@@ -1,0 +1,65 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+undefined8 *
+FUN_141ba9700(undefined8 *param_1,undefined8 *param_2,undefined8 param_3,undefined8 param_4,
+             undefined8 param_5)
+
+{
+  code *pcVar1;
+  undefined4 uVar2;
+  undefined4 uVar3;
+  undefined4 uVar4;
+  undefined8 *puVar5;
+  undefined1 auStack_168 [144];
+  undefined8 uStack_d8;
+  undefined8 uStack_d0;
+  undefined4 *puStack_c8;
+  undefined8 uStack_c0;
+  undefined8 uStack_b8;
+  undefined8 uStack_48;
+  undefined4 uStack_40;
+  undefined8 *puStack_38;
+  undefined8 uStack_30;
+  
+  uStack_30 = 0xfffffffffffffffe;
+  puVar5 = (undefined8 *)func_0x000140613c10(8,8);
+  if (puVar5 == (undefined8 *)0x0) {
+    FUN_1428d9000(8,8);
+  }
+  else {
+    puStack_38 = puVar5;
+    puStack_c8 = (undefined4 *)func_0x000140613c10(0x15,1);
+    uVar4 = _UNK_142eebca4;
+    uVar3 = _UNK_142eebca0;
+    uVar2 = _UNK_142eebc9c;
+    if (puStack_c8 != (undefined4 *)0x0) {
+      *puStack_c8 = _UNK_142eebc98;
+      puStack_c8[1] = uVar2;
+      puStack_c8[2] = uVar3;
+      puStack_c8[3] = uVar4;
+      *(undefined8 *)((longlong)puStack_c8 + 0xd) = 0x656c626269726373;
+      uStack_d0 = 0x15;
+      uStack_c0 = 0x15;
+      uStack_d8 = 0x8000000000000000;
+      FUN_14089d9b0(auStack_168,&uStack_d8);
+      FUN_14089dc90(&uStack_d8,auStack_168,0);
+      uStack_40 = *(undefined4 *)(param_2 + 1);
+      uStack_48 = *param_2;
+      FUN_14089dc00(auStack_168,&uStack_d8,&uStack_48);
+      FUN_14089dc60(&uStack_d8,auStack_168,*(undefined4 *)((longlong)param_2 + 0xc));
+      FUN_14089dad0(auStack_168,&uStack_d8,0);
+      FUN_14089dd50(&uStack_d8,auStack_168,param_3,param_4,param_5);
+      *puStack_38 = uStack_b8;
+      *param_1 = 1;
+      param_1[1] = puStack_38;
+      param_1[2] = 1;
+      return param_1;
+    }
+  }
+  FUN_1428d8fe3(1,0x15,&UNK_142eebb88);
+                    /* WARNING: Does not return */
+  pcVar1 = (code *)invalidInstructionException();
+  (*pcVar1)();
+}
+

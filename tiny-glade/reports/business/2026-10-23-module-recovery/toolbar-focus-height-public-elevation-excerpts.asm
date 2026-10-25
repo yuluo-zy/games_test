@@ -1,0 +1,43 @@
+; 原publisher两个不连续片段，仅证明公共+280来源；不声称为完整CFG。
+140a8d81e: 4c 8b 9d 40 0d 00 00        	movq	0xd40(%rbp), %r11
+140a8d825: f3 41 0f 10 63 e8           	movss	-0x18(%r11), %xmm4
+140a8d82b: f3 41 0f 10 6b ec           	movss	-0x14(%r11), %xmm5
+140a8d831: 66 41 0f 6e 4b f0           	movd	-0x10(%r11), %xmm1
+140a8d837: 41 0f b6 4b f4              	movzbl	-0xc(%r11), %ecx
+140a8d83c: 41 0f b6 53 f6              	movzbl	-0xa(%r11), %edx
+140a8d841: 45 0f b6 53 f7              	movzbl	-0x9(%r11), %r10d
+140a8d846: 45 0f b7 5b f8              	movzwl	-0x8(%r11), %r11d
+140a8d84b: 4c 8b 8d a0 0c 00 00        	movq	0xca0(%rbp), %r9
+140a8d852: 4c 89 8d 00 05 00 00        	movq	%r9, 0x500(%rbp)
+140a8d859: 4c 8b 8d 20 0c 00 00        	movq	0xc20(%rbp), %r9
+140a8d860: 4c 89 8d 08 05 00 00        	movq	%r9, 0x508(%rbp)
+140a8d867: 4c 8b 8d 08 0d 00 00        	movq	0xd08(%rbp), %r9
+140a8d86e: 4c 89 8d 10 05 00 00        	movq	%r9, 0x510(%rbp)
+140a8d875: 4c 8b 8d a8 0c 00 00        	movq	0xca8(%rbp), %r9
+140a8d87c: 4c 89 8d 18 05 00 00        	movq	%r9, 0x518(%rbp)
+140a8d883: 4c 8b 8d 80 0c 00 00        	movq	0xc80(%rbp), %r9
+140a8d88a: 4c 89 8d 20 05 00 00        	movq	%r9, 0x520(%rbp)
+140a8d891: 48 89 b5 28 05 00 00        	movq	%rsi, 0x528(%rbp)
+140a8d898: 66 0f 7e bd 30 05 00 00     	movd	%xmm7, 0x530(%rbp)
+140a8d8a0: 48 8b b5 90 02 00 00        	movq	0x290(%rbp), %rsi
+140a8d8a7: 49 89 b0 60 fe ff ff        	movq	%rsi, -0x1a0(%r8)
+140a8d8ae: f3 41 0f 5f dc              	maxss	%xmm12, %xmm3
+140a8d8b3: f3 0f 5d d3                 	minss	%xmm3, %xmm2
+140a8d8b7: 0f 10 9d 60 02 00 00        	movups	0x260(%rbp), %xmm3
+140a8d8be: 44 0f 10 9d 70 02 00 00     	movups	0x270(%rbp), %xmm11
+140a8d8c6: 44 0f 10 a5 80 02 00 00     	movups	0x280(%rbp), %xmm12
+140a8d8ce: 45 0f 11 a0 50 fe ff ff     	movups	%xmm12, -0x1b0(%r8)
+140a8d8d6: 45 0f 11 98 40 fe ff ff     	movups	%xmm11, -0x1c0(%r8)
+140a8d8de: 41 0f 11 98 30 fe ff ff     	movups	%xmm3, -0x1d0(%r8)
+140a8d8e6: f3 44 0f 11 95 74 07 00 00  	movss	%xmm10, 0x774(%rbp)
+140a8d8ef: 0f 57 db                    	xorps	%xmm3, %xmm3
+140a8d8f2: f3 44 0f 11 ad 78 07 00 00  	movss	%xmm13, 0x778(%rbp)
+140a8d8fb: f3 44 0f 11 8d 7c 07 00 00  	movss	%xmm9, 0x77c(%rbp)
+140a8d904: f3 0f 11 a5 80 07 00 00     	movss	%xmm4, 0x780(%rbp)
+140a8d90c: f3 0f 11 95 84 07 00 00     	movss	%xmm2, 0x784(%rbp)
+140a8d914: f3 0f 11 ad 88 07 00 00     	movss	%xmm5, 0x788(%rbp)
+140a8dd06: 41 b8 a0 02 00 00           	movl	$0x2a0, %r8d            # imm = 0x2A0
+140a8dd0c: 48 8d b5 40 08 00 00        	leaq	0x840(%rbp), %rsi
+140a8dd13: 48 89 f1                    	movq	%rsi, %rcx
+140a8dd16: 48 8d 95 00 05 00 00        	leaq	0x500(%rbp), %rdx
+140a8dd1d: e8 de 5e e9 01              	callq	0x142923c00 <.text+0x2922c00>

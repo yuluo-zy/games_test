@@ -1,0 +1,29 @@
+[package]
+name = "utils"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+description = "Shared geometry, curves, numeric policies and utility functions"
+readme = "README.md"
+
+[dependencies]
+bevy_ecs.workspace = true
+glam.workspace = true
+fastrand.workspace = true
+half.workspace = true
+lerp = "=0.4.0"
+itertools = "=0.14.0"
+take-until = "=0.2.0"
+serde.workspace = true
+xxhash-rust = { version = "=0.8.10", features = ["xxh3"] }
+time = { version = "=0.3.36", features = ["local-offset", "formatting"] }
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[lints]
+workspace = true

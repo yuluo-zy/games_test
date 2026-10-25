@@ -1,0 +1,179 @@
+   1	
+   2	void __cdecl country_core::resources::history::History::add(void)
+   3	
+   4	{
+   5	  undefined8 *puVar1;
+   6	  longlong lVar2;
+   7	  undefined8 *extraout_RAX;
+   8	  longlong *extraout_RAX_00;
+   9	  undefined8 *extraout_RAX_01;
+  10	  longlong lVar3;
+  11	  longlong in_RCX;
+  12	  longlong *plVar4;
+  13	  int *in_RDX;
+  14	  longlong lVar5;
+  15	  longlong *plVar6;
+  16	  longlong lVar7;
+  17	  undefined8 local_a8;
+  18	  undefined8 uStack_a0;
+  19	  longlong local_98;
+  20	  longlong *local_90;
+  21	  undefined **local_88;
+  22	  undefined8 uStack_80;
+  23	  undefined8 *local_78;
+  24	  undefined8 local_70;
+  25	  undefined8 uStack_68;
+  26	  undefined8 *local_58;
+  27	  undefined1 local_49;
+  28	  undefined8 local_48;
+  29	  
+  30	  local_48 = 0xfffffffffffffffe;
+  31	  lVar3 = *(longlong *)(in_RCX + 0x30);
+  32	  if (!SBORROW8(0,lVar3)) {
+  33	    plVar6 = (longlong *)(in_RCX + 0x30);
+  34	    local_90 = plVar6;
+  35	    if ((*(longlong *)(in_RCX + 0x40) == 0) &&
+  36	       (*(int *)(in_RCX + 0x68) - *(int *)(in_RCX + 0x10) < -1)) {
+  37	      local_49 = 1;
+  38	      nuke_future_states();
+  39	      local_88 = (undefined **)0x0;
+  40	      uStack_80 = 8;
+  41	      local_78 = (undefined8 *)0x0;
+  42	      std::alloc::__default_lib_allocator::__rust_alloc();
+  43	      if (extraout_RAX == (undefined8 *)0x0) {
+  44	                    /* WARNING: Subroutine does not return */
+  45	        alloc::alloc::handle_alloc_error();
+  46	      }
+  47	      local_58 = extraout_RAX;
+  48	      core::ops::function::FnOnce::
+  49	      call_once<std::hash::random::impl_0::new::KEYS::constant_0::closure_env_1,tuple_<enum2_<core::option::Option<ref_mut_<enum2_<core::option::Option<core::cell::Cell<tuple_<u64,u64>_>_>_>_>_>_>_>_>
+  50	                ();
+  51	      if (extraout_RAX_00 == (longlong *)0x0) {
+  52	                    /* WARNING: Subroutine does not return */
+  53	        std::thread::local::panic_access_error();
+  54	      }
+  55	      lVar3 = *extraout_RAX_00;
+  56	      lVar5 = extraout_RAX_00[1];
+  57	      *extraout_RAX_00 = *extraout_RAX_00 + 1;
+  58	      *local_58 = 1;
+  59	      local_58[1] = 1;
+  60	      local_58[2] = &anon_869b53123b80c82212150de940b3e437_13_llvm_8061242415410628904;
+  61	      local_58[3] = 0;
+  62	      local_58[4] = 0;
+  63	      local_58[5] = 0;
+  64	      local_58[6] = lVar3;
+  65	      local_58[7] = lVar5;
+  66	      std::alloc::__default_lib_allocator::__rust_alloc();
+  67	      if (extraout_RAX_01 == (undefined8 *)0x0) {
+  68	                    /* WARNING: Subroutine does not return */
+  69	        alloc::alloc::handle_alloc_error();
+  70	      }
+  71	      *extraout_RAX_01 = 1;
+  72	      extraout_RAX_01[1] = 1;
+  73	      extraout_RAX_01[2] = 0;
+  74	      extraout_RAX_01[4] = 0;
+  75	      extraout_RAX_01[6] = 0;
+  76	      extraout_RAX_01[7] = 4;
+  77	      extraout_RAX_01[8] = 0;
+  78	      extraout_RAX_01[9] = 0;
+  79	      extraout_RAX_01[10] = 4;
+  80	      extraout_RAX_01[0xb] = 0;
+  81	      local_98 = (longlong)local_78;
+  82	      local_a8 = local_88;
+  83	      uStack_a0 = (code *)uStack_80;
+  84	      if (!SBORROW8(0,*plVar6)) {
+  85	        core::ptr::drop_in_place<country_core::resources::history::MultiEdit>();
+  86	      }
+  87	      local_90[2] = local_98;
+  88	      *(undefined4 *)local_90 = (undefined4)local_a8;
+  89	      *(undefined4 *)((longlong)local_90 + 4) = local_a8._4_4_;
+  90	      *(undefined4 *)(local_90 + 1) = (undefined4)uStack_a0;
+  91	      *(undefined4 *)((longlong)local_90 + 0xc) = uStack_a0._4_4_;
+  92	      *(undefined8 **)(in_RCX + 0x48) = local_58;
+  93	      *(undefined8 **)(in_RCX + 0x50) = extraout_RAX_01;
+  94	      lVar3 = *(longlong *)(in_RCX + 0x30);
+  95	      if (SBORROW8(0,lVar3)) goto LAB_140a8525b;
+  96	    }
+  97	    if ((*in_RDX == 7) && (*(longlong *)(in_RDX + 4) != 0)) {
+  98	      plVar6 = *(longlong **)(in_RDX + 2);
+  99	      plVar4 = plVar6 + *(longlong *)(in_RDX + 4) * 2;
+ 100	      do {
+ 101	        if (plVar6[1] != 0) {
+ 102	          lVar5 = 0;
+ 103	          do {
+ 104	            lVar2 = *(longlong *)(*plVar6 + lVar5);
+ 105	            lVar7 = *(longlong *)(lVar2 + 0x10) + -0x7fffffffffffffff;
+ 106	            if (-0x7ffffffffffffff1 < *(longlong *)(lVar2 + 0x10)) {
+ 107	              lVar7 = 0;
+ 108	            }
+ 109	            if (lVar7 == 0) {
+ 110	              if (*(uint *)(lVar2 + 0xf8) < 2) {
+ 111	                if (*(float *)(lVar2 + 0x100) < *(float *)(lVar2 + 0xfc) ||
+ 112	                    *(float *)(lVar2 + 0x100) == *(float *)(lVar2 + 0xfc)) {
+ 113	                  local_88 = &PTR_s_Slice_start_u_must_be_smaller_th_142ad8170;
+ 114	                  uStack_80 = 1;
+ 115	                  local_78 = (undefined8 *)0x8;
+ 116	                  local_70 = 0;
+ 117	                  uStack_68 = 0;
+ 118	                  local_49 = 1;
+ 119	                    /* WARNING: Subroutine does not return */
+ 120	                  core::panicking::panic_fmt();
+ 121	                }
+ 122	              }
+ 123	            }
+ 124	            else if (lVar7 == 1) {
+ 125	              if (SBORROW8(0,*(longlong *)(lVar2 + 0x18))) {
+ 126	                local_88 = &PTR_s_None_is_not_allowed_in__CreateWa_142ad81b8;
+ 127	                uStack_80 = 1;
+ 128	                local_78 = (undefined8 *)0x8;
+ 129	                local_70 = 0;
+ 130	                uStack_68 = 0;
+ 131	                local_49 = 1;
+ 132	                    /* WARNING: Subroutine does not return */
+ 133	                core::panicking::panic_fmt();
+ 134	              }
+ 135	            }
+ 136	            else if ((lVar7 == 2) && (SBORROW8(0,*(longlong *)(lVar2 + 0x18)))) {
+ 137	              local_88 = &PTR_s_None_is_not_allowed_in__DeleteWa_142ad8200;
+ 138	              uStack_80 = 1;
+ 139	              local_78 = (undefined8 *)0x8;
+ 140	              local_70 = 0;
+ 141	              uStack_68 = 0;
+ 142	              local_49 = 1;
+ 143	                    /* WARNING: Subroutine does not return */
+ 144	              core::panicking::panic_fmt();
+ 145	            }
+ 146	            lVar5 = lVar5 + 8;
+ 147	          } while (plVar6[1] << 3 != lVar5);
+ 148	        }
+ 149	        plVar6 = plVar6 + 2;
+ 150	      } while (plVar6 != plVar4);
+ 151	    }
+ 152	    local_78 = *(undefined8 **)(in_RDX + 4);
+ 153	    local_88 = *(undefined ***)in_RDX;
+ 154	    uStack_80 = *(undefined8 *)(in_RDX + 2);
+ 155	    lVar5 = *(longlong *)(in_RCX + 0x40);
+ 156	    if (lVar5 == lVar3) {
+ 157	      alloc::raw_vec::RawVec::
+ 158	      grow_one<tuple_<ref_<str_>,enum2_<country_core::resources::gui::SettingsMenuState>_>,alloc::alloc::Global>
+ 159	                ();
+ 160	    }
+ 161	    lVar3 = *(longlong *)(in_RCX + 0x38);
+ 162	    *(undefined8 **)(lVar3 + 0x10 + lVar5 * 0x18) = local_78;
+ 163	    puVar1 = (undefined8 *)(lVar3 + lVar5 * 0x18);
+ 164	    *puVar1 = local_88;
+ 165	    puVar1[1] = uStack_80;
+ 166	    *(longlong *)(in_RCX + 0x40) = lVar5 + 1;
+ 167	    return;
+ 168	  }
+ 169	LAB_140a8525b:
+ 170	  uStack_a0 = history::impl$14::fmt;
+ 171	  local_88 = &PTR_s_Tried_writing_to_History_when_th_142ad8250;
+ 172	  uStack_80 = 2;
+ 173	  uStack_68 = 0;
+ 174	  local_78 = &local_a8;
+ 175	  local_70 = 1;
+ 176	  local_49 = 1;
+ 177	                    /* WARNING: Subroutine does not return */
+ 178	  core::panicking::panic_fmt();
+ 179	}

@@ -1,0 +1,73 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140252850: 56                          	pushq	%rsi
+140252851: 57                          	pushq	%rdi
+140252852: 48 81 ec 88 00 00 00        	subq	$0x88, %rsp
+140252859: bf 01 00 00 00              	movl	$0x1, %edi
+14025285e: f0                          	lock
+14025285f: 0f c1 ba b0 05 00 00        	xaddl	%edi, 0x5b0(%rdx)
+140252866: f6 01 01                    	testb	$0x1, (%rcx)
+140252869: 0f 84 10 01 00 00           	je	0x14025297f <.text+0x25197f>
+14025286f: 48 89 ce                    	movq	%rcx, %rsi
+140252872: 48 8b 41 08                 	movq	0x8(%rcx), %rax
+140252876: 48 39 82 18 02 00 00        	cmpq	%rax, 0x218(%rdx)
+14025287d: 76 78                       	jbe	0x1402528f7 <.text+0x2518f7>
+14025287f: 48 8b 8a 10 02 00 00        	movq	0x210(%rdx), %rcx
+140252886: 48 8b 0c c1                 	movq	(%rcx,%rax,8), %rcx
+14025288a: 48 85 c9                    	testq	%rcx, %rcx
+14025288d: 74 68                       	je	0x1402528f7 <.text+0x2518f7>
+14025288f: 48 8b 82 e0 01 00 00        	movq	0x1e0(%rdx), %rax
+140252896: 48 f7 d1                    	notq	%rcx
+140252899: 48 8d 0c 49                 	leaq	(%rcx,%rcx,2), %rcx
+14025289d: 48 c1 e1 05                 	shlq	$0x5, %rcx
+1402528a1: 48 83 7c 08 20 00           	cmpq	$0x0, 0x20(%rax,%rcx)
+1402528a7: 74 4e                       	je	0x1402528f7 <.text+0x2518f7>
+1402528a9: 48 01 c8                    	addq	%rcx, %rax
+1402528ac: 48 8b 48 10                 	movq	0x10(%rax), %rcx
+1402528b0: 4c 8d 40 58                 	leaq	0x58(%rax), %r8
+1402528b4: 48 83 c0 5c                 	addq	$0x5c, %rax
+1402528b8: 8b 92 b0 05 00 00           	movl	0x5b0(%rdx), %edx
+1402528be: 8b 96 48 01 00 00           	movl	0x148(%rsi), %edx
+1402528c4: 48 89 4c 24 28              	movq	%rcx, 0x28(%rsp)
+1402528c9: 4c 89 44 24 30              	movq	%r8, 0x30(%rsp)
+1402528ce: 48 89 44 24 38              	movq	%rax, 0x38(%rsp)
+1402528d3: 89 54 24 40                 	movl	%edx, 0x40(%rsp)
+1402528d7: 89 7c 24 44                 	movl	%edi, 0x44(%rsp)
+1402528db: 48 8d 4c 24 28              	leaq	0x28(%rsp), %rcx
+1402528e0: e8 7b 5a 68 00              	callq	0x1408d8360 <.text+0x8d7360>
+1402528e5: 89 be 48 01 00 00           	movl	%edi, 0x148(%rsi)
+1402528eb: 31 c0                       	xorl	%eax, %eax
+1402528ed: 48 81 c4 88 00 00 00        	addq	$0x88, %rsp
+1402528f4: 5f                          	popq	%rdi
+1402528f5: 5e                          	popq	%rsi
+1402528f6: c3                          	retq
+1402528f7: 48 81 c6 b0 00 00 00        	addq	$0xb0, %rsi
+1402528fe: 48 8d 05 02 07 75 02        	leaq	0x2750702(%rip), %rax   # 0x1429a3007
+140252905: 48 89 44 24 58              	movq	%rax, 0x58(%rsp)
+14025290a: 48 c7 44 24 60 35 00 00 00  	movq	$0x35, 0x60(%rsp)
+140252913: 48 89 74 24 68              	movq	%rsi, 0x68(%rsp)
+140252918: 48 8d 05 b1 91 de ff        	leaq	-0x216e4f(%rip), %rax   # 0x14003bad0 <.text+0x3aad0>
+14025291f: 48 89 44 24 70              	movq	%rax, 0x70(%rsp)
+140252924: 48 8d 44 24 58              	leaq	0x58(%rsp), %rax
+140252929: 48 89 44 24 78              	movq	%rax, 0x78(%rsp)
+14025292e: 48 8d 05 5b 75 eb ff        	leaq	-0x148aa5(%rip), %rax   # 0x140109e90 <.text+0x108e90>
+140252935: 48 89 84 24 80 00 00 00     	movq	%rax, 0x80(%rsp)
+14025293d: 48 8d 05 24 07 75 02        	leaq	0x2750724(%rip), %rax   # 0x1429a3068
+140252944: 48 89 44 24 28              	movq	%rax, 0x28(%rsp)
+140252949: 48 c7 44 24 30 02 00 00 00  	movq	$0x2, 0x30(%rsp)
+140252952: 48 c7 44 24 48 00 00 00 00  	movq	$0x0, 0x48(%rsp)
+14025295b: 48 8d 44 24 68              	leaq	0x68(%rsp), %rax
+140252960: 48 89 44 24 38              	movq	%rax, 0x38(%rsp)
+140252965: 48 c7 44 24 40 02 00 00 00  	movq	$0x2, 0x40(%rsp)
+14025296e: 48 8d 15 7b 07 75 02        	leaq	0x275077b(%rip), %rdx   # 0x1429a30f0
+140252975: 48 8d 4c 24 28              	leaq	0x28(%rsp), %rcx
+14025297a: e8 11 6a 68 02              	callq	0x1428d9390 <.text+0x28d8390>
+14025297f: 48 8d 0d 62 08 75 02        	leaq	0x2750862(%rip), %rcx   # 0x1429a31e8
+140252986: 4c 8d 05 bb 08 75 02        	leaq	0x27508bb(%rip), %r8    # 0x1429a3248
+14025298d: ba 59 00 00 00              	movl	$0x59, %edx
+140252992: e8 99 69 68 02              	callq	0x1428d9330 <.text+0x28d8330>
+140252997: cc                          	int3

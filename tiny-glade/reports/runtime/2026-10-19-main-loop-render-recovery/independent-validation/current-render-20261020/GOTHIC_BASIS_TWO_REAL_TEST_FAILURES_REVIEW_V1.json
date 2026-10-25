@@ -1,0 +1,20 @@
+{
+  "scope": "gothic producer fixture basis only; actual two failing coordinate gates",
+  "source_before_sha256": "e680958f0c5d1306089307bce6695b16736ec47391dd8d0aa61b8d681c63f63b",
+  "source_after_sha256": "8f8f12e370e7340807adfccf1b5dc188803c8341c6731fa764fedcee82177941",
+  "patch_sha256": "eb186f0b08a993348e54a90221d631f3102fcef31ed6c50b9cda22a4b59c77fa",
+  "production_prefix_identical": true,
+  "independent_findings": [
+    "Current Rectangle2d::as_points2 source emits [-4,-4],[-4,4],[4,4],[4,-4]; actual first tangent is +Z and u4 position(-4,2,0). Both old coordinate expectations describe bottom edge with z=-4, so fixture conflicts before main algorithm starts.",
+    "Candidate explicitly reorders same actual rectangle [0,3,2,1], first tangent +X, u4=(0,2,-4), preserving all numeric expectations/tolerances and original producer algorithm. Three new preconditions assert actual published curve basis via real PublicWalls rather than a synthetic curve.",
+    "Original real failure is retained: all_native_ranks... hat.translation.z+4 and gothic_dormer... hole.z+3.61. Other 400 tests passed; no inference that corrected fixtures have executed."
+  ],
+  "verdict": "source_ready_for_root_actual_rerun; no static production algorithm defect hidden by this narrow fixture change",
+  "limitations": [
+    "Changing input winding tests a different actual wall; this is legitimate only for these explicit bottom-edge coordinate fixtures, not evidence all winding/rank cases are differential-complete.",
+    "No Cargo/GPU run by reviewer; root must retain and rerun original failing tests."
+  ],
+  "source_log": "/private/tmp/tg-gothic-graph-cpu-v2-20261021.log",
+  "author_delivery_sha256": "691a81a18a824553c221b92f21d97d7a431ae2d9549fd18e8e0b8ba3f81e4434",
+  "production_written": false
+}

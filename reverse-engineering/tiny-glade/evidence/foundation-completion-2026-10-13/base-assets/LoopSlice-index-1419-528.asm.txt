@@ -1,0 +1,68 @@
+0x141208d20: mov edi, dword ptr [rdx + 0x18]
+0x141208d23: test edi, edi
+0x141208d25: je 0x141208de7
+0x141208d2b: mov r9, rdx
+0x141208d2e: add r10d, dword ptr [rdx + 0x10]
+0x141208d32: mov ebx, edi
+0x141208d34: not ebx
+0x141208d36: lea eax, [r10 - 0x80000000]
+0x141208d3d: or eax, ebx
+0x141208d3f: je 0x141208ddf
+0x141208d45: mov eax, r10d
+0x141208d48: cdq 
+0x141208d49: idiv edi
+0x141208d4b: mov ebp, edi
+0x141208d4d: neg ebp
+0x141208d4f: cmovs ebp, edi
+0x141208d52: mov eax, edx
+0x141208d54: sar eax, 0x1f
+0x141208d57: and eax, ebp
+0x141208d59: add eax, edx
+0x141208d5b: movsxd r11, eax
+0x141208d5e: mov rsi, qword ptr [r9 + 8]
+0x141208d62: cmp rsi, r11
+0x141208d65: jbe 0x141208def
+0x141208d6b: lea eax, [r10 - 0x7fffffff]
+0x141208d72: or ebx, eax
+0x141208d74: je 0x141208ddf
+0x141208d76: inc r10d
+0x141208d79: mov eax, r10d
+0x141208d7c: cdq 
+0x141208d7d: idiv edi
+0x141208d7f: mov eax, edx
+0x141208d81: sar eax, 0x1f
+0x141208d84: and eax, ebp
+0x141208d86: add eax, edx
+0x141208d88: cdqe 
+0x141208d8a: cmp rsi, rax
+0x141208d8d: jbe 0x141208dfa
+0x141208d8f: mov rdx, qword ptr [r9]
+0x141208d92: lea r8, [r11 + r11*2]
+0x141208d96: movsd xmm0, qword ptr [rdx + r8*4]
+0x141208d9c: movss xmm1, dword ptr [rdx + r8*4 + 8]
+0x141208da3: lea rax, [rax + rax*2]
+0x141208da7: movss xmm2, dword ptr [rdx + rax*4 + 8]
+0x141208dad: subss xmm2, xmm1
+0x141208db1: mulss xmm2, xmm3
+0x141208db5: addss xmm2, xmm1
+0x141208db9: movsd xmm1, qword ptr [rdx + rax*4]
+0x141208dbe: subps xmm1, xmm0
+0x141208dc1: movsldup xmm3, xmm3
+0x141208dc5: mulps xmm3, xmm1
+0x141208dc8: addps xmm3, xmm0
+0x141208dcb: movlps qword ptr [rcx], xmm3
+0x141208dce: movss dword ptr [rcx + 8], xmm2
+0x141208dd3: mov rax, rcx
+0x141208dd6: add rsp, 0x28
+0x141208dda: pop rbx
+0x141208ddb: pop rbp
+0x141208ddc: pop rdi
+0x141208ddd: pop rsi
+0x141208dde: ret 
+0x141208ddf: mov rcx, r8
+0x141208de2: call 0x1428d99a0
+0x141208de7: mov rcx, r8
+0x141208dea: call 0x1428d9a20
+0x141208def: mov rcx, r11
+0x141208df2: mov rdx, rsi
+0x141208df5: call 0x1428d9518

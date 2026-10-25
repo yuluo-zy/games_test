@@ -1,0 +1,36 @@
+{
+  "scope": "read-only independent peer review; no rerun native cases; no edit other crates",
+  "packages": [
+    "feedback-reporter",
+    "geforcenow"
+  ],
+  "findings": [
+    {
+      "severity": "integration-gap",
+      "package": "feedback-reporter",
+      "location": "FeedbackReporterPlugin::build + report_player_feedback Res<FeedbackTransport>",
+      "detail": "Plugin registers the system but no default transport Resource; app must insert transport before update or provider initialization should be added",
+      "sent_to_owner": true,
+      "status": "resolved by owner; default provider resource initialization and injection override retained"
+    }
+  ],
+  "confirmed": [
+    "readiness checks first path then second only when first ready",
+    "missing-files counts0..600 wait and increment;before601 sends and increments602",
+    "ready/no-save sends immediately and increments counter;u32 wrap retained",
+    "multipart text,meta,screenshot,save,benchmark;binary MIME image/jpg and application/zip;no invented filenames",
+    "save packing failure propagates;benchmark packing failure logs and omits only benchmark",
+    "2xx does not read body;non2xx body failure maps to waiting-response error;post failure maps Connection failed",
+    "GFN DLL symbol resolution order init/shutdown/cloud;initialize0;any nonzero rejects without query/shutdown",
+    "GFN success query then shutdown once;RAII library unload on success and resolution/init failure"
+  ],
+  "evidence": [
+    "../feedback-cloud/0x1406903a0.c",
+    "../feedback-cloud/feedback-reporter-6903a0.asm.txt",
+    "../feedback-cloud/feedback-wait-native-validation.json",
+    "../feedback-cloud/0x14061e660.c",
+    "../feedback-cloud/gfn-native-validation.json",
+    "../../../reconstruction/shared-foundation/crates/feedback-reporter/src/lib.rs",
+    "../../../reconstruction/shared-foundation/crates/geforcenow/src/lib.rs"
+  ]
+}

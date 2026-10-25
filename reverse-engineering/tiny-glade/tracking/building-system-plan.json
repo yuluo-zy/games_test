@@ -1,0 +1,527 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-11",
+  "status": "implementation_in_progress",
+  "implementation_baseline": "B",
+  "delivery_target": "C v1.16.0",
+  "overall_completion_percent": null,
+  "document": "BUILDING_SYSTEM_RECOVERY_PLAN.md",
+  "packages": [
+    {
+      "id": "G00",
+      "title": "原模块与版本契约清单（P0，父 agent）",
+      "status": "in_progress",
+      "contract_dependencies": [],
+      "acceptance_and_scope": [
+        "将 InnerWall/PublicWall、Roof、Decorator、Stairs、WallMaterial、History owner 和各 CPU 输出列成接口表；标明原字段、已解析输入、adapter 字段、未知值和版本差异。",
+        "每个待实现入口先查三版 Cargo/PDB 定义与 `dependency-exclusions.json`。std、Bevy、glam、fastrand、Serde、容器、通用碰撞库复用；同 checksum 的 private 游戏规则仍需恢复。私有 local 包不能自动认定为游戏业务。",
+        "退出：每个包有权威输入、实际消费者、删除策略、版本范围、Rust 映射和验收场景。未闭合边进入清单，不通过猜默认值消失。"
+      ],
+      "specification": {
+        "document": "BUILDING_SYSTEM_RECOVERY_PLAN.md",
+        "heading_id": "G00",
+        "heading_title": "原模块与版本契约清单（P0，父 agent）"
+      },
+      "implementation_evidence": "evidence/building-integrate/findings.md",
+      "full_package_accepted": false
+    },
+    {
+      "id": "G01",
+      "title": "墙权威对象与完整编辑（P0）",
+      "status": "in_progress",
+      "contract_dependencies": [
+        "G00"
+      ],
+      "acceptance_and_scope": [
+        "原入口：`country-core/resources/walls/{inner_wall_state,inner_walls,in_progress_wall,wall_attachment}`，`systems/wall/shapes/*`、`adjust_wall_height/*`、`delete_wall`。",
+        "输入/输出：创建、尺寸、旋转、移动、形变、墙高、删除 → 原墙状态、raw Curve2、对象 ID 与 dirty。CLI upsert 已有 Curve2 不能替代作者编辑规则。",
+        "恢复高度约束查询前段和未命名 special_flag 的生产者；rectangle/circle/freehand 或 path 的实际类型关系先由判别分支确认。",
+        "前置 G00；退出：连续编辑与取消、同值写入、缺失对象、宿主删除、恢复 ID 均经过原消费者核对，更新现有发布链。"
+      ],
+      "specification": {
+        "document": "BUILDING_SYSTEM_RECOVERY_PLAN.md",
+        "heading_id": "G01",
+        "heading_title": "墙权威对象与完整编辑（P0）"
+      },
+      "implementation_evidence": "evidence/building-integrate/findings.md",
+      "full_package_accepted": false
+    },
+    {
+      "id": "G02",
+      "title": "自由墙缓存与高度前段（P0）",
+      "status": "in_progress",
+      "contract_dependencies": [
+        "G00",
+        "G01"
+      ],
+      "acceptance_and_scope": [
+        "原入口：`init_wall_height_and_arch_segment_height`、`calc_shape_height`、PublicWall 缓存生产者；目前 regular cache 对 tag>=2 明确拒绝。",
+        "输入/输出：开放/闭合 raw 路径、地形、相对高度、山墙与限制 → 基础/逐段高度及 max-y 缓存。",
+        "前置 G00/G01 的类型契约，可并行恢复解析后的算法；退出：自由路径不再落 UnsupportedShape，移动/地形/屋顶切换不积累旧高度，缺缓存与无变化行为明确。"
+      ],
+      "specification": {
+        "document": "BUILDING_SYSTEM_RECOVERY_PLAN.md",
+        "heading_id": "G02",
+        "heading_title": "自由墙缓存与高度前段（P0）"
+      },
+      "full_package_accepted": false,
+      "implementation_evidence": "evidence/building-integrate/stage-reviews/2026-10-11-stage0-stage1.md"
+    },
+    {
+      "id": "G03",
+      "title": "墙相交、分段与连接（P0/P1）",
+      "status": "in_progress",
+      "contract_dependencies": [
+        "G00",
+        "G01",
+        "G02"
+      ],
+      "acceptance_and_scope": [
+        "原入口：`shape_intersections`，wall-constructor 的 `segmentation/{sample_wall_path_intersections,calculate_wall_path_segmentation,wall_path_segment}`。",
+        "输入/输出：多墙、地形、屋顶、楼梯与邻接关系 → 可构造区段、可见面、重叠/裁切和支撑提案。空间格候选覆盖并非真实几何相交。",
+        "复用匹配碰撞/几何依赖，恢复游戏筛选、容差、顺序和传播；退出：相接/重叠/包含/角点/开放端、邻墙移动及删除均更新双方，无残留段。"
+      ],
+      "specification": {
+        "document": "BUILDING_SYSTEM_RECOVERY_PLAN.md",
+        "heading_id": "G03",
+        "heading_title": "墙相交、分段与连接（P0/P1）"
+      },
+      "full_package_accepted": false,
+      "implementation_evidence": "evidence/building-production-authority/findings.md"
+    },
+    {
+      "id": "G04",
+      "title": "开口实际消费者与墙砖主体（P0，第一批主攻）",
+      "status": "in_progress",
+      "contract_dependencies": [
+        "G00"
+      ],
+      "acceptance_and_scope": [
+        "原入口：已保存 WallHoleStorage::finalize 实际 caller `system_wall_constructor::construct_walls`，沿 AL 后实际分支和 `WallConstructor` 追踪主体输出；调查 `resolve_hole_overlap`、`trim_rows`、`split_into_random_rows`、wall corners/skirts 的真实调用。`construct_brick_columns` 定义在 elevation support/pillar 模块，列入 G05，未经 CALL 证据不把它当主体墙砖循环。",
+        "输入/输出：真实 PublicWall、finalized 开口、分段/高度、材质/seed → 有序砖列/实例、裁切边界、墙体 CPU 几何与输出所有权。开口 AABB 数量通过不能替代此消费链。",
+        "前置：现有 G00 已知契约与已验证开口核心；自由墙与复杂相交分支分别等待 G02/G03，不阻止先恢复合法矩形/圆墙。",
+        "退出：创建门窗确实改变墙砖/裁切输出；移除、移动、wrap、多洞相交、同值缓存、宿主删除/撤销恢复均连续验证；保留 RNG 最终状态与输出顺序。"
+      ],
+      "specification": {
+        "document": "BUILDING_SYSTEM_RECOVERY_PLAN.md",
+        "heading_id": "G04",
+        "heading_title": "开口实际消费者与墙砖主体（P0，第一批主攻）"
+      },
+      "implementation_evidence": "evidence/building-integrate/findings.md",
+      "full_package_accepted": false
+    },
+    {
+      "id": "G05",
+      "title": "拱、过梁与悬挑/高架支撑（P1）",
+      "status": "in_progress",
+      "contract_dependencies": [
+        "G02",
+        "G03",
+        "G04"
+      ],
+      "acceptance_and_scope": [
+        "原入口：`construct_arches`、`arch_walker`、`construct_lintels/place_support_beams`、`construct_elevation_supports/*`（包括 `util_pillar_construction::construct_brick_columns`）、`place_pillars`、stone column colliders。墙过梁与屋顶的同名 `place_support_beams` 分开追踪，不能混用证据。",
+        "输入/输出：墙区段、孔洞、地形/下方交叠、样式与支撑状态 → 石柱、梁、托架、拱轮廓、碰撞及材质统计。",
+        "前置 G02/G03/G04；退出：悬空/叠层/山墙/门窗挤占等分支有原规则，支撑增删跟随宿主，ZST marker 不计为几何完成。"
+      ],
+      "specification": {
+        "document": "BUILDING_SYSTEM_RECOVERY_PLAN.md",
+        "heading_id": "G05",
+        "heading_title": "拱、过梁与悬挑/高架支撑（P1）"
+      },
+      "full_package_accepted": false,
+      "implementation_evidence": "evidence/building-structures/findings.md"
+    },
+    {
+      "id": "G06",
+      "title": "楼板、栅栏、门与墙面层（P1）",
+      "status": "in_progress",
+      "contract_dependencies": [
+        "G03",
+        "G04"
+      ],
+      "acceptance_and_scope": [
+        "原入口：`construct_floors`、`construct_fences`、`construct_gates`、`plaster_systems`、`curved_halftimber`、wall skirts。",
+        "输入/输出：墙/洞/区段、地形和材质 → 楼面、栅栏段、门口/门组件、抹灰/边缘层与碰撞。",
+        "前置 G03/G04；退出：各 family 创建/修改/移除都有实际输出与 owner 清理；门/栅栏不能通过门窗四族规则覆盖。"
+      ],
+      "specification": {
+        "document": "BUILDING_SYSTEM_RECOVERY_PLAN.md",
+        "heading_id": "G06",
+        "heading_title": "楼板、栅栏、门与墙面层（P1）"
+      },
+      "full_package_accepted": false
+    },
+    {
+      "id": "G07",
+      "title": "屋顶全部参数与类型切换（P0/P1）",
+      "status": "in_progress",
+      "contract_dependencies": [
+        "G00"
+      ],
+      "acceptance_and_scope": [
+        "原入口：`system_roof::edit_roof`、`replay_roof`、Roof 参数/visual shape 和 Flat customization 的真实消费者。",
+        "输入/输出：height/profile/eave/ridge/tip、方向、Flat/Pitched 样式 → 原 Roof 写入、ticks、geometry/gable/hole/sound、录制 mutation 和 CPU 输出。",
+        "前置 G00，复用已验证 edit_rules/replay 后段；退出：VisualEdit 真正进入 World；参数同值、Absolute/Delta、取消与缺失对象按原规则，切换清理旧瓦/旧平顶输出。",
+        "已证有效 Roof 宿主 shape 为 circle/rectangle；其他形状必须先找到原消费者，不凭“完整”要求补造。"
+      ],
+      "specification": {
+        "document": "BUILDING_SYSTEM_RECOVERY_PLAN.md",
+        "heading_id": "G07",
+        "heading_title": "屋顶全部参数与类型切换（P0/P1）"
+      },
+      "implementation_evidence": "evidence/building-integrate/findings.md",
+      "full_package_accepted": false
+    },
+    {
+      "id": "G08",
+      "title": "屋顶尖顶、梁、模拟与碰撞输出（P1）",
+      "status": "planned_not_implemented",
+      "contract_dependencies": [
+        "G07",
+        "G09"
+      ],
+      "acceptance_and_scope": [
+        "原入口：`place_spires`、support/roof tile simulation、`calculate_roof_trigger_volumes`、roof buffers、Nani 更新消费者。当前 TriggerVolume 创建为空，尚无原 triangle/normal/UV 生产；当前 TileSimulation 初始化及 wall_height_dt 不等于原 simulate_roof_tile_for_audio 已恢复。",
+        "输入/输出：屋顶形状与动画、材质、实例/碰撞资源 → 尖顶/梁 CPU 几何、动态瓦片参数、TriggerVolume 和 drawable/instance 更新与释放。",
+        "前置 G07，必要资源来自 G09；TriggerVolume/UV 分支按 G10 屋顶定位需要提前至 P0，墙面四族先闭环不必等待全部屋顶视觉。退出：真正消费 RoofSpire/SupportBeams marker；阶段、淡出和删除后所有 owner 清理。Nani Create/Update/Remove 意图单独验证，backend 成功由真实执行证明。"
+      ],
+      "specification": {
+        "document": "BUILDING_SYSTEM_RECOVERY_PLAN.md",
+        "heading_id": "G08",
+        "heading_title": "屋顶尖顶、梁、模拟与碰撞输出（P1）"
+      }
+    },
+    {
+      "id": "G09",
+      "title": "建筑资源与碰撞元数据（P0，第一批并行）",
+      "status": "in_progress",
+      "contract_dependencies": [
+        "G00"
+      ],
+      "acceptance_and_scope": [
+        "原入口：asset/asset-pipe、mesh JSON/RON、decorator collision/outline/subtype、Nani atlas/prefab/资源 ID 的游戏绑定。",
+        "输入/输出：发行资源与游戏资源 key → 正确资产变体、碰撞尺寸、轮廓、枢轴、mesh subset 和材质 metadata。",
+        "先提取窗/门、砖、楼梯等当前 consumer 需要的数据；复用 Serde/RON/rkyv/image 等匹配依赖，恢复游戏 schema/坐标/ID 规则。",
+        "退出：现有四族不再由 fixture 手填碰撞 extent；尺寸、单位、变体、缺资源与 ID 绑定有实际 caller 证据。解析 JSON 本身不等于复现资产管线。"
+      ],
+      "specification": {
+        "document": "BUILDING_SYSTEM_RECOVERY_PLAN.md",
+        "heading_id": "G09",
+        "heading_title": "建筑资源与碰撞元数据（P0，第一批并行）"
+      },
+      "implementation_evidence": "evidence/building-integrate/findings.md",
+      "full_package_accepted": false
+    },
+    {
+      "id": "G10",
+      "title": "原 Decorator 放置与附着状态（P0，接续 G09）",
+      "status": "in_progress",
+      "contract_dependencies": [
+        "G01",
+        "G07",
+        "G09"
+      ],
+      "acceptance_and_scope": [
+        "原入口：WallSpace 映射、DecoratorInfo::dst_as_wall、target/dst、derive_subtype、collision_detection、缓存 transform 和宿主更新。",
+        "输入/输出：用户/历史的放置与位置、墙/屋顶、资产碰撞 → 宿主解析、UV/墙局部坐标、投影/吸附/避碰、尺寸/变形、真实 Decorator 实体及 raw holes。",
+        "前置 G01/G07/G09 已知接口；屋顶挂载还需 G08 的原 TriggerVolume/UV→position，不能用空碰撞体或预解析 roof 坐标冒充。退出：移墙、调高、换屋顶、跨角/周期接缝、冲突、改 subtype、删宿主/撤销和重新附着有连续验证；adapter OpeningAuthority 与原 Bundle 分列。"
+      ],
+      "specification": {
+        "document": "BUILDING_SYSTEM_RECOVERY_PLAN.md",
+        "heading_id": "G10",
+        "heading_title": "原 Decorator 放置与附着状态（P0，接续 G09）"
+      },
+      "implementation_evidence": "evidence/building-integrate/findings.md",
+      "full_package_accepted": false
+    },
+    {
+      "id": "G11",
+      "title": "其他装饰、屋顶窗与洞贡献（P1）",
+      "status": "planned_not_implemented",
+      "contract_dependencies": [
+        "G07",
+        "G08",
+        "G09",
+        "G10"
+      ],
+      "acceptance_and_scope": [
+        "原入口：cottage_corner_window、arrow slit、cottage/gothic dormer、dormer_holes/roof tiles、trap_doors、chimney wall/roof/bricks、flag_connections、decorator_clutter。",
+        "输入/输出：G10 的附着状态、roof-aware 形变与各 family 资源 → 对应孔洞/屋顶切口/门窗视觉 CPU 记录、烟囱和连接状态。",
+        "前置 G07/G09/G10；退出：按实际分支建立 family 清单；所有贡献进入同一实际消费者，移除能撤销，dormer tile 与主屋顶切口一致。不将多个 raw rectangle 合并猜成完整开口形状。"
+      ],
+      "specification": {
+        "document": "BUILDING_SYSTEM_RECOVERY_PLAN.md",
+        "heading_id": "G11",
+        "heading_title": "其他装饰、屋顶窗与洞贡献（P1）"
+      }
+    },
+    {
+      "id": "G12",
+      "title": "门阶、平台与玩家楼梯（P1）",
+      "status": "in_progress",
+      "contract_dependencies": [
+        "G03",
+        "G05",
+        "G10"
+      ],
+      "acceptance_and_scope": [
+        "原入口：construct_door_stairs、door_stairs_assemble_bricks、platform/playermade_stairs、stairs structural graph/removed_supports/invalidate，C stairs_wall_holes。",
+        "输入/输出：门口、墙/平台边缘、地形、用户楼梯参数 → 分段、台阶、托架/柱、碰撞、开口贡献及支撑关系。",
+        "前置 G03/G05/G10，历史由 G14 接入；退出：坡地、边角、交叠、宿主与地形改变、移除/撤销保持图和实例一致，石/木差异单列。"
+      ],
+      "specification": {
+        "document": "BUILDING_SYSTEM_RECOVERY_PLAN.md",
+        "heading_id": "G12",
+        "heading_title": "门阶、平台与玩家楼梯（P1）"
+      },
+      "full_package_accepted": false
+    },
+    {
+      "id": "G13",
+      "title": "半木、颜色、材质与建筑灯光（P1）",
+      "status": "planned_not_implemented",
+      "contract_dependencies": [
+        "G04",
+        "G07",
+        "G10"
+      ],
+      "acceptance_and_scope": [
+        "原入口：timberframe circle/rectangle、color set_wall/decorator/gate/halftimber/roof_customization、window_light、material/elevation stats。",
+        "输入/输出：样式/材质/颜色/窗口灯、墙屋顶与结构数据 → 原状态、dirty、半木梁/颜色 CPU 字段和历史 mutation。",
+        "前置 G04/G07/G10；退出：样式切换会触发真实重建/切口策略，复用 palette schema；改色/灯光/半木及其撤销覆盖同值和宿主清理。状态字段与 GPU upload 分列。"
+      ],
+      "specification": {
+        "document": "BUILDING_SYSTEM_RECOVERY_PLAN.md",
+        "heading_id": "G13",
+        "heading_title": "半木、颜色、材质与建筑灯光（P1）"
+      }
+    },
+    {
+      "id": "G14",
+      "title": "全部建筑历史 owner 与复合事务（P0，第一批并行）",
+      "status": "in_progress",
+      "contract_dependencies": [
+        "G00"
+      ],
+      "acceptance_and_scope": [
+        "原入口：wall_history/wall_compound_edit、roof_edit/replay_roof、decorator_edit/replay_decorator、color_edit/replay_color、stairs_history_edit/replay_stairs 和 replay_pop_bucket。",
+        "输入/输出：各业务消费者产生的真实 mutation → 录制组、commit/cancel、undo/redo 命令展开、cursor/redo 截断与 ID 恢复。",
+        "复用已证 Rim ledger 核心；先补 Roof VisualEdit/Create/Delete/Direction 和 Wall，再补 Decorator/Color/Stairs。三个 aux owner 非零的排序/展开须恢复，不能将 Rim 一 edit 一 cmd 的反转推广。",
+        "退出：跨 owner 复合组按原展开顺序撤销/重做；空组/取消/撤销后首次 edit 截 redo、删除重建、no-record 重放和缺对象明确。整个结果再次驱动 G01–G13 的状态与几何。"
+      ],
+      "specification": {
+        "document": "BUILDING_SYSTEM_RECOVERY_PLAN.md",
+        "heading_id": "G14",
+        "heading_title": "全部建筑历史 owner 与复合事务（P0，第一批并行）"
+      },
+      "implementation_evidence": "evidence/building-integrate/findings.md",
+      "full_package_accepted": false
+    },
+    {
+      "id": "G15",
+      "title": "快照、保存/装载与版本迁移（P1）",
+      "status": "planned_not_implemented",
+      "contract_dependencies": [
+        "G00",
+        "G14"
+      ],
+      "acceptance_and_scope": [
+        "原入口：History snapshots、session/world save schema、rkyv/ron 原 fork 调用、旧版 migration/BackwardCompatibility。",
+        "输入/输出：已有完整快照、事务链与版本 → 同一对象 ID/关系/状态恢复，再触发 derived 重建。",
+        "前置 G00/G14 的 schema，现有完整样本可立即调查；缺引用不是暂停所有快照研究的理由。",
+        "退出：已存在样本解码和 roundtrip、保存后重建、派生缓存重生与关联一致；未知/缺失对象和版本走原策略。语料 62 个缺引用（A18/B22/C22），B 同 ID 的 2 个候选未确认可替代，不伪造缺失目标。"
+      ],
+      "specification": {
+        "document": "BUILDING_SYSTEM_RECOVERY_PLAN.md",
+        "heading_id": "G15",
+        "heading_title": "快照、保存/装载与版本迁移（P1）"
+      }
+    },
+    {
+      "id": "G16",
+      "title": "原系统图、输入与异步任务（P1，接口取证穿插）",
+      "status": "in_progress",
+      "contract_dependencies": [
+        "G00"
+      ],
+      "acceptance_and_scope": [
+        "原入口：各 crate lib/plugin 注册、FunctionSystem/Event/Message types、wall/roof/decorator UI 模式、picking/gizmo、history recording/replay_mode/finish_replay。",
+        "输入/输出：工具开始/拖动/结束/取消、事件/dirty 与 tasks → 原消费者执行顺序、flush、任务结果/取消及录制边界。",
+        "复用 Bevy 调度/输入/任务 API；恢复游戏注册、filter、before/after、flush 和任务版本策略，现有 19 阶段 adapter chain 不等于原 graph。",
+        "退出：timed VisualEdit 与连续交互真实调度；快速连续编辑、撤销/删除期间的过期任务不复活对象。原 fork 未知范围仅按实际阻塞调查。"
+      ],
+      "specification": {
+        "document": "BUILDING_SYSTEM_RECOVERY_PLAN.md",
+        "heading_id": "G16",
+        "heading_title": "原系统图、输入与异步任务（P1，接口取证穿插）"
+      },
+      "implementation_evidence": "evidence/building-integrate/findings.md",
+      "full_package_accepted": false
+    },
+    {
+      "id": "G17",
+      "title": "C 专属木构与风格迁移（P1，贯穿每包）",
+      "status": "planned_not_implemented",
+      "contract_dependencies": [
+        "G00"
+      ],
+      "acceptance_and_scope": [
+        "原入口：C construct_wooden_walls、window_cut_lists、stone_foundation_cutouts/surface、wooden_arch_frame、wooden platform/playermade stairs；color palettes/material_color_mapping/style_changes，roof resolved_appearance 与 pack_window_cut_list。",
+        "输入/输出：C 独立类型/材质/样式及资源 → C 木板/切口/石基础/木拱框/楼梯、颜色和屋顶输出；B 实现保留独立验证。",
+        "前置相应 G04/G05/G07/G09/G12/G13，静态契约现在开始；退出：C 用自己的 binary、enum、依赖与 Message API 验证对应链，最终 runtime 迁移报告完整。共享源 checksum 不替代执行，B Replay13 不套 C Replay9。"
+      ],
+      "specification": {
+        "document": "BUILDING_SYSTEM_RECOVERY_PLAN.md",
+        "heading_id": "G17",
+        "heading_title": "C 专属木构与风格迁移（P1，贯穿每包）"
+      }
+    },
+    {
+      "id": "G18",
+      "title": "建筑实例到实际绘制与释放（后期必做）",
+      "status": "planned_not_implemented",
+      "contract_dependencies": [
+        "G04",
+        "G05",
+        "G06",
+        "G08",
+        "G09",
+        "G10",
+        "G11",
+        "G12",
+        "G13",
+        "G17"
+      ],
+      "acceptance_and_scope": [
+        "原入口：Nani mesh/atlas、roof/wall/decorator buffers、sparse instance buffer 的游戏调用、draw/shader material 接口和资源所有权。",
+        "输入/输出：G04–G13/G17 的 CPU 记录与资源 → 实际 allocation/upload/update/remove、材质/mesh/灯光、可见画面和碰撞一致性。",
+        "复用 Vulkan/渲染依赖；私有 renderer 包先按归属与可用源码分类。shader/GPU 后置，不能把 deferred 请求或 dummy handle 宣称为后端执行。",
+        "退出：固定相机/种子/资源建筑画面对照，重复增删无残留 allocation，描边/孔洞/玻璃/瓦片与 CPU 数据一致。"
+      ],
+      "specification": {
+        "document": "BUILDING_SYSTEM_RECOVERY_PLAN.md",
+        "heading_id": "G18",
+        "heading_title": "建筑实例到实际绘制与释放（后期必做）"
+      }
+    },
+    {
+      "id": "G19",
+      "title": "完整建筑验收矩阵（分层持续、最终关闭）",
+      "status": "planned_not_implemented",
+      "contract_dependencies": [
+        "G00"
+      ],
+      "acceptance_and_scope": [
+        "CPU 门槛：全部已观察 content family 的创建/编辑/取消/删除、跨对象变化、事务与保存恢复均进入真实 App，而非仅 probe。",
+        "版本门槛：B 每项恢复证明与 C 每项迁移证明分别可追溯，失败报告保留；A 仅对声称兼容的分支验收。",
+        "系统门槛：矩形/圆形/自由墙，单体/相接/重叠/高架，多洞/跨角/门窗/屋顶窗/楼梯，样式切换、同值、反复编辑和脏更新、撤销分叉、保存装载、缺资源及任务过期都有场景。",
+        "最终门槛：可运行建筑交互，原作 Windows x64 状态/画面对照、长运行与性能、GPU/资源清理。源码验收和最终产品验收分开，不要求先有 GPU 才能恢复下一段 CPU。"
+      ],
+      "specification": {
+        "document": "BUILDING_SYSTEM_RECOVERY_PLAN.md",
+        "heading_id": "G19",
+        "heading_title": "完整建筑验收矩阵（分层持续、最终关闭）"
+      }
+    }
+  ],
+  "dependency_semantics": "Contract availability permits staged work; not all listed packages must pass full-system acceptance before any dependent investigation. Roof-host G10 additionally requires G08 TriggerVolume/UV branch. History owners integrate incrementally, not by assuming original order.",
+  "parallel_workers": {
+    "walls": "evidence/building-planning/walls-audit.md",
+    "roofs_decorators": "evidence/building-planning/roofs-decorators-audit.md",
+    "history_schedule": "evidence/building-planning/history-schedule-audit.md"
+  },
+  "first_batch": {
+    "wall_worker": [
+      "G04",
+      "G02 contract"
+    ],
+    "decorator_worker": [
+      "G09",
+      "G10 wall branch"
+    ],
+    "history_worker": [
+      "G14 Roof/Wall",
+      "G07 VisualEdit contract",
+      "G16 registration evidence"
+    ],
+    "parent": [
+      "G00",
+      "shared APIs and plugin integration",
+      "actual wall output plus original placement and transaction acceptance"
+    ]
+  },
+  "first_continuous_acceptance": "Actual collision assets and original wall attachment produce holes consumed by actual wall construction; edit/remove and committed undo/redo restore IDs, relationships and geometry. Roof-host variants wait for verified TriggerVolume/UV.",
+  "verification_snapshot": "evidence/building-planning/planning-snapshot.json",
+  "open_failures": [
+    "evidence/building-runtime/B-roof-pipeline-host-verification.json"
+  ],
+  "current_system_acceptances": 0,
+  "plan_document_sha256": "d087b0cc492b61e8c533ed083df9a36317056f5a4b8ac36edaaba1eda01dd73c",
+  "last_implementation_findings": "evidence/building-integrate/findings.md",
+  "validation": {
+    "workspace_tests": 54,
+    "scoped_verifier_count": 67,
+    "sources_remained_frozen": true,
+    "frozen_review": "evidence/building-integrate/stage-reviews/2026-10-11-stage4-frozen.md",
+    "frozen_summary": "evidence/building-integrate/stage-reviews/stage4-frozen/summary.json",
+    "full_system_accepted": false
+  },
+  "stage_reviews": [
+    {
+      "stage": "previous CPU integration fixes",
+      "accepted_scope": "Two cleanup/asset dependency regressions fixed; 11 asset_parameter_history_chain World tests.",
+      "report": "evidence/building-integrate/stage-reviews/2026-10-11-stage0-stage1.md",
+      "full_package_accepted": false
+    },
+    {
+      "stage": "original plain wall producer",
+      "accepted_scope": "B kind2/topTag2/fence-fit=false: original report 85 cases/6476 ordered 96B records; independent review 90 cases/7075 records with actual-return checks.",
+      "report": "evidence/building-integrate/stage-reviews/2026-10-11-stage0-stage1.md",
+      "full_package_accepted": false
+    }
+  ],
+  "next_milestone": "Parallel implement gate entities/CPU mesh/Nani, platform Rapier and actual DirtyTiles, rectangle finish/cancel/pending history; defer validation per user, then reconcile conflicts and validate entire candidate.",
+  "explicit_wall_proposal_boundary_closed": true,
+  "latest_scoped_review": "evidence/building-integrate/stage-reviews/2026-10-11-stage4-frozen.md",
+  "stage4_in_progress": {
+    "runtime_review": "evidence/building-integrate/stage-reviews/2026-10-11-stage4.md",
+    "arches_world": "evidence/building-arches-freehand/B-arches-world-verification.json",
+    "stairs_world": "evidence/building-integrate/B-stair-wall-runtime-verification.json",
+    "bulldoze_native": "evidence/building-wall-history/B-bulldoze-verification.json",
+    "revalidation": "complete: 54 tests / 67 scoped proofs / frozen Rust-Cargo inputs",
+    "new_unaccepted_research_failure": "evidence/building-segmentation/B-platform-stairs-consumer-first-failure.json",
+    "full_system_accepted": false
+  },
+  "parallel_implementation": {
+    "date": "2026-10-11",
+    "authorization": "User requested multiple agents, implementation first, defer validation, conflicts recorded and reconciled later.",
+    "status": "saved_unverified_at_user_checkpoint",
+    "verification_deferred": true,
+    "conflict_directory": "tracking/parallel-implementation-conflicts",
+    "workers": {
+      "gates": "building_walls_audit",
+      "collision_stairs": "building_history_schedule_audit",
+      "rectangle_history": "building_stage_review",
+      "shared_registration_nani_cli": "parent"
+    },
+    "validation_snapshot_scope": "Historical stage4 frozen inputs; not current parallel candidate.",
+    "registered_candidate_modules": [
+      "gates",
+      "wall_platform_collision",
+      "wall_rectangle_edit",
+      "wall_pending_changed",
+      "wall_decorator_archivist",
+      "decorator_info_binding",
+      "nani_solid_vertex_color"
+    ],
+    "current_build_verified": false,
+    "active_next_consumers": {
+      "gates_worker": "construct_fences / emit_fences / floor consumer",
+      "collision_worker": "17 subworld query filters / flush_colliders / DirtyTiles subscriber",
+      "decorator_worker": "apply_decorator_place / DecoMoveToStorage / anchor following"
+    },
+    "latest_checkpoint": "checkpoints/building-parallel-2026-10-11T100110Z",
+    "agents_running": false
+  }
+}

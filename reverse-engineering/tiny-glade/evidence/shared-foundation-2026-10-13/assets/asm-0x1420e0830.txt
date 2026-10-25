@@ -1,0 +1,68 @@
+
+D:\game\ljxsj_92385\Tiny Glade\tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+1420e0830:     	pushq	%rsi
+1420e0831:     	pushq	%rdi
+1420e0832:     	subq	$0x68, %rsp
+1420e0836:     	movq	%r8, %rdi
+1420e0839:     	movq	%rcx, %rsi
+1420e083c:     	movzbl	(%rdx), %eax
+1420e083f:     	leaq	0xefbfb2(%rip), %rdx    # 0x142fdc7f8 ; 'CompressionMethodfailed to write whole buffer'
+1420e0846:     	leaq	0x20(%rsp), %rcx
+1420e084b:     	movl	$0x11, %r8d
+1420e0851:     	testl	%eax, %eax
+1420e0853:     	je	0x1420e088d <.text+0x20df88d>
+1420e0855:     	cmpl	$0x1, %eax
+1420e0858:     	jne	0x1420e08bc <.text+0x20df8bc>
+1420e085a:     	callq	0x142451200 <.text+0x2450200> ; ron::ser::Serializer::validate_identifier<ref_mut$<alloc::string::String> >
+1420e085f:     	cmpb	$0x32, 0x20(%rsp)
+1420e0864:     	jne	0x1420e08ee <.text+0x20df8ee>
+1420e086a:     	leaq	0xefbf26(%rip), %r8     # 0x142fdc797
+1420e0871:     	leaq	0x20(%rsp), %rcx
+1420e0876:     	movl	$0x9, %r9d
+1420e087c:     	movq	%rdi, %rdx
+1420e087f:     	callq	0x142450ed0 <.text+0x244fed0> ; ron::ser::Serializer::write_identifier<ref_mut$<alloc::string::String> >
+1420e0884:     	cmpb	$0x32, 0x20(%rsp)
+1420e0889:     	jne	0x1420e08ee <.text+0x20df8ee>
+1420e088b:     	jmp	0x1420e08e9 <.text+0x20df8e9>
+1420e088d:     	callq	0x142451200 <.text+0x2450200> ; ron::ser::Serializer::validate_identifier<ref_mut$<alloc::string::String> >
+1420e0892:     	cmpb	$0x32, 0x20(%rsp)
+1420e0897:     	jne	0x1420e08ee <.text+0x20df8ee>
+1420e0899:     	leaq	0xefbef0(%rip), %r8     # 0x142fdc790
+1420e08a0:     	leaq	0x20(%rsp), %rcx
+1420e08a5:     	movl	$0x7, %r9d
+1420e08ab:     	movq	%rdi, %rdx
+1420e08ae:     	callq	0x142450ed0 <.text+0x244fed0> ; ron::ser::Serializer::write_identifier<ref_mut$<alloc::string::String> >
+1420e08b3:     	cmpb	$0x32, 0x20(%rsp)
+1420e08b8:     	je	0x1420e08e9 <.text+0x20df8e9>
+1420e08ba:     	jmp	0x1420e08ee <.text+0x20df8ee>
+1420e08bc:     	callq	0x142451200 <.text+0x2450200> ; ron::ser::Serializer::validate_identifier<ref_mut$<alloc::string::String> >
+1420e08c1:     	cmpb	$0x32, 0x20(%rsp)
+1420e08c6:     	jne	0x1420e08ee <.text+0x20df8ee>
+1420e08c8:     	leaq	0xefbe59(%rip), %r8     # 0x142fdc728 ; 'NoneFullLimited'
+1420e08cf:     	leaq	0x20(%rsp), %rcx
+1420e08d4:     	movl	$0x4, %r9d
+1420e08da:     	movq	%rdi, %rdx
+1420e08dd:     	callq	0x142450ed0 <.text+0x244fed0> ; ron::ser::Serializer::write_identifier<ref_mut$<alloc::string::String> >
+1420e08e2:     	cmpb	$0x32, 0x20(%rsp)
+1420e08e7:     	jne	0x1420e08ee <.text+0x20df8ee>
+1420e08e9:     	movb	$0x32, (%rsi)
+1420e08ec:     	jmp	0x1420e091a <.text+0x20df91a>
+1420e08ee:     	movq	0x60(%rsp), %rax
+1420e08f3:     	movq	%rax, 0x40(%rsi)
+1420e08f7:     	movups	0x20(%rsp), %xmm0
+1420e08fc:     	movups	0x30(%rsp), %xmm1
+1420e0901:     	movups	0x40(%rsp), %xmm2
+1420e0906:     	movups	0x50(%rsp), %xmm3
+1420e090b:     	movups	%xmm3, 0x30(%rsi)
+1420e090f:     	movups	%xmm2, 0x20(%rsi)
+1420e0913:     	movups	%xmm1, 0x10(%rsi)
+1420e0917:     	movups	%xmm0, (%rsi)
+1420e091a:     	movq	%rsi, %rax
+1420e091d:     	addq	$0x68, %rsp
+1420e0921:     	popq	%rdi
+1420e0922:     	popq	%rsi
+1420e0923:     	retq

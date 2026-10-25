@@ -1,0 +1,124 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/dof_autofocus.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/dof_autofocus.rs
+@@ -71,7 +71,18 @@
+ impl LibrarySsbo for DofAutofocusSsbo {
+     type Storage = TypedStorageBuffer<DofAutofocusSsbo>;
+     fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+-        TypedStorageBuffer::<DofAutofocusSsbo>::new_storage_buffer(device, initial)
++        // Original None@14161025c allocates0x200B and repeats the exact
++        //16B constant142ac7e60 ([0x41f00000;4]) through14161034a.
++        // This is128 f32 bit-patterns for30.0, not a zero Default record.
++        let native_defaults;
++        let data = match initial {
++            Some(bytes) => Some(bytes),
++            None => {
++                native_defaults = [0x41f00000u32; 128];
++                Some(bytemuck::cast_slice(&native_defaults))
++            }
++        };
++        TypedStorageBuffer::<DofAutofocusSsbo>::new_storage_buffer(device, data)
+     }
+ }
+ 
+@@ -469,9 +480,13 @@
+             (0x200, 0x22, 1, 4)
+         );
+         assert_eq!(name, "DofAutofocusSsbo");
++        let data = data
++            .as_ref()
++            .expect("native autofocus None uploads defaults");
++        assert_eq!(data.len(), 0x200);
+         assert!(
+-            data.is_none(),
+-            "BUFFER_LEN > 0 without data uploads nothing (O)"
++            data.chunks_exact(4)
++                .all(|word| u32::from_le_bytes(word.try_into().unwrap()) == 0x41f00000)
+         );
+         assert_eq!(
+             DofAutofocusSsbo::BUFFER_LEN * size_of::<DofAutofocusSsbo>(),
+--- a/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/apply_screen_shadows.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/apply_screen_shadows.rs
+@@ -57,7 +57,17 @@
+ impl LibrarySsbo for ShadowMaskHistogramSsbo {
+     type Storage = TypedStorageBuffer<ShadowMaskHistogramSsbo>;
+     fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+-        TypedStorageBuffer::<ShadowMaskHistogramSsbo>::new_storage_buffer(device, initial)
++        // Original None@1416121dc: xorps xmm0 then all64 stores fill the
++        // complete0x400B histogram. ShadowMaskMean's None is different.
++        let native_defaults;
++        let data = match initial {
++            Some(bytes) => Some(bytes),
++            None => {
++                native_defaults = [0u32; 256];
++                Some(bytemuck::cast_slice(&native_defaults))
++            }
++        };
++        TypedStorageBuffer::<ShadowMaskHistogramSsbo>::new_storage_buffer(device, data)
+     }
+ }
+ impl LibrarySsbo for ShadowMaskMeanSsbo {
+@@ -354,6 +364,15 @@
+         );
+         assert_eq!(created[0].1, "ShadowMaskHistogramSsbo");
+         assert_eq!(created[1].1, "ShadowMaskMeanSsbo");
+-        assert!(created[0].2.is_none() && created[1].2.is_none());
+-    }
+-}
++        let histogram = created[0]
++            .2
++            .as_ref()
++            .expect("native histogram None uploads zeroes");
++        assert_eq!(histogram.len(), 0x400);
++        assert!(histogram.iter().all(|byte| *byte == 0));
++        assert!(
++            created[1].2.is_none(),
++            "native mean None performs no upload"
++        );
++    }
++}
+--- a/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/path_pebbles.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/path_pebbles.rs
+@@ -48,12 +48,9 @@
+ impl SsboType for PebblePlacementSsbo {
+     type Storage = TypedStorageBuffer<PebblePlacementSsbo>;
+     fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+-        match initial {
+-            None => TypedStorageBuffer::<PebblePlacementSsbo>::new(device, None),
+-            Some(b) => {
+-                TypedStorageBuffer::<PebblePlacementSsbo>::new_storage_buffer(device, Some(b))
+-            }
+-        }
++        // Original None branches directly to141610e39 with no allocation
++        // or default upload. Keep the fixed-size byte constructor's None.
++        TypedStorageBuffer::<PebblePlacementSsbo>::new_storage_buffer(device, initial)
+     }
+ }
+ 
+@@ -90,6 +87,27 @@
+         assert_eq!(PATH_MASK, 0xed50_2fff_6dc4_021f);
+         assert_eq!(WATER_MASK, 0x6ad6_3ccd_18c8_f041);
+         assert_eq!(binding::DRAW_COMMANDS, 0xf1c0_7a2b_8012_765a);
++    }
++
++    #[test]
++    fn native_pebble_none_stays_uninitialized_and_some_preserves_input() {
++        use crate::render::ssbo::tests::MockDevice;
++        let device = MockDevice::default();
++        let _ = <PebblePlacementSsbo as SsboType>::new_storage_buffer(&device, None);
++        let provided = [0x11223344u32; 12];
++        let bytes = bytemuck::cast_slice(&provided);
++        let _ = <PebblePlacementSsbo as SsboType>::new_storage_buffer(&device, Some(bytes));
++        let created = device.created.borrow();
++        assert_eq!(created.len(), 2);
++        for (desc, name, _) in created.iter() {
++            assert_eq!(
++                (desc.size, desc.usage, desc.memory, desc.alignment),
++                (0x6c00, 0x22, 1, 4)
++            );
++            assert_eq!(name, "PebblePlacement");
++        }
++        assert!(created[0].2.is_none(), "native None does not upload zeroes");
++        assert_eq!(created[1].2.as_deref(), Some(bytes));
+     }
+ 
+     #[test]

@@ -1,0 +1,69 @@
+--- a/games_test/tiny-glade/crates/country-core/src/resources/history/serialized.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/history/serialized.rs
+@@ -5,6 +5,7 @@
+ //! decoding; they never become an empty edit or a fabricated wall.
+ use super::{
+     EditType,
++    terrain_edit::TerrainEdit,
+     transactions::HistoryEntry,
+     wall_edit::{WallCompoundHistoryEdit, WallHistoryEdit},
+ };
+@@ -219,12 +220,14 @@
+ 
+ #[derive(Deserialize)]
+ enum SavedEdit {
++    Terrain(TerrainEdit),
+     #[serde(alias = "WallNewSystem")]
+     Wall(WallCompoundHistoryEdit),
+ }
+ impl<'de> Deserialize<'de> for EditType {
+     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+         match SavedEdit::deserialize(d)? {
++            SavedEdit::Terrain(terrain) => Ok(Self::Terrain(Arc::new(terrain))),
+             SavedEdit::Wall(wall) => Ok(Self::Wall(Arc::new(wall))),
+         }
+     }
+@@ -233,9 +236,12 @@
+ impl Serialize for EditType {
+     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+         match self {
++            Self::Terrain(terrain) => {
++                s.serialize_newtype_variant("EditType", 0, "Terrain", &**terrain)
++            }
+             Self::Wall(wall) => s.serialize_newtype_variant("EditType", 7, "Wall", &**wall),
+             _ => Err(serde::ser::Error::custom(
+-                "B non-wall History save encoder is not restored",
++                "B History save encoder for this edit is not restored",
+             )),
+         }
+     }
+@@ -346,4 +352,28 @@
+         );
+         assert!(serde_json::from_value::<EditType>(serde_json::json!({"unknown": []})).is_err());
+     }
+-}
++    #[test]
++    fn original_b_terrain_variants_survive_saved_multi_edit_round_trip() {
++        // Original EditType serializer 0x140316660 calls TerrainEdit 0x1404f41b0.
++        // Values are retained native outputs, covering all three typed payloads.
++        let edits: serde_json::Value = serde_json::from_str(r#"[
++            {"Terrain":{"NewTerrainStroke":{"index":9,"stroke_pts":[[1.0,2.0,3.0],[4.0,5.0,6.0]],"height_ws":2.5}}},
++            {"Terrain":{"EditTerrainStroke":{"index":7,"prev_height_ws":1.0,"new_height_ws":2.0,"prev_falloff":0.25,"new_falloff":0.5}}},
++            {"Terrain":{"MoveTerrainStroke":{"id":3,"original_stroke_pts":[],"move_vec":[1.25,-2.0]}}}
++        ]"#).unwrap();
++        let saved = serde_json::json!({"edits": edits});
++        let loaded: SavedMultiEdit = serde_json::from_value(saved.clone()).unwrap();
++        assert_eq!(loaded.0.edits.len(), 3);
++        assert!(
++            loaded
++                .0
++                .edits
++                .iter()
++                .all(|edit| matches!(edit, EditType::Terrain(_)))
++        );
++        assert_eq!(serde_json::to_value(&loaded).unwrap(), saved);
++        let encoded = serde_json::to_string(&loaded).unwrap();
++        let reloaded: SavedMultiEdit = serde_json::from_str(&encoded).unwrap();
++        assert_eq!(serde_json::to_value(&reloaded).unwrap(), saved);
++    }
++}

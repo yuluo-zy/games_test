@@ -1,0 +1,873 @@
+##### 0x141e4c650 style
+
+void __cdecl toolbar::resouces_and_components::taffy_layout::TaffyLayout::style(void)
+
+{
+  undefined4 local_48;
+  
+  taffy::node::Taffy::style();
+  if (local_48 == 4) {
+    return;
+  }
+                    // WARNING: Subroutine does not return
+  core::result::unwrap_failed();
+}
+
+
+##### 0x141e4c6c0 perform_layout
+
+// WARNING: Removing unreachable block (ram,0x000141e4c9ba)
+// WARNING: Removing unreachable block (ram,0x000141e4c99d)
+
+void __cdecl toolbar::resouces_and_components::taffy_layout::TaffyLayout::perform_layout(void)
+
+{
+  longlong lVar1;
+  ulonglong uVar2;
+  longlong in_RCX;
+  longlong lVar3;
+  int local_b0;
+  
+  lVar1 = *(longlong *)(in_RCX + 0xa0);
+  uVar2 = *(ulonglong *)(in_RCX + 0xa8);
+  if (uVar2 < 2) {
+    if (uVar2 == 0) {
+      return;
+    }
+  }
+  else if (uVar2 < 0x15) {
+    core::slice::sort::shared::smallsort::
+    insertion_sort_shift_left<toolbar::resouces_and_components::taffy_layout::AnchoredNode,core::slice::impl_0::sort_unstable_by::closure_env_0<toolbar::resouces_and_components::taffy_layout::AnchoredNode,toolbar::resouces_and_components::taffy_layout::impl_1::perform_layout::closure_env_0>_>
+              ();
+  }
+  else {
+    core::slice::sort::unstable::
+    ipnsort<toolbar::resouces_and_components::taffy_layout::AnchoredNode,core::slice::impl_0::sort_unstable_by::closure_env_0<toolbar::resouces_and_components::taffy_layout::AnchoredNode,toolbar::resouces_and_components::taffy_layout::impl_1::perform_layout::closure_env_0>_>
+              ();
+  }
+  lVar3 = 0;
+  do {
+    if (*(char *)(lVar1 + 0x24 + lVar3) == '\x04') {
+      taffy_utils::
+      taffy_mut_style<toolbar::resouces_and_components::taffy_layout::impl_1::perform_layout::closure_env_1>
+                ();
+      taffy::node::Taffy::compute_layout();
+      if (local_b0 != 4) {
+LAB_141e4c9f2:
+                    // WARNING: Subroutine does not return
+        core::result::unwrap_failed();
+      }
+    }
+    else {
+      taffy::node::Taffy::compute_layout();
+      if (local_b0 != 4) goto LAB_141e4c9f2;
+      taffy::node::Taffy::layout();
+      taffy::node::Taffy::layout();
+    }
+    make_layout_absolute<taffy::node::Taffy>();
+    lVar3 = lVar3 + 0x28;
+    if (uVar2 * 0x28 == lVar3) {
+      return;
+    }
+  } while( true );
+}
+
+
+##### 0x142374e10 make_layout_absolute<taffy::node::Taffy>
+
+void __cdecl
+toolbar::resouces_and_components::taffy_layout::make_layout_absolute<taffy::node::Taffy>(void)
+
+{
+  undefined8 uVar1;
+  longlong lVar2;
+  longlong extraout_RAX;
+  longlong in_RCX;
+  int in_EDX;
+  longlong lVar3;
+  uint in_R8D;
+  longlong lVar4;
+  float in_XMM3_Da;
+  float in_stack_00000028;
+  int local_88;
+  
+  lVar2 = 0x310;
+  if ((*(byte *)(in_RCX + 0x90) & *(byte *)(in_RCX + 0x91)) != 0) {
+    lVar2 = 0x2fc;
+  }
+  if ((((ulonglong)in_R8D < *(ulonglong *)(in_RCX + 0x10)) &&
+      (lVar3 = *(longlong *)(in_RCX + 8), lVar3 != 0)) &&
+     (lVar4 = (ulonglong)in_R8D * 0x330, *(int *)(lVar3 + 0x328 + lVar4) == in_EDX)) {
+    lVar3 = lVar3 + lVar4;
+    uVar1 = *(undefined8 *)(lVar3 + 8 + lVar2);
+    *(ulonglong *)(lVar3 + 8 + lVar2) =
+         CONCAT44(in_stack_00000028 + (float)((ulonglong)uVar1 >> 0x20),in_XMM3_Da + (float)uVar1);
+    taffy::node::Taffy::mark_dirty_internal();
+    if (local_88 == 4) {
+      taffy::node::impl$3::child_count();
+      if (extraout_RAX != 0) {
+        lVar2 = 0;
+        do {
+          lVar2 = lVar2 + 1;
+          taffy::node::impl$3::child();
+          make_layout_absolute<taffy::node::Taffy>();
+        } while (extraout_RAX != lVar2);
+      }
+      return;
+    }
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+                    // WARNING: Subroutine does not return
+  std::panicking::begin_panic<ref_<str_>_>();
+}
+
+
+##### 0x142340d20 taffy_update_drawables
+
+void __cdecl toolbar::taffy_update::taffy_update_drawables(void)
+
+{
+  uint *puVar1;
+  longlong lVar2;
+  undefined8 uVar3;
+  undefined4 uVar4;
+  longlong lVar5;
+  longlong lVar6;
+  longlong lVar7;
+  longlong lVar8;
+  longlong lVar9;
+  longlong *in_RCX;
+  ulonglong uVar10;
+  longlong lVar11;
+  ulonglong uVar12;
+  ulonglong uVar13;
+  longlong lVar14;
+  uint *puVar15;
+  int local_98;
+  undefined8 *puStack_90;
+  
+  lVar5 = *in_RCX;
+  lVar6 = in_RCX[1];
+  uVar4 = *(undefined4 *)((longlong)in_RCX + 0x14);
+  puVar15 = *(uint **)(lVar5 + 0xf8);
+  puVar1 = puVar15 + *(longlong *)(lVar5 + 0x100);
+  if (*(char *)(lVar5 + 0x108) == '\0') {
+    while (puVar15 != puVar1) {
+      while( true ) {
+        lVar2 = *(longlong *)(*(longlong *)(lVar6 + 0x100) + 0x58 + (ulonglong)*puVar15 * 0xa0);
+        if (lVar2 != 0) break;
+        puVar15 = puVar15 + 1;
+        if (puVar15 == puVar1) {
+          return;
+        }
+      }
+      lVar8 = *(longlong *)(lVar6 + 0x100) + (ulonglong)*puVar15 * 0xa0;
+      uVar10 = (ulonglong)*(uint *)(lVar8 + 0x94);
+      lVar7 = *(longlong *)(*(longlong *)(lVar6 + 0x1a8) + 0x18 + uVar10 * 0x48);
+      lVar11 = ~*(ulonglong *)
+                 (*(longlong *)(*(longlong *)(lVar6 + 0x1a8) + 0x38 + uVar10 * 0x48) +
+                 *(longlong *)(lVar5 + 0x110) * 8) * 0x30;
+      lVar14 = *(longlong *)(lVar7 + 0x10 + lVar11);
+      lVar7 = *(longlong *)(lVar7 + 0x28 + lVar11);
+      puVar15 = puVar15 + 1;
+      lVar8 = *(longlong *)(lVar8 + 0x50);
+      lVar11 = 0;
+      do {
+        uVar10 = (ulonglong)*(uint *)(lVar8 + 8 + lVar11 * 0x10);
+        taffy::node::Taffy::layout();
+        if (local_98 != 4) goto LAB_142341033;
+        lVar11 = lVar11 + 1;
+        lVar9 = uVar10 * 0x10;
+        uVar3 = *puStack_90;
+        *(ulonglong *)(lVar14 + lVar9) =
+             CONCAT44((float)((ulonglong)uVar3 >> 0x20) * 0.5 +
+                      (float)((ulonglong)puStack_90[1] >> 0x20),
+                      (float)uVar3 * 0.5 + (float)puStack_90[1]);
+        *(undefined4 *)(lVar7 + uVar10 * 4) = uVar4;
+        *(undefined8 *)(lVar14 + 8 + lVar9) = uVar3;
+      } while (lVar11 != lVar2);
+    }
+  }
+  else {
+    while (puVar15 != puVar1) {
+      while( true ) {
+        uVar10 = *(ulonglong *)(*(longlong *)(lVar6 + 0x1a8) + 0x10 + (ulonglong)*puVar15 * 0x48);
+        if (uVar10 != 0) break;
+        puVar15 = puVar15 + 1;
+        if (puVar15 == puVar1) {
+          return;
+        }
+      }
+      lVar2 = *(longlong *)(lVar6 + 0x1a8) + (ulonglong)*puVar15 * 0x48;
+      lVar7 = *(longlong *)(lVar2 + 0x18);
+      lVar14 = ~*(ulonglong *)(*(longlong *)(lVar2 + 0x38) + *(longlong *)(lVar5 + 0x110) * 8) *
+               0x30;
+      lVar2 = *(longlong *)(lVar7 + 0x10 + lVar14);
+      lVar7 = *(longlong *)(lVar7 + 0x28 + lVar14);
+      puVar15 = puVar15 + 1;
+      uVar13 = 0;
+      do {
+        uVar12 = uVar13 & 0xffffffff;
+        taffy::node::Taffy::layout();
+        if (local_98 != 4) {
+LAB_142341033:
+                    // WARNING: Subroutine does not return
+          core::result::unwrap_failed();
+        }
+        uVar13 = uVar13 + 1;
+        lVar14 = uVar12 * 0x10;
+        uVar3 = *puStack_90;
+        *(ulonglong *)(lVar2 + lVar14) =
+             CONCAT44((float)((ulonglong)uVar3 >> 0x20) * 0.5 +
+                      (float)((ulonglong)puStack_90[1] >> 0x20),
+                      (float)uVar3 * 0.5 + (float)puStack_90[1]);
+        *(undefined4 *)(lVar7 + uVar12 * 4) = uVar4;
+        *(undefined8 *)(lVar2 + 8 + lVar14) = uVar3;
+      } while (uVar13 != uVar10);
+    }
+  }
+  return;
+}
+
+
+##### 0x141e4ccb0 setup_screen_and_toolbar_nodes
+
+void __cdecl
+toolbar::resouces_and_components::toolbar_layout::ToolbarLayout::setup_screen_and_toolbar_nodes
+          (void)
+
+{
+  undefined8 *puVar1;
+  longlong lVar2;
+  longlong lVar3;
+  undefined8 *in_RCX;
+  longlong in_RDX;
+  int local_278;
+  int local_258;
+  undefined4 uStack_254;
+  undefined4 uStack_250;
+  
+  taffy::node::Taffy::new_leaf();
+  if (local_258 != 4) {
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+  lVar2 = *(longlong *)(in_RDX + 0xa8);
+  if (lVar2 == *(longlong *)(in_RDX + 0x98)) {
+    alloc::raw_vec::RawVec::
+    grow_one<indexmap::Bucket<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,enum2_<country_core::resources::stairs::stairs_assembly_params::AlignKind>_>,alloc::alloc::Global>
+              ();
+  }
+  lVar3 = *(longlong *)(in_RDX + 0xa0);
+  puVar1 = (undefined8 *)(lVar3 + lVar2 * 0x28);
+  *puVar1 = 0;
+  puVar1[1] = 0;
+  *(ulonglong *)(lVar3 + 0x10 + lVar2 * 0x28) = CONCAT44(uStack_250,uStack_254);
+  *(undefined1 *)(lVar3 + 0x24 + lVar2 * 0x28) = 4;
+  *(longlong *)(in_RDX + 0xa8) = lVar2 + 1;
+  taffy::node::Taffy::new_leaf();
+  taffy::node::Taffy::add_child();
+  if (local_278 != 4) {
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+  in_RCX[3] = CONCAT44(uStack_250,uStack_254);
+  in_RCX[4] = CONCAT44(uStack_250,uStack_254);
+  *in_RCX = 0;
+  in_RCX[1] = 8;
+  in_RCX[2] = 0;
+  in_RCX[5] = 0;
+  return;
+}
+
+
+##### 0x141e4d1e0 add_contextual_menu
+
+void __cdecl
+toolbar::resouces_and_components::toolbar_layout::ToolbarLayout::add_contextual_menu(void)
+
+{
+  longlong lVar1;
+  char *pcVar2;
+  undefined8 *puVar3;
+  undefined8 uVar4;
+  longlong lVar5;
+  longlong lVar6;
+  longlong lVar7;
+  longlong in_RCX;
+  longlong lVar8;
+  longlong in_RDX;
+  char in_R8B;
+  longlong lVar9;
+  longlong *in_R9;
+  longlong lVar10;
+  int local_c8;
+  undefined4 uStack_c4;
+  undefined4 uStack_c0;
+  ulonglong local_88;
+  
+  lVar10 = in_R9[2];
+  if (lVar10 == 0) {
+    if (*in_R9 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+      return;
+    }
+  }
+  else {
+    lVar5 = *(longlong *)(in_RCX + 8);
+    lVar8 = 0;
+    do {
+      if (*(longlong *)(in_RCX + 0x10) << 5 == lVar8) {
+                    // WARNING: Subroutine does not return
+        core::option::unwrap_failed();
+      }
+      lVar1 = lVar8 + 0x20;
+      pcVar2 = (char *)(lVar5 + 0x18 + lVar8);
+      lVar8 = lVar1;
+    } while (*pcVar2 != in_R8B);
+    taffy::node::Taffy::new_leaf();
+    if (local_c8 != 4) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    uVar4 = *(undefined8 *)(lVar5 + -0x20 + lVar1);
+    lVar8 = *(longlong *)(in_RDX + 0xa8);
+    if (lVar8 == *(longlong *)(in_RDX + 0x98)) {
+      alloc::raw_vec::RawVec::
+      grow_one<indexmap::Bucket<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,enum2_<country_core::resources::stairs::stairs_assembly_params::AlignKind>_>,alloc::alloc::Global>
+                ();
+    }
+    lVar6 = *(longlong *)(in_RDX + 0xa0);
+    *(undefined8 *)(lVar6 + lVar8 * 0x28) = 1;
+    *(undefined8 *)(lVar6 + 8 + lVar8 * 0x28) = 0;
+    puVar3 = (undefined8 *)(lVar6 + 0x10 + lVar8 * 0x28);
+    *puVar3 = CONCAT44(uStack_c0,uStack_c4);
+    puVar3[1] = uVar4;
+    *(undefined4 *)(lVar6 + 0x20 + lVar8 * 0x28) = 0x41200000;
+    *(undefined1 *)(lVar6 + 0x24 + lVar8 * 0x28) = 0;
+    *(longlong *)(in_RDX + 0xa8) = lVar8 + 1;
+    lVar6 = *in_R9;
+    lVar10 = lVar10 * 0x40;
+    lVar8 = in_R9[1] + lVar10;
+    lVar7 = in_R9[1];
+    do {
+      lVar9 = lVar7 + 0x40;
+      if (*(char *)(lVar7 + 0x38) == '\x02') break;
+      add_toolbar_item();
+      lVar10 = lVar10 + -0x40;
+      lVar9 = lVar8;
+      lVar7 = lVar7 + 0x40;
+    } while (lVar10 != 0);
+    local_88 = 0;
+    while ((ulonglong)(lVar8 - lVar9) >> 6 != local_88) {
+      local_88 = local_88 + 1;
+      core::ptr::
+      drop_in_place<enum2_<toolbar::resouces_and_components::toolbar_layout::ToolbarItemKind>_>();
+    }
+    if (lVar6 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    *(undefined4 *)(lVar5 + -0x10 + lVar1) = uStack_c4;
+    *(undefined4 *)(lVar5 + -0xc + lVar1) = uStack_c0;
+  }
+  return;
+}
+
+
+##### 0x141e4d880 link_up_nav
+
+void __cdecl toolbar::resouces_and_components::toolbar_layout::ToolbarLayout::link_up_nav(void)
+
+{
+  ulonglong uVar1;
+  undefined8 uVar2;
+  undefined8 uVar3;
+  undefined8 uVar4;
+  longlong lVar5;
+  undefined8 *extraout_RAX;
+  longlong in_RCX;
+  char in_DL;
+  ulonglong uVar6;
+  longlong lVar7;
+  longlong in_R8;
+  undefined8 *puVar8;
+  ulonglong uVar9;
+  longlong *plVar10;
+  
+  uVar1 = *(ulonglong *)(in_RCX + 0x10);
+  if (uVar1 == 0) {
+    return;
+  }
+  lVar7 = *(longlong *)(in_RCX + 8);
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX == (undefined8 *)0x0) {
+                    // WARNING: Subroutine does not return
+    alloc::raw_vec::handle_error();
+  }
+  if (uVar1 < 4) {
+    uVar6 = 0;
+  }
+  else {
+    puVar8 = (undefined8 *)(lVar7 + 0x68);
+    uVar6 = 0;
+    do {
+      extraout_RAX[uVar6] = puVar8[-0xc];
+      extraout_RAX[uVar6 + 1] = puVar8[-8];
+      extraout_RAX[uVar6 + 2] = puVar8[-4];
+      extraout_RAX[uVar6 + 3] = *puVar8;
+      uVar6 = uVar6 + 4;
+      puVar8 = puVar8 + 0x10;
+    } while ((uVar1 & 0xfffffffffffffffc) != uVar6);
+  }
+  if ((uVar1 & 3) != 0) {
+    uVar9 = 0;
+    do {
+      *(undefined8 *)((longlong)extraout_RAX + uVar9 + uVar6 * 8) =
+           *(undefined8 *)(uVar6 * 0x20 + lVar7 + 8 + uVar9 * 4);
+      uVar9 = uVar9 + 8;
+    } while (((uint)uVar1 & 3) << 3 != uVar9);
+  }
+  plVar10 = *(longlong **)(in_R8 + 8);
+  if (plVar10 == (longlong *)0x0) {
+    plVar10 = *(longlong **)(in_R8 + 0x10);
+  }
+  lVar7 = plVar10[2];
+  if (in_DL == '\0') {
+    uVar6 = 0;
+    puVar8 = extraout_RAX;
+    do {
+      uVar2 = *puVar8;
+      uVar9 = (uVar1 - 1) + uVar6;
+      if ((uVar9 | uVar1) >> 0x20 == 0) {
+        uVar9 = (uVar9 & 0xffffffff) % (uVar1 & 0xffffffff);
+      }
+      else {
+        uVar9 = uVar9 % uVar1;
+      }
+      uVar6 = uVar6 + 1;
+      uVar3 = extraout_RAX[uVar9];
+      if ((uVar6 | uVar1) >> 0x20 == 0) {
+        uVar9 = (uVar6 & 0xffffffff) % (uVar1 & 0xffffffff);
+      }
+      else {
+        uVar9 = uVar6 % uVar1;
+      }
+      uVar4 = extraout_RAX[uVar9];
+      if ((ulonglong)(*plVar10 - lVar7) < 0x60) {
+        alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+      }
+      lVar5 = plVar10[1];
+      *(code **)(lVar5 + lVar7) =
+           core::ops::function::FnOnce::
+           call_once<bevy_ecs::world::command_queue::impl_4::push::closure_env_0<bevy_ecs::error::command_handling::impl_0::handle_error_with::closure_env_0<bevy_ecs::error::command_handling::impl_3::with_entity::closure_env_0<bevy_ecs::system::commands::entity_command::insert::closure_env_0<country_core::components::UiNav>_>,tuple_<>,enum2_<bevy_ecs::world::error::EntityMutableFetchError>_>_>,tuple_<bevy_ptr::OwningPtr<bevy_ptr::Unaligned>,enum2_<core::option::Option<core::ptr::non_null::NonNull<bevy_ecs::world::World>_>_>,ref_mut_<usize>_>_>
+      ;
+      *(undefined8 *)(lVar5 + 8 + lVar7) = 0;
+      *(undefined8 *)(lVar5 + 0x18 + lVar7) = 0;
+      *(undefined8 *)(lVar5 + 0x28 + lVar7) = 3;
+      *(undefined8 *)(lVar5 + 0x30 + lVar7) = uVar4;
+      *(undefined8 *)(lVar5 + 0x38 + lVar7) = 3;
+      *(undefined8 *)(lVar5 + 0x40 + lVar7) = uVar3;
+      *(undefined1 *)(lVar5 + 0x48 + lVar7) = 0;
+      *(undefined8 *)(lVar5 + 0x50 + lVar7) = uVar2;
+      *(code **)(lVar5 + 0x58 + lVar7) = bevy_ecs::error::handler::panic;
+      lVar7 = lVar7 + 0x60;
+      plVar10[2] = lVar7;
+      puVar8 = puVar8 + 1;
+    } while (puVar8 != extraout_RAX + uVar1);
+  }
+  else {
+    uVar6 = 0;
+    puVar8 = extraout_RAX;
+    do {
+      uVar2 = *puVar8;
+      uVar9 = (uVar1 - 1) + uVar6;
+      if ((uVar9 | uVar1) >> 0x20 == 0) {
+        uVar9 = (uVar9 & 0xffffffff) % (uVar1 & 0xffffffff);
+      }
+      else {
+        uVar9 = uVar9 % uVar1;
+      }
+      uVar6 = uVar6 + 1;
+      uVar3 = extraout_RAX[uVar9];
+      if ((uVar6 | uVar1) >> 0x20 == 0) {
+        uVar9 = (uVar6 & 0xffffffff) % (uVar1 & 0xffffffff);
+      }
+      else {
+        uVar9 = uVar6 % uVar1;
+      }
+      uVar4 = extraout_RAX[uVar9];
+      if ((ulonglong)(*plVar10 - lVar7) < 0x60) {
+        alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+      }
+      lVar5 = plVar10[1];
+      *(code **)(lVar5 + lVar7) =
+           core::ops::function::FnOnce::
+           call_once<bevy_ecs::world::command_queue::impl_4::push::closure_env_0<bevy_ecs::error::command_handling::impl_0::handle_error_with::closure_env_0<bevy_ecs::error::command_handling::impl_3::with_entity::closure_env_0<bevy_ecs::system::commands::entity_command::insert::closure_env_0<country_core::components::UiNav>_>,tuple_<>,enum2_<bevy_ecs::world::error::EntityMutableFetchError>_>_>,tuple_<bevy_ptr::OwningPtr<bevy_ptr::Unaligned>,enum2_<core::option::Option<core::ptr::non_null::NonNull<bevy_ecs::world::World>_>_>,ref_mut_<usize>_>_>
+      ;
+      *(undefined8 *)(lVar5 + 8 + lVar7) = 3;
+      *(undefined8 *)(lVar5 + 0x10 + lVar7) = uVar3;
+      *(undefined8 *)(lVar5 + 0x18 + lVar7) = 3;
+      *(undefined8 *)(lVar5 + 0x20 + lVar7) = uVar4;
+      *(undefined8 *)(lVar5 + 0x28 + lVar7) = 0;
+      *(undefined8 *)(lVar5 + 0x38 + lVar7) = 0;
+      *(undefined1 *)(lVar5 + 0x48 + lVar7) = 0;
+      *(undefined8 *)(lVar5 + 0x50 + lVar7) = uVar2;
+      *(code **)(lVar5 + 0x58 + lVar7) = bevy_ecs::error::handler::panic;
+      lVar7 = lVar7 + 0x60;
+      plVar10[2] = lVar7;
+      puVar8 = puVar8 + 1;
+    } while (puVar8 != extraout_RAX + uVar1);
+  }
+  std::alloc::__default_lib_allocator::__rust_dealloc();
+  return;
+}
+
+
+##### 0x141e4dc40 add_toolbar_item
+
+void __cdecl toolbar::resouces_and_components::toolbar_layout::add_toolbar_item(void)
+
+{
+  longlong lVar1;
+  byte bVar2;
+  longlong lVar3;
+  void *_Src;
+  size_t _Size;
+  longlong lVar4;
+  longlong lVar5;
+  uint uVar6;
+  void *extraout_RAX;
+  byte *in_R9;
+  longlong lVar7;
+  longlong lVar8;
+  void *_Dst;
+  undefined8 in_stack_00000030;
+  int local_e8;
+  int local_c8;
+  longlong *plStack_c0;
+  longlong *local_b8;
+  undefined8 local_a8;
+  longlong local_98;
+  ulonglong local_70;
+  
+  bVar2 = *in_R9;
+  uVar6 = (uint)bVar2;
+  if (uVar6 == 4) {
+    lVar3 = *(longlong *)(in_R9 + 0x18);
+    local_98 = *(longlong *)(in_R9 + 8);
+    lVar4 = *(longlong *)(in_R9 + 0x10);
+    taffy::node::Taffy::new_leaf();
+    if (local_e8 != 4) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    taffy::node::Taffy::add_child();
+    if (local_c8 != 4) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    lVar8 = lVar3 * 0x40;
+    lVar1 = lVar4 + lVar8;
+    lVar5 = lVar4;
+    while ((lVar7 = lVar4, lVar3 != 0 && (lVar7 = lVar5 + 0x40, *(char *)(lVar5 + 0x38) != '\x02')))
+    {
+      add_toolbar_item();
+      lVar8 = lVar8 + -0x40;
+      lVar4 = lVar1;
+      lVar5 = lVar7;
+      lVar3 = lVar8;
+    }
+    local_70 = 0;
+    while ((ulonglong)(lVar1 - lVar7) >> 6 != local_70) {
+      local_70 = local_70 + 1;
+      core::ptr::
+      drop_in_place<enum2_<toolbar::resouces_and_components::toolbar_layout::ToolbarItemKind>_>();
+    }
+  }
+  else {
+    if (bVar2 != 5) {
+      taffy::node::Taffy::new_leaf();
+      if (local_e8 != 4) {
+                    // WARNING: Subroutine does not return
+        core::result::unwrap_failed();
+      }
+      taffy::node::Taffy::add_child();
+      if (local_c8 != 4) {
+                    // WARNING: Subroutine does not return
+        core::result::unwrap_failed();
+      }
+      _Src = *(void **)(in_R9 + 0x20);
+      _Size = *(size_t *)(in_R9 + 0x28);
+      if (-1 < (longlong)_Size) {
+        if (_Size == 0) {
+          _Dst = (void *)0x1;
+        }
+        else {
+          std::alloc::__default_lib_allocator::__rust_alloc();
+          _Dst = extraout_RAX;
+          if (extraout_RAX == (void *)0x0) goto LAB_141e4ef08;
+        }
+        memcpy(_Dst,_Src,_Size);
+        bevy_ecs::system::commands::Commands::
+        spawn<tuple_<toolbar::resouces_and_components::TaffyNode,toolbar::resouces_and_components::UiScaleWithUserSetting,country_core::components::UiInteractionState,toolbar::resouces_and_components::UiAnimationState,country_core::components::UiMouseInteractable,country_core::components::Ui2dExtent,country_core::components::Ui2dImage,country_core::components::UiDrawOrder>_>
+                  ();
+        if (plStack_c0 == (longlong *)0x0) {
+          plStack_c0 = local_b8;
+        }
+        lVar3 = plStack_c0[2];
+        if ((ulonglong)(*plStack_c0 - lVar3) < 0x28) {
+          alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+        }
+        lVar4 = plStack_c0[1];
+        *(code **)(lVar4 + lVar3) =
+             core::ops::function::FnOnce::
+             call_once<bevy_ecs::world::command_queue::impl_4::push::closure_env_0<bevy_ecs::error::command_handling::impl_0::handle_error_with::closure_env_0<bevy_ecs::error::command_handling::impl_3::with_entity::closure_env_0<bevy_ecs::system::commands::entity_command::insert::closure_env_0<toolbar::resouces_and_components::UiShowIfParentIsInFocus>_>,tuple_<>,enum2_<bevy_ecs::world::error::EntityMutableFetchError>_>_>,tuple_<bevy_ptr::OwningPtr<bevy_ptr::Unaligned>,enum2_<core::option::Option<core::ptr::non_null::NonNull<bevy_ecs::world::World>_>_>,ref_mut_<usize>_>_>
+        ;
+        *(code **)(lVar4 + 8 + lVar3) = bevy_ecs::error::handler::panic;
+        *(undefined8 *)(lVar4 + 0x10 + lVar3) = local_a8;
+        *(undefined8 *)(lVar4 + 0x18 + lVar3) = in_stack_00000030;
+        *(undefined1 *)(lVar4 + 0x20 + lVar3) = 0;
+        plStack_c0[2] = lVar3 + 0x28;
+        if (in_R9[0x38] != 0) {
+          if ((ulonglong)(*plStack_c0 - (lVar3 + 0x28)) < 0x20) {
+            alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+          }
+          lVar4 = plStack_c0[1];
+          *(code **)(lVar4 + 0x28 + lVar3) =
+               core::ops::function::FnOnce::
+               call_once<bevy_ecs::world::command_queue::impl_4::push::closure_env_0<bevy_ecs::error::command_handling::impl_0::handle_error_with::closure_env_0<bevy_ecs::error::command_handling::impl_3::with_entity::closure_env_0<bevy_ecs::system::commands::entity_command::insert::closure_env_0<toolbar::resouces_and_components::ShowOnlyInFpvAndFree>_>,tuple_<>,enum2_<bevy_ecs::world::error::EntityMutableFetchError>_>_>,tuple_<bevy_ptr::OwningPtr<bevy_ptr::Unaligned>,enum2_<core::option::Option<core::ptr::non_null::NonNull<bevy_ecs::world::World>_>_>,ref_mut_<usize>_>_>
+          ;
+          *(code **)(lVar4 + 0x30 + lVar3) = bevy_ecs::error::handler::panic;
+          *(undefined8 *)(lVar4 + 0x38 + lVar3) = local_a8;
+          *(undefined1 *)(lVar4 + 0x40 + lVar3) = 0;
+          plStack_c0[2] = lVar3 + 0x48;
+                    // WARNING: Could not recover jumptable at 0x000141e4e5db. Too many branches
+                    // WARNING: Treating indirect jump as call
+          (*(code *)(&DAT_142f8f774 + *(int *)(&DAT_142f8f774 + (ulonglong)uVar6 * 4)))();
+          return;
+        }
+                    // WARNING: Could not recover jumptable at 0x000141e4e5f1. Too many branches
+                    // WARNING: Treating indirect jump as call
+        (*(code *)(&DAT_142f8f774 + *(int *)(&DAT_142f8f774 + (ulonglong)uVar6 * 4)))();
+        return;
+      }
+LAB_141e4ef08:
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    lVar3 = *(longlong *)(in_R9 + 0x18);
+    local_98 = *(longlong *)(in_R9 + 8);
+    lVar4 = *(longlong *)(in_R9 + 0x10);
+    taffy::node::Taffy::new_leaf();
+    if (local_e8 != 4) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    taffy::node::Taffy::add_child();
+    if (local_c8 != 4) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    lVar8 = lVar3 * 0x40;
+    lVar1 = lVar4 + lVar8;
+    lVar5 = lVar4;
+    while ((lVar7 = lVar4, lVar3 != 0 && (lVar7 = lVar5 + 0x40, *(char *)(lVar5 + 0x38) != '\x02')))
+    {
+      add_toolbar_item();
+      lVar8 = lVar8 + -0x40;
+      lVar4 = lVar1;
+      lVar5 = lVar7;
+      lVar3 = lVar8;
+    }
+    local_70 = 0;
+    while ((ulonglong)(lVar1 - lVar7) >> 6 != local_70) {
+      local_70 = local_70 + 1;
+      core::ptr::
+      drop_in_place<enum2_<toolbar::resouces_and_components::toolbar_layout::ToolbarItemKind>_>();
+    }
+  }
+  if (local_98 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  if ((bVar2 & 6) != 4) {
+    core::ptr::
+    drop_in_place<enum2_<toolbar::resouces_and_components::toolbar_layout::ToolbarItemKind>_>();
+    return;
+  }
+  return;
+}
+
+
+##### 0x140fad870 setup
+
+// WARNING: Removing unreachable block (ram,0x000140fae18f)
+
+void __cdecl toolbar::resouces_and_components::undo_redo_layout::UndoRedoLayout::setup(void)
+
+{
+  undefined8 *puVar1;
+  byte bVar2;
+  longlong lVar3;
+  longlong lVar4;
+  char *_Size;
+  void *extraout_RAX;
+  undefined8 *in_RCX;
+  longlong in_RDX;
+  longlong *plVar5;
+  ulonglong uVar6;
+  void *_Dst;
+  char **ppcVar7;
+  int local_328;
+  undefined4 uStack_324;
+  undefined4 uStack_320;
+  undefined4 uStack_31c;
+  longlong *local_318;
+  undefined8 local_308;
+  char *local_198;
+  undefined8 uStack_190;
+  ulonglong local_188;
+  char *pcStack_180;
+  undefined8 local_178;
+  undefined1 local_170;
+  undefined8 *local_150;
+  ulonglong local_138;
+  char *local_130;
+  int local_128;
+  undefined8 local_108;
+  undefined8 uStack_100;
+  undefined8 local_f8;
+  undefined8 uStack_f0;
+  
+  taffy::node::Taffy::new_leaf();
+  if (local_328 != 4) {
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+  lVar3 = *(longlong *)(in_RDX + 0xa8);
+  if (lVar3 == *(longlong *)(in_RDX + 0x98)) {
+    alloc::raw_vec::RawVec::
+    grow_one<indexmap::Bucket<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,enum2_<country_core::resources::stairs::stairs_assembly_params::AlignKind>_>,alloc::alloc::Global>
+              ();
+  }
+  lVar4 = *(longlong *)(in_RDX + 0xa0);
+  puVar1 = (undefined8 *)(lVar4 + lVar3 * 0x28);
+  *puVar1 = 0;
+  puVar1[1] = 0;
+  *(ulonglong *)(lVar4 + 0x10 + lVar3 * 0x28) = CONCAT44(uStack_320,uStack_324);
+  *(undefined1 *)(lVar4 + 0x24 + lVar3 * 0x28) = 4;
+  *(longlong *)(in_RDX + 0xa8) = lVar3 + 1;
+  taffy::node::Taffy::new_leaf();
+  local_108 = CONCAT44(uStack_320,uStack_324);
+  uStack_100 = 0;
+  uStack_f0 = 0;
+  ppcVar7 = &local_198;
+  local_150 = in_RCX;
+  local_f8 = CONCAT44(uStack_320,uStack_324);
+  taffy::node::Taffy::add_child();
+  if ((int)local_198 != 4) {
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+  local_198 = "icon/undoicon/redo";
+  uStack_190 = 9;
+  local_188 = local_188 & 0xffffffffffffff00;
+  pcStack_180 = "icon/redo";
+  local_178 = 9;
+  local_170 = 1;
+  uVar6 = 0;
+  do {
+    bVar2 = *(byte *)(ppcVar7 + 2);
+    if (bVar2 == 2) break;
+    local_130 = *ppcVar7;
+    _Size = ppcVar7[1];
+    taffy::node::Taffy::new_leaf();
+    if (local_128 != 4) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    taffy::node::Taffy::add_child();
+    if ((longlong)_Size < 0) {
+LAB_140fae1d3:
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    local_138 = uVar6;
+    if (_Size == (char *)0x0) {
+      _Dst = (void *)0x1;
+    }
+    else {
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      _Dst = extraout_RAX;
+      if (extraout_RAX == (void *)0x0) goto LAB_140fae1d3;
+    }
+    memcpy(_Dst,local_130,(size_t)_Size);
+    bevy_ecs::system::commands::Commands::
+    spawn<tuple_<toolbar::resouces_and_components::TaffyNode,toolbar::resouces_and_components::UiScaleWithUserSetting,country_core::components::UiInteractionState,toolbar::resouces_and_components::UiAnimationState,country_core::components::UiMouseInteractable,country_core::components::Ui2dExtent,country_core::components::Ui2dImage,country_core::components::UiDrawOrder>_>
+              ();
+    plVar5 = (longlong *)CONCAT44(uStack_31c,uStack_320);
+    if ((longlong *)CONCAT44(uStack_31c,uStack_320) == (longlong *)0x0) {
+      plVar5 = local_318;
+    }
+    lVar3 = plVar5[2];
+    if ((ulonglong)(*plVar5 - lVar3) < 0x20) {
+      alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+    }
+    lVar4 = plVar5[1];
+    *(code **)(lVar4 + lVar3) =
+         core::ops::function::FnOnce::
+         call_once<bevy_ecs::world::command_queue::impl_4::push::closure_env_0<bevy_ecs::error::command_handling::impl_0::handle_error_with::closure_env_0<bevy_ecs::error::command_handling::impl_3::with_entity::closure_env_0<bevy_ecs::system::commands::entity_command::insert::closure_env_0<country_core::components::HistoryButton>_>,tuple_<>,enum2_<bevy_ecs::world::error::EntityMutableFetchError>_>_>,tuple_<bevy_ptr::OwningPtr<bevy_ptr::Unaligned>,enum2_<core::option::Option<core::ptr::non_null::NonNull<bevy_ecs::world::World>_>_>,ref_mut_<usize>_>_>
+    ;
+    *(code **)(lVar4 + 8 + lVar3) = bevy_ecs::error::handler::panic;
+    *(undefined8 *)(lVar4 + 0x10 + lVar3) = local_308;
+    *(byte *)(lVar4 + 0x18 + lVar3) = bVar2 & 1;
+    *(undefined1 *)(lVar4 + 0x19 + lVar3) = 0;
+    plVar5[2] = lVar3 + 0x20;
+    if ((ulonglong)(*plVar5 - (lVar3 + 0x20)) < 0x20) {
+      alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+    }
+    lVar4 = plVar5[1];
+    *(code **)(lVar4 + 0x20 + lVar3) =
+         core::ops::function::FnOnce::
+         call_once<bevy_ecs::world::command_queue::impl_4::push::closure_env_0<bevy_ecs::error::command_handling::impl_0::handle_error_with::closure_env_0<bevy_ecs::error::command_handling::impl_3::with_entity::closure_env_0<bevy_ecs::system::commands::entity_command::insert::closure_env_0<toolbar::resouces_and_components::HideIfMenuIsOpen>_>,tuple_<>,enum2_<bevy_ecs::world::error::EntityMutableFetchError>_>_>,tuple_<bevy_ptr::OwningPtr<bevy_ptr::Unaligned>,enum2_<core::option::Option<core::ptr::non_null::NonNull<bevy_ecs::world::World>_>_>,ref_mut_<usize>_>_>
+    ;
+    *(code **)(lVar4 + 0x28 + lVar3) = bevy_ecs::error::handler::panic;
+    *(undefined8 *)(lVar4 + 0x30 + lVar3) = local_308;
+    *(undefined1 *)(lVar4 + 0x38 + lVar3) = 0;
+    plVar5[2] = lVar3 + 0x40;
+    ppcVar7 = &pcStack_180;
+    uVar6 = CONCAT71((int7)((ulonglong)plVar5 >> 8),1);
+  } while ((local_138 & 1) == 0);
+  *local_150 = local_f8;
+  local_150[1] = local_108;
+  *(undefined4 *)(local_150 + 2) = 0;
+  return;
+}
+
+
+##### 0x142383730 param_to_value
+
+void __cdecl toolbar::resouces_and_components::LogSlider::param_to_value(void)
+
+{
+  float *in_RCX;
+  float fVar1;
+  float in_XMM1_Da;
+  float fVar2;
+  
+  fVar1 = *in_RCX;
+  fVar2 = in_RCX[1];
+  if (fVar1 <= fVar2) {
+    if (fVar1 <= in_XMM1_Da) {
+      fVar1 = in_XMM1_Da;
+    }
+    if (fVar1 <= fVar2) {
+      fVar2 = fVar1;
+    }
+    exp2f(fVar2 + in_RCX[3]);
+    return;
+  }
+                    // WARNING: Subroutine does not return
+  core::f32::impl$0::clamp::do_panic::runtime();
+}
+

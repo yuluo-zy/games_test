@@ -1,0 +1,803 @@
+{
+  "backend": "ghidra",
+  "worker": "shared",
+  "access": "read",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "get_metadata",
+      "requested_args": {
+        "program": "tiny-glade.exe"
+      },
+      "args": {
+        "program": "tiny-glade.exe"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program_name\":\"tiny-glade.exe\",\"executable_path\":\"/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.exe\",\"architecture\":\"x86\",\"compiler\":\"clangwindows\",\"language\":\"x86:LE:64:default\",\"endian\":\"little\",\"address_size_bits\":64,\"base_address\":\"140000000\",\"memory_blocks\":8,\"total_memory_size\":58486568,\"function_count\":131517,\"symbol_count\":991681}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "read_memory",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "address": "0x142a9fa24",
+        "length": 128
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "address": "0x142a9fa24",
+        "length": 128
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"address\":\"142a9fa24\",\"length\":128,\"data\":[203,92,225,253,89,95,225,253,140,95,225,253,2,94,225,253,158,91,225,253,65,96,225,253,65,95,225,253,242,93,225,253,3,127,225,253,44,125,225,253,168,126,225,253,223,126,225,253,87,126,225,253,60,127,225,253,141,127,225,253,241,126,225,253,221,127,225,253,123,126,225,253,203,127,225,253,69,126,225,253,105,126,225,253,78,127,225,253,7,126,225,253,186,126,225,253,202,125,225,253,184,125,225,253,184,125,225,253,17,125,225,253,17,125,225,253,0,0,0,0,0,0,0,0,108,111,119,101],\"hex\":\"cb5ce1fd595fe1fd8c5fe1fd025ee1fd9e5be1fd4160e1fd415fe1fdf25de1fd037fe1fd2c7de1fda87ee1fddf7ee1fd577ee1fd3c7fe1fd8d7fe1fdf17ee1fddd7fe1fd7b7ee1fdcb7fe1fd457ee1fd697ee1fd4e7fe1fd077ee1fdba7ee1fdca7de1fdb87de1fdb87de1fd117de1fd117de1fd00000000000000006c6f7765\"}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "get_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x140a53640,0x140a53870,0x140a53a00,0x140a53db0,0x140a54440,0x140a54810,0x140a54a40,0x140a55f20,0x140a55f40,0x140a55ff0,0x140a57100,0x1409285a0,0x140a596b0,0x140a59430,0x140a593f0,0x140a59220",
+        "fields": "signature,decompiled_code,callees",
+        "include_call_context": false
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x140a53640,0x140a53870,0x140a53a00,0x140a53db0,0x140a54440,0x140a54810,0x140a54a40,0x140a55f20,0x140a55f40,0x140a55ff0,0x140a57100,0x1409285a0,0x140a596b0,0x140a59430,0x140a593f0,0x140a59220",
+        "fields": "signature,decompiled_code,callees",
+        "include_call_context": false
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"functions\":{\"0x140a53640\":{\"name\":\"load\",\"size\":401,\"address\":\"140a53640\",\"signature\":\"void __cdecl load(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::audio_resources::Bank::load(void)\\n\\n{\\n  undefined8 *extraout_RAX;\\n  byte *in_RCX;\\n  byte *local_e0;\\n  code *local_d8;\\n  undefined8 local_d0;\\n  undefined *local_c8;\\n  undefined8 local_c0;\\n  undefined8 local_b8;\\n  undefined8 local_b0;\\n  undefined8 uStack_a8;\\n  undefined8 local_a0;\\n  undefined *local_98;\\n  undefined8 local_90;\\n  undefined4 local_88;\\n  undefined4 local_84;\\n  undefined *local_80;\\n  undefined8 local_78;\\n  byte **local_70;\\n  undefined8 local_68;\\n  undefined8 local_60;\\n  longlong local_50;\\n  undefined8 local_48;\\n  \\n  if ((*in_RCX & 1) == 0) {\\n    if (4 < *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E) {\\n      local_e0 = in_RCX + 0x10;\\n      local_d8 = std::path::impl$44::fmt;\\n      ::toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n      local_b0 = *extraout_RAX;\\n      uStack_a8 = extraout_RAX[1];\\n      local_84 = *(undefined4 *)(extraout_RAX + 2);\\n      local_a0 = 5;\\n      local_98 = &DAT_142ad2550;\\n      local_90 = 0x28;\\n      local_80 = &DAT_142ad24f0;\\n      local_78 = 1;\\n      local_70 = &local_e0;\\n      local_68 = 1;\\n      local_60 = 0;\\n      local_d0 = 0;\\n      local_c8 = &DAT_142ad2550;\\n      local_c0 = 0x28;\\n      local_b8 = 0;\\n      local_88 = 1;\\n      ::log::__private_api::impl$2::log();\\n    }\\n    std::sys::os_str::wtf8::Buf::as_mut_slice();\\n    std::ffi::os_str::impl$41::try_from();\\n    if ((int)local_d0 == 1) {\\n                    // WARNING: Subroutine does not return\\n      core::option::unwrap_failed();\\n    }\\n    libfmod::Studio::load_bank_file<u32>();\\n    if (local_50 != -0x7ffffffffffffffc) {\\n                    // WARNING: Subroutine does not return\\n      audio_resources::impl$0::load::closure_0();\\n    }\\n    in_RCX[0] = 1;\\n    in_RCX[1] = 0;\\n    in_RCX[2] = 0;\\n    in_RCX[3] = 0;\\n    in_RCX[4] = 0;\\n    in_RCX[5] = 0;\\n    in_RCX[6] = 0;\\n    in_RCX[7] = 0;\\n    *(undefined8 *)(in_RCX + 8) = local_48;\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":7,\"callees\":[{\"name\":\"as_inner_mut\",\"address\":\"14067dd80\"},{\"name\":\"as_mut_slice\",\"address\":\"140d76ed0\"},{\"name\":\"closure$0\",\"address\":\"140a537e0\"},{\"name\":\"load_bank_file<u32>\",\"address\":\"14157cb70\"},{\"name\":\"log\",\"address\":\"140d4a330\"},{\"name\":\"try_from\",\"address\":\"140d58e70\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9310\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140a53870\":{\"name\":\"load_sample_data\",\"size\":342,\"address\":\"140a53870\",\"signature\":\"void __cdecl load_sample_data(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::audio_resources::Bank::load_sample_data(void)\\n\\n{\\n  undefined8 *extraout_RAX;\\n  byte *in_RCX;\\n  byte *local_e0;\\n  code *pcStack_d8;\\n  undefined8 local_d0;\\n  undefined8 uStack_c8;\\n  undefined8 local_c0;\\n  undefined8 uStack_b8;\\n  undefined8 local_b0;\\n  byte *local_a8;\\n  code *pcStack_a0;\\n  undefined8 local_98;\\n  undefined8 uStack_90;\\n  undefined8 local_88;\\n  undefined8 uStack_80;\\n  undefined8 local_78;\\n  undefined *local_70;\\n  undefined8 local_68;\\n  undefined4 local_60;\\n  undefined4 local_5c;\\n  undefined **local_58;\\n  undefined8 local_50;\\n  byte **local_48;\\n  undefined8 local_40;\\n  undefined8 local_38;\\n  undefined8 local_18;\\n  \\n  local_18 = 0xfffffffffffffffe;\\n  if ((*in_RCX & 1) == 0) {\\n                    // WARNING: Subroutine does not return\\n    core::option::unwrap_failed();\\n  }\\n  if (4 < *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E) {\\n    local_e0 = in_RCX + 0x10;\\n    pcStack_d8 = std::path::impl$44::fmt;\\n    ::toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n    local_88 = *extraout_RAX;\\n    uStack_80 = extraout_RAX[1];\\n    local_5c = *(undefined4 *)(extraout_RAX + 2);\\n    local_78 = 5;\\n    local_70 = &DAT_142ad2550;\\n    local_68 = 0x28;\\n    local_58 = &PTR_s_Loading_sample_data_of_FMOD_bank_142ad2618;\\n    local_50 = 1;\\n    local_48 = &local_e0;\\n    local_40 = 1;\\n    local_38 = 0;\\n    local_a8 = (byte *)0x0;\\n    pcStack_a0 = (code *)&DAT_142ad2550;\\n    local_98 = 0x28;\\n    uStack_90 = 0;\\n    local_60 = 1;\\n    ::log::__private_api::impl$2::log();\\n  }\\n  libfmod::Bank::load_sample_data();\\n  if (local_e0 == (byte *)0x8000000000000004) {\\n    return;\\n  }\\n  local_78 = local_b0;\\n  local_88 = local_c0;\\n  uStack_80 = uStack_b8;\\n  local_98 = local_d0;\\n  uStack_90 = uStack_c8;\\n  local_a8 = local_e0;\\n  pcStack_a0 = pcStack_d8;\\n                    // WARNING: Subroutine does not return\\n  core::result::unwrap_failed();\\n}\\n\\n\",\"callee_count\":5,\"callees\":[{\"name\":\"as_inner_mut\",\"address\":\"14067dd80\"},{\"name\":\"load_sample_data\",\"address\":\"141435750\"},{\"name\":\"log\",\"address\":\"140d4a330\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9310\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140a53a00\":{\"name\":\"update\",\"size\":807,\"address\":\"140a53a00\",\"signature\":\"void __cdecl update(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::audio_resources::AudioCoreInner::update(void)\\n\\n{\\n  undefined8 *extraout_RAX;\\n  undefined8 *in_RDX;\\n  float fVar1;\\n  float fVar2;\\n  longlong local_180;\\n  ulonglong local_148 [7];\\n  ulonglong *local_110;\\n  code *local_108;\\n  longlong local_100;\\n  undefined8 uStack_f8;\\n  undefined8 local_f0;\\n  undefined8 uStack_e8;\\n  undefined8 local_e0;\\n  undefined8 uStack_d8;\\n  undefined1 local_d0;\\n  longlong local_c8;\\n  undefined *puStack_c0;\\n  undefined8 local_b8;\\n  undefined8 uStack_b0;\\n  float local_a8;\\n  float fStack_a4;\\n  float fStack_a0;\\n  float fStack_9c;\\n  undefined8 local_98;\\n  undefined *local_90;\\n  undefined8 local_88;\\n  undefined4 local_80;\\n  undefined4 local_7c;\\n  undefined **local_78;\\n  undefined8 local_70;\\n  undefined8 **local_68;\\n  undefined8 local_60;\\n  longlong *local_58;\\n  undefined8 local_50;\\n  undefined8 local_40;\\n  \\n  local_40 = 0xfffffffffffffffe;\\n  uStack_b0 = in_RDX[3];\\n  fVar1 = (float)uStack_b0;\\n  fVar2 = (float)((ulonglong)uStack_b0 >> 0x20);\\n  local_a8 = *(float *)(in_RDX + 4);\\n  if (0.001 <= SQRT(local_a8 * local_a8 + fVar2 * fVar2 + fVar1 * fVar1) + -1.0) {\\n                    // WARNING: Subroutine does not return\\n    core::panicking::panic();\\n  }\\n  fStack_a4 = (float)*(undefined8 *)((longlong)in_RDX + 0x24);\\n  fStack_a0 = (float)((ulonglong)*(undefined8 *)((longlong)in_RDX + 0x24) >> 0x20);\\n  fStack_9c = *(float *)((longlong)in_RDX + 0x2c);\\n  if (0.001 <= SQRT(fStack_9c * fStack_9c + fStack_a0 * fStack_a0 + fStack_a4 * fStack_a4) + -1.0) {\\n                    // WARNING: Subroutine does not return\\n    core::panicking::panic();\\n  }\\n  if (0.001 <= ABS(local_a8 * fStack_9c + fVar2 * fStack_a0 + fVar1 * fStack_a4)) {\\n                    // WARNING: Subroutine does not return\\n    core::panicking::panic();\\n  }\\n  local_c8 = *in_RDX;\\n  puStack_c0 = (undefined *)in_RDX[1];\\n  local_b8 = in_RDX[2];\\n  local_148[0] = local_148[0] & 0xffffffff00000000;\\n  libfmod::Studio::set_listener_attributes();\\n  if (local_100 == -0x7ffffffffffffffc) {\\n    libfmod::Studio::update();\\n    if (local_180 != -0x7ffffffffffffffc) {\\n      if (*(longlong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E != 0) {\\n        local_108 = libfmod::impl$341::fmt;\\n        local_100 = 2;\\n        uStack_f8 = 2;\\n        local_f0 = 2;\\n        local_e0 = 0;\\n        uStack_d8 = 0x400000020;\\n        local_d0 = 3;\\n        local_110 = local_148;\\n        ::toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n        local_7c = *(undefined4 *)(extraout_RAX + 2);\\n        local_98 = 1;\\n        local_90 = &DAT_142ad2550;\\n        local_88 = 0x28;\\n        local_78 = &PTR_s_FMOD_update_error__142ad29c0;\\n        local_70 = 1;\\n        local_68 = &local_110;\\n        local_60 = 1;\\n        local_50 = 1;\\n        local_c8 = 0;\\n        puStack_c0 = &DAT_142ad2550;\\n        local_b8 = 0x28;\\n        uStack_b0 = 0;\\n        local_a8 = (float)*extraout_RAX;\\n        fStack_a4 = (float)((ulonglong)*extraout_RAX >> 0x20);\\n        fStack_a0 = (float)extraout_RAX[1];\\n        fStack_9c = (float)((ulonglong)extraout_RAX[1] >> 0x20);\\n        local_80 = 1;\\n        local_58 = &local_100;\\n        ::log::__private_api::impl$2::log();\\n      }\\n      core::ptr::drop_in_place<enum2_<libfmod::Error>_>();\\n    }\\n    return;\\n  }\\n  local_a8 = (float)local_e0;\\n  fStack_a4 = (float)((ulonglong)local_e0 >> 0x20);\\n  fStack_a0 = (float)uStack_d8;\\n  fStack_9c = (float)((ulonglong)uStack_d8 >> 0x20);\\n  local_b8 = local_f0;\\n  uStack_b0 = uStack_e8;\\n  local_c8 = local_100;\\n  puStack_c0 = (undefined *)uStack_f8;\\n                    // WARNING: Subroutine does not return\\n  core::result::unwrap_failed();\\n}\\n\\n\",\"callee_count\":7,\"callees\":[{\"name\":\"as_inner_mut\",\"address\":\"14067dd80\"},{\"name\":\"drop_in_place<enum2$<libfmod::Error>_>\",\"address\":\"140a526b0\"},{\"name\":\"log\",\"address\":\"140d4a330\"},{\"name\":\"panic\",\"address\":\"1428d9430\"},{\"name\":\"set_listener_attributes\",\"address\":\"141438ae0\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"},{\"name\":\"update\",\"address\":\"1414380c0\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140a53db0\":{\"name\":\"set_parameter\",\"size\":1275,\"address\":\"140a53db0\",\"signature\":\"void __cdecl set_parameter(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::audio_resources::AudioCoreInner::set_parameter(void)\\n\\n{\\n  char cVar1;\\n  undefined **ppuVar2;\\n  undefined ***pppuVar3;\\n  char extraout_AL;\\n  char extraout_AL_00;\\n  code *extraout_RAX;\\n  undefined8 *extraout_RAX_00;\\n  longlong local_1c8;\\n  undefined1 *local_190;\\n  void *pvStack_188;\\n  ulonglong local_180;\\n  undefined1 local_178 [64];\\n  undefined1 local_138 [16];\\n  undefined ***local_128;\\n  undefined **ppuStack_120;\\n  longlong local_118;\\n  undefined8 local_110;\\n  undefined8 local_108;\\n  undefined8 uStack_100;\\n  undefined8 local_f8;\\n  undefined *local_f0;\\n  undefined8 local_e8;\\n  undefined8 local_e0;\\n  undefined *local_d8;\\n  undefined8 local_d0;\\n  undefined ***local_c8;\\n  undefined8 local_c0;\\n  undefined8 local_b8;\\n  undefined **local_a8;\\n  code *pcStack_a0;\\n  undefined1 *local_98;\\n  code *local_90;\\n  undefined **local_80;\\n  undefined ***local_78;\\n  code *pcStack_70;\\n  undefined ***local_68;\\n  undefined8 local_60;\\n  undefined ****local_58;\\n  undefined8 local_50;\\n  char local_39;\\n  undefined8 local_38;\\n  \\n  local_38 = 0xfffffffffffffffe;\\n  libfmod::Studio::set_parameter_by_name();\\n  if (local_1c8 != -0x7ffffffffffffffc) {\\n    local_a8 = (undefined **)local_138;\\n    pcStack_a0 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;\\n    local_90 = libfmod::impl$341::fmt;\\n    local_128 = (undefined ***)0x2;\\n    ppuStack_120 = (undefined **)0x2;\\n    local_118 = 2;\\n    local_108 = 0;\\n    uStack_100 = 0x20;\\n    local_f8 = CONCAT71(local_f8._1_7_,3);\\n    local_f0 = (undefined *)0x2;\\n    local_e8 = 2;\\n    local_e0 = 2;\\n    local_d0 = 1;\\n    local_c8 = (undefined ***)0x400000020;\\n    local_c0 = CONCAT71(local_c0._1_7_,3);\\n    local_78 = (undefined ***)&PTR_s_Couldn_t_set_global_FMOD_paramet_142ad2a10;\\n    pcStack_70 = (code *)0x2;\\n    local_60 = 2;\\n    local_58 = &local_128;\\n    local_50 = 2;\\n    local_98 = local_178;\\n    local_68 = &local_a8;\\n    alloc::fmt::format::format_inner();\\n    local_a8 = (undefined **)local_190;\\n    pcStack_a0 = pvStack_188;\\n    local_98 = (undefined1 *)local_180;\\n    if (DAT_143634d60 != 3) {\\n      local_78 = (undefined ***)CONCAT71(local_78._1_7_,1);\\n      local_128 = (undefined ***)&local_78;\\n      std::sys::sync::once::futex::Once::call();\\n    }\\n    std::sync::poison::mutex::Mutex::lock<winit::dpi::PhysicalSize<u32>_>();\\n    if ((int)local_128 == 1) {\\n      local_78 = (undefined ***)ppuStack_120;\\n      pcStack_70 = (code *)CONCAT71(pcStack_70._1_7_,(char)local_118);\\n                    // WARNING: Subroutine does not return\\n      core::result::unwrap_failed();\\n    }\\n    local_80 = ppuStack_120;\\n    local_39 = (char)local_118;\\n    std::alloc::__default_lib_allocator::__rust_alloc();\\n    if (extraout_RAX == (code *)0x0) {\\n                    // WARNING: Subroutine does not return\\n      alloc::raw_vec::handle_error();\\n    }\\n    *(undefined8 *)(extraout_RAX + 7) = 0x2928202168746170;\\n    *(undefined8 *)extraout_RAX = 0x705f656c75646f6d;\\n    local_128 = (undefined ***)&DAT_0000000f;\\n    local_118 = 0xf;\\n    ppuStack_120 = (undefined **)extraout_RAX;\\n    alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n    *(undefined8 *)((longlong)ppuStack_120 + local_118) = 0x3a20657461726324;\\n    *(undefined8 *)((code *)((longlong)ppuStack_120 + local_118) + 8) = 0x206c6576654c203a;\\n    *(undefined8 *)((longlong)ppuStack_120 + local_118 + 0xf) = 0x6e726157203a3a20;\\n    local_68 = (undefined ***)(local_118 + 0x17);\\n    local_78 = local_128;\\n    pcStack_70 = (code *)ppuStack_120;\\n    if ((ulonglong)((longlong)local_128 - (longlong)local_68) < local_98) {\\n      alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n    }\\n    pppuVar3 = local_68;\\n    memcpy(pcStack_70 + (longlong)local_68,pcStack_a0,(size_t)local_98);\\n    local_118 = (longlong)pppuVar3 + (longlong)local_98;\\n    local_128 = local_78;\\n    ppuStack_120 = (undefined **)pcStack_70;\\n    local_68 = (undefined ***)local_118;\\n    alloc::collections::btree::map::BTreeMap::\\n    insert<alloc::string::String,alloc::collections::btree::set_val::SetValZST,alloc::alloc::Global>\\n              ();\\n    if ((extraout_AL == '\\\\0') &&\\n       (1 < *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E)) {\\n      pcStack_70 = alloc::string::impl$23::fmt;\\n      local_78 = &local_a8;\\n      ::toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n      local_108 = *extraout_RAX_00;\\n      uStack_100 = extraout_RAX_00[1];\\n      local_f8 = 2;\\n      local_f0 = &DAT_142ad2550;\\n      local_e8 = 0x28;\\n      local_d8 = &DAT_142ad2a78;\\n      local_d0 = 1;\\n      local_c0 = 1;\\n      local_b8 = 0;\\n      local_128 = (undefined ***)0x0;\\n      ppuStack_120 = (undefined **)&DAT_142ad2550;\\n      local_118 = 0x28;\\n      local_110 = 0;\\n      local_e0 = CONCAT44(*(undefined4 *)(extraout_RAX_00 + 2),1);\\n      local_c8 = (undefined ***)&local_78;\\n      ::log::__private_api::impl$2::log();\\n    }\\n    ppuVar2 = local_80;\\n    if ((local_39 == '\\\\0') &&\\n       ((*(ulonglong *)__imp__ZN3std9panicking11panic_count18GLOBAL_PANIC_COUNT17h923f4fc2d5dc75a1E\\n        & 0x7fffffffffffffff) != 0)) {\\n      std::panicking::panic_count::is_zero_slow_path();\\n      if (extraout_AL_00 == '\\\\0') {\\n        *(char *)((longlong)ppuVar2 + 1) = '\\\\x01';\\n      }\\n    }\\n    LOCK();\\n    cVar1 = *(char *)ppuVar2;\\n    *(char *)ppuVar2 = '\\\\0';\\n    UNLOCK();\\n    if (cVar1 == '\\\\x02') {\\n      std::sys::sync::mutex::futex::Mutex::wake();\\n    }\\n    if (local_a8 != (undefined **)0x0) {\\n      std::alloc::__default_lib_allocator::__rust_dealloc();\\n    }\\n    core::ptr::drop_in_place<enum2_<libfmod::Error>_>();\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":16,\"callees\":[{\"name\":\"__rust_alloc\",\"address\":\"140613c10\"},{\"name\":\"__rust_dealloc\",\"address\":\"140613c20\"},{\"name\":\"as_inner_mut\",\"address\":\"14067dd80\"},{\"name\":\"call\",\"address\":\"1428d8820\"},{\"name\":\"do_reserve_and_handle<alloc::alloc::Global>\",\"address\":\"1428a9a60\"},{\"name\":\"drop_in_place<enum2$<libfmod::Error>_>\",\"address\":\"140a526b0\"},{\"name\":\"format_inner\",\"address\":\"140d79f90\"},{\"name\":\"handle_error\",\"address\":\"1428d8fe3\"},{\"name\":\"insert<alloc::string::String,alloc::collections::btree::set_val::SetValZST,alloc::alloc::Global>\",\"address\":\"14143b8b0\"},{\"name\":\"is_zero_slow_path\",\"address\":\"1428d86b0\"},{\"name\":\"lock<winit::dpi::PhysicalSize<u32>_>\",\"address\":\"140542890\"},{\"name\":\"log\",\"address\":\"140d4a330\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"set_parameter_by_name\",\"address\":\"141438870\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"},{\"name\":\"wake\",\"address\":\"1428d8810\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140a54440\":{\"name\":\"instantiate_audio\",\"size\":775,\"address\":\"140a54440\",\"signature\":\"void __cdecl instantiate_audio(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::audio_resources::AudioCoreInner::instantiate_audio(void)\\n\\n{\\n  void *extraout_RAX;\\n  undefined8 extraout_RAX_00;\\n  undefined8 uVar1;\\n  undefined8 extraout_RAX_01;\\n  undefined8 *in_RCX;\\n  void *_Dst;\\n  void *in_R8;\\n  size_t in_R9;\\n  longlong local_170;\\n  undefined8 uStack_168;\\n  undefined ***local_138;\\n  code *local_130;\\n  undefined *local_128 [2];\\n  undefined **local_118;\\n  undefined8 uStack_110;\\n  undefined ****local_108;\\n  undefined8 local_100;\\n  undefined8 local_f8;\\n  undefined8 local_e8;\\n  undefined ***local_e0;\\n  code *local_d8;\\n  undefined **local_c8;\\n  code *pcStack_c0;\\n  undefined ****local_b8;\\n  undefined8 uStack_b0;\\n  undefined8 local_a8;\\n  undefined8 uStack_a0;\\n  undefined8 local_98;\\n  undefined **local_88;\\n  undefined8 uStack_80;\\n  undefined ***local_78;\\n  undefined8 uStack_70;\\n  undefined8 local_68;\\n  undefined8 uStack_60;\\n  undefined8 local_58;\\n  undefined1 local_41;\\n  undefined8 local_40;\\n  \\n  local_40 = 0xfffffffffffffffe;\\n  libfmod::Studio::get_event();\\n  if (local_c8 == (undefined **)0x8000000000000004) {\\n    local_e8 = pcStack_c0;\\n    libfmod::EventDescription::create_instance();\\n    if (local_170 == -0x7ffffffffffffffc) {\\n      if (-1 < (longlong)in_R9) {\\n        if (in_R9 == 0) {\\n          _Dst = (void *)0x1;\\n        }\\n        else {\\n          std::alloc::__default_lib_allocator::__rust_alloc();\\n          _Dst = extraout_RAX;\\n          if (extraout_RAX == (void *)0x0) goto LAB_140a54735;\\n        }\\n        memcpy(_Dst,in_R8,in_R9);\\n        *in_RCX = 1;\\n        in_RCX[1] = uStack_168;\\n        in_RCX[2] = in_R9;\\n        in_RCX[3] = _Dst;\\n        in_RCX[4] = in_R9;\\n        *(undefined1 *)(in_RCX + 5) = 2;\\n        return;\\n      }\\nLAB_140a54735:\\n                    // WARNING: Subroutine does not return\\n      alloc::raw_vec::handle_error();\\n    }\\n    local_e0 = &local_88;\\n    local_d8 = libfmod::impl$341::fmt;\\n    local_c8 = (undefined **)&DAT_142ad2d88;\\n    pcStack_c0 = (code *)0x1;\\n    local_b8 = &local_e0;\\n    uStack_b0 = 1;\\n    local_a8 = 0;\\n    alloc::fmt::format::format_inner();\\n    anyhow::Error::msg<alloc::string::String>();\\n    core::ptr::drop_in_place<enum2_<libfmod::Error>_>();\\n    local_c8 = (undefined **)&DAT_142ad2a88;\\n    pcStack_c0 = (code *)0xf;\\n    local_88 = (undefined **)0x3;\\n    anyhow::Error::construct<anyhow::error::ContextError<ref_<str_>,anyhow::Error>_>();\\n    uVar1 = extraout_RAX_01;\\n  }\\n  else {\\n    local_58 = local_98;\\n    local_68 = local_a8;\\n    uStack_60 = uStack_a0;\\n    local_78 = (undefined ***)local_b8;\\n    uStack_70 = uStack_b0;\\n    local_88 = local_c8;\\n    uStack_80 = pcStack_c0;\\n    local_138 = &local_88;\\n    local_130 = libfmod::impl$341::fmt;\\n    local_118 = (undefined **)&DAT_142ad2d88;\\n    uStack_110 = 1;\\n    local_108 = &local_138;\\n    local_100 = 1;\\n    local_f8 = 0;\\n    alloc::fmt::format::format_inner();\\n    anyhow::Error::msg<alloc::string::String>();\\n    core::ptr::drop_in_place<enum2_<libfmod::Error>_>();\\n    local_c8 = local_128;\\n    pcStack_c0 = core::fmt::impl$74::fmt<str_>;\\n    local_88 = &anon_de0eed98b15ac5150e4d56a6eb006e4c_140_llvm_7941911296138889869;\\n    uStack_80 = 2;\\n    uStack_70 = 1;\\n    local_68 = 0;\\n    local_41 = 1;\\n    local_78 = &local_c8;\\n    alloc::fmt::format::format_inner();\\n    local_b8 = local_108;\\n    local_c8 = local_118;\\n    pcStack_c0 = (code *)uStack_110;\\n    local_88 = (undefined **)0x3;\\n    local_41 = 0;\\n    anyhow::Error::construct<anyhow::error::ContextError<alloc::string::String,anyhow::Error>_>();\\n    uVar1 = extraout_RAX_00;\\n  }\\n  in_RCX[1] = uVar1;\\n  *in_RCX = 2;\\n  return;\\n}\\n\\n\",\"callee_count\":10,\"callees\":[{\"name\":\"__rust_alloc\",\"address\":\"140613c10\"},{\"name\":\"construct<anyhow::error::ContextError<alloc::string::String,anyhow::Error>_>\",\"address\":\"1428a94b0\"},{\"name\":\"construct<anyhow::error::ContextError<ref$<str$>,anyhow::Error>_>\",\"address\":\"1428a8a20\"},{\"name\":\"create_instance\",\"address\":\"1414361e0\"},{\"name\":\"drop_in_place<enum2$<libfmod::Error>_>\",\"address\":\"140a526b0\"},{\"name\":\"format_inner\",\"address\":\"140d79f90\"},{\"name\":\"get_event\",\"address\":\"1414383b0\"},{\"name\":\"handle_error\",\"address\":\"1428d8fe3\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"msg<alloc::string::String>\",\"address\":\"1428a83e0\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140a54810\":{\"name\":\"set_vca_volume\",\"size\":447,\"address\":\"140a54810\",\"signature\":\"void __cdecl set_vca_volume(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::audio_resources::AudioCoreInner::set_vca_volume(void)\\n\\n{\\n  longlong local_140;\\n  longlong local_88 [8];\\n  longlong *local_48;\\n  code *local_40;\\n  undefined8 local_30;\\n  \\n  local_30 = 0xfffffffffffffffe;\\n  libfmod::Studio::get_vca();\\n  if (local_140 == -0x7ffffffffffffffc) {\\n    libfmod::Vca::set_volume();\\n    if (local_88[0] != -0x7ffffffffffffffc) {\\n                    // WARNING: Subroutine does not return\\n      core::result::unwrap_failed();\\n    }\\n  }\\n  else {\\n    if (*(longlong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E != 0) {\\n      local_48 = local_88;\\n      local_40 = libfmod::impl$341::fmt;\\n      ::toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n      ::log::__private_api::impl$2::log();\\n    }\\n    core::ptr::drop_in_place<enum2_<libfmod::Error>_>();\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":6,\"callees\":[{\"name\":\"as_inner_mut\",\"address\":\"14067dd80\"},{\"name\":\"drop_in_place<enum2$<libfmod::Error>_>\",\"address\":\"140a526b0\"},{\"name\":\"get_vca\",\"address\":\"141438610\"},{\"name\":\"log\",\"address\":\"140d4a330\"},{\"name\":\"set_volume\",\"address\":\"141439160\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140a54a40\":{\"name\":\"new\",\"size\":4050,\"address\":\"140a54a40\",\"signature\":\"void __cdecl new(void)\",\"decompiled_code\":\"\\n// WARNING: Type propagation algorithm not settling\\n\\nvoid __cdecl country_core::resources::audio_resources::AudioCore::new(void)\\n\\n{\\n  char *pcVar1;\\n  undefined8 *****pppppuVar2;\\n  uint uVar3;\\n  uint uVar4;\\n  float fVar5;\\n  int iVar6;\\n  int iVar7;\\n  char cVar8;\\n  char cVar9;\\n  char cVar10;\\n  char cVar11;\\n  char cVar12;\\n  char cVar13;\\n  char cVar14;\\n  char cVar15;\\n  char cVar16;\\n  char cVar17;\\n  char cVar18;\\n  char cVar19;\\n  char cVar20;\\n  char cVar21;\\n  char cVar22;\\n  char cVar23;\\n  undefined8 ******ppppppuVar24;\\n  undefined8 *******pppppppuVar25;\\n  longlong lVar26;\\n  ushort uVar27;\\n  int iVar28;\\n  int iVar29;\\n  undefined8 *extraout_RAX;\\n  longlong *extraout_RAX_00;\\n  undefined8 *****extraout_RAX_01;\\n  undefined8 *extraout_RAX_02;\\n  ulonglong uVar30;\\n  ulonglong extraout_RAX_03;\\n  undefined8 *extraout_RAX_04;\\n  undefined8 *extraout_RAX_05;\\n  undefined **ppuVar31;\\n  ulonglong extraout_RAX_06;\\n  undefined8 ******extraout_RAX_07;\\n  undefined8 extraout_RAX_08;\\n  undefined8 *extraout_RAX_09;\\n  undefined8 *extraout_RAX_10;\\n  undefined8 *in_RCX;\\n  code *pcVar32;\\n  undefined4 uVar33;\\n  undefined8 ******ppppppuVar34;\\n  undefined8 *****pppppuVar35;\\n  uint uVar36;\\n  longlong lVar37;\\n  ulonglong uVar38;\\n  byte bVar39;\\n  undefined1 auVar40 [16];\\n  undefined1 auVar41 [16];\\n  undefined1 unaff_XMM6_Be;\\n  undefined1 unaff_XMM6_Bf;\\n  undefined1 unaff_XMM6_Bg;\\n  undefined1 unaff_XMM6_Bh;\\n  undefined1 unaff_XMM6_Bi;\\n  undefined1 unaff_XMM6_Bj;\\n  undefined1 unaff_XMM6_Bk;\\n  undefined1 unaff_XMM6_Bl;\\n  undefined1 unaff_XMM6_Bm;\\n  undefined1 unaff_XMM6_Bn;\\n  undefined1 unaff_XMM6_Bo;\\n  undefined1 unaff_XMM6_Bp;\\n  char cVar42;\\n  char cVar43;\\n  char cVar44;\\n  char cVar45;\\n  undefined1 auVar46 [16];\\n  undefined1 auVar47 [16];\\n  undefined8 ******local_698;\\n  undefined8 uStack_690;\\n  undefined8 ******ppppppuStack_688;\\n  longlong lStack_680;\\n  longlong lStack_678;\\n  longlong local_670;\\n  undefined8 *****local_668;\\n  code *local_428;\\n  undefined8 *****pppppuStack_420;\\n  longlong local_418;\\n  longlong lStack_410;\\n  longlong local_408;\\n  undefined4 local_3f0;\\n  undefined8 local_3e8;\\n  undefined *puStack_3e0;\\n  undefined8 local_3d8;\\n  undefined *puStack_3d0;\\n  undefined8 ******local_3b8;\\n  code *pcStack_3b0;\\n  undefined8 *******local_3a8;\\n  code *pcStack_3a0;\\n  undefined8 *****local_398;\\n  longlong lStack_390;\\n  undefined *local_388;\\n  undefined *puStack_380;\\n  undefined8 *****local_378;\\n  undefined8 local_370;\\n  undefined **local_368;\\n  undefined8 local_360;\\n  undefined8 *******local_358;\\n  undefined8 local_350;\\n  undefined8 *******local_348;\\n  undefined8 local_340;\\n  undefined8 *local_140;\\n  undefined8 *******local_138;\\n  code *local_130;\\n  undefined8 *******local_128;\\n  code *pcStack_120;\\n  undefined8 *****local_118;\\n  longlong lStack_110;\\n  longlong local_108;\\n  longlong lStack_100;\\n  undefined8 *****local_f8;\\n  undefined8 *****local_f0;\\n  undefined8 *****local_e8;\\n  undefined8 *****local_e0;\\n  code *local_d8;\\n  longlong local_d0;\\n  undefined8 local_c8;\\n  code *pcStack_c0;\\n  undefined8 *****local_b8;\\n  longlong lStack_b0;\\n  longlong local_a8;\\n  longlong lStack_a0;\\n  int local_98;\\n  uint local_94;\\n  undefined8 ******local_90;\\n  undefined1 local_82;\\n  undefined1 local_81;\\n  undefined8 local_80;\\n  \\n  local_80 = 0xfffffffffffffffe;\\n  ppppppuVar34 = &local_3b8;\\n  libfmod::Studio::create();\\n  pcVar32 = pcStack_3b0;\\n  if (local_3b8 == (undefined8 ******)0x8000000000000004) {\\n    local_f0 = (undefined8 *****)pcStack_3b0;\\n    libfmod::Studio::get_core_system();\\n    if (local_3b8 == (undefined8 ******)0x8000000000000004) {\\n      local_e8 = (undefined8 *****)pcStack_3b0;\\n      local_f8 = (undefined8 *****)pcStack_3b0;\\n      libfmod::System::set_software_format();\\n      if (local_3b8 == (undefined8 ******)0x8000000000000004) {\\n        libfmod::System::get_dsp_buffer_size();\\n        if (local_698 != (undefined8 ******)0x8000000000000004) {\\n          local_388 = (undefined *)local_668;\\n          local_398 = (undefined8 *****)lStack_678;\\n          lStack_390 = local_670;\\n          local_3a8 = (undefined8 *******)ppppppuStack_688;\\n          pcStack_3a0 = (code *)lStack_680;\\n          local_3b8 = local_698;\\n          pcStack_3b0 = uStack_690;\\n                    // WARNING: Subroutine does not return\\n          core::result::unwrap_failed();\\n        }\\n        local_94 = (uint)uStack_690;\\n        local_98 = uStack_690._4_4_;\\n        libfmod::System::get_software_format();\\n        if (local_698 != (undefined8 ******)0x8000000000000004) {\\n          local_388 = (undefined *)local_668;\\n          local_398 = (undefined8 *****)lStack_678;\\n          lStack_390 = local_670;\\n          local_3a8 = (undefined8 *******)ppppppuStack_688;\\n          pcStack_3a0 = (code *)lStack_680;\\n          local_3b8 = local_698;\\n          pcStack_3b0 = uStack_690;\\n                    // WARNING: Subroutine does not return\\n          core::result::unwrap_failed();\\n        }\\n        fVar5 = (float)(int)(uint)uStack_690;\\n        uVar38 = (ulonglong)local_94;\\n        if (*(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E < 5) {\\n          if (4 < *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E)\\n          goto LAB_140a553b1;\\nLAB_140a54ba3:\\n          uVar30 = *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E;\\n        }\\n        else {\\n          local_698 = (undefined8 ******)&local_94;\\n          uStack_690 = core::fmt::num::imp::impl$6::fmt;\\n          ::toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n          local_398 = (undefined8 *****)*extraout_RAX_04;\\n          lStack_390 = extraout_RAX_04[1];\\n          local_388 = (undefined *)0x5;\\n          puStack_380 = &DAT_142ad2550;\\n          local_378 = (undefined8 *****)0x28;\\n          local_368 = &PTR_s_Mixer_buffer_length__142ad26b0;\\n          local_360 = 1;\\n          local_350 = 1;\\n          local_348 = (undefined8 *******)0x0;\\n          local_3b8 = (undefined8 ******)0x0;\\n          pcStack_3b0 = (code *)&DAT_142ad2550;\\n          local_3a8 = (undefined8 *******)&DAT_00000028;\\n          pcStack_3a0 = (code *)0x0;\\n          local_370 = CONCAT44(*(undefined4 *)(extraout_RAX_04 + 2),1);\\n          local_358 = &local_698;\\n          ::log::__private_api::impl$2::log();\\n          if (*(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E < 5)\\n          goto LAB_140a54ba3;\\nLAB_140a553b1:\\n          local_698 = (undefined8 ******)&local_98;\\n          uStack_690 = core::fmt::num::imp::impl$7::fmt;\\n          ::toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n          local_398 = (undefined8 *****)*extraout_RAX_05;\\n          lStack_390 = extraout_RAX_05[1];\\n          local_388 = (undefined *)0x5;\\n          puStack_380 = &DAT_142ad2550;\\n          local_378 = (undefined8 *****)0x28;\\n          local_368 = &PTR_s_Mixer_buffer_count__142ad26f0;\\n          local_360 = 1;\\n          local_350 = 1;\\n          local_348 = (undefined8 *******)0x0;\\n          local_3b8 = (undefined8 ******)0x0;\\n          pcStack_3b0 = (code *)&DAT_142ad2550;\\n          local_3a8 = (undefined8 *******)&DAT_00000028;\\n          pcStack_3a0 = (code *)0x0;\\n          local_370 = CONCAT44(*(undefined4 *)(extraout_RAX_05 + 2),1);\\n          local_358 = &local_698;\\n          ::log::__private_api::impl$2::log();\\n          uVar30 = *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E;\\n        }\\n        if (4 < uVar30) {\\n          uVar30 = (ulonglong)local_c8 >> 0x20;\\n          local_c8 = (undefined8 ******)\\n                     CONCAT44((int)uVar30,\\n                              ((float)local_98 + -1.5) * (((float)uVar38 * 1000.0) / fVar5));\\n          local_128 = (undefined8 *******)&local_c8;\\n          pcStack_120 = core::fmt::float::impl$5::fmt;\\n          local_698 = (undefined8 ******)0x0;\\n          uStack_690 = (code *)0x2;\\n          ppppppuStack_688 = (undefined8 ******)0x2;\\n          lStack_678 = 0;\\n          local_670 = 0x20;\\n          local_668._1_7_ = (undefined7)((ulonglong)local_668 >> 8);\\n          local_668 = (undefined8 *****)CONCAT71(local_668._1_7_,3);\\n          ::toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n          local_398 = (undefined8 *****)*extraout_RAX;\\n          lStack_390 = extraout_RAX[1];\\n          local_388 = (undefined *)0x5;\\n          puStack_380 = &DAT_142ad2550;\\n          local_378 = (undefined8 *****)0x28;\\n          local_368 = &PTR_s_Mixer_average_latency__ms_142ad2738;\\n          local_360 = 2;\\n          local_358 = &local_128;\\n          local_350 = 1;\\n          local_340 = 1;\\n          local_3b8 = (undefined8 ******)0x0;\\n          pcStack_3b0 = (code *)&DAT_142ad2550;\\n          local_3a8 = (undefined8 *******)&DAT_00000028;\\n          pcStack_3a0 = (code *)0x0;\\n          local_370 = CONCAT44(*(undefined4 *)(extraout_RAX + 2),1);\\n          local_348 = &local_698;\\n          ::log::__private_api::impl$2::log();\\n        }\\n        libfmod::Studio::initialize<u32,u32>();\\n        if (local_3b8 == (undefined8 ******)0x8000000000000004) {\\n          local_e0 = (undefined8 *****)pcVar32;\\n          std::sys::pal::windows::fs::readdir();\\n          pcVar32 = pcStack_3b0;\\n          ppppppuVar24 = local_3b8;\\n          if (local_3b8 == (undefined8 ******)0x2) {\\n            local_3b8 = (undefined8 ******)pcStack_3b0;\\n                    // WARNING: Subroutine does not return\\n            core::result::unwrap_failed();\\n          }\\n          memcpy(&ppppppuStack_688,&local_3a8,0x260);\\n          local_698 = ppppppuVar24;\\n          uStack_690 = pcVar32;\\n          local_81 = 1;\\n          core::ops::function::FnOnce::\\n          call_once<std::hash::random::impl_0::new::KEYS::constant_0::closure_env_1,tuple_<enum2_<core::option::Option<ref_mut_<enum2_<core::option::Option<core::cell::Cell<tuple_<u64,u64>_>_>_>_>_>_>_>_>\\n                    ();\\n          pppppuVar35 = local_e0;\\n          if (extraout_RAX_00 == (longlong *)0x0) {\\n            local_81 = 1;\\n                    // WARNING: Subroutine does not return\\n            std::thread::local::panic_access_error();\\n          }\\n          local_108 = *extraout_RAX_00;\\n          lStack_100 = extraout_RAX_00[1];\\n          *extraout_RAX_00 = *extraout_RAX_00 + 1;\\n          local_118 = (undefined8 *****)0x0;\\n          lStack_110 = 0;\\n          local_128 = (undefined8 *******)\\n                      &anon_2ad33cd064e2b7a85895a07d96050156_27_llvm_3451300626392288586;\\n          pcStack_120 = (code *)0x0;\\n          memcpy(ppppppuVar34,&local_698,0x270);\\n          hashbrown::map::impl$82::\\n          extend<alloc::string::String,country_core::resources::audio_resources::Bank,std::hash::random::RandomState,alloc::alloc::Global,core::iter::adapters::filter_map::FilterMap<std::fs::ReadDir,country_core::resources::audio_resources::impl_6::new_impl::closure_env_0>_>\\n                    ();\\n          local_c8 = local_128;\\n          pcStack_c0 = pcStack_120;\\n          local_b8 = local_118;\\n          lStack_b0 = lStack_110;\\n          local_a8 = local_108;\\n          lStack_a0 = lStack_100;\\n          std::time::Instant::now();\\n          local_3f0 = SUB84(ppppppuVar34,0);\\n          local_3b8 = (undefined8 ******)&DAT_142ad27b8;\\n          pcStack_3b0 = (code *)0x13;\\n          local_3a8 = (undefined8 *******)&DAT_142ad27cb;\\n          pcStack_3a0 = (code *)0xb;\\n          local_398 = (undefined8 *****)&DAT_142ad27d6;\\n          lStack_390 = 0x12;\\n          local_388 = &DAT_142ad27e8;\\n          puStack_380 = (undefined *)0x7;\\n          local_378 = (undefined8 *****)&DAT_142ad27ef;\\n          local_370 = 0xe;\\n          iVar29 = -(uint)(CONCAT13(unaff_XMM6_Bh,\\n                                    CONCAT12(unaff_XMM6_Bg,CONCAT11(unaff_XMM6_Bf,unaff_XMM6_Be)))\\n                          == CONCAT13(unaff_XMM6_Bh,\\n                                      CONCAT12(unaff_XMM6_Bg,CONCAT11(unaff_XMM6_Bf,unaff_XMM6_Be)))\\n                          );\\n          iVar6 = -(uint)(CONCAT13(unaff_XMM6_Bl,\\n                                   CONCAT12(unaff_XMM6_Bk,CONCAT11(unaff_XMM6_Bj,unaff_XMM6_Bi))) ==\\n                         CONCAT13(unaff_XMM6_Bl,\\n                                  CONCAT12(unaff_XMM6_Bk,CONCAT11(unaff_XMM6_Bj,unaff_XMM6_Bi))));\\n          iVar7 = -(uint)(CONCAT13(unaff_XMM6_Bp,\\n                                   CONCAT12(unaff_XMM6_Bo,CONCAT11(unaff_XMM6_Bn,unaff_XMM6_Bm))) ==\\n                         CONCAT13(unaff_XMM6_Bp,\\n                                  CONCAT12(unaff_XMM6_Bo,CONCAT11(unaff_XMM6_Bn,unaff_XMM6_Bm))));\\n          ppuVar31 = (undefined **)0x0;\\n          local_140 = in_RCX;\\nLAB_140a55248:\\n          if (ppuVar31 != (undefined **)0x5) {\\n            local_368 = (undefined **)((longlong)ppuVar31 + 1);\\n            pppppuVar35 = (&local_3b8)[(longlong)ppuVar31 * 2];\\n            pppppuVar2 = (undefined8 *****)(&pcStack_3b0)[(longlong)ppuVar31 * 2];\\n            lVar26 = local_d0;\\n            if (lStack_b0 != 0) {\\n              core::hash::BuildHasher::hash_one<std::hash::random::RandomState,ref_<str_>_>();\\n              ppppppuVar24 = local_c8;\\n              uVar38 = (ulonglong)pcStack_c0 & extraout_RAX_03;\\n              bVar39 = (byte)(extraout_RAX_03 >> 0x39);\\n              auVar40 = ZEXT216(CONCAT11(bVar39,bVar39));\\n              auVar40 = pshuflw(auVar40,auVar40,0);\\n              cVar42 = auVar40[0];\\n              cVar43 = auVar40[1];\\n              cVar44 = auVar40[2];\\n              cVar45 = auVar40[3];\\n              lVar37 = 0;\\n              pcVar32 = pcStack_c0;\\n              ppppppuVar34 = local_c8;\\n              while( true ) {\\n                pcVar1 = (char *)((longlong)ppppppuVar34 + uVar38);\\n                cVar8 = *pcVar1;\\n                cVar9 = pcVar1[1];\\n                cVar10 = pcVar1[2];\\n                cVar11 = pcVar1[3];\\n                cVar12 = pcVar1[4];\\n                cVar13 = pcVar1[5];\\n                cVar14 = pcVar1[6];\\n                cVar15 = pcVar1[7];\\n                cVar16 = pcVar1[8];\\n                cVar17 = pcVar1[9];\\n                cVar18 = pcVar1[10];\\n                cVar19 = pcVar1[0xb];\\n                cVar20 = pcVar1[0xc];\\n                cVar21 = pcVar1[0xd];\\n                cVar22 = pcVar1[0xe];\\n                cVar23 = pcVar1[0xf];\\n                auVar40[0] = -(cVar8 == cVar42);\\n                auVar40[1] = -(cVar9 == cVar43);\\n                auVar40[2] = -(cVar10 == cVar44);\\n                auVar40[3] = -(cVar11 == cVar45);\\n                auVar40[4] = -(cVar12 == cVar42);\\n                auVar40[5] = -(cVar13 == cVar43);\\n                auVar40[6] = -(cVar14 == cVar44);\\n                auVar40[7] = -(cVar15 == cVar45);\\n                auVar40[8] = -(cVar16 == cVar42);\\n                auVar40[9] = -(cVar17 == cVar43);\\n                auVar40[10] = -(cVar18 == cVar44);\\n                auVar40[0xb] = -(cVar19 == cVar45);\\n                auVar40[0xc] = -(cVar20 == cVar42);\\n                auVar40[0xd] = -(cVar21 == cVar43);\\n                auVar40[0xe] = -(cVar22 == cVar44);\\n                auVar40[0xf] = -(cVar23 == cVar45);\\n                uVar27 = (ushort)(SUB161(auVar40 >> 7,0) & 1) |\\n                         (ushort)(SUB161(auVar40 >> 0xf,0) & 1) << 1 |\\n                         (ushort)(SUB161(auVar40 >> 0x17,0) & 1) << 2 |\\n                         (ushort)(SUB161(auVar40 >> 0x1f,0) & 1) << 3 |\\n                         (ushort)(SUB161(auVar40 >> 0x27,0) & 1) << 4 |\\n                         (ushort)(SUB161(auVar40 >> 0x2f,0) & 1) << 5 |\\n                         (ushort)(SUB161(auVar40 >> 0x37,0) & 1) << 6 |\\n                         (ushort)(SUB161(auVar40 >> 0x3f,0) & 1) << 7 |\\n                         (ushort)(SUB161(auVar40 >> 0x47,0) & 1) << 8 |\\n                         (ushort)(SUB161(auVar40 >> 0x4f,0) & 1) << 9 |\\n                         (ushort)(SUB161(auVar40 >> 0x57,0) & 1) << 10 |\\n                         (ushort)(SUB161(auVar40 >> 0x5f,0) & 1) << 0xb |\\n                         (ushort)(SUB161(auVar40 >> 0x67,0) & 1) << 0xc |\\n                         (ushort)(SUB161(auVar40 >> 0x6f,0) & 1) << 0xd |\\n                         (ushort)(SUB161(auVar40 >> 0x77,0) & 1) << 0xe |\\n                         (ushort)(auVar40[0xf] >> 7) << 0xf;\\n                uVar36 = (uint)uVar27;\\n                lVar26 = local_d0;\\n                while (local_d0 = lVar37, uVar27 != 0) {\\n                  uVar3 = 0;\\n                  for (uVar4 = uVar36; (uVar4 & 1) == 0; uVar4 = uVar4 >> 1 | 0x80000000) {\\n                    uVar3 = uVar3 + 1;\\n                  }\\n                  uVar30 = uVar3 + uVar38 & (ulonglong)pcVar32;\\n                  local_d8 = pcVar32;\\n                  local_90 = ppppppuVar34;\\n                  if ((ppppppuVar24[uVar30 * -9 + -7] == pppppuVar2) &&\\n                     (iVar28 = memcmp(pppppuVar35,ppppppuVar24[uVar30 * -9 + -8],(size_t)pppppuVar2)\\n                     , iVar28 == 0)) {\\n                    ppppppuVar34 = &local_f0;\\n                    Bank::load();\\n                    ppuVar31 = (undefined **)((longlong)ppuVar31 + 1);\\n                    pppppuVar35 = local_e0;\\n                    goto LAB_140a55248;\\n                  }\\n                  uVar27 = (ushort)(uVar36 - 1) & (ushort)uVar36;\\n                  uVar36 = CONCAT22((short)(uVar36 - 1 >> 0x10),uVar27);\\n                  pcVar32 = local_d8;\\n                  ppppppuVar34 = local_90;\\n                  lVar37 = local_d0;\\n                  lVar26 = local_d0;\\n                }\\n                auVar46[0] = -(cVar8 == -1);\\n                auVar46[1] = -(cVar9 == -1);\\n                auVar46[2] = -(cVar10 == -1);\\n                auVar46[3] = -(cVar11 == -1);\\n                auVar46[4] = -(cVar12 == (char)iVar29);\\n                auVar46[5] = -(cVar13 == (char)((uint)iVar29 >> 8));\\n                auVar46[6] = -(cVar14 == (char)((uint)iVar29 >> 0x10));\\n                auVar46[7] = -(cVar15 == (char)((uint)iVar29 >> 0x18));\\n                auVar46[8] = -(cVar16 == (char)iVar6);\\n                auVar46[9] = -(cVar17 == (char)((uint)iVar6 >> 8));\\n                auVar46[10] = -(cVar18 == (char)((uint)iVar6 >> 0x10));\\n                auVar46[0xb] = -(cVar19 == (char)((uint)iVar6 >> 0x18));\\n                auVar46[0xc] = -(cVar20 == (char)iVar7);\\n                auVar46[0xd] = -(cVar21 == (char)((uint)iVar7 >> 8));\\n                auVar46[0xe] = -(cVar22 == (char)((uint)iVar7 >> 0x10));\\n                auVar46[0xf] = -(cVar23 == (char)((uint)iVar7 >> 0x18));\\n                if ((((((((((((((((SUB161(auVar46 >> 7,0) & 1) != 0 ||\\n                                 (SUB161(auVar46 >> 0xf,0) & 1) != 0) ||\\n                                (SUB161(auVar46 >> 0x17,0) & 1) != 0) ||\\n                               (SUB161(auVar46 >> 0x1f,0) & 1) != 0) ||\\n                              (SUB161(auVar46 >> 0x27,0) & 1) != 0) ||\\n                             (SUB161(auVar46 >> 0x2f,0) & 1) != 0) ||\\n                            (SUB161(auVar46 >> 0x37,0) & 1) != 0) ||\\n                           (SUB161(auVar46 >> 0x3f,0) & 1) != 0) ||\\n                          (SUB161(auVar46 >> 0x47,0) & 1) != 0) ||\\n                         (SUB161(auVar46 >> 0x4f,0) & 1) != 0) ||\\n                        (SUB161(auVar46 >> 0x57,0) & 1) != 0) ||\\n                       (SUB161(auVar46 >> 0x5f,0) & 1) != 0) || (SUB161(auVar46 >> 0x67,0) & 1) != 0\\n                      ) || (SUB161(auVar46 >> 0x6f,0) & 1) != 0) ||\\n                    (SUB161(auVar46 >> 0x77,0) & 1) != 0) || auVar46[0xf] < '\\\\0') break;\\n                lVar37 = local_d0 + 0x10;\\n                uVar38 = uVar38 + local_d0 + 0x10 & (ulonglong)pcVar32;\\n                local_d0 = lVar26;\\n              }\\n            }\\n            local_d0 = lVar26;\\n                    // WARNING: Subroutine does not return\\n            core::option::expect_failed();\\n          }\\n          local_3b8 = (undefined8 ******)&DAT_142ad27b8;\\n          pcStack_3b0 = (code *)0x13;\\n          local_3a8 = (undefined8 *******)&DAT_142ad27cb;\\n          pcStack_3a0 = (code *)0xb;\\n          local_398 = (undefined8 *****)&DAT_142ad27d6;\\n          lStack_390 = 0x12;\\n          local_388 = &DAT_142ad27e8;\\n          puStack_380 = (undefined *)0x7;\\n          local_378 = (undefined8 *****)&DAT_142ad27ef;\\n          local_370 = 0xe;\\n          ppuVar31 = (undefined **)0x0;\\nLAB_140a5560a:\\n          uVar33 = SUB84(ppppppuVar34,0);\\n          if (ppuVar31 != (undefined **)0x5) {\\n            local_368 = (undefined **)((longlong)ppuVar31 + 1);\\n            pppppuVar35 = (&local_3b8)[(longlong)ppuVar31 * 2];\\n            pppppuVar2 = (undefined8 *****)(&pcStack_3b0)[(longlong)ppuVar31 * 2];\\n            lVar26 = local_d0;\\n            if (lStack_b0 != 0) {\\n              core::hash::BuildHasher::hash_one<std::hash::random::RandomState,ref_<str_>_>();\\n              ppppppuVar24 = local_c8;\\n              uVar38 = (ulonglong)pcStack_c0 & extraout_RAX_06;\\n              bVar39 = (byte)(extraout_RAX_06 >> 0x39);\\n              auVar40 = ZEXT216(CONCAT11(bVar39,bVar39));\\n              auVar40 = pshuflw(auVar40,auVar40,0);\\n              cVar42 = auVar40[0];\\n              cVar43 = auVar40[1];\\n              cVar44 = auVar40[2];\\n              cVar45 = auVar40[3];\\n              lVar37 = 0;\\n              pcVar32 = pcStack_c0;\\n              ppppppuVar34 = local_c8;\\n              while( true ) {\\n                pcVar1 = (char *)((longlong)ppppppuVar34 + uVar38);\\n                cVar8 = *pcVar1;\\n                cVar9 = pcVar1[1];\\n                cVar10 = pcVar1[2];\\n                cVar11 = pcVar1[3];\\n                cVar12 = pcVar1[4];\\n                cVar13 = pcVar1[5];\\n                cVar14 = pcVar1[6];\\n                cVar15 = pcVar1[7];\\n                cVar16 = pcVar1[8];\\n                cVar17 = pcVar1[9];\\n                cVar18 = pcVar1[10];\\n                cVar19 = pcVar1[0xb];\\n                cVar20 = pcVar1[0xc];\\n                cVar21 = pcVar1[0xd];\\n                cVar22 = pcVar1[0xe];\\n                cVar23 = pcVar1[0xf];\\n                auVar41[0] = -(cVar8 == cVar42);\\n                auVar41[1] = -(cVar9 == cVar43);\\n                auVar41[2] = -(cVar10 == cVar44);\\n                auVar41[3] = -(cVar11 == cVar45);\\n                auVar41[4] = -(cVar12 == cVar42);\\n                auVar41[5] = -(cVar13 == cVar43);\\n                auVar41[6] = -(cVar14 == cVar44);\\n                auVar41[7] = -(cVar15 == cVar45);\\n                auVar41[8] = -(cVar16 == cVar42);\\n                auVar41[9] = -(cVar17 == cVar43);\\n                auVar41[10] = -(cVar18 == cVar44);\\n                auVar41[0xb] = -(cVar19 == cVar45);\\n                auVar41[0xc] = -(cVar20 == cVar42);\\n                auVar41[0xd] = -(cVar21 == cVar43);\\n                auVar41[0xe] = -(cVar22 == cVar44);\\n                auVar41[0xf] = -(cVar23 == cVar45);\\n                uVar27 = (ushort)(SUB161(auVar41 >> 7,0) & 1) |\\n                         (ushort)(SUB161(auVar41 >> 0xf,0) & 1) << 1 |\\n                         (ushort)(SUB161(auVar41 >> 0x17,0) & 1) << 2 |\\n                         (ushort)(SUB161(auVar41 >> 0x1f,0) & 1) << 3 |\\n                         (ushort)(SUB161(auVar41 >> 0x27,0) & 1) << 4 |\\n                         (ushort)(SUB161(auVar41 >> 0x2f,0) & 1) << 5 |\\n                         (ushort)(SUB161(auVar41 >> 0x37,0) & 1) << 6 |\\n                         (ushort)(SUB161(auVar41 >> 0x3f,0) & 1) << 7 |\\n                         (ushort)(SUB161(auVar41 >> 0x47,0) & 1) << 8 |\\n                         (ushort)(SUB161(auVar41 >> 0x4f,0) & 1) << 9 |\\n                         (ushort)(SUB161(auVar41 >> 0x57,0) & 1) << 10 |\\n                         (ushort)(SUB161(auVar41 >> 0x5f,0) & 1) << 0xb |\\n                         (ushort)(SUB161(auVar41 >> 0x67,0) & 1) << 0xc |\\n                         (ushort)(SUB161(auVar41 >> 0x6f,0) & 1) << 0xd |\\n                         (ushort)(SUB161(auVar41 >> 0x77,0) & 1) << 0xe |\\n                         (ushort)(auVar41[0xf] >> 7) << 0xf;\\n                uVar36 = (uint)uVar27;\\n                lVar26 = local_d0;\\n                while (local_d0 = lVar37, uVar27 != 0) {\\n                  uVar3 = 0;\\n                  for (uVar4 = uVar36; (uVar4 & 1) == 0; uVar4 = uVar4 >> 1 | 0x80000000) {\\n                    uVar3 = uVar3 + 1;\\n                  }\\n                  uVar30 = uVar3 + uVar38 & (ulonglong)pcVar32;\\n                  local_d8 = pcVar32;\\n                  local_90 = ppppppuVar34;\\n                  if (ppppppuVar24[uVar30 * -9 + -7] == pppppuVar2) {\\n                    ppppppuVar34 = (undefined8 ******)ppppppuVar24[uVar30 * -9 + -8];\\n                    iVar29 = memcmp(pppppuVar35,ppppppuVar34,(size_t)pppppuVar2);\\n                    if (iVar29 == 0) {\\n                      Bank::load_sample_data();\\n                      ppuVar31 = (undefined **)((longlong)ppuVar31 + 1);\\n                      pppppuVar35 = local_e0;\\n                      goto LAB_140a5560a;\\n                    }\\n                  }\\n                  uVar27 = (ushort)(uVar36 - 1) & (ushort)uVar36;\\n                  uVar36 = CONCAT22((short)(uVar36 - 1 >> 0x10),uVar27);\\n                  pcVar32 = local_d8;\\n                  ppppppuVar34 = local_90;\\n                  lVar37 = local_d0;\\n                  lVar26 = local_d0;\\n                }\\n                auVar47[0] = -(cVar8 == -1);\\n                auVar47[1] = -(cVar9 == -1);\\n                auVar47[2] = -(cVar10 == -1);\\n                auVar47[3] = -(cVar11 == -1);\\n                auVar47[4] = -(cVar12 == -1);\\n                auVar47[5] = -(cVar13 == -1);\\n                auVar47[6] = -(cVar14 == -1);\\n                auVar47[7] = -(cVar15 == -1);\\n                auVar47[8] = -(cVar16 == -1);\\n                auVar47[9] = -(cVar17 == -1);\\n                auVar47[10] = -(cVar18 == -1);\\n                auVar47[0xb] = -(cVar19 == -1);\\n                auVar47[0xc] = -(cVar20 == -1);\\n                auVar47[0xd] = -(cVar21 == -1);\\n                auVar47[0xe] = -(cVar22 == -1);\\n                auVar47[0xf] = -(cVar23 == -1);\\n                if ((((((((((((((((SUB161(auVar47 >> 7,0) & 1) != 0 ||\\n                                 (SUB161(auVar47 >> 0xf,0) & 1) != 0) ||\\n                                (SUB161(auVar47 >> 0x17,0) & 1) != 0) ||\\n                               (SUB161(auVar47 >> 0x1f,0) & 1) != 0) ||\\n                              (SUB161(auVar47 >> 0x27,0) & 1) != 0) ||\\n                             (SUB161(auVar47 >> 0x2f,0) & 1) != 0) ||\\n                            (SUB161(auVar47 >> 0x37,0) & 1) != 0) ||\\n                           (SUB161(auVar47 >> 0x3f,0) & 1) != 0) ||\\n                          (SUB161(auVar47 >> 0x47,0) & 1) != 0) ||\\n                         (SUB161(auVar47 >> 0x4f,0) & 1) != 0) ||\\n                        (SUB161(auVar47 >> 0x57,0) & 1) != 0) ||\\n                       (SUB161(auVar47 >> 0x5f,0) & 1) != 0) || (SUB161(auVar47 >> 0x67,0) & 1) != 0\\n                      ) || (SUB161(auVar47 >> 0x6f,0) & 1) != 0) ||\\n                    (SUB161(auVar47 >> 0x77,0) & 1) != 0) || auVar47[0xf] < '\\\\0') break;\\n                lVar37 = local_d0 + 0x10;\\n                uVar38 = uVar38 + local_d0 + 0x10 & (ulonglong)pcVar32;\\n                local_d0 = lVar26;\\n              }\\n            }\\n            local_d0 = lVar26;\\n                    // WARNING: Subroutine does not return\\n            core::option::expect_failed();\\n          }\\n          if (3 < *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E) {\\n            std::time::Instant::elapsed();\\n            pcStack_120 = (code *)CONCAT44(pcStack_120._4_4_,uVar33);\\n            local_138 = &local_128;\\n            local_130 = core::time::impl$12::fmt;\\n            local_3b8 = (undefined8 ******)&DAT_142ad2818;\\n            pcStack_3b0 = (code *)0x1;\\n            local_398 = (undefined8 *****)0x0;\\n            local_3a8 = &local_138;\\n            pcStack_3a0 = (code *)0x1;\\n            local_128 = (undefined8 *******)extraout_RAX_07;\\n            ::toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n            local_698 = (undefined8 ******)&DAT_142ad2550;\\n            uStack_690 = (code *)0x28;\\n            ppppppuStack_688 = (undefined8 ******)&DAT_142ad2550;\\n            lStack_680 = 0x28;\\n            lStack_678 = extraout_RAX_08;\\n            ::log::__private_api::log<tuple_<>,log::__private_api::GlobalLogger>();\\n          }\\n          local_408 = lStack_a0;\\n          local_428 = pcStack_c0;\\n          pppppuStack_420 = local_b8;\\n          local_418 = lStack_b0;\\n          lStack_410 = local_a8;\\n          in_RCX = local_140;\\n          if (local_c8 != (undefined8 ******)0x0) {\\n            local_670 = lStack_a0;\\n            lStack_680 = lStack_b0;\\n            lStack_678 = local_a8;\\n            uStack_690 = pcStack_c0;\\n            ppppppuStack_688 = (undefined8 ******)local_b8;\\n            local_698 = local_c8;\\n            local_82 = 1;\\n            local_668 = pppppuVar35;\\n            std::sync::mpmc::\\n            sync_channel<country_core::resources::audio_resources::AudioSamplesLoaded>();\\n            pcVar32 = pcStack_3a0;\\n            pppppppuVar25 = local_3a8;\\n            local_128 = local_3a8;\\n            pcStack_120 = pcStack_3a0;\\n            local_378 = local_668;\\n            local_388 = (undefined *)lStack_678;\\n            puStack_380 = (undefined *)local_670;\\n            local_398 = ppppppuStack_688;\\n            lStack_390 = lStack_680;\\n            local_3a8 = (undefined8 *******)local_698;\\n            pcStack_3a0 = uStack_690;\\n            std::alloc::__default_lib_allocator::__rust_alloc();\\n            if (extraout_RAX_09 == (undefined8 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n              alloc::alloc::handle_alloc_error();\\n            }\\n            extraout_RAX_09[8] = local_378;\\n            extraout_RAX_09[6] = local_388;\\n            extraout_RAX_09[7] = puStack_380;\\n            extraout_RAX_09[4] = local_398;\\n            extraout_RAX_09[5] = lStack_390;\\n            extraout_RAX_09[2] = local_3a8;\\n            extraout_RAX_09[3] = pcStack_3a0;\\n            *extraout_RAX_09 = local_3b8;\\n            extraout_RAX_09[1] = pcStack_3b0;\\n            std::alloc::__default_lib_allocator::__rust_alloc();\\n            if (extraout_RAX_10 != (undefined8 *)0x0) {\\n              *extraout_RAX_10 = 1;\\n              extraout_RAX_10[1] = 1;\\n              extraout_RAX_10[2] = pppppuVar35;\\n              extraout_RAX_10[3] = local_e8;\\n              local_140[2] = extraout_RAX_10;\\n              *local_140 = extraout_RAX_09;\\n              local_140[1] = &\\n                             PTR_drop_in_place<country_core::resources::audio_resources::impl_7::new::closure_env_0>_142ad2b08\\n              ;\\n              local_140[3] = 1;\\n              *(undefined2 *)(local_140 + 4) = 0;\\n              local_140[5] = pppppppuVar25;\\n              local_140[6] = pcVar32;\\n              return;\\n            }\\n                    // WARNING: Subroutine does not return\\n            alloc::alloc::handle_alloc_error();\\n          }\\n          goto LAB_140a54fc3;\\n        }\\n      }\\n      local_3e8 = pcStack_3a0;\\n      puStack_3e0 = (undefined *)local_398;\\n      local_3d8 = lStack_390;\\n      puStack_3d0 = local_388;\\n    }\\n    else {\\n      local_3e8 = pcStack_3a0;\\n      puStack_3e0 = (undefined *)local_398;\\n      local_3d8 = lStack_390;\\n      puStack_3d0 = local_388;\\n    }\\n  }\\n  else {\\n    local_3e8 = pcStack_3a0;\\n    puStack_3e0 = (undefined *)local_398;\\n    local_3d8 = lStack_390;\\n    puStack_3d0 = local_388;\\n  }\\n  pcStack_3a0 = (code *)local_3e8;\\n  local_398 = (undefined8 *****)puStack_3e0;\\n  lStack_390 = local_3d8;\\n  local_388 = puStack_3d0;\\n  pcStack_c0 = libfmod::impl$341::fmt;\\n  local_698 = (undefined8 ******)&DAT_142ad2d88;\\n  uStack_690 = (code *)0x1;\\n  ppppppuStack_688 = (undefined8 ******)&local_c8;\\n  lStack_680 = 1;\\n  lStack_678 = 0;\\n  local_c8 = ppppppuVar34;\\n  alloc::fmt::format::format_inner();\\n  anyhow::Error::msg<alloc::string::String>();\\n  core::ptr::drop_in_place<enum2_<libfmod::Error>_>();\\n  pppppuVar35 = extraout_RAX_01;\\nLAB_140a54fc3:\\n  local_c8 = (undefined8 ******)pppppuVar35;\\n  if (*(longlong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E != 0) {\\n    local_128 = (undefined8 *******)&local_c8;\\n    pcStack_120 = anyhow::error::impl$4::fmt;\\n    local_698 = (undefined8 ******)0x2;\\n    uStack_690 = (code *)0x2;\\n    ppppppuStack_688 = (undefined8 ******)0x2;\\n    lStack_678 = 0;\\n    local_670 = 0x400000020;\\n    local_668 = (undefined8 *****)CONCAT71(local_668._1_7_,3);\\n    ::toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n    local_398 = (undefined8 *****)*extraout_RAX_02;\\n    lStack_390 = extraout_RAX_02[1];\\n    local_388 = (undefined *)0x1;\\n    puStack_380 = &DAT_142ad2550;\\n    local_378 = (undefined8 *****)0x28;\\n    local_368 = &PTR_s_Failed_initializing_audio__142ad2b48;\\n    local_360 = 1;\\n    local_358 = &local_128;\\n    local_350 = 1;\\n    local_348 = &local_698;\\n    local_340 = 1;\\n    local_3b8 = (undefined8 ******)0x0;\\n    pcStack_3b0 = (code *)&DAT_142ad2550;\\n    local_3a8 = (undefined8 *******)&DAT_00000028;\\n    pcStack_3a0 = (code *)0x0;\\n    local_370 = CONCAT44(*(undefined4 *)(extraout_RAX_02 + 2),1);\\n    ::log::__private_api::impl$2::log();\\n  }\\n  anyhow::error::impl$6::drop();\\n  *(undefined1 (*) [16])(in_RCX + 2) = (undefined1  [16])0x0;\\n  *in_RCX = 1;\\n  in_RCX[1] = &DAT_142ad2b70;\\n  return;\\n}\\n\\n\",\"callee_count\":29,\"callees\":[{\"name\":\"__rust_alloc\",\"address\":\"140613c10\"},{\"name\":\"as_inner_mut\",\"address\":\"14067dd80\"},{\"name\":\"call_once<std::hash::random::impl$0::new::KEYS::constant$0::closure_env$1,tuple$<enum2$<core::option::Option<ref_mut$<enum2$<core::option::Option<core::cell::Cell<tuple$<u64,u64>_>_>_>_>_>_>_>_>\",\"address\":\"1400d9b20\"},{\"name\":\"create\",\"address\":\"141437f40\"},{\"name\":\"drop\",\"address\":\"140d4cc30\"},{\"name\":\"drop_in_place<enum2$<libfmod::Error>_>\",\"address\":\"140a526b0\"},{\"name\":\"elapsed\",\"address\":\"140d63910\"},{\"name\":\"expect_failed\",\"address\":\"1428d9330\"},{\"name\":\"extend<alloc::string::String,country_core::resources::audio_resources::Bank,std::hash::random::RandomState,alloc::alloc::Global,core::iter::adapters::filter_map::FilterMap<std::fs::ReadDir,country_core::resources::audio_resources::impl$6::new_impl::closure_env$0>_>\",\"address\":\"1415224d0\"},{\"name\":\"format_inner\",\"address\":\"140d79f90\"},{\"name\":\"get_core_system\",\"address\":\"141438230\"},{\"name\":\"get_dsp_buffer_size\",\"address\":\"141439640\"},{\"name\":\"get_software_format\",\"address\":\"141439460\"},{\"name\":\"handle_alloc_error\",\"address\":\"1428d9000\"},{\"name\":\"hash_one<std::hash::random::RandomState,ref$<str$>_>\",\"address\":\"1405b1a70\"},{\"name\":\"initialize<u32,u32>\",\"address\":\"14157c9e0\"},{\"name\":\"load\",\"address\":\"140a53640\"},{\"name\":\"load_sample_data\",\"address\":\"140a53870\"},{\"name\":\"log\",\"address\":\"140d4a330\"},{\"name\":\"log<tuple$<>,log::__private_api::GlobalLogger>\",\"address\":\"1404b1430\"},{\"name\":\"memcmp\",\"address\":\"142923bf0\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"msg<alloc::string::String>\",\"address\":\"1428a83e0\"},{\"name\":\"now\",\"address\":\"140d635e0\"},{\"name\":\"panic_access_error\",\"address\":\"1428d80d0\"},{\"name\":\"readdir\",\"address\":\"140d68f80\"},{\"name\":\"set_software_format\",\"address\":\"1414392d0\"},{\"name\":\"sync_channel<country_core::resources::audio_resources::AudioSamplesLoaded>\",\"address\":\"1408d9d30\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140a55f20\":{\"name\":\"set_parameter\",\"size\":18,\"address\":\"140a55f20\",\"signature\":\"void __cdecl set_parameter(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::audio_resources::AudioCore::set_parameter(void)\\n\\n{\\n  longlong *in_RCX;\\n  \\n  if (*in_RCX != 0) {\\n    AudioCoreInner::set_parameter();\\n    return;\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":1,\"callees\":[{\"name\":\"set_parameter\",\"address\":\"140a53db0\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140a55f40\":{\"name\":\"instantiate_audio\",\"size\":175,\"address\":\"140a55f40\",\"signature\":\"void __cdecl instantiate_audio(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::audio_resources::AudioCore::instantiate_audio(void)\\n\\n{\\n  void *extraout_RAX;\\n  undefined8 *in_RCX;\\n  longlong *in_RDX;\\n  void *_Dst;\\n  void *in_R8;\\n  size_t in_R9;\\n  \\n  if (*in_RDX == 0) {\\n    if ((longlong)in_R9 < 0) {\\nLAB_140a55fdd:\\n                    // WARNING: Subroutine does not return\\n      alloc::raw_vec::handle_error();\\n    }\\n    if (in_R9 == 0) {\\n      _Dst = (void *)0x1;\\n    }\\n    else {\\n      std::alloc::__default_lib_allocator::__rust_alloc();\\n      _Dst = extraout_RAX;\\n      if (extraout_RAX == (void *)0x0) goto LAB_140a55fdd;\\n    }\\n    memcpy(_Dst,in_R8,in_R9);\\n    *in_RCX = 0;\\n    in_RCX[2] = in_R9;\\n    in_RCX[3] = _Dst;\\n    in_RCX[4] = in_R9;\\n    *(undefined1 *)(in_RCX + 5) = 2;\\n  }\\n  else {\\n    AudioCoreInner::instantiate_audio();\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":4,\"callees\":[{\"name\":\"__rust_alloc\",\"address\":\"140613c10\"},{\"name\":\"handle_error\",\"address\":\"1428d8fe3\"},{\"name\":\"instantiate_audio\",\"address\":\"140a54440\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140a55ff0\":{\"name\":\"visualize_sounds\",\"size\":3180,\"address\":\"140a55ff0\",\"signature\":\"void __cdecl visualize_sounds(void)\",\"decompiled_code\":\"\\n// WARNING: Removing unreachable block (ram,0x000140a569f0)\\n// WARNING: Removing unreachable block (ram,0x000140a568e4)\\n// WARNING: Removing unreachable block (ram,0x000140a56b18)\\n// WARNING: Removing unreachable block (ram,0x000140a56bce)\\n// WARNING: Removing unreachable block (ram,0x000140a56ad2)\\n// WARNING: Removing unreachable block (ram,0x000140a56b56)\\n// WARNING: Removing unreachable block (ram,0x000140a56b83)\\n// WARNING: Removing unreachable block (ram,0x000140a5689c)\\n// WARNING: Removing unreachable block (ram,0x000140a5692a)\\n// WARNING: Removing unreachable block (ram,0x000140a56969)\\n// WARNING: Removing unreachable block (ram,0x000140a56a3a)\\n// WARNING: Removing unreachable block (ram,0x000140a56a87)\\n// WARNING: Removing unreachable block (ram,0x000140a56abb)\\n// WARNING: Removing unreachable block (ram,0x000140a5698d)\\n// WARNING: Removing unreachable block (ram,0x000140a56999)\\n// WARNING: Removing unreachable block (ram,0x000140a569b4)\\n// WARNING: Removing unreachable block (ram,0x000140a56b88)\\n// WARNING: Removing unreachable block (ram,0x000140a56c0c)\\n// WARNING: Removing unreachable block (ram,0x000140a569cd)\\n// WARNING: Removing unreachable block (ram,0x000140a569d6)\\n\\nvoid __cdecl country_core::resources::audio_resources::AudioCore::visualize_sounds(void)\\n\\n{\\n  void *pvVar1;\\n  longlong lVar2;\\n  longlong lVar3;\\n  int iVar4;\\n  longlong *extraout_RAX;\\n  float *extraout_RAX_00;\\n  float *extraout_RAX_01;\\n  undefined8 *extraout_RAX_02;\\n  longlong *extraout_RAX_03;\\n  undefined8 extraout_RAX_04;\\n  undefined8 extraout_RAX_05;\\n  undefined8 uVar5;\\n  undefined8 *in_RCX;\\n  longlong *in_RDX;\\n  void *in_R8;\\n  size_t in_R9;\\n  void *pvVar6;\\n  void *pvVar7;\\n  float fVar8;\\n  float fVar9;\\n  float fVar10;\\n  float fVar11;\\n  float fVar12;\\n  float fVar13;\\n  float fVar14;\\n  float fVar15;\\n  float fVar16;\\n  float local_28c;\\n  undefined8 local_288;\\n  longlong local_1f8;\\n  longlong local_1f0;\\n  void *pvStack_1e8;\\n  size_t local_1e0;\\n  longlong local_188;\\n  float local_180;\\n  float fStack_17c;\\n  float fStack_178;\\n  \\n  if (*in_RDX == 0) {\\n    core::ops::function::FnOnce::\\n    call_once<std::hash::random::impl_0::new::KEYS::constant_0::closure_env_1,tuple_<enum2_<core::option::Option<ref_mut_<enum2_<core::option::Option<core::cell::Cell<tuple_<u64,u64>_>_>_>_>_>_>_>_>\\n              ();\\n    if (extraout_RAX_03 == (longlong *)0x0) goto LAB_140a56c2e;\\n    lVar2 = *extraout_RAX_03;\\n    lVar3 = extraout_RAX_03[1];\\n    *extraout_RAX_03 = *extraout_RAX_03 + 1;\\n    in_RCX[4] = lVar2;\\n    in_RCX[5] = lVar3;\\n    *in_RCX = &anon_b07311dcbeea092d4c88647b99c4ec26_8_llvm_12982147591757793021;\\n    in_RCX[1] = 0;\\n    in_RCX[2] = 0;\\n    in_RCX[3] = 0;\\n  }\\n  else {\\n    core::ops::function::FnOnce::\\n    call_once<std::hash::random::impl_0::new::KEYS::constant_0::closure_env_1,tuple_<enum2_<core::option::Option<ref_mut_<enum2_<core::option::Option<core::cell::Cell<tuple_<u64,u64>_>_>_>_>_>_>_>_>\\n              ();\\n    if (extraout_RAX == (longlong *)0x0) {\\nLAB_140a56c2e:\\n                    // WARNING: Subroutine does not return\\n      std::thread::local::panic_access_error();\\n    }\\n    lVar2 = *extraout_RAX;\\n    lVar3 = extraout_RAX[1];\\n    *extraout_RAX = *extraout_RAX + 1;\\n    libfmod::Studio::get_bank_count();\\n    if (local_188 == -0x7ffffffffffffffc) {\\n      libfmod::Studio::get_bank_list();\\n      if (local_1f8 == -0x7ffffffffffffffc) {\\n        pvVar6 = pvStack_1e8;\\n        do {\\n          if (pvVar6 == (void *)((longlong)pvStack_1e8 + local_1e0 * 8)) {\\n            if (local_1f0 != 0) {\\n              std::alloc::__default_lib_allocator::__rust_dealloc();\\n            }\\n            in_RCX[4] = lVar2;\\n            in_RCX[5] = lVar3;\\n            in_RCX[2] = 0;\\n            in_RCX[3] = 0;\\n            *in_RCX = &anon_b07311dcbeea092d4c88647b99c4ec26_8_llvm_12982147591757793021;\\n            in_RCX[1] = 0;\\n            return;\\n          }\\n          libfmod::Bank::get_event_count();\\n          libfmod::Bank::get_event_list();\\n          pvVar6 = (void *)((longlong)pvVar6 + 8);\\n          pvVar1 = pvStack_1e8;\\n          while (pvVar1 != (void *)((longlong)pvStack_1e8 + local_1e0 * 8)) {\\n            libfmod::EventDescription::get_instance_count();\\n            libfmod::EventDescription::get_instance_list();\\n            pvVar1 = (void *)((longlong)pvVar1 + 8);\\n            pvVar7 = pvStack_1e8;\\n            while (pvVar7 != (void *)((longlong)pvStack_1e8 + local_1e0 * 8)) {\\n              libfmod::EventInstance::get_playback_state();\\n              pvVar7 = (void *)((longlong)pvVar7 + 8);\\n              if (local_180._0_1_ != '\\\\x02') {\\n                libfmod::EventInstance::get_description();\\n                libfmod::EventDescription::get_path();\\n                alloc::string::impl$6::clone();\\n                hashbrown::map::HashMap::\\n                insert<alloc::string::String,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global>\\n                          ();\\n                if ((in_R8 == (void *)0x0) ||\\n                   ((local_1e0 == in_R9 && (iVar4 = memcmp(in_R8,pvStack_1e8,in_R9), iVar4 == 0))))\\n                {\\n                  libfmod::EventInstance::get_3d_attributes();\\n                  libfmod::EventInstance::get_volume();\\n                  country_core::utils::debug_viz::DebugSphere::show();\\n                  ::utils::camera::CameraMatrices::eye_right();\\n                  fVar11 = (float)((ulonglong)local_288 >> 0x20);\\n                  std::alloc::__default_lib_allocator::__rust_alloc();\\n                  if (extraout_RAX_00 == (float *)0x0) {\\n                    // WARNING: Subroutine does not return\\n                    alloc::alloc::handle_alloc_error();\\n                  }\\n                  fVar16 = fStack_178 + fVar11 * 0.7822;\\n                  fVar8 = local_180 + local_28c * 0.7822;\\n                  fVar9 = (float)local_288 * 0.7822 + fStack_17c + -0.7822;\\n                  fVar10 = (float)local_288 * 0.05;\\n                  fVar11 = fVar11 * 0.05;\\n                  fVar12 = fVar8 - local_28c * 0.05;\\n                  fVar13 = fVar9 - fVar10;\\n                  fVar14 = fVar16 - fVar11;\\n                  fVar15 = local_28c * 0.05 + fVar8;\\n                  fVar10 = fVar9 + fVar10;\\n                  fVar11 = fVar16 + fVar11;\\n                  *extraout_RAX_00 = fVar12;\\n                  extraout_RAX_00[1] = fVar13;\\n                  extraout_RAX_00[2] = fVar14;\\n                  extraout_RAX_00[3] = fVar15;\\n                  *(ulonglong *)(extraout_RAX_00 + 4) = CONCAT44(fVar11,fVar10);\\n                  country_core::utils::debug_viz::DebugLine::show();\\n                  std::alloc::__default_lib_allocator::__rust_alloc();\\n                  if (extraout_RAX_01 == (float *)0x0) {\\n                    // WARNING: Subroutine does not return\\n                    alloc::alloc::handle_alloc_error();\\n                  }\\n                  *extraout_RAX_01 = fVar12 + 0.0;\\n                  extraout_RAX_01[1] = fVar13 + 1.5644;\\n                  extraout_RAX_01[2] = fVar14 + 0.0;\\n                  extraout_RAX_01[3] = fVar15 + 0.0;\\n                  *(ulonglong *)(extraout_RAX_01 + 4) = CONCAT44(fVar11 + 0.0,fVar10 + 1.5644);\\n                  country_core::utils::debug_viz::DebugLine::show();\\n                  std::alloc::__default_lib_allocator::__rust_alloc();\\n                  if (extraout_RAX_02 == (undefined8 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n                    alloc::alloc::handle_alloc_error();\\n                  }\\n                  *extraout_RAX_02 = CONCAT44(fVar9,fVar8);\\n                  *(float *)(extraout_RAX_02 + 1) = fVar16;\\n                  fVar11 = fStack_17c * 1.5644 * 0.0;\\n                  *(ulonglong *)((longlong)extraout_RAX_02 + 0xc) =\\n                       CONCAT44(fStack_17c * 1.5644 + fVar9,fVar11 + fVar8);\\n                  *(float *)((longlong)extraout_RAX_02 + 0x14) = fVar11 + fVar16;\\n                  country_core::utils::debug_viz::DebugLine::show();\\n                  if (local_1f0 != 0) {\\n                    std::alloc::__default_lib_allocator::__rust_dealloc();\\n                  }\\n                }\\n                else if (local_1f0 != 0) {\\n                  std::alloc::__default_lib_allocator::__rust_dealloc();\\n                }\\n              }\\n            }\\n            if (local_1f0 != 0) {\\n              std::alloc::__default_lib_allocator::__rust_dealloc();\\n            }\\n          }\\n          if (local_1f0 != 0) {\\n            std::alloc::__default_lib_allocator::__rust_dealloc();\\n          }\\n        } while( true );\\n      }\\n      anyhow::error::impl$1::from<enum2_<libfmod::Error>_>();\\n      uVar5 = extraout_RAX_05;\\n    }\\n    else {\\n      anyhow::error::impl$1::from<enum2_<libfmod::Error>_>();\\n      uVar5 = extraout_RAX_04;\\n    }\\n    in_RCX[1] = uVar5;\\n    *in_RCX = 0;\\n    hashbrown::raw::RawTableInner::\\n    drop_inner_table<tuple_<alloc::string::String,tuple_<>_>,alloc::alloc::Global>();\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":24,\"callees\":[{\"name\":\"__rust_alloc\",\"address\":\"140613c10\"},{\"name\":\"__rust_dealloc\",\"address\":\"140613c20\"},{\"name\":\"call_once<std::hash::random::impl$0::new::KEYS::constant$0::closure_env$1,tuple$<enum2$<core::option::Option<ref_mut$<enum2$<core::option::Option<core::cell::Cell<tuple$<u64,u64>_>_>_>_>_>_>_>_>\",\"address\":\"1400d9b20\"},{\"name\":\"clone\",\"address\":\"140d7bd90\"},{\"name\":\"drop_inner_table<tuple$<alloc::string::String,tuple$<>_>,alloc::alloc::Global>\",\"address\":\"14004e480\"},{\"name\":\"eye_right\",\"address\":\"140c96df0\"},{\"name\":\"from<enum2$<libfmod::Error>_>\",\"address\":\"1428a97c0\"},{\"name\":\"get_3d_attributes\",\"address\":\"141436cb0\"},{\"name\":\"get_bank_count\",\"address\":\"141438cd0\"},{\"name\":\"get_bank_list\",\"address\":\"141438e50\"},{\"name\":\"get_description\",\"address\":\"141436810\"},{\"name\":\"get_event_count\",\"address\":\"1414358c0\"},{\"name\":\"get_event_list\",\"address\":\"141435a40\"},{\"name\":\"get_instance_count\",\"address\":\"141436370\"},{\"name\":\"get_instance_list\",\"address\":\"1414364f0\"},{\"name\":\"get_path\",\"address\":\"141435d50\"},{\"name\":\"get_playback_state\",\"address\":\"141437730\"},{\"name\":\"get_volume\",\"address\":\"1414369a0\"},{\"name\":\"handle_alloc_error\",\"address\":\"1428d9000\"},{\"name\":\"insert<alloc::string::String,tuple$<>,std::hash::random::RandomState,alloc::alloc::Global>\",\"address\":\"1415295a0\"},{\"name\":\"memcmp\",\"address\":\"142923bf0\"},{\"name\":\"panic_access_error\",\"address\":\"1428d80d0\"},{\"name\":\"show\",\"address\":\"140b02520\"},{\"name\":\"show\",\"address\":\"140b04f70\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140a57100\":{\"name\":\"recv\",\"size\":252,\"address\":\"140a57100\",\"signature\":\"void __cdecl recv(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::audio_resources::AudioSamplesLoadedPromise::recv(void)\\n\\n{\\n  longlong lVar1;\\n  char extraout_AL;\\n  char extraout_AL_00;\\n  char extraout_AL_01;\\n  char cVar2;\\n  longlong *in_RCX;\\n  \\n  lVar1 = *in_RCX;\\n  *in_RCX = 0;\\n  if (lVar1 != 1) {\\n    if (lVar1 != 0) {\\n      core::ptr::\\n      drop_in_place<std::sync::poison::mutex::Mutex<std::sync::mpsc::Receiver<country_core::resources::audio_resources::AudioSamplesLoaded>_>_>\\n                ();\\n    }\\n    return;\\n  }\\n  if (*(char *)((longlong)in_RCX + 9) == '\\\\0') {\\n    if (in_RCX[2] == 0) {\\n      std::sync::mpmc::array::Channel::\\n      recv<country_core::resources::audio_resources::AudioSamplesLoaded>();\\n      cVar2 = extraout_AL_00;\\n    }\\n    else if (in_RCX[2] == 1) {\\n      std::sync::mpmc::list::Channel::\\n      recv<country_core::resources::audio_resources::AudioSamplesLoaded>();\\n      cVar2 = extraout_AL;\\n    }\\n    else {\\n      std::sync::mpmc::zero::Channel::\\n      recv<country_core::resources::audio_resources::AudioSamplesLoaded>();\\n      cVar2 = extraout_AL_01;\\n    }\\n    if (cVar2 == '\\\\x02') {\\n      core::ptr::\\n      drop_in_place<std::sync::mpsc::Receiver<country_core::resources::audio_resources::AudioSamplesLoaded>_>\\n                ();\\n      return;\\n    }\\n                    // WARNING: Subroutine does not return\\n    core::result::unwrap_failed();\\n  }\\n                    // WARNING: Subroutine does not return\\n  core::result::unwrap_failed();\\n}\\n\\n\",\"callee_count\":6,\"callees\":[{\"name\":\"drop_in_place<std::sync::mpsc::Receiver<country_core::resources::audio_resources::AudioSamplesLoaded>_>\",\"address\":\"140879510\"},{\"name\":\"drop_in_place<std::sync::poison::mutex::Mutex<std::sync::mpsc::Receiver<country_core::resources::audio_resources::AudioSamplesLoaded>_>_>\",\"address\":\"14087fef0\"},{\"name\":\"recv<country_core::resources::audio_resources::AudioSamplesLoaded>\",\"address\":\"141679d70\"},{\"name\":\"recv<country_core::resources::audio_resources::AudioSamplesLoaded>\",\"address\":\"1416748a0\"},{\"name\":\"recv<country_core::resources::audio_resources::AudioSamplesLoaded>\",\"address\":\"1416cd1b0\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409285a0\":{\"name\":\"request_play\",\"size\":262,\"address\":\"1409285a0\",\"signature\":\"void __cdecl request_play(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::systems::audio::wall_audio_utils::AudioLoopPlayer::request_play(void)\\n\\n{\\n  ulonglong uVar1;\\n  longlong lVar2;\\n  longlong in_RCX;\\n  undefined8 local_c0;\\n  \\n  *(undefined1 *)(in_RCX + 0x38) = 1;\\n  uVar1 = *(ulonglong *)(in_RCX + 0x28);\\n  if (*(ulonglong *)(in_RCX + 0x10) <= uVar1) {\\n                    // WARNING: Subroutine does not return\\n    core::panicking::panic_bounds_check();\\n  }\\n  lVar2 = *(longlong *)(in_RCX + 8);\\n  resources::audio_resources::impl$10::set_position();\\n  resources::audio_resources::impl$10::set_parameter();\\n  if (*(int *)(lVar2 + uVar1 * 0x30) == 1) {\\n    libfmod::EventInstance::set_volume();\\n    if (local_c0 != -0x7ffffffffffffffc) {\\n                    // WARNING: Subroutine does not return\\n      core::result::unwrap_failed();\\n    }\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":5,\"callees\":[{\"name\":\"panic_bounds_check\",\"address\":\"1428d9518\"},{\"name\":\"set_parameter\",\"address\":\"140a57670\"},{\"name\":\"set_position\",\"address\":\"140a57da0\"},{\"name\":\"set_volume\",\"address\":\"141436b40\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140a596b0\":{\"name\":\"start_if_not_playing\",\"size\":279,\"address\":\"140a596b0\",\"signature\":\"void __cdecl start_if_not_playing(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::utils::audio_utils::AudioLoop::start_if_not_playing(void)\\n\\n{\\n  ulonglong uVar1;\\n  ulonglong uVar2;\\n  longlong in_RCX;\\n  undefined8 local_a0;\\n  \\n  *(undefined4 *)(in_RCX + 0x20) = 1000000000;\\n  if (*(char *)(in_RCX + 0x34) == '\\\\0') {\\n    uVar1 = *(ulonglong *)(in_RCX + 0x10);\\n    uVar2 = *(ulonglong *)(in_RCX + 0x28);\\n    if (*(char *)(in_RCX + 0x35) != '\\\\0') {\\n      if (uVar1 <= uVar2) {\\n                    // WARNING: Subroutine does not return\\n        core::panicking::panic_bounds_check();\\n      }\\n      resources::audio_resources::impl$10::set_parameter();\\n    }\\n    if (uVar1 <= uVar2) {\\n                    // WARNING: Subroutine does not return\\n      core::panicking::panic_bounds_check();\\n    }\\n    if (*(int *)(*(longlong *)(in_RCX + 8) + uVar2 * 0x30) == 1) {\\n      libfmod::EventInstance::start();\\n      if (local_a0 != -0x7ffffffffffffffc) {\\n                    // WARNING: Subroutine does not return\\n        core::result::unwrap_failed();\\n      }\\n    }\\n    *(undefined1 *)(in_RCX + 0x34) = 1;\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":4,\"callees\":[{\"name\":\"panic_bounds_check\",\"address\":\"1428d9518\"},{\"name\":\"set_parameter\",\"address\":\"140a57670\"},{\"name\":\"start\",\"address\":\"1414372d0\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140a59430\":{\"name\":\"stop\",\"size\":533,\"address\":\"140a59430\",\"signature\":\"void __cdecl stop(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::utils::audio_utils::AudioLoop::stop(void)\\n\\n{\\n  ulonglong uVar1;\\n  longlong lVar2;\\n  int extraout_EAX;\\n  undefined8 extraout_RAX;\\n  longlong in_RCX;\\n  undefined4 uVar3;\\n  ulonglong in_RDX;\\n  ulonglong uVar4;\\n  undefined8 local_a0;\\n  \\n  uVar3 = (undefined4)in_RDX;\\n  if (*(int *)(in_RCX + 0x20) == 1000000000) {\\n    std::time::Instant::now();\\n    *(undefined8 *)(in_RCX + 0x18) = extraout_RAX;\\n    *(undefined4 *)(in_RCX + 0x20) = uVar3;\\n  }\\n  else {\\n    std::time::Instant::elapsed();\\n    if (*(uint *)(in_RCX + 0x30) <\\n        (uint)((int)((in_RDX & 0xffffffff) / 1000000) + extraout_EAX * 1000)) {\\n      uVar1 = *(ulonglong *)(in_RCX + 0x10);\\n      uVar4 = *(ulonglong *)(in_RCX + 0x28);\\n      if (*(char *)(in_RCX + 0x35) == '\\\\0') {\\n        if (uVar1 <= uVar4) {\\n                    // WARNING: Subroutine does not return\\n          core::panicking::panic_bounds_check();\\n        }\\n        if (*(int *)(*(longlong *)(in_RCX + 8) + uVar4 * 0x30) == 1) {\\n          libfmod::EventInstance::stop();\\n          if (local_a0 != -0x7ffffffffffffffc) {\\n                    // WARNING: Subroutine does not return\\n            core::result::unwrap_failed();\\n          }\\n        }\\n      }\\n      else {\\n        if (uVar1 <= uVar4) {\\n                    // WARNING: Subroutine does not return\\n          core::panicking::panic_bounds_check();\\n        }\\n        lVar2 = *(longlong *)(in_RCX + 8);\\n        resources::audio_resources::impl$10::set_parameter();\\n        if ((*(char *)(in_RCX + 0x36) == '\\\\x01') && (*(int *)(uVar4 * 0x30 + lVar2) == 1)) {\\n          libfmod::EventInstance::stop();\\n          if (local_a0 != -0x7ffffffffffffffc) {\\n                    // WARNING: Subroutine does not return\\n            core::result::unwrap_failed();\\n          }\\n        }\\n      }\\n      uVar4 = uVar4 + 1;\\n      if ((uVar4 | uVar1) >> 0x20 == 0) {\\n        uVar4 = (uVar4 & 0xffffffff) % (uVar1 & 0xffffffff);\\n      }\\n      else {\\n        uVar4 = uVar4 % uVar1;\\n      }\\n      *(ulonglong *)(in_RCX + 0x28) = uVar4;\\n      *(undefined1 *)(in_RCX + 0x34) = 0;\\n      *(undefined4 *)(in_RCX + 0x20) = 1000000000;\\n    }\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":6,\"callees\":[{\"name\":\"elapsed\",\"address\":\"140d63910\"},{\"name\":\"now\",\"address\":\"140d635e0\"},{\"name\":\"panic_bounds_check\",\"address\":\"1428d9518\"},{\"name\":\"set_parameter\",\"address\":\"140a57670\"},{\"name\":\"stop\",\"address\":\"141437440\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140a593f0\":{\"name\":\"current\",\"size\":49,\"address\":\"140a593f0\",\"signature\":\"void __cdecl current(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::utils::audio_utils::AudioLoop::current(void)\\n\\n{\\n  longlong in_RCX;\\n  \\n  if (*(ulonglong *)(in_RCX + 0x28) < *(ulonglong *)(in_RCX + 0x10)) {\\n    return;\\n  }\\n                    // WARNING: Subroutine does not return\\n  core::panicking::panic_bounds_check();\\n}\\n\\n\",\"callee_count\":1,\"callees\":[{\"name\":\"panic_bounds_check\",\"address\":\"1428d9518\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140a59220\":{\"name\":\"instantiate_loop\",\"size\":341,\"address\":\"140a59220\",\"signature\":\"void __cdecl instantiate_loop(void)\",\"decompiled_code\":\"\\n// WARNING: Removing unreachable block (ram,0x000140a59293)\\n\\nvoid __cdecl country_core::resources::audio_resources::AudioCore::instantiate_loop(void)\\n\\n{\\n  undefined4 uVar1;\\n  longlong *in_RCX;\\n  longlong in_RDX;\\n  longlong in_R8;\\n  bool bVar2;\\n  longlong local_70;\\n  int *local_68;\\n  longlong local_60;\\n  \\n  alloc::vec::spec_from_iter::impl$0::\\n  from_iter<country_core::resources::audio_resources::AudioInstance,core::iter::adapters::GenericShunt<core::iter::adapters::map::Map<core::ops::range::Range<usize>,country_core::utils::audio_utils::impl_1::instantiate_loop::closure_env_0>,enum2_<core::result::Result<enum2_<core::convert::Infallible>,anyhow::Error>_>_>_>\\n            ();\\n  if (SBORROW8(0,local_70)) {\\n    in_RCX[1] = (longlong)local_68;\\n    *in_RCX = -0x8000000000000000;\\n  }\\n  else {\\n    if (local_60 == 0) {\\n                    // WARNING: Subroutine does not return\\n      core::panicking::panic_bounds_check();\\n    }\\n    if (*local_68 == 1) {\\n      libfmod::EventInstance::get_parameter_by_name();\\n      if (in_RDX != -0x7ffffffffffffffc) {\\n        core::ptr::drop_in_place<enum2_<libfmod::Error>_>();\\n      }\\n      bVar2 = in_RDX == -0x7ffffffffffffffc;\\n    }\\n    else {\\n      bVar2 = false;\\n    }\\n    in_RCX[2] = local_60;\\n    *in_RCX = local_70;\\n    in_RCX[1] = (longlong)local_68;\\n    uVar1 = *(undefined4 *)(in_R8 + 0x18);\\n    *(undefined4 *)(in_RCX + 4) = 1000000000;\\n    in_RCX[5] = 0;\\n    *(undefined4 *)(in_RCX + 6) = uVar1;\\n    *(undefined1 *)((longlong)in_RCX + 0x34) = 0;\\n    *(bool *)((longlong)in_RCX + 0x35) = bVar2;\\n    *(undefined1 *)((longlong)in_RCX + 0x36) = 0;\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":5,\"callees\":[{\"name\":\"drop_in_place<alloc::vec::Vec<country_core::resources::audio_resources::AudioInstance,alloc::alloc::Global>_>\",\"address\":\"140899740\"},{\"name\":\"drop_in_place<enum2$<libfmod::Error>_>\",\"address\":\"140a526b0\"},{\"name\":\"from_iter<country_core::resources::audio_resources::AudioInstance,core::iter::adapters::GenericShunt<core::iter::adapters::map::Map<core::ops::range::Range<usize>,country_core::utils::audio_utils::impl$1::instantiate_loop::closure_env$0>,enum2$<core::result::Result<enum2$<core::convert::Infallible>,anyhow::Error>_>_>_>\",\"address\":\"1412fafb0\"},{\"name\":\"get_parameter_by_name\",\"address\":\"141437a60\"},{\"name\":\"panic_bounds_check\",\"address\":\"1428d9518\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}}},\"count\":16,\"requested\":16}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "list_instances",
+        "title": null,
+        "description": "\nList known Ghidra instances from UDS discovery and the active TCP fallback.\n\nReturns JSON with each instance's project name, PID, open programs, and\nsocket path or TCP URL. Also shows which instance is currently connected.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "_list_instances_toolArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "connect_instance",
+        "title": null,
+        "description": "\nSwitch the MCP bridge to a different Ghidra instance by project name.\n\nIMPORTANT: Before calling this function only the static bridge tools are\nexposed (list_instances, connect_instance, tool-group management,\ndebugger proxy). After a successful connect the bridge fetches the\ninstance's /mcp/schema and registers Ghidra analysis tools dynamically.\nBy default all tool groups are loaded on connect. When started with\n--lazy, only the default groups are loaded initially and clients may need\nto call load_tool_group() for additional categories. Clients that cache\nthe initial tools/list and don't honor tools/list_changed must re-list\ntools after this call.\n\nUse list_instances() first to see available instances.\n\nArgs:\n    project: Project name (or substring) to connect to\n",
+        "inputSchema": {
+          "properties": {
+            "project": {
+              "description": "Project name (or substring) to connect to",
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          "required": [
+            "project"
+          ],
+          "title": "connect_instanceArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_tool_groups",
+        "title": null,
+        "description": "\nList all available tool groups with their tool counts and loaded status.\n\nReturns each category with: tool count, loaded status, and tool names.\nUse load_tool_group(group) to load a group's tools.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "list_tool_groupsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "load_tool_group",
+        "title": null,
+        "description": "\nLoad all tools in a category. Accepts a category name or \"all\" to load everything.\n\nUse list_tool_groups() to see available categories.\n\nArgs:\n    group: Category name (e.g. \"function\", \"datatype\") or \"all\"\n",
+        "inputSchema": {
+          "properties": {
+            "group": {
+              "description": "Category name (e.g. \"function\", \"datatype\") or \"all\"",
+              "title": "Group",
+              "type": "string"
+            }
+          },
+          "required": [
+            "group"
+          ],
+          "title": "load_tool_groupArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "search_tools",
+        "title": null,
+        "description": "\nSearch the full Ghidra tool catalog by keyword \u2014 including tools whose group\nis not currently loaded. Use this to discover the right tool without paying\nthe context cost of loading all groups (run the bridge with --lazy and search\non demand). Matches against tool name, description, and category.\n\nEach result reports whether the tool is callable right now; if not, it\nincludes the exact load_tool_group(...) call needed to make it callable.\n\nArgs:\n    query: Space-separated keywords, e.g. \"rename function\" or \"xref struct\".\n    limit: Maximum number of results to return (default 15).\n",
+        "inputSchema": {
+          "properties": {
+            "query": {
+              "description": "Space-separated keywords, e.g. \"rename function\" or \"xref struct\".",
+              "title": "Query",
+              "type": "string"
+            },
+            "limit": {
+              "default": 15,
+              "description": "Maximum number of results to return (default 15).",
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "title": "search_toolsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble_function",
+        "title": null,
+        "description": "Get assembly listing of function. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution. When Ghidra's stored function body is degenerate (body_end == body_start, which would truncate the listing to a single instruction), the listing is instead bounded by the next function or the containing memory block and the response adds body_degenerate=true, bounded_by (next_function | memory_block | function_body) and a warning; do not trust this function's stored extent in that case.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "disassemble_functionArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_data_types",
+        "title": null,
+        "description": "Find data types by name or path pattern, category and kind, one record per type (name, kind, category, size, path). With categories=true, list the category paths instead. With no filter it lists every type.",
+        "inputSchema": {
+          "properties": {
+            "pattern": {
+              "default": "",
+              "description": "Case-insensitive substring of the type's name or full path; omit for no name filter.",
+              "title": "Pattern",
+              "type": "string"
+            },
+            "category": {
+              "default": "",
+              "description": "Case-insensitive substring of the category path (e.g. Windows, /MyTypes); omit for any category.",
+              "title": "Category",
+              "type": "string"
+            },
+            "kind": {
+              "default": "",
+              "description": "Only this kind: struct, union, enum, typedef, pointer, array, function or primitive. Omit for all kinds.",
+              "title": "Kind",
+              "type": "string"
+            },
+            "categories": {
+              "default": "false",
+              "description": "True lists the category paths (filtered by pattern) instead of types; category and kind do not apply.",
+              "title": "Categories",
+              "type": "boolean"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "find_data_typesArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_functions",
+        "title": null,
+        "description": "Find functions: every filter is optional, so with none it lists the whole program a page at a time. Filter by name (substring or regex=true), xref count, calling convention, whether the name is user-given, thunk or external, or by tag (tag=a,b keeps functions carrying ANY of them); each result lists its tags; sort by address, name or xref_count. Replaces list_functions, list_functions_enhanced, search_functions and search_functions_enhanced, which returned four different shapes for the same question.",
+        "inputSchema": {
+          "properties": {
+            "name_pattern": {
+              "default": "",
+              "description": "Substring to match, or a regex when regex=true. Omit to match every function.",
+              "title": "Name Pattern",
+              "type": "string"
+            },
+            "regex": {
+              "default": "false",
+              "description": "Treat name_pattern as a regular expression.",
+              "title": "Regex",
+              "type": "boolean"
+            },
+            "min_xrefs": {
+              "default": "",
+              "description": "Only functions with at least this many references to them.",
+              "title": "Min Xrefs",
+              "type": "integer"
+            },
+            "max_xrefs": {
+              "default": "",
+              "description": "Only functions with at most this many references to them.",
+              "title": "Max Xrefs",
+              "type": "integer"
+            },
+            "calling_convention": {
+              "default": "",
+              "description": "Only functions with this calling convention (e.g. __stdcall).",
+              "title": "Calling Convention",
+              "type": "string"
+            },
+            "has_custom_name": {
+              "default": "",
+              "description": "true = only functions somebody has named; false = only auto-generated names (FUN_*, thunk_*).",
+              "title": "Has Custom Name",
+              "type": "boolean"
+            },
+            "is_thunk": {
+              "default": "",
+              "description": "true = only thunks, false = exclude them, omit for both.",
+              "title": "Is Thunk",
+              "type": "boolean"
+            },
+            "is_external": {
+              "default": "",
+              "description": "true = only external functions, false = exclude them.",
+              "title": "Is External",
+              "type": "boolean"
+            },
+            "tag": {
+              "default": "",
+              "description": "Only functions carrying any of these tags: one name or a comma-separated list. A name that is not a defined tag is an error (list_function_tags shows the definitions).",
+              "title": "Tag",
+              "type": "string"
+            },
+            "sort_by": {
+              "default": "address",
+              "description": "address | name | xref_count.",
+              "title": "Sort By",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Page size. 0 means no limit, which on a large binary is a megabytes-long response \u2014 the old list_functions had no pagination at all and returned 1.7MB on a stripped `ls`.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "pattern": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Pattern"
+            },
+            "query": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Query"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            }
+          },
+          "title": "find_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_functions",
+        "title": null,
+        "description": "Everything about one or many functions in a single call. Pass functions= as a comma-separated list of names or addresses for bulk mode (up to 20); omit it and pass function=/name=/address= for one. Pass fields= as a comma-separated subset to skip work you do not need \u2014 omitted or empty returns everything. When the requested fields need no decompiled text (e.g. fields=callers,callees,signature,labels,entry_point), the target function is NOT decompiled (238 ms cold / 5\u201310 ms warm per function); only decompiled_code (and call_context when enabled) pays that cost. Decompiled text renders EOL comments (// style), so comments written with set_comment are visible in the code. Replaces get_function_by_address, get_function_variables, get_function_xrefs, decompile_function, and the former get_function_callers/callees/labels/signature tools. Completeness scoring is NOT included \u2014 call analyze_function_completeness for that.",
+        "inputSchema": {
+          "properties": {
+            "function": {
+              "default": "",
+              "description": "Single mode: function name or address (0x<hex> or <space>:<hex>). Ignored when functions= is set.",
+              "title": "Function",
+              "type": "string"
+            },
+            "functions": {
+              "default": "",
+              "description": "Bulk mode: comma-separated function references (names or addresses). When set, function= is ignored. Returns a map keyed by the reference asked for.",
+              "title": "Functions",
+              "type": "string"
+            },
+            "fields": {
+              "default": "",
+              "description": "Comma-separated subset: signature, classification, return_type, entry_point, body_start, body_end, decompiled_code, plate_comment, comments, labels, tags, parameters, locals, callers, call_context, callees, xrefs, disassembly, jump_targets, refs (the absolute addresses the function uses: data references, the values of literal-pool words, and the memory the decompiled code reads and writes, so a register reached as base + offset is listed by its own address; a pool value is written value<word; asking for refs decompiles). Omit or leave empty for the full bundle.",
+              "title": "Fields",
+              "type": "string"
+            },
+            "include_call_context": {
+              "default": "true",
+              "description": "Include each caller's decompiled call-site line. Costs one decompilation per unique caller (~43ms); set false for the cheapest possible bundle. Ignored unless call_context is requested (explicitly or via an empty fields=).",
+              "title": "Include Call Context",
+              "type": "boolean"
+            },
+            "call_context_limit": {
+              "default": "6",
+              "description": "Maximum number of UNIQUE callers to decompile for call context.",
+              "title": "Call Context Limit",
+              "type": "integer"
+            },
+            "call_context_lines": {
+              "default": "3",
+              "description": "Lines of the caller's decompilation to return per call site, centred on the call. 1 is the call line alone; the default 3 adds the line above and below, which is usually where the guard and the use of the result live. Clamped to 1-21; costs no extra decompilation.",
+              "title": "Call Context Lines",
+              "type": "integer"
+            },
+            "include_disasm": {
+              "default": "false",
+              "description": "Include the raw instruction listing. Off by default: it roughly doubles the payload and agents rarely read it.",
+              "title": "Include Disasm",
+              "type": "boolean"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Address"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "function_address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Address"
+            },
+            "function_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Name"
+            },
+            "call_context_window": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Call Context Window"
+            }
+          },
+          "title": "get_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_metadata",
+        "title": null,
+        "description": "Get program metadata",
+        "inputSchema": {
+          "properties": {
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_metadataArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_struct_layout",
+        "title": null,
+        "description": "Get structure field layout",
+        "inputSchema": {
+          "properties": {
+            "struct_name": {
+              "description": "Structure name",
+              "title": "Struct Name",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "struct_name"
+          ],
+          "title": "get_struct_layoutArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_from",
+        "title": null,
+        "description": "Get cross-references from an address. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "get_xrefs_fromArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_to",
+        "title": null,
+        "description": "Get cross-references to ONE address, or to MANY at once (addresses=comma-separated), which returns a map keyed by the address you asked for. Replaces the former get_bulk_xrefs. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "default": "",
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "addresses": {
+              "default": "",
+              "description": "Comma-separated addresses for the many-at-once form. The result is a map of address to its reference list, and an address that does not resolve gets an empty list rather than failing the whole call.",
+              "title": "Addresses",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_xrefs_toArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read_memory",
+        "title": null,
+        "description": "Read raw memory bytes. Always pass the 'program' argument to target the correct binary \u2014 especially when multiple programs are open. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "length": {
+              "default": "16",
+              "description": "Number of bytes",
+              "title": "Length",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "read_memoryArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

@@ -1,0 +1,23 @@
+{
+  "status": "no_static_blockers",
+  "reviewer": "/root/render_lifetime",
+  "author": "/root/render_reviewer",
+  "candidate_manifest": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-c459c7f73345e24709/main-chain-boot-20261018/window-lifecycle-20261021/loading-and-suspended-close-harness-v2/MANIFEST.json",
+  "candidate_sha256": "e06b031b406db6d42696e87890b225469263ec00e40980dbd37bea002f3c78a8",
+  "all_four_manifest_hashes_verified": true,
+  "checks": [
+    "Gameplay default/native12/save gates retained; lifecycle modes select exact env values and unknown mode fails.",
+    "Lifecycle injection now requires current Loading observation, actual present ticket/generation and increase of native raw success counter during that frame. Legal acquire no-image is not counted as presented. V1 lacked this gate and must not be used.",
+    "pending=true proves preparation owner awaiting handoff, not necessarily running worker; completed unpublished Apps still require join/disposal. Source wording now explicit.",
+    "Suspended mode invokes existing actual Suspended then Close with no Resume, checks target.exiting and owner removal before LoopExiting. LoopExiting fallback cannot create this earlier success flag.",
+    "Ordinary loading_close preserves real Close queue→frame→ShutdownGameCmd consumer→renderer cleanup; final requires actual ShutdownGame marker.",
+    "UserEvent watchdog records error before exit, and existing result Some(Err) prevents LoopExiting from overwriting failure with success. Stop channel and join guard do not leave timer thread detached.",
+    "No frame threshold relaxation in original Gameplay mode, no fake device/monitor/image, no forced worker success, no live production mutation."
+  ],
+  "execution_limits": [
+    "Not compiled or OS/GPU executed by this reviewer.",
+    "Watchdog wakes an OS loop blocked in Wait but cannot preempt a native call or synchronously hung shutdown; real bounded production GPU waits remain necessary.",
+    "Native present success is the backend native result, not physical scanout or image correctness proof.",
+    "Close tests do not cover every resize/suspend/WSI failure branch."
+  ]
+}

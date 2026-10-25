@@ -1,0 +1,610 @@
+{
+  "backend": "reva",
+  "worker": "water-owner",
+  "access": "write",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "\nimport json, os\nfrom ghidra.app.decompiler import DecompInterface\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x142260ae0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x142260ae0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nout[\"size\"] = f.getBody().getNumAddresses() if f.getBody().contains(addr) else -1\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    out[\"decompiled\"] = res.getDecompiledFunction().getC() if res.decompileCompleted() else None\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+        "timeoutSeconds": 300
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "\nimport json, os\nfrom ghidra.app.decompiler import DecompInterface\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x142260ae0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x142260ae0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nout[\"size\"] = f.getBody().getNumAddresses() if f.getBody().contains(addr) else -1\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    out[\"decompiled\"] = res.getDecompiledFunction().getC() if res.decompileCompleted() else None\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+        "timeoutSeconds": 300
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"name\\\": \\\"draw_raster<country_core::resources::world_raster_defs::WaterRasterStagingSsbo,country_core::resources::world_raster::WorldRaster<512>,system_water::draw_water::draw_water::closure_env$1,system_water::draw_water::draw_water::closure_env$2,system_water::draw_water::draw_water::closure_env$3>\\\", \\\"entry\\\": \\\"142260ae0\\\", \\\"body\\\": \\\"[[142260ae0, 142261385]]\\\", \\\"signature\\\": \\\"void __cdecl draw_raster<country_core::resources::world_raster_defs::WaterRasterStagingSsbo,country_core::resources::world_raster::WorldRaster<512>,system_water::draw_water::draw_water::closure_env$1,system_water::draw_water::draw_water::closure_env$2,system_water::draw_water::draw_water::closure_env$3>(void)\\\", \\\"size\\\": 2214, \\\"decompiled\\\": \\\"\\\\nvoid __cdecl\\\\ncountry_core::systems::world_raster::\\\\ndraw_raster<country_core::resources::world_raster_defs::WaterRasterStagingSsbo,country_core::resources::world_raster::WorldRaster<512>,system_water::draw_water::draw_water::closure_env_1,system_water::draw_water::draw_water::closure_env_2,system_water::draw_water::draw_water::closure_env_3>\\\\n          (void)\\\\n\\\\n{\\\\n  undefined4 uVar1;\\\\n  longlong lVar2;\\\\n  undefined8 uVar3;\\\\n  undefined8 uVar4;\\\\n  undefined8 uVar5;\\\\n  int iVar6;\\\\n  longlong extraout_RAX;\\\\n  float *extraout_RAX_00;\\\\n  undefined8 *extraout_RAX_01;\\\\n  longlong lVar7;\\\\n  undefined8 *extraout_RAX_02;\\\\n  uint *in_RCX;\\\\n  longlong lVar8;\\\\n  float *in_RDX;\\\\n  longlong lVar9;\\\\n  longlong in_R8;\\\\n  undefined8 uVar10;\\\\n  longlong *in_stack_00000028;\\\\n  longlong *in_stack_00000030;\\\\n  longlong *in_stack_00000038;\\\\n  \\\\n  **(undefined4 **)(in_R8 + 0x10) = *(undefined4 *)(in_R8 + 0x1c);\\\\n  resources::active_raster_stroke::impl$1::index_mut();\\\\n  lVar7 = 0;\\\\n  if (1 < (ulonglong)*in_RCX) {\\\\n    lVar7 = (ulonglong)*in_RCX - 1;\\\\n  }\\\\n  if (lVar7 == 0) {\\\\n    **(undefined4 **)(in_R8 + 0x30) = *(undefined4 *)(in_R8 + 0x3c);\\\\n    resources::walls::decorator_archivist::DecoratorArchivist::decorator_cull_allow_any();\\\\n    resources::cursor_terrain_raycast::CursorTerrainRaycast::position();\\\\n    resources::active_raster_stroke::ActiveRasterStroke::start_new();\\\\n  }\\\\n  else if (lVar7 == 1) {\\\\n    resources::active_raster_stroke::InProgressRasterStroke::last();\\\\n    if (__real_3a83126f <\\\\n        SQRT((in_RDX[2] - extraout_RAX_00[2]) * (in_RDX[2] - extraout_RAX_00[2]) +\\\\n             (in_RDX[1] - extraout_RAX_00[1]) * (in_RDX[1] - extraout_RAX_00[1]) +\\\\n             (*in_RDX - *extraout_RAX_00) * (*in_RDX - *extraout_RAX_00))) {\\\\n      resources::active_raster_stroke::InProgressRasterStroke::add_point();\\\\n      resources::active_raster_stroke::ActiveRasterStroke::resample_and_smooth();\\\\n      country_core::utils::dirty_tiles::DirtyTiles::clear();\\\\n      resources::raster_stroke::RasterStroke::iter_points_xz();\\\\n      country_core::utils::dirty_tiles::DirtyTiles::\\\\n      rasterize_world_space_stroke<core::iter::adapters::map::Map<core::slice::iter::Iter<glam::f32::vec3::Vec3>,country_core::resources::raster_stroke::impl_2::iter_points_xz::closure_env_0>_>\\\\n                ();\\\\n      country_core::utils::dirty_tiles::DirtyTiles::extend();\\\\n      country_core::utils::dirty_tiles::DirtyTiles::extend();\\\\n      uVar10 = *(undefined8 *)(extraout_RAX + 0x270);\\\\n      uVar3 = *(undefined8 *)(extraout_RAX + 0x278);\\\\n      uVar4 = *(undefined8 *)(extraout_RAX + 0x280);\\\\n      uVar5 = *(undefined8 *)(extraout_RAX + 0x288);\\\\n      *(undefined8 *)(extraout_RAX + 0x270) = *(undefined8 *)(extraout_RAX + 0x70);\\\\n      *(undefined8 *)(extraout_RAX + 0x278) = *(undefined8 *)(extraout_RAX + 0x78);\\\\n      *(undefined8 *)(extraout_RAX + 0x280) = *(undefined8 *)(extraout_RAX + 0x80);\\\\n      *(undefined8 *)(extraout_RAX + 0x288) = *(undefined8 *)(extraout_RAX + 0x88);\\\\n      *(undefined8 *)(extraout_RAX + 0x70) = uVar10;\\\\n      *(undefined8 *)(extraout_RAX + 0x78) = uVar3;\\\\n      *(undefined8 *)(extraout_RAX + 0x80) = uVar4;\\\\n      *(undefined8 *)(extraout_RAX + 0x88) = uVar5;\\\\n      uVar10 = *(undefined8 *)(extraout_RAX + 0x290);\\\\n      uVar3 = *(undefined8 *)(extraout_RAX + 0x298);\\\\n      uVar4 = *(undefined8 *)(extraout_RAX + 0x2a0);\\\\n      uVar5 = *(undefined8 *)(extraout_RAX + 0x2a8);\\\\n      *(undefined8 *)(extraout_RAX + 0x290) = *(undefined8 *)(extraout_RAX + 0x90);\\\\n      *(undefined8 *)(extraout_RAX + 0x298) = *(undefined8 *)(extraout_RAX + 0x98);\\\\n      *(undefined8 *)(extraout_RAX + 0x2a0) = *(undefined8 *)(extraout_RAX + 0xa0);\\\\n      *(undefined8 *)(extraout_RAX + 0x2a8) = *(undefined8 *)(extraout_RAX + 0xa8);\\\\n      *(undefined8 *)(extraout_RAX + 0x90) = uVar10;\\\\n      *(undefined8 *)(extraout_RAX + 0x98) = uVar3;\\\\n      *(undefined8 *)(extraout_RAX + 0xa0) = uVar4;\\\\n      *(undefined8 *)(extraout_RAX + 0xa8) = uVar5;\\\\n      uVar10 = *(undefined8 *)(extraout_RAX + 0x2b0);\\\\n      uVar3 = *(undefined8 *)(extraout_RAX + 0x2b8);\\\\n      uVar4 = *(undefined8 *)(extraout_RAX + 0x2c0);\\\\n      uVar5 = *(undefined8 *)(extraout_RAX + 0x2c8);\\\\n      *(undefined8 *)(extraout_RAX + 0x2b0) = *(undefined8 *)(extraout_RAX + 0xb0);\\\\n      *(undefined8 *)(extraout_RAX + 0x2b8) = *(undefined8 *)(extraout_RAX + 0xb8);\\\\n      *(undefined8 *)(extraout_RAX + 0x2c0) = *(undefined8 *)(extraout_RAX + 0xc0);\\\\n      *(undefined8 *)(extraout_RAX + 0x2c8) = *(undefined8 *)(extraout_RAX + 200);\\\\n      *(undefined8 *)(extraout_RAX + 0xb0) = uVar10;\\\\n      *(undefined8 *)(extraout_RAX + 0xb8) = uVar3;\\\\n      *(undefined8 *)(extraout_RAX + 0xc0) = uVar4;\\\\n      *(undefined8 *)(extraout_RAX + 200) = uVar5;\\\\n      uVar10 = *(undefined8 *)(extraout_RAX + 0x2d0);\\\\n      uVar3 = *(undefined8 *)(extraout_RAX + 0x2d8);\\\\n      uVar4 = *(undefined8 *)(extraout_RAX + 0x2e0);\\\\n      uVar5 = *(undefined8 *)(extraout_RAX + 0x2e8);\\\\n      *(undefined8 *)(extraout_RAX + 0x2d0) = *(undefined8 *)(extraout_RAX + 0xd0);\\\\n      *(undefined8 *)(extraout_RAX + 0x2d8) = *(undefined8 *)(extraout_RAX + 0xd8);\\\\n      *(undefined8 *)(extraout_RAX + 0x2e0) = *(undefined8 *)(extraout_RAX + 0xe0);\\\\n      *(undefined8 *)(extraout_RAX + 0x2e8) = *(undefined8 *)(extraout_RAX + 0xe8);\\\\n      *(undefined8 *)(extraout_RAX + 0xd0) = uVar10;\\\\n      *(undefined8 *)(extraout_RAX + 0xd8) = uVar3;\\\\n      *(undefined8 *)(extraout_RAX + 0xe0) = uVar4;\\\\n      *(undefined8 *)(extraout_RAX + 0xe8) = uVar5;\\\\n      uVar10 = *(undefined8 *)(extraout_RAX + 0x2f0);\\\\n      uVar3 = *(undefined8 *)(extraout_RAX + 0x2f8);\\\\n      uVar4 = *(undefined8 *)(extraout_RAX + 0x300);\\\\n      uVar5 = *(undefined8 *)(extraout_RAX + 0x308);\\\\n      *(undefined8 *)(extraout_RAX + 0x2f0) = *(undefined8 *)(extraout_RAX + 0xf0);\\\\n      *(undefined8 *)(extraout_RAX + 0x2f8) = *(undefined8 *)(extraout_RAX + 0xf8);\\\\n      *(undefined8 *)(extraout_RAX + 0x300) = *(undefined8 *)(extraout_RAX + 0x100);\\\\n      *(undefined8 *)(extraout_RAX + 0x308) = *(undefined8 *)(extraout_RAX + 0x108);\\\\n      *(undefined8 *)(extraout_RAX + 0xf0) = uVar10;\\\\n      *(undefined8 *)(extraout_RAX + 0xf8) = uVar3;\\\\n      *(undefined8 *)(extraout_RAX + 0x100) = uVar4;\\\\n      *(undefined8 *)(extraout_RAX + 0x108) = uVar5;\\\\n      uVar10 = *(undefined8 *)(extraout_RAX + 0x310);\\\\n      uVar3 = *(undefined8 *)(extraout_RAX + 0x318);\\\\n      uVar4 = *(undefined8 *)(extraout_RAX + 800);\\\\n      uVar5 = *(undefined8 *)(extraout_RAX + 0x328);\\\\n      *(undefined8 *)(extraout_RAX + 0x310) = *(undefined8 *)(extraout_RAX + 0x110);\\\\n      *(undefined8 *)(extraout_RAX + 0x318) = *(undefined8 *)(extraout_RAX + 0x118);\\\\n      *(undefined8 *)(extraout_RAX + 800) = *(undefined8 *)(extraout_RAX + 0x120);\\\\n      *(undefined8 *)(extraout_RAX + 0x328) = *(undefined8 *)(extraout_RAX + 0x128);\\\\n      *(undefined8 *)(extraout_RAX + 0x110) = uVar10;\\\\n      *(undefined8 *)(extraout_RAX + 0x118) = uVar3;\\\\n      *(undefined8 *)(extraout_RAX + 0x120) = uVar4;\\\\n      *(undefined8 *)(extraout_RAX + 0x128) = uVar5;\\\\n      uVar10 = *(undefined8 *)(extraout_RAX + 0x330);\\\\n      uVar3 = *(undefined8 *)(extraout_RAX + 0x338);\\\\n      uVar4 = *(undefined8 *)(extraout_RAX + 0x340);\\\\n      uVar5 = *(undefined8 *)(extraout_RAX + 0x348);\\\\n      *(undefined8 *)(extraout_RAX + 0x330) = *(undefined8 *)(extraout_RAX + 0x130);\\\\n      *(undefined8 *)(extraout_RAX + 0x338) = *(undefined8 *)(extraout_RAX + 0x138);\\\\n      *(undefined8 *)(extraout_RAX + 0x340) = *(undefined8 *)(extraout_RAX + 0x140);\\\\n      *(undefined8 *)(extraout_RAX + 0x348) = *(undefined8 *)(extraout_RAX + 0x148);\\\\n      *(undefined8 *)(extraout_RAX + 0x130) = uVar10;\\\\n      *(undefined8 *)(extraout_RAX + 0x138) = uVar3;\\\\n      *(undefined8 *)(extraout_RAX + 0x140) = uVar4;\\\\n      *(undefined8 *)(extraout_RAX + 0x148) = uVar5;\\\\n      uVar10 = *(undefined8 *)(extraout_RAX + 0x350);\\\\n      uVar3 = *(undefined8 *)(extraout_RAX + 0x358);\\\\n      uVar4 = *(undefined8 *)(extraout_RAX + 0x360);\\\\n      uVar5 = *(undefined8 *)(extraout_RAX + 0x368);\\\\n      *(undefined8 *)(extraout_RAX + 0x350) = *(undefined8 *)(extraout_RAX + 0x150);\\\\n      *(undefined8 *)(extraout_RAX + 0x358) = *(undefined8 *)(extraout_RAX + 0x158);\\\\n      *(undefined8 *)(extraout_RAX + 0x360) = *(undefined8 *)(extraout_RAX + 0x160);\\\\n      *(undefined8 *)(extraout_RAX + 0x368) = *(undefined8 *)(extraout_RAX + 0x168);\\\\n      *(undefined8 *)(extraout_RAX + 0x150) = uVar10;\\\\n      *(undefined8 *)(extraout_RAX + 0x158) = uVar3;\\\\n      *(undefined8 *)(extraout_RAX + 0x160) = uVar4;\\\\n      *(undefined8 *)(extraout_RAX + 0x168) = uVar5;\\\\n      uVar10 = *(undefined8 *)(extraout_RAX + 0x370);\\\\n      uVar3 = *(undefined8 *)(extraout_RAX + 0x378);\\\\n      uVar4 = *(undefined8 *)(extraout_RAX + 0x380);\\\\n      uVar5 = *(undefined8 *)(extraout_RAX + 0x388);\\\\n      *(undefined8 *)(extraout_RAX + 0x370) = *(undefined8 *)(extraout_RAX + 0x170);\\\\n      *(undefined8 *)(extraout_RAX + 0x378) = *(undefined8 *)(extraout_RAX + 0x178);\\\\n      *(undefined8 *)(extraout_RAX + 0x380) = *(undefined8 *)(extraout_RAX + 0x180);\\\\n      *(undefined8 *)(extraout_RAX + 0x388) = *(undefined8 *)(extraout_RAX + 0x188);\\\\n      *(undefined8 *)(extraout_RAX + 0x170) = uVar10;\\\\n      *(undefined8 *)(extraout_RAX + 0x178) = uVar3;\\\\n      *(undefined8 *)(extraout_RAX + 0x180) = uVar4;\\\\n      *(undefined8 *)(extraout_RAX + 0x188) = uVar5;\\\\n      uVar10 = *(undefined8 *)(extraout_RAX + 0x390);\\\\n      uVar3 = *(undefined8 *)(extraout_RAX + 0x398);\\\\n      uVar4 = *(undefined8 *)(extraout_RAX + 0x3a0);\\\\n      uVar5 = *(undefined8 *)(extraout_RAX + 0x3a8);\\\\n      *(undefined8 *)(extraout_RAX + 0x390) = *(undefined8 *)(extraout_RAX + 400);\\\\n      *(undefined8 *)(extraout_RAX + 0x398) = *(undefined8 *)(extraout_RAX + 0x198);\\\\n      *(undefined8 *)(extraout_RAX + 0x3a0) = *(undefined8 *)(extraout_RAX + 0x1a0);\\\\n      *(undefined8 *)(extraout_RAX + 0x3a8) = *(undefined8 *)(extraout_RAX + 0x1a8);\\\\n      *(undefined8 *)(extraout_RAX + 400) = uVar10;\\\\n      *(undefined8 *)(extraout_RAX + 0x198) = uVar3;\\\\n      *(undefined8 *)(extraout_RAX + 0x1a0) = uVar4;\\\\n      *(undefined8 *)(extraout_RAX + 0x1a8) = uVar5;\\\\n      uVar10 = *(undefined8 *)(extraout_RAX + 0x3b0);\\\\n      uVar3 = *(undefined8 *)(extraout_RAX + 0x3b8);\\\\n      uVar4 = *(undefined8 *)(extraout_RAX + 0x3c0);\\\\n      uVar5 = *(undefined8 *)(extraout_RAX + 0x3c8);\\\\n      *(undefined8 *)(extraout_RAX + 0x3b0) = *(undefined8 *)(extraout_RAX + 0x1b0);\\\\n      *(undefined8 *)(extraout_RAX + 0x3b8) = *(undefined8 *)(extraout_RAX + 0x1b8);\\\\n      *(undefined8 *)(extraout_RAX + 0x3c0) = *(undefined8 *)(extraout_RAX + 0x1c0);\\\\n      *(undefined8 *)(extraout_RAX + 0x3c8) = *(undefined8 *)(extraout_RAX + 0x1c8);\\\\n      *(undefined8 *)(extraout_RAX + 0x1b0) = uVar10;\\\\n      *(undefined8 *)(extraout_RAX + 0x1b8) = uVar3;\\\\n      *(undefined8 *)(extraout_RAX + 0x1c0) = uVar4;\\\\n      *(undefined8 *)(extraout_RAX + 0x1c8) = uVar5;\\\\n      uVar10 = *(undefined8 *)(extraout_RAX + 0x3d0);\\\\n      uVar3 = *(undefined8 *)(extraout_RAX + 0x3d8);\\\\n      uVar4 = *(undefined8 *)(extraout_RAX + 0x3e0);\\\\n      uVar5 = *(undefined8 *)(extraout_RAX + 1000);\\\\n      *(undefined8 *)(extraout_RAX + 0x3d0) = *(undefined8 *)(extraout_RAX + 0x1d0);\\\\n      *(undefined8 *)(extraout_RAX + 0x3d8) = *(undefined8 *)(extraout_RAX + 0x1d8);\\\\n      *(undefined8 *)(extraout_RAX + 0x3e0) = *(undefined8 *)(extraout_RAX + 0x1e0);\\\\n      *(undefined8 *)(extraout_RAX + 1000) = *(undefined8 *)(extraout_RAX + 0x1e8);\\\\n      *(undefined8 *)(extraout_RAX + 0x1d0) = uVar10;\\\\n      *(undefined8 *)(extraout_RAX + 0x1d8) = uVar3;\\\\n      *(undefined8 *)(extraout_RAX + 0x1e0) = uVar4;\\\\n      *(undefined8 *)(extraout_RAX + 0x1e8) = uVar5;\\\\n      uVar10 = *(undefined8 *)(extraout_RAX + 0x3f0);\\\\n      uVar3 = *(undefined8 *)(extraout_RAX + 0x3f8);\\\\n      uVar4 = *(undefined8 *)(extraout_RAX + 0x400);\\\\n      uVar5 = *(undefined8 *)(extraout_RAX + 0x408);\\\\n      *(undefined8 *)(extraout_RAX + 0x3f0) = *(undefined8 *)(extraout_RAX + 0x1f0);\\\\n      *(undefined8 *)(extraout_RAX + 0x3f8) = *(undefined8 *)(extraout_RAX + 0x1f8);\\\\n      *(undefined8 *)(extraout_RAX + 0x400) = *(undefined8 *)(extraout_RAX + 0x200);\\\\n      *(undefined8 *)(extraout_RAX + 0x408) = *(undefined8 *)(extraout_RAX + 0x208);\\\\n      *(undefined8 *)(extraout_RAX + 0x1f0) = uVar10;\\\\n      *(undefined8 *)(extraout_RAX + 0x1f8) = uVar3;\\\\n      *(undefined8 *)(extraout_RAX + 0x200) = uVar4;\\\\n      *(undefined8 *)(extraout_RAX + 0x208) = uVar5;\\\\n      uVar10 = *(undefined8 *)(extraout_RAX + 0x410);\\\\n      uVar3 = *(undefined8 *)(extraout_RAX + 0x418);\\\\n      uVar4 = *(undefined8 *)(extraout_RAX + 0x420);\\\\n      uVar5 = *(undefined8 *)(extraout_RAX + 0x428);\\\\n      *(undefined8 *)(extraout_RAX + 0x410) = *(undefined8 *)(extraout_RAX + 0x210);\\\\n      *(undefined8 *)(extraout_RAX + 0x418) = *(undefined8 *)(extraout_RAX + 0x218);\\\\n      *(undefined8 *)(extraout_RAX + 0x420) = *(undefined8 *)(extraout_RAX + 0x220);\\\\n      *(undefined8 *)(extraout_RAX + 0x428) = *(undefined8 *)(extraout_RAX + 0x228);\\\\n      *(undefined8 *)(extraout_RAX + 0x210) = uVar10;\\\\n      *(undefined8 *)(extraout_RAX + 0x218) = uVar3;\\\\n      *(undefined8 *)(extraout_RAX + 0x220) = uVar4;\\\\n      *(undefined8 *)(extraout_RAX + 0x228) = uVar5;\\\\n      uVar10 = *(undefined8 *)(extraout_RAX + 0x430);\\\\n      uVar3 = *(undefined8 *)(extraout_RAX + 0x438);\\\\n      uVar4 = *(undefined8 *)(extraout_RAX + 0x440);\\\\n      uVar5 = *(undefined8 *)(extraout_RAX + 0x448);\\\\n      *(undefined8 *)(extraout_RAX + 0x430) = *(undefined8 *)(extraout_RAX + 0x230);\\\\n      *(undefined8 *)(extraout_RAX + 0x438) = *(undefined8 *)(extraout_RAX + 0x238);\\\\n      *(undefined8 *)(extraout_RAX + 0x440) = *(undefined8 *)(extraout_RAX + 0x240);\\\\n      *(undefined8 *)(extraout_RAX + 0x448) = *(undefined8 *)(extraout_RAX + 0x248);\\\\n      *(undefined8 *)(extraout_RAX + 0x230) = uVar10;\\\\n      *(undefined8 *)(extraout_RAX + 0x238) = uVar3;\\\\n      *(undefined8 *)(extraout_RAX + 0x240) = uVar4;\\\\n      *(undefined8 *)(extraout_RAX + 0x248) = uVar5;\\\\n      uVar10 = *(undefined8 *)(extraout_RAX + 0x450);\\\\n      uVar3 = *(undefined8 *)(extraout_RAX + 0x458);\\\\n      uVar4 = *(undefined8 *)(extraout_RAX + 0x460);\\\\n      uVar5 = *(undefined8 *)(extraout_RAX + 0x468);\\\\n      *(undefined8 *)(extraout_RAX + 0x450) = *(undefined8 *)(extraout_RAX + 0x250);\\\\n      *(undefined8 *)(extraout_RAX + 0x458) = *(undefined8 *)(extraout_RAX + 600);\\\\n      *(undefined8 *)(extraout_RAX + 0x460) = *(undefined8 *)(extraout_RAX + 0x260);\\\\n      *(undefined8 *)(extraout_RAX + 0x468) = *(undefined8 *)(extraout_RAX + 0x268);\\\\n      *(undefined8 *)(extraout_RAX + 0x250) = uVar10;\\\\n      *(undefined8 *)(extraout_RAX + 600) = uVar3;\\\\n      *(undefined8 *)(extraout_RAX + 0x260) = uVar4;\\\\n      *(undefined8 *)(extraout_RAX + 0x268) = uVar5;\\\\n      resources::world_raster::impl$2::copy_composite_to_scratch<512>();\\\\n      resources::raster_stroke::RasterStroke::iter_points_xz();\\\\n      resources::world_raster::impl$2::\\\\n      rasterize_stroke<512,core::iter::adapters::map::Map<core::slice::iter::Iter<glam::f32::vec3::Vec3>,country_core::resources::raster_stroke::impl_2::iter_points_xz::closure_env_0>_>\\\\n                ();\\\\n      frozen::FrozenMap::\\\\n      get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>\\\\n                ();\\\\n      if (extraout_RAX_01 != (undefined8 *)0x0) {\\\\n        if ((extraout_RAX_01[3] != 0x42) ||\\\\n           (iVar6 = memcmp(\\\\\\\"country_core::resources::world_raster_defs::WaterRasterStagingSsbo/home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/indexmap-2.7.1/src/map/core.rs\\\\\\\"\\\\n                           ,(void *)extraout_RAX_01[2],0x42), iVar6 != 0)) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n          core::panicking::assert_failed<ref_<str_>,ref_<str_>_>();\\\\n        }\\\\n        lVar7 = (**(code **)(extraout_RAX_01[1] + 0x18))(*extraout_RAX_01);\\\\n        if (lVar7 != 0) {\\\\n          resources::world_raster::impl$2::copy_to_staging<512>();\\\\n          uVar1 = *(undefined4 *)(extraout_RAX + 0x60);\\\\n          if (*(char *)(extraout_RAX + 100) == '\\\\\\\\0') {\\\\n            *(undefined4 *)in_stack_00000030[2] =\\\\n                 *(undefined4 *)((longlong)in_stack_00000030 + 0x1c);\\\\n            lVar7 = *in_stack_00000030;\\\\n            lVar9 = *(longlong *)(lVar7 + 0x30);\\\\n            uVar10 = *(undefined8 *)(lVar7 + 0x40);\\\\n            if (lVar9 == *(longlong *)(lVar7 + 0x20)) {\\\\n              alloc::raw_vec::RawVec::\\\\n              grow_one<tuple_<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<system_decorator::decorator_visual::stairs::PreferredNodeAlignment,alloc::alloc::Global>_>,alloc::alloc::Global>\\\\n                        ();\\\\n            }\\\\n          }\\\\n          else {\\\\n            *(undefined4 *)in_stack_00000028[2] =\\\\n                 *(undefined4 *)((longlong)in_stack_00000028 + 0x1c);\\\\n            lVar7 = *in_stack_00000028;\\\\n            lVar9 = *(longlong *)(lVar7 + 0x30);\\\\n            uVar10 = *(undefined8 *)(lVar7 + 0x40);\\\\n            if (lVar9 == *(longlong *)(lVar7 + 0x20)) {\\\\n              alloc::raw_vec::RawVec::\\\\n              grow_one<tuple_<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<system_decorator::decorator_visual::stairs::PreferredNodeAlignment,alloc::alloc::Global>_>,alloc::alloc::Global>\\\\n                        ();\\\\n            }\\\\n          }\\\\n          lVar2 = *(longlong *)(lVar7 + 0x28);\\\\n          lVar8 = lVar9 * 0x20;\\\\n          *(undefined8 *)(lVar2 + lVar8) = uVar10;\\\\n          *(undefined8 *)(lVar2 + 8 + lVar8) = *(undefined8 *)in_RDX;\\\\n          *(float *)(lVar2 + 0x10 + lVar8) = in_RDX[2];\\\\n          *(undefined4 *)(lVar2 + 0x14 + lVar8) = uVar1;\\\\n          *(undefined1 *)(lVar2 + 0x18 + lVar8) = 0;\\\\n          *(longlong *)(lVar7 + 0x30) = lVar9 + 1;\\\\n          *(longlong *)(lVar7 + 0x40) = *(longlong *)(lVar7 + 0x40) + 1;\\\\n          return;\\\\n        }\\\\n      }\\\\n                    /* WARNING: Subroutine does not return */\\\\n      core::option::unwrap_failed();\\\\n    }\\\\n  }\\\\n  else if (1 < *(ulonglong *)(extraout_RAX + 0x58)) {\\\\n    **(undefined4 **)(in_R8 + 0xb0) = *(undefined4 *)(in_R8 + 0xbc);\\\\n    lVar7 = *(longlong *)(in_R8 + 0xa0);\\\\n    lVar9 = *(longlong *)(lVar7 + 0x30);\\\\n    uVar10 = *(undefined8 *)(lVar7 + 0x40);\\\\n    if (lVar9 == *(longlong *)(lVar7 + 0x20)) {\\\\n      alloc::raw_vec::RawVec::\\\\n      grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>\\\\n                ();\\\\n    }\\\\n    *(undefined8 *)(*(longlong *)(lVar7 + 0x28) + lVar9 * 8) = uVar10;\\\\n    *(longlong *)(lVar7 + 0x30) = lVar9 + 1;\\\\n    *(longlong *)(lVar7 + 0x40) = *(longlong *)(lVar7 + 0x40) + 1;\\\\n    *(undefined4 *)in_stack_00000038[2] = *(undefined4 *)((longlong)in_stack_00000038 + 0x1c);\\\\n    lVar7 = *in_stack_00000038;\\\\n    lVar9 = *(longlong *)(lVar7 + 0x30);\\\\n    uVar10 = *(undefined8 *)(lVar7 + 0x40);\\\\n    if (lVar9 == *(longlong *)(lVar7 + 0x20)) {\\\\n      alloc::raw_vec::RawVec::\\\\n      grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>\\\\n                ();\\\\n    }\\\\n    *(undefined8 *)(*(longlong *)(lVar7 + 0x28) + lVar9 * 8) = uVar10;\\\\n    *(longlong *)(lVar7 + 0x30) = lVar9 + 1;\\\\n    *(longlong *)(lVar7 + 0x40) = *(longlong *)(lVar7 + 0x40) + 1;\\\\n    **(undefined4 **)(in_R8 + 0x90) = *(undefined4 *)(in_R8 + 0x9c);\\\\n    lVar7 = *(longlong *)(in_R8 + 0x80);\\\\n    lVar9 = *(longlong *)(lVar7 + 0x30);\\\\n    uVar10 = *(undefined8 *)(lVar7 + 0x40);\\\\n    if (lVar9 == *(longlong *)(lVar7 + 0x20)) {\\\\n      alloc::raw_vec::RawVec::\\\\n      grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>\\\\n                ();\\\\n    }\\\\n    *(undefined8 *)(*(longlong *)(lVar7 + 0x28) + lVar9 * 8) = uVar10;\\\\n    *(longlong *)(lVar7 + 0x30) = lVar9 + 1;\\\\n    *(longlong *)(lVar7 + 0x40) = *(longlong *)(lVar7 + 0x40) + 1;\\\\n    country_core::utils::dirty_tiles::DirtyTiles::extend();\\\\n    country_core::utils::dirty_tiles::DirtyTiles::clear();\\\\n    resources::world_raster::impl$2::commit_scratch_to_composite<512>();\\\\n    frozen::FrozenMap::\\\\n    get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>\\\\n              ();\\\\n    if (extraout_RAX_02 != (undefined8 *)0x0) {\\\\n      if ((extraout_RAX_02[3] != 0x42) ||\\\\n         (iVar6 = memcmp(\\\\\\\"country_core::resources::world_raster_defs::WaterRasterStagingSsbo/home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/indexmap-2.7.1/src/map/core.rs\\\\\\\"\\\\n                         ,(void *)extraout_RAX_02[2],0x42), iVar6 != 0)) {\\\\n                    /* WARNING: Subroutine does not return */\\\\n        core::panicking::assert_failed<ref_<str_>,ref_<str_>_>();\\\\n      }\\\\n      lVar7 = (**(code **)(extraout_RAX_02[1] + 0x18))(*extraout_RAX_02);\\\\n      if (lVar7 != 0) {\\\\n        resources::world_raster::impl$2::copy_to_staging<512>();\\\\n        return;\\\\n      }\\\\n    }\\\\n                    /* WARNING: Subroutine does not return */\\\\n    core::option::unwrap_failed();\\\\n  }\\\\n  return;\\\\n}\\\\n\\\\n\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":488}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "\nimport json, os\nfrom ghidra.app.decompiler import DecompInterface\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x1406501d0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x1406501d0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nout[\"size\"] = f.getBody().getNumAddresses() if f.getBody().contains(addr) else -1\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    out[\"decompiled\"] = res.getDecompiledFunction().getC() if res.decompileCompleted() else None\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+        "timeoutSeconds": 300
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "\nimport json, os\nfrom ghidra.app.decompiler import DecompInterface\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x1406501d0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x1406501d0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nout[\"size\"] = f.getBody().getNumAddresses() if f.getBody().contains(addr) else -1\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    out[\"decompiled\"] = res.getDecompiledFunction().getC() if res.decompileCompleted() else None\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+        "timeoutSeconds": 300
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"name\\\": \\\"build\\\", \\\"entry\\\": \\\"1406501d0\\\", \\\"body\\\": \\\"[[1406501d0, 1406504b3]]\\\", \\\"signature\\\": \\\"void __cdecl build(void)\\\", \\\"size\\\": 740, \\\"decompiled\\\": \\\"\\\\nvoid __cdecl system_water::impl$0::build(void)\\\\n\\\\n{\\\\n  longlong extraout_RAX;\\\\n  longlong extraout_RAX_00;\\\\n  longlong extraout_RAX_01;\\\\n  longlong extraout_RAX_02;\\\\n  ulonglong uVar1;\\\\n  \\\\n  _ZN8bevy_ecs8schedule6config19IntoScheduleConfigs6in_set17h31980271add316ceE();\\\\n  bevy_ecs::schedule::config::IntoScheduleConfigs::\\\\n  in_set<void_(*)(country_core::systems::world_raster::RasterHistoryRecordResources,bevy_ecs::event::reader::EventReader<system_water::record_water_history::RecordWaterEditToHistoryCmd>),alloc::boxed::Box<dyn_<bevy_ecs::system::system::System<assoc_<In,tuple_<>_>,assoc_<Out,enum2_<core::result::Result<tuple_<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>,tuple_<bevy_ecs::schedule::config::Infallible,tuple_<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(country_core::systems::world_raster::RasterHistoryRecordResources,bevy_ecs::event::reader::EventReader<system_water::record_water_history::RecordWaterEditToHistoryCmd>)>_>,country_core::systems::GameSystemSet>\\\\n            ();\\\\n  bevy_app::sub_app::SubApp::\\\\n  add_systems<tuple_<bevy_ecs::schedule::config::ScheduleConfigTupleMarker,tuple_<>,tuple_<>_>,bevy_app::main_schedule::Update,tuple_<enum2_<bevy_ecs::schedule::config::ScheduleConfigs<alloc::boxed::Box<dyn_<bevy_ecs::system::system::System<assoc_<In,tuple_<>_>,assoc_<Out,enum2_<core::result::Result<tuple_<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>_>,enum2_<bevy_ecs::schedule::config::ScheduleConfigs<alloc::boxed::Box<dyn_<bevy_ecs::system::system::System<assoc_<In,tuple_<>_>,assoc_<Out,enum2_<core::result::Result<tuple_<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>_>_>_>\\\\n            ();\\\\n  bevy_ecs::schedule::config::IntoScheduleConfigs::\\\\n  run_if<void_(*)(bevy_ecs::system::system_param::Local<system_water::water_audio_grid::WaterAudioGridUpdateState>,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::WaterRaster>,country_core::systems::collision::world::Raycasting,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::ResMut<country_core::systems::audio::water_ambience_audio::WaterAudioGrid>),alloc::boxed::Box<dyn_<bevy_ecs::system::system::System<assoc_<In,tuple_<>_>,assoc_<Out,enum2_<core::result::Result<tuple_<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>,tuple_<bevy_ecs::schedule::config::Infallible,tuple_<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(bevy_ecs::system::system_param::Local<system_water::water_audio_grid::WaterAudioGridUpdateState>,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::WaterRaster>,country_core::systems::collision::world::Raycasting,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::ResMut<country_core::systems::audio::water_ambience_audio::WaterAudioGrid>)>_>,tuple_<bevy_ecs::system::function_system::IsFunctionSystem,bool_(*)(enum2_<core::option::Option<bevy_ecs::change_detection::Res<country_core::systems::audio::water_ambience_audio::WaterAudioGrid>_>_>)>,bool_(*)(enum2_<core::option::Option<bevy_ecs::change_detection::Res<country_core::systems::audio::water_ambience_audio::WaterAudioGrid>_>_>)>\\\\n            ();\\\\n  bevy_ecs::intern::Interner::intern<dyn_<bevy_ecs::schedule::set::SystemSet>_>();\\\\n  bevy_ecs::schedule::config::ScheduleConfigs::\\\\n  in_set_inner<alloc::boxed::Box<dyn_<bevy_ecs::system::system::System<assoc_<In,tuple_<>_>,assoc_<Out,enum2_<core::result::Result<tuple_<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>\\\\n            ();\\\\n  bevy_app::sub_app::SubApp::\\\\n  add_systems<tuple_<>,bevy_app::main_schedule::Update,enum2_<bevy_ecs::schedule::config::ScheduleConfigs<alloc::boxed::Box<dyn_<bevy_ecs::system::system::System<assoc_<In,tuple_<>_>,assoc_<Out,enum2_<core::result::Result<tuple_<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>_>_>\\\\n            ();\\\\n  country_core::resources::world_raster::DirtyTilePublisher::unique();\\\\n  country_core::resources::world_raster_defs::PathRaster::new();\\\\n  bevy_app::app::App::insert_resource<country_core::resources::world_raster_defs::WaterRaster>();\\\\n  uVar1 = 0xcc3c0165e2715d9d;\\\\n  bevy_ecs::component::Components::get_resource_id();\\\\n  if ((((extraout_RAX_00 == 0) || (*(ulonglong *)(extraout_RAX + 0x218) <= uVar1)) ||\\\\n      (uVar1 = *(ulonglong *)(*(longlong *)(extraout_RAX + 0x210) + uVar1 * 8), uVar1 == 0)) ||\\\\n     (*(longlong *)(*(longlong *)(extraout_RAX + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)) {\\\\n    bevy_ecs::event::registry::EventRegistry::\\\\n    register_event<system_water::record_water_history::RecordWaterEditToHistoryCmd>();\\\\n  }\\\\n  uVar1 = 0xb050d5756cb9fc8f;\\\\n  bevy_ecs::component::Components::get_resource_id();\\\\n  if (((extraout_RAX_01 == 0) || (*(ulonglong *)(extraout_RAX + 0x218) <= uVar1)) ||\\\\n     ((uVar1 = *(ulonglong *)(*(longlong *)(extraout_RAX + 0x210) + uVar1 * 8), uVar1 == 0 ||\\\\n      (*(longlong *)(*(longlong *)(extraout_RAX + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)))) {\\\\n    bevy_ecs::event::registry::EventRegistry::\\\\n    register_event<country_core::resources::water::WaterDrawEvent>();\\\\n  }\\\\n  uVar1 = 0x494426e4a24afc26;\\\\n  bevy_ecs::component::Components::get_resource_id();\\\\n  if (((extraout_RAX_02 != 0) && (uVar1 < *(ulonglong *)(extraout_RAX + 0x218))) &&\\\\n     ((uVar1 = *(ulonglong *)(*(longlong *)(extraout_RAX + 0x210) + uVar1 * 8), uVar1 != 0 &&\\\\n      (*(longlong *)(*(longlong *)(extraout_RAX + 0x1e0) + 0x20 + ~uVar1 * 0x60) != 0)))) {\\\\n    return;\\\\n  }\\\\n  bevy_ecs::event::registry::EventRegistry::\\\\n  register_event<country_core::resources::water::WaterEraseEvent>();\\\\n  return;\\\\n}\\\\n\\\\n\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":381}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "\nimport json\nprog = currentProgram\nout = {\"target\": \"0x141444c70\", \"callers\": []}\naddr = prog.getAddressFactory().getAddress(\"0x141444c70\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x141444c70\")\nrefmgr = prog.getReferenceManager()\nrefs = refmgr.getReferencesTo(addr)\nseen = set()\nfor r in refs:\n    monitor.checkCancelled()\n    if not r.getReferenceType().isCall():\n        continue\n    frm = r.getFromAddress()\n    if frm in seen:\n        continue\n    seen.add(frm)\n    caller = fm.getFunctionContaining(frm)\n    cname = str(caller.getName()) if caller else \"\"\n    caddr = str(caller.getEntryPoint()) if caller else str(frm)\n    out[\"callers\"].append([str(frm), caddr, cname])\nprint(json.dumps(out))\n",
+        "timeoutSeconds": 60
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "\nimport json\nprog = currentProgram\nout = {\"target\": \"0x141444c70\", \"callers\": []}\naddr = prog.getAddressFactory().getAddress(\"0x141444c70\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x141444c70\")\nrefmgr = prog.getReferenceManager()\nrefs = refmgr.getReferencesTo(addr)\nseen = set()\nfor r in refs:\n    monitor.checkCancelled()\n    if not r.getReferenceType().isCall():\n        continue\n    frm = r.getFromAddress()\n    if frm in seen:\n        continue\n    seen.add(frm)\n    caller = fm.getFunctionContaining(frm)\n    cname = str(caller.getName()) if caller else \"\"\n    caddr = str(caller.getEntryPoint()) if caller else str(frm)\n    out[\"callers\"].append([str(frm), caddr, cname])\nprint(json.dumps(out))\n",
+        "timeoutSeconds": 60
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"target\\\": \\\"0x141444c70\\\", \\\"callers\\\": [[\\\"14083c11d\\\", \\\"14083c110\\\", \\\"call_once<country_core::systems::history::replay_water::replay_water::closure_env$1,tuple$<ref$<enum2$<country_core::resources::history::EditType>_>,ref_mut$<alloc::vec::Vec<enum2$<country_core::resources::history::replay_cmd_buffer::ReplayCmd>,alloc::alloc::Global>_>_>_>\\\"]]}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":90}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "\nimport json\nprog = currentProgram\nout = {\"target\": \"0x1406501d0\", \"callers\": []}\naddr = prog.getAddressFactory().getAddress(\"0x1406501d0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x1406501d0\")\nrefmgr = prog.getReferenceManager()\nrefs = refmgr.getReferencesTo(addr)\nseen = set()\nfor r in refs:\n    monitor.checkCancelled()\n    if not r.getReferenceType().isCall():\n        continue\n    frm = r.getFromAddress()\n    if frm in seen:\n        continue\n    seen.add(frm)\n    caller = fm.getFunctionContaining(frm)\n    cname = str(caller.getName()) if caller else \"\"\n    caddr = str(caller.getEntryPoint()) if caller else str(frm)\n    out[\"callers\"].append([str(frm), caddr, cname])\nprint(json.dumps(out))\n",
+        "timeoutSeconds": 60
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "\nimport json\nprog = currentProgram\nout = {\"target\": \"0x1406501d0\", \"callers\": []}\naddr = prog.getAddressFactory().getAddress(\"0x1406501d0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x1406501d0\")\nrefmgr = prog.getReferenceManager()\nrefs = refmgr.getReferencesTo(addr)\nseen = set()\nfor r in refs:\n    monitor.checkCancelled()\n    if not r.getReferenceType().isCall():\n        continue\n    frm = r.getFromAddress()\n    if frm in seen:\n        continue\n    seen.add(frm)\n    caller = fm.getFunctionContaining(frm)\n    cname = str(caller.getName()) if caller else \"\"\n    caddr = str(caller.getEntryPoint()) if caller else str(frm)\n    out[\"callers\"].append([str(frm), caddr, cname])\nprint(json.dumps(out))\n",
+        "timeoutSeconds": 60
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"target\\\": \\\"0x1406501d0\\\", \\\"callers\\\": []}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":63}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "get-function-count",
+        "title": "Get Function Count",
+        "description": "Get the total count of functions in the program (use this before calling get-functions to plan pagination)",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program to get functions from",
+              "type": "string"
+            },
+            "filterDefaultNames": {
+              "type": "boolean",
+              "description": "Whether to filter out default Ghidra generated names like FUN_, DAT_, etc.",
+              "default": true
+            }
+          },
+          "required": [
+            "programPath"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "set-function-prototype",
+        "title": "Set Function Prototype",
+        "description": "Set or update a function prototype using C-style function signatures. Can create new functions or update existing ones.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program",
+              "type": "string"
+            },
+            "signature": {
+              "description": "C-style function signature (e.g., 'int main(int argc, char** argv)')",
+              "type": "string"
+            },
+            "location": {
+              "description": "Address or symbol name where the function is located",
+              "type": "string"
+            },
+            "createIfNotExists": {
+              "type": "boolean",
+              "description": "Create function if it doesn't exist at the location",
+              "default": true
+            }
+          },
+          "required": [
+            "programPath",
+            "location",
+            "signature"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get-decompilation",
+        "title": "Get Function Decompilation",
+        "description": "Get decompiled code for a function with line range support. Defaults to 50 lines to conserve context - start with small chunks (10-20 lines) then expand as needed using offset/limit. Updating variable data types and names can significantly improve decompilation quality. Use includeCallers/includeCallees to get caller/callee lists in one call (avoids separate tool invocations).",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "functionNameOrAddress": {
+              "description": "Function name, address, or symbol to decompile (e.g. 'main', '0x00401000', or 'start'). For addresses pointing inside a function, the containing function will be decompiled.",
+              "type": "string"
+            },
+            "includeCallers": {
+              "type": "boolean",
+              "description": "Include list of functions that call this one (name, address, signature). Use for understanding function usage without bulk decompilation.",
+              "default": false
+            },
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program containing the function",
+              "type": "string"
+            },
+            "offset": {
+              "type": "integer",
+              "description": "Line number to start reading from (1-based). Defaults to 1.",
+              "default": 1
+            },
+            "includeDisassembly": {
+              "type": "boolean",
+              "description": "Whether to include assembly listing alongside decompilation for sync",
+              "default": false
+            },
+            "includeIncomingReferences": {
+              "type": "boolean",
+              "description": "Whether to include incoming cross references to this function on the function declaration line",
+              "default": false
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Number of lines to return. Defaults to 50 lines to conserve context. Use smaller chunks (10-20 lines) for initial exploration, then expand as needed.",
+              "default": 50
+            },
+            "includeReferenceContext": {
+              "type": "boolean",
+              "description": "Whether to include code context snippets from calling functions (requires includeIncomingReferences)",
+              "default": false
+            },
+            "includeComments": {
+              "type": "boolean",
+              "description": "Whether to include comments in the decompilation output",
+              "default": false
+            },
+            "includeCallees": {
+              "type": "boolean",
+              "description": "Include list of functions this one calls (name, address, signature). Use for understanding function dependencies without bulk decompilation.",
+              "default": false
+            },
+            "signatureOnly": {
+              "type": "boolean",
+              "description": "Return only signature/metadata without decompiled code. Saves output tokens.",
+              "default": false
+            }
+          },
+          "required": [
+            "programPath",
+            "functionNameOrAddress"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find-cross-references",
+        "title": "Find Cross References",
+        "description": "Find all references to or from a memory location, symbol, or function. Returns incoming and/or outgoing references with optional decompilation context.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "includeContext": {
+              "type": "boolean",
+              "description": "Include decompilation context snippets for code references",
+              "default": false
+            },
+            "contextLines": {
+              "type": "integer",
+              "description": "Number of lines before and after to include in context snippets",
+              "default": 2
+            },
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program to get references from",
+              "type": "string"
+            },
+            "offset": {
+              "type": "integer",
+              "description": "Starting offset for pagination (0-based)",
+              "default": 0
+            },
+            "includeFlow": {
+              "type": "boolean",
+              "description": "Include flow references (calls, jumps, branches)",
+              "default": true
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum number of references to return per direction",
+              "default": 100
+            },
+            "location": {
+              "description": "Address or symbol name to get references for (e.g., '0x00400123', 'main', 'FUN_00401000')",
+              "type": "string"
+            },
+            "includeData": {
+              "type": "boolean",
+              "description": "Include data references (reads, writes)",
+              "default": true
+            },
+            "direction": {
+              "enum": [
+                "to",
+                "from",
+                "both"
+              ],
+              "type": "string",
+              "default": "both",
+              "description": "Direction of references to retrieve: 'to' (incoming), 'from' (outgoing), or 'both' (default)"
+            }
+          },
+          "required": [
+            "programPath",
+            "location"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get-data-type-by-string",
+        "title": "Get Data Type by String",
+        "description": "Get a data type by its string representation",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program",
+              "type": "string"
+            },
+            "dataTypeString": {
+              "description": "String representation of the data type (e.g., 'char**', 'int[10]')",
+              "type": "string"
+            },
+            "archiveName": {
+              "type": "string",
+              "description": "Optional name of the data type archive to search in. If not provided, all archives will be searched.",
+              "default": ""
+            }
+          },
+          "required": [
+            "programPath",
+            "dataTypeString"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "run-script",
+        "title": "Run Python Script",
+        "description": "Execute a Python script in the Ghidra PyGhidra runtime against a specific program. Requires Ghidra to be launched via PyGhidra (mcp-reva or pyghidra-gui). Returns captured stdout/stderr, duration, and timeout flag. Script failures appear in stderr with success=false; tool failures (bad args, PyGhidra unavailable) are MCP errors. Cancellation is cooperative: long-running scripts should periodically check monitor.isCancelled() so the timeout can fire on tight loops.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path to an existing .py script to run.",
+              "type": "string"
+            },
+            "programPath": {
+              "description": "Path to the program in the Ghidra Project",
+              "type": "string"
+            },
+            "code": {
+              "description": "Inline Python source. The script runs as a Ghidra script with currentProgram, FlatProgramAPI helpers, and monitor available. Wrap state changes in currentProgram.startTransaction(...) / endTransaction(...) yourself \u2014 the tool does not open a transaction. Provide exactly one of: code, scriptPath, scriptName.",
+              "type": "string"
+            },
+            "scriptName": {
+              "description": "Name of a script (e.g., 'MyAnalysis.py') resolved across registered Ghidra script directories.",
+              "type": "string"
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "description": "Per-call timeout override in seconds. Defaults to the configured script timeout.",
+              "default": 60
+            }
+          },
+          "required": [
+            "programPath"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list-scripts",
+        "title": "List Scripts",
+        "description": "List Python scripts visible to Ghidra across all registered script directories (user dir + system dirs + bundle dirs). Filterable by path or name; supports pagination.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "pathFilter": {
+              "type": "string",
+              "description": "Optional substring filter on script absolute path",
+              "default": ""
+            },
+            "startIndex": {
+              "type": "integer",
+              "description": "Pagination start (0-indexed)",
+              "default": 0
+            },
+            "nameFilter": {
+              "type": "string",
+              "description": "Optional substring filter on script file name",
+              "default": ""
+            },
+            "maxCount": {
+              "type": "integer",
+              "description": "Maximum entries to return",
+              "default": 100
+            }
+          },
+          "required": []
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read-script",
+        "title": "Read Script",
+        "description": "Read a script's source, returned with cat -n style line numbers so you can reference exact lines in edit-script. Supports chunked reads via offset/limit. Sets truncated=true if more lines remain.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path to the script. Provide either scriptPath or scriptName.",
+              "type": "string"
+            },
+            "offset": {
+              "type": "integer",
+              "description": "1-indexed starting line",
+              "default": 1
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum lines to return",
+              "default": 2000
+            },
+            "scriptName": {
+              "description": "Script file name resolved across registered script directories.",
+              "type": "string"
+            }
+          },
+          "required": []
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "write-script",
+        "title": "Write Script",
+        "description": "Create a new script or fully replace an existing one in a writeable script directory. System directories are read-only. Use edit-script for targeted changes instead of full rewrites.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path; must resolve under a writeable script directory.",
+              "type": "string"
+            },
+            "code": {
+              "description": "Script source to write.",
+              "type": "string"
+            },
+            "scriptName": {
+              "description": "File name (e.g., 'MyAnalysis.py') \u2014 written to the default writeable scripts directory.",
+              "type": "string"
+            },
+            "overwrite": {
+              "type": "boolean",
+              "description": "Overwrite existing file. Default false: errors if file exists.",
+              "default": false
+            }
+          },
+          "required": [
+            "code"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "edit-script",
+        "title": "Edit Script",
+        "description": "Replace exact old_string with new_string in a script. Errors if old_string isn't found, or if it matches multiple locations and replace_all is false. Use this instead of write-script when iterating on an existing script.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path to the script to edit (must be writeable).",
+              "type": "string"
+            },
+            "old_string": {
+              "description": "Exact text to find. Must occur exactly once unless replace_all is true; surround with enough context to make it unique.",
+              "type": "string"
+            },
+            "scriptName": {
+              "description": "Script file name resolved under the default writeable scripts directory.",
+              "type": "string"
+            },
+            "replace_all": {
+              "type": "boolean",
+              "description": "Replace every occurrence. Default false: errors if old_string matches more than one location.",
+              "default": false
+            },
+            "new_string": {
+              "description": "Replacement text. Must differ from old_string.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "old_string",
+            "new_string"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

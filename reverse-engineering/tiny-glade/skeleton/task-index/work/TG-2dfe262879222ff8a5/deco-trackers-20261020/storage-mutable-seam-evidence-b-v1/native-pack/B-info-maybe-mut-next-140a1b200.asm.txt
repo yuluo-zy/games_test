@@ -1,0 +1,54 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140a1b200: 48 89 c8                    	movq	%rcx, %rax
+140a1b203: 4c 8b 42 20                 	movq	0x20(%rdx), %r8
+140a1b207: 4d 85 c0                    	testq	%r8, %r8
+140a1b20a: 74 26                       	je	0x140a1b232 <.text+0xa1a232>
+140a1b20c: 44 0f b7 4a 18              	movzwl	0x18(%rdx), %r9d
+140a1b211: 48 8b 0a                    	movq	(%rdx), %rcx
+140a1b214: 66 45 85 c9                 	testw	%r9w, %r9w
+140a1b218: 74 21                       	je	0x140a1b23b <.text+0xa1a23b>
+140a1b21a: 45 8d 51 ff                 	leal	-0x1(%r9), %r10d
+140a1b21e: 45 21 ca                    	andl	%r9d, %r10d
+140a1b221: 66 44 89 52 18              	movw	%r10w, 0x18(%rdx)
+140a1b226: 49 ff c8                    	decq	%r8
+140a1b229: 4c 89 42 20                 	movq	%r8, 0x20(%rdx)
+140a1b22d: 48 85 c9                    	testq	%rcx, %rcx
+140a1b230: 75 51                       	jne	0x140a1b283 <.text+0xa1a283>
+140a1b232: 48 c7 40 08 00 00 00 00     	movq	$0x0, 0x8(%rax)
+140a1b23a: c3                          	retq
+140a1b23b: 4c 8b 52 08                 	movq	0x8(%rdx), %r10
+140a1b23f: 90                          	nop
+140a1b240: 66 41 0f 6f 02              	movdqa	(%r10), %xmm0
+140a1b245: 66 44 0f d7 c8              	pmovmskb	%xmm0, %r9d
+140a1b24a: 48 81 c1 00 fb ff ff        	addq	$-0x500, %rcx           # imm = 0xFB00
+140a1b251: 49 83 c2 10                 	addq	$0x10, %r10
+140a1b255: 41 81 f9 ff ff 00 00        	cmpl	$0xffff, %r9d           # imm = 0xFFFF
+140a1b25c: 74 e2                       	je	0x140a1b240 <.text+0xa1a240>
+140a1b25e: 4c 89 52 08                 	movq	%r10, 0x8(%rdx)
+140a1b262: 48 89 0a                    	movq	%rcx, (%rdx)
+140a1b265: 41 ba fe ff ff ff           	movl	$0xfffffffe, %r10d      # imm = 0xFFFFFFFE
+140a1b26b: 45 29 ca                    	subl	%r9d, %r10d
+140a1b26e: 41 f7 d1                    	notl	%r9d
+140a1b271: 45 89 cb                    	movl	%r9d, %r11d
+140a1b274: 45 21 d3                    	andl	%r10d, %r11d
+140a1b277: 66 44 89 5a 18              	movw	%r11w, 0x18(%rdx)
+140a1b27c: 49 ff c8                    	decq	%r8
+140a1b27f: 4c 89 42 20                 	movq	%r8, 0x20(%rdx)
+140a1b283: f3 45 0f bc c1              	tzcntl	%r9d, %r8d
+140a1b288: 49 f7 d8                    	negq	%r8
+140a1b28b: 4f 8d 04 80                 	leaq	(%r8,%r8,4), %r8
+140a1b28f: 49 c1 e0 04                 	shlq	$0x4, %r8
+140a1b293: 4e 8d 0c 01                 	leaq	(%rcx,%r8), %r9
+140a1b297: 49 83 c1 b8                 	addq	$-0x48, %r9
+140a1b29b: 42 8b 4c 01 b0              	movl	-0x50(%rcx,%r8), %ecx
+140a1b2a0: 48 8b 52 28                 	movq	0x28(%rdx), %rdx
+140a1b2a4: 89 08                       	movl	%ecx, (%rax)
+140a1b2a6: 4c 89 48 08                 	movq	%r9, 0x8(%rax)
+140a1b2aa: 48 89 50 10                 	movq	%rdx, 0x10(%rax)
+140a1b2ae: 89 48 18                    	movl	%ecx, 0x18(%rax)
+140a1b2b1: c3                          	retq

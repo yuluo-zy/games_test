@@ -1,0 +1,24 @@
+--- a/crates/country-core/src/systems/wall/wall_state/publish_public_wall_state.rs
++++ b/crates/country-core/src/systems/wall/wall_state/publish_public_wall_state.rs
+@@ -148,6 +148,7 @@
+     mut dirty: ResMut<WallPublicationDirty>,
+     mut public: ResMut<PublicWalls>,
+     spatial: Res<WallSpatialHash>,
++    bulldozing: Res<crate::systems::wall::eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer>,
+     mut changed: EventWriter<OnWallChanged>,
+     mut deleted: EventWriter<OnWallDeleted>,
+ ) {
+@@ -181,6 +182,13 @@
+         &dirty,
+         &spatial,
+     );
++    // Original +0x297 is membership when each public row is rebuilt.
++    // Retain this snapshot until its next publication, even if the queue changes.
++    for id in public.last_delta.changed.clone() {
++        if let Some(state) = public.get_mut(id) {
++            state.set_being_bulldozed(bulldozing.contains(id));
++        }
++    }
+     dirty.primary.clear();
+     dirty.secondary.clear();
+     for event in &public.last_delta.events {

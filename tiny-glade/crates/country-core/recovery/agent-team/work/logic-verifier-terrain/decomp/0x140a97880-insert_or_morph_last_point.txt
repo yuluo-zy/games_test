@@ -1,0 +1,66 @@
+
+void __cdecl
+country_core::resources::terrain_stroke::TerrainStroke::insert_or_morph_last_point(void)
+
+{
+  longlong lVar1;
+  ulonglong uVar2;
+  undefined8 *puVar3;
+  float *pfVar4;
+  ulonglong uVar5;
+  ulonglong *in_RCX;
+  float *in_RDX;
+  float fVar6;
+  float in_XMM2_Da;
+  float fVar7;
+  float fVar8;
+  
+  uVar2 = in_RCX[2];
+  if (uVar2 == 1) {
+    pfVar4 = (float *)in_RCX[1];
+    if (0.001 < SQRT((in_RDX[2] - pfVar4[2]) * (in_RDX[2] - pfVar4[2]) +
+                     (in_RDX[1] - pfVar4[1]) * (in_RDX[1] - pfVar4[1]) +
+                     (*in_RDX - *pfVar4) * (*in_RDX - *pfVar4))) {
+      if (*in_RCX == 1) {
+        alloc::raw_vec::RawVec::grow_one<glam::f32::vec3::Vec3,alloc::alloc::Global>();
+        pfVar4 = (float *)in_RCX[1];
+      }
+      pfVar4[5] = in_RDX[2];
+      *(undefined8 *)(pfVar4 + 3) = *(undefined8 *)in_RDX;
+      in_RCX[2] = 2;
+    }
+  }
+  else if (uVar2 == 0) {
+    if (*in_RCX == 0) {
+      alloc::raw_vec::RawVec::grow_one<glam::f32::vec3::Vec3,alloc::alloc::Global>();
+    }
+    puVar3 = (undefined8 *)in_RCX[1];
+    *(float *)(puVar3 + 1) = in_RDX[2];
+    *puVar3 = *(undefined8 *)in_RDX;
+    in_RCX[2] = 1;
+  }
+  else {
+    uVar5 = in_RCX[1];
+    fVar6 = *(float *)((uVar5 - 0x14) + uVar2 * 0xc) - *(float *)((uVar5 - 8) + uVar2 * 0xc);
+    fVar7 = *(float *)((uVar5 - 0x18) + uVar2 * 0xc) - *(float *)((uVar5 - 0xc) + uVar2 * 0xc);
+    fVar8 = *(float *)((uVar5 - 0x10) + uVar2 * 0xc) - *(float *)((uVar5 - 4) + uVar2 * 0xc);
+    if (in_XMM2_Da <= SQRT(fVar8 * fVar8 + fVar6 * fVar6 + fVar7 * fVar7)) {
+      if (uVar2 < 0x400) {
+        if (uVar2 == *in_RCX) {
+          alloc::raw_vec::RawVec::grow_one<glam::f32::vec3::Vec3,alloc::alloc::Global>();
+          uVar5 = in_RCX[1];
+        }
+        *(float *)(uVar5 + 8 + uVar2 * 0xc) = in_RDX[2];
+        *(undefined8 *)(uVar5 + uVar2 * 0xc) = *(undefined8 *)in_RDX;
+        in_RCX[2] = uVar2 + 1;
+      }
+    }
+    else {
+      lVar1 = uVar5 + uVar2 * 0xc;
+      *(float *)(lVar1 + -4) = in_RDX[2];
+      *(undefined8 *)(lVar1 + -0xc) = *(undefined8 *)in_RDX;
+    }
+  }
+  return;
+}
+

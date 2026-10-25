@@ -1,0 +1,90 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_draw_terrain.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_draw_terrain.rs
+@@ -76,6 +76,8 @@
+     pub state: u8,
+     /// subtype==3 时写入的 drag 距离（disasm 0x140aa00c3 `MOVSS [R14],XMM0`）。
+     pub drag_distance: f32,
++    /// Host projection of the original editing resource's active draw flag.
++    pub active: bool,
+ }
+ 
+ /// `ui_draw_terrain` @0x140a9fdc0（逐语句重建）。
+@@ -90,6 +92,8 @@
+     mut changed: EventWriter<EvTerrainStrokeChanged>,
+     mut recalculate: EventWriter<RecalculateHeightMapCmd>,
+     mut draw_state: ResMut<TerrainDrawState>,
++    mut pending: ResMut<PendingTerrainHistory>,
++    mut stairs: ResMut<StairsPlacementBucket>,
+ ) {
+     // 门：AppMode::Terrain（O：0x140a9fdf9 `CMP dword [RAX],0xa`）。
+     if mode.native_tag() != 10 {
+@@ -161,6 +165,7 @@
+     match state {
+         1 => {
+             if let Ok(Some(id)) = editing.new_stroke(position.to_array()) {
++                draw_state.active = true;
+                 changed.write(EvTerrainStrokeChanged(StrokeId(id.0)));
+             }
+         }
+@@ -179,6 +184,19 @@
+                 // returns without changing a point (near duplicate / 1024 cap).
+                 changed.write(EvTerrainStrokeChanged(id));
+             }
++        }
++        3 => {
++            let id = editing.next_index.checked_sub(1).map(StrokeId);
++            if let (Some(id), Ok(stroke)) = (id, editing.get_last_mut_stroke()) {
++                pending.stage(TerrainEdit::NewTerrainStroke {
++                    index: id,
++                    height_ws: stroke.height_ws,
++                    stroke_pts: stroke.points.clone(),
++                });
++                stairs.entries.push(StairsPlacementEntry { tag: 0, ..Default::default() });
++                recalculate.write(RecalculateHeightMapCmd);
++            }
++            draw_state.active = false;
+         }
+         _ => {}
+     }
+@@ -259,3 +277,41 @@
+         assert_eq!(world.resource::<TerrainDrawState>().state, 2);
+     }
+ }
++
++
++#[cfg(test)]
++mod typed_history_release_tests {
++    use super::*;
++    use crate::systems::{terrain::{register_terrain_events, deferred_terrain_history::history_record_terrain}, ui::resources::ui_state::{UiInteraction, WidgetId}};
++    use crate::resources::history::{History, EditType, transactions::ObservedHistoryLedger};
++
++    #[test]
++    fn release_records_an_owned_typed_stroke_once_and_resets_pending() {
++        let mut world = World::new();
++        register_terrain_events(&mut world);
++        world.insert_resource(AppMode::Terrain);
++        world.insert_resource(CursorTerrainRaycast::default());
++        world.insert_resource(TerrainHeightsData::<TerrainHeightSsbo>::new());
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.new_stroke([1.0, 2.0, 3.0]).unwrap();
++        editing.get_last_mut_stroke().unwrap().points.push([4.0, 5.0, 6.0]);
++        world.insert_resource(TerrainEditingData(editing));
++        world.insert_resource(GladeBorder(BorderShape::Circle(Circle2d::new(Vec2::ZERO, 100.0))));
++        world.insert_resource(UiState::new(UiInteraction { native_tag: 2, native_phase: 5, widget: WidgetId::clearing_canvas(DRAW_CANVAS_NAME) }));
++        world.resource_mut::<TerrainDrawState>().state = 2;
++        world.resource_mut::<TerrainDrawState>().active = true;
++        let mut history: History = History::from_observed(ObservedHistoryLedger { entries: vec![], cursor: -1, undo_anchor: -1, resolved_snapshots: vec![], observed_count_58: 0, mutation_nonce: 0 });
++        history.start_input_recording(7).unwrap();
++        world.insert_resource(history);
++        let mut schedule = Schedule::default();
++        schedule.add_systems((ui_draw_terrain, history_record_terrain::<()>).chain());
++        schedule.run(&mut world);
++        assert!(world.resource::<PendingTerrainHistory>().is_empty());
++        assert!(!world.resource::<TerrainDrawState>().active);
++        let recorded = &world.resource::<History>().pending().unwrap().edits;
++        assert_eq!(recorded.len(), 1);
++        assert!(matches!(&recorded[0], EditType::Terrain(edit) if matches!(edit.as_ref(), TerrainEdit::NewTerrainStroke { index: StrokeId(0), height_ws, stroke_pts } if *height_ws == 2.5 && *stroke_pts == [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])));
++        schedule.run(&mut world);
++        assert_eq!(world.resource::<History>().pending().unwrap().edits.len(), 1);
++    }
++}

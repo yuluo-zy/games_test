@@ -1,0 +1,3373 @@
+{
+  "schema_version": 1,
+  "baseline_date": "2026-10-13",
+  "policy": "原crate/目录/文件为进度主键；实现、接线和验证独立；不推算整游戏百分比；历史报告不自动升级为当前验收。",
+  "original_function_sources": [
+    "evidence/roof-tiles/source-map.json"
+  ],
+  "function_bindings": [
+    {
+      "module": "crates/country-core/src/resources/roofs",
+      "original_source": "crates/country-core/src/resources/roofs/roof_shape.rs",
+      "original_symbol": "Roof::new",
+      "restoration": "reconstruction/roof/roof_state.rs",
+      "rust_function": "new_observed",
+      "baseline": "B",
+      "status": "reported_verified_local",
+      "scope": "256构造器输入的原字节写入；未写padding保留，不证明完整Rust ABI",
+      "evidence": [
+        "evidence/native/roof-state-verification.json"
+      ]
+    },
+    {
+      "module": "crates/country-core/src/resources/roofs",
+      "original_source": "crates/country-core/src/resources/roofs/roof_shape.rs",
+      "original_symbol": "Roof::ty",
+      "restoration": "reconstruction/roof/roof_state.rs",
+      "rust_function": "ty_observed",
+      "baseline": "B",
+      "status": "reported_verified_local",
+      "scope": "1348观察输入的布尔返回；不证明完整Roof类型",
+      "evidence": [
+        "evidence/native/roof-state-verification.json"
+      ]
+    },
+    {
+      "module": "crates/country-core/src/resources/roofs",
+      "original_source": "crates/country-core/src/resources/roofs/roof_shape.rs",
+      "original_symbol": "Roof::is_gable",
+      "restoration": "reconstruction/roof/roof_state.rs",
+      "rust_function": "is_gable_observed",
+      "baseline": "B",
+      "status": "reported_verified_local",
+      "scope": "1348观察输入的布尔返回；NaN比较遵原指令范围",
+      "evidence": [
+        "evidence/native/roof-state-verification.json"
+      ]
+    },
+    {
+      "module": "crates/country-core/src/resources",
+      "original_source": "crates/country-core/src/resources/window.rs",
+      "original_symbol": "WindowSize::aspect_ratio",
+      "restoration": "reconstruction/math/window_aspect.rs",
+      "rust_function": "aspect_ratio_observed",
+      "baseline": "B",
+      "status": "reported_verified_local",
+      "scope": "1280输入、原20字节完整局部f32结果；不证明完整WindowSize布局",
+      "evidence": [
+        "evidence/native/window-aspect-verification.json"
+      ]
+    },
+    {
+      "module": "crates/rhapsody/src/rg",
+      "original_source": null,
+      "original_symbol": "ResourceInfo::link_up_next_access_chains",
+      "restoration": "reconstruction/render/resource_info.rs",
+      "rust_function": "link_up_next_access_chains",
+      "baseline": "B",
+      "status": "reported_verified_local",
+      "scope": "原0x140bd47d0访问链规则；计数与样本边界见子报告；定义文件精确归属待核实",
+      "evidence": [
+        "evidence/render-recovery/verification.json",
+        "evidence/render-recovery/findings.md"
+      ]
+    },
+    {
+      "module": "crates/rhapsody/src/rg",
+      "original_source": null,
+      "original_symbol": "ResourceInfo::calculate_lifetime_events",
+      "restoration": "reconstruction/render/resource_info.rs",
+      "rust_function": "calculate_lifetime_events",
+      "baseline": "B",
+      "status": "reported_verified_local",
+      "scope": "原0x140bd4860生命周期事件规则；非完整ResourceInfo::calculate/图编译；定义文件精确归属待核实",
+      "evidence": [
+        "evidence/render-recovery/verification.json",
+        "evidence/render-recovery/findings.md"
+      ]
+    },
+    {
+      "module": "crates/rhapsody/src/rg",
+      "original_source": null,
+      "original_symbol": "PassResourceAccessType::can_be_concurrent_with",
+      "restoration": "reconstruction/render/resource_info.rs",
+      "rust_function": "can_be_concurrent_with",
+      "baseline": "B",
+      "status": "reported_verified_local",
+      "scope": "原0x140bece70并发访问判断；classifier为外供公开依赖边界，定义文件精确归属待核实",
+      "evidence": [
+        "evidence/render-recovery/verification.json",
+        "evidence/render-recovery/findings.md"
+      ]
+    },
+    {
+      "module": "crates/paths/src",
+      "original_source": "crates/paths/src/lib.rs",
+      "original_symbol": "paths::config",
+      "restoration": "reconstruction/shared-foundation/crates/paths/src/lib.rs",
+      "rust_function": "config",
+      "baseline": "B",
+      "status": "candidate_static_evidence",
+      "scope": "B限定静态业务规则和候选测试，原全接口行为等价未完成",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/paths-language/delivery.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/validation.json"
+      ]
+    },
+    {
+      "module": "crates/paths/src",
+      "original_source": "crates/paths/src/lib.rs",
+      "original_symbol": "paths::saves",
+      "restoration": "reconstruction/shared-foundation/crates/paths/src/lib.rs",
+      "rust_function": "saves",
+      "baseline": "B",
+      "status": "candidate_static_evidence",
+      "scope": "B限定静态业务规则和候选测试，原全接口行为等价未完成",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/paths-language/delivery.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/validation.json"
+      ]
+    },
+    {
+      "module": "crates/paths/src",
+      "original_source": "crates/paths/src/lib.rs",
+      "original_symbol": "paths::backup_saves",
+      "restoration": "reconstruction/shared-foundation/crates/paths/src/lib.rs",
+      "rust_function": "backup_saves",
+      "baseline": "B",
+      "status": "candidate_static_evidence",
+      "scope": "B限定静态业务规则和候选测试，原全接口行为等价未完成",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/paths-language/delivery.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/validation.json"
+      ]
+    },
+    {
+      "module": "crates/paths/src",
+      "original_source": "crates/paths/src/lib.rs",
+      "original_symbol": "paths::tmp",
+      "restoration": "reconstruction/shared-foundation/crates/paths/src/lib.rs",
+      "rust_function": "tmp",
+      "baseline": "B",
+      "status": "candidate_static_evidence",
+      "scope": "B限定静态业务规则和候选测试，原全接口行为等价未完成",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/paths-language/delivery.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/validation.json"
+      ]
+    },
+    {
+      "module": "crates/paths/src",
+      "original_source": "crates/paths/src/lib.rs",
+      "original_symbol": "paths::deleted_saves",
+      "restoration": "reconstruction/shared-foundation/crates/paths/src/lib.rs",
+      "rust_function": "deleted_saves",
+      "baseline": "B",
+      "status": "candidate_static_evidence",
+      "scope": "B限定静态业务规则和候选测试，原全接口行为等价未完成",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/paths-language/delivery.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/validation.json"
+      ]
+    },
+    {
+      "module": "crates/paths/src",
+      "original_source": "crates/paths/src/lib.rs",
+      "original_symbol": "paths::installed",
+      "restoration": "reconstruction/shared-foundation/crates/paths/src/lib.rs",
+      "rust_function": "installed",
+      "baseline": "B",
+      "status": "candidate_static_evidence",
+      "scope": "B限定静态业务规则和候选测试，原全接口行为等价未完成",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/paths-language/delivery.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/validation.json"
+      ]
+    },
+    {
+      "module": "crates/paths/src",
+      "original_source": "crates/paths/src/lib.rs",
+      "original_symbol": "paths::standard_app_root_path",
+      "restoration": "reconstruction/shared-foundation/crates/paths/src/lib.rs",
+      "rust_function": "standard_app_root_path",
+      "baseline": "B",
+      "status": "candidate_static_evidence",
+      "scope": "B限定静态业务规则和候选测试，原全接口行为等价未完成",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/paths-language/delivery.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/validation.json"
+      ]
+    },
+    {
+      "module": "crates/paths/src",
+      "original_source": "crates/paths/src/lib.rs",
+      "original_symbol": "paths::find_standard_app_root_path",
+      "restoration": "reconstruction/shared-foundation/crates/paths/src/lib.rs",
+      "rust_function": "find_standard_app_root_path",
+      "baseline": "B",
+      "status": "candidate_static_evidence",
+      "scope": "B限定静态业务规则和候选测试，原全接口行为等价未完成",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/paths-language/delivery.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/validation.json"
+      ]
+    },
+    {
+      "module": "crates/paths/src",
+      "original_source": "crates/paths/src/lib.rs",
+      "original_symbol": "paths::initialize_paths",
+      "restoration": "reconstruction/shared-foundation/crates/paths/src/lib.rs",
+      "rust_function": "initialize_paths",
+      "baseline": "B",
+      "status": "candidate_static_evidence",
+      "scope": "B限定静态业务规则和候选测试，原全接口行为等价未完成",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/paths-language/delivery.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/validation.json"
+      ]
+    },
+    {
+      "module": "crates/paths/src",
+      "original_source": "crates/paths/src/lib.rs",
+      "original_symbol": "paths::ensure_path<std::path::PathBuf>",
+      "restoration": "reconstruction/shared-foundation/crates/paths/src/lib.rs",
+      "rust_function": "ensure_path",
+      "baseline": "B",
+      "status": "candidate_static_evidence",
+      "scope": "B限定静态业务规则和候选测试，原全接口行为等价未完成",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/paths-language/delivery.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/validation.json"
+      ]
+    },
+    {
+      "module": "crates/tabloid/src",
+      "original_source": "crates/tabloid/src/lib.rs",
+      "original_symbol": "tabloid::Publisher<T>::publish",
+      "restoration": "reconstruction/shared-foundation/crates/tabloid/src/lib.rs",
+      "rust_function": "publish",
+      "baseline": "B",
+      "status": "candidate_static_evidence",
+      "scope": "B限定静态业务规则和候选测试，原全接口行为等价未完成",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/delivery.json",
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/CONTRACT.md"
+      ]
+    },
+    {
+      "module": "crates/tabloid/src",
+      "original_source": "crates/tabloid/src/lib.rs",
+      "original_symbol": "tabloid::Publisher<T>::subscribe",
+      "restoration": "reconstruction/shared-foundation/crates/tabloid/src/lib.rs",
+      "rust_function": "subscribe",
+      "baseline": "B",
+      "status": "candidate_static_evidence",
+      "scope": "B限定静态业务规则和候选测试，原全接口行为等价未完成",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/delivery.json",
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/CONTRACT.md"
+      ]
+    },
+    {
+      "module": "crates/tabloid/src",
+      "original_source": "crates/tabloid/src/lib.rs",
+      "original_symbol": "tabloid::Subscriber<T>::take",
+      "restoration": "reconstruction/shared-foundation/crates/tabloid/src/lib.rs",
+      "rust_function": "take",
+      "baseline": "B",
+      "status": "candidate_static_evidence",
+      "scope": "B限定静态业务规则和候选测试，原全接口行为等价未完成",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/delivery.json",
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/CONTRACT.md"
+      ]
+    },
+    {
+      "module": "crates/tabloid/src",
+      "original_source": "crates/tabloid/src/lib.rs",
+      "original_symbol": "private publication retain predicate",
+      "restoration": "reconstruction/shared-foundation/crates/tabloid/src/lib.rs",
+      "rust_function": "publish",
+      "baseline": "B",
+      "status": "candidate_static_evidence",
+      "scope": "B限定静态业务规则和候选测试，原全接口行为等价未完成",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/delivery.json",
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/CONTRACT.md"
+      ]
+    },
+    {
+      "module": "crates/lang-lib/src",
+      "original_source": "crates/lang-lib/src/lib.rs",
+      "original_symbol": "lang_lib::lang_pack_path",
+      "restoration": "reconstruction/shared-foundation/crates/lang-lib/src/lib.rs",
+      "rust_function": "lang_pack_path",
+      "baseline": "B",
+      "status": "candidate_static_evidence",
+      "scope": "B限定静态业务规则和候选测试，原全接口行为等价未完成",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/lang-small/summary.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/validation.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/native-result.json"
+      ]
+    },
+    {
+      "module": "crates/lang-lib/src",
+      "original_source": "crates/lang-lib/src/lib.rs",
+      "original_symbol": "lang_lib::load_locale",
+      "restoration": "reconstruction/shared-foundation/crates/lang-lib/src/lib.rs",
+      "rust_function": "load_locale",
+      "baseline": "B",
+      "status": "candidate_static_evidence",
+      "scope": "B限定静态业务规则和候选测试，原全接口行为等价未完成",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/lang-small/summary.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/validation.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/native-result.json"
+      ]
+    },
+    {
+      "module": "crates/lang-lib/src",
+      "original_source": "crates/lang-lib/src/lib.rs",
+      "original_symbol": "lang_lib::load_locale_impl",
+      "restoration": "reconstruction/shared-foundation/crates/lang-lib/src/lib.rs",
+      "rust_function": "load_locale_impl",
+      "baseline": "B",
+      "status": "candidate_static_evidence",
+      "scope": "B限定静态业务规则和候选测试，原全接口行为等价未完成",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/lang-small/summary.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/validation.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/native-result.json"
+      ]
+    },
+    {
+      "module": "crates/lang-lib/src",
+      "original_source": "crates/lang-lib/src/lib.rs",
+      "original_symbol": "lang_lib::load_last_used_locale",
+      "restoration": "reconstruction/shared-foundation/crates/lang-lib/src/lib.rs",
+      "rust_function": "load_last_used_locale",
+      "baseline": "B",
+      "status": "candidate_static_evidence",
+      "scope": "B限定静态业务规则和候选测试，原全接口行为等价未完成",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/lang-small/summary.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/validation.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/native-result.json"
+      ]
+    },
+    {
+      "module": "crates/lang-lib/src",
+      "original_source": "crates/lang-lib/src/lib.rs",
+      "original_symbol": "lang_lib::lookup",
+      "restoration": "reconstruction/shared-foundation/crates/lang-lib/src/lib.rs",
+      "rust_function": "lookup",
+      "baseline": "B",
+      "status": "candidate_static_evidence",
+      "scope": "B限定静态业务规则和候选测试，原全接口行为等价未完成",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/lang-small/summary.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/validation.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/native-result.json"
+      ]
+    },
+    {
+      "module": "crates/lang-lib/src",
+      "original_source": "crates/lang-lib/src/lib.rs",
+      "original_symbol": "lang_lib::game_locale",
+      "restoration": "reconstruction/shared-foundation/crates/lang-lib/src/lib.rs",
+      "rust_function": "game_locale",
+      "baseline": "B",
+      "status": "candidate_static_evidence",
+      "scope": "B限定静态业务规则和候选测试，原全接口行为等价未完成",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/lang-small/summary.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/validation.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/native-result.json"
+      ]
+    },
+    {
+      "module": "crates/lang-lib/src",
+      "original_source": "crates/lang-lib/src/language_library.rs",
+      "original_symbol": "lang_lib::language_library::LanguageLibrary::get",
+      "restoration": "reconstruction/shared-foundation/crates/lang-lib/src/language_library.rs",
+      "rust_function": "get",
+      "baseline": "B",
+      "status": "candidate_static_evidence",
+      "scope": "B限定静态业务规则和候选测试，原全接口行为等价未完成",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/lang-small/summary.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/validation.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/native-result.json"
+      ]
+    },
+    {
+      "module": "crates/lang-lib/src",
+      "original_source": "crates/lang-lib/src/language_library.rs",
+      "original_symbol": "lang_lib::language_library::LanguageLibrary::try_from_yml",
+      "restoration": "reconstruction/shared-foundation/crates/lang-lib/src/language_library.rs",
+      "rust_function": "try_from_yml",
+      "baseline": "B",
+      "status": "candidate_static_evidence",
+      "scope": "B限定静态业务规则和候选测试，原全接口行为等价未完成",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/lang-small/summary.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/validation.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/native-result.json"
+      ]
+    },
+    {
+      "module": "crates/asset-pipe/src",
+      "original_source": "crates/asset-pipe/src/texture.rs",
+      "original_symbol": "B entry  0x1417b7300?compile_or_load_texture_assets",
+      "restoration": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+      "rust_function": "compile_or_load_texture_assets",
+      "baseline": "B",
+      "status": "candidate_business_comparison",
+      "scope": "index loading/conditional build; modern root argument; outer flags/logs not recreated",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "module": "crates/asset-pipe/src",
+      "original_source": "crates/asset-pipe/src/texture.rs",
+      "original_symbol": "B entry  0x1417b7790?compile_texture_assets",
+      "restoration": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+      "rust_function": "compile_texture_assets",
+      "baseline": "B",
+      "status": "candidate_business_comparison",
+      "scope": "scan, tolerant metadata, sorted names, jobs complete before metadata persistence; contract fixture",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "module": "crates/asset-pipe/src",
+      "original_source": "crates/asset-pipe/src/texture.rs",
+      "original_symbol": "B entry  0x1417b8f50?compile_texture_asset",
+      "restoration": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+      "rust_function": "compile_texture_asset",
+      "baseline": "B",
+      "status": "candidate_business_comparison",
+      "scope": "descriptor+mtime+magic/version cache and output; synthetic actual-file fixture",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "module": "crates/asset-pipe/src",
+      "original_source": "crates/asset-pipe/src/texture.rs",
+      "original_symbol": "B entry  0x1417bbc10?process_regular_image / process_decoded_image",
+      "restoration": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+      "rust_function": "process_regular_image",
+      "baseline": "B",
+      "status": "candidate_business_comparison",
+      "scope": "gamma, resize, mips, format; instruction/control-flow comparison, contracts; no full original entry differential",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "module": "crates/asset-pipe/src",
+      "original_source": "crates/asset-pipe/src/texture.rs",
+      "original_symbol": "B entry  0x1417bc930?next_level",
+      "restoration": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+      "rust_function": "next_level",
+      "baseline": "B",
+      "status": "candidate_business_comparison",
+      "scope": "private mip closure; base resize/padding/type conversion; original address is closure, new API is own port",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "module": "crates/asset-pipe/src",
+      "original_source": "crates/asset-pipe/src/texture.rs",
+      "original_symbol": "B entry  0x1420e2bd0,0x1420e3080?with_rgba8",
+      "restoration": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+      "rust_function": "with_rgba8",
+      "baseline": "B",
+      "status": "candidate_business_comparison",
+      "scope": "RGB-only output transfer; original generic specializations; wrapper differs in API",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "module": "crates/asset-pipe/src",
+      "original_source": "crates/asset-pipe/src/texture.rs",
+      "original_symbol": "B entry  0x1417bcd20?srgb_oetf",
+      "restoration": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+      "rust_function": "srgb_oetf",
+      "baseline": "B",
+      "status": "reported_verified_local",
+      "scope": "4364 original private instruction cases bit-identical",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/gamma-verification.json"
+      ]
+    },
+    {
+      "module": "crates/asset-pipe/src",
+      "original_source": "crates/asset-pipe/src/texture.rs",
+      "original_symbol": "B entry  0x1417bcd60?compress / bc7_settings",
+      "restoration": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+      "rust_function": "compress",
+      "baseline": "B",
+      "status": "candidate_business_comparison",
+      "scope": "original channel selection/basic presets; dependency codecs reused; contract only, not compressed-pixel native differential",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "module": "crates/asset-pipe/src",
+      "original_source": "crates/asset-pipe/src/texture.rs",
+      "original_symbol": "B entry  0x1417ba565..0x1417bafb7?process_dds_image / process_dds",
+      "restoration": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+      "rust_function": "process_dds_image",
+      "baseline": "B",
+      "status": "candidate_business_comparison",
+      "scope": "inlined DDS route in compile_texture_asset; format/layer-zero/dimensions clauses checked",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "module": "crates/asset-pipe/src",
+      "original_source": "crates/asset-pipe/src/texture.rs",
+      "original_symbol": "B entry  0x1417b99bc..0x1417ba6e4?assemble_array",
+      "restoration": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+      "rust_function": "assemble_array",
+      "baseline": "B",
+      "status": "candidate_business_comparison",
+      "scope": "inlined array route in compile_texture_asset; invariants and layer-major join checked",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "module": "crates/asset/src",
+      "original_source": "crates/asset/src/inheritable.rs",
+      "original_symbol": "B entry  0x142689b90,0x142689ed0,0x14268a2e0,0x14268a700,0x142424d90?Inheritable::inherit_from / Option::inherit_from / HashMap::inherit_from",
+      "restoration": "reconstruction/shared-foundation/crates/asset/src/inheritable.rs",
+      "rust_function": "inherit_from",
+      "baseline": "B",
+      "status": "candidate_business_comparison",
+      "scope": "control-flow comparison; own semantic data types; not native ABI",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "module": "crates/asset/src",
+      "original_source": "crates/asset/src/inheritable.rs",
+      "original_symbol": "B entry  0x14268aa60,0x14268aee0,0x14268b260,0x14268b770?deserialize_inheritable_option",
+      "restoration": "reconstruction/shared-foundation/crates/asset/src/inheritable.rs",
+      "rust_function": "deserialize_inheritable_option",
+      "baseline": "B",
+      "status": "candidate_business_comparison",
+      "scope": "typed RON thin adaptation; actual prefab plus bare/Some/None/unit/error contracts",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "module": "crates/asset/src",
+      "original_source": "crates/asset/src/prefab.rs",
+      "original_symbol": "B entry  0x141556080?PrefabName::new",
+      "restoration": "reconstruction/shared-foundation/crates/asset/src/prefab.rs",
+      "rust_function": "new",
+      "baseline": "B",
+      "status": "candidate_business_comparison",
+      "scope": "Arc<str> wrapper, dependency allocation semantics reused",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "module": "crates/asset/src",
+      "original_source": "crates/asset/src/prefab.rs",
+      "original_symbol": "B entry  0x141556130,0x14067dd80?PrefabName::as_name_ref / AsRef::as_ref",
+      "restoration": "reconstruction/shared-foundation/crates/asset/src/prefab.rs",
+      "rust_function": "as_name_ref",
+      "baseline": "B",
+      "status": "candidate_business_comparison",
+      "scope": "borrowed name/access; no native-layout claim",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "module": "crates/asset/src",
+      "original_source": "crates/asset/src/prefab/config.rs",
+      "original_symbol": "B entry  0x142424d90?PrefabConfig::inherit_from / PrefabPartConfig::inherit_from",
+      "restoration": "reconstruction/shared-foundation/crates/asset/src/prefab/config.rs",
+      "rust_function": "inherit_from",
+      "baseline": "B",
+      "status": "candidate_business_comparison",
+      "scope": "map merge and default resolution candidate; unresolved/default paths not exhaustive",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "module": "crates/asset/src",
+      "original_source": "crates/asset/src/prefab/config.rs",
+      "original_symbol": "B entry  0x142879c20,0x142879de0,0x142689ed0,0x142689b90?PrefabRtConfig::inherit_from / PrefabRenderConfig::inherit_from / AudioTriggerConfig::inherit_from",
+      "restoration": "reconstruction/shared-foundation/crates/asset/src/prefab/config.rs",
+      "rust_function": "inherit_from",
+      "baseline": "B",
+      "status": "candidate_business_comparison",
+      "scope": "field-level override candidates; semantic mappings, not native structure declarations",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "module": "crates/asset/src",
+      "original_source": "crates/asset/src/prefab/scan.rs",
+      "original_symbol": "B entry  0x142009df0?PrefabDependencies::add_file_to_prefab_dependency",
+      "restoration": "reconstruction/shared-foundation/crates/asset/src/prefab/scan.rs",
+      "rust_function": "add_file_to_prefab_dependency",
+      "baseline": "B",
+      "status": "candidate_business_comparison",
+      "scope": "file→prefab vector relationship; duplicate registrations retained",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "module": "crates/asset/src",
+      "original_source": "crates/asset/src/prefab/scan.rs",
+      "original_symbol": "B entry  0x14200a1b0?scan_asset_tree",
+      "restoration": "reconstruction/shared-foundation/crates/asset/src/prefab/scan.rs",
+      "rust_function": "scan_asset_tree",
+      "baseline": "B",
+      "status": "candidate_business_comparison",
+      "scope": "25 original shipped prefabs/28 dependency files parse+merge",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "module": "crates/asset/src",
+      "original_source": "crates/asset/src/prefab/scan.rs",
+      "original_symbol": "B entry  0x14200a5f0?scan_asset_tree_walker",
+      "restoration": "reconstruction/shared-foundation/crates/asset/src/prefab/scan.rs",
+      "rust_function": "scan_asset_tree_walker",
+      "baseline": "B",
+      "status": "candidate_business_comparison",
+      "scope": "default.ron inheritance and recursion; consumer native differential remains",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "module": "crates/asset/src",
+      "original_source": "crates/asset/src/prefab/scan.rs",
+      "original_symbol": "B entry  0x14200ba50?load_prefab_config",
+      "restoration": "reconstruction/shared-foundation/crates/asset/src/prefab/scan.rs",
+      "rust_function": "load_prefab_config",
+      "baseline": "B",
+      "status": "candidate_business_comparison",
+      "scope": "original RON delegation; modern compiler adaptation",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "module": "crates/asset/src",
+      "original_source": "crates/asset/src/texture/config.rs",
+      "original_symbol": "B entry  0x142456250?InheritableTextureOpts::inherit_from / into_concrete",
+      "restoration": "reconstruction/shared-foundation/crates/asset/src/texture/config.rs",
+      "rust_function": "inherit_from",
+      "baseline": "B",
+      "status": "candidate_business_comparison",
+      "scope": "field resolution candidate; defaults/source file syntax validated; all panic/default cases not exhaustive",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "module": "crates/asset/src",
+      "original_source": "crates/asset/src/texture/scan.rs",
+      "original_symbol": "B entry  0x1420d8ba0?scan_asset_tree",
+      "restoration": "reconstruction/shared-foundation/crates/asset/src/texture/scan.rs",
+      "rust_function": "scan_asset_tree",
+      "baseline": "B",
+      "status": "candidate_business_comparison",
+      "scope": "root defaults and mapping; original configs/fixture scan",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "module": "crates/asset/src",
+      "original_source": "crates/asset/src/texture/scan.rs",
+      "original_symbol": "B entry  0x1420d8d00?scan_asset_tree_walker",
+      "restoration": "reconstruction/shared-foundation/crates/asset/src/texture/scan.rs",
+      "rust_function": "scan_asset_tree_walker",
+      "baseline": "B",
+      "status": "candidate_business_comparison",
+      "scope": "configuration inheritance, extension selection, consecutive array indexing; fixtures",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "module": "crates/country-core/src/resources/roofs",
+      "status": "integrated_partial",
+      "ownership": "private_game_source",
+      "scope": "Roof88、参数/形状、曲面/Curve2、脊线、方向与Flat/Rim部分消费者已恢复。",
+      "restoration_globs": [
+        "reconstruction/roof/surface.rs",
+        "reconstruction/roof/ridge.rs",
+        "reconstruction/roof/roof_state.rs",
+        "reconstruction/roof/parameters.rs"
+      ],
+      "functions": [
+        "Roof::new/ty/is_gable",
+        "profile/截面/Curve2构造、采样、导数和切线",
+        "RoofRidgeDims、roof_tip_offset_xz、世界点/线段脊线",
+        "Width/Length参数映射与檐口计算"
+      ],
+      "gaps": [
+        "roof_noise/buffers/trigger_volume/tile_sim等全部字段与消费者未闭合",
+        "A/C布局及完整ABI单独核实",
+        "ARM矩形case14 filler Y仍有1ULP历史失败"
+      ],
+      "verification": "限定原码报告：surface23810、ridge14776；参数与状态有独立对照。不是全部11文件验收。",
+      "evidence": [
+        "evidence/roof-surface/verification.json",
+        "evidence/roof-ridge/verification.json",
+        "evidence/multi-version/B-parameters-verification.json"
+      ],
+      "integration": "部分由真实Bevy建筑runtime消费",
+      "next_action": "roof_noise/buffers/trigger_volume/tile_sim等全部字段与消费者未闭合"
+    },
+    {
+      "module": "crates/country-core/src/resources/walls",
+      "status": "integrated_partial",
+      "ownership": "private_game_source",
+      "scope": "Public/InnerWall投影、开口存储、subtype、装饰字段与部分附着候选。",
+      "restoration_globs": [
+        "reconstruction/building/wall_state.rs",
+        "reconstruction/building/wall_height_authority.rs",
+        "reconstruction/building/wall_holes.rs",
+        "reconstruction/building/decorator_subtype.rs",
+        "reconstruction/building/decorator_info.rs",
+        "reconstruction/building/wall_decorator_archivist.rs",
+        "reconstruction/wall/height_rules.rs"
+      ],
+      "functions": [
+        "PublicWalls::get合法性读取",
+        "max_y/max_y_gable/flat_roof_y",
+        "WallHoleStorage周期副本/finalize/cache",
+        "derive_decorator_subtype和Info72字段投影"
+      ],
+      "gaps": [
+        "未知published字段及PublicWall+296生产者",
+        "全部资源字段/布局和wall_attachment跨版ABI",
+        "新Info/storage绑定未统一验收"
+      ],
+      "verification": "高度、hole、subtype有原码局部证明；Info和部分storage为新增候选，不能整体通过。",
+      "evidence": [
+        "evidence/scope-priorities/wall-rules-verification.json",
+        "evidence/building-holes/storage-B-verification.json",
+        "evidence/building-placement/B-subtype-verification.json",
+        "evidence/building-decorator-info/findings.md"
+      ],
+      "integration": "已验收子集接真实World，新增字段另列未验证",
+      "next_action": "未知published字段及PublicWall+296生产者"
+    },
+    {
+      "module": "crates/country-core/src/systems/wall",
+      "status": "integrated_partial",
+      "ownership": "private_game_source",
+      "scope": "raw Curve2→terrain/raster/prepared→cache/publication→Roof/openings/brick消费者；创建、高度、删除/bulldoze及部分矩形编辑。",
+      "restoration_globs": [
+        "reconstruction/building/wall_collection.rs",
+        "reconstruction/building/wall_publication.rs",
+        "reconstruction/building/wall_spatial_index.rs",
+        "reconstruction/building/wall_cache.rs",
+        "reconstruction/building/wall_freeform_cache.rs",
+        "reconstruction/building/wall_gable.rs",
+        "reconstruction/building/wall_authoring.rs",
+        "reconstruction/building/wall_height_command.rs",
+        "reconstruction/building/wall_bulldoze.rs",
+        "reconstruction/building/wall_rectangle_edit.rs",
+        "reconstruction/building/wall_pending_changed.rs",
+        "reconstruction/building/wall_hole_invalidation.rs",
+        "reconstruction/building/roof_associations.rs",
+        "reconstruction/crates/tg-building-runtime/src/wall_authoring.rs",
+        "reconstruction/crates/tg-building-runtime/src/wall_height.rs",
+        "reconstruction/crates/tg-building-runtime/src/wall_bulldoze.rs",
+        "reconstruction/crates/tg-building-runtime/src/wall_rectangle_edit.rs",
+        "reconstruction/crates/tg-building-runtime/src/wall_pending_changed.rs"
+      ],
+      "functions": [
+        "publish_public_wall_state/采集与dirty更新",
+        "circle/rectangle/freeform缓存和逐arch gable",
+        "AdjustWallHeightCmd读取、clamp、authority/audio",
+        "创建/直接删除/animate_wall_bulldoze",
+        "矩形finish/cancel/enclosure及PendingWallChanged候选"
+      ],
+      "gaps": [
+        "完整UI placement/startup、snapping/merge/splitter未恢复",
+        "新矩形/Enclosure等整批尚未统一验证",
+        "原fork排程与跨writer顺序"
+      ],
+      "verification": "阶段4冻结54测试/67限定证明；新增并行批不继承冻结验收。",
+      "evidence": [
+        "evidence/building-integrate/stage-reviews/2026-10-11-stage4-frozen.md",
+        "evidence/building-integrate/stage-reviews/stage4-frozen/summary.json",
+        "evidence/building-wall-history/findings.md"
+      ],
+      "integration": "已验收链为真实Bevy World；新增链implemented_unverified",
+      "next_action": "完整UI placement/startup、snapping/merge/splitter未恢复"
+    },
+    {
+      "module": "crates/country-core/src/resources/history",
+      "status": "integrated_partial",
+      "ownership": "private_game_source",
+      "scope": "A/B/C历史格式解析、Wall/Roof事务和游戏命令字段；其他命令保留未知值。",
+      "restoration_globs": [
+        "reconstruction/crates/tg-history/src/lib.rs",
+        "reconstruction/history/transaction.rs",
+        "reconstruction/history/building_transactions.rs",
+        "reconstruction/building/wall_history_edit.rs"
+      ],
+      "functions": [
+        "History start/add/finish/cursor、分叉截redo",
+        "Roof五类owner和Wall compound edit",
+        "原历史大整数ID/未知tag保留"
+      ],
+      "gaps": [
+        "Path/Garden/Color/Stairs等完整owner和schema消费者",
+        "快照解码、22缺失快照引用与C迁移"
+      ],
+      "verification": "历史静态样本与Rust解析有证明，建筑事务限定链通过；不等于完整存档。",
+      "evidence": [
+        "evidence/multi-version/history-rust-verification.json",
+        "evidence/building-history/B-transaction-verification.json",
+        "evidence/building-history-owners/B-owner-verification.json"
+      ],
+      "integration": "建筑已验收owner接World，其余未建立",
+      "next_action": "Path/Garden/Color/Stairs等完整owner和schema消费者"
+    },
+    {
+      "module": "crates/country-core/src/systems/history",
+      "status": "integrated_partial",
+      "ownership": "private_game_source",
+      "scope": "Wall/Roof外层bucket与同Wall组barrier、计时和离散回放；terrain/tree/water/auto-clutter局部链。",
+      "restoration_globs": [
+        "reconstruction/building/wall_history_replay.rs",
+        "reconstruction/building/wall_history_transition.rs",
+        "reconstruction/crates/tg-building-runtime/src/history.rs",
+        "reconstruction/roof/replay.rs",
+        "reconstruction/terrain/crates/tg-terrain/src/replay.rs",
+        "reconstruction/tree-tool/src/replay_tree.rs",
+        "reconstruction/clutter-audio/crates/tg-clutter-audio/src/clutter/auto_clutter_edit.rs"
+      ],
+      "functions": [
+        "replay_wall/replay_pop_bucket限定范围",
+        "Roof VisualEdit/create/delete/direction/rim",
+        "replay_terrain Edit",
+        "replay_tree/replay_water/replay_raster/replay_auto_clutter候选"
+      ],
+      "gaps": [
+        "全部命令owner统一调度、失败展开、snapshot联接",
+        "Garden/Path/Stairs/Color完整消费者"
+      ],
+      "verification": "建筑冻结链通过；terrain Edit512原作↔Rust；其他新回放候选范围独立。",
+      "evidence": [
+        "evidence/building-integrate/stage-reviews/2026-10-11-stage4-frozen.md",
+        "evidence/multi-version/B-replay-verification.json",
+        "evidence/terrain-editing/milestones/M1/status.md",
+        "evidence/multi-baseline/README.md"
+      ],
+      "integration": "建筑World已接，独立terrain/tree/clutter不冒称统一游戏接线",
+      "next_action": "全部命令owner统一调度、失败展开、snapshot联接"
+    },
+    {
+      "module": "crates/country-core/src/systems/save",
+      "status": "not_assessed",
+      "ownership": "private_game_source",
+      "scope": "仅建立原文件清单，未登记完整恢复。",
+      "restoration_globs": [],
+      "functions": [],
+      "gaps": [
+        "save_game/load_game/snapshot/snapshot_gc完整状态、格式、后台消费者与错误恢复"
+      ],
+      "verification": "未建立模块验收。",
+      "evidence": [],
+      "integration": "not_established",
+      "next_action": "save_game/load_game/snapshot/snapshot_gc完整状态、格式、后台消费者与错误恢复"
+    },
+    {
+      "module": "crates/country-core/src/systems/terrain",
+      "status": "candidate_partial",
+      "ownership": "private_game_source",
+      "scope": "Stroke schema、点列/ID、已解析编辑与Edit回放；重算/读回事件链已分析。",
+      "restoration_globs": [
+        "reconstruction/terrain/crates/tg-terrain/src/schema.rs",
+        "reconstruction/terrain/crates/tg-terrain/src/stroke.rs",
+        "reconstruction/terrain/crates/tg-terrain/src/edit.rs",
+        "reconstruction/terrain/crates/tg-terrain/src/replay.rs",
+        "reconstruction/terrain/crates/tg-terrain/src/readback.rs"
+      ],
+      "functions": [
+        "stroke点列维护和ID上限",
+        "Edit Delta/Absolute/Keep规则",
+        "Edit正反replay",
+        "delayed_terrain_changed_msg/readback聚合通知"
+      ],
+      "gaps": [
+        "New/Move全入口与UI、pending history、真实ECS",
+        "非有限边界、GPU rasterize/readback同步、dirty消费者全链"
+      ],
+      "verification": "M1报告Edit512原作↔Rust；Delta512是早期原片段↔公式，不能升格完整Rust入口。",
+      "evidence": [
+        "evidence/terrain-editing/milestones/M1/status.md",
+        "evidence/terrain-editing/second-batch-findings.md",
+        "evidence/terrain-editing/B-delta-edit-verification.json"
+      ],
+      "integration": "not_established",
+      "next_action": "New/Move全入口与UI、pending history、真实ECS"
+    },
+    {
+      "module": "crates/country-core/src/systems/camera_rig",
+      "status": "draft_partial",
+      "ownership": "private_game_source",
+      "scope": "normal/free/walk/butterfly/camera_body候选源码；不是完整MainCamera。",
+      "restoration_globs": [
+        "reconstruction/camera/*.rs"
+      ],
+      "functions": [
+        "camera_body/normal/free/walk/butterfly的候选更新函数"
+      ],
+      "gaps": [
+        "完整input/mode transition和MainCamera编排",
+        "真实terrain/collision producer与跳表复核、C适配"
+      ],
+      "verification": "构造器native返回已观察；Rust完整差分/系统未验收。",
+      "evidence": [
+        "tracking/parallel-modules-stopped-snapshot.json",
+        "evidence/parallel-camera/B-constructor-native.json"
+      ],
+      "integration": "not_established",
+      "next_action": "完整input/mode transition和MainCamera编排"
+    },
+    {
+      "module": "crates/country-core/src/systems/audio",
+      "status": "candidate_partial",
+      "ownership": "private_game_source",
+      "scope": "16事件注册；wall/building/stairs/music/menu/sheep/clutter/water局部事件映射。",
+      "restoration_globs": [
+        "reconstruction/audio/src/*.rs",
+        "reconstruction/clutter-audio/crates/tg-clutter-audio/src/audio/*.rs"
+      ],
+      "functions": [
+        "add_audio_events",
+        "wall/building/stairs kind→FMOD参数",
+        "music_audio_system richness/time规则",
+        "update/listener/volume候选"
+      ],
+      "gaps": [
+        "FMOD资源类型/实例和真实后端接线",
+        "部分kind、资源字段和环境音公式未钉死；占位不得计恢复"
+      ],
+      "verification": "clutter+audio候选check/build/test5/5；非FMOD运行或原作完整音频等价。",
+      "evidence": [
+        "evidence/multi-baseline/compile-clutter-audio.json",
+        "evidence/multi-baseline/audio-events-analysis.md",
+        "evidence/multi-baseline/audio-extra-analysis.md"
+      ],
+      "integration": "not_established",
+      "next_action": "FMOD资源类型/实例和真实后端接线"
+    },
+    {
+      "module": "crates/country-core/src/render",
+      "status": "reported_missing",
+      "ownership": "private_game_source",
+      "scope": "pass_builder、SSBO/Shadowed/SparseBuffer、Mesh/Shader、nani GPU-world/atlas/实例与21 ECS系统有交付记录。",
+      "restoration_globs": [
+        "reconstruction/country-core/src/render/**/*.rs"
+      ],
+      "functions": [
+        "ShaderUri::parse、ComputePass/DrawBuilder全族",
+        "TypedStorageBuffer/ShadowedBuffer/SparseInstanceBuffer",
+        "GpuWorld/MeshAtlas/实例更新及nani_flush_instance_updates"
+      ],
+      "gaps": [
+        "记录中的country-core/country-core-render交付在当前工作区缺失，先同步并复核",
+        "pass_resource_access/draw_stream managed/temporal边界、component→T多数字段映射"
+      ],
+      "verification": "项目记忆报告offline check/clippy通过；本机源缺失，不计本机已复核实现。",
+      "evidence": [
+        "PROJECT_MEMORY.md",
+        "reconstruction/country-core-render/_integration/INTEGRATION_REPORT.md"
+      ],
+      "integration": "not_established",
+      "next_action": "找回原交付与合同，核对身份/源码hash，再接pass到rhapsody真实Command与managed资源"
+    },
+    {
+      "module": "crates/country-core/src/systems/render_loop",
+      "status": "reported_missing",
+      "ownership": "private_game_source",
+      "scope": "render_world帧顺序、54pass调用、8条件分支及CPU组合有分析/交付记录。",
+      "restoration_globs": [
+        "reconstruction/country-core/src/systems/render_loop/**/*.rs"
+      ],
+      "functions": [
+        "render_world",
+        "HZB/GI/透明/DoF/TAA或TGSR及呈现调用顺序"
+      ],
+      "gaps": [
+        "CPU交付源码本机缺失",
+        "逐pass变体、descriptor/resource handle、GPU时序与整帧画面对照"
+      ],
+      "verification": "B原二进制+404shader静态分析；没有整帧GPU验收。",
+      "evidence": [
+        "evidence/render-passes/INDEX.md",
+        "PROJECT_MEMORY.md"
+      ],
+      "integration": "not_established",
+      "next_action": "CPU交付源码本机缺失"
+    },
+    {
+      "module": "crates/country-core/src/asset_libraries",
+      "status": "integrated_partial",
+      "ownership": "private_game_source",
+      "scope": "实际decorator collision JSON读取与mesh/shader library生产者边界已有局部恢复/分析。",
+      "restoration_globs": [
+        "reconstruction/crates/tg-building-runtime/src/decorator_assets.rs",
+        "reconstruction/building/decorator_placement.rs"
+      ],
+      "functions": [
+        "load_decorators/实际collision bounds",
+        "AssetShaderLibrary四个add/get生产者及raster创建分析"
+      ],
+      "gaps": [
+        "完整asset/pass关联、缓存淘汰和资源所有权",
+        "新country-core库接线交付缺失"
+      ],
+      "verification": "18键资产放置等限定World链；ShaderLibrary只读分析非完整Rust恢复。",
+      "evidence": [
+        "evidence/building-integrate/findings.md",
+        "evidence/render-recovery/consumer-chain-review-2026-10-12/README.md"
+      ],
+      "integration": "decorator资产子集已接World",
+      "next_action": "完整asset/pass关联、缓存淘汰和资源所有权"
+    },
+    {
+      "module": "crates/country-core/src/resources",
+      "status": "candidate_partial",
+      "ownership": "private_game_source",
+      "scope": "地形、水、树存储、critters/window lights等跨系统资源有局部字段证据；不是整个resources目录恢复。",
+      "restoration_globs": [
+        "reconstruction/terrain/crates/tg-terrain/src/water.rs",
+        "reconstruction/tree-tool/src/process_tree_cmds.rs"
+      ],
+      "functions": [
+        "TreeStorage get/insert/remove与next_index",
+        "WorldRaster<Water> CPU状态与格点映射",
+        "TerrainHeightsData双实例字段分析"
+      ],
+      "gaps": [
+        "每个资源精确字段/原类型和生产者仍待对齐",
+        "WP7–10 country-core消费资源源码本机缺失"
+      ],
+      "verification": "水模块候选9测试；其他资源主要分析或缺失交付记录。",
+      "evidence": [
+        "evidence/multi-baseline/README.md",
+        "PROJECT_MEMORY.md"
+      ],
+      "integration": "not_established",
+      "next_action": "每个资源精确字段/原类型和生产者仍待对齐"
+    },
+    {
+      "module": "crates/systems/roof/src",
+      "status": "integrated_partial",
+      "ownership": "private_game_source",
+      "scope": "create/edit/delete/spatial/replay和类型/动画已接World；CPU铺瓦完整核心。",
+      "restoration_globs": [
+        "reconstruction/roof/*.rs",
+        "reconstruction/building/roof_creation.rs",
+        "reconstruction/building/roof_spatial.rs",
+        "reconstruction/building/roof_components.rs",
+        "reconstruction/building/roof_associations.rs",
+        "reconstruction/building/roof_deletion.rs",
+        "reconstruction/building/roof_lifecycle.rs",
+        "reconstruction/building/roof_direction.rs",
+        "reconstruction/building/roof_customization.rs",
+        "reconstruction/building/roof_invalid_notifications.rs",
+        "reconstruction/crates/tg-building-runtime/src/roof_edits.rs",
+        "reconstruction/crates/tg-building-runtime/src/roof_invalid.rs"
+      ],
+      "functions": [
+        "create_roof、edit_roof、delete_roof、update_roof_spatial",
+        "replay_roof/五类owner",
+        "assemble_circular_roof/assemble_rectangular_roof",
+        "switch_roof_type和屋顶动画/移除"
+      ],
+      "gaps": [
+        "roof_trigger_volume实际几何、place_spires/place_support_beams、snow与瓦片音频模拟完整消费者",
+        "UI输入与完整视觉所有权",
+        "ARM矩形case14一处1ULP历史失败"
+      ],
+      "verification": "矩形33输入19024记录/圆形37输入11467记录历史报告；编辑/生命周期/World链各自范围独立。",
+      "evidence": [
+        "evidence/roof-pipeline-verification.json",
+        "evidence/roof-tiles/circular-verification.json",
+        "evidence/source-edits/verification.json",
+        "evidence/building-integrate/stage-reviews/2026-10-11-stage4-frozen.md"
+      ],
+      "integration": "真实Bevy建筑runtime已接验收子集；GPU/完整系统未验收",
+      "next_action": "roof_trigger_volume实际几何、place_spires/place_support_beams、snow与瓦片音频模拟完整消费者"
+    },
+    {
+      "module": "crates/systems/wall-constructor/src",
+      "status": "integrated_partial",
+      "ownership": "private_game_source",
+      "scope": "construct_walls/WallConstructor与noise/seed/authority walker→96B砖输出已恢复并接World。",
+      "restoration_globs": [
+        "reconstruction/building/wall_constructor.rs",
+        "reconstruction/building/wall_production.rs",
+        "reconstruction/building/wall_construction_sources.rs",
+        "reconstruction/building/wall_path_preparation.rs",
+        "reconstruction/crates/tg-building-runtime/src/wall_bricks.rs"
+      ],
+      "functions": [
+        "WallConstructor::from_curve",
+        "construct_walls输入策略、proposal与96B实例输出",
+        "noise/seed/height/开口裁切与顺序"
+      ],
+      "gaps": [
+        "所有结构family和完整原资源消费者",
+        "原ECS/fork排程及C迁移"
+      ],
+      "verification": "普通85/其他304限定入口及连续World链；冻结后新增源码不继承旧报告。",
+      "evidence": [
+        "evidence/building-constructor/B-wall-constructor-verification.json",
+        "evidence/building-production-authority/findings.md",
+        "evidence/building-integrate/stage-reviews/2026-10-11-stage4-frozen.md"
+      ],
+      "integration": "真实raw/prepared/cache→brick World链",
+      "next_action": "所有结构family和完整原资源消费者"
+    },
+    {
+      "module": "crates/systems/wall-constructor/src/segmentation",
+      "status": "integrated_partial",
+      "ownership": "private_game_source",
+      "scope": "calculate_wall_path_segmentation；sample_wall_path_intersections；split_wall_path_segment_into_platform_stairs",
+      "restoration_globs": [
+        "reconstruction/building/wall_segmentation.rs",
+        "reconstruction/building/wall_platform_segmentation.rs",
+        "reconstruction/building/wall_path_preparation.rs"
+      ],
+      "functions": [
+        "calculate_wall_path_segmentation",
+        "sample_wall_path_intersections",
+        "split_wall_path_segment_into_platform_stairs"
+      ],
+      "gaps": [
+        "完整路径mask/material-stat已验限定范围；更多形状/消费者",
+        "未建立整个子目录逐函数等价验收"
+      ],
+      "verification": "仅所列局部/连续链报告；不继承其他family验收。",
+      "evidence": [
+        "evidence/building-segmentation/findings.md"
+      ],
+      "integration": "部分World链或候选，按所列范围",
+      "next_action": "完整路径mask/material-stat已验限定范围；更多形状/消费者"
+    },
+    {
+      "module": "crates/systems/wall-constructor/src/construct_arches",
+      "status": "integrated_partial",
+      "ownership": "private_game_source",
+      "scope": "construct_arches/profile；regular/freeform arch输出、final arch/third和120B ConstructGateCmd",
+      "restoration_globs": [
+        "reconstruction/building/wall_arches.rs",
+        "reconstruction/building/wall_arches_freehand.rs"
+      ],
+      "functions": [
+        "construct_arches/profile",
+        "regular/freeform arch输出、final arch/third和120B ConstructGateCmd"
+      ],
+      "gaps": [
+        "更多支撑族、门命令最终consumer",
+        "未建立整个子目录逐函数等价验收"
+      ],
+      "verification": "仅所列局部/连续链报告；不继承其他family验收。",
+      "evidence": [
+        "evidence/building-arches-freehand/findings.md"
+      ],
+      "integration": "部分World链或候选，按所列范围",
+      "next_action": "更多支撑族、门命令最终consumer"
+    },
+    {
+      "module": "crates/systems/wall-constructor/src/construct_lintels",
+      "status": "integrated_partial",
+      "ownership": "private_game_source",
+      "scope": "construct_lintels/place_support_beams限定CPU链",
+      "restoration_globs": [
+        "reconstruction/building/wall_structures.rs"
+      ],
+      "functions": [
+        "construct_lintels/place_support_beams限定CPU链"
+      ],
+      "gaps": [
+        "完整梁/悬挑/资源生命周期",
+        "未建立整个子目录逐函数等价验收"
+      ],
+      "verification": "仅所列局部/连续链报告；不继承其他family验收。",
+      "evidence": [
+        "evidence/building-structures/findings.md"
+      ],
+      "integration": "部分World链或候选，按所列范围",
+      "next_action": "完整梁/悬挑/资源生命周期"
+    },
+    {
+      "module": "crates/systems/wall-constructor/src/construct_platform_stairs",
+      "status": "integrated_partial",
+      "ownership": "private_game_source",
+      "scope": "80B装饰源→cells/碰撞/96B记录/holes/stats",
+      "restoration_globs": [
+        "reconstruction/building/wall_platform_stairs.rs",
+        "reconstruction/building/wall_platform_stair_rows.rs",
+        "reconstruction/building/wall_platform_collision.rs",
+        "reconstruction/building/wall_platform_rapier_backend.rs"
+      ],
+      "functions": [
+        "80B装饰源→cells/碰撞/96B记录/holes/stats"
+      ],
+      "gaps": [
+        "扩大consumer输入边界；新Rapier接线整批未验收",
+        "未建立整个子目录逐函数等价验收"
+      ],
+      "verification": "仅所列局部/连续链报告；不继承其他family验收。",
+      "evidence": [
+        "evidence/building-platform-stairs/B-rapier-backend-verification.json"
+      ],
+      "integration": "部分World链或候选，按所列范围",
+      "next_action": "扩大consumer输入边界；新Rapier接线整批未验收"
+    },
+    {
+      "module": "crates/systems/wall-constructor/src/construct_gates",
+      "status": "candidate_partial",
+      "ownership": "private_game_source",
+      "scope": "Gate120→CPU木门/支撑/post fallback、候选mesh/entity/Nani生命周期",
+      "restoration_globs": [
+        "reconstruction/building/gates.rs"
+      ],
+      "functions": [
+        "Gate120→CPU木门/支撑/post fallback、候选mesh/entity/Nani生命周期"
+      ],
+      "gaps": [
+        "新增整批未统一验收；原MeshLib/ShaderLib/SSBO所有权",
+        "未建立整个子目录逐函数等价验收"
+      ],
+      "verification": "仅所列局部/连续链报告；不继承其他family验收。",
+      "evidence": [
+        "evidence/building-gates/findings.md"
+      ],
+      "integration": "部分World链或候选，按所列范围",
+      "next_action": "新增整批未统一验收；原MeshLib/ShaderLib/SSBO所有权"
+    },
+    {
+      "module": "crates/systems/wall-constructor/src/construct_fences",
+      "status": "candidate_partial",
+      "ownership": "private_game_source",
+      "scope": "construct_fences/process_segment部分候选",
+      "restoration_globs": [
+        "reconstruction/building/fences.rs"
+      ],
+      "functions": [
+        "construct_fences/process_segment部分候选"
+      ],
+      "gaps": [
+        "完整floor/fence消费链及新代码验收",
+        "未建立整个子目录逐函数等价验收"
+      ],
+      "verification": "仅所列局部/连续链报告；不继承其他family验收。",
+      "evidence": [
+        "evidence/building-fences/findings.md"
+      ],
+      "integration": "部分World链或候选，按所列范围",
+      "next_action": "完整floor/fence消费链及新代码验收"
+    },
+    {
+      "module": "crates/systems/wall-constructor/src/construct_elevation_supports",
+      "status": "analysis_partial",
+      "ownership": "private_game_source",
+      "scope": "construct_brick_columns定位/局部helper候选",
+      "restoration_globs": [],
+      "functions": [
+        "construct_brick_columns定位/局部helper候选"
+      ],
+      "gaps": [
+        "圆/矩形柱、托架、turret、碰撞完整family",
+        "未建立整个子目录逐函数等价验收"
+      ],
+      "verification": "仅所列局部/连续链报告；不继承其他family验收。",
+      "evidence": [
+        "evidence/building-structures/findings.md"
+      ],
+      "integration": "部分World链或候选，按所列范围",
+      "next_action": "圆/矩形柱、托架、turret、碰撞完整family"
+    },
+    {
+      "module": "crates/systems/wall-constructor/src/utils",
+      "status": "candidate_partial",
+      "ownership": "private_game_source",
+      "scope": "resolve_hole_overlap、trim_rows、split_into_random_rows限定策略",
+      "restoration_globs": [
+        "reconstruction/building/wall_constructor.rs"
+      ],
+      "functions": [
+        "resolve_hole_overlap、trim_rows、split_into_random_rows限定策略"
+      ],
+      "gaps": [
+        "wall_corners/wall_skirts、half_timber与全部helper来源归属",
+        "未建立整个子目录逐函数等价验收"
+      ],
+      "verification": "仅所列局部/连续链报告；不继承其他family验收。",
+      "evidence": [
+        "evidence/building-constructor/B-wall-constructor-verification.json"
+      ],
+      "integration": "部分World链或候选，按所列范围",
+      "next_action": "wall_corners/wall_skirts、half_timber与全部helper来源归属"
+    },
+    {
+      "module": "crates/systems/decorator/src",
+      "status": "integrated_partial",
+      "ownership": "private_game_source",
+      "scope": "墙面四族asset/subtype/position→raw holes→wall brick；Info/storage与部分stairs候选。",
+      "restoration_globs": [
+        "reconstruction/building/decorator_placement.rs",
+        "reconstruction/building/decorator_subtype.rs",
+        "reconstruction/building/decorator_info.rs",
+        "reconstruction/building/opening_rules.rs",
+        "reconstruction/building/wall_decorator_archivist.rs",
+        "reconstruction/crates/tg-building-runtime/src/decorator_assets.rs",
+        "reconstruction/crates/tg-building-runtime/src/decorator_placement.rs",
+        "reconstruction/crates/tg-building-runtime/src/decorator_info_binding.rs",
+        "reconstruction/crates/tg-building-runtime/src/openings.rs"
+      ],
+      "functions": [
+        "load_decorators/WallSpaceCoord定位",
+        "derive_decorator_subtype、四族raw-hole producer",
+        "apply_decorator_op/archivist/storage部分候选"
+      ],
+      "gaps": [
+        "全部decorator_visual家族：dormer/chimney/corner/flag/clothline/lantern等",
+        "真实anchor/拖动与roof宿主形变、跨对象恢复"
+      ],
+      "verification": "placement1668/subtype1326等限定报告；新增Info/storage不冒称当前整批通过。",
+      "evidence": [
+        "evidence/building-placement/B-placement-verification.json",
+        "evidence/building-placement/B-subtype-verification.json",
+        "evidence/building-integrate/findings.md"
+      ],
+      "integration": "墙面子集真实World已接",
+      "next_action": "全部decorator_visual家族：dormer/chimney/corner/flag/clothline/lantern等"
+    },
+    {
+      "module": "crates/systems/tree-tool/src",
+      "status": "draft_partial",
+      "ownership": "private_game_source",
+      "scope": "六个文件的命令/删除/回放/地形跟随/弯曲/预置树恢复草稿。",
+      "restoration_globs": [
+        "reconstruction/tree-tool/src/*.rs"
+      ],
+      "functions": [
+        "process_tree_cmds Move→Insert→Delete",
+        "despawn_trees/replay_tree",
+        "recalc_tree_position_on_terrain_height_change/tree_move_bend/convert_preplaced_trees"
+      ],
+      "gaps": [
+        "PlaceTreeCmd载荷和TreeEdit跨系统判别值",
+        "完整UI/startup/hide_trees及真实World consumer"
+      ],
+      "verification": "reva/RNE反汇编交叉核对与语义草稿；未登记完整编译/原码差分/系统验收。",
+      "evidence": [
+        "evidence/multi-baseline/tree-process-cmds-analysis.md",
+        "evidence/multi-baseline/tree-tool-rest-analysis.md",
+        "evidence/multi-baseline/tree-tool-extra-analysis.md"
+      ],
+      "integration": "not_established",
+      "next_action": "PlaceTreeCmd载荷和TreeEdit跨系统判别值"
+    },
+    {
+      "module": "crates/systems/water/src",
+      "status": "candidate_partial",
+      "ownership": "private_game_source",
+      "scope": "WaterRaster CPU状态、world_raster/replay/上传调用、water_audio_grid。",
+      "restoration_globs": [
+        "reconstruction/terrain/crates/tg-terrain/src/water.rs",
+        "reconstruction/terrain/crates/tg-terrain/src/water_audio_grid.rs"
+      ],
+      "functions": [
+        "draw_water工具分派分析",
+        "startup_water、water_rasterize_from_cpu、replay_raster/replay_water",
+        "world→512网格映射、水位u8/255、audio-grid更新"
+      ],
+      "gaps": [
+        "zeno闭包内部、mask SSBO字段和完整draw/history producer",
+        "真实GPU上传、water-render consumer与系统生命周期"
+      ],
+      "verification": "五模块README记录候选9测试；没有完整水域原作运行等价。",
+      "evidence": [
+        "evidence/multi-baseline/README.md",
+        "evidence/multi-baseline/water-cpu-analysis.md",
+        "evidence/multi-baseline/water-extra-analysis.md"
+      ],
+      "integration": "not_established",
+      "next_action": "zeno闭包内部、mask SSBO字段和完整draw/history producer"
+    },
+    {
+      "module": "crates/systems/critters/src",
+      "status": "candidate_partial",
+      "ownership": "private_game_source",
+      "scope": "duck/shared/sheep terrain/wren boids/fish/butterfly候选；firefly和sheep pet独立局部。",
+      "restoration_globs": [
+        "reconstruction/critters/src/*.rs",
+        "reconstruction/critters/firefly.rs",
+        "reconstruction/critters/sheep_pet*.rs"
+      ],
+      "functions": [
+        "duck plan→move→goals→velocities→ripples",
+        "shared避让/移动、sheep_walk_on_terrain",
+        "sim_wren_boids、fish/butterfly更新",
+        "firefly goal/velocity/smoothing与sheep pet局部"
+      ],
+      "gaps": [
+        "CritterLocomotion物种映射、全startup/delete/history/建筑反应",
+        "firefly2102案例中一处NaN符号差异保留",
+        "真实World/GPU与C物种全链"
+      ],
+      "verification": "新harness记录22测试；firefly原码报告有失败，不记全通过；其他物种新源码未等价验收。",
+      "evidence": [
+        "evidence/multi-baseline/README.md",
+        "evidence/multi-baseline/critters-behavior-analysis.md",
+        "evidence/multi-baseline/critters-extra-analysis.md",
+        "tracking/parallel-modules-stopped-snapshot.json"
+      ],
+      "integration": "not_established",
+      "next_action": "CritterLocomotion物种映射、全startup/delete/history/建筑反应"
+    },
+    {
+      "module": "crates/systems/clutter/src",
+      "status": "candidate_partial",
+      "ownership": "private_game_source",
+      "scope": "autoclutter区域/筛选/放置/实体管理、merlons/stitches、auto-clutter历史草稿接可编译crate。",
+      "restoration_globs": [
+        "reconstruction/clutter-audio/crates/tg-clutter-audio/src/clutter/**/*.rs"
+      ],
+      "functions": [
+        "populate_autoclutter_regions/process_autoclutter_candidates",
+        "add_* gates/windows/birdnests/lantern/tree",
+        "manage_autoclutter_entities",
+        "detect/construct_inter_roof_merlons、stitch_bricks",
+        "AutoClutterEdit/replay与删除记录"
+      ],
+      "gaps": [
+        "BrickTransformSsbo/StairsFloatingBrickParams字段与真实资源producer",
+        "22 TODO和3空位；动画/mesh加载/GPU bush读回与完整调度"
+      ],
+      "verification": "clutter+audio check/build/test5/5，使用glue占位；未通过原作完整行为验证。",
+      "evidence": [
+        "evidence/multi-baseline/compile-clutter-audio.json",
+        "evidence/multi-baseline/clutter-placement-analysis.md",
+        "evidence/multi-baseline/clutter-extra-analysis.md"
+      ],
+      "integration": "not_established",
+      "next_action": "BrickTransformSsbo/StairsFloatingBrickParams字段与真实资源producer"
+    },
+    {
+      "module": "crates/rhapsody/src/raw",
+      "status": "integrated_partial",
+      "ownership": "private_game_source",
+      "scope": "设备、buffer/image/view/sampler、descriptor/pipeline/attachments、command/submit/WSI/诊断/格式候选可运行。 2026-10-13：真实compiled asset直接stored reflection生产布局/compute，删除catalog offset生产fixture。",
+      "restoration_globs": [
+        "reconstruction/rhapsody-rebuild/src/raw/*.rs",
+        "reconstruction/rhapsody-rebuild/src/raw/shader.rs"
+      ],
+      "functions": [
+        "GraphicsDevice资源创建/屏障/扩展和create_raw_device",
+        "RasterPipelineOpts、descriptor/binding/shader/cache",
+        "CommandBuffer/SubmitInfo/SubmissionEngine/Queue",
+        "Swapchain acquire→submit→present及诊断/格式原入口",
+        "register_compiled_compute/raster→retained schema→pipeline layout"
+      ],
+      "gaps": [
+        "get_setup_cb_submit_info/with_setup_cb、init_texture_data/update_texture、fullscreen exclusive",
+        "原设备完整策略、allocator/vk-sync/winit分叉和全pipeline/pass关联"
+      ],
+      "verification": "10/12候选统一64测试/13GPU探针；10/13补接口69测试和严格Clippy、未重跑GPU。报告当前性逐项检查。",
+      "evidence": [
+        "reconstruction/rhapsody-rebuild/MODULE_STATUS.md",
+        "reconstruction/rhapsody-rebuild/evidence/missing-functions-completion-2026-10-13.json",
+        "reconstruction/rhapsody-rebuild/evidence/functional-project-validation.json",
+        "reconstruction/rhapsody-rebuild/evidence/raw-resource-implementation.json",
+        "reconstruction/rhapsody-rebuild/evidence/shader-production-validation.json",
+        "reconstruction/rhapsody-rebuild/evidence/swapchain-functional-validation.json",
+        "evidence/shader-toolchain-2026-10-13/integration.json",
+        "evidence/shader-toolchain-2026-10-13/runtime/runtime-contract.json"
+      ],
+      "integration": "真实Vulkan候选资源/WSI链；原完整ABI/行为未验收",
+      "next_action": "get_setup_cb_submit_info/with_setup_cb、init_texture_data/update_texture、fullscreen exclusive"
+    },
+    {
+      "module": "crates/rhapsody/src/raw/managed",
+      "status": "integrated_partial",
+      "ownership": "private_game_source",
+      "scope": "handle/ref/generation/checksum、资源持有/CPU退役/GPU保护与managed资源包装。",
+      "restoration_globs": [
+        "reconstruction/rhapsody-rebuild/src/raw/managed/*.rs"
+      ],
+      "functions": [
+        "GpuOwned全族、ManagedHandle/ManagedRef",
+        "ManagedResourceMeta/checksum/owning_device/get_maybe_tracked",
+        "managed buffer/texture/view/swapchain包装"
+      ],
+      "gaps": [
+        "原全域producer/序号桶、真实游戏持有关系与性能",
+        "raw析构保守等待、全ABI和原complete disposal"
+      ],
+      "verification": "限定原生命周期合同和候选测试/GPU链；新增接口不是原完整ABI恢复。",
+      "evidence": [
+        "reconstruction/rhapsody-rebuild/MODULE_STATUS.md",
+        "reconstruction/rhapsody-rebuild/evidence/missing-functions-completion-2026-10-13.json",
+        "reconstruction/rhapsody-rebuild/evidence/functional-project-validation.json",
+        "reconstruction/rhapsody-rebuild/evidence/managed-implementation.json",
+        "reconstruction/rhapsody-rebuild/evidence/pass-bindings-functional-validation.json"
+      ],
+      "integration": "候选descriptor持有与GPU消费已接，provider主图桥仍两阶段",
+      "next_action": "原全域producer/序号桶、真实游戏持有关系与性能"
+    },
+    {
+      "module": "crates/rhapsody/src/rg",
+      "status": "integrated_partial",
+      "ownership": "private_game_source",
+      "scope": "graph/compiled/registry/pool、访问分析、barrier/record、executor/temporal/import-export/pass API。",
+      "restoration_globs": [
+        "reconstruction/rhapsody-rebuild/src/rg/*.rs",
+        "reconstruction/render/execution.rs",
+        "reconstruction/render/graph.rs",
+        "reconstruction/render/graph_info.rs",
+        "reconstruction/render/resource_info.rs",
+        "reconstruction/render/resource_usage.rs"
+      ],
+      "functions": [
+        "ResourceInfo::calculate与用途转换",
+        "RenderGraph/BatchCompiler/CompiledGraph/Registry/Pool",
+        "RenderPassApi draw/dispatch九命令、recorder、executor",
+        "Parity/Temporal/import_export/ExecutedRenderGraph/PGO",
+        "ExecutionChain::execute_graph(_with_context)旧共享入口"
+      ],
+      "gaps": [
+        "首个shader callback自动注入真实Command/managed descriptor并同一submit",
+        "原并行/跨族ownership transfer、完整compile/record原入口",
+        "temporal淘汰/reset/drop、原游戏consumer"
+      ],
+      "verification": "原CPU合同/叶函数限定差分；候选串行session/temporal GPU已运行；全图与原整帧未验收。",
+      "evidence": [
+        "reconstruction/rhapsody-rebuild/MODULE_STATUS.md",
+        "reconstruction/rhapsody-rebuild/evidence/missing-functions-completion-2026-10-13.json",
+        "reconstruction/rhapsody-rebuild/evidence/functional-project-validation.json",
+        "evidence/render-recovery/verification.json",
+        "evidence/render-recovery/consumer-chain-review-2026-10-12/context-entry-validation.json",
+        "reconstruction/rhapsody-rebuild/evidence/queue-graph-functional-validation.json",
+        "reconstruction/rhapsody-rebuild/evidence/temporal-functional-validation.json"
+      ],
+      "integration": "rg候选到Vulkan串行功能链；旧context入口未自动迁入新工程",
+      "next_action": "将游戏pass的registry与正在录制的Command接入首个真实shader callback，完成同一提交/回收"
+    },
+    {
+      "module": "crates/rhapsody/src",
+      "status": "candidate_partial",
+      "ownership": "private_game_source",
+      "scope": "crate根与leek入口包装已实现部分候选。",
+      "restoration_globs": [
+        "reconstruction/rhapsody-rebuild/src/lib.rs",
+        "reconstruction/rhapsody-rebuild/src/leek.rs"
+      ],
+      "functions": [
+        "leek wait_submits_done和顶层接口"
+      ],
+      "gaps": [
+        "全部原root/reexports/features/原API闭合"
+      ],
+      "verification": "候选check/test/clippy；不能从根文件存在判断完整crate完成。",
+      "evidence": [
+        "reconstruction/rhapsody-rebuild/MODULE_STATUS.md",
+        "reconstruction/rhapsody-rebuild/evidence/missing-functions-completion-2026-10-13.json",
+        "reconstruction/rhapsody-rebuild/evidence/functional-project-validation.json"
+      ],
+      "integration": "not_established",
+      "next_action": "全部原root/reexports/features/原API闭合"
+    },
+    {
+      "module": "crates/utils/src",
+      "status": "candidate_partial",
+      "ownership": "private_game_source",
+      "scope": "22顶层文件候选：camera/RDP/Spline/Timer/区间等已对照并修复；原PDB内联接口仍有遗漏。",
+      "restoration_globs": [
+        "reconstruction/shared-foundation/crates/utils/src/*.rs"
+      ],
+      "functions": [
+        "utils::angle_range::AngleRange::clamp::h1e38e505b21716f7",
+        "utils::angle_range::AngleRange::from_min_and_len::h33d2357d24df0270",
+        "utils::camera::CameraMatrices::eye_right::ha9cbece401b86c69",
+        "utils::camera::CameraMatrices::eye_position::h197cc691c4961e2b",
+        "utils::camera::CameraMatrices::xz_projective_rotation::h2a492c1381c13566",
+        "utils::camera::CameraProjectionParams::calc_matrices::ha4168fdbac703f7b",
+        "utils::camera::CameraLens::immediately_set_vertical_fov_degrees::hb8b585f91f9a3e21",
+        "utils::camera::CameraMatrices::eye_direction::hdd8c9098532097c3",
+        "utils::camera::CameraBodyMatrices::from_position_rotation::h15f3135b9d882184",
+        "utils::camera::CameraMatrices::aspect_ratio::h2280663f762167ae",
+        "utils::camera::CameraLens::new::hba96194044b772a6",
+        "utils::circular_f32::CircularF32::new::h4a370bc0f4ecfd83",
+        "utils::circular_f32::CircularF32::set_value::h2a27842468e6d8cd",
+        "utils::circular_f32::CircularF32::distance::haeb25b59b8695df4",
+        "utils::circular_f32::CircularF32::as_f32::h4a622c1cdce81d18",
+        "utils::circular_f32::CircularF32::lerp::h3fb4800358aded15",
+        "_$LT$utils..wall_space..WallSpace$u20$as$u20$utils..comparative_space..ComparativeSpace$GT$::distance::h7b2c52b959561051",
+        "_$LT$utils..wall_space..WallSpace$u20$as$u20$utils..comparative_space..ComparativeSpace$GT$::project::hb54ceb2dc35b6a0d",
+        "_$LT$utils..wall_space..WallSpace$u20$as$u20$utils..comparative_space..ComparativeSpace$GT$::project_unbounded::ha90815c3ad318565",
+        "_$LT$utils..wall_space..WallSpace$u20$as$u20$utils..comparative_space..ComparativeSpace$GT$::project_clamp::h403dbe9f0dcfece2",
+        "_$LT$utils..comparative_space..CircularComparativeSpace$u20$as$u20$utils..comparative_space..ComparativeSpace$GT$::distance::h63c7050070005b2d",
+        "_$LT$utils..wall_space..WallSpace$u20$as$u20$utils..comparative_space..ComparativeSpace$GT$::subtract::hf7a5d0707cc7372d",
+        "utils::easing_functions::EasingFunction::apply::hb692303304673b5b",
+        "utils::easing_functions::cubic_in_out::h9f90081ff645ad35",
+        "utils::file::generate_backup_file_path::hfb5bed1165e208fd",
+        "utils::file::copy_file_to_backup::hcb9f224743c1f22d",
+        "utils::file::date_time_string_for_filename::he181c464f5c8002c",
+        "_$LT$T$u20$as$u20$utils..float_grid..FloatGridSampler$GT$::bilinear_sample_at_world_xz::h21c466addbd36c5b (.llvm.10815386406131266915)",
+        "_$LT$T$u20$as$u20$utils..float_grid..FloatGridSampler$GT$::bilinear_sample_at_world_xz::h5f9a59d6ff3084ac",
+        "_$LT$T$u20$as$u20$utils..float_grid..FloatGridSampler$GT$::bilinear_sample_at_world_xz::h37f26bb52d35e9a5",
+        "_$LT$T$u20$as$u20$utils..float_grid..FloatGridSampler$GT$::bilinear_sample_at_world_xz::h6ec8cfbf8d357fe5",
+        "_$LT$T$u20$as$u20$utils..float_grid..FloatGridSampler$GT$::bilinear_sample_at_world_xz::h72e4e1f27b7e5695",
+        "_$LT$T$u20$as$u20$utils..float_grid..FloatGridSampler$GT$::bilinear_sample_at_world_xz::h054924d541f34fec",
+        "_$LT$T$u20$as$u20$utils..float_grid..FloatGridSampler$GT$::bilinear_sample_at_world_xz::h461c683309370f25 (.llvm.9386989208921278972)",
+        "_$LT$T$u20$as$u20$utils..float_grid..FloatGridSampler$GT$::bilinear_sample_at_world_xz::h7b46bd8afae5f9b9",
+        "_$LT$T$u20$as$u20$utils..float_grid..FloatGridSampler$GT$::bilinear_sample_at_world_xz::h40b3724ed41a6401",
+        "_$LT$T$u20$as$u20$utils..float_grid..FloatGridSampler$GT$::bilinear_sample_at_world_xz::h9ee14f70b38e34f5",
+        "_$LT$T$u20$as$u20$utils..float_grid..FloatGridSampler$GT$::bilinear_sample_at_world_xz::hdd12a535fe7377c0",
+        "_$LT$glam..f32..sse2..vec4..Vec4$u20$as$u20$utils..halver..Halver$GT$::to_f16::hb66f3c2c26d2deba",
+        "_$LT$f32$u20$as$u20$utils..halver..Halver$GT$::to_f16::h628d79fa31310e7a",
+        "_$LT$$u5b$f32$u3b$$u20$4$u5d$$u20$as$u20$utils..halver..Halver$GT$::to_f16::h16803eaa118aabc6",
+        "_$LT$$u5b$f32$u3b$$u20$3$u5d$$u20$as$u20$utils..halver..Halver$GT$::to_f16::ha8b503566bb8cdf3",
+        "_$LT$glam..f32..vec3..Vec3$u20$as$u20$utils..halver..Halver$GT$::to_f16::h51c93e75a0ff6032",
+        "_$LT$glam..f32..sse2..quat..Quat$u20$as$u20$utils..halver..Halver$GT$::to_f16::h7d373b4258af3426",
+        "utils::index_condenser::IndexCondenser$LT$K$GT$::remove::h5522bb7ae0853256",
+        "utils::local_time::init_local_time::h4b7eea84f2234896",
+        "utils::local_time::system_time_to_local_time::h7f709757ba2dd5da",
+        "utils::loop_range::LoopRange::start::he216921d941dd42d",
+        "utils::loop_range::LoopIdx::raw_idx::h7d0ec4316db23cac",
+        "utils::loop_range::LoopRange::len::h037da5194cbf249f",
+        "utils::loop_range::LoopRange::is_empty::h5dcae5a5e640982a",
+        "utils::loop_range::LoopRange::new_loop::hf6cc726d4bea6953",
+        "utils::loop_range::LoopRange::end::hd947be2921f572df",
+        "utils::loop_range::LoopIdx::index::h5da9681895b19d80",
+        "utils::loop_range::LoopRange::subslice::h58705f0479c7b7d3",
+        "utils::loop_range::LoopRange::new_line::h6253d498842a5e06",
+        "utils::name_hash::NameHash::compute::h6604b19c12e29953",
+        "utils::name_hash::NameHash::debug_name::h9048771f0a8c6cb2",
+        "utils::natural_cubic::Spline2D::from_control_points_with_tangents::h8ff9c8fab7ec82bb",
+        "utils::natural_cubic::Spline2D::from_periodic_loop::h2215646c48812760",
+        "utils::natural_cubic::Spline3D::from_control_points_with_tangents::h4f96a7d574b7be56",
+        "utils::natural_cubic::SplineSegment2D::position_at_local_t::he9e0d14242507778",
+        "utils::natural_cubic::Spline3D::tangent_at_t::h5aeef5094617714b",
+        "utils::natural_cubic::Spline3D::position_at_t::h7ec0ddb3ddad631c",
+        "utils::natural_cubic::SplineSegment2D::tangent_at_local_t::h8fafdc5f1299a652",
+        "utils::natural_cubic::Spline3D::to_owned::hef13392e53373cba",
+        "utils::rdp::Rdp$LT$T$GT$::new_with_opts::hc10fe7c6319b6f02",
+        "utils::rgb9e5::pack_rgb9e5::h1919f53c9d068e05",
+        "utils::rng::init_rng_u64::haf5ce7081dff94f8",
+        "utils::rng::init_rng::h2380124e07933713",
+        "utils::subtractive_1d_boolean::SubtractiveBoolean1D::new_range::h38f45a92e1741cd8",
+        "utils::subtractive_1d_boolean::SubtractiveBoolean1D::result::hd0197dcae2cf048c",
+        "utils::subtractive_1d_boolean::SubtractiveBoolean1D::subtract::h9b7301b3325c1f55",
+        "utils::threshold_range::threshold_range::hbf358fb23f7c7319",
+        "utils::threshold_range::threshold_range::h4af01b25adab61ab",
+        "utils::threshold_range::threshold_range::he03025b31b314fc7",
+        "utils::timer::FilteredWallTime::delta_secs::h894dea9d709deba3",
+        "utils::wall_space::WallSpaceCoord::get_pos_xz::h8fb9935763211cd2",
+        "utils::wall_space::WallSpace::space_length::h8863a0d2fe8bbbf2",
+        "utils::wall_space::WallSpaceCoord::to_world_space::h83d891612441f5e5",
+        "utils::wall_space::WallSpaceCoord::with_y::h0af639b6442aa6e3",
+        "utils::wall_space::WallSpaceCoord::from_world_space::h3dd7969c0bf40780",
+        "utils::wall_space::WallSpaceCoord::with_y_offset::hb75ce7f8b3c3d42c",
+        "utils::wall_space::WallSpaceCoord::from_curve_internal_coord::h268e5b71461535d7",
+        "utils::wall_space::WallSpaceCoord::new_unchecked::h76dae8b6ebe6ff7f",
+        "utils::wall_space::WallSpaceCoord::get_tangent::h651bf111d4d6fc73",
+        "_$LT$utils..wall_space..WallSpace$u20$as$u20$utils..comparative_space..ComparativeSpace$GT$::distance::h7b2c52b959561051",
+        "_$LT$utils..wall_space..WallSpace$u20$as$u20$utils..comparative_space..ComparativeSpace$GT$::project::hb54ceb2dc35b6a0d",
+        "_$LT$utils..wall_space..WallSpace$u20$as$u20$utils..comparative_space..ComparativeSpace$GT$::project_unbounded::ha90815c3ad318565",
+        "_$LT$utils..wall_space..WallSpace$u20$as$u20$utils..comparative_space..ComparativeSpace$GT$::project_clamp::h403dbe9f0dcfece2",
+        "_$LT$utils..wall_space..WallSpace$u20$as$u20$utils..comparative_space..ComparativeSpace$GT$::subtract::hf7a5d0707cc7372d"
+      ],
+      "gaps": [
+        "Swizzlers/IndexCondenser/WallSpace等已知原接口尚未恢复",
+        "Spline退化/重复点边界未验证",
+        "FloatGrid/WallSpace完整消费者及原存档visitor差分未完成"
+      ],
+      "verification": "全utils37测试、strict Clippy、12候选JSON场景通过；新增916原码记录、继承367记录；不等于全部原接口验收。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/delivery.json",
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/CONTRACT.md",
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/native-manifest.json",
+        "evidence/shared-foundation-2026-10-13/integration/dependency-validation.json",
+        "evidence/shared-foundation-2026-10-13/PARALLEL_PLAN.md",
+        "evidence/shared-foundation-2026-10-13/utils-base/delivery.json",
+        "evidence/shared-foundation-2026-10-13/utils-base/CONTRACT.md",
+        "evidence/shared-foundation-2026-10-13/utils-base/verification.json"
+      ],
+      "integration": "候选模块可调用，完整原游戏消费者接线仍待完成",
+      "next_action": "按原函数接口库存优先补未触及工作"
+    },
+    {
+      "module": "crates/utils/src/curve",
+      "status": "candidate_partial",
+      "ownership": "private_game_source",
+      "scope": "Curve2/profile采样完整CPU子链与CurveU候选。",
+      "restoration_globs": [
+        "reconstruction/roof/surface.rs"
+      ],
+      "functions": [
+        "Curve2构造/弧长/points_u/find/interpolate/tangent",
+        "CurveU/Circular等跨版候选"
+      ],
+      "gaps": [
+        "全部Curve3/slice/异常调用者和候选ABI"
+      ],
+      "verification": "surface限定原码23810案例中包含Curve2链；不是整个curve目录。",
+      "evidence": [
+        "evidence/roof-surface/verification.json",
+        "evidence/abc-tools-52-2026-10-11/summary.json"
+      ],
+      "integration": "not_established",
+      "next_action": "全部Curve3/slice/异常调用者和候选ABI"
+    },
+    {
+      "module": "crates/asset/src",
+      "status": "candidate_partial",
+      "ownership": "private_game_source",
+      "scope": "B九原文件的资源扫描、prefab继承、纹理交换格式；texture.rs是合成glue，不计C恢复。",
+      "restoration_globs": [
+        "reconstruction/shared-foundation/crates/asset/src/lib.rs",
+        "reconstruction/shared-foundation/crates/asset/src/inheritable.rs",
+        "reconstruction/shared-foundation/crates/asset/src/prefab.rs",
+        "reconstruction/shared-foundation/crates/asset/src/prefab/config.rs",
+        "reconstruction/shared-foundation/crates/asset/src/prefab/scan.rs",
+        "reconstruction/shared-foundation/crates/asset/src/texture/blob.rs",
+        "reconstruction/shared-foundation/crates/asset/src/texture/config.rs",
+        "reconstruction/shared-foundation/crates/asset/src/texture/desc.rs",
+        "reconstruction/shared-foundation/crates/asset/src/texture/scan.rs",
+        "reconstruction/shared-foundation/crates/asset/src/texture.rs"
+      ],
+      "functions": [
+        "Inheritable::inherit_from / Option::inherit_from / HashMap::inherit_from",
+        "deserialize_inheritable_option",
+        "PrefabName::new",
+        "PrefabName::as_name_ref / AsRef::as_ref",
+        "PrefabConfig::inherit_from / PrefabPartConfig::inherit_from",
+        "PrefabRtConfig::inherit_from / PrefabRenderConfig::inherit_from / AudioTriggerConfig::inherit_from",
+        "deserialize_float3",
+        "PrefabDependencies::add_file_to_prefab_dependency",
+        "scan_asset_tree",
+        "scan_asset_tree_walker",
+        "load_prefab_config",
+        "TextureAssetBlob transport / load / to_file_bytes",
+        "InheritableTextureOpts::inherit_from / into_concrete",
+        "TextureOpts / TextureAssetDesc / Gamma / MipChain / CompressionMethod",
+        "TextureAssetDesc::source_files",
+        "scan_asset_tree",
+        "scan_asset_tree_walker"
+      ],
+      "gaps": [
+        "prefab全部默认/错误/副作用路径未穷尽",
+        "country-core资产热重载消费者未接线",
+        "C新增文件须独立身份分析"
+      ],
+      "verification": "388原纹理字节回写一致，25prefab/28依赖通过；候选合同与原全链差分分开。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/cargo-test.log",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/clippy.log",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/gamma-verification.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/bounded-report.json"
+      ],
+      "integration": "候选模块可调用，完整原游戏消费者接线仍待完成",
+      "next_action": "按接口覆盖表补未触及接口及真实消费者"
+    },
+    {
+      "module": "crates/asset-pipe/src",
+      "status": "candidate_partial",
+      "ownership": "private_game_source",
+      "scope": "B两原文件的图片处理、mip/padding、DDS/数组、原压缩preset、版本缓存与输出；已接原easy-parallel。",
+      "restoration_globs": [
+        "reconstruction/shared-foundation/crates/asset-pipe/src/lib.rs",
+        "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs"
+      ],
+      "functions": [
+        "compile_or_load_texture_assets",
+        "compile_texture_assets",
+        "compile_texture_asset",
+        "process_regular_image / process_decoded_image",
+        "next_level",
+        "with_rgba8",
+        "srgb_oetf",
+        "compress / bc7_settings",
+        "process_dds_image / process_dds",
+        "assemble_array"
+      ],
+      "gaps": [
+        "原PNG/JPG/DDS源图缺失，完整原压缩结果差分未执行",
+        "原CLI flags/日志等外层行为尚未覆盖",
+        "C新增文件独立待分析"
+      ],
+      "verification": "两资产包14测试、严格Clippy通过；OETF4364原码零差异；完整原图流水线差分未完成。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/cargo-test.log",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/clippy.log",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/gamma-verification.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/bounded-report.json"
+      ],
+      "integration": "候选模块可调用，完整原游戏消费者接线仍待完成",
+      "next_action": "按接口覆盖表补未触及接口及全链原侧对照"
+    },
+    {
+      "module": "crates/paths/src",
+      "status": "candidate_partial",
+      "ownership": "private_game_source",
+      "scope": "Windows路径选择、账号目录和顺序初始化/错误传播；10个原接口映射。",
+      "restoration_globs": [
+        "reconstruction/shared-foundation/crates/paths/src/lib.rs"
+      ],
+      "functions": [
+        "paths::config",
+        "paths::saves",
+        "paths::backup_saves",
+        "paths::tmp",
+        "paths::deleted_saves",
+        "paths::installed",
+        "paths::standard_app_root_path",
+        "paths::find_standard_app_root_path",
+        "paths::initialize_paths",
+        "paths::ensure_path<std::path::PathBuf>"
+      ],
+      "gaps": [
+        "其他平台分支未核实",
+        "原初始化消费者未完整接线",
+        "原入口运行时差分未执行"
+      ],
+      "verification": "原锁候选合同验证；静态原代码规则核对，完整消费者和原入口运行差分尚未完成。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/paths-language/delivery.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/validation.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md",
+        "evidence/shared-foundation-2026-10-13/integration/dependency-validation.json"
+      ],
+      "integration": "lang-lib persistence consumer + independent path policy entry; original tiny-glade startup not wired",
+      "next_action": "对接原初始化消费者，补原入口行为对照"
+    },
+    {
+      "module": "crates/tiny-glade/src",
+      "status": "not_assessed",
+      "ownership": "private_game_source",
+      "scope": "仅登记原源码结构；局部调用或适配不等于本crate实现。",
+      "restoration_globs": [],
+      "functions": [],
+      "gaps": [
+        "逐文件/函数恢复范围、类型和实际生产消费链尚未建立"
+      ],
+      "verification": "未登记完整crate验证；源码索引不算恢复。",
+      "evidence": [],
+      "integration": "not_established",
+      "next_action": "逐文件/函数恢复范围、类型和实际生产消费链尚未建立"
+    },
+    {
+      "module": "crates/tabloid/src",
+      "status": "candidate_partial",
+      "ownership": "private_game_source",
+      "scope": "发布、订阅、共享增量批次及reader生命周期；三主要接口有业务恢复。",
+      "restoration_globs": [
+        "reconstruction/shared-foundation/crates/tabloid/src/lib.rs"
+      ],
+      "functions": [
+        "tabloid::Publisher<T>::publish",
+        "tabloid::Publisher<T>::subscribe",
+        "tabloid::Subscriber<T>::take",
+        "private publication retain predicate"
+      ],
+      "gaps": [
+        "真实DirtyTiles/ColliderDiff生产者未接线",
+        "Default/Drop/Deref独立原接口对照不足",
+        "原发布消费全流程运行差分未执行"
+      ],
+      "verification": "3个原锁合同测试、严格Clippy；Default/Drop/Deref内联接口单列复核。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/delivery.json",
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/CONTRACT.md",
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/tabloid-test.log",
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/tabloid-clippy.log",
+        "evidence/shared-foundation-2026-10-13/integration/dependency-validation.json"
+      ],
+      "integration": "候选模块可调用，完整原游戏消费者接线仍待完成",
+      "next_action": "补内联接口对照并对接真实生产者"
+    },
+    {
+      "module": "crates/lang-lib/src",
+      "status": "candidate_partial",
+      "ownership": "private_game_source",
+      "scope": "语言加载、回退、热切换、缺失key和请求locale持久化；修正非Unicode环境分支。",
+      "restoration_globs": [
+        "reconstruction/shared-foundation/crates/lang-lib/src/lib.rs",
+        "reconstruction/shared-foundation/crates/lang-lib/src/language_library.rs"
+      ],
+      "functions": [
+        "lang_lib::lang_pack_path",
+        "lang_lib::load_locale",
+        "lang_lib::load_locale_impl",
+        "lang_lib::load_last_used_locale",
+        "lang_lib::lookup",
+        "lang_lib::game_locale",
+        "lang_lib::language_library::LanguageLibrary::get",
+        "lang_lib::language_library::LanguageLibrary::try_from_yml"
+      ],
+      "gaps": [
+        "原ECS/UI初始化未接线",
+        "new/locale/try_get接口状态需逐项核实",
+        "开发工具和完整原运行时差分未覆盖"
+      ],
+      "verification": "2单元测试、5隔离进程、15发行locale通过；原8入口静态对照、15调用边界，另3内联接口单列。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/lang-small/summary.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/inventory.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/validation.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/native-result.json",
+        "evidence/shared-foundation-2026-10-13/lang-small/locale-policy.log",
+        "evidence/shared-foundation-2026-10-13/lang-small/original-assets.log"
+      ],
+      "integration": "候选模块可调用，完整原游戏消费者接线仍待完成",
+      "next_action": "补内联接口合同并接入真实消费者"
+    },
+    {
+      "module": "crates/tg-iced/src",
+      "status": "not_assessed",
+      "ownership": "private_game_source",
+      "scope": "仅登记原源码结构；局部调用或适配不等于本crate实现。",
+      "restoration_globs": [],
+      "functions": [],
+      "gaps": [
+        "逐文件/函数恢复范围、类型和实际生产消费链尚未建立"
+      ],
+      "verification": "未登记完整crate验证；源码索引不算恢复。",
+      "evidence": [],
+      "integration": "not_established",
+      "next_action": "逐文件/函数恢复范围、类型和实际生产消费链尚未建立"
+    },
+    {
+      "module": "crates/tg-text/src",
+      "status": "not_assessed",
+      "ownership": "private_game_source",
+      "scope": "仅登记原源码结构；局部调用或适配不等于本crate实现。",
+      "restoration_globs": [],
+      "functions": [],
+      "gaps": [
+        "逐文件/函数恢复范围、类型和实际生产消费链尚未建立"
+      ],
+      "verification": "未登记完整crate验证；源码索引不算恢复。",
+      "evidence": [],
+      "integration": "not_established",
+      "next_action": "逐文件/函数恢复范围、类型和实际生产消费链尚未建立"
+    },
+    {
+      "module": "crates/theme-defs/src",
+      "status": "candidate_partial",
+      "ownership": "private_game_source",
+      "scope": "活动数据PathBuf+两个SystemTime，以及Clone/Eq和错误状态候选。",
+      "restoration_globs": [
+        "reconstruction/shared-foundation/crates/theme-defs/src/lib.rs"
+      ],
+      "functions": [
+        "IPI 0x3F73 clone / 0x3F76 eq",
+        "IPI 0x3F78 clone / 0x3F7A eq"
+      ],
+      "gaps": [
+        "错误与交换格式可观察规则尚未核实",
+        "原生产/消费全流程未对照"
+      ],
+      "verification": "4个已观察内联类型接口有静态证据；不是完整传输流程验收。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/paths-language/delivery.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/validation.json",
+        "evidence/shared-foundation-2026-10-13/paths-language/CONTRACTS.md",
+        "evidence/shared-foundation-2026-10-13/integration/dependency-validation.json"
+      ],
+      "integration": "typed producer/consumer transport contract; no original plugin replacement yet",
+      "next_action": "补生产/消费和错误语义对照"
+    },
+    {
+      "module": "crates/theme-fetcher/src",
+      "status": "not_assessed",
+      "ownership": "private_game_source",
+      "scope": "仅登记原源码结构；局部调用或适配不等于本crate实现。",
+      "restoration_globs": [],
+      "functions": [],
+      "gaps": [
+        "逐文件/函数恢复范围、类型和实际生产消费链尚未建立"
+      ],
+      "verification": "未登记完整crate验证；源码索引不算恢复。",
+      "evidence": [],
+      "integration": "not_established",
+      "next_action": "逐文件/函数恢复范围、类型和实际生产消费链尚未建立"
+    },
+    {
+      "module": "crates/theme-server-proto/src",
+      "status": "not_assessed",
+      "ownership": "private_game_source",
+      "scope": "仅登记原源码结构；局部调用或适配不等于本crate实现。",
+      "restoration_globs": [],
+      "functions": [],
+      "gaps": [
+        "逐文件/函数恢复范围、类型和实际生产消费链尚未建立"
+      ],
+      "verification": "未登记完整crate验证；源码索引不算恢复。",
+      "evidence": [],
+      "integration": "not_established",
+      "next_action": "逐文件/函数恢复范围、类型和实际生产消费链尚未建立"
+    },
+    {
+      "module": "crates/systems/color/src",
+      "status": "not_assessed",
+      "ownership": "private_game_source",
+      "scope": "索引/零散候选；完整系统范围尚未核对。",
+      "restoration_globs": [],
+      "functions": [],
+      "gaps": [
+        "完整文件/函数、状态/资源和生产者消费者尚未恢复"
+      ],
+      "verification": "未登记完整模块验收。",
+      "evidence": [],
+      "integration": "not_established",
+      "next_action": "完整文件/函数、状态/资源和生产者消费者尚未恢复"
+    },
+    {
+      "module": "crates/systems/forest/src",
+      "status": "not_assessed",
+      "ownership": "private_game_source",
+      "scope": "索引/零散候选；完整系统范围尚未核对。",
+      "restoration_globs": [],
+      "functions": [],
+      "gaps": [
+        "完整文件/函数、状态/资源和生产者消费者尚未恢复"
+      ],
+      "verification": "未登记完整模块验收。",
+      "evidence": [],
+      "integration": "not_established",
+      "next_action": "完整文件/函数、状态/资源和生产者消费者尚未恢复"
+    },
+    {
+      "module": "crates/systems/glade-border/src",
+      "status": "not_assessed",
+      "ownership": "private_game_source",
+      "scope": "索引/零散候选；完整系统范围尚未核对。",
+      "restoration_globs": [],
+      "functions": [],
+      "gaps": [
+        "完整文件/函数、状态/资源和生产者消费者尚未恢复"
+      ],
+      "verification": "未登记完整模块验收。",
+      "evidence": [],
+      "integration": "not_established",
+      "next_action": "完整文件/函数、状态/资源和生产者消费者尚未恢复"
+    },
+    {
+      "module": "crates/systems/onboarding/src",
+      "status": "not_assessed",
+      "ownership": "private_game_source",
+      "scope": "索引/零散候选；完整系统范围尚未核对。",
+      "restoration_globs": [],
+      "functions": [],
+      "gaps": [
+        "完整文件/函数、状态/资源和生产者消费者尚未恢复"
+      ],
+      "verification": "未登记完整模块验收。",
+      "evidence": [],
+      "integration": "not_established",
+      "next_action": "完整文件/函数、状态/资源和生产者消费者尚未恢复"
+    },
+    {
+      "module": "crates/systems/timberframe/src",
+      "status": "not_assessed",
+      "ownership": "private_game_source",
+      "scope": "索引/零散候选；完整系统范围尚未核对。",
+      "restoration_globs": [],
+      "functions": [],
+      "gaps": [
+        "完整文件/函数、状态/资源和生产者消费者尚未恢复"
+      ],
+      "verification": "未登记完整模块验收。",
+      "evidence": [],
+      "integration": "not_established",
+      "next_action": "完整文件/函数、状态/资源和生产者消费者尚未恢复"
+    },
+    {
+      "module": "crates/systems/toolbar/src",
+      "status": "not_assessed",
+      "ownership": "private_game_source",
+      "scope": "索引/零散候选；完整系统范围尚未核对。",
+      "restoration_globs": [],
+      "functions": [],
+      "gaps": [
+        "完整文件/函数、状态/资源和生产者消费者尚未恢复"
+      ],
+      "verification": "未登记完整模块验收。",
+      "evidence": [],
+      "integration": "not_established",
+      "next_action": "完整文件/函数、状态/资源和生产者消费者尚未恢复"
+    },
+    {
+      "module": "crates/gpu-allocator/src",
+      "status": "dependency_boundary",
+      "ownership": "dependency_or_unresolved_local_ownership",
+      "scope": "先核实Cargo/PDB定义与公开来源；不默认local包都是私有任务。",
+      "restoration_globs": [],
+      "functions": [],
+      "gaps": [
+        "来源/必要分叉差异待核实，公共实现复用"
+      ],
+      "verification": "依赖实现不计游戏逆向覆盖。",
+      "evidence": [
+        "DEPENDENCY_FILTERING.md"
+      ],
+      "integration": "not_established",
+      "next_action": "来源/必要分叉差异待核实，公共实现复用"
+    },
+    {
+      "module": "crates/conservative-line-raster/src",
+      "status": "dependency_boundary",
+      "ownership": "dependency_or_unresolved_local_ownership",
+      "scope": "先核实Cargo/PDB定义与公开来源；不默认local包都是私有任务。",
+      "restoration_globs": [],
+      "functions": [],
+      "gaps": [
+        "来源/必要分叉差异待核实，公共实现复用"
+      ],
+      "verification": "依赖实现不计游戏逆向覆盖。",
+      "evidence": [
+        "DEPENDENCY_FILTERING.md"
+      ],
+      "integration": "not_established",
+      "next_action": "来源/必要分叉差异待核实，公共实现复用"
+    },
+    {
+      "module": "crates/frozen/src",
+      "status": "dependency_boundary",
+      "ownership": "dependency_or_unresolved_local_ownership",
+      "scope": "先核实Cargo/PDB定义与公开来源；不默认local包都是私有任务。",
+      "restoration_globs": [],
+      "functions": [],
+      "gaps": [
+        "来源/必要分叉差异待核实，公共实现复用"
+      ],
+      "verification": "依赖实现不计游戏逆向覆盖。",
+      "evidence": [
+        "DEPENDENCY_FILTERING.md"
+      ],
+      "integration": "not_established",
+      "next_action": "来源/必要分叉差异待核实，公共实现复用"
+    },
+    {
+      "module": "crates/leekspin/src",
+      "status": "dependency_boundary",
+      "ownership": "dependency_or_unresolved_local_ownership",
+      "scope": "先核实Cargo/PDB定义与公开来源；不默认local包都是私有任务。",
+      "restoration_globs": [],
+      "functions": [],
+      "gaps": [
+        "来源/必要分叉差异待核实，公共实现复用"
+      ],
+      "verification": "依赖实现不计游戏逆向覆盖。",
+      "evidence": [
+        "DEPENDENCY_FILTERING.md"
+      ],
+      "integration": "not_established",
+      "next_action": "来源/必要分叉差异待核实，公共实现复用"
+    },
+    {
+      "module": "crates/tg-gpu-selector/src",
+      "status": "dependency_boundary",
+      "ownership": "dependency_or_unresolved_local_ownership",
+      "scope": "先核实Cargo/PDB定义与公开来源；不默认local包都是私有任务。",
+      "restoration_globs": [],
+      "functions": [],
+      "gaps": [
+        "来源/必要分叉差异待核实，公共实现复用"
+      ],
+      "verification": "依赖实现不计游戏逆向覆盖。",
+      "evidence": [
+        "DEPENDENCY_FILTERING.md"
+      ],
+      "integration": "not_established",
+      "next_action": "来源/必要分叉差异待核实，公共实现复用"
+    },
+    {
+      "module": "crates/shader-variants/src",
+      "status": "dependency_boundary",
+      "ownership": "dependency_or_unresolved_local_ownership",
+      "scope": "先核实Cargo/PDB定义与公开来源；不默认local包都是私有任务。",
+      "restoration_globs": [],
+      "functions": [],
+      "gaps": [
+        "来源/必要分叉差异待核实，公共实现复用"
+      ],
+      "verification": "依赖实现不计游戏逆向覆盖。",
+      "evidence": [
+        "DEPENDENCY_FILTERING.md"
+      ],
+      "integration": "not_established",
+      "next_action": "来源/必要分叉差异待核实，公共实现复用"
+    },
+    {
+      "module": "crates/turbosloth/src",
+      "status": "dependency_boundary",
+      "ownership": "dependency_or_unresolved_local_ownership",
+      "scope": "先核实Cargo/PDB定义与公开来源；不默认local包都是私有任务。",
+      "restoration_globs": [],
+      "functions": [],
+      "gaps": [
+        "来源/必要分叉差异待核实，公共实现复用"
+      ],
+      "verification": "依赖实现不计游戏逆向覆盖。",
+      "evidence": [
+        "DEPENDENCY_FILTERING.md"
+      ],
+      "integration": "not_established",
+      "next_action": "来源/必要分叉差异待核实，公共实现复用"
+    },
+    {
+      "module": "crates/usdl/src",
+      "status": "dependency_boundary",
+      "ownership": "dependency_or_unresolved_local_ownership",
+      "scope": "先核实Cargo/PDB定义与公开来源；不默认local包都是私有任务。",
+      "restoration_globs": [],
+      "functions": [],
+      "gaps": [
+        "来源/必要分叉差异待核实，公共实现复用"
+      ],
+      "verification": "依赖实现不计游戏逆向覆盖。",
+      "evidence": [
+        "DEPENDENCY_FILTERING.md"
+      ],
+      "integration": "not_established",
+      "next_action": "来源/必要分叉差异待核实，公共实现复用"
+    },
+    {
+      "module": "crates/usdl-sys/src",
+      "status": "dependency_boundary",
+      "ownership": "dependency_or_unresolved_local_ownership",
+      "scope": "先核实Cargo/PDB定义与公开来源；不默认local包都是私有任务。",
+      "restoration_globs": [],
+      "functions": [],
+      "gaps": [
+        "来源/必要分叉差异待核实，公共实现复用"
+      ],
+      "verification": "依赖实现不计游戏逆向覆盖。",
+      "evidence": [
+        "DEPENDENCY_FILTERING.md"
+      ],
+      "integration": "not_established",
+      "next_action": "来源/必要分叉差异待核实，公共实现复用"
+    },
+    {
+      "module": "crates/rhapsody/crates/shader-pipeline/src",
+      "status": "integrated_partial",
+      "ownership": "local_path_source_candidate; public_origin_unconfirmed",
+      "scope": "B原compiled容器完整schema、反射/类型、文件键与binding hash已恢复；5个原PDB文件映射接入现有rhapsody。",
+      "restoration_globs": [
+        "reconstruction/rhapsody-rebuild/src/shader_pipeline/*.rs"
+      ],
+      "functions": [
+        "CompiledShaderPipeline阶段/依赖/完整stored reflection编解码",
+        "BindingNameHash::_dims规则与lookup",
+        "Type/Scalar/Vector/Matrix/Array/Struct wire tags及公共spirq尺寸接口",
+        "compiled_file_path、DefaultHasher每对XOR键"
+      ],
+      "gaps": [
+        "完整ShaderCompilerArtifacts加载错误上下文/缓存所有权",
+        "原描述对象optional字段与默认构造规则（新constructor是便利候选）",
+        "反射/变体/打包producer与AssetShaderLibrary/pass真实联接",
+        "A/C与原异常副作用未验收"
+      ],
+      "verification": "B404文件/638模块完整typed decode/encode逐字节回写；5测试通过。原机器码/PDB静态字段依据，不宣称完整crate所有函数或原ABI。",
+      "evidence": [
+        "evidence/shader-toolchain-2026-10-13/pipeline/validation.json",
+        "evidence/shader-toolchain-2026-10-13/pipeline/delivery.json",
+        "evidence/shader-toolchain-2026-10-13/integration.json"
+      ],
+      "integration": "真实compiled asset→ShaderLibrary retained metadata→Vulkan布局/compute消费；原fill buffer在Intel UHD630读回通过",
+      "next_action": "恢复原加载/缓存/错误与编译反射producer，接country-core资产/variant选择"
+    },
+    {
+      "module": "shader-compiler",
+      "status": "candidate_partial",
+      "ownership": "local_path_package; original_source_root_unobserved_in_B_PDB",
+      "scope": "已知原包名，B PDB未定位原源码目录；仅原DXC请求合同恢复，不编造src路径或原函数名。",
+      "restoration_globs": [
+        "reconstruction/rhapsody-rebuild/src/shader_compiler.rs"
+      ],
+      "functions": [
+        "638原OpModuleProcessed(330)编译参数提取、重建与同stage入口核对",
+        "prepared_input与source_include适配边界及候选进程错误返回"
+      ],
+      "gaps": [
+        "本机无DXC，真实shader重编译未验收",
+        "shader-prepper预处理、原SPIRV反射/name规范化、变体与打包生产者",
+        "原temp文件/取消/清理/完整异常与原源码映射"
+      ],
+      "verification": "3合同测试通过，404原资产SHA匹配，638请求参数/入口/stage一致；实际编译进程适配仍候选。",
+      "evidence": [
+        "evidence/shader-toolchain-2026-10-13/compiler/validation.json",
+        "evidence/shader-toolchain-2026-10-13/compiler/delivery.json",
+        "evidence/shader-toolchain-2026-10-13/compiler/stored-public-binding-name-audit.json",
+        "evidence/shader-toolchain-2026-10-13/integration.json"
+      ],
+      "integration": "共享compiled decoder→DxcRequest；真实DXC输出生产尚未闭合",
+      "next_action": "定位原私有compiler源码/调用，恢复反射预处理打包producer并提供DXC环境验证"
+    }
+  ],
+  "file_bindings": [
+    {
+      "original": "crates/country-core/src/resources/roofs/roof_shape.rs",
+      "restoration": "reconstruction/roof/roof_state.rs",
+      "basis": "reviewed_partial_module_mapping",
+      "verification_scope": "仅列出的状态/曲面/参数/脊线局部范围；非整个原文件",
+      "evidence": [
+        "evidence/roof-surface/verification.json",
+        "evidence/roof-ridge/verification.json",
+        "evidence/multi-version/B-parameters-verification.json"
+      ]
+    },
+    {
+      "original": "crates/country-core/src/resources/roofs/roof_shape.rs",
+      "restoration": "reconstruction/roof/surface.rs",
+      "basis": "reviewed_partial_module_mapping",
+      "verification_scope": "仅列出的状态/曲面/参数/脊线局部范围；非整个原文件",
+      "evidence": [
+        "evidence/roof-surface/verification.json",
+        "evidence/roof-ridge/verification.json",
+        "evidence/multi-version/B-parameters-verification.json"
+      ]
+    },
+    {
+      "original": "crates/country-core/src/resources/roofs/roof_shape.rs",
+      "restoration": "reconstruction/roof/parameters.rs",
+      "basis": "reviewed_partial_module_mapping",
+      "verification_scope": "仅列出的状态/曲面/参数/脊线局部范围；非整个原文件",
+      "evidence": [
+        "evidence/roof-surface/verification.json",
+        "evidence/roof-ridge/verification.json",
+        "evidence/multi-version/B-parameters-verification.json"
+      ]
+    },
+    {
+      "original": "crates/country-core/src/resources/roofs/roof_ridge.rs",
+      "restoration": "reconstruction/roof/ridge.rs",
+      "basis": "reviewed_partial_module_mapping",
+      "verification_scope": "仅列出的状态/曲面/参数/脊线局部范围；非整个原文件",
+      "evidence": [
+        "evidence/roof-surface/verification.json",
+        "evidence/roof-ridge/verification.json",
+        "evidence/multi-version/B-parameters-verification.json"
+      ]
+    },
+    {
+      "original": "crates/country-core/src/resources/roofs/roof_visual_shape.rs",
+      "restoration": "reconstruction/roof/surface.rs",
+      "basis": "reviewed_partial_module_mapping",
+      "verification_scope": "仅列出的状态/曲面/参数/脊线局部范围；非整个原文件",
+      "evidence": [
+        "evidence/roof-surface/verification.json",
+        "evidence/roof-ridge/verification.json",
+        "evidence/multi-version/B-parameters-verification.json"
+      ]
+    },
+    {
+      "original": "crates/country-core/src/resources/walls/public_wall_state.rs",
+      "restoration": "reconstruction/building/wall_state.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/resources/walls/public_walls.rs",
+      "restoration": "reconstruction/building/wall_state.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/resources/walls/inner_wall_state.rs",
+      "restoration": "reconstruction/building/wall_height_authority.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/resources/walls/wall_holes.rs",
+      "restoration": "reconstruction/building/wall_holes.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/resources/walls/decorator_subtype.rs",
+      "restoration": "reconstruction/building/decorator_subtype.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/resources/walls/decorator.rs",
+      "restoration": "reconstruction/building/decorator_info.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/resources/walls/decorator_archivist.rs",
+      "restoration": "reconstruction/building/wall_decorator_archivist.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/resources/walls/public_wall_state.rs",
+      "restoration": "reconstruction/wall/height_rules.rs",
+      "basis": "reviewed_partial_module_mapping",
+      "verification_scope": "3个缓存叶函数及数值后段；非整个墙系统",
+      "evidence": [
+        "evidence/scope-priorities/wall-rules-verification.json"
+      ]
+    },
+    {
+      "original": "crates/country-core/src/resources/walls/public_walls.rs",
+      "restoration": "reconstruction/wall/height_rules.rs",
+      "basis": "reviewed_partial_module_mapping",
+      "verification_scope": "3个缓存叶函数及数值后段；非整个墙系统",
+      "evidence": [
+        "evidence/scope-priorities/wall-rules-verification.json"
+      ]
+    },
+    {
+      "original": "crates/country-core/src/systems/wall/wall_state/publish_public_wall_state.rs",
+      "restoration": "reconstruction/building/wall_publication.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/systems/wall/wall_state/wall_spatial_hash.rs",
+      "restoration": "reconstruction/building/wall_spatial_index.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/systems/wall/wall_state/spatial_hash_update.rs",
+      "restoration": "reconstruction/building/wall_spatial_index.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/systems/wall/wall_state/wall_roof_hashmap.rs",
+      "restoration": "reconstruction/building/roof_associations.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/systems/wall/shapes/calc_shape_height.rs",
+      "restoration": "reconstruction/building/wall_freeform_cache.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/systems/wall/draw_wall.rs",
+      "restoration": "reconstruction/building/wall_authoring.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/systems/wall/finish_wall.rs",
+      "restoration": "reconstruction/building/wall_authoring.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/systems/wall/delete_wall.rs",
+      "restoration": "reconstruction/building/wall_authoring.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/systems/wall/adjust_wall_height/adjust_wall_height_impl.rs",
+      "restoration": "reconstruction/building/wall_height_command.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/systems/wall/eraser/animate_wall_bulldoze.rs",
+      "restoration": "reconstruction/building/wall_bulldoze.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/systems/wall/shapes/rectangle/edit_rectangle.rs",
+      "restoration": "reconstruction/building/wall_rectangle_edit.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/systems/wall/shapes/rectangle/finish_edit_rectangle.rs",
+      "restoration": "reconstruction/building/wall_rectangle_edit.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/resources/history/mod.rs",
+      "restoration": "reconstruction/history/transaction.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/resources/history/roof_edit.rs",
+      "restoration": "reconstruction/roof/replay.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/resources/history/wall_compound_edit.rs",
+      "restoration": "reconstruction/building/wall_history_edit.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/resources/history/wall_history.rs",
+      "restoration": "reconstruction/building/wall_history_edit.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/systems/history/replay_wall.rs",
+      "restoration": "reconstruction/building/wall_history_replay.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/systems/history/replay_pop_bucket.rs",
+      "restoration": "reconstruction/building/wall_history_replay.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/systems/history/history_process.rs",
+      "restoration": "reconstruction/history/transaction.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/systems/history/replay_terrain.rs",
+      "restoration": "reconstruction/terrain/crates/tg-terrain/src/replay.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/systems/history/replay_auto_clutter.rs",
+      "restoration": "reconstruction/clutter-audio/crates/tg-clutter-audio/src/clutter/auto_clutter_edit.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/systems/terrain/edit_terrain_stroke.rs",
+      "restoration": "reconstruction/terrain/crates/tg-terrain/src/edit.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/resources/terrain_editing.rs",
+      "restoration": "reconstruction/terrain/crates/tg-terrain/src/stroke.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/resources/terrain_stroke.rs",
+      "restoration": "reconstruction/terrain/crates/tg-terrain/src/schema.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/country-core/src/systems/camera_rig/normal.rs",
+      "restoration": "reconstruction/camera/normal.rs",
+      "basis": "same_source_submodule_candidate"
+    },
+    {
+      "original": "crates/country-core/src/systems/camera_rig/free.rs",
+      "restoration": "reconstruction/camera/free.rs",
+      "basis": "same_source_submodule_candidate"
+    },
+    {
+      "original": "crates/country-core/src/systems/camera_rig/walk.rs",
+      "restoration": "reconstruction/camera/walk.rs",
+      "basis": "same_source_submodule_candidate"
+    },
+    {
+      "original": "crates/country-core/src/systems/camera_rig/butterfly.rs",
+      "restoration": "reconstruction/camera/butterfly.rs",
+      "basis": "same_source_submodule_candidate"
+    },
+    {
+      "original": "crates/country-core/src/systems/camera_rig/camera_body.rs",
+      "restoration": "reconstruction/camera/camera_body.rs",
+      "basis": "same_source_submodule_candidate"
+    },
+    {
+      "original": "crates/country-core/src/resources/tree_storage.rs",
+      "restoration": "reconstruction/tree-tool/src/process_tree_cmds.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/roof/src/create_roof.rs",
+      "restoration": "reconstruction/building/roof_creation.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/roof/src/edit_roof.rs",
+      "restoration": "reconstruction/roof/edit_rules.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/roof/src/delete_roof.rs",
+      "restoration": "reconstruction/building/roof_deletion.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/roof/src/update_roof_spatial.rs",
+      "restoration": "reconstruction/building/roof_spatial.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/roof/src/replay_roof.rs",
+      "restoration": "reconstruction/roof/replay.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/roof/src/utils/assemble_circular_roof.rs",
+      "restoration": "reconstruction/roof/tiles.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/roof/src/utils/assemble_rectangular_roof.rs",
+      "restoration": "reconstruction/roof/pipeline.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/roof/src/visual/switch_roof_type.rs",
+      "restoration": "reconstruction/crates/tg-building-runtime/src/roof_edits.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/roof/src/visual/roof_animation.rs",
+      "restoration": "reconstruction/building/roof_components.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/roof/src/edit_roof.rs",
+      "restoration": "reconstruction/roof/edit_rules.rs",
+      "basis": "reviewed_partial_module_mapping",
+      "verification_scope": "4514已解析编辑后段案例，不含完整原ECS前段",
+      "evidence": [
+        "evidence/source-edits/verification.json"
+      ]
+    },
+    {
+      "original": "crates/systems/roof/src/utils/assemble_circular_roof.rs",
+      "restoration": "reconstruction/roof/tiles.rs",
+      "basis": "reviewed_partial_module_mapping",
+      "verification_scope": "37输入，25prepared/12完整入口，限定CPU记录",
+      "evidence": [
+        "evidence/roof-tiles/circular-verification.json"
+      ]
+    },
+    {
+      "original": "crates/systems/roof/src/utils/assemble_rectangular_roof.rs",
+      "restoration": "reconstruction/roof/pipeline.rs",
+      "basis": "reviewed_partial_module_mapping",
+      "verification_scope": "历史Windows33完整CPU输入；ARM1ULP失败单列",
+      "evidence": [
+        "evidence/roof-pipeline-verification.json"
+      ]
+    },
+    {
+      "original": "crates/systems/wall-constructor/src/wall_constructor.rs",
+      "restoration": "reconstruction/building/wall_constructor.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/wall-constructor/src/construct_walls.rs",
+      "restoration": "reconstruction/building/wall_production.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/wall-constructor/src/construct_arches/mod.rs",
+      "restoration": "reconstruction/building/wall_arches.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/wall-constructor/src/construct_arches/profile.rs",
+      "restoration": "reconstruction/building/wall_arches.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/wall-constructor/src/construct_lintels/mod.rs",
+      "restoration": "reconstruction/building/wall_structures.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/wall-constructor/src/construct_platform_stairs/mod.rs",
+      "restoration": "reconstruction/building/wall_platform_stairs.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/wall-constructor/src/construct_gates/mod.rs",
+      "restoration": "reconstruction/building/gates.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/wall-constructor/src/construct_gates/systems.rs",
+      "restoration": "reconstruction/building/gates.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/wall-constructor/src/construct_fences/mod.rs",
+      "restoration": "reconstruction/building/fences.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/wall-constructor/src/construct_fences/process_segment.rs",
+      "restoration": "reconstruction/building/fences.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/wall-constructor/src/segmentation/calculate_wall_path_segmentation.rs",
+      "restoration": "reconstruction/building/wall_segmentation.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/wall-constructor/src/segmentation/sample_wall_path_intersections.rs",
+      "restoration": "reconstruction/building/wall_path_preparation.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/wall-constructor/src/segmentation/split_wall_path_segment_into_platform_stairs.rs",
+      "restoration": "reconstruction/building/wall_platform_segmentation.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/tree-tool/src/process_tree_cmds.rs",
+      "restoration": "reconstruction/tree-tool/src/process_tree_cmds.rs",
+      "basis": "same_source_submodule_candidate"
+    },
+    {
+      "original": "crates/systems/tree-tool/src/replay_tree.rs",
+      "restoration": "reconstruction/tree-tool/src/replay_tree.rs",
+      "basis": "same_source_submodule_candidate"
+    },
+    {
+      "original": "crates/systems/tree-tool/src/recalc_tree_position_on_terrain_height_change.rs",
+      "restoration": "reconstruction/tree-tool/src/recalc_tree_position_on_terrain_height_change.rs",
+      "basis": "same_source_submodule_candidate"
+    },
+    {
+      "original": "crates/systems/tree-tool/src/tree_move_bend.rs",
+      "restoration": "reconstruction/tree-tool/src/tree_move_bend.rs",
+      "basis": "same_source_submodule_candidate"
+    },
+    {
+      "original": "crates/systems/tree-tool/src/convert_preplaced_trees.rs",
+      "restoration": "reconstruction/tree-tool/src/convert_preplaced_trees.rs",
+      "basis": "same_source_submodule_candidate"
+    },
+    {
+      "original": "crates/systems/water/src/draw_water.rs",
+      "restoration": "reconstruction/terrain/crates/tg-terrain/src/water.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/water/src/record_water_history.rs",
+      "restoration": "reconstruction/terrain/crates/tg-terrain/src/water.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/water/src/water_audio_grid.rs",
+      "restoration": "reconstruction/terrain/crates/tg-terrain/src/water_audio_grid.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/critters/src/duck.rs",
+      "restoration": "reconstruction/critters/src/duck.rs",
+      "basis": "same_source_submodule_candidate"
+    },
+    {
+      "original": "crates/systems/critters/src/shared.rs",
+      "restoration": "reconstruction/critters/src/shared.rs",
+      "basis": "same_source_submodule_candidate"
+    },
+    {
+      "original": "crates/systems/critters/src/fish.rs",
+      "restoration": "reconstruction/critters/src/fish.rs",
+      "basis": "same_source_submodule_candidate"
+    },
+    {
+      "original": "crates/systems/critters/src/butterfly.rs",
+      "restoration": "reconstruction/critters/src/butterfly.rs",
+      "basis": "same_source_submodule_candidate"
+    },
+    {
+      "original": "crates/systems/critters/src/wren_boids.rs",
+      "restoration": "reconstruction/critters/src/wren_boids.rs",
+      "basis": "same_source_submodule_candidate"
+    },
+    {
+      "original": "crates/systems/critters/src/sheep/sheep_terrain.rs",
+      "restoration": "reconstruction/critters/src/sheep_terrain.rs",
+      "basis": "same_source_submodule_candidate"
+    },
+    {
+      "original": "crates/systems/critters/src/firefly.rs",
+      "restoration": "reconstruction/critters/firefly.rs",
+      "basis": "same_source_submodule_candidate"
+    },
+    {
+      "original": "crates/systems/clutter/src/autoclutter/populate_autoclutter_regions.rs",
+      "restoration": "reconstruction/clutter-audio/crates/tg-clutter-audio/src/clutter/autoclutter/populate_autoclutter_regions.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/clutter/src/autoclutter/process_autoclutter_candidates.rs",
+      "restoration": "reconstruction/clutter-audio/crates/tg-clutter-audio/src/clutter/autoclutter/process_autoclutter_candidates.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/clutter/src/autoclutter/manage_autoclutter_entities.rs",
+      "restoration": "reconstruction/clutter-audio/crates/tg-clutter-audio/src/clutter/autoclutter/manage_autoclutter_entities.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/clutter/src/inter_roof_merlons/construct_inter_roof_merlons.rs",
+      "restoration": "reconstruction/clutter-audio/crates/tg-clutter-audio/src/clutter/merlons.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/clutter/src/inter_roof_merlons/detect_inter_roof_merlons.rs",
+      "restoration": "reconstruction/clutter-audio/crates/tg-clutter-audio/src/clutter/merlons.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/systems/clutter/src/inter_shape_stitches/stitch_bricks.rs",
+      "restoration": "reconstruction/clutter-audio/crates/tg-clutter-audio/src/clutter/stitches.rs",
+      "basis": "reviewed_partial_module_mapping"
+    },
+    {
+      "original": "crates/rhapsody/src/leek.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/leek.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/lib.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/lib.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/allocator.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/allocator.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/barrier.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/barrier.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/binding.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/binding.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/buffer.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/buffer.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/bytes.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/bytes.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/command_buffer.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/command_buffer.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/crash.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/crash.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/debug.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/debug.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/descriptor_set.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/descriptor_set.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/device.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/device.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/disposal.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/disposal.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/dynamic_constants.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/dynamic_constants.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/error.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/error.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/format.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/format.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/framebuffer.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/framebuffer.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/init.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/init.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/instance.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/instance.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/managed/buffer.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/managed/buffer.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/managed/descriptor_set.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/managed/descriptor_set.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/managed/framebuffer.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/managed/framebuffer.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/managed/handle.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/managed/handle.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/managed/render_pass.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/managed/render_pass.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/managed/resources.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/managed/resources.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/managed/sampler.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/managed/sampler.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/managed/swapchain.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/managed/swapchain.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/managed/texture.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/managed/texture.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/physical_device.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/physical_device.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/profiler.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/profiler.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/ray_tracing.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/ray_tracing.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/render_pass.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/render_pass.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/sampler.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/sampler.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/semaphore.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/semaphore.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/shader.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/shader.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/stats.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/stats.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/submit.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/submit.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/swapchain.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/swapchain.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/temp_list.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/temp_list.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/raw/texture.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/raw/texture.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/rg/binding.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/rg/binding.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/rg/compiled.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/rg/compiled.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/rg/executor.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/rg/executor.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/rg/graph.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/rg/graph.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/rg/import_export.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/rg/import_export.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/rg/pass_api.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/rg/pass_api.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/rg/pass_builder.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/rg/pass_builder.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/rg/recorder.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/rg/recorder.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/rg/resource.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/rg/resource.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/rg/resource_info.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/rg/resource_info.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/rg/resource_pool.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/rg/resource_pool.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/rg/resource_registry.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/rg/resource_registry.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/rg/state.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/rg/state.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/rg/temporal.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/rg/temporal.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/rhapsody/src/rg/util.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/rg/util.rs",
+      "basis": "pdb_structure_aligned_candidate_path; not_original_text"
+    },
+    {
+      "original": "crates/utils/src/curve/mod.rs",
+      "restoration": "reconstruction/roof/surface.rs",
+      "basis": "reviewed_partial_module_mapping",
+      "verification_scope": "限定Curve2 CPU链",
+      "evidence": [
+        "evidence/roof-surface/verification.json"
+      ]
+    },
+    {
+      "original": "crates/utils/src/lib.rs",
+      "restoration": "reconstruction/roof/tiles.rs",
+      "basis": "reviewed_partial_module_mapping",
+      "verification_scope": "私有random_splits调用策略，不包含RNG库实现",
+      "evidence": [
+        "evidence/roof-tiles/dependency-boundary.json"
+      ]
+    },
+    {
+      "original": "crates/asset-pipe/src/lib.rs",
+      "restoration": "reconstruction/shared-foundation/crates/asset-pipe/src/lib.rs",
+      "basis": "reviewed_B_business_mapping",
+      "verification_scope": "B限定恢复与对照范围见报告；不代表A/C或完整原文件",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "original": "crates/asset-pipe/src/texture.rs",
+      "restoration": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+      "basis": "reviewed_B_business_mapping",
+      "verification_scope": "B限定恢复与对照范围见报告；不代表A/C或完整原文件",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "original": "crates/asset/src/lib.rs",
+      "restoration": "reconstruction/shared-foundation/crates/asset/src/lib.rs",
+      "basis": "reviewed_B_business_mapping",
+      "verification_scope": "B限定恢复与对照范围见报告；不代表A/C或完整原文件",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "original": "crates/asset/src/inheritable.rs",
+      "restoration": "reconstruction/shared-foundation/crates/asset/src/inheritable.rs",
+      "basis": "reviewed_B_business_mapping",
+      "verification_scope": "B限定恢复与对照范围见报告；不代表A/C或完整原文件",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "original": "crates/asset/src/prefab.rs",
+      "restoration": "reconstruction/shared-foundation/crates/asset/src/prefab.rs",
+      "basis": "reviewed_B_business_mapping",
+      "verification_scope": "B限定恢复与对照范围见报告；不代表A/C或完整原文件",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "original": "crates/asset/src/prefab/config.rs",
+      "restoration": "reconstruction/shared-foundation/crates/asset/src/prefab/config.rs",
+      "basis": "reviewed_B_business_mapping",
+      "verification_scope": "B限定恢复与对照范围见报告；不代表A/C或完整原文件",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "original": "crates/asset/src/prefab/scan.rs",
+      "restoration": "reconstruction/shared-foundation/crates/asset/src/prefab/scan.rs",
+      "basis": "reviewed_B_business_mapping",
+      "verification_scope": "B限定恢复与对照范围见报告；不代表A/C或完整原文件",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "original": "crates/asset/src/texture/blob.rs",
+      "restoration": "reconstruction/shared-foundation/crates/asset/src/texture/blob.rs",
+      "basis": "reviewed_B_business_mapping",
+      "verification_scope": "B限定恢复与对照范围见报告；不代表A/C或完整原文件",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "original": "crates/asset/src/texture/config.rs",
+      "restoration": "reconstruction/shared-foundation/crates/asset/src/texture/config.rs",
+      "basis": "reviewed_B_business_mapping",
+      "verification_scope": "B限定恢复与对照范围见报告；不代表A/C或完整原文件",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "original": "crates/asset/src/texture/desc.rs",
+      "restoration": "reconstruction/shared-foundation/crates/asset/src/texture/desc.rs",
+      "basis": "reviewed_B_business_mapping",
+      "verification_scope": "B限定恢复与对照范围见报告；不代表A/C或完整原文件",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "original": "crates/asset/src/texture/scan.rs",
+      "restoration": "reconstruction/shared-foundation/crates/asset/src/texture/scan.rs",
+      "basis": "reviewed_B_business_mapping",
+      "verification_scope": "B限定恢复与对照范围见报告；不代表A/C或完整原文件",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ]
+    },
+    {
+      "original": "crates/rhapsody/crates/shader-pipeline/src/compiled.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/shader_pipeline/compiled.rs",
+      "basis": "B_PDB_path_and_original_native_reader_contract",
+      "verification_scope": "B原schema/键/存储字段合同与404逐字节回写；不代表整个原文件全部函数。构造层明确便利候选。",
+      "evidence": [
+        "evidence/shader-toolchain-2026-10-13/pipeline/delivery.json",
+        "evidence/shader-toolchain-2026-10-13/pipeline/validation.json"
+      ]
+    },
+    {
+      "original": "crates/rhapsody/crates/shader-pipeline/src/pipeline_desc.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/shader_pipeline/pipeline_desc.rs",
+      "basis": "B_PDB_path_and_original_native_reader_contract",
+      "verification_scope": "B原schema/键/存储字段合同与404逐字节回写；不代表整个原文件全部函数。构造层明确便利候选。",
+      "evidence": [
+        "evidence/shader-toolchain-2026-10-13/pipeline/delivery.json",
+        "evidence/shader-toolchain-2026-10-13/pipeline/validation.json"
+      ]
+    },
+    {
+      "original": "crates/rhapsody/crates/shader-pipeline/src/reflection.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/shader_pipeline/reflection.rs",
+      "basis": "B_PDB_path_and_original_native_reader_contract",
+      "verification_scope": "B原schema/键/存储字段合同与404逐字节回写；不代表整个原文件全部函数。构造层明确便利候选。",
+      "evidence": [
+        "evidence/shader-toolchain-2026-10-13/pipeline/delivery.json",
+        "evidence/shader-toolchain-2026-10-13/pipeline/validation.json"
+      ]
+    },
+    {
+      "original": "crates/rhapsody/crates/shader-pipeline/src/reflection_ty.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/shader_pipeline/reflection_ty.rs",
+      "basis": "B_PDB_path_and_original_native_reader_contract",
+      "verification_scope": "B原schema/键/存储字段合同与404逐字节回写；不代表整个原文件全部函数。构造层明确便利候选。",
+      "evidence": [
+        "evidence/shader-toolchain-2026-10-13/pipeline/delivery.json",
+        "evidence/shader-toolchain-2026-10-13/pipeline/validation.json"
+      ]
+    },
+    {
+      "original": "crates/rhapsody/crates/shader-pipeline/src/shader_defines.rs",
+      "restoration": "reconstruction/rhapsody-rebuild/src/shader_pipeline/shader_defines.rs",
+      "basis": "B_PDB_path_and_original_native_reader_contract",
+      "verification_scope": "B原schema/键/存储字段合同与404逐字节回写；不代表整个原文件全部函数。构造层明确便利候选。",
+      "evidence": [
+        "evidence/shader-toolchain-2026-10-13/pipeline/delivery.json",
+        "evidence/shader-toolchain-2026-10-13/pipeline/validation.json"
+      ]
+    }
+  ],
+  "candidate_mappings": [
+    "evidence/abc-tools-52-2026-10-11/mapping.json",
+    "evidence/abc-building-35-2026-10-12/mapping.json"
+  ],
+  "shader_layer": {
+    "root": "reconstruction/shader-source/shaders/",
+    "scope": "独立HLSL源码层：404/404原bin有对应重建main；260main/共享include及大算法族已重建。对应覆盖不等于算法验收。",
+    "verification": "全树汇总258/260编译、235/260结构关口；两个Affine3Packed冲突后续记录已修复，未见更新后的全树汇总。原码指纹、变体和GPU验证分别看待。",
+    "gaps": [
+      "17 capability、5 binding和1 local_size汇总残差需逐项核实，不能全归编译器差异",
+      "PBA/f0ad变体/大PS结构残差",
+      "Shader源码→游戏pass→rhapsody pipeline/descriptor→真实整帧与画面对照"
+    ],
+    "evidence": [
+      "evidence/render-passes/integration/wave2-final/completion.json",
+      "evidence/render-passes/RECOVERY_TRACKER.md"
+    ],
+    "next_action": "保留历史汇总，先关闭绑定/工作组等语义结构差异，再接最小真实cull/indirect/shadow/main消费链"
+  },
+  "behavior_recovery_policy": {
+    "requested_by_user": "2026-10-13",
+    "source_text_1_to_1_required": false,
+    "original_rust_abi_required": false,
+    "workflow": [
+      "extract_original_business_rules",
+      "implement_independently_with_original_dependencies",
+      "compare_actual_original_logic",
+      "record_differences",
+      "repair",
+      "recheck"
+    ],
+    "acceptance_scope": [
+      "inputs_outputs",
+      "state_transitions",
+      "ordering",
+      "boundaries",
+      "failure_behavior",
+      "persistent_format_compatibility"
+    ],
+    "evidence": "evidence/shared-foundation-2026-10-13/BEHAVIOR_WORKFLOW.md",
+    "third_party_reimplementation_allowed": false,
+    "dependency_reuse_audit_required": true
+  }
+}

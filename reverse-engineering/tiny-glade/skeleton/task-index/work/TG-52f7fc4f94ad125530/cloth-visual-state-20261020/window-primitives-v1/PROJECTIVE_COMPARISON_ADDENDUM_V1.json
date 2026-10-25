@@ -1,0 +1,28 @@
+{
+  "scope": "additional bounded register liveness observation, no runtime equivalence claim",
+  "base": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-52f7fc4f94ad125530/cloth-visual-state-20261020/window-primitives-v1/PROJECTIVE_COMPARISON_V1.json",
+    "sha256": "a4731ec313e5e49831e3ec1b667e605537244245470f4ab8b7dad46948356ccd"
+  },
+  "three_initial_comparison_mismatches": [
+    {
+      "index": 95,
+      "old": "xorps xmm1, xmm1",
+      "projective_with_input_register_permutation": "xorps xmm2, xmm2"
+    },
+    {
+      "index": 96,
+      "old": "movss xmm1, xmm0",
+      "projective_with_input_register_permutation": "movss xmm2, xmm0"
+    },
+    {
+      "index": 97,
+      "old": "shufps xmm3, xmm1, 0x14",
+      "projective_with_input_register_permutation": "shufps xmm3, xmm2, 0x14"
+    }
+  ],
+  "reason": "old instructions95..97 and projective97..99 are literally the same xorps xmm1,xmm1; movss xmm1,xmm0; shufps xmm3,xmm1,0x14. This scratch is overwritten from zero and xmm0 after the input xmm1/xmm2 values are no longer live on that branch; global input-register permutation must not rename this dead/redefined scratch.",
+  "new_policy": "retain original registers for these three scratch instructions; preserve input xmm1/xmm2 permutation elsewhere, same resolved RIP constants and branch instruction labels",
+  "normalized_remaining_algorithm_instructions_equal": 128,
+  "new_business_semantics": "ignore input y; extract actual x/z then reuse existing xz_rotation_bad semantic implementation; no new math/dependency algorithm"
+}

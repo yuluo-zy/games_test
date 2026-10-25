@@ -1,0 +1,18 @@
+// max_y_gable  size=81
+// void __cdecl max_y_gable(void)
+
+void __cdecl country_core::resources::walls::public_wall_state::PublicWallState::max_y_gable(void)
+
+{
+  longlong in_RCX;
+  
+  if ((*(byte *)(in_RCX + 0x110) & 1) != 0) {
+    return;
+  }
+                    // WARNING: Subroutine does not return
+  core::panicking::panic_fmt();
+}
+
+
+
+// CALLEES: [{'name': 'panic_fmt', 'address': '1428d9390'}]

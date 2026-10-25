@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.program.model.address import AddressSet\n\ndef dump(base, nentries):\n    a = currentProgram.getAddressFactory().getAddress(base)\n    mem = currentProgram.getMemory()\n    out = []\n    for i in range(nentries):\n        b = a.add(i*4)\n        try:\n            v = mem.getInt(b)\n        except Exception:\n            break\n        target = (int(base,16) + v) & 0xffffffffffffffff\n        out.append({\"i\": i, \"rel\": v, \"target_hex\": \"%x\" % target})\n    return out\nprint(json.dumps({\"jt_404c\": dump(\"142ae404c\", 64), \"jt_405c\": dump(\"142ae405c\", 64)}))",
+      "timeoutSeconds": 60
+    },
+    "timeout_seconds": 90
+  }
+]

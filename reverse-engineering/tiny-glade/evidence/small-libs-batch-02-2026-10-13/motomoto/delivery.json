@@ -1,0 +1,70 @@
+{
+  "module": "motomoto",
+  "baseline": "B",
+  "status": "implemented_bounded_behavior_verified",
+  "round": "batch-02",
+  "source": "crates/motomoto/src/lib.rs",
+  "implementation": "reconstruction/shared-foundation/crates/motomoto/src/lib.rs",
+  "original_lock_dependency": {
+    "byteorder": "1.5.0"
+  },
+  "round_verification": [
+    {
+      "original": "Writer::add_chunk<Cursor<&mut Vec>, &str>",
+      "address": "0x141552690",
+      "method": "ghidra_decompile",
+      "session": "evidence/toolchain/session-ghidra-shared-motmoto-b02.json",
+      "result": "matches_candidate"
+    },
+    {
+      "original": "Writer::add_chunk<Cursor<&mut Vec>, u64>",
+      "address": "0x141552820",
+      "method": "ghidra_decompile",
+      "session": "evidence/toolchain/session-ghidra-shared-motmoto-b02.json",
+      "result": "matches_candidate"
+    },
+    {
+      "original": "ChunkWriter seek_back_and_write_length + Drop",
+      "address": "0x14087abf0",
+      "method": "ghidra_decompile",
+      "session": "evidence/toolchain/session-ghidra-shared-motmoto-b02.json",
+      "result": "matches_candidate"
+    },
+    {
+      "original": "Reader::iter",
+      "address": "0x142080d50",
+      "method": "ghidra_decompile",
+      "session": "evidence/toolchain/session-ghidra-shared-motmoto-b02.json",
+      "result": "matches_candidate"
+    },
+    {
+      "original": "ChunkIterator::next (try_next)",
+      "address": "0x142080d70",
+      "method": "ghidra_decompile",
+      "session": "evidence/toolchain/session-ghidra-shared-motmoto-b02.json",
+      "result": "matches_candidate"
+    }
+  ],
+  "consumer_wiring": [
+    {
+      "producer": "capture_game_snapshot",
+      "address": "0x1417a1d00",
+      "usage": "serde_json world map -> Writer::add_chunk<&str>(0x1417a31fa) -> write_all<ChunkWriter>; batch-01 另有 0x1417a35fa(u64)/0x1417a3a50(&str) add_chunk 观察"
+    },
+    {
+      "reader": "validate_and_load_closest_snapshot_data",
+      "address": "0x1417a6e50",
+      "usage": "Reader::iter -> ChunkIterator::next(0x1417a6e50 反编译行206-208)；try_load_snapshot_data 内再 next(行1367)；flate2 DeflateDecoder + serde_json 反序列化"
+    }
+  ],
+  "validation": {
+    "cargo_test": "12 passed",
+    "clippy": "pending_unified",
+    "new_test": "byte_exact_header_layout_and_trailing_partial_tail_ignored"
+  },
+  "unchanged": ["library_api"],
+  "known_remaining": [
+    "Writer/Drop 原入口在真实 Windows loader 的运行验收（当前为反编译静态对照+File/BufWriter 候选验收）",
+    "完整存档动态 tag 生产/消费表、Snapshot/Terrain 段 schema、压缩设置与迁移规则（属 country-core save 系统范围）"
+  ]
+}

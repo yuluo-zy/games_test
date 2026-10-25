@@ -1,0 +1,86 @@
+{
+  "reviewer": "/root/render_reviewer",
+  "date": "2026-10-21",
+  "status": "design_accepted_with_source_and_gpu_acceptance_pending",
+  "scope": "保留当前重构的rhapsody，审固定单set共享layout多页宿主合同；本报告不是host实现或游戏恢复通过声明。",
+  "reviewer_execution": {
+    "production_mutations": false,
+    "cargo": false,
+    "gpu": false,
+    "native_game_execution": false,
+    "static_otool_and_source_reads": true
+  },
+  "contract_inputs": {
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/layout-contract-20261021/CONTRACT.md": "993b42946c9b4a130438d3dd1281c65955e48e2a2371d3c33e7ac7b96127af14",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/layout-contract-20261021/CONTRACT_ADDENDUM_A.md": "6f551cee26f0d85fbf99da78d0aa55315bc3e4dad710892161764fa4494855a8",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/layout-contract-20261021/ADDENDUM_A_STATE.json": "e8d7a6b1122ef729cf8398ae53c111494ff9de1d58364d537f5ffb30e470525e",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/layout-contract-20261021/GROUP_BOUND_EVIDENCE.json": "96f7f8212d674b3f75b7c6e407f163c8f7907f1b9309110791109e644aa78a9b",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/layout-contract-20261021/LAYOUT_MATRIX_INPUTS.json": "df206f8a2e0013124c7fede4ceab2558d49c2b8c1c0a413c5b0b02f5f99fa892",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/layout-contract-20261021/DRIVER_EVIDENCE_IDENTITY.json": "583b238d7b23333c9d46c1a627625e4aed3d9b335e4c816bac9afbfa5c947c21",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/layout-contract-20261021/moltenvk-fixed-support-installed.asm.txt": "d0a3dc54716b0240a531055ed3e81f91c494e78965561982e89c00c2de83a315",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/layout-contract-20261021/moltenvk-variable-support-installed.asm.txt": "b3470c0280bd34eb9ac270ff4ba4a3e129e12e37af9d01b91b31c1281e702c80"
+  },
+  "current_source_dependencies": {
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/render_host.rs": "b40a50e357ddefc2ef5c0832d0e4319243ba6d35711cab40af5c3bd6f0322aba",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/frame_setup.rs": "19e87b04543868ef46b02b58aec83a37a881f66b95ab4b7894fb26a4a840437a",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/raster_host.rs": "11d1469b4dc1002e8ec4d6fa932510777f33d4ab38ef14e4234a0f52652d2ea9",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/bindless_parameters.rs": "8041feb68d419e866ec856c66cdf919bd3d0720366ae5d3c9523dbf1c2c28a13",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/bindless.rs": "9a5b11881e8d3820975baa6b5507374d727b40c152e500bc6908728d16f8154f",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/indirect_count.rs": "75336616213c00c1ff55dab878f3c9024682a04fae3d76275b4adec223fc9181",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/descriptor_set.rs": "7ee6aef9aca7daf5b9bd8a83c8fd4dfe80f38e680d294810086f51a73a43c566",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/allocator.rs": "65e1e1949cb80871211f0deecf25062479576e990330486ba094ded39a066d82"
+  },
+  "evidence_classes": {
+    "original_tiny_glade_native": "本次分页是现有重构API的跨平台工程适配，未声称找到原版一一对应的分页算法；不改变原shader资源、数组长度、draw/dispatch业务。",
+    "schema": "保留ABI_VERSION=1、lowered set0 binding0..3、单push索引；同组资源必须全部映射到同一物理页；pipeline继续验证真实layout.handle，lease继续验证实际heap身份。",
+    "engineering": "合同新增PagePool/GroupReservation及新页原语，不复制原rhapsody目录或绕过现错误。",
+    "current_runtime": "root已有v5/v6真实失败，不是skip；新分页未编译/运行，矩阵与page lifetime测试未运行。"
+  },
+  "driver": {
+    "installed_library": "/opt/homebrew/Cellar/molten-vk/1.4.2/lib/libMoltenVK.dylib",
+    "sha256": "05df2d2145b9ef5b86b08ed93a7a6e916815c2bbac244298a50b2d58061600d1",
+    "independent_check": "已在本轮上下文中独立otool精确symbol到下一label，fixed143行、variable146行函数体与保留证据逐行一致；无driver或游戏执行。",
+    "fixed_PC": "0x78f30..0x78f60，传统三类上限求和乘4，与1024取大，再以lo严格小于比较supported；M3输入得到1212，等于1212也不支持。",
+    "variable_PC": "0x78fb8起，独立variable helper不能将fixed false改成true，单storage上限31。",
+    "official_source": "https://raw.githubusercontent.com/KhronosGroup/MoltenVK/v1.4.2/MoltenVK/MoltenVK/GPUObjects/MVKDevice.mm",
+    "root_caps": {
+      "path": "/private/tmp/tg-m3-vulkaninfo-20261021.txt",
+      "sha256": "4373c0fdb6dd69b1862c9d31acae89f4e88104adc1417d07112176284a6c58c9",
+      "identity": "Apple M3; MoltenVK1.4.2; maxPerSetDescriptors1212; drawIndirectCount=false"
+    },
+    "failure_logs": {
+      "/private/tmp/tg-main-chain-validation-20261021-v5-gpu.log": "c2dd55c24533b1eae07e08e1f7377fc87e1bc2f300ecfb546cb38b21f1cfd304",
+      "/private/tmp/tg-main-chain-validation-20261021-v6-gpu.log": "d94f0782b5b90bb9aacc7e1e36c655b7526a2e939d784f5d30bfda3396f0b3a4"
+    }
+  },
+  "blocking_findings_resolved_in_design": [
+    {
+      "id": "PAGING-ADAPTER",
+      "source": "render_host.rs:1033; rhapsody/src/rg/indirect_count.rs:254..271",
+      "counterexample": "M3 drawIndirectCount=false，适配器每次直接向模板heap写source/count/scratch+parameter；仅游戏ShaderBindings分页仍会耗尽模板。",
+      "resolution": "补充A把实际record callback的完整三buffer+参数组接同一个PagePool事务；pipeline只读同layout，不在add_pass提前选页。"
+    },
+    {
+      "id": "PAGING-RESERVATION",
+      "counterexample": "两个并行组同时读free=1，都认为可写一个参数；一次失败留下不完整组并可能错误重试。",
+      "resolution": "补充A以per-page group mutex覆盖精确准入、缓存查找、全部写入和finish；所有生产paging writer包括with_push与adapter走同入口。"
+    }
+  ],
+  "design_acceptance_conditions": [
+    "group guard借用外层Arc<PageRecord>，closure返回Prepared，避免自引用guard或unsafe延长生命周期。",
+    "manager只选/clone/摘取owner即释放；cache查找释放后才分配；Slots不跨dynamic/poll；旧owner锁外drop。所有反向锁序必须在源码核验。",
+    "首个callback冻结真实FrameGlobals Arc/ABI/sampler/local owner+range+role，with_push迁页重放该快照，不能取当前帧指针或复用旧页物理索引。",
+    "只扣确证同页缓存命中；需求与writer实际去重策略一致，write_lease与local重复不得漏算，private upload与declared角色不合并，b0/b1保同declared lease。",
+    "缓存完整Prepared成功后才发布；失败释放unused lease，允许dynamic ring未用chunk空洞；不声称native descriptor更新或ring写入可回滚。",
+    "仅内部InsufficientSlots允许换页；不得吞任意Exhausted/OOM/DeviceLost/InvalidUsage；fresh page容不下完整组显式失败并报逐类需求。",
+    "PageRecord不反持FrameGlobals，heap不反持leases/caches；实际页身份持owner，不能裸指针ABA；cursor持页覆盖整个with_push序列。",
+    "现有VulkanDescriptorPool已为全部UPDATE_AFTER_BIND池做device-wide quota，含Retirement；新增页必须继续走原pool路径。"
+  ],
+  "next_root_validation": [
+    "先将阶段1实际编译并显式运行shared-page pending/unused tests和ignored actual_layout矩阵，RHAPSODY_REQUIRE_VULKAN=1，false必须保持拒绝；不可将ignored或device skip计pass。",
+    "阶段2独审全部生产writer闭包后，实际跑同一个shipped_session二进制/资源/场景，保draw/dispatch与数组长度；没有最小世界fallback或false绕过。",
+    "检查间接count fallback真实执行；跨页shader输出、同数字index异heap拒绝、并行预留、FrameGlobals跨帧冻结、参数换页与部分submit failure寿命。",
+    "记录跨帧页数/各类live-retiring-free/CPU+device metadata与实际timeline完成，验证缓存不会每draw新增页、页可有界复用；30帧通过仍不等于长稳或WSI。"
+  ],
+  "remaining": "完整宿主分页源尚未交付；24896布局失败仍是现GPU主链阻断。404旧catalog组界仅帮助设计，运行时仍计算实际组；新生成或未匹配shader不在该静态界内。"
+}

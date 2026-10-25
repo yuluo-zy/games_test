@@ -1,0 +1,37 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+uint * FUN_140960b20(uint *param_1)
+
+{
+  bool bVar1;
+  uint uVar2;
+  uint uVar3;
+  float fVar4;
+  float fVar5;
+  
+  fVar4 = (float)func_0x000142923ef0();
+  fVar5 = (float)func_0x000142923ef0();
+  func_0x000142923ef0();
+  uVar2 = (uint)fVar5;
+  if (_UNK_1429a49bc < fVar5) {
+    uVar2 = 0x7fffffff;
+  }
+  if (NAN(fVar5)) {
+    uVar2 = 0;
+  }
+  uVar3 = (int)fVar4;
+  if (_UNK_1429a49bc < fVar4) {
+    uVar3 = 0x7fffffff;
+  }
+  if (NAN(fVar4)) {
+    uVar3 = 0;
+  }
+  bVar1 = (uVar2 | uVar3) < 0x40;
+  if (bVar1) {
+    *(ulonglong *)(param_1 + 1) = CONCAT44(uVar2,uVar3);
+  }
+  *param_1 = (uint)bVar1;
+  return param_1;
+}
+

@@ -1,0 +1,121 @@
+{
+  "baseline": "B",
+  "target_rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "db_patched_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+  "worker": "feedback-cloud-unstarted-20261013",
+  "source_scope": [
+    "crates/feedback-reporter/src/lib.rs",
+    "crates/geforcenow/src/lib.rs"
+  ],
+  "original_functions": [
+    {
+      "name": "feedback_reporter::zip_dir<std::io::cursor::Cursor<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global> > > >",
+      "va": "0x141002650",
+      "size": 2145,
+      "sha256": "1e121cfba88e0154907bb2f0bc7bff01fe8350fa104b59b4cfb3c3a19678d18b",
+      "patched_same": true
+    },
+    {
+      "name": "feedback_reporter::impl$0::build",
+      "va": "0x1406901f0",
+      "size": 418,
+      "sha256": "90cc1d782fd9132970c77e04413df070758296c2c61db0a7021977ec575c455c",
+      "patched_same": true
+    },
+    {
+      "name": "feedback_reporter::report_player_feedback",
+      "va": "0x1406903a0",
+      "size": 12991,
+      "sha256": "b5be88b2145952894c0d37d07963e36fd4d373e67cd9b3690d7667c019c28484",
+      "patched_same": true
+    },
+    {
+      "name": "geforcenow::is_running_in_cloud",
+      "va": "0x14061e660",
+      "size": 334,
+      "sha256": "7e65d927491e32dc7340398ebdb49d1881fae034940a12037550bff992b82281",
+      "patched_same": true
+    }
+  ],
+  "implemented": [
+    "GFN DLL/export load and error propagation; initialize(0)/query/shutdown/unload",
+    "Feedback pending replacement and two-file readiness/count gating",
+    "Selected save files ZIP packaging and missing/directory branches",
+    "Benchmark ZIP and nonfatal benchmark packing failures",
+    "Multipart name/MIME/order with binary/text inputs",
+    "connect_timeout=5s and successful/non-success response/error policy",
+    "Bevy Update plugin, command/finished events, Local pending state; injectable Transport Resource",
+    "Plugin initializes default offline-constructed HTTP transport and preserves preinserted provider"
+  ],
+  "inferred": [
+    "Consumer-facing public field names/types; no original Rust ABI claim",
+    "Exact semantic names of two readiness paths",
+    "Benchmark source path producer contract",
+    "SDK enum variant labels and Display wording"
+  ],
+  "unknown": [
+    "Complete original feedback/ZIP entrance oracle and actual vendor/service integration",
+    "Author Bevy fork commit and full country-core feedback producer registration",
+    "Extreme IO/unwind/non-Unicode error text and all source field mappings"
+  ],
+  "verification": {
+    "gfn_original_private_code": {
+      "passed": true,
+      "cases": 18,
+      "report": "gfn-native-validation.json",
+      "boundaries": "Injected DLL loader/symbol/drop + SDK callbacks; no vendor SDK loaded"
+    },
+    "feedback_original_wait_branch": {
+      "passed": true,
+      "cases": 48,
+      "report": "feedback-wait-native-validation.json",
+      "boundaries": "Injected Path::deref/is_file; not the full report function"
+    },
+    "cargo": {
+      "passed": true,
+      "feedback": 8,
+      "gfn": 2,
+      "report": "cargo-test.log"
+    },
+    "live_http": false,
+    "live_vendor_sdk": false,
+    "fixture_dll": {
+      "compiled": true,
+      "passed": true,
+      "rust_tests": 1,
+      "internal_cases": 14,
+      "source": "fixtures/gfn_runtime.c",
+      "report": "gfn-fixture-dll-direct.log",
+      "dll_sha256": "98fe7bbf95475e20e2770f34a525768a79afa8265c61ac1a2bc37474bad52c34"
+    },
+    "clippy": {
+      "passed": true,
+      "report": "clippy.log"
+    }
+  },
+  "status": "candidate_partial",
+  "source_hashes": [
+    {
+      "path": "reconstruction/shared-foundation/crates/feedback-reporter/Cargo.toml",
+      "bytes": 1861,
+      "sha256": "852b8c88d8a9c04635c12e6e00b2f19e5303a4b94415ca90bf2cbb8b64f780df"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/feedback-reporter/src/lib.rs",
+      "bytes": 21809,
+      "sha256": "8571398f74ea0a26e52c026cab1f4452ced629b563129e227d95bc291fcb13e5"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/geforcenow/Cargo.toml",
+      "bytes": 1207,
+      "sha256": "2f9fd1283eac0c749270f49c68708e5d88e9c8d838dba4e3471bf1b997aeb923"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/geforcenow/src/lib.rs",
+      "bytes": 7104,
+      "sha256": "46d37685ce21b8e74d1eeb9364864ff41a1cc9148d8a4a79b391c611e0a44889"
+    }
+  ],
+  "shared_lock_sha256": "3fdf6483fddc1027f68a38ab68a51a564c658ab8bdaa601bb0760913c174a00b",
+  "worker_stopped": true
+}

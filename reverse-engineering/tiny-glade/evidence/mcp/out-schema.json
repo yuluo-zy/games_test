@@ -1,0 +1,34 @@
+{
+  "server": "re_mcp_ghidra",
+  "actual_mcp_connection": true,
+  "results": [
+    {
+      "tool": "get_schema",
+      "args": {
+        "tools": [
+          "disassemble_function"
+        ],
+        "detail": "full"
+      },
+      "result": {
+        "_meta": {
+          "fastmcp": {
+            "wrap_result": true
+          }
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "[\n  {\n    \"name\": \"disassemble_function\",\n    \"title\": \"Disassemble Function\",\n    \"description\": \"Disassemble a function into individual instructions.\",\n    \"inputSchema\": {\n      \"additionalProperties\": false,\n      \"properties\": {\n        \"address\": {\n          \"description\": \"Address (hex string, decimal, or symbol name).\",\n          \"type\": \"string\"\n        },\n        \"database\": {\n          \"type\": \"string\",\n          \"description\": \"Database to target (stem ID from open_database / list_databases).\"\n        }\n      },\n      \"required\": [\n        \"address\",\n        \"database\"\n      ],\n      \"type\": \"object\"\n    },\n    \"outputSchema\": {\n      \"properties\": {\n        \"function_name\": {\n          \"type\": \"string\"\n        },\n        \"start\": {\n          \"type\": \"string\"\n        },\n        \"end\": {\n          \"type\": \"string\"\n        },\n        \"instruction_count\": {\n          \"type\": \"integer\"\n        },\n        \"instructions\": {\n          \"items\": {\n            \"properties\": {\n              \"address\": {\n                \"type\": \"string\"\n              },\n              \"bytes\": {\n                \"type\": \"string\"\n              },\n              \"mnemonic\": {\n                \"type\": \"string\"\n              },\n              \"operands\": {\n                \"type\": \"string\"\n              }\n            },\n            \"required\": [\n              \"address\",\n              \"bytes\",\n              \"mnemonic\",\n              \"operands\"\n            ],\n            \"type\": \"object\"\n          },\n          \"type\": \"array\"\n        },\n        \"database\": {\n          \"type\": \"string\",\n          \"description\": \"Database identifier.\"\n        }\n      },\n      \"required\": [\n        \"function_name\",\n        \"start\",\n        \"end\",\n        \"instruction_count\",\n        \"instructions\"\n      ],\n      \"type\": \"object\"\n    },\n    \"annotations\": {\n      \"readOnlyHint\": true,\n      \"destructiveHint\": false,\n      \"idempotentHint\": true,\n      \"openWorldHint\": false\n    },\n    \"meta\": {\n      \"fastmcp\": {\n        \"tags\": [\n          \"functions\"\n        ]\n      }\n    },\n    \"execution\": {\n      \"taskSupport\": \"optional\"\n    }\n  }\n]"
+          }
+        ],
+        "structuredContent": {
+          "result": "[\n  {\n    \"name\": \"disassemble_function\",\n    \"title\": \"Disassemble Function\",\n    \"description\": \"Disassemble a function into individual instructions.\",\n    \"inputSchema\": {\n      \"additionalProperties\": false,\n      \"properties\": {\n        \"address\": {\n          \"description\": \"Address (hex string, decimal, or symbol name).\",\n          \"type\": \"string\"\n        },\n        \"database\": {\n          \"type\": \"string\",\n          \"description\": \"Database to target (stem ID from open_database / list_databases).\"\n        }\n      },\n      \"required\": [\n        \"address\",\n        \"database\"\n      ],\n      \"type\": \"object\"\n    },\n    \"outputSchema\": {\n      \"properties\": {\n        \"function_name\": {\n          \"type\": \"string\"\n        },\n        \"start\": {\n          \"type\": \"string\"\n        },\n        \"end\": {\n          \"type\": \"string\"\n        },\n        \"instruction_count\": {\n          \"type\": \"integer\"\n        },\n        \"instructions\": {\n          \"items\": {\n            \"properties\": {\n              \"address\": {\n                \"type\": \"string\"\n              },\n              \"bytes\": {\n                \"type\": \"string\"\n              },\n              \"mnemonic\": {\n                \"type\": \"string\"\n              },\n              \"operands\": {\n                \"type\": \"string\"\n              }\n            },\n            \"required\": [\n              \"address\",\n              \"bytes\",\n              \"mnemonic\",\n              \"operands\"\n            ],\n            \"type\": \"object\"\n          },\n          \"type\": \"array\"\n        },\n        \"database\": {\n          \"type\": \"string\",\n          \"description\": \"Database identifier.\"\n        }\n      },\n      \"required\": [\n        \"function_name\",\n        \"start\",\n        \"end\",\n        \"instruction_count\",\n        \"instructions\"\n      ],\n      \"type\": \"object\"\n    },\n    \"annotations\": {\n      \"readOnlyHint\": true,\n      \"destructiveHint\": false,\n      \"idempotentHint\": true,\n      \"openWorldHint\": false\n    },\n    \"meta\": {\n      \"fastmcp\": {\n        \"tags\": [\n          \"functions\"\n        ]\n      }\n    },\n    \"execution\": {\n      \"taskSupport\": \"optional\"\n    }\n  }\n]"
+        },
+        "isError": false
+      }
+    }
+  ],
+  "target_execution": false,
+  "ok": true
+}

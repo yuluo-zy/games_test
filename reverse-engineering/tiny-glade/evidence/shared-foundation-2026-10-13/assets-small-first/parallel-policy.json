@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "baseline": "B",
+  "package": "easy-parallel",
+  "version": "3.2.0",
+  "checksum": "6907e25393cdcc1f4f3f513d9aac1e840eb1cc341a0fccb01171f7d14d10b946",
+  "original_call_sites": {
+    "each": "0x1417b7fc3 → 0x1420dd5e0",
+    "run": "0x1417b7fd3 → 0x1420dc1a0"
+  },
+  "original_evidence": "../assets/asm-0x1417b7790.txt; LLVM generic signature each iterator=(previous meta option,name,descriptor), then run()",
+  "strategy": "Parallel::new().each(descriptors, per_asset_closure).run(); original APIs take no threadcount/chunk parameter",
+  "library_semantics": [
+    "one closure per descriptor",
+    "all but final closure run on library-created scoped threads; final closure runs on calling thread",
+    "join all workers before exposing result vector",
+    "results retain insertion order",
+    "resume panic on calling thread only after joining"
+  ],
+  "private_policy": [
+    "Result errors processed only after run returned",
+    "first Result error aborts metadata/list persistence",
+    "successful per-asset output files can exist despite another job error/panic"
+  ],
+  "implemented_original_library_reuse": true,
+  "custom_thread_pool_or_scheduler": false,
+  "dependency_source_sha256": "f241c7abca2068f3fff6280208ef501858789b2b7c3145d05993558c9e28e6d5",
+  "candidate_source": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+  "candidate_sha256": "1420bcb75fcefff8e88978acf7432828c8d9e92396dd02092fda7b7e57152232",
+  "verification": {
+    "crate_tests": 14,
+    "pipeline_contracts": 10,
+    "strict_clippy": true,
+    "log": "cargo-test.log",
+    "new_tests": [
+      "failed_job_joins_other_tasks_and_leaves_metadata_and_list_unchanged",
+      "panicking_job_joins_other_tasks_before_unwinding_and_does_not_persist_indices"
+    ]
+  },
+  "limits": [
+    "original outer print/log/CLI flags remain unmodeled",
+    "no complete original compile_texture_assets native entry differential"
+  ]
+}

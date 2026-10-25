@@ -1,0 +1,292 @@
+{
+  "status": "evidence_and_design_only",
+  "native_checks": [
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-971fce9dfe7b86b81c/scene-clutter-producer-20261020/cottage-shape-wrapper-pack-v1/shape-closest-u-wrapper.json",
+      "sha256": "27e46ceb311edc6c8c52c13aa09743345f3d2748219f5a2f11dff602fe1a6a02",
+      "range": {
+        "rva": "0x11ff660",
+        "length": 21,
+        "start_va": "0x1411ff660",
+        "stop_va_exclusive": "0x1411ff675",
+        "instruction_overhang_bytes": 0,
+        "function_boundary_verified": false
+      },
+      "all_instruction_bytes_match_direct_pe": true,
+      "continuous_span_sha256": "6208e70dfbac8b03e92b55a49acb12fb9060e03089e679f045e8f0086e670e4a"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-971fce9dfe7b86b81c/scene-clutter-producer-20261020/native-roof-producer-pack-v1/cottage-roof-tessellator.json",
+      "sha256": "747942e6f83c6058cafbcdab92d9f8e1af8b3f869dda09a776dff5e8cdf28488",
+      "range": {
+        "rva": "0x128db20",
+        "length": 10926,
+        "start_va": "0x14128db20",
+        "stop_va_exclusive": "0x1412905ce",
+        "instruction_overhang_bytes": 0,
+        "function_boundary_verified": false
+      },
+      "all_instruction_bytes_match_direct_pe": true,
+      "continuous_span_sha256": "dc67c079255347af6de05e138898e2e8943ef4df2e8ea2d290d01912ee2e21e1"
+    }
+  ],
+  "actual_cottage_callers": [
+    {
+      "call_va": "0x14128de7f",
+      "instructions": [
+        {
+          "va": "0x14128de5c",
+          "rva": "0x128de5c",
+          "bytes": "66410f6ed4",
+          "size": 5,
+          "assembly": "movd\t%r12d, %xmm2",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128de61",
+          "rva": "0x128de61",
+          "bytes": "48899dc8030000",
+          "size": 7,
+          "assembly": "movq\t%rbx, 0x3c8(%rbp)",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128de68",
+          "rva": "0x128de68",
+          "bytes": "488d8da4000000",
+          "size": 7,
+          "assembly": "leaq\t0xa4(%rbp), %rcx",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128de6f",
+          "rva": "0x128de6f",
+          "bytes": "660f7e8da8030000",
+          "size": 8,
+          "assembly": "movd\t%xmm1, 0x3a8(%rbp)",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128de77",
+          "rva": "0x128de77",
+          "bytes": "660f7e95ac030000",
+          "size": 8,
+          "assembly": "movd\t%xmm2, 0x3ac(%rbp)",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128de7f",
+          "rva": "0x128de7f",
+          "bytes": "e8dc17f7ff",
+          "size": 5,
+          "assembly": "callq\t0x1411ff660 <.text+0x11fe660>",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128de84",
+          "rva": "0x128de84",
+          "bytes": "48899dc8030000",
+          "size": 7,
+          "assembly": "movq\t%rbx, 0x3c8(%rbp)",
+          "crosses_requested_stop": false
+        }
+      ]
+    },
+    {
+      "call_va": "0x14128df4c",
+      "instructions": [
+        {
+          "va": "0x14128df2c",
+          "rva": "0x128df2c",
+          "bytes": "e81f6865ff",
+          "size": 5,
+          "assembly": "callq\t0x1408e4750 <.text+0x8e3750>",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128df31",
+          "rva": "0x128df31",
+          "bytes": "48899dc8030000",
+          "size": 7,
+          "assembly": "movq\t%rbx, 0x3c8(%rbp)",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128df38",
+          "rva": "0x128df38",
+          "bytes": "488d4dc4",
+          "size": 4,
+          "assembly": "leaq\t-0x3c(%rbp), %rcx",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128df3c",
+          "rva": "0x128df3c",
+          "bytes": "660f6e8da8030000",
+          "size": 8,
+          "assembly": "movd\t0x3a8(%rbp), %xmm1",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128df44",
+          "rva": "0x128df44",
+          "bytes": "f30f1095ac030000",
+          "size": 8,
+          "assembly": "movss\t0x3ac(%rbp), %xmm2",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128df4c",
+          "rva": "0x128df4c",
+          "bytes": "e80f17f7ff",
+          "size": 5,
+          "assembly": "callq\t0x1411ff660 <.text+0x11fe660>",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128df51",
+          "rva": "0x128df51",
+          "bytes": "48899dc8030000",
+          "size": 7,
+          "assembly": "movq\t%rbx, 0x3c8(%rbp)",
+          "crosses_requested_stop": false
+        }
+      ]
+    },
+    {
+      "call_va": "0x14128e3c6",
+      "instructions": [
+        {
+          "va": "0x14128e3a7",
+          "rva": "0x128e3a7",
+          "bytes": "4c89ea",
+          "size": 3,
+          "assembly": "movq\t%r13, %rdx",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128e3aa",
+          "rva": "0x128e3aa",
+          "bytes": "e8d112f7ff",
+          "size": 5,
+          "assembly": "callq\t0x1411ff680 <.text+0x11fe680>",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128e3af",
+          "rva": "0x128e3af",
+          "bytes": "488d8dfc010000",
+          "size": 7,
+          "assembly": "leaq\t0x1fc(%rbp), %rcx",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128e3b6",
+          "rva": "0x128e3b6",
+          "bytes": "f30f108da8030000",
+          "size": 8,
+          "assembly": "movss\t0x3a8(%rbp), %xmm1",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128e3be",
+          "rva": "0x128e3be",
+          "bytes": "f30f1095ac030000",
+          "size": 8,
+          "assembly": "movss\t0x3ac(%rbp), %xmm2",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128e3c6",
+          "rva": "0x128e3c6",
+          "bytes": "e89512f7ff",
+          "size": 5,
+          "assembly": "callq\t0x1411ff660 <.text+0x11fe660>",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128e3cb",
+          "rva": "0x128e3cb",
+          "bytes": "0f298520010000",
+          "size": 7,
+          "assembly": "movaps\t%xmm0, 0x120(%rbp)",
+          "crosses_requested_stop": false
+        }
+      ]
+    },
+    {
+      "call_va": "0x14128e3e9",
+      "instructions": [
+        {
+          "va": "0x14128e3c6",
+          "rva": "0x128e3c6",
+          "bytes": "e89512f7ff",
+          "size": 5,
+          "assembly": "callq\t0x1411ff660 <.text+0x11fe660>",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128e3cb",
+          "rva": "0x128e3cb",
+          "bytes": "0f298520010000",
+          "size": 7,
+          "assembly": "movaps\t%xmm0, 0x120(%rbp)",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128e3d2",
+          "rva": "0x128e3d2",
+          "bytes": "488d8d54010000",
+          "size": 7,
+          "assembly": "leaq\t0x154(%rbp), %rcx",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128e3d9",
+          "rva": "0x128e3d9",
+          "bytes": "f30f108da8030000",
+          "size": 8,
+          "assembly": "movss\t0x3a8(%rbp), %xmm1",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128e3e1",
+          "rva": "0x128e3e1",
+          "bytes": "f30f1095ac030000",
+          "size": 8,
+          "assembly": "movss\t0x3ac(%rbp), %xmm2",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128e3e9",
+          "rva": "0x128e3e9",
+          "bytes": "e87212f7ff",
+          "size": 5,
+          "assembly": "callq\t0x1411ff660 <.text+0x11fe660>",
+          "crosses_requested_stop": false
+        },
+        {
+          "va": "0x14128e3ee",
+          "rva": "0x128e3ee",
+          "bytes": "0f28f0",
+          "size": 3,
+          "assembly": "movaps\t%xmm0, %xmm6",
+          "crosses_requested_stop": false
+        }
+      ]
+    }
+  ],
+  "current_source_observations": [
+    {
+      "path": "tiny-glade/crates/country-core/src/systems/wall/valid_enclosure/mod.rs",
+      "sha256": "22eb05b20add68b1265eb52147c13b1b1deeec275af9d29cc08dfb9d2da41c78"
+    },
+    {
+      "path": "tiny-glade/crates/utils/src/geometry/rectangle.rs",
+      "sha256": "6353c714ae6fd18b59a420257bb695b1f61e3c562e82d3e06efd0a55bb0ab403"
+    }
+  ],
+  "source_changed": false,
+  "tests_executed": false,
+  "original_target_executed": false
+}

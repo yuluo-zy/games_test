@@ -1,0 +1,757 @@
+{
+  "schema_version": 1,
+  "baseline": "B",
+  "original_binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "patched_database_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+  "worker": "foundation-geometry-curves",
+  "author_source_or_Rust_ABI_identity_required": false,
+  "full_module_acceptance": false,
+  "original_leaf_execution": true,
+  "full_game_executed": false,
+  "source_files": [
+    {
+      "original_source": "crates/utils/src/components/transform.rs",
+      "versions": [
+        "B"
+      ],
+      "restored_file": "reconstruction/shared-foundation/crates/utils/src/components/transform.rs",
+      "sha256": "8a9f3e6e97da11df6fd1e13f14b041af90a8088d52d6b90ed7d10e770440424d",
+      "functions_and_types": [
+        "Transform",
+        "look_at",
+        "abs_diff_eq"
+      ],
+      "business_rules": [
+        "look_at: local -Z faces target; up cross normal; only rotation changes",
+        "abs_diff_eq: all translation/quaternion/scale components <= epsilon; NaNs fail"
+      ],
+      "actual_original_comparison": [
+        "look_at:100",
+        "abs_diff_eq:90"
+      ],
+      "gaps": [
+        "Constructors/default/compose methods not independently evidenced; Bevy Component glue not restored"
+      ],
+      "status": "business_subset_original_compared"
+    },
+    {
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "versions": [
+        "B"
+      ],
+      "restored_file": "reconstruction/shared-foundation/crates/utils/src/curve/mod.rs",
+      "sha256": "c71e9f46b0f3742381f478155d343263418ce7c3817ff6cf2d84126129317ea2",
+      "functions_and_types": [
+        "CurveCoordSemantic2D",
+        "CurveCoordSemantic3D",
+        "CurveError",
+        "CurvePoint",
+        "CurveMetric",
+        "Curve",
+        "Curve2",
+        "Curve3",
+        "Curve3XZ",
+        "CurveInternalCoord",
+        "new_for_point_count",
+        "try_new_from_points",
+        "try_new",
+        "crashy_new_from_points",
+        "get_coord_at_u",
+        "coord_at_u",
+        "get_pos_at_coord",
+        "get_pos_at_u",
+        "pos_at_u",
+        "get_tangent_at_coord",
+        "get_tangent_at_u",
+        "tangent_at_u",
+        "get_approx_coord_from_pos",
+        "get_approx_u_from_pos",
+        "reverse",
+        "to_curve3",
+        "project_point"
+      ],
+      "business_rules": [
+        "Curve2/Curve3/Curve3XZ arc lengths; Vec3 XZ semantics still compare full XYZ duplicates",
+        "finite unbounded u clamps endpoints; right-biased segment lookup",
+        "nearest projection denominator >=1e-8; first equal-distance segment wins",
+        "reverse rebuilds cumulative lengths",
+        "wall-space CurveSampling bridge delegates actual curve"
+      ],
+      "actual_original_comparison": [
+        "Curve2 constructors:41",
+        "Curve2 coord/position/tangent:328 each",
+        "nearest coord/u:328 each",
+        "Curve3 XYZ and XZ constructors:80",
+        "constructor errors:7"
+      ],
+      "gaps": [
+        "resample/approx count/per-segment remap/smooth/weighted smooth/extend/lerp/is_on_right_side not recovered",
+        "reverse/to_curve3/project_point only statically checked; callers not all integrated"
+      ],
+      "status": "business_subset_original_compared"
+    },
+    {
+      "original_source": "crates/utils/src/curve/curve_u.rs",
+      "versions": [
+        "B"
+      ],
+      "restored_file": "reconstruction/shared-foundation/crates/utils/src/curve/curve_u.rs",
+      "sha256": "840b5bcc9323b08ef3de677afdfa242dbd90607ecce21bc9095bf6c9ce8bf4c2",
+      "functions_and_types": [
+        "CurveU",
+        "new",
+        "get"
+      ],
+      "business_rules": [
+        "Finite normalized coordinate with both endpoints included; phantom semantic type"
+      ],
+      "actual_original_comparison": [],
+      "gaps": [
+        "Standalone new/inline arithmetic exception fixtures not exhaustive"
+      ],
+      "status": "static_candidate_not_business_verified"
+    },
+    {
+      "original_source": "crates/utils/src/curve/curve_u_circular.rs",
+      "versions": [
+        "B"
+      ],
+      "restored_file": "reconstruction/shared-foundation/crates/utils/src/curve/curve_u_circular.rs",
+      "sha256": "d8ba02095b36c8e7c08f0cb849529edf0bfda1006d777963800c994e6078889c",
+      "functions_and_types": [],
+      "business_rules": [],
+      "actual_original_comparison": [],
+      "gaps": [
+        "Inline-only separate circular-u type/arithmetic remains unimplemented; documentation module only, not a business delivery"
+      ],
+      "status": "documentation_only_not_restored"
+    },
+    {
+      "original_source": "crates/utils/src/curve/curve_slice.rs",
+      "versions": [
+        "B"
+      ],
+      "restored_file": "reconstruction/shared-foundation/crates/utils/src/curve/curve_slice.rs",
+      "sha256": "d6c23d9fef8a327a1e6febd7fcc1de650e59a8605b63cd967e414438f475e111",
+      "functions_and_types": [
+        "slice_into",
+        "try_slice",
+        "crashy_slice",
+        "circular_slice"
+      ],
+      "business_rules": [
+        "retain all interior vertices; exact endpoint vertices deduplicated",
+        "circular slice wraps across end/start, pops junction and deduplicates adjacent equal vertices",
+        "same-u circular path and (1,0) error preserve original cases"
+      ],
+      "actual_original_comparison": [
+        "try_slice:40",
+        "circular_slice:20"
+      ],
+      "gaps": [
+        "stateful CurveSlice extend_left/extend_right_until/remap iterator variants remain unimplemented",
+        "slice3 corresponding operations not independently executed"
+      ],
+      "status": "business_subset_original_compared"
+    },
+    {
+      "original_source": "crates/utils/src/geometry/aabb.rs",
+      "versions": [
+        "B"
+      ],
+      "restored_file": "reconstruction/shared-foundation/crates/utils/src/geometry/aabb.rs",
+      "sha256": "3042d689b2e91e3c444e5dda0bd34ce7f8f0d9d88345865e3868cdc4955187b2",
+      "functions_and_types": [
+        "Aabb2",
+        "from_center_dims",
+        "from_center_radius",
+        "center",
+        "half_dims",
+        "area",
+        "contains",
+        "intersects",
+        "intersect_ray",
+        "max_extent",
+        "width",
+        "height",
+        "expanded",
+        "Aabb3",
+        "RayBoxIntersection",
+        "is_hit",
+        "expand_to_contain_point",
+        "expand",
+        "center",
+        "extent",
+        "scaled",
+        "translated",
+        "inclusive_contains_point",
+        "intersect_segment",
+        "classify_ray_intersection",
+        "is_inside_bbx"
+      ],
+      "business_rules": [
+        "inclusive point/box touching tests; 2D ray returns entry t rather than bool",
+        "3D segment and ray classification keep strict-inside rule; no far>=0 guard",
+        "negative scale leaves endpoint order unchanged"
+      ],
+      "actual_original_comparison": [
+        "Aabb3 classify-ray/intersect-segment:70 each"
+      ],
+      "gaps": [
+        "other Aabb2/3 constructors/expand/contains/scaled leaves only statically checked",
+        "intersection_aabb_segment2 not recovered; arbitrary NaN field matrices not exhaustive"
+      ],
+      "status": "business_subset_original_compared"
+    },
+    {
+      "original_source": "crates/utils/src/geometry/barycentric.rs",
+      "versions": [
+        "B"
+      ],
+      "restored_file": "reconstruction/shared-foundation/crates/utils/src/geometry/barycentric.rs",
+      "sha256": "681ee2c1fc95232336d9af710ccca87d4ce45019a83f77f4e14bcb7930c2476a",
+      "functions_and_types": [
+        "barycentric"
+      ],
+      "business_rules": [
+        "three weights with no degenerate fallback"
+      ],
+      "actual_original_comparison": [
+        "barycentric:70"
+      ],
+      "gaps": [
+        "degenerate/NaN inputs not exhaustively covered"
+      ],
+      "status": "business_subset_original_compared"
+    },
+    {
+      "original_source": "crates/utils/src/geometry/circle.rs",
+      "versions": [
+        "B"
+      ],
+      "restored_file": "reconstruction/shared-foundation/crates/utils/src/geometry/circle.rs",
+      "sha256": "9d4cc5c8a63fe25a680bcd085bc774882f207bc0550f6a47af3b6a18d6933fb5",
+      "functions_and_types": [
+        "Circle2d",
+        "new",
+        "new_rotated",
+        "area",
+        "perimeter",
+        "get_pos_at_u",
+        "get_normal_at_u",
+        "get_tangent_at_u",
+        "get_closest_u_from_pos",
+        "signed_distance",
+        "is_point_inside",
+        "contains_point",
+        "closest_point_on_perimeter",
+        "with_expanded_diameter",
+        "aabb",
+        "intersect_ray",
+        "intersect_circle",
+        "as_points2_ptcount",
+        "as_points2",
+        "as_points3",
+        "CirclePoints2"
+      ],
+      "business_rules": [
+        "rotation fmod TAU; increasing u samples clockwise",
+        "tangent is (-sin,cos), opposite increasing-u derivative",
+        "closest_u returns 0.0 for center/non-normalizable displacement",
+        "ray quadratic accepts negative roots and tangency; radius inside/contains distinctions"
+      ],
+      "actual_original_comparison": [
+        "position/normal/tangent/closest_u:80 each"
+      ],
+      "gaps": [
+        "ray/circle intersection/perimeter/range/lerp and curve conversions only static or unrecovered",
+        "circle sampling open/closed conversion policy still to verify"
+      ],
+      "status": "business_subset_original_compared"
+    },
+    {
+      "original_source": "crates/utils/src/geometry/intersect.rs",
+      "versions": [
+        "B"
+      ],
+      "restored_file": "reconstruction/shared-foundation/crates/utils/src/geometry/intersect.rs",
+      "sha256": "c4719ffbc6344d1362deef9a9ac6cd32b8fae3d8db15e9ef23c425f4f55dbd8e",
+      "functions_and_types": [
+        "Triangle",
+        "new",
+        "points_mut",
+        "normal",
+        "aabb",
+        "intersect_triangle",
+        "Sphere",
+        "as_f32x4",
+        "SphereIntersection",
+        "closest_intersection_distance",
+        "TriangleIntersection",
+        "ray_triangle_intersection",
+        "ray_sphere_intersection"
+      ],
+      "business_rules": [
+        "two-sided ray triangle with determinant abs>=1e-5, t>1e-5, inclusive barycentric edges",
+        "sphere quadratic uses unnormalized rays, tangency and negative roots",
+        "Triangle convenience APIs reuse glam; triangle-triangle forwards private rule"
+      ],
+      "actual_original_comparison": [
+        "ray-triangle:82",
+        "ray-sphere:94"
+      ],
+      "gaps": [
+        "Triangle constructor/normal/aabb/points_mut and Sphere closest-distance direct fixtures not yet recorded"
+      ],
+      "status": "business_subset_original_compared"
+    },
+    {
+      "original_source": "crates/utils/src/geometry/line_relation.rs",
+      "versions": [
+        "B"
+      ],
+      "restored_file": "reconstruction/shared-foundation/crates/utils/src/geometry/line_relation.rs",
+      "sha256": "fe50d4b1a589e41095e0009e4698a5e3b98ef3be8b7a28be9487a30596938496",
+      "functions_and_types": [
+        "LineInterval",
+        "LineRelation",
+        "line_segment",
+        "relate"
+      ],
+      "business_rules": [
+        "closed parameter intervals; intersection/disjoint/parallel/collinear; original divide-before-multiply"
+      ],
+      "actual_original_comparison": [
+        "line relation:70"
+      ],
+      "gaps": [
+        "unbounded intervals and NaN inputs not exhaustive"
+      ],
+      "status": "business_subset_original_compared"
+    },
+    {
+      "original_source": "crates/utils/src/geometry/mod.rs",
+      "versions": [
+        "B"
+      ],
+      "restored_file": "reconstruction/shared-foundation/crates/utils/src/geometry/mod.rs",
+      "sha256": "62cef87c502ed353756b483d62cc8c2fd32f78334172f750ac341886200a62a8",
+      "functions_and_types": [],
+      "business_rules": [
+        "source module exports plus fixture tests"
+      ],
+      "actual_original_comparison": [],
+      "gaps": [
+        "ws_to_ss/ws_to_cs wrappers not restored in this file; wrapper ownership/camera integration to check"
+      ],
+      "status": "static_candidate_not_business_verified"
+    },
+    {
+      "original_source": "crates/utils/src/geometry/plane.rs",
+      "versions": [
+        "B"
+      ],
+      "restored_file": "reconstruction/shared-foundation/crates/utils/src/geometry/plane.rs",
+      "sha256": "b4d0ccd0daabf6257939b422919c1528cac97e9ff2f8454048e5fc78157b0502",
+      "functions_and_types": [
+        "Plane",
+        "intersect_ray"
+      ],
+      "business_rules": [
+        "unnormalized plane normal; no parallel epsilon; min_t inclusive"
+      ],
+      "actual_original_comparison": [
+        "plane-ray:70"
+      ],
+      "gaps": [
+        "parallel/NaN matrices not exhaustive"
+      ],
+      "status": "business_subset_original_compared"
+    },
+    {
+      "original_source": "crates/utils/src/geometry/position_from_mesh_uvs.rs",
+      "versions": [
+        "B"
+      ],
+      "restored_file": "reconstruction/shared-foundation/crates/utils/src/geometry/position_from_mesh_uvs.rs",
+      "sha256": "83566b0cb078427626dafd6c436589508cc32f8dc87c580573f57cb7588bc213",
+      "functions_and_types": [
+        "get_position_from_mesh_uv"
+      ],
+      "business_rules": [
+        "first containing UV triangle wins; inclusive edges; paired positions indexed only on match",
+        "no invented degenerate fallback"
+      ],
+      "actual_original_comparison": [
+        "mesh UV:66"
+      ],
+      "gaps": [
+        "degenerate UV triangles and position-count mismatch errors not yet direct-fixtured"
+      ],
+      "status": "business_subset_original_compared"
+    },
+    {
+      "original_source": "crates/utils/src/geometry/ray.rs",
+      "versions": [
+        "B"
+      ],
+      "restored_file": "reconstruction/shared-foundation/crates/utils/src/geometry/ray.rs",
+      "sha256": "f9b854034c69bcf4e9e3c1dff2248498faa22c3c1b5c300f71033bc8c5cfc95b",
+      "functions_and_types": [
+        "Ray",
+        "Ray2",
+        "xz"
+      ],
+      "business_rules": [
+        "Ray origin/direction and XZ projection fields"
+      ],
+      "actual_original_comparison": [],
+      "gaps": [
+        "from_mouse_ss producer not restored; no direct leaf fixture for xz"
+      ],
+      "status": "static_candidate_not_business_verified"
+    },
+    {
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "versions": [
+        "B"
+      ],
+      "restored_file": "reconstruction/shared-foundation/crates/utils/src/geometry/rectangle.rs",
+      "sha256": "cf862528fd5bd696f79da36aa636a2ebca78f0112c3ab981958e0a86b16a5649",
+      "functions_and_types": [
+        "Rectangle2d",
+        "new_centered_axis_aligned",
+        "new_axis_aligned",
+        "new",
+        "local_to_world",
+        "world_to_local",
+        "as_points2_centered_aligned",
+        "as_points2",
+        "area",
+        "perimeter",
+        "corner_us",
+        "get_pos_at_u",
+        "get_edge_normal",
+        "get_point",
+        "get_point_u",
+        "get_corner_normal",
+        "get_edge_pts",
+        "edge_length",
+        "try_as_curve2",
+        "as_curve2",
+        "overlaps_rectangle2d",
+        "contains_point",
+        "contains_point_padding",
+        "with_expanded_size",
+        "aabb",
+        "Rectangle3d",
+        "new",
+        "translate",
+        "set_orientation_xz",
+        "set_size",
+        "expand",
+        "extent",
+        "contains_point",
+        "overlaps_rectangle3d",
+        "points"
+      ],
+      "business_rules": [
+        "rotated 2D footprint; perimeter coordinate corners; SAT includes touch",
+        "3D containment bottom inclusive/top exclusive; overlap touching y planes inclusive",
+        "expand adds half vertical extent at each side"
+      ],
+      "actual_original_comparison": [
+        "Rectangle2d position/SAT:80 each",
+        "Rectangle3d contains/extent/points/expand:50 each"
+      ],
+      "gaps": [
+        "2D normal/corner/closest_edge/closest_u/lerp/intersections/circular slice/edge expansion incomplete or static",
+        "3D constructor/set-size/translate/rotate/overlap wrapper not independently executed"
+      ],
+      "status": "business_subset_original_compared"
+    },
+    {
+      "original_source": "crates/utils/src/geometry/split_heightmap.rs",
+      "versions": [
+        "B"
+      ],
+      "restored_file": "reconstruction/shared-foundation/crates/utils/src/geometry/split_heightmap.rs",
+      "sha256": "4b09386aeaeb389970be08d9182cb43a24379115ef0c54926e302acfe8f4b5e6",
+      "functions_and_types": [
+        "ThresholdCrossing",
+        "split_heightmap_by_threshold"
+      ],
+      "business_rules": [
+        "height<=threshold is below; unordered/NaN branch follows above",
+        "crossing fraction (threshold-a)/(b-a) and direction preserved"
+      ],
+      "actual_original_comparison": [
+        "classification/crossing event projection:30"
+      ],
+      "gaps": [
+        "RowTrimmerSink full span assembly and callback bodies not validated; this is an event-only business projection"
+      ],
+      "status": "business_subset_original_compared"
+    },
+    {
+      "original_source": "crates/utils/src/geometry/triangle_triangle/cross_intersect.rs",
+      "versions": [
+        "B"
+      ],
+      "restored_file": "reconstruction/shared-foundation/crates/utils/src/geometry/triangle_triangle/cross_intersect.rs",
+      "sha256": "094dda63f6d617800c6933c50f2aa2883c3c843f63b6feea9aeb33640adcd826",
+      "functions_and_types": [
+        "cross_intersect"
+      ],
+      "business_rules": [
+        "clip both triangles to opposite planes; intersect two line intervals",
+        "canonical triangle vertex/winding fixes ordered segment direction",
+        "squared endpoint distance <1e-20 becomes Point"
+      ],
+      "actual_original_comparison": [
+        "via triangles_intersect:257"
+      ],
+      "gaps": [
+        "3e-5 endpoint residual explicitly allowed, not bit-identical; extreme/near-parallel/NaN inputs not exhaustive"
+      ],
+      "status": "business_subset_original_compared"
+    },
+    {
+      "original_source": "crates/utils/src/geometry/triangle_triangle/triangles_intersect.rs",
+      "versions": [
+        "B"
+      ],
+      "restored_file": "reconstruction/shared-foundation/crates/utils/src/geometry/triangle_triangle/triangles_intersect.rs",
+      "sha256": "c8f18409adf8b1cf74f2d108f1efec4cb166a42ccffa4a4c9e7d4cab3f1292ce",
+      "functions_and_types": [
+        "triangles_intersect"
+      ],
+      "business_rules": [
+        "private determinant threshold +/-1e-10; degenerate triangles are Disjoint",
+        "coplanar result itself does not assert finite-triangle overlap",
+        "Point/Segment/Coplanar/Disjoint categories preserved"
+      ],
+      "actual_original_comparison": [
+        "257: 1 Point,68 Segment,3 Coplanar,185 Disjoint"
+      ],
+      "gaps": [
+        "geometric endpoints checked in original order with <=3e-5 distance tolerance"
+      ],
+      "status": "business_subset_original_compared"
+    },
+    {
+      "original_source": "crates/utils/src/geometry/triangle_triangle/utils.rs",
+      "versions": [
+        "B"
+      ],
+      "restored_file": "reconstruction/shared-foundation/crates/utils/src/geometry/triangle_triangle/utils.rs",
+      "sha256": "f49a411cd3bf23a674bbb46db42fa98e2e4de4dbf7f2284ca609259bffcef92a",
+      "functions_and_types": [],
+      "business_rules": [
+        "private canonical-side vertex rotation and orient helper",
+        "glam Mat4::determinant and normalize reused; not reimplemented"
+      ],
+      "actual_original_comparison": [
+        "indirect triangles_intersect:257"
+      ],
+      "gaps": [
+        "helper standalone boundary and mutation ABI not part of business claim"
+      ],
+      "status": "business_subset_original_compared"
+    }
+  ],
+  "excluded_other_versions": [
+    {
+      "original_source": "crates/utils/src/geometry/brace.rs",
+      "versions": [
+        "C"
+      ],
+      "status": "not_B_source; separate C identity/analysis required"
+    }
+  ],
+  "library_ownership": {
+    "utils": "original local package 0.1.0; original Cargo.lock lines8100..8121; PDB private utils:: definitions",
+    "triangle_triangle": "original private outer/cross/orient functions; no triangle collision library dependency in utils",
+    "reused": [
+      "glam 0.29.3 Vec2/Vec3/Quat/Mat3/Mat4 and normalize/try_normalize/determinant",
+      "Vec container and std iteration/sorting",
+      "original CRT math imports delegated to host ucrtbase.dll in oracle"
+    ],
+    "not_reimplemented": [
+      "glam matrix determinant/quaternion/normalization",
+      "std containers/allocator",
+      "third party geometry library"
+    ]
+  },
+  "comparison_groups": {
+    "curve_and_transform": "native-fixtures.json",
+    "intersection_uv_slice_rectangle3d": "geometry-fixtures.json",
+    "circle_rectangle2d": "boundary-fixtures.json",
+    "transform_threshold_edge": "edge-fixtures.json",
+    "aabb_plane_line_barycentric": "linear-fixtures.json",
+    "triangle_triangle": "triangle-fixtures.json"
+  },
+  "differences_fixed": [
+    "Transform t/r layout annotation corrected; layout is representation evidence only",
+    "Sphere dot/length addition order fixed after original differential mismatch",
+    "UV weighted sum order fixed after original differential mismatch",
+    "Circular slice removes junction then adjacent duplicate first point",
+    "Circle tangent signs corrected to (-sin,cos)",
+    "Circle non-normalizable closest-u returns 0.0 instead of invented None",
+    "Transform abs-diff rejects all NaNs; Ghidra comparison simplification was incorrect",
+    "Threshold NaN next sample follows above, not an ordered greater-than comparison",
+    "Triangle endpoint order follows canonical side vertex and winding, not arbitrary sort order",
+    "Normalization and generic squared-length hand-written copies replaced by exact original glam APIs and rechecked"
+  ],
+  "test_scope": {
+    "owned_original_fixture_tests": 19,
+    "whole_utils_tests_seen": 37,
+    "full_consumer_chain": false,
+    "triangle_endpoint_numeric_tolerance": 3e-05,
+    "threshold_projection_only": true
+  },
+  "tooling_is_not_business_delivery": [
+    "native oracle harnesses",
+    "MCP prepare/decompilation jobs",
+    "artifact/report generation"
+  ],
+  "artifacts_sha256": {
+    "140152b00.c": "19dd4b8d51ea32c1293ddbc2c712ce7a11462b212e7633637ef15da0406e80f5",
+    "140153380.c": "a8a99f69cceaf9932c34cdc709cc4e86cea583da647988646fe1889900151b65",
+    "140153640.c": "b9d53e9c7bbc2169f530fb2a428e3409c4fe735335cd881efbbd4ad1c4a21c16",
+    "140153900.c": "794e5dba0c63a0ecdbd4c4ca639ad1d79f14c3c3e72e18bec3a07090fcf27b27",
+    "140153bc0.c": "200c07bd99ef7b78516094d303ee4eab411069487fa00840abf1e0ef1fdc4881",
+    "140153de0.c": "3a1f013654dcda67ab35be455eb70522730dfd3fea7b12d5a4215b6e387f780a",
+    "140154490.c": "6f9fa459c0065d33e530bd5ccb4c36ec7ff7c28e8c6dbf00fff6f17aa0b1b0a9",
+    "140154b60.c": "7146e1e6eb715f6db860af7615735c7477dc906a67b475b6cf7e6ffb264ef664",
+    "140155120.c": "ec24156bb15a4bc5614dc2fb4f23151d9219041201005339ded34f3a7849457e",
+    "14067dd80.c": "62cd91d2410a232d2aead35e0d0c49fbf64ea5bc7c716d237aca95662fc53233",
+    "1408e1630.c": "0402a21bd3f7f660d0ceaa12ffb27e398b20828568878db585274a8b47adccaf",
+    "140c9cc60.c": "888fdc1b5ec468784740567b6465d2e9b2be8fd8fcdd5aa327f897fceb89c691",
+    "140c9ce00.c": "3f5858b3f6e1c8803b235757534560f3c879f2ea93d2bca0a9d3f27622ed78ee",
+    "140c9d0d0.c": "e03c3d4b81af3c792ed00c57d6d7156670ad34a5f5e6312b8a8774a1cf144223",
+    "140dc0a90.c": "ff3a64327a8b88d7c18c3edf7e8b07a2b96f6fccf6ca3e4624d1ddcafc36b3a5",
+    "1411f8130.c": "0141d0ce3a0120cb39fea7f9f38331a4d44e456c622ca760ec158247506f03d0",
+    "1411f8640.c": "36d8ce500f9525c8aea93a3127ed4e4d276e00e7b80d5e6af1afed7067625c66",
+    "1411f8750.c": "ce9ac282e18a816f778f806d655863f4abf9faf95ba6037c2016b62f9b25c0e4",
+    "1411f8c10.c": "e816309334e434a3903e89187604558d9882716fa5cc4c8f50dc1a93cc421316",
+    "1411f8ed0.c": "0768c95666dbc4ace13cc17dd96a8c8847ca26010e56d682ca32374a035381fc",
+    "1411f97b0.c": "0a6a1c391923d79867cf6d784397ddee0fa4a188681b42680f49287f3947b212",
+    "1411f9920.c": "c8da462187ac53d9756b86c9468f073c10fb70db048545bdff48dabbaf4b6195",
+    "1411f9be0.c": "ae83cabdf88f2deea20623becd61b74032df2c581ba36204735acb7aa253c7cb",
+    "1411f9ea0.c": "45595b34f7d5ff71d30551f56d528a89e8fac180bbe31d1b2c13b566b9dcf709",
+    "1411fa190.c": "4dd1029897ed5b2af8e8e3660ef9cc36357bfd66588d13f4e1cf52875a67d654",
+    "1411fa3c0.c": "cf8af017402641ead4acfd95911f6fcc23c0a9c446f01e5eb64b3b219a8f2546",
+    "1411fa450.c": "702ae6fe7408a65e4715e204a45a5968daeb834d9d2fdc149dce71499049aa7e",
+    "1411fa6b0.c": "8460886a0b72d4ca3178f716301aa7a274ceb5d26c0255369a3d453e0f762d41",
+    "1411fac00.c": "b8e19854b098c1c449b5c9f56fb8814aa313122c0fe8678b7b4b8f76fbe19632",
+    "1411fb2b0.c": "05bb8f85c14eccd75efa94635836841f9f9e5497e12de8091500a9489d0d7950",
+    "141206c50.c": "0b9f39adcf0fb3e2df9135c2fd73d4ffbf1708df693c934013d18162173efc74",
+    "141206ed0.c": "ea9d3ccf03f9a2a15f9669dd3ee7f7a588d2d0a43f9dd066ecff669925505b2c",
+    "141207310.c": "2496b7f416481debe0310254c49abc7bada67967024479b16e37ed9d1c393261",
+    "1412075e0.c": "2896d25554ef3a374419b6c051fb7f3f6fe706289308a2b53229bcdc930b58c9",
+    "141207a10.c": "a79661cc46cb03267547bf8e770229c349f9fcd41fcc32daefea2abfa5adf820",
+    "141207c10.c": "a20532793f12a8ea70abadf412e9277af5ece57a2a221bb6e4c24d701cc9f45c",
+    "141208a00.c": "e1bb347b85cb1e4b57f52bc39e8a5bf4675ad3428617aca40784c2fbba107deb",
+    "14123ad70.c": "c55c7ca9c41e720d20c0316a935e92d56648d9b8fd79aefd9787b3910fead959",
+    "14123ada0.c": "7e2110303d27420b234e56fcfb92f8aca5c3528246bb6290db3bb4621ff61650",
+    "14123ae50.c": "1d5f387627aacd4105076819d9c2775ace4d721231d895406024480fedc010fa",
+    "14123af40.c": "5d7a7b97e44889f80f00dbcfecec7c05e008d13bb57b5e6ece444af7686d48b7",
+    "14123afa0.c": "4b2bcdecf73399300c4a5be622ca2078f79b5d51f9f69322cc11688362c728a0",
+    "14123b200.c": "5a9f5fd48bf4c34afdb185900c62d5e1bcecb7ebcc7e258d7af35e6877934cbd",
+    "14123b230.c": "cf4d5c3e95e62b4c13327ae37839f485f1737af15756c5707e88f3dfe51d1d9c",
+    "141268e90.c": "6c37989a41c95cffd6d2699baf420fb6969702b0bf47d36f8da47c0a7575e289",
+    "141269710.c": "2bb44bcffa54fb7cebb3871602ce5ec5538b9278eff5169a9e97bd3731097482",
+    "1412699d0.c": "ec632cf3ad388bb056d161965771f12f932cba81107e4aabc5c7ed9dabac5491",
+    "141269ce0.c": "0341b55fb92b995c7c77bf77f746785e4c82504349542520082c563af2d185b1",
+    "141269fa0.c": "a6282fc2e0048bcd9e84adc28bf2d82fbae2a24cf7f1d2c626f8d57eca516430",
+    "14126a040.c": "6d5259d0cfedd7a31e845ab624de351c5ec0121e0a09b2f88b5bd1991c8c316b",
+    "14126a110.c": "313498edd0b942c542da38b7bb7ab67eb57ec66e82d12404250b48efb37a9592",
+    "14126a1e0.c": "2381454b5e963761ade79cd8b3023b4b7699e4354186cd98be88758377693686",
+    "14126a450.c": "440ab9d7dc57c8a1b0d8629c397c41dbb6521123a0cf21867c92671a0ff9a319",
+    "14126a6b0.c": "fb4beecd6510b46606c5a8aa7001317c929bab3d58c9b88211998c80bc37b211",
+    "14126a8f0.c": "c9fe06c692198253ca7e6c8754ceea3c2e6c718fec0c551d3fc64d9f948dc310",
+    "14126af00.c": "ceb314ac3e1b2525f3855b5b73d14d14540415c84640c593f60ff11486bb15d2",
+    "14127c950.c": "9023069b30b95c47c4180747cc87c1cc25695ea9d5f4af3f7830e86fc8049c3d",
+    "14127c970.c": "3342af2b2863fc1dc45c1ab268c070076bc5a5bb1ac964ffa14ef4a096cd95df",
+    "1412898e0.c": "671cd8659487d1721889b32f145b025577e8f254e9a5f390b2b2d502d1ffa438",
+    "141465260.c": "98718ab031460703413c9fdcafb24ec1b6d492856376ee14b5fc8d2edc5699d6",
+    "141466300.c": "2655f3070134b90492bee2e09ebf748fe0769c7c472f949124feea7b69f3144e",
+    "141466860.c": "5e5172fcb5ef2ea605799b838d2c239461ded70b2e5c2cd96360a62b12cbd395",
+    "141466a40.c": "82d57af533870f3c45209005513da4204ea007b75b69754c7c6a555e55aa0163",
+    "141466bb0.c": "1f06034e290136679659c3385e741bc327bd52988da81cbc547f0735268832c2",
+    "1414671d0.c": "e8294124c548520342689e718fcb47f4df1ec584f020e538a027c996d516ecc1",
+    "141467270.c": "fafba8bac44cbde3c90e0b0b0317e28af24cdd51caa2c6d799bc1b67c0f7bbb8",
+    "141467300.c": "0f7e4bf8f2f49d32c4d73421169fa608bb21af916168109f75d9de3a257281b4",
+    "1414677f0.c": "679cfcba1453c1270fcb097dd46256604bb87d1ca811de25f4699ec79d266e76",
+    "141467ce0.c": "408bc31aaa36cfb67a01a1fb191fca9d5f269a1478911fe16670152aecb26b2c",
+    "141467fa0.c": "2b51609d2a1077338fbc41c3ba4471d76bec2ec9660943eaf5a7f5ca918c5668",
+    "141468880.c": "b20f946c18064cb506aa32046c1c269144b4ab71fe9eb96bcacb62e23720a993",
+    "141468ee0.c": "a72e1468e1567fc1871201fa3d2d2f5643bc15ba7e53918215c5d2ab9fbd45c1",
+    "141468f90.c": "8ba656ea539c6b00f939740b76a11f85d98e900d43f0e0b1cdbec51b09b995ec",
+    "141469000.c": "14b709904f2ce2198713cc018bad91ebb2f7e1c1ec6e1458e398c19531e64e38",
+    "141469230.c": "60a4bb42724f5c92c2d8bae0f0bb6a2f2517e229c3f09381eb625416aa6c6d80",
+    "141469430.c": "17854a05186de1e9a28c769e16f3dd3ba271798b09a7b0a2f4006770c1e66914",
+    "141469950.c": "65c4f86174c3fa55c9769d2e41cddf0d3032b5c12529cd557d9e8ecc99380016",
+    "141469a20.c": "dfc58852cabbc5a2ec0e3f0139e2525c72628cb843a0c051be426cbea14ad2a1",
+    "141469af0.c": "43af08b94697dc88475ed4ab47d6f943ed6be2bfc81faf55c8f3d2319a82acc9",
+    "141469e00.c": "175bae1d819c7bcf280b2cf1d9c1def514a115cb8e14ff1cdd25624de65d23e6",
+    "14146a060.c": "4000fac17a78e41973441bb4e3e4b89d7ee80361bd5e9b73a40cc13f1494544c",
+    "14146a2a0.c": "03804cebea054e7ce5053a6cbdf1af4e34bf0f6ef9cabe248cc81186660c8daf",
+    "14146a830.c": "f0ffdc9e9956108069d22ce5bbcf30ce1859c7459a1e8e2c270b65046a2a44fe",
+    "14146afe0.c": "0d3bcd6401b6496e7d9959a50eae07ba75fa9a800b45dac6c24ba2b2d4229541",
+    "14146b5f0.c": "a4c1632e0d9845b2441088d50024ce42adb625b4c184d78cfe9cd947d29d97ce",
+    "14146bb70.c": "e27505553e9be0f70c6041584b060f877378a41d6cb364252838af33e955fa6b",
+    "14146c190.c": "539b24630a4290339a1f98c2c14bfc9219a64644ef33eb09a644d96ddaf5a695",
+    "14146c3c0.c": "b8efeecb4b29c0d82e16767bbae051406bae1fabdf3313cbdd9efe4e58483f25",
+    "14146c470.c": "966a78424c2b72adac22039d103d2990d505fa5d2eb076592163dd52046fdbba",
+    "1416f34a0.c": "bc6a23d376ac4febb3d09e17fb87e47a93096150a3ca8a9763e547f3fd0d6027",
+    "1419401b0.c": "7a4a77a2a327947b735928036ca4392d31f1794ee3203bd09e5ae8ebbd3f7868",
+    "141940470.c": "8f375b8cc40873970d65ec5003ea358a9646144f4f4af606366288deeabe1449",
+    "141940780.c": "065a90649d29f803b8274f63ab04302629cee426ecf88a812d00464fee5470b5",
+    "141940a40.c": "e4d5be12ef9b8d8aabc817f08723997af1782f7a7eb4e63907b32e84881e3cc3",
+    "141cd5a90.c": "e3f709c4954e8a12c45426d2cc3e4d1b4b375c7787dd4df50071eeae64702419",
+    "141cd5f80.c": "72792c76c1b2d5f64a68ffe5aa47eb9346639638f13e09a656d6b0a199611242",
+    "141cd64a0.c": "39669f823546e003703695a21960a38f8def5b428a8ceee66907f65a8407c86a",
+    "141fdfd80.c": "0e9bed8823033113cf647fe0ff9c7d6cbfadb7a7261c8be0263309eb8b546c78",
+    "141fe0750.c": "8f51d7b8a68df54f66e3834859b6b4c93276f75ae01c414482f7f630d15127f9",
+    "142197610.c": "8d43daa25ac38cb087e1061646eb27a2ec27d711f9ccc4698abaf1cce06a22ab",
+    "1421978d0.c": "251e666ed7544d2646c483452587373a4c228a57c350bca884b94422fa5e9a86",
+    "142289c40.c": "7e804a211f6701dda5118b0ece4cf6afb3c2373a6b70839e37ed54262fd36b37",
+    "1422e1e40.c": "511fdd3f946b2cb9debf2614ce3ce7ee81b459af1969d1869514597a66a04956",
+    "1424181a0.c": "1dcbdb6a596f758e42a2c148e468cec71d849318974438c0b05d9b987ec0a87a",
+    "142418dc0.c": "d978d7189cd67cc24331d067488ca11b95892351ca36b972f61b07c8fde5ccb6",
+    "14261ef90.c": "7770b031e54842ff132f50de65170391964a7389ce5e4181464f14b63b52e97e",
+    "1428f15b0.c": "9db8ecb9d38c4e7c763f1328135a7c268a6ff52040e68644e18ab509af529758",
+    "1428f7fe0.c": "88412f897e1c4eb282c6d8a734544684c7290f3209302a44daf978ee5a9e8579",
+    "142922300.c": "32afecb66830ebf30e757bd31abfb1b9408edcff8a8b1be69b69cf9b5e72de66",
+    "boundary-fixtures.json": "1350eada2a107be4c7035f49c57fc926a68db3ea2b4f4438550f9825b73534bf",
+    "boundary_oracle.py": "5b833da1e8ba7d1e1d4b9035a463dae0576b2f2a2d4468f448034a28efd91e55",
+    "boundary_tests.rs": "88564cc2395b65accb26e84717ce020b4aa3d39fa32ea4ff5076d395b330d13a",
+    "build_delivery.py": "2e97ad8c20de77f868ede53f0ca3fa9480692fcd85df1cde7e907d525ecde50a",
+    "curves-all-job.json": "a9bdbf57c41abcdc0293d920af43feb1a1dc5a4dc83420532ae58861c4f5bf53",
+    "curves-all-result.json": "0eb28e682eddfc5f4f1e2da66af61c8096ab54797875c06ab76e1dc2821acc66",
+    "edge-fixtures.json": "a0fb30182794f9f21c89f7e395c16049a8e4415768fbad676ecd735514fafcf9",
+    "edge_oracle.py": "7a71f1f8b109ccd16387f5d45f6277761009b4410689e89c55f94bfb90bb0b29",
+    "edge_tests.rs": "f9524d99b5fa88f4daf67c935642f6578c52d8fd5b7641cfd46c718cf27b7a6b",
+    "geometry-fixtures.json": "101f9cbdae65e31160003fa15d007c5510799dd67010b48385be06640bd2ec5f",
+    "geometry-rest-job.json": "773bee4e6541c365b6d4f57327b1b11a6ae12dc55707683fdca98708c891a9c7",
+    "geometry-rest-result.json": "90623bdee9d23171ae68d545839a3f51e6a7346f6bfa5d172339db49936d3ba9",
+    "geometry_oracle.py": "db0ce64db8c6820045fc99a325d1a479879a825f0d6ed5f828e66aa3dbbcb1aa",
+    "geometry_tests.rs": "c962e53f6fccdbbecf2e5f1832f30fa762db7b0239b800c5cfd9dc7f71291084",
+    "initial-job.json": "c613d42e5073378404a18ddb1016397d64a8809ab0d8efb4628a0b3d90dd6ab6",
+    "initial-result.json": "dc1635a0118bcaf32bdd8a981b1f57d36831fbdce89dcee3b9ea24447e91e9c8",
+    "linear-fixtures.json": "e76e91f22a7e71bb73ba178288bc1dfb28887f3778e1f6f00b7f602ac82296cf",
+    "linear_oracle.py": "297d85bf7cf14039d8622eed8fb0279ce33b503c00fd7290422847431634e68a",
+    "linear_tests.rs": "7fe81ec81f23daf6a0a036637a14dab6e2ac8ee130c9b4cf1b0adfe94261733c",
+    "native-fixtures.json": "f7989a8d18fdcf7442eb6a7a41ce9327bdf77fac979eaa6276a162a00a979ab3",
+    "native_oracle.py": "f56cbbdbc19b8b3706efc0c087c049acd83b6d0280363fb5a949d382589dbddb",
+    "native_tests.rs": "02c10c75508569f81a37883c3ab6fc5a44ee89f63a20b9e596e5f0914ea34a54",
+    "orient-job.json": "412aa2e64a1ab62f2a5532f105381ab85cd2d03b59fb76ac5a0752c1a26d14f8",
+    "orient-result.json": "7e30bfdf16687e150c1b696bffd0c9fac4ed0380cc8d8fc64c3a9ec10fec4e4c",
+    "triangle-fixtures.json": "17d0f216ca88455f15497377f118b9591cf48edc3b1aba917fa6ff7217a1c02a",
+    "triangle_oracle.py": "518b34a5f27e97761d172826dcd1961c8dba410df36cbd151a2e8c970784dbfd",
+    "triangle_tests.rs": "3522ce4667641352edc3c626eb8baa14b401ed2d2ac66768b214370a770e13d5",
+    "validation.json": "ba3faaa960600be2459459de98f1c2d26f6d843f495f6b59585099ef5d0df6ac"
+  }
+}

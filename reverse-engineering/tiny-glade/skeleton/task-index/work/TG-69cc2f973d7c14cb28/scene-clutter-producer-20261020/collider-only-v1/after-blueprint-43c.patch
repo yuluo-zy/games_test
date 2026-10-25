@@ -1,0 +1,289 @@
+--- a/tiny-glade/crates/systems/decorator/src/blueprint.rs
++++ b/tiny-glade/crates/systems/decorator/src/blueprint.rs
+@@ -5,16 +5,23 @@
+ //! interface. The full consumer and its side-effect resource dependencies remain
+ //! a separate acceptance gate; legacy generator fields below are not an ABI claim.
+ 
+-use std::sync::Arc;
++use std::{collections::HashSet, sync::Arc};
+ 
+ use bevy_ecs::{
+     resource::Resource,
+     system::{Res, ResMut},
+ };
+ use country_core::geometry::instanced_wall::BrickSourceId;
+-use country_core::resources::walls::decorator_storage::{DecoratorStorage, DecoratorStorageAddr};
+ use country_core::resources::walls::decorator_subtype::DecoratorCollision;
+-use country_core::systems::collision::world::RaycastMeshData;
++use country_core::resources::walls::{
++    decorator::DecoratorId,
++    decorator_collision::DecoratorPhysicsColliders,
++    decorator_storage::{DecoratorStorage, DecoratorStorageAddr},
++};
++use country_core::systems::collision::world::{
++    ColliderUpsert, RaycastGeoSource, RaycastMeshData, RaycastWorld, remove_collider,
++    upsert_collider,
++};
+ use glam::{Quat, Vec3};
+ use hashbrown::HashMap;
+ 
+@@ -107,7 +114,8 @@
+     pub flag_cloth_basis: [f32; 4],
+     /// +0x20..0x40：变换槽（O 写面 pos/quat；CachedDecoratorTransform 语义 U）。
+     pub transform_slots: [u64; 4],
+-    /// +0x138：u8（U）。
++    /// Native +0x138: changed/new blueprints with nonzero byte skip both
++    /// upserts, leaving their existing collider keys pending removal.
+     pub u138: u8,
+     /// 碰撞体列表（set_colliders 0x14017a22f0/0x1408ed6f0 消费面；原 +0x0 区域）。
+     pub colliders: Vec<DecoratorCollision>,
+@@ -322,6 +330,104 @@
+     blueprints.copy_blueprints_to_prev(&mut previous);
+ }
+ 
++/// B registered collider-only system@140827510/1009B. Full visual
++/// instantiation also invokes this same helper; it has separate dependencies.
++pub fn instantiate_blueprint_colliders(
++    mut world: ResMut<RaycastWorld>,
++    mut colliders: ResMut<DecoratorPhysicsColliders>,
++    current: Res<DecoratorBlueprints>,
++    previous: Res<PrevDecoratorBlueprints>,
++) {
++    instantiate_decorator_colliders(&mut colliders, &current, &previous, &mut world);
++}
++
++/// B helper@140829850/6470B: reconcile the two actual live collider maps.
++/// The original PHYSICS_DEBUG_LOG_ENABLE/log branches are not recovered here;
++/// see COLLIDER_ONLY_PHASE_DESIGN_V1.md. This is the reviewed business sequence,
++/// not a claim of complete native diagnostic side-effect equivalence.
++pub fn instantiate_decorator_colliders(
++    colliders: &mut DecoratorPhysicsColliders,
++    current: &DecoratorBlueprints,
++    previous: &PrevDecoratorBlueprints,
++    world: &mut RaycastWorld,
++) {
++    let mut collision_removals: HashSet<DecoratorId> = colliders.first.keys().copied().collect();
++    let mut interaction_removals: HashSet<DecoratorId> = colliders.second.keys().copied().collect();
++    for (&raw_id, blueprint) in &current.map {
++        let id = DecoratorId(raw_id);
++        // Native pointer fast path precedes the skip byte and both slot checks.
++        if previous
++            .map
++            .get(&raw_id)
++            .is_some_and(|old| Arc::ptr_eq(old, blueprint))
++        {
++            collision_removals.remove(&id);
++            interaction_removals.remove(&id);
++            continue;
++        }
++        if blueprint.u138 != 0 {
++            continue;
++        }
++        if let BlueprintMeshSlot::Mesh(positioned) = &blueprint.collision_mesh {
++            let source = RaycastGeoSource::decorator(
++                id,
++                blueprint
++                    .storage_addr
++                    .expect("collider blueprint has no recovered storage source"),
++            );
++            let outcome = upsert_collider(
++                world,
++                &mut colliders.first,
++                id,
++                source,
++                Arc::clone(&positioned.mesh),
++                positioned.position,
++                positioned.rotation,
++            );
++            if !matches!(outcome, ColliderUpsert::Inserted { .. }) {
++                collision_removals.remove(&id);
++            }
++        }
++        // First Disabled/Unspecified both skip. Check second only after the
++        // first slot's real side effects; prevalidating would change panic order.
++        match &blueprint.interaction_mesh {
++            BlueprintMeshSlot::Mesh(positioned) => {
++                let source = RaycastGeoSource::decorator_interaction(
++                    id,
++                    blueprint
++                        .storage_addr
++                        .expect("interaction blueprint has no recovered storage source"),
++                    blueprint.interaction_source_flags,
++                );
++                let outcome = upsert_collider(
++                    world,
++                    &mut colliders.second,
++                    id,
++                    source,
++                    Arc::clone(&positioned.mesh),
++                    positioned.position,
++                    positioned.rotation,
++                );
++                if !matches!(outcome, ColliderUpsert::Inserted { .. }) {
++                    interaction_removals.remove(&id);
++                }
++            }
++            BlueprintMeshSlot::Disabled => {}
++            BlueprintMeshSlot::Unspecified => {
++                panic!("decorator blueprint did not specify its interaction mesh")
++            }
++        }
++    }
++    // The sets originate from live owners, so even an empty current/prev pair
++    // removes stale geometry. Preserve original first-map-before-second order.
++    for id in collision_removals {
++        remove_collider(world, &mut colliders.first, &id);
++    }
++    for id in interaction_removals {
++        remove_collider(world, &mut colliders.second, &id);
++    }
++}
++
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+@@ -371,4 +477,143 @@
+         blueprints.clear_blueprints(&storage);
+         assert_eq!(blueprints.map.keys().copied().collect::<Vec<_>>(), [5]);
+     }
+-}
++
++    fn real_clutter_blueprint(current: &mut DecoratorBlueprints, id: u32) {
++        let center = Vec3::new(0.0, 2.0, 0.0);
++        let blueprint = current.insert_for(id, DecoratorStorageAddr::Terrain, 0);
++        blueprint.set_positioned_colliders(
++            Arc::new(RaycastMeshData::new_cuboid_at(
++                Vec3::new(1.5, 3.5, 5.5),
++                center,
++            )),
++            Arc::new(RaycastMeshData::new_cuboid_at(
++                Vec3::new(2.0, 4.0, 6.0),
++                center,
++            )),
++            &Vec3::ZERO,
++            &Quat::IDENTITY,
++        );
++    }
++
++    #[test]
++    fn real_phase_creates_two_distinct_receipts_and_queries_both_shapes() {
++        let id = DecoratorId(71);
++        let mut current = DecoratorBlueprints::default();
++        real_clutter_blueprint(&mut current, id.0);
++        let previous = PrevDecoratorBlueprints::default();
++        let mut maps = DecoratorPhysicsColliders::default();
++        let mut world = RaycastWorld::new();
++        instantiate_decorator_colliders(&mut maps, &current, &previous, &mut world);
++        let first = maps.first[&id];
++        let second = maps.second[&id];
++        assert_ne!(first.registry_index, second.registry_index);
++        assert_ne!(first.handle().slot, second.handle().slot);
++        assert_eq!(
++            world
++                .get_collider_mesh(first.registry_index, first.generation)
++                .source,
++            RaycastGeoSource::decorator(id, DecoratorStorageAddr::Terrain),
++        );
++        assert_eq!(
++            world
++                .get_collider_mesh(second.registry_index, second.generation)
++                .source,
++            RaycastGeoSource::decorator_interaction(id, DecoratorStorageAddr::Terrain, 0),
++        );
++        world.flush_colliders();
++        let ray_origin = Vec3::new(0.0, 10.0, 0.0);
++        assert_eq!(
++            world
++                .raycast(ray_origin, Vec3::NEG_Y, 1 << first.handle().slot)
++                .toi,
++            6.25
++        );
++        assert_eq!(
++            world
++                .raycast(ray_origin, Vec3::NEG_Y, 1 << second.handle().slot)
++                .toi,
++            6.0
++        );
++    }
++
++    #[test]
++    fn unchanged_arc_precedes_skip_flag_but_changed_skip_removes_both() {
++        let id = DecoratorId(72);
++        let mut current = DecoratorBlueprints::default();
++        real_clutter_blueprint(&mut current, id.0);
++        let mut previous = PrevDecoratorBlueprints::default();
++        let mut maps = DecoratorPhysicsColliders::default();
++        let mut world = RaycastWorld::new();
++        instantiate_decorator_colliders(&mut maps, &current, &previous, &mut world);
++        let first = maps.first[&id].handle();
++        let second = maps.second[&id].handle();
++        current.get_mut(id.0).unwrap().u138 = 1;
++        current.copy_blueprints_to_prev(&mut previous);
++        instantiate_decorator_colliders(&mut maps, &current, &previous, &mut world);
++        assert_eq!(maps.first[&id].handle(), first);
++        assert_eq!(maps.second[&id].handle(), second);
++        current
++            .insert_for(id.0, DecoratorStorageAddr::Terrain, 0)
++            .u138 = 1;
++        instantiate_decorator_colliders(&mut maps, &current, &previous, &mut world);
++        assert!(maps.first.is_empty());
++        assert!(maps.second.is_empty());
++    }
++
++    #[test]
++    fn first_unspecified_skips_but_second_unspecified_panics_after_first_upsert() {
++        let id = DecoratorId(73);
++        let mut current = DecoratorBlueprints::default();
++        let blueprint = current.insert_for(id.0, DecoratorStorageAddr::Terrain, 0);
++        blueprint.interaction_mesh = BlueprintMeshSlot::Disabled;
++        let previous = PrevDecoratorBlueprints::default();
++        let mut maps = DecoratorPhysicsColliders::default();
++        let mut world = RaycastWorld::new();
++        instantiate_decorator_colliders(&mut maps, &current, &previous, &mut world);
++        assert!(maps.first.is_empty() && maps.second.is_empty());
++        let blueprint = current.insert_for(id.0, DecoratorStorageAddr::Terrain, 0);
++        blueprint.collision_mesh = BlueprintMeshSlot::Mesh(PositionedDecoratorMesh {
++            mesh: Arc::new(RaycastMeshData::new_cuboid_at(Vec3::splat(2.0), Vec3::Y)),
++            position: Vec3::ZERO,
++            rotation: Quat::IDENTITY,
++        });
++        let failure = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++            instantiate_decorator_colliders(&mut maps, &current, &previous, &mut world);
++        }));
++        assert!(failure.is_err());
++        assert_eq!(
++            maps.first.len(),
++            1,
++            "the original first upsert precedes this failure"
++        );
++        assert!(maps.second.is_empty());
++        let receipt = maps.first[&id];
++        assert_eq!(
++            world
++                .get_collider_mesh(receipt.registry_index, receipt.generation)
++                .source,
++            RaycastGeoSource::decorator(id, DecoratorStorageAddr::Terrain),
++        );
++    }
++
++    #[test]
++    fn explicit_disable_and_empty_current_clean_actual_live_maps_without_prev_keys() {
++        let id = DecoratorId(74);
++        let mut current = DecoratorBlueprints::default();
++        real_clutter_blueprint(&mut current, id.0);
++        let mut previous = PrevDecoratorBlueprints::default();
++        let mut maps = DecoratorPhysicsColliders::default();
++        let mut world = RaycastWorld::new();
++        instantiate_decorator_colliders(&mut maps, &current, &previous, &mut world);
++        let second = maps.second[&id].handle();
++        current.copy_blueprints_to_prev(&mut previous);
++        current.get_mut(id.0).unwrap().collision_mesh = BlueprintMeshSlot::Disabled;
++        instantiate_decorator_colliders(&mut maps, &current, &previous, &mut world);
++        assert!(maps.first.is_empty());
++        assert_eq!(maps.second[&id].handle(), second);
++        current.map.clear();
++        previous.map.clear();
++        instantiate_decorator_colliders(&mut maps, &current, &previous, &mut world);
++        assert!(maps.first.is_empty() && maps.second.is_empty());
++    }
++}

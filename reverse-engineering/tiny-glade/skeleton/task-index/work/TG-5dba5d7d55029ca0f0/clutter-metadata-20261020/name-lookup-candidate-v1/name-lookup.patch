@@ -1,0 +1,102 @@
+--- a/crates/country-core/src/systems/ui_clutter/ui_autoclutter.rs
++++ b/crates/country-core/src/systems/ui_clutter/ui_autoclutter.rs
+@@ -29,6 +29,70 @@
+ 
+ use super::rmb_autoclutter::EvRightClickedAutoClutter;
+ 
++/// B1408b83d0/2748B: exact original name parser, shared by the actual
++/// parent/RMB consumers. This does not search caller-modified mesh catalogs.
++pub(super) fn clutter_mesh_type_from_name(name: &str) -> crate::systems::mode_manager::ClutterMeshTy {
++    let tag = match name {
++        "clutter/plant_pot_v1" => 0,
++        "clutter/ladder" => 1,
++        "clutter/wheel" => 2,
++        "clutter/pitchfork" => 3,
++        "clutter/shovel" => 4,
++        "clutter/box_w_stuff" => 5,
++        "clutter/watering_can" => 6,
++        "clutter/firewood" => 7,
++        "clutter/bucket" => 8,
++        "clutter/birdnest" => 9,
++        "clutter/bench" => 10,
++        "clutter/bench_w_basket" => 11,
++        "clutter/bench_short" => 12,
++        "clutter/barrel" => 13,
++        "clutter/haystack" => 14,
++        "clutter/plant_pot_v2" => 15,
++        "clutter/birdhouse" => 16,
++        "clutter/basket" => 17,
++        "clutter/basket_w_food" => 18,
++        "clutter/barrel_w_food_basket" => 19,
++        "clutter/potato_sack" => 20,
++        "clutter/road_sign" => 21,
++        "clutter/sunflower" => 22,
++        "clutter/cart" => 23,
++        "clutter/cart2" => 24,
++        "clutter/crates_w_tools" => 25,
++        "clutter/crates_w_flowers" => 26,
++        "clutter/window_flowerpot" => 27,
++        "clutter/window_shutter" => 28,
++        "clutter/reed" => 30,
++        "clutter/lilypad" => 31,
++        "fallen_leaves" => 32,
++        "fallen_petals" => 33,
++        "olden_glade_rock" => 34,
++        "tree_log" => 35,
++        "tree_stump" => 36,
++        "clutter/pumpkin" => 37,
++        "clutter/pumpkin2" => 38,
++        "clutter/pumpkin_w_face" => 39,
++        "clutter/cart_w_pumpkins" => 40,
++        "clutter/crates_w_pumpkins" => 41,
++        "clutter/barrel_w_candles" => 43,
++        "clutter/anvil" => 44,
++        "clutter/fabric_rolls" => 45,
++        "clutter/stall_bread" => 46,
++        "clutter/stall_veggies" => 47,
++        "clutter/crate_fish" => 48,
++        "clutter/rack_brooms" => 49,
++        "clutter/flowerbox" => 50,
++        "clutter/door_bell" => 51,
++        "clutter/door_krans" => 52,
++        "clutter/door_krans_autumn" => 53,
++        "clutter/cart_w_pumpkins_regular" => 54,
++        "clutter/crates_w_pumpkins_regular" => 55,
++        _ => unreachable!(),
++    };
++    crate::systems::mode_manager::ClutterMeshTy::from_native_tag(tag)
++        .expect("original ClutterMeshTy name arm has a valid tag")
++}
++
+ /// Original B InstaCreateDeco: an actual creation command, not the right-click
+ /// input. Native EventId and inactive extra/padding bytes are not business data.
+ #[derive(Event, Debug)]
+@@ -275,3 +339,28 @@
+         assert_eq!(world.resource::<Events<InstaCreateDeco>>().len(), 1);
+     }
+ }
++
++#[cfg(test)]
++mod original_name_lookup_tests {
++    use super::clutter_mesh_type_from_name;
++
++    #[test]
++    fn original_fallthrough_arms_and_duplicate_stump_name_keep_their_types() {
++        for (name, tag) in [("tree_log", 35), ("tree_stump", 36),
++            ("clutter/cart_w_pumpkins", 40), ("clutter/crates_w_pumpkins", 41),
++            ("clutter/stall_veggies", 47), ("clutter/crate_fish", 48),
++            ("clutter/door_krans_autumn", 53), ("clutter/cart_w_pumpkins_regular", 54)] {
++            assert_eq!(clutter_mesh_type_from_name(name) as u8, tag);
++        }
++        assert_ne!(clutter_mesh_type_from_name("tree_stump") as u8, 42);
++    }
++
++    #[test]
++    fn unknown_or_normalized_names_keep_the_original_unreachable_failure() {
++        for name in ["", "clutter/tree_stump", "TREE_STUMP", "tree_stump_v2",
++            "clutter/window_flowerbeds", "caller_defined_mesh"] {
++            assert!(std::panic::catch_unwind(|| clutter_mesh_type_from_name(name)).is_err(),
++                "unknown original name unexpectedly parsed: {name}");
++        }
++    }
++}

@@ -1,0 +1,36 @@
+{
+  "target": {"path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe", "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"},
+  "provider": {"id": "ghidra", "version": "12.1.4"},
+  "database": "ccdiag",
+  "session_key": "re_mcp_ghidra:ccdiag",
+  "steps": [
+    {"tool": "open_database", "args": {"file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe", "database_id": "ccdiag", "run_auto_analysis": false}},
+    {"tool": "wait_for_analysis", "args": {"database": "ccdiag"}},
+
+    {"tool": "decompile_function", "args": {"database": "ccdiag", "address": "0x140be2b40"}, "allow_error": true},
+    {"tool": "decompile_function", "args": {"database": "ccdiag", "address": "0x140082a00"}, "allow_error": true},
+    {"tool": "decompile_function", "args": {"database": "ccdiag", "address": "0x140bdd3f0"}, "allow_error": true},
+    {"tool": "decompile_function", "args": {"database": "ccdiag", "address": "0x140be2710"}, "allow_error": true},
+    {"tool": "decompile_function", "args": {"database": "ccdiag", "address": "0x140be2880"}, "allow_error": true},
+    {"tool": "decompile_function", "args": {"database": "ccdiag", "address": "0x140be2990"}, "allow_error": true},
+    {"tool": "decompile_function", "args": {"database": "ccdiag", "address": "0x140be6a90"}, "allow_error": true},
+    {"tool": "decompile_function", "args": {"database": "ccdiag", "address": "0x140be6b40"}, "allow_error": true},
+    {"tool": "decompile_function", "args": {"database": "ccdiag", "address": "0x140be6b50"}, "allow_error": true},
+    {"tool": "decompile_function", "args": {"database": "ccdiag", "address": "0x140bf09b0"}, "allow_error": true},
+    {"tool": "decompile_function", "args": {"database": "ccdiag", "address": "0x140bf0b40"}, "allow_error": true},
+    {"tool": "decompile_function", "args": {"database": "ccdiag", "address": "0x140c02da0"}, "allow_error": true},
+    {"tool": "decompile_function", "args": {"database": "ccdiag", "address": "0x14090dda0"}, "allow_error": true},
+
+    {"tool": "decompile_function", "args": {"database": "ccdiag", "address": "0x1408ed880"}, "allow_error": true},
+    {"tool": "decompile_function", "args": {"database": "ccdiag", "address": "0x1408fca00"}, "allow_error": true},
+    {"tool": "decompile_function", "args": {"database": "ccdiag", "address": "0x1409046b0"}, "allow_error": true},
+    {"tool": "decompile_function", "args": {"database": "ccdiag", "address": "0x140916140"}, "allow_error": true},
+
+    {"tool": "get_xrefs_to", "args": {"database": "ccdiag", "address": "0x140be2b40"}, "allow_error": true},
+    {"tool": "get_xrefs_to", "args": {"database": "ccdiag", "address": "0x140be6b50"}, "allow_error": true},
+    {"tool": "get_xrefs_from", "args": {"database": "ccdiag", "address": "0x140be2b40"}, "allow_error": true},
+    {"tool": "get_xrefs_from", "args": {"database": "ccdiag", "address": "0x140bf09b0"}, "allow_error": true},
+
+    {"tool": "close_database", "args": {"database": "ccdiag", "save": false}}
+  ]
+}

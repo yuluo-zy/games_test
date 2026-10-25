@@ -1,0 +1,248 @@
+{
+  "schema_version": 1,
+  "scope": "base-assets completion overlay; historical reports immutable",
+  "original_version": "B",
+  "original_rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "features": [
+    {
+      "feature_id": "utils:06",
+      "current_status": "implemented_scoped",
+      "implemented_scope": [
+        "ComparativeSpace defaults: interpolate via subtract then project_clamp; strict distance < sum of half-extents intersection; ordered subtract < 0 side decision.",
+        "ZeroBoundedComparativeSpace implements linear distance, inclusive projection, clamp and subtraction; existing circular strategy reused."
+      ],
+      "missing_library_logic": [],
+      "unresolved_contracts": [
+        "classify_side original enum/ABI is not recovered; ComparativeSide expresses the observed consumer decision."
+      ],
+      "validation_gaps": [
+        "New predicates checked against bounded original disassembly and contract cases, not a complete original function ABI harness.",
+        "Arbitrary nonpositive/NaN periods and invalid bounds have not been accepted as game inputs."
+      ],
+      "source_mapping": [
+        "utils/src/comparative_space.rs",
+        "Original inline lerp module183 record2292; regions module432 records14416/14500 and module3064 records3352/3436; classify module3064 record3584.",
+        "Linear strategy inline module761 and compiled WallSpace project/subtract callees."
+      ],
+      "evidence": [
+        "evidence/foundation-completion-2026-10-13/base-assets/inline-bindings.json",
+        "evidence/foundation-completion-2026-10-13/base-assets/ComparativeSpace-lerp_clamp-183-2292.asm.txt",
+        "evidence/foundation-completion-2026-10-13/base-assets/regions_intersect-432-14500.asm.txt",
+        "evidence/foundation-completion-2026-10-13/base-assets/classify_side-3064-3584.asm.txt",
+        "evidence/foundation-completion-2026-10-13/base-assets/comparative_tests.rs"
+      ]
+    },
+    {
+      "feature_id": "utils:13",
+      "current_status": "implemented_scoped",
+      "implemented_scope": [
+        "LoopRange::map_slice, borrowed LoopSlice, forward/backward iteration, exact remaining iterator size, signed wrapping physical indexing.",
+        "60 original traces compare values and start/end/period after every mixed-direction step."
+      ],
+      "missing_library_logic": [],
+      "unresolved_contracts": [
+        "Invalid period/range combinations retain underlying signed index/panic policy; consumer admissibility is not established."
+      ],
+      "validation_gaps": [
+        "Index consumer has bounded instruction evidence; invalid period and physical out-of-bounds panic messages/ABI are not directly compared."
+      ],
+      "source_mapping": [
+        "utils/src/loop_range.rs",
+        "Original complete next 0x141208e10; next_back consumer prefix 0x141237cbc; Index module1419/390 inlines."
+      ],
+      "evidence": [
+        "evidence/foundation-completion-2026-10-13/base-assets/native-base-fixtures.json",
+        "evidence/foundation-completion-2026-10-13/base-assets/native_base.py",
+        "evidence/foundation-completion-2026-10-13/base-assets/loop_slice_tests.rs",
+        "evidence/foundation-completion-2026-10-13/base-assets/native-0x141208e10.c",
+        "evidence/foundation-completion-2026-10-13/base-assets/LoopSlice-next_back-1452-10148.asm.txt",
+        "evidence/foundation-completion-2026-10-13/base-assets/LoopSlice-index-1419-528.asm.txt"
+      ]
+    },
+    {
+      "feature_id": "utils:17",
+      "current_status": "partial_missing_logic",
+      "implemented_scope": [
+        "Existing 2D/3D constructors, natural/cyclic solve, segment polynomial position/tangent evaluation, and 3D global clamped selector remain implemented.",
+        "Vector subtraction/length delegates to original glam. No new guessed 2D selector was added."
+      ],
+      "missing_library_logic": [
+        "Spline2D global find_segment_and_dt / corresponding global query policy remains absent."
+      ],
+      "unresolved_contracts": [
+        "Original B Spline2D IPI0xAF37 is a declaration only (source line164), with no compiled entry or inline host found; 3D IPI0xAF46 at line285 is separate evidence."
+      ],
+      "validation_gaps": [
+        "A 3D selector cannot be reported as direct original verification of the unobserved 2D policy.",
+        "No original game-edit consumer integration closure is claimed."
+      ],
+      "source_mapping": [
+        "utils/src/natural_cubic.rs",
+        "PDB module762; Spline2D IPI0xAF37 declaration, Spline3D IPI0xAF46 compiled inline in position/tangent."
+      ],
+      "evidence": [
+        "evidence/foundation-completion-2026-10-13/base-assets/pdb-focus.json",
+        "evidence/foundation-completion-2026-10-13/base-assets/B-module-762.txt"
+      ]
+    },
+    {
+      "feature_id": "utils:18",
+      "current_status": "implemented_scoped",
+      "implemented_scope": [
+        "Rdp::new uses observed Vec2 default threshold 0.1 and root=0.",
+        "stitch_with keeps the old prefix through the cut, unconditionally drops the new seam point/index, appends points, and wrapping-rebases new indices by the old cut index.",
+        "Existing generic RDP geometry and options implementation retained."
+      ],
+      "missing_library_logic": [],
+      "unresolved_contracts": [
+        "The 0.1 default is directly observed for Vec2; other dimensions share the reconstructed API policy but have no direct default-producer oracle.",
+        "Negative epsilon infinite splitting is shared with original machine code; caller nonnegative precondition remains unresolved."
+      ],
+      "validation_gaps": [
+        "48 original Vec2 default constructors compared; bounded original stitch executed for four cuts; the current Rust regression embeds one of those cuts.",
+        "Real editing consumer ownership/error paths remain outside this library closure."
+      ],
+      "source_mapping": [
+        "utils/src/rdp.rs",
+        "Original default producer 0x140ad1fe0; stitch IPI0x7EBF/module567 record29048 in compute_final_curve, bounded original execution 0x140ad47ab..0x140ad4bab."
+      ],
+      "evidence": [
+        "evidence/foundation-completion-2026-10-13/base-assets/native-base-fixtures.json",
+        "evidence/foundation-completion-2026-10-13/base-assets/native_base.py",
+        "evidence/foundation-completion-2026-10-13/base-assets/rdp_tests.rs",
+        "evidence/foundation-completion-2026-10-13/base-assets/native-0x140ad1fe0.c",
+        "evidence/foundation-completion-2026-10-13/base-assets/Rdp-stitch_with-567-29048.asm.txt"
+      ]
+    },
+    {
+      "feature_id": "utils:23",
+      "current_status": "partial_missing_logic",
+      "implemented_scope": [
+        "Existing scalar x0y/xvy/xvz/x0z coordinate adapters use original glam; borrowed Vec3SliceView2 transports source without allocation."
+      ],
+      "missing_library_logic": [
+        "Projected borrowed-view consumer access/index/iteration remains absent."
+      ],
+      "unresolved_contracts": [
+        "as_vec2 original 4-byte shared identity entry 0x14067dd80 only proves pointer transport; projected axes, stride and author return type are not established.",
+        "No unsafe compact Vec2 slice cast or guessed XZ projection was introduced."
+      ],
+      "validation_gaps": [
+        "No typed original consumer was located to validate projected slice semantics."
+      ],
+      "source_mapping": [
+        "utils/src/swizzlers.rs",
+        "PDB module757 record848 as_vec2; shared identity machine entry cannot by itself identify its return consumer contract."
+      ],
+      "evidence": [
+        "evidence/foundation-completion-2026-10-13/base-assets/B-module-757.txt"
+      ]
+    },
+    {
+      "feature_id": "asset:01",
+      "current_status": "implemented_scoped",
+      "implemented_scope": [
+        "Concrete render default retains required mesh/shader markers and no mesh processor.",
+        "Enabled RT inherits parent first then resolves scale and all seasonal albedo to unit triples, semantic None, mesh required marker; absent optional object remains absent.",
+        "Enabled audio resolves nested trigger scale to unit triple and shape/kind to required markers; exhausted outer trigger is rejected, while missing required nested fields remain markers until extraction.",
+        "Default finalization runs even when parent optional RT/audio is disabled; original Option specializations drove the authored Inherit::finish_inheritance hook.",
+        "All these operations remain game configuration policy; serde/RON parsing and generic dependency internals are reused."
+      ],
+      "missing_library_logic": [],
+      "unresolved_contracts": [
+        "No invented Aabb/string defaults for required RT mesh or audio shape/kind.",
+        "This scope completes the observed render/RT/audio/trigger default owners; it does not assert all consumers or every author-defined asset type have been surveyed."
+      ],
+      "validation_gaps": [
+        "200 complete original RT option cases and 36 complete audio option cases compare parent priority, default tags/payloads and nine panic outcomes.",
+        "The audio fixture grid currently uses absent parent; enabled-audio parent inheritance also has authored RON integration coverage, not a complete native grid.",
+        "Original GPU/audio runtime consumption and malformed ABI-state acceptance are outside this completion scope."
+      ],
+      "source_mapping": [
+        "asset/src/inheritable.rs",
+        "asset/src/prefab/config.rs",
+        "Original Option RT complete 0x14268a2e0; Option audio complete 0x14268a700; RT field inheritance 0x142879de0; render 0x142879c20.",
+        "Module4590 nested default inlines at0x14268a790; PrefabPart/render default module4091 record6228."
+      ],
+      "evidence": [
+        "evidence/foundation-completion-2026-10-13/base-assets/asset-inline-bindings.json",
+        "evidence/foundation-completion-2026-10-13/base-assets/native-prefab-fixtures.json",
+        "evidence/foundation-completion-2026-10-13/base-assets/native_prefab.py",
+        "evidence/foundation-completion-2026-10-13/base-assets/prefab_default_tests.rs",
+        "evidence/foundation-completion-2026-10-13/base-assets/prefab_native_tests.rs",
+        "evidence/foundation-completion-2026-10-13/base-assets/PrefabRt-inherit-4590-5564.asm.txt",
+        "evidence/foundation-completion-2026-10-13/base-assets/AudioTrigger-concrete_default-4590-6808.asm.txt"
+      ]
+    },
+    {
+      "feature_id": "asset:03",
+      "current_status": "implemented_scoped",
+      "implemented_scope": [
+        "Concrete render default retains required mesh/shader markers and no mesh processor.",
+        "Enabled RT inherits parent first then resolves scale and all seasonal albedo to unit triples, semantic None, mesh required marker; absent optional object remains absent.",
+        "Enabled audio resolves nested trigger scale to unit triple and shape/kind to required markers; exhausted outer trigger is rejected, while missing required nested fields remain markers until extraction.",
+        "Default finalization runs even when parent optional RT/audio is disabled; original Option specializations drove the authored Inherit::finish_inheritance hook.",
+        "All these operations remain game configuration policy; serde/RON parsing and generic dependency internals are reused."
+      ],
+      "missing_library_logic": [],
+      "unresolved_contracts": [
+        "No invented Aabb/string defaults for required RT mesh or audio shape/kind.",
+        "This scope completes the observed render/RT/audio/trigger default owners; it does not assert all consumers or every author-defined asset type have been surveyed."
+      ],
+      "validation_gaps": [
+        "200 complete original RT option cases and 36 complete audio option cases compare parent priority, default tags/payloads and nine panic outcomes.",
+        "The audio fixture grid currently uses absent parent; enabled-audio parent inheritance also has authored RON integration coverage, not a complete native grid.",
+        "Original GPU/audio runtime consumption and malformed ABI-state acceptance are outside this completion scope."
+      ],
+      "source_mapping": [
+        "asset/src/inheritable.rs",
+        "asset/src/prefab/config.rs",
+        "Original Option RT complete 0x14268a2e0; Option audio complete 0x14268a700; RT field inheritance 0x142879de0; render 0x142879c20.",
+        "Module4590 nested default inlines at0x14268a790; PrefabPart/render default module4091 record6228."
+      ],
+      "evidence": [
+        "evidence/foundation-completion-2026-10-13/base-assets/asset-inline-bindings.json",
+        "evidence/foundation-completion-2026-10-13/base-assets/native-prefab-fixtures.json",
+        "evidence/foundation-completion-2026-10-13/base-assets/native_prefab.py",
+        "evidence/foundation-completion-2026-10-13/base-assets/prefab_default_tests.rs",
+        "evidence/foundation-completion-2026-10-13/base-assets/prefab_native_tests.rs",
+        "evidence/foundation-completion-2026-10-13/base-assets/PrefabRt-inherit-4590-5564.asm.txt",
+        "evidence/foundation-completion-2026-10-13/base-assets/AudioTrigger-concrete_default-4590-6808.asm.txt"
+      ]
+    }
+  ],
+  "source_sha256": {
+    "reconstruction/shared-foundation/crates/utils/src/comparative_space.rs": "a287977adb195a0dcd7dd2c2889b6f10a405d7c936aad7752405a2e919fccd22",
+    "reconstruction/shared-foundation/crates/utils/src/loop_range.rs": "0df4ac3afa385b8397314408d997b79d33cb9bb34564cc6f3c1e4e4f6637c0de",
+    "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs": "400febb381f2461a3d45ef6b72d0a246c566ce7bb08a5339226cbfea81bcf59e",
+    "reconstruction/shared-foundation/crates/utils/src/rdp.rs": "98e7acef73ed3e64dfe29ef3c97ec5f43f6163289a446f9e423a8212bd8b1cc5",
+    "reconstruction/shared-foundation/crates/utils/src/swizzlers.rs": "04924394691bc65e08f23c77532176c99a2febec67a06121a4be2c9fef0f59cf",
+    "reconstruction/shared-foundation/crates/asset/src/inheritable.rs": "2f64c818ae1126a90e7814240e6eed694bab413bece4328fed8354fd098a42a9",
+    "reconstruction/shared-foundation/crates/asset/src/lib.rs": "293e0615754a8491caece8a084c75fe110e4fea0e01e583190f6f5c661cf04e3",
+    "reconstruction/shared-foundation/crates/asset/src/prefab/config.rs": "6c6067d4ff1bcdce14e8c636de1ad52717d4a66fc5b65b08c2592bdee734ea70",
+    "reconstruction/shared-foundation/crates/asset/src/prefab/scan.rs": "ad310c2aaa55c750d80195c2ac6f9bb061bfad32e9c3f30b04ff0d9dde1cf062",
+    "reconstruction/shared-foundation/crates/asset/src/prefab.rs": "6692ce67bee015587c93db7c507160e85fe396718e14b55940fb1d2fb900bcfb",
+    "reconstruction/shared-foundation/crates/asset/src/texture/blob.rs": "3c167d325ab2942eae36a6d150a28ea536ee8d80b82ce085b6e084f41901df84",
+    "reconstruction/shared-foundation/crates/asset/src/texture/config.rs": "e2066688d980b3c446fafe598dcea9f3367ac1084a75f9b2a978a0973ba67088",
+    "reconstruction/shared-foundation/crates/asset/src/texture/desc.rs": "c87be9f80e1c2deb1d4df1a67a547582bd594a94eea9334dae2216aa42892843",
+    "reconstruction/shared-foundation/crates/asset/src/texture/scan.rs": "fa5c157bf0cfdc58949d4869683ee7a2d21a725a9b5133ae15059dfb5550f929",
+    "reconstruction/shared-foundation/crates/asset/src/texture.rs": "9d107c5aa5b10184e6bb26744e13f28ebd1a38a6d0c8b8351032ba35b2921851",
+    "reconstruction/shared-foundation/crates/asset-pipe/src/lib.rs": "9edc23d6191c33d74a6327671ce66036425614b9e9e190ac22c99340d92ed8b9",
+    "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs": "581d6ee69449a5a33426241589d81e23775c0a0e29de1f3bde2cc42cc234dfba"
+  },
+  "validation": {
+    "asset_completion": "5 tests passed; 200 RT + 36 audio native cases",
+    "asset_and_asset_pipe": "25 tests passed --locked --offline; includes current completion tests",
+    "rdp_completion": "2 tests passed; 48 native constructors and seam regression",
+    "loop_slice": "60 native transition traces passed previously in this completion run",
+    "comparative": "contract cases passed previously in this completion run",
+    "clippy": "Blocked by peer geometry rectangle.rs manual_range_contains and geometry/native_tests.rs bool_assert_comparison; no owner error found in current log",
+    "logs": [
+      "evidence/foundation-completion-2026-10-13/base-assets/asset-test-current.log",
+      "evidence/foundation-completion-2026-10-13/base-assets/asset-all-current.log",
+      "evidence/foundation-completion-2026-10-13/base-assets/rdp-test-current.log",
+      "evidence/foundation-completion-2026-10-13/base-assets/clippy-current.log",
+      "evidence/foundation-completion-2026-10-13/base-assets/clippy-lib-current.log"
+    ]
+  }
+}

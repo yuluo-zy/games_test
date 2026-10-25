@@ -1,0 +1,73 @@
+--- a/crates/rhapsody/tests/reverse_blur_original_vulkan.rs
++++ b/crates/rhapsody/tests/reverse_blur_original_vulkan.rs
+@@ -8,6 +8,7 @@
+     },
+     device::{Device, DeviceConfig},
+     pipeline::{AsyncPipelineCompiler, CompilerConfig, PipelineCache},
++    raw::instance::{InstanceBuilder, ValidationMessenger},
+     resource::{
+         Buffer, BufferDesc, DynamicConstants, Texture, TextureDesc, TextureViewDesc,
+         init_texture_data,
+@@ -116,13 +117,29 @@
+ }
+ 
+ fn run_original_reverse(levels: u32) {
+-    let Some(device) = gpu_test_support::initialize(
+-        "original reverse blur device",
+-        Device::new_headless(&DeviceConfig {
+-            validation: true,
+-            ..DeviceConfig::headless()
+-        }),
+-    ) else {
++    let initialized = (|| -> rhapsody::Result<_> {
++        let mut builder = InstanceBuilder::default();
++        if !builder.enable_validation()? {
++            return Err(rhapsody::Error::unsupported(
++                "Khronos validation layer unavailable",
++            ));
++        }
++        let instance = builder.build()?;
++        // Start collecting before logical device/pipeline/resource creation.
++        let validation = ValidationMessenger::new(&instance)?;
++        let device = Device::new(
++            instance,
++            None,
++            &DeviceConfig {
++                validation: true,
++                ..DeviceConfig::headless()
++            },
++        )?;
++        Ok((device, validation))
++    })();
++    let Some((device, validation)) =
++        gpu_test_support::initialize("original reverse blur validated device", initialized)
++    else {
+         return;
+     };
+     let original = original();
+@@ -211,7 +228,7 @@
+     );
+     let mut graph = session.begin_frame().unwrap();
+     let partial_id = session
+-        .import_frame_texture(&mut graph, partial, READ)
++        .import_frame_texture(&mut graph, Arc::new(partial), READ)
+         .unwrap();
+     // The first top sampled/storage alias is a fresh OriginSource::Create.
+     let full = session
+@@ -392,6 +409,16 @@
+     }
+     assert_eq!(compiler.stats().compiled, 1);
+     assert_eq!(device.retirement_stats().idle_waits, 0);
++    drop((
++        session, dynamic, pipeline, compiler, sampler, heap, readback, abi,
++    ));
++    device.try_collect_all_completed().unwrap();
++    drop(device);
++    let errors = validation.collector.errors();
++    assert!(
++        errors.is_empty(),
++        "original reverse Vulkan validation errors: {errors:#?}"
++    );
+ }
+ 
+ #[test]

@@ -1,0 +1,60 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/audio/terrain_audio.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/audio/terrain_audio.rs
+@@ -87,7 +87,9 @@
+ }
+ 
+ fn clamp01(value: f32) -> f32 {
+-    value.max(0.0).min(1.0)
++    // Native MAXSS/MINSS retain NaN and the input signed zero. The f32
++    // min/max methods ignore NaN and canonicalize opposite signed zeros.
++    value.clamp(0.0, 1.0)
+ }
+ 
+ /// `terrain_audio_system` (0x1414618c0).
+@@ -428,6 +430,46 @@
+         }
+     }
+     #[test]
++    fn low_point_speed_preserves_native_nan_and_signed_zero() {
++        // Original B tag4 branch replay: one-shot-boundaries.json. NaN sign
++        // and payload from arithmetic depend on the host CPU, so compare
++        // NaN semantically; finite and signed-zero results compare by bits.
++        for (magnitude, editing_speed, expected) in [
++            (0.0, 0.0, None),
++            (f32::NAN, 1.0, None),
++            (0.1, 0.0, Some(1.0_f32.to_bits())),
++            (-0.1, 0.0, Some(0.0_f32.to_bits())),
++            (-0.0, 1.0, Some((-0.0_f32).to_bits())),
++        ] {
++            let calls = observe(
++                PlayTerrainSound::Removed {
++                    position: Vec3::new(3.0, -1.0, 4.0),
++                    falloff: 0.4,
++                    magnitude,
++                },
++                editing_speed,
++                TERRAIN_LOW_POINT_EVENT,
++            );
++            let bits = calls
++                .iter()
++                .find_map(|call| match call {
++                    Call::Parameter(name, parameter, bits)
++                        if name == TERRAIN_LOW_POINT_EVENT
++                            && parameter == TERRAIN_EDITING_SPEED_PARAM =>
++                    {
++                        Some(*bits)
++                    }
++                    _ => None,
++                })
++                .expect("LowPoint must forward its editing_speed parameter");
++            match expected {
++                Some(expected) => assert_eq!(bits, expected),
++                None => assert!(f32::from_bits(bits).is_nan()),
++            }
++        }
++    }
++
++    #[test]
+     fn original_one_shot_0() {
+         let position = Vec3::new(3., -1., 4.);
+         let event = PlayTerrainSound::Removed {

@@ -1,0 +1,192 @@
+--- a/crates/tiny-glade/src/run_game.rs
++++ b/crates/tiny-glade/src/run_game.rs
+@@ -45,6 +45,9 @@
+ use bevy_ecs::prelude::*;
+ use country_core::{game_config::GameConfig, resources::window::WindowSize};
+ use std::{path::PathBuf, sync::Arc};
++
++#[path = "startup_construction_runtime.rs"]
++mod startup_construction_runtime;
+ 
+ #[path = "history_runtime.rs"]
+ mod history_runtime;
+@@ -325,6 +328,7 @@
+     app.insert_resource(rt_worker);
+     app.add_event::<country_core::resources::rt::UpdateRtWorldEvent>();
+     install_history_and_wall_runtime(&mut app, config.dev.demo);
++    startup_construction_runtime::install(&mut app);
+     // Preserve actual domain owner constructors without mounting incomplete
+     // edit/UI helpers merely to initialize their resources.
+     toolbar::configure_app(&mut app);
+@@ -844,9 +848,13 @@
+             adjust_wall_height,
+             collect_wall_publication_dirty,
+             publish_public_wall_state,
+-            // Original helper140335b30 ends with the changed/deleted event
+-            // readers and the same PublicWalls/WallSpatialHash owners.
++            country_core::systems::wall::delete_wall::delete_wall,
++            system_wall_constructor::gpu_output::delete_constructor_output,
+             spatial_hash_update,
++            country_core::systems::wall::calc_wall_bend::calc_wall_bend,
++            system_wall_constructor::gpu_output::clear_constructor_planks,
++            system_wall_constructor::segmentation::calculate_wall_path_segmentation::calculate_wall_path_segmentation,
++            system_wall_constructor::init_wall_height_and_arch_segment_height::init_wall_height_and_arch_segment_height,
+         )
+             .chain_ignore_deferred()
+             .in_set(GameSystemSet(19)),
+--- a/crates/tiny-glade/src/history_runtime.rs
++++ b/crates/tiny-glade/src/history_runtime.rs
+@@ -78,7 +78,7 @@
+         Update,
+         sys::save::snapshot::rebuild_pending_roof_associations
+             .after(GameSystemSet(19))
+-            .before(GameSystemSet(35)),
++            .before(GameSystemSet(20)),
+     );
+     app.add_systems(
+         Update,
+@@ -166,37 +166,39 @@
+         Update,
+         system_roof::replay_roof::replay_roof.in_set(GameSystemSet(40)),
+     );
+-    app.add_systems(
+-        Update,
++    app.add_systems(Update, (
+         (
++            (
++                system_roof::delete_roof::mark_roof_for_deletion,
++                system_roof::update_roof_spatial::update_roof_spatial,
++                system_roof::wall_height_dt::wall_height_dt,
++                system_roof::visual::roof_animation::roof_animation,
++            ).chain_ignore_deferred(),
+             system_roof::create_roof::create_roof,
+-            system_roof::create_roof::wall_roof_hashmap,
+-            system_roof::update_roof_spatial::update_roof_spatial,
+             system_roof::edit_roof::edit_roof,
+-            system_roof::edit_roof::switch_roof_direction,
+-            system_roof::ui_edit_roof_ridge_dir::switch_roof_ridge_direction,
+-            system_roof::edit_roof::set_flat_roof_rim_style,
+-            system_roof::delete_roof::process_invalid_roof_notifications,
+-            system_roof::delete_roof::mark_roof_for_deletion,
+-            system_roof::visual::roof_animation::roof_animation,
+-            system_roof::delete_roof::delete_roofs,
+-            system_roof::update_roof_spatial::update_wall_gable_heights,
+-        )
+-            .chain()
+-            .after(system_roof::replay_roof::replay_roof)
+-            .in_set(GameSystemSet(40)),
+-    );
+-    app.add_systems(
+-        Update,
+-        system_roof::visual::switch_roof_type::switch_roof_type
+-            .after(system_roof::edit_roof::edit_roof)
+-            .in_set(GameSystemSet(40))
+-            .run_if(
+-                |assets: Option<
+-                    Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,
+-                >| assets.is_some(),
+-            ),
+-    );
++        ).chain(),
++        system_roof::simulate_roof_tile_for_audio::simulate_roof_tile_for_audio,
++        system_roof::highlight_roof::highlight_roof,
++        system_roof::visual::switch_roof_type::switch_roof_type,
++        system_roof::roof_trigger_volume::calculate_roof_trigger_volumes,
++    ).chain().in_set(GameSystemSet(20)));
++    app.add_systems(Update,
++        system_roof::delete_roof::delete_roofs.in_set(GameSystemSet(21)));
++    app.add_systems(Update, (
++        system_roof::visual::assemble_roof_tiles::assemble_roof_tiles,
++        system_roof::visual::generate_roof_stone_floor_and_roof_bottom::generate_roof_stone_floor_and_roof_bottom,
++        system_roof::visual::place_spires::place_roof_spires,
++    ).in_set(GameSystemSet(29)));
++    app.add_systems(Update,
++        system_roof::gpu_flush_buffers.in_set(GameSystemSet(44)));
++    // Preserve already existing nonempty command adapters. Their individual native
++    // caller stages remain separately adjudicated; they are not native20 items.
++    app.add_systems(Update, (
++        system_roof::edit_roof::switch_roof_direction,
++        system_roof::ui_edit_roof_ridge_dir::switch_roof_ridge_direction,
++        system_roof::edit_roof::set_flat_roof_rim_style,
++        system_roof::update_roof_spatial::update_wall_gable_heights,
++    ).chain().after(system_roof::replay_roof::replay_roof).in_set(GameSystemSet(40)));
+     app.add_systems(
+         Update,
+         (
+--- /dev/null
++++ b/crates/tiny-glade/src/startup_construction_runtime.rs
+@@ -0,0 +1,62 @@
++//! Evidence-only startup assembly candidate; root owns production installation.
++//! Existing real producers only. No draw/edit UI, platform TODO, legacy main
++//! construct_walls, empty path sampler, or duplicate AssetMaintenance is mounted.
++use bevy_app::{App, Update};
++use bevy_ecs::prelude::*;
++use crate::run_game::GameSystemSet;
++use country_core::{resources as res, systems as sys};
++
++pub(super) fn install(app: &mut App) {
++    // Owning empty constructors run before actual load; init preserves existing
++    // authoritative content and never resets a loaded scene to make it start.
++    sys::wall::registration::register_wall_cpu_resources(app.world_mut());
++    crate::wall_constructor_plugin::build(app);
++    app.init_resource::<res::walls::wooden_gates::Gates>();
++    app.init_resource::<res::walls::arches::ArchSegments>();
++    app.init_resource::<res::walls::arches::BuildingHadArchesLastFrame>();
++    app.init_resource::<res::walls::public_walls::WallEntities>();
++    app.init_resource::<res::walls::public_walls::WallPlasters>();
++    app.init_resource::<res::walls::WallHighlight>();
++    app.init_resource::<res::walls::wall_holes::WallHoles>();
++    app.init_resource::<res::walls::wall_holes::PrevWallHoles>();
++    app.init_resource::<sys::wall::construct_wall_bricks::WallBrickBuildState>();
++    app.init_resource::<res::rt::RtWorld>();
++    app.init_resource::<sys::ui::signifiers::signifier_create::UiSignifierStream>();
++    app.init_resource::<sys::render_loop::draw_passes::draw_callbacks_a::RoofHighlight>();
++    app.add_event::<res::walls::public_walls::OnWallChanged>();
++    app.add_event::<res::walls::public_walls::OnWallDeleted>();
++    app.add_event::<sys::wall::construct_wall_bricks::RecalculateWallBricks>();
++    app.add_event::<sys::wall::construct_wall_bricks::WallBricksChanged>();
++    app.add_event::<sys::wall::calc_wall_bend::WallBendChangedEvent>();
++    app.add_event::<res::rt::UpdateRtWorldEvent>();
++    app.add_event::<system_wall_constructor::construct_gates::systems::ConstructGateCmd>();
++    app.add_event::<res::roofs::commands::HighlightRoofCmd>();
++    app.add_event::<res::roofs::commands::RoofSound>();
++    app.add_event::<res::roofs::commands::CreateRoofCmd>();
++    app.add_event::<res::roofs::commands::SwitchRoofTypeCmd>();
++    app.add_event::<res::roofs::commands::RoofGeometryChanged>();
++    app.add_event::<res::roofs::commands::WallGableChanged>();
++    app.add_event::<res::roofs::commands::WallRoofPresenceChanged>();
++    app.add_event::<res::roofs::commands::RoofIsInvalid>();
++
++    // The root patch extends the EXISTING19 publication tuple in place. The
++    // second copy of publication/spatial systems must never be installed here.
++    app.add_systems(Update, (
++        system_roof::create_roof::wall_roof_hashmap,
++        system_roof::delete_roof::process_invalid_roof_notifications,
++        system_wall_constructor::segmentation::split_wall_path_segment_into_platform_stairs::split_wall_path_segment_into_platform_stairs,
++        system_wall_constructor::construct_arches::construct_arches,
++        system_wall_constructor::construct_lintels::construct_lintels,
++    ).chain_ignore_deferred().in_set(GameSystemSet(22)));
++    app.add_systems(Update, (
++        system_wall_constructor::construct_gates::systems::update_gates_hashmap,
++        system_wall_constructor::construct_gates::systems::construct_gates,
++        system_wall_constructor::construct_fences::construct_fences,
++        // Current core owner finalizes actual holes before its full producer.
++        // This explicit adapter edge is not a recovered separate native item.
++        sys::wall::construct_wall_bricks::finalize_wall_holes,
++        sys::wall::construct_wall_bricks::construct_wall_bricks,
++    ).chain_ignore_deferred().in_set(GameSystemSet(28)));
++    app.add_systems(Update,
++        system_wall_constructor::gpu_output::flush_constructor_output.in_set(GameSystemSet(44)));
++}
+--- a/crates/country-core/src/systems/wall/construct_wall_bricks.rs
++++ b/crates/country-core/src/systems/wall/construct_wall_bricks.rs
+@@ -34,8 +34,7 @@
+ use bevy_ecs::prelude::*;
+ use hashbrown::{HashMap, HashSet};
+ 
+-#[derive(Event, Clone, Copy, Debug)]
+-pub struct RecalculateWallBricks(pub WallId);
++pub use crate::resources::roofs::commands::RecalculateWallBricks;
+ /// Actual completed brick output. Trigger/RT consumers can observe this event
+ /// without pretending their own work has already happened.
+ #[derive(Event, Clone, Copy, Debug)]

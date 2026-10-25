@@ -1,0 +1,36 @@
+140939470 push r14
+140939472 push rsi
+140939473 push rdi
+140939474 push rbx
+140939475 sub rsp, 0x28
+140939479 mov r14, rdx
+14093947c mov rsi, qword ptr [rsp + 0x70]
+140939481 mov rcx, qword ptr [rdx]
+140939484 mov rbx, qword ptr [rsi + 8]
+140939488 mov rdi, qword ptr [rsi + 0x10]
+14093948c mov rdx, rbx
+14093948f mov r8, rdi
+140939492 call 0x140d40d70
+140939497 mov rcx, r14
+14093949a call 0x140935f60
+14093949f mov r14, rax
+1409394a2 cmp rdi, qword ptr [rsi]
+1409394a5 jne 0x1409394c0
+1409394a7 lea rdx, [rip + 0x2177f22]
+1409394ae mov rcx, rsi
+1409394b1 call 0x140b81df0
+1409394b6 mov rax, qword ptr [rsi + 8]
+1409394ba mov qword ptr [rax + rdi*8], r14
+1409394be jmp 0x1409394d0
+1409394c0 mov qword ptr [rbx + rdi*8], r14
+1409394c4 mov rax, rdi
+1409394c7 inc rax
+1409394ca mov qword ptr [rsi + 0x10], rax
+1409394ce je 0x1409394d4
+1409394d0 mov qword ptr [rsi + 0x10], rdi
+1409394d4 add rsp, 0x28
+1409394d8 pop rbx
+1409394d9 pop rdi
+1409394da pop rsi
+1409394db pop r14
+1409394dd ret 

@@ -1,0 +1,176 @@
+{
+  "baseline": "B",
+  "production_crate_sources_used": true,
+  "standalone_replacement_workspace": false,
+  "dependency_artifacts": {
+    "lang_lib": "D:/game/reverse-engineering/tiny-glade/reconstruction/shared-foundation/target/debug/deps/liblang_lib-dd8969ef4085c9e0.rlib",
+    "tg_package_integrity": "D:/game/reverse-engineering/tiny-glade/reconstruction/shared-foundation/target/debug/deps/libtg_package_integrity-dd7309cad2af5144.rlib"
+  },
+  "rustc_library_checks": [
+    {
+      "package": "tg-iced",
+      "passed": true
+    },
+    {
+      "package": "tg-integrity-report",
+      "passed": true
+    },
+    {
+      "package": "crash-reporter-gui",
+      "passed": true
+    },
+    {
+      "package": "tg-gpu-selector",
+      "passed": true
+    }
+  ],
+  "rust_tests": [
+    {
+      "package": "tg-iced",
+      "passed": true,
+      "output": "\nrunning 1 test\ntest dialog::tests::original_rne_new_and_set_level_contract ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n"
+    },
+    {
+      "package": "tg-integrity-report",
+      "passed": true,
+      "output": "\nrunning 2 tests\ntest controls::tests::deleting_extra_keeps_missing_and_corrupt_order ... ok\ntest controls::tests::failed_deletion_preserves_report_then_success_normalizes_without_reverify ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n"
+    },
+    {
+      "package": "crash-reporter-gui",
+      "passed": true,
+      "output": "\nrunning 3 tests\ntest tests::deletion_forwards_to_attached_integrity_consumer ... ok\ntest tests::frame_window_and_integrity_precedence ... ok\ntest tests::callback_is_consumed_once_and_tick_joins_real_worker ... ok\n\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n"
+    },
+    {
+      "package": "tg-gpu-selector",
+      "passed": true,
+      "output": "\nrunning 5 tests\ntest gpu_selection::tests::raw_error_families_keep_distinct_recommendations ... ok\ntest gpu_selection::tests::unknown_and_emulated_have_no_vendor_links ... ok\ntest original_contract_tests::original_gpu_message_leaf_fields ... ok\ntest vulkan_config::tests::apply_snapshots_and_duplicate_toggle_does_not_flip_other_variant ... ok\ntest original_contract_tests::original_six_workaround_fields ... ok\n\ntest result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n"
+    }
+  ],
+  "rust_test_count": 11,
+  "strict_clippy_targets": [
+    {
+      "package": "tg-iced",
+      "target": "lib",
+      "passed": true
+    },
+    {
+      "package": "tg-iced",
+      "target": "test",
+      "passed": true
+    },
+    {
+      "package": "tg-integrity-report",
+      "target": "lib",
+      "passed": true
+    },
+    {
+      "package": "tg-integrity-report",
+      "target": "test",
+      "passed": true
+    },
+    {
+      "package": "crash-reporter-gui",
+      "target": "lib",
+      "passed": true
+    },
+    {
+      "package": "crash-reporter-gui",
+      "target": "test",
+      "passed": true
+    },
+    {
+      "package": "tg-gpu-selector",
+      "target": "lib",
+      "passed": true
+    },
+    {
+      "package": "tg-gpu-selector",
+      "target": "test",
+      "passed": true
+    }
+  ],
+  "native_original_leaf_entries": 242,
+  "native_original_cases": 131,
+  "cargo_workspace_gate": "PASS: default native-gui --offline --locked --all-targets check/test/clippy; 11 CPU tests; final shaping change affected check + strict clippy PASS",
+  "real_gui_backend": "PASS: original B forks reused for Application/tiny-skia/windows/events; five real windows captured and closed",
+  "whole_original_ui_equivalence": false,
+  "original_features_verified": false,
+  "consumer_chain_test": "Crash deletion -> attached integrity consumer -> displayed status",
+  "worker_shutdown": "normal checkpoint/stopped",
+  "native_first_hidden_attempt": {
+    "all_processes_exited": true,
+    "accepted_as_render": false,
+    "reason": "Win32 hidden windows do not paint renderer primitives; all five captures background-only",
+    "evidence": "hidden-attempt/results.json"
+  },
+  "cargo_logs": [
+    "native-check.log",
+    "native-test.log",
+    "native-clippy.log",
+    "native-final-gate.log"
+  ],
+  "final_cargo_gate_exit": 0,
+  "native_gui_captures": [
+    {
+      "case": "dialog",
+      "width": 800,
+      "height": 600,
+      "rgba_bytes": 1920000,
+      "pixels_distinct_from_corner": 14143,
+      "rgba_sha256": "ecfea0a608abb149c974ffbe68ba349f65b1fd4aca8e3fab2a0fb38ea54f2e05",
+      "png_sha256": "b79e4fa19e935856f6d525a17bfb6e17bf303bd3915422437c82870f7c8fef7c",
+      "png": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\foundation-unstarted-2026-10-13\\ui\\dialog.png"
+    },
+    {
+      "case": "integrity",
+      "width": 800,
+      "height": 600,
+      "rgba_bytes": 1920000,
+      "pixels_distinct_from_corner": 27039,
+      "rgba_sha256": "de79a66255fe92ee8236e2995abbcc6942a4d26cdbc2bebaac9f7706110e3c61",
+      "png_sha256": "20b5baa1886309643e00a8346f0c72410c49724b4bd84b4d989d68e7723ca15a",
+      "png": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\foundation-unstarted-2026-10-13\\ui\\integrity.png"
+    },
+    {
+      "case": "gpu",
+      "width": 900,
+      "height": 800,
+      "rgba_bytes": 2880000,
+      "pixels_distinct_from_corner": 26655,
+      "rgba_sha256": "c92cbcd352e410c8c825524f65584b54f070d82c9d7bc3a9d5b9f2c91ffa1113",
+      "png_sha256": "0a1ba6e85b1472796efd5675d50fc84c5ce9e53c93acecfd988653ed6aab6972",
+      "png": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\foundation-unstarted-2026-10-13\\ui\\gpu.png"
+    },
+    {
+      "case": "vulkan",
+      "width": 900,
+      "height": 800,
+      "rgba_bytes": 2880000,
+      "pixels_distinct_from_corner": 36773,
+      "rgba_sha256": "52a877f20bf0577c00a51be2e6f7a5e5fb21d3aa9a77c062223294f5bd3f2e89",
+      "png_sha256": "bc155652cbbbb2e811d5e9509a555ed129360ca62782cfd5dc9f4cf360aca92d",
+      "png": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\foundation-unstarted-2026-10-13\\ui\\vulkan.png"
+    },
+    {
+      "case": "crash",
+      "width": 900,
+      "height": 800,
+      "rgba_bytes": 2880000,
+      "pixels_distinct_from_corner": 41382,
+      "rgba_sha256": "8b5ae8aa3dd4358a8c842ee44849a42477c063949d47b3697e638bdd330eb476",
+      "png_sha256": "b4b182f35d6147330e9498a089afd4ddb601d6963aef526b94a45153b8daf9d3",
+      "png": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\foundation-unstarted-2026-10-13\\ui\\crash.png"
+    }
+  ],
+  "native_gui_visual_review": "PASS: agent and integration owner inspected latest five PNGs, no overlap/cutoff; emoji/font fallback verified after Advanced shaping",
+  "native_glyph_glue": "native Text Shaping::Advanced from original iced enables system font fallback; original strings/icons unchanged; exact original font/style choice remains unverified",
+  "native_process_evidence": "native-processes.json",
+  "platform_effects_exercised": {
+    "native_window": true,
+    "screenshot": true,
+    "browser": false,
+    "clipboard_write": false,
+    "file_delete": false,
+    "report_send": false
+  }
+}

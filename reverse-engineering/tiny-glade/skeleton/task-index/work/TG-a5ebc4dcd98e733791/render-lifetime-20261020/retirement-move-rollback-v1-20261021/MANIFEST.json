@@ -1,0 +1,15 @@
+{
+  "status": "frozen_for_independent_review",
+  "source": "tiny-glade/crates/rhapsody/src/sync/retire.rs",
+  "baseline_sha256": "b3d163ef0f9c7f0d0d2d3a6c10e60431a1033b61b3b66e2d8ff42767175cfbb7",
+  "candidate_sha256": "6d4012022c5e757fc233d19eb117981e5bea44664b5153442b4ab8b89955a797",
+  "patch_sha256": "2021c8a6e3eca7aa9f71ecd1f6c050309ec0fcb99c47c6b0e79828733b09a1b9",
+  "contract_sha256": "40495153ca10e1b0eaa23b5f4eab58fee0d2cc797a0ddd4b20031136d1c61692",
+  "engineering_scope": "restore source queue value when migration storage admission fails; no GC policy/budget/normal path changes",
+  "author_validation": "rustfmt --emit stdout syntax parse only; no Cargo/GPU",
+  "root_required": [
+    "sync::retire::tests (existing7 plus new2)",
+    "existing actual world/WSI as part of root validation, not an OOM injection integration test"
+  ],
+  "test_injection": "cfg(test), per-instance, fail next matching insert with identical Err(entry); no production field/branch"
+}

@@ -1,0 +1,121 @@
+{
+  "merge": "wave2-nani-cull-merge",
+  "date": "2026-10-13",
+  "verdict_applied": "evidence/render-passes/review/nani-cull/review.md + review.json (B is the base)",
+  "candidate_sources": {
+    "B": "reconstruction/shader-source/candidates/nani-cull-b/shaders/",
+    "A": "reconstruction/shader-source/candidates/nani-cull-a/shaders/ (only folded pieces + reference)"
+  },
+  "wholesale_from_B": [
+    "nani/allocate_draw_commands.cs.hlsl",
+    "nani/atlas_part_info.inc.hlsl",
+    "nani/clear_draw_lists.cs.hlsl",
+    "nani/clear_histogram.cs.hlsl",
+    "nani/clear_subtotals.cs.hlsl",
+    "nani/cull_and_bucket.cs.hlsl",
+    "nani/cull_and_bucket_bush.cs.hlsl",
+    "nani/cull_and_bucket_curved_halftimber.cs.hlsl",
+    "nani/cull_and_bucket_flowers.cs.hlsl",
+    "nani/cull_and_bucket_plaster.cs.hlsl",
+    "nani/cull_and_bucket_roof_tile.cs.hlsl",
+    "nani/cull_and_bucket_smoke.cs.hlsl",
+    "nani/cull_and_bucket_stairs_floor.cs.hlsl",
+    "nani/cull_and_bucket_wooden_plank.cs.hlsl",
+    "nani/draw_indexed_indirect_to_dispatch.cs.hlsl",
+    "nani/draw_list_offsets.inc.hlsl",
+    "nani/draw_lists.inc.hlsl",
+    "nani/fill_sorted_instance_list.cs.hlsl",
+    "nani/fill_unsorted_instance_indirection.cs.hlsl",
+    "nani/fill_unsorted_instance_list.cs.hlsl",
+    "nani/generate_dispatch_args.cs.hlsl",
+    "nani/generate_draw_lists.cs.hlsl",
+    "nani/group_draw_cmd_prefix_sum.cs.hlsl",
+    "nani/histogram_prefix_sum.cs.hlsl",
+    "nani/prefix_sum_unsorted_instances_per_atlas_entry.cs.hlsl",
+    "nani/prepare_unsorted_draw_lists.cs.hlsl",
+    "nani/subtotal_prefix_sum.cs.hlsl",
+    "nani/inc/cull_and_bucket_owned_custom.hlsl",
+    "nani/inc/trimesh.hlsl",
+    "nani/inc/user.hlsl",
+    "wall/reset_pass2_inst_counts.cs.hlsl",
+    "wall/wall_brick_lod0.raster.hlsl",
+    "wall/wall_brick_lod1.raster.hlsl",
+    "wall/inc/brick_frag.hlsl",
+    "wall/inc/brick_instance.hlsl",
+    "wall/inc/brick_instance_flags.hlsl",
+    "wall/inc/brick_vert.hlsl",
+    "wall/inc/brick_vs_out.hlsl",
+    "wall/inc/draw_lists.hlsl",
+    "wall/inc/highlight_mode.hlsl"
+  ],
+  "merged_files": [
+    {
+      "file": "nani/cull_and_bucket.inc.hlsl",
+      "base": "B",
+      "folded_from_A": [
+        "decode_instance_meta_size",
+        "decode_instance_mesh_index"
+      ],
+      "note": "NaniDrawListInfo = {global_instance_offset} (single uint, bin struct 40/41/42) adopted from B draw_lists.inc; A 4-member version dropped; Affine3Packed guard kept; PBA residual documented"
+    },
+    {
+      "file": "wall/generate_draw_lists.cs.hlsl",
+      "base": "B shell",
+      "folded_from_A": [
+        "cs_pass1 4-plane frustum + LOD buckets 0..3 + ring buckets 4..7",
+        "cs_pass2 8-corner AABB HZB"
+      ],
+      "note": "gating corrected to bin: LOD append + InterlockedOr only when prev-visible AND in-frustum; ring-bucket loop unconditional (A's [if(!was_visible) return;] early-return dropped). FrameConstants redeclared locally; inc/frame_constants.hlsl included (bin embeds it; cascades.hlsl needs view_constants; verified set1/b0 UBO DCE'd by installed dxc). WALL_BRICK_* macros + wall_brick_draw_list_slot inlined from A wall/inc bodies"
+    }
+  ],
+  "files_total": 42,
+  "inc_fixes": [
+    {
+      "id": 1,
+      "desc": "Two distinct DrawIndexedIndirectCommand structs kept: nani snake_case {index_count,...} in nani/draw_lists.inc.hlsl; camelCase {count,instanceCount,...} in inc/draw_indirect_types.hlsl",
+      "action": "verify-only (already correct)",
+      "consumer_hardgate": "nani/draw_indexed_indirect_to_dispatch (camelCase, PASS_STRUCTURAL); nani/generate_draw_lists + nani/fill_unsorted_instance_list (snake_case, HARD_GATE_PASS)"
+    },
+    {
+      "id": 2,
+      "desc": "inc/prefix_scan.hlsl include kept for closure; scans inline 2-per-lane 11-barrier (barrier-after-add)",
+      "action": "verify-only (B already does this)",
+      "consumer_hardgate": "nani/histogram_prefix_sum + nani/group_draw_cmd_prefix_sum + nani/subtotal_prefix_sum + nani/prefix_sum_unsorted (all HARD_GATE_PASS)"
+    },
+    {
+      "id": 3,
+      "desc": "wall closure = inc/draw_indirect.hlsl + inc/draw_indirect_types.hlsl + wall/inc; wall compute redeclares FrameConstants locally",
+      "action": "applied in merged wall/generate_draw_lists.cs.hlsl",
+      "consumer_hardgate": "wall/generate_draw_lists cs_pass1 + cs_pass2 (HARD_GATE_PASS)"
+    },
+    {
+      "id": 4,
+      "desc": "cull_and_bucket.inc NaniDrawListInfo single-member {global_instance_offset} (A 4-member wrong); Affine3Packed guard (#ifndef TINYGLADE_INC_UTILS_HLSL) kept",
+      "action": "applied",
+      "consumer_hardgate": "nani/cull_and_bucket 8a7d+d852, all 8 material variants (HARD_GATE_PASS)"
+    }
+  ],
+  "deviations": [
+    {
+      "item": "inc/frame_constants.hlsl include in wall/generate_draw_lists.cs.hlsl",
+      "adjudication": "inc-fix #4 said NEVER include (would add set1/b0 UBO)",
+      "decision": "INCLUDED",
+      "evidence": "bin embeds frame_constants.hlsl in embedded_source_paths; inc/cascades.hlsl (wall closure) requires global view_constants to compile; empirical check with installed dxc: unused set1/b0 UBO + space2/t0 bindless trigger are DCE'd, output bindings = bin exactly, caps {Shader,RuntimeDescriptorArray}; so the adjudicated rationale does not materialize. FrameConstants still redeclared locally per convention.",
+      "risk": "if a future dxc stops DCE-ing unused cbuffers, a set1/b0 UBO would appear (flagged)",
+      "supersedes": "rationale of review inc-fix #4; convention kept otherwise"
+    },
+    {
+      "item": "WALL_BRICK_* #defines + wall_brick_draw_list_slot helper",
+      "adjudication": "wall/inc files copied wholesale from B",
+      "decision": "inlined in merged wall/generate_draw_lists.cs.hlsl (B wall/inc files stay closure-only)",
+      "evidence": "A body depends on them; B wall/inc files are closure stubs; review attributed these helpers to the wall/inc files in intent",
+      "risk": "helpers not available to other future consumers of wall/inc; fold into wall/inc/draw_lists.hlsl + brick_instance_flags.hlsl when an owner fills those bodies"
+    }
+  ],
+  "rules_respected": [
+    "never modified .bin oracle",
+    "did not touch flat nani_*.raster materials (nani-raster owns)",
+    "did not touch water/ gi/ dof/ grass/ deferred/ families",
+    "keep // ==RECONSTRUCTED== headers + MERGE provenance (merged files)"
+  ]
+}

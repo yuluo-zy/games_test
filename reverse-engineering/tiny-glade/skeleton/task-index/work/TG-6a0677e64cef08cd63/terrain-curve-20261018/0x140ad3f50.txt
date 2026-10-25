@@ -1,0 +1,94 @@
+
+void __cdecl
+country_core::resources::in_progress_curve::InProgressCurve::try_add_raw_input_points(void)
+
+{
+  size_t _Size;
+  undefined8 *extraout_RAX;
+  char *in_RCX;
+  longlong lVar1;
+  longlong in_RDX;
+  ulonglong uVar2;
+  ulonglong in_R9;
+  ulonglong uVar3;
+  undefined8 *puVar4;
+  undefined8 *_Src;
+  char local_68;
+  undefined7 local_67;
+  undefined1 uStack_60;
+  undefined7 uStack_5f;
+  ulonglong local_50;
+  
+  ::utils::curve::Curve::try_extend<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>();
+  if (local_68 != '\x03') {
+    *(ulonglong *)(in_RCX + 8) = CONCAT71(uStack_5f,uStack_60);
+    *(ulonglong *)(in_RCX + 1) = CONCAT17(uStack_60,local_67);
+    goto LAB_140ad40ed;
+  }
+  _Size = in_R9 * 8;
+  if ((in_R9 >> 0x3d != 0) || (0x7ffffffffffffff8 < _Size)) {
+LAB_140ad4130:
+                    // WARNING: Subroutine does not return
+    alloc::raw_vec::handle_error();
+  }
+  if (_Size == 0) {
+    _Src = (undefined8 *)&DAT_00000008;
+    local_50 = 0;
+    puVar4 = _Src;
+    if (1 < in_R9) goto LAB_140ad3fed;
+LAB_140ad4024:
+    puVar4 = _Src;
+    if (in_R9 != 0) goto LAB_140ad4090;
+  }
+  else {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX == (undefined8 *)0x0) goto LAB_140ad4130;
+    _Src = extraout_RAX;
+    puVar4 = extraout_RAX;
+    local_50 = in_R9;
+    if (in_R9 < 2) goto LAB_140ad4024;
+LAB_140ad3fed:
+    if (in_R9 < 5) {
+      lVar1 = 1;
+      _Src = puVar4;
+LAB_140ad407a:
+      lVar1 = in_R9 - lVar1;
+      do {
+        *_Src = 1;
+        _Src = _Src + 1;
+        lVar1 = lVar1 + -1;
+      } while (lVar1 != 0);
+    }
+    else {
+      uVar2 = in_R9 - 1 & 0xfffffffffffffffc;
+      _Src = puVar4 + uVar2;
+      lVar1 = uVar2 + 1;
+      uVar3 = 0;
+      do {
+        puVar4[uVar3] = 1;
+        (puVar4 + uVar3)[1] = 1;
+        puVar4[uVar3 + 2] = 1;
+        (puVar4 + uVar3 + 2)[1] = 1;
+        uVar3 = uVar3 + 4;
+      } while (uVar2 != uVar3);
+      if (in_R9 - 1 != uVar2) goto LAB_140ad407a;
+    }
+LAB_140ad4090:
+    *_Src = 1;
+    _Src = puVar4;
+  }
+  lVar1 = *(longlong *)(in_RDX + 0x48);
+  if ((ulonglong)(*(longlong *)(in_RDX + 0x38) - lVar1) < (in_R9 & 0x1fffffffffffffff)) {
+    alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+    lVar1 = *(longlong *)(in_RDX + 0x48);
+  }
+  memcpy((void *)(lVar1 * 8 + *(longlong *)(in_RDX + 0x40)),_Src,_Size);
+  *(ulonglong *)(in_RDX + 0x48) = (in_R9 & 0x1fffffffffffffff) + lVar1;
+  if (local_50 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+LAB_140ad40ed:
+  *in_RCX = local_68;
+  return;
+}
+

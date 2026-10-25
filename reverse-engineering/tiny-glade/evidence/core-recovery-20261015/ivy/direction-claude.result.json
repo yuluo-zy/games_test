@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "status": "success",
+  "exit_code": 0,
+  "timeout_seconds": 300.0,
+  "prompt_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\ivy\\direction-prompt.txt",
+  "stdout_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\ivy\\direction-claude.stdout.json",
+  "stderr_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\ivy\\direction-claude.stderr.txt",
+  "command": [
+    "C:\\Users\\liyu\\AppData\\Roaming\\npm\\node_modules\\@anthropic-ai\\claude-code\\bin\\claude.exe",
+    "-p",
+    "--tools",
+    "",
+    "--output-format",
+    "json",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "{\"mcpServers\":{}}"
+  ],
+  "result": "**Assumptions (continued).** 0x142923fd0 = sinf and 0x142923e80 = cosf; swapping them yields q = (0,0,cos θ,sin θ), non-unit and inconsistent with the identity branch at 0x141234864–0x14123486a, so the assignment stands. Constants: 0x16f10db = 0.5, 0x1724ca7 = 80, 0x1876ce0 = π/180. The block 0x141234799–0x1412347d0 is a clamp, valid only as written (maxss against 0 then minss against 1), so t ∈ [0,1] holds even for |n| > 0.5 — hence \"saturates\" rather than \"extrapolates.\"\n\n**Sign, precisely.** The axis is +Z and the code applies no negations to q before the product, so for n < 0 the rotation is clockwise in the XY plane; for n > 0, counter-clockwise. Prior prose that reports a *magnitude* \"±40°\" without the factor-of-two conflates the sinf/cosf argument with the applied angle.\n\n**What I did not assume.** Nothing here depends on glam's public Quat/Vec2 internals beyond the identity q·v·q⁻¹ with q = (0,0,sin,cos) — the vector is a pure-2D case, so no general quaternion product needs reconstructing. The two shuffle-derived vectors (0x1412347f7–0x141234801 for q, 0x14123480d–0x141234811 for v) are the only structural claim, and they are read directly off the lane routing.\n\n**Bottom line.** Axis +Z, sign = sign(noise), applied angle **2θ = 160n°** for |n| ≤ 0.5, clamped. The prose's \"±40 degrees\" names the half-angle and understates the rotation by 2×; its \"(cos,sin)\" describes the normalized output's orientation, not the quaternion's (z,w) = (sin θ, cos θ).",
+  "is_error": false,
+  "subtype": "success",
+  "elapsed_seconds": 213.46
+}

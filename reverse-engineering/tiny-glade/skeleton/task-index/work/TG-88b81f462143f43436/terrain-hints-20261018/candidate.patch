@@ -1,0 +1,209 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/ui_edit_focus.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/ui_edit_focus.rs
+@@ -65,7 +65,7 @@
+ use crate::resources::walls::decorator::DecoratorId;
+ use crate::resources::walls::decorator_storage::{DecoratorStorage, DecoratorStorageAddr};
+ use crate::resources::walls::WallId;
+-use crate::systems::mode_manager::EditSubject;
++use crate::systems::mode_manager::{AppMode, EditSubject};
+ 
+ /// 命中结果前 24 字节（`RaycastWorldResult.handle` / `ColliderRegistryEntry`
+ /// 头部，或地形 `0xB` 哨兵），即原版 `GeoSource` 的字节投影。
+@@ -221,6 +221,92 @@
+     }
+ }
+ 
++/// Terrain-tool endpoint of B `ui_edit_focus` @0x1409771f0. The existing
++/// GeoSource converters above retain their separate contract. Other selection
++/// branches remain with their current owners; this restores the real terrain
++/// right-click producer, rather than deriving completion from mode changes.
++fn terrain_focus_input_enabled(
++    mode: AppMode,
++    navigation: &crate::systems::ui::resources::widget_params::UiNavState,
++    actions: &crate::input::action_set::MainActionSet,
++    hovered: &crate::systems::terrain::terrain_hover_idx::HoveredTerrainStrokeId,
++) -> bool {
++    mode == AppMode::Terrain
++        && !(navigation.focus.is_none() && actions.digital[18].just_pressed())
++        && actions.digital[1].just_pressed()
++        && hovered.tag & 1 != 0
++}
++
++/// B @1409779bf and @140977a40 sum y²+x² before z². Keep the scalar order:
++/// Vec3::distance may choose a different dot-product reduction.
++fn focus_distance(point: glam::Vec3, origin: glam::Vec3) -> f32 {
++    let y = point.y - origin.y;
++    let x = point.x - origin.x;
++    let z = point.z - origin.z;
++    ((y * y + x * x) + z * z).sqrt()
++}
++
++fn terrain_focus_target(
++    camera: &crate::resources::mouse_terrain_raycast::CameraCursorRay,
++    cursor: &crate::resources::cursor_terrain_raycast::CursorTerrainRaycast,
++    hovered: &crate::systems::terrain::terrain_hover_idx::HoveredTerrainStrokeId,
++    geometry: &crate::systems::collision::world::RaycastSimpleResult,
++) -> Option<u32> {
++    let geometry_distance = if geometry.is_miss() {
++        f32::MAX
++    } else {
++        focus_distance(geometry.position, camera.origin)
++    };
++    // Native position() returns ZERO for an absent cursor; it does not reject
++    // that branch. Ordered strict comparison rejects equal distances and NaNs.
++    let terrain_distance = focus_distance(cursor.position(), camera.origin);
++    (geometry_distance > terrain_distance && hovered.tag == 1).then_some(hovered.id as u32)
++}
++
++/// Uses the real input, UI, collider query and terrain hover resources. Optional
++/// host resources defer the system until their actual owners install them;
++/// there is no fabricated cursor/raycast/action fallback.
++pub fn ui_edit_focus_terrain(
++    mode: bevy_ecs::prelude::Res<AppMode>,
++    actions: Option<bevy_ecs::prelude::Res<crate::input::action_set::MainActionSet>>,
++    ui: Option<bevy_ecs::prelude::Res<crate::systems::ui::resources::ui_state::UiState>>,
++    navigation: Option<bevy_ecs::prelude::Res<crate::systems::ui::resources::widget_params::UiNavState>>,
++    camera: Option<bevy_ecs::prelude::Res<crate::resources::mouse_terrain_raycast::CameraCursorRay>>,
++    collision: Option<bevy_ecs::prelude::Res<crate::systems::collision::world::RaycastWorld>>,
++    hovered: bevy_ecs::prelude::Res<crate::systems::terrain::terrain_hover_idx::HoveredTerrainStrokeId>,
++    cursor: Option<bevy_ecs::prelude::Res<crate::resources::cursor_terrain_raycast::CursorTerrainRaycast>>,
++    mut requests: bevy_ecs::event::EventWriter<crate::systems::mode_manager::RequestAppModeChange>,
++    mut hints: bevy_ecs::event::EventWriter<crate::resources::onboarding::NotifyHintSystemTerrain>,
++) {
++    use crate::systems::ui::resources::widget_params::{UiSounds, WidgetParams, WidgetVolumeShape};
++    let (Some(actions), Some(ui), Some(navigation), Some(camera), Some(collision), Some(cursor)) =
++        (actions, ui, navigation, camera, collision, cursor)
++    else {
++        return;
++    };
++    if !terrain_focus_input_enabled(*mode, &navigation, &actions, &hovered) {
++        return;
++    }
++    // B @140977467..504: actual edit_focus_canvas with volume tag5, max
++    // distance in size.x, empty sounds and occlude_by_world byte0.
++    ui.add(
++        "edit_focus_canvas",
++        WidgetParams::new_with_sounds_and_volume(
++            UiSounds::empty(),
++            WidgetVolumeShape { tag: 5, layer: 0, size: glam::Vec2::new(f32::MAX, 0.0) },
++        )
++        .occlude_by_world(false),
++    );
++    let geometry = collision.raycast_simple(camera.origin, camera.dir, 0x3f43);
++    if let Some(stroke_id) = terrain_focus_target(&camera, &cursor, &hovered, &geometry) {
++        // B @140977ce6..d75: request first, then terrain notification byte2.
++        requests.write(crate::systems::mode_manager::RequestAppModeChange(
++            AppMode::Editing(EditSubject::Terrain(stroke_id)),
++        ));
++        hints.write(crate::resources::onboarding::NotifyHintSystemTerrain { tag: 2 });
++    }
++}
++
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+@@ -347,3 +433,104 @@
+         );
+     }
+ }
++
++
++#[cfg(test)]
++mod terrain_focus_producer_tests {
++    use super::*;
++    use crate::input::action_set::{DigitalActionPhase, DigitalActionState, MainActionSet};
++    use crate::resources::{cursor_terrain_raycast::CursorTerrainRaycast, mouse_terrain_raycast::CameraCursorRay, onboarding::NotifyHintSystemTerrain};
++    use crate::systems::{collision::world::{RaycastSimpleResult, RaycastWorld}, mode_manager::{self, RequestAppModeChange}, terrain::terrain_hover_idx::HoveredTerrainStrokeId};
++    use crate::systems::ui::resources::{ui_state::{UiState, WidgetId}, widget_params::{UiFocus, UiNavState}};
++    use bevy_ecs::prelude::*;
++    use glam::Vec3;
++
++    fn phase(n: u32) -> DigitalActionPhase {
++        match n { 0 => DigitalActionPhase::JustPressed, 1 => DigitalActionPhase::Held, 2 => DigitalActionPhase::Repeating, 3 => DigitalActionPhase::JustReleased, 4 => DigitalActionPhase::Idle, _ => panic!("fixture phase") }
++    }
++    #[test]
++    fn terrain_focus_matches_twenty_original_entry_observations() {
++        // 0x1409771f0 original entry, 20 resolved dependency cases. The native
++        // harness records both real RequestAppModeChange and Terrain byte2.
++        // Rows store the original f32 words, including NaN and signed zero.
++        let cases: &[([u32; 17], bool)] = &[
++            ([0x00000000, 0x00000000, 0x00000001, 0x00000001, 0x00000000, 0x00000004, 0x00000000, 0x00000011, 0x00000000, 0x00000000, 0x42c80000, 0x40400000, 0x40800000, 0x40a00000, 0x00000000, 0x00000000, 0x00000000], true),
++            ([0x00000001, 0x00000000, 0x00000001, 0x00000001, 0x00000000, 0x00000004, 0x00000000, 0x00000011, 0x00000000, 0x00000000, 0x42c80000, 0x40400000, 0x40800000, 0x40a00000, 0x00000000, 0x00000000, 0x00000000], false),
++            ([0x00000002, 0xbf800000, 0x00000001, 0x00000001, 0x00000000, 0x00000004, 0x00000000, 0x00000011, 0x00000000, 0x00000000, 0x42c80000, 0x40400000, 0x40800000, 0x40a00000, 0x00000000, 0x00000000, 0x00000000], true),
++            ([0x00000002, 0x00000000, 0x00000001, 0x00000001, 0x00000000, 0x00000004, 0x00000000, 0x00000011, 0x00000000, 0x00000000, 0x42c80000, 0x40400000, 0x40800000, 0x40a00000, 0x00000000, 0x00000000, 0x00000000], true),
++            ([0x00000002, 0x3f800000, 0x00000001, 0x00000001, 0x00000000, 0x00000004, 0x00000000, 0x00000011, 0x00000000, 0x00000000, 0x42c80000, 0x40400000, 0x40800000, 0x40a00000, 0x00000000, 0x00000000, 0x00000000], false),
++            ([0x00000002, 0x7fc00000, 0x00000001, 0x00000001, 0x00000000, 0x00000004, 0x00000000, 0x00000011, 0x00000000, 0x00000000, 0x42c80000, 0x40400000, 0x40800000, 0x40a00000, 0x00000000, 0x00000000, 0x00000000], false),
++            ([0x00000003, 0x00000000, 0x00000001, 0x00000001, 0x00000000, 0x00000004, 0x00000000, 0x00000011, 0x00000000, 0x00000000, 0x42c80000, 0x40400000, 0x40800000, 0x40a00000, 0x00000000, 0x00000000, 0x00000000], false),
++            ([0x00000004, 0x00000000, 0x00000001, 0x00000001, 0x00000000, 0x00000004, 0x00000000, 0x00000011, 0x00000000, 0x00000000, 0x42c80000, 0x40400000, 0x40800000, 0x40a00000, 0x00000000, 0x00000000, 0x00000000], false),
++            ([0x00000000, 0x00000000, 0x00000000, 0x00000001, 0x00000000, 0x00000004, 0x00000000, 0x00000011, 0x00000000, 0x00000000, 0x42c80000, 0x40400000, 0x40800000, 0x40a00000, 0x00000000, 0x00000000, 0x00000000], false),
++            ([0x00000000, 0x00000000, 0x00000001, 0x00000001, 0x00000000, 0x00000004, 0x00000000, 0x00000011, 0x00000000, 0x00000000, 0x42c80000, 0x40400000, 0x40800000, 0x40a00000, 0x00000000, 0x00000000, 0x00000000], true),
++            ([0x00000000, 0x00000000, 0x00000001, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0x00000011, 0x00000000, 0x00000000, 0x42c80000, 0x40400000, 0x40800000, 0x40a00000, 0x00000000, 0x00000000, 0x00000000], false),
++            ([0x00000000, 0x00000000, 0x00000001, 0x00000001, 0x00000001, 0x00000000, 0x00000000, 0x00000011, 0x00000000, 0x00000000, 0x42c80000, 0x40400000, 0x40800000, 0x40a00000, 0x00000000, 0x00000000, 0x00000000], true),
++            ([0x00000000, 0x00000000, 0x00000001, 0x00000000, 0x00000000, 0x00000004, 0x00000000, 0x00000006, 0x3f800000, 0x00000000, 0x00000000, 0x40400000, 0x40800000, 0x40a00000, 0x00000000, 0x00000000, 0x00000000], true),
++            ([0x00000000, 0x00000000, 0x00000001, 0x00000001, 0x00000000, 0x00000004, 0x00000000, 0x00000006, 0x3f800000, 0x00000000, 0x00000000, 0x40400000, 0x40800000, 0x40a00000, 0x00000000, 0x00000000, 0x00000000], false),
++            ([0x00000000, 0x00000000, 0x00000001, 0x00000001, 0x00000000, 0x00000004, 0x00000000, 0x00000006, 0x40400000, 0x40800000, 0x40a00000, 0x40400000, 0x40800000, 0x40a00000, 0x00000000, 0x00000000, 0x00000000], false),
++            ([0x00000000, 0x00000000, 0x00000001, 0x00000001, 0x00000000, 0x00000004, 0x00000000, 0x00000006, 0x40400000, 0x40800000, 0x40c00000, 0x40400000, 0x40800000, 0x40a00000, 0x00000000, 0x00000000, 0x00000000], true),
++            ([0x00000000, 0x00000000, 0x00000001, 0x00000001, 0x00000000, 0x00000004, 0x00000000, 0x00000006, 0x7fc00000, 0x00000000, 0x00000000, 0x40400000, 0x40800000, 0x40a00000, 0x00000000, 0x00000000, 0x00000000], false),
++            ([0x00000000, 0x00000000, 0x00000001, 0x00000001, 0x00000000, 0x00000004, 0x00000000, 0x00000006, 0x40400000, 0x40800000, 0x40c00000, 0x7fc00000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000], false),
++            ([0x00000000, 0x00000000, 0x00000001, 0x00000001, 0x00000000, 0x00000004, 0x00000000, 0x00000006, 0x40400000, 0x40800000, 0x40c00000, 0x40400000, 0x40800000, 0x40a00000, 0x00000000, 0x00000000, 0x00000000], true),
++            ([0x00000000, 0x00000000, 0x00000001, 0x00000001, 0x00000000, 0x00000004, 0x00000000, 0x00000006, 0x40400000, 0x40800000, 0x40c00000, 0x80000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000], true),
++        ];
++        for (index, (v, expected)) in cases.iter().enumerate() {
++            let mut actions = MainActionSet::default();
++            actions.digital[1] = DigitalActionState { phase: phase(v[0]), timer_seconds: f32::from_bits(v[1]) };
++            actions.digital[18] = DigitalActionState { phase: phase(v[5]), timer_seconds: f32::from_bits(v[6]) };
++            let mut navigation = UiNavState::default();
++            navigation.focus = UiFocus::new(v[4]);
++            let hovered = HoveredTerrainStrokeId { tag: u64::from(v[2]), id: 17 };
++            let vec = |s: &[u32]| Vec3::new(f32::from_bits(s[0]), f32::from_bits(s[1]), f32::from_bits(s[2]));
++            let cursor = CursorTerrainRaycast { tag: v[3], pos: vec(&v[11..14]), ..Default::default() };
++            let camera = CameraCursorRay { origin: vec(&v[14..17]), dir: Vec3::Z };
++            let geometry = RaycastSimpleResult { handle: [u64::from(v[7]), 0, 0], position: vec(&v[8..11]), toi: 0.0 };
++            let actual = terrain_focus_input_enabled(AppMode::Terrain, &navigation, &actions, &hovered)
++                .then(|| terrain_focus_target(&camera, &cursor, &hovered, &geometry)).flatten();
++            assert_eq!(actual, expected.then_some(17), "original case {index}");
++        }
++    }
++
++    #[test]
++    fn terrain_right_click_uses_real_query_and_request_consumer() {
++        use crate::resources::{gui::TimeOfDayScreen, history::transactions::{HistoryTransactions, ObservedHistoryLedger}};
++        let mut world = World::new();
++        world.insert_resource(AppMode::Terrain);
++        let mut actions = MainActionSet::default();
++        actions.digital[1].phase = DigitalActionPhase::JustPressed;
++        world.insert_resource(actions);
++        world.insert_resource(UiNavState::default());
++        world.insert_resource(UiState::at_startup());
++        world.insert_resource(CameraCursorRay { origin: Vec3::ZERO, dir: Vec3::Z });
++        world.insert_resource(RaycastWorld::new());
++        world.insert_resource(HoveredTerrainStrokeId { tag: 1, id: 17 });
++        world.insert_resource(CursorTerrainRaycast { tag: 1, pos: Vec3::new(3.0, 4.0, 5.0), ..Default::default() });
++        world.init_resource::<Events<NotifyHintSystemTerrain>>();
++        world.insert_resource(HistoryTransactions::<(), ()>::from_observed(ObservedHistoryLedger {
++            entries: vec![], cursor: -1, undo_anchor: -1, resolved_snapshots: vec![], observed_count_58: 0, mutation_nonce: 0,
++        }));
++        world.insert_resource(TimeOfDayScreen::default());
++        world.insert_resource(mode_manager::ModeManagerUiContext {
++            probe: mode_manager::EscMenuProbe { hovered: false, widget_id: 0, hit_tag: 2 }, esc_menu_canvas_id: 55,
++        });
++        let mut schedule = Schedule::default();
++        mode_manager::configure_mode_manager::<(), ()>(&mut world, &mut schedule, false);
++        schedule.add_systems(ui_edit_focus_terrain.before(mode_manager::mode_manager::<(), ()>));
++        schedule.run(&mut world);
++        assert_eq!(*world.resource::<AppMode>(), AppMode::Editing(EditSubject::Terrain(17)));
++        let requests = world.resource::<Events<RequestAppModeChange>>();
++        assert_eq!(requests.get_cursor().read(requests).copied().collect::<Vec<_>>(), [RequestAppModeChange(AppMode::Editing(EditSubject::Terrain(17)))]);
++        let hints = world.resource::<Events<NotifyHintSystemTerrain>>();
++        assert_eq!(hints.get_cursor().read(hints).map(|e| e.tag).collect::<Vec<_>>(), [2]);
++        let ui = world.resource::<UiState>();
++        let widget = ui.widget(WidgetId::from_name("edit_focus_canvas")).unwrap();
++        assert_eq!(widget.volume.tag, 5);
++        assert_eq!(widget.volume.size.x.to_bits(), f32::MAX.to_bits());
++        assert!(!widget.occlude_by_world);
++        // A held input in the already focused mode cannot repeat this producer.
++        world.resource_mut::<MainActionSet>().digital[1].phase = DigitalActionPhase::Held;
++        schedule.run(&mut world);
++        assert_eq!(world.resource::<Events<NotifyHintSystemTerrain>>().len(), 1);
++    }
++}

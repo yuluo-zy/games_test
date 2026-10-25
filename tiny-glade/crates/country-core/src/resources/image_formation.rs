@@ -1,0 +1,354 @@
+//! image_formation.rs — 画面形成配置（WP21；B 阶段 i_infra 按机器码修正布局）。
+//!
+//! # 布局（O，修正旧文档）
+//! 旧文档写成“三档 0xc0 B config + kind u8”。机器码：
+//! * `current_mut`（0x1408aea50）：`movzx eax, byte [rcx+0xc0]; shl eax, 6; add rax, rcx` → **每档 config 占 0x40 B**
+//!   （下标左移 6），三档共 0xc0 B，当前档号 `kind: u8` 在 `+0xc0`；
+//! * `get`（0x1408aea80）：`movzx eax, dl; shl eax, 6; add rax, rcx`（同一步长，**无边界检查**）；
+//! * `iter_non_default_mut`（0x1408aea60）：写 `{begin = self, end = self + 0xc0, idx = 0}`（三档，步长 0x40）；
+//! * `switch_kind`（0x1408aea90）：`mov [rcx+0xc0], dl`；
+//! * `impl$0::default`（0x1408ae7f0，607 B）：逐档写入下表，末尾 `[+0xc0] = 1`（**缺省档是 1，不是 0**）。
+//!
+//! 单档 0x40 B（`default` 写入的字段；语义 U，按偏移命名）：
+//!
+//! | 偏移 | 内容 | 缺省（档 0 / 1 / 2） |
+//! |---|---|---|
+//! | +0x00 | `String` 名称 `{cap, ptr, len}`（0x18 B） | 三档都是 `"default"`（cap 7、len 7；两次 `alloc(7)` 拷入 `0x61666564`/`0x746c7561`） |
+//! | +0x18 | 4×f32 | `(1.0, 0.0, 1.0, 1.0)`（`.rdata 0x142a9be30`） |
+//! | +0x28 | u8 | 0 |
+//! | +0x30 | 8 B（2×f32） | 档 0 / 1：0；档 2：`(0.0, 0.015)`（`.rdata 0x142a9be40`） |
+//! | +0x38 | u32 | 0 |
+//! | +0x3c | u8 | 0 |
+//! | +0x3d | u8 | 档 0 / 1：1；档 2：进程级布尔 `.data 0x143634d90`（与 `water_planes_draw` 的守卫同一个字节） |
+//!
+//! 整个资源 `0xc8` B（三档 0xc0 + `kind` + 填充）。`ArtisticConfig`/`CameraLensConfig` 子类型（serde）。
+
+use bevy_ecs::resource::Resource;
+use serde::{Deserialize, Serialize};
+
+/// `ImageFormationConfig`（O：0x40 B；见模块文档的偏移表，字段语义 U）。
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct ImageFormationConfig {
+    /// `+0x00`：名称（O：`String`，缺省 "default"）。
+    pub name: String,
+    /// `+0x18`：4×f32（O：缺省 `(1, 0, 1, 1)`）。
+    pub params_18: [f32; 4],
+    /// `+0x28`：u8（O：缺省 0）。
+    pub flag_28: u8,
+    /// `+0x29..+0x30`：未写入（对齐填充，U）。
+    pub _pad_29: [u8; 7],
+    /// `+0x30`：2×f32（O：档 2 缺省 `(0.0, 0.015)`，其余 0）。
+    pub params_30: [f32; 2],
+    /// `+0x38`：u32（O：缺省 0）。
+    pub word_38: u32,
+    /// `+0x3c`：u8（O：缺省 0）。
+    pub flag_3c: u8,
+    /// `+0x3d`：u8（O：档 0 / 1 缺省 1；档 2 = 进程级布尔）。
+    pub flag_3d: u8,
+    /// `+0x3e..+0x40`：尾部填充。
+    pub _pad_3e: [u8; 2],
+}
+
+// Serde views of this same owner. The native serializers are 0x14085fd80
+// (outer), 0x140af00e0 (grading), 0x14085faa0 (lens), 0x14085fc20 (artistic).
+// Padding and offset-based implementation names are never stored in saves.
+#[derive(Serialize, Deserialize)]
+#[serde(rename = "ColorGradingState")]
+struct GradingSave {
+    bypass_color: bool,
+    current_grading_lut: String,
+    grading_strength: f32,
+    ev_shift: f32,
+    contrast: f32,
+    saturation: f32,
+}
+#[derive(Serialize, Deserialize)]
+#[serde(rename = "CameraLensConfig")]
+struct LensSave {
+    vignette: f32,
+    chromatic_aberration: f32,
+    barrel_distortion: f32,
+}
+#[derive(Serialize, Deserialize)]
+#[serde(rename = "ArtisticConfig")]
+struct ArtisticSave {
+    lighting_only: bool,
+    tree_see_thru: bool,
+}
+#[derive(Serialize, Deserialize)]
+#[serde(rename = "ImageFormationConfig")]
+struct ImageFormationSave {
+    grading: GradingSave,
+    camera_lens: LensSave,
+    artistic: ArtisticSave,
+}
+impl Serialize for ImageFormationConfig {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        ImageFormationSave {
+            grading: GradingSave {
+                bypass_color: self.flag_28 != 0,
+                current_grading_lut: self.name.clone(),
+                grading_strength: self.params_18[0],
+                ev_shift: self.params_18[1],
+                contrast: self.params_18[2],
+                saturation: self.params_18[3],
+            },
+            camera_lens: LensSave {
+                vignette: self.params_30[0],
+                chromatic_aberration: self.params_30[1],
+                barrel_distortion: f32::from_bits(self.word_38),
+            },
+            artistic: ArtisticSave {
+                lighting_only: self.flag_3c != 0,
+                tree_see_thru: self.flag_3d != 0,
+            },
+        }
+        .serialize(serializer)
+    }
+}
+impl<'de> Deserialize<'de> for ImageFormationConfig {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        // Native visitors require all three objects and all of their fields.
+        let data = ImageFormationSave::deserialize(deserializer)?;
+        Ok(Self {
+            name: data.grading.current_grading_lut,
+            params_18: [
+                data.grading.grading_strength,
+                data.grading.ev_shift,
+                data.grading.contrast,
+                data.grading.saturation,
+            ],
+            flag_28: u8::from(data.grading.bypass_color),
+            _pad_29: [0; 7],
+            params_30: [
+                data.camera_lens.vignette,
+                data.camera_lens.chromatic_aberration,
+            ],
+            word_38: data.camera_lens.barrel_distortion.to_bits(),
+            flag_3c: u8::from(data.artistic.lighting_only),
+            flag_3d: u8::from(data.artistic.tree_see_thru),
+            _pad_3e: [0; 2],
+        })
+    }
+}
+
+impl ImageFormationConfig {
+    /// `impl$0::default`（0x1408ae7f0）里档 0 / 档 1 的初值。
+    pub fn default_plain() -> Self {
+        ImageFormationConfig {
+            name: "default".to_owned(),
+            params_18: [1.0, 0.0, 1.0, 1.0],
+            flag_28: 0,
+            _pad_29: [0; 7],
+            params_30: [0.0, 0.0],
+            word_38: 0,
+            flag_3c: 0,
+            flag_3d: 1,
+            _pad_3e: [0; 2],
+        }
+    }
+
+    /// 档 2 的初值（O：`+0x30 = (0.0, 0.015)`，`+0x3d` = 进程级布尔 `process_flag`）。
+    pub fn default_third(process_flag: bool) -> Self {
+        ImageFormationConfig {
+            params_30: [0.0, 0.015],
+            flag_3d: u8::from(process_flag),
+            ..Self::default_plain()
+        }
+    }
+
+    /// `ColorGradingState::flattened`（0x140b00b20，fresh）：把调色段（名称 + 4×f32 +
+    /// +0x28 bypass 字节）压平为**无 bypass 的生效配置**。
+    ///
+    /// fresh 反编译（grading-b1.json，2026-10-17）：
+    /// - `if (*(char*)(in_RDX+0x28) == 0)`：克隆输入名（`String::clone`）+ 拷贝
+    ///   +0x18/+0x1c/+0x20/+0x24 四 f32；
+    /// - else：新分配名 `"default"`（`0x61666564`/`0x746c7561` = "default"，len/cap 7）+
+    ///   参数 `{1.0, 0.0, 1.0, 1.0}`（`0x3f800000`/0/`0x3f800000`/`0x3f800000`）；
+    /// - 两分支都写输出 +0x28 字节 = 0（输出 bypass 恒清）。
+    ///
+    /// 语义 = 把 bypass 门控消解成具体参数。尾部（+0x30 镜头 / +0x38 / +0x3c / +0x3d）
+    /// 原生**不写**（输出为调用方栈上未初始化区，不属于 `ColorGradingState`），这里保留
+    /// `self` 原值作语义模型，登记。
+    pub fn flattened(&self) -> Self {
+        let (name, params_18) = if self.flag_28 == 0 {
+            (self.name.clone(), self.params_18)
+        } else {
+            ("default".to_owned(), [1.0, 0.0, 1.0, 1.0])
+        };
+        Self {
+            name,
+            params_18,
+            flag_28: 0,
+            _pad_29: self._pad_29,
+            params_30: self.params_30,
+            word_38: self.word_38,
+            flag_3c: self.flag_3c,
+            flag_3d: self.flag_3d,
+            _pad_3e: self._pad_3e,
+        }
+    }
+}
+
+impl Default for ImageFormationConfig {
+    fn default() -> Self {
+        Self::default_plain()
+    }
+}
+
+/// 缺省当前档（O：`default` 末尾 `mov byte [rsi+0xc0], 1`）。
+pub const DEFAULT_KIND: u8 = 1;
+/// 单档大小 / 档数 / `kind` 偏移（O：`shl eax, 6`、`+0xc0`）。
+pub const CONFIG_STRIDE: usize = 0x40;
+pub const CONFIG_COUNT: usize = 3;
+pub const KIND_OFFSET: usize = 0xc0;
+
+/// `ImageFormationConfigs`（O：三档 × 0x40 B + 当前 kind @0xc0）。
+#[derive(Resource, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ImageFormationConfigs {
+    pub configs: [ImageFormationConfig; CONFIG_COUNT],
+    /// 当前档（O：`+0xc0` 字节，`switch_kind` 写）。
+    pub kind: u8,
+}
+
+impl ImageFormationConfigs {
+    /// `impl$0::default`（0x1408ae7f0）：`process_flag` = `.data 0x143634d90` 的值（档 2 的 `+0x3d`）。
+    pub fn with_process_flag(process_flag: bool) -> Self {
+        ImageFormationConfigs {
+            configs: [
+                ImageFormationConfig::default_plain(),
+                ImageFormationConfig::default_plain(),
+                ImageFormationConfig::default_third(process_flag),
+            ],
+            kind: DEFAULT_KIND,
+        }
+    }
+}
+
+impl Default for ImageFormationConfigs {
+    /// 进程级布尔的 .bss 初值为 0（U：写入者未找到）。
+    fn default() -> Self {
+        Self::with_process_flag(false)
+    }
+}
+
+impl ImageFormationConfigs {
+    /// `initial`（O 0x67dd80 折叠）。
+    pub fn initial() -> Self {
+        Self::default()
+    }
+    /// `current`（O 名，内联）：`configs[kind]`。
+    pub fn current(&self) -> &ImageFormationConfig {
+        &self.configs[self.kind as usize]
+    }
+    /// `current_mut`（O 0x1408aea50）：`self + (kind << 6)`。原版无边界检查，这里越界即 panic。
+    pub fn current_mut(&mut self) -> &mut ImageFormationConfig {
+        &mut self.configs[self.kind as usize]
+    }
+    /// `get`（O 0x1408aea80）：`self + (i << 6)`，原版无边界检查（i 是 u8），这里越界返回 `None`。
+    pub fn get(&self, i: usize) -> Option<&ImageFormationConfig> {
+        self.configs.get(i)
+    }
+    /// B1408aea60 returns the enumerate/filter iterator; callers skip index0
+    /// (141ec0890 and141ec09bc), retaining the two editable configurations.
+    pub fn iter_non_default_mut(&mut self) -> impl Iterator<Item = &mut ImageFormationConfig> {
+        self.configs.iter_mut().skip(1)
+    }
+    /// `switch_kind`（O 0x1408aea90）。
+    pub fn switch_kind(&mut self, kind: u8) {
+        self.kind = kind;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use core::mem::{offset_of, size_of};
+
+    /// 布局（O：`shl eax, 6`、`+0xc0`）：单档 0x40 B，三档 0xc0 B，字段偏移与 `default` 的写入偏移一致。
+    #[test]
+    fn each_config_is_0x40_bytes_and_the_array_is_0xc0() {
+        assert_eq!(size_of::<ImageFormationConfig>(), CONFIG_STRIDE);
+        assert_eq!(
+            size_of::<[ImageFormationConfig; CONFIG_COUNT]>(),
+            KIND_OFFSET
+        );
+        assert_eq!(offset_of!(ImageFormationConfigs, kind), KIND_OFFSET);
+        assert_eq!(offset_of!(ImageFormationConfig, params_18), 0x18);
+        assert_eq!(offset_of!(ImageFormationConfig, flag_28), 0x28);
+        assert_eq!(offset_of!(ImageFormationConfig, params_30), 0x30);
+        assert_eq!(offset_of!(ImageFormationConfig, word_38), 0x38);
+        assert_eq!(offset_of!(ImageFormationConfig, flag_3c), 0x3c);
+        assert_eq!(offset_of!(ImageFormationConfig, flag_3d), 0x3d);
+        assert_eq!(size_of::<ImageFormationConfigs>(), 0xc8);
+    }
+
+    /// O 0x1408ae7f0：缺省档是 1，三档名称都是 "default"，档 2 的 `+0x30` 是 `(0, 0.015)`，`+0x3d` 取进程级布尔。
+    #[test]
+    fn defaults_follow_the_machine_code() {
+        let c = ImageFormationConfigs::default();
+        assert_eq!(c.kind, 1, "`mov byte [rsi+0xc0], 1`");
+        assert!(
+            c.configs
+                .iter()
+                .all(|x| x.name == "default" && x.name.len() == 7)
+        );
+        assert!(
+            c.configs
+                .iter()
+                .all(|x| x.params_18 == [1.0, 0.0, 1.0, 1.0])
+        );
+        assert_eq!(c.configs[0], ImageFormationConfig::default_plain());
+        assert_eq!(c.configs[1], ImageFormationConfig::default_plain());
+        assert_eq!(c.configs[0].flag_3d, 1);
+        assert_eq!(c.configs[2].params_30, [0.0, 0.015]);
+        assert_eq!(c.configs[2].flag_3d, 0, "进程级布尔 .bss 初值 0");
+        assert_eq!(
+            ImageFormationConfigs::with_process_flag(true).configs[2].flag_3d,
+            1
+        );
+        assert_eq!(c.current(), &c.configs[1]);
+    }
+
+    /// O：`switch_kind` 写 `+0xc0`；`current_mut` / `get` 以 `kind << 6` 取档。
+    #[test]
+    fn switch_kind_selects_the_config_by_index() {
+        let mut c = ImageFormationConfigs::default();
+        c.switch_kind(2);
+        assert_eq!(c.kind, 2);
+        c.current_mut().word_38 = 7;
+        assert_eq!(c.configs[2].word_38, 7);
+        assert_eq!(c.get(2).map(|x| x.word_38), Some(7));
+        assert!(c.get(3).is_none());
+        assert_eq!(c.iter_non_default_mut().count(), 2);
+    }
+
+    /// O 0x140b00b20 `ColorGradingState::flattened`：bypass 未置位 → 克隆名 + 拷贝四 f32；
+    /// bypass 置位 → 名 "default" + `{1, 0, 1, 1}`；输出 bypass 字节恒 0。
+    #[test]
+    fn flattened_resolves_bypass_to_concrete_params() {
+        let plain = ImageFormationConfig {
+            name: "warm".to_owned(),
+            params_18: [0.4, 0.5, 0.6, 0.7],
+            flag_28: 0,
+            ..ImageFormationConfig::default_plain()
+        };
+        let f = plain.flattened();
+        assert_eq!(f.name, "warm");
+        assert_eq!(f.params_18, [0.4, 0.5, 0.6, 0.7]);
+        assert_eq!(f.flag_28, 0);
+
+        let bypassed = ImageFormationConfig {
+            name: "anything".to_owned(),
+            params_18: [9.0, 9.0, 9.0, 9.0],
+            flag_28: 1,
+            ..ImageFormationConfig::default_plain()
+        };
+        let g = bypassed.flattened();
+        assert_eq!(g.name, "default");
+        assert_eq!(g.name.len(), 7, "len/cap = 7 的 String 常量");
+        assert_eq!(g.params_18, [1.0, 0.0, 1.0, 1.0]);
+        assert_eq!(g.flag_28, 0);
+    }
+}

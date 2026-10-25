@@ -1,0 +1,42 @@
+--- a/games_test/tiny-glade/crates/country-core/src/lib.rs
++++ b/games_test/tiny-glade/crates/country-core/src/lib.rs
+@@ -36,6 +36,7 @@
+ 
+ pub mod systems {
+     pub mod audio;
++    pub mod arrow_gizmo_animation;
+     pub mod backend;
+     pub mod brush_preview;
+     pub mod debug;
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/mod.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/mod.rs
+@@ -72,6 +72,17 @@
+     world.init_resource::<Events<delayed_terrain_changed_msg::OnTerrainChange>>();
+     world.init_resource::<Events<RecalculateHeightMapCmd>>();
+     world.init_resource::<Events<PlayTerrainSound>>();
++    world.init_resource::<Events<crate::resources::onboarding::NotifyHintSystemTerrain>>();
++    world.init_resource::<Events<crate::resources::onboarding::NotifyHintSystemTerrainSteepness>>();
++    world.init_resource::<Events<crate::resources::onboarding::NotifyHintSystemToolWasJustUsed>>();
++    world.init_resource::<Events<crate::resources::glade_border::DisplayOutOfBorder>>();
++    world.init_resource::<Events<crate::resources::glade_border::FeedbackInputOutOfBorder>>();
++    world.init_resource::<Events<crate::resources::mouse_capture::CursorCaptureCmd>>();
++    world.init_resource::<Events<crate::systems::arrow_gizmo_animation::EnableArrowGizmoStretch>>();
++    world.init_resource::<Events<crate::systems::render_loop::compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd>>();
++    world.init_resource::<Events<crate::systems::camera_rig::main_camera::MainCameraMoved>>();
++    world.init_resource::<crate::systems::backend::input::mod_key::Modifiers>();
++
+     world.init_resource::<Events<deferred_terrain_history::DebugHistoryMsg>>();
+     world.init_resource::<Events<crate::resources::window::CursorMovedScreenSpace>>();
+ 
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/tests.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/tests.rs
+@@ -127,7 +127,8 @@
+         tag: 0,
+         ..Default::default()
+     });
+-    world.insert_resource(TerrainHeightsData::<TerrainHeightSsbo>::new());
++    world.insert_resource(crate::resources::world_raster_defs::WaterRaster::new(
++        crate::resources::world_raster::DirtyTilePublisher::unique()));
+     world.insert_resource(TerrainEditingData(tg_terrain::stroke::TerrainEditingData::default()));
+     // 大圆边界 → is_shape_inside = true。
+     world.insert_resource(GladeBorder(BorderShape::Circle(Circle2d::new(

@@ -1,0 +1,364 @@
+{
+  "schema_version": 2,
+  "status": "candidate_static",
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "full_original_entry_differential": false,
+  "reason": "original closure/device/temporal ABI not recovered",
+  "checks": [
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked"
+      ],
+      "status": 0,
+      "stdout": "\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 17 tests\ntest empty_pass_and_empty_graph_compile ... ok\ntest backend_failure_preserves_partial_consumption_and_does_not_rollback_pool ... ok\ntest event_order_controls_physical_mapping_and_unused_resource_is_unmapped ... ok\ntest dsl_snapshot_covers_order_ranges_mapping_and_barriers ... ok\ntest access_concurrency_uses_external_classifier ... ok\ntest failed_population_does_not_restore_taken_pool_resource ... ok\ntest external_dependency_table_is_required_and_parser_rejects_bad_input ... ok\ntest fatal_backend_tags_panic ... ok\ntest first_transition_is_initial_unless_reused_and_drains_once ... ok\ntest imported_ownership_export_moves_and_initial_state ... ok\ntest invalid_access_is_rejected_before_backend_creation ... ok\ntest invalid_pre_ranges_and_wrong_barrier_payload_panic ... ok\ntest no_graph_local_alias_is_produced_for_equal_descriptors ... ok\ntest one_whole_graph_batch_has_final_flag_and_zero_graph_has_no_export_event ... ok\ntest pool_hit_is_lifo_and_still_uses_initial_transition ... ok\ntest unused_create_export_panics_at_final_mapping_boundary ... ok\ntest zero_usage_population_emits_empty_without_backend ... ok\n\ntest result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n",
+      "stderr": "warning: D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\render\\Cargo.toml: version requirement `=0.38.0+1.3.281` for dependency `ash` includes semver metadata which will be ignored, removing the metadata is recommended to avoid confusion\n   Compiling tiny-glade-graph-compiler-r2 v0.1.0 (D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\render\\work-packages\\graph-compiler-r2)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.41s\n     Running unittests src\\lib.rs (target\\debug\\deps\\tiny_glade_graph_compiler_r2-d07cffa5fe36d245.exe)\n     Running unittests src\\bin\\graph-snapshot-oracle.rs (target\\debug\\deps\\graph_snapshot_oracle-e6a7cf811039241b.exe)\n     Running tests\\projection.rs (target\\debug\\deps\\projection-ea5b3016205cd7d7.exe)\n   Doc-tests tiny_glade_graph_compiler_r2\n"
+    },
+    {
+      "command": [
+        "cargo",
+        "build",
+        "--offline",
+        "--locked",
+        "--release"
+      ],
+      "status": 0,
+      "stdout": "",
+      "stderr": "warning: D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\render\\Cargo.toml: version requirement `=0.38.0+1.3.281` for dependency `ash` includes semver metadata which will be ignored, removing the metadata is recommended to avoid confusion\n   Compiling tiny-glade-graph-compiler-r2 v0.1.0 (D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\render\\work-packages\\graph-compiler-r2)\n    Finished `release` profile [optimized] target(s) in 1.68s\n"
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "--offline",
+        "--locked",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "status": 0,
+      "stdout": "",
+      "stderr": "warning: D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\render\\Cargo.toml: version requirement `=0.38.0+1.3.281` for dependency `ash` includes semver metadata which will be ignored, removing the metadata is recommended to avoid confusion\n    Checking tiny-glade-graph-compiler-r2 v0.1.0 (D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\render\\work-packages\\graph-compiler-r2)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.43s\n"
+    },
+    {
+      "command": [
+        "rustfmt",
+        "--check",
+        "--config",
+        "skip_children=true",
+        "exclusive_files"
+      ],
+      "status": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "fixtures": [
+    {
+      "name": "multi",
+      "status": 0,
+      "result": {
+        "status": "candidate_static",
+        "pass_order": [
+          "upload",
+          "empty",
+          "draw"
+        ],
+        "pass_ranges": [
+          [
+            0,
+            2
+          ],
+          [
+            2,
+            2
+          ],
+          [
+            2,
+            3
+          ]
+        ],
+        "accesses": [
+          {
+            "resource": 0,
+            "previous": 4294967295,
+            "next": 2,
+            "synchronization_group": 0,
+            "code": 1
+          },
+          {
+            "resource": 1,
+            "previous": 4294967295,
+            "next": 4294967295,
+            "synchronization_group": 0,
+            "code": 2
+          },
+          {
+            "resource": 0,
+            "previous": 0,
+            "next": 4294967295,
+            "synchronization_group": 0,
+            "code": 3
+          }
+        ],
+        "lifetimes": [
+          {
+            "first_pass": 0,
+            "last_pass": 2,
+            "first_access": 0,
+            "last_access": 2
+          },
+          {
+            "first_pass": 0,
+            "last_pass": 2,
+            "first_access": 1,
+            "last_access": 1
+          }
+        ],
+        "image_usage": [
+          23,
+          0
+        ],
+        "buffer_usage": [
+          0,
+          32
+        ],
+        "lifetime_events": [
+          0,
+          1,
+          327680,
+          327681
+        ],
+        "physical_mapping": [
+          {
+            "logical": 0,
+            "physical": 0,
+            "reused": false,
+            "initial_access": 0,
+            "payload_tag": 0,
+            "token": 0
+          },
+          {
+            "logical": 1,
+            "physical": 1,
+            "reused": false,
+            "initial_access": 4,
+            "payload_tag": 3,
+            "token": 9
+          }
+        ],
+        "pending_initial": [
+          0,
+          1
+        ],
+        "initial_transitions": [
+          {
+            "resource": 0,
+            "physical": 0,
+            "from": 0,
+            "to": 1
+          },
+          {
+            "resource": 1,
+            "physical": 1,
+            "from": 4,
+            "to": 2
+          }
+        ],
+        "pre_transitions": [
+          [],
+          [],
+          [
+            {
+              "resource": 0,
+              "physical": 0,
+              "from": 1,
+              "to": 3
+            }
+          ]
+        ],
+        "export_transitions": [
+          {
+            "resource": 0,
+            "physical": 0,
+            "from": 3,
+            "to": 4
+          }
+        ],
+        "batches": [
+          {
+            "start": 0,
+            "end": 1,
+            "export_barriers": false
+          },
+          {
+            "start": 1,
+            "end": 2,
+            "export_barriers": false
+          },
+          {
+            "start": 2,
+            "end": 3,
+            "export_barriers": true
+          }
+        ],
+        "imports": [
+          1
+        ],
+        "exports": [
+          0
+        ],
+        "pool_hits": []
+      }
+    },
+    {
+      "name": "backend-error",
+      "status": 0,
+      "result": {
+        "status": "backend_error",
+        "tag": 3,
+        "consumed_origins": 2,
+        "partial_backing_count": 1
+      }
+    },
+    {
+      "name": "panic",
+      "status": 0,
+      "result": {
+        "status": "panic"
+      }
+    },
+    {
+      "name": "empty",
+      "status": 0,
+      "result": {
+        "status": "candidate_static",
+        "pass_order": [
+          "empty"
+        ],
+        "pass_ranges": [
+          [
+            0,
+            0
+          ]
+        ],
+        "accesses": [],
+        "lifetimes": [],
+        "image_usage": [],
+        "buffer_usage": [],
+        "lifetime_events": [],
+        "physical_mapping": [],
+        "pending_initial": [],
+        "initial_transitions": [],
+        "pre_transitions": [
+          []
+        ],
+        "export_transitions": [],
+        "batches": [
+          {
+            "start": 0,
+            "end": 1,
+            "export_barriers": true
+          }
+        ],
+        "imports": [],
+        "exports": [],
+        "pool_hits": []
+      }
+    }
+  ],
+  "fixture_checks": {
+    "multi_order": true,
+    "multi_ranges": true,
+    "multi_chain": true,
+    "multi_transitions": true,
+    "multi_final_flag": true,
+    "error_partial": true,
+    "panic_status": true,
+    "empty_pass": true
+  },
+  "dependency_packages": [
+    {
+      "name": "ash",
+      "version": "0.38.0+1.3.281",
+      "checksum": "0bb44936d800fea8f016d7f2311c6a4f97aebd5dc86f09906139ec848cf3a46f",
+      "original_match": true
+    },
+    {
+      "name": "cfg-if",
+      "version": "1.0.0",
+      "checksum": "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd",
+      "original_match": true
+    },
+    {
+      "name": "libloading",
+      "version": "0.8.3",
+      "checksum": "0c2a198fb6b0eada2a8df47933734e6d35d350665a33a3593d7164fa52c75c19",
+      "original_match": true
+    },
+    {
+      "name": "windows-targets",
+      "version": "0.52.6",
+      "checksum": "9b724f72796e036ab90c1021d4780d4d3d648aca59e491e6b98e725b84e99973",
+      "original_match": true
+    },
+    {
+      "name": "windows_aarch64_gnullvm",
+      "version": "0.52.6",
+      "checksum": "32a4622180e7a0ec044bb555404c800bc9fd9ec262ec147edd5989ccd0c02cd3",
+      "original_match": true
+    },
+    {
+      "name": "windows_aarch64_msvc",
+      "version": "0.52.6",
+      "checksum": "09ec2a7bb152e2252b53fa7803150007879548bc709c039df7627cabbd05d469",
+      "original_match": true
+    },
+    {
+      "name": "windows_i686_gnu",
+      "version": "0.52.6",
+      "checksum": "8e9b5ad5ab802e97eb8e295ac6720e509ee4c243f69d781394014ebfe8bbfa0b",
+      "original_match": true
+    },
+    {
+      "name": "windows_i686_gnullvm",
+      "version": "0.52.6",
+      "checksum": "0eee52d38c090b3caa76c563b86c3a4bd71ef1a819287c19d586d7334ae8ed66",
+      "original_match": true
+    },
+    {
+      "name": "windows_i686_msvc",
+      "version": "0.52.6",
+      "checksum": "240948bc05c5e7c6dabba28bf89d89ffce3e303022809e73deaefe4f6ec56c66",
+      "original_match": true
+    },
+    {
+      "name": "windows_x86_64_gnu",
+      "version": "0.52.6",
+      "checksum": "147a5c80aabfbf0c7d901cb5895d1de30ef2907eb21fbbab29ca94c5b08b1a78",
+      "original_match": true
+    },
+    {
+      "name": "windows_x86_64_gnullvm",
+      "version": "0.52.6",
+      "checksum": "24d5b23dc417412679681396f2b49f3de8c1473deb516bd34410872eff51ed0d",
+      "original_match": true
+    },
+    {
+      "name": "windows_x86_64_msvc",
+      "version": "0.52.6",
+      "checksum": "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec",
+      "original_match": true
+    }
+  ],
+  "dependency_identity_ok": true,
+  "passed": true,
+  "tests": 17,
+  "notes": [
+    "ResourceInfo 512 and BatchCompiler 1600 original cases are retained R1 evidence, not new R2 counts",
+    "cargo fmt --all briefly removed the trailing empty line of reconstruction/render/lib.rs; restored only that exact empty line by apply_patch; subsequent formatting uses rustfmt skip_children=true on exclusive files"
+  ]
+}

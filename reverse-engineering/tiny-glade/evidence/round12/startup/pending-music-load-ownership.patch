@@ -1,0 +1,23 @@
+--- a/tiny-glade/crates/country-core/src/systems/audio/music/music_player.rs
++++ b/tiny-glade/crates/country-core/src/systems/audio/music/music_player.rs
+@@ -133,6 +133,10 @@
+         backend: &B,
+         paths: &[P],
+     ) {
++        // Native1408b6b10 clears/releases the old owners before it creates
++        // replacements. The caller stops playback; this function does not.
++        self.tracks.clear();
++        self.track_names.clear();
+         let mut tracks = Vec::with_capacity(paths.len());
+         let mut track_names = Vec::with_capacity(paths.len());
+         for path in paths {
+@@ -144,9 +148,6 @@
+                     track_names.push(path.to_owned());
+                 }
+             }
+-        }
+-        if !self.tracks.is_empty() {
+-            self.stop_immediately();
+         }
+         self.current_track = None;
+         self.tracks = tracks;

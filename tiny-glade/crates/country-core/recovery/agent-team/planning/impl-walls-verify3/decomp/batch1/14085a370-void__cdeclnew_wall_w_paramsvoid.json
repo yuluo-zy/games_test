@@ -1,0 +1,30 @@
+{
+ "name": "new_wall_w_params",
+ "size": 295,
+ "address": "14085a370",
+ "signature": "void __cdecl new_wall_w_params(void)",
+ "decompiled_code": "\nvoid __cdecl country_core::resources::walls::inner_walls::InnerWalls::new_wall_w_params(void)\n\n{\n  longlong in_RCX;\n  undefined8 local_80;\n  undefined8 local_68;\n  \n  *(longlong *)(in_RCX + 0xc0) = *(longlong *)(in_RCX + 0xc0) + 1;\n  hashbrown::map::HashMap::\n  insert<country_core::resources::walls::WallId,country_core::resources::walls::inner_wall_state::WallState,std::hash::random::RandomState,alloc::alloc::Global>\n            ();\n  if (!SBORROW8(0,local_80)) {\n    if (local_80 != 0) {\n      std::alloc::__default_lib_allocator::__rust_dealloc();\n    }\n    if (local_68 != 0) {\n      std::alloc::__default_lib_allocator::__rust_dealloc();\n    }\n  }\n  hashbrown::map::HashMap::\n  insert<country_core::resources::walls::WallId,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global>\n            ();\n  return;\n}\n\n",
+ "callee_count": 3,
+ "callees": [
+  {
+   "name": "__rust_dealloc",
+   "address": "140613c20"
+  },
+  {
+   "name": "insert<country_core::resources::walls::WallId,country_core::resources::walls::inner_wall_state::WallState,std::hash::random::RandomState,alloc::alloc::Global>",
+   "address": "141529bb0"
+  },
+  {
+   "name": "insert<country_core::resources::walls::WallId,tuple$<>,std::hash::random::RandomState,alloc::alloc::Global>",
+   "address": "1402ca2f0"
+  }
+ ],
+ "revision": {
+  "token": "1791719479858:b17d372d:3",
+  "epoch": "b17d372d",
+  "modification_number": 3,
+  "saved_time": 1791719479858,
+  "unsaved_changes": false,
+  "decompiled": true
+ }
+}

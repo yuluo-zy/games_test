@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "artifact": {
+    "path": "/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe",
+    "sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708",
+    "bytes": 48046080,
+    "id": "abc-building-35",
+    "version": "A",
+    "format": "PE",
+    "image_base": "0x140000000",
+    "rsds": [
+      {
+        "guid": "98388131-DB1D-D6B0-4C4C-44205044422E",
+        "age": 1,
+        "pdb_name": "tiny_glade.pdb"
+      }
+    ],
+    "debug": {
+      "path": "/Users/yuluo/Desktop/game/Tiny Glade/tiny_glade.pdb",
+      "sha256": "d5d4001583e31abf20b1563bbfdd9e4853629065aa2e461fe5809b205db908a5",
+      "bytes": 213172224,
+      "guid": "98388131-DB1D-D6B0-4C4C-44205044422E",
+      "age": 1
+    }
+  },
+  "request_id": "99995990b110d2ed6b-0",
+  "cache_key": "f797b6d9e6e83b7336fdd7bcd154346ec21e1c95587b820e454e0840c389ac21",
+  "status": "ok",
+  "range": {
+    "rva": "0x8d1650",
+    "length": 11,
+    "start_va": "0x1408d1650",
+    "stop_va_exclusive": "0x1408d165b",
+    "instruction_overhang_bytes": 0,
+    "function_boundary_verified": false
+  },
+  "instructions": [
+    {
+      "va": "0x1408d1650",
+      "rva": "0x8d1650",
+      "bytes": "f30f104110",
+      "size": 5,
+      "assembly": "movss\t0x10(%rcx), %xmm0",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x1408d1655",
+      "rva": "0x8d1655",
+      "bytes": "f30f594114",
+      "size": 5,
+      "assembly": "mulss\t0x14(%rcx), %xmm0",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x1408d165a",
+      "rva": "0x8d165a",
+      "bytes": "c3",
+      "size": 1,
+      "assembly": "retq",
+      "crosses_requested_stop": false
+    }
+  ],
+  "symbolization": [
+    {
+      "Address": "0x8d1650",
+      "ModuleName": "/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe",
+      "Symbol": [
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/code/pouncelight/country-slice-private/crates/utils/src/geometry/rectangle.rs",
+          "FunctionName": "utils::geometry::rectangle::Rectangle2d::area::h9185166c7068ca2b",
+          "Line": 196,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        }
+      ]
+    }
+  ],
+  "missing_symbol_addresses": [],
+  "raw_assembly": "\n/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe:\tfile format coff-x86-64\n\nDisassembly of section .text:\n\n0000000140001000 <.text>:\n1408d1650: f3 0f 10 41 10              \tmovss\t0x10(%rcx), %xmm0\n1408d1655: f3 0f 59 41 14              \tmulss\t0x14(%rcx), %xmm0\n1408d165a: c3                          \tretq\n",
+  "original_target_executed": false
+}

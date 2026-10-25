@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "timeoutSeconds": 120,
+      "code": "from ghidra.program.model.address import AddressSet\nfrom ghidra.program.disassemble import Disassembler\naf=currentProgram.getAddressFactory()\na=af.getAddress('142344ae0'); b=af.getAddress('142344c00')\ntx=currentProgram.startTransaction('dis')\ntry:\n    Disassembler.getDisassembler(currentProgram,monitor,None).disassemble(a,AddressSet(a,b),True)\nfinally:\n    currentProgram.endTransaction(tx,True)\nfor ins in currentProgram.getListing().getInstructions(AddressSet(a,b), True):\n    print(ins.getAddress(), ins.toString())\n"
+    },
+    "timeout_seconds": 180
+  }
+]

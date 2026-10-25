@@ -1,0 +1,29 @@
+{
+  "original_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "mode": "static original CFG, independently read; not executed",
+  "ranges": [
+    {
+      "va": "0x140a59220",
+      "size": 459,
+      "sha256": "56b530b6e648756588a9331fa955877340d4b0f319c909d0e2db1597be13d2d5"
+    },
+    {
+      "va": "0x1412fafb0",
+      "size": 711,
+      "sha256": "3c26cca55de0da27d448ad65e64122b8ed698c3bd6c84895ab2f652933c346bf"
+    },
+    {
+      "va": "0x1414792b0",
+      "size": 600,
+      "sha256": "578e031b14cfac77428e75eb08039e6b7850a7b039a2c861e3eb2ae09a2480c0"
+    }
+  ],
+  "observed": [
+    "140a59243/247 descriptor count incremented; range start0@25e/end count+1@266",
+    "1412fb06e..082 original collection writes first item, 091 len1; 0f9/106 continues same iterator",
+    "1414792d7/2db load start/end;2df/2e2 checks end;306/30b stores start+1 before actualinstantiate31c",
+    "140a59340/352 descriptor+18 copied to loop+30 threshold;59306 probe supplies flag59359"
+  ],
+  "inference": "descriptor count3 yields four retained instances; no first-item skip. Games own count+1 and threshold/probe policy; dependencies remain reused.",
+  "unknown": "this independent audit does not execute FMOD, failure variants, or the walking caller itself; author execution fixtures remain separate evidence"
+}

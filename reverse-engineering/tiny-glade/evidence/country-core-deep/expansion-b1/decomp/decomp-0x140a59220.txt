@@ -1,0 +1,85 @@
+
+longlong * FUN_140a59220(longlong *param_1,longlong param_2,undefined4 *param_3)
+
+{
+  undefined4 uVar1;
+  code *pcVar2;
+  longlong lVar3;
+  int *piVar4;
+  bool bVar5;
+  longlong lStack_a8;
+  undefined4 uStack_a0;
+  undefined4 uStack_9c;
+  undefined4 uStack_98;
+  undefined4 uStack_94;
+  undefined8 uStack_90;
+  longlong lStack_88;
+  int **ppiStack_80;
+  longlong lStack_70;
+  int *piStack_68;
+  longlong lStack_60;
+  longlong lStack_58;
+  int *piStack_50;
+  longlong lStack_48;
+  int *piStack_40;
+  undefined1 uStack_31;
+  undefined8 uStack_30;
+  
+  uStack_30 = 0xfffffffffffffffe;
+  lStack_88 = *(longlong *)(param_3 + 4) + 1;
+  uStack_a0 = *param_3;
+  uStack_9c = param_3[1];
+  uStack_98 = param_3[2];
+  uStack_94 = param_3[3];
+  piStack_40 = (int *)0x0;
+  uStack_90 = 0;
+  ppiStack_80 = &piStack_40;
+  uStack_31 = 0;
+  lStack_a8 = param_2;
+  FUN_1412fafb0(&lStack_70,&lStack_a8,&UNK_142c77bb0);
+  piVar4 = piStack_40;
+  if (piStack_40 == (int *)0x0) {
+    if (!SBORROW8(0,lStack_70)) {
+      lStack_58 = lStack_70;
+      piStack_50 = piStack_68;
+      lStack_48 = lStack_60;
+      if (lStack_60 != 0) {
+        if (*piStack_68 == 1) {
+          FUN_141437a60(&lStack_a8,piStack_68 + 2,&UNK_142ad2f20,4);
+          lVar3 = lStack_a8;
+          if (lStack_a8 != -0x7ffffffffffffffc) {
+            FUN_140a526b0(&lStack_a8);
+          }
+          bVar5 = lVar3 == -0x7ffffffffffffffc;
+        }
+        else {
+          bVar5 = false;
+        }
+        param_1[2] = lStack_48;
+        *param_1 = lStack_58;
+        param_1[1] = (longlong)piStack_50;
+        uVar1 = param_3[6];
+        *(undefined4 *)(param_1 + 4) = 1000000000;
+        param_1[5] = 0;
+        *(undefined4 *)(param_1 + 6) = uVar1;
+        *(undefined1 *)((longlong)param_1 + 0x34) = 0;
+        *(bool *)((longlong)param_1 + 0x35) = bVar5;
+        *(undefined1 *)((longlong)param_1 + 0x36) = 0;
+        return param_1;
+      }
+      FUN_1428d9518(0,0,&UNK_142ad2f08);
+                    /* WARNING: Does not return */
+      pcVar2 = (code *)invalidInstructionException();
+      (*pcVar2)();
+    }
+  }
+  else {
+    uStack_31 = 1;
+    FUN_140899740(&lStack_70);
+    piStack_68 = piVar4;
+  }
+  param_1[1] = (longlong)piStack_68;
+  *param_1 = -0x8000000000000000;
+  return param_1;
+}
+

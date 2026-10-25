@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "from ghidra.program.model.pcode import JumpTable\nimport json\nprint(json.dumps({\"constructors\":[str(x) for x in JumpTable.class_.getConstructors()],\"methods\":[str(x) for x in JumpTable.class_.getDeclaredMethods()]}))\n",
+      "timeoutSeconds": 20
+    },
+    "timeout_seconds": 40
+  }
+]

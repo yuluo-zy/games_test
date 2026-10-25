@@ -1,0 +1,179 @@
+{
+  "target": {
+    "path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+    "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+  },
+  "provider": {
+    "id": "ghidra",
+    "version": "12.1.4"
+  },
+  "database": "g8a_l1",
+  "steps": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "keep_open": true,
+        "database_id": "g8a_l1"
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "g8a_l1"
+      }
+    },
+    {
+      "tool": "batch",
+      "args": {
+        "database": "g8a_l1",
+        "stop_on_error": false,
+        "operations": [
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140be9600"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x1400fa190"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x1409dca90"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140533b10"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140970620"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140975920"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x1409764a0"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140bf0cc0"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140c04e20"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x1418c3300"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x1402c3d00"
+            }
+          }
+        ]
+      },
+      "expands": [
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140be9600"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x1400fa190"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x1409dca90"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140533b10"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140970620"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140975920"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x1409764a0"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140bf0cc0"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140c04e20"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x1418c3300"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x1402c3d00"
+          }
+        }
+      ],
+      "timeout_ms": 600000
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "g8a_l1",
+        "save": false
+      }
+    }
+  ]
+}

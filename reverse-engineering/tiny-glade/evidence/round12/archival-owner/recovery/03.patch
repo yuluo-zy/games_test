@@ -1,0 +1,34 @@
+*** Begin Patch
+*** Update File: D:/game/reverse-engineering/tiny-glade/evidence/round12/archival-owner/candidate/tiny-glade/crates/country-core/src/resources/walls/decorator_archivist.rs
+@@
+-fn extract_before_after_pair(
++fn extract_before_after_pair(
+@@
+ }
++
++/// Original141523a60..141523eef. Destination variants compare only their
++/// active payload; all subsequent common fields are still compared. Inactive
++/// bytes and padding must not create edits. NaN differs, signed zero is equal.
++fn archived_history_equal(before: &DecoratorHistoryState, after: &DecoratorHistoryState) -> bool {
++    let b = before.to_bytes();
++    let a = after.to_bytes();
++    let read32 = |s: &[u8; 0x50], p| u32::from_le_bytes(s[p..p+4].try_into().unwrap());
++    let feq = |p| f32::from_bits(read32(&b, p)) == f32::from_bits(read32(&a, p));
++    let sel_b = if b[0x22].wrapping_sub(2) < 3 { b[0x22] - 1 } else { 0 };
++    let sel_a = if a[0x22] >= 2 { a[0x22] - 1 } else { 0 };
++    if sel_b != sel_a { return false; }
++    let destination_equal = match sel_b {
++        1 | 2 => [0, 4, 8].into_iter().all(feq),
++        3 => b[..8] == a[..8] && [8, 12, 16].into_iter().all(feq),
++        _ => [0, 4, 16, 20, 24, 28].into_iter().all(feq)
++            && b[8..16] == a[8..16] && b[0x20..0x23] == a[0x20..0x23],
++    };
++    if !destination_equal { return false; }
++    // Native normalizes the decorator type to0..7 / fallback6, and when
++    // fallback6 it additionally compares the full byte. This is exact identity.
++    b[0x4a] == a[0x4a]
++        && [0x48, 0x49, 0x4b, 0x4c, 0x4d, 0x4e].into_iter().all(|p| b[p] == a[p])
++        && [0x28, 0x2c, 0x34, 0x40, 0x44].into_iter().all(|p| read32(&b,p) == read32(&a,p))
++        && [0x30, 0x38, 0x3c].into_iter().all(feq)
++}
+*** End Patch

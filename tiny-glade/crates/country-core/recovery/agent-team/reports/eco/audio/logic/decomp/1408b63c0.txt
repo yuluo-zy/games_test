@@ -1,0 +1,149 @@
+// init @ 0x1408b63c0
+
+void __cdecl country_core::systems::audio::music::music_player::MusicPlayer::init(void)
+
+{
+  char *extraout_RAX;
+  char *extraout_RAX_00;
+  char *extraout_RAX_01;
+  char *extraout_RAX_02;
+  undefined8 *in_RCX;
+  longlong *in_RDX;
+  undefined8 local_d8;
+  char *pcStack_d0;
+  undefined8 local_c8;
+  undefined8 uStack_c0;
+  undefined8 local_a8;
+  char *pcStack_a0;
+  undefined8 local_98;
+  undefined8 uStack_90;
+  char *pcStack_70;
+  undefined8 uStack_60;
+  longlong local_50;
+  undefined8 uStack_48;
+  undefined8 local_40;
+  char *pcStack_38;
+  undefined8 local_30;
+  undefined1 uStack_28;
+  undefined4 uStack_27;
+  undefined2 uStack_23;
+  undefined1 uStack_21;
+  
+  if (*in_RDX == 0) {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX == (char *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    builtin_strncpy(extraout_RAX,"snapshot:/Track Switching",0x19);
+    local_a8 = 0x19;
+    local_98 = 0x19;
+    uStack_90._0_5_ = CONCAT41(uStack_27,2);
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX_00 == (char *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    builtin_strncpy(extraout_RAX_00,"snapshot:/PhotoMode",0x13);
+    local_d8 = 0x13;
+    local_c8 = 0x13;
+    uStack_c0._0_5_ = CONCAT41(uStack_27,2);
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX_01 == (char *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    builtin_strncpy(extraout_RAX_01,"snapshot:/FirstPerson",0x15);
+    uStack_60._0_5_ = CONCAT41(uStack_27,2);
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX_02 == (char *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    builtin_strncpy(extraout_RAX_02,"snapshot:/MusicFadeIn",0x15);
+    local_50 = 0;
+    local_40 = 0x15;
+    local_30 = 0x15;
+    uStack_28 = 2;
+    pcStack_d0 = extraout_RAX_00;
+    pcStack_a0 = extraout_RAX;
+    pcStack_70 = extraout_RAX_01;
+    pcStack_38 = extraout_RAX_02;
+  }
+  else {
+    resources::audio_resources::AudioCoreInner::instantiate_audio();
+    if ((int)local_50 == 2) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    uStack_90._0_5_ = CONCAT41(uStack_27,uStack_28);
+    local_98 = local_30;
+    local_a8 = local_40;
+    pcStack_a0 = pcStack_38;
+    resources::audio_resources::AudioCoreInner::instantiate_audio();
+    if ((int)local_50 == 2) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    uStack_c0._0_5_ = CONCAT41(uStack_27,uStack_28);
+    local_c8 = local_30;
+    local_d8 = local_40;
+    pcStack_d0 = pcStack_38;
+    resources::audio_resources::AudioCoreInner::instantiate_audio();
+    if ((int)local_50 == 2) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    uStack_60._0_5_ = CONCAT41(uStack_27,uStack_28);
+    pcStack_70 = pcStack_38;
+    resources::audio_resources::AudioCoreInner::instantiate_audio();
+    if (local_50 == 2) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  uStack_60 = CONCAT17(uStack_21,CONCAT25(uStack_23,(undefined5)uStack_60));
+  uStack_90 = CONCAT17(uStack_21,CONCAT25(uStack_23,(undefined5)uStack_90));
+  uStack_c0 = CONCAT17(uStack_21,CONCAT25(uStack_23,(undefined5)uStack_c0));
+  in_RCX[0xc] = local_30;
+  *(undefined1 *)(in_RCX + 0xd) = uStack_28;
+  *(undefined4 *)((longlong)in_RCX + 0x69) = uStack_27;
+  *(undefined2 *)((longlong)in_RCX + 0x6d) = uStack_23;
+  *(undefined1 *)((longlong)in_RCX + 0x6f) = uStack_21;
+  in_RCX[10] = local_40;
+  in_RCX[0xb] = pcStack_38;
+  in_RCX[8] = local_50;
+  in_RCX[9] = uStack_48;
+  in_RCX[0x1a] = 0;
+  in_RCX[0x1b] = 8;
+  in_RCX[0x1c] = 0;
+  in_RCX[0x1d] = 0;
+  in_RCX[0x1e] = 8;
+  in_RCX[0x1f] = 0;
+  *in_RCX = 0;
+  *(undefined4 *)(in_RCX + 0x23) = 0;
+  in_RCX[2] = local_50;
+  in_RCX[3] = uStack_48;
+  in_RCX[4] = local_a8;
+  in_RCX[5] = pcStack_a0;
+  in_RCX[6] = local_98;
+  in_RCX[7] = uStack_90;
+  in_RCX[0x20] = 0;
+  in_RCX[0x21] = 8;
+  in_RCX[0x22] = 0;
+  in_RCX[0xe] = local_50;
+  in_RCX[0xf] = uStack_48;
+  in_RCX[0x10] = local_d8;
+  in_RCX[0x11] = pcStack_d0;
+  in_RCX[0x12] = local_c8;
+  in_RCX[0x13] = uStack_c0;
+  in_RCX[0x14] = local_50;
+  in_RCX[0x15] = uStack_48;
+  in_RCX[0x16] = local_40;
+  in_RCX[0x17] = pcStack_70;
+  in_RCX[0x18] = local_30;
+  in_RCX[0x19] = uStack_60;
+  *(undefined4 *)(in_RCX + 0x25) = 0;
+  return;
+}
+

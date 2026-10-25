@@ -1,0 +1,25 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140c91f60: 0f 28 c1                    	movaps	%xmm1, %xmm0
+140c91f63: f6 01 01                    	testb	$0x1, (%rcx)
+140c91f66: 74 1f                       	je	0x140c91f87 <.text+0xc90f87>
+140c91f68: f3 0f 5c c2                 	subss	%xmm2, %xmm0
+140c91f6c: f3 0f 10 49 04              	movss	0x4(%rcx), %xmm1
+140c91f71: f3 0f 10 15 6f 81 cc 01     	movss	0x1cc816f(%rip), %xmm2  # 0x14295a0e8
+140c91f79: f3 0f 59 d1                 	mulss	%xmm1, %xmm2
+140c91f7d: 0f 2e d0                    	ucomiss	%xmm0, %xmm2
+140c91f80: 76 0a                       	jbe	0x140c91f8c <.text+0xc90f8c>
+140c91f82: f3 0f 58 c1                 	addss	%xmm1, %xmm0
+140c91f86: c3                          	retq
+140c91f87: f3 0f 5c c2                 	subss	%xmm2, %xmm0
+140c91f8b: c3                          	retq
+140c91f8c: f3 0f 10 15 dc 38 c9 01     	movss	0x1c938dc(%rip), %xmm2  # 0x142925870
+140c91f94: f3 0f 59 d1                 	mulss	%xmm1, %xmm2
+140c91f98: 0f 2e d0                    	ucomiss	%xmm0, %xmm2
+140c91f9b: 77 04                       	ja	0x140c91fa1 <.text+0xc90fa1>
+140c91f9d: f3 0f 5c c1                 	subss	%xmm1, %xmm0
+140c91fa1: c3                          	retq

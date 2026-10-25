@@ -1,0 +1,177 @@
+--- games_test/tiny-glade/crates/country-core/src/systems/save/save_game.rs
++++ games_test/tiny-glade/crates/country-core/src/systems/save/save_game.rs
+@@ -8,28 +8,28 @@
+ //! Identity/Camera/Colors 三节已按 re-analyst 域类型证据包组装；其余节（TimeOfDay/
+ //! Sheep/chain_index/history_start/snapshots）由所属域提供序列化载荷，缺失即 panic
+ //! （原版每节必写），不伪造。
+-pub use crate::resources::save_file::SaveFileSection;
++use crate::resources::critters::{
++    sheep::{control::capture_sheep_snapshot, Sheep},
++    CritterGoal,
++};
++use crate::resources::glade_color_customization::GladeColorCustomization;
+ use crate::resources::history::snapshots::current_snapshot;
+ use crate::resources::history::snapshots::set_current_snapshot;
+ use crate::resources::history::transactions::ResolvedHistorySnapshot;
+-use crate::resources::glade_color_customization::GladeColorCustomization;
+ use crate::resources::history::HistoryIdentity;
+ use crate::resources::roofs::roof_animation::RoofMarkedForDeletion;
+ use crate::resources::roofs::roof_shape::Roof;
++pub use crate::resources::save_file::SaveFileSection;
+ use crate::resources::session::SessionId;
+ use crate::resources::session::SessionMeta;
+ use crate::resources::time::GameTime;
+ use crate::systems::camera_rig::CameraRigParametersCache;
+-use crate::resources::critters::{
+-    CritterGoal,
+-    sheep::{Sheep, control::capture_sheep_snapshot},
+-};
+-use crate::utils::components::transform::Transform;
+ use crate::systems::save::save_backup_list::BackupSaveFileKind;
+ use crate::systems::save::save_backup_metronome::SaveBackupMetronome;
++use crate::systems::save::snapshot::capture_game_snapshot_save_data;
+ use crate::systems::save::snapshot::SnapshotDomainData;
+ use crate::systems::save::snapshot::SnapshotSaveData;
+-use crate::systems::save::snapshot::capture_game_snapshot_save_data;
++use crate::utils::components::transform::Transform;
+ use bevy_ecs::prelude::{Query, Res, ResMut, Without};
+ use hashbrown::HashMap;
+ use serde::{Serialize, Serializer};
+@@ -162,7 +162,7 @@
+ /// 游戏线程 → 存档线程的命令。原版变体标签 **3..=11**（① r6-async-savecmd 契约 §1，
+ /// ALGORITHMS §2.1 save_thread 0x141720680 / 分发 0x141721aa0 权威；0/1/2 未在 switch
+ /// 出现 = 死/历史变体）。判别值显式对齐：3 OpenFile / 4 CloseFile / 9 CaptureSnapshot /
+-/// 10 Flush / 0xb(11) Shutdown；5/6/7/8 = ChangeSection/ReplaceEdits/BackupSave/ManualBackup。
++/// 10 Flush / 0xb(11) Shutdown；5/6/7/8 = ReplaceEdits/ChangeSection/BackupSave/ManualBackup。
+ ///
+ /// **字段名约定**：各变体的载荷字段名是**语义字段**（由分发行为/存档 codec 合同推导），
+ /// **非**原字节布局字段名。原版载荷仅 tag@+0（qword 判别）与分段偏移已被观测
+@@ -180,19 +180,19 @@
+     } = 3,
+     /// 4 CloseFile。载荷含 session id（语义；分段字段 U）。
+     CloseFile { session: SessionId } = 4,
+-    /// 5 ChangeSection：改节 + mark_dirty。
++    /// 6 ChangeSection：改节 + mark_dirty。
+     /// 载荷分段（O）：param_1[1..2]（+8/+0x10）、[3..4]（+0x18/+0x20）。
+     /// `section`/`value` 为语义字段（change_section 行为合同），字节布局名待取证。
+     ChangeSection {
+         section: SaveFileSection,
+         value: SerializedJson,
+-    } = 5,
+-    /// 6 ReplaceEdits：截断 + 追加编辑。
++    } = 6,
++    /// 5 ReplaceEdits：截断 + 追加编辑。
+     /// 载荷分段（O）：{byte 标志@+3, edit 列表 ptr/len}。`truncate`/`edits` 为语义字段。
+     ReplaceEdits {
+         truncate: usize,
+         edits: Vec<SerializedJson>,
+-    } = 6,
++    } = 5,
+     /// 7 BackupSave：`history-auto` 前缀备份。
+     /// `path`/`kind` 为语义字段；`remove_counter` = 节拍器返回的 retention 删除候选
+     /// （O：BackupDecision.remove_counter → "Backup limit reached; removing " 删除旧备份）。
+@@ -213,8 +213,11 @@
+     } = 8,
+     /// 9 CaptureSnapshot：快照 JSON 落盘。
+     CaptureSnapshot { snapshot: Arc<SnapshotSaveData> } = 9,
+-    /// 10 Flush。
+-    Flush = 10,
++    /// Original tag10 carries a one-result channel. The worker applies all
++    /// deferred sections, syncs the actual shadow file, then returns success/error.
++    Flush {
++        reply: crossbeam_channel::Sender<Result<(), anyhow::Error>>,
++    } = 10,
+     /// 11 Shutdown：需要时 flush_deferred_and_sync + 确认 + 退出线程。
+     Shutdown { flush: bool } = 11,
+ }
+@@ -254,7 +257,7 @@
+ /// clamp[0,8]、逐秒档位）→ **内联快照采集**（`current_snapshot` 0x140a84650 为空 →
+ /// log "Capturing a game snapshot" → `capture_game_snapshot_save_data` 0x1417a0430 →
+ /// Arc → `send<AsyncSaveCmd>`（tag 9 CaptureSnapshot）→ `set_current_snapshot`
+-/// 0x140a84760）→ 各节 `ChangeSection(5)`（值 != 缓存才发）→ **内联同步保存**
++/// 0x140a84760）→ 各节 `ChangeSection(6)`（值 != 缓存才发）→ **内联同步保存**
+ /// （History edits → `send<AsyncSaveCmd>`）→ `SessionMeta::write_to_disk` 0x140b463c0 →
+ /// `sync_channel<Result<(),anyhow::Error>>` 手动备份请求-应答 → 错误状态
+ /// `try_recv<AutosaveErrorState>` 吸干。
+@@ -313,7 +316,7 @@
+             remove_counter: decision.remove_counter,
+         });
+     }
+-    // ③ 各节 cooldown 值变更 → ChangeSection(5)（可采集节：Colors/Sheep）。
++    // ③ 各节 cooldown 值变更 → ChangeSection(6)（可采集节：Colors/Sheep）。
+     //    Camera/Version/TimeOfDay/chain_index/history_start/snapshots 的载荷由宿主
+     //    （`SaveGameSyncData.sections` 的对应节）采集；本系统不伪造。
+     emit_section_change_if_changed(
+@@ -342,7 +345,9 @@
+     if let Err(error) = active.meta.write_to_disk(active.id) {
+         log::error!("Error writing session meta to disk: {error}");
+     }
+-    auto.send_command(AsyncSaveCmd::Flush);
++    if let Err(error) = auto.flush_synchronously() {
++        log::error!("Error while performing a synchronous save: {error:#}");
++    }
+     // ⑥ 吸干存档线程回传的错误状态（O：try_recv<AutosaveErrorState> ×3）。
+     if let Some(mut handle) = save_thread {
+         handle.error_state.drain_pending();
+@@ -399,7 +404,7 @@
+ }
+ 
+ /// 单节 cooldown 值变更判定（O：save_game 节 cooldown 段 `if (section值!=缓存)`）。
+-/// 值变化才发 `ChangeSection(5)` 并更新缓存；cooldown 秒表值待取证，当前以变更即发
++/// 值变化才发 `ChangeSection(6)` 并更新缓存；cooldown 秒表值待取证，当前以变更即发
+ /// （不伪造表值）。发送失败仅记录（send_command 已 log）。
+ fn emit_section_change_if_changed(
+     auto: &mut AutoSaveState,
+@@ -418,6 +423,8 @@
+ 
+ /// 注册 save_game 系统事件/资源。
+ pub fn register_save_game_events(world: &mut bevy_ecs::world::World) {
++    bevy_ecs::event::EventRegistry::register_event::<SaveGameCmd>(world);
++    bevy_ecs::event::EventRegistry::register_event::<SavingGameComplete>(world);
+     world.init_resource::<bevy_ecs::event::Events<CaptureSnapshotRequested>>();
+     world.init_resource::<SnapshotCaptureState>();
+     world.init_resource::<SaveGameSyncData>();
+@@ -510,10 +517,8 @@
+ 
+ /// 游戏线程同步保存请求（PDB：`save_game::SaveGameCmd`）。域资源组装见
+ /// `GameSaveData`；命令载荷在域恢复后接入。
+-#[derive(Clone, Debug)]
+-pub struct SaveGameCmd {
+-    pub data: GameSaveData,
+-}
++#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq)]
++pub struct SaveGameCmd;
+ 
+ /// 删除会话命令（PDB：`save_game::DeleteSessionCmd`）。`SessionFlowPlugin::build`
+ /// 0x140b47840 注册为事件（`register_event<DeleteSessionCmd>`）。
+@@ -523,8 +528,10 @@
+ }
+ 
+ /// 保存完成事件（PDB：`save_game::SavingGameComplete`）。
+-#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq)]
+-pub struct SavingGameComplete;
++#[derive(bevy_ecs::event::Event, Clone, Debug, PartialEq, Eq)]
++pub struct SavingGameComplete {
++    pub path: PathBuf,
++}
+ 
+ /// 同步存档路径的组装数据（PDB：`save_game::GameSaveData`）。原版由
+ /// save_game 0x140a3f470 从 ~9 资源拷贝组装（+0x28..+0x100 密集字段，**240B 完整字段名
+@@ -651,6 +658,17 @@
+                 "save thread disconnected while creating backup: {error}"
+             )),
+         }
++    }
++
++    /// B save_game@140a419b5..41a51: bound1 reply channel, tag10,
++    /// wait for the actual worker result. Send/receive disconnects panic as in
++    /// the original; a file flush error is returned for the caller to log.
++    pub fn flush_synchronously(&mut self) -> Result<(), anyhow::Error> {
++        let (reply, result) = crossbeam_channel::bounded(1);
++        self.send_command_expect(AsyncSaveCmd::Flush { reply });
++        result
++            .recv()
++            .expect("receiving synchronous save completion")
+     }
+ 
+     /// 0x140a439a0：**返回 `+0x10` 错误状态字段的引用**（fresh disasm

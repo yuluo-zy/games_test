@@ -1,0 +1,379 @@
+{
+ "exe": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+ "targets_analyzed": 5,
+ "pdata_functions": 116269,
+ "functions": {
+  "0x140530430": {
+   "va": "0x140530430",
+   "name": "rhapsody::rg::resource_info::ResourceInfo::calculate::h1c626033b539586e",
+   "modules": [
+    "rg::resource_info"
+   ],
+   "n_incoming_direct_callsites": 3,
+   "n_resolved_callsites": 3,
+   "consensus": {
+    "observed_arg_regs": [
+     "rcx",
+     "rdx",
+     "r8",
+     "r9"
+    ],
+    "prefix_count": 4,
+    "sources": {
+     "rcx": "mem:[rbp+5672]",
+     "rdx": "mem:[rbp+4920]",
+     "r8": "mem:[rbp+6744]",
+     "r9": "mem:[rbp+6752]"
+    },
+    "stack_arg_stores": [],
+    "confidence": "high",
+    "from_site": "0x140163ac9"
+   },
+   "callsites": [
+    {
+     "site": "0x140163ac9",
+     "caller": "0x140161cd0",
+     "caller_name": "rhapsody::rg::state::RenderGraphState::compile::h1404e5612569a6e5",
+     "arg_regs_observed": [
+      "rcx",
+      "rdx",
+      "r8",
+      "r9"
+     ],
+     "prefix_count": 4,
+     "gap": false,
+     "defs": {
+      "rdx": {
+       "source": "mem:[rbp+4920]",
+       "addr": "0x140163ac2"
+      },
+      "r9": {
+       "source": "mem:[rbp+6752]",
+       "addr": "0x140163aad"
+      },
+      "r8": {
+       "source": "mem:[rbp+6744]",
+       "addr": "0x140163aa6"
+      },
+      "rcx": {
+       "source": "mem:[rbp+5672]",
+       "addr": "0x140163a24"
+      }
+     },
+     "xmm_observed": [
+      "xmm1",
+      "xmm0"
+     ],
+     "stack_arg_stores": [],
+     "barrier": [
+      "0x14016399b",
+      "call"
+     ],
+     "confidence": "high"
+    },
+    {
+     "site": "0x1401657f8",
+     "caller": "0x1401647b0",
+     "caller_name": "rhapsody::rg::state::RenderGraphState::compile::h1edf2b06c104b210",
+     "arg_regs_observed": [
+      "rcx",
+      "rdx",
+      "r8",
+      "r9"
+     ],
+     "prefix_count": 4,
+     "gap": false,
+     "defs": {
+      "rdx": {
+       "source": "mem:[rbp+4944]",
+       "addr": "0x1401657f1"
+      },
+      "r9": {
+       "source": "mem:[rbp+6400]",
+       "addr": "0x1401657dc"
+      },
+      "r8": {
+       "source": "mem:[rbp+6392]",
+       "addr": "0x1401657d5"
+      },
+      "rcx": {
+       "source": "mem:[rbp+5256]",
+       "addr": "0x140165753"
+      }
+     },
+     "xmm_observed": [
+      "xmm1",
+      "xmm0"
+     ],
+     "stack_arg_stores": [],
+     "barrier": [
+      "0x1401656ca",
+      "call"
+     ],
+     "confidence": "high"
+    },
+    {
+     "site": "0x140166f9f",
+     "caller": "0x140166510",
+     "caller_name": "rhapsody::rg::state::RenderGraphState::compile::hc97c995713b979ef",
+     "arg_regs_observed": [
+      "rcx",
+      "rdx",
+      "r8",
+      "r9"
+     ],
+     "prefix_count": 4,
+     "gap": false,
+     "defs": {
+      "rdx": {
+       "source": "mem:[rbp+5568]",
+       "addr": "0x140166f98"
+      },
+      "r9": {
+       "source": "mem:[rbp+6368]",
+       "addr": "0x140166f83"
+      },
+      "r8": {
+       "source": "mem:[rbp+6360]",
+       "addr": "0x140166f7c"
+      },
+      "rcx": {
+       "source": "mem:[rbp+5880]",
+       "addr": "0x140166efa"
+      }
+     },
+     "xmm_observed": [
+      "xmm1",
+      "xmm0"
+     ],
+     "stack_arg_stores": [],
+     "barrier": [
+      "0x140166e71",
+      "call"
+     ],
+     "confidence": "high"
+    }
+   ]
+  },
+  "0x1409dca90": {
+   "va": "0x1409dca90",
+   "name": "rhapsody::rg::pass_builder::PassBuilder$LT$UserData$GT$::add_resource_access::hee5de4e8c6a2fb95 (.llvm.5603919287574932884)",
+   "modules": [
+    "rg::pass_builder"
+   ],
+   "n_incoming_direct_callsites": 0,
+   "n_resolved_callsites": 0,
+   "consensus": null,
+   "callsites": []
+  },
+  "0x140bebdf0": {
+   "va": "0x140bebdf0",
+   "name": "rhapsody::rg::executor::GraphExecutionRecorder::submit_pending_cbs",
+   "modules": [
+    "rg::executor"
+   ],
+   "n_incoming_direct_callsites": 3,
+   "n_resolved_callsites": 3,
+   "consensus": {
+    "observed_arg_regs": [
+     "rcx",
+     "rdx"
+    ],
+    "prefix_count": 2,
+    "sources": {
+     "rcx": "reg:rdi",
+     "rdx": "mem:[rbp+528]"
+    },
+    "stack_arg_stores": [],
+    "confidence": "high",
+    "from_site": "0x1400fa684"
+   },
+   "callsites": [
+    {
+     "site": "0x1400fa684",
+     "caller": "0x1400fa190",
+     "caller_name": "rhapsody::rg::executor::GraphExecutionRecorder::execute_compiled::he77827c1ebb95e22",
+     "arg_regs_observed": [
+      "rcx",
+      "rdx"
+     ],
+     "prefix_count": 2,
+     "gap": false,
+     "defs": {
+      "rdx": {
+       "source": "mem:[rbp+528]",
+       "addr": "0x1400fa67d"
+      },
+      "rcx": {
+       "source": "reg:rdi",
+       "addr": "0x1400fa67a"
+      }
+     },
+     "xmm_observed": [],
+     "stack_arg_stores": [],
+     "barrier": [
+      "0x1400fa658",
+      "call"
+     ],
+     "confidence": "high"
+    },
+    {
+     "site": "0x1400fab27",
+     "caller": "0x1400fa190",
+     "caller_name": "rhapsody::rg::executor::GraphExecutionRecorder::execute_compiled::he77827c1ebb95e22",
+     "arg_regs_observed": [
+      "rcx",
+      "rdx"
+     ],
+     "prefix_count": 2,
+     "gap": false,
+     "defs": {
+      "rdx": {
+       "source": "mem:[rbp+528]",
+       "addr": "0x1400fab20"
+      },
+      "rcx": {
+       "source": "reg:rdi",
+       "addr": "0x1400fab1d"
+      }
+     },
+     "xmm_observed": [],
+     "stack_arg_stores": [],
+     "barrier": [
+      "0x1400faaf6",
+      "call"
+     ],
+     "confidence": "high"
+    },
+    {
+     "site": "0x140bec7f2",
+     "caller": "0x140bec400",
+     "caller_name": "rhapsody::rg::executor::GraphExecutionRecorder::end_frame",
+     "arg_regs_observed": [
+      "rcx",
+      "rdx"
+     ],
+     "prefix_count": 2,
+     "gap": false,
+     "defs": {
+      "rcx": {
+       "source": "reg:rdi",
+       "addr": "0x140bec7ef"
+      },
+      "rdx": {
+       "source": "mem:[rdi+376]",
+       "addr": "0x140bec7e1"
+      }
+     },
+     "xmm_observed": [],
+     "stack_arg_stores": [],
+     "barrier": [
+      "0x140bec7d3",
+      "call"
+     ],
+     "confidence": "high"
+    }
+   ]
+  },
+  "0x140bf0b90": {
+   "va": "0x140bf0b90",
+   "name": "rhapsody::raw::device::Queue::update_pending_submissions",
+   "modules": [
+    "raw::device"
+   ],
+   "n_incoming_direct_callsites": 2,
+   "n_resolved_callsites": 2,
+   "consensus": {
+    "observed_arg_regs": [
+     "rcx",
+     "rdx"
+    ],
+    "prefix_count": 2,
+    "sources": {
+     "rcx": "mem:[rdi+16]",
+     "rdx": "reg:rsi"
+    },
+    "stack_arg_stores": [],
+    "confidence": "high",
+    "from_site": "0x1418c3558"
+   },
+   "callsites": [
+    {
+     "site": "0x1418c3558",
+     "caller": "0x1418c3300",
+     "caller_name": "rhapsody::raw::submit::SubmissionEngine::update_queue_pending_submissions",
+     "arg_regs_observed": [
+      "rcx",
+      "rdx"
+     ],
+     "prefix_count": 2,
+     "gap": false,
+     "defs": {
+      "rdx": {
+       "source": "reg:rsi",
+       "addr": "0x1418c3555"
+      },
+      "rcx": {
+       "source": "mem:[rdi+16]",
+       "addr": "0x1418c3551"
+      }
+     },
+     "xmm_observed": [],
+     "stack_arg_stores": [],
+     "barrier": [
+      "0x1418c3535",
+      "call"
+     ],
+     "confidence": "high"
+    },
+    {
+     "site": "0x1418c358f",
+     "caller": "0x1418c3300",
+     "caller_name": "rhapsody::raw::submit::SubmissionEngine::update_queue_pending_submissions",
+     "arg_regs_observed": [
+      "rcx",
+      "rdx"
+     ],
+     "prefix_count": 2,
+     "gap": false,
+     "defs": {
+      "rdx": {
+       "source": "reg:rsi",
+       "addr": "0x1418c358c"
+      },
+      "rcx": {
+       "source": "mem:[rdi+200]",
+       "addr": "0x1418c355d"
+      }
+     },
+     "xmm_observed": [],
+     "stack_arg_stores": [],
+     "barrier": [
+      "0x1418c3558",
+      "call"
+     ],
+     "confidence": "high"
+    }
+   ]
+  },
+  "0x1409dd4d0": {
+   "va": "0x1409dd4d0",
+   "name": "rhapsody::rg::pass_builder::PassBuilder$LT$UserData$GT$::render::hc316b716c5256a6b",
+   "modules": [
+    "rg::pass_builder"
+   ],
+   "n_incoming_direct_callsites": 0,
+   "n_resolved_callsites": 0,
+   "consensus": null,
+   "callsites": []
+  }
+ },
+ "coverage": {
+  "targets": 5,
+  "targets_with_incoming_callsite": 3,
+  "targets_with_resolved_callsite": 3,
+  "targets_high_confidence": 3,
+  "targets_no_incoming_callsite": 2,
+  "targets_undecidable": 2
+ }
+}

@@ -1,0 +1,422 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs.rs
+@@ -1,14 +1,15 @@
+ //! 玩家楼梯的图到几何计算，沿既有模块逐段恢复原 B 业务。
+ //!
+-//! 已绑定完整原码：节点 fold、锚点派生、形状遍历、对齐组合、装配计算与短请求。
+-//! 完整请求 producer、装饰生成和图编辑仍按各自合同推进；
+-//! 本计算器不通过空资源或默认请求代替这些尚未接线的上游。
++//! 已按完整原码恢复权威图、对齐、形状/样条、失败回退到本轮装配请求。
++//! 实际宿主 specialization、装饰生成和图编辑仍需各自闭包；
++//! 不通过空资源、默认请求或本地简化样条代替尚未接线的上游。
+ 
+ use bevy_ecs::prelude::*;
+ use country_core::resources::walls::decorator_storage::DecoratorStorage;
+ use country_core::resources::walls::decorator::DecoratorId;
+ use country_core::resources::stairs::stairs_assembly_params::{
+-    AlignKind, PlayermadeStairsAssemblyParams, StairNodeAnchor, StairWallAnchor,
++    AdjustedStairEdge, AlignKind, PlayermadeStairsAssemblyParams, PlayermadeStairsAssemblyRequests,
++    StairNodeAnchor, StairWallAnchor,
+     StairSubSegment, StairSubSegments,
+ };
+ use country_core::resources::stairs::stairs_state::{StairGraphEdge, StairSegment, StairsState};
+@@ -343,10 +344,233 @@
+     // U：楼梯视觉生成主体待取证。
+ }
+ 
+-/// 0x140276e80 / 0x14027e470（O 结构，泛型 <false,true>）：生成玩家楼梯请求
+-/// （形状遍历 → 段类型 → 节点参数 → 装配参数）。
+-pub fn generate_playermade_stair_requests<const X: bool>() {
+-    // U：主体待取证。
++/// 原 false140276e80 / true14027e470：权威图到完整本轮请求和双向几何图。
++/// X 只控制旧 dirty 的继承；实际宿主 specialization 由原注册链另行绑定。
++pub fn generate_playermade_stair_requests<const X: bool>(
++    storage: Res<DecoratorStorage>,
++    cached: Res<CachedDecoratorTransforms>,
++    walls: Res<PublicWalls>,
++    terrain: Res<TerrainHeightsData<VisualTerrainHeightSsbo>>,
++    stairs: Res<StairsState>,
++    mut requests: ResMut<PlayermadeStairsAssemblyRequests>,
++    _signifiers: Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,
++    demo: Res<country_core::systems::backend::input::translate_input::DemoModeEnabled>,
++) {
++    // 现代 adapter 复用 App 的唯一 Demo owner，原 body 入口即返回。
++    if demo.0 { return; }
++    let old_dirty = if X {
++        requests.requests.iter().filter(|request| request.dirty)
++            .map(|request| StairGraphEdge::from(request.segment)).collect()
++    } else { std::collections::HashSet::new() };
++    requests.requests.clear();
++    let points = collect_stair_points(&storage, &cached, &walls, &stairs);
++    let mut alignments = std::mem::take(&mut requests.alignments);
++    let mut adjusted_edges = std::mem::take(&mut requests.adjusted_edges);
++    // 原 GraphMap::clear 清节点和边并保 allocation，不能只清边或换新图。
++    alignments.clear();
++    adjusted_edges.clear();
++    for raw_id in stairs.graph().nodes() {
++        let id = DecoratorId(raw_id);
++        let neighbors: Vec<_> = stairs.graph().neighbors(raw_id).collect();
++        let mut candidates = Vec::new();
++        for raw_neighbor in neighbors {
++            let neighbor = DecoratorId(raw_neighbor);
++            let from = points.get(&id).expect("stair requests: missing source point");
++            let to = points.get(&neighbor).expect("stair requests: missing neighbor point");
++            let delta = Vec2::new(to.position.x - from.position.x, to.position.z - from.position.z);
++            let preferences = find_alignment_preferences(from, to, delta, &storage, &walls);
++            if preferences.is_empty() {
++                // 反向节点自有偏好；这里不能顺手覆盖 neighbor→id。
++                alignments.add_edge(id, neighbor, AlignKind { tag: 2, ..AlignKind::default() });
++            } else {
++                candidates.push((neighbor, preferences));
++            }
++        }
++        for (neighbor, alignment) in find_best_neighbor_alignments(&candidates, 0).0 {
++            alignments.add_edge(id, neighbor, alignment);
++        }
++    }
++    propagate_alignment_flags(&mut alignments);
++    let sources = StairRequestSources {
++        storage: &storage, cached: &cached, walls: &walls, stairs: &stairs, terrain: &terrain,
++    };
++    let mut remaining = stairs.graph().clone();
++    let mut path = std::collections::VecDeque::new();
++    let mut control_points = Vec::new();
++    let mut failed_edges = Vec::new();
++    // 原每请求 Bump、逐路径 reset；保用户 owned Vec Spline，复用本轮 scratch Vec。
++    // owned Spline 的 allocation retention 与原 Bump 不同，不能声称 allocator 等价。
++    loop {
++        let seed = remaining.all_edges().next().map(|(a, b, _)| (a, b));
++        let Some((raw_a, raw_b)) = seed else { break; };
++        path.clear();
++        control_points.clear();
++        remaining.remove_edge(raw_a, raw_b);
++        path.push_back(raw_a);
++        path.push_back(raw_b);
++        let mut front_is_wall = false;
++        let mut back_is_wall = false;
++        let mut closed = false;
++        loop {
++            let a = *path.front().expect("stair requests: empty path front");
++            if storage.lookup_decorator_info(DecoratorId(a)).is_some_and(|info| info.is_wall_dst()) {
++                front_is_wall = true;
++                break;
++            }
++            if a == *path.back().expect("stair requests: empty path back") {
++                closed = true;
++                break;
++            }
++            let Some(b) = remaining.neighbors(a).next() else { break; };
++            remaining.remove_edge(a, b);
++            path.push_front(b);
++        }
++        loop {
++            let a = *path.back().expect("stair requests: empty path back");
++            if storage.lookup_decorator_info(DecoratorId(a)).is_some_and(|info| info.is_wall_dst()) {
++                back_is_wall = true;
++                break;
++            }
++            if a == *path.front().expect("stair requests: empty path front") {
++                closed = true;
++                break;
++            }
++            let Some(b) = remaining.neighbors(a).next() else { break; };
++            remaining.remove_edge(a, b);
++            path.push_back(b);
++        }
++        if front_is_wall && back_is_wall && path.len() == 2 {
++            let a = DecoratorId(path[0].min(path[1]));
++            let b = DecoratorId(path[0].max(path[1]));
++            let from = points.get(&a).expect("wall stair request: missing first point");
++            let to = points.get(&b).expect("wall stair request: missing second point");
++            if let (DecoratorStorageAddr::Wall(first_wall), DecoratorStorageAddr::Wall(second_wall)) = (from.addr, to.addr) {
++                if first_wall == second_wall {
++                    let first_info = storage.get(from.addr).and_then(|bucket| bucket.get(a))
++                        .expect("wall stair request: missing first decorator");
++                    let second_info = storage.get(to.addr).and_then(|bucket| bucket.get(b))
++                        .expect("wall stair request: missing second decorator");
++                    // 原 wrapping 门只排除已知2/3/4；不能吞未知 tag 的后续失败。
++                    if first_info.dst_tag().wrapping_sub(5) <= 252 && second_info.dst_tag().wrapping_sub(5) <= 252 {
++                        let (first_position, first_alignment) = aligned_stair_control_point(&points, &alignments, a, b);
++                        let (second_position, second_alignment) = aligned_stair_control_point(&points, &alignments, b, a);
++                        let first_direction = first_alignment.outgoing_dir();
++                        let second_direction = second_alignment.outgoing_dir();
++                        adjusted_edges.add_edge(a, b, AdjustedStairEdge { position: first_position, outgoing_dir: first_direction });
++                        adjusted_edges.add_edge(b, a, AdjustedStairEdge { position: second_position, outgoing_dir: second_direction });
++                        let nodes = [derive_stair_node_params(first_info, &walls, &stairs, from.addr, a),
++                            derive_stair_node_params(second_info, &walls, &stairs, to.addr, b)];
++                        let wall = walls.get(from.addr.as_wall()).expect("wall stair request: missing wall");
++                        let output = walk_shape(wall, [first_alignment, second_alignment],
++                            [first_direction, -second_direction], [from.width, to.width],
++                            [first_info.wall_space_coord(), second_info.wall_space_coord()]);
++                        match utils::curve::Curve2::try_new_from_points(output.points, true) {
++                            Ok(curve) => requests.requests.push(compute_stair_assembly_params(
++                                StairAssemblyInput { nodes, points: [from, to],
++                                    alignments: [first_alignment, second_alignment],
++                                    positions: [first_position, second_position], directions: [first_direction, -second_direction],
++                                    ordered_ids: [a, b], curve },
++                                StairAssemblyOverrides { tangents: output.tangents, widths: output.widths,
++                                    heights: output.heights, sub_segments: output.sub_segments }, &terrain, &old_dirty,
++                            )),
++                            Err(_) => failed_edges.push([a, b]),
++                        }
++                        continue;
++                    }
++                }
++            }
++        }
++        let mut start_tangent = None;
++        for (&raw_from, &raw_to) in path.iter().zip(path.iter().skip(1)) {
++            let (position, alignment) = aligned_stair_control_point(&points, &alignments,
++                DecoratorId(raw_from), DecoratorId(raw_to));
++            if !closed && control_points.is_empty() {
++                start_tangent = match alignment.tag {
++                    0 => Some(alignment.first), 1 => Some(alignment.second), _ => None,
++                };
++            }
++            control_points.push(position);
++        }
++        let spline = if closed {
++            assert!(control_points.len() >= 3, "closed stair path needs at least three control points");
++            let spline = Spline2D::from_periodic_loop(&control_points);
++            let first = *control_points.first().expect("closed stair path: missing first control point");
++            control_points.push(first);
++            spline
++        } else {
++            let a = DecoratorId(*path.back().expect("open stair path: missing last node"));
++            let b = DecoratorId(*path.get(path.len() - 2).expect("open stair path: missing previous node"));
++            let (last, alignment) = aligned_stair_control_point(&points, &alignments, a, b);
++            let end_tangent = match alignment.tag {
++                0 => Some(-alignment.first), 1 => Some(-alignment.second), _ => None,
++            };
++            control_points.push(last);
++            Spline2D::from_control_points_with_tangents(&control_points, start_tangent, end_tangent)
++        };
++        let mut any_success = false;
++        for (index, control_pair) in control_points.windows(2).enumerate() {
++            let mut dense = densely_sample_spline_segment(&spline, index);
++            let mut a = DecoratorId(*path.get(index).expect("stair spline: missing first node"));
++            let mut b = DecoratorId(*path.get(index + 1).expect("stair spline: missing second node"));
++            let mut positions = [control_pair[0], control_pair[1]];
++            let mut outgoing = [dense.start_tangent, dense.end_tangent];
++            if a > b {
++                std::mem::swap(&mut a, &mut b);
++                dense.points.reverse();
++                positions.reverse();
++                outgoing.reverse();
++            }
++            let Ok(curve) = utils::curve::Curve2::try_new_from_points(dense.points, true) else { continue; };
++            let from = points.get(&a).expect("stair spline: missing first point");
++            let to = points.get(&b).expect("stair spline: missing second point");
++            let first_alignment = *alignments.edge_weight(a, b).expect("stair spline: missing first alignment");
++            let second_alignment = *alignments.edge_weight(b, a).expect("stair spline: missing second alignment");
++            adjusted_edges.add_edge(a, b, AdjustedStairEdge { position: positions[0], outgoing_dir: outgoing[0] });
++            adjusted_edges.add_edge(b, a, AdjustedStairEdge { position: positions[1], outgoing_dir: outgoing[1] });
++            let first_info = storage.get(from.addr).and_then(|bucket| bucket.get(a))
++                .expect("stair spline: missing first decorator");
++            let second_info = storage.get(to.addr).and_then(|bucket| bucket.get(b))
++                .expect("stair spline: missing second decorator");
++            let nodes = [derive_stair_node_params(first_info, &walls, &stairs, from.addr, a),
++                derive_stair_node_params(second_info, &walls, &stairs, to.addr, b)];
++            requests.requests.push(compute_stair_assembly_params(
++                StairAssemblyInput { nodes, points: [from, to], alignments: [first_alignment, second_alignment],
++                    positions, directions: [outgoing[0], -outgoing[1]], ordered_ids: [a, b], curve },
++                StairAssemblyOverrides { tangents: None, widths: None, heights: None, sub_segments: None },
++                &terrain, &old_dirty,
++            ));
++            any_success = true;
++        }
++        // 原不是每段 Err 均补短请求：只有整条 path 没有产出才补首 pair 一次。
++        if !any_success {
++            if let (Some(&a), Some(&b)) = (path.front(), path.get(1)) {
++                failed_edges.push([DecoratorId(a), DecoratorId(b)]);
++            }
++        }
++    }
++    // 孤点取原权威图，不能用已经消完所有边的 remaining 图。
++    for raw_id in stairs.graph().nodes() {
++        if stairs.graph().neighbors(raw_id).next().is_none() {
++            if let Some(request) = make_short_stair_request(&sources, &points, [DecoratorId(raw_id); 2], &old_dirty) {
++                requests.requests.push(request);
++            }
++        }
++    }
++    for endpoint_ids in failed_edges {
++        if let Some(request) = make_short_stair_request(&sources, &points, endpoint_ids, &old_dirty) {
++            requests.requests.push(request);
++        }
++    }
++    let dirty_nodes: std::collections::HashSet<_> = requests.requests.iter().filter(|request| request.dirty)
++        .flat_map(|request| { let (a, b) = request.segment.nodes(); [a, b] }).collect();
++    if !dirty_nodes.is_empty() {
++        for request in &mut requests.requests {
++            let (a, b) = request.segment.nodes();
++            if dirty_nodes.contains(&a) || dirty_nodes.contains(&b) { request.dirty = true; }
++        }
++    }
++    requests.alignments = alignments;
++    requests.adjusted_edges = adjusted_edges;
+ }
+ 
+ /// 原 walk 返回五个真实 owner，None 与 Some(empty) 不合并。
+@@ -1594,4 +1818,160 @@
+         run_short_request(&world, &points, [DecoratorId(29), DecoratorId(7)], &Default::default());
+     }
+ 
+-}
++    fn install_request_resources(world: &mut World) {
++        world.insert_resource(PlayermadeStairsAssemblyRequests::default());
++        world.insert_resource(country_core::systems::ui::signifiers::signifier_create::UiSignifierStream::default());
++        world.insert_resource(country_core::systems::backend::input::translate_input::DemoModeEnabled(false));
++        world.resource_mut::<TerrainHeightsData<VisualTerrainHeightSsbo>>().set_height_range(-20.0, -20.0);
++    }
++
++    fn run_requests<const KEEP_DIRTY: bool>(world: &mut World) {
++        use bevy_ecs::system::RunSystemOnce;
++        world.run_system_once(generate_playermade_stair_requests::<KEEP_DIRTY>).unwrap();
++    }
++
++    fn request_graph_world(positions: &[Vec3], edges: &[(u32, u32)]) -> World {
++        use country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransform;
++        let mut storage = DecoratorStorage::default();
++        let mut cached = CachedDecoratorTransforms::default();
++        let mut stairs = StairsState::new();
++        for (index, &position) in positions.iter().enumerate() {
++            let id = (index + 1) as u32;
++            storage.apply_decorator_place(DecoratorStorageAddr::Terrain, DecoratorId(id),
++                &stair_info(3, position.y, 1.0));
++            cached.insert(id, CachedDecoratorTransform {
++                rotation: glam::Quat::IDENTITY, translation: position, scale: Vec3::ONE,
++            });
++            stairs.add_node(id);
++        }
++        for &(a, b) in edges { stairs.add_edge(a, b); }
++        let mut world = World::new();
++        world.insert_resource(storage); world.insert_resource(cached); world.insert_resource(stairs);
++        world.insert_resource(PublicWalls::default());
++        world.insert_resource(TerrainHeightsData::<VisualTerrainHeightSsbo>::new());
++        install_request_resources(&mut world);
++        world
++    }
++
++    #[test]
++    fn requests_open_spline_sorts_ids_with_geometry_and_publishes_both_directions() {
++        let mut world = compute_world([0.0, 1.0], [1.0, 3.0]);
++        install_request_resources(&mut world);
++        run_requests::<false>(&mut world);
++        let requests = world.resource::<PlayermadeStairsAssemblyRequests>();
++        assert_eq!(requests.requests.len(), 1);
++        let request = &requests.requests[0];
++        assert_eq!(request.segment.nodes(), (DecoratorId(7), DecoratorId(29)));
++        assert_eq!(request.curve.points.len(), 8);
++        assert!((request.curve.points[0] - Vec2::new(4.0, 0.0)).length() < 0.0001);
++        assert!(request.curve.points.last().unwrap().length() < 0.0001);
++        assert!((request.heights[0] - 1.0).abs() < 0.0001);
++        assert!(request.heights.last().unwrap().abs() < 0.0001);
++        assert_eq!(request.widths[0], 3.0);
++        assert_eq!(*request.widths.last().unwrap(), 1.0);
++        assert_eq!(request.tangents[0], Vec2::NEG_X);
++        assert_eq!(*request.tangents.last().unwrap(), Vec2::NEG_X);
++        assert_eq!(requests.alignments.edge_weight(DecoratorId(7), DecoratorId(29)).unwrap().tag, 2);
++        assert_eq!(requests.alignments.edge_weight(DecoratorId(29), DecoratorId(7)).unwrap().tag, 2);
++        let forward = requests.adjusted_edges.edge_weight(DecoratorId(7), DecoratorId(29)).unwrap();
++        let backward = requests.adjusted_edges.edge_weight(DecoratorId(29), DecoratorId(7)).unwrap();
++        assert_eq!(forward.position, Vec2::new(4.0, 0.0));
++        assert_eq!(backward.position, Vec2::ZERO);
++        assert!((forward.outgoing_dir.normalize_or_zero() - Vec2::NEG_X).length() < 0.0001);
++        assert!((backward.outgoing_dir.normalize_or_zero() - Vec2::X).length() < 0.0001);
++    }
++
++    #[test]
++    fn requests_keep_dirty_only_for_true_and_propagate_one_fixed_hop() {
++        let mut world = request_graph_world(&[
++            Vec3::ZERO, Vec3::new(4.0, 0.0, 0.0), Vec3::new(8.0, 0.0, 0.0), Vec3::new(12.0, 0.0, 0.0),
++        ], &[(1, 2), (2, 3), (3, 4)]);
++        let points = short_request_points(&world);
++        let dirty = std::collections::HashSet::from([StairGraphEdge::new(1, 2)]);
++        let previous = run_short_request(&world, &points, [DecoratorId(1), DecoratorId(2)], &dirty).unwrap();
++        world.resource_mut::<PlayermadeStairsAssemblyRequests>().requests.push(previous);
++        run_requests::<true>(&mut world);
++        let requests = world.resource::<PlayermadeStairsAssemblyRequests>();
++        assert_eq!(requests.requests.len(), 3);
++        let dirty_for = |a, b| requests.requests.iter()
++            .find(|request| request.segment == StairSegment::new(DecoratorId(a), DecoratorId(b))).unwrap().dirty;
++        assert!(dirty_for(1, 2));
++        assert!(dirty_for(2, 3));
++        assert!(!dirty_for(3, 4));
++        let allocation = requests.requests.as_ptr();
++        let capacity = requests.requests.capacity();
++        run_requests::<false>(&mut world);
++        let requests = world.resource::<PlayermadeStairsAssemblyRequests>();
++        assert_eq!(requests.requests.len(), 3);
++        assert!(requests.requests.iter().all(|request| !request.dirty));
++        assert_eq!(requests.requests.capacity(), capacity);
++        assert_eq!(requests.requests.as_ptr(), allocation);
++    }
++
++    #[test]
++    fn requests_demo_gate_preserves_current_requests_and_scratch_graphs() {
++        let mut world = request_graph_world(&[Vec3::ZERO, Vec3::new(4.0, 0.0, 0.0)], &[(1, 2)]);
++        run_requests::<false>(&mut world);
++        let allocation = world.resource::<PlayermadeStairsAssemblyRequests>().requests.as_ptr();
++        world.resource_mut::<PlayermadeStairsAssemblyRequests>().alignments.add_edge(DecoratorId(99), DecoratorId(100),
++            AlignKind { tag: 2, ..AlignKind::default() });
++        world.resource_mut::<country_core::systems::backend::input::translate_input::DemoModeEnabled>().0 = true;
++        run_requests::<true>(&mut world);
++        let requests = world.resource::<PlayermadeStairsAssemblyRequests>();
++        assert_eq!(requests.requests.len(), 1);
++        assert_eq!(requests.requests.as_ptr(), allocation);
++        assert!(requests.alignments.contains_edge(DecoratorId(99), DecoratorId(100)));
++        assert_eq!(requests.adjusted_edges.edge_count(), 2);
++    }
++
++    #[test]
++    fn requests_closed_spline_consumes_original_edges_and_keeps_isolated_nodes_separate() {
++        let mut world = request_graph_world(&[
++            Vec3::ZERO, Vec3::new(4.0, 0.0, 0.0), Vec3::new(2.0, 0.0, 3.0), Vec3::new(10.0, 0.0, 0.0),
++        ], &[(1, 2), (2, 3), (3, 1)]);
++        run_requests::<false>(&mut world);
++        let requests = world.resource::<PlayermadeStairsAssemblyRequests>();
++        assert_eq!(requests.requests.len(), 4);
++        assert_eq!(requests.requests.iter().filter(|request| request.segment.nodes().0 == request.segment.nodes().1).count(), 1);
++        assert_eq!(requests.adjusted_edges.edge_count(), 6);
++        assert_eq!(world.resource::<StairsState>().graph().edge_count(), 3);
++        assert!(requests.requests.iter().all(|request| request.curve.points.iter().all(|point| point.is_finite())));
++        assert_eq!(requests.requests.last().unwrap().segment.nodes(), (DecoratorId(4), DecoratorId(4)));
++    }
++
++    #[test]
++    fn requests_same_wall_curve_failure_keeps_published_edges_and_builds_short_request() {
++        use country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransform;
++        let (walls, wall_id) = published_wall();
++        let mut world = request_graph_world(&[Vec3::ZERO, Vec3::new(4.0, 0.0, 0.0)], &[(1, 2)]);
++        world.insert_resource(walls);
++        for id in [1, 2] {
++            world.resource_mut::<DecoratorStorage>().apply_decorator_place(DecoratorStorageAddr::Wall(wall_id),
++                DecoratorId(id), &stair_info(0, 4.0, 1.0));
++            world.resource_mut::<CachedDecoratorTransforms>().insert(id, CachedDecoratorTransform {
++                rotation: glam::Quat::IDENTITY, translation: Vec3::new(1.0, 4.0, 2.0), scale: Vec3::ONE,
++            });
++        }
++        run_requests::<false>(&mut world);
++        let requests = world.resource::<PlayermadeStairsAssemblyRequests>();
++        assert_eq!(requests.requests.len(), 1);
++        assert_eq!(requests.adjusted_edges.edge_count(), 2);
++        assert_eq!(requests.requests[0].heights, vec![4.0, 3.0]);
++        assert!(matches!(requests.requests[0].nodes[0].0, StairNodeAnchor::Wall(_)));
++        assert_eq!(requests.requests[0].segment.nodes(), (DecoratorId(1), DecoratorId(2)));
++    }
++
++    #[test]
++    fn requests_duplicate_control_points_reach_original_short_fallback() {
++        // 依赖 paired canonical native Spline2D：不能用本系统 finite 门掩盖共享缺口。
++        let mut world = request_graph_world(&[Vec3::ZERO, Vec3::ZERO], &[(1, 2)]);
++        run_requests::<false>(&mut world);
++        let requests = world.resource::<PlayermadeStairsAssemblyRequests>();
++        assert_eq!(requests.requests.len(), 1);
++        assert_eq!(requests.requests[0].curve.points, vec![Vec2::ZERO, Vec2::new(0.0, -1.0)]);
++        assert_eq!(requests.requests[0].heights, vec![0.0, 1.0]);
++        assert_eq!(requests.requests[0].segment.nodes(), (DecoratorId(1), DecoratorId(2)));
++        assert_eq!(requests.adjusted_edges.edge_count(), 0);
++    }
++
++}

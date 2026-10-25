@@ -1,0 +1,196 @@
+{
+  "wave": "P2 water-ice merge",
+  "date": "2026-10-13",
+  "owner": "integration (wave2 water/ice surface + software-BVH deferred-RT family)",
+  "review": "evidence/render-passes/review/water-ice/review.json + review.md",
+  "base": "candidate A adopted wholesale (water-ice-a); B/bin fragments folded per the review per-file winners",
+  "method": "apply review verdict: copy merged result into reconstruction/shader-source/shaders/ replacing ==SKELETON== placeholders; preserve ==RECONSTRUCTED== header + note MERGE provenance; then adjudicated inc fixes; verify each with recompile_check.py (hard gate = bindings/entry/LocalSize/capabilities; residual = opcode histogram / documented dxc-version caps). Oracle .bin read-only.",
+  "files": {
+    "water/deferred_rt.cs.hlsl": {
+      "winner": "merge (A base)",
+      "provenance": "A body + B/bin: octant sign-selected corner bytes (child A data[2].x/.z, child B data[2].y/.w) merged into combined count-byte accumulation feeding node entry + leaf; blue-noise scroll +bounce*137; post-bounce miss sky branch; fresnel 1-dot(view_ray,tangent) + sky gradient reflect_dir.y",
+      "status": "O",
+      "hard_gate": "PASS",
+      "bin": "_water_deferred_rt.cs.hlsl_cs_main_0.bin"
+    },
+    "water/ice_deferred_rt.cs.hlsl": {
+      "winner": "merge (A base)",
+      "provenance": "same hybrid traversal fix as deferred_rt + blue-noise +bounce*137 + miss sky branch",
+      "status": "O",
+      "hard_gate": "PASS",
+      "bin": "_water_ice_deferred_rt.cs.hlsl_cs_main_0.bin"
+    },
+    "water/ice_refl_march.cs.hlsl": {
+      "winner": "merge (A base)",
+      "provenance": "A Hilbert index + retry-on-bad; B/bin accept-gate polarity fixed (reflect(basis,v).z<0 -> accept; A inverted it)",
+      "status": "O",
+      "hard_gate": "PASS",
+      "bin": "_water_ice_refl_march.cs.hlsl_cs_main_0.bin"
+    },
+    "water/ice_refl_resolve.cs.hlsl": {
+      "winner": "A",
+      "provenance": "A body; dropped inc/curve.hlsl include (not in bin closure); FrexpStructType + frexp sourced from water/ice_shared.inc.hlsl",
+      "status": "O",
+      "hard_gate": "PASS",
+      "bin": "_water_ice_refl_resolve.cs.hlsl_cs_main_0.bin"
+    },
+    "water/ice_refr_resolve.cs.hlsl": {
+      "winner": "A",
+      "provenance": "A body verbatim (closure matches bin OpString list exactly)",
+      "status": "O",
+      "hard_gate": "PASS",
+      "bin": "_water_ice_refr_resolve.cs.hlsl_cs_main_0.bin"
+    },
+    "water/calc_deferred_rt_args.cs.hlsl": {
+      "winner": "A",
+      "provenance": "A RWByteAddressBuffer access (bin byte-address; B used RWStructuredBuffer)",
+      "status": "O",
+      "hard_gate": "PASS",
+      "bin": "_water_calc_deferred_rt_args.cs.hlsl_cs_main_0.bin"
+    },
+    "water/ice_cracks.raster.hlsl": {
+      "winner": "A (merge water_mask_sampler include)",
+      "provenance": "A path water/ice_cracks.raster.hlsl (bin embedded source path) + inc/water_mask_sampler.inc.hlsl (bin closure)",
+      "status": "O",
+      "hard_gate": "PASS",
+      "bins": ["_water_ice_cracks.raster.hlsl_b903e43ffb3da915.bin", "_water_ice_cracks.raster.hlsl_f0adff76827e73ff.bin"]
+    },
+    "water/ice_shared.inc.hlsl": {
+      "winner": "merge",
+      "provenance": "B FrexpStructType + frexp workaround (ice_refl_resolve bin name+closure; NOT inc/curve.hlsl) + A half pack/unpack helpers",
+      "status": "O",
+      "hard_gate": "N/A (include-only; verified via consumers ice_deferred_rt/ice_refl_march/ice_refl_resolve/ice_refr_resolve/ice_plane)"
+    },
+    "water/water_surface_frag.inc.hlsl": {
+      "winner": "merge",
+      "provenance": "B shared-inc layout (PS lives in the inc; bin PS reads only TEXCOORD1) + A faithful PS body + bin theme==4 fast path + TAA jitter table _244[frame_index&3]",
+      "status": "O",
+      "hard_gate": "N/A (include-only; verified via water_plane/waterfall both variants)"
+    },
+    "water/waterfall_vert.inc.hlsl": {
+      "winner": "merge",
+      "provenance": "A mesh layout + B hash3 (3-component uint3 chain 1664525/1013904223) + vs_main in the inc (bin VS entry lives in the inc)",
+      "status": "O",
+      "hard_gate": "N/A (include-only; verified via waterfall/waterfall_refraction_copy)"
+    },
+    "water/waves.inc.hlsl": {
+      "winner": "merge",
+      "provenance": "A tables {2,4,8,12}/{2,2,0.5,0.2}/{17,18,20,21} + 2-lattice blend + damp; B scalar two-component hash01 (x=h, y=h+(h<<15)); added bin 3-phase central-difference ripple normal",
+      "status": "O",
+      "hard_gate": "N/A (include-only; verified via water_plane/waterfall/lilypad/lilypad_flower/reed/leaf_particles)"
+    },
+    "water/water_mask_sampler.inc.hlsl": {
+      "winner": "A",
+      "provenance": "already reconstructed (P1c inc-fix #5); green channel .y verified against family bins + shared tree",
+      "status": "O",
+      "hard_gate": "N/A (include-only)"
+    },
+    "water_plane.raster.hlsl": {
+      "winner": "merge (A base)",
+      "provenance": "A bindings/$Globals/vs_main; PS moved into water/water_surface_frag.inc.hlsl (B layout) gated on WATER_SURFACE_FULL; theme-4 fast path + TAA jitter applied there",
+      "status": "O",
+      "hard_gate": "PASS",
+      "bins": ["_water_plane.raster.hlsl_b903e43ffb3da915.bin", "_water_plane.raster.hlsl_f0adff76827e73ff.bin"]
+    },
+    "ice_plane.raster.hlsl": {
+      "winner": "A",
+      "provenance": "A hex-lattice SampleGrad roughness + PCSS + 5 RTs (B roughness structurally wrong)",
+      "status": "O",
+      "hard_gate": "PASS",
+      "bins": ["_ice_plane.raster.hlsl_b903e43ffb3da915.bin", "_ice_plane.raster.hlsl_f0adff76827e73ff.bin"]
+    },
+    "water_snow_plane.raster.hlsl": {
+      "winner": "A",
+      "provenance": "A exact thresholds/tint uint2(4286644096,114677205)",
+      "status": "O",
+      "hard_gate": "PASS",
+      "bins": ["_water_snow_plane.raster.hlsl_b903e43ffb3da915.bin", "_water_snow_plane.raster.hlsl_f0adff76827e73ff.bin"]
+    },
+    "water_x_paths.raster.hlsl": {
+      "winner": "A",
+      "provenance": "A closure (texture_utils/texture_blend/water_mask_sampler/path_mask_sampler + material stack)",
+      "status": "O",
+      "hard_gate": "PASS",
+      "bins": ["_water_x_paths.raster.hlsl_b903e43ffb3da915.bin", "_water_x_paths.raster.hlsl_f0adff76827e73ff.bin"]
+    },
+    "water_plane_refraction_copy.raster.hlsl": {
+      "winner": "A",
+      "provenance": "A body; added inc/terrain_heightmap.inc.hlsl with TINYGLADE_TERRAIN_HEIGHTMAP_NO_GLOBAL guard (bin embeds the include, binds no terrain texture)",
+      "status": "O",
+      "hard_gate": "PASS",
+      "bins": ["_water_plane_refraction_copy.raster.hlsl_b903e43ffb3da915.bin", "_water_plane_refraction_copy.raster.hlsl_f0adff76827e73ff.bin"]
+    },
+    "waterfall.raster.hlsl": {
+      "winner": "merge (A base)",
+      "provenance": "A bindings/$Globals; vs_main from water/waterfall_vert.inc.hlsl (B hash3 + inc layout); PS from water/water_surface_frag.inc.hlsl (gated WATER_SURFACE_FULL)",
+      "status": "O",
+      "hard_gate": "PASS",
+      "bins": ["_waterfall.raster.hlsl_b903e43ffb3da915.bin", "_waterfall.raster.hlsl_f0adff76827e73ff.bin"]
+    },
+    "waterfall_refraction_copy.raster.hlsl": {
+      "winner": "A",
+      "provenance": "A procedural VS; vs_main + instance_buffer moved into water/waterfall_vert.inc.hlsl",
+      "status": "O",
+      "hard_gate": "PASS",
+      "bins": ["_waterfall_refraction_copy.raster.hlsl_b903e43ffb3da915.bin", "_waterfall_refraction_copy.raster.hlsl_f0adff76827e73ff.bin"]
+    }
+  },
+  "inc_fixes": {
+    "inc/rt.hlsl": {
+      "item": "BVH-traversal adjudication (review bvh_traversal_finding)",
+      "applied": true,
+      "note": "trace_software_bvh rewritten as the morton uint2[8]-stack hybrid: A count-byte mask accumulation ((count>>shift)&255)<<((mask>>shift)&31), node entry (data[1].x,(accum&0xFF000000)|(data[0].w>>24&255)) + leaf (data[1].y,accum&0xFFFFFF), break/pop control flow; B octant sign-selected corner bytes; shared morton/octant/slab; extent decode fixed to asfloat(byte<<23); decode_bvh_corner/load_child_aabb removed",
+      "verified": "water/deferred_rt.cs.hlsl + water/ice_deferred_rt.cs.hlsl hard gate PASS (they embed the same traversal inline)"
+    },
+    "inc/terrain_heightmap.inc.hlsl": {
+      "item": "make terrain_height() compilable without a global texture binding",
+      "applied": true,
+      "note": "terrain_height() guarded behind TINYGLADE_TERRAIN_HEIGHTMAP_NO_GLOBAL; consumers that cannot declare the global (water_plane_refraction_copy) define it before the include",
+      "verified": "water_plane_refraction_copy b903/f0ad hard gate PASS; stairs.cs (declares texture) still hard gate PASS"
+    },
+    "inc/blue_noise.hlsl": {
+      "item": "blue_noise_texture register t14 vs family t15 (tracker #17)",
+      "applied": true,
+      "note": "global declaration + fixed register(t14) removed; blue_noise() helper now takes the texture as a parameter; text.raster declares blue_noise_texture at t14 locally; water/ice family declares t15 locally",
+      "verified": "text.raster b903 hard gate PASS; ice_plane/ice_refl_march compile PASS"
+    },
+    "inc/perlin.hlsl": {
+      "item": "explicit-arithmetic perlin (review inc-fix #4)",
+      "applied": true,
+      "note": "perlin() return rewritten from lerp() bilinear to explicit multiply-add (asfloat(hash & 0x7FFFFF | 0x3F800000)-1 lattice)",
+      "verified": "water_plane full PS foam (calls perlin()) hard gate PASS; water_snow_plane/water_x_paths inline the explicit form"
+    },
+    "water/waves.inc.hlsl": {
+      "item": "review inc-fix #5",
+      "applied": true,
+      "note": "scalar two-component hash01 (x=h, y=h+(h<<15)) + 3-phase ripple normal (sin(w1), (sin(w2)-sin(w1))*0.5, (sin(w3)-sin(w1))*0.5) at +0.01 offsets",
+      "verified": "water_plane/waterfall/lilypad/lilypad_flower/reed/leaf_particles hard gate PASS"
+    },
+    "water/waterfall_vert.inc.hlsl": {
+      "item": "review inc-fix #5",
+      "applied": true,
+      "note": "waterfall_hash3 (3-component uint3 chain 1664525/1013904223) matches bin VS 8-corner chain",
+      "verified": "waterfall + waterfall_refraction_copy hard gate PASS"
+    },
+    "water/ice_shared.inc.hlsl": {
+      "item": "review inc-fix #6",
+      "applied": true,
+      "note": "FrexpStructType defined here (ice_refl_resolve bin name + closure); frexp workaround macro; inc/curve.hlsl dropped from ice_refl_resolve",
+      "verified": "ice_refl_resolve hard gate PASS"
+    },
+    "water/water_mask_sampler.inc.hlsl": {
+      "item": "review inc-fix #7",
+      "applied": false,
+      "note": "already correct (green channel .y); no edit needed"
+    }
+  },
+  "consumer_consequences": {
+    "leaf_particles.cs.hlsl": "water_noise_texture : register(t15) declaration moved before the water/waves.inc.hlsl include (waves.inc helper bodies now reference it; eager dxc sema)",
+    "lilypad.raster.hlsl": "same declaration-order fix",
+    "lilypad_flower.raster.hlsl": "same declaration-order fix",
+    "reed.raster.hlsl": "same declaration-order fix",
+    "text.raster.hlsl": "blue_noise_texture : register(t14) declared locally (inc no longer declares it)"
+  },
+  "reverted": [],
+  "blockers": []
+}

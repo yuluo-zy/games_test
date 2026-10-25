@@ -1,0 +1,76 @@
+# get_pos_at_u @ 0x1411ff620
+sig: void __cdecl get_pos_at_u(void)
+callees: [{'name': 'get_pos_at_u', 'address': '140c975a0'}]
+
+// WARNING: Type propagation algorithm not settling
+
+void __cdecl country_core::systems::wall::valid_enclosure::ShapeParameters::get_pos_at_u(void)
+
+{
+  byte *in_RCX;
+  float fVar1;
+  float fVar2;
+  float in_XMM1_Da;
+  float fVar3;
+  float fVar4;
+  float fVar5;
+  float afStack_70 [2];
+  float *pfStack_68;
+  code *pcStack_60;
+  undefined **ppuStack_58;
+  undefined8 uStack_50;
+  float **ppfStack_48;
+  undefined8 uStack_40;
+  undefined8 uStack_38;
+  
+  if ((*in_RCX & 1) == 0) {
+    ::utils::geometry::circle::Circle2d::get_pos_at_u();
+    return;
+  }
+  fVar2 = (float)((ulonglong)*(undefined8 *)(in_RCX + 0x14) >> 0x20);
+  fVar1 = (float)*(undefined8 *)(in_RCX + 0x14);
+  fVar3 = fVar2 + fVar1;
+  fVar5 = fVar3 + fVar3;
+  fVar4 = fVar2 / fVar5;
+  afStack_70[0] = fVar4;
+  if ((0.0 <= fVar4) && (fVar4 <= 1.0)) {
+    if (!NAN(fVar4)) {
+      fVar3 = fVar3 / fVar5;
+      afStack_70[0] = fVar3;
+      if ((fVar3 < 0.0) || (1.0 < fVar3)) goto LAB_140c99a93;
+      if (!NAN(fVar3)) {
+        afStack_70[0] = (fVar2 + fVar2 + fVar1) / fVar5;
+        if ((afStack_70[0] < 0.0) || (1.0 < afStack_70[0])) goto LAB_140c99a93;
+        if (!NAN(afStack_70[0])) {
+          if (((in_XMM1_Da != 0.0) || (NAN(in_XMM1_Da))) &&
+             ((in_XMM1_Da != 1.0 || (NAN(in_XMM1_Da))))) {
+            if ((((fVar4 != in_XMM1_Da) || (NAN(fVar4) || NAN(in_XMM1_Da))) &&
+                ((fVar3 != in_XMM1_Da || (NAN(fVar3) || NAN(in_XMM1_Da))))) &&
+               ((afStack_70[0] != in_XMM1_Da || (NAN(afStack_70[0]) || NAN(in_XMM1_Da))))) {
+              ::utils::geometry::rectangle::impl$1::get_pos_at_u::closure_0();
+              return;
+            }
+          }
+          if (0.0 < fVar2 * fVar1) {
+            return;
+          }
+                    // WARNING: Subroutine does not return
+          core::panicking::panic();
+        }
+      }
+    }
+                    // WARNING: Subroutine does not return
+    core::panicking::panic();
+  }
+LAB_140c99a93:
+  pfStack_68 = afStack_70;
+  pcStack_60 = core::fmt::float::impl$5::fmt;
+  ppuStack_58 = &anon_ca83a639f917387dae152b8c26146856_1_llvm_10654403658398494596;
+  uStack_50 = 1;
+  uStack_38 = 0;
+  ppfStack_48 = &pfStack_68;
+  uStack_40 = 1;
+                    // WARNING: Subroutine does not return
+  core::panicking::panic_fmt();
+}
+

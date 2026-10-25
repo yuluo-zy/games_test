@@ -1,0 +1,45 @@
+{
+  "native_va": "0x141278050",
+  "native_bytes": 499,
+  "range_sha256": "93edb35144df9ea39baa082b85f62c305d55d4da71a7115410e35f763f7c3f25",
+  "range_matches_original_rne": true,
+  "original_asm_path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/progress-20261020/decorator-interaction/raycast_offset.asm",
+  "original_asm_sha256": "7aba2deaa90c7beee3997c24f01ef06a144bfe363f394025ac0d64e1c3db015a",
+  "frozen_goldens_path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/progress-20261020/decorator-interaction/offset-ray-goldens.json",
+  "frozen_goldens_sha256": "38123d02a3b7cf62b9bbfe41e6db35b68c21567e53f6796a5e824d1922980fd8",
+  "production_algorithm_path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/ui_systems/calculate_decorator_grab_offset.rs",
+  "production_algorithm_sha256": "338e58cd6ceaf5760ff021d0b6a2214fad0022ca8309474da87e608bafacad96",
+  "official_std_documentation_path": "/Users/yuluo/.rustup/toolchains/stable-aarch64-apple-darwin/share/doc/rust/html/std/primitive.f32.html",
+  "official_std_documentation_sha256": "764af364851e2384ac35b01841a6af306a398b15bb358b5e3eafc62806430a4b",
+  "official_std_url": "https://doc.rust-lang.org/std/primitive.f32.html#nan-bit-patterns",
+  "short_quote": "The result has a non-deterministic sign.",
+  "failing_actual_bits": [
+    "0xff800000",
+    "0x7fc00000",
+    "0xff800000"
+  ],
+  "frozen_original_expected_bits": [
+    "0xff800000",
+    "0xffc00000",
+    "0xff800000"
+  ],
+  "affected_cases": [
+    {
+      "type": 56,
+      "physical": false,
+      "terrain": false,
+      "direction_y_bits": 0,
+      "axis": 1,
+      "reason": "0 * -Inf generates arithmetic quiet NaN"
+    },
+    {
+      "type": 63,
+      "physical": false,
+      "terrain": false,
+      "direction_y_bits": 0,
+      "axis": 1,
+      "reason": "0 * -Inf generates arithmetic quiet NaN"
+    }
+  ],
+  "scope": "only test-side known arithmetic NaN sign across non-x86 target; quiet/payload31 bits remain exact; finite/Inf/signedzero and all x86_64 remain all32bits"
+}

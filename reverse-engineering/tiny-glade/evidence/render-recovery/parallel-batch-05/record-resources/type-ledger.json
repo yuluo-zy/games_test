@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "target_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "types": [
+    {"name":"Pass","size_observed":64,"fields":{"0x08":"resource-reference array pointer","0x10":"resource-reference array length","0x28":"callback data pointer (taken/zeroed before invoke)","0x30":"callback vtable"},"evidence":"batch04 pass-record.objdump.txt 0x1402c342b..0x1402c379e","abi_claim":false},
+    {"name":"PassResourceReference","stride_observed":12,"fields":{"0x00":"logical resource index; trailing eight bytes opaque"},"evidence":"0x1402c3450/0x1402c346f","abi_claim":false},
+    {"name":"Command","stride_observed":88,"fields":{"0x00":"state 1=open,2=ended","0x08":"command sequence; injected 7 here","0x48":"device command handle; injected 99/100 here"},"evidence":"R6 record/submit assembly + original bd6a70","abi_claim":false},
+    {"name":"ResourceControlBlock","fields":{"0x00":"atomic last tracked command sequence","0x0c":"generation"},"evidence":"original 0x140bd6a70 executes; prior batch02 gpu-lifecycle decompilation","abi_claim":false},
+    {"name":"ResourceRegistry","fields":{"0x48":"AccessChain Vec","0x60":"pass access ranges Vec","0x78":"ResourceLifetime Vec"},"evidence":"R5 pre oracle + helper 0x1402c34b4","abi_claim":false}
+  ],
+  "rust_types":"LogicalResource/PassAccess/Pass/Command/Recorder are semantic source projections, not repr(C) layout claims"
+}

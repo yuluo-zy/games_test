@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-10-19T20:32:08.155509+00:00",
+  "reviewer": "07 independent validation",
+  "verdict": "new_counterexample_rejected_no_schema_rename",
+  "rejected_claim": {
+    "manifest": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-1d83d856c7a8e81b88/window-candidates-20261020/window-key-route-correction-v1/FACT_MANIFEST_V1.json",
+    "manifest_sha256": "ded4de15d8f46e457eef76ab84ece48d6baa78a7ad5cc670608a6b8883ef45fd",
+    "document": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-1d83d856c7a8e81b88/window-candidates-20261020/window-key-route-correction-v1/FACT_CORRECTION_V1.md",
+    "document_sha256": "6ba23cedad9bd13e1c4bf0c6d473143cf2492e698f40297893a20661c9d1afba",
+    "claim": "candidate+40 modified DecoratorId and +48 shutter_right hash, hence original schema key/hash and wall identities wrong"
+  },
+  "independent_evidence": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-c89f35d68343a58e6f/window-candidates-20261020/evidence/native-pack-v2/cottage-window-producer.json",
+      "sha256": "67eae38790df5e263cd59331a57d3cc765e1582b3bed529ab55bcf02b50702f1",
+      "range": {
+        "rva": "0x7ebfd0",
+        "length": 14303,
+        "start_va": "0x1407ebfd0",
+        "stop_va_exclusive": "0x1407ef7af",
+        "instruction_overhang_bytes": 0,
+        "function_boundary_verified": false
+      },
+      "instructions_rechecked_direct_pe": 2641,
+      "continuous_bytes": 14303
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-c89f35d68343a58e6f/window-candidates-20261020/evidence/native-pack-v2/on-windows-consumer.json",
+      "sha256": "873a84d939057571baa550935c7eb5b547f5193479bf6130d407826f0aec8b4b",
+      "range": {
+        "rva": "0x22cd7d0",
+        "length": 1622,
+        "start_va": "0x1422cd7d0",
+        "stop_va_exclusive": "0x1422cde26",
+        "instruction_overhang_bytes": 0,
+        "function_boundary_verified": false
+      },
+      "instructions_rechecked_direct_pe": 420,
+      "continuous_bytes": 1622
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-1d83d856c7a8e81b88/window-candidates-20261020/evidence/native-pack-v1/manage-autoclutter-entities-full.json",
+      "sha256": "72f39c81c5f0882aec0b316bcff2ee6390dd8a8934686d5e6e67e779fc95dca7",
+      "range": {
+        "rva": "0x22d04e0",
+        "length": 10301,
+        "start_va": "0x1422d04e0",
+        "stop_va_exclusive": "0x1422d2d1d",
+        "instruction_overhang_bytes": 0,
+        "function_boundary_verified": false
+      },
+      "instructions_rechecked_direct_pe": 2122,
+      "continuous_bytes": 10301
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-1d83d856c7a8e81b88/window-candidates-20261020/window-key-route-correction-v1/native-pack/manager-target-map-from-iter-full.json",
+      "sha256": "669b323e3b26af74282257550cd420ae38b8b704e790ed40b721e15844830520",
+      "range": {
+        "rva": "0x2612aa0",
+        "length": 316,
+        "start_va": "0x142612aa0",
+        "stop_va_exclusive": "0x142612bdc",
+        "instruction_overhang_bytes": 0,
+        "function_boundary_verified": false
+      },
+      "instructions_rechecked_direct_pe": 97,
+      "continuous_bytes": 316
+    }
+  ],
+  "decisive_original_dataflow": [
+    "Right shutter: ee6f6 reads the prior modified-id slot only to construct the hash input; ee703/ee711 selects shutter_right/13, ee723 calls hash, ee728 writes hash to local280. ee739/ee740 separately copies actual outer-key local1f0 to local1f8. At ee863/ee86a candidate40 receives the new hash; ee86f/ee876 candidate48 receives local1f8.",
+    "Left shutter: ee897 supplies the old modified-id value as hash input; ee8a4/ee8b2 selects shutter_left/12, ee8c4 calls hash, ee8c9 OVERWRITES local278 with that hash. ee8da/ee8e1 separately OVERWRITES local280 from local1f0. Only afterward ee9c7/ee9ce stores local278 to candidate40 and ee9d3/ee9da stores local280 to candidate48. Connecting ec4a6 or ee728 to these later stores without intervening definitions is invalid.",
+    "Actual local1f0 originates ec3cd from the first qword of the iterated 0x98 outer storage entry and is stored ec3d5. It remains the source of both right/left candidate48 copies above, consistent with the previously admitted per-wall key identity; this review adds no new numeric ABI promise.",
+    "The unchanged drain reads candidate40 at cd97d and emits output40 at cd90a; candidate48 at cd981 is transported to output20 at cd8e5. Full316B target-map construction reads object40 at 2612b58 as the HashMap key. Manager reads actual map key d19fb and writes it into AutoClutter insertion payload d1b81. This supports preserving the current40 route, not swapping40/48."
+  ],
+  "literal_bytes_checked": [
+    {
+      "va": "0x142a8a900",
+      "bytes_hex": "736875747465725f7269676874"
+    },
+    {
+      "va": "0x142a8a928",
+      "bytes_hex": "736875747465725f6c656674"
+    }
+  ],
+  "source_decision": "Do not rename wall to neutral u64, exchange fields, or replace native40 key using this rejected counterexample. Preserve frozen schema/source reviews and retain this appended rejection of the later erroneous fact packet. Authors acknowledged withdrawal; any future independent conflicting producer must include all reaching stack definitions and actual branch path.",
+  "scope_limits": [
+    "This is an independent static machine-code/dataflow correction, not original-program execution, Rust typechecking, or actual Window scene validation.",
+    "The original manager key route is preserved even if a suggested semantic label seemed more intuitive. No production/source/claim mutation was performed."
+  ]
+}

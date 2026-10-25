@@ -1,0 +1,2 @@
+import json,pathlib
+p=pathlib.Path('reverse-engineering/tiny-glade/evidence/render-architecture/public-symbols.json');s=json.loads(p.read_text());rows=[q for q in s if 'icc' in q.get('demangled','').lower()];pathlib.Path('reverse-engineering/tiny-glade/evidence/round13-frame-graph-gpu/review/icc-publics.json').write_text(json.dumps(rows,indent=2));print('\n'.join(str(q['va'])+' '+q['demangled'] for q in rows))

@@ -1,0 +1,116 @@
+// update @ 0x140a53a00
+
+void __cdecl country_core::resources::audio_resources::AudioCoreInner::update(void)
+
+{
+  undefined8 *extraout_RAX;
+  undefined8 *in_RDX;
+  float fVar1;
+  float fVar2;
+  longlong local_180;
+  ulonglong local_148 [7];
+  ulonglong *local_110;
+  code *local_108;
+  longlong local_100;
+  undefined8 uStack_f8;
+  undefined8 local_f0;
+  undefined8 uStack_e8;
+  undefined8 local_e0;
+  undefined8 uStack_d8;
+  undefined1 local_d0;
+  longlong local_c8;
+  undefined *puStack_c0;
+  undefined8 local_b8;
+  undefined8 uStack_b0;
+  float local_a8;
+  float fStack_a4;
+  float fStack_a0;
+  float fStack_9c;
+  undefined8 local_98;
+  undefined *local_90;
+  undefined8 local_88;
+  undefined4 local_80;
+  undefined4 local_7c;
+  undefined **local_78;
+  undefined8 local_70;
+  undefined8 **local_68;
+  undefined8 local_60;
+  longlong *local_58;
+  undefined8 local_50;
+  undefined8 local_40;
+  
+  local_40 = 0xfffffffffffffffe;
+  uStack_b0 = in_RDX[3];
+  fVar1 = (float)uStack_b0;
+  fVar2 = (float)((ulonglong)uStack_b0 >> 0x20);
+  local_a8 = *(float *)(in_RDX + 4);
+  if (0.001 <= SQRT(local_a8 * local_a8 + fVar2 * fVar2 + fVar1 * fVar1) + -1.0) {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic();
+  }
+  fStack_a4 = (float)*(undefined8 *)((longlong)in_RDX + 0x24);
+  fStack_a0 = (float)((ulonglong)*(undefined8 *)((longlong)in_RDX + 0x24) >> 0x20);
+  fStack_9c = *(float *)((longlong)in_RDX + 0x2c);
+  if (0.001 <= SQRT(fStack_9c * fStack_9c + fStack_a0 * fStack_a0 + fStack_a4 * fStack_a4) + -1.0) {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic();
+  }
+  if (0.001 <= ABS(local_a8 * fStack_9c + fVar2 * fStack_a0 + fVar1 * fStack_a4)) {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic();
+  }
+  local_c8 = *in_RDX;
+  puStack_c0 = (undefined *)in_RDX[1];
+  local_b8 = in_RDX[2];
+  local_148[0] = local_148[0] & 0xffffffff00000000;
+  libfmod::Studio::set_listener_attributes();
+  if (local_100 == -0x7ffffffffffffffc) {
+    libfmod::Studio::update();
+    if (local_180 != -0x7ffffffffffffffc) {
+      if (*(longlong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E != 0) {
+        local_108 = libfmod::impl$341::fmt;
+        local_100 = 2;
+        uStack_f8 = 2;
+        local_f0 = 2;
+        local_e0 = 0;
+        uStack_d8 = 0x400000020;
+        local_d0 = 3;
+        local_110 = local_148;
+        ::toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();
+        local_7c = *(undefined4 *)(extraout_RAX + 2);
+        local_98 = 1;
+        local_90 = &DAT_142ad2550;
+        local_88 = 0x28;
+        local_78 = &PTR_s_FMOD_update_error__142ad29c0;
+        local_70 = 1;
+        local_68 = &local_110;
+        local_60 = 1;
+        local_50 = 1;
+        local_c8 = 0;
+        puStack_c0 = &DAT_142ad2550;
+        local_b8 = 0x28;
+        uStack_b0 = 0;
+        local_a8 = (float)*extraout_RAX;
+        fStack_a4 = (float)((ulonglong)*extraout_RAX >> 0x20);
+        fStack_a0 = (float)extraout_RAX[1];
+        fStack_9c = (float)((ulonglong)extraout_RAX[1] >> 0x20);
+        local_80 = 1;
+        local_58 = &local_100;
+        ::log::__private_api::impl$2::log();
+      }
+      core::ptr::drop_in_place<enum2_<libfmod::Error>_>();
+    }
+    return;
+  }
+  local_a8 = (float)local_e0;
+  fStack_a4 = (float)((ulonglong)local_e0 >> 0x20);
+  fStack_a0 = (float)uStack_d8;
+  fStack_9c = (float)((ulonglong)uStack_d8 >> 0x20);
+  local_b8 = local_f0;
+  uStack_b0 = uStack_e8;
+  local_c8 = local_100;
+  puStack_c0 = (undefined *)uStack_f8;
+                    // WARNING: Subroutine does not return
+  core::result::unwrap_failed();
+}
+

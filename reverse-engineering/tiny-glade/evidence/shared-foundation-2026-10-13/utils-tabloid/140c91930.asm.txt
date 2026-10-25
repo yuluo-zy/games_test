@@ -1,0 +1,112 @@
+utils::pack_srgba_u32::h942cdbbd79734ca6
+0x140c91930: sub rsp, 0x78
+0x140c91934: movaps xmmword ptr [rsp + 0x60], xmm10
+0x140c9193a: movaps xmmword ptr [rsp + 0x50], xmm9
+0x140c91940: movaps xmmword ptr [rsp + 0x40], xmm8
+0x140c91946: movaps xmmword ptr [rsp + 0x30], xmm7
+0x140c9194b: movaps xmmword ptr [rsp + 0x20], xmm6
+0x140c91950: movss xmm7, dword ptr [rcx]
+0x140c91954: movss xmm6, dword ptr [rcx + 4]
+0x140c91959: movss xmm8, dword ptr [rcx + 8]
+0x140c9195f: movups xmm9, xmmword ptr [rcx]
+0x140c91963: movss xmm10, dword ptr [rip + 0x1d7f4bc] ; [0x142a10e28]=1c2e4d3b f32=0.0031308000907301903
+0x140c9196c: ucomiss xmm10, xmm7
+0x140c91970: jae 0x140c919b4
+0x140c91972: movss xmm1, dword ptr [rip + 0x1d7f4b2] ; [0x142a10e2c]=5555d53e f32=0.4166666567325592
+0x140c9197a: movaps xmm0, xmm7
+0x140c9197d: call 0x142923f70
+0x140c91982: movaps xmm7, xmm0
+0x140c91985: mulss xmm7, dword ptr [rip + 0x1d7f4a3] ; [0x142a10e30]=3d0a873f f32=1.0549999475479126
+0x140c9198d: addss xmm7, dword ptr [rip + 0x1d7f49f] ; [0x142a10e34]=ae4761bd f32=-0.054999999701976776
+0x140c91995: ucomiss xmm10, xmm6
+0x140c91999: jb 0x140c919c2
+0x140c9199b: mulss xmm6, dword ptr [rip + 0x1d7f495] ; [0x142a10e38]=52b84e41 f32=12.920000076293945
+0x140c919a3: ucomiss xmm10, xmm8
+0x140c919a7: jb 0x140c919eb
+0x140c919a9: mulss xmm8, dword ptr [rip + 0x1d7f486] ; [0x142a10e38]=52b84e41 f32=12.920000076293945
+0x140c919b2: jmp 0x140c91a12
+0x140c919b4: mulss xmm7, dword ptr [rip + 0x1d7f47c] ; [0x142a10e38]=52b84e41 f32=12.920000076293945
+0x140c919bc: ucomiss xmm10, xmm6
+0x140c919c0: jae 0x140c9199b
+0x140c919c2: movss xmm1, dword ptr [rip + 0x1d7f462] ; [0x142a10e2c]=5555d53e f32=0.4166666567325592
+0x140c919ca: movaps xmm0, xmm6
+0x140c919cd: call 0x142923f70
+0x140c919d2: movaps xmm6, xmm0
+0x140c919d5: mulss xmm6, dword ptr [rip + 0x1d7f453] ; [0x142a10e30]=3d0a873f f32=1.0549999475479126
+0x140c919dd: addss xmm6, dword ptr [rip + 0x1d7f44f] ; [0x142a10e34]=ae4761bd f32=-0.054999999701976776
+0x140c919e5: ucomiss xmm10, xmm8
+0x140c919e9: jae 0x140c919a9
+0x140c919eb: movss xmm1, dword ptr [rip + 0x1d7f439] ; [0x142a10e2c]=5555d53e f32=0.4166666567325592
+0x140c919f3: movaps xmm0, xmm8
+0x140c919f7: call 0x142923f70
+0x140c919fc: movaps xmm8, xmm0
+0x140c91a00: mulss xmm8, dword ptr [rip + 0x1d7f427] ; [0x142a10e30]=3d0a873f f32=1.0549999475479126
+0x140c91a09: addss xmm8, dword ptr [rip + 0x1d7f422] ; [0x142a10e34]=ae4761bd f32=-0.054999999701976776
+0x140c91a12: unpcklps xmm6, xmm8
+0x140c91a16: movaps xmm0, xmmword ptr [rip + 0x1d4c2f3] ; [0x1429ddd10]=00007f43 f32=255.0
+0x140c91a1d: shufps xmm7, xmm9, 0xf4
+0x140c91a22: shufps xmm7, xmm9, 0xf2
+0x140c91a27: mulps xmm7, xmm0
+0x140c91a2a: movaps xmm2, xmmword ptr [rip + 0x1c93eaf] ; [0x1429258e0]=0000003f f32=0.5
+0x140c91a31: addps xmm7, xmm2
+0x140c91a34: xorps xmm1, xmm1
+0x140c91a37: xorps xmm5, xmm5
+0x140c91a3a: maxps xmm5, xmm7
+0x140c91a3d: movaps xmm3, xmm0
+0x140c91a40: cmpltps xmm3, xmm5
+0x140c91a44: unpcklps xmm3, xmm3
+0x140c91a47: movmskpd r8d, xmm3
+0x140c91a4c: movss xmm7, dword ptr [rip + 0x1ca921c] ; [0x14293ac70]=00007f43 f32=255.0
+0x140c91a54: movaps xmm8, xmm7
+0x140c91a58: test r8b, 2
+0x140c91a5c: jne 0x140c91a63
+0x140c91a5e: movshdup xmm8, xmm5
+0x140c91a63: mulps xmm6, xmm0
+0x140c91a66: cvttss2si rax, xmm8
+0x140c91a6b: xor ecx, ecx
+0x140c91a6d: xorps xmm3, xmm3
+0x140c91a70: ucomiss xmm8, xmm3
+0x140c91a74: cmovb eax, ecx
+0x140c91a77: movss xmm4, dword ptr [rip + 0x1d0ed51] ; [0x1429a07d0]=ffff7f4f f32=4294967040.0
+0x140c91a7f: ucomiss xmm8, xmm4
+0x140c91a83: mov edx, 0xffffffff
+0x140c91a88: cmova eax, edx
+0x140c91a8b: test r8b, 1
+0x140c91a8f: jne 0x140c91a94
+0x140c91a91: movaps xmm7, xmm5
+0x140c91a94: cvttss2si r8, xmm7
+0x140c91a99: ucomiss xmm7, xmm3
+0x140c91a9c: cmovb r8d, ecx
+0x140c91aa0: ucomiss xmm7, xmm4
+0x140c91aa3: cmova r8d, edx
+0x140c91aa7: shl eax, 0x18
+0x140c91aaa: addps xmm6, xmm2
+0x140c91aad: maxps xmm1, xmm6
+0x140c91ab0: minps xmm0, xmm1
+0x140c91ab3: movshdup xmm1, xmm0
+0x140c91ab7: cvttss2si r9, xmm1
+0x140c91abc: ucomiss xmm1, xmm3
+0x140c91abf: cmovb r9d, ecx
+0x140c91ac3: ucomiss xmm1, xmm4
+0x140c91ac6: cmova r9d, edx
+0x140c91aca: movd xmm1, r9d
+0x140c91acf: cvttss2si r9, xmm0
+0x140c91ad4: ucomiss xmm0, xmm3
+0x140c91ad7: cmovb r9d, ecx
+0x140c91adb: ucomiss xmm0, xmm4
+0x140c91ade: cmova r9d, edx
+0x140c91ae2: movd xmm0, r9d
+0x140c91ae7: pslld xmm0, 0x10
+0x140c91aec: or eax, r8d
+0x140c91aef: movd ecx, xmm0
+0x140c91af3: or ecx, eax
+0x140c91af5: pslld xmm1, 8
+0x140c91afa: movd eax, xmm1
+0x140c91afe: or eax, ecx
+0x140c91b00: movaps xmm6, xmmword ptr [rsp + 0x20]
+0x140c91b05: movaps xmm7, xmmword ptr [rsp + 0x30]
+0x140c91b0a: movaps xmm8, xmmword ptr [rsp + 0x40]
+0x140c91b10: movaps xmm9, xmmword ptr [rsp + 0x50]
+0x140c91b16: movaps xmm10, xmmword ptr [rsp + 0x60]
+0x140c91b1c: add rsp, 0x78
+0x140c91b20: ret 

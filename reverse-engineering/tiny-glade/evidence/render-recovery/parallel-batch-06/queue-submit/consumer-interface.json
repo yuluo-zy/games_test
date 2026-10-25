@@ -1,0 +1,49 @@
+{
+  "module": "rhapsody queue submission",
+  "entry": "0x140c04e20",
+  "candidate_source": "reconstruction/render/work-packages/queue-submit-r8/src/lib.rs",
+  "consumer": "reconstruction/render/execution.rs::ExecutionChain::submit_recorded",
+  "function": "DeviceState::queue_submit(QueueId, SubmissionInput, FnMut(vk::Queue, &[PreparedSubmit]) -> (i32, bool)) -> Outcome",
+  "input": {
+    "queue": "legal tag 0 primary or tag 1 auxiliary ordinal; not pool-family index",
+    "command": "state2, original begin-produced sequence, original queue identity, VkCommandBuffer handle; opaque remaining native fields excluded",
+    "prior": "optional previously prepared batch; real producer currently outside shared minimal path",
+    "flushed_command": "typed projection of active device primary command, native end-success path only",
+    "current": "commands moved from recorder plus executor waits/signals; no prebuilt VkSubmitInfo input",
+    "backend": "external Vulkan capture/call and supplied private handle_error success tag classification"
+  },
+  "output": ["per-batch wait/stage/value, command handle, signal/value arrays", "next_timeline and oldest_pending", "pending state3 commands carrying unchanged sequence and assigned timeline", "success receipt only after backend error conversion and post-submit", "original panic-stop event/state projection on error"],
+  "ownership": {
+    "input": "SubmissionInput consumed by value; caller takes recorder commands before end validation",
+    "success": "commands moved to selected pending deque; temporary backing arrays survive backend call and then drop via std",
+    "command_failure": "timeline range already registered; earlier commands moved, later commands not represented in Outcome; native unwind and opaque-resource drop not recovered",
+    "backend_failure": "all commands already pending state3; no rollback and no receipt; consumer must retain/mark error state, not reuse commands",
+    "real_locks": "not owned by this serialized candidate state projection"
+  },
+  "native_layout": {
+    "command_size": 88,
+    "command_state": 0,
+    "command_sequence": 8,
+    "command_queue_tag_index": [16,20],
+    "command_handle": 72,
+    "pending_command_size": 96,
+    "pending_timeline_offset": 88,
+    "batch_size": 144,
+    "batch_vectors": {"wait_semaphores":0,"wait_stages":24,"wait_values":48,"signal_semaphores":72,"signal_values":96,"commands":120},
+    "device_primary_queue": "0x730",
+    "device_auxiliary_pointer_length": ["0x7e8","0x7f0"],
+    "device_next_timeline": "0x7f8",
+    "device_oldest_pending_option": "0x720",
+    "queue_handle": "0x78",
+    "queue_timeline_semaphore": "0x88"
+  },
+  "native_boundaries": {
+    "public": {"0x140613c10/c20/c30":"allocation/deallocation/reallocation", "0x142923c00/c10":"memcpy/memmove", "0x140c16a00":"puffin scopes disabled", "0x140c81c70/e10":"parking_lot deadlock acquire/release diagnostic hooks"},
+    "diagnostic_excluded": {"0x1418c1380":"leekspin ringbuffer append; package ownership not inferred", "0x140c84010":"backtrace capture"},
+    "private_fixture": {"0x140bf0860":"handle_error output tag 9 or 11; native conversion not reconstructed"},
+    "vulkan": ["queueSubmit result and SubmitInfo capture", "getSemaphoreCounterValue result0/value0 in existing empty-pending fixture", "endCommandBuffer result0", "barrier command capture/no-op"],
+    "original_private_helpers": ["flush active command helper", "register submission range", "queue pending update", "command ownership migration", "debug begin/end disabled-extension path", "queue receipt and cleanup normal branch"]
+  },
+  "typed_gaps": ["Device active-command producer and end-error path", "native handle_error and device-invalid state", "real locks/concurrency", "panic unwinding/destructors and opaque command resources", "prior batch and optional semaphore production", "existing pending and nonzero counter-query state", "raw invalid QueueId tags", "actual Vulkan and game pass"],
+  "module_complete": false
+}

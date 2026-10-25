@@ -1,0 +1,7 @@
+# BalconyDoor canonical value candidate V1
+
+Root explicitly delegated this necessary addition under its existing boot-leaf claim to /root/world_graph_team. The original claim/old artifacts remain unchanged. Candidate adds only Component+Clone+Debug BalconyDoor {translation:Vec3,forward:Vec3} and one actual ECS query/clone six-lane value test. No Default, Eq, original declaration/ABI, numeric TypeId or physics algorithm claim. No Convertable96 schema is included.
+
+Before source SHA6989b2a023c8e67b65d51bf99420daff6027df6430b8f8cc5c58afae7d54ff8a. Complete original producer1412a9b30/5949B and reader1422d6ed0/44132B are bound by04 producer contract/consumer binding and root independent design review df7d9f31. Original concrete six-lane producer condition/value order is preserved by04's separate builder companion, which must reexport/insert this one type. Neither candidate alone restores the whole RejectionRes/populate/actualApp chain.
+
+The single new source test checks actual World/Query membership and exact scalar-copy behavior including signed zero and a NaN payload; it does not run the original builder/filter or assert native layout/equality.04's companion carries the actual builder/query test. All new tests are UNRUN. No Cargo, compiler, CPU tests, GPU or original target was invoked. Production unchanged; root alone integrates and validates the paired candidates after independent source review.

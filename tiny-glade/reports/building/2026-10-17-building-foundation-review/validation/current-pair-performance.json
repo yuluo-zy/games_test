@@ -1,0 +1,51 @@
+{
+  "baseline_us": [
+    149635,
+    77439,
+    100298,
+    66390,
+    69619
+  ],
+  "baseline_low_fd": {
+    "exit": 1,
+    "stdout": "Err(Os { code: 24, kind: TooManyOpenFiles, message: \"Too many open files\" })\n",
+    "stderr": ""
+  },
+  "files": 2048,
+  "file_bytes": 10,
+  "cpu_count": 8,
+  "after_us": [
+    417879,
+    18059,
+    17197,
+    23018,
+    21795
+  ],
+  "after_low_fd": {
+    "exit": 0,
+    "stdout": "Ok([\"d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/d/file\"])\n",
+    "stderr": ""
+  },
+  "baseline_median_us": 77439,
+  "after_median_us": 21795,
+  "median_speedup": 3.5530626290433585,
+  "final_sparse_after_us": [
+    598246,
+    17465,
+    17771,
+    17824,
+    20376
+  ],
+  "final_sparse_median_us": 17824,
+  "final_median_speedup": 4.344647666068223,
+  "method": {
+    "mode": "release build; direct private check_files via temporary copied crate; no checksum nonce search; wall clock microseconds; sequential runs over same 2048-file fixture",
+    "baseline_algorithm": "chunks of 64; easy_parallel one closure per file; each run spawns n-1 threads",
+    "final_algorithm": "single dynamic worker group bounded by min(available_parallelism,64,entries); only non-valid worker results retained",
+    "fd_probe": "100 nested d directories and one leaf file; child RLIMIT_NOFILE hard+soft64; parent limit untouched",
+    "dependencies": "identical external harness Cargo.lock for baseline and final",
+    "interpretation": "narrow local small-file measurement; first after sample is a visible cold-start outlier; no whole-game or platform performance claim"
+  },
+  "harness_source_sha256": "1d8d04b18cd8fa088ea8b7a1deaad71e66316c7c27d1e3db1851abca5061e055",
+  "harness_lock_sha256": "0725c77d9e2c2a30509494c1938129d6228fbe5da0786dfe5408fb81ccf692b1"
+}

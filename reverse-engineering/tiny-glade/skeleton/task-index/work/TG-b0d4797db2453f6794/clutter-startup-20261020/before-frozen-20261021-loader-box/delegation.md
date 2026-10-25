@@ -1,0 +1,1 @@
+root明确窄委派，parent core_business_lead 转发：TG-b0d4797db2453f6794 原 box_trigger_volume 必要入口/3测试迁移，保原owner合法work。仅恢复 width/height/depth/&Transform→Vec<Triangle>原24点36索引与内map，不改rectangle UI其它业务；生产/Cargo/GPU由root。

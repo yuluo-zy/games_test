@@ -1,0 +1,30 @@
+{
+  "status": "verified_partial",
+  "target_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "cases": 1101,
+  "take_prefix_cases": 48,
+  "restore_injected_slice_cases": 48,
+  "frame_reset_leaf_cases": 1005,
+  "mismatches": 0,
+  "failures": [],
+  "hashes": {
+    "reconstruction/render/work-packages/temporal-lifecycle-r8/src/lib.rs": "90f224d69b94d363afcaa4994d0ca7ee2434814ef0c86068833c76e3c33259dd",
+    "reconstruction/render/work-packages/temporal-lifecycle-r8/src/main.rs": "a32387dd727e526b70936c1c5e2c69fc9db60d06ed851a40d69cf24b72aa6055",
+    "reconstruction/render/work-packages/temporal-lifecycle-r8/Cargo.toml": "4abc94adc94ebf93080775ab083438cf524f6ccb097ce85ad408a2bacb72c3e4",
+    "reconstruction/render/work-packages/temporal-lifecycle-r8/Cargo.lock": "c315d3c244f6415734c938fed4a2e962deed2acbb7622ffbfa41c8ed54de1f2a",
+    "evidence/render-recovery/parallel-batch-06/temporal-lifecycle/verify.py": "2864531b139d441aa6d09a58f0a37b551199e96dc538f18b5e0cc8b4c6c9b37d",
+    "evidence/render-recovery/parallel-batch-03/barrier-record/verify.py": "e6b99e6fa400909d042598a66f41fcf077630687b6d326eaa3efa19ea71d7ec5",
+    "evidence/render-recovery/parallel-batch-06/temporal-lifecycle/job.json": "78154fda15d34a634a6008b69ca01e41eb2ade9b968669a77063303abf9cb837",
+    "evidence/render-recovery/parallel-batch-06/temporal-lifecycle/mcp-report.json": "7dbcabaed2c8811f2a867428ac7721633df23c22fb4f099da788c9dc51997d44",
+    "evidence/render-recovery/parallel-batch-06/temporal-lifecycle/direct-callers.json": "0ca4d25941a11d5627e9cbfdc118b679af667c0994a60d0be3edb87b3084bc8e",
+    "evidence/render-recovery/parallel/compiled-state/0x140166510.c": "d58285f4acfd2527ed11be1e1f308fcba56eaf51a28c9120fc4bbd6897c33013",
+    "evidence/render-architecture/0x140161cd0.c": "8b2254bfe9ae28632d8f5aec4d8a0e6f2c9cf9f04ec52bfdab47d6f3da5a4e8f"
+  },
+  "limits": [
+    "compile body and unwind are not executed; take prefix starts at original entry and stops before game closure",
+    "restore starts at injected post-export frame, assumes empty old parity map, captures standard HashMap drop without restoring its internals",
+    "FrameConstants reset word semantics beyond equals-zero are unknown; predicate does not itself clear temporal maps",
+    "whole-state drop observed via original standard monomorphized glue but not counted as private source recovery",
+    "unused-key eviction and explicit full-cache reset remain unresolved"
+  ]
+}

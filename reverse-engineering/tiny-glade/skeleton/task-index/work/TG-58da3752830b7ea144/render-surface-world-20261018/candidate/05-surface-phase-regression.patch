@@ -1,0 +1,59 @@
+--- a/crates/country-core/src/systems/render_loop/draw_passes/transparency_pass/surface_tests.rs
++++ b/crates/country-core/src/systems/render_loop/draw_passes/transparency_pass/surface_tests.rs
+@@ -408,6 +408,9 @@
+ }
+ 
+ fn run(water: bool, s: &Scene, history_valid: u8) -> Run {
++    run_with_phases(water, s, history_valid, false)
++}
++fn run_with_phases(water: bool, s: &Scene, history_valid: u8, phased: bool) -> Run {
+     let log = Rc::new(RefCell::new(Log::default()));
+     let mut world = World::new();
+     let mut factory = || mock_host(&log);
+@@ -441,7 +444,17 @@
+             lists: &s.lists,
+         };
+         if water {
+-            water_surface_pass(&mut ctx, &mut env, &inputs);
++            if phased {
++                let prepared = super::surface_water::prepare_water_surface(&mut env, &inputs);
++                super::surface_water::raster_water_surface(&mut ctx, &prepared, &inputs);
++                super::surface_water::finish_water_surface(&mut env, prepared, &inputs);
++            } else {
++                water_surface_pass(&mut ctx, &mut env, &inputs);
++            }
++        } else if phased {
++            let prepared = super::surface_ice::prepare_ice_surface(&mut env, &inputs).unwrap();
++            super::surface_ice::raster_ice_surface(&mut ctx, &prepared, &inputs);
++            super::surface_ice::finish_ice_surface(&mut env, prepared, &inputs).unwrap();
+         } else {
+             ice_surface_pass(&mut ctx, &mut env, &inputs).unwrap();
+         }
+@@ -908,3 +921,27 @@
+         (7, (64, 32), 44, 1)
+     );
+ }
++
++
++#[test]
++fn explicit_surface_phases_keep_original_resource_ids_bindings_and_call_order() {
++    let scene = scene(1);
++    for water in [true, false] {
++        for valid in [0, 1] {
++            let original = run(water, &scene, valid);
++            let phased = run_with_phases(water, &scene, valid, true);
++            assert_eq!(phased.trace, original.trace);
++            assert_eq!(phased.extra, original.extra);
++            assert_eq!(phased.paths, original.paths);
++            assert_eq!(phased.graph.passes, original.graph.passes);
++            assert_eq!(phased.compute.len(), original.compute.len());
++            for (a, b) in phased.compute.iter().zip(&original.compute) {
++                assert_eq!(a.name, b.name);
++                assert_eq!(a.bindings, b.bindings);
++                assert_eq!(a.builder.accesses, b.builder.accesses);
++                assert_eq!(a.push_constants, b.push_constants);
++                assert_eq!(a.uniform_binder.as_ref().map(|v| v.data()), b.uniform_binder.as_ref().map(|v| v.data()));
++            }
++        }
++    }
++}

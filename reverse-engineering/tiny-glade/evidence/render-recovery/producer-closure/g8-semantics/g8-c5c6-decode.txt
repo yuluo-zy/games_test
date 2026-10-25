@@ -1,0 +1,99 @@
+# C5/C6 tiny-function machine-code decode (PE direct read)
+
+imagebase 0x140000000. Bytes read from workspace/input/tiny-glade.exe.
+Regression format: hex bytes + my decoding. Names from workgraph functions.json.
+
+## C5.1 BatchCompiler::new  (0x140be95e0, size 30)
+48 89 C8                mov  rax, rcx              ; return this
+48 C7 01 00 00 00 00    mov  qword [rcx], 0        ; field +0x00 = 0   (Vec.capacity)
+48 C7 41 08 08 00 00 00 mov  qword [rcx+8], 8      ; field +0x08 = 8   (Vec.ptr = dangling, align 8)
+0F 57 C0                xorps xmm0, xmm0
+0F 11 41 10             movups [rcx+0x10], xmm0    ; +0x10..0x20 = 0    (Vec.len=0 ; cur_batch.start=0)
+0F 11 41 19             movups [rcx+0x19], xmm0    ; +0x19..0x29 = 0    (cur_batch.end=0 ; cur_batch.flag=0)
+C3                      ret
+Struct (observed): +0x00 cap, +0x08 ptr, +0x10 len  -> Vec<0x18-byte batch>;
+                   +0x18 cur.start:u64, +0x20 cur.end:u64, +0x28 cur.flag:u8
+Semantics: empty BatchCompiler; current batch = [0,0] with flag 0.
+
+## C5.2 BatchCompiler::flush_batch  (0x140be9600, size 131) [Ghidra]
+void flush(end):
+  if self.cur.start(+0x18) != end:
+     self.cur.end(+0x20) = end
+     b = {self.cur.start, self.cur.end, self.cur.flag(+0x28)}
+     self.cur = {0,0,0}
+     idx = self.len(+0x10); if idx == self.cap(+0x00) grow(FUN_140562db0)
+     self.ptr(+0x08)[idx] = b          ; 0x18-byte batch appended
+     self.len = idx+1
+     self.cur.start = end              ; next batch begins at `end`
+ => batches are 24B {start:u64, end:u64, payload:u8}, matching SYNTHESIS §11.5.
+
+## C5.3 pass_access_range_indices  (0x140be9690, size 5)
+89 C8                   mov  eax, ecx   ; first out = first in
+89 D2                   mov  edx, edx   ; second out = second in (unchanged)
+C3                      ret
+Semantics: identity/passthrough of the (start,end) u32 indices (2nd move is a
+redundant self-move LLVM emits when materialising the 2nd return register).
+Caller add_pre_pass_barriers (0x1402c3d00) uses it on a table entry (stride 8 =
+{u32 start,@+0 ; u32 end,@+4}) to read start, then bounds-checks end<start -> panic.
+=> a trivial accessor that "passes the access-range indices through" unchanged.
+
+## C6.1 GraphicsDevice::device_uuid (0x140bf84c0, size 21)
+48 89 C8                mov  rax, rcx
+48 8B 8A 58 06 00 00    mov  rcx, [rdx+0x658]      ; rcx = P = *(device+0x658)
+0F 10 81 90 06 00 00    movups xmm0, [rcx+0x690]   ; 16 bytes from P+0x690
+0F 11 00                movups [rax], xmm0
+C3                      ret
+=> returns the 16-byte VkPhysicalDeviceIDProperties.deviceUUID cached at P+0x690.
+
+## C6.2 GraphicsDevice::physical_device (0x140bf8950, size 12)
+48 8B 81 58 06 00 00    mov  rax, [rcx+0x658]      ; rax = P
+48 83 C0 10             add rax, 0x10              ; return P+0x10
+C3                      ret
+=> returns &rhapsody PhysicalDevice = *(device+0x658) + 0x10.
+
+## C6.3 GraphicsDevice::debug_utils (0x140bf8960, size 22)
+48 8B 91 70 08 00 00    mov  rdx, [rcx+0x870]
+48 8D 81 70 08 00 00    lea  rax, [rcx+0x870]
+48 85 D2                test rdx, rdx
+48 0F 44 C2             cmovz rax, rdx             ; if stored ptr==0 -> return 0
+C3                      ret
+=> Option<&DebugUtils>::as_ref() = (&self.field @+0x870) if non-null else None.
+
+## C6.4 GraphicsDevice::refresh_memory_budget (0x140bf8f80, size 23)
+80 79 1A 00             cmp  byte [rcx+0x1a], 0    ; flag @+0x1a
+74 10                   je   .ret
+48 8B 89 58 06 00 00    mov  rcx, [rcx+0x658]      ; P
+48 83 C1 10             add  rcx, 0x10             ; P+0x10
+E9 8A 86 00 00          jmp  0x140c01620         ; tail -> PhysicalDevice::refresh_memory_budget
+C3                .ret: ret
+=> if flag(+0x1a) set: tail-call PhysicalDevice::refresh_memory_budget(P+0x10).
+
+## C6.5 GraphicsDevice::min_subgroup_size (0x140bf8fa0, size 7)
+8B 41 40                mov  eax, [rcx+0x40]        ; first out = *(this+0x40)
+8B 51 44                mov  edx, [rcx+0x44]        ; second out = *(this+0x44)
+C3                      ret
+=> returns the (u32,u32) pair at this+0x40 / this+0x44 (min/max subgroup size).
+
+## C1. queue+0x80 writer  (found)
+Queue::update_pending_submissions  (0x140bf0b90)
+0x140bf0b90.c line 19: call (**(code**)(device+0x478))(*(device+0x5c8), queue+0x88, &out)
+   -> vkGetSemaphoreCounterValue(devhandle, timeline-semaphore@queue+0x88, &u64)
+line 42: param_1[0x10] = <that u64>   ; param_1[0x10] == queue+0x80
+Read-only consumers: Queue::reclaim_command_buffer_resources (0x140bf0cc0, +0x80 water-mark)
+and queue_submit (0x140c04e20) — as GAPS.md says.
+
+## C2. bucket structure  (immediate_empty_bucket 0x140bf92f0)
+- 9 handle Vecs {ptr,cap,len} stride 0x18 at qword offsets 0(ptr) ... ; each drained by
+  a distinct device vtable slot with (VkDevice, handle, 0):
+    ov0 [1]/[2]  -> slot +0x1a8
+    ov1 [4]/[5]  -> slot +0x1c0
+    ov2 [7]/[8]  -> slot +0x188
+    ov3 [10]/[0xb]-> slot +0x6b8  (device base +0x6f0, a SECOND table)
+    ov4 [0xd]/[0xe]-> slot +0x138
+    ov5 [0x10]/[0x11] -> slot +0x278  == vkDestroyFramebuffer
+    ov6 [0x13]/[0x14] -> slot +0x288  == vkDestroyRenderPass
+    ov7 [0x16]/[0x17] -> slot +0x228
+    ov8 [0x19]/[0x1a] -> slot +0x248
+- 10th block: record Vec {ptr@[0x1c], len@[0x1d]}, elements 0x48B, tag@+0x44.
+  element+0x44==2 -> stop; each record dispatched via
+  FUN_140c0e150 -> FUN_140c14680, output discriminant asserted == 9 ("case 9").

@@ -1,0 +1,23 @@
+--- a/tiny-glade/crates/country-core/src/resources/audio_resources.rs
++++ b/tiny-glade/crates/country-core/src/resources/audio_resources.rs
+@@ -145,10 +145,17 @@
+         Ok(())
+     }
+ 
+-    /// `set_parameter` (0x140a57670).
++    /// B 0x140a57670：参数失败通过原 log-once 0.3.1 的进程静态消息集去重告警。
++    /// 保留现有 Result API；原调用者丢弃 Err 后继续，不把参数错误升级成构造失败。
+     pub fn set_parameter(&mut self, name: &str, value: f32) -> Result<(), E::Error> {
+-        if let AudioInstance::Active { event, .. } = self {
+-            event.set_parameter_by_name(name, value)?;
++        if let AudioInstance::Active { event, name: event_name, .. } = self {
++            if let Err(error) = event.set_parameter_by_name(name, value) {
++                log_once::warn_once!(
++                    "Failed to set parameter named {} on FMOD event {}\n{:?}",
++                    name, event_name, error
++                );
++                return Err(error);
++            }
+         }
+         Ok(())
+     }

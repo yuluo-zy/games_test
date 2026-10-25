@@ -1,0 +1,328 @@
+
+D:\game\ljxsj_92385\Tiny Glade\tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+1420e2bd0:     	pushq	%rbp
+1420e2bd1:     	pushq	%r15
+1420e2bd3:     	pushq	%r14
+1420e2bd5:     	pushq	%rsi
+1420e2bd6:     	pushq	%rdi
+1420e2bd7:     	pushq	%rbx
+1420e2bd8:     	subq	$0xb8, %rsp
+1420e2bdf:     	leaq	0x80(%rsp), %rbp
+1420e2be7:     	movq	$-0x2, 0x30(%rbp)
+1420e2bef:     	movq	%r8, %rdi
+1420e2bf2:     	cmpb	$0x0, 0x4c(%rcx)
+1420e2bf6:     	je	0x1420e2d38 <.text+0x20e1d38>
+1420e2bfc:     	leaq	-0x30(%rbp), %rcx
+1420e2c00:     	callq	0x140bad960 <.text+0xbac960>
+1420e2c05:     	movl	-0x18(%rbp), %eax
+1420e2c08:     	movl	-0x14(%rbp), %ecx
+1420e2c0b:     	shlq	$0x2, %rax
+1420e2c0f:     	mulq	%rcx
+1420e2c12:     	jo	0x1420e2f22 <.text+0x20e1f22>
+1420e2c18:     	movq	%rax, %rsi
+1420e2c1b:     	movq	-0x20(%rbp), %rdx
+1420e2c1f:     	cmpq	%rdx, %rax
+1420e2c22:     	ja	0x1420e2e52 <.text+0x20e1e52>
+1420e2c28:     	testq	%rsi, %rsi
+1420e2c2b:     	je	0x1420e2c81 <.text+0x20e1c81>
+1420e2c2d:     	movq	-0x28(%rbp), %rbx
+1420e2c31:     	nopw	%cs:(%rax,%rax)
+1420e2c40:     	movss	(%rbx), %xmm0
+1420e2c44:     	movb	$0x1, 0x2f(%rbp)
+1420e2c48:     	callq	0x1417bcd20 <.text+0x17bbd20> ; asset_pipe::texture::srgb_oetf
+1420e2c4d:     	movss	%xmm0, (%rbx)
+1420e2c51:     	movss	0x4(%rbx), %xmm0
+1420e2c56:     	movb	$0x1, 0x2f(%rbp)
+1420e2c5a:     	callq	0x1417bcd20 <.text+0x17bbd20> ; asset_pipe::texture::srgb_oetf
+1420e2c5f:     	movss	%xmm0, 0x4(%rbx)
+1420e2c64:     	movss	0x8(%rbx), %xmm0
+1420e2c69:     	movb	$0x1, 0x2f(%rbp)
+1420e2c6d:     	callq	0x1417bcd20 <.text+0x17bbd20> ; asset_pipe::texture::srgb_oetf
+1420e2c72:     	movss	%xmm0, 0x8(%rbx)
+1420e2c77:     	addq	$0x10, %rbx
+1420e2c7b:     	addq	$-0x4, %rsi
+1420e2c7f:     	jne	0x1420e2c40 <.text+0x20e1c40>
+1420e2c81:     	movq	(%rdi), %r14
+1420e2c84:     	movq	0x8(%rdi), %rsi
+1420e2c88:     	movq	0x10(%rdi), %rbx
+1420e2c8c:     	movq	0x18(%rdi), %rdi
+1420e2c90:     	movups	-0x30(%rbp), %xmm0
+1420e2c94:     	movups	-0x20(%rbp), %xmm1
+1420e2c98:     	movups	%xmm1, 0x8(%rbp)
+1420e2c9c:     	movups	%xmm0, -0x8(%rbp)
+1420e2ca0:     	movq	$0x9, -0x10(%rbp)
+1420e2ca8:     	movb	$0x0, 0x2f(%rbp)
+1420e2cac:     	leaq	-0x50(%rbp), %rcx
+1420e2cb0:     	leaq	-0x10(%rbp), %rdx
+1420e2cb4:     	callq	0x140bad9f0 <.text+0xbac9f0>
+1420e2cb9:     	cmpb	$0x0, (%r14)
+1420e2cbd:     	je	0x1420e2df5 <.text+0x20e1df5>
+1420e2cc3:     	movzbl	(%rdi), %r9d
+1420e2cc7:     	cmpb	$0x3, %r9b
+1420e2ccb:     	je	0x1420e2f4c <.text+0x20e1f4c>
+1420e2cd1:     	leaq	-0x10(%rbp), %rcx
+1420e2cd5:     	leaq	-0x50(%rbp), %rdx
+1420e2cd9:     	movq	%rbx, %r8
+1420e2cdc:     	callq	0x1417bcd60 <.text+0x17bbd60> ; asset_pipe::texture::compress
+1420e2ce1:     	movq	-0x10(%rbp), %r14
+1420e2ce5:     	movq	-0x8(%rbp), %r15
+1420e2ce9:     	movq	(%rbp), %rdi
+1420e2ced:     	movq	(%rsi), %rax
+1420e2cf0:     	movq	0x10(%rsi), %rbx
+1420e2cf4:     	subq	%rbx, %rax
+1420e2cf7:     	cmpq	%rdi, %rax
+1420e2cfa:     	jb	0x1420e2eec <.text+0x20e1eec>
+1420e2d00:     	movq	0x8(%rsi), %rcx
+1420e2d04:     	addq	%rbx, %rcx
+1420e2d07:     	movq	%r15, %rdx
+1420e2d0a:     	movq	%rdi, %r8
+1420e2d0d:     	callq	0x142923c00 <.text+0x2922c00>
+1420e2d12:     	addq	%rdi, %rbx
+1420e2d15:     	movq	%rbx, 0x10(%rsi)
+1420e2d19:     	testq	%r14, %r14
+1420e2d1c:     	je	0x1420e2e29 <.text+0x20e1e29>
+1420e2d22:     	movl	$0x1, %r8d
+1420e2d28:     	movq	%r15, %rcx
+1420e2d2b:     	movq	%r14, %rdx
+1420e2d2e:     	callq	0x140613c20 <.text+0x612c20>
+1420e2d33:     	jmp	0x1420e2e29 <.text+0x20e1e29>
+1420e2d38:     	cmpl	$0x3, (%rdx)
+1420e2d3b:     	jne	0x1420e2f34 <.text+0x20e1f34>
+1420e2d41:     	movq	0x8(%rdi), %rsi
+1420e2d45:     	movq	(%rdi), %rax
+1420e2d48:     	cmpb	$0x0, (%rax)
+1420e2d4b:     	je	0x1420e2dbf <.text+0x20e1dbf>
+1420e2d4d:     	movq	0x18(%rdi), %rax
+1420e2d51:     	movzbl	(%rax), %r9d
+1420e2d55:     	cmpb	$0x3, %r9b
+1420e2d59:     	je	0x1420e2f40 <.text+0x20e1f40>
+1420e2d5f:     	movq	0x10(%rdi), %r8
+1420e2d63:     	addq	$0x8, %rdx
+1420e2d67:     	leaq	-0x10(%rbp), %rcx
+1420e2d6b:     	callq	0x1417bcd60 <.text+0x17bbd60> ; asset_pipe::texture::compress
+1420e2d70:     	movq	-0x10(%rbp), %r14
+1420e2d74:     	movq	-0x8(%rbp), %r15
+1420e2d78:     	movq	(%rbp), %rdi
+1420e2d7c:     	movq	(%rsi), %rax
+1420e2d7f:     	movq	0x10(%rsi), %rbx
+1420e2d83:     	subq	%rbx, %rax
+1420e2d86:     	cmpq	%rdi, %rax
+1420e2d89:     	jb	0x1420e2e90 <.text+0x20e1e90>
+1420e2d8f:     	movq	0x8(%rsi), %rcx
+1420e2d93:     	addq	%rbx, %rcx
+1420e2d96:     	movq	%r15, %rdx
+1420e2d99:     	movq	%rdi, %r8
+1420e2d9c:     	callq	0x142923c00 <.text+0x2922c00>
+1420e2da1:     	addq	%rdi, %rbx
+1420e2da4:     	movq	%rbx, 0x10(%rsi)
+1420e2da8:     	testq	%r14, %r14
+1420e2dab:     	je	0x1420e2e41 <.text+0x20e1e41>
+1420e2db1:     	movl	$0x1, %r8d
+1420e2db7:     	movq	%r15, %rcx
+1420e2dba:     	movq	%r14, %rdx
+1420e2dbd:     	jmp	0x1420e2e3c <.text+0x20e1e3c>
+1420e2dbf:     	movq	0x10(%rdx), %rbx
+1420e2dc3:     	movq	0x18(%rdx), %rdi
+1420e2dc7:     	movq	(%rsi), %rax
+1420e2dca:     	movq	0x10(%rsi), %r14
+1420e2dce:     	subq	%r14, %rax
+1420e2dd1:     	cmpq	%rdi, %rax
+1420e2dd4:     	jb	0x1420e2e6a <.text+0x20e1e6a>
+1420e2dda:     	movq	0x8(%rsi), %rcx
+1420e2dde:     	addq	%r14, %rcx
+1420e2de1:     	movq	%rbx, %rdx
+1420e2de4:     	movq	%rdi, %r8
+1420e2de7:     	callq	0x142923c00 <.text+0x2922c00>
+1420e2dec:     	addq	%rdi, %r14
+1420e2def:     	movq	%r14, 0x10(%rsi)
+1420e2df3:     	jmp	0x1420e2e41 <.text+0x20e1e41>
+1420e2df5:     	movq	-0x48(%rbp), %rbx
+1420e2df9:     	movq	-0x40(%rbp), %rdi
+1420e2dfd:     	movq	(%rsi), %rax
+1420e2e00:     	movq	0x10(%rsi), %r14
+1420e2e04:     	subq	%r14, %rax
+1420e2e07:     	cmpq	%rdi, %rax
+1420e2e0a:     	jb	0x1420e2ec6 <.text+0x20e1ec6>
+1420e2e10:     	movq	0x8(%rsi), %rcx
+1420e2e14:     	addq	%r14, %rcx
+1420e2e17:     	movq	%rbx, %rdx
+1420e2e1a:     	movq	%rdi, %r8
+1420e2e1d:     	callq	0x142923c00 <.text+0x2922c00>
+1420e2e22:     	addq	%rdi, %r14
+1420e2e25:     	movq	%r14, 0x10(%rsi)
+1420e2e29:     	movq	-0x50(%rbp), %rdx
+1420e2e2d:     	testq	%rdx, %rdx
+1420e2e30:     	je	0x1420e2e41 <.text+0x20e1e41>
+1420e2e32:     	movq	-0x48(%rbp), %rcx
+1420e2e36:     	movl	$0x1, %r8d
+1420e2e3c:     	callq	0x140613c20 <.text+0x612c20>
+1420e2e41:     	nop
+1420e2e42:     	addq	$0xb8, %rsp
+1420e2e49:     	popq	%rbx
+1420e2e4a:     	popq	%rdi
+1420e2e4b:     	popq	%rsi
+1420e2e4c:     	popq	%r14
+1420e2e4e:     	popq	%r15
+1420e2e50:     	popq	%rbp
+1420e2e51:     	retq
+1420e2e52:     	movb	$0x1, 0x2f(%rbp)
+1420e2e56:     	leaq	0xefbf1b(%rip), %r8     # 0x142fded78
+1420e2e5d:     	movq	%rsi, %rcx
+1420e2e60:     	callq	0x1428d9840 <.text+0x28d8840>
+1420e2e65:     	jmp	0x1420e2f58 <.text+0x20e1f58>
+1420e2e6a:     	movq	$0x1, 0x20(%rsp)
+1420e2e73:     	movl	$0x1, %r9d
+1420e2e79:     	movq	%rsi, %rcx
+1420e2e7c:     	movq	%r14, %rdx
+1420e2e7f:     	movq	%rdi, %r8
+1420e2e82:     	callq	0x142916290 <.text+0x2915290> ; alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>
+1420e2e87:     	movq	0x10(%rsi), %r14
+1420e2e8b:     	jmp	0x1420e2dda <.text+0x20e1dda>
+1420e2e90:     	movq	%r15, 0x18(%rbp)
+1420e2e94:     	movq	%r14, 0x20(%rbp)
+1420e2e98:     	movq	$0x1, 0x20(%rsp)
+1420e2ea1:     	movl	$0x1, %r9d
+1420e2ea7:     	movq	%rsi, %rcx
+1420e2eaa:     	movq	%rbx, %rdx
+1420e2ead:     	movq	%rdi, %r8
+1420e2eb0:     	callq	0x142916290 <.text+0x2915290> ; alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>
+1420e2eb5:     	movq	0x10(%rsi), %rbx
+1420e2eb9:     	movq	0x20(%rbp), %r14
+1420e2ebd:     	movq	0x18(%rbp), %r15
+1420e2ec1:     	jmp	0x1420e2d8f <.text+0x20e1d8f>
+1420e2ec6:     	movq	$0x1, 0x20(%rsp)
+1420e2ecf:     	movl	$0x1, %r9d
+1420e2ed5:     	movq	%rsi, %rcx
+1420e2ed8:     	movq	%r14, %rdx
+1420e2edb:     	movq	%rdi, %r8
+1420e2ede:     	callq	0x142916290 <.text+0x2915290> ; alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>
+1420e2ee3:     	movq	0x10(%rsi), %r14
+1420e2ee7:     	jmp	0x1420e2e10 <.text+0x20e1e10>
+1420e2eec:     	movq	%r15, 0x18(%rbp)
+1420e2ef0:     	movq	%r14, 0x20(%rbp)
+1420e2ef4:     	movq	$0x1, 0x20(%rsp)
+1420e2efd:     	movl	$0x1, %r9d
+1420e2f03:     	movq	%rsi, %rcx
+1420e2f06:     	movq	%rbx, %rdx
+1420e2f09:     	movq	%rdi, %r8
+1420e2f0c:     	callq	0x142916290 <.text+0x2915290> ; alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>
+1420e2f11:     	movq	0x10(%rsi), %rbx
+1420e2f15:     	movq	0x20(%rbp), %r14
+1420e2f19:     	movq	0x18(%rbp), %r15
+1420e2f1d:     	jmp	0x1420e2d00 <.text+0x20e1d00>
+1420e2f22:     	movb	$0x1, 0x2f(%rbp)
+1420e2f26:     	leaq	0xefbe33(%rip), %rcx    # 0x142fded60
+1420e2f2d:     	callq	0x1428d9310 <.text+0x28d8310>
+1420e2f32:     	jmp	0x1420e2f58 <.text+0x20e1f58>
+1420e2f34:     	leaq	0xefbd35(%rip), %rcx    # 0x142fdec70
+1420e2f3b:     	callq	0x1428d9310 <.text+0x28d8310>
+1420e2f40:     	leaq	0xefbd11(%rip), %rcx    # 0x142fdec58
+1420e2f47:     	callq	0x1428d9310 <.text+0x28d8310>
+1420e2f4c:     	leaq	0xefbd05(%rip), %rcx    # 0x142fdec58
+1420e2f53:     	callq	0x1428d9310 <.text+0x28d8310>
+1420e2f58:     	ud2
+1420e2f5a:     	nopw	(%rax,%rax)
+1420e2f60:     	movq	%rdx, 0x10(%rsp)
+1420e2f65:     	pushq	%rbp
+1420e2f66:     	pushq	%r15
+1420e2f68:     	pushq	%r14
+1420e2f6a:     	pushq	%rsi
+1420e2f6b:     	pushq	%rdi
+1420e2f6c:     	pushq	%rbx
+1420e2f6d:     	subq	$0x28, %rsp
+1420e2f71:     	leaq	0x80(%rdx), %rbp
+1420e2f78:     	cmpq	$0x0, 0x20(%rbp)
+1420e2f7d:     	je	0x1420e2f92 <.text+0x20e1f92>
+1420e2f7f:     	movl	$0x1, %r8d
+1420e2f85:     	movq	0x18(%rbp), %rcx
+1420e2f89:     	movq	0x20(%rbp), %rdx
+1420e2f8d:     	callq	0x140613c20 <.text+0x612c20>
+1420e2f92:     	nop
+1420e2f93:     	addq	$0x28, %rsp
+1420e2f97:     	popq	%rbx
+1420e2f98:     	popq	%rdi
+1420e2f99:     	popq	%rsi
+1420e2f9a:     	popq	%r14
+1420e2f9c:     	popq	%r15
+1420e2f9e:     	popq	%rbp
+1420e2f9f:     	retq
+1420e2fa0:     	movq	%rdx, 0x10(%rsp)
+1420e2fa5:     	pushq	%rbp
+1420e2fa6:     	pushq	%r15
+1420e2fa8:     	pushq	%r14
+1420e2faa:     	pushq	%rsi
+1420e2fab:     	pushq	%rdi
+1420e2fac:     	pushq	%rbx
+1420e2fad:     	subq	$0x28, %rsp
+1420e2fb1:     	leaq	0x80(%rdx), %rbp
+1420e2fb8:     	cmpq	$0x0, 0x20(%rbp)
+1420e2fbd:     	je	0x1420e2fd2 <.text+0x20e1fd2>
+1420e2fbf:     	movl	$0x1, %r8d
+1420e2fc5:     	movq	0x18(%rbp), %rcx
+1420e2fc9:     	movq	0x20(%rbp), %rdx
+1420e2fcd:     	callq	0x140613c20 <.text+0x612c20>
+1420e2fd2:     	nop
+1420e2fd3:     	addq	$0x28, %rsp
+1420e2fd7:     	popq	%rbx
+1420e2fd8:     	popq	%rdi
+1420e2fd9:     	popq	%rsi
+1420e2fda:     	popq	%r14
+1420e2fdc:     	popq	%r15
+1420e2fde:     	popq	%rbp
+1420e2fdf:     	retq
+1420e2fe0:     	movq	%rdx, 0x10(%rsp)
+1420e2fe5:     	pushq	%rbp
+1420e2fe6:     	pushq	%r15
+1420e2fe8:     	pushq	%r14
+1420e2fea:     	pushq	%rsi
+1420e2feb:     	pushq	%rdi
+1420e2fec:     	pushq	%rbx
+1420e2fed:     	subq	$0x28, %rsp
+1420e2ff1:     	leaq	0x80(%rdx), %rbp
+1420e2ff8:     	movq	-0x50(%rbp), %rdx
+1420e2ffc:     	testq	%rdx, %rdx
+1420e2fff:     	je	0x1420e3010 <.text+0x20e2010>
+1420e3001:     	movq	-0x48(%rbp), %rcx
+1420e3005:     	movl	$0x1, %r8d
+1420e300b:     	callq	0x140613c20 <.text+0x612c20>
+1420e3010:     	movb	$0x0, 0x2f(%rbp)
+1420e3014:     	addq	$0x28, %rsp
+1420e3018:     	popq	%rbx
+1420e3019:     	popq	%rdi
+1420e301a:     	popq	%rsi
+1420e301b:     	popq	%r14
+1420e301d:     	popq	%r15
+1420e301f:     	popq	%rbp
+1420e3020:     	retq
+1420e3021:     	nopw	%cs:(%rax,%rax)
+1420e3030:     	movq	%rdx, 0x10(%rsp)
+1420e3035:     	pushq	%rbp
+1420e3036:     	pushq	%r15
+1420e3038:     	pushq	%r14
+1420e303a:     	pushq	%rsi
+1420e303b:     	pushq	%rdi
+1420e303c:     	pushq	%rbx
+1420e303d:     	subq	$0x28, %rsp
+1420e3041:     	leaq	0x80(%rdx), %rbp
+1420e3048:     	cmpb	$0x0, 0x2f(%rbp)
+1420e304c:     	je	0x1420e306a <.text+0x20e206a>
+1420e304e:     	movq	-0x30(%rbp), %rdx
+1420e3052:     	testq	%rdx, %rdx
+1420e3055:     	je	0x1420e306a <.text+0x20e206a>
+1420e3057:     	movq	-0x28(%rbp), %rcx
+1420e305b:     	shlq	$0x2, %rdx
+1420e305f:     	movl	$0x4, %r8d
+1420e3065:     	callq	0x140613c20 <.text+0x612c20>
+1420e306a:     	nop
+1420e306b:     	addq	$0x28, %rsp
+1420e306f:     	popq	%rbx
+1420e3070:     	popq	%rdi
+1420e3071:     	popq	%rsi
+1420e3072:     	popq	%r14
+1420e3074:     	popq	%r15
+1420e3076:     	popq	%rbp
+1420e3077:     	retq

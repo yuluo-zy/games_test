@@ -1,0 +1,214 @@
+--- /dev/null
++++ b/games_test/tiny-glade/crates/country-core/src/startup/clearing.rs
+@@ -0,0 +1,211 @@
++//! Complete B clearing business producer@140a78aa0/6913B on current real
++//! asset/device/Commands owners. No raw ABI records or fabricated entities.
++use crate::{
++    asset_libraries::{
++        Handle,
++        mesh_library::{AssetMeshLibrary, MeshAsset},
++        meshwatch::MeshWatch,
++        placement_data_library::AssetPlacementDataLibrary,
++        shader_library::AssetShaderLibrary,
++        ssbo_library::AssetSsboLibrary,
++    },
++    components::drawable::DrawableMeshBundle,
++    render::{
++        mesh::Mesh,
++        shader::{RasterShaderProgram, boundary::ShaderBackend},
++        ssbo::rhapsody_boundary::GraphicsDevice,
++    },
++    resources::{
++        preplaced_autoclutter::PreplacedAutoClutter,
++        session::{ActiveSession, GladeType},
++        tree_storage::{ForestTree, InteractableForestPlacements},
++    },
++    systems::render_loop::compute_passes::leaf_particles::{
++        LoadedParticleEmitterCount, ParticleEmitterSsbo,
++    },
++    utils::{components::transform::Transform, load_json::try_load_json_as_mesh},
++};
++use anyhow::Context;
++use asset::prefab::PrefabName;
++use bevy_ecs::system::Commands;
++use glam::Vec3;
++use relative_path::RelativePath;
++use serde::Deserialize;
++use std::{fs, path::Path};
++
++fn default_billboard_expansion_scale() -> f32 {
++    1.0
++}
++/// Original serde structure141416520 requires prefab and placements; optional
++/// emitter defaults None and billboard scale defaults1.0 (not placement.scale).
++#[derive(Debug, Deserialize)]
++pub struct PlacementConfigEntry {
++    pub prefab: String,
++    pub placements: String,
++    #[serde(default)]
++    pub particle_emitter: Option<String>,
++    #[serde(default = "default_billboard_expansion_scale")]
++    pub billboard_expansion_scale: f32,
++}
++
++pub(crate) fn install_json_mesh(
++    root: &Path,
++    relative: &str,
++    name: &str,
++    meshes: &AssetMeshLibrary,
++    watch: &MeshWatch,
++) -> anyhow::Result<Handle<Mesh>> {
++    let path = root.join(relative);
++    let path = path.to_str().context("clearing mesh path is not UTF-8")?;
++    let mesh = try_load_json_as_mesh(path)?;
++    watch.watch(&mesh);
++    Ok(meshes.add(MeshAsset::new(mesh, Some(name.to_owned()))))
++}
++
++pub(crate) fn drawable(
++    mesh: Handle<Mesh>,
++    shader: Handle<RasterShaderProgram>,
++) -> DrawableMeshBundle {
++    DrawableMeshBundle {
++        mesh,
++        shader,
++        transform: Transform::identity(),
++    }
++}
++
++/// Original closure140a123a0 only emits transformed particle-mesh positions
++/// from placements with actual3D distance<45 and scale>0.7. The fourth word is
++/// explicitly zero in original@140a12562; no unknown padding is invented.
++fn emitter_for(
++    placement: &crate::resources::placement_data::PlacementDataSsbo,
++    vertex: Vec3,
++) -> Option<ParticleEmitterSsbo> {
++    if !(placement.position.length() < 45.0 && placement.scale > 0.7) {
++        return None;
++    }
++    let world = placement
++        .to_transform()
++        .compute_affine()
++        .transform_point3(vertex);
++    Some(ParticleEmitterSsbo {
++        words: [world.x.to_bits(), world.y.to_bits(), world.z.to_bits(), 0],
++    })
++}
++
++#[allow(clippy::too_many_arguments)]
++pub fn init_clearing(
++    root: &Path,
++    device: &dyn GraphicsDevice,
++    backend: &dyn ShaderBackend,
++    session: &ActiveSession,
++    meshes: &AssetMeshLibrary,
++    mesh_watch: &MeshWatch,
++    shaders: &AssetShaderLibrary,
++    placements: &mut AssetPlacementDataLibrary,
++    ssbos: &AssetSsboLibrary,
++    emitter_count: &mut LoadedParticleEmitterCount,
++    forest: &mut InteractableForestPlacements,
++    commands: &mut Commands,
++) -> anyhow::Result<()> {
++    if session.meta.glade == GladeType::Winter {
++        let mesh = install_json_mesh(
++            root,
++            "assets/meshes/ice_cracks.json",
++            "ice_cracks",
++            meshes,
++            mesh_watch,
++        )?;
++        let shader = super::load_shaders::load_shader_into_library(
++            shaders,
++            backend,
++            "/water/ice_cracks.raster.hlsl",
++            "ice_cracks",
++        );
++        commands.spawn(drawable(mesh, shader));
++    }
++    if session.meta.glade == GladeType::Flowery {
++        super::glade_themes::flowery::startup_flowery(
++            root, device, session, meshes, mesh_watch, shaders, placements, commands,
++        )?;
++    }
++    if session.meta.glade == GladeType::Olden {
++        let clutter = super::glade_themes::olden::startup_olden(
++            root, device, session, meshes, mesh_watch, shaders, placements, commands,
++        )?;
++        commands.insert_resource(clutter);
++    } else {
++        commands.remove_resource::<PreplacedAutoClutter>();
++    }
++    let config_path = root.join(session.assets_root()).join("trees.json");
++    let text = fs::read_to_string(&config_path)
++        .with_context(|| format!("read clearing config {}", config_path.display()))?;
++    let entries: Vec<PlacementConfigEntry> = serde_json::from_str(&text)
++        .with_context(|| format!("parse clearing config {}", config_path.display()))?;
++    forest.records.clear();
++    forest.initialized = false;
++    let mut emitters = Vec::new();
++    for entry in entries {
++        if entry.prefab == "clearing/tree/bush" {
++            continue;
++        }
++        let path = RelativePath::new(&entry.placements).to_path(root.join(session.assets_root()));
++        let (data, _) = placements.load(device, path);
++        let prefab = PrefabName::new(&entry.prefab);
++        for &placement in &data {
++            let p = placement.position;
++            if !(p.x.abs() < 65.0 && p.z.abs() < 65.0) {
++                forest.records.push(ForestTree {
++                    prefab: prefab.clone(),
++                    placement,
++                    entity: None,
++                    billboard_expansion_scale: entry.billboard_expansion_scale,
++                });
++            }
++        }
++        if let Some(path) = entry.particle_emitter {
++            let path = RelativePath::new(&path).to_path(root.join("assets/meshes"));
++            let mesh =
++                try_load_json_as_mesh(path.to_str().context("particle mesh path is not UTF-8")?)?;
++            // Native materializes positions and drops the temporary mesh before
++            // evaluating placements. It never registers this emitter mesh.
++            let vertices = mesh.positions_without_indices().to_vec();
++            drop(mesh);
++            for placement in &data {
++                for &vertex in &vertices {
++                    if let Some(emitter) = emitter_for(placement, vertex) {
++                        emitters.push(emitter);
++                    }
++                }
++            }
++        }
++    }
++    // Original get_mut None and empty data skip upload, but count still updates.
++    if let Some(buffer) = ssbos.get::<ParticleEmitterSsbo>() {
++        if !emitters.is_empty() {
++            let bytes = bytemuck::cast_slice(&emitters);
++            assert!(
++                bytes.len() <= buffer.byte_size(),
++                "particle emitter upload exceeds real buffer capacity"
++            );
++            device
++                .update_buffer_bytes(&buffer.buffer, bytes, &[0..bytes.len()], 0)
++                .context("upload clearing particle emitters")?;
++        }
++    }
++    emitter_count.0 = emitters.len().min(1100) as u64;
++    let shader = super::load_shaders::load_shader_into_library(
++        shaders,
++        backend,
++        "/clearing/distant_billboard.raster.hlsl",
++        "distant_billboard_shader",
++    );
++    let mesh = install_json_mesh(
++        root,
++        "assets/meshes/distant_billboard.json",
++        "distant_billboard",
++        meshes,
++        mesh_watch,
++    )?;
++    commands.spawn(drawable(mesh, shader));
++    Ok(())
++}

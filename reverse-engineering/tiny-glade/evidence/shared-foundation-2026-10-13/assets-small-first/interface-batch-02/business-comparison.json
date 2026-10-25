@@ -1,0 +1,260 @@
+{
+  "schema_version": 1,
+  "baseline": "B",
+  "original_RNE_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "scope": "New private API behavior only in B asset9/asset-pipe2 inventory; 11 additional implementations, five formerly untouched APIs",
+  "interfaces": [
+    {
+      "id": "asset::inheritable::Inheritable::inherit_shallow",
+      "path": "asset/src/inheritable.rs",
+      "api": "Inheritable::inherit_shallow",
+      "native_compared": true,
+      "native_comparison_evidence": "interface-batch-02/shallow-native-comparison.json; 160000 original-instruction cases",
+      "internal_integrated": true,
+      "scope": "Only Inherit copies the parent (including unresolved markers); concrete value/explicit None/MissingDefault stay unchanged; four texture specializations natively compared",
+      "implementation_sha256": "47461cdea243ef0fca1fb44fa4daebd85f1dd2c4673b9e7b406fbfaff92eded7",
+      "implementation_path": "reconstruction/shared-foundation/crates/asset/src/inheritable.rs",
+      "evidence_kind": "original instructions/static caller comparison plus Rust contract tests",
+      "original_consumer_integrated": false
+    },
+    {
+      "id": "asset::inheritable::Inheritable::as_concrete",
+      "path": "asset/src/inheritable.rs",
+      "api": "Inheritable::as_concrete",
+      "scope": "Original inlinee 0x7bf7 tag gates, borrowed concrete value and two original panic formats; typed Rust borrow identity and bool failures tested; generic type-name text depends on compiler",
+      "implementation_sha256": "47461cdea243ef0fca1fb44fa4daebd85f1dd2c4673b9e7b406fbfaff92eded7",
+      "implementation_path": "reconstruction/shared-foundation/crates/asset/src/inheritable.rs",
+      "evidence_kind": "original instructions/static caller comparison plus Rust contract tests",
+      "original_consumer_integrated": false
+    },
+    {
+      "id": "asset::inheritable::deserialize_inheritable",
+      "path": "asset/src/inheritable.rs",
+      "api": "deserialize_inheritable; Inheritable<T>::deserialize delegates",
+      "internal_integrated": true,
+      "scope": "Original inlinee 0x20bb7 typed RON/serde call, result success/error branch; missing field differs from explicit typed value; errors propagated; permissive Option adapter remains separate",
+      "implementation_sha256": "47461cdea243ef0fca1fb44fa4daebd85f1dd2c4673b9e7b406fbfaff92eded7",
+      "implementation_path": "reconstruction/shared-foundation/crates/asset/src/inheritable.rs",
+      "evidence_kind": "original instructions/static caller comparison plus Rust contract tests",
+      "original_consumer_integrated": false
+    },
+    {
+      "id": "asset::prefab::impl$6::borrow",
+      "path": "asset/src/prefab.rs",
+      "api": "impl Borrow<PrefabNameRef> for PrefabName",
+      "scope": "Original inlinee 0x7872 in PrefabLibrary::get/has calls shared 0x141556130 getter; original length and memcmp checks use borrowed bytes unchanged; tested standard HashMap Borrow/Hash contract",
+      "implementation_sha256": "6692ce67bee015587c93db7c507160e85fe396718e14b55940fb1d2fb900bcfb",
+      "implementation_path": "reconstruction/shared-foundation/crates/asset/src/prefab.rs",
+      "evidence_kind": "original instructions/static caller comparison plus Rust contract tests",
+      "original_consumer_integrated": false
+    },
+    {
+      "id": "asset::prefab::impl$4::as_ref",
+      "path": "asset/src/prefab.rs",
+      "api": "impl AsRef<PrefabNameRef> for PrefabNameRef",
+      "scope": "Original public alias 0x14067dd80 returns input data pointer, length unchanged; transparent borrowed view and identity test",
+      "implementation_sha256": "6692ce67bee015587c93db7c507160e85fe396718e14b55940fb1d2fb900bcfb",
+      "implementation_path": "reconstruction/shared-foundation/crates/asset/src/prefab.rs",
+      "evidence_kind": "original instructions/static caller comparison plus Rust contract tests",
+      "original_consumer_integrated": false
+    },
+    {
+      "id": "asset::prefab::impl$5::as_ref",
+      "path": "asset/src/prefab.rs",
+      "api": "impl AsRef<PrefabNameRef> for PrefabName",
+      "scope": "Original public alias 0x141556130 unwraps Arc string data/length; standard Arc and transparent nominal adapter reused",
+      "implementation_sha256": "6692ce67bee015587c93db7c507160e85fe396718e14b55940fb1d2fb900bcfb",
+      "implementation_path": "reconstruction/shared-foundation/crates/asset/src/prefab.rs",
+      "evidence_kind": "original instructions/static caller comparison plus Rust contract tests",
+      "original_consumer_integrated": false
+    },
+    {
+      "id": "asset::prefab::PrefabName::as_str",
+      "path": "asset/src/prefab.rs",
+      "api": "PrefabName::as_str",
+      "scope": "Original public alias 0x141556130 borrows Arc bytes/length without normalization, allocation or clone; identity tested",
+      "implementation_sha256": "6692ce67bee015587c93db7c507160e85fe396718e14b55940fb1d2fb900bcfb",
+      "implementation_path": "reconstruction/shared-foundation/crates/asset/src/prefab.rs",
+      "evidence_kind": "original instructions/static caller comparison plus Rust contract tests",
+      "original_consumer_integrated": false
+    },
+    {
+      "id": "asset::prefab::PrefabNameRef::as_str",
+      "path": "asset/src/prefab.rs",
+      "api": "PrefabNameRef::as_str",
+      "scope": "Original 4-byte body at 0x14067dd80 returns data pointer and retains string length; no normalization; identity tested",
+      "implementation_sha256": "6692ce67bee015587c93db7c507160e85fe396718e14b55940fb1d2fb900bcfb",
+      "implementation_path": "reconstruction/shared-foundation/crates/asset/src/prefab.rs",
+      "evidence_kind": "original instructions/static caller comparison plus Rust contract tests",
+      "original_consumer_integrated": false
+    },
+    {
+      "id": "asset::prefab::PrefabName::Deref::deref",
+      "path": "asset/src/prefab.rs",
+      "api": "impl Deref<Target=PrefabNameRef> for PrefabName",
+      "scope": "Original public alias 0x141556130 shared getter; same borrowed view tested",
+      "implementation_sha256": "6692ce67bee015587c93db7c507160e85fe396718e14b55940fb1d2fb900bcfb",
+      "implementation_path": "reconstruction/shared-foundation/crates/asset/src/prefab.rs",
+      "evidence_kind": "original instructions/static caller comparison plus Rust contract tests",
+      "original_consumer_integrated": false
+    },
+    {
+      "id": "asset::prefab::PrefabName::From<&str>::from",
+      "path": "asset/src/prefab.rs",
+      "api": "impl From<&str> for PrefabName",
+      "scope": "Original 0x141556080 shared new/From body allocates refcounted UTF-8 bytes using library allocation/copy; exact std Arc reused; empty/nonASCII/NUL names tested; original allocation failure not executed",
+      "implementation_sha256": "6692ce67bee015587c93db7c507160e85fe396718e14b55940fb1d2fb900bcfb",
+      "implementation_path": "reconstruction/shared-foundation/crates/asset/src/prefab.rs",
+      "evidence_kind": "original instructions/static caller comparison plus Rust contract tests",
+      "original_consumer_integrated": false
+    },
+    {
+      "id": "asset::texture::config::InheritableTextureOpts::concrete_default",
+      "path": "asset/src/texture/config.rs",
+      "api": "InheritableTextureOpts::concrete_default",
+      "internal_integrated": true,
+      "scope": "Original inlinee 0x1a65f root initializer 0x1420d8c24..0x1420d8c38 writes concrete None/Linear/MipNone/Color zero tags; distinct from missing-input Default; scanner wired and defaults/explicit None tested",
+      "implementation_sha256": "e2066688d980b3c446fafe598dcea9f3367ac1084a75f9b2a978a0973ba67088",
+      "implementation_path": "reconstruction/shared-foundation/crates/asset/src/texture/config.rs",
+      "evidence_kind": "original instructions/static caller comparison plus Rust contract tests",
+      "original_consumer_integrated": false
+    }
+  ],
+  "native_comparison": {
+    "schema": 1,
+    "ok": true,
+    "cases": 160000,
+    "mismatches": [],
+    "original_RNE_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "original_inlinee": "0x1a669",
+    "parent_procedure": "asset::texture::scan::scan_asset_tree_walker 0x1420d8d00",
+    "start": "0x1420d9039",
+    "stop": "0x1420d92bc",
+    "instruction_ranges": [
+      {
+        "start": "0x1420d8eec",
+        "end": "0x1420d8f20",
+        "sha256": "c9239e12c576f96c0391f0f007a1c5795c07a8eed6e78cbe28887a5f3f5a5040"
+      },
+      {
+        "start": "0x1420d9039",
+        "end": "0x1420d90bc",
+        "sha256": "5cb36de2ef4a8d669e92c547b39553045958c31aa2744160792fc3f27138e78d"
+      },
+      {
+        "start": "0x1420d922a",
+        "end": "0x1420d92bc",
+        "sha256": "c0a63d8ab78e689439c2ae574cb3785f6563d8f7334950e27a709b9a4ee98e2e"
+      }
+    ],
+    "oracle": "Original inline caller register/frame state; original RNE instructions; no external callbacks or rewritten library routine",
+    "candidate_exe_sha256": "ef7cf934d42deecbadc97ef9954876c48869bc4d3fe44a046bf70ca5297b3044",
+    "limits": [
+      "Four scalar/array private specializations only; not arbitrary T::Clone ABI",
+      "All valid joint state tags; dimensions/mip payloads use distinct child/parent samples",
+      "Uninitialized inactive payload bytes ignored",
+      "No full game runtime or C-version claim"
+    ]
+  },
+  "rules": {
+    "inherit_shallow": "Copy parent only for Inherit, preserving parent concrete/missing-default/inherit state; concrete child and explicit None are atomic. T only needs original std Clone; deep inherit_from recursively merges concrete objects.",
+    "as_concrete": "Borrow concrete value; Inherit and MissingDefault panic with separate original formatting, without consuming or cloning the value.",
+    "deserialize_inheritable": "Call original typed serde/RON deserialization; explicit valid T becomes Value(T), typed errors propagate, missing fields use Inherit. Separate permissive option callback unchanged.",
+    "PrefabName": "Original shared Arc getter and borrowed identity getter; byte length/content remain unchanged; Borrow lookup performs exact length and runtime memcmp. New/From use std Arc, no name normalization.",
+    "concrete_texture_default": "Original root inline writes zero tags: resize None, Gamma Linear, mips None, compression Color; distinct from serde missing-input Default."
+  },
+  "original_static_evidence": {
+    "as_concrete": {
+      "inlinee": "0x7bf7",
+      "consumer": "country_core::startup::load_prefabs::load_prefabs_impl",
+      "tag_gate": "0x1412a23c2..0x1412a23e2",
+      "panic_state_branch": "0x1412a5528..0x1412a5608",
+      "panic_fmt": "0x1428d9390",
+      "inherit_string": "as_concrete() called on an Inheritable value without a prior call to inherit()",
+      "missing_default_format": [
+        "Unable to resolve: a default value ",
+        " was not provided."
+      ]
+    },
+    "deserialize": {
+      "inlinee": "0x20bb7",
+      "bool_call": "0x142687c88 -> ron::parse::Parser::bool 0x140bc81c0",
+      "typed_enum_call": "0x142682b52 -> original RON deserialize_enum 0x142681f40",
+      "result_branches": [
+        "0x142687ca6 -> 0x1426884b3 error path",
+        "0x142682b5e -> 0x142683061 error path"
+      ],
+      "success": "typed bool/enum result stored unchanged as concrete field; missing markers are default path, not parser sentinels"
+    },
+    "borrow": {
+      "inlinee": "0x7872",
+      "call_sites": [
+        "0x141552e40",
+        "0x14155309b"
+      ],
+      "callee": "0x141556130",
+      "comparison": "returned length compared, then external memcmp 0x142923bf0",
+      "borrowed_getter": "0x14067dd80 returns input data pointer unchanged"
+    },
+    "concrete_default": {
+      "inlinee": "0x1a65f",
+      "caller": "asset::texture::scan::scan_asset_tree",
+      "range": "0x1420d8c24..0x1420d8c38",
+      "stores": "resize tag u32=0 at rbp-0x48; gamma+compression u16=0 at rbp-0x34; mip tag u32=0 at rbp-0x3c"
+    }
+  },
+  "differences_and_fixes": [
+    {
+      "difference": "Recovered texture opts originally invoked deep generic inheritance; leaf no-op stubs made outputs coincide but did not express original atomic policy.",
+      "fix": "Added Clone-only inherit_shallow and wired all four texture fields to it.",
+      "recheck": "160000 original instruction cases and composite deep/shallow contrast test."
+    },
+    {
+      "difference": "Borrowed concrete API and named ordinary Deserialize callback absent.",
+      "fix": "Added as_concrete with exact original two panic formats; added typed callback and made serde impl delegate.",
+      "recheck": "borrow pointer identity; original failure texts; direct RON bool errors unchanged; ordinary Option vs permissive option adapter distinguished."
+    },
+    {
+      "difference": "PrefabName exposed str only; nominal borrowed view and original aliases/trait APIs absent.",
+      "fix": "Added transparent UTF-8 PrefabNameRef adapter and original borrowed/name methods/traits using Arc, Borrow, Deref.",
+      "recheck": "empty/case/path/nonASCII/embedded NUL names preserve bytes; same pointers/hash; standard HashMap Borrow lookup succeeds without allocating a key."
+    },
+    {
+      "difference": "Texture resolved defaults existed only through generic from_concrete(Default), independent original method absent.",
+      "fix": "Explicit concrete_default implementing original four field tags; scanner calls it.",
+      "recheck": "resolved defaults differ from Inherit markers; explicit None remains concrete after default merge."
+    },
+    {
+      "difference": "Strict Clippy identified intentional identity AsRef test as useless method syntax.",
+      "fix": "Test uses explicit UFCS to exercise the recovered trait API without suppressing warnings.",
+      "recheck": "strict Clippy all targets passes."
+    }
+  ],
+  "verification": {
+    "cargo_test_exit": 0,
+    "tests_passed": 19,
+    "strict_all_targets_clippy_exit": 0,
+    "fmt_packages": [
+      "asset",
+      "asset-pipe"
+    ],
+    "original_texture_archives": 388,
+    "original_prefab_input_files": 28,
+    "new_test_names": [
+      "shallow_inheritance_preserves_concrete_children_and_unresolved_markers",
+      "concrete_borrow_preserves_identity_and_original_unresolved_failures",
+      "explicit_deserializer_delegates_typed_values_and_preserves_errors",
+      "concrete_texture_defaults_resolve_missing_fields_without_replacing_explicit_none",
+      "borrowed_name_views_share_bytes_and_map_hash_without_normalizing"
+    ]
+  },
+  "dependency_reuse": "No new dependency; serde/RON typed parsing, Arc/Clone/Borrow/HashMap/memcmp library behavior directly reused, private wrappers only. Original Cargo identities unchanged.",
+  "gaps": [
+    "Native equality only the four scalar/array shallow specializations; other new APIs are original static comparison plus Rust contract tests",
+    "Original country-core game consumer runtime is not connected",
+    "Compiler ABI/nominal layout equality and every generic/default/error monomorph are not claimed",
+    "B-only proof; C interfaces remain unknown",
+    "Generic indexed impl$2/impl$6 concrete_default ownership/bounds still pending; one inline None specialization does not prove full generic rule",
+    "Nineteen observed APIs still untouched; previous C/whole native pipeline/logging/CLI gaps retained"
+  ]
+}

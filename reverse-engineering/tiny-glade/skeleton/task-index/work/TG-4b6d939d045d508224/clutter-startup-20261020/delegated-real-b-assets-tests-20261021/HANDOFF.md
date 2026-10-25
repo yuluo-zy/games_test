@@ -1,0 +1,9 @@
+# 真实 B 安装树加载验证：仅测试窄增量
+
+root明确委派；corelead确认loader本体7eacff3a已freeze/生产整合，无worker并写。保持原TG4b6 clutter claim/owner。本候选before捕获实际生产7eacff3a，仅原tests模块尾部新增helper与2个ignored实际资产用例，既有合成边界 tests 与 production函数逐字不改。
+
+测试严格读取/校验TG_INSTALL_ROOT，要求default_settings.ron、compiled-shaders与assets/meshes/decorators，不缺env跳过成功、不造JSON/替身资产。两次独立生产load_decorators调用full52/demo34，四表逐key与已独立原表EXPECTED矩阵完全一致；非skip族每源文件绑定实际安装树、bbox全部维度/真cuboid、indexed真实vertices/indices/normals/UV、convex真shape、sphere/empty原topology、Same原Arc共享与真实triangleclone、全部描边原类型/完整点序+追加首点。
+
+当前生产caller gameplay_startup.rs609实际PreStartup closure捕获installed/demo，借同唯一AssetMeshLibrary/MeshWatch/DecoratorMeshLibrary后调本入口。该load_decorators安全签名无GraphicsContext/TestContext参数；AssetMeshLibrary CPU库不需要GPU context，测试不额外造渲染后端。
+
+请root显式运行测试过滤 `original_b_asset_tree_` + `--ignored --nocapture`，真实TG_INSTALL_ROOT指向B安装根。测试命令具体package/target目录由root唯一验证owner决定。本worker只rustfmt parse/格式化，不Cargo/rustc/GPU，不声称真实资产已通过；若失败保原失败路径定位，不能为了过test改为bbox/defaultgeometry。

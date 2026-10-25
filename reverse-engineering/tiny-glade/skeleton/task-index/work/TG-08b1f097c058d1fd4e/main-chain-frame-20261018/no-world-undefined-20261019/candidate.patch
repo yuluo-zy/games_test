@@ -1,0 +1,97 @@
+--- a/crates/country-core/src/systems/render_loop/draw_passes/final_post.rs
++++ b/crates/country-core/src/systems/render_loop/draw_passes/final_post.rs
+@@ -315,6 +315,11 @@
+             None,
+         ),
+     };
++    // 原 b903 Fragment 在真实 fetch 后才按 Globals.is_input_valid 选择常量。
++    // 仅同一个 flag0 分支允许 src0 未定义；blur/LUT/Tony/shadow 继续严格。
++    if env.flag94 == 0 {
++        b = b.allow_undefined_texture_contents(B_SRC0);
++    }
+     b.uniform(U_LUT_FLAG, env.lut_flag as u32)
+ }
+ 
+@@ -379,3 +384,82 @@
+ pub fn final_post_uniform_writes() -> usize {
+     FINAL_POST_UNIFORMS.len()
+ }
++
++#[cfg(test)]
++mod undefined_source_tests {
++    use super::*;
++    use crate::render::pass_builder::draw_stream::test_host::MockHost;
++    use crate::render::pass_builder::draw_stream::{
++        DrawPacket, RasterPass, RasterState, ShaderReflection,
++    };
++    use alloc::sync::Arc;
++
++    #[test]
++    fn only_flag_zero_permits_the_actual_src0_binding_and_other_inputs_stay_strict() {
++        for flag in [0, 1, 2, 255] {
++            let (mut host, _) = MockHost::new();
++            let mut reflection = ShaderReflection::default();
++            reflection.bindings.insert(B_SRC0, (0, 3));
++            reflection.bindings.insert(B_SRC1, (0, 4));
++            reflection.bindings.insert(B_LUT_FIXED, (0, 5));
++            reflection.bindings.insert(S_SHADOW_MASK_MEAN, (0, 6));
++            host.shaders.insert(1, Arc::new(reflection));
++            let source = AttachmentTexture {
++                id: 50,
++                extent: (16, 16),
++                format: 0x7a,
++                sample_count: 1,
++            };
++            for key in [DISK_FILE, LUT_FIXED_FILE, lut_asset_hash(DEFAULT_LUT_NAME)] {
++                host.textures_by_name
++                    .insert(key, (ManagedHandle(2), source));
++            }
++            host.rg_buffers
++                .insert(ShadowMaskMeanBuffer::rg_buffer_hash(), 52);
++            let mut pass = RasterPass::new("Final blit", &[], None, host.boxed());
++            let shader = Handle(ManagedHandle(1), core::marker::PhantomData);
++            let b = DrawBuilder::new(
++                &mut pass,
++                DrawPacket::new(shader, [0, 0], RasterState::default()),
++                0,
++            );
++            let env = build_env(&FinalPostArgs {
++                out_extent: (16, 16),
++                src0: source,
++                src1: AttachmentTexture { id: 51, ..source },
++                flag94: flag,
++                lut: LutSelect::Default,
++                arg_f0: 0.0,
++                arg_f1: 0.0,
++                shader: None,
++                cfg: GradingConfig {
++                    named: false,
++                    pair: [1.0, 1.0],
++                    floats: GradingFloats::default(),
++                },
++                theme: 0,
++                custom_lut: None,
++            });
++            final_blit_body(b, &env).draw_no_vao(3);
++            let packet = &pass.draws[0];
++            assert_eq!(
++                packet.undefined_texture_bindings.as_slice(),
++                if flag == 0 { &[3][..] } else { &[][..] }
++            );
++            assert!(packet.inactive_texture_bindings.is_empty());
++            assert_eq!(
++                packet.accesses.len(),
++                3,
++                "src0, blur and shadow accesses all survive"
++            );
++            assert!(
++                packet.bindings.contains_key(&5),
++                "Tony remains a real raw descriptor"
++            );
++            assert_eq!(pass.bindings[0].resource_index, 50);
++            assert_eq!(pass.bindings[1].resource_index, 51);
++            assert_eq!(pass.bindings[2].resource_index, 52);
++            pass.rendered.0 = true;
++        }
++    }
++}

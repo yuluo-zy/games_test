@@ -1,0 +1,6 @@
+systems::_::impl$0::as_dyn_eq (0x140a90e70) — 机器码手解（Ghidra 未建函数，RE-MCP NotFound）
+Raw: 48 89 c8 | 48 8d 15 0e 87 04 02 | c3 cc cc ...
+  0x140a90e70:  mov rax, rcx                ; self（数据指针）
+  0x140a90e73:  lea rdx, [rip+0x204870e]    ; 静态 DynEq vtable（fat 指针第二字）
+  0x140a90e7a:  ret
+= 返回 `&dyn DynEq` 胖指针 {self, 静态 vtable}（SystemSet 动态相等转换）。

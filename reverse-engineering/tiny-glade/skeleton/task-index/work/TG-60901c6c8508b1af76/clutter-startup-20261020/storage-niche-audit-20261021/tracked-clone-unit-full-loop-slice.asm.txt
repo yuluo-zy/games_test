@@ -1,0 +1,32 @@
+141257570: 48 83 ee 01                 	subq	$0x1, %rsi
+141257574: 72 6c                       	jb	0x1412575e2 <.text+0x12565e2>
+141257576: 66 85 c0                    	testw	%ax, %ax
+141257579: 74 15                       	je	0x141257590 <.text+0x1256590>
+14125757b: 44 8d 78 ff                 	leal	-0x1(%rax), %r15d
+14125757f: 41 21 c7                    	andl	%eax, %r15d
+141257582: eb 35                       	jmp	0x1412575b9 <.text+0x12565b9>
+141257584: 66 66 66 2e 0f 1f 84 00 00 00 00 00 	nopw	%cs:(%rax,%rax)
+141257590: 66 0f 6f 07                 	movdqa	(%rdi), %xmm0
+141257594: 66 0f d7 c0                 	pmovmskb	%xmm0, %eax
+141257598: 48 81 c3 00 fb ff ff        	addq	$-0x500, %rbx           # imm = 0xFB00
+14125759f: 48 83 c7 10                 	addq	$0x10, %rdi
+1412575a3: 3d ff ff 00 00              	cmpl	$0xffff, %eax           # imm = 0xFFFF
+1412575a8: 74 e6                       	je	0x141257590 <.text+0x1256590>
+1412575aa: b9 fe ff ff ff              	movl	$0xfffffffe, %ecx       # imm = 0xFFFFFFFE
+1412575af: 29 c1                       	subl	%eax, %ecx
+1412575b1: f7 d0                       	notl	%eax
+1412575b3: 41 89 c7                    	movl	%eax, %r15d
+1412575b6: 41 21 cf                    	andl	%ecx, %r15d
+1412575b9: f3 0f bc c0                 	tzcntl	%eax, %eax
+1412575bd: 48 f7 d8                    	negq	%rax
+1412575c0: 48 8d 04 80                 	leaq	(%rax,%rax,4), %rax
+1412575c4: 48 c1 e0 04                 	shlq	$0x4, %rax
+1412575c8: 80 7c 03 ff 02              	cmpb	$0x2, -0x1(%rbx,%rax)
+1412575cd: 74 13                       	je	0x1412575e2 <.text+0x12565e2>
+1412575cf: 48 01 d8                    	addq	%rbx, %rax
+1412575d2: 8b 50 b0                    	movl	-0x50(%rax), %edx
+1412575d5: 4c 89 f1                    	movq	%r14, %rcx
+1412575d8: e8 a3 45 de fe              	callq	0x14003bb80 <.text+0x3ab80>
+1412575dd: 44 89 f8                    	movl	%r15d, %eax
+1412575e0: eb 8e                       	jmp	0x141257570 <.text+0x1256570>
+1412575e2: 48 8b 7d 48                 	movq	0x48(%rbp), %rdi

@@ -1,0 +1,26 @@
+{
+  "status": "static original-SPIRV dataflow/range audit; not GPU validation",
+  "spirv_text_sha256": "cdfbce1615234a9695b26dea023fbd037de0801bfc28c32b44497f23a729c41e",
+  "spirv_binary_sha256": "1700415df48510054a30ddd7343ff608a269ace41b7e25cc74cb5a7ad346d590",
+  "checked_n": [
+    1,
+    1024
+  ],
+  "counts_checked": 1024,
+  "anchors": [
+    "%325 = OpULessThan %bool %321 %324",
+    "%412 = OpLoad %v4uint %411 Aligned 8",
+    "%426 = OpULessThan %bool %425 %390",
+    "%447 = OpLoad %v4uint %446 Aligned 8",
+    "%497 = OpLoad %v4uint %496 Aligned 8",
+    "%522 = OpLoad %v4uint %521 Aligned 8",
+    "%549 = OpULessThanEqual %bool %548 %390",
+    "%570 = OpLoad %v4uint %569 Aligned 8",
+    "%592 = OpLoad %v4uint %591 Aligned 8",
+    "%693 = OpULessThanEqual %bool %692 %390",
+    "%714 = OpLoad %v4uint %713 Aligned 8",
+    "%769 = OpULessThanEqual %bool %768 %390",
+    "%790 = OpLoad %v4uint %789 Aligned 8"
+  ],
+  "conclusion": "All physical16B fetches fit the rounded-even allocation. Singleton/final odd tail takes xy only; unused zw bits have no asserted value. Count0 outer stroke loop executes no BDA load, but W3 still declares four passes when rasterized=false."
+}

@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "scope": "rhapsody::raw::texture (47/55 funcs), rhapsody::raw::buffer (26/27 funcs), rhapsody::raw::format (3 funcs)",
+  "target_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "jobs": ["job1.json", "job2.json", "job3.json"],
+  "reports": ["REPORT1.json", "REPORT2.json", "REPORT3.json"],
+  "runner": "scripts/render-recovery/run-lanes.mjs --lanes 2 (lane database newtexbuf_l1/_l2)",
+  "evidence_method": "Ghidra 12.1.4 decompile_function / disassemble_function; run_auto_analysis=false; PDB names from workgraph/functions.json; candidate rust read-only for cross-check only",
+  "coverage": {
+    "decompiled": 38,
+    "not_in_ghidra_db_no_unwind_info": "all TextureDesc::new*/getters, all TextureViewDesc::* (11), BufferDesc constructors (5), byte_count/get_vk_buffer, all_mip_levels(0x140bd54a0), half_res(0x140bd5730)",
+    "note": "tiny leaf getters are PDB procedures but absent from the auto-analysis-off function list; Ghidra returns 'No function at 0x...'; their semantics are inferred from consumers (get_image_create_info, update_buffer_bytes), NOT fabricated."
+  },
+  "TextureDesc": {
+    "size_bytes": 32,
+    "layout": [
+      {"off": "0x00", "type": "u32", "name": "usage", "evidence": "get_image_create_info writes *(u32)desc -> VkImageCreateInfo.usage(0x38); create_texture tests desc.usage==0 and ORs TRANSFER_DST(2)"},
+      {"off": "0x04", "type": "u32", "name": "flags", "evidence": "-> VkImageCreateInfo.flags(0x10)"},
+      {"off": "0x08", "type": "u32", "name": "format", "evidence": "-> VkImageCreateInfo.format(0x18); copied with width as one qword (desc+8)"},
+      {"off": "0x0c", "type": "u32", "name": "width", "evidence": "div/div_up_extent divide this field; -> VkImageCreateInfo.extent.width(0x1c)"},
+      {"off": "0x10", "type": "u32", "name": "height", "evidence": "div/div_up_extent; -> extent.height(0x20)"},
+      {"off": "0x14", "type": "u32", "name": "depth", "evidence": "div/div_up_extent; -> extent.depth(0x24)"},
+      {"off": "0x18", "type": "u32", "name": "array_elements (layers)", "evidence": "array_elements stores count here and validates against kind; -> VkImageCreateInfo.arrayLayers(0x2c); cube = layers*6"},
+      {"off": "0x1c", "type": "u8", "name": "mip_levels", "evidence": "-> VkImageCreateInfo.mipLevels(0x28)"},
+      {"off": "0x1d", "type": "u8", "name": "sample_count", "evidence": "-> VkImageCreateInfo.samples(0x30); compared in div_up_extent kind mask"},
+      {"off": "0x1e", "type": "u8", "name": "kind (image type enum)", "evidence": "switch in get_image_create_info and mask check (0x4a) in array_elements"}
+    ],
+    "kind_enum": {
+      "0": "1D (array must be 1)",
+      "1": "1D array",
+      "2": "2D (array must be 1)",
+      "3": "2D array",
+      "4": "3D",
+      "5": "cube (layers=6, array must be 1)",
+      "6": "cube array (layers=n*6)"
+    },
+    "derived": "get_image_create_info builds a full VkImageCreateInfo (sType=14, initialLayout = arg<<3); array_elements valid only for kind 1/3/6 when layers>1 (mask 0x4a)."
+  },
+  "TextureViewDesc": {
+    "status": "not decompilable (all 11 leaf funcs); inferred from TextureViewDesc::new semantics in get_image flow only",
+    "candidate_cross_check": "candidate src has {view_type, format, aspect, base_mip_level, level_count, base_layer, layer_count}; original field order/ABI NOT confirmed"
+  },
+  "BufferDesc": {
+    "size_bytes": 16,
+    "layout": [
+      {"off": "0x00", "type": "u64", "name": "size (byte_count)", "evidence": "create_buffer_impl compares *desc as size and stores it; BUFFER creation size"},
+      {"off": "0x08", "type": "u32", "name": "usage (VkBufferUsageFlags)", "evidence": "create_buffer ORs bit 2 (TRANSFER_DST) here; create_buffer_impl tests desc.usage & 0x400"},
+      {"off": "0x0c", "type": "u16", "name": "alignment", "evidence": "BufferDesc::alignment validates value<0x10000 and stores as u16 here; create_buffer_impl takes max(req_align, this)"},
+      {"off": "0x0e", "type": "u8", "name": "memory_class/location enum", "evidence": "create_mapped_buffer requires value in {2,4}; create_buffer_impl reads byte and forwards"}
+    ],
+    "constructors": "new/new_gpu_only/new_cpu_to_gpu/new_cpu_to_gpu_low_prio/new_gpu_to_cpu (leaf, not decompiled) set size/usage/memory_class; new_cpu_to_gpu_low_prio reused for upload staging buffers",
+    "candidate_cross_check": "candidate models required_memory/preferred_memory (MemoryPropertyFlags) - NOT the observed original ABI (u16 alignment + small enum)."
+  },
+  "texture_create_path": {
+    "entry": "GraphicsDevice::create_texture (monomorphized @0x1405b9b00/0x1405ba5f0/0x140faeba0/0x1417faa80; generic @0x140c07950 / @0x1416a6700 / @0x1416a71f0)",
+    "steps": [
+      "MipChainIter::new(@0x140bd5a80) over extent+mip count (validated)",
+      "OR usage bit 2 (TRANSFER_DST) when initial data present",
+      "get_image_create_info(@0x140bd5ed0) -> VkImageCreateInfo (sType 14)",
+      "vkCreateImage via device fn-ptr @+0x1a0 (args: device@+0x640, info, null alloc, &image)",
+      "allocator allocate via gpu-allocator-style vtable (func_0x140bf8960 -> vtable call)",
+      "vkGetImageMemoryRequirements via fn-ptr @+0xf0",
+      "vkBindImageMemory via fn-ptr @+0xe0 (offset+size from memory requirement)",
+      "ManagedTexture::new(@0x140bdc2d0) wraps image+memory (+ view @0x140bdc5d0 / create_vk_image_view @0x140bdcba0 from A4)",
+      "optional init_texture_data(@0x140bfe270) initial upload (TextureInitialData enum dispatch)",
+      "default debug name 'GpuOnly texture'"
+    ],
+    "note": "no direct ash symbols resolved; ash entry points are cached fn-pointers on the device struct (offsets 0xe0/0xf0/0x1a0)."
+  },
+  "buffer_create_path": {
+    "entry": "GraphicsDevice::create_buffer_impl(@0x140bee200) via create_buffer(@0x140c03460 generic, @0x1405b93b0 &[u8], @0x140c038c0), create_mapped_buffer(@0x140beea80)",
+    "steps": [
+      "BufferDesc read; OR usage bit 2 when initial data present",
+      "allocator allocate via vtable (device+0x78 sub-object fn-ptrs @[0x21],[0xe],[0xc]) gpu-allocator style",
+      "alignment = max(mem_req_align, desc.alignment, default 0x10 or 0x40 if usage&0x400)",
+      "spin-lock staging buffer (try_lock + 1s timeout) for host uploads",
+      "record copy into staging via FUN_140c04840 + memcpy; create staging desc via BufferDesc::new_cpu_to_gpu_low_prio(@0x140bd4ea0)",
+      "result enum tag 0xb (Ok)"
+    ],
+    "update_buffer_bytes": "@0x140beefa0: stale-check(generation@+0x14, valid-flag@+0x16), size match(inner+0xc == h+0x10), range validation, host-visible flag check (inner+0x28 & 2), memcpy into mapped region, flush (FUN_140c04280)",
+    "accessors": "Buffer::device_address @0x140bd4c00, Buffer::mapped_slice_mut @0x140bd4cd0, get_vk_buffer @0x140bef470 (leaf)"
+  },
+  "raw_handle_layout": {
+    "note": "raw Texture and raw Buffer share the same 0x20-byte handle shape used by update_texture/update_buffer_bytes/device_address/mapped_slice_mut",
+    "fields": [
+      {"off": "0x08", "name": "inner handle ptr (ManagedTexture/ManagedBuffer allocation)"},
+      {"off": "0x10", "name": "u32 size mirror (must equal inner+0xc)"},
+      {"off": "0x14", "name": "u16 generation (compared to device+0x648->0xa50)"},
+      {"off": "0x16", "name": "u8 valid/state flag"},
+      {"off": "0x18", "name": "u64 requested len (buffer)"}
+    ],
+    "inner_allocation": {"off_0x0c": "u32 size", "off_0x20": "mapped capacity", "off_0x28": "u8 flags (bit1=host-visible)", "off_0x38": "mapping region", "off_0x7c": "u8 mapping state (2=error)", "off_0xcc": "u8 state (texture)"},
+    "create_result": "create_* return a Result-like enum (tag 0xb = Ok) of ~0x50 bytes; unwrap yields the raw handle"
+  },
+  "format_module": {
+    "vk_format_valid_aspect_flags": "@0x141738fe0: table[format-1] for format in 1..=184, u32 VkImageAspectFlags; else panic",
+    "vk_format_info": "@0x141739060: fills struct {u32,u32,u8,u8(dup)} from 3 parallel tables for format in 0..=146; else panic",
+    "vk_format_block_bytes": "@0x1417390e0: 1 for format 1..=130; then 16 (mask 0xccc0) or 8 (mask 3 / idx 8) for 131..=146; else panic",
+    "relation_to_249_format_table": "these are VkFormat-number-indexed static rule tables (aspect / block bytes / info) built into the binary; the earlier '249-format table' candidate is a different, denser enumeration. raw::format is engine/static metadata, NOT ash."
+  },
+  "memory_type_selection": {
+    "physical_device_props": "not resolved by symbol; allocator (gpu-allocator-style) vtable consulted via device fn-ptrs; vkGetImageMemoryRequirements used (@+0xf0) and buffer memory requirements via device+0x78 fn-ptr [0xe]. No direct vkGetPhysicalDeviceMemoryProperties call observed in these funcs (handled inside allocator dependency)."
+  },
+  "thin_wrapper_verdict": {
+    "summary": "NOT thin ash wrappers. raw::texture and raw::buffer are the engine resource layer above ash: they own descriptor ABIs, allocator integration, staging upload, Managed* wrapping, generation/staleness and debug names.",
+    "per_item": [
+      {"item": "TextureDesc/TextureViewDesc/BufferDesc + getters/constructors", "verdict": "engine data types (not ash); packed ABI differs from candidate"}
+    ,
+      {"item": "get_image_create_info / MipChainIter / array_elements / div_extent", "verdict": "engine logic: desc->VkImageCreateInfo translation, mip iteration, validation - not a forward"}
+    ,
+      {"item": "create_texture/create_buffer*/update_*/set_*_debug_name/device_address/mapped_slice_mut", "verdict": "engine logic: allocator vtable, staging, locking, generation checks, uploads - not thin forward"}
+    ,
+      {"item": "raw::format (3 funcs)", "verdict": "static engine rule tables indexed by VkFormat - not a wrapper"}
+    ,
+      {"item": "genuine pass-through only", "verdict": "none observed as a standalone function; ash calls are inlined as cached device fn-pointers, never a 1-call module"}
+    ]
+  },
+  "unknowns": [
+    "Exact TextureViewDesc binary layout/field order (all leaf funcs absent from Ghidra DB)",
+    "Exact TextureDesc usage-bit builders (sampled/storage/... are 21-byte leaves, not disassembled)",
+    "Buffer memory_class enum value meanings (observed {2,4} mappable only)",
+    "raw handle offset 0x00 semantics and the 0x50-byte create-result enum field meanings",
+    "Whether raw::texture/buffer call into managed types only or share raw handle with rg layer",
+    "No caller graph: empty xrefs with auto-analysis off are not evidence of no callers"
+  ]
+}

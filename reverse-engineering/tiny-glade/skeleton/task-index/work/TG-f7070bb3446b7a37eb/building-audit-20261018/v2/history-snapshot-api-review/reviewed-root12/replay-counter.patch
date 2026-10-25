@@ -1,0 +1,173 @@
+--- a/games_test/tiny-glade/crates/country-core/src/resources/history/replay_cmd_buffer.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/history/replay_cmd_buffer.rs
+@@ -119,8 +119,7 @@
+ /// 0x140b38250 弹桶时按它们恢复装饰/楼梯）。
+ #[derive(Clone, Debug, Default)]
+ pub struct ReplayBucketAux {
+-    pub decorator_diff:
+-        Option<std::sync::Arc<super::decorator_edit::DecoratorHistoryDiffMap>>,
++    pub decorator_diff: Option<std::sync::Arc<super::decorator_edit::DecoratorHistoryDiffMap>>,
+     pub stairs_diff:
+         Option<std::sync::Arc<crate::resources::stairs::stairs_state::StairsHistoryDiff>>,
+ }
+@@ -160,7 +159,13 @@
+         undo: bool,
+         instant: bool,
+     ) -> Result<Self, HistoryReplayError> {
+-        Self::expand_with_aux(entry_index, entry, undo, instant, ReplayBucketAux::default())
++        Self::expand_with_aux(
++            entry_index,
++            entry,
++            undo,
++            instant,
++            ReplayBucketAux::default(),
++        )
+     }
+ 
+     /// B `replay_edit` 0x140af6170：逐 edit `generate_replay_cmds_from_edit`
+@@ -193,7 +198,9 @@
+             commands.push(match edit {
+                 EditType::AutoClutter(edit) => ReplayCommand::AutoClutter(
+                     super::auto_clutter_edit::AutoClutterReplayCmd::expanded_shared(
+-                        edit.clone(), undo, instant,
++                        edit.clone(),
++                        undo,
++                        instant,
+                     ),
+                 ),
+                 EditType::Roof(edit) => ReplayCommand::Roof(RoofReplayCommand::expanded_shared(
+@@ -240,11 +247,9 @@
+                 EditType::Tree(edit) => ReplayCommand::Tree(
+                     super::tree_edit::TreeReplayCmd::expanded(edit, undo, instant),
+                 ),
+-                EditType::Color(edit) => ReplayCommand::Color(ColorReplayCmd::expanded(
+-                    edit.clone(),
+-                    undo,
+-                    instant,
+-                )),
++                EditType::Color(edit) => {
++                    ReplayCommand::Color(ColorReplayCmd::expanded(edit.clone(), undo, instant))
++                }
+                 EditType::DecoratorV5(edit) => ReplayCommand::Decorator(
+                     DecoratorReplayCmd::expanded(edit.clone(), undo, instant),
+                 ),
+@@ -255,7 +260,9 @@
+                 }
+                 EditType::Terrain(edit) => ReplayCommand::Terrain(
+                     crate::systems::terrain::replay_terrain::TerrainReplayCmd::expanded(
+-                        edit.clone(), undo, instant,
++                        edit.clone(),
++                        undo,
++                        instant,
+                     ),
+                 ),
+                 // 光栅族（tag 1..6）已在上方 `edit.raster()` 分支消费。
+@@ -299,6 +306,8 @@
+     /// 与 `buckets` 一一对应的 aux owner diff（原生 bucket 内联两 Arc 槽）。
+     pub aux: VecDeque<ReplayBucketAux>,
+     pub speed: f32,
++    /// B pop_front increments this even before the empty-queue assertion.
++    pop_counter: u64,
+ }
+ impl ReplayBuffer {
+     /// Speed is supplied by the real replay-mode owner; no guessed startup
+@@ -308,7 +317,11 @@
+             buckets: VecDeque::new(),
+             aux: VecDeque::new(),
+             speed,
+-        }
++            pop_counter: 0,
++        }
++    }
++    pub fn pop_counter(&self) -> u64 {
++        self.pop_counter
+     }
+     pub fn is_empty(&self) -> bool {
+         self.buckets.is_empty()
+@@ -329,6 +342,7 @@
+     /// 弹出前桶及其 aux（原 `ReplayBuffer::pop_front` 0x1409f18f0 之外的
+     /// history 侧模型：aux 与 bucket 同步）。
+     pub fn pop_front_bucket(&mut self) -> Option<(ReplayBucket, ReplayBucketAux)> {
++        self.pop_counter = self.pop_counter.wrapping_add(1);
+         let bucket = self.buckets.pop_front()?;
+         let aux = self.aux.pop_front().unwrap_or_default();
+         Some((bucket, aux))
+@@ -454,7 +468,10 @@
+         // fresh replay_edit 0x140af6170 的相邻命令兼容谓词（switch case 6/7/8/10）。
+         let color = HistoryEntry::from_edits(vec![EditType::Color(color_edit())]);
+         let roof = HistoryEntry::from_edits(vec![EditType::Roof(Arc::new(
+-            crate::resources::history::building_transactions::RoofHistoryEdit::from_observed([0; 64]).unwrap(),
++            crate::resources::history::building_transactions::RoofHistoryEdit::from_observed(
++                [0; 64],
++            )
++            .unwrap(),
+         ))]);
+         let decorator = HistoryEntry::from_edits(vec![EditType::DecoratorV5(Arc::new(
+             DecoratorHistoryEdit::default(),
+@@ -462,11 +479,21 @@
+         let tree = HistoryEntry::from_edits(vec![EditType::Tree(Arc::new(
+             crate::resources::history::tree_edit::TreeEdit::default(),
+         ))]);
+-        let color_cmd = &ReplayBucket::expand(0, &color, false, true).unwrap().commands[0];
+-        let other_color = &ReplayBucket::expand(1, &color, false, true).unwrap().commands[0];
+-        let roof_cmd = &ReplayBucket::expand(0, &roof, false, true).unwrap().commands[0];
+-        let decorator_cmd = &ReplayBucket::expand(0, &decorator, false, true).unwrap().commands[0];
+-        let tree_cmd = &ReplayBucket::expand(0, &tree, false, true).unwrap().commands[0];
++        let color_cmd = &ReplayBucket::expand(0, &color, false, true)
++            .unwrap()
++            .commands[0];
++        let other_color = &ReplayBucket::expand(1, &color, false, true)
++            .unwrap()
++            .commands[0];
++        let roof_cmd = &ReplayBucket::expand(0, &roof, false, true)
++            .unwrap()
++            .commands[0];
++        let decorator_cmd = &ReplayBucket::expand(0, &decorator, false, true)
++            .unwrap()
++            .commands[0];
++        let tree_cmd = &ReplayBucket::expand(0, &tree, false, true)
++            .unwrap()
++            .commands[0];
+         assert_eq!(color_cmd.native_tag(), 6);
+         assert_eq!(roof_cmd.native_tag(), 5);
+         assert_eq!(decorator_cmd.native_tag(), 7);
+@@ -489,7 +516,9 @@
+     fn undo_reverses_generated_commands() {
+         let entry = HistoryEntry::from_edits(vec![
+             EditType::Color(color_edit()),
+-            EditType::Tree(Arc::new(crate::resources::history::tree_edit::TreeEdit::default())),
++            EditType::Tree(Arc::new(
++                crate::resources::history::tree_edit::TreeEdit::default(),
++            )),
+         ]);
+         let bucket = ReplayBucket::expand(0, &entry, true, true).unwrap();
+         assert!(matches!(bucket.commands[0], ReplayCommand::Tree(_)));
+@@ -548,3 +577,28 @@
+         }
+     }
+ }
++
++#[cfg(test)]
++mod pop_counter_tests {
++    use super::*;
++    #[test]
++    fn counter_tracks_pop_attempts_and_is_preserved_by_clone() {
++        let mut replay = ReplayBuffer::new(1.0);
++        assert_eq!(replay.pop_counter(), 0);
++        replay.push(ReplayBucket {
++            entry_index: 0,
++            undo: false,
++            commands: Vec::new(),
++            timing: Vec::new(),
++        });
++        assert_eq!(replay.pop_counter(), 0);
++        assert!(replay.pop_front_bucket().is_some());
++        assert_eq!(replay.pop_counter(), 1);
++        assert_eq!(replay.clone().pop_counter(), 1);
++        assert!(replay.pop_front_bucket().is_none());
++        assert_eq!(replay.pop_counter(), 2);
++        replay.pop_counter = u64::MAX;
++        assert!(replay.pop_front_bucket().is_none());
++        assert_eq!(replay.pop_counter(), 0);
++    }
++}

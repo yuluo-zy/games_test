@@ -1,0 +1,436 @@
+{
+  "tool": "recompile_check.py + variant_verify.py (manual -D compiles)",
+  "date": "2026-10-13",
+  "scope": "wave2 nani cull/draw-list + wall family merge (review nani-cull verdict applied)",
+  "oracle": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/compiled-shaders/ (read-only)",
+  "summary": {
+    "modules_checked": 44,
+    "hard_gate_pass": 44,
+    "hard_gate_fail": 0,
+    "pass_structural_bins": [
+      "_nani_clear_histogram.cs.hlsl_cs_main_0.bin",
+      "_nani_clear_subtotals.cs.hlsl_cs_main_0.bin",
+      "_nani_draw_indexed_indirect_to_dispatch.cs.hlsl_cs_main_0.bin",
+      "_nani_fill_unsorted_instance_indirection.cs.hlsl_cs_main_0.bin"
+    ],
+    "default_modules": 31,
+    "variant_modules": 13,
+    "note": "hard gate = entries + local_size + capabilities + bindings (per validation-pipeline.md); opcode-histogram residuals are documented classes, NOT failures."
+  },
+  "per_module": [
+    {
+      "bin": "_nani_allocate_draw_commands.cs.hlsl_cs_main_0.bin",
+      "hlsl": "allocate_draw_commands.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 1,
+      "hist_candidate_only_keys": 1
+    },
+    {
+      "bin": "_nani_clear_draw_lists.cs.hlsl_cs_main_0.bin",
+      "hlsl": "clear_draw_lists.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 1,
+      "hist_candidate_only_keys": 1
+    },
+    {
+      "bin": "_nani_clear_histogram.cs.hlsl_cs_main_0.bin",
+      "hlsl": "clear_histogram.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "PASS_STRUCTURAL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 0,
+      "hist_candidate_only_keys": 0
+    },
+    {
+      "bin": "_nani_clear_subtotals.cs.hlsl_cs_main_0.bin",
+      "hlsl": "clear_subtotals.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "PASS_STRUCTURAL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 0,
+      "hist_candidate_only_keys": 0
+    },
+    {
+      "bin": "_nani_cull_and_bucket.cs.hlsl_cs_main_8a7d2f81e72c8eeb.bin",
+      "hlsl": "cull_and_bucket.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 41,
+      "hist_candidate_only_keys": 36
+    },
+    {
+      "bin": "_nani_cull_and_bucket_bush.cs.hlsl_cs_main_8a7d2f81e72c8eeb.bin",
+      "hlsl": "cull_and_bucket_bush.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 45,
+      "hist_candidate_only_keys": 39
+    },
+    {
+      "bin": "_nani_cull_and_bucket_curved_halftimber.cs.hlsl_cs_main_8a7d2f81e72c8eeb.bin",
+      "hlsl": "cull_and_bucket_curved_halftimber.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 44,
+      "hist_candidate_only_keys": 39
+    },
+    {
+      "bin": "_nani_cull_and_bucket_flowers.cs.hlsl_cs_main_8a7d2f81e72c8eeb.bin",
+      "hlsl": "cull_and_bucket_flowers.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 44,
+      "hist_candidate_only_keys": 38
+    },
+    {
+      "bin": "_nani_cull_and_bucket_plaster.cs.hlsl_cs_main_8a7d2f81e72c8eeb.bin",
+      "hlsl": "cull_and_bucket_plaster.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 41,
+      "hist_candidate_only_keys": 36
+    },
+    {
+      "bin": "_nani_cull_and_bucket_roof_tile.cs.hlsl_cs_main_8a7d2f81e72c8eeb.bin",
+      "hlsl": "cull_and_bucket_roof_tile.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 41,
+      "hist_candidate_only_keys": 37
+    },
+    {
+      "bin": "_nani_cull_and_bucket_smoke.cs.hlsl_cs_main_8a7d2f81e72c8eeb.bin",
+      "hlsl": "cull_and_bucket_smoke.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 43,
+      "hist_candidate_only_keys": 38
+    },
+    {
+      "bin": "_nani_cull_and_bucket_stairs_floor.cs.hlsl_cs_main_8a7d2f81e72c8eeb.bin",
+      "hlsl": "cull_and_bucket_stairs_floor.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 43,
+      "hist_candidate_only_keys": 38
+    },
+    {
+      "bin": "_nani_cull_and_bucket_wooden_plank.cs.hlsl_cs_main_8a7d2f81e72c8eeb.bin",
+      "hlsl": "cull_and_bucket_wooden_plank.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 47,
+      "hist_candidate_only_keys": 40
+    },
+    {
+      "bin": "_nani_draw_indexed_indirect_to_dispatch.cs.hlsl_cs_main_0.bin",
+      "hlsl": "draw_indexed_indirect_to_dispatch.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "PASS_STRUCTURAL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 0,
+      "hist_candidate_only_keys": 0
+    },
+    {
+      "bin": "_nani_fill_sorted_instance_list.cs.hlsl_cs_main_0.bin",
+      "hlsl": "fill_sorted_instance_list.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 4,
+      "hist_candidate_only_keys": 4
+    },
+    {
+      "bin": "_nani_fill_unsorted_instance_indirection.cs.hlsl_cs_main_0.bin",
+      "hlsl": "fill_unsorted_instance_indirection.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "PASS_STRUCTURAL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 0,
+      "hist_candidate_only_keys": 0
+    },
+    {
+      "bin": "_nani_fill_unsorted_instance_list.cs.hlsl_cs_main_0.bin",
+      "hlsl": "fill_unsorted_instance_list.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 4,
+      "hist_candidate_only_keys": 4
+    },
+    {
+      "bin": "_nani_generate_dispatch_args.cs.hlsl_cs_main_0.bin",
+      "hlsl": "generate_dispatch_args.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 8,
+      "hist_candidate_only_keys": 8
+    },
+    {
+      "bin": "_nani_generate_draw_lists.cs.hlsl_cs_main_0.bin",
+      "hlsl": "generate_draw_lists.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 2,
+      "hist_candidate_only_keys": 1
+    },
+    {
+      "bin": "_nani_group_draw_cmd_prefix_sum.cs.hlsl_cs_main_0.bin",
+      "hlsl": "group_draw_cmd_prefix_sum.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 6,
+      "hist_candidate_only_keys": 4
+    },
+    {
+      "bin": "_nani_histogram_prefix_sum.cs.hlsl_cs_main_0.bin",
+      "hlsl": "histogram_prefix_sum.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 4,
+      "hist_candidate_only_keys": 2
+    },
+    {
+      "bin": "_nani_prefix_sum_unsorted_instances_per_atlas_entry.cs.hlsl_cs_main_0.bin",
+      "hlsl": "prefix_sum_unsorted_instances_per_atlas_entry.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 4,
+      "hist_candidate_only_keys": 2
+    },
+    {
+      "bin": "_nani_prepare_unsorted_draw_lists.cs.hlsl_cs_main_0.bin",
+      "hlsl": "prepare_unsorted_draw_lists.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 2,
+      "hist_candidate_only_keys": 1
+    },
+    {
+      "bin": "_nani_subtotal_prefix_sum.cs.hlsl_cs_main_0.bin",
+      "hlsl": "subtotal_prefix_sum.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 7,
+      "hist_candidate_only_keys": 5
+    },
+    {
+      "bin": "_wall_generate_draw_lists.cs.hlsl_cs_pass1_0.bin",
+      "hlsl": "generate_draw_lists.cs.hlsl",
+      "entry": "cs_pass1",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 32,
+      "hist_candidate_only_keys": 32
+    },
+    {
+      "bin": "_wall_generate_draw_lists.cs.hlsl_cs_pass2_0.bin",
+      "hlsl": "generate_draw_lists.cs.hlsl",
+      "entry": "cs_pass2",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 28,
+      "hist_candidate_only_keys": 29
+    },
+    {
+      "bin": "_wall_reset_pass2_inst_counts.cs.hlsl_cs_main_0.bin",
+      "hlsl": "reset_pass2_inst_counts.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 1,
+      "hist_candidate_only_keys": 1
+    },
+    {
+      "bin": "_wall_wall_brick_lod0.raster.hlsl_b903e43ffb3da915.bin",
+      "hlsl": "wall_brick_lod0.raster.hlsl",
+      "entry": "vs_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 55,
+      "hist_candidate_only_keys": 23
+    },
+    {
+      "bin": "_wall_wall_brick_lod0.raster.hlsl_b903e43ffb3da915.bin",
+      "hlsl": "wall_brick_lod0.raster.hlsl",
+      "entry": "ps_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 54,
+      "hist_candidate_only_keys": 30
+    },
+    {
+      "bin": "_wall_wall_brick_lod1.raster.hlsl_b903e43ffb3da915.bin",
+      "hlsl": "wall_brick_lod1.raster.hlsl",
+      "entry": "vs_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 54,
+      "hist_candidate_only_keys": 21
+    },
+    {
+      "bin": "_wall_wall_brick_lod1.raster.hlsl_b903e43ffb3da915.bin",
+      "hlsl": "wall_brick_lod1.raster.hlsl",
+      "entry": "ps_main",
+      "verdict": "FAIL",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 75,
+      "hist_candidate_only_keys": 34
+    },
+    {
+      "bin": "_nani_cull_and_bucket.cs.hlsl_cs_main_d8520a92ddeb65ab.bin",
+      "hlsl": "nani/cull_and_bucket.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "VARIANT_HARD_GATE_PASS",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 48,
+      "hist_candidate_only_keys": 0
+    },
+    {
+      "bin": "_nani_cull_and_bucket_bush.cs.hlsl_cs_main_d8520a92ddeb65ab.bin",
+      "hlsl": "nani/cull_and_bucket_bush.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "VARIANT_HARD_GATE_PASS",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 49,
+      "hist_candidate_only_keys": 0
+    },
+    {
+      "bin": "_nani_cull_and_bucket_curved_halftimber.cs.hlsl_cs_main_d8520a92ddeb65ab.bin",
+      "hlsl": "nani/cull_and_bucket_curved_halftimber.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "VARIANT_HARD_GATE_PASS",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 51,
+      "hist_candidate_only_keys": 0
+    },
+    {
+      "bin": "_nani_cull_and_bucket_flowers.cs.hlsl_cs_main_d8520a92ddeb65ab.bin",
+      "hlsl": "nani/cull_and_bucket_flowers.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "VARIANT_HARD_GATE_PASS",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 48,
+      "hist_candidate_only_keys": 0
+    },
+    {
+      "bin": "_nani_cull_and_bucket_plaster.cs.hlsl_cs_main_d8520a92ddeb65ab.bin",
+      "hlsl": "nani/cull_and_bucket_plaster.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "VARIANT_HARD_GATE_PASS",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 37,
+      "hist_candidate_only_keys": 0
+    },
+    {
+      "bin": "_nani_cull_and_bucket_roof_tile.cs.hlsl_cs_main_d8520a92ddeb65ab.bin",
+      "hlsl": "nani/cull_and_bucket_roof_tile.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "VARIANT_HARD_GATE_PASS",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 44,
+      "hist_candidate_only_keys": 0
+    },
+    {
+      "bin": "_nani_cull_and_bucket_smoke.cs.hlsl_cs_main_d8520a92ddeb65ab.bin",
+      "hlsl": "nani/cull_and_bucket_smoke.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "VARIANT_HARD_GATE_PASS",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 50,
+      "hist_candidate_only_keys": 0
+    },
+    {
+      "bin": "_nani_cull_and_bucket_stairs_floor.cs.hlsl_cs_main_d8520a92ddeb65ab.bin",
+      "hlsl": "nani/cull_and_bucket_stairs_floor.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "VARIANT_HARD_GATE_PASS",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 50,
+      "hist_candidate_only_keys": 0
+    },
+    {
+      "bin": "_nani_cull_and_bucket_wooden_plank.cs.hlsl_cs_main_d8520a92ddeb65ab.bin",
+      "hlsl": "nani/cull_and_bucket_wooden_plank.cs.hlsl",
+      "entry": "cs_main",
+      "verdict": "VARIANT_HARD_GATE_PASS",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 52,
+      "hist_candidate_only_keys": 0
+    },
+    {
+      "bin": "_wall_wall_brick_lod0.raster.hlsl_f0adff76827e73ff.bin",
+      "hlsl": "wall/wall_brick_lod0.raster.hlsl",
+      "entry": "vs_main",
+      "verdict": "VARIANT_HARD_GATE_PASS",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 54,
+      "hist_candidate_only_keys": 0
+    },
+    {
+      "bin": "_wall_wall_brick_lod0.raster.hlsl_f0adff76827e73ff.bin",
+      "hlsl": "wall/wall_brick_lod0.raster.hlsl",
+      "entry": "ps_main",
+      "verdict": "VARIANT_HARD_GATE_PASS",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 24,
+      "hist_candidate_only_keys": 0
+    },
+    {
+      "bin": "_wall_wall_brick_lod1.raster.hlsl_f0adff76827e73ff.bin",
+      "hlsl": "wall/wall_brick_lod1.raster.hlsl",
+      "entry": "vs_main",
+      "verdict": "VARIANT_HARD_GATE_PASS",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 53,
+      "hist_candidate_only_keys": 0
+    },
+    {
+      "bin": "_wall_wall_brick_lod1.raster.hlsl_f0adff76827e73ff.bin",
+      "hlsl": "wall/wall_brick_lod1.raster.hlsl",
+      "entry": "ps_main",
+      "verdict": "VARIANT_HARD_GATE_PASS",
+      "hard_gate": "PASS",
+      "hist_target_only_keys": 24,
+      "hist_candidate_only_keys": 0
+    }
+  ],
+  "pba": {
+    "strategy": "B approximation: uint2 address (32-bit OpIAdd low word, no carry), no Int64, [[vk::ext_capability(5347)]] + SPV_KHR_physical_storage_buffer; physical instance read approximated (logical per-index read)",
+    "a_rejected": "A used uint64_t + [[vk::buffer_reference]]: would emit Int64 + FAIL_DXC with installed dxc (bin has NO Int64 capability, only 32-bit OpTypeInt)",
+    "verified": "cull_and_bucket.cs.hlsl 8a7d2f81 (hzb default) hard-gate PASS; d8520a92 no-hzb manual -D compile hard-gate PASS; no-hzb caps exactly {Shader, RuntimeDescriptorArray, PhysicalStorageBufferAddresses} (matches bin, no Int64)",
+    "residual": "genuine OpBitcast->PhysicalStorageBuffer volatile OpLoad not expressible with installed dxc; A file kept as algorithm reference (documented in merged cull_and_bucket.inc header)"
+  },
+  "hzB_variant": {
+    "mechanism": "#if !defined(TINYGLADE_NANI_NO_HZB), default = hzb 8a7d superset (t21 hzb_tex + b22 \\); -D = d852 no-hzb (no hzb_tex/\\)",
+    "verified": "9 cull files both variants hard-gate PASS (default via recompile_check; no-hzb via manual -D + fingerprint)"
+  },
+  "residual_classes": {
+    "OpLine/OpNoLine/OpSource/OpString_counts": "dxc line-mapping / include-closure counts (documented dxc-version artifact)",
+    "OpSwitch_vs_OpLoopMerge/branch": "ternary->OpSwitch codegen class (documented dxc-version artifact)",
+    "OpBitcast/OpExtInstImport_in_RWByteAddressBuffer": "byte-address address-math class (documented dxc-version artifact)",
+    "PBA_physical_load_approximation": "uint2->OpBitcast->PhysicalStorageBuffer volatile OpLoad not expressible (documented residual, not a failure)",
+    "HZB_screen_extent_approximation": "cull HZB 2x2 mip constants + wall 8-corner AABB are histogram-level approximations",
+    "wall_raster_large_body_residual": "binding-correct but body trimmed (39-file closure pulled read-only incs with color_library/current_view/sampler drift); f0ad trivial-PS (TINYGLADE_RASTER_NO_COLOR)"
+  }
+}

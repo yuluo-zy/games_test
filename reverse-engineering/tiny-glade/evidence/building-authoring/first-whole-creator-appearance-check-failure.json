@@ -1,0 +1,11 @@
+{
+  "scope": "First complete circle/rectangle creator report B-authority-sections-failure.json",
+  "cases": 256,
+  "failure_count": 128,
+  "failing_family": "circle",
+  "different_fields": ["roof_event_binding"],
+  "cause": "Verifier checked DWORD at CreateRoof record+20 as None discriminant; original appearance discriminant is byte+20 and the following inactive payload contains uninitialized old stack data",
+  "correction": "Check byte+20==0; do not claim bits for inactive payload",
+  "candidate_algorithm_changed": false,
+  "additional_report_fix": "Copy captured notification list into each result; later reset must not mutate historical snapshots"
+}

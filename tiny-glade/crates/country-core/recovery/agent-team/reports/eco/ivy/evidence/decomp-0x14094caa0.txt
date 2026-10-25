@@ -1,0 +1,69 @@
+
+void __cdecl country_core::systems::ivy::ivy_grower::get_wall_double_sided_normal(void)
+
+{
+  float fVar1;
+  float fVar2;
+  undefined8 uVar3;
+  undefined8 uVar4;
+  ulonglong uVar5;
+  longlong lVar6;
+  uint extraout_EAX;
+  uint extraout_EAX_00;
+  ulonglong uVar7;
+  ulonglong *in_RCX;
+  longlong in_RDX;
+  float *in_R9;
+  float extraout_XMM0_Da;
+  float fVar8;
+  float fVar9;
+  float fVar10;
+  ulonglong local_88;
+  uint local_80;
+  
+  ::utils::curve::Curve::
+  get_coord_at_u<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic2D>_>
+            ();
+  uVar7 = (ulonglong)extraout_EAX;
+  uVar5 = *(ulonglong *)(in_RDX + 0x10);
+  if (uVar5 <= uVar7 + 1) {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic_bounds_check();
+  }
+  lVar6 = *(longlong *)(in_RDX + 8);
+  uVar3 = *(undefined8 *)(lVar6 + uVar7 * 8);
+  uVar4 = *(undefined8 *)(lVar6 + 8 + uVar7 * 8);
+  fVar8 = (float)uVar4 - (float)uVar3;
+  fVar9 = (float)((ulonglong)uVar4 >> 0x20) - (float)((ulonglong)uVar3 >> 0x20);
+  fVar10 = 1.0 / SQRT(fVar9 * fVar9 + fVar8 * fVar8);
+  fVar1 = *in_R9;
+  fVar2 = in_R9[2];
+  ::utils::curve::Curve::
+  get_coord_at_u<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic2D>_>
+            ();
+  uVar7 = (ulonglong)extraout_EAX_00;
+  if (uVar7 < uVar5) {
+    if (uVar7 + 1 < uVar5) {
+      uVar3 = *(undefined8 *)(lVar6 + uVar7 * 8);
+      uVar4 = *(undefined8 *)(lVar6 + 8 + uVar7 * 8);
+      if (fVar10 * fVar9 *
+          (fVar1 - (extraout_XMM0_Da * (float)uVar4 + (1.0 - extraout_XMM0_Da) * (float)uVar3)) <=
+          fVar10 * fVar8 *
+          (fVar2 - (extraout_XMM0_Da * (float)((ulonglong)uVar4 >> 0x20) +
+                   (1.0 - extraout_XMM0_Da) * (float)((ulonglong)uVar3 >> 0x20)))) {
+        ::utils::swizzlers::impl$0::x0y();
+      }
+      else {
+        ::utils::swizzlers::impl$0::x0y();
+        *in_RCX = local_88 ^ 0x8000000080000000;
+        *(uint *)(in_RCX + 1) = local_80 ^ 0x80000000;
+      }
+      return;
+    }
+                    // WARNING: Subroutine does not return
+    core::panicking::panic_bounds_check();
+  }
+                    // WARNING: Subroutine does not return
+  core::panicking::panic_bounds_check();
+}
+

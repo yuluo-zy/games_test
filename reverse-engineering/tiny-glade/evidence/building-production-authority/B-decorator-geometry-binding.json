@@ -1,0 +1,28 @@
+{
+  "original_evidence_root": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/building-placement",
+  "placement": {
+    "entry": "0x140c92090",
+    "source": "Original PublicWallState Curve2 at+0",
+    "instructions": [
+      "0x140c920cf MOVSS XMM7,[R8+30]",
+      "0x140c9211a MOV RCX,RBX",
+      "0x140c9211d CALL141940780",
+      "0x140c9213e MOV RAX,[RBX+8]"
+    ],
+    "meaning": "WallCoord.x /rawCurve.length; rawCurve2 coordinate lookup and interpolation. Keep runtime.source_curve raw; do not replace with mapped/prepared curve."
+  },
+  "subtype": {
+    "entry": "0x140814470",
+    "source": "Prepared PublicWallState Curve3 +88, arch Vec+e0/+e8",
+    "instructions": [
+      "0x140814562 LEARCX,[RDI+88]",
+      "0x140814575 CALL14126a450",
+      "0x14126a492 MOVRDX,[RCX+8] = Public+90",
+      "0x14126a496 MOVRAX,[RCX+10] = Public+98",
+      "0x14081457a MOVRDX,[RDI+e8]",
+      "0x1408145b2 MOVRAX,[RDI+e0]"
+    ],
+    "meaning": "Half-dormer nearest XZ segment and arch-height interpolation use prepared geometry. Runtime mapped_outline context must prepared positions of same arch count."
+  },
+  "scope": "Static actualinstruction schema binding. Full B subtype oracle supplied +88/+e0 already, confirmed in existing verifier. Runtime migration is parent integration; A/C offsets not asserted."
+}

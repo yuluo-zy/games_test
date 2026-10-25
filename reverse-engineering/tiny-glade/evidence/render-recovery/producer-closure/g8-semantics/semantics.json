@@ -1,0 +1,110 @@
+{
+  "schema": "g8-semantics/1",
+  "date": "2026-10-12",
+  "target_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "method": "PE-direct machine-code read + Ghidra decompile (read-only). No game source modified.",
+  "items": [
+    {
+      "gap": "C5",
+      "subject": "BatchCompiler::new (0x140be95e0, 30B) and pass_access_range_indices (0x140be9690, 5B)",
+      "conclusion": "Both function bodies recovered by PE direct read. BatchCompiler::new zero-inits a {Vec capacity@+0x00, ptr@+0x08(=8 dangling), len@+0x10} with cur_batch {start@+0x18, end@+0x20, flag@+0x28} all 0. Batch layout (24B {start,end,payload}) independently confirmed via flush_batch (0x140be9600). pass_access_range_indices is an identity passthrough of its two u32 range indices.",
+      "evidence": [
+        "0x140be95e0 bytes: 48 89 C8 / 48 C7 01 00000000 / 48 C7 41 08 08000000 / 0F 57 C0 / 0F 11 41 10 / 0F 11 41 19 / C3",
+        "flush_batch 0x140be9600 decomp: appends 0x18-byte {start,end,flag}, stride-0x18 Vec at +0x08, len +0x10, cap +0x00",
+        "0x140be9690 bytes: 89 C8 89 D2 C3  (mov eax,ecx / mov edx,edx / ret)",
+        "caller add_pre_pass_barriers 0x1402c3d00 line 39 reads u32 range start via this fn from a stride-8 {start,end} table"
+      ],
+      "confidence": "high",
+      "observed_vs_inferred": "bytes/offsets observed; field NAMES inferred from use"
+    },
+    {
+      "gap": "C6",
+      "subject": "raw::device 5 micro-functions",
+      "conclusion": "All 5 bodies recovered by PE direct read (see g8-c5c6-decode.txt). device_uuid copies 16B from P+0x690 (P=*(device+0x658)); physical_device returns P+0x10; debug_utils is Option<&DebugUtils>::as_ref at +0x870; refresh_memory_budget conditionally tail-calls PhysicalDevice::refresh_memory_budget(P+0x10) when flag@+0x1a!=0; min_subgroup_size returns (u32@+0x40,u32@+0x44).",
+      "evidence": [
+        "0x140bf84c0: 48 89 C8 / 48 8B 8A 58060000 / 0F 10 81 90060000 / 0F 11 00 / C3",
+        "0x140bf8950: 48 8B 81 58060000 / 48 83 C0 10 / C3",
+        "0x140bf8960: 48 8B 91 70080000 / 48 8D 81 70080000 / 48 85 D2 / 48 0F 44 C2 / C3",
+        "0x140bf8f80: 80 79 1A 00 / 74 10 / 48 8B 89 58060000 / 48 83 C1 10 / E9 8A860000 -> 0x140c01620 (= PhysicalDevice::refresh_memory_budget)",
+        "0x140bf8fa0: 8B 41 40 / 8B 51 44 / C3"
+      ],
+      "confidence": "high",
+      "observed_vs_inferred": "bytes/offsets/tail-target observed; debug_utils=Option as_ref is a strong idiom inference"
+    },
+    {
+      "gap": "C3",
+      "subject": "access codes 0x17 / 0x19 / 0x1d / 0x1e semantics",
+      "conclusion": "PARTIAL. The merge lattice inside add_resource_access (0x1409dca90 == 0x140533b10) is fully recovered: 0x17 + 0x1d (either order) -> 0x1e; 0x1a + 0x02 -> 0x02; {0x19,0x1a} + 0x37 -> 0x37; any other non-equivalent pair -> panic (unreachable). So 0x1e is a MERGE-ONLY state (=read|write union); 0x17/0x19/0x1d are complementary access aspects, 0x1a/0x1f read-class, 0x32/0x37 write-class, 0x02 indirect. Input codes located at producers by PE scan of call sites: 0x02=indirect (DrawBuilder::multi_draw_indirect / draw_indexed_indirect / ComputePass::dispatch_indirect), 0x1a=ComputePass::read_rg_storage_buffer, 0x24=DrawBuilder::read_rg_storage_buffer, 0x34=write/clear (reset_indirect_args, clear_rg_buffer, rg_buffer_copy_from_slice), 0x37=DrawBuilder/ComputePass::write_rg_storage_buffer, 0x17=RasterPass::new_impl. Accessor callers pass read=0x1a/0x1f, write=0x32, write_concurrent=0x37. 0x19 and 0x1d are referenced by the merge table but were NOT found emitted as literals (no immediate producer) -> still unnamed.",
+      "evidence": [
+        "0x1409dca90 decomp lines 96-115 (merge table) and 73-77",
+        "0x140533b10 decomp lines 96-115 (identical)",
+        "PE scan: 167 call sites to add_resource_access; codes found via 'mov r8b,imm': 0x02x12,0x17x1,0x1ax1,0x22x1,0x24x1,0x2fx1,0x34x7,0x37x3",
+        "PE scan: 125 call sites to pass_resource_access accessors; param code imm via 'mov byte[rsp+0x20],imm': R=0x1a/0x1f, W=0x32, Wc=0x37",
+        "ledger entry = {index:u32@+0, sync_group:u32@+4, access_code:u8@+8} (comparisons entry+8 vs code, is_equivalent(entry+4, sync)) -> confirms SYNTHESIS 11.2"
+      ],
+      "confidence": "merge lattice high; producer mapping high; 0x19/0x1d and exact enum names medium/unknown",
+      "observed_vs_inferred": "lattice + producer codes observed; code NAMES inferred"
+    },
+    {
+      "gap": "C1",
+      "subject": "writer of queue+0x80",
+      "conclusion": "FOUND. queue+0x80 (== Queue[0x10]) is WRITTEN in Queue::update_pending_submissions (0x140bf0b90): it queries the timeline semaphore (queue+0x88) via device ash slot +0x478 (vkGetSemaphoreCounterValue) and stores the returned u64 into queue+0x80. reclaim (0x140bf0cc0) and queue_submit (0x140c04e20) only read it; the drain loop in update_pending then discards pending entries whose seq <= the new watermark.",
+      "evidence": [
+        "0x140bf0b90.c line 19: (**(code**)(param_2+0x478))(*(param_2+0x5c8), param_1[0x11], &iStack_20)",
+        "0x140bf0b90.c line 42: param_1[0x10] = uVar3   (param_1[0x10]==+0x80)",
+        "0x140bf0b90 is called as FUN_140bf0b90(engine+0x10, dev); reclaim reads param_1+0x80 => same slot"
+      ],
+      "confidence": "high (writer located); slot +0x478 = vkGetSemaphoreCounterValue is inferred",
+      "observed_vs_inferred": "write site + offsets observed; the specific vk entry name inferred"
+    },
+    {
+      "gap": "C2",
+      "subject": "9 destroy slots vs 7 stores; case 9",
+      "conclusion": "PARTIAL. Bucket record = 9 handle Vecs {ptr,cap,len} stride 0x18 (qword offsets 0,3,6,...24) + a 10th Vec of 0x48-byte records {ptr@[0x1c], len@[0x1d]} whose elements carry tag@+0x44. Each of the 9 handle Vecs is drained by a distinct device-vtable slot: +0x1a8,+0x1c0,+0x188,+0x138,+0x228,+0x248,+0x278,+0x288 and one via a SECOND table (+0x6b8 with device base +0x6f0). Calibrated names: +0x278=vkDestroyFramebuffer, +0x288=vkDestroyRenderPass (matched to create slots +0x270/+0x280). The 7 managed stores are the 7 dispose<T> specializations (Texture,Buffer,Sampler,RenderPass,Framebuffer,Swapchain,PersistentDescriptorSet); the 2 extra drain Vecs are for non-store resources (the +0x6b8/+0x6f0 second-table slot is the command-buffer/pool path candidate). 'case 9': the 0x48-record path asserts the dispatch discriminant == 9; the dispatcher FUN_140c0e150 -> FUN_140c14680 writes '*out = 9' (lines 165 & 328-329) as the sentinel returned when a registry entry's dyn-trait vtable method (**(entry[1]+0x48))(...) yields 9 or when record[0]==0. It is a trait/vtable dispatch discriminant, not a literal int32 jump-table case.",
+      "evidence": [
+        "0x140bf92f0: 9 blocks 'if(param_2[k]!=0)' striding 0x18; 9 '(**code**)(param_1+SLOT)(VkDevice,handle,0)' calls",
+        "0x140bf92f0 lines 1340-1387: record Vec param_2[0x1c]/[0x1d], stride 9 qwords, elem+0x44==2 break, FUN_140c0e150, assert !=9 panic",
+        "0x140c14680 lines 165/328-329: *param_1 = 9 ; line 226 dyn vtable call (**(plVar21[1]+0x48))",
+        "create anchors: createFramebuffer +0x270 (0x140bfbef0), createRenderPass +0x280 (0x140bfc0d0)",
+        "7 dispose<T> monomorphizations (0x1418af090..0x1418afa20)"
+      ],
+      "confidence": "structure high; only 2/9 slots named (medium); case-9 semantic (sentinel) medium",
+      "observed_vs_inferred": "offsets/structure observed; named slots partly inferred via create/create+8 pairing"
+    },
+    {
+      "gap": "C4",
+      "subject": "SynchronizationScope1 mask +0x48 remaining bits",
+      "conclusion": "BOUNDARY REGISTERED. The +0x48 u64 = {low32 access mask, high32 stage mask}, initial {access=1, stage=0x2000}=0x0000200000000001. Additional bits are OR-ed per access code inside SynchronizationScope builders FUN_140c10af0 and FUN_140c10940, through the external vk-sync-fork mapping FUN_140c10dd0(code)->(access_mask,stage_mask). Mapping is inside the external dependency vk-sync-fork -> NOT reversed (per task constraint); only the boundary is registered.",
+      "evidence": [
+        "0x140c10af0: loops call func_0x140c10dd0(&uStack_8c, code); uVar13|=uStack_88, uVar14|=uStack_8c; *out=uVar14+(uVar14==0); out[1]=uVar8 (default 0x2000); out[2]=0x2d",
+        "0x140c10940: same pattern, out[2]=0x2c",
+        "Packed value 0x0000200000000001 = low32 access(1) | high32 stage(0x2000)"
+      ],
+      "confidence": "boundary high; individual bit meanings belong to vk-sync-fork (not reversed)",
+      "observed_vs_inferred": "OR site and mapping entry function observed; per-bit semantics = external lib"
+    },
+    {
+      "gap": "C10",
+      "subject": "O+0x680 field mapping / path from VkPhysicalDevice (+0xd0)",
+      "conclusion": "PARTIAL. device+0x658 holds a POINTER P. device_uuid/P reads P+0x690 (16B deviceUUID); physical_device()=P+0x10; refresh_memory_budget passes P+0x10 to PhysicalDevice::refresh_memory_budget. In GraphicsDevice::create, the descriptor-count source reads *(u32)(PhysDev+0x680) with a '<0x2000 -> error' guard (matches maxDescriptorSetUpdateAfterBindSampledImages) and stores the PhysicalDevice into device+0x658 (puVar62[0xcb]). The limit is a plain CACHED field of the wrapper (read directly at create; no runtime vkGetPhysicalDeviceProperties call at the use site) - it is a sibling of P+0x690, not derived by walking the +0xd0 VkPhysicalDevice handle. Exact absolute offset (P+0x680 vs PhysDev+0x680) not fully pinned because physical_device()=P+0x10 while create reads *param_2+0x680.",
+      "evidence": [
+        "0x140bf2560 line 185-188: lVar83=*param_2; uVar74=*(u32)(lVar83+0x680); if(uVar74<0x2000) error",
+        "0x140bf2560 line 2501: puVar62[0xcb]=uVar78  (device+0x658)",
+        "0x140bf84c0: P+0x690 = 16B uuid; 0x140bf8950: P+0x10 = PhysicalDevice",
+        "0x140c00400 PhysicalDevice::name reads deviceName at param_2+0xdc"
+      ],
+      "confidence": "path shape medium; exact +0x680 vs +0x690 base ambiguous",
+      "observed_vs_inferred": "offsets/guard observed; the field-name binding rests on SYNTHESIS' panic-string evidence"
+    }
+  ],
+  "job_artifacts": [
+    "job-g8a.json / REPORT-g8a.json (11 decompiles)",
+    "job-g8b.json / REPORT-g8b.json (14)",
+    "job-g8c.json / REPORT-g8c.json (7; get_type_info failed -> top ok:false, per-op ok)",
+    "job-g8d.json / REPORT-g8d.json (10)",
+    "job-g8e.json / REPORT-g8e.json (4)",
+    "decomp/*.c (25 preserved Ghidra pseudo-code files)",
+    "g8-c5c6-decode.txt (byte-level decodes)",
+    "pe.py, decode_calls.py, dump.py, scan_codes.py (read-only helpers)"
+  ]
+}

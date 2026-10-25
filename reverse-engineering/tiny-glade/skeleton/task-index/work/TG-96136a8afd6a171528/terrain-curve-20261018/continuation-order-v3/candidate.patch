@@ -1,0 +1,87 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/wall/finish_wall.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/wall/finish_wall.rs
+@@ -110,12 +110,13 @@
+         }
+         // Invalid continuation removes the live wall but records the actual
+         // original source and the current color owner for undo restoration.
++        // 0x140a80ff9 removes and drops authority before indexing color.
++        walls.remove(wall);
+         let color = if metadata.kind == 0 {
+             wall_colors.0[wall.0 as usize]
+         } else {
+             fence_colors.0[wall.0 as usize]
+         };
+-        walls.remove(wall);
+         records.write(RecordWallHistory::deleted_wall_with_height(
+             wall,
+             &previous,
+@@ -300,7 +301,7 @@
+     }
+ 
+     #[test]
+-    fn invalid_continuation_records_previous_source_and_actual_color_before_removal() {
++    fn invalid_continuation_records_previous_source_and_actual_color() {
+         use crate::resources::history::{EditType, History, wall_edit::WallHistoryEdit};
+         let world = complete(true, false, true);
+         assert!(!world.resource::<InnerWalls>().contains(WallId(1)));
+@@ -345,6 +346,60 @@
+                 .is_empty()
+         );
+         assert!(world.resource::<WallDrawingIssues>().0.is_empty());
++    }
++
++    #[test]
++    fn invalid_color_index_panics_after_original_live_wall_removal() {
++        use crate::resources::{
++            roofs::geometry::surface::Curve2, walls::in_progress_wall::WallDrawingMetadata,
++        };
++        let source = WallState::new(
++            Curve2::try_new(vec![[0.0, 0.0], [0.1, 0.0]], false).unwrap(),
++            3.9,
++            0,
++            0,
++            false,
++        );
++        let mut world = World::new();
++        let mut walls = InnerWalls::new();
++        let wall = walls.new_wall_from_curve(source.clone());
++        world.insert_resource(walls);
++        let mut progress = InProgressCurve::default();
++        progress.wall = Some(wall);
++        progress.drawing = Some(WallDrawingMetadata {
++            first_unsnapped_cursor: None,
++            desired_height: 7.0,
++            color_id: 99,
++            kind: 0,
++            freehand_ty: 0,
++        });
++        world.insert_resource(progress);
++        world.insert_resource(ContinueWallOriginalState {
++            previous: Some(source),
++        });
++        world.init_resource::<SnappingMode>();
++        world.init_resource::<WallDrawingIssues>();
++        world.init_resource::<PendingWallHistory>();
++        // Native color indexing panics after remove; an empty owner forces it.
++        world.insert_resource(WallColorIds(Vec::new()));
++        world.init_resource::<HalftimberColorIds>();
++        world.init_resource::<Events<FinishWall>>();
++        world.init_resource::<Events<RecordWallHistory>>();
++        world.init_resource::<Events<NotifyHintSystemToolWasJustUsed>>();
++        world
++            .resource_mut::<Events<FinishWall>>()
++            .send(FinishWall(false));
++        let mut schedule = Schedule::default();
++        schedule.add_systems(finish_wall);
++        assert!(
++            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++                schedule.run(&mut world);
++            }))
++            .is_err()
++        );
++        assert!(!world.resource::<InnerWalls>().contains(wall));
++        // Only the confirmed removal is asserted after panic: other unwound
++        // owners are deliberately outside this native failure observation.
+     }
+ 
+     #[test]

@@ -1,0 +1,31 @@
+--- a/tiny-glade/crates/tiny-glade/src/game_loop.rs
++++ b/tiny-glade/crates/tiny-glade/src/game_loop.rs
+@@ -854,20 +854,20 @@
+         }
+         // B @1404dc952..971 skips both simulation and rendering while either
+         // dimension is zero. Keep input edges for the next actual update.
+-        if frame_waits_for_window_extent(self.driver.app.world()) {
+-            // Main-thread host adaptation: an actual OS close may stop a zero-
+-            // sized window without simulating, rendering or inventing the game
+-            // shutdown marker. Sender disconnect still joins the real saver.
+-            if os_close_requested {
+-                return Ok(false);
+-            }
++        let waits_for_window_extent = frame_waits_for_window_extent(self.driver.app.world());
++        // 保留零尺寸 Close 的主线程立即关闭；其余 OS 批次仍先消费原 ICC dirty，
++        // 查询只产生路径事件，不在零尺寸期间 update App、执行 LCMS 或分配 GPU LUT。
++        if waits_for_window_extent && os_close_requested {
++            return Ok(false);
++        }
++        self.monitor_icc.publish_pending(self.driver.app_mut().world_mut())?;
++        if waits_for_window_extent {
+             std::thread::sleep(std::time::Duration::from_millis(1));
+             // 原 dc971 跳到公共 de84d，再处理 de8c5 视频设置；否则零尺寸可能永远
+             // 无法应用恢复设置。此尾段不 update App、消耗输入边沿或推进帧计数。
+             self.apply_pending_video_settings()?;
+             return Ok(true);
+         }
+-        self.monitor_icc.publish_pending(self.driver.app_mut().world_mut())?;
+         // B 1404ddf28..3c: real OS egui input is consumed only while the
+         // debug or experimental window is active. Other frames still begin
+         // and end egui with RawInput::default (1404ddf49 -> 140c2c770).

@@ -1,0 +1,77 @@
+140ac9770 PUSH RBP
+140ac9771 PUSH RSI
+140ac9772 PUSH RDI
+140ac9773 PUSH RBX
+140ac9774 SUB RSP,0x88
+140ac977b LEA RBP,[RSP + 0x80]
+140ac9783 MOV qword ptr [RBP],-0x2
+140ac978b MOV RSI,R8
+140ac978e MOV EAX,dword ptr [RDX + 0x1c]
+140ac9791 MOV R8,qword ptr [RDX + 0x10]
+140ac9795 MOV dword ptr [R8],EAX
+140ac9798 MOV RDX,qword ptr [RDX]
+140ac979b MOV RAX,qword ptr [RDX]
+140ac979e MOV R8,-0x7ffffffffffffffe
+140ac97a8 MOV qword ptr [RDX],R8
+140ac97ab CMP RAX,R8
+140ac97ae JZ 0x140ac988f
+140ac97b4 MOVUPS XMM0,xmmword ptr [RDX + 0x8]
+140ac97b8 MOVUPS XMM1,xmmword ptr [RDX + 0x18]
+140ac97bc MOVAPS xmmword ptr [RBP + -0x50],XMM1
+140ac97c0 MOVAPS xmmword ptr [RBP + -0x60],XMM0
+140ac97c4 MOV EDX,dword ptr [RCX + 0x1c]
+140ac97c7 MOV R8,qword ptr [RCX + 0x10]
+140ac97cb MOV dword ptr [R8],EDX
+140ac97ce MOV RDI,qword ptr [RCX]
+140ac97d1 MOV qword ptr [RBP + -0x38],0x1
+140ac97d9 MOV qword ptr [RBP + -0x30],0x1
+140ac97e1 MOV qword ptr [RBP + -0x28],RAX
+140ac97e5 MOVAPS XMM0,xmmword ptr [RBP + -0x60]
+140ac97e9 MOVAPS XMM1,xmmword ptr [RBP + -0x50]
+140ac97ed MOVUPS xmmword ptr [RBP + -0x20],XMM0
+140ac97f1 MOVUPS xmmword ptr [RBP + -0x10],XMM1
+140ac97f5 MOVZX EAX,byte ptr [0x143634c09]
+140ac97fc MOV ECX,0x38
+140ac9801 MOV EDX,0x8
+140ac9806 CALL 0x140613c10
+140ac980b TEST RAX,RAX
+140ac980e JZ 0x140ac989b
+140ac9814 MOV RCX,qword ptr [RBP + -0x8]
+140ac9818 MOV qword ptr [RAX + 0x30],RCX
+140ac981c MOVUPS XMM0,xmmword ptr [RBP + -0x38]
+140ac9820 MOVUPS XMM1,xmmword ptr [RBP + -0x28]
+140ac9824 MOVUPS XMM2,xmmword ptr [RBP + -0x18]
+140ac9828 MOVUPS xmmword ptr [RAX + 0x20],XMM2
+140ac982c MOVUPS xmmword ptr [RAX + 0x10],XMM1
+140ac9830 MOVUPS xmmword ptr [RAX],XMM0
+140ac9833 MOV qword ptr [RBP + -0x30],RAX
+140ac9837 MOV qword ptr [RBP + -0x38],0x0
+140ac983f LEA R8,[0x142ae0858]
+140ac9846 LEA RDX,[RBP + -0x38]
+140ac984a MOV RCX,RDI
+140ac984d CALL 0x140a84ec0
+140ac9852 MOV EAX,dword ptr [RSI + 0x1c]
+140ac9855 MOV RCX,qword ptr [RSI + 0x10]
+140ac9859 MOV dword ptr [RCX],EAX
+140ac985b MOV RSI,qword ptr [RSI]
+140ac985e MOV RDI,qword ptr [RSI + 0x30]
+140ac9862 MOV RBX,qword ptr [RSI + 0x40]
+140ac9866 CMP RDI,qword ptr [RSI + 0x20]
+140ac986a JNZ 0x140ac987c
+140ac986c LEA RCX,[RSI + 0x20]
+140ac9870 LEA RDX,[0x142c3a148]
+140ac9877 CALL 0x140562870
+140ac987c MOV RAX,qword ptr [RSI + 0x28]
+140ac9880 MOV qword ptr [RAX + RDI*0x8],RBX
+140ac9884 INC RDI
+140ac9887 MOV qword ptr [RSI + 0x30],RDI
+140ac988b INC qword ptr [RSI + 0x40]
+140ac988f ADD RSP,0x88
+140ac9896 POP RBX
+140ac9897 POP RDI
+140ac9898 POP RSI
+140ac9899 POP RBP
+140ac989a RET
+140ac989b MOV ECX,0x8
+140ac98a0 MOV EDX,0x38
+140ac98a5 CALL 0x1428d9000

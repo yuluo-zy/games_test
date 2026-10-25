@@ -1,0 +1,78 @@
+--- a/games_test/tiny-glade/crates/tiny-glade/src/gameplay_startup.rs
++++ b/games_test/tiny-glade/crates/tiny-glade/src/gameplay_startup.rs
+@@ -66,10 +66,11 @@
+             load_prefabs::load_prefabs_with_watcher(&prefab_root, &mut prefabs, watcher.as_deref_mut())
+                 .expect("original load_prefabs startup");
+         }).in_set(GameplayGpuPreStartup::Inputs));
++    let atlas_root = installed.clone();
+     app.add_systems(PreStartup,
+         (move |prefabs: Res<PrefabLibrary>, mut atlases: ResMut<MeshAtlasLibrary>,
+                mut meshes: ResMut<AssetMeshLibrary>, mut watcher: Option<ResMut<PrefabWatcher>>| {
+-            load_mesh_atlases::load_mesh_atlases(&installed, &prefabs, &mut atlases, &mut meshes,
++            load_mesh_atlases::load_mesh_atlases(&atlas_root, &prefabs, &mut atlases, &mut meshes,
+                 watcher.as_deref_mut(), demo).expect("original load_mesh_atlases startup");
+         }).in_set(GameplayGpuPreStartup::Atlases));
+     let backend = hosts.shaders.clone();
+@@ -80,6 +81,7 @@
+             startup_nani::startup_nani(buffers.as_ref(), backend.as_ref(), &library.0,
+                 &ssbos, &atlases, &mut gpu, &mut commands);
+         }).in_set(GameplayGpuPreStartup::Nani));
++    install_clearing_and_forest_startup(app, &hosts, &installed);
+     // Current MEI host attaches to the full canonical text buffers; allocation
+     // remains the original72-entry producer's responsibility.
+     app.add_systems(PreStartup, (move |world: &mut World| {
+@@ -88,3 +90,54 @@
+     }).after(GameplayGpuPreStartup::Inputs));
+     Ok(())
+ }
++
++
++/// B clearing is item4 of OnEnter(Game)'s final unchained8 functions:
++/// 140839d71 ->140a11c80 ->vtable142ac77f0 ->run140a0f100 ->140a78aa0.
++/// The forest chain executes on the same App's actual resource owners.
++fn install_clearing_and_forest_startup(app: &mut App, hosts: &HostTables, installed: &std::path::Path) {
++    use country_core::{
++        asset_libraries::{audio_trigger_library::AudioTriggerLibrary,
++            placement_data_library::AssetPlacementDataLibrary},
++        resources::{history::tree_edit::TreeCanopyMaxCullDistance,
++            session::ActiveSession, tree_storage::InteractableForestPlacements},
++        systems::{prefab::{SpawnPrefabCmd, DespawnPrefabCmd},
++            render_loop::compute_passes::leaf_particles::LoadedParticleEmitterCount,
++            ui::signifiers::signifier_create::UiSignifierStream},
++    };
++    // ForestPlugin creates one empty placements owner. runthread@14059f41d
++    // initializes the two canopy values0. add_ui@140945e5e..e78 inserts an
++    // empty stream. load_audio@140b0e23d..279 creates its empty trigger library;
++    // this explicit SDK-disabled host still owns the real trigger boxes.
++    app.init_resource::<InteractableForestPlacements>();
++    app.init_resource::<TreeCanopyMaxCullDistance>();
++    app.init_resource::<UiSignifierStream>();
++    app.init_resource::<AudioTriggerLibrary>();
++    app.add_event::<SpawnPrefabCmd>();
++    app.add_event::<DespawnPrefabCmd>();
++    // ConstructTimberframeCmd is registered by the actual timberframe/domain
++    // host. add_event is idempotent; these are the same canonical events.
++    app.add_event::<country_core::resources::events::ConstructTimberframeCmd>();
++    let root = installed.to_owned();
++    let buffers = hosts.buffers.clone();
++    let shaders = hosts.shaders.clone();
++    app.add_systems(
++        bevy_state::state::OnEnter(country_core::app_loading_state::AppLoadingState::Game),
++        (move |session: Res<ActiveSession>, meshes: Res<AssetMeshLibrary>, watch: Res<MeshWatch>,
++               library: Res<ApplicationShaderLibrary>, mut placements: ResMut<AssetPlacementDataLibrary>,
++               ssbos: Res<AssetSsboLibrary>, mut emitters: ResMut<LoadedParticleEmitterCount>,
++               mut forest: ResMut<InteractableForestPlacements>, mut commands: Commands| {
++            country_core::startup::clearing::init_clearing(&root, buffers.as_ref(), shaders.as_ref(),
++                &session, &meshes, &watch, &library.0, &mut placements, &ssbos,
++                &mut emitters, &mut forest, &mut commands)
++                .expect("original init_clearing session assets");
++        }).in_set(crate::run_game::GameSessionStage::Glade),
++    );
++    // Original ForestPlugin@140650c50 ->chain_ignore_deferred@140ea68d0.
++    // No deferred flush or resource_exists gate is added between these systems.
++    app.add_systems(bevy_app::Update,
++        (forest::manage_tree_prefabs::manage_tree_prefabs::<()>,
++         forest::tree_animation::forest_tree_animation,
++         forest::tree_animation::handplaced_tree_animation)
++            .chain_ignore_deferred().in_set(crate::run_game::GameSystemSet(36)));
++}

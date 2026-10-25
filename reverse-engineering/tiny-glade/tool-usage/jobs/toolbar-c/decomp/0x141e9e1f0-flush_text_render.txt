@@ -1,0 +1,60 @@
+SIG: void __cdecl flush_text_render(void)
+SIZE: 416
+ADDR: 141e9e1f0
+
+DECOMP:
+
+void __cdecl toolbar::text::flush_text_render(void)
+
+{
+  int iVar1;
+  undefined8 *extraout_RAX;
+  longlong lVar2;
+  undefined8 *extraout_RAX_00;
+  longlong in_RCX;
+  
+  frozen::FrozenMap::
+  get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>
+            ();
+  if (extraout_RAX == (undefined8 *)0x0) {
+LAB_141e9e378:
+                    // WARNING: Subroutine does not return
+    core::option::unwrap_failed();
+  }
+  if (extraout_RAX[3] == 0x49) {
+    iVar1 = memcmp(&anon_35c0e18e72144e77e5fdf2ecf42a564d_1_llvm_9588986728419368905,
+                   (void *)extraout_RAX[2],0x49);
+    if (iVar1 == 0) {
+      lVar2 = (**(code **)(extraout_RAX[1] + 0x18))(*extraout_RAX);
+      if (lVar2 == 0) goto LAB_141e9e378;
+      frozen::FrozenMap::
+      get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>
+                ();
+      if (extraout_RAX_00 != (undefined8 *)0x0) {
+        if (extraout_RAX_00[3] == 0x4c) {
+          iVar1 = memcmp(&anon_35c0e18e72144e77e5fdf2ecf42a564d_9_llvm_9588986728419368905,
+                         (void *)extraout_RAX_00[2],0x4c);
+          if (iVar1 == 0) {
+            lVar2 = (**(code **)(extraout_RAX_00[1] + 0x18))(*extraout_RAX_00);
+            if (lVar2 != 0) {
+              **(undefined4 **)(in_RCX + 0x10) = *(undefined4 *)(in_RCX + 0x1c);
+              country_core::render::impl$0::deref();
+              tg_text::TextRenderer::consume<toolbar::text::flush_text_render::closure_env_0>();
+              return;
+            }
+            goto LAB_141e9e384;
+          }
+        }
+                    // WARNING: Subroutine does not return
+        core::panicking::assert_failed<ref_<str_>,ref_<str_>_>();
+      }
+LAB_141e9e384:
+                    // WARNING: Subroutine does not return
+      core::option::unwrap_failed();
+    }
+  }
+                    // WARNING: Subroutine does not return
+  core::panicking::assert_failed<ref_<str_>,ref_<str_>_>();
+}
+
+

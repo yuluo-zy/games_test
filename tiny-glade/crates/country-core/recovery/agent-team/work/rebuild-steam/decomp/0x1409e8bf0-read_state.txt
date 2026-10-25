@@ -1,0 +1,73 @@
+NAME: read_state
+VA: 0x1409e8bf0
+SIZE: 394
+SIGNATURE: void __cdecl read_state(void)
+CALLEES:
+  {'name': 'SteamAPI_ISteamInput_GetAnalogActionData', 'address': '142923650'}
+  {'name': 'SteamAPI_ISteamInput_GetDigitalActionData', 'address': '142923660'}
+  {'name': 'SteamAPI_SteamInput_v006', 'address': '142923700'}
+  {'name': 'drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>', 'address': '140b85350'}
+DECOMP:
+
+void __cdecl country_core::resources::steam::SteamMenuActionSet::read_state(void)
+
+{
+  longlong lVar1;
+  longlong *plVar2;
+  code *pcVar3;
+  byte bVar4;
+  byte bVar5;
+  byte bVar6;
+  byte bVar7;
+  byte bVar8;
+  byte bVar9;
+  byte bVar10;
+  byte bVar11;
+  byte bVar12;
+  undefined8 uVar13;
+  undefined8 *in_RCX;
+  undefined8 *in_R9;
+  undefined1 local_65 [4];
+  undefined8 local_61;
+  
+  uVar13 = SteamAPI_SteamInput_v006();
+  plVar2 = (longlong *)*in_R9;
+  LOCK();
+  lVar1 = *plVar2;
+  *plVar2 = *plVar2 + 1;
+  UNLOCK();
+  if (*plVar2 != 0 && SCARRY8(lVar1,1) == *plVar2 < 0) {
+    SteamAPI_ISteamInput_GetAnalogActionData(local_65,uVar13);
+    bVar4 = SteamAPI_ISteamInput_GetDigitalActionData(uVar13);
+    bVar5 = SteamAPI_ISteamInput_GetDigitalActionData(uVar13);
+    bVar6 = SteamAPI_ISteamInput_GetDigitalActionData(uVar13);
+    bVar7 = SteamAPI_ISteamInput_GetDigitalActionData(uVar13);
+    bVar8 = SteamAPI_ISteamInput_GetDigitalActionData(uVar13);
+    bVar9 = SteamAPI_ISteamInput_GetDigitalActionData(uVar13);
+    bVar10 = SteamAPI_ISteamInput_GetDigitalActionData(uVar13);
+    bVar11 = SteamAPI_ISteamInput_GetDigitalActionData(uVar13);
+    bVar12 = SteamAPI_ISteamInput_GetDigitalActionData(uVar13);
+    *in_RCX = local_61;
+    *(byte *)(in_RCX + 1) = bVar4 & 1;
+    *(byte *)((longlong)in_RCX + 9) = bVar5 & 1;
+    *(byte *)((longlong)in_RCX + 10) = bVar6 & 1;
+    *(byte *)((longlong)in_RCX + 0xb) = bVar7 & 1;
+    *(byte *)((longlong)in_RCX + 0xc) = bVar8 & 1;
+    *(byte *)((longlong)in_RCX + 0xd) = bVar9 & 1;
+    *(byte *)((longlong)in_RCX + 0xe) = bVar10 & 1;
+    *(byte *)((longlong)in_RCX + 0xf) = bVar11 & 1;
+    *(byte *)(in_RCX + 2) = bVar12 & 1;
+    LOCK();
+    *plVar2 = *plVar2 + -1;
+    UNLOCK();
+    if (*plVar2 == 0) {
+      alloc::sync::Arc::drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>
+                ();
+    }
+    return;
+  }
+                    // WARNING: Does not return
+  pcVar3 = (code *)invalidInstructionException();
+  (*pcVar3)();
+}
+

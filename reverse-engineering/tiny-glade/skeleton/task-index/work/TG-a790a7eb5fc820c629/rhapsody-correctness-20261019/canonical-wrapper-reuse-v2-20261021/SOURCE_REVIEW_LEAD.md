@@ -1,0 +1,15 @@
+# 完整subtype唯一producer最终源码独审
+
+core_business_lead，2026-10-21。结论：有界源码实现通过，交root与canonical四表/ID map API/实际cache时序同组整合；implemented_unverified。没有Cargo/rustc/原程序/GPU执行，不能外推C。
+
+最终source SHA094ec0672bd7be2b403b196e83b7d43c15f902bef63c1dc4e6b7a8c9052da16d，原before6ce9a006a2d7af9531e8bba64b8c7cc8d5bb390d1a73cd7a098b40eaff56522d。使用本目录canonical-id-producer-complete.patch（67e46122...）从原before直接应用；此前f9a433版本可追溯保留但不能当最终交付。另依赖TG609 after e8c5da61的clear/insert旧Option接口。
+
+已读完整singular/half/全4576B producer合同、最终生产源码及16个源码测试，独立定点核producer原5131..6d7的真实字段/float/late-self短路：原height先乘.5再加halfspan，对应源码half_height+half_span；roof平方先dy²+dx²再加dz²。源码scope是全8类型×目的表、平台Info+08（不是doorbyte）、required wall/optionalroof、shape/flat/corner/platform懒依赖，exact0/6/22+rank；无旧ID反查拟位置、maskfallback或全数组新finite限制。
+
+生产half路径真实prepared.positions与arch_segment_heights选中两值，使用同canonical CurveSampling/approx_curve_coord/Rectangle closest-edge；三个数值wrapper通过独审修正最终也复用这些canonical helpers，保旧Result前提，删除两份重复数学循环。重复端点Y的NaN传播按原canonical纠正，记录在REVIEW-FIX.md，不把旧错误有限Y保存为兼容。单一私有half控制/数值内核维持真正读取顺序。
+
+全storage按原wall→terrain→stairs借用chain，同一HashMap.clear保allocation；第一遍唯一ID subtype插入，重复诊断含新旧真实Info/Addr/subtype并panic，已替换值不回滚。日志Debug展示明确为当前Rust架构适配，不宣称原formatter字节一致。第二遍完整ty3b/dst<=1烟囱，required墙/extra、span乘零/NaN、真实曲线投影、墙宽高+0.425严格距离/roof真实cache严格1.0、required读取后排除self及19/20覆盖；不是只填几种窗type的空producer。
+
+16个测试保留旧覆盖，并以真实PublicWalls/Query/storage/mesh/cache验证完整分支、有效platform与错误doorbyte、optionalroof代际/缺owner、原selected arch/exactrank、旧ID与拟位置独立、全storage与删除、重复ID部分状态、完整chimney第二遍与required self/cache失败。真实cuboid夹具只用于其所消费的bounds/mesh身份，无默认生产geometry。测试未编译，root需实际验证并保失败日志。
+
+调度正确原证在此前producer目录SCHEDULING-ADDENDUM.md：cache先于derive，再clear/generator；root/decorator_chain接真实host，不能沿当前旧lib反向顺序。cache/stairs未恢复分支仍独立明确阻点，本包不造默认transform。

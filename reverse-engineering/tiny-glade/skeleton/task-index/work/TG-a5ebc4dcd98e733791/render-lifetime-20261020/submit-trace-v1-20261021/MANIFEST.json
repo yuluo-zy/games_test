@@ -1,0 +1,50 @@
+{
+  "status": "frozen_for_independent_review",
+  "files": [
+    {
+      "source": "tiny-glade/crates/rhapsody/src/raw/command_buffer.rs",
+      "baseline_sha256": "673b3a531ebbc80000a068eae600ef36b0d70514ff48122d0c2279022b794f1a",
+      "candidate_sha256": "7110f4f7d6f53a92b7dd342c4b57f304643a4f416bb2c7350e5083eaa547f3ee"
+    },
+    {
+      "source": "tiny-glade/crates/rhapsody/src/rg/vulkan.rs",
+      "baseline_sha256": "01cb0a81e191a87d250cd5404de2e12a09ebca4e52410beb128dd494d0c10964",
+      "candidate_sha256": "d6149b76fbfef86c481008e9434b062ebf6e250758851a939bfb8d9b8d58e654"
+    },
+    {
+      "source": "tiny-glade/crates/rhapsody/src/device/submission.rs",
+      "baseline_sha256": "b6f86d0e75603ed78437ae9a25c7b7f5b420faeeb7b1c4af4ab3e8e0847df40d",
+      "candidate_sha256": "b57be6a0c0b572a2ad2ef26db041cfa34860503c70f466fc11f691b33f5629b1"
+    },
+    {
+      "source": "tiny-glade/crates/rhapsody/src/sync/timeline.rs",
+      "baseline_sha256": "504e0b5e0d3353ddfcb94ce1226e3e62c9e4028c2948c301afb31a16c1987a6a",
+      "candidate_sha256": "86bc8a02f95e1550fd8093300cf3325e9743ce42ae2643c243dcdfac9246703c"
+    }
+  ],
+  "patch_sha256": "fe2586fc13a5e442962dd112fb44d630ef7674740e2cb560798f798e38b53302",
+  "environment": "RHAPSODY_SUBMIT_TRACE=1, read once with process-wide OnceLock; set before process start",
+  "scope": "optional bounded submit/GPU-wait timing only; no range-state or business behavior changes",
+  "disabled_hot_path": "OnceLock bool read/Option branch; no Instant calls, no allocations; no metadata iteration",
+  "enabled": "fixed stack samples; one non-panicking stderr write per scope; timing separates native state preparation from driver queue submission and actual Vulkan semaphore wait",
+  "phases": [
+    "validate1",
+    "semaphore refs",
+    "uses merge",
+    "submission state locks",
+    "validate2",
+    "prepare states",
+    "dependencies",
+    "device wrapper",
+    "actual vkQueueSubmit / vkQueueSubmit2",
+    "actual vkWaitSemaphores"
+  ],
+  "validation": "candidate rustfmt parse passed; root sole Cargo/GPU owner; no new behavior tests for this reversible diagnostic",
+  "preserved": [
+    "original execution and validation order",
+    "same queue/resource locks and original lexical lifetimes",
+    "native return codes and ErrorKind",
+    "original error/cancellation/publish paths",
+    "all world draws/passes and unmodified steady assertions"
+  ]
+}

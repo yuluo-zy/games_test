@@ -1,0 +1,49 @@
+
+void __cdecl country_core::systems::audio::replay_audio::replay_audio_init_system(void)
+
+{
+  longlong *plVar1;
+  undefined8 *extraout_RAX;
+  undefined8 *extraout_RAX_00;
+  undefined8 *in_RCX;
+  undefined8 local_b8;
+  undefined8 local_50;
+  
+  plVar1 = (longlong *)*in_RCX;
+  if (*plVar1 == 0) {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX == (undefined8 *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    *(undefined8 *)((longlong)extraout_RAX + 6) = 0x6f646e552f49552f;
+    *extraout_RAX = 0x552f3a746e657665;
+  }
+  else {
+    resources::audio_resources::AudioCoreInner::instantiate_audio();
+    if (local_b8 == 2) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  if (*plVar1 == 0) {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX_00 == (undefined8 *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    *(undefined8 *)((longlong)extraout_RAX_00 + 6) = 0x6f6465522f49552f;
+    *extraout_RAX_00 = 0x552f3a746e657665;
+  }
+  else {
+    resources::audio_resources::AudioCoreInner::instantiate_audio();
+    if (local_50 == 2) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  bevy_ecs::system::commands::Commands::
+  insert_resource<country_core::systems::audio::replay_audio::ReplayAudioState>();
+  return;
+}
+

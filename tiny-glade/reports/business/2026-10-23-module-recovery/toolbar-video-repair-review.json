@@ -1,0 +1,84 @@
+{
+  "status": "implemented_and_bounded_tests_passed_integration_by_central_pending",
+  "scope": "TB-R1 ui_settings_video helper; not whole toolbar acceptance",
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "original_pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+  "source_ownership": "原B crates/tiny-glade/src/gui/settings.rs; retained refactored runtime/renderer interfaces",
+  "source_block": {
+    "path": "crates/tiny-glade/src/gui/settings.rs",
+    "begin": "/// 原视频页使用启动时枚举的设备",
+    "end_before": "/// 原14024aa80：",
+    "sha256": "3f27ae27b6380cdce99de8e3f3849078ad4586f676c94922972f940e1c2dea71"
+  },
+  "dependencies": {
+    "Cargo.toml": "f72a636d5c1f1e066ba6450948bd5ac5af35f26e976bd720aba75730f4a36f5d",
+    "Cargo.lock": "57ab0932c38ecdec6a2056504fec3695970859798b63f33a3ba93b1ff2db503a",
+    "crates/tiny-glade/Cargo.toml": "b9a95bc04160af3b701e53259ebc21edcf06a1578ce49603313a894ad663bd75",
+    "crates/country-core/src/render/adaptive_render_state.rs": "e9c7ccf5364ac896b197dadeef597ede0920c28e6b1a1d3561e93cbe40c70812",
+    "crates/country-core/src/render/render_config.rs": "f4722a8d66b9caee246ff35a736373af11b1fc1fc57bc57c0631230d3fa79472",
+    "crates/systems/toolbar/src/mei/widgets/tweaker.rs": "378afecede12e52842b7086b9e9c971882d188a50ffce03bbee2569fb1a61958"
+  },
+  "candidate": {
+    "target": "arm64-apple-darwin",
+    "profile": "test unoptimized+debuginfo",
+    "binary": "target/debug/deps/tiny_glade-8aca289a803adeb8",
+    "sha256": "583f7e2bdc751e9379eda99c8b66c635f95e0a0079cdedfc88c9a058c1481f1a"
+  },
+  "commands": [
+    "cargo test -p tiny-glade --lib video_settings_tests --offline --no-run",
+    "TG_INSTALL_ROOT=<B安装根> target/debug/deps/tiny_glade-8aca289a803adeb8 video_settings_tests --include-ignored --nocapture"
+  ],
+  "test_results": {
+    "cargo_build_exit": 0,
+    "rust_tests_passed": 3,
+    "original_cases": {
+      "quality_match": 320,
+      "quality_apply": 1024,
+      "fps": 27
+    },
+    "native_fixture": "toolbar-video-values-native.json",
+    "logs": [
+      "toolbar-video-test-build.log",
+      "toolbar-video-settings-tests.log",
+      "toolbar-video-values-oracle.log"
+    ]
+  },
+  "implemented": [
+    "三路视频菜单，图像/显示原设置按钮",
+    "四画质组合、Custom双侧返回Quality、预算不足拒绝整条预设",
+    "TGSR模式/预设、两路DoF、手动缩放及显存恢复状态、亮度/Gamma/锐化",
+    "GPU选择与重启/失败提示、三种显示模式、命名监视器选择",
+    "原相邻分辨率去重反转、刷新率升序去重、完整bitdepth/refresh/extent写回",
+    "原九档FPS上限、vsync配置更新（真实Apply生产消费由中央集成）"
+  ],
+  "native_contracts": {
+    "init_state": {
+      "0": "枚举未尝试；1418b3300显式写+0x98=0",
+      "1": "原整设备+swapchain初始化尝试错误；140597925",
+      "2": "原成功候选；140597ff2并写回配置UUID"
+    },
+    "quality_custom_static_table": [
+      2,
+      4,
+      2
+    ],
+    "preset_apply_does_not_reset_adaptive_when_option_target_unchanged": true,
+    "resolution_mode_preserves_bit_depth": true
+  },
+  "limits": [
+    "不代表真实OS输入验收，用户暂停该项",
+    "不代表GPU呈现/整游戏验收或性能实测",
+    "GUI入口与启动WSI设备列表及初始化状态传递由中央接线；本helper CPU消费者已通过",
+    "原显存预算计算复用vram模块既有实现，此轮原指令差分不包含Vulkan预算查询",
+    "未运行原完整10058B UI函数，1371例为明确有界业务指令范围，无库桥和业务指令替换"
+  ],
+  "lessons_for_next_round": [
+    "大型UI反编译遇间接jump提前return，必须用PDB函数长度和有界原汇编恢复余下控制流；不要把未到达代码当不存在。",
+    "显示值enum不等于算法选择器：Custom原静态表[Quality,Custom,Quality]，内部5是no-apply sentinel；不要扩展ImageQualityPreset。",
+    "配置变更必须核对旁路权威状态：预设和手动scale会写FrameRenderConfig与AdaptiveRenderState；同None目标的预设不重置原OOM phase。",
+    "设备InitState与兼容性/内存门槛分开：原枚举写0，整device+swapchain尝试错误1，成功2。只看设备properties不能伪造这些结果。",
+    "排序与去重以原版操作次序为准：resolution仅adjacent dedup后reverse，refresh才sort+dedup；不能统统sort/dedup以图省事。",
+    "多agent共享同文件必须使用marker限定修改与格式化；证据绑定稳定业务区块，避免中央顶部接线使独立helper的源码指纹失真。"
+  ],
+  "assembly_range_note": "toolbar-video-settings-native.asm是247870..24a1ba有界连续片段；Ghidra size10058为body合计，不据此宣称已覆盖非连续整函数。1371原指令测试按明确entry/stop执行，不以该连续范围作等价证明。"
+}

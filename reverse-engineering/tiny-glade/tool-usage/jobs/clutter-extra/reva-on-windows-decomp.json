@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nOUT = \"/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain/clutter-extra/\"\nprog = currentProgram\naddr = prog.getAddressFactory().getAddress(\"0x1422cd7d0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"absent\")\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    c = res.getDecompiledFunction().getC()\n    open(OUT + \"add_autoclutter_on_windows_fresh.c\", \"w\").write(c)\n    print(json.dumps({\"c_len\": len(c)}))\nfinally:\n    d.dispose()\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  }
+]

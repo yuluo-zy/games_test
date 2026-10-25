@@ -1,0 +1,1 @@
+原v1 caller短片段false以2756c0起，截断前一条movaps的0f前缀，起始若干伪解码不能作原指令证据；其后CALL为真但现已使用PDB全wrapper范围caller-native-pack替代本条CALL与typedparams证明。旧片段保留，不把工具ok当正确边界。两个完整30KB业务体不受影响。

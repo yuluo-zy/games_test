@@ -1,0 +1,47 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+undefined8 * FUN_140a07390(undefined8 *param_1,undefined8 param_2,undefined8 param_3)
+
+{
+  undefined8 uVar1;
+  byte *pbVar2;
+  longlong lVar3;
+  undefined8 uVar4;
+  
+  uVar4 = param_2;
+  pbVar2 = (byte *)FUN_140d4d740();
+  if ((*pbVar2 & 1) == 0) {
+    lVar3 = FUN_140d64e00();
+    pbVar2[0] = 1;
+    pbVar2[1] = 0;
+    pbVar2[2] = 0;
+    pbVar2[3] = 0;
+    pbVar2[4] = 0;
+    pbVar2[5] = 0;
+    pbVar2[6] = 0;
+    pbVar2[7] = 0;
+    *(undefined8 *)(pbVar2 + 0x10) = uVar4;
+  }
+  else {
+    lVar3 = *(longlong *)(pbVar2 + 8);
+    uVar4 = *(undefined8 *)(pbVar2 + 0x10);
+  }
+  *(longlong *)(pbVar2 + 8) = lVar3 + 1;
+  uVar1 = _UNK_142ac64d8;
+  param_1[9] = _UNK_142ac64d0;
+  param_1[10] = uVar1;
+  uVar1 = _UNK_142ac64c8;
+  param_1[7] = _UNK_142ac64c0;
+  param_1[8] = uVar1;
+  param_1[0xb] = lVar3;
+  param_1[0xc] = uVar4;
+  *param_1 = 0;
+  param_1[1] = 4;
+  param_1[2] = 0;
+  param_1[3] = 0x8000000000000000;
+  param_1[0xd] = param_2;
+  param_1[0xe] = param_3;
+  return param_1;
+}
+

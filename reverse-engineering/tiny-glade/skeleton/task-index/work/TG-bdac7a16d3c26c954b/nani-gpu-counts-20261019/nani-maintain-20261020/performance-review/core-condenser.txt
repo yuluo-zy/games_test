@@ -1,0 +1,26 @@
+Source: /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/utils/index_condenser.rs
+SHA256: b8e1dc202815e1d16df7496650992a74a4f1b6101bebc79fc52260afe0faeab6
+
+47:         self.shared.keys().get(dense_index).copied()
+48:     }
+49:     pub fn resolve(&self, id: u32, hint: &mut u32) -> Option<usize> {
+50:         let key = Condex {
+51:             key: id,
+52:             cached_index: Cell::new(*hint),
+53:         };
+54:         let resolved = self.shared.get(&key);
+55:         *hint = key.last_known_index();
+56:         resolved.map(|index| index as usize)
+57:     }
+58:     pub fn remove(&mut self, id: u32, hint: &mut u32) -> Option<usize> {
+59:         let key = Condex {
+60:             key: id,
+61:             cached_index: Cell::new(*hint),
+62:         };
+63:         let removed = self.shared.remove_index(&key);
+64:         *hint = key.last_known_index();
+65:         removed.map(|index| index as usize)
+66:     }
+67: }
+68: 
+

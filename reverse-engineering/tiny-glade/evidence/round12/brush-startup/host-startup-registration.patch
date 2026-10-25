@@ -1,0 +1,20 @@
+--- a/tiny-glade/crates/tiny-glade/src/gameplay_startup.rs
++++ b/tiny-glade/crates/tiny-glade/src/gameplay_startup.rs
+@@ -167,6 +167,17 @@
+     app.add_systems(PreStartup,
+         country_core::startup::init_populate_ssbo_library::init_populate_ssbo_library
+             .in_set(GameplayGpuPreStartup::Inputs));
++    // B original fourth Startup tuple: persistent previews once per App.
++    // PreStartup's canonical vertex_color_shader must already exist.
++    let preview_root = installed.clone();
++    let preview_backend = hosts.shaders.clone();
++    app.add_systems(bevy_app::Startup,
++        move |meshes: Res<AssetMeshLibrary>, watch: Res<MeshWatch>,
++              library: Res<ApplicationShaderLibrary>, mut commands: Commands| {
++            country_core::startup::spawn_brush_previews::spawn_brush_previews(
++                &preview_root, preview_backend.as_ref(), &meshes, &watch,
++                &library.0, &mut commands).expect("original brush-preview startup");
++        });
+     let input_root = installed.clone();
+     let input_hosts = hosts.clone();
+     app.add_systems(PreStartup, (move |world: &mut World| {

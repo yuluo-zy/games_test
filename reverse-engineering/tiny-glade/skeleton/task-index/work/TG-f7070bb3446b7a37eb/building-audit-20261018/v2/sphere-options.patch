@@ -1,0 +1,339 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/collision/world.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/collision/world.rs
+@@ -1387,7 +1387,8 @@
+         result
+     }
+ 
+-    /// `RaycastWorld::spherecast`（0x1408ccfc0）：转发 `Rapier::spherecast`。
++    /// Sphere sweep using the existing API's dependency-default options.
++    /// Use spherecast_with_options when the consumer supplies a sweep limit or flags.
+     #[cfg(feature = "native-physics")]
+     pub fn spherecast(
+         &self,
+@@ -1396,7 +1397,27 @@
+         radius: f32,
+         mask: u32,
+     ) -> RaycastWorldResult {
+-        Rapier::spherecast(self, origin, dir, radius, mask)
++        self.spherecast_with_options(
++            origin,
++            dir,
++            radius,
++            rapier3d::parry::query::ShapeCastOptions::default(),
++            mask,
++        )
++    }
++
++    /// B 0x1408ccfc0: sphere sweep with explicit original dependency options.
++    /// Radius is geometry; options.max_time_of_impact is the sweep limit.
++    #[cfg(feature = "native-physics")]
++    pub fn spherecast_with_options(
++        &self,
++        origin: glam::Vec3,
++        dir: glam::Vec3,
++        radius: f32,
++        options: rapier3d::parry::query::ShapeCastOptions,
++        mask: u32,
++    ) -> RaycastWorldResult {
++        Rapier::spherecast(self, origin, dir, radius, options, mask)
+     }
+ 
+     /// `mesh_intersect_collider_diff_publisher`（0x1408cc670）：返回 &Publisher（O：
+@@ -1953,8 +1974,8 @@
+         false
+     }
+ 
+-    /// O：0x1408ccfc0。17 槽 `QueryPipeline::cast_shape`（球体扫掠，`ShapeCastOptions::default()`），
+-    /// 逐槽 mask 位测试，**最后一次命中槽覆盖**。
++    /// B 0x1408ccfc0: 17 masked subworld sweeps, preserving target_distance and
++    /// both caller flags. Each hit tightens max_time_of_impact for later slots.
+     ///
+     /// fresh 逐语句（2026-10-17）：
+     /// - 输出 position = `hit.witness1`（不是 origin+dir*toi）；
+@@ -1966,12 +1987,16 @@
+         origin: glam::Vec3,
+         dir: glam::Vec3,
+         radius: f32,
++        mut options: rapier3d::parry::query::ShapeCastOptions,
+         mask: u32,
+     ) -> RaycastWorldResult {
+         let sphere = Ball::new(radius);
+         let shape_pos = Isometry::translation(origin.x, origin.y, origin.z);
+         let shape_vel = Vector::new(dir.x, dir.y, dir.z);
+-        let mut result = RaycastWorldResult::miss();
++        let mut result = RaycastWorldResult {
++            toi: options.max_time_of_impact,
++            ..RaycastWorldResult::miss()
++        };
+         for (slot_index, slot) in world.slots.iter().enumerate() {
+             if (mask >> slot_index) & 1 == 0 {
+                 continue;
+@@ -1982,9 +2007,11 @@
+                 &shape_pos,
+                 &shape_vel,
+                 &sphere,
+-                rapier3d::parry::query::ShapeCastOptions::default(),
++                options,
+                 QueryFilter::default(),
+             ) {
++                // B 0x1408cd23f replaces only the next query's maximum TOI.
++                options.max_time_of_impact = hit.time_of_impact;
+                 let witness1 = glam::Vec3::new(hit.witness1.x, hit.witness1.y, hit.witness1.z);
+                 let normal1 = glam::Vec3::new(hit.normal1.x, hit.normal1.y, hit.normal1.z);
+                 // O：点积 < 0 → 翻转整个法线。
+@@ -2107,6 +2134,33 @@
+     }
+ }
+ 
++/// B 0x1408cc410..0x1408cc49c. The fallback pair loaded from 0x142aa3270
++/// is (0.0, f32::from_bits(0x1e3c_e508)), and MAXPS selects the computed operand
++/// on equality. Ordered comparisons preserve -0 in the numerator and use the
++/// fallback for NaN. Direction is not assumed normalized.
++#[cfg(feature = "native-physics")]
++fn terrain_spherecast_time_of_impact(
++    origin: glam::Vec3,
++    direction: glam::Vec3,
++    radius: f32,
++    terrain_position: glam::Vec3,
++) -> f32 {
++    let delta = origin - terrain_position;
++    let distance_squared = (delta.y * delta.y + delta.x * delta.x) + delta.z * delta.z;
++    let numerator = distance_squared.sqrt() - radius;
++    let direction_squared =
++        direction.z * direction.z + (direction.y * direction.y + direction.x * direction.x);
++    let direction_length = direction_squared.sqrt();
++    let minimum_length = f32::from_bits(0x1e3c_e508);
++    let numerator = if numerator >= 0.0 { numerator } else { 0.0 };
++    let denominator = if direction_length >= minimum_length {
++        direction_length
++    } else {
++        minimum_length
++    };
++    numerator / denominator
++}
++
+ /// `Raycasting`（O：旧包装，转发 `RaycastWorld` + 地形数据）。
+ ///
+ /// Resource（组 A restorer 接线）：`system_water::update_water_audio_grid` 的 BASELINE 参数面
+@@ -2178,9 +2232,7 @@
+         false
+     }
+ 
+-    /// `Raycasting::spherecast`（0x1408cc390）：转发 `RaycastWorld::spherecast` + 地形合并：
+-    /// 地形 toi = `(dist(origin,地形点) - radius) / max(dir_len, 4e-8)`（NaN→4e-8，下限 0）；
+-    /// 仅当 rapier 命中且 toi 严格更近才保留 rapier，否则地形命中（0xb）覆盖。
++    /// Existing terrain-aware sphere sweep API, using dependency-default options.
+     #[cfg(feature = "native-physics")]
+     pub fn spherecast(
+         &self,
+@@ -2190,27 +2242,44 @@
+         radius: f32,
+         mask: u32,
+     ) -> RaycastWorldResult {
+-        let mut result = self.world.spherecast(origin, dir, radius, mask);
++        self.spherecast_with_options(
++            terrain,
++            origin,
++            dir,
++            radius,
++            rapier3d::parry::query::ShapeCastOptions::default(),
++            mask,
++        )
++    }
++
++    /// `Raycasting::spherecast`（0x1408cc390）：转发 `RaycastWorld::spherecast` + 地形合并：
++    /// Terrain ray limit is options.max_time_of_impact + radius; the resulting
++    /// sphere TOI must fit options.max_time_of_impact. A strict nearer collider
++    /// wins; equal-distance terrain replaces it. The original denominator floor
++    /// is 1e-20 (0x142aa3274), with explicit NaN fallback.
++    #[cfg(feature = "native-physics")]
++    pub fn spherecast_with_options(
++        &self,
++        terrain: &TerrainHeightsData<TerrainHeightSsbo>,
++        origin: glam::Vec3,
++        dir: glam::Vec3,
++        radius: f32,
++        options: rapier3d::parry::query::ShapeCastOptions,
++        mask: u32,
++    ) -> RaycastWorldResult {
++        let mut result = self
++            .world
++            .spherecast_with_options(origin, dir, radius, options, mask);
+         if mask & 0x20 != 0 {
+             let ray = TerrainRay {
+                 origin,
+                 direction: dir,
+             };
+-            if let Some(terrain_hit) = terrain.intersect_ray(ray, f32::MAX) {
+-                let to_terrain = terrain_hit.position - origin;
+-                let dir_len = dir.length();
+-                let numerator = if (to_terrain.length() - radius).is_nan() {
+-                    0.0
+-                } else {
+-                    (to_terrain.length() - radius).max(0.0)
+-                };
+-                let denominator = if dir_len.is_nan() {
+-                    4.0e-8
+-                } else {
+-                    dir_len.max(4.0e-8)
+-                };
+-                let toi = numerator / denominator;
+-                if toi <= radius {
++            let terrain_limit = options.max_time_of_impact + radius;
++            if let Some(terrain_hit) = terrain.intersect_ray(ray, terrain_limit) {
++                let toi =
++                    terrain_spherecast_time_of_impact(origin, dir, radius, terrain_hit.position);
++                if toi <= options.max_time_of_impact {
+                     // O：`local_70 < fVar9`（rapier toi < 地形 toi）才保留 rapier。
+                     if !(result.is_hit() && result.toi < toi) {
+                         result = terrain_result(toi, origin, dir);
+@@ -2950,4 +3019,148 @@
+         });
+         assert_eq!(hits, 1, "true stops at the first overlap");
+     }
+-}
++
++    #[test]
++    fn sphere_options_keep_limit_target_distance_and_nearest_subworld() {
++        use rapier3d::parry::query::ShapeCastOptions;
++        let mut world = RaycastWorld::new();
++        insert_cuboid(
++            &mut world,
++            0,
++            glam::Vec3::new(2.0, 0.0, 0.0),
++            glam::Vec3::splat(0.5),
++        );
++        insert_cuboid(
++            &mut world,
++            1,
++            glam::Vec3::new(6.0, 0.0, 0.0),
++            glam::Vec3::splat(0.5),
++        );
++        let mut options = ShapeCastOptions {
++            max_time_of_impact: 10.0,
++            target_distance: 0.0,
++            stop_at_penetration: false,
++            compute_impact_geometry_on_penetration: false,
++        };
++        let hit = world.spherecast_with_options(glam::Vec3::ZERO, glam::Vec3::X, 0.5, options, 3);
++        assert!(hit.is_hit());
++        assert!((hit.toi - 1.0).abs() < 1e-4);
++        options.max_time_of_impact = 0.25;
++        let miss = world.spherecast_with_options(glam::Vec3::ZERO, glam::Vec3::X, 0.5, options, 3);
++        assert!(miss.is_miss());
++        assert_eq!(miss.toi, 0.25);
++        options.max_time_of_impact = 10.0;
++        options.target_distance = 0.5;
++        let expanded =
++            world.spherecast_with_options(glam::Vec3::ZERO, glam::Vec3::X, 0.5, options, 3);
++        assert!(expanded.is_hit());
++        assert!((expanded.toi - 0.5).abs() < 1e-4);
++    }
++
++    #[test]
++    fn sphere_terrain_uses_sweep_limit_and_preserves_existing_entry() {
++        use rapier3d::parry::query::ShapeCastOptions;
++        let world = Raycasting {
++            world: RaycastWorld::new(),
++        };
++        let terrain = TerrainHeightsData::<TerrainHeightSsbo>::new();
++        // Outside the terrain grid, the existing terrain owner supplies its y=0 plane.
++        let origin = glam::Vec3::new(100.0, 3.0, 0.0);
++        let direction = glam::Vec3::NEG_Y;
++        let mut options = ShapeCastOptions::with_max_time_of_impact(3.0);
++        let hit = world.spherecast_with_options(&terrain, origin, direction, 0.5, options, 0x20);
++        assert!(hit.is_hit() && hit.is_terrain());
++        assert_eq!(hit.toi, 2.5);
++        options.max_time_of_impact = 2.0;
++        assert!(
++            world
++                .spherecast_with_options(&terrain, origin, direction, 0.5, options, 0x20)
++                .is_miss()
++        );
++        assert!(
++            world
++                .spherecast(&terrain, origin, direction, 0.5, 0x20)
++                .is_hit()
++        );
++    }
++
++    #[test]
++    fn sphere_terrain_projection_matches_original_b_wrapper_instructions() {
++        // B 0x1408cc390 executed with resolved dependency query boundaries.
++        // Each row: origin[3], direction[3], radius, terrain point[3], native TOI.
++        let cases: &[[u32; 11]] = &[
++            [
++                0x40800000, 0x40400000, 0x40000000, 0x00000000, 0xbf800000, 0x00000000, 0x3f000000,
++                0x40800000, 0x00000000, 0x40000000, 0x40200000,
++            ],
++            [
++                0x3f800000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x3f000000,
++                0x00000000, 0x00000000, 0x00000000, 0x602d78ec,
++            ],
++            [
++                0x3f800000, 0x00000000, 0x00000000, 0x0da24260, 0x00000000, 0x00000000, 0x3f000000,
++                0x00000000, 0x00000000, 0x00000000, 0x602d78ec,
++            ],
++            [
++                0x3f800000, 0x00000000, 0x00000000, 0x1e3ce508, 0x00000000, 0x00000000, 0x3f000000,
++                0x00000000, 0x00000000, 0x00000000, 0x602d78ec,
++            ],
++            [
++                0x3f800000, 0x00000000, 0x00000000, 0x2edbe6ff, 0x00000000, 0x00000000, 0x3f000000,
++                0x00000000, 0x00000000, 0x00000000, 0x4f9502f9,
++            ],
++            [
++                0x3f800000, 0x00000000, 0x00000000, 0x40000000, 0x00000000, 0x00000000, 0x3f000000,
++                0x00000000, 0x00000000, 0x00000000, 0x3e800000,
++            ],
++            [
++                0x3f800000, 0x00000000, 0x00000000, 0x7fc00000, 0x00000000, 0x00000000, 0x3f000000,
++                0x00000000, 0x00000000, 0x00000000, 0x602d78ec,
++            ],
++            [
++                0x3f800000, 0x00000000, 0x00000000, 0x3f800000, 0x00000000, 0x00000000, 0x00000000,
++                0x00000000, 0x00000000, 0x00000000, 0x3f800000,
++            ],
++            [
++                0x3f800000, 0x00000000, 0x00000000, 0x3f800000, 0x00000000, 0x00000000, 0x3f000000,
++                0x00000000, 0x00000000, 0x00000000, 0x3f000000,
++            ],
++            [
++                0x3f800000, 0x00000000, 0x00000000, 0x3f800000, 0x00000000, 0x00000000, 0x3f800000,
++                0x00000000, 0x00000000, 0x00000000, 0x00000000,
++            ],
++            [
++                0x3f800000, 0x00000000, 0x00000000, 0x3f800000, 0x00000000, 0x00000000, 0x40000000,
++                0x00000000, 0x00000000, 0x00000000, 0x00000000,
++            ],
++            [
++                0x3f800000, 0x00000000, 0x00000000, 0x3f800000, 0x00000000, 0x00000000, 0x7fc00000,
++                0x00000000, 0x00000000, 0x00000000, 0x00000000,
++            ],
++        ];
++        for row in cases {
++            let origin = glam::Vec3::new(
++                f32::from_bits(row[0]),
++                f32::from_bits(row[1]),
++                f32::from_bits(row[2]),
++            );
++            let direction = glam::Vec3::new(
++                f32::from_bits(row[3]),
++                f32::from_bits(row[4]),
++                f32::from_bits(row[5]),
++            );
++            let point = glam::Vec3::new(
++                f32::from_bits(row[7]),
++                f32::from_bits(row[8]),
++                f32::from_bits(row[9]),
++            );
++            let actual =
++                terrain_spherecast_time_of_impact(origin, direction, f32::from_bits(row[6]), point);
++            assert_eq!(
++                actual.to_bits(),
++                row[10],
++                "original sphere terrain row {row:?}"
++            );
++        }
++    }
++}

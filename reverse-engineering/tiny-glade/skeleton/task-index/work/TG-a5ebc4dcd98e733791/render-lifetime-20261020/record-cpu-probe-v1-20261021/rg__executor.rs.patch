@@ -1,0 +1,105 @@
+--- tiny-glade/crates/rhapsody/src/rg/executor.rs
++++ tiny-glade/crates/rhapsody/src/rg/executor.rs
+@@ -1,4 +1,6 @@
+ //! Graph recording and submission using typed CPU identities and actual queue completion points.
++use super::profiling::RecordScope;
++use crate::raw::command_buffer::SubmitTrace;
+ use super::transaction::FrameTransaction;
+ use crate::command::recording;
+ use crate::command::{
+@@ -1327,6 +1329,13 @@
+                                 // SAFETY: this pair was reserved for this exclusively recording command.
+                                 unsafe { backend.write_pass_timestamp(handle, pair, false) };
+                             }
++                            let mut record_trace = RecordScope::new(
++                                compiled.declarations.passes[pass_index]
++                                    .graph_id.map_or(0, |id| id.raw()),
++                                pass_index,
++                                new.handle(),
++                                pass_names[pass_index],
++                            );
+                             let timer = std::time::Instant::now();
+                             let ok = callbacks[pass_index](PassContext {
+                                 pass_index,
+@@ -1343,7 +1352,10 @@
+                             }
+                             durations[duration_count] = Some(timer.elapsed().as_nanos() as u64);
+                             duration_count += 1;
+-                            ok && errors.borrow().is_none()
++                            let ok = ok && errors.borrow().is_none();
++                            record_trace.complete(ok);
++                            drop(record_trace);
++                            ok
+                         }
+                         record::RecordAction::End(command) => {
+                             backend.end_command(vk::CommandBuffer::from_raw(command))
+@@ -1363,7 +1375,20 @@
+                         }
+                     },
+                 );
+-                if !backend.retain_command_owners(handle, &mut owners.into_inner()) {
++                let mut transfer_trace = SubmitTrace::new("record_owner_transfer");
++                if transfer_trace.enabled() {
++                    let owner_count = owners.borrow().len();
++                    transfer_trace.count("owners", owner_count);
++                    transfer_trace.count("command", handle as usize);
++                    transfer_trace.count(
++                        "graph",
++                        compiled.declarations.passes[start].graph_id.map_or(0, |id| id.raw()) as usize,
++                    );
++                }
++                let retained = backend.retain_command_owners(handle, &mut owners.into_inner());
++                transfer_trace.mark("retain_resources");
++                drop(transfer_trace);
++                if !retained {
+                     return Err(Error::MissingCommand(handle));
+                 }
+                 self.pgo
+@@ -1812,6 +1837,13 @@
+                         // SAFETY: each worker owns its command and its disjoint reserved query pairs.
+                         unsafe { view.write_pass_timestamp(&mut work.lease, pair, false) };
+                     }
++                    let mut record_trace = RecordScope::new(
++                        compiled.declarations.passes[pass_index]
++                            .graph_id.map_or(0, |id| id.raw()),
++                        pass_index,
++                        work.command.handle(),
++                        pass_names[pass_index],
++                    );
+                     let timer = std::time::Instant::now();
+                     let good = callback(PassContext {
+                         pass_index,
+@@ -1828,7 +1860,10 @@
+                     }
+                     work.durations[duration_count] = Some(timer.elapsed().as_nanos() as u64);
+                     duration_count += 1;
+-                    if !good || errors.borrow().is_some() {
++                    let good = good && errors.borrow().is_none();
++                    record_trace.complete(good);
++                    drop(record_trace);
++                    if !good {
+                         ok = false;
+                         break;
+                     }
+@@ -1862,7 +1897,20 @@
+                         )
+                     }),
+             );
+-            if !backend.retain_command_owners(command.handle(), &mut result.owners) {
++            let mut transfer_trace = SubmitTrace::new("record_owner_transfer");
++            if transfer_trace.enabled() {
++                transfer_trace.count("owners", result.owners.len());
++                transfer_trace.count("command", command.handle() as usize);
++                transfer_trace.count(
++                    "graph",
++                    compiled.declarations.passes[first_pass + range.start]
++                        .graph_id.map_or(0, |id| id.raw()) as usize,
++                );
++            }
++            let retained = backend.retain_command_owners(command.handle(), &mut result.owners);
++            transfer_trace.mark("retain_resources");
++            drop(transfer_trace);
++            if !retained {
+                 return Err(Error::MissingCommand(command.handle()));
+             }
+             failed |= !result.ok;

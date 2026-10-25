@@ -1,0 +1,7 @@
+# 真实Extra测试输入迁移合同独审
+
+通过typed extra/真实set_extra与三调用范围，附唯一修正要求：测试live fixture原state2是旧niche误读，应显式采用原有效flags0（去掉state2使用Default0即可）。这是修fixture初态，不是生产mask/强制flags，也不改raw accessor刻意state2的单纯字节测试。
+
+原Flag5/Window6/Lantern7数值未变，From10/10/12B写Extra+0/11，原Extra独立于Destination+10。旧helper把标签和载荷写进dst_payload，真实系统当然看见Stair0，不能改消费者match来掩盖。新helper用typedvariant并set_extra，保actual Storage发布/全部redo undo timed与结果断言，无生产算法更改。
+
+原sourceTG860正常claim映射现既存core adapter已清楚记录；不新建生产模块，不称原色彩SSBO/音效/plaster副作用均完成。请将flags0勘误并入作者合同后直接源码冻结；源码独审/root真实测试另做，当前不称运行通过。

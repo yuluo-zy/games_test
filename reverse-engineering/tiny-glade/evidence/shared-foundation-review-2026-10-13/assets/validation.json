@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "commands": [
+    {
+      "command": "cargo test -p asset-pipe --test allocation_review --locked --offline -- --nocapture",
+      "before_fix_exit": 1,
+      "before_full_rgba_allocations": 2,
+      "after_fix_exit": 0,
+      "after_full_rgba_allocations": 0,
+      "source_image_bytes": 1048576,
+      "cumulative_rgba_copy_allocation_bytes_avoided": 2097152,
+      "dependency_bc7_bytes_equal": true
+    },
+    {
+      "command": "cargo test -p asset -p asset-pipe --locked --offline",
+      "exit_code": 0,
+      "tests_passed": 20,
+      "scope": "9 asset tests + 11 asset-pipe tests; includes 388 original archive files, prefab input/merge, pipeline and allocation regression"
+    },
+    {
+      "command": "cargo clippy -p asset -p asset-pipe --all-targets --locked --offline -- -D warnings",
+      "exit_code": 0
+    },
+    {
+      "command": "rustfmt --edition 2024 crates/asset-pipe/src/texture.rs crates/asset-pipe/tests/allocation_review.rs",
+      "exit_code": 0
+    }
+  ],
+  "native_original_runtime_rerun": false,
+  "full_producer_accepted": false,
+  "original_game_consumer_accepted": false,
+  "current_source_sha256": {
+    "reconstruction/shared-foundation/crates/asset/src/inheritable.rs": "47461cdea243ef0fca1fb44fa4daebd85f1dd2c4673b9e7b406fbfaff92eded7",
+    "reconstruction/shared-foundation/crates/asset/src/lib.rs": "293e0615754a8491caece8a084c75fe110e4fea0e01e583190f6f5c661cf04e3",
+    "reconstruction/shared-foundation/crates/asset/src/prefab/config.rs": "3a9a3528466ab8b5568f89b930f3c0c565eeb750a53425bb2c0b56562d307690",
+    "reconstruction/shared-foundation/crates/asset/src/prefab/scan.rs": "ad310c2aaa55c750d80195c2ac6f9bb061bfad32e9c3f30b04ff0d9dde1cf062",
+    "reconstruction/shared-foundation/crates/asset/src/prefab.rs": "6692ce67bee015587c93db7c507160e85fe396718e14b55940fb1d2fb900bcfb",
+    "reconstruction/shared-foundation/crates/asset/src/texture/blob.rs": "3c167d325ab2942eae36a6d150a28ea536ee8d80b82ce085b6e084f41901df84",
+    "reconstruction/shared-foundation/crates/asset/src/texture/config.rs": "e2066688d980b3c446fafe598dcea9f3367ac1084a75f9b2a978a0973ba67088",
+    "reconstruction/shared-foundation/crates/asset/src/texture/desc.rs": "c87be9f80e1c2deb1d4df1a67a547582bd594a94eea9334dae2216aa42892843",
+    "reconstruction/shared-foundation/crates/asset/src/texture/scan.rs": "fa5c157bf0cfdc58949d4869683ee7a2d21a725a9b5133ae15059dfb5550f929",
+    "reconstruction/shared-foundation/crates/asset/src/texture.rs": "9d107c5aa5b10184e6bb26744e13f28ebd1a38a6d0c8b8351032ba35b2921851",
+    "reconstruction/shared-foundation/crates/asset/tests/inheritance_contract.rs": "79d2002aa675cf635f5eacffddd36aa382b02840b52ebf72091394c90dedf314",
+    "reconstruction/shared-foundation/crates/asset/tests/prefab_name_contract.rs": "74fe702a9d8be68e25322176568d3125c5d6ec51a66604b9614938446aa2163b",
+    "reconstruction/shared-foundation/crates/asset/tests/shipped_prefabs.rs": "e9d0f424308b7f10d6803ad201764dd205e8bf966d10a5da75a88cf850323e8c",
+    "reconstruction/shared-foundation/crates/asset/tests/shipped_textures.rs": "5230a50d2b1091187f475ea6df6078f4982a6841f4e9483230b53ff9abf46a68",
+    "reconstruction/shared-foundation/crates/asset-pipe/src/lib.rs": "9edc23d6191c33d74a6327671ce66036425614b9e9e190ac22c99340d92ed8b9",
+    "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs": "581d6ee69449a5a33426241589d81e23775c0a0e29de1f3bde2cc42cc234dfba",
+    "reconstruction/shared-foundation/crates/asset-pipe/tests/allocation_review.rs": "8124413b74429733a3f4fb632278948577ecdadb151a7812f9583d238e530052",
+    "reconstruction/shared-foundation/crates/asset-pipe/tests/pipeline_contract.rs": "3d39598da33cc493b3323f9488e1d0b764594ec9ac9f89f62f2e07e395ba4ca1"
+  },
+  "current_lock_sha256": "9673c8cc887ac441d3ba891f6ba3e6bab6401c39cb01a7b224851fb6344d0a8c",
+  "dependency_reuse": {
+    "reachable_external_packages": 49,
+    "all_exact_original_identity": true
+  },
+  "historical_reports": "Kept unchanged; previous source hashes are historical after this performance patch. Current review validation is separate."
+}

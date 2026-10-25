@@ -1,0 +1,86 @@
+--- a/tiny-glade/crates/tiny-glade/src/render_host.rs
++++ b/tiny-glade/crates/tiny-glade/src/render_host.rs
+@@ -1317,26 +1317,71 @@
+         let deadline = Instant::now()
+             .checked_add(timeout)
+             .ok_or(rhapsody::Error::Timeout)?;
+-        let mut tickets = self
++        // 保持原等待次序和错误类别；只在失败时补充实际请求身份。
++        enum Target {
++            Compute(Arc<ComputeEntry>),
++            Raster(Arc<RasterEntry>),
++            IndexedCount(PipelineTicket),
++        }
++        let mut targets = self
+             .compute
+             .lock()
+             .iter()
+-            .map(|entry| entry.pipeline.clone())
++            .cloned()
++            .map(Target::Compute)
+             .collect::<Vec<_>>();
+-        tickets.extend(
+-            self.raster
+-                .lock()
+-                .iter()
+-                .map(|entry| entry.pipeline.clone()),
+-        );
++        targets.extend(self.raster.lock().iter().cloned().map(Target::Raster));
+         if let Some(adapter) = self.indexed_count_adapter.lock().as_ref() {
+-            tickets.push(adapter.ticket());
+-        }
+-        for ticket in tickets {
++            targets.push(Target::IndexedCount(adapter.ticket()));
++        }
++        let total = targets.len();
++        for (index, target) in targets.into_iter().enumerate() {
+             let remaining = deadline
+                 .checked_duration_since(Instant::now())
+                 .ok_or(rhapsody::Error::Timeout)?;
+-            ticket.wait(remaining).map_err(rhapsody::Error::from)?;
++            let ticket = match &target {
++                Target::Compute(entry) => &entry.pipeline,
++                Target::Raster(entry) => &entry.pipeline,
++                Target::IndexedCount(ticket) => ticket,
++            };
++            if let Err(error) = ticket.wait(remaining) {
++                let identity = match &target {
++                    Target::Compute(entry) => format!(
++                        "compute shader={} local_size={:?} ABI={}bytes/{}bindings",
++                        entry.bindings.name,
++                        entry.local_size,
++                        entry.bindings.abi.parameter_bytes,
++                        entry.bindings.abi.bindings.len(),
++                    ),
++                    Target::Raster(entry) => format!(
++                        "raster shader={} samples={:?} colors={:?} depth={:?} stencil={:?} view_mask={} ABI={}bytes/{}bindings",
++                        entry.bindings.name,
++                        entry.pass.samples,
++                        entry.pass.formats.colors,
++                        entry.pass.formats.depth,
++                        entry.pass.formats.stencil,
++                        entry.pass.formats.view_mask,
++                        entry.bindings.abi.parameter_bytes,
++                        entry.bindings.abi.bindings.len(),
++                    ),
++                    Target::IndexedCount(_) => "indexed-count platform adapter".to_owned(),
++                };
++                let message = format!(
++                    "pipeline prewarm failed [{}/{}] {}: {} ({:?}); compiler={:?}",
++                    index + 1,
++                    total,
++                    identity,
++                    error,
++                    error.kind(),
++                    self.compiler.stats(),
++                );
++                log::error!(target: "tiny_glade::pipeline", "{message}");
++                // 集成测试可能未安装 logger；失败诊断仍需在实际运行日志可见。
++                if !log::log_enabled!(target: "tiny_glade::pipeline", log::Level::Error) {
++                    eprintln!("{message}");
++                }
++                return Err(error.into());
++            }
+         }
+         Ok(())
+     }

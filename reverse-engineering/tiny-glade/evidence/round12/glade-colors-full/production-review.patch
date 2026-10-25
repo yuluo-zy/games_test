@@ -1,0 +1,771 @@
+--- a/tiny-glade/crates/country-core/src/resources/glade_color_customization.rs
++++ b/tiny-glade/crates/country-core/src/resources/glade_color_customization.rs
+@@ -1,81 +1,90 @@
+-//! B `resources/glade_color_customization.rs` — 15 字段颜色定制（≥0x48B）。
+-//!
+-//! 存档 Colors 节载荷 = `to_json_string<GladeColorCustomization>` 0x14085ee90；
+-//! 字段名/索引与偏移由 re-analyst 域类型证据包（RE-DOMAIN-TYPES.md §3）全表给出：
+-//! `visit_str` 0x14085f550 长度分派 → index 0..0xe，`serialize` 0x14085f980
+-//! `serialize_entry` 泛型。多为 `ColorId(u32)`；+0x40/+0x41/+0x42 三字节枚举
+-//! （含 `building_wall_style = StairRailingType` 候选）；`flag` bool、
+-//! `lantern_brightness` f32。
+-use crate::resources::color_id::ColorId;
++//! Original B15-field Colors wire. Full native serializers and visitor
++//! executions are retained in round12/glade-colors-full, including all enums.
++use crate::resources::{
++    color_id::ColorId,
++    roofs::roof_shape::FlatRoofRimStyle,
++    walls::{
++        decorator::StairRailingType,
++        inner_wall_state::{ArchType, WallStyle},
++    },
++};
+ 
+-/// 颜色定制（字段序按原 visit_str index 0..0xe；偏移见 RE-DOMAIN-TYPES §3）。
+-///
+-/// 三个字节枚举字段（freehand_ty/flat_rim_style/building_wall_style）的**变体名待取证**；
+-/// 以 `u8` 保留字节存储与 serde 数字形态，枚举变体恢复后改为具名枚举。
+-#[derive(bevy_ecs::resource::Resource, Clone, Copy, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
++/// B GCC+8..18: independent stair, ladder and magic colors plus railing type.
++#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
++pub struct StairCustomization {
++    pub stairs_color: ColorId,
++    pub ladder_color: ColorId,
++    pub railing_ty: StairRailingType,
++    #[serde(default)]
++    pub magic_color: ColorId,
++}
++impl Default for StairCustomization {
++    fn default() -> Self {
++        Self {
++            stairs_color: ColorId(100003),
++            ladder_color: ColorId(0),
++            railing_ty: StairRailingType::None,
++            magic_color: ColorId(0),
++        }
++    }
++}
++
++#[derive(
++    bevy_ecs::resource::Resource,
++    Clone,
++    Copy,
++    Debug,
++    PartialEq,
++    serde::Serialize,
++    serde::Deserialize,
++)]
+ pub struct GladeColorCustomization {
+-    /// index 0，+0x18
+     pub freeform_wall: ColorId,
+-    /// index 1，+0x1c
+     pub building: ColorId,
+-    /// index 2，+0x20
+     pub roof: ColorId,
+-    /// index 3，+0x42（字节枚举；StairRailingType 候选，变体名待取证）
+-    pub building_wall_style: u8,
+-    /// index 4，+0x40（字节枚举，变体名待取证）
+-    pub freehand_ty: u8,
+-    /// index 5，+0x24
++    pub building_wall_style: WallStyle,
++    pub freehand_ty: ArchType,
+     pub halftimber: ColorId,
+-    /// index 6，+0x28
+     pub lantern_light: ColorId,
+-    /// index 7，+0x2c
+-    pub fence: ColorId,
+-    /// index 8，+0x30
++    pub fences: ColorId,
+     pub window_light: ColorId,
+-    /// index 9，+0x34
+-    pub flag: bool,
+-    /// index 10，+0x00
+-    pub windows: ColorId,
+-    /// index 11，+0x38
++    pub flag: ColorId,
++    pub windows: Option<ColorId>,
+     pub gates: ColorId,
+-    /// index 12，+0x41（字节枚举，变体名待取证）
+-    pub flat_rim_style: u8,
+-    /// index 13，+0x3c
++    #[serde(default)]
++    pub flat_rim_style: FlatRoofRimStyle,
++    #[serde(default = "default_lantern_brightness")]
+     pub lantern_brightness: f32,
+-    /// index 14，+0x08
+-    pub stairs: ColorId,
++    #[serde(default)]
++    pub stairs: StairCustomization,
++}
++fn default_lantern_brightness() -> f32 {
++    1.0
++}
++impl Default for GladeColorCustomization {
++    /// Complete original82B default1408c5600, executed with poison-filled
++    /// storage and then serialized by original14085ee90 to verify all fields.
++    fn default() -> Self {
++        Self {
++            freeform_wall: ColorId(0),
++            building: ColorId(8),
++            roof: ColorId(0),
++            building_wall_style: WallStyle::STONE_WITH_SKIRTS,
++            freehand_ty: ArchType::FollowTerrain,
++            halftimber: ColorId(0),
++            lantern_light: ColorId(0),
++            fences: ColorId(0),
++            window_light: ColorId(0),
++            flag: ColorId(0),
++            windows: None,
++            gates: ColorId(0),
++            flat_rim_style: FlatRoofRimStyle::Rim,
++            lantern_brightness: 1.0,
++            stairs: StairCustomization::default(),
++        }
++    }
+ }
+ 
+ #[cfg(test)]
+-mod tests {
+-    use super::*;
+-
+-    #[test]
+-    fn colors_roundtrip_keeps_all_fifteen_fields() {
+-        let value = GladeColorCustomization {
+-            freeform_wall: ColorId(1),
+-            building: ColorId(2),
+-            roof: ColorId(3),
+-            building_wall_style: 1,
+-            freehand_ty: 2,
+-            halftimber: ColorId(4),
+-            lantern_light: ColorId(5),
+-            fence: ColorId(6),
+-            window_light: ColorId(7),
+-            flag: true,
+-            windows: ColorId(8),
+-            gates: ColorId(9),
+-            flat_rim_style: 3,
+-            lantern_brightness: 0.5,
+-            stairs: ColorId(10),
+-        };
+-        let json = serde_json::to_value(&value).unwrap();
+-        let back: GladeColorCustomization = serde_json::from_value(json).unwrap();
+-        assert_eq!(value, back);
+-        // ColorId 序列化为透明 u32（裸数字，非元组数组）。
+-        assert_eq!(
+-            serde_json::to_value(&ColorId(42)).unwrap(),
+-            serde_json::json!(42)
+-        );
+-    }
+-}
++#[path = "glade_color_customization_native_oracle.rs"]
++mod native_oracle;
+--- a/tiny-glade/crates/country-core/src/resources/walls/inner_wall_state.rs
++++ b/tiny-glade/crates/country-core/src/resources/walls/inner_wall_state.rs
+@@ -338,3 +338,32 @@
+         assert!(state.is_premade_shape()); // tag 1 → premade
+     }
+ }
++
++/// Original B GCC serializer141584b90 and its field visitor use this enum.
++#[repr(u8)]
++#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
++pub enum ArchType {
++    #[default]
++    FollowTerrain = 0,
++    ConstantMaxHeight = 1,
++}
++impl ArchType {
++    pub fn native_tag(self) -> u8 { self as u8 }
++}
++impl TryFrom<u8> for ArchType {
++    type Error=u8;
++    fn try_from(value:u8)->Result<Self,u8> {
++        match value { 0=>Ok(Self::FollowTerrain), 1=>Ok(Self::ConstantMaxHeight), _=>Err(value) }
++    }
++}
++
++impl serde::Serialize for WallStyle {
++    fn serialize<S:serde::Serializer>(&self, serializer:S)->Result<S::Ok,S::Error> {
++        match self.0 {
++            0=>serializer.serialize_unit_variant("WallStyle",0,"Stone"),
++            1=>serializer.serialize_unit_variant("WallStyle",1,"StoneWithSkirts"),
++            2=>serializer.serialize_unit_variant("WallStyle",2,"HalfTimbered"),
++            invalid=>Err(serde::ser::Error::custom(format_args!("invalid native WallStyle {invalid}"))),
++        }
++    }
++}
+--- a/tiny-glade/crates/country-core/src/resources/roofs/roof_shape.rs
++++ b/tiny-glade/crates/country-core/src/resources/roofs/roof_shape.rs
+@@ -483,11 +483,7 @@
+     flat_rim_style: SavedFlatRimStyle,
+ }
+ 
+-#[derive(Deserialize)]
+-enum SavedFlatRimStyle {
+-    Rim,
+-    NoRim,
+-}
++type SavedFlatRimStyle = FlatRoofRimStyle;
+ 
+ fn saved_ridge_length_default() -> f32 {
+     f32::from_bits(0x3ecccccd) // B @0x142925970: 0.4.
+@@ -1417,3 +1413,21 @@
+         assert_eq!(at(&legacy.0, 0x18).to_bits(), 0);
+     }
+ }
++
++/// Original B GCC/roof wire uses the same two named rim variants.
++#[repr(u8)]
++#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
++pub enum FlatRoofRimStyle {
++    #[default]
++    Rim = 0,
++    NoRim = 1,
++}
++impl FlatRoofRimStyle {
++    pub fn native_tag(self)->u8 { self as u8 }
++}
++impl TryFrom<u8> for FlatRoofRimStyle {
++    type Error=u8;
++    fn try_from(value:u8)->Result<Self,u8> {
++        match value {0=>Ok(Self::Rim),1=>Ok(Self::NoRim),_=>Err(value)}
++    }
++}
+--- a/tiny-glade/crates/country-core/src/resources/walls/decorator.rs
++++ b/tiny-glade/crates/country-core/src/resources/walls/decorator.rs
+@@ -1333,3 +1333,23 @@
+         assert_eq!(next, vec![b]);
+     }
+ }
++
++/// All four native tags, directly executed through GCC serializer14085ee90.
++#[repr(u8)]
++#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
++pub enum StairRailingType {
++    #[default]
++    None=0,
++    Low=1,
++    High=2,
++    Wooden=3,
++}
++impl StairRailingType {
++    pub fn native_tag(self)->u8 { self as u8 }
++}
++impl TryFrom<u8> for StairRailingType {
++    type Error=u8;
++    fn try_from(value:u8)->Result<Self,u8> {
++        match value {0=>Ok(Self::None),1=>Ok(Self::Low),2=>Ok(Self::High),3=>Ok(Self::Wooden),_=>Err(value)}
++    }
++}
+--- a/tiny-glade/crates/country-core/src/resources/walls/color_selection.rs
++++ b/tiny-glade/crates/country-core/src/resources/walls/color_selection.rs
+@@ -281,7 +281,7 @@
+         wall_color_id: settings.building.0,
+         roof_color_id: settings.roof.0,
+         timber_color_id: settings.halftimber.0,
+-        wall_style: settings.building_wall_style,
++        wall_style: settings.building_wall_style.0,
+         roof_appearance: [0; 12],
+     };
+ 
+@@ -357,7 +357,7 @@
+             building: ColorId(11),
+             roof: ColorId(12),
+             halftimber: ColorId(13),
+-            building_wall_style: 14,
++            building_wall_style: crate::resources::walls::inner_wall_state::WallStyle(14),
+             ..Default::default()
+         }
+     }
+--- a/tiny-glade/crates/country-core/src/systems/wall/draw_wall.rs
++++ b/tiny-glade/crates/country-core/src/systems/wall/draw_wall.rs
+@@ -135,11 +135,11 @@
+             let state =
+                 WallState::new(to_authority_curve(&input), height, 0, kind, config.dev.demo);
+             let wall = walls.new_wall_from_curve(state);
+-            let freehand_ty = if kind == 0 { settings.freehand_ty } else { 0 };
++            let freehand_ty = if kind == 0 { settings.freehand_ty.native_tag() } else { 0 };
+             let color_id = if kind == 0 {
+                 settings.freeform_wall.0
+             } else {
+-                settings.fence.0
++                settings.fences.0
+             };
+             *progress = InProgressCurve::from_curve(input);
+             progress.wall = Some(wall);
+@@ -394,8 +394,8 @@
+         world.init_resource::<GameConfig>();
+         let mut settings = GladeColorCustomization::default();
+         settings.freeform_wall.0 = 23;
+-        settings.fence.0 = 42;
+-        settings.freehand_ty = 1;
++        settings.fences.0 = 42;
++        settings.freehand_ty = crate::resources::walls::inner_wall_state::ArchType::ConstantMaxHeight;
+         world.insert_resource(settings);
+         world.insert_resource(GameTime {
+             ticks_60: 1,
+--- a/tiny-glade/crates/country-core/src/systems/wall/shapes/circle/create_circle.rs
++++ b/tiny-glade/crates/country-core/src/systems/wall/shapes/circle/create_circle.rs
+@@ -108,7 +108,7 @@
+             height_01,
+             0.2,
+             0.2,
+-            colors.flat_rim_style,
++            colors.flat_rim_style.native_tag(),
+             false,
+             appearance.roof_color_id,
+             appearance.roof_appearance,
+@@ -152,8 +152,8 @@
+         world.insert_resource(WallColorIds::default());
+         world.insert_resource(HalftimberColorIds::default());
+         let mut colors = GladeColorCustomization::default();
+-        colors.building_wall_style = 4;
+-        colors.flat_rim_style = 6;
++        colors.building_wall_style = crate::resources::walls::inner_wall_state::WallStyle(4);
++        colors.flat_rim_style = crate::resources::roofs::roof_shape::FlatRoofRimStyle::NoRim;
+         world.insert_resource(colors);
+         world.insert_resource(RoofColorComponentTables::default());
+         register_wall_recording_events(&mut world);
+@@ -192,7 +192,7 @@
+         // fresh：圆圈 +0x38 恒 0、+0x39 = settings+0x41；update_style 写
+         // settings+0x42。
+         assert_eq!(record[0x38], 0);
+-        assert_eq!(record[0x39], 6);
++        assert_eq!(record[0x39], 1);
+         assert_eq!(
+             world
+                 .resource::<InnerWalls>()
+--- a/tiny-glade/crates/country-core/src/systems/wall/shapes/rectangle/create_rectangle.rs
++++ b/tiny-glade/crates/country-core/src/systems/wall/shapes/rectangle/create_rectangle.rs
+@@ -128,7 +128,7 @@
+         // id 存在、roofs 探针命中、entity generation != 0、dense roof 记录链
+         // 命中时：style = component+0x3d；pitch = component+0x30，且
+         // `pitch <= 0.1`（有序；NaN 跳过）时 height_01 改为 pitch。
+-        let mut roof_style = colors.flat_rim_style;
++        let mut roof_style = colors.flat_rim_style.native_tag();
+         let mut height_01 = rectangle_roof_height_01(event.dimensions);
+         if let Some(previous) = event.previous_wall {
+             if let Some(entity_bits) = public.roof_entity(previous).map(|e| e.to_bits()) {
+@@ -242,8 +242,8 @@
+         world.insert_resource(WallColorIds::default());
+         world.insert_resource(HalftimberColorIds::default());
+         let mut colors = GladeColorCustomization::default();
+-        colors.building_wall_style = 3;
+-        colors.flat_rim_style = 5;
++        colors.building_wall_style = crate::resources::walls::inner_wall_state::WallStyle(3);
++        colors.flat_rim_style = crate::resources::roofs::roof_shape::FlatRoofRimStyle::NoRim;
+         colors.gates = crate::resources::color_id::ColorId(11);
+         world.insert_resource(colors);
+         world.insert_resource(RoofColorComponentTables::default());
+@@ -274,7 +274,7 @@
+         assert_eq!(roofs.len(), 1);
+         assert_eq!(inherited_style, 3);
+         let record = roofs[0].0.record();
+-        assert_eq!(record[0x39], 5); // 扁屋顶样式 = settings+0x41
++        assert_eq!(record[0x39], 1); // 扁屋顶样式 = settings+0x41
+         assert_eq!(record[0x38], 0); // 6>4 → ridge_dir=false
+         // History::add #1 = EditType::Roof / RoofHistoryEdit tag 0 (create).
+         let roof_edits = world
+--- a/tiny-glade/crates/country-core/src/systems/save/load_game.rs
++++ b/tiny-glade/crates/country-core/src/systems/save/load_game.rs
+@@ -467,9 +467,9 @@
+         freeform_wall: crate::resources::color_id::ColorId(settings.default_freeform_wall_color_id),
+         building: crate::resources::color_id::ColorId(settings.default_building_color_id),
+         roof: crate::resources::color_id::ColorId(settings.default_roof_color_id),
+-        stairs: crate::resources::color_id::ColorId(100003),
++        stairs: crate::resources::glade_color_customization::StairCustomization::default(),
+         lantern_brightness: 1.0,
+-        building_wall_style: 1,
++        building_wall_style: crate::resources::walls::inner_wall_state::WallStyle::STONE_WITH_SKIRTS,
+         ..GladeColorCustomization::default()
+     };
+     // Colors：失败 → default + "Initializing new color customization."。
+--- /dev/null
++++ b/tiny-glade/crates/country-core/src/resources/glade_color_customization_native_oracle.rs
+@@ -0,0 +1,386 @@
++//! Independent original RNE outputs, not candidate-generated roundtrips.
++use super::*;
++#[test]
++fn original_default_82_bytes_and_all_fifteen_fields() {
++    let original = r#"{"freeform_wall":0,"building":8,"roof":0,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":0,"lantern_light":0,"fences":0,"window_light":0,"flag":0,"windows":null,"gates":0,"flat_rim_style":"Rim","lantern_brightness":1.0,"stairs":{"stairs_color":100003,"ladder_color":0,"railing_ty":"None","magic_color":0}}"#;
++    assert_eq!(
++        serde_json::to_string(&GladeColorCustomization::default()).unwrap(),
++        original
++    );
++}
++#[test]
++fn all_192_original_serializer_cases_decode_to_the_proven_typed_fields() {
++    let originals = &[
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"Stone","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"StoneWithSkirts","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"FollowTerrain","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"Rim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"None","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Low","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"High","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":null,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":0,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":8,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++        r#"{"freeform_wall":101,"building":102,"roof":103,"building_wall_style":"HalfTimbered","freehand_ty":"ConstantMaxHeight","halftimber":104,"lantern_light":105,"fences":106,"window_light":107,"flag":108,"windows":4294967295,"gates":109,"flat_rim_style":"NoRim","lantern_brightness":1.25,"stairs":{"stairs_color":11,"ladder_color":22,"railing_ty":"Wooden","magic_color":33}}"#,
++    ];
++    for &original in originals {
++        let value: GladeColorCustomization = serde_json::from_str(original).unwrap();
++        assert_eq!(value.freeform_wall, ColorId(101));
++        assert_eq!(value.building, ColorId(102));
++        assert_eq!(value.roof, ColorId(103));
++        assert_eq!(value.halftimber, ColorId(104));
++        assert_eq!(value.lantern_light, ColorId(105));
++        assert_eq!(value.fences, ColorId(106));
++        assert_eq!(value.window_light, ColorId(107));
++        assert_eq!(value.flag, ColorId(108));
++        assert_eq!(value.gates, ColorId(109));
++        assert_eq!(value.lantern_brightness, 1.25);
++        assert_eq!(value.stairs.stairs_color, ColorId(11));
++        assert_eq!(value.stairs.ladder_color, ColorId(22));
++        assert_eq!(value.stairs.magic_color, ColorId(33));
++        assert_eq!(serde_json::to_string(&value).unwrap(), original);
++    }
++}
++#[test]
++fn obsolete_simplified_wire_is_rejected_and_present_values_are_never_defaulted() {
++    let valid = serde_json::to_value(GladeColorCustomization::default()).unwrap();
++    for (field, bad) in [
++        ("flag", serde_json::json!(true)),
++        ("stairs", serde_json::json!(100003)),
++        ("building_wall_style", serde_json::json!(1)),
++        ("freehand_ty", serde_json::json!(0)),
++        ("flat_rim_style", serde_json::json!(0)),
++        ("windows", serde_json::json!(true)),
++    ] {
++        let mut invalid = valid.clone();
++        invalid[field] = bad;
++        assert!(
++            serde_json::from_value::<GladeColorCustomization>(invalid).is_err(),
++            "{field}"
++        );
++    }
++    let mut invalid = valid.clone();
++    invalid["stairs"]["railing_ty"] = serde_json::json!("Unknown");
++    assert!(serde_json::from_value::<GladeColorCustomization>(invalid).is_err());
++    let mut missing_fences = valid;
++    let fences = missing_fences
++        .as_object_mut()
++        .unwrap()
++        .remove("fences")
++        .unwrap();
++    missing_fences["fence"] = fences;
++    assert!(serde_json::from_value::<GladeColorCustomization>(missing_fences).is_err());
++}
++
++#[test]
++fn original_missing_field_policy_is_preserved_individually() {
++    let original = serde_json::to_value(GladeColorCustomization::default()).unwrap();
++    {
++        let mut value = original.clone();
++        value.as_object_mut().unwrap().remove("freeform_wall");
++        assert!(serde_json::from_value::<GladeColorCustomization>(value).is_err());
++    }
++    {
++        let mut value = original.clone();
++        value.as_object_mut().unwrap().remove("building");
++        assert!(serde_json::from_value::<GladeColorCustomization>(value).is_err());
++    }
++    {
++        let mut value = original.clone();
++        value.as_object_mut().unwrap().remove("roof");
++        assert!(serde_json::from_value::<GladeColorCustomization>(value).is_err());
++    }
++    {
++        let mut value = original.clone();
++        value.as_object_mut().unwrap().remove("building_wall_style");
++        assert!(serde_json::from_value::<GladeColorCustomization>(value).is_err());
++    }
++    {
++        let mut value = original.clone();
++        value.as_object_mut().unwrap().remove("freehand_ty");
++        assert!(serde_json::from_value::<GladeColorCustomization>(value).is_err());
++    }
++    {
++        let mut value = original.clone();
++        value.as_object_mut().unwrap().remove("halftimber");
++        assert!(serde_json::from_value::<GladeColorCustomization>(value).is_err());
++    }
++    {
++        let mut value = original.clone();
++        value.as_object_mut().unwrap().remove("lantern_light");
++        assert!(serde_json::from_value::<GladeColorCustomization>(value).is_err());
++    }
++    {
++        let mut value = original.clone();
++        value.as_object_mut().unwrap().remove("fences");
++        assert!(serde_json::from_value::<GladeColorCustomization>(value).is_err());
++    }
++    {
++        let mut value = original.clone();
++        value.as_object_mut().unwrap().remove("window_light");
++        assert!(serde_json::from_value::<GladeColorCustomization>(value).is_err());
++    }
++    {
++        let mut value = original.clone();
++        value.as_object_mut().unwrap().remove("flag");
++        assert!(serde_json::from_value::<GladeColorCustomization>(value).is_err());
++    }
++    {
++        let mut value = original.clone();
++        value.as_object_mut().unwrap().remove("windows");
++        let parsed = serde_json::from_value::<GladeColorCustomization>(value).unwrap();
++        assert_eq!(
++            serde_json::to_string(&parsed).unwrap(),
++            r#"{"freeform_wall":0,"building":8,"roof":0,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":0,"lantern_light":0,"fences":0,"window_light":0,"flag":0,"windows":null,"gates":0,"flat_rim_style":"Rim","lantern_brightness":1.0,"stairs":{"stairs_color":100003,"ladder_color":0,"railing_ty":"None","magic_color":0}}"#
++        );
++    }
++    {
++        let mut value = original.clone();
++        value.as_object_mut().unwrap().remove("gates");
++        assert!(serde_json::from_value::<GladeColorCustomization>(value).is_err());
++    }
++    {
++        let mut value = original.clone();
++        value.as_object_mut().unwrap().remove("flat_rim_style");
++        let parsed = serde_json::from_value::<GladeColorCustomization>(value).unwrap();
++        assert_eq!(
++            serde_json::to_string(&parsed).unwrap(),
++            r#"{"freeform_wall":0,"building":8,"roof":0,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":0,"lantern_light":0,"fences":0,"window_light":0,"flag":0,"windows":null,"gates":0,"flat_rim_style":"Rim","lantern_brightness":1.0,"stairs":{"stairs_color":100003,"ladder_color":0,"railing_ty":"None","magic_color":0}}"#
++        );
++    }
++    {
++        let mut value = original.clone();
++        value.as_object_mut().unwrap().remove("lantern_brightness");
++        let parsed = serde_json::from_value::<GladeColorCustomization>(value).unwrap();
++        assert_eq!(
++            serde_json::to_string(&parsed).unwrap(),
++            r#"{"freeform_wall":0,"building":8,"roof":0,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":0,"lantern_light":0,"fences":0,"window_light":0,"flag":0,"windows":null,"gates":0,"flat_rim_style":"Rim","lantern_brightness":1.0,"stairs":{"stairs_color":100003,"ladder_color":0,"railing_ty":"None","magic_color":0}}"#
++        );
++    }
++    {
++        let mut value = original.clone();
++        value.as_object_mut().unwrap().remove("stairs");
++        let parsed = serde_json::from_value::<GladeColorCustomization>(value).unwrap();
++        assert_eq!(
++            serde_json::to_string(&parsed).unwrap(),
++            r#"{"freeform_wall":0,"building":8,"roof":0,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":0,"lantern_light":0,"fences":0,"window_light":0,"flag":0,"windows":null,"gates":0,"flat_rim_style":"Rim","lantern_brightness":1.0,"stairs":{"stairs_color":100003,"ladder_color":0,"railing_ty":"None","magic_color":0}}"#
++        );
++    }
++    {
++        let mut value = original.clone();
++        value["stairs"]
++            .as_object_mut()
++            .unwrap()
++            .remove("stairs_color");
++        assert!(serde_json::from_value::<GladeColorCustomization>(value).is_err());
++    }
++    {
++        let mut value = original.clone();
++        value["stairs"]
++            .as_object_mut()
++            .unwrap()
++            .remove("ladder_color");
++        assert!(serde_json::from_value::<GladeColorCustomization>(value).is_err());
++    }
++    {
++        let mut value = original.clone();
++        value["stairs"]
++            .as_object_mut()
++            .unwrap()
++            .remove("railing_ty");
++        assert!(serde_json::from_value::<GladeColorCustomization>(value).is_err());
++    }
++    {
++        let mut value = original.clone();
++        value["stairs"]
++            .as_object_mut()
++            .unwrap()
++            .remove("magic_color");
++        let parsed = serde_json::from_value::<GladeColorCustomization>(value).unwrap();
++        assert_eq!(
++            serde_json::to_string(&parsed).unwrap(),
++            r#"{"freeform_wall":0,"building":8,"roof":0,"building_wall_style":"StoneWithSkirts","freehand_ty":"FollowTerrain","halftimber":0,"lantern_light":0,"fences":0,"window_light":0,"flag":0,"windows":null,"gates":0,"flat_rim_style":"Rim","lantern_brightness":1.0,"stairs":{"stairs_color":100003,"ladder_color":0,"railing_ty":"None","magic_color":0}}"#
++        );
++    }
++}

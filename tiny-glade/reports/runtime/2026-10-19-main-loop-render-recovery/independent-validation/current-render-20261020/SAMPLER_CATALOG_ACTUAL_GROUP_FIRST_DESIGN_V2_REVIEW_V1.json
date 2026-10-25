@@ -1,0 +1,48 @@
+{
+  "review": "SAMPLER_CATALOG_ACTUAL_GROUP_FIRST_DESIGN_V2",
+  "reviewer": "/root/render_reviewer",
+  "source_head": "08ecee0011d9449ebe79dffcd2f9388c490d2f53",
+  "verdict": "V1 预算阻断已由 V2 合同消除；可继续生成冻结源码候选，尚未源码/GPU/30 帧验收。V1 不可整合。",
+  "inputs": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/sampler-catalog-bootstrap-v1-20261021/CONTRACT.md",
+      "sha256": "fe3e804ac6fe451c402d5ca6ea6784d4aa9cb6a17cc34cb4e5e9f7dda0266c80"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/sampler-catalog-bootstrap-v2-20261021/ADDENDUM_V2_ACTUAL_GROUP_FIRST.md",
+      "sha256": "fc72c52b0b167780b3e9fd905f2608ad1c43356bb3e0d859d389cf79583572b0"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/render_host.rs",
+      "sha256": "6da9c537d13f2946b8b003f43ec1027472064e2dd286cb4638c7a5026aab9183"
+    }
+  ],
+  "observed_failure": {
+    "log": "/private/tmp/tg-postpush-world30-20261021.log",
+    "actual": "原30已全部渲染，live断言3021..3042跨度21>16失败；frame2 sampler52，frame11..29 sampler70，不是74。8页容量自frame2固定，sampler retiring始终0。",
+    "diagnosis_limit": "各page对(name,真实ArcSampler)强持缓存、9反射内建名×8页上界72，支持有限跨页懒填解释；未采逐page runtime key，不把推断写成精确实测名单。"
+  },
+  "native_schema_engineering_split": {
+    "native": "已有匹配B机器码证明13个启动sampler目录，不能由此证明原作分页或本工程每页预填。",
+    "schema": "现反射名映射9种；原Sampler binding/name/Arc身份、每页独立槽、layout sampler capacity与完整组group guard是现适配合同。",
+    "engineering": "同一ShaderHost已成功安装entry的真实sampler目录与额外每页缓存属于工程缓存策略，不能计作新的原作业务恢复。"
+  },
+  "v1_blockers": [
+    "cap64，目录9个已安装sampler、当前真实组仅1个且仅余1个sampler预算：把目录extras放入group原需求会把原成功路径变成OOM。容量回退及OOM原子取消本身不能解决这个兼容反例。",
+    "登记目录Vec元数据失败若拒绝entry，会把原本只需table.reserve的可安装entry变成新失败，目录作为可选优化不能这样改变安装预算语义。"
+  ],
+  "v2_required_contract": [
+    "真实group沿原顺序准备、准入、写入、finish一次且仍持同一page guard，任何原group错误照旧传播。extra阶段不得重试group、重写FG/实际参数或二次推进DynamicConstants cursor。",
+    "extras仅实际已安装目录，按(name,ArcSampler)去重，容量不足直接走原组路径；不能假登记全Device目录、失败安装entry或外App/Device owner。",
+    "extra metadata/slot不足或lease分配明确OOM/Exhausted可回退；任何部分成功extras全部取消，旧cache与真实Prepared保留。require_slots::Error、DeviceLost和其它真实错误不吞。",
+    "全部额外fallible完成后才允许实际与extra cache提交；预留容量使commit无新分配失败，完整目录stamp只在全成功、同epoch且非饱和时发布。name invalidate删除所有版本并在锁外释放，旧Prepared保真实inflight lease。",
+    "注册元数据OOM时禁用本App后续bootstrap、清当前目录而不清实际cache，仍安装原entry；禁用标记不分配，旧目录锁外Drop，不用遗漏目录伪称完整。"
+  ],
+  "remaining_source_review": [
+    "实现同页guard、cache锁序、Prepared完成与取消实际顺序，with_push与adapter仍消费同一准入权威。",
+    "缓存key/epoch并发更换，最后owner锁外释放，metadata/slots部分失败原子取消。",
+    "登记失败不影响entry，以及目录小capacity/多版本/实际组成功extra中途OOM/真实错误传播测试。",
+    "可选extras非预算driver错误仍可能引入失败机会，所以不能宣称所有错误行为完全等价。实际生产收益及预算影响必须通过原30断言原样重跑确认。"
+  ],
+  "execution": "本审查未运行Cargo/GPU/游戏、未改生产；只是冻结设计独审。root唯一实际验证。"
+}

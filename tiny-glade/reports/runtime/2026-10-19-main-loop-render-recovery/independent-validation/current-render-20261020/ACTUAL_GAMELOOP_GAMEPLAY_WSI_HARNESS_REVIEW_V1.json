@@ -1,0 +1,34 @@
+{
+  "schema": "tiny-glade-independent-review/v1",
+  "reviewer": "render_reviewer",
+  "date": "2026-10-21",
+  "decision": "accept explicit bounded gameplay WSI harness for root build and actual run; no remaining static false-positive path identified within declared scope",
+  "actual_source_sha256": {
+    "tiny-glade/crates/tiny-glade/tests/original_loading_present.rs": "9bd194555d36eae5147763115446fd2f4c7abdcd09a06044094fd34176d4ad9d",
+    "tiny-glade/crates/tiny-glade/src/game_loop.rs": "489b446d29b80f6ca1c74d2cd2a3368bddf6c5e0df075907e2ac94ba7ebe7dac",
+    "tiny-glade/crates/tiny-glade/src/event_loop.rs": "d249f5633168e1ad5824d5b05cea7041311aeb57bf4502d023d9c910c5953bb3",
+    "tiny-glade/crates/tiny-glade/src/production_renderer.rs": "8224b87cc5723ec2929fd5de0356f1b6f0a32e6533b2a19a7ecf161446b94255",
+    "tiny-glade/crates/country-core/src/systems/save/save_thread.rs": "1194141fe7713e5056e670bcc38320188e14c41b916a4f3de25ce5c3028598d0",
+    "tiny-glade/crates/rhapsody/src/raw/swapchain.rs": "c21b1c716b90a82479f4a44da6c4066662056f551efbe91106d53682410bb0bc"
+  },
+  "classification": "工程验证入口；仅 GameLoop 新增只读native success getter，默认loading模式保留；不当作原版业务新算法",
+  "independent_checks": [
+    "显式TG_VALIDATE_GAMEPLAY_WSI=1才选择。真实安装根+独立账户，完整run_game_thread→GameLoop::new加载App/worker warmup及交接，frame_limit=None，未用自建空world替代。",
+    "main_loop真实OS分派处理每个事件；只在Redraw且completed_frames实际增加后读取该帧观察，避免关闭无更新时重计旧observation。",
+    "Main必须world_rendered=true，非diagnostic；ActiveSession+真实InnerWalls非空、非空draw-list、同WorldId、互异receipt、WSI point/generation齐备。",
+    "首次世界帧验证SaveThreadHandle存在且同World AutoSaveState已attach；避免缺少真实save owner但shutdown空操作返回Ok假阳性。",
+    "至少12世界帧后发CloseRequested走原OS queue→normal Update consumer→ShutdownGame→GameLoop::shut_down。LoopExiting本身也调用shut_down，错误由?保留，已有Err结果不被末尾成功覆盖。",
+    "退出确认SaveThreadHandle已移除、AutoSaveState sender detach；所有early/user close、无结果、超时、无loading、少于12world、无native增量都失败。临时账户保留到loop/shutdown之后。",
+    "raw native success只计原vk present Result::Ok（含suboptimal）；increment从首世界帧前快照起至少12，不依赖旧any_presented可恢复失败flag。",
+    "shut_down真实join准备worker/save线程/截图线程并执行renderer.shutdown，首错误优先，清理不因早期错误跳过；GameFrameDriver.frame也消费renderer.finish_render错误。"
+  ],
+  "root_execution_gates": [
+    "实际build成功不等于GPU成功。保持严格Vulkan+validation layer，保存完整log/binaryhash/env/sourceepoch。",
+    "要求日志实际loading>0/world>=12/native-world>=12、exit0及真实关闭结果；若提前退出/卡住保留失败。"
+  ],
+  "limits": [
+    "reviewer未运行Cargo/GPU/OS事件循环。",
+    "这里只验证至少12帧真实WSI消费及保存线程生命周期；不证明屏幕像素/scanout正确、编辑数据已落盘或重启恢复。",
+    "真实异常取消路径仍需对应实际错误测试；绝不将本入口成功扩展为所有场景/长稳/保存业务完成。"
+  ]
+}

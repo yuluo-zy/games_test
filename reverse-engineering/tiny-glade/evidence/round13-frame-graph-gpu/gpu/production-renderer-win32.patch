@@ -1,0 +1,76 @@
+--- a/tiny-glade/crates/tiny-glade/src/production_renderer.rs
++++ b/tiny-glade/crates/tiny-glade/src/production_renderer.rs
+@@ -543,7 +543,7 @@
+     reduced_state: u64,
+     stats: rhapsody::device::RenderStats,
+     last_stats: rhapsody::device::StatsSnapshot,
+-    // The native window and CAMetalLayer outlive every Vulkan surface owner.
++    // The native window and platform backing outlive every Vulkan surface owner.
+     platform: PlatformSurface,
+     window: Arc<winit::window::Window>,
+ }
+@@ -1365,9 +1365,62 @@
+     }
+ }
+ 
+-#[cfg(not(target_os = "macos"))]
++// Host platform integration. This uses winit's actual Win32 handles and the
++// existing ash surface owner; it does not introduce another Vulkan lifetime.
++#[cfg(target_os = "windows")]
++struct PlatformSurface {
++    hwnd: vk::HWND,
++    hinstance: vk::HINSTANCE,
++}
++#[cfg(target_os = "windows")]
++impl PlatformSurface {
++    fn new(window: &winit::window::Window) -> Result<Self> {
++        use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
++        let handle = match window.window_handle()?.as_raw() {
++            RawWindowHandle::Win32(handle) => handle,
++            _ => anyhow::bail!("winit did not return a Win32 window handle"),
++        };
++        Ok(Self {
++            hwnd: handle.hwnd.get(),
++            hinstance: handle
++                .hinstance
++                .context("winit Win32 window has no module instance")?
++                .get(),
++        })
++    }
++
++    fn update(&self, window: &winit::window::Window) -> Result<()> {
++        // Win32 owns the client extent. ProductionRenderer::resize updates the
++        // swapchain separately; never create a second surface on resize/resume.
++        let current = Self::new(window)?;
++        anyhow::ensure!(
++            self.hwnd == current.hwnd && self.hinstance == current.hinstance,
++            "Vulkan surface belongs to a different Win32 window"
++        );
++        Ok(())
++    }
++
++    fn create_surface(
++        &self,
++        instance: Arc<rhapsody::interop::VulkanInstance>,
++    ) -> Result<Arc<rhapsody::present::Surface>> {
++        let loader = ash::khr::win32_surface::Instance::new(&instance.entry, &instance.instance);
++        let info = vk::Win32SurfaceCreateInfoKHR::default()
++            .hinstance(self.hinstance)
++            .hwnd(self.hwnd);
++        // ProductionRenderer retains the winit Window until after its swapchain
++        // and Surface owners drop. Surface::from_raw owns the Vulkan destruction.
++        let handle = unsafe { loader.create_win32_surface(&info, None) }
++            .context("create Vulkan Win32 surface")?;
++        Ok(Arc::new(unsafe {
++            rhapsody::present::Surface::from_raw(instance, handle, true)
++        }))
++    }
++}
++
++#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+ struct PlatformSurface;
+-#[cfg(not(target_os = "macos"))]
++#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+ impl PlatformSurface {
+     fn new(_: &winit::window::Window) -> Result<Self> {
+         anyhow::bail!("native surface adapter is only available for macOS in this host build")

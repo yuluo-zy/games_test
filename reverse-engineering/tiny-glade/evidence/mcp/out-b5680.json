@@ -1,0 +1,101 @@
+{
+  "server": "re_mcp_ghidra",
+  "actual_mcp_connection": true,
+  "results": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"tiny_glade\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "tiny_glade",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "tiny_glade"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"tiny_glade\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "tiny_glade",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tiny_glade",
+        "address": "0x1418b5680"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_1418b5680\",\"address\":\"0x1418B5680\",\"decompiled_code\":\"\\r\\nundefined8 FUN_1418b5680(longlong *param_1,undefined8 *param_2)\\r\\n\\r\\n{\\r\\n  undefined1 uVar1;\\r\\n  longlong lVar2;\\r\\n  undefined8 uVar3;\\r\\n  undefined8 uVar4;\\r\\n  undefined8 uVar5;\\r\\n  undefined8 uVar6;\\r\\n  undefined8 uStack_1a8;\\r\\n  undefined8 uStack_1a0;\\r\\n  undefined8 uStack_198;\\r\\n  undefined8 uStack_190;\\r\\n  undefined8 uStack_188;\\r\\n  undefined8 uStack_180;\\r\\n  undefined8 uStack_178;\\r\\n  undefined8 uStack_160;\\r\\n  undefined8 uStack_158;\\r\\n  undefined8 uStack_150;\\r\\n  undefined4 uStack_148;\\r\\n  undefined4 uStack_144;\\r\\n  undefined4 uStack_140;\\r\\n  undefined4 uStack_13c;\\r\\n  undefined4 uStack_138;\\r\\n  undefined8 uStack_134;\\r\\n  undefined8 uStack_12c;\\r\\n  undefined8 uStack_124;\\r\\n  undefined4 uStack_11c;\\r\\n  undefined4 uStack_118;\\r\\n  undefined4 uStack_114;\\r\\n  undefined4 uStack_110;\\r\\n  undefined4 uStack_10c;\\r\\n  undefined1 uStack_108;\\r\\n  undefined1 uStack_107;\\r\\n  undefined8 uStack_b8;\\r\\n  undefined8 uStack_a0;\\r\\n  undefined8 uStack_98;\\r\\n  undefined8 uStack_90;\\r\\n  undefined8 uStack_88;\\r\\n  undefined8 uStack_80;\\r\\n  undefined4 uStack_78;\\r\\n  undefined8 uStack_70;\\r\\n  undefined8 uStack_68;\\r\\n  undefined8 uStack_60;\\r\\n  undefined4 uStack_58;\\r\\n  undefined4 uStack_54;\\r\\n  undefined4 uStack_50;\\r\\n  undefined4 uStack_4c;\\r\\n  undefined4 uStack_48;\\r\\n  undefined8 uStack_40;\\r\\n  \\r\\n  uStack_40 = 0xfffffffffffffffe;\\r\\n  param_1 = (longlong *)*param_1;\\r\\n  if (*(char *)((longlong)param_2 + 0x99) == '\\\\0') {\\r\\n    if ((999999999 < (ulonglong)param_2[0x11]) && (399999999 < (ulonglong)param_2[0x12])) {\\r\\n      return 1;\\r\\n    }\\r\\n  }\\r\\n  else if (1399999999 < (ulonglong)(param_2[0x11] + param_2[0x12])) {\\r\\n    return 1;\\r\\n  }\\r\\n  FUN_140d7bd90(&uStack_70,param_2 + 2);\\r\\n  uVar3 = *param_2;\\r\\n  uVar4 = param_2[1];\\r\\n  uVar1 = *(undefined1 *)(param_2 + 0x13);\\r\\n  if (SBORROW8(0,param_2[5])) {\\r\\n    uStack_58 = 0;\\r\\n    uStack_54 = 0x80000000;\\r\\n  }\\r\\n  else {\\r\\n    FUN_140d7bd90(&uStack_58,param_2 + 5);\\r\\n  }\\r\\n  if (SBORROW8(0,param_2[8])) {\\r\\n    uStack_1a8 = 0x8000000000000000;\\r\\n  }\\r\\n  else {\\r\\n    FUN_140d7bd90(&uStack_1a8,param_2 + 8);\\r\\n  }\\r\\n  uStack_138 = *(undefined4 *)(param_2 + 0xd);\\r\\n  uVar5 = param_2[0xb];\\r\\n  uVar6 = param_2[0xc];\\r\\n  uStack_178 = CONCAT44(uStack_54,uStack_58);\\r\\n  uStack_a0 = uStack_1a8;\\r\\n  uStack_98 = uStack_1a0;\\r\\n  uStack_90 = uStack_198;\\r\\n  uStack_107 = *(undefined1 *)((longlong)param_2 + 0x99);\\r\\n  uStack_180 = uStack_60;\\r\\n  uStack_190 = uStack_70;\\r\\n  uStack_188 = uStack_68;\\r\\n  uStack_54 = (undefined4)param_2[0xf];\\r\\n  uStack_50 = (undefined4)((ulonglong)param_2[0xf] >> 0x20);\\r\\n  uStack_4c = (undefined4)param_2[0x10];\\r\\n  uStack_48 = (undefined4)((ulonglong)param_2[0x10] >> 0x20);\\r\\n  uStack_88._0_4_ = (undefined4)uVar5;\\r\\n  uStack_88._4_4_ = (undefined4)((ulonglong)uVar5 >> 0x20);\\r\\n  uStack_80._0_4_ = (undefined4)uVar6;\\r\\n  uStack_80._4_4_ = (undefined4)((ulonglong)uVar6 >> 0x20);\\r\\n  uStack_148 = (undefined4)uStack_88;\\r\\n  uStack_144 = uStack_88._4_4_;\\r\\n  uStack_140 = (undefined4)uStack_80;\\r\\n  uStack_13c = uStack_80._4_4_;\\r\\n  uStack_158 = uStack_1a0;\\r\\n  uStack_150 = uStack_198;\\r\\n  uStack_160 = uStack_1a8;\\r\\n  uStack_134 = *(undefined8 *)((longlong)param_2 + 0x6c);\\r\\n  uStack_12c = CONCAT44(uStack_54,uStack_58);\\r\\n  uStack_124 = CONCAT44(uStack_4c,uStack_50);\\r\\n  uStack_11c = uStack_48;\\r\\n  uStack_118 = *(undefined4 *)(param_2 + 0x11);\\r\\n  uStack_114 = *(undefined4 *)((longlong)param_2 + 0x8c);\\r\\n  uStack_110 = *(undefined4 *)(param_2 + 0x12);\\r\\n  uStack_10c = *(undefined4 *)((longlong)param_2 + 0x94);\\r\\n  uStack_1a8 = 3;\\r\\n  lVar2 = param_1[2];\\r\\n  uStack_1a0 = uVar3;\\r\\n  uStack_198 = uVar4;\\r\\n  uStack_108 = uVar1;\\r\\n  uStack_b8 = uStack_178;\\r\\n  uStack_88 = uVar5;\\r\\n  uStack_80 = uVar6;\\r\\n  uStack_78 = uStack_138;\\r\\n  if (lVar2 == *param_1) {\\r\\n    FUN_140bdd330(param_1,&UNK_142d03908);\\r\\n  }\\r\\n  func_0x000142923c10(lVar2 * 0xf0 + param_1[1],&uStack_1a8,0xf0);\\r\\n  param_1[2] = lVar2 + 1;\\r\\n  return 0;\\r\\n}\\r\\n\\r\\n\",\"database\":\"tiny_glade\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_1418b5680",
+          "address": "0x1418B5680",
+          "decompiled_code": "\r\nundefined8 FUN_1418b5680(longlong *param_1,undefined8 *param_2)\r\n\r\n{\r\n  undefined1 uVar1;\r\n  longlong lVar2;\r\n  undefined8 uVar3;\r\n  undefined8 uVar4;\r\n  undefined8 uVar5;\r\n  undefined8 uVar6;\r\n  undefined8 uStack_1a8;\r\n  undefined8 uStack_1a0;\r\n  undefined8 uStack_198;\r\n  undefined8 uStack_190;\r\n  undefined8 uStack_188;\r\n  undefined8 uStack_180;\r\n  undefined8 uStack_178;\r\n  undefined8 uStack_160;\r\n  undefined8 uStack_158;\r\n  undefined8 uStack_150;\r\n  undefined4 uStack_148;\r\n  undefined4 uStack_144;\r\n  undefined4 uStack_140;\r\n  undefined4 uStack_13c;\r\n  undefined4 uStack_138;\r\n  undefined8 uStack_134;\r\n  undefined8 uStack_12c;\r\n  undefined8 uStack_124;\r\n  undefined4 uStack_11c;\r\n  undefined4 uStack_118;\r\n  undefined4 uStack_114;\r\n  undefined4 uStack_110;\r\n  undefined4 uStack_10c;\r\n  undefined1 uStack_108;\r\n  undefined1 uStack_107;\r\n  undefined8 uStack_b8;\r\n  undefined8 uStack_a0;\r\n  undefined8 uStack_98;\r\n  undefined8 uStack_90;\r\n  undefined8 uStack_88;\r\n  undefined8 uStack_80;\r\n  undefined4 uStack_78;\r\n  undefined8 uStack_70;\r\n  undefined8 uStack_68;\r\n  undefined8 uStack_60;\r\n  undefined4 uStack_58;\r\n  undefined4 uStack_54;\r\n  undefined4 uStack_50;\r\n  undefined4 uStack_4c;\r\n  undefined4 uStack_48;\r\n  undefined8 uStack_40;\r\n  \r\n  uStack_40 = 0xfffffffffffffffe;\r\n  param_1 = (longlong *)*param_1;\r\n  if (*(char *)((longlong)param_2 + 0x99) == '\\0') {\r\n    if ((999999999 < (ulonglong)param_2[0x11]) && (399999999 < (ulonglong)param_2[0x12])) {\r\n      return 1;\r\n    }\r\n  }\r\n  else if (1399999999 < (ulonglong)(param_2[0x11] + param_2[0x12])) {\r\n    return 1;\r\n  }\r\n  FUN_140d7bd90(&uStack_70,param_2 + 2);\r\n  uVar3 = *param_2;\r\n  uVar4 = param_2[1];\r\n  uVar1 = *(undefined1 *)(param_2 + 0x13);\r\n  if (SBORROW8(0,param_2[5])) {\r\n    uStack_58 = 0;\r\n    uStack_54 = 0x80000000;\r\n  }\r\n  else {\r\n    FUN_140d7bd90(&uStack_58,param_2 + 5);\r\n  }\r\n  if (SBORROW8(0,param_2[8])) {\r\n    uStack_1a8 = 0x8000000000000000;\r\n  }\r\n  else {\r\n    FUN_140d7bd90(&uStack_1a8,param_2 + 8);\r\n  }\r\n  uStack_138 = *(undefined4 *)(param_2 + 0xd);\r\n  uVar5 = param_2[0xb];\r\n  uVar6 = param_2[0xc];\r\n  uStack_178 = CONCAT44(uStack_54,uStack_58);\r\n  uStack_a0 = uStack_1a8;\r\n  uStack_98 = uStack_1a0;\r\n  uStack_90 = uStack_198;\r\n  uStack_107 = *(undefined1 *)((longlong)param_2 + 0x99);\r\n  uStack_180 = uStack_60;\r\n  uStack_190 = uStack_70;\r\n  uStack_188 = uStack_68;\r\n  uStack_54 = (undefined4)param_2[0xf];\r\n  uStack_50 = (undefined4)((ulonglong)param_2[0xf] >> 0x20);\r\n  uStack_4c = (undefined4)param_2[0x10];\r\n  uStack_48 = (undefined4)((ulonglong)param_2[0x10] >> 0x20);\r\n  uStack_88._0_4_ = (undefined4)uVar5;\r\n  uStack_88._4_4_ = (undefined4)((ulonglong)uVar5 >> 0x20);\r\n  uStack_80._0_4_ = (undefined4)uVar6;\r\n  uStack_80._4_4_ = (undefined4)((ulonglong)uVar6 >> 0x20);\r\n  uStack_148 = (undefined4)uStack_88;\r\n  uStack_144 = uStack_88._4_4_;\r\n  uStack_140 = (undefined4)uStack_80;\r\n  uStack_13c = uStack_80._4_4_;\r\n  uStack_158 = uStack_1a0;\r\n  uStack_150 = uStack_198;\r\n  uStack_160 = uStack_1a8;\r\n  uStack_134 = *(undefined8 *)((longlong)param_2 + 0x6c);\r\n  uStack_12c = CONCAT44(uStack_54,uStack_58);\r\n  uStack_124 = CONCAT44(uStack_4c,uStack_50);\r\n  uStack_11c = uStack_48;\r\n  uStack_118 = *(undefined4 *)(param_2 + 0x11);\r\n  uStack_114 = *(undefined4 *)((longlong)param_2 + 0x8c);\r\n  uStack_110 = *(undefined4 *)(param_2 + 0x12);\r\n  uStack_10c = *(undefined4 *)((longlong)param_2 + 0x94);\r\n  uStack_1a8 = 3;\r\n  lVar2 = param_1[2];\r\n  uStack_1a0 = uVar3;\r\n  uStack_198 = uVar4;\r\n  uStack_108 = uVar1;\r\n  uStack_b8 = uStack_178;\r\n  uStack_88 = uVar5;\r\n  uStack_80 = uVar6;\r\n  uStack_78 = uStack_138;\r\n  if (lVar2 == *param_1) {\r\n    FUN_140bdd330(param_1,&UNK_142d03908);\r\n  }\r\n  func_0x000142923c10(lVar2 * 0xf0 + param_1[1],&uStack_1a8,0xf0);\r\n  param_1[2] = lVar2 + 1;\r\n  return 0;\r\n}\r\n\r\n",
+          "database": "tiny_glade"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "tiny_glade",
+        "save": false
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"tiny_glade\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "tiny_glade"
+        },
+        "isError": false
+      }
+    }
+  ],
+  "target_execution": false,
+  "ok": true
+}

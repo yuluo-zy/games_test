@@ -1,0 +1,18 @@
+
+/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny-glade.exe:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140df0400: f3 0f 10 02                 	movss	(%rdx), %xmm0
+140df0404: f3 0f 10 4a 08              	movss	0x8(%rdx), %xmm1
+140df0409: 0f 14 c1                    	unpcklps	%xmm1, %xmm0            # xmm0 = xmm0[0],xmm1[0],xmm0[1],xmm1[1]
+140df040c: f2 0f 10 49 08              	movsd	0x8(%rcx), %xmm1
+140df0411: 0f 58 c8                    	addps	%xmm0, %xmm1
+140df0414: f2 0f 10 41 18              	movsd	0x18(%rcx), %xmm0
+140df0419: 0f 13 49 08                 	movlps	%xmm1, 0x8(%rcx)
+140df041d: f3 0f 10 4a 04              	movss	0x4(%rdx), %xmm1
+140df0422: f3 0f 12 c9                 	movsldup	%xmm1, %xmm1            # xmm1 = xmm1[0,0,2,2]
+140df0426: 0f 58 c8                    	addps	%xmm0, %xmm1
+140df0429: 0f 13 49 18                 	movlps	%xmm1, 0x18(%rcx)
+140df042d: c3                          	retq

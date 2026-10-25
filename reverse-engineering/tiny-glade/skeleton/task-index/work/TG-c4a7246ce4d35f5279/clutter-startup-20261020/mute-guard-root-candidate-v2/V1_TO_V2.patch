@@ -1,0 +1,29 @@
+--- a/tiny-glade/crates/systems/decorator/src/audio/op_preview_audio.rs
++++ b/tiny-glade/crates/systems/decorator/src/audio/op_preview_audio.rs
+@@ -201,7 +201,7 @@
+         raw[0x81] = 0x38;
+         world
+             .resource_mut::<Events<DecoratorOpEventKind>>()
+-            .write(DecoratorOpEventKind(raw));
++            .send(DecoratorOpEventKind(raw));
+         world
+             .resource_mut::<DecoratorAudioEvents>()
+             .set_state(91, 7);
+@@ -222,7 +222,7 @@
+         for _ in 0..3 {
+             world
+                 .resource_mut::<Events<MutePreviewDecoratorOpSounds>>()
+-                .write(MutePreviewDecoratorOpSounds);
++                .send(MutePreviewDecoratorOpSounds);
+         }
+         schedule.run(&mut world);
+         assert_eq!(world.resource::<Events<PlayDecoratorSoundCmd>>().len(), 0);
+@@ -245,7 +245,7 @@
+         let (mut world, mut schedule) = fixture();
+         world
+             .resource_mut::<Events<MutePreviewDecoratorOpSounds>>()
+-            .write(MutePreviewDecoratorOpSounds);
++            .send(MutePreviewDecoratorOpSounds);
+         schedule.run(&mut world);
+         world
+             .resource_mut::<Events<DecoratorOpEventKind>>()

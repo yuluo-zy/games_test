@@ -1,0 +1,10 @@
+[
+  {"tool":"open_database","args":{"file_path":"D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe","run_auto_analysis":false,"database_id":"tg_ca1","keep_open":true},"timeout_ms":600000},
+  {"tool":"wait_for_analysis","args":{"database":"tg_ca1"},"timeout_ms":600000},
+  {"tool":"find_code_by_string","args":{"database":"tg_ca1","string":"bend_vector"},"timeout_ms":180000,"allow_error":true,"_note":"code refs to bend_vector"},
+  {"tool":"find_code_by_string","args":{"database":"tg_ca1","string":"rotation_degrees"},"timeout_ms":180000,"allow_error":true,"_note":"code refs to rotation_degrees"},
+  {"tool":"get_xrefs_from","args":{"database":"tg_ca1","address":"0x140b3b960"},"timeout_ms":180000,"allow_error":true,"_note":"calls made by visit_str"},
+  {"tool":"decompile_function","args":{"database":"tg_ca1","address":"0x140ad5020"},"timeout_ms":240000,"allow_error":true,"_note":"PlacementDataSsbo::to_affine3a"},
+  {"tool":"decompile_function","args":{"database":"tg_ca1","address":"0x140ad51a0"},"timeout_ms":240000,"allow_error":true,"_note":"PlacementDataSsbo::position"},
+  {"tool":"close_database","args":{"database":"tg_ca1","save":false},"timeout_ms":180000}
+]

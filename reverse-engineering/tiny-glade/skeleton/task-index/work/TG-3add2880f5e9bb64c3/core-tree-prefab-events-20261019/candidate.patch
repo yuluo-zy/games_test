@@ -1,0 +1,52 @@
+--- a/tiny-glade/crates/systems/tree-tool/src/process_tree_cmds.rs
++++ b/tiny-glade/crates/systems/tree-tool/src/process_tree_cmds.rs
+@@ -201,7 +201,7 @@
+         // O：`SpawnPrefabCmd`（事件槽 stride 0x50 = 头 8B + 载荷 0x48；
+         // decomp 行 683-719 / asm 142267e55-142267ec8 逐字段）：
+         // prefab@+0、entity@+0x10、position@+0x18、scale@+0x24、rotation@+0x28、
+-        // variant@+0x2c、常量 1.0@+0x30、flags[16]@+0x34、mode@+0x44。
++        // placement.id@+0x2c、custom0=1.0 bits@+0x30、其余四字清零、pad0@+0x44。
+         // Preserve original rotation/placement variant from the actual command.
+         // mode（iVar22）：naked&&deny → 3；否则非拖动路径 = 1；拖动/flags 门
+         // （ActiveWidget::is_dragging + 事件 flags 字节）未接线 → 登记。
+@@ -211,13 +211,17 @@
+                 country_core::resources::render::mesh_atlas_library::PrefabName::new(&prefab_name),
+             ),
+             entity: Some(entity),
+-            position: pos,
+-            scale,
+-            rotation: cmd.rotation_degrees,
+-            variant: cmd.variant as u32,
+-            one: 1.0,
+-            flags: [0; 0x10],
+-            mode,
++            placement: country_core::resources::placement_data::PlacementDataSsbo {
++                position: pos,
++                scale,
++                rotation_angle: cmd.rotation_degrees,
++                id: cmd.variant,
++                custom0: 1.0_f32.to_bits(),
++                custom1: 0,
++                anim_t_packed: 0,
++                bend_vector: glam::Vec2::ZERO,
++                pad0: mode,
++            },
+         });
+         // O：`TreeStorage::insert`（0x140a38560）；Some(previous) → 日志 +
+         // DespawnPrefabCmd{entity: previous.entity}（decomp 行 721 / 747-785；
+@@ -236,7 +240,6 @@
+             );
+             despawns.write(DespawnPrefabCmd {
+                 entity: Some(previous.entity),
+-                _gap: 0,
+             });
+         }
+         // O：水面采样（decomp 行 722-726）→ `PlayTreeSoundCmd`：kind=0、
+@@ -291,7 +294,6 @@
+         if should_despawn_tree(true, animation.progress) {
+             despawns.write(DespawnPrefabCmd {
+                 entity: Some(entity),
+-                _gap: 0,
+             });
+         }
+     }

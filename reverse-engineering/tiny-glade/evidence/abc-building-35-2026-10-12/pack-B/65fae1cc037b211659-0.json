@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "artifact": {
+    "path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne",
+    "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "bytes": 58460160,
+    "id": "abc-building-35",
+    "version": "B",
+    "format": "PE",
+    "image_base": "0x140000000",
+    "rsds": [
+      {
+        "guid": "09F1A02A-49F2-F8C8-4C4C-44205044422E",
+        "age": 1,
+        "pdb_name": "tiny_glade.pdb"
+      }
+    ],
+    "debug": {
+      "path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny_glade.pdb",
+      "sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+      "bytes": 274710528,
+      "guid": "09F1A02A-49F2-F8C8-4C4C-44205044422E",
+      "age": 1
+    }
+  },
+  "request_id": "65fae1cc037b211659-0",
+  "cache_key": "3fdebd995704179c2872a1e185ed4569387fa92576e4216d876bdde9be42c2dc",
+  "status": "ok",
+  "range": {
+    "rva": "0xc984c0",
+    "length": 46,
+    "start_va": "0x140c984c0",
+    "stop_va_exclusive": "0x140c984ee",
+    "instruction_overhang_bytes": 0,
+    "function_boundary_verified": false
+  },
+  "instructions": [
+    {
+      "va": "0x140c984c0",
+      "rva": "0xc984c0",
+      "bytes": "f30f1002",
+      "size": 4,
+      "assembly": "movss\t(%rdx), %xmm0",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c984c4",
+      "rva": "0xc984c4",
+      "bytes": "f30f104a08",
+      "size": 5,
+      "assembly": "movss\t0x8(%rdx), %xmm1",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c984c9",
+      "rva": "0xc984c9",
+      "bytes": "0f14c1",
+      "size": 3,
+      "assembly": "unpcklps\t%xmm1, %xmm0            # xmm0 = xmm0[0],xmm1[0],xmm0[1],xmm1[1]",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c984cc",
+      "rva": "0xc984cc",
+      "bytes": "f20f104908",
+      "size": 5,
+      "assembly": "movsd\t0x8(%rcx), %xmm1",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c984d1",
+      "rva": "0xc984d1",
+      "bytes": "0f58c8",
+      "size": 3,
+      "assembly": "addps\t%xmm0, %xmm1",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c984d4",
+      "rva": "0xc984d4",
+      "bytes": "f20f104118",
+      "size": 5,
+      "assembly": "movsd\t0x18(%rcx), %xmm0",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c984d9",
+      "rva": "0xc984d9",
+      "bytes": "0f134908",
+      "size": 4,
+      "assembly": "movlps\t%xmm1, 0x8(%rcx)",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c984dd",
+      "rva": "0xc984dd",
+      "bytes": "f30f104a04",
+      "size": 5,
+      "assembly": "movss\t0x4(%rdx), %xmm1",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c984e2",
+      "rva": "0xc984e2",
+      "bytes": "f30f12c9",
+      "size": 4,
+      "assembly": "movsldup\t%xmm1, %xmm1            # xmm1 = xmm1[0,0,2,2]",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c984e6",
+      "rva": "0xc984e6",
+      "bytes": "0f58c8",
+      "size": 3,
+      "assembly": "addps\t%xmm0, %xmm1",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c984e9",
+      "rva": "0xc984e9",
+      "bytes": "0f134918",
+      "size": 4,
+      "assembly": "movlps\t%xmm1, 0x18(%rcx)",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c984ed",
+      "rva": "0xc984ed",
+      "bytes": "c3",
+      "size": 1,
+      "assembly": "retq",
+      "crosses_requested_stop": false
+    }
+  ],
+  "symbolization": [
+    {
+      "Address": "0xc984c0",
+      "ModuleName": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne",
+      "Symbol": [
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\\library\\core\\src\\ops\\arith.rs",
+          "FunctionName": "core::ops::arith::impl$353::add_assign",
+          "Line": 761,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        },
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glam-0.29.3/src/f32/vec2.rs",
+          "FunctionName": "glam::f32::vec2::impl$38::add_assign",
+          "Line": 1318,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        },
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/code/pouncelight/country-slice-private/crates/utils/src/geometry/rectangle.rs",
+          "FunctionName": "utils::geometry::rectangle::Rectangle3d::translate::h626b23d8c39e4960",
+          "Line": 41,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        }
+      ]
+    }
+  ],
+  "missing_symbol_addresses": [],
+  "raw_assembly": "\n/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:\tfile format coff-x86-64\n\nDisassembly of section .text:\n\n0000000140001000 <.text>:\n140c984c0: f3 0f 10 02                 \tmovss\t(%rdx), %xmm0\n140c984c4: f3 0f 10 4a 08              \tmovss\t0x8(%rdx), %xmm1\n140c984c9: 0f 14 c1                    \tunpcklps\t%xmm1, %xmm0            # xmm0 = xmm0[0],xmm1[0],xmm0[1],xmm1[1]\n140c984cc: f2 0f 10 49 08              \tmovsd\t0x8(%rcx), %xmm1\n140c984d1: 0f 58 c8                    \taddps\t%xmm0, %xmm1\n140c984d4: f2 0f 10 41 18              \tmovsd\t0x18(%rcx), %xmm0\n140c984d9: 0f 13 49 08                 \tmovlps\t%xmm1, 0x8(%rcx)\n140c984dd: f3 0f 10 4a 04              \tmovss\t0x4(%rdx), %xmm1\n140c984e2: f3 0f 12 c9                 \tmovsldup\t%xmm1, %xmm1            # xmm1 = xmm1[0,0,2,2]\n140c984e6: 0f 58 c8                    \taddps\t%xmm0, %xmm1\n140c984e9: 0f 13 49 18                 \tmovlps\t%xmm1, 0x18(%rcx)\n140c984ed: c3                          \tretq\n",
+  "original_target_executed": false
+}

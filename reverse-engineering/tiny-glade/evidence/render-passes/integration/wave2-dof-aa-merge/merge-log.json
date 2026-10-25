@@ -1,0 +1,43 @@
+{
+  "integration": "wave2-dof-aa-merge",
+  "date": "2026-10-13",
+  "adjudicator": "main agent applying independent review evidence/render-passes/review/dof-aa/review.{json,md}",
+  "scope": "dof + taa/tgsr/fsr HLSL family merged into reconstruction/shader-source/shaders/",
+  "candidates": {
+    "A": "reconstruction/shader-source/candidates/dof-aa-a/shaders/",
+    "B": "reconstruction/shader-source/candidates/dof-aa-b/shaders/"
+  },
+  "per_file": [
+    {"file": "dof/analyze.cs.hlsl", "decision": "A", "evidence": "A winner: accumulator inits max=0/min=1e10, max-over-y written to coc_tiles_dilated_tex, near<=7/far>11; B inits inverted = behaviorally broken (always 0 / always pass).", "overlays": []},
+    {"file": "dof/autofocus.cs.hlsl", "decision": "A", "evidence": "A winner: tilt-shift focus0=MIN/median0, focus1=MAX/median1, locked focus1 = lock_dist + lerped(focus0); B swaps near/far and focus0/focus1.", "overlays": ["inc fix #2: readback member focus_lock_request -> lock_reponse (bin OpMemberName typo)"]},
+    {"file": "dof/fused.cs.hlsl", "decision": "A", "evidence": "A winner: OpExtInst 146~145, OpImageFetch 4=4, OpPhi 23=23, no 8/11 guard (target: add_weight=weight_acc; add_color_weight=sample_weight), RWTexture2D<float3> + [[vk::ext_capability(49)]] matches R11fG11fB10f + StorageImageWriteWithoutFormat; B misses all three opcodes and fails the capability gate.", "overlays": ["blue_noise_texture declared locally at t14 (main inc/blue_noise.hlsl no longer declares the global, RECOVERY_TRACKER #17)"]},
+    {"file": "dof/prepare.cs.hlsl", "decision": "A", "evidence": "A winner: read-only StructuredBuffer<DofFocus>, member-wise reads (no OpMemberDecorate drift); B's whole-struct load adds +84/-83 OpMemberDecorate.", "overlays": ["inc fix #3: coc_out_tex RWTexture2D<half> (R16f), tile_output_tex RWTexture2D<half2> (Rg16f) -- verified target OpTypeImage formats 9/7"]},
+    {"file": "dof/halfres.cs.hlsl", "decision": "MERGE (B base + A overlay)", "evidence": "B loop/pack structure (OpLoopMerge 6, OpBitwiseAnd 18, f16x2 masking unpack, halfres_core shared by cs_halfres/cs_halfres_all via offsets_slot+occlude_gate) + A RWTexture2D<half4> img_output (Rgba16f). INCREASING ramp (smoothstep(8,11), abs<8) kept -- correct for halfres.", "overlays": ["A half4 format (target OpTypeImage format 2)", "includes normalized to dof/-qualified"]},
+    {"file": "dof/fullres.cs.hlsl", "decision": "MERGE (B base + A overlay)", "evidence": "B loop/pack structure (OpLoopMerge 7, OpBitwiseAnd 19, masking unpack) + A DECREASING near-branch ramp (smoothstep(11,8), abs>=11; B wrongly used halfres-style increasing) + A RWTexture2D<half4> img_output (Rgba16f).", "overlays": ["A decreasing ramp (target fullres: abs>=11 continue, weight*smoothstep(11,8,abs))", "A half4 format", "includes normalized to dof/-qualified"]},
+    {"file": "dof/fullres_all_lod0.cs.hlsl", "decision": "MERGE (B base + A overlay)", "evidence": "B base (loop structure; histogram 1079/1194 & 1047/1218 vs A 1170/1304) + A RWTexture2D<half4> img_output (Rgba16f). No 8/11 guard -- correct for lod0.", "overlays": ["A half4 format", "includes normalized to dof/-qualified"]},
+    {"file": "dof/fullres_all_lod1.cs.hlsl", "decision": "A", "evidence": "A winner (tie/slight A): format-correct half4, marginally closer histogram (1042/1079 & 951/1044). No 8/11 guard -- correct for lod1.", "overlays": ["blue_noise_texture declared locally at t14 (main inc/blue_noise.hlsl no longer declares the global)"]},
+    {"file": "dof/clear_halfres.cs.hlsl", "decision": "A (tie, include form)", "evidence": "Histogram identical A 25/25 vs B 25/25; A uses resolvable dof/-qualified include + explicit float4(0,0,0,0). Target img_output format operand is Rgba16f -> RWTexture2D<half4>.", "overlays": ["half4 format (target OpTypeImage format 2)"]},
+    {"file": "dof/fullres_upsample.cs.hlsl", "decision": "B (tie, slight B)", "evidence": "B calls the upsample_halfres() helper from upsample_halfres.inc (inlined identically); A inlines the loop. Target img_output format operand Rgba16f -> RWTexture2D<half4>.", "overlays": ["half4 format (target OpTypeImage format 2)", "includes normalized to dof/-qualified"]},
+    {"file": "dof/init_buffers.cs.hlsl", "decision": "B (tie, slight B)", "evidence": "B matches target OpStore count via whole-struct copy tile_offsets_buffer[0] = tile_offsets_initial_values; A's [unroll] 2-member loop overshoots by 1.", "overlays": ["includes normalized to dof/-qualified"]},
+    {"file": "dof/multires.inc.hlsl", "decision": "B", "evidence": "B carries real f16x2 pack/unpack helpers (dof_pack_half2/dof_unpack_half2) matching the target masking form (spvUnpackHalf2x16(v&0xFFFF).x); A keeps the header empty and defines local PackRingPair/UnpackRingPair.", "overlays": []},
+    {"file": "dof/upsample_halfres.inc.hlsl", "decision": "B", "evidence": "B carries the 8-tap upsample_halfres() helper; the include edge exists in the 3 consumer bins, so a live helper is more faithful. Included as dof/upsample_halfres.inc.hlsl.", "overlays": []},
+    {"file": "dof/tiles.inc.hlsl", "decision": "tie (A)", "evidence": "Identical struct content (DofTileOffsets uint offsets[8]; DofTileOffsetsPacked uint4 offsets[2]).", "overlays": []},
+    {"file": "taa.cs.hlsl", "decision": "A", "evidence": "A winner: target Catmull-Rom w1 = (1 + f^2*(-2.5+1.5f)) + w2 and center_uv = (base_c + w2/w1); B uses standard w1 -> numerically different history filter.", "overlays": []},
+    {"file": "tgsr.cs.hlsl", "decision": "A", "evidence": "A winner: blend lerp divides current-frame wide sum by the WIDE weight (wc_sum); history-sample middle component constant 0.5; B divides by narrow weight and uses 0.0.", "overlays": []},
+    {"file": "tgsr_reproject.cs.hlsl", "decision": "A", "evidence": "A winner: w1-includes-w2 bicubic form matching taa/tgsr family; rgb_to_ycbcr from inc/color/ycbcr.hlsl; leaner include closure (B duplicates YCoCg via tgsr_common.inc).", "overlays": []},
+    {"file": "tgsr_blur_lum.cs.hlsl", "decision": "A (tie)", "evidence": "Residual identical (A 96/94, B 96/94); A forces R8 via [[vk::ext_capability(49)]], B via [[vk::image_format(\"r8\")]]; both miss StorageImageWriteWithoutFormat (documented).", "overlays": []},
+    {"file": "tgsr_common.inc.hlsl", "decision": "A (keep empty)", "evidence": "Every TGSR helper body is inlined into consumers; header only contributes OpSource/OpString. B's YCoCg macro duplicates inc/color/ycbcr.hlsl.", "overlays": []},
+    {"file": "fsr_copy_history.cs.hlsl", "decision": "B", "evidence": "B winner: input_tex[id.xy] texel-fetch indexing compiles to OpImageFetch 1 + OpVectorShuffle 1; A's input_tex.Load(int3(...)) adds OpBitcast/CompositeConstruct/Extract (22/32).", "overlays": []},
+    {"file": "fsr_init_reactive.cs.hlsl", "decision": "B (tie)", "evidence": "Residuals identical (17/16, OpLine/OpSource/OpString only). RWTexture2D<half> u14 (R16f) + $Globals b13 {output_tex_dims, value}.", "overlays": []}
+  ],
+  "inc_fixes": [
+    {"file": "inc/coc.hlsl", "fix": "Remove static const float2 ring_samples[16] and unused gaussian_weights[16] (bins embed ring_samples once per gather consumer as the consumer's own groupshared; consumers keep dof_ring_samples naming).", "consumer_verify": "gather consumers (fullres/halfres/lod0/lod1/fused) hard-gate PASS"},
+    {"file": "inc/coc.hlsl", "fix": "DofFocusReadback member renamed focus_lock_request -> lock_reponse (bin OpMemberName typo; $Globals member focus_lock_request separate and correct).", "consumer_verify": "dof/autofocus.cs.hlsl writes readback.lock_reponse = focus_lock_request; hard-gate PASS"},
+    {"file": "dof/prepare.cs.hlsl", "fix": "Storage formats: coc_out_tex RWTexture2D<half> (R16f), tile_output_tex RWTexture2D<half2> (Rg16f) [target OpTypeImage formats 9/7].", "consumer_verify": "prepare hard-gate PASS (emits StorageImageExtendedFormats like target)"},
+    {"file": "inc/curve.hlsl", "fix": "No change needed: FrexpStructType in curve.hlsl is the taa/tgsr bin truth; taa + tgsr hard-gate PASS with curve.hlsl included.", "consumer_verify": "taa + tgsr (3ee6/7a0a) hard-gate PASS"}
+  ],
+  "noise_scheme": {
+    "note": "Both candidates reconstructed the 6f1d hash-jitter scheme only; the 72a2 compile-time variant (blue-noise.z phase, pi/4 angle, no frame%64) remains unimplemented -- recorded residual for fullres/halfres/lod0/lod1 72a2 bins.",
+    "status": "documented residual (not a hard-gate failure)"
+  }
+}

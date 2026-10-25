@@ -1,0 +1,12 @@
+{
+  "states":["Allocated","Recording","Executable","PendingGpu","CompletedTimeline","ReadyForDisposal","Recycled"],
+  "transitions":[
+    {"from":"Allocated","event":"begin(queue_identity)","to":"Recording","effects":["atomic_fetch_add(domain_counter)","CB.sequence=old","bucket.insert(CB.sequence)"]},
+    {"from":"Recording","event":"end","to":"Executable","effects":["CB.tag=2"]},
+    {"from":"Executable","event":"queue_submit","to":"PendingGpu","effects":["CB.tag=3","PendingCommand.timeline_threshold=global_submission_value","return token timeline=last_value"]},
+    {"from":"PendingGpu","event":"timeline_query","to":"CompletedTimeline","effects":["queue.completed_timeline=semaphore_counter"]},
+    {"from":"CompletedTimeline","event":"reclaim threshold reached","to":"Recycled","effects":["sequential_disposal(CB.sequence): dispose now or enqueue ready marker","pool return does not wait for sequence gap closure"]},
+    {"from":"ReadyForDisposal","event":"in-order drain","to":"DisposedBucket","effects":["bucket.remove(CB.sequence)","empty bucket"]}
+  ],
+  "ordering":"GPU timeline gates CB reclamation; CB sequence orders resource disposal. They are not interchangeable."
+}

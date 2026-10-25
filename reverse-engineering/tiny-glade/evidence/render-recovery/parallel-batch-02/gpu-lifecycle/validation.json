@@ -1,0 +1,10 @@
+{
+  "schema_version":1,
+  "status":"verified_partial",
+  "identity":{"binary_sha256":"f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03","batch_contract":"../contract.json","functions_sha256":"3f2a3653c68d1d8d030eaffc0c3ca4d2887342ac92670e5242fd108bfa2189da","calls_sha256":"35558cee3398e78837f9296552a9dae51d4b3f9c40cb7c2be6d5c9e96a6143f4"},
+  "static":{"reports":["mcp-report.json","mcp-dispose-report.json"],"unique_entries":19,"decompiled_entries":18,"clone_failure":"function not defined; used untouched machine-code oracle","database":"tg_render_arch","database_mutations":false,"closures":"save:false both sessions"},
+  "native_cpu":{"report":"leaf-validation.json","oracle":"leaf-oracle.jsonl.gz","cases":29692,"counts":{"track":7268,"seq":15405,"clone":3007,"drop":4012},"failures":0,"scope":"actual original entry bytes under Unicorn; not live GPU"},
+  "candidate":{"manifest":"reconstruction/render/work-packages/gpu-lifecycle-r3/Cargo.toml","locked_offline_release":"pass","locked_clippy_all_targets":"pass with -D warnings","tests":6,"failed":0,"event_trace":"event-oracle.json"},
+  "scenarios":[{"name":"multiqueue completion with gap","type":"candidate","result":"pass"},{"name":"CPU pool return before completion","type":"candidate+R4 static","result":"pass"},{"name":"out-of-order CPU drop and clone delay","type":"candidate","result":"pass"},{"name":"empty submit","type":"candidate explicit timeline input","result":"pass"},{"name":"stale generation skip/bad CB tag/moved drop","type":"native leaf+candidate","result":"pass"},{"name":"duplicate bucket/old completion/disposal generation failure","type":"candidate+static","result":"pass"}],
+  "limitations":["final-reference append static-only","no Vulkan game execution","no concurrent CAS schedule/unwind/allocation failure","same-resource cross-domain mapping explicitly unknown","no full ABI or source identity claim"]
+}

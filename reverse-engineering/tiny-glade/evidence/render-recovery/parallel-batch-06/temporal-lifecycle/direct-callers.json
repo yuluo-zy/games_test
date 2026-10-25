@@ -1,0 +1,220 @@
+{
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "targets": [
+    "0x1405f9f50",
+    "0x1405fc3d0",
+    "0x14060d340",
+    "0x140976880"
+  ],
+  "search_scope": ".text direct E8/E9 encodings to four selected targets, validated on PE RUNTIME_FUNCTION instruction boundaries; indirect, inlined and unbounded code excluded",
+  "sites": [
+    {
+      "site": "0x14016268d",
+      "target": "0x140976880",
+      "runtime_start": "0x140161cd0",
+      "runtime_end": "0x1401640c4",
+      "kind": "call",
+      "window": [
+        "0x14016265b: je 0x14016409a",
+        "0x140162661: mov rax, qword ptr [r15 + 0x1e0]",
+        "0x140162668: not rcx",
+        "0x14016266b: lea rcx, [rcx + rcx*2]",
+        "0x14016266f: shl rcx, 5",
+        "0x140162673: cmp qword ptr [rax + rcx + 0x20], 0",
+        "0x140162679: je 0x14016409a",
+        "0x14016267f: add rax, rcx",
+        "0x140162682: mov rcx, qword ptr [rax + 0x10]",
+        "0x140162686: mov byte ptr [rbp + 0x1a97], 1",
+        "0x14016268d: call 0x140976880",
+        "0x140162692: lea rcx, [rip + 0x27fb0af]",
+        "0x140162699: mov qword ptr [rbp + 0x1a10], rcx",
+        "0x1401626a0: mov qword ptr [rbp + 0x1a18], 0x14",
+        "0x1401626ab: test al, al",
+        "0x1401626ad: je 0x140163c5e"
+      ]
+    },
+    {
+      "site": "0x1402c91ec",
+      "target": "0x1405f9f50",
+      "runtime_start": "0x1402c91d0",
+      "runtime_end": "0x1402c91ff",
+      "kind": "call",
+      "window": [
+        "0x1402c91d0: mov qword ptr [rsp + 0x10], rdx",
+        "0x1402c91d5: push rbp",
+        "0x1402c91d6: push r15",
+        "0x1402c91d8: push r14",
+        "0x1402c91da: push rsi",
+        "0x1402c91db: push rdi",
+        "0x1402c91dc: push rbx",
+        "0x1402c91dd: sub rsp, 0x28",
+        "0x1402c91e1: lea rbp, [rdx + 0x80]",
+        "0x1402c91e8: mov rcx, qword ptr [rbp + 8]",
+        "0x1402c91ec: call 0x1405f9f50",
+        "0x1402c91f1: nop ",
+        "0x1402c91f2: add rsp, 0x28",
+        "0x1402c91f6: pop rbx",
+        "0x1402c91f7: pop rdi",
+        "0x1402c91f8: pop rsi"
+      ]
+    },
+    {
+      "site": "0x1404f7f00",
+      "target": "0x1405fc3d0",
+      "runtime_start": "0x1404f7ee0",
+      "runtime_end": "0x1404f7f20",
+      "kind": "call",
+      "window": [
+        "0x1404f7ee6: push r15",
+        "0x1404f7ee8: push r14",
+        "0x1404f7eea: push r13",
+        "0x1404f7eec: push r12",
+        "0x1404f7eee: push rsi",
+        "0x1404f7eef: push rdi",
+        "0x1404f7ef0: push rbx",
+        "0x1404f7ef1: sub rsp, 0x28",
+        "0x1404f7ef5: lea rbp, [rdx + 0x80]",
+        "0x1404f7efc: lea rcx, [rbp + 0x50]",
+        "0x1404f7f00: call 0x1405fc3d0",
+        "0x1404f7f05: lea rcx, [rbp - 0x58]",
+        "0x1404f7f09: call 0x1405daf00",
+        "0x1404f7f0e: nop ",
+        "0x1404f7f0f: add rsp, 0x28",
+        "0x1404f7f13: pop rbx"
+      ]
+    },
+    {
+      "site": "0x1405dce69",
+      "target": "0x1405fc3d0",
+      "runtime_start": "0x1405dce50",
+      "runtime_end": "0x1405dce75",
+      "kind": "call",
+      "window": [
+        "0x1405dce50: mov qword ptr [rsp + 0x10], rdx",
+        "0x1405dce55: push rbp",
+        "0x1405dce56: sub rsp, 0x20",
+        "0x1405dce5a: lea rbp, [rdx + 0x30]",
+        "0x1405dce5e: mov rcx, qword ptr [rbp - 0x10]",
+        "0x1405dce62: add rcx, 0xb0",
+        "0x1405dce69: call 0x1405fc3d0",
+        "0x1405dce6e: nop ",
+        "0x1405dce6f: add rsp, 0x20",
+        "0x1405dce73: pop rbp",
+        "0x1405dce74: ret "
+      ]
+    },
+    {
+      "site": "0x1405f143a",
+      "target": "0x14060d340",
+      "runtime_start": "0x1405f1420",
+      "runtime_end": "0x1405f1447",
+      "kind": "call",
+      "window": [
+        "0x1405f1420: mov qword ptr [rsp + 0x10], rdx",
+        "0x1405f1425: push rbp",
+        "0x1405f1426: push rsi",
+        "0x1405f1427: sub rsp, 0x28",
+        "0x1405f142b: lea rbp, [rdx + 0x30]",
+        "0x1405f142f: mov rax, qword ptr [rbp - 8]",
+        "0x1405f1433: lea rcx, [rax + 0x160]",
+        "0x1405f143a: call 0x14060d340",
+        "0x1405f143f: nop ",
+        "0x1405f1440: add rsp, 0x28",
+        "0x1405f1444: pop rsi",
+        "0x1405f1445: pop rbp",
+        "0x1405f1446: ret "
+      ]
+    },
+    {
+      "site": "0x1405f14da",
+      "target": "0x14060d340",
+      "runtime_start": "0x1405f14c0",
+      "runtime_end": "0x1405f14e7",
+      "kind": "call",
+      "window": [
+        "0x1405f14c0: mov qword ptr [rsp + 0x10], rdx",
+        "0x1405f14c5: push rbp",
+        "0x1405f14c6: push rsi",
+        "0x1405f14c7: sub rsp, 0x28",
+        "0x1405f14cb: lea rbp, [rdx + 0x30]",
+        "0x1405f14cf: mov rcx, qword ptr [rbp - 8]",
+        "0x1405f14d3: add rcx, 0x250",
+        "0x1405f14da: call 0x14060d340",
+        "0x1405f14df: nop ",
+        "0x1405f14e0: add rsp, 0x28",
+        "0x1405f14e4: pop rsi",
+        "0x1405f14e5: pop rbp",
+        "0x1405f14e6: ret "
+      ]
+    },
+    {
+      "site": "0x1405f3329",
+      "target": "0x14060d340",
+      "runtime_start": "0x1405f3310",
+      "runtime_end": "0x1405f3335",
+      "kind": "call",
+      "window": [
+        "0x1405f3310: mov qword ptr [rsp + 0x10], rdx",
+        "0x1405f3315: push rbp",
+        "0x1405f3316: sub rsp, 0x20",
+        "0x1405f331a: lea rbp, [rdx + 0x30]",
+        "0x1405f331e: mov rcx, qword ptr [rbp - 0x10]",
+        "0x1405f3322: add rcx, 0x90",
+        "0x1405f3329: call 0x14060d340",
+        "0x1405f332e: nop ",
+        "0x1405f332f: add rsp, 0x20",
+        "0x1405f3333: pop rbp",
+        "0x1405f3334: ret "
+      ]
+    },
+    {
+      "site": "0x1405fcdad",
+      "target": "0x1405fc3d0",
+      "runtime_start": "0x1405fcd90",
+      "runtime_end": "0x1405fcdba",
+      "kind": "call",
+      "window": [
+        "0x1405fcd90: mov qword ptr [rsp + 0x10], rdx",
+        "0x1405fcd95: push rbp",
+        "0x1405fcd96: push rsi",
+        "0x1405fcd97: sub rsp, 0x28",
+        "0x1405fcd9b: lea rbp, [rdx + 0x80]",
+        "0x1405fcda2: mov rax, qword ptr [rbp + 8]",
+        "0x1405fcda6: lea rcx, [rax + 0xb0]",
+        "0x1405fcdad: call 0x1405fc3d0",
+        "0x1405fcdb2: nop ",
+        "0x1405fcdb3: add rsp, 0x28",
+        "0x1405fcdb7: pop rsi",
+        "0x1405fcdb8: pop rbp",
+        "0x1405fcdb9: ret "
+      ]
+    },
+    {
+      "site": "0x14152aecc",
+      "target": "0x1405f9f50",
+      "runtime_start": "0x14152aeb0",
+      "runtime_end": "0x14152aedf",
+      "kind": "call",
+      "window": [
+        "0x14152aeb0: mov qword ptr [rsp + 0x10], rdx",
+        "0x14152aeb5: push rbp",
+        "0x14152aeb6: push r15",
+        "0x14152aeb8: push r14",
+        "0x14152aeba: push rsi",
+        "0x14152aebb: push rdi",
+        "0x14152aebc: push rbx",
+        "0x14152aebd: sub rsp, 0x28",
+        "0x14152aec1: lea rbp, [rdx + 0x80]",
+        "0x14152aec8: mov rcx, qword ptr [rbp + 8]",
+        "0x14152aecc: call 0x1405f9f50",
+        "0x14152aed1: nop ",
+        "0x14152aed2: add rsp, 0x28",
+        "0x14152aed6: pop rbx",
+        "0x14152aed7: pop rdi",
+        "0x14152aed8: pop rsi"
+      ]
+    }
+  ],
+  "unbounded_candidates": [],
+  "decoded_function_count": 9
+}

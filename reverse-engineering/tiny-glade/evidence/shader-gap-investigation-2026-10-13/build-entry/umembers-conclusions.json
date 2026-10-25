@@ -1,0 +1,65 @@
+{
+  "probe": {
+    "source": "dump-umembers.rs",
+    "public_library": "spirq0.6.2 exact4f22e6f",
+    "exit_code": 0,
+    "log": "umembers-original-fresh.log",
+    "original_metadata_injected": false
+  },
+  "examples": [
+    {
+      "asset": "_cloud.raster.hlsl_b903e43ffb3da915.bin",
+      "original_both_stages": {
+        "binding": [
+          0,
+          13
+        ],
+        "byte_size": 48,
+        "member_offsets": {
+          "current_view_index": 0,
+          "framebuffer_dims": 4,
+          "cloud1_dims": 16,
+          "cloud2_dims": 24,
+          "cloud3_dims": 32,
+          "cloud4_dims": 40
+        }
+      },
+      "fresh_vs": "exact types/offsets/byte_size but _Globals_ member-name prefix",
+      "fresh_ps": "original plain member names; layout equals original",
+      "cause": "source lifted VS declarations add prefixes; stage merge cannot treat two different uniform names as equal"
+    },
+    {
+      "asset": "_solid_vertex_color.raster.hlsl_b903e43ffb3da915.bin",
+      "original_both_stages": {
+        "binding": [
+          0,
+          13
+        ],
+        "byte_size": 84,
+        "member_offsets": {
+          "current_view_index": 0,
+          "is_semitransparent": 4,
+          "is_flat_lighting": 8,
+          "model_to_world": 16,
+          "bool_render_shadows": 80
+        }
+      },
+      "fresh_vs": {
+        "byte_size": 92,
+        "member_offsets": {
+          "current_view_index": 0,
+          "model_to_world": 16,
+          "is_semitransparent": 80,
+          "is_flat_lighting": 84,
+          "bool_render_shadows": 88
+        }
+      },
+      "fresh_ps": "original84B offsets with _Globals_ member-name prefix",
+      "matrix": "public RowMajor stride16 in original and both fresh; HLSL column_major wording is not a reason to invert public type",
+      "bool_member": "Original name bool_render_shadows, Signed(4); only added _Globals_ can be removed, not bool_",
+      "cause": "fallback VS declaration order and lifted PS names differ from original shared source block"
+    }
+  ],
+  "decision": "Keep current producer rejecting incompatible cross-stage UBO; fix HLSL names/offsets, never inject original metadata or relax gate",
+  "not_complete_corpus_review": true
+}

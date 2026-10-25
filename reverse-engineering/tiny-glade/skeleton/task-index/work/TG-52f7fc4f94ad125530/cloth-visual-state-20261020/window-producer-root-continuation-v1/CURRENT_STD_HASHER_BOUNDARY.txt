@@ -1,0 +1,58 @@
+88: /// The default [`Hasher`] used by [`RandomState`].
+89: ///
+90: /// The internal algorithm is not specified, and so it and its hashes should
+91: /// not be relied upon over releases.
+92: #[derive(Clone, Debug)]
+93: #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
+94: pub struct DefaultHasher(SipHasher13);
+95: 
+96: impl DefaultHasher {
+97:     /// Creates a new `DefaultHasher`.
+98:     ///
+99:     /// This hasher is not guaranteed to be the same as all other
+100:     /// `DefaultHasher` instances, but is the same as all other `DefaultHasher`
+101:     /// instances created through `new` or `default`.
+102:     #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
+103:     #[inline]
+104:     #[rustc_const_unstable(feature = "const_default", issue = "143894")]
+105:     #[must_use]
+106:     pub const fn new() -> DefaultHasher {
+107:         DefaultHasher(SipHasher13::new_with_keys(0, 0))
+108:     }
+109: }
+110: 
+111: #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
+112: #[rustc_const_unstable(feature = "const_default", issue = "143894")]
+113: const impl Default for DefaultHasher {
+114:     /// Creates a new `DefaultHasher` using [`new`].
+115:     /// See its documentation for more.
+116:     ///
+117:     /// [`new`]: DefaultHasher::new
+118:     #[inline]
+119:     fn default() -> DefaultHasher {
+120:         DefaultHasher::new()
+121:     }
+122: }
+123: 
+124: #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
+125: impl Hasher for DefaultHasher {
+126:     // The underlying `SipHasher13` doesn't override the other
+127:     // `write_*` methods, so it's ok not to forward them here.
+128: 
+129:     #[inline]
+130:     fn write(&mut self, msg: &[u8]) {
+131:         self.0.write(msg)
+132:     }
+133: 
+134:     #[inline]
+135:     fn write_str(&mut self, s: &str) {
+136:         self.0.write_str(s);
+137:     }
+138: 
+139:     #[inline]
+140:     fn finish(&self) -> u64 {
+141:         self.0.finish()
+142:     }
+143: }
+144: 
+145: #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]

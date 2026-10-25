@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "owner": "shader_pipeline",
+  "status": "bounded runtime loading, recipe separation, original38 tuple verification, and final source conflict repair reviewed",
+  "changed_sources": [
+    "src/shader_pipeline/compiled.rs",
+    "src/shader_compiler/build.rs",
+    "tests/shader_pipeline_contract.rs",
+    "tests/shader_build_pipeline.rs"
+  ],
+  "source_fingerprints": [
+    {
+      "file": "src/shader_pipeline/compiled.rs",
+      "current_root_sha256": "7e791fc8244ca987ce78712c590ccd29949460e3ee5e749eee4076ed1804ef13",
+      "published_sha256": "7e791fc8244ca987ce78712c590ccd29949460e3ee5e749eee4076ed1804ef13",
+      "equal": true
+    },
+    {
+      "file": "src/shader_compiler/build.rs",
+      "current_root_sha256": "9336953401382281eacb523e0c8ccc00f3db461859428400a67e25f2fd2320bc",
+      "published_sha256": "9336953401382281eacb523e0c8ccc00f3db461859428400a67e25f2fd2320bc",
+      "equal": true
+    },
+    {
+      "file": "tests/shader_pipeline_contract.rs",
+      "current_root_sha256": "7adb1bcede95dbc88a43ba7fd32875711974367e96baa9e89227282d3b496c35",
+      "published_sha256": "7adb1bcede95dbc88a43ba7fd32875711974367e96baa9e89227282d3b496c35",
+      "equal": true
+    },
+    {
+      "file": "tests/shader_build_pipeline.rs",
+      "current_root_sha256": "d53acb9b78ec5a20663fa1f90af6cdd1bf79ecee5baa0efd0501563750fbaa83",
+      "published_sha256": "d53acb9b78ec5a20663fa1f90af6cdd1bf79ecee5baa0efd0501563750fbaa83",
+      "equal": true
+    }
+  ],
+  "rust_validation": {
+    "checked_on": "2026-10-13",
+    "tests": {
+      "command": "cargo test --locked --manifest-path reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/Cargo.toml --test shader_build_pipeline --test shader_pipeline_contract --test shader_compiler_contract --test shader_dxc_recompile --test shader_rebuild_consumer --test shader_toolchain_runtime -- --nocapture",
+      "passed": 21,
+      "failed": 0,
+      "suites": {
+        "shader_build_pipeline": 5,
+        "shader_pipeline_contract": 7,
+        "shader_compiler_contract": 3,
+        "shader_dxc_recompile": 2,
+        "shader_rebuild_consumer": 1,
+        "shader_toolchain_runtime": 3
+      }
+    },
+    "clippy": {
+      "command": "cargo clippy --locked --manifest-path reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/Cargo.toml --all-targets -- -D warnings",
+      "exit_code": 0
+    },
+    "selected_fresh_gpu": {
+      "device": "Intel(R) UHD Graphics 630",
+      "fill_words": 64,
+      "fill_value": 3221344269,
+      "raster_layouts": 2,
+      "raster_draw": false,
+      "original_executable_run": false,
+      "original_metadata_injected": false,
+      "exit_code": 0
+    },
+    "source_gate": {
+      "full_hlsl_recipe_audit": "corpus-final-native/report.json",
+      "intermediate_only": false,
+      "packages_generated": 404,
+      "actual_spirv_generated": 638,
+      "cross_stage_uniform_failures": 0,
+      "semantic_schema_equal_assets": 397,
+      "ps_scope_error_resolved": true,
+      "independent_19_ubo_stages_equal": 38,
+      "final_source_equivalence_claimed": false
+    },
+    "historical_output_preserved": true
+  },
+  "original_evidence": {
+    "manifest_records": 1792,
+    "pdb_modules": 4894,
+    "pdb_source_records": 169720,
+    "offline_tool_author_path_hits": 0,
+    "runtime_loaders": [
+      {
+        "address": "0x1409e3c50",
+        "size": 847,
+        "bytes_sha256": "4a4131dca631971e7154eed4efb818a8130beb8b2813d49bbf0f5656e0bce21b",
+        "range_basis": "original RNE PE exception directory end_exclusive 0x1409e3f9f"
+      },
+      {
+        "address": "0x1409e4160",
+        "size": 847,
+        "bytes_sha256": "b6bba06dcbb945f9b6d6eaf7f1c6a1f4bf5d2c6842cfb5f2fbd25d9d0604edee",
+        "range_basis": "original RNE PE exception directory end_exclusive 0x1409e44af"
+      }
+    ],
+    "private_ABI_verified": false
+  },
+  "mutual_reviews": {
+    "compute": "compute-peer-review.json",
+    "interfaces": "runtime-peer-review.json",
+    "patch_changes_requested": "runtime-patch-review-blockers.json",
+    "uniform": "umembers-conclusions.json",
+    "patch_final": "runtime-patch-final-peer-review.json",
+    "globals_prefix": "globals-prefix-peer-review.json",
+    "uniform_final": "ubo-final-independent-review.json",
+    "capabilities": "capability-peer-review.json"
+  },
+  "full_original_offline_workflow_restored": false,
+  "worker_stopped": true,
+  "remaining": [
+    "7 typed metadata schema differences: final-schema-residuals.json",
+    "132 original zero-key compute tuples have no independently recovered producer tuple",
+    "Original offline compiler provider/error/cache/temp strategy and DXC binary version unknown",
+    "Shader code equivalence remains unverified beyond bounded observed interfaces/opcode probes"
+  ],
+  "post_test_change": "tests_build directhelper comment Chinese-only after verified published business body; root/publish synchronized"
+}

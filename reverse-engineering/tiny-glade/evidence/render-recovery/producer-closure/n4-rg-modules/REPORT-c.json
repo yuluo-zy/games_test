@@ -1,0 +1,658 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-10-12T10:32:51.108Z",
+  "completed_at": "2026-10-12T10:33:11.929Z",
+  "server": "re_mcp_ghidra",
+  "lane_count": 1,
+  "lanes": [
+    {
+      "database": "newrgmods_l1",
+      "report": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\producer-closure\\n4-rg-modules\\newrgmods_l1.report.json",
+      "ok": false,
+      "cleanup_ok": true,
+      "error": "Error: batch operations failed: decompile_function, disassemble_function, decompile_function, disassemble_function, decompile_function, disassemble_function, decompile_function, disassemble_function, decompile_function, disassemble_function, decompile_function, disassemble_function, decompile_function, disassemble_function, decompile_function, disassemble_function, decompile_function, disassemble_function, decompile_function, disassemble_function",
+      "steps": 26
+    }
+  ],
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "identity": {
+    "target": {
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+      "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+    },
+    "provider": {
+      "id": "ghidra",
+      "version": "12.1.4"
+    },
+    "launch_sha256": "c82cc6dd6f528a9f07990202b685f0802e0833733774283e9a497bc4cef41aad",
+    "inputs": []
+  },
+  "cache_policy": {
+    "enabled": false,
+    "reason": "Database analysis cache disabled: both provider_manifest and database_snapshot files are required.",
+    "provider_version_provenance": "job-declared; actual server self-report is recorded separately upon connection"
+  },
+  "evidence_limits": [
+    "Static tool outputs do not prove runtime execution.",
+    "Xref completeness is unknown with auto-analysis disabled. Empty or DATA-only references cannot establish whole-program absence.",
+    "Successful cache reuse preserves the original evidence coverage; it does not expand it."
+  ],
+  "results": [
+    {
+      "index": 0,
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "keep_open": true,
+        "database_id": "newrgmods_l1"
+      },
+      "cache_key": "8cfafa3184e33972ee65c677897b98b442499e7f7735e1deb7b43a184d2e6219",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:32:51.249Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"newrgmods_l1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "newrgmods_l1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:33:00.962Z",
+      "ok": true,
+      "result_sha256": "bffb0f79d5bf1fd409eee9b117c3e006df04c4c0d6ac6c0dbaff077ebb907f9b",
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 1,
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "newrgmods_l1"
+      },
+      "cache_key": "57229285f68ff42c0013e6018d8a80eb62f5c7f0af226ca49bc0480803a4475d",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:33:00.964Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"newrgmods_l1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "newrgmods_l1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:33:11.144Z",
+      "ok": true,
+      "result_sha256": "a4138d9d7101874c5afc80246b0a498e2d292f6d2fe3f84def274726992b042f",
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 0,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd6c00"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD6C00\",\"error_type\":\"NotFound\",\"database\":\"newrgmods_l1\"}",
+      "ok": false,
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 1,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd6c00"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD6C00\",\"error_type\":\"NotFound\",\"database\":\"newrgmods_l1\"}",
+      "ok": false,
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 2,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd6c30"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD6C30\",\"error_type\":\"NotFound\",\"database\":\"newrgmods_l1\"}",
+      "ok": false,
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 3,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd6c30"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD6C30\",\"error_type\":\"NotFound\",\"database\":\"newrgmods_l1\"}",
+      "ok": false,
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 4,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x1416f7850"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x1416F7850\",\"error_type\":\"NotFound\",\"database\":\"newrgmods_l1\"}",
+      "ok": false,
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 5,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x1416f7850"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x1416F7850\",\"error_type\":\"NotFound\",\"database\":\"newrgmods_l1\"}",
+      "ok": false,
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 6,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x1416f7960"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x1416F7960\",\"error_type\":\"NotFound\",\"database\":\"newrgmods_l1\"}",
+      "ok": false,
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 7,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x1416f7960"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x1416F7960\",\"error_type\":\"NotFound\",\"database\":\"newrgmods_l1\"}",
+      "ok": false,
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 8,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140b25c90"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140B25C90\",\"error_type\":\"NotFound\",\"database\":\"newrgmods_l1\"}",
+      "ok": false,
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 9,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140b25c90"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140B25C90\",\"error_type\":\"NotFound\",\"database\":\"newrgmods_l1\"}",
+      "ok": false,
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 10,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd6ce0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD6CE0\",\"error_type\":\"NotFound\",\"database\":\"newrgmods_l1\"}",
+      "ok": false,
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 11,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd6ce0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD6CE0\",\"error_type\":\"NotFound\",\"database\":\"newrgmods_l1\"}",
+      "ok": false,
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 12,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd6d00"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD6D00\",\"error_type\":\"NotFound\",\"database\":\"newrgmods_l1\"}",
+      "ok": false,
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 13,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd6d00"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD6D00\",\"error_type\":\"NotFound\",\"database\":\"newrgmods_l1\"}",
+      "ok": false,
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 14,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bece40"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BECE40\",\"error_type\":\"NotFound\",\"database\":\"newrgmods_l1\"}",
+      "ok": false,
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 15,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bece40"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BECE40\",\"error_type\":\"NotFound\",\"database\":\"newrgmods_l1\"}",
+      "ok": false,
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 16,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bece50"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BECE50\",\"error_type\":\"NotFound\",\"database\":\"newrgmods_l1\"}",
+      "ok": false,
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 17,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bece50"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BECE50\",\"error_type\":\"NotFound\",\"database\":\"newrgmods_l1\"}",
+      "ok": false,
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 18,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bece60"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BECE60\",\"error_type\":\"NotFound\",\"database\":\"newrgmods_l1\"}",
+      "ok": false,
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 19,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bece60"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BECE60\",\"error_type\":\"NotFound\",\"database\":\"newrgmods_l1\"}",
+      "ok": false,
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 20,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140be7ba0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A57F8",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "newrgmods_l1"
+      },
+      "result_sha256": "8f5038a497a40fcffc4b33f9c52c48d5bfe7479d94db5fd6a456245ea69bab47",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 21,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140530430"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x143663918",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "newrgmods_l1"
+      },
+      "result_sha256": "86d96270d42e952b5dcbf0bc02b9658460ef4e70977bc03a622a681416dbd4b7",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 22,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x1404f7ca0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x143661890",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "newrgmods_l1"
+      },
+      "result_sha256": "bd34b6eff5cd206e68c332256e42178f62d92edfbd1aa4392e5b58a89ad50c6b",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    },
+    {
+      "index": 2,
+      "position": 23,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x14096c310"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:33:11.146Z",
+      "completed_at": "2026-10-12T10:33:11.335Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2cb17bbb2b24129f38a4e5094561b208bd1e98dbdf06694eab23b24e00702f6f",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x14368F670",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "newrgmods_l1"
+      },
+      "result_sha256": "85a7a1c07b9a9b413835a5470907921f67e0932f9797e6ac07b336622c22dc99",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "newrgmods_l1",
+      "database": "newrgmods_l1"
+    }
+  ],
+  "cleanup": [
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "newrgmods_l1",
+        "save": false
+      },
+      "cleanup": true,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"newrgmods_l1\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "newrgmods_l1"
+        },
+        "isError": false
+      },
+      "ok": true,
+      "lane": "newrgmods_l1"
+    }
+  ],
+  "lock_events": [
+    {
+      "event": "lock_removed",
+      "reason": "per-database workers own separate Ghidra projects; a shared session lock is no longer required",
+      "lane": "newrgmods_l1"
+    }
+  ],
+  "ok": false,
+  "cleanup_ok": true
+}

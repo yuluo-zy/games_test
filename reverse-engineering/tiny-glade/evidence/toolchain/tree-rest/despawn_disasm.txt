@@ -1,0 +1,224 @@
+1422686d0  PUSH       ['R15']                                                                          4157
+1422686d2  PUSH       ['R14']                                                                          4156
+1422686d4  PUSH       ['R13']                                                                          4155
+1422686d6  PUSH       ['R12']                                                                          4154
+1422686d8  PUSH       ['RSI']                                                                          56
+1422686d9  PUSH       ['RDI']                                                                          57
+1422686da  PUSH       ['RBP']                                                                          55
+1422686db  PUSH       ['RBX']                                                                          53
+1422686dc  SUB        ['RSP', '0x78']                                                                  4883ec78
+1422686e0  MOVAPS     ['xmmword ptr [RSP + 0x60]', 'XMM6']                                             0f29742460
+1422686e5  MOV        ['R10', 'qword ptr [RCX]']                                                       4c8b11
+1422686e8  MOV        ['R14', 'qword ptr [RCX + 0x8]']                                                 4c8b7108
+1422686ec  MOV        ['R15', 'qword ptr [R10 + 0xf8]']                                                4d8bbaf8000000
+1422686f3  MOV        ['RAX', 'qword ptr [R10 + 0x100]']                                               498b8200010000
+1422686fa  LEA        ['R12', '[R15 + RAX*0x4]']                                                       4d8d2487
+1422686fe  MOV        ['R11D', 'dword ptr [RDX + 0x1c]']                                               448b5a1c
+142268702  MOV        ['R13', 'qword ptr [RDX]']                                                       4c8b2a
+142268705  MOV        ['R9', 'qword ptr [RDX + 0x10]']                                                 4c8b4a10
+142268709  LEA        ['RAX', '[R13 + 0x20]']                                                          498d4520
+14226870d  MOV        ['qword ptr [RSP + 0x58]', 'RAX']                                                4889442458
+142268712  CMP        ['byte ptr [R10 + 0x108]', '0x0']                                                4180ba0801000000
+14226871a  JZ         ['0x142268855']                                                                  0f8435010000
+142268720  MOV        ['EDI', '0x8']                                                                   bf08000000
+142268725  XOR        ['R8D', 'R8D']                                                                   4531c0
+142268728  MOVSS      ['XMM6', 'dword ptr [0x142960674]']                                              f30f1035447f6f00
+142268730  LEA        ['RDX', '[0x143034d10]']                                                         488d15d9c5dc00
+142268737  XOR        ['ESI', 'ESI']                                                                   31f6
+142268739  XOR        ['EBX', 'EBX']                                                                   31db
+14226873b  JMP        ['0x142268769']                                                                  eb2c
+142268740  MOV        ['RAX', 'qword ptr [R13 + 0x28]']                                                498b4528
+142268744  MOV        ['RCX', 'RDI']                                                                   4889f9
+142268747  SHL        ['RCX', '0x4']                                                                   48c1e104
+14226874b  MOV        ['qword ptr [RAX + RCX*0x1]', 'RBP']                                             48892c08
+14226874f  MOV        ['RBP', 'qword ptr [RSP + 0x38]']                                                488b6c2438
+142268754  MOV        ['qword ptr [RAX + RCX*0x1 + 0x8]', 'RBP']                                       48896c0808
+142268759  INC        ['RDI']                                                                          48ffc7
+14226875c  MOV        ['qword ptr [R13 + 0x30]', 'RDI']                                                49897d30
+142268760  INC        ['qword ptr [R13 + 0x40]']                                                       49ff4540
+142268764  MOV        ['RDI', 'qword ptr [RSP + 0x40]']                                                488b7c2440
+142268769  CMP        ['RBX', 'RSI']                                                                   4839f3
+14226876c  JNZ        ['0x1422687d0']                                                                  7562
+14226876e  NOP        []                                                                               6690
+142268770  CMP        ['R15', 'R12']                                                                   4d39e7
+142268773  JZ         ['0x1422689a9']                                                                  0f8430020000
+142268779  MOV        ['ECX', 'dword ptr [R15]']                                                       418b0f
+14226877c  ADD        ['R15', '0x4']                                                                   4983c704
+142268780  MOV        ['RAX', 'qword ptr [R14 + 0x1a8]']                                               498b86a8010000
+142268787  LEA        ['RCX', '[RCX + RCX*0x8]']                                                       488d0cc9
+14226878b  MOV        ['RSI', 'qword ptr [RAX + RCX*0x8 + 0x10]']                                      488b74c810
+142268790  TEST       ['RSI', 'RSI']                                                                   4885f6
+142268793  JZ         ['0x142268770']                                                                  74db
+142268795  LEA        ['RAX', '[RAX + RCX*0x8]']                                                       488d04c8
+142268799  MOV        ['RCX', 'qword ptr [R10 + 0x110]']                                               498b8a10010000
+1422687a0  CMP        ['qword ptr [RAX + 0x40]', 'RCX']                                                48394840
+1422687a4  JBE        ['0x1422687d5']                                                                  762f
+1422687a6  MOV        ['R8', 'qword ptr [RAX + 0x38]']                                                 4c8b4038
+1422687aa  MOV        ['RCX', 'qword ptr [R8 + RCX*0x8]']                                              498b0cc8
+1422687ae  TEST       ['RCX', 'RCX']                                                                   4885c9
+1422687b1  JZ         ['0x1422687d5']                                                                  7422
+1422687b3  MOV        ['R8', 'qword ptr [RAX + 0x18]']                                                 4c8b4018
+1422687b7  NOT        ['RCX']                                                                          48f7d1
+1422687ba  LEA        ['RCX', '[RCX + RCX*0x2]']                                                       488d0c49
+1422687be  SHL        ['RCX', '0x4']                                                                   48c1e104
+1422687c2  MOV        ['R8', 'qword ptr [R8 + RCX*0x1 + 0x10]']                                        4d8b440810
+1422687c7  JMP        ['0x1422687d8']                                                                  eb0f
+1422687d0  MOV        ['RAX', 'RBX']                                                                   4889d8
+1422687d3  JMP        ['0x1422687de']                                                                  eb09
+1422687d5  XOR        ['R8D', 'R8D']                                                                   4531c0
+1422687d8  MOV        ['RDI', 'qword ptr [RAX + 0x8]']                                                 488b7808
+1422687dc  XOR        ['EAX', 'EAX']                                                                   31c0
+1422687de  MOV        ['ECX', 'EAX']                                                                   89c1
+1422687e0  LEA        ['RBX', '[RAX + 0x1]']                                                           488d5801
+1422687e4  SHL        ['RCX', '0x4']                                                                   48c1e104
+1422687e8  UCOMISS    ['XMM6', 'dword ptr [R8 + RCX*0x1 + 0x4]']                                       410f2e740804
+1422687ee  JBE        ['0x142268769']                                                                  0f8675ffffff
+1422687f4  MOV        ['qword ptr [RSP + 0x40]', 'RDI']                                                48897c2440
+1422687f9  MOV        ['RAX', 'qword ptr [RDI + RAX*0x8]']                                             488b04c7
+1422687fd  MOV        ['qword ptr [RSP + 0x38]', 'RAX']                                                4889442438
+142268802  MOV        ['dword ptr [R9]', 'R11D']                                                       458919
+142268805  MOV        ['RDI', 'qword ptr [R13 + 0x30]']                                                498b7d30
+142268809  MOV        ['RBP', 'qword ptr [R13 + 0x40]']                                                498b6d40
+14226880d  CMP        ['RDI', 'qword ptr [R13 + 0x20]']                                                493b7d20
+142268811  JNZ        ['0x142268740']                                                                  0f8529ffffff
+142268817  MOV        ['RCX', 'qword ptr [RSP + 0x58]']                                                488b4c2458
+14226881c  MOV        ['qword ptr [RSP + 0x50]', 'R10']                                                4c89542450
+142268821  MOV        ['dword ptr [RSP + 0x2c]', 'R11D']                                               44895c242c
+142268826  MOV        ['qword ptr [RSP + 0x48]', 'R9']                                                 4c894c2448
+14226882b  MOV        ['qword ptr [RSP + 0x30]', 'R8']                                                 4c89442430
+142268830  CALL       ['0x140562630']                                                                  e8fb9d2ffe
+142268835  MOV        ['R8', 'qword ptr [RSP + 0x30]']                                                 4c8b442430
+14226883a  LEA        ['RDX', '[0x143034d10]']                                                         488d15cfc4dc00
+142268841  MOV        ['R9', 'qword ptr [RSP + 0x48]']                                                 4c8b4c2448
+142268846  MOV        ['R11D', 'dword ptr [RSP + 0x2c]']                                               448b5c242c
+14226884b  MOV        ['R10', 'qword ptr [RSP + 0x50]']                                                4c8b542450
+142268850  JMP        ['0x142268740']                                                                  e9ebfeffff
+142268855  MOV        ['R8D', '0x8']                                                                   41b808000000
+14226885b  XOR        ['EDX', 'EDX']                                                                   31d2
+14226885d  MOVSS      ['XMM6', 'dword ptr [0x142960674]']                                              f30f10350f7e6f00
+142268865  XOR        ['ESI', 'ESI']                                                                   31f6
+142268867  XOR        ['EBX', 'EBX']                                                                   31db
+142268869  JMP        ['0x142268894']                                                                  eb29
+142268870  MOV        ['RAX', 'qword ptr [R13 + 0x28]']                                                498b4528
+142268874  MOV        ['RCX', 'RBP']                                                                   4889e9
+142268877  SHL        ['RCX', '0x4']                                                                   48c1e104
+14226887b  MOV        ['qword ptr [RAX + RCX*0x1]', 'RDI']                                             48893c08
+14226887f  MOV        ['RDI', 'qword ptr [RSP + 0x40]']                                                488b7c2440
+142268884  MOV        ['qword ptr [RAX + RCX*0x1 + 0x8]', 'RDI']                                       48897c0808
+142268889  INC        ['RBP']                                                                          48ffc5
+14226888c  MOV        ['qword ptr [R13 + 0x30]', 'RBP']                                                49896d30
+142268890  INC        ['qword ptr [R13 + 0x40]']                                                       49ff4540
+142268894  CMP        ['RBX', 'RSI']                                                                   4839f3
+142268897  JNZ        ['0x142268925']                                                                  0f8588000000
+14226889d  NOP        ['dword ptr [RAX]']                                                              0f1f00
+1422688a0  CMP        ['R15', 'R12']                                                                   4d39e7
+1422688a3  JZ         ['0x1422689a9']                                                                  0f8400010000
+1422688a9  MOV        ['ECX', 'dword ptr [R15]']                                                       418b0f
+1422688ac  ADD        ['R15', '0x4']                                                                   4983c704
+1422688b0  MOV        ['RAX', 'qword ptr [R14 + 0x100]']                                               498b8600010000
+1422688b7  LEA        ['RCX', '[RCX + RCX*0x4]']                                                       488d0c89
+1422688bb  SHL        ['RCX', '0x5']                                                                   48c1e105
+1422688bf  MOV        ['RSI', 'qword ptr [RAX + RCX*0x1 + 0x58]']                                      488b740858
+1422688c4  TEST       ['RSI', 'RSI']                                                                   4885f6
+1422688c7  JZ         ['0x1422688a0']                                                                  74d7
+1422688c9  ADD        ['RAX', 'RCX']                                                                   4801c8
+1422688cc  MOV        ['EDX', 'dword ptr [RAX + 0x94]']                                                8b9094000000
+1422688d2  MOV        ['RCX', 'qword ptr [R14 + 0x1a8]']                                               498b8ea8010000
+1422688d9  LEA        ['RDX', '[RDX + RDX*0x8]']                                                       488d14d2
+1422688dd  MOV        ['R8', 'qword ptr [R10 + 0x110]']                                                4d8b8210010000
+1422688e4  CMP        ['qword ptr [RCX + RDX*0x8 + 0x40]', 'R8']                                       4c3944d140
+1422688e9  JBE        ['0x142268916']                                                                  762b
+1422688eb  MOV        ['RDI', 'R9']                                                                    4c89cf
+1422688ee  MOV        ['R9', 'qword ptr [RCX + RDX*0x8 + 0x38]']                                       4c8b4cd138
+1422688f3  MOV        ['R8', 'qword ptr [R9 + R8*0x8]']                                                4f8b04c1
+1422688f7  TEST       ['R8', 'R8']                                                                     4d85c0
+1422688fa  JZ         ['0x14226891a']                                                                  741e
+1422688fc  LEA        ['RCX', '[RCX + RDX*0x8]']                                                       488d0cd1
+142268900  MOV        ['RCX', 'qword ptr [RCX + 0x18]']                                                488b4918
+142268904  NOT        ['R8']                                                                           49f7d0
+142268907  LEA        ['RDX', '[R8 + R8*0x2]']                                                         4b8d1440
+14226890b  SHL        ['RDX', '0x4']                                                                   48c1e204
+14226890f  MOV        ['RDX', 'qword ptr [RCX + RDX*0x1 + 0x10]']                                      488b541110
+142268914  JMP        ['0x14226891c']                                                                  eb06
+142268916  XOR        ['EDX', 'EDX']                                                                   31d2
+142268918  JMP        ['0x14226891f']                                                                  eb05
+14226891a  XOR        ['EDX', 'EDX']                                                                   31d2
+14226891c  MOV        ['R9', 'RDI']                                                                    4989f9
+14226891f  MOV        ['R8', 'qword ptr [RAX + 0x50]']                                                 4c8b4050
+142268923  XOR        ['EBX', 'EBX']                                                                   31db
+142268925  MOV        ['RAX', 'RBX']                                                                   4889d8
+142268928  SHL        ['RAX', '0x4']                                                                   48c1e004
+14226892c  MOV        ['ECX', 'dword ptr [R8 + RAX*0x1 + 0x8]']                                        418b4c0008
+142268931  INC        ['RBX']                                                                          48ffc3
+142268934  SHL        ['RCX', '0x4']                                                                   48c1e104
+142268938  UCOMISS    ['XMM6', 'dword ptr [RDX + RCX*0x1 + 0x4]']                                      0f2e740a04
+14226893d  JBE        ['0x142268894']                                                                  0f8651ffffff
+142268943  MOV        ['RAX', 'qword ptr [R8 + RAX*0x1]']                                              498b0400
+142268947  MOV        ['qword ptr [RSP + 0x40]', 'RAX']                                                4889442440
+14226894c  MOV        ['dword ptr [R9]', 'R11D']                                                       458919
+14226894f  MOV        ['RBP', 'qword ptr [R13 + 0x30]']                                                498b6d30
+142268953  MOV        ['RDI', 'qword ptr [R13 + 0x40]']                                                498b7d40
+142268957  CMP        ['RBP', 'qword ptr [R13 + 0x20]']                                                493b6d20
+14226895b  JNZ        ['0x142268870']                                                                  0f850fffffff
+142268961  MOV        ['RCX', 'qword ptr [RSP + 0x58]']                                                488b4c2458
+142268966  MOV        ['qword ptr [RSP + 0x38]', 'RDX']                                                4889542438
+14226896b  LEA        ['RDX', '[0x143034d10]']                                                         488d159ec3dc00
+142268972  MOV        ['qword ptr [RSP + 0x50]', 'R10']                                                4c89542450
+142268977  MOV        ['dword ptr [RSP + 0x2c]', 'R11D']                                               44895c242c
+14226897c  MOV        ['qword ptr [RSP + 0x48]', 'R9']                                                 4c894c2448
+142268981  MOV        ['qword ptr [RSP + 0x30]', 'R8']                                                 4c89442430
+142268986  CALL       ['0x140562630']                                                                  e8a59c2ffe
+14226898b  MOV        ['R8', 'qword ptr [RSP + 0x30]']                                                 4c8b442430
+142268990  MOV        ['RDX', 'qword ptr [RSP + 0x38]']                                                488b542438
+142268995  MOV        ['R9', 'qword ptr [RSP + 0x48]']                                                 4c8b4c2448
+14226899a  MOV        ['R11D', 'dword ptr [RSP + 0x2c]']                                               448b5c242c
+14226899f  MOV        ['R10', 'qword ptr [RSP + 0x50]']                                                4c8b542450
+1422689a4  JMP        ['0x142268870']                                                                  e9c7feffff
+1422689a9  MOVAPS     ['XMM6', 'xmmword ptr [RSP + 0x60]']                                             0f28742460
+1422689ae  ADD        ['RSP', '0x78']                                                                  4883c478
+1422689b2  POP        ['RBX']                                                                          5b
+1422689b3  POP        ['RBP']                                                                          5d
+1422689b4  POP        ['RDI']                                                                          5f
+1422689b5  POP        ['RSI']                                                                          5e
+1422689b6  POP        ['R12']                                                                          415c
+1422689b8  POP        ['R13']                                                                          415d
+1422689ba  POP        ['R14']                                                                          415e
+1422689bc  POP        ['R15']                                                                          415f
+1422689be  RET        []                                                                               c3
+
+CALL TARGETS:
+  140562630 grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>
+
+DATA REFS:
+  ['14226870d', 'MOV', 'Stack[-0x60]', 'WRITE']
+  ['142268728', 'MOVSS', '142960674', 'READ']
+  ['142268730', 'LEA', '143034d10', 'DATA']
+  ['14226874f', 'MOV', 'Stack[-0x80]', 'READ']
+  ['142268764', 'MOV', 'Stack[-0x78]', 'READ']
+  ['1422687f4', 'MOV', 'Stack[-0x78]', 'WRITE']
+  ['1422687fd', 'MOV', 'Stack[-0x80]', 'WRITE']
+  ['142268817', 'MOV', 'Stack[-0x60]', 'READ']
+  ['14226881c', 'MOV', 'Stack[-0x68]', 'WRITE']
+  ['142268821', 'MOV', 'Stack[-0x8c]', 'WRITE']
+  ['142268826', 'MOV', 'Stack[-0x70]', 'WRITE']
+  ['14226882b', 'MOV', 'Stack[-0x88]', 'WRITE']
+  ['142268835', 'MOV', 'Stack[-0x88]', 'READ']
+  ['14226883a', 'LEA', '143034d10', 'DATA']
+  ['142268841', 'MOV', 'Stack[-0x70]', 'READ']
+  ['142268846', 'MOV', 'Stack[-0x8c]', 'READ']
+  ['14226884b', 'MOV', 'Stack[-0x68]', 'READ']
+  ['14226885d', 'MOVSS', '142960674', 'READ']
+  ['14226887f', 'MOV', 'Stack[-0x78]', 'READ']
+  ['142268947', 'MOV', 'Stack[-0x78]', 'WRITE']
+  ['142268961', 'MOV', 'Stack[-0x60]', 'READ']
+  ['142268966', 'MOV', 'Stack[-0x80]', 'WRITE']
+  ['14226896b', 'LEA', '143034d10', 'DATA']
+  ['142268972', 'MOV', 'Stack[-0x68]', 'WRITE']
+  ['142268977', 'MOV', 'Stack[-0x8c]', 'WRITE']
+  ['14226897c', 'MOV', 'Stack[-0x70]', 'WRITE']
+  ['142268981', 'MOV', 'Stack[-0x88]', 'WRITE']
+  ['14226898b', 'MOV', 'Stack[-0x88]', 'READ']
+  ['142268990', 'MOV', 'Stack[-0x80]', 'READ']
+  ['142268995', 'MOV', 'Stack[-0x70]', 'READ']
+  ['14226899a', 'MOV', 'Stack[-0x8c]', 'READ']
+  ['14226899f', 'MOV', 'Stack[-0x68]', 'READ']

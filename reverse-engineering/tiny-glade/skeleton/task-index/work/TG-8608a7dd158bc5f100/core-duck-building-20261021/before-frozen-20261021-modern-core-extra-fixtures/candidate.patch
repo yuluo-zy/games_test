@@ -1,0 +1,49 @@
+--- a/replay_color.rs
++++ b/replay_color.rs
+@@ -313,7 +313,7 @@
+     use super::*;
+     use crate::resources::history::replay_cmd_buffer::ColorReplayCmd;
+     use crate::resources::terrain_editing::StrokeId;
+-    use crate::resources::walls::decorator::DecoratorInfo;
++    use crate::resources::walls::decorator::{DecoratorInfo, FlagExtra, LanternExtra, WindowExtra};
+     use crate::resources::walls::decorator_storage::DecoratorStorageAddr;
+     use crate::resources::walls::WallId;
+     use crate::systems::history::register_history_events;
+@@ -342,13 +342,13 @@
+         (world, schedule)
+     }
+ 
+-    fn place(world: &mut World, id: u32, disc: u8, extra_low: u64) {
+-        let info = DecoratorInfo {
++    fn place(world: &mut World, id: u32, extra: DecoratorExtraInfo) {
++        let mut info = DecoratorInfo {
+             decorator_id: id,
+-            dst_payload: extra_low | ((disc as u64) << 56),
+-            state: 2,
+             ..DecoratorInfo::default()
+         };
++        // Extra 与 destination 是独立联合；用真实 owner 写入载荷和 niche。
++        info.set_extra(extra);
+         world
+             .resource_mut::<DecoratorStorage>()
+             .apply_decorator_place(TERRAIN, DecoratorId(id), &info);
+@@ -439,7 +439,7 @@
+     #[test]
+     fn brightness_is_one_shot_without_interpolation() {
+         let (mut world, mut schedule) = fixture();
+-        place(&mut world, 4, 7, 0x3e80_0000); // disc 7 = Lantern，初值 0.25
++        place(&mut world, 4, DecoratorExtraInfo::Lantern(LanternExtra(0.25)));
+         push(
+             &mut world,
+             ColorEdit::Brightness {
+@@ -516,8 +516,8 @@
+     #[test]
+     fn flag_and_window_targets_write_decorator_extra() {
+         let (mut world, mut schedule) = fixture();
+-        place(&mut world, 5, 5, 0); // disc 5 = Flag
+-        place(&mut world, 6, 6, 0); // disc 6 = Window
++        place(&mut world, 5, DecoratorExtraInfo::Flag(FlagExtra(0)));
++        place(&mut world, 6, DecoratorExtraInfo::Window(WindowExtra(0)));
+         push(
+             &mut world,
+             ColorEdit::FlagBunting {

@@ -1,0 +1,82 @@
+{
+  "program": "tiny-glade.exe",
+  "functions": {
+    "0x14090e080": {
+      "name": "build",
+      "size": 364,
+      "address": "14090e080",
+      "signature": "void __cdecl build(void)",
+      "decompiled_code": "\n// WARNING: Removing unreachable block (ram,0x00014090e159)\n// WARNING: Globals starting with '_' overlap smaller symbols at the same address\n\nvoid __cdecl country_core::resources::gpu_lut::impl$0::build(void)\n\n{\n  undefined4 uStack_2f;\n  undefined2 uStack_2b;\n  undefined1 uStack_29;\n  \n  alloc::raw_vec::RawVec::\n  grow_one<country_core::render::render_config::LastKnownGraphicsDevice,alloc::alloc::Global>();\n  _DAT_00000030 = (ulonglong)CONCAT16(uStack_29,CONCAT24(uStack_2b,uStack_2f)) << 8;\n  _DAT_00000028 = &anon_e1ef625e541d4204a9786b2dedd5ac6d_57_llvm_16024945903336668838;\n  _DAT_00000018 = 0;\n  _DAT_00000020 = 1;\n  _DAT_00000008 = 0;\n  _DAT_00000010 = 8;\n  if (_DEV_OVERRIDE_IS_DEMO_MODE == '\\0') {\n    _DAT_00000058 = &anon_e1ef625e541d4204a9786b2dedd5ac6d_56_llvm_16024945903336668838;\n    DAT_00000060 = 0;\n    _DAT_00000061 = uStack_2f;\n    _DAT_00000065 = uStack_2b;\n    DAT_00000067 = uStack_29;\n    _DAT_00000048 = 0;\n    _DAT_00000050 = 1;\n    _DAT_00000038 = 0;\n    _DAT_00000040 = 8;\n  }\n  bevy_app::app::App::insert_resource<country_core::resources::gpu_lut::GpuLutTracker>();\n  return;\n}\n\n",
+      "revision": {
+        "token": "1791719479858:b17d372d:3",
+        "epoch": "b17d372d",
+        "modification_number": 3,
+        "saved_time": 1791719479858,
+        "unsaved_changes": false,
+        "decompiled": true
+      }
+    },
+    "0x14090e280": {
+      "name": "render_luts",
+      "size": 132,
+      "address": "14090e280",
+      "signature": "void __cdecl render_luts(void)",
+      "decompiled_code": "\nvoid __cdecl country_core::resources::gpu_lut::GpuLutTracker::render_luts(void)\n\n{\n  longlong in_RCX;\n  longlong lVar1;\n  longlong lVar2;\n  undefined1 local_48 [8];\n  longlong local_40;\n  \n  if (*(longlong *)(in_RCX + 0x10) != 0) {\n    lVar2 = *(longlong *)(in_RCX + 8);\n    lVar1 = *(longlong *)(in_RCX + 0x10) * 0x30;\n    do {\n      if (*(char *)(lVar2 + 0x28) == '\\0') {\n        *(undefined8 *)(lVar2 + 0x10) = 0;\n        local_40 = lVar2;\n        (**(code **)(*(longlong *)(lVar2 + 0x20) + 0x28))\n                  (*(undefined8 *)(lVar2 + 0x18),local_48,&DAT_142aab6e0);\n        *(undefined1 *)(lVar2 + 0x28) = 1;\n      }\n      lVar2 = lVar2 + 0x30;\n      lVar1 = lVar1 + -0x30;\n    } while (lVar1 != 0);\n  }\n  return;\n}\n\n",
+      "revision": {
+        "token": "1791719479858:b17d372d:3",
+        "epoch": "b17d372d",
+        "modification_number": 3,
+        "saved_time": 1791719479858,
+        "unsaved_changes": false,
+        "decompiled": true
+      }
+    },
+    "0x14090e310": {
+      "name": "compute_impl",
+      "size": 305,
+      "address": "14090e310",
+      "signature": "void __cdecl compute_impl(void)",
+      "decompiled_code": "\nvoid __cdecl country_core::resources::gpu_lut::impl$3::render_luts::impl$0::compute_impl(void)\n\n{\n  longlong *plVar1;\n  longlong lVar2;\n  undefined8 uVar3;\n  longlong in_RCX;\n  longlong in_R8;\n  undefined8 in_R9;\n  longlong in_stack_00000028;\n  undefined1 local_378 [400];\n  undefined1 local_1e8 [400];\n  undefined8 local_58;\n  longlong local_50;\n  undefined1 local_41;\n  undefined8 local_40;\n  \n  local_40 = 0xfffffffffffffffe;\n  local_50 = in_stack_00000028;\n  plVar1 = *(longlong **)(in_RCX + 8);\n  local_41 = 1;\n  local_58 = in_R9;\n  uVar3 = (**(code **)(in_R8 + 0x18))();\n  lVar2 = plVar1[2];\n  if (lVar2 == *plVar1) {\n    local_41 = 1;\n    alloc::raw_vec::RawVec::\n    grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>\n              ();\n  }\n  *(undefined8 *)(plVar1[1] + lVar2 * 8) = uVar3;\n  plVar1[2] = lVar2 + 1;\n  local_41 = 1;\n  country_core::render::pass_builder::compute_pass_builder::ComputePass::\n  new<ref_<dyn_<country_core::render::pass_builder::shader_uri::AsComputeShaderSource>_>_>();\n  memcpy(local_378,local_1e8,400);\n  (**(code **)(local_50 + 0x18))(local_58,local_378);\n  if (*(longlong *)(local_50 + 8) != 0) {\n    std::alloc::__default_lib_allocator::__rust_dealloc();\n    return;\n  }\n  return;\n}\n\n",
+      "revision": {
+        "token": "1791719479858:b17d372d:3",
+        "epoch": "b17d372d",
+        "modification_number": 3,
+        "saved_time": 1791719479858,
+        "unsaved_changes": false,
+        "decompiled": true
+      }
+    },
+    "0x140a716c0": {
+      "name": "call_once<country_core::resources::gpu_lut::impl$0::build::closure_env$0,tuple$<ref_mut$<dyn$<country_core::resources::gpu_lut::GpuLutApi>_>_>_>",
+      "size": 70,
+      "address": "140a716c0",
+      "signature": "void __cdecl call_once<country_core::resources::gpu_lut::impl$0::build::closure_env$0,tuple$<ref_mut$<dyn$<country_core::resources::gpu_lut::GpuLutApi>_>_>_>(void)",
+      "decompiled_code": "\nvoid __cdecl\ncore::ops::function::FnOnce::\ncall_once<country_core::resources::gpu_lut::impl_0::build::closure_env_0,tuple_<ref_mut_<dyn_<country_core::resources::gpu_lut::GpuLutApi>_>_>_>\n          (void)\n\n{\n  longlong in_R8;\n  \n  (**(code **)(in_R8 + 0x18))();\n  return;\n}\n\n",
+      "revision": {
+        "token": "1791719479858:b17d372d:3",
+        "epoch": "b17d372d",
+        "modification_number": 3,
+        "saved_time": 1791719479858,
+        "unsaved_changes": false,
+        "decompiled": true
+      }
+    },
+    "0x140a71980": {
+      "name": "call_once<country_core::resources::gpu_lut::impl$0::build::closure_env$1,tuple$<ref_mut$<dyn$<country_core::resources::gpu_lut::GpuLutApi>_>_>_>",
+      "size": 70,
+      "address": "140a71980",
+      "signature": "void __cdecl call_once<country_core::resources::gpu_lut::impl$0::build::closure_env$1,tuple$<ref_mut$<dyn$<country_core::resources::gpu_lut::GpuLutApi>_>_>_>(void)",
+      "decompiled_code": "\nvoid __cdecl\ncore::ops::function::FnOnce::\ncall_once<country_core::resources::gpu_lut::impl_0::build::closure_env_1,tuple_<ref_mut_<dyn_<country_core::resources::gpu_lut::GpuLutApi>_>_>_>\n          (void)\n\n{\n  longlong in_R8;\n  \n  (**(code **)(in_R8 + 0x18))();\n  return;\n}\n\n",
+      "revision": {
+        "token": "1791719479858:b17d372d:3",
+        "epoch": "b17d372d",
+        "modification_number": 3,
+        "saved_time": 1791719479858,
+        "unsaved_changes": false,
+        "decompiled": true
+      }
+    }
+  },
+  "count": 5,
+  "requested": 5
+}

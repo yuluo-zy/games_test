@@ -1,0 +1,72 @@
+// name: closest_resolved_snapshot size: 331
+// void __cdecl closest_resolved_snapshot(void)
+
+void __cdecl country_core::resources::history::History::closest_resolved_snapshot(void)
+
+{
+  longlong lVar1;
+  undefined4 uVar2;
+  undefined8 *puVar3;
+  undefined8 *in_RCX;
+  int iVar4;
+  longlong lVar5;
+  int in_R8D;
+  ulonglong uVar6;
+  int iVar7;
+  longlong local_28;
+  longlong local_20;
+  ulonglong local_18;
+  
+  alloc::vec::spec_from_iter::impl$0::
+  from_iter<country_core::resources::history::ResolvedHistoryChainSnapshot,core::iter::adapters::filter_map::FilterMap<core::slice::iter::Iter<country_core::resources::history::HistoryChainSnapshot>,country_core::resources::history::impl_1::serialize::closure_env_0<ref_mut_<serde_json::ser::Serializer<ref_mut_<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::CompactFormatter>_>_>_>_>
+            ();
+  if (local_18 == 0) {
+    *in_RCX = 0;
+  }
+  else {
+    lVar5 = 0;
+    uVar6 = local_18;
+    if (local_18 != 1) {
+      do {
+        lVar1 = (uVar6 >> 1) + lVar5;
+        if (*(int *)(local_20 + 8 + lVar1 * 0x10) < in_R8D) {
+          lVar5 = lVar1;
+        }
+        uVar6 = uVar6 - (uVar6 >> 1);
+      } while (1 < uVar6);
+    }
+    uVar6 = (ulonglong)(*(int *)(local_20 + 8 + lVar5 * 0x10) < in_R8D) + lVar5;
+    if (uVar6 < local_18) {
+      puVar3 = (undefined8 *)(uVar6 * 0x10 + local_20);
+      if (uVar6 != 0) {
+        iVar7 = -(*(int *)(puVar3 + -1) - in_R8D);
+        if (iVar7 < 0) {
+          iVar7 = *(int *)(puVar3 + -1) - in_R8D;
+        }
+        iVar4 = -(*(int *)(puVar3 + 1) - in_R8D);
+        if (iVar4 < 0) {
+          iVar4 = *(int *)(puVar3 + 1) - in_R8D;
+        }
+        puVar3 = puVar3 + (ulonglong)(iVar4 <= iVar7) * 2 + -2;
+      }
+    }
+    else {
+      puVar3 = (undefined8 *)(local_18 * 0x10 + local_20 + -0x10);
+    }
+    if (puVar3 == (undefined8 *)0x0) {
+      *in_RCX = 0;
+    }
+    else {
+      uVar2 = *(undefined4 *)(puVar3 + 1);
+      in_RCX[1] = *puVar3;
+      *(undefined4 *)(in_RCX + 2) = uVar2;
+      *in_RCX = 1;
+    }
+  }
+  if (local_28 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  return;
+}
+
+

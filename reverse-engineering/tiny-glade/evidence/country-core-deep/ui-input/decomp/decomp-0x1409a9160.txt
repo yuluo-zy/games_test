@@ -1,0 +1,87 @@
+
+void FUN_1409a9160(undefined8 *param_1,undefined8 *param_2)
+
+{
+  undefined4 uVar1;
+  ulonglong *puVar2;
+  ulonglong uVar3;
+  undefined8 uVar4;
+  undefined4 *puVar5;
+  undefined8 uVar6;
+  code *pcVar7;
+  longlong lVar8;
+  longlong lVar9;
+  undefined8 *puVar10;
+  ulonglong uVar11;
+  longlong lVar12;
+  longlong lVar13;
+  ulonglong uVar14;
+  ulonglong uVar15;
+  longlong lVar16;
+  undefined8 uStack_58;
+  undefined8 *puStack_50;
+  
+  puVar2 = (ulonglong *)*param_2;
+  lVar9 = param_2[1];
+  uVar3 = *puVar2;
+  uVar14 = 0;
+  uVar11 = uVar3 - *(ulonglong *)(lVar9 + 0x18);
+  if (uVar3 < *(ulonglong *)(lVar9 + 0x18)) {
+    uVar11 = uVar14;
+  }
+  uVar15 = uVar3 - *(ulonglong *)(lVar9 + 0x38);
+  if (uVar3 < *(ulonglong *)(lVar9 + 0x38)) {
+    uVar15 = uVar14;
+  }
+  lVar8 = uVar11 * 0x10 + *(longlong *)(lVar9 + 8);
+  uVar3 = *(ulonglong *)(lVar9 + 0x10) - uVar11;
+  if (*(ulonglong *)(lVar9 + 0x10) < uVar11) {
+    lVar8 = 8;
+    uVar3 = uVar14;
+  }
+  lVar12 = uVar15 * 0x10 + *(longlong *)(lVar9 + 0x28);
+  uVar11 = *(ulonglong *)(lVar9 + 0x30) - uVar15;
+  if (*(ulonglong *)(lVar9 + 0x30) < uVar15) {
+    lVar12 = 8;
+    uVar11 = uVar14;
+  }
+  *puVar2 = (*(longlong *)(lVar9 + 0x40) - uVar11) - uVar3;
+  lVar13 = uVar11 * 0x10 + lVar12;
+  uVar1 = *(undefined4 *)((longlong)param_1 + 0x1c);
+  uVar4 = *param_1;
+  puVar5 = (undefined4 *)param_1[2];
+  lVar9 = lVar8;
+  if (lVar8 == 0) goto code_r0x0001409a9210;
+  do {
+    if (lVar9 == uVar3 * 0x10 + lVar8) goto code_r0x0001409a9210;
+    lVar16 = lVar9 + 0x10;
+    while( true ) {
+      *puVar2 = *puVar2 + 1;
+      *puVar5 = uVar1;
+      uVar6 = *(undefined8 *)(lVar9 + 8);
+      puVar10 = (undefined8 *)func_0x000140613c10(0x18,8);
+      if (puVar10 == (undefined8 *)0x0) {
+        FUN_1428d9000(8,0x18);
+        pcVar7 = (code *)swi(3);
+        (*pcVar7)();
+        return;
+      }
+      *puVar10 = 1;
+      puVar10[1] = 1;
+      puVar10[2] = uVar6;
+      uStack_58 = 0xd;
+      puStack_50 = puVar10;
+      FUN_140a84ec0(uVar4,&uStack_58,&UNK_142abd990);
+      lVar9 = lVar16;
+      if (lVar16 != 0) break;
+code_r0x0001409a9210:
+      lVar9 = lVar12;
+      if ((lVar9 == 0) || (lVar9 == lVar13)) {
+        return;
+      }
+      lVar12 = lVar9 + 0x10;
+      lVar16 = 0;
+    }
+  } while( true );
+}
+

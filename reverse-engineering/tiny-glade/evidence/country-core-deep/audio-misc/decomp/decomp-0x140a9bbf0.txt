@@ -1,0 +1,80 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_140a9bbf0(undefined8 *param_1,undefined8 param_2)
+
+{
+  longlong lVar1;
+  code *pcVar2;
+  byte *pbVar3;
+  undefined8 uVar4;
+  undefined8 auStack_1c0 [2];
+  undefined8 uStack_1b0;
+  undefined8 uStack_c0;
+  undefined8 uStack_60;
+  undefined8 uStack_58;
+  undefined4 uStack_50;
+  undefined4 uStack_4c;
+  undefined4 uStack_48;
+  undefined4 uStack_44;
+  longlong lStack_40;
+  undefined8 uStack_38;
+  longlong *plStack_30;
+  undefined8 uStack_28;
+  undefined8 uStack_20;
+  
+  uStack_20 = 0xfffffffffffffffe;
+  param_1 = (undefined8 *)*param_1;
+  uVar4 = param_2;
+  uStack_28 = func_0x000142923700();
+  plStack_30 = (longlong *)*param_1;
+  LOCK();
+  lVar1 = *plStack_30;
+  *plStack_30 = *plStack_30 + 1;
+  UNLOCK();
+  if (*plStack_30 != 0 && SCARRY8(lVar1,1) == *plStack_30 < 0) {
+    uVar4 = CONCAT71((int7)((ulonglong)uVar4 >> 8),1);
+    func_0x0001429236e0(uStack_28);
+    pbVar3 = (byte *)FUN_140d4d740();
+    if ((*pbVar3 & 1) == 0) {
+      lStack_40 = FUN_140d64e00();
+      pbVar3[0] = 1;
+      pbVar3[1] = 0;
+      pbVar3[2] = 0;
+      pbVar3[3] = 0;
+      pbVar3[4] = 0;
+      pbVar3[5] = 0;
+      pbVar3[6] = 0;
+      pbVar3[7] = 0;
+      *(longlong *)(pbVar3 + 8) = lStack_40;
+      *(undefined8 *)(pbVar3 + 0x10) = uVar4;
+    }
+    else {
+      lStack_40 = *(longlong *)(pbVar3 + 8);
+      uVar4 = *(undefined8 *)(pbVar3 + 0x10);
+    }
+    *(longlong *)(pbVar3 + 8) = lStack_40 + 1;
+    auStack_1c0[0] = 0;
+    uStack_1b0 = 0;
+    uStack_c0 = 0;
+    uStack_60 = _UNK_142adafb0;
+    uStack_58 = _UNK_142adafb8;
+    uStack_50 = _UNK_142adafc0;
+    uStack_4c = _UNK_142adafc4;
+    uStack_48 = _UNK_142adafc8;
+    uStack_44 = _UNK_142adafcc;
+    uStack_38 = uVar4;
+    FUN_1412e0660(param_2,auStack_1c0,&UNK_142adb4e8);
+    LOCK();
+    *plStack_30 = *plStack_30 + -1;
+    UNLOCK();
+    if (*plStack_30 == 0) {
+      FUN_140b85350(&plStack_30);
+    }
+    return;
+  }
+                    /* WARNING: Does not return */
+  pcVar2 = (code *)invalidInstructionException();
+  (*pcVar2)();
+}
+

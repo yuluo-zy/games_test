@@ -1,0 +1,70 @@
+--- a/games_test/tiny-glade/crates/utils/src/rdp.rs
++++ b/games_test/tiny-glade/crates/utils/src/rdp.rs
+@@ -135,6 +135,67 @@
+     }
+ }
+ 
++/// The original B freehand-wall simplifier uses distance to the unbounded line,
++/// a first-range returning-curve check and a short-left-range shortcut. Keep
++/// this explicit entry for recovered callers; `Rdp::new` retains the corrected
++/// finite-segment contract used by existing tools.
++impl Rdp<Vec2> {
++    pub fn new_original_2d(points: &[Vec2]) -> Self {
++        if points.len() < 3 {
++            return Self {
++                indices: (0..points.len()).collect(),
++                points: points.to_vec(),
++            };
++        }
++        let mut indices = vec![0];
++        let mut pending = vec![(0, points.len() - 1)];
++        let chord = points[0] - points[points.len() - 1];
++        let chord_length = (chord.y * chord.y + chord.x * chord.x).sqrt();
++        let mut check_returning_curve = chord_length < 1e8;
++        while let Some((first, last)) = pending.pop() {
++            if last - first < 2 {
++                indices.push(last);
++                continue;
++            }
++            let a = points[first];
++            let b = points[last];
++            let delta = b - a;
++            let squared = delta.y * delta.y + delta.x * delta.x;
++            let denominator = if squared <= 1e-20 { 1e-20 } else { squared };
++            let mut furthest_distance = 0.0;
++            let mut furthest_offset = 0;
++            for (offset, &point) in points[first + 1..last].iter().enumerate() {
++                let from_start = point - a;
++                let t = (from_start.y * delta.y + from_start.x * delta.x) / denominator;
++                let projected = b * t + a * (1.0 - t);
++                let d = point - projected;
++                let distance = (d.y * d.y + d.x * d.x).sqrt();
++                assert!(distance.is_finite(), "original RDP distance assertion");
++                if distance > furthest_distance {
++                    furthest_distance = distance;
++                    furthest_offset = offset + 1;
++                }
++            }
++            if furthest_distance > 0.1
++                || (check_returning_curve && furthest_distance > chord_length)
++            {
++                let split = first + furthest_offset;
++                pending.push((split, last));
++                if furthest_offset < 3 {
++                    indices.push(split);
++                } else {
++                    pending.push((first, split));
++                }
++                check_returning_curve = false;
++            } else {
++                indices.push(last);
++            }
++        }
++        let points = indices.iter().map(|&index| points[index]).collect();
++        Self { indices, points }
++    }
++}
++
+ /// An upper bound on distance to a point on the exact finite segment.
+ ///
+ /// The parameter need not be the exact closest-point parameter: every point on

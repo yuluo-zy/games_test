@@ -1,0 +1,12 @@
+{
+  "scope": "test-only delta after frozen 4-file runtime save candidate; production untouched",
+  "baseline_sha256": "bfa62869a1574d95ece8e9fb7077374b1cbea908264c520e8b6cbaa00154ffeb",
+  "candidate": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-941c23b174ac2b4408/oschain-20261018/world-worker-v2/candidate-runtime-save_game.rs",
+  "candidate_sha256": "d95e6e3e00427940d8cae8c22315871d3b5c96136d300415be3311a0c9c59627",
+  "patch": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-941c23b174ac2b4408/oschain-20261018/world-worker-v2/after-save-runtime-v1.patch",
+  "test": "real_nonempty_world_capture_resolves_the_same_history_owner_on_worker_flush",
+  "schema_review": "current SnapshotDomainData::collect/with_terrain_and_supports and SnapshotSaveData::encode; no duplicate encoder",
+  "test_boundary": "real ECS SaveSnapshotWorld capture -> production execute_save_cmd dispatcher on dedicated thread with real temp CurrentSaveFile -> real tag10 sync acknowledgement -> shared History Atomic ID and actual file; initial file supplied directly to isolate global save paths; outer worker poll loop covered by prior tests, not this fixture",
+  "validation": "not compiled/run; root owns Cargo/GPU",
+  "frozen_for_parent_commit": true
+}

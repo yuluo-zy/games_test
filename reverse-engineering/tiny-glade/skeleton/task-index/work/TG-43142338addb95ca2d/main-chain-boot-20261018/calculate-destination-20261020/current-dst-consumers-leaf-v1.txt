@@ -1,0 +1,23 @@
+games_test/tiny-glade/crates/country-core/src/components/drawable.rs:349:/// DecoratorDst union. Only the two evidenced populate variants are present.
+games_test/tiny-glade/crates/country-core/src/systems/save/snapshot.rs:551:        other => anyhow::bail!("invalid DecoratorDst niche {other}"),
+games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs:438:/// B DecoratorDst：目的地联合，判别字节位于 +0x22。
+games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs:447:pub enum DecoratorDst {
+games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs:460:impl DecoratorDst {
+games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs:464:            DecoratorDst::Wall(_) => 0,
+games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs:465:            DecoratorDst::WallCompound(_) => 1,
+games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs:466:            DecoratorDst::Roof => 2,
+games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs:467:            DecoratorDst::Terrain => 3,
+games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs:468:            DecoratorDst::Stair => 4,
+games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs:479:        if matches!(self, DecoratorDst::Roof) {
+games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs:482:            panic!("DecoratorDst::as_roof: not a roof destination")
+games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs:491:            panic!("DecoratorDst::as_wall: not a wall destination")
+games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs:500:            unreachable!("DecoratorDst::as_wall_mut: not a wall destination")
+games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs:507:            DecoratorDst::Wall(id) | DecoratorDst::WallCompound(id) => id,
+games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs:508:            _ => panic!("DecoratorDst::wall_id: not a wall destination"),
+games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs:1108:        assert!(DecoratorDst::Wall(WallId(1)).is_wall());
+games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs:1109:        assert!(DecoratorDst::WallCompound(WallId(1)).is_wall());
+games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs:1110:        assert!(!DecoratorDst::Roof.is_wall());
+games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs:1111:        assert_eq!(DecoratorDst::Terrain.tag(), 3);
+games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs:1112:        assert_eq!(DecoratorDst::Stair.tag(), 4);
+games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs:1113:        assert_eq!(DecoratorDst::Wall(WallId(1)).wall_id(), WallId(1));
+games_test/tiny-glade/crates/systems/decorator/src/ui_systems/calculate_decorator_dst.rs:10://! **目的 tag 空间（O，与 core `DecoratorDst` 不同——core 为 DecoratorInfo

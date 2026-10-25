@@ -1,0 +1,70 @@
+
+B版本内容/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+14089d9b0: 55                          	pushq	%rbp
+14089d9b1: 56                          	pushq	%rsi
+14089d9b2: 57                          	pushq	%rdi
+14089d9b3: 48 83 ec 30                 	subq	$0x30, %rsp
+14089d9b7: 48 8d 6c 24 30              	leaq	0x30(%rsp), %rbp
+14089d9bc: 48 c7 45 f8 fe ff ff ff     	movq	$-0x2, -0x8(%rbp)
+14089d9c4: 48 89 d7                    	movq	%rdx, %rdi
+14089d9c7: 48 89 ce                    	movq	%rcx, %rsi
+14089d9ca: 0f b6 05 38 72 d9 02        	movzbl	0x2d97238(%rip), %eax   # 0x143634c09
+14089d9d1: b9 13 00 00 00              	movl	$0x13, %ecx
+14089d9d6: ba 01 00 00 00              	movl	$0x1, %edx
+14089d9db: e8 30 62 d7 ff              	callq	0x140613c10 <.text+0x612c10>
+14089d9e0: 48 85 c0                    	testq	%rax, %rax
+14089d9e3: 0f 84 96 00 00 00           	je	0x14089da7f <.text+0x89ca7f>
+14089d9e9: 0f 10 05 9c ba 1f 02        	movups	0x21fba9c(%rip), %xmm0  # 0x142a9948c
+14089d9f0: 0f 11 00                    	movups	%xmm0, (%rax)
+14089d9f3: c7 40 0f 61 64 65 72        	movl	$0x72656461, 0xf(%rax)  # imm = 0x72656461
+14089d9fa: 0f 10 07                    	movups	(%rdi), %xmm0
+14089d9fd: 0f 10 4f 10                 	movups	0x10(%rdi), %xmm1
+14089da01: 0f 10 57 20                 	movups	0x20(%rdi), %xmm2
+14089da05: 0f 11 46 10                 	movups	%xmm0, 0x10(%rsi)
+14089da09: 0f 11 4e 20                 	movups	%xmm1, 0x20(%rsi)
+14089da0d: 0f 11 56 30                 	movups	%xmm2, 0x30(%rsi)
+14089da11: c7 46 78 cd cc 4c 3e        	movl	$0x3e4ccccd, 0x78(%rsi) # imm = 0x3E4CCCCD
+14089da18: 66 c7 46 40 00 01           	movw	$0x100, 0x40(%rsi)      # imm = 0x100
+14089da1e: 48 b9 00 00 80 3f 01 00 00 00       	movabsq	$0x13f800000, %rcx # imm = 0x13F800000
+14089da28: 48 89 4e 44                 	movq	%rcx, 0x44(%rsi)
+14089da2c: 48 c7 46 60 13 00 00 00     	movq	$0x13, 0x60(%rsi)
+14089da34: 48 89 46 68                 	movq	%rax, 0x68(%rsi)
+14089da38: 48 c7 46 70 13 00 00 00     	movq	$0x13, 0x70(%rsi)
+14089da40: 48 c7 86 81 00 00 00 00 00 00 00    	movq	$0x0, 0x81(%rsi)
+14089da4b: 48 c7 46 7c 00 00 00 00     	movq	$0x0, 0x7c(%rsi)
+14089da53: 0f 28 05 66 06 0a 02        	movaps	0x20a0666(%rip), %xmm0  # 0x14293e0c0
+14089da5a: 0f 29 06                    	movaps	%xmm0, (%rsi)
+14089da5d: c7 46 50 00 00 00 00        	movl	$0x0, 0x50(%rsi)
+14089da64: 66 c7 86 89 00 00 00 00 00  	movw	$0x0, 0x89(%rsi)
+14089da6d: c7 46 58 00 00 00 00        	movl	$0x0, 0x58(%rsi)
+14089da74: 48 89 f0                    	movq	%rsi, %rax
+14089da77: 48 83 c4 30                 	addq	$0x30, %rsp
+14089da7b: 5f                          	popq	%rdi
+14089da7c: 5e                          	popq	%rsi
+14089da7d: 5d                          	popq	%rbp
+14089da7e: c3                          	retq
+14089da7f: 48 89 7d f0                 	movq	%rdi, -0x10(%rbp)
+14089da83: 4c 8d 05 96 b4 1f 02        	leaq	0x21fb496(%rip), %r8    # 0x142a98f20
+14089da8a: b9 01 00 00 00              	movl	$0x1, %ecx
+14089da8f: ba 13 00 00 00              	movl	$0x13, %edx
+14089da94: e8 4a b5 03 02              	callq	0x1428d8fe3 <.text+0x28d7fe3>
+14089da99: 0f 0b                       	ud2
+14089da9b: 0f 1f 44 00 00              	nopl	(%rax,%rax)
+14089daa0: 48 89 54 24 10              	movq	%rdx, 0x10(%rsp)
+14089daa5: 55                          	pushq	%rbp
+14089daa6: 56                          	pushq	%rsi
+14089daa7: 57                          	pushq	%rdi
+14089daa8: 48 83 ec 20                 	subq	$0x20, %rsp
+14089daac: 48 8d 6a 30                 	leaq	0x30(%rdx), %rbp
+14089dab0: 48 8b 4d f0                 	movq	-0x10(%rbp), %rcx
+14089dab4: e8 e7 d2 ff ff              	callq	0x14089ada0 <.text+0x899da0>
+14089dab9: 90                          	nop
+14089daba: 48 83 c4 20                 	addq	$0x20, %rsp
+14089dabe: 5f                          	popq	%rdi
+14089dabf: 5e                          	popq	%rsi
+14089dac0: 5d                          	popq	%rbp
+14089dac1: c3                          	retq

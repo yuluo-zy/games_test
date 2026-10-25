@@ -1,0 +1,431 @@
+//! One unchanged original B shader, through the existing production lowering,
+//! graph, descriptor heap and real GPU. No country-core/application dependency.
+mod gpu_test_support;
+use ash::vk::{self, Handle};
+use rhapsody::{
+    bindless::{
+        BindlessConfig, BindlessHeap, BindlessParameters, BindlessResource, BindlessShaderPackage,
+    },
+    device::{Device, DeviceConfig},
+    pipeline::{AsyncPipelineCompiler, CompilerConfig, PipelineCache},
+    raw::instance::{InstanceBuilder, ValidationMessenger},
+    resource::{
+        Buffer, BufferDesc, DynamicConstants, Texture, TextureDesc, TextureViewDesc,
+        init_texture_data,
+    },
+    rg::{
+        AccessRange, AccessTable, PassContext, ResourceSpec, VulkanGraphBackend, VulkanGraphSession,
+    },
+};
+use shader_pipeline::{
+    compiled::{CompiledShaderPipeline, ShaderStage},
+    reflection::BindingLocation,
+};
+use std::{sync::Arc, time::Duration};
+
+// Entire immutable original container SHA256:
+// cf8410f4fb3691bfc701cd30a04078893552e7a31df325f7d1c99b88b552f3df.
+// Its single original raw SPV [23..5023] SHA256:
+// ff30af76281df60e184e76fb27799ae941f86eac34c8f8f08250723b1579eda9.
+const ORIGINAL: &[u8] = include_bytes!("data/reverse_blur_original_B.bin");
+const READ: u8 = 0x19;
+const GENERAL: u8 = 0x37;
+const TRANSFER_READ: u8 = 0x25;
+const TRANSFER_WRITE: u8 = 0x34;
+const HOST_READ: u8 = 0x26;
+
+fn range(mip: u32) -> AccessRange {
+    AccessRange::Texture {
+        aspect_mask: 1,
+        base_mip_level: mip,
+        level_count: 1,
+        base_array_layer: 0,
+        layer_count: 1,
+    }
+}
+fn original() -> CompiledShaderPipeline {
+    assert_eq!(ORIGINAL.len(), 5657);
+    let original = CompiledShaderPipeline::decode(ORIGINAL).unwrap();
+    assert_eq!(original.stages.len(), 1);
+    assert_eq!(original.stages[0].stage, ShaderStage::Compute);
+    assert_eq!(original.stages[0].entry_point, "cs_main");
+    assert_eq!(
+        original.stages[0].spirv_bytes().as_slice(),
+        &ORIGINAL[23..5023]
+    );
+    assert_eq!(original.reflection.local_size, Some([8, 8, 1]));
+    let uniform = original.reflection.uniform_block.as_ref().unwrap();
+    assert_eq!(
+        uniform.binding,
+        BindingLocation {
+            set: 0,
+            binding: 16
+        }
+    );
+    assert!(uniform.byte_size >= 12);
+    assert!(
+        uniform
+            .name_offsets
+            .iter()
+            .any(|(name, offset)| name == "output_extent" && *offset == 0)
+    );
+    assert!(
+        uniform
+            .name_offsets
+            .iter()
+            .any(|(name, offset)| name == "sample_self" && *offset == 8)
+    );
+    original
+}
+
+// Exactly representable fixture colors for R11G11B10 UFLOAT: gray zero, 1/4, 1.
+// These initialize only the genuine partial input. Full is never uploaded/cleared.
+fn partial_color(mip: u32, levels: u32) -> (u32, f32) {
+    if mip + 1 == levels {
+        (0x781e03c0, 1.0)
+    } else if mip == 1 {
+        (0x681a0340, 0.25)
+    } else {
+        (0, 0.0)
+    }
+}
+fn decode_component(value: u32, fraction_bits: u32) -> f32 {
+    let fraction = value & ((1 << fraction_bits) - 1);
+    let exponent = (value >> fraction_bits) & 31;
+    match exponent {
+        0 => (fraction as f32) * 2f32.powi(-14 - fraction_bits as i32),
+        31 => f32::INFINITY,
+        _ => {
+            (1.0 + fraction as f32 / (1 << fraction_bits) as f32) * 2f32.powi(exponent as i32 - 15)
+        }
+    }
+}
+fn selected(
+    texture: &rhapsody::resource::ManagedTexture,
+    mip: u32,
+    storage: bool,
+) -> rhapsody::Result<Arc<rhapsody::resource::TextureView>> {
+    let mut view = TextureViewDesc::new(&texture.desc)?;
+    view.base_mip_level = mip;
+    view.level_count = 1;
+    view.usage = if storage {
+        vk::ImageUsageFlags::STORAGE
+    } else {
+        vk::ImageUsageFlags::SAMPLED
+    };
+    Ok(texture.image_view(&view)?.view)
+}
+
+fn run_original_reverse(levels: u32) {
+    let initialized = (|| -> rhapsody::Result<_> {
+        let mut builder = InstanceBuilder::default();
+        if !builder.enable_validation()? {
+            return Err(rhapsody::Error::unsupported(
+                "Khronos validation layer unavailable",
+            ));
+        }
+        let instance = builder.build()?;
+        // Start collecting before logical device/pipeline/resource creation.
+        let validation = ValidationMessenger::new(&instance)?;
+        let device = Device::new(
+            instance,
+            None,
+            &DeviceConfig {
+                validation: true,
+                ..DeviceConfig::headless()
+            },
+        )?;
+        Ok((device, validation))
+    })();
+    let Some((device, validation)) =
+        gpu_test_support::initialize("original reverse blur validated device", initialized)
+    else {
+        return;
+    };
+    let original = original();
+    let uniform_size = original
+        .reflection
+        .uniform_block
+        .as_ref()
+        .unwrap()
+        .byte_size as usize;
+    let heap = BindlessHeap::new(
+        device.clone(),
+        BindlessConfig {
+            sampled_images: 16,
+            storage_images: 8,
+            storage_buffers: 16,
+            samplers: 4,
+        },
+    )
+    .unwrap();
+    let package = BindlessShaderPackage::new(&heap, &original, 64).unwrap();
+    let abi = package.abi.clone();
+    let compiler = AsyncPipelineCompiler::new(
+        Arc::new(PipelineCache::new(device.clone(), &[]).unwrap()),
+        CompilerConfig::default(),
+    )
+    .unwrap();
+    let pipeline = compiler
+        .request_compute_spirv(
+            package.stages[0].spirv_bytes(),
+            c"cs_main".to_owned(),
+            package.layout,
+        )
+        .unwrap()
+        .wait(Duration::from_secs(10))
+        .unwrap();
+    let sampler = device.get_built_in_sampler_by_name("sampler_lnc").unwrap();
+    let dynamic = Arc::new(parking_lot::Mutex::new(
+        DynamicConstants::new(device.clone()).unwrap(),
+    ));
+    // Every dispatch dimension is a multiple of original local size 8; no
+    // replacement shader bounds guard or extra out-of-range invocations.
+    let size = 8 << (levels - 1);
+    let desc = TextureDesc::new_2d(size, size, vk::Format::B10G11R11_UFLOAT_PACK32)
+        .mip_levels(levels as u8)
+        .usage(
+            vk::ImageUsageFlags::SAMPLED
+                | vk::ImageUsageFlags::STORAGE
+                | vk::ImageUsageFlags::TRANSFER_SRC
+                | vk::ImageUsageFlags::TRANSFER_DST,
+        );
+    let mut input = Vec::new();
+    let mut copies = Vec::new();
+    for mip in 0..levels {
+        let extent = size >> mip;
+        let word = partial_color(mip, levels).0;
+        copies.push(vk::BufferImageCopy {
+            buffer_offset: input.len() as u64,
+            image_subresource: vk::ImageSubresourceLayers {
+                aspect_mask: vk::ImageAspectFlags::COLOR,
+                mip_level: mip,
+                base_array_layer: 0,
+                layer_count: 1,
+            },
+            image_extent: vk::Extent3D {
+                width: extent,
+                height: extent,
+                depth: 1,
+            },
+            ..Default::default()
+        });
+        for _ in 0..extent * extent {
+            input.extend_from_slice(&word.to_le_bytes());
+        }
+    }
+    let partial = Texture::new_with_initial_data(device.clone(), &desc, true).unwrap();
+    init_texture_data(&device, &partial, &input).unwrap();
+    let readback = Arc::new(
+        Buffer::new(
+            device.clone(),
+            &BufferDesc::new_gpu_to_cpu(input.len() as u64, vk::BufferUsageFlags::TRANSFER_DST),
+        )
+        .unwrap(),
+    );
+    let mut session = VulkanGraphSession::new(
+        VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap(),
+    );
+    let mut graph = session.begin_frame().unwrap();
+    let partial_id = session
+        .import_frame_texture(&mut graph, Arc::new(partial), READ)
+        .unwrap();
+    // The first top sampled/storage alias is a fresh OriginSource::Create.
+    let full = session
+        .backend
+        .declare(
+            &mut graph,
+            "fresh full original reverse blur",
+            ResourceSpec::Image(desc),
+        )
+        .unwrap();
+    let out = session
+        .import_frame_buffer(&mut graph, readback.clone(), HOST_READ)
+        .unwrap();
+    for mip in (0..levels).rev() {
+        let next = (mip + 1).min(levels - 1);
+        let sample_self = mip + 1 != levels;
+        let extent = size >> mip;
+        let mut pass = graph.add_pass("original rev_blurN");
+        pass.on_queue(rhapsody::device::QueueClass::Compute);
+        pass.add_resource_access_range(partial_id, READ, 1, range(mip))
+            .unwrap();
+        if sample_self {
+            pass.add_resource_access_range(full, READ, 1, range(next))
+                .unwrap();
+        } else {
+            pass.add_undefined_content_read_range(full, READ, 1, range(next))
+                .unwrap();
+        }
+        pass.add_resource_access_range(full, GENERAL, 0, range(mip))
+            .unwrap();
+        let (device, heap, abi, pipeline, sampler, dynamic) = (
+            device.clone(),
+            heap.clone(),
+            abi.clone(),
+            pipeline.clone(),
+            sampler.clone(),
+            dynamic.clone(),
+        );
+        pass.render_with_result_context(move |ctx: PassContext<'_>| {
+            let managed = ctx
+                .managed
+                .ok_or_else(|| rhapsody::Error::invalid_usage("missing managed projection"))?;
+            let tail = managed.texture_for(partial_id.raw()).unwrap();
+            let full_texture = managed.texture_for(full.raw()).unwrap();
+            let tail_layout = ctx.image_layout_for_range(partial_id.raw(), range(mip))?;
+            let input_layout = ctx.image_layout_for_range(full.raw(), range(next))?;
+            let output_layout = ctx.image_layout_for_range(full.raw(), range(mip))?;
+            assert_eq!(tail_layout, vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+            assert_eq!(
+                input_layout,
+                if sample_self {
+                    vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL
+                } else {
+                    vk::ImageLayout::GENERAL
+                }
+            );
+            assert_eq!(output_layout, vk::ImageLayout::GENERAL);
+            let mut bindings = BindlessParameters::new(heap.clone(), abi.clone(), &[])?;
+            // These exact returned layouts enter the actual descriptor writes;
+            // bind_pass also independently validates native scope/range/layout.
+            bindings.write(
+                BindingLocation { set: 0, binding: 0 },
+                0,
+                BindlessResource::SampledImage {
+                    view: selected(&tail, mip, false)?,
+                    layout: tail_layout,
+                },
+            )?;
+            bindings.write(
+                BindingLocation { set: 0, binding: 1 },
+                0,
+                BindlessResource::SampledImage {
+                    view: selected(&full_texture, next, false)?,
+                    layout: input_layout,
+                },
+            )?;
+            bindings.write(
+                BindingLocation { set: 0, binding: 2 },
+                0,
+                BindlessResource::StorageImage(selected(&full_texture, mip, true)?),
+            )?;
+            bindings.write(
+                BindingLocation { set: 0, binding: 3 },
+                0,
+                BindlessResource::Sampler(sampler.clone()),
+            )?;
+            let mut globals = vec![0; uniform_size];
+            globals[0..4].copy_from_slice(&extent.to_le_bytes());
+            globals[4..8].copy_from_slice(&extent.to_le_bytes());
+            globals[8..12].copy_from_slice(&u32::from(sample_self).to_le_bytes());
+            let mut dynamic = dynamic.lock();
+            let uniform = dynamic.allocate_with_data(&globals)?;
+            bindings.write(
+                BindingLocation {
+                    set: 0,
+                    binding: 16,
+                },
+                0,
+                BindlessResource::Buffer {
+                    buffer: uniform.buffer.clone(),
+                    offset: uniform.offset,
+                    size: uniform.size,
+                },
+            )?;
+            let prepared = bindings.finish(|size| dynamic.allocate(size))?;
+            let command = vk::CommandBuffer::from_raw(ctx.command.handle());
+            unsafe {
+                pipeline.bind_pipeline(command);
+                prepared.bind_pass(&ctx, pipeline.clone())?;
+                device
+                    .raw_device()
+                    .cmd_dispatch(command, extent / 8, extent / 8, 1);
+            }
+            Ok(())
+        });
+    }
+    let mut pass = graph
+        .add_pass("copy actual original outputs")
+        .with_side_effect();
+    pass.add_resource_access(full, TRANSFER_READ, 0).unwrap();
+    pass.add_resource_access(out, TRANSFER_WRITE, 0).unwrap();
+    let copy_device = device.clone();
+    pass.render_with_result_context(move |ctx| {
+        let managed = ctx
+            .managed
+            .ok_or_else(|| rhapsody::Error::invalid_usage("missing copy resources"))?;
+        let texture = managed.texture_for(full.raw()).unwrap();
+        let output = managed.buffer_for(out.raw()).unwrap();
+        unsafe {
+            copy_device.raw_device().cmd_copy_image_to_buffer(
+                vk::CommandBuffer::from_raw(ctx.command.handle()),
+                texture.raw(),
+                vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                output.raw(),
+                &copies,
+            );
+        }
+        Ok(())
+    });
+    graph.export(out, HOST_READ).unwrap();
+    session.execute_frame(graph.build()).unwrap();
+    session.wait_submits_done(10_000_000_000).unwrap();
+    let mut actual = vec![0; input.len()];
+    unsafe {
+        readback
+            .read_bytes_after_completion(0, &mut actual)
+            .unwrap();
+    }
+    let mut expected = vec![0.0; levels as usize];
+    for mip in (0..levels).rev() {
+        let tail = partial_color(mip, levels).1;
+        expected[mip as usize] = if mip + 1 == levels {
+            tail
+        } else {
+            0.7 * expected[mip as usize + 1] + 0.3 * tail
+        };
+    }
+    let mut offset = 0;
+    for mip in 0..levels {
+        let extent = size >> mip;
+        for pixel in 0..extent * extent {
+            let index = offset + pixel as usize * 4;
+            let word = u32::from_le_bytes(actual[index..index + 4].try_into().unwrap());
+            let rgb = [
+                decode_component(word & 0x7ff, 6),
+                decode_component((word >> 11) & 0x7ff, 6),
+                decode_component((word >> 22) & 0x3ff, 5),
+            ];
+            for component in rgb {
+                assert!(
+                    component.is_finite() && (component - expected[mip as usize]).abs() <= 0.035,
+                    "original reverse mip{mip} pixel{pixel}: actual {rgb:?}, expected gray {}",
+                    expected[mip as usize]
+                );
+            }
+        }
+        offset += extent as usize * extent as usize * 4;
+    }
+    assert_eq!(compiler.stats().compiled, 1);
+    assert_eq!(device.retirement_stats().idle_waits, 0);
+    drop((
+        session, dynamic, pipeline, compiler, sampler, heap, readback, abi,
+    ));
+    device.try_collect_all_completed().unwrap();
+    drop(device);
+    let errors = validation.collector.errors();
+    assert!(
+        errors.is_empty(),
+        "original reverse Vulkan validation errors: {errors:#?}"
+    );
+}
+
+#[test]
+fn original_reverse_single_mip_false_branch_reads_but_outputs_tail() {
+    run_original_reverse(1);
+}
+#[test]
+fn original_reverse_three_mips_keep_true_branch_producers_and_exact_descriptor_layouts() {
+    run_original_reverse(3);
+}

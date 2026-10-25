@@ -1,0 +1,14 @@
+{
+  "schema_version":1,
+  "types":[
+    {"name":"RawManagedHandle","classification":"observed_projection","size":24,"fields":{"0x0":"owner pointer","0x8":"control/resource pointer","0x10":"u32 generation","0x14":"u16 device ID","0x16":"u8 kind","0x17":"untouched padding"},"evidence":["handle-track.asm.txt","handle-clone.asm.txt","handle-drop.asm.txt"]},
+    {"name":"ControlBlockPrefix","classification":"observed_projection","fields":{"0x0":"u64 atomic last command sequence","0x8":"u32 atomic references","0xc":"u32 generation"},"evidence":["0x140bd6a70.c","0x1418af800.c"]},
+    {"name":"DroppedWasteRecord","classification":"observed_projection","size":16,"fields":{"0x0":"control pointer","0x8":"u32 generation","0xc":"u16 device","0xe":"u8 kind","0xf":"padding/unobserved"},"evidence":["handle-drop.asm.txt","take-out-waste.asm.txt"]},
+    {"name":"CommandBuffer","classification":"observed_projection","size":88,"fields":{"0x0":"state tag","0x8":"u64 command sequence","0x10":"queue tag","0x14":"auxiliary index","0x48":"VkCommandBuffer","0x50":"pool/family identity"},"tags":{"0":"initial","1":"recording","2":"ended","3":"submitted"},"evidence":["0x140bed050.c","0x140bed230.c","0x140bed3d0.c","0x140c04e20.c"]},
+    {"name":"Queue","classification":"observed_projection","size":176,"fields":{"0x0":"pending timeline deque","0x20":"pending command deque","0x40":"SequentialDisposal","0x68":"queue identity","0x80":"completion counter","0x88":"timeline semaphore"},"evidence":["../executor-temporal/0x140bf0b90.c","0x140bf0cc0.c"]},
+    {"name":"PendingCommand","classification":"observed_projection","size":96,"fields":{"0x0":"88-byte submitted command projection","0x58":"u64 timeline threshold"},"evidence":["0x140bf0cc0.c"]},
+    {"name":"SequentialDisposal","classification":"observed_projection","size":40,"fields":{"0x0":"VecDeque optional-ready sequences","0x20":"last contiguous disposed sequence"},"evidence":["0x1418c7ae0.c"]},
+    {"name":"CommandBufferDisposalBuckets","classification":"observed_projection","key":"u64 command sequence","payload_size":240,"evidence":["0x1418c4100.c","0x1418c4260.c","0x1418c6af0.c"]}
+  ],
+  "abi_warning":"PDB void signatures are placeholders; projections are not original full Rust types."
+}

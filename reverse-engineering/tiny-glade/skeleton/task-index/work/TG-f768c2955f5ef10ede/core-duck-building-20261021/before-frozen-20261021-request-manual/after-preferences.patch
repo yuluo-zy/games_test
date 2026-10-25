@@ -1,0 +1,234 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs.rs
+@@ -1,7 +1,7 @@
+ //! 玩家楼梯的图到几何计算，沿既有模块逐段恢复原 B 业务。
+ //!
+-//! 已绑定完整原码：节点 fold、锚点派生、段类型、对齐组合搜索、装配参数计算。
+-//! 原 shape 遍历、完整请求 producer、装饰生成和图编辑仍按各自合同推进；
++//! 已绑定完整原码：节点 fold、锚点派生、形状遍历、对齐组合、装配计算与短请求。
++//! 完整请求 producer、装饰生成和图编辑仍按各自合同推进；
+ //! 本计算器不通过空资源或默认请求代替这些尚未接线的上游。
+ 
+ use bevy_ecs::prelude::*;
+@@ -259,6 +259,78 @@
+             _ => { alignment.flag = flags & 1; alignment.byte_2 = (flags >> 1) & 1; }
+         }
+     }
++}
++
++/// 原 closure1 的 28 字节临时值；这不是发布给下游的 AdjustedStairEdge。
++fn aligned_stair_control_point(
++    points: &std::collections::HashMap<DecoratorId, StairPoint>,
++    alignments: &petgraph::graphmap::DiGraphMap<DecoratorId, AlignKind, std::hash::RandomState>,
++    from: DecoratorId,
++    to: DecoratorId,
++) -> (Vec2, AlignKind) {
++    let point = points.get(&from).expect("stair control point: missing point");
++    let alignment = *alignments.edge_weight(from, to)
++        .expect("stair control point: missing alignment");
++    // 原 140285a90 在复制 kind 后再次 required 借同一条有向边，才求宽度偏移。
++    let offset = alignments.edge_weight(from, to)
++        .expect("stair control point: missing alignment").position_offset(point.width);
++    (Vec2::new(point.position.x, point.position.z) + offset, alignment)
++}
++
++/// 同一帧真实 owner 的借用分组；不建立另一份墙、缓存或高度权威。
++struct StairRequestSources<'a> {
++    storage: &'a DecoratorStorage,
++    cached: &'a CachedDecoratorTransforms,
++    walls: &'a PublicWalls,
++    stairs: &'a StairsState,
++    terrain: &'a TerrainHeightsData<VisualTerrainHeightSsbo>,
++}
++
++/// 原 source983..1078 的短出射请求，同时供孤点和整条路径失败后的首边使用。
++fn make_short_stair_request(
++    sources: &StairRequestSources<'_>,
++    points: &std::collections::HashMap<DecoratorId, StairPoint>,
++    endpoint_ids: [DecoratorId; 2],
++    dirty_edges: &std::collections::HashSet<StairGraphEdge>,
++) -> Option<PlayermadeStairsAssemblyParams> {
++    let [a, b] = endpoint_ids;
++    let from = points.get(&a).expect("short stair request: missing first point");
++    let to = points.get(&b).expect("short stair request: missing second point");
++    let (direction, height_extra, horizontal_extra) = if let Some(normal) = from.wall_normal {
++        (Vec3::new(normal.x, 0.0, normal.y), -1.0, -0.0)
++    } else {
++        // 原 basis 保留两个负零，且不把有限但未归一的缓存 Quat 擅自归一化。
++        (sources.cached.transform(a.0).rotation * Vec3::new(-0.0, -0.0, -1.0), 1.0, 0.0)
++    };
++    let start = Vec2::new(from.position.x, from.position.z);
++    let direction_xz = Vec2::new(direction.x, direction.z);
++    let end = (start + direction_xz) + Vec2::splat(horizontal_extra);
++    // 此处唯一的 None 就是原两点 CurveTry(true) 的 Err；不能改用 compute 默认值。
++    let curve = utils::curve::Curve2::try_new_from_points(vec![start, end], true).ok()?;
++    let heights = vec![from.position.y, (from.position.y + direction.y) + height_extra];
++    let widths = vec![from.width; 2];
++    let tangents = vec![direction_xz.normalize_or_zero(); 2];
++    let (kind, flag) = determine_segment_type(&curve.points, &heights);
++    let mut sub_segments = StairSubSegments::new();
++    sub_segments.push(StairSubSegment { kind, flag, count: 1 });
++    let mut terrain_contacts = bitvec::vec::BitVec::<usize, bitvec::order::Lsb0>::repeat(false, 2);
++    // 原只采中心点并作 ordered 严格比较；没有左右半宽、-.025 或抬高 height。
++    terrain_contacts.set(0, sources.terrain.sample_at_world_xz(start.x, start.y) + 0.1 > heights[0]);
++    terrain_contacts.set(1, sources.terrain.sample_at_world_xz(end.x, end.y) + 0.1 > heights[1]);
++    let segment = StairSegment::new(a, b);
++    let first_info = sources.storage.get(from.addr).and_then(|bucket| bucket.get(from.id))
++        .expect("short stair request: missing first decorator");
++    let first_node = derive_stair_node_params(first_info, sources.walls, sources.stairs, from.addr, from.id);
++    // 原 281fdc 派生首端以后，282007 才 required 读取第二端；保留失败先后。
++    let second_info = sources.storage.get(to.addr).and_then(|bucket| bucket.get(to.id))
++        .expect("short stair request: missing second decorator");
++    let second_node = derive_stair_node_params(second_info, sources.walls, sources.stairs, to.addr, to.id);
++    let dirty = dirty_edges.contains(&StairGraphEdge::from(segment));
++    Some(PlayermadeStairsAssemblyParams {
++        curve, heights, widths, tangents,
++        auxiliary_samples: Vec::new(), interpolated_curve: None,
++        nodes: [first_node, second_node], terrain_contacts, segment, sub_segments, dirty,
++    })
+ }
+ 
+ /// 0x140803dd0（O 结构）：生成玩家楼梯装饰视觉（walk_shape 消费 + 蓝图）。
+@@ -1385,4 +1457,141 @@
+         assert_eq!(result[0].0.second.y.to_bits(), 0xffc0_0000);
+     }
+ 
+-}
++    fn short_request_points(world: &World) -> std::collections::HashMap<DecoratorId, StairPoint> {
++        collect_stair_points(world.resource::<DecoratorStorage>(),
++            world.resource::<CachedDecoratorTransforms>(), world.resource::<PublicWalls>(),
++            world.resource::<StairsState>())
++    }
++
++    fn run_short_request(
++        world: &World, points: &std::collections::HashMap<DecoratorId, StairPoint>,
++        ids: [DecoratorId; 2], dirty: &std::collections::HashSet<StairGraphEdge>,
++    ) -> Option<PlayermadeStairsAssemblyParams> {
++        make_short_stair_request(&StairRequestSources {
++            storage: world.resource::<DecoratorStorage>(), cached: world.resource::<CachedDecoratorTransforms>(),
++            walls: world.resource::<PublicWalls>(), stairs: world.resource::<StairsState>(),
++            terrain: world.resource::<TerrainHeightsData<VisualTerrainHeightSsbo>>(),
++        }, points, ids, dirty)
++    }
++
++    #[test]
++    fn control_point_uses_directed_alignment_and_never_requires_target_point() {
++        let world = compute_world([3.0, 9.0], [2.0, 8.0]);
++        let mut points = short_request_points(&world);
++        points.remove(&DecoratorId(7));
++        let mut alignments = petgraph::graphmap::DiGraphMap::default();
++        let kind = AlignKind { tag: 0, flag: 1, first: Vec2::X, ..AlignKind::default() };
++        alignments.add_edge(DecoratorId(29), DecoratorId(7), kind);
++        alignments.add_edge(DecoratorId(7), DecoratorId(29),
++            AlignKind { tag: 2, ..AlignKind::default() });
++        assert_eq!(aligned_stair_control_point(&points, &alignments, DecoratorId(29), DecoratorId(7)),
++            (Vec2::new(2.0, 0.0), kind));
++    }
++
++    #[test]
++    #[should_panic(expected = "missing point")]
++    fn control_point_checks_point_before_missing_alignment() {
++        aligned_stair_control_point(&Default::default(), &Default::default(), DecoratorId(29), DecoratorId(7));
++    }
++
++    #[test]
++    fn short_failed_edge_keeps_first_geometry_and_actual_second_anchor() {
++        let mut world = compute_world([3.0, 9.0], [2.0, 8.0]);
++        world.resource_mut::<TerrainHeightsData<VisualTerrainHeightSsbo>>().set_height_range(3.0, 3.0);
++        let points = short_request_points(&world);
++        let mut dirty = std::collections::HashSet::new();
++        dirty.insert(StairGraphEdge::new(29, 7));
++        let result = run_short_request(&world, &points, [DecoratorId(29), DecoratorId(7)], &dirty).unwrap();
++        assert_eq!(result.curve.points, vec![Vec2::ZERO, Vec2::new(0.0, -1.0)]);
++        assert_eq!(result.heights, vec![3.0, 4.0]);
++        assert_eq!(result.widths, vec![2.0, 2.0]);
++        assert_eq!(result.tangents, vec![Vec2::NEG_Y; 2]);
++        assert_eq!(result.nodes, [(StairNodeAnchor::Terrain { height: 3.0 }, 1),
++            (StairNodeAnchor::Terrain { height: 9.0 }, 1)]);
++        assert_eq!(result.segment.nodes(), (DecoratorId(7), DecoratorId(29)));
++        assert_eq!(result.sub_segments.as_slice(), &[StairSubSegment { kind: 2, flag: 1, count: 1 }]);
++        assert!(result.terrain_contacts[0]);
++        assert!(!result.terrain_contacts[1]);
++        assert!(result.dirty);
++        assert!(result.auxiliary_samples.is_empty());
++        assert!(result.interpolated_curve.is_none());
++    }
++
++    #[test]
++    fn short_isolated_point_keeps_non_unit_cached_quaternion_and_nan_mask_policy() {
++        use country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransform;
++        let mut world = compute_world([0.0, 0.0], [1.0, 2.0]);
++        world.resource_mut::<CachedDecoratorTransforms>().insert(29, CachedDecoratorTransform {
++            rotation: glam::Quat::from_xyzw(0.0, 0.0, 0.0, 2.0),
++            translation: Vec3::ZERO, scale: Vec3::ONE,
++        });
++        world.resource_mut::<TerrainHeightsData<VisualTerrainHeightSsbo>>().set_height_range(f32::NAN, f32::NAN);
++        let points = short_request_points(&world);
++        let result = run_short_request(&world, &points, [DecoratorId(29); 2], &Default::default()).unwrap();
++        assert_eq!(result.curve.points, vec![Vec2::ZERO, Vec2::new(0.0, -4.0)]);
++        assert_eq!(result.heights, vec![0.0, 1.0]);
++        assert_eq!(result.sub_segments.as_slice(), &[StairSubSegment { kind: 1, flag: 1, count: 1 }]);
++        assert_eq!(result.segment.nodes(), (DecoratorId(29), DecoratorId(29)));
++        assert!(result.terrain_contacts.iter().all(|bit| !*bit));
++    }
++
++    #[test]
++    fn short_wall_point_uses_real_normal_without_reading_cached_quaternion() {
++        use country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransform;
++        let (walls, wall_id) = published_wall();
++        let mut world = compute_world([4.0, 0.0], [2.0, 2.0]);
++        world.insert_resource(walls);
++        world.resource_mut::<DecoratorStorage>().apply_decorator_place(
++            DecoratorStorageAddr::Wall(wall_id), DecoratorId(29), &stair_info(0, 4.0, 2.0));
++        world.resource_mut::<CachedDecoratorTransforms>().insert(29, CachedDecoratorTransform {
++            rotation: glam::Quat::from_xyzw(0.0, 0.0, 0.0, 0.0),
++            translation: Vec3::new(1.0, 4.0, 2.0), scale: Vec3::ONE,
++        });
++        let points = short_request_points(&world);
++        let normal = points[&DecoratorId(29)].wall_normal.unwrap();
++        world.insert_resource(CachedDecoratorTransforms::default());
++        let result = run_short_request(&world, &points, [DecoratorId(29); 2], &Default::default()).unwrap();
++        assert_eq!(result.curve.points, vec![Vec2::new(1.0, 2.0), Vec2::new(1.0, 2.0) + normal]);
++        assert_eq!(result.heights, vec![4.0, 3.0]);
++        assert!(matches!(result.nodes[0].0, StairNodeAnchor::Wall(_)));
++    }
++
++    #[test]
++    fn short_curve_failure_happens_before_late_decorator_lookups() {
++        use country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransform;
++        let mut world = compute_world([0.0, 0.0], [1.0, 1.0]);
++        world.resource_mut::<CachedDecoratorTransforms>().insert(29, CachedDecoratorTransform {
++            rotation: glam::Quat::from_xyzw(0.0, 0.0, 0.0, 0.0),
++            translation: Vec3::ZERO, scale: Vec3::ONE,
++        });
++        let points = short_request_points(&world);
++        world.resource_mut::<DecoratorStorage>().get_mut(DecoratorStorageAddr::Terrain).unwrap()
++            .remove(DecoratorId(29));
++        assert!(run_short_request(&world, &points, [DecoratorId(29); 2], &Default::default()).is_none());
++    }
++
++    #[test]
++    #[should_panic(expected = "missing second point")]
++    fn short_second_point_is_required_before_cached_direction() {
++        let mut world = compute_world([0.0, 0.0], [1.0, 1.0]);
++        let mut points = short_request_points(&world);
++        points.remove(&DecoratorId(7));
++        world.insert_resource(CachedDecoratorTransforms::default());
++        run_short_request(&world, &points, [DecoratorId(29), DecoratorId(7)], &Default::default());
++    }
++
++    #[test]
++    #[should_panic(expected = "internal error: entered unreachable code")]
++    fn short_first_anchor_is_derived_before_second_decorator_lookup() {
++        let mut world = compute_world([0.0, 0.0], [1.0, 1.0]);
++        let points = short_request_points(&world);
++        let mut storage = world.resource_mut::<DecoratorStorage>();
++        let bucket = storage.get_mut(DecoratorStorageAddr::Terrain).unwrap();
++        let info = bucket.get_mut(DecoratorId(29)).unwrap();
++        info.u20 = (info.u20 & 0xff00_ffff) | (4 << 16);
++        bucket.remove(DecoratorId(7));
++        drop(storage);
++        run_short_request(&world, &points, [DecoratorId(29), DecoratorId(7)], &Default::default());
++    }
++
++}

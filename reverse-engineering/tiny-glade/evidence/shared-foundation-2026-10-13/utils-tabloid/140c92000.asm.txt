@@ -1,0 +1,35 @@
+utils::wall_space::WallSpaceCoord::from_curve_internal_coord::h268e5b71461535d7
+0x140c92000: sub rsp, 0x28
+0x140c92004: mov ecx, ecx
+0x140c92006: mov rdx, qword ptr [r9 + 0x28]
+0x140c9200a: cmp rdx, rcx
+0x140c9200d: jbe 0x140c9206e
+0x140c9200f: lea rax, [rcx + 1]
+0x140c92013: cmp rax, rdx
+0x140c92016: jae 0x140c9207a
+0x140c92018: xorps xmm0, xmm0
+0x140c9201b: ucomiss xmm1, xmm0
+0x140c9201e: jb 0x140c92056
+0x140c92020: movss xmm0, dword ptr [rip + 0x1c938dc] ; [0x142925904]=0000803f f32=1.0
+0x140c92028: ucomiss xmm0, xmm1
+0x140c9202b: jb 0x140c92056
+0x140c9202d: mov rax, qword ptr [r9 + 0x20]
+0x140c92031: movss xmm3, dword ptr [rax + rcx*4]
+0x140c92036: movss xmm0, dword ptr [rax + rcx*4 + 4]
+0x140c9203c: subss xmm0, xmm3
+0x140c92040: mulss xmm0, xmm1
+0x140c92044: addss xmm0, xmm3
+0x140c92048: mulss xmm0, dword ptr [r9 + 0x30]
+0x140c9204e: movaps xmm1, xmm2
+0x140c92051: add rsp, 0x28
+0x140c92055: ret 
+0x140c92056: lea rcx, [rip + 0x21df788] ; [0x142e717e5]=61737365 f32=7.185396378077638e+22
+0x140c9205d: lea r8, [rip + 0x21df7cc] ; [0x142e71830]=0f18e742 f32=115.54698944091797
+0x140c92064: mov edx, 0x2a
+0x140c92069: call 0x1428d9430
+0x140c9206e: lea r8, [rip + 0x21df62b] ; [0x142e716a0]=db14e742 f32=115.54073333740234
+0x140c92075: call 0x1428d9518
+0x140c9207a: lea r8, [rip + 0x21df637] ; [0x142e716b8]=db14e742 f32=115.54073333740234
+0x140c92081: mov rcx, rax
+0x140c92084: call 0x1428d9518
+0x140c92089: int3 

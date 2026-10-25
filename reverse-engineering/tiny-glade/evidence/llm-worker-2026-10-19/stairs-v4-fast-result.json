@@ -1,0 +1,386 @@
+{
+  "id": "B-replay-stairs-v4-fast",
+  "input_sha256": "d23698d5ee4ec83e9af891d5a52ac2099251d453e264d6e5381bd18076332443",
+  "prompt_sha256": "5c66b1acd11c82c31604b80c6412cf264e05c1a53e811b8e8837139c7ba0ed55",
+  "packet_sha256": "6ad2146b88b68b736c479aef9009d1396fd2086777c7617793b6e255dec76624",
+  "model": "deepseek-ai/DeepSeek-V4.1-Flash",
+  "endpoint_origin": "https://it-litellm.espressif.cn",
+  "request_options": {
+    "max_tokens": 8000,
+    "thinking": "template-disabled"
+  },
+  "elapsed_seconds": 23.938,
+  "finish_reason": "stop",
+  "usage": {
+    "completion_tokens": 3007,
+    "prompt_tokens": 15918,
+    "total_tokens": 18925,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    }
+  },
+  "accepted_transport": true,
+  "semantically_verified": false,
+  "validation_errors": [],
+  "analysis": {
+    "summary": "Read-only contract for replay_stairs (0x140af75b0): replays queued stair records, indexing marked records, collecting completion indices, then removing them in reverse with per-tag drops and tail compaction.",
+    "observations": [
+      {
+        "id": "O1",
+        "claim": "Observed: early-return guard when *(puVar33+0x18)==0 (no source records) after writing *param_1[2] from param_1+0x1c.",
+        "refs": [
+          "D1:L114-L120"
+        ]
+      },
+      {
+        "id": "O2",
+        "claim": "Observed: two record kinds distinguished by byte at record+0 (c=='\\n') and by flag bit at record_data+0x10 bit0; both converge on the same lookup/emit tail via joined labels.",
+        "refs": [
+          "D1:L183-L193",
+          "D1:L335-L354"
+        ]
+      },
+      {
+        "id": "O3",
+        "claim": "Inferred: repeated hash-of-candidate probing at L219-L311 and L380-L472 is an unchanged library container lookup (pointer-free decompiler artifact), preserving container mutation order; internals not reconstructed.",
+        "refs": [
+          "D1:L218-L312",
+          "D1:L379-L473"
+        ]
+      },
+      {
+        "id": "O4",
+        "claim": "Observed: completion indices pushed into a temporary stack buffer (puStack_c8) with capacity check calling FUN_140b81df0, then reversed before removal loop.",
+        "refs": [
+          "D1:L187-L190",
+          "D1:L347-L350",
+          "D1:L520-L566"
+        ]
+      }
+    ],
+    "branch_matrix": [
+      {
+        "condition": "puVar33[3]==0",
+        "effect": "return; no side effects",
+        "refs": [
+          "D1:L118-L120"
+        ]
+      },
+      {
+        "condition": "puVar33[2] < *puVar33 at L123",
+        "effect": "uVar28 forced 0 for base offset computation",
+        "refs": [
+          "D1:L123-L126"
+        ]
+      },
+      {
+        "condition": "record byte0 == '\\n'",
+        "effect": "take path A (first lookup block L194-L312)",
+        "refs": [
+          "D1:L183-L193"
+        ]
+      },
+      {
+        "condition": "record byte0 != '\\n'",
+        "effect": "take path B float-budget block L335-L354",
+        "refs": [
+          "D1:L335-L344"
+        ]
+      },
+      {
+        "condition": "path A, record_data[0x10] bit0 == 0",
+        "effect": "goto L355 code_r0x000140af77bd (lookup B block)",
+        "refs": [
+          "D1:L192-L193"
+        ]
+      },
+      {
+        "condition": "path A, record_data[0x10] bit0 != 0",
+        "effect": "fall through into L194 emit-A block",
+        "refs": [
+          "D1:L192-L194"
+        ]
+      },
+      {
+        "condition": "path B, x/fVar3 <= fVar22 (0.05f, C1)",
+        "effect": "fVar17 = fVar22 (floor)",
+        "refs": [
+          "D1:L336-L339",
+          "C1:L1"
+        ]
+      },
+      {
+        "condition": "path B, record[0x18] <= fVar17",
+        "effect": "record[0x18] += lVar34[0x28]; goto code_r0x000140af7722 (continue, no index push)",
+        "refs": [
+          "D1:L340-L343"
+        ]
+      },
+      {
+        "condition": "path B, record[0x18] > fVar17",
+        "effect": "push index uVar38; record[0x18]+=lVar34[0x28]; dispatch on next flag bit",
+        "refs": [
+          "D1:L345-L354"
+        ]
+      },
+      {
+        "condition": "path B, dispatch record_data[0x10] bit0 != 0",
+        "effect": "goto L355 (lookup B)",
+        "refs": [
+          "D1:L353-L354"
+        ]
+      },
+      {
+        "condition": "path A or B, record+0x1c == 0",
+        "effect": "FUN_1405b1be0 + FUN_140b76ce0 emit (variant-0 shape)",
+        "refs": [
+          "D1:L208-L211",
+          "D1:L369-L374"
+        ]
+      },
+      {
+        "condition": "path A or B, record+0x1c != 0",
+        "effect": "FUN_1402c8640(lStack_e8,rec[+4],rec[+8])",
+        "refs": [
+          "D1:L212-L214",
+          "D1:L369-L371"
+        ]
+      },
+      {
+        "condition": "path B, after L489: cVar40 = pcStack_a8[0x1c]; then at L497 cVar40 = cVar40 + 0x11",
+        "effect": "output tag = record[0x1c] + 0x11 for path B",
+        "refs": [
+          "D1:L376-L377",
+          "D1:L497-L502"
+        ]
+      },
+      {
+        "condition": "path A: cVar40 = '\\x12' - pcStack_a8[0x1c] at L215",
+        "effect": "output tag = 0x12 - record[0x1c] for path A",
+        "refs": [
+          "D1:L206-L207",
+          "D1:L215",
+          "D1:L502"
+        ]
+      },
+      {
+        "condition": "puVar31==0 (lookup absent)",
+        "effect": "uVar67=uVar68=0 payload zero",
+        "refs": [
+          "D1:L317-L324",
+          "D1:L479-L486"
+        ]
+      },
+      {
+        "condition": "puVar31!=0",
+        "effect": "payload low/high 32-bit from *puVar31",
+        "refs": [
+          "D1:L321-L324",
+          "D1:L483-L486"
+        ]
+      },
+      {
+        "condition": "lVar35 == *(lVar8+0x20) (capacity check before push)",
+        "effect": "FUN_1406319d0(lVar8+0x20) grow",
+        "refs": [
+          "D1:L331-L332",
+          "D1:L494-L495"
+        ]
+      },
+      {
+        "condition": "output record byte at +0x30 written 1; counters +0x30 and +0x40 incremented",
+        "effect": "push completed output",
+        "refs": [
+          "D1:L514-L516"
+        ]
+      },
+      {
+        "condition": "uStack_c0 > 1 at end",
+        "effect": "reverse completion-index buffer (block + scalar tail)",
+        "refs": [
+          "D1:L521-L565"
+        ]
+      },
+      {
+        "condition": "uVar28 <= uVar41 during removal (bounds)",
+        "effect": "FUN_1428d90e9 panics (non-returning)",
+        "refs": [
+          "D1:L574-L580"
+        ]
+      },
+      {
+        "condition": "per-index removal loop over puStack_c8 until puVar39==puVar33",
+        "effect": "memmove tail, decrement len, switch drop by tag at uStack_118",
+        "refs": [
+          "D1:L569-L697"
+        ]
+      }
+    ],
+    "side_effects": [
+      {
+        "order": 1,
+        "effect": "Seed *param_1[2] = *(param_1+0x1c); read fVar3=*(puVar33+5), fVar22=0.05f",
+        "refs": [
+          "D1:L114-L117",
+          "C1:L1"
+        ]
+      },
+      {
+        "order": 2,
+        "effect": "Loop pushes completion indices into temp buffer; maybe FUN_140b81df0 grow",
+        "refs": [
+          "D1:L187-L190",
+          "D1:L347-L350"
+        ]
+      },
+      {
+        "order": 3,
+        "effect": "Writer setup: *puVar7=uStack_d8; *puVar9=uStack_d4; emit via FUN_1405b1be0/FUN_140b76ce0 (record[0x1c]==0) or FUN_1402c8640 (else)",
+        "refs": [
+          "D1:L207-L214",
+          "D1:L327-L374"
+        ]
+      },
+      {
+        "order": 4,
+        "effect": "Lookup internal calls FUN_140a1c930, FUN_1405b0ed0 (container hash)",
+        "refs": [
+          "D1:L196-L205",
+          "D1:L357-L366",
+          "D1:L219",
+          "D1:L380"
+        ]
+      },
+      {
+        "order": 5,
+        "effect": "Output record store: [0]=uVar27, byte+8=tag (path A: 0x12-rec[0x1c]; path B: rec[0x1c]+0x11), 16B at +9, 16B at +0x18, u64 at +0x28 = CONCAT44(uVar67,uVar68), byte+0x30=1",
+        "refs": [
+          "D1:L497-L502",
+          "D1:L206-L215",
+          "D1:L511-L514"
+        ]
+      },
+      {
+        "order": 6,
+        "effect": "Container counters: *(lVar8+0x30)=lVar35+1; *(lVar8+0x40)+=1 (capacity grow at +0x20 may pre-run L331/L494)",
+        "refs": [
+          "D1:L515-L516",
+          "D1:L331-L332",
+          "D1:L494-L495"
+        ]
+      },
+      {
+        "order": 7,
+        "effect": "Per removed index: read 0x30 bytes record, func_0x000142923c10 memmove tail, *(lVar25+0x10)=uVar28-1",
+        "refs": [
+          "D1:L583-L601"
+        ]
+      },
+      {
+        "order": 8,
+        "effect": "Switch on uStack_118 (0..9,default): atomic dec at *(plVar24)=*(plVar24)-1; if zero call per-tag drop: case0 FUN_140b5cfc0; case3 FUN_140b5c2a0; case4 FUN_140891eb0 (WallReplayCmd drop, S1); case5 func_0x140b5cd40; cases6,7 func_0x140b5d010; case8 FUN_140b5c040; case9 func_0x1402e5d80; default func_0x1406978e0; cases1,2 FUN_140b5cfc0",
+        "refs": [
+          "D1:L602-L695",
+          "S1:L1-L6"
+        ]
+      },
+      {
+        "order": 9,
+        "effect": "If plStack_b0!=0 free temp buffer func_0x140613c20(puStack_b8, plStack_b0<<3, 8)",
+        "refs": [
+          "D1:L699-L701"
+        ]
+      }
+    ],
+    "dependency_reuse": [
+      {
+        "operation": "Hash-container lookup on uVar6 with record id (FUN_140a1c930 + probe loop)",
+        "game_policy_to_preserve": "Lookup result absent -> zero payload (uVar67=uVar68=0); presence -> *puVar31 split into low/high u32; do not reconstruct internals",
+        "refs": [
+          "D1:L196-L205",
+          "D1:L317-L324"
+        ]
+      },
+      {
+        "operation": "Vec growth via FUN_1406319d0 when len==cap",
+        "game_policy_to_preserve": "Grow before pushing index/storing output; counter increments after store",
+        "refs": [
+          "D1:L331-L332",
+          "D1:L494-L495",
+          "D1:L515-L516"
+        ]
+      },
+      {
+        "operation": "Arc-style refcount drop with atomic dec and per-tag drop fn (inferred)",
+        "game_policy_to_preserve": "Dec then invoke drop only if count hits zero; preserve per-tag mapping exactly as decompiled cases",
+        "refs": [
+          "D1:L602-L695"
+        ]
+      }
+    ],
+    "unknowns": [
+      {
+        "question": "Identity/signature of FUN_140a1c930, FUN_1405b0ed0, FUN_1405b1be0, FUN_140b76ce0, FUN_1402c8640",
+        "needed_evidence": "Public symbol labels or signatures for these VAs",
+        "refs": [
+          "D1:L196",
+          "D1:L209-L213",
+          "D1:L357",
+          "D1:L373"
+        ]
+      },
+      {
+        "question": "Meaning of integer tag output slices at +9..+0x28 and output tag formulas (0x12-rec[0x1c], rec[0x1c]+0x11)",
+        "needed_evidence": "Rust source or type layout for replay command enum",
+        "refs": [
+          "D1:L206-L215",
+          "D1:L497-L514"
+        ]
+      },
+      {
+        "question": "Field at param_1+0x1c and param_1[2] target semantics (seed write)",
+        "needed_evidence": "Struct layout / caller type info",
+        "refs": [
+          "D1:L116",
+          "D1:L144-L169"
+        ]
+      },
+      {
+        "question": "Whether decompiler probe loop at L222-L311 reproduces intact container probing or is artifact; correctness of lookup absence semantics",
+        "needed_evidence": "Fresh disassembly of 0x140af77xx..0x140af7bxx region",
+        "refs": [
+          "D1:L218-L312",
+          "D1:L379-L473"
+        ]
+      },
+      {
+        "question": "Whether the L116 seed write happens before the L118 guard under all inputs (decompiled order)",
+        "needed_evidence": "Disassembly with instruction ordering",
+        "refs": [
+          "D1:L116-L118"
+        ]
+      }
+    ],
+    "integration_checks": [
+      "Preserve early return on no-records without touching container counters",
+      "Preserve path A tag formula 0x12-rec[0x1c] and path B tag formula rec[0x1c]+0x11 separately",
+      "Preserve float floor to 0.05f and strict complement of x<=fVar22 vs record[0x18]<=fVar17 with NaN semantics as written (comparisons <= only, else branches)",
+      "Preserve reverse-order removal, tail memmove, len decrement ordering, and per-tag atomic-dec drop mapping exactly as cases 0..9/default"
+    ],
+    "independent_followups": [
+      {
+        "task": "Disassemble FUN_140a1c930, FUN_1405b0ed0, FUN_1405b1be0, FUN_140b76ce0, FUN_1402c8640 to confirm signatures/return types",
+        "input_needed": "Original bytes at those VAs and PDB public symbols JSON",
+        "output_contract": "Per-function signature + absent/emitted side-effect classification",
+        "depends_on": "S1"
+      },
+      {
+        "task": "Resolve replay command enum tag order from retained history symbols and layout of record at +0 (0x30 bytes)",
+        "input_needed": "PDB type records or retained Rust source fragment",
+        "output_contract": "Tag->variant mapping proving case order 0..9/default assignment",
+        "depends_on": "S1"
+      }
+    ]
+  },
+  "content": "{\"summary\":\"Read-only contract for replay_stairs (0x140af75b0): replays queued stair records, indexing marked records, collecting completion indices, then removing them in reverse with per-tag drops and tail compaction.\",\"observations\":[{\"id\":\"O1\",\"claim\":\"Observed: early-return guard when *(puVar33+0x18)==0 (no source records) after writing *param_1[2] from param_1+0x1c.\",\"refs\":[\"D1:L114-L120\"]},{\"id\":\"O2\",\"claim\":\"Observed: two record kinds distinguished by byte at record+0 (c=='\\\\n') and by flag bit at record_data+0x10 bit0; both converge on the same lookup/emit tail via joined labels.\",\"refs\":[\"D1:L183-L193\",\"D1:L335-L354\"]},{\"id\":\"O3\",\"claim\":\"Inferred: repeated hash-of-candidate probing at L219-L311 and L380-L472 is an unchanged library container lookup (pointer-free decompiler artifact), preserving container mutation order; internals not reconstructed.\",\"refs\":[\"D1:L218-L312\",\"D1:L379-L473\"]},{\"id\":\"O4\",\"claim\":\"Observed: completion indices pushed into a temporary stack buffer (puStack_c8) with capacity check calling FUN_140b81df0, then reversed before removal loop.\",\"refs\":[\"D1:L187-L190\",\"D1:L347-L350\",\"D1:L520-L566\"]}],\"branch_matrix\":[{\"condition\":\"puVar33[3]==0\",\"effect\":\"return; no side effects\",\"refs\":[\"D1:L118-L120\"]},{\"condition\":\"puVar33[2] < *puVar33 at L123\",\"effect\":\"uVar28 forced 0 for base offset computation\",\"refs\":[\"D1:L123-L126\"]},{\"condition\":\"record byte0 == '\\\\n'\",\"effect\":\"take path A (first lookup block L194-L312)\",\"refs\":[\"D1:L183-L193\"]},{\"condition\":\"record byte0 != '\\\\n'\",\"effect\":\"take path B float-budget block L335-L354\",\"refs\":[\"D1:L335-L344\"]},{\"condition\":\"path A, record_data[0x10] bit0 == 0\",\"effect\":\"goto L355 code_r0x000140af77bd (lookup B block)\",\"refs\":[\"D1:L192-L193\"]},{\"condition\":\"path A, record_data[0x10] bit0 != 0\",\"effect\":\"fall through into L194 emit-A block\",\"refs\":[\"D1:L192-L194\"]},{\"condition\":\"path B, x/fVar3 <= fVar22 (0.05f, C1)\",\"effect\":\"fVar17 = fVar22 (floor)\",\"refs\":[\"D1:L336-L339\",\"C1:L1\"]},{\"condition\":\"path B, record[0x18] <= fVar17\",\"effect\":\"record[0x18] += lVar34[0x28]; goto code_r0x000140af7722 (continue, no index push)\",\"refs\":[\"D1:L340-L343\"]},{\"condition\":\"path B, record[0x18] > fVar17\",\"effect\":\"push index uVar38; record[0x18]+=lVar34[0x28]; dispatch on next flag bit\",\"refs\":[\"D1:L345-L354\"]},{\"condition\":\"path B, dispatch record_data[0x10] bit0 != 0\",\"effect\":\"goto L355 (lookup B)\",\"refs\":[\"D1:L353-L354\"]},{\"condition\":\"path A or B, record+0x1c == 0\",\"effect\":\"FUN_1405b1be0 + FUN_140b76ce0 emit (variant-0 shape)\",\"refs\":[\"D1:L208-L211\",\"D1:L369-L374\"]},{\"condition\":\"path A or B, record+0x1c != 0\",\"effect\":\"FUN_1402c8640(lStack_e8,rec[+4],rec[+8])\",\"refs\":[\"D1:L212-L214\",\"D1:L369-L371\"]},{\"condition\":\"path B, after L489: cVar40 = pcStack_a8[0x1c]; then at L497 cVar40 = cVar40 + 0x11\",\"effect\":\"output tag = record[0x1c] + 0x11 for path B\",\"refs\":[\"D1:L376-L377\",\"D1:L497-L502\"]},{\"condition\":\"path A: cVar40 = '\\\\x12' - pcStack_a8[0x1c] at L215\",\"effect\":\"output tag = 0x12 - record[0x1c] for path A\",\"refs\":[\"D1:L206-L207\",\"D1:L215\",\"D1:L502\"]},{\"condition\":\"puVar31==0 (lookup absent)\",\"effect\":\"uVar67=uVar68=0 payload zero\",\"refs\":[\"D1:L317-L324\",\"D1:L479-L486\"]},{\"condition\":\"puVar31!=0\",\"effect\":\"payload low/high 32-bit from *puVar31\",\"refs\":[\"D1:L321-L324\",\"D1:L483-L486\"]},{\"condition\":\"lVar35 == *(lVar8+0x20) (capacity check before push)\",\"effect\":\"FUN_1406319d0(lVar8+0x20) grow\",\"refs\":[\"D1:L331-L332\",\"D1:L494-L495\"]},{\"condition\":\"output record byte at +0x30 written 1; counters +0x30 and +0x40 incremented\",\"effect\":\"push completed output\",\"refs\":[\"D1:L514-L516\"]},{\"condition\":\"uStack_c0 > 1 at end\",\"effect\":\"reverse completion-index buffer (block + scalar tail)\",\"refs\":[\"D1:L521-L565\"]},{\"condition\":\"uVar28 <= uVar41 during removal (bounds)\",\"effect\":\"FUN_1428d90e9 panics (non-returning)\",\"refs\":[\"D1:L574-L580\"]},{\"condition\":\"per-index removal loop over puStack_c8 until puVar39==puVar33\",\"effect\":\"memmove tail, decrement len, switch drop by tag at uStack_118\",\"refs\":[\"D1:L569-L697\"]}],\"side_effects\":[{\"order\":1,\"effect\":\"Seed *param_1[2] = *(param_1+0x1c); read fVar3=*(puVar33+5), fVar22=0.05f\",\"refs\":[\"D1:L114-L117\",\"C1:L1\"]},{\"order\":2,\"effect\":\"Loop pushes completion indices into temp buffer; maybe FUN_140b81df0 grow\",\"refs\":[\"D1:L187-L190\",\"D1:L347-L350\"]},{\"order\":3,\"effect\":\"Writer setup: *puVar7=uStack_d8; *puVar9=uStack_d4; emit via FUN_1405b1be0/FUN_140b76ce0 (record[0x1c]==0) or FUN_1402c8640 (else)\",\"refs\":[\"D1:L207-L214\",\"D1:L327-L374\"]},{\"order\":4,\"effect\":\"Lookup internal calls FUN_140a1c930, FUN_1405b0ed0 (container hash)\",\"refs\":[\"D1:L196-L205\",\"D1:L357-L366\",\"D1:L219\",\"D1:L380\"]},{\"order\":5,\"effect\":\"Output record store: [0]=uVar27, byte+8=tag (path A: 0x12-rec[0x1c]; path B: rec[0x1c]+0x11), 16B at +9, 16B at +0x18, u64 at +0x28 = CONCAT44(uVar67,uVar68), byte+0x30=1\",\"refs\":[\"D1:L497-L502\",\"D1:L206-L215\",\"D1:L511-L514\"]},{\"order\":6,\"effect\":\"Container counters: *(lVar8+0x30)=lVar35+1; *(lVar8+0x40)+=1 (capacity grow at +0x20 may pre-run L331/L494)\",\"refs\":[\"D1:L515-L516\",\"D1:L331-L332\",\"D1:L494-L495\"]},{\"order\":7,\"effect\":\"Per removed index: read 0x30 bytes record, func_0x000142923c10 memmove tail, *(lVar25+0x10)=uVar28-1\",\"refs\":[\"D1:L583-L601\"]},{\"order\":8,\"effect\":\"Switch on uStack_118 (0..9,default): atomic dec at *(plVar24)=*(plVar24)-1; if zero call per-tag drop: case0 FUN_140b5cfc0; case3 FUN_140b5c2a0; case4 FUN_140891eb0 (WallReplayCmd drop, S1); case5 func_0x140b5cd40; cases6,7 func_0x140b5d010; case8 FUN_140b5c040; case9 func_0x1402e5d80; default func_0x1406978e0; cases1,2 FUN_140b5cfc0\",\"refs\":[\"D1:L602-L695\",\"S1:L1-L6\"]},{\"order\":9,\"effect\":\"If plStack_b0!=0 free temp buffer func_0x140613c20(puStack_b8, plStack_b0<<3, 8)\",\"refs\":[\"D1:L699-L701\"]}],\"dependency_reuse\":[{\"operation\":\"Hash-container lookup on uVar6 with record id (FUN_140a1c930 + probe loop)\",\"game_policy_to_preserve\":\"Lookup result absent -> zero payload (uVar67=uVar68=0); presence -> *puVar31 split into low/high u32; do not reconstruct internals\",\"refs\":[\"D1:L196-L205\",\"D1:L317-L324\"]},{\"operation\":\"Vec growth via FUN_1406319d0 when len==cap\",\"game_policy_to_preserve\":\"Grow before pushing index/storing output; counter increments after store\",\"refs\":[\"D1:L331-L332\",\"D1:L494-L495\",\"D1:L515-L516\"]},{\"operation\":\"Arc-style refcount drop with atomic dec and per-tag drop fn (inferred)\",\"game_policy_to_preserve\":\"Dec then invoke drop only if count hits zero; preserve per-tag mapping exactly as decompiled cases\",\"refs\":[\"D1:L602-L695\"]}],\"unknowns\":[{\"question\":\"Identity/signature of FUN_140a1c930, FUN_1405b0ed0, FUN_1405b1be0, FUN_140b76ce0, FUN_1402c8640\",\"needed_evidence\":\"Public symbol labels or signatures for these VAs\",\"refs\":[\"D1:L196\",\"D1:L209-L213\",\"D1:L357\",\"D1:L373\"]},{\"question\":\"Meaning of integer tag output slices at +9..+0x28 and output tag formulas (0x12-rec[0x1c], rec[0x1c]+0x11)\",\"needed_evidence\":\"Rust source or type layout for replay command enum\",\"refs\":[\"D1:L206-L215\",\"D1:L497-L514\"]},{\"question\":\"Field at param_1+0x1c and param_1[2] target semantics (seed write)\",\"needed_evidence\":\"Struct layout / caller type info\",\"refs\":[\"D1:L116\",\"D1:L144-L169\"]},{\"question\":\"Whether decompiler probe loop at L222-L311 reproduces intact container probing or is artifact; correctness of lookup absence semantics\",\"needed_evidence\":\"Fresh disassembly of 0x140af77xx..0x140af7bxx region\",\"refs\":[\"D1:L218-L312\",\"D1:L379-L473\"]},{\"question\":\"Whether the L116 seed write happens before the L118 guard under all inputs (decompiled order)\",\"needed_evidence\":\"Disassembly with instruction ordering\",\"refs\":[\"D1:L116-L118\"]}],\"integration_checks\":[\"Preserve early return on no-records without touching container counters\",\"Preserve path A tag formula 0x12-rec[0x1c] and path B tag formula rec[0x1c]+0x11 separately\",\"Preserve float floor to 0.05f and strict complement of x<=fVar22 vs record[0x18]<=fVar17 with NaN semantics as written (comparisons <= only, else branches)\",\"Preserve reverse-order removal, tail memmove, len decrement ordering, and per-tag atomic-dec drop mapping exactly as cases 0..9/default\"],\"independent_followups\":[{\"task\":\"Disassemble FUN_140a1c930, FUN_1405b0ed0, FUN_1405b1be0, FUN_140b76ce0, FUN_1402c8640 to confirm signatures/return types\",\"input_needed\":\"Original bytes at those VAs and PDB public symbols JSON\",\"output_contract\":\"Per-function signature + absent/emitted side-effect classification\",\"depends_on\":\"S1\"},{\"task\":\"Resolve replay command enum tag order from retained history symbols and layout of record at +0 (0x30 bytes)\",\"input_needed\":\"PDB type records or retained Rust source fragment\",\"output_contract\":\"Tag->variant mapping proving case order 0..9/default assignment\",\"depends_on\":\"S1\"}]}"
+}

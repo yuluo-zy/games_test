@@ -1,0 +1,94 @@
+Source: /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-eac12c8d24c206af39/no-world-undefined-20261019/reverse-blur-top-20261020/consumer-candidate/candidate/crates/tiny-glade/src/render_host.rs
+SHA256: 03184a90100cd0584fc890af601a8111f5b70bf8a502b3db6624f9153562a329
+
+862:         }
+863:         Ok(parameters)
+864:     }
+865:     pub fn image(
+866:         &self,
+867:         binding: u32,
+868:         view: Arc<rhapsody::resource::TextureView>,
+869:     ) -> rhapsody::Result<BindlessResource> {
+870:         let layout = match self
+871:             .abi
+872:             .slot(BindingLocation { set: 0, binding })
+873:             .map(|slot| slot.kind)
+874:         {
+875:             Some(BindingKind::StorageImage) => vk::ImageLayout::GENERAL,
+876:             Some(BindingKind::SampledImage) => vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+877:             _ => {
+878:                 return Err(rhapsody::Error::invalid_usage(
+879:                     "image binding differs from shader ABI",
+880:                 ));
+881:             }
+882:         };
+883:         self.image_with_layout(binding, view, layout)
+884:     }
+885: 
+886:     fn image_with_layout(
+887:         &self,
+888:         binding: u32,
+889:         view: Arc<rhapsody::resource::TextureView>,
+890:         layout: vk::ImageLayout,
+891:     ) -> rhapsody::Result<BindlessResource> {
+892:         let kind = self
+893:             .abi
+894:             .slot(BindingLocation { set: 0, binding })
+895:             .map(|slot| slot.kind)
+896:             .ok_or_else(|| {
+897:                 rhapsody::Error::invalid_usage("image binding is absent from shader ABI")
+898:             })?;
+899:         validate_image_binding_layout(kind, layout)?;
+900:         match kind {
+901:             BindingKind::StorageImage => Ok(BindlessResource::StorageImage(view)),
+902:             BindingKind::SampledImage => Ok(BindlessResource::SampledImage { view, layout }),
+903:             _ => unreachable!("validated image ABI kind"),
+904:         }
+905:     }
+906: 
+907:     fn image_for_pass(
+908:         &self,
+909:         ctx: &rhapsody::rg::PassContext<'_>,
+910:         resource: u32,
+911:         binding: u32,
+912:         view: Arc<rhapsody::resource::TextureView>,
+913:     ) -> rhapsody::Result<BindlessResource> {
+914:         let selected = view.desc;
+915:         let layout = ctx.image_layout_for_range(
+916:             resource,
+917:             rhapsody::rg::AccessRange::Texture {
+918:                 aspect_mask: selected.aspect.as_raw(),
+919:                 base_mip_level: selected.base_mip_level,
+920:                 level_count: selected.level_count,
+921:                 base_array_layer: selected.base_layer,
+922:                 layer_count: selected.layer_count,
+923:             },
+924:         )?;
+925:         self.image_with_layout(binding, view, layout)
+926:     }
+927: }
+928: 
+929: fn validate_image_binding_layout(
+930:     kind: BindingKind,
+931:     layout: vk::ImageLayout,
+932: ) -> rhapsody::Result<()> {
+933:     let valid = match kind {
+934:         BindingKind::SampledImage => matches!(
+935:             layout,
+936:             vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL | vk::ImageLayout::GENERAL
+937:         ),
+938:         BindingKind::StorageImage => layout == vk::ImageLayout::GENERAL,
+939:         _ => false,
+940:     };
+941:     if valid {
+942:         Ok(())
+943:     } else {
+944:         Err(rhapsody::Error::invalid_usage(
+945:             "planned image layout differs from shader ABI",
+946:         ))
+947:     }
+948: }
+949: 
+950: impl ShaderHost {
+951:     pub fn new(device: Arc<Device>, root: impl Into<PathBuf>) -> rhapsody::Result<Self> {
+

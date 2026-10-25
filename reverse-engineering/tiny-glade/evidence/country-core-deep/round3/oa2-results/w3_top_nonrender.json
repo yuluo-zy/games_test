@@ -1,0 +1,164 @@
+[
+ {
+  "addr": "0x140002370",
+  "verdict": "一致",
+  "detail": "行内断言成立：机器码 31c0c3 = xor eax,eax; ret（3B，PDB is_exclusive size 3 吻合）。地址为 ICF 折叠区：PDB 精确符号是 bevy_ecs schedule_system::impl$1::is_exclusive（非排他系统返回 false），pubsym 另有 UiNav clone_behavior（size 140）同址挂名，两者折叠为同一 3 字节桩，行为一致（is_exclusive=false 与 clone_behavior=None 均返回 0）。decomp 文件为 NotFound 错误文件（81B），机器码手解裁决。按 coordinator 预验证（public-symbols.json 含 UiNav/Critter/Sheep clone_behavior 符号），判一致，注记 ICF 折叠。",
+  "evidence": "rne-read --hex 0x140002370 = 31c0c3；pdb_exact is_exclusive size 3；pubsym clone_behavior size 140；decomp 8 份均 NotFound"
+ },
+ {
+  "addr": "0x140002450",
+  "verdict": "一致",
+  "detail": "行内断言（5B lea rax,[rcx+0x18]; ret 访问器）成立：机器码 488d4118c3 恰为 5 字节字段返回桩，与 PDB size 5 吻合。地址为 bevy component_access（FunctionSystem 包装器）与 transient_meshes 等 ICF 合并址，行本身已披露该合并；机器码无法区分两身份（均为 lea-ret 桩），按行内断言（访问器形态）+ 机器码吻合判一致，身份按 ICF 折叠注记。",
+  "evidence": "rne-read --hex 0x140002450 = 488d4118c3；pdb_exact component_access size 5；pubsym InfallibleSystemWrapper::component_access size 204；decomp NotFound"
+ },
+ {
+  "addr": "0x1402b4aa0",
+  "verdict": "一致",
+  "detail": "PDB 精确符号与行内 fn 完全吻合（country_core::utils::get_last_event<enum2$<OsCursorCaptureCmd>>，size 415）。decomp 证实：事件注册表取末条——TypeId hash 0xbbdd82cfacba045f 查 hasher@+0x38（FUN_1400dd6f0），桶@+0x1e0/len@+0x210/cap@+0x218/tick@+0x5b0 全部命中 utils/mod.rs.md 记录的注册表布局，事件 0x60 大小逐字段拷贝进输出 Option 并回填 tick，未注册走 panic（UNK_1429ae260 = Event not registered 区）。同上（枚举变体）= 同注册表取末条，成立。",
+  "evidence": "decomp-0x1402b4aa0.txt（2456B 有效）；hash/桶/len/cap/tick 偏移与 utils/mod.rs.md 布局一致"
+ },
+ {
+  "addr": "0x14082cad0",
+  "verdict": "一致",
+  "detail": "register_required_components 胶水：PDB 精确符号 = country_core::components::drawable::impl$9::register_required_components（size 1776），pubsym = NaniInstanceDesc::register_required_components。decomp（18KB 有效）为典型 monomorphized bevy_ecs 注册胶水（5 参、类型表构建、alloc/哈希助手调用、cargo registry 源路径 UNK_142a91dd0 区），并引用本 impl 独立组件类型名串 country_core::components::drawable::NaniInstanceDesc（UNK_142c375e2）。按规则判一致（胶水，不计业务）。",
+  "evidence": "decomp-0x14082cad0.txt；rne-read 0x142c375e2 = country_core::components::drawable::NaniInstanceDesc"
+ },
+ {
+  "addr": "0x14082d1c0",
+  "verdict": "一致",
+  "detail": "register_required_components 胶水：PDB 精确符号 = impl$12（size 1776），pubsym = NaniActiveInstance::register_required_components；decomp 18KB 有效，引用独立类型名串 country_core::components::drawable::NaniActiveInstance（UNK_142c36dfa）。判一致（胶水）。",
+  "evidence": "decomp-0x14082d1c0.txt；rne-read 0x142c36dfa"
+ },
+ {
+  "addr": "0x140830250",
+  "verdict": "一致",
+  "detail": "register_required_components 胶水：PDB 精确符号 = impl$27（size 1776），pubsym = AlphaMap::register_required_components；decomp 18KB 有效，引用类型名串 country_core::components::drawable::AlphaMap（UNK_142c370ba）。判一致（胶水）。",
+  "evidence": "decomp-0x140830250.txt；rne-read 0x142c370ba"
+ },
+ {
+  "addr": "0x140850aa0",
+  "verdict": "一致",
+  "detail": "register_required_components 胶水：PDB 精确符号 = country_core::components::impl$52（size 1776），pubsym = UiDrawOrder::register_required_components；decomp 18KB 有效，引用类型名串 country_core::components::UiDrawOrder（UNK_142c3866d）。判一致（胶水）。",
+  "evidence": "decomp-0x140850aa0.txt；rne-read 0x142c3866d"
+ },
+ {
+  "addr": "0x140855030",
+  "verdict": "一致",
+  "detail": "register_required_components 胶水：PDB 精确符号 = impl$82（size 1776），pubsym = WallFlagCloth::register_required_components；decomp 18KB 有效，引用类型名串 country_core::components::WallFlagCloth（UNK_142c372a9）。判一致（胶水）。",
+  "evidence": "decomp-0x140855030.txt；rne-read 0x142c372a9"
+ },
+ {
+  "addr": "0x14089b280",
+  "verdict": "一致",
+  "detail": "PDB 精确符号吻合（KeyBindings::assign_mouse_button，size 22，decomp NotFound 属系统性错误文件，改机器码裁决）。机器码 22B 逐条吻合：movzx eax,dl（action u8）→ mov word[rcx+rax*4+0x1bc],r8w（写 key u16）→ mov word[rcx+rax*4+0x1be],r9w（写 mouse u16）→ ret。即 action*4 槽位内 {key@0,mouse@2} u16 对，地址 0x1bc+action*4 与行内断言完全一致。",
+  "evidence": "rne-read --hex 0x14089b280 = 0fb6c26644898481bc0100006644898c81be010000c3"
+ },
+ {
+  "addr": "0x14089b2a0",
+  "verdict": "一致",
+  "detail": "PDB 精确符号吻合（KeyBindings::assign_key，size 5598）。decomp（73KB）显示重复的逐槽块结构：0xc3 哨兵比较/清零（== 0xc3 共 70 处、写 0xc3 共 35 处）、冲突处理（uVar8==uVar45 分支）、每动作跳表分派调用（UNK_142a9a730..0x142a9a9ec 步长 0x14，36 处调用点）。行为断言（指定按键、冲突交换、清 0xc3、变更事件分派）成立。注记：evid 所述 26 块与反编译展开的 36 个块副本不符（Ghidra 警告 UNRECOVERED_JUMPTABLE/重叠指令，块数为循环展开伪影，26 无法从该 decomp 直接证实，建议按重建复核动作数）。",
+  "evidence": "decomp-0x14089b2a0.txt；0xc3 计数与跳表步长 0x14"
+ },
+ {
+  "addr": "0x14089d490",
+  "verdict": "一致",
+  "detail": "PDB 精确符号吻合（keycode_to_str，size 41）。机器码 41B：movzx 取 u8 键码 → add al,0x7b / cmp al,0xf7 / ja 默认（越界返回 0）→ shl 3 索引双表（len 表@0x142a997b8、ptr 表@0x142a99f58）→ rax=ptr、rdx=len 返回 &str 胖指针。表内容为键名串（MediaSelect/MediaStop/Power/Sleep/Copy/Cut...，len 表 0x0b/0x09/0/0x05/0x05）。键码→标签成立。注记：evid 措辞 跳表 不准确——实际是数据双表查表（含边界检查），非指令跳表。",
+  "evidence": "rne-read --hex 0x14089d490；0x142a997b8/0x142a99f58 双表内容"
+ },
+ {
+  "addr": "0x1408ba290",
+  "verdict": "一致",
+  "detail": "PDB 精确符号吻合（ConfigWatch::watch，size 499）。decomp（2401B 有效）证实行内断言：Arc 强计数 LOCK 自增 → String::clone（alloc+memcpy+负长 panic）→ watcher None 分支（*param_1==3）静默释放并返回；否则调用 FUN_14091da10（hotwatch.watch）并传闭包环境 {watched: String 克隆, pending: Arc}，结果非 Ok 走 panic（消息 UNK_142aa07b0 len 0x15 = failed to watch file! 已读串确认；另两参为文件/行胖串 {0x1408b9aa0,0x18} 与 {0x142aa075d,0x36}）。不读文件——decomp 无文件读取调用。",
+  "evidence": "decomp-0x1408ba290.txt；rne-read 0x142aa07b0 = 'failed to watch file!'（21 字符=0x15）"
+ },
+ {
+  "addr": "0x14090df90",
+  "verdict": "不一致",
+  "detail": "代码写 f32 比较 [rcx+0x84] vs 常量 0x14202018e（0.5?），证据为：ucomiss 目标实为 0x142925904（f32=1.0f），第二常量 0x142aab384（f32=0.125f）；0x14202018e 处字节为 69c2d000（f32=0x00d0c269，非 0.5），地址错。其余字节断言成立：test byte[rcx+0x88],1（行内写 cmp byte,1，指令编码为 test&1，语义对 0/1 bool 等价）；je+1; ret 形态吻合（7401c3）；cmp dword[rcx+0x80],0 与 mov dword[rcx+0x80],0 吻合；后续 mov dword[rcx+0x88],1 + movss[rcx+0x8c]=xmm0（回填的是旧值 [0x84] 而非新常量）。修复建议：常量地址改为 0x142925904（1.0f）与 0x142aab384（0.125f），指令记法改 test byte,1，新常量回填改述为 0x8c 复制旧值、0x88 置版本标志。函数总长 80B 与 PDB size 吻合。",
+  "evidence": "rne-read --hex 0x14090df90 96B 程序化逐指令解码；rne-read --hex 0x142925904=0000803f(1.0f)/0x142aab384=0000003e(0.125f)/0x14202018e=69c2d000"
+ },
+ {
+  "addr": "0x140916440",
+  "verdict": "一致",
+  "detail": "PDB 精确符号吻合（profile_file_path，size 52）。decomp（220B 有效）与机器码双重吻合：调 FUN_140b9db30（config_dir）→ FUN_140d62810(输出, dir, 传入串, &UNK_142aaca1c, 0xb) 拼接，len 0xb 串已读 = profile.ron（11 字符）。行内断言 config_dir()+profile.ron 成立。",
+  "evidence": "decomp-0x140916440.txt；rne-read 0x142aaca1c = 'profile.ron'"
+ },
+ {
+  "addr": "0x140917230",
+  "verdict": "一致",
+  "detail": "PDB 精确符号吻合（save_game_profile，size 289）。decomp（1603B 有效）证实：调 FUN_140917360(*param_1)（该函数经 MCP 反编译确认为 write_profile_via_tmp：ron 序列化→失败 panic called Result::unwrap() on an Err value（UNK_142aac010 len 0x2b 已读串确认）→ config_dir+profile.ron（UNK_142aaca1c,0xb）→ 写文件/CloseHandle/重命名路径）；返回非零且全局 0x143634c3a8 置位时走错误 log（参数含模块路径串 country_core::game_profile@0x142aacaa8 len 0x1a）。行内断言 → write_profile_via_tmp；错误 log 成立。",
+  "evidence": "decomp-0x140917230.txt + MCP decomp 0x140917360；rne-read 0x142aac010/0x142aacaa8"
+ },
+ {
+  "addr": "0x140924030",
+  "verdict": "一致",
+  "detail": "PDB 精确符号吻合（AssetVAOLibrary::new，size 328）。MCP 反编译证实：两次调用线程局部 KEYS 访问器 FUN_140d4d740（首次带 FUN_140d64e00 种子初始化，每次 k0 自增）——各取一次线程局部 KEYS 成立；两张表均以静态空桶数据（_UNK_142aae420..438，含 ctrl/桶指针）初始化并零填充其余字段；param_2 为 RandomState 种子透传。两张空表成立。",
+  "evidence": "MCP tg_oa2w3 decomp 0x140924030（成功）"
+ },
+ {
+  "addr": "0x14092cc60",
+  "verdict": "一致",
+  "detail": "PDB 精确符号吻合（AssetMeshLibrary::add，size 1652）。decomp+机器码头联合证实 0x90B 结构断言：全局 HANDLE_COUNT++（lock xadd [0x143634cd0]）→ Mesh 内部 source_file Option<String>@+0x18 判别/克隆路径（判别测试机器码 cmp rax,[rdx+0x18] 确认）→ Box::new(mesh) 分配 0x78/8 并把 param_2[0x00..0x77] 全 0x78 字节拷入 → FUN_14096a690(param_1+0x20, handle, box) = FrozenMap::insert(mesh_entries) → 失败 panic 串 assertion failed: self.mesh_entries.insert(mesh_handle, Box::new(asset.asset)).is_ok()（UNK_142aafbf1 已读确认）→ 写锁（+0x60/+0x98 Mutex）+0x68 names.insert / +0xa0 paths.insert（FUN_14152ced0/141525160）。name Option<String>@0x78（尾段 plStack_68[0xf..0x11] = +0x78/+0x80/+0x88 读取）与总尺寸 0x90 成立。",
+  "evidence": "decomp-0x14092cc60.txt；rne-read --hex 0x14092cc60 头 176B；rne-read 0x142aafbf1/0x142aafc80"
+ },
+ {
+  "addr": "0x14092d2e0",
+  "verdict": "一致",
+  "detail": "PDB 精确符号吻合（AssetMeshLibrary::get，size 29）。机器码 29B：sub rsp,0x28 → 存 handle 到栈 → add rcx,0x20（self+0x20 = mesh_entries，与 add 的 insert 基址一致）→ lea rdx,&handle → call FrozenMap::get 单态化（0x14096954b 区）→ ret。FrozenMap::get(self+0x20, &handle) 断言完全吻合。",
+  "evidence": "rne-read --hex 0x14092d2e0 = 4883ec2848895424204883c120488d542420e859c20300904883c428c3"
+ },
+ {
+  "addr": "0x140936c60",
+  "verdict": "一致",
+  "detail": "PDB 精确符号吻合（AssetShaderLibrary::new，size 656）。MCP 反编译证实：FUN_1400d9b20 分配（空指针走分配失败 panic UNK_142c3aaa0）→ 线程局部 KEYS 取 k0 对（FUN_140d4d740 + k0 自增）→ RandomState 静态键 _UNK_142ab5b60..78 拷贝 → 两张表：表 1 param_1[0..0xf] 与表 2 param_1[0x10..0x17] 均以空数据（param_1[8]/[0x10]/[0x17]=0 锁字全 0）加静态空组（_UNK_142ab0c90..a8）初始化。两张表 RandomState 取线程局部 KEYS（k0 自增），锁字全 0，ctrl 指向静态空组 成立。",
+  "evidence": "MCP tg_oa2w3 decomp 0x140936c60（成功）"
+ },
+ {
+  "addr": "0x140937cb0",
+  "verdict": "一致",
+  "detail": "PDB 精确符号吻合（debug_raster_get_name，size 352）。MCP 反编译证实：RwLock@+0x80 读锁（快速路径 LOCK/UNLOCK + 阻塞路径 FUN_1428cc4b0(...,1e9)）→ hashbrown SSE 组位图遍历（128 位组逐字节 bit7 提取、匹配位迭代）→ 桶 [-8]==Handle（param_2）时返回桶 [-0x18]（&str ptr，rax）+ [-0x10]（len）；未命中返回 0（None，uVar10=0 且读计数 -0x10 释放）。读锁下线性扫描返回 Option<&str>（rax=ptr，0=None）成立。",
+  "evidence": "MCP tg_oa2w3 decomp 0x140937cb0（成功）"
+ },
+ {
+  "addr": "0x14093b530",
+  "verdict": "一致",
+  "detail": "PDB 精确符号吻合（update_color_library，size 1502），decomp 4 参签名与 bevy 系统 (设置,&AssetSsboLibrary,&Arc<GraphicsDevice>,&mut ColorLibrarySsbo) 参数面一致。逐项证实：串 assets/colors.json（UNK_142ab1a40 已读）+ 源码路径 color_library.rs；主题目录表@0x142ab22b8 = {summer,olden,flowery,autumn,winter} 胖串（len 6/5/7/6/6 已读确认）；FUN_140969720(param_2,&UNK_142c2e328) = FrozenMap::get，键全局@0x142c2e328 字节 0d3fde2cc1682aef = u64 0xef2a68c12cde3f0d，与行内断言完全一致；缺失走 FUN_1428d9310（Option::unwrap panic，文件行 0x9c=156 与 行 156 吻合）；类型名检查名长 ==0x3e 且 memcmp UNK_142a9e53e（type_name::<ColorLibrarySsbo> 62 字符）→ vtable+0x18 as_any → byte_size(+0x18)<0x250 守卫 → update_buffer_bytes(0x250 范围,偏移 0) → Err 分支/Ok 后 memcpy 0x250 到 CPU 资源（func_0x000142923c00(param_4,...)）。行内断言全部成立。",
+  "evidence": "decomp-0x14093b530.txt（14084B）；rne-read 0x142ab22b8/0x142ab1a40/0x142c2e328/0x142ab1a98"
+ },
+ {
+  "addr": "0x14093c720",
+  "verdict": "一致",
+  "detail": "PDB 精确符号吻合（create_name_mapping，size 580）。decomp（9144B 有效）证实：FUN_140c9cd80 计算 target 名字哈希（hashbrown 查表，桶@+0x30/mask@+0x38）→ 未命中 panic Was asked to map {} to {}, but the latter does not exist as a named texture（拆三段串 0x142ab1da0(0x11)/0x142ab1db1(4)/0x142ab1db5(0x32) + 文件纹理库路径 0x142ab1ad9 已读确认，行 0x9e=158）；命中 → FUN_14152cca0(param_1+0x30, hash(新名), target.handle, 1) = insert(hash(name), {target.handle, is_virtual:1})；结果 Ok（2/奇数值）返回，否则走 Onoz panic——Onoz, {name} already exists, and is a real texture. Create a new (arbitrary) name, and map it to a real texture instead, like 'imaginary/pony' -> 'the_real_texture_asset'.（0x142ab1cc0 len 6 + 0x142ab1cc6 len 0x9f 已读确认，panic 在 insert 之后、行 0xad=173）。target 查找 + 别名登记 成立。",
+  "evidence": "decomp-0x14093c720.txt；rne-read 0x142ab1da0/0x142ab1cc6/0x142ab1ad9"
+ },
+ {
+  "addr": "0x14093d310",
+  "verdict": "一致",
+  "detail": "PDB 精确符号吻合（handle_to_bindless_index，size 884）。decomp（3741B 有效）逐项证实：&self（仅 & 读 self）；读写锁两段式——读锁@+0x80 快速路径查 indices 表（+0xb0 桶、+0xb8 容量，entry+4 的既有下标命中即返回并释放读锁），未命中释放读锁后取写锁（FUN_1428d86b0@+0x90）且不复查；idx=next@+0xc0 先自增；assert idx<0x1fe0，panic 文案 UNK_142ab1fa0 全文已读 = assertion failed: descriptor_index.0 < GraphicsDevice::REQUIRED_BINDLESS_DESCRIPTOR_COUNT as u32 - RESERVED_DESCRIPTOR_COUNT as u32；pending Vec（+0x90/+0x98/+0xa0）push；FUN_1412f8f60(param_1+0xa8, asset, 1, idx) = assign_auto_resize(indices, asset, Some(idx)) 调用地址与行内断言完全一致；写锁占用时 panic（UNK_142ab1588 0x2b）。全部成立。",
+  "evidence": "decomp-0x14093d310.txt；rne-read 0x142ab1fa0"
+ },
+ {
+  "addr": "0x14093d690",
+  "verdict": "一致",
+  "detail": "PDB 精确符号吻合（impl$2::image_name_to_index，size 401，pubsym 揭示 ImageNameToIndex trait 实现）。decomp（8240B 有效）证实：起始 FUN_140c9cd80(param_2,param_3) = NameHash::compute（与 name_hash.rs.md 记录的 0x140c9cd80 一致）→ hashbrown 查表（+0x30/+0x38）→ 每桶 FUN_140c9cd70 = NameHash::eq 比对 → 命中直接 FUN_14093d310(param_1, 桶[-0x10] handle) = handle_to_bindless_index（未查 is_virtual 标志，与不看 is_virtual 吻合）→ 未命中 panic No such texture: {}. Available: {}（0x142ab1e30 len 0x11 已读确认）。NameHash::compute + handle_to_bindless_index 成立。",
+  "evidence": "decomp-0x14093d690.txt；rne-read 0x142ab1e30；name_hash.rs.md 交叉确认 compute=0x140c9cd80/eq=0x140c9cd70"
+ },
+ {
+  "addr": "0x140a658a0",
+  "verdict": "一致",
+  "detail": "PDB 精确符号吻合（impl$0::serialize<ref_mut<ron::ser::Serializer<ref_mut<String>>>>，size 608）= serde derive Serialize 单态化胶水。decomp（4207B 有效）为典型 serialize_struct 序列：FUN_1413132c0(...,GameProfile@0x142ad4578,len 0xb,字段数 5) → 5 次 serialize_field：tutorial@+0x1f4、tutorial_cooldowns@+0x1e0、game_installation_id@+0x1c8、key_bindings@+0、new_glade_count@+0x1d8（字段名串 0x142ad4583/8b/9d/b1/bd 已读确认）→ FUN_141312a40 结束。ron 序列化（同字段表）成立；serde 派生胶水按规则不计业务。",
+  "evidence": "decomp-0x140a658a0.txt；rne-read 0x142ad4578..0x142ad45bd"
+ },
+ {
+  "addr": "0x140adec50",
+  "verdict": "一致",
+  "detail": "PDB 精确符号吻合（iter_world_space_rect_cells<...intersects_world_space_rect::closure_env$0>，size 579）。decomp（4143B 有效）证实：glam 向量加载（func_0x000142923e60/3ee0/3ef0）读世界矩形→min/max 转换格单元下标（clamp 到 [0,_UNK_142ae19e0]，上限 _UNK_1429a07d0 越界置 0xffffffff）→ 嵌套行/位循环扫描 param_2（u64 格位图，行 uVar10*8、位 uVar9&0x3f）→ 命中脏位即 *param_3 = 1（闭包环境 bool 置位——闭包置 bool 成立）→ 越界走 FUN_1428d9518 panic（UNK_142ae2078）。矩形范围遍历（碰撞闭包）成立。",
+  "evidence": "decomp-0x140adec50.txt（4143B）"
+ },
+ {
+  "addr": "0x14129f400",
+  "verdict": "一致",
+  "detail": "PDB 精确符号吻合（load_mesh_atlases，size 5138）。decomp（19799B 有效）证实：图集部件名字符串区 0x142c2a35c 起 = smoke+Vertex_Position+stone_floor_、plaster(7)、plaster_strip、stairs_floor_chunk_（另见 timber_，hex 已读确认）；callee 调用 FUN_140928100（grid_gen_cw）×2、FUN_140928350（grid_gen_ccw）×2、FUN_1415f7190（load_nani_meshes）×1，与行内断言地址完全一致。",
+  "evidence": "decomp-0x14129f400.txt；rne-read --hex 0x142c2a35c；callee 列表 grep"
+ }
+]

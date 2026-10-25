@@ -1,0 +1,104 @@
+NAME: add_steam_integration
+VA: 0x140945320
+SIZE: 517
+SIGNATURE: void __cdecl add_steam_integration(void)
+CALLEES:
+  {'name': 'SteamAPI_ISteamScreenshots_HookScreenshots', 'address': '142923630'}
+  {'name': 'SteamAPI_SteamScreenshots_v003', 'address': '142923560'}
+  {'name': '__rust_alloc', 'address': '140613c10'}
+  {'name': '__rust_dealloc', 'address': '140613c20'}
+  {'name': 'add_systems<tuple$<>,bevy_app::main_schedule::Update,enum2$<bevy_ecs::schedule::config::ScheduleConfigs<alloc::boxed::Box<dyn$<bevy_ecs::system::system::System<assoc$<In,tuple$<>_>,assoc$<Out,enum2$<core::result::Result<tuple$<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>_>_>', 'address': '140b67280'}
+  {'name': 'add_systems<tuple$<bevy_ecs::schedule::config::Infallible,tuple$<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(bevy_ecs::change_detection::Res<country_core::systems::steam::SteamClientResource>,bevy_ecs::system::commands::Commands)>_>,bevy_app::main_schedule::PreStartup,void_(*)(bevy_ecs::change_detection::Res<country_core::systems::steam::SteamClientResource>,bevy_ecs::system::commands::Commands)>', 'address': '140b65d00'}
+  {'name': 'as_inner_mut', 'address': '14067dd80'}
+  {'name': 'drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>', 'address': '140b85350'}
+  {'name': 'handle_alloc_error', 'address': '1428d9000'}
+  {'name': 'in_set<void_(*)(bevy_ecs::change_detection::Res<country_core::systems::steam::SteamClientResource>,bevy_ecs::system::system_param::Local<country_core::systems::steam::PrevSteamInputState>,bevy_ecs::change_detection::ResMut<country_core::resources::steam::SteamInput>,bevy_ecs::change_detection::ResMut<country_core::input::action_set::ActionSetValues>,bevy_ecs::change_detection::ResMut<country_core::input::ActiveInputModeTracker>,bevy_ecs::event::reader::EventReader<country_core::systems::backend::input::translate_input_to_cursor_moved::InputCursorDelta>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<enum2$<country_core::resources::gui::EscMenuState>_>),alloc::boxed::Box<dyn$<bevy_ecs::system::system::System<assoc$<In,tuple$<>_>,assoc$<Out,enum2$<core::result::Result<tuple$<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>,tuple$<bevy_ecs::schedule::config::Infallible,tuple$<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(bevy_ecs::change_detection::Res<country_core::systems::steam::SteamClientResource>,bevy_ecs::system::system_param::Local<country_core::systems::steam::PrevSteamInputState>,bevy_ecs::change_detection::ResMut<country_core::resources::steam::SteamInput>,bevy_ecs::change_detection::ResMut<country_core::input::action_set::ActionSetValues>,bevy_ecs::change_detection::ResMut<country_core::input::ActiveInputModeTracker>,bevy_ecs::event::reader::EventReader<country_core::systems::backend::input::translate_input_to_cursor_moved::InputCursorDelta>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<enum2$<country_core::resources::gui::EscMenuState>_>)>_>,country_core::systems::GameSystemSet>', 'address': '140b64aa0'}
+  {'name': 'insert_resource<country_core::systems::steam::SteamClientResource>', 'address': '14153b490'}
+  {'name': 'insert_resource<country_core::systems::steam::SteamScreenshotRequests>', 'address': '14152f4e0'}
+  {'name': 'log', 'address': '140d4a330'}
+  {'name': 'register_callback<steamworks::screenshots::ScreenshotRequested,country_core::systems::steam::impl$4::add_steam_integration::closure_env$0,steamworks::ClientManager>', 'address': '14091aa30'}
+DECOMP:
+
+void __cdecl country_core::systems::steam::impl$4::add_steam_integration(void)
+
+{
+  longlong *plVar1;
+  longlong lVar2;
+  code *pcVar3;
+  longlong *extraout_RAX;
+  undefined8 uVar4;
+  longlong extraout_RAX_00;
+  longlong *in_RDX;
+  
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX == (longlong *)0x0) {
+                    // WARNING: Subroutine does not return
+    alloc::alloc::handle_alloc_error();
+  }
+  *extraout_RAX = 1;
+  extraout_RAX[1] = 1;
+  extraout_RAX[2] = 0;
+  extraout_RAX[3] = 0;
+  extraout_RAX[4] = 8;
+  extraout_RAX[5] = 0;
+  if (3 < *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E) {
+    toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();
+    ::log::__private_api::impl$2::log();
+  }
+  LOCK();
+  lVar2 = *extraout_RAX;
+  *extraout_RAX = *extraout_RAX + 1;
+  UNLOCK();
+  if (*extraout_RAX != 0 && SCARRY8(lVar2,1) == *extraout_RAX < 0) {
+    uVar4 = SteamAPI_SteamScreenshots_v003();
+    LOCK();
+    lVar2 = *in_RDX;
+    *in_RDX = *in_RDX + 1;
+    UNLOCK();
+    if (*in_RDX != 0 && SCARRY8(lVar2,1) == *in_RDX < 0) {
+      SteamAPI_ISteamScreenshots_HookScreenshots(uVar4,1);
+      LOCK();
+      *in_RDX = *in_RDX + -1;
+      UNLOCK();
+      if (*in_RDX == 0) {
+        alloc::sync::Arc::
+        drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>();
+      }
+      steamworks::callback::
+      register_callback<steamworks::screenshots::ScreenshotRequested,country_core::systems::steam::impl_4::add_steam_integration::closure_env_0,steamworks::ClientManager>
+                ();
+      if (extraout_RAX_00 != -1) {
+        LOCK();
+        plVar1 = (longlong *)(extraout_RAX_00 + 8);
+        *plVar1 = *plVar1 + -1;
+        UNLOCK();
+        if (*plVar1 == 0) {
+          std::alloc::__default_lib_allocator::__rust_dealloc();
+        }
+      }
+      LOCK();
+      lVar2 = *in_RDX;
+      *in_RDX = *in_RDX + 1;
+      UNLOCK();
+      if (*in_RDX != 0 && SCARRY8(lVar2,1) == *in_RDX < 0) {
+        bevy_app::app::App::insert_resource<country_core::systems::steam::SteamClientResource>();
+        bevy_app::app::App::insert_resource<country_core::systems::steam::SteamScreenshotRequests>()
+        ;
+        bevy_app::sub_app::SubApp::
+        add_systems<tuple_<bevy_ecs::schedule::config::Infallible,tuple_<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(bevy_ecs::change_detection::Res<country_core::systems::steam::SteamClientResource>,bevy_ecs::system::commands::Commands)>_>,bevy_app::main_schedule::PreStartup,void_(*)(bevy_ecs::change_detection::Res<country_core::systems::steam::SteamClientResource>,bevy_ecs::system::commands::Commands)>
+                  ();
+        bevy_ecs::schedule::config::IntoScheduleConfigs::
+        in_set<void_(*)(bevy_ecs::change_detection::Res<country_core::systems::steam::SteamClientResource>,bevy_ecs::system::system_param::Local<country_core::systems::steam::PrevSteamInputState>,bevy_ecs::change_detection::ResMut<country_core::resources::steam::SteamInput>,bevy_ecs::change_detection::ResMut<country_core::input::action_set::ActionSetValues>,bevy_ecs::change_detection::ResMut<country_core::input::ActiveInputModeTracker>,bevy_ecs::event::reader::EventReader<country_core::systems::backend::input::translate_input_to_cursor_moved::InputCursorDelta>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<enum2_<country_core::resources::gui::EscMenuState>_>),alloc::boxed::Box<dyn_<bevy_ecs::system::system::System<assoc_<In,tuple_<>_>,assoc_<Out,enum2_<core::result::Result<tuple_<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>,tuple_<bevy_ecs::schedule::config::Infallible,tuple_<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(bevy_ecs::change_detection::Res<country_core::systems::steam::SteamClientResource>,bevy_ecs::system::system_param::Local<country_core::systems::steam::PrevSteamInputState>,bevy_ecs::change_detection::ResMut<country_core::resources::steam::SteamInput>,bevy_ecs::change_detection::ResMut<country_core::input::action_set::ActionSetValues>,bevy_ecs::change_detection::ResMut<country_core::input::ActiveInputModeTracker>,bevy_ecs::event::reader::EventReader<country_core::systems::backend::input::translate_input_to_cursor_moved::InputCursorDelta>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<enum2_<country_core::resources::gui::EscMenuState>_>)>_>,country_core::systems::GameSystemSet>
+                  ();
+        bevy_app::sub_app::SubApp::
+        add_systems<tuple_<>,bevy_app::main_schedule::Update,enum2_<bevy_ecs::schedule::config::ScheduleConfigs<alloc::boxed::Box<dyn_<bevy_ecs::system::system::System<assoc_<In,tuple_<>_>,assoc_<Out,enum2_<core::result::Result<tuple_<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>_>_>
+                  ();
+        return;
+      }
+    }
+  }
+                    // WARNING: Does not return
+  pcVar3 = (code *)invalidInstructionException();
+  (*pcVar3)();
+}
+

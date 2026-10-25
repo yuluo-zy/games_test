@@ -1,0 +1,16 @@
+{
+  "target": {"path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe", "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"},
+  "provider": {"id": "ghidra", "version": "12.1.4"},
+  "database": "tg_render_arch",
+  "inputs": [{"path": "D:/game/reverse-engineering/tiny-glade/evidence/render-recovery/workgraph/functions.json"}],
+  "steps": [
+    {"tool":"open_database", "args":{"file_path":"D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe","database_id":"tg_render_arch","run_auto_analysis":false}},
+    {"tool":"wait_for_analysis", "args":{"database":"tg_render_arch"}},
+    {"tool":"decompile_function", "args":{"database":"tg_render_arch","address":"0x1405fc3d0"},"allow_error":true},
+    {"tool":"decompile_function", "args":{"database":"tg_render_arch","address":"0x1405f9f50"},"allow_error":true},
+    {"tool":"decompile_function", "args":{"database":"tg_render_arch","address":"0x14060d340"},"allow_error":true},
+    {"tool":"decompile_function", "args":{"database":"tg_render_arch","address":"0x140976880"},"allow_error":true},
+    {"tool":"get_xrefs_from", "args":{"database":"tg_render_arch","address":"0x1405fc3d0","limit":40}},
+    {"tool":"get_xrefs_from", "args":{"database":"tg_render_arch","address":"0x14060d340","limit":40}}
+  ]
+}

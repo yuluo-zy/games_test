@@ -1,0 +1,9 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.program.model.listing import CodeUnit\na=currentProgram.getAddressFactory().getAddress('1408e1630')\ntx=currentProgram.startTransaction(\"Durability probe\")\ntry:\n    currentProgram.getListing().setComment(a,CodeUnit.EOL_COMMENT,'toolchain-repair durability probe 2026-10-13')\nfinally:\n    currentProgram.endTransaction(tx,True)\nprint(json.dumps({\"comment\":currentProgram.getListing().getComment(CodeUnit.EOL_COMMENT,a)}))\n"
+    }
+  }
+]

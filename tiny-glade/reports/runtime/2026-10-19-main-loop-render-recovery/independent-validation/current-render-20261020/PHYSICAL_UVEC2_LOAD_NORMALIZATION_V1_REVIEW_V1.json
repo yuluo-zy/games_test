@@ -1,0 +1,60 @@
+{
+  "reviewer": "/root/render_reviewer",
+  "date": "2026-10-21",
+  "status": "static_semantic_review_accepted_root_cpu_gpu_pending",
+  "scope": "现lower_stage内仅修确证physical uint2载入provenance形态的后端规范化；不是原游戏算法重写、MSL文本补丁或系统driver改动。",
+  "inputs": {
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/physical-load-normalization-v1-20261021/MANIFEST.json": "54867bf410559eaa85ddfc190ae865ac1ba0abf52dd219433a07888e0794d29f",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/physical-load-normalization-v1-20261021/physical-load-normalization-v1.patch": "57d2e370444a7da71cc8c5e3ce32833031a72ba7fd5b971bf8631f27fdf7898f",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/physical-load-normalization-v1-20261021/tiny-glade/crates/rhapsody/crates/shader-compiler/src/bindless.rs": "9893094f71298cdb24ad378bfd1a37d88ecd0b52c508f1b49d55c39ef3e82062",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/physical-load-evidence-20261021/BYTE_EXPERIMENTS.json": "fa77f2322aed514262ce4810e34ceee6e5a70a3d7fb8efc89b0f30b255e43295",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/physical-load-evidence-20261021/INSTALLED_SHADER_IDENTITY.json": "de143e8e87412c05fd969c5e4bc43a09cfe13e5d4f7b814cddbabf711a15733b",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/physical-load-evidence-20261021/UPSTREAM_SOURCE_IDENTITY.json": "c5a7480995853b04d01b2cd63a5dda8ad300070833fa0975d6e27e694875c662",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/physical-load-evidence-20261021/EVIDENCE.md": "2c5851d99bba39907ea8b93319a2ec956c577321dbd08809bf85b931f4a20977",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/physical-load-evidence-20261021/cli-baseline.metal": "341bf1c365697cb8abb8a3824430c81f6ea3e45a816f267f51e210a4a34f004f",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/physical-load-evidence-20261021/cli-normalized-add-zero.metal": "e36060dec55b63d46da8ba9c32e411bd0d2e1c55d2c1d7c4861b08825afb9818",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/physical-load-evidence-20261021/cli-normalized-add-zero-43fff.metal": "29b7da1288ac8d527719fc451e17e817b2105090e63539e2c434b1dc2f3709cb"
+  },
+  "production_source_at_review": {
+    "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/crates/shader-compiler/src/bindless.rs",
+    "sha256": "9893094f71298cdb24ad378bfd1a37d88ecd0b52c508f1b49d55c39ef3e82062",
+    "matches_baseline": false,
+    "matches_candidate": true
+  },
+  "independent_evidence": [
+    "独立直接读取安装B的两个compiled-shaders原包，重算package及offset23/47172B VS SHA，均与INSTALLED_SHADER_IDENTITY一致。两原VS bound969；不是此前reports旧lowered artifact。",
+    "独立解析实际原VS二进制链：%309=OpLoad uint2 %170(Function变量)；%310=OpBitcast PhysicalStorageBuffer<uint2> %309；%311=OpLoad uint2 %310 Aligned16；%322=float2 Bitcast %311，与实际lower dump同链。",
+    "独立按words重建两个dump字节实验：分别新增2 IDs及8words；删ConstantNull/IAdd、还原唯一cast输入和header.bound，完整逐word还原原dump。保原physical Load六word 393277,76,311,310,2,16。",
+    "直接读baseline与normalized CLI Metal：原float2 bitcast对象是const device uint2*，规范化后先真实uint2解引用，再float2 bitcast。CLI身份242d2c...不同于installed MoltenVK；该文本变化不是driver通过证明。"
+  ],
+  "primary_source_review": {
+    "pin": "https://raw.githubusercontent.com/KhronosGroup/MoltenVK/v1.4.2/ExternalRevisions/SPIRV-Cross_repo_revision",
+    "pin_observed": "6c09849fe88c48eaed08413aa022aaa136a3a057",
+    "msl": "https://github.com/KhronosGroup/SPIRV-Cross/blob/6c09849fe88c48eaed08413aa022aaa136a3a057/spirv_msl.cpp#L9813-L9831",
+    "glsl": "https://github.com/KhronosGroup/SPIRV-Cross/blob/6c09849fe88c48eaed08413aa022aaa136a3a057/spirv_glsl.cpp#L11134-L11175",
+    "backing": "https://github.com/KhronosGroup/SPIRV-Cross/blob/6c09849fe88c48eaed08413aa022aaa136a3a057/spirv_cross.cpp#L389-L410",
+    "independently_read": "已独立web读取上述官方pin及三段源码；cast继承numeric来源的backing Function变量，而copy判定未比较storage class，可误压掉物理解引用。此为观察到MSL错误的机制解释，未证明installed dylib具体构建commit。"
+  },
+  "source_acceptance": [
+    "pattern同时要求目标PhysicalStorageBuffer pointer、pointee精确同TypeID的u32x2、源为该u32x2 OpLoad、load对象为精确Function u32x2 OpVariable。浮点pointee、Private来源、已有算术来源不会命中；不泛化全部BDA。",
+    "按目标value type各加一个ConstantNull，并在每个cast前加同型IAdd；每个u32分量加零在模2^32上逐bit恒等，地址64bits不变；原指针类型/Load/access mask/Aligned16/后续float bitcast/ABI和图资源访问均不改。",
+    "新ID从合法module header.bound开始；checked_add全部ID需求先成功再改模块。常量定义在类型全局段、IAdd在cast前，保合法SSA支配与Function变量布局；修改header.bound精确覆盖全部新增ID。",
+    "第二次cast源变IAdd，不再匹配Load，幂等。对已有合法SPIRV的结果ID唯一性与无溢出成立；没有新增全语义SPIRV validator，不能泛称所有畸形module都已拒绝。",
+    "现ABI/entry/rspirv解析错误和新增ID上限错误仍Result传播，未catch后默认成功；新增bound失败在mutation前。source四项测试涵盖word restoration/unique IDs/幂等/3负例/bound失败原值/生产lower_stage同入口，但尚未由我执行。"
+  ],
+  "performance": "一次编译阶段多做有界定义/target扫描；每个精确命中IR多1整数向量加法，无新memory Load/branch/额外draw资源。Metal是否折叠及native成本仍未测量，不宣称零开销。",
+  "findings": [],
+  "root_required_validation": [
+    "运行当前同源shader-compiler四项pure tests及默认构建。",
+    "对当前两真实原包经过生产lower_stage生成完整IR，root验证spirv-val、actual installed MoltenVK pipeline与同世界30帧；不能只用手改dump替代Rust候选。",
+    "保root原world失败日志，检查输出/长稳/所有后续shader；不跳plaster、裁draw或放宽driver错误。"
+  ],
+  "reviewer_execution": {
+    "production_write": false,
+    "cargo_or_rust_tests": false,
+    "gpu": false,
+    "CLI_cross_execution": false,
+    "spirv_val_execution": false,
+    "static_bytes_and_primary_source_reads": true
+  }
+}

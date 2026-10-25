@@ -1,0 +1,31 @@
+# B 组 input DELTA（2026-10-16 第三轮，核对用户批改真实性）
+
+> 核对对象：`D:/game/tiny-glade/crates/country-core/src/systems/backend/input/*`（f510c7e7 改动 translate_input.rs、input_record_replay.rs、button_input.rs、mod.rs）+ `input/{action_set,input_stream,mod}.rs`。
+> SPEC：`input-SPEC.md`（2026-10-15 第二轮追加）。逐项对照当前源码与原始机码。
+> 原侧抽查：`rne-read.py --hex` 复核常量、`reset_input_state` 反汇编（`reconstruction/country-core-render/wp20/analysis/0x140942b00_reset_input_state.txt`）。
+
+| SPEC 项 | 当前状态 | 证据（源码位置 / 原地址） | 备注 |
+|---|---|---|---|
+| §2.1 translate_input（0x1417cd0a0）动作↔槽映射 O 全解 | **真实实现（框架+常量 O）** | `translate_input.rs` L191-352；ANALOG_TARGETS L140-155、DIGITAL_TARGETS L159-189、BindingsTable::default L100-121 | 模拟槽 0..3→pan(2)/4..5→height(3)/6..7→rotate(5,±1800·raw delta)/8..9→zoom(4,±1.5·dt×30)；数字槽 10..38→动作；滚轮→analog[4].x（权重 8.0/1.0）；EscMenu 门 `tag==2\|\|(tag==10&&flag!=1)` 与 spec 一致 |
+| 相机模拟常量（30/1800/-1800/1.5/-1.5/8.0/1.0/3.0） | **真实实现（原侧已复核）** | rne-read：`0x1429cd034=0000f041`(30)、`0x142ce2d30=0000e144`(1800)+`0x142ce2d34=0000e1c4`(-1800)、`0x1429258d0=0000c03f`(1.5)、`0x1429df180=0000c0bf`(-1.5)、`0x142934604=00000041`(8)、`0x142925904=0000803f`(1)、`0x1429cd078=00004040`(3) | 全部对上源码注释与实现 |
+| GameProfile.key_bindings（0xc3 未绑定哨兵） | **诚实标注（default 表内容待取证）** | `BindingsTable::default` KEYS/MOUSE L104-110；`UNBOUND_KEY=0xc3`（button_input.rs L14） | 源码**不读 `Res<GameProfile>`**（PDB 签名里有），改用硬编码 default 表并诚实注释"默认序列来自 O 原字节 @0x14089b110"；0xc3 哨兵、u16 鼠标 `{1,2,1}`、槽 37/38/39 结构均对；**default 表各键码值我只抽查了结构、未独立逐字节核 0x14089b110**——逐槽 key 值仍属待取证（SPEC T1），合成 agent 需决定是否从原表直读补强 |
+| UiHistoryButtonPressed 消费（param_11：+0x98/+0x99 undo/redo 字节） | **有水分** | `translate_input.rs` L266 `mut _history_buttons: EventReader<UiHistoryButtonPressed>` 声明但函数体**从不 read()** | 事件已定义（calculate_input_delta.rs L11，SPEC 缺口 #5 的定义部分闭合），但 translate_input 的 undo/redo 折叠未实现——参数是死参数。生产者（UI 侧，组外）仍缺 |
+| Steam 门 | **诚实标注** | `SteamInputActive(pub bool)` L66；`if steam.0 { return; }` L269 | 全链（SteamClientResource/Deck 检测/`update_steam_inputs` @0x140ae9740）登记为库外；未模拟 |
+| `ActiveInputModeTracker` 更新 | **真实实现（小偏差）** | L351 `*mode_tracker = new_default_mouse_keyboard(now)`，`now=0` L272 | 用固定 `Duration::from_millis(0)` 做 now；因 mode() 是相对比较、每帧覆盖，功能成立；但与"now+250ms"真实时间基准有偏移（minor 水分，诚实注释内） |
+| §2.2 reset_input_state（0x140942b00） | **真实实现** | `reset_input_state.rs` L27-46；对照反汇编 `0x140942b00_reset_input_state.txt` | ① buffer→current 置换+清 buffer：汇编 `new[i]=old[i+0xb], new[0xb..0x15]=0` 与代码一致；② 两个 Events 双缓冲计数回写：代码用两个 EventReader（InputCursorMoved/InputReplayCommand），语义与 bevy 排空一致；③ `reset_all<KeyCode>` **门控**与汇编一致（两队列都零才早退不 reset）；④ InputStream 结构保留。SPEC 描述的"修剪 InputStream"与汇编实际（Events 双缓冲）不符——**以汇编为准，代码是对的** |
+| §2.2 input_record_replay（0x1409423d0） | **真实实现** | `input_record_replay.rs` L366-433；InputFrame 0xd0B L76-93、niche mode L37-53（input/mod.rs） | mode 0（AutoRecordPanicRepro）重建流/克隆 toolbar+camera/帧构造；mode 2（Replay）越界 panic"Out of bounds access"、帧→翻译状态 buffer+回放输出+u32 游标 clamp；mode 3 清 20 qword；mode 4 no-op。常量复核：`0x142a171f0=[-0.5,-0.5,0,0]`、`0x1429258e0=[0.5,0.5]`、`0x1429a07d0=0x4f7fffff` 全对上 |
+| InputReplayInitialState/seek 子字段类型化（f510c7e7） | **真实实现** | `input_record_replay.rs` L176-207、`seek_to_sync_point` L231-257；`InputTranslationState::toolbar_current/toolbar_vec_cap_ptr/camera_params`（input_stream.rs L39-53） | 由 `serde_json::Value` 升级为 10 字段类型化（window_size/cursor_depth/cursor_pos_ws/center_pos_ws/ui_settings/sheep_positions/sheep_rotations/app_mode/toolbar/camera）；字段名/序 O，类型诚实标 I、sheep 载荷 U；seek 偏移 @+0x18/+0x20/+0x28/+0x30..0x58/+0x58 已定 |
+| §2.2 advance_input_replay_frame / control_input_replay / try_load | **真实实现** | `input_record_replay.rs` L448-498、`try_load` L212-217 | advance：Replay→index+=1、帧尽→None；control：Sync/Load 两命令消费；try_load 读 JSON→首帧入流→mode=Replay；sync_points.len==0 panic 文案、`mode!=Replay` panic 文案对齐 0x140941a30 |
+| §2.2 record_and_replay_input_for_trailers（0x14083c620）/ do_input_replay_ui（0x14083cdd0） | **真实实现（Save 按钮为日志壳）** | `input_replay_for_trailers.rs` L55-139 | 配置字节 @+0xfc（enabled）门、键码 0x22/0x1c、Start/Finished/Replay... 日志文案对齐；`do_input_replay_ui` 的 **Save 按钮只 log 路径不写文件**、Replay sheep 按钮只 log（诚实标 待取证），有水分边缘 |
+| §2.3 update_cursor_position（PDB 签名） | **仍缺 / 有水分** | `update_cursor_position.rs` L57-65 | **与 SPEC 签名不符**：应为 `(Res<ActionSetStates>,Res<CursorCapturedPosition>,ResMut<CursorPositionSS>,EventWriter<CursorMovedScreenSpace>)`；现为 `(ResMut<CursorPosition>,EventReader<InputCursorMoved>)`，不写 CursorPositionSS、不发 `CursorMovedScreenSpace`（全 crate 无该事件）、不读 ActionSetStates/CursorCapturedPosition。现实现是"把 InputCursorMoved 折叠进自有 CursorPosition 资源"的 I 级近似（注释诚实标 I/O）。SPEC §3.3 的"按签名实现 + CursorMovedScreenSpace 事件写"**未落地** |
+| §2.4 原全局调度（add_input_cpu_consumers） | **真实实现（顺序对，缺 mod_key）** | `mod.rs` L49-62：translate_input→translate_input_to_cursor_moved→calculate_input_delta→reset_input_state→update_cursor_position + 4 个录制/回放系统 | 顺序与 SPEC 一致；但 **mod_key（update_mod_key_state @0x140af9c00）模块不存在**（grep 无命中）——SPEC §3.4 的 mod_key+update_cursor_position 成对未成。`register_input_events` L29-46 注册了全部事件/资源（含 MouseWheel、UiHistoryButtonPressed、SteamInputActive、DemoModeEnabled、CursorPosition、Key/MouseButtonInput、InputReplayForTrailers） |
+| translate_input_to_cursor_moved / calculate_input_delta | **真实实现** | `translate_input_to_cursor_moved.rs` L87-105、`calculate_input_delta.rs` L20-96 | 事件折叠/窗口钳制/捕获路径与 0x140b17a80 一致；6 模拟+40 数字槽 0.1/0.05 repeat 与 0x1416feeb0 一致；UiHistoryButtonPressed 事件现已在 calculate_input_delta.rs 定义 |
+
+## 合成 agent 应关闭的真实剩余缺口（input）
+
+1. **update_cursor_position 按 SPEC 签名重做**：`(Res<ActionSetStates>,Res<CursorCapturedPosition>,ResMut<CursorPositionSS>,EventWriter<CursorMovedScreenSpace>)`，发窗口空间事件；现文件为 I 级近似（不写 CursorPositionSS、无 CursorMovedScreenSpace）。
+2. **UiHistoryButtonPressed 消费**：translate_input 的 EventReader 是死参数——补 `+0x98/+0x99` undo/redo 字节折叠（digital[16]/[17]）；生产者（UI 历史按钮，组外）待仲裁。
+3. **mod_key**（`update_mod_key_state` @0x140af9c00 + `is_disable_snapping_just_pressed` @0x140af9bf0 + Modifiers 资源）：不存在，需新建（systems/mod_key.rs 或 input 目录）并与 update_cursor_position 成对进调度。
+4. **GameProfile.key_bindings 直读**：现为硬编码 default 表；逐槽 key 值待 rne-read 0x14089b110 独立核对补强（SPEC T1），或保持诚实标注 + 宿主注入 BindingsTable。
+5. **trailer Save/Replay sheep 按钮**：现只 log；若算真实 producer 需接 try_load/写文件（serde 形态待取证）。
+6. 保持：Steam 全链 / `update_steam_inputs` / OS 设备层为库外登记；`_history_buttons` 补齐后移除下划线。

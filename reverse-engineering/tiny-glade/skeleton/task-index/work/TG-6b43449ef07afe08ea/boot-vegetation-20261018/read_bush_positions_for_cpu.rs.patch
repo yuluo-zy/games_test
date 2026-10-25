@@ -1,0 +1,31 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/read_bush_positions_for_cpu.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/read_bush_positions_for_cpu.rs
+@@ -89,10 +89,25 @@
+ pub fn read_bush_positions_for_cpu<BushSsbo: SsboType>(
+     env: &mut PassEnv<'_>,
+ ) -> RecordedComputePass {
+-    env.pass(NAME, URI)
++    read_bush_positions_for_cpu_with_building_prefix::<BushSsbo>(env, true)
++}
++
++/// With W14 disabled, the real preceding draw-command reset leaves slot10=0;
++/// original SPV writes its count header but does not fetch any Bush record.
++/// Preserve the binding/synchronization while declaring that actual no-read.
++pub fn read_bush_positions_for_cpu_with_building_prefix<BushSsbo: SsboType>(
++    env: &mut PassEnv<'_>,
++    has_building_prefix: bool,
++) -> RecordedComputePass {
++    let pass = env.pass(NAME, URI)
+         .write_to_cpu_mapped_storage_buffer::<BushCpuSsbo>(BUSH_CPU)
+-        .read_storage_buffer::<BushSsbo>(BUSH_BUFFER)
+-        .read_storage_buffer::<DrawIndexedIndirectBuffer>(binding::DRAW_COMMANDS)
++        .read_storage_buffer::<BushSsbo>(BUSH_BUFFER);
++    let pass = if has_building_prefix {
++        pass
++    } else {
++        pass.inactive_storage_buffer_contents(BUSH_BUFFER)
++    };
++    pass.read_storage_buffer::<DrawIndexedIndirectBuffer>(binding::DRAW_COMMANDS)
+         .uniform(binding::DRAW_INDIRECT_BUFFER_OFFSET, DRAW_INDIRECT_OFFSET)
+         .dispatch_1d(DISPATCH_THREADS)
+ }

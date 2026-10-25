@@ -1,0 +1,3 @@
+# Original invalid-continuation failure order
+
+This delta follows frozen continuation29; do not replace its evidence. Original B `0x140a80ff9` removes/drops the live authority before current color-table indexing at `0x140a810ee..11f`. Move only removal ahead of color indexing. The success payload and independent desired-height field are unchanged. Add one actual World/Schedule test source that catches the empty-color-index panic and checks only the confirmed post-panic absence of the wall. No Rust/native execution was performed; rustfmt parsed the candidate. Parent integration/test remains required.

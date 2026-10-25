@@ -1,0 +1,41 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/compute_water.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/compute_water.rs
+@@ -398,7 +398,11 @@
+         .bind_texture(H_PATH_MASK, &PRESET_PATH_MASK, ACCESS_READ)
+         .bind_texture(H_GARDEN_MASK, &PRESET_GARDEN_MASK, ACCESS_READ)
+         .bind_texture(H_ANIMATION, &PRESET_ANIMATION, ACCESS_WRITE)
++        // Original SPV reads the actual previous animation texel before mix/store.
++        .preserve_storage_texture_contents(H_ANIMATION)
+         .write_storage_buffer_concurrent::<S::DrawCommands>(H_DRAW_COMMANDS, DRAW_COMMANDS_GROUP)
++        // Atomic instanceCount append retains other words and command slots.
++        .preserve_storage_buffer_contents(H_DRAW_COMMANDS)
+         .uniform(H_DRAW_INDIRECT_BUFFER_OFFSET, LILYPAD_DRAW_OFFSET)
+         .dispatch_2d(LILYPAD_GRID[0], LILYPAD_GRID[1]);
+ 
+@@ -420,6 +424,8 @@
+             ACCESS_READ,
+         )
+         .write_storage_buffer_concurrent::<S::DrawCommands>(H_DRAW_COMMANDS, DRAW_COMMANDS_GROUP)
++        // Atomic instanceCount append retains other words and command slots.
++        .preserve_storage_buffer_contents(H_DRAW_COMMANDS)
+         .uniform(H_DRAW_INDIRECT_BUFFER_OFFSET, REED_DRAW_OFFSET)
+         .dispatch_2d(REED_GRID[0], REED_GRID[1]);
+     vec![lilypads, reeds]
+@@ -647,6 +653,17 @@
+         // lilypad：ctor + 2 SSBO + 5 读 + 1 写纹理 + draw_commands = 10 个绑定；reed：1 + 1 + 5 + 1 = 8。
+         assert_eq!(passes[0].bindings.len(), 10);
+         assert_eq!(passes[1].bindings.len(), 8);
++        // Actual shader content contracts: both command buffers are RMW;
++        // only lilypads read their previous animation texels.
++        for pass in &passes {
++            let draw = pass.builder.accesses.last().unwrap().resource;
++            assert_eq!(pass.preserving_buffers, [draw]);
++        }
++        assert_eq!(passes[0].preserving_texture_bindings.len(), 1);
++        let animation = passes[0].preserving_texture_bindings[0] as usize;
++        assert!(matches!(passes[0].bindings[animation],
++            PassBinding::ImageView { write: true, .. }));
++        assert!(passes[1].preserving_texture_bindings.is_empty());
+         // draw_commands 同步组 = 1。
+         assert_eq!(passes[0].builder.accesses.last().map(|a| a.group), Some(1));
+         assert!(matches!(

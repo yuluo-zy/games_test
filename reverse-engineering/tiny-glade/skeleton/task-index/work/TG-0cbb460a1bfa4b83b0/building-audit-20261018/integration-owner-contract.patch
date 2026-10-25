@@ -1,0 +1,17 @@
+--- a/games_test/tiny-glade/crates/country-core/src/resources/window.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/window.rs
+@@ -52,10 +52,10 @@
+ #[derive(Event, Clone, Copy, Debug, Default)]
+ pub struct OsWindowCmd;
+ 
+-/// `CursorMovedScreenSpace`（B `country_core::resources::window::CursorMovedScreenSpace`，
+-/// O：PDB `update_cursor_position` into_configs @0x1413ee760 的 EventWriter 类型）。
+-/// `update_cursor_position` 每帧产出窗口空间游标位置（f32 屏幕空间）。
+-/// 载荷形状 I（待取证：可能为裸 Vec2；事件按 bevy 每元素 0x10 B 槽承载）。
++/// 工具消费的输入空间光标位移；由现有 `ActionSetStates::analog[0]` 非零时产生。
++/// B `update_cursor_position` inline @0x14173db3e 读取原+0x140 Vec2，
++/// @0x14173db95 写入此事件；捕获期间仍发送位移，零向量不发送，NaN 按非零处理。
++/// 窗口位置另由 analog[1] 更新到 CursorPositionSS；事件载荷不包含绝对位置。
+ #[derive(Event, Clone, Copy, Debug, PartialEq)]
+ pub struct CursorMovedScreenSpace(pub Vec2);
+ 

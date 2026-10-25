@@ -1,0 +1,10 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/arrow_gizmo_animation.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/arrow_gizmo_animation.rs
+@@ -0,0 +1,7 @@
++//! Original B terrain UI publishes this unit event on every continued edit.
++//! Native arg10 at ui_edit0x140aef5a1/652 has8-byte EventInstance stride;
++//! unlike CursorCaptureCmd it carries no boolean payload. This is the actual
++//! original event owner. The native animation consumer0x140a92f80 still needs
++//! its multi-entity event-reader/query behavior recovered before integration.
++#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default)]
++pub struct EnableArrowGizmoStretch;

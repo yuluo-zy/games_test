@@ -1,0 +1,3091 @@
+{
+  "schema": "foundation-business-source-comparison-v1",
+  "baseline": "B",
+  "scope": "Current 7-library workspace, utils top-level business features utils:01..utils:27 only",
+  "features": [
+    {
+      "id": "utils:01",
+      "name": "角度限制",
+      "status": "implemented_scoped",
+      "judgement": "implemented_scoped",
+      "declared_behavior": "按最小角和跨度构造可跨周期的角度范围，限制编辑角度",
+      "existing_logic": "构造时将 min 环绕至 TAU，clamp 处理跨缝与最近端点；私有 wrap 已存在。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/angle_range.rs",
+          "sha256": "d24bbecf97ee0b890445dac75c985695ebae074bfc87288f9fee9ff6639cf392",
+          "key_functions": [
+            {
+              "function": "wrap",
+              "line": 4
+            },
+            {
+              "function": "from_min_and_len",
+              "line": 6
+            },
+            {
+              "function": "clamp",
+              "line": 10
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [],
+      "verification_gaps": [
+        "构造极端跨度、非有限值和半圈平局未全面原对照；独立 wrap_angle 原入口映射未单独验证，但同等归一化逻辑已有源码。"
+      ],
+      "external_integration_gaps": [],
+      "original_interfaces": [
+        {
+          "interface_id": "utils::angle_range::AngleRange::clamp",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x1425f24d0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/angle_range.rs",
+            "method": "AngleRange::clamp"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::angle_range::AngleRange::from_min_and_len",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x1425f2460"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/angle_range.rs",
+            "method": "AngleRange::from_min_and_len"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::angle_range::wrap_angle",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "独立wrap及极端端点策略未全部分析",
+      "document_remaining_assessment": "独立 wrap 不能称没写；remaining 是原接口映射及边界验证。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/native-fixtures.json",
+        "skeleton/B/crates/utils/src/angle_range.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [],
+      "validation_gaps": [
+        "构造极端跨度、非有限值和半圈平局未全面原对照；独立 wrap_angle 原入口映射未单独验证，但同等归一化逻辑已有源码。"
+      ],
+      "consumer_gaps": []
+    },
+    {
+      "id": "utils:02",
+      "name": "周期数值与插值",
+      "status": "implemented_scoped",
+      "judgement": "implemented_scoped",
+      "declared_behavior": "归一化周期值，计算环形距离并沿环形路径插值",
+      "existing_logic": "new/set_value 已执行模 TAU 归一化；distance 与最短环形 lerp、d<-PI / d>=PI 平局分支均已有代码。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/circular_f32.rs",
+          "sha256": "88e5a2e7901c24c8c2e4364073319abf43e78ef3cb8d9aff891e48d902c04184",
+          "key_functions": [
+            {
+              "function": "wrap",
+              "line": 7
+            },
+            {
+              "function": "new",
+              "line": 9
+            },
+            {
+              "function": "set_value",
+              "line": 10
+            },
+            {
+              "function": "distance",
+              "line": 12
+            },
+            {
+              "function": "lerp",
+              "line": 13
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [],
+      "verification_gaps": [
+        "原构造/Serde格式、非有限和恰好半周期策略未穷尽验证；project_unbounded 原接口未单独映射，不能仅因候选命名不同算新缺失算法。"
+      ],
+      "external_integration_gaps": [],
+      "original_interfaces": [
+        {
+          "interface_id": "utils::circular_f32::CircularF32::as_f32",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x1416f3210"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/circular_f32.rs",
+            "method": "CircularF32::as_f32"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::circular_f32::CircularF32::distance",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x1416f3260"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/circular_f32.rs",
+            "method": "CircularF32::distance"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::circular_f32::CircularF32::lerp",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x1416f3330"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/circular_f32.rs",
+            "method": "CircularF32::lerp"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::circular_f32::CircularF32::new",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x1416f31d0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/circular_f32.rs",
+            "method": "CircularF32::new"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::circular_f32::CircularF32::project_unbounded",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::circular_f32::CircularF32::set_value",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x1416f3180"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/circular_f32.rs",
+            "method": "CircularF32::set_value"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "构造归一化、半周期平局及非有限值边界",
+      "document_remaining_assessment": "构造归一化与平局分支已经写；剩余为验证和字段格式。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/native-fixtures.json",
+        "skeleton/B/crates/utils/src/circular_f32.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [],
+      "validation_gaps": [
+        "原构造/Serde格式、非有限和恰好半周期策略未穷尽验证；project_unbounded 原接口未单独映射，不能仅因候选命名不同算新缺失算法。"
+      ],
+      "consumer_gaps": []
+    },
+    {
+      "id": "utils:03",
+      "name": "相机投影",
+      "status": "implemented_scoped",
+      "judgement": "implemented_scoped",
+      "declared_behavior": "由镜头、长宽比和相机位置旋转生成投影与视图关系",
+      "existing_logic": "无限 reverse-Z 投影及显式逆投影、刚体 view / inverse_view 由原 glam 组装。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/camera.rs",
+          "sha256": "d0997f45be9bfa01027e9d2282ef825d708715a8e6c3261645c0fad91489fcb9",
+          "key_functions": [
+            {
+              "function": "calc_matrices",
+              "line": 16
+            },
+            {
+              "function": "from_position_rotation",
+              "line": 44
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [],
+      "verification_gaps": [
+        "projection 有限定原入口对照；body matrix 主要静态证据。完整资源字段和模式未验收。"
+      ],
+      "external_integration_gaps": [
+        "country-core 的相机资源组装/消费者不计 utils 库内源码缺失。"
+      ],
+      "original_interfaces": [
+        {
+          "interface_id": "<$LP$glam::f32::vec3::Vec3,glam::f32::sse2::quat::Quat$RP$ as utils::camera::IntoCameraBodyMatrices>::into_camera_body_matrices",
+          "existing_analysis_status": "untouched",
+          "original_entries": [
+            "0x140c8ff70"
+          ],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::camera::CameraBodyMatrices::from_position_rotation",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c96fe0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/camera.rs",
+            "method": "CameraBodyMatrices::from_position_rotation"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::camera::CameraProjectionParams::calc_matrices",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c97390"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/camera.rs",
+            "method": "CameraProjectionParams::calc_matrices"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "完整相机资源组装与消费者",
+      "document_remaining_assessment": "remaining 主要是外部资源接线；基础投影与视图逻辑已有。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-base/camera-native-fixtures.json",
+        "skeleton/B/crates/utils/src/camera.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [],
+      "validation_gaps": [
+        "projection 有限定原入口对照；body matrix 主要静态证据。完整资源字段和模式未验收。"
+      ],
+      "consumer_gaps": [
+        "country-core 的相机资源组装/消费者不计 utils 库内源码缺失。"
+      ]
+    },
+    {
+      "id": "utils:04",
+      "name": "相机朝向投影",
+      "status": "implemented_scoped",
+      "judgement": "implemented_scoped",
+      "declared_behavior": "提取眼睛位置、前方、右方及XZ平面朝向，处理近垂直回退",
+      "existing_logic": "眼睛向量、右方向 XZ 投影、1e-5 near-vertical fallback 和原 glam basis→Quat 已实现。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/camera.rs",
+          "sha256": "d0997f45be9bfa01027e9d2282ef825d708715a8e6c3261645c0fad91489fcb9",
+          "key_functions": [
+            {
+              "function": "eye_position",
+              "line": 59
+            },
+            {
+              "function": "eye_direction",
+              "line": 62
+            },
+            {
+              "function": "eye_right",
+              "line": 65
+            },
+            {
+              "function": "xz_projective_rotation",
+              "line": 71
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [],
+      "verification_gaps": [
+        "已有 146 原旋转限定样例；完整非有限矩阵和 mode 交互未验收。"
+      ],
+      "external_integration_gaps": [
+        "country-core 的输入与模式切换另列，不能称这个数学功能没写。"
+      ],
+      "original_interfaces": [
+        {
+          "interface_id": "utils::camera::CameraMatrices::aspect_ratio",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c96e60"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/camera.rs",
+            "method": "CameraMatrices::aspect_ratio"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::camera::CameraMatrices::eye_direction",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c96d80"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/camera.rs",
+            "method": "CameraMatrices::eye_direction"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::camera::CameraMatrices::eye_position",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c96d40"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/camera.rs",
+            "method": "CameraMatrices::eye_position"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::camera::CameraMatrices::eye_right",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c96df0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/camera.rs",
+            "method": "CameraMatrices::eye_right"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::camera::CameraMatrices::xz_projective_rotation",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c96e70"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/camera.rs",
+            "method": "CameraMatrices::xz_projective_rotation"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "完整模式切换及输入在country-core侧",
+      "document_remaining_assessment": "当前库内朝向算法存在，模式切换属于外部。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-base/camera-native-fixtures.json",
+        "skeleton/B/crates/utils/src/camera.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [],
+      "validation_gaps": [
+        "已有 146 原旋转限定样例；完整非有限矩阵和 mode 交互未验收。"
+      ],
+      "consumer_gaps": [
+        "country-core 的输入与模式切换另列，不能称这个数学功能没写。"
+      ]
+    },
+    {
+      "id": "utils:05",
+      "name": "镜头变化",
+      "status": "implemented_scoped",
+      "judgement": "implemented_scoped",
+      "declared_behavior": "设置垂直视野；镜头平滑与更新入口尚待联接",
+      "existing_logic": "CameraLens::new 初始化已观察字段；immediate setter 同时更新当前和 target 垂直 FOV。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/camera.rs",
+          "sha256": "d0997f45be9bfa01027e9d2282ef825d708715a8e6c3261645c0fad91489fcb9",
+          "key_functions": [
+            {
+              "function": "new",
+              "line": 104
+            },
+            {
+              "function": "immediately_set_vertical_fov_degrees",
+              "line": 128
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [],
+      "verification_gaps": [
+        "多个 lens 字段语义和运行时更新路径仍未闭合。现有 B utils 原接口清单未定位独立 smooth/update 原方法，不能据文档文字断言其属于 utils。"
+      ],
+      "external_integration_gaps": [
+        "smooth/update producer 归属待核实；若在 country-core 则为外部接线，不计本库缺失。"
+      ],
+      "original_interfaces": [
+        {
+          "interface_id": "utils::camera::CameraLens::immediately_set_vertical_fov_degrees",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c974f0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/camera.rs",
+            "method": "CameraLens::immediately_set_vertical_fov_degrees"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::camera::CameraLens::new",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c97480"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/camera.rs",
+            "method": "CameraLens::new"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "平滑/update生产者未恢复",
+      "document_remaining_assessment": "已定位的两个 Lens 原方法都有代码；“平滑/update 未恢复”须先确认定义模块。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-base/camera-native-fixtures.json",
+        "skeleton/B/crates/utils/src/camera.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [],
+      "validation_gaps": [
+        "多个 lens 字段语义和运行时更新路径仍未闭合。现有 B utils 原接口清单未定位独立 smooth/update 原方法，不能据文档文字断言其属于 utils。"
+      ],
+      "consumer_gaps": [
+        "smooth/update producer 归属待核实；若在 country-core 则为外部接线，不计本库缺失。"
+      ]
+    },
+    {
+      "id": "utils:06",
+      "name": "空间投影与区域关系",
+      "status": "partial_missing_logic",
+      "judgement": "partial_missing_logic",
+      "declared_behavior": "在线性或循环空间计算距离、投影、夹紧、区间减法",
+      "existing_logic": "CircularComparativeSpace 与 WallSpace 线性/循环距离、投影、clamp、单次环形 subtract 已实现。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/comparative_space.rs",
+          "sha256": "1e963bba98f35a2f5252d5c69db94ea09c9c8cde6614b26a120d198ca863b0b7",
+          "key_functions": [
+            {
+              "function": "distance",
+              "line": 2
+            },
+            {
+              "function": "project",
+              "line": 3
+            },
+            {
+              "function": "project_clamp",
+              "line": 4
+            },
+            {
+              "function": "project_unbounded",
+              "line": 5
+            },
+            {
+              "function": "subtract",
+              "line": 6
+            }
+          ]
+        },
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+          "sha256": "3e034065f8b7f7f00a7c7cd9b76f6f0a86ed92be0e957a84725968c7a86a7218",
+          "key_functions": [
+            {
+              "function": "distance",
+              "line": 6
+            },
+            {
+              "function": "project",
+              "line": 7
+            },
+            {
+              "function": "project_clamp",
+              "line": 8
+            },
+            {
+              "function": "project_unbounded",
+              "line": 9
+            },
+            {
+              "function": "subtract",
+              "line": 10
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [
+        "ComparativeSpace 的区域侧向 classify_side / regions_intersect 与 lerp_clamp 行为尚无实现；其他原 impl 的空间类型/规则仍待绑定。"
+      ],
+      "verification_gaps": [
+        "零/负周期、非有限值策略属于边界验证缺口，已有 % / 分支代码，不能笼统算缺少整个投影算法。"
+      ],
+      "external_integration_gaps": [],
+      "original_interfaces": [
+        {
+          "interface_id": "<utils::comparative_space::CircularComparativeSpace as utils::comparative_space::ComparativeSpace>::distance",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x142007170"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/comparative_space.rs",
+            "method": "distance"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::comparative_space::ComparativeSpace::lerp_clamp",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::comparative_space::impl$0::classify_side",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::comparative_space::impl$0::regions_intersect",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::comparative_space::impl$1::distance",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::comparative_space::impl$2::distance",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::comparative_space::impl$2::project",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::comparative_space::impl$2::project_clamp",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::comparative_space::impl$2::subtract",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::comparative_space::impl$3::project",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::comparative_space::impl$3::project_clamp",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::comparative_space::impl$3::project_unbounded",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::comparative_space::impl$3::subtract",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "<utils::wall_space::WallSpace as utils::comparative_space::ComparativeSpace>::distance",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c91df0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+            "method": "distance"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "<utils::wall_space::WallSpace as utils::comparative_space::ComparativeSpace>::project",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c91e40"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+            "method": "project"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "<utils::wall_space::WallSpace as utils::comparative_space::ComparativeSpace>::project_clamp",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c91eb0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+            "method": "project_clamp"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "<utils::wall_space::WallSpace as utils::comparative_space::ComparativeSpace>::project_unbounded",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c91f20"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+            "method": "project_unbounded"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "<utils::wall_space::WallSpace as utils::comparative_space::ComparativeSpace>::subtract",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c91f60"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+            "method": "subtract"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::bound",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::from_curve_internal_coord",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c92000"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+            "method": "WallSpaceCoord::from_curve_internal_coord"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::from_world_space",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c91fb0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+            "method": "WallSpaceCoord::from_world_space"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::get_pos_xz",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c923b0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+            "method": "WallSpaceCoord::get_pos_xz"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::get_tangent",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c924f0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+            "method": "WallSpaceCoord::get_tangent"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::is_bounded",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::new",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::offset_x_clamped",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::subtract",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::to_affine3",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::to_world_space",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c92090"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+            "method": "WallSpaceCoord::to_world_space"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::with_offset",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::with_offset_clamped",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::with_offset_unbounded",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::with_y_offset",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c925d0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+            "method": "WallSpaceCoord::with_y"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceRegion::intersects",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::impl$4::from",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x14003bb80"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+            "method": "WallSpaceCoord::new_unchecked"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "classify_side、regions_intersect及零/负周期",
+      "document_remaining_assessment": "区域关系确实缺；零/负周期主要未验证。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-base/CONTRACT.md",
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/CONTRACT.md",
+        "skeleton/B/crates/utils/src/comparative_space.rs",
+        "skeleton/B/crates/utils/src/wall_space.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [
+        "ComparativeSpace 的区域侧向 classify_side / regions_intersect 与 lerp_clamp 行为尚无实现；其他原 impl 的空间类型/规则仍待绑定。"
+      ],
+      "validation_gaps": [
+        "零/负周期、非有限值策略属于边界验证缺口，已有 % / 分支代码，不能笼统算缺少整个投影算法。"
+      ],
+      "consumer_gaps": []
+    },
+    {
+      "id": "utils:07",
+      "name": "缓动与偏置",
+      "status": "implemented_scoped",
+      "judgement": "implemented_scoped",
+      "declared_behavior": "按游戏枚举选择插值曲线，对过渡进度施加缓动",
+      "existing_logic": "EasingFunction 七个已观察 discriminants（Circular/Cubic/Sine/Bias/Elastic/Back/CubicOut）全部已有 apply 分支。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/easing_functions.rs",
+          "sha256": "fb8011ab85c5e50ed82f2178d385cde3b042aac3550c173af77b96e72289298b",
+          "key_functions": [
+            {
+              "function": "cubic_in_out",
+              "line": 7
+            },
+            {
+              "function": "apply",
+              "line": 12
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [],
+      "verification_gaps": [
+        "119 原枚举入口样例仅限定输入域；shoulder 等 standalone helper 身份/调用策略未独立确认，不因没有同名 helper 就判枚举族缺失。越界/NaN 待验证。"
+      ],
+      "external_integration_gaps": [],
+      "original_interfaces": [
+        {
+          "interface_id": "utils::easing_functions::EasingFunction::apply",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c95ef0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/easing_functions.rs",
+            "method": "EasingFunction::apply"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::easing_functions::circular_in_out",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::easing_functions::cubic_in_out",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c961e0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/easing_functions.rs",
+            "method": "cubic_in_out"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::easing_functions::cubic_out",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::easing_functions::ease_in_out_elastic",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::easing_functions::ease_out_back",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::easing_functions::shoulder",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::easing_functions::sine_in_out",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "其余已观察缓动族、越界和NaN输入",
+      "document_remaining_assessment": "“其余缓动族”不能从 standalone helper 名字推导；七个已观察枚举族已有实现。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/native-fixtures.json",
+        "skeleton/B/crates/utils/src/easing_functions.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [],
+      "validation_gaps": [
+        "119 原枚举入口样例仅限定输入域；shoulder 等 standalone helper 身份/调用策略未独立确认，不因没有同名 helper 就判枚举族缺失。越界/NaN 待验证。"
+      ],
+      "consumer_gaps": []
+    },
+    {
+      "id": "utils:08",
+      "name": "带时间的备份",
+      "status": "implemented_scoped",
+      "judgement": "implemented_scoped",
+      "declared_behavior": "按日期格式生成保留原名的备份路径并复制文件",
+      "existing_logic": "保留原文件名和目录、追加原日期格式与 .json，再委托 std::fs::copy；结果传播已有。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/file.rs",
+          "sha256": "1c53d1f379c7368dfbc50b89a9d9149c4d780a32c6fb163977dcfafa3fda44e5",
+          "key_functions": [
+            {
+              "function": "date_time_string_for_filename_at",
+              "line": 3
+            },
+            {
+              "function": "generate_backup_file_path_at",
+              "line": 10
+            },
+            {
+              "function": "copy_file_to_backup",
+              "line": 15
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [],
+      "verification_gaps": [
+        "IO错误、无文件名、非Unicode panic 和原日志策略没有完整原对照；是否额外日志为本方法业务尚需证据。"
+      ],
+      "external_integration_gaps": [],
+      "original_interfaces": [
+        {
+          "interface_id": "<std::path::Path as utils::file::PathTail>::tail",
+          "existing_analysis_status": "untouched",
+          "original_entries": [
+            "0x1416f6ac0"
+          ],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::file::copy_file_to_backup",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c96a80"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/file.rs",
+            "method": "copy_file_to_backup"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::file::date_time_string_for_filename",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c96690"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/file.rs",
+            "method": "date_time_string_for_filename"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::file::generate_backup_file_path",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c968b0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/file.rs",
+            "method": "generate_backup_file_path"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "IO失败、非Unicode路径和日志策略",
+      "document_remaining_assessment": "失败路径代码已有；remaining 不能全视为没写。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-base/CONTRACT.md",
+        "skeleton/B/crates/utils/src/file.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [],
+      "validation_gaps": [
+        "IO错误、无文件名、非Unicode panic 和原日志策略没有完整原对照；是否额外日志为本方法业务尚需证据。"
+      ],
+      "consumer_gaps": []
+    },
+    {
+      "id": "utils:09",
+      "name": "地面网格采样",
+      "status": "implemented_scoped",
+      "judgement": "implemented_scoped",
+      "declared_behavior": "把世界XZ映射至网格并做双线性采样，支持已观察采样器",
+      "existing_logic": "世界 XZ 归一化、四 texel 采样、texel-center fix 与 legacy 分支以及 legacy 边缘外推公式均存在。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/float_grid.rs",
+          "sha256": "b975bbff901ab153bd20549fe37eed4c9d64b0793987fcd53293c2f05dfbd650",
+          "key_functions": [
+            {
+              "function": "bilinear_sample_at_world_xz",
+              "line": 10
+            },
+            {
+              "function": "load_index_unchecked",
+              "line": 5
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [],
+      "verification_gaps": [
+        "固定/动态 monomorphization 的输入格式/flags 与 NaN/边界未完整原差分；ByteFloatGrid 只是 u8 storage adapter，不能覆盖全部真实 owner 类型。"
+      ],
+      "external_integration_gaps": [
+        "terrain/raster 数据存储实现与 flag producer 属实际调用方，不计缺一个库内 bilinear 算法。"
+      ],
+      "original_interfaces": [
+        {
+          "interface_id": "<T as utils::float_grid::FloatGridSampler>::bilinear_sample_at_world_xz",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140257ba0",
+            "0x140a14df0",
+            "0x14261f0c0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/float_grid.rs",
+            "method": "FloatGridSampler::bilinear_sample_at_world_xz"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::float_grid::FloatGrid::load_unchecked",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/float_grid.rs",
+            "method": "FloatGrid::load_index_unchecked via explicit storage adapter"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "固定/动态网格标志、边界外推与真实资源",
+      "document_remaining_assessment": "两种 sampler 逻辑已有；flags/真实资源是绑定和验证。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/native-manifest.json",
+        "skeleton/B/crates/utils/src/float_grid.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [],
+      "validation_gaps": [
+        "固定/动态 monomorphization 的输入格式/flags 与 NaN/边界未完整原差分；ByteFloatGrid 只是 u8 storage adapter，不能覆盖全部真实 owner 类型。"
+      ],
+      "consumer_gaps": [
+        "terrain/raster 数据存储实现与 flag producer 属实际调用方，不计缺一个库内 bilinear 算法。"
+      ]
+    },
+    {
+      "id": "utils:10",
+      "name": "半精度数据包装",
+      "status": "implemented_scoped",
+      "judgement": "implemented_scoped",
+      "declared_behavior": "将游戏向量/数组按既定分量转换成f16用于紧凑数据",
+      "existing_logic": "f32/数组/Vec2/Vec3/Vec4/Quat 通过原 half 和 glam 按分量打包；未自写 f16。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/halver.rs",
+          "sha256": "10f1569eb954dfece1d7af10a53b01ee896e2e7b11f67072832edbc77ec19e33",
+          "key_functions": [
+            {
+              "function": "to_f16",
+              "line": 4
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [],
+      "verification_gaps": [
+        "所有原泛型实例的分量类型/顺序及 payload consumer 未全部验收；Vec2/泛型数组部分是明确 adapter。"
+      ],
+      "external_integration_gaps": [
+        "原资源生产者/消费者接线另列。"
+      ],
+      "original_interfaces": [
+        {
+          "interface_id": "<[f32; 3] as utils::halver::Halver>::to_f16",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x141940140"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/halver.rs",
+            "method": "Halver::to_f16"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "<[f32; 4] as utils::halver::Halver>::to_f16",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x141940180"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/halver.rs",
+            "method": "Halver::to_f16"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "<f32 as utils::halver::Halver>::to_f16",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x1408b9f20"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/halver.rs",
+            "method": "Halver::to_f16"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "<glam::f32::sse2::quat::Quat as utils::halver::Halver>::to_f16",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x1420071b0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/halver.rs",
+            "method": "Halver::to_f16"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "<glam::f32::sse2::vec4::Vec4 as utils::halver::Halver>::to_f16",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x1420071f0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/halver.rs",
+            "method": "Halver::to_f16"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "<glam::f32::vec3::Vec3 as utils::halver::Halver>::to_f16",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c8ffb0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/halver.rs",
+            "method": "Halver::to_f16"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::halver::impl$1::to_f16",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/halver.rs",
+            "method": "Halver::to_f16"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "仅恢复打包组合；half算法复用，完整生产者待接",
+      "document_remaining_assessment": "打包组合已有代码；half 算法应复用，不能算待恢复。",
+      "evidence": [
+        "skeleton/B/crates/utils/src/halver.rs",
+        "tracking/original-Cargo.lock"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [],
+      "validation_gaps": [
+        "所有原泛型实例的分量类型/顺序及 payload consumer 未全部验收；Vec2/泛型数组部分是明确 adapter。"
+      ],
+      "consumer_gaps": [
+        "原资源生产者/消费者接线另列。"
+      ]
+    },
+    {
+      "id": "utils:11",
+      "name": "对象索引压缩",
+      "status": "implemented_scoped",
+      "judgement": "implemented_scoped",
+      "declared_behavior": "为对象key维护紧凑索引，删除时调整索引并支持缓存解析",
+      "existing_logic": "insert 为新 key 建立 dense Vec/HashMap、重复 key 返回现有 index；get 修复 Cell cache，remove swap_remove 后修正 moved key，clear 保留容量。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/index_condenser.rs",
+          "sha256": "6f9a86ee03f79b7448a2337542526e6199fa88f78a792b2e6a5994c73168f858",
+          "key_functions": [
+            {
+              "function": "insert",
+              "line": 32
+            },
+            {
+              "function": "get",
+              "line": 62
+            },
+            {
+              "function": "remove",
+              "line": 46
+            },
+            {
+              "function": "clear",
+              "line": 71
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [],
+      "verification_gaps": [
+        "insert 是维持已观察 invariants 的候选 producer，原真实 key/重复策略未对照；get/remove 有原片段/静态证据，不能把 insert 未验证写成完全无源码。"
+      ],
+      "external_integration_gaps": [
+        "GPUWorld/startup 原消费者未接线，单列库外联接。"
+      ],
+      "original_interfaces": [
+        {
+          "interface_id": "utils::index_condenser::IndexCondenser::clear",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/index_condenser.rs",
+            "method": "utils::index_condenser::IndexCondenser::clear"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::index_condenser::IndexCondenser::get",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/index_condenser.rs",
+            "method": "utils::index_condenser::IndexCondenser::get"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::index_condenser::IndexCondenser::insert",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/index_condenser.rs",
+            "method": "candidate adapter; original method binding unverified"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::index_condenser::IndexCondenser::remove",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140a19f50"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/index_condenser.rs",
+            "method": "IndexCondenser::remove"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "insert生产策略、GPUWorld与启动消费者",
+      "document_remaining_assessment": "insert 源码存在，原 producer 合同仍未验证。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-base/interface-batch-02/CONTRACT.md",
+        "skeleton/B/crates/utils/src/index_condenser.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [],
+      "validation_gaps": [
+        "insert 是维持已观察 invariants 的候选 producer，原真实 key/重复策略未对照；get/remove 有原片段/静态证据，不能把 insert 未验证写成完全无源码。"
+      ],
+      "consumer_gaps": [
+        "GPUWorld/startup 原消费者未接线，单列库外联接。"
+      ]
+    },
+    {
+      "id": "utils:12",
+      "name": "本地时间缓存",
+      "status": "implemented_scoped",
+      "judgement": "implemented_scoped",
+      "declared_behavior": "缓存平台时区偏移，初始化失败使用UTC，再转换时间",
+      "existing_logic": "每次 init 查询并覆盖 offset cache，失败用 None/UTC；转换读取 cache 后 to_offset。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/local_time.rs",
+          "sha256": "e7987286ead98c76c8fbfad5f527f7c8d5e1ef6666a5e4cf0933c05541748f00",
+          "key_functions": [
+            {
+              "function": "init_local_time",
+              "line": 6
+            },
+            {
+              "function": "system_time_to_local_time",
+              "line": 10
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [],
+      "verification_gaps": [
+        "平台 offset 查询失败与时区/刷新实际 workflow 未原运行验证。"
+      ],
+      "external_integration_gaps": [
+        "启动调用次数和刷新时机由消费者决定；不算库内未实现 refresh 分支。"
+      ],
+      "original_interfaces": [
+        {
+          "interface_id": "utils::local_time::init_local_time",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c91d60"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/local_time.rs",
+            "method": "init_local_time"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::local_time::now_appox_local",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::local_time::system_time_to_local_time",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c91d90"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/local_time.rs",
+            "method": "system_time_to_local_time"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "实际刷新频率和平台失败流程",
+      "document_remaining_assessment": "刷新代码不是一次性 init：每次调用都覆盖；remaining 是实际调用频率。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-base/CONTRACT.md",
+        "skeleton/B/crates/utils/src/local_time.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [],
+      "validation_gaps": [
+        "平台 offset 查询失败与时区/刷新实际 workflow 未原运行验证。"
+      ],
+      "consumer_gaps": [
+        "启动调用次数和刷新时机由消费者决定；不算库内未实现 refresh 分支。"
+      ]
+    },
+    {
+      "id": "utils:13",
+      "name": "循环索引与切片",
+      "status": "partial_missing_logic",
+      "judgement": "partial_missing_logic",
+      "declared_behavior": "把有符号索引映射到周期，遍历直线/闭环范围及子切片",
+      "existing_logic": "signed rem_euclid、line/loop bounds、subslice、正向及 DoubleEndedIterator 反向遍历均已有。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/loop_range.rs",
+          "sha256": "fdb528c2889f670cc4d28fb4c2321ba9a7c6dd83b082172143c557c6ef9c8891",
+          "key_functions": [
+            {
+              "function": "index",
+              "line": 8
+            },
+            {
+              "function": "new_loop",
+              "line": 14
+            },
+            {
+              "function": "new_line",
+              "line": 20
+            },
+            {
+              "function": "subslice",
+              "line": 32
+            },
+            {
+              "function": "next",
+              "line": 40
+            },
+            {
+              "function": "next_back",
+              "line": 47
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [
+        "LoopSlice / LoopRange::map_slice 对原 slice 的循环索引、双向迭代与 indexing 业务尚无实现。"
+      ],
+      "verification_gaps": [
+        "next/next_back 原 owner 与全部异常 period 规则未独立对照；不得将已有 reverse iterator 称未写。"
+      ],
+      "external_integration_gaps": [],
+      "original_interfaces": [
+        {
+          "interface_id": "<utils::loop_range::LoopIdx as core::ops::arith::Sub>::sub",
+          "existing_analysis_status": "untouched",
+          "original_entries": [
+            "0x1412002e0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/loop_range.rs",
+            "method": "candidate adapter; original method binding unverified"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "<utils::loop_range::LoopRange as core::iter::traits::double_ended::DoubleEndedIterator>::next_back",
+          "existing_analysis_status": "untouched",
+          "original_entries": [
+            "0x141200320"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/loop_range.rs",
+            "method": "candidate adapter; original method binding unverified"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "<utils::loop_range::LoopRange as core::iter::traits::iterator::Iterator>::next",
+          "existing_analysis_status": "untouched",
+          "original_entries": [
+            "0x1412002f0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/loop_range.rs",
+            "method": "candidate adapter; original method binding unverified"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "<utils::loop_range::LoopSlice as core::iter::traits::iterator::Iterator>::next",
+          "existing_analysis_status": "untouched",
+          "original_entries": [
+            "0x141208e10"
+          ],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::loop_range::LoopIdx::index",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x141200280"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/loop_range.rs",
+            "method": "LoopIdx::index"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::loop_range::LoopRange::end",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x141200380"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/loop_range.rs",
+            "method": "LoopRange::end"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::loop_range::LoopRange::map_slice",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::loop_range::LoopRange::new_line",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x141200450"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/loop_range.rs",
+            "method": "LoopRange::new_line"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::loop_range::LoopRange::new_loop",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x141200390"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/loop_range.rs",
+            "method": "LoopRange::new_loop"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::loop_range::LoopRange::start",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x141200370"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/loop_range.rs",
+            "method": "LoopRange::start"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::loop_range::LoopRange::subslice",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x141200510"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/loop_range.rs",
+            "method": "LoopRange::subslice"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::loop_range::impl$7::next_back",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::loop_range::impl$8::index",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "LoopSlice、反向遍历与异常周期规则",
+      "document_remaining_assessment": "LoopSlice 确实缺；反向 LoopRange 遍历已经存在。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/141200510.asm.txt",
+        "skeleton/B/crates/utils/src/loop_range.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [
+        "LoopSlice / LoopRange::map_slice 对原 slice 的循环索引、双向迭代与 indexing 业务尚无实现。"
+      ],
+      "validation_gaps": [
+        "next/next_back 原 owner 与全部异常 period 规则未独立对照；不得将已有 reverse iterator 称未写。"
+      ],
+      "consumer_gaps": []
+    },
+    {
+      "id": "utils:14",
+      "name": "资产名称标识",
+      "status": "implemented_scoped",
+      "judgement": "implemented_scoped",
+      "declared_behavior": "按原xxhash调用生成名称key并提供调试名称策略",
+      "existing_logic": "UTF-8 名称直接调用原 xxh3_64，debug label 策略也已实现。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/name_hash.rs",
+          "sha256": "4bcb4d8fc8c3a5ef179b669f57d58865caf57394eefd00d880df2a69dfff30c4",
+          "key_functions": [
+            {
+              "function": "compute",
+              "line": 5
+            },
+            {
+              "function": "debug_name",
+              "line": 6
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [],
+      "verification_gaps": [
+        "hash/type/format 全部字段契约及真实 lookup collision 处理未验收。"
+      ],
+      "external_integration_gaps": [
+        "资产库 lookup / collision consumers 在真实 asset/country-core 调用方，不是本库新增 hash 算法任务。"
+      ],
+      "original_interfaces": [
+        {
+          "interface_id": "utils::name_hash::NameHash::compute",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c9cd80"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/name_hash.rs",
+            "method": "NameHash::compute"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::name_hash::NameHash::debug_name",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c9cdb0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/name_hash.rs",
+            "method": "NameHash::debug_name"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "真实名称生产者与冲突/查找消费者；hash算法复用",
+      "document_remaining_assessment": "名称 key 与 debug 行为已写；剩余消费者和验证。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/140c9cd80.asm.txt",
+        "skeleton/B/crates/utils/src/name_hash.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [],
+      "validation_gaps": [
+        "hash/type/format 全部字段契约及真实 lookup collision 处理未验收。"
+      ],
+      "consumer_gaps": [
+        "资产库 lookup / collision consumers 在真实 asset/country-core 调用方，不是本库新增 hash 算法任务。"
+      ]
+    },
+    {
+      "id": "utils:15",
+      "name": "自然样条构造",
+      "status": "implemented_scoped",
+      "judgement": "implemented_scoped",
+      "declared_behavior": "由2D/3D控制点和可选端点切线生成样条系数",
+      "existing_logic": "2D/3D open knots、自然/单端/双端导数、scalar solve 和每段系数生产完整候选已有。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs",
+          "sha256": "400febb381f2461a3d45ef6b72d0a246c566ce7bb08a5339226cbfea81bcf59e",
+          "key_functions": [
+            {
+              "function": "knots",
+              "line": 46
+            },
+            {
+              "function": "second_derivatives",
+              "line": 66
+            },
+            {
+              "function": "coefficients",
+              "line": 145
+            },
+            {
+              "function": "from_control_points_with_tangents",
+              "line": 188
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [],
+      "verification_gaps": [
+        "少点 assert/重复弦长导致除零或非有限已有现行代码，但是否与原退化策略一致未验收；极端规模也未验证。"
+      ],
+      "external_integration_gaps": [],
+      "original_interfaces": [
+        {
+          "interface_id": "utils::natural_cubic::Spline2D::from_control_points_with_tangents",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c926b0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs",
+            "method": "Spline2D::from_control_points_with_tangents"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::natural_cubic::Spline3D::from_control_points_with_tangents",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c93970"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs",
+            "method": "Spline3D::from_control_points_with_tangents"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::natural_cubic::build_knots_open",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs",
+            "method": "knots(periodic=false)"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::natural_cubic::build_knots_open3",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs",
+            "method": "knots(periodic=false)"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::natural_cubic::solve_clamped_spline",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c94a10"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs",
+            "method": "second_derivatives + coefficients"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::natural_cubic::solve_tridiagonal",
+          "existing_analysis_status": "untouched",
+          "original_entries": [
+            "0x140c95c60"
+          ],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "重复点、少点、非有限与极端规模",
+      "document_remaining_assessment": "重复/少点不是完全没有处理代码，而是原处理规则验证缺口。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-base/spline-rdp-native-fixtures.json",
+        "skeleton/B/crates/utils/src/natural_cubic.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [],
+      "validation_gaps": [
+        "少点 assert/重复弦长导致除零或非有限已有现行代码，但是否与原退化策略一致未验收；极端规模也未验证。"
+      ],
+      "consumer_gaps": []
+    },
+    {
+      "id": "utils:16",
+      "name": "周期样条构造",
+      "status": "implemented_scoped",
+      "judgement": "implemented_scoped",
+      "declared_behavior": "构造闭合样条的节点及周期边界条件",
+      "existing_logic": "2D closed knots 及 cyclic rank-one correction（两次 tridiagonal solve）已有，并通过现有 periodic constructor fixture。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs",
+          "sha256": "400febb381f2461a3d45ef6b72d0a246c566ce7bb08a5339226cbfea81bcf59e",
+          "key_functions": [
+            {
+              "function": "knots",
+              "line": 46
+            },
+            {
+              "function": "tridiagonal",
+              "line": 98
+            },
+            {
+              "function": "periodic_second_derivatives",
+              "line": 115
+            },
+            {
+              "function": "from_periodic_loop",
+              "line": 221
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [],
+      "verification_gaps": [
+        "原 solve_cyclic / solve_tridiagonal 名字没有一比一函数，但相应数学逻辑已合并实现；所有独立入口及退化周期输入未对照。"
+      ],
+      "external_integration_gaps": [],
+      "original_interfaces": [
+        {
+          "interface_id": "utils::natural_cubic::Spline2D::from_periodic_loop",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c930f0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs",
+            "method": "Spline2D::from_periodic_loop"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::natural_cubic::build_knots_closed",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs",
+            "method": "knots(periodic=true)"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::natural_cubic::compute_periodic_spline",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c95200"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs",
+            "method": "periodic_second_derivatives + coefficients"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::natural_cubic::solve_cyclic",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::natural_cubic::solve_tridiagonal",
+          "existing_analysis_status": "untouched",
+          "original_entries": [
+            "0x140c95c60"
+          ],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "求解器剩余入口和退化周期输入",
+      "document_remaining_assessment": "“求解器未写”过时；剩余入口映射/退化验证。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-base/spline-rdp-native-fixtures.json",
+        "skeleton/B/crates/utils/src/natural_cubic.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [],
+      "validation_gaps": [
+        "原 solve_cyclic / solve_tridiagonal 名字没有一比一函数，但相应数学逻辑已合并实现；所有独立入口及退化周期输入未对照。"
+      ],
+      "consumer_gaps": []
+    },
+    {
+      "id": "utils:17",
+      "name": "样条位置和切线",
+      "status": "partial_missing_logic",
+      "judgement": "partial_missing_logic",
+      "declared_behavior": "寻找采样区段，夹紧参数，计算曲线位置及切线",
+      "existing_logic": "2D/3D 每段 polynomial position/tangent 已实现；3D 全局 t clamp、partition_point 区段选择和 evaluate 已实现。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs",
+          "sha256": "400febb381f2461a3d45ef6b72d0a246c566ce7bb08a5339226cbfea81bcf59e",
+          "key_functions": [
+            {
+              "function": "position_at_local_t",
+              "line": 10
+            },
+            {
+              "function": "tangent_at_local_t",
+              "line": 14
+            },
+            {
+              "function": "segment_at_t",
+              "line": 279
+            },
+            {
+              "function": "position_at_t",
+              "line": 288
+            },
+            {
+              "function": "tangent_at_t",
+              "line": 292
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [
+        "Spline2D::find_segment_and_dt 对整个2D样条选择区段/局部参数的业务路径尚无实现；不能由3D查询自动替代。"
+      ],
+      "verification_gaps": [
+        "已有3D 120+120限定查询对照；2D segment-selection、端点/退化与完整消费者未验收。"
+      ],
+      "external_integration_gaps": [
+        "真实编辑消费者接线不算2D/3D polynomial 代码缺失。"
+      ],
+      "original_interfaces": [
+        {
+          "interface_id": "utils::natural_cubic::Spline2D::find_segment_and_dt",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::natural_cubic::Spline3D::find_segment_and_dt",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs",
+            "method": "Spline3D::segment_at_t"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::natural_cubic::Spline3D::position_at_t",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c946a0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs",
+            "method": "Spline3D::position_at_t"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::natural_cubic::Spline3D::tangent_at_t",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c94800"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs",
+            "method": "Spline3D::tangent_at_t"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::natural_cubic::SplineSegment2D::position_at_local_t",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c92610"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs",
+            "method": "SplineSegment2D::position_at_local_t"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::natural_cubic::SplineSegment2D::tangent_at_local_t",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c92660"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs",
+            "method": "SplineSegment2D::tangent_at_local_t"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::natural_cubic::SplineSegment3D::position_at_local_t",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs",
+            "method": "SplineSegment3D::position_at_local_t"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::natural_cubic::SplineSegment3D::tangent_at_local_t",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs",
+            "method": "SplineSegment3D::tangent_at_local_t"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::natural_cubic::eval_cubic",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs",
+            "method": "SplineSegment2D/3D::position_at_local_t"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::natural_cubic::eval_cubic_deriv",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs",
+            "method": "SplineSegment2D/3D::tangent_at_local_t"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "全部区段/端点和真实编辑消费者",
+      "document_remaining_assessment": "3D 区段/夹紧已有；2D 全局区段选择确实缺。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-base/spline-rdp-native-fixtures.json",
+        "skeleton/B/crates/utils/src/natural_cubic.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [
+        "Spline2D::find_segment_and_dt 对整个2D样条选择区段/局部参数的业务路径尚无实现；不能由3D查询自动替代。"
+      ],
+      "validation_gaps": [
+        "已有3D 120+120限定查询对照；2D segment-selection、端点/退化与完整消费者未验收。"
+      ],
+      "consumer_gaps": [
+        "真实编辑消费者接线不算2D/3D polynomial 代码缺失。"
+      ]
+    },
+    {
+      "id": "utils:18",
+      "name": "轮廓简化",
+      "status": "partial_missing_logic",
+      "judgement": "partial_missing_logic",
+      "declared_behavior": "按RDP阈值选择保留点索引，保留已观察几何规则",
+      "existing_logic": "无界投影线距离、spacing、root-force、left-span shortcut、输出索引及简化点生产候选已有。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/rdp.rs",
+          "sha256": "3734f2f03262624dece0620314d2e5aa8d3fb608d8fdd24e2eebb030418c51b1",
+          "key_functions": [
+            {
+              "function": "new_with_opts",
+              "line": 23
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [
+        "Rdp::stitch_with 的简化结果接缝合并规则未实现；Rdp::new<Vec2> 的原默认参数策略未确认/实现（不能只补猜测 wrapper）。"
+      ],
+      "verification_gaps": [
+        "108 原案例覆盖已观察constructor域；负 epsilon 不进展原作共有风险，调用方非负前置条件待确认。into_indices 是纯取值，不单列缺失业务。"
+      ],
+      "external_integration_gaps": [
+        "真实阈值/seed/source-size producer 不在本库内自动视为缺算法。"
+      ],
+      "original_interfaces": [
+        {
+          "interface_id": "utils::rdp::Rdp::into_indices",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::rdp::Rdp::new",
+          "existing_analysis_status": "untouched",
+          "original_entries": [
+            "0x140ad1fe0"
+          ],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::rdp::Rdp::new_with_opts",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x141fe0b90"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/rdp.rs",
+            "method": "Rdp::new_with_opts"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::rdp::Rdp::stitch_with",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "stitch_with、索引消费及调用者非负阈值约束",
+      "document_remaining_assessment": "stitch 确实缺；索引字段已可用，getter 不构成独立任务。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-base/spline-rdp-native-fixtures.json",
+        "evidence/shared-foundation-review-2026-10-13/utils-base/rdp-boundary-probe.json",
+        "skeleton/B/crates/utils/src/rdp.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [
+        "Rdp::stitch_with 的简化结果接缝合并规则未实现；Rdp::new<Vec2> 的原默认参数策略未确认/实现（不能只补猜测 wrapper）。"
+      ],
+      "validation_gaps": [
+        "108 原案例覆盖已观察constructor域；负 epsilon 不进展原作共有风险，调用方非负前置条件待确认。into_indices 是纯取值，不单列缺失业务。"
+      ],
+      "consumer_gaps": [
+        "真实阈值/seed/source-size producer 不在本库内自动视为缺算法。"
+      ]
+    },
+    {
+      "id": "utils:19",
+      "name": "颜色紧凑编码",
+      "status": "implemented_scoped",
+      "judgement": "implemented_scoped",
+      "declared_behavior": "按游戏使用的RGB9E5范围和共享指数规则打包颜色",
+      "existing_logic": "通道范围、round-to-even bias、共享指数与 bit packing 均已有。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/rgb9e5.rs",
+          "sha256": "06063e7fbd43eaf38c5695ff85b1e9a4f87be273ebef060af3b7da8fcbc0b1af",
+          "key_functions": [
+            {
+              "function": "pack_rgb9e5",
+              "line": 6
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [],
+      "verification_gaps": [
+        "非有限/±0、clamp/log2独立 helper 映射和完整字段格式未穷尽；主packing中的相应range/exponent逻辑已有。"
+      ],
+      "external_integration_gaps": [
+        "GPU typed field/上传消费者接线另列。"
+      ],
+      "original_interfaces": [
+        {
+          "interface_id": "utils::rgb9e5::clamp_range_for_rgb9e5",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::rgb9e5::floor_log2",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::rgb9e5::pack_rgb9e5",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x1417c66b0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/rgb9e5.rs",
+            "method": "pack_rgb9e5"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "非有限值和实际GPU字段；不扩成通用颜色库",
+      "document_remaining_assessment": "颜色编码算法已有，remaining 主要验证/下游。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/1417c66b0.asm.txt",
+        "skeleton/B/crates/utils/src/rgb9e5.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [],
+      "validation_gaps": [
+        "非有限/±0、clamp/log2独立 helper 映射和完整字段格式未穷尽；主packing中的相应range/exponent逻辑已有。"
+      ],
+      "consumer_gaps": [
+        "GPU typed field/上传消费者接线另列。"
+      ]
+    },
+    {
+      "id": "utils:20",
+      "name": "随机种子策略",
+      "status": "implemented_scoped",
+      "judgement": "implemented_scoped",
+      "declared_behavior": "变换游戏输入种子并调用原fastrand初始化RNG",
+      "existing_logic": "私有 seed affine mix 已实现；typed adapter 调用原 fastrand1.8 with_seed。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/rng.rs",
+          "sha256": "07ac85d69572d5257812dabc93db19a90232c08df12d4c5b8b489ac3171ca08e",
+          "key_functions": [
+            {
+              "function": "init_rng_u64",
+              "line": 4
+            },
+            {
+              "function": "init_rng",
+              "line": 4
+            },
+            {
+              "function": "rng_from_seed_u64",
+              "line": 10
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [],
+      "verification_gaps": [
+        "原 typed ABI 和各版本/调用源未全部验证；RNG生成算法不在恢复范围。"
+      ],
+      "external_integration_gaps": [
+        "游戏各生成器 seed producer 在其各自业务系统另列。"
+      ],
+      "original_interfaces": [
+        {
+          "interface_id": "utils::rng::init_rng",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c96240"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/rng.rs",
+            "method": "init_rng"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::rng::init_rng_u64",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c96270"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/rng.rs",
+            "method": "init_rng"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "各生成消费者种子来源；不恢复RNG实现",
+      "document_remaining_assessment": "库内种子策略已有；不应把各消费者来源算作本库没写。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-tabloid/native-fixtures.json",
+        "skeleton/B/crates/utils/src/rng.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [],
+      "validation_gaps": [
+        "原 typed ABI 和各版本/调用源未全部验证；RNG生成算法不在恢复范围。"
+      ],
+      "consumer_gaps": [
+        "游戏各生成器 seed producer 在其各自业务系统另列。"
+      ]
+    },
+    {
+      "id": "utils:21",
+      "name": "快照字段选择",
+      "status": "implemented_scoped",
+      "judgement": "implemented_scoped",
+      "declared_behavior": "只提取History内snapshots等所需字段，保留部分成功与吞错策略",
+      "existing_logic": "History→snapshots 的 nested selector、忽略其他字段、last-valid-value、吞错/default 和 partial-success 已有；borrowed key 优化保留策略。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/selective_deserialize.rs",
+          "sha256": "4da495878b1fb10e356a40565d956c6926b1fb6efeb917f3630a226e779beec4",
+          "key_functions": [
+            {
+              "function": "deserialize",
+              "line": 14
+            },
+            {
+              "function": "visit_map",
+              "line": 86
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [],
+      "verification_gaps": [
+        "12候选策略用例非原完整visitor执行；原 payload/schema与inline visit_str/deserialize全规则未验收，不能因没全runtime验证说字段选择算法没有代码。"
+      ],
+      "external_integration_gaps": [
+        "真实 Snapshot type 由 country-core/存档owner提供，单列契约/集成。"
+      ],
+      "original_interfaces": [
+        {
+          "interface_id": "<utils::selective_deserialize::SelectiveDeserialize as serde::de::Deserialize>::deserialize",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x1413e4830",
+            "0x1413e4990"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/selective_deserialize.rs",
+            "method": "SelectiveDeserialize::deserialize"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::selective_deserialize::impl$0::visit_map",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/selective_deserialize.rs",
+            "method": "nested SelectField::visit_map"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::selective_deserialize::impl$4::visit_str",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::selective_deserialize::impl$5::deserialize",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "真实Snapshot类型及原完整visitor",
+      "document_remaining_assessment": "现有源码不是contract_only；原Snapshot绑定和原visitor验证仍缺。",
+      "evidence": [
+        "evidence/shared-foundation-review-2026-10-13/utils-base/selector-policy.log",
+        "skeleton/B/crates/utils/src/selective_deserialize.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [],
+      "validation_gaps": [
+        "12候选策略用例非原完整visitor执行；原 payload/schema与inline visit_str/deserialize全规则未验收，不能因没全runtime验证说字段选择算法没有代码。"
+      ],
+      "consumer_gaps": [
+        "真实 Snapshot type 由 country-core/存档owner提供，单列契约/集成。"
+      ]
+    },
+    {
+      "id": "utils:22",
+      "name": "一维区间裁剪",
+      "status": "implemented_scoped",
+      "judgement": "implemented_scoped",
+      "declared_behavior": "从范围扣除一个或多个区段，输出剩余有序范围",
+      "existing_logic": "当前 ranges 对每次 cut 迭代分拆/删除并写回；连续调用 subtract 已自然实现多次裁剪。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/subtractive_1d_boolean.rs",
+          "sha256": "4565b4529dae9aadef75964b9d2b3fae5e18d7f62321362d757abd418664ac2e",
+          "key_functions": [
+            {
+              "function": "new_range",
+              "line": 13
+            },
+            {
+              "function": "subtract",
+              "line": 25
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [],
+      "verification_gaps": [
+        "158原单次案例已验证；连续 cuts 的 endpoint flag传播、反向/非有限域原对照未完成。"
+      ],
+      "external_integration_gaps": [],
+      "original_interfaces": [
+        {
+          "interface_id": "utils::subtractive_1d_boolean::SubtractiveBoolean1D::new_range",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x141fdc2d0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/subtractive_1d_boolean.rs",
+            "method": "SubtractiveBoolean1D::new_range"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::subtractive_1d_boolean::SubtractiveBoolean1D::result",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c37760"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/subtractive_1d_boolean.rs",
+            "method": "SubtractiveBoolean1D::result"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::subtractive_1d_boolean::SubtractiveBoolean1D::subtract",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x141fdc350"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/subtractive_1d_boolean.rs",
+            "method": "SubtractiveBoolean1D::subtract"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "连续多次裁剪、反向/非有限范围",
+      "document_remaining_assessment": "“连续多次裁剪未写”过时；缺的是序列差分/边界验证。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-base/small-native-fixtures.json",
+        "skeleton/B/crates/utils/src/subtractive_1d_boolean.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [],
+      "validation_gaps": [
+        "158原单次案例已验证；连续 cuts 的 endpoint flag传播、反向/非有限域原对照未完成。"
+      ],
+      "consumer_gaps": []
+    },
+    {
+      "id": "utils:23",
+      "name": "坐标分量适配",
+      "status": "partial_missing_logic",
+      "judgement": "partial_missing_logic",
+      "declared_behavior": "把XZ等平面分量放入指定3D轴，并桥接借用切片",
+      "existing_logic": "四个坐标分量 adapter 完整候选已有；as_vec2 transport 保存 &[Vec3] pointer/len。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/swizzlers.rs",
+          "sha256": "04924394691bc65e08f23c77532176c99a2febec67a06121a4be2c9fef0f59cf",
+          "key_functions": [
+            {
+              "function": "x0y",
+              "line": 5
+            },
+            {
+              "function": "xvy",
+              "line": 13
+            },
+            {
+              "function": "xvz",
+              "line": 21
+            },
+            {
+              "function": "x0z",
+              "line": 29
+            },
+            {
+              "function": "as_vec2",
+              "line": 64
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [
+        "Vec3SliceView2 没有 projected Vec2 element/iterator/index 访问，原轴、stride 与 returned view semantics 未恢复。"
+      ],
+      "verification_gaps": [
+        "256坐标案例与借用运输通过只证明这些范围；不能把pointer passthrough当投影消费完成。"
+      ],
+      "external_integration_gaps": [
+        "真实借用消费者可帮助定类型；基础 view 功能缺口仍属库内。"
+      ],
+      "original_interfaces": [
+        {
+          "interface_id": "<[glam::f32::vec3::Vec3] as utils::swizzlers::Vec3SliceAs2>::as_vec2",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x14067dd80"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/swizzlers.rs",
+            "method": "utils::swizzlers::Vec3SliceAs2::as_vec2",
+            "scope": "borrowed pointer/length transport only; projected consumer API remains unknown"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "<glam::f32::vec2::Vec2 as utils::swizzlers::SwizzlerX0Y>::x0y",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c9cdc0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/swizzlers.rs",
+            "method": "utils::swizzlers::SwizzlerX0Y::x0y",
+            "scope": "original coordinate lane policy"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "<glam::f32::vec2::Vec2 as utils::swizzlers::SwizzlerXVY>::xvy",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c9cde0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/swizzlers.rs",
+            "method": "utils::swizzlers::SwizzlerXVY::xvy",
+            "scope": "original coordinate lane policy"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "<glam::f32::vec3::Vec3 as utils::swizzlers::SwizzlerX0Z>::x0z",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c90030"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/swizzlers.rs",
+            "method": "utils::swizzlers::SwizzlerX0Z::x0z",
+            "scope": "original coordinate lane policy"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "<glam::f32::vec3::Vec3 as utils::swizzlers::SwizzlerXVZ>::xvz",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c90010"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/swizzlers.rs",
+            "method": "utils::swizzlers::SwizzlerXVZ::xvz",
+            "scope": "original coordinate lane policy"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "Vec3SliceAs2投影轴、步长及真实借用消费者",
+      "document_remaining_assessment": "四个分量变换已有；slice投影视图确实不完整。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-base/interface-batch-02/CONTRACT.md",
+        "skeleton/B/crates/utils/src/swizzlers.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [
+        "Vec3SliceView2 没有 projected Vec2 element/iterator/index 访问，原轴、stride 与 returned view semantics 未恢复。"
+      ],
+      "validation_gaps": [
+        "256坐标案例与借用运输通过只证明这些范围；不能把pointer passthrough当投影消费完成。"
+      ],
+      "consumer_gaps": [
+        "真实借用消费者可帮助定类型；基础 view 功能缺口仍属库内。"
+      ]
+    },
+    {
+      "id": "utils:24",
+      "name": "阈值区段提取",
+      "status": "implemented_scoped",
+      "judgement": "implemented_scoped",
+      "declared_behavior": "从样本寻找满足阈值的区段并按原策略保留回调结果",
+      "existing_logic": "按 <= 与 > 分割连续runs并调用 low/high；NaN high singleton 路径已有代码。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/threshold_range.rs",
+          "sha256": "5ca1547b7eaf9487552958e30bd58e23cad75c419aadb0df4445b732410d0579",
+          "key_functions": [
+            {
+              "function": "threshold_range",
+              "line": 5
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [],
+      "verification_gaps": [
+        "原三specializations主要静态证据；NaN/callback保留策略缺完整原入口差分。"
+      ],
+      "external_integration_gaps": [
+        "singleton是否保留由传入callback决定，不应猜测新增utils过滤规则。"
+      ],
+      "original_interfaces": [
+        {
+          "interface_id": "utils::threshold_range::threshold_range",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x1411ff790",
+            "0x1411ffbd0",
+            "0x1411fff30"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/threshold_range.rs",
+            "method": "threshold_range"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "NaN singleton与回调完整原入口",
+      "document_remaining_assessment": "NaN singleton 与 callback流程已经写，剩余为验证。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-base/CONTRACT.md",
+        "skeleton/B/crates/utils/src/threshold_range.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [],
+      "validation_gaps": [
+        "原三specializations主要静态证据；NaN/callback保留策略缺完整原入口差分。"
+      ],
+      "consumer_gaps": [
+        "singleton是否保留由传入callback决定，不应猜测新增utils过滤规则。"
+      ]
+    },
+    {
+      "id": "utils:25",
+      "name": "帧时间过滤",
+      "status": "implemented_scoped",
+      "judgement": "implemented_scoped",
+      "declared_behavior": "按warmup和历史样本过滤墙钟delta，控制初始帧输出",
+      "existing_logic": "原 warmup=1、previous=1/60、4容量空deque producer 和tiny-delta/1.2上限/warmup/4-sample-average过滤已实现。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/timer.rs",
+          "sha256": "6928585c8d83bb88fb5bae8f8b322d6a4cd4bc60a9fea34cc5f1ce54190d90cf",
+          "key_functions": [
+            {
+              "function": "default",
+              "line": 10
+            },
+            {
+              "function": "delta_secs",
+              "line": 36
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [],
+      "verification_gaps": [
+        "140原连续state案例支持该scope；非有限输入域与完整原system运行未验收。"
+      ],
+      "external_integration_gaps": [
+        "Bevy Time/SystemParam adapter、actual Time resource producer与country-core scheduling未接；这些是引擎/调用边界，不能叫过滤业务没写。"
+      ],
+      "original_interfaces": [
+        {
+          "interface_id": "utils::timer::FilteredWallTime::delta_secs",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x141799e70"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/timer.rs",
+            "method": "FilteredWallTime::delta_secs"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::timer::TimeFilter::update",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/timer.rs",
+            "method": "FilteredWallTime::delta_secs private filter body"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::timer::_::_::init_state",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x14179a010"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/timer.rs",
+            "method": "FilteredWallTime::default game Local values only"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::timer::impl$2::default",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/timer.rs",
+            "method": "FilteredWallTime::default"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "Bevy Time/SystemParam实际联接",
+      "document_remaining_assessment": "库内状态初始化和滤波已有，remaining 是资源/系统联接。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-base/small-native-fixtures.json",
+        "skeleton/B/crates/utils/src/timer.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [],
+      "validation_gaps": [
+        "140原连续state案例支持该scope；非有限输入域与完整原system运行未验收。"
+      ],
+      "consumer_gaps": [
+        "Bevy Time/SystemParam adapter、actual Time resource producer与country-core scheduling未接；这些是引擎/调用边界，不能叫过滤业务没写。"
+      ]
+    },
+    {
+      "id": "utils:26",
+      "name": "墙曲线坐标",
+      "status": "implemented_scoped",
+      "judgement": "implemented_scoped",
+      "declared_behavior": "在曲线参数、墙体沿线距离和世界XZ间映射，叠加高度",
+      "existing_logic": "内部coord→沿线距离、世界XZ nearest-u、height以及端点tangent外推都有代码；Curve2 已实现真实 CurveSampling bridge。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+          "sha256": "3e034065f8b7f7f00a7c7cd9b76f6f0a86ed92be0e957a84725968c7a86a7218",
+          "key_functions": [
+            {
+              "function": "from_curve_internal_coord",
+              "line": 29
+            },
+            {
+              "function": "from_world_space",
+              "line": 33
+            },
+            {
+              "function": "get_tangent",
+              "line": 37
+            },
+            {
+              "function": "to_world_space",
+              "line": 38
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [],
+      "verification_gaps": [
+        "WallSpace wrapper整条原调用对照未完成；nearest-u本体Curve2已有但各wrapper输入/退化/闭环规则需验证。"
+      ],
+      "external_integration_gaps": [
+        "真实墙/装饰producer和consumer在country-core/systems另列，不算缺nearest算法。"
+      ],
+      "original_interfaces": [
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::from_curve_internal_coord",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c92000"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+            "method": "WallSpaceCoord::from_curve_internal_coord"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::from_world_space",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c91fb0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+            "method": "WallSpaceCoord::from_world_space"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::get_pos_xz",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c923b0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+            "method": "WallSpaceCoord::get_pos_xz"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::get_tangent",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c924f0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+            "method": "WallSpaceCoord::get_tangent"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::to_world_space",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c92090"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+            "method": "WallSpaceCoord::to_world_space"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::with_y_offset",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c925d0"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+            "method": "WallSpaceCoord::with_y"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "nearest-u、外推及真实墙/装饰消费者",
+      "document_remaining_assessment": "nearest-u与外推不再是没有实现；是wrapper验证与真实接线。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-base/CONTRACT.md",
+        "skeleton/B/crates/utils/src/wall_space.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "supporting_bridge": {
+        "file": "reconstruction/shared-foundation/crates/utils/src/curve/mod.rs",
+        "line": 252,
+        "functions": [
+          "get_approx_u_from_pos",
+          "get_pos_at_u",
+          "get_tangent_at_u"
+        ],
+        "sha256": "8c813a6a073be33d482718200e2ca1de67fcfcc7d80ddf37a61beb3ceb3d8484",
+        "note": "Read solely to confirm already-existing bridge; geometry/curve owner assesses its own feature rows."
+      },
+      "missing_logic": [],
+      "validation_gaps": [
+        "WallSpace wrapper整条原调用对照未完成；nearest-u本体Curve2已有但各wrapper输入/退化/闭环规则需验证。"
+      ],
+      "consumer_gaps": [
+        "真实墙/装饰producer和consumer在country-core/systems另列，不算缺nearest算法。"
+      ]
+    },
+    {
+      "id": "utils:27",
+      "name": "墙空间偏移与范围",
+      "status": "not_implemented",
+      "judgement": "not_implemented",
+      "declared_behavior": "沿墙限制或放开偏移，判断墙空间区域相交并形成变换",
+      "existing_logic": "已有WallSpace空间clamp/unbounded基元与纯height offset，但没有本功能沿墙offset/region/affine闭包。",
+      "implementation_files": [
+        {
+          "file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+          "sha256": "3e034065f8b7f7f00a7c7cd9b76f6f0a86ed92be0e957a84725968c7a86a7218",
+          "key_functions": [
+            {
+              "function": "project_clamp",
+              "line": 8
+            },
+            {
+              "function": "project_unbounded",
+              "line": 9
+            },
+            {
+              "function": "with_y_offset",
+              "line": 24
+            }
+          ]
+        }
+      ],
+      "missing_library_logic": [
+        "WallSpaceCoord::bound / is_bounded / new 的边界策略、with_offset / with_offset_clamped / with_offset_unbounded / offset_x_clamped尚缺。",
+        "WallSpaceRegion::intersects 的区域相交规则和 WallSpaceCoord::to_affine3 的墙曲线变换组装尚缺。"
+      ],
+      "verification_gaps": [
+        "这些原业务接口多数只有PDB/source归属，具体算法尚未闭合，不能由getter/derive或简单u+y猜造。"
+      ],
+      "external_integration_gaps": [],
+      "original_interfaces": [
+        {
+          "interface_id": "<utils::wall_space::WallSpace as utils::comparative_space::ComparativeSpace>::subtract",
+          "existing_analysis_status": "analyzed_partial",
+          "original_entries": [
+            "0x140c91f60"
+          ],
+          "candidate_mapping": {
+            "file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+            "method": "subtract"
+          },
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::bound",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::is_bounded",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::new",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::offset_x_clamped",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::subtract",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::to_affine3",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::with_offset",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::with_offset_clamped",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceCoord::with_offset_unbounded",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        },
+        {
+          "interface_id": "utils::wall_space::WallSpaceRegion::intersects",
+          "existing_analysis_status": "untouched",
+          "original_entries": [],
+          "candidate_mapping": null,
+          "boundary": "mapping/inventory evidence is not full business acceptance"
+        }
+      ],
+      "document_remaining": "bound、offset、region和to_affine3规则",
+      "document_remaining_assessment": "scope_only仍准确：基本项目计算相关primitive不等于实现沿墙offset/region/transform功能。",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/utils-base/CONTRACT.md",
+        "skeleton/B/crates/utils/src/wall_space.rs"
+      ],
+      "full_original_functionality_accepted": false,
+      "missing_logic": [
+        "WallSpaceCoord::bound / is_bounded / new 的边界策略、with_offset / with_offset_clamped / with_offset_unbounded / offset_x_clamped尚缺。",
+        "WallSpaceRegion::intersects 的区域相交规则和 WallSpaceCoord::to_affine3 的墙曲线变换组装尚缺。"
+      ],
+      "validation_gaps": [
+        "这些原业务接口多数只有PDB/source归属，具体算法尚未闭合，不能由getter/derive或简单u+y猜造。"
+      ],
+      "consumer_gaps": []
+    }
+  ],
+  "statistics": {
+    "implemented_scoped": 21,
+    "partial_missing_logic": 5,
+    "not_implemented": 1
+  },
+  "interpretation": {
+    "implemented_scoped": "Declared library-local behavior has current executable source in observed scope. Original edge/ABI/consumer acceptance may remain; this is not full-game acceptance.",
+    "partial_missing_logic": "Some behavior already exists, but explicit business sublogic is absent. Verification gaps are separate.",
+    "not_implemented": "Declared business closure lacks implementation; related primitives are not the feature itself."
+  },
+  "inputs": [
+    {
+      "path": "tracking/foundation-business-functions.json",
+      "sha256": "0705e75827c05452defb70297053676e4c4ec177f575e78380dee7f59e85f1c6"
+    },
+    {
+      "path": "evidence/shared-foundation-2026-10-13/utils-base/interface-coverage.json",
+      "sha256": "11e10de74005e5f06bdc30669c1c74c6cee3aa7bdfdfc46b4c2824ffd6821305"
+    }
+  ],
+  "source_modified": false,
+  "tests_run": false,
+  "new_reverse_analysis": false,
+  "limits": [
+    "Do not count primitive getters, derives or absent source-level helper names as missing business algorithms.",
+    "External country-core/engine/actual payload producer integration is listed separately, not library-local code absence.",
+    "Source presence is separated from original-equivalence verification. Unknown edge policies are verification gaps unless a distinct known behavior is demonstrably absent."
+  ],
+  "source_sha256": {
+    "reconstruction/shared-foundation/crates/utils/src/angle_range.rs": "d24bbecf97ee0b890445dac75c985695ebae074bfc87288f9fee9ff6639cf392",
+    "reconstruction/shared-foundation/crates/utils/src/camera.rs": "d0997f45be9bfa01027e9d2282ef825d708715a8e6c3261645c0fad91489fcb9",
+    "reconstruction/shared-foundation/crates/utils/src/circular_f32.rs": "88e5a2e7901c24c8c2e4364073319abf43e78ef3cb8d9aff891e48d902c04184",
+    "reconstruction/shared-foundation/crates/utils/src/comparative_space.rs": "1e963bba98f35a2f5252d5c69db94ea09c9c8cde6614b26a120d198ca863b0b7",
+    "reconstruction/shared-foundation/crates/utils/src/easing_functions.rs": "fb8011ab85c5e50ed82f2178d385cde3b042aac3550c173af77b96e72289298b",
+    "reconstruction/shared-foundation/crates/utils/src/file.rs": "1c53d1f379c7368dfbc50b89a9d9149c4d780a32c6fb163977dcfafa3fda44e5",
+    "reconstruction/shared-foundation/crates/utils/src/float_grid.rs": "b975bbff901ab153bd20549fe37eed4c9d64b0793987fcd53293c2f05dfbd650",
+    "reconstruction/shared-foundation/crates/utils/src/halver.rs": "10f1569eb954dfece1d7af10a53b01ee896e2e7b11f67072832edbc77ec19e33",
+    "reconstruction/shared-foundation/crates/utils/src/index_condenser.rs": "6f9a86ee03f79b7448a2337542526e6199fa88f78a792b2e6a5994c73168f858",
+    "reconstruction/shared-foundation/crates/utils/src/local_time.rs": "e7987286ead98c76c8fbfad5f527f7c8d5e1ef6666a5e4cf0933c05541748f00",
+    "reconstruction/shared-foundation/crates/utils/src/loop_range.rs": "fdb528c2889f670cc4d28fb4c2321ba9a7c6dd83b082172143c557c6ef9c8891",
+    "reconstruction/shared-foundation/crates/utils/src/name_hash.rs": "4bcb4d8fc8c3a5ef179b669f57d58865caf57394eefd00d880df2a69dfff30c4",
+    "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs": "400febb381f2461a3d45ef6b72d0a246c566ce7bb08a5339226cbfea81bcf59e",
+    "reconstruction/shared-foundation/crates/utils/src/rdp.rs": "3734f2f03262624dece0620314d2e5aa8d3fb608d8fdd24e2eebb030418c51b1",
+    "reconstruction/shared-foundation/crates/utils/src/rgb9e5.rs": "06063e7fbd43eaf38c5695ff85b1e9a4f87be273ebef060af3b7da8fcbc0b1af",
+    "reconstruction/shared-foundation/crates/utils/src/rng.rs": "07ac85d69572d5257812dabc93db19a90232c08df12d4c5b8b489ac3171ca08e",
+    "reconstruction/shared-foundation/crates/utils/src/selective_deserialize.rs": "4da495878b1fb10e356a40565d956c6926b1fb6efeb917f3630a226e779beec4",
+    "reconstruction/shared-foundation/crates/utils/src/subtractive_1d_boolean.rs": "4565b4529dae9aadef75964b9d2b3fae5e18d7f62321362d757abd418664ac2e",
+    "reconstruction/shared-foundation/crates/utils/src/swizzlers.rs": "04924394691bc65e08f23c77532176c99a2febec67a06121a4be2c9fef0f59cf",
+    "reconstruction/shared-foundation/crates/utils/src/threshold_range.rs": "5ca1547b7eaf9487552958e30bd58e23cad75c419aadb0df4445b732410d0579",
+    "reconstruction/shared-foundation/crates/utils/src/timer.rs": "6928585c8d83bb88fb5bae8f8b322d6a4cd4bc60a9fea34cc5f1ce54190d90cf",
+    "reconstruction/shared-foundation/crates/utils/src/wall_space.rs": "3e034065f8b7f7f00a7c7cd9b76f6f0a86ed92be0e957a84725968c7a86a7218",
+    "reconstruction/shared-foundation/crates/utils/src/curve/mod.rs": "8c813a6a073be33d482718200e2ca1de67fcfcc7d80ddf37a61beb3ceb3d8484"
+  }
+}

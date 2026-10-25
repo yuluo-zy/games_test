@@ -1,0 +1,60 @@
+{
+  "backend": "reva",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "tool-repair",
+  "pid": 4452,
+  "project": "D:\\game\\tools\\reverse-runtime\\tool-repair\\project\\TinyGlade.gpr",
+  "backend_reused": true,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": false,
+  "results": [
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "print(\"saved-before-failure\")\nraise RuntimeError(\"intentional validation failure\")",
+        "timeoutSeconds": 30
+      },
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\toolchain-repair-2026-10-13\\nested-failure.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"\",\"success\":false,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"Traceback (most recent call last):\\n  File \\\"C:\\\\Users\\\\liyu\\\\AppData\\\\Local\\\\Temp\\\\reva_11550011318436476255.py\\\", line 9, in <module>\\n    exec(compile('print(\\\"saved-before-failure\\\")\\\\nraise RuntimeError(\\\"intentional validation failure\\\")', \\\"<retained-job>\\\", \\\"exec\\\"), globals())\\n  File \\\"<retained-job>\\\", line 2, in <module>\\nRuntimeError: intentional validation failure\\n\\r\\n\",\"durationMs\":10}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.015,
+      "stdout": "saved-before-failure\n",
+      "passed": false,
+      "error": "run-script: failed, timed out or truncated; inspect the retained result"
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 0.344,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":9}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "error": "unhandled errors in a TaskGroup (1 sub-exception)"
+}

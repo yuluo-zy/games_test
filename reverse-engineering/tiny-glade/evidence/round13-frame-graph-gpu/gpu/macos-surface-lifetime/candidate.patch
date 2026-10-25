@@ -1,0 +1,71 @@
+--- a/tiny-glade/crates/rhapsody/src/raw/swapchain.rs
++++ b/tiny-glade/crates/rhapsody/src/raw/swapchain.rs
+@@ -231,6 +231,24 @@
+             native_owner: None,
+         }
+     }
++    /// Wrap a native surface while retaining the actual platform-window
++    /// owner through vkDestroySurfaceKHR and any deliberately retained WSI
++    /// generation. This uses the same bounded native-owner slot as Win32.
++    ///
++    /// # Safety
++    /// In addition to from_raw's requirements, native_owner must keep all
++    /// platform objects needed by handle alive. It must not retain this Surface.
++    pub unsafe fn from_raw_retained(
++        instance: Arc<VulkanInstance>,
++        handle: vk::SurfaceKHR,
++        owned: bool,
++        native_owner: Arc<dyn std::any::Any + Send + Sync>,
++    ) -> Self {
++        let mut surface = unsafe { Self::from_raw(instance, handle, owned) };
++        surface.native_owner = Some(native_owner);
++        surface
++    }
++
+     /// Wrap an existing Win32 Vulkan surface, allowing explicit fullscreen.
+     ///
+     /// # Safety
+--- a/tiny-glade/crates/tiny-glade/src/production_renderer.rs
++++ b/tiny-glade/crates/tiny-glade/src/production_renderer.rs
+@@ -1315,9 +1315,10 @@
+     pub struct PlatformSurface {
+         layer: StrongPtr,
+         view: *mut Object,
++        window: Arc<winit::window::Window>,
+     }
+     impl PlatformSurface {
+-        pub fn new(window: &winit::window::Window) -> Result<Self> {
++        pub fn new(window: &Arc<winit::window::Window>) -> Result<Self> {
+             let view = match window.window_handle()?.as_raw() {
+                 RawWindowHandle::AppKit(handle) => handle.ns_view.as_ptr().cast::<Object>(),
+                 _ => anyhow::bail!("winit did not return an AppKit view"),
+@@ -1336,7 +1337,11 @@
+                 }
+                 Ok(layer)
+             })?;
+-            let surface = Self { layer, view };
++            let surface = Self {
++                layer,
++                view,
++                window: window.clone(),
++            };
+             surface.update(window)?;
+             Ok(surface)
+         }
+@@ -1367,7 +1372,15 @@
+             let info = vk::MetalSurfaceCreateInfoEXT::default().layer((*self.layer).cast());
+             let handle = unsafe { loader.create_metal_surface(&info, None) }?;
+             Ok(Arc::new(unsafe {
+-                rhapsody::present::Surface::from_raw(instance, handle, true)
++                // NSView's hosted layer property retains this CAMetalLayer.
++                // Keep its actual content-view/window owner in Surface too:
++                // failed WSI teardown can retain Surface after PlatformSurface.
++                rhapsody::present::Surface::from_raw_retained(
++                    instance,
++                    handle,
++                    true,
++                    self.window.clone(),
++                )
+             }))
+         }
+     }

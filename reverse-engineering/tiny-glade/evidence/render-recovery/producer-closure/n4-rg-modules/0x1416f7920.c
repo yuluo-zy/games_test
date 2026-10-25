@@ -1,0 +1,14 @@
+
+void FUN_1416f7920(longlong *param_1,char param_2)
+
+{
+  longlong lVar1;
+  
+  lVar1 = *param_1;
+  if (*(char *)(lVar1 + 0x56) != param_2) {
+    (**(code **)(param_1[1] + 800))(*(undefined8 *)(lVar1 + 0x48),3,param_2);
+    *(char *)(lVar1 + 0x56) = param_2;
+  }
+  return;
+}
+

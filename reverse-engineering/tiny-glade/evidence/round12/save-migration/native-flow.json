@@ -1,0 +1,201 @@
+{
+  "original": {
+    "path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+    "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+  },
+  "ranges": [
+    {
+      "start": "0x141673140",
+      "bytes": 704,
+      "sha256": "878624a31f0ef5703703bb4a4b0f88dc0bc28d6c65a3a53a5a0a93f8371bf5c5",
+      "symbols": [
+        {
+          "bytes": 704,
+          "symbol": "country_core::systems::save::save_file_identity::derive_fallback_save_file_identity"
+        }
+      ],
+      "assembly": "identity-fallback.asm"
+    },
+    {
+      "start": "0x14145a8e0",
+      "bytes": 396,
+      "sha256": "127483c8bb6fcb49340d23dbfc935f48af627890db4601947683e45cbe4687c8",
+      "symbols": [
+        {
+          "bytes": 396,
+          "symbol": "utils::calculate_hash<tuple$<u64,ref$<std::time::SystemTime> > >"
+        },
+        {
+          "bytes": 396,
+          "symbol": "utils::calculate_hash<tuple$<u64,ref$<u64> > >"
+        }
+      ],
+      "assembly": "identity-pair-hash.asm"
+    },
+    {
+      "start": "0x14145aa70",
+      "bytes": 424,
+      "sha256": "01321bd0a92620f437643419e228e847ae86479151070ea43f5ba1ea938fcfb5",
+      "symbols": [
+        {
+          "bytes": 424,
+          "symbol": "utils::calculate_hash<enum2$<core::option::Option<ref$<std::ffi::os_str::OsStr> > > >"
+        }
+      ],
+      "assembly": "identity-basename-hash.asm"
+    },
+    {
+      "start": "0x140d59e60",
+      "bytes": 23,
+      "sha256": "18c26253e64bacdba8a9ffc0a73d41151bf25b289f403cf770967e79bf84fa06",
+      "symbols": [
+        {
+          "bytes": 23,
+          "symbol": "std::fs::Metadata::modified"
+        }
+      ],
+      "assembly": "metadata-modified.asm"
+    },
+    {
+      "start": "0x1412f50f0",
+      "bytes": 549,
+      "sha256": "7af9b36704cb9438d98f493264b3a25f907077da36e8c890c524e5aca81ed66c",
+      "symbols": [
+        {
+          "bytes": 549,
+          "symbol": "alloc::vec::Vec::retain<enum2$<country_core::resources::history::EditType>,alloc::alloc::Global,country_core::systems::save::load_game::parse_saved_game_data::closure_env$2>"
+        }
+      ],
+      "assembly": "migration-retain-edits.asm"
+    },
+    {
+      "start": "0x1402de600",
+      "bytes": 691,
+      "sha256": "849c08f1f9b668a80086ba4a92455de7f85e5cc0ceb5688ce83d49a7d444bbae",
+      "symbols": [
+        {
+          "bytes": 691,
+          "symbol": "country_core::resources::walls::decorator::_::impl$0::serialize<ref_mut$<serde_json::ser::Serializer<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global> >,serde_json::ser::CompactFormatter> > >"
+        }
+      ],
+      "assembly": "decorator-type-serialize.asm"
+    },
+    {
+      "start": "0x140d6a960",
+      "bytes": 810,
+      "sha256": "a102f624f90e0522942a30bb991108881b8d4775b5f2233ed300045ea210ee80",
+      "symbols": [
+        {
+          "bytes": 810,
+          "symbol": "std::sys::pal::windows::fs::metadata"
+        }
+      ],
+      "assembly": "metadata-result-construction.asm"
+    }
+  ],
+  "strings": {
+    "0x142c64a90": {
+      "pointer": "0x142c64a50",
+      "length": 59,
+      "text": "Detected old version of arrow slits color IDs. Upgrading..."
+    },
+    "0x142c64af0": {
+      "pointer": "0x142c64ab8",
+      "length": 54,
+      "text": "Detected old version of window color IDs. Upgrading..."
+    }
+  },
+  "decorator_serializer_cases": [
+    {
+      "tag": 56,
+      "jump_target": "0x1402de631",
+      "string_pointer": "0x1429b30d0",
+      "length": 13,
+      "text": "CottageWindow"
+    },
+    {
+      "tag": 57,
+      "jump_target": "0x1402de690",
+      "string_pointer": "0x1429b30dd",
+      "length": 12,
+      "text": "GothicWindow"
+    },
+    {
+      "tag": 58,
+      "jump_target": "0x1402de657",
+      "string_pointer": "0x1429b30e9",
+      "length": 9,
+      "text": "ArrowSlit"
+    }
+  ],
+  "float_constants": {
+    "0x142a82410": {
+      "bits": "0xbc23d70a"
+    },
+    "0x142960674": {
+      "bits": "0x3c23d70a"
+    },
+    "0x14294ca10": {
+      "bits": "0x7f800000"
+    },
+    "0x142960690": {
+      "bits": "0x0"
+    },
+    "0x1429cd060": {
+      "bits": "0x3a83126f"
+    },
+    "0x1429345a8": {
+      "bits": "0x41200000"
+    },
+    "0x142a7fa30": {
+      "bits": "0x41a00000"
+    }
+  },
+  "byte_flow": [
+    {
+      "producer": "141472734..14147279f",
+      "condition": "version<20; inner 0x58 record byte[-6] in 0x38..=0x3a",
+      "rewrite": "record u32[-0x28] through 9-way table; 999 retained; >8 except999 ->1",
+      "flag_store": "stack+0x2f0=1",
+      "wrapper_write": "141472eab: wrapper+0xd=stack+0x2f0 & 1",
+      "consumer": "14146ec9c: bt flags,0x28; +0x910 is successful wrapper second word",
+      "snapshot_write": "14146ed83..14146ee0a: Vec at stack+0x240/248, 16B records +8, same color map",
+      "log_fragment_pointer": "0x142c64af0"
+    },
+    {
+      "producer": "141472a9f..141472aac",
+      "condition": "version<21; inner 0x58 record byte[-6]==0x3a",
+      "rewrite": "record u32[-0x28]=999",
+      "flag_store": "stack+0x304=1",
+      "wrapper_write": "141472eaf: wrapper+0xe=stack+0x304 & 1",
+      "consumer": "14146eb4e: bt flags,0x30",
+      "snapshot_write": "14146ec35..14146ec9a: outer 0x28 rows, inner0x58 rows, byte+0x52==0x3a ->u32+0x30=999",
+      "log_fragment_pointer": "0x142c64a90"
+    }
+  ],
+  "identity_flow": [
+    "141673164 Path::file_name, 169/16d stores Option<&OsStr>",
+    "141673175 calculate_hash<Option<&OsStr>>, 17a keeps hash in rsi",
+    "141673187 std::fs::metadata/stat; error returns current rsi after dropping error",
+    "141673207 loads Metadata+0x38 u64; 21f calculate_hash<(old_hash,&u64)>",
+    "14167322f Metadata::modified; error returns current rsi after dropping error",
+    "141673275 reads successful SystemTime raw8B; 28d hashes (old_hash,&SystemTime)",
+    "14145a8e0 ICF has (u64,&u64)/(u64,&SystemTime): hashes exactly two8B words",
+    "No clock query and no second Identity parser call exist in full704B procedure"
+  ],
+  "history_identity_load_flow": [
+    "parser141472d26 writes parsed body+0x48 = r15, successful Identity or fallback",
+    "load14146dd98/9c takes parsed+0x48 to stack+0x8b8",
+    "load14146de8e/95 moves same stack+0x8b8 to canonical History+0x60",
+    "finish140a86832 and finish_potential140a86a33 mutate same History+0x60",
+    "current ledger.mutation_nonce is same value, save_game publish_save_sections already serializes it"
+  ],
+  "metadata_length_evidence": {
+    "pdb_rust_commit": "05f9846f893b09a1be1fc8560e33fc3c815cfecb",
+    "rust_source": "https://raw.githubusercontent.com/rust-lang/rust/1.86.0/library/std/src/sys/pal/windows/fs.rs",
+    "source_observations": "FileAttr::size returns file_size; From<WIN32_FIND_DATAW> creates file_size as (nFileSizeHigh<<32)|nFileSizeLow. Metadata::modified returns SystemTime::from(last_write_time).",
+    "original_construction": "140d6abb2/abb6 loads FindFirstFileExW output+32/+28; abed/abf1 combines high<<32|low; ac11 stores result at Metadata+0x38. Original modified@140d59e67 reads +0x30, independently matching last_write_time copied from Find data+20 at140d6abad/ac0d.",
+    "no_std_reimplementation": "Only the game leaf calling policy is restored; canonical std metadata,len,modified and existing calculate_hash are reused."
+  },
+  "scope": "read-only original RNE; no database overlay, no Cargo, no production changes"
+}

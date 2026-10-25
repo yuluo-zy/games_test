@@ -1,0 +1,8 @@
+{
+  "input_fields":["mode","count","failure/state/backend_error","final/end_error/converted_success","wait_only"],
+  "modes":{"0":"original sequential record with empty resource lists","1":"original submit entry; structured queue fixture","2":"injected original queue backend tail","3":"original record command bytes transferred to original submit entry"},
+  "output_fields":["panic_bool","ordered_backend_event_trace","pending_length","physical_command_states","consumed_pass_count","receipt"],
+  "trace_events":["create:handle","begin:handle","pass:index","end:handle","exports","end:last","queue:count","vk-submit:count","convert-error","post-submit"],
+  "structured_native_fields":["submit_payload.capacity/count/states/handles/queue_kind/opaque_d8_hex","vk_arguments.queue/count/submits/fence","chain.command_sha256","visited original instruction addresses"],
+  "comparison":"native-validation.json exact per-case output equality with independent typed Rust Event projection"
+}

@@ -1,0 +1,898 @@
+{
+  "resources/window.rs": {
+    "formal_paths": [
+      "resources/window.rs"
+    ],
+    "status_label": "已修复并核验：尺寸/转换/比例；启动消费者待接",
+    "implementation": "implemented_bounded",
+    "verified_scope": [
+      "new",
+      "set",
+      "as_dims",
+      "as_vec2",
+      "aspect_ratio"
+    ],
+    "evidence": [
+      "B RNE 0x140949bf0..0x140949c34",
+      "tests/fixtures/core-foundation-b.json:windows"
+    ],
+    "corrections": [
+      "FIX-047 的 f32 bitcast 结论错误；真实入口先零扩展 u32 再 cvtsi2ss。",
+      "ARM 0/0 为正 NaN，显式保留 B x86 的 0xffc00000；不将零高度改成有限值。"
+    ],
+    "consumers": [
+      "utils/project_cursor_onto_ray.rs:ProportionalScreenSpace::from_window_size",
+      "systems/render_loop/draw_passes/custom_cursor_pass.rs:custom_cursor_pass_from_world"
+    ],
+    "remaining": [
+      "原窗口事件生产者/主循环尚未导入；from_world 是正式 core 适配入口，尚无启动调度。"
+    ],
+    "fix_records": {
+      "FIX-047": "historical_correction_wrong_replaced_by_original_instructions"
+    }
+  },
+  "resources/ui_settings.rs": {
+    "formal_paths": [
+      "resources/ui_settings.rs"
+    ],
+    "status_label": "已修复并核验：7 字段/default/JSON；持久化消费者待接",
+    "implementation": "implemented_bounded",
+    "verified_scope": [
+      "UiSettings::default",
+      "ToolbarAlignment 4 变体及 is_horizontal",
+      "7 字段的 JSON 序列化顺序",
+      "JSON 缺字段默认策略：原 deserialize_struct 128 组合"
+    ],
+    "evidence": [
+      "B RNE 0x140b12f10",
+      "B RNE 0x140b0e070",
+      "B RNE serialize 0x140a46ad0",
+      "B RNE deserialize_struct 0x14142eba0",
+      "tests/fixtures/core-foundation-b.json:ui_deserialize"
+    ],
+    "corrections": [
+      "默认 +8 写 0x01010000，alignment=Bottom、auto_hide=false、input_lag_reduction=true、game_logo=true。",
+      "0x140a46dd0 是 ToolbarAlignment 反序列化，不是 UiSettings；泛型结构入口需沿 field visitor caller 定位。",
+      "UiSettings 必须 #[serde(default)]，不是要求 7 字段都存在。"
+    ],
+    "dependency_glue": [
+      "serde 1.0.200 derives；不手写 visitor",
+      "enum-iterator Sequence 为依赖派生；当前 core 未使用该枚举迭代消费者"
+    ],
+    "consumers": [
+      "原 generic deserialize_struct 0x14142eba0/0x14039fbb0",
+      "原 toolbar 与设置持久化消费者尚未导入 core"
+    ],
+    "remaining": [
+      "RON、错误分支的原入口执行验证",
+      "enum-iterator 派生消费接线",
+      "启动/toolbar/设置保存消费者"
+    ],
+    "fix_records": {
+      "FIX-209": "field_names_and_variants_fixed_default_claim_corrected"
+    }
+  },
+  "resources/gui.rs": {
+    "formal_paths": [
+      "resources/gui.rs"
+    ],
+    "status_label": "菜单拥有状态/推进、缩略图算法、调试标签已实现；GUI 其余资源仍缺",
+    "implementation": "partial_implemented_static_evidence",
+    "implemented_scope": [
+      "EscMenuState/LoadMenuState/Backup/Settings/Video 子状态",
+      "Next/Prev 默认、set/get 和所有权移动",
+      "advance_menu_state 的消费/保存请求/替换顺序（core 适配）",
+      "SessionId 载荷复用",
+      "LoadMenuThumbnailMetrics 默认与 eager positions",
+      "两组调试枚举标签"
+    ],
+    "verified_scope": [
+      "先前限定原码对照：8 个菜单策略（含 time_update 内联 allow_time_passage）",
+      "先前限定原码对照：缩略图位置和调试标签",
+      "2026-10-15 当前拥有状态与 LUT 接线仅 all-targets 编译检查；未扩展测试"
+    ],
+    "evidence": [
+      "skeleton/task-index/work/TG-cfac1f498c427933d2/core-gui-20261014/REPORT.md",
+      "同目录 gui-state/gui-consumers/gui-metrics/gui-owned-state-result.json",
+      "tests/fixtures/gui-contracts-b.json",
+      "B 0x14093fad0/0x14014af10/0x140fe5150/0x14068de50/0x14068e5b0"
+    ],
+    "corrections": [
+      "0x14093fc00 为 cast_ui_shadows；is_open 在 0x14093fbc0。",
+      "完整 owned enum 为原 96B 状态；+0x30 为 Arc<Mutex<LoadMenuThumbnailMetrics>>，不是 String。",
+      "+8 是 SettingsMenuState 的嵌套 enum 字节，不可用 bool 表示。",
+      "allow_time_passage 为 is_closed || Settings(Video(Image))，与 can_limit_frame_rate 不同。",
+      "should_show_world 是 word-2 的 0xaf/0x50 掩码，不是 word-0xfe。",
+      "positions 返回 owned Vec::IntoIter<Vec2>，不是 4 个字段或 host 自行拼装坐标。",
+      "word 6/Settings byte 4 是 niche 分派默认位置，不增造业务变体。"
+    ],
+    "consumers": [
+      "systems/render_loop/lut_gallery.rs 的菜单门控/positions/cell_size/highlight",
+      "systems/render_loop/draw_passes/draw_callbacks_a.rs:DebugGuiView alias",
+      "systems/render_loop/draw_passes/draw_callbacks_b.rs:DebugGuiView alias",
+      "原 toolbar 菜单写入者与推进算法；推进算法已放入 core，调度/持久化 sink 待接"
+    ],
+    "remaining": [
+      "PhotomodeScreen",
+      "完整 DebugGui/日志和 PendingEguiContextResource",
+      "Settings tag10 的原名/生产者、ReportBug bool 的具体 UI 含义、warning_session 的准确业务命名",
+      "原全局菜单调度/持久化事件接收；本轮未声明完整 UI 或 ABI 等价"
+    ],
+    "fix_records": {
+      "FIX-206": "owned_payload_and_policies_recovered_other_gui_resources_pending"
+    }
+  },
+  "resources/session.rs": {
+    "formal_paths": [
+      "resources/session.rs"
+    ],
+    "status_label": "部分恢复：限定review与行为检查通过；完整模块未完成",
+    "implementation": "implemented_bounded",
+    "verified_scope": [
+      "ActiveSession and SessionMeta original schema",
+      "theme aliases",
+      "metadata tmp/sync/rename and typed roundtrip",
+      "music consumes real ActiveSession"
+    ],
+    "evidence": [
+      "evidence/country-core-deep/chapters/resources/session.rs.md",
+      "evidence/country-core-deep/round3/MODULE-DEEP-DIG.md"
+    ],
+    "remaining": [
+      "full NextSession/GameSaveData/MetaCommand and world startup lifecycle"
+    ]
+  },
+  "systems/render_loop/lut_gallery.rs": {
+    "formal_paths": [
+      "systems/render_loop/lut_gallery.rs"
+    ],
+    "status_label": "菜单与缩略图消费者已修正；GPU/名字格式仍待恢复",
+    "implementation": "partial_consumer_integration",
+    "evidence": [
+      "B 0x1408b0635/0x1408b063f TypeId 匹配 0x140fd13da/0x140fd13e4 EscMenuState 插入者",
+      "B 0x1408b0c5f -> 0x141304fb0",
+      "B 0x1408b04c0 默认 metrics"
+    ],
+    "corrections": [
+      "删除重复假 metrics 字段与 host.cell_positions，消费 gui 的共享算法。",
+      "资源不是 AppMode 而是 EscMenuState；先取 gallery，再取 menu，最后检查 Photomode(true)。",
+      "default 只保证有效字段为默认值，不保证 Option::None 载荷全零。"
+    ],
+    "consumers": [
+      "render_photomode_lut_gallery"
+    ],
+    "remaining": [
+      "真实渲染 host/GPU 注册与 LutName 格式化；本轮不升级完整 pass 验收"
+    ]
+  },
+  "resources/editing_highlight.rs": {
+    "formal_paths": [
+      "resources/editing_highlight.rs"
+    ],
+    "status_label": "clear/墙高亮写入/统一 draw 消费已核验",
+    "implementation": "implemented_bounded",
+    "verified_scope": [
+      "clear 的 13 字节有效数据清零",
+      "A/B draw 消费同一 EditingHighlight TypeId",
+      "wall_highlight 只写 RGB 并保留 enabled"
+    ],
+    "evidence": [
+      "B ResMut clear 0x140976890..0x1409768ac",
+      "tests/fixtures/core-foundation-b.json:clear",
+      "tests/core_foundation.rs:both_draw_consumers_read_the_same_highlight_resource_after_clear"
+    ],
+    "consumers": [
+      "systems/render_loop/draw_passes/common_draw_params.rs:BrickEraseInputs::from_world",
+      "systems/render_loop/draw_passes/draw_callbacks_a.rs",
+      "systems/render_loop/draw_passes/draw_callbacks_b.rs"
+    ],
+    "remaining": [
+      "原墙工具/教学提示事件生产者及全局注册次序"
+    ],
+    "fix_records": {
+      "FIX-210": "clear_and_wall_highlight_writer_verified_in_bounded_scope"
+    }
+  },
+  "resources/color_icon.rs": {
+    "formal_paths": [
+      "resources/color_icon.rs"
+    ],
+    "status_label": "已修复亮度表；图标组件与消费仍缺",
+    "implementation": "partial_missing_consumers",
+    "verified_scope": [
+      "ColorMenuBrightnessValue 三个数值 tag",
+      "to_f32/default_f32"
+    ],
+    "evidence": [
+      "B RNE 0x140b06770/0x140b06780; table 0x142ae785c",
+      "tests/fixtures/core-foundation-b.json:brightness"
+    ],
+    "consumers": [
+      "原颜色菜单/toolbar，正式消费者尚未导入"
+    ],
+    "remaining": [
+      "变体原名",
+      "实际被消费者使用的图标组件与 Bevy required-components 合同"
+    ],
+    "fix_records": {
+      "FIX-037": "brightness_union_fixed_registration_contract_pending"
+    }
+  },
+  "utils/mod.rs": {
+    "formal_paths": [
+      "utils/mod.rs"
+    ],
+    "status_label": "依赖胶水已接；部分内联工具待取证",
+    "implementation": "partial_dependency_glue",
+    "verified_scope": [
+      "get_res/get_res_mut 复用 Bevy World",
+      "drain_events/get_last_event 消费两代缓冲并保留事件计数器",
+      "既有屏幕坐标投影"
+    ],
+    "evidence": [
+      "evidence/country-core-deep/expansion-b1/decomp/decomp-0x1402b47f0.txt",
+      "evidence/country-core-deep/expansion-b1/decomp/decomp-0x1402b4910.txt",
+      "Bevy ECS 0.16.0 Events::drain",
+      "tests/core_foundation.rs:event_consumption_drains_both_epochs_and_keeps_dependency_counters"
+    ],
+    "dependency_glue": [
+      "World/Mut/Events 的索引、借用 tick 和 drain/drop 使用锁定 Bevy；不重写注册表"
+    ],
+    "consumers": [
+      "systems/render_loop/draw_passes/common_draw_params.rs",
+      "原 OS 窗口/光标命令消费者尚未导入 core"
+    ],
+    "remaining": [
+      "is_inside_map_bounds 的实际内联消费者",
+      "Bevy fork 的注册/调度差异与缺资源 panic 文案",
+      "原 OS 事件循环"
+    ]
+  },
+  "utils/project_cursor_onto_ray.rs": {
+    "formal_paths": [
+      "utils/project_cursor_onto_ray.rs"
+    ],
+    "status_label": "已修复尺寸比例边界；投影其余原差分待验",
+    "implementation": "partial_verification",
+    "verified_scope": [
+      "from_window_size 的 16 字节数值输出，包括 0/0"
+    ],
+    "evidence": [
+      "B RNE 0x140ac8420",
+      "tests/fixtures/core-foundation-b.json:windows.screen_space_bits"
+    ],
+    "consumers": [
+      "原 systems/ui/resources/slider3d.rs 等滑动输入消费者"
+    ],
+    "remaining": [
+      "project_onto_ray/transform_screen_space 其余原入口差分",
+      "真实相机资源与 slider3d 消费链"
+    ]
+  },
+  "utils/dirty_tiles.rs": {
+    "formal_paths": [
+      "utils/dirty_tiles.rs"
+    ],
+    "status_label": "补齐 cell 转换；既有位图/栅格链继续复核",
+    "implementation": "partial_verified_chain",
+    "verified_scope": [
+      "cell_from_world_space 完整私有入口的转换/边界/返回，881 组整数输出对照"
+    ],
+    "evidence": [
+      "B RNE 0x140960b20..0x140960c16",
+      "tests/fixtures/dirty-tile-cell-b.json",
+      "shared Ghidra xref 0x1422ca1c9 -> cell_from_world_space"
+    ],
+    "corrections": [
+      "返回 tag + 两个坐标，不是四通道；第三次 fmaf 计算值未写入返回。",
+      "缩放 32/65、偏移 32；旧 DIGEST 的每格 32 世界单位错误。",
+      "用截断，不是 floor；NaN 转 0；不把所有越界值 clamp 到网格。"
+    ],
+    "consumers": [
+      "原 crates/systems/clutter/src/autoclutter/add_birdnests.rs:add_birdnests（调用点 0x1422ca1c9）",
+      "core 内现有 DirtyTiles 的 set_cell/contains/tile_indices 可直接消费返回坐标"
+    ],
+    "remaining": [
+      "原调用者不在本 core 源码目录，未代写上层生态系统",
+      "fmaf 复用宿主 C 库，Windows CRT 独立实现不属于本叶验收",
+      "其它栅格/瓦片函数的完整原入口差分"
+    ]
+  },
+  "resources/walls/public_walls.rs": {
+    "formal_paths": [
+      "resources/walls/public_walls.rs"
+    ],
+    "status_label": "WallEntities 查询已接；完整 PublicWalls 仍缺",
+    "implementation": "partial_missing_schema",
+    "verified_scope": [
+      "WallEntities::wall_entity 依赖 map 查询合同",
+      "真实 highlighter 通过 Res<WallEntities> 消费"
+    ],
+    "evidence": [
+      "B RNE wall_highlight 0x140981477..0x14098153f",
+      "B wall_entity 0x140a91e00",
+      "tests/fixtures/wall-highlight-b.json"
+    ],
+    "dependency_glue": [
+      "hashbrown 0.14.5 map；Bevy Entity/Resource"
+    ],
+    "consumers": [
+      "systems/wall/wall_highlight.rs:wall_highlight"
+    ],
+    "remaining": [
+      "PublicWalls 全状态与 simplified_curve_2d",
+      "屋顶/石膏关系",
+      "发布/实体创建/删除与 WallEntities 同步"
+    ],
+    "fix_records": {
+      "FIX-113": "WallEntities_consumer_recovered_PublicWalls_findings_still_open"
+    }
+  },
+  "systems/wall/wall_highlight.rs": {
+    "formal_paths": [
+      "systems/wall/wall_highlight.rs"
+    ],
+    "status_label": "原单系统与真实 ECS 事件/资源接线已核验",
+    "implementation": "implemented_bounded",
+    "verified_scope": [
+      "先将 ty 清零",
+      "跨两代缓冲的最后未读事件选择",
+      "末条目标缺失时不回退到前一条",
+      "成功后更新实体/墙 ID/ty/RGB，保留 enabled",
+      "EventReader 独立游标，非 drain"
+    ],
+    "evidence": [
+      "B RNE 0x140981390..0x1409815cc",
+      "tests/fixtures/wall-highlight-b.json:96 cases",
+      "tests/wall_highlight.rs:SystemState and Schedule"
+    ],
+    "corrections": [
+      "FIX-137/旧 skeleton 的逐条 for 循环错误；原版只取最后未读事件。",
+      "原事件类型在 systems::wall::wall_highlight 内，非虚构 resources::events。",
+      "编辑高亮仅写 RGB 12 字节，+12 橡皮擦启用标志保持不变。"
+    ],
+    "consumers": [
+      "resources/walls/mod.rs:WallHighlight -> draw callbacks",
+      "resources/editing_highlight.rs:EditingHighlight -> common_draw_params/draw callbacks"
+    ],
+    "remaining": [
+      "全局 startup/schedule 注册顺序",
+      "原墙工具/教学提示事件生产者",
+      "完整实体生命周期"
+    ],
+    "fix_records": {
+      "FIX-137": "historical_OK_wrong_last_event_reset_and_rgb_rules_fixed"
+    }
+  },
+  "resources/walls/inner_wall_state.rs": {
+    "formal_paths": [
+      "resources/walls/inner_wall_state.rs"
+    ],
+    "status_label": "已接入墙权威链；serde/完整消费者未闭合",
+    "implementation": "partial_verified_chain",
+    "evidence": [
+      "provenance/core-wall-authority-2026-10-14.json"
+    ],
+    "consumers": [
+      "resources/walls/inner_walls.rs",
+      "systems/wall/wall_state/publish_public_wall_state.rs"
+    ],
+    "remaining": [
+      "serde",
+      "完整 PublicWalls/空间/屋顶/历史联动"
+    ]
+  },
+  "resources/walls/inner_walls.rs": {
+    "formal_paths": [
+      "resources/walls/inner_walls.rs"
+    ],
+    "status_label": "已接入墙权威链；完整消费者未闭合",
+    "implementation": "partial_verified_chain",
+    "evidence": [
+      "provenance/core-wall-authority-2026-10-14.json"
+    ],
+    "consumers": [
+      "systems/wall/wall_state/publish_public_wall_state.rs"
+    ],
+    "remaining": [
+      "原 UI/历史输入事件",
+      "完整 PublicWalls/空间/屋顶/历史联动"
+    ]
+  },
+  "systems/wall/wall_state/publish_public_wall_state.rs": {
+    "formal_paths": [
+      "systems/wall/wall_state/publish_public_wall_state.rs"
+    ],
+    "status_label": "限定 CPU 发布链；原完整发布系统未恢复",
+    "implementation": "partial_verified_chain",
+    "evidence": [
+      "provenance/core-wall-authority-2026-10-14.json"
+    ],
+    "consumers": [
+      "systems/wall/construction/parameters.rs",
+      "resources/walls/height_rules.rs"
+    ],
+    "remaining": [
+      "完整 PublicWalls",
+      "地形脏区到墙的路由",
+      "空间/屋顶/历史传播"
+    ]
+  },
+  "resources/history/auto_clutter_edit.rs": {
+    "formal_paths": [
+      "resources/history/auto_clutter_edit.rs"
+    ],
+    "status_label": "已存在 Delete serde 合同投影；完整历史链未接",
+    "implementation": "partial_schema",
+    "evidence": [
+      "provenance/small-system-audit.json:selected.clutter"
+    ],
+    "consumers": [
+      "原 history/picking/replay"
+    ],
+    "remaining": [
+      "历史/拾取/回放生产者和消费者"
+    ]
+  },
+  "resources/critters/sheep.rs": {
+    "formal_paths": [
+      "resources/critters/sheep.rs"
+    ],
+    "status_label": "部分恢复：原码对照及限定行为核对已通过；完整消费者仍缺",
+    "implementation": "implemented_bounded",
+    "verified_scope": [
+      "SheepMoveState wire variants"
+    ],
+    "consumers": [
+      "resources/critters/sheep/control.rs"
+    ],
+    "remaining": [
+      "complete Sheep owner and lifecycle"
+    ],
+    "evidence": [
+      "evidence/country-core-deep/chapters/resources/critters/sheep.rs.md",
+      "evidence/country-core-deep/round3/MODULE-DEEP-DIG.md"
+    ]
+  },
+  "resources/critters/sheep/control.rs": {
+    "formal_paths": [
+      "resources/critters/sheep/control.rs"
+    ],
+    "status_label": "部分恢复：原码对照及限定行为核对已通过；完整消费者仍缺",
+    "implementation": "implemented_bounded",
+    "verified_scope": [
+      "snapshot schema",
+      "capture query fields in order",
+      "apply shortest zip preserving unrelated fields"
+    ],
+    "consumers": [
+      "borrowed live-row capture/restore API"
+    ],
+    "remaining": [
+      "actual Sheep query owner and save/load wiring"
+    ],
+    "evidence": [
+      "evidence/country-core-deep/chapters/resources/critters/sheep/control.rs.md",
+      "evidence/country-core-deep/round3/MODULE-DEEP-DIG.md"
+    ]
+  },
+  "systems/backend/input/calculate_input_delta.rs": {
+    "formal_paths": [
+      "systems/backend/input/calculate_input_delta.rs"
+    ],
+    "status_label": "部分恢复：原码对照及限定行为核对已通过；完整消费者仍缺",
+    "implementation": "implemented_bounded",
+    "verified_scope": [
+      "six analog copies",
+      "40 digital edge/hold/repeat slots",
+      "bevy Time ECS consumer"
+    ],
+    "consumers": [
+      "existing MainActionSet owner consumed by mode manager"
+    ],
+    "remaining": [
+      "device translation and original global scheduling"
+    ],
+    "evidence": [
+      "evidence/country-core-deep/chapters/systems/backend/input/calculate_input_delta.rs.md",
+      "evidence/country-core-deep/round3/MODULE-DEEP-DIG.md"
+    ]
+  },
+  "systems/backend/input/translate_input_to_cursor_moved.rs": {
+    "formal_paths": [
+      "systems/backend/input/translate_input_to_cursor_moved.rs"
+    ],
+    "status_label": "部分恢复：原码对照及限定行为核对已通过；完整消费者仍缺",
+    "implementation": "implemented_bounded",
+    "verified_scope": [
+      "free/captured event folding",
+      "per-event window clamp",
+      "real Delta event and ActionSetValues update"
+    ],
+    "consumers": [
+      "calculate_input_delta ActionSetValues"
+    ],
+    "remaining": [
+      "OS event producers and update_cursor_position"
+    ],
+    "evidence": [
+      "evidence/country-core-deep/chapters/systems/backend/input/translate_input_to_cursor_moved.rs.md",
+      "evidence/country-core-deep/round3/MODULE-DEEP-DIG.md"
+    ]
+  },
+  "systems/garden/draw_garden.rs": {
+    "formal_paths": [
+      "systems/garden/draw_garden.rs"
+    ],
+    "status_label": "部分恢复：限定原码核对与行为检查通过；全模块未完成",
+    "implementation": "implemented_bounded",
+    "verified_scope": [
+      "actual mode/brush/UI/border consumers",
+      "begin/extend/commit raster mutation"
+    ],
+    "evidence": [
+      "evidence/country-core-deep/chapters/systems/garden/draw_garden.rs.md",
+      "evidence/country-core-deep/round3/MODULE-DEEP-DIG.md"
+    ],
+    "consumers": [
+      "systems/garden/record_garden_history.rs",
+      "GardenRasterStagingSsbo"
+    ],
+    "remaining": [
+      "full UI arbitration",
+      "pin renderer and scatter/audio consumers",
+      "global registration"
+    ]
+  },
+  "systems/garden/record_garden_history.rs": {
+    "formal_paths": [
+      "systems/garden/record_garden_history.rs"
+    ],
+    "status_label": "部分恢复：限定原码核对与行为检查通过；全模块未完成",
+    "implementation": "implemented_bounded",
+    "verified_scope": [
+      "coalesced record requests",
+      "canonical History::Garden record"
+    ],
+    "evidence": [
+      "evidence/country-core-deep/chapters/systems/garden/record_garden_history.rs.md",
+      "evidence/country-core-deep/round3/MODULE-DEEP-DIG.md"
+    ],
+    "consumers": [
+      "canonical history transactions",
+      "garden replay feedback"
+    ],
+    "remaining": [
+      "global registration",
+      "complete garden downstream consumers"
+    ]
+  },
+  "systems/terrain/edit_terrain_stroke.rs": {
+    "formal_paths": [
+      "systems/terrain/edit_terrain_stroke.rs"
+    ],
+    "status_label": "部分恢复：限定原码核对与行为检查通过；全模块未完成",
+    "implementation": "implemented_bounded",
+    "verified_scope": [
+      "point replacement before parameter edit",
+      "tg-terrain parameter arithmetic",
+      "typed audio/change notifications"
+    ],
+    "evidence": [
+      "evidence/country-core-deep/chapters/systems/terrain/edit_terrain_stroke.rs.md",
+      "evidence/country-core-deep/round3/MODULE-DEEP-DIG.md"
+    ],
+    "consumers": [
+      "systems/terrain/draw_terrain_stroke.rs"
+    ],
+    "remaining": [
+      "terrain tool producers",
+      "history/replay",
+      "audio consumer"
+    ]
+  },
+  "systems/terrain/delayed_terrain_changed_msg.rs": {
+    "formal_paths": [
+      "systems/terrain/delayed_terrain_changed_msg.rs"
+    ],
+    "status_label": "部分恢复：限定原码核对与行为检查通过；全模块未完成",
+    "implementation": "implemented_bounded",
+    "verified_scope": [
+      "two-frame delay",
+      "coalesced authority/event/visual readback order"
+    ],
+    "evidence": [
+      "evidence/country-core-deep/chapters/systems/terrain/delayed_terrain_changed_msg.rs.md",
+      "evidence/country-core-deep/round3/MODULE-DEEP-DIG.md"
+    ],
+    "consumers": [
+      "TerrainHeightsData",
+      "OnTerrainChange"
+    ],
+    "remaining": [
+      "original GPU execution",
+      "global registration and downstream subscriptions"
+    ]
+  },
+  "systems/ivy/ivy_leaf_spawner.rs": {
+    "formal_paths": [
+      "systems/ivy/ivy_leaf_spawner.rs"
+    ],
+    "status_label": "部分恢复：限定原码核对与行为检查通过；全模块未完成",
+    "implementation": "implemented_bounded",
+    "verified_scope": [
+      "capacity/RNG/noise gates",
+      "segment leaf disc geometry and random stream order"
+    ],
+    "evidence": [
+      "evidence/country-core-deep/chapters/systems/ivy/ivy_leaf_spawner.rs.md",
+      "evidence/country-core-deep/round3/MODULE-DEEP-DIG.md"
+    ],
+    "consumers": [
+      "IvyLeafStorage",
+      "ivy_leaf_animation"
+    ],
+    "remaining": [
+      "full grower event producer",
+      "GladeSettings input wiring",
+      "GPU consumer"
+    ]
+  },
+  "systems/audio/music/music_player.rs": {
+    "formal_paths": [
+      "systems/audio/music/music_player.rs"
+    ],
+    "status_label": "部分恢复：限定原码核对与行为检查通过；全模块未完成",
+    "implementation": "implemented_bounded",
+    "verified_scope": [
+      "five-state player",
+      "strict transition thresholds and command order",
+      "shuffle/refill and callbacks"
+    ],
+    "evidence": [
+      "evidence/country-core-deep/chapters/systems/audio/music/music_player.rs.md",
+      "evidence/country-core-deep/round3/MODULE-DEEP-DIG.md"
+    ],
+    "consumers": [
+      "music_system.rs",
+      "music_debug_gui.rs",
+      "native.rs"
+    ],
+    "remaining": [
+      "complete GladeAudio track producer",
+      "live FMOD integration"
+    ]
+  },
+  "systems/save/shadow_file.rs": {
+    "formal_paths": [
+      "systems/save/shadow_file.rs"
+    ],
+    "status_label": "部分恢复：限定review与行为检查通过；完整模块未完成",
+    "implementation": "implemented_bounded",
+    "verified_scope": [
+      "eager tempfile write/sync/persist and failed-create retry",
+      "coalesced dirty-block flush",
+      "truncate data/cursor/dirty bitmap",
+      "real isolated file roundtrip"
+    ],
+    "evidence": [
+      "evidence/country-core-deep/chapters/systems/save/shadow_file.rs.md",
+      "evidence/country-core-deep/round3/MODULE-DEEP-DIG.md"
+    ],
+    "remaining": [
+      "async save orchestration and capture",
+      "full snapshot/backup consumers"
+    ]
+  },
+  "systems/save/save_thread.rs": {
+    "formal_paths": [
+      "systems/save/save_thread.rs"
+    ],
+    "status_label": "部分恢复：限定review与行为检查通过；完整模块未完成",
+    "implementation": "implemented_bounded",
+    "verified_scope": [
+      "existing section growth and subsequent offset migration",
+      "history replacement/footer/truncate/flush"
+    ],
+    "evidence": [
+      "evidence/country-core-deep/chapters/systems/save/save_thread.rs.md",
+      "evidence/country-core-deep/round3/MODULE-DEEP-DIG.md"
+    ],
+    "remaining": [
+      "full CurrentSaveFile enum and async thread owners",
+      "domain capture producers"
+    ]
+  },
+  "systems/save/save_backup_metronome.rs": {
+    "formal_paths": [
+      "systems/save/save_backup_metronome.rs"
+    ],
+    "status_label": "部分恢复：限定review与行为检查通过；完整模块未完成",
+    "implementation": "implemented_bounded",
+    "verified_scope": [
+      "budget clamp to eight seconds",
+      "tiered backup counter and previous-backup selection"
+    ],
+    "evidence": [
+      "evidence/country-core-deep/chapters/systems/save/save_backup_metronome.rs.md",
+      "evidence/country-core-deep/round3/MODULE-DEEP-DIG.md"
+    ],
+    "remaining": [
+      "original AutoSaveState inactivity gate and full save scheduler"
+    ]
+  },
+  "systems/ui_clutter/defered_autoclutter_history.rs": {
+    "formal_paths": [
+      "systems/ui_clutter/defered_autoclutter_history.rs"
+    ],
+    "status_label": "部分恢复：限定review与行为检查通过；完整模块未完成",
+    "implementation": "implemented_bounded",
+    "verified_scope": [
+      "actual ID record events into canonical ledger"
+    ],
+    "evidence": [
+      "evidence/country-core-deep/chapters/systems/ui_clutter/defered_autoclutter_history.rs.md",
+      "evidence/country-core-deep/round3/MODULE-DEEP-DIG.md"
+    ],
+    "remaining": [
+      "native picking/decorator conversion",
+      "visible generated clutter consumer"
+    ]
+  },
+  "systems/history/replay_auto_clutter.rs": {
+    "formal_paths": [
+      "systems/history/replay_auto_clutter.rs"
+    ],
+    "status_label": "部分恢复：限定review与行为检查通过；完整模块未完成",
+    "implementation": "implemented_bounded",
+    "verified_scope": [
+      "same owned deleted-ID set for undo/redo",
+      "front mixed bucket and strict native timing"
+    ],
+    "evidence": [
+      "evidence/country-core-deep/chapters/systems/history/replay_auto_clutter.rs.md",
+      "evidence/country-core-deep/round3/MODULE-DEEP-DIG.md"
+    ],
+    "remaining": [
+      "full auto clutter generated/render consumers"
+    ]
+  },
+  "resources/image_formation.rs": {
+    "formal_paths": [
+      "resources/image_formation.rs"
+    ],
+    "status_label": "部分恢复：限定review与行为检查通过；完整模块未完成",
+    "implementation": "implemented_bounded",
+    "verified_scope": [
+      "original grading/camera_lens/artistic serialization fields",
+      "typed float/boolean mapping preserving existing owner layout"
+    ],
+    "evidence": [
+      "evidence/country-core-deep/chapters/resources/image_formation.rs.md",
+      "evidence/country-core-deep/round3/MODULE-DEEP-DIG.md"
+    ],
+    "remaining": [
+      "all image formation controls and full config collection schema"
+    ]
+  },
+  "resources/glade_settings.rs": {
+    "formal_paths": [
+      "resources/glade_settings.rs"
+    ],
+    "status_label": "部分恢复：限定review与行为检查通过；完整模块未完成",
+    "implementation": "implemented_bounded",
+    "verified_scope": [
+      "all eleven original fields/defaults",
+      "settings.json loading and failure/null fallback",
+      "actual Ivy gate consumer"
+    ],
+    "evidence": [
+      "evidence/country-core-deep/chapters/resources/glade_settings.rs.md",
+      "evidence/country-core-deep/round3/MODULE-DEEP-DIG.md"
+    ],
+    "remaining": [
+      "remaining weather/vegetation/color consumers",
+      "global startup/theme transition wiring"
+    ]
+  },
+  "systems/save/snapshot_gc.rs": {
+    "formal_paths": [
+      "systems/save/snapshot_gc.rs"
+    ],
+    "status_label": "部分恢复：限定review与行为检查通过；完整模块未完成",
+    "implementation": "implemented_bounded",
+    "verified_scope": [
+      "selective History.snapshots parsing",
+      "real file reference collection and deletion",
+      "release channel cancellation and current-file lock consumer"
+    ],
+    "evidence": [
+      "evidence/country-core-deep/chapters/systems/save/snapshot_gc.rs.md",
+      "evidence/country-core-deep/round3/MODULE-DEEP-DIG.md"
+    ],
+    "remaining": [
+      "automatic session/save scheduler connection",
+      "complete async save thread"
+    ]
+  },
+  "components/mod.rs": {
+    "implementation": "implemented_bounded",
+    "target": "B",
+    "review": "self_review_against_original_evidence",
+    "evidence": [
+      "recovery/components-2026-10-18.md",
+      "skeleton/task-index/work/TG-abf1305389c44cc264/components-review-20261018/evidence/schema-direct.json",
+      "skeleton/task-index/work/TG-abf1305389c44cc264/components-review-20261018/evidence/original-span-identity.json"
+    ],
+    "verification": "recovery/components-2026-10-18.json",
+    "formal_paths": [
+      "components/mod.rs",
+      "components/rendering.rs",
+      "components/trees.rs",
+      "components/ui.rs",
+      "components/registry.rs"
+    ],
+    "status_label": "现有三个占位载荷已恢复；组件字段/克隆策略及直接消费者限定检查；其余类型库存待恢复",
+    "verified_scope": [
+      "TreeAnimation payload",
+      "TreeMoveBend payload",
+      "TreeComponent payload",
+      "ConvertedPreplacedTree payload",
+      "Ui2dImage payload",
+      "UiDrawOrder u64",
+      "actual Component clone/required descriptors"
+    ],
+    "corrections": [
+      "时长与进度分离，删除读 progress@4",
+      "进度随实体而非查询顺序 Local<Vec<_>>",
+      "拥有 UI 资源名，工具栏不再丢弃 label",
+      "恢复两个误作 ZST 的树载荷",
+      "移除改变原 ECS 克隆策略的 Clone/Copy 派生"
+    ],
+    "consumers": [
+      "system-tree/process_tree_cmds",
+      "system-tree/tree_move_bend",
+      "forest/tree_animation",
+      "toolbar/toolbar_layout",
+      "systems/render_loop/draw_passes/ui_2d_pass"
+    ],
+    "remaining": [
+      "原放置记录 GPU 写面/全局 canopy/原调度未闭合",
+      "InsertTreeCmd 原 flags 等尚未完整恢复",
+      "其余未定义的 registry 组件不计完成",
+      "未执行原进程或跨版本 oracle"
+    ]
+  },
+  "components/drawable.rs": {
+    "implementation": "implemented_bounded",
+    "target": "B",
+    "review": "self_review_against_original_evidence",
+    "evidence": [
+      "recovery/components-2026-10-18.md",
+      "skeleton/task-index/work/TG-abf1305389c44cc264/components-review-20261018/evidence/schema-direct.json",
+      "skeleton/task-index/work/TG-abf1305389c44cc264/components-review-20261018/evidence/original-span-identity.json"
+    ],
+    "verification": "recovery/components-2026-10-18.json",
+    "formal_paths": [
+      "components/drawable.rs",
+      "render/nani/systems.rs"
+    ],
+    "status_label": "选择器共用、移除误加 Component/Clone、澄清 Bundle 布局；系统/其余材质载荷仍待恢复",
+    "verified_scope": [
+      "shared mesh selector",
+      "NaniInstanceDesc Component clone behavior",
+      "host NaniBundle/DrawableMeshBundle layouts in components_recovery"
+    ],
+    "corrections": [
+      "NaniMeshSelector 与 NaniInstanceMeshDesc 统一",
+      "0x48 有效复制范围与本机 0x50 分配大小分开"
+    ],
+    "consumers": [
+      "render/nani/systems"
+    ],
+    "remaining": [
+      "cache_prev_object_transforms 未恢复",
+      "其余材质组件/原完整 ABI 与 GPU 链未验收"
+    ]
+  }
+}

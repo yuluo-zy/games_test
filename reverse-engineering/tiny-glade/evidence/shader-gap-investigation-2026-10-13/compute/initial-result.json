@@ -1,0 +1,144 @@
+{
+  "backend": "ghidra",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "shader-compute-gap-1013",
+  "pid": 21896,
+  "project": "D:\\game\\tools\\reverse-runtime\\shader-compute-gap-1013\\project\\TinyGlade.gpr",
+  "backend_reused": false,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": true,
+  "results": [
+    {
+      "tool": "get_metadata",
+      "requested_args": {
+        "program": "tiny-glade.exe"
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\shader-gap-investigation-2026-10-13\\compute\\initial-result.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\shader-gap-investigation-2026-10-13\\\\\\\\compute\\\\\\\\initial-result.artifacts\\\\\\\\000.stdout.txt\\\", \\\"bytes\\\": 274, \\\"sha256\\\": \\\"e1ab8352899238e72c78224897f74f16f15ade786ac6c094b3acfacee0640f52\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":17}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.031,
+      "stdout": "{\"name\": \"tiny-glade.exe\", \"sha256\": \"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\", \"path\": \"/tiny-glade.exe\", \"functions\": 116270, \"language\": \"x86:LE:64:default\", \"adapter\": \"Windows ReVa transport / Ghidra engine\", \"preexisting_Mac_overlays\": false}\n",
+      "passed": true
+    },
+    {
+      "tool": "find_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "pattern": "ComputePipelineDesc",
+        "limit": 20
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\shader-gap-investigation-2026-10-13\\compute\\initial-result.artifacts\\001.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\shader-gap-investigation-2026-10-13\\\\\\\\compute\\\\\\\\initial-result.artifacts\\\\\\\\001.stdout.txt\\\", \\\"bytes\\\": 1189, \\\"sha256\\\": \\\"ad8aeeafe68bc38e3d26d6500d7844db7a5200a2bb010d992e2c2c57997892e9\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":2325}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 2.344,
+      "stdout": "{\"total_matches\": 6, \"functions\": [{\"address\": \"0x1405fe2e0\", \"name\": \"core::ptr::drop_in_place$LT$shader_pipeline..pipeline_desc..ComputePipelineDesc$GT$::h2d19aa74dde36d47\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x140539370\", \"name\": \"shader_pipeline::pipeline_desc::ComputePipelineDesc::with_entry::h33a205290a2ea0c4\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x14003bb80\", \"name\": \"rhapsody::raw::shader::ComputePipelineDesc::new::h237ebdf3e877ad58\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x141795d10\", \"name\": \"_$LT$shader_pipeline..pipeline_desc..ComputePipelineDesc$u20$as$u20$shader_pipeline..compiled..ShaderCompilerArtifacts$GT$::compiled_file_path::h9d471e6151c11950\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1405fe2e0\", \"name\": \"core::ptr::drop_in_place$LT$shader_pipeline..pipeline_desc..ComputePipelineDesc$GT$::h43ca506355368823\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1409e3ab0\", \"name\": \"shader_pipeline::pipeline_desc::ComputePipelineDesc::with_entry::hca29d12b920881c0\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}]}\n",
+      "passed": true
+    },
+    {
+      "tool": "find_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "pattern": "compute.*uri|uri.*compute|ShaderLibrary::.*compute",
+        "limit": 20,
+        "regex": true
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\shader-gap-investigation-2026-10-13\\compute\\initial-result.artifacts\\002.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\shader-gap-investigation-2026-10-13\\\\\\\\compute\\\\\\\\initial-result.artifacts\\\\\\\\002.stdout.txt\\\", \\\"bytes\\\": 5601, \\\"sha256\\\": \\\"1122fbd9131256ba8018476a2987677f4bc12415803a5caeda8ec3c9f9eaa880\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":2143}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 2.156,
+      "stdout": "{\"total_matches\": 26, \"functions\": [{\"address\": \"0x141623e90\", \"name\": \"_$LT$country_core..render..nani..cull_shaders..NaniCullAndBucketBush$u20$as$u20$country_core..render..pass_builder..shader_uri..AsComputeShaderSource$GT$::as_compute_pipeline::h898adde37a7fc584\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1409e8db0\", \"name\": \"_$LT$country_core..systems..render_loop..compute_passes..bin_lights..BinLights$u20$as$u20$country_core..render..pass_builder..shader_uri..AsComputeShaderSource$GT$::as_compute_pipeline::ha2616648d5e369d2\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1405cf0f0\", \"name\": \"_$LT$T$u20$as$u20$country_core..render..pass_builder..shader_uri..AsComputeShaderSource$GT$::as_compute_pipeline::h8218f340b0a41b8d\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x140a5d4c0\", \"name\": \"_$LT$country_core..systems..render_loop..compute_passes..dof..FullResAllLod0Dof$u20$as$u20$country_core..render..pass_builder..shader_uri..AsComputeShaderSource$GT$::source_hash::h59a832dfae7a3ce8\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1416250f0\", \"name\": \"_$LT$country_core..render..nani..cull_shaders..NaniCullAndBucketSmoke$u20$as$u20$country_core..render..pass_builder..shader_uri..AsComputeShaderSource$GT$::as_compute_pipeline::h754fff4d82d0301f\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x141623590\", \"name\": \"_$LT$country_core..render..nani..cull_shaders..NaniCullAndBucketRoofTile$u20$as$u20$country_core..render..pass_builder..shader_uri..AsComputeShaderSource$GT$::as_compute_pipeline::hf762c34f8fe6868c\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x140a5de00\", \"name\": \"_$LT$country_core..systems..render_loop..compute_passes..dof..FullResDof$u20$as$u20$country_core..render..pass_builder..shader_uri..AsComputeShaderSource$GT$::source_hash::ha00f22c21b8dd1b2\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x140a3e100\", \"name\": \"_$LT$country_core..systems..render_loop..compute_passes..taa..TgsrMain$u20$as$u20$country_core..render..pass_builder..shader_uri..AsComputeShaderSource$GT$::as_compute_pipeline::h5875051789c80be8\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1409378e0\", \"name\": \"country_core::asset_libraries::shader_library::AssetShaderLibrary::get_compute_by_name::h096151d84ce9b5e9\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x140937560\", \"name\": \"country_core::asset_libraries::shader_library::AssetShaderLibrary::add_compute::h95daece19493023f\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x140a5e290\", \"name\": \"_$LT$country_core..systems..render_loop..compute_passes..dof..HalfResDof$u20$as$u20$country_core..render..pass_builder..shader_uri..AsComputeShaderSource$GT$::as_compute_pipeline::ha6f997521fe5352c\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x141624300\", \"name\": \"_$LT$country_core..render..nani..cull_shaders..NaniCullAndBucketWoodenPlank$u20$as$u20$country_core..render..pass_builder..shader_uri..AsComputeShaderSource$GT$::as_compute_pipeline::h999061347cc954ef\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x140a5d990\", \"name\": \"_$LT$country_core..systems..render_loop..compute_passes..dof..FullResAllLod1Dof$u20$as$u20$country_core..render..pass_builder..shader_uri..AsComputeShaderSource$GT$::as_compute_pipeline::haeb4b26cae8d9e04\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x140a5d960\", \"name\": \"_$LT$country_core..systems..render_loop..compute_passes..dof..FullResAllLod1Dof$u20$as$u20$country_core..render..pass_builder..shader_uri..AsComputeShaderSource$GT$::source_hash::hff4d882c1a18a528\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1408ca1c0\", \"name\": \"_$LT$country_core..systems..render_loop..compute_passes..rasterize_terrain_stroke..GaussBlur$u20$as$u20$country_core..render..pass_builder..shader_uri..AsComputeShaderSource$GT$::as_compute_pipeline::h27c96196696365ad\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x140a5de30\", \"name\": \"_$LT$country_core..systems..render_loop..compute_passes..dof..FullResDof$u20$as$u20$country_core..render..pass_builder..shader_uri..AsComputeShaderSource$GT$::as_compute_pipeline::h280baca1e9b31af9\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x140a5d4f0\", \"name\": \"_$LT$country_core..systems..render_loop..compute_passes..dof..FullResAllLod0Dof$u20$as$u20$country_core..render..pass_builder..shader_uri..AsComputeShaderSource$GT$::as_compute_pipeline::ha1ebda506361c704\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x141625590\", \"name\": \"_$LT$country_core..render..nani..cull_shaders..NaniCullAndBucketStairsFloor$u20$as$u20$country_core..render..pass_builder..shader_uri..AsComputeShaderSource$GT$::as_compute_pipeline::hcd6ad8d77cba0e45\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x141623120\", \"name\": \"_$LT$country_core..render..nani..cull_shaders..NaniCullAndBucketMain$u20$as$u20$country_core..render..pass_builder..shader_uri..AsComputeShaderSource$GT$::as_compute_pipeline::h4432201133d0deb0\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x141624c40\", \"name\": \"_$LT$country_core..render..nani..cull_shaders..NaniCullAndBucketPlaster$u20$as$u20$country_core..render..pass_builder..shader_uri..AsComputeShaderSource$GT$::as_compute_pipeline::hf3b713d378ee902b\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}]}\n",
+      "passed": true
+    },
+    {
+      "tool": "find_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "pattern": "ShaderDefines",
+        "limit": 20
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\shader-gap-investigation-2026-10-13\\compute\\initial-result.artifacts\\003.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\shader-gap-investigation-2026-10-13\\\\\\\\compute\\\\\\\\initial-result.artifacts\\\\\\\\003.stdout.txt\\\", \\\"bytes\\\": 38, \\\"sha256\\\": \\\"e6f173380fd5f0f72c554695d7f5487475521103e04240d5b1c9523881d2234c\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":1670}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 1.688,
+      "stdout": "{\"total_matches\": 0, \"functions\": []}\n",
+      "passed": true
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 26.531,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":940}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "save_result": {
+    "nonce": "eff3468576435380b333b640001c4300",
+    "success": true,
+    "was_changed": false,
+    "changed_after_save": false,
+    "path": "/tiny-glade.exe",
+    "saved_locally": true
+  }
+}

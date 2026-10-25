@@ -1,0 +1,15 @@
+{
+  "status": "candidate-only integration target; rustfmt parsed, not Cargo compiled/executed",
+  "replaces": "startup-chain-acceptance.patch libtest module; do not apply both",
+  "files": [
+    {
+      "path": "tiny-glade/crates/tiny-glade/tests/original_preplaced_startup.rs",
+      "base_sha256": null,
+      "proposed_sha256": "9589f73c1c9097c7dabed1d589665ccacc764c1c9f02a2044dcf4a691e0e9def"
+    }
+  ],
+  "run": [
+    "cargo test -p tiny-glade --test original_preplaced_startup (root build window only)",
+    "Run compiled test executable directly with original distribution as working directory, passing --ignored --exact shipped_themes_execute_actual_asset_producer_and_nonempty_delayed_converter; Cargo itself normally changes cwd to package root."
+  ]
+}

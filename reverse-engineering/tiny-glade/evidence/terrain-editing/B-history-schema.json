@@ -1,0 +1,42 @@
+{
+  "source_function": "0x1417c1590",
+  "offset_evidence": "B-second/1417c1590.asm.txt",
+  "discriminant_policy": "Native niche encoding, not a normal u32 tag",
+  "variants": [
+    {
+      "name": "NewTerrainStroke",
+      "first_qword": "0x8000000000000000",
+      "fields": {
+        "index": "0x20 u32",
+        "stroke_pts": "0x08 Vec<Vec3> (cap=+8, ptr=+16, len=+24)",
+        "height_ws": "0x24 f32"
+      }
+    },
+    {
+      "name": "EditTerrainStroke",
+      "first_qword": "0x8000000000000001",
+      "fields": {
+        "index": "0x08 u32",
+        "prev_height_ws": "0x0c f32",
+        "new_height_ws": "0x10 f32",
+        "prev_falloff": "0x14 f32",
+        "new_falloff": "0x18 f32"
+      }
+    },
+    {
+      "name": "MoveTerrainStroke",
+      "first_qword": "Vec allocation capacity; niche fallback branch",
+      "fields": {
+        "id": "0x20 u32",
+        "original_stroke_pts": "0x00 Vec<Vec3> (cap=+0, ptr=+8, len=+16)",
+        "move_vec": "0x18 Vec2"
+      }
+    }
+  ],
+  "limitations": [
+    "Native layouts specific to B",
+    "index/id not generally interchangeable",
+    "Vec/serde implementation reused; no parser reconstruction",
+    "No snapshot format acceptance"
+  ]
+}

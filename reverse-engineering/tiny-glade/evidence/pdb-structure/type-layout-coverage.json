@@ -1,0 +1,136 @@
+{
+  "source": "D:\\game\\TinyGlade_逆向初查\\pdb-types.txt",
+  "scope": "All 6125 records in existing full TPI dump; literal text search, not a claim about every PDB stream",
+  "literal_hits": {
+    "country_core": 0,
+    "system_roof": 0,
+    "system_decorator": 0,
+    "system_wall_constructor": 0,
+    "WindowSize": 1,
+    "RoofShape": 0,
+    "HistoryMutationToken": 0,
+    "WallHistoryEdit": 0,
+    "PublicWalls": 0,
+    "PublicWallState": 0,
+    "RoofTriggerVolume": 0
+  },
+  "false_positive_note": "WindowSize substring hit is the unrelated C field maxWindowSize at pdb-types.txt:7721; exact WindowSize type-name not found",
+  "codeview_placeholder": {
+    "index": "0x1001",
+    "kind": "LF_PROCEDURE",
+    "return": "void",
+    "args": 0,
+    "real_rust_signature_recovered": false
+  },
+  "observed_game_type_names": [
+    {
+      "name": "country_core::resources::history::EditType",
+      "basis": "Compiled procedure/type-reference name, not a layout record",
+      "fields": null,
+      "sizeof": null
+    },
+    {
+      "name": "country_core::resources::history::wall_compound_edit::WallHistoryEdit",
+      "basis": "Compiled procedure/type-reference name, not a layout record",
+      "fields": null,
+      "sizeof": null
+    },
+    {
+      "name": "country_core::resources::history::roof_edit::RoofEdit",
+      "basis": "Compiled procedure/type-reference name, not a layout record",
+      "fields": null,
+      "sizeof": null
+    },
+    {
+      "name": "country_core::resources::history::decorator_edit::DecoratorHistoryEdit",
+      "basis": "Compiled procedure/type-reference name, not a layout record",
+      "fields": null,
+      "sizeof": null
+    },
+    {
+      "name": "country_core::resources::history::color_edit::ColorEdit",
+      "basis": "Compiled procedure/type-reference name, not a layout record",
+      "fields": null,
+      "sizeof": null
+    },
+    {
+      "name": "country_core::resources::history::tree_edit::TreeEdit",
+      "basis": "Compiled procedure/type-reference name, not a layout record",
+      "fields": null,
+      "sizeof": null
+    },
+    {
+      "name": "country_core::resources::history::stairs_history_edit::StairsHistoryEdit",
+      "basis": "Compiled procedure/type-reference name, not a layout record",
+      "fields": null,
+      "sizeof": null
+    },
+    {
+      "name": "country_core::resources::history::terrain_edit::TerrainEdit",
+      "basis": "Compiled procedure/type-reference name, not a layout record",
+      "fields": null,
+      "sizeof": null
+    },
+    {
+      "name": "country_core::resources::history::HistoryMutationToken",
+      "basis": "Compiled procedure/type-reference name, not a layout record",
+      "fields": null,
+      "sizeof": null
+    },
+    {
+      "name": "country_core::resources::roofs::roof_shape::Roof",
+      "basis": "Compiled procedure/type-reference name, not a layout record",
+      "fields": null,
+      "sizeof": null
+    },
+    {
+      "name": "country_core::resources::walls::public_walls::PublicWalls",
+      "basis": "Compiled procedure/type-reference name, not a layout record",
+      "fields": null,
+      "sizeof": null
+    },
+    {
+      "name": "country_core::resources::walls::public_wall_state::PublicWallState",
+      "basis": "Compiled procedure/type-reference name, not a layout record",
+      "fields": null,
+      "sizeof": null
+    },
+    {
+      "name": "country_core::resources::window::WindowSize",
+      "basis": "Compiled procedure/type-reference name, not a layout record",
+      "fields": null,
+      "sizeof": null
+    }
+  ],
+  "window_aspect_ratio": {
+    "entry": "0x140949c20",
+    "size": 20,
+    "end_exclusive": "0x140949c34",
+    "reads": [
+      {
+        "base_register": "RCX",
+        "offset": 0,
+        "read_bytes": 4,
+        "value_semantics": "zero-extended u32",
+        "field_name": null
+      },
+      {
+        "base_register": "RCX",
+        "offset": 4,
+        "read_bytes": 4,
+        "value_semantics": "zero-extended u32",
+        "field_name": null
+      }
+    ],
+    "return_semantics": "float32(value_at_0) / float32(value_at_4)",
+    "zero_check": false,
+    "total_struct_size": null,
+    "evidence": "window-aspect-full-disassembly.txt:7"
+  },
+  "limitations": [
+    "Game type-name presence in generic procedure signatures does not provide field layouts",
+    "No S_LOCAL or S_GDATA32/S_LDATA32 records in five initially sampled modules",
+    "8-byte readable span does not establish WindowSize total sizeof or width/height field names",
+    "No target execution; arithmetic formula follows six observed instructions"
+  ]
+}

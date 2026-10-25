@@ -1,0 +1,93 @@
+{
+  "ok": true,
+  "actual_mcp_transport": "official Python MCP SDK, three independent ClientSession+stdio servers launched through configured launch.py; no manual connect_instance",
+  "core_calls": 45,
+  "sessions": 3,
+  "rounds_per_session": 3,
+  "queries": [
+    "get_metadata",
+    "get_functions(fields=entry_point,signature,body_start,body_end,decompiled_code; include_call_context=false)",
+    "get_xrefs_to",
+    "get_xrefs_from(actual caller reference instruction)",
+    "read_memory(32 bytes)"
+  ],
+  "functions": [
+    {
+      "va": "0x14090e510",
+      "name": "country_core::systems::camera_rig::MainCamera::init_walk_camera"
+    },
+    {
+      "va": "0x14090e6f0",
+      "name": "country_core::systems::camera_rig::MainCamera::match_free_camera_to_normal"
+    },
+    {
+      "va": "0x140911520",
+      "name": "country_core::systems::camera_rig::MainCamera::load_parameters"
+    }
+  ],
+  "validation": [
+    {
+      "function": "0x14090e510",
+      "metadata_identity": true,
+      "bundle_identity": true,
+      "nonempty_decompilation": true,
+      "xref_reciprocal": true,
+      "pe_bytes_match": true,
+      "stable_results": true
+    },
+    {
+      "function": "0x14090e6f0",
+      "metadata_identity": true,
+      "bundle_identity": true,
+      "nonempty_decompilation": true,
+      "xref_reciprocal": true,
+      "pe_bytes_match": true,
+      "stable_results": true
+    },
+    {
+      "function": "0x140911520",
+      "metadata_identity": true,
+      "bundle_identity": true,
+      "nonempty_decompilation": true,
+      "xref_reciprocal": true,
+      "pe_bytes_match": true,
+      "stable_results": true
+    }
+  ],
+  "same_backend_pid": true,
+  "backend_pids": [
+    1256,
+    1256,
+    1256,
+    1256
+  ],
+  "catalog_sizes": [
+    14,
+    14,
+    14
+  ],
+  "selected_pids": [
+    1256,
+    1256,
+    1256
+  ],
+  "all_15_barrier_batches_overlap": true,
+  "maximum_client_start_spread_s": 0.0005762079963460565,
+  "distinct_decompilation_hashes": {
+    "0x140911520": "8bcb32031f0a6e9475a88645f593802c952a24fb28d554b4fafc19477de4927f",
+    "0x14090e510": "0b38f9e0bcb31a50d986dbdf85d3a10cf3e566e37a7850eb80ed3f85f05c68a0",
+    "0x14090e6f0": "dc9eb92d141206e08c943aabe4e8d845a53b7ec34f57a97ccaae05e14e6e235d"
+  },
+  "result_files": [
+    "parallel-game-multi-instance-final.json",
+    "game-multi-instance-final.log",
+    "competing-backends-inventory.json",
+    "source-concurrency-audit.json"
+  ],
+  "limitations": [
+    "Concurrent submission and correctly isolated results verified. No CPU execution timeline or speedup ratio measured.",
+    "Read-only path only. Exclusive worker write clones tested by parent agent.",
+    "The initial final run had test-validator schema error, not a tool error; retained as parallel-game-final-validator-failure.json and corrected.",
+    "No Java source, launcher/config, skills, binary or database changes by this test agent."
+  ]
+}

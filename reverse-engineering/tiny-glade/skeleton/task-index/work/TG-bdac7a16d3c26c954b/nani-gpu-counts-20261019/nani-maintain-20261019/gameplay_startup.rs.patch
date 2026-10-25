@@ -1,0 +1,15 @@
+--- a/tiny-glade/crates/tiny-glade/src/gameplay_startup.rs
++++ b/tiny-glade/crates/tiny-glade/src/gameplay_startup.rs
+@@ -72,6 +72,12 @@
+         .in_set(crate::run_game::GameSystemSet(36))
+         .run_if(bevy_state::condition::in_state(
+             country_core::app_loading_state::AppLoadingState::Game)));
++    // B add_backend_systems@140942c80: set44 contains Nani maintain,
++    // explicit ApplyDeferred, unchained updates, then the real buffer flush.
++    app.edit_schedule(bevy_app::Update, |schedule| {
++        country_core::render::nani::systems::add_mapped_nani_instance_systems(
++            schedule, crate::run_game::GameSystemSet(44));
++    });
+     let config = app.world().resource::<GameConfig>();
+     let demo = config.dev.demo;
+     let watching = config.dev.live_link();

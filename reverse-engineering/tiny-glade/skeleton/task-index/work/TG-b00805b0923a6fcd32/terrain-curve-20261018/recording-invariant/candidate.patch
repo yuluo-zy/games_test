@@ -1,0 +1,40 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/deferred_terrain_history.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/deferred_terrain_history.rs
+@@ -35,7 +35,36 @@
+     mut debug: EventWriter<DebugHistoryMsg>,
+ ) {
+     if let Some(edit) = pending.edit.take() {
+-        let _ = history.add(EditType::Terrain(Arc::new(edit)));
++        history
++            .add(EditType::Terrain(Arc::new(edit)))
++            .expect("terrain history recorder requires an open input recording");
+         debug.write(DebugHistoryMsg);
+     }
+ }
++
++
++#[cfg(test)]
++mod recording_invariant_tests {
++    use super::*;
++    use crate::resources::terrain_editing::StrokeId;
++
++    #[test]
++    #[should_panic(expected = "terrain history recorder requires an open input recording")]
++    fn missing_recording_is_an_invariant_failure_instead_of_a_silent_lost_edit() {
++        let mut world = World::new();
++        world.insert_resource(History::<()>::empty_glade());
++        let mut pending = PendingTerrainHistory::default();
++        pending.stage(TerrainEdit::EditTerrainStroke {
++            index: StrokeId(7),
++            prev_height_ws: 2.5,
++            new_height_ws: 3.0,
++            prev_falloff: 0.4,
++            new_falloff: 0.5,
++        });
++        world.insert_resource(pending);
++        world.init_resource::<Events<DebugHistoryMsg>>();
++        let mut schedule = Schedule::default();
++        schedule.add_systems(history_record_terrain::<()>);
++        schedule.run(&mut world);
++    }
++}

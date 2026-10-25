@@ -1,0 +1,993 @@
+=====    ; reloc.WS2_32.dll_accept
+   ; reloc.
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af64b0      shl ecx, 4
+0x140af64b3      movzx r9d, byte [rax + rcx]
+; reloc.WS2_32.dll_ioctlsocket
+   ; reloc.WS2_32.dll_accept
+0x140af64b8      cmp r9, 0xa
+   ; likely
+0x140af64bc      ja 0x140af6660
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af64c2      add rcx, rax
+0x140af64c5      movsxd r9, dword [r15 + r9*4]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af64c9      add r9, r15
+0x140af64cc      jmp r9
+0x140af64cf      movzx r9d, byte [rsi]
+   ; reloc.WS2_32.dll_accept
+0x140af64d3      test r9d, r9d
+   ; unlikely
+0x140af64d6      je 0x140af659b
+; reloc.WS2_32.dll_connect
+0x140af64dc      cmp r9d, 4
+   ; unlikely
+0x140af64e0      je 0x140af6490
+; 8
+0x140af64e2      cmp r9d, 8
+   ; unlikely
+0x140af64e6      je 0x140af6490
+0x140af64e8      jmp 0x140af6660
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af64ed      cmp byte [rsi], 6
+   ; unlikely
+0x140af64f0      je 0x140af6490
+0x140af64f2      jmp 0x140af6660
+   ; reloc.WS2_32.dll_accept
+0x140af64f7      cmp byte [rsi], 4
+0x140af64fa      mov rcx, rsi
+   ; unlikely
+0x140af64fd      je 0x140af6525
+0x140af64ff      jmp 0x140af6660
+   ; reloc.WS2_32.dll_accept
+0x140af6504      cmp byte [rsi], 7
+   ; unlikely
+0x140af6507      je 0x140af6490
+0x140af6509      jmp 0x140af6660
+0x140af650e      movzx r9d, byte [rsi]
+   ; reloc.WS2_32.dll_accept
+0x140af6512      test r9d, r9d
+   ; unlikely
+0x140af6515      je 0x140af6490
+; reloc.WS2_32.dll_getpeername
+   ; reloc.WS2_32.dll_accept
+0x140af651b      cmp r9d, 5
+   ; likely
+0x140af651f      jne 0x140af6660
+   ; reloc.WS2_32.dll_accept
+0x140af6525      cmp qword [rcx + 0x20], 1
+   ; likely
+0x140af652a      jne 0x140af6660
+0x140af6530      mov r9, qword [rcx + 0x18]
+0x140af6534      mov r10, qword [rcx + 8]
+0x140af6538      mov rcx, qword [rcx + 0x10]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af653c      cmp r9, r10
+0x140af653f      mov r11d, 0
+0x140af6545      cmovae r11, r10
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af6549      sub r9, r11
+0x140af654c      lea r9, [r9 + r9*2]
+   ; reloc.WS2_32.dll_accept
+0x140af6550      cmp qword [rcx + r9*8 + 0x10], 1
+   ; likely
+0x140af6556      jne 0x140af6660
+0x140af655c      lea rcx, [rcx + r9*8]
+0x140af6560      mov rcx, qword [rcx + 8]
+0x140af6564      mov rcx, qword [rcx + 8]
+0x140af6568      movabs r9, 0x8000000000000002
+0x140af6572      cmp qword [rcx + 0x10], r9
+   ; unlikely
+0x140af6576      je 0x140af6490
+0x140af657c      jmp 0x140af6660
+0x140af6581      movzx ecx, byte [rsi]
+; reloc.WS2_32.dll_getsockopt
+0x140af6584      cmp ecx, 7
+   ; unlikely
+0x140af6587      je 0x140af6490
+; reloc.WS2_32.dll_ioctlsocket
+   ; reloc.WS2_32.dll_accept
+0x140af658d      cmp ecx, 0xa
+   ; unlikely
+0x140af6590      je 0x140af6490
+0x140af6596      jmp 0x140af6660
+0x140af659b      movzx r9d, byte [rcx + 1]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af65a0      cmp r9b, byte [rsi + 1]
+   ; unlikely
+0x140af65a4      jne 0x140af6490
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af65aa      test r9b, r9b
+   ; unlikely
+0x140af65ad      je 0x140af6660
+0x140af65b3      movzx r9d, byte [rsi + 2]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af65b8      cmp byte [rcx + 2], r9b
+   ; unlikely
+0x140af65bc      jne 0x140af6490
+0x140af65c2      jmp 0x140af6660
+0x140af65c7      mov rax, rdi
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af65ca      sub rax, rsi
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af65cd      shr rax, 4
+0x140af65d1      movabs rcx, 0xaaaaaaaaaaaaaaab
+0x140af65db      imul rax, rcx
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af65df      cmp rax, r13
+   ; likely
+0x140af65e2      jbe 0x140af664a
+0x140af65e4      lea rax, [r13*2]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af65ec      add rax, r13
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af65ef      shl rax, 4
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af65f3      add rsi, rax
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af65f6      add rdx, r13
+0x140af65f9      mov qword [rbp + 0x168], rdx
+0x140af6600      mov r13, qword [rbp + 0x138]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af6607      test r14, r14
+   ; unlikely
+0x140af660a      jne 0x140af6467
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af6610      cmp r14, qword [rbp + 0x130]
+   ; likely
+0x140af6617      jne 0x140af6410
+0x140af661d      mov byte [rbp + 0x17f], 1
+0x140af6624      mov byte [rbp + 0x17e], 1
+0x140af662b      lea rcx, [rbp + 0x130]
+   ; (pstr 0x142ae51b8) "crates/country-core/src/systems/history/history_process.rsinter"
+0x140af6632      lea rdx, [0x142ae5348]
+   ; 0x140b81df0(0x0, 0x0, 0x142ae5348, 0x130)
+0x140af6639      call 0x140b81df0
+0x140af663e      mov r13, qword [rbp + 0x138]
+0x140af6645      jmp 0x140af6410
+0x140af664a      mov r13, qword [rbp + 0x138]
+0x140af6651      nop word cs:[rax + rax]
+0x140af6660      lea rsi, [r14*8]
+0x140af6668      mov rax, r14
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af666b      shr rax, 0x3d
+   ; unlikely
+0x140af666f      jne 0x140af6e5d
+0x140af6675      mov edi, 0
+; 9223372036854775800
+0x140af667a      movabs rax, 0x7ffffffffffffff8
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af6684      cmp rsi, rax
+   ; unlikely
+0x140af6687      ja 0x140af6e5f
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af668d      test rsi, rsi
+   ; likely
+0x140af6690      je 0x140af66c0
+; [0x143634c09:1]=0
+0x140af6692      movzx eax, byte [0x143634c09]
+0x140af6699      mov edi, 8
+0x140af669e      mov edx, 8
+0x140af66a3      mov rcx, rsi
+   ; 0x140613c10(0x8, 0x0, 0x8, 0x0)
+0x140af66a6      call 0x140613c10
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af66ab      test rax, rax
+   ; likely
+0x140af66ae      je 0x140af6e5f
+0x140af66b4      mov qword [rbp + 0x168], r14
+0x140af66bb      jmp 0x140af66d0
+0x140af66bd      nop dword [rax]
+0x140af66c0      mov eax, 8
+0x140af66c5      mov qword [rbp + 0x168], 0
+0x140af66d0      mov qword [rbp + 0x160], rax
+0x140af66d7      mov rcx, rax
+0x140af66da      mov rdx, r13
+0x140af66dd      mov r8, rsi
+   ; 0x142923c00(0x8, 0x0, -1, 0x8)
+0x140af66e0      call 0x142923c00
+0x140af66e5      mov rsi, qword [rbp + 0xf8]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af66ec      cmp rsi, qword [rbp + 0xe8]
+   ; unlikely
+0x140af66f3      jne 0x140af6330
+0x140af66f9      lea rcx, [rbp + 0xe8]
+   ; (pstr 0x142ae51b8) "crates/country-core/src/systems/history/history_process.rsinter"
+0x140af6700      lea rdx, [0x142ae5330]
+   ; 0x1406ae3b0(0x8, -1, 0x142ae5330, 0xe8)
+0x140af6707      call 0x1406ae3b0
+0x140af670c      jmp 0x140af6330
+0x140af6711      mov qword [rbp + 0x120], 0
+0x140af671c      mov rax, qword [rbp + 0x118]
+0x140af6723      lea rdx, [rcx + rcx*2]
+0x140af6727      shl rdx, 4
+   ; reloc.WS2_32.dll_accept
+0x140af672b      add rdx, rax
+0x140af672e      mov qword [rbp - 0x20], rax
+0x140af6732      mov qword [rbp - 0x18], rdx
+0x140af6736      lea rax, [rbp + 0x110]
+0x140af673d      mov qword [rbp - 0x10], rax
+0x140af6741      mov qword [rbp - 8], rcx
+0x140af6745      mov qword [rbp], 0
+0x140af674d      mov byte [rbp + 0x17f], 1
+0x140af6754      mov byte [rbp + 0x17e], 1
+   ; (pstr 0x142ae5038) "/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\sr"
+0x140af675b      lea r8, [0x142ae5090]
+0x140af6762      lea rsi, [rbp - 0x58]
+0x140af6766      lea rdx, [rbp - 0x20]
+0x140af676a      mov rcx, rsi
+   ; 0x141307390(0x8, 0xffffffffffffffa8, 0xffffffffffffffe0, 0xffffffffffffffa8)
+0x140af676d      call 0x141307390
+0x140af6772      mov rax, qword [rbp + 0x148]
+0x140af6779      movzx ecx, byte [rbp + 0x17b]
+0x140af6780      mov rdx, qword [rax + 0x10]
+0x140af6784      mov r8, qword [rax + 0x18]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af6788      add r8, rdx
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af678b      inc r8
+
+===== 0x140af5dd0      jmp 0x140af5e5d
+0x140af
+0x140af5dd0      jmp 0x140af5e5d
+0x140af5dd5      nop word cs:[rax + rax]
+0x140af5de0      mov eax, dword [rsp + 0x44]
+0x140af5de4      mov rcx, qword [rsp + 0x80]
+0x140af5dec      mov dword [rcx], eax
+0x140af5dee      mov rcx, qword [rsp + 0x60]
+   ; 0x1409f1ab0(0x0, 0x0, 0x0, -1)
+0x140af5df3      call 0x1409f1ab0
+0x140af5df8      mov eax, dword [rsp + 0x4c]
+0x140af5dfc      mov rcx, qword [rsp + 0xa0]
+0x140af5e04      mov dword [rcx], eax
+0x140af5e06      mov r12, qword [rdi + 0x30]
+0x140af5e0a      mov rsi, qword [rdi + 0x40]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af5e0e      cmp r12, qword [rdi + 0x20]
+   ; unlikely
+0x140af5e12      jne 0x140af5e28
+0x140af5e14      mov rcx, qword [rsp + 0x88]
+   ; (pstr 0x142c3a0e0) "/home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/b"
+0x140af5e1c      lea rdx, [0x142c3a148]
+   ; 0x140562870(0x0, -1, 0x142c3a148, -1)
+0x140af5e23      call 0x140562870
+0x140af5e28      mov rax, qword [rdi + 0x28]
+0x140af5e2c      mov qword [rax + r12*8], rsi
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af5e30      inc r12
+0x140af5e33      mov qword [rdi + 0x30], r12
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af5e37      inc qword [rdi + 0x40]
+0x140af5e3b      mov rax, qword [rsp + 0x38]
+0x140af5e40      mov ecx, dword [rsp + 0x30]
+0x140af5e44      mov dword [rax], ecx
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af5e46      cmp qword [rbx + 0x18], 0
+   ; unlikely
+0x140af5e4b      je 0x140af5e55
+0x140af5e4d      mov qword [rbx + 0x18], 0
+0x140af5e55      mov qword [rbx + 0x10], 0
+0x140af5e5d      movzx r12d, byte [r13 + 0xb]
+0x140af5e62      mov rax, rbp
+0x140af5e65      mov r13, r15
+; reloc.WS2_32.dll_closesocket
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af5e68      cmp r12b, 3
+   ; unlikely
+0x140af5e6c      je 0x140af5ca5
+0x140af5e72      mov eax, dword [rsp + 0x48]
+0x140af5e76      mov rcx, qword [rsp + 0x90]
+0x140af5e7e      mov dword [rcx], eax
+0x140af5e80      mov r13, qword [r14 + 0x30]
+0x140af5e84      mov rsi, qword [r14 + 0x40]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af5e88      cmp r13, qword [r14 + 0x20]
+   ; unlikely
+0x140af5e8c      jne 0x140af5c80
+0x140af5e92      mov rcx, qword [rsp + 0x78]
+   ; (pstr 0x142c3a0e0) "/home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/b"
+0x140af5e97      lea rdx, [0x142c3a148]
+   ; 0x140562630(0x0, -1, 0x142c3a148, -1)
+0x140af5e9e      call 0x140562630
+0x140af5ea3      jmp 0x140af5c80
+; [0x14362c3a8:8]=0x143639320
+0x140af5ea8      mov rax, qword [0x14362c3a8]
+0x140af5eaf      mov rax, qword [rax]
+; reloc.WS2_32.dll_bind
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140af5eb2      cmp rax, 2
+   ; likely
+0x140af5eb6      jb 0x140af5f9c
+   ; (pstr 0x142ae51b8) "crates/country-core/src/systems/history/history_process.rsinter"
+0x140af5ebc      lea rcx, [0x142ae52a0]
+   ; 0x14067dd80(0x0, -1, 0x142c3a148, 0x142ae52a0)
+0x140af5ec3      call 0x14067dd80
+0x140af5ec8      movups xmm0, xmmword [rax]
+0x140af5ecb      mov eax, dword [rax + 0x10]
+0x140af5ece      mov qword [rsp + 0xe8], 2
+; "country_core::systems::history::history_process"
+0x140af5eda      lea rcx, [0x142ae52b8]
+0x140af5ee1      mov qword [rsp + 0xf0], rcx
+; '/'
+; [0x2f:8]=-1
+; 47
+0x140af5ee9      mov qword [rsp + 0xf8], 0x2f
+   ; (pstr 0x142ae5250) "Can't process History while recording a new edit is active!"
+0x140af5ef5      lea rdx, [0x142ae5290]
+0x140af5efc      mov qword [rsp + 0x108], rdx
+0x140af5f04      mov qword [rsp + 0x110], 1
+
+===== 0x140abfcb0      mov esp, 0xe9ffe928
+; r
+0x140abfcb0      mov esp, 0xe9ffe928
+; reloc.WS2_32.dll_listen
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140abfcb5      and al, 0xd
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140abfcb7      add byte [rax], al
+0x140abfcb9      lea r15, [r13 + 0x20]
+0x140abfcbd      lea r12, [r13 + 0x3c]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140abfcc1      cmp byte [rsi + 0x14], 0
+   ; likely
+0x140abfcc5      jne 0x140abff23
+0x140abfccb      movaps xmm7, xmm6
+0x140abfcce      jmp 0x140abff27
+   ; reloc.WS2_32.dll_recv
+0x140abfcd3      lea r14, [r13 + 0x10]
+0x140abfcd7      lea r15, [r13 + 0x80]
+0x140abfcde      ucomiss xmm7, xmm6
+0x140abfce1      setbe cl
+0x140abfce4      mov eax, dword [r13 + 0xf8]
+; reloc.WS2_32.dll_bind
+   ; reloc.WS2_32.dll_accept
+0x140abfceb      cmp eax, 2
+0x140abfcee      sete dl
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140abfcf1      or dl, cl
+   ; likely
+0x140abfcf3      je 0x140ac0100
+0x140abfcf9      mov rbx, qword [r13 + 0xf0]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140abfd00      cmp byte [rsi + 0x14], 0
+   ; unlikely
+0x140abfd04      je 0x140ac06f7
+   ; reloc.WS2_32.dll_recv
+0x140abfd0a      mov rdx, r14
+   ; (pstr 0x142adeda8) "/home/h3/code/pouncelight/country-slice-private/crates/utils/sr"
+0x140abfd0d      lea r14, [0x142adedf8]
+0x140abfd14      lea rcx, [rbp + 0xa0]
+   ; (pstr 0x142adeda8) "/home/h3/code/pouncelight/country-slice-private/crates/utils/sr"
+0x140abfd1b      mov r8, r14
+   ; 0x1412f7970(0x0, 0x0, 0x10, 0xa0)
+0x140abfd1e      call 0x1412f7970
+0x140abfd23      lea rdx, [r13 + 0x28]
+0x140abfd27      lea rcx, [rbp + 0xd0]
+   ; (pstr 0x142adeda8) "/home/h3/code/pouncelight/country-slice-private/crates/utils/sr"
+0x140abfd2e      mov r8, r14
+   ; 0x1412f78c0(0x0, 0x0, 0x28, 0xd0)
+0x140abfd31      call 0x1412f78c0
+0x140abfd36      movss xmm0, dword [r13 + 0x40]
+0x140abfd3c      mov rax, qword [rbp + 0xb0]
+0x140abfd43      mov qword [rbp + 0x150], rax
+0x140abfd4a      movups xmm1, xmmword [rbp + 0xa0]
+0x140abfd51      movaps xmmword [rbp + 0x140], xmm1
+0x140abfd58      movups xmm1, xmmword [rbp + 0xd0]
+0x140abfd5f      movups xmmword [rbp + 0x158], xmm1
+0x140abfd66      mov rax, qword [rbp + 0xe0]
+0x140abfd6d      mov qword [rbp + 0x168], rax
+0x140abfd74      mov edx, dword [r13 + 0x48]
+0x140abfd78      lea r8d, [rdx - 2]
+; reloc.WS2_32.dll_bind
+   ; reloc.WS2_32.dll_accept
+0x140abfd7c      cmp r8d, 2
+   ; reloc.WS2_32.dll_bind
+0x140abfd80      mov eax, 2
+   ; reloc.WS2_32.dll_bind
+   ; reloc.WS2_32.dll_bind
+0x140abfd85      cmovae r8d, eax
+0x140abfd89      test r8d, r8d
+0x140abfd8c      mov rcx, qword [rbp + 0x1b8]
+   ; unlikely
+0x140abfd93      je 0x140ac0c0d
+; reloc.WS2_32.dll_bind
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140abfd99      cmp r8d, 2
+   ; unlikely
+0x140abfd9d      jne 0x140ac0c08
+0x140abfda3      mov rax, qword [r13 + 0x5c]
+0x140abfda7      mov qword [rbp + 0x70], rax
+0x140abfdab      movups xmm1, xmmword [r13 + 0x4c]
+0x140abfdb0      movaps xmmword [rbp + 0x60], xmm1
+0x140abfdb4      mov eax, edx
+0x140abfdb6      jmp 0x140ac0c0d
+0x140abfdbb      mov rdi, qword [r13 + 0x18]
+0x140abfdbf      movzx eax, byte [rsi + 0x14]
+0x140abfdc3      subss xmm7, xmm6
+0x140abfdc7      mulss xmm7, dword [r13 + rax*4 + 0x20]
+   ; reloc.WS2_32.dll_accept
+0x140abfdce      xor al, 1
+0x140abfdd0      movzx eax, al
+0x140abfdd3      movss xmm8, dword [r13 + rax*4 + 0x20]
+0x140abfdda      mulss xmm8, xmm6
+0x140abfddf      addss xmm8, xmm7
+0x140abfde4      mov eax, dword [r12 + 0x1c]
+0x140abfde9      mov rcx, qword [r12 + 0x10]
+0x140abfdee      mov dword [rcx], eax
+0x140abfdf0      mov rbx, qword [r12]
+0x140abfdf4      mov r14, qword [rbx + 0x30]
+0x140abfdf8      mov r15, qword [rbx + 0x40]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140abfdfc      cmp r14, qword [rbx + 0x20]
+   ; unlikely
+0x140abfe00      jne 0x140abfe12
+0x140abfe02      lea rcx, [rbx + 0x20]
+   ; (pstr 0x142c3a0e0) "/home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/b"
+0x140abfe06      lea rdx, [0x142c3a148]
+   ; 0x1405629f0(-1, 0x0, 0x142c3a148, 0x1f)
+0x140abfe0d      call 0x1405629f0
+0x140abfe12      mov rax, qword [rbx + 0x28]
+0x140abfe16      lea rcx, [r14 + r14*2]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140abfe1a      shl rcx, 4
+0x140abfe1e      mov dword [rax + rcx], 0
+0x140abfe25      mov dword [rax + rcx + 0x10], 1
+0x140abfe2d      movss dword [rax + rcx + 0x14], xmm8
+0x140abfe34      mov qword [rax + rcx + 0x18], rdi
+0x140abfe39      mov byte [rax + rcx + 0x20], 1
+0x140abfe3e      mov qword [rax + rcx + 0x28], r15
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140abfe43      inc r14
+0x140abfe46      mov qword [rbx + 0x30], r14
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140abfe4a      inc qword [rbx + 0x40]
+0x140abfe4e      ucomiss xmm6, dword [0x142925904]
+   ; unlikely
+0x140abfe55      jae 0x140abff1a
+0x140abfe5b      jmp 0x140ac09d2
+0x140abfe60      movaps xmm0, xmm7
+0x140abfe63      subss xmm0, xmm6
+0x140abfe67      mov rdx, qword [rbp + 0x1b8]
+0x140abfe6e      mov rcx, qword [r13 + 0x88]
+0x140abfe75      movss dword [rsp + 0x20], xmm0
+   ; 0x140952570(-1, 0x0, -1, -1)
+0x140abfe7b      call 0x140952570
+0x140abfe80      jmp 0x140abff11
+0x140abfe85      movzx eax, byte [rsi + 0x14]
+0x140abfe89      movaps xmm0, xmm7
+0x140abfe8c      subss xmm0, xmm6
+0x140abfe90      mulss xmm0, dword [r13 + rax*4 + 0x20]
+   ; reloc.WS2_32.dll_accept
+0x140abfe97      xor al, 1
+0x140abfe99      movzx eax, al
+0x140abfe9c      movss xmm1, dword [r13 + rax*4 + 0x20]
+0x140abfea3      mulss xmm1, xmm6
+0x140abfea7      addss xmm1, xmm0
+0x140abfeab      mov rdx, qword [r13 + 0x18]
+0x140abfeaf      movss dword [rbp + 0x140], xmm1
+0x140abfeb7      lea r8, [rbp + 0x140]
+0x140abfebe      mov rcx, qword [rbp + 0x1b8]
+   ; 0x140aaaac0(-1, 0x0, -1, -1)
+0x140abfec5      call 0x140aaaac0
+0x140abfeca      jmp 0x140abff11
+0x140abfecc      movzx eax, byte [rsi + 0x14]
+0x140abfed0      movaps xmm0, xmm7
+0x140abfed3      subss xmm0, xmm6
+0x140abfed7      mulss xmm0, dword [r13 + rax*4 + 0x20]
+   ; reloc.WS2_32.dll_accept
+0x140abfede      xor al, 1
+0x140abfee0      movzx eax, al
+0x140abfee3      movss xmm1, dword [r13 + rax*4 + 0x20]
+0x140abfeea      mulss xmm1, xmm6
+0x140abfeee      addss xmm1, xmm0
+0x140abfef2      mov rdx, qword [r13 + 0x18]
+0x140abfef6      movss dword [rbp + 0x140], xmm1
+0x140abfefe      lea r8, [rbp + 0x140]
+0x140abff05      mov rcx, qword [rbp + 0x1b8]
+   ; 0x140aaa710(-1, 0x0, -1, -1)
+0x140abff0c      call 0x140aaa710
+0x140abff11      ucomiss xmm6, xmm7
+   ; unlikely
+0x140abff14      jb 0x140ac09d2
+0x140abff1a      mov byte [rsi + 0x15], 1
+0x140abff1e      jmp 0x140ac09d2
+0x140abff23      subss xmm7, xmm6
+0x140abff27      mov rax, r12
+0x140abff2a      cmovne rax, r15
+0x140abff2e      mov ecx, dword [rax]
+0x140abff30      mov rax, qword [rax + rcx*8 + 4]
+0x140abff35      mov qword [rbp + 0x88], rax
+0x140abff3c      mov rax, qword [r13 + 0x18]
+0x140abff40      mov qword [rbp + 0x58], rax
+0x140abff44      lea rcx, [rbp + 0x140]
+0x140abff4b      lea rdx, [rbp + 0x88]
+   ; 0x140c9cdc0(-1, 0x0, 0x88, 0x140)
+0x140abff52      call 0x140c9cdc0
+0x140abff57      movss xmm8, dword [rbp + 0x140]
+0x140abff60      movss xmm13, dword [rbp + 0x144]
+0x140abff69      movss xmm9, dword [rbp + 0x148]
+0x140abff72      mov rcx, qword [rdi]
+0x140abff75      movaps xmm1, xmm8
+0x140abff79      movaps xmm2, xmm9
+   ; 0x1409e9640(-1, 0x0, 0x88, 0x140)
+0x140abff7d      call 0x1409e9640
+0x140abff82      movaps xmm10, xmm0
+0x140abff86      addss xmm10, xmm13
+0x140abff8b      mov eax, dword [rbx + 0x1c]
+0x140abff8e      mov rcx, qword [rbx + 0x10]
+0x140abff92      mov dword [rcx], eax
+0x140abff94      mov rbx, qword [rbx]
+0x140abff97      mov rdi, qword [rbx + 0x30]
+0x140abff9b      mov r14, qword [rbx + 0x40]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140abff9f      cmp rdi, qword [rbx + 0x20]
+   ; unlikely
+0x140abffa3      jne 0x140abffb5
+0x140abffa5      lea rcx, [rbx + 0x20]
+   ; (pstr 0x142c3a0e0) "/home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/b"
+0x140abffa9      lea rdx, [0x142c3a148]
+   ; 0x140562c30(-1, 0x0, 0x142c3a148, 0x1f)
+0x140abffb0      call 0x140562c30
+0x140abffb5      mov rax, qword [rbx + 0x28]
+0x140abffb9      mov rcx, rdi
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140abffbc      shl rcx, 5
+0x140abffc0      mov qword [rax + rcx], r14
+0x140abffc4      mov rdx, qword [rbp + 0x58]
+0x140abffc8      mov qword [rax + rcx + 8], rdx
+0x140abffcd      movss dword [rax + rcx + 0x10], xmm8
+0x140abffd4      movss dword [rax + rcx + 0x14], xmm10
+0x140abffdb      movss dword [rax + rcx + 0x18], xmm9
+; [0x100:2]=0xffff
+; 256
+0x140abffe2      mov word [rax + rcx + 0x1c], 0x100
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140abffe9      inc rdi
+0x140abffec      mov qword [rbx + 0x30], rdi
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140abfff0      inc qword [rbx + 0x40]
+0x140abfff4      movzx eax, byte [r12]
+0x140abfff9      test byte [r15], 1
+   ; unlikely
+0x140abfffd      je 0x140ac0026
+; reloc.WS2_32.dll_accept
+0x140abffff      test al, 1
+   ; unlikely
+0x140ac0001      je 0x140ac15d5
+0x140ac0007      lea rdx, [r13 + 0x24]
+
+===== 0x140ac01f0      out dx, eax
+   ; reloc.
+0x140ac01f0      out dx, eax
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140ac01f1      add dword [rdx], eax
+0x140ac01f3      movaps xmm9, xmm6
+0x140ac01f7      mov r15, r14
+0x140ac01fa      jmp 0x140ac0810
+; [0x1429cd068:4]=0x3e4ccccd
+0x140ac01ff      movss xmm2, dword [0x1429cd068]
+   ; 0x140c97cf0(0x0, 0x0, 0x0, 0x0)
+0x140ac0207      call 0x140c97cf0
+0x140ac020c      lea r8, [rbp - 0x48]
+0x140ac0210      mov rcx, qword [rbp + 0x1b8]
+0x140ac0217      mov rdx, rbx
+   ; 0x140aaa090(0x0, 0x0, 0x0, -1)
+0x140ac021a      call 0x140aaa090
+0x140ac021f      jmp 0x140ac09d2
+0x140ac0224      mov rdx, qword [r12 + 0x18]
+0x140ac0229      movzx eax, byte [rsi + 0x14]
+; 33
+   ; reloc.WS2_32.dll_accept
+0x140ac022d      xor rax, 0x21
+0x140ac0231      movzx eax, byte [r12 + rax]
+0x140ac0236      mov byte [rbp + 0x140], al
+0x140ac023c      lea rax, [rbp + 0x140]
+0x140ac0243      mov rcx, r8
+0x140ac0246      mov r8, rax
+   ; 0x140aa9800(0x0, 0x0, -1, 0xffffffffffffffb8)
+0x140ac0249      call 0x140aa9800
+0x140ac024e      jmp 0x140ac09dd
+0x140ac0253      mov rdx, qword [r12 + 0x18]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140ac0258      cmp byte [rsi + 0x14], 0
+   ; unlikely
+0x140ac025c      je 0x140ac0a37
+0x140ac0262      mov eax, dword [r12 + 0x20]
+0x140ac0267      lea r9d, [rax - 2]
+; reloc.WS2_32.dll_bind
+   ; reloc.WS2_32.dll_accept
+0x140ac026b      cmp r9d, 2
+   ; reloc.WS2_32.dll_bind
+0x140ac026f      mov ecx, 2
+   ; reloc.WS2_32.dll_bind
+   ; reloc.WS2_32.dll_bind
+0x140ac0274      cmovae r9d, ecx
+0x140ac0278      test r9d, r9d
+   ; unlikely
+0x140ac027b      je 0x140ac0bcf
+; reloc.WS2_32.dll_bind
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140ac0281      cmp r9d, 2
+   ; unlikely
+0x140ac0285      jne 0x140ac0bca
+0x140ac028b      mov rcx, qword [r12 + 0x34]
+0x140ac0290      mov qword [rbp + 0xe0], rcx
+0x140ac0297      movups xmm0, xmmword [r12 + 0x24]
+0x140ac029d      jmp 0x140ac0a72
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140ac02a2      cmp byte [rsi + 0x14], 0
+   ; likely
+0x140ac02a6      jne 0x140ac0577
+0x140ac02ac      mov rsi, r8
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140ac02af      xor eax, eax
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140ac02b1      cmp rax, qword [r12 + 0x18]
+   ; unlikely
+0x140ac02b6      jo 0x140ac105d
+0x140ac02bc      lea rdx, [r12 + 0x18]
+   ; (pstr 0x142adeda8) "/home/h3/code/pouncelight/country-slice-private/crates/utils/sr"
+0x140ac02c1      lea rbx, [0x142adedf8]
+0x140ac02c8      lea rcx, [rbp + 0x88]
+   ; (pstr 0x142adeda8) "/home/h3/code/pouncelight/country-slice-private/crates/utils/sr"
+0x140ac02cf      mov r8, rbx
+   ; 0x1412f7970(0x0, 0x140, 0x18, 0x88)
+0x140ac02d2      call 0x1412f7970
+0x140ac02d7      lea rdx, [r12 + 0x30]
+0x140ac02dc      lea rcx, [rbp + 0xd0]
+   ; (pstr 0x142adeda8) "/home/h3/code/pouncelight/country-slice-private/crates/utils/sr"
+0x140ac02e3      mov r8, rbx
+   ; 0x1412f78c0(0x0, 0x140, 0x30, 0xd0)
+0x140ac02e6      call 0x1412f78c0
+0x140ac02eb      movss xmm0, dword [r12 + 0x48]
+0x140ac02f2      mov rax, qword [rbp + 0x88]
+0x140ac02f9      movups xmm1, xmmword [rbp + 0x90]
+0x140ac0300      movaps xmmword [rbp + 0x140], xmm1
+0x140ac0307      movups xmm1, xmmword [rbp + 0xd0]
+0x140ac030e      movaps xmmword [rbp + 0x150], xmm1
+0x140ac0315      mov rcx, qword [rbp + 0xe0]
+0x140ac031c      mov qword [rbp + 0x160], rcx
+0x140ac0323      mov edx, dword [r12 + 0x50]
+0x140ac0328      lea r8d, [rdx - 2]
+; reloc.WS2_32.dll_bind
+   ; reloc.WS2_32.dll_accept
+0x140ac032c      cmp r8d, 2
+   ; reloc.WS2_32.dll_bind
+0x140ac0330      mov ecx, 2
+   ; reloc.WS2_32.dll_bind
+   ; reloc.WS2_32.dll_bind
+0x140ac0335      cmovae r8d, ecx
+0x140ac0339      test r8d, r8d
+   ; unlikely
+0x140ac033c      je 0x140ac1000
+; reloc.WS2_32.dll_bind
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140ac0342      cmp r8d, 2
+   ; unlikely
+0x140ac0346      jne 0x140ac0ffb
+0x140ac034c      mov rcx, qword [r12 + 0x64]
+0x140ac0351      mov qword [rbp + 0x20], rcx
+0x140ac0355      movups xmm1, xmmword [r12 + 0x54]
+0x140ac035b      movaps xmmword [rbp + 0x10], xmm1
+0x140ac035f      mov ecx, edx
+0x140ac0361      jmp 0x140ac1000
+   ; reloc.WS2_32.dll_bind
+0x140ac0366      mov r14, r8
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140ac0369      cmp byte [rsi + 0x14], 0
+   ; unlikely
+0x140ac036d      je 0x140ac0a80
+   ; reloc.WS2_32.dll_recv
+0x140ac0373      lea rdx, [r12 + 0x10]
+   ; (pstr 0x142adeda8) "/home/h3/code/pouncelight/country-slice-private/crates/utils/sr"
+0x140ac0378      lea rsi, [0x142adedf8]
+0x140ac037f      lea rcx, [rbp + 0xa0]
+   ; (pstr 0x142adeda8) "/home/h3/code/pouncelight/country-slice-private/crates/utils/sr"
+0x140ac0386      mov r8, rsi
+   ; 0x1412f7970(0x0, 0x142adedf8, 0x10, 0xa0)
+0x140ac0389      call 0x1412f7970
+0x140ac038e      lea rdx, [r12 + 0x28]
+0x140ac0393      lea rcx, [rbp + 0xd0]
+   ; (pstr 0x142adeda8) "/home/h3/code/pouncelight/country-slice-private/crates/utils/sr"
+0x140ac039a      mov r8, rsi
+   ; 0x1412f78c0(0x0, 0x142adedf8, 0x28, 0xd0)
+0x140ac039d      call 0x1412f78c0
+0x140ac03a2      movss xmm0, dword [r12 + 0x40]
+0x140ac03a9      mov rax, qword [rbp + 0xb0]
+0x140ac03b0      mov qword [rbp + 0x150], rax
+0x140ac03b7      movups xmm1, xmmword [rbp + 0xa0]
+0x140ac03be      movaps xmmword [rbp + 0x140], xmm1
+0x140ac03c5      movups xmm1, xmmword [rbp + 0xd0]
+0x140ac03cc      movups xmmword [rbp + 0x158], xmm1
+0x140ac03d3      mov rax, qword [rbp + 0xe0]
+0x140ac03da      mov qword [rbp + 0x168], rax
+0x140ac03e1      movss xmm1, dword [r12 + 0x64]
+0x140ac03e8      mov ecx, dword [r12 + 0x48]
+0x140ac03ed      lea edx, [rcx - 2]
+; reloc.WS2_32.dll_bind
+   ; reloc.WS2_32.dll_accept
+0x140ac03f0      cmp edx, 2
+   ; reloc.WS2_32.dll_bind
+0x140ac03f3      mov eax, 2
+   ; reloc.WS2_32.dll_bind
+   ; reloc.WS2_32.dll_bind
+0x140ac03f8      cmovae edx, eax
+0x140ac03fb      test edx, edx
+   ; unlikely
+0x140ac03fd      je 0x140ac0d43
+; reloc.WS2_32.dll_bind
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140ac0403      cmp edx, 2
+   ; unlikely
+0x140ac0406      jne 0x140ac0d3e
+0x140ac040c      mov rax, qword [r12 + 0x5c]
+0x140ac0411      mov qword [rbp + 0xb0], rax
+0x140ac0418      movups xmm2, xmmword [r12 + 0x4c]
+0x140ac041e      movaps xmmword [rbp + 0xa0], xmm2
+0x140ac0425      mov eax, ecx
+0x140ac0427      jmp 0x140ac0d43
+0x140ac042c      mov rax, qword [r12 + 0x18]
+0x140ac0431      movzx ecx, byte [rsi + 0x14]
+0x140ac0435      xor ecx, 1
+0x140ac0438      movss xmm0, dword [r12 + rcx*4 + 0x20]
+0x140ac043f      mov dword [rbp + 0x140], 0
+0x140ac0449      mov byte [rbp + 0x160], 1
+0x140ac0450      mov qword [rbp + 0x158], rax
+0x140ac0457      mov dword [rbp + 0x150], 1
+0x140ac0461      movss dword [rbp + 0x154], xmm0
+   ; (pstr 0x142adef3e) "crates/country-core/src/systems/history/replay_wall.rs"
+0x140ac0469      lea r8, [0x142adf008]
+0x140ac0470      lea rdx, [rbp + 0x140]
+   ; reloc.WS2_32.dll_bind
+0x140ac0477      mov rcx, r9
+   ; 0x141327210(0x0, 0x142adedf8, 0x140, 0x2)
+0x140ac047a      call 0x141327210
+0x140ac047f      jmp 0x140ac09dd
+0x140ac0484      movzx eax, byte [rsi + 0x14]
+; 33
+   ; reloc.WS2_32.dll_accept
+0x140ac0488      xor rax, 0x21
+0x140ac048c      movzx eax, byte [r12 + rax]
+0x140ac0491      mov rdx, qword [r12 + 0x18]
+0x140ac0496      mov byte [rbp + 0x140], al
+0x140ac049c      lea rax, [rbp + 0x140]
+   ; (pstr 0x142adef3e) "crates/country-core/src/systems/history/replay_wall.rs"
+0x140ac04a3      mov rcx, r8
+0x140ac04a6      mov r8, rax
+   ; 0x140aa9eb0(0x0, 0x142adedf8, -1, 0x142adf008)
+0x140ac04a9      call 0x140aa9eb0
+0x140ac04ae      jmp 0x140ac09dd
+   ; reloc.WS2_32.dll_accept
+0x140ac04b3      cmp byte [rsi + 0x14], 0
+   ; unlikely
+0x140ac04b7      je 0x140ac0577
+0x140ac04bd      mov rbx, r8
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140ac04c0      xor eax, eax
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140ac04c2      cmp rax, qword [r12 + 0x18]
+   ; unlikely
+0x140ac04c7      jo 0x140ac1322
+0x140ac04cd      lea rdx, [r12 + 0x18]
+   ; (pstr 0x142adeda8) "/home/h3/code/pouncelight/country-slice-private/crates/utils/sr"
+0x140ac04d2      lea rsi, [0x142adedf8]
+0x140ac04d9      lea rcx, [rbp + 0x88]
+   ; (pstr 0x142adeda8) "/home/h3/code/pouncelight/country-slice-private/crates/utils/sr"
+0x140ac04e0      mov r8, rsi
+   ; 0x1412f7970(0x0, 0x142adedf8, 0x18, 0x88)
+0x140ac04e3      call 0x1412f7970
+0x140ac04e8      lea rdx, [r12 + 0x30]
+0x140ac04ed      lea rcx, [rbp + 0xd0]
+   ; (pstr 0x142adeda8) "/home/h3/code/pouncelight/country-slice-private/crates/utils/sr"
+0x140ac04f4      mov r8, rsi
+   ; 0x1412f78c0(0x0, 0x142adedf8, 0x30, 0xd0)
+0x140ac04f7      call 0x1412f78c0
+0x140ac04fc      movss xmm0, dword [r12 + 0x48]
+0x140ac0503      mov rax, qword [rbp + 0x88]
+0x140ac050a      movups xmm1, xmmword [rbp + 0x90]
+0x140ac0511      movaps xmmword [rbp + 0x140], xmm1
+0x140ac0518      movups xmm1, xmmword [rbp + 0xd0]
+0x140ac051f      movaps xmmword [rbp + 0x150], xmm1
+0x140ac0526      mov rcx, qword [rbp + 0xe0]
+0x140ac052d      mov qword [rbp + 0x160], rcx
+0x140ac0534      mov edx, dword [r12 + 0x50]
+0x140ac0539      lea r8d, [rdx - 2]
+; reloc.WS2_32.dll_bind
+   ; reloc.WS2_32.dll_accept
+0x140ac053d      cmp r8d, 2
+   ; reloc.WS2_32.dll_bind
+0x140ac0541      mov ecx, 2
+   ; reloc.WS2_32.dll_bind
+   ; reloc.WS2_32.dll_bind
+0x140ac0546      cmovae r8d, ecx
+0x140ac054a      test r8d, r8d
+   ; unlikely
+0x140ac054d      je 0x140ac12be
+; reloc.WS2_32.dll_bind
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140ac0553      cmp r8d, 2
+   ; unlikely
+0x140ac0557      jne 0x140ac12b9
+0x140ac055d      mov rcx, qword [r12 + 0x64]
+0x140ac0562      mov qword [rbp], rcx
+0x140ac0566      movups xmm1, xmmword [r12 + 0x54]
+0x140ac056c      movaps xmmword [rbp - 0x10], xmm1
+0x140ac0570      mov ecx, edx
+0x140ac0572      jmp 0x140ac12be
+0x140ac0577      mov rax, qword [r12 + 0x88]
+0x140ac057f      lea rcx, [rbp + 0x140]
+   ; reloc.WS2_32.dll_bind
+0x140ac0586      mov rdx, r8
+0x140ac0589      mov r8, rax
+   ; 0x14085aa60(0x0, 0x142adedf8, 0x2, 0x140)
+0x140ac058c      call 0x14085aa60
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140ac0591      xor eax, eax
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140ac0593      cmp rax, qword [rbp + 0x140]
+   ; unlikely
+0x140ac059a      jo 0x140ac09dd
+0x140ac05a0      lea rcx, [rbp + 0x140]
+   ; 0x1405d24f0(0x0, 0x142adedf8, 0x2, 0x140)
+0x140ac05a7      call 0x1405d24f0
+0x140ac05ac      jmp 0x140ac09dd
+0x140ac05b1      movzx eax, byte [rsi + 0x14]
+0x140ac05b5      xor eax, 1
+0x140ac05b8      movss xmm0, dword [r12 + rax*4 + 0x20]
+0x140ac05bf      mov rdx, qword [r12 + 0x18]
+0x140ac05c4      movss dword [rbp + 0x140], xmm0
+0x140ac05cc      lea rax, [rbp + 0x140]
+0x140ac05d3      mov rcx, r8
+0x140ac05d6      mov r8, rax
+   ; 0x140aaa710(0x0, 0x142adedf8, -1, -1)
+0x140ac05d9      call 0x140aaa710
+0x140ac05de      jmp 0x140ac09dd
+0x140ac05e3      mov rdx, qword [r12 + 0x18]
+0x140ac05e8      movzx eax, byte [rsi + 0x14]
+; 33
+   ; reloc.WS2_32.dll_accept
+0x140ac05ec      xor rax, 0x21
+0x140ac05f0      movzx eax, byte [r12 + rax]
+0x140ac05f5      mov byte [rbp + 0x140], al
+0x140ac05fb      lea rax, [rbp + 0x140]
+0x140ac0602      mov rcx, r8
+0x140ac0605      mov r8, rax
+   ; 0x140aaa350(0x0, 0x142adedf8, -1, 0x140)
+0x140ac0608      call 0x140aaa350
+0x140ac060d      jmp 0x140ac09dd
+   ; reloc.WS2_32.dll_accept
+0x140ac0612      cmp byte [rsi + 0x14], 0
+   ; unlikely
+0x140ac0616      je 0x140ac0b32
+0x140ac061c      mov rsi, r8
+0x140ac061f      lea rdx, [r12 + 0x20]
+0x140ac0624      movups xmm0, xmmword [r12 + 0x20]
+0x140ac062a      movups xmm1, xmmword [r12 + 0x2c]
+0x140ac0630      jmp 0x140ac0b46
+0x140ac0635      mov rdx, qword [r12 + 0x18]
+0x140ac063a      movzx eax, byte [rsi + 0x14]
+0x140ac063e      xor eax, 1
+0x140ac0641      movss xmm0, dword [r12 + rax*4 + 0x20]
+0x140ac0648      movss dword [rbp + 0x140], xmm0
+0x140ac0650      lea rax, [rbp + 0x140]
+0x140ac0657      mov rcx, r8
+0x140ac065a      mov r8, rax
+   ; 0x140aaa530(0x0, 0x140, -1, 0x140)
+0x140ac065d      call 0x140aaa530
+0x140ac0662      jmp 0x140ac09dd
+0x140ac0667      movzx eax, byte [rsi + 0x14]
+0x140ac066b      xor eax, 1
+0x140ac066e      movss xmm0, dword [r12 + rax*4 + 0x20]
+0x140ac0675      mov rdx, qword [r12 + 0x18]
+0x140ac067a      movss dword [rbp + 0x140], xmm0
+0x140ac0682      lea rax, [rbp + 0x140]
+0x140ac0689      mov rcx, r8
+0x140ac068c      mov r8, rax
+   ; 0x140aaaac0(0x0, 0x140, -1, 0x140)
+0x140ac068f      call 0x140aaaac0
+0x140ac0694      jmp 0x140ac09dd
+0x140ac0699      mov rdx, qword [r12 + 0x18]
+0x140ac069e      movzx eax, byte [rsi + 0x14]
+; 33
+   ; reloc.WS2_32.dll_accept
+0x140ac06a2      xor rax, 0x21
+0x140ac06a6      movzx eax, byte [r12 + rax]
+0x140ac06ab      mov byte [rbp + 0x140], al
+0x140ac06b1      lea rax, [rbp + 0x140]
+0x140ac06b8      mov rcx, r8
+0x140ac06bb      mov r8, rax
+   ; 0x140aaa350(0x0, 0x140, -1, 0x140)
+0x140ac06be      call 0x140aaa350
+0x140ac06c3      jmp 0x140ac09dd
+0x140ac06c8      mov rdx, qword [r12 + 0x18]
+0x140ac06cd      movzx eax, byte [rsi + 0x14]
+; 33
+   ; reloc.WS2_32.dll_accept
+0x140ac06d1      xor rax, 0x21
+0x140ac06d5      movzx eax, byte [r12 + rax]
+0x140ac06da      mov byte [rbp + 0x140], al
+0x140ac06e0      lea rax, [rbp + 0x140]
+0x140ac06e7      mov rcx, r8
+0x140ac06ea      mov r8, rax
+   ; 0x140aa99e0(0x0, 0x140, -1, 0x140)
+0x140ac06ed      call 0x140aa99e0
+0x140ac06f2      jmp 0x140ac09dd
+   ; (pstr 0x142adeda8) "/home/h3/code/pouncelight/country-slice-private/crates/utils/sr"
+0x140ac06f7      lea r14, [0x142adedf8]
+0x140ac06fe      lea rcx, [rbp + 0xa0]
+0x140ac0705      mov rdx, r15
+   ; (pstr 0x142adeda8) "/home/h3/code/pouncelight/country-slice-private/crates/utils/sr"
+0x140ac0708      mov r8, r14
+   ; 0x1412f7970(0x0, 0x140, 0x0, 0xa0)
+0x140ac070b      call 0x1412f7970
+0x140ac0710      lea rdx, [r13 + 0x98]
+0x140ac0717      lea rcx, [rbp + 0xd0]

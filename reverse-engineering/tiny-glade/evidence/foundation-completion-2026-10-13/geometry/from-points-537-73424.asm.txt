@@ -1,0 +1,37 @@
+140a07972 test rax, rax
+140a07975 je 0x140a07a0a
+140a0797b mov r14, qword ptr [rcx - 0x10]
+140a0797f movss xmm0, dword ptr [r14]
+140a07984 movsd xmm1, qword ptr [r14 + 4]
+140a0798a shufps xmm0, xmm1, 0x40
+140a0798e shufps xmm0, xmm0, 0x78
+140a07992 movaps xmmword ptr [rsp + 0x30], xmm0
+140a07997 movsd qword ptr [rsp + 0x40], xmm1
+140a0799d cmp rax, 1
+140a079a1 je 0x140a079ee
+140a079a3 shl rax, 2
+140a079a7 lea r15, [rax + rax*2]
+140a079ab add r15, -0xc
+140a079af xor r12d, r12d
+140a079b2 lea rdi, [rsp + 0x30]
+140a079b7 lea rbx, [rsp + 0x20]
+140a079bc nop dword ptr [rax]
+140a079c0 movss xmm0, dword ptr [r14 + r12 + 0x14]
+140a079c7 movsd xmm1, qword ptr [r14 + r12 + 0xc]
+140a079ce movsd qword ptr [rsp + 0x20], xmm1
+140a079d4 movss dword ptr [rsp + 0x28], xmm0
+140a079da mov rcx, rdi
+140a079dd mov rdx, rbx
+140a079e0 call 0x141240330
+140a079e5 add r12, 0xc
+140a079e9 cmp r15, r12
+140a079ec jne 0x140a079c0
+140a079ee mov rax, qword ptr [rsp + 0x40]
+140a079f3 mov qword ptr [rsi + 0x10], rax
+140a079f7 movaps xmm0, xmmword ptr [rsp + 0x30]
+140a079fc jmp 0x140a07a1c
+140a079fe lea rcx, [rip + 0x20bee0b]
+140a07a05 call 0x1428d9310
+140a07a0a mov rax, qword ptr [rip + 0x226faaf]
+140a07a11 mov qword ptr [rsi + 0x10], rax
+140a07a15 movups xmm0, xmmword ptr [rip + 0x226fa94]

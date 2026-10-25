@@ -1,0 +1,126 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/edit_terrain_stroke.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/edit_terrain_stroke.rs
+@@ -1,16 +1,9 @@
+-//! B 0x14094e000 consumes point replacements before parameter edits. Missing
+-//! IDs are logged and skipped; old chapter's "missing stroke panic" was wrong.
+-//!
+-//! fresh 反编译（terrain-systems-0x14094e000）：
+-//! - 点集/编辑两循环、id 查找、错误串、`magnitude=delta*sqrt(dz²+(dy²+dx²))/0.001`、
+-//!   `apply_resolved` 逻辑、readback.pending LOCK INC 均吻合；
+-//! - **原版把 tag 1/2/3/4 观测写 `StairsPlacementBucket`（indexmap::Bucket<(DecoratorId,
+-//!   DecoratorId),AlignKind>）**（`grow_one<…>`），**无 PlayTerrainSound 载荷事件**——
+-//!   早期 Rust 的 PlayTerrainSound::Points/Falloff/Height/Removed 写入系**编造**
+-//!   （把 stairs bucket 记录误判为音频事件），已删。
++//! B0x14094e000 point/parameter edits. The original FunctionSystem declares
++//! EventWriter<PlayTerrainSound>; folded grow_one aliases do not identify stairs.
++//! Reuse current tg_terrain::edit::apply_resolved numeric/audio observations.
+ use super::{
+-    delayed_terrain_changed_msg::ScheduledTerrainReadback, RecalculateHeightMapCmd,
+-    ui_edit_terrain::{StairsPlacementBucket, StairsPlacementEntry},
++    PlayTerrainSound, RecalculateHeightMapCmd,
++    delayed_terrain_changed_msg::ScheduledTerrainReadback,
+ };
+ use crate::resources::{
+     terrain_editing::{StrokeId, TerrainEditingData},
+@@ -18,7 +11,7 @@
+ };
+ use bevy_ecs::prelude::*;
+ use glam::Vec3;
+-use tg_terrain::edit::{apply_resolved, EditCommand, StrokeParameters};
++use tg_terrain::edit::{EditCommand, StrokeParameters, apply_resolved};
+ 
+ #[derive(Event, Clone, Copy, Debug)]
+ pub struct EditTerrainStrokeCmd(pub EditCommand);
+@@ -31,32 +24,11 @@
+     pub id: StrokeId,
+ }
+ 
+-/// 原生 0x28B stairs bucket 记录（机械写偏移）：`+0x0c..+0x14` = position.x/y 位
+-/// （双 DecoratorId 键）、`+0x14` = position.z 位、`+0x18` = 值 a、`+0x1c` = 值 b、
+-/// `+0x20` = 幅度（tag 2/3）。
+-fn stairs_entry(
+-    tag: u32,
+-    position: Vec3,
+-    value_a: u32,
+-    value_b: u32,
+-    magnitude: f32,
+-) -> StairsPlacementEntry {
+-    StairsPlacementEntry {
+-        tag,
+-        decorator_a: position.x.to_bits(),
+-        decorator_b: position.y.to_bits(),
+-        sub: position.z.to_bits(),
+-        value_a,
+-        value_b,
+-        magnitude,
+-    }
+-}
+-
+ pub fn edit_terrain_stroke(
+     mut edits: EventReader<EditTerrainStrokeCmd>,
+     mut point_sets: EventReader<SetTerrainStrokePtsCmd>,
+     mut terrain: ResMut<TerrainEditingData>,
+-    mut stairs: ResMut<StairsPlacementBucket>,
++    mut sounds: EventWriter<PlayTerrainSound>,
+     readback: Res<ScheduledTerrainReadback>,
+     mut recalculate: EventWriter<RecalculateHeightMapCmd>,
+     time: Res<GameTime>,
+@@ -81,14 +53,12 @@
+         let magnitude =
+             (time.delta * (dz * dz + (dy * dy + dx * dx)).sqrt()) / f32::from_bits(0x3a83126f);
+         stroke.points.clone_from(&command.points);
+-        // tag=3（点集）stairs bucket：+0x18/+0x1c = stroke falloff/height 载荷。
+-        stairs.entries.push(stairs_entry(
+-            3,
+-            command.position,
+-            stroke.falloff.to_bits(),
+-            stroke.height_ws.to_bits(),
++        sounds.write(PlayTerrainSound::Points {
++            position: command.position,
++            falloff: stroke.falloff,
++            height: stroke.height_ws,
+             magnitude,
+-        ));
++        });
+         recalculate.write(RecalculateHeightMapCmd);
+         readback.on_terrain_modified();
+     }
+@@ -113,21 +83,24 @@
+         stroke.height_ws = outcome.state.height;
+         let position = Vec3::from_array(command.position);
+         for sample in outcome.audio {
+-            // 原版把 tag 1/2/4 观测写 StairsPlacementBucket（非音频事件）：
+-            // - tag=1（falloff）：+0x18 = 新 falloff、+0x1c = |delta|
+-            // - tag=2（height）：+0x18 = stroke falloff、+0x1c = 新 height、+0x20 = |delta|
+-            // - tag=4（removed）：+0x18 = stroke falloff、+0x1c = |delta|
+-            stairs.entries.push(match sample.tag {
+-                1 => stairs_entry(1, position, sample.falloff.to_bits(), sample.magnitude.to_bits(), 0.0),
+-                2 => stairs_entry(
+-                    2,
++            sounds.write(match sample.tag {
++                1 => PlayTerrainSound::Falloff {
+                     position,
+-                    stroke.falloff.to_bits(),
+-                    sample.height.expect("height stairs payload").to_bits(),
+-                    sample.magnitude,
+-                ),
+-                4 => stairs_entry(4, position, stroke.falloff.to_bits(), sample.magnitude.to_bits(), 0.0),
+-                _ => unreachable!("apply_resolved returned an unknown terrain stairs tag"),
++                    falloff: sample.falloff,
++                    magnitude: sample.magnitude,
++                },
++                2 => PlayTerrainSound::Height {
++                    position,
++                    falloff: stroke.falloff,
++                    height: sample.height.expect("height audio payload"),
++                    magnitude: sample.magnitude,
++                },
++                4 => PlayTerrainSound::Removed {
++                    position,
++                    falloff: stroke.falloff,
++                    magnitude: sample.magnitude,
++                },
++                _ => unreachable!("apply_resolved returned an unknown terrain audio tag"),
+             });
+         }
+         recalculate.write(RecalculateHeightMapCmd);

@@ -1,0 +1,18 @@
+# on_wall_removed @ 0x140a1f550
+sig: void __cdecl on_wall_removed(void)
+callees: [{'name': 'panic', 'address': '1428d9430'}, {'name': 'remove_storage', 'address': '140a1dba0'}]
+
+void __cdecl
+country_core::resources::walls::decorator_storage::DecoratorStorage::on_wall_removed(void)
+
+{
+  longlong in_RCX;
+  
+  if (*(char *)(in_RCX + 0x1b0) == '\0') {
+    remove_storage();
+    return;
+  }
+                    // WARNING: Subroutine does not return
+  core::panicking::panic();
+}
+

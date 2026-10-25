@@ -1,0 +1,352 @@
+{
+  "date": "2026-10-14",
+  "scope": "Function-level audit and migration of completed CPU leaves from standalone/clutter-audio drafts; no whole draft/plugin imported.",
+  "selected": [
+    {
+      "module": "tree",
+      "original_owner": "system-tree/process_tree_cmds.rs:despawn_trees",
+      "source_path": "reverse-engineering/tiny-glade/reconstruction/standalone/tg-tree/src/despawn.rs",
+      "functions": [
+        "DESPAWN_THRESHOLD",
+        "despawn_trees resolved deletion predicate"
+      ],
+      "evidence": "evidence/multi-baseline/tree-tool-rest-analysis.md section 1; B 0x1422686d0",
+      "transformations": [
+        "Project Bevy Query/EventWriter into should_despawn_tree(marker, animation_value); no lifecycle/event payload ABI assumed."
+      ],
+      "input_contract": "Animation component/query presence is resolved by caller. Strict ordered <0.01 preserves NaN rejection.",
+      "formal_path": "crates/country-core/src/recovered_systems/tree.rs",
+      "sources": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/standalone/tg-tree/src/despawn.rs",
+          "sha256": "1d7de7d1d22abff4a1cefe9ccedd13ee48e5242c2adbbf0c5ff8817a31f26495",
+          "source_commit": "78be3e3f17301cc57a62d63061e72c7a9c241a66"
+        }
+      ]
+    },
+    {
+      "module": "water",
+      "original_owner": "system-water/water_audio_grid.rs + country-core/world_raster rasterize_stroke callbacks",
+      "source_path": "reverse-engineering/tiny-glade/reconstruction/standalone/tg-critters-water/src/water/audio_grid.rs",
+      "additional_source_paths": [
+        "reverse-engineering/tiny-glade/reconstruction/standalone/tg-critters-water/src/water/stroke.rs"
+      ],
+      "functions": [
+        "frame_bit",
+        "apply_bit",
+        "select_write_mode",
+        "coverage_to_alpha",
+        "brush_fixed",
+        "apply_write"
+      ],
+      "evidence": "evidence/multi-baseline/water-extra-analysis.md sections 2 and 5; B 0x141baefe0, 0x142262221..0x1422622c8, 0x142828b30/0x142821d90/0x142823e50",
+      "transformations": [
+        "Flatten mask/counters from WaterAudioGridCell into explicit scalar inputs; present supplied by real caller.",
+        "coverage becomes unsigned u32: no guessed negative clamp.",
+        "Illegal mode is reported as None by pure projection; original entry panics."
+      ],
+      "input_contract": "bit in 0..64 from frame_bit; nonnegative coverage; finite brush; weight in 0..=65536. No guessed coverage scale, grid/world distance or raycast producer.",
+      "formal_path": "crates/country-core/src/recovered_systems/water.rs",
+      "sources": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/standalone/tg-critters-water/src/water/audio_grid.rs",
+          "sha256": "dfd39c51f7f75d3e81ae083878ab62cc47590f6236cdd1414bfe724761e4b5cd",
+          "source_commit": "78be3e3f17301cc57a62d63061e72c7a9c241a66"
+        },
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/standalone/tg-critters-water/src/water/stroke.rs",
+          "sha256": "1df05f8c79526ce160bbd7b2e501f29080e50239c18d04d8da6538334312a2b5",
+          "source_commit": "78be3e3f17301cc57a62d63061e72c7a9c241a66"
+        }
+      ]
+    },
+    {
+      "module": "critters",
+      "original_owner": "system-critters raw CritterLocomotion collision branch predicates",
+      "source_path": "reverse-engineering/tiny-glade/reconstruction/standalone/tg-critters-water/src/critters/components.rs",
+      "functions": [
+        "samples_rock_mask",
+        "skips_water_sample",
+        "skips_public_walls",
+        "wall_hash_only"
+      ],
+      "evidence": "evidence/multi-baseline/critters-extra-analysis.md section 6",
+      "transformations": [
+        "Only raw u32 input/predicates selected; remove Bevy component/bundle and speculative species/default producers."
+      ],
+      "input_contract": "raw tag is preserved; no eight-byte enum layout or species mapping asserted.",
+      "formal_path": "crates/country-core/src/recovered_systems/critters.rs",
+      "sources": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/standalone/tg-critters-water/src/critters/components.rs",
+          "sha256": "5e830e6e8b4744525f35d416e92eaa12b5e6d037bf3ed4a83155463f22fce4c4",
+          "source_commit": "78be3e3f17301cc57a62d63061e72c7a9c241a66"
+        }
+      ]
+    },
+    {
+      "module": "audio",
+      "original_owner": "country-core/systems/audio wall_audio_fmod + music_audio_system scalar leaves",
+      "source_path": "reverse-engineering/tiny-glade/reconstruction/clutter-audio/crates/tg-clutter-audio/src/audio/wall_kinds.rs",
+      "additional_source_paths": [
+        "reverse-engineering/tiny-glade/reconstruction/clutter-audio/crates/tg-clutter-audio/src/audio/music.rs"
+      ],
+      "functions": [
+        "WallKind",
+        "WALL_KIND_TABLE",
+        "wall_kind",
+        "snap_off_boundaries",
+        "compute_new_glade_time"
+      ],
+      "evidence": "evidence/multi-baseline/audio-extra-analysis.md sections 1 and 4; RNE jump table 0x142ab4998 + MusicRichness/NewGladeTime constants",
+      "transformations": [
+        "Select only enum/table/getter before placeholder FMOD helpers.",
+        "NewGladeTime state+0x1c8 projected into mutable f32 accumulator; name advance_new_glade_time."
+      ],
+      "input_contract": "Wall tags retain original kind24+ ignore guard; music finite scalar inputs only. No MusicPlayer/lerp stub or event backend imported.",
+      "formal_path": "crates/country-core/src/recovered_systems/audio.rs",
+      "sources": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/clutter-audio/crates/tg-clutter-audio/src/audio/wall_kinds.rs",
+          "sha256": "09ac0d86bf0f86fdc30b114fe47b53210457124a693b6d399898d49d93d37def",
+          "source_commit": "e4ce4585d4a16c599b0d118268382e7931ea8255"
+        },
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/clutter-audio/crates/tg-clutter-audio/src/audio/music.rs",
+          "sha256": "41fd125fc3a7a7a6008287b2f3185a5e6e7796b97d81481ffe993cdc10208d1b",
+          "source_commit": "e4ce4585d4a16c599b0d118268382e7931ea8255"
+        }
+      ]
+    },
+    {
+      "module": "clutter",
+      "original_owner": "country-core/resources/history/auto_clutter_edit.rs",
+      "source_path": "reverse-engineering/tiny-glade/reconstruction/clutter-audio/crates/tg-clutter-audio/src/clutter/auto_clutter_edit.rs",
+      "functions": [
+        "AutoClutterEdit::Delete externally tagged serde data contract"
+      ],
+      "evidence": "evidence/multi-baseline/clutter-extra-analysis.md; B serialize 0x14003d300/0x140a18320, deserialize 0x140a18500",
+      "transformations": [
+        "Select Delete{id:u64} schema only; serde derived, not counted as hand-written decoder."
+      ],
+      "input_contract": "Observed wire key/value types only; no history/picking/replay implementation inferred.",
+      "formal_path": "crates/country-core/src/recovered_systems/clutter.rs",
+      "sources": [
+        {
+          "path": "reverse-engineering/tiny-glade/reconstruction/clutter-audio/crates/tg-clutter-audio/src/clutter/auto_clutter_edit.rs",
+          "sha256": "f0de6bb3e439d91cec459fa201eea0be133dd9f5cb36c378de2507cc435cb00d",
+          "source_commit": "e4ce4585d4a16c599b0d118268382e7931ea8255"
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "crates/systems/tree-tool/src/process_tree_cmds.rs",
+      "sha256": "d894459741b8c1de1f46fb2d03fb72443679b9c86a12d52e09862310fd2d3db9",
+      "source_path": "reverse-engineering/tiny-glade/reconstruction/standalone/tg-tree/src/despawn.rs",
+      "additional_source_paths": [],
+      "source_sha256": "1d7de7d1d22abff4a1cefe9ccedd13ee48e5242c2adbbf0c5ff8817a31f26495",
+      "source_commit": "78be3e3f17301cc57a62d63061e72c7a9c241a66",
+      "kind": "recovered_cpu_projection",
+      "selected_functions": [
+        "DESPAWN_THRESHOLD",
+        "despawn_trees resolved deletion predicate"
+      ],
+      "transformations": [
+        "Project Bevy Query/EventWriter into should_despawn_tree(marker, animation_value); no lifecycle/event payload ABI assumed."
+      ],
+      "migrated_to": "crates/systems/tree-tool/src/process_tree_cmds.rs",
+      "original_path": "crates/country-core/src/recovered_systems/tree.rs",
+      "original_sha256": "3d865737092ba3f37758a3b0212f5dcd49a57dc114bb60cc0b1d296755b98e7a",
+      "migration_note": "module-migration-2026-10-18.json",
+      "source_status": "current",
+      "path_status": "moved",
+      "current_path": "crates/systems/tree-tool/src/process_tree_cmds.rs"
+    },
+    {
+      "path": "crates/systems/water/src/water_audio_grid/bit_projection.rs",
+      "sha256": "7f725cdfc10d355fcc6d88b2a7f31e7326156a3a2cc3c0c2a526cd7b11d0293b",
+      "source_path": "reverse-engineering/tiny-glade/reconstruction/standalone/tg-critters-water/src/water/audio_grid.rs",
+      "additional_source_paths": [
+        "reverse-engineering/tiny-glade/reconstruction/standalone/tg-critters-water/src/water/stroke.rs"
+      ],
+      "source_sha256": "dfd39c51f7f75d3e81ae083878ab62cc47590f6236cdd1414bfe724761e4b5cd",
+      "source_commit": "78be3e3f17301cc57a62d63061e72c7a9c241a66",
+      "kind": "recovered_cpu_projection",
+      "selected_functions": [
+        "frame_bit",
+        "apply_bit",
+        "select_write_mode",
+        "coverage_to_alpha",
+        "brush_fixed",
+        "apply_write"
+      ],
+      "transformations": [
+        "Flatten mask/counters from WaterAudioGridCell into explicit scalar inputs; present supplied by real caller.",
+        "coverage becomes unsigned u32: no guessed negative clamp.",
+        "Illegal mode is reported as None by pure projection; original entry panics."
+      ],
+      "migrated_to": "crates/systems/water/src/water_audio_grid/bit_projection.rs",
+      "original_path": "crates/country-core/src/recovered_systems/water.rs",
+      "original_sha256": "6da5dff28de575e6b59bdc4c94ab086fce1d0b40892c6e2fc8d52f2cd894f740",
+      "migration_note": "module-migration-2026-10-18.json",
+      "source_status": "current",
+      "path_status": "moved",
+      "current_path": "crates/systems/water/src/water_audio_grid/bit_projection.rs"
+    },
+    {
+      "path": "crates/systems/critters/src/components.rs",
+      "sha256": "d0e56058cda338d4223c9765f90abbe1119d3085927026880035b12d30f67338",
+      "source_path": "reverse-engineering/tiny-glade/reconstruction/standalone/tg-critters-water/src/critters/components.rs",
+      "additional_source_paths": [],
+      "source_sha256": "5e830e6e8b4744525f35d416e92eaa12b5e6d037bf3ed4a83155463f22fce4c4",
+      "source_commit": "78be3e3f17301cc57a62d63061e72c7a9c241a66",
+      "kind": "recovered_cpu_projection",
+      "selected_functions": [
+        "samples_rock_mask",
+        "skips_water_sample",
+        "skips_public_walls",
+        "wall_hash_only"
+      ],
+      "transformations": [
+        "Only raw u32 input/predicates selected; remove Bevy component/bundle and speculative species/default producers."
+      ],
+      "migrated_to": "crates/systems/critters/src/components.rs",
+      "original_path": "crates/country-core/src/recovered_systems/critters.rs",
+      "original_sha256": "f9ba6338a25e6c1e0bda19fdfa986d6462ca1668649cbf5b20f3c7ec3f89065a",
+      "migration_note": "module-migration-2026-10-18.json",
+      "source_status": "current",
+      "path_status": "moved",
+      "current_path": "crates/systems/critters/src/components.rs"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/wall_kinds.rs",
+      "sha256": "1d13a1bbef26b3241fa7ce43df12600c3153f59a1a77d17fa0217f0af4a3643e",
+      "source_path": "reverse-engineering/tiny-glade/reconstruction/clutter-audio/crates/tg-clutter-audio/src/audio/wall_kinds.rs",
+      "additional_source_paths": [
+        "reverse-engineering/tiny-glade/reconstruction/clutter-audio/crates/tg-clutter-audio/src/audio/music.rs"
+      ],
+      "source_sha256": "09ac0d86bf0f86fdc30b114fe47b53210457124a693b6d399898d49d93d37def",
+      "source_commit": "e4ce4585d4a16c599b0d118268382e7931ea8255",
+      "kind": "recovered_cpu_projection",
+      "selected_functions": [
+        "WallKind",
+        "WALL_KIND_TABLE",
+        "wall_kind",
+        "snap_off_boundaries",
+        "compute_new_glade_time"
+      ],
+      "transformations": [
+        "Select only enum/table/getter before placeholder FMOD helpers.",
+        "NewGladeTime state+0x1c8 projected into mutable f32 accumulator; name advance_new_glade_time."
+      ],
+      "migrated_to": "crates/country-core/src/systems/audio/wall_kinds.rs",
+      "original_path": "crates/country-core/src/recovered_systems/audio.rs",
+      "original_sha256": "983123a37daf2ef32ebd549bf357cb5c5c3b5aa4b9cab7a6258e625f08460244",
+      "migration_note": "module-migration-2026-10-18.json",
+      "source_status": "current",
+      "path_status": "moved",
+      "current_path": "crates/country-core/src/systems/audio/wall_kinds.rs"
+    },
+    {
+      "path": "crates/country-core/src/resources/history/auto_clutter_edit.rs",
+      "sha256": "786c5336214a927df1aa42ba1f26a9567dc745132e3c13de75e8e1625f495d05",
+      "source_path": "reverse-engineering/tiny-glade/reconstruction/clutter-audio/crates/tg-clutter-audio/src/clutter/auto_clutter_edit.rs",
+      "additional_source_paths": [],
+      "source_sha256": "f0de6bb3e439d91cec459fa201eea0be133dd9f5cb36c378de2507cc435cb00d",
+      "source_commit": "e4ce4585d4a16c599b0d118268382e7931ea8255",
+      "kind": "recovered_cpu_projection",
+      "selected_functions": [
+        "AutoClutterEdit::Delete externally tagged serde data contract"
+      ],
+      "transformations": [
+        "Select Delete{id:u64} schema only; serde derived, not counted as hand-written decoder."
+      ],
+      "migrated_to": "crates/country-core/src/resources/history/auto_clutter_edit.rs",
+      "original_path": "crates/country-core/src/recovered_systems/clutter.rs",
+      "original_sha256": "be30b9433ca8aec2de191d922bc9841c8da466f7e243082a52d00c52df127669",
+      "migration_note": "module-migration-2026-10-18.json",
+      "source_status": "current",
+      "path_status": "moved",
+      "current_path": "crates/country-core/src/resources/history/auto_clutter_edit.rs"
+    },
+    {
+      "path": "crates/country-core/src/recovered_systems/mod.rs",
+      "sha256": "dd5f9ea9a08ace5517942b7eb7696c3ab29eea941bbde60bf41f35f19e158dfd",
+      "kind": "integration_glue",
+      "original_path": "crates/country-core/src/recovered_systems/mod.rs",
+      "removal_reason": "no current path or unique basename",
+      "path_status": "removed",
+      "current_path": null
+    },
+    {
+      "path": "crates/country-core/src/recovered_systems/README.md",
+      "sha256": "9ff0fd25b3c4dcc2ea580f003bbc6614650af47af7af86aacbc621c2315ad3e3",
+      "kind": "integration_glue",
+      "original_path": "crates/country-core/src/recovered_systems/README.md",
+      "removal_reason": "no current path or unique basename",
+      "path_status": "removed",
+      "current_path": null
+    }
+  ],
+  "excluded": [
+    {
+      "source": "reverse-engineering/tiny-glade/reconstruction/standalone/tg-tree/src/storage.rs:insert",
+      "reason": "saturating_add overflow policy lacks original boundary evidence; raw entry/generation policy and reset hash keys are not fully recovered."
+    },
+    {
+      "source": "reverse-engineering/tiny-glade/reconstruction/standalone/tg-tree/src/{process_cmds,plugin,replay,convert,recalc,bend}.rs",
+      "reason": "Unknown prefab/event payloads, initial animation, +65 bounds, bend constants/rounding, replay divisors, conversion gates and guessed scheduler edges. No whole-system adoption."
+    },
+    {
+      "source": "reverse-engineering/tiny-glade/reconstruction/standalone/tg-critters-water/src/water/{raster,tool,replay,plugin}.rs + stroke::coverage_at/rasterize_stroke + audio_grid::update_grid",
+      "reason": "Unknown initial raster, half-cell origin, coverage scale/width, zeno replaced with capsule AA, producer/layout/selector/occlusion/distance and replay easing assumptions."
+    },
+    {
+      "source": "reverse-engineering/tiny-glade/reconstruction/standalone/tg-critters-water/src/critters/{boids,duck,sheep,sheep_terrain,wren,fish,butterfly,firefly,shared,plugin}.rs",
+      "reason": "UNKNOWN sampler/axis/trajectory/state/timer/producer branches and guessed schedules. Whole modules and demo tests are not original acceptance. Firefly original-instruction recovery is audited separately by parent."
+    },
+    {
+      "source": "reverse-engineering/tiny-glade/reconstruction/standalone/tg-audio/src/{backend,events,plugin,music,update,wall_system,stairs,menu,sheep,clutter,building}.rs",
+      "reason": "Guessed/empty event payloads, FMOD recording adapter, identity music lerp, unimplemented MusicPlayer, inferred event prefixes and unknown parameter/input/listener/scheduling fields."
+    },
+    {
+      "source": "reverse-engineering/tiny-glade/reconstruction/standalone/tg-audio/src/math.rs:inverse_lerp_clamped",
+      "reason": "Common scalar arithmetic already available via formal utils; do not duplicate dependency/math helper solely for the audio draft."
+    },
+    {
+      "source": "reverse-engineering/tiny-glade/reconstruction/clutter-audio/crates/tg-clutter-audio/src/audio/music.rs:compute_music_richness/music_audio_system_step",
+      "reason": "compute_music_richness explicitly uses smoothed=target placeholder; FMOD/player operations are comments. Only separate boundary/NewGladeTime leaves selected."
+    },
+    {
+      "source": "reverse-engineering/tiny-glade/reconstruction/clutter-audio/crates/tg-clutter-audio/src/audio/wall_kinds.rs:play_wall_kind/wall_frame_tail/wall_event_position",
+      "reason": "FMOD helpers are no-op comments, wall_event_position returns fabricated ZERO. Pure table/getter selected without these bodies."
+    },
+    {
+      "source": "reverse-engineering/tiny-glade/reconstruction/clutter-audio/crates/tg-clutter-audio/src/clutter/auto_clutter_edit.rs:History/replay_auto_clutter/UI",
+      "reason": "History::add and start_input_recording empty; flag!=0 replay branch calls unimplemented erase_decorator_pair; picking/UI path has unknown(). Schema only selected."
+    },
+    {
+      "source": "reverse-engineering/tiny-glade/reconstruction/clutter-audio/crates/tg-clutter-audio/src/{utils,tabloid,glue}.rs",
+      "reason": "Public/library substitutes and game-type stubs. Use formal utils/tabloid and actual verified consumer contracts instead."
+    }
+  ],
+  "validation": {
+    "native_equivalence_newly_run": false,
+    "test_contracts": "Existing source cases projected into pure APIs: tree threshold/NaN, raw predicate bits, PADDW/PSUBW, fixed callbacks, RNE wall-table cases, music bounds, serde wire string.",
+    "country_core_cpu_projection_tests": {
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0
+    },
+    "complete_systems_accepted": false
+  },
+  "snapshot_note": "Updated 2026-10-24: path/current_path and sha256 reflect the current tree; original_path/original_sha256 retain the audited state. path_status/audit_status are separate.",
+  "ledger_updated": "2026-10-24",
+  "ledger_state": "current paths and hashes; audited original_path/original_sha256 retained",
+  "path_loss_summary": {
+    "moved": 5,
+    "removed": 2
+  }
+}

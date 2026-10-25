@@ -1,0 +1,43 @@
+Replay static bytes: 09000000
+panic string: assertion failed: **app_mode != AppMode::Replay
+140b4d1b0 movzx r8d, byte ptr [rcx]
+140b4d1b4 cmp r8b, byte ptr [rdx]
+140b4d1b7 jne 0x140b4d220
+140b4d1b9 mov al, 1
+140b4d1bb cmp r8d, 0xe
+140b4d1bf ja 0x140b4d222
+140b4d1c1 mov r8d, r8d
+140b4d1c4 lea r9, [rip + 0x24f5cb5]
+140b4d1cb movsxd r8, dword ptr [r9 + r8*4]
+140b4d1cf add r8, r9
+140b4d1d2 jmp r8
+140b4d1d5 movzx eax, byte ptr [rcx + 1]
+140b4d1d9 cmp al, byte ptr [rdx + 1]
+140b4d1dc sete al
+140b4d1df ret 
+140b4d1e0 mov r8, qword ptr [rcx + 8]
+140b4d1e4 cmp r8, qword ptr [rdx + 8]
+140b4d1e8 jne 0x140b4d220
+140b4d1ea cmp r8d, 6
+140b4d1ee jne 0x140b4d222
+140b4d1f0 jmp 0x140b4d22f
+140b4d1f2 mov r8d, dword ptr [rcx + 8]
+140b4d1f6 cmp r8d, dword ptr [rdx + 8]
+140b4d1fa jne 0x140b4d220
+140b4d1fc dec r8d
+140b4d1ff cmp r8d, 5
+140b4d203 ja 0x140b4d222
+140b4d205 lea r9, [rip + 0x24f5cb0]
+140b4d20c movsxd r8, dword ptr [r9 + r8*4]
+140b4d210 add r8, r9
+140b4d213 jmp r8
+140b4d216 mov eax, dword ptr [rcx + 0xc]
+140b4d219 cmp eax, dword ptr [rdx + 0xc]
+140b4d21c sete al
+140b4d21f ret 
+140b4d220 xor eax, eax
+140b4d222 ret 
+140b4d223 mov rax, qword ptr [rcx + 8]
+140b4d227 cmp rax, qword ptr [rdx + 8]
+140b4d22b sete al
+140b4d22e ret 

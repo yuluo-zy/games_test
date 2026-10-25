@@ -1,0 +1,97 @@
+--- roundf-v2/draw_wall.rs
++++ r1-tested/draw_wall.rs
+@@ -652,4 +652,94 @@
+         );
+         assert!(world.resource::<Events<RecordWallHistory>>().is_empty());
+     }
++    #[test]
++    fn first_wall_and_fence_ui_operation_commits_through_actual_history_lifecycle() {
++        use crate::systems::{
++            backend::input::{
++                input_record_replay::{
++                    InputRecordReplayState, InputReplayCommand, control_input_replay,
++                },
++                register_input_events,
++            },
++            history::{
++                HistoryCpuStage,
++                recording::{add_recording_systems, register_recording_events},
++            },
++            wall::registration::{add_wall_drawing_cpu_systems, register_wall_drawing_resources},
++        };
++        for fence in [false, true] {
++            let mut world = world(fence);
++            // Unlike the candidate-only pending test, start from the actual
++            // empty history and absent canvas registry for the first input.
++            world.insert_resource(History::<()>::empty_glade());
++            register_wall_drawing_resources(&mut world);
++            register_recording_events(&mut world);
++            register_input_events(&mut world);
++            world.init_resource::<crate::resources::toolbar::Toolbar>();
++            world.init_resource::<crate::resources::mouse_capture::CursorCapturedPosition>();
++            let name = if fence { "fences" } else { "wall" };
++            let widget = WidgetId::clearing_canvas(name);
++            assert!(
++                world
++                    .resource::<UiState>()
++                    .clearing_canvas_params(widget)
++                    .is_none()
++            );
++            assert!(!world.resource::<History<()>>().is_recording());
++            let mut schedule = Schedule::default();
++            schedule.add_systems(control_input_replay.before(ui_draw_wall));
++            add_wall_drawing_cpu_systems::<()>(&mut schedule);
++            schedule.add_systems(record_wall_history::<()>.in_set(HistoryCpuStage::Record));
++            add_recording_systems::<()>(&mut schedule);
++            ui_frame(&mut world, &mut schedule, 3, Vec3::ZERO);
++            assert!(
++                world
++                    .resource::<UiState>()
++                    .clearing_canvas_params(widget)
++                    .is_some()
++            );
++            assert!(world.resource::<History<()>>().is_recording());
++            ui_frame(&mut world, &mut schedule, 4, Vec3::new(0.1, 0., 0.));
++            ui_frame(&mut world, &mut schedule, 4, Vec3::new(0.2, 0., 0.));
++            let wall = world.resource::<InProgressCurve>().wall.unwrap();
++            ui_frame(&mut world, &mut schedule, 4, Vec3::new(0.3, 0., 0.1));
++            ui_frame(&mut world, &mut schedule, 1, Vec3::new(0.3, 0., 0.1));
++            assert!(world.resource::<InnerWalls>().get(wall).is_some());
++            assert!(world.resource::<InProgressCurve>().wall.is_none());
++            let history = world.resource::<History<()>>();
++            assert!(!history.is_recording());
++            assert_eq!(history.ledger().cursor, 0);
++            assert_eq!(history.ledger().entries.len(), 1);
++            assert!(matches!(
++                &history.ledger().entries[0].edits[..],
++                [EditType::Wall(_)]
++            ));
++            assert!(world.resource::<WallDrawingIssues>().0.is_empty());
++            let events = world.resource::<Events<InputReplayCommand>>();
++            let mut cursor = events.get_cursor();
++            assert_eq!(
++                cursor.read(events).cloned().collect::<Vec<_>>(),
++                [InputReplayCommand::Sync { record: true }]
++            );
++            assert_eq!(
++                world
++                    .resource::<InputRecordReplayState>()
++                    .stream
++                    .sync_points()
++                    .len(),
++                0
++            );
++            ui_frame(&mut world, &mut schedule, 3, Vec3::new(0.4, 0., 0.1));
++            assert!(world.resource::<History<()>>().is_recording());
++            assert_eq!(world.resource::<History<()>>().ledger().entries.len(), 1);
++            assert_eq!(
++                world
++                    .resource::<InputRecordReplayState>()
++                    .stream
++                    .sync_points()
++                    .len(),
++                1
++            );
++        }
++    }
+ }

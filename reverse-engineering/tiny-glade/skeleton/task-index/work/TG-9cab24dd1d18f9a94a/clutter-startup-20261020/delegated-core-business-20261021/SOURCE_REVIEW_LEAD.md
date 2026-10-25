@@ -1,0 +1,9 @@
+# canonical必要依赖最终源码独审（lead）
+
+本scope源码通过，完整读最窄patch/meaningful tests、合同与既有原证；隔离真实before patch-F0重放退出0且逐字节等于冻结candidate。未Cargo/目标/GPU、不改生产；实际编译/运行由root，完整模块/游戏不因此验收。
+
+已证两个单态通过编译期常量精准限制Vec2,S2D和Vec3,S3D，custom point/semantic/XZ/thresholded不启用；通用metric_length/metric_distance/normalized/segment_length保原本体。构造按len→alloc→包含first的纯f32累加→仅length==0早错→逐coords写回+finite→duplicate顺序，保under/overflow失败而非f64补偿；crashy轨迹用track_caller不把Location当bool，既有bool兼容签名不抹掉。四数值测试cover正常点序、原错误优先级、极值/NaN、保留工程稳健API；不只断言新const。
+
+附properties旧test仅改两个错误成功断言为原NonFiniteLength，其它稳健slice测距保留，必须配对。原allocatorOOM现代Result域不据此作native目标验收；没有改变公用切片算法或新增producer私有Curve。此前compute共享构造极端差异在这两个已证单态范围已源码消解，待root实际测试。
+
+before `c653ddb2e61f4aa1f0a8b4d78ac7e6a012581e26b0d02d1b590c9b7dc6db50bc`；after `af00b0d9cfdf157e44e265c2b15ce62e877a29ce223f8ee7df23a9ba7abfce1f`；patch `e3338275076c7b2200e74d41b7e0439954eda74f891b162dd5db06274524f4e6`。

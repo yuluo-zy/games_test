@@ -1,0 +1,81 @@
+{
+  "author_manifest_sha256": "909118c7ba26bd690b2dcd92b6c1ad8effd81365ce0a1a8432560a97e0917b17",
+  "author_files_verified": 24,
+  "B_PE_whole_identity": true,
+  "native_full_PDB_bytes": 2844,
+  "native_instructions_all_bytes_verified": 688,
+  "exact_native_caller_SystemParams_disambiguated": true,
+  "no_Finish_writer_in_two_unique_typed_callers": true,
+  "semantic_checks": [
+    {
+      "site": "0x140aa00fe",
+      "asm": "call 0x140924a10"
+    },
+    {
+      "site": "0x140aa0103",
+      "asm": "cmp eax, 1"
+    },
+    {
+      "site": "0x140aa0106",
+      "asm": "jne 0x140aa035a"
+    },
+    {
+      "site": "0x140aa010f",
+      "asm": "movss xmm7, dword ptr [r14]"
+    },
+    {
+      "site": "0x140aa0117",
+      "asm": "mov dword ptr [rdi], 1"
+    },
+    {
+      "site": "0x140aa011d",
+      "asm": "movss dword ptr [rdi + 4], xmm7"
+    },
+    {
+      "site": "0x140aa0133",
+      "asm": "call 0x140969720"
+    },
+    {
+      "site": "0x140aa02d9",
+      "asm": "call 0x140924900"
+    },
+    {
+      "site": "0x140aa02de",
+      "asm": "test rax, rax"
+    },
+    {
+      "site": "0x140aa02e1",
+      "asm": "je 0x140aa06e7"
+    },
+    {
+      "site": "0x140aa06e7",
+      "asm": "mov dword ptr [r13], r12d"
+    },
+    {
+      "site": "0x140aa06eb",
+      "asm": "mov dword ptr [rsi], 0"
+    }
+  ],
+  "all_three_patch_applications_exact": true,
+  "source_drift_at_review": [
+    {
+      "path": "games_test/tiny-glade/crates/systems/terrain/src/stroke.rs",
+      "current_matches_captured_base": true
+    },
+    {
+      "path": "games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_draw_terrain.rs",
+      "current_matches_captured_base": true
+    },
+    {
+      "path": "games_test/tiny-glade/crates/country-core/src/systems/save/snapshot.rs",
+      "current_matches_captured_base": true
+    }
+  ],
+  "canonical_inner_field_no_parallel_Resource": true,
+  "three_new_tests_and_existing_three_frame_extended": "source reviewed, not executed",
+  "production_changed": false,
+  "cargo_executed": false,
+  "native_or_JIT_executed": false,
+  "blocking_findings": [],
+  "sole_required_root_integration_risk": "Apply the snapshot-owned one-literal cursor_height_override:None hunk together with the canonical field, retaining the concurrent State-reader owner changes; do not overwrite the whole snapshot.rs from either candidate."
+}

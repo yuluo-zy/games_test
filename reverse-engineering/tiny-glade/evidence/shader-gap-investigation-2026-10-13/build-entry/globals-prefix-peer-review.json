@@ -1,0 +1,41 @@
+{
+  "status": "passed_bounded_source_rename",
+  "patch_sources": 119,
+  "identifier_count": 796,
+  "exceptions": 0,
+  "checks": {
+    "only_Globals_prefixed_tokens": true,
+    "exact_original_member_name_set_binding_offset_proof": true,
+    "comments_strings_untouched": true,
+    "other_cbuffer_identifier_guard": true,
+    "bool_prefix_retained": true,
+    "matrix_types_and_packoffsets_unchanged": true,
+    "no_producer_metadata_injection": true
+  },
+  "actual_dxc_probes": [
+    {
+      "file": "_cloud.raster.hlsl_b903e43ffb3da915.bin",
+      "names_offsets_exact": true,
+      "opcode_histogram_unchanged": true
+    },
+    {
+      "file": "_billboard_forest.raster.hlsl_b903e43ffb3da915.bin",
+      "names_offsets_exact": true,
+      "opcode_histogram_unchanged": true
+    }
+  ],
+  "selected19_recheck": {
+    "packages17_schema_exact": 17,
+    "remaining2": "solid_vertex_color true fallback global order, handled separately"
+  },
+  "limits": [
+    "All-source original shader arithmetic equivalence is not established by token rename or two compiler probes.",
+    "Original author normalization implementation unavailable; this patch restores original emitted member names in reconstructed HLSL, not a new reflection normalization rule."
+  ],
+  "evidence": [
+    "../interfaces/globals-prefix-plan.json",
+    "../interfaces/generate_globals_name_patch.mjs",
+    "../interfaces/globals-prefix-compile-probes.json",
+    "ubo-layout-comparison.json"
+  ]
+}

@@ -1,0 +1,182 @@
+--- a/games_test/tiny-glade/crates/country-core/src/resources/history/decorator_edit.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/history/decorator_edit.rs
+@@ -113,71 +113,44 @@
+         f32::from_bits(self.u3c) == 1.0
+     }
+ 
+-    /// `from` 的逆映射（restore_decorators 0x14155ba30 回填 DecoratorInfo 用）。
+-    ///
+-    /// style 派生簇按 [`From<&DecoratorInfo>`] 逐 style 收敛回 `DecoratorInfo.u30/
+-    /// u38/u3c/u40`；`style`/`u4b` 收敛回 `u40` byte1/byte0。**登记 U**：原生
+-    /// restore 的 state 字节写语义未逐句还原，本处写 2=live（fresh 0x14155afe0
+-    /// insert 写入 2）。
++    /// B restore_snapshot 0x140a20f44..0x140a2107d chooses extra data by
++    /// DecoratorType, including default-valued extras. It does not infer the
++    /// variant from which optional field happens to differ from its default.
+     pub fn to_info(&self) -> DecoratorInfo {
+-        // style 字节：`from` 只在 read_branch（style 8+ 或 <2）写入 +0x4e；style 2..7
+-        // 的 style 字节为 0，需由派生簇推断（唯一非默认者）——**登记 U**（原生
+-        // restore 的 style 判定经桶内 DecoratorInfo `u40` byte1 直读，本处为
+-        // state 侧重建推断）。
+-        let style = if self.style != 0 {
+-            self.style
+-        } else if self.u4d != 1 {
+-            4 // Chimney u8 非默认
+-        } else if self.u4c != 0 {
+-            5 // Flag u8 非默认
+-        } else if self.u34 != 0 {
+-            6 // Window u32 非默认
+-        } else if f32::from_bits(self.u38) != 1.0 {
+-            7 // Lantern f32 非默认
+-        } else {
+-            0
++        let style = match self.ty {
++            0x38..=0x3a => 6,
++            0x3b => 4,
++            0x3c => 7,
++            0x3d => 5,
++            0x3f => self.style,
++            _ => 3,
+         };
+-        let mut info = DecoratorInfo {
++        let (u30, u38, u3c, extra_byte) = match self.ty {
++            0x38..=0x3a => (u64::from(self.u34), 0, 0, 0),
++            0x3b => (u64::from(self.u30) | (u64::from(self.u4d) << 32), 0, 0, 0),
++            0x3c => (u64::from(self.u38), 0, 0, 0),
++            0x3d => (u64::from(self.u4c), 0, 0, 0),
++            0x3f => (u64::from(self.u30) | (u64::from(self.u3c) << 32), self.u40, self.u44, self.u4b),
++            _ => (0, 0, 0, 0),
++        };
++        DecoratorInfo {
+             dst_wall: self.dst_wall,
+             dst_secondary: self.dst_secondary,
+             dst_payload: self.dst_payload,
+             u18: self.u18,
+             u20: self.u20,
+             u24: self.u24,
+-            u28: (self.u28 & 0xffff_ffff) as u32,
++            u28: self.u28 as u32,
+             decorator_id: (self.u28 >> 32) as u32,
+-            u30: self.u30 as u64,
+-            u38: self.u40,
+-            u3c: self.u44,
+-            u40: ((style as u32) << 8) | (self.u4b as u32),
++            u30,
++            u38,
++            u3c,
++            u40: (u32::from(style) << 8) | u32::from(extra_byte),
+             rank: self.rank,
+             u45: self.u49,
+             ty: self.ty,
+-            state: 2,
+-        };
+-        match style {
+-            // Chimney{ f32,u8 }：u8 → u30 byte4。
+-            4 => {
+-                info.u30 = (info.u30 & 0xffff_ffff) | ((self.u4d as u64) << 32);
+-            }
+-            // Flag{ u8 }：u8 → u30 byte0。
+-            5 => {
+-                info.u30 = (info.u30 & !0xff) | (self.u4c as u64);
+-            }
+-            // Window{ u32 }：u32 → u30 low。
+-            6 => {
+-                info.u30 = self.u34 as u64;
+-            }
+-            // Lantern{ f32 }：f32 → u30 low。
+-            7 => {
+-                info.u30 = self.u38 as u64;
+-            }
+-            // 默认簇：u30 = (u3c<<32)|u30、u38=u40 面、u3c=u44 面。
+-            _ => {
+-                info.u30 = ((self.u3c as u64) << 32) | (self.u30 as u64);
+-            }
+-        }
+-        info
++            state: 0,
++        }
+     }
+ }
+ 
+@@ -562,8 +535,7 @@
+ /// `+0x08` 存储判别、`+0x10` 存储载荷、`+0x10..+0x68` 变更/状态负载、
+ /// `+0x68` DecoratorId、`+0x7c` =1、`+0x81` DecoratorType。
+ /// 原生未写出的 padding 字节（`+0x6c..+0x70` 等）按 0 建模并登记 U。
+-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+-pub struct DecoratorDiffEvent(pub [u8; 0x88]);
++pub use crate::resources::walls::decorator::DecoratorOpEvent as DecoratorDiffEvent;
+ 
+ impl DecoratorDiffEvent {
+     pub const SIZE: usize = 0x88;
+@@ -584,11 +556,7 @@
+     /// 事件记录 id：按判别取不同偏移（fresh `DecoratorOpEventKind::id`
+     /// 0x140833570 同式：disc 3 → +0x40，disc 4 → +0x60，其余 → +0x68）。
+     pub fn decorator_id(&self) -> u32 {
+-        match self.kind() {
+-            3 => u32_at(&self.0, 0x40),
+-            4 => u32_at(&self.0, 0x60),
+-            _ => u32_at(&self.0, 0x68),
+-        }
++        self.id()
+     }
+     /// +0x81：DecoratorType。
+     pub fn decorator_ty(&self) -> u8 {
+@@ -1019,11 +987,16 @@
+ 
+     #[test]
+     fn to_info_roundtrips_per_style_fields() {
++        fn valid_info(style: u8) -> DecoratorInfo {
++            let mut src = info(style, 0);
++            src.ty = match style { 4 => 0x3b, 5 => 0x3d, 6 => 0x38, 7 => 0x3c, _ => 0x3f };
++            src
++        }
+         // 各 style：from → to_info 收敛回 DecoratorInfo 的直拷簇 + style 字节。
+         // 派生簇为**有损**（原生 state 只保留 Chimney/Flag/Window/Lantern 子面，
+         // 未保留 u30 高字节）——只对非有损面断言全量回填。
+         for style in [4u8, 5, 6, 7, 8, 0] {
+-            let src = info(style, 0);
++            let src = valid_info(style);
+             let state = DecoratorHistoryState::from(&src);
+             let back = state.to_info();
+             // 直拷簇完整回填。
+@@ -1043,21 +1016,35 @@
+         }
+         // 非有损默认簇（style 8+/<2）：u30/u38/u3c 全量回填。
+         for style in [8u8, 0] {
+-            let src = info(style, 0);
++            let src = valid_info(style);
+             let back = DecoratorHistoryState::from(&src).to_info();
+             assert_eq!(back.u30, src.u30, "style {style}");
+             assert_eq!(back.u38, src.u38, "style {style}");
+             assert_eq!(back.u3c, src.u3c, "style {style}");
+         }
+         // 有损子面（style 4/5/6/7）：捕获子字节回填到 u30 对应字节。
+-        let c = DecoratorHistoryState::from(&info(4, 0)).to_info();
++        let c = DecoratorHistoryState::from(&valid_info(4)).to_info();
+         assert_eq!(c.u30 >> 32, 0x78); // Chimney u8 @ u30 byte4
+-        let f = DecoratorHistoryState::from(&info(5, 0)).to_info();
++        let f = DecoratorHistoryState::from(&valid_info(5)).to_info();
+         assert_eq!(f.u30 & 0xff, 0xf0); // Flag u8 @ u30 byte0
+-        let w = DecoratorHistoryState::from(&info(6, 0)).to_info();
++        let w = DecoratorHistoryState::from(&valid_info(6)).to_info();
+         assert_eq!(w.u30, 0x9abc_def0); // Window u32
+-        let l = DecoratorHistoryState::from(&info(7, 0)).to_info();
++        let l = DecoratorHistoryState::from(&valid_info(7)).to_info();
+         assert_eq!(l.u30, 0x9abc_def0); // Lantern f32
++    }
++
++    #[test]
++    fn to_info_type_selects_default_extras_and_live_state() {
++        for (ty, expected_style) in [(0x38, 6), (0x39, 6), (0x3a, 6), (0x3b, 4), (0x3c, 7), (0x3d, 5), (0x3e, 3)] {
++            let state = DecoratorHistoryState {
++                ty, u38: 1.0_f32.to_bits(), u3c: 1.0_f32.to_bits(), u4d: 1,
++                ..DecoratorHistoryState::default()
++            };
++            let actual = state.to_info();
++            assert_eq!(actual.extra_style(), expected_style, "type {ty:#x}");
++            assert_eq!(actual.state, 0);
++            assert_eq!(DecoratorHistoryState::from_info(&actual).ty, ty);
++        }
+     }
+ 
+     // ---- diff 事件链（0x140b3fab0 / 0x1417bdae0 / 0x140a854a0）----

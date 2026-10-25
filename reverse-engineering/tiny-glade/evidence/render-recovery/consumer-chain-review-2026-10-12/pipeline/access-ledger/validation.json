@@ -1,0 +1,71 @@
+{
+  "status": "passed_shared_module_and_pass_builder_wired",
+  "source_sha256": "4e19383ce2e74665847dd6cdd122ebb7e819f265b4437e6f035238ce82869a3d",
+  "tests": 4,
+  "original_entries": [
+    "0x1409dca90",
+    "0x140533b10",
+    "0x140bece50",
+    "0x140bece60",
+    "0x140530430"
+  ],
+  "original_evidence": "Existing pseudocode and R2 PE interpretation; no new original oracle",
+  "actual_shared_module_mod_declaration": true,
+  "actual_pass_builder_wiring": true,
+  "consumer": "Actual graph declaration -> PassBuilder::add_resource_access -> render -> Graph.build -> ResourceInfo::calculate verified in one of four module tests; invalid handle checked before ledger change",
+  "manifest_sha256": "dcaa199e2fb344521a8c4a638bfbdcc87b95e5c23dbf2c0534765989d2d1f641",
+  "lock_sha256": "b9ada79f3f94baf816641849f97d2c3d247e49ae3110b889036dc1be95a09290",
+  "commands": [
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "access_ledger"
+      ],
+      "exit_code": 0,
+      "stdout": "\nrunning 4 tests\ntest rg::access_ledger::tests::conflict_preserves_prior_entries_and_group_equality_is_exact ... ok\ntest rg::access_ledger::tests::duplicate_and_in_place_merge_keep_first_resource_order ... ok\ntest rg::access_ledger::tests::group_counter_and_twelve_byte_ledger_projection ... ok\ntest rg::access_ledger::tests::upgrade_appends_and_calculate_consumes_group_code_without_swapping ... ok\n\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s\n\n",
+      "stderr": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s\n     Running unittests src\\lib.rs (target\\debug\\deps\\rhapsody-0d231441bb5da086.exe)\n"
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--offline",
+        "--lib",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.14s\n"
+    }
+  ],
+  "failed_validation_attempt": "Before root mod declaration, standalone rustc inclusion failed linking because Cargo native search paths were absent; never counted as passed. Removed unused inclusion wrapper after root connected module.",
+  "input_hashes": {
+    "reconstruction/rhapsody-rebuild/src/rg/resource_info.rs": "1479899f3864ecbd52ed4c3b93d89cf3049c63c98194dce449099386fa915d6a",
+    "reconstruction/rhapsody-rebuild/src/rg/pass_builder.rs": "28b667a245b0e1561de5fcb233cae119599a4e90b52f8b1495c8b92da1b4b106",
+    "reconstruction/rhapsody-rebuild/src/rg/mod.rs": "a44248a36a4f25f7f86b222b3921408c27db5a417a14190fa07a7db3e05a22ea",
+    "reconstruction/rhapsody-rebuild/src/rg/graph.rs": "e6854586f2151f19fab0827668001c0cdfeb30758d5d41443033869f7024a179",
+    "evidence/render-recovery/producer-closure/a2-graph-closure/decomp/0x1409dca90.c": "c4e7dfc7b20c3fa5efeb169ba6376998658cd10bdfb4be326f55ce5c7828c9d5",
+    "evidence/render-recovery/producer-closure/r2-graph-barrier/decomp/0x140533b10.c": "6721bb19f6df57fa38a99e78f89127558f646c37f057ccd8a1c4308fb17a9614",
+    "evidence/render-recovery/producer-closure/r2-graph-barrier/findings.md": "43d09036f0d0f7c8bb04c1d803595425a6ce81e68546993a07bd7651af05f066"
+  },
+  "final_run": {
+    "cargo test --locked --offline --lib access_ledger": {
+      "exit_code": 0,
+      "passed": 4,
+      "failed": 0,
+      "test_profile_seconds": 1.89
+    },
+    "cargo clippy --locked --offline --lib -- -D warnings": {
+      "exit_code": 0,
+      "dev_profile_seconds": 1.63
+    }
+  },
+  "commands_from_previous_run": "Detailed preceding unchanged-case run retained; final run after consumer test rewiring is recorded separately"
+}

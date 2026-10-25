@@ -1,0 +1,34 @@
+{
+  "target": {"path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe", "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"},
+  "provider": {"id": "ghidra", "version": "12.1.4"},
+  "database": "tg_producer_closure",
+  "session_key": "re_mcp_ghidra:tg_producer_closure",
+  "steps": [
+    {"tool": "open_database", "args": {"file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe", "database_id": "tg_producer_closure", "run_auto_analysis": false}},
+    {"tool": "wait_for_analysis", "args": {"database": "tg_producer_closure"}},
+
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140b0da50"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140b24d50"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x1415fc230"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x1408bcff0"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x1408bc650"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x14067dd80"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x1408bc530"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x140a01cf0"}},
+    {"tool": "decompile_function", "args": {"database": "tg_producer_closure", "address": "0x141562aa0"}},
+
+    {"tool": "get_xrefs_to", "args": {"database": "tg_producer_closure", "address": "0x140b0da50"}},
+    {"tool": "get_xrefs_to", "args": {"database": "tg_producer_closure", "address": "0x140b24d50"}},
+    {"tool": "get_xrefs_to", "args": {"database": "tg_producer_closure", "address": "0x1415fc230"}},
+    {"tool": "get_xrefs_to", "args": {"database": "tg_producer_closure", "address": "0x140a01cf0"}},
+    {"tool": "get_xrefs_to", "args": {"database": "tg_producer_closure", "address": "0x1408bcff0"}},
+    {"tool": "get_xrefs_from", "args": {"database": "tg_producer_closure", "address": "0x140b0da50"}},
+    {"tool": "get_xrefs_from", "args": {"database": "tg_producer_closure", "address": "0x1415fc230"}},
+
+    {"tool": "list_names", "args": {"database": "tg_producer_closure", "filter_pattern": "resources::rt", "limit": 200}},
+    {"tool": "get_strings", "args": {"database": "tg_producer_closure", "filter_pattern": "Rt", "min_length": 5, "limit": 100}},
+    {"tool": "get_strings", "args": {"database": "tg_producer_closure", "filter_pattern": "ray", "min_length": 4, "limit": 100}},
+
+    {"tool": "close_database", "args": {"database": "tg_producer_closure", "save": false}}
+  ]
+}

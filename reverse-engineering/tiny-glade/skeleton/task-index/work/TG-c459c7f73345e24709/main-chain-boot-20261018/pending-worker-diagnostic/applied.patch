@@ -1,0 +1,47 @@
+--- games_test/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ games_test/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@ -796,7 +796,11 @@
+         let cancel = Arc::new(AtomicBool::new(false));
+         let cancelled = cancel.clone();
+         std::thread::Builder::new().name("async load".to_owned()).spawn(move || {
+-            let result = (|| {
++            // Host diagnostic boundary only: preserve the original load/ready
++            // gates, but carry a worker panic back to the owning OS thread.
++            let mut phase = "validate gameplay resources";
++            let mut update_index = 0u64;
++            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                 // The current partial startup must fail explicitly instead of
+                 // spinning forever without its original producer. AppMode and
+                 // LoadGameManager are actual inputs of load_game_system.
+@@ -809,14 +813,30 @@
+                     // @1400d76e3 and Events<LoadingGameComplete> native TypeId
+                     // 4d00324fb817a8a1/5846f8d25a034525, confirmed register_event
+                     // @14151ffb0. It reads both live event buffers.
++                    phase = "gameplay SubApp::update";
+                     gameplay.update();
++                    update_index += 1;
++                    phase = "read original LoadingGameComplete";
+                     let events = gameplay.world().get_resource::<Events<country_core::systems::save::load_game::LoadingGameComplete>>()
+                         .ok_or_else(|| anyhow::anyhow!("B async load: LoadingGameComplete event resource missing"))?;
+                     if !events.is_empty() { break; }
+                 }
++                phase = "original gameplay graph warm-up";
+                 warm_up(gameplay.world_mut())?;
+                 Ok(gameplay)
+-            })();
++            }))
++            .unwrap_or_else(|payload| {
++                let message = if let Some(message) = payload.downcast_ref::<String>() {
++                    message.as_str()
++                } else if let Some(message) = payload.downcast_ref::<&'static str>() {
++                    *message
++                } else {
++                    "non-string panic payload"
++                };
++                Err(anyhow::anyhow!(
++                    "async gameplay loader panicked during {phase} (completed updates: {update_index}): {message}"
++                ))
++            });
+             let _ = sender.send(result);
+         })?;
+         Ok(Self {

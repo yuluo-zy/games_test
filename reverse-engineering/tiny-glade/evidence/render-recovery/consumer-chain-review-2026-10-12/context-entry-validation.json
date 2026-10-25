@@ -1,0 +1,154 @@
+{
+  "timestamp_utc": "2026-10-12T10:02:31.275017+00:00",
+  "status": "candidate_shared_context_passed",
+  "entry": "ExecutionChain::execute_graph_with_context",
+  "commands": [
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\render\\Cargo.toml",
+        "--test",
+        "shared_graph"
+      ],
+      "exit_code": 0,
+      "log": "evidence\\render-recovery\\consumer-chain-review-2026-10-12\\context-tests.log"
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\render\\Cargo.toml",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log": "evidence\\render-recovery\\consumer-chain-review-2026-10-12\\context-clippy.log"
+    }
+  ],
+  "candidate_chain_tests": 4,
+  "scope": "Current recording Command/state/queue/counter sequence and graph registry exposed in callback. Two batches verify seq2/4 mapping to actual submitted handles. No original ABI or live-GPU claim.",
+  "source_sha256": {
+    "reconstruction/render/lib.rs": "186232d5ae86694a60b5cbbd4f6b86d74e1c3d7030c0062168b24a23b128960f",
+    "reconstruction/render/graph.rs": "d96d7bff0e1000c88b3cd9790a100093a0ff2d633a27179573080e0fd1b13de8",
+    "reconstruction/render/graph_info.rs": "4ccb1696e8847711c18527a75a5b46b5ac58ae25a1ad76b01c74f6445d9d4d2e",
+    "reconstruction/render/execution.rs": "63432c913fab74f428a13892aef1a6b873b8ee491278d1595819ba05ea475388",
+    "reconstruction/render/Cargo.toml": "bea1a028620b60fcf1bcf7a0c8494a1ed96c4065825b893b47291d2f7f7ee93f",
+    "reconstruction/render/Cargo.lock": "32d9a284ab6c2d1712a1a1edc475c68fad1ddba60a21c42898d4990193ad5cac",
+    "reconstruction/render/tests/shared_graph.rs": "7a0aee7d78f42a616dee28d14acdd68f61ade13a0688d2b8a808946ed04160f0"
+  },
+  "registry_dependencies": [
+    {
+      "name": "ash",
+      "version": "0.38.0+1.3.281",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "0bb44936d800fea8f016d7f2311c6a4f97aebd5dc86f09906139ec848cf3a46f",
+      "dependencies": [
+        "libloading"
+      ]
+    },
+    {
+      "name": "cfg-if",
+      "version": "1.0.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
+    },
+    {
+      "name": "libloading",
+      "version": "0.8.3",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "0c2a198fb6b0eada2a8df47933734e6d35d350665a33a3593d7164fa52c75c19",
+      "dependencies": [
+        "cfg-if",
+        "windows-targets"
+      ]
+    },
+    {
+      "name": "windows-targets",
+      "version": "0.52.6",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "9b724f72796e036ab90c1021d4780d4d3d648aca59e491e6b98e725b84e99973",
+      "dependencies": [
+        "windows_aarch64_gnullvm",
+        "windows_aarch64_msvc",
+        "windows_i686_gnu",
+        "windows_i686_gnullvm",
+        "windows_i686_msvc",
+        "windows_x86_64_gnu",
+        "windows_x86_64_gnullvm",
+        "windows_x86_64_msvc"
+      ]
+    },
+    {
+      "name": "windows_aarch64_gnullvm",
+      "version": "0.52.6",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "32a4622180e7a0ec044bb555404c800bc9fd9ec262ec147edd5989ccd0c02cd3"
+    },
+    {
+      "name": "windows_aarch64_msvc",
+      "version": "0.52.6",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "09ec2a7bb152e2252b53fa7803150007879548bc709c039df7627cabbd05d469"
+    },
+    {
+      "name": "windows_i686_gnu",
+      "version": "0.52.6",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "8e9b5ad5ab802e97eb8e295ac6720e509ee4c243f69d781394014ebfe8bbfa0b"
+    },
+    {
+      "name": "windows_i686_gnullvm",
+      "version": "0.52.6",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "0eee52d38c090b3caa76c563b86c3a4bd71ef1a819287c19d586d7334ae8ed66"
+    },
+    {
+      "name": "windows_i686_msvc",
+      "version": "0.52.6",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "240948bc05c5e7c6dabba28bf89d89ffce3e303022809e73deaefe4f6ec56c66"
+    },
+    {
+      "name": "windows_x86_64_gnu",
+      "version": "0.52.6",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "147a5c80aabfbf0c7d901cb5895d1de30ef2907eb21fbbab29ca94c5b08b1a78"
+    },
+    {
+      "name": "windows_x86_64_gnullvm",
+      "version": "0.52.6",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "24d5b23dc417412679681396f2b49f3de8c1473deb516bd34410872eff51ed0d"
+    },
+    {
+      "name": "windows_x86_64_msvc",
+      "version": "0.52.6",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
+    }
+  ],
+  "historic_renderer_lock_sha256": "1c6e3c618db02be29d8877ce9d612666108c5b176b7ed177f25ad66ef05e3aa2",
+  "current_renderer_lock_sha256": "32d9a284ab6c2d1712a1a1edc475c68fad1ddba60a21c42898d4990193ad5cac",
+  "whole_original_chain_validated": false,
+  "live_gpu": false,
+  "module_complete": false,
+  "prior_proof": "evidence/render-recovery/parallel-batch-06/shared-entry-validation.json",
+  "private_boundaries_unresolved": [
+    "GraphDeclaration original game construction producer",
+    "raw device resource/command create and managed physical ControlBlock generation provider",
+    "executor wait/signal/prior/flush input producer in shared entry",
+    "real locks, device end-error/unwind and fatal device recovery",
+    "original full graph-to-submit chain oracle",
+    "shader/interface producer and descriptor shared callback integration",
+    "temporal cross-frame closure"
+  ]
+}

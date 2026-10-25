@@ -1,0 +1,134 @@
+{
+  "id": "TG-9faa0d6d467095b0a6",
+  "source_path": "crates/country-core/src/resources/roofs/roof_trigger_volume.rs",
+  "category": "core",
+  "target_version": "C",
+  "versions": [
+    "A",
+    "B",
+    "C"
+  ],
+  "priority_score": 60,
+  "family": "building",
+  "claim_mode": "candidate_reconstruction",
+  "cross_version_pairs": [
+    {
+      "versions": [
+        "A",
+        "B"
+      ],
+      "same_file_source_checksum_set": false,
+      "shared_source_checksums": [],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    },
+    {
+      "versions": [
+        "A",
+        "C"
+      ],
+      "same_file_source_checksum_set": false,
+      "shared_source_checksums": [],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    },
+    {
+      "versions": [
+        "B",
+        "C"
+      ],
+      "same_file_source_checksum_set": true,
+      "shared_source_checksums": [
+        "ba081972535a2000f946fa29beb129e208e9d635b19c737d0c15bf38ecae7f16"
+      ],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    }
+  ],
+  "function_ids": [
+    "1c8be2d9b1cd222b12",
+    "26f2965b93f923ae74",
+    "2aed1a7746c42da7d1",
+    "2f208b65b06689e7fa",
+    "6b7a93e9013e8f339d",
+    "83700e23d7ba1bdf74",
+    "b2c9c66013049b2c74",
+    "e7699555a6e439731b",
+    "00716e0797ce9d8f74",
+    "1031aaa5138f84f679",
+    "3d001bffe5aa1cf68a",
+    "53adc3b5e702cb4da4",
+    "590c2b781ab6d65aa3",
+    "6884b0967b4e22cfa9",
+    "72f13b82b8966fc693",
+    "76bac6ee7cf9eef9c2",
+    "a9df3023c0e9cd383e",
+    "f022ff0be855d8a062",
+    "f0a5167921a0ddb31f",
+    "0fc5100355a8c4eaa9",
+    "4a8b6658d402ac60b5",
+    "4d08e762a5a630a8be",
+    "6e71b40aa329642db2",
+    "73f6e51587a73e05ad",
+    "8a7bca6048af451808",
+    "aa51c494552bfa236a",
+    "ac5892ac4b1b718d68",
+    "b2edbefb6a1a7df59d",
+    "bb4bbd62aafa35eab2",
+    "f35a61fe6770fd8a9a"
+  ],
+  "related_callee_tasks": [
+    "TG-e37b01ad3a8c34766b"
+  ],
+  "related_caller_tasks": [
+    "TG-ef1d59d5448a097d02",
+    "TG-f7070bb3446b7a37eb",
+    "TG-e4d744f32840ad5cb0",
+    "TG-5afa26edeade113069",
+    "TG-4587ef30db6a99ad40",
+    "TG-6613bc651182fe9b77",
+    "TG-3f1713b27c7e76b81f",
+    "TG-69909b49ac9cab8563",
+    "TG-9073c40e5ed5e52282",
+    "TG-c9995364df6e06987c",
+    "TG-d6ef91291ed4219e59",
+    "TG-6ec13ad63cea4e8b7b"
+  ],
+  "source_inputs": {
+    "A": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/A/crates/country-core/src/resources/roofs/roof_trigger_volume.rs",
+      "sha256": "2cbdbfa4f1ada985782e8e68af8b04e6d0ffb6ef21536ab2d5e43a00aa364d17",
+      "binary_sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708",
+      "pdb_sha256": "d5d4001583e31abf20b1563bbfdd9e4853629065aa2e461fe5809b205db908a5"
+    },
+    "B": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/B/crates/country-core/src/resources/roofs/roof_trigger_volume.rs",
+      "sha256": "08b733e996b006702af5ca9bc93c16614c42627ab1e5a46a1f33f124e2d80a20",
+      "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+      "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911"
+    },
+    "C": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/C/crates/country-core/src/resources/roofs/roof_trigger_volume.rs",
+      "sha256": "a521e7db77d599bac55c7279abf9b7d4ff6b9e0b3c085865dc7065c8e30e963f",
+      "binary_sha256": "d8f9261b1a4cb677fe91b8f5017bcff63b1312228b3f3264a2071ca7d3ad80a9",
+      "pdb_sha256": "df472d8e6ae642baed96127151b18685291468518ea8dc71557bce4508c78902"
+    }
+  },
+  "assignment_unit": "one source-file family across A/B/C; one owner to prevent overlapping file edits",
+  "deliverable": "independent candidate Rust + ABI/field/dependency contracts + producer/consumer and removal/history boundaries + evidence handoff",
+  "implementation_status": "not_assessed; existing Rust must be checked before duplicate work",
+  "semantic_acceptance": false,
+  "existing_reconstruction_candidates": [
+    "reconstruction/building/roof_components.rs"
+  ],
+  "known_B_evidence_function_ids": [
+    "6884b0967b4e22cfa9"
+  ],
+  "data_structure_metadata": {
+    "A": "skeleton/A/crates/country-core/src/resources/roofs/roof_trigger_volume.rs.structures.json.gz",
+    "B": "skeleton/B/crates/country-core/src/resources/roofs/roof_trigger_volume.rs.structures.json.gz",
+    "C": "skeleton/C/crates/country-core/src/resources/roofs/roof_trigger_volume.rs.structures.json.gz"
+  },
+  "handoff": "task-index/handoffs/TG-9faa0d6d467095b0a6.json",
+  "handoff_audit": "task-index/handoffs/TG-9faa0d6d467095b0a6.audit.json"
+}

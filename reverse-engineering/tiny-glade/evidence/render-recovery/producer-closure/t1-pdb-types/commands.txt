@@ -1,0 +1,9 @@
+# Read-only reproduction (original PDB never modified). llvm-pdbutil 20.1.0.
+PDB="D:/game/ljxsj_92385/Tiny Glade/tiny_glade.pdb"
+
+llvm-pdbutil dump --summary "$PDB"
+llvm-pdbutil dump --types --type-stats "$PDB" > tpi_full.txt          # TPI leaf histogram + records
+llvm-pdbutil dump --ids  --id-stats    "$PDB" > ipi_samples.txt       # IPI leaf histogram + records
+llvm-pdbutil dump --sym-stats          "$PDB" > symbol_stats.txt      # per-module symbol kinds
+python -I parse_pdb_types.py "$PDB" "D:/game/ljxsj_92385/Tiny Glade/tiny-glade.exe" --symstats symbol_stats.txt --rva 0x140530430 0x140beabd0 0x140c04e20 0x1409dca90 > parser_output.json
+python -I aggregate_symstats.py symbol_stats.txt > symbol_kind_aggregate.json

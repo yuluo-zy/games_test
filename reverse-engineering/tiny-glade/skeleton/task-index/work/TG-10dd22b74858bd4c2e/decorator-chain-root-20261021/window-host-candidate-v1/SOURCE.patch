@@ -1,0 +1,67 @@
+--- a/tiny-glade/crates/tiny-glade/src/decorator_plugin.rs
++++ b/tiny-glade/crates/tiny-glade/src/decorator_plugin.rs
+@@ -61,33 +61,43 @@
+     app.init_resource::<country_core::systems::collision::WindowAutoClutterCandidates>();
+ }
+ 
+-/// Recovered subset of original Update/GameSystemSet25. This installs the
+-/// actual terrain clutter pipeline; the other native generator/assembly members
+-/// remain separate gaps. The resource condition waits for the real asset owner.
+-/// The main host must not install this subset before the real stair-attached
+-/// cache producer is recovered: the generic clutter generator also accepts dst4.
++/// 原装饰物帧链的已恢复成员：set10清墙洞，set25缓存、派生、生成与发布。
++/// 所有正式资产、请求和缓存producer必须已由同App启动链安装后再调用。
++/// validate/编辑回滚等其余成员仍须独立恢复；此处只注册真实可调用系统。
+ pub fn build_recovered_visual_systems(app: &mut bevy_app::App) {
+     use bevy_ecs::schedule::IntoScheduleConfigs;
+-    use bevy_ecs::schedule::common_conditions::resource_exists;
+-    use country_core::{systems::GameSystemSet, resources::clutter_meshes::ClutterMeshes};
+-    use system_decorator::{blueprint::{clear_blueprints, instantiate_blueprint_colliders,
+-        instantiate_blueprints, copy_blueprints_to_prev},
++    use country_core::systems::{GameSystemSet, collision::world::flush_rapier_colliders};
++    use system_decorator::{
++        blueprint::{clear_blueprints, copy_blueprints_to_prev,
++            instantiate_blueprint_colliders, instantiate_blueprints},
+         cache_decorator_transforms::cache_decorator_transforms,
+-        decorator_visual::decorator_clutter::generate_decorator_clutter};
+-    // Original parent 1403451af/1b4/253: Update set25. Constructor
+-    // 1400d52f0 writes cache, clear, generators, collider-only in this order;
+-    // its later 1403d6ce0 chain_ignore_deferred installs fullvisual then copy.
++        derive_decorator_subtype::derive_decorator_subtypes,
++        decorator_visual::{
++            cottage_corner_window::generate_cottage_corner_windows,
++            cottage_wall_window::generate_cottage_wall_windows,
++            decorator_clutter::generate_decorator_clutter,
++            maintain_visual_entities::{clear_out_visual_entities, clear_out_wall_holes},
++        },
++    };
++    // 原140344e0f/e12：墙洞双缓冲清帧属于set10，不与瞬态实体清理混淆。
++    app.add_systems(bevy_app::Update, clear_out_wall_holes.in_set(GameSystemSet(10)));
++    // 原外19成员chain：cache#2先于derive#4，clear tuple#5先于generator tuple#6。
++    // 原15个生成器中这里只挂完整恢复的三项；tuple内部没有人为添加相邻顺序。
++    // outer chain保留自动deferred同步，full/copy的原内部链才ignore_deferred。
+     app.add_systems(bevy_app::Update, (
+         cache_decorator_transforms,
+-        clear_blueprints,
+-        system_decorator::decorator_visual::maintain_visual_entities::clear_out_visual_entities,
+-        generate_decorator_clutter,
++        derive_decorator_subtypes,
++        (clear_blueprints, clear_out_visual_entities),
++        (generate_cottage_wall_windows, generate_cottage_corner_windows, generate_decorator_clutter),
+         instantiate_blueprint_colliders,
+-        instantiate_blueprints,
+-        copy_blueprints_to_prev,
+-    ).chain_ignore_deferred()
++        flush_rapier_colliders,
++        (instantiate_blueprints, copy_blueprints_to_prev).chain_ignore_deferred(),
++    ).chain()
++        .in_set(GameSystemSet(25))
++        .before(country_core::resources::walls::decorator::unleash_decorator_op_events));
++    // 原member16再次冲刷同一RaycastWorld，处在member15通知发布之后、member18 UI之前。
++    app.add_systems(bevy_app::Update, flush_rapier_colliders
+         .in_set(GameSystemSet(25))
+         .after(country_core::resources::walls::decorator::unleash_decorator_op_events)
+-        .after(system_decorator::ui_systems::ui_decorator_affordance_dispatch::ui_dispatch_decorator_affordance)
+-        .run_if(resource_exists::<ClutterMeshes>));
++        .before(system_decorator::ui_systems::ui_decorator_affordance_dispatch::ui_dispatch_decorator_affordance));
+ }

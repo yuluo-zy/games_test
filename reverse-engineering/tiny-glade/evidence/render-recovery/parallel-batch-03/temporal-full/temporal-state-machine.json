@@ -1,0 +1,16 @@
+{
+  "schema_version":2,
+  "observed":{
+    "tags":{"raw_texture":0,"raw_buffer":1,"exported":2},
+    "single_texture":{"missing":"create -> import(access0) -> raw0; created=false-reused","exported_same_extent_fixed_equal":"import(stored access) -> raw0; reused=true","raw":"Error duplicate request","exported_wrong_kind":"Error","extent_change":"create/import then replace/drop old on success; failure preserves old","same_extent_fixed_mismatch":"panic"},
+    "single_buffer":{"missing":"create -> import(access0) -> raw1","exported_buffer":"import(stored access) -> raw1 without descriptor comparison","raw":"Error duplicate request","exported_texture":"Error"},
+    "pair_texture":{"keys":["base:0","base:1"],"descriptor":"same for both","first_error":"return immediately","second_error":"return; first mutation persists","both_success":"flip base parity; order parity0=[0,1], parity1=[1,0]; reused=AND"},
+    "pair_buffer":{"status":"unknown","reason":"no buffer pair instantiation established"},
+    "export":{"raw_texture":"export_texture(logical,0x37)->exported2","raw_buffer":"export_buffer(logical,0x37)->exported2","exported":"unchanged","physical":"retained","parity":"unchanged"},
+    "parity":{"missing":{"stored":0,"returned":0},"hit":{"stored":"1u32.wrapping_sub(old)","returned":"new"},"scope":"per Ustr key"},
+    "replace":{"trigger":"texture extent changed","success":"insert new raw0 physical/logical; old managed ref dropped","create_error":"keep old exported record"},
+    "reset":{"status":"unknown","not_inferred":"resize replacement does not reset pair parity"},
+    "drop":{"replacement":"observed managed-resource drop helpers","whole_state_clear":"unknown"}
+  },
+  "inferred":{"backend":"create/import/export abstract interfaces; infallible import/export reflects observed absence of result-tag branch"}
+}

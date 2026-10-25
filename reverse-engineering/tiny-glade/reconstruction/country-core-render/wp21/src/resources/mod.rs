@@ -1,0 +1,33 @@
+//! `crate::resources` — WP21 杂项资源族。
+
+pub mod walls;
+pub mod stairs;
+pub mod stairs_walls;
+pub mod ivy;
+pub mod rt;
+pub mod clutter_meshes;
+pub mod color_icon;
+pub mod daily;
+pub mod feedback_report_resources;
+pub mod garden_mask;
+pub mod glade_color_customization;
+pub mod glade_settings;
+pub mod gothic_window_profile;
+pub mod image_formation;
+pub mod mouse_capture;
+pub mod photo_mode;
+pub mod placement_data;
+pub mod prefab;
+pub mod preplaced_autoclutter;
+pub mod raster_stroke;
+pub mod render;
+pub mod shader_refactoring_state;
+pub mod shape_intersections;
+pub mod shutdown;
+pub mod sparkle;
+pub mod steam;
+pub mod texture_presets;
+pub mod time_of_day;
+pub mod toolbar;
+pub mod ui_settings;
+pub mod weather;

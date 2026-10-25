@@ -1,0 +1,76 @@
+{
+  "original_lock_path": "D:\\game\\ljxsj_92385\\Tiny Glade\\build-info\\Cargo.lock",
+  "original_lock_sha256": "9e0cb4a0fa173122fa7cd552aa639f5ee977abc22c74aec92398808c707184bd",
+  "reconstructed_lock_sha256": "3154839e5a5391f48377c9e833fdb7bd3941bb81a2bf371655d31d3a77e8004e",
+  "exact_published_dependencies": [
+    {
+      "name": "cfg-if",
+      "version": "1.0.0",
+      "checksum": "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd",
+      "direct": false
+    },
+    {
+      "name": "crunchy",
+      "version": "0.2.2",
+      "checksum": "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7",
+      "direct": false
+    },
+    {
+      "name": "fastrand",
+      "version": "1.8.0",
+      "checksum": "a7a407cfaa3385c4ae6b23e84623d48c2798d06e3e6a1878f7f59f17b3f86499",
+      "direct": true
+    },
+    {
+      "name": "glam",
+      "version": "0.29.3",
+      "checksum": "8babf46d4c1c9d92deac9f7be466f76dfc4482b6452fc5024b5e8daf6ffeb3ee",
+      "direct": true
+    },
+    {
+      "name": "half",
+      "version": "2.4.1",
+      "checksum": "6dd08c532ae367adf81c312a4580bc67f1d0fe8bc9c460520283f4c0ff277888",
+      "direct": true
+    },
+    {
+      "name": "instant",
+      "version": "0.1.12",
+      "checksum": "7a5bbe824c507c5da5956355e86a746d82e0e1464f65d862cc5e71da70e94b2c",
+      "direct": false
+    }
+  ],
+  "adapters": [
+    {
+      "game_interface": "TileRng::next_f32",
+      "published_api": "fastrand::Rng::with_seed / f32 / get_seed",
+      "manual_algorithm_removed": true
+    },
+    {
+      "game_interface": "tiles::half",
+      "published_api": "half::f16::from_f32 / to_bits",
+      "manual_algorithm_removed": true
+    },
+    {
+      "game_interface": "tiles::matrix_quat",
+      "published_api": "glam::Mat3::from_cols / Quat::from_mat3",
+      "manual_algorithm_removed": true
+    },
+    {
+      "game_interface": "circular tile frame direction",
+      "published_api": "glam::Quat::from_axis_angle * glam::Vec3",
+      "manual_algorithm_removed": true
+    }
+  ],
+  "retained_game_code": [
+    "utils::random_splits",
+    "Curve2 and normalized/world profile sampling",
+    "roof shape/ridge parameter rules",
+    "roof row/column placement and tile emission order",
+    "game packed record and flags"
+  ],
+  "scope": "Reuse dependencies rather than recover/reimplement their sources; no GPU or scene work",
+  "limitations": [
+    "User states Bevy is a fork; exact fork repository/commit is still unverified and no engine dependency is invented here"
+  ]
+}

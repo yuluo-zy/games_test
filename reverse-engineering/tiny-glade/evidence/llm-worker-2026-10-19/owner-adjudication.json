@@ -1,0 +1,39 @@
+{
+  "scope":"Long-function worker evaluation and reusable delegation setup; static evidence only. No game code or Ghidra database modified.",
+  "complete_long_function_automatically_accepted":false,
+  "evidence_priority":"Original RNE instructions override decompiled C expressions. Existing candidate Rust and prior worker answers are hypotheses.",
+  "result_reviews":[
+    {"file":"stairs-v1-result.json","decision":"reject_incomplete","reason":"10000 reasoning tokens, empty content, length finish"},
+    {"file":"stairs-v2-result.json","decision":"reject_incomplete","reason":"Standard thinking disabled parameter ineffective; 7000 reasoning tokens, empty content"},
+    {"file":"stairs-v3-result.json","decision":"reject_complete_contract","reason":"Wrong nested branch, missing event formulas, conflated lookup fields; see separate v3 review"},
+    {"file":"stairs-v4-fast-result.json","decision":"reject_complete_contract","reason":"Still misplaces timed else under tag mismatch and collapses reversed helper mapping; output formulas at least extracted"},
+    {"file":"stairs-v4-low-result.json","decision":"use_selected_observations_with_corrections","reason":"Correct main selector, separate flags, raw helper truth table, distinct lookups, compaction/drop. Incorrect extra +0x11 on payload-bit1 path, misses bucket expression/change-marker details; decompiled float semantics not authoritative"},
+    {"file":"stairs-v5-plain-fast-result.json","decision":"reject_complete_contract","reason":"Plain rendering reduces prompt tokens but fast mode still inverts conditions, mishandles clamp, and confuses indices"},
+    {"file":"B-stairs-event-scope-audit-result.json","decision":"reject_semantics","reason":"Calls +0x11 universally executed despite source scopes; contradictory reject/confirm statements"},
+    {"file":"B-stairs-entry-change-markers-result.json","decision":"use_only_literal_writes","reason":"Marker copies and reuse partly correct; effective bucket index prose is mathematically wrong. Literal expression remains in input"},
+    {"file":"assembly-audit-result.json","decision":"reject_incomplete","reason":"Combined numeric/event audit exceeded 10000 budget and produced truncated JSON"},
+    {"file":"B-stairs-asm-event-only-result.json","decision":"accept_bounded_static_event_formula_after_owner_check","reason":"Correct payload-controlled tag formulas and epilogue targets; owner checked omitted helper/lookup edges in full original listing. Correct loose noun event+0x1c to input-record+0x1c"},
+    {"file":"B-stairs-asm-readiness-only-result.json","decision":"accept_instruction_facts_reject_readiness_label","reason":"MAXSS, UCOMISS flags, signed infinity and equality facts correct. Incorrectly calls pending time update applied-command behavior; original target returns to scan without applying state/event"}
+  ],
+  "original_instruction_contract":{
+    "source":"stairs-original-disassembly.txt; original RNE span SHA in stairs-input-manifest.json",
+    "selector":"0x140af773d cmp byte 10; jne 0x140af7722 skips other tags. +8 bit0 controls immediate/animated only.",
+    "bucket_index":"physical_index = end - (end < front ? 0 : front), stride 0x40; command count is then loaded from bucket+0x10. Not wrap-to-zero index.",
+    "event_formula":{"payload_bit0_0":"(direction + 0x11) modulo 256","payload_bit0_1":"(0x12 - direction) modulo 256","scheduling_flag_effect":"No effect on formula after command is ready","proof":["0x140af77b7 jne 0x140af782f; 0x140af7829 je 0x140af77bd","0x140af78c5 loads direction; 0x140af7a15/7a2b -> 0x140af76dc add 0x11","0x140af7a7b/7a82 sets 0x12-direction; 0x140af7bb9/7bcf -> 0x140af76e0 skips add"]},
+    "animated_readiness":{"assumption":"Standard masked MXCSR FP exceptions. Actual game MXCSR runtime state not observed.","threshold":"MAXSS source is constant 0.05; NaN quotient selects constant, +inf remains, -inf selects constant","pending":"elapsed <= threshold ordered OR unordered: UCOMISS/JBE -> 0x140af7862; add delta then jump to scan 0x140af7722, no state/event application","ready":"elapsed > threshold ordered: append completion index, add delta, apply state/event","boundary":"Equality and NaN elapsed stay pending. 0/0 quotient clamps to 0.05 under masked invalid; finite nonzero/zero gives signed infinity before MAXSS."},
+    "mutation_markers":"Entry param1 marker write occurs before empty guard; param3 marker before state helper; param4 marker before output capacity/growth. Exact offsets in full listing.",
+    "cleanup":"Reverse completed original indices, stable tail memmove, length decrement, variant drop, free temporary allocation; generic container implementation reused."
+  },
+  "corrections_to_heldout_checklist":[
+    {"id":"H09","correction":"Original formula is controlled by payload bit, not scheduling flag. Initial checklist inherited an incorrect candidate comment; this criterion is superseded by original-instruction contract."},
+    {"id":"H14","correction":"Decompiler-only complement-of-<= predicts unordered apply, but actual MAXSS + UCOMISS/JBE yields pending for NaN elapsed. Only a decompiler-reading criterion, not original behavior. H05 numeric interpretation likewise superseded."}
+  ],
+  "candidate_finding":{
+    "path":"tiny-glade/crates/country-core/src/systems/history/replay_stairs.rs",
+    "issue":"audio kind currently branches on cmd.instant; original branches on payload bit corresponding to cmd.recreate in current schema.",
+    "suggested_expression":"if cmd.recreate { 0x12 - u8::from(cmd.undo) } else { 0x11 + u8::from(cmd.undo) }",
+    "status":"Static discrepancy registered; no source edits or original runtime equivalence claim. Current native producer/schema mapping should remain part of integration review."
+  },
+  "production_routing":"Low thinking for meaningful semantics; fast mode only non-authoritative mechanical drafts checked deterministically. Independent functional contracts may run in batches of 2. Owner retains identity/ABI, original-instruction checks, all writes and integration.",
+  "game_progress_change":false
+}

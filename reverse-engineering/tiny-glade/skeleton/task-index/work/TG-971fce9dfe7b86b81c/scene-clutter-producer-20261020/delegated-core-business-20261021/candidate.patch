@@ -1,0 +1,11 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/cottage_dormers/assemble_dormer_roof_tiles.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/cottage_dormers/assemble_dormer_roof_tiles.rs
+@@ -87,7 +87,7 @@
+ ) {
+     for (_wall, decorators) in decorator_storage.iter_walls() {
+         for (id, info) in decorators.iter_modified() {
+-            let subtype = derived.get(id).subtype().0;
++            let subtype = derived.get(id).0;
+             // O：子类型掩码 / 0x17 特殊分支。
+             let Some(family) = dormer_roof_family(subtype) else {
+                 continue;

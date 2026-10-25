@@ -1,0 +1,55 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+1407de800: f3 0f 10 42 04              	movss	0x4(%rdx), %xmm0
+1407de805: 31 d2                       	xorl	%edx, %edx
+1407de807: 31 c0                       	xorl	%eax, %eax
+1407de809: 0f 2e 41 04                 	ucomiss	0x4(%rcx), %xmm0
+1407de80d: 0f 96 c2                    	setbe	%dl
+1407de810: 4d 8d 51 14                 	leaq	0x14(%r9), %r10
+1407de814: 4d 0f 47 d1                 	cmovaq	%r9, %r10
+1407de818: 0f 97 c0                    	seta	%al
+1407de81b: c1 e2 05                    	shll	$0x5, %edx
+1407de81e: c1 e0 05                    	shll	$0x5, %eax
+1407de821: b1 01                       	movb	$0x1, %cl
+1407de823: 41 80 7c 10 18 01           	cmpb	$0x1, 0x18(%r8,%rdx)
+1407de829: 41 b1 01                    	movb	$0x1, %r9b
+1407de82c: 75 19                       	jne	0x1407de847 <.text+0x7dd847>
+1407de82e: 41 83 3c 10 02              	cmpl	$0x2, (%r8,%rdx)
+1407de833: 73 34                       	jae	0x1407de869 <.text+0x7dd869>
+1407de835: f3 0f 10 05 97 8f 2a 02     	movss	0x22a8f97(%rip), %xmm0  # 0x142a877d4
+1407de83d: 41 0f 2e 44 10 04           	ucomiss	0x4(%r8,%rdx), %xmm0
+1407de843: 41 0f 93 c1                 	setae	%r9b
+1407de847: 41 80 7c 00 18 01           	cmpb	$0x1, 0x18(%r8,%rax)
+1407de84d: 75 2a                       	jne	0x1407de879 <.text+0x7dd879>
+1407de84f: 41 83 3c 00 01              	cmpl	$0x1, (%r8,%rax)
+1407de854: 77 23                       	ja	0x1407de879 <.text+0x7dd879>
+1407de856: f3 0f 10 05 76 8f 2a 02     	movss	0x22a8f76(%rip), %xmm0  # 0x142a877d4
+1407de85e: 41 0f 2e 44 00 04           	ucomiss	0x4(%r8,%rax), %xmm0
+1407de864: 0f 93 c1                    	setae	%cl
+1407de867: eb 10                       	jmp	0x1407de879 <.text+0x7dd879>
+1407de869: 41 80 3a 00                 	cmpb	$0x0, (%r10)
+1407de86d: 41 0f 94 c1                 	sete	%r9b
+1407de871: 41 80 7c 00 18 01           	cmpb	$0x1, 0x18(%r8,%rax)
+1407de877: 74 d6                       	je	0x1407de84f <.text+0x7dd84f>
+1407de879: 45 84 c9                    	testb	%r9b, %r9b
+1407de87c: 74 07                       	je	0x1407de885 <.text+0x7dd885>
+1407de87e: 84 c9                       	testb	%cl, %cl
+1407de880: 74 08                       	je	0x1407de88a <.text+0x7dd88a>
+1407de882: 31 c0                       	xorl	%eax, %eax
+1407de884: c3                          	retq
+1407de885: b0 04                       	movb	$0x4, %al
+1407de887: 28 c8                       	subb	%cl, %al
+1407de889: c3                          	retq
+1407de88a: b0 02                       	movb	$0x2, %al
+1407de88c: 41 83 3c 10 01              	cmpl	$0x1, (%r8,%rdx)
+1407de891: 77 10                       	ja	0x1407de8a3 <.text+0x7dd8a3>
+1407de893: f3 0f 10 05 39 8f 2a 02     	movss	0x22a8f39(%rip), %xmm0  # 0x142a877d4
+1407de89b: 41 0f 2e 44 10 04           	ucomiss	0x4(%r8,%rdx), %xmm0
+1407de8a1: 73 01                       	jae	0x1407de8a4 <.text+0x7dd8a4>
+1407de8a3: c3                          	retq
+1407de8a4: b0 01                       	movb	$0x1, %al
+1407de8a6: c3                          	retq

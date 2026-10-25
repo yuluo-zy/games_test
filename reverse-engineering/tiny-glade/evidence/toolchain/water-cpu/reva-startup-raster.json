@@ -1,0 +1,662 @@
+{
+  "backend": "reva",
+  "worker": "water-owner",
+  "access": "write",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json, os\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x1408f1a20\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x1408f1a20\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nout[\"size\"] = f.getBody().getNumAddresses() if f.getBody().contains(addr) else -1\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    if not res.decompileCompleted():\n        out[\"decompile_error\"] = str(res.getErrorMessage())\n        out[\"decompiled\"] = None\n    else:\n        out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nmonitor.checkCancelled()\nbody = f.getBody()\nlisting = prog.getListing()\nit = listing.getInstructions(body, True)\ninsns = []\nrefmgr = prog.getReferenceManager()\ncall_targets = {}\nmem_refs = []\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                if nm not in call_targets:\n                    call_targets[nm] = str(to)\n    if mnem in (\"LEA\", \"MOV\", \"MOVSD\", \"MOVSS\", \"CMP\", \"TEST\"):\n        for i in range(ins.getNumOperands()):\n            refs = refmgr.getReferencesFrom(a, i)\n            for r in refs:\n                rt = r.getReferenceType()\n                to = r.getToAddress()\n                if str(to)[0:3] in (\"140\", \"141\", \"142\", \"143\"):\n                    target = fm.getFunctionAt(to)\n                    tname = str(target.getName()) if target else \"\"\n                    mem_refs.append([str(a), str(to), str(rt), tname])\nout[\"insn_count\"] = len(insns)\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nout[\"mem_refs\"] = mem_refs\npath = os.path.join(\"/Users/yuluo/ghidra_scripts/water-owner\", out[\"name\"] + \".json\")\nwith open(path, \"w\") as fh:\n    json.dump(out, fh)\nprint(json.dumps({\"name\": out[\"name\"], \"entry\": out[\"entry\"], \"size\": out[\"size\"],\n                   \"insn_count\": len(insns), \"calls\": len(call_targets),\n                   \"mem_refs\": len(mem_refs), \"file\": path,\n                   \"decompile_error\": out.get(\"decompile_error\")}))\n",
+        "timeoutSeconds": 300
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json, os\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x1408f1a20\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x1408f1a20\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nout[\"size\"] = f.getBody().getNumAddresses() if f.getBody().contains(addr) else -1\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    if not res.decompileCompleted():\n        out[\"decompile_error\"] = str(res.getErrorMessage())\n        out[\"decompiled\"] = None\n    else:\n        out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nmonitor.checkCancelled()\nbody = f.getBody()\nlisting = prog.getListing()\nit = listing.getInstructions(body, True)\ninsns = []\nrefmgr = prog.getReferenceManager()\ncall_targets = {}\nmem_refs = []\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                if nm not in call_targets:\n                    call_targets[nm] = str(to)\n    if mnem in (\"LEA\", \"MOV\", \"MOVSD\", \"MOVSS\", \"CMP\", \"TEST\"):\n        for i in range(ins.getNumOperands()):\n            refs = refmgr.getReferencesFrom(a, i)\n            for r in refs:\n                rt = r.getReferenceType()\n                to = r.getToAddress()\n                if str(to)[0:3] in (\"140\", \"141\", \"142\", \"143\"):\n                    target = fm.getFunctionAt(to)\n                    tname = str(target.getName()) if target else \"\"\n                    mem_refs.append([str(a), str(to), str(rt), tname])\nout[\"insn_count\"] = len(insns)\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nout[\"mem_refs\"] = mem_refs\npath = os.path.join(\"/Users/yuluo/ghidra_scripts/water-owner\", out[\"name\"] + \".json\")\nwith open(path, \"w\") as fh:\n    json.dump(out, fh)\nprint(json.dumps({\"name\": out[\"name\"], \"entry\": out[\"entry\"], \"size\": out[\"size\"],\n                   \"insn_count\": len(insns), \"calls\": len(call_targets),\n                   \"mem_refs\": len(mem_refs), \"file\": path,\n                   \"decompile_error\": out.get(\"decompile_error\")}))\n",
+        "timeoutSeconds": 300
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"name\\\": \\\"startup_water\\\", \\\"entry\\\": \\\"1408f1a20\\\", \\\"size\\\": 3223, \\\"insn_count\\\": 634, \\\"calls\\\": 7, \\\"mem_refs\\\": 81, \\\"file\\\": \\\"/Users/yuluo/ghidra_scripts/water-owner/startup_water.json\\\", \\\"decompile_error\\\": null}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":608}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json, os\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x140a12680\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x140a12680\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nout[\"size\"] = f.getBody().getNumAddresses() if f.getBody().contains(addr) else -1\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    if not res.decompileCompleted():\n        out[\"decompile_error\"] = str(res.getErrorMessage())\n        out[\"decompiled\"] = None\n    else:\n        out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nmonitor.checkCancelled()\nbody = f.getBody()\nlisting = prog.getListing()\nit = listing.getInstructions(body, True)\ninsns = []\nrefmgr = prog.getReferenceManager()\ncall_targets = {}\nmem_refs = []\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                if nm not in call_targets:\n                    call_targets[nm] = str(to)\n    if mnem in (\"LEA\", \"MOV\", \"MOVSD\", \"MOVSS\", \"CMP\", \"TEST\"):\n        for i in range(ins.getNumOperands()):\n            refs = refmgr.getReferencesFrom(a, i)\n            for r in refs:\n                rt = r.getReferenceType()\n                to = r.getToAddress()\n                if str(to)[0:3] in (\"140\", \"141\", \"142\", \"143\"):\n                    target = fm.getFunctionAt(to)\n                    tname = str(target.getName()) if target else \"\"\n                    mem_refs.append([str(a), str(to), str(rt), tname])\nout[\"insn_count\"] = len(insns)\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nout[\"mem_refs\"] = mem_refs\npath = os.path.join(\"/Users/yuluo/ghidra_scripts/water-owner\", out[\"name\"] + \".json\")\nwith open(path, \"w\") as fh:\n    json.dump(out, fh)\nprint(json.dumps({\"name\": out[\"name\"], \"entry\": out[\"entry\"], \"size\": out[\"size\"],\n                   \"insn_count\": len(insns), \"calls\": len(call_targets),\n                   \"mem_refs\": len(mem_refs), \"file\": path,\n                   \"decompile_error\": out.get(\"decompile_error\")}))\n",
+        "timeoutSeconds": 300
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json, os\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x140a12680\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x140a12680\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nout[\"size\"] = f.getBody().getNumAddresses() if f.getBody().contains(addr) else -1\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    if not res.decompileCompleted():\n        out[\"decompile_error\"] = str(res.getErrorMessage())\n        out[\"decompiled\"] = None\n    else:\n        out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nmonitor.checkCancelled()\nbody = f.getBody()\nlisting = prog.getListing()\nit = listing.getInstructions(body, True)\ninsns = []\nrefmgr = prog.getReferenceManager()\ncall_targets = {}\nmem_refs = []\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                if nm not in call_targets:\n                    call_targets[nm] = str(to)\n    if mnem in (\"LEA\", \"MOV\", \"MOVSD\", \"MOVSS\", \"CMP\", \"TEST\"):\n        for i in range(ins.getNumOperands()):\n            refs = refmgr.getReferencesFrom(a, i)\n            for r in refs:\n                rt = r.getReferenceType()\n                to = r.getToAddress()\n                if str(to)[0:3] in (\"140\", \"141\", \"142\", \"143\"):\n                    target = fm.getFunctionAt(to)\n                    tname = str(target.getName()) if target else \"\"\n                    mem_refs.append([str(a), str(to), str(rt), tname])\nout[\"insn_count\"] = len(insns)\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nout[\"mem_refs\"] = mem_refs\npath = os.path.join(\"/Users/yuluo/ghidra_scripts/water-owner\", out[\"name\"] + \".json\")\nwith open(path, \"w\") as fh:\n    json.dump(out, fh)\nprint(json.dumps({\"name\": out[\"name\"], \"entry\": out[\"entry\"], \"size\": out[\"size\"],\n                   \"insn_count\": len(insns), \"calls\": len(call_targets),\n                   \"mem_refs\": len(mem_refs), \"file\": path,\n                   \"decompile_error\": out.get(\"decompile_error\")}))\n",
+        "timeoutSeconds": 300
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"name\\\": \\\"water_rasterize_from_cpu\\\", \\\"entry\\\": \\\"140a12680\\\", \\\"size\\\": 3238, \\\"insn_count\\\": 564, \\\"calls\\\": 16, \\\"mem_refs\\\": 21, \\\"file\\\": \\\"/Users/yuluo/ghidra_scripts/water-owner/water_rasterize_from_cpu.json\\\", \\\"decompile_error\\\": null}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":525}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json, os\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x142261d10\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x142261d10\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nout[\"size\"] = f.getBody().getNumAddresses() if f.getBody().contains(addr) else -1\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    if not res.decompileCompleted():\n        out[\"decompile_error\"] = str(res.getErrorMessage())\n        out[\"decompiled\"] = None\n    else:\n        out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nmonitor.checkCancelled()\nbody = f.getBody()\nlisting = prog.getListing()\nit = listing.getInstructions(body, True)\ninsns = []\nrefmgr = prog.getReferenceManager()\ncall_targets = {}\nmem_refs = []\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                if nm not in call_targets:\n                    call_targets[nm] = str(to)\n    if mnem in (\"LEA\", \"MOV\", \"MOVSD\", \"MOVSS\", \"CMP\", \"TEST\"):\n        for i in range(ins.getNumOperands()):\n            refs = refmgr.getReferencesFrom(a, i)\n            for r in refs:\n                rt = r.getReferenceType()\n                to = r.getToAddress()\n                if str(to)[0:3] in (\"140\", \"141\", \"142\", \"143\"):\n                    target = fm.getFunctionAt(to)\n                    tname = str(target.getName()) if target else \"\"\n                    mem_refs.append([str(a), str(to), str(rt), tname])\nout[\"insn_count\"] = len(insns)\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nout[\"mem_refs\"] = mem_refs\npath = os.path.join(\"/Users/yuluo/ghidra_scripts/water-owner\", out[\"name\"] + \".json\")\nwith open(path, \"w\") as fh:\n    json.dump(out, fh)\nprint(json.dumps({\"name\": out[\"name\"], \"entry\": out[\"entry\"], \"size\": out[\"size\"],\n                   \"insn_count\": len(insns), \"calls\": len(call_targets),\n                   \"mem_refs\": len(mem_refs), \"file\": path,\n                   \"decompile_error\": out.get(\"decompile_error\")}))\n",
+        "timeoutSeconds": 300
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json, os\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x142261d10\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x142261d10\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nout[\"size\"] = f.getBody().getNumAddresses() if f.getBody().contains(addr) else -1\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    if not res.decompileCompleted():\n        out[\"decompile_error\"] = str(res.getErrorMessage())\n        out[\"decompiled\"] = None\n    else:\n        out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nmonitor.checkCancelled()\nbody = f.getBody()\nlisting = prog.getListing()\nit = listing.getInstructions(body, True)\ninsns = []\nrefmgr = prog.getReferenceManager()\ncall_targets = {}\nmem_refs = []\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                if nm not in call_targets:\n                    call_targets[nm] = str(to)\n    if mnem in (\"LEA\", \"MOV\", \"MOVSD\", \"MOVSS\", \"CMP\", \"TEST\"):\n        for i in range(ins.getNumOperands()):\n            refs = refmgr.getReferencesFrom(a, i)\n            for r in refs:\n                rt = r.getReferenceType()\n                to = r.getToAddress()\n                if str(to)[0:3] in (\"140\", \"141\", \"142\", \"143\"):\n                    target = fm.getFunctionAt(to)\n                    tname = str(target.getName()) if target else \"\"\n                    mem_refs.append([str(a), str(to), str(rt), tname])\nout[\"insn_count\"] = len(insns)\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nout[\"mem_refs\"] = mem_refs\npath = os.path.join(\"/Users/yuluo/ghidra_scripts/water-owner\", out[\"name\"] + \".json\")\nwith open(path, \"w\") as fh:\n    json.dump(out, fh)\nprint(json.dumps({\"name\": out[\"name\"], \"entry\": out[\"entry\"], \"size\": out[\"size\"],\n                   \"insn_count\": len(insns), \"calls\": len(call_targets),\n                   \"mem_refs\": len(mem_refs), \"file\": path,\n                   \"decompile_error\": out.get(\"decompile_error\")}))\n",
+        "timeoutSeconds": 300
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"name\\\": \\\"rasterize_stroke<512,core::iter::adapters::map::Map<core::slice::iter::Iter<glam::f32::vec3::Vec3>,country_core::resources::raster_stroke::impl$2::iter_points_xz::closure_env$0>_>\\\", \\\"entry\\\": \\\"142261d10\\\", \\\"size\\\": 1737, \\\"insn_count\\\": 379, \\\"calls\\\": 18, \\\"mem_refs\\\": 31, \\\"file\\\": \\\"/Users/yuluo/ghidra_scripts/water-owner/rasterize_stroke<512,core::iter::adapters::map::Map<core::slice::iter::Iter<glam::f32::vec3::Vec3>,country_core::resources::raster_stroke::impl$2::iter_points_xz::closure_env$0>_>.json\\\", \\\"decompile_error\\\": null}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":401}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json, os\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x142261760\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x142261760\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nout[\"size\"] = f.getBody().getNumAddresses() if f.getBody().contains(addr) else -1\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    if not res.decompileCompleted():\n        out[\"decompile_error\"] = str(res.getErrorMessage())\n        out[\"decompiled\"] = None\n    else:\n        out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nmonitor.checkCancelled()\nbody = f.getBody()\nlisting = prog.getListing()\nit = listing.getInstructions(body, True)\ninsns = []\nrefmgr = prog.getReferenceManager()\ncall_targets = {}\nmem_refs = []\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                if nm not in call_targets:\n                    call_targets[nm] = str(to)\n    if mnem in (\"LEA\", \"MOV\", \"MOVSD\", \"MOVSS\", \"CMP\", \"TEST\"):\n        for i in range(ins.getNumOperands()):\n            refs = refmgr.getReferencesFrom(a, i)\n            for r in refs:\n                rt = r.getReferenceType()\n                to = r.getToAddress()\n                if str(to)[0:3] in (\"140\", \"141\", \"142\", \"143\"):\n                    target = fm.getFunctionAt(to)\n                    tname = str(target.getName()) if target else \"\"\n                    mem_refs.append([str(a), str(to), str(rt), tname])\nout[\"insn_count\"] = len(insns)\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nout[\"mem_refs\"] = mem_refs\npath = os.path.join(\"/Users/yuluo/ghidra_scripts/water-owner\", out[\"name\"] + \".json\")\nwith open(path, \"w\") as fh:\n    json.dump(out, fh)\nprint(json.dumps({\"name\": out[\"name\"], \"entry\": out[\"entry\"], \"size\": out[\"size\"],\n                   \"insn_count\": len(insns), \"calls\": len(call_targets),\n                   \"mem_refs\": len(mem_refs), \"file\": path,\n                   \"decompile_error\": out.get(\"decompile_error\")}))\n",
+        "timeoutSeconds": 300
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json, os\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x142261760\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x142261760\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nout[\"size\"] = f.getBody().getNumAddresses() if f.getBody().contains(addr) else -1\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    if not res.decompileCompleted():\n        out[\"decompile_error\"] = str(res.getErrorMessage())\n        out[\"decompiled\"] = None\n    else:\n        out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nmonitor.checkCancelled()\nbody = f.getBody()\nlisting = prog.getListing()\nit = listing.getInstructions(body, True)\ninsns = []\nrefmgr = prog.getReferenceManager()\ncall_targets = {}\nmem_refs = []\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                if nm not in call_targets:\n                    call_targets[nm] = str(to)\n    if mnem in (\"LEA\", \"MOV\", \"MOVSD\", \"MOVSS\", \"CMP\", \"TEST\"):\n        for i in range(ins.getNumOperands()):\n            refs = refmgr.getReferencesFrom(a, i)\n            for r in refs:\n                rt = r.getReferenceType()\n                to = r.getToAddress()\n                if str(to)[0:3] in (\"140\", \"141\", \"142\", \"143\"):\n                    target = fm.getFunctionAt(to)\n                    tname = str(target.getName()) if target else \"\"\n                    mem_refs.append([str(a), str(to), str(rt), tname])\nout[\"insn_count\"] = len(insns)\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nout[\"mem_refs\"] = mem_refs\npath = os.path.join(\"/Users/yuluo/ghidra_scripts/water-owner\", out[\"name\"] + \".json\")\nwith open(path, \"w\") as fh:\n    json.dump(out, fh)\nprint(json.dumps({\"name\": out[\"name\"], \"entry\": out[\"entry\"], \"size\": out[\"size\"],\n                   \"insn_count\": len(insns), \"calls\": len(call_targets),\n                   \"mem_refs\": len(mem_refs), \"file\": path,\n                   \"decompile_error\": out.get(\"decompile_error\")}))\n",
+        "timeoutSeconds": 300
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"name\\\": \\\"copy_to_staging<512>\\\", \\\"entry\\\": \\\"142261760\\\", \\\"size\\\": 1135, \\\"insn_count\\\": 280, \\\"calls\\\": 17, \\\"mem_refs\\\": 24, \\\"file\\\": \\\"/Users/yuluo/ghidra_scripts/water-owner/copy_to_staging<512>.json\\\", \\\"decompile_error\\\": null}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":378}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json, os\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x142262680\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x142262680\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nout[\"size\"] = f.getBody().getNumAddresses() if f.getBody().contains(addr) else -1\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    if not res.decompileCompleted():\n        out[\"decompile_error\"] = str(res.getErrorMessage())\n        out[\"decompiled\"] = None\n    else:\n        out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nmonitor.checkCancelled()\nbody = f.getBody()\nlisting = prog.getListing()\nit = listing.getInstructions(body, True)\ninsns = []\nrefmgr = prog.getReferenceManager()\ncall_targets = {}\nmem_refs = []\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                if nm not in call_targets:\n                    call_targets[nm] = str(to)\n    if mnem in (\"LEA\", \"MOV\", \"MOVSD\", \"MOVSS\", \"CMP\", \"TEST\"):\n        for i in range(ins.getNumOperands()):\n            refs = refmgr.getReferencesFrom(a, i)\n            for r in refs:\n                rt = r.getReferenceType()\n                to = r.getToAddress()\n                if str(to)[0:3] in (\"140\", \"141\", \"142\", \"143\"):\n                    target = fm.getFunctionAt(to)\n                    tname = str(target.getName()) if target else \"\"\n                    mem_refs.append([str(a), str(to), str(rt), tname])\nout[\"insn_count\"] = len(insns)\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nout[\"mem_refs\"] = mem_refs\npath = os.path.join(\"/Users/yuluo/ghidra_scripts/water-owner\", out[\"name\"] + \".json\")\nwith open(path, \"w\") as fh:\n    json.dump(out, fh)\nprint(json.dumps({\"name\": out[\"name\"], \"entry\": out[\"entry\"], \"size\": out[\"size\"],\n                   \"insn_count\": len(insns), \"calls\": len(call_targets),\n                   \"mem_refs\": len(mem_refs), \"file\": path,\n                   \"decompile_error\": out.get(\"decompile_error\")}))\n",
+        "timeoutSeconds": 300
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json, os\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x142262680\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x142262680\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nout[\"size\"] = f.getBody().getNumAddresses() if f.getBody().contains(addr) else -1\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    if not res.decompileCompleted():\n        out[\"decompile_error\"] = str(res.getErrorMessage())\n        out[\"decompiled\"] = None\n    else:\n        out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nmonitor.checkCancelled()\nbody = f.getBody()\nlisting = prog.getListing()\nit = listing.getInstructions(body, True)\ninsns = []\nrefmgr = prog.getReferenceManager()\ncall_targets = {}\nmem_refs = []\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                if nm not in call_targets:\n                    call_targets[nm] = str(to)\n    if mnem in (\"LEA\", \"MOV\", \"MOVSD\", \"MOVSS\", \"CMP\", \"TEST\"):\n        for i in range(ins.getNumOperands()):\n            refs = refmgr.getReferencesFrom(a, i)\n            for r in refs:\n                rt = r.getReferenceType()\n                to = r.getToAddress()\n                if str(to)[0:3] in (\"140\", \"141\", \"142\", \"143\"):\n                    target = fm.getFunctionAt(to)\n                    tname = str(target.getName()) if target else \"\"\n                    mem_refs.append([str(a), str(to), str(rt), tname])\nout[\"insn_count\"] = len(insns)\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nout[\"mem_refs\"] = mem_refs\npath = os.path.join(\"/Users/yuluo/ghidra_scripts/water-owner\", out[\"name\"] + \".json\")\nwith open(path, \"w\") as fh:\n    json.dump(out, fh)\nprint(json.dumps({\"name\": out[\"name\"], \"entry\": out[\"entry\"], \"size\": out[\"size\"],\n                   \"insn_count\": len(insns), \"calls\": len(call_targets),\n                   \"mem_refs\": len(mem_refs), \"file\": path,\n                   \"decompile_error\": out.get(\"decompile_error\")}))\n",
+        "timeoutSeconds": 300
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"name\\\": \\\"copy_composite_to_scratch<512>\\\", \\\"entry\\\": \\\"142262680\\\", \\\"size\\\": 795, \\\"insn_count\\\": 206, \\\"calls\\\": 11, \\\"mem_refs\\\": 25, \\\"file\\\": \\\"/Users/yuluo/ghidra_scripts/water-owner/copy_composite_to_scratch<512>.json\\\", \\\"decompile_error\\\": null}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":331}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json, os\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x142262a60\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x142262a60\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nout[\"size\"] = f.getBody().getNumAddresses() if f.getBody().contains(addr) else -1\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    if not res.decompileCompleted():\n        out[\"decompile_error\"] = str(res.getErrorMessage())\n        out[\"decompiled\"] = None\n    else:\n        out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nmonitor.checkCancelled()\nbody = f.getBody()\nlisting = prog.getListing()\nit = listing.getInstructions(body, True)\ninsns = []\nrefmgr = prog.getReferenceManager()\ncall_targets = {}\nmem_refs = []\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                if nm not in call_targets:\n                    call_targets[nm] = str(to)\n    if mnem in (\"LEA\", \"MOV\", \"MOVSD\", \"MOVSS\", \"CMP\", \"TEST\"):\n        for i in range(ins.getNumOperands()):\n            refs = refmgr.getReferencesFrom(a, i)\n            for r in refs:\n                rt = r.getReferenceType()\n                to = r.getToAddress()\n                if str(to)[0:3] in (\"140\", \"141\", \"142\", \"143\"):\n                    target = fm.getFunctionAt(to)\n                    tname = str(target.getName()) if target else \"\"\n                    mem_refs.append([str(a), str(to), str(rt), tname])\nout[\"insn_count\"] = len(insns)\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nout[\"mem_refs\"] = mem_refs\npath = os.path.join(\"/Users/yuluo/ghidra_scripts/water-owner\", out[\"name\"] + \".json\")\nwith open(path, \"w\") as fh:\n    json.dump(out, fh)\nprint(json.dumps({\"name\": out[\"name\"], \"entry\": out[\"entry\"], \"size\": out[\"size\"],\n                   \"insn_count\": len(insns), \"calls\": len(call_targets),\n                   \"mem_refs\": len(mem_refs), \"file\": path,\n                   \"decompile_error\": out.get(\"decompile_error\")}))\n",
+        "timeoutSeconds": 300
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json, os\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256()), \"program\": str(prog.getName())}\naddr = prog.getAddressFactory().getAddress(\"0x142262a60\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x142262a60\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nout[\"size\"] = f.getBody().getNumAddresses() if f.getBody().contains(addr) else -1\nmonitor.checkCancelled()\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    if not res.decompileCompleted():\n        out[\"decompile_error\"] = str(res.getErrorMessage())\n        out[\"decompiled\"] = None\n    else:\n        out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nmonitor.checkCancelled()\nbody = f.getBody()\nlisting = prog.getListing()\nit = listing.getInstructions(body, True)\ninsns = []\nrefmgr = prog.getReferenceManager()\ncall_targets = {}\nmem_refs = []\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                if nm not in call_targets:\n                    call_targets[nm] = str(to)\n    if mnem in (\"LEA\", \"MOV\", \"MOVSD\", \"MOVSS\", \"CMP\", \"TEST\"):\n        for i in range(ins.getNumOperands()):\n            refs = refmgr.getReferencesFrom(a, i)\n            for r in refs:\n                rt = r.getReferenceType()\n                to = r.getToAddress()\n                if str(to)[0:3] in (\"140\", \"141\", \"142\", \"143\"):\n                    target = fm.getFunctionAt(to)\n                    tname = str(target.getName()) if target else \"\"\n                    mem_refs.append([str(a), str(to), str(rt), tname])\nout[\"insn_count\"] = len(insns)\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nout[\"mem_refs\"] = mem_refs\npath = os.path.join(\"/Users/yuluo/ghidra_scripts/water-owner\", out[\"name\"] + \".json\")\nwith open(path, \"w\") as fh:\n    json.dump(out, fh)\nprint(json.dumps({\"name\": out[\"name\"], \"entry\": out[\"entry\"], \"size\": out[\"size\"],\n                   \"insn_count\": len(insns), \"calls\": len(call_targets),\n                   \"mem_refs\": len(mem_refs), \"file\": path,\n                   \"decompile_error\": out.get(\"decompile_error\")}))\n",
+        "timeoutSeconds": 300
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"name\\\": \\\"commit_scratch_to_composite<512>\\\", \\\"entry\\\": \\\"142262a60\\\", \\\"size\\\": 795, \\\"insn_count\\\": 206, \\\"calls\\\": 11, \\\"mem_refs\\\": 25, \\\"file\\\": \\\"/Users/yuluo/ghidra_scripts/water-owner/commit_scratch_to_composite<512>.json\\\", \\\"decompile_error\\\": null}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":330}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "get-function-count",
+        "title": "Get Function Count",
+        "description": "Get the total count of functions in the program (use this before calling get-functions to plan pagination)",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program to get functions from",
+              "type": "string"
+            },
+            "filterDefaultNames": {
+              "type": "boolean",
+              "description": "Whether to filter out default Ghidra generated names like FUN_, DAT_, etc.",
+              "default": true
+            }
+          },
+          "required": [
+            "programPath"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "set-function-prototype",
+        "title": "Set Function Prototype",
+        "description": "Set or update a function prototype using C-style function signatures. Can create new functions or update existing ones.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program",
+              "type": "string"
+            },
+            "signature": {
+              "description": "C-style function signature (e.g., 'int main(int argc, char** argv)')",
+              "type": "string"
+            },
+            "location": {
+              "description": "Address or symbol name where the function is located",
+              "type": "string"
+            },
+            "createIfNotExists": {
+              "type": "boolean",
+              "description": "Create function if it doesn't exist at the location",
+              "default": true
+            }
+          },
+          "required": [
+            "programPath",
+            "location",
+            "signature"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get-decompilation",
+        "title": "Get Function Decompilation",
+        "description": "Get decompiled code for a function with line range support. Defaults to 50 lines to conserve context - start with small chunks (10-20 lines) then expand as needed using offset/limit. Updating variable data types and names can significantly improve decompilation quality. Use includeCallers/includeCallees to get caller/callee lists in one call (avoids separate tool invocations).",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "functionNameOrAddress": {
+              "description": "Function name, address, or symbol to decompile (e.g. 'main', '0x00401000', or 'start'). For addresses pointing inside a function, the containing function will be decompiled.",
+              "type": "string"
+            },
+            "includeCallers": {
+              "type": "boolean",
+              "description": "Include list of functions that call this one (name, address, signature). Use for understanding function usage without bulk decompilation.",
+              "default": false
+            },
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program containing the function",
+              "type": "string"
+            },
+            "offset": {
+              "type": "integer",
+              "description": "Line number to start reading from (1-based). Defaults to 1.",
+              "default": 1
+            },
+            "includeDisassembly": {
+              "type": "boolean",
+              "description": "Whether to include assembly listing alongside decompilation for sync",
+              "default": false
+            },
+            "includeIncomingReferences": {
+              "type": "boolean",
+              "description": "Whether to include incoming cross references to this function on the function declaration line",
+              "default": false
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Number of lines to return. Defaults to 50 lines to conserve context. Use smaller chunks (10-20 lines) for initial exploration, then expand as needed.",
+              "default": 50
+            },
+            "includeReferenceContext": {
+              "type": "boolean",
+              "description": "Whether to include code context snippets from calling functions (requires includeIncomingReferences)",
+              "default": false
+            },
+            "includeComments": {
+              "type": "boolean",
+              "description": "Whether to include comments in the decompilation output",
+              "default": false
+            },
+            "includeCallees": {
+              "type": "boolean",
+              "description": "Include list of functions this one calls (name, address, signature). Use for understanding function dependencies without bulk decompilation.",
+              "default": false
+            },
+            "signatureOnly": {
+              "type": "boolean",
+              "description": "Return only signature/metadata without decompiled code. Saves output tokens.",
+              "default": false
+            }
+          },
+          "required": [
+            "programPath",
+            "functionNameOrAddress"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find-cross-references",
+        "title": "Find Cross References",
+        "description": "Find all references to or from a memory location, symbol, or function. Returns incoming and/or outgoing references with optional decompilation context.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "includeContext": {
+              "type": "boolean",
+              "description": "Include decompilation context snippets for code references",
+              "default": false
+            },
+            "contextLines": {
+              "type": "integer",
+              "description": "Number of lines before and after to include in context snippets",
+              "default": 2
+            },
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program to get references from",
+              "type": "string"
+            },
+            "offset": {
+              "type": "integer",
+              "description": "Starting offset for pagination (0-based)",
+              "default": 0
+            },
+            "includeFlow": {
+              "type": "boolean",
+              "description": "Include flow references (calls, jumps, branches)",
+              "default": true
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum number of references to return per direction",
+              "default": 100
+            },
+            "location": {
+              "description": "Address or symbol name to get references for (e.g., '0x00400123', 'main', 'FUN_00401000')",
+              "type": "string"
+            },
+            "includeData": {
+              "type": "boolean",
+              "description": "Include data references (reads, writes)",
+              "default": true
+            },
+            "direction": {
+              "enum": [
+                "to",
+                "from",
+                "both"
+              ],
+              "type": "string",
+              "default": "both",
+              "description": "Direction of references to retrieve: 'to' (incoming), 'from' (outgoing), or 'both' (default)"
+            }
+          },
+          "required": [
+            "programPath",
+            "location"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get-data-type-by-string",
+        "title": "Get Data Type by String",
+        "description": "Get a data type by its string representation",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program",
+              "type": "string"
+            },
+            "dataTypeString": {
+              "description": "String representation of the data type (e.g., 'char**', 'int[10]')",
+              "type": "string"
+            },
+            "archiveName": {
+              "type": "string",
+              "description": "Optional name of the data type archive to search in. If not provided, all archives will be searched.",
+              "default": ""
+            }
+          },
+          "required": [
+            "programPath",
+            "dataTypeString"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "run-script",
+        "title": "Run Python Script",
+        "description": "Execute a Python script in the Ghidra PyGhidra runtime against a specific program. Requires Ghidra to be launched via PyGhidra (mcp-reva or pyghidra-gui). Returns captured stdout/stderr, duration, and timeout flag. Script failures appear in stderr with success=false; tool failures (bad args, PyGhidra unavailable) are MCP errors. Cancellation is cooperative: long-running scripts should periodically check monitor.isCancelled() so the timeout can fire on tight loops.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path to an existing .py script to run.",
+              "type": "string"
+            },
+            "programPath": {
+              "description": "Path to the program in the Ghidra Project",
+              "type": "string"
+            },
+            "code": {
+              "description": "Inline Python source. The script runs as a Ghidra script with currentProgram, FlatProgramAPI helpers, and monitor available. Wrap state changes in currentProgram.startTransaction(...) / endTransaction(...) yourself \u2014 the tool does not open a transaction. Provide exactly one of: code, scriptPath, scriptName.",
+              "type": "string"
+            },
+            "scriptName": {
+              "description": "Name of a script (e.g., 'MyAnalysis.py') resolved across registered Ghidra script directories.",
+              "type": "string"
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "description": "Per-call timeout override in seconds. Defaults to the configured script timeout.",
+              "default": 60
+            }
+          },
+          "required": [
+            "programPath"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list-scripts",
+        "title": "List Scripts",
+        "description": "List Python scripts visible to Ghidra across all registered script directories (user dir + system dirs + bundle dirs). Filterable by path or name; supports pagination.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "pathFilter": {
+              "type": "string",
+              "description": "Optional substring filter on script absolute path",
+              "default": ""
+            },
+            "startIndex": {
+              "type": "integer",
+              "description": "Pagination start (0-indexed)",
+              "default": 0
+            },
+            "nameFilter": {
+              "type": "string",
+              "description": "Optional substring filter on script file name",
+              "default": ""
+            },
+            "maxCount": {
+              "type": "integer",
+              "description": "Maximum entries to return",
+              "default": 100
+            }
+          },
+          "required": []
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read-script",
+        "title": "Read Script",
+        "description": "Read a script's source, returned with cat -n style line numbers so you can reference exact lines in edit-script. Supports chunked reads via offset/limit. Sets truncated=true if more lines remain.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path to the script. Provide either scriptPath or scriptName.",
+              "type": "string"
+            },
+            "offset": {
+              "type": "integer",
+              "description": "1-indexed starting line",
+              "default": 1
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum lines to return",
+              "default": 2000
+            },
+            "scriptName": {
+              "description": "Script file name resolved across registered script directories.",
+              "type": "string"
+            }
+          },
+          "required": []
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "write-script",
+        "title": "Write Script",
+        "description": "Create a new script or fully replace an existing one in a writeable script directory. System directories are read-only. Use edit-script for targeted changes instead of full rewrites.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path; must resolve under a writeable script directory.",
+              "type": "string"
+            },
+            "code": {
+              "description": "Script source to write.",
+              "type": "string"
+            },
+            "scriptName": {
+              "description": "File name (e.g., 'MyAnalysis.py') \u2014 written to the default writeable scripts directory.",
+              "type": "string"
+            },
+            "overwrite": {
+              "type": "boolean",
+              "description": "Overwrite existing file. Default false: errors if file exists.",
+              "default": false
+            }
+          },
+          "required": [
+            "code"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "edit-script",
+        "title": "Edit Script",
+        "description": "Replace exact old_string with new_string in a script. Errors if old_string isn't found, or if it matches multiple locations and replace_all is false. Use this instead of write-script when iterating on an existing script.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path to the script to edit (must be writeable).",
+              "type": "string"
+            },
+            "old_string": {
+              "description": "Exact text to find. Must occur exactly once unless replace_all is true; surround with enough context to make it unique.",
+              "type": "string"
+            },
+            "scriptName": {
+              "description": "Script file name resolved under the default writeable scripts directory.",
+              "type": "string"
+            },
+            "replace_all": {
+              "type": "boolean",
+              "description": "Replace every occurrence. Default false: errors if old_string matches more than one location.",
+              "default": false
+            },
+            "new_string": {
+              "description": "Replacement text. Must differ from old_string.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "old_string",
+            "new_string"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

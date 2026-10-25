@@ -1,0 +1,111 @@
+Analyze this bounded decompiled game function excerpt. No tools, answer directly. Identify metronome counter progression and deletion candidate algorithm. Do not invent constant values beyond 300,600,3600,7200 table. Distinguish unrelated inactivity gating. Output concise pseudocode and uncertainties.
+  pppppppfStack_138 = uStack_120;
+  pppppppfStack_e0 = pppppppfStack_118;
+  ppppppfVar39 = (float ******)ppppppfStack_3a8[4];
+  if (ppppppfStack_3a8[3] == (float *****)0x0) {
+    bVar74 = false;
+    ppppppfVar42 = (float ******)*uStack_158;
+    *uStack_158 = (float *****)ppppppfVar39;
+    if (ppppppfVar39 != ppppppfVar42) goto code_r0x000140a3fbb9;
+    ppppppfVar39 = uStack_150;
+    if (uStack_150[2] == (float *****)0x0) {
+      ppppppfVar39 = (float ******)0x0;
+      bVar74 = SBORROW8(0,(longlong)pppppppfStack_d0[6]);
+    }
+  }
+  else {
+    *uStack_158 = (float *****)ppppppfVar39;
+code_r0x000140a3fbb9:
+    bVar74 = false;
+  }
+  uStack_158 = (float ******)
+               CONCAT44(uStack_158._4_4_,(int)CONCAT71((int7)((ulonglong)ppppppfVar39 >> 8),1));
+  pppppppfStack_168 = uStack_128;
+  if (*(float *)(pppppppfVar62 + 0x29) <= _UNK_1429d18cc &&
+      _UNK_1429d18cc != *(float *)(pppppppfVar62 + 0x29)) {
+    if (*(float *)(pppppppfVar46 + 5) < 0.0) {
+      FUN_1428d9430(&UNK_142a9f2c0,0x32,&UNK_142a9f330);
+      goto code_r0x000140a4248a;
+    }
+    fVar75 = *(float *)(pppppppfVar46 + 5) + *(float *)((longlong)pppppppfVar62 + 0x144);
+    *(float *)((longlong)pppppppfVar62 + 0x144) = fVar75;
+    if (bVar74) {
+      uStack_150 = (float ******)CONCAT44(uStack_150._4_4_,2);
+      fVar76 = 0.0;
+      if (0.0 <= fVar75) {
+        fVar76 = fVar75;
+      }
+      fVar75 = _UNK_142934604;
+      if (fVar76 <= _UNK_142934604) {
+        fVar75 = fVar76;
+      }
+      *(float *)((longlong)pppppppfVar62 + 0x144) = fVar75;
+      if (_UNK_142925904 <= fVar75) {
+        pppppppfVar46 = (float *******)(ulonglong)*(uint *)(pppppppfVar62 + 0x28);
+        puVar60 = &UNK_142a9f354;
+        while( true ) {
+          uVar57 = (uint)pppppppfVar46;
+          fVar75 = fVar75 + _UNK_14295a0e4;
+          if ((int)((ulonglong)pppppppfVar46 / 0x1c20) * 0x1c20 == uVar57) break;
+          if ((int)((ulonglong)pppppppfVar46 / 0xe10) * 0xe10 == uVar57) {
+            uVar61 = 0xe10;
+            puVar60 = &UNK_142a9f350;
+            goto code_r0x000140a41039;
+          }
+          if ((int)((ulonglong)pppppppfVar46 / 600) * 600 == uVar57) {
+            uVar61 = 600;
+            puVar60 = &UNK_142a9f34c;
+            goto code_r0x000140a41039;
+          }
+          if ((int)((ulonglong)pppppppfVar46 / 300) * 300 == uVar57) {
+            uVar61 = 300;
+            puVar60 = &UNK_142a9f348;
+            goto code_r0x000140a41039;
+          }
+          pppppppfVar46 = (float *******)(ulonglong)(uVar57 + 1);
+          if (fVar75 < _UNK_142925904) goto code_r0x000140a3fd27;
+        }
+        uVar61 = 0x1c20;
+code_r0x000140a41039:
+        *(float *)((longlong)pppppppfStack_c0 + 0x144) = fVar75;
+        *(uint *)(pppppppfStack_c0 + 0x28) = uVar57 + 1;
+        if (uVar57 < uVar61) goto code_r0x000140a41054;
+        pppppppfVar62 = pppppppfVar46;
+        uVar57 = uVar57 - uVar61;
+        if (puVar60 + -0x142a9f348 < (undefined *)0x10) {
+          do {
+            uVar57 = (int)pppppppfVar62 - uVar61;
+            puVar65 = puVar60 + -0x142a9f348;
+            do {
+              if (puVar65 == (undefined *)0xc) goto code_r0x000140a410c6;
+              puVar2 = (uint *)(&UNK_142a9f34c + (longlong)puVar65);
+              if (*puVar2 == 0) {
+                FUN_1428d9a20(&UNK_142c6e9d8);
+                goto code_r0x000140a4248a;
+              }
+              puVar65 = puVar65 + 4;
+            } while (uVar57 % *puVar2 != 0);
+            pppppppfVar62 = (float *******)(ulonglong)uVar57;
+          } while (uVar61 <= uVar57);
+code_r0x000140a41054:
+          uStack_158 = (float ******)((ulonglong)uStack_158._4_4_ << 0x20);
+          uStack_150 = (float ******)((ulonglong)uStack_150._4_4_ << 0x20);
+        }
+        else {
+code_r0x000140a410c6:
+          uStack_2d4 = uVar57;
+          uStack_150 = (float ******)CONCAT44(uStack_150._4_4_,1);
+          uStack_158 = (float ******)((ulonglong)uStack_158._4_4_ << 0x20);
+        }
+      }
+      goto code_r0x000140a3fd42;
+    }
+  }
+  uStack_150 = (float ******)CONCAT44(uStack_150._4_4_,2);
+  goto code_r0x000140a3fd42;
+code_r0x000140a3fd27:
+  *(float *)((longlong)pppppppfStack_c0 + 0x144) = fVar75;
+  *(uint *)(pppppppfStack_c0 + 0x28) = uVar57 + 1;
+code_r0x000140a3fd42:
+  ppppppfVar39 = pppppppfStack_160[1];
+  pppppfVar54 = **pppppppfStack_160;

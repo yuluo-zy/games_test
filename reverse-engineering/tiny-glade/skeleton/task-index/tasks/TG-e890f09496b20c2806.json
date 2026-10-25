@@ -1,0 +1,135 @@
+{
+  "id": "TG-e890f09496b20c2806",
+  "source_path": "crates/tiny-glade/src/crash_pickup/mod.rs",
+  "category": "business",
+  "target_version": "C",
+  "versions": [
+    "A",
+    "B",
+    "C"
+  ],
+  "priority_score": 30,
+  "family": "other_game_or_owner_review",
+  "claim_mode": "candidate_reconstruction",
+  "cross_version_pairs": [
+    {
+      "versions": [
+        "A",
+        "B"
+      ],
+      "same_file_source_checksum_set": true,
+      "shared_source_checksums": [
+        "aa37d61f3104ab6776320fbc70138c286f9501f28d0b3582dc3fe5dfe1abb98f"
+      ],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    },
+    {
+      "versions": [
+        "A",
+        "C"
+      ],
+      "same_file_source_checksum_set": false,
+      "shared_source_checksums": [],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    },
+    {
+      "versions": [
+        "B",
+        "C"
+      ],
+      "same_file_source_checksum_set": false,
+      "shared_source_checksums": [],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    }
+  ],
+  "function_ids": [
+    "275fbfb7df65d3463d",
+    "299e3b482552d44b70",
+    "2b6c4cebb0400d3640",
+    "2e7d35c3359df2d7ca",
+    "665fc238ec18d3ce66",
+    "906775fad7085ce859",
+    "90cef547c8527917bb",
+    "a0f6bd0393ae0474d2",
+    "abeb59da4eec8a7126",
+    "be6a127621da85461c",
+    "e64933d02de05d048c",
+    "f546f4d96d692231fd",
+    "174365678ad3735514",
+    "1df9ae692bb8675580",
+    "239c349fb9fd8e5a25",
+    "3fd2cd3d46732ac436",
+    "52c973f05c196f827c",
+    "6a218bb8848a8a85c1",
+    "6fdf709d685a8dc642",
+    "78aaba66cfe92b7f48",
+    "7e855edb302437cec2",
+    "b4e270a393a680fec5",
+    "d8e67b246385c877bd",
+    "d9c58ea0e199769449",
+    "db3eb29e4031cf5000",
+    "03cfda5a19b0dfaa16",
+    "0aab55d93a0f4edea6",
+    "169928648b12cc2797",
+    "329525bf65f16a0c3a",
+    "5f5a3dcb2549e9c388",
+    "84c09ec6671fc815c1",
+    "a701289a1564ed1f12",
+    "adfa5801ce66df1502",
+    "b96c8f03714f67e8a9",
+    "c961d8748ec9a4d153",
+    "d8fc4a6157fe55b502",
+    "eaea2c1f53c5d265c2"
+  ],
+  "related_callee_tasks": [
+    "TG-dc2ce5a55f8bfad8d2",
+    "TG-09d67191d14123a3f2"
+  ],
+  "related_caller_tasks": [
+    "TG-135f736ac5c9d1ccab",
+    "TG-f85fffa142cf9ba9eb",
+    "TG-c459c7f73345e24709"
+  ],
+  "source_inputs": {
+    "A": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/A/crates/tiny-glade/src/crash_pickup/mod.rs",
+      "sha256": "200f3428bdf53408c3e18452387493eba7713c1c281a4d70bebe71ef4e2becc1",
+      "binary_sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708",
+      "pdb_sha256": "d5d4001583e31abf20b1563bbfdd9e4853629065aa2e461fe5809b205db908a5"
+    },
+    "B": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/B/crates/tiny-glade/src/crash_pickup/mod.rs",
+      "sha256": "9bc26c98e72d433ac03dc78bd57681e1f5c242e8392caf6f28b2333a70b7d145",
+      "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+      "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911"
+    },
+    "C": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/C/crates/tiny-glade/src/crash_pickup/mod.rs",
+      "sha256": "6236febc837a3bf1f77717a2883536bb8044da9a12f102adeebf42108b9d520d",
+      "binary_sha256": "d8f9261b1a4cb677fe91b8f5017bcff63b1312228b3f3264a2071ca7d3ad80a9",
+      "pdb_sha256": "df472d8e6ae642baed96127151b18685291468518ea8dc71557bce4508c78902"
+    }
+  },
+  "assignment_unit": "one source-file family across A/B/C; one owner to prevent overlapping file edits",
+  "deliverable": "independent candidate Rust + ABI/field/dependency contracts + producer/consumer and removal/history boundaries + evidence handoff",
+  "implementation_status": "not_assessed; existing Rust must be checked before duplicate work",
+  "semantic_acceptance": false,
+  "existing_reconstruction_candidates": [
+    "reconstruction/building/wall_arches.rs",
+    "reconstruction/building/wall_production.rs",
+    "reconstruction/building/wall_structures.rs",
+    "reconstruction/crates/tg-history/src/lib.rs",
+    "reconstruction/history/building_transactions.rs"
+  ],
+  "known_B_evidence_function_ids": [],
+  "data_structure_metadata": {
+    "A": "skeleton/A/crates/tiny-glade/src/crash_pickup/mod.rs.structures.json.gz",
+    "B": "skeleton/B/crates/tiny-glade/src/crash_pickup/mod.rs.structures.json.gz",
+    "C": "skeleton/C/crates/tiny-glade/src/crash_pickup/mod.rs.structures.json.gz"
+  },
+  "handoff": "task-index/handoffs/TG-e890f09496b20c2806.json",
+  "handoff_audit": "task-index/handoffs/TG-e890f09496b20c2806.audit.json"
+}

@@ -1,0 +1,54 @@
+{
+  "status": "passed_scoped_business_static_no_registration_or_diagnostics_acceptance",
+  "manifest_sha256": "cd94e72dc4c4e3052966d708b039b4bb64ffa089e9e813df8796e14ac6e4f620",
+  "candidate_sha256": "c86444c77352782c7572396e16886e55ff2820c56e16de7c2536d927a346b07b",
+  "checks": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-69cc2f973d7c14cb28/scene-clutter-producer-20261020/collider-only-v1/source/blueprint.rs",
+      "sha256": "c86444c77352782c7572396e16886e55ff2820c56e16de7c2536d927a346b07b",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-69cc2f973d7c14cb28/scene-clutter-producer-20261020/collider-only-v1/after-blueprint-43c.patch",
+      "sha256": "1682d606401a49996d52e98fdea3c1ac3af6a974f44704e7ac886686c088653c",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-69cc2f973d7c14cb28/scene-clutter-producer-20261020/collider-only-v1/full-from-original.patch",
+      "sha256": "e1bc28b86b9a8a2896c708016c700211a1f9eb3b1b2e0aff0d429e4fbae90bd1",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/blueprint.rs",
+      "sha256": "8e6fa6e6e151397af1565a377fdf7b12ba184cdfecc554763b84079274ee1181",
+      "matches_original_or_reviewed_producer": true
+    }
+  ],
+  "dependencies": [
+    "Reviewed canonical physics world e06d4429 with consumer7603 (root integrated).",
+    "Reviewed producer/helper v2 and same canonical catalog/startup.",
+    "Root explicit country-core/native-physics local dependency in system-decorator."
+  ],
+  "findings": [
+    "Actual wrapper uses required RaycastWorld/DecoratorPhysicsColliders/current/previous ECS resources. Helper takes same actual owners and uses existing two std HashMaps keyed DecoratorId. No duplicate map/source registry or private cross-crate resolver misuse.",
+    "Both removal sets originate from live maps. Same Arc identity is tested before u138 and removes IDs from both pending sets. Changed u138 skips upserts, leaves pending keys for real cleanup.",
+    "First Mesh resolves actual storage/id source and calls real canonical upsert; first Disabled/Unspecified skips. Second Mesh preserves actual flag byte and source factory; Disabled skips; Unspecified panics after first upsert can already have changed world. No eager validation/transaction rewrites native side-effect order.",
+    "Only Kept/Replaced removes an existing pending ID; Inserted could not have existed in the initial same-map keyset. Remaining first map then second map keys call canonical remove even with empty current/previous.",
+    "Tests query actual receipt.registry_index/generation through public get_collider_mesh and use returned physical handle only for subworld/raycast. They distinguish full/shrunk primitive ray hit6.0/6.25, sameArc-before-skip, partial side effect after invalid secondslot, and stale live map cleanup independent of previous keys.",
+    "No whole visual consumer, set25/current copy scheduling or whole decorator plugin registration added. PHYSICS_DEBUG_LOG_ENABLE gated logs remain explicitly unrecovered; no invented global or disabled runtime flag."
+  ],
+  "test_source_scope": {
+    "new_cases": 4,
+    "run": "not run; no Cargo/typecheck/CPU/GPU execution by reviewer",
+    "limits": "Tests call actual helper directly; no complete Bevy production schedule/registration, original debug log or fullvisual acceptance."
+  },
+  "integration_options": "Apply full-from-original.patch if current8e6; apply after-blueprint-43c.patch if current43c. Match exact before, do not overwrite unrelated current edits.",
+  "remaining": [
+    "Original flag/log observable side effects missing.",
+    "Exact previous-map copy phase and original integration/order still unresolved.",
+    "Full14-param visual/holes/cloth/window/tracker consumers unresolved.",
+    "Admitted0x3e placement and five helper/atlas kind input domains unresolved.",
+    "Unrelated scalar new_cuboid_collider legacy callers still explicitNone, not falsely counted recovered.",
+    "No fullgame/WSI/GPU or performance result."
+  ]
+}

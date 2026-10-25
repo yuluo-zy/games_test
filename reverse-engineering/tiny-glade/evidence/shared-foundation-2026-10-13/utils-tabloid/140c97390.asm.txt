@@ -1,0 +1,59 @@
+utils::camera::CameraProjectionParams::calc_matrices::ha4168fdbac703f7b
+0x140c97390: push rsi
+0x140c97391: push rdi
+0x140c97392: sub rsp, 0x58
+0x140c97396: movaps xmmword ptr [rsp + 0x40], xmm8
+0x140c9739c: movaps xmmword ptr [rsp + 0x30], xmm7
+0x140c973a1: movaps xmmword ptr [rsp + 0x20], xmm6
+0x140c973a6: mov rdi, rdx
+0x140c973a9: mov rsi, rcx
+0x140c973ac: movd xmm8, dword ptr [rdx + 4]
+0x140c973b2: movss xmm6, dword ptr [rdx + 8]
+0x140c973b7: mulss xmm6, dword ptr [rip + 0x1e140f1] ; [0x142aab4b0]=35fa8e3c f32=0.01745329238474369
+0x140c973bf: mulss xmm6, dword ptr [rip + 0x1c8e4a9] ; [0x142925870]=0000003f f32=0.5
+0x140c973c7: movaps xmm0, xmm6
+0x140c973ca: call 0x142923e80
+0x140c973cf: movaps xmm7, xmm0
+0x140c973d2: movaps xmm0, xmm6
+0x140c973d5: call 0x142923fd0
+0x140c973da: divss xmm7, xmm0
+0x140c973de: movaps xmm0, xmm7
+0x140c973e1: divss xmm0, dword ptr [rdi]
+0x140c973e5: xorps xmm1, xmm1
+0x140c973e8: xorps xmm2, xmm2
+0x140c973eb: movss xmm2, xmm0
+0x140c973ef: movq xmm3, xmm7
+0x140c973f3: shufps xmm3, xmm1, 0xe2
+0x140c973f7: movq xmm4, xmm8
+0x140c973fc: xorps xmm5, xmm5
+0x140c973ff: shufps xmm5, xmm4, 0x84
+0x140c97403: movss xmm4, dword ptr [rip + 0x1c8e4f9] ; [0x142925904]=0000803f f32=1.0
+0x140c9740b: movaps xmm6, xmm4
+0x140c9740e: divss xmm6, xmm0
+0x140c97412: xorps xmm0, xmm0
+0x140c97415: movss xmm0, xmm6
+0x140c97419: movaps xmm6, xmm4
+0x140c9741c: divss xmm6, xmm7
+0x140c97420: movq xmm6, xmm6
+0x140c97424: shufps xmm6, xmm1, 0xe2
+0x140c97428: divss xmm4, xmm8
+0x140c9742d: movq xmm4, xmm4
+0x140c97431: shufps xmm1, xmm4, 0x24
+0x140c97435: movaps xmmword ptr [rsi], xmm2
+0x140c97438: movaps xmmword ptr [rsi + 0x10], xmm3
+0x140c9743c: movaps xmm2, xmmword ptr [rip + 0x1e96f4d] ; [0x142b2e390]=00000000 f32=0.0
+0x140c97443: movaps xmmword ptr [rsi + 0x20], xmm2
+0x140c97447: movaps xmmword ptr [rsi + 0x30], xmm5
+0x140c9744b: movaps xmmword ptr [rsi + 0x40], xmm0
+0x140c9744f: movaps xmmword ptr [rsi + 0x50], xmm6
+0x140c97453: movaps xmmword ptr [rsi + 0x60], xmm1
+0x140c97457: movaps xmm0, xmmword ptr [rip + 0x1d799f2] ; [0x142a10e50]=00000000 f32=0.0
+0x140c9745e: movaps xmmword ptr [rsi + 0x70], xmm0
+0x140c97462: mov rax, rsi
+0x140c97465: movaps xmm6, xmmword ptr [rsp + 0x20]
+0x140c9746a: movaps xmm7, xmmword ptr [rsp + 0x30]
+0x140c9746f: movaps xmm8, xmmword ptr [rsp + 0x40]
+0x140c97475: add rsp, 0x58
+0x140c97479: pop rdi
+0x140c9747a: pop rsi
+0x140c9747b: ret 

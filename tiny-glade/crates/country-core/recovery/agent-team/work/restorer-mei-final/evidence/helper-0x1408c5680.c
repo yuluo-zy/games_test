@@ -1,0 +1,7 @@
+
+void __cdecl country_core::resources::walls::inner_wall_state::StructureType::is_fence(void)
+
+{
+  return;
+}
+

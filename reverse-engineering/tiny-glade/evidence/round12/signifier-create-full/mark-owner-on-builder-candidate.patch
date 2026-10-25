@@ -1,0 +1,38 @@
+--- a/crates/country-core/src/systems/ui/signifiers/signifier_mark_for_delete.rs
++++ b/crates/country-core/src/systems/ui/signifiers/signifier_mark_for_delete.rs
+@@ -2,7 +2,9 @@
+ //! 活动集合由创建系统统一维护；保留历史拼写 signfier 以兼容现有调用。
+ use bevy_ecs::prelude::*;
+ 
+-use super::signifier_create::{SignifierId, UiSignifierStream};
++use super::signifier_create::{record_id, SignifierId};
++use crate::systems::ui::resources::ui_state::UiState;
++use std::collections::HashSet;
+ 
+ /// 已标记删除的指示符实体（O：`SignifierMarkedForDeletion` 组件标记）。
+ #[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
+@@ -23,15 +25,22 @@
+ 
+ /// `signfier_mark_for_delete` @0x140929160（O）：按 live-hash 表 + 寿命对匹配实体打标记。
+ pub fn signfier_mark_for_delete(
+-    stream: Res<UiSignifierStream>,
++    ui: Res<UiState>,
+     query: Query<
+         (Entity, &SignifierId, Option<&SignifierMinimumLifespan>),
+         Without<SignifierMarkedForDeletion>,
+     >,
+     mut commands: Commands,
+ ) {
++    // Original local set is rebuilt from the captured active widget's actual
++    // factory list. No persistent Stream.active_ids table exists.
++    let active: HashSet<u64> = if ui.hover_byte() != 0 {
++        let widget = ui.active_widget();
++        ui.active_params().unwrap().signifiers.iter()
++            .map(|factory| record_id(widget, factory.name())).collect()
++    } else { HashSet::new() };
+     for (entity, id, lifespan) in &query {
+-        let is_live = stream.is_active(*id);
++        let is_live = active.contains(&id.0);
+         // Original UCOMISS/JA: a positive ordered lifespan comparison skips; unordered is expired.
+         let expired = lifespan.is_none_or(|lifespan| !(lifespan.min_lifespan > lifespan.t));
+         if !is_live && expired {

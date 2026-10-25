@@ -1,0 +1,88 @@
+{
+  "recorded_at": "2026-10-16T15:51:30.982075+00:00",
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "host": "aarch64-apple-darwin",
+  "rhapsody_source_sha256": "5d3616e1c5d7d29ddab21eb8875a15a5c1a5f76e986c20e67f2e96e646456edb",
+  "source_file_count": 153,
+  "checks": [
+    {
+      "name": "default-check",
+      "command": "cargo check -p rhapsody --offline --all-targets -j 2",
+      "cwd": "tiny-glade",
+      "exit_code": 0,
+      "log": "default-check.log",
+      "log_updated_at": "2026-10-16T15:44:23.827394+00:00"
+    },
+    {
+      "name": "no-default-check",
+      "command": "cargo check -p rhapsody --offline --no-default-features --all-targets -j 2",
+      "cwd": "tiny-glade",
+      "exit_code": 0,
+      "log": "no-default-check.log",
+      "log_updated_at": "2026-10-16T15:49:30.308702+00:00"
+    },
+    {
+      "name": "consumer-targets",
+      "command": "cargo check -p rhapsody -p tg-text -p tiny-glade --offline --all-features --all-targets -j 2",
+      "cwd": "tiny-glade",
+      "exit_code": 0,
+      "log": "consumer-targets.log",
+      "log_updated_at": "2026-10-16T15:44:57.764349+00:00"
+    },
+    {
+      "name": "country-core-lib",
+      "command": "cargo check -p rhapsody -p tg-text -p tiny-glade -p country-core --offline --all-features --lib -j 2",
+      "cwd": "tiny-glade",
+      "exit_code": 0,
+      "log": "country-core-lib.log",
+      "log_updated_at": "2026-10-16T15:39:56.984674+00:00"
+    },
+    {
+      "name": "all-tests",
+      "command": "cargo test -p rhapsody --offline --all-features --lib --tests --no-fail-fast -j 2 -- --nocapture",
+      "cwd": "tiny-glade",
+      "exit_code": 0,
+      "log": "all-tests.log",
+      "log_updated_at": "2026-10-16T15:42:52.455073+00:00"
+    },
+    {
+      "name": "targeted-tests",
+      "command": "cargo test -p rhapsody --offline --all-features --lib --test rg_fixes_cpu --test raw_fixes_graveyard --test device_api --test crash -j 2 -- --nocapture",
+      "cwd": "tiny-glade",
+      "exit_code": 0,
+      "log": "targeted-tests.log",
+      "log_updated_at": "2026-10-16T15:48:18.263260+00:00"
+    },
+    {
+      "name": "store-final",
+      "command": "cargo test -p rhapsody --offline --all-features --lib device_store_tests -j 2",
+      "cwd": "tiny-glade",
+      "exit_code": 0,
+      "log": "store-final.log",
+      "log_updated_at": "2026-10-16T15:50:10.792184+00:00"
+    },
+    {
+      "name": "strict-clippy",
+      "command": "cargo clippy -p rhapsody --offline --all-features --lib --tests --no-deps -j 2 -- -D warnings",
+      "cwd": "tiny-glade",
+      "exit_code": 0,
+      "log": "strict-clippy.log",
+      "log_updated_at": "2026-10-16T15:49:13.428600+00:00"
+    },
+    {
+      "name": "country-core-all-targets",
+      "command": "cargo check -p rhapsody -p tg-text -p tiny-glade -p country-core --offline --all-features --all-targets -j 2",
+      "cwd": "tiny-glade",
+      "exit_code": 101,
+      "log": "country-core-all-targets.log",
+      "log_updated_at": "2026-10-16T15:27:50.939842+00:00"
+    }
+  ],
+  "limits": [
+    "No Vulkan loader: GPU tests that return early are not GPU passes.",
+    "Windows-only Window Lab code and visible window behavior were not executed.",
+    "All-tests run: 367 passed, 0 failed, 1 ignored at that snapshot; later targeted tests cover the added GPU-retirement test (SKIP), descriptor validation, and final store change.",
+    "country-core all-targets fails in unchanged tests/wall_highlight.rs: CursorTerrainRaycast initializer lacks delta and speed.",
+    "No V0-V9 milestone is certified by this report. Milestone state lives in REFACTOR_PROGRESS.md."
+  ]
+}

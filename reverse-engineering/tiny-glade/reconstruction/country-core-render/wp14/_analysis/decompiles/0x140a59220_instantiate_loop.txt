@@ -1,0 +1,51 @@
+
+// WARNING: Removing unreachable block (ram,0x000140a59293)
+
+void __cdecl country_core::resources::audio_resources::AudioCore::instantiate_loop(void)
+
+{
+  undefined4 uVar1;
+  longlong *in_RCX;
+  longlong in_RDX;
+  longlong in_R8;
+  bool bVar2;
+  longlong local_70;
+  int *local_68;
+  longlong local_60;
+  
+  alloc::vec::spec_from_iter::impl$0::
+  from_iter<country_core::resources::audio_resources::AudioInstance,core::iter::adapters::GenericShunt<core::iter::adapters::map::Map<core::ops::range::Range<usize>,country_core::utils::audio_utils::impl_1::instantiate_loop::closure_env_0>,enum2_<core::result::Result<enum2_<core::convert::Infallible>,anyhow::Error>_>_>_>
+            ();
+  if (SBORROW8(0,local_70)) {
+    in_RCX[1] = (longlong)local_68;
+    *in_RCX = -0x8000000000000000;
+  }
+  else {
+    if (local_60 == 0) {
+                    // WARNING: Subroutine does not return
+      core::panicking::panic_bounds_check();
+    }
+    if (*local_68 == 1) {
+      libfmod::EventInstance::get_parameter_by_name();
+      if (in_RDX != -0x7ffffffffffffffc) {
+        core::ptr::drop_in_place<enum2_<libfmod::Error>_>();
+      }
+      bVar2 = in_RDX == -0x7ffffffffffffffc;
+    }
+    else {
+      bVar2 = false;
+    }
+    in_RCX[2] = local_60;
+    *in_RCX = local_70;
+    in_RCX[1] = (longlong)local_68;
+    uVar1 = *(undefined4 *)(in_R8 + 0x18);
+    *(undefined4 *)(in_RCX + 4) = 1000000000;
+    in_RCX[5] = 0;
+    *(undefined4 *)(in_RCX + 6) = uVar1;
+    *(undefined1 *)((longlong)in_RCX + 0x34) = 0;
+    *(bool *)((longlong)in_RCX + 0x35) = bVar2;
+    *(undefined1 *)((longlong)in_RCX + 0x36) = 0;
+  }
+  return;
+}
+

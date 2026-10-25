@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.program.model.symbol import SymbolType\nresults = {}\nsym = currentProgram.getSymbolTable()\n# find anon labels used in upload_rt_world / find_mesh_mesh_intersections FrozenMap::get name compares\nfor prefix in [\"107183261458dea85466985370debbb6_52\", \"107183261458dea85466985370debbb6_2_\", \"107183261458dea85466985370debbb6_93\", \"107183261458dea85466985370debbb6_35\"]:\n    it = sym.getSymbols(prefix)\n    found = []\n    for s in it:\n        addr = s.getAddress()\n        data = currentProgram.getMemory()\n        b = []\n        try:\n            for i in range(0, 80):\n                byte = data.getByte(addr.add(i))\n                if byte == 0:\n                    break\n                b.append(byte)\n        except Exception as e:\n            pass\n        found.append({\"label\": s.getName(), \"address\": str(addr), \"bytes\": b, \"str\": bytes(b).decode(\"utf-8\", errors=\"replace\")})\n    results[prefix] = found\nprint(json.dumps(results))\n",
+      "timeoutSeconds": 60
+    },
+    "timeout_seconds": 120
+  }
+]

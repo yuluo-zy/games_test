@@ -1,0 +1,62 @@
+{
+  "recorded_utc": "2026-10-24T07:30:51.137732+00:00",
+  "changes": [
+    "bounded packing of distinct physical upload targets into one existing staging slot/submit, preserving per-target FIFO and priority",
+    "single GPU timing configuration owner at begin_frame; identical settings retain actual in-flight queries",
+    "test-side first-frame extent/scale acceptance and periodic dimension metadata"
+  ],
+  "source_sha256": {
+    "crates/rhapsody/src/transfer.rs": "3357e8ba143d0938d4d30bcb527ed1d0bf1b9127fbff3d5f49181014c729e0a8",
+    "crates/rhapsody/src/transfer/queue.rs": "fac7da5d92004253a878f6d65505f0c8eb8417a479a9063001d84c7293479d76",
+    "crates/rhapsody/src/rg/profiling.rs": "a7a72d7e04d03b97310ccda21db2b705c1c3c0a34f1de5343b13c9e63ea6fa1d",
+    "crates/rhapsody/src/rg/vulkan.rs": "6e86efe9f5008d0c0e0f6af8841954ea6794d076a97d80c33b09e5e9c9bca601",
+    "crates/rhapsody/tests/transfers.rs": "e9a69bcd0b96c593d2fa8f171d646a92f14f6c0b584d0b638cbacc600e2a6a0b",
+    "crates/rhapsody/tests/gpu_timing.rs": "cd81b7c0c7f2eae223bf070e7e9e861ecde85ab995c1a7fba0ad47434246a4bf",
+    "crates/tiny-glade/src/production_renderer.rs": "2e6f719e7bbdcc5d91b277495547109def74a836adf5ef473ebf234702e62c00",
+    "crates/tiny-glade/tests/original_loading_present.rs": "df5e57da70e31b37a8bca58305e5d635314dc75aada4f96370f920c013fb9c4b"
+  },
+  "validation": {
+    "check": {
+      "log": "tg-upload-batching-check-retry.log",
+      "sha256": "5db5f15ea9dc613db9d008ade73f7b84d82cf7db8e08698543edbb159b304822",
+      "result_lines": [
+        "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1m 07s"
+      ]
+    },
+    "library": {
+      "log": "tg-upload-batching-library-retry.log",
+      "sha256": "c91b8c6c08490724af448efd658c531dd9392d826c96929e3dc26ab7b14baa55",
+      "result_lines": [
+        "    Finished `test` profile [unoptimized + debuginfo] target(s) in 11.40s",
+        "test result: ok. 426 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 4.89s"
+      ]
+    },
+    "gpu": {
+      "log": "tg-upload-batching-transfers-gpu-timing.log",
+      "sha256": "ab6d8e20a544a2674c42fc933314e9843b030ba9d3887b623ae856a40b44a053",
+      "result_lines": [
+        "    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.70s",
+        "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.87s",
+        "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.56s"
+      ]
+    },
+    "host": {
+      "log": "tg-upload-batching-host.log",
+      "sha256": "877721a6cb452649b436a91cedc58458b7c90dece77a5f6e3b0c6c9d8f483207",
+      "result_lines": [
+        "    Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 07s",
+        "test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 207 filtered out; finished in 4.71s"
+      ]
+    },
+    "bridges": {
+      "log": "tg-upload-batching-bridges.log",
+      "sha256": "444959aa602084f51302d78caeee0fd1e0441f73f83df408cb5dfb3c0e6a3539",
+      "result_lines": [
+        "    Finished `test` profile [unoptimized + debuginfo] target(s) in 29.02s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.92s",
+        "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.17s",
+        "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      ]
+    }
+  }
+}

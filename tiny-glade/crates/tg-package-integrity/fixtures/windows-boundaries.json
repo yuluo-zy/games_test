@@ -1,0 +1,215 @@
+{
+  "scope": "Windows x64 stable-filesystem original verify in retained DLL loader container, not shipped EXE process",
+  "source_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "original_entry": "0x14067c3d0",
+  "cases": [
+    {
+      "name": "root-tmp-file",
+      "disk_files": [
+        [
+          "tmp",
+          "content"
+        ]
+      ],
+      "lone_surrogate": false,
+      "bytes": "{\"files\":[[\"build-info/manifest.json\",\"ignored\"]],\"version\":1} \t\t\t\t \t \t\t \t\t \t     ",
+      "expected": {
+        "kind": "ok"
+      }
+    },
+    {
+      "name": "root-tmp-listed",
+      "disk_files": [
+        [
+          "tmp",
+          "content"
+        ]
+      ],
+      "lone_surrogate": false,
+      "bytes": "{\"files\":[[\"build-info/manifest.json\",\"ignored\"],[\"tmp\",\"bad\"]],\"version\":1} \t    \t \t\t\t \t \t     ",
+      "expected": {
+        "kind": "files",
+        "lists": [
+          [],
+          [
+            "tmp"
+          ],
+          []
+        ]
+      }
+    },
+    {
+      "name": "uppercase-tmp",
+      "disk_files": [
+        [
+          "Tmp/file",
+          "content"
+        ]
+      ],
+      "lone_surrogate": false,
+      "bytes": "{\"files\":[[\"build-info/manifest.json\",\"ignored\"]],\"version\":1} \t\t\t\t \t \t\t \t\t \t     ",
+      "expected": {
+        "kind": "files",
+        "lists": [
+          [],
+          [],
+          [
+            "Tmp/file"
+          ]
+        ]
+      }
+    },
+    {
+      "name": "known-case",
+      "disk_files": [
+        [
+          "Case",
+          "content"
+        ]
+      ],
+      "lone_surrogate": false,
+      "bytes": "{\"files\":[[\"build-info/manifest.json\",\"ignored\"],[\"CASE\",\"3fba5250be9ac259c56e7250c526bc83bacb4be825f2799d3d59e5b4878dd74e\"]],\"version\":1}\t   \t   \t\t \t\t \t\t    ",
+      "expected": {
+        "kind": "files",
+        "lists": [
+          [],
+          [],
+          [
+            "Case"
+          ]
+        ]
+      }
+    },
+    {
+      "name": "separator-alias",
+      "disk_files": [
+        [
+          "sub/file",
+          "content"
+        ]
+      ],
+      "lone_surrogate": false,
+      "bytes": "{\"files\":[[\"build-info/manifest.json\",\"ignored\"],[\"sub\\\\file\",\"3fba5250be9ac259c56e7250c526bc83bacb4be825f2799d3d59e5b4878dd74e\"]],\"version\":1}\t  \t \t\t \t\t    \t     ",
+      "expected": {
+        "kind": "files",
+        "lists": [
+          [],
+          [],
+          [
+            "sub/file"
+          ]
+        ]
+      }
+    },
+    {
+      "name": "dot-alias",
+      "disk_files": [
+        [
+          "good",
+          "content"
+        ]
+      ],
+      "lone_surrogate": false,
+      "bytes": "{\"files\":[[\"build-info/manifest.json\",\"ignored\"],[\"./good\",\"3fba5250be9ac259c56e7250c526bc83bacb4be825f2799d3d59e5b4878dd74e\"]],\"version\":1} \t\t\t     \t\t   \t\t\t   ",
+      "expected": {
+        "kind": "files",
+        "lists": [
+          [],
+          [],
+          [
+            "good"
+          ]
+        ]
+      }
+    },
+    {
+      "name": "self-dot-alias",
+      "disk_files": [],
+      "lone_surrogate": false,
+      "bytes": "{\"files\":[[\"build-info/manifest.json\",\"ignored\"],[\"./build-info/manifest.json\",\"3fba5250be9ac259c56e7250c526bc83bacb4be825f2799d3d59e5b4878dd74e\"]],\"version\":1}\t   \t  \t  \t\t\t  \t    ",
+      "expected": {
+        "kind": "files",
+        "lists": [
+          [],
+          [
+            "./build-info/manifest.json"
+          ],
+          []
+        ]
+      }
+    },
+    {
+      "name": "empty-file-name",
+      "disk_files": [],
+      "lone_surrogate": false,
+      "bytes": "{\"files\":[[\"build-info/manifest.json\",\"ignored\"],[\"\",\"3fba5250be9ac259c56e7250c526bc83bacb4be825f2799d3d59e5b4878dd74e\"]],\"version\":1}\t\t \t\t\t\t\t  \t    \t    ",
+      "expected": {
+        "kind": "files",
+        "lists": [
+          [
+            ""
+          ],
+          [],
+          []
+        ]
+      }
+    },
+    {
+      "name": "nul-file-name",
+      "disk_files": [],
+      "lone_surrogate": false,
+      "bytes": "{\"files\":[[\"build-info/manifest.json\",\"ignored\"],[\"bad\\u0000name\",\"3fba5250be9ac259c56e7250c526bc83bacb4be825f2799d3d59e5b4878dd74e\"]],\"version\":1}\t  \t\t\t\t\t\t\t\t  \t\t     ",
+      "expected": {
+        "kind": "files",
+        "lists": [
+          [
+            "bad\u0000name"
+          ],
+          [],
+          []
+        ]
+      }
+    },
+    {
+      "name": "directory-known",
+      "disk_files": [
+        [
+          "sub/file",
+          "content"
+        ]
+      ],
+      "lone_surrogate": false,
+      "bytes": "{\"files\":[[\"build-info/manifest.json\",\"ignored\"],[\"sub\",\"3fba5250be9ac259c56e7250c526bc83bacb4be825f2799d3d59e5b4878dd74e\"]],\"version\":1}\t\t\t       \t\t\t\t \t\t\t  ",
+      "expected": {
+        "kind": "files",
+        "lists": [
+          [
+            "sub"
+          ],
+          [],
+          [
+            "sub/file"
+          ]
+        ]
+      }
+    },
+    {
+      "name": "unicode-and-surrogate",
+      "disk_files": [
+        [
+          "\u4e2d\u6587\ud83e\uddf1",
+          "content"
+        ],
+        [
+          "good",
+          "content"
+        ]
+      ],
+      "lone_surrogate": true,
+      "bytes": "{\"files\":[[\"build-info/manifest.json\",\"ignored\"],[\"\u4e2d\u6587\ud83e\uddf1\",\"3fba5250be9ac259c56e7250c526bc83bacb4be825f2799d3d59e5b4878dd74e\"],[\"good\",\"3fba5250be9ac259c56e7250c526bc83bacb4be825f2799d3d59e5b4878dd74e\"]],\"version\":1}\t   \t  \t   \t\t\t\t\t    ",
+      "expected": {
+        "kind": "ok"
+      }
+    }
+  ]
+}

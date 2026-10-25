@@ -1,0 +1,26 @@
+{
+ "name": "get_unwrapped",
+ "size": 214,
+ "address": "14085a650",
+ "signature": "void __cdecl get_unwrapped(void)",
+ "decompiled_code": "\nvoid __cdecl country_core::resources::walls::inner_walls::InnerWalls::get_unwrapped(void)\n\n{\n  char *pcVar1;\n  uint uVar2;\n  uint uVar3;\n  ulonglong extraout_RAX;\n  longlong *in_RCX;\n  longlong in_RDX;\n  ulonglong uVar4;\n  longlong lVar5;\n  uint uVar6;\n  ushort uVar7;\n  byte bVar8;\n  char cVar9;\n  char cVar11;\n  char cVar12;\n  char cVar13;\n  undefined1 auVar10 [16];\n  undefined1 auVar14 [16];\n  undefined1 auVar15 [16];\n  \n  if (in_RCX[3] != 0) {\n    core::hash::BuildHasher::\n    hash_one<std::hash::random::RandomState,ref_<country_core::systems::ui::GlobalId>_>();\n    bVar8 = (byte)(extraout_RAX >> 0x39);\n    auVar10 = ZEXT216(CONCAT11(bVar8,bVar8));\n    auVar10 = pshuflw(auVar10,auVar10,0);\n    lVar5 = 0;\n    uVar4 = extraout_RAX;\n    while( true ) {\n      uVar4 = in_RCX[1] & uVar4;\n      pcVar1 = (char *)(*in_RCX + uVar4);\n      cVar9 = auVar10[0];\n      auVar15[0] = -(*pcVar1 == cVar9);\n      cVar11 = auVar10[1];\n      auVar15[1] = -(pcVar1[1] == cVar11);\n      cVar12 = auVar10[2];\n      auVar15[2] = -(pcVar1[2] == cVar12);\n      cVar13 = auVar10[3];\n      auVar15[3] = -(pcVar1[3] == cVar13);\n      auVar15[4] = -(pcVar1[4] == cVar9);\n      auVar15[5] = -(pcVar1[5] == cVar11);\n      auVar15[6] = -(pcVar1[6] == cVar12);\n      auVar15[7] = -(pcVar1[7] == cVar13);\n      auVar15[8] = -(pcVar1[8] == cVar9);\n      auVar15[9] = -(pcVar1[9] == cVar11);\n      auVar15[10] = -(pcVar1[10] == cVar12);\n      auVar15[0xb] = -(pcVar1[0xb] == cVar13);\n      auVar15[0xc] = -(pcVar1[0xc] == cVar9);\n      auVar15[0xd] = -(pcVar1[0xd] == cVar11);\n      auVar15[0xe] = -(pcVar1[0xe] == cVar12);\n      auVar15[0xf] = -(pcVar1[0xf] == cVar13);\n      uVar7 = (ushort)(SUB161(auVar15 >> 7,0) & 1) | (ushort)(SUB161(auVar15 >> 0xf,0) & 1) << 1 |\n              (ushort)(SUB161(auVar15 >> 0x17,0) & 1) << 2 |\n              (ushort)(SUB161(auVar15 >> 0x1f,0) & 1) << 3 |\n              (ushort)(SUB161(auVar15 >> 0x27,0) & 1) << 4 |\n              (ushort)(SUB161(auVar15 >> 0x2f,0) & 1) << 5 |\n              (ushort)(SUB161(auVar15 >> 0x37,0) & 1) << 6 |\n              (ushort)(SUB161(auVar15 >> 0x3f,0) & 1) << 7 |\n              (ushort)(SUB161(auVar15 >> 0x47,0) & 1) << 8 |\n              (ushort)(SUB161(auVar15 >> 0x4f,0) & 1) << 9 |\n              (ushort)(SUB161(auVar15 >> 0x57,0) & 1) << 10 |\n              (ushort)(SUB161(auVar15 >> 0x5f,0) & 1) << 0xb |\n              (ushort)(SUB161(auVar15 >> 0x67,0) & 1) << 0xc |\n              (ushort)(SUB161(auVar15 >> 0x6f,0) & 1) << 0xd |\n              (ushort)(SUB161(auVar15 >> 0x77,0) & 1) << 0xe | (ushort)(auVar15[0xf] >> 7) << 0xf;\n      uVar6 = (uint)uVar7;\n      while (uVar7 != 0) {\n        uVar2 = 0;\n        for (uVar3 = uVar6; (uVar3 & 1) == 0; uVar3 = uVar3 >> 1 | 0x80000000) {\n          uVar2 = uVar2 + 1;\n        }\n        if (*(longlong *)(*in_RCX + -0x78 + (uVar2 + uVar4 & in_RCX[1]) * -0x78) == in_RDX) {\n          return;\n        }\n        uVar7 = (ushort)(uVar6 - 1) & (ushort)uVar6;\n        uVar6 = CONCAT22((short)(uVar6 - 1 >> 0x10),uVar7);\n      }\n      auVar14[0] = -(*pcVar1 == -1);\n      auVar14[1] = -(pcVar1[1] == -1);\n      auVar14[2] = -(pcVar1[2] == -1);\n      auVar14[3] = -(pcVar1[3] == -1);\n      auVar14[4] = -(pcVar1[4] == -1);\n      auVar14[5] = -(pcVar1[5] == -1);\n      auVar14[6] = -(pcVar1[6] == -1);\n      auVar14[7] = -(pcVar1[7] == -1);\n      auVar14[8] = -(pcVar1[8] == -1);\n      auVar14[9] = -(pcVar1[9] == -1);\n      auVar14[10] = -(pcVar1[10] == -1);\n      auVar14[0xb] = -(pcVar1[0xb] == -1);\n      auVar14[0xc] = -(pcVar1[0xc] == -1);\n      auVar14[0xd] = -(pcVar1[0xd] == -1);\n      auVar14[0xe] = -(pcVar1[0xe] == -1);\n      auVar14[0xf] = -(pcVar1[0xf] == -1);\n      if ((((((((((((((((SUB161(auVar14 >> 7,0) & 1) != 0 || (SUB161(auVar14 >> 0xf,0) & 1) != 0) ||\n                      (SUB161(auVar14 >> 0x17,0) & 1) != 0) || (SUB161(auVar14 >> 0x1f,0) & 1) != 0)\n                    || (SUB161(auVar14 >> 0x27,0) & 1) != 0) || (SUB161(auVar14 >> 0x2f,0) & 1) != 0\n                   ) || (SUB161(auVar14 >> 0x37,0) & 1) != 0) ||\n                 (SUB161(auVar14 >> 0x3f,0) & 1) != 0) || (SUB161(auVar14 >> 0x47,0) & 1) != 0) ||\n               (SUB161(auVar14 >> 0x4f,0) & 1) != 0) || (SUB161(auVar14 >> 0x57,0) & 1) != 0) ||\n             (SUB161(auVar14 >> 0x5f,0) & 1) != 0) || (SUB161(auVar14 >> 0x67,0) & 1) != 0) ||\n           (SUB161(auVar14 >> 0x6f,0) & 1) != 0) || (SUB161(auVar14 >> 0x77,0) & 1) != 0) ||\n          auVar14[0xf] < '\\0') break;\n      uVar4 = uVar4 + lVar5 + 0x10;\n      lVar5 = lVar5 + 0x10;\n    }\n  }\n                    // WARNING: Subroutine does not return\n  core::option::unwrap_failed();\n}\n\n",
+ "callee_count": 2,
+ "callees": [
+  {
+   "name": "hash_one<std::hash::random::RandomState,ref$<country_core::systems::ui::GlobalId>_>",
+   "address": "1405b0d70"
+  },
+  {
+   "name": "unwrap_failed",
+   "address": "1428d9310"
+  }
+ ],
+ "revision": {
+  "token": "1791719479858:b17d372d:3",
+  "epoch": "b17d372d",
+  "modification_number": 3,
+  "saved_time": 1791719479858,
+  "unsaved_changes": false,
+  "decompiled": true
+ }
+}

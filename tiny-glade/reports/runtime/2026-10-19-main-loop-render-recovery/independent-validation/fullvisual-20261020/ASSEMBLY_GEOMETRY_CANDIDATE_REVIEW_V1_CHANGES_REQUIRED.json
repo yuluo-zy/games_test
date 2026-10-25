@@ -1,0 +1,79 @@
+{
+  "reviewer": "07-independent-validation",
+  "created_utc": "2026-10-19T19:14:16.282818+00:00",
+  "verdict": "changes_required_chimney;door_scoped_source_admitted_separately",
+  "manifest": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bd3d82a9ddc435cfb2/deco-trackers-20261020/geometry-candidate-v1/CANDIDATE_MANIFEST_V1.json",
+    "sha256": "e1b9da4ee6adafc3138374520d9bcacd7f9b460506726d27f2223a4ff7fd91f0"
+  },
+  "sources": [
+    {
+      "task": "TG-917d6130810801d337",
+      "before": {
+        "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/decorator_visual/chimney_assemble_bricks.rs",
+        "sha256": "486ad0e2375a61b988a5e8e3726c750fc65f178bad0a536d4a9199f07b00195a",
+        "bytes": 2619
+      },
+      "candidate": {
+        "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-917d6130810801d337/deco-trackers-20261020/geometry-candidate-v1/src/decorator_visual/chimney_assemble_bricks.rs",
+        "sha256": "adf1a4ed872ea0a231a4ec9672525ab58a833ef57035a942d2ab90703dec0cfe",
+        "bytes": 11930
+      },
+      "reviewer_derived_diff_sha256": "ed2d6430c7ddd35b9d7ace7b3ad686977f5c3dc612f019f37c8835a75361e6ff"
+    },
+    {
+      "task": "TG-e10831b95b26b67a3c",
+      "before": {
+        "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/decorator_visual/door_stairs_assemble_bricks.rs",
+        "sha256": "a5d70ecdae87ffeaaeb94941fbadc91a44009e97533bf468df3df9a84fa245d6",
+        "bytes": 1952
+      },
+      "candidate": {
+        "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-e10831b95b26b67a3c/deco-trackers-20261020/geometry-candidate-v1/src/decorator_visual/door_stairs_assemble_bricks.rs",
+        "sha256": "a446faf102a5d5cced2d02ad21796764d6f82b302f1e63e3e5b2efdc0c4c2e39",
+        "bytes": 8376
+      },
+      "reviewer_derived_diff_sha256": "d834842db8dbeb1d371494c13918e4aca979a7a36938b00da31fe513a43b6341"
+    }
+  ],
+  "input_verification": "All21 frozen/source-contract/native dependency/current dependency/before/candidate hashes and byte lengths matched, including both live production before sources. Native2836/4668 complete ranges previously fully PE compared and reread for these arithmetic paths.",
+  "findings": [
+    {
+      "priority": "major",
+      "source": "Chimney adf1a4ed, emit_crossbrick_chimney layer_count",
+      "defect": "Candidate divides layer index by (heights.len()-1); actual original divides by (heights.len()-2).",
+      "original_proof": [
+        "14200bded..bdf1 loads collected normalized split length into rdi.",
+        "14200bf6b..bf6e copies rdi and adds -2; bf79..bf9d saturating unsigned-to-f32 conversion stores denominator [rbp+18c].",
+        "14200bffd preserves current layer index in [rbp+190]; c0ba..c0e4 converts this index; c0e8 divides by [rbp+18c] before c101/c109 smoothstep."
+      ],
+      "concrete_effect": "For3 heights/two layers, native final layer t=1 and smoothstep=1; candidate final t=.5 and smoothstep=0. Nonzero size_delta flare is lost. This affects normal body/lower section behavior, not only nonfinite edges.",
+      "required_fix": "Preserve frozenV1. Create V2 with len-2 divisor and nonzero size_delta final-layer affine/edge-size regression checking real emit payload, plus source/native trace erratum. Existing new test uses delta0 and therefore cannot detect it."
+    }
+  ],
+  "reviewer_design_erratum": {
+    "prior_review": "MEMBER14_MIDDLE_OWNER_GEOMETRY_CONTRACT_REVIEW_V1.json SHA35bb7a21afa0d34b4d0adfacefea5c455e3dafdd35a5bdc1ef1f762d670dd12b",
+    "correction": "Prior scoped design accepted contract inherited n-1 language without tracing the actual bf6e->18c->c0e8 denominator. That arithmetic acceptance is withdrawn; native n-2 governs. Historical review and author manifests remain unchanged. Owner/highlight/partial-failure conclusions are unaffected.",
+    "author_response": "Author confirmed error, withdrew V1 integration recommendation and is preparing separately frozen V2/erratum."
+  },
+  "door_separate_verdict": {
+    "status": "passed_scoped_source",
+    "candidate_sha256": "a446faf102a5d5cced2d02ad21796764d6f82b302f1e63e3e5b2efdc0c4c2e39",
+    "scope": [
+      "Actual32B Params/ordered Eq and explicit tracker protocol are retained. New constructor writes same canonical96B via actual SparseInstanceBufferWriter.push closure; no parallel registry/buffer/lane owner, clear/flush or registration.",
+      "Actual y-count/jitter and separate y Vec interpolation, native k clamp2..5, depth.56/k +.1, x-count max3/width.45, fresh per-step normalized split then mapped Vec, original row/step/x order, .28 offset and perpendicular placement match full4668B evidence.",
+      "Rotation uses integrated xz_rotation_bad, affine uses existing canonical Affine3Packed, raw default surfaces/deformation/flags retained. Actual row-only outerWallId low32+2row seed, canonical material encoding and directed wall_distance[a,b] preserved.",
+      "Bool bitwise |= always evaluates each emit even after first NoFreeChunks; true means any failure, retaining successful prefix. Wrapper creates per-decorator RNG once; actual sparse capacity, current audio, true four-param host and lane clear/normalize remain outside.",
+      "New same production emit test observes payload/order/RNG and injected first emit failure continuation; not a test of real writer capacity or GPU. Existing Eq test remains."
+    ],
+    "limits": [
+      "No Rust/Cargo/typecheck/test execution. No Source/host initialization or registration approval outside this bounded Door file.",
+      "Root may take this exact independently admitted Door source after beforehash check, without accepting ChimneyV1. If bundled under newV2 manifest, rebind immutable references rather than overwrite V1."
+    ]
+  },
+  "remaining_host_gates": [
+    "Full actual7/4param terrain/DerivedInfo/audio hosts, actual wall/Commands/three independent same-library lanes initialization and delete/update/deferred phases, shared flush/compute upload failure policy still require separate ownership/API/source reviews.",
+    "No tests ran for either new constructor. Do not reuse prior tracker8/sharedutils7 tests as constructor acceptance. No App/WSI/pixels/performance/native runtime claim.",
+    "Reviewer changed no production/claims/Git and ran no compiler/test/GPU."
+  ]
+}

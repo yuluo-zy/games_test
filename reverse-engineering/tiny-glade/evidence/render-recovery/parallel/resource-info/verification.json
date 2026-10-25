@@ -1,0 +1,35 @@
+{
+  "status": "verified_semantic_snapshot",
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "entry": "0x140530430",
+  "cases": 512,
+  "outcomes": {
+    "ok": 507,
+    "panic": 5
+  },
+  "fields_compared": [
+    "accesses",
+    "pass_access_ranges",
+    "lifetime_endpoints",
+    "first_last_access_indices",
+    "image_usage",
+    "buffer_usage",
+    "lifetime_events",
+    "exported_index_set",
+    "dependency_access_info_call_order"
+  ],
+  "reuse": "candidate reuses one ResourceInfo across all cases; original allocations preallocated and reset per case",
+  "dependency_boundaries": [
+    "vk_sync_fork::get_access_info outputs supplied as explicit masks, not reimplemented",
+    "hashbrown insert supplied as exported-index set side effect",
+    "memset dependency",
+    "standard Vec capacity preallocated"
+  ],
+  "limitations": [
+    "not full graph integration",
+    "no actual dependency AccessType enum validation",
+    "None payload and padding canonicalized",
+    "panic observed at entry without unwind",
+    "fewer than 21 lifetime events use untouched emitted insertion sort; large std sort path not repeated"
+  ]
+}

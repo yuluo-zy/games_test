@@ -1,0 +1,48 @@
+{
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+  "cases": 1728,
+  "fixture": "tiny-glade/tests/fixtures/native/toolbar-rollercoaster-cart-dynamics.ron",
+  "fixture_sha256": "6cd33fb80b87366333753a8cbda02f30b909899808432a1459dd4689a053724c",
+  "nonfinite_cases": 120,
+  "nonfinite_fixture": "tiny-glade/tests/fixtures/native/toolbar-rollercoaster-cart-dynamics-nonfinite.ron",
+  "nonfinite_fixture_sha256": "638e6b5d67a304d4cd757b147408594b346e55d70bfe5f35bd81582c1fea3903",
+  "executed_ranges": [
+    [
+      "0x1403b8d68",
+      "0x1403b9260"
+    ],
+    [
+      "0x1403b94b0",
+      "0x1403b95d9"
+    ]
+  ],
+  "bridges": [],
+  "supplied_boundaries": [
+    "调用方提供前后未归一化Spline切线、前后速度、dolly look_at四元数",
+    "私有ABI Cart/State/羊形状字段、选择索引和横向输入",
+    "跳过羊随机事件发送，原9263常量1在进入A片段前重载"
+  ],
+  "columns": [
+    "selected_u32",
+    "sheep_u32",
+    "old_speed_bits",
+    "speed_bits",
+    "old_tangent_bits3",
+    "tangent_bits3",
+    "look_quat_bits4",
+    "steer_bits",
+    "old_J_bits3",
+    "old_BC_bits3",
+    "old_A_bits3",
+    "old_peak_bits",
+    "sheep_scale_bits3",
+    "J_bits3",
+    "BC_bits3",
+    "A_bits3",
+    "peak_bits",
+    "cross_flag_u8"
+  ],
+  "serialization": "((前13输入列),(后5输出列))；向量是RON序列[]，可用Vec<u32>读取并检查维度，避免serde大于16 tuple限制。",
+  "scope": "原每车1ms J/B/C/peak/A指令；不覆盖速度/t、Spline求值、look_at、随机羊事件、ECS/摄像机/音频消费。尚需Rust候选对照。"
+}

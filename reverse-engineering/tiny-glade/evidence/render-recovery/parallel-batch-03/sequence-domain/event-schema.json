@@ -1,0 +1,11 @@
+{
+  "events":[
+    {"name":"cb_begin","fields":["queue_identity","counter_domain","cb_sequence"]},
+    {"name":"cb_submit","fields":["queue_identity","cb_sequence","timeline_threshold"]},
+    {"name":"timeline_complete","fields":["queue_identity","completed_timeline"]},
+    {"name":"cb_reclaim","fields":["queue_identity","cb_sequence","timeline_threshold"]},
+    {"name":"bucket_dispose","fields":["cb_sequence","resource_count"]}
+  ],
+  "invariant":"cb_sequence is a global bucket key as observed; queue_identity remains required for pending/reclaim validation",
+  "same_resource_cross_domain":"A tracked resource stores only its last CB sequence. Disposal resolves that sequence through the global device bucket map. Static evidence does not show a queue tag in this lookup; if two counter domains emit the same sequence, the original behavior is a collision/ambiguous mapping, not a proven queue-qualified mapping."
+}

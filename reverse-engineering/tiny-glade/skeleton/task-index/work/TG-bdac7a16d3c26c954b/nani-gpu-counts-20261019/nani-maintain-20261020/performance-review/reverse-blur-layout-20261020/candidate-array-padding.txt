@@ -1,0 +1,42 @@
+Source: /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-eac12c8d24c206af39/no-world-undefined-20261019/reverse-blur-top-20261020/consumer-candidate/candidate/crates/tiny-glade/src/render_host.rs
+SHA256: 03184a90100cd0584fc890af601a8111f5b70bf8a502b3db6624f9153562a329
+
+2163:     Ok(count)
+2164: }
+2165: 
+2166: /// Original bind_individual_mips enumerates the exact selected range and
+2167: /// creates a level_count=1 view per element (@1418b4740..47f7). The current
+2168: /// fully-bound shader ABI additionally fills unused array slots with the last
+2169: /// actual view; it creates no owner or mip beyond the declared original range.
+2170: fn individual_mip_views(
+2171:     view: rhapsody::resource::TextureViewDesc,
+2172:     array_count: u32,
+2173: ) -> rhapsody::Result<Vec<rhapsody::resource::TextureViewDesc>> {
+2174:     if view.level_count == 0 || array_count < view.level_count {
+2175:         return Err(rhapsody::Error::invalid_usage(
+2176:             "individual mip views exceed the actual shader array",
+2177:         ));
+2178:     }
+2179:     let mut views = Vec::new();
+2180:     views
+2181:         .try_reserve_exact(array_count as usize)
+2182:         .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
+2183:     for element in 0..array_count {
+2184:         let mut selected = view;
+2185:         selected.base_mip_level = view
+2186:             .base_mip_level
+2187:             .checked_add(element.min(view.level_count - 1))
+2188:             .ok_or_else(|| rhapsody::Error::invalid_usage("individual mip index overflow"))?;
+2189:         selected.level_count = 1;
+2190:         views.push(selected);
+2191:     }
+2192:     Ok(views)
+2193: }
+2194: 
+2195: /// Declaration-time projection of the same view used by rh_view_desc during
+2196: /// recording. The logical descriptor is available before GPU allocation; no
+2197: /// physical image or substitute owner is created to calculate this range.
+2198: pub(crate) fn compute_view_range(
+2199:     descriptor: rhapsody::rg::Descriptor,
+2200:     view: &country_core::rhapsody_types::TextureViewDesc,
+

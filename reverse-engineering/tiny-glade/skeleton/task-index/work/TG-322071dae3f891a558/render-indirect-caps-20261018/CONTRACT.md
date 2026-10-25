@@ -1,0 +1,13 @@
+# B indirect raster consumer / current device capability API gap
+
+Original oracle SHA256 f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03; B PDB 2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911. Complete original render callback retained in reports/main-chain-recovery-2026-10-18/renderer-evidence/vao-render-rne.asm, 141697ab0..14169a64e. This directory retains bounded indirect branches plus original jump table.
+
+Kind5 target141698ece: stack1d4/packet44 buffer index, stack1d8/packet48 offset (builder writes zero), stack1e0/packet50 low32 drawCount, stack1e8/packet58 low32 stride; resolve actual graph buffer via be79d0/bef470, call table350 at141698f96. Kind7 target141698d40 same args; call358 at141698e08. Kind7 optional first_index_count is not consumed in this command branch.
+
+Kind8 target14169903a: actual buffer indices packet44 and48; packet50 offset,58 stride low32,60 countOffset,68 maxDrawCount low32. Load both actual graph buffer owners; Win64 call RCX command buffer,RDX indirect buffer,R8 offset,R9 count buffer,stack20 countOffset,stack28 maxDrawCount,stack30 stride; table4c0 at1416992d3. Original device+ad8 feature gate has an explicit unsupported failure branch; no CPU count-read or fake fallback.
+
+Current RasterHost records these through current RenderPassApi and ManagedPassResources buffer_for, actual reflected VAO/index owners, same frame graph. Malformed range/stride/device-limit fails before native submission. Original payload narrowing to u32 is preserved; typed API safety checks do not reinterpret u64 fields. Indexed packets without a recovered actual index-buffer owner remain explicit Unsupported.
+
+Architecture change is a missing capability gap in existing refactored DeviceCaps/FeatureSet. Add MultiDrawIndirect,DrawIndirectFirstInstance,DrawIndirectCount with supported/enabled tracking via existing core_features. Existing core optional features already enabled the first two, but API did not expose them. Enable Vulkan12 drawIndirectCount only if actual physical feature is supported, and require it for kind8. raw Device only exposes actual physical max_draw_indirect_count limit. No new Device/backend/legacy graph.
+
+Validation: original_raster_gpu::actual_typed_vao_vertex_index_and_instance_count_change_gpu_pixels adds native kinds5/7/8 actual GPU argument buffers, stride32, indexed offset16/countOffset8, GPU count1/2, pixel changes for actual firstInstance. Kind5 uses original generic builder and real lazy library metadata/cache across two frame generations. These are explicit fixtures, not recovered scene geometry. Device CPU regression verifies supported does not equal enabled for all three bits. Parent runs all cargo centrally; source delivered, runtime pending.

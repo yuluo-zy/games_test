@@ -1,0 +1,21 @@
+[
+  {
+    "tool": "set-function-prototype",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "location": "0x140949c20",
+      "signature": "float aspect_ratio(unsigned int *size)",
+      "createIfNotExists": false
+    },
+    "timeout_seconds": 60
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\naddr = currentProgram.getAddressFactory().getAddress(\"140949c20\")\nf = currentProgram.getFunctionManager().getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"Expected B function is absent\")\nd = DecompInterface()\ntry:\n    d.openProgram(currentProgram)\n    result = d.decompileFunction(f, 15, monitor)\n    if not result.decompileCompleted():\n        raise RuntimeError(str(result.getErrorMessage()))\n    high = result.getHighFunction()\n    if high is None:\n        raise RuntimeError(\"No HighFunction returned\")\n    ops = high.getPcodeOps()\n    sample = []\n    while ops.hasNext() and len(sample) < 12:\n        monitor.checkCancelled()\n        sample.append(str(ops.next()))\n    if not any(\"FLOAT_DIV\" in op for op in sample):\n        raise RuntimeError(\"Known B aspect-ratio division absent from High P-code\")\n    print(json.dumps({\"sha256\": str(currentProgram.getExecutableSHA256()),\n                      \"program\": str(currentProgram.getName()),\n                      \"address\": str(addr), \"signature\": str(f.getSignature()),\n                      \"pcode_sample\": sample}))\nfinally:\n    d.dispose()\n",
+      "timeoutSeconds": 20
+    },
+    "timeout_seconds": 60
+  }
+]

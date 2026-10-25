@@ -1,0 +1,110 @@
+{
+  "passed": true,
+  "original_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "native_rust_barrier_cases": 1344,
+  "native_population_cases": 97,
+  "snapshot_checks": 6,
+  "bounded_callers": 6,
+  "candidate_sha256": "a3cda72c6dba88b7ec4e3b78b056ca8299047c81bc12afaa03e78230f01df23f",
+  "commands": [
+    {
+      "command": [
+        "C:\\Users\\liyu\\AppData\\Local\\Microsoft\\WindowsApps\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\python.exe",
+        "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\parallel-batch-03\\barrier-record\\verify.py"
+      ],
+      "exit_code": 0,
+      "stdout": "{\"passed\": true, \"cases\": 1344, \"failure_count\": 0, \"failures\": []}\n",
+      "stderr": "    Finished `release` profile [optimized] target(s) in 0.08s\n"
+    },
+    {
+      "command": [
+        "C:\\Users\\liyu\\AppData\\Local\\Microsoft\\WindowsApps\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\python.exe",
+        "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\parallel-batch-03\\barrier-record\\verify-population.py"
+      ],
+      "exit_code": 0,
+      "stdout": "{\"passed\": true, \"cases\": 97}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\liyu\\AppData\\Local\\Microsoft\\WindowsApps\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\python.exe",
+        "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\parallel-batch-03\\barrier-record\\audit.py"
+      ],
+      "exit_code": 0,
+      "stdout": "{\"passed\": true, \"callers\": 6, \"marker_one_stores\": 2}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\liyu\\AppData\\Local\\Microsoft\\WindowsApps\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\python.exe",
+        "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\parallel-batch-03\\barrier-record\\check-snapshots.py"
+      ],
+      "exit_code": 0,
+      "stdout": "{\"passed\": true, \"checks\": 6}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "--manifest-path",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\render\\work-packages\\barrier-record-r5\\Cargo.toml"
+      ],
+      "exit_code": 0,
+      "stdout": "\nrunning 4 tests\ntest tests::concurrent_write_needs_nonzero_equal_group ... ok\ntest tests::empty_command_panics_before_drain ... ok\ntest tests::reused_initial_and_pre_have_opposite_roles ... ok\ntest tests::pending_is_drained_before_partial_panic ... ok\n\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n",
+      "stderr": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.01s\n     Running unittests src\\lib.rs (reconstruction\\render\\work-packages\\barrier-record-r5\\target\\debug\\deps\\tiny_glade_barrier_record_r5-fcbd82b238f97291.exe)\n     Running unittests src\\main.rs (reconstruction\\render\\work-packages\\barrier-record-r5\\target\\debug\\deps\\barrier_projection-a70ed4820c833cca.exe)\n   Doc-tests tiny_glade_barrier_record_r5\n"
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "--offline",
+        "--locked",
+        "--all-targets",
+        "--manifest-path",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\render\\work-packages\\barrier-record-r5\\Cargo.toml",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.08s\n"
+    },
+    {
+      "command": [
+        "rustfmt",
+        "--check",
+        "--edition",
+        "2021",
+        "--config",
+        "skip_children=true",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\render\\work-packages\\barrier-record-r5\\src\\lib.rs",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\render\\work-packages\\barrier-record-r5\\src\\main.rs"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "status": "scoped-native-differential-pass",
+  "original_entry_scopes": [
+    "pre barriers",
+    "record initial prefix",
+    "populate resources"
+  ],
+  "injected_scope": "post-record final/export gate only",
+  "not_claimed": [
+    "full graph compile or record differential",
+    "Vulkan runtime validation",
+    "natural local-map reuse producer",
+    "whole-program negative search",
+    "original ABI/padding"
+  ],
+  "write_scope": [
+    "parallel-batch-03/barrier-record",
+    "work-packages/barrier-record-r5"
+  ]
+}

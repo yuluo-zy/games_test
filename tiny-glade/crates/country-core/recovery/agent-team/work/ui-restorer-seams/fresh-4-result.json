@@ -1,0 +1,755 @@
+{
+  "backend": "ghidra",
+  "worker": "shared",
+  "access": "read",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "get_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x140a04cf0,0x1412a8fa0,0x14091d060,0x14091d540,0x14091b430,0x14091b4b0",
+        "fields": "signature,decompiled_code,callees",
+        "include_call_context": false
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x140a04cf0,0x1412a8fa0,0x14091d060,0x14091d540,0x14091b430,0x14091b4b0",
+        "fields": "signature,decompiled_code,callees",
+        "include_call_context": false
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"functions\":{\"0x140a04cf0\":{\"name\":\"call_mut<tuple$<ref$<tuple$<ref$<asset::prefab::PrefabName>,ref$<asset::prefab::config::PrefabConfig>_>_>_>,country_core::startup::load_prefabs::load_prefabs_impl::closure_env$2>\",\"size\":326,\"address\":\"140a04cf0\",\"signature\":\"void __cdecl call_mut<tuple$<ref$<tuple$<ref$<asset::prefab::PrefabName>,ref$<asset::prefab::config::PrefabConfig>_>_>_>,country_core::startup::load_prefabs::load_prefabs_impl::closure_env$2>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncore::ops::function::impls::impl$3::\\ncall_mut<tuple_<ref_<tuple_<ref_<asset::prefab::PrefabName>,ref_<asset::prefab::config::PrefabConfig>_>_>_>,country_core::startup::load_prefabs::load_prefabs_impl::closure_env_2>\\n          (void)\\n\\n{\\n  char *pcVar1;\\n  undefined8 *puVar2;\\n  longlong *plVar3;\\n  longlong lVar4;\\n  ulonglong uVar5;\\n  uint uVar6;\\n  int iVar7;\\n  int iVar8;\\n  int iVar9;\\n  int iVar10;\\n  char cVar11;\\n  char cVar12;\\n  char cVar13;\\n  char cVar14;\\n  char cVar15;\\n  char cVar16;\\n  char cVar17;\\n  char cVar18;\\n  char cVar19;\\n  char cVar20;\\n  char cVar21;\\n  char cVar22;\\n  char cVar23;\\n  char cVar24;\\n  char cVar25;\\n  char cVar26;\\n  char extraout_AL;\\n  ushort uVar27;\\n  int iVar28;\\n  void *_Buf1;\\n  ulonglong extraout_RAX;\\n  void *_Buf2;\\n  undefined8 *in_RCX;\\n  longlong lVar29;\\n  void *in_RDX;\\n  void *pvVar30;\\n  uint uVar31;\\n  ulonglong uVar32;\\n  byte bVar33;\\n  undefined1 auVar34 [16];\\n  char cVar35;\\n  char cVar36;\\n  char cVar37;\\n  char cVar38;\\n  undefined1 unaff_XMM7_Ba;\\n  undefined1 unaff_XMM7_Bb;\\n  undefined1 unaff_XMM7_Bc;\\n  undefined1 unaff_XMM7_Bd;\\n  undefined1 unaff_XMM7_Be;\\n  undefined1 unaff_XMM7_Bf;\\n  undefined1 unaff_XMM7_Bg;\\n  undefined1 unaff_XMM7_Bh;\\n  undefined1 unaff_XMM7_Bi;\\n  undefined1 unaff_XMM7_Bj;\\n  undefined1 unaff_XMM7_Bk;\\n  undefined1 unaff_XMM7_Bl;\\n  undefined1 unaff_XMM7_Bm;\\n  undefined1 unaff_XMM7_Bn;\\n  undefined1 unaff_XMM7_Bo;\\n  undefined1 unaff_XMM7_Bp;\\n  undefined1 auVar39 [16];\\n  \\n  puVar2 = *(undefined8 **)*in_RCX;\\n  asset::prefab::PrefabName::as_name_ref();\\n  if (((*(char *)*puVar2 == '\\\\x01') &&\\n      (country_core::resources::prefab::PrefabLibrary::has<ref_<asset::prefab::PrefabNameRef>_>(),\\n      extraout_AL != '\\\\0')) && (plVar3 = (longlong *)puVar2[2], plVar3[3] != 0)) {\\n    pvVar30 = _Buf1;\\n    hash::BuildHasher::hash_one<std::hash::random::RandomState,ref_<str_>_>();\\n    lVar4 = *plVar3;\\n    uVar5 = plVar3[1];\\n    bVar33 = (byte)(extraout_RAX >> 0x39);\\n    auVar34 = ZEXT216(CONCAT11(bVar33,bVar33));\\n    auVar34 = pshuflw(auVar34,auVar34,0);\\n    cVar35 = auVar34[0];\\n    cVar36 = auVar34[1];\\n    cVar37 = auVar34[2];\\n    cVar38 = auVar34[3];\\n    lVar29 = 0;\\n    iVar7 = -(uint)(CONCAT13(unaff_XMM7_Bd,\\n                             CONCAT12(unaff_XMM7_Bc,CONCAT11(unaff_XMM7_Bb,unaff_XMM7_Ba))) ==\\n                   CONCAT13(unaff_XMM7_Bd,\\n                            CONCAT12(unaff_XMM7_Bc,CONCAT11(unaff_XMM7_Bb,unaff_XMM7_Ba))));\\n    iVar8 = -(uint)(CONCAT13(unaff_XMM7_Bh,\\n                             CONCAT12(unaff_XMM7_Bg,CONCAT11(unaff_XMM7_Bf,unaff_XMM7_Be))) ==\\n                   CONCAT13(unaff_XMM7_Bh,\\n                            CONCAT12(unaff_XMM7_Bg,CONCAT11(unaff_XMM7_Bf,unaff_XMM7_Be))));\\n    iVar9 = -(uint)(CONCAT13(unaff_XMM7_Bl,\\n                             CONCAT12(unaff_XMM7_Bk,CONCAT11(unaff_XMM7_Bj,unaff_XMM7_Bi))) ==\\n                   CONCAT13(unaff_XMM7_Bl,\\n                            CONCAT12(unaff_XMM7_Bk,CONCAT11(unaff_XMM7_Bj,unaff_XMM7_Bi))));\\n    iVar10 = -(uint)(CONCAT13(unaff_XMM7_Bp,\\n                              CONCAT12(unaff_XMM7_Bo,CONCAT11(unaff_XMM7_Bn,unaff_XMM7_Bm))) ==\\n                    CONCAT13(unaff_XMM7_Bp,\\n                             CONCAT12(unaff_XMM7_Bo,CONCAT11(unaff_XMM7_Bn,unaff_XMM7_Bm))));\\n    uVar32 = extraout_RAX;\\n    while( true ) {\\n      pcVar1 = (char *)(lVar4 + (uVar5 & uVar32));\\n      cVar11 = *pcVar1;\\n      cVar12 = pcVar1[1];\\n      cVar13 = pcVar1[2];\\n      cVar14 = pcVar1[3];\\n      cVar15 = pcVar1[4];\\n      cVar16 = pcVar1[5];\\n      cVar17 = pcVar1[6];\\n      cVar18 = pcVar1[7];\\n      cVar19 = pcVar1[8];\\n      cVar20 = pcVar1[9];\\n      cVar21 = pcVar1[10];\\n      cVar22 = pcVar1[0xb];\\n      cVar23 = pcVar1[0xc];\\n      cVar24 = pcVar1[0xd];\\n      cVar25 = pcVar1[0xe];\\n      cVar26 = pcVar1[0xf];\\n      auVar34[0] = -(cVar11 == cVar35);\\n      auVar34[1] = -(cVar12 == cVar36);\\n      auVar34[2] = -(cVar13 == cVar37);\\n      auVar34[3] = -(cVar14 == cVar38);\\n      auVar34[4] = -(cVar15 == cVar35);\\n      auVar34[5] = -(cVar16 == cVar36);\\n      auVar34[6] = -(cVar17 == cVar37);\\n      auVar34[7] = -(cVar18 == cVar38);\\n      auVar34[8] = -(cVar19 == cVar35);\\n      auVar34[9] = -(cVar20 == cVar36);\\n      auVar34[10] = -(cVar21 == cVar37);\\n      auVar34[0xb] = -(cVar22 == cVar38);\\n      auVar34[0xc] = -(cVar23 == cVar35);\\n      auVar34[0xd] = -(cVar24 == cVar36);\\n      auVar34[0xe] = -(cVar25 == cVar37);\\n      auVar34[0xf] = -(cVar26 == cVar38);\\n      uVar27 = (ushort)(SUB161(auVar34 >> 7,0) & 1) | (ushort)(SUB161(auVar34 >> 0xf,0) & 1) << 1 |\\n               (ushort)(SUB161(auVar34 >> 0x17,0) & 1) << 2 |\\n               (ushort)(SUB161(auVar34 >> 0x1f,0) & 1) << 3 |\\n               (ushort)(SUB161(auVar34 >> 0x27,0) & 1) << 4 |\\n               (ushort)(SUB161(auVar34 >> 0x2f,0) & 1) << 5 |\\n               (ushort)(SUB161(auVar34 >> 0x37,0) & 1) << 6 |\\n               (ushort)(SUB161(auVar34 >> 0x3f,0) & 1) << 7 |\\n               (ushort)(SUB161(auVar34 >> 0x47,0) & 1) << 8 |\\n               (ushort)(SUB161(auVar34 >> 0x4f,0) & 1) << 9 |\\n               (ushort)(SUB161(auVar34 >> 0x57,0) & 1) << 10 |\\n               (ushort)(SUB161(auVar34 >> 0x5f,0) & 1) << 0xb |\\n               (ushort)(SUB161(auVar34 >> 0x67,0) & 1) << 0xc |\\n               (ushort)(SUB161(auVar34 >> 0x6f,0) & 1) << 0xd |\\n               (ushort)(SUB161(auVar34 >> 0x77,0) & 1) << 0xe | (ushort)(auVar34[0xf] >> 7) << 0xf;\\n      uVar31 = (uint)uVar27;\\n      while (uVar6 = uVar31, uVar27 != 0) {\\n        for (; (uVar6 & 1) == 0; uVar6 = uVar6 >> 1 | 0x80000000) {\\n        }\\n        asset::prefab::PrefabName::as_name_ref();\\n        if ((pvVar30 == in_RDX) &&\\n           (pvVar30 = _Buf2, iVar28 = memcmp(_Buf1,_Buf2,(size_t)in_RDX), iVar28 == 0)) {\\n          return;\\n        }\\n        uVar27 = (ushort)(uVar31 - 1) & (ushort)uVar31;\\n        uVar31 = CONCAT22((short)(uVar31 - 1 >> 0x10),uVar27);\\n      }\\n      auVar39[0] = -(cVar11 == (char)iVar7);\\n      auVar39[1] = -(cVar12 == (char)((uint)iVar7 >> 8));\\n      auVar39[2] = -(cVar13 == (char)((uint)iVar7 >> 0x10));\\n      auVar39[3] = -(cVar14 == (char)((uint)iVar7 >> 0x18));\\n      auVar39[4] = -(cVar15 == (char)iVar8);\\n      auVar39[5] = -(cVar16 == (char)((uint)iVar8 >> 8));\\n      auVar39[6] = -(cVar17 == (char)((uint)iVar8 >> 0x10));\\n      auVar39[7] = -(cVar18 == (char)((uint)iVar8 >> 0x18));\\n      auVar39[8] = -(cVar19 == (char)iVar9);\\n      auVar39[9] = -(cVar20 == (char)((uint)iVar9 >> 8));\\n      auVar39[10] = -(cVar21 == (char)((uint)iVar9 >> 0x10));\\n      auVar39[0xb] = -(cVar22 == (char)((uint)iVar9 >> 0x18));\\n      auVar39[0xc] = -(cVar23 == (char)iVar10);\\n      auVar39[0xd] = -(cVar24 == (char)((uint)iVar10 >> 8));\\n      auVar39[0xe] = -(cVar25 == (char)((uint)iVar10 >> 0x10));\\n      auVar39[0xf] = -(cVar26 == (char)((uint)iVar10 >> 0x18));\\n      if ((((((((((((((((SUB161(auVar39 >> 7,0) & 1) != 0 || (SUB161(auVar39 >> 0xf,0) & 1) != 0) ||\\n                      (SUB161(auVar39 >> 0x17,0) & 1) != 0) || (SUB161(auVar39 >> 0x1f,0) & 1) != 0)\\n                    || (SUB161(auVar39 >> 0x27,0) & 1) != 0) || (SUB161(auVar39 >> 0x2f,0) & 1) != 0\\n                   ) || (SUB161(auVar39 >> 0x37,0) & 1) != 0) ||\\n                 (SUB161(auVar39 >> 0x3f,0) & 1) != 0) || (SUB161(auVar39 >> 0x47,0) & 1) != 0) ||\\n               (SUB161(auVar39 >> 0x4f,0) & 1) != 0) || (SUB161(auVar39 >> 0x57,0) & 1) != 0) ||\\n             (SUB161(auVar39 >> 0x5f,0) & 1) != 0) || (SUB161(auVar39 >> 0x67,0) & 1) != 0) ||\\n           (SUB161(auVar39 >> 0x6f,0) & 1) != 0) || (SUB161(auVar39 >> 0x77,0) & 1) != 0) ||\\n          auVar39[0xf] < '\\\\0') break;\\n      uVar32 = (uVar5 & uVar32) + lVar29 + 0x10;\\n      lVar29 = lVar29 + 0x10;\\n    }\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":4,\"callees\":[{\"name\":\"as_name_ref\",\"address\":\"141556130\"},{\"name\":\"has<ref$<asset::prefab::PrefabNameRef>_>\",\"address\":\"141552ff0\"},{\"name\":\"hash_one<std::hash::random::RandomState,ref$<str$>_>\",\"address\":\"1405b1a70\"},{\"name\":\"memcmp\",\"address\":\"142923bf0\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1412a8fa0\":{\"name\":\"watch_atlas\",\"size\":177,\"address\":\"1412a8fa0\",\"signature\":\"void __cdecl watch_atlas(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::startup::load_prefabs::PrefabWatcher::watch_atlas(void)\\n\\n{\\n  longlong lVar1;\\n  longlong *plVar2;\\n  code *pcVar3;\\n  int *in_RCX;\\n  longlong *in_RDX;\\n  longlong local_50;\\n  \\n  if (*in_RCX != 3) {\\n    plVar2 = *(longlong **)(in_RCX + 0xe);\\n    LOCK();\\n    lVar1 = *plVar2;\\n    *plVar2 = *plVar2 + 1;\\n    UNLOCK();\\n    if (*plVar2 == 0 || SCARRY8(lVar1,1) != *plVar2 < 0) {\\n                    // WARNING: Does not return\\n      pcVar3 = (code *)invalidInstructionException();\\n      (*pcVar3)();\\n    }\\n    hotwatch::GenericHotwatch::\\n    watch<notify::windows::ReadDirectoryChangesWatcher,ref_<std::path::PathBuf>,country_core::startup::load_prefabs::impl_1::watch_atlas::closure_env_0>\\n              ();\\n    if (local_50 != -0x7ffffffffffffffc) {\\n                    // WARNING: Subroutine does not return\\n      core::result::unwrap_failed();\\n    }\\n  }\\n  if (*in_RDX == 0) {\\n    return;\\n  }\\n  std::alloc::__default_lib_allocator::__rust_dealloc();\\n  return;\\n}\\n\\n\",\"callee_count\":3,\"callees\":[{\"name\":\"__rust_dealloc\",\"address\":\"140613c20\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"},{\"name\":\"watch<notify::windows::ReadDirectoryChangesWatcher,ref$<std::path::PathBuf>,country_core::startup::load_prefabs::impl$1::watch_atlas::closure_env$0>\",\"address\":\"14091d540\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x14091d060\":{\"name\":\"watch<notify::windows::ReadDirectoryChangesWatcher,ref$<std::path::PathBuf>,country_core::startup::load_prefabs::impl$1::watch_prefab::closure_env$0>\",\"size\":708,\"address\":\"14091d060\",\"signature\":\"void __cdecl watch<notify::windows::ReadDirectoryChangesWatcher,ref$<std::path::PathBuf>,country_core::startup::load_prefabs::impl$1::watch_prefab::closure_env$0>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\nhotwatch::GenericHotwatch::\\nwatch<notify::windows::ReadDirectoryChangesWatcher,ref_<std::path::PathBuf>,country_core::startup::load_prefabs::impl_1::watch_prefab::closure_env_0>\\n          (void)\\n\\n{\\n  char cVar1;\\n  longlong lVar2;\\n  ulonglong uVar3;\\n  undefined *puVar4;\\n  char *pcVar5;\\n  char extraout_AL;\\n  undefined8 *extraout_RAX;\\n  longlong extraout_RAX_00;\\n  ulonglong extraout_RAX_01;\\n  ulonglong uVar6;\\n  longlong *in_RCX;\\n  longlong in_RDX;\\n  longlong *plVar7;\\n  undefined8 *in_R9;\\n  bool bVar8;\\n  longlong local_c8;\\n  longlong lStack_c0;\\n  longlong local_b8;\\n  undefined8 uStack_b0;\\n  longlong local_a8;\\n  longlong lStack_a0;\\n  longlong local_98;\\n  undefined8 uStack_90;\\n  char *local_88;\\n  longlong *local_80;\\n  char *local_78;\\n  longlong lStack_70;\\n  longlong local_68;\\n  undefined8 uStack_60;\\n  undefined4 local_4c;\\n  undefined8 *local_40;\\n  undefined1 local_32;\\n  undefined1 local_31;\\n  undefined8 local_30;\\n  \\n  local_30 = 0xfffffffffffffffe;\\n  local_32 = 1;\\n  local_40 = in_R9;\\n  std::sys::os_str::wtf8::Buf::as_mut_slice();\\n  local_32 = 1;\\n  std::sys::pal::windows::fs::canonicalize();\\n  if (SBORROW8(0,(longlong)local_78)) {\\n    *in_RCX = -0x7ffffffffffffffd;\\n    in_RCX[1] = lStack_70;\\n  }\\n  else {\\n    local_98 = local_68;\\n    uStack_90 = uStack_60;\\n    local_a8 = (longlong)local_78;\\n    lStack_a0 = lStack_70;\\n    local_31 = 1;\\n    ::notify::windows::impl$2::watch<ref_<std::path::PathBuf>_>();\\n    if (local_78 == (char *)0x8000000000000003) {\\n      lVar2 = *(longlong *)(in_RDX + 0x28);\\n      LOCK();\\n      bVar8 = *(char *)(lVar2 + 0x10) == '\\\\0';\\n      if (bVar8) {\\n        *(char *)(lVar2 + 0x10) = '\\\\x01';\\n      }\\n      UNLOCK();\\n      if (!bVar8) {\\n        local_31 = 1;\\n        std::sys::sync::mutex::futex::Mutex::lock_contended();\\n      }\\n      puVar4 = __imp__ZN3std9panicking11panic_count18GLOBAL_PANIC_COUNT17h923f4fc2d5dc75a1E;\\n      if ((*(ulonglong *)\\n            __imp__ZN3std9panicking11panic_count18GLOBAL_PANIC_COUNT17h923f4fc2d5dc75a1E &\\n          0x7fffffffffffffff) == 0) {\\n        uVar6 = 0;\\n        local_4c = 0;\\n        cVar1 = *(char *)(lVar2 + 0x11);\\n        local_c8 = local_a8;\\n        lStack_c0 = lStack_a0;\\n        local_b8 = local_98;\\n        uStack_b0 = uStack_90;\\n      }\\n      else {\\n        local_31 = 1;\\n        std::panicking::panic_count::is_zero_slow_path();\\n        uVar6 = extraout_RAX_01 ^ 1;\\n        local_4c = (undefined4)uVar6;\\n        cVar1 = *(char *)(lVar2 + 0x11);\\n        local_c8 = local_a8;\\n        lStack_c0 = lStack_a0;\\n        local_b8 = local_98;\\n        uStack_b0 = uStack_90;\\n      }\\n      local_a8 = local_c8;\\n      lStack_a0 = lStack_c0;\\n      local_98 = local_b8;\\n      uStack_90 = uStack_b0;\\n      if (cVar1 != '\\\\0') {\\n        uVar3 = (ulonglong)lStack_70 >> 8;\\n        lStack_70 = CONCAT71((int7)uVar3,(char)uVar6);\\n        local_78 = (char *)(lVar2 + 0x10);\\n                    // WARNING: Subroutine does not return\\n        core::result::unwrap_failed();\\n      }\\n      local_78 = (char *)*local_40;\\n      lStack_70 = local_40[1];\\n      local_68 = local_40[2];\\n      uStack_60 = local_40[3];\\n      local_88 = (char *)(lVar2 + 0x10);\\n      std::alloc::__default_lib_allocator::__rust_alloc();\\n      if (extraout_RAX == (undefined8 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n        alloc::alloc::handle_alloc_error();\\n      }\\n      extraout_RAX[2] = local_68;\\n      extraout_RAX[3] = uStack_60;\\n      *extraout_RAX = local_78;\\n      extraout_RAX[1] = lStack_70;\\n      plVar7 = &local_c8;\\n      hashbrown::map::HashMap::\\n      insert<std::path::PathBuf,alloc::boxed::Box<dyn_<core::ops::function::FnMut<tuple_<enum2_<notify::DebouncedEvent>_>,assoc_<Output,tuple_<>_>_>,core::marker::Send>,alloc::alloc::Global>,std::hash::random::RandomState,alloc::alloc::Global>\\n                ();\\n      if (extraout_RAX_00 != 0) {\\n        local_80 = plVar7;\\n        if ((code *)*plVar7 != (code *)0x0) {\\n          (*(code *)*plVar7)(extraout_RAX_00);\\n        }\\n        if (local_80[1] != 0) {\\n          std::alloc::__default_lib_allocator::__rust_dealloc();\\n        }\\n      }\\n      pcVar5 = local_88;\\n      *in_RCX = -0x7ffffffffffffffc;\\n      if (((char)local_4c == '\\\\0') && ((*(ulonglong *)puVar4 & 0x7fffffffffffffff) != 0)) {\\n        local_31 = 0;\\n        std::panicking::panic_count::is_zero_slow_path();\\n        if (extraout_AL == '\\\\0') {\\n          *(undefined1 *)(lVar2 + 0x11) = 1;\\n        }\\n      }\\n      LOCK();\\n      cVar1 = *pcVar5;\\n      *pcVar5 = '\\\\0';\\n      UNLOCK();\\n      if (cVar1 != '\\\\x02') {\\n        return;\\n      }\\n      local_31 = 0;\\n      std::sys::sync::mutex::futex::Mutex::wake();\\n      return;\\n    }\\n    local_b8 = local_68;\\n    local_c8 = (longlong)local_78;\\n    lStack_c0 = lStack_70;\\n    local_31 = 1;\\n    hotwatch::impl$3::from();\\n    in_RCX[2] = local_68;\\n    *in_RCX = (longlong)local_78;\\n    in_RCX[1] = lStack_70;\\n    if (local_a8 != 0) {\\n      std::alloc::__default_lib_allocator::__rust_dealloc();\\n    }\\n  }\\n  plVar7 = (longlong *)local_40[3];\\n  LOCK();\\n  *plVar7 = *plVar7 + -1;\\n  UNLOCK();\\n  if (*plVar7 == 0) {\\n    alloc::sync::Arc::\\n    drop_slow<std::sync::poison::mutex::Mutex<std::collections::hash::set::HashSet<asset::prefab::PrefabName,std::hash::random::RandomState>_>,alloc::alloc::Global>\\n              ();\\n  }\\n  core::ptr::drop_in_place<alloc::vec::Vec<asset::prefab::PrefabName,alloc::alloc::Global>_>();\\n  return;\\n}\\n\\n\",\"callee_count\":14,\"callees\":[{\"name\":\"__rust_alloc\",\"address\":\"140613c10\"},{\"name\":\"__rust_dealloc\",\"address\":\"140613c20\"},{\"name\":\"as_mut_slice\",\"address\":\"140d76ed0\"},{\"name\":\"canonicalize\",\"address\":\"140d6af30\"},{\"name\":\"drop_in_place<alloc::vec::Vec<asset::prefab::PrefabName,alloc::alloc::Global>_>\",\"address\":\"14088d2c0\"},{\"name\":\"drop_slow<std::sync::poison::mutex::Mutex<std::collections::hash::set::HashSet<asset::prefab::PrefabName,std::hash::random::RandomState>_>,alloc::alloc::Global>\",\"address\":\"140b5c490\"},{\"name\":\"from\",\"address\":\"141733c90\"},{\"name\":\"handle_alloc_error\",\"address\":\"1428d9000\"},{\"name\":\"insert<std::path::PathBuf,alloc::boxed::Box<dyn$<core::ops::function::FnMut<tuple$<enum2$<notify::DebouncedEvent>_>,assoc$<Output,tuple$<>_>_>,core::marker::Send>,alloc::alloc::Global>,std::hash::random::RandomState,alloc::alloc::Global>\",\"address\":\"1415288d0\"},{\"name\":\"is_zero_slow_path\",\"address\":\"1428d86b0\"},{\"name\":\"lock_contended\",\"address\":\"1428d8750\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"},{\"name\":\"wake\",\"address\":\"1428d8810\"},{\"name\":\"watch<ref$<std::path::PathBuf>_>\",\"address\":\"140923d40\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x14091d540\":{\"name\":\"watch<notify::windows::ReadDirectoryChangesWatcher,ref$<std::path::PathBuf>,country_core::startup::load_prefabs::impl$1::watch_atlas::closure_env$0>\",\"size\":694,\"address\":\"14091d540\",\"signature\":\"void __cdecl watch<notify::windows::ReadDirectoryChangesWatcher,ref$<std::path::PathBuf>,country_core::startup::load_prefabs::impl$1::watch_atlas::closure_env$0>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\nhotwatch::GenericHotwatch::\\nwatch<notify::windows::ReadDirectoryChangesWatcher,ref_<std::path::PathBuf>,country_core::startup::load_prefabs::impl_1::watch_atlas::closure_env_0>\\n          (void)\\n\\n{\\n  char *pcVar1;\\n  char cVar2;\\n  longlong lVar3;\\n  ulonglong uVar4;\\n  undefined *puVar5;\\n  char extraout_AL;\\n  undefined8 *extraout_RAX;\\n  longlong extraout_RAX_00;\\n  ulonglong extraout_RAX_01;\\n  ulonglong uVar6;\\n  longlong *in_RCX;\\n  longlong in_RDX;\\n  char **ppcVar7;\\n  longlong *in_R9;\\n  bool bVar8;\\n  undefined1 in_stack_00000028;\\n  char *local_78;\\n  longlong lStack_70;\\n  longlong local_68;\\n  undefined4 local_54;\\n  char **local_48;\\n  undefined1 local_3a;\\n  undefined1 local_39;\\n  undefined8 local_38;\\n  \\n  ppcVar7 = &local_78;\\n  local_38 = 0xfffffffffffffffe;\\n  local_3a = 1;\\n  std::sys::os_str::wtf8::Buf::as_mut_slice();\\n  local_3a = 1;\\n  std::sys::pal::windows::fs::canonicalize();\\n  pcVar1 = local_78;\\n  if (SBORROW8(0,(longlong)local_78)) {\\n    *in_RCX = -0x7ffffffffffffffd;\\n    in_RCX[1] = lStack_70;\\n  }\\n  else {\\n    local_39 = 1;\\n    ::notify::windows::impl$2::watch<ref_<std::path::PathBuf>_>();\\n    if (local_78 == (char *)0x8000000000000003) {\\n      lVar3 = *(longlong *)(in_RDX + 0x28);\\n      pcVar1 = (char *)(lVar3 + 0x10);\\n      LOCK();\\n      bVar8 = *(char *)(lVar3 + 0x10) == '\\\\0';\\n      if (bVar8) {\\n        *(char *)(lVar3 + 0x10) = '\\\\x01';\\n      }\\n      UNLOCK();\\n      if (!bVar8) {\\n        local_39 = 1;\\n        std::sys::sync::mutex::futex::Mutex::lock_contended();\\n      }\\n      puVar5 = __imp__ZN3std9panicking11panic_count18GLOBAL_PANIC_COUNT17h923f4fc2d5dc75a1E;\\n      if ((*(ulonglong *)\\n            __imp__ZN3std9panicking11panic_count18GLOBAL_PANIC_COUNT17h923f4fc2d5dc75a1E &\\n          0x7fffffffffffffff) == 0) {\\n        uVar6 = 0;\\n        local_54 = 0;\\n        cVar2 = *(char *)(lVar3 + 0x11);\\n      }\\n      else {\\n        local_39 = 1;\\n        std::panicking::panic_count::is_zero_slow_path();\\n        uVar6 = extraout_RAX_01 ^ 1;\\n        local_54 = (undefined4)uVar6;\\n        cVar2 = *(char *)(lVar3 + 0x11);\\n      }\\n      if (cVar2 != '\\\\0') {\\n        uVar4 = (ulonglong)lStack_70 >> 8;\\n        lStack_70 = CONCAT71((int7)uVar4,(char)uVar6);\\n        local_78 = pcVar1;\\n                    // WARNING: Subroutine does not return\\n        core::result::unwrap_failed();\\n      }\\n      std::alloc::__default_lib_allocator::__rust_alloc();\\n      if (extraout_RAX == (undefined8 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n        alloc::alloc::handle_alloc_error();\\n      }\\n      *extraout_RAX = in_R9;\\n      *(undefined1 *)(extraout_RAX + 1) = in_stack_00000028;\\n      hashbrown::map::HashMap::\\n      insert<std::path::PathBuf,alloc::boxed::Box<dyn_<core::ops::function::FnMut<tuple_<enum2_<notify::DebouncedEvent>_>,assoc_<Output,tuple_<>_>_>,core::marker::Send>,alloc::alloc::Global>,std::hash::random::RandomState,alloc::alloc::Global>\\n                ();\\n      if (extraout_RAX_00 != 0) {\\n        local_48 = ppcVar7;\\n        if ((code *)*ppcVar7 != (code *)0x0) {\\n          (*(code *)*ppcVar7)(extraout_RAX_00);\\n        }\\n        if (local_48[1] != (char *)0x0) {\\n          std::alloc::__default_lib_allocator::__rust_dealloc();\\n        }\\n      }\\n      *in_RCX = -0x7ffffffffffffffc;\\n      if (((char)local_54 == '\\\\0') && ((*(ulonglong *)puVar5 & 0x7fffffffffffffff) != 0)) {\\n        local_39 = 0;\\n        std::panicking::panic_count::is_zero_slow_path();\\n        if (extraout_AL == '\\\\0') {\\n          *(undefined1 *)(lVar3 + 0x11) = 1;\\n        }\\n      }\\n      LOCK();\\n      cVar2 = *pcVar1;\\n      *pcVar1 = '\\\\0';\\n      UNLOCK();\\n      if (cVar2 != '\\\\x02') {\\n        return;\\n      }\\n      local_39 = 0;\\n      std::sys::sync::mutex::futex::Mutex::wake();\\n      return;\\n    }\\n    local_39 = 1;\\n    hotwatch::impl$3::from();\\n    in_RCX[2] = local_68;\\n    *in_RCX = (longlong)local_78;\\n    in_RCX[1] = lStack_70;\\n    if (pcVar1 != (char *)0x0) {\\n      std::alloc::__default_lib_allocator::__rust_dealloc();\\n    }\\n  }\\n  LOCK();\\n  *in_R9 = *in_R9 + -1;\\n  UNLOCK();\\n  if (*in_R9 == 0) {\\n    alloc::sync::Arc::\\n    drop_slow<std::sync::poison::mutex::Mutex<std::collections::hash::set::HashSet<country_core::render::nani::gpu_world::GpuWorldSubsetKind,std::hash::random::RandomState>_>,alloc::alloc::Global>\\n              ();\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":13,\"callees\":[{\"name\":\"__rust_alloc\",\"address\":\"140613c10\"},{\"name\":\"__rust_dealloc\",\"address\":\"140613c20\"},{\"name\":\"as_mut_slice\",\"address\":\"140d76ed0\"},{\"name\":\"canonicalize\",\"address\":\"140d6af30\"},{\"name\":\"drop_slow<std::sync::poison::mutex::Mutex<std::collections::hash::set::HashSet<country_core::render::nani::gpu_world::GpuWorldSubsetKind,std::hash::random::RandomState>_>,alloc::alloc::Global>\",\"address\":\"140b5d0c0\"},{\"name\":\"from\",\"address\":\"141733c90\"},{\"name\":\"handle_alloc_error\",\"address\":\"1428d9000\"},{\"name\":\"insert<std::path::PathBuf,alloc::boxed::Box<dyn$<core::ops::function::FnMut<tuple$<enum2$<notify::DebouncedEvent>_>,assoc$<Output,tuple$<>_>_>,core::marker::Send>,alloc::alloc::Global>,std::hash::random::RandomState,alloc::alloc::Global>\",\"address\":\"1415288d0\"},{\"name\":\"is_zero_slow_path\",\"address\":\"1428d86b0\"},{\"name\":\"lock_contended\",\"address\":\"1428d8750\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"},{\"name\":\"wake\",\"address\":\"1428d8810\"},{\"name\":\"watch<ref$<std::path::PathBuf>_>\",\"address\":\"140923d40\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x14091b430\":{\"name\":\"call_once<country_core::startup::load_prefabs::impl$1::watch_atlas::closure_env$0,tuple$<enum2$<notify::DebouncedEvent>_>_>\",\"size\":71,\"address\":\"14091b430\",\"signature\":\"void __cdecl call_once<country_core::startup::load_prefabs::impl$1::watch_atlas::closure_env$0,tuple$<enum2$<notify::DebouncedEvent>_>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncore::ops::function::FnOnce::\\ncall_once<country_core::startup::load_prefabs::impl_1::watch_atlas::closure_env_0,tuple_<enum2_<notify::DebouncedEvent>_>_>\\n          (void)\\n\\n{\\n  longlong *plVar1;\\n  undefined8 *in_RCX;\\n  \\n  plVar1 = (longlong *)*in_RCX;\\n  country_core::startup::load_prefabs::impl$1::watch_atlas::closure_0();\\n  LOCK();\\n  *plVar1 = *plVar1 + -1;\\n  UNLOCK();\\n  if (*plVar1 == 0) {\\n    ::alloc::sync::Arc::\\n    drop_slow<std::sync::poison::mutex::Mutex<std::collections::hash::set::HashSet<country_core::render::nani::gpu_world::GpuWorldSubsetKind,std::hash::random::RandomState>_>,alloc::alloc::Global>\\n              ();\\n  }\\n  return;\\n}\\n\\n\",\"callee_count\":2,\"callees\":[{\"name\":\"closure$0\",\"address\":\"140922a80\"},{\"name\":\"drop_slow<std::sync::poison::mutex::Mutex<std::collections::hash::set::HashSet<country_core::render::nani::gpu_world::GpuWorldSubsetKind,std::hash::random::RandomState>_>,alloc::alloc::Global>\",\"address\":\"140b5d0c0\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x14091b4b0\":{\"name\":\"call_once<country_core::startup::load_prefabs::impl$1::watch_prefab::closure_env$0,tuple$<enum2$<notify::DebouncedEvent>_>_>\",\"size\":68,\"address\":\"14091b4b0\",\"signature\":\"void __cdecl call_once<country_core::startup::load_prefabs::impl$1::watch_prefab::closure_env$0,tuple$<enum2$<notify::DebouncedEvent>_>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncore::ops::function::FnOnce::\\ncall_once<country_core::startup::load_prefabs::impl_1::watch_prefab::closure_env_0,tuple_<enum2_<notify::DebouncedEvent>_>_>\\n          (void)\\n\\n{\\n  longlong *plVar1;\\n  longlong in_RCX;\\n  \\n  country_core::startup::load_prefabs::impl$1::watch_prefab::closure_0();\\n  plVar1 = *(longlong **)(in_RCX + 0x18);\\n  LOCK();\\n  *plVar1 = *plVar1 + -1;\\n  UNLOCK();\\n  if (*plVar1 == 0) {\\n    ::alloc::sync::Arc::\\n    drop_slow<std::sync::poison::mutex::Mutex<std::collections::hash::set::HashSet<asset::prefab::PrefabName,std::hash::random::RandomState>_>,alloc::alloc::Global>\\n              ();\\n  }\\n  ptr::drop_in_place<alloc::vec::Vec<asset::prefab::PrefabName,alloc::alloc::Global>_>();\\n  return;\\n}\\n\\n\",\"callee_count\":3,\"callees\":[{\"name\":\"closure$0\",\"address\":\"140922830\"},{\"name\":\"drop_in_place<alloc::vec::Vec<asset::prefab::PrefabName,alloc::alloc::Global>_>\",\"address\":\"14088d2c0\"},{\"name\":\"drop_slow<std::sync::poison::mutex::Mutex<std::collections::hash::set::HashSet<asset::prefab::PrefabName,std::hash::random::RandomState>_>,alloc::alloc::Global>\",\"address\":\"140b5c490\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}}},\"count\":6,\"requested\":6}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "list_instances",
+        "title": null,
+        "description": "\nList known Ghidra instances from UDS discovery and the active TCP fallback.\n\nReturns JSON with each instance's project name, PID, open programs, and\nsocket path or TCP URL. Also shows which instance is currently connected.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "_list_instances_toolArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "connect_instance",
+        "title": null,
+        "description": "\nSwitch the MCP bridge to a different Ghidra instance by project name.\n\nIMPORTANT: Before calling this function only the static bridge tools are\nexposed (list_instances, connect_instance, tool-group management,\ndebugger proxy). After a successful connect the bridge fetches the\ninstance's /mcp/schema and registers Ghidra analysis tools dynamically.\nBy default all tool groups are loaded on connect. When started with\n--lazy, only the default groups are loaded initially and clients may need\nto call load_tool_group() for additional categories. Clients that cache\nthe initial tools/list and don't honor tools/list_changed must re-list\ntools after this call.\n\nUse list_instances() first to see available instances.\n\nArgs:\n    project: Project name (or substring) to connect to\n",
+        "inputSchema": {
+          "properties": {
+            "project": {
+              "description": "Project name (or substring) to connect to",
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          "required": [
+            "project"
+          ],
+          "title": "connect_instanceArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_tool_groups",
+        "title": null,
+        "description": "\nList all available tool groups with their tool counts and loaded status.\n\nReturns each category with: tool count, loaded status, and tool names.\nUse load_tool_group(group) to load a group's tools.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "list_tool_groupsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "load_tool_group",
+        "title": null,
+        "description": "\nLoad all tools in a category. Accepts a category name or \"all\" to load everything.\n\nUse list_tool_groups() to see available categories.\n\nArgs:\n    group: Category name (e.g. \"function\", \"datatype\") or \"all\"\n",
+        "inputSchema": {
+          "properties": {
+            "group": {
+              "description": "Category name (e.g. \"function\", \"datatype\") or \"all\"",
+              "title": "Group",
+              "type": "string"
+            }
+          },
+          "required": [
+            "group"
+          ],
+          "title": "load_tool_groupArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "search_tools",
+        "title": null,
+        "description": "\nSearch the full Ghidra tool catalog by keyword \u2014 including tools whose group\nis not currently loaded. Use this to discover the right tool without paying\nthe context cost of loading all groups (run the bridge with --lazy and search\non demand). Matches against tool name, description, and category.\n\nEach result reports whether the tool is callable right now; if not, it\nincludes the exact load_tool_group(...) call needed to make it callable.\n\nArgs:\n    query: Space-separated keywords, e.g. \"rename function\" or \"xref struct\".\n    limit: Maximum number of results to return (default 15).\n",
+        "inputSchema": {
+          "properties": {
+            "query": {
+              "description": "Space-separated keywords, e.g. \"rename function\" or \"xref struct\".",
+              "title": "Query",
+              "type": "string"
+            },
+            "limit": {
+              "default": 15,
+              "description": "Maximum number of results to return (default 15).",
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "title": "search_toolsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble_function",
+        "title": null,
+        "description": "Get assembly listing of function. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution. When Ghidra's stored function body is degenerate (body_end == body_start, which would truncate the listing to a single instruction), the listing is instead bounded by the next function or the containing memory block and the response adds body_degenerate=true, bounded_by (next_function | memory_block | function_body) and a warning; do not trust this function's stored extent in that case.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "disassemble_functionArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_data_types",
+        "title": null,
+        "description": "Find data types by name or path pattern, category and kind, one record per type (name, kind, category, size, path). With categories=true, list the category paths instead. With no filter it lists every type.",
+        "inputSchema": {
+          "properties": {
+            "pattern": {
+              "default": "",
+              "description": "Case-insensitive substring of the type's name or full path; omit for no name filter.",
+              "title": "Pattern",
+              "type": "string"
+            },
+            "category": {
+              "default": "",
+              "description": "Case-insensitive substring of the category path (e.g. Windows, /MyTypes); omit for any category.",
+              "title": "Category",
+              "type": "string"
+            },
+            "kind": {
+              "default": "",
+              "description": "Only this kind: struct, union, enum, typedef, pointer, array, function or primitive. Omit for all kinds.",
+              "title": "Kind",
+              "type": "string"
+            },
+            "categories": {
+              "default": "false",
+              "description": "True lists the category paths (filtered by pattern) instead of types; category and kind do not apply.",
+              "title": "Categories",
+              "type": "boolean"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "find_data_typesArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_functions",
+        "title": null,
+        "description": "Find functions: every filter is optional, so with none it lists the whole program a page at a time. Filter by name (substring or regex=true), xref count, calling convention, whether the name is user-given, thunk or external, or by tag (tag=a,b keeps functions carrying ANY of them); each result lists its tags; sort by address, name or xref_count. Replaces list_functions, list_functions_enhanced, search_functions and search_functions_enhanced, which returned four different shapes for the same question.",
+        "inputSchema": {
+          "properties": {
+            "name_pattern": {
+              "default": "",
+              "description": "Substring to match, or a regex when regex=true. Omit to match every function.",
+              "title": "Name Pattern",
+              "type": "string"
+            },
+            "regex": {
+              "default": "false",
+              "description": "Treat name_pattern as a regular expression.",
+              "title": "Regex",
+              "type": "boolean"
+            },
+            "min_xrefs": {
+              "default": "",
+              "description": "Only functions with at least this many references to them.",
+              "title": "Min Xrefs",
+              "type": "integer"
+            },
+            "max_xrefs": {
+              "default": "",
+              "description": "Only functions with at most this many references to them.",
+              "title": "Max Xrefs",
+              "type": "integer"
+            },
+            "calling_convention": {
+              "default": "",
+              "description": "Only functions with this calling convention (e.g. __stdcall).",
+              "title": "Calling Convention",
+              "type": "string"
+            },
+            "has_custom_name": {
+              "default": "",
+              "description": "true = only functions somebody has named; false = only auto-generated names (FUN_*, thunk_*).",
+              "title": "Has Custom Name",
+              "type": "boolean"
+            },
+            "is_thunk": {
+              "default": "",
+              "description": "true = only thunks, false = exclude them, omit for both.",
+              "title": "Is Thunk",
+              "type": "boolean"
+            },
+            "is_external": {
+              "default": "",
+              "description": "true = only external functions, false = exclude them.",
+              "title": "Is External",
+              "type": "boolean"
+            },
+            "tag": {
+              "default": "",
+              "description": "Only functions carrying any of these tags: one name or a comma-separated list. A name that is not a defined tag is an error (list_function_tags shows the definitions).",
+              "title": "Tag",
+              "type": "string"
+            },
+            "sort_by": {
+              "default": "address",
+              "description": "address | name | xref_count.",
+              "title": "Sort By",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Page size. 0 means no limit, which on a large binary is a megabytes-long response \u2014 the old list_functions had no pagination at all and returned 1.7MB on a stripped `ls`.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "pattern": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Pattern"
+            },
+            "query": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Query"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            }
+          },
+          "title": "find_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_functions",
+        "title": null,
+        "description": "Everything about one or many functions in a single call. Pass functions= as a comma-separated list of names or addresses for bulk mode (up to 20); omit it and pass function=/name=/address= for one. Pass fields= as a comma-separated subset to skip work you do not need \u2014 omitted or empty returns everything. When the requested fields need no decompiled text (e.g. fields=callers,callees,signature,labels,entry_point), the target function is NOT decompiled (238 ms cold / 5\u201310 ms warm per function); only decompiled_code (and call_context when enabled) pays that cost. Decompiled text renders EOL comments (// style), so comments written with set_comment are visible in the code. Replaces get_function_by_address, get_function_variables, get_function_xrefs, decompile_function, and the former get_function_callers/callees/labels/signature tools. Completeness scoring is NOT included \u2014 call analyze_function_completeness for that.",
+        "inputSchema": {
+          "properties": {
+            "function": {
+              "default": "",
+              "description": "Single mode: function name or address (0x<hex> or <space>:<hex>). Ignored when functions= is set.",
+              "title": "Function",
+              "type": "string"
+            },
+            "functions": {
+              "default": "",
+              "description": "Bulk mode: comma-separated function references (names or addresses). When set, function= is ignored. Returns a map keyed by the reference asked for.",
+              "title": "Functions",
+              "type": "string"
+            },
+            "fields": {
+              "default": "",
+              "description": "Comma-separated subset: signature, classification, return_type, entry_point, body_start, body_end, decompiled_code, plate_comment, comments, labels, tags, parameters, locals, callers, call_context, callees, xrefs, disassembly, jump_targets, refs (the absolute addresses the function uses: data references, the values of literal-pool words, and the memory the decompiled code reads and writes, so a register reached as base + offset is listed by its own address; a pool value is written value<word; asking for refs decompiles). Omit or leave empty for the full bundle.",
+              "title": "Fields",
+              "type": "string"
+            },
+            "include_call_context": {
+              "default": "true",
+              "description": "Include each caller's decompiled call-site line. Costs one decompilation per unique caller (~43ms); set false for the cheapest possible bundle. Ignored unless call_context is requested (explicitly or via an empty fields=).",
+              "title": "Include Call Context",
+              "type": "boolean"
+            },
+            "call_context_limit": {
+              "default": "6",
+              "description": "Maximum number of UNIQUE callers to decompile for call context.",
+              "title": "Call Context Limit",
+              "type": "integer"
+            },
+            "call_context_lines": {
+              "default": "3",
+              "description": "Lines of the caller's decompilation to return per call site, centred on the call. 1 is the call line alone; the default 3 adds the line above and below, which is usually where the guard and the use of the result live. Clamped to 1-21; costs no extra decompilation.",
+              "title": "Call Context Lines",
+              "type": "integer"
+            },
+            "include_disasm": {
+              "default": "false",
+              "description": "Include the raw instruction listing. Off by default: it roughly doubles the payload and agents rarely read it.",
+              "title": "Include Disasm",
+              "type": "boolean"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Address"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "function_address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Address"
+            },
+            "function_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Name"
+            },
+            "call_context_window": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Call Context Window"
+            }
+          },
+          "title": "get_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_metadata",
+        "title": null,
+        "description": "Get program metadata",
+        "inputSchema": {
+          "properties": {
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_metadataArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_struct_layout",
+        "title": null,
+        "description": "Get structure field layout",
+        "inputSchema": {
+          "properties": {
+            "struct_name": {
+              "description": "Structure name",
+              "title": "Struct Name",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "struct_name"
+          ],
+          "title": "get_struct_layoutArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_from",
+        "title": null,
+        "description": "Get cross-references from an address. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "get_xrefs_fromArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_to",
+        "title": null,
+        "description": "Get cross-references to ONE address, or to MANY at once (addresses=comma-separated), which returns a map keyed by the address you asked for. Replaces the former get_bulk_xrefs. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "default": "",
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "addresses": {
+              "default": "",
+              "description": "Comma-separated addresses for the many-at-once form. The result is a map of address to its reference list, and an address that does not resolve gets an empty list rather than failing the whole call.",
+              "title": "Addresses",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_xrefs_toArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read_memory",
+        "title": null,
+        "description": "Read raw memory bytes. Always pass the 'program' argument to target the correct binary \u2014 especially when multiple programs are open. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "length": {
+              "default": "16",
+              "description": "Number of bytes",
+              "title": "Length",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "read_memoryArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

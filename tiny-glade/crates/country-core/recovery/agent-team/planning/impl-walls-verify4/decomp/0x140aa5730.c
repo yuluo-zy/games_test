@@ -1,0 +1,63 @@
+
+void __cdecl
+country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash::query(void)
+
+{
+  ulonglong uVar1;
+  longlong in_RCX;
+  int iVar2;
+  float fVar3;
+  float fVar4;
+  undefined1 auVar5 [16];
+  float in_XMM1_Da;
+  float in_XMM1_Db;
+  undefined1 auVar6 [16];
+  int iVar8;
+  undefined1 auVar7 [16];
+  float in_XMM2_Da;
+  float in_XMM2_Db;
+  undefined1 auVar9 [16];
+  int iVar10;
+  int iVar11;
+  
+  uVar1 = *(ulonglong *)(in_RCX + 0x50);
+  auVar5._8_8_ = 0;
+  auVar5._0_8_ = uVar1;
+  auVar9._0_4_ = (float)uVar1 * 0.5 + in_XMM1_Da;
+  auVar9._4_4_ = (float)(uVar1 >> 0x20) * 0.5 + in_XMM2_Da;
+  auVar9._8_4_ = in_XMM1_Db + 0.0;
+  auVar9._12_4_ = in_XMM2_Db + 0.0;
+  iVar10 = (int)*(undefined8 *)(in_RCX + 0x48);
+  iVar11 = (int)((ulonglong)*(undefined8 *)(in_RCX + 0x48) >> 0x20);
+  auVar6._0_4_ = (float)iVar10;
+  auVar6._4_4_ = (float)iVar11;
+  auVar6._8_8_ = 0;
+  auVar5 = divps(auVar5,auVar6);
+  auVar5 = divps(auVar9,auVar5);
+  fVar3 = floorf(auVar5._4_4_);
+  fVar4 = floorf(auVar5._0_4_);
+  iVar8 = (int)fVar4;
+  if (2.1474835e+09 < fVar4) {
+    iVar8 = 0x7fffffff;
+  }
+  if (NAN(fVar4)) {
+    iVar8 = 0;
+  }
+  iVar2 = (int)fVar3;
+  if (2.1474835e+09 < fVar3) {
+    iVar2 = 0x7fffffff;
+  }
+  if (NAN(fVar3)) {
+    iVar2 = 0;
+  }
+  if (-1 < iVar8) {
+    auVar7._0_4_ = -(uint)(iVar8 < iVar10);
+    iVar8 = -(uint)(iVar2 < iVar11);
+    auVar7._4_4_ = auVar7._0_4_;
+    auVar7._8_4_ = iVar8;
+    auVar7._12_4_ = iVar8;
+    movmskpd(iVar2,auVar7);
+  }
+  return;
+}
+

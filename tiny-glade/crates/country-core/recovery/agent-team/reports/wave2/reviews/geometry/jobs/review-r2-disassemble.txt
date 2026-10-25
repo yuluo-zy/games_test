@@ -1,0 +1,208 @@
+0x1412ac9b0      push rsi
+0x1412ac9b1      push rdi
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1412ac9b2      sub rsp, 0x98
+0x1412ac9b9      movaps xmmword [rsp + 0x80], xmm10
+0x1412ac9c2      movaps xmmword [rsp + 0x70], xmm9
+0x1412ac9c8      movaps xmmword [rsp + 0x60], xmm8
+0x1412ac9ce      movaps xmmword [rsp + 0x50], xmm7
+0x1412ac9d3      movaps xmmword [rsp + 0x40], xmm6
+0x1412ac9d8      mov rdi, rdx
+0x1412ac9db      mov rsi, rcx
+0x1412ac9de      movss xmm6, dword [r8]
+0x1412ac9e3      movss xmm8, dword [r8 + 4]
+0x1412ac9e9      mov rdx, qword [rdx]
+0x1412ac9ec      lea rcx, [rsp + 0x28]
+   ; 0x140b2a7d0(0x0, 0x0, -1, 0xffffffffffffff80)
+0x1412ac9f1      call 0x140b2a7d0
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1412ac9f6      cmp dword [rsp + 0x28], 0
+; [0x142c2b0c8:4]=0x3ec28f5c
+; "\\x8f\xc2>internal error: entered unreachable codecrates/systems/decorator/src/decorator_visual/gothic_wall_window.rs"
+0x1412ac9fb      movss xmm7, dword [0x142c2b0c8]
+   ; unlikely
+0x1412aca03      je 0x1412aca2e
+0x1412aca05      mov rax, qword [rdi + 8]
+   ; reloc.WS2_32.dll_accept
+0x1412aca09      cmp byte [rax], 7
+   ; likely
+0x1412aca0c      jne 0x1412aca2e
+0x1412aca0e      mov rax, qword [rdi + 0x10]
+0x1412aca12      movzx eax, byte [rax]
+   ; reloc.WS2_32.dll_accept
+0x1412aca15      dec al
+; reloc.WS2_32.dll_closesocket
+   ; reloc.WS2_32.dll_accept
+0x1412aca17      cmp al, 3
+   ; likely
+0x1412aca19      jae 0x1412acc08
+0x1412aca1f      movzx eax, al
+0x1412aca22      lea rcx, [0x142c2b180]
+0x1412aca29      movss xmm7, dword [rcx + rax*4]
+0x1412aca2e      mov rdx, qword [rdi + 0x18]
+0x1412aca32      mov rcx, qword [rdi + 0x20]
+0x1412aca36      mov rax, qword [rcx + 0x10]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1412aca3a      test rax, rax
+0x1412aca3d      sete r8b
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1412aca41      shl rax, 3
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1412aca45      add rax, qword [rcx + 8]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1412aca49      add rax, 0xfffffffffffffff8
+0x1412aca4d      sete cl
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1412aca50      or cl, r8b
+0x1412aca53      cmp dword [rdx], 0
+   ; likely
+0x1412aca56      je 0x1412acad7
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1412aca58      test cl, cl
+   ; unlikely
+0x1412aca5a      jne 0x1412acbf0
+0x1412aca60      movss xmm1, dword [rax]
+0x1412aca64      xorps xmm0, xmm0
+0x1412aca67      movaps xmm2, xmm6
+   ; 0x140c904a0(0x0, 0x0, -1, 0xffffffffffffff00)
+0x1412aca6a      call 0x140c904a0
+0x1412aca6f      movaps xmm6, xmm0
+0x1412aca72      mov rax, qword [rdi + 0x28]
+; [0x142925904:4]=0x3f800000
+0x1412aca76      movss xmm0, dword [0x142925904]
+0x1412aca7e      movaps xmm1, xmm0
+0x1412aca81      subss xmm1, xmm6
+0x1412aca85      movss xmm9, dword [rax]
+0x1412aca8a      mulss xmm9, xmm1
+0x1412aca8f      movss xmm2, dword [rax + 4]
+0x1412aca94      mulss xmm2, xmm1
+0x1412aca98      movsldup xmm3, xmm1
+0x1412aca9c      mulss xmm1, dword [rax + 8]
+0x1412acaa1      mov rax, qword [rdi + 0x48]
+0x1412acaa5      movss xmm10, dword [rax]
+0x1412acaaa      mulss xmm10, xmm6
+0x1412acaaf      movss xmm4, dword [rax + 4]
+0x1412acab4      mulss xmm4, xmm6
+0x1412acab8      movsldup xmm5, xmm6
+0x1412acabc      mulss xmm6, dword [rax + 8]
+0x1412acac1      addss xmm6, xmm1
+0x1412acac5      addss xmm4, xmm2
+0x1412acac9      unpcklps xmm9, xmm4
+0x1412acacd      mov rax, qword [rdi + 0x38]
+0x1412acad1      mov rcx, qword [rdi + 0x50]
+0x1412acad5      jmp 0x1412acb54
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1412acad7      test cl, cl
+   ; likely
+0x1412acad9      jne 0x1412acbfc
+0x1412acadf      movss xmm1, dword [rax]
+0x1412acae3      xorps xmm0, xmm0
+0x1412acae6      movaps xmm2, xmm6
+   ; 0x140c904a0(0x0, 0x0, -1, -1)
+0x1412acae9      call 0x140c904a0
+0x1412acaee      movaps xmm6, xmm0
+0x1412acaf1      mov rax, qword [rdi + 0x28]
+; [0x142925904:4]=0x3f800000
+0x1412acaf5      movss xmm0, dword [0x142925904]
+0x1412acafd      movaps xmm1, xmm0
+0x1412acb00      subss xmm1, xmm6
+0x1412acb04      movss xmm9, dword [rax]
+0x1412acb09      mulss xmm9, xmm1
+0x1412acb0e      movss xmm2, dword [rax + 4]
+0x1412acb13      mulss xmm2, xmm1
+0x1412acb17      movsldup xmm3, xmm1
+0x1412acb1b      mulss xmm1, dword [rax + 8]
+0x1412acb20      mov rax, qword [rdi + 0x30]
+0x1412acb24      movss xmm10, dword [rax]
+0x1412acb29      mulss xmm10, xmm6
+0x1412acb2e      movss xmm4, dword [rax + 4]
+0x1412acb33      mulss xmm4, xmm6
+0x1412acb37      movsldup xmm5, xmm6
+0x1412acb3b      mulss xmm6, dword [rax + 8]
+0x1412acb40      addss xmm6, xmm1
+0x1412acb44      addss xmm4, xmm2
+0x1412acb48      unpcklps xmm9, xmm4
+0x1412acb4c      mov rax, qword [rdi + 0x38]
+0x1412acb50      mov rcx, qword [rdi + 0x40]
+0x1412acb54      movsd xmm1, qword [rax]
+0x1412acb58      movsd xmm2, qword [rcx]
+0x1412acb5c      mulps xmm1, xmm3
+0x1412acb5f      mulps xmm2, xmm5
+0x1412acb62      addps xmm2, xmm1
+0x1412acb65      movaps xmm1, xmm2
+0x1412acb68      mulps xmm1, xmm2
+0x1412acb6b      movshdup xmm3, xmm1
+0x1412acb6f      addss xmm3, xmm1
+0x1412acb73      xorps xmm1, xmm1
+0x1412acb76      sqrtss xmm1, xmm3
+0x1412acb7a      divss xmm0, xmm1
+0x1412acb7e      movsldup xmm0, xmm0
+0x1412acb82      mulps xmm0, xmm2
+0x1412acb85      movlps qword [rsp + 0x20], xmm0
+0x1412acb8a      lea rcx, [rsp + 0x28]
+0x1412acb8f      lea rdx, [rsp + 0x20]
+   ; 0x140c9cdc0(0x0, 0x0, 0xffffffffffffff60, 0xffffffffffffff68)
+0x1412acb94      call 0x140c9cdc0
+0x1412acb99      unpcklps xmm10, xmm8
+0x1412acb9d      addps xmm10, xmm9
+0x1412acba1      movsd xmm1, qword [rsp + 0x28]
+0x1412acba7      movsldup xmm0, xmm7
+0x1412acbab      mulps xmm0, xmm1
+0x1412acbae      addps xmm0, xmm10
+0x1412acbb2      mulss xmm7, dword [rsp + 0x30]
+0x1412acbb8      addss xmm7, xmm6
+0x1412acbbc      movlps qword [rsi], xmm0
+0x1412acbbf      movss dword [rsi + 8], xmm7
+0x1412acbc4      mov rax, rsi
+0x1412acbc7      movaps xmm6, xmmword [rsp + 0x40]
+0x1412acbcc      movaps xmm7, xmmword [rsp + 0x50]
+0x1412acbd1      movaps xmm8, xmmword [rsp + 0x60]
+0x1412acbd7      movaps xmm9, xmmword [rsp + 0x70]
+0x1412acbdd      movaps xmm10, xmmword [rsp + 0x80]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1412acbe6      add rsp, 0x98
+0x1412acbed      pop rdi
+0x1412acbee      pop rsi
+0x1412acbef      ret
+   ; (pstr 0x142c2b0f4) "crates/systems/decorator/src/decorator_visual/gothic_wall_windo"
+0x1412acbf0      lea rcx, [0x142c2b168]
+   ; 0x1428d9310(-1, -1, 0xffffffffffffff60, 0x142c2b168)
+0x1412acbf7      call 0x1428d9310
+   ; (pstr 0x142c2b0f4) "crates/systems/decorator/src/decorator_visual/gothic_wall_windo"
+0x1412acbfc      lea rcx, [0x142c2b150]
+   ; 0x1428d9310(-1, -1, 0xffffffffffffff60, 0x142c2b150)
+0x1412acc03      call 0x1428d9310
+; "internal error: entered unreachable codecrates/systems/decorator/src/decorator_visual/gothic_wall_window.rs"
+0x1412acc08      lea rcx, [0x142c2b0cc]
+   ; (pstr 0x142c2b0f4) "crates/systems/decorator/src/decorator_visual/gothic_wall_windo"
+0x1412acc0f      lea r8, [0x142c2b138]
+; '('
+; 40
+0x1412acc16      mov edx, 0x28
+   ; 0x1428d9430(-1, -1, 0x28, 0x142c2b0cc)
+0x1412acc1b      call 0x1428d9430
+0x1412acc20      int3
+0x1412acc21      int3
+0x1412acc22      int3
+0x1412acc23      int3
+0x1412acc24      int3
+0x1412acc25      int3
+0x1412acc26      int3
+0x1412acc27      int3
+0x1412acc28      int3
+0x1412acc29      int3
+0x1412acc2a      int3
+0x1412acc2b      int3
+0x1412acc2c      int3
+0x1412acc2d      int3

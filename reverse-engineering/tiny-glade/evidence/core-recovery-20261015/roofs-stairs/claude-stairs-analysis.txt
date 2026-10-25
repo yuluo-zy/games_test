@@ -1,0 +1,27 @@
+## 1. Why "dirty = persistent stub storage" is wrong
+
+Three supplied facts contradict it:
+
+- **Stub identity is computed, not stored.** `iter_edges_and_stubs` emits `(n,n)` from GraphMap degree 0. The dirty set is never read to produce stubs.
+- **Membership means "may have changed," not "exists."** `add_edge` inserts `(a,a)` and `(b,b)` precisely because those endpoints' degrees changed — after the insert they have degree ≥1, so no stub exists at `a` or `b`, yet the self-pairs stay in dirty. Reading dirty as storage produces phantom stubs on every endpoint ever touched.
+- **It is non-reconciling.** Nothing described clears an entry when a stub disappears (node gains an edge), and nothing adds one when a node becomes isolated through `apply_diff`'s second pass (zero-degree endpoints are removed, not dirty-marked). So dirty is simultaneously over- and under-inclusive relative to the true stub set.
+
+Its real role is a delta log: `reduce_diff` iterates it as the *before* candidate set, deleting matches from the *after* set. The self-pair also carries a second meaning at apply time — `(a,a)` maps to `add_node`, a *cause* of a stub, not a record of one.
+
+## 2. Two essential operations
+
+**(a) Symmetric pair-level diff marking.** Both `make_backup` and `restore_backup` iterate edges *and stubs* of the source graph and insert pairs absent from the destination into dirty. Dropping either direction breaks rollback: pairs created between snapshot and restore would never be marked, so the restored graph and the dirty set disagree.
+
+**(b) Cached-checksum invalidation** (alongside `backed_up` maintenance). Restore invalidates the checksum before cloning; `apply_diff` invalidates and recalculates. A snapshot/rollback that preserves the cached `Option` returns a stale digest. Implicitly, the clone must copy rather than alias.
+
+## 3. Does `sorted Vec<(u32,u32)>.hash` with `DefaultHasher` match?
+
+**Schema: yes. Variant: not determinable.**
+
+`Vec<(u32,u32)>::hash` under std's `DefaultHasher` writes the `usize` length (8 bytes on 64-bit), then per pair two `write_u32` calls in tuple order — nothing else. Observed stream: 8-byte `edges.len`, then two u32 per pair, no cached-hash bytes. Byte-identical.
+
+Caveats from the supplied facts:
+
+- **Sortedness is required for a stable *value***, since HashSet iteration order is unstable; `reduce_diff` producing sorted Vecs supplies exactly that. Sorting does not change the layout, only the digest.
+- The facts fix "standard SipHash constants / zero key" but not the round count, so `DefaultHasher` (SipHash-1-3) versus SipHash-2-4 cannot be distinguished from this description alone.
+- The 8-byte length implies a 64-bit build; `DefaultHasher` is not guaranteed stable across Rust versions, so a stored digest is not portable.

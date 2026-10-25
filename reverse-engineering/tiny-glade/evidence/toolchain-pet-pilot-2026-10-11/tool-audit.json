@@ -1,0 +1,485 @@
+{
+  "date": "2026-10-11",
+  "scope": "updated-tool audit; actual pet queries reserved for parent",
+  "target_execution": false,
+  "business_build_or_oracle": false,
+  "shared_database_write": false,
+  "vendor_source_modified": false,
+  "operator": {
+    "path": "/Users/yuluo/.codex/mcp-tools/reverse-operator.py",
+    "sha256": "921bd98b9495220c118baab06487106d2e98912cde56383f6666f640bbf2fc05",
+    "interpreter": "/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/.venv/bin/python",
+    "argv": [
+      "interpreter",
+      "operator",
+      "ghidra",
+      "job_absolute_path",
+      "result_absolute_path",
+      "--worker",
+      "shared"
+    ]
+  },
+  "live_read_connection": {
+    "report": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/tool-audit-connection.json",
+    "process_exit_code": 0,
+    "actual_mcp_connection": true,
+    "ok": true,
+    "catalog_pages": 1,
+    "read_tools": [
+      "list_instances",
+      "connect_instance",
+      "list_tool_groups",
+      "load_tool_group",
+      "search_tools",
+      "disassemble_function",
+      "find_data_types",
+      "find_functions",
+      "get_functions",
+      "get_metadata",
+      "get_struct_layout",
+      "get_xrefs_from",
+      "get_xrefs_to",
+      "read_memory"
+    ],
+    "calls": [
+      {
+        "tool": "get_metadata",
+        "args": {
+          "program": "tiny-glade.exe"
+        },
+        "isError": false
+      }
+    ],
+    "metadata": {
+      "program_name": "tiny-glade.exe",
+      "executable_path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.exe",
+      "architecture": "x86",
+      "compiler": "clangwindows",
+      "language": "x86:LE:64:default",
+      "endian": "little",
+      "address_size_bits": 64,
+      "base_address": "140000000",
+      "memory_blocks": 8,
+      "total_memory_size": 58486568,
+      "function_count": 131517,
+      "symbol_count": 991681
+    },
+    "identity_scope": "program/path/compiler/count confirmed; get_metadata did not return executable SHA; known patched B hash is a document binding not freshly verified loaded-memory hash"
+  },
+  "selected_live_schemas": {
+    "find_functions": {
+      "properties": {
+        "name_pattern": {
+          "default": "",
+          "description": "Substring to match, or a regex when regex=true. Omit to match every function.",
+          "title": "Name Pattern",
+          "type": "string"
+        },
+        "regex": {
+          "default": "false",
+          "description": "Treat name_pattern as a regular expression.",
+          "title": "Regex",
+          "type": "boolean"
+        },
+        "min_xrefs": {
+          "default": "",
+          "description": "Only functions with at least this many references to them.",
+          "title": "Min Xrefs",
+          "type": "integer"
+        },
+        "max_xrefs": {
+          "default": "",
+          "description": "Only functions with at most this many references to them.",
+          "title": "Max Xrefs",
+          "type": "integer"
+        },
+        "calling_convention": {
+          "default": "",
+          "description": "Only functions with this calling convention (e.g. __stdcall).",
+          "title": "Calling Convention",
+          "type": "string"
+        },
+        "has_custom_name": {
+          "default": "",
+          "description": "true = only functions somebody has named; false = only auto-generated names (FUN_*, thunk_*).",
+          "title": "Has Custom Name",
+          "type": "boolean"
+        },
+        "is_thunk": {
+          "default": "",
+          "description": "true = only thunks, false = exclude them, omit for both.",
+          "title": "Is Thunk",
+          "type": "boolean"
+        },
+        "is_external": {
+          "default": "",
+          "description": "true = only external functions, false = exclude them.",
+          "title": "Is External",
+          "type": "boolean"
+        },
+        "tag": {
+          "default": "",
+          "description": "Only functions carrying any of these tags: one name or a comma-separated list. A name that is not a defined tag is an error (list_function_tags shows the definitions).",
+          "title": "Tag",
+          "type": "string"
+        },
+        "sort_by": {
+          "default": "address",
+          "description": "address | name | xref_count.",
+          "title": "Sort By",
+          "type": "string"
+        },
+        "offset": {
+          "default": "0",
+          "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+          "title": "Offset",
+          "type": "integer"
+        },
+        "limit": {
+          "default": "100",
+          "description": "Page size. 0 means no limit, which on a large binary is a megabytes-long response — the old list_functions had no pagination at all and returned 1.7MB on a stripped `ls`.",
+          "title": "Limit",
+          "type": "integer"
+        },
+        "program": {
+          "default": "",
+          "description": "Target program name (omit to use the active program — always specify when multiple programs are open)",
+          "title": "Program",
+          "type": "string"
+        },
+        "pattern": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pattern"
+        },
+        "query": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        }
+      },
+      "title": "find_functionsArguments",
+      "type": "object"
+    },
+    "get_functions": {
+      "properties": {
+        "function": {
+          "default": "",
+          "description": "Single mode: function name or address (0x<hex> or <space>:<hex>). Ignored when functions= is set.",
+          "title": "Function",
+          "type": "string"
+        },
+        "functions": {
+          "default": "",
+          "description": "Bulk mode: comma-separated function references (names or addresses). When set, function= is ignored. Returns a map keyed by the reference asked for.",
+          "title": "Functions",
+          "type": "string"
+        },
+        "fields": {
+          "default": "",
+          "description": "Comma-separated subset: signature, classification, return_type, entry_point, body_start, body_end, decompiled_code, plate_comment, comments, labels, tags, parameters, locals, callers, call_context, callees, xrefs, disassembly, jump_targets, refs (the absolute addresses the function uses: data references, the values of literal-pool words, and the memory the decompiled code reads and writes, so a register reached as base + offset is listed by its own address; a pool value is written value<word; asking for refs decompiles). Omit or leave empty for the full bundle.",
+          "title": "Fields",
+          "type": "string"
+        },
+        "include_call_context": {
+          "default": "true",
+          "description": "Include each caller's decompiled call-site line. Costs one decompilation per unique caller (~43ms); set false for the cheapest possible bundle. Ignored unless call_context is requested (explicitly or via an empty fields=).",
+          "title": "Include Call Context",
+          "type": "boolean"
+        },
+        "call_context_limit": {
+          "default": "6",
+          "description": "Maximum number of UNIQUE callers to decompile for call context.",
+          "title": "Call Context Limit",
+          "type": "integer"
+        },
+        "call_context_lines": {
+          "default": "3",
+          "description": "Lines of the caller's decompilation to return per call site, centred on the call. 1 is the call line alone; the default 3 adds the line above and below, which is usually where the guard and the use of the result live. Clamped to 1-21; costs no extra decompilation.",
+          "title": "Call Context Lines",
+          "type": "integer"
+        },
+        "include_disasm": {
+          "default": "false",
+          "description": "Include the raw instruction listing. Off by default: it roughly doubles the payload and agents rarely read it.",
+          "title": "Include Disasm",
+          "type": "boolean"
+        },
+        "program": {
+          "default": "",
+          "description": "Target program name (omit to use the active program — always specify when multiple programs are open)",
+          "title": "Program",
+          "type": "string"
+        },
+        "address": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Address"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "function_address": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Function Address"
+        },
+        "function_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Function Name"
+        },
+        "call_context_window": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Call Context Window"
+        }
+      },
+      "title": "get_functionsArguments",
+      "type": "object"
+    },
+    "get_metadata": {
+      "properties": {
+        "program": {
+          "default": "",
+          "description": "Target program name (omit to use the active program — always specify when multiple programs are open)",
+          "title": "Program",
+          "type": "string"
+        }
+      },
+      "title": "get_metadataArguments",
+      "type": "object"
+    },
+    "get_xrefs_from": {
+      "properties": {
+        "address": {
+          "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs — particularly embedded/microcontroller targets — are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+          "title": "Address",
+          "type": "string"
+        },
+        "offset": {
+          "default": "0",
+          "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+          "title": "Offset",
+          "type": "integer"
+        },
+        "limit": {
+          "default": "100",
+          "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+          "title": "Limit",
+          "type": "integer"
+        },
+        "program": {
+          "default": "",
+          "description": "Target program name (omit to use the active program — always specify when multiple programs are open)",
+          "title": "Program",
+          "type": "string"
+        }
+      },
+      "required": [
+        "address"
+      ],
+      "title": "get_xrefs_fromArguments",
+      "type": "object"
+    },
+    "get_xrefs_to": {
+      "properties": {
+        "address": {
+          "default": "",
+          "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs — particularly embedded/microcontroller targets — are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+          "title": "Address",
+          "type": "string"
+        },
+        "addresses": {
+          "default": "",
+          "description": "Comma-separated addresses for the many-at-once form. The result is a map of address to its reference list, and an address that does not resolve gets an empty list rather than failing the whole call.",
+          "title": "Addresses",
+          "type": "string"
+        },
+        "offset": {
+          "default": "0",
+          "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+          "title": "Offset",
+          "type": "integer"
+        },
+        "limit": {
+          "default": "100",
+          "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+          "title": "Limit",
+          "type": "integer"
+        },
+        "program": {
+          "default": "",
+          "description": "Target program name (omit to use the active program — always specify when multiple programs are open)",
+          "title": "Program",
+          "type": "string"
+        }
+      },
+      "title": "get_xrefs_toArguments",
+      "type": "object"
+    },
+    "read_memory": {
+      "properties": {
+        "address": {
+          "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs — particularly embedded/microcontroller targets — are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+          "title": "Address",
+          "type": "string"
+        },
+        "length": {
+          "default": "16",
+          "description": "Number of bytes",
+          "title": "Length",
+          "type": "integer"
+        },
+        "program": {
+          "default": "",
+          "description": "Target program name (omit to use the active program — always specify when multiple programs are open)",
+          "title": "Program",
+          "type": "string"
+        }
+      },
+      "required": [
+        "address"
+      ],
+      "title": "read_memoryArguments",
+      "type": "object"
+    }
+  },
+  "suggested_parent_discovery_job": [
+    {
+      "tool": "get_metadata",
+      "args": {
+        "program": "tiny-glade.exe"
+      },
+      "timeout_seconds": 45
+    },
+    {
+      "tool": "find_functions",
+      "args": {
+        "program": "tiny-glade.exe",
+        "name_pattern": "critters",
+        "regex": false,
+        "offset": 0,
+        "limit": 20
+      },
+      "timeout_seconds": 45
+    }
+  ],
+  "suggested_parent_function_bundle": {
+    "tool": "get_functions",
+    "args": {
+      "program": "tiny-glade.exe",
+      "functions": "<parent selected exact addresses, comma-separated, <=20>",
+      "fields": "signature,entry_point,body_start,body_end,callees,callers",
+      "include_call_context": false
+    },
+    "timeout_seconds": 90
+  },
+  "suggested_parent_decompile_page": {
+    "backend": "reva",
+    "tool": "get-decompilation",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "functionNameOrAddress": "<parent selected exact address>",
+      "offset": 1,
+      "limit": 20,
+      "includeIncomingReferences": false,
+      "includeReferenceContext": false
+    }
+  },
+  "route_priority": [
+    "existing PDB/original ASM/LLVM source-inline evidence",
+    "ghidra shared read: bounded discovery and exact bundles",
+    "reva shared read: 20-line pages",
+    "dedicated unique reva --write: scripts/type recovery only if needed",
+    "original RNE LLVM/radare2 byte crosscheck as needed",
+    "RE-MCP/REA independent contexts only if justified"
+  ],
+  "error_requirements": [
+    "process exit code and top-level ok",
+    "every result.isError and embedded per-item errors",
+    "ReVa run-script payload success=true and timedOut=false",
+    "allow_error leaves failures in otherwise ok report",
+    "void() or RETURN-only Pcode is ABI/type gap, not empty business",
+    "patched DB body cannot establish original RNE behavior",
+    "read profile rejects run-script even if code itself is read-only",
+    "new dedicated clone inherits seed, not shared overlays"
+  ],
+  "historical_revalidation": {
+    "summary": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/summary.json",
+    "ai_guide": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/summary.json",
+    "current_operator_matches_ai_guide_hash": true,
+    "summary_final_helper_operator_hash_matches_current": false,
+    "note": "summary helper snapshot predates pagination/operator revision; no report rewritten"
+  },
+  "not_executed": [
+    "pet function discovery/decompilation",
+    "ReVa scripts or database mutation",
+    "shared Ghidra write",
+    "optional backend connection",
+    "game execution/oracle/build"
+  ]
+}

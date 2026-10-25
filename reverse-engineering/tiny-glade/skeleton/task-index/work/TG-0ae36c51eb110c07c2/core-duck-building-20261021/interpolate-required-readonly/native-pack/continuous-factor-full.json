@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "artifact": {
+    "path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne",
+    "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "bytes": 58460160,
+    "id": "stair-requests-compute-B-core-duck-building-20261021",
+    "version": "B",
+    "format": "PE",
+    "image_base": "0x140000000",
+    "rsds": [
+      {
+        "guid": "09F1A02A-49F2-F8C8-4C4C-44205044422E",
+        "age": 1,
+        "pdb_name": "tiny_glade.pdb"
+      }
+    ],
+    "debug": {
+      "path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny_glade.pdb",
+      "sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+      "bytes": 274710528,
+      "guid": "09F1A02A-49F2-F8C8-4C4C-44205044422E",
+      "age": 1
+    }
+  },
+  "request_id": "continuous-factor-full",
+  "cache_key": "f9b7d7b3b375dee13865e85ac6e4057f7d2ce60e097774a7a1113852a28ed690",
+  "status": "ok",
+  "range": {
+    "rva": "0xc90540",
+    "length": 40,
+    "start_va": "0x140c90540",
+    "stop_va_exclusive": "0x140c90568",
+    "instruction_overhang_bytes": 0,
+    "function_boundary_verified": false
+  },
+  "instructions": [
+    {
+      "va": "0x140c90540",
+      "rva": "0xc90540",
+      "bytes": "4883ec28",
+      "size": 4,
+      "assembly": "subq\t$0x28, %rsp",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c90544",
+      "rva": "0xc90544",
+      "bytes": "0f5705a553c901",
+      "size": 7,
+      "assembly": "xorps\t0x1c953a5(%rip), %xmm0  # 0x1429258f0",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c9054b",
+      "rva": "0xc9054b",
+      "bytes": "f30f59c1",
+      "size": 4,
+      "assembly": "mulss\t%xmm1, %xmm0",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c9054f",
+      "rva": "0xc9054f",
+      "bytes": "e86c39c901",
+      "size": 5,
+      "assembly": "callq\t0x142923ec0 <.text+0x2922ec0>",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c90554",
+      "rva": "0xc90554",
+      "bytes": "f30f100da853c901",
+      "size": 8,
+      "assembly": "movss\t0x1c953a8(%rip), %xmm1  # 0x142925904",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c9055c",
+      "rva": "0xc9055c",
+      "bytes": "f30f5cc8",
+      "size": 4,
+      "assembly": "subss\t%xmm0, %xmm1",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c90560",
+      "rva": "0xc90560",
+      "bytes": "0f28c1",
+      "size": 3,
+      "assembly": "movaps\t%xmm1, %xmm0",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c90563",
+      "rva": "0xc90563",
+      "bytes": "4883c428",
+      "size": 4,
+      "assembly": "addq\t$0x28, %rsp",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c90567",
+      "rva": "0xc90567",
+      "bytes": "c3",
+      "size": 1,
+      "assembly": "retq",
+      "crosses_requested_stop": false
+    }
+  ],
+  "symbolization": [
+    {
+      "Address": "0xc90540",
+      "ModuleName": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne",
+      "Symbol": [
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/code/pouncelight/country-slice-private/crates/utils/src/lib.rs",
+          "FunctionName": "utils::time_continuous_lerp_factor::h4ae5b83200e1ae75",
+          "Line": 275,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        }
+      ]
+    }
+  ],
+  "missing_symbol_addresses": [],
+  "raw_assembly": "\n/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:\tfile format coff-x86-64\n\nDisassembly of section .text:\n\n0000000140001000 <.text>:\n140c90540: 48 83 ec 28                 \tsubq\t$0x28, %rsp\n140c90544: 0f 57 05 a5 53 c9 01        \txorps\t0x1c953a5(%rip), %xmm0  # 0x1429258f0\n140c9054b: f3 0f 59 c1                 \tmulss\t%xmm1, %xmm0\n140c9054f: e8 6c 39 c9 01              \tcallq\t0x142923ec0 <.text+0x2922ec0>\n140c90554: f3 0f 10 0d a8 53 c9 01     \tmovss\t0x1c953a8(%rip), %xmm1  # 0x142925904\n140c9055c: f3 0f 5c c8                 \tsubss\t%xmm0, %xmm1\n140c90560: 0f 28 c1                    \tmovaps\t%xmm1, %xmm0\n140c90563: 48 83 c4 28                 \taddq\t$0x28, %rsp\n140c90567: c3                          \tretq\n",
+  "original_target_executed": false
+}

@@ -1,0 +1,36 @@
+--- a/tiny-glade/crates/tiny-glade/src/decorator_plugin.rs
++++ b/tiny-glade/crates/tiny-glade/src/decorator_plugin.rs
+@@ -1,8 +1,8 @@
+ //! B `crates/tiny-glade/src/decorator_plugin.rs`（装饰物插件注册 / glade 卸载）。
+ //!
+ //! 恢复依据（Ghidra shared 2026-10-17）：
+-//! - `impl$0::build` `0x140342c10`（10,365 B，113 KB 反编译）
+-//! - `decorators_on_glade_unload` `0x140347090`（5,395 B，40 KB 反编译）
++//! - `impl$0::build` `0x140342c10`（17,521 B，PDB141:65468）
++//! - `decorators_on_glade_unload` `0x140347090`（9,451 B，PDB141:113876）
+ //!
+ //! `impl$0::build` 是 `DecoratorPlugin` 的 Bevy 注册面：事件/资源插入 + 多组
+ //! `add_systems`（`Update`/`PostUpdate`），反编译体 113 KB，包含大量
+@@ -16,7 +16,7 @@
+ //! 属「callee 转发错」，故登记未实现而不是近似接线。
+ //!
+ //! `decorators_on_glade_unload` 是卸载时的真实业务系统（装饰物/碰撞/可视化
+-//! 实体清理），40 KB 反编译，未逐语句重建。
++//! 资源重置），复用下方唯一consumer；资源载荷与App注册前提另行核验。
+ 
+ /// `tiny_glade::decorator_plugin::impl$0::build` `0x140342c10`。
+ ///
+@@ -45,9 +45,10 @@
+     system_decorator::ui_systems::register_ui_systems::<CollisionPayload>(app);
+ }
+ 
+-/// `tiny_glade::decorator_plugin::decorators_on_glade_unload` `0x140347090` —— 未实现。
+-pub fn decorators_on_glade_unload() {
+-    todo!("未实现: decorators_on_glade_unload 0x140347090 —— 40KB 卸载清理业务，未逐语句重建")
++/// 原9451B卸载消费面：复用唯一owner参数与原顺序资源重置实现。
++/// 音频、石柱及楼梯载荷的模型缺口仍是独立注册前提；这里不提前mount。
++pub fn decorators_on_glade_unload(owners: system_decorator::lifecycle::ExistingDecoratorUnloadOwners) {
++    system_decorator::lifecycle::reset_scoped_existing_decorator_owners_on_glade_unload(owners);
+ }
+ 
+ /// Genuine startup owners, independent of incomplete edit/UI system adapters.

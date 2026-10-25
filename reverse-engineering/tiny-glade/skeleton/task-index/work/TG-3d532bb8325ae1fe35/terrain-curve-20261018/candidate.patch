@@ -1,0 +1,99 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_draw_terrain.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_draw_terrain.rs
+@@ -52,8 +52,8 @@
+ /// 画布名字（O：RNE 直读 @0x142adc2df / @0x142adc2f0）。
+ pub const DENY_CANVAS_NAME: &str = "terrain_deny_draw";
+ pub const DRAW_CANVAS_NAME: &str = "terrain_draw";
+-/// state-2 续笔 morph 间距（0x140a97880 内常量待取证；以 tg_terrain 默认 1.0 接入，I）。
+-pub const MORPH_SPACING: f32 = 1.0;
++/// B state-2 caller 0x140aa025b reads .rdata@0x1429258d8 = 0x3e99999a.
++pub const MORPH_SPACING: f32 = 0.3;
+ 
+ /// 悬停有效性适配（I：UI 悬停上下文 layout Gap；ui_edit_terrain 消费）。
+ #[derive(Resource, Clone, Copy, Debug, Default)]
+@@ -97,7 +97,8 @@
+     }
+     // 光标面（O：`tag&1` @+0、`pos.x` @+4、`pos.y` @+8（distance 槽）、`pos.z` @+0xc）。
+     let hovered = (hover.tag & 1) != 0;
+-    let cursor = Vec2::new(hover.pos.x, hover.pos.z);
++    let position = hover.position();
++    let cursor = Vec2::new(position.x, position.z);
+     let distance = hover.pos.y;
+     // 高度采样（O：0x140a9fe9e `bilinear_sample_at_world_xz<RasterBufferRef<512>>`）。
+     let height = terrain.sample_at_world_xz(cursor.x, cursor.y);
+@@ -163,15 +164,72 @@
+     // 3 = 释放/读笔（crate 输入模型无 release 事件，登记）；0 = 无动作。
+     match state {
+         1 => {
+-            if let Ok(Some(id)) = editing.new_stroke([cursor.x, 0.0, cursor.y]) {
++            if let Ok(Some(id)) = editing.new_stroke(position.to_array()) {
+                 changed.write(EvTerrainStrokeChanged(StrokeId(id.0)));
+             }
+         }
+-        2 => {
++        2 if inside => {
+             if let Ok(stroke) = editing.get_last_mut_stroke() {
+-                stroke.insert_or_morph_last_point([cursor.x, 0.0, cursor.y], MORPH_SPACING);
++                // B 0x140aa0235..0x140aa02c2: the cursor keeps all XYZ
++                // coordinates; border failure skips mutation and notification.
++                stroke.insert_or_morph_last_point(position.to_array(), MORPH_SPACING);
++                let id = StrokeId(editing.next_index.checked_sub(1)
++                    .expect("original last terrain stroke counter assertion"));
++                // The native caller publishes this even when the point helper
++                // returns without changing a point (near duplicate / 1024 cap).
++                changed.write(EvTerrainStrokeChanged(id));
+             }
+         }
+         _ => {}
+     }
+ }
++
++
++#[cfg(test)]
++mod recovered_extend_tests {
++    use super::*;
++    use crate::systems::{terrain::register_terrain_events, ui::resources::ui_state::{UiInteraction, WidgetId}};
++
++    fn world(position: glam::Vec3, inside: bool) -> World {
++        let mut world = World::new();
++        register_terrain_events(&mut world);
++        world.insert_resource(AppMode::Terrain);
++        world.insert_resource(CursorTerrainRaycast { tag: 1, pos: position, ..Default::default() });
++        world.insert_resource(TerrainHeightsData::<TerrainHeightSsbo>::new());
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.new_stroke([0.0; 3]).unwrap();
++        editing.get_last_mut_stroke().unwrap().points.push([0.4, 0.0, 0.0]);
++        world.insert_resource(TerrainEditingData(editing));
++        world.insert_resource(GladeBorder(BorderShape::Circle(Circle2d::new(
++            if inside { Vec2::ZERO } else { Vec2::splat(1000.0) }, 100.0,
++        ))));
++        world.insert_resource(UiState::new(UiInteraction {
++            native_tag: 2, native_phase: 4, widget: WidgetId::clearing_canvas(DRAW_CANVAS_NAME),
++        }));
++        world.resource_mut::<TerrainDrawState>().state = 1;
++        world
++    }
++
++    #[test]
++    fn continuation_preserves_cursor_height_uses_point_three_spacing_and_notifies() {
++        let mut world = world(glam::Vec3::new(0.8, 0.6, 0.1), true);
++        let mut schedule = Schedule::default();
++        schedule.add_systems(ui_draw_terrain);
++        schedule.run(&mut world);
++        let stroke = &world.resource::<TerrainEditingData>().strokes[&StrokeId(0)];
++        // Existing segment .4 >= original spacing .3: append, rather than morph.
++        assert_eq!(stroke.points, [[0.0; 3], [0.4, 0.0, 0.0], [0.8, 0.6, 0.1]]);
++        assert_eq!(world.resource::<Events<EvTerrainStrokeChanged>>().len(), 1);
++    }
++
++    #[test]
++    fn blocked_continuation_keeps_the_stroke_and_emits_no_changed_event() {
++        let mut world = world(glam::Vec3::new(0.8, 0.6, 0.1), false);
++        let mut schedule = Schedule::default();
++        schedule.add_systems(ui_draw_terrain);
++        schedule.run(&mut world);
++        assert_eq!(world.resource::<TerrainEditingData>().strokes[&StrokeId(0)].points.len(), 2);
++        assert!(world.resource::<Events<EvTerrainStrokeChanged>>().is_empty());
++        assert_eq!(world.resource::<TerrainDrawState>().state, 2);
++    }
++}

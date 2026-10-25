@@ -1,0 +1,17 @@
+{
+  "status": "required_design_correction_before_candidate_acceptance",
+  "parent_review": {
+    "path": "solid-texture-20261020/ROOF_DOMAIN_DESIGN_REVIEW_V1.json",
+    "sha256": "c03a0ff1ace1a110b8a2d9760880c9824f3b4497daf9ab0e6b1e4b3dba30803d"
+  },
+  "origin": "Root independent cross-boundary review identified marker/key entities outside descriptor preflight; 07 agreed and informed 04 before candidate review.",
+  "missed_domain": "Original update Query requires InstanceKey/Transform, Option Roof/Animation/Floor, With StoneFloor marker. It does not require NaniInstanceDesc. A marker+key entity without descriptor never enters maintain descriptor preflight. Requiring &Roof in restricted update Query would silently skip its no-Roof domain.",
+  "required_implementation": [
+    "Retain original With<InstanceDataMarker<StoneFloorInstanceData>> filter and actual key/Transform update domain.",
+    "Query Option<&Roof>, not required &Roof. Resolve Some through actual restricted Roof-present numerical adapter; None must explicitly fail unsupported Floor-only/no-shape rather than silently filter.",
+    "Keep maintain descriptor preflight for real kind9 descriptors before new key/count; this separate Query None failure covers original update domain independently.",
+    "No fake Floor, broad kind9 approval, zero payload or fullkind10 count."
+  ],
+  "review_correction": "V1 reviewed descriptor preflight including existing keys but did not close descriptorless marker/key Query domain; V1 body preserved and must be read with this addendum.",
+  "builder_API_observation": "Root deferred unneeded PartialEq derive; current builder80a8 retained. No source acceptance depends on that unused API."
+}

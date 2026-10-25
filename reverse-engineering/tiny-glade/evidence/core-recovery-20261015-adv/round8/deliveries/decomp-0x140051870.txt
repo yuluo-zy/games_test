@@ -1,0 +1,119 @@
+
+/* WARNING: Possible PIC construction at 0x000140051926: Changing call to branch */
+
+void FUN_140051870(longlong *param_1,undefined8 param_2,longlong param_3,ulonglong param_4)
+
+{
+  undefined1 auVar1 [16];
+  uint uVar2;
+  uint uVar3;
+  longlong lVar4;
+  ulonglong uVar5;
+  undefined8 uVar6;
+  longlong lVar7;
+  longlong lVar8;
+  uint uVar9;
+  ulonglong unaff_RBP;
+  ulonglong unaff_RSI;
+  undefined1 (*pauVar10) [16];
+  undefined1 (*pauVar11) [16];
+  longlong lVar12;
+  undefined *apuStack_70 [5];
+  longlong lStack_48;
+  
+  lVar7 = param_1[1];
+  if (lVar7 != 0) {
+    lVar12 = param_1[3];
+    lStack_48 = param_3;
+    if (lVar12 != 0) {
+      pauVar10 = (undefined1 (*) [16])*param_1;
+      auVar1 = *pauVar10;
+      uVar9 = ~(uint)(ushort)((ushort)(SUB161(auVar1 >> 7,0) & 1) |
+                              (ushort)(SUB161(auVar1 >> 0xf,0) & 1) << 1 |
+                              (ushort)(SUB161(auVar1 >> 0x17,0) & 1) << 2 |
+                              (ushort)(SUB161(auVar1 >> 0x1f,0) & 1) << 3 |
+                              (ushort)(SUB161(auVar1 >> 0x27,0) & 1) << 4 |
+                              (ushort)(SUB161(auVar1 >> 0x2f,0) & 1) << 5 |
+                              (ushort)(SUB161(auVar1 >> 0x37,0) & 1) << 6 |
+                              (ushort)(SUB161(auVar1 >> 0x3f,0) & 1) << 7 |
+                              (ushort)(SUB161(auVar1 >> 0x47,0) & 1) << 8 |
+                              (ushort)(SUB161(auVar1 >> 0x4f,0) & 1) << 9 |
+                              (ushort)(SUB161(auVar1 >> 0x57,0) & 1) << 10 |
+                              (ushort)(SUB161(auVar1 >> 0x5f,0) & 1) << 0xb |
+                              (ushort)(SUB161(auVar1 >> 0x67,0) & 1) << 0xc |
+                              (ushort)(SUB161(auVar1 >> 0x6f,0) & 1) << 0xd |
+                              (ushort)(SUB161(auVar1 >> 0x77,0) & 1) << 0xe |
+                             (ushort)(byte)(auVar1[0xf] >> 7) << 0xf);
+      pauVar11 = pauVar10 + 1;
+      do {
+        if ((short)uVar9 == 0) {
+          do {
+            auVar1 = *pauVar11;
+            pauVar10 = pauVar10 + -0x78;
+            pauVar11 = pauVar11 + 1;
+            uVar9 = (uint)(ushort)((ushort)(SUB161(auVar1 >> 7,0) & 1) |
+                                   (ushort)(SUB161(auVar1 >> 0xf,0) & 1) << 1 |
+                                   (ushort)(SUB161(auVar1 >> 0x17,0) & 1) << 2 |
+                                   (ushort)(SUB161(auVar1 >> 0x1f,0) & 1) << 3 |
+                                   (ushort)(SUB161(auVar1 >> 0x27,0) & 1) << 4 |
+                                   (ushort)(SUB161(auVar1 >> 0x2f,0) & 1) << 5 |
+                                   (ushort)(SUB161(auVar1 >> 0x37,0) & 1) << 6 |
+                                   (ushort)(SUB161(auVar1 >> 0x3f,0) & 1) << 7 |
+                                   (ushort)(SUB161(auVar1 >> 0x47,0) & 1) << 8 |
+                                   (ushort)(SUB161(auVar1 >> 0x4f,0) & 1) << 9 |
+                                   (ushort)(SUB161(auVar1 >> 0x57,0) & 1) << 10 |
+                                   (ushort)(SUB161(auVar1 >> 0x5f,0) & 1) << 0xb |
+                                   (ushort)(SUB161(auVar1 >> 0x67,0) & 1) << 0xc |
+                                   (ushort)(SUB161(auVar1 >> 0x6f,0) & 1) << 0xd |
+                                   (ushort)(SUB161(auVar1 >> 0x77,0) & 1) << 0xe |
+                                  (ushort)(byte)(auVar1[0xf] >> 7) << 0xf);
+          } while (uVar9 == 0xffff);
+          uVar9 = ~uVar9;
+        }
+        uVar2 = 0;
+        for (uVar3 = uVar9; (uVar3 & 1) == 0; uVar3 = uVar3 >> 1 | 0x80000000) {
+          uVar2 = uVar2 + 1;
+        }
+        lVar4 = (ulonglong)uVar2 * -0x78;
+        lVar8 = *(longlong *)((longlong)pauVar10 + lVar4 + -0x70);
+        if (lVar8 != 0) {
+          lVar7 = *(longlong *)((longlong)pauVar10 + lVar4 + -0x68);
+          lVar8 = lVar8 << 3;
+          register0x00000020 = (BADSPACEBASE *)apuStack_70;
+          apuStack_70[0] = &UNK_14005192b;
+          unaff_RBP = (ulonglong)uVar9;
+          unaff_RSI = param_4;
+          param_4 = 4;
+          goto code_r0x000140613c20;
+        }
+        lVar8 = *(longlong *)((longlong)pauVar10 + lVar4 + -0x58);
+        if (lVar8 != 0) {
+          apuStack_70[0] = &UNK_140051947;
+          func_0x000140613c20(*(undefined8 *)((longlong)pauVar10 + lVar4 + -0x50),lVar8 << 2,4);
+        }
+        lVar12 = lVar12 + -1;
+        uVar9 = uVar9 - 1 & uVar9;
+      } while (lVar12 != 0);
+    }
+    uVar5 = -param_4 & (param_4 + lStack_48 * (lVar7 + 1)) - 1;
+    lVar8 = lVar7 + uVar5 + 0x11;
+    if (lVar8 != 0) {
+      lVar7 = *param_1 - uVar5;
+code_r0x000140613c20:
+      *(ulonglong *)((longlong)register0x00000020 + -8) = unaff_RBP;
+      *(ulonglong *)((longlong)register0x00000020 + -0x10) = unaff_RSI;
+      lVar12 = lVar7;
+      if (0x10 < param_4) {
+        lVar12 = *(longlong *)(lVar7 + -8);
+      }
+      *(undefined **)((longlong)register0x00000020 + -0x40) = &UNK_140d6582e;
+      uVar6 = GetProcessHeap(lVar7,lVar8);
+                    /* WARNING: Could not recover jumptable at 0x000140d6583c. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+      HeapFree(uVar6,0,lVar12);
+      return;
+    }
+  }
+  return;
+}
+

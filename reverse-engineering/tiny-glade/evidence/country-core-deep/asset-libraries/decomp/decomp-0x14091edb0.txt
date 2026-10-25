@@ -1,0 +1,150 @@
+/* FUN_14091edb0 */
+/* WARNING: Possible PIC construction at 0x0001408875c5: Changing call to branch */
+/* WARNING: Possible PIC construction at 0x0001408875e4: Changing call to branch */
+/* WARNING: Removing unreachable block (ram,0x0001408875ca) */
+/* WARNING: Removing unreachable block (ram,0x0001408875e9) */
+/* WARNING: Removing unreachable block (ram,0x000140d65824) */
+
+ulonglong FUN_14091edb0(longlong param_1,ulonglong *param_2)
+
+{
+  char *pcVar1;
+  code *pcVar2;
+  ulonglong *puVar3;
+  char cVar4;
+  longlong lVar5;
+  undefined8 uVar6;
+  ulonglong uVar7;
+  ulonglong uVar8;
+  undefined1 *puVar9;
+  undefined1 *puVar10;
+  undefined1 *unaff_RBP;
+  longlong lVar11;
+  longlong unaff_RSI;
+  bool bVar12;
+  char *pcStack_60;
+  undefined1 uStack_58;
+  undefined *puStack_50;
+  ulonglong *puStack_48;
+  char *pcStack_40;
+  uint uStack_34;
+  undefined8 uStack_30;
+  
+  uStack_30 = 0xfffffffffffffffe;
+  uVar7 = 6;
+  if ((*param_2 ^ 0x8000000000000000) < 9) {
+    uVar7 = *param_2 ^ 0x8000000000000000;
+  }
+  puStack_48 = param_2;
+  if ((uVar7 < 7) && ((0x4cUL >> (uVar7 & 0x3f) & 1) != 0)) {
+    lVar11 = *(longlong *)(param_1 + 0x18);
+    pcVar1 = (char *)(lVar11 + 0x10);
+    LOCK();
+    bVar12 = *(char *)(lVar11 + 0x10) == '\0';
+    if (bVar12) {
+      *(char *)(lVar11 + 0x10) = '\x01';
+    }
+    UNLOCK();
+    if (!bVar12) {
+      FUN_1428d8750(pcVar1);
+    }
+    puVar3 = puRam000000014362c420;
+    if ((*puRam000000014362c420 & 0x7fffffffffffffff) == 0) {
+      uStack_34 = 0;
+      cVar4 = *(char *)(lVar11 + 0x11);
+    }
+    else {
+      uStack_34 = FUN_1428d86b0();
+      uStack_34 = uStack_34 ^ 1;
+      cVar4 = *(char *)(lVar11 + 0x11);
+    }
+    pcStack_40 = pcVar1;
+    if (cVar4 != '\0') {
+      uStack_58 = (undefined1)uStack_34;
+      pcStack_60 = pcVar1;
+      FUN_1428d9760(&UNK_142aad758,0x2b,&pcStack_60,&UNK_142aad7e8,&UNK_142aaddc0);
+                    /* WARNING: Does not return */
+      pcVar2 = (code *)invalidInstructionException();
+      (*pcVar2)();
+    }
+    FUN_140d7bd90(&pcStack_60,param_1);
+    FUN_141528bc0(lVar11 + 0x18,&pcStack_60);
+    pcVar1 = pcStack_40;
+    if ((((char)uStack_34 == '\0') && ((*puVar3 & 0x7fffffffffffffff) != 0)) &&
+       (cVar4 = FUN_1428d86b0(), cVar4 == '\0')) {
+      *(undefined1 *)(lVar11 + 0x11) = 1;
+    }
+    LOCK();
+    cVar4 = *pcVar1;
+    *pcVar1 = '\0';
+    UNLOCK();
+    if (cVar4 == '\x02') {
+      FUN_1428d8810(pcVar1);
+    }
+  }
+  puVar3 = puStack_48;
+  puVar9 = &stack0xffffffffffffffe8;
+  puVar10 = &stack0xffffffffffffffe8;
+  uVar8 = *puStack_48 ^ 0x8000000000000000;
+  uVar7 = 6;
+  if (uVar8 < 9) {
+    uVar7 = uVar8;
+  }
+  lVar11 = 8;
+  if (uVar7 < 6) {
+code_r0x00014088754f:
+    uVar8 = *(ulonglong *)((longlong)puStack_48 + lVar11);
+  }
+  else {
+    if (uVar7 == 6) {
+      lVar11 = 0x20;
+      if (*puStack_48 != 0) {
+        uVar7 = puStack_48[1];
+        register0x00000020 = (BADSPACEBASE *)&puStack_50;
+        puStack_50 = &UNK_1408875e9;
+        goto code_r0x000140613c20;
+      }
+      goto code_r0x00014088754f;
+    }
+    if (uVar7 == 7) {
+      return 7;
+    }
+    uVar7 = puStack_48[5];
+    lVar5 = 0;
+    if ((longlong)uVar7 < -0x7ffffffffffffffd) {
+      lVar5 = uVar7 + 0x8000000000000001;
+    }
+    if (lVar5 == 1) {
+      puStack_50 = &UNK_1408875f7;
+      FUN_1405e7a00(puStack_48 + 6);
+    }
+    else if ((lVar5 == 0) && (uVar7 != 0)) {
+      uVar7 = puStack_48[6];
+      register0x00000020 = (BADSPACEBASE *)&puStack_50;
+      puStack_50 = &UNK_1408875ca;
+      puVar10 = puVar9;
+      goto code_r0x000140613c20;
+    }
+    uVar8 = puVar3[1];
+    uVar7 = -uVar8;
+    if (SBORROW8(0,uVar8)) {
+      return uVar7;
+    }
+  }
+  if (uVar8 == 0) {
+    return uVar7;
+  }
+  uVar7 = *(ulonglong *)((longlong)puVar3 + lVar11 + 8);
+  puVar10 = unaff_RBP;
+  lVar11 = unaff_RSI;
+code_r0x000140613c20:
+  *(undefined1 **)((longlong)register0x00000020 + -8) = puVar10;
+  *(longlong *)((longlong)register0x00000020 + -0x10) = lVar11;
+  *(undefined **)((longlong)register0x00000020 + -0x40) = &UNK_140d6582e;
+  uVar6 = GetProcessHeap();
+                    /* WARNING: Could not recover jumptable at 0x000140d6583c. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  uVar7 = HeapFree(uVar6,0,uVar7);
+  return uVar7;
+}
+

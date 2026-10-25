@@ -1,0 +1,13 @@
+0x1422b1528: mov rbx, qword ptr [rbp + 0x3e0]
+0x1422b152f: mov ecx, esi
+0x1422b1531: mov edx, esi
+0x1422b1533: call 0x140901260
+0x1422b1538: mov dword ptr [rbp + 0x1d0], eax
+0x1422b153e: mov dword ptr [rbp + 0x1d4], edx
+0x1422b1544: mov dword ptr [rbp + 0x1d8], 0x40000000
+0x1422b154e: mov word ptr [rbp + 0x1dc], 0x100
+0x1422b1557: lea r8, [rip + 0xd8b89a]
+0x1422b155e: lea rdx, [rbp + 0x1d0]
+0x1422b1565: mov rcx, rbx
+0x1422b1568: call 0x142291100
+0x1422b156d: jmp 0x1422b162d

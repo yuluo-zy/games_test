@@ -1,0 +1,66 @@
+{
+  "backend": "reva",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "ui-unstarted-20261013",
+  "pid": 29344,
+  "project": "D:\\game\\tools\\reverse-runtime\\ui-unstarted-20261013\\project\\TinyGlade.gpr",
+  "backend_reused": true,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": true,
+  "results": [
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json,hashlib\nfrom ghidra.program.disassemble import Disassembler\nfrom ghidra.program.model.address import AddressSet\nfrom ghidra.program.flatapi import FlatProgramAPI\np=currentProgram\na=p.getAddressFactory().getAddress('140623370')\nsize=29773\napi=FlatProgramAPI(p,monitor)\nraw=bytes(x&255 for x in api.getBytes(a,size))\nassert hashlib.sha256(raw).hexdigest()=='099bfeeda510d63d4ad68adbcaede4d795534fe8e5b611ff3bd0a5a029aa4c07'\ntx=p.startTransaction('Original PDB main_view unwind scope')\nok=False\ntry:\n body=AddressSet(a,a.add(size-1))\n Disassembler.getDisassembler(p,monitor,None).disassemble(a,body,True)\n f=p.getFunctionManager().getFunctionAt(a)\n if f is None:f=api.createFunction(a,'crash_main_view_B')\n for x in p.getFunctionManager().getFunctionsOverlapping(body):\n  if x!=f:body.delete(x.getBody())\n f.setBody(body)\n ok=True\n print(json.dumps({'address':str(a),'original_unwind_size':size,'body_bytes':body.getNumAddresses(),'bytes_sha256':hashlib.sha256(raw).hexdigest(),'source':'B skeleton crash Controls main_view PDB compiled_procedure plus RNE pdata'}))\nfinally:p.endTransaction(tx,ok)\n",
+        "timeoutSeconds": 60
+      },
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\foundation-unstarted-2026-10-13\\ui\\mainview-prepared.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\foundation-unstarted-2026-10-13\\\\\\\\ui\\\\\\\\mainview-prepared.artifacts\\\\\\\\000.stdout.txt\\\", \\\"bytes\\\": 248, \\\"sha256\\\": \\\"87d9bc273e830df0b942420450cdb9a37b6455d83adcbd89677dd43d20a19096\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":130}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.14,
+      "stdout": "{\"address\": \"140623370\", \"original_unwind_size\": 29773, \"body_bytes\": 29773, \"bytes_sha256\": \"099bfeeda510d63d4ad68adbcaede4d795534fe8e5b611ff3bd0a5a029aa4c07\", \"source\": \"B skeleton crash Controls main_view PDB compiled_procedure plus RNE pdata\"}\n",
+      "passed": true
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 0.89,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":10}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "save_result": {
+    "nonce": "cd06fe7e35a0a1108b247f7aff7dc6c8",
+    "success": true,
+    "was_changed": true,
+    "changed_after_save": false,
+    "path": "/tiny-glade.exe",
+    "saved_locally": true
+  }
+}

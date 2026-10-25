@@ -1,0 +1,137 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_14171f7f0(void)
+
+{
+  byte *pbVar1;
+  byte bVar2;
+  byte bVar3;
+  byte bVar4;
+  code *pcVar5;
+  char cVar6;
+  uint uVar7;
+  longlong lVar8;
+  longlong *plVar9;
+  ulonglong uVar10;
+  undefined *puVar11;
+  longlong lVar12;
+  ulonglong uVar13;
+  undefined *puVar14;
+  undefined *puVar15;
+  undefined1 uVar16;
+  
+  cVar6 = func_0x000140c16a00();
+  if (cVar6 == '\0') goto code_r0x00014171fa3a;
+  puVar11 = &UNK_142cca30f;
+  lVar12 = 0x52;
+  uVar10 = 0x52;
+  lVar8 = FUN_14171e730(&UNK_142cca30f);
+  if (lVar8 == 1) {
+    if (uVar10 != 0) {
+      if (uVar10 < 0x52) {
+        if ((char)(&UNK_142cca30f)[uVar10] < -0x40) {
+code_r0x00014171f85a:
+          FUN_1428d9940(&UNK_142cca30f,0x52,0,uVar10,&UNK_142cca430);
+          goto code_r0x00014171fa3a;
+        }
+      }
+      else if (uVar10 != 0x52) goto code_r0x00014171f85a;
+    }
+    puVar11 = &UNK_142cca30f;
+    lVar8 = FUN_14171e730(&UNK_142cca30f);
+    if (lVar8 == 1) {
+      uVar13 = uVar10 + 2;
+      if (uVar13 != 0) {
+        uVar16 = uVar13 == 0x52;
+        if (0x51 < uVar13) goto code_r0x00014171f8db;
+        uVar16 = (&UNK_142cca311)[uVar10] == -0x41;
+        if ((char)(&UNK_142cca311)[uVar10] < -0x40) {
+          do {
+            uVar10 = 0x52;
+            FUN_1428d9940(&UNK_142cca30f,0x52);
+code_r0x00014171f8db:
+          } while (!(bool)uVar16);
+        }
+      }
+      lVar12 = 0x50 - uVar10;
+      puVar11 = &UNK_142cca30f + uVar13;
+    }
+  }
+  puVar14 = &UNK_142cca4ab;
+  puVar15 = &UNK_142cca478;
+  do {
+    bVar2 = puVar14[-1];
+    uVar7 = (uint)(char)bVar2;
+    if ((char)bVar2 < '\0') {
+      bVar3 = puVar14[-2];
+      if ((char)bVar3 < -0x40) {
+        bVar4 = puVar14[-3];
+        if ((char)bVar4 < -0x40) {
+          pbVar1 = puVar14 + -4;
+          puVar14 = puVar14 + -4;
+          uVar7 = bVar4 & 0x3f | (*pbVar1 & 7) << 6;
+        }
+        else {
+          puVar14 = puVar14 + -3;
+          uVar7 = bVar4 & 0xf;
+        }
+        uVar7 = bVar3 & 0x3f | uVar7 << 6;
+      }
+      else {
+        puVar14 = puVar14 + -2;
+        uVar7 = bVar3 & 0x1f;
+      }
+      uVar7 = (uint)(bVar2 & 0x3f) | uVar7 << 6;
+      if (uVar7 != 0x5c) goto code_r0x00014171f974;
+code_r0x00014171f986:
+      puVar15 = puVar14 + -0x142cca477;
+      if (puVar15 != (undefined *)0x0) {
+        uVar16 = puVar15 == (undefined *)0x33;
+        if ((undefined *)0x32 < puVar15) goto code_r0x00014171f9c5;
+        uVar16 = puVar14[1] == -0x41;
+        if ((char)puVar14[1] < -0x40) {
+          do {
+            FUN_1428d9940(&UNK_142cca478,0x33);
+code_r0x00014171f9c5:
+          } while (!(bool)uVar16);
+        }
+      }
+      lVar8 = 0x33 - (longlong)puVar15;
+      puVar15 = &UNK_142cca478 + (longlong)puVar15;
+      goto code_r0x00014171f9d3;
+    }
+    puVar14 = puVar14 + -1;
+    if (uVar7 == 0x5c) goto code_r0x00014171f986;
+code_r0x00014171f974:
+    if (uVar7 == 0x2f) goto code_r0x00014171f986;
+  } while (puVar14 != &UNK_142cca478);
+  lVar8 = 0x33;
+code_r0x00014171f9d3:
+  plVar9 = (longlong *)func_0x000140c18130();
+  if (*plVar9 == 1) {
+    plVar9 = plVar9 + 1;
+  }
+  else if ((*plVar9 != 0) ||
+          (plVar9 = (longlong *)FUN_1428f87d0(plVar9,0), plVar9 == (longlong *)0x0)) {
+    FUN_1428d80d0(&UNK_142c3aaa0);
+    goto code_r0x00014171fd94;
+  }
+  if (*plVar9 == 0) {
+    *plVar9 = -1;
+    FUN_140c16d40(plVar9 + 1,puVar11,lVar12,puVar15,lVar8,1,0);
+    *plVar9 = *plVar9 + 1;
+code_r0x00014171fa3a:
+                    /* WARNING: Could not recover jumptable at 0x00014171fa74. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+    (*(code *)(&UNK_142ccb398 + _UNK_142ccb398))(&UNK_142ccb398 + _UNK_142ccb398,0);
+    return;
+  }
+code_r0x00014171fd94:
+  FUN_1428d9250(&UNK_142c3ab70);
+  FUN_1428d9250(&UNK_142c3ab70);
+                    /* WARNING: Does not return */
+  pcVar5 = (code *)invalidInstructionException();
+  (*pcVar5)();
+}
+

@@ -1,0 +1,61 @@
+ADDR: 0x140a875e0
+SIG: void __cdecl send_mode_just_changed_event(void)
+
+
+void __cdecl country_core::systems::mode_manager::send_mode_just_changed_event(void)
+
+{
+  undefined8 *puVar1;
+  undefined8 *puVar2;
+  undefined8 *puVar3;
+  longlong lVar4;
+  longlong lVar5;
+  undefined8 uVar6;
+  longlong lVar7;
+  undefined8 uVar8;
+  undefined8 uVar9;
+  undefined8 uVar10;
+  undefined8 uVar11;
+  char extraout_AL;
+  longlong *in_RCX;
+  longlong *in_RDX;
+  longlong *in_R8;
+  
+  puVar2 = (undefined8 *)*in_RCX;
+  puVar3 = (undefined8 *)*in_RDX;
+  core::cmp::PartialEq::
+  ne<enum2_<country_core::systems::mode_manager::AppMode>,enum2_<country_core::systems::mode_manager::AppMode>_>
+            ();
+  if (extraout_AL != '\0') {
+    uVar8 = *puVar2;
+    uVar9 = puVar2[1];
+    uVar10 = *puVar3;
+    uVar11 = puVar3[1];
+    *(undefined4 *)in_R8[2] = *(undefined4 *)((longlong)in_R8 + 0x1c);
+    lVar4 = *in_R8;
+    lVar5 = *(longlong *)(lVar4 + 0x30);
+    uVar6 = *(undefined8 *)(lVar4 + 0x40);
+    if (lVar5 == *(longlong *)(lVar4 + 0x20)) {
+      alloc::raw_vec::RawVec::
+      grow_one<indexmap::Bucket<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,enum2_<country_core::resources::stairs::stairs_assembly_params::AlignKind>_>,alloc::alloc::Global>
+                ();
+    }
+    lVar7 = *(longlong *)(lVar4 + 0x28);
+    puVar1 = (undefined8 *)(lVar7 + 0x10 + lVar5 * 0x28);
+    *puVar1 = uVar10;
+    puVar1[1] = uVar11;
+    puVar1 = (undefined8 *)(lVar7 + lVar5 * 0x28);
+    *puVar1 = uVar8;
+    puVar1[1] = uVar9;
+    *(undefined8 *)(lVar7 + 0x20 + lVar5 * 0x28) = uVar6;
+    *(longlong *)(lVar4 + 0x30) = lVar5 + 1;
+    *(longlong *)(lVar4 + 0x40) = *(longlong *)(lVar4 + 0x40) + 1;
+    uVar6 = *puVar2;
+    uVar8 = puVar2[1];
+    *(undefined4 *)in_RDX[2] = *(undefined4 *)((longlong)in_RDX + 0x1c);
+    *puVar3 = uVar6;
+    puVar3[1] = uVar8;
+  }
+  return;
+}
+

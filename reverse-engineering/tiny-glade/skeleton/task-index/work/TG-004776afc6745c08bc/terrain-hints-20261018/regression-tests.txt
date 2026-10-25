@@ -1,0 +1,95 @@
+
+#[cfg(test)]
+mod native_regressions {
+    use super::*;
+    use country_core::{
+        game_profile::GameProfile,
+        resources::onboarding::{NotifyHintSystemTerrain, NotifyHintSystemTerrainSteepness},
+        systems::{mode_manager::AppMode, terrain::terrain_hover_idx::HoveredTerrainStrokeId},
+    };
+    use crate::{
+        hint_terrain_focus::{HintFocusTerrainConditions, hint_terrain_focus},
+        hint_terrain_steepness::{HintTerrainSteepnessConditions, hint_terrain_steepness},
+        tutorial_completion::TutorialHintComplete,
+    };
+
+    fn world() -> World {
+        let mut world = World::new();
+        world.insert_resource(GameProfile::default());
+        world.insert_resource(AppMode::default());
+        world.insert_resource(HoveredTerrainStrokeId::default());
+        world.init_resource::<HintTerrainConditions>();
+        world.init_resource::<HintFocusTerrainConditions>();
+        world.init_resource::<HintTerrainSteepnessConditions>();
+        world.init_resource::<Events<NotifyHintSystemTerrain>>();
+        world.init_resource::<Events<NotifyHintSystemTerrainSteepness>>();
+        world.init_resource::<Events<crate::DisplayHintRequest>>();
+        world.init_resource::<Events<TutorialHintComplete>>();
+        world
+    }
+
+    #[test]
+    fn original_b_tag_sequences_preserve_state_and_completion_order() {
+        // Actual native42 cases, with its display backend excluded by mode0.
+        let cases: &[(&str, &[u8], bool, u64, bool, u8, &[u8])] = &[
+NATIVE_ROWS
+        ];
+        for &(kind, tags, initial_done, count, done, flag, completed) in cases {
+            let mut world = world();
+            world.resource_mut::<HintTerrainConditions>().hint_done = initial_done;
+            world.resource_mut::<HintFocusTerrainConditions>().hint_done = initial_done;
+            world.resource_mut::<HintTerrainSteepnessConditions>().hint_done = initial_done;
+            world.resource_mut::<HintTerrainSteepnessConditions>().event_byte = initial_done as u8;
+            let mut schedule = Schedule::default();
+            match kind {
+                "layering" => { schedule.add_systems(hint_terrain_layering); }
+                "focus" => { schedule.add_systems(hint_terrain_focus); }
+                "steepness" => { schedule.add_systems(hint_terrain_steepness); }
+                _ => unreachable!(),
+            }
+            for &tag in tags {
+                if kind == "steepness" {
+                    world.send_event(NotifyHintSystemTerrainSteepness { tag });
+                } else {
+                    world.send_event(NotifyHintSystemTerrain { tag });
+                }
+            }
+            schedule.run(&mut world);
+            match kind {
+                "layering" => {
+                    let state = world.resource::<HintTerrainConditions>();
+                    assert_eq!(state.count, count);
+                    assert_eq!(state.hint_done, done);
+                }
+                "focus" => assert_eq!(world.resource::<HintFocusTerrainConditions>().hint_done, done),
+                "steepness" => {
+                    let state = world.resource::<HintTerrainSteepnessConditions>();
+                    assert_eq!(state.hint_done, done);
+                    assert_eq!(state.event_byte, flag);
+                }
+                _ => unreachable!(),
+            }
+            let mut reader = bevy_ecs::event::EventCursor::<TutorialHintComplete>::default();
+            let actual: Vec<_> = reader.read(world.resource::<Events<TutorialHintComplete>>()).map(|event| event.id).collect();
+            assert_eq!(actual.as_slice(), completed, "{kind} {tags:?}");
+        }
+    }
+
+    #[test]
+    fn display_guards_require_hover_even_with_other_entities() {
+        let mut world = world();
+        world.insert_resource(AppMode::Terrain);
+        world.resource_mut::<HintTerrainConditions>().count = 2;
+        world.resource_mut::<HintTerrainSteepnessConditions>().hint_done = true;
+        world.spawn_empty();
+        let mut schedule = Schedule::default();
+        schedule.add_systems((hint_terrain_layering, hint_terrain_focus, hint_terrain_steepness).chain());
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<Events<crate::DisplayHintRequest>>().len(), 0);
+        world.resource_mut::<HoveredTerrainStrokeId>().tag = 1;
+        schedule.run(&mut world);
+        let mut reader = bevy_ecs::event::EventCursor::<crate::DisplayHintRequest>::default();
+        let ids: Vec<_> = reader.read(world.resource::<Events<crate::DisplayHintRequest>>()).map(|request| request.id).collect();
+        assert_eq!(ids, [6, 1, 4]);
+    }
+}

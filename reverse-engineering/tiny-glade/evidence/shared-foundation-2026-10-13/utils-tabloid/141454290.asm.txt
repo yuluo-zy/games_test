@@ -1,0 +1,54 @@
+tabloid::Publisher$LT$T$GT$::subscribe::h481335255b855a95
+0x141454290: push rbp
+0x141454291: push rsi
+0x141454292: push rdi
+0x141454293: sub rsp, 0x80
+0x14145429a: lea rbp, [rsp + 0x80]
+0x1414542a2: mov qword ptr [rbp - 8], 0xfffffffffffffffe
+0x1414542aa: mov rsi, rcx
+0x1414542ad: xorps xmm0, xmm0
+0x1414542b0: movups xmmword ptr [rbp - 0x50], xmm0
+0x1414542b4: mov qword ptr [rbp - 0x40], 1
+0x1414542bc: mov qword ptr [rbp - 0x38], 1
+0x1414542c4: mov byte ptr [rbp - 0x30], 0
+0x1414542c8: movups xmm0, xmmword ptr [rbp - 0x57]
+0x1414542cc: movups xmmword ptr [rbp - 0x2f], xmm0
+0x1414542d0: mov rax, qword ptr [rbp - 0x48]
+0x1414542d4: mov qword ptr [rbp - 0x20], rax
+0x1414542d8: movzx eax, byte ptr [rip + 0x21e092a]
+0x1414542df: mov ecx, 0x28
+0x1414542e4: mov edx, 8
+0x1414542e9: call 0x140613c10
+0x1414542ee: test rax, rax
+0x1414542f1: je 0x141454354
+0x1414542f3: mov rcx, qword ptr [rbp - 0x20]
+0x1414542f7: mov qword ptr [rax + 0x20], rcx
+0x1414542fb: movups xmm0, xmmword ptr [rbp - 0x40]
+0x1414542ff: movups xmm1, xmmword ptr [rbp - 0x30]
+0x141454303: movups xmmword ptr [rax + 0x10], xmm1
+0x141454307: movups xmmword ptr [rax], xmm0
+0x14145430a: mov qword ptr [rbp - 0x18], rax
+0x14145430e: lock inc qword ptr [rax]
+0x141454312: jle 0x141454363
+0x141454314: mov qword ptr [rbp - 0x10], rax
+0x141454318: mov qword ptr [rbp - 0x40], rax
+0x14145431c: mov rdi, qword ptr [rsi + 0x28]
+0x141454320: cmp rdi, qword ptr [rsi + 0x18]
+0x141454324: jne 0x141454336
+0x141454326: lea rcx, [rsi + 0x18]
+0x14145432a: lea rdx, [rip + 0x180d1e7] ; [0x142c61518]=b014c642 f32=99.0404052734375
+0x141454331: call 0x140562870
+0x141454336: mov rcx, qword ptr [rsi + 0x20]
+0x14145433a: mov rax, qword ptr [rbp - 0x10]
+0x14145433e: mov qword ptr [rcx + rdi*8], rax
+0x141454342: inc rdi
+0x141454345: mov qword ptr [rsi + 0x28], rdi
+0x141454349: add rsp, 0x80
+0x141454350: pop rdi
+0x141454351: pop rsi
+0x141454352: pop rbp
+0x141454353: ret 
+0x141454354: mov ecx, 8
+0x141454359: mov edx, 0x28
+0x14145435e: call 0x1428d9000
+0x141454363: ud2 

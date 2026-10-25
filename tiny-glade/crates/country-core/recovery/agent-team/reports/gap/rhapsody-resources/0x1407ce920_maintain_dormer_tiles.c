@@ -1,0 +1,78 @@
+
+void __cdecl
+system_decorator::decorator_visual::cottage_dormers::maintain_dormer_tiles_draw::
+maintain_dormer_tiles(void)
+
+{
+  longlong lVar1;
+  undefined4 uVar2;
+  ulonglong *puVar3;
+  longlong lVar4;
+  ulonglong uVar5;
+  undefined4 *puVar6;
+  ulonglong uVar7;
+  longlong lVar8;
+  longlong in_RCX;
+  undefined8 *in_RDX;
+  longlong lVar9;
+  ulonglong uVar10;
+  ulonglong uVar11;
+  longlong local_50;
+  longlong local_48;
+  
+  puVar3 = (ulonglong *)*in_RDX;
+  lVar4 = in_RDX[1];
+  uVar5 = *puVar3;
+  uVar10 = 0;
+  uVar7 = uVar5 - *(ulonglong *)(lVar4 + 0x18);
+  if (uVar5 < *(ulonglong *)(lVar4 + 0x18)) {
+    uVar7 = uVar10;
+  }
+  uVar11 = uVar5 - *(ulonglong *)(lVar4 + 0x38);
+  if (uVar5 < *(ulonglong *)(lVar4 + 0x38)) {
+    uVar11 = uVar10;
+  }
+  lVar9 = uVar7 * 0x18 + *(longlong *)(lVar4 + 8);
+  uVar5 = *(ulonglong *)(lVar4 + 0x10) - uVar7;
+  if (*(ulonglong *)(lVar4 + 0x10) < uVar7) {
+    lVar9 = 8;
+    uVar5 = uVar10;
+  }
+  lVar8 = uVar11 * 0x18 + *(longlong *)(lVar4 + 0x28);
+  uVar7 = *(ulonglong *)(lVar4 + 0x30) - uVar11;
+  if (*(ulonglong *)(lVar4 + 0x30) < uVar11) {
+    lVar8 = 8;
+    uVar7 = uVar10;
+  }
+  *puVar3 = (*(longlong *)(lVar4 + 0x40) - uVar7) - uVar5;
+  lVar4 = lVar9 + uVar5 * 0x18;
+  lVar1 = lVar8 + uVar7 * 0x18;
+  uVar2 = *(undefined4 *)(in_RCX + 0x1c);
+  puVar6 = *(undefined4 **)(in_RCX + 0x10);
+  do {
+    if ((lVar9 == 0) || (lVar9 == lVar4)) {
+      if ((lVar8 == 0) || (lVar8 == lVar1)) {
+        return;
+      }
+      lVar8 = lVar8 + 0x18;
+      lVar9 = 0;
+    }
+    else {
+      lVar9 = lVar9 + 0x18;
+    }
+    *puVar3 = *puVar3 + 1;
+    *puVar6 = uVar2;
+    core::hash::BuildHasher::
+    hash_one<std::hash::random::RandomState,ref_<country_core::systems::ui::GlobalId>_>();
+    hashbrown::raw::RawTable::
+    remove_entry<tuple_<u64,alloc::boxed::Box<dyn_<core::ops::function::FnOnce<tuple_<ptr_mut_<core::ffi::c_void>,bool>,assoc_<Output,tuple_<>_>_>,core::marker::Send>,alloc::alloc::Global>_>,alloc::alloc::Global,hashbrown::map::equivalent_key::closure_env_0<u64,u64,alloc::boxed::Box<dyn_<core::ops::function::FnOnce<tuple_<ptr_mut_<core::ffi::c_void>,bool>,assoc_<Output,tuple_<>_>_>,core::marker::Send>,alloc::alloc::Global>_>_>
+              ();
+    if (local_50 != 0) {
+      core::ptr::
+      drop_in_place<country_core::render::sparse_instance_buffer::SparseInstanceBufferAllocation<country_core::resources::roof_tile_ssbo::RoofTileSsbo>_>
+                ();
+    }
+    local_50 = local_48;
+  } while( true );
+}
+

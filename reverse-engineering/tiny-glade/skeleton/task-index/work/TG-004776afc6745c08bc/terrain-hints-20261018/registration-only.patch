@@ -1,0 +1,48 @@
+--- a/games_test/tiny-glade/crates/systems/onboarding/src/lib.rs
++++ b/games_test/tiny-glade/crates/systems/onboarding/src/lib.rs
+@@ -75,7 +75,18 @@
+ /// 依赖 bevy_app/SubApp（本 workspace 仅 bevy_ecs）：以 `configure` 表达可落部分；
+ /// 未落库事件（country-core `resources::onboarding` 除 ToolWasJustUsed 外、TutorialOp、
+ /// DisplayRollercoasterPrompt）登记待落。
+-pub fn configure(world: &mut World, _schedule: &mut bevy_ecs::schedule::Schedule) {
++pub fn configure(world: &mut World, schedule: &mut bevy_ecs::schedule::Schedule) {
++    // Reuse the existing original startup constructor once, when the host has
++    // provided its profile and no terrain hint conditions were supplied.
++    if world.contains_resource::<country_core::game_profile::GameProfile>()
++        && !world.contains_resource::<hint_terrain::HintTerrainConditions>()
++        && !world.contains_resource::<hint_terrain_focus::HintFocusTerrainConditions>()
++        && !world.contains_resource::<hint_terrain_steepness::HintTerrainSteepnessConditions>()
++    {
++        use bevy_ecs::system::RunSystemOnce;
++        world.run_system_once(hints_startup::hints_startup)
++            .expect("initializing hint conditions from the loaded profile");
++    }
+     world.init_resource::<hint_camera_progress::CameraHintProgress>();
+     world.init_resource::<hint_camera_controls::CameraHintsState>();
+     world.init_resource::<hint_deselect_tool::DeselectToolHintConditions>();
+@@ -89,6 +100,10 @@
+     world.init_resource::<hint_terrain_focus::HintFocusTerrainConditions>();
+     world.init_resource::<hint_stairs::StairsHintConditions>();
+ 
++    world.init_resource::<Events<country_core::resources::onboarding::NotifyHintSystemTerrain>>();
++    world.init_resource::<Events<country_core::resources::onboarding::NotifyHintSystemTerrainSteepness>>();
++    world.init_resource::<Events<country_core::resources::events::WriteSettingsFileCmd>>();
++    world.init_resource::<country_core::systems::terrain::terrain_hover_idx::HoveredTerrainStrokeId>();
+     world.init_resource::<Events<DisplayHintRequest>>();
+     world.init_resource::<Events<LingerHintRequest>>();
+     world.init_resource::<Events<tutorial_completion::TutorialHintComplete>>();
+@@ -96,6 +111,14 @@
+     // O：`ToolbarUiIsInFocus` 属 toolbar plugin 的注册面（country-core 尚未落该类型）；
+     // 本模块以本地同名事件承接 `hint_orchestrator` 的 reader，故在此注册（接线 U）。
+     world.init_resource::<Events<hint_orchestrator::ToolbarUiIsInFocus>>();
++    // Current CPU consumer order. The upper host supplies profile/AppMode and
++    // the actual core terrain producers; this does not create a core->plugin dependency.
++    schedule.add_systems((
++        hint_terrain::hint_terrain_layering,
++        hint_terrain_focus::hint_terrain_focus,
++        hint_terrain_steepness::hint_terrain_steepness,
++        tutorial_completion::tutorial_completion,
++    ).chain().after(country_core::systems::terrain::TerrainCpuStage::Changed));
+ }
+ 
+ /// NotifyHintSystem* 事件宿主载荷字节 seam（O：native 各 hint_* 读 `事件+8` 载荷字节

@@ -1,0 +1,491 @@
+--- a/tiny-glade/crates/country-core/src/components/mod.rs
++++ b/tiny-glade/crates/country-core/src/components/mod.rs
+@@ -37,3 +37,6 @@
+ 
+ pub mod brush_previews;
+ pub use brush_previews::{SnappingToEndPreview, SnappingToSegmentPreview};
++
++pub use ui::Ui2DFollowMouse;
++pub use rendering::MeshFollowTerrain;
+--- a/tiny-glade/crates/country-core/src/components/rendering.rs
++++ b/tiny-glade/crates/country-core/src/components/rendering.rs
+@@ -48,3 +48,7 @@
+ /// Original components::NormalMap: one eight-byte disk-texture name hash.
+ #[derive(Component,Debug,PartialEq,Eq)]
+ pub struct NormalMap(pub u64);
++
++/// Original zero-sized query filter marker; no independent runtime owner.
++#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
++pub struct MeshFollowTerrain;
+--- a/tiny-glade/crates/country-core/src/components/ui.rs
++++ b/tiny-glade/crates/country-core/src/components/ui.rs
+@@ -77,3 +77,7 @@
+ const _: () = assert!(std::mem::size_of::<UiInactive>() == 0);
+ const _: () = assert!(std::mem::size_of::<Ui2dWsExtent>() == 0x14);
+ const _: () = assert!(std::mem::size_of::<UiInteractionState>() == 3);
++
++/// Original zero-sized query filter marker; no independent runtime owner.
++#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
++pub struct Ui2DFollowMouse;
+--- a/tiny-glade/crates/country-core/src/lib.rs
++++ b/tiny-glade/crates/country-core/src/lib.rs
+@@ -48,6 +48,8 @@
+     pub mod main_camera;
+     pub mod mode_manager;
+     pub mod paths;
++    pub mod ui_2d_follow_mouse;
++    pub mod mesh_follow_terrain;
+     pub mod render_loop;
+     pub mod weather_system;
+     pub mod world_raster;
+--- a/tiny-glade/crates/country-core/src/systems/debug/human_scale_ref.rs
++++ b/tiny-glade/crates/country-core/src/systems/debug/human_scale_ref.rs
+@@ -0,0 +1,131 @@
++//! B1408b2b30/2516B. Debug-gated digital34 toggles every reference.
++use crate::{
++    input::action_set::MainActionSet,
++    resources::{cursor_terrain_raycast::CursorTerrainRaycast, gui::DebugGui},
++    utils::components::transform::Transform,
++};
++use bevy_ecs::prelude::*;
++use glam::Vec3;
++/// Original stride12; Y size is read at+4 when centering the mesh over terrain.
++#[derive(Component, Clone, Copy, Debug, Default)]
++pub struct HumanScaleRef(pub Vec3);
++pub fn human_scale_ref(
++    query: Query<(Entity, Option<&Transform>, &HumanScaleRef)>,
++    actions: Res<MainActionSet>,
++    cursor: Res<CursorTerrainRaycast>,
++    mut commands: Commands,
++    debug: Res<DebugGui>,
++) {
++    if !debug.human_scale_reference || !actions.digital[34].just_pressed() {
++        return;
++    }
++    for (entity, transform, reference) in &query {
++        if transform.is_some() {
++            commands.entity(entity).remove::<Transform>();
++        } else {
++            let h = reference.0.y;
++            let offset = Vec3::new(h * 0.0, h, h * 0.0) * 0.5;
++            commands.entity(entity).insert(Transform {
++                translation: cursor.position() + offset,
++                ..Transform::identity()
++            });
++        }
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use crate::input::action_set::{DigitalActionPhase, DigitalActionState};
++    fn bits(t: &Transform) -> Vec<u32> {
++        t.rotation
++            .to_array()
++            .into_iter()
++            .chain(t.translation.to_array())
++            .chain(t.scale.to_array())
++            .map(f32::to_bits)
++            .collect()
++    }
++    #[test]
++    fn native40_full_body_debug_toggle_cases() {
++        let fixtures:serde_json::Value=serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"),"/../../../reverse-engineering/tiny-glade/evidence/round12/brush-runtime-full/native-human-scale-fixtures.json"))).unwrap();
++        for case in fixtures.as_array().unwrap() {
++            let input = &case["input"];
++            let native = &case["native"];
++            let mut world = World::new();
++            let mut debug = DebugGui::default();
++            debug.human_scale_reference = input["debug_enabled"].as_bool().unwrap();
++            world.insert_resource(debug);
++            let mut actions = MainActionSet::default();
++            let phase = match input["phase"].as_u64().unwrap() {
++                0 => DigitalActionPhase::JustPressed,
++                1 => DigitalActionPhase::Held,
++                2 => DigitalActionPhase::Repeating,
++                3 => DigitalActionPhase::JustReleased,
++                _ => DigitalActionPhase::Idle,
++            };
++            actions.digital[34] = DigitalActionState {
++                phase,
++                timer_seconds: f32::from_bits(input["timer_bits"].as_u64().unwrap() as u32),
++            };
++            world.insert_resource(actions);
++            let mut cursor = CursorTerrainRaycast::new();
++            cursor.update(Some(Vec3::new(10., 20., 30.)));
++            world.insert_resource(cursor);
++            let a = world.spawn(HumanScaleRef(Vec3::new(1., 2., 3.))).id();
++            let b = world
++                .spawn((
++                    HumanScaleRef(Vec3::new(1., 4., 3.)),
++                    Transform {
++                        translation: Vec3::new(1., 2., 3.),
++                        scale: Vec3::splat(2.),
++                        ..Transform::identity()
++                    },
++                ))
++                .id();
++            let c = world.spawn(HumanScaleRef(Vec3::new(1., f32::NAN, 3.))).id();
++            let ids = [a, b, c];
++            let mut expected: Vec<Option<Vec<u32>>> = native["transforms"]
++                .as_array()
++                .unwrap()
++                .iter()
++                .map(|v| {
++                    if v.is_null() {
++                        None
++                    } else {
++                        Some(
++                            v.as_array()
++                                .unwrap()
++                                .iter()
++                                .map(|x| x.as_u64().unwrap() as u32)
++                                .collect(),
++                        )
++                    }
++                })
++                .collect();
++            for command in native["commands"].as_array().unwrap() {
++                if let Some(id) = command["remove"].as_u64() {
++                    expected[(id - 0x100000000) as usize] = None;
++                }
++                if let Some(id) = command["insert"].as_u64() {
++                    expected[(id - 0x100000000) as usize] = Some(
++                        command["transform_bits"]
++                            .as_array()
++                            .unwrap()
++                            .iter()
++                            .map(|x| x.as_u64().unwrap() as u32)
++                            .collect(),
++                    );
++                }
++            }
++            let mut schedule = Schedule::default();
++            schedule.add_systems(human_scale_ref);
++            schedule.run(&mut world);
++            let actual: Vec<_> = ids
++                .into_iter()
++                .map(|id| world.get::<Transform>(id).map(bits))
++                .collect();
++            assert_eq!(actual, expected, "input={input}");
++        }
++    }
++}
+--- a/tiny-glade/crates/country-core/src/systems/debug/mod.rs
++++ b/tiny-glade/crates/country-core/src/systems/debug/mod.rs
+@@ -1,2 +1,4 @@
+ //! `systems::debug` — 调试域（中央仲裁批准 2026-10-16 落 sheep_controls）。
+ pub mod sheep_controls;
++
++pub mod human_scale_ref;
+--- a/tiny-glade/crates/country-core/src/systems/history/signifier_replay_active.rs
++++ b/tiny-glade/crates/country-core/src/systems/history/signifier_replay_active.rs
+@@ -1,4 +1,155 @@
+-//! Original component descriptor140b1d90e: size8,alignment8.
+-//! Startup emits index1/2; no replacement empty replay consumer is registered.
+-#[derive(bevy_ecs::component::Component, Debug, PartialEq, Eq)]
++//! B140b1b860/1959B, original replay preview lifecycle and damped pulse.
++pub use super::replay_mode::ReplayModeElapsedTime;
++use crate::{
++    resources::{
++        cursor_terrain_raycast::CursorTerrainRaycast, history::ReplayBuffer, time::GameTime,
++    },
++    systems::camera_rig::main_camera::MainCamera,
++    utils::components::transform::Transform,
++};
++use bevy_ecs::prelude::*;
++use glam::Vec3;
++#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+ pub struct SignifierReplayIndex(pub usize);
++fn maxss(a: f32, b: f32) -> f32 {
++    if a > b { a } else { b }
++}
++fn minss(a: f32, b: f32) -> f32 {
++    if a < b { a } else { b }
++}
++fn pulse(phase: f32) -> f32 {
++    let wave = (phase * f32::from_bits(0x40fb53d2)).sin();
++    (phase * -10.).exp2() * wave * 0.5
++}
++pub fn signifier_replay_active(
++    replay: Res<ReplayBuffer>,
++    mut elapsed: ResMut<ReplayModeElapsedTime>,
++    mut query: Query<(&mut Transform, &SignifierReplayIndex)>,
++    camera: Res<MainCamera>,
++    time: Res<GameTime>,
++    cursor: Res<CursorTerrainRaycast>,
++    speed: Res<ReplayBuffer>,
++) {
++    let Some(elapsed) = elapsed.0.as_mut() else {
++        return;
++    };
++    *elapsed = time.delta + *elapsed;
++    let period = maxss(f32::from_bits(0x3f666666) / speed.speed, 0.5);
++    let normalized = *elapsed / period;
++    let mut phase = normalized - normalized.trunc();
++    for (mut transform, index) in &mut query {
++        let Some(front) = replay.buckets.front() else {
++            transform.translation = cursor.position();
++            continue;
++        };
++        let up = if front.undo {
++            Vec3::new(-0.0, -1., -0.0)
++        } else {
++            Vec3::Y
++        };
++        transform.look_at(camera.eye_position(), up);
++        let target = if index.0 == 1 {
++            -0.15
++        } else {
++            // Original phase is shared across the query loop: preserve mutation
++            // for later rows, including repeated secondary indices.
++            phase = minss(1., maxss(0., phase + f32::from_bits(0xbd4ccccd)));
++            0.15
++        };
++        let oscillation = pulse(phase);
++        let direction = transform.rotation * Vec3::X;
++        let base = cursor.position() - direction * oscillation * f32::from_bits(0x40333333);
++        transform.translation = direction * target * f32::from_bits(0x40333333) + base;
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use crate::resources::history::replay_cmd_buffer::ReplayBucket;
++    #[test]
++    fn actual_schedule_matches90_native_full_function_cases() {
++        let fixtures:serde_json::Value=serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"),"/../../../reverse-engineering/tiny-glade/evidence/round12/brush-runtime-full/native-signifier-replay-fixtures.json"))).unwrap();
++        for case in fixtures.as_array().unwrap() {
++            let input = &case["input"];
++            let native = &case["native"];
++            let mut world = World::new();
++            let mut replay = ReplayBuffer::new(1.);
++            if input["pending"].as_bool().unwrap() {
++                replay.push(ReplayBucket {
++                    entry_index: 0,
++                    undo: input["undo"].as_bool().unwrap(),
++                    commands: vec![],
++                    timing: vec![],
++                });
++            }
++            world.insert_resource(replay);
++            world.insert_resource(ReplayModeElapsedTime(
++                input["elapsed"].as_f64().map(|f| f as f32),
++            ));
++            world.insert_resource(GameTime {
++                delta: 0.016,
++                ..Default::default()
++            });
++            let mut cursor = CursorTerrainRaycast::new();
++            cursor.update(Some(Vec3::new(10., 20., 30.)));
++            world.insert_resource(cursor);
++            let mut camera = MainCamera::default();
++            camera.set_camera_matrices(glam::Mat4::from_translation(Vec3::new(15., 25., 35.)));
++            world.insert_resource(camera);
++            let ids: Vec<_> = input["rows"]
++                .as_array()
++                .unwrap()
++                .iter()
++                .map(|r| {
++                    world
++                        .spawn((
++                            SignifierReplayIndex(r[0].as_u64().unwrap() as usize),
++                            Transform {
++                                translation: Vec3::new(1., 2., 3.),
++                                scale: Vec3::splat(2.),
++                                ..Transform::identity()
++                            },
++                        ))
++                        .id()
++                })
++                .collect();
++            let mut schedule = Schedule::default();
++            schedule.add_systems(signifier_replay_active);
++            schedule.run(&mut world);
++            let elapsed = world.resource::<ReplayModeElapsedTime>().0;
++            if input["elapsed"].is_null() {
++                assert_eq!(elapsed, None);
++            } else {
++                assert_eq!(
++                    elapsed.unwrap().to_bits(),
++                    native["elapsed_bits"].as_u64().unwrap() as u32
++                );
++            }
++            for (id, expected) in ids
++                .into_iter()
++                .zip(native["transforms"].as_array().unwrap())
++            {
++                let t = world.get::<Transform>(id).unwrap();
++                let actual: Vec<_> = t
++                    .rotation
++                    .to_array()
++                    .into_iter()
++                    .chain(t.translation.to_array())
++                    .chain(t.scale.to_array())
++                    .collect();
++                for (i, (a, b)) in actual
++                    .into_iter()
++                    .zip(expected.as_array().unwrap())
++                    .enumerate()
++                {
++                    let b = f32::from_bits(b.as_u64().unwrap() as u32);
++                    assert!(
++                        (a - b).abs() < 0.00005,
++                        "input={input},field={i},actual={a:?},original={b:?}"
++                    );
++                }
++            }
++        }
++    }
++}
+--- a/tiny-glade/crates/country-core/src/systems/mesh_follow_terrain.rs
++++ b/tiny-glade/crates/country-core/src/systems/mesh_follow_terrain.rs
+@@ -0,0 +1,91 @@
++//! B140a68430/1556B and indexed map/collect1412fd550/496B.
++//! This rewrites mesh vertices through the owning library, not entity transforms.
++use crate::{
++    components::MeshFollowTerrain,
++    asset_libraries::{Handle, mesh_library::AssetMeshLibrary},
++    render::mesh::{ATTR_POSITION, Mesh},
++    resources::terrain_height::TerrainHeightsData,
++};
++use bevy_ecs::prelude::*;
++pub fn mesh_follow_terrain(
++    query: Query<&Handle<Mesh>, With<MeshFollowTerrain>>,
++    mut meshes: ResMut<AssetMeshLibrary>,
++    terrain: Res<TerrainHeightsData>,
++) {
++    for handle in &query {
++        let mesh = meshes
++            .get_mut(*handle)
++            .expect("MeshFollowTerrain got an invalid mesh handle");
++        let (indices, positions) = mesh.positions();
++        let positions: Vec<glam::Vec3> = indices
++            .iter()
++            .map(|&index| {
++                let p = positions[index as usize];
++                glam::Vec3::new(p.x, terrain.sample_at_world_xz(p.x, p.z), p.z)
++            })
++            .collect();
++        mesh.set_attribute(ATTR_POSITION, positions);
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use crate::{
++        asset_libraries::mesh_library::MeshAsset,
++        render::mesh::{ATTR_COLOR, VertexAttributeValues},
++        resources::terrain_height::TerrainHeightSsbo,
++    };
++    #[test]
++    fn indexed_order_real_terrain_sampling_and_original_dirty_receipts() {
++        let mut mesh = Mesh::new("follow");
++        mesh.indices = vec![2, 0, 2, 1];
++        let old = vec![
++            glam::Vec3::new(-3., 8., 2.),
++            glam::Vec3::new(4., 9., -5.),
++            glam::Vec3::new(7., 10., 6.),
++        ];
++        mesh.set_attribute(ATTR_POSITION, old.clone());
++        mesh.set_attribute(ATTR_COLOR, vec![glam::Vec3::ONE; 3]);
++        let library = AssetMeshLibrary::new();
++        let handle = library.add(MeshAsset::new(mesh, Some("follow".to_owned())));
++        let mut terrain = TerrainHeightsData::<TerrainHeightSsbo>::new();
++        terrain.set_height_range(0., 65535.);
++        for (i, h) in terrain.heights_mut().iter_mut().enumerate() {
++            *h = (i % 512) as u16;
++        }
++        let expected: Vec<_> = [2, 0, 2, 1]
++            .map(|i| {
++                let p = old[i];
++                glam::Vec3::new(p.x, terrain.sample_at_world_xz(p.x, p.z), p.z)
++            })
++            .into_iter()
++            .collect();
++        let mut world = World::new();
++        world.insert_resource(library);
++        world.insert_resource(terrain);
++        world.spawn((handle, MeshFollowTerrain));
++        let mut schedule = Schedule::default();
++        schedule.add_systems(mesh_follow_terrain);
++        schedule.run(&mut world);
++        let library = world.resource::<AssetMeshLibrary>();
++        assert_eq!(library.modified_meshes, vec![handle]);
++        let mesh = library.get(handle).unwrap();
++        assert_eq!(mesh.indices, [2, 0, 2, 1]);
++        assert_eq!(mesh.positions_without_indices(), expected);
++        assert!(
++            matches!(mesh.attributes.get(ATTR_COLOR),Some(VertexAttributeValues::Float3(v)) if v.len()==3)
++        );
++    }
++    #[test]
++    #[should_panic(expected = "MeshFollowTerrain got an invalid mesh handle")]
++    fn invalid_handle_panics_in_actual_query() {
++        let mut world = World::new();
++        world.insert_resource(AssetMeshLibrary::new());
++        world.insert_resource(TerrainHeightsData::<TerrainHeightSsbo>::new());
++        world.spawn((Handle::<Mesh>::new(), MeshFollowTerrain));
++        let mut schedule = Schedule::default();
++        schedule.add_systems(mesh_follow_terrain);
++        schedule.run(&mut world);
++    }
++}
+--- a/tiny-glade/crates/country-core/src/systems/ui_2d_follow_mouse.rs
++++ b/tiny-glade/crates/country-core/src/systems/ui_2d_follow_mouse.rs
+@@ -0,0 +1,52 @@
++//! B14092a100/1265B: only position is overwritten, extent remains intact.
++use crate::{components::{Ui2dExtent,Ui2DFollowMouse}, resources::mouse_terrain_raycast::CursorPositionSS};
++use bevy_ecs::prelude::*;
++pub fn ui_2d_follow_mouse(
++    mut query: Query<(&mut Ui2dExtent, &Ui2DFollowMouse)>,
++    cursor: Res<CursorPositionSS>,
++) {
++    for (mut extent, _) in &mut query {
++        extent.pos = cursor.0;
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    #[test]
++    fn original_nonempty_follow_preserves_extent_and_unmarked_rows() {
++        let mut world = World::new();
++        world.insert_resource(CursorPositionSS(glam::Vec2::new(12., 34.)));
++        let ids: Vec<_> = (0..3)
++            .map(|_| {
++                world
++                    .spawn((
++                        Ui2DFollowMouse,
++                        Ui2dExtent {
++                            pos: glam::Vec2::new(1., 2.),
++                            size: glam::Vec2::new(30., 40.),
++                        },
++                    ))
++                    .id()
++            })
++            .collect();
++        let excluded = world
++            .spawn(Ui2dExtent {
++                pos: glam::Vec2::ONE,
++                size: glam::Vec2::splat(5.),
++            })
++            .id();
++        let mut schedule = Schedule::default();
++        schedule.add_systems(ui_2d_follow_mouse);
++        schedule.run(&mut world);
++        for id in ids {
++            let extent = world.get::<Ui2dExtent>(id).unwrap();
++            assert_eq!(extent.pos, glam::Vec2::new(12., 34.));
++            assert_eq!(extent.size, glam::Vec2::new(30., 40.));
++        }
++        assert_eq!(
++            world.get::<Ui2dExtent>(excluded).unwrap().pos,
++            glam::Vec2::ONE
++        );
++    }
++}

@@ -1,0 +1,17 @@
+
+void __cdecl country_core::resources::audio_resources::AudioInstance::is_playing(void)
+
+{
+  int *in_RCX;
+  undefined8 local_38;
+  
+  if (*in_RCX == 1) {
+    libfmod::EventInstance::get_playback_state();
+    if (local_38 == -0x7ffffffffffffffc) {
+      return;
+    }
+    core::ptr::drop_in_place<enum2_<libfmod::Error>_>();
+  }
+  return;
+}
+

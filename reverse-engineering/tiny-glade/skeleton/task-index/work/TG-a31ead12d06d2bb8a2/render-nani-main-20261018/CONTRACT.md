@@ -1,0 +1,33 @@
+# B Nani 启动、GPU布局与绘制数量合同
+
+原发行 RNE SHA256 f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03；B PDB SHA256 2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911。仅恢复B，不以C索引存在推定等价。索引、连接、编译不当业务验收。
+
+## 原生产顺序
+
+startup_nani@140a38610完整4765B。先按真实27条栈表调用已有原load_shader_into_library。注册顺序首三项是background/tree_trunk/tree_canopy，并不等于SubsetKind的canopy/trunk/background。所有字面量和kind→shader映射由原PE只读字节取出，见startup-native-tables.json。runtime_check_limits的发射前缀仅遍历27枚举，无可观测设备调用；不造额外限制策略。
+
+遍历27kind：取实际MeshAtlasLibrary::get_by_world_subset；查同App已注册shader；atlas.registered=Some时spawn(GpuDrivenDrawable,KeepOnLevelUnload,OcclusionCulled)，对应kind真实typed Owned或四类External。registered=None时原赋None，不创建替代网格。上传现有atlas.layouts，非空时byte_count=len*16、byte_offset=kind*1024，边界为同world真实atlas buffer容量。最后替换subset槽，原失败和OOM不自造回滚。
+
+GpuDrivenDrawable的原write_components@14200fa70完整1284B，读取mesh@30/shader@38/transform@0各为8/8/48B，并写3组件；后两个标记为ZST。当前使用已有DrawableMeshBundle的别名，保持同ECS身份；没有凭+48外层命令insertmode造kind字段。
+
+启动最后原读取GpuWorld.params+60 total_cmd_offset，再>>5，生成该长度u32零向量，依次真实上传PrevVisibility和NextVisibility。默认3,788,800/32=118,400 words=473,600B/缓冲。不是init72中的fixed1默认。当前两个不同Rust类型分别构造相同零内容，仍调用同真实设备/SSBO库上传。没有伪GPU ID。CPU向量不当作设备句柄。
+
+reload_nani@140a398b0完整1458B：合并所有MeshAtlasesModifiedCmd中的subset集合，逐kind重新上传现有布局；没有原证的重分配/重建实例/更新partcount不添加。当前入口显式接收事件迭代器，实际Bevy reader推进由调度调用者负责。
+
+## 纠正的载荷与数量
+
+NaniMeshAtlasPartInfo原TypedStorageBuffer ctor@141616c00完整810B分配0x6c00B=0x6c0*16。当前原32B gap替换为既有MeshAtlasPart同一类型别名，即{base_index,count,radius,pad}。没有再造平行GPUschema。
+
+external subset ctor@1409912a0完整21B把r8第三参数存+8；startup该参数=atlas.layouts.len。Owned<Placement> ctor@1415673b0完整1425B同参数写+a8，+a0 live_instance_count另清零。nani_draw读取+a8或External+8作非fine原始间接绘制命令条数：它是图集part数，不是live_instance_count。GpuWorld已保留该独立字段，draw_ext合法owner负责消费者窄修。fine路径仍由真实countbuffer/设备能力约束。
+
+PlacementDataSsbo原typed ctor@1416164c0完整451B是shl4后lea*3，实际48B，旧{x,y}8B错误。原packaged canopy SPIRV明确9个成员offset0/12/16/20/24/28/32/36/44、ArrayStride48。原serde字段访客@140b3b960完整358B与deserialize_struct@14142f860完整3891B证明：position/scale/rotation_degrees(alias rotation_angle)/id必需；custom0/custom1/bend_vector/pad0默认零；未知字段忽略；anim_t_packed跳过文件并pack(1,1)=0x3c003c00。Owned初值不同：position.y=-100，其他0（原142ae0d20字节及48B repeat证明）。原CPUto_affine3a直接rawangle*0.5计算sin/cos；GPU另用Radians。保留原差异，不因字段名自行转换。数学复用已有glam，派生serde不算新增手写业务函数。
+
+## 输入owner与集成边界
+
+设备必须是同CoreRenderBridge/BufferHost的canonical GraphicsDeviceResource；shader库必须是调用App自己的真实AssetShaderLibrary，ShaderBackend来自该设备。MeshAtlasLibrary必须先由实际prefab/nani_meshes资产填充并register_meshes到实际AssetMeshLibrary；shader/SSBO/mesh库不能跨双App混用。startup_nani当前是可调用生产函数，原NaniPlugin阶段/tuple/registered-atlas上游正在由boot owner独立核，尚未声称已挂实际App调度。当前显式ShaderBackend复用现原shader loader适配，未复制原设备/ShaderWatch内部ABI；原watch外部producer状态沿其owner合同。
+
+完整FramePasses尚未闭合，compile_world_graph仍显式报错；不运行一段Nani helper就发布gameplay-ready。GPU master未运行，原WSI loading3帧通过与原mainprelude2帧通过只覆盖各自边界。
+
+## 验证
+
+root统一Cargo，未在本任务运行Cargo。新增CPU合同：original_placement_payload_and_asset_defaults、native_atlas_slice_and_draw_part_count_are_not_live_instance_count；现Fixture四required替换旧x/y输入。Nani master/IndirectWith等源v25编译通过，但v27 startup/字段新源仍待根验证。不预填通过。

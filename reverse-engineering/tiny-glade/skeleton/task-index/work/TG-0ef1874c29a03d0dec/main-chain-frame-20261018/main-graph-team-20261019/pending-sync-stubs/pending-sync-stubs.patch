@@ -1,0 +1,74 @@
+--- /dev/null
++++ b/crates/tiny-glade/src/menu_background_host.rs
+@@ -0,0 +1,18 @@
++//! Temporary compile seam for a source file awaiting synchronization.
++//! No menu texture owner, frame or successful result is fabricated here.
++use bevy_app::App;
++use bevy_ecs::world::World;
++use country_core::render::pass_builder::framebuffer_binding::AttachmentTexture;
++use crate::{render_bridge::CoreGraphFrame, render_host::HostTables};
++
++const PENDING: &str = "ORIGINAL_IMPLEMENTATION_PENDING_SYNC: menu_background_host.rs";
++
++pub fn install(_app: &mut App, _hosts: HostTables) {
++    panic!("{PENDING}: install");
++}
++
++pub fn render(
++    _frame: &mut CoreGraphFrame<'_>, _world: &mut World, _target: AttachmentTexture,
++) -> rhapsody::Result<()> {
++    Err(rhapsody::Error::unsupported(PENDING))
++}
+--- /dev/null
++++ b/crates/tiny-glade/src/session_preview_host.rs
+@@ -0,0 +1,18 @@
++//! Temporary compile seam for a source file awaiting synchronization.
++//! Canonical load-menu metrics and texture-pool owners are not replaced.
++use bevy_app::App;
++use bevy_ecs::world::World;
++use country_core::render::pass_builder::framebuffer_binding::AttachmentTexture;
++use crate::{render_bridge::CoreGraphFrame, render_host::HostTables};
++
++const PENDING: &str = "ORIGINAL_IMPLEMENTATION_PENDING_SYNC: session_preview_host.rs";
++
++pub fn install(_app: &mut App, _hosts: HostTables) {
++    panic!("{PENDING}: install");
++}
++
++pub fn render(
++    _frame: &mut CoreGraphFrame<'_>, _world: &mut World, _target: AttachmentTexture,
++) -> rhapsody::Result<()> {
++    Err(rhapsody::Error::unsupported(PENDING))
++}
+--- /dev/null
++++ b/crates/tiny-glade/src/screenshot_capture.rs
+@@ -0,0 +1,29 @@
++//! Temporary compile seam for a source file awaiting synchronization.
++//! No request queue, texture capture, completion callback or ready flag is made.
++use bevy_app::App;
++use bevy_ecs::world::World;
++use country_core::render::pass_builder::pass_resource_access::RgTexture;
++use rhapsody::rg::{GraphId, SessionFrameReceipt};
++use crate::{render_bridge::{CoreGraphFrame, CoreRenderBridge}, screenshot::ScreenshotRequest};
++
++const PENDING: &str = "ORIGINAL_IMPLEMENTATION_PENDING_SYNC: screenshot_capture.rs";
++fn pending<T>() -> rhapsody::Result<T> { Err(rhapsody::Error::unsupported(PENDING)) }
++
++pub fn install(_app: &mut App) { panic!("{PENDING}: install"); }
++pub fn installed(_world: &World) -> bool { panic!("{PENDING}: installed"); }
++pub fn enqueue(_world: &mut World, _request: ScreenshotRequest) -> rhapsody::Result<()> { pending() }
++pub fn active_capture_purpose(_world: &World) -> u8 { panic!("{PENDING}: active_capture_purpose"); }
++pub fn has_requests(_world: &World) -> bool { panic!("{PENDING}: has_requests"); }
++pub fn opportunity(
++    _frame: &mut CoreGraphFrame<'_>, _world: &mut World, _purpose: u8,
++    _target: RgTexture, _sample_count: u8,
++) -> rhapsody::Result<()> { pending() }
++pub fn submitted(
++    _world: &mut World, _bridge: &mut CoreRenderBridge,
++    _graph: GraphId, _receipt: &SessionFrameReceipt,
++) -> rhapsody::Result<()> { pending() }
++pub fn cancel_unsubmitted(_world: &mut World, _graph: GraphId) {
++    panic!("{PENDING}: cancel_unsubmitted");
++}
++pub fn finish(_world: &mut World) -> rhapsody::Result<()> { pending() }
++pub fn shutdown(_world: &mut World) -> rhapsody::Result<()> { pending() }

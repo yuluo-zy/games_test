@@ -1,0 +1,1 @@
+本轮按父任务授权只恢复原B SHA f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03。索引target C仅默认库存，不引用其业务实现。原namespace映射当前canonical源码，候选/集成/原行为验收分别记录。

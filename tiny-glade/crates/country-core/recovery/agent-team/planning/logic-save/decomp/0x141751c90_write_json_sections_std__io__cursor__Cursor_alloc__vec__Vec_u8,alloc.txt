@@ -1,0 +1,125 @@
+
+// WARNING: Removing unreachable block (ram,0x00014175204a)
+// WARNING: Removing unreachable block (ram,0x000141751e7e)
+// WARNING: Removing unreachable block (ram,0x000141751e92)
+// WARNING: Removing unreachable block (ram,0x000141751e96)
+// WARNING: Removing unreachable block (ram,0x000141751ea6)
+// WARNING: Removing unreachable block (ram,0x000141751eb5)
+// WARNING: Removing unreachable block (ram,0x00014175209d)
+// WARNING: Removing unreachable block (ram,0x000141751ec1)
+// WARNING: Removing unreachable block (ram,0x0001417520cb)
+// WARNING: Removing unreachable block (ram,0x000141751ed5)
+// WARNING: Removing unreachable block (ram,0x000141751eef)
+// WARNING: Removing unreachable block (ram,0x000141751ef3)
+// WARNING: Removing unreachable block (ram,0x000141751f00)
+
+void __cdecl
+country_core::systems::save::save_game::
+write_json_sections<std::io::cursor::Cursor<alloc::vec::Vec<u8,alloc::alloc::Global>_>_>(void)
+
+{
+  longlong lVar1;
+  ulonglong uVar2;
+  char extraout_AL;
+  longlong in_RCX;
+  longlong in_RDX;
+  ulonglong uVar3;
+  ulonglong *in_R8;
+  ulonglong uVar4;
+  size_t sVar5;
+  ulonglong uVar6;
+  longlong local_110;
+  void *local_108;
+  ulonglong local_100;
+  longlong local_f8;
+  void *local_f0;
+  ulonglong local_e8;
+  
+  lVar1 = in_RCX + in_RDX * 0x28;
+  do {
+    if (in_RCX == lVar1) {
+      return;
+    }
+    alloc::fmt::format::format_inner();
+    if (local_e8 != 0) {
+      uVar2 = in_R8[3];
+      uVar3 = uVar2 + local_e8;
+      uVar4 = uVar3;
+      if (CARRY8(uVar2,local_e8)) {
+        uVar4 = 0xffffffffffffffff;
+      }
+      uVar6 = in_R8[2];
+      if ((*in_R8 < uVar4) && (*in_R8 - uVar6 < uVar4 - uVar6)) {
+        alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+        uVar6 = in_R8[2];
+        uVar4 = in_R8[1];
+        sVar5 = uVar2 - uVar6;
+        if (uVar6 <= uVar2 && sVar5 != 0) {
+LAB_141751db6:
+          memset((void *)(uVar6 + uVar4),0,sVar5);
+          in_R8[2] = uVar2;
+          uVar6 = uVar2;
+        }
+      }
+      else {
+        uVar4 = in_R8[1];
+        sVar5 = uVar2 - uVar6;
+        if (uVar6 <= uVar2 && sVar5 != 0) goto LAB_141751db6;
+      }
+      memcpy((void *)(uVar4 + uVar2),local_f0,local_e8);
+      if (uVar6 < uVar3) {
+        in_R8[2] = uVar3;
+      }
+      in_R8[3] = uVar3;
+    }
+    if (local_f8 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    uVar2 = in_R8[3];
+    serde_json::value::impl$1::fmt();
+    if (extraout_AL != '\0') {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    alloc::slice::impl$0::repeat<u8>();
+    alloc::fmt::format::format_inner();
+    if (local_100 != 0) {
+      uVar3 = uVar2 + local_100;
+      uVar4 = uVar3;
+      if (CARRY8(uVar2,local_100)) {
+        uVar4 = 0xffffffffffffffff;
+      }
+      uVar6 = in_R8[2];
+      if ((*in_R8 < uVar4) && (*in_R8 - uVar6 < uVar4 - uVar6)) {
+        alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+        uVar6 = in_R8[2];
+        uVar4 = in_R8[1];
+        sVar5 = uVar2 - uVar6;
+        if (uVar6 <= uVar2 && sVar5 != 0) {
+LAB_141751fd4:
+          memset((void *)(uVar6 + uVar4),0,sVar5);
+          in_R8[2] = uVar2;
+          uVar6 = uVar2;
+        }
+      }
+      else {
+        uVar4 = in_R8[1];
+        sVar5 = uVar2 - uVar6;
+        if (uVar6 <= uVar2 && sVar5 != 0) goto LAB_141751fd4;
+      }
+      memcpy((void *)(uVar4 + uVar2),local_108,local_100);
+      if (uVar6 < uVar3) {
+        in_R8[2] = uVar3;
+      }
+      in_R8[3] = uVar3;
+    }
+    if (local_110 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    hashbrown::map::HashMap::
+    insert<country_core::systems::save::save_game::SaveFileSection,core::ops::range::Range<u64>,std::hash::random::RandomState,alloc::alloc::Global>
+              ();
+    in_RCX = in_RCX + 0x28;
+  } while( true );
+}
+

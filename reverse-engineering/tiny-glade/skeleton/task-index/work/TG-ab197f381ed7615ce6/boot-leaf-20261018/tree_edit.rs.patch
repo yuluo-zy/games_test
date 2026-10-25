@@ -1,0 +1,27 @@
+--- a/games_test/tiny-glade/crates/country-core/src/resources/history/tree_edit.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/history/tree_edit.rs
+@@ -198,17 +198,13 @@
+ 
+ // ---------------------------------------------------------------- 组 A 接线
+ 
+-/// 树 canopy 最大剔除距离（O：`tree_edit::TreeCanopyMaxCullDistance` 载荷
+-/// `(pub f32)`；render 域 `draw_callbacks_b` 记为无 Resource 的 f32 载荷——本处
+-/// 按 BASELINE 参数面 `ResMut<TreeCanopyMaxCullDistance>`（forest::tree_animation
+-/// 0x142279500）落地为 Resource，差异登记（render 侧视图待同步）。
+-#[derive(bevy_ecs::resource::Resource, Clone, Copy, Debug, PartialEq)]
+-pub struct TreeCanopyMaxCullDistance(pub f32);
+-
+-impl Default for TreeCanopyMaxCullDistance {
+-    fn default() -> Self {
+-        Self(0.0)
+-    }
++/// Original shared canopy state, written by handplaced_tree_animation.
++/// B run_game_thread@14059f41d..426 inserts two actual zero f32 values;
++/// handplaced@142279885/8a6 writes linear progress and its smoothstep output.
++#[derive(bevy_ecs::resource::Resource, Clone, Copy, Debug, Default, PartialEq)]
++pub struct TreeCanopyMaxCullDistance {
++    pub progress: f32,
++    pub smoothstep: f32,
+ }
+ 
+ /// 树编辑命令事件族（O，BASELINE 参数面；`system_tree`/`forest` 消费）。

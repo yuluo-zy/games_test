@@ -1,0 +1,26 @@
+{
+  "claim": "TG-ceff16d029e62c46b5",
+  "scope": "Original B only; work candidates, no production/Cargo/GPU. Canonical TerrainEntities is now in current source.",
+  "files": [
+    {
+      "production": "games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/read_terrain_data.rs",
+      "before_sha256": "2d6136fa6e13ab6f24b2842ce8bcd0ca0c5c91fab6c7e017e612947761ad488b",
+      "candidate_sha256": "e3c33cec5ad48aa318803cf4ad428f10ca7ab20419f3c1391ecbfba4c4debb51",
+      "patch": "read_terrain_data-direct.patch"
+    },
+    {
+      "production": "games_test/tiny-glade/crates/tiny-glade/src/raster_host.rs",
+      "before_sha256": "48621f6f097adf9ed9fdf527efe9a7e98521364a6aaf34d95997d10f6de8dcc8",
+      "candidate_sha256": "2e15246f03846c81b34701cef466a2b7b825ee2199833467b6a4a4bbeb3a65a8",
+      "patch": "raster_host-direct.patch"
+    }
+  ],
+  "host_fragment_sha256": "15443b4e9076da55ec2329f33af6e4b81315636b5b54c4dcdeabfb82200cb3bd",
+  "dependencies": [
+    "canonical TerrainEntities{floor:Entity,rocky:Entity} now exists in resources::rocky_terrain; no default is invented",
+    "W9 shared scene_raster::with_draw_context helper",
+    "same App real typed Handle<Vao>/Shader/Transform components published by current asset maintenance",
+    "actual canonical mapped readback SSBOs; original72 producer",
+    "GameConfig.dev.demo is current host projection of original global demo flag"
+  ]
+}

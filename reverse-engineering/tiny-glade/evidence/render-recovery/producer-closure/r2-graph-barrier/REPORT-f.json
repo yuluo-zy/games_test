@@ -1,0 +1,378 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-10-12T10:29:57.945Z",
+  "completed_at": "2026-10-12T10:30:41.231Z",
+  "server": "re_mcp_ghidra",
+  "lane_count": 1,
+  "lanes": [
+    {
+      "database": "revgraph_l1",
+      "report": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\producer-closure\\r2-graph-barrier\\revgraph_l1.report.json",
+      "ok": false,
+      "cleanup_ok": true,
+      "error": "Error: batch operations failed: get_structure, get_structure, get_type_info",
+      "steps": 8
+    }
+  ],
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "identity": {
+    "target": {
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+      "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+    },
+    "provider": {
+      "id": "ghidra",
+      "version": "12.1.4"
+    },
+    "launch_sha256": "c82cc6dd6f528a9f07990202b685f0802e0833733774283e9a497bc4cef41aad",
+    "inputs": []
+  },
+  "cache_policy": {
+    "enabled": false,
+    "reason": "Database analysis cache disabled: both provider_manifest and database_snapshot files are required.",
+    "provider_version_provenance": "job-declared; actual server self-report is recorded separately upon connection"
+  },
+  "evidence_limits": [
+    "Static tool outputs do not prove runtime execution.",
+    "Xref completeness is unknown with auto-analysis disabled. Empty or DATA-only references cannot establish whole-program absence.",
+    "Successful cache reuse preserves the original evidence coverage; it does not expand it."
+  ],
+  "results": [
+    {
+      "index": 0,
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "keep_open": true,
+        "database_id": "revgraph_l1"
+      },
+      "cache_key": "61387e3d9a6541352bbedb0902b77a827b9b5c40ef4ec8e7258a252009fd3df8",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:29:58.102Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"revgraph_l1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "revgraph_l1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:30:16.960Z",
+      "ok": true,
+      "result_sha256": "2a438c20ed343ee25c8ab169969c5c2899c77d97ee736229741f7ca2087ca05b",
+      "lane": "revgraph_l1",
+      "database": "revgraph_l1"
+    },
+    {
+      "index": 1,
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "revgraph_l1"
+      },
+      "cache_key": "2e34abe7b6e1a77d94505238044eabe796200966655f93d52cf55b3ddbdee0da",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:30:16.962Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"revgraph_l1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "revgraph_l1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:30:37.322Z",
+      "ok": true,
+      "result_sha256": "c1126c71f96d25eba9fc462c69b7799efcfe6259f5d25bcae4fd7e8898c78dba",
+      "lane": "revgraph_l1",
+      "database": "revgraph_l1"
+    },
+    {
+      "index": 2,
+      "position": 0,
+      "tool": "list_structures",
+      "args": {},
+      "via_batch": true,
+      "started_at": "2026-10-12T10:30:37.324Z",
+      "completed_at": "2026-10-12T10:30:40.489Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2bb703d4d3a39150b0c30f905234f4ab6b39e639f4188a099c68c8650fc2c20e",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "name": "_IMAGE_RUNTIME_FUNCTION_ENTRY",
+            "size": 12,
+            "member_count": 3,
+            "is_union": false,
+            "category": "/PE"
+          },
+          {
+            "name": "DotNetPdbInfo",
+            "size": 38,
+            "member_count": 4,
+            "is_union": false,
+            "category": "/PDB"
+          },
+          {
+            "name": "IMAGE_BASE_RELOCATION",
+            "size": 8,
+            "member_count": 2,
+            "is_union": false,
+            "category": "/PE"
+          },
+          {
+            "name": "IMAGE_DATA_DIRECTORY",
+            "size": 8,
+            "member_count": 2,
+            "is_union": false,
+            "category": "/PE"
+          },
+          {
+            "name": "IMAGE_DEBUG_DIRECTORY",
+            "size": 28,
+            "member_count": 8,
+            "is_union": false,
+            "category": "/PE"
+          },
+          {
+            "name": "IMAGE_DOS_HEADER",
+            "size": 120,
+            "member_count": 20,
+            "is_union": false,
+            "category": "/DOS"
+          },
+          {
+            "name": "IMAGE_FILE_HEADER",
+            "size": 20,
+            "member_count": 7,
+            "is_union": false,
+            "category": "/PE"
+          },
+          {
+            "name": "IMAGE_LOAD_CONFIG_CODE_INTEGRITY",
+            "size": 12,
+            "member_count": 4,
+            "is_union": false,
+            "category": "/PE"
+          },
+          {
+            "name": "IMAGE_LOAD_CONFIG_DIRECTORY64",
+            "size": 256,
+            "member_count": 41,
+            "is_union": false,
+            "category": "/PE"
+          },
+          {
+            "name": "IMAGE_NT_HEADERS64",
+            "size": 264,
+            "member_count": 3,
+            "is_union": false,
+            "category": "/PE"
+          },
+          {
+            "name": "IMAGE_OPTIONAL_HEADER64",
+            "size": 240,
+            "member_count": 30,
+            "is_union": false,
+            "category": "/PE"
+          },
+          {
+            "name": "IMAGE_SECTION_HEADER",
+            "size": 40,
+            "member_count": 10,
+            "is_union": false,
+            "category": "/PE"
+          },
+          {
+            "name": "IMAGE_THUNK_DATA64",
+            "size": 40,
+            "member_count": 6,
+            "is_union": false,
+            "category": "/PE"
+          },
+          {
+            "name": "Misc",
+            "size": 4,
+            "member_count": 2,
+            "is_union": true,
+            "category": "/PE"
+          }
+        ],
+        "total": 14,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revgraph_l1"
+      },
+      "result_sha256": "1a1e7bad941a071ff53c2afc295c554958af7c6bb8f3eda7ea4dc53f23989745",
+      "ok": true,
+      "lane": "revgraph_l1",
+      "database": "revgraph_l1"
+    },
+    {
+      "index": 2,
+      "position": 1,
+      "tool": "get_structure",
+      "args": {
+        "name": "PassResourceAccessType"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:30:37.324Z",
+      "completed_at": "2026-10-12T10:30:40.489Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2bb703d4d3a39150b0c30f905234f4ab6b39e639f4188a099c68c8650fc2c20e",
+      "cache_eligible": false,
+      "error": "{\"error\":\"Structure not found: PassResourceAccessType\",\"error_type\":\"NotFound\",\"database\":\"revgraph_l1\"}",
+      "ok": false,
+      "lane": "revgraph_l1",
+      "database": "revgraph_l1"
+    },
+    {
+      "index": 2,
+      "position": 2,
+      "tool": "get_structure",
+      "args": {
+        "name": "ResourceSyncGroup"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:30:37.324Z",
+      "completed_at": "2026-10-12T10:30:40.489Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2bb703d4d3a39150b0c30f905234f4ab6b39e639f4188a099c68c8650fc2c20e",
+      "cache_eligible": false,
+      "error": "{\"error\":\"Structure not found: ResourceSyncGroup\",\"error_type\":\"NotFound\",\"database\":\"revgraph_l1\"}",
+      "ok": false,
+      "lane": "revgraph_l1",
+      "database": "revgraph_l1"
+    },
+    {
+      "index": 2,
+      "position": 3,
+      "tool": "get_type_info",
+      "args": {
+        "address": "0x1409dca90"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:30:37.324Z",
+      "completed_at": "2026-10-12T10:30:40.489Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2bb703d4d3a39150b0c30f905234f4ab6b39e639f4188a099c68c8650fc2c20e",
+      "cache_eligible": false,
+      "result": {
+        "address": "0x1409DCA90",
+        "type_name": "undefined",
+        "type_size": null,
+        "function_signature": "undefined FUN_1409dca90()",
+        "database": "revgraph_l1"
+      },
+      "result_sha256": "cc3ff2c2bae8680da0bc892f91950def230fcd5fd38569ba772eff297011bb9b",
+      "ok": true,
+      "lane": "revgraph_l1",
+      "database": "revgraph_l1"
+    },
+    {
+      "index": 2,
+      "position": 4,
+      "tool": "get_type_info",
+      "args": {
+        "name": "PassResourceAccessType"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:30:37.324Z",
+      "completed_at": "2026-10-12T10:30:40.490Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2bb703d4d3a39150b0c30f905234f4ab6b39e639f4188a099c68c8650fc2c20e",
+      "cache_eligible": false,
+      "error": "2 validation errors for call[get_type_info]\naddress\n  Missing required argument [type=missing_argument, input_value={'name': 'PassResourceAccessType'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.14/v/missing_argument\nname\n  Unexpected keyword argument [type=unexpected_keyword_argument, input_value='PassResourceAccessType', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.14/v/unexpected_keyword_argument",
+      "ok": false,
+      "lane": "revgraph_l1",
+      "database": "revgraph_l1"
+    },
+    {
+      "index": 2,
+      "position": 5,
+      "tool": "list_names",
+      "args": {
+        "filter_pattern": "PassResource"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:30:37.324Z",
+      "completed_at": "2026-10-12T10:30:40.490Z",
+      "source": "actual_mcp_call",
+      "cache_key": "2bb703d4d3a39150b0c30f905234f4ab6b39e639f4188a099c68c8650fc2c20e",
+      "cache_eligible": false,
+      "result": {
+        "items": [],
+        "total": 0,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revgraph_l1"
+      },
+      "result_sha256": "c913e92ef34be856e51ca83dc55dca38f4fd2e8f4189d4af45d9416eb052e987",
+      "ok": true,
+      "lane": "revgraph_l1",
+      "database": "revgraph_l1"
+    }
+  ],
+  "cleanup": [
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "revgraph_l1",
+        "save": false
+      },
+      "cleanup": true,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"revgraph_l1\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "revgraph_l1"
+        },
+        "isError": false
+      },
+      "ok": true,
+      "lane": "revgraph_l1"
+    }
+  ],
+  "lock_events": [
+    {
+      "event": "lock_removed",
+      "reason": "per-database workers own separate Ghidra projects; a shared session lock is no longer required",
+      "lane": "revgraph_l1"
+    }
+  ],
+  "ok": false,
+  "cleanup_ok": true
+}

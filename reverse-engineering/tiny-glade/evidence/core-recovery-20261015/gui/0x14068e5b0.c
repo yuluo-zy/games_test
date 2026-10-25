@@ -1,0 +1,76 @@
+
+void __cdecl toolbar::menu::advance_menu_state(void)
+
+{
+  longlong *plVar1;
+  longlong lVar2;
+  longlong lVar3;
+  longlong lVar4;
+  longlong lVar5;
+  undefined8 uVar6;
+  longlong lVar7;
+  longlong lVar8;
+  longlong lVar9;
+  longlong lVar10;
+  longlong lVar11;
+  longlong lVar12;
+  longlong lVar13;
+  longlong lVar14;
+  longlong lVar15;
+  longlong lVar16;
+  undefined8 *in_R8;
+  undefined8 *in_R9;
+  longlong in_stack_00000028;
+  longlong *in_stack_00000030;
+  
+  *(undefined4 *)in_R9[2] = *(undefined4 *)((longlong)in_R9 + 0x1c);
+  plVar1 = (longlong *)*in_R9;
+  lVar2 = *plVar1;
+  lVar3 = plVar1[0xb];
+  lVar7 = plVar1[9];
+  lVar8 = plVar1[10];
+  lVar9 = plVar1[7];
+  lVar10 = plVar1[8];
+  lVar11 = plVar1[5];
+  lVar12 = plVar1[6];
+  lVar13 = plVar1[3];
+  lVar14 = plVar1[4];
+  lVar15 = plVar1[1];
+  lVar16 = plVar1[2];
+  *plVar1 = 0xb;
+  if (lVar2 != 0xb) {
+    if (lVar2 == 2) {
+      *(undefined4 *)in_stack_00000030[2] = *(undefined4 *)((longlong)in_stack_00000030 + 0x1c);
+      lVar4 = *in_stack_00000030;
+      lVar5 = *(longlong *)(lVar4 + 0x30);
+      uVar6 = *(undefined8 *)(lVar4 + 0x40);
+      if (lVar5 == *(longlong *)(lVar4 + 0x20)) {
+        alloc::raw_vec::RawVec::
+        grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>
+                  ();
+      }
+      *(undefined8 *)(*(longlong *)(lVar4 + 0x28) + lVar5 * 8) = uVar6;
+      *(longlong *)(lVar4 + 0x30) = lVar5 + 1;
+      *(longlong *)(lVar4 + 0x40) = *(longlong *)(lVar4 + 0x40) + 1;
+    }
+    **(undefined4 **)(in_stack_00000028 + 0x10) = *(undefined4 *)(in_stack_00000028 + 0x1c);
+    *(undefined4 *)in_R8[2] = *(undefined4 *)((longlong)in_R8 + 0x1c);
+    plVar1 = (longlong *)*in_R8;
+    plVar1[10] = lVar8;
+    plVar1[0xb] = lVar3;
+    plVar1[8] = lVar10;
+    plVar1[9] = lVar7;
+    plVar1[6] = lVar12;
+    plVar1[7] = lVar9;
+    plVar1[4] = lVar14;
+    plVar1[5] = lVar11;
+    plVar1[2] = lVar16;
+    plVar1[3] = lVar13;
+    *plVar1 = lVar2;
+    plVar1[1] = lVar15;
+    country_core::resources::gui::NextEscMenuState::set();
+  }
+  return;
+}
+
+

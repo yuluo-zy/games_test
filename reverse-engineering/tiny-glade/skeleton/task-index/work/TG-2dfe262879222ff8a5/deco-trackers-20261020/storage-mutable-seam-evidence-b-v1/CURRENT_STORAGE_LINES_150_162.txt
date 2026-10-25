@@ -1,0 +1,13 @@
+/// 布局（O）：+0x00 removed_ids 集合、+0x30 内嵌 map
+/// `HashMap<u32 DecoratorId, DecoratorInfo 0x48B>`（条目 0x50B）、+0x60
+/// modified_ids 集合。
+#[derive(Clone, Debug, Default)]
+pub struct Decorators {
+    /// +0x00：已移除 DecoratorId 集合。
+    pub removed_ids: HashSet<u32>,
+    /// +0x30：内嵌 map（DecoratorId → DecoratorInfo）。
+    pub decorators: HashMap<u32, DecoratorInfo>,
+    /// +0x60：已修改 DecoratorId 集合。
+    pub modified_ids: HashSet<u32>,
+}
+

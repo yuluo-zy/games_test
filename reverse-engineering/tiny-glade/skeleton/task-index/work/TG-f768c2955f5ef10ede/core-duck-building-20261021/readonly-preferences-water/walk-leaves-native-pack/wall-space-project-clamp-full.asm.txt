@@ -1,0 +1,36 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140c91eb0: 48 83 ec 38                 	subq	$0x38, %rsp
+140c91eb4: 0f 29 74 24 20              	movaps	%xmm6, 0x20(%rsp)
+140c91eb9: 0f 28 c1                    	movaps	%xmm1, %xmm0
+140c91ebc: f6 01 01                    	testb	$0x1, (%rcx)
+140c91ebf: 74 27                       	je	0x140c91ee8 <.text+0xc90ee8>
+140c91ec1: f3 0f 10 71 04              	movss	0x4(%rcx), %xmm6
+140c91ec6: 0f 28 ce                    	movaps	%xmm6, %xmm1
+140c91ec9: e8 42 20 c9 01              	callq	0x142923f10 <.text+0x2922f10>
+140c91ece: f3 0f 58 f0                 	addss	%xmm0, %xmm6
+140c91ed2: 0f 57 d2                    	xorps	%xmm2, %xmm2
+140c91ed5: 0f 28 c8                    	movaps	%xmm0, %xmm1
+140c91ed8: f3 0f c2 ca 01              	cmpltss	%xmm2, %xmm1
+140c91edd: 0f 54 f1                    	andps	%xmm1, %xmm6
+140c91ee0: 0f 55 c8                    	andnps	%xmm0, %xmm1
+140c91ee3: 0f 56 ce                    	orps	%xmm6, %xmm1
+140c91ee6: eb 15                       	jmp	0x140c91efd <.text+0xc90efd>
+140c91ee8: f3 0f 10 49 04              	movss	0x4(%rcx), %xmm1
+140c91eed: 0f 57 d2                    	xorps	%xmm2, %xmm2
+140c91ef0: 0f 2e ca                    	ucomiss	%xmm2, %xmm1
+140c91ef3: 72 15                       	jb	0x140c91f0a <.text+0xc90f0a>
+140c91ef5: f3 0f 5f d0                 	maxss	%xmm0, %xmm2
+140c91ef9: f3 0f 5d ca                 	minss	%xmm2, %xmm1
+140c91efd: 0f 28 c1                    	movaps	%xmm1, %xmm0
+140c91f00: 0f 28 74 24 20              	movaps	0x20(%rsp), %xmm6
+140c91f05: 48 83 c4 38                 	addq	$0x38, %rsp
+140c91f09: c3                          	retq
+140c91f0a: 4c 8d 05 4f ba e9 01        	leaq	0x1e9ba4f(%rip), %r8    # 0x142b2d960
+140c91f11: 0f 57 c0                    	xorps	%xmm0, %xmm0
+140c91f14: e8 67 95 0f 00              	callq	0x140d8b480 <.text+0xd8a480>
+140c91f19: cc                          	int3

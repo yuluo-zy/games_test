@@ -1,0 +1,79 @@
+1416fb100 push rsi
+1416fb101 push rdi
+1416fb102 push rbx
+1416fb103 sub rsp, 0x40
+1416fb107 mov rsi, rcx
+1416fb10a mov rdi, qword ptr [rdx]
+1416fb10d inc qword ptr [rdx + 0x18]
+1416fb111 mov byte ptr [rdx + 0x20], 0
+1416fb115 mov rax, qword ptr [rdi + 0x10]
+1416fb119 cmp qword ptr [rdi], rax
+1416fb11c je 0x1416fb21d
+1416fb122 mov rcx, qword ptr [rdi + 8]
+1416fb126 mov byte ptr [rcx + rax], 0x7b
+1416fb12a inc rax
+1416fb12d mov qword ptr [rdi + 0x10], rax
+1416fb131 mov qword ptr [rsp + 0x30], rdx
+1416fb136 mov byte ptr [rsp + 0x38], 1
+1416fb13b lea rdx, [rip + 0x159709c]
+1416fb142 lea rcx, [rsp + 0x30]
+1416fb147 mov r8d, 3
+1416fb14d mov r9, rsi
+1416fb150 call 0x141583370
+1416fb155 test rax, rax
+1416fb158 jne 0x1416fb214
+1416fb15e lea r9, [rsi + 4]
+1416fb162 lea rdx, [rip + 0x1597078]
+1416fb169 lea rcx, [rsp + 0x30]
+1416fb16e mov r8d, 5
+1416fb174 call 0x141583370
+1416fb179 test rax, rax
+1416fb17c jne 0x1416fb214
+1416fb182 lea r9, [rsi + 8]
+1416fb186 lea rdx, [rip + 0x1596dbf]
+1416fb18d lea rcx, [rsp + 0x30]
+1416fb192 mov r8d, 8
+1416fb198 call 0x1415893a0
+1416fb19d test rax, rax
+1416fb1a0 jne 0x1416fb214
+1416fb1a2 lea r9, [rsi + 0x14]
+1416fb1a6 lea rdx, [rip + 0x1597039]
+1416fb1ad lea rcx, [rsp + 0x30]
+1416fb1b2 mov r8d, 0x15
+1416fb1b8 call 0x141583370
+1416fb1bd test rax, rax
+1416fb1c0 jne 0x1416fb214
+1416fb1c2 lea r9, [rsi + 0x1c]
+1416fb1c6 lea rdx, [rip + 0x159702e]
+1416fb1cd lea rcx, [rsp + 0x30]
+1416fb1d2 mov r8d, 0xc
+1416fb1d8 call 0x141583370
+1416fb1dd test rax, rax
+1416fb1e0 jne 0x1416fb214
+1416fb1e2 add rsi, 0x20
+1416fb1e6 lea rdx, [rip + 0x159701a]
+1416fb1ed lea rcx, [rsp + 0x30]
+1416fb1f2 mov r8d, 0xa
+1416fb1f8 mov r9, rsi
+1416fb1fb call 0x141583370
+1416fb200 test rax, rax
+1416fb203 jne 0x1416fb214
+1416fb205 mov rcx, qword ptr [rsp + 0x30]
+1416fb20a movzx edx, byte ptr [rsp + 0x38]
+1416fb20f call 0x140a44bb0
+1416fb214 nop 
+1416fb215 add rsp, 0x40
+1416fb219 pop rbx
+1416fb21a pop rdi
+1416fb21b pop rsi
+1416fb21c ret 
+1416fb21d mov qword ptr [rsp + 0x20], 1
+1416fb226 mov r8d, 1
+1416fb22c mov r9d, 1
+1416fb232 mov rcx, rdi
+1416fb235 mov rbx, rdx
+1416fb238 mov rdx, rax
+1416fb23b call 0x1428a9a60
+1416fb240 mov rdx, rbx
+1416fb243 mov rax, qword ptr [rdi + 0x10]
+1416fb247 jmp 0x1416fb122

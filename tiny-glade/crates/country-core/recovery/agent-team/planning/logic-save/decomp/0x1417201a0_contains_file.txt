@@ -1,0 +1,68 @@
+
+void __cdecl country_core::systems::save::save_thread::UnsavedFileList::contains_file(void)
+
+{
+  char cVar1;
+  byte bVar2;
+  char extraout_AL;
+  int iVar3;
+  char *in_RCX;
+  longlong lVar4;
+  void *local_e0;
+  size_t local_d8;
+  byte local_d0;
+  char local_a8;
+  char cStack_a7;
+  void *local_a0;
+  size_t local_98;
+  byte local_90;
+  char local_68;
+  char cStack_67;
+  
+  LOCK();
+  cVar1 = *in_RCX;
+  if (cVar1 == '\0') {
+    *in_RCX = '\x01';
+  }
+  UNLOCK();
+  if (cVar1 != '\0') {
+    parking_lot::raw_mutex::RawMutex::lock_slow();
+  }
+  parking_lot_core::parking_lot::deadlock_impl::acquire_resource();
+  lVar4 = *(longlong *)(in_RCX + 0x18) << 7;
+  do {
+    if (lVar4 == 0) break;
+    std::sys::os_str::wtf8::Buf::as_mut_slice();
+    std::path::Path::components();
+    std::path::Path::components();
+    if (local_98 == local_d8) {
+      if (((local_68 == local_a8) && (cStack_67 == '\x02')) && (cStack_a7 == '\x02')) {
+        bVar2 = local_d0;
+        if ((local_90 == 6) || (bVar2 = local_90, local_d0 == 6)) {
+          if (2 < bVar2) {
+LAB_1417203bd:
+            iVar3 = memcmp(local_a0,local_e0,local_98);
+            if (iVar3 == 0) break;
+          }
+        }
+        else if (local_d0 < 3 == local_90 < 3) goto LAB_1417203bd;
+      }
+    }
+    core::iter::traits::iterator::Iterator::
+    eq_by<core::iter::adapters::rev::Rev<std::path::Components>,core::iter::adapters::rev::Rev<std::path::Components>,core::iter::traits::iterator::Iterator::eq::closure_env_0<core::iter::adapters::rev::Rev<std::path::Components>,core::iter::adapters::rev::Rev<std::path::Components>_>_>
+              ();
+    lVar4 = lVar4 + -0x80;
+  } while (extraout_AL == '\0');
+  parking_lot_core::parking_lot::deadlock_impl::release_resource();
+  LOCK();
+  cVar1 = *in_RCX;
+  if (cVar1 == '\x01') {
+    *in_RCX = '\0';
+  }
+  UNLOCK();
+  if (cVar1 != '\x01') {
+    parking_lot::raw_mutex::RawMutex::unlock_slow();
+  }
+  return;
+}
+

@@ -1,0 +1,10 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.program.model.symbol import SymbolType\nst = currentProgram.getSymbolTable()\nout = []\n# anon symbols are often stored as external or in symbol table; search by matching name fragment\nfor sym in st.getSymbols(True):\n    n = sym.getName()\n    if '7548959914703945057' in n or '11933763432560700012' in n:\n        addr = sym.getAddress()\n        try:\n            data = currentProgram.getMemory().getBytes(addr, 120)\n            s = ''.join(chr(b) if 32 <= b < 127 else '.' for b in data)\n        except Exception as e:\n            s = 'ERR ' + str(e)\n        out.append({'name': n[:120], 'addr': str(addr), 'bytes': s})\nprint(json.dumps(out, ensure_ascii=False))\n"
+    },
+    "timeout_seconds": 60
+  }
+]

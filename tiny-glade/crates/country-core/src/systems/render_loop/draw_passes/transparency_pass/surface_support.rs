@@ -1,0 +1,517 @@
+//! `surface_support.rs` — 水 / 冰表面 pass（`water_surface_pass` 0x1409bf800、`ice_surface_pass` 0x1409c08d0）共用的接缝与步骤助手。
+//!
+//! 标注：O = 机器码观测，I = 推断，U = 未知。
+//!
+//! # 栈布局（O）
+//! 两个函数同形：`rcx` = `&mut RenderGraph`、`rdx` = `&World`、`r8` = 颜色、`r9` = 深度；栈参数（水 `[rbp+0xc10+8*i]`，冰 `[rbp+0xe10+8*i]`，
+//! `rbp = rsp+0x80`）依次为：A `&Handle<Texture>`（`half_depth_tex`，其 `extent_2d` 决定射线缓冲大小）、B `&Handle<Texture>`
+//! （`taa_history_tex`）、`u8`（`history_valid`）、C `&Handle<Texture>`（`refraction_tex`）、D `&Handle<Texture>`（`reprojection_tex`）、
+//! `&DrawLists`。**绑定名**取自重建 HLSL 反射名的 FNV-1a 64（本文件 [`names`]，由 `tools` 脚本逐个对照机器码立即数核对），所以输入字段按
+//! 着色器里的名字命名（与 `render_world.rs` 里 `half / history / refraction / reprojection` 的叫法一致，I）。
+//!
+//! # 重建层接缝
+//! * RG 资源创建 / temporal：`RgResources`（A4 `rg_resources.rs`）。
+//! * 清除 / 缓冲拷贝：`rg_helpers::rg_boundary::RenderGraph`（`clear_rg_buffer` / `clear_rg_color_image` / `rg_buffer_copy_from_slice<u32>`）。
+//! * `ComputePass::new` + `PassBuilder::render` 落点：[`SurfaceCompute`]（`ComputePassInit` 的三个接缝由调用方持有）。
+//! * 栅格 pass：`DrawPassCtx`（`d_main_support`，宿主工厂 + `World`）。
+//!
+//! # 黄金序列
+//! [`SurfaceEnv`] 里的 `trace` 在**每一个**真实调用的助手里追加一个 [`PlanOp`]（种类 + 绑定名哈希）；调用点不经助手就不会发生，
+//! 所以 trace 不是另一份手抄表。测试断言一个绘制项时 trace == `WATER_OPS` / `ICE_OPS`。`PlanKind` 词汇表里没有的步骤
+//! （`clear_rg_color_image`、`rg_buffer_copy_from_slice`、temporal pair 的创建、`TextureViewDesc` 构造）记在 `extra` 里。
+
+use alloc::rc::Rc;
+use core::cell::RefCell;
+
+use crate::asset_libraries::color_library::ColorLibrarySsbo;
+use crate::render::pass_builder::bind_resources::BindGameResources;
+use crate::render::pass_builder::compute_pass_builder::{
+    ComputePass, RecordedComputePass, RgBuffer,
+};
+use crate::render::pass_builder::draw_builder::{ACCESS_SAMPLED_IMAGE, BindTexture, DrawBuilder};
+use crate::render::pass_builder::draw_stream::RasterPass;
+use crate::render::pass_builder::framebuffer_binding::{
+    AttachmentTexture, ColorAttachment, DepthAttachment, DepthClear,
+};
+use crate::render::pass_builder::pass_resource_access::{RgTexture, WriteTextureUnchecked};
+use crate::render::pass_builder::rg_resources::{RgResources, TemporalTexturePair};
+use crate::render::rg_helpers::{self, rg_boundary::RenderGraph};
+use crate::render::ssbo::rhapsody_boundary::BufferDesc;
+use crate::resources::texture_presets::{TextureFromDisk, TexturePreset};
+use crate::rhapsody_types::{TextureDesc, TextureViewDesc};
+use crate::systems::render_loop::draw_passes::d_main_support::DrawPassCtx;
+use crate::systems::render_loop::draw_passes::draw_lists::{DrawEntry, DrawLists};
+
+use super::{PlanKind, PlanOp};
+
+/// 绑定名哈希（O：`movabs r8` 立即数；名字 = 重建 HLSL 的反射成员名，FNV-1a 64，测试里逐个重算）。
+pub mod names {
+    pub const HISTORY_VALID: u64 = 0xa9a1_09b7_60ee_d902;
+    pub const HALF_DEPTH_TEX: u64 = 0x2a33_3c3a_2802_8230;
+    pub const TAA_HISTORY_TEX: u64 = 0x0417_5185_826c_09d0;
+    pub const REPROJECTION_TEX: u64 = 0xb8a7_4ccd_835a_6be3;
+    pub const REFRACTION_TEX: u64 = 0xe920_8e8a_2888_4e3c;
+    pub const BLUE_NOISE_TEXTURE: u64 = 0x815b_f503_6966_978c;
+    pub const TERRAIN_HEIGHTMAP: u64 = 0x61b0_8b5e_0470_c5f2;
+    pub const VISUAL_TERRAIN_HEIGHTMAP: u64 = 0x297d_1e4c_dae8_f657;
+    pub const TERRAIN_LIGHTING_TEXTURE: u64 = 0x7716_0113_ac8d_ca3f;
+    pub const COLOR_TEX: u64 = 0xd997_8e54_1ce9_a95e;
+    pub const WATER_RT_COUNT_BUFFER: u64 = 0x1863_d10d_6efe_0b4e;
+    pub const WATER_RT_RAY_BUFFER: u64 = 0x8f7b_94e3_7966_c87b;
+    pub const SHADOW_MAP: u64 = 0x1165_1f4d_c984_1aa4;
+    pub const BOOL_RENDER_SHADOWS: u64 = 0x418a_9844_1f59_a54c;
+    pub const SHADOWS_HISTORY_TEX: u64 = 0xfdfa_b251_8469_de1b;
+    pub const ICE_REFL_COUNT_BUFFER: u64 = 0x2a34_15ea_b2e8_de29;
+    pub const ICE_REFL_PX_BUFFER: u64 = 0xfc90_2035_b75f_0652;
+    pub const ICE_RT_COUNT_BUFFER: u64 = 0xf051_2b88_9439_e93e;
+    pub const ICE_RT_RAY_BUFFER: u64 = 0x0654_1d6c_fdf2_53ab;
+    pub const REFL_HIT_TEX: u64 = 0x2c59_0127_6b7f_6bd6;
+    pub const REFL_HIT_RADIANCE_TEX: u64 = 0xecc9_f908_d1aa_b342;
+    pub const ICE_ROUGHNESS_TEX: u64 = 0x5390_2beb_e45a_b883;
+    pub const REFR_HIT_TEX: u64 = 0x1128_f800_d215_bbe4;
+    pub const REFR_HIT_RADIANCE_TEX: u64 = 0xde47_9e07_7311_79b4;
+    pub const DEPTH_TEX: u64 = 0x4861_579d_a049_fbfc;
+    pub const REFL_REFR_RADIANCE_OUT_TEX: u64 = 0xb8c2_60c7_c1df_9cab;
+    pub const BRDF_FG_LUT: u64 = 0xb79d_1a8a_6a25_4145;
+    pub const REFL_REFR_RADIANCE_HISTORY_TEX: u64 = 0xf459_974f_b83c_d293;
+    pub const RAY_LEN_HISTORY_TEX: u64 = 0x69d7_bdb7_5a2f_4016;
+    pub const RAY_LEN_OUT_TEX: u64 = 0x96c7_a43d_54ea_e8fa;
+    /// `TextureFromDisk` 的文件哈希（blue noise；`movabs rax, 0x579f39ab91a01865`）。
+    pub const BLUE_NOISE_FILE: u64 = 0x579f_39ab_91a0_1865;
+}
+
+/// `bind_texture_to_compute_pass` 的访问码（O：`mov r9b, 0x19` 读 / `0x32` 写）。
+pub const COMPUTE_READ: u8 = 0x19;
+pub const COMPUTE_WRITE: u8 = 0x32;
+/// 地形预设纹理号（O：`mov byte [..], 9 / 0xa / 8`；`brdf_fg_lut` = 0；`shadow_map` 在栅格里 = 0x11）。
+pub const PRESET_TERRAIN_HEIGHTMAP: u8 = 9;
+pub const PRESET_VISUAL_TERRAIN_HEIGHTMAP: u8 = 0xa;
+pub const PRESET_TERRAIN_LIGHTING: u8 = 8;
+pub const PRESET_BRDF_FG_LUT: u8 = 0;
+pub const PRESET_SHADOW_MAP: u8 = 0x11;
+/// `TextureViewDesc::new().format(0x7b).usage(4)`（O：冰的两个 resolve 里 `*_hit_radiance_tex` 的视图）。
+pub const RADIANCE_VIEW_FORMAT: u32 = 0x7b;
+pub const RADIANCE_VIEW_USAGE: u32 = 4;
+/// 所有缓冲的用途字（O：`BufferDesc::new_gpu_only(size, 0x20)`）。
+pub const BUFFER_USAGE: u32 = 0x20;
+
+/// `ComputePass::new::<&str>` + `PassBuilder::render` 的落点（重建层接缝，见模块头）。
+pub trait SurfaceCompute {
+    /// `ComputePass::new(name, uri, world)`（O 0x1416032a0）。
+    fn new_pass(&mut self, name: &'static str, uri: &'static str) -> ComputePass;
+    /// `PassBuilder::render`（0x1409dd4d0）：已声明完毕的 pass 交给图录制。
+    fn record(&mut self, pass: RecordedComputePass);
+}
+
+/// 水 / 冰 pass 的输入（对应 [`模块头`](self) 的栈布局）。
+#[derive(Clone, Copy)]
+pub struct SurfaceInputs<'a> {
+    /// `r8`：颜色（栅格 tag0 附件；计算里 `color_tex` 以写访问绑定）。
+    pub color: &'a RgTexture,
+    /// `r9`：深度（栅格 tag0 可写、无清除；其 `extent_2d` = 视口；冰的 resolve 里是 `depth_tex`）。
+    pub depth: &'a RgTexture,
+    /// 栈参 A：`half_depth_tex`（其 extent 决定射线缓冲大小）。
+    pub half_depth: &'a RgTexture,
+    /// 栈参 B：`taa_history_tex`。
+    pub taa_history: &'a RgTexture,
+    /// 栈参 `u8`：`history_valid`。
+    pub history_valid: u8,
+    /// 栈参 C：`refraction_tex`。
+    pub refraction: &'a RgTexture,
+    /// 栈参 D：`reprojection_tex`。
+    pub reprojection: &'a RgTexture,
+    /// 栈参：`&DrawLists`（列表 15）。
+    pub lists: &'a DrawLists,
+}
+
+/// Owned declaration trace for the raster phase. It keeps the original
+/// operation log without retaining the compute environment or its World borrow.
+#[derive(Clone)]
+pub struct SurfaceRasterTrace(Rc<RefCell<Vec<PlanOp>>>);
+impl SurfaceRasterTrace {
+    pub fn op(&self, kind: PlanKind, key: Option<u64>) {
+        self.0.borrow_mut().push(PlanOp { kind, key });
+    }
+}
+
+/// 运行环境：RG 创建面、图（清除/拷贝）、计算接缝 + 黄金序列 trace。
+pub struct SurfaceEnv<'a> {
+    pub rg: &'a mut dyn RgResources,
+    pub graph: &'a mut dyn RenderGraph,
+    pub compute: &'a mut dyn SurfaceCompute,
+    /// 每个真实调用的 `(种类, 绑定名哈希)`（见模块头“黄金序列”）。
+    pub trace: Rc<RefCell<Vec<PlanOp>>>,
+    /// `PlanKind` 之外的步骤名（按调用顺序）。
+    pub extra: RefCell<Vec<&'static str>>,
+    raster_trace: SurfaceRasterTrace,
+}
+impl core::ops::Deref for SurfaceEnv<'_> {
+    type Target = SurfaceRasterTrace;
+    fn deref(&self) -> &Self::Target { &self.raster_trace }
+}
+
+impl<'a> SurfaceEnv<'a> {
+    pub fn new(
+        rg: &'a mut dyn RgResources,
+        graph: &'a mut dyn RenderGraph,
+        compute: &'a mut dyn SurfaceCompute,
+    ) -> SurfaceEnv<'a> {
+        let trace = Rc::new(RefCell::new(Vec::new()));
+        SurfaceEnv {
+            rg,
+            graph,
+            compute,
+            raster_trace: SurfaceRasterTrace(Rc::clone(&trace)),
+            trace,
+            extra: RefCell::new(Vec::new()),
+        }
+    }
+
+    pub fn op(&self, kind: PlanKind, key: Option<u64>) {
+        self.trace.borrow_mut().push(PlanOp { kind, key });
+    }
+
+    pub fn raster_trace(&self) -> SurfaceRasterTrace {
+        self.raster_trace.clone()
+    }
+
+    fn note(&self, what: &'static str) {
+        self.extra.borrow_mut().push(what);
+    }
+
+    /// `BufferDesc::new_gpu_only(size, 0x20)` + `RenderGraph::create_raw_resource(name)`。
+    pub fn create_buffer(&mut self, name: &'static str, size: u64) -> (RgBuffer, BufferDesc) {
+        self.op(PlanKind::NewGpuOnlyBuffer, None);
+        let desc = BufferDesc::new_gpu_only(size as usize, BUFFER_USAGE);
+        self.op(PlanKind::CreateRawResource, None);
+        (self.rg.create_raw_buffer(name, &desc), desc)
+    }
+
+    /// `TextureDesc::new_2d(extent, format)`（`edit` 追加 `sampled()` 等）+ `create_raw_resource(name)`。
+    pub fn create_texture(&mut self, name: &'static str, desc: TextureDesc) -> RgTexture {
+        self.op(PlanKind::NewTexture2d, None);
+        self.op(PlanKind::CreateRawResource, None);
+        self.rg.create_raw_texture(name, &desc)
+    }
+
+    pub fn temporal_pair(&mut self, name: &'static str, desc: TextureDesc) -> TemporalTexturePair {
+        self.try_temporal_pair(name, desc)
+            .expect("called `Result::unwrap()` on an `Err` value")
+    }
+    pub fn try_temporal_pair(
+        &mut self,
+        name: &'static str,
+        desc: TextureDesc,
+    ) -> rhapsody::Result<TemporalTexturePair> {
+        self.op(PlanKind::NewTexture2d, None);
+        self.note("temporal_pair");
+        self.rg
+            .get_or_create_temporal_texture_pair(name, &desc)
+            .map_err(crate::render::pass_builder::rg_resources::into_backend_error)
+    }
+
+    /// `clear_rg_buffer`（0x1409ddbb0）。
+    pub fn clear_buffer(&mut self, buffer: &RgBuffer) {
+        self.op(PlanKind::ClearRgBuffer, None);
+        rg_helpers::clear_rg_buffer(self.graph, buffer.resource);
+    }
+
+    /// `clear_rg_color_image`（0x1409dde90）。
+    pub fn clear_image(&mut self, image: &RgTexture) {
+        self.note("clear_rg_color_image");
+        rg_helpers::clear_rg_color_image(self.graph, image.resource);
+    }
+
+    /// `rg_buffer_copy_from_slice<u32>`（0x14090d9a0）。
+    pub fn copy_u32(
+        &mut self,
+        buffer: &RgBuffer,
+        desc: &BufferDesc,
+        data: &[u32],
+    ) -> rhapsody::Result<()> {
+        self.note("rg_buffer_copy_from_slice");
+        rg_helpers::rg_buffer_copy_from_slice_u32(
+            self.graph,
+            buffer.resource,
+            desc.size as u64,
+            data,
+            rg_helpers::rg_boundary::UploadContentVersion::Unknown,
+        )
+    }
+
+    /// `ComputePass::new(name, uri)`。
+    pub fn compute_pass(&mut self, name: &'static str, uri: &'static str) -> Cp {
+        self.op(PlanKind::ComputePassNew, None);
+        let pass = self.compute.new_pass(name, uri);
+        Cp {
+            pass,
+            trace: Rc::clone(&self.trace),
+        }
+    }
+
+    pub fn record(&mut self, pass: RecordedComputePass) {
+        self.compute.record(pass);
+    }
+}
+
+/// 把 [`RgTexture`] 当作栅格附件 / 绑定引用（`AttachmentTexture`：id、extent、format）。
+pub fn att(t: &RgTexture) -> AttachmentTexture {
+    AttachmentTexture {
+        id: t.resource,
+        extent: (t.desc.extent[0], t.desc.extent[1]),
+        format: t.desc.format,
+        sample_count: 1,
+    }
+}
+
+/// `TextureDesc::half_res`（O 0x140bd5730）：三个 extent 分量逐个 `max(v - v/2, 1)`。
+pub fn half_res(mut desc: TextureDesc) -> TextureDesc {
+    for v in desc.extent.iter_mut() {
+        *v = (*v - *v / 2).max(1);
+    }
+    desc
+}
+
+/// `TextureDesc::sampled_with_different_format`（O 0x140bd5410：`first_qword |= 0x10800000004`，即 usage |= 4 且 dword@+4 |= 0x108）。
+/// The canonical descriptor preserves both original image-create flags and
+/// usage; the production TextureHost passes them to the same graph allocation.
+pub fn sampled_with_different_format(desc: TextureDesc) -> TextureDesc {
+    desc.sampled_with_different_format()
+}
+
+/// 射线缓冲的像素数 `n = w * h`（32 位乘，回绕）与 `n + (n >> 4)`（32 位加）。
+pub fn ray_units(width: u32, height: u32) -> u32 {
+    let n = width.wrapping_mul(height);
+    n.wrapping_add(n >> 4)
+}
+
+// ---------------------------------------------------------------------------------------------
+// 栅格 pass（水 / 冰共用的外壳）
+// ---------------------------------------------------------------------------------------------
+
+/// `RasterPass::new_impl(name, colors, depth(tag0 可写、无清除、layer 0), viewport = extent_2d(depth))` + 列表遍历 + `render`。
+///
+/// 每个元素（O：0x1409bfaf0.. / 0x1409c1050..）：`DrawPacket::new(head = [1, item.vao], shader = item.shader, 默认状态)` →
+/// `DrawBuilder::new(variant 0)` → `bind_common(CommonDrawParams{time, flag=false}, item)` → `per_item` 的额外绑定 →
+/// `state.byte3 = (byte3 & 0x9f) | 0x40`（`set_byte3_field_2`；**没有** `byte0 &= 0xbf`，与 pre/post-TAA 不同）→ 回调 `(item+0x70)(builder, item, world)`。
+pub fn run_surface_raster(
+    ctx: &mut DrawPassCtx<'_>,
+    env: &SurfaceRasterTrace,
+    name: &'static str,
+    colors: &[ColorAttachment],
+    depth: &RgTexture,
+    items: &[DrawEntry],
+    per_item: &dyn for<'p> Fn(DrawBuilder<'p>) -> DrawBuilder<'p>,
+) {
+    let depth_att = DepthAttachment {
+        writable: true,
+        layer: 0,
+        texture: att(depth),
+        clear: DepthClear::Load,
+    };
+    let host = ctx.host();
+    env.op(PlanKind::RasterPassNew, None);
+    let mut pass = RasterPass::new(name, colors, Some(&depth_att), host)
+        .with_viewport([depth.desc.extent[0], depth.desc.extent[1]]);
+    let params = ctx.common_params(false);
+    for (item, func) in items {
+        let state = pass.host.default_raster_state();
+        let packet = item.to_draw_packet(state);
+        let builder = DrawBuilder::new(&mut pass, packet, 0)
+            .bind_common::<ColorLibrarySsbo>(&params, &item.params.transform);
+        let mut builder = per_item(builder);
+        let p = builder.packet_mut();
+        p.state = p.state.set_byte3_field_2();
+        func(builder, &item.params, &mut *ctx.world);
+    }
+    env.op(PlanKind::RasterRender, None);
+    pass.render();
+}
+
+// ---------------------------------------------------------------------------------------------
+// 栅格侧助手（DrawBuilder）：每次调用追加一个 PlanOp
+// ---------------------------------------------------------------------------------------------
+
+/// `bind_texture_to_draw_builder<&Handle<Texture>>`（访问 0x1d）。
+pub fn d_sampled<'p>(
+    env: &SurfaceRasterTrace,
+    b: DrawBuilder<'p>,
+    t: &RgTexture,
+    hash: u64,
+) -> DrawBuilder<'p> {
+    env.op(PlanKind::BindTextureDraw, Some(hash));
+    let a = att(t);
+    b.bind_texture_to_draw_builder(BindTexture::RgHandle(&a), hash, ACCESS_SAMPLED_IMAGE, None)
+}
+
+/// `bind_texture_to_draw_builder<TexturePreset>`（访问 0x1d）。
+pub fn d_preset<'p>(
+    env: &SurfaceRasterTrace,
+    b: DrawBuilder<'p>,
+    preset: u8,
+    hash: u64,
+) -> DrawBuilder<'p> {
+    env.op(PlanKind::BindTextureDraw, Some(hash));
+    b.bind_texture_to_draw_builder(
+        BindTexture::Preset(TexturePreset(preset)),
+        hash,
+        ACCESS_SAMPLED_IMAGE,
+        None,
+    )
+}
+
+/// `UniformBinder::write_uniform<u32>`（栅格：未命中静默忽略）。
+pub fn d_uniform_u32<'p>(
+    env: &SurfaceRasterTrace,
+    b: DrawBuilder<'p>,
+    hash: u64,
+    v: u32,
+) -> DrawBuilder<'p> {
+    env.op(PlanKind::WriteUniform, Some(hash));
+    b.uniform(hash, v)
+}
+
+/// `UniformBinder::write_uniform<bool>`。
+pub fn d_uniform_bool<'p>(
+    env: &SurfaceRasterTrace,
+    b: DrawBuilder<'p>,
+    hash: u64,
+    v: bool,
+) -> DrawBuilder<'p> {
+    env.op(PlanKind::WriteUniform, Some(hash));
+    b.uniform(hash, v)
+}
+
+/// `DrawBuilder::write_rg_storage_buffer`（访问 0x37）。
+pub fn d_write_rg<'p>(
+    env: &SurfaceRasterTrace,
+    b: DrawBuilder<'p>,
+    hash: u64,
+    buf: &RgBuffer,
+) -> DrawBuilder<'p> {
+    env.op(PlanKind::WriteRgBuffer, Some(hash));
+    b.write_rg_storage_buffer(hash, buf.resource)
+}
+
+// ---------------------------------------------------------------------------------------------
+// 计算侧助手：包住 ComputePass，每次调用追加一个 PlanOp
+// ---------------------------------------------------------------------------------------------
+
+/// 记录调用序列的 `ComputePass` 包装（按值链式，与 A4 的 builder 风格一致）。
+pub struct Cp {
+    pub pass: ComputePass,
+    trace: Rc<RefCell<Vec<PlanOp>>>,
+}
+
+impl Cp {
+    fn op(&self, kind: PlanKind, key: Option<u64>) {
+        self.trace.borrow_mut().push(PlanOp { kind, key });
+    }
+
+    pub fn read_rg(mut self, hash: u64, b: &RgBuffer) -> Self {
+        self.op(PlanKind::ReadRgBuffer, Some(hash));
+        self.pass = self.pass.read_rg_storage_buffer(hash, b);
+        self
+    }
+
+    pub fn write_rg(mut self, hash: u64, b: &RgBuffer) -> Self {
+        self.op(PlanKind::WriteRgBuffer, Some(hash));
+        self.pass = self.pass.write_rg_storage_buffer(hash, b);
+        self
+    }
+
+    /// `bind_texture_to_compute_pass<&Handle<Texture>>`（访问 0x19，视图 None）。
+    pub fn tex(mut self, hash: u64, t: &RgTexture) -> Self {
+        self.op(PlanKind::BindTextureCompute, Some(hash));
+        self.pass = self.pass.bind_texture(hash, &t, COMPUTE_READ);
+        self
+    }
+
+    /// 同上，带 `Some(TextureViewDesc)`。
+    pub fn tex_view(mut self, hash: u64, t: &RgTexture, view: &TextureViewDesc) -> Self {
+        self.op(PlanKind::BindTextureCompute, Some(hash));
+        self.pass = self
+            .pass
+            .bind_texture_with_view(hash, &t, COMPUTE_READ, Some(view));
+        self
+    }
+
+    /// `bind_texture_to_compute_pass<&mut Handle<Texture>>`（访问 0x32，无写守卫）。
+    pub fn tex_write(mut self, hash: u64, t: &RgTexture) -> Self {
+        self.op(PlanKind::BindTextureCompute, Some(hash));
+        self.pass = self
+            .pass
+            .bind_texture(hash, &WriteTextureUnchecked(*t), COMPUTE_WRITE);
+        self
+    }
+
+    pub fn disk(mut self, hash: u64, file: u64) -> Self {
+        self.op(PlanKind::BindTextureCompute, Some(hash));
+        self.pass = self
+            .pass
+            .bind_texture(hash, &TextureFromDisk(file), COMPUTE_READ);
+        self
+    }
+
+    pub fn preset(mut self, hash: u64, preset: u8) -> Self {
+        self.op(PlanKind::BindTextureCompute, Some(hash));
+        self.pass = self
+            .pass
+            .bind_texture(hash, &TexturePreset(preset), COMPUTE_READ);
+        self
+    }
+
+    pub fn uniform_u32(mut self, hash: u64, v: u32) -> Self {
+        self.op(PlanKind::WriteUniform, Some(hash));
+        self.pass = self.pass.uniform(hash, v);
+        self
+    }
+
+    /// `bind_ray_tracing<ComputePass>`（0x1415fc230）。
+    pub fn ray_tracing(mut self) -> Self {
+        self.op(PlanKind::BindRayTracing, None);
+        BindGameResources::bind_ray_tracing(&mut self.pass);
+        self
+    }
+
+    /// Current graph-host metadata for original SPIR-V content use. These
+    /// calls do not add original operations to the native call-order trace.
+    pub fn preserve_buffer(mut self, hash: u64) -> Self {
+        self.pass = self.pass.preserve_storage_buffer_contents(hash);
+        self
+    }
+    pub fn preserve_texture(mut self, hash: u64) -> Self {
+        self.pass = self.pass.preserve_storage_texture_contents(hash);
+        self
+    }
+    pub fn inactive_texture_when(mut self, hash: u64, inactive: bool) -> Self {
+        if inactive { self.pass = self.pass.inactive_texture_contents(hash); }
+        self
+    }
+    pub fn inactive_buffer_when(mut self, hash: u64, inactive: bool) -> Self {
+        if inactive { self.pass = self.pass.inactive_storage_buffer_contents(hash); }
+        self
+    }
+    pub fn original_undefined_texture_when(mut self, hash: u64, undefined: bool) -> Self {
+        if undefined { self.pass = self.pass.allow_undefined_texture_contents(hash); }
+        self
+    }
+
+    /// `dispatch_indirect_raw(buffer, 0)`。
+    pub fn dispatch_indirect(self, b: &RgBuffer) -> RecordedComputePass {
+        self.op(PlanKind::DispatchIndirect, None);
+        self.pass.dispatch_indirect_raw(b, 0)
+    }
+
+    /// `PassBuilder::render` + `dispatch_1d`（线程模式 `(x,1,1)`）。
+    pub fn dispatch_1d(self, x: u32) -> RecordedComputePass {
+        self.op(PlanKind::ComputeRender, None);
+        self.pass.dispatch_1d(x)
+    }
+
+    /// `PassBuilder::render` + `dispatch_2d`。
+    pub fn dispatch_2d(self, x: u32, y: u32) -> RecordedComputePass {
+        self.op(PlanKind::ComputeRender, None);
+        self.pass.dispatch_2d(x, y)
+    }
+}

@@ -1,0 +1,28 @@
+#version 450
+// Platform capability adapter, not an original Tiny Glade shader.
+// vkCmdDrawIndexedIndirectCount executes min(counter,maxDrawCount) commands.
+// Copy that exact prefix; zero commands beyond it so ordinary multi-draw has
+// identical vertex/instance invocations without reading count back to the CPU.
+layout(local_size_x=64) in;
+layout(set=0,binding=0,std430) readonly buffer Source { uint words[]; } source_commands;
+layout(set=0,binding=1,std430) readonly buffer Count { uint words[]; } actual_count;
+layout(set=0,binding=2,std430) writeonly buffer Output { uint words[]; } scratch_commands;
+layout(push_constant) uniform Args {
+    uint source_offset_words;
+    uint source_stride_words;
+    uint count_offset_words;
+    uint max_draw_count;
+} args;
+void main() {
+    uint i=gl_GlobalInvocationID.x;
+    if (i>=args.max_draw_count) return;
+    uint n=min(actual_count.words[args.count_offset_words],args.max_draw_count);
+    // Inactive tail never fetches stale/unwritten input command words.
+    if (i<n) {
+        uint input_word=args.source_offset_words+i*args.source_stride_words;
+        for (uint field=0;field<5;field++)
+            scratch_commands.words[i*5+field]=source_commands.words[input_word+field];
+    } else {
+        for (uint field=0;field<5;field++) scratch_commands.words[i*5+field]=0;
+    }
+}

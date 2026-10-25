@@ -1,0 +1,90 @@
+{
+  "status": "passed",
+  "date": "2026-10-13",
+  "scope": "B original compiled asset schema, typed decode/encode, keys, source path formatting, malformed data/type boundary tests",
+  "command": "cargo test --locked --test shader_pipeline_contract (root integration Windows build environment)",
+  "evidence_log": "evidence/shader-toolchain-2026-10-13/pipeline/cargo-test-verified.log",
+  "evidence_log_sha256": "a8d4218f8f475e10ecd9656339dc77ffc1488a9df79348253d44a302b53f90f3",
+  "passed_tests": 5,
+  "failed_tests": 0,
+  "original_assets": {
+    "files": 404,
+    "modules": 638,
+    "byte_roundtrip": true,
+    "uniform_blocks": 328,
+    "vertex_inputs": 472,
+    "local_size": 170,
+    "push_ranges": 43,
+    "runtime_arrays": 4
+  },
+  "keys": {
+    "raster_macro": "SHADER_VARIANT_DEPTH_ONLY",
+    "original_values": [
+      "0",
+      "1"
+    ],
+    "expected_hashes": [
+      "b903e43ffb3da915",
+      "f0adff76827e73ff"
+    ],
+    "binding_name_suffix_edge": "_dims limit=0 full-string original library rule",
+    "public_libraries_reused": true
+  },
+  "original_identity": {
+    "rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "patched_database_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323"
+  },
+  "dependency_validation": "evidence/shader-toolchain-2026-10-13/dependency-projection.json",
+  "inputs": {
+    "reconstruction/rhapsody-rebuild/src/shader_pipeline/compiled.rs": "632fa25bf99f8c30369d2b55b9bca97bc4bfbbda4eaab20339dcb1c173cf1ed7",
+    "reconstruction/rhapsody-rebuild/src/shader_pipeline/pipeline_desc.rs": "5dfeb34b124ca41e017faf2354a2f54a6fa89d38750c542b0bf55e9064102e39",
+    "reconstruction/rhapsody-rebuild/src/shader_pipeline/reflection.rs": "d14d2baa47c56de1375dd94ce93a4012d50fc827f9fcb1191f404c8c28843986",
+    "reconstruction/rhapsody-rebuild/src/shader_pipeline/reflection_ty.rs": "5b4be5e91a855b8dbda8e7ed5ceeb7c2573401a1b75749ae7f5ff25b15b095e7",
+    "reconstruction/rhapsody-rebuild/src/shader_pipeline/shader_defines.rs": "3d004b0811c83239ed3e5f29b9aa6638a24bdcbedd38e2753ba307edb6fbfad1",
+    "reconstruction/rhapsody-rebuild/src/shader_pipeline/mod.rs": "45f60348cb6b537cfdfd19368836077e785e608601bfa9aad54d479ee5936bbb",
+    "reconstruction/rhapsody-rebuild/tests/shader_pipeline_contract.rs": "de6e017c0dd3f954725451475bb0fe930f8363edb69eb38173ecb24768196112",
+    "reconstruction/rhapsody-rebuild/Cargo.toml": "cf8eaff2b76c1ffbeecdfaabedf583c42f772df42437aa75418d2f07bd2b35ff",
+    "reconstruction/rhapsody-rebuild/Cargo.lock": "7396b03904060da997f18ab58c31a3c0adcb1b60080b0df420a70f98979b657e"
+  },
+  "source_mapping": "evidence/shader-toolchain-2026-10-13/pipeline/delivery.json",
+  "mutual_review": {
+    "compiler": "review-compiler.md",
+    "runtime_findings_fixed": [
+      "tag2 CombinedImageSampler (original consumer)",
+      "final_u32 push_constant_size (VkPushConstantRange consumer)"
+    ],
+    "compiler_source_opcode_fix": "embedded-request-opcode-independent.json confirms638/638 ModuleProcessed330, removes prior incorrect OpString inference"
+  },
+  "residuals": [
+    "original complete load_compiled anyhow context/ownership and full pipeline_desc optional fields",
+    "compiler reflection/packing and country-core full application consumer",
+    "A/C compatibility",
+    "native entry differential for malformed allocation/depth/overflow side effects"
+  ],
+  "unicorn_oracle": {
+    "status": "not_executed",
+    "reason": "missing unicorn dependency",
+    "counted_as_validation": false
+  },
+  "full_crate_recovered": false,
+  "tested_inputs": {
+    "reconstruction/rhapsody-rebuild/src/shader_pipeline/compiled.rs": "632fa25bf99f8c30369d2b55b9bca97bc4bfbbda4eaab20339dcb1c173cf1ed7",
+    "reconstruction/rhapsody-rebuild/src/shader_pipeline/pipeline_desc.rs": "de0e2c4d305797e20a4dfd1c1d489651542f1411f03700d3077ac229e7074aa3",
+    "reconstruction/rhapsody-rebuild/src/shader_pipeline/reflection.rs": "d14d2baa47c56de1375dd94ce93a4012d50fc827f9fcb1191f404c8c28843986",
+    "reconstruction/rhapsody-rebuild/src/shader_pipeline/reflection_ty.rs": "5b4be5e91a855b8dbda8e7ed5ceeb7c2573401a1b75749ae7f5ff25b15b095e7",
+    "reconstruction/rhapsody-rebuild/src/shader_pipeline/shader_defines.rs": "3d004b0811c83239ed3e5f29b9aa6638a24bdcbedd38e2753ba307edb6fbfad1",
+    "reconstruction/rhapsody-rebuild/src/shader_pipeline/mod.rs": "45f60348cb6b537cfdfd19368836077e785e608601bfa9aad54d479ee5936bbb",
+    "reconstruction/rhapsody-rebuild/tests/shader_pipeline_contract.rs": "de6e017c0dd3f954725451475bb0fe930f8363edb69eb38173ecb24768196112",
+    "reconstruction/rhapsody-rebuild/Cargo.toml": "cf8eaff2b76c1ffbeecdfaabedf583c42f772df42437aa75418d2f07bd2b35ff",
+    "reconstruction/rhapsody-rebuild/Cargo.lock": "7396b03904060da997f18ab58c31a3c0adcb1b60080b0df420a70f98979b657e"
+  },
+  "post_validation_changes": [
+    {
+      "path": "reconstruction/rhapsody-rebuild/src/shader_pipeline/pipeline_desc.rs",
+      "kind": "comment_only",
+      "description": "Clarify convenience constructors and original confirmed file path boundary; executable code unchanged",
+      "test_rerun": false
+    }
+  ],
+  "constructor_equivalence_claimed": false
+}

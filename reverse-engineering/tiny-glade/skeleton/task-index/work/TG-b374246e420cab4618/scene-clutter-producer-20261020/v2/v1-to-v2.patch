@@ -1,0 +1,70 @@
+--- v1/source/load_clutter_meshes.rs
++++ v2/source/load_clutter_meshes.rs
+@@ -4,7 +4,10 @@
+ 
+ use bevy_ecs::prelude::{Commands, Res};
+ use country_core::{
+-    asset_libraries::mesh_library::{AssetMeshLibrary, MeshAsset},
++    asset_libraries::{
++        mesh_library::{AssetMeshLibrary, MeshAsset},
++        meshwatch::MeshWatch,
++    },
+     game_config::GameConfig,
+     resources::clutter_meshes::{ClutterMesh, decode_solid_texture},
+     utils::load_json::load_json_as_mesh,
+@@ -612,6 +615,7 @@
+ fn load_one(
+     installation: &Path,
+     meshes: &AssetMeshLibrary,
++    watch: &MeshWatch,
+     demo: bool,
+     spec: ClutterLoadSpec,
+ ) -> ClutterMesh {
+@@ -630,6 +634,8 @@
+     // Original radius and bounds are computed before asset ownership moves.
+     let radius_xz = mesh.collision_radius_xz();
+     let bounds = mesh.collision_bbx();
++    // Original shared load_mesh_into_library @140b1aca0: watch first, then add.
++    watch.watch(&mesh);
+     let handle = meshes.add(MeshAsset::new(mesh, Some(spec.mesh_name.to_owned())));
+     ClutterMesh {
+         bounds: Rectangle3d {
+@@ -654,6 +660,7 @@
+ pub fn load_clutter_meshes_from(
+     installation: &Path,
+     meshes: &AssetMeshLibrary,
++    watch: &MeshWatch,
+     demo: bool,
+ ) -> ClutterMeshes {
+     let mut fixed: [Option<ClutterMesh>; 55] = std::array::from_fn(|_| None);
+@@ -665,6 +672,7 @@
+                 flowerbeds.push(load_one(
+                     installation,
+                     meshes,
++                    watch,
+                     false,
+                     ClutterLoadSpec {
+                         fixed_index: 0,
+@@ -683,7 +691,7 @@
+             fixed[spec.fixed_index].is_none(),
+             "duplicate native clutter fixed slot"
+         );
+-        fixed[spec.fixed_index] = Some(load_one(installation, meshes, demo, spec));
++        fixed[spec.fixed_index] = Some(load_one(installation, meshes, watch, demo, spec));
+     }
+     ClutterMeshes::from_parts(
+         fixed.map(|entry| entry.expect("native clutter fixed slot was not loaded")),
+@@ -696,11 +704,13 @@
+ pub fn load_clutter_meshes(
+     mut commands: Commands,
+     meshes: Res<AssetMeshLibrary>,
++    watch: Res<MeshWatch>,
+     config: Res<GameConfig>,
+ ) {
+     commands.insert_resource(load_clutter_meshes_from(
+         Path::new("."),
+         &meshes,
++        &watch,
+         config.dev.demo,
+     ));
+ }

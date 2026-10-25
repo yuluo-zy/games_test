@@ -1,0 +1,63 @@
+1405d2640 push rbp
+1405d2641 push rsi
+1405d2642 sub rsp, 0xa8
+1405d2649 lea rbp, [rsp + 0x80]
+1405d2651 mov qword ptr [rbp + 0x20], 0xfffffffffffffffe
+1405d2659 mov rsi, rcx
+1405d265c mov qword ptr [rbp - 0x60], 0
+1405d2664 mov qword ptr [rbp - 0x58], 8
+1405d266c xorps xmm0, xmm0
+1405d266f movups xmmword ptr [rbp - 0x50], xmm0
+1405d2673 mov qword ptr [rbp - 0x40], 8
+1405d267b mov qword ptr [rbp - 0x38], 0
+1405d2683 movzx eax, byte ptr [rip + 0x26a8437]
+1405d268a mov ecx, 0x30000
+1405d268f mov edx, 8
+1405d2694 call 0x1403da780
+1405d2699 test rax, rax
+1405d269c mov qword ptr [rbp], rax
+1405d26a0 je 0x1405d275d
+1405d26a6 mov qword ptr [rbp + 8], 0x1000
+1405d26ae mov qword ptr [rbp + 0x10], rax
+1405d26b2 mov qword ptr [rbp + 0x18], 0
+1405d26ba movups xmm0, xmmword ptr [rbp - 0x60]
+1405d26be movups xmm1, xmmword ptr [rbp - 0x50]
+1405d26c2 movups xmm2, xmmword ptr [rbp - 0x40]
+1405d26c6 movaps xmmword ptr [rbp - 0x10], xmm2
+1405d26ca movaps xmmword ptr [rbp - 0x20], xmm1
+1405d26ce movaps xmmword ptr [rbp - 0x30], xmm0
+1405d26d2 lea rcx, [rbp + 8]
+1405d26d6 lea r8, [rbp - 0x30]
+1405d26da mov edx, 0x1000
+1405d26df call 0x140d6f260
+1405d26e4 movups xmm0, xmmword ptr [rbp + 8]
+1405d26e8 movaps xmmword ptr [rbp - 0x30], xmm0
+1405d26ec mov rax, qword ptr [rbp + 0x18]
+1405d26f0 mov qword ptr [rbp - 0x20], rax
+1405d26f4 call 0x1408418d0
+1405d26f9 cmp qword ptr [rax], 0
+1405d26fd je 0x1405d2705
+1405d26ff add rax, 8
+1405d2703 jmp 0x1405d270f
+1405d2705 mov rcx, rax
+1405d2708 xor edx, edx
+1405d270a call 0x1403bc080
+1405d270f mov rcx, qword ptr [rbp - 0x20]
+1405d2713 mov qword ptr [rsi + 0x10], rcx
+1405d2717 movaps xmm0, xmmword ptr [rbp - 0x30]
+1405d271b movups xmmword ptr [rsi], xmm0
+1405d271e movups xmm0, xmmword ptr [rax]
+1405d2721 inc qword ptr [rax]
+1405d2724 movups xmm1, xmmword ptr [rip + 0x1c7fc45]
+1405d272b movups xmmword ptr [rsi + 0x28], xmm1
+1405d272f movups xmm1, xmmword ptr [rip + 0x1c7fc2a]
+1405d2736 movups xmmword ptr [rsi + 0x18], xmm1
+1405d273a movups xmmword ptr [rsi + 0x38], xmm0
+1405d273e movaps xmm0, xmmword ptr [rip + 0x1c7fb4b]
+1405d2745 movups xmmword ptr [rsi + 0x48], xmm0
+1405d2749 mov dword ptr [rsi + 0x58], 0
+1405d2750 mov rax, rsi
+1405d2753 add rsp, 0xa8
+1405d275a pop rsi
+1405d275b pop rbp
+1405d275c ret 

@@ -1,0 +1,41 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140ed3da0: 56                          	pushq	%rsi
+140ed3da1: 57                          	pushq	%rdi
+140ed3da2: 53                          	pushq	%rbx
+140ed3da3: 48 83 ec 20                 	subq	$0x20, %rsp
+140ed3da7: 48 8b 41 08                 	movq	0x8(%rcx), %rax
+140ed3dab: 48 8b 71 20                 	movq	0x20(%rcx), %rsi
+140ed3daf: 48 3b 01                    	cmpq	(%rcx), %rax
+140ed3db2: 48 c7 01 10 00 00 00        	movq	$0x10, (%rcx)
+140ed3db9: 48 c7 41 08 10 00 00 00     	movq	$0x10, 0x8(%rcx)
+140ed3dc1: 48 85 f6                    	testq	%rsi, %rsi
+140ed3dc4: 74 45                       	je	0x140ed3e0b <.text+0xed2e0b>
+140ed3dc6: 48 8b 41 10                 	movq	0x10(%rcx), %rax
+140ed3dca: 48 8b 49 18                 	movq	0x18(%rcx), %rcx
+140ed3dce: 48 8d 78 10                 	leaq	0x10(%rax), %rdi
+140ed3dd2: 48 8b 58 10                 	movq	0x10(%rax), %rbx
+140ed3dd6: 48 39 d9                    	cmpq	%rbx, %rcx
+140ed3dd9: 74 2a                       	je	0x140ed3e05 <.text+0xed2e05>
+140ed3ddb: 48 8b 40 08                 	movq	0x8(%rax), %rax
+140ed3ddf: 48 8d 14 89                 	leaq	(%rcx,%rcx,4), %rdx
+140ed3de3: 48 c1 e2 04                 	shlq	$0x4, %rdx
+140ed3de7: 48 01 c2                    	addq	%rax, %rdx
+140ed3dea: 48 8d 0c 9b                 	leaq	(%rbx,%rbx,4), %rcx
+140ed3dee: 48 c1 e1 04                 	shlq	$0x4, %rcx
+140ed3df2: 48 01 c1                    	addq	%rax, %rcx
+140ed3df5: 48 89 f0                    	movq	%rsi, %rax
+140ed3df8: 48 c1 e0 04                 	shlq	$0x4, %rax
+140ed3dfc: 4c 8d 04 80                 	leaq	(%rax,%rax,4), %r8
+140ed3e00: e8 0b fe a4 01              	callq	0x142923c10 <.text+0x2922c10>
+140ed3e05: 48 01 f3                    	addq	%rsi, %rbx
+140ed3e08: 48 89 1f                    	movq	%rbx, (%rdi)
+140ed3e0b: 48 83 c4 20                 	addq	$0x20, %rsp
+140ed3e0f: 5b                          	popq	%rbx
+140ed3e10: 5f                          	popq	%rdi
+140ed3e11: 5e                          	popq	%rsi
+140ed3e12: c3                          	retq

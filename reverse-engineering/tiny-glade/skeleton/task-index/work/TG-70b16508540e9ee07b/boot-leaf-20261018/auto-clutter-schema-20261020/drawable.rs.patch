@@ -1,0 +1,30 @@
+--- a/tiny-glade/crates/country-core/src/components/drawable.rs
++++ b/tiny-glade/crates/country-core/src/components/drawable.rs
+@@ -171,6 +171,27 @@
+     }
+ }
+ 
++/// Canonical animation state for an actual auto-clutter drawable entity.
++/// Original B `components::AutoClutter` is mapped into this project's existing
++/// drawable-component module; every manager/animation consumer must use this
++/// same Rust type. This is not the separate AutoClutterObject record.
++///
++/// Native observations are a 24-byte, non-owning value. These semantic fields
++/// do not promise the original Rust ABI, author declaration or numeric TypeId.
++/// Construction supplies the real key, frame-seeded delay and mesh metadata;
++/// no default state is provided to stand in for a missing producer.
++#[derive(bevy_ecs::component::Component, Clone, Copy, Debug)]
++pub struct AutoClutter {
++    pub key: u64,
++    pub timer: f32,
++    pub progress: f32,
++    pub target_scale: f32,
++    /// Native +14: the actual mesh group used as the sound command kind.
++    pub native_group: u8,
++    /// Native +15: proven constructor value, downstream meaning unresolved.
++    pub native_flag_15: bool,
++}
++
+ /// Canonical solid-texture selector observed as one component byte in B
+ /// clone1412efd00 and updates142072010/142072b50. PDB does not recover the
+ /// original Rust declaration or variant names; this is a checked opaque host

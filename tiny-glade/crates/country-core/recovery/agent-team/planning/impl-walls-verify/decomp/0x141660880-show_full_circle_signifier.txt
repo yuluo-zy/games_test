@@ -1,0 +1,83 @@
+// 0x141660880 show_full_circle_signifier size=481
+
+void __cdecl
+country_core::systems::wall::shapes::circle::ui_edit_circle::show_full_circle_signifier(void)
+
+{
+  undefined8 *extraout_RAX;
+  void *extraout_RAX_00;
+  undefined8 *in_R8;
+  void *_Dst;
+  undefined4 in_XMM3_Da;
+  undefined4 in_stack_00000028;
+  longlong local_e0;
+  void *local_d8;
+  size_t local_d0;
+  undefined1 local_c8 [16];
+  undefined1 *local_b8;
+  code *pcStack_b0;
+  code *local_a0;
+  undefined4 *local_98;
+  code *local_90;
+  undefined4 *local_88;
+  code *local_80;
+  undefined4 local_74;
+  undefined8 local_70;
+  
+  local_70 = 0xfffffffffffffffe;
+  local_b8 = local_c8;
+  pcStack_b0 = resources::walls::impl$7::fmt;
+  local_a0 = ::utils::geometry::circle::impl$3::fmt;
+  local_98 = &local_74;
+  local_90 = core::fmt::float::impl$5::fmt;
+  local_88 = &stack0x00000028;
+  local_80 = core::fmt::float::impl$5::fmt;
+  local_74 = in_XMM3_Da;
+  alloc::fmt::format::format_inner();
+  local_b8 = (undefined1 *)*in_R8;
+  pcStack_b0 = (code *)in_R8[1];
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX == (undefined8 *)0x0) {
+                    // WARNING: Subroutine does not return
+    alloc::alloc::handle_alloc_error();
+  }
+  *extraout_RAX = 1;
+  extraout_RAX[1] = 1;
+  extraout_RAX[2] = local_b8;
+  extraout_RAX[3] = pcStack_b0;
+  *(undefined4 *)(extraout_RAX + 4) = local_74;
+  *(undefined4 *)((longlong)extraout_RAX + 0x24) = in_stack_00000028;
+  pcStack_b0 = (code *)&DAT_142c824f8;
+  if ((longlong)local_d0 < 0) {
+LAB_141660a4d:
+                    // WARNING: Subroutine does not return
+    alloc::raw_vec::handle_error();
+  }
+  if (local_d0 == 0) {
+    _Dst = (void *)0x1;
+  }
+  else {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    _Dst = extraout_RAX_00;
+    if (extraout_RAX_00 == (void *)0x0) goto LAB_141660a4d;
+  }
+  memcpy(_Dst,local_d8,local_d0);
+  local_98 = (undefined4 *)&DAT_142c824f8;
+  pcStack_b0 = _Dst;
+  append_only_vec::AppendOnlyVec::
+  push<country_core::systems::ui::signifiers::signifier_create::UiAppendSignifier>();
+  if (local_e0 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  return;
+}
+
+
+// CALLEES:
+{'name': '__rust_alloc', 'address': '140613c10'}
+{'name': '__rust_dealloc', 'address': '140613c20'}
+{'name': 'format_inner', 'address': '140d79f90'}
+{'name': 'handle_alloc_error', 'address': '1428d9000'}
+{'name': 'handle_error', 'address': '1428d8fe3'}
+{'name': 'memcpy', 'address': '142923c00'}
+{'name': 'push<country_core::systems::ui::signifiers::signifier_create::UiAppendSignifier>', 'address': '14146c880'}

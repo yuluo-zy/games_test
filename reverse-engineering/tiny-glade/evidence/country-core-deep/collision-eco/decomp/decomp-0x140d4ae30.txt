@@ -1,0 +1,55 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_140d4ae30(undefined1 (*param_1) [16],float *param_2,float *param_3)
+
+{
+  float fVar1;
+  float fVar2;
+  float fVar3;
+  float fVar4;
+  undefined1 auVar5 [16];
+  undefined1 auVar6 [16];
+  undefined1 auVar7 [16];
+  float fVar8;
+  float fVar9;
+  float fVar10;
+  
+  fVar4 = *param_2;
+  fVar1 = param_2[1];
+  fVar8 = param_2[2];
+  fVar9 = *param_3;
+  fVar2 = param_3[1];
+  fVar3 = param_3[2];
+  fVar10 = fVar8 * fVar3 + fVar1 * fVar2 + fVar4 * fVar9;
+  auVar6 = _UNK_14293e0c0;
+  if (fVar10 <= _UNK_142b45544) {
+    if (_UNK_142b45548 <= fVar10) {
+      auVar7._0_4_ = fVar1 * fVar3 - fVar8 * fVar2;
+      fVar8 = fVar8 * fVar9 - fVar3 * fVar4;
+      auVar7._4_4_ = fVar8;
+      fVar4 = fVar4 * fVar2 - fVar1 * fVar9;
+      fVar10 = fVar10 + _UNK_142925904;
+      auVar7._12_4_ = fVar10;
+      auVar7._8_4_ = fVar4;
+      auVar5._0_4_ = fVar10 * fVar10 + fVar8 * fVar8 + fVar4 * fVar4 + auVar7._0_4_ * auVar7._0_4_;
+      auVar5._4_4_ = auVar5._0_4_;
+      auVar5._8_4_ = auVar5._0_4_;
+      auVar5._12_4_ = auVar5._0_4_;
+      auVar6 = sqrtps(auVar5,auVar5);
+      auVar6 = divps(auVar7,auVar6);
+    }
+    else {
+      fVar9 = (float)(~-(uint)NAN(fVar8) & ((uint)fVar8 & _UNK_1429258f0 | (uint)UNK_142925930) |
+                     _UNK_142a8d5c4 & -(uint)NAN(fVar8));
+      fVar8 = _UNK_14295a0e4 / (fVar8 + fVar9);
+      auVar6._4_4_ = fVar1 * fVar1 * fVar8 + fVar9;
+      auVar6._0_4_ = fVar4 * fVar1 * fVar8;
+      auVar6._8_4_ = (uint)fVar1 ^ _UNK_1429258f0;
+      auVar6._12_4_ = _UNK_142b4554c;
+    }
+  }
+  *param_1 = auVar6;
+  return;
+}
+

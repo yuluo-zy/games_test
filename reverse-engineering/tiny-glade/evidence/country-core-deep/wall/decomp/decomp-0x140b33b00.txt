@@ -1,0 +1,76 @@
+country_core::resources::walls::decorator_outline::impl$0::display::closure$0 :: resources/walls/decorator_outline.rs
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_140b33b00(uint *param_1,float *param_2,undefined8 param_3,uint param_4,undefined8 param_5,
+                  char param_6)
+
+{
+  float fVar1;
+  float fVar2;
+  float fVar3;
+  ulonglong *puStack_160;
+  undefined *puStack_158;
+  undefined8 *puStack_150;
+  code *pcStack_148;
+  undefined1 *puStack_140;
+  code *pcStack_138;
+  ulonglong uStack_130;
+  undefined1 auStack_128 [32];
+  undefined8 uStack_108;
+  float fStack_100;
+  undefined *puStack_f8;
+  undefined8 uStack_f0;
+  ulonglong **ppuStack_e8;
+  undefined8 uStack_e0;
+  undefined8 uStack_d8;
+  undefined8 uStack_c0;
+  
+  puStack_150 = &uStack_108;
+  uStack_c0 = 0xfffffffffffffffe;
+  uStack_108 = *(undefined8 *)(param_2 + 0xc);
+  fStack_100 = param_2[0xe];
+  fVar2 = param_2[8];
+  fVar1 = param_2[10];
+  if (fVar1 <= 0.0) {
+    fVar3 = param_2[5] - *param_2;
+    if (fVar3 <= 0.0) {
+      fVar3 = (param_2[2] + fVar2) * (_UNK_142925870 / SQRT((_UNK_142925904 - fVar1) - fVar3));
+    }
+    else {
+      fVar3 = (param_2[6] + param_2[9]) * (_UNK_142925870 / SQRT(fVar3 + (_UNK_142925904 - fVar1)));
+    }
+  }
+  else {
+    fVar3 = param_2[5] + *param_2;
+    if (0.0 < fVar3) {
+      fVar3 = (param_2[1] - param_2[4]) * (_UNK_142925870 / SQRT(fVar3 + _UNK_142925904 + fVar1));
+    }
+    else {
+      fVar3 = (_UNK_142925904 + fVar1) - fVar3;
+      fVar3 = fVar3 * (_UNK_142925870 / SQRT(fVar3));
+    }
+  }
+  if (param_6 != '\0') {
+    fVar2 = fVar2 * _UNK_142aecb30;
+    uStack_108 = CONCAT44(param_2[0xd] + param_2[9] * _UNK_142aecb34,param_2[0xc] + fVar2);
+    fStack_100 = fStack_100 + fVar1 * _UNK_142a8c5d8;
+  }
+  uStack_130 = (ulonglong)param_4;
+  puStack_160 = &uStack_130;
+  puStack_158 = &UNK_1400c84c0;
+  pcStack_148 = FUN_140d4ba00;
+  puStack_140 = (undefined1 *)&param_5;
+  pcStack_138 = FUN_140b35930;
+  puStack_f8 = &UNK_142aed708;
+  uStack_f0 = 3;
+  ppuStack_e8 = &puStack_160;
+  uStack_e0 = 3;
+  uStack_d8 = 0;
+  FUN_140d79f90(auStack_128,&puStack_f8,fVar2,fVar3);
+                    /* WARNING: Could not recover jumptable at 0x000140b33df6. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)(&UNK_142aed9a8 + *(int *)(&UNK_142aed9a8 + (ulonglong)*param_1 * 4)))();
+  return;
+}
+

@@ -1,0 +1,45 @@
+{
+  "reviewed_at_utc": "2026-10-19T15:57:32.929029+00:00",
+  "verdict": "passed_scoped_static",
+  "manifest": {
+    "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-1298d15aa21683bbb3/scene-decorator-20261019/albedo-handoff-manifest.json",
+    "sha256": "521f2ef491fed641236ddd0a8ce38abd9e859b892e68b42ceeb3a8a2bc2461b4"
+  },
+  "patch": {
+    "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-1298d15aa21683bbb3/scene-decorator-20261019/visual_entity_builder.rs.albedo.patch",
+    "sha256": "293a90ad1bcfc71609a5bcf75fa5ae4b4691b866bfac7cf8d44bb32a21bf4c8c"
+  },
+  "candidate": {
+    "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-1298d15aa21683bbb3/scene-decorator-20261019/visual_entity_builder.rs.albedo.candidate",
+    "sha256": "cef3060313155d7844e071e6ce263e72509d84e0634d0c2af93a575a42527231"
+  },
+  "checks": [
+    "Removes the local raw-byte AlbedoMap Component and publicly reexports the existing canonical AlbedoMap(u64) inside pending_core, preserving existing public module path and one actual TypeId.",
+    "Actual visual builder insertion preserves the same u64 value instead of converting it to eight bytes. Two-crate source scan found no other raw constructor caller.",
+    "Canonical payload is texture namehash, consumed through the actual Nani asset lookup/bindless path; this does not fabricate a GPU texture handle."
+  ],
+  "native_checks": [
+    {
+      "address": "0x1412aa73b",
+      "bytes": "837f2001",
+      "fact": "cmp dword [builder+0x20],1 controls optional insertion"
+    },
+    {
+      "address": "0x1412aac25",
+      "bytes": "4c8b7f28",
+      "fact": "loads actual u64 at builder+0x28 into R15"
+    },
+    {
+      "address": "0x1412aac62",
+      "bytes": "4e897c3018",
+      "fact": "stores that u64 into command payload+0x18"
+    }
+  ],
+  "evidence_scope": "B RNE identity f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03. Cold branch independently checked in retained 1412a9b30 full assembly and direct bounded PE bytes. The shorter 3281-byte entry function range does not cover this cold branch; no C equivalence claim.",
+  "remaining": [
+    "Central typecheck/runtime",
+    "Cloth producer field interpretation and TypeId migration explicitly excluded"
+  ],
+  "reviewer_ran_cargo_gpu": false,
+  "runtime_accepted": false
+}

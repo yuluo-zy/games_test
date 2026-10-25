@@ -1,0 +1,122 @@
+
+void __cdecl country_core::systems::history::replay_raster::_::impl$0::get_param(void)
+
+{
+  undefined4 uVar1;
+  ulonglong uVar2;
+  ulonglong uVar3;
+  longlong lVar4;
+  undefined8 uVar5;
+  undefined8 uVar6;
+  undefined8 uVar7;
+  longlong lVar8;
+  undefined8 *in_RCX;
+  ulonglong *in_RDX;
+  longlong lVar9;
+  longlong lVar10;
+  longlong in_R8;
+  longlong in_R9;
+  longlong lVar11;
+  undefined4 in_stack_00000028;
+  undefined *local_88;
+  undefined8 local_80;
+  longlong local_78;
+  code *local_70;
+  undefined **local_68;
+  code *local_60;
+  undefined **local_58;
+  undefined8 local_50;
+  longlong *local_48;
+  undefined8 local_40;
+  undefined8 local_38;
+  
+  uVar2 = *(ulonglong *)(in_R9 + 0x218);
+  if (*in_RDX < uVar2) {
+    lVar10 = *(longlong *)(in_R9 + 0x210);
+    uVar3 = *(ulonglong *)(lVar10 + *in_RDX * 8);
+    if (uVar3 != 0) {
+      lVar4 = *(longlong *)(in_R9 + 0x1e0);
+      lVar8 = ~uVar3 * 0x60;
+      if (*(longlong *)(lVar4 + 0x20 + lVar8) != 0) {
+        if (((in_RDX[1] < uVar2) && (uVar3 = *(ulonglong *)(lVar10 + in_RDX[1] * 8), uVar3 != 0)) &&
+           (lVar11 = ~uVar3 * 0x60, *(longlong *)(lVar4 + 0x20 + lVar11) != 0)) {
+          if (((in_RDX[2] < uVar2) && (uVar3 = *(ulonglong *)(lVar10 + in_RDX[2] * 8), uVar3 != 0))
+             && (lVar9 = ~uVar3 * 0x60, *(longlong *)(lVar4 + 0x20 + lVar9) != 0)) {
+            if (((in_RDX[3] < uVar2) && (uVar2 = *(ulonglong *)(lVar10 + in_RDX[3] * 8), uVar2 != 0)
+                ) && (lVar10 = ~uVar2 * 0x60, *(longlong *)(lVar4 + 0x20 + lVar10) != 0)) {
+              lVar8 = lVar8 + lVar4;
+              uVar1 = *(undefined4 *)(in_R8 + 0x130);
+              lVar11 = lVar11 + lVar4;
+              uVar5 = *(undefined8 *)(lVar11 + 0x10);
+              lVar9 = lVar9 + lVar4;
+              uVar6 = *(undefined8 *)(lVar9 + 0x10);
+              lVar10 = lVar10 + lVar4;
+              uVar7 = *(undefined8 *)(lVar10 + 0x10);
+              *in_RCX = *(undefined8 *)(lVar8 + 0x10);
+              in_RCX[1] = lVar8 + 0x58;
+              in_RCX[2] = lVar8 + 0x5c;
+              *(undefined4 *)(in_RCX + 3) = uVar1;
+              *(undefined4 *)((longlong)in_RCX + 0x1c) = in_stack_00000028;
+              in_RCX[4] = uVar5;
+              in_RCX[5] = lVar11 + 0x58;
+              in_RCX[6] = lVar11 + 0x5c;
+              *(undefined4 *)(in_RCX + 7) = uVar1;
+              *(undefined4 *)((longlong)in_RCX + 0x3c) = in_stack_00000028;
+              in_RCX[8] = uVar6;
+              in_RCX[9] = lVar9 + 0x58;
+              in_RCX[10] = lVar9 + 0x5c;
+              *(undefined4 *)(in_RCX + 0xb) = uVar1;
+              *(undefined4 *)((longlong)in_RCX + 0x5c) = in_stack_00000028;
+              in_RCX[0xc] = uVar7;
+              in_RCX[0xd] = lVar10 + 0x58;
+              in_RCX[0xe] = lVar10 + 0x5c;
+              *(undefined4 *)(in_RCX + 0xf) = uVar1;
+              *(undefined4 *)((longlong)in_RCX + 0x7c) = in_stack_00000028;
+              in_RCX[0x10] = in_RDX + 4;
+              return;
+            }
+            local_78 = in_R8 + 0x98;
+            local_88 = &DAT_142ae250d;
+            local_80 = 0x41;
+            local_70 = alloc::string::impl$23::fmt;
+            local_68 = &local_88;
+            local_60 = anyhow::context::impl$3::
+                       fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;
+            local_58 = &PTR_s_Resource_requested_by_does_not_e_142ae20f8;
+            local_50 = 2;
+            local_38 = 0;
+            local_48 = &local_78;
+            local_40 = 2;
+                    // WARNING: Subroutine does not return
+            core::panicking::panic_fmt();
+          }
+          local_88 = &DAT_142ae2287;
+          local_80 = 0x3d;
+        }
+        else {
+          local_88 = &DAT_142ae225e;
+          local_80 = 0x29;
+        }
+        goto LAB_140ae5a24;
+      }
+    }
+  }
+  local_88 = &DAT_142ae20a7;
+  local_80 = 0x27;
+LAB_140ae5a24:
+  local_78 = in_R8 + 0x98;
+  local_70 = alloc::string::impl$23::fmt;
+  local_68 = &local_88;
+  local_60 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;
+  local_58 = &PTR_s_Resource_requested_by_does_not_e_142ae20f8;
+  local_50 = 2;
+  local_38 = 0;
+  local_48 = &local_78;
+  local_40 = 2;
+                    // WARNING: Subroutine does not return
+  core::panicking::panic_fmt();
+}
+
+
+
+CALLEES: [{"name": "panic_fmt", "address": "1428d9390"}]

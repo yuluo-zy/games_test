@@ -1,0 +1,98 @@
+
+void __cdecl
+bevy_ecs::system::system_param::impl$9::init_state<country_core::resources::time_of_day::TimeOfDay>
+          (void)
+
+{
+  ulonglong *puVar1;
+  ulonglong uVar2;
+  ulonglong extraout_RAX;
+  longlong extraout_RAX_00;
+  longlong in_RCX;
+  longlong in_RDX;
+  undefined **local_128;
+  undefined8 local_120;
+  undefined8 **local_118;
+  undefined8 local_110;
+  longlong *local_108;
+  undefined8 local_100;
+  undefined *local_f8;
+  undefined8 local_f0;
+  undefined **local_e8;
+  code *local_e0;
+  longlong local_d8;
+  code *local_d0;
+  longlong local_c8;
+  undefined ***local_c0;
+  longlong local_b8;
+  undefined8 local_a8;
+  undefined8 local_a0;
+  undefined1 local_98;
+  undefined8 local_90;
+  undefined8 local_80;
+  undefined8 local_70;
+  undefined8 local_68;
+  undefined1 local_60;
+  undefined8 local_58;
+  undefined8 local_48;
+  undefined8 local_38;
+  undefined8 local_30;
+  undefined1 local_28;
+  
+  local_c0 = (undefined ***)(in_RCX + 0x5a8);
+  local_c8 = in_RCX + 0x38;
+  component::ComponentsRegistrator::
+  register_resource_with<bevy_ecs::component::impl_18::register_resource::closure_env_0<country_core::resources::time_of_day::TimeOfDay>_>
+            ();
+  world::World::flush_components();
+  local_b8 = in_RCX + 0xf8;
+  local_c0 = &local_128;
+  local_c8 = in_RCX + 0x38;
+  storage::sparse_set::SparseSet::
+  get_or_insert_with<bevy_ecs::component::ComponentId,bevy_ecs::storage::resource::ResourceData<true>,bevy_ecs::storage::resource::impl_2::initialize_with::closure_env_0<true,bevy_ecs::world::impl_2::initialize_resource_internal::closure_env_0>_>
+            ();
+  if ((*(char *)(in_RDX + 0x93) == '\0') &&
+     ((*(ulonglong *)(in_RDX + 0x70) <= extraout_RAX ||
+      ((*(ulonglong *)(*(longlong *)(in_RDX + 0x60) + (extraout_RAX >> 6) * 8) >>
+        (extraout_RAX & 0x3f) & 1) == 0)))) {
+    uVar2 = *(ulonglong *)(extraout_RAX_00 + 0x48);
+    bevy_ecs::query::access::FilteredAccessSet::
+    add_unfiltered_resource_read<bevy_ecs::component::ComponentId>();
+    if (*(ulonglong *)(in_RDX + 0xf0) < uVar2 + 1) {
+      fixedbitset::impl$2::grow::do_grow();
+    }
+    puVar1 = (ulonglong *)(*(longlong *)(in_RDX + 0xe0) + (uVar2 >> 6) * 8);
+    *puVar1 = *puVar1 | 1L << ((byte)uVar2 & 0x3f);
+    return;
+  }
+  local_f8 = &DAT_142964639;
+  local_f0 = 0x2f;
+  local_d8 = in_RDX + 0x98;
+  local_e8 = &local_f8;
+  local_e0 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;
+  local_d0 = alloc::string::impl$23::fmt;
+  local_c8 = 2;
+  local_b8 = 2;
+  local_a8 = 0;
+  local_a0 = 0x20;
+  local_98 = 3;
+  local_90 = 2;
+  local_80 = 2;
+  local_70 = 1;
+  local_68 = 0x20;
+  local_60 = 3;
+  local_58 = 2;
+  local_48 = 2;
+  local_38 = 0;
+  local_30 = 0x20;
+  local_28 = 3;
+  local_128 = &PTR_DAT_1429617f0;
+  local_120 = 4;
+  local_100 = 3;
+  local_118 = &local_e8;
+  local_110 = 2;
+  local_108 = &local_c8;
+                    // WARNING: Subroutine does not return
+  core::panicking::panic_fmt();
+}
+

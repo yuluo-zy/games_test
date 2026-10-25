@@ -1,0 +1,37 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/compute_garden.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/compute_garden.rs
+@@ -561,11 +561,15 @@
+         let resources = |i: usize| f.passes[i].builder.accesses.iter()
+             .map(|a| a.resource).collect::<Vec<_>>();
+         let r0 = resources(0);
+-        assert_eq!(f.passes[0].preserving_buffers,
+-            [r0[1], r0[2], *r0.last().unwrap()]);
++        // This fixture aliases buffer bindings to one graph resource. The
++        // content-intent list contains each resource once, not each binding.
++        let mut expected = vec![r0[1], r0[2], *r0.last().unwrap()];
++        expected.dedup();
++        assert_eq!(f.passes[0].preserving_buffers, expected);
+         let r1 = resources(1);
+-        assert_eq!(f.passes[1].preserving_buffers,
+-            [r1[1], *r1.last().unwrap()]);
++        let mut expected = vec![r1[1], *r1.last().unwrap()];
++        expected.dedup();
++        assert_eq!(f.passes[1].preserving_buffers, expected);
+         for i in [2, 3] {
+             let r = resources(i);
+             assert_eq!(f.passes[i].preserving_buffers, [*r.last().unwrap()]);
+@@ -602,10 +606,12 @@
+             [first.builder.accesses.last().unwrap().resource]);
+         // Flower pass still continues flowers from this frame's bushes pass.
+         let flowers = &f.passes[1];
+-        assert_eq!(flowers.preserving_buffers, [
++        let mut expected = vec![
+             flowers.builder.accesses[1].resource,
+             flowers.builder.accesses.last().unwrap().resource,
+-        ]);
++        ];
++        expected.dedup();
++        assert_eq!(flowers.preserving_buffers, expected);
+         assert_eq!(f.passes.len(), 4);
+     }
+ 

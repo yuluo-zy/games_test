@@ -1,0 +1,53 @@
+{
+  "status": "source_review_pass_pending_root_compile_and_tests",
+  "baseline_sha": "fa53d49a61dd7496cddc9af054c6fb1899fa1676",
+  "reviewer": "root/render_reviewer",
+  "candidate": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/candidate-v1",
+  "frozen_sha256": {
+    "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/candidate-v1/SOURCE_STATE.json": "f1dbe9b3ab52816ce9f34e3ca30d144ab49eae4f4a8c200179ad9c2ccde3ddf4",
+    "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/candidate-v1/bindless-kind-statistics.patch": "472eaa373337c1012cb50760c37d90121be118601cb1442de9c9f7e2878be4b0",
+    "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/candidate-v1/tiny-glade/crates/rhapsody/src/bindless.rs": "9a5b11881e8d3820975baa6b5507374d727b40c152e500bc6908728d16f8154f",
+    "tiny-glade/crates/rhapsody/src/bindless.rs": "2373f3ae182b264f04500d8cc3151376c774ab0702eace7bfe7e14c130fa93d0"
+  },
+  "classification": "工程适配：按 DescriptorKind 暴露真实槽统计并修正满表诊断；无原版 per-kind 同形 ABI 或算法主张。",
+  "native_boundary": {
+    "pdb": "B raw/binding.rs.pdb.jsonl.gz 原映射，bind_descriptor_set 1416a5380/source line45，code_size1409；不是候选bindless统计的直接原证",
+    "retained_asm": "evidence/render-recovery/parallel-batch-06/descriptor-binding/bind-enumerated.asm.txt",
+    "retained_asm_sha256": "4ec1620fb0185fc806369b2910b85db1ce743d5c99a29c531117bba13ebf8847",
+    "checked": "已将retained 243条/1111字节逐条与原B RNE按VA比较，无差异；该retained范围不称完整1409字节procedure。原版分配set→写descriptor→bind事实不推出候选新统计接口。",
+    "original_rne_identity": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+  },
+  "source_checks": [
+    {
+      "at": "candidate bindless.rs:173-204",
+      "result": "各kind live仅在成功allocate后增；generation溢出只消耗当前kind free并记永久exhausted；满表错误使用同kind容量与live/retiring，另显式标heap总数，未改分配政策。"
+    },
+    {
+      "at": "candidate bindless.rs:213-253",
+      "result": "每次合法lease Drop保持原单一retire入口；无GPU use立即free，不误计retiring；GPU use非空进入同kind队列，collect仍以真实SyncSet达到为条件，当前retiring/free读取队列len，未增加易漂移的镜像当前计数。"
+    },
+    {
+      "at": "candidate bindless.rs:255-265,467-476",
+      "result": "快照在同一个Slots mutex下取得；固定4表O(1)，无逐slot扫描；统计字节新增已通过现有shared_cpu_bytes::<BindlessHeap>类型大小进入CPU预算。"
+    },
+    {
+      "at": "candidate bindless.rs:338-361; repo consumers",
+      "result": "公开stats增加tables及按kind访问；全crates搜索未发现外部BindlessStats结构字面量被遗漏更新。"
+    },
+    {
+      "at": "candidate tests:959-990",
+      "result": "源码包含混类满表、真实完成集合collect、未用lease回池、generation溢出容量守恒；未执行。"
+    }
+  ],
+  "findings": [],
+  "limits": [
+    "不证明GPU泄漏根因已修复；仅使live/retiring归类诊断正确。",
+    "对非法index重复retire仅debug_assert是既有内部约束；此候选未扩张API，不引入新的调用路径。",
+    "未执行Cargo、GPU、Rust typecheck；root必须实际编译并运行对应Slots测试，必要时严格GPU bindless集成测试。"
+  ],
+  "production_modified": false,
+  "cargo_executed": false,
+  "gpu_executed": false,
+  "supersedes": "BINDLESS_KIND_STATS_REVIEW_V1.json binds prior pre-freeze test formatting; same policy and semantic review, V2 binds final bytes",
+  "final_delta": "再次读最终patch；相对前次阅源码仅新增测试let-else和容量守恒assert_eq的换行；生产行为差异未扩大。"
+}

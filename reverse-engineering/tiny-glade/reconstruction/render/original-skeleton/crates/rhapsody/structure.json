@@ -1,0 +1,112 @@
+{
+  "package": {
+    "name": "rhapsody",
+    "version": "0.1.0",
+    "version_evidence": "tracking/original-Cargo.lock",
+    "original_manifest_recovered": false,
+    "implementation_recovered": false
+  },
+  "pdb": {
+    "path": "D:/game/ljxsj_92385/Tiny Glade/tiny_glade.pdb",
+    "sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+    "source_manifest": "evidence/render-skeleton/files.json",
+    "observed_source_file_count": 55
+  },
+  "modules": {
+    "crate_root": {
+      "observed": ["src/lib.rs", "src/leek.rs"],
+      "synthetic_glue": []
+    },
+    "raw": {
+      "observed": [
+        "src/raw/allocator.rs",
+        "src/raw/barrier.rs",
+        "src/raw/binding.rs",
+        "src/raw/buffer.rs",
+        "src/raw/bytes.rs",
+        "src/raw/command_buffer.rs",
+        "src/raw/crash.rs",
+        "src/raw/debug.rs",
+        "src/raw/descriptor_set.rs",
+        "src/raw/device.rs",
+        "src/raw/disposal.rs",
+        "src/raw/dynamic_constants.rs",
+        "src/raw/error.rs",
+        "src/raw/format.rs",
+        "src/raw/framebuffer.rs",
+        "src/raw/init.rs",
+        "src/raw/instance.rs",
+        "src/raw/physical_device.rs",
+        "src/raw/profiler.rs",
+        "src/raw/ray_tracing.rs",
+        "src/raw/render_pass.rs",
+        "src/raw/sampler.rs",
+        "src/raw/semaphore.rs",
+        "src/raw/shader.rs",
+        "src/raw/stats.rs",
+        "src/raw/submit.rs",
+        "src/raw/swapchain.rs",
+        "src/raw/temp_list.rs",
+        "src/raw/texture.rs"
+      ],
+      "synthetic_glue": ["src/raw/mod.rs"]
+    },
+    "raw_managed": {
+      "observed": [
+        "src/raw/managed/buffer.rs",
+        "src/raw/managed/descriptor_set.rs",
+        "src/raw/managed/framebuffer.rs",
+        "src/raw/managed/handle.rs",
+        "src/raw/managed/render_pass.rs",
+        "src/raw/managed/resources.rs",
+        "src/raw/managed/sampler.rs",
+        "src/raw/managed/swapchain.rs",
+        "src/raw/managed/texture.rs"
+      ],
+      "synthetic_glue": ["src/raw/managed/mod.rs"]
+    },
+    "rg": {
+      "observed": [
+        "src/rg/binding.rs",
+        "src/rg/compiled.rs",
+        "src/rg/executor.rs",
+        "src/rg/graph.rs",
+        "src/rg/import_export.rs",
+        "src/rg/pass_api.rs",
+        "src/rg/pass_builder.rs",
+        "src/rg/recorder.rs",
+        "src/rg/resource.rs",
+        "src/rg/resource_info.rs",
+        "src/rg/resource_pool.rs",
+        "src/rg/resource_registry.rs",
+        "src/rg/state.rs",
+        "src/rg/temporal.rs",
+        "src/rg/util.rs"
+      ],
+      "synthetic_glue": ["src/rg/mod.rs"]
+    }
+  },
+  "counts": {
+    "observed_source_files": 55,
+    "synthetic_module_glue_files": 3,
+    "raw_direct_files": 29,
+    "raw_managed_files": 9,
+    "render_graph_files": 15,
+    "crate_root_files": 2
+  },
+  "visibility": {
+    "scaffold_choice": "module declarations are public to keep later recovered APIs addressable",
+    "original_visibility_recovered": false,
+    "cross_crate_reference_evidence": {
+      "raw": ["binding", "command_buffer", "device", "init", "managed", "texture"],
+      "raw_managed": ["handle"],
+      "rg": ["binding", "compiled", "executor", "pass_builder", "recorder", "resource", "temporal"]
+    }
+  },
+  "limitations": [
+    "PDB paths enumerate compiled contributing files, not removed or cfg-disabled files.",
+    "The three mod.rs files are reconstruction glue and are not claimed as original source paths.",
+    "Cargo dependency kinds, features, optional flags, targets, edition and original workspace layout are not recovered.",
+    "Empty modules preserve topology only; function signatures, types and implementations remain unrecovered unless separately verified."
+  ]
+}

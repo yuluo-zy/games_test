@@ -1,0 +1,124 @@
+{
+  "id": "B-stairs-asm-readiness-only",
+  "input_sha256": "8c969f44ba4044d330572a6a6675ce7267a5207830a6f9ea5f90d6edceb49217",
+  "prompt_sha256": "b5f08b75a8ca2ffb6287795a06c793a3e5f6aa5ed6ffde476992ddfbb0283d0b",
+  "packet_sha256": "466ff65403ac56934df68dd9225480c22622504dbba8b2ec28cccafb04fb96ae",
+  "rendered_input_sha256": "511223435699bc1c526cbd9086d95f3a95a8d266cbe286b2314c92246223bd2d",
+  "render_format": "numbered-plain-text-v1",
+  "model": "deepseek-ai/DeepSeek-V4.1-Flash",
+  "endpoint_origin": "https://it-litellm.espressif.cn",
+  "request_options": {
+    "max_tokens": 12000,
+    "thinking": "template-low"
+  },
+  "elapsed_seconds": 44.83,
+  "finish_reason": "stop",
+  "usage": {
+    "completion_tokens": 5702,
+    "prompt_tokens": 1655,
+    "total_tokens": 7357,
+    "completion_tokens_details": {
+      "reasoning_tokens": 4691
+    }
+  },
+  "accepted_transport": true,
+  "semantically_verified": false,
+  "validation_errors": [],
+  "analysis": {
+    "summary": "Under masked MXCSR, MAXSS maps a NaN quotient to 0.05; JBE is taken on equality or unordered, and that target applies the add/store.",
+    "observations": [
+      {
+        "id": "O1",
+        "claim": "Confirmed: `divss %xmm6,%xmm1` computes xmm1=xmm1/xmm6. With masked invalid, 0/0 yields NaN; then `maxss %xmm7,%xmm1` has dest=xmm1, src=0.05 and returns the valid source 0.05, so the NaN quotient is not retained. Nonzero finite numerator / zero divisor yields signed infinity; +inf survives maxss, -inf is raised to 0.05.",
+        "refs": [
+          "A1:L5-L8"
+        ]
+      },
+      {
+        "id": "O2",
+        "claim": "Confirmed: `ucomiss %xmm1,%xmm0` compares xmm0 as first/dest (elapsed from 0x18) against xmm1 as second/src (clamped quotient). `jbe 0x140af7862` is taken when xmm0<=xmm1 ordered, i.e. CF=1 or ZF=1, and also unordered; it is not taken only when xmm0>xmm1 ordered. Equality therefore branches to the target.",
+        "refs": [
+          "A1:L7-L10"
+        ]
+      },
+      {
+        "id": "O3",
+        "claim": "Confirmed: target 0x140af7862 applies the update: xmm0 still holds loaded elapsed, `addss 0x28(%rax),%xmm0` adds the delta, then stores to 0x18(%r11). NaN elapsed makes ucomiss unordered, so JBE reaches this target and applies the update; it is not pending/deferred.",
+        "refs": [
+          "A1:L7-L10",
+          "A2:L1-L3"
+        ]
+      }
+    ],
+    "branch_matrix": [
+      {
+        "condition": "xmm0 (elapsed) > xmm1 (clamped quotient), ordered",
+        "effect": "Fall through; later L23-L26 load delta, add current 0x18(%r11), and store updated value",
+        "refs": [
+          "A1:L9-L10",
+          "A1:L22-L26"
+        ]
+      },
+      {
+        "condition": "xmm0 <= xmm1 ordered (CF=1 or ZF=1)",
+        "effect": "JBE 0x140af7862; A2 adds delta to xmm0 (current elapsed) and stores at 0x18(%r11)",
+        "refs": [
+          "A1:L7-L10",
+          "A2:L1-L3"
+        ]
+      },
+      {
+        "condition": "Unordered comparison (either operand NaN)",
+        "effect": "UCOMISS sets CF=ZF=PF=1; JBE taken to 0x140af7862; A2 performs add/store, so NaN elapsed is applied",
+        "refs": [
+          "A1:L7-L10",
+          "A2:L1-L3"
+        ]
+      },
+      {
+        "condition": "Quotient NaN before maxss (e.g. 0/0, masked invalid)",
+        "effect": "MAXSS writes source 0.05 into xmm1; NaN clamp does not survive",
+        "refs": [
+          "A1:L5-L8"
+        ]
+      },
+      {
+        "condition": "Finite nonzero numerator / zero divisor, masked divide-by-zero",
+        "effect": "DIVSS yields signed infinity; +inf remains, -inf is replaced by 0.05 by MAXSS",
+        "refs": [
+          "A1:L5-L8"
+        ]
+      }
+    ],
+    "side_effects": [
+      {
+        "order": "Target path order at 0x140af7862: rax=rbp-0x38; xmm0=xmm0+0x28(rax); 0x18(r11)=xmm0; jump 0x140af7722",
+        "refs": [
+          "A2:L1-L4"
+        ]
+      },
+      {
+        "order": "Fallthrough path order: xmm0=0x28(rax); xmm0=xmm0+0x18(r11); 0x18(r11)=xmm0; this path is skipped when JBE is taken",
+        "refs": [
+          "A1:L22-L26"
+        ]
+      }
+    ],
+    "dependency_reuse": [],
+    "unknowns": [
+      {
+        "question": "Are invalid and divide-by-zero FP exceptions masked at this site?",
+        "needed_evidence": "MXCSR mask bits at execution, not supplied",
+        "refs": [
+          "A1:L5-L8"
+        ]
+      }
+    ],
+    "integration_checks": [
+      "Preserve AT&T operand order: `maxss %xmm7,%xmm1` compares/clamps xmm1 against 0.05; `ucomiss %xmm1,%xmm0` compares elapsed xmm0 against quotient xmm1.",
+      "Treat JBE target 0x140af7862 as an applied update path, including unordered/NaN and equality cases."
+    ],
+    "independent_followups": []
+  },
+  "content": "{\"summary\":\"Under masked MXCSR, MAXSS maps a NaN quotient to 0.05; JBE is taken on equality or unordered, and that target applies the add/store.\",\"observations\":[{\"id\":\"O1\",\"claim\":\"Confirmed: `divss %xmm6,%xmm1` computes xmm1=xmm1/xmm6. With masked invalid, 0/0 yields NaN; then `maxss %xmm7,%xmm1` has dest=xmm1, src=0.05 and returns the valid source 0.05, so the NaN quotient is not retained. Nonzero finite numerator / zero divisor yields signed infinity; +inf survives maxss, -inf is raised to 0.05.\",\"refs\":[\"A1:L5-L8\"]},{\"id\":\"O2\",\"claim\":\"Confirmed: `ucomiss %xmm1,%xmm0` compares xmm0 as first/dest (elapsed from 0x18) against xmm1 as second/src (clamped quotient). `jbe 0x140af7862` is taken when xmm0<=xmm1 ordered, i.e. CF=1 or ZF=1, and also unordered; it is not taken only when xmm0>xmm1 ordered. Equality therefore branches to the target.\",\"refs\":[\"A1:L7-L10\"]},{\"id\":\"O3\",\"claim\":\"Confirmed: target 0x140af7862 applies the update: xmm0 still holds loaded elapsed, `addss 0x28(%rax),%xmm0` adds the delta, then stores to 0x18(%r11). NaN elapsed makes ucomiss unordered, so JBE reaches this target and applies the update; it is not pending/deferred.\",\"refs\":[\"A1:L7-L10\",\"A2:L1-L3\"]}],\"branch_matrix\":[{\"condition\":\"xmm0 (elapsed) > xmm1 (clamped quotient), ordered\",\"effect\":\"Fall through; later L23-L26 load delta, add current 0x18(%r11), and store updated value\",\"refs\":[\"A1:L9-L10\",\"A1:L22-L26\"]},{\"condition\":\"xmm0 <= xmm1 ordered (CF=1 or ZF=1)\",\"effect\":\"JBE 0x140af7862; A2 adds delta to xmm0 (current elapsed) and stores at 0x18(%r11)\",\"refs\":[\"A1:L7-L10\",\"A2:L1-L3\"]},{\"condition\":\"Unordered comparison (either operand NaN)\",\"effect\":\"UCOMISS sets CF=ZF=PF=1; JBE taken to 0x140af7862; A2 performs add/store, so NaN elapsed is applied\",\"refs\":[\"A1:L7-L10\",\"A2:L1-L3\"]},{\"condition\":\"Quotient NaN before maxss (e.g. 0/0, masked invalid)\",\"effect\":\"MAXSS writes source 0.05 into xmm1; NaN clamp does not survive\",\"refs\":[\"A1:L5-L8\"]},{\"condition\":\"Finite nonzero numerator / zero divisor, masked divide-by-zero\",\"effect\":\"DIVSS yields signed infinity; +inf remains, -inf is replaced by 0.05 by MAXSS\",\"refs\":[\"A1:L5-L8\"]}],\"side_effects\":[{\"order\":\"Target path order at 0x140af7862: rax=rbp-0x38; xmm0=xmm0+0x28(rax); 0x18(r11)=xmm0; jump 0x140af7722\",\"refs\":[\"A2:L1-L4\"]},{\"order\":\"Fallthrough path order: xmm0=0x28(rax); xmm0=xmm0+0x18(r11); 0x18(r11)=xmm0; this path is skipped when JBE is taken\",\"refs\":[\"A1:L22-L26\"]}],\"dependency_reuse\":[],\"unknowns\":[{\"question\":\"Are invalid and divide-by-zero FP exceptions masked at this site?\",\"needed_evidence\":\"MXCSR mask bits at execution, not supplied\",\"refs\":[\"A1:L5-L8\"]}],\"integration_checks\":[\"Preserve AT&T operand order: `maxss %xmm7,%xmm1` compares/clamps xmm1 against 0.05; `ucomiss %xmm1,%xmm0` compares elapsed xmm0 against quotient xmm1.\",\"Treat JBE target 0x140af7862 as an applied update path, including unordered/NaN and equality cases.\"],\"independent_followups\":[]}"
+}

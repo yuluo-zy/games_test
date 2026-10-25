@@ -1,0 +1,97 @@
+{
+  "target": "B current production static consumer audit",
+  "files": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_draw_terrain.rs",
+      "sha256": "03aadae0292a722f3c43067946523f9a17d68a67cc939d49f89d2744fffa4b6b"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_edit_terrain.rs",
+      "sha256": "16edb7ff0b87bb9fc87ded4d5c8a38b35213f84934c6d0c00d760661b2651079"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/terrain/deferred_terrain_history.rs",
+      "sha256": "7b0f06192fe3153b468b504c040edb8843c945c4c94bfc2fbc59589ffaa9f097"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/history/terrain_edit.rs",
+      "sha256": "449cc7694f0e984d5dc780486a659fcbeac40011a0ed2cc23acb65f48621f885"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/history/serialized.rs",
+      "sha256": "f8b62d94a37409e933a3a5f08139ea44587a0aaf512e0b7c990c5dd2e93f350d"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/history/replay_cmd_buffer.rs",
+      "sha256": "4becad14674df014982485fc0037eb28d7c5ef51250068a9723898f0265b81f1"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/history/transactions.rs",
+      "sha256": "307416a434bdc593f27258c5db527000de5b59fba8e448042df9bdd99387245d"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/history/mod.rs",
+      "sha256": "19dc5b631f7051719525f3f9882fa9b5bb29155c1fcea5486716b1b9e8d697d9"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/terrain/replay_terrain.rs",
+      "sha256": "93ac53927917c60640318f5f3e2a0790ce95e8e08f0867450e61f5c702a0bd51"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/terrain/mod.rs",
+      "sha256": "e1e252b1f87c50c6f13093e438044690fef53e8ed09b598a47372f3b23cb9b0f"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/history.rs",
+      "sha256": "b61604837621d4c3dbfd5282fd690748c628af81f6c312fcfeab3617a9c95aa8"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/history/recording.rs",
+      "sha256": "5e62bc61f4c1fe5d64339d77970152371995ef4749c0cc667a5a51eff6005466"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/save/save_game.rs",
+      "sha256": "c965fbed25bd3bb32d513fab993bb59dc06816edc102d3964d3b394ba6f7bc0c"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/save/load_game.rs",
+      "sha256": "f417b5ca85a384d00342dd0164a750c499155260fce7d2484990a40a3b3ffbdf"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/save/snapshot.rs",
+      "sha256": "528513074189170d003fb99dc5657f80227a797d37ccdb69ba2bddb0e4b1b926"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/startup/run_game.rs",
+      "sha256": "48e60c9ae2587a6ef6bd62d769843513d0b3064ea9422fe10c3803909ee81044"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/backend/input/mod.rs",
+      "sha256": "cde1993bcb43318e18e2bfd419cd22545bcd55cccdfa5053850ecd2d5b31bd0d"
+    }
+  ],
+  "scope": "UI typed pending -> History terrain variant -> save/load schema -> ReplayBucket terrain -> actual edit/changed consumers",
+  "compile_performed": false,
+  "findings": [
+    {
+      "severity": "integration_gap",
+      "owner": "history recording lifecycle",
+      "detail": "Ordinary terrain tool scheduling does not call start_input_recording or finish_input_recording. empty_glade/from_observed start with pending None. Deferred consumes its payload then ignores RecordingNotStarted; UI tests explicitly pre-start recording. This is not a reason to invent start/finish in terrain UI."
+    },
+    {
+      "severity": "integration_gap",
+      "owner": "save scheduling",
+      "detail": "TerrainEdit save/readback schema is connected, but save_game uses host supplied SaveGameSyncData.edits. It does not automatically serialize the current live History ledger. Snapshot loading also explicitly rejects opening retained snapshot bodies."
+    },
+    {
+      "severity": "accepted_bounded",
+      "owner": "terrain history consumers",
+      "detail": "Current New/Edit producers share one typed pending owner; deferred transfers Arc<TerrainEdit>; Terrain serialization and deserialization reuse schema; replay expansion preserves Arc and undo; replay publishes actual Edit/SetPoints/Changed consumed before history bucket pop."
+    }
+  ],
+  "boundaries": [
+    "No production changes or compilation by this worker",
+    "No full native runtime/GPU or whole save system acceptance",
+    "C untouched"
+  ]
+}

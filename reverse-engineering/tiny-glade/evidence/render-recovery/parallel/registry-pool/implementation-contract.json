@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "candidate": "reconstruction/render/work-packages/registry-pool/src/lib.rs",
+  "status": "compilable semantic candidate; not integrated original source and not native-differential verified",
+  "implemented": [
+    {"operation": "ResourcePool::insert_texture/insert_buffer", "contract": "consume resource; key by its exact descriptor; append to Vec bucket", "evidence": ["0x140be6d70", "0x140be7320"]},
+    {"operation": "ResourcePool::take_texture/take_buffer", "contract": "exact descriptor lookup; pop last; return None on missing/empty; retain empty bucket", "evidence": ["0x140be6b90", "0x140be71e0"]},
+    {"operation": "ResourcePool::clear", "contract": "clear both maps through std; drop managed payloads; capacity retained", "evidence": ["0x140be76f0"]},
+    {"operation": "ResourceRegistry::resource", "contract": "logical->physical lookup, then initial access; return reference and reused flag; no variant check", "evidence": ["0x140be78b0"]},
+    {"operation": "ResourceRegistry::image_from_raw_handle/buffer", "contract": "accept both ownership variants of requested kind; panic on wrong kind", "evidence": ["0x140be7940", "0x140be79d0"]},
+    {"operation": "ResourceRegistry::into_exports", "contract": "consume registry; move selected physical payloads to logical-key map; replace with Empty; retain remaining nonempty resources in order", "evidence": ["0x140be9040", "0x1417e78e0"]}
+  ],
+  "external_contracts": {
+    "managed_handles": "Use recovered private RawManagedHandle or original runtime implementation; generic candidate handles carry ownership without inventing reference-count internals.",
+    "descriptor_names": "Offset-named fields preserve observed equality; replace with exact original TextureDesc/BufferDesc definitions when recovered. Padding must not participate in equality/hash.",
+    "dependencies": "Candidate uses std only. Production should reuse original dependencies and versions from build-info/Cargo.lock. Bevy family 0.16.0 and user-stated fork constraint remain; fork repository/commit unverified.",
+    "ResourceInfo": "192-byte embedded type supplied by sibling recovery; exported logical set resides at registry offset 0xd8.",
+    "populate": "Not implemented in candidate. See findings and state machine for evidenced branches and unresolved BackendError/create-device boundaries.",
+    "image_view": "Not implemented. Must validate device identity/kind/generation and call private Texture::image_view instead of directly returning VkImageView.",
+    "retirement": "Not implemented; prove downstream ResourceExports handling before connecting remaining resources to pool."
+  },
+  "do_not_implement": [
+    "std/hashbrown Vec or HashMap internals",
+    "general engine/Bevy/ash/glam implementations",
+    "unproven graph-local reuse insertion on release",
+    "pool size/usage-superset matching",
+    "immediate Vulkan destruction on clear",
+    "exact ABI claims from placeholder generic payloads"
+  ],
+  "validation": {
+    "checks": ["cargo test --offline", "cargo fmt --check", "all package JSON parsed by PowerShell ConvertFrom-Json"],
+    "native_differential": "not run; no original callable harness established",
+    "tests_cover": ["LIFO and exact keys", "empty bucket retention", "no Clone payload requirement", "pool clear drops once and retains capacity", "registry metadata/accessors", "move exports with ordered remaining resources", "aliased export slot yields Empty on second extraction"]
+  }
+}

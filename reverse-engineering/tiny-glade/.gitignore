@@ -1,0 +1,14 @@
+# Original binaries, PDB copies, Ghidra databases and local verification runners.
+/workspace/
+/reconstruction/target/
+/reconstruction/render/target/
+# 构建产物：work-packages 与 rhapsody-rebuild 各自的 target 之前未被覆盖，
+# 直接 add 会把 ~10GB 的 .rlib 提交进去。
+/reconstruction/render/work-packages/*/target/
+/reconstruction/rhapsody-rebuild/target/
+**/__pycache__/
+**/*.pyc
+**/.venv/
+# 重新编译临时产物与锁文件备份（不入库）
+/recompile_tmp/
+/reconstruction/shared-foundation/*.bak

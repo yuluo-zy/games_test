@@ -1,0 +1,13 @@
+# W18 typed输入与原内容合同
+
+本任务只写授权work候选，production/Cargo/GPU均未执行。
+
+原`leaf_particles_compute@1408f4d00/1154B`的3dce36237fb50dff/93a27cf4512d885c是实际GladeSettings，首u64是leaf_particle_count；旧LoadedLeafParticleCount是假身份，已从候选删除。现typed host必须先读实际GladeSettings；count0直接返回，不查shader/资源库/emitter。count非0才按min(count,832)声明pass，真实Leaf write→Emitter read→water push→total_particle_count uniform→读取实际LoadedParticleEmitterCount→emitter_count uniform→dispatch。
+
+候选同一个core body采用lazy FnOnce()->Result<u64,E>表示原较晚的Emitter读取，避免包装层把resource读取前移。此前唯一直接调用者为本文件测试，已迁到真实count参数，不另造一套native/compatibility算法。实际LoadedParticleEmitterCount canonical类型补Bevy Resource derive，原true TypeId4259a350202a056c/1e9e3f559133d465保留。
+
+原发行SPV module offset23,size52536：每invocation先取32B LeafParticle旧record再写，故候选标真实buffer preserve；其原ctor@141614110 None上传832个已证默认record，保持现实现不变。emitter_count低32==0时原shader将Leaf位置0/scale0且保留rotation/up_axis，提前退出，完全不访问ParticleEmitter内容；候选在真实同一uniform条件下标inactive_storage_buffer_contents，仅关闭内容读取检查，binding/access/sync保持。非0依赖真实init_clearing producer上传的16B emitter prefix，不能zero-fill这个None存储替代。
+
+原run_game_thread@1405a194a..194f明确xor edx,edx→App::insert_resource<LoadedParticleEmitterCount>@14012c910，初值0是有证据的生命周期初始化；但并不证明全部init_clearing已完成。它后续真实生成/上传并更新count的函数是startup::clearing::init_clearing@140a78aa0/6913B，未完成前不能把batch或emitter子集说成完整OnEnter(Game)。init_clearing和Forest消费者继续在TG-025d04787e7e6b72cd及TG-b99.../TG-d94.../TG-a433...各合法claim中恢复。
+
+该候选依赖root统一新增的通用inactive_storage_buffer_contents API；当前patch--check0仅表示hunk适配，不表示已编译。没有实际GPU通过结论。完整原SPV/派生GLSL各自SHA见original-shader/manifest.json，candidate/before/patch SHA见candidate-manifest.json。root将统一编译与验证。

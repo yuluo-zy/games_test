@@ -1,0 +1,21 @@
+--- a/tiny-glade/crates/tiny-glade/tests/original_gameplay_chain.rs
++++ b/tiny-glade/crates/tiny-glade/tests/original_gameplay_chain.rs
+@@ -164,9 +164,16 @@
+             for (index, entry) in entries.into_iter().enumerate() {
+                 decorator_aux += usize::from(entry.0.auxiliary.decorator_diff.is_some());
+                 stairs_aux += usize::from(entry.0.auxiliary.stairs_diff.is_some());
+-                let mut saved = serde_json::to_value(&entry)?;
++                // 原 Value 序列化先将 f32 扩为 f64，独立验证该中间表示的往返。
++                let value = serde_json::to_value(&entry)?;
++                let value_loaded: SavedMultiEdit = serde_json::from_value(value.clone())?;
++                assert_eq!(serde_json::to_value(value_loaded)?, value, "{}", path.display());
++                // 原资产文本及实际 SerializedJson::new 调用使用 CompactFormatter。
++                let mut saved: serde_json::Value =
++                    serde_json::from_slice(&serde_json::to_vec(&entry)?)?;
+                 let loaded: SavedMultiEdit = serde_json::from_value(saved.clone())?;
+-                let mut resaved = serde_json::to_value(&loaded)?;
++                let mut resaved: serde_json::Value =
++                    serde_json::from_slice(&serde_json::to_vec(&loaded)?)?;
+                 canonicalize_decorator_diff_map(&mut saved);
+                 canonicalize_decorator_diff_map(&mut resaved);
+                 assert_eq!(resaved, saved, "{}", path.display());

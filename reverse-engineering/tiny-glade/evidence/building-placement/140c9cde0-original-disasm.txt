@@ -1,0 +1,57 @@
+140c9cde0 mov rax, rcx
+140c9cde3 movss xmm0, dword ptr [rdx]
+140c9cde7 movss xmm1, dword ptr [rdx + 4]
+140c9cdec movss dword ptr [rcx], xmm0
+140c9cdf0 movss dword ptr [rcx + 4], xmm2
+140c9cdf5 movss dword ptr [rcx + 8], xmm1
+140c9cdfa ret 
+140c9cdfb int3 
+140c9cdfc int3 
+140c9cdfd int3 
+140c9cdfe int3 
+140c9cdff int3 
+140c9ce00 sub rsp, 0x58
+140c9ce04 movaps xmmword ptr [rsp + 0x40], xmm10
+140c9ce0a movaps xmmword ptr [rsp + 0x30], xmm9
+140c9ce10 movaps xmmword ptr [rsp + 0x20], xmm8
+140c9ce16 movaps xmmword ptr [rsp + 0x10], xmm7
+140c9ce1b movaps xmmword ptr [rsp], xmm6
+140c9ce1f movss xmm3, dword ptr [rcx + 0x18]
+140c9ce24 subss xmm3, dword ptr [rdx + 8]
+140c9ce29 movaps xmm0, xmm3
+140c9ce2c mulss xmm0, xmm3
+140c9ce30 movsd xmm5, qword ptr [rcx + 0x10]
+140c9ce35 movsd xmm1, qword ptr [rdx]
+140c9ce39 subps xmm5, xmm1
+140c9ce3c movaps xmm1, xmm5
+140c9ce3f mulps xmm1, xmm5
+140c9ce42 movshdup xmm2, xmm1
+140c9ce46 addss xmm2, xmm1
+140c9ce4a addss xmm2, xmm0
+140c9ce4e xorps xmm0, xmm0
+140c9ce51 sqrtss xmm0, xmm2
+140c9ce55 movss xmm2, dword ptr [rip + 0x1c88aa7]
+140c9ce5d movaps xmm4, xmm2
+140c9ce60 divss xmm4, xmm0
+140c9ce64 movsldup xmm1, xmm4
+140c9ce68 mulps xmm1, xmm5
+140c9ce6b movshdup xmm0, xmm1
+140c9ce6f mulss xmm4, xmm3
+140c9ce73 movss xmm3, dword ptr [r8 + 8]
+140c9ce79 mulss xmm3, xmm1
+140c9ce7d movsd xmm6, qword ptr [r8]
+140c9ce82 movsd xmm7, qword ptr [r8 + 4]
+140c9ce88 movaps xmm5, xmm4
+140c9ce8b shufps xmm5, xmm1, 0xd4
+140c9ce8f shufps xmm5, xmm1, 0xf2
+140c9ce93 mulps xmm5, xmm6
+140c9ce96 mulss xmm6, xmm4
+140c9ce9a subss xmm3, xmm6
+140c9ce9e mulps xmm7, xmm1
+140c9cea1 subps xmm5, xmm7
+140c9cea4 movaps xmm6, xmm3
+140c9cea7 mulss xmm6, xmm3
+140c9ceab movaps xmm7, xmm5
+140c9ceae mulps xmm7, xmm5
+140c9ceb1 movshdup xmm8, xmm7
+140c9ceb6 addss xmm8, xmm6

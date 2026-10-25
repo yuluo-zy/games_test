@@ -1,0 +1,42 @@
+
+void __cdecl country_core::systems::save::shadow_file::ShadowFile::sync_all(void)
+
+{
+  longlong lVar1;
+  char extraout_AL;
+  longlong extraout_RAX;
+  undefined8 extraout_RAX_00;
+  longlong in_RCX;
+  undefined8 *local_38;
+  undefined8 local_30;
+  
+  if (4 < *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E) {
+    toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();
+    ::log::__private_api::impl$2::log();
+  }
+  flush();
+  if (extraout_AL != '\0') {
+    if (!SBORROW8(0,*(longlong *)(in_RCX + 0x40))) {
+                    // WARNING: Subroutine does not return
+      core::panicking::panic_fmt();
+    }
+    std::fs::File::sync_all();
+    if (extraout_RAX == 0) {
+      local_30 = 0;
+      lVar1 = *(longlong *)(in_RCX + 0x78);
+    }
+    else {
+      std::backtrace::Backtrace::capture();
+      anyhow::Error::construct<anyhow::error::ContextError<ref_<str_>,std::io::error::Error>_>();
+      lVar1 = *(longlong *)(in_RCX + 0x78);
+      local_30 = extraout_RAX_00;
+    }
+    if (lVar1 != 0) {
+      anyhow::error::impl$6::drop();
+    }
+    local_38 = (undefined8 *)(in_RCX + 0x78);
+    *local_38 = local_30;
+  }
+  return;
+}
+

@@ -1,0 +1,129 @@
+tabloid::Subscriber$LT$T$GT$::take::hd382462b001b78b0 (.llvm.15199191784329602580)
+0x141454590: push rbp
+0x141454591: push r15
+0x141454593: push r14
+0x141454595: push rsi
+0x141454596: push rdi
+0x141454597: push rbx
+0x141454598: sub rsp, 0x48
+0x14145459c: lea rbp, [rsp + 0x40]
+0x1414545a1: mov qword ptr [rbp], 0xfffffffffffffffe
+0x1414545a9: mov rbx, rdx
+0x1414545ac: mov rsi, rcx
+0x1414545af: lea rdi, [rdx + 0x10]
+0x1414545b3: mov cl, 1
+0x1414545b5: xor eax, eax
+0x1414545b7: lock cmpxchg byte ptr [rdx + 0x10], cl
+0x1414545bc: jne 0x141454715
+0x1414545c2: mov rcx, rdi
+0x1414545c5: call 0x140c81c70
+0x1414545ca: mov r15, qword ptr [rbx + 0x20]
+0x1414545ce: mov qword ptr [rbx + 0x20], 0
+0x1414545d6: test r15, r15
+0x1414545d9: je 0x141454614
+0x1414545db: mov qword ptr [rbp - 0x18], rdi
+0x1414545df: mov qword ptr [rbp - 0x10], r15
+0x1414545e3: lea rdi, [r15 + 0x10]
+0x1414545e7: mov rax, qword ptr [r15 + 0x10]
+0x1414545eb: mov ecx, eax
+0x1414545ed: and ecx, 8
+0x1414545f0: shr ecx, 3
+0x1414545f3: cmp rax, -0x10
+0x1414545f7: setae dl
+0x1414545fa: or dl, cl
+0x1414545fc: je 0x141454620
+0x1414545fe: mov byte ptr [rbp - 1], 1
+0x141454602: mov rcx, rdi
+0x141454605: xor edx, edx
+0x141454607: mov r9d, 0x3b9aca00
+0x14145460d: call 0x1428cc4b0
+0x141454612: jmp 0x14145462b
+0x141454614: mov qword ptr [rsi], 0
+0x14145461b: jmp 0x1414546f6
+0x141454620: lea rcx, [rax + 0x10]
+0x141454624: lock cmpxchg qword ptr [rdi], rcx
+0x141454629: jne 0x1414545fe
+0x14145462b: mov byte ptr [rbp - 1], 1
+0x14145462f: mov rcx, rdi
+0x141454632: call 0x140c81c70
+0x141454637: mov r14, rdi
+0x14145463a: or r14, 1
+0x14145463e: mov byte ptr [rbp - 1], 1
+0x141454642: mov rcx, r14
+0x141454645: call 0x140c81c70
+0x14145464a: mov rax, qword ptr [r15 + 0x218]
+0x141454651: mov qword ptr [rbx + 0x18], rax
+0x141454655: mov byte ptr [rbp - 1], 1
+0x141454659: mov rcx, rdi
+0x14145465c: call 0x140c81e10
+0x141454661: mov byte ptr [rbp - 1], 1
+0x141454665: mov rcx, r14
+0x141454668: call 0x140c81e10
+0x14145466d: mov rax, 0xfffffffffffffff0
+0x141454674: lock xadd qword ptr [rdi], rax
+0x141454679: and rax, 0xfffffffffffffff2
+0x14145467d: cmp rax, 0x12
+0x141454681: je 0x14145473e
+0x141454687: mov rbx, qword ptr [rbp - 0x10]
+0x14145468b: lea rdi, [rbx + 0x10]
+0x14145468f: mov rax, qword ptr [rbx + 0x10]
+0x141454693: mov ecx, eax
+0x141454695: and ecx, 8
+0x141454698: shr ecx, 3
+0x14145469b: cmp rax, -0x10
+0x14145469f: setae dl
+0x1414546a2: or dl, cl
+0x1414546a4: je 0x1414546bc
+0x1414546a6: mov byte ptr [rbp - 1], 0
+0x1414546aa: mov rcx, rdi
+0x1414546ad: xor edx, edx
+0x1414546af: mov r9d, 0x3b9aca00
+0x1414546b5: call 0x1428cc4b0
+0x1414546ba: jmp 0x1414546c7
+0x1414546bc: lea rcx, [rax + 0x10]
+0x1414546c0: lock cmpxchg qword ptr [rdi], rcx
+0x1414546c5: jne 0x1414546a6
+0x1414546c7: mov byte ptr [rbp - 1], 0
+0x1414546cb: mov rcx, rdi
+0x1414546ce: call 0x140c81c70
+0x1414546d3: mov rcx, rdi
+0x1414546d6: or rcx, 1
+0x1414546da: mov byte ptr [rbp - 1], 0
+0x1414546de: call 0x140c81c70
+0x1414546e3: add rbx, 0x18
+0x1414546e7: mov qword ptr [rsi], rdi
+0x1414546ea: mov qword ptr [rsi + 8], rbx
+0x1414546ee: mov qword ptr [rsi + 0x10], rdi
+0x1414546f2: mov rdi, qword ptr [rbp - 0x18]
+0x1414546f6: mov rcx, rdi
+0x1414546f9: call 0x140c81e10
+0x1414546fe: xor ecx, ecx
+0x141454700: mov al, 1
+0x141454702: lock cmpxchg byte ptr [rdi], cl
+0x141454706: jne 0x141454728
+0x141454708: add rsp, 0x48
+0x14145470c: pop rbx
+0x14145470d: pop rdi
+0x14145470e: pop rsi
+0x14145470f: pop r14
+0x141454711: pop r15
+0x141454713: pop rbp
+0x141454714: ret 
+0x141454715: mov rcx, rdi
+0x141454718: mov r8d, 0x3b9aca00
+0x14145471e: call 0x1428cd210
+0x141454723: jmp 0x1414545c2
+0x141454728: mov rcx, rdi
+0x14145472b: xor edx, edx
+0x14145472d: add rsp, 0x48
+0x141454731: pop rbx
+0x141454732: pop rdi
+0x141454733: pop rsi
+0x141454734: pop r14
+0x141454736: pop r15
+0x141454738: pop rbp
+0x141454739: jmp 0x1428cdb90
+0x14145473e: mov byte ptr [rbp - 1], 1
+0x141454742: mov rcx, rdi
+0x141454745: call 0x1428ccf50
+0x14145474a: jmp 0x141454687

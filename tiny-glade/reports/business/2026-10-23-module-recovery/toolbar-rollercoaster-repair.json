@@ -1,0 +1,121 @@
+{
+  "status": "in_progress",
+  "updated_utc": "2026-10-24T10:20:27.945737+00:00",
+  "scope": "TB-R5；真实Steam SDK排除；OS输入验收仍暂停",
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+  "implemented": [
+    "prompt_rollercoaster读取实际GameProfile槽29(ui_confirm)，Steam query0x1401，完整消费事件批次",
+    "photomode_focus原尾部事件输出与ghost modifier抢占",
+    "原权威PROMPT_ROLLERCOASTER AtomicBool槽（上游未注册，不冒称生产完成）",
+    "原空闲目标解析+前置条件已按275例原指令域恢复",
+    "CoasterAudioInstance::new ordered volume>=0.03修复NaN错误",
+    "assemble_coaster_track原邻接遍历/端点裁剪/逐坐标去重/地板/重采样/平滑已写；尚未新构建/差分",
+    "CoasterAudioState四实例/三实例池与原顺序及阈值恢复，原1/3/12车调用轨迹对照通过",
+    "create_cart_chain邻车LIFO、仅processed判重、双侧原射线及真实VelocityOnly/PrevTransform生成已实现",
+    "CartMotion J/BC/A/peak和CoasterProgress速度/t原复杂算法已逐位对照",
+    "本轮最新已以原Local<Option>载荷替换旧carts+enabled与todo主体，完整骑乘系统候选写入，当前未编译/接入宿主验收"
+  ],
+  "verified": [
+    {
+      "command": "cargo test -p system-onboarding --lib rollercoaster_prompt_tests --offline",
+      "cases": 1,
+      "result": "passed; 加格式化前源版本，后续重跑"
+    },
+    {
+      "command": "tools/venv/bin/python verify_toolbar_rollercoaster_tail.py",
+      "cases": 48,
+      "result": "passed native oracle; Rust test pending"
+    },
+    {
+      "command": "tools/venv/bin/python verify_toolbar_rollercoaster_target.py",
+      "cases": 275,
+      "result": "passed native oracle; 3个已解析依赖桥详见原报告"
+    },
+    {
+      "command": "cargo test -p tiny-glade --lib original_coaster_target_tests --offline",
+      "cases": 2,
+      "result": "passed; native274安全Entity域+音频阈值/参数顺序；assemble_coaster_track为随后新增，尚未该构建覆盖"
+    },
+    {
+      "command": "cargo test -p toolbar --lib rollercoaster_tail_tests --offline",
+      "cases": 1,
+      "result": "passed;48原尾部fixture",
+      "log": "/tmp/photo-tail-test-final.log"
+    },
+    {
+      "command": "rustc --test crates/tiny-glade/src/rollercoaster.rs (last successful host dependency fingerprints)",
+      "cases": 3,
+      "result": "passed;274安全Entity判定+120初始采样逐bit+NaN音频门控；这是当前生产单文件定点，宿主Cargo被渲染API E0308阻断，非整游戏验收",
+      "log": "/tmp/photo-owned-rustc-tests.log"
+    },
+    {
+      "command": "rustc --test crates/tiny-glade/src/rollercoaster.rs exact cached host dependency fingerprints; /tmp/toolbar-coaster-owned-tests --nocapture",
+      "cases": 7,
+      "result": "passed before full ECS system replacement: native274 resolved target +120 initial parameter+45 neighbor rays+1728 cart dynamics+5400 speed+3 audio init traces+NaN gate; helper aggregate is not ride integration acceptance",
+      "log": "toolbar-rollercoaster-owned-before-integration-tests.log"
+    }
+  ],
+  "unresolved": [
+    "完整rollercoaster_update候选已写但待当前Cargo编译与CPU集成、原side-effect分支差分；不能声明TB-R5生产完成",
+    "宿主尚未调用rollercoaster::build，需要真实camera之后、摄影prompt consumer之前注册",
+    "有界射线原max_toi4/2需要RaycastWorld现有API增补，暂无限查询后过滤，中央待确认文件所有权",
+    "原轨道组装尚未业务级原指令差分；原Spline/Curve已有库实现复用但未等同整轨道验收",
+    "羊配件/随机反应/相机/音频帧尾及退出联合验收仍待执行",
+    "真实OS输入仍用户暂停",
+    "Cargo构建曾磁盘不足，中央统一清理后空间28GiB，等待解除Cargo暂停；旧单文件缓存差分不替代当前host"
+  ],
+  "lessons": [
+    "PDB code_size25204包含EH funclets，正常CFG18638不能当成缺失6516字节；但get_functions120k文本截断需ReVa分页补全3122行",
+    "禁止从名称或相邻数据猜ty集合，bitmask实际{23,24,40,54}",
+    "轨道起始方向原cart quaternion旋转NEG_X，不能按常见camera NEG_Z猜测",
+    "地板clamp原SSE4点块与scalar尾对NaN选择不同，不能一概f32::max",
+    "原EventReader游标推进队尾：read().next()不能替代整批消费",
+    "rustfmt默认跟进mod子文件；本次已产生额外纯格式变动，后续定点必须skip_children=true",
+    "原动态夹具发现peak maxss相等保留旧-0，不可用f32::max直接假定逐位等价",
+    "音频初始化原trace检出overlap=0.7*attenuation、水=2*attenuation，反编译无参数不能靠常见静音猜测",
+    "原1ms速度/t夹具初版误写私有State偏移，候选坚持失败后修复原探针；原侧oracle也要审核输入",
+    "原FunctionSystem泛型完整参数可在structures named_symbol_entities的procedure_occurrences中取，确认末项Modifiers，避免ICF别名is_fence误判"
+  ],
+  "format_only_extra_files": [
+    "crates/systems/onboarding/src/hint_orchestrator.rs",
+    "crates/systems/onboarding/src/exponential_back_off.rs",
+    "crates/systems/onboarding/src/hint_camera_controls.rs",
+    "crates/systems/onboarding/src/hint_unlink_windows.rs",
+    "crates/systems/onboarding/src/hint_focused_edit.rs",
+    "crates/systems/onboarding/src/hints_startup.rs",
+    "crates/systems/onboarding/src/hint_deselect_tool.rs",
+    "crates/systems/onboarding/src/tutorial_completion.rs",
+    "crates/systems/onboarding/src/hint_undo.rs",
+    "crates/systems/onboarding/src/hint_clutter_focus_edit.rs",
+    "crates/systems/onboarding/src/hint_stairs.rs",
+    "crates/systems/onboarding/src/hint_disable_snapping.rs",
+    "crates/systems/onboarding/src/hint_display_system.rs",
+    "crates/systems/toolbar/src/photomode/ui_slider.rs",
+    "crates/systems/toolbar/src/photomode/setup_photomode_toolbar.rs",
+    "crates/systems/toolbar/src/photomode/setup_photomode_toolbar_tests.rs"
+  ],
+  "source_capture": "阶段快照，不是整个workspace编译身份；保持后续修改/重验记录",
+  "sources": [
+    {
+      "path": "crates/systems/onboarding/src/lib.rs",
+      "sha256": "0c65e8ce8515d65e2e5e22c2cb9d00c08f46f135cc909df43a5aa4196c5a6b44"
+    },
+    {
+      "path": "crates/systems/toolbar/src/photomode.rs",
+      "sha256": "4c137ddf803164e3f0bff0143bc58d21091c2f8949ccd525a67eb854dab8f553"
+    },
+    {
+      "path": "crates/country-core/src/systems/main_camera.rs",
+      "sha256": "ada55602e3326a7fc4d354fa1cacfc8349c44378b47f19576dfa16103b32ed34"
+    },
+    {
+      "path": "crates/tiny-glade/src/rollercoaster.rs",
+      "sha256": "547643f27fa0fe888bb413ee806ac499108a23f62a3a90433dbed53c4c061197"
+    },
+    {
+      "path": "crates/tiny-glade/Cargo.toml",
+      "sha256": "ac693c512f73f5e5d9c47f2d1ff6d0a2e19e79f60a5866ce29b70cfe8b26e039"
+    }
+  ]
+}

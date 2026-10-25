@@ -1,0 +1,90 @@
+
+void __cdecl country_core::systems::timelapse_replay::finish_timelapse(void)
+
+{
+  byte bVar1;
+  byte *pbVar2;
+  longlong lVar3;
+  undefined8 uVar4;
+  longlong lVar5;
+  undefined8 *in_RCX;
+  longlong *in_RDX;
+  ulonglong uVar6;
+  ulonglong uVar7;
+  ulonglong uVar8;
+  longlong lVar9;
+  ulonglong uVar10;
+  undefined8 *in_R8;
+  undefined8 *in_R9;
+  ulonglong uVar11;
+  bool bVar12;
+  bool bVar13;
+  longlong *in_stack_00000028;
+  
+  lVar9 = in_RCX[1];
+  uVar8 = *(ulonglong *)*in_RCX;
+  uVar11 = 0;
+  uVar6 = uVar8 - *(ulonglong *)(lVar9 + 0x18);
+  if (uVar8 < *(ulonglong *)(lVar9 + 0x18)) {
+    uVar6 = uVar11;
+  }
+  uVar10 = uVar8 - *(ulonglong *)(lVar9 + 0x38);
+  if (uVar8 < *(ulonglong *)(lVar9 + 0x38)) {
+    uVar10 = uVar11;
+  }
+  bVar12 = *(ulonglong *)(lVar9 + 0x30) < uVar10;
+  uVar10 = *(ulonglong *)(lVar9 + 0x30) - uVar10;
+  uVar8 = uVar10;
+  if (bVar12) {
+    uVar8 = uVar11;
+  }
+  bVar13 = *(ulonglong *)(lVar9 + 0x10) < uVar6;
+  uVar6 = *(ulonglong *)(lVar9 + 0x10) - uVar6;
+  uVar7 = uVar6;
+  if (bVar13) {
+    uVar7 = uVar11;
+  }
+  uVar8 = uVar7 + uVar8;
+  if (!bVar13 && uVar6 != 0 || !bVar12 && uVar10 != 0) {
+    uVar8 = uVar11;
+  }
+  *(ulonglong *)*in_RCX = *(longlong *)(lVar9 + 0x40) - uVar8;
+  *(undefined4 *)in_R9[2] = *(undefined4 *)((longlong)in_R9 + 0x1c);
+  pbVar2 = (byte *)*in_R9;
+  if (*pbVar2 != 2) {
+    if (!bVar13 && uVar6 != 0 || !bVar12 && uVar10 != 0) {
+      lVar9 = *in_stack_00000028;
+      if ((*pbVar2 & 1) == 0) {
+        *(undefined4 *)in_stack_00000028[2] = *(undefined4 *)((longlong)in_stack_00000028 + 0x1c);
+        alloc::collections::vec_deque::impl$18::
+        extend<enum2_<country_core::meta_commander::MetaCommand>,alloc::alloc::Global,array_<enum2_<country_core::meta_commander::MetaCommand>,1>_>
+                  ();
+        *pbVar2 = 1;
+      }
+    }
+    else {
+      lVar9 = *in_stack_00000028;
+    }
+    if (*(longlong *)(lVar9 + 0x18) == 0) {
+      *(undefined4 *)in_R8[2] = *(undefined4 *)((longlong)in_R8 + 0x1c);
+      *(undefined4 *)*in_R8 = 0;
+      bVar1 = *pbVar2;
+      *(undefined4 *)in_RDX[2] = *(undefined4 *)((longlong)in_RDX + 0x1c);
+      lVar9 = *in_RDX;
+      lVar3 = *(longlong *)(lVar9 + 0x30);
+      uVar4 = *(undefined8 *)(lVar9 + 0x40);
+      if (lVar3 == *(longlong *)(lVar9 + 0x20)) {
+        alloc::raw_vec::RawVec::
+        grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>
+                  ();
+      }
+      lVar5 = *(longlong *)(lVar9 + 0x28);
+      *(undefined8 *)(lVar5 + lVar3 * 0x10) = uVar4;
+      *(byte *)(lVar5 + 8 + lVar3 * 0x10) = bVar1;
+      *(longlong *)(lVar9 + 0x30) = lVar3 + 1;
+      *(longlong *)(lVar9 + 0x40) = *(longlong *)(lVar9 + 0x40) + 1;
+    }
+  }
+  return;
+}
+

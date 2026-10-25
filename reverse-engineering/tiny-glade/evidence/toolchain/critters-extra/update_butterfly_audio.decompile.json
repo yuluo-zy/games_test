@@ -1,0 +1,9 @@
+{
+  "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+  "program": "tiny-glade.exe",
+  "name": "update_butterfly_audio",
+  "entry": "141d86eb0",
+  "body": "[[141d86eb0, 141d87131]]",
+  "signature": "void __cdecl update_butterfly_audio(void)",
+  "decompiled": "\nvoid __cdecl system_critters::butterfly::update_butterfly_audio(void)\n\n{\n  uint *puVar1;\n  uint uVar2;\n  longlong lVar3;\n  longlong *in_RCX;\n  longlong lVar4;\n  longlong lVar5;\n  uint *puVar6;\n  \n  lVar5 = *in_RCX;\n  lVar3 = in_RCX[1];\n  puVar6 = *(uint **)(lVar5 + 0xf8);\n  puVar1 = puVar6 + *(longlong *)(lVar5 + 0x100);\n  if (*(char *)(lVar5 + 0x108) == '\\0') {\n    lVar5 = 0;\n    lVar4 = 0;\n    do {\n      if (lVar4 == lVar5) {\n        do {\n          if (puVar6 == puVar1) {\n            return;\n          }\n          uVar2 = *puVar6;\n          puVar6 = puVar6 + 1;\n          lVar5 = *(longlong *)(*(longlong *)(lVar3 + 0x100) + 0x58 + (ulonglong)uVar2 * 0xa0);\n        } while (lVar5 == 0);\n        lVar4 = 0;\n      }\n      lVar4 = lVar4 + 1;\n      country_core::resources::critters::ButterflyAudio::set_position();\n    } while( true );\n  }\n  lVar5 = 0;\n  lVar4 = 0;\n  do {\n    if (lVar4 == lVar5) {\n      do {\n        if (puVar6 == puVar1) {\n          return;\n        }\n        uVar2 = *puVar6;\n        puVar6 = puVar6 + 1;\n        lVar5 = *(longlong *)(*(longlong *)(lVar3 + 0x1a8) + 0x10 + (ulonglong)uVar2 * 0x48);\n      } while (lVar5 == 0);\n      lVar4 = 0;\n    }\n    lVar4 = lVar4 + 1;\n    country_core::resources::critters::ButterflyAudio::set_position();\n  } while( true );\n}\n\n"
+}

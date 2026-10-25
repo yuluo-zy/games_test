@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "status": "success",
+  "exit_code": 0,
+  "timeout_seconds": 300.0,
+  "prompt_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\roofs-stairs\\claude-switch-prompt.txt",
+  "stdout_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\roofs-stairs\\claude-switch.stdout.json",
+  "stderr_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\roofs-stairs\\claude-switch.stderr.txt",
+  "command": [
+    "C:\\Users\\liyu\\AppData\\Roaming\\npm\\node_modules\\@anthropic-ai\\claude-code\\bin\\claude.exe",
+    "-p",
+    "--tools",
+    "",
+    "--output-format",
+    "json",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "{\"mcpServers\":{}}"
+  ],
+  "result": "**Flat-source branch.** Gated by R12B==1 (else → accb0). h = [RAX+0x54], RAX = return of 0x14085a650. `UCOMISS h,1.6` + JNZ/JNP is the standard \"equal *and* ordered\" test: h==1.6 skips to accb0; h!=1.6 **and NaN** enter acc7e.\n\nThe previous adapter is wrong three ways:\n1. Not unconditional — exact 1.6 is a no-op.\n2. It is a saturating clamp, not a constant: XMM1=max(1.6,h), XMM2=min(14.0,XMM1) → clamp(h,1.6,14.0). Only h<1.6 yields 1.6; 1.6<h<14 passes through unchanged; h>14 → 14.0.\n3. The result is never stored back to [RAX+0x54]. It stays in XMM2 as a float arg to 0x14085ad60, so \"writes 1.6\" holds only if that callee stores it.\n\nNaN: MAXSS/MINSS return the source operand when either input is NaN, so NaN propagates into XMM2 — not 1.6.\n\n**pivot_3d (1408e3220).** Returns (elem[i].f0, [RDX+0x4c], elem[i].f1), stride 8. The middle component is a struct-level scalar shared by every index, not read from the element — a plane constant. The leaf carries no name or sign evidence, so floor vs apex is **not determinable from this leaf**; a shared constant is consistent with a floor plane, but a per-roof apex would also be constant per call. Do not assert either.\n\n**Side effects.** INC [RDX+0x40] (counter); u32 from [RBP+0xb4] stored through [RBP]; call 0x14085ad60; at accb0 a 24-byte record (two static ptrs + R14) appended.",
+  "is_error": false,
+  "subtype": "success",
+  "elapsed_seconds": 37.872
+}

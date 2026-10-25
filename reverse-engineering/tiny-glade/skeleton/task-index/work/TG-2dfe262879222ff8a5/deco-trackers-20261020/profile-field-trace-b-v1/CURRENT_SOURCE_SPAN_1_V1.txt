@@ -1,0 +1,104 @@
+}
+#[derive(Clone, Debug)]
+pub struct CollectedWallPublication {
+    pub outline: Arc<Vec<[f32; 3]>>,
+    pub outline_u: Vec<f32>,
+    pub mapped_curve_length: f32,
+    /// PublicWallState B +0x28c retains raw 2D length, not mapped 3D length.
+    pub original_curve_length: f32,
+    pub terrain_y: Vec<f32>,
+    pub relative_heights: Vec<f32>,
+    pub metrics: WallPublicationMetrics,
+}
+#[derive(Debug, PartialEq)]
+pub enum CollectionError {
+    InvalidSource,
+    Curve(CurveError),
+    ExcessiveSampleCount,
+}
+
+/// B 14146bb70's game sampling policy; source segment endpoints are preserved,
+/// including a repeated closing point. No closing edge is fabricated.
+pub fn collect_raw_wall_publication(
+    source: &RawWallPublicationSource,
+    terrain: &TerrainHeightGrid512,
+) -> Result<CollectedWallPublication, CollectionError> {
+    if source.curve.points.len() < 2 || !(source.curve.length > 0.0) {
+        return Err(CollectionError::InvalidSource);
+    }
+    let floor = if source.terrain_floor > 0.0 {
+        source.terrain_floor
+    } else {
+        f32::from_bits(0xc02ccccd)
+    };
+    let mut outline = Vec::with_capacity(source.curve.points.len());
+    let map = |p: [f32; 2]| {
+        let y = terrain.sample_at_world_xz(p[0], p[1]);
+        let y = if y.is_nan() || floor > y { floor } else { y };
+        [p[0], y, p[1]]
+    };
+    outline.push(map(source.curve.points[0]));
+    for segment in source.curve.points.windows(2) {
+        let [a, b] = [segment[0], segment[1]];
+        let dx = b[0] - a[0];
+        let dz = b[1] - a[1];
+        let length = (dz * dz + dx * dx).sqrt();
+        let epsilon = f32::from_bits(0x322bcc77);
+        let length = if length > epsilon { length } else { epsilon };
+        let step = 0.5 / length;
+        let step = if step < 1.0 { step } else { 1.0 };
+        let n = (1.0 / step).round() as u64;
+        let mut count = n.wrapping_add(1).max(2);
+        if source.curve_kind_tag == 1 && count & 1 == 0 {
+            count |= 1;
+        }
+        // The original allocator cannot materialize impossible sizes either.
+        // Reject before conversion/allocation instead of hanging the runtime.
+        if count > isize::MAX as u64 / 12 || !length.is_finite() {
+            return Err(CollectionError::ExcessiveSampleCount);
+        }
+        for j in 1..count {
+            let t = j as f32 / (count as f32 - 1.0);
+            outline.push(map([
+                b[0] * t + a[0] * (1.0 - t),
+                b[1] * t + a[1] * (1.0 - t),
+            ]));
+        }
+    }
+    // Original try_new_from_points< Vec3 > calculates 3D arc length and U.
+    let mut mapped_curve_length = 0.0;
+    let mut outline_u = Vec::with_capacity(outline.len());
+    let mut previous = outline[0];
+    for p in &outline {
+        let x = previous[0] - p[0];
+        let y = previous[1] - p[1];
+        let z = previous[2] - p[2];
+        mapped_curve_length += (z * z + (y * y + x * x)).sqrt();
+        outline_u.push(mapped_curve_length);
+        previous = *p;
+    }
+    if mapped_curve_length == 0.0 || !mapped_curve_length.is_finite() {
+        return Err(CollectionError::Curve(CurveError::NonFiniteLength));
+    }
+    for u in &mut outline_u {
+        *u /= mapped_curve_length;
+    }
+    let terrain_y: Vec<_> = outline
+        .iter()
+        .map(|p| terrain.sample_at_world_xz(p[0], p[2]))
+        .collect();
+    let relative_heights: Vec<_> = outline
+        .iter()
+        .zip(&terrain_y)
+        .map(|(p, y)| p[1] - y)
+        .collect();
+    let metrics = publication_metrics(&relative_heights, &outline, source.extra, source.special);
+    Ok(CollectedWallPublication {
+        outline: Arc::new(outline),
+        outline_u,
+        mapped_curve_length,
+        original_curve_length: source.curve.length,
+        terrain_y,
+        relative_heights,
+        metrics,
+    })

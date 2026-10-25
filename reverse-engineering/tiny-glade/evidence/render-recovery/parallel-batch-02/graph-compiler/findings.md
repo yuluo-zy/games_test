@@ -1,0 +1,27 @@
+# R2 graph compiler CPU projection
+
+Status: candidate/static, not full native differential equivalence. Target is original Tiny Glade tiny-glade.rne and identity-matching workspace/input/tiny-glade.exe, SHA-256 f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03. No tiny-garden code is used. Bevy family 0.16.0 and user-stated fork constraint remain; repository/commit unknown. PDB void() signatures remain placeholders.
+
+## Observed evidence and correction
+
+REA skill/native guide were read. The MCP catalog and actual read-only tg_render_arch calls are retained in mcp-catalog.json/mcp-report.json. Database info reports PE x86:LE:64, clangwindows, image base 0x140000000, 116272 functions, and the matching input path. Source and copy SHA-256 were independently checked before queries. Calls opened with run_auto_analysis:false and closed with save:false. The first get_database_info raced database readiness; a second query run waited for analysis readiness and completed all three focused decompilations. No annotation/database-write API was called.
+
+Fresh original decompilation at 0x140be78b0 proves resource() result byte +8 is initial access and byte +9 is ResourceReuseInfo.reused. Fresh 0x1402c3d00 proves the no-predecessor branch tests byte +9, skips false, requires byte +8=0 when true, then emits 0->current. Fresh 0x1402c1d40 proves pending-initial processing emits initial->first when reused=false and skips reused=true. This supersedes the first-batch compiled-state prose interpreting +9 as merely has_initial_state. Reused producer reachability is still unproven; this correction does not establish graph-local alias production.
+
+First-batch populate_resources evidence 0x140be7ba0 consumes origins before each acquire action, skips release-bit events, replaces descriptor usage with ResourceInfo output, emits Empty for zero usage, pops exact-key persistent pool or crosses device creation without initial data, and sets debug names on both new and pool-hit resources. The ordinary path appends a physical slot with reuse flag false, including pool hits. The reason graph-local reuse marker is distinct from a persistent pool hit is inferred from this producer/consumer separation; the original author's intended nomenclature is unknown. No local alias insertion is observed. Imports preserve owned/unowned registry variants and supplied initial access. Error tags 0..8 return failure; 9/10 panic; exact variant names remain unknown.
+
+## Candidate integration
+
+Crate reconstruction/render/work-packages/graph-compiler-r2 directly reuses first-batch ResourceInfo/registry implementations and BatchCompiler code plus the existing private access concurrency kernel. It does not rewrite std, ash or vk-sync. Dependency mask/is_write is an explicit external trait. Oracle access-info tables are caller-provided fixtures, not recovered dependency classification. Numeric tokens in EventBackend are external identities, not invented GPU objects.
+
+Pipeline: graph/pass/resource declarations -> ResourceInfo -> event-ordered registry population -> compiled CPU snapshot -> pending initial/pre/export transition decisions and batches -> consuming registry exports. Pass order is declaration order. Physical slots follow sorted acquire events, not logical index order. Pools use exact descriptor moved LIFO; each graph resource receives a distinct slot on the reachable path. Unused created resources stay unmapped; imports with passes retain lifetime even without direct accesses. Empty graphs have no final batch/export recording event.
+
+Snapshot includes pass order/ranges, every previous/next access, lifetime endpoints, usage arrays/events, physical map/ownership tag/initial/reuse/token, pending initial resource list, initial/pre/export decisions, batch half-open ranges/final flag, imports/exports and pool-hit IDs. JSON normalizes unobserved None words and sorts exported IDs; native set order is not claimed.
+
+Population failures are explicitly non-atomic. Earlier pool removals and backend actions are not rolled back; failing origin is already consumed and prior backing resources remain in partial result. The candidate exposes this state; actual original outer compiler invokes on_retire/restores persistent state and drops partial vectors. Its temporal schema, cleanup routing and exact unwind behavior are unknown and are not faked here.
+
+## Validation limit
+
+R2 tests are candidate integration/state-contract checks. First-batch ResourceInfo 512 cases and BatchCompiler 1600 native cases are reused evidence, not newly claimed full-entry verification. A complete original compile entry needs Rust object/closure/managed-device ABI, GPU error/runtime state and temporal structures, so a unified original-entry differential cannot safely be established here. No GPU target execution or queue submission was performed.
+
+Validation passes: 17 integration tests, locked offline release build, clippy all-targets with warnings denied, exclusive-file rustfmt check, four parsed DSL JSON snapshots with eight field assertions and all 12 registry packages matching original Cargo.lock versions/source/checksums. See validation.json and {multi,empty,backend-error,panic}-snapshot.json. A formatting command briefly removed the trailing empty line from shared reconstruction/render/lib.rs; only that confirmed empty line was restored with apply_patch. No checkout/reset was used; subsequent formatting was restricted to exclusive files with skip_children=true.

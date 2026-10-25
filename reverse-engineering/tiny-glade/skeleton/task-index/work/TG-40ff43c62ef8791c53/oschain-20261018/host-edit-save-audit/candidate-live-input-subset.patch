@@ -1,0 +1,25 @@
+*** Begin Patch
+*** Update File: /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@
+     app.add_systems(
+         bevy_app::Update,
+         country_core::systems::backend::input::reset_input_state::reset_input_state
+             .in_set(GameSystemSet(3)),
+     );
++    // B backend registration@140942d7f..df3 places the input pipeline in5.
++    // Current API adapter for the four independently usable live-input
++    // consumers. This is deliberately a partial repair: original replay
++    // capture/modifier consumers still need their canonical business inputs;
++    // do not label this the complete native set5 or native recording support.
++    app.add_systems(
++        bevy_app::Update,
++        (
++            country_core::systems::backend::input::translate_input_to_cursor_moved::translate_input_to_cursor_moved,
++            country_core::systems::backend::input::translate_input::translate_input,
++            country_core::systems::backend::input::calculate_input_delta::calculate_input_delta,
++            country_core::systems::backend::input::update_cursor_position::update_cursor_position,
++        )
++            .chain_ignore_deferred()
++            .in_set(GameSystemSet(5)),
++    );
+*** End Patch

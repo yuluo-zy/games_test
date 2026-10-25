@@ -1,0 +1,237 @@
+0x140fcdae0      push rbp
+0x140fcdae1      push r15
+0x140fcdae3      push r14
+0x140fcdae5      push rsi
+0x140fcdae6      push rdi
+0x140fcdae7      push rbx
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140fcdae8      sub rsp, 0x58
+0x140fcdaec      lea rbp, [rsp + 0x50]
+0x140fcdaf1      mov qword [rbp], 0xfffffffffffffffe
+0x140fcdaf9      mov rax, qword [rcx + 0x10]
+0x140fcdafd      mov qword [rbp - 0x18], rax
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140fcdb01      test rax, rax
+   ; unlikely
+0x140fcdb04      je 0x140fcdbe5
+0x140fcdb0a      mov rsi, rdx
+0x140fcdb0d      mov qword [rcx + 0x10], 0
+0x140fcdb15      movzx r15d, byte [r8]
+0x140fcdb19      mov qword [rbp - 0x28], rcx
+0x140fcdb1d      mov rax, qword [rcx + 8]
+0x140fcdb21      mov qword [rbp - 0x20], rax
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140fcdb25      xor ebx, ebx
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140fcdb27      xor r14d, r14d
+0x140fcdb2a      nop word [rax + rax]
+0x140fcdb30      lea rax, [r14 + r14*2]
+0x140fcdb34      mov rcx, qword [rbp - 0x20]
+0x140fcdb38      lea rdi, [rcx + rax*4]
+0x140fcdb3c      mov qword [rbp - 8], 0
+0x140fcdb44      mov qword [rbp - 0x10], r14
+0x140fcdb48      mov rcx, rdi
+; 0x13
+   ; reloc.WS2_32.dll_send
+0x140fcdb4b      mov dl, reloc.WS2_32.dll_send
+   ; 0x1409487b0(-1, 0x0, 0x13, -1)
+0x140fcdb4d      call 0x1409487b0
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140fcdb52      test al, al
+   ; unlikely
+0x140fcdb54      jne 0x140fcdbc0
+0x140fcdb56      mov qword [rbp - 8], 0
+0x140fcdb5e      mov qword [rbp - 0x10], r14
+0x140fcdb62      mov rcx, rdi
+; 0x14
+; 20
+0x140fcdb65      mov dl, setsockopt
+   ; 0x1409487b0(-1, 0x0, 0x14, -1)
+0x140fcdb67      call 0x1409487b0
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140fcdb6c      test al, al
+   ; unlikely
+0x140fcdb6e      jne 0x140fcdbc0
+0x140fcdb70      mov qword [rbp - 8], 0
+0x140fcdb78      mov qword [rbp - 0x10], r14
+0x140fcdb7c      mov rcx, rdi
+; 0x15
+   ; reloc.WS2_32.dll_setsockopt
+0x140fcdb7f      mov dl, reloc.WS2_32.dll_setsockopt
+   ; 0x1409487b0(-1, 0x0, 0x15, -1)
+0x140fcdb81      call 0x1409487b0
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140fcdb86      test al, al
+   ; unlikely
+0x140fcdb88      jne 0x140fcdbc0
+0x140fcdb8a      mov qword [rbp - 8], 0
+0x140fcdb92      mov qword [rbp - 0x10], r14
+0x140fcdb96      mov rcx, rdi
+; 0x16
+   ; reloc.WS2_32.dll_shutdown
+0x140fcdb99      mov dl, reloc.WS2_32.dll_shutdown
+   ; 0x1409487b0(-1, 0x0, 0x16, -1)
+0x140fcdb9b      call 0x1409487b0
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140fcdba0      test al, al
+   ; unlikely
+0x140fcdba2      jne 0x140fcdbc0
+0x140fcdba4      mov qword [rbp - 8], 0
+0x140fcdbac      mov qword [rbp - 0x10], r14
+0x140fcdbb0      mov rcx, rdi
+; 0x17
+   ; reloc.WS2_32.dll_socket
+0x140fcdbb3      mov dl, reloc.WS2_32.dll_socket
+   ; 0x1409487b0(-1, 0x0, 0x17, -1)
+0x140fcdbb5      call 0x1409487b0
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140fcdbba      test al, al
+   ; likely
+0x140fcdbbc      je 0x140fcdbc9
+0x140fcdbbe      nop
+0x140fcdbc0      mov byte [rsi], 1
+; reloc.WS2_32.dll_accept
+0x140fcdbc3      test r15b, 1
+   ; unlikely
+0x140fcdbc7      je 0x140fcdbf2
+   ; reloc.WS2_32.dll_accept
+0x140fcdbc9      inc r14
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140fcdbcc      cmp r14, qword [rbp - 0x18]
+   ; likely
+0x140fcdbd0      jne 0x140fcdb30
+0x140fcdbd6      mov rcx, qword [rbp - 0x18]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140fcdbda      sub rcx, rbx
+0x140fcdbdd      mov rax, qword [rbp - 0x28]
+0x140fcdbe1      mov qword [rax + 0x10], rcx
+   ; reloc.WS2_32.dll_accept
+0x140fcdbe5      add rsp, 0x58
+0x140fcdbe9      pop rbx
+0x140fcdbea      pop rdi
+0x140fcdbeb      pop rsi
+0x140fcdbec      pop r14
+0x140fcdbee      pop r15
+0x140fcdbf0      pop rbp
+0x140fcdbf1      ret
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140fcdbf2      inc r14
+   ; reloc.WS2_32.dll_accept
+0x140fcdbf5      mov ebx, 1
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140fcdbfa      cmp r14, qword [rbp - 0x18]
+   ; likely
+0x140fcdbfe      jne 0x140fcdc1f
+0x140fcdc00      jmp 0x140fcdbd6
+0x140fcdc02      nop word cs:[rax + rax]
+0x140fcdc10      mov byte [rsi], 1
+   ; reloc.WS2_32.dll_bind
+0x140fcdc13      inc rbx
+   ; reloc.WS2_32.dll_accept
+0x140fcdc16      inc r14
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140fcdc19      cmp r14, qword [rbp - 0x18]
+   ; unlikely
+0x140fcdc1d      je 0x140fcdbd6
+   ; reloc.WS2_32.dll_closesocket
+0x140fcdc1f      lea rax, [r14 + r14*2]
+0x140fcdc23      mov rcx, qword [rbp - 0x20]
+0x140fcdc27      lea rdi, [rcx + rax*4]
+0x140fcdc2b      mov qword [rbp - 8], rbx
+0x140fcdc2f      mov qword [rbp - 0x10], r14
+0x140fcdc33      mov rcx, rdi
+; 0x13
+   ; reloc.WS2_32.dll_send
+0x140fcdc36      mov dl, reloc.WS2_32.dll_send
+   ; 0x1409487b0(0xb, -1, 0x13, 0xb)
+0x140fcdc38      call 0x1409487b0
+   ; reloc.WS2_32.dll_accept
+0x140fcdc3d      test al, al
+   ; likely
+0x140fcdc3f      jne 0x140fcdc10
+0x140fcdc41      mov qword [rbp - 8], rbx
+0x140fcdc45      mov qword [rbp - 0x10], r14
+0x140fcdc49      mov rcx, rdi
+; 0x14
+; 20
+0x140fcdc4c      mov dl, setsockopt
+   ; 0x1409487b0(0xb, -1, 0x14, 0xb)
+0x140fcdc4e      call 0x1409487b0
+   ; reloc.WS2_32.dll_accept
+0x140fcdc53      test al, al
+   ; likely
+0x140fcdc55      jne 0x140fcdc10
+0x140fcdc57      mov qword [rbp - 8], rbx
+0x140fcdc5b      mov qword [rbp - 0x10], r14
+0x140fcdc5f      mov rcx, rdi
+; 0x15
+   ; reloc.WS2_32.dll_setsockopt
+0x140fcdc62      mov dl, reloc.WS2_32.dll_setsockopt
+   ; 0x1409487b0(0xb, -1, 0x15, 0xb)
+0x140fcdc64      call 0x1409487b0
+   ; reloc.WS2_32.dll_accept
+0x140fcdc69      test al, al
+   ; likely
+0x140fcdc6b      jne 0x140fcdc10
+0x140fcdc6d      mov qword [rbp - 8], rbx
+0x140fcdc71      mov qword [rbp - 0x10], r14
+0x140fcdc75      mov rcx, rdi
+; 0x16
+   ; reloc.WS2_32.dll_shutdown
+0x140fcdc78      mov dl, reloc.WS2_32.dll_shutdown
+   ; 0x1409487b0(0xb, -1, 0x16, 0xb)
+0x140fcdc7a      call 0x1409487b0
+   ; reloc.WS2_32.dll_accept
+0x140fcdc7f      test al, al
+   ; likely
+0x140fcdc81      jne 0x140fcdc10
+0x140fcdc83      mov qword [rbp - 8], rbx
+0x140fcdc87      mov qword [rbp - 0x10], r14
+0x140fcdc8b      mov rcx, rdi
+; 0x17
+   ; reloc.WS2_32.dll_socket
+0x140fcdc8e      mov dl, reloc.WS2_32.dll_socket
+   ; 0x1409487b0(0xb, -1, 0x17, 0xb)
+0x140fcdc90      call 0x1409487b0
+   ; reloc.WS2_32.dll_accept
+0x140fcdc95      test al, al
+   ; likely
+0x140fcdc97      jne 0x140fcdc10
+   ; reloc.WS2_32.dll_accept
+0x140fcdc9d      mov rax, r14
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140fcdca0      sub rax, rbx
+0x140fcdca3      lea rax, [rax + rax*2]
+0x140fcdca7      mov ecx, dword [rdi + 8]
+0x140fcdcaa      mov rdx, qword [rbp - 0x20]
+0x140fcdcae      mov dword [rdx + rax*4 + 8], ecx
+0x140fcdcb2      mov rcx, qword [rdi]
+0x140fcdcb5      mov qword [rdx + rax*4], rcx
+   ; reloc.WS2_32.dll_bind
+0x140fcdcb9      inc r14
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140fcdcbc      cmp r14, qword [rbp - 0x18]
+   ; likely
+0x140fcdcc0      jne 0x140fcdc1f
+0x140fcdcc6      jmp 0x140fcdbd6

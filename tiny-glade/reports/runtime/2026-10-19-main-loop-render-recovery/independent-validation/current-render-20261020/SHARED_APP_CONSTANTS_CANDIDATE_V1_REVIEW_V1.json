@@ -1,0 +1,57 @@
+{
+  "reviewer": "/root/render_reviewer",
+  "date": "2026-10-21",
+  "decision": "冻结三生产源加既有test无静态阻断；正确性与内存改善仍待root真实consumer验证",
+  "manifest_sha256": "42b4b3f2f5f13d0abd1092c822277775c4819c20f9d338b13df453e9a5a1f5db",
+  "patch_sha256": "f0ba3816b0d8ef3c1acf93d78143e5aa46a206e90a8adb7502bf65dc798c49ab",
+  "sources": [
+    {
+      "source": "tiny-glade/crates/tiny-glade/src/raster_host.rs",
+      "baseline_sha256": "5a675f5bbbd11aadb47447590db1720bf185cfe228270dc06c7569c4ffb622fb",
+      "candidate_sha256": "3ff7347e90d3afcf1b542b83660a08dea7264c3ec03a4189ca38599b885b197d",
+      "authority": "root delegated existing host adapter closure; original rawbinding work retained; no claim changes",
+      "classification": "engineering host owner wiring",
+      "production_at_review_sha256": "5a675f5bbbd11aadb47447590db1720bf185cfe228270dc06c7569c4ffb622fb"
+    },
+    {
+      "source": "tiny-glade/crates/tiny-glade/src/render_host.rs",
+      "baseline_sha256": "703706cf7687849e60c1ced68e62386ddf85f6ade8e765b3b11516255d73dfe0",
+      "candidate_sha256": "c69837d9dee6f634bb72ddb4426b82b70c781b75d807fe29999f29af43d58779",
+      "authority": "root delegated existing host adapter closure; original rawbinding work retained; no claim changes",
+      "classification": "engineering host owner wiring",
+      "production_at_review_sha256": "703706cf7687849e60c1ced68e62386ddf85f6ade8e765b3b11516255d73dfe0"
+    },
+    {
+      "source": "tiny-glade/crates/tiny-glade/src/render_bridge.rs",
+      "baseline_sha256": "015e4f67f7c45ad4a28a7aa47fc06cdecdd2f0072d1eeea870a14321971514c8",
+      "candidate_sha256": "8ccdf12ffe8aaab89c5bc6481119f1e415c59e0adc565cda88c4a3b14d60e71f",
+      "authority": "root delegated existing host adapter closure; original rawbinding work retained; no claim changes",
+      "classification": "engineering host owner wiring",
+      "production_at_review_sha256": "015e4f67f7c45ad4a28a7aa47fc06cdecdd2f0072d1eeea870a14321971514c8"
+    },
+    {
+      "source": "tiny-glade/crates/tiny-glade/tests/core_render_bridge.rs",
+      "baseline_sha256": "c0eb34996c1c2f44015caa93c0712bfbae6aa033e3c37d0c10c9e560500daa22",
+      "candidate_sha256": "ad4820a58ce123b160eea9b8cd9709b9e7c49078950a1d70846a086fc2651a80",
+      "authority": "root delegated existing host adapter closure; original rawbinding work retained; no claim changes",
+      "classification": "existing bridge regression",
+      "production_at_review_sha256": "c0eb34996c1c2f44015caa93c0712bfbae6aa033e3c37d0c10c9e560500daa22"
+    }
+  ],
+  "native_fact": "原FrameConstants/DynamicConstants全局owner先前frame_setup原证已绑定；本包仅修当前Rust adapter每with_compute短命池接缝，不宣称新还原原B分配算法。",
+  "reviewed_source": [
+    "RasterShared原已Arc<Mutex<DynamicConstants>>，新crate内getter只核既有self.device与expected Arc ptr_eq后clone当前self.dynamic，不锁池/分配池/跨App注册",
+    "GraphPasses原公共new保独立池；新new_with_app_constants保DynamicConstants::new原DeviceLost早返，直接from_parts已有Arc。每实例uniform_uploads继续Vec::new，没跨声明缓存Arc数据或活对象",
+    "CoreGraphFrame::with_compute只换构造器传当前bridge.raster；相同graph/tables/session，临时session Ref原语句末结束，finish错误优先和self.failed标记不变",
+    "dynamic Mutex仅原每次短allocate/push，未延长到导入/回调/submit；既有page group→dynamic→SyncCell路径不引入反向锁，提交gates不反取dynamic",
+    "复用同物理buffer不互换private/declared角色；原copy staging/UniformBytes/BDA/FrameGlobals按chunk exact offset,size；session同physical Arc复用logical身份，真实range/producer/revision检查继续执行",
+    "原PageRing1000alloc/32page/预算、CPU独占/Weak不可升级/真实全队列完成与used seal/取消flush规则完全没改；取消不能回滚或重置已被其他CPU lease持有页"
+  ],
+  "test_scope": "新既有bridge测试实际Device Buffer分配，两个with_compute同nativeBuffer非重叠range；取消后第三chunk仍不覆盖前两内容；同Device另一App有独立pool/buffer/stats。该测试没有GPUshader提交或真实declared/private混合consumer；实际现core staging测试和原world还需跑。",
+  "runtime": "作者四源parse-only，独审未Cargo/GPU/production写。bridge helper允许非严格环境SKIP；root须RHAPSODY_REQUIRE_VULKAN=1且确认0SKIP/0ignored。",
+  "required_validation": [
+    "桥接相关实际测试，真实private+declared同页全验证及原世界单帧像素",
+    "记录同pool pages/creations/reuses、physical cells、pending/真实completed drain，区分池接缝与退役积压",
+    "原30帧live/peak/memory/pixels/TAA阈值不变，性能改善与长稳分别判定"
+  ]
+}

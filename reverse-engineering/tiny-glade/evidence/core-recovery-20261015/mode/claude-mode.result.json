@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "status": "success",
+  "exit_code": 0,
+  "timeout_seconds": 300.0,
+  "prompt_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\mode\\claude-mode-question.txt",
+  "stdout_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\mode\\claude-mode.stdout.json",
+  "stderr_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\mode\\claude-mode.stderr.txt",
+  "command": [
+    "C:\\Users\\liyu\\AppData\\Roaming\\npm\\node_modules\\@anthropic-ai\\claude-code\\bin\\claude.exe",
+    "-p",
+    "--tools",
+    "",
+    "--output-format",
+    "json",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "{\"mcpServers\":{}}"
+  ],
+  "result": "## 参数槽\nrcx/rdx/r8/r9 = `AppMode / RestoreAppTo / Toolbar / UiState`；arg5..arg15 落在 `rsp+0xC0..0x110`（含 0x20 shadow），故 0xc0=ClearCanvasCmd、0xc8=UiHistoryPlaySelectAnimation、0xd0=HistoryCmd、0xd8=LoadingGameComplete、0xe0=RequestAppModeChange、0xe8=RequestToolbarCategoryChange、0xf0=RequestHistoryCommand、0xf8=ActionSetStates、0x100=History、0x108=PlayUiSound、0x110=TimeOfDayScreen。\n\n## 队列读取顺序\n① `0x140a86b7d` UiState：`[+0x18]≠0 ∧ [+0x38]==hash(\"esc_menu_canvas\"@0x142ad8501) ∧ [+0x28]≠2` → `0x140a875ae` ret。\n② `0x140a86bbd` RequestHistoryCommand → `0x140a86cbc` check_if_can_switch::h8bf0171c；rdx=PlayUiSound，r8={AppMode, HistoryCmd, 事件, UiHistoryPlaySelectAnimation}。\n③ `0x140a86cc1` ActionSetStates → r12=*Res，先派发 +0x80、+0x88。\n④ `0x140a86eaa` `*AppMode==0xd` → ret。\n⑤ `0x140a86eb6` LoadingGameComplete：AppMode:=0xd(`0x140a86f79`)；事件 tag∈{13,14} → `0x140a875bf` panic(replay_mode.rs)；否则 AppMode:=tag、RestoreAppTo 写 16B(`0x140a86fca..fd9`)。\n⑥ `0x140a86fdc` RequestAppModeChange(24B/条) → `0x140a870c1` h1f941d0。\n⑦ `0x140a870c6` RequestToolbarCategoryChange(16B/条) → `0x140a871af` h7af6c9b8。\n⑧ `0x140a871b4` 续派发 +0x20/28/30/38/48/40/50/58/60/68/70。\n\n## 跳表\n13 张 = `0x142AD890C+0x14k`(k=0..12)，每张 5×u32；k→字段：k0=+0x80、k1=+0x88、k2..5=+0x20/28/30/38、k6=+0x48、k7=+0x40、k8..12=+0x50/58/60/68/70。索引**全部**取自 `*Res<ActionSetStates>` 字段值（字段+4 为 f32 计时，`0x140a86ce7` ucomiss），非 AppMode（AppMode 仅 `0x140a86eaa` 被读）。最后一张 k=12=`0x142AD89FC`，索引 `[*ActionSetStates+0x70]`、计时 +0x74。“64 项”需 0x142AD890C–0x142AD8A0C，与实测 0x14 间隔（共 0xF4 字节）不符→**未证实**；`0x140a86ce2` 无界检查直接 jmp，每张 5 项仅为间隔推断。\n\n## 主块\n- +0x80(`0x140a86ce4`)：AppMode:=0xd(`0x140a86d0d`)+HistoryCmd 16B tag0(`0x140a86d52`)；另一支 PlayUiSound 32B tag4(`0x140a86da5`)。\n- +0x88(`0x140a86dd3`)：同构，AppMode:=0xd(`0x140a86dfc`)+HistoryCmd(`0x140a86e41`)／PlayUiSound tag4(`0x140a86e94`)。\n- +0x20..+0x68(`0x140a871d1/7210/724f/728e/72cd/730c/734b/738a/73c9/7408`)：各调一个 check_if_can_switch 单态 `0x140afa{b70,3f0,db0,c90}`、`0x140af{9f30,a190,a640,a510,a060,a9f0}`，rdx=PlayUiSound，r8/r9=Toolbar/AppMode。\n- +0x70(`0x140a87447`)：翻转 TimeOfDayScreen[+0xa] bool(`0x140a87473`)，推 PlayUiSound tag0xe(`0x140a874b4`)。\n- `0x140a874d8` 若 `[ActionSetStates+0xd0]≤2`：ClearCanvasCmd byte0 16B(`0x140a87549`)／PlayUiSound tag4(`0x140a87599`)。\n\n未知：`0x140a86c94`、`0x140a874ec` 的 `cmp 0,[*Res<History>+0x30];setno/jno` 守卫语义（疑恒真）；事件 payload 取 Events 计数 `[+0x40]`。",
+  "is_error": false,
+  "subtype": "success",
+  "elapsed_seconds": 200.547
+}

@@ -1,0 +1,1941 @@
+[
+ {
+  "domain": "audio-misc",
+  "file": "audio_update.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "相机 3×3+偏移 → 听者变换的具体行列对应（U，相机域）；puffin scope 未建模"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "building_audio.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "`building_audio` 体空（kind 6/7/8 瞬发 + 尾部 0/1/2/3/4/9/5 循环参数表，multi-baseline §2 全有）；`get_building_size_01`/`set_parameters` 空"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "clutter_audio.rs",
+  "status": "GAP",
+  "errors": "—",
+  "missing": "`clutter_audio_system` 体空（39 kind 表 0x142aa1688 + Cosmetics 串表 0x142aa0e4c 全部 O 可落码）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "decorator_audio.rs",
+  "status": "FIX",
+  "errors": "16 名单与 O 串表映射 I 且缺 `Cosmetics/Clutter_Rotate`、`Cosmetics/MoveGround`（合同串名 O）；`AudioLoopDesc::new(name, Some(\"editing_speed\"), 3, 0x32)` 参数假设未证",
+  "missing": "`decorator_audio_system` 体空（稳定排序 `(f32,Vec3)` 距离衰减，行 811 O）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "elevation_supports_audio.rs",
+  "status": "FIX",
+  "errors": "只记 `WoodenBracketsAppear`；O 串表 3 个（+`BrickColumnAppear`/`WoodenColumnAppear`，DIGEST §2.13）",
+  "missing": "system 体空（kind→3 串分派）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "firstperson_steps.rs",
+  "status": "GAP",
+  "errors": "—",
+  "missing": "`firstperson_steps` 体空（GroundType::to_fmod_param、FirstPersonOff、双线性地形采样）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "forest_audio.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "`forest_audio_system` 体空"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "game_loading_audio.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "`loading_audio` 体空（event:/UI/Loading + 状态→2 停 snapshot + 1s 定时器，O）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "garden_audio.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "`garden_audio_system` 体空（update_draw_audio 模板 ×4）；`GapEventPlaceholder` 假类型"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "ivy_audio.rs",
+  "status": "GAP",
+  "errors": "—",
+  "missing": "`ivy_audio_init_system` 体空（instantiate_audio(\"event:/SFX/IvyGrow\") O）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "menu_audio.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "`menu_audio` 体空（13 kind 跳表 0x142ac706c + AppMode `(mode\\"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "mod.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "`add_audio_systems` 空（music_debug_gui + 两个 run_if 包）；`add_audio_startup_systems` 空"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "path_audio.rs",
+  "status": "FIX",
+  "errors": "init 只有 CobblestoneDraw×2（loop+snappy）；O 证据 5 事件：`CobblestoneDraw` + **`Path Draw`(0x142ac1660)** + **`Erase Draw`(0x142ac1690)** + `PathWaterDraw/PathWaterErase`（DIGEST §2.13）",
+  "missing": "`path_audio_system`/`update_draw_audio`/`brush_editing_speed_01` 空"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "playermade_stairs_audio.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "`stairs_audio_system` 体空（kind≤18 跳表 0x142bad9f0 全量 O，multi-baseline §3a）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "replay_audio.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "`replay_audio_system` 体空（Undo/Redo/DenyInput + AppMode==0xd 全局参数）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "roof_audio.rs",
+  "status": "FIX",
+  "errors": "init 事件名 `{RoofAppear, RoofSwitchDirection}` 与 O 串不符：应为 **`RoofTipMove`(0x142adcb38)、`InterRoofMerlonsRearrange`(0x142adcb68)**（+RoofShape 正确，DIGEST §2.13）",
+  "missing": "`roof_audio_system` 空；`instantiate_audio_w_position` 签名错（O 4 参 `(core, name&str, pos)`，0x140aa3360 调用点 0x1408b7788 证据）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "sheep_audio.rs",
+  "status": "GAP",
+  "errors": "—",
+  "missing": "`sheep_audio_init_system` 体空（impl$0::new O）；`sheep_audio_system` 体空（kind 0-7 表 0x142ac2cc8 + Aww/Think/So/Angry/Idea/Eyes/Confused + 参数 FirstPersonOff；0x140909870 羊叫列表装配在本域外）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "signifier_audio.rs",
+  "status": "FIX",
+  "errors": "init 实例名不全：O 证据 1 loop + 4 实例 = `UI Boop`(0x142ac2465)/`Cursor/Grab`/`Cursor/Release`/`HoldTimeSiginfier`(原版拼写)/`UiRotateGizmoMovingBack`（DIGEST §2.13）；现有代码用 Grab 当 loop 且缺 3 名",
+  "missing": "`signifier_audio_system` 体空（set_parameter ×21 + FirstPersonOn/Off、Tool 参数）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "terrain_audio.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "`terrain_audio_system` 体空；`EditStateAudio` 空"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "terrain_stairs_audio.rs",
+  "status": "GAP",
+  "errors": "—",
+  "missing": "全部体空（StairDraw_OneShot + SSBO BufferState 名称断言 + inverse_lerp/60 音量，multi-baseline §3b O）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "timberframe_audio.rs",
+  "status": "GAP",
+  "errors": "—",
+  "missing": "体空（TimberframeMove/Length/Width + RectangleAppear 等 kind 表 O）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "tree_audio.rs",
+  "status": "GAP",
+  "errors": "—",
+  "missing": "`tree_audio_system` 体空（最近树排序 + set_position/音量 O）；init 名 TreeMove/Tree/Amb 部分"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "trigger_audio.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "`trigger_audio_system` 体空（audibility ±0.5/−0.1 夹取、音量位移/阈值×0.0125、z>=11/dist<=70 停 InForest，wp14 合同全量）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "wall_audio_fmod.rs",
+  "status": "FIX",
+  "errors": "`WallAudioState.loops: Vec<AudioLoopPlayer>` 模型与 O 布局冲突：O = **固定 10×AudioLoopPlayer stride 0x40**（+0/+0x40/…/+0x240）+ 参数 Vec @+0x48/0x88/0xc8/0x148 + 应播标志 @+0x38+0x40k + 音量 @+0x280；init 里 `let _ = core.instantiate_loop(&desc)` 丢弃结果（应装入 state）",
+  "missing": "`wall_audio_fmod` 体空（kind 0-23 全表 O，multi-baseline §1 + audio-extra §1）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "wall_audio_orchestrator.rs",
+  "status": "GAP",
+  "errors": "—",
+  "missing": "体空（RequestWallMaterialAudio 协调：hashbrown/atomic_float，0x141234bf0 O）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "wall_audio_path.rs",
+  "status": "GAP",
+  "errors": "—",
+  "missing": "体空（0x140a89bb0 O）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "wall_audio_ui.rs",
+  "status": "GAP",
+  "errors": "—",
+  "missing": "体空（PlayWallUiSound kind 分派；本 round 新证：事件串表含 `ChangeWallStyle`、`Lantern/TurnOn`、`Chimney/ToggleSmokeOn"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "wall_audio_utils.rs",
+  "status": "FIX",
+  "errors": "`AudioLoopPlayer` 字段序：O = `{instances Vec cap-first {cap@0,ptr@8,len@0x10}, …@+0x18(参数 Vec 疑), current@+0x28, should_play@+0x38}`；现有代码 `current`/`should_play` 注解偏移对但 `resolve` 语义未证（O request_play 直接 `instances[current]` + 越界 panic）",
+  "missing": "—"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "water_ambience_audio.rs",
+  "status": "FIX",
+  "errors": "init 只建 1 loop；O（audio-extra §3c）= **按水网格装配多个 AudioLoopPlayer**（from_iter<Map<Range,…>> over grid）+ `get_parameter_by_name` + `insert_resource<WaterAudioGrid>`",
+  "missing": "`water_ambience_audio_system` 体空（逐格 start/stop/set_position/音量；常量 0.015625/42.5）；`load_index_unchecked` 空（0x1409ebe80 O 名）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "water_audio.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "`water_audio_system` 体空"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "weather_audio.rs",
+  "status": "GAP",
+  "errors": "—",
+  "missing": "体空（Weather→全局参数，参数名 U）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "music/music_player.rs",
+  "status": "FIX",
+  "errors": "① `current_track` 与 `stop_immediately` 对调（0x1408b72e0 实为 stop_immediately，DIGEST §7）；② `get_timeline_beat_properties(&self)->(i32,f32)` 错：O = 输入结构→写 6 进程全局的发布器（0x1408b7620）；③ `update` 空——状态机 O 结构见 CLOSURE §1（4 状态 + 节拍同步 + switch_track）",
+  "missing": "`load_tracks/switch_track/pause/probabilistic_switch_track/trigger_*_snapshot` 空；MusicTrack 布局 I（stride 0x30, [+0]==1, [+8] 事件）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "music/music_system.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "`music_audio_system`/`update_music_richness_based_on_time` 空（richness 三档 snap-off 0.24/0.49/0.74 公式 multi-baseline §4 O）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "music/music_debug_gui.rs",
+  "status": "GAP",
+  "errors": "—",
+  "missing": "体空（egui 调试窗，读 [+0x100] 开关与 richness@+0x1c0，O）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "audio_resources.rs",
+  "status": "FIX",
+  "errors": "① Active 变体：event = 8B 句柄 @+8（现有 `_event: Gap` 位置含糊）；name String 为 **cap-first** {cap@+0x10, ptr@+0x18, len@+0x20}（现有注释只说 `state @+0x28`）；② `Bank::load` 失败 = **panic**（\"Error loading FMOD bank file: …\"，现有代码只 set loaded 无 panic 路径）；③ `AudioSamplesLoadedPromise::recv` = 三通道 recv_timeout(1s)+unwrap（现有 recv 空体）；④ `set_parameter`/`set_position` 失败后的**全局报告注册表**（0x143634d60/d80 族 + \"Mutex was poisonned\"）完全未建模；⑤ `start_if_not_playing` 位掩码 0xb 未记",
+  "missing": "`AudioCoreInner::update` 体（听者三断言 + set_listener_attributes + Studio::update + \"FMOD update error: \" 日志）未落码"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "audio_settings.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "@0..0xf8 字段 U（音量 4 字段 O）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "color_icon.rs",
+  "status": "FIX",
+  "errors": "`ColorMenuBrightnessValue {Default, Custom(f32)}` 错：O = 三变体无载荷，判别→{0.25, 1.0, 4.0}（表 0x142ae785c），default=变体1；`to_f32`/`default_f32` 实现随之错",
+  "missing": "15 个图标组件为 bevy 注册胶水（TypeId 查表样板），不需逐个体"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "color_id.rs",
+  "status": "FIX",
+  "errors": "`default_value=ColorId(0)` 引 0x14099ca50 错（=1，归属 color_id_roof）；`is_default()==0` 的过滤语义需以屋顶侧重审",
+  "missing": "—"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "color_id_roof.rs",
+  "status": "FIX",
+  "errors": "`RoofColorIdSsbo(Gap)` 未承载 `default_value()=1`（O 0x14099ca50）",
+  "missing": "—"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "gpu_lut.rs",
+  "status": "GAP",
+  "errors": "—",
+  "missing": "`build`（2 条目/demo 门禁 0x143634d90 + vtable 0x142ad6260/0x142ad6290）、`render_luts`（+0x28 标志循环）、`compute_impl` 全部 unimplemented!（CLOSURE/DIGEST §2.10 全量算法可落码）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "grading_lut.rs",
+  "status": "GAP",
+  "errors": "—",
+  "missing": "`load_cube`（完整 .cube 解析器）、`parse_rgb`、`GradingLuts::load`（\"assets/luts\" 目录 + 双 Vec）unimplemented!（DIGEST §2.9 全量）；`load_unwrapped`（0x140b00bc0，路径前缀 \"assets/luts/\"，O 名）缺"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "image_formation.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "—"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "placement_data.rs",
+  "status": "OK",
+  "errors": "建议加注释说明 w 行原版怪癖（现无）",
+  "missing": "—"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "texture_presets.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "—"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "render_ssbo.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "—"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "shader_refactoring_state.rs",
+  "status": "FIX",
+  "errors": "`disabled()` 建模为构造器；O = `fn disabled(&self)->bool`（`[+0]==0`，0x140b1f210）",
+  "missing": "—"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "window.rs",
+  "status": "FIX",
+  "errors": "`WindowSize{width,height: u32}` 错：O `as_vec2`（0x1400885d0）= 头 8 字节直接当 Vec2（f32×2）；`aspect_ratio` 缺失；0x140949c40（PDB aspect_ratio）= 静态变量析构例程（见 CLOSURE §5）未记",
+  "missing": "—"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "window_lights.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "—"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "feedback_report_resources.rs",
+  "status": "FIX",
+  "errors": "① `FeedbackReportBgTexture(pub bool)` 独立资源错：O `is_available` = `[+0x36] < 7`（状态字节，宿主=资源本体）；② `FeedbackReportTags {tags:&'static [&str]}` 错：0x140909870 实为羊叫 4 标志装配（DIGEST §7）；③ 布局缺 0x10..0x38 截图元数据区（见 CLOSURE §4）",
+  "missing": "`feedback_report_texture_receive` 空（事件→换纹理 Arc→拷元数据→状态 7/8 机转，O）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "gothic_window_profile.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "panic 串（\"gothic half dormer profile size\"）未记"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "glade_color_customization.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "—"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "shutdown.rs",
+  "status": "FIX",
+  "errors": "`initiate_game_shutdown(&mut Vec, &mut Vec)` 签名错：O = bevy 系统（EventReader 双缓冲 + Commands，0x140b2ba40）",
+  "missing": "—"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "steam.rs（resources）",
+  "status": "OK",
+  "errors": "—",
+  "missing": "`is_any_active` 未证"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "app_loading_state.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "—"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "frozen_map.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "库本体不重写（正确策略）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "meta_commander.rs",
+  "status": "OK",
+  "errors": "`is_profiling` 的 `[+0x38]` 字段语义未注（U）",
+  "missing": "—"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "name_hash.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "—"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "audio_events.rs",
+  "status": "GAP",
+  "errors": "PlayStairsAudioCmd/PlayWallAudio 用 Gap 凑布局：O 偏移全有（@+0xc..0x2c f32 族/@+0x1c u64+u32 位置/@+0x20 byte）但字段名缺失",
+  "missing": "RequestWallMaterialAudio `raw: Gap`"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "systems/steam/mod.rs",
+  "status": "FIX",
+  "errors": "① `AppSteamIntegration{client, user_id:u64}` 存字段模型错：O `user_id()` 每次现算 `client.user().steam_id()`（0x140ae96f0）；② `is_floating_gamepad_text_input_open` 模型错：O = 进程全局字节 0x143634d94；③ `add_steam_integration` 空（8 系统批量注册 O）",
+  "missing": "`update_steam_inputs` 空（14 动作块归纳见 CLOSURE §2）；`SteamOverlayOpenResources` 方法体空（open_overlay_or_browser O 0x14026d3c0）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "systems/steam/startup_steam.rs",
+  "status": "GAP",
+  "errors": "—",
+  "missing": "体空（首帧一次性 Commands 插入资源束，O 0x140a9bbf0）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "systems/debug/human_scale_ref.rs",
+  "status": "GAP",
+  "errors": "—",
+  "missing": "`human_scale_ref` 空（5 参系统 + [+0xf8] 开关 + [+0x110] 模式跳表 0x142a9f3b0，O）"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "systems/debug/sheep_controls.rs",
+  "status": "GAP",
+  "errors": "—",
+  "missing": "`sheep_controls`/`apply_sheep_snapshot` 空（0x1416f11a0/0x1416f24f0 O 名）；PickingMode 变体 U"
+ },
+ {
+  "domain": "audio-misc",
+  "file": "systems/debug/lazy_grid_debug.rs",
+  "status": "GAP",
+  "errors": "—",
+  "missing": "全内联（无独立过程）——占位合理"
+ },
+ {
+  "domain": "session-save",
+  "file": "resources/session/mod.rs",
+  "status": "FIX",
+  "errors": "1) `SavedSession::screenshot_path`/`loading_background_path` 均指 0x140b46a50：v2 名 = **loading_background_path**，实为 save_folder_path+`\"loading_background.jpg\"`（串 0x142aef557 len 0x16）；screenshot_path 另址。2) `is_halloween_any` 写 `any(b>1)`：机器码 0x140b46890 = `cmp [rdx+rcx],1; ja` → **any(b<=1)**（0/1 均为万圣节）。3) `SessionMeta::assets_root` 写 `base.join(\"assets\")`：机器码 0x140b46370 = join(\"assets/glade\", 主题子目录)（O：+0x58 字节索引表 {summer,olden,flowery,autumn,winter} @0x142aef620/0x142aef648）。4) `backup_folder_path` 占位返回 save_folder_path：机器码 = **paths::backups()(0x140b9db90)/uuid**（独立根目录，无叶名；saves()=0x140b9db60）。5) `session_file_list` 返回空 Vec：机器码 = 构建 {history.json, screenshot.jpg, meta.json} 三条完整路径（v2 名确认 session_file_list）。6) `NextSession::create` 签名 (session_id, kind, rest) 臆造：机器码 = 从 96B 模板（rdx，+0..+0x60）+ 32B（r8，uuid 等）构造，kind@+0x18=模板首 qword，Vec 清空、+0x98=false。7) `append_on_load` 用 Gap push：O 条目 0x20B = {u32 0, u32 0x80000000, u64 payload}。8) `ActiveSession`/`is_winter` 等返回 false 的 stub：+0x58==4 选冬季水面为 O（wp7/water_planes_draw）。9) `GladeType` 值域缺 0=Summer：O（主题表首位 \"summer\"）。",
+  "missing": "delete_session（0x140b46d60）无实现；SessionMeta::write_to_disk（=save_folder+meta.json+save_session_meta_to_file，O）无实现；NextSessionKind 无变体（1/2 存在，O）；SessionMeta serde 字段 {state,glade,mutators,image}（O）未体现"
+ },
+ {
+  "domain": "session-save",
+  "file": "resources/loading_screen.rs",
+  "status": "FIX",
+  "errors": "1) `Plugin::build 0x140a1a190` 注释地址错：0x140a1a190 = 实际 update_loading_screen 主体（hashbrown 管理函数）；Plugin::build 地址未证。2) `update_loading_screen` 注释签名 (ResMut<LoadingScreenProgress>, Res<LogoAnimation>, FilteredWallTime) 为 I（宿主系统注释），本域未证实。3) 注释未提已证实事实：键 = 占位 UUID **33333333-3333-3333-3333-333333333333**（0x1429503e0，16B 0x33，O），两张 hashbrown 表 @+0x70/+0xd8，0xd0B 条目 {state tag@+0(2=完成类), progress u32@+0x58}，插入(0x80)/删除(0xff) 路径。",
+  "missing": "LoadingScreenProgress 布局除 +0x70/+0xd8/+0x5b0 外 U"
+ },
+ {
+  "domain": "session-save",
+  "file": "resources/logo_animation.rs",
+  "status": "FIX",
+  "errors": "1) 布局 `_f0/_f1/wait_progress/_f2/_stages` 错：机器码 = **progress[5] f32 @+0..+0x14 + durations[5] f32 @+0x14..+0x28**。2) `is_waiting` 注释“wait 未完成”：机器码 = (+0x0c) > 0.0。3) 地址注释错位：is_finished = 0x140b19d22（(+0x10)>=1.0，常量@0x142ae8b10），finish_wait = 0x140b19d33（+0x0c:=1.0f）；注释写 0x140b19d20/0x140b19d30。4) `build 0x140b19d40` ✓（插入 LogoAnimation 默认值：progress 全 0 + durations {const×4, 0.5f}；注释可补）。",
+  "missing": "animate_logo 的“写 GPU uniform +0x10”未在本域反编译证实（早期 WP 证据，保留 I）"
+ },
+ {
+  "domain": "session-save",
+  "file": "resources/prefab/mod.rs",
+  "status": "FIX",
+  "errors": "`Prefab { parts: Vec<PrefabPart> }` 布局不符：hashbrown 桶 0x28B = {hash 8B, PrefabName 16B, **Prefab 值 16B**}（get 返回桶基+0x18 的 16B 值）→ 实际为 {ptr,len} 胖指针类（Box<[PrefabPart]> 候选）。Vec=24B 塞不进。",
+  "missing": "PrefabPart 字段 U；PrefabWatchPlugin watch 策略 U"
+ },
+ {
+  "domain": "session-save",
+  "file": "systems/prefab.rs",
+  "status": "FIX",
+  "errors": "1) `spawn_prefabs (EventReader<SpawnPrefabCmd>, Res<PrefabLibrary>, Commands)` 签名 I（未证实 SpawnPrefabCmd 事件名）。实际 O 链 = create_prefab_rt 0x140841550（实例矩阵+颜色打包 u32+条件 spawn）+ create_prefab_audio_trigger 0x140841b00。2) `despawn_prefabs` 注释 ✓ 但 0x140842d60 的条目步长 0x58 与 DespawnPrefabCmd 载荷 U。3) `update_prefabs` GPU 路径：closure 0x140841d60 触碰 audio_trigger_library（O），注释只写 PlacementDataSsbo，不完整。",
+  "missing": "create_prefab_rt / create_prefab_audio_trigger / create_prefab_gpu_instances 无函数体"
+ },
+ {
+  "domain": "session-save",
+  "file": "systems/save/mod.rs",
+  "status": "FIX",
+  "errors": "`add_save_load_systems`/`add_save_load_events_and_resources` 为自造空函数：v2 有 `impl$1::add_save_load_events_and_resources` 0x1409447e0（批内已反编译）；注册内容未按 O 填写。",
+  "missing": "add_save_load_systems 的 v2 地址/内容"
+ },
+ {
+  "domain": "session-save",
+  "file": "systems/save/load_completion_checker.rs",
+  "status": "FIX",
+  "errors": "1) `is_session_ok_to_load` 返回 true stub：机器码 0x140a9fa80 = 调 save_folder_path ×2 + join ×2 + File::create ×4（**检查会话文件存在性**，I）。2) `check_load_completion` 返回 true stub：机器码 0x140a9f810 = save_folder_path + join + FUN_140d69590 + File::create ×2（文件存在性/就绪检查）。3) SessionLoadReadiness::is_ok/deny_load ✓（tag 判定）。",
+  "missing": "两函数精确判定条件"
+ },
+ {
+  "domain": "session-save",
+  "file": "systems/save/load_game.rs",
+  "status": "FIX",
+  "errors": "全 Gap 骨架（empty_body 文件）。O 可补：LoadGameState::LoadGameData 状态日志；`loading.tmp` 写入（save_folder + \"loading.tmp\"）；kind==1 → parse_saved_game_data + `Making save file backup for upgrade`→`Reading file data`→`Parsing JSON`→`Version`→`BackwardCompatibility`→`Camera`→`parsing camera`→`Time of day`；颜色升级映射 {1→2,2→5,4→8,5→3,8→4}（window + arrow slits 双处）；extract_max_wall_id_from_history 写计数器 +0xc0；PostGameLoadCommand 回放（fence 0x8000000000000003、SwitchAppMode 忽略）；init_game_state_from_snapshot 调用。",
+  "missing": "LoadGameSource/ParsedGameData 布局"
+ },
+ {
+  "domain": "session-save",
+  "file": "systems/save/save_backup_list.rs",
+  "status": "OK",
+  "errors": "is_corrupted tag==4 ✓；iter_backup_files 0x140ae8330 ✓；is_auto “判定文件名前缀”为 I（v2 无 is_auto 符号，v1 批名错位已登记）。",
+  "missing": "new_from_session（O 串：Error reading save backup directory / Error creating backup save folder:）无实现"
+ },
+ {
+  "domain": "session-save",
+  "file": "systems/save/save_backup_metronome.rs",
+  "status": "FIX",
+  "errors": "字段假设错：代码写 `active_game_time f32` + `_gap`。机器码（save_game 内联 0x140a3f470 行 507-591）= **{counter u32 @+0x140, 累计 f32 @+0x144（clamp[0,1]）, 阈值 f32 @+0x148}**；档位表 {300,600,3600,7200} @0x142a9f348；仅阈值<60.0 时累计；`active_game_delta_seconds >= 0.0` 断言（串 0x142a9f2c0）。`consider_backing_up` 返回 false stub。",
+  "missing": "new_from_backup_list 构造来源"
+ },
+ {
+  "domain": "session-save",
+  "file": "systems/save/save_file_identity.rs",
+  "status": "OK",
+  "errors": "骨架 Gap ✓。新增 O：try_approx_parse_save_file_identity = 读 0x800B 缓冲 → 搜 `\"Identity\"`（串 0x142f92a40，len 10）→ 解析其后 JSON；closure 0x141673140 = 失败回退（文件元数据派生，I）。",
+  "missing": "fallback 具体字段"
+ },
+ {
+  "domain": "session-save",
+  "file": "systems/save/save_game.rs",
+  "status": "FIX",
+  "errors": "1) `SaveFileSection` enum/json_key/padding ✓ 完全一致。2) `save_cooldown_seconds/should_trigger_backup/should_trigger_debug_log` 返回 0/false stub（U 数值）。3) `AutoSaveState::close_file` 空：机器码 0x140a43840 = 清 +0x120 字段 + 清 cap-first 列表 @+0x28/（O）。4) `write_json_sections` 是臆造实现（逐 key 写文本）：实际为节级 serde 序列化 + padding 对齐（save_game_to_file 手工拼 `'{'`/`\"History\":{`/`\",\\n\"`，O）。5) `save_game` 签名 stub：实际 6 段 SystemParam + 节拍器内联 + capture→Arc→set_current_snapshot(0x140a84760)→send(变体 9)。6) `add_history_edit_to_save_file` 空：同址 v1 名 ensure_current_snapshot；O = 追加计数 + `\",\\n\"`(0xa2c) + 序列化 0x80B + **ShadowFile::mark_dirty(start,end)**。7) save_session_meta_to_file stub（0x1417522e0）。",
+  "missing": "各节 serde 字段序"
+ },
+ {
+  "domain": "session-save",
+  "file": "systems/save/save_thread.rs",
+  "status": "FIX",
+  "errors": "empty_body 文件。O 可补：**AsyncSaveCmd 变体 3=OpenFile/4=CloseFile/5=ChangeSection/6=ReplaceEdits/7=BackupSave/8=ManualBackup/9=CaptureSnapshot/10=Flush/11=Shutdown**（debug 串 + switch 0x141721aa0）；save_thread 主循环（condvar ≤1s、错误列表 diff/日志、0xb 退出+flush_deferred_and_sync）；快照 GC 线程 closure$1 0x14172b280（Deleting unreferenced snapshot / Save file changed before snapshot GC could finish…）；`assertion failed: current_save_file.locked_backups.remove(&path_buf)`。",
+  "missing": "CurrentSaveFile 布局"
+ },
+ {
+  "domain": "session-save",
+  "file": "systems/save/shadow_file.rs",
+  "status": "FIX",
+  "errors": "1) 布局 `{dirty bool, rest Gap}` 错：机器码 = {+0x28/+0x30 数据 (ptr,len), +0x40/+0x48 文件状态（MIN 哨兵+句柄）, +0x68 脏块计数（persist 后 &7）}。2) `create` 空：O = 未开状态 + `ShadowBackendFile is not open` panic 前置。3) `flush` 空：O 协议 = `<path>.tmp` 创建 → `Write data` → `Setting file length` → `Sync data` → `Save file successfully opened and written to disk`；错误 `Could not create temp file for save rewrite: `/`Error writing save data to temp file: `；Persist temp file + `Asking the OS to sync writes to disk`/`flushed_block_count: `。4) `mark_dirty` 只置 bool：O = 记录脏字节区间（`Marking block range dirty: ..`，start/end 参数）。5) `ShadowFileWriter` 形状 ok。",
+  "missing": "flush_impl 的 +0x40 状态位精确约定（open=MIN 反转细节）"
+ },
+ {
+  "domain": "session-save",
+  "file": "systems/save/snapshot.rs",
+  "status": "FIX",
+  "errors": "1) `try_load_snapshot_data` bail：O schema = JSON 明文 + flate2 deflate（Terrain 节）；节序 Version→Walls→Roofs→Decorators→WallColors→GateColors→Terrain→Trees→Raster；已知结构 StairsSnapshot{edges,checksum}、StairsRemovedSupports{edges}、TerrainEditingData{strokes,next_stroke_id,next_stroke_index}、DecoratorStorageSnapshot{states}；错误串 Failed to load history snapshot / Version mismatch; expected , got / Ignoring unknown raster data in snapshot。2) `validate_and_load_closest_snapshot_data` 空返回 Ok：实际 0x1417a6e50 就是快照 JSON 解析器（“parsing …”全串在此）。3) capture 两函数 Gap：capture_game_snapshot_save_data 0x1417a0430 返回 Arc（0x18 alloc {1,1} + LOCK inc）；巨型 capture 系统体 0x1417a1d00。",
+  "missing": "try_chunk 语义"
+ },
+ {
+  "domain": "session-save",
+  "file": "systems/save/snapshot_gc.rs",
+  "status": "LATER",
+  "errors": "parse_save_file_snapshots stub：供 GC 线程（closure$1 0x14172b280）调用，O 仅串级证据（Error parsing history snapshots fromfile）。",
+  "missing": "返回结构/解析规则"
+ },
+ {
+  "domain": "session-save",
+  "file": "systems/save/load_completion_checker.rs 已列上",
+  "status": "?",
+  "errors": "—",
+  "missing": "—"
+ },
+ {
+  "domain": "history",
+  "file": "mod.rs",
+  "status": "OK",
+  "errors": "布局表/方法行为与机器码一致。文档内残留两处旧名：布局表证据列写 \"new_from_params 0x140a844f0\"（真名 insert_starting_edit，正文已用真名，属文档不一致）；`add_decorator_diff` 保留 2 参签名（真 4 参：diff + stairs + remap），`remove_snapshot_record` 注释\"委托 FUN_140d79f90 + prev 回调\"无证据（CLOSURE：该名无独立符号，疑似内联）",
+  "missing": "`closest_history_snapshot` free fn（重建自造名；真逻辑在 save::snapshot 域，见 CLOSURE）；History 信封 serde（内联，见 CLOSURE）"
+ },
+ {
+  "domain": "history",
+  "file": "history_chain.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "—"
+ },
+ {
+  "domain": "history",
+  "file": "replay_cmd_buffer.rs",
+  "status": "FIX",
+  "errors": "文档头 \"ReplayBuffer 环形 {head,buf,cap,len,modification_counter}\" 无证据；证据（replay_pop_bucket 0x140b38250）：头部 = 桶 Vec（cap-first，元素 0x40）@+0x00..+0x18 + 活跃计数 @+0x18。`pop_front` 实现里 expect 信息 \"on empty buffer\" 自造（U）。`current_replay_cmd`/`replay_active` 等辅助语义 U",
+  "missing": "ReplayBuffer 精确字段布局；桶 0x40B 的 @+0x28..+0x40 字段"
+ },
+ {
+  "domain": "history",
+  "file": "decorator_edit.rs",
+  "status": "FIX",
+  "errors": "① `is_default_lantern_brightness(_record: &DecoratorRecord)->bool` 签名错——证据（0x140b3f910 机器码）：`(f32)->bool`，语义 `x == 1.0f`，且与 `is_default_stair_width` 同址同码（ICF）。② `convert_before_after_states_to_changes` 地址写 0x140b31220——真址 0x140b3fab0；真签名 `(out:*mut Change, before:*const State, after:*const State)`（按 style 字节分变体比较浮点、输出 changed 布尔 @+0x40/+0x52），非 `(&self)->Vec<Gap>` 方法。③ `is_default_chimney_smoke` 0x1408c5680：地址有效（ICF 多符号同址，含 is_default_allow_connection 等 ~12 个谓词），但本域无法单独裁决其语义（U 保留）",
+  "missing": "DecoratorHistoryState 的 0x50B 记录字段名"
+ },
+ {
+  "domain": "history",
+  "file": "wall_history.rs",
+  "status": "FIX",
+  "errors": "`ev_height_changed` 建模为 `(&mut self, WallId)->Option<EditType>`——证据：它是 History 的 trait 方法，真流程 = `EditType::new_height_changed(buf, wall, h0, h1)`（0x140a83fb0，写 24B 记录 {1,1,niche+2,wall,h0,h1} + 0x108B blob + FUN_141696f50）→ `History::add`（track-caller 文件参数）；无 Option 返回。`EditType::new_height_changed()` 无参重建也错（真 4 参构造器，写 niche 判别 0x8000000000000002）",
+  "missing": "ev_new_wall 的 0x108B blob 内字段布局（wall_index/roof_shape_params/bend_vector/pad0/custom0/custom1 已证，完整布局 U）"
+ },
+ {
+  "domain": "history",
+  "file": "wall_compound_edit.rs",
+  "status": "FIX",
+  "errors": "① `panic_deprecated_operation` 地址写 0x140a83120——真址 0x140a82e20。② `build` 注释地址（sysres 0x1414022c0）错——真址 0x140a82d50；0x1414022c0 = WallHistoryEdit serde Deserialize 族。③ 缺 `update_compatibility`（CLOSURE：候选区间 0x140a82940-0x140a82b20 全为 drop glue，疑似内联，无独立符号）",
+  "missing": "CompoundEditBuilder 内部状态布局；update_compatibility 语义"
+ },
+ {
+  "domain": "history",
+  "file": "terrain_edit.rs",
+  "status": "FIX",
+  "errors": "① `duration` 证据列 \"(0x140858d30 区)\"——0x140858d30 = revert（0.99f 阈值 + panic \"Requested terrain stroke {id}\"）；duration 公式 O 在 `TerrainReplayCmd::forward` 0x140994f30 内联（clamp(Σ点距*0.01, 0.4, 3.0)、空 0.3、\"stroke_length.is_finite()\" 断言）；无独立 duration 符号（CLOSURE）。② `revert`/`reapply` 空壳 + \"领域 apply 边界\" 注释——证据已有可写行为（hashbrown 48B 元素表查 stroke id、清 active 标志），可升级为 O 骨架",
+  "missing": "update_terrain_curve 0x140859740 的完整行为（本轮已解出：hash 查表 + 点集拷贝 + fold + 全局时间 lerp 进度，见 CLOSURE）"
+ },
+ {
+  "domain": "history",
+  "file": "auto_clutter_edit.rs",
+  "status": "OK",
+  "errors": "serialize 0x140a18320 / deserialize 0x140a18500 与 v2 一致 ✓",
+  "missing": "负载字段"
+ },
+ {
+  "domain": "history",
+  "file": "color_edit.rs",
+  "status": "OK",
+  "errors": "字段名（Decorator/Terrain/chimney_h_offset/allow_connection）与 0x1417bf8a0 证据一致",
+  "missing": "目标枚举闭合性"
+ },
+ {
+  "domain": "history",
+  "file": "path_edit.rs",
+  "status": "FIX",
+  "errors": "serde 地址注释写 \"0x16e8340 / 0x16e8510\"（丢高位 1）——真址 0x1416e8340（serialize）/ 0x1416e8510（deserialize）。`RasterEditSerialized` 的 From（0x140a976b0）未建模",
+  "missing": "`impl$1::from` 0x140a976b0 语义"
+ },
+ {
+  "domain": "history",
+  "file": "stairs_history_edit.rs",
+  "status": "FIX",
+  "errors": "`StairsHistoryDiff` 建模为 {before/after Vec<StairGraphEdge>, hash_before/after}（JSON schema），但运行时 `StairsDiffTable` 96B = {tag0,tag1,4×u64, 两个 Vec<u32> 边对}（cap-first，cap@+0x30/+0x48），两型混用未区分。`is_empty` 注释 \"容器 +0x30 非空\" 对（原版读 cap），但实现读 before/after len（等价、字段不同）",
+  "missing": "运行时表与 JSON 型的映射"
+ },
+ {
+  "domain": "history",
+  "file": "tree_edit.rs",
+  "status": "FIX",
+  "errors": "serialize 0x17c2600 / deserialize 0x17c2f60 丢高位——真址 0x1417c2600 / 0x1417c2f60。`missing_prefab(_prefab:&str)->Self` 签名 U（v2 有 0x1409e6210 符号，参数面未证）",
+  "missing": "missing_prefab 参数面"
+ },
+ {
+  "domain": "history",
+  "file": "（roof_edit.rs）",
+  "status": "GAP",
+  "errors": "文件不存在（wp13 合同列 12 模块，重建缺 roof_edit）。证据已有：serde Serialize 0x140259e30 / Deserialize 0x140b38b80、visit_str 0x140b392d0（操作 tag FlatRoofRimStyleChange/SwitchRoofRidgeDir）、RoofEdit::serialize 0x140259e30",
+  "missing": "整个 roof_edit 模块"
+ },
+ {
+  "domain": "history",
+  "file": "mod.rs",
+  "status": "OK",
+  "errors": "AppMode::Replay=0xd ✓；系统地址表与 v2 一致",
+  "missing": "—"
+ },
+ {
+  "domain": "history",
+  "file": "history_process.rs",
+  "status": "FIX",
+  "errors": "① `HistoryCmd::undo()=0x00000000 / redo()=0x00000001` 自造命令字——证据仅 interrupt()=0x02000200（O 机器码）；undo/redo 的完整命令字（byte[0] 族）U。② 重建 `process_history_commands` 缺：undo 时命令 Vec 反转、Arc clone 两表、桶 push、第二事件流（16B 记录 byte[+9] 跳表 0x142ae5420）、ReplayCmd tag drop 分派（0x142ae545c）、\"Can't process History while recording…\" log",
+  "missing": "第二事件流消费；generate_replay_cmds_from_edit 真共享核心（4 单态均 316B 跳板尾调 0x141443xxx）"
+ },
+ {
+  "domain": "history",
+  "file": "history_recording.rs",
+  "status": "FIX",
+  "errors": "① 文件名/注释：0x1409dd790 = `history_finish_recording`（v2 + S_PUB32 一致），DIGEST 首轮曾误标 history_start_recording，重建文件两函数都挂同一地址。② `history_start_recording` 的真地址无独立符号（U）。③ 系统参数面（多事件游标 + AppMode 检查，见反编译）未建模",
+  "missing": "history_start_recording 真址"
+ },
+ {
+  "domain": "history",
+  "file": "replay_wall.rs",
+  "status": "OK",
+  "errors": "WallReplayEditCmd::process 0x140abfb30 自递归 8 参（cmd, dt*速度, &mut Mut, …）已证；重建注释一致",
+  "missing": "process 内部 vtable 0x142ab4910 分派细节"
+ },
+ {
+  "domain": "history",
+  "file": "replay_terrain.rs",
+  "status": "FIX",
+  "errors": "forward/backward 输出布局注释 \"+0x8=2 方向位\" 与机器码不符——证据（0x140994f30）：`{ptr@+0x00, u32@+0x08=0, duration f32@+0x0c, u32@+0x10=2}`（+0x10=2，+0x08=0）",
+  "missing": "ease_out 系数歧义（U）"
+ },
+ {
+  "domain": "history",
+  "file": "replay_stairs.rs",
+  "status": "OK",
+  "errors": "判别 10、undo 分支、PlayStairsAudioCmd 与证据一致",
+  "missing": "边集 insert/remove 的精确表结构"
+ },
+ {
+  "domain": "history",
+  "file": "replay_auto_clutter.rs",
+  "status": "OK",
+  "errors": "判别 9、undo 分支与证据一致",
+  "missing": "—"
+ },
+ {
+  "domain": "history",
+  "file": "replay_pop_bucket.rs",
+  "status": "OK",
+  "errors": "前桶空判定（cmds len@+0x10==0）、pop_front、装饰/楼梯双 Arc 应用链与机器码一致（FUN_14155ba30 / 1408ff210→140900ba0→14157cec0→140b50cc0→140b50d60→1408fefe0 链已 O 登记）",
+  "missing": "收尾 FUN_140b2cb30/140b743e0/1408cd5c0 的语义"
+ },
+ {
+  "domain": "history",
+  "file": "replay_raster.rs",
+  "status": "OK",
+  "errors": "panic \"!cmd.edit.stroke.points.is_empty()\"（replay_raster.rs）✓；6 单态地址与 v2 一致。`RasterReplayCmd::new` 的 duration=0.2 默认值 U（证据 forward 的默认 0.3 是无点分支）",
+  "missing": "undo 字节（payload+0x3？）与 +0x19/+0x1a 标志"
+ },
+ {
+  "domain": "history",
+  "file": "replay_path.rs",
+  "status": "FIX",
+  "errors": "`generate_path_replay_cmds` 注释地址 \"0x14016286d0\" 丢高位 1——真址 0x1416286d0（跳板：niche 判别 dec/cmp 4 过滤后尾跳 0x1414433xx 共享核心）。Cobblestone3 用 discrim==2 与 Cobblestone2 共用（U：真实判别分界未证）",
+  "missing": "各 PathFilter 的判别字节映射"
+ },
+ {
+  "domain": "history",
+  "file": "replay_garden.rs",
+  "status": "FIX",
+  "errors": "GardenFilter 用 `ReplayCmd::Path(e)=>Some(e)` 占位（注释自认 \"U 判别歧义\"）；真实现 = replay_raster<Garden…> 单态（0x1409f6ff0）的闭包 env，判别映射 U",
+  "missing": "花园/水面的判别字节"
+ },
+ {
+  "domain": "history",
+  "file": "replay_water.rs",
+  "status": "FIX",
+  "errors": "同上（0x1409f4650 单态；生成宿主 0x141444c70）",
+  "missing": "同上"
+ },
+ {
+  "domain": "history",
+  "file": "replay_mode.rs",
+  "status": "OK",
+  "errors": "AppMode!=0xd 早退、\"Replay mode started/finished\" log、+0x28=1.0f 写与证据一致",
+  "missing": "HistoryCmd 命令字变体（0x03000100 等，注释自认 U）"
+ },
+ {
+  "domain": "history",
+  "file": "finish_replay.rs",
+  "status": "OK",
+  "errors": "与反编译一致（pending 恰 1 条 redo → unfreeze、双空 → restore AppMode、MetaCommander 哨兵）",
+  "missing": "toolbar switch_mode 条件细节（+0x80/+0x88）"
+ },
+ {
+  "domain": "history",
+  "file": "signifier_replay_active.rs",
+  "status": "OK",
+  "errors": "ease_out_elastic_jiggle 公式、enum2$ 判别、register_required_components 0x140b1d680 与证据一致",
+  "missing": "—"
+ },
+ {
+  "domain": "wall",
+  "file": "mod.rs",
+  "status": "FIX",
+  "errors": "`split_height_into_skirts` 循环条件实现 `height > f+1.4` 与机器码一致，ok；但缺 **WallId::is_valid 真身地址注记**（0x140b34f20，代码注释把它挂在 get_inner 0x140885d0 名下，见 DIGEST §7——两个函数都存在，注释措辞易误导，建议分列）。Floor/WallHighlight/HighlightColor 其余为 Gap/占位，ok。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "inner_wall_state.rs",
+  "status": "FIX",
+  "errors": "① `StructureType::is_fence` 写 `discriminant() != Wall`，证据 0x1408c5680 仅\"判别读取、比较在调用方内联\"——Fence 值未证实（I），且 `!= Wall` 把 Other 也算 fence，**错误**（应为单变体判别，值 U）。② `is_default_arch_height` 注释地址 0x1408c5690 与 PDB 索引挂名 0x1408c56b0 冲突：v2 索引确认 0x1408c56b0 = `WallState::get_enclosure_params`（机器码 `tag@+0x38<2 ? &self+0x38 : null`），is_default_arch_height 真身在 0x1408c5690（待字节复核）——注释/实现需分开登记。③ WallState 大小未标：证据 **0x70B**（InnerWalls 条目步长 0x78），字段偏移见 DIGEST §1.2（enclosure@+0x38/height@+0x54/freehand_ty@+0x60/arch_type@+0x64/removed_supports@+0x67），当前 `{raw: Gap, height_ty, curve, shape}` 命名布局与真实偏移不符。④ serde 13 字段名表（DIGEST §1.2）未写入文档。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "public_wall_state.rs",
+  "status": "FIX",
+  "errors": "① `point_count()`/`source_curve_length()` 注释称\"偏移歧义\"——已解：calc_wall_bend 读的是 0x2a8 步长条目内偏移（map 值区 +0x18 起算），与 raw 曲线 +0x10 是两个不同数组（+0x10 为 raw Curve2 点计数 O）。歧义注释应删除。② `wall_space()` 返回 `WallSpace(Gap)` 空占位——证据 = `{tag!=2, f32@+0x28c}`（Option<f32>=Some(published 长度)）；`wall_space_length()` = 纯 +0x28c；`u_space()` = `{tag!=2, 1.0f@0x142925904}`。三方法可 100% 落地。③ `is_enclosed()` 无证据直连（行 118 内联，语义仍 U，注释可保留）。④ `max_ivy_grow_height`/`corner_normal_xz` 为 Gap，ok（U）。⑤ `max_y()` 返回 Result 包装 panic 语义可接受（注明即可）。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "inner_walls.rs",
+  "status": "FIX",
+  "errors": "① 结构 `{walls, next_id, gap}` 与证据不符：+0xc0 是**每调用递增的脏代计数器**（wall_ids 0x14085a200），不是 ID 分配游标；+0x30 是**工厂子结构**（wall_ids/new_wall_with_id 尾调 `FUN_1402ca2f0(self+0x30, id)`）。② `new_wall` 用 `next_id++` 分配 id——原作用 max_id/工厂分配（`max_id` 0x14085a730、`reset_max_id` 0x14085a550、`new_wall_with_id` 0x14085a4a0 见 v2 索引）。③ 方法面缺：`update_arch_height`（v2 新证 0x14085ad20 → `_try_update_state<update_arch_height>` 0x140aaa710）、`get_unwrapped` 0x14085a650、`remove` 0x14085aa60（v2 均已有反编译）。④ `update_wall_state_curve/enclosure/height` 等全空占位——`_try_update_state` 六实例（0x140aa9800..0x140aaaca0）已给出精确写偏移（DIGEST §1.2），可落地。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "public_walls.rs",
+  "status": "FIX",
+  "errors": "① 布局错：证据 PublicWalls.wall_entities_map 在 **+0x30**（delete_wall 0x140aac1e0 从 `*self+0x30` remove_entry），代码写 `{walls, wall_entities_map, roofs, gap}` 按 Rust 字段序摆放与偏移无关但注释未标注；② `simplified_curve_2d` 字段/方法缺失（`assertion failed: w.simplified_curve_2d.is_valid()` public_walls.rs:50 被 publish/spatial_hash_update/clamp_wall_height 三处内联，O）——应登记。③ WallEntities/WallPlasters map 基址在 +0x0（delete_wall 用 `*param_3` 直接作 map），与代码一致，ok。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "wall_attachment.rs",
+  "status": "OK",
+  "errors": "`to_rectangle_corner_id`/`from_rectangle_corner_id` 编码（0=None, 1..=4=id+1）与手解机器码一致；`is_attached`=字节!=0 O。注意：to_rectangle_corner_id 证据（0x140b256f0）返回 {present: self!=0, id: self-1}——重建代码 None 分支返回 0 而非 (false, 0)，语义等价但无 present 通道，记 ok-remark。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "decorator.rs",
+  "status": "FIX",
+  "errors": "① DecoratorType 全表待补（DIGEST §1.5：is_window={0x38,0x39,0x3a}、can_place_on_roof=t≠0x3a、can_place_on_stair_top={0x3c,0x3d,0x3e}∨非窗、can_place_on_terrain=t∉{0x38..0x3b}、should_offer_snap_to_corner=t≠0x3f、can_change_seed={0x38,0x39,0x3a,0x3d}、spawns_clutter={0x38,0x39}）——代码仍 Unknown=0。② `try_dst_as_wall` 手解 = `[rcx+0x22]<2 ? &self : null` ✓；dst_as_wall（v2：0x140833260）= tag≤1 → &self 否则 unreachable(line 40)——代码一致。③ v2 名表：0x140833570 = DecoratorOpEventKind::id（u32），DecoratorDst::as_wall_mut 真身 0x140833540——代码注释无冲突但注意不要引用旧名。④ TransientDecoratorIdGen {base:*mut u32, +0x8 u64, +0x10 bool} 两模式 generate 手解未写进代码（当前 Gap）。⑤ DecoratorRank::new 0x140833250（v2 名）、DecoratorLocator::new 0x140833240 等小方法缺。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "decorator_storage.rs",
+  "status": "FIX",
+  "errors": "① 五集合映射证据（round2 闭合）：+0x0 wall（iter 0x140a1e5b0 读 [self+0]/[self+8]）、+0x90 terrain（iter_terrain_decorators 0x140a1e280）、+0x120 stair（iter_stair_decorators 0x140a1e2c0）、+0x78 为 0x18B {DecoratorId u32, ptr} 查找索引（lookup_storage 0x140a1c3e0）、+0x18/+0x48 为其余集合（take_snapshot 0x140a20d70 五处判空：+0x18/+0x48/+0x78/+0x90/+0x120）、+0x1b0 可写标志（mark_mutable 0x140a1c2b0 清零）；wall 条目 = 0x98 步长 {WallId u64, Decorators 0x90B}，Decorators 内嵌 DecoratorId→Info map @+0x30、modified@+0x60、removed_ids@+0x0。当前代码全 Gap——可直接落地骨架。② `!self.immutable` 断言（get_or_insert 族）即 +0x1b0 标志语义。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "decorator_archivist.rs",
+  "status": "FIX",
+  "errors": "① `decorator_interactions` 0x1403c03c0 = 返回 &self+0x90（手解）——代码无此方法。② `decorator_cull_allow_any` 0x140b2bc00 遍历 0x98 步长 map + 命中回调 FUN_140b76260——重建代码恒返 true，**错误**（语义未证实，至少非恒真）。③ validate_param 0x140b2bb00 构建校验描述符（+0x20/+0x28/+0x30/+0x38 u16 掩码/+0x40/+0xc0）——缺失。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "decorator_subtype.rs",
+  "status": "OK",
+  "errors": "EMPTY=0x1a、DecoratorLibKey 2 字节键、4 表、insert 克隆语义与证据一致；`can_be_on_corner` 写 `matches!(0, 3",
+  "missing": "6)`——机器码 0xb25b50 极短（表查询或位移），I 推断已注明，ok。queue 0x14003bb80 = 空函数 ret（代码无 queue，ok）。"
+ },
+ {
+  "domain": "wall",
+  "file": "wall_holes.rs",
+  "status": "FIX",
+  "errors": "① `finalize` 断言文案：原作 panic = `finalize called on a wall hole storage that has not been cleared yet.`（0x140f87300 域）——要求\"前一状态已 clear\"的前置条件，重建代码断言 `phase == InProgress` + 文案 \"finalize\"，**文案与前置条件均不符**。② FinalizedWallHoles 布局已证实（holes Vec@0..0x18、wall_length f32@+0x18、closed@+0x1c——holes_no_duplicates 闭包 `movss [rcx+0x18]`），代码注释可升级为 O。③ InProgressHoleStorage::holes = {ptr@+8, len@+0x10} 切片（0x140c37760 手解），代码未表达。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "material_stats.rs",
+  "status": "FIX",
+  "errors": "全 Gap，但 round1 已解出完整布局（DIGEST §1.6：prev 7×f32@+0x28..、cur 7×f32@+0x90..、8 计数 u32@+0xac..+0xc8、seed u64@+0x88、pillar placements Vec@+0x70{cap,ptr,len}、自旋锁@+0x68、CAS 原子 add、arches_length_delta argmax+bias -0.01、init_this_update 0x140a88280）——可直接落地。v2 名修正：0x140a88420 = set_lintel_pillar_count（非 pillar_count）。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "wall_trigger_volume.rs",
+  "status": "FIX",
+  "errors": "全 Gap；证据：quad 数组 {ptr@+8, len@+0x10}、元素 0x60B、tri 输出 0x48B（get_tris 0x1408e80f0）、选项 {+0xc bit, +0x10 f32, +0x14/+0x18 u32}、panic `!triangles.is_empty()`/`!mesh_uvs.is_empty()`/`!normals.is_empty()`。`is_valid` 恒 true 无依据（U）。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "cached_decorator_transforms.rs",
+  "status": "FIX",
+  "errors": "`transform` 0x140a1ada0 = 缓存矩阵 9 分量有限性校验 + panic（NaN/Inf），非取位——代码 `try_position/try_transform` 返 None 空占位；v2 新增 transform_at/with_* 族（0x140a1a9f0/aa20/ab80/ac80/af40 已反编译）缺失。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "in_progress_wall.rs",
+  "status": "OK",
+  "errors": "`new`/fmt、Option 语义与合同一致（布局 U 标注清晰）。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "wall_path_segment.rs",
+  "status": "OK",
+  "errors": "pt_count/length_ws/length_ws_2d 地址 O；语义 I 已标注。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "decorator_collision.rs",
+  "status": "OK",
+  "errors": "无独立函数，Gap 合理。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "decorator_outline.rs",
+  "status": "OK",
+  "errors": "display 族（0x140b33920/0x140b33b00/0x140b348e0）语义与代码一致（Lines/Sphere 判别、+0x18 偏移）。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "elevation_support_stats.rs",
+  "status": "OK",
+  "errors": "无独立函数。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "arches.rs / curved_halftimber.rs / plaster.rs / wooden_gates.rs / wall_stone_columns.rs",
+  "status": "LATER",
+  "errors": "纯 Gap 门面 + 命名证据；wall_stone_columns 有 v2 新反编译 0x140a78880（11KB StoneColumnCollisionStorage）未对照，建议下轮。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "dormers.rs",
+  "status": "FIX",
+  "errors": "代码写 cottage `e[2]=1.0, e[3]=-50.0`（注释称 0xc24800003f800000）；手解 0x1412866e0：+0x28 处写 **f64**（movsd 全局常量），非两个 f32——gothic 4×f32 vs cottage 2×f32+f64 尾区差异。代码的 f32 数组建模**错误**。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "calc_wall_bend.rs",
+  "status": "OK",
+  "errors": "逻辑与反编译一致（>5 点才算 bend、sum/(n-1)、acos clamp≤1.0）；`compute_bend` 用 Vec2 方向归一（原作用 `d.y*d.y + d.x*d.x` 2D ✓）。事件 16B 行、ResMut 判别（EventWriter param_3 回写）均 O。remark：重建补了 `dirs.len().saturating_sub(1)` 与原文 n-1 一致。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "delete_wall.rs",
+  "status": "OK",
+  "errors": "三 map remove + Commands::despawn 双类型 id 与反编译一致（PublicWalls+0x30 wall_entities_map ✓）。remark：注释 \"keep inner wall record removal out of the public cascade\" 属推断（原 inner 记录删除域外，U 注明即可）。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "draw_wall.rs",
+  "status": "FIX",
+  "errors": "① 签名证据 4 ResMut（param_2/7/8/9）+ 合同（InnerWalls/InProgressWallResource/CurveNursery/InProgressCurve）✓，但重建自造 `current_wall_id`（`*local += 1; Some(WallId(*local))`）**编造 id**——原作用 InProgressWall 携带 WallId（typed gap），不应伪造。② CurveNursery 结构（重建 {curve: Option<Curve>}）无 O 依据（U）。③ `update_freehand_ty(wall, 0)` 硬编码 0——证据只证明 draw_wall 调 update_freehand_ty（0x140aa99e0 ×3），参数语义 U。④ 吸附位置 `_snapped` 未用（占位 ok）。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "finish_wall.rs",
+  "status": "FIX",
+  "errors": "① 签名缺：反编译 12+ 参、5 ResMut（param_4/6/9/10/11），重建只有 5 参 3 ResMut（缺 2 个 ResMut，U 名称）。② panic 语义缺失：`Was asked to finish a wall, but wall_manager has no temp curve`、`Finish wall marked a wall as non-enclosed, but it doesn't exist`（原 panic 路径未表达）。③ `wall_id_of` 返 None 使整段逻辑空转——InProgressWall 的 WallId 字段为 typed gap（证据：原 panic 文案证明 in-progress wall 与 inner 墙 id 关联）。④ enclosure snapshot 构造 `[0;28]` 占位 ok（U）。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "merge_walls.rs",
+  "status": "FIX",
+  "errors": "① 签名证据含 `DecoratorArchivalResources + ResMut<DecoratorArchivist>`（调用 decorator_cull_allow_any 0x140b2bc00 ×2）✓ 重建一致；② 合并判据实现（\"end point touches start within terrain tolerance\"）无 O 依据——反编译只见曲线/地形采样调用，判据数值 U，重建的遍历骨架可能误导；③ `InnerWalls::remove`（v2 0x14085aa60）在合并路径应被调用（重建无）。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "set_wall_style.rs",
+  "status": "FIX",
+  "errors": "① 事件行大小：style 0x18B/freehand 0x20B/plaster 0x18B（证据）——重建读三 reader 但未表达行布局；② 音频事件 {tag=0x10, style, pos.xy, pos.z}（0x20B RequestWallMaterialAudio）——重建写 {wall, pos, raw:Gap} 结构**不符**；③ history：证据 = CompoundEditBuilder::next + from_iter + History::add（0x140a82b40 ×4、0x141696f50 ×3、0x140a84ec0 ×3）——重建 `history.mark_changed()` 占位（可接受 typed gap，但应注明真实序列）；④ `_try_update_state<update_style/update_plaster_peel>` 实例 0x140aaa530/aaa350 未在索引。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "wall_splitter.rs",
+  "status": "FIX",
+  "errors": "① `cursor_u_for_wall` 硬编码 0.5——证据 = get_curve_segment_from_u/get_u_at_coord（FUN_141467ce0 ×3）真实光标投影；② ChildWall::new(0, 0.0, 0.0) 全零参数占位（U，参数面未知）；③ 样式 `convert_to_stone_version` 命中处转换未表达（合同 O：split 命中处转石）；④ 签名：证据含 Res<AppMode>/Res<PublicWalls>/DecoratorArchivalResources/Res<UiState> ✓ 一致。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "wall_highlight.rs",
+  "status": "OK",
+  "errors": "WallEntities 查表 + WallHighlight{entity, wall, ty} 与证据一致；ty→rgba 4 常量（0x3d8f5c29 等）未在重建落地（注释已列，ok-remark）。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "upload_instanced_wall_ssbo.rs",
+  "status": "OK",
+  "errors": "get_mut<BrickTransformSsbo> unwrap、+0x108 compact 双路径、gpu_flush 与合同一致；typed gap 明确。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "deferred_wall_history.rs",
+  "status": "OK",
+  "errors": "try_new 投影规则（分母下限 1e-8、严格更小、并列取首段、clamp01、严格 low<high→i64::MIN 哨兵）与机器码 0x1408dc9f0 一致；wall_deleted 3 分支组（0x140a876a0）注明。remark：`approximate_curve_coord` 用 `dist < best` 严格比较 ✓。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "structure_outline.rs",
+  "status": "OK",
+  "errors": "Esc 关闭才画、ShapeParameters 消费、signifier 名串（outline_wall_top_ 等）与证据一致；描边几何为 typed gap（U 已注明）。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "ui_continue_wall.rs",
+  "status": "FIX",
+  "errors": "① 证据：ui_continue_wall 消费 `tuple<(Res<InnerWalls>, Res<PublicWalls>)>` + GladeBorder::is_pos_inside + decorator cull + WallContinueState::display_signifier/finish——重建缺 GladeBorder 参数（重建签名无 glade_border）与 decorator cull；② suppress_continue_wall：证据含 Res<GameTime>（\"Resource does not exist…GameTime…\" panic 串），重建签名缺 GameTime；③ 续画判定阈值 U 已注明。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "ui_draw_wall.rs",
+  "status": "FIX",
+  "errors": "① 证据 **5 ResMut**（param_5/7/9/10/14），重建签名只有 ResMut<WallDrawState>（且无 CurveNursery！合同列 ResMut<CurveNursery>）——CurveNursery 参数缺失；② RecordMouseInputIntoWall 转发进 CurveNursery 的路径缺失（重建只写事件，无 nursery 写入）；③ 5 个 ResMut 中 3 个未登记（U）。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "wall_state/publish_public_wall_state.rs",
+  "status": "FIX",
+  "errors": "① 签名：反编译 **14 系统参数**；重建 6 参。证据面：ResMut<InnerWalls>（param_2 回写）+ ResMut<PublicWalls> + Res<WallSpatialHash> + Res<TerrainHeightsData> + EventWriter×2 + 未登记参数（SparseInstanceBuffer 存取 0x140969720、AnimateWallBulldozeBuffer::contains 0x140b772b0、material_stats 0x1409e9640、调试 signifier 等）。② `gather_lazy_update_sources` 重建自造 kind=known?1:0——语义 U（反编译见 lazy 源收集但判据未逐行）。③ 重建循环对每个 source 无条件发 OnWallChanged——证据有 `assertion failed: !is_adding`（添加中重复发布防护）与删除事件分支，缺失。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "wall_state/spatial_hash_update.rs",
+  "status": "FIX",
+  "errors": "① 证据用 **`w.simplified_curve_2d`** 建段（断言 public_walls.rs:50 三处内联），重建用 `published_curve_points()`——**错字段**；② add_segment 参数面：证据 `add_segment(hash, 3 floats?, &event payload, …)`（0x140aa5dd0 调用点），重建 `(wall: u64, low, high, segment)` 不符（0x38B 成员 = {WallId, 段数据 0x30}）；③ `assertion failed: (0.0..=1.0).contains(&t)` 前置缺失；④ 缺失墙 → panic（SpatialQuery received OnWallChanged with wall index …），重建 continue 静默跳过——**行为不符**。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "wall_state/wall_spatial_hash.rs",
+  "status": "FIX",
+  "errors": "① `add_segment` 实现为端点包围盒填格——证据：逐格闭包填充（get_cells_from_* 栅格化）+ 0x38B 成员 push（FUN_140562870/1406319d0 扩容）；② `get_cells_from_aabb/circle/rectangle2d/segment` 全空——原断言族（RESAMPLING < cell_size、bbx_min/max 越界）与真实栅格化缺失；③ `cell_center/world_space_to_grid_coord` 未接 bounds.min（代码自注 typed gap，ok 但布局无 O 常量——bounds 常量来源 U）；④ 64×64 为合同先验（walls-audit），未复测。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "wall_state/wall_roof_hashmap.rs",
+  "status": "FIX",
+  "errors": "① `wall_id_for_roof` 反向遍历 roofs map 找 entity——原逻辑为\"预置形状无 roof → 清除；有 roof → 写入映射\"（合同 O），重建无清除分支；② 证据 Query<(Entity, &Roof, Option<…>)>，重建 Query<(Entity, &Roof)> 缺 Option 项；③ 1 个 ResMut 回写（param_3）与合同 2 ResMut 的差异未注明。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "wall_state/spatial_hash_debug.rs",
+  "status": "FIX",
+  "errors": "合同/证据为 DebugRectangle2d，重建用 DebugRectangle3d——**类型不符**（低危）。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "wall_state/debug_viz_threshold_curve.rs",
+  "status": "OK",
+  "errors": "逐墙 DebugSphere 沿发布曲线 ✓。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "snapping/mod.rs",
+  "status": "FIX",
+  "errors": "`position_to_snap_to` 返 Vec3::ZERO 占位（U）；mode 1/2 语义注释 ✓。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "snapping/snapping_init.rs",
+  "status": "FIX",
+  "errors": "① 门控方向**反了**：证据/合同\"DebugGui 禁用或进行中墙空 → 返回\"，重建 `if debug_gui.enabled() { return; }`；② 1.65/1.5 阈值条件未实现（重建无条件 `snapping.mode = 1`）。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "snapping/snapping_maintain.rs",
+  "status": "FIX",
+  "errors": "① `check_for_disable_snapping`：证据 0x140a6a560 = mode∈{2,3} → **写事件**（0x20B 行，间接禁用），重建直接清零 mode——**行为不符**；② `snapping_maintain`：证据 = mod key 切换 + 跳表分发（0x140a6ad00 手解）+ NotifyHintSystemSnapping，重建复制了 check_for_disable 逻辑（错）；③ snapping_signifiers 双查询签名 ✓。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "snapping/snapping_to_ends.rs",
+  "status": "FIX",
+  "errors": "① 重建构造空 Curve 后 find_closest_end——原作用每墙真实曲线投影（`first_raw_input_point` 投影 + start_pos/get_pos_at_u）；② `find_closest_end_to_snap_to` 无半径限制实现（原有限制 U 值）；③ 证据入口有 mode 前置（`*pcVar4 != 1 → return`，I），重建无。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "snapping/snapping_to_segments.rs",
+  "status": "OK",
+  "errors": "半径 1.5 与 SQRT 距离路径 ✓；closest_segment_to_snap_to 投影实现为占位（typed gap 注明）；mode==1 前置未表达（同 to_ends）。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "snapping/snapping_audio.rs",
+  "status": "FIX",
+  "errors": "证据：mode==2 且 `[SnappingMode+0x20]==2` → 跳过；mode==3 且 `[+0x20]>1` → 跳过；否则写 PlayWallUiSound。重建：`mode==2 && !snapped → write; mode==3 → write`——**两个分支条件均错**（应读 +0x20 声音状态字节，非 snapped）。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "snapping/telegraph_walls_are_merged.rs",
+  "status": "OK",
+  "errors": "PlayLineAcrossWall{a,b} → 连线 signifier + 动画时长 ✓（细节 U 已注）。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "adjust_wall_height/adjust_wall_height_impl.rs",
+  "status": "FIX",
+  "errors": "① clamp 回退语义：证据\"clamp_wall_height 返回 1/0（bool）\"（0x140ac7f30 全读：PublicWalls 查墙 → roof_entity → 返回 1；缺失返回 0），重建把它当 `Option<f32>` 数值钳制——**函数语义错**（数值策略在 S02 height_rules/调用方内联，不在该函数）；② 命令 0x30B 行布局注释 ✓；③ `_try_update_state<update_wall_state_height>` ×2（0x140aaaca0）证据未在重建体现（重建直接改 state.height()）。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "adjust_wall_height/ui_adjust_wall_height_mode.rs",
+  "status": "FIX",
+  "errors": "① `clamp_wall_height` 重建实现数值策略（1.6/0.7/0.3/0.5、2.5/14.0 magic bits）——机器码 0x140ac7f30 无任何浮点比较，只有查表+roof_entity+bool 返回。**函数名与行为不符**：要么 0x140ac7f30 的 PDB 名错位（v1/v2 均挂此名），要么数值钳制被内联进调用方而该函数实为\"墙存在性/roof 查询\"。需下轮定点裁决；重建实现应标 U 而非 O。② 其余 UI 面 typed gap ok。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "adjust_wall_height/ui_adjust_wall_height.rs",
+  "status": "OK",
+  "errors": "预置形状 + roof flat/no-rim 分支 ✓（调用链）；widget 细节 U 注明。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "adjust_wall_height/adjust_wall_ui_mode.rs",
+  "status": "OK",
+  "errors": "widget/signifier 占位 + 地址注记 ✓（U 布局）。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "adjust_wall_height/signifier_animation.rs",
+  "status": "OK",
+  "errors": "is_flat_w_no_rim → 重算曲线；否则 SignifierAnimation::t 驱动 ✓；实现占位（typed gap）。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "shapes/mod.rs",
+  "status": "OK",
+  "errors": "4 资源注册 ✓。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "shapes/calc_shape_height.rs",
+  "status": "OK",
+  "errors": "数值合同（base 6.0/8.0、-0.46、clamp[0.7,14.0]、+0x40 写入、time_continuous_lerp）注释完整；实现前半占位（写 `mut cache: Res<CalcShapeHeight>` **Res 却要写入**——编译级 bug，应为 ResMut），后半 typed gap。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "shapes/shape_placement.rs",
+  "status": "OK",
+  "errors": "new_unsnapped/closest_segment_to_snap_to/snap_to_roof_ridge 占位 + 证据调用链（WallSpatialHash 查询 0x140b04f70、Roof::pivot_3d/RoofRidgeDims）注明；实现为 stub（typed gap）。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "shapes/circle/*, rectangle/*, shape_placement_signifiers.rs, utils/*",
+  "status": "LATER",
+  "errors": "round1 已反编译全族（ui_edit_circle 94KB 等），但本轮未逐文件对照实现（时间预算）；下一轮建议按 create/edit/ui/signifier 四组逐对照。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "valid_enclosure/mod.rs",
+  "status": "FIX",
+  "errors": "① 判别编码：证据 get_normal_at_u/get_pos_at_u/perimeter = `test byte[rax],1` **位 0 判别**（tag@+0，载荷@+4），重建用 Rust enum（Curve/Circle/Rectangle）自动判别——位 0 判别与 enum 变体序需核对（serde 名 `IsEnclosedNoYesPremadeShapeIsEnclosedV2` 存在）；② contains_shape/expand/perimeter 算法 U（parry3d 0.17 路径串证据）；③ `center()` 对 Curve 取首末中点——证据 0x1411ff2a0 为 15B 极短函数（不可能含遍历），**实现与机器码规模矛盾**（可能为直接字段读取）。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "eraser/animate_wall_bulldoze.rs",
+  "status": "OK",
+  "errors": "命令行 152B、phase 推进/CubicInOut、增长/完成事件（128 场景 768 全 RET 先验验证）——与合同一致；曲线切片细节 typed gap。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "eraser/wall_eraser.rs",
+  "status": "OK",
+  "errors": "调用链（PublicWalls::roof_entity ×4、WallEraserArchivist::affected_walls、ChildWall::new）✓；determine_freehand_height_ty/wall_height_based_on_length 返 0 占位（U 注明）；eraser 段重连细节 U。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "eraser/archivist.rs",
+  "status": "OK",
+  "errors": "ChildWalls/WallHistoryEdits 骨架 + finish→CompoundEditBuilder::build ✓；缓存字段 U。v2 新反编译 new/record_rewiring_event/cache_if_original_wall/shrink_wall（0x14092e6e0..92eff0）已落盘，可下轮对照。",
+  "missing": ""
+ },
+ {
+  "domain": "wall",
+  "file": "eraser/ui_bulldozer.rs",
+  "status": "OK",
+  "errors": "bulldoze_condition = AppMode{tag==9, +4==3}（round1 手解补正）与 RoofDelete FIRST + WallCompound StateChange+Delete 双组次序 ✓；命中/选区上游 U。",
+  "missing": ""
+ },
+ {
+  "domain": "terrain-water",
+  "file": "resources/world_raster.rs",
+  "status": "FIX",
+  "errors": "① `WorldRaster(pub Gap)` 整体占位；② `RasterBufferRef` 注释“调用方从 WorldRaster 按 +0x298 字节选缓冲构造”方向对，但 `WorldRaster` 本体布局已 O，应落地",
+  "missing": "composite/scratch 双缓冲（+0x08/+0x10、+0x20/+0x28，各 0x40000B）；DirtyTiles 位图 Vec +0x30..+0x47（0x4000B=4096 u32 瓦片状态，初始 0x07954dbb）；次级 Vec +0x48..+0x5f；56B 头拷贝 +0x60..+0x97（含 parking_lot Mutex + 订阅者 Vec @+0x78/80/88）；staging 0x200B@+0x98 + 4 标志字节 +0x298..+0x29b"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "resources/world_raster_defs.rs",
+  "status": "FIX",
+  "errors": "① 六个 `*Raster(pub RasterBufferRef<512>)` 与 O 不符——实为 Deref 到 WorldRaster 的资源（水位本体在 `WorldRaster<512>`，prior wp7 已证）；② `AllWorldRasterWrite(pub Gap)` 占位",
+  "missing": "6 槽名序 PathRaster/Cobblestone1/2/3Raster/WaterRaster/GardenRaster（0x142a93ca8 区胖指针表）；AllWorldRasterRead/Write 的 SystemParam 骨架（apply/queue=new_archetype=ICF 裸 ret、init_state=0x83fe20、get_param=0x1507ce0/0x1508130）；staging SSBO type-id 家族（0x142c2e210 区常量表）"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "resources/active_raster_stroke.rs",
+  "status": "FIX",
+  "errors": "全 stub；`resample_and_smooth`/`index`/`index_mut` unimplemented",
+  "missing": "0x470B 记录布局（三 Vec 列 +0x10/+0x28/+0x48、弧长 f32@+0x40、笔刷 f32@+0x60、模式字节@+0x64、blend flag u32@+0x68、计数 u32@+0x6c、双 512B 位图@+0x70）；index_mut=base+idx*0x470；start_new/add_point/last（Option::unwrap panic）/solidify（0.5 间距重采样）/resample_and_smooth=10 遍 0.25/0.5/0.25 平滑"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "resources/raster_stroke.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "`smooth`（当前为空实现）的真实平滑语义 U；`points: Arc<[Vec3]>` 与 O 一致"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "resources/brush_sizes.rs",
+  "status": "FIX",
+  "errors": "字段序错误：现有 `pub water: f32` 位于 +0；原布局 **path@+0（默认 0.8，clamp[0.32,1.2]）/ water@+4（2.0，[1,5]）/ garden@+8（3.0，[2,4]）**",
+  "missing": "path/garden 的 set/reset 方法与 clamp 常量（0x142ac56c0、0x1429cd128、0x14292e6f0、0x142934694）"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "resources/cursor_terrain_raycast.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "`update` 的输入语义（谁调用）U；布局 {tag u8@0, pos@4} O 正确"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "resources/mouse_terrain_raycast.rs",
+  "status": "FIX",
+  "errors": "`camera_mouse_ray` unimplemented（0x8ef1c0 有 O 反编译可恢复）；`CursorPositionSS(pub Gap)` 占位",
+  "missing": "CameraCursorRay 布局已 O 正确；mouse_terrain_raycast 的“xz 平面 vs intersect_ray 比距取近 + closure$0 实例精化”链；CursorPositionSS 字段"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "resources/read_mouse_depth_value.rs",
+  "status": "STUB",
+  "errors": "纯 Gap",
+  "missing": "MouseDepthValue={w f32@0, xyz@+8, 帧哨兵@+0x40}；read_mouse_depth_value_from_gpu（0xa1a480：SSBO 名 0x47 字符、2×float4 NaN 过滤回读）"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "resources/in_progress_curve.rs",
+  "status": "STUB",
+  "errors": "全 false/0 占位",
+  "missing": "new(0xad3070)/try_add_raw_input_points(0xad3f50，FUN_141466860 验证门)/compute_final_curve(0xad41a0)；本域属 freehand 墙输入曲线（wall 域主消费）"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "resources/drawing_input_smoother.rs",
+  "status": "FIX",
+  "errors": "全占位",
+  "missing": "**DrawingInputSmoother::process（0x145c350）= 弧长均匀重采样 + 最小间距门控 → Vec<(x,z)>**（O，round2 新解）；当前文件只有 RawInputSmoothed 外观"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "resources/glade_border.rs",
+  "status": "STUB",
+  "errors": "`is_pos_inside` 恒 true 占位",
+  "missing": "is_pos_inside=0xad2950（跳板→is_shape_inside 0xad2970 主体）；search_lerped_shape_that_fits_into_glade（0xad2ce0）；CurveU panic \"Tried to init CurveU from an invalid u: \""
+ },
+ {
+  "domain": "terrain-water",
+  "file": "resources/rocky_terrain.rs",
+  "status": "OK",
+  "errors": "`LoadedRockyTerrainVertex._gap: [f32;9]`（0x24B 源记录=9 f32 ✓ 尺寸巧合正确）",
+  "missing": "顶点 0x24B→0x30B、三角形 0x10B→0x20B 的字段映射 U；RockyTerrainMesh 布局 U（typed gap 保留合理）"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "resources/terrain_height.rs",
+  "status": "FIX",
+  "errors": "① `copy_from_gpu(&mut self, _readback: &[u16])` 参数方向待核（O 是 16B 块差分拷贝，非整缓冲）；② sample_at_world_xz 返回 u16（当前注释未提）；③ intersect_ray 的 32 步行进+3 二分未记录",
+  "missing": "+0x08=u16 512×512 网格；+0x50/54 min/max（默认 -2.5/24.0，copy_from_gpu 复位逻辑）；视觉实例 0x141246fb0 双线性变体；load_index_unchecked=0x1408b54c0（0x14067dd80 是 ICF 身份函数，勿用）"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "resources/terrain_rock_mask.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "已 O（0x9ea800、位索引 (z*512"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "resources/terrain_editing.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "HashMap 布局 + new_stroke 0x3fffff 上限 O 正确；serde Compact/Pretty/Value 胶水按项目规则复用"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "resources/terrain_stroke.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "insert_or_morph_last_point O 正确（0.001/1024）；`falloff: f32` 默认 0.4 为猜测字段（U 标出即可）"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "resources/water.rs",
+  "status": "LATER",
+  "errors": "`rg_buffer_hash() = 0` 占位（真值=name_hash，I）",
+  "missing": "RippleSourceSsbo/WaterDrawEvent/WaterEraseEvent 载荷 U（typed gap 保留）；`Water` 外观结构本身是恢复层发明（原模块无此 struct），注释已声明可接受"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "resources/water_mask.rs / water_exclude_clutter_mask.rs",
+  "status": "LATER",
+  "errors": "同 rg_buffer_hash 占位",
+  "missing": "布局 U（name-only）；阈值 0.5/0.2、映射 1/130 O 正确"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "resources/garden_mask.rs",
+  "status": "LATER",
+  "errors": "纯 Gap",
+  "missing": "GardenMaskSsbo name-only（U）"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "systems/world_raster.rs",
+  "status": "FIX",
+  "errors": "① `record_raster_history` 地址注释缺失/错（v2=0x957990；旧索引 0x957bf0 是 upload_world_raster_buffers_to_staging）；② draw_raster 泛型面 stub",
+  "missing": "record：variant·0x470 槽位 + 12B 元素 Vec Arc 克隆 + History::add + reset cap4；upload：脏流门 + 6 光栅 upload_to_staging（copy_to_staging selector=0）；draw_raster 状态机（start_new/add_point/resample/solidify/rasterize_stroke/copy_to_staging 链）"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "systems/terrain/mod.rs",
+  "status": "FIX",
+  "errors": "insert_terrain_resources/add_terrain_events/add_terrain_systems 均 unimplemented（0x9457c0/0x945a20/0x9455f0 有 O 反编译）",
+  "missing": "资源/事件注册清单（契约已有）；RtTriangleMetaSsbo Vec 扩展细节"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "systems/terrain/delayed_terrain_changed_msg.rs",
+  "status": "OK",
+  "errors": "注释与 O 一致",
+  "missing": "函数体 unimplemented（0xaabdd0 反编译已落盘可恢复）；on_terrain_modified=`LOCK inc`（O，round2 手解）"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "systems/terrain/deferred_terrain_history.rs",
+  "status": "STUB",
+  "errors": "—",
+  "missing": "history_record_terrain（0xac9770 反编译已落盘）"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "systems/terrain/draw_terrain_stroke.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "事件转发逻辑 O 正确"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "systems/terrain/edit_terrain_stroke.rs",
+  "status": "STUB",
+  "errors": "—",
+  "missing": "0x94e000 反编译已落盘（35KB）；panic 串 O"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "systems/terrain/terrain_hover_idx.rs",
+  "status": "STUB",
+  "errors": "注释说“读鼠标回读 SSBO（断言 0x6c）”方向对",
+  "missing": "0xaff720 反编译已落盘；AppMode 0x421 门、水位/距离门控细节"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "systems/terrain/ui_draw_terrain.rs / ui_edit_terrain.rs / ui_terrain_focus_mode.rs",
+  "status": "STUB",
+  "errors": "—",
+  "missing": "ui-input 域共享；反编译已落盘（ui_edit 0xaef1f0 33KB、focus_mode 0x9a4fb0 167KB+4 闭包）"
+ },
+ {
+  "domain": "terrain-water",
+  "file": "systems/mesh_follow_terrain.rs",
+  "status": "OK",
+  "errors": "注释与 O 一致（panic 串、Query 面）",
+  "missing": "函数体 stub；Vertex_Position 属性路径（0x142ad5120）可补"
+ },
+ {
+  "domain": "ui-input",
+  "file": "systems/mode_manager.rs",
+  "status": "WRONG",
+  "errors": "① AppMode 枚举缺 **Replay** 变体（判别 0xd，check_if_can_switch 写 *state=0xd）；② `AppMode::is_tool_selected @0x140a8a5d0` 是伪声明（该地址 = `timelapse_replay::cleanup_timelapse`，PDB 清单无此名）；③ `send_mode_just_changed_event` 事件类型错（实为 0x28B `{prev: AppMode 16B, current: AppMode 16B, id}` 双 AppMode 事件，且 PDB 名 = `mode_manager::closure$0`）；④ mode_manager 早退规则未实现（`hash(\"esc_menu_canvas\") + hover!=0 + id 匹配 + 交点 tag!=2 + mode!=2`）；⑤ AppMode 判别序：2=Timelapse、6..9=Wall 形状、10+5k=Tool(工具栏类别 k)、0xd=Replay",
+  "missing": "check_if_can_switch 语义（见 CLOSURE.md 已闭合）、per-mode 跳表分发、Tool(工具栏类别) 载荷结构"
+ },
+ {
+  "domain": "ui-input",
+  "file": "systems/mod_key.rs",
+  "status": "WRONG",
+  "errors": "`Modifiers` 布局错：代码 4 个独立 bool；机器码 `disable_snapping` = **byte [rcx+1]**（位标志字节组）。`update_mod_key_state` 地址（0x140af9000 实为 Toolbar::new）",
+  "missing": "位标志完整位定义、update_mod_key_state 真实地址"
+ },
+ {
+  "domain": "ui-input",
+  "file": "input/mod.rs",
+  "status": "PARTIAL",
+  "errors": "ActiveInputModeTracker 32B 结构对；但 `on_controller_used/on_mouse_keyboard_used` 只改 mode，缺 **Instant::now()+Duration 时间戳逻辑**（wp15 O）；MouseMoved/InputCursorMoved 实为 16B `{id u64, Vec2}` 记录（回放路径产出），代码用 Gap 包装",
+  "missing": "时间戳/冷却字段语义、事件精确字段"
+ },
+ {
+  "domain": "ui-input",
+  "file": "input/action_set.rs",
+  "status": "PARTIAL",
+  "errors": "DigitalActionState 访问器 ✓（pressed=Pressed\\",
+  "missing": "JustPressed 等）；ActionSetAction tag0=Analog/tag1=Digital ✓；但 0xcB 记录 `(action-type u16, value)` 的 tag 编码（0x100/0x101/…）未恢复"
+ },
+ {
+  "domain": "ui-input",
+  "file": "input/input_stream.rs",
+  "status": "PARTIAL",
+  "errors": "布局声明与 wp15 一致 ✓；InputFrame 0xd0B 各字段（DIGEST §2.3：@+0x30 u64、@+0x38 u32、@+0x3c u8、@+0x40 双 f32、@+0x44 f32、@+0x58..0xc0 十 qword）未写入结构",
+  "missing": "add_frame/on_history_sync/drop_oldest_sync_point/seek 实现、trim 边界（9999/50000/9/10000 已有注释）"
+ },
+ {
+  "domain": "ui-input",
+  "file": "input/panic_repro_state.rs",
+  "status": "PARTIAL",
+  "errors": "`is_inactive` 硬编码 true；机器码 = `byte *self == 0`",
+  "missing": "状态字节的其它取值语义"
+ },
+ {
+  "domain": "ui-input",
+  "file": "resources/toolbar.rs",
+  "status": "WRONG",
+  "errors": "① Toolbar::new 地址 0xaf8c50 → 实 **0x140af9000**；② 类别表：缺 **id 0 类别**；`Roofs=8` 存疑（8 未出现在 Toolbar::new 的 11 类 id 中，屋顶=Decor 0x38..0x3f 区间模式）；Buildings 列表含 (0xb,0x3f)/(0x12,0) 两条（置信中，Ghidra 类型混淆风险）；③ switch_mode 签名 `(u32,u8)` → 实 `(&mut Toolbar, &{cat u32, mode u8, arg u64})`；④ contains 区间 0x38..=0x3d → 实 **0x38..=0x3f**；⑤ panic 串原文不对（\"mode but no toolbar\" 片段）；⑥ next_mode 地址是 serde unknown_variant thunk（名错位）",
+  "missing": "ModeEntry 真实布局 `{cat u32, mode u8, pad3, arg u64}`（代码写 (u32,u8,u64) 元组可读性差）、真实 next_mode 地址、panic 完整原文"
+ },
+ {
+  "domain": "ui-input",
+  "file": "resources/photo_mode.rs",
+  "status": "PARTIAL",
+  "errors": "next/next_demo 判别与 panic 串 ✓；但 PhotoModeCameraMode 应 **repr(u8)**（代码默认 i32 布局）",
+  "missing": "PhotomodeState（on_enable_photomode 0x140870570：f32@0=3.0/1.0 + u32@4=-1 + 2 字节）资源、CameraMode 6..12 槽映射（见 CLOSURE.md）"
+ },
+ {
+  "domain": "ui-input",
+  "file": "resources/gui.rs",
+  "status": "WRONG",
+  "errors": "① EscMenuState = 8B `{disc u32@0, sub u32@4}`（is_open：qword∈{3,4} 或 disc==7&&sub==1；allow_time_passage：!(disc==7&&sub==1)）——代码的 {Closed,Open} 二变体枚举完全不符；② 缺 **NextEscMenuState / PrevEscMenuState / PhotomodeScreen** 三个同文件资源（PDB 类型证实）；③ DebugTriggerProxyVis::as_string 行为（串表索引生成）未写",
+  "missing": "EscMenuState 全变体名（判别 0..7+）、DebugGui 布局"
+ },
+ {
+  "domain": "ui-input",
+  "file": "resources/mouse_capture.rs",
+  "status": "WRONG",
+  "errors": "① 注释 \"SettingsMenuState\" 错——mouse_capture 推的是 **EscMenuState 值 {disc2,sub2}（未捕获）/ {disc3,sub2}（捕获）** + WindowFocusEvent `{focused u32, window u64}` 16B（代码注释与事实不符）；② CursorCapturedPosition 实为 `{u32 captured, u64 pos(2×f32)}` 12B（代码 bool+f32+f32 数值一致但语义注释不足）",
+  "missing": "与 EscMenuState/NextEscMenuState 的联动说明、WindowFocusEvent 精确字段"
+ },
+ {
+  "domain": "ui-input",
+  "file": "resources/onboarding.rs",
+  "status": "WRONG",
+  "errors": "仅 NotifyHintSystemSnapping；缺 **WelcomeScreenState**（is_closed = 判别==2，0x1409a9140 折叠处证实）与 **TutorialOp** 事件（tiny_glade settings 系统 EventWriter<TutorialOp>，PDB 类型证实）",
+  "missing": "WelcomeScreenState 变体集、TutorialOp 载荷"
+ },
+ {
+  "domain": "ui-input",
+  "file": "resources/ui_settings.rs",
+  "status": "WRONG",
+  "errors": "**ToolbarAlignment 变体名错**：代码 Horizontal/Vertical/Bottom/Side → 实 **Bottom/Left/Right/Top**（串表 0x142acec66）；UiSettings 字段无名（实 7 字段：icon_size_mult f32@0、custom_cursor_size f32@4、toolbar_alignment u8@8、auto_hide_toolbar u8@9、input_lag_reduction u8@10、game_logo u8@11、custom_cursor u8@12，serialize 0x140a46ad0）",
+  "missing": "字段名/默认值语义（默认 auto_hide=true、alignment=变体1）"
+ },
+ {
+  "domain": "ui-input",
+  "file": "resources/editing_highlight.rs",
+  "status": "OK",
+  "errors": "无实质错误（facade）",
+  "missing": "wall_highlight 写 rgba 的具体字段（跨 wall 域）"
+ },
+ {
+  "domain": "ui-input",
+  "file": "systems/ui/mod.rs",
+  "status": "PARTIAL",
+  "errors": "GlobalId::from_name ✓；signifier_config_hash 返回 0（stub）；add_ui 未实现",
+  "missing": "UiState/UiNavState/UiSignifierStream(0x170B) 资源 + PlayUiSound/PlayPhotomodeSound 事件 + Update 调度链"
+ },
+ {
+  "domain": "ui-input",
+  "file": "systems/ui/resources/ui_state.rs",
+  "status": "PARTIAL",
+  "errors": "① `is_active`/`hovered` 缺 **id 匹配**（证据：hover!=0 && id@+0x38 == ctx id）；② clicked 条件 ✓（hover>1 && click<2 && click&1）；③ `clearing_canvas_w_layer` 忽略 layer 参数（实参应传入 WidgetVolumeShape.layer）；④ UiWidgetContext 布局：hover@0x18/click@0x19/id@0x38/交点@0x28..0x58 未写全",
+  "missing": "add_with_id（RwLock@0x60 + HashMap@0x68 + 0xb0B 拷贝 + 0xc0 Arc，已解出）、widget/active_widget_state/origin、clearing_canvas 130×130 体积"
+ },
+ {
+  "domain": "ui-input",
+  "file": "systems/ui/resources/widget_params.rs",
+  "status": "WRONG",
+  "errors": "① 结构体字段序与真实 0xb0B 布局不符（真实：u32 组 @0..0x60、sounds 96B @0x18..0x78、volume 32B @0x78..0xa8、u16@0xa8=0x101——代码的 {sounds, volume, ...} 序不匹配）；② WidgetFlags 位值（DECORATOR=1<<3、HIDE_OS_CURSOR=1<<4）未验证（U）",
+  "missing": "真实布局表（DIGEST §2.4）、UiSounds 槽位（3qword×4）payload"
+ },
+ {
+  "domain": "ui-input",
+  "file": "systems/ui/resources/slider3d.rs",
+  "status": "PARTIAL",
+  "errors": "Slider3dState 字段 {origin, direction} 为 I；其余 stub",
+  "missing": "SystemParam 包装的资源集（UiState/UiSignifierStream/CameraCursorRay 等）、project_cursor_onto_line、update<C,F> 泛型"
+ },
+ {
+  "domain": "ui-input",
+  "file": "systems/ui/hover_intersection.rs",
+  "status": "PARTIAL",
+  "errors": "WidgetIntersection 字段 {id, point, distance} 为 I",
+  "missing": "par_chunk_map 体积测试 + layer/distance 排序、HoverIntersectionCache 布局"
+ },
+ {
+  "domain": "ui-input",
+  "file": "systems/ui/ui_update.rs",
+  "status": "PARTIAL",
+  "errors": "均为 todo；get_ui_volume 返回 default（语义错）",
+  "missing": "hover/click/drag 状态机（HoverState/DragState）、enter_hover、PlayUiSound 触发"
+ },
+ {
+  "domain": "ui-input",
+  "file": "systems/ui/debug_visualize_volumes.rs",
+  "status": "OK",
+  "errors": "无实质错误（stub，头注释与 wp15 一致）",
+  "missing": "三角面片/UV 线框绘制"
+ },
+ {
+  "domain": "ui-input",
+  "file": "systems/ui/signifiers/mod.rs",
+  "status": "PARTIAL",
+  "errors": "① SignifierEntityBuilder 0x90B 真实布局（shader String@0x60..0x70、position Vec2@0x7c、默认 {0,1.0f64,0x100 u16@0x40,0.2f32@0x78}）与代码字段序不匹配；② **UiAppendSignifier 实为 0x28B 紧凑记录（流元素），不是 SignifierEntityBuilder(0x90B) 的包装**",
+  "missing": "SignifierFactory 40B 布局、build 三分支（0=命名网格/1=transient/2=mesh_from_pts）"
+ },
+ {
+  "domain": "ui-input",
+  "file": "systems/ui/signifiers/signifier_create.rs",
+  "status": "WRONG",
+  "errors": "**UiSignifierStream = 0x170B 无锁环形流**（read cursor@+0x160、write counter@+0x168、0x28B 槽）——代码写成 `Vec<UiAppendSignifier>`",
+  "missing": "write 自旋追加 + signifier_create 排空生成实体"
+ },
+ {
+  "domain": "ui-input",
+  "file": "systems/ui/signifiers/signifier_mark_for_delete.rs",
+  "status": "OK",
+  "errors": "PDB 拼写 signfier 已注明 ✓",
+  "missing": "signifier_config_hash 联动"
+ },
+ {
+  "domain": "ui-input",
+  "file": "systems/ui/signifiers/animation.rs",
+  "status": "PARTIAL",
+  "errors": "stub",
+  "missing": "t 推进 + 缓动 scale/alpha + get_origin 父挂"
+ },
+ {
+  "domain": "ui-input",
+  "file": "systems/ui_edit_focus.rs",
+  "status": "WRONG",
+  "errors": "头注释\"geo_src 映射 EditSubject\"过于简略；核心行为缺失：mode<6 注册 **\"edit_focus_canvas\"** widget（volume tag=5、size f32::MAX）；mode 1/2 跟随路径（FUN_140a1c930 谓词）；0x2a8 反向 wall 数组遍历 + 两条 panic（DIGEST §2.5）；mode==10 特判；结尾 push `{tag0, id}` 0x18B 事件",
+  "missing": "4 张旋转跳表 = 24 变体 GeoSource 匹配、EditSubject 变体 serde 名（WallId/Floor/Roof/flat/gable/DecoratorCollision/…，DIGEST §2.5 已列）"
+ },
+ {
+  "domain": "ui-input",
+  "file": "systems/ui_move_shapes.rs",
+  "status": "PARTIAL",
+  "errors": "widget 名 \"move_shape\" 未记录",
+  "missing": "MoveShapeCache 布局、gizmo delta→shape 位置 + volume 触发"
+ },
+ {
+  "domain": "ui-input",
+  "file": "systems/ui_raise_shape.rs",
+  "status": "PARTIAL",
+  "errors": "三个 widget 名（outline_wall_bottom_/arrow_raise_shape_/raise_wall_elevation_）未记录",
+  "missing": "project_onto_ray 抬升 + History::add 细节"
+ },
+ {
+  "domain": "ui-input",
+  "file": "systems/ui_2d_follow_mouse.rs",
+  "status": "PARTIAL",
+  "errors": "头注释与证据一致 ✓；body todo",
+  "missing": "双分支 Query 索引写槽细节"
+ },
+ {
+  "domain": "ui-input",
+  "file": "systems/ui_camera_mode_gizmos.rs",
+  "status": "PARTIAL",
+  "errors": "widget 名 **\"camera_mode_active\"** + signifier **\"rotation_\"** 未记录；`(byte@4d0 & 6)==2` 判定注释有",
+  "missing": "窗口尺寸门（w/h>2）、0x14 判定、AppendOnlyVec 记录 {tag,size,pos,fov}"
+ },
+ {
+  "domain": "ui-input",
+  "file": "systems/ui_edit_freehand_walls.rs",
+  "status": "OK",
+  "errors": "stub；头注释与 wp20 一致",
+  "missing": "EditFreehandWallCache 布局"
+ },
+ {
+  "domain": "ui-input",
+  "file": "systems/ui_focus_mode_shape_height.rs",
+  "status": "OK",
+  "errors": "stub；LerpedGizmoPosition 字段为 I",
+  "missing": "高度射线投影"
+ },
+ {
+  "domain": "ui-input",
+  "file": "systems/ui_move_freehand_walls.rs",
+  "status": "OK",
+  "errors": "stub",
+  "missing": "MoveWallCache 布局"
+ },
+ {
+  "domain": "ui-input",
+  "file": "systems/ui_clutter/*（8 文件）",
+  "status": "OK",
+  "errors": "stub 族；头注释与 wp20 一致；DeletedAutoClutter 事件已声明",
+  "missing": "各缓存/命令载荷"
+ },
+ {
+  "domain": "camera-time",
+  "file": "systems/camera_rig/mod.rs",
+  "status": "FIX",
+  "errors": "文档声称\"模式字节@+0x4d0 选 6 body\"——证据：模式槽 0..12（13 槽，focus/lens 表各 13 项 @0x142aabb68/@0x142aabb98）；MainCamera@+0x0..0x100 = CameraMatrices 矩阵块未记；`MainCamera::new` @0x14090ec70、`mode/focus/focus_mut/lens/lens_mut` @0x140911230/240/260、`zoom` @0x140911280、`match_free_camera_to_normal` @0x14090e6f0、`init_walk_camera` @0x14090e510、`load_parameters` @0x140911520、`CameraModeStates::current_dyn` @0x1409149d0 全缺",
+  "missing": "13 槽模式字节模型；7 个 MainCamera 方法 stub（new/eye_position 等 return 零值）"
+ },
+ {
+  "domain": "camera-time",
+  "file": "systems/camera_rig/camera_body.rs",
+  "status": "OK",
+  "errors": "无（CameraMode 6 核心变体 ✓；lerp/smooth(1−exp(−8dt))/bounds_xz 机器码实证）",
+  "missing": "模式 6..12 = 拍照/工具槽位的注释；CameraTransform 在 dolly 分叉内为 rotation-first（0x140994700 读 +0x18 作四元数、0x140994310 拷贝 +0x18 16B）——仅影响内部布局认知"
+ },
+ {
+  "domain": "camera-time",
+  "file": "systems/camera_rig/free.rs",
+  "status": "OK",
+  "errors": "无（typeid 0x6b8463577afc1a66 Position / 0x718e4fd258330fe5 YawPitch、±91 clamp、terrain+0.75、20/60、smooth 全实证）",
+  "missing": "—"
+ },
+ {
+  "domain": "camera-time",
+  "file": "systems/camera_rig/normal.rs",
+  "status": "OK",
+  "errors": "无（position@+0x38/pending@+0x44/yaw@+0x50/pitch@+0x54/radial_max@+0x60/loose@+0x6c、max(terrain+0.75)、ratio=max(y/−fwd.y,1)/50 全实证）",
+  "missing": "`zoom` 的 lower 上界来自模式表（MainCamera::zoom 的 table2[(mode==1)?1:0]），skeleton 用参数传——语义等价"
+ },
+ {
+  "domain": "camera-time",
+  "file": "systems/camera_rig/walk.rs",
+  "status": "FIX",
+  "errors": "`teleport` 用 quat 基构造方向——实为方向向量→yaw/pitch 度欧拉转换（FUN_140334d80+FUN_141766a90，rad2deg 常量 0x142aba9e0/9e4）；`rotation()` = 拷贝 [self+0x18] 16B（分叉 CameraTransform rotation-first）——skeleton 语义对但布局认知错",
+  "missing": "ground_hit 判别 0xb（命中）/0x11（无命中）注释"
+ },
+ {
+  "domain": "camera-time",
+  "file": "systems/camera_rig/butterfly.rs",
+  "status": "OK",
+  "errors": "无（selected/applied @+0x38/+0x3c、dt=1000 吸附、空 trampoline 0x14003bb80）",
+  "missing": "rig 各 Smooth 参数（2,predictive/4/4）为合同继承（I），未本域重验"
+ },
+ {
+  "domain": "camera-time",
+  "file": "systems/main_camera.rs",
+  "status": "FIX",
+  "errors": "`camera_snapshot` 签名错：实参 =（Mut<快照：mode u32@+0x18、f32@+0x1c>、Res<时间：dt@+0x28>、Mut<…>、Res<MainCamera：fov 系数@+0x0ec>）逐模式 jumptable——skeleton 写成 (ResMut<MainCamera>, ResMut<CameraSnapshot>, EventWriter)；`paused_main_camera_update` 参数顺序错：实为 (&mut Mut<MainCamera>, Res<WindowSize{u32 w,h}>，…)，aspect=w/h 写 @+0x4d8、memcpy 0x100 矩阵块进 @+0x0；`CameraRotationPivot` 是 **7 变体枚举**（CameraRotationPivot/CursorDepthFiltered/CursorDepth/CenterDepthFiltered/CenterDepth/CursorTerrain/CenterTerrain，ron 0x14003ac90 + enum_iterator Sequence 0x1408b99e0/0x140914ac0），skeleton 写成空 struct",
+  "missing": "`next/previous` 实现（previous 表 [6,0,1,2,3,4] @0x140914ac0）；`apply_camera_snapshot_op`；mode 6→0 的 DebugGui/UI 映射"
+ },
+ {
+  "domain": "camera-time",
+  "file": "systems/look_at_camera.rs",
+  "status": "FIX",
+  "errors": "`register_required_components` 建模为运行时插入 Transform 的系统——实为 Bevy derive 组件注册胶水（bevy_ecs-0.16.0 component.rs 递归，一次性）；`clone_behavior` = `return 0` 平凡函数",
+  "missing": "look_at 本体的朝向数学在共享工具 FUN_140c96d40/FUN_140c9ce00（utils::camera），LookAtCamera{target,up} 字段布局 I"
+ },
+ {
+  "domain": "camera-time",
+  "file": "systems/time_of_day.rs",
+  "status": "FIX",
+  "errors": "文件头 doc 的 remap 基值 {48,17,11,24,22,…} 错——实为 {0,3,11,17,22,24}（常量 @142ad59b0/b8/c0）；系统签名缺 6 个参数（实 13 参：AudioCoreInner@+0x10 上报、TodSequence、f32 资源、GameTime(dt@+0x28)、按键、sun-sky、播放态、光照、dev 态(小时倍率@+0x23/热键@+0xe3)、双 EventReader、GladeType、当前态）",
+  "missing": "remap 冬季插入 5.0/6.2/9.0 的注释；状态机/音频参数 \"TOD-Enabled/Timetravel/DayNight\" 说明"
+ },
+ {
+  "domain": "camera-time",
+  "file": "systems/time_update.rs",
+  "status": "FIX",
+  "errors": "doc 写 \"total_f32@+0x10\"——实为 f64（`(double)dt + (double)old` 存 u64）",
+  "missing": "重放帧 delta@+0xc8（0xd0B 帧）、i64::MIN+2 @+0x40 判 Replaying、前两帧 clamp 1/60 的注释"
+ },
+ {
+  "domain": "camera-time",
+  "file": "systems/weather_system.rs",
+  "status": "OK",
+  "errors": "无（glade_type@+0x58==4、sin(game_time/300·π)、±0.1·dt@+0x28、intensity@+0xc、clamp[0,1] 全实证；1e9@1429a7640、300@142aa5140）",
+  "missing": "—"
+ },
+ {
+  "domain": "camera-time",
+  "file": "systems/timelapse_replay.rs",
+  "status": "FIX",
+  "errors": "`is_active = self.0 == 1` 错——机器码 0x14092e6b0 = `state != 2`；start/finish/cleanup 签名不全：实为 EventReader 修剪流 + check_if_can_switch（0x140af9e00）+ MetaCommand 推入（i64::MIN 哨兵，meta_commander.rs）+ 事件 {tag,byte}（stride 0x10）",
+  "missing": "相邻谓词 `==3`/`<2`（0x14092e6b7/be）归属未定"
+ },
+ {
+  "domain": "camera-time",
+  "file": "systems/arrow_gizmo_animation.rs",
+  "status": "FIX",
+  "errors": "doc 无行为描述；实为：有事件按主轴 `stretch=min(stretch+",
+  "missing": "δ"
+ },
+ {
+  "domain": "camera-time",
+  "file": "systems/ui_camera_mode_gizmos.rs",
+  "status": "OK",
+  "errors": "无（四重门槛 AppMode∈{2,10}、非 Free/Walk、窗口<3px、模式∈{0,1,4}+6→0 映射、UiState::add(\"camera_mode_activerotation_\")、0x20B 签名符 {1,1,id,size,fov@+0xe8} 全实证）",
+  "missing": "闭包渲染细节（cursor_grab 部件、value/1000·20、clamp 25.0）"
+ },
+ {
+  "domain": "camera-time",
+  "file": "systems/clear_canvas.rs",
+  "status": "OK",
+  "errors": "无（InnerWalls::remove_all、光栅 clear_all<512> 变体 0x13/0x14/6/5/7/1/2/3/4(+9/0xb/0xd/0xe)、7×clear_preset_texture、日志 \"Clearing the canvas.\" 全实证）；签名可补 EventReader",
+  "missing": "上传记录重置的 3 个 color_id 语义"
+ },
+ {
+  "domain": "camera-time",
+  "file": "systems/despawn.rs",
+  "status": "OK",
+  "errors": "无（@+0x108 二分、stride 0xa0/0x48、u64 高 32 位==0 提前返回、Commands despawn）",
+  "missing": "两个实体 id 数组的资源名"
+ },
+ {
+  "domain": "camera-time",
+  "file": "resources/time_of_day.rs",
+  "status": "FIX",
+  "errors": "TodLightingSnapshot 字段用 a/b/c/d/e/f 占位——现已实证：sun_sky(Vec4@+0x0)、fog_tint(2×u64@+0x20，**不插值**)、base_fog_thickness(4×f32@+0x30)、speed_bias(f32@+0x40)（ron 字段名 0x142930744/75d/74b/765）；`TimeOfDay(pub f32)` 不完整——会话序列化外层资源 = {time_of_day, snapshot, temp_ui_ids}（0x14007fd40）",
+  "missing": "播放态资源 {state/progress/target_hour/angle/latitude@+0x10/sunrise@+0x14/sunset@+0x18/visible/day_of_year@+0x28} 的类型定义"
+ },
+ {
+  "domain": "camera-time",
+  "file": "resources/time.rs",
+  "status": "FIX",
+  "errors": "无错误，但 GameTime 布局已可补：{game_time Duration(secs@+0x0/nanos@+0x8), delta Duration(secs@+0x10/nanos@+0x18), delta f32@+0x28}",
+  "missing": "+0x20..0x27 与尾部字段（U）"
+ },
+ {
+  "domain": "camera-time",
+  "file": "resources/weather.rs",
+  "status": "OK",
+  "errors": "无（Weather 空资源 U 如实标注）",
+  "missing": "—"
+ },
+ {
+  "domain": "camera-time",
+  "file": "resources/daily.rs",
+  "status": "FIX",
+  "errors": "`is_weekly` 写 7*86400——实为 `elapsed_secs > 0x6977f`（432511s ≈ 5.006 天）；`get_name` 空实现——实为 locale 判别 jumptable（[rdx+4] 首字符匹配 S/E/F/R/T/J 族，en-US/de-DE/es-ES/fr-FR/it-IT/ja-JP 风格常量，r8==5 门）",
+  "missing": "主题名的完整常量表"
+ },
+ {
+  "domain": "camera-time",
+  "file": "resources/glade_settings.rs",
+  "status": "OK",
+  "errors": "无（Default {0,0.01,1.0,8,0.0,1.0,1} 与 load=serde_json Option 回退 均与 wp21 合同一致）",
+  "missing": "—"
+ },
+ {
+  "domain": "camera-time",
+  "file": "resources/sparkle.rs",
+  "status": "OK",
+  "errors": "无（SparkleSsbo 空 bundle，wp21 misc-resources 一致）",
+  "missing": "—"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "world.rs",
+  "status": "WRONG",
+  "errors": "① `SubworldIndex` 16 变体顺序错（Terrain 真实槽=5，重建=13；真实 17 槽）② `SubworldColliderHandle` 建模 `{subworld,index}` 错（真实 24B 带负载枚举，Empty=0x11，`new` 写 {u32@+0,u32@+4,u8@+8}=index/gen/slot）③ `RaycastWorldResult2` 建模 {Option<RaycastHit>,source,handle} 错（真实扁平 0x40B：handle24B/point@0x18/normal@0x24/toi@0x30/marker@0x34/uv@0x38）④ `RaycastGeoSource` 8B 错（真实 24B {disc,flag}）⑤ `subscribe_to_changes` 注释称 Subscriber<ColliderDiff> 错（真实 DirtyTiles）⑥ 函数地址注释多处随 v1 错位：raycast_simple=0x1408ccc20（注释 0x1408cc870 对但 0x1408ccc90 错标）、flush_colliders=0x1408cd5c0、xz_flatten_aabb=0x1408d98a0、dispose_collider_mesh_instance=0x1408d9590（注释称 remove_collider_entry 不存在）、on_collider_upserted=0x1408ce460 ⑦ `RaycastMeshData` 字段注释（SharedShape@+0x20/+0x28）与机器码不符（见 DIGEST §2.5）⑧ `RapierSubWorld` 只建模 ColliderSet（缺 shape@+0x30、脏瓦片@+0x188、脏标志@+0x388）⑨ `Raycasting` 建模 {world: RaycastWorld} 错（真实含 rapier 指针+max_toi 配置）",
+  "missing": "`flush_colliders` 脏瓦片 drain/publish 逻辑、`update_rapier_colliders` 重建管线、`iter_shape_overlaps` 3 实例、`shape_overlaps_with<Rectangle3d>`、`decorator_overlaps_with_others`、`to_offset_collider_builder`、upsert 泛型族 6 实例、命中视图结构（DIGEST §2.5 裁决）"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "intersect_meshes.rs",
+  "status": "PARTIAL",
+  "errors": "注释名/址部分随 v1 错（v2：0x1408f2850=polyline::merge_segments_into_polylines、0x140a97b70=find_mesh_mesh_intersections、0x140a9afa0=intersect_mesh_mesh、0x140a9b3c0=should_intersect_collider_meshes；文件头注释把 0x1408f2850 标为 merge 主函数但对齐到 remove_invalid_polylines 的 v1 名）",
+  "missing": "merge_segments_into_polylines 44KB 实现（重建为 stub 返空）、find_mesh_mesh_intersections 系统体、should_intersect_collider_meshes 源过滤规则、MeshIntersectionGraph 真实容器（GraphMap<SubworldColliderHandle,Artifacts> 待核）"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "visualize_colliders.rs",
+  "status": "PARTIAL",
+  "errors": "注释名/址对（0x141326370/0x141326930 ✓ v2）",
+  "missing": "两函数体（线框图元队列）均为 stub"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "mod.rs",
+  "status": "OK",
+  "errors": "无",
+  "missing": "—"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "stairs_state.rs",
+  "status": "WRONG",
+  "errors": "① `restore_backup` 置 `dirty=false` 与机器码相反（+0x2f=1）；且把 backed_up（+0x178，add_node 清零/restore 置 1）与脏标志混用 ② stubs/脏边集合实际在 **+0x148**（重建 `edges/stubs: HashMap` 独立字段无此偏移；DIGEST round2 已更正 +0x29 笔误）③ `contains_edge_or_stub` 快路径（+0x38 节点数==1、+0x80 边数==1）未体现 ④ `drain_dirty_edges`（stubs.drain）无机器码对应——真实脏边集合在 +0x148，迭代经 iter_edges_and_stubs 3 实例 ⑤ GraphMap 实际起点 +0x28（重建 `graph` 字段注释 @+0x30/+0x38 系竞技场内指针）⑥ `endpoint` 判别是 **qword**（重建 4 变体枚举语义对，但 Unset 置 qword=3）",
+  "missing": "+0x148 脏边集合的 drain 面、备份区 +0xb0 起 0x90B blob 结构、+0x00 qword（变更清零）语义、apply_diff/restore_snapshot 完整算法（DIGEST O 部分已述）"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "structural_graph.rs",
+  "status": "PARTIAL",
+  "errors": "字段名 `span_to_collider` 应作 `span_to_collider_handle`（断言串 O）；8 张 hashbrown 表实际偏移 +0x90/+0xb0/+0xc0/+0xe0/+0xf0/+0x110/+0x150（std HashMap 建模偏移不符）；`ColliderHandle` 局部枚举（Empty=0x11 ✓ 但 Handle(u64) 与 24B 真实句柄不符）",
+  "missing": "upsert_span 旧关联解绑断言（remove_node(prev)）、connections IndexMap 真实类型"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "stairs_assembly_params.rs",
+  "status": "WRONG",
+  "errors": "① `StairNodeAnchor` Wall 判别=**2**（重建 enum{Wall,Free} Wall=0 错）② `AlignKind::position_offset` 实际计算 {flag u8@+1,Vec2@+4,Vec2@+0xc}+常量缩放（重建返 ZERO stub 错）③ `PlayermadeStairsAssemblyRequests::prev_requests` = &self+**0x138**（重建 `params` 字段偏移不符）④ `AlignKind::outgoing_dir` 判别/常量未核（重建 Wall→(1,0)/Free→(0,1) 为猜测）",
+  "missing": "AlignKind 变体 2 语义、StairSubSegment/AdjustedStairEdge/SampledStairsPoints 布局"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "invalidate.rs",
+  "status": "PARTIAL",
+  "errors": "骨架签名（Gap 参数）与真实系统参数面不符（真实：World + StairsState + …，`remove_collider<StairGraphEdge>`×3 + Arc drop + contains_edge_or_stub + StairsVisualState::remove_edge）",
+  "missing": "系统参数面（ECS Query/ResMut 判别）、RtWorld RtMesh 删除面、StairSubSegment/StairArchWallSupportType map 清理"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "visual.rs",
+  "status": "PARTIAL",
+  "errors": "`StairsVisualState::remove_edge` 0x140aa8620 ✓；`force_rebuild` 名错（v2=reset_edge 0x140aa8a60）；`MagicSupports::clear` 0x140aa8210 缺失",
+  "missing": "StairsFloorMeshChunk 布局、StairsEdgeVisualState/StairsFloatingBrickParams"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "stairs_collider.rs",
+  "status": "PARTIAL",
+  "errors": "与 wp21 合同一致（标记资源、无独立函数、U 布局）",
+  "missing": "StairColliderRegistry 布局"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "stairs_removed_supports.rs",
+  "status": "OK",
+  "errors": "与合同一致（serde 存档类型，字段 U）",
+  "missing": "判别/字段"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "mod.rs",
+  "status": "PARTIAL",
+  "errors": "`ColliderHandle` 空判别 0x11 ✓；Handle(u64) 建模与 24B 句柄不符（跨域 boundary 注明即可）",
+  "missing": "—"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "resources/critters.rs",
+  "status": "PARTIAL",
+  "errors": "只有 `Wren` 占位；`Sheep::being_petted`=+0x58>0.0（O）、BirdSpotManager gen_id=+8 自增返旧值（O）、ButterflyAudio::set_position=thunk→0x140a57da0（O）均缺失",
+  "missing": "CritterControl/Critter/Firefly/Butterfly/Duck/DuckState/CritterGoal/CritterLocomotion/CritterRng/CritterVelocityTarget/Multiplier/BirdSpotManager/BirdSpots 等 18 实体布局（wp10 合同 typed gap 清单仍有效）"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "systems/paths/draw_path.rs",
+  "status": "WRONG",
+  "errors": "① `draw_path` 是 0x140ae4d00（注释 ✓），但函数体 stub；模式串匹配 \"eraser\"/\"path\"/\"cobblestone\"（O 串）未体现 ② `DrawState::update` 0x140ae4bd0 状态机缺失（手解：raw=ui_mode-2 夹取 0..3；raw∈{1,2}→mode=min(mode-1,raw)；返回 0/3）③ `PathRastersResources::as_float_grid` 0x140ae4c20 stub ④ 注释称 `erase_other_path_variants` 为内联但实际为 draw_path 内 9 个 draw_raster 单态分派组合",
+  "missing": "DrawState 转移表、4×WorldRaster<512> 布局（+0x298 GPU 标志）、draw_raster 9 单态接线"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "systems/paths/path_brush_preview_size.rs",
+  "status": "PARTIAL",
+  "errors": "名/址 ✓（0x140b1c010；SetSizeBasedOnAppModePath）",
+  "missing": "系统体（按模式设笔刷尺寸；brush size 1.5 分支见 misc-systems 合同）"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "systems/paths/record_path_history.rs",
+  "status": "PARTIAL",
+  "errors": "名/址 ✓（0x140b1c270）；4 命令实体 ✓",
+  "missing": "系统体（4 事件游标差→历史写入）"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "systems/paths/mod.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "—"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "resources/ivy/ivy_storage.rs",
+  "status": "PARTIAL",
+  "errors": "Ivy{points: VecDeque,next_point_id} 语义 ✓；IvyStorage{HashMap<usize,Ivy>…} ✓；`last_segment_point_ids` 重建返回 (Option,Option) 而真实 expect 失败语义（合同）",
+  "missing": "Ivy 0x20..0x58 区间字段（U）、spawn_ivy 参数面（真实含 RNG 采样根点，重建 signature (pos,dir) 为 I）"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "resources/ivy/ivy_leaf_storage.rs",
+  "status": "PARTIAL",
+  "errors": "IvyLeaf 104B 字段名全 I/U；容器 `HashMap<usize,Vec<IvyLeaf>>` vs 重建 `Vec<IvyLeaf>`（合同说 HashMap 键=ivy id，重建用 Vec 不符）",
+  "missing": "IvyLeafRng、delete_affected_leaves 按 ivy id 过滤逻辑"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "resources/ivy/ivy_direction_proposer.rs",
+  "status": "PARTIAL",
+  "errors": "θ 范围 O（[-40°,+40°]）；重建 `noise_a/noise_b: FastNoise` 建模对；get_direction 体 stub",
+  "missing": "噪声采样坐标映射（U）、两个 FastNoise 参数（seeded/fractal 细节）、1.3 常量用途"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "resources/ivy/wall_coord.rs",
+  "status": "PARTIAL",
+  "errors": "WallCoord{u,v} 与 into_world_space 语义 ✓；重建 PublicWallCurve 为独立承载（真实读 PublicWallState 曲线）",
+  "missing": "曲线采样精确几何（Curve::get_coord_at_u）、0.63*0.5 偏移方向细节"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "resources/ivy/mod.rs",
+  "status": "OK",
+  "errors": "—",
+  "missing": "—"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "systems/ivy/*（9 文件）",
+  "status": "PARTIAL",
+  "errors": "mod.rs 注释地址 ✓；`closest_segment_index` 0x14094c800 ✓ 但体 stub（真实 28B 步长墙段投影+高度过滤）；`intersect_ivy_growth_w_wall_segment`=0x14094cc60 ✓（v1 三名错位已随 v2 更正）；`get_wall_double_sided_normal`=0x14094caa0（重建注释把 0x14094cc60 标为 get_wall_double_sided_normal 错）",
+  "missing": "round2：grower 主闭包=0x14094ac20（10 相跳表 @0x142ab3be0，见 CLOSURE）；pruner/leaf_spawner/spawner 体（部分 O 已述 DIGEST §6）"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "resources/clutter_meshes.rs",
+  "status": "WRONG",
+  "errors": "① `ClutterMeshTy` 11 变体粗分类错——真实 **56 变体按资产路径**（shovel/bucket/fallen_leaves/bench/pumpkin2/anvil/door_bell…）② `clutter_mesh_ty_data` 是静态表 switch(0..0x37)→8B 条目（重建 (name,kind) 对不符）③ From<&str> 匹配语义（前缀 vs 全名）待核 ④ ClutterMesh/ClutterMeshes 集合类型 U",
+  "missing": "56 变体完整名序、ClutterMarkedForDeletion 等 3 组件布局"
+ },
+ {
+  "domain": "collision-eco",
+  "file": "resources/preplaced_autoclutter.rs",
+  "status": "OK",
+  "errors": "与合同一致（default 内联，无独立过程）",
+  "missing": "布局 U"
+ }
+]

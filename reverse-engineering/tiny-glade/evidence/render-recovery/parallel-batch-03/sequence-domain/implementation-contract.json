@@ -1,0 +1,17 @@
+{
+  "api":[
+    "begin_cb(domain) -> cb_sequence",
+    "submit(queue, cb_sequences) -> SubmissionToken",
+    "complete(queue, timeline)",
+    "reclaim_ready(queue) -> cb_sequences",
+    "dispose_in_sequence(cb_sequence)"
+  ],
+  "candidate_boundary":"Rust zero-valued counter initialization is a fixture choice, not recovered constructor behavior. The candidate covers threshold mapping and collision detection, not Vulkan execution, atomic concurrency, submission token allocation, or full sequential disposal.",
+  "requirements":[
+    "Keep CB sequence and submission timeline as distinct u64 values.",
+    "Reject a pending CB whose stored queue identity differs from its queue.",
+    "Do not encode queue identity into bucket keys without constructor evidence.",
+    "Require globally unique CB sequence keys or return a collision error.",
+    "Model Vulkan calls as external effects; CPU state machine remains testable without Vulkan."
+  ]
+}

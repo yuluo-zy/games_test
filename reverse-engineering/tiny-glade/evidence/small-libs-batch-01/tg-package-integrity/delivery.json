@@ -1,0 +1,80 @@
+{
+  "module": "tg-package-integrity",
+  "baseline": "B",
+  "status": "business_candidate_delivered",
+  "original_source": "crates/tg-package-integrity/src/lib.rs",
+  "candidate_crate": "reconstruction/shared-foundation/crates/tg-package-integrity",
+  "functions_recovered": [
+    "verify_package_manifest",
+    "is_valid_manifest_checksum",
+    "find_extra_files"
+  ],
+  "candidate_api": [
+    "verify_package_manifest(root)",
+    "verify_manifest_bytes(root,bytes)",
+    "is_valid_manifest_checksum(bytes)",
+    "find_extra_files(root,known)"
+  ],
+  "owned_worker": "small-integrity-20261013",
+  "original_entry_executed": false,
+  "comparison": "original PDB attribution + RNE bytes/exception ranges + identity-bound persistent Ghidra static control flow + byte-preserved shipped JSON + candidate disk tests + candidate read-only original package consumer",
+  "validation": {
+    "tests": {
+      "command": "cargo test --offline --locked -p tg-package-integrity -- --nocapture",
+      "status": "passed",
+      "count": 4,
+      "output": "test-final.json"
+    },
+    "clippy": {
+      "command": "cargo clippy --offline --locked -p tg-package-integrity --all-targets -- -D warnings",
+      "status": "passed",
+      "output": "clippy-final.json"
+    },
+    "raw_original_format": {
+      "path": "fixtures/B-manifest.json",
+      "bytes": 264376,
+      "entries": 1792,
+      "checksum_valid": true
+    },
+    "original_entry_executed": false,
+    "candidate_real_package": {
+      "entries": 1792,
+      "missing": 0,
+      "corrupt": 2,
+      "extra": 288,
+      "output": "candidate-real-package-result.json"
+    }
+  },
+  "dependency_audit": "dependency-audit.json",
+  "business_rules": "BUSINESS_RULES.md",
+  "differences": "DIFFERENCES.md",
+  "database": {
+    "project": "D:\\game\\tools\\reverse-runtime\\small-integrity-20261013\\project\\TinyGlade.gpr",
+    "identity": {
+      "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+      "path": "/tiny-glade.exe",
+      "functions": 116271
+    },
+    "persisted_and_reopened": true,
+    "reopen_evidence": "reopen-result.json",
+    "prototype_changed": false,
+    "body_preparation_only": true,
+    "synchronized_to_original_database": false
+  },
+  "intentional_differences": [
+    "explicit package root parameter rather than implicit process CWD",
+    "easy-parallel scheduling batched 64 files; stable-filesystem ordering retained, concurrent filesystem mutation timing unknown",
+    "candidate error enum names/representation rather than original Rust ABI"
+  ],
+  "remaining_unknown": [
+    "original entry runtime oracle",
+    "complete serde attrs/rare invalid-schema behavior and exact version unsigned type declaration",
+    "32-bit/big-endian Rust Hash length prefix compatibility",
+    "Windows reparse/permission/invalid-surrogate behavioral probes",
+    "original panic/thread-creation failure behavior",
+    "game integrity/crash reporter consumer integration",
+    "A/C"
+  ],
+  "original_artifacts_modified": false,
+  "global_tracking_modified": false
+}

@@ -1,0 +1,44 @@
+{
+  "source_after_sha256": "feaaee386a98f4551009dca584c63b3e1b680db0bed21d1c76bb33a7bf5e5fd6",
+  "current_live_sha256_observed": "c390ecff7fb5ae4c62e042c3edf54454c10275ebee75064cf722aa637193a5e0",
+  "workspace_lock_path": "tiny-glade/Cargo.lock",
+  "workspace_lock_sha256": "cc65502024d35d91859a4b01dfa229cc24aac0068041f0bf6317f39b734a07d0",
+  "workspace_cargo_sha256": "8e8f6a289d5c6d08774d8348ae3cb743813763206090e0e120b60f492f4538d7",
+  "utils_cargo_sha256": "88c9cfcc10c437400b40925497e225a53bbc8138ee847f29e494edd4ae9e91ea",
+  "selected_registry_packages": [
+    {
+      "name": "cfg-if",
+      "version": "1.0.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
+    },
+    {
+      "name": "fastrand",
+      "version": "1.8.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "a7a407cfaa3385c4ae6b23e84623d48c2798d06e3e6a1878f7f59f17b3f86499"
+    },
+    {
+      "name": "glam",
+      "version": "0.29.3",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "8babf46d4c1c9d92deac9f7be466f76dfc4482b6452fc5024b5e8daf6ffeb3ee"
+    },
+    {
+      "name": "instant",
+      "version": "0.1.12",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "7a5bbe824c507c5da5956355e86a746d82e0e1464f65d862cc5e71da70e94b2c"
+    }
+  ],
+  "selected_features": "fastrand default; glam default std. These are the direct utils manifest defaults; whole-App optional serde/bytemuck feature unification is not tested.",
+  "template_lock_sha256": "8756e7a9479a0cd3f8abac9baa68cda0bf48683429e8a61a7d73c3717756428a",
+  "rules": [
+    "Before execution root canonical source must match source_after_sha256; an approved candidate origin is disclosed while central integration is pending.",
+    "Root copies template to a fresh independent runtime directory before any Cargo command.",
+    "Never run Cargo inside this frozen template; Cargo can rewrite lock/metadata even when source is fixed.",
+    "Use offline and locked first; if lock materialization is needed, only the runtime copy may change and the final lock/hash/package identities must be captured for independent review.",
+    "No old utils rlib or linked recovered crate is used; harness compiles exact source slices and actual pinned registry dependencies.",
+    "Package versions/source/checksums must equal these constraints; no dependency upgrade or network fetch is authorized by this artifact."
+  ]
+}

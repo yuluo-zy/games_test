@@ -1,0 +1,665 @@
+--- a/tiny-glade/crates/country-core/src/systems/save/save_thread.rs
++++ b/tiny-glade/crates/country-core/src/systems/save/save_thread.rs
+@@ -16,7 +16,7 @@
+     snapshot::SnapshotSaveData,
+ };
+ use crate::resources::session::SessionId;
+-use bevy_ecs::prelude::{Commands, ResMut};
++use bevy_ecs::prelude::{Commands, ResMut, World};
+ use crossbeam_channel::Receiver;
+ use hashbrown::HashSet;
+ use std::{
+@@ -634,7 +634,18 @@
+     error_sender: crossbeam_channel::Sender<Vec<(PathBuf, AutoSaveError)>>,
+     unsaved: Arc<UnsavedFileList>,
+ ) {
+-    let mut current: Option<CurrentSaveFile> = None;
++    save_thread_with_current(commands, error_sender, unsaved, None);
++}
++
++// One worker loop shared by production and the isolated-file CPU regression.
++// Production always enters with None; tests supply an actual temporary file
++// rather than mutating the process-global account paths.
++fn save_thread_with_current(
++    commands: Receiver<AsyncSaveCmd>,
++    error_sender: crossbeam_channel::Sender<Vec<(PathBuf, AutoSaveError)>>,
++    unsaved: Arc<UnsavedFileList>,
++    mut current: Option<CurrentSaveFile>,
++) {
+     let mut previous_errors: Vec<(PathBuf, AutoSaveError)> = Vec::new();
+     let mut last_tick = std::time::Instant::now();
+ 
+@@ -713,7 +724,8 @@
+ 
+ /// 存档线程生产句柄（游戏线程侧资源）。`join` 供收尾等待；`command_sender` 经
+ /// `AutoSaveState::attach_command_sender` 装配；`error_state` 供游戏线程吸干错误列表。
+-/// Dropping all actual command senders disconnects and joins this worker; no ack command is invented.
++/// The stopped host must call shutdown_save_thread to disconnect both actual
++/// senders and join this worker; dropping this handle alone detaches it.
+ #[derive(bevy_ecs::resource::Resource)]
+ pub struct SaveThreadHandle {
+     pub join: JoinHandle<()>,
+@@ -739,6 +751,70 @@
+             command_sender,
+             error_state,
+         }
++    }
++}
++
++/// Current host disposal adapter, called only after this World's schedules have
++/// stopped permanently. This joins the actual worker and reports known errors;
++/// it does not prove durability: the original disconnect flush is warn-only.
++pub fn shutdown_save_thread(world: &mut World) -> anyhow::Result<()> {
++    let (auto_present, attached, mut failure, unsaved) = match world
++        .get_resource_mut::<super::save_game::AutoSaveState>()
++    {
++        Some(mut auto) => {
++            let attached = auto.is_command_attached();
++            let unsaved = auto.unsaved_files.clone();
++            (true, attached, auto.detach_for_shutdown(), Some(unsaved))
++        }
++        None => (false, false, None, None),
++    };
++    if let Some(handle) = world.remove_resource::<SaveThreadHandle>() {
++        let SaveThreadHandle { join, command_sender, mut error_state } = handle;
++        // AutoSaveState's private sender has already been dropped above.
++        drop(command_sender);
++        if let Err(payload) = join.join() {
++            let message = if let Some(message) = payload.downcast_ref::<String>() {
++                message.as_str()
++            } else if let Some(message) = payload.downcast_ref::<&'static str>() {
++                *message
++            } else {
++                "non-string panic payload"
++            };
++            retain_first_shutdown_error(&mut failure,
++                anyhow::anyhow!("Async save worker panicked while stopping: {message}"));
++        }
++        // Read the real worker channel only after its final send/termination.
++        error_state.drain_pending();
++        if !error_state.is_ok() {
++            retain_first_shutdown_error(&mut failure,
++                anyhow::anyhow!("Async save worker stopped with reported I/O errors: {:?}", error_state.errors()));
++        }
++        if !auto_present {
++            retain_first_shutdown_error(&mut failure,
++                anyhow::anyhow!("Async save worker joined without its canonical AutoSaveState; shared unsaved status is unknown"));
++        }
++    } else if attached {
++        retain_first_shutdown_error(&mut failure,
++            anyhow::anyhow!("AutoSaveState had an attached sender but no SaveThreadHandle; worker termination could not be joined"));
++    }
++    if let Some(unsaved) = unsaved {
++        let count = unsaved.len();
++        if count != 0 {
++            retain_first_shutdown_error(&mut failure,
++                anyhow::anyhow!("Async save stopped with {count} known unsaved file(s)"));
++        }
++    }
++    match failure {
++        Some(error) => Err(error),
++        None => Ok(()),
++    }
++}
++
++fn retain_first_shutdown_error(first: &mut Option<anyhow::Error>, error: anyhow::Error) {
++    if first.is_some() {
++        log::error!("Additional save shutdown failure: {error:#}");
++    } else {
++        *first = Some(error);
+     }
+ }
+ 
+@@ -900,3 +976,133 @@
+         assert_ne!(id, other);
+     }
+ }
++
++#[cfg(test)]
++mod shutdown_save_host_tests {
++    use super::*;
++    use crate::systems::save::save_game::{AutoSaveState, defer_json};
++
++    fn insert_actual_inactive_worker(world: &mut World, mut auto: AutoSaveState) {
++        let handle = SaveThreadHandle::spawn_with_unsaved(auto.unsaved_files.clone());
++        auto.attach_command_sender(handle.command_sender.clone());
++        world.insert_resource(auto);
++        world.insert_resource(handle);
++    }
++
++    #[test]
++    fn shutdown_without_active_file_joins_and_keeps_the_same_unsaved_owner() {
++        let mut world = World::new();
++        shutdown_save_thread(&mut world).unwrap();
++        let auto = AutoSaveState::default();
++        let unsaved = auto.unsaved_files.clone();
++        insert_actual_inactive_worker(&mut world, auto);
++        shutdown_save_thread(&mut world).unwrap();
++        let auto = world.resource::<AutoSaveState>();
++        assert!(!auto.is_command_attached());
++        assert!(Arc::ptr_eq(&unsaved, &auto.unsaved_files));
++        assert!(!world.contains_resource::<SaveThreadHandle>());
++        shutdown_save_thread(&mut world).unwrap();
++    }
++
++    #[test]
++    fn disconnect_runs_the_real_worker_deferred_flush_into_an_actual_file() {
++        let directory = tempfile::tempdir().unwrap();
++        let values = [serde_json::json!(27), serde_json::json!(17u64),
++            serde_json::json!(0), serde_json::json!({"before":true}),
++            serde_json::json!({}), serde_json::json!([]), serde_json::json!({}),
++            serde_json::json!(-1), serde_json::json!(-1), serde_json::json!([])];
++        let sections = GameSaveSections {
++            values: values.map(|value| SerializedJson::new(&value).unwrap()),
++        };
++        let current = CurrentSaveFile::create(directory.path(), sections, &[]);
++        let mut auto = AutoSaveState::default();
++        let unsaved = auto.unsaved_files.clone();
++        let worker_unsaved = unsaved.clone();
++        let (command_sender, receiver) = crossbeam_channel::unbounded();
++        let (error_sender, error_state) = AutosaveErrorState::channel();
++        let join = std::thread::spawn(move || {
++            // Exact production loop; only the initial real file is supplied so
++            // this fixture does not redirect process-global account paths.
++            save_thread_with_current(receiver, error_sender, worker_unsaved, Some(current));
++        });
++        auto.attach_command_sender(command_sender.clone());
++        let expected = serde_json::json!({"camera_at_disconnect":"x".repeat(300)});
++        auto.send_command_expect(AsyncSaveCmd::ChangeSection {
++            section: SaveFileSection::Camera, value: defer_json(expected.clone()),
++        });
++        let mut world = World::new();
++        world.insert_resource(auto);
++        world.insert_resource(SaveThreadHandle { join, command_sender, error_state });
++        shutdown_save_thread(&mut world).unwrap();
++        let saved: serde_json::Value = serde_json::from_slice(
++            &std::fs::read(directory.path().join("history.json")).unwrap()).unwrap();
++        assert_eq!(saved[SaveFileSection::Camera.json_key()], expected);
++        assert!(Arc::ptr_eq(&unsaved, &world.resource::<AutoSaveState>().unsaved_files));
++    }
++
++    #[test]
++    fn attached_without_handle_reports_unknown_join_and_disconnects_its_sender() {
++        let mut world = World::new();
++        let (sender, receiver) = crossbeam_channel::unbounded();
++        let mut auto = AutoSaveState::default();
++        auto.attach_command_sender(sender);
++        world.insert_resource(auto);
++        let error = shutdown_save_thread(&mut world).unwrap_err();
++        assert!(error.to_string().contains("no SaveThreadHandle"));
++        assert!(matches!(receiver.try_recv(), Err(crossbeam_channel::TryRecvError::Disconnected)));
++    }
++
++    #[test]
++    fn previous_auto_error_does_not_skip_join_or_hide_it_behind_later_failures() {
++        let mut world = World::new();
++        let mut auto = AutoSaveState::default();
++        assert!(!auto.send_command(AsyncSaveCmd::ChangeSection {
++            section: SaveFileSection::Camera, value: defer_json(serde_json::json!({})),
++        }));
++        auto.unsaved_files.add_path(PathBuf::from("previously-unsaved.json"));
++        let (command_sender, receiver) = crossbeam_channel::unbounded();
++        let (error_sender, error_state) = AutosaveErrorState::channel();
++        let stopped = Arc::new(std::sync::atomic::AtomicBool::new(false));
++        let worker_stopped = stopped.clone();
++        let join = std::thread::spawn(move || {
++            assert!(matches!(receiver.recv_timeout(Duration::from_secs(2)),
++                Err(crossbeam_channel::RecvTimeoutError::Disconnected)));
++            error_sender.send(vec![(PathBuf::from("worker.json"), AutoSaveError::Io("disk failure".into()))]).unwrap();
++            worker_stopped.store(true, std::sync::atomic::Ordering::Release);
++            panic!("worker panic retained as secondary");
++        });
++        auto.attach_command_sender(command_sender.clone());
++        world.insert_resource(auto);
++        world.insert_resource(SaveThreadHandle { join, command_sender, error_state });
++        let error = shutdown_save_thread(&mut world).unwrap_err();
++        assert_eq!(error.to_string(), "save command sender not attached");
++        assert!(stopped.load(std::sync::atomic::Ordering::Acquire));
++        assert_eq!(world.resource::<AutoSaveState>().unsaved_files.len(), 1);
++        assert!(!world.contains_resource::<SaveThreadHandle>());
++    }
++
++    #[test]
++    fn worker_error_diff_and_unsaved_list_are_observable_failures_after_join() {
++        for reported_error in [false, true] {
++            let mut auto = AutoSaveState::default();
++            if !reported_error {
++                auto.unsaved_files.add_path(PathBuf::from("known-unsaved.json"));
++            }
++            let (command_sender, receiver) = crossbeam_channel::unbounded();
++            let (error_sender, error_state) = AutosaveErrorState::channel();
++            let join = std::thread::spawn(move || {
++                assert!(matches!(receiver.recv_timeout(Duration::from_secs(2)),
++                    Err(crossbeam_channel::RecvTimeoutError::Disconnected)));
++                if reported_error {
++                    error_sender.send(vec![(PathBuf::from("disk.json"), AutoSaveError::Io("real reported error".into()))]).unwrap();
++                }
++            });
++            auto.attach_command_sender(command_sender.clone());
++            let mut world = World::new();
++            world.insert_resource(auto);
++            world.insert_resource(SaveThreadHandle { join, command_sender, error_state });
++            let error = shutdown_save_thread(&mut world).unwrap_err();
++            assert!(error.to_string().contains(if reported_error {"reported I/O errors"} else {"known unsaved"}));
++        }
++    }
++}
+--- a/tiny-glade/crates/tiny-glade/src/game_loop.rs
++++ b/tiny-glade/crates/tiny-glade/src/game_loop.rs
+@@ -792,11 +792,13 @@
+             return Ok(false);
+         }
+         self.flush_game_requests()?;
++        let mut os_close_requested = false;
+         for _ in 0..incoming_count {
+             let event = self
+                 .pending_os_events
+                 .pop_front()
+                 .expect("captured OS batch must remain queued");
++            os_close_requested |= matches!(&event, crate::event_loop::OsWindowEvent::CloseRequested);
+             self.dispatch_os_event(event, target)?;
+         }
+         // B @1404dc952..971 skips both simulation and rendering while either
+@@ -807,6 +809,12 @@
+             .world()
+             .resource::<country_core::resources::window::WindowSize>();
+         if window.width == 0 || window.height == 0 {
++            // Main-thread host adaptation: an actual OS close may stop a zero-
++            // sized window without simulating, rendering or inventing the game
++            // shutdown marker. Sender disconnect still joins the real saver.
++            if os_close_requested {
++                return Ok(false);
++            }
+             std::thread::sleep(std::time::Duration::from_millis(1));
+             return Ok(true);
+         }
+@@ -905,22 +913,30 @@
+             .preparation
+             .take()
+             .map_or(Ok(()), |mut preparation| preparation.cancel_and_join());
++        let save_result = country_core::systems::save::save_thread::shutdown_save_thread(
++            self.driver.app_mut().world_mut(),
++        );
+         self.custom_cursor_buffer = None;
+         self.window
+             .set_cursor_grab(winit::window::CursorGrabMode::None)
+             .ok();
+         self.window.set_cursor_visible(true);
+         let renderer_result = self.renderer.shutdown();
+-        match (preparation_result, renderer_result) {
+-            (Ok(()), Ok(())) => {
+-                self.shutdown_done = true;
+-                Ok(())
+-            }
+-            (Err(error), Err(cleanup)) => {
+-                log::error!("GPU shutdown after gameplay preparation failure: {cleanup:#}");
+-                Err(error)
+-            }
+-            (Err(error), Ok(())) | (Ok(()), Err(error)) => Err(error),
++        let mut failure = preparation_result.err();
++        for (phase, result) in [("save thread", save_result), ("GPU", renderer_result)] {
++            if let Err(error) = result {
++                if failure.is_some() {
++                    log::error!("Additional {phase} shutdown failure: {error:#}");
++                } else {
++                    failure = Some(error);
++                }
++            }
++        }
++        if let Some(error) = failure {
++            Err(error)
++        } else {
++            self.shutdown_done = true;
++            Ok(())
+         }
+     }
+ 
+--- a/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ b/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@ -1056,6 +1056,64 @@
+ 
+ impl std::error::Error for GameplayPreparationCancelled {}
+ 
++/// A local disposal guard for the same SubApp. In particular, a failed thread
++/// spawn drops its captured closure before it can return ownership to us.
++struct GameplayAppOwner(Option<bevy_app::SubApp>);
++
++impl GameplayAppOwner {
++    fn new(app: bevy_app::SubApp) -> Self { Self(Some(app)) }
++    fn app_mut(&mut self) -> &mut bevy_app::SubApp {
++        self.0.as_mut().expect("gameplay SubApp is still owned")
++    }
++    fn take(&mut self) -> bevy_app::SubApp {
++        self.0.take().expect("gameplay SubApp is still owned")
++    }
++    fn dispose(&mut self) -> anyhow::Result<()> {
++        let Some(mut app) = self.0.take() else { return Ok(()); };
++        country_core::systems::save::save_thread::shutdown_save_thread(app.world_mut())
++    }
++}
++
++impl Drop for GameplayAppOwner {
++    fn drop(&mut self) {
++        if let Err(error) = self.dispose() {
++            log::error!("Save shutdown before gameplay World disposal: {error:#}");
++        }
++    }
++}
++
++fn dispose_gameplay_app(app: bevy_app::SubApp) -> anyhow::Result<()> {
++    GameplayAppOwner::new(app).dispose()
++}
++
++fn publish_prepared_app(
++    sender: &std::sync::mpsc::Sender<anyhow::Result<bevy_app::SubApp>>,
++    app: bevy_app::SubApp,
++) -> anyhow::Result<()> {
++    match sender.send(Ok(app)) {
++        Ok(()) => Ok(()),
++        Err(std::sync::mpsc::SendError(Ok(app))) => {
++            dispose_gameplay_app(app)?;
++            anyhow::bail!("gameplay owner stopped receiving its prepared App");
++        }
++        Err(std::sync::mpsc::SendError(Err(error))) => Err(error),
++    }
++}
++
++fn keep_first_preparation_failure(
++    primary: anyhow::Result<()>,
++    cleanup: anyhow::Result<()>,
++) -> anyhow::Result<()> {
++    match (primary, cleanup) {
++        (Err(primary), Err(secondary)) => {
++            log::error!("Additional gameplay preparation shutdown failure: {secondary:#}");
++            Err(primary)
++        }
++        (Err(error), Ok(())) | (Ok(()), Err(error)) => Err(error),
++        (Ok(()), Ok(())) => Ok(()),
++    }
++}
++
+ pub struct GameplayPreparation {
+     receiver: std::sync::mpsc::Receiver<anyhow::Result<bevy_app::SubApp>>,
+     pending: Option<bevy_app::SubApp>,
+@@ -1065,19 +1123,23 @@
+ 
+ impl GameplayPreparation {
+     pub fn spawn(
+-        mut gameplay: bevy_app::SubApp,
++        gameplay: bevy_app::SubApp,
+         warm_up: impl FnOnce(&mut World) -> anyhow::Result<()> + Send + 'static,
+     ) -> anyhow::Result<Self> {
+         use std::sync::atomic::{AtomicBool, Ordering};
+         let (sender, receiver) = std::sync::mpsc::channel();
+         let cancel = Arc::new(AtomicBool::new(false));
+         let cancelled = cancel.clone();
++        let mut gameplay_owner = GameplayAppOwner::new(gameplay);
+         let worker = std::thread::Builder::new().name("async load".to_owned()).spawn(move || {
+             // Host diagnostic boundary only: preserve the original load/ready
+             // gates, but carry a worker panic back to the owning OS thread.
+             let mut phase = "validate gameplay resources";
+             let mut update_index = 0u64;
+             let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++                // Borrow the owned App so an error/panic cannot drop its World
++                // before its save worker has disconnected and joined.
++                let gameplay = gameplay_owner.app_mut();
+                 // The current partial startup must fail explicitly instead of
+                 // spinning forever without its original producer. AppMode and
+                 // LoadGameManager are actual inputs of load_game_system.
+@@ -1108,7 +1170,7 @@
+                 if cancelled.load(Ordering::Acquire) {
+                     return Err(GameplayPreparationCancelled.into());
+                 }
+-                Ok(gameplay)
++                Ok(())
+             }))
+             .unwrap_or_else(|payload| {
+                 let message = if let Some(message) = payload.downcast_ref::<String>() {
+@@ -1122,7 +1184,27 @@
+                     "async gameplay loader panicked during {phase} (completed updates: {update_index}): {message}"
+                 ))
+             });
+-            let _ = sender.send(result);
++            match result {
++                Ok(()) => {
++                    if let Err(error) = publish_prepared_app(&sender, gameplay_owner.take()) {
++                        log::error!("Prepared gameplay App could not be published: {error:#}");
++                    }
++                }
++                Err(primary) => {
++                    let cleanup = gameplay_owner.dispose();
++                    // Cancellation is benign only when its real save cleanup
++                    // succeeded; never discard a cleanup failure as cancellation.
++                    let error = if primary.is::<GameplayPreparationCancelled>() {
++                        match cleanup { Ok(()) => primary, Err(error) => error }
++                    } else {
++                        if let Err(secondary) = cleanup {
++                            log::error!("Save shutdown after gameplay producer failure: {secondary:#}");
++                        }
++                        primary
++                    };
++                    let _ = sender.send(Err(error));
++                }
++            }
+         })?;
+         Ok(Self {
+             receiver,
+@@ -1152,23 +1234,16 @@
+     pub fn cancel_and_join(&mut self) -> anyhow::Result<()> {
+         self.cancel.store(true, std::sync::atomic::Ordering::Release);
+         let joined = self.join_worker();
+-        // Both a received World and a queued successful World must release
+-        // their scene/device resources before the renderer is dismantled.
+-        self.pending.take();
++        // Both received and queued Worlds must stop their save thread before
++        // their scene/device owners are dropped and renderer shutdown begins.
++        let pending_cleanup = self.pending.take().map_or(Ok(()), dispose_gameplay_app);
+         let completion = match self.receiver.try_recv() {
+             Ok(Err(error)) if !error.is::<GameplayPreparationCancelled>() => Err(error),
+-            Ok(Ok(_)) | Ok(Err(_)) | Err(_) => Ok(()),
++            Ok(Ok(app)) => dispose_gameplay_app(app),
++            Ok(Err(_)) | Err(_) => Ok(()),
+         };
+-        // A producer failure happened before worker completion; preserve that
+-        // error if a later teardown panic also occurred.
+-        match (completion, joined) {
+-            (Err(primary), Err(secondary)) => {
+-                log::error!("Async gameplay worker also failed while stopping: {secondary:#}");
+-                Err(primary)
+-            }
+-            (Err(error), Ok(())) | (Ok(()), Err(error)) => Err(error),
+-            (Ok(()), Ok(())) => Ok(()),
+-        }
++        keep_first_preparation_failure(
++            keep_first_preparation_failure(completion, joined), pending_cleanup)
+     }
+ 
+     /// Original main_loop polls only at the logo's waiting stage and switches
+@@ -1180,8 +1255,9 @@
+         if self.pending.is_none() {
+             match self.receiver.try_recv() {
+                 Ok(Ok(app)) => {
++                    let mut app = GameplayAppOwner::new(app);
+                     self.join_worker()?;
+-                    self.pending = Some(app);
++                    self.pending = Some(app.take());
+                 }
+                 Ok(Err(error)) => {
+                     if let Err(secondary) = self.join_worker() {
+@@ -1205,11 +1281,15 @@
+                 return Ok(false);
+             }
+         }
+-        let Some(mut gameplay) = self.pending.take() else {
++        let Some(gameplay) = self.pending.take() else {
+             return Ok(false);
+         };
+-        transfer_loading_resources(loading.world_mut(), gameplay.world_mut())?;
+-        *loading.main_mut() = gameplay;
++        let mut gameplay = GameplayAppOwner::new(gameplay);
++        transfer_loading_resources(loading.world_mut(), gameplay.app_mut().world_mut())?;
++        // Normally the independent loading World owns no save worker. Still
++        // close any actual owner before replacing it; all schedules are stopped.
++        country_core::systems::save::save_thread::shutdown_save_thread(loading.world_mut())?;
++        *loading.main_mut() = gameplay.take();
+         Ok(true)
+     }
+ }
+@@ -1600,3 +1680,140 @@
+     }
+ 
+ }
++
++#[cfg(test)]
++mod save_shutdown_preparation_tests {
++    use super::*;
++    use country_core::systems::save::{save_game::AutoSaveState,
++        save_thread::{AutosaveErrorState, SaveThreadHandle}};
++    use std::sync::{atomic::{AtomicBool, Ordering}, mpsc};
++
++    #[derive(bevy_ecs::resource::Resource)]
++    struct SaveStoppedBeforeWorldDrop {
++        stopped: Arc<AtomicBool>,
++        observed: Arc<AtomicBool>,
++    }
++    impl Drop for SaveStoppedBeforeWorldDrop {
++        fn drop(&mut self) {
++            self.observed.store(self.stopped.load(Ordering::Acquire), Ordering::Release);
++        }
++    }
++
++    fn attach_save_owner(world: &mut World) -> (Arc<AtomicBool>, Arc<AtomicBool>) {
++        let stopped = Arc::new(AtomicBool::new(false));
++        let observed = Arc::new(AtomicBool::new(false));
++        let worker_stopped = stopped.clone();
++        let (command_sender, receiver) = crossbeam_channel::unbounded();
++        let (error_sender, error_state) = AutosaveErrorState::channel();
++        let join = std::thread::spawn(move || {
++            assert!(matches!(receiver.recv_timeout(std::time::Duration::from_secs(2)),
++                Err(crossbeam_channel::RecvTimeoutError::Disconnected)));
++            drop(error_sender);
++            worker_stopped.store(true, Ordering::Release);
++        });
++        let mut auto = AutoSaveState::default();
++        auto.attach_command_sender(command_sender.clone());
++        world.insert_resource(auto);
++        world.insert_resource(SaveThreadHandle { join, command_sender, error_state });
++        world.insert_resource(SaveStoppedBeforeWorldDrop {
++            stopped: stopped.clone(), observed: observed.clone(),
++        });
++        (stopped, observed)
++    }
++
++    fn assert_saved_before_drop(flags: (Arc<AtomicBool>, Arc<AtomicBool>)) {
++        assert!(flags.0.load(Ordering::Acquire), "save worker must terminate");
++        assert!(flags.1.load(Ordering::Acquire), "World must drop only after save join");
++    }
++
++    #[test]
++    fn pending_and_queued_apps_join_save_workers_before_world_drop() {
++        for receive_first in [false, true] {
++            let mut app = bevy_app::SubApp::new();
++            let flags = attach_save_owner(app.world_mut());
++            let (sender, receiver) = mpsc::channel();
++            let worker = std::thread::spawn(move || { sender.send(Ok(app)).unwrap(); });
++            let mut preparation = GameplayPreparation { receiver, pending: None,
++                cancel: Arc::new(AtomicBool::new(false)), worker: Some(worker) };
++            if receive_first {
++                preparation.pending = Some(preparation.receiver.recv().unwrap().unwrap());
++            }
++            preparation.cancel_and_join().unwrap();
++            assert_saved_before_drop(flags);
++        }
++    }
++
++    #[test]
++    fn producer_validation_error_stops_save_before_publishing_failure() {
++        let mut app = bevy_app::SubApp::new();
++        let flags = attach_save_owner(app.world_mut());
++        let mut preparation = GameplayPreparation::spawn(app, |_| Ok(())).unwrap();
++        let failure = preparation.receiver.recv_timeout(std::time::Duration::from_secs(2))
++            .unwrap().unwrap_err();
++        assert!(failure.to_string().contains("AppMode"));
++        assert_saved_before_drop(flags);
++        preparation.cancel_and_join().unwrap();
++    }
++
++    #[test]
++    fn worker_update_panic_warmup_error_and_cancellation_all_stop_save() {
++        for phase in ["update panic", "warmup failure", "cancel"] {
++            let mut app = App::new();
++            app.insert_resource(country_core::systems::mode_manager::AppMode::default());
++            app.init_resource::<country_core::systems::save::load_game::LoadGameManager>();
++            app.add_event::<country_core::systems::save::load_game::LoadingGameComplete>();
++            app.add_systems(bevy_app::Update, move |world: &mut World| {
++                assert_ne!(phase, "update panic", "injected update panic");
++                world.send_event(country_core::systems::save::load_game::LoadingGameComplete);
++            });
++            let flags = attach_save_owner(app.world_mut());
++            let gameplay = std::mem::take(app.main_mut());
++            let mut preparation = GameplayPreparation::spawn(gameplay, move |_| {
++                if phase == "warmup failure" { anyhow::bail!("injected warmup failure"); }
++                Ok(())
++            }).unwrap();
++            if phase == "cancel" {
++                preparation.cancel_and_join().unwrap();
++            } else {
++                let error = preparation.receiver.recv_timeout(std::time::Duration::from_secs(2))
++                    .unwrap().unwrap_err();
++                assert!(error.to_string().contains(phase));
++                preparation.cancel_and_join().unwrap();
++            }
++            assert_saved_before_drop(flags);
++        }
++    }
++
++    #[test]
++    fn unstarted_capture_and_failed_send_both_dispose_the_actual_app() {
++        for failed_send in [false, true] {
++            let mut app = bevy_app::SubApp::new();
++            let flags = attach_save_owner(app.world_mut());
++            if failed_send {
++                let (sender, receiver) = mpsc::channel();
++                drop(receiver);
++                assert!(publish_prepared_app(&sender, app).is_err());
++            } else {
++                // Same closure-capture drop as Builder::spawn returning Err;
++                // do not try to exhaust process threads to test std itself.
++                let owner = GameplayAppOwner::new(app);
++                let unstarted = move || drop(owner);
++                drop(unstarted);
++            }
++            assert_saved_before_drop(flags);
++        }
++    }
++
++    #[test]
++    fn failed_handoff_disposes_pending_save_owner_before_returning_error() {
++        let mut app = bevy_app::SubApp::new();
++        let flags = attach_save_owner(app.world_mut());
++        let (_sender, receiver) = mpsc::channel();
++        let mut preparation = GameplayPreparation { receiver, pending: Some(app),
++            cancel: Arc::new(AtomicBool::new(false)), worker: None };
++        let mut loading = App::new();
++        assert!(preparation.poll(&mut loading).is_err());
++        assert_saved_before_drop(flags);
++        preparation.cancel_and_join().unwrap();
++    }
++}
+--- a/tiny-glade/crates/country-core/src/systems/save/save_game.rs
++++ b/tiny-glade/crates/country-core/src/systems/save/save_game.rs
+@@ -712,6 +712,14 @@
+     /// 绑定存档线程命令发送端（由存档初始化者装配）。
+     pub fn attach_command_sender(&mut self, sender: crossbeam_channel::Sender<AsyncSaveCmd>) {
+         self.command_sender = Some(sender);
++    }
++
++    /// Current host disposal only: the owning World's schedules must be stopped
++    /// permanently. Keep the same unsaved Arc/state and return the actual prior
++    /// error while disconnecting this owner's command sender before join.
++    pub(crate) fn detach_for_shutdown(&mut self) -> Option<anyhow::Error> {
++        drop(self.command_sender.take());
++        self.last_error.take()
+     }
+ 
+     /// 是否已装配命令发送端（init_save_thread 幂等门）。

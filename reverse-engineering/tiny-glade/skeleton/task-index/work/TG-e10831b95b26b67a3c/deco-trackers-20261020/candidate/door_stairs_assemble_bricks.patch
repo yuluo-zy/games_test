@@ -1,0 +1,105 @@
+--- a/crates/systems/decorator/src/decorator_visual/door_stairs_assemble_bricks.rs
++++ b/crates/systems/decorator/src/decorator_visual/door_stairs_assemble_bricks.rs
+@@ -1,59 +1,59 @@
+-//! B `decorator_visual/door_stairs_assemble_bricks.rs` — 门梯砖装配（D1）。
++//! B canonical door-stair payload and explicit wall-diff consumer protocol.
+ //!
+-//! 证据：fresh RE-MCP 反编译 0x1407ff130（door_stairs_assemble_bricks，399B，
+-//! **O 全文**）+ 骨架 callees（0x1412af3a0 = DoorStairs 差分闭包 env）。
+-//!
+-//! 机器码（O）：
+-//! 1. `*(u32*)param_3[2] = *(u32*)((byte*)param_3 + 0x1c)`——ResMut 复合的
+-//!    槽位写回（把 +0x1c 写入第 3 个指针槽）；
+-//! 2. 组装 3 元组 `{param_2, param_1, param_4}` 转发 FUN_1412af3a0
+-//!    （*param_3 为差分代际值）。
+-//!
+-//! 本实现以类型化 seam 落地同一语义：槽位写回 + 差分重装。
++//! Original entry 1407ff130/52B marks the real ResMut changed and forwards its
++//! resource closure to with_diffs 1412af3a0. This is a protocol adapter, not the
++//! original four-SystemParam wall-geometry/signifier host. No empty host is
++//! supplied or registered here.
+ 
+-use crate::decorator_visual::deco_differential_state::{
+-    door_stairs_reassemble, DoorStairsAssemblyParams, WallAttachedDecoTracker,
+-};
++use bevy_ecs::change_detection::ResMut;
++use country_core::resources::walls::WallId;
+ 
+-/// ResMut 复合（O：`+0x00` 值、`+0x1c` tick）。
+-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+-pub struct AssembleResMut {
+-    /// `+0x00`：差分代际/值。
+-    pub value: u32,
+-    /// `+0x1c`：本帧 tick。
+-    pub tick: u32,
++use super::deco_differential_state::{ConsumedDiffs, DecoDiffLog, WallAttachedDecoTracker};
++
++/// Original add clones 32 bytes, and 140825150/152B compares eight ordered f32s.
++#[repr(C)]
++#[derive(Clone, Copy, Debug)]
++pub struct DoorStairsAssemblyParams {
++    pub words: [u32; 8],
+ }
+ 
+-/// 0x1407ff130（O，399B）：门梯砖差分装配入口。
+-///
+-/// 返回重装条目数。`rebuild` 对应 0x1412af3a0 的砖列装配主体（U，由宿主提供）。
++impl PartialEq for DoorStairsAssemblyParams {
++    fn eq(&self, other: &Self) -> bool {
++        self.words
++            .iter()
++            .zip(other.words.iter())
++            .all(|(a, b)| f32::from_bits(*a) == f32::from_bits(*b))
++    }
++}
++
++const _: () = assert!(std::mem::size_of::<DoorStairsAssemblyParams>() == 32);
++const _: () = assert!(std::mem::align_of::<DoorStairsAssemblyParams>() == 4);
++
++/// The real wall consumer must build all current values, then explicitly choose
++/// the original Door no-op removal callback. A missing host is not success.
+ pub fn door_stairs_assemble_bricks<F>(
+-    resmut: &mut AssembleResMut,
+-    tracker: &mut WallAttachedDecoTracker<DoorStairsAssemblyParams>,
+-    current: &std::collections::HashMap<u32, DoorStairsAssemblyParams>,
+-    mut rebuild: F,
+-) -> usize
+-where
+-    F: FnMut(u32, &DoorStairsAssemblyParams),
++    mut tracker: ResMut<'_, WallAttachedDecoTracker<DoorStairsAssemblyParams>>,
++    consume_wall: F,
++) where
++    F: for<'a> FnMut(
++        WallId,
++        DecoDiffLog<'a, DoorStairsAssemblyParams>,
++    ) -> ConsumedDiffs<'a, DoorStairsAssemblyParams>,
+ {
+-    // O：`*param_3[2] = *(u32*)(param_3 + 0x1c)`。
+-    resmut.value = resmut.tick;
+-    // O：转发 DoorStairs 差分重装闭包（仅变化项）。
+-    door_stairs_reassemble(tracker, current, |id, params| rebuild(id, params))
++    tracker.with_diffs(consume_wall);
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+-    use std::collections::HashMap;
+ 
+     #[test]
+-    fn slot_writeback_copies_tick() {
+-        let mut resmut = AssembleResMut { value: 3, tick: 11 };
+-        let mut tracker = WallAttachedDecoTracker::default();
+-        let current = HashMap::new();
+-        let n = door_stairs_assemble_bricks(&mut resmut, &mut tracker, &current, |_, _| {});
+-        assert_eq!(n, 0);
+-        assert_eq!(resmut.value, 11);
++    fn native_ordered_float_equality_is_not_bit_equality() {
++        let a = DoorStairsAssemblyParams { words: [0; 8] };
++        let mut b = a;
++        b.words[7] = (-0.0f32).to_bits();
++        assert_eq!(a, b);
++        b.words[7] = f32::NAN.to_bits();
++        assert_ne!(b, b);
+     }
+ }

@@ -1,0 +1,95 @@
+--- a/games_test/tiny-glade/crates/country-core/src/startup/load_prefabs.rs
++++ b/games_test/tiny-glade/crates/country-core/src/startup/load_prefabs.rs
+@@ -473,21 +473,83 @@
+         _ => panic!("Unknown mesh code processor {processor:?}"),
+     };
+     let mut mesh = filter_mesh_by_vertex_color(source, canopy);
+-    if canopy && mesh.has_attribute("prim_center") {
+-        recalculate_canopy_quad_attribs(&mut mesh);
+-    }
+-    // Native both branches delete id, then add only missing appear_pos/age.
++    // B count is read from one retained attribute before deleting id:
++    // canopy saves it at1412a2ccc to[rbp+308]; trunk keeps RBX at1412a2e47.
+     let count = mesh
+         .attributes
+         .values()
+         .next()
+         .map_or(0, VertexAttributeValues::array_length);
++    if canopy && mesh.has_attribute("prim_center") {
++        recalculate_canopy_quad_attribs(&mut mesh);
++    }
+     mesh.attributes.remove("id");
+-    if !mesh.has_attribute("appear_pos") {
+-        mesh.set_attribute("appear_pos", vec![Vec3::ZERO; count]);
+-    }
+-    if !mesh.has_attribute("age") {
+-        mesh.set_attribute("age", vec![1.0f32; count]);
++    // Original trunk count0 reaches1412a3a91(test RBX)/3a94(JE4121)
++    // AFTER id removal, skipping only these two additions. The independent
++    // canopy path uses saved[rbp+308] and has no equivalent count0 gate.
++    // Keep Mesh::From<Vec3>'s genuine empty assertion; do not weaken it.
++    if canopy || count != 0 {
++        if !mesh.has_attribute("appear_pos") {
++            mesh.set_attribute("appear_pos", vec![Vec3::ZERO; count]);
++        }
++        if !mesh.has_attribute("age") {
++            mesh.set_attribute("age", vec![1.0f32; count]);
++        }
+     }
+     mesh
+ }
++
++#[cfg(test)]
++mod native_empty_trunk_tests {
++    use super::*;
++
++    #[test]
++    fn shipped_far_tree_empty_trunk_keeps_empty_attributes_and_removes_id() {
++        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../../ljxsj_92385/Tiny Glade");
++        let path = root.join("assets/meshes/far_distance_tree.json");
++        let source =
++            crate::utils::load_json::try_load_json_as_mesh(path.to_str().unwrap()).unwrap();
++        let colors = float3_attribute(&source, "Vertex_Color");
++        assert!(!colors.is_empty());
++        assert!(colors.iter().all(|color| color.z == 0.0));
++        assert!(source.has_attribute("id"));
++        assert!(!source.has_attribute("appear_pos"));
++        assert!(!source.has_attribute("age"));
++        let trunk = process_prefab_mesh(&source, "extract_trunk");
++        assert!(trunk.indices.is_empty());
++        assert!(!trunk.attributes.is_empty());
++        assert!(trunk.attributes.values().all(|v| v.array_length() == 0));
++        assert!(!trunk.has_attribute("id"));
++        assert!(!trunk.has_attribute("appear_pos"));
++        assert!(!trunk.has_attribute("age"));
++        assert_eq!(trunk.source_file, source.source_file);
++        // The other real part remains nonempty; this is not a general return
++        // of the unprocessed source or a blanket empty-attribute exception.
++        let canopy = process_prefab_mesh(&source, "extract_canopy");
++        assert_eq!(canopy.indices, source.indices);
++        let count = float3_attribute(&canopy, "Vertex_Position").len();
++        assert_eq!(count, colors.len());
++        assert_eq!(
++            float3_attribute(&canopy, "appear_pos"),
++            vec![Vec3::ZERO; count]
++        );
++        assert!(matches!(&canopy.attributes["age"],
++            VertexAttributeValues::Float(v) if v.len() == count && v.iter().all(|v| *v == 1.0)));
++        assert!(!canopy.has_attribute("id"));
++    }
++
++    #[test]
++    fn nonempty_trunk_still_adds_real_per_vertex_defaults() {
++        let mut source = Mesh::new("nonempty trunk filter fixture");
++        source.set_indices(vec![0, 1, 2]);
++        source.set_attribute("Vertex_Position", vec![Vec3::ZERO, Vec3::X, Vec3::Y]);
++        source.set_attribute("Vertex_Color", vec![Vec3::Z; 3]);
++        source.set_attribute("id", vec![7i32; 3]);
++        let trunk = process_prefab_mesh(&source, "extract_trunk");
++        assert_eq!(trunk.indices, [0, 1, 2]);
++        assert!(!trunk.has_attribute("id"));
++        assert_eq!(float3_attribute(&trunk, "appear_pos"), [Vec3::ZERO; 3]);
++        assert!(matches!(&trunk.attributes["age"],
++            VertexAttributeValues::Float(v) if v == &[1.0, 1.0, 1.0]));
++    }
++}

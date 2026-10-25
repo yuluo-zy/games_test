@@ -1,0 +1,334 @@
+a205bd8a2a6ecb39d952bc04e45cbed0f6cc734f
+2026-10-14T07:49:53+08:00
+fix(task-index): 移除误提交的编译产物,恢复 delivery.json 规范路径
+
+- 删除 curve-chain-1013 误提交的 Mach-O 编译产物 tests(源码 tests.rs 保留)
+- 将因脚本相对路径 bug 写入 games_test 嵌套树的 delivery.json 移回
+  work/<TG>/curve-chain-1013/ 规范位置(内容与 root 字段一致)
+
+c05fad963ef16bb0711d393b859cffecea0ea3d6
+2026-10-14T07:47:42+08:00
+feat(foundation): 共享基础库业务恢复与修复，回归 CI 与证据同步
+
+- paths/lang-lib/tabloid 按独立产品行为修复（API 迁移见 FOUNDATION_LIBRARY_REPAIRS.md），
+  增补 lang-lib/paths/tabloid 测试与 examples
+- 新增 .github 三平台 foundation 回归 CI（check/test/clippy/fmt + 成本探针）
+- 同步 FOUNDATION_* 文档、tracking 进度与对比数据（business-comparison/unrecovered-interfaces）
+- 新增证据：foundation-plt、closures、utils-gaps、small-libs-batch-02、
+  multi-baseline/pdb-exports、toolchain 会话日志
+- 新增 tool-usage jobs、update-comparison 工具与 task-index 工作产物
+- 忽略 recompile_tmp 临时产物与 Cargo.lock 备份
+
+326cb236246543c4970ac623d689a828317959ad
+2026-10-14T01:56:56+08:00
+fix(foundation): repair texture caching and portable numeric contracts
+
+81aa0042f16a17e77fa260e8f6b25002f1b95138
+2026-10-14T01:13:30+08:00
+feat(shader): 415 个重建 HLSL 全量可读化重写 + 防逻辑漂移校验工具
+
+按 404 个 oracle bin 对应的重建源码树,把 reconstruction/shader-source/shaders
+全部 415 个 HLSL 重写为人类可读形式,交付到 reconstruction/human-readable-shaders
+(镜像布局,原树未动):
+- 转译段 SPIR-V 编号变量(_NN)语义化命名,注释一律中文(文件头/函数/算法块)
+- 8 个关键大文件(water_plane/waterfall/deferred×4/generate_strokes/trace_gi)二次
+  语义化;44 个非关键大文件按约定保留 vNN 统一临时变量(顶层已语义化)
+- 变体守卫、绑定、入口、算术与控制流逐字节保留
+
+校验(readable_check.py):原版与重写版同一 dxc 命令编译,剥离全部调试信息后哈希
+必须逐位一致。独立终扫 260/260 着色器、638/638 变体模块全 PASS;结构审计 0 差异;
+原树 git 状态干净。新增工具:readable_check/readable_sweep/build_readable_manifest
+及 file→bin manifest(readable-manifest.json)。
+
+b596559377f8d735db417162ca6c7c69962cee3d
+2026-10-13T20:20:42+08:00
+feat(country-core): 渲染模块 A1–A4/N/D/C/S/H 按原机器码恢复，附统一测试台与审计工具
+
+- 渲染第 0–7 层（ssbo/mesh/vao/shader、资产库、pass_builder、nani、draw_passes、compute 帧 pass、
+  风格化与帧编排）按原 EXE 机器码恢复，O/I/U 标注，渲染目录大部分 todo!/占位已清除。
+- 复用真实依赖（bevy_ecs 0.16、glam、half、bytemuck、xxhash-rust）；缺失的底层库只写最小 stub。
+- binding 名哈希 = FNV-1a-64、SsboId = xxh3_64(NAME)；TypeId 经 typeid_resolve.py 反查真名。
+- 统一全树测试台 tools/country-core-audit/l0-harness：785 通过 / 0 失败。
+- 新增审计工具（dis/rdva/calls/layers/fnstat/modstat/typeid_resolve 等）与各组证据 B_*.md、B_SUMMARY.md。
+- 已知局限：整个 crate 离线仍无法整体编译（缺 dolly/mint/puffin）；render_world 未接真实 pass 入口；
+  未做 GPU/原版行为对照。详见 evidence/country-core-audit/B_SUMMARY.md。
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+3d924ccd1873547edc0ebfff44983407a2418985
+2026-10-13T20:00:44+08:00
+wip(foundation): checkpoint seven-library recovery and comparison evidence
+
+ce2d8a53fa1ff844ca038441379afced2bf8b290
+2026-10-13T19:58:31+08:00
+fix: preserve rhapsody workspace instructions and ignore rules
+
+f666057397e5d2424ee426e153889c30ee6b9b51
+2026-10-13T19:56:59+08:00
+feat: recover small foundation libraries and validate text GPU pipeline
+
+3e0387cd7899fd22d0bed4e037af6e6013119d0c
+2026-10-13T19:55:45+08:00
+feat(foundation): restore B libraries and original dependency closure
+
+1382c09fccbd6838f45883732fa73a93b304e190
+2026-10-13T19:48:07+08:00
+docs(shader): analyze remaining reflection and zero-key configuration gaps
+
+db1ecad7d3cbb190853ef3c3b4c80f69c3d1d881
+2026-10-13T19:25:10+08:00
+feat(shader): recover original compute variants and repair source interfaces
+
+902bb6e81891fcd939c1fe52abec824dfaa9ca26
+2026-10-13T18:10:49+08:00
+merge: integrate upstream shader and country-core recovery with DXC build pipeline
+
+e4e0fbe28ec56a8335f6e378afc1396c89de83d2
+2026-10-13T18:01:04+08:00
+feat(shader): restore actual DXC preprocessing reflection and package build
+
+Build 404 recovered shader packages through the original public dependencies, preserve compiler and semantic residuals, and add independent provenance and consumer validation.
+
+45caddbdac457edf666b12e561edcff470a45612
+2026-10-13T17:38:45+08:00
+docs(rhapsody): add hardware GPU performance analysis
+
+ba1acef4b5a70f090f05734cad93c60bfc371697
+2026-10-13T15:54:50+08:00
+shader-recovery: 5 个 EDGE 逐值证明；lilypad/reed 真因是 dxc 因式分解，已修为 SAME
+
+- 新增 spv_nocontract.py 与 diff_common 的严格复核（dxc -Gis + NoContraction）：
+  DIFF/EDGE 自动复核，禁融合/严格顺序后逐位一致才记“已证明”，否则升 DIFF；删除硬编码 PROVEN_FMA
+- lilypad/reed VS：原“FMA 融合”推断被证伪（禁融合无变化）；真因是 dxc 把 (x*20)-(z*20)
+  改成 (x-z)*20。batch_lift 新增 spv_fmsub(precise)，4 个变体变 SAME
+- ice_refl_resolve：保持 EDGE 但已证明（-Gis+NoContraction 0 差异；对照差 29 字；
+  严格顺序+允许融合与原版默认 0 差异）
+- spv-diff 首个差异现在输出完整 32 位字与浮点值
+- 最新：像素 232 SAME/2 空壳；顶点 234 SAME；计算 168 SAME/1 EDGE/1 空壳；结构 637/638
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+6d30d3ae69de59793a0082ccad2e5b59f3d8f112
+2026-10-13T15:43:14+08:00
+shader-recovery: 差分执行验证 + 提升修复，重建 HLSL 与原版 bin 逐个核对
+
+- 新增工具：sweep_all（结构门禁）、batch_lift（spirv-cross 提升 + 修复后处理）、
+  diff_exec/diff_exec_ps/diff_exec_vs（lavapipe 上差分执行，计算/像素/顶点）、
+  tools/spv-diff（Rust 执行器：混合输入、深度附件、VS 输出捕获）
+- 手写版被执行验证揭出大量真差异（计算/顶点/像素/discard），已换成行为精确的提升版；
+  修复 frexp 非规格化、OpSRem 除零、dxc 表达式重排(precise)等提升缺陷
+- 最终：结构门禁 637/638；执行验证 SAME 630 / EDGE 5(FMA 融合) / 空壳 3 / DIFF 0
+- 新增 SHADER_STATUS.md/.json：每个 HLSL 的类别、功能、实现方式、复验结果与备注
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+16412392910ee53b2ef0a1a0a6bc0a6ea3c2f9ac
+2026-10-13T15:14:08+08:00
+Merge remote-tracking branch 'origin/main'
+
+664f6a650d330b00d1bd9a947408b0a56d8e1237
+2026-10-13T15:11:45+08:00
+feat(country-core): 全量恢复 21 工作包并整合为可编译 crate
+
+- WP1–21：渲染域(pass 声明/GPU buffer/nani/mesh·资产)、内容域(水/地形/屋顶/植被生物)、墙状态·墙系统/会话·历史·存档/音频/UI·输入·启动、历史回放/draw_shaders/风格化·菜单/相机·UI·时间·天气/资源余量
+- 方法：逐函数业务逻辑→整理→骨架实现 Rust；机器码差分仅作关键数值/边界校验，无 oracle，未知字段一律 typed gap
+- 终局 crate reconstruction/country-core 570 .rs，offline cargo check 0 错误 + all-targets clippy 0 错误（亲自复验）
+- 覆盖审计 skeleton/B 539 源路径实质全量覆盖（仅 3 个 mod.rs 路径名差异）
+- 每包含业务逻辑合同(Observed/Inferred/Unknown)+骨架对齐 Rust+evidence+独立编译门禁；整合报告 _integration/*.md
+- 全部 implemented_unverified；GPU/画面验收未开展，不声称原作等价
+
+52a144603c95751165b40d3b23724f8d6c302369
+2026-10-13T13:26:21+08:00
+feat(rhapsody-rebuild): 并行录制、子分配、依赖对齐与首条真实 pass，并清理过时文档
+
+- 并行录制：还原原作 record_batch 的按上一帧耗时分块（bevy_tasks），ADAPTIVE/Balanced 为候选扩展
+- 并发协议：控制块原子化；槽位表改 append-only-vec、显存预算快照改 arc-swap；全部锁改 parking_lot
+- 显存子分配（公开 gpu-allocator 0.27.0，默认关闭）、延迟销毁场、setup 命令缓冲/纹理上传、屏障计数
+- 性能基准与门禁（perf/、benches/perf.rs）；新增 tests/real_pass_blur.rs：原作 blur SPIR-V 经 rg 图执行并与 HLSL 参考比对
+- 取证：并行录制、setup CB、多队列/跨队列屏障（原作屏障全 IGNORED、图像 EXCLUSIVE、录制写死主队列）
+- 清理：重写 README 为现状文档；删除无引用的 migration.json/native-support-provenance.json 与无调用点的 CrashDiagnostics；
+  更正 TASK_BACKLOG、PERFORMANCE_ANALYSIS、a7 取证中的过时结论
+
+测试 132 通过（专用/子分配/无 Vulkan 三种环境一致），clippy 无警告。lavapipe 验证，不代表真显卡。
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+78be3e3f17301cc57a62d63061e72c7a9c241a66
+2026-10-13T13:22:31+08:00
+feat: tree/audio/critters-water 在 Bevy 0.16 上的独立实现 + 反编译任务单
+
+- standalone workspace 依赖取自 skeleton/B/Cargo.lock（bevy_ecs/bevy_app 0.16.0、
+  glam 0.29.3、fastrand 1.8.0、perchance 0.4.0），不自写替代库
+- tg-tree 39、tg-audio 97、tg-critters-water 146 个测试通过，4 个 demo 可运行
+- 未解项逐处标 UNKNOWN(evidence: ...)；FMOD 无法复用，保留 AudioBackend trait
+- 仅覆盖 B 基线；A（无 Cargo.lock）与 C（Bevy 0.17.3）未做
+- DECOMPILE_TASKLIST.md：待手动反编译的函数、VA 与调查重点
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+5e712ae8f8fe42f3ef1f4fe0e1b3d255f65f0d8d
+2026-10-13T12:14:50+08:00
+Merge remote-tracking branch 'origin/main'
+
+1d450b50d9a410c51ad3ffb559369d6b6071d792
+2026-10-13T12:09:46+08:00
+shader-recovery: 镜像原作 compiled-shaders oracle bin（404 个）入仓库
+
+- evidence/render-passes/shaders/oracle-bin/: B 版本 404 个 SPIR-V .bin，验证用只读 oracle
+- 来源 /Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/compiled-shaders/，原始文件保留原路径
+- 用于 dxc 重编译结构指纹校验对照（catalog.json 已含逐文件 sha256）
+
+622a088ed27dcd8d16de9c7ac209476a51790b20
+2026-10-13T11:49:11+08:00
+Merge remote-tracking branch 'origin/main'
+
+2992adf5eaa8e46e25a81b4a637d6051d7fa12e0
+2026-10-13T11:30:33+08:00
+shader-recovery: 原作 HLSL 源码恢复完成（404/404 bin 覆盖）+ 证据归档
+
+- reconstruction/shader-source/shaders/: 415 源文件行为等价重建（inc/ 共享层 87 + 六族 + 大算法族双人重建+合并），404/404 发行 shader 均有匹配主文件；全树 260 main 编译 258 PASS（Affine3Packed 冲突已修），硬门 235/260（残差为 dxc 版本码差/f0ad 平凡变体/PBA 物理读不可表达）
+- evidence/render-passes/: pass 清单 INDEX、RECOVERY_TRACKER 判定记录、4 组双人 review 裁决、wave-1/2 集成与 completion 报告、骨架/校验证据
+- scripts+tools/render-passes/: SPIR-V 骨架提取器与 dxc 重编译结构指纹校验管线（recompile_check.py 等）
+- PROJECT_MEMORY: 记录 wave-1/wave-2 HLSL 恢复里程碑
+
+7c7703fc4660501099ab9c7b37ee6cf466e2d3f5
+2026-10-13T10:37:22+08:00
+Merge remote-tracking branch 'origin/main'
+
+e4ce4585d4a16c599b0d118268382e7931ea8255
+2026-10-13T10:24:08+08:00
+五模块(tree-tool/water/critters/clutter/audio)业务逻辑反汇编级分析与恢复草稿
+
+方法论：先分析每个函数业务逻辑（调用者泛型签名 + reva 定点反编译 + radare2 RNE oracle
+逐条一致），整理证据文档，再按 PDB 源码骨架实现 Rust；机器码差分仅作校验。
+
+交付：
+- 清单：5 个 -inventory.json（源文件/模块/函数边界，A/B 对照，303 VA 已修正）
+- 分析：11 份 -analysis.md / -extra-analysis.md（命令槽布局、boids 规则、kind 逐条表、
+  笔画→栅格公式、事件→FMOD 映射等）
+- 草稿：reconstruction/{tree-tool,clutter,audio,clutter-audio,critters/src,terrain water}
+- 编译验证：clutter-audio workspace offline 全过（5 集成测试）、critters 22 测试、
+  tg-terrain 水模块 9 测试
+- 工具：dump_pdb_functions.py / pdb_sources_by_module.py（修复 llvm-pdbutil addr 十进制换算）
+- 总览：evidence/multi-baseline/README.md
+
+未知项逐文档如实标注，不伪造语义；全部为分析证据与恢复草稿，非作者原源码。
+
+473868c6735f0fae8219dd5eefc08a2ecb60a7f6
+2026-10-13T09:19:53+08:00
+Merge remote-tracking branch 'origin/chore/sync-workspace-20261011'
+
+92722863030f459238b1358691bbda0a55889e70
+2026-10-13T07:55:07+08:00
+docs(rhapsody-rebuild): README 补充 2026-10-13 缺失函数补全记录与已知剩余缺口
+
+登记本轮补全范围（rg/raw/managed 约200个）、验证结果（69测试+clippy all-targets）
+与已知剩余缺口（setup命令缓冲/full_screen_exclusive/纹理暂存上传及机制层偏差），
+并去掉验证命令的 offline 限定以匹配可联网构建。
+
+344b73f76ee21f192ec85f3658aaec4d295df766
+2026-10-13T06:14:18+08:00
+feat(rhapsody-rebuild): 按三版骨架清单补全缺失函数约200个并登记证据
+
+对照 skeleton-enriched/B/crates/rhapsody 骨架函数清单补全 rg/raw/managed 缺失项：
+- rg: RenderPassApi draw/dispatch 9命令+计数、PGO(PassPgoNameId/Duration/Stats)、
+  ExportedRenderGraphResources/ExecutedRenderGraph、Handle/ExportableResource、
+  ResourceInfo extract_*拆出、Parity/Temporal、RenderGraphRecorder/PassResourceRef、
+  VulkanGraphSession wait_submits_done/帧时长/顶层时间戳、leek wait_submits_done
+- raw: GraphicsDevice候选包装+create_raw_device/Queue、RasterPipelineOpts 29 setter、
+  Buffer持久映射mapped_slice_mut、SubmitInfo/SubmissionEngine、instance黑名单系列、
+  buffer/texture/barrier/descriptor/command_buffer若干
+- managed: GpuOwned全族、ManagedHandle/ManagedRef/Checksum、owning_device/
+  throw_out_managed_resource/get_maybe_tracked、SwapchainInner包装
+
+验证: cargo test --locked 69通过0失败(含此前路径不可编译的device_policy 5)；
+cargo clippy --locked --all-targets -- -D warnings 通过。GPU探针未重跑。
+剩余typed gap(setup命令缓冲/full_screen_exclusive/纹理暂存上传)需按原码取证。
+tests/device_policy.rs资产相对路径4层改5层为环境适配。
+交付证据 evidence/missing-functions-completion-2026-10-13.json，MODULE_STATUS 更新。
+
+53b00a73fe7bfa76d376e1e0d043750cdce34d96
+2026-10-12T22:10:33+08:00
+Merge remote-tracking branch 'origin/chore/sync-workspace-20261011'
+
+# Conflicts:
+#	reverse-engineering/tiny-glade/AGENTS.md
+#	reverse-engineering/tiny-glade/PROJECT_MEMORY.md
+#	reverse-engineering/tiny-glade/PROJECT_PROGRESS.md
+#	reverse-engineering/tiny-glade/TASK_BACKLOG.md
+#	reverse-engineering/tiny-glade/reconstruction/src/lib.rs
+#	reverse-engineering/tiny-glade/scripts/update-progress.py
+#	reverse-engineering/tiny-glade/skeleton/workflow-design/tiny-glade-recovery/SKILL.md
+#	reverse-engineering/tiny-glade/tracking/project.json
+
+353f85e6c479d7338a9a9bc5bf3fd496c92fef28
+2026-10-12T21:40:11+08:00
+chore: publish all A B C Rust skeleton sources and module manifests
+
+7d49881c1f446ccd20b376efb05ab8c76f945417
+2026-10-12T19:50:48+08:00
+11
+
+92b4ca260adacd97ac00f429ca088e8dc6e76887
+2026-10-12T19:35:07+08:00
+research: Tiny Glade rhapsody 逆向三轮取证与可行性调查归档
+
+rhapsody 域 450/450 函数、342,968 字节全部反汇编完成（Ghidra 伪代码 291 +
+PE 直读 159）；country_core 渲染面补上 140 个地址的取证与 36+59 步构图顺序。
+
+主要结论
+- 构图闭包属 country_core 游戏码（声明层），rhapsody 只做容器/编译/执行
+- 帧节流、每 batch 一命令缓冲、销毁桶按提交序列号排出等机制已逐行坐实
+- 无硬件光追（四重独立确认，GI 走 obvhs 软件 CW-BVH）
+- 直接调用图全镜像建成（419,936 条 call rel32，99.97% 解析；三法零差异）
+
+可行性调查（t1-t5）
+- 签名与类型静态无解：根因是 -C debuginfo=line-tables-only；rhapsody 在
+  TPI 里出现 0 次，943 个 LF_FUNC_ID 全指向 void() 占位；符号为 legacy
+  修饰不编码签名；调用点 ABI 只给参数个数（47.3%）
+- 间接调用静态只解 0.35%，主因基址是 this 入参
+
+新增文档
+- ASSESSMENT.md：当前状态与判断（含"不 1:1 自写"的可行性边界）
+- MECHANISM_DIFF.md：候选实现 vs 逆向机制的 16 处差异分级
+- evidence/render-recovery/producer-closure/：三轮详录（SYNTHESIS /
+  ROUND3_FINDINGS / GAPS）与 24 份 findings
+
+自我更正台账（三条，详见 ASSESSMENT.md 第五节）
+- 0x1436A55xx 是 .pdata 异常目录，不是 vtable 槽
+- barrier 账本字段是 {index@+0, sync_group@+4, access_code@+8}
+- public-symbols.json 的 demangled 字段有损，相关类型结论需降级
+
+维护
+- .gitignore 补上 work-packages/*/target 与 rhapsody-rebuild/target
+- 修复一处畸形路径（正文被当成路径写入），内容救回
+  parallel-batch-02/executor-temporal/R4-executor-temporal-findings.md
+
+156add0591a13b61c944c9b4f0e154f3b72ebc18
+2026-10-12T08:23:43+08:00
+chore: publish shared Rust recovery candidates and workflow docs, keep generated data local
+
+c3625e1da4db6d7c49bfff002f816a871d228586
+2026-10-12T07:57:46+08:00
+chore: save reconstruction candidates, evidence, docs and workspace changes
+
+7cbf71305e1b5ae37609d51e9c248303687db158
+2026-10-11T18:01:18+08:00
+wip(terrain): add native Rust edit-point verification and readback draft
+
+8107b4751190ff8d9504a099840cfcb916c4878c
+2026-10-11T17:53:11+08:00
+chore: snapshot stopped camera and critter reverse engineering
+
+Preserve partial Rust recovery, original-instruction evidence and stop-state handoff. Record the firefly verification failure and outstanding module acceptance; exclude unrelated workspace changes.
+
+531b7d3213e327fbf0b6ef0988c7787d456f9e34
+2026-10-11T17:13:01+08:00
+chore: archive workspace deliverables and latest reverse-engineering research
+
+Include Blender editable library, previews, renders, textures, tool scripts and workspace skills. Preserve reconstruction source and research evidence while excluding original game files, raw asset archives, installed toolchains and build caches.
+
+0f9ded4363e1595ecb13da793a9005bdd1962a39
+2026-10-10T19:05:23+08:00
+feat: preserve Tiny Glade reconstruction, analysis and progress
+

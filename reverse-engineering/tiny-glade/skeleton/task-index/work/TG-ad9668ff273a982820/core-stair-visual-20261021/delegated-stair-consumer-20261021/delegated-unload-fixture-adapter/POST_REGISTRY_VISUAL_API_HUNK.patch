@@ -1,0 +1,13 @@
+--- a/tiny-glade/crates/systems/decorator/tests/decorator_unload_lifecycle.rs
++++ b/tiny-glade/crates/systems/decorator/tests/decorator_unload_lifecycle.rs
+@@ -178,7 +178,9 @@
+     stairs.make_backup();
+     world
+         .resource_mut::<StairsVisualState>()
+-        .reset_edge(StairGraphEdge::new(1, 2));
++        .edges_mut()
++        .entry(StairGraphEdge::new(1, 2))
++        .or_default();
+     world.resource_mut::<StairsStructuralGraph>().upsert_span(
+         (StairGraphEdge::new(1, 2), 0),
+         StairColliderHandle::new(3, 4, 5),

@@ -1,0 +1,1390 @@
+{
+  "status": "changes_requested",
+  "known_pixel_input_blocks": [
+    {
+      "source": "clearing/meadow_flower.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "before": "struct SPIRV_Cross_Input\n{\n    [[vk::location(1)]] float2 in_var_C1 : TEXCOORD1;\n    [[vk::location(3)]] float3 in_var_C3 : TEXCOORD3;\n    [[vk::location(5)]] nointerpolation int in_var_C5 : TEXCOORD5;\n    [[vk::location(6)]] float2 in_var_C6 : TEXCOORD6;\n    [[vk::location(7)]] float3x3 in_var_C7 : TEXCOORD7;\n    float4 gl_FragCoord : SV_Position;\n};",
+      "after": "struct SPIRV_Cross_Input\n{\n    [[vk::location(1)]] float2 in_var_C1: Vertex_Normal;\n    [[vk::location(3)]] float3 in_var_C3: flower_pivot;\n    [[vk::location(5)]] nointerpolation int in_var_C5: wind_bend;\n    [[vk::location(6)]] float2 in_var_C6 : TEXCOORD6;\n    [[vk::location(7)]] float3x3 in_var_C7 : TEXCOORD7;\n    float4 gl_FragCoord : SV_Position;\n};"
+    },
+    {
+      "source": "clearing/tree_canopy.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "before": "struct SPIRV_Cross_Input\n{\n    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;\n    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;\n    [[vk::location(3)]] float3 in_var_C3 : TEXCOORD3;\n    [[vk::location(4)]] nointerpolation int in_var_C4 : TEXCOORD4;\n    [[vk::location(5)]] nointerpolation int in_var_C5 : TEXCOORD5;\n    [[vk::location(6)]] nointerpolation float in_var_C6 : TEXCOORD6;\n    [[vk::location(7)]] float3 in_var_C7 : TEXCOORD7;\n    [[vk::location(8)]] nointerpolation uint in_var_C8 : TEXCOORD8;\n    [[vk::location(9)]] nointerpolation uint in_var_C9 : TEXCOORD9;\n    [[vk::location(10)]] nointerpolation float in_var_C10 : TEXCOORD10;\n    [[vk::location(12)]] float in_var_C12 : TEXCOORD12;\n    float4 gl_FragCoord : SV_Position;\n};",
+      "after": "struct SPIRV_Cross_Input\n{\n    [[vk::location(1)]] float3 in_var_C1: Vertex_Color;\n    [[vk::location(2)]] float3 in_var_C2: Vertex_Normal;\n    [[vk::location(3)]] float3 in_var_C3: prim_center;\n    [[vk::location(4)]] nointerpolation int in_var_C4: prim_normals;\n    [[vk::location(5)]] nointerpolation int in_var_C5: appear_pos;\n    [[vk::location(6)]] nointerpolation float in_var_C6: age;\n    [[vk::location(7)]] float3 in_var_C7 : TEXCOORD7;\n    [[vk::location(8)]] nointerpolation uint in_var_C8 : TEXCOORD8;\n    [[vk::location(9)]] nointerpolation uint in_var_C9 : TEXCOORD9;\n    [[vk::location(10)]] nointerpolation float in_var_C10 : TEXCOORD10;\n    [[vk::location(12)]] float in_var_C12 : TEXCOORD12;\n    float4 gl_FragCoord : SV_Position;\n};"
+    },
+    {
+      "source": "ivy/instanced_ivy_leaf.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "before": "struct SPIRV_Cross_Input\n{\n    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;\n    [[vk::location(4)]] float2 in_var_C4 : TEXCOORD4;\n    float4 gl_FragCoord : SV_Position;\n};",
+      "after": "struct SPIRV_Cross_Input\n{\n    [[vk::location(2)]] float3 in_var_C2: Vertex_UV;\n    [[vk::location(4)]] float2 in_var_C4 : TEXCOORD4;\n    float4 gl_FragCoord : SV_Position;\n};"
+    },
+    {
+      "source": "nani_gothic_window_bricks.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "before": "struct SPIRV_Cross_Input\n{\n    [[vk::location(0)]] nointerpolation uint in_var_C0 : TEXCOORD0;\n    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;\n    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;\n    [[vk::location(7)]] float in_var_C7 : TEXCOORD7;\n    [[vk::location(10)]] float2 in_var_C10 : TEXCOORD10;\n    [[vk::location(11)]] nointerpolation int in_var_C11 : TEXCOORD11;\n    [[vk::location(12)]] nointerpolation float2 in_var_C12 : TEXCOORD12;\n    [[vk::location(13)]] nointerpolation int in_var_C13 : TEXCOORD13;\n    [[vk::location(14)]] nointerpolation uint in_var_C14 : TEXCOORD14;\n    float4 gl_FragCoord : SV_Position;\n};",
+      "after": "struct SPIRV_Cross_Input\n{\n    [[vk::location(0)]] nointerpolation uint in_var_C0: Vertex_Position;\n    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;\n    [[vk::location(2)]] float3 in_var_C2: Vertex_Normal;\n    [[vk::location(7)]] float in_var_C7 : TEXCOORD7;\n    [[vk::location(10)]] float2 in_var_C10 : TEXCOORD10;\n    [[vk::location(11)]] nointerpolation int in_var_C11 : TEXCOORD11;\n    [[vk::location(12)]] nointerpolation float2 in_var_C12 : TEXCOORD12;\n    [[vk::location(13)]] nointerpolation int in_var_C13 : TEXCOORD13;\n    [[vk::location(14)]] nointerpolation uint in_var_C14 : TEXCOORD14;\n    float4 gl_FragCoord : SV_Position;\n};"
+    },
+    {
+      "source": "nani_gothic_window_bricks.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "before": "struct SPIRV_Cross_Input\n{\n    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;\n    [[vk::location(7)]] float in_var_C7 : TEXCOORD7;\n    [[vk::location(13)]] nointerpolation int in_var_C13 : TEXCOORD13;\n    float4 gl_FragCoord : SV_Position;\n};",
+      "after": "struct SPIRV_Cross_Input\n{\n    [[vk::location(2)]] float3 in_var_C2: Vertex_Normal;\n    [[vk::location(7)]] float in_var_C7 : TEXCOORD7;\n    [[vk::location(13)]] nointerpolation int in_var_C13 : TEXCOORD13;\n    float4 gl_FragCoord : SV_Position;\n};"
+    },
+    {
+      "source": "nani_solid_vertex_color.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "before": "struct SPIRV_Cross_Input\n{\n    [[vk::location(3)]] nointerpolation uint in_var_C3 : TEXCOORD3;\n    float4 gl_FragCoord : SV_Position;\n};",
+      "after": "struct SPIRV_Cross_Input\n{\n    [[vk::location(3)]] nointerpolation uint in_var_C3: flags;\n    float4 gl_FragCoord : SV_Position;\n};"
+    },
+    {
+      "source": "nani_solid_vertex_color_bricks.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "before": "struct SPIRV_Cross_Input\n{\n    [[vk::location(0)]] nointerpolation uint in_var_C0 : TEXCOORD0;\n    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;\n    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;\n    [[vk::location(7)]] float in_var_C7 : TEXCOORD7;\n    [[vk::location(10)]] float2 in_var_C10 : TEXCOORD10;\n    [[vk::location(11)]] nointerpolation int in_var_C11 : TEXCOORD11;\n    [[vk::location(12)]] nointerpolation float2 in_var_C12 : TEXCOORD12;\n    [[vk::location(13)]] nointerpolation int in_var_C13 : TEXCOORD13;\n    [[vk::location(14)]] nointerpolation uint in_var_C14 : TEXCOORD14;\n    float4 gl_FragCoord : SV_Position;\n};",
+      "after": "struct SPIRV_Cross_Input\n{\n    [[vk::location(0)]] nointerpolation uint in_var_C0: Vertex_Position;\n    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;\n    [[vk::location(2)]] float3 in_var_C2: Vertex_Normal;\n    [[vk::location(7)]] float in_var_C7 : TEXCOORD7;\n    [[vk::location(10)]] float2 in_var_C10 : TEXCOORD10;\n    [[vk::location(11)]] nointerpolation int in_var_C11 : TEXCOORD11;\n    [[vk::location(12)]] nointerpolation float2 in_var_C12 : TEXCOORD12;\n    [[vk::location(13)]] nointerpolation int in_var_C13 : TEXCOORD13;\n    [[vk::location(14)]] nointerpolation uint in_var_C14 : TEXCOORD14;\n    float4 gl_FragCoord : SV_Position;\n};"
+    },
+    {
+      "source": "nani_solid_vertex_color_bricks.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "before": "struct SPIRV_Cross_Input\n{\n    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;\n    [[vk::location(7)]] float in_var_C7 : TEXCOORD7;\n    [[vk::location(13)]] nointerpolation int in_var_C13 : TEXCOORD13;\n    float4 gl_FragCoord : SV_Position;\n};",
+      "after": "struct SPIRV_Cross_Input\n{\n    [[vk::location(2)]] float3 in_var_C2: Vertex_Normal;\n    [[vk::location(7)]] float in_var_C7 : TEXCOORD7;\n    [[vk::location(13)]] nointerpolation int in_var_C13 : TEXCOORD13;\n    float4 gl_FragCoord : SV_Position;\n};"
+    },
+    {
+      "source": "nani_solid_vertex_color_window_glass.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "before": "struct SPIRV_Cross_Input\n{\n    [[vk::location(0)]] float3 in_var_C0 : TEXCOORD0;\n    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;\n    [[vk::location(3)]] float2 in_var_C3 : TEXCOORD3;\n    [[vk::location(4)]] nointerpolation uint in_var_C4 : TEXCOORD4;\n    [[vk::location(5)]] nointerpolation uint in_var_C5 : TEXCOORD5;\n    [[vk::location(6)]] nointerpolation float3 in_var_C6 : TEXCOORD6;\n    [[vk::location(7)]] nointerpolation uint in_var_C7 : TEXCOORD7;\n    float4 gl_FragCoord : SV_Position;\n};",
+      "after": "struct SPIRV_Cross_Input\n{\n    [[vk::location(0)]] float3 in_var_C0: Vertex_Position;\n    [[vk::location(2)]] float3 in_var_C2: Vertex_Normal;\n    [[vk::location(3)]] float2 in_var_C3: Vertex_UV;\n    [[vk::location(4)]] nointerpolation uint in_var_C4: is_glass;\n    [[vk::location(5)]] nointerpolation uint in_var_C5 : TEXCOORD5;\n    [[vk::location(6)]] nointerpolation float3 in_var_C6 : TEXCOORD6;\n    [[vk::location(7)]] nointerpolation uint in_var_C7 : TEXCOORD7;\n    float4 gl_FragCoord : SV_Position;\n};"
+    },
+    {
+      "source": "nani_solid_vertex_color_window_glass.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "before": "struct SPIRV_Cross_Input\n{\n    [[vk::location(4)]] nointerpolation uint in_var_C4 : TEXCOORD4;\n    float4 gl_FragCoord : SV_Position;\n};",
+      "after": "struct SPIRV_Cross_Input\n{\n    [[vk::location(4)]] nointerpolation uint in_var_C4: is_glass;\n    float4 gl_FragCoord : SV_Position;\n};"
+    },
+    {
+      "source": "skydome.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "before": "struct SPIRV_Cross_Input\n{\n    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;\n    float4 gl_FragCoord : SV_Position;\n};",
+      "after": "struct SPIRV_Cross_Input\n{\n    [[vk::location(2)]] float3 in_var_C2: Vertex_Normal;\n    float4 gl_FragCoord : SV_Position;\n};"
+    }
+  ],
+  "rule": "Never apply vertex location/name mappings across same-named structs from a different stage; identify owning lifted block and entry execution model",
+  "lifted_blocks_whose_next_entry_is_frag_main": [
+    {
+      "source": "clearing/meadow_flower.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": true
+    },
+    {
+      "source": "clearing/tree_canopy.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": true
+    },
+    {
+      "source": "clearing/tree_trunk.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "clearing/tree_trunk.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "critters/nani_wren.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "flag_roof_cloth.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "flag_small.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "flag_wall_cloth.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "garden_lowpoly_flower.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "instanced_roof_beams.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "ivy/instanced_ivy_leaf.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": true
+    },
+    {
+      "source": "leaf_particle.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "lilypad.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "lilypad.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "lilypad_flower.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_bush.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_gothic_window_bricks.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": true
+    },
+    {
+      "source": "nani_gothic_window_bricks.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": true
+    },
+    {
+      "source": "nani_plant.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_solid_vertex_color.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": true
+    },
+    {
+      "source": "nani_solid_vertex_color_bricks.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": true
+    },
+    {
+      "source": "nani_solid_vertex_color_bricks.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": true
+    },
+    {
+      "source": "nani_solid_vertex_color_window_glass.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": true
+    },
+    {
+      "source": "nani_solid_vertex_color_window_glass.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": true
+    },
+    {
+      "source": "nani_velocity_only.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_wooden_plank.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "path_pebble.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "reed.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "reed.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "skydome.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": true
+    },
+    {
+      "source": "solid_vertex_color_boat.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "solid_vertex_color_garden_stone.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "solid_vertex_color_waterwheel.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "timed_terrain_gizmo.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    }
+  ],
+  "classification": [
+    {
+      "source": "billboard_plant.raster.hlsl",
+      "type": "VS_IN",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "clearing/distant_billboard.raster.hlsl",
+      "type": "VS_IN",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "clearing/instanced_background_tree.raster.hlsl",
+      "type": "VS_IN",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "clearing/meadow_flower.raster.hlsl",
+      "type": "VS_IN",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "clearing/meadow_flower.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "clearing/meadow_flower.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": true
+    },
+    {
+      "source": "clearing/meadow_flower.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "clearing/meadow_plant.raster.hlsl",
+      "type": "VS_IN",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "clearing/tree_canopy.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "clearing/tree_canopy.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": true
+    },
+    {
+      "source": "clearing/tree_canopy.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "clearing/tree_trunk.raster.hlsl",
+      "type": "VS_IN",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "clearing/tree_trunk.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "clearing/tree_trunk.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "clearing/tree_trunk.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "clearing/tree_trunk.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "critters/butterfly.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "critters/butterfly.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "critters/butterfly.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "critters/duck_animated.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "critters/firefly.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "critters/firefly_glow.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "critters/nani_wren.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "critters/nani_wren.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "critters/nani_wren.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "critters/nani_wren.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "dashed_line.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "flag_roof_cloth.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "flag_roof_cloth.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "flag_roof_cloth.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "flag_roof_cloth.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "flag_small.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "flag_small.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "flag_small.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "flag_small.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "flag_wall_cloth.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "flag_wall_cloth.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "flag_wall_cloth.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "flag_wall_cloth.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "garden_lowpoly_flower.raster.hlsl",
+      "type": "VSInput",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "garden_lowpoly_flower.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "garden_lowpoly_flower.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "garden_lowpoly_flower.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "ice_plane.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "instanced_roof_beams.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "instanced_roof_beams.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "instanced_roof_beams.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "instanced_roof_spire.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "instanced_roof_spire.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "instanced_roof_spire.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "ivy/instanced_ivy_branch.raster.hlsl",
+      "type": "VSInput",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "ivy/instanced_ivy_branch.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "ivy/instanced_ivy_branch.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "ivy/instanced_ivy_leaf.raster.hlsl",
+      "type": "VSInput",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "ivy/instanced_ivy_leaf.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "ivy/instanced_ivy_leaf.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": true
+    },
+    {
+      "source": "ivy/instanced_ivy_leaf.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "leaf_particle.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "leaf_particle.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "leaf_particle.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "leaf_particle.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "lilypad.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "lilypad.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "lilypad.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "lilypad.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "lilypad.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "lilypad.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "lilypad.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "lilypad_flower.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "lilypad_flower.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "lilypad_flower.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "lilypad_flower.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "logo_animation.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "logo_branches_animation.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "logo_branches_animation.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "logo_branches_animation.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_balcony_door.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_balcony_door.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_balcony_door.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_bush.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_bush.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_bush.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_bush.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_cloth.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_curved_halftimber.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_curved_halftimber.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_curved_halftimber.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_flower.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_flower.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_flower.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_gothic_window_bricks.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_gothic_window_bricks.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_gothic_window_bricks.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": true
+    },
+    {
+      "source": "nani_gothic_window_bricks.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_gothic_window_bricks.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": true
+    },
+    {
+      "source": "nani_instanced_roof.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_instanced_roof.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_instanced_roof.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_lantern_emissive.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_plant.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_plant.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_plant.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_plant.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_preplaced_flower.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_preplaced_flower.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_preplaced_flower.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_roof_floor.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_roof_floor.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_roof_floor.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_solid_albedo_map.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_solid_albedo_map.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_solid_albedo_map.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_solid_vertex_color.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_solid_vertex_color.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_solid_vertex_color.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_solid_vertex_color.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": true
+    },
+    {
+      "source": "nani_solid_vertex_color_bricks.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_solid_vertex_color_bricks.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": true
+    },
+    {
+      "source": "nani_solid_vertex_color_bricks.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_solid_vertex_color_bricks.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": true
+    },
+    {
+      "source": "nani_solid_vertex_color_window.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_solid_vertex_color_window_glass.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_solid_vertex_color_window_glass.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": true
+    },
+    {
+      "source": "nani_solid_vertex_color_window_glass.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_solid_vertex_color_window_glass.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": true
+    },
+    {
+      "source": "nani_uber.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_uber.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_uber.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_velocity_only.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_velocity_only.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_velocity_only.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_wooden_plank.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_wooden_plank.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "nani_wooden_plank.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "path_pebble.raster.hlsl",
+      "type": "vs_main_input",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "path_pebble.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "path_pebble.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "path_pebble.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "rain_particles.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "rain_particles.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "rain_particles.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "reed.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "reed.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "reed.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "reed.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "reed.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "reed.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "reed.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "rocky_terrain/stairs/stairs_indirect.raster.hlsl",
+      "type": "VS_INPUT",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "roof_snow.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "sheep.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "sheep.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "sheep.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "skydome.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "skydome.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "skydome.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": true
+    },
+    {
+      "source": "skydome.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "solid_vertex_color.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "solid_vertex_color_albedo_map.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "solid_vertex_color_boat.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "solid_vertex_color_boat.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "solid_vertex_color_boat.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "solid_vertex_color_garden_stone.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "solid_vertex_color_garden_stone.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "solid_vertex_color_garden_stone.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "solid_vertex_color_waterwheel.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "solid_vertex_color_waterwheel.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "solid_vertex_color_waterwheel.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "solid_vertex_color_wooden_gate.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "sparkles.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "splash_particle.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "texture_test.raster.hlsl",
+      "type": "VSIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "timed_terrain_gizmo.raster.hlsl",
+      "type": "VS_INPUT",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "timed_terrain_gizmo.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "timed_terrain_gizmo.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "frag_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "timed_terrain_gizmo.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "vertex_color.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "water/ice_cracks.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "water_plane.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "water_plane.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "water_plane_refraction_copy.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "water_snow_plane.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    },
+    {
+      "source": "water_snow_plane.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "water_snow_plane.raster.hlsl",
+      "type": "SPIRV_Cross_Input",
+      "stage": "vert_main",
+      "has_fragcoord": false
+    },
+    {
+      "source": "water_x_paths.raster.hlsl",
+      "type": "VsIn",
+      "stage": "manualVS",
+      "has_fragcoord": false
+    }
+  ]
+}

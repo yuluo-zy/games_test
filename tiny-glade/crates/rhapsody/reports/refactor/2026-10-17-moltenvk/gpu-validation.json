@@ -1,0 +1,2335 @@
+{
+  "recorded_at": "2026-10-16T20:08:32.081268+00:00",
+  "platform": "macOS / aarch64-apple-darwin",
+  "gpu": "Apple M3 / MoltenVK 1.4.2",
+  "environment_evidence": [
+    "vulkaninfo-summary.txt",
+    "vulkaninfo-full.txt",
+    "shader-tools.json"
+  ],
+  "required_runtime_environment": {
+    "DYLD_FALLBACK_LIBRARY_PATH": "/opt/homebrew/lib",
+    "RHAPSODY_REQUIRE_VULKAN": "1 (test fixtures)",
+    "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation (tests; Window Lab requests it explicitly)",
+    "VK_LAYER_VALIDATE_SYNC": "1 for final full tests and WSI stress"
+  },
+  "execution_context": "outside desktop execution sandbox to permit Metal access; no installation failure inferred from sandbox denial",
+  "test_cases": [
+    {
+      "name": "all-features-gpu-final",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rhapsody",
+        "--offline",
+        "--all-features",
+        "--lib",
+        "--tests",
+        "--no-fail-fast",
+        "-j",
+        "2",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "log": "all-features-gpu-final.log",
+      "log_sha256": "02ff27ac4eaa1d0774e4bb4892915635e79e7f9da5ac5d65506a59f99f19bf50",
+      "process_results": {
+        "suites": 44,
+        "passed": 401,
+        "failed": 0,
+        "ignored": 1,
+        "contains_cpu_tests": true
+      },
+      "synchronization_validation": true,
+      "initialization_required": true,
+      "note": "positive validation assertions exclude intentionally injected negative API/test cases"
+    },
+    {
+      "name": "core-gpu-final",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rhapsody",
+        "--offline",
+        "--all-features",
+        "--test",
+        "device_config",
+        "--test",
+        "import_contract",
+        "--test",
+        "sync_timeline_vulkan",
+        "--test",
+        "rg_fixes_vulkan",
+        "--test",
+        "p0_stability",
+        "--no-fail-fast",
+        "-j",
+        "2",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "log": "core-gpu-final.log",
+      "log_sha256": "c0e078bd2c827b2d4b9cdfacaa1affaae113cf7c292161395d7505727048bdbb",
+      "process_results": {
+        "suites": 5,
+        "passed": 18,
+        "failed": 0,
+        "ignored": 0,
+        "contains_cpu_tests": true
+      },
+      "synchronization_validation": false,
+      "initialization_required": true,
+      "note": "positive validation assertions exclude intentionally injected negative API/test cases"
+    },
+    {
+      "name": "raster-validation",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rhapsody",
+        "--offline",
+        "--all-features",
+        "--test",
+        "triangle_draw",
+        "--test",
+        "triangle_animation_graph",
+        "--test",
+        "wave3_validation",
+        "--test",
+        "wave3_queues",
+        "--test",
+        "raw_fixes_graveyard",
+        "--test",
+        "managed_alignment",
+        "--no-fail-fast",
+        "-j",
+        "2",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "log": "raster-validation.log",
+      "log_sha256": "6e3a7ba04b99234a206a35d3c6caaf9e73bbbe5154a1bbe6fd1e5dfc55b200d9",
+      "process_results": {
+        "suites": 6,
+        "passed": 16,
+        "failed": 0,
+        "ignored": 0,
+        "contains_cpu_tests": true
+      },
+      "synchronization_validation": false,
+      "initialization_required": true,
+      "note": "positive validation assertions exclude intentionally injected negative API/test cases"
+    }
+  ],
+  "window_cases": [
+    {
+      "name": "window",
+      "report": "window/report.json",
+      "report_sha256": "1231db95a82afb15d37b66c97e91639933ad8f8e74927fdfdbef6fb61dbdf8a2",
+      "status": "pass",
+      "command": [
+        "target/debug/examples/window_lab",
+        "--frames",
+        "360",
+        "--fps",
+        "30",
+        "--script",
+        "--require-validation",
+        "--report",
+        "crates/rhapsody/reports/refactor/2026-10-17-moltenvk/window/report.json",
+        "--capture",
+        "crates/rhapsody/reports/refactor/2026-10-17-moltenvk/window/readback.ppm"
+      ],
+      "presented_frames": 360,
+      "pixel_verified_frames": 360,
+      "validation_errors": 0,
+      "validation_warnings": 0,
+      "synchronization_validation": false,
+      "final_screen_visual_check": "BLOCKED: Computer Use permissions are not granted",
+      "wsi_stress": null
+    },
+    {
+      "name": "wsi-stress",
+      "report": "wsi-stress/report.json",
+      "report_sha256": "5c8b1e2ee8cf3686e70579ba6416010037bcff92b8d797ed777c2eeb2a30dd17",
+      "status": "pass",
+      "command": [
+        "target/debug/examples/window_lab",
+        "--frames",
+        "1000",
+        "--fps",
+        "60",
+        "--wsi-stress",
+        "--require-validation",
+        "--report",
+        "crates/rhapsody/reports/refactor/2026-10-17-moltenvk/wsi-stress/report.json",
+        "--capture",
+        "crates/rhapsody/reports/refactor/2026-10-17-moltenvk/wsi-stress/readback.ppm"
+      ],
+      "presented_frames": 1000,
+      "pixel_verified_frames": 1000,
+      "validation_errors": 0,
+      "validation_warnings": 0,
+      "synchronization_validation": true,
+      "final_screen_visual_check": "BLOCKED: Computer Use permissions are not granted",
+      "wsi_stress": {
+        "target_resizes": 100,
+        "target_minimize_restore_cycles": 20,
+        "resize_requests": 100,
+        "resize_completions": 100,
+        "minimize_requests": 20,
+        "minimize_completions": 20,
+        "restore_requests": 20,
+        "restore_completions": 20,
+        "completed_cycles": 20,
+        "completed": true,
+        "events": [
+          {
+            "kind": "resize",
+            "from_extent": [
+              2000,
+              1240
+            ],
+            "observed_extent": [
+              1520,
+              960
+            ],
+            "requested_logical_extent": [
+              760,
+              480
+            ],
+            "presented_frames_at_observation": 1
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1520,
+              960
+            ],
+            "observed_extent": [
+              1800,
+              1080
+            ],
+            "requested_logical_extent": [
+              900,
+              540
+            ],
+            "presented_frames_at_observation": 3
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1800,
+              1080
+            ],
+            "observed_extent": [
+              1640,
+              1200
+            ],
+            "requested_logical_extent": [
+              820,
+              600
+            ],
+            "presented_frames_at_observation": 5
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1640,
+              1200
+            ],
+            "observed_extent": [
+              2120,
+              1280
+            ],
+            "requested_logical_extent": [
+              1060,
+              640
+            ],
+            "presented_frames_at_observation": 7
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              2120,
+              1280
+            ],
+            "observed_extent": [
+              1600,
+              1000
+            ],
+            "requested_logical_extent": [
+              800,
+              500
+            ],
+            "presented_frames_at_observation": 9
+          },
+          {
+            "kind": "minimize",
+            "from_extent": [
+              1600,
+              1000
+            ],
+            "observed_extent": [
+              0,
+              0
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 10
+          },
+          {
+            "kind": "restore",
+            "from_extent": [
+              0,
+              0
+            ],
+            "observed_extent": [
+              1600,
+              1000
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 10
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1600,
+              1000
+            ],
+            "observed_extent": [
+              1960,
+              1160
+            ],
+            "requested_logical_extent": [
+              980,
+              580
+            ],
+            "presented_frames_at_observation": 12
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1960,
+              1160
+            ],
+            "observed_extent": [
+              1520,
+              960
+            ],
+            "requested_logical_extent": [
+              760,
+              480
+            ],
+            "presented_frames_at_observation": 14
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1520,
+              960
+            ],
+            "observed_extent": [
+              1800,
+              1080
+            ],
+            "requested_logical_extent": [
+              900,
+              540
+            ],
+            "presented_frames_at_observation": 16
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1800,
+              1080
+            ],
+            "observed_extent": [
+              1640,
+              1200
+            ],
+            "requested_logical_extent": [
+              820,
+              600
+            ],
+            "presented_frames_at_observation": 18
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1640,
+              1200
+            ],
+            "observed_extent": [
+              2120,
+              1280
+            ],
+            "requested_logical_extent": [
+              1060,
+              640
+            ],
+            "presented_frames_at_observation": 20
+          },
+          {
+            "kind": "minimize",
+            "from_extent": [
+              2120,
+              1280
+            ],
+            "observed_extent": [
+              0,
+              0
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 21
+          },
+          {
+            "kind": "restore",
+            "from_extent": [
+              0,
+              0
+            ],
+            "observed_extent": [
+              2120,
+              1280
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 21
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              2120,
+              1280
+            ],
+            "observed_extent": [
+              1600,
+              1000
+            ],
+            "requested_logical_extent": [
+              800,
+              500
+            ],
+            "presented_frames_at_observation": 23
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1600,
+              1000
+            ],
+            "observed_extent": [
+              1960,
+              1160
+            ],
+            "requested_logical_extent": [
+              980,
+              580
+            ],
+            "presented_frames_at_observation": 25
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1960,
+              1160
+            ],
+            "observed_extent": [
+              1520,
+              960
+            ],
+            "requested_logical_extent": [
+              760,
+              480
+            ],
+            "presented_frames_at_observation": 27
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1520,
+              960
+            ],
+            "observed_extent": [
+              1800,
+              1080
+            ],
+            "requested_logical_extent": [
+              900,
+              540
+            ],
+            "presented_frames_at_observation": 29
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1800,
+              1080
+            ],
+            "observed_extent": [
+              1640,
+              1200
+            ],
+            "requested_logical_extent": [
+              820,
+              600
+            ],
+            "presented_frames_at_observation": 31
+          },
+          {
+            "kind": "minimize",
+            "from_extent": [
+              1640,
+              1200
+            ],
+            "observed_extent": [
+              0,
+              0
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 33
+          },
+          {
+            "kind": "restore",
+            "from_extent": [
+              0,
+              0
+            ],
+            "observed_extent": [
+              1640,
+              1200
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 33
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1640,
+              1200
+            ],
+            "observed_extent": [
+              2120,
+              1280
+            ],
+            "requested_logical_extent": [
+              1060,
+              640
+            ],
+            "presented_frames_at_observation": 35
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              2120,
+              1280
+            ],
+            "observed_extent": [
+              1600,
+              1000
+            ],
+            "requested_logical_extent": [
+              800,
+              500
+            ],
+            "presented_frames_at_observation": 37
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1600,
+              1000
+            ],
+            "observed_extent": [
+              1960,
+              1160
+            ],
+            "requested_logical_extent": [
+              980,
+              580
+            ],
+            "presented_frames_at_observation": 39
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1960,
+              1160
+            ],
+            "observed_extent": [
+              1520,
+              960
+            ],
+            "requested_logical_extent": [
+              760,
+              480
+            ],
+            "presented_frames_at_observation": 41
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1520,
+              960
+            ],
+            "observed_extent": [
+              1800,
+              1080
+            ],
+            "requested_logical_extent": [
+              900,
+              540
+            ],
+            "presented_frames_at_observation": 43
+          },
+          {
+            "kind": "minimize",
+            "from_extent": [
+              1800,
+              1080
+            ],
+            "observed_extent": [
+              0,
+              0
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 45
+          },
+          {
+            "kind": "restore",
+            "from_extent": [
+              0,
+              0
+            ],
+            "observed_extent": [
+              1800,
+              1080
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 45
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1800,
+              1080
+            ],
+            "observed_extent": [
+              1640,
+              1200
+            ],
+            "requested_logical_extent": [
+              820,
+              600
+            ],
+            "presented_frames_at_observation": 47
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1640,
+              1200
+            ],
+            "observed_extent": [
+              2120,
+              1280
+            ],
+            "requested_logical_extent": [
+              1060,
+              640
+            ],
+            "presented_frames_at_observation": 49
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              2120,
+              1280
+            ],
+            "observed_extent": [
+              1600,
+              1000
+            ],
+            "requested_logical_extent": [
+              800,
+              500
+            ],
+            "presented_frames_at_observation": 51
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1600,
+              1000
+            ],
+            "observed_extent": [
+              1960,
+              1160
+            ],
+            "requested_logical_extent": [
+              980,
+              580
+            ],
+            "presented_frames_at_observation": 53
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1960,
+              1160
+            ],
+            "observed_extent": [
+              1520,
+              960
+            ],
+            "requested_logical_extent": [
+              760,
+              480
+            ],
+            "presented_frames_at_observation": 55
+          },
+          {
+            "kind": "minimize",
+            "from_extent": [
+              1520,
+              960
+            ],
+            "observed_extent": [
+              0,
+              0
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 57
+          },
+          {
+            "kind": "restore",
+            "from_extent": [
+              0,
+              0
+            ],
+            "observed_extent": [
+              1520,
+              960
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 57
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1520,
+              960
+            ],
+            "observed_extent": [
+              1800,
+              1080
+            ],
+            "requested_logical_extent": [
+              900,
+              540
+            ],
+            "presented_frames_at_observation": 59
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1800,
+              1080
+            ],
+            "observed_extent": [
+              1640,
+              1200
+            ],
+            "requested_logical_extent": [
+              820,
+              600
+            ],
+            "presented_frames_at_observation": 61
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1640,
+              1200
+            ],
+            "observed_extent": [
+              2120,
+              1280
+            ],
+            "requested_logical_extent": [
+              1060,
+              640
+            ],
+            "presented_frames_at_observation": 63
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              2120,
+              1280
+            ],
+            "observed_extent": [
+              1600,
+              1000
+            ],
+            "requested_logical_extent": [
+              800,
+              500
+            ],
+            "presented_frames_at_observation": 65
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1600,
+              1000
+            ],
+            "observed_extent": [
+              1960,
+              1160
+            ],
+            "requested_logical_extent": [
+              980,
+              580
+            ],
+            "presented_frames_at_observation": 67
+          },
+          {
+            "kind": "minimize",
+            "from_extent": [
+              1960,
+              1160
+            ],
+            "observed_extent": [
+              0,
+              0
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 69
+          },
+          {
+            "kind": "restore",
+            "from_extent": [
+              0,
+              0
+            ],
+            "observed_extent": [
+              1960,
+              1160
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 69
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1960,
+              1160
+            ],
+            "observed_extent": [
+              1520,
+              960
+            ],
+            "requested_logical_extent": [
+              760,
+              480
+            ],
+            "presented_frames_at_observation": 71
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1520,
+              960
+            ],
+            "observed_extent": [
+              1800,
+              1080
+            ],
+            "requested_logical_extent": [
+              900,
+              540
+            ],
+            "presented_frames_at_observation": 73
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1800,
+              1080
+            ],
+            "observed_extent": [
+              1640,
+              1200
+            ],
+            "requested_logical_extent": [
+              820,
+              600
+            ],
+            "presented_frames_at_observation": 75
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1640,
+              1200
+            ],
+            "observed_extent": [
+              2120,
+              1280
+            ],
+            "requested_logical_extent": [
+              1060,
+              640
+            ],
+            "presented_frames_at_observation": 77
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              2120,
+              1280
+            ],
+            "observed_extent": [
+              1600,
+              1000
+            ],
+            "requested_logical_extent": [
+              800,
+              500
+            ],
+            "presented_frames_at_observation": 79
+          },
+          {
+            "kind": "minimize",
+            "from_extent": [
+              1600,
+              1000
+            ],
+            "observed_extent": [
+              0,
+              0
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 80
+          },
+          {
+            "kind": "restore",
+            "from_extent": [
+              0,
+              0
+            ],
+            "observed_extent": [
+              1600,
+              1000
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 80
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1600,
+              1000
+            ],
+            "observed_extent": [
+              1960,
+              1160
+            ],
+            "requested_logical_extent": [
+              980,
+              580
+            ],
+            "presented_frames_at_observation": 82
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1960,
+              1160
+            ],
+            "observed_extent": [
+              1520,
+              960
+            ],
+            "requested_logical_extent": [
+              760,
+              480
+            ],
+            "presented_frames_at_observation": 84
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1520,
+              960
+            ],
+            "observed_extent": [
+              1800,
+              1080
+            ],
+            "requested_logical_extent": [
+              900,
+              540
+            ],
+            "presented_frames_at_observation": 86
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1800,
+              1080
+            ],
+            "observed_extent": [
+              1640,
+              1200
+            ],
+            "requested_logical_extent": [
+              820,
+              600
+            ],
+            "presented_frames_at_observation": 88
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1640,
+              1200
+            ],
+            "observed_extent": [
+              2120,
+              1280
+            ],
+            "requested_logical_extent": [
+              1060,
+              640
+            ],
+            "presented_frames_at_observation": 90
+          },
+          {
+            "kind": "minimize",
+            "from_extent": [
+              2120,
+              1280
+            ],
+            "observed_extent": [
+              0,
+              0
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 92
+          },
+          {
+            "kind": "restore",
+            "from_extent": [
+              0,
+              0
+            ],
+            "observed_extent": [
+              2120,
+              1280
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 92
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              2120,
+              1280
+            ],
+            "observed_extent": [
+              1600,
+              1000
+            ],
+            "requested_logical_extent": [
+              800,
+              500
+            ],
+            "presented_frames_at_observation": 94
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1600,
+              1000
+            ],
+            "observed_extent": [
+              1960,
+              1160
+            ],
+            "requested_logical_extent": [
+              980,
+              580
+            ],
+            "presented_frames_at_observation": 96
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1960,
+              1160
+            ],
+            "observed_extent": [
+              1520,
+              960
+            ],
+            "requested_logical_extent": [
+              760,
+              480
+            ],
+            "presented_frames_at_observation": 98
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1520,
+              960
+            ],
+            "observed_extent": [
+              1800,
+              1080
+            ],
+            "requested_logical_extent": [
+              900,
+              540
+            ],
+            "presented_frames_at_observation": 100
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1800,
+              1080
+            ],
+            "observed_extent": [
+              1640,
+              1200
+            ],
+            "requested_logical_extent": [
+              820,
+              600
+            ],
+            "presented_frames_at_observation": 102
+          },
+          {
+            "kind": "minimize",
+            "from_extent": [
+              1640,
+              1200
+            ],
+            "observed_extent": [
+              0,
+              0
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 103
+          },
+          {
+            "kind": "restore",
+            "from_extent": [
+              0,
+              0
+            ],
+            "observed_extent": [
+              1640,
+              1200
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 103
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1640,
+              1200
+            ],
+            "observed_extent": [
+              2120,
+              1280
+            ],
+            "requested_logical_extent": [
+              1060,
+              640
+            ],
+            "presented_frames_at_observation": 105
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              2120,
+              1280
+            ],
+            "observed_extent": [
+              1600,
+              1000
+            ],
+            "requested_logical_extent": [
+              800,
+              500
+            ],
+            "presented_frames_at_observation": 107
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1600,
+              1000
+            ],
+            "observed_extent": [
+              1960,
+              1160
+            ],
+            "requested_logical_extent": [
+              980,
+              580
+            ],
+            "presented_frames_at_observation": 109
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1960,
+              1160
+            ],
+            "observed_extent": [
+              1520,
+              960
+            ],
+            "requested_logical_extent": [
+              760,
+              480
+            ],
+            "presented_frames_at_observation": 111
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1520,
+              960
+            ],
+            "observed_extent": [
+              1800,
+              1080
+            ],
+            "requested_logical_extent": [
+              900,
+              540
+            ],
+            "presented_frames_at_observation": 113
+          },
+          {
+            "kind": "minimize",
+            "from_extent": [
+              1800,
+              1080
+            ],
+            "observed_extent": [
+              0,
+              0
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 115
+          },
+          {
+            "kind": "restore",
+            "from_extent": [
+              0,
+              0
+            ],
+            "observed_extent": [
+              1800,
+              1080
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 115
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1800,
+              1080
+            ],
+            "observed_extent": [
+              1640,
+              1200
+            ],
+            "requested_logical_extent": [
+              820,
+              600
+            ],
+            "presented_frames_at_observation": 117
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1640,
+              1200
+            ],
+            "observed_extent": [
+              2120,
+              1280
+            ],
+            "requested_logical_extent": [
+              1060,
+              640
+            ],
+            "presented_frames_at_observation": 119
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              2120,
+              1280
+            ],
+            "observed_extent": [
+              1600,
+              1000
+            ],
+            "requested_logical_extent": [
+              800,
+              500
+            ],
+            "presented_frames_at_observation": 121
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1600,
+              1000
+            ],
+            "observed_extent": [
+              1960,
+              1160
+            ],
+            "requested_logical_extent": [
+              980,
+              580
+            ],
+            "presented_frames_at_observation": 123
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1960,
+              1160
+            ],
+            "observed_extent": [
+              1520,
+              960
+            ],
+            "requested_logical_extent": [
+              760,
+              480
+            ],
+            "presented_frames_at_observation": 125
+          },
+          {
+            "kind": "minimize",
+            "from_extent": [
+              1520,
+              960
+            ],
+            "observed_extent": [
+              0,
+              0
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 127
+          },
+          {
+            "kind": "restore",
+            "from_extent": [
+              0,
+              0
+            ],
+            "observed_extent": [
+              1520,
+              960
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 127
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1520,
+              960
+            ],
+            "observed_extent": [
+              1800,
+              1080
+            ],
+            "requested_logical_extent": [
+              900,
+              540
+            ],
+            "presented_frames_at_observation": 129
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1800,
+              1080
+            ],
+            "observed_extent": [
+              1640,
+              1200
+            ],
+            "requested_logical_extent": [
+              820,
+              600
+            ],
+            "presented_frames_at_observation": 131
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1640,
+              1200
+            ],
+            "observed_extent": [
+              2120,
+              1280
+            ],
+            "requested_logical_extent": [
+              1060,
+              640
+            ],
+            "presented_frames_at_observation": 133
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              2120,
+              1280
+            ],
+            "observed_extent": [
+              1600,
+              1000
+            ],
+            "requested_logical_extent": [
+              800,
+              500
+            ],
+            "presented_frames_at_observation": 135
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1600,
+              1000
+            ],
+            "observed_extent": [
+              1960,
+              1160
+            ],
+            "requested_logical_extent": [
+              980,
+              580
+            ],
+            "presented_frames_at_observation": 137
+          },
+          {
+            "kind": "minimize",
+            "from_extent": [
+              1960,
+              1160
+            ],
+            "observed_extent": [
+              0,
+              0
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 139
+          },
+          {
+            "kind": "restore",
+            "from_extent": [
+              0,
+              0
+            ],
+            "observed_extent": [
+              1960,
+              1160
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 139
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1960,
+              1160
+            ],
+            "observed_extent": [
+              1520,
+              960
+            ],
+            "requested_logical_extent": [
+              760,
+              480
+            ],
+            "presented_frames_at_observation": 141
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1520,
+              960
+            ],
+            "observed_extent": [
+              1800,
+              1080
+            ],
+            "requested_logical_extent": [
+              900,
+              540
+            ],
+            "presented_frames_at_observation": 143
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1800,
+              1080
+            ],
+            "observed_extent": [
+              1640,
+              1200
+            ],
+            "requested_logical_extent": [
+              820,
+              600
+            ],
+            "presented_frames_at_observation": 145
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1640,
+              1200
+            ],
+            "observed_extent": [
+              2120,
+              1280
+            ],
+            "requested_logical_extent": [
+              1060,
+              640
+            ],
+            "presented_frames_at_observation": 147
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              2120,
+              1280
+            ],
+            "observed_extent": [
+              1600,
+              1000
+            ],
+            "requested_logical_extent": [
+              800,
+              500
+            ],
+            "presented_frames_at_observation": 149
+          },
+          {
+            "kind": "minimize",
+            "from_extent": [
+              1600,
+              1000
+            ],
+            "observed_extent": [
+              0,
+              0
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 151
+          },
+          {
+            "kind": "restore",
+            "from_extent": [
+              0,
+              0
+            ],
+            "observed_extent": [
+              1600,
+              1000
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 151
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1600,
+              1000
+            ],
+            "observed_extent": [
+              1960,
+              1160
+            ],
+            "requested_logical_extent": [
+              980,
+              580
+            ],
+            "presented_frames_at_observation": 153
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1960,
+              1160
+            ],
+            "observed_extent": [
+              1520,
+              960
+            ],
+            "requested_logical_extent": [
+              760,
+              480
+            ],
+            "presented_frames_at_observation": 155
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1520,
+              960
+            ],
+            "observed_extent": [
+              1800,
+              1080
+            ],
+            "requested_logical_extent": [
+              900,
+              540
+            ],
+            "presented_frames_at_observation": 157
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1800,
+              1080
+            ],
+            "observed_extent": [
+              1640,
+              1200
+            ],
+            "requested_logical_extent": [
+              820,
+              600
+            ],
+            "presented_frames_at_observation": 159
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1640,
+              1200
+            ],
+            "observed_extent": [
+              2120,
+              1280
+            ],
+            "requested_logical_extent": [
+              1060,
+              640
+            ],
+            "presented_frames_at_observation": 161
+          },
+          {
+            "kind": "minimize",
+            "from_extent": [
+              2120,
+              1280
+            ],
+            "observed_extent": [
+              0,
+              0
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 163
+          },
+          {
+            "kind": "restore",
+            "from_extent": [
+              0,
+              0
+            ],
+            "observed_extent": [
+              2120,
+              1280
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 163
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              2120,
+              1280
+            ],
+            "observed_extent": [
+              1600,
+              1000
+            ],
+            "requested_logical_extent": [
+              800,
+              500
+            ],
+            "presented_frames_at_observation": 165
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1600,
+              1000
+            ],
+            "observed_extent": [
+              1960,
+              1160
+            ],
+            "requested_logical_extent": [
+              980,
+              580
+            ],
+            "presented_frames_at_observation": 167
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1960,
+              1160
+            ],
+            "observed_extent": [
+              1520,
+              960
+            ],
+            "requested_logical_extent": [
+              760,
+              480
+            ],
+            "presented_frames_at_observation": 169
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1520,
+              960
+            ],
+            "observed_extent": [
+              1800,
+              1080
+            ],
+            "requested_logical_extent": [
+              900,
+              540
+            ],
+            "presented_frames_at_observation": 171
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1800,
+              1080
+            ],
+            "observed_extent": [
+              1640,
+              1200
+            ],
+            "requested_logical_extent": [
+              820,
+              600
+            ],
+            "presented_frames_at_observation": 173
+          },
+          {
+            "kind": "minimize",
+            "from_extent": [
+              1640,
+              1200
+            ],
+            "observed_extent": [
+              0,
+              0
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 174
+          },
+          {
+            "kind": "restore",
+            "from_extent": [
+              0,
+              0
+            ],
+            "observed_extent": [
+              1640,
+              1200
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 174
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1640,
+              1200
+            ],
+            "observed_extent": [
+              2120,
+              1280
+            ],
+            "requested_logical_extent": [
+              1060,
+              640
+            ],
+            "presented_frames_at_observation": 176
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              2120,
+              1280
+            ],
+            "observed_extent": [
+              1600,
+              1000
+            ],
+            "requested_logical_extent": [
+              800,
+              500
+            ],
+            "presented_frames_at_observation": 178
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1600,
+              1000
+            ],
+            "observed_extent": [
+              1960,
+              1160
+            ],
+            "requested_logical_extent": [
+              980,
+              580
+            ],
+            "presented_frames_at_observation": 180
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1960,
+              1160
+            ],
+            "observed_extent": [
+              1520,
+              960
+            ],
+            "requested_logical_extent": [
+              760,
+              480
+            ],
+            "presented_frames_at_observation": 182
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1520,
+              960
+            ],
+            "observed_extent": [
+              1800,
+              1080
+            ],
+            "requested_logical_extent": [
+              900,
+              540
+            ],
+            "presented_frames_at_observation": 184
+          },
+          {
+            "kind": "minimize",
+            "from_extent": [
+              1800,
+              1080
+            ],
+            "observed_extent": [
+              0,
+              0
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 186
+          },
+          {
+            "kind": "restore",
+            "from_extent": [
+              0,
+              0
+            ],
+            "observed_extent": [
+              1800,
+              1080
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 186
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1800,
+              1080
+            ],
+            "observed_extent": [
+              1640,
+              1200
+            ],
+            "requested_logical_extent": [
+              820,
+              600
+            ],
+            "presented_frames_at_observation": 188
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1640,
+              1200
+            ],
+            "observed_extent": [
+              2120,
+              1280
+            ],
+            "requested_logical_extent": [
+              1060,
+              640
+            ],
+            "presented_frames_at_observation": 190
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              2120,
+              1280
+            ],
+            "observed_extent": [
+              1600,
+              1000
+            ],
+            "requested_logical_extent": [
+              800,
+              500
+            ],
+            "presented_frames_at_observation": 192
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1600,
+              1000
+            ],
+            "observed_extent": [
+              1960,
+              1160
+            ],
+            "requested_logical_extent": [
+              980,
+              580
+            ],
+            "presented_frames_at_observation": 194
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1960,
+              1160
+            ],
+            "observed_extent": [
+              1520,
+              960
+            ],
+            "requested_logical_extent": [
+              760,
+              480
+            ],
+            "presented_frames_at_observation": 196
+          },
+          {
+            "kind": "minimize",
+            "from_extent": [
+              1520,
+              960
+            ],
+            "observed_extent": [
+              0,
+              0
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 197
+          },
+          {
+            "kind": "restore",
+            "from_extent": [
+              0,
+              0
+            ],
+            "observed_extent": [
+              1520,
+              960
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 197
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1520,
+              960
+            ],
+            "observed_extent": [
+              1800,
+              1080
+            ],
+            "requested_logical_extent": [
+              900,
+              540
+            ],
+            "presented_frames_at_observation": 199
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1800,
+              1080
+            ],
+            "observed_extent": [
+              1640,
+              1200
+            ],
+            "requested_logical_extent": [
+              820,
+              600
+            ],
+            "presented_frames_at_observation": 201
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1640,
+              1200
+            ],
+            "observed_extent": [
+              2120,
+              1280
+            ],
+            "requested_logical_extent": [
+              1060,
+              640
+            ],
+            "presented_frames_at_observation": 203
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              2120,
+              1280
+            ],
+            "observed_extent": [
+              1600,
+              1000
+            ],
+            "requested_logical_extent": [
+              800,
+              500
+            ],
+            "presented_frames_at_observation": 205
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1600,
+              1000
+            ],
+            "observed_extent": [
+              1960,
+              1160
+            ],
+            "requested_logical_extent": [
+              980,
+              580
+            ],
+            "presented_frames_at_observation": 207
+          },
+          {
+            "kind": "minimize",
+            "from_extent": [
+              1960,
+              1160
+            ],
+            "observed_extent": [
+              0,
+              0
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 209
+          },
+          {
+            "kind": "restore",
+            "from_extent": [
+              0,
+              0
+            ],
+            "observed_extent": [
+              1960,
+              1160
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 209
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1960,
+              1160
+            ],
+            "observed_extent": [
+              1520,
+              960
+            ],
+            "requested_logical_extent": [
+              760,
+              480
+            ],
+            "presented_frames_at_observation": 211
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1520,
+              960
+            ],
+            "observed_extent": [
+              1800,
+              1080
+            ],
+            "requested_logical_extent": [
+              900,
+              540
+            ],
+            "presented_frames_at_observation": 213
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1800,
+              1080
+            ],
+            "observed_extent": [
+              1640,
+              1200
+            ],
+            "requested_logical_extent": [
+              820,
+              600
+            ],
+            "presented_frames_at_observation": 215
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1640,
+              1200
+            ],
+            "observed_extent": [
+              2120,
+              1280
+            ],
+            "requested_logical_extent": [
+              1060,
+              640
+            ],
+            "presented_frames_at_observation": 217
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              2120,
+              1280
+            ],
+            "observed_extent": [
+              1600,
+              1000
+            ],
+            "requested_logical_extent": [
+              800,
+              500
+            ],
+            "presented_frames_at_observation": 219
+          },
+          {
+            "kind": "minimize",
+            "from_extent": [
+              1600,
+              1000
+            ],
+            "observed_extent": [
+              0,
+              0
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 221
+          },
+          {
+            "kind": "restore",
+            "from_extent": [
+              0,
+              0
+            ],
+            "observed_extent": [
+              1600,
+              1000
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 221
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1600,
+              1000
+            ],
+            "observed_extent": [
+              1960,
+              1160
+            ],
+            "requested_logical_extent": [
+              980,
+              580
+            ],
+            "presented_frames_at_observation": 223
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1960,
+              1160
+            ],
+            "observed_extent": [
+              1520,
+              960
+            ],
+            "requested_logical_extent": [
+              760,
+              480
+            ],
+            "presented_frames_at_observation": 225
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1520,
+              960
+            ],
+            "observed_extent": [
+              1800,
+              1080
+            ],
+            "requested_logical_extent": [
+              900,
+              540
+            ],
+            "presented_frames_at_observation": 227
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1800,
+              1080
+            ],
+            "observed_extent": [
+              1640,
+              1200
+            ],
+            "requested_logical_extent": [
+              820,
+              600
+            ],
+            "presented_frames_at_observation": 229
+          },
+          {
+            "kind": "resize",
+            "from_extent": [
+              1640,
+              1200
+            ],
+            "observed_extent": [
+              2120,
+              1280
+            ],
+            "requested_logical_extent": [
+              1060,
+              640
+            ],
+            "presented_frames_at_observation": 231
+          },
+          {
+            "kind": "minimize",
+            "from_extent": [
+              2120,
+              1280
+            ],
+            "observed_extent": [
+              0,
+              0
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 233
+          },
+          {
+            "kind": "restore",
+            "from_extent": [
+              0,
+              0
+            ],
+            "observed_extent": [
+              2120,
+              1280
+            ],
+            "requested_logical_extent": null,
+            "presented_frames_at_observation": 233
+          }
+        ]
+      }
+    }
+  ],
+  "final_matrix": "final-checks.json",
+  "rhapsody_source_sha256": "5897621d8049f24a6c2619d999ec54107a0d04cadbf765c29c78a400251a7915",
+  "final_matrix_source_stable": true,
+  "compiled_window_binary_sha256": "568abe0bc8bfa1e30b315a1cb72e51f0b26ed7490d81d1400f04c43044fdd09c",
+  "limitations": [
+    "Windows runtime not tested",
+    "screen pixels and keyboard actions are not verified: Computer Use permission unavailable",
+    "MoltenVK headless image-exhaustion timeout not verified; legal first acquire tests forwarding and queue-lock isolation",
+    "unextended WSI strict final shutdown and complete driver-error injection remain open",
+    "no V9 controlled performance comparison; GPU timing/memory budget metrics not instrumented"
+  ],
+  "historical_failed_attempts": [
+    "core-gpu.log (old immediate-retirement assertion)",
+    "all-features-gpu.log (fixed OPTIMAL/PREINITIALIZED validation error and obsolete tests)"
+  ]
+}

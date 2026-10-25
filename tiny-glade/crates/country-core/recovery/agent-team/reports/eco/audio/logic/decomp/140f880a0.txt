@@ -1,0 +1,279 @@
+// stairs_audio_system @ 0x140f880a0
+
+void __cdecl country_core::systems::audio::playermade_stairs_audio::stairs_audio_system(void)
+
+{
+  float fVar1;
+  byte bVar2;
+  undefined4 uVar3;
+  undefined4 *puVar4;
+  longlong lVar5;
+  ulonglong *puVar6;
+  ulonglong uVar7;
+  longlong *plVar8;
+  longlong lVar9;
+  longlong lVar10;
+  void *_Dst;
+  longlong *in_RCX;
+  ulonglong uVar11;
+  undefined8 *in_RDX;
+  ulonglong uVar12;
+  size_t _Size;
+  longlong lVar13;
+  undefined8 *in_R8;
+  ulonglong uVar14;
+  longlong lVar15;
+  longlong lVar16;
+  longlong lVar17;
+  longlong lVar18;
+  longlong lVar19;
+  undefined *_Src;
+  longlong lStack_138;
+  size_t sStack_128;
+  
+  uVar3 = *(undefined4 *)((longlong)in_RCX + 0x1c);
+  puVar4 = (undefined4 *)in_RCX[2];
+  *puVar4 = uVar3;
+  lVar5 = *in_RCX;
+  country_core::utils::audio_utils::AudioLoop::stop();
+  *puVar4 = uVar3;
+  country_core::utils::audio_utils::AudioLoop::stop();
+  *puVar4 = uVar3;
+  country_core::utils::audio_utils::AudioLoop::stop();
+  *puVar4 = uVar3;
+  country_core::utils::audio_utils::AudioLoop::stop();
+  *puVar4 = uVar3;
+  country_core::utils::audio_utils::AudioLoop::stop();
+  *puVar4 = uVar3;
+  country_core::utils::audio_utils::AudioLoop::stop();
+  puVar6 = (ulonglong *)*in_RDX;
+  lVar16 = in_RDX[1];
+  uVar7 = *puVar6;
+  uVar11 = 0;
+  uVar14 = uVar7 - *(ulonglong *)(lVar16 + 0x18);
+  if (uVar7 < *(ulonglong *)(lVar16 + 0x18)) {
+    uVar14 = uVar11;
+  }
+  uVar12 = uVar7 - *(ulonglong *)(lVar16 + 0x38);
+  if (uVar7 < *(ulonglong *)(lVar16 + 0x38)) {
+    uVar12 = uVar11;
+  }
+  lVar15 = uVar14 * 0x38 + *(longlong *)(lVar16 + 8);
+  uVar7 = *(ulonglong *)(lVar16 + 0x10) - uVar14;
+  if (*(ulonglong *)(lVar16 + 0x10) < uVar14) {
+    lVar15 = 8;
+    uVar7 = uVar11;
+  }
+  lVar17 = uVar12 * 0x38 + *(longlong *)(lVar16 + 0x28);
+  uVar14 = *(ulonglong *)(lVar16 + 0x30) - uVar12;
+  if (*(ulonglong *)(lVar16 + 0x30) < uVar12) {
+    lVar17 = 8;
+    uVar14 = uVar11;
+  }
+  *puVar6 = (*(longlong *)(lVar16 + 0x40) - uVar14) - uVar7;
+  plVar8 = (longlong *)*in_R8;
+  lVar16 = lVar15;
+  lVar18 = lVar17;
+LAB_140f8825e:
+  if ((lVar16 == 0) || (lVar16 == uVar7 * 0x38 + lVar15)) {
+    if ((lVar18 == 0) || (lVar18 == uVar14 * 0x38 + lVar17)) {
+      return;
+    }
+    lVar19 = lVar18 + 0x38;
+    lVar10 = 0;
+    lVar16 = lVar18;
+  }
+  else {
+    lVar10 = lVar16 + 0x38;
+    lVar19 = lVar18;
+  }
+  *puVar6 = *puVar6 + 1;
+  bVar2 = *(byte *)(lVar16 + 8);
+  fVar1 = *(float *)(lVar16 + 0xc);
+  lVar9 = *(longlong *)(lVar16 + 0x1c);
+  ::utils::inverse_lerp();
+  ::utils::inverse_lerp();
+  lVar13 = lVar5;
+  lVar16 = lVar10;
+  lVar18 = lVar19;
+  switch(bVar2) {
+  case 0:
+    goto code_r0x000140f88580;
+  case 1:
+    lVar13 = lVar5 + 0x38;
+    goto code_r0x000140f88580;
+  case 2:
+    lVar13 = lVar5 + 0x70;
+    goto code_r0x000140f88580;
+  case 3:
+    _Size = 0x1c;
+    _Src = &UNK_142bad6c8;
+    break;
+  case 4:
+    _Size = 0x1d;
+    _Src = &UNK_142bad6e4;
+    break;
+  case 5:
+    _Size = 0x1d;
+    _Src = &UNK_142bad701;
+    break;
+  case 6:
+    _Size = 0x24;
+    _Src = &UNK_142bad71e;
+    break;
+  case 7:
+    lVar13 = lVar5 + 0xa8;
+    goto code_r0x000140f88580;
+  case 8:
+    _Size = 0x1e;
+    _Src = &UNK_142bad742;
+    break;
+  case 9:
+    lVar13 = lVar5 + 0xe0;
+    goto code_r0x000140f88580;
+  case 10:
+    goto code_r0x000140f8856d;
+  case 0xb:
+    _Size = 0x1d;
+    _Src = &UNK_142bad760;
+    break;
+  case 0xc:
+    _Size = 0x1d;
+    _Src = &UNK_142bad77d;
+    break;
+  case 0xd:
+    _Size = 0x1f;
+    _Src = &UNK_142bad79a;
+    break;
+  case 0xe:
+  case 0x11:
+  case 0x12:
+    _Size = 0x24;
+    _Src = &UNK_142bad7b9;
+    break;
+  case 0xf:
+    _Size = 0x23;
+    _Src = &UNK_142bad7dd;
+    break;
+  default:
+    goto LAB_140f8825e;
+  }
+  if (*plVar8 == 0) {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (_Dst == (void *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    memcpy(_Dst,_Src,_Size);
+    sStack_128 = _Size;
+  }
+  else {
+    resources::audio_resources::AudioCoreInner::instantiate_audio();
+    if (lStack_138 == 2) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  resources::audio_resources::impl$10::set_position();
+  resources::audio_resources::impl$10::set_parameter();
+  resources::audio_resources::AudioInstance::start_if_not_playing();
+  if (bVar2 - 0xc < 2) {
+    if (1.0 < fVar1) {
+code_r0x000140f884f6:
+      ::utils::inverse_lerp();
+      resources::audio_resources::impl$10::set_parameter();
+    }
+  }
+  else if (bVar2 == 8) goto code_r0x000140f884f6;
+  resources::audio_resources::impl$13::drop();
+  if (sStack_128 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  lVar13 = lVar5 + 0xa8;
+  lStack_138 = lVar9;
+  if ((bVar2 != 7) && (lVar13 = lVar5 + 0xe0, bVar2 != 9)) {
+    if (bVar2 != 10) goto LAB_140f8825e;
+code_r0x000140f8856d:
+    lVar13 = lVar5 + 0x118;
+  }
+code_r0x000140f88580:
+  *puVar4 = uVar3;
+  country_core::utils::audio_utils::AudioLoop::start_if_not_playing();
+  if ((*(ulonglong *)(lVar13 + 0x10) <= *(ulonglong *)(lVar13 + 0x28)) ||
+     (resources::audio_resources::impl$10::set_parameter(),
+     *(ulonglong *)(lVar13 + 0x10) <= *(ulonglong *)(lVar13 + 0x28))) goto code_r0x000140f88947;
+  resources::audio_resources::impl$10::set_position();
+  switch(bVar2) {
+  case 0:
+  case 7:
+    if (*(ulonglong *)(lVar13 + 0x10) <= *(ulonglong *)(lVar13 + 0x28)) goto code_r0x000140f88947;
+    ::utils::inverse_lerp();
+    resources::audio_resources::impl$10::set_parameter();
+    if (*(ulonglong *)(lVar13 + 0x10) <= *(ulonglong *)(lVar13 + 0x28)) goto code_r0x000140f88947;
+    ::utils::inverse_lerp();
+    resources::audio_resources::impl$10::set_parameter();
+    if ((*(ulonglong *)(lVar13 + 0x10) <= *(ulonglong *)(lVar13 + 0x28)) ||
+       (resources::audio_resources::impl$10::set_parameter(),
+       *(ulonglong *)(lVar13 + 0x10) <= *(ulonglong *)(lVar13 + 0x28))) goto code_r0x000140f88947;
+    resources::audio_resources::impl$10::set_parameter();
+    break;
+  case 1:
+  case 9:
+    if (*(ulonglong *)(lVar13 + 0x10) <= *(ulonglong *)(lVar13 + 0x28)) goto code_r0x000140f88947;
+    resources::audio_resources::impl$10::set_parameter();
+    break;
+  case 2:
+    if (*(ulonglong *)(lVar13 + 0x28) < *(ulonglong *)(lVar13 + 0x10)) {
+      resources::audio_resources::impl$10::set_parameter();
+      goto code_r0x000140f88800;
+    }
+code_r0x000140f88947:
+                    // WARNING: Subroutine does not return
+    core::panicking::panic_bounds_check();
+  default:
+    goto LAB_140f8825e;
+  case 10:
+code_r0x000140f88800:
+    if (*(ulonglong *)(lVar13 + 0x28) < *(ulonglong *)(lVar13 + 0x10)) {
+      resources::audio_resources::impl$10::set_parameter();
+      goto code_r0x000140f8883c;
+    }
+    goto code_r0x000140f88947;
+  }
+  if (bVar2 < 10) {
+    switch(bVar2) {
+    case 0:
+      if ((*(ulonglong *)(lVar13 + 0x28) < *(ulonglong *)(lVar13 + 0x10)) &&
+         (resources::audio_resources::impl$10::set_parameter(),
+         *(ulonglong *)(lVar13 + 0x28) < *(ulonglong *)(lVar13 + 0x10))) goto code_r0x000140f88851;
+      goto code_r0x000140f88947;
+    case 1:
+    case 9:
+code_r0x000140f8883c:
+      break;
+    case 2:
+    case 7:
+      if (*(ulonglong *)(lVar13 + 0x10) <= *(ulonglong *)(lVar13 + 0x28)) goto code_r0x000140f88947;
+      resources::audio_resources::impl$10::set_parameter();
+      if (bVar2 != 7) {
+        if (bVar2 == 2) goto code_r0x000140f8883c;
+        goto LAB_140f8825e;
+      }
+      break;
+    default:
+      goto LAB_140f8825e;
+    }
+    if (*(ulonglong *)(lVar13 + 0x10) <= *(ulonglong *)(lVar13 + 0x28)) goto code_r0x000140f88947;
+code_r0x000140f88851:
+    ::utils::inverse_lerp();
+    resources::audio_resources::impl$10::set_parameter();
+    if (bVar2 == 0) {
+      if ((*(ulonglong *)(lVar13 + 0x10) <= *(ulonglong *)(lVar13 + 0x28)) ||
+         (resources::audio_resources::impl$10::set_parameter(),
+         *(ulonglong *)(lVar13 + 0x10) <= *(ulonglong *)(lVar13 + 0x28))) goto code_r0x000140f88947;
+      resources::audio_resources::impl$10::set_parameter();
+    }
+  }
+  goto LAB_140f8825e;
+}
+

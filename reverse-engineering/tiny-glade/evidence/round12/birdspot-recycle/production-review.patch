@@ -1,0 +1,334 @@
+--- a/tiny-glade/crates/country-core/src/resources/critters/mod.rs
++++ b/tiny-glade/crates/country-core/src/resources/critters/mod.rs
+@@ -14,3 +14,6 @@
+     pub position: Vec3,
+     pub goal_tag: u32,
+ }
++
++pub mod wren;
++pub use wren::{Wren, WrenSpotState};
+--- /dev/null
++++ b/tiny-glade/crates/country-core/src/resources/critters/wren.rs
+@@ -0,0 +1,47 @@
++//! Known original Wren state belongs to its canonical core component identity.
++//! Audio remains a separate host component. This is a semantic projection,
++//! not a claim that the native 80-byte record has this Rust layout.
++use bevy_ecs::component::Component;
++use glam::Vec3;
++
++#[derive(Component, Clone, Copy, Debug, PartialEq)]
++pub struct Wren {
++    pub pos: Vec3,
++    pub prev_pos: Vec3,
++    pub phase: f32,
++    pub hop_timer: f32,
++    pub spot: WrenSpotState,
++}
++impl Wren {
++    /// All three original sim_wren_boids spawn tuples write state 2 at +0x30.
++    pub fn new_airborne(pos: Vec3) -> Self {
++        Self { pos, prev_pos: pos, phase: 0.0, hop_timer: 0.0,
++            spot: WrenSpotState { state: 2, ..Default::default() } }
++    }
++}
++impl Default for Wren {
++    fn default() -> Self { Self::new_airborne(Vec3::ZERO) }
++}
++
++/// 鹪鹩 per-spot 状态机记录（二进制 spot 0x50 记录的语义投影；字段偏移见各注释）。
++/// 状态跳表 DAT_14304b638（RE-ANALYSIS §1.1 解码，index=`*(uint*)(spot+0x30)`）：
++/// 0=计时/等待（timer 倒计时；到点或距目标<1.0 → state1）、1=音频过渡（→2）、
++/// 2/4=扫描续（无 handler）、3=smoothstep 移动（→重置后高度更新）。
++#[derive(Clone, Copy, Debug, Default, PartialEq)]
++pub struct WrenSpotState {
++    /// +0x30：状态字节（0..4）。
++    pub state: u32,
++    /// +0x34：计时（state0 倒计时；state3 复用作 dir.x 方向分量）。
++    pub timer: f32,
++    /// +0x38：state3 方向分量 y。
++    pub dir_y: f32,
++    /// +0x3c：state3 方向分量 z。
++    pub dir_z: f32,
++    /// +0x40：smoothstep 进度计时（state3 `+= dt`，>6.0 → 重置）。
++    pub progress: f32,
++    /// +0x44：动画流经值（state0/1 经 XMM15 原样回写；state3 = 新 progress）。
++    pub anim_val: f32,
++    /// +0x48：高度（`clamp01(height + dt*(state==0 ? -50 : 5))`，表 [0x14304b3b0]=(-50,5)）。
++    pub height: f32,
++}
++
+--- a/tiny-glade/crates/systems/critters/src/components.rs
++++ b/tiny-glade/crates/systems/critters/src/components.rs
+@@ -150,15 +150,7 @@
+     pub goal_timer: f32,
+ }
+ 
+-/// `Wren`（鹪鹩状态；`nani_update_wren` 读 prev/current 变换 + 参数，布局 U——
+-/// 只落状态机消费的语义字段）。
+-#[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
+-pub struct Wren {
+-    pub pos: Vec3,
+-    pub prev_pos: Vec3,
+-    pub phase: f32,
+-    pub hop_timer: f32,
+-}
++pub use country_core::resources::critters::Wren;
+ 
+ /// 鹪鹩停靠点记录（stride 0x18；move_critters 更新位置，wren 系统读写）。
+ #[derive(Component, Clone, Debug, Default, PartialEq)]
+--- /dev/null
++++ b/tiny-glade/crates/systems/critters/src/wren/recycle.rs
+@@ -0,0 +1,20 @@
++//! Original recycle<update_roof_bird_spots::closure_env$3>, 1422f86e0/378B.
++use bevy_ecs::prelude::*;
++use crate::bird_spots::BirdSpotManager;
++use crate::components::{Transform, Wren};
++use super::SittableForBirds;
++
++/// Query owns live-generation and archetype/filter membership checks. Merely
++/// inspecting an ineligible row must not set its Changed tick.
++pub fn recycle_returned_bird_spots(
++    manager: &mut BirdSpotManager,
++    wrens: &mut Query<(Entity, &mut Transform, &mut Wren), Without<SittableForBirds>>,
++) {
++    manager.recycle(|spot| {
++        let Some(entity) = spot.occupant else { return };
++        let Ok((_, _, mut wren)) = wrens.get_mut(entity) else { return };
++        if wren.spot.state == 0 {
++            wren.spot.state = 1;
++        }
++    });
++}
+--- a/tiny-glade/crates/systems/critters/src/wren.rs
++++ b/tiny-glade/crates/systems/critters/src/wren.rs
+@@ -26,6 +26,7 @@
+ use crate::bird_spots::BirdSpotManager;
+ use crate::components::{BirdSpot, BirdSpots, Wren};
+ use crate::wren_boids::WrenAudio;
++pub mod recycle;
+ 
+ /// `SittableForBirds`（B component，0x10）：`DecoratorId u32@+0` + 局部偏移
+ /// `Vec3@+4`（world = 装饰物 Transform 变换该偏移）。country-core 仅注册未定义该类型，
+@@ -99,16 +100,11 @@
+         }
+ 
+         // O：gen_id（点 id）→ create_spots（池分配）→ spawn + insert<BirdSpots>。
+-        let _spot_id = manager.gen_id();
+-        let allocated = manager.create_spots(1);
+-        let spots: Vec<BirdSpot> = allocated
+-            .into_iter()
+-            .map(|_| BirdSpot {
+-                pos: world,
+-                occupied: false,
+-            })
+-            .collect();
+-        let entity = commands.spawn(BirdSpots { spots }).id();
++        let spot_id = manager.gen_id();
++        let spots = manager.create_spots(vec![BirdSpot {
++            occupant: None, pos: world, id: spot_id,
++        }]);
++        let entity = commands.spawn(spots).id();
+         local.spots.insert(id, entity);
+     }
+     // O：`HashMap::retain`（decorator 仍存在）。
+@@ -150,9 +146,9 @@
+     mut roof_changed: EventReader<RecalculateRoofCmd>,
+     mut wall_changed: EventReader<OnWallChanged>,
+     mut roofs: Query<(&Roof, Option<&BirdSpots>)>,
+-    wrens: Query<(Entity, &mut crate::components::Transform, &mut Wren), Without<SittableForBirds>>,
+-) {
+-    let _ = (&time, &wrens);
++    mut wrens: Query<(Entity, &mut crate::components::Transform, &mut Wren), Without<SittableForBirds>>,
++) {
++    let _ = &time;
+     // 收集需重算的墙（事件载荷 = WallId）。
+     let mut dirty: Vec<country_core::resources::walls::WallId> = Vec::new();
+     for event in roof_changed.read() {
+@@ -164,11 +160,9 @@
+     for wall in dirty {
+         let Some(roof_entity) = walls.roof_entity(wall) else {
+             // 屋顶已移除：回收（O：`recycle::<closure_env$3>`）。
+-            manager.recycle_all();
+             continue;
+         };
+         let Ok((roof, _existing)) = roofs.get_mut(roof_entity) else {
+-            manager.recycle_all();
+             continue;
+         };
+         // 形状门：tag==1（矩形）&& !is_flat（O 14231daf6/14231db0x）。
+@@ -178,9 +172,8 @@
+             .unwrap_or(0)
+             == 1;
+         if !rect_roof || roof.is_flat() {
+-            let spots = manager.create_spots(0);
+-            let _ = spots;
+-            commands.spawn(BirdSpots { spots: Vec::new() });
++            let spots = manager.create_spots(Vec::new());
++            commands.entity(roof_entity).insert(spots);
+             continue;
+         }
+         // 脊线矩形门（几何部分已证；采样段未实现 → 空点集并登记）。
+@@ -202,32 +195,14 @@
+         } else {
+             Vec::new()
+         };
+-        let _ = manager.create_spots(spots.len());
+-        commands.spawn(BirdSpots { spots });
+-    }
+-}
+-
+-/// 鹪鹩 per-spot 状态机记录（二进制 spot 0x50 记录的语义投影；字段偏移见各注释）。
+-/// 状态跳表 DAT_14304b638（RE-ANALYSIS §1.1 解码，index=`*(uint*)(spot+0x30)`）：
+-/// 0=计时/等待（timer 倒计时；到点或距目标<1.0 → state1）、1=音频过渡（→2）、
+-/// 2/4=扫描续（无 handler）、3=smoothstep 移动（→重置后高度更新）。
+-#[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
+-pub struct WrenSpotState {
+-    /// +0x30：状态字节（0..4）。
+-    pub state: u32,
+-    /// +0x34：计时（state0 倒计时；state3 复用作 dir.x 方向分量）。
+-    pub timer: f32,
+-    /// +0x38：state3 方向分量 y。
+-    pub dir_y: f32,
+-    /// +0x3c：state3 方向分量 z。
+-    pub dir_z: f32,
+-    /// +0x40：smoothstep 进度计时（state3 `+= dt`，>6.0 → 重置）。
+-    pub progress: f32,
+-    /// +0x44：动画流经值（state0/1 经 XMM15 原样回写；state3 = 新 progress）。
+-    pub anim_val: f32,
+-    /// +0x48：高度（`clamp01(height + dt*(state==0 ? -50 : 5))`，表 [0x14304b3b0]=(-50,5)）。
+-    pub height: f32,
+-}
++        let spots = manager.create_spots(spots);
++        commands.entity(roof_entity).insert(spots);
++    }
++    // The original drains every update, including updates without roof events.
++    recycle::recycle_returned_bird_spots(&mut manager, &mut wrens);
++}
++
++pub use country_core::resources::critters::WrenSpotState;
+ 
+ /// update_wrens（0x14231e390）。
+ /// ① 逐鹪鹩 PlacementDataSsbo::to_affine3a（放置矩阵；crate 以 Wren.pos 承载）→
+@@ -241,18 +216,19 @@
+     mode: Res<AppMode>,
+     cursor: Res<CursorTerrainRaycast>,
+     mut commands: Commands,
+-    mut query: Query<(Entity, &mut Wren, &mut WrenSpotState, &mut WrenAudio)>,
++    mut query: Query<(Entity, &mut Wren, &mut WrenAudio)>,
+ ) {
+     let dt = time.delta;
+     let cursor_pos = cursor.position();
+     // O 0x14231e7d9-0x14231f5fb：模式 → h0 距离阈值（`xmm7`）。
+     let proximity = wren_proximity_threshold(*mode);
+-    for (entity, mut wren, mut spot, mut audio) in &mut query {
++    for (entity, mut wren, mut audio) in &mut query {
++        let wren = &mut *wren;
+         // ① 音频 set_position（跳表分派前，0x14231ebde）。
+         audio.handle.set_position(wren.pos);
+         // ② 状态机 + 跳表分派。
+         wren_spot_step(
+-            &mut spot,
++            &mut wren.spot,
+             &mut wren.pos,
+             dt,
+             cursor_pos,
+--- a/tiny-glade/crates/systems/critters/src/wren_boids.rs
++++ b/tiny-glade/crates/systems/critters/src/wren_boids.rs
+@@ -181,12 +181,7 @@
+             let vel = Vec3::new(r.f32() - 0.5, r.f32() - 0.5, r.f32() - 0.5);
+             let mut spawn = commands.spawn((
+                 Transform::default(),
+-                Wren {
+-                    pos,
+-                    prev_pos: pos,
+-                    phase: 0.0,
+-                    hop_timer: 0.0,
+-                },
++                Wren::new_airborne(pos),
+                 PrevTransform::default(),
+             ));
+             if let Some(core) = audio_core.as_ref() {
+@@ -207,7 +202,7 @@
+             spots
+                 .spots
+                 .iter()
+-                .filter(|s| !s.occupied)
++                .filter(|s| s.occupant.is_none())
+                 .map(|s| s.pos)
+         })
+         .collect();
+@@ -331,12 +326,7 @@
+                     let pos = sphere + dir * dist * 1.01;
+                     let mut spawn = commands.spawn((
+                         Transform::default(),
+-                        Wren {
+-                            pos,
+-                            prev_pos: pos,
+-                            phase: 0.0,
+-                            hop_timer: 0.0,
+-                        },
++                        Wren::new_airborne(pos),
+                         PrevTransform::default(),
+                     ));
+                     if let Some(core) = audio_core.as_ref() {
+--- /dev/null
++++ b/tiny-glade/crates/tiny-glade/tests/original_birdspot_recycle.rs
+@@ -0,0 +1,58 @@
++use bevy_ecs::prelude::*;
++use country_core::resources::critters::Wren;
++use country_core::utils::components::transform::Transform;
++use system_critters::bird_spots::{BirdSpot, BirdSpotManager};
++use system_critters::wren::{recycle::recycle_returned_bird_spots, SittableForBirds};
++
++fn recycle(mut manager: ResMut<BirdSpotManager>,
++    mut wrens: Query<(Entity, &mut Transform, &mut Wren), Without<SittableForBirds>>) {
++    recycle_returned_bird_spots(&mut manager, &mut wrens);
++}
++#[test]
++fn dropped_points_use_live_generation_query_membership_and_actual_wren_state() {
++    let mut world = World::new();
++    world.init_resource::<BirdSpotManager>();
++    let mut actors = Vec::new();
++    for state in [0, 1, 2, 3, 4, u32::MAX] {
++        let mut wren = Wren::default(); wren.spot.state = state;
++        actors.push(world.spawn((Transform::default(), wren)).id());
++    }
++    let stale = world.spawn((Transform::default(), Wren::default())).id();
++    world.despawn(stale);
++    let mut wren = Wren::default(); wren.spot.state = 0;
++    let excluded = world.spawn((Transform::default(), wren, SittableForBirds::default())).id();
++    let missing_transform = world.spawn(wren).id();
++    let points = {
++        let mut manager = world.resource_mut::<BirdSpotManager>();
++        let mut records = Vec::new();
++        for entity in actors.iter().copied().chain([stale, excluded, missing_transform]) {
++            let id = manager.gen_id();
++            records.push(BirdSpot { occupant: Some(entity), pos: glam::Vec3::ZERO, id });
++        }
++        records.push(BirdSpot::default());
++        // Duplicate queued occupant must observe state 1 after its first callback.
++        records.push(records[0]);
++        manager.create_spots(records)
++    };
++    let mut schedule = Schedule::default(); schedule.add_systems(recycle);
++    world.clear_trackers();
++    schedule.run(&mut world);
++    assert_eq!(world.get::<Wren>(actors[0]).unwrap().spot.state, 0);
++    drop(points);
++    world.clear_trackers();
++    schedule.run(&mut world);
++    for (&entity, state) in actors.iter().zip([1, 1, 2, 3, 4, u32::MAX]) {
++        assert_eq!(world.get::<Wren>(entity).unwrap().spot.state, state);
++    }
++    assert_eq!(world.get::<Wren>(excluded).unwrap().spot.state, 0);
++    assert_eq!(world.get::<Wren>(missing_transform).unwrap().spot.state, 0);
++    let changed: Vec<Entity> = world.query_filtered::<Entity, Changed<Wren>>().iter(&world).collect();
++    assert_eq!(changed, [actors[0]]);
++    world.clear_trackers(); schedule.run(&mut world);
++    assert_eq!(world.query_filtered::<Entity, Changed<Wren>>().iter(&world).count(), 0);
++}
++#[test]
++fn spawned_wren_starts_in_original_airborne_state() {
++    let wren = Wren::new_airborne(glam::Vec3::new(1.0, 2.0, 3.0));
++    assert_eq!(wren.spot.state, 2);
++}

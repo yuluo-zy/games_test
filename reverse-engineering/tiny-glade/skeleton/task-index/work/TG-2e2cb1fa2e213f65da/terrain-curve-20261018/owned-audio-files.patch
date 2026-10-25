@@ -1,0 +1,615 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/audio/terrain_audio.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/audio/terrain_audio.rs
+@@ -1,32 +1,7 @@
+-//! B `terrain_audio.rs`: terrain edit sounds — 4 loops + the terrain edit
+-//! event dispatch.
+-//!
+-//! Fresh evidence (decomp-0x1414613e0 / 0x1414618c0, disasm-0x141461c80..
+-//! 0x141463220, jump table 0x142c63274):
+-//! - init creates 4 loops — `event:/SFX/TerrainEditShape`,
+-//!   `event:/SFX/TerrainEditHeight`, `event:/SFX/Terrain Draw`,
+-//!   `event:/SFX/TerrainMove`.
+-//! - event slot stride 0x28: kind u32 @+8, position @+0xc (x,y,z), value@+0x18,
+-//!   value@+0x1c, value@+0x20.
+-//! - dispatch by native tag:
+-//!   0 → Terrain Draw loop (slot 2), no position/parameters;
+-//!   1 → TerrainEditShape (slot 0): `terrain_smoothness` = v18,
+-//!       editing speed = clamp01(inverse_lerp(0, 5, v1c / speed));
+-//!   2 → TerrainEditHeight (slot 1): `terrain_smoothness` = v18,
+-//!       `terrain_height` = inverse_lerp(0, 20, v1c),
+-//!       editing speed = clamp01(inverse_lerp(0, 5, v20 / speed));
+-//!   3 → TerrainMove (slot 3): same parameters as tag 2;
+-//!   4 → one-shot `event:/SFX/TerrainLowPoint`: set_position +
+-//!       `terrain_height` = inverse_lerp(0, 20, v18);
+-//!   5 → one-shot `event:/SFX/TerrainCreateChunk`: `terrain_smoothness` = v18,
+-//!       `editing_speed` = clamp01(inverse_lerp(0, 5, v1c / speed))
+-//!       — no Rust event variant carries native tag 5 (cross-domain gap,
+-//!       registered in the rebuild report).
+-//! - frame-end drive order: slots 2, 1, 0, 3; a flagged slot does
+-//!   `start_if_not_playing → set_parameter("editing_speed", slot_speed) →
+-//!   set_position(last event position)`, an unflagged slot is stopped; the
+-//!   flag is cleared. The speed divisor is the shared `+0x58` editing speed.
+-
++//! B terrain audio; original table0x142c63274 and six executed one-shot
++//! probes correct the old swapped tag4/5 parameter interpretation. Tag4 LowPoint
++//! sets smoothness+editing_speed; tag5 CreateChunk sets terrain_height from its
++//! single raw/unclamped height payload. Reuse existing AudioCore/AudioInstance.
+ use crate::{
+     resources::audio_resources::{AudioCore, AudioInstance, EventInstance, Studio},
+     systems::audio::audio_update::EditingSpeed,
+@@ -131,14 +106,18 @@
+             PlayTerrainSound::Removed {
+                 position,
+                 falloff,
+-                magnitude: _,
+-            } => (Some(*position), *falloff, 0.0, 0.0),
+-        };
+-
+-        let set_param = |state: &mut TerrainAudioState<S::Event>, slot: usize, name: &str, value: f32| {
+-            let cursor = state.loops[slot].cursor;
+-            let _ = state.loops[slot].entries[cursor].set_parameter(name, value);
+-        };
++                magnitude,
++            } => (Some(*position), *falloff, *magnitude, 0.0),
++            PlayTerrainSound::CreateChunk { position, height } => {
++                (Some(*position), *height, 0.0, 0.0)
++            }
++        };
++
++        let set_param =
++            |state: &mut TerrainAudioState<S::Event>, slot: usize, name: &str, value: f32| {
++                let cursor = state.loops[slot].cursor;
++                let _ = state.loops[slot].entries[cursor].set_parameter(name, value);
++            };
+ 
+         match tag {
+             // 0 — Terrain Draw loop: only the flag (no position/parameters).
+@@ -178,20 +157,28 @@
+                     inverse_lerp(0.0, 20.0, value1),
+                 );
+             }
+-            // 4 — TerrainLowPoint one-shot.
++            // 4 — original0x141461d4d ->0x141461f10.
+             4 => {
+                 let position = position.unwrap_or(Vec3::ZERO);
+                 let mut instance = core.instantiate_audio(TERRAIN_LOW_POINT_EVENT);
+-                let _ = instance.set_position([position.x, position.y, position.z]);
++                let _ = instance.set_position(position.to_array());
+                 let _ = instance.start_if_not_playing();
++                let _ = instance.set_parameter(TERRAIN_SMOOTHNESS_PARAM, value0);
+                 let _ = instance.set_parameter(
+-                    TERRAIN_HEIGHT_PARAM,
+-                    inverse_lerp(0.0, 20.0, value0),
++                    TERRAIN_EDITING_SPEED_PARAM,
++                    clamp01(inverse_lerp(0.0, 5.0, value1 / editing_speed)),
+                 );
+             }
+-            // 5 — TerrainCreateChunk one-shot (native tag 5; no Rust event
+-            // variant carries it — cross-domain gap).
+-            _ => {}
++            // 5 — original0x141461d90 ->0x141461e16.
++            5 => {
++                let position = position.unwrap_or(Vec3::ZERO);
++                let mut instance = core.instantiate_audio(TERRAIN_CREATE_CHUNK_EVENT);
++                let _ = instance.set_position(position.to_array());
++                let _ = instance.start_if_not_playing();
++                let _ =
++                    instance.set_parameter(TERRAIN_HEIGHT_PARAM, inverse_lerp(0.0, 20.0, value0));
++            }
++            _ => unreachable!("typed terrain audio tag"),
+         }
+     }
+ 
+@@ -204,10 +191,8 @@
+         if play {
+             let _ = loop_player.start_if_not_playing();
+             let cursor = loop_player.cursor;
+-            let _ = loop_player.entries[cursor]
+-                .set_parameter(TERRAIN_EDITING_SPEED_PARAM, speed);
+-            let _ = loop_player.entries[cursor]
+-                .set_position([position.x, position.y, position.z]);
++            let _ = loop_player.entries[cursor].set_parameter(TERRAIN_EDITING_SPEED_PARAM, speed);
++            let _ = loop_player.entries[cursor].set_position([position.x, position.y, position.z]);
+         } else {
+             let _ = loop_player.stop(std::time::Duration::ZERO);
+         }
+@@ -236,3 +221,331 @@
+         assert_eq!(TERRAIN_CREATE_CHUNK_EVENT, "event:/SFX/TerrainCreateChunk");
+     }
+ }
++
++#[cfg(test)]
++mod original_one_shot_consumer_tests {
++    use super::*;
++    use crate::resources::{
++        audio_instance::PlaybackState,
++        audio_resources::{ListenerAttributes, VcaHandle},
++    };
++    use std::sync::{Arc, Mutex};
++    #[derive(Clone, Debug, PartialEq)]
++    enum Call {
++        Create(String),
++        Position(String, [u32; 3]),
++        Start(String),
++        Parameter(String, String, u32),
++    }
++    type Log = Arc<Mutex<Vec<Call>>>;
++    #[derive(Debug)]
++    struct RecordingEvent {
++        name: String,
++        log: Log,
++    }
++    impl EventInstance for RecordingEvent {
++        type Error = String;
++        fn start(&mut self) -> Result<(), String> {
++            self.log
++                .lock()
++                .unwrap()
++                .push(Call::Start(self.name.clone()));
++            Ok(())
++        }
++        fn stop(&mut self, _: i32) -> Result<(), String> {
++            Ok(())
++        }
++        fn get_playback_state(&self) -> Result<PlaybackState, String> {
++            Ok(PlaybackState::Stopped)
++        }
++        fn set_volume(&mut self, _: f32) -> Result<(), String> {
++            Ok(())
++        }
++        fn set_parameter_by_name(&mut self, n: &str, v: f32) -> Result<(), String> {
++            self.log.lock().unwrap().push(Call::Parameter(
++                self.name.clone(),
++                n.into(),
++                v.to_bits(),
++            ));
++            Ok(())
++        }
++        fn has_parameter(&self, _: &str) -> Result<bool, String> {
++            Ok(true)
++        }
++        fn set_3d_attributes(
++            &mut self,
++            p: [f32; 3],
++            _: [f32; 3],
++            _: [f32; 3],
++            _: [f32; 3],
++        ) -> Result<(), String> {
++            self.log
++                .lock()
++                .unwrap()
++                .push(Call::Position(self.name.clone(), p.map(f32::to_bits)));
++            Ok(())
++        }
++        fn get_timeline_position(&self) -> Result<i32, String> {
++            Ok(0)
++        }
++        fn pause(&mut self, _: bool) -> Result<(), String> {
++            Ok(())
++        }
++        fn install_beat_callback(&mut self) -> Result<(), String> {
++            Ok(())
++        }
++    }
++    struct RecordingVca;
++    impl VcaHandle for RecordingVca {
++        type Error = String;
++        fn set_volume(&self, _: f32) -> Result<(), String> {
++            Ok(())
++        }
++    }
++    struct RecordingStudio(Log);
++    impl Studio for RecordingStudio {
++        type Error = String;
++        type Event = RecordingEvent;
++        type Vca = RecordingVca;
++        fn load_bank_file(&mut self, _: &str) -> Result<(), String> {
++            Ok(())
++        }
++        fn load_sample_data(&mut self) -> Result<(), String> {
++            Ok(())
++        }
++        fn get_vca(&self, _: &str) -> Result<RecordingVca, String> {
++            Ok(RecordingVca)
++        }
++        fn set_listener_attributes(&mut self, _: ListenerAttributes) -> Result<(), String> {
++            Ok(())
++        }
++        fn update(&mut self) -> Result<(), String> {
++            Ok(())
++        }
++        fn set_parameter_by_name(&self, _: &str, _: f32) -> Result<(), String> {
++            Ok(())
++        }
++        fn create_event_instance(&self, n: &str) -> Result<Option<RecordingEvent>, String> {
++            self.0.lock().unwrap().push(Call::Create(n.into()));
++            Ok(Some(RecordingEvent {
++                name: n.into(),
++                log: self.0.clone(),
++            }))
++        }
++    }
++    fn observe(sound: PlayTerrainSound, speed: f32, name: &str) -> Vec<Call> {
++        let log = Log::default();
++        let core = AudioCore {
++            studio: Some(RecordingStudio(log.clone())),
++            banks: Default::default(),
++        };
++        let state = TerrainAudioState::new(&core);
++        log.lock().unwrap().clear();
++        let mut world = World::new();
++        world.insert_resource(core);
++        world.insert_resource(state);
++        world.insert_resource(EditingSpeed(speed));
++        world.init_resource::<Events<PlayTerrainSound>>();
++        world.send_event(sound);
++        let mut schedule = Schedule::default();
++        schedule.add_systems(terrain_audio_system::<RecordingStudio>);
++        schedule.run(&mut world);
++        let out = log
++            .lock()
++            .unwrap()
++            .iter()
++            .filter(|call| match call {
++                Call::Create(n)
++                | Call::Position(n, _)
++                | Call::Start(n)
++                | Call::Parameter(n, _, _) => n == name,
++            })
++            .cloned()
++            .collect();
++        out
++    }
++    #[test]
++    fn original_one_shot_0() {
++        let position = Vec3::new(3., -1., 4.);
++        let event = PlayTerrainSound::Removed {
++            position,
++            falloff: f32::from_bits(1053609165),
++            magnitude: f32::from_bits(1075838976),
++        };
++        let observed = observe(
++            event,
++            f32::from_bits(1065353216),
++            "event:/SFX/TerrainLowPoint",
++        );
++        assert_eq!(
++            observed,
++            vec![
++                Call::Create("event:/SFX/TerrainLowPoint".into()),
++                Call::Position(
++                    "event:/SFX/TerrainLowPoint".into(),
++                    [1077936128, 3212836864, 1082130432]
++                ),
++                Call::Start("event:/SFX/TerrainLowPoint".into()),
++                Call::Parameter(
++                    "event:/SFX/TerrainLowPoint".into(),
++                    "terrain_smoothness".into(),
++                    1053609165
++                ),
++                Call::Parameter(
++                    "event:/SFX/TerrainLowPoint".into(),
++                    "editing_speed".into(),
++                    1056964608
++                ),
++            ]
++        );
++    }
++    #[test]
++    fn original_one_shot_1() {
++        let position = Vec3::new(3., -1., 4.);
++        let event = PlayTerrainSound::Removed {
++            position,
++            falloff: f32::from_bits(1104412672),
++            magnitude: f32::from_bits(1082130432),
++        };
++        let observed = observe(
++            event,
++            f32::from_bits(1073741824),
++            "event:/SFX/TerrainLowPoint",
++        );
++        assert_eq!(
++            observed,
++            vec![
++                Call::Create("event:/SFX/TerrainLowPoint".into()),
++                Call::Position(
++                    "event:/SFX/TerrainLowPoint".into(),
++                    [1077936128, 3212836864, 1082130432]
++                ),
++                Call::Start("event:/SFX/TerrainLowPoint".into()),
++                Call::Parameter(
++                    "event:/SFX/TerrainLowPoint".into(),
++                    "terrain_smoothness".into(),
++                    1104412672
++                ),
++                Call::Parameter(
++                    "event:/SFX/TerrainLowPoint".into(),
++                    "editing_speed".into(),
++                    1053609165
++                ),
++            ]
++        );
++    }
++    #[test]
++    fn original_one_shot_2() {
++        let position = Vec3::new(3., -1., 4.);
++        let event = PlayTerrainSound::Removed {
++            position,
++            falloff: f32::from_bits(3212836864),
++            magnitude: f32::from_bits(1036831949),
++        };
++        let observed = observe(event, f32::from_bits(0), "event:/SFX/TerrainLowPoint");
++        assert_eq!(
++            observed,
++            vec![
++                Call::Create("event:/SFX/TerrainLowPoint".into()),
++                Call::Position(
++                    "event:/SFX/TerrainLowPoint".into(),
++                    [1077936128, 3212836864, 1082130432]
++                ),
++                Call::Start("event:/SFX/TerrainLowPoint".into()),
++                Call::Parameter(
++                    "event:/SFX/TerrainLowPoint".into(),
++                    "terrain_smoothness".into(),
++                    3212836864
++                ),
++                Call::Parameter(
++                    "event:/SFX/TerrainLowPoint".into(),
++                    "editing_speed".into(),
++                    1065353216
++                ),
++            ]
++        );
++    }
++    #[test]
++    fn original_one_shot_3() {
++        let position = Vec3::new(3., -1., 4.);
++        let event = PlayTerrainSound::CreateChunk {
++            position,
++            height: f32::from_bits(1053609165),
++        };
++        let observed = observe(
++            event,
++            f32::from_bits(1065353216),
++            "event:/SFX/TerrainCreateChunk",
++        );
++        assert_eq!(
++            observed,
++            vec![
++                Call::Create("event:/SFX/TerrainCreateChunk".into()),
++                Call::Position(
++                    "event:/SFX/TerrainCreateChunk".into(),
++                    [1077936128, 3212836864, 1082130432]
++                ),
++                Call::Start("event:/SFX/TerrainCreateChunk".into()),
++                Call::Parameter(
++                    "event:/SFX/TerrainCreateChunk".into(),
++                    "terrain_height".into(),
++                    1017370378
++                ),
++            ]
++        );
++    }
++    #[test]
++    fn original_one_shot_4() {
++        let position = Vec3::new(3., -1., 4.);
++        let event = PlayTerrainSound::CreateChunk {
++            position,
++            height: f32::from_bits(1104412672),
++        };
++        let observed = observe(
++            event,
++            f32::from_bits(1073741824),
++            "event:/SFX/TerrainCreateChunk",
++        );
++        assert_eq!(
++            observed,
++            vec![
++                Call::Create("event:/SFX/TerrainCreateChunk".into()),
++                Call::Position(
++                    "event:/SFX/TerrainCreateChunk".into(),
++                    [1077936128, 3212836864, 1082130432]
++                ),
++                Call::Start("event:/SFX/TerrainCreateChunk".into()),
++                Call::Parameter(
++                    "event:/SFX/TerrainCreateChunk".into(),
++                    "terrain_height".into(),
++                    1068079514
++                ),
++            ]
++        );
++    }
++    #[test]
++    fn original_one_shot_5() {
++        let position = Vec3::new(3., -1., 4.);
++        let event = PlayTerrainSound::CreateChunk {
++            position,
++            height: f32::from_bits(3212836864),
++        };
++        let observed = observe(event, f32::from_bits(0), "event:/SFX/TerrainCreateChunk");
++        assert_eq!(
++            observed,
++            vec![
++                Call::Create("event:/SFX/TerrainCreateChunk".into()),
++                Call::Position(
++                    "event:/SFX/TerrainCreateChunk".into(),
++                    [1077936128, 3212836864, 1082130432]
++                ),
++                Call::Start("event:/SFX/TerrainCreateChunk".into()),
++                Call::Parameter(
++                    "event:/SFX/TerrainCreateChunk".into(),
++                    "terrain_height".into(),
++                    3175926989
++                ),
++            ]
++        );
++    }
++}
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/edit_terrain_stroke.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/edit_terrain_stroke.rs
+@@ -1,16 +1,9 @@
+-//! B 0x14094e000 consumes point replacements before parameter edits. Missing
+-//! IDs are logged and skipped; old chapter's "missing stroke panic" was wrong.
+-//!
+-//! fresh 反编译（terrain-systems-0x14094e000）：
+-//! - 点集/编辑两循环、id 查找、错误串、`magnitude=delta*sqrt(dz²+(dy²+dx²))/0.001`、
+-//!   `apply_resolved` 逻辑、readback.pending LOCK INC 均吻合；
+-//! - **原版把 tag 1/2/3/4 观测写 `StairsPlacementBucket`（indexmap::Bucket<(DecoratorId,
+-//!   DecoratorId),AlignKind>）**（`grow_one<…>`），**无 PlayTerrainSound 载荷事件**——
+-//!   早期 Rust 的 PlayTerrainSound::Points/Falloff/Height/Removed 写入系**编造**
+-//!   （把 stairs bucket 记录误判为音频事件），已删。
++//! B0x14094e000 point/parameter edits. The original FunctionSystem declares
++//! EventWriter<PlayTerrainSound>; folded grow_one aliases do not identify stairs.
++//! Reuse current tg_terrain::edit::apply_resolved numeric/audio observations.
+ use super::{
+-    delayed_terrain_changed_msg::ScheduledTerrainReadback, RecalculateHeightMapCmd,
+-    ui_edit_terrain::{StairsPlacementBucket, StairsPlacementEntry},
++    PlayTerrainSound, RecalculateHeightMapCmd,
++    delayed_terrain_changed_msg::ScheduledTerrainReadback,
+ };
+ use crate::resources::{
+     terrain_editing::{StrokeId, TerrainEditingData},
+@@ -18,7 +11,7 @@
+ };
+ use bevy_ecs::prelude::*;
+ use glam::Vec3;
+-use tg_terrain::edit::{apply_resolved, EditCommand, StrokeParameters};
++use tg_terrain::edit::{EditCommand, StrokeParameters, apply_resolved};
+ 
+ #[derive(Event, Clone, Copy, Debug)]
+ pub struct EditTerrainStrokeCmd(pub EditCommand);
+@@ -31,32 +24,11 @@
+     pub id: StrokeId,
+ }
+ 
+-/// 原生 0x28B stairs bucket 记录（机械写偏移）：`+0x0c..+0x14` = position.x/y 位
+-/// （双 DecoratorId 键）、`+0x14` = position.z 位、`+0x18` = 值 a、`+0x1c` = 值 b、
+-/// `+0x20` = 幅度（tag 2/3）。
+-fn stairs_entry(
+-    tag: u32,
+-    position: Vec3,
+-    value_a: u32,
+-    value_b: u32,
+-    magnitude: f32,
+-) -> StairsPlacementEntry {
+-    StairsPlacementEntry {
+-        tag,
+-        decorator_a: position.x.to_bits(),
+-        decorator_b: position.y.to_bits(),
+-        sub: position.z.to_bits(),
+-        value_a,
+-        value_b,
+-        magnitude,
+-    }
+-}
+-
+ pub fn edit_terrain_stroke(
+     mut edits: EventReader<EditTerrainStrokeCmd>,
+     mut point_sets: EventReader<SetTerrainStrokePtsCmd>,
+     mut terrain: ResMut<TerrainEditingData>,
+-    mut stairs: ResMut<StairsPlacementBucket>,
++    mut sounds: EventWriter<PlayTerrainSound>,
+     readback: Res<ScheduledTerrainReadback>,
+     mut recalculate: EventWriter<RecalculateHeightMapCmd>,
+     time: Res<GameTime>,
+@@ -81,14 +53,12 @@
+         let magnitude =
+             (time.delta * (dz * dz + (dy * dy + dx * dx)).sqrt()) / f32::from_bits(0x3a83126f);
+         stroke.points.clone_from(&command.points);
+-        // tag=3（点集）stairs bucket：+0x18/+0x1c = stroke falloff/height 载荷。
+-        stairs.entries.push(stairs_entry(
+-            3,
+-            command.position,
+-            stroke.falloff.to_bits(),
+-            stroke.height_ws.to_bits(),
++        sounds.write(PlayTerrainSound::Points {
++            position: command.position,
++            falloff: stroke.falloff,
++            height: stroke.height_ws,
+             magnitude,
+-        ));
++        });
+         recalculate.write(RecalculateHeightMapCmd);
+         readback.on_terrain_modified();
+     }
+@@ -113,21 +83,24 @@
+         stroke.height_ws = outcome.state.height;
+         let position = Vec3::from_array(command.position);
+         for sample in outcome.audio {
+-            // 原版把 tag 1/2/4 观测写 StairsPlacementBucket（非音频事件）：
+-            // - tag=1（falloff）：+0x18 = 新 falloff、+0x1c = |delta|
+-            // - tag=2（height）：+0x18 = stroke falloff、+0x1c = 新 height、+0x20 = |delta|
+-            // - tag=4（removed）：+0x18 = stroke falloff、+0x1c = |delta|
+-            stairs.entries.push(match sample.tag {
+-                1 => stairs_entry(1, position, sample.falloff.to_bits(), sample.magnitude.to_bits(), 0.0),
+-                2 => stairs_entry(
+-                    2,
++            sounds.write(match sample.tag {
++                1 => PlayTerrainSound::Falloff {
+                     position,
+-                    stroke.falloff.to_bits(),
+-                    sample.height.expect("height stairs payload").to_bits(),
+-                    sample.magnitude,
+-                ),
+-                4 => stairs_entry(4, position, stroke.falloff.to_bits(), sample.magnitude.to_bits(), 0.0),
+-                _ => unreachable!("apply_resolved returned an unknown terrain stairs tag"),
++                    falloff: sample.falloff,
++                    magnitude: sample.magnitude,
++                },
++                2 => PlayTerrainSound::Height {
++                    position,
++                    falloff: stroke.falloff,
++                    height: sample.height.expect("height audio payload"),
++                    magnitude: sample.magnitude,
++                },
++                4 => PlayTerrainSound::Removed {
++                    position,
++                    falloff: stroke.falloff,
++                    magnitude: sample.magnitude,
++                },
++                _ => unreachable!("apply_resolved returned an unknown terrain audio tag"),
+             });
+         }
+         recalculate.write(RecalculateHeightMapCmd);
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/draw_terrain_stroke.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/draw_terrain_stroke.rs
+@@ -1,16 +1,9 @@
+-//! B 0x140a03ba0 coalesces all unread stroke changes into one notification.
+-//!
+-//! fresh 反编译（terrain-systems-0x140a03ba0）：
+-//! - 有未读 `EvTerrainStrokeChanged` 事件才处理；
+-//! - 写 8 B unit 事件（`grow_one<EventInstance<WriteSettingsFileCmd>>`，in_R8）——
+-//!   crate 以 [`RecalculateHeightMapCmd`]（8 B unit）承载；
+-//! - `LOCK INC` readback.pending（`on_terrain_modified`）；
+-//! - **另写一条 StairsPlacementBucket 记录 tag=0**（`grow_one<indexmap::Bucket<(DecoratorId,
+-//!   DecoratorId),AlignKind>>`，0x28B，仅写 `{count u64@+0, tag u32@+8=0}`），in_R9——
+-//!   早期 Rust 写 `PlayTerrainSound::StrokeChanged` 系**编造**（原版无音频载荷事件），已删。
++//! B0x140a03ba0 coalesces unread stroke changes, requests recalculation,
++//! increments scheduled readback and publishes PlayTerrainSound tag0. The
++//! original SystemParam identity supersedes folded grow_one's stairs alias.
+ use super::{
+-    delayed_terrain_changed_msg::ScheduledTerrainReadback, RecalculateHeightMapCmd,
+-    ui_edit_terrain::{StairsPlacementBucket, StairsPlacementEntry},
++    PlayTerrainSound, RecalculateHeightMapCmd,
++    delayed_terrain_changed_msg::ScheduledTerrainReadback,
+ };
+ use crate::resources::terrain_editing::StrokeId;
+ use bevy_ecs::prelude::*;
+@@ -23,15 +16,11 @@
+     mut changed: EventReader<EvTerrainStrokeChanged>,
+     readback: Res<ScheduledTerrainReadback>,
+     mut recalculate: EventWriter<RecalculateHeightMapCmd>,
+-    mut stairs: ResMut<StairsPlacementBucket>,
++    mut sounds: EventWriter<PlayTerrainSound>,
+ ) {
+     if changed.read().last().is_some() {
+-        // 原版顺序（in_R8 8B 事件 → readback LOCK INC → in_R9 stairs 桶 tag=0）。
+         recalculate.write(RecalculateHeightMapCmd);
+         readback.on_terrain_modified();
+-        stairs.entries.push(StairsPlacementEntry {
+-            tag: 0,
+-            ..Default::default()
+-        });
++        sounds.write(PlayTerrainSound::StrokeChanged);
+     }
+ }

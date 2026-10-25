@@ -1,0 +1,325 @@
+{
+  "schema_version": 1,
+  "status": "batch_03_started",
+  "identity": {
+    "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "functions_sha256": "3f2a3653c68d1d8d030eaffc0c3ca4d2887342ac92670e5242fd108bfa2189da",
+    "calls_sha256": "35558cee3398e78837f9296552a9dae51d4b3f9c40cb7c2be6d5c9e96a6143f4",
+    "batch_02_integration_sha256": "bbee39f940847bac720988b7089ea03ea712c11aac983ec03d0c50dcd8c1e66c"
+  },
+  "packages": {
+    "R5A-barrier-record": {
+      "entry_count": 2,
+      "entries": [
+        {
+          "va": "0x1402c1d40",
+          "code_size": 4674,
+          "names": [
+            "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::record_batch::hedb91080fd331410"
+          ],
+          "work_package": "D-graph-compiler",
+          "existing_decompilation": null,
+          "indirect_call_sites": 0
+        },
+        {
+          "va": "0x1402c3d00",
+          "code_size": 1403,
+          "names": [
+            "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::add_pre_pass_barriers::hcb31af73759a11ec"
+          ],
+          "work_package": "D-graph-compiler",
+          "existing_decompilation": "evidence/render-architecture/0x1402c3d00.c",
+          "indirect_call_sites": 0
+        }
+      ]
+    },
+    "R5B-sequence-timeline": {
+      "entry_count": 5,
+      "entries": [
+        {
+          "va": "0x140becfd0",
+          "code_size": 122,
+          "names": [
+            "rhapsody::raw::command_buffer::CommandBufferSeqTracker::track",
+            "rhapsody::raw::command_buffer::CommandBufferSeqTracker::track::h27f3d9f4c3c3e000"
+          ],
+          "work_package": "C-gpu-lifecycle",
+          "existing_decompilation": null,
+          "indirect_call_sites": 0
+        },
+        {
+          "va": "0x140bf0cc0",
+          "code_size": 6290,
+          "names": [
+            "rhapsody::raw::device::Queue::reclaim_command_buffer_resources",
+            "rhapsody::raw::device::Queue::reclaim_command_buffer_resources::h0f1d6c7b15535ea7"
+          ],
+          "work_package": "B-device-resource-creation",
+          "existing_decompilation": null,
+          "indirect_call_sites": 0
+        },
+        {
+          "va": "0x140c04e20",
+          "code_size": 11047,
+          "names": [
+            "rhapsody::raw::device::GraphicsDevice::queue_submit<alloc::vec::Vec<rhapsody::raw::submit::SubmitInfo,alloc::alloc::Global>,rhapsody::rg::executor::impl$7::submit_pending_cbs::closure_env$0>",
+            "rhapsody::raw::submit::_$LT$impl$u20$rhapsody..raw..device..GraphicsDevice$GT$::queue_submit::h8a0ca96aebdf4411"
+          ],
+          "work_package": "C-gpu-lifecycle",
+          "existing_decompilation": null,
+          "indirect_call_sites": 1
+        },
+        {
+          "va": "0x1418c3300",
+          "code_size": 989,
+          "names": [
+            "rhapsody::raw::submit::SubmissionEngine::update_queue_pending_submissions",
+            "rhapsody::raw::submit::SubmissionEngine::update_queue_pending_submissions::h0032b8c43b137faa"
+          ],
+          "work_package": "C-gpu-lifecycle",
+          "existing_decompilation": null,
+          "indirect_call_sites": 0
+        },
+        {
+          "va": "0x1418c7ae0",
+          "code_size": 1959,
+          "names": [
+            "rhapsody::raw::disposal::SequentialDisposal::dispose_in_order::h8d812a8be22c87fd",
+            "rhapsody::raw::disposal::SequentialDisposal::dispose_in_order<rhapsody::raw::device::impl$1::reclaim_command_buffer_resources::closure_env$0>"
+          ],
+          "work_package": "C-gpu-lifecycle",
+          "existing_decompilation": null,
+          "indirect_call_sites": 0
+        }
+      ]
+    },
+    "R5C-temporal-state": {
+      "entry_count": 6,
+      "entries": [
+        {
+          "va": "0x1404f7ca0",
+          "code_size": 563,
+          "names": [
+            "rhapsody::rg::temporal::TemporalRenderGraphRecorder$LT$UserData$GT$::export_temporal::h949acac9fc332e8a"
+          ],
+          "work_package": "E-graph-executor",
+          "existing_decompilation": null,
+          "indirect_call_sites": 0
+        },
+        {
+          "va": "0x14096c310",
+          "code_size": 1396,
+          "names": [
+            "rhapsody::rg::temporal::impl$12::get_or_create_temporal<country_core::render::pass_builder::pass_resources::PassResources,ref$<str$> >"
+          ],
+          "work_package": "E-graph-executor",
+          "existing_decompilation": null,
+          "indirect_call_sites": 0
+        },
+        {
+          "va": "0x14096c890",
+          "code_size": 1532,
+          "names": [
+            "rhapsody::rg::temporal::impl$11::get_or_create_temporal<country_core::render::pass_builder::pass_resources::PassResources,ref$<str$> >"
+          ],
+          "work_package": "E-graph-executor",
+          "existing_decompilation": null,
+          "indirect_call_sites": 0
+        },
+        {
+          "va": "0x14096ce90",
+          "code_size": 1532,
+          "names": [
+            "rhapsody::rg::temporal::impl$11::get_or_create_temporal<country_core::render::pass_builder::pass_resources::PassResources,alloc::string::String>"
+          ],
+          "work_package": "E-graph-executor",
+          "existing_decompilation": null,
+          "indirect_call_sites": 0
+        },
+        {
+          "va": "0x14096d490",
+          "code_size": 610,
+          "names": [
+            "rhapsody::rg::temporal::impl$20::get_or_create_temporal_pair<country_core::render::pass_builder::pass_resources::PassResources,ref$<str$> >"
+          ],
+          "work_package": "E-graph-executor",
+          "existing_decompilation": null,
+          "indirect_call_sites": 0
+        },
+        {
+          "va": "0x140beced0",
+          "code_size": 246,
+          "names": [
+            "rhapsody::rg::temporal::TemporalRenderGraphState::get_and_flip_parity",
+            "rhapsody::rg::temporal::TemporalRenderGraphState::get_and_flip_parity::h5641993fc02b9f67"
+          ],
+          "work_package": "E-graph-executor",
+          "existing_decompilation": null,
+          "indirect_call_sites": 0
+        }
+      ]
+    }
+  },
+  "selected_internal_edges": [
+    {
+      "source": "0x1402c1d40",
+      "source_names": [
+        "rhapsody::rg::compiled::CompiledRenderGraph$LT$UserData$GT$::record_batch::hedb91080fd331410"
+      ],
+      "target": "0x140becfd0",
+      "target_names": [
+        "rhapsody::raw::command_buffer::CommandBufferSeqTracker::track",
+        "rhapsody::raw::command_buffer::CommandBufferSeqTracker::track::h27f3d9f4c3c3e000"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x1402c1eff",
+        "0x1402c1f7f",
+        "0x1402c2883",
+        "0x1402c28fd"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x14096d490",
+      "source_names": [
+        "rhapsody::rg::temporal::impl$20::get_or_create_temporal_pair<country_core::render::pass_builder::pass_resources::PassResources,ref$<str$> >"
+      ],
+      "target": "0x14096ce90",
+      "target_names": [
+        "rhapsody::rg::temporal::impl$11::get_or_create_temporal<country_core::render::pass_builder::pass_resources::PassResources,alloc::string::String>"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x14096d53e",
+        "0x14096d5e2"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x14096d490",
+      "source_names": [
+        "rhapsody::rg::temporal::impl$20::get_or_create_temporal_pair<country_core::render::pass_builder::pass_resources::PassResources,ref$<str$> >"
+      ],
+      "target": "0x140beced0",
+      "target_names": [
+        "rhapsody::rg::temporal::TemporalRenderGraphState::get_and_flip_parity",
+        "rhapsody::rg::temporal::TemporalRenderGraphState::get_and_flip_parity::h5641993fc02b9f67"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x14096d638"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140bf0cc0",
+      "source_names": [
+        "rhapsody::raw::device::Queue::reclaim_command_buffer_resources",
+        "rhapsody::raw::device::Queue::reclaim_command_buffer_resources::h0f1d6c7b15535ea7"
+      ],
+      "target": "0x1418c7ae0",
+      "target_names": [
+        "rhapsody::raw::disposal::SequentialDisposal::dispose_in_order::h8d812a8be22c87fd",
+        "rhapsody::raw::disposal::SequentialDisposal::dispose_in_order<rhapsody::raw::device::impl$1::reclaim_command_buffer_resources::closure_env$0>"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140bf17d2"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140c04e20",
+      "source_names": [
+        "rhapsody::raw::device::GraphicsDevice::queue_submit<alloc::vec::Vec<rhapsody::raw::submit::SubmitInfo,alloc::alloc::Global>,rhapsody::rg::executor::impl$7::submit_pending_cbs::closure_env$0>",
+        "rhapsody::raw::submit::_$LT$impl$u20$rhapsody..raw..device..GraphicsDevice$GT$::queue_submit::h8a0ca96aebdf4411"
+      ],
+      "target": "0x140bf0cc0",
+      "target_names": [
+        "rhapsody::raw::device::Queue::reclaim_command_buffer_resources",
+        "rhapsody::raw::device::Queue::reclaim_command_buffer_resources::h0f1d6c7b15535ea7"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140c06322"
+      ],
+      "kinds": [
+        "call"
+      ]
+    },
+    {
+      "source": "0x140c04e20",
+      "source_names": [
+        "rhapsody::raw::device::GraphicsDevice::queue_submit<alloc::vec::Vec<rhapsody::raw::submit::SubmitInfo,alloc::alloc::Global>,rhapsody::rg::executor::impl$7::submit_pending_cbs::closure_env$0>",
+        "rhapsody::raw::submit::_$LT$impl$u20$rhapsody..raw..device..GraphicsDevice$GT$::queue_submit::h8a0ca96aebdf4411"
+      ],
+      "target": "0x1418c3300",
+      "target_names": [
+        "rhapsody::raw::submit::SubmissionEngine::update_queue_pending_submissions",
+        "rhapsody::raw::submit::SubmissionEngine::update_queue_pending_submissions::h0032b8c43b137faa"
+      ],
+      "target_is_rhapsody": true,
+      "sites": [
+        "0x140c0561e"
+      ],
+      "kinds": [
+        "call"
+      ]
+    }
+  ],
+  "interfaces": [
+    {
+      "from": "R2-graph-compiler",
+      "to": "R5A-barrier-record",
+      "contract": "compiled resource transitions and batches become deterministic backend events"
+    },
+    {
+      "from": "R5A-barrier-record",
+      "to": "R5B-sequence-timeline",
+      "contract": "recorded command buffers expose command-sequence ownership before queue submission"
+    },
+    {
+      "from": "R5B-sequence-timeline",
+      "to": "R3-gpu-lifecycle",
+      "contract": "command-sequence buckets map to queue completion without merging numbering domains"
+    },
+    {
+      "from": "R5C-temporal-state",
+      "to": "R2-graph-compiler",
+      "contract": "typed temporal payload and parity state feed the next graph compilation"
+    }
+  ],
+  "acceptance": {
+    "R5A-barrier-record": [
+      "original-entry instruction oracle or bounded structural oracle covers transition branches",
+      "backend-event ordering agrees with the batch-02 compiled snapshot contract",
+      "Vulkan calls remain explicit unexecuted backend events unless runtime evidence exists"
+    ],
+    "R5B-sequence-timeline": [
+      "producers and consumers of both numbering domains are identified",
+      "same-resource ownership is traced across submit and reclaim boundaries",
+      "unknown cross-domain mapping is retained as unknown rather than equated"
+    ],
+    "R5C-temporal-state": [
+      "texture and buffer single/pair payload variants are represented",
+      "parity, export, replacement, reset and drop are separate state transitions",
+      "multi-frame tests cover missing, hit, replace and reset paths"
+    ]
+  },
+  "shared_limits": [
+    "PDB void signatures are placeholders",
+    "static calls do not prove runtime execution",
+    "public dependency implementations are reused, not reconstructed",
+    "candidate tests do not establish full Vulkan or GPU equivalence",
+    "observed, inferred and unknown claims remain separately labelled"
+  ]
+}

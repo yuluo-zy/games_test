@@ -1,0 +1,63 @@
+
+#[derive(Clone, Debug)]
+pub struct PublicWallState {
+    pub material_stats: super::material_stats::MaterialStats,
+    /// Original +110/+114 readiness and scalar. Distinct from optional profile
+    /// geometry: a correctly initialized no-roof wall still owns a base value.
+    gable_maximum_y: Option<f32>,
+    pub authority: WallState,
+    pub geometry: CollectedWallPublication,
+    pub regular_heights: Option<RegularWallHeightCache>,
+    pub prepared_path: Option<PreparedWallPath>,
+    pub freeform_heights: Option<FreeformWallHeightCache>,
+    /// Original independent third array +f0/+f8/+100, initialized with the
+    /// prepared segment-owner count (+d0), not the source point count.
+    pub segment_heights: Vec<f32>,
+    pub gable_heights: Option<GableArchHeights>,
+    /// Derived at publication, from the actual bulldoze animation queue.
+    being_bulldozed: bool,
+}
+
+impl PublicWallState {
+    pub fn is_being_bulldozed(&self) -> bool {
+        self.being_bulldozed
+    }
+
+    /// The publication owner captures this value when rebuilding the row.
+    /// UI consumers must not substitute the later queue's current membership.
+    pub(crate) fn set_being_bulldozed(&mut self, value: bool) {
+        self.being_bulldozed = value;
+    }
+
+    pub fn collect(
+        authority: &WallState,
+        terrain: &TerrainHeightGrid512,
+    ) -> Result<Self, CollectionError> {
+        let geometry = collect_raw_wall_publication(authority.source(), terrain)?;
+        let regular_heights = regular_wall_height_cache(
+            &geometry.outline,
+            &authority.source().shape,
+            geometry.metrics.constrained_extra,
+        )
+        .ok();
+        Ok(Self {
+            material_stats: super::material_stats::MaterialStats::default(),
+            gable_maximum_y: None,
+            authority: authority.clone(),
+            geometry,
+            regular_heights,
+            prepared_path: None,
+            freeform_heights: None,
+            segment_heights: Vec::new(),
+            gable_heights: None,
+            being_bulldozed: false,
+        })
+    }
+
+    /// The source Curve2 is the field tested by PublicWalls::get, not the
+    /// terrain-mapped Curve3 nor the later path-intersection curve.
+    pub fn simplified_curve_2d(&self) -> &crate::resources::roofs::geometry::surface::Curve2 {
+        &self.authority.source().curve
+    }
+
+    pub fn assert_valid(&self) {

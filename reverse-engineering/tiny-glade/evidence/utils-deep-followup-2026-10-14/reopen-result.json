@@ -1,0 +1,68 @@
+{
+  "backend": "ghidra",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "utils-gap-20261014",
+  "pid": 12292,
+  "project": "D:\\game\\tools\\reverse-runtime\\utils-gap-20261014\\project\\TinyGlade.gpr",
+  "backend_reused": false,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": true,
+  "results": [
+    {
+      "tool": "get_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x140809ad0",
+        "fields": "signature,decompiled_code",
+        "include_call_context": false
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\utils-deep-followup-2026-10-14\\reopen-result.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\utils-deep-followup-2026-10-14\\\\\\\\reopen-result.artifacts\\\\\\\\000.stdout.txt\\\", \\\"bytes\\\": 2747, \\\"sha256\\\": \\\"c9e9c5d0a423e02f1b939f9539fb1db834ab6ae8545bff2f2cd21c1c901a1c8e\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":871}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.875,
+      "stdout": "{\"functions\": [{\"address\": \"0x140809ad0\", \"name\": \"dense_segment_B\", \"signature\": \"void * dense_segment_B(void * out, void * spline, ulonglong index)\", \"signature_source\": \"USER_DEFINED\", \"body_bytes\": 400, \"prototype_is_not_verified_Rust_ABI\": true, \"decompiler_completed\": true, \"decompiled_code\": \"\\r\\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\\r\\n/* WARNING: Unknown calling convention -- yet parameter storage is locked */\\r\\n\\r\\nvoid * dense_segment_B(void *out,void *spline,ulonglong index)\\r\\n\\r\\n{\\r\\n  longlong lVar1;\\r\\n  longlong lVar2;\\r\\n  code *pcVar3;\\r\\n  float *pfVar4;\\r\\n  ulonglong uVar5;\\r\\n  void *pvVar6;\\r\\n  ulonglong uVar7;\\r\\n  longlong lVar8;\\r\\n  float fVar9;\\r\\n  undefined4 uVar10;\\r\\n  uint uVar11;\\r\\n  undefined4 uVar12;\\r\\n  float fVar13;\\r\\n  float *pfStack_90;\\r\\n  longlong lStack_88;\\r\\n  undefined8 uStack_80;\\r\\n  ulonglong uStack_78;\\r\\n  undefined8 uStack_70;\\r\\n  undefined8 uStack_68;\\r\\n  undefined8 uStack_60;\\r\\n  float afStack_54 [15];\\r\\n  \\r\\n  afStack_54[1] = -NAN;\\r\\n  afStack_54[2] = -NAN;\\r\\n  uVar5 = *(ulonglong *)((longlong)spline + 8);\\r\\n  if (index < uVar5) {\\r\\n    lVar2 = *(longlong *)spline;\\r\\n    lVar8 = index * 0x2c;\\r\\n    lVar1 = lVar2 + lVar8;\\r\\n    pfVar4 = (float *)(lVar2 + 0x2c + lVar8);\\r\\n    if (uVar5 <= index + 1) {\\r\\n      pfVar4 = (float *)((longlong)spline + 0x14);\\r\\n    }\\r\\n    fVar13 = *pfVar4 - *(float *)(lVar2 + lVar8);\\r\\n    fVar9 = (float)func_0x000142923e60(fVar13 + fVar13);\\r\\n    uVar5 = 0;\\r\\n    if (0.0 <= fVar9) {\\r\\n      uVar5 = (longlong)(fVar9 - _DAT_14295a0dc) & (longlong)fVar9 >> 0x3f | (longlong)fVar9;\\r\\n    }\\r\\n    uVar7 = 0xffffffffffffffff;\\r\\n    if (fVar9 <= _DAT_14295a0e0) {\\r\\n      uVar7 = uVar5;\\r\\n    }\\r\\n    uStack_78 = 2;\\r\\n    if (2 < uVar7) {\\r\\n      uStack_78 = uVar7;\\r\\n    }\\r\\n    afStack_54[0] = fVar13 / (float)(uStack_78 - 1);\\r\\n    uStack_80 = 0;\\r\\n    pfStack_90 = afStack_54;\\r\\n    lStack_88 = lVar1;\\r\\n    FUN_141261550(&uStack_70,&pfStack_90,&UNK_142c296c0);\\r\\n    uVar12 = 0;\\r\\n    uVar10 = func_0x000140c92660(lVar1);\\r\\n    uVar11 = func_0x000140c92660(lVar1);\\r\\n    *(undefined8 *)((longlong)out + 0x10) = uStack_60;\\r\\n    *(undefined8 *)out = uStack_70;\\r\\n    *(undefined8 *)((longlong)out + 8) = uStack_68;\\r\\n    *(undefined4 *)((longlong)out + 0x18) = uVar10;\\r\\n    *(undefined4 *)((longlong)out + 0x1c) = uVar12;\\r\\n    *(ulonglong *)((longlong)out + 0x20) =\\r\\n         CONCAT44((uint)fVar13 ^ _UNK_1429258f4,uVar11 ^ _DAT_1429258f0);\\r\\n    return out;\\r\\n  }\\r\\n  FUN_1428d9518(index,uVar5,&UNK_142a8e0b0);\\r\\n  pcVar3 = (code *)swi(3);\\r\\n  pvVar6 = (void *)(*pcVar3)();\\r\\n  return pvVar6;\\r\\n}\\r\\n\\r\\n\", \"decompiler_error\": \"\"}]}\n",
+      "passed": true
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 7.094,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":176}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "save_result": {
+    "nonce": "9096e0b1a53098b1c8ecf6106c92f4a5",
+    "success": true,
+    "was_changed": false,
+    "changed_after_save": false,
+    "path": "/tiny-glade.exe",
+    "saved_locally": true
+  }
+}

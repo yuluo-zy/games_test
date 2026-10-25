@@ -1,0 +1,487 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-10-12T10:34:25.593Z",
+  "completed_at": "2026-10-12T10:34:54.249Z",
+  "server": "re_mcp_ghidra",
+  "lane_count": 2,
+  "lanes": [
+    {
+      "database": "newdevice_l1",
+      "report": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\producer-closure\\n1-device\\newdevice_l1.report.json",
+      "ok": false,
+      "cleanup_ok": true,
+      "error": "Error: batch operations failed: decompile_function, decompile_function, decompile_function, decompile_function, decompile_function",
+      "steps": 8
+    },
+    {
+      "database": "newdevice_l2",
+      "report": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\producer-closure\\n1-device\\newdevice_l2.report.json",
+      "ok": false,
+      "cleanup_ok": true,
+      "error": "Error: batch operations failed: decompile_function, decompile_function, decompile_function, decompile_function, decompile_function",
+      "steps": 8
+    }
+  ],
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "identity": {
+    "target": {
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+      "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+    },
+    "provider": {
+      "id": "ghidra",
+      "version": "12.1.4"
+    },
+    "launch_sha256": "c82cc6dd6f528a9f07990202b685f0802e0833733774283e9a497bc4cef41aad",
+    "inputs": []
+  },
+  "cache_policy": {
+    "enabled": false,
+    "reason": "Database analysis cache disabled: both provider_manifest and database_snapshot files are required.",
+    "provider_version_provenance": "job-declared; actual server self-report is recorded separately upon connection"
+  },
+  "evidence_limits": [
+    "Static tool outputs do not prove runtime execution.",
+    "Xref completeness is unknown with auto-analysis disabled. Empty or DATA-only references cannot establish whole-program absence.",
+    "Successful cache reuse preserves the original evidence coverage; it does not expand it."
+  ],
+  "results": [
+    {
+      "index": 0,
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "keep_open": true,
+        "database_id": "newdevice_l1"
+      },
+      "cache_key": "03f80c26f76e440567cb38aa9b72d4e685206e4b86f61c43b4c34e6be4ea42e6",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:34:25.741Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"newdevice_l1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "newdevice_l1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:34:36.717Z",
+      "ok": true,
+      "result_sha256": "3790088cace00ba60da56aad5c23a3425d42cd2d68de710777fbf8b796b20bf2",
+      "lane": "newdevice_l1",
+      "database": "newdevice_l1"
+    },
+    {
+      "index": 1,
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "newdevice_l1"
+      },
+      "cache_key": "244adffc63df9685f03971d93af65ed56c1323ec9557f289006a2e9cc37ace49",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:34:36.718Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"newdevice_l1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "newdevice_l1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:34:49.922Z",
+      "ok": true,
+      "result_sha256": "892fd216d38159b07ac93d44db3478df807582672a536602bf2a0bd4fd0473e8",
+      "lane": "newdevice_l1",
+      "database": "newdevice_l1"
+    },
+    {
+      "index": 2,
+      "position": 0,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bf0b90"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:34:49.923Z",
+      "completed_at": "2026-10-12T10:34:50.428Z",
+      "source": "actual_mcp_call",
+      "cache_key": "b1c88593ec3528c1bf9088128c22b2e86ce71078c7b3f6d6a2366e1e6bd0d571",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bf0b90",
+        "address": "0x140BF0B90",
+        "decompiled_code": "\r\nvoid FUN_140bf0b90(ulonglong *param_1,longlong param_2)\r\n\r\n{\r\n  ulonglong uVar1;\r\n  code *pcVar2;\r\n  ulonglong uVar3;\r\n  undefined4 uVar4;\r\n  int iVar5;\r\n  ulonglong uVar6;\r\n  undefined8 uVar7;\r\n  ulonglong uVar8;\r\n  ulonglong uVar9;\r\n  int iStack_20;\r\n  undefined4 uStack_1c;\r\n  undefined1 uStack_18;\r\n  undefined1 uStack_17;\r\n  \r\n  iVar5 = (**(code **)(param_2 + 0x478))(*(undefined8 *)(param_2 + 0x5c8),param_1[0x11],&iStack_20);\r\n  uVar4 = uStack_1c;\r\n  if (iVar5 != 0) {\r\n    iStack_20 = iVar5;\r\n    FUN_1428d9760(&UNK_142b15188,0x2b,&iStack_20,&UNK_142b15128,&UNK_142b15f40);\r\n    pcVar2 = (code *)swi(3);\r\n    (*pcVar2)();\r\n    return;\r\n  }\r\n  uVar3 = CONCAT44(uStack_1c,iStack_20);\r\n  if ((param_1[0xd] & 1) == 0) {\r\n    uStack_18 = 1;\r\n    uVar7 = 9;\r\n  }\r\n  else {\r\n    iStack_20._1_3_ = (undefined3)iStack_20;\r\n    iStack_20 = CONCAT31(iStack_20._1_3_,*(undefined1 *)((longlong)param_1 + 0x6c));\r\n    uStack_1c = (undefined4)(uVar3 >> 0x18);\r\n    uStack_18 = (undefined1)((uint)uVar4 >> 0x18);\r\n    uStack_17 = 2;\r\n    uVar7 = 10;\r\n  }\r\n  FUN_1418c1380(0x143634e40,&iStack_20,uVar7);\r\n  param_1[0x10] = uVar3;\r\n  uVar6 = param_1[3];\r\n  if (uVar6 != 0) {\r\n    uVar1 = *param_1;\r\n    uVar8 = param_1[2];\r\n    do {\r\n      uVar6 = uVar6 - 1;\r\n      if (uVar8 < uVar1) {\r\n        uVar9 = *(ulonglong *)(param_1[1] + uVar8 * 8);\r\n      }\r\n      else {\r\n        uVar9 = *(ulonglong *)(param_1[1] + (uVar8 - uVar1) * 8);\r\n      }\r\n      if (uVar3 < uVar9) {\r\n        return;\r\n      }\r\n      uVar9 = uVar1;\r\n      if (uVar8 + 1 < uVar1) {\r\n        uVar9 = 0;\r\n      }\r\n      uVar8 = (uVar8 + 1) - uVar9;\r\n      param_1[2] = uVar8;\r\n      param_1[3] = uVar6;\r\n    } while (uVar6 != 0);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+        "database": "newdevice_l1"
+      },
+      "result_sha256": "322ee2ed4706e67d7b8f14c86670a0236e9051e56d0438acba2429f1bb67c622",
+      "ok": true,
+      "lane": "newdevice_l1",
+      "database": "newdevice_l1"
+    },
+    {
+      "index": 2,
+      "position": 1,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bf84c0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:34:49.923Z",
+      "completed_at": "2026-10-12T10:34:50.428Z",
+      "source": "actual_mcp_call",
+      "cache_key": "b1c88593ec3528c1bf9088128c22b2e86ce71078c7b3f6d6a2366e1e6bd0d571",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BF84C0\",\"error_type\":\"NotFound\",\"database\":\"newdevice_l1\"}",
+      "ok": false,
+      "lane": "newdevice_l1",
+      "database": "newdevice_l1"
+    },
+    {
+      "index": 2,
+      "position": 2,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bf8950"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:34:49.923Z",
+      "completed_at": "2026-10-12T10:34:50.428Z",
+      "source": "actual_mcp_call",
+      "cache_key": "b1c88593ec3528c1bf9088128c22b2e86ce71078c7b3f6d6a2366e1e6bd0d571",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BF8950\",\"error_type\":\"NotFound\",\"database\":\"newdevice_l1\"}",
+      "ok": false,
+      "lane": "newdevice_l1",
+      "database": "newdevice_l1"
+    },
+    {
+      "index": 2,
+      "position": 3,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bf8960"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:34:49.923Z",
+      "completed_at": "2026-10-12T10:34:50.428Z",
+      "source": "actual_mcp_call",
+      "cache_key": "b1c88593ec3528c1bf9088128c22b2e86ce71078c7b3f6d6a2366e1e6bd0d571",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BF8960\",\"error_type\":\"NotFound\",\"database\":\"newdevice_l1\"}",
+      "ok": false,
+      "lane": "newdevice_l1",
+      "database": "newdevice_l1"
+    },
+    {
+      "index": 2,
+      "position": 4,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bf8fa0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:34:49.923Z",
+      "completed_at": "2026-10-12T10:34:50.428Z",
+      "source": "actual_mcp_call",
+      "cache_key": "b1c88593ec3528c1bf9088128c22b2e86ce71078c7b3f6d6a2366e1e6bd0d571",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BF8FA0\",\"error_type\":\"NotFound\",\"database\":\"newdevice_l1\"}",
+      "ok": false,
+      "lane": "newdevice_l1",
+      "database": "newdevice_l1"
+    },
+    {
+      "index": 2,
+      "position": 5,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bf8f80"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:34:49.923Z",
+      "completed_at": "2026-10-12T10:34:50.428Z",
+      "source": "actual_mcp_call",
+      "cache_key": "b1c88593ec3528c1bf9088128c22b2e86ce71078c7b3f6d6a2366e1e6bd0d571",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BF8F80\",\"error_type\":\"NotFound\",\"database\":\"newdevice_l1\"}",
+      "ok": false,
+      "lane": "newdevice_l1",
+      "database": "newdevice_l1"
+    },
+    {
+      "index": 0,
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "keep_open": true,
+        "database_id": "newdevice_l2"
+      },
+      "cache_key": "d9c0065d5335f7d7293d7dabd65135d54b7b9c4a384d47586c8e5ec1d1d4133e",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:34:25.932Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"newdevice_l2\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "newdevice_l2",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:34:40.495Z",
+      "ok": true,
+      "result_sha256": "22e369342f9e3008edcb7cfaee58e886e5fd454dddc2cb1be2dd42e4e488cf7a",
+      "lane": "newdevice_l2",
+      "database": "newdevice_l2"
+    },
+    {
+      "index": 1,
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "newdevice_l2"
+      },
+      "cache_key": "6498545c248e629b1b2f04226f156c60ab7fbee9bf0e45f516d6b0c918d5502e",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:34:40.497Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"newdevice_l2\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "newdevice_l2",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:34:52.994Z",
+      "ok": true,
+      "result_sha256": "29d6721027cf5374f884a2c13103fc05c2948f30f6eab97459235b1a7680c3df",
+      "lane": "newdevice_l2",
+      "database": "newdevice_l2"
+    },
+    {
+      "index": 2,
+      "position": 0,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bf0b90"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:34:52.995Z",
+      "completed_at": "2026-10-12T10:34:53.554Z",
+      "source": "actual_mcp_call",
+      "cache_key": "91d6257375d42b12c03aabdbe9965bfcef036b8556af1180b9cfe21456dbd1f3",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bf0b90",
+        "address": "0x140BF0B90",
+        "decompiled_code": "\r\nvoid FUN_140bf0b90(ulonglong *param_1,longlong param_2)\r\n\r\n{\r\n  ulonglong uVar1;\r\n  code *pcVar2;\r\n  ulonglong uVar3;\r\n  undefined4 uVar4;\r\n  int iVar5;\r\n  ulonglong uVar6;\r\n  undefined8 uVar7;\r\n  ulonglong uVar8;\r\n  ulonglong uVar9;\r\n  int iStack_20;\r\n  undefined4 uStack_1c;\r\n  undefined1 uStack_18;\r\n  undefined1 uStack_17;\r\n  \r\n  iVar5 = (**(code **)(param_2 + 0x478))(*(undefined8 *)(param_2 + 0x5c8),param_1[0x11],&iStack_20);\r\n  uVar4 = uStack_1c;\r\n  if (iVar5 != 0) {\r\n    iStack_20 = iVar5;\r\n    FUN_1428d9760(&UNK_142b15188,0x2b,&iStack_20,&UNK_142b15128,&UNK_142b15f40);\r\n    pcVar2 = (code *)swi(3);\r\n    (*pcVar2)();\r\n    return;\r\n  }\r\n  uVar3 = CONCAT44(uStack_1c,iStack_20);\r\n  if ((param_1[0xd] & 1) == 0) {\r\n    uStack_18 = 1;\r\n    uVar7 = 9;\r\n  }\r\n  else {\r\n    iStack_20._1_3_ = (undefined3)iStack_20;\r\n    iStack_20 = CONCAT31(iStack_20._1_3_,*(undefined1 *)((longlong)param_1 + 0x6c));\r\n    uStack_1c = (undefined4)(uVar3 >> 0x18);\r\n    uStack_18 = (undefined1)((uint)uVar4 >> 0x18);\r\n    uStack_17 = 2;\r\n    uVar7 = 10;\r\n  }\r\n  FUN_1418c1380(0x143634e40,&iStack_20,uVar7);\r\n  param_1[0x10] = uVar3;\r\n  uVar6 = param_1[3];\r\n  if (uVar6 != 0) {\r\n    uVar1 = *param_1;\r\n    uVar8 = param_1[2];\r\n    do {\r\n      uVar6 = uVar6 - 1;\r\n      if (uVar8 < uVar1) {\r\n        uVar9 = *(ulonglong *)(param_1[1] + uVar8 * 8);\r\n      }\r\n      else {\r\n        uVar9 = *(ulonglong *)(param_1[1] + (uVar8 - uVar1) * 8);\r\n      }\r\n      if (uVar3 < uVar9) {\r\n        return;\r\n      }\r\n      uVar9 = uVar1;\r\n      if (uVar8 + 1 < uVar1) {\r\n        uVar9 = 0;\r\n      }\r\n      uVar8 = (uVar8 + 1) - uVar9;\r\n      param_1[2] = uVar8;\r\n      param_1[3] = uVar6;\r\n    } while (uVar6 != 0);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+        "database": "newdevice_l2"
+      },
+      "result_sha256": "5411bd6da0168f8fbc4a96a47811d1e915f211ff64a8a7f56405292a4b85022e",
+      "ok": true,
+      "lane": "newdevice_l2",
+      "database": "newdevice_l2"
+    },
+    {
+      "index": 2,
+      "position": 1,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bf84c0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:34:52.995Z",
+      "completed_at": "2026-10-12T10:34:53.554Z",
+      "source": "actual_mcp_call",
+      "cache_key": "91d6257375d42b12c03aabdbe9965bfcef036b8556af1180b9cfe21456dbd1f3",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BF84C0\",\"error_type\":\"NotFound\",\"database\":\"newdevice_l2\"}",
+      "ok": false,
+      "lane": "newdevice_l2",
+      "database": "newdevice_l2"
+    },
+    {
+      "index": 2,
+      "position": 2,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bf8950"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:34:52.995Z",
+      "completed_at": "2026-10-12T10:34:53.554Z",
+      "source": "actual_mcp_call",
+      "cache_key": "91d6257375d42b12c03aabdbe9965bfcef036b8556af1180b9cfe21456dbd1f3",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BF8950\",\"error_type\":\"NotFound\",\"database\":\"newdevice_l2\"}",
+      "ok": false,
+      "lane": "newdevice_l2",
+      "database": "newdevice_l2"
+    },
+    {
+      "index": 2,
+      "position": 3,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bf8960"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:34:52.995Z",
+      "completed_at": "2026-10-12T10:34:53.554Z",
+      "source": "actual_mcp_call",
+      "cache_key": "91d6257375d42b12c03aabdbe9965bfcef036b8556af1180b9cfe21456dbd1f3",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BF8960\",\"error_type\":\"NotFound\",\"database\":\"newdevice_l2\"}",
+      "ok": false,
+      "lane": "newdevice_l2",
+      "database": "newdevice_l2"
+    },
+    {
+      "index": 2,
+      "position": 4,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bf8fa0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:34:52.995Z",
+      "completed_at": "2026-10-12T10:34:53.554Z",
+      "source": "actual_mcp_call",
+      "cache_key": "91d6257375d42b12c03aabdbe9965bfcef036b8556af1180b9cfe21456dbd1f3",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BF8FA0\",\"error_type\":\"NotFound\",\"database\":\"newdevice_l2\"}",
+      "ok": false,
+      "lane": "newdevice_l2",
+      "database": "newdevice_l2"
+    },
+    {
+      "index": 2,
+      "position": 5,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bf8f80"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:34:52.995Z",
+      "completed_at": "2026-10-12T10:34:53.554Z",
+      "source": "actual_mcp_call",
+      "cache_key": "91d6257375d42b12c03aabdbe9965bfcef036b8556af1180b9cfe21456dbd1f3",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BF8F80\",\"error_type\":\"NotFound\",\"database\":\"newdevice_l2\"}",
+      "ok": false,
+      "lane": "newdevice_l2",
+      "database": "newdevice_l2"
+    }
+  ],
+  "cleanup": [
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "newdevice_l1",
+        "save": false
+      },
+      "cleanup": true,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"newdevice_l1\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "newdevice_l1"
+        },
+        "isError": false
+      },
+      "ok": true,
+      "lane": "newdevice_l1"
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "newdevice_l2",
+        "save": false
+      },
+      "cleanup": true,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"newdevice_l2\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "newdevice_l2"
+        },
+        "isError": false
+      },
+      "ok": true,
+      "lane": "newdevice_l2"
+    }
+  ],
+  "lock_events": [
+    {
+      "event": "lock_removed",
+      "reason": "per-database workers own separate Ghidra projects; a shared session lock is no longer required",
+      "lane": "newdevice_l1"
+    },
+    {
+      "event": "lock_removed",
+      "reason": "per-database workers own separate Ghidra projects; a shared session lock is no longer required",
+      "lane": "newdevice_l2"
+    }
+  ],
+  "ok": false,
+  "cleanup_ok": true
+}

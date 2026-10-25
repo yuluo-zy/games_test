@@ -1,0 +1,108 @@
+--- a/games_test/tiny-glade/crates/utils/src/geometry/rectangle.rs
++++ b/games_test/tiny-glade/crates/utils/src/geometry/rectangle.rs
+@@ -238,38 +238,53 @@
+             Vec2::new(self.axis.y, -self.axis.x)
+         }
+     }
++    /// B 0x140c9a9d0 selects the first edge whose clamped projection
++    /// strictly improves the original 1000.0 distance bound. The second
++    /// endpoint may be4; users wrap that sentinel to corner0.
++    pub fn get_closest_edge_pt_indices(self, point: Vec2) -> (usize, usize) {
++        let corners = self.as_points2();
++        let mut best = (0, 1);
++        let mut best_distance = 1000.0;
++        for i in 0..4 {
++            let a = corners[i];
++            let b = corners[(i + 1) % 4];
++            let edge = b - a;
++            let offset = point - a;
++            let denominator = (edge.y * edge.y + edge.x * edge.x).max(1e-20);
++            let t = (offset.y * edge.y + offset.x * edge.x) / denominator;
++            // MAXSS(0,t), MINSS(1,t): unordered t remains unordered.
++            let lower = if 0.0 > t { 0.0 } else { t };
++            let t = if 1.0 < lower { 1.0 } else { lower };
++            let closest = a * (1.0 - t) + b * t;
++            let d = point - closest;
++            let distance = (d.y * d.y + d.x * d.x).sqrt();
++            if best_distance > distance {
++                best = (i, i + 1);
++                best_distance = distance;
++            }
++        }
++        best
++    }
++
++    /// Original five-byte entry0x140c9acb0 tail-jumps to the same selector.
+     pub fn get_closest_edge_id(self, point: Vec2) -> usize {
+-        // B 0x140c9acb0: for each edge, clamp the point's projection onto the
+-        // segment, compare squared distances, and keep the first edge that is
+-        // strictly closest. Ties retain the earlier edge index.
+-        let hx = self.size.x * 0.5;
+-        let hy = self.size.y * 0.5;
+-        let corners = [
+-            Vec2::new(-hx, -hy),
+-            Vec2::new(-hx, hy),
+-            Vec2::new(hx, hy),
+-            Vec2::new(hx, -hy),
+-        ]
+-        .map(|p| self.local_to_world(p));
+-        let mut best = 0;
+-        let mut best_d = f32::INFINITY;
+-        for i in 0..4 {
+-            let e1 = corners[i];
+-            let e2 = corners[(i + 1) % 4];
+-            let edge = e2 - e1;
+-            let mut len2 = edge.length_squared();
+-            if len2 <= 1e-20 {
+-                len2 = 1e-20;
+-            }
+-            let t = (((point - e1).dot(edge)) / len2).clamp(0.0, 1.0);
+-            let closest = e2 * t + e1 * (1.0 - t);
+-            let d = (point - closest).length_squared();
+-            if d < best_d {
+-                best_d = d;
+-                best = i;
+-            }
+-        }
+-        best
++        self.get_closest_edge_pt_indices(point).0
++    }
++
++    /// B 0x140c9ae20 recomputes the selected segment projection and returns
++    /// its world-space point directly, without converting through perimeter u.
++    pub fn closest_point_on_perimeter(self, point: Vec2) -> Vec2 {
++        let (start, end) = self.get_closest_edge_pt_indices(point);
++        let corners = self.as_points2();
++        let a = corners[start % 4];
++        let b = corners[end % 4];
++        let edge = b - a;
++        let offset = point - a;
++        let denominator = (edge.y * edge.y + edge.x * edge.x).max(1e-20);
++        let t = (offset.y * edge.y + offset.x * edge.x) / denominator;
++        let lower = if 0.0 > t { 0.0 } else { t };
++        let t = if 1.0 < lower { 1.0 } else { lower };
++        a * (1.0 - t) + b * t
+     }
+     /// Signed distance to the rectangle perimeter, negative in the interior.
+     pub fn signed_distance_to_closest_edge(self, point: Vec2) -> f32 {
+@@ -663,3 +678,20 @@
+         );
+     }
+ }
++
++#[cfg(test)]
++mod original_forest_rectangle_tests {
++    use super::*;
++
++    #[test]
++    fn perimeter_projection_uses_native_first_edge_and_finite_search_bound() {
++        let rectangle = Rectangle2d::new_centered_axis_aligned(Vec2::splat(2.0));
++        assert_eq!(rectangle.get_closest_edge_pt_indices(Vec2::ZERO), (0, 1));
++        assert_eq!(rectangle.closest_point_on_perimeter(Vec2::ZERO), Vec2::new(-1.0, 0.0));
++        assert_eq!(rectangle.closest_point_on_perimeter(Vec2::new(5.0, 0.25)), Vec2::new(1.0, 0.25));
++        // Original starts at1000, so no faraway distance improves the pair.
++        let far = Vec2::new(0.0, 100_000.0);
++        assert_eq!(rectangle.get_closest_edge_pt_indices(far), (0, 1));
++        assert_eq!(rectangle.closest_point_on_perimeter(far), Vec2::new(-1.0, 1.0));
++    }
++}

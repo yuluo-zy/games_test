@@ -1,0 +1,137 @@
+// load_tracks @ 0x1408b6b10
+
+void __cdecl country_core::systems::audio::music::music_player::MusicPlayer::load_tracks(void)
+
+{
+  undefined8 *puVar1;
+  size_t *psVar2;
+  void *_Src;
+  longlong lVar3;
+  longlong lVar4;
+  size_t sVar5;
+  ulonglong uVar6;
+  void *extraout_RAX;
+  longlong in_RCX;
+  longlong lVar7;
+  longlong lVar8;
+  longlong *in_RDX;
+  longlong lVar9;
+  longlong in_R8;
+  longlong in_R9;
+  ulonglong local_98;
+  undefined8 uStack_90;
+  size_t local_88;
+  void *pvStack_80;
+  size_t local_78;
+  size_t sStack_70;
+  
+  lVar7 = *(longlong *)(in_RCX + 0xf8);
+  *(undefined8 *)(in_RCX + 0xf8) = 0;
+  if (lVar7 != 0) {
+    lVar7 = 1 - lVar7;
+    lVar9 = *(longlong *)(in_RCX + 0xf0);
+    do {
+      resources::audio_resources::impl$13::drop();
+      if (*(longlong *)(lVar9 + 0x10) != 0) {
+        std::alloc::__default_lib_allocator::__rust_dealloc();
+      }
+      lVar7 = lVar7 + 1;
+      lVar9 = lVar9 + 0x30;
+    } while (lVar7 != 1);
+  }
+  lVar7 = *(longlong *)(in_RCX + 0xe0);
+  *(undefined8 *)(in_RCX + 0xe0) = 0;
+  if (lVar7 != 0) {
+    lVar9 = *(longlong *)(in_RCX + 0xd8) + 8;
+    do {
+      if (*(longlong *)(lVar9 + -8) != 0) {
+        std::alloc::__default_lib_allocator::__rust_dealloc();
+      }
+      lVar9 = lVar9 + 0x18;
+      lVar7 = lVar7 + -1;
+    } while (lVar7 != 0);
+  }
+  lVar7 = in_R8 + in_R9 * 0x18;
+  lVar9 = *in_RDX;
+  sVar5 = local_88;
+joined_r0x0001408b6c36:
+  do {
+    if (in_R8 == lVar7) {
+      *(undefined4 *)(in_RCX + 0x118) = 0;
+      return;
+    }
+    _Src = *(void **)(in_R8 + 8);
+    local_88 = *(size_t *)(in_R8 + 0x10);
+    if (lVar9 == 0) {
+      if ((longlong)local_88 < 0) {
+LAB_1408b6edf:
+                    // WARNING: Subroutine does not return
+        alloc::raw_vec::handle_error();
+      }
+      if (local_88 == 0) {
+        pvStack_80 = (void *)0x1;
+      }
+      else {
+        std::alloc::__default_lib_allocator::__rust_alloc();
+        pvStack_80 = extraout_RAX;
+        if (extraout_RAX == (void *)0x0) goto LAB_1408b6edf;
+      }
+      memcpy(pvStack_80,_Src,local_88);
+      local_98 = 0;
+      uVar6 = sStack_70 >> 8;
+      sStack_70 = CONCAT71((int7)uVar6,2);
+      local_78 = local_88;
+    }
+    else {
+      resources::audio_resources::AudioCoreInner::instantiate_audio();
+      local_88 = sVar5;
+      if (local_98 == 2) {
+                    // WARNING: Subroutine does not return
+        core::result::unwrap_failed();
+      }
+    }
+    sVar5 = local_88;
+    if ((local_98 & 1) != 0) {
+      libfmod::EventInstance::set_callback<u32>();
+      core::ptr::drop_in_place<enum2_<core::result::Result<tuple_<>,enum2_<libfmod::Error>_>_>_>();
+      if (local_98 == 0x8000000000000004) {
+        lVar3 = *(longlong *)(in_RCX + 0xf8);
+        if (lVar3 == *(longlong *)(in_RCX + 0xe8)) {
+          alloc::raw_vec::RawVec::
+          grow_one<country_core::render::render_config::LastKnownGraphicsDevice,alloc::alloc::Global>
+                    ();
+        }
+        lVar4 = *(longlong *)(in_RCX + 0xf0);
+        lVar8 = lVar3 * 0x30;
+        psVar2 = (size_t *)(lVar4 + 0x20 + lVar8);
+        *psVar2 = local_78;
+        psVar2[1] = sStack_70;
+        psVar2 = (size_t *)(lVar4 + 0x10 + lVar8);
+        *psVar2 = local_88;
+        psVar2[1] = (size_t)pvStack_80;
+        *(undefined8 *)(lVar4 + lVar8) = 0x8000000000000004;
+        ((undefined8 *)(lVar4 + lVar8))[1] = uStack_90;
+        *(longlong *)(in_RCX + 0xf8) = lVar3 + 1;
+        alloc::string::impl$6::clone();
+        lVar3 = *(longlong *)(in_RCX + 0xe0);
+        if (lVar3 == *(longlong *)(in_RCX + 0xd0)) {
+          alloc::raw_vec::RawVec::grow_one<alloc::string::String,alloc::alloc::Global>();
+        }
+        lVar4 = *(longlong *)(in_RCX + 0xd8);
+        *(size_t *)(lVar4 + 0x10 + lVar3 * 0x18) = local_88;
+        puVar1 = (undefined8 *)(lVar4 + lVar3 * 0x18);
+        *puVar1 = 0x8000000000000004;
+        puVar1[1] = uStack_90;
+        *(longlong *)(in_RCX + 0xe0) = lVar3 + 1;
+        in_R8 = in_R8 + 0x18;
+        goto joined_r0x0001408b6c36;
+      }
+    }
+    resources::audio_resources::impl$13::drop();
+    if (local_88 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    in_R8 = in_R8 + 0x18;
+  } while( true );
+}
+

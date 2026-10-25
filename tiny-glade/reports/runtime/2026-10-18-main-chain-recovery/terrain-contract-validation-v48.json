@@ -1,0 +1,55 @@
+{
+  "recorded_utc": "2026-10-18T12:40:02.409268+00:00",
+  "scope": "W3 direct reconstruction + canonical same-owner typed host; not entire W3..W11/full world graph",
+  "build": "v48 country-core and tiny-glade lib tests compiled locked/offline. v47 command used --lib twice, no build ran; command error retained.",
+  "binaries": [
+    {
+      "label": "tiny_glade",
+      "binary": "/private/tmp/tg-tiny_glade-v48-tests",
+      "sha256": "4bd0c48ed64c460b2466ab1a7f6390d521e417f36e72e408062006e8cefef5ca"
+    },
+    {
+      "label": "country_core",
+      "binary": "/private/tmp/tg-country_core-v48-tests",
+      "sha256": "a608f8ce0375c799023c602ad0b737d931b5b482a4e9a32b5a758cb40d8c6bda"
+    }
+  ],
+  "cpu": {
+    "passed": 3,
+    "failed": 0,
+    "ignored": 0,
+    "log": "logs/terrain-v48-cpu.log",
+    "covers": [
+      "XZ point upload with odd rounded-even allocation, capped1024",
+      "native half packing/count1024 low10 encoding",
+      "native Gauss float4/float defines and source identity"
+    ]
+  },
+  "original_review": "10 full original RNE ranges independently rehashed: world-terrain-20261018/terrain-candidate/root-original-and-source-review.json",
+  "current_drift_from_start": [
+    {
+      "file": "crates/tiny-glade/src/world_terrain.rs",
+      "before": "18e01522cec329641ce81e810e3adb978a21ad6fbbde45249e32f0c519b63791",
+      "after": "91d04170f8f31628a555db5d0987b029f2c7fe1126b9ae3274f8fac96d787ed0"
+    }
+  ],
+  "drift_note": "Only typed W3 wrapper gained an admission-error marker rollback after v48. v49 compilation confirms that edit compiles; CPU3 tests exercise unchanged core W3 body. No full dependency/source freeze claim.",
+  "remaining": [
+    "Original W3 shaders not GPU-executed in this validation",
+    "Original fullworld caller still missing",
+    "W4/W5 rocky producer and other W3..W11 consumers not closed",
+    "Logical marker is declaration success, not GPU completion"
+  ],
+  "v49_followup": {
+    "status": "locked/offline tiny-glade --lib --no-run successful after marker rollback edit",
+    "log": "logs/terrain-v49-build.log",
+    "world_terrain_sha256": "91d04170f8f31628a555db5d0987b029f2c7fe1126b9ae3274f8fac96d787ed0",
+    "binaries": [
+      {
+        "binary": "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/tiny_glade-1fac38c230758e54",
+        "sha256": "4bd0c48ed64c460b2466ab1a7f6390d521e417f36e72e408062006e8cefef5ca"
+      }
+    ],
+    "scope": "compilation only; no W3 GPU claim"
+  }
+}

@@ -1,0 +1,634 @@
+{
+ "generated": "2026-10-13",
+ "agent": "F-E",
+ "scope": "entry/small family (blit, sky, ui_2d, text, egui, session_ui, screenshot, fxaa)",
+ "files": {
+  "shaders/skydome.raster.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": [
+    "sun glow polynomial constant set (behavior-equivalent approximation)"
+   ]
+  },
+  "shaders/star.raster.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": [
+    "per-instance hash chain depth (4-step vs 5-step hash at last rand) \u2014 reconstructed as 5-step hash(h3)"
+   ]
+  },
+  "shaders/cloud.raster.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": [
+    "theme-dependent cloud height/size tables (values from inlined SPIR-V, Inference of intent)"
+   ]
+  },
+  "shaders/ui_2d.raster.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": []
+  },
+  "shaders/ui_2d_color_button.raster.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": [
+    "circle-reveal rim color/alpha tuning constants"
+   ]
+  },
+  "shaders/ui_2d_ws.raster.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": []
+  },
+  "shaders/text.raster.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": [
+    "shape-stream op encoding (interpreter param layout Inference)",
+    "glyph dither octave weights/offsets (bilinear hash noise; octave mapping partly Inference)"
+   ]
+  },
+  "shaders/custom_cursor.raster.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": [
+    "NaN disable idiom (asfloat(0x7fbfffff) reproduced)"
+   ]
+  },
+  "shaders/dashed_line.raster.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": []
+  },
+  "shaders/timer_circle.raster.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": []
+  },
+  "shaders/loading_screen.raster.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": []
+  },
+  "shaders/logo_animation.raster.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": []
+  },
+  "shaders/logo_branches_animation.raster.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": []
+  },
+  "shaders/logo_overlay.raster.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": [
+    "aspect-corrected corner offset constants"
+   ]
+  },
+  "shaders/egui.raster.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": []
+  },
+  "shaders/capture_panic_screenshot.cs.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": []
+  },
+  "shaders/fxaa.cs.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": [
+    "output_tex float3->R11fG11fB10f ImageFormat is dxc-version specific; StorageImageExtendedFormats not reproducible in HLSL"
+   ]
+  },
+  "shaders/resolve_to_swapchain.cs.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": []
+  },
+  "shaders/fullscreen_triangle_vert.inc.hlsl": {
+   "status": "O",
+   "fingerprint": "PASS",
+   "unknowns": []
+  },
+  "shaders/fxaa.inc.hlsl": {
+   "status": "I",
+   "fingerprint": "partial",
+   "unknowns": []
+  },
+  "shaders/resolve_to_swapchain.inc.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": []
+  },
+  "shaders/blit/blit_stretch_decode_srgb.raster.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": []
+  },
+  "shaders/blit/resolve_to_swapchain.raster.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": []
+  },
+  "shaders/blit/resolve_msaa_to_swapchain.raster.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": []
+  },
+  "shaders/screenshot/capture_screenshot.inc.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": []
+  },
+  "shaders/screenshot/capture_screenshot_buffer.cs.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": []
+  },
+  "shaders/screenshot/capture_screenshot_texture.cs.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": []
+  },
+  "shaders/session_selection/background.raster.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": []
+  },
+  "shaders/session_selection/new_glade_thumbnail.raster.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": []
+  },
+  "shaders/session_selection/thumbnail.raster.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": []
+  },
+  "shaders/session_selection/thumbnail_painterly.raster.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": [
+    "scatter/rotation hash chain and brush-mask rim values"
+   ]
+  },
+  "shaders/lut_gallery/thumbnail.raster.hlsl": {
+   "status": "O",
+   "fingerprint": "partial",
+   "unknowns": []
+  }
+ },
+ "validation": {
+  "_skydome.raster.hlsl_b903e43ffb3da915.bin": [
+   {
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   },
+   {
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_star.raster.hlsl_b903e43ffb3da915.bin": [
+   {
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   },
+   {
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_cloud.raster.hlsl_b903e43ffb3da915.bin": [
+   {
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   },
+   {
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_ui_2d.raster.hlsl_b903e43ffb3da915.bin": [
+   {
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   },
+   {
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_ui_2d_color_button.raster.hlsl_b903e43ffb3da915.bin": [
+   {
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   },
+   {
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_ui_2d_ws.raster.hlsl_b903e43ffb3da915.bin": [
+   {
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   },
+   {
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_text.raster.hlsl_b903e43ffb3da915.bin": [
+   {
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   },
+   {
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_custom_cursor.raster.hlsl_b903e43ffb3da915.bin": [
+   {
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   },
+   {
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_dashed_line.raster.hlsl_b903e43ffb3da915.bin": [
+   {
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   },
+   {
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_timer_circle.raster.hlsl_b903e43ffb3da915.bin": [
+   {
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   },
+   {
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_loading_screen.raster.hlsl_b903e43ffb3da915.bin": [
+   {
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   },
+   {
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_logo_animation.raster.hlsl_b903e43ffb3da915.bin": [
+   {
+    "entry": "vs_main",
+    "verdict": "PASS_STRUCTURAL",
+    "hard_diffs": [],
+    "opcode_histogram_match": true,
+    "normalized_hash_match": false
+   },
+   {
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_logo_branches_animation.raster.hlsl_b903e43ffb3da915.bin": [
+   {
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   },
+   {
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_logo_overlay.raster.hlsl_b903e43ffb3da915.bin": [
+   {
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   },
+   {
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_egui.raster.hlsl_b903e43ffb3da915.bin": [
+   {
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   },
+   {
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_blit_blit_stretch_decode_srgb.raster.hlsl_b903e43ffb3da915.bin": [
+   {
+    "entry": "vs_main",
+    "verdict": "PASS_STRUCTURAL",
+    "hard_diffs": [],
+    "opcode_histogram_match": true,
+    "normalized_hash_match": false
+   },
+   {
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_blit_resolve_to_swapchain.raster.hlsl_b903e43ffb3da915.bin": [
+   {
+    "entry": "vs_main",
+    "verdict": "PASS_STRUCTURAL",
+    "hard_diffs": [],
+    "opcode_histogram_match": true,
+    "normalized_hash_match": false
+   },
+   {
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_blit_resolve_msaa_to_swapchain.raster.hlsl_b903e43ffb3da915.bin": [
+   {
+    "entry": "vs_main",
+    "verdict": "PASS_STRUCTURAL",
+    "hard_diffs": [],
+    "opcode_histogram_match": true,
+    "normalized_hash_match": false
+   },
+   {
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_session_selection_background.raster.hlsl_b903e43ffb3da915.bin": [
+   {
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   },
+   {
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_session_selection_new_glade_thumbnail.raster.hlsl_b903e43ffb3da915.bin": [
+   {
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   },
+   {
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_session_selection_thumbnail.raster.hlsl_b903e43ffb3da915.bin": [
+   {
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   },
+   {
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_session_selection_thumbnail_painterly.raster.hlsl_b903e43ffb3da915.bin": [
+   {
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   },
+   {
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_lut_gallery_thumbnail.raster.hlsl_b903e43ffb3da915.bin": [
+   {
+    "entry": "vs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   },
+   {
+    "entry": "ps_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_capture_panic_screenshot.cs.hlsl_cs_main_0.bin": [
+   {
+    "entry": "cs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_fxaa.cs.hlsl_cs_main_0.bin": [
+   {
+    "entry": "cs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [
+     "capabilities"
+    ],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_screenshot_capture_screenshot_buffer.cs.hlsl_sample1_0.bin": [
+   {
+    "entry": "sample1",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_screenshot_capture_screenshot_buffer.cs.hlsl_sample4_0.bin": [
+   {
+    "entry": "sample4",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_screenshot_capture_screenshot_texture.cs.hlsl_sample1_0.bin": [
+   {
+    "entry": "sample1",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_screenshot_capture_screenshot_texture.cs.hlsl_sample4_0.bin": [
+   {
+    "entry": "sample4",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ],
+  "_resolve_to_swapchain.cs.hlsl_cs_main_0.bin": [
+   {
+    "entry": "cs_main",
+    "verdict": "FAIL",
+    "hard_diffs": [],
+    "opcode_histogram_match": false,
+    "normalized_hash_match": false
+   }
+  ]
+ },
+ "summary": {
+  "files_total": 32,
+  "status_O": 31,
+  "status_I": 1,
+  "status_U": 0,
+  "modules_PASS_STRUCTURAL": 4,
+  "modules_hist_only_diff": 48,
+  "modules_caps_diff": 1,
+  "note": "Raster bins have 2 modules (vs+ps); the f0ad variant PS is an empty stub (not reconstructable from one source). Bindings/entries/localsize are the hard-match gate; opcode-histogram diffs are largely dxc-version codegen idioms (OpSwitch from return-idioms, shuffle-vs-construct, float3 storage-image format choice).",
+  "modules_total": 53,
+  "modules_binding_entry_localsize_match": 53,
+  "modules_bindings_entries_capabilities_localsize_match": 52
+ }
+}

@@ -1,0 +1,22 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/history.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/history.rs
+@@ -301,6 +301,7 @@
+ 
+ pub fn register_history_events(world: &mut World) {
+     world.init_resource::<PendingHistoryCommands>();
++    world.init_resource::<crate::systems::debug::sheep_controls::SheepControl>();
+     world.init_resource::<PendingHistoryControl>();
+     world.init_resource::<Events<HistoryCommand>>();
+     world.init_resource::<Events<HistoryReplayFailed>>();
+@@ -365,6 +366,11 @@
+     );
+     schedule.add_systems(pop_empty_replay_bucket.in_set(HistoryCpuStage::Pop));
+     schedule.add_systems(finish_replay::finish_replay.in_set(HistoryCpuStage::Pop));
++    schedule.add_systems(
++        crate::systems::debug::sheep_controls::sheep_controls
++            .after(finish_replay::finish_replay)
++            .in_set(HistoryCpuStage::Pop),
++    );
+     crate::systems::ui_clutter::registration::add_ui_clutter_cpu_systems::<S>(schedule);
+     schedule.add_systems(
+         (

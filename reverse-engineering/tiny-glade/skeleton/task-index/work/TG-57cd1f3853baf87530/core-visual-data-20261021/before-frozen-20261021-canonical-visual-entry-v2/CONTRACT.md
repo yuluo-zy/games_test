@@ -1,0 +1,15 @@
+# 七个已证视觉消费者：唯一蓝图 entry 的必要收口 v2
+
+root经lead明确授权，继续原合法owner，仅本work候选。v1已冻结不覆盖。本v2以v1 after作为before，同时附原生产冻结before以便root选择整包原子应用。只恢复canonical collider consumer必需的storage source/flags及原入口副作用，不扩其它视觉业务。
+
+完整原body/匹配RNE/PDB身份继承v1 native-pack（十源共99,482B，逐request status=ok），本目录native-entry-call-sites.json逐一保存真实1408258b0前20条/后6条。七源所有第五参均读原Info+47末字节，具体MOVZX -1及写stack20见该文件；当前唯一typed读取为info.state()，不猜clutter常数0、不mask低位。外圈当前仅Wall桶，真实storage_addr=DecoratorStorageAddr::Wall(wall)；原转换1408bc520即matching PDB From<WallId> for DecoratorStorageAddr。flag/lantern/roof原入口接收iterator的addr，现有循环只Wall，v2保现有范围，不把原Terrain/Stair分支遗漏洗成完成。
+
+唯一owner使用blueprints.insert_for(id,addr,info.state())返回的可变entry，后续直接写同entry。不能本地new后legacyinsert；碰撞消费instantiate_decorator_colliders对Mesh槽required storage_addr，legacy路径会panic。entry为唯一Arc时复用allocation与visual Vec，shared previous时分配新Arc；不绕owner或自己Arc::make_mut。
+
+原时序：cottage_balcony_door4376、gothic_balcony_door0eb5在collision/interaction required lookup与后续cache/视觉计算前；flagfff5a在已有cached lookup与subtype判定后、现13/14分支网格查找前；lanternda85在daa6 cached及后续库查询/as_lantern之前；gothic_dormer5e34在真实cached5d40与rank剖面之后、mesh查询之前；roof119f在cached115f之后、as_chimney122a与cuboid15b5之前；arrowbc834在现已存在的geometry/cache门之后、两表lookup之前。v2据此放置entry，保现其余未恢复逻辑边界。缺ID发生在entry前则不发布；缺第二表发生在entry后则保entry metadata与未指定槽，不能仍断言map空。entry先于部分失败的副作用不可用默认成功或原子回滚掩盖。
+
+实际World测试补storage_addr和非零合法flags=1，继续验证exactrank与两个Arc的实际physics。cottage新增调用真实instantiate_decorator_colliders→两活map→RaycastWorld.get_collider_mesh实际source/Arc/pose验证，禁止只计数量。缺ID与缺mesh区分entry前/后；新增shared Prev snapshot保持旧entry而新entry使用真实meta及shape，不把向后快照修改。roof测试补真实storage/flags。其余v1真实业务测试保留。未Cargo/GPU，由root唯一统一验证。
+
+本源 TG-57cd1f3853baf87530 `tiny-glade/crates/systems/decorator/src/decorator_visual/lantern.rs`
+v1 before SHA e401368fc89e32813a5a97a0c1b5f9e2536ac253ec2ccde383249eaaacaeb6a0
+原冻结 before SHA 1979c816d0e6ca25c49837d36204fc9886a0b509120d53e86f56f725fe23f091

@@ -1,0 +1,65 @@
+{
+  "backend": "reva",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "ui-unstarted-20261013",
+  "pid": 29344,
+  "project": "D:\\game\\tools\\reverse-runtime\\ui-unstarted-20261013\\project\\TinyGlade.gpr",
+  "backend_reused": true,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": true,
+  "results": [
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json\nfrom java.util import ArrayList\nfrom ghidra.program.model.pcode import JumpTable\nfrom ghidra.program.disassemble import Disassembler\nfrom ghidra.program.model.address import AddressSet\np=currentProgram\na=p.getAddressFactory()\nfm=p.getFunctionManager()\nrows=[]\nfor start,size,site,entries in [[\"1421be370\",12533,\"1421be644\",[\"1421bee7b\",\"1421bed43\",\"1421be646\",\"1421be646\",\"1421bfa68\",\"1421bf751\"]],[\"140df3e70\",431,\"140df3e91\",[\"140df3e93\",\"140df3f8e\",\"140df3ec2\",\"140df3f74\",\"140df3eb4\"]],[\"1421bb740\",564,\"1421bb76e\",[\"1421bb770\",\"1421bb88b\",\"1421bb784\",\"1421bb871\",\"1421bb897\",\"1421bb959\"]]]:\n begin=a.getAddress(start)\n fn=fm.getFunctionAt(begin)\n tx=p.startTransaction('Original bounded jump table override')\n ok=False\n try:\n  dest=ArrayList()\n  restriction=AddressSet(begin,begin.add(size-1))\n  for e in entries:\n   ea=a.getAddress(e)\n   dest.add(ea)\n   Disassembler.getDisassembler(p,monitor,None).disassemble(ea,restriction,True)\n  fn.setBody(restriction)\n  JumpTable(a.getAddress(site),dest,True,0).writeOverride(fn)\n  ok=True\n  rows.append({'start':start,'site':site,'destinations':entries})\n finally:p.endTransaction(tx,ok)\nprint(json.dumps(rows))\n"
+      },
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\foundation-unstarted-2026-10-13\\ui\\overrides.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\foundation-unstarted-2026-10-13\\\\\\\\ui\\\\\\\\overrides.artifacts\\\\\\\\000.stdout.txt\\\", \\\"bytes\\\": 411, \\\"sha256\\\": \\\"fe23705fe46c8e885c415635f08353b6b57b53549a724da133059243b06fdf07\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":197}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.203,
+      "stdout": "[{\"start\": \"1421be370\", \"site\": \"1421be644\", \"destinations\": [\"1421bee7b\", \"1421bed43\", \"1421be646\", \"1421be646\", \"1421bfa68\", \"1421bf751\"]}, {\"start\": \"140df3e70\", \"site\": \"140df3e91\", \"destinations\": [\"140df3e93\", \"140df3f8e\", \"140df3ec2\", \"140df3f74\", \"140df3eb4\"]}, {\"start\": \"1421bb740\", \"site\": \"1421bb76e\", \"destinations\": [\"1421bb770\", \"1421bb88b\", \"1421bb784\", \"1421bb871\", \"1421bb897\", \"1421bb959\"]}]\n",
+      "passed": true
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 0.859,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":11}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "save_result": {
+    "nonce": "b655dea2d7a58062e37c944e234dd1a1",
+    "success": true,
+    "was_changed": true,
+    "changed_after_save": false,
+    "path": "/tiny-glade.exe",
+    "saved_locally": true
+  }
+}

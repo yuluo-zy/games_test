@@ -1,0 +1,56 @@
+
+void __cdecl country_core::resources::terrain_rock_mask::impl$1::sample_at_world_xz(void)
+
+{
+  uint uVar1;
+  ulonglong in_RDX;
+  uint uVar2;
+  float in_XMM2_Da;
+  float fVar3;
+  float in_XMM3_Da;
+  float fVar4;
+  
+  fVar3 = in_XMM2_Da / 130.0 + 0.5;
+  fVar4 = in_XMM3_Da / 130.0 + 0.5;
+  if (fVar3 <= 0.0) {
+    fVar3 = 0.0;
+  }
+  if (fVar4 <= 0.0) {
+    fVar4 = 0.0;
+  }
+  if (1.0 <= fVar3) {
+    fVar3 = 1.0;
+  }
+  if (1.0 <= fVar4) {
+    fVar4 = 1.0;
+  }
+  fVar3 = fVar3 * 512.0;
+  uVar2 = (uint)(longlong)fVar3;
+  if (fVar3 < 0.0) {
+    uVar2 = 0;
+  }
+  fVar4 = fVar4 * 512.0;
+  if (4.294967e+09 < fVar3) {
+    uVar2 = 0xffffffff;
+  }
+  uVar1 = (uint)(longlong)fVar4;
+  if (fVar4 < 0.0) {
+    uVar1 = 0;
+  }
+  if (4.294967e+09 < fVar4) {
+    uVar1 = 0xffffffff;
+  }
+  if (0x1fe < uVar2) {
+    uVar2 = 0x1ff;
+  }
+  if (0x1fe < uVar1) {
+    uVar1 = 0x1ff;
+  }
+  if ((uVar1 << 9 | uVar2) >> 5 < in_RDX) {
+    return;
+  }
+                    // WARNING: Subroutine does not return
+  core::panicking::panic_bounds_check();
+}
+
+

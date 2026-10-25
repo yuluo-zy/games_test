@@ -1,0 +1,101 @@
+{
+  "status": "execution_plan_only_not_validation",
+  "baseline_sha": "fa53d49a61dd7496cddc9af054c6fb1899fa1676",
+  "reviewer": "root/render_reviewer",
+  "scope": "源码审查及验证边界；不执行 Cargo/GPU，不修改 production",
+  "source_sha256": {
+    "tiny-glade/crates/tiny-glade/tests/main_chain_audit.rs": "755c49017fb802440184a7486e3f68d797ae06726d3238462ced872ce9fdb993",
+    "tiny-glade/crates/tiny-glade/tests/original_gameplay_chain.rs": "2344ff2c55fa960b96b896890250be1102edb9b751c06d5b4b3c7ace2a85b1f9",
+    "tiny-glade/crates/tiny-glade/tests/original_loading_present.rs": "fe0b5dcd25b1f02b5f064113aeeb435707a8c9dc5e44be9a3fc3649188083730",
+    "tiny-glade/crates/tiny-glade/tests/render_host.rs": "66bd71b1409355793ed8b29b78b3931e5bddc244256a85081cb4cf4102cc8012",
+    "tiny-glade/crates/tiny-glade/tests/original_session_control.rs": "2781b45b9a4b2bf2c68f7c6b3b534b134dd9a5c7695597196bdd10087d838473",
+    "tiny-glade/crates/tiny-glade/src/production_renderer.rs": "b42bd882871d13f7c1c0227fc7adbad7d251b30c0c35e5de1b48c01a151e3532",
+    "tiny-glade/crates/tiny-glade/src/event_loop.rs": "d249f5633168e1ad5824d5b05cea7041311aeb57bf4502d023d9c910c5953bb3",
+    "tiny-glade/crates/tiny-glade/src/game_loop.rs": "abf77a552a24baf907c76670fbb4f9c53cb42f598945ab6474a4dd8b492765ec"
+  },
+  "observations": [
+    {
+      "source": "tests/main_chain_audit.rs:98-109",
+      "fact": "真实 gameplay App 在真实 headless device owner 上更新；没有调用 GameFrameDriver::frame 或 production renderer",
+      "implication": "仅证明实际调度参数/资源/事件不存在被全局 handler 收集的错误；不能证明图提交或 WSI。失败列表必须为空。"
+    },
+    {
+      "source": "tests/original_gameplay_chain.rs:347-455,573-820",
+      "fact": "真实原版安装启动资源、headless production world graph、真实截图读回与30帧观测",
+      "implication": "可验证图编译/执行/像素内容/短时缓存及资源复用；30帧不代表长稳，headless不代表OS/WSI。"
+    },
+    {
+      "source": "tests/original_loading_present.rs:101",
+      "finding": "driver.frame 返回的 Result 被丢弃，只查 renderer.take_error；App update/graph层错误可能未传播",
+      "required_fix": "在真实验证前传播 driver.frame(...)?，禁止凭一次 any_present_successful 掩盖前后失败",
+      "classification": "工程验证缺陷；非原版native恢复结论"
+    },
+    {
+      "source": "tests/render_host.rs:9-20",
+      "fact": "无可用 Vulkan 时会 SKIP；RHAPSODY_REQUIRE_VULKAN=1 可令其失败",
+      "implication": "GPU验收必须严格环境与设备身份日志，不能计 SKIP 为成功。"
+    },
+    {
+      "source": "tests/original_session_control.rs:1-4,167-169",
+      "fact": "自身声明止于 HistoryCmd/LoadingGameComplete；只挂begin_glade_unload",
+      "implication": "不能当作装饰物真实GPU卸载、编辑及重启恢复闭环证据。"
+    },
+    {
+      "source": "src/production_renderer.rs:204",
+      "fact": "TG_ALLOW_MINIMAL_WORLD_FRAME=1 允许诊断 clear/export路径",
+      "implication": "正式验证必须禁用，不能用空world帧代替业务成功。"
+    },
+    {
+      "source": "src/game_loop.rs:90-99,src/event_loop.rs:138-147",
+      "fact": "FrameProgress来自成功 frame 子集，present字段只表示present入队；TG_SMOKE_FRAMES退出按总frame_count",
+      "implication": "bounded退出成功还要检查gameplay_frames/submissions/presents_queued及实际画面，不得把纯loading帧计作Game成功。"
+    }
+  ],
+  "ordered_gates": [
+    {
+      "id": "build",
+      "owner": "root",
+      "action": "先默认Mac tiny-glade lib/bin/tests编译，再native-audio feature编译；复核所有NativeStudio引用受同一cfg",
+      "pass": "Critters/Sheep startup、uninit_clearing及GameLoadingAudioState生命周期完整保留；不得cfg删除业务生产者。"
+    },
+    {
+      "id": "ecs",
+      "owner": "root",
+      "action": "main_chain_audit实际最新source单独进程运行",
+      "pass": "AUDIT distinct failures=0，任何失败都不因收集handler而算成功。"
+    },
+    {
+      "id": "physical_headless",
+      "owner": "root",
+      "action": "严格Vulkan环境运行实际shipped_session_through_actual_app_and_production_world_graph与steady_state_multi_frame",
+      "pass": "真实device身份、非空walls及buffer归属、图成功、读回像素、TAA/caches/heap归还验证全部通过；此项不是WSI验收。"
+    },
+    {
+      "id": "wsi",
+      "owner": "root",
+      "action": "先修现有loading_present Result传播，再实际启动tiny-glade-host的窗口、loading→gameplay、resize/minimize/restore/close",
+      "pass": "无诊断minimal-world开关；出现Game非空画面及成功帧/提交/present入队；无validation、panic、device-lost；正常shutdown。"
+    },
+    {
+      "id": "edit_unload",
+      "owner": "root",
+      "action": "使用真实App authority执行装饰物新增、移动/类型变化、删除及场景切换，检查延迟命令可见时间和真实SSBO/Nani/mesh/VAO所有者",
+      "pass": "源状态、entity/drawlist/GPU owner同步变化；重复卸载不残留/误删；失败分支保持native成功prefix；已提交资源等待实际SyncPoint，不据CPU drop假定完成。"
+    },
+    {
+      "id": "save_restart",
+      "owner": "root",
+      "action": "临时独立账号，真实编辑命令→保存thread完成→正常关闭join→新进程启动同账号→加载保存数据",
+      "pass": "重启后的canonical业务数据、位置/类型/历史和渲染实体一致；需读真实落盘，不仅encoder/decoder自洽。"
+    },
+    {
+      "id": "long_stability",
+      "owner": "root",
+      "action": "最小链完成后延长真实窗口连续渲染，含周期编辑/删改/场景切换/截图及resize",
+      "pass": "记录warmup后按同场景归一的heap live/retiring、GPU内存、constants pages、pending frames、p95/p99与validation；区分短时peak与持续增长。"
+    }
+  ],
+  "production_modified": false,
+  "cargo_executed": false,
+  "gpu_executed": false
+}

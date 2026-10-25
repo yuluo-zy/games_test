@@ -1,0 +1,39 @@
+[
+ {
+  "tool": "open_database",
+  "args": {
+   "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+   "run_auto_analysis": false,
+   "database_id": "tg_comp"
+  }
+ },
+ {
+  "tool": "wait_for_analysis",
+  "args": {
+   "database": "tg_comp"
+  }
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_comp",
+   "address": "0x140844f20"
+  },
+  "allow_error": true
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_comp",
+   "address": "0x140856c10"
+  },
+  "allow_error": true
+ },
+ {
+  "tool": "close_database",
+  "args": {
+   "database": "tg_comp",
+   "save": false
+  }
+ }
+]

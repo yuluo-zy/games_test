@@ -1,0 +1,52 @@
+{
+  "reviewer": "/root/render_reviewer",
+  "date": "2026-10-21",
+  "status": "static_review_accepted_implemented_unverified",
+  "scope": "仅共享layout物理页原语和既有tests文件；不声明宿主分页或M3主链完成。",
+  "inputs": {
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/page-primitive-v1-20261021/page-primitive.patch": "8a02c2a1037aff873ad692cc861fd5107deb3ce4cb8334beb1030942a5e61608",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/page-primitive-v1-20261021/SOURCE_STATE.json": "4c127ffe071e2d6141c7d053a4d67e82cc2f864f7ea6c52f58f362442922a656"
+  },
+  "source_state": {
+    "tiny-glade/crates/rhapsody/src/bindless.rs": {
+      "production_sha256": "9a5b11881e8d3820975baa6b5507374d727b40c152e500bc6908728d16f8154f",
+      "candidate_sha256": "4e65bf0b9607ce202aed09fbdb0a5df783e896875b8713234e4ae16845debffb"
+    },
+    "tiny-glade/crates/rhapsody/tests/bindless.rs": {
+      "production_sha256": "6aa87d5b9b3ce9bd8acc0b1a23b875be1eff8429b2bbecd7df4bf884f803b42d",
+      "candidate_sha256": "9de2079e258337013aa854efae39650c05864883e7facb71f384787fedf684f6"
+    }
+  },
+  "independent_source_hash_checks": "全部2个production/before和2个candidate SHA256现场一致，已读完整patch及相关pool/allocator/lease提交寿命。",
+  "source_review": [
+    {
+      "source": "candidate bindless.rs:459..495",
+      "conclusion": "DeviceLost优先；仅短取Slots读取不可变capacity，核真实device及四类layout结构/flags；公开layout被外部替换不能默默错配。"
+    },
+    {
+      "source": "candidate bindless.rs:497..510",
+      "conclusion": "沿原new顺序先CPU预算/Slots/实际hostbytes，再新pool/set；复用已创建的同Arc layout，不复制占用/generation、不重新查询同layout。已有全局pool descriptor quota继续生效。"
+    },
+    {
+      "source": "candidate bindless.rs:511..517",
+      "conclusion": "页只持layout/set/device/独立slots和CPU reservation，不持模板heap；同layout不意味着lease heap身份可互换，现validate未放宽。"
+    },
+    {
+      "source": "candidate tests/bindless.rs shared-page pending helper",
+      "conclusion": "保真实shader写77、实际gate阻塞及完成后回收；foreign同index仍拒绝；模板弱owner用来检查无parent强持有。测试设计有意义，尚未执行。"
+    },
+    {
+      "source": "candidate tests/bindless.rs actual_bindless_layout_support_matrix",
+      "conclusion": "ignored明确需root显式运行；fixed查询false仍要求new返回Unsupported，variable只查询未创建。不得以该ignored测试存在声称实测通过。"
+    }
+  ],
+  "blockers": [],
+  "runtime": {
+    "cargo_run_by_reviewer": false,
+    "gpu_run_by_reviewer": false,
+    "candidate_compile_or_runtime_claim": false,
+    "root_required": "严格Vulkan shared-page2项、旧pending用例及显式ignored矩阵；检查实际执行而非skip。"
+  },
+  "production_mutations_by_reviewer": false,
+  "design_report": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/independent-validation/current-render-20261020/PAGED_BINDING_DESIGN_REVIEW_V1.json"
+}

@@ -1,0 +1,197 @@
+--- a/games_test/tiny-glade/crates/systems/color/src/set_wall_color_id.rs
++++ b/games_test/tiny-glade/crates/systems/color/src/set_wall_color_id.rs
+@@ -18,9 +18,8 @@
+ use glam::Vec2;
+ 
+ use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
+-use country_core::resources::color_id::{SetWallColorIdCmd, WallColorIds, MAX_NUMBER_OF_WALLS};
++use country_core::resources::color_id::{MAX_NUMBER_OF_WALLS, SetWallColorIdCmd, WallColorIds};
+ use country_core::resources::walls::public_walls::PublicWalls;
+-use country_core::resources::walls::WallId;
+ use country_core::systems::audio::PlayWallUiSound;
+ use utils::geometry::aabb::Aabb2;
+ use utils::swizzlers::SwizzlerXVY;
+@@ -39,10 +38,7 @@
+ /// **分歧点**：`AssetSsboLibrary::add_new::<T>` 需 `T: SsboType`，而 core 的
+ /// `WallColorIdSsbo/RoofColorIdSsbo/GateColorIdSsbo/HalftimberColorIdSsbo` 为
+ /// typed-gap（无 `StorageElement`/`SsboType` 实现）——SSBO 注册无法编译，登记。
+-pub fn init_color_ids_buffer(
+-    mut commands: Commands,
+-    _library: Res<AssetSsboLibrary>,
+-) {
++pub fn init_color_ids_buffer(mut commands: Commands, _library: Res<AssetSsboLibrary>) {
+     use country_core::resources::color_id::{GateColorIds, HalftimberColorIds};
+     // O：`WallColorIds::new()`（0x140b19890）insert_resource。
+     commands.insert_resource(WallColorIds::new());
+@@ -67,16 +63,20 @@
+     mut plaster_delete: EventWriter<country_core::resources::walls::plaster::DeletePlasterCmd>,
+ ) {
+     for cmd in cmds.read() {
++        let wall_id = cmd.wall_id();
+         // O：`idx = id→索引`（0x1400885d0）；`0x4fff < idx` → panic（= idx <
+         // MAX_NUMBER_OF_WALLS=0x5000）。
+-        let idx = cmd.id as usize;
+-        assert!(idx < MAX_NUMBER_OF_WALLS, "wall_index < MAX_NUMBER_OF_WALLS");
++        assert!(
++            wall_id.0 < MAX_NUMBER_OF_WALLS as u64,
++            "wall_index < MAX_NUMBER_OF_WALLS"
++        );
++        let idx = wall_id.0 as usize;
+         // O：读旧色、写新色。
+         let old = wall_colors.0[idx];
+         wall_colors.0[idx] = cmd.color;
+         // O：PublicWalls::get → 命中才做 halftimber/石膏分类（反编译 do-while
+         // 在 wall==null 时跳过处理直接进入下一事件）。
+-        if let Some(wall) = walls.get(WallId(u64::from(cmd.id))) {
++        if let Some(wall) = walls.get(wall_id) {
+             if cmd.custom != 0 {
+                 // O：`WallStyle::is_halftimbered()`（内联于 0x142290820；返回未参与
+                 // 反编译分支，U——可能为 Ghidra 丢失的数据流；core `PublicWallState`
+@@ -85,11 +85,8 @@
+                 // SIMD minps/maxps = glam Vec2::min/max，Aabb2::from_points 折叠）
+                 // → center → max_y → xvy。空折线时 Aabb2 保持 {f32::MAX, f32::MIN}，
+                 // center=0（与反编译一致）。
+-                let aabb = Aabb2::from_points(
+-                    wall.height_outline()
+-                        .iter()
+-                        .map(|p| Vec2::new(p[0], p[2])),
+-                );
++                let aabb =
++                    Aabb2::from_points(wall.height_outline().iter().map(|p| Vec2::new(p[0], p[2])));
+                 let center = aabb.center();
+                 let position = center.xvy(wall.max_y());
+                 // O：推 0x20B 记录（tag 6；PlayWallUiSound kind=6）。selector/
+@@ -106,13 +103,131 @@
+             let new_custom = CUSTOM_COLOR_SET.contains(&cmd.color);
+             if new_custom {
+                 plaster_create.write(country_core::resources::walls::plaster::CreatePlasterCmd(
+-                    WallId(u64::from(cmd.id)),
++                    wall_id,
+                 ));
+             } else if CUSTOM_COLOR_SET.contains(&old) {
+                 plaster_delete.write(country_core::resources::walls::plaster::DeletePlasterCmd(
+-                    WallId(u64::from(cmd.id)),
++                    wall_id,
+                 ));
+             }
+         }
+     }
+ }
++
++#[cfg(test)]
++mod full_wall_id_tests {
++    use super::*;
++    use country_core::resources::{
++        color_id::{GateColorIds, HalftimberColorIds, SetGateColorIdCmd, SetHalftimberColorIdCmd},
++        roofs::geometry::surface::Curve2,
++        walls::{
++            InnerWalls, WallId, WallState,
++            plaster::{CreatePlasterCmd, DeletePlasterCmd},
++            publication_source::TerrainHeightGrid512,
++        },
++    };
++    fn world(public_id: Option<WallId>) -> World {
++        let mut world = World::new();
++        world.insert_resource(AssetSsboLibrary::new());
++        world.init_resource::<WallColorIds>();
++        world.init_resource::<GateColorIds>();
++        world.init_resource::<HalftimberColorIds>();
++        world.init_resource::<Events<SetWallColorIdCmd>>();
++        world.init_resource::<Events<SetGateColorIdCmd>>();
++        world.init_resource::<Events<SetHalftimberColorIdCmd>>();
++        world.init_resource::<Events<PlayWallUiSound>>();
++        world.init_resource::<Events<CreatePlasterCmd>>();
++        world.init_resource::<Events<DeletePlasterCmd>>();
++        let mut public = PublicWalls::default();
++        if let Some(id) = public_id {
++            let mut inner = InnerWalls::default();
++            let curve = Curve2::try_new(vec![[0.0, 0.0], [4.0, 0.0]], false).unwrap();
++            inner.new_wall_with_id(id, WallState::new(curve, 4.0, 0, 0, false));
++            public.consume(
++                &mut inner,
++                &TerrainHeightGrid512 {
++                    encoded: vec![0u16; 512 * 512].into(),
++                    minimum_y: 0.0,
++                    maximum_y: 0.0,
++                    sampling_fix: false,
++                },
++            );
++            assert!(public.get(id).is_some());
++        }
++        world.insert_resource(public);
++        world
++    }
++    #[test]
++    fn wall_and_half_reject_high_identity_bits_before_touching_the_low_slot() {
++        for half in [false, true] {
++            let mut world = world(None);
++            world.resource_mut::<WallColorIds>().0[7] = 91;
++            world.resource_mut::<HalftimberColorIds>().0[7] = 91;
++            let id = WallId(0x1_0000_0007);
++            let mut schedule = Schedule::default();
++            if half {
++                world.send_event(SetHalftimberColorIdCmd::new(id, 12, 0));
++                schedule.add_systems(crate::set_halftimber_color_id::set_halftimber_color_id);
++            } else {
++                world.send_event(SetWallColorIdCmd::new(id, 12, 0));
++                schedule.add_systems(set_wall_color_id);
++            }
++            let result =
++                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| schedule.run(&mut world)));
++            assert!(result.is_err());
++            assert_eq!(world.resource::<WallColorIds>().0[7], 91);
++            assert_eq!(world.resource::<HalftimberColorIds>().0[7], 91);
++            assert!(world.resource::<Events<CreatePlasterCmd>>().is_empty());
++            assert!(world.resource::<Events<PlayWallUiSound>>().is_empty());
++        }
++    }
++    #[test]
++    fn gate_missing_full_identity_skips_without_mutating_a_low_identity_wall() {
++        let mut world = world(Some(WallId(7)));
++        world.resource_mut::<GateColorIds>().0[7] = 91;
++        world.send_event(SetGateColorIdCmd::new(WallId(0x1_0000_0007), 4, 0));
++        let mut schedule = Schedule::default();
++        schedule.add_systems(crate::set_gate_color_id::set_gate_color_id);
++        schedule.run(&mut world);
++        assert_eq!(world.resource::<GateColorIds>().0[7], 91);
++        assert!(world.resource::<Events<PlayWallUiSound>>().is_empty());
++    }
++    #[test]
++    fn gate_present_full_identity_reaches_the_original_full_width_bound() {
++        let id = WallId(0x1_0000_0007);
++        let mut world = world(Some(id));
++        world.resource_mut::<GateColorIds>().0[7] = 91;
++        world.send_event(SetGateColorIdCmd::new(id, 4, 0));
++        let mut schedule = Schedule::default();
++        schedule.add_systems(crate::set_gate_color_id::set_gate_color_id);
++        let result =
++            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| schedule.run(&mut world)));
++        assert!(result.is_err());
++        assert_eq!(world.resource::<GateColorIds>().0[7], 91);
++    }
++    #[test]
++    fn low_identity_keeps_current_color_and_plaster_behavior() {
++        let id = WallId(7);
++        let mut world = world(Some(id));
++        world.send_event(SetWallColorIdCmd::new(id, 12, 0));
++        world.send_event(SetGateColorIdCmd::new(id, 4, 0));
++        world.send_event(SetHalftimberColorIdCmd::new(id, 5, 0));
++        let mut schedule = Schedule::default();
++        schedule.add_systems(
++            (
++                set_wall_color_id,
++                crate::set_gate_color_id::set_gate_color_id,
++                crate::set_halftimber_color_id::set_halftimber_color_id,
++            )
++                .chain(),
++        );
++        schedule.run(&mut world);
++        assert_eq!(world.resource::<WallColorIds>().0[7], 12);
++        assert_eq!(world.resource::<GateColorIds>().0[7], 4);
++        assert_eq!(world.resource::<HalftimberColorIds>().0[7], 5);
++        let events = world.resource::<Events<CreatePlasterCmd>>();
++        let mut cursor = events.get_cursor();
++        assert_eq!(cursor.read(events).next().unwrap().0, id);
++        assert!(world.resource::<Events<DeletePlasterCmd>>().is_empty());
++    }
++}

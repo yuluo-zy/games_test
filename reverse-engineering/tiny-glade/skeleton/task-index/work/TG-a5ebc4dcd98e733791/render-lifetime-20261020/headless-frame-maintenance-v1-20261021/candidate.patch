@@ -1,0 +1,14 @@
+--- a/tiny-glade/crates/tiny-glade/src/production_renderer.rs
++++ b/tiny-glade/crates/tiny-glade/src/production_renderer.rs
+@@ -141,6 +141,11 @@
+     bridge: &mut crate::render_bridge::CoreRenderBridge,
+     world: &mut World,
+ ) -> Result<HeadlessGameplayFrame> {
++    // 与生产 RenderHost 的帧首 drain_finished_frames 一致：只回收真实已完成帧。
++    // 未完成帧仍持有原命令和资源，不为验证统计追加等待或改变在飞帧上限。
++    bridge
++        .collect_completed_frames()
++        .context("collect completed gameplay frames")?;
+     let started = std::time::Instant::now();
+     let mut lists = DrawLists::new();
+     build_draw_lists(world, bridge.shader_library().as_ref(), &mut lists);

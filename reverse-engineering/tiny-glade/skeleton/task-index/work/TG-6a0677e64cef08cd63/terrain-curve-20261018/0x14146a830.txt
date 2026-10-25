@@ -1,0 +1,276 @@
+
+// WARNING: Removing unreachable block (ram,0x00014146ac06)
+
+void __cdecl
+utils::curve::Curve::
+crashy_resample_approx_pt_count<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>(void)
+
+{
+  undefined1 *puVar1;
+  float fVar2;
+  undefined8 uVar3;
+  undefined8 uVar4;
+  undefined8 *extraout_RAX;
+  longlong lVar5;
+  longlong *in_RCX;
+  longlong lVar6;
+  longlong in_RDX;
+  undefined8 *puVar7;
+  undefined1 *in_R8;
+  ulonglong uVar8;
+  undefined1 **ppuVar9;
+  ulonglong uVar10;
+  ulonglong uVar11;
+  float extraout_XMM0_Da;
+  uint uVar12;
+  float fVar13;
+  uint uVar14;
+  float fVar15;
+  float fVar16;
+  float fVar17;
+  float fVar18;
+  float fVar19;
+  float fVar20;
+  float fVar21;
+  float fVar22;
+  float fVar23;
+  float fVar24;
+  float fVar25;
+  longlong local_1d0;
+  longlong lStack_1c8;
+  longlong local_1c0;
+  longlong lStack_1b8;
+  longlong local_1b0;
+  longlong lStack_1a8;
+  longlong local_1a0;
+  undefined1 local_198 [16];
+  undefined1 local_188 [16];
+  undefined1 *local_178;
+  code *pcStack_170;
+  undefined1 *local_168;
+  code *local_160;
+  code *local_150;
+  undefined1 local_140 [8];
+  undefined8 *local_138;
+  longlong local_130;
+  undefined **local_128;
+  undefined8 *puStack_120;
+  undefined1 **local_118;
+  undefined8 local_110;
+  undefined8 local_108;
+  undefined1 local_f1;
+  undefined8 local_f0;
+  
+  local_f0 = 0xfffffffffffffffe;
+  if (in_R8 < (undefined1 *)0x2) {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic();
+  }
+  if ((((ulonglong)in_R8 >> 0x3d != 0) || (0x7ffffffffffffffc < (ulonglong)((longlong)in_R8 * 8)))
+     || (std::alloc::__default_lib_allocator::__rust_alloc(), extraout_RAX == (undefined8 *)0x0)) {
+                    // WARNING: Subroutine does not return
+    alloc::raw_vec::handle_error();
+  }
+  local_118 = (undefined1 **)0x0;
+  uVar10 = *(ulonglong *)(in_RDX + 0x10);
+  if (uVar10 == 0) {
+    local_f1 = 1;
+                    // WARNING: Subroutine does not return
+    core::panicking::panic_bounds_check();
+  }
+  fVar19 = 1.0 / ((float)in_R8 + -1.0);
+  puVar7 = *(undefined8 **)(in_RDX + 8);
+  local_188 = ZEXT416((uint)(fVar19 * -0.5 + 1.0));
+  uVar3 = *puVar7;
+  fVar20 = (float)uVar3;
+  fVar21 = (float)((ulonglong)uVar3 >> 0x20);
+  *extraout_RAX = uVar3;
+  local_118 = (undefined1 **)0x1;
+  local_138 = puVar7 + uVar10;
+  if (*(ulonglong *)(in_RDX + 0x28) < uVar10) {
+    uVar10 = *(ulonglong *)(in_RDX + 0x28);
+  }
+  lVar5 = *(longlong *)(in_RDX + 0x20);
+  local_130 = -uVar10;
+  fVar23 = 0.0;
+  fVar18 = 0.0;
+  fVar15 = 0.0;
+  fVar17 = 0.0;
+  ppuVar9 = (undefined1 **)0x1;
+  uVar8 = (ulonglong)(uVar10 != 0);
+  local_128 = (undefined **)in_R8;
+  puStack_120 = extraout_RAX;
+  if (uVar8 < uVar10) {
+    lVar6 = 0;
+    do {
+      if (uVar8 - 1 == lVar6) {
+        uVar8 = uVar8 - lVar6;
+        uVar11 = uVar8 + 1;
+        fVar13 = fVar20;
+        fVar22 = fVar21;
+        goto LAB_14146aa2a;
+      }
+      lVar6 = lVar6 + -1;
+    } while (local_130 + uVar8 != lVar6);
+  }
+LAB_14146ac3a:
+  if (puStack_120 + (longlong)((longlong)ppuVar9 + -1) == (undefined8 *)0x0) {
+    local_f1 = 1;
+                    // WARNING: Subroutine does not return
+    core::option::unwrap_failed();
+  }
+  if (local_138 + -1 == (undefined8 *)0x0) {
+    local_f1 = 1;
+                    // WARNING: Subroutine does not return
+    core::option::unwrap_failed();
+  }
+  uVar3 = local_138[-1];
+  fVar17 = (float)((ulonglong)uVar3 >> 0x20);
+  uVar4 = puStack_120[(longlong)((longlong)ppuVar9 + -1)];
+  fVar19 = (float)uVar3 - (float)uVar4;
+  fVar15 = fVar17 - (float)((ulonglong)uVar4 >> 0x20);
+  fVar19 = SQRT(fVar15 * fVar15 + fVar19 * fVar19);
+  if (fVar19 <= 0.0) {
+    if (fVar18 <= fVar19) goto LAB_14146ad39;
+    if (ppuVar9 == local_128) {
+      local_f1 = 1;
+      alloc::raw_vec::RawVec::grow_one<tuple_<u8,u32>,alloc::alloc::Global>();
+    }
+    puStack_120[(longlong)ppuVar9] = CONCAT44(fVar21,fVar20);
+    puVar1 = (undefined1 *)((longlong)ppuVar9 + 1);
+    fVar20 = fVar20 - (float)uVar3;
+    fVar21 = fVar21 - fVar17;
+    local_118 = (undefined1 **)puVar1;
+    if (SQRT(fVar21 * fVar21 + fVar20 * fVar20) <= 0.0) {
+      local_f1 = 1;
+                    // WARNING: Subroutine does not return
+      core::panicking::panic();
+    }
+    if ((undefined **)puVar1 == local_128) {
+      local_f1 = 1;
+      alloc::raw_vec::RawVec::grow_one<tuple_<u8,u32>,alloc::alloc::Global>();
+    }
+    puVar7 = puStack_120 + (longlong)puVar1;
+    lVar5 = 2;
+  }
+  else {
+    if (ppuVar9 == local_128) {
+      local_f1 = 1;
+      alloc::raw_vec::RawVec::grow_one<tuple_<u8,u32>,alloc::alloc::Global>();
+    }
+    puVar7 = puStack_120 + (longlong)ppuVar9;
+    lVar5 = 1;
+  }
+  *puVar7 = uVar3;
+  local_118 = (undefined1 **)((longlong)ppuVar9 + lVar5);
+LAB_14146ad39:
+  local_168 = (undefined1 *)local_118;
+  local_178 = (undefined1 *)local_128;
+  pcStack_170 = (code *)puStack_120;
+  local_f1 = 0;
+  try_new_from_points<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>();
+  if (!SBORROW8(0,local_1d0)) {
+    in_RCX[6] = local_1a0;
+    in_RCX[4] = local_1b0;
+    in_RCX[5] = lStack_1a8;
+    in_RCX[2] = local_1c0;
+    in_RCX[3] = lStack_1b8;
+    *in_RCX = local_1d0;
+    in_RCX[1] = lStack_1c8;
+    return;
+  }
+  local_178 = local_140;
+  pcStack_170 = core::fmt::num::imp::impl$9::fmt;
+  local_168 = local_198;
+  local_160 = impl$46::fmt;
+  local_150 = alloc::vec::impl$27::fmt<glam::f32::vec2::Vec2,alloc::alloc::Global>;
+  local_128 = &PTR_s_Curve_resampling_to_points_faile_142c63b18;
+  puStack_120 = (undefined8 *)0x3;
+  local_108 = 0;
+  local_110 = 3;
+  local_118 = &local_178;
+                    // WARNING: Subroutine does not return
+  core::panicking::panic_fmt();
+LAB_14146aa2a:
+  fVar24 = (float)puVar7[uVar8];
+  fVar25 = (float)((ulonglong)puVar7[uVar8] >> 0x20);
+  fVar2 = *(float *)(lVar5 + uVar8 * 4);
+  fVar23 = fVar23 + (fVar2 - fVar15);
+  fVar15 = (float)local_188._0_4_;
+  if (fVar23 <= (float)local_188._0_4_) {
+    fVar15 = fVar23;
+  }
+  fVar23 = (float)(-(uint)NAN(fVar23) & local_188._0_4_ | ~-(uint)NAN(fVar23) & (uint)fVar15);
+LAB_14146aa70:
+  if (fVar19 <= fVar23 - fVar17) {
+    fVar17 = fVar17 + fVar19;
+    local_f1 = 1;
+    inverse_lerp();
+    ppuVar9 = local_118;
+    if ((local_118 == (undefined1 **)0x0) ||
+       (puStack_120 + (longlong)((longlong)local_118 + -1) == (undefined8 *)0x0)) {
+      local_f1 = 1;
+                    // WARNING: Subroutine does not return
+      core::option::unwrap_failed();
+    }
+    uVar3 = puStack_120[(longlong)((longlong)local_118 + -1)];
+    fVar15 = fVar24 - (float)uVar3;
+    fVar16 = fVar25 - (float)((ulonglong)uVar3 >> 0x20);
+    if (SQRT(fVar16 * fVar16 + fVar15 * fVar15) <= fVar18) goto code_r0x00014146aadf;
+    fVar20 = 0.0;
+    if (0.0 <= extraout_XMM0_Da) {
+      fVar20 = extraout_XMM0_Da;
+    }
+    fVar21 = 1.0;
+    if (fVar20 <= 1.0) {
+      fVar21 = fVar20;
+    }
+    fVar20 = (1.0 - fVar21) * fVar13 + fVar21 * fVar24;
+    fVar21 = (1.0 - fVar21) * fVar22 + fVar21 * fVar25;
+    if (local_118 == local_128) {
+      local_f1 = 1;
+      alloc::raw_vec::RawVec::grow_one<tuple_<u8,u32>,alloc::alloc::Global>();
+    }
+    goto LAB_14146ab54;
+  }
+  if ((ppuVar9 == (undefined1 **)0x0) ||
+     (puStack_120 + (longlong)((longlong)ppuVar9 + -1) == (undefined8 *)0x0)) {
+    local_f1 = 1;
+                    // WARNING: Subroutine does not return
+    core::option::unwrap_failed();
+  }
+  uVar3 = puStack_120[(longlong)((longlong)ppuVar9 + -1)];
+  fVar15 = fVar24 - (float)uVar3;
+  fVar13 = fVar25 - (float)((ulonglong)uVar3 >> 0x20);
+  fVar13 = SQRT(fVar13 * fVar13 + fVar15 * fVar15);
+  fVar15 = fVar13;
+  if (fVar13 <= fVar18) {
+    fVar15 = fVar18;
+  }
+  uVar12 = (int)((uint)(fVar18 < fVar13) << 0x1f) >> 0x1f;
+  uVar14 = (int)((uint)(fVar18 < fVar13) << 0x1f) >> 0x1f;
+  fVar20 = (float)(~uVar12 & (uint)fVar20 | (uint)fVar24 & uVar12);
+  fVar21 = (float)(~uVar14 & (uint)fVar21 | (uint)fVar25 & uVar14);
+  fVar18 = fVar15;
+  if (uVar10 <= uVar11) goto LAB_14146ac3a;
+  uVar8 = uVar11;
+  uVar11 = (uVar11 < uVar10) + uVar11;
+  fVar15 = fVar2;
+  fVar13 = fVar24;
+  fVar22 = fVar25;
+  goto LAB_14146aa2a;
+code_r0x00014146aadf:
+  if (0.0 < fVar18) {
+    if (local_118 == local_128) {
+      local_f1 = 1;
+      alloc::raw_vec::RawVec::grow_one<tuple_<u8,u32>,alloc::alloc::Global>();
+    }
+LAB_14146ab54:
+    puStack_120[(longlong)ppuVar9] = CONCAT44(fVar21,fVar20);
+    ppuVar9 = (undefined1 **)((longlong)ppuVar9 + 1);
+    fVar18 = 0.0;
+    local_118 = ppuVar9;
+  }
+  goto LAB_14146aa70;
+}
+

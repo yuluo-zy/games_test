@@ -1,0 +1,38 @@
+{
+  "task_id": "TG-11d607188d6724d9f3",
+  "owner": "render-nani-main-20261018",
+  "status": "claimed",
+  "claimed_at_utc": "2026-10-18T05:03:11.716589+00:00",
+  "target_version": "C",
+  "versions": [
+    "A",
+    "B",
+    "C"
+  ],
+  "function_scope": null,
+  "work_dir": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-11d607188d6724d9f3/render-nani-main-20261018",
+  "worker": "idx-tg-11d607188d6724d9f3-render-nani-main-20261018",
+  "source_inputs": {
+    "A": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/A/crates/country-core/src/render/nani/gpu_world.rs",
+      "sha256": "52742541b2d9b1844a27f0464a7c7a9be64797877f389827c5fe28573fa3d4a3",
+      "binary_sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708",
+      "pdb_sha256": "d5d4001583e31abf20b1563bbfdd9e4853629065aa2e461fe5809b205db908a5"
+    },
+    "B": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/B/crates/country-core/src/render/nani/gpu_world.rs",
+      "sha256": "89765346be556fee2e1413b42e3f460e7c0cff6f44c1b2cc65a6092d687d15a1",
+      "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+      "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911"
+    },
+    "C": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/C/crates/country-core/src/render/nani/gpu_world.rs",
+      "sha256": "1e86cbdef35481fd6cbbaef15f6390188e0b24441d7a01c6682ecc9ed92cf218",
+      "binary_sha256": "d8f9261b1a4cb677fe91b8f5017bcff63b1312228b3f3264a2071ca7d3ad80a9",
+      "pdb_sha256": "df472d8e6ae642baed96127151b18685291468518ea8dc71557bce4508c78902"
+    }
+  },
+  "handoff": "task-index/handoffs/TG-11d607188d6724d9f3.json",
+  "rule": "one owner for this A/B/C file family; deliver independent candidate/patch/contract, never overwrite another owner or original artifacts",
+  "authorized_deferred_reason": "用户要求恢复复杂顶层真实业务；gpu_generate_draw_lists原读取OwnedGpuWorldSubset的ShadowedBuffer/GPU地址，而当前源码只有CPUVec，需同族补真实所有者；只按B原证给现重构架构窄适配，C等价未宣称。"
+}

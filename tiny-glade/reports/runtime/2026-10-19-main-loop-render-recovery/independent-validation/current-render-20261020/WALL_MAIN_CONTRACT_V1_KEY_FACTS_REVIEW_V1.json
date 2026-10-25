@@ -1,0 +1,50 @@
+{
+  "reviewer": "/root/render_reviewer",
+  "date": "2026-10-21",
+  "status": "bounded_native_design_facts_accepted_source_pending",
+  "scope": "墙窗完整main设计的关键数值/部分写入顺序独审；不是完整源码、全部RNG支路或producer挂载验收。",
+  "inputs": {
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-52f7fc4f94ad125530/cloth-visual-state-20261020/window-producer-root-continuation-v1/WALL_MAIN_CONTRACT_MANIFEST_V1.json": "0e9dabe1929021ecb6e3a0d61d02def0a8bcf327b1651c62ee49c9cebb1cbd3d",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-52f7fc4f94ad125530/cloth-visual-state-20261020/window-producer-root-continuation-v1/WALL_MAIN_CONTRACT_V1.md": "5b729a4d376910abafe2a901d5b7e38a5da3f992a6e5ed4a579ef3755784a956",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-52f7fc4f94ad125530/cloth-visual-state-20261020/window-producer-root-continuation-v1/WALL_LITERAL_USES.json": "947e0497728aef97bc081326e291829eb6df447b482788eba79ad810d95786fe",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-52f7fc4f94ad125530/cloth-visual-state-20261020/window-producer-root-continuation-v1/WALL_MESH_NAME_TABLES.json": "3a13163c30958e1ebd3193c878acf604675a349f1fdbb1c224db1fa7a86e9bc5",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-52f7fc4f94ad125530/cloth-visual-state-20261020/window-producer-root-continuation-v1/SELECTED_HASH_AND_MAIN_PDB.json": "7091e1e4cdf4dcca6168e3dbf24f9ddaea6c6ac6540dca9523f4e7e2acfa7289",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-52f7fc4f94ad125530/cloth-visual-state-20261020/window-producer-root-continuation-v1/hash-native-pack/window-shutter-hash.json": "9a14da80e08bf331bc7ece44950b81cc5bd13cfab09c1bf1d6a8bb43e6b1f8d2",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-52f7fc4f94ad125530/cloth-visual-state-20261020/window-producer-root-continuation-v1/hash-native-pack/window-flowerbed-hash.json": "4acf4bb6cbb02e840ee8e9c641a3265cc4a38763722e7137bd699ead708abeca"
+  },
+  "native": {
+    "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "main_pdb": "442:2224; code_size14303",
+    "direct_check": "直接读取实际RNE PE，原main 0x1407ebfd0..0x1407ef7af全部14303B/2637指令字节一致且连续；hash叶406/434B逐指令也匹配。12个mesh名直接读实际PE，全部吻合；合同manifest所列文件与复用依赖全部hash吻合。"
+  },
+  "accepted_bounded_facts": [
+    {
+      "pc": "0x1407ec570..0x1407ec725",
+      "fact": "subtype只容0/1；必需outer wall和collision bounds在蓝图insert前；insert之后才rank wrapping_sub(1)<3显式失败，不能提前事务化消除已发生发布。"
+    },
+    {
+      "pc": "0x1407ed307..0x1407ed30e",
+      "fact": "玻璃window_light用实际modified ID与1000*rank相加，不是stored Info.decorator_id。"
+    },
+    {
+      "pc": "0x1407ed87f..0x1407edb6d",
+      "fact": "subtype1 premade分支先局部bounds footprint.y=.63，不写原库；首洞forward*1.08*.5，维度[width,(height+0)+.2,.63+.5]，第二洞仅shutter flag时，位移forward*(.63+.5)*.5、维度[width+.7,height-.2,.5]；原算术顺序与已读合同吻合。142a89ef0实际向量为[0,.2,0,0]。"
+    },
+    {
+      "pc": "0x1407ee2cb..0x1407ee306",
+      "fact": "premade后段独立reseed storedID，wrap乘0xaaaaaab6加0x5556884b与0x55555555比较，且rank<3；不得擅改mod3。"
+    }
+  ],
+  "schema_engineering_limits": [
+    "七参数、实际canonical库/Info accessor以旧已绑定合同为依赖，本次未把PDB void占位当作完整signature。",
+    "DefaultHasher复用方案依赖已列本地std hash源码，工具链变动需要复核；新包字节核对不等于完整跨目标hash差分运行。",
+    "尚未审候选所有RNG消费、helper恢复、Rust借用/资源authority、Bevy挂载、编辑/卸载可达性。完整候选仍需源码独审及root实测。"
+  ],
+  "reviewer_execution": {
+    "production_write": false,
+    "cargo": false,
+    "gpu": false,
+    "original_target_execution": false
+  },
+  "blockers_in_reviewed_facts": []
+}

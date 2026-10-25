@@ -1,0 +1,37 @@
+{
+  "id": "B-stairs-original-instruction-adjudication",
+  "input_sha256": "7aa89d6a2b01a799b124b77350022d746b6166a268f9a746e6b115dd39fd299d",
+  "prompt_sha256": "b5f08b75a8ca2ffb6287795a06c793a3e5f6aa5ed6ffde476992ddfbb0283d0b",
+  "packet_sha256": "212c80475cbba1b8eb39cefcfa54735e25aface5b83e96533ae13c11ddb01b27",
+  "rendered_input_sha256": "4277320e533650278c86e7bb7c2bcdfd332a62050bb6eda6bfdb8bb69323cb86",
+  "render_format": "numbered-plain-text-v1",
+  "model": "deepseek-ai/DeepSeek-V4.1-Flash",
+  "endpoint_origin": "https://it-litellm.espressif.cn",
+  "request_options": {
+    "max_tokens": 10000,
+    "thinking": "template-low"
+  },
+  "elapsed_seconds": 80.587,
+  "finish_reason": "length",
+  "usage": {
+    "completion_tokens": 10000,
+    "prompt_tokens": 4193,
+    "total_tokens": 14193,
+    "completion_tokens_details": {
+      "reasoning_tokens": 7949
+    }
+  },
+  "accepted_transport": false,
+  "semantically_verified": false,
+  "validation_errors": [
+    "Invalid JSON",
+    "Invalid array observations",
+    "Invalid array branch_matrix",
+    "Invalid array side_effects",
+    "Invalid array dependency_reuse",
+    "Invalid array unknowns",
+    "Incomplete finish_reason=length"
+  ],
+  "analysis": null,
+  "content": "{\"summary\":\"Readiness uses MAXSS(dest=quotient,src=0.05) then UCOMISS/JBE; <=, equal, and unordered take A2. Event byte +0x11 executes only on the 76dc path, not 76e0. Payload +0x10 controls dispatch; scheduling +8 does not control the final formula.\",\"observations\":[{\"id\":\"O1\",\"claim\":\"MAXSS operand order: AT&T maxss %xmm7,%xmm1 means destination xmm1=quotient, source xmm7=0.05. For a QNaN destination the source 0.05 is returned; an SNaN destination is quieted and remains NaN.\",\"refs\":[\"A1:L5-L8\"]},{\"id\":\"O2\",\"claim\":\"UCOMISS %xmm1,%xmm0 compares elapsed xmm0 against threshold xmm1. JBE is taken on CF=1 or ZF=1, so elapsed<threshold, elapsed==threshold, and unordered all jump to A2; only elapsed>threshold falls through.\",\"refs\":[\"A1:L9-L10\"]},{\"id\":\"O3\",\"claim\":\"A2 is the accumulate/not-emit path: it adds [rax+0x28] to xmm0 and stores to 0x18(%r11), then loops.\",\"refs\":[\"A2:L1-L4\"]},{\"id\":\"O4\",\"claim\":\"With ordinary nonzero xmm6, numerator [r11+0xc]=0 gives quotient +/-0 and MAXSS yields 0.05; a nonzero numerator can give quotient>0.05 and raise the threshold. If xmm6=0, 0/0 is QNaN and MAXSS yields 0.05; nonzero/0 gives +/-inf.\",\"refs\":[\"A1:L5-L8\"]},{\"id\":\"O5\",\"claim\":\"NaN elapsed makes UCOMISS unordered, sets CF=ZF=1, and JBE goes to A2; it does not emit. A QNaN quotient from 0/0 is normally suppressed by MAXSS to 0.05 before UCOMISS.\",\"refs\":[\"A1:L5-L10\",\"A2:L1-L4\"]},{\"id\":\"O6\",\"claim\":\"Output byte order: if target 76dc is taken, addb $0x11,%r14b executes before r14b is stored at output+8; if target 76e0 is taken, that add is skipped.\",\"refs\":[\"A5:L13-L17\",\"A7:L4-L8\",\"A8:L1-L5\"]},{\"id\":\"O7\",\"claim\":\"Payload +0x10 bit is tested at 77b7 and 7829. Set routes to 782f call; clear routes to 77bd. Both scheduling +8 paths converge on these tests, so +0x10 controls that dispatch, not the final event formula by itself.\",\"refs\":[\"A1:L27-L30\",\"A3:L12-L16\"]},{\"id\":\"O8\",\"claim\":\"Input +8 bit selects readiness path when set (A1) versus queue/enqueue path when clear (A3); it does not by itself select whether +0x11 is added.\",\"refs\":[\"A1:L3-L4\",\"A3:L1-L11\"]},{\"id\":\"O9\",\"claim\":\"A4 loads input+0x1c into r14d; A6 starts r14b=0x12 and subtracts input+0x1c. A5 jumps to 76dc (add 0x11); A7 jumps to 76e0 (no add). The exact edge from 77bd/782f to A4/A6 is not in these slices.\",\"refs\":[\"A4:L1-L2\",\"A5:L13-L17\",\"A6:L1-L3\",\"A7:L4-L8\"]},{\"id\":\"O10\",\"claim\":\"Previous 'unordered readiness applies' is rejected as an emission claim: unordered JBE goes to A2 accumulation. The narrower fact that unordered makes JBE taken is confirmed.\",\"refs\":[\"A1:L9-L10\",\"A2:L1-L4\"]},{\"id\":\"O11\",\"claim\":\"Previous 'every event path adds 0x11' is rejected: the 76e0 path skips A8:L1.\",\"refs\":[\"A7:L4-L8\",\"A8:L1-L2\"]}],\"branch_matrix\":[{\"condition\":\"0x8(%r11) bit0 set\",\"effect\":\"enter A1 readiness block; clear jumps to A3 enqueue block\",\"refs\":[\"A1:L3-L4\",\"A3:L1-L11\"]},{\"condition\":\"UCOMISS: elapsed <= threshold (CF=1 or ZF=1), including equality\",\"effect\":\"jbe to A2; accumulate timer and loop, no event write in slice\",\"refs\":[\"A1:L9-L10\",\"A2:L1-L4\"]},{\"condition\":\"UCOMISS unordered either operand NaN\",\"effect\":\"CF=ZF=1, jbe to A2\",\"refs\":[\"A1:L9-L10\",\"A2:L1-L4\"]},{\"condition\":\"UCOMISS: elapsed > threshold\",\"effect\":\"fall through toward event construction at A1:L11\",\"refs\":[\"A1:L9-L11\"]},{\"condition\":\"payload +0x10 bit set\",\"effect\":\"branch/fall to 782f call\",\"refs\":[\"A1:L29-L30\",\"A3:L15-L19\"]},{\"condition\":\"payload +0x10 bit clear\",\"effect\":\"branch/fall to 77bd\",\"refs\":[\"A1:L29-L30\",\"A3:L15-L16\"]},{\"condition\":\"jump target 76dc\",\"effect\":\"execute addb $0x11,%r14b then write r14b to output+8\",\"refs\":[\"A5:L13-L17\",\"A8:L1-L5\"]},{\"condition\":\"jump target 76e0\",\"effect\":\"skip addb $0x11; write r14b directly to output+8\",\"refs\":[\"A7:L4-L8\",\"A8:L1-L5\"]}],\"side_effects\":[{\"order\":\"1\",\"effect\":\"On non-jbe A1 path, save r11 at 0x60(%rbp), possibly grow event array, store rdi at (%rax,%r14,8), increment r14, store 0x48(%rbp), update input timer at 0x18(%rax).\",\"refs\":[\"A1:L11-L26\"]},{\"order\":\"2\",\"effect\":\"Load payload pointer from 0x10(%rax), form r14=payload+0x10, test payload+0x10 bit.\",\"refs\":[\"A1:L27-L30\",\"A3:L12-L16\"]},{\"order\":\"3\",\"effect\":\"A2 path adds [rax+0x28] to xmm0, stores xmm0 to 0x18(%r11), jumps to 7722.\",\"refs\":[\"A2:L1-L4\"]},{\"order\":\"4\",\"effect\":\"Event body write: output[r12]=r12 input value; output+8=r14b; adjacent XMM stores; output+0x30=1; increments 0x30(%rsi) and 0x40(%rsi).\",\"refs\":[\"A8:L2-L15\"]}],\"dependency_reuse\":[{\"operation\":\"Input record +0x1c used as direction byte in A4 and as subtraction operand from 0x12 in A6.\",\"game_policy_to_preserve\":\"Preserve whether the selected formula is direct direction or 0x12-direction; do not merge the two blocks.\",\"refs\":[\"A4:L1-L2\",\"A6:L1-L3\"]},{\"operation\":\"Payload pointer from input+0x10, then payload+0x10 bit controls 782f versus 77bd dispatch.\",\"game_policy_to_preserve\":\"Keep scheduling bit +8 separate from payload bit +0x10.\",\"refs\":[\"A1:L3-L4\",\"A1:L27-L30\",\"A3:L12-L16\"]},{\"operation\":\"r14b carries event byte to output+8; A8:L1 conditionally modifies it.\",\"game_policy_to_preserve\":\"Preserve add-before-store only on 76dc path and no add on 76e0 path.\",\"refs\":[\"A5:L13-L17\",\"A7:L4-L8\",\"A8:L1-L5\"]}],\"unknowns\":[{\"question\":\"Which payload +0x10 polarity maps to A4/A5 (+0x11) versus A6/A7 (skip +0x11)?\",\"needed_evidence\":\"Instructions from 77bd/after 782f call through 78c1 and 7a7b.\",\"refs\":[\"A1:L29-L30\",\"A3:L15-L19\",\"A4:L1-L2\",\"A6:L1-L3\"]},{\"question\":\"What is xmm6 and the exact denominator policy?\",\"needed_evidence\":\"Definition/load of xmm6 before 0x140af7754.\",\"refs\":[\"A1:L5-L6\"]},{\"question\":\"What is at 77bd and after the 782f call?\",\"needed_evidence\":\"Disassembly for 0x140af77bd and 0x140af7837 onward.\",\"refs\":[\"A1:L29-L30\",\"A3:L15-L19\"]}],\"integration_checks\":[\"Do not treat unordered UCOMISS as"
+}

@@ -1,0 +1,400 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs_assemble.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs_assemble.rs
+@@ -388,13 +388,176 @@
+     Vec::new() // U。
+ }
+ 
+-/// 0x1407dc170（O 结构）：生成梯层（floor_tri_count_to_atlas_idx 消费）。
+-pub fn gen_stair_floors(
+-    _segments: &[(u32, Vec3)],
+-) -> Vec<u8> {
+-    Vec::new() // U。
++/// B 0x1407dc170：发布经过屋顶补高与辅助高度裁切的双面楼梯网格。
++/// 复用真实 Trimesh 打包器；每个 chunk 的实体共享同一块有析构责任的缓冲。
++#[allow(clippy::too_many_arguments)]
++pub fn gen_stair_floors<D>(
++    device: std::sync::Arc<D>,
++    widths: &[f32],
++    tangents: &[Vec2],
++    positions: &[Vec3],
++    entities: &mut Vec<Entity>,
++    commands: &mut Commands<'_, '_>,
++    info_28: u32,
++    roof_heights: [Option<f32>; 2],
++    auxiliary_samples: &[f32],
++) where
++    D: country_core::render::ssbo::rhapsody_boundary::GraphicsDevice + Send + Sync + 'static,
++{
++    use country_core::components::drawable::{NaniBundle, NaniInstanceDesc, NaniInstanceMeshDesc};
++    use country_core::render::nani::{
++        gpu_world::{GpuWorldSubsetKind, InstanceDataMarker},
++        instance_data::StairsFloorInstanceData,
++        trimesh::Trimesh,
++    };
++    use country_core::resources::stairs::visual::{StairsFloorMeshChunk, StairsMeshBuffer};
++    use country_core::utils::components::transform::Transform;
++    use std::sync::Arc;
++
++    let (indices, vertices, normals) = stair_floor_geometry(
++        widths, tangents, positions, roof_heights, auxiliary_samples,
++    );
++    match Trimesh::builder(&indices).positions(&vertices).attrib(&normals)
++        .build(device.as_ref(), "stair floor chunk")
++    {
++        Ok(mesh) => {
++            let buffer = Arc::new(StairsMeshBuffer::new(mesh.buffer, device));
++            for chunk in mesh.chunks {
++                let bucket = floor_tri_count_to_atlas_idx(u32::from(chunk.index_count()) / 3);
++                let entity = commands.spawn((
++                    NaniBundle::<StairsFloorInstanceData> {
++                        desc: NaniInstanceDesc {
++                            mesh: NaniInstanceMeshDesc::AtlasPart(bucket),
++                            subset_kind: GpuWorldSubsetKind::StairsFloor,
++                        },
++                        transform: Transform::identity(),
++                        marker: InstanceDataMarker::default(),
++                    },
++                    StairsFloorMeshChunk { buffer: Arc::clone(&buffer), chunk, info_28 },
++                )).id();
++                entities.push(entity);
++            }
++        }
++        Err(error) => {
++            // 原 dd980 先按 Error 级别过滤，记录 Display，再析构错误并结束。
++            log::error!(target: "system_decorator::decorator_visual::stairs_assemble",
++                "Error spawning stair mesh: {}", error);
++        }
++    }
++}
++
++/// 同一原函数的 CPU 几何区；输入短切片保最短 zip，不补首尾样本。
++fn stair_floor_geometry(
++    widths: &[f32],
++    tangents: &[Vec2],
++    positions: &[Vec3],
++    roof_heights: [Option<f32>; 2],
++    auxiliary_samples: &[f32],
++) -> (Vec<u32>, Vec<Vec3>, Vec<Vec3>) {
++    let start_raise = roof_heights[0].map_or(0.0, |h| (0.15 - h).max(0.0));
++    let end_raise = roof_heights[1].map_or(0.0, |h| (0.15 - h).max(0.0));
++    let inverse_end = 1.0 / positions.len().wrapping_sub(1) as f32;
++    let raised: Vec<_> = positions.iter().enumerate().map(|(i, &point)| {
++        let u = i as f32 * inverse_end;
++        let height = (1.0 - u) * start_raise + u * end_raise;
++        // 不能只赋值 Y；原 callback 的 X/Z 也有 +0*height 运算。
++        point + Vec3::Y * height
++    }).collect();
++    let mut source_normals = Vec::with_capacity(raised.len());
++    let first_delta = raised[1] - raised[0];
++    source_normals.push(stair_floor_normal(first_delta));
++    for i in 1..raised.len() - 1 {
++        source_normals.push(stair_floor_normal(raised[i + 1] - raised[i - 1]));
++    }
++    source_normals.push(stair_floor_normal(raised[raised.len() - 2] - raised[raised.len() - 1]));
++
++    let mut indices = Vec::with_capacity(raised.len() * 12);
++    let mut vertices = Vec::with_capacity(raised.len() * 4);
++    let mut normals = Vec::with_capacity(raised.len() * 4);
++    // 原在进入 zip 前读取 aux[0]；width/tangent 空不能绕过此失败。
++    let mut previous_gap = 0.15 - auxiliary_samples[0];
++    let mut previous_left = Vec3::ZERO;
++    let mut previous_right = Vec3::ZERO;
++    let mut previous_normal = Vec3::ZERO;
++    let mut top_pair = [0; 2];
++    let mut bottom_pair = [0; 2];
++    let mut active = false;
++    for ((((&width, tangent), point), normal), &sample) in widths.iter().zip(tangents)
++        .zip(&raised).zip(&source_normals).zip(auxiliary_samples)
++    {
++        let gap = 0.15 - sample;
++        let next_active = gap > 0.0;
++        let offset = (Vec3::new(-tangent.y, 0.0, tangent.x) * width) * 0.5;
++        let left = *point - offset;
++        let right = offset + *point;
++        if (previous_gap > 0.0) != next_active {
++            let u = previous_gap / (previous_gap - gap);
++            let one_minus = 1.0 - u;
++            let boundary_left = left * u + previous_left * one_minus;
++            let boundary_right = right * u + previous_right * one_minus;
++            let boundary_normal = *normal * u + previous_normal * one_minus;
++            append_stair_floor_pair(
++                &mut indices, &mut vertices, &mut normals, &mut top_pair,
++                [boundary_left, boundary_right], boundary_normal, active, next_active,
++            );
++            append_stair_floor_pair(
++                &mut indices, &mut vertices, &mut normals, &mut bottom_pair,
++                [stair_floor_bottom(boundary_right), stair_floor_bottom(boundary_left)],
++                -boundary_normal, active, next_active,
++            );
++            active = next_active;
++        }
++        if next_active {
++            append_stair_floor_pair(
++                &mut indices, &mut vertices, &mut normals, &mut top_pair,
++                [left, right], *normal, active, true,
++            );
++            append_stair_floor_pair(
++                &mut indices, &mut vertices, &mut normals, &mut bottom_pair,
++                [stair_floor_bottom(right), stair_floor_bottom(left)], -(*normal), active, true,
++            );
++            active = true;
++        }
++        previous_gap = gap;
++        previous_left = left;
++        previous_right = right;
++        previous_normal = *normal;
++    }
++    (indices, vertices, normals)
+ }
+ 
++fn stair_floor_normal(delta: Vec3) -> Vec3 {
++    // 原先归一化，再取负；零/溢出回退留下三个负零，不能交换负号与回退。
++    -delta.cross(Vec3::new(-delta.z, 0.0, delta.x)).normalize_or_zero()
++}
++
++fn stair_floor_bottom(point: Vec3) -> Vec3 {
++    Vec3::new(point.x, point.y + f32::from_bits(0xbe4c_cccd), point.z)
++}
++
++#[allow(clippy::too_many_arguments)]
++fn append_stair_floor_pair(
++    indices: &mut Vec<u32>,
++    vertices: &mut Vec<Vec3>,
++    normals: &mut Vec<Vec3>,
++    previous: &mut [u32; 2],
++    pair: [Vec3; 2],
++    normal: Vec3,
++    connect: bool,
++    remember: bool,
++) {
++    let index = vertices.len() as u32;
++    let next_index = index.wrapping_add(1);
++    if connect {
++        indices.extend_from_slice(&[
++            previous[0], previous[1], index, index, previous[1], next_index,
++        ]);
++    }
++    vertices.extend_from_slice(&pair);
++    normals.extend_from_slice(&[normal, normal]);
++    if remember { *previous = [index, next_index]; }
++}
++
+ /// B 0x1407de8b0及141fe5f70：将真实梯路径窗口追加到碰撞与两路渲染几何。
+ /// 三路输出各由调用者原 owner 持有；凸包失败仍保留先写入的RT和俯视几何。
+ #[allow(clippy::too_many_arguments)]
+@@ -1375,3 +1538,215 @@
+         assert!(width.contains("the len is 1 but the index is 1"));
+     }
+ }
++
++#[cfg(test)]
++mod stair_floor_mesh_tests {
++    use super::*;
++    use country_core::components::drawable::{NaniInstanceDesc, NaniInstanceMeshDesc};
++    use country_core::render::nani::gpu_world::{GpuWorldSubsetKind, InstanceDataMarker};
++    use country_core::render::nani::instance_data::StairsFloorInstanceData;
++    use country_core::render::ssbo::rhapsody_boundary::{BackendError, Buffer, BufferDesc, GraphicsDevice};
++    use country_core::resources::stairs::visual::StairsFloorMeshChunk;
++    use country_core::utils::components::transform::Transform;
++    use std::{ops::Range, sync::{Arc, Mutex}};
++
++    fn line(count: usize) -> Vec<Vec3> {
++        (0..count).map(|i| Vec3::new(i as f32 * 2.0, 0.0, 0.0)).collect()
++    }
++
++    fn geometry(samples: &[f32]) -> (Vec<u32>, Vec<Vec3>, Vec<Vec3>) {
++        stair_floor_geometry(&vec![2.0; samples.len()], &vec![Vec2::X; samples.len()],
++            &line(samples.len()), [None, None], samples)
++    }
++
++    #[test]
++    fn full_clearance_builds_both_faces_with_original_vertex_and_triangle_order() {
++        let (indices, vertices, normals) = geometry(&[0.0, 0.0]);
++        assert_eq!(indices, [0, 1, 4, 4, 1, 5, 2, 3, 6, 6, 3, 7]);
++        assert_eq!(vertices, [
++            Vec3::new(0.0, 0.0, -1.0), Vec3::new(0.0, 0.0, 1.0),
++            Vec3::new(0.0, -0.2, 1.0), Vec3::new(0.0, -0.2, -1.0),
++            Vec3::new(2.0, 0.0, -1.0), Vec3::new(2.0, 0.0, 1.0),
++            Vec3::new(2.0, -0.2, 1.0), Vec3::new(2.0, -0.2, -1.0),
++        ]);
++        assert_eq!(normals, [Vec3::Y, Vec3::Y, -Vec3::Y, -Vec3::Y,
++            Vec3::Y, Vec3::Y, -Vec3::Y, -Vec3::Y]);
++    }
++
++    #[test]
++    fn both_crossing_directions_insert_the_actual_halfway_boundary() {
++        for (samples, expected_x) in [([0.0, 0.3], [0.0, 1.0]), ([0.3, 0.0], [1.0, 2.0])] {
++            let (indices, vertices, normals) = geometry(&samples);
++            assert_eq!(vertices.len(), 8);
++            assert_eq!(indices.len(), 12);
++            assert_eq!(vertices[0].x, expected_x[0]);
++            assert_eq!(vertices[4].x, expected_x[1]);
++            assert_eq!(vertices[0].z, -1.0);
++            assert_eq!(vertices[5].z, 1.0);
++            assert_eq!(normals[0], Vec3::Y);
++            assert_eq!(normals[6], -Vec3::Y);
++        }
++    }
++
++    #[test]
++    fn closed_middle_does_not_connect_separate_open_strips() {
++        let (indices, vertices, _) = geometry(&[0.0, 0.3, 0.3, 0.0, 0.0]);
++        assert_eq!(vertices.len(), 20);
++        assert_eq!(indices.len(), 36);
++        assert_eq!(vertices[4].x, 1.0);
++        assert_eq!(vertices[8].x, 5.0);
++        assert!(indices[..12].iter().all(|&i| i < 8));
++        assert!(indices[12..].iter().all(|&i| i >= 8));
++    }
++
++    #[test]
++    fn roof_raise_changes_end_heights_and_invalid_roof_values_follow_maxss_zero() {
++        let (_, vertices, _) = stair_floor_geometry(&[2.0; 3], &[Vec2::X; 3], &line(3),
++            [Some(0.05), Some(0.15)], &[0.0; 3]);
++        assert!((vertices[0].y - 0.1).abs() < 1e-6);
++        assert!((vertices[4].y - 0.05).abs() < 1e-6);
++        assert_eq!(vertices[8].y, 0.0);
++        let (_, invalid, _) = stair_floor_geometry(&[2.0; 2], &[Vec2::X; 2], &line(2),
++            [Some(f32::NAN), Some(f32::INFINITY)], &[0.0; 2]);
++        assert_eq!(invalid[0].y, 0.0);
++        assert_eq!(invalid[4].y, 0.0);
++    }
++
++    #[test]
++    fn degenerate_normal_keeps_negative_zero_and_nan_crossings_are_not_filtered() {
++        let (_, _, normals) = stair_floor_geometry(&[2.0; 2], &[Vec2::X; 2], &[Vec3::ZERO; 2],
++            [None, None], &[0.0; 2]);
++        assert_eq!(normals[0].to_array().map(f32::to_bits), [0x8000_0000; 3]);
++        assert_eq!(normals[2].to_array().map(f32::to_bits), [0; 3]);
++        let (indices, vertices, normals) = geometry(&[f32::NAN, 0.0]);
++        assert_eq!(indices.len(), 12);
++        assert!(vertices[0].is_nan());
++        assert!(normals[0].is_nan());
++        assert_eq!(vertices[4], Vec3::new(2.0, 0.0, -1.0));
++    }
++
++    #[test]
++    fn short_zip_does_not_append_tail_and_required_reads_precede_empty_zip() {
++        let (indices, vertices, _) = stair_floor_geometry(&[2.0], &[Vec2::X; 3], &line(3),
++            [None, None], &[0.0; 3]);
++        assert!(indices.is_empty());
++        assert_eq!(vertices.len(), 4);
++        let zero_points = std::panic::catch_unwind(|| stair_floor_geometry(&[], &[], &[], [None, None], &[]));
++        assert!(zero_points.is_err());
++        let one_point = std::panic::catch_unwind(|| stair_floor_geometry(&[], &[], &[Vec3::ZERO], [None, None], &[]));
++        assert!(one_point.is_err());
++        let no_aux = std::panic::catch_unwind(|| stair_floor_geometry(&[], &[], &line(2), [None, None], &[]));
++        assert!(no_aux.is_err());
++    }
++
++    #[derive(Default)]
++    struct RecordDevice {
++        created: Mutex<Vec<(BufferDesc, String, Vec<u8>)>>,
++        released: Mutex<Vec<u64>>,
++        fail: bool,
++    }
++    impl GraphicsDevice for RecordDevice {
++        fn create_buffer(&self, desc: &BufferDesc, name: &str, bytes: Option<&[u8]>) -> Result<Buffer, BackendError> {
++            let mut calls = self.created.lock().unwrap();
++            calls.push((*desc, name.to_owned(), bytes.unwrap().to_vec()));
++            if self.fail { return Err(BackendError::unsupported("floor upload fixture failure")); }
++            Ok(Buffer { id: calls.len() as u64, byte_size: desc.size as u64, ..Default::default() })
++        }
++        fn update_buffer_bytes(&self, _: &Buffer, _: &[u8], _: &[Range<usize>], _: usize) -> Result<(), BackendError> {
++            panic!("Trimesh creates its packed buffer in one call")
++        }
++        fn device_address(&self, buffer: &Buffer) -> u64 { 0xabcd_0000 + buffer.id * 0x10000 }
++        fn release_buffer(&self, buffer: &Buffer) { self.released.lock().unwrap().push(buffer.id); }
++    }
++
++    fn publish(world: &mut World, device: Arc<RecordDevice>, count: usize, auxiliary: f32, entities: &mut Vec<Entity>) {
++        let mut queue = bevy_ecs::world::CommandQueue::default();
++        {
++            let mut commands = Commands::new(&mut queue, world);
++            gen_stair_floors(device, &vec![2.0; count], &vec![Vec2::X; count], &line(count),
++                entities, &mut commands, 0xfedc_ba98, [None, None], &vec![auxiliary; count]);
++        }
++        queue.apply(world);
++    }
++
++    #[test]
++    fn real_trimesh_upload_publishes_typed_nani_chunk_and_original_normal_attribute() {
++        let device = Arc::new(RecordDevice::default());
++        let mut world = World::new();
++        let mut entities = Vec::new();
++        publish(&mut world, device.clone(), 2, 0.0, &mut entities);
++        assert_eq!(entities.len(), 1);
++        let entity = entities[0];
++        let chunk = world.get::<StairsFloorMeshChunk>(entity).unwrap();
++        assert_eq!(chunk.info_28, 0xfedc_ba98);
++        assert_eq!(chunk.chunk.index_count(), 12);
++        assert_eq!(chunk.chunk.address, 0xabce_0000);
++        assert_eq!(chunk.instance_words()[8], 0xfedc_ba98);
++        let desc = world.get::<NaniInstanceDesc>(entity).unwrap();
++        assert_eq!(desc.subset_kind, GpuWorldSubsetKind::StairsFloor);
++        assert_eq!(desc.mesh, NaniInstanceMeshDesc::AtlasPart(0));
++        assert!(world.get::<InstanceDataMarker<StairsFloorInstanceData>>(entity).is_some());
++        assert_eq!(*world.get::<Transform>(entity).unwrap(), Transform::identity());
++        let calls = device.created.lock().unwrap();
++        assert_eq!(calls.len(), 1);
++        assert_eq!(calls[0].1, "stair floor chunk");
++        assert_eq!(calls[0].0.usage, 0x20020);
++        assert!(calls[0].0.gpu_only);
++        let start = chunk.chunk.attributes_offset as usize + chunk.chunk.vertex_count as usize * 12;
++        let bytes = &calls[0].2;
++        assert_eq!(f32::from_le_bytes(bytes[start + 4..start + 8].try_into().unwrap()), 1.0);
++        assert!(device.released.lock().unwrap().is_empty());
++    }
++
++    #[test]
++    fn multiple_real_meshlets_share_one_buffer_until_the_last_entity_is_removed() {
++        let device = Arc::new(RecordDevice::default());
++        let mut world = World::new();
++        let mut entities = Vec::new();
++        publish(&mut world, device.clone(), 70, 0.0, &mut entities);
++        assert!(entities.len() > 1);
++        let first = world.get::<StairsFloorMeshChunk>(entities[0]).unwrap();
++        let weak = Arc::downgrade(&first.buffer);
++        for &entity in &entities {
++            let chunk = world.get::<StairsFloorMeshChunk>(entity).unwrap();
++            assert!(Arc::ptr_eq(&first.buffer, &chunk.buffer));
++            assert_eq!(world.get::<NaniInstanceDesc>(entity).unwrap().mesh,
++                NaniInstanceMeshDesc::AtlasPart(floor_tri_count_to_atlas_idx(u32::from(chunk.chunk.index_count()) / 3)));
++        }
++        assert_eq!(device.created.lock().unwrap().len(), 1);
++        for &entity in &entities[..entities.len() - 1] { assert!(world.despawn(entity)); }
++        assert!(device.released.lock().unwrap().is_empty());
++        assert!(weak.upgrade().is_some());
++        assert!(world.despawn(*entities.last().unwrap()));
++        assert!(weak.upgrade().is_none());
++        assert_eq!(*device.released.lock().unwrap(), [1]);
++    }
++
++    #[test]
++    fn backend_failure_preserves_existing_entity_prefix_without_spawning_or_releasing() {
++        let device = Arc::new(RecordDevice { fail: true, ..Default::default() });
++        let mut world = World::new();
++        let prefix = world.spawn_empty().id();
++        let mut entities = vec![prefix];
++        publish(&mut world, device.clone(), 2, 0.0, &mut entities);
++        assert_eq!(entities, [prefix]);
++        assert!(world.get_entity(prefix).is_ok());
++        assert_eq!(device.created.lock().unwrap().len(), 1);
++        assert!(device.released.lock().unwrap().is_empty());
++        let mut query = world.query::<&StairsFloorMeshChunk>();
++        assert_eq!(query.iter(&world).count(), 0);
++    }
++
++    #[test]
++    fn all_closed_rows_still_run_the_real_empty_mesh_builder_and_release_the_local_buffer() {
++        let device = Arc::new(RecordDevice::default());
++        let mut world = World::new();
++        let mut entities = Vec::new();
++        publish(&mut world, device.clone(), 3, 1.0, &mut entities);
++        assert!(entities.is_empty());
++        let calls = device.created.lock().unwrap();
++        assert_eq!(calls.len(), 1);
++        assert!(calls[0].2.is_empty());
++        assert_eq!(*device.released.lock().unwrap(), [1]);
++    }
++}

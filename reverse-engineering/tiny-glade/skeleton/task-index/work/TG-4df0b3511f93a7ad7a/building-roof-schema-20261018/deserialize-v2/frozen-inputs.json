@@ -1,0 +1,998 @@
+{
+  "target": "B",
+  "claim_group": "TG-4df0b3511f93a7ad7a",
+  "owner": "building-roof-schema-20261018",
+  "scope": "Roof JSON Value Deserialize and necessary existing ShapeParameters compatibility; schema contract, not full module",
+  "writer139_base_sha256": "218d62d0e86c94bd40396254489667fb82ee13bf13e742847807109b3a43bf4e",
+  "native_executed": false,
+  "cargo_executed": false,
+  "production_changed": false,
+  "tests": "10 authored, unexecuted; default verifier is read-only except isolated temporary patch application",
+  "inputs": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/CONTRACT.md",
+      "size": 9173,
+      "sha256": "3ec11c3827dc8d0d0e35c0117b3f866cbb09d808527f05c7f530f726613114b3"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/INTEGRATION.md",
+      "size": 2055,
+      "sha256": "fe08c11d6cf2cc05959531f4d1943f09531744758b5152c817d47fbd8ea0bf7c"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/base.rs",
+      "size": 42445,
+      "sha256": "218d62d0e86c94bd40396254489667fb82ee13bf13e742847807109b3a43bf4e"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/candidate.patch",
+      "size": 16094,
+      "sha256": "c600e5c7b29c663d9d972ad2d0662889d8db471c1b0726a2858834f00bedef01"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/candidate.rs",
+      "size": 57487,
+      "sha256": "efd8788a93b0a203245c717c3e37a07b25c0f81d4bf13086318e3d5540826523"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/claim-checkpoint.json",
+      "size": 2242,
+      "sha256": "24b25c415f3db8bc7c29b2f8b02e2dee310db38fcf4b210e19e6da2839d70e66"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/current-api/history-roof.rs",
+      "size": 4384,
+      "sha256": "c78e0ed3789da8439c238170be22f943b4b0f359cef02ebd0db3714936c640ec"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/current-api/rectangle.rs",
+      "size": 24806,
+      "sha256": "7a1bd9cb18f66ced6470372b5ee82c43bad596dafd935c4faa0e5a796d2b6541"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/current-api/serde-json-1.0.85-value-de.rs",
+      "size": 38107,
+      "sha256": "64a86f6c14c2c04abc4b6f06b90bfcbda097b37b7f3e990576801f170d4af1e4"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/current-api/serde-json-lock.txt",
+      "size": 229,
+      "sha256": "669c04b275133e9173863e680b1de993d604d2d9db62d2d78e71892b081f84cc"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/default-constants.json",
+      "size": 234,
+      "sha256": "acf1119ef2c9c3426aa57971cfa8f9daa6eb53e187309fcc3e9d333bf9bffd9d"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/140c97540.asm",
+      "size": 267,
+      "sha256": "1247f1faf3510b56c07b1e9cd8ba69c7b92442ee7080e401ab207b434c1d8f83"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/140c97540.bin",
+      "size": 25,
+      "sha256": "557b5f12857236a8704d598a6b769693e44377ad7bbd1263dfb824c6c4d5bc1c"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/140c97540.calls.json",
+      "size": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/140c97540.pdb.json",
+      "size": 544,
+      "sha256": "9b6c558ab677a78f1dba05ff01083ad0e1cf6b6adf2763285fbef1266d8d8148"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/140c97540.refs.json",
+      "size": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141282480.asm",
+      "size": 4604,
+      "sha256": "5d24b23011e1d2a9edff6a45bdedcbc7dafdaae6027069c530089d32b760a5ca"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141282480.bin",
+      "size": 455,
+      "sha256": "6cf0893021a92979c89ece8936c6abb198febebf71681160bd54f5fe3dc67bf1"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141282480.calls.json",
+      "size": 1166,
+      "sha256": "938f960743eaaae1244e63b4289686d8563f0155486808cd8d5fd24b529cf1e7"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141282480.pdb.json",
+      "size": 981,
+      "sha256": "9f185bdd545963bd9f96c8b064eb3d02d2ac04493ee14d3f6122ae824179ff83"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141282480.refs.json",
+      "size": 4255,
+      "sha256": "5264e9906f09ade14bd10609c9c73944dd3f01b4505e13258d5d1745b0cc6490"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141282b50.asm",
+      "size": 4604,
+      "sha256": "b27d7a99d581c54e269500eac961043db4b70f33ec15dc0e931522a7f75321a2"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141282b50.bin",
+      "size": 455,
+      "sha256": "09e63595fd4188d9403c61894fc0b7bad08ae0d51258f6b13734b300f9d21787"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141282b50.calls.json",
+      "size": 1166,
+      "sha256": "32984dcc9bb1bd3850a5403160e03bf23815ee8e464605fe097045cc2e7e1e7f"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141282b50.pdb.json",
+      "size": 982,
+      "sha256": "04c512b8eda6e022cefcd21da6b0d7ec1c3a5716a5cb866b43353f81a3015f95"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141282b50.refs.json",
+      "size": 4211,
+      "sha256": "447b8c864eb8aa6bb745dccefd2baa4c2c60b7b427b7dbd17f94aad57dd844d6"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141282e60.asm",
+      "size": 1551,
+      "sha256": "a780d7bcab3a446c83b7b1f3f4e82fb37d25adae8c80dd0adb7e4d7587cd04ad"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141282e60.bin",
+      "size": 147,
+      "sha256": "d84d99f1919a77130fc8cce5f11f5a46cd896fee8ce90013c1182e91c5206310"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141282e60.calls.json",
+      "size": 1152,
+      "sha256": "28ee7e6965052dae8370ba5054c5313ca4f2e3e29f926703733b65e8d1892c7f"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141282e60.pdb.json",
+      "size": 920,
+      "sha256": "ca8711a913a4ef08e39b4479fe394a2cdb99d390f80d33ae96581d5d747c838f"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141282e60.refs.json",
+      "size": 2059,
+      "sha256": "56ce5a648da08ff0118f1cb6f009c51a2e915c332b4be5d7b1075893ba6997c2"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141283000.asm",
+      "size": 1551,
+      "sha256": "2e8f31c2394bbc33b4906bfd17daf28567f1cda4d8d28e989233ad96a50608ce"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141283000.bin",
+      "size": 147,
+      "sha256": "ff0714ce71fb8807058da8e08bc0680e8aa659560a95cd428bee0b0d8a4630e8"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141283000.calls.json",
+      "size": 1152,
+      "sha256": "b36fcc2575d18a1a19297350a7bbd48124c1f434f67515eb1d38555e401e8385"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141283000.pdb.json",
+      "size": 920,
+      "sha256": "44969c3dfbbeb8dcb245f603f4082f2fc3288497b8b2377b6f8130f488d03c84"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141283000.refs.json",
+      "size": 2059,
+      "sha256": "ce8eba5860aa36caed8f5c8392986c40891176eb20eaf20811dacd6937cc9888"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1412830a0.asm",
+      "size": 16339,
+      "sha256": "038a0661bf4b665ed8770afb109e4599cf6d685b37b9895a3f03283fcd9a5643"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1412830a0.bin",
+      "size": 1683,
+      "sha256": "84b4ef192b824afb8b610b1e25d4c63d691fd1bd2b011b9c1f98d552b78148ac"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1412830a0.calls.json",
+      "size": 3561,
+      "sha256": "1241dba0bd3ca2f739123a4169267ec8b27a6b94e08c8632356ba9ca7c303365"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1412830a0.pdb.json",
+      "size": 863,
+      "sha256": "b1c382d37141432d7ea47885df56d2f601d5cc72eb744baae9955e14ce937b88"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1412830a0.refs.json",
+      "size": 11942,
+      "sha256": "a7652bf0079386a61ac8ef85bf830afe4a3faf092d5beccf1213e506e3e967d5"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141283740.asm",
+      "size": 9234,
+      "sha256": "2c150bd29800bc2a2efc5dbc85c3eeb29342e3dc8cf158f51c75fb811efa4490"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141283740.bin",
+      "size": 910,
+      "sha256": "736b7fb79ce5dc7b07132b969f26f962b224e436e8ab7cab50020d6d0cd550ff"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141283740.calls.json",
+      "size": 1277,
+      "sha256": "db66b6e40295b854becd7a7bf7f4d8a22842e4ea4997b3c655d43e77af73cd60"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141283740.pdb.json",
+      "size": 851,
+      "sha256": "b966de5c697e80ec8b523ad10171a3a021514f156b98a684fb6fcdca2699a97f"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141283740.refs.json",
+      "size": 8193,
+      "sha256": "b23e02076241ba4927388fb0cf3a0825c614f1f42d00a8e79a0481a53be1a318"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141283ad0.asm",
+      "size": 13949,
+      "sha256": "37855dd8e2da0ad76585fd46b112132c33f383f94bb8cf99f62225c6ad1d6d9d"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141283ad0.bin",
+      "size": 1407,
+      "sha256": "a60617d5ed90917910ded6069ec950b76f8ce9818535543370ed6b7ca7d55b54"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141283ad0.calls.json",
+      "size": 2003,
+      "sha256": "abd23cd6717e8d2265084da2e7354d31d1cb5ba3f49bf5dd59dd23d424114aae"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141283ad0.pdb.json",
+      "size": 925,
+      "sha256": "c9d8916932868ee89ff69b892bd2721952aa5bf32a5256ddac69ce6d894cb09a"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141283ad0.refs.json",
+      "size": 11141,
+      "sha256": "84c0226d63053bb34573cceb1fc3803af45ae0a6e8a57725ee5066d81a5993b8"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141284050.asm",
+      "size": 21962,
+      "sha256": "442b59c7b7cbfb50141830e1f8c04aa5c3145cc3e4d2515f49e77508207ec78d"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141284050.bin",
+      "size": 2318,
+      "sha256": "93ebd171fcfc6e74f1235217e3ee8ec79dfde205c9c2d2b082735f821bfbedd4"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141284050.calls.json",
+      "size": 5284,
+      "sha256": "9792ba23827398a45cfb5ac42d0946d3e463158dc3249747aa427b9fcc9db8bb"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141284050.pdb.json",
+      "size": 875,
+      "sha256": "bd03182dd355550642a1d554ed74e0e964cc66b9d9bca42a33365062ffa61764"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/141284050.refs.json",
+      "size": 16551,
+      "sha256": "54c805c802d363f1a9ea6f09ff63921a9609da732af859a8eccb9711c25d568a"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/14157ba70.asm",
+      "size": 2687,
+      "sha256": "2e5b2d46a8881a5745b388c826469aa98ce9501437ead3ed1358c45d348a6ce9"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/14157ba70.bin",
+      "size": 246,
+      "sha256": "948b6d82a92589f775fb9fc68a3e492048aa8915dc1ffed46f8d32abad307d80"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/14157ba70.calls.json",
+      "size": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/14157ba70.pdb.json",
+      "size": 717,
+      "sha256": "7f18ed118a2f840a604cf8e11628661d0b1b3195ab92b4f0b2209d89c2792602"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/14157ba70.refs.json",
+      "size": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415a1b30.asm",
+      "size": 5542,
+      "sha256": "5e5601c687a80e8aed1e01c0f97ea5caec12be6f28b75a01559eb32d0de70e93"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415a1b30.bin",
+      "size": 511,
+      "sha256": "fcd711efe70b1ecc115e949e5dfbf57aa2023797ba4f80329d05bb87b4a99541"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415a1b30.calls.json",
+      "size": 5934,
+      "sha256": "2a7025cb942308c68d7a207d3cdbff3d3f47d141ea9d7485c193f38297e10d54"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415a1b30.pdb.json",
+      "size": 816,
+      "sha256": "6585ddbca1ac6059c1a831bfde6dd925406309b6cf91550b4747277f71fe9c77"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415a1b30.refs.json",
+      "size": 527,
+      "sha256": "d3f404b8dc2e5ff5013350b21d4530b0ad268ea860fcf5ba30c2090e9e7672d0"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415a9230.asm",
+      "size": 14784,
+      "sha256": "f74f271734b5c4426e8dc339cfbe2107ca9e07643ac26bf70856d4d3ac617243"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415a9230.bin",
+      "size": 1360,
+      "sha256": "bd87d2ed4cace72ec8076192c66a214bd22900a3dbad0c26145d0457faf1d1d2"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415a9230.calls.json",
+      "size": 5059,
+      "sha256": "52642500e8410fc91b60269c17b92e07136e5db86ff16e367a102a02b716d7b3"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415a9230.pdb.json",
+      "size": 778,
+      "sha256": "e4f7819aba8ea10dc99fc20538d30b8ed0a7236a3669aef538abcaff9c5bc36a"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415a9230.refs.json",
+      "size": 5791,
+      "sha256": "0a8c15440e88a498d9e87e4f92fbf9657d645e425c7c53ff46404dd21351b253"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415ab620.asm",
+      "size": 13085,
+      "sha256": "0afccf07077fcf4943c3012ef5552e69fe91feb431bdfa467a54e03c44d280db"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415ab620.bin",
+      "size": 1189,
+      "sha256": "6f0c2cfc534f435e3db1ceae897a5df4ec3a6a2fe109270b6ff0551656caae9a"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415ab620.calls.json",
+      "size": 4512,
+      "sha256": "343853115cb9db4553327bc869da5fd9f01b036758dec6d6416524bda6a99660"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415ab620.pdb.json",
+      "size": 778,
+      "sha256": "3fd10b557dcb5f25f23afdc8655f2cafdb55bda6f634bf485eed842e2013de2d"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415ab620.refs.json",
+      "size": 4521,
+      "sha256": "96f78c937513f325e4d0183e3713abf991e096a18f20dde946b1e5456be8c922"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415c5460.asm",
+      "size": 28654,
+      "sha256": "03e00f753045abcf3bb25f469c6bfe3e27055e8f7d4897faccdd153a3957f32b"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415c5460.bin",
+      "size": 2960,
+      "sha256": "45b1e3042514f53628e7053a8f3416006746f39301101bd47d5bb5d3a4f8da5d"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415c5460.calls.json",
+      "size": 11421,
+      "sha256": "a0e02a430c4ec90c775b56a283a16f6d3de80e61bbaeaea7fb1740501591cbd4"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415c5460.pdb.json",
+      "size": 781,
+      "sha256": "937b55c8e4a83f48a976d0894ad1e56afe7b29d8c25abc0a2b87239b7d33347f"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415c5460.refs.json",
+      "size": 9441,
+      "sha256": "d857956f114a884dd100a09a439bf3e18a6a24e378964fea92afd964a9edad0f"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415c7ed0.asm",
+      "size": 29793,
+      "sha256": "54976c10934256ac7a9162d53452d181a193bc26b97fcb6c397ec7bf34966c61"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415c7ed0.bin",
+      "size": 2944,
+      "sha256": "a3b0bc59dc1efa41ca37c1e4c85f5da91a8db3c2422760e94b9da5ceb10bf957"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415c7ed0.calls.json",
+      "size": 10658,
+      "sha256": "ab4b028e7158fa9dd37459ec4cdb3f6205ad06b0da654292d05c08f3b32a944a"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415c7ed0.pdb.json",
+      "size": 781,
+      "sha256": "b2b483995086afee862a27f1fd2345d74ef945de631979999f7cbda3d28e5b64"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415c7ed0.refs.json",
+      "size": 9226,
+      "sha256": "5430d1a51e27165190798ac1e0f788af699f9219b8ff7c837e417c7e1b51e25f"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d19e0.asm",
+      "size": 5192,
+      "sha256": "65de406696fdefc9f8ae724ef850387699aef0b41023815dd2f96fc520ee6bc1"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d19e0.bin",
+      "size": 449,
+      "sha256": "c03b377b6122c72ad932d5e4f5c80e862cd0c8dd465999bad2561ee521521339"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d19e0.calls.json",
+      "size": 978,
+      "sha256": "b46bd531fc9b7be68c3866d5a2c5171da5c11b106d7b1dfa475e896cc13f57c4"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d19e0.pdb.json",
+      "size": 878,
+      "sha256": "6a6c4eefcb07922c6c6d6839e9f6d5778496a2230892a59b31b07ac436449d43"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d19e0.refs.json",
+      "size": 2083,
+      "sha256": "78cc8e96e6090ec1fc6bcf43f7adfe433488c54fc16a4b7f3e5f540d864fdec8"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d23c0.asm",
+      "size": 5199,
+      "sha256": "2436994d1b4cc08f81884823cf0700118259f44d67c049c0f49d8989d3507c5b"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d23c0.bin",
+      "size": 449,
+      "sha256": "c7c746b735396bef41eab1c17a1ddb7a9f24b59f0747974fd2f530c486293c06"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d23c0.calls.json",
+      "size": 978,
+      "sha256": "7aa8cc8a0a90dd76f80765f3703c431e81b09a407b2371e5956464a1839297ac"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d23c0.pdb.json",
+      "size": 878,
+      "sha256": "83a664db98a3ee49fe20644fd300c7b7297549c20eecfde7dc57b04ba55e13c6"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d23c0.refs.json",
+      "size": 2163,
+      "sha256": "3e8a58452fbb37db04102cd0467e3969edc6fc43766a276209b7426908b1ec52"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d26d0.asm",
+      "size": 5025,
+      "sha256": "a3bcf902a993736c96ea062435c7a2703651476b9a5ba6180c4f1d60fdf25fc9"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d26d0.bin",
+      "size": 433,
+      "sha256": "3edd700d73ff4d4b5ed77c2750ae1bb6338ec6c11e8462ac145499e392a652d9"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d26d0.calls.json",
+      "size": 978,
+      "sha256": "7e59203360ab34626453806840c25a011acdee3b9be4c969c86c25a774fa5e28"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d26d0.pdb.json",
+      "size": 878,
+      "sha256": "9b1b534ccbda596af84f843057d1cb5317a07bd4f0dac26eca7f6d747afd4341"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d26d0.refs.json",
+      "size": 1959,
+      "sha256": "daee52a723564f3ec487d9a2a35ff4addc7cb0b9eda50371a8d2b6f94e49577e"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d2eb0.asm",
+      "size": 3669,
+      "sha256": "51306610bd87bbc8767d1211309af6efda6661ba5d3144509b9f7b831f0b8e6e"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d2eb0.bin",
+      "size": 313,
+      "sha256": "07cfa9dc7adbadf8dbc38aa2a94b7fcba923a7f41c0d9295f234085a0a2c913a"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d2eb0.calls.json",
+      "size": 1104,
+      "sha256": "309143991366ead3c162bc282822d94bad49a12e5b17281908f1b13c65d389d3"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d2eb0.pdb.json",
+      "size": 878,
+      "sha256": "ed4e658f60807730fb51b7326c4a4387a7faf1b3111a1c3800af17dcaaf5fb85"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d2eb0.refs.json",
+      "size": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d3f80.asm",
+      "size": 4997,
+      "sha256": "c17338fa99e388b36f9456e7acd97ef2cd3f8d5b3cae2653d9e3e21e0457477d"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d3f80.bin",
+      "size": 433,
+      "sha256": "4695b68655d6e5c3377c0effaf05a7402343d09e62a48fc0b567da39d8430f7a"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d3f80.calls.json",
+      "size": 978,
+      "sha256": "f17e607dbd6348fdc2cd521869615c69b70a1f5535972d8651eb0f2b1cdc3f80"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d3f80.pdb.json",
+      "size": 878,
+      "sha256": "23fcb94525068817af415eb3321c2815b318030fb075a870b5d97bcc669b4de6"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d3f80.refs.json",
+      "size": 1707,
+      "sha256": "34edc992d641afb28d2de5329aa7de682078e4b252fdf1f4c2a2861ba9869326"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d9440.asm",
+      "size": 21236,
+      "sha256": "90edd4f0aad763af69f77e71253458ceb5052e69dcfc3c1b0a8c95c85b1135b9"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d9440.bin",
+      "size": 2100,
+      "sha256": "22b0ca77c62dfe5c6c0acf983e1266e120a4ffc62b6eeda0d88a28380f02cc18"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d9440.calls.json",
+      "size": 18546,
+      "sha256": "e082e58d8c0d061eaf005d2b8c06c19700b48ece6a1021fa5e5d022229167d40"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d9440.pdb.json",
+      "size": 867,
+      "sha256": "8fc7632e15a53e79a22ba2e96f5ed453d46acbbc3fb09cee1e21b742e0f27060"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1415d9440.refs.json",
+      "size": 8273,
+      "sha256": "44f4292275dba42e090195c28a5026b0b9cbc795bc6d5d38d07b72c8adf3d4ed"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416e8680.asm",
+      "size": 17574,
+      "sha256": "d8f10090ac391af42359df41c126140f66537707a665dcaf0b7e9d634aa9fc77"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416e8680.bin",
+      "size": 1686,
+      "sha256": "faa131c77eb0bd7f3d80d87676f561cf271919620f11a290585613e9e54fa6ef"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416e8680.calls.json",
+      "size": 16669,
+      "sha256": "eb2b20fc1df74416b467694ff3da373693b4900849af9e3a69ff0294f99dcf4e"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416e8680.pdb.json",
+      "size": 742,
+      "sha256": "e6677b2b9cff33636183bcb736837582d6e715cc4436a9849d6e491ed4e9eaaf"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416e8680.refs.json",
+      "size": 2771,
+      "sha256": "d56f5a2c95cf35538507dd583aaf8bff9b10343cf524c104a65418c28986ff57"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416e91c0.asm",
+      "size": 18209,
+      "sha256": "2fe6b242179364fb7cf69f74c5b5f0d67f27ece9494b553d81fba3b2653a52c1"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416e91c0.bin",
+      "size": 1782,
+      "sha256": "4f349e4b5c8b49ef0f8d2606fad0b411053a3fffe976f687293c53f161d82640"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416e91c0.calls.json",
+      "size": 17233,
+      "sha256": "d1381c6d727c5b00e4b215f683af096394f0bc4ce303d5725d1e3d5ffd968494"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416e91c0.pdb.json",
+      "size": 742,
+      "sha256": "a35fcd7e0c19b94fbf4138d0d69099282224b59a07a9715a3ee977e2b61fa598"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416e91c0.refs.json",
+      "size": 3261,
+      "sha256": "6fe0c797ce8ddf9d5df16578175b949c25b522f17b8802a0102c0ef91abd6fe5"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416e98c0.asm",
+      "size": 2080,
+      "sha256": "e446c57ba8407985ec2b3e6f9e44a12e39e96215a5d418303a2bd75cc224018f"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416e98c0.bin",
+      "size": 199,
+      "sha256": "808d42332301e6f9fe152996a3c013ff9e11c309e4516a2a11965869b49eab2a"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416e98c0.calls.json",
+      "size": 252,
+      "sha256": "9e5b11e030a7fe9551b1d64008f60b755a20b86ddd5fcb77826068ccd7843ce3"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416e98c0.pdb.json",
+      "size": 767,
+      "sha256": "e5756c5eca35fedc45f4090e0fa77703fc1957d3b1b5a1660d0a7ff27f712012"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416e98c0.refs.json",
+      "size": 1343,
+      "sha256": "d42f58bb08a9d411c545798de3ed348b6cfe1b753741f9ba5855c5c1ef38fd71"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416e99c0.asm",
+      "size": 17574,
+      "sha256": "750d1b820fd3becb206fb4e319ec8a2bf0899e3db7c69b7c47d78f4383284733"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416e99c0.bin",
+      "size": 1686,
+      "sha256": "a3e8135235bf05ea2ffe5cca576b0339f2621db06e987caf5e214541e7ac1a9f"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416e99c0.calls.json",
+      "size": 16669,
+      "sha256": "ff4549f23deee683fc0cfc2a15156c1598f8e842e41fa54dd18fe01639649be8"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416e99c0.pdb.json",
+      "size": 742,
+      "sha256": "8b5df4d59529f160cef3bfd69654b969dcc5fa0ebdb68f0c89d056d38108ff8d"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416e99c0.refs.json",
+      "size": 2771,
+      "sha256": "c475eea20d7be6bd9c089ed9a52a484eb4e3bbd07c9bac99d74df395da8a8706"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ea060.asm",
+      "size": 17574,
+      "sha256": "4009f4a3c6f7423a7bad46ad861f074ecad84500df35718bf91e80d22895ecb8"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ea060.bin",
+      "size": 1686,
+      "sha256": "b9ddfc3d9e6bef60b16d85206f432db4093439fb3440357131dc55535c2c1cc5"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ea060.calls.json",
+      "size": 16669,
+      "sha256": "07a1f4a79d87aa92c0a832ff12e708d002f20f4fc5b16cb2c2ba04f17a7cf48b"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ea060.pdb.json",
+      "size": 742,
+      "sha256": "5584906c5f7ca2e9703c3be43dcb442fdd61e0213fb2979c6d7a98327b16771f"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ea060.refs.json",
+      "size": 2771,
+      "sha256": "65303352b993d120828c941b121e1bce86ba74770fb09186f8c1fd1c58e0afbd"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ea920.asm",
+      "size": 2936,
+      "sha256": "b0a043d4e02729a3e908169943448de1426c5f4dd3ce51bfd10014ca48d4a562"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ea920.bin",
+      "size": 288,
+      "sha256": "bc2ba7bea331904da56112459cd26cabe738303852051ad62e659b2bee706b50"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ea920.calls.json",
+      "size": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ea920.pdb.json",
+      "size": 767,
+      "sha256": "767e336825698979cd244d802984553454a98997df40696aa2e8fbeac290af2b"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ea920.refs.json",
+      "size": 539,
+      "sha256": "d6f0c8740151018cceb315fdd7b6a2cdb5d9cb5f3f0171045ed6cd531f025fff"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416eadf0.asm",
+      "size": 4116,
+      "sha256": "24d362a276769f72a89715bed5bba988a67a8e1e9ce505217862bc0c21950465"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416eadf0.bin",
+      "size": 428,
+      "sha256": "651deff17e0a158b300f87241f2581e0f84cb0a14f44d2f7b8c2a91689612847"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416eadf0.calls.json",
+      "size": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416eadf0.pdb.json",
+      "size": 767,
+      "sha256": "d32b5ca1cb16481c4976b597b49bd510de3b17dd11370a6e66e8dcc392abb940"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416eadf0.refs.json",
+      "size": 523,
+      "sha256": "b29936a60ce59e8b3c0bd499a845f16fcbf64caa0f72e6736e4391e5440603e6"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416eafa0.asm",
+      "size": 17574,
+      "sha256": "010d0fc2d20683d6b8c85b4e182d90e57160c7c119b6f37eec3d483388752538"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416eafa0.bin",
+      "size": 1686,
+      "sha256": "4821624487ae8a8d174c3f897e681732f53d1056caa1725f2f400f8599de04fa"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416eafa0.calls.json",
+      "size": 16669,
+      "sha256": "cf26497ed1675788abc1c9c6491e36916313ced7c13be7f627aad8cbd95c5007"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416eafa0.pdb.json",
+      "size": 742,
+      "sha256": "e2915c54e2fa91c5ab9fa68124c9b0269ade85fcd997976378f269b45c48e526"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416eafa0.refs.json",
+      "size": 2771,
+      "sha256": "6c1186e7949c5277ac98757fcbd39e21770fab33aa22ed70d0c2da8215a19523"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ebe70.asm",
+      "size": 402,
+      "sha256": "ca44be5cdfffd757e408c4f3b9042a87c87c7ff3aa6d48530a7cea48cb1f6eaa"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ebe70.bin",
+      "size": 38,
+      "sha256": "35e0222e27e0760d52e033e271523fbae6599dce9087250acca097d4d109356a"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ebe70.calls.json",
+      "size": 250,
+      "sha256": "ed975808646504991be73ca2b459e2db6f0cabaf097506e5ec7ab3bb90da24d0"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ebe70.pdb.json",
+      "size": 909,
+      "sha256": "1e5cc3930440aabc84c437c910d5d618719dfb6f20af1d4a14055761a1a740b3"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ebe70.refs.json",
+      "size": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ec620.asm",
+      "size": 11466,
+      "sha256": "8f596d1726a7ff9caa4d89c64a7aa6a1c0d5809c899c90b6809cf8d8900daca7"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ec620.bin",
+      "size": 1026,
+      "sha256": "334b26a9bb4f5921923a8cdd60dcb1f879dc9fe1d16abff39e8f89ed4f7ba09c"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ec620.calls.json",
+      "size": 62925,
+      "sha256": "6a0bdccdb8aa0aabea1989ad85cf28062266c041e0a0d207c5cb83bd1858b994"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ec620.pdb.json",
+      "size": 744,
+      "sha256": "abd5540a28c9e81a71f7ec5aada10f0ce90db3fefe98d2973af97b75c626b7b6"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ec620.refs.json",
+      "size": 2735,
+      "sha256": "bb8bddde9ab8ff9f6ca77d91b6c38d7c407445b4a6b111b339474d14844f4474"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ecda0.asm",
+      "size": 3155,
+      "sha256": "48d92f1e3b5b375956622d4bcdc8e3b12a875ea908e3760868e680926419ec7a"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ecda0.bin",
+      "size": 328,
+      "sha256": "4ccc1989a8431f1a07c0655a607a1354c52b84c42810ed9fd71094e457ab6d57"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ecda0.calls.json",
+      "size": 1493,
+      "sha256": "7860428a93f58fa5a06d72c3ed49a3158402b1f4851a4ca0d42c687e4d14ae3d"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ecda0.pdb.json",
+      "size": 935,
+      "sha256": "4f4c96fa7f62e19d84427fcae86799af04b24a062bfaefe90e82238bfa1b6a25"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ecda0.refs.json",
+      "size": 3791,
+      "sha256": "4e142237f63e507f8432d54946a57c36b399794f1cdbecf1f9695b0f0dce224c"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ecef0.asm",
+      "size": 3296,
+      "sha256": "2ab7451b2cb6c691306278327c73831f950f95d046029b269f138abd39085f01"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ecef0.bin",
+      "size": 295,
+      "sha256": "29616f67f54f69d6c0d0022419372901d26642890613d69127b3a81e1e632ea4"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ecef0.calls.json",
+      "size": 646,
+      "sha256": "9f38b8acf2165ef0abf3c63ea232b1eddfca805e72526c56f8df373f1aa65802"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ecef0.pdb.json",
+      "size": 779,
+      "sha256": "df01f30e22947d2b3ba5007b31439311a18fdba1eb4e5fc477cbb42f4b5a2858"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ecef0.refs.json",
+      "size": 409,
+      "sha256": "eae0171943d5c563b568871c7ea9eeca964f74cab70d94a0cd02acaf4407f3d5"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ed020.asm",
+      "size": 2452,
+      "sha256": "0dbbef9133da75d455f04c474b9fd15a4df81f5501bdc4bd124756abf710e3db"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ed020.bin",
+      "size": 239,
+      "sha256": "fab94f2a03f064e7f0974430b653b3c255ded892598a9e0e7786de2a55b07dad"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ed020.calls.json",
+      "size": 1235,
+      "sha256": "1937ed8d7bf4795f98641a8c6064637ecaa7c71bf4b6cbb3e9ab1d23282a9653"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ed020.pdb.json",
+      "size": 935,
+      "sha256": "4110d61dda3ef2f513553b8361986e1b06da140b6482f615bb6abf5640f947c8"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/1416ed020.refs.json",
+      "size": 2363,
+      "sha256": "e6fb091c66d06d5d14b34da88d5248e905f9e7d733eb06ef80af5633a134bd1a"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/checked-semantics.json",
+      "size": 5621,
+      "sha256": "d8128a7918e288ab4cf90ad302be2100f23bf7ccf55f743d128d2c3b177a16e8"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/evidence/ranges.json",
+      "size": 10859,
+      "sha256": "f8a1a0e51170d6a4b15dbab4d42629715b4be9f9d6130f090a5f6380cfacbced"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/extract-read-contracts.log",
+      "size": 2714,
+      "sha256": "7e5d16961b22e84202c8cf06483f195568acbc00ff3b1da5f512b50de724a009"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/extract-reader.log",
+      "size": 76904,
+      "sha256": "72a5276bc25cf2e8192ee7f3cfd357d54c653563f1833f80ecd734324b05f79c"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/extract-shape-enum.log",
+      "size": 3354,
+      "sha256": "5e63db6861446b7bcc728e1e88ec94e355692414532164de2dd4f72fe3dfd874"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/extract-shape-fields.log",
+      "size": 14739,
+      "sha256": "4d81ca9fcee468cd2b59398566cf4a425cd80154f7434dcda9e9256cf1c0f917"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/extract-shape.log",
+      "size": 3658,
+      "sha256": "e551abfb519059269d69703388b0931d94a5b888821225975308a1c3c949dc6f"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/extract_native.py",
+      "size": 2250,
+      "sha256": "9d0547177f345ccbc6ac8ea0661c87a06f30a304bc7802228b02d45ede5f0f65"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/integration-owner.patch",
+      "size": 6219,
+      "sha256": "a3c85fca177b5581d717313f3d6081ba820d1f99783991a6423955e3d7397438"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/reader-tests.rs",
+      "size": 9089,
+      "sha256": "94e6a860d7ea296a1978d0df5dfb8d1d54faf3f9bbf0f24cd3d09af492bdd904"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/shape-base.rs",
+      "size": 22174,
+      "sha256": "f01111678f0d57f377fded9d7b5fa6fa5965774fbf2e680ec3773515387a8e10"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/shape-candidate.rs",
+      "size": 26592,
+      "sha256": "22eb05b20add68b1265eb52147c13b1b1deeec275af9d29cc08dfb9d2da41c78"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/shape-reader-tests.rs",
+      "size": 3045,
+      "sha256": "8c6335eb505b4618559f382daac0b4837cb6d77c92938398f72058c4d5b729d1"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/source-map.json",
+      "size": 761,
+      "sha256": "5acb02eb29c2f94847e7f91d584c0b0c628f13344a5bc181193a4fef35b7557e"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/validation.json",
+      "size": 477,
+      "sha256": "24bb7a3eae8114ae0c07e0f2a7a852642952d472c87f904d80efe19f81bccff1"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4df0b3511f93a7ad7a/building-roof-schema-20261018/deserialize-v2/verify_evidence.py",
+      "size": 6862,
+      "sha256": "586f332f36313bf4cc70e85739b12c2858285c4814c0ad42960c1dbc23a1edf8"
+    }
+  ]
+}

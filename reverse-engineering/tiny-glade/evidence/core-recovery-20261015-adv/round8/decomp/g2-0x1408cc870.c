@@ -1,0 +1,9 @@
+// FUN_1408cc870 0x1408cc870
+
+undefined8 FUN_1408cc870(undefined8 param_1)
+
+{
+  FUN_1408cdc60();
+  return param_1;
+}
+

@@ -1,0 +1,36 @@
+{
+  "status": "candidate_cpu_validation",
+  "source": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-0ef1874c29a03d0dec/main-chain-frame-20261018/world-graph-20261019/render_frame.rs",
+  "source_sha256": "d89f8239845daa9a6236edced2f59356fe5be35d316a74a01878adde8c8c54bf",
+  "binary": "/private/tmp/tg-render-frame-recovery-v1-tests",
+  "binary_sha256": "a9895e0e71a4106756a2d005c1328d5362ecec0a5c077209f1096b81688c4de0",
+  "dependency": {
+    "path": "tiny-glade/target/debug/deps/libash-60f88f90e7593d42.rlib",
+    "sha256": "780800d557953642e9675ed800c09261eceb3ccc52115ec587129e552f0aaea1",
+    "workspace_pin": "ash =0.38.0"
+  },
+  "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: aarch64-apple-darwin\nrelease: 1.98.1\nLLVM version: 22.1.8\n",
+  "compile_command": [
+    "rustc",
+    "--edition=2024",
+    "--test",
+    "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-0ef1874c29a03d0dec/main-chain-frame-20261018/world-graph-20261019/render_frame.rs",
+    "--extern",
+    "ash=tiny-glade/target/debug/deps/libash-60f88f90e7593d42.rlib",
+    "-L",
+    "dependency=tiny-glade/target/debug/deps",
+    "-o",
+    "/private/tmp/tg-render-frame-recovery-v1-tests"
+  ],
+  "compile_exit_code": 0,
+  "run_command": [
+    "/private/tmp/tg-render-frame-recovery-v1-tests",
+    "--test-threads=1"
+  ],
+  "run_exit_code": 0,
+  "passed": 27,
+  "failed": 0,
+  "stdout_provenance": "root exec tool result; initial run stdout not separately redirected",
+  "scope": "actual entire render_frame module and its tests; generic host failure/order/pacer contract only; does not validate ProductionRenderHost/full App/GPU/native binary equivalence",
+  "initial_failure": "first direct rustc call lacked extern ash; corrected using current workspace dependency"
+}

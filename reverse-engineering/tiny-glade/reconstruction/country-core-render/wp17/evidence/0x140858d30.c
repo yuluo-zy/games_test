@@ -1,0 +1,286 @@
+// 0x140858d30 revert
+
+void __cdecl country_core::resources::history::terrain_edit::TerrainEdit::revert(void)
+
+{
+  char *pcVar1;
+  float fVar2;
+  float fVar3;
+  float fVar4;
+  float fVar5;
+  longlong lVar6;
+  undefined8 uVar7;
+  ulonglong uVar8;
+  uint uVar9;
+  uint uVar10;
+  ulonglong extraout_RAX;
+  ulonglong *in_RCX;
+  longlong lVar11;
+  longlong in_RDX;
+  int iVar12;
+  longlong *in_R8;
+  ulonglong uVar13;
+  longlong *in_R9;
+  longlong lVar14;
+  uint uVar15;
+  ushort uVar16;
+  longlong lVar17;
+  byte bVar18;
+  char cVar19;
+  char cVar21;
+  char cVar22;
+  float extraout_XMM0_Da;
+  char cVar23;
+  undefined1 auVar20 [16];
+  undefined1 auVar24 [16];
+  undefined1 auVar25 [16];
+  longlong *in_stack_00000028;
+  float in_stack_00000030;
+  ulonglong *local_d0;
+  code *local_c8;
+  ulonglong local_c0;
+  ulonglong local_b8;
+  longlong local_b0;
+  undefined8 local_a8;
+  longlong local_a0;
+  ulonglong **local_98;
+  undefined1 *local_90;
+  undefined8 local_88;
+  undefined8 local_78;
+  undefined4 local_70;
+  undefined1 local_6c [4];
+  ulonglong *local_68;
+  undefined8 local_60;
+  
+  local_60 = 0xfffffffffffffffe;
+  uVar13 = 2;
+  if ((*in_RCX ^ 0x8000000000000000) < 2) {
+    uVar13 = *in_RCX ^ 0x8000000000000000;
+  }
+  if (uVar13 == 0) {
+    if (0.99 <= in_stack_00000030) {
+      iVar12 = (int)in_RCX[4];
+      local_a8 = (undefined **)CONCAT44(local_a8._4_4_,iVar12);
+      if (*(longlong *)(in_RDX + 0x20) != 0) {
+        core::hash::BuildHasher::
+        hash_one<std::hash::random::RandomState,ref_<shader_pipeline::reflection::BindingIndex>_>();
+        lVar6 = *(longlong *)(in_RDX + 8);
+        bVar18 = (byte)(extraout_RAX >> 0x39);
+        auVar20 = ZEXT216(CONCAT11(bVar18,bVar18));
+        auVar20 = pshuflw(auVar20,auVar20,0);
+        lVar14 = 0;
+        uVar13 = extraout_RAX;
+        while( true ) {
+          uVar13 = *(ulonglong *)(in_RDX + 0x10) & uVar13;
+          pcVar1 = (char *)(lVar6 + uVar13);
+          cVar19 = auVar20[0];
+          auVar25[0] = -(*pcVar1 == cVar19);
+          cVar21 = auVar20[1];
+          auVar25[1] = -(pcVar1[1] == cVar21);
+          cVar22 = auVar20[2];
+          auVar25[2] = -(pcVar1[2] == cVar22);
+          cVar23 = auVar20[3];
+          auVar25[3] = -(pcVar1[3] == cVar23);
+          auVar25[4] = -(pcVar1[4] == cVar19);
+          auVar25[5] = -(pcVar1[5] == cVar21);
+          auVar25[6] = -(pcVar1[6] == cVar22);
+          auVar25[7] = -(pcVar1[7] == cVar23);
+          auVar25[8] = -(pcVar1[8] == cVar19);
+          auVar25[9] = -(pcVar1[9] == cVar21);
+          auVar25[10] = -(pcVar1[10] == cVar22);
+          auVar25[0xb] = -(pcVar1[0xb] == cVar23);
+          auVar25[0xc] = -(pcVar1[0xc] == cVar19);
+          auVar25[0xd] = -(pcVar1[0xd] == cVar21);
+          auVar25[0xe] = -(pcVar1[0xe] == cVar22);
+          auVar25[0xf] = -(pcVar1[0xf] == cVar23);
+          uVar16 = (ushort)(SUB161(auVar25 >> 7,0) & 1) |
+                   (ushort)(SUB161(auVar25 >> 0xf,0) & 1) << 1 |
+                   (ushort)(SUB161(auVar25 >> 0x17,0) & 1) << 2 |
+                   (ushort)(SUB161(auVar25 >> 0x1f,0) & 1) << 3 |
+                   (ushort)(SUB161(auVar25 >> 0x27,0) & 1) << 4 |
+                   (ushort)(SUB161(auVar25 >> 0x2f,0) & 1) << 5 |
+                   (ushort)(SUB161(auVar25 >> 0x37,0) & 1) << 6 |
+                   (ushort)(SUB161(auVar25 >> 0x3f,0) & 1) << 7 |
+                   (ushort)(SUB161(auVar25 >> 0x47,0) & 1) << 8 |
+                   (ushort)(SUB161(auVar25 >> 0x4f,0) & 1) << 9 |
+                   (ushort)(SUB161(auVar25 >> 0x57,0) & 1) << 10 |
+                   (ushort)(SUB161(auVar25 >> 0x5f,0) & 1) << 0xb |
+                   (ushort)(SUB161(auVar25 >> 0x67,0) & 1) << 0xc |
+                   (ushort)(SUB161(auVar25 >> 0x6f,0) & 1) << 0xd |
+                   (ushort)(SUB161(auVar25 >> 0x77,0) & 1) << 0xe |
+                   (ushort)(auVar25[0xf] >> 7) << 0xf;
+          uVar15 = (uint)uVar16;
+          while (uVar16 != 0) {
+            uVar9 = 0;
+            for (uVar10 = uVar15; (uVar10 & 1) == 0; uVar10 = uVar10 >> 1 | 0x80000000) {
+              uVar9 = uVar9 + 1;
+            }
+            lVar17 = (uVar9 + uVar13 & *(ulonglong *)(in_RDX + 0x10)) * -0x30;
+            if (*(int *)(lVar6 + -0x30 + lVar17) == iVar12) {
+              *(undefined4 *)(lVar6 + -8 + lVar17) = 0;
+              goto LAB_14085913a;
+            }
+            uVar16 = (ushort)(uVar15 - 1) & (ushort)uVar15;
+            uVar15 = CONCAT22((short)(uVar15 - 1 >> 0x10),uVar16);
+          }
+          auVar24[0] = -(*pcVar1 == -1);
+          auVar24[1] = -(pcVar1[1] == -1);
+          auVar24[2] = -(pcVar1[2] == -1);
+          auVar24[3] = -(pcVar1[3] == -1);
+          auVar24[4] = -(pcVar1[4] == -1);
+          auVar24[5] = -(pcVar1[5] == -1);
+          auVar24[6] = -(pcVar1[6] == -1);
+          auVar24[7] = -(pcVar1[7] == -1);
+          auVar24[8] = -(pcVar1[8] == -1);
+          auVar24[9] = -(pcVar1[9] == -1);
+          auVar24[10] = -(pcVar1[10] == -1);
+          auVar24[0xb] = -(pcVar1[0xb] == -1);
+          auVar24[0xc] = -(pcVar1[0xc] == -1);
+          auVar24[0xd] = -(pcVar1[0xd] == -1);
+          auVar24[0xe] = -(pcVar1[0xe] == -1);
+          auVar24[0xf] = -(pcVar1[0xf] == -1);
+          if ((((((((((((((((SUB161(auVar24 >> 7,0) & 1) != 0 || (SUB161(auVar24 >> 0xf,0) & 1) != 0
+                           ) || (SUB161(auVar24 >> 0x17,0) & 1) != 0) ||
+                         (SUB161(auVar24 >> 0x1f,0) & 1) != 0) ||
+                        (SUB161(auVar24 >> 0x27,0) & 1) != 0) ||
+                       (SUB161(auVar24 >> 0x2f,0) & 1) != 0) || (SUB161(auVar24 >> 0x37,0) & 1) != 0
+                      ) || (SUB161(auVar24 >> 0x3f,0) & 1) != 0) ||
+                    (SUB161(auVar24 >> 0x47,0) & 1) != 0) || (SUB161(auVar24 >> 0x4f,0) & 1) != 0)
+                  || (SUB161(auVar24 >> 0x57,0) & 1) != 0) || (SUB161(auVar24 >> 0x5f,0) & 1) != 0)
+                || (SUB161(auVar24 >> 0x67,0) & 1) != 0) || (SUB161(auVar24 >> 0x6f,0) & 1) != 0) ||
+              (SUB161(auVar24 >> 0x77,0) & 1) != 0) || auVar24[0xf] < '\0') break;
+          uVar13 = uVar13 + lVar14 + 0x10;
+          lVar14 = lVar14 + 0x10;
+        }
+      }
+      local_c8 = terrain_editing::impl$11::fmt;
+      local_a8 = &PTR_s_Requested_terrain_stroke_doesn_t_142a94cf8;
+      local_a0 = 2;
+      local_88 = 0;
+      local_98 = &local_d0;
+      local_90 = (undefined1 *)0x1;
+      local_d0 = in_RCX + 4;
+                    // WARNING: Subroutine does not return
+      core::panicking::panic_fmt();
+    }
+    iVar12 = (int)in_RCX[4];
+    uVar13 = in_RCX[2];
+    uVar8 = in_RCX[3];
+    update_terrain_curve();
+    fVar2 = *(float *)((longlong)in_RCX + 0x24);
+    lVar6 = uVar13 + uVar8 * 0xc;
+    if (uVar8 == 0 || lVar6 == 0xc) {
+      local_70 = 0;
+      local_78 = 0;
+    }
+    else {
+      local_a8 = (undefined **)CONCAT44(*(undefined4 *)(lVar6 + -4),*(undefined4 *)(lVar6 + -0xc));
+      ::utils::swizzlers::impl$1::xvy();
+    }
+    *(undefined4 *)in_R8[2] = *(undefined4 *)((longlong)in_R8 + 0x1c);
+    lVar6 = *in_R8;
+    lVar14 = *(longlong *)(lVar6 + 0x30);
+    uVar7 = *(undefined8 *)(lVar6 + 0x40);
+    if (lVar14 == *(longlong *)(lVar6 + 0x20)) {
+      alloc::raw_vec::RawVec::
+      grow_one<indexmap::Bucket<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,enum2_<country_core::resources::stairs::stairs_assembly_params::AlignKind>_>,alloc::alloc::Global>
+                ();
+    }
+    lVar17 = *(longlong *)(lVar6 + 0x28);
+    *(undefined4 *)(lVar17 + lVar14 * 0x28) = 0;
+    *(undefined4 *)(lVar17 + 8 + lVar14 * 0x28) = 1;
+    *(float *)(lVar17 + 0xc + lVar14 * 0x28) = extraout_XMM0_Da * fVar2;
+    *(undefined8 *)(lVar17 + 0x10 + lVar14 * 0x28) = local_78;
+    *(undefined4 *)(lVar17 + 0x18 + lVar14 * 0x28) = local_70;
+    *(int *)(lVar17 + 0x1c + lVar14 * 0x28) = iVar12;
+    *(undefined8 *)(lVar17 + 0x20 + lVar14 * 0x28) = uVar7;
+    *(longlong *)(lVar6 + 0x30) = lVar14 + 1;
+    *(longlong *)(lVar6 + 0x40) = *(longlong *)(lVar6 + 0x40) + 1;
+LAB_14085913a:
+    *(undefined4 *)in_R9[2] = *(undefined4 *)((longlong)in_R9 + 0x1c);
+    lVar6 = *in_R9;
+    lVar14 = *(longlong *)(lVar6 + 0x30);
+    uVar7 = *(undefined8 *)(lVar6 + 0x40);
+    if (lVar14 == *(longlong *)(lVar6 + 0x20)) {
+      alloc::raw_vec::RawVec::
+      grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>
+                ();
+    }
+    lVar17 = *(longlong *)(lVar6 + 0x28);
+    *(undefined8 *)(lVar17 + lVar14 * 0x10) = uVar7;
+    *(int *)(lVar17 + 8 + lVar14 * 0x10) = iVar12;
+    *(longlong *)(lVar6 + 0x30) = lVar14 + 1;
+    *(longlong *)(lVar6 + 0x40) = *(longlong *)(lVar6 + 0x40) + 1;
+  }
+  else if (uVar13 == 1) {
+    uVar13 = in_RCX[1];
+    fVar2 = *(float *)(in_RCX + 3);
+    fVar3 = *(float *)((longlong)in_RCX + 0x14);
+    fVar4 = *(float *)(in_RCX + 2);
+    fVar5 = *(float *)((longlong)in_RCX + 0xc);
+    *(undefined4 *)in_R8[2] = *(undefined4 *)((longlong)in_R8 + 0x1c);
+    lVar6 = *in_R8;
+    lVar14 = *(longlong *)(lVar6 + 0x30);
+    uVar7 = *(undefined8 *)(lVar6 + 0x40);
+    if (lVar14 == *(longlong *)(lVar6 + 0x20)) {
+      alloc::raw_vec::RawVec::
+      grow_one<indexmap::Bucket<tuple_<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId>,enum2_<country_core::resources::stairs::stairs_assembly_params::AlignKind>_>,alloc::alloc::Global>
+                ();
+    }
+    lVar17 = *(longlong *)(lVar6 + 0x28);
+    *(uint *)(lVar17 + lVar14 * 0x28) = -(uint)(fVar2 != fVar3) & 1;
+    *(float *)(lVar17 + 4 + lVar14 * 0x28) =
+         fVar2 * (1.0 - in_stack_00000030) + fVar3 * in_stack_00000030;
+    *(uint *)(lVar17 + 8 + lVar14 * 0x28) = -(uint)(fVar4 != fVar5) & 1;
+    *(float *)(lVar17 + 0xc + lVar14 * 0x28) =
+         fVar5 * in_stack_00000030 + (1.0 - in_stack_00000030) * fVar4;
+    *(undefined8 *)(lVar17 + 0x10 + lVar14 * 0x28) = 0;
+    *(undefined4 *)(lVar17 + 0x18 + lVar14 * 0x28) = 0;
+    *(int *)(lVar17 + 0x1c + lVar14 * 0x28) = (int)uVar13;
+    *(undefined8 *)(lVar17 + 0x20 + lVar14 * 0x28) = uVar7;
+    *(longlong *)(lVar6 + 0x30) = lVar14 + 1;
+    *(longlong *)(lVar6 + 0x40) = *(longlong *)(lVar6 + 0x40) + 1;
+  }
+  else {
+    ::utils::easing_functions::EasingFunction::apply();
+    local_a8 = (undefined **)in_RCX[1];
+    local_a0 = (longlong)local_a8 + in_RCX[2] * 0xc;
+    local_90 = local_6c;
+    local_98 = (ulonglong **)(in_RCX + 3);
+    alloc::vec::spec_from_iter::impl$0::
+    from_iter<glam::f32::vec3::Vec3,core::iter::adapters::map::Map<core::slice::iter::Iter<glam::f32::vec3::Vec3>,country_core::resources::history::terrain_edit::impl_1::revert::closure_env_2>_>
+              ();
+    local_b8 = local_c0;
+    if (local_c0 == 0) {
+                    // WARNING: Subroutine does not return
+      core::panicking::panic_bounds_check();
+    }
+    local_68 = local_d0;
+    local_a8 = *(undefined ***)((longlong)local_c8 + (local_c0 >> 1) * 0xc);
+    local_b0 = (longlong)local_c8;
+    local_a0 = CONCAT44(local_a0._4_4_,
+                        *(undefined4 *)((longlong)local_c8 + 8 + (local_c0 >> 1) * 0xc));
+    uVar13 = in_RCX[4];
+    *(undefined4 *)in_stack_00000028[2] = *(undefined4 *)((longlong)in_stack_00000028 + 0x1c);
+    lVar6 = *in_stack_00000028;
+    lVar14 = *(longlong *)(lVar6 + 0x30);
+    uVar7 = *(undefined8 *)(lVar6 + 0x40);
+    if (lVar14 == *(longlong *)(lVar6 + 0x20)) {
+      alloc::raw_vec::RawVec::
+      grow_one<country_core::render::render_config::LastKnownGraphicsDevice,alloc::alloc::Global>();
+    }
+    lVar17 = *(longlong *)(lVar6 + 0x28);
+    lVar11 = lVar14 * 0x30;
+    *(ulonglong **)(lVar17 + lVar11) = local_68;
+    *(longlong *)(lVar17 + 8 + lVar11) = local_b0;
+    *(ulonglong *)(lVar17 + 0x10 + lVar11) = local_b8;
+    *(undefined ***)(lVar17 + 0x18 + lVar11) = local_a8;
+    *(undefined4 *)(lVar17 + 0x20 + lVar11) = (undefined4)local_a0;
+    *(int *)(lVar17 + 0x24 + lVar11) = (int)uVar13;
+    *(undefined8 *)(lVar17 + 0x28 + lVar11) = uVar7;
+    *(longlong *)(lVar6 + 0x30) = lVar14 + 1;
+    *(longlong *)(lVar6 + 0x40) = *(longlong *)(lVar6 + 0x40) + 1;
+  }
+  return;
+}
+

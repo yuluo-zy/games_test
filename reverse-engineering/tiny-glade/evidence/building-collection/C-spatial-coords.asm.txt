@@ -1,0 +1,46 @@
+140ac2d90 push rsi
+140ac2d91 push rdi
+140ac2d92 push rbx
+140ac2d93 sub rsp, 0x40
+140ac2d97 movaps xmmword ptr [rsp + 0x30], xmm7
+140ac2d9c movaps xmmword ptr [rsp + 0x20], xmm6
+140ac2da1 movss xmm3, dword ptr [rcx + 0x50]
+140ac2da6 movss xmm4, dword ptr [rcx + 0x54]
+140ac2dab movss xmm6, dword ptr [rip + 0x24438c1]
+140ac2db3 movaps xmm0, xmm3
+140ac2db6 mulss xmm0, xmm6
+140ac2dba mulss xmm6, xmm4
+140ac2dbe addss xmm0, xmm1
+140ac2dc2 xorps xmm1, xmm1
+140ac2dc5 cvtsi2ss xmm1, dword ptr [rcx + 0x48]
+140ac2dca addss xmm6, xmm2
+140ac2dce xorps xmm2, xmm2
+140ac2dd1 cvtsi2ss xmm2, dword ptr [rcx + 0x4c]
+140ac2dd6 divss xmm3, xmm1
+140ac2dda divss xmm0, xmm3
+140ac2dde divss xmm4, xmm2
+140ac2de2 divss xmm6, xmm4
+140ac2de6 call 0x142e1be00
+140ac2deb cvttss2si esi, xmm0
+140ac2def movss xmm7, dword ptr [rip + 0x244c149]
+140ac2df7 ucomiss xmm0, xmm7
+140ac2dfa mov edi, 0x7fffffff
+140ac2dff cmova esi, edi
+140ac2e02 xor ebx, ebx
+140ac2e04 ucomiss xmm0, xmm0
+140ac2e07 cmovp esi, ebx
+140ac2e0a movaps xmm0, xmm6
+140ac2e0d call 0x142e1be00
+140ac2e12 cvttss2si edx, xmm0
+140ac2e16 ucomiss xmm0, xmm7
+140ac2e19 cmova edx, edi
+140ac2e1c ucomiss xmm0, xmm0
+140ac2e1f cmovp edx, ebx
+140ac2e22 mov eax, esi
+140ac2e24 movaps xmm6, xmmword ptr [rsp + 0x20]
+140ac2e29 movaps xmm7, xmmword ptr [rsp + 0x30]
+140ac2e2e add rsp, 0x40
+140ac2e32 pop rbx
+140ac2e33 pop rdi
+140ac2e34 pop rsi
+140ac2e35 ret 

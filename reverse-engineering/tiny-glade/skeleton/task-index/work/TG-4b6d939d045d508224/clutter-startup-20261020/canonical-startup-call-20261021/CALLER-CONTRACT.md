@@ -1,0 +1,28 @@
+# 26分支真实loader的最窄启动调用
+
+root明确授权在TG4b6d旧owner合法work准备root-owned gameplay_startup方法hunk；唯一writer root，worker未修改production/lib/Cargo、未挂任意visual host。本delivery只有install_gameplay_gpu_startup内2窄hunk，不可整文件覆盖root同期音频事件。before全文/method各SHA见delivery，source before95471af9，method7a29c0d5。
+
+## 原安装身份与已审producer
+
+复用本task real-collision-producer-20261020/PRESTARTUP-INSTALLATION-CONTRACT-V1.md及已核原包：matching B RNE f507a6ce/PDB2d9686b8，DecoratorPlugin::build140342c10完整17521B于140344de6物理call140170fb0；PDB70:41416对应完整1132B Schedules::add_systems<PreStartup,fn(ResMut<DecoratorMeshLibrary>,Res<AssetMeshLibrary>,Res<MeshWatch>)>，body/typed wrappers与真实load_decorators1407b66e0完整17386B互相闭合。这里只接已审after7eacff3a完整producer，绝不装旧generic read_dir/None壳。
+
+现代签名root:&Path,&mut DecoratorMeshLibrary,&AssetMeshLibrary,&MeshWatch,demo:bool。原三资源身份逐一保持；root和demo是现代已有配置/路径适配，不新增状态。closure捕获当前installed.clone和当前GameConfig.dev.demo，不硬码demo false，目录仍loader内部root/assets/meshes/decorators。入口returns()且panic原失败，不加虚假Result/expect/忽略错误。
+
+## 当前实际调用链逐项核
+
+- 主生产：run_game::run_game_thread构造App，run_game.rs405调用decorator_plugin::build_startup_resources→system_decorator::add_decorator_events_and_resources→lib.rs219/220实际init DerivedDecoratorSubtypes和DecoratorMeshLibrary。四collision/interaction/outline/collision_outline地图是后者同一个canonical资源内四个真实HashMap，不是四个独立Resource。当前原表初始化只给空owner，不等于目录已加载。
+- run_game.rs460已创建AssetMeshLibrary；game_loop.rs366 bridge.install_asset_libraries(app.world_mut())挂同实际device资产owners，再373 install_gameplay_device_runtime→gpu_startup。CoreRenderBridge真实install_asset_libraries由backend资源owner提供，不在本hunk造空mesh/假handle；loader使用Res<AssetMeshLibrary>就是该同一库。
+- gpu_startup当前432..433按GameConfig.dev.live_link初始化缺失MeshWatch；已有时保同一resource，watch()真实OS订阅由它执行。不会临时MeshWatch::new(false)替代，也不二次watchregistry。
+- 当前没有任何load_decorators真实caller：全crates搜索除generic函数声明无调用，decorator_plugin build/build_startup_resources也不注册该系统，必须补这一实际PreStartup closure。不存在需要保留/迁移的第二老call。
+- 三真实device_runtime caller中game_loop/main_chain_audit/original_gameplay_chain都先run_game_thread与bridge安装，库已在同App；original_startup_gpu.rs直接App::new+bridge.install_asset_libraries+gpu_startup，不走DecoratorPlugin。因此hunk在gpu_startup幂等init当前canonical DerivedDecoratorSubtypes/DecoratorMeshLibrary两个原真实空资源，保持主App原已有值，也让该直接真实GPU入口具备原owner。不是默认geometry、不是加载完成标记、不调用整DecoratPlugin的partial UI/visual函数。
+
+## 两hunk实际内容与调度
+
+1. 在config demo/live_link捕获后，用已有canonical类型init同两个资源；不清库、不替换已loaded值。
+2. 在installed被Atlas closure move前clone为decorator_root，注册原PreStartup三资源closure，直接调用完整loader。独立PreStartup，不人为新增与Atlas/Nani/其它plugin的次序边；原包只证明phase/owners，不凭此推导新set边。所有PreStartup均结束后才原Startup/Update消费，所以不得用新ready bool提前发布。原assetMesh add/watch-before-add由loader同已审body负责，hunk不复制任何26case算法。
+
+没有注册build_recovered_visual_systems、add_decorator_systems、cache/validator/instantiate/scene host，也不增加原目录缺资产时的fallback或条件skip。directory/JSON/UTF8/requiredmesh/convex/outline失败继续在PreStartup真实传播，中止启动。
+
+## root最小验证边界
+
+需先原子集成完整canonical四表/outline/box/loader签名，然后此method hunk；旧generic双参数loader不能编译这五参调用，这正是要成组切换的接口。worker只rustfmt语法；root可独立先Cargo与原安装目录的真实AssetMeshLibrary/MeshWatch loader验证（full52/demo34 exact keys、真实mesh Arc/类型/triangle/outline，不以resource存在计加载成功），再实际gameplay PreStartup。整个visual/render链状态不由此最小启动call宣称完成。

@@ -1,0 +1,2590 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-10-12T10:49:01.725Z",
+  "server": "re_mcp_ghidra",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "index": 0,
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "keep_open": true,
+        "database_id": "ccscene_l1"
+      },
+      "cache_key": "8f73c50750d320e5f9266523bfdcfa991eae59d077a45098741f7c44f57d7e68",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:49:01.869Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"ccscene_l1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "ccscene_l1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:49:14.244Z",
+      "ok": true,
+      "result_sha256": "b508af1d2c0d67e857b748f9a25a8698437135a9b6fa63ebfb35f98851edca74"
+    },
+    {
+      "index": 1,
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "ccscene_l1"
+      },
+      "cache_key": "1a676914563f5924e4fce24c92dc3eaa62959c6ec97ade58b94d08f98eac3176",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:49:14.247Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"ccscene_l1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "ccscene_l1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:49:26.687Z",
+      "ok": true,
+      "result_sha256": "64da7c765b9b654b9eb1fe8e2b246e34aa7ddff07b9eb85981a679e55b6734bc"
+    },
+    {
+      "index": 2,
+      "position": 0,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140588bc0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:49:26.689Z",
+      "completed_at": "2026-10-12T10:49:32.241Z",
+      "source": "actual_mcp_call",
+      "cache_key": "20e0c2fcf306110442bd31018339077052e45ae3c195648208c8f5b522b055b7",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140588bc0",
+        "address": "0x140588BC0",
+        "decompiled_code": "\r\nundefined8 FUN_140588bc0(undefined8 param_1,longlong param_2,ulonglong param_3)\r\n\r\n{\r\n  undefined1 auVar1 [16];\r\n  undefined4 uVar2;\r\n  longlong lVar3;\r\n  code *pcVar4;\r\n  uint uVar5;\r\n  uint uVar6;\r\n  undefined1 uVar7;\r\n  longlong lVar8;\r\n  uint uVar9;\r\n  ushort uVar10;\r\n  ulonglong uVar11;\r\n  longlong lVar12;\r\n  ulonglong uVar13;\r\n  byte bVar14;\r\n  char cVar15;\r\n  char cVar17;\r\n  char cVar18;\r\n  char cVar19;\r\n  undefined1 auVar16 [16];\r\n  undefined1 auVar20 [16];\r\n  undefined1 auVar21 [16];\r\n  undefined8 auStack_80 [6];\r\n  int iStack_4c;\r\n  longlong lStack_48;\r\n  undefined8 uStack_40;\r\n  \r\n  uStack_40 = 0xfffffffffffffffe;\r\n  lStack_48 = param_2;\r\n  uVar7 = FUN_1402b06e0(param_2 + 0x148,*(undefined8 *)(param_2 + 0x140),param_2 + 0x60,param_2,0x1a\r\n                       );\r\n  lVar12 = *(longlong *)(lStack_48 + 0x138);\r\n  if (*(longlong *)(lVar12 + 0xb0) != 0) {\r\n    lVar3 = *(longlong *)(lVar12 + 0x98);\r\n    bVar14 = (byte)(param_3 >> 0x39);\r\n    auVar16 = ZEXT216(CONCAT11(bVar14,bVar14));\r\n    auVar16 = pshuflw(auVar16,auVar16,0);\r\n    lVar8 = 0;\r\n    uVar13 = param_3;\r\n    while( true ) {\r\n      uVar13 = *(ulonglong *)(lVar12 + 0xa0) & uVar13;\r\n      auVar1 = *(undefined1 (*) [16])(lVar3 + uVar13);\r\n      cVar15 = auVar16[0];\r\n      auVar21[0] = -(auVar1[0] == cVar15);\r\n      cVar17 = auVar16[1];\r\n      auVar21[1] = -(auVar1[1] == cVar17);\r\n      cVar18 = auVar16[2];\r\n      auVar21[2] = -(auVar1[2] == cVar18);\r\n      cVar19 = auVar16[3];\r\n      auVar21[3] = -(auVar1[3] == cVar19);\r\n      auVar21[4] = -(auVar1[4] == cVar15);\r\n      auVar21[5] = -(auVar1[5] == cVar17);\r\n      auVar21[6] = -(auVar1[6] == cVar18);\r\n      auVar21[7] = -(auVar1[7] == cVar19);\r\n      auVar21[8] = -(auVar1[8] == cVar15);\r\n      auVar21[9] = -(auVar1[9] == cVar17);\r\n      auVar21[10] = -(auVar1[10] == cVar18);\r\n      auVar21[0xb] = -(auVar1[0xb] == cVar19);\r\n      auVar21[0xc] = -(auVar1[0xc] == cVar15);\r\n      auVar21[0xd] = -(auVar1[0xd] == cVar17);\r\n      auVar21[0xe] = -(auVar1[0xe] == cVar18);\r\n      auVar21[0xf] = -(auVar1[0xf] == cVar19);\r\n      uVar10 = (ushort)(SUB161(auVar21 >> 7,0) & 1) | (ushort)(SUB161(auVar21 >> 0xf,0) & 1) << 1 |\r\n               (ushort)(SUB161(auVar21 >> 0x17,0) & 1) << 2 |\r\n               (ushort)(SUB161(auVar21 >> 0x1f,0) & 1) << 3 |\r\n               (ushort)(SUB161(auVar21 >> 0x27,0) & 1) << 4 |\r\n               (ushort)(SUB161(auVar21 >> 0x2f,0) & 1) << 5 |\r\n               (ushort)(SUB161(auVar21 >> 0x37,0) & 1) << 6 |\r\n               (ushort)(SUB161(auVar21 >> 0x3f,0) & 1) << 7 |\r\n               (ushort)(SUB161(auVar21 >> 0x47,0) & 1) << 8 |\r\n               (ushort)(SUB161(auVar21 >> 0x4f,0) & 1) << 9 |\r\n               (ushort)(SUB161(auVar21 >> 0x57,0) & 1) << 10 |\r\n               (ushort)(SUB161(auVar21 >> 0x5f,0) & 1) << 0xb |\r\n               (ushort)(SUB161(auVar21 >> 0x67,0) & 1) << 0xc |\r\n               (ushort)(SUB161(auVar21 >> 0x6f,0) & 1) << 0xd |\r\n               (ushort)(SUB161(auVar21 >> 0x77,0) & 1) << 0xe | (ushort)(auVar21[0xf] >> 7) << 0xf;\r\n      uVar9 = (uint)uVar10;\r\n      while (uVar10 != 0) {\r\n        uVar5 = 0;\r\n        for (uVar6 = uVar9; (uVar6 & 1) == 0; uVar6 = uVar6 >> 1 | 0x80000000) {\r\n          uVar5 = uVar5 + 1;\r\n        }\r\n        uVar11 = uVar5 + uVar13 & *(ulonglong *)(lVar12 + 0xa0);\r\n        if (*(ulonglong *)(lVar3 + -0x10 + uVar11 * -0x10) == param_3) {\r\n          lVar12 = uVar11 * -0x10;\r\n          iStack_4c = *(int *)(lVar3 + -8 + lVar12);\r\n          uVar2 = *(undefined4 *)(lVar3 + -4 + lVar12);\r\n          if (iStack_4c != 0) {\r\n            auStack_80[0] = 0;\r\n            FUN_1428a994f(0,&iStack_4c,&UNK_1429fcab8,auStack_80,&UNK_1429fcac0);\r\n                    /* WARNING: Does not return */\r\n            pcVar4 = (code *)invalidInstructionException();\r\n            (*pcVar4)();\r\n          }\r\n          lVar12 = *(longlong *)(lStack_48 + 0x28);\r\n          if (lVar12 == *(longlong *)(lStack_48 + 0x18)) {\r\n            FUN_140562e70(lStack_48 + 0x18,&UNK_1429fcad8);\r\n          }\r\n          lVar3 = *(longlong *)(lStack_48 + 0x20);\r\n          *(undefined4 *)(lVar3 + lVar12 * 8) = uVar2;\r\n          *(undefined1 *)(lVar3 + 4 + lVar12 * 8) = uVar7;\r\n          *(longlong *)(lStack_48 + 0x28) = lVar12 + 1;\r\n          goto code_r0x000140588d0c;\r\n        }\r\n        uVar10 = (ushort)(uVar9 - 1) & (ushort)uVar9;\r\n        uVar9 = CONCAT22((short)(uVar9 - 1 >> 0x10),uVar10);\r\n      }\r\n      auVar20[0] = -(auVar1[0] == -1);\r\n      auVar20[1] = -(auVar1[1] == -1);\r\n      auVar20[2] = -(auVar1[2] == -1);\r\n      auVar20[3] = -(auVar1[3] == -1);\r\n      auVar20[4] = -(auVar1[4] == -1);\r\n      auVar20[5] = -(auVar1[5] == -1);\r\n      auVar20[6] = -(auVar1[6] == -1);\r\n      auVar20[7] = -(auVar1[7] == -1);\r\n      auVar20[8] = -(auVar1[8] == -1);\r\n      auVar20[9] = -(auVar1[9] == -1);\r\n      auVar20[10] = -(auVar1[10] == -1);\r\n      auVar20[0xb] = -(auVar1[0xb] == -1);\r\n      auVar20[0xc] = -(auVar1[0xc] == -1);\r\n      auVar20[0xd] = -(auVar1[0xd] == -1);\r\n      auVar20[0xe] = -(auVar1[0xe] == -1);\r\n      auVar20[0xf] = -(auVar1[0xf] == -1);\r\n      if ((((((((((((((((SUB161(auVar20 >> 7,0) & 1) != 0 || (SUB161(auVar20 >> 0xf,0) & 1) != 0) ||\r\n                      (SUB161(auVar20 >> 0x17,0) & 1) != 0) || (SUB161(auVar20 >> 0x1f,0) & 1) != 0)\r\n                    || (SUB161(auVar20 >> 0x27,0) & 1) != 0) || (SUB161(auVar20 >> 0x2f,0) & 1) != 0\r\n                   ) || (SUB161(auVar20 >> 0x37,0) & 1) != 0) ||\r\n                 (SUB161(auVar20 >> 0x3f,0) & 1) != 0) || (SUB161(auVar20 >> 0x47,0) & 1) != 0) ||\r\n               (SUB161(auVar20 >> 0x4f,0) & 1) != 0) || (SUB161(auVar20 >> 0x57,0) & 1) != 0) ||\r\n             (SUB161(auVar20 >> 0x5f,0) & 1) != 0) || (SUB161(auVar20 >> 0x67,0) & 1) != 0) ||\r\n           (SUB161(auVar20 >> 0x6f,0) & 1) != 0) || (SUB161(auVar20 >> 0x77,0) & 1) != 0) ||\r\n          auVar20[0xf] < '\\0') break;\r\n      uVar13 = uVar13 + lVar8 + 0x10;\r\n      lVar8 = lVar8 + 0x10;\r\n    }\r\n  }\r\ncode_r0x000140588d0c:\r\n  func_0x000142923c00(param_1,lStack_48,400);\r\n  return param_1;\r\n}\r\n\r\n",
+        "database": "ccscene_l1"
+      },
+      "result_sha256": "8046acc4c9de17c7b7814f0af579a1e42d077b813e4b9f9469844611a325d80c",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 1,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x141605170"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:49:26.689Z",
+      "completed_at": "2026-10-12T10:49:32.241Z",
+      "source": "actual_mcp_call",
+      "cache_key": "20e0c2fcf306110442bd31018339077052e45ae3c195648208c8f5b522b055b7",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_141605170",
+        "address": "0x141605170",
+        "decompiled_code": "\r\nundefined8 FUN_141605170(undefined8 param_1,longlong param_2,ulonglong param_3)\r\n\r\n{\r\n  undefined1 auVar1 [16];\r\n  undefined4 uVar2;\r\n  longlong lVar3;\r\n  code *pcVar4;\r\n  uint uVar5;\r\n  uint uVar6;\r\n  undefined1 uVar7;\r\n  longlong lVar8;\r\n  uint uVar9;\r\n  ushort uVar10;\r\n  ulonglong uVar11;\r\n  longlong lVar12;\r\n  ulonglong uVar13;\r\n  byte bVar14;\r\n  char cVar15;\r\n  char cVar17;\r\n  char cVar18;\r\n  char cVar19;\r\n  undefined1 auVar16 [16];\r\n  undefined1 auVar20 [16];\r\n  undefined1 auVar21 [16];\r\n  undefined8 auStack_80 [6];\r\n  int iStack_4c;\r\n  longlong lStack_48;\r\n  undefined8 uStack_40;\r\n  \r\n  uStack_40 = 0xfffffffffffffffe;\r\n  lStack_48 = param_2;\r\n  uVar7 = FUN_140975320(param_2 + 0x148,*(undefined8 *)(param_2 + 0x140),param_2 + 0x60,param_2,0x32\r\n                       );\r\n  lVar12 = *(longlong *)(lStack_48 + 0x138);\r\n  if (*(longlong *)(lVar12 + 0xb0) != 0) {\r\n    lVar3 = *(longlong *)(lVar12 + 0x98);\r\n    bVar14 = (byte)(param_3 >> 0x39);\r\n    auVar16 = ZEXT216(CONCAT11(bVar14,bVar14));\r\n    auVar16 = pshuflw(auVar16,auVar16,0);\r\n    lVar8 = 0;\r\n    uVar13 = param_3;\r\n    while( true ) {\r\n      uVar13 = *(ulonglong *)(lVar12 + 0xa0) & uVar13;\r\n      auVar1 = *(undefined1 (*) [16])(lVar3 + uVar13);\r\n      cVar15 = auVar16[0];\r\n      auVar21[0] = -(auVar1[0] == cVar15);\r\n      cVar17 = auVar16[1];\r\n      auVar21[1] = -(auVar1[1] == cVar17);\r\n      cVar18 = auVar16[2];\r\n      auVar21[2] = -(auVar1[2] == cVar18);\r\n      cVar19 = auVar16[3];\r\n      auVar21[3] = -(auVar1[3] == cVar19);\r\n      auVar21[4] = -(auVar1[4] == cVar15);\r\n      auVar21[5] = -(auVar1[5] == cVar17);\r\n      auVar21[6] = -(auVar1[6] == cVar18);\r\n      auVar21[7] = -(auVar1[7] == cVar19);\r\n      auVar21[8] = -(auVar1[8] == cVar15);\r\n      auVar21[9] = -(auVar1[9] == cVar17);\r\n      auVar21[10] = -(auVar1[10] == cVar18);\r\n      auVar21[0xb] = -(auVar1[0xb] == cVar19);\r\n      auVar21[0xc] = -(auVar1[0xc] == cVar15);\r\n      auVar21[0xd] = -(auVar1[0xd] == cVar17);\r\n      auVar21[0xe] = -(auVar1[0xe] == cVar18);\r\n      auVar21[0xf] = -(auVar1[0xf] == cVar19);\r\n      uVar10 = (ushort)(SUB161(auVar21 >> 7,0) & 1) | (ushort)(SUB161(auVar21 >> 0xf,0) & 1) << 1 |\r\n               (ushort)(SUB161(auVar21 >> 0x17,0) & 1) << 2 |\r\n               (ushort)(SUB161(auVar21 >> 0x1f,0) & 1) << 3 |\r\n               (ushort)(SUB161(auVar21 >> 0x27,0) & 1) << 4 |\r\n               (ushort)(SUB161(auVar21 >> 0x2f,0) & 1) << 5 |\r\n               (ushort)(SUB161(auVar21 >> 0x37,0) & 1) << 6 |\r\n               (ushort)(SUB161(auVar21 >> 0x3f,0) & 1) << 7 |\r\n               (ushort)(SUB161(auVar21 >> 0x47,0) & 1) << 8 |\r\n               (ushort)(SUB161(auVar21 >> 0x4f,0) & 1) << 9 |\r\n               (ushort)(SUB161(auVar21 >> 0x57,0) & 1) << 10 |\r\n               (ushort)(SUB161(auVar21 >> 0x5f,0) & 1) << 0xb |\r\n               (ushort)(SUB161(auVar21 >> 0x67,0) & 1) << 0xc |\r\n               (ushort)(SUB161(auVar21 >> 0x6f,0) & 1) << 0xd |\r\n               (ushort)(SUB161(auVar21 >> 0x77,0) & 1) << 0xe | (ushort)(auVar21[0xf] >> 7) << 0xf;\r\n      uVar9 = (uint)uVar10;\r\n      while (uVar10 != 0) {\r\n        uVar5 = 0;\r\n        for (uVar6 = uVar9; (uVar6 & 1) == 0; uVar6 = uVar6 >> 1 | 0x80000000) {\r\n          uVar5 = uVar5 + 1;\r\n        }\r\n        uVar11 = uVar5 + uVar13 & *(ulonglong *)(lVar12 + 0xa0);\r\n        if (*(ulonglong *)(lVar3 + -0x10 + uVar11 * -0x10) == param_3) {\r\n          lVar12 = uVar11 * -0x10;\r\n          iStack_4c = *(int *)(lVar3 + -8 + lVar12);\r\n          uVar2 = *(undefined4 *)(lVar3 + -4 + lVar12);\r\n          if (iStack_4c != 0) {\r\n            auStack_80[0] = 0;\r\n            FUN_1428a994f(0,&iStack_4c,&UNK_142c7d9e8,auStack_80,&UNK_142c7d9f0);\r\n                    /* WARNING: Does not return */\r\n            pcVar4 = (code *)invalidInstructionException();\r\n            (*pcVar4)();\r\n          }\r\n          lVar12 = *(longlong *)(lStack_48 + 0x28);\r\n          if (lVar12 == *(longlong *)(lStack_48 + 0x18)) {\r\n            FUN_140562e70(lStack_48 + 0x18,&UNK_142c7da08);\r\n          }\r\n          lVar3 = *(longlong *)(lStack_48 + 0x20);\r\n          *(undefined4 *)(lVar3 + lVar12 * 8) = uVar2;\r\n          *(undefined1 *)(lVar3 + 4 + lVar12 * 8) = uVar7;\r\n          *(longlong *)(lStack_48 + 0x28) = lVar12 + 1;\r\n          goto code_r0x0001416052bc;\r\n        }\r\n        uVar10 = (ushort)(uVar9 - 1) & (ushort)uVar9;\r\n        uVar9 = CONCAT22((short)(uVar9 - 1 >> 0x10),uVar10);\r\n      }\r\n      auVar20[0] = -(auVar1[0] == -1);\r\n      auVar20[1] = -(auVar1[1] == -1);\r\n      auVar20[2] = -(auVar1[2] == -1);\r\n      auVar20[3] = -(auVar1[3] == -1);\r\n      auVar20[4] = -(auVar1[4] == -1);\r\n      auVar20[5] = -(auVar1[5] == -1);\r\n      auVar20[6] = -(auVar1[6] == -1);\r\n      auVar20[7] = -(auVar1[7] == -1);\r\n      auVar20[8] = -(auVar1[8] == -1);\r\n      auVar20[9] = -(auVar1[9] == -1);\r\n      auVar20[10] = -(auVar1[10] == -1);\r\n      auVar20[0xb] = -(auVar1[0xb] == -1);\r\n      auVar20[0xc] = -(auVar1[0xc] == -1);\r\n      auVar20[0xd] = -(auVar1[0xd] == -1);\r\n      auVar20[0xe] = -(auVar1[0xe] == -1);\r\n      auVar20[0xf] = -(auVar1[0xf] == -1);\r\n      if ((((((((((((((((SUB161(auVar20 >> 7,0) & 1) != 0 || (SUB161(auVar20 >> 0xf,0) & 1) != 0) ||\r\n                      (SUB161(auVar20 >> 0x17,0) & 1) != 0) || (SUB161(auVar20 >> 0x1f,0) & 1) != 0)\r\n                    || (SUB161(auVar20 >> 0x27,0) & 1) != 0) || (SUB161(auVar20 >> 0x2f,0) & 1) != 0\r\n                   ) || (SUB161(auVar20 >> 0x37,0) & 1) != 0) ||\r\n                 (SUB161(auVar20 >> 0x3f,0) & 1) != 0) || (SUB161(auVar20 >> 0x47,0) & 1) != 0) ||\r\n               (SUB161(auVar20 >> 0x4f,0) & 1) != 0) || (SUB161(auVar20 >> 0x57,0) & 1) != 0) ||\r\n             (SUB161(auVar20 >> 0x5f,0) & 1) != 0) || (SUB161(auVar20 >> 0x67,0) & 1) != 0) ||\r\n           (SUB161(auVar20 >> 0x6f,0) & 1) != 0) || (SUB161(auVar20 >> 0x77,0) & 1) != 0) ||\r\n          auVar20[0xf] < '\\0') break;\r\n      uVar13 = uVar13 + lVar8 + 0x10;\r\n      lVar8 = lVar8 + 0x10;\r\n    }\r\n  }\r\ncode_r0x0001416052bc:\r\n  func_0x000142923c00(param_1,lStack_48,400);\r\n  return param_1;\r\n}\r\n\r\n",
+        "database": "ccscene_l1"
+      },
+      "result_sha256": "54c1ceb5b2276479b8393f932f841b1ff17a889be6b42d4ddc336d935faa3422",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 2,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x141608c10"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:49:26.689Z",
+      "completed_at": "2026-10-12T10:49:32.241Z",
+      "source": "actual_mcp_call",
+      "cache_key": "20e0c2fcf306110442bd31018339077052e45ae3c195648208c8f5b522b055b7",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_141608c10",
+        "address": "0x141608C10",
+        "decompiled_code": "\r\nundefined8 FUN_141608c10(undefined8 param_1,longlong param_2,ulonglong param_3,undefined4 param_4)\r\n\r\n{\r\n  undefined1 auVar1 [16];\r\n  undefined4 uVar2;\r\n  longlong lVar3;\r\n  code *pcVar4;\r\n  uint uVar5;\r\n  uint uVar6;\r\n  undefined1 uVar7;\r\n  longlong lVar8;\r\n  uint uVar9;\r\n  ushort uVar10;\r\n  ulonglong uVar11;\r\n  longlong lVar12;\r\n  ulonglong uVar13;\r\n  byte bVar14;\r\n  char cVar15;\r\n  char cVar17;\r\n  char cVar18;\r\n  char cVar19;\r\n  undefined1 auVar16 [16];\r\n  undefined1 auVar20 [16];\r\n  undefined1 auVar21 [16];\r\n  undefined8 auStack_80 [6];\r\n  int iStack_4c;\r\n  longlong lStack_48;\r\n  undefined8 uStack_40;\r\n  \r\n  uStack_40 = 0xfffffffffffffffe;\r\n  lStack_48 = param_2;\r\n  uVar7 = FUN_140975e40(param_2 + 0x148,*(undefined8 *)(param_2 + 0x140),param_2 + 0x60,param_2,0x37\r\n                        ,param_4);\r\n  lVar12 = *(longlong *)(lStack_48 + 0x138);\r\n  if (*(longlong *)(lVar12 + 0xb0) != 0) {\r\n    lVar3 = *(longlong *)(lVar12 + 0x98);\r\n    bVar14 = (byte)(param_3 >> 0x39);\r\n    auVar16 = ZEXT216(CONCAT11(bVar14,bVar14));\r\n    auVar16 = pshuflw(auVar16,auVar16,0);\r\n    lVar8 = 0;\r\n    uVar13 = param_3;\r\n    while( true ) {\r\n      uVar13 = *(ulonglong *)(lVar12 + 0xa0) & uVar13;\r\n      auVar1 = *(undefined1 (*) [16])(lVar3 + uVar13);\r\n      cVar15 = auVar16[0];\r\n      auVar21[0] = -(auVar1[0] == cVar15);\r\n      cVar17 = auVar16[1];\r\n      auVar21[1] = -(auVar1[1] == cVar17);\r\n      cVar18 = auVar16[2];\r\n      auVar21[2] = -(auVar1[2] == cVar18);\r\n      cVar19 = auVar16[3];\r\n      auVar21[3] = -(auVar1[3] == cVar19);\r\n      auVar21[4] = -(auVar1[4] == cVar15);\r\n      auVar21[5] = -(auVar1[5] == cVar17);\r\n      auVar21[6] = -(auVar1[6] == cVar18);\r\n      auVar21[7] = -(auVar1[7] == cVar19);\r\n      auVar21[8] = -(auVar1[8] == cVar15);\r\n      auVar21[9] = -(auVar1[9] == cVar17);\r\n      auVar21[10] = -(auVar1[10] == cVar18);\r\n      auVar21[0xb] = -(auVar1[0xb] == cVar19);\r\n      auVar21[0xc] = -(auVar1[0xc] == cVar15);\r\n      auVar21[0xd] = -(auVar1[0xd] == cVar17);\r\n      auVar21[0xe] = -(auVar1[0xe] == cVar18);\r\n      auVar21[0xf] = -(auVar1[0xf] == cVar19);\r\n      uVar10 = (ushort)(SUB161(auVar21 >> 7,0) & 1) | (ushort)(SUB161(auVar21 >> 0xf,0) & 1) << 1 |\r\n               (ushort)(SUB161(auVar21 >> 0x17,0) & 1) << 2 |\r\n               (ushort)(SUB161(auVar21 >> 0x1f,0) & 1) << 3 |\r\n               (ushort)(SUB161(auVar21 >> 0x27,0) & 1) << 4 |\r\n               (ushort)(SUB161(auVar21 >> 0x2f,0) & 1) << 5 |\r\n               (ushort)(SUB161(auVar21 >> 0x37,0) & 1) << 6 |\r\n               (ushort)(SUB161(auVar21 >> 0x3f,0) & 1) << 7 |\r\n               (ushort)(SUB161(auVar21 >> 0x47,0) & 1) << 8 |\r\n               (ushort)(SUB161(auVar21 >> 0x4f,0) & 1) << 9 |\r\n               (ushort)(SUB161(auVar21 >> 0x57,0) & 1) << 10 |\r\n               (ushort)(SUB161(auVar21 >> 0x5f,0) & 1) << 0xb |\r\n               (ushort)(SUB161(auVar21 >> 0x67,0) & 1) << 0xc |\r\n               (ushort)(SUB161(auVar21 >> 0x6f,0) & 1) << 0xd |\r\n               (ushort)(SUB161(auVar21 >> 0x77,0) & 1) << 0xe | (ushort)(auVar21[0xf] >> 7) << 0xf;\r\n      uVar9 = (uint)uVar10;\r\n      while (uVar10 != 0) {\r\n        uVar5 = 0;\r\n        for (uVar6 = uVar9; (uVar6 & 1) == 0; uVar6 = uVar6 >> 1 | 0x80000000) {\r\n          uVar5 = uVar5 + 1;\r\n        }\r\n        uVar11 = uVar5 + uVar13 & *(ulonglong *)(lVar12 + 0xa0);\r\n        if (*(ulonglong *)(lVar3 + -0x10 + uVar11 * -0x10) == param_3) {\r\n          lVar12 = uVar11 * -0x10;\r\n          iStack_4c = *(int *)(lVar3 + -8 + lVar12);\r\n          uVar2 = *(undefined4 *)(lVar3 + -4 + lVar12);\r\n          if (iStack_4c != 0) {\r\n            auStack_80[0] = 0;\r\n            FUN_1428a994f(0,&iStack_4c,&UNK_142c7d9e8,auStack_80,&UNK_142c7da20);\r\n                    /* WARNING: Does not return */\r\n            pcVar4 = (code *)invalidInstructionException();\r\n            (*pcVar4)();\r\n          }\r\n          lVar12 = *(longlong *)(lStack_48 + 0x28);\r\n          if (lVar12 == *(longlong *)(lStack_48 + 0x18)) {\r\n            FUN_140562e70(lStack_48 + 0x18,&UNK_142c7da38);\r\n          }\r\n          lVar3 = *(longlong *)(lStack_48 + 0x20);\r\n          *(undefined4 *)(lVar3 + lVar12 * 8) = uVar2;\r\n          *(undefined1 *)(lVar3 + 4 + lVar12 * 8) = uVar7;\r\n          *(longlong *)(lStack_48 + 0x28) = lVar12 + 1;\r\n          goto code_r0x000141608d6c;\r\n        }\r\n        uVar10 = (ushort)(uVar9 - 1) & (ushort)uVar9;\r\n        uVar9 = CONCAT22((short)(uVar9 - 1 >> 0x10),uVar10);\r\n      }\r\n      auVar20[0] = -(auVar1[0] == -1);\r\n      auVar20[1] = -(auVar1[1] == -1);\r\n      auVar20[2] = -(auVar1[2] == -1);\r\n      auVar20[3] = -(auVar1[3] == -1);\r\n      auVar20[4] = -(auVar1[4] == -1);\r\n      auVar20[5] = -(auVar1[5] == -1);\r\n      auVar20[6] = -(auVar1[6] == -1);\r\n      auVar20[7] = -(auVar1[7] == -1);\r\n      auVar20[8] = -(auVar1[8] == -1);\r\n      auVar20[9] = -(auVar1[9] == -1);\r\n      auVar20[10] = -(auVar1[10] == -1);\r\n      auVar20[0xb] = -(auVar1[0xb] == -1);\r\n      auVar20[0xc] = -(auVar1[0xc] == -1);\r\n      auVar20[0xd] = -(auVar1[0xd] == -1);\r\n      auVar20[0xe] = -(auVar1[0xe] == -1);\r\n      auVar20[0xf] = -(auVar1[0xf] == -1);\r\n      if ((((((((((((((((SUB161(auVar20 >> 7,0) & 1) != 0 || (SUB161(auVar20 >> 0xf,0) & 1) != 0) ||\r\n                      (SUB161(auVar20 >> 0x17,0) & 1) != 0) || (SUB161(auVar20 >> 0x1f,0) & 1) != 0)\r\n                    || (SUB161(auVar20 >> 0x27,0) & 1) != 0) || (SUB161(auVar20 >> 0x2f,0) & 1) != 0\r\n                   ) || (SUB161(auVar20 >> 0x37,0) & 1) != 0) ||\r\n                 (SUB161(auVar20 >> 0x3f,0) & 1) != 0) || (SUB161(auVar20 >> 0x47,0) & 1) != 0) ||\r\n               (SUB161(auVar20 >> 0x4f,0) & 1) != 0) || (SUB161(auVar20 >> 0x57,0) & 1) != 0) ||\r\n             (SUB161(auVar20 >> 0x5f,0) & 1) != 0) || (SUB161(auVar20 >> 0x67,0) & 1) != 0) ||\r\n           (SUB161(auVar20 >> 0x6f,0) & 1) != 0) || (SUB161(auVar20 >> 0x77,0) & 1) != 0) ||\r\n          auVar20[0xf] < '\\0') break;\r\n      uVar13 = uVar13 + lVar8 + 0x10;\r\n      lVar8 = lVar8 + 0x10;\r\n    }\r\n  }\r\ncode_r0x000141608d6c:\r\n  func_0x000142923c00(param_1,lStack_48,400);\r\n  return param_1;\r\n}\r\n\r\n",
+        "database": "ccscene_l1"
+      },
+      "result_sha256": "31bcf278235e3bb5c1c1a26b759114d49ad63b724fd8f9aa62f5e8cfc8dfb0ad",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 3,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x14096ec80"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:49:26.689Z",
+      "completed_at": "2026-10-12T10:49:32.241Z",
+      "source": "actual_mcp_call",
+      "cache_key": "20e0c2fcf306110442bd31018339077052e45ae3c195648208c8f5b522b055b7",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_14096ec80",
+        "address": "0x14096EC80",
+        "decompiled_code": "\r\nulonglong FUN_14096ec80(undefined8 *param_1,undefined8 param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  byte bVar2;\r\n  undefined1 uVar3;\r\n  undefined2 uVar4;\r\n  undefined4 uVar5;\r\n  undefined8 uVar6;\r\n  longlong lVar7;\r\n  longlong lVar8;\r\n  byte *pbVar9;\r\n  ulonglong uVar10;\r\n  longlong lVar11;\r\n  undefined8 *unaff_RSI;\r\n  undefined8 *puVar12;\r\n  byte *unaff_R13;\r\n  undefined4 uStack_158;\r\n  undefined4 uStack_154;\r\n  undefined4 uStack_150;\r\n  undefined4 uStack_14c;\r\n  undefined4 uStack_148;\r\n  undefined4 uStack_144;\r\n  undefined4 uStack_140;\r\n  undefined4 uStack_13c;\r\n  undefined4 uStack_138;\r\n  undefined4 uStack_134;\r\n  undefined4 uStack_130;\r\n  undefined4 uStack_12c;\r\n  undefined4 uStack_128;\r\n  undefined4 uStack_124;\r\n  undefined4 uStack_120;\r\n  undefined4 uStack_11c;\r\n  undefined8 uStack_118;\r\n  undefined8 uStack_110;\r\n  undefined8 uStack_108;\r\n  undefined8 uStack_100;\r\n  undefined8 uStack_f8;\r\n  undefined8 uStack_f0;\r\n  undefined8 uStack_e8;\r\n  undefined8 uStack_e0;\r\n  undefined8 uStack_d8;\r\n  undefined8 uStack_d0;\r\n  undefined8 uStack_c8;\r\n  undefined8 uStack_c0;\r\n  undefined8 uStack_b8;\r\n  undefined8 uStack_b0;\r\n  undefined4 uStack_a8;\r\n  undefined4 uStack_a4;\r\n  undefined4 uStack_a0;\r\n  undefined4 uStack_9c;\r\n  undefined8 uStack_90;\r\n  undefined8 uStack_88;\r\n  undefined *puStack_80;\r\n  undefined8 uStack_78;\r\n  undefined8 uStack_70;\r\n  undefined8 uStack_68;\r\n  undefined8 uStack_60;\r\n  undefined8 uStack_58;\r\n  byte *pbStack_50;\r\n  undefined8 uStack_48;\r\n  \r\n  uStack_f8 = param_1[2];\r\n  uStack_108 = *param_1;\r\n  uStack_100 = param_1[1];\r\n  uStack_c8 = param_1[5];\r\n  uStack_d8 = param_1[3];\r\n  uStack_d0 = param_1[4];\r\n  uStack_e0 = param_1[8];\r\n  uStack_f0 = param_1[6];\r\n  uStack_e8 = param_1[7];\r\n  uStack_90 = param_1[0x16];\r\n  uStack_88 = param_1[0x17];\r\n  puStack_80 = (undefined *)param_1[0x18];\r\n  uStack_78 = param_1[0x19];\r\n  uStack_70 = param_1[0x1a];\r\n  uStack_68 = param_1[0x1b];\r\n  uStack_60 = param_1[0x1c];\r\n  uStack_58 = param_1[0x1d];\r\n  pbStack_50 = (byte *)param_1[0x1e];\r\n  uStack_48 = param_1[0x1f];\r\n  uStack_b0 = param_1[0xb];\r\n  uStack_c0 = param_1[9];\r\n  uStack_b8 = param_1[10];\r\n  uStack_a8 = 1;\r\n  uStack_a4 = (undefined4)param_2;\r\n  uStack_118 = param_1[0x14];\r\n  uStack_110 = param_1[0x15];\r\n  uStack_158 = *(undefined4 *)(param_1 + 0xc);\r\n  uStack_154 = *(undefined4 *)((longlong)param_1 + 100);\r\n  uStack_150 = *(undefined4 *)(param_1 + 0xd);\r\n  uStack_14c = *(undefined4 *)((longlong)param_1 + 0x6c);\r\n  uStack_148 = *(undefined4 *)(param_1 + 0xe);\r\n  uStack_144 = *(undefined4 *)((longlong)param_1 + 0x74);\r\n  uStack_140 = *(undefined4 *)(param_1 + 0xf);\r\n  uStack_13c = *(undefined4 *)((longlong)param_1 + 0x7c);\r\n  uStack_138 = *(undefined4 *)(param_1 + 0x10);\r\n  uStack_134 = *(undefined4 *)((longlong)param_1 + 0x84);\r\n  uStack_130 = *(undefined4 *)(param_1 + 0x11);\r\n  uStack_12c = *(undefined4 *)((longlong)param_1 + 0x8c);\r\n  uStack_128 = *(undefined4 *)(param_1 + 0x12);\r\n  uStack_124 = *(undefined4 *)((longlong)param_1 + 0x94);\r\n  uStack_120 = *(undefined4 *)(param_1 + 0x13);\r\n  uStack_11c = *(undefined4 *)((longlong)param_1 + 0x9c);\r\n  uStack_a0 = (undefined4)((ulonglong)param_2 >> 0x20);\r\n  uStack_9c = 1;\r\n  uVar10 = FUN_1409dd4d0(&uStack_158,&uStack_108);\r\n  if (*(char *)((longlong)param_1 + 0x136) == '\\b') {\r\n    return uVar10;\r\n  }\r\n  puVar12 = param_1 + 0x24;\r\n  uStack_48 = 0xfffffffffffffffe;\r\n  uVar10 = param_1[0x25];\r\n  if (uVar10 == 0) {\r\n    puStack_80 = &UNK_140be25a3;\r\n    FUN_1428d9430(&UNK_142b12c50,0x2a,&UNK_142b12c80);\r\ncode_r0x000140be25a3:\r\n    puStack_80 = &UNK_140be25b1;\r\n    FUN_1428cd210(unaff_R13);\r\n    puVar12 = unaff_RSI;\r\n  }\r\n  else {\r\n    LOCK();\r\n    piVar1 = (int *)(uVar10 + 8);\r\n    *piVar1 = *piVar1 + -1;\r\n    UNLOCK();\r\n    if (*piVar1 != 0) goto code_r0x000140be2572;\r\n    unaff_R13 = (byte *)*puVar12;\r\n    LOCK();\r\n    bVar2 = *unaff_R13;\r\n    if (bVar2 == 0) {\r\n      *unaff_R13 = 1;\r\n    }\r\n    UNLOCK();\r\n    unaff_RSI = puVar12;\r\n    if (bVar2 != 0) goto code_r0x000140be25a3;\r\n  }\r\n  puStack_80 = &UNK_140be2502;\r\n  FUN_140c81c70(unaff_R13);\r\n  uVar6 = puVar12[1];\r\n  uVar5 = *(undefined4 *)(puVar12 + 2);\r\n  uVar3 = *(undefined1 *)((longlong)puVar12 + 0x16);\r\n  uVar4 = *(undefined2 *)((longlong)puVar12 + 0x14);\r\n  lVar7 = *(longlong *)(unaff_R13 + 0x18);\r\n  pbStack_50 = unaff_R13;\r\n  if (lVar7 == *(longlong *)(unaff_R13 + 8)) {\r\n    puStack_80 = &UNK_140be2535;\r\n    FUN_140562630(unaff_R13 + 8,&UNK_142b12c38);\r\n  }\r\n  pbVar9 = pbStack_50;\r\n  lVar8 = *(longlong *)(pbStack_50 + 0x10);\r\n  lVar11 = lVar7 * 0x10;\r\n  *(undefined8 *)(lVar8 + lVar11) = uVar6;\r\n  *(undefined4 *)(lVar8 + 8 + lVar11) = uVar5;\r\n  *(undefined2 *)(lVar8 + 0xc + lVar11) = uVar4;\r\n  *(undefined1 *)(lVar8 + 0xe + lVar11) = uVar3;\r\n  *(longlong *)(pbStack_50 + 0x18) = lVar7 + 1;\r\n  puStack_80 = &UNK_140be2566;\r\n  FUN_140c81e10();\r\n  uVar10 = 1;\r\n  LOCK();\r\n  bVar2 = *pbVar9;\r\n  if (bVar2 == 1) {\r\n    *pbVar9 = 0;\r\n  }\r\n  else {\r\n    uVar10 = (ulonglong)bVar2;\r\n  }\r\n  UNLOCK();\r\n  if (bVar2 != 1) {\r\n    puStack_80 = &UNK_140be25c0;\r\n    uVar10 = FUN_1428cdb90(pbVar9,0);\r\n  }\r\ncode_r0x000140be2572:\r\n  puVar12[1] = 0;\r\n  return uVar10;\r\n}\r\n\r\n",
+        "database": "ccscene_l1"
+      },
+      "result_sha256": "08baf7fbbe6d0533c739877fa0872c398a4c401a22dc307ab1fde118ec1254d1",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 4,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140905260"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:49:26.689Z",
+      "completed_at": "2026-10-12T10:49:32.241Z",
+      "source": "actual_mcp_call",
+      "cache_key": "20e0c2fcf306110442bd31018339077052e45ae3c195648208c8f5b522b055b7",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140905260",
+        "address": "0x140905260",
+        "decompiled_code": "\r\nvoid FUN_140905260(undefined1 *param_1,longlong *param_2,ulonglong param_3,undefined4 param_4,\r\n                  undefined8 *param_5)\r\n\r\n{\r\n  char *pcVar1;\r\n  undefined8 *puVar2;\r\n  longlong lVar3;\r\n  code *pcVar4;\r\n  uint uVar5;\r\n  uint uVar6;\r\n  undefined4 uVar7;\r\n  char cVar8;\r\n  undefined8 uVar9;\r\n  ulonglong uVar10;\r\n  undefined *puVar11;\r\n  ulonglong uVar12;\r\n  longlong lVar13;\r\n  uint uVar14;\r\n  ushort uVar15;\r\n  ulonglong uVar16;\r\n  longlong lVar17;\r\n  byte bVar18;\r\n  char cVar20;\r\n  char cVar21;\r\n  char cVar22;\r\n  undefined1 auVar19 [16];\r\n  undefined1 auVar23 [16];\r\n  undefined1 auVar24 [16];\r\n  undefined1 auVar25 [16];\r\n  undefined1 auVar26 [16];\r\n  undefined4 uStack_dc;\r\n  undefined4 uStack_d8;\r\n  int iStack_d4;\r\n  undefined8 uStack_d0;\r\n  ulonglong uStack_c8;\r\n  undefined8 uStack_c0;\r\n  undefined8 uStack_b8;\r\n  undefined8 uStack_b0;\r\n  undefined8 uStack_a8;\r\n  undefined8 uStack_a0;\r\n  undefined8 uStack_98;\r\n  undefined4 uStack_90;\r\n  undefined8 uStack_88;\r\n  undefined8 uStack_80;\r\n  undefined8 uStack_78;\r\n  undefined8 uStack_70;\r\n  undefined8 uStack_68;\r\n  undefined4 uStack_60;\r\n  undefined4 uStack_5c;\r\n  undefined4 uStack_58;\r\n  undefined8 uStack_54;\r\n  \r\n  FUN_140c10e10(param_4);\r\n  lVar17 = param_2[0x27];\r\n  if (*(longlong *)(lVar17 + 0xb0) == 0) {\r\ncode_r0x00014090533e:\r\n    uVar9 = func_0x000140c87650(param_3);\r\n    if (*(char *)((longlong)param_2 + 0x136) != '\\b') {\r\n      FUN_14096bf50(param_2 + 0x22,lVar17 + 0xe8,uVar9,param_1,param_2 + 0x29);\r\n    }\r\n    return;\r\n  }\r\n  lVar3 = *(longlong *)(lVar17 + 0x98);\r\n  bVar18 = (byte)(param_3 >> 0x39);\r\n  auVar19 = ZEXT216(CONCAT11(bVar18,bVar18));\r\n  auVar19 = pshuflw(auVar19,auVar19,0);\r\n  lVar13 = 0;\r\n  uVar10 = param_3;\r\n  do {\r\n    uVar10 = *(ulonglong *)(lVar17 + 0xa0) & uVar10;\r\n    auVar26 = *(undefined1 (*) [16])(lVar3 + uVar10);\r\n    cVar8 = auVar19[0];\r\n    auVar25[0] = -(auVar26[0] == cVar8);\r\n    cVar20 = auVar19[1];\r\n    auVar25[1] = -(auVar26[1] == cVar20);\r\n    cVar21 = auVar19[2];\r\n    auVar25[2] = -(auVar26[2] == cVar21);\r\n    cVar22 = auVar19[3];\r\n    auVar25[3] = -(auVar26[3] == cVar22);\r\n    auVar25[4] = -(auVar26[4] == cVar8);\r\n    auVar25[5] = -(auVar26[5] == cVar20);\r\n    auVar25[6] = -(auVar26[6] == cVar21);\r\n    auVar25[7] = -(auVar26[7] == cVar22);\r\n    auVar25[8] = -(auVar26[8] == cVar8);\r\n    auVar25[9] = -(auVar26[9] == cVar20);\r\n    auVar25[10] = -(auVar26[10] == cVar21);\r\n    auVar25[0xb] = -(auVar26[0xb] == cVar22);\r\n    auVar25[0xc] = -(auVar26[0xc] == cVar8);\r\n    auVar25[0xd] = -(auVar26[0xd] == cVar20);\r\n    auVar25[0xe] = -(auVar26[0xe] == cVar21);\r\n    auVar25[0xf] = -(auVar26[0xf] == cVar22);\r\n    uVar15 = (ushort)(SUB161(auVar25 >> 7,0) & 1) | (ushort)(SUB161(auVar25 >> 0xf,0) & 1) << 1 |\r\n             (ushort)(SUB161(auVar25 >> 0x17,0) & 1) << 2 |\r\n             (ushort)(SUB161(auVar25 >> 0x1f,0) & 1) << 3 |\r\n             (ushort)(SUB161(auVar25 >> 0x27,0) & 1) << 4 |\r\n             (ushort)(SUB161(auVar25 >> 0x2f,0) & 1) << 5 |\r\n             (ushort)(SUB161(auVar25 >> 0x37,0) & 1) << 6 |\r\n             (ushort)(SUB161(auVar25 >> 0x3f,0) & 1) << 7 |\r\n             (ushort)(SUB161(auVar25 >> 0x47,0) & 1) << 8 |\r\n             (ushort)(SUB161(auVar25 >> 0x4f,0) & 1) << 9 |\r\n             (ushort)(SUB161(auVar25 >> 0x57,0) & 1) << 10 |\r\n             (ushort)(SUB161(auVar25 >> 0x5f,0) & 1) << 0xb |\r\n             (ushort)(SUB161(auVar25 >> 0x67,0) & 1) << 0xc |\r\n             (ushort)(SUB161(auVar25 >> 0x6f,0) & 1) << 0xd |\r\n             (ushort)(SUB161(auVar25 >> 0x77,0) & 1) << 0xe | (ushort)(auVar25[0xf] >> 7) << 0xf;\r\n    uVar14 = (uint)uVar15;\r\n    while (uVar15 != 0) {\r\n      uVar5 = 0;\r\n      for (uVar6 = uVar14; (uVar6 & 1) == 0; uVar6 = uVar6 >> 1 | 0x80000000) {\r\n        uVar5 = uVar5 + 1;\r\n      }\r\n      uVar16 = uVar5 + uVar10 & *(ulonglong *)(lVar17 + 0xa0);\r\n      if (*(ulonglong *)(lVar3 + -0x10 + uVar16 * -0x10) == param_3) {\r\n        lVar17 = uVar16 * -0x10;\r\n        iStack_d4 = *(int *)(lVar3 + -8 + lVar17);\r\n        if (iStack_d4 != 0) {\r\n          uStack_d0 = 0;\r\n          FUN_1428a994f(0,&iStack_d4,&UNK_142aaa718,&uStack_d0,&UNK_142aaa760);\r\n          goto code_r0x00014090569a;\r\n        }\r\n        uStack_d8 = *(undefined4 *)(lVar3 + -4 + lVar17);\r\n        FUN_14093cf30(&uStack_d0,param_2[0x2a],*param_1);\r\n        uVar9 = func_0x000140bd5790((longlong)&uStack_d0 + 4);\r\n        uVar16 = uStack_d0;\r\n        uVar10 = param_2[2];\r\n        if (0xff < uVar10) goto code_r0x0001409056a6;\r\n        uVar7 = (undefined4)uStack_d0;\r\n        cVar8 = FUN_140c10e10(param_4);\r\n        if (cVar8 == '\\0') {\r\n          func_0x00014003bb80(param_4);\r\n          FUN_1409dca90(param_2 + 0xc,uVar16 & 0xffffffff,param_4,1);\r\n          uStack_dc = uVar7;\r\n          uStack_88 = *param_5;\r\n          uStack_80 = param_5[1];\r\n          uStack_78 = param_5[2];\r\n          uStack_70 = param_5[3];\r\n          uStack_68 = param_5[4];\r\n          uStack_54 = *(undefined8 *)((longlong)param_5 + 0x34);\r\n          uStack_58 = (undefined4)((ulonglong)*(undefined8 *)((longlong)param_5 + 0x2c) >> 0x20);\r\n          uStack_60 = (undefined4)param_5[5];\r\n          uStack_5c = (undefined4)((ulonglong)param_5[5] >> 0x20);\r\n          func_0x000140bd6c00(&uStack_d0,&uStack_dc,&uStack_88);\r\n          lVar17 = param_2[2];\r\n          if (lVar17 == *param_2) {\r\n            puVar11 = &UNK_142aaa778;\r\n            goto code_r0x0001409054e5;\r\n          }\r\n        }\r\n        else {\r\n          func_0x00014003bb80(param_4);\r\n          FUN_1409dca90(param_2 + 0xc,uVar16 & 0xffffffff,param_4,0);\r\n          uStack_dc = uVar7;\r\n          uStack_88 = *param_5;\r\n          uStack_80 = param_5[1];\r\n          uStack_78 = param_5[2];\r\n          uStack_70 = param_5[3];\r\n          uStack_68 = param_5[4];\r\n          uStack_54 = *(undefined8 *)((longlong)param_5 + 0x34);\r\n          uStack_58 = (undefined4)((ulonglong)*(undefined8 *)((longlong)param_5 + 0x2c) >> 0x20);\r\n          uStack_60 = (undefined4)param_5[5];\r\n          uStack_5c = (undefined4)((ulonglong)param_5[5] >> 0x20);\r\n          func_0x000140bd6c30(&uStack_d0,&uStack_dc,&uStack_88);\r\n          lVar17 = param_2[2];\r\n          if (lVar17 == *param_2) {\r\n            puVar11 = &UNK_142aaa790;\r\ncode_r0x0001409054e5:\r\n            FUN_140b60150(param_2,puVar11);\r\n          }\r\n        }\r\n        uVar7 = uStack_d8;\r\n        lVar3 = param_2[1];\r\n        lVar13 = lVar17 * 0x44;\r\n        *(undefined4 *)(lVar3 + 0x40 + lVar13) = uStack_90;\r\n        puVar2 = (undefined8 *)(lVar3 + 0x30 + lVar13);\r\n        *puVar2 = uStack_a0;\r\n        puVar2[1] = uStack_98;\r\n        puVar2 = (undefined8 *)(lVar3 + 0x20 + lVar13);\r\n        *puVar2 = uStack_b0;\r\n        puVar2[1] = uStack_a8;\r\n        puVar2 = (undefined8 *)(lVar3 + 0x10 + lVar13);\r\n        *puVar2 = uStack_c0;\r\n        puVar2[1] = uStack_b8;\r\n        *(ulonglong *)(lVar3 + lVar13) = uStack_d0;\r\n        ((ulonglong *)(lVar3 + lVar13))[1] = uStack_c8;\r\n        param_2[2] = lVar17 + 1;\r\n        lVar17 = param_2[5];\r\n        if (lVar17 == param_2[3]) {\r\n          FUN_140562e70(param_2 + 3,&UNK_142aaa7a8);\r\n        }\r\n        lVar3 = param_2[4];\r\n        *(undefined4 *)(lVar3 + lVar17 * 8) = uVar7;\r\n        *(char *)(lVar3 + 4 + lVar17 * 8) = (char)uVar10;\r\n        param_2[5] = lVar17 + 1;\r\n        lVar17 = param_2[0x27];\r\n        uVar10 = func_0x000140c87650(param_3);\r\n        if (*(char *)((longlong)param_2 + 0x136) == '\\b') {\r\n          return;\r\n        }\r\n        if (*(longlong *)(lVar17 + 0xe8) == 0) {\r\n          return;\r\n        }\r\n        if (*(longlong *)(lVar17 + 0x130) == 0) {\r\n          return;\r\n        }\r\n        lVar3 = *(longlong *)(lVar17 + 0x118);\r\n        bVar18 = (byte)(uVar10 >> 0x39);\r\n        auVar19 = ZEXT216(CONCAT11(bVar18,bVar18));\r\n        auVar19 = pshuflw(auVar19,auVar19,0);\r\n        lVar13 = 0;\r\n        uVar16 = uVar10;\r\n        do {\r\n          uVar16 = *(ulonglong *)(lVar17 + 0x120) & uVar16;\r\n          pcVar1 = (char *)(lVar3 + uVar16);\r\n          cVar8 = auVar19[0];\r\n          auVar26[0] = -(*pcVar1 == cVar8);\r\n          cVar20 = auVar19[1];\r\n          auVar26[1] = -(pcVar1[1] == cVar20);\r\n          cVar21 = auVar19[2];\r\n          auVar26[2] = -(pcVar1[2] == cVar21);\r\n          cVar22 = auVar19[3];\r\n          auVar26[3] = -(pcVar1[3] == cVar22);\r\n          auVar26[4] = -(pcVar1[4] == cVar8);\r\n          auVar26[5] = -(pcVar1[5] == cVar20);\r\n          auVar26[6] = -(pcVar1[6] == cVar21);\r\n          auVar26[7] = -(pcVar1[7] == cVar22);\r\n          auVar26[8] = -(pcVar1[8] == cVar8);\r\n          auVar26[9] = -(pcVar1[9] == cVar20);\r\n          auVar26[10] = -(pcVar1[10] == cVar21);\r\n          auVar26[0xb] = -(pcVar1[0xb] == cVar22);\r\n          auVar26[0xc] = -(pcVar1[0xc] == cVar8);\r\n          auVar26[0xd] = -(pcVar1[0xd] == cVar20);\r\n          auVar26[0xe] = -(pcVar1[0xe] == cVar21);\r\n          auVar26[0xf] = -(pcVar1[0xf] == cVar22);\r\n          uVar15 = (ushort)(SUB161(auVar26 >> 7,0) & 1) |\r\n                   (ushort)(SUB161(auVar26 >> 0xf,0) & 1) << 1 |\r\n                   (ushort)(SUB161(auVar26 >> 0x17,0) & 1) << 2 |\r\n                   (ushort)(SUB161(auVar26 >> 0x1f,0) & 1) << 3 |\r\n                   (ushort)(SUB161(auVar26 >> 0x27,0) & 1) << 4 |\r\n                   (ushort)(SUB161(auVar26 >> 0x2f,0) & 1) << 5 |\r\n                   (ushort)(SUB161(auVar26 >> 0x37,0) & 1) << 6 |\r\n                   (ushort)(SUB161(auVar26 >> 0x3f,0) & 1) << 7 |\r\n                   (ushort)(SUB161(auVar26 >> 0x47,0) & 1) << 8 |\r\n                   (ushort)(SUB161(auVar26 >> 0x4f,0) & 1) << 9 |\r\n                   (ushort)(SUB161(auVar26 >> 0x57,0) & 1) << 10 |\r\n                   (ushort)(SUB161(auVar26 >> 0x5f,0) & 1) << 0xb |\r\n                   (ushort)(SUB161(auVar26 >> 0x67,0) & 1) << 0xc |\r\n                   (ushort)(SUB161(auVar26 >> 0x6f,0) & 1) << 0xd |\r\n                   (ushort)(SUB161(auVar26 >> 0x77,0) & 1) << 0xe |\r\n                   (ushort)(auVar26[0xf] >> 7) << 0xf;\r\n          uVar14 = (uint)uVar15;\r\n          while (uVar15 != 0) {\r\n            uVar5 = 0;\r\n            for (uVar6 = uVar14; (uVar6 & 1) == 0; uVar6 = uVar6 >> 1 | 0x80000000) {\r\n              uVar5 = uVar5 + 1;\r\n            }\r\n            uVar12 = uVar5 + uVar16 & *(ulonglong *)(lVar17 + 0x120);\r\n            if (*(ulonglong *)(lVar3 + -0x10 + uVar12 * -0x10) == uVar10) {\r\n              uVar10 = (ulonglong)*(uint *)(lVar3 + -8 + uVar12 * -0x10);\r\n              if (uVar10 <= (ulonglong)param_2[0x23]) {\r\n                *(undefined8 *)(param_2[0x22] + uVar10) = uVar9;\r\n                return;\r\n              }\r\ncode_r0x00014090569a:\r\n              FUN_1428d9830();\r\ncode_r0x0001409056a6:\r\n              FUN_1428d9760(&UNK_142aaa288,0x2b,&uStack_d0,&UNK_142aaa268,&UNK_142aaa540);\r\n              pcVar4 = (code *)swi(3);\r\n              (*pcVar4)();\r\n              return;\r\n            }\r\n            uVar15 = (ushort)(uVar14 - 1) & (ushort)uVar14;\r\n            uVar14 = CONCAT22((short)(uVar14 - 1 >> 0x10),uVar15);\r\n          }\r\n          auVar24[0] = -(*pcVar1 == -1);\r\n          auVar24[1] = -(pcVar1[1] == -1);\r\n          auVar24[2] = -(pcVar1[2] == -1);\r\n          auVar24[3] = -(pcVar1[3] == -1);\r\n          auVar24[4] = -(pcVar1[4] == -1);\r\n          auVar24[5] = -(pcVar1[5] == -1);\r\n          auVar24[6] = -(pcVar1[6] == -1);\r\n          auVar24[7] = -(pcVar1[7] == -1);\r\n          auVar24[8] = -(pcVar1[8] == -1);\r\n          auVar24[9] = -(pcVar1[9] == -1);\r\n          auVar24[10] = -(pcVar1[10] == -1);\r\n          auVar24[0xb] = -(pcVar1[0xb] == -1);\r\n          auVar24[0xc] = -(pcVar1[0xc] == -1);\r\n          auVar24[0xd] = -(pcVar1[0xd] == -1);\r\n          auVar24[0xe] = -(pcVar1[0xe] == -1);\r\n          auVar24[0xf] = -(pcVar1[0xf] == -1);\r\n          if ((((((((((((((((SUB161(auVar24 >> 7,0) & 1) != 0 || (SUB161(auVar24 >> 0xf,0) & 1) != 0\r\n                           ) || (SUB161(auVar24 >> 0x17,0) & 1) != 0) ||\r\n                         (SUB161(auVar24 >> 0x1f,0) & 1) != 0) ||\r\n                        (SUB161(auVar24 >> 0x27,0) & 1) != 0) ||\r\n                       (SUB161(auVar24 >> 0x2f,0) & 1) != 0) || (SUB161(auVar24 >> 0x37,0) & 1) != 0\r\n                      ) || (SUB161(auVar24 >> 0x3f,0) & 1) != 0) ||\r\n                    (SUB161(auVar24 >> 0x47,0) & 1) != 0) || (SUB161(auVar24 >> 0x4f,0) & 1) != 0)\r\n                  || (SUB161(auVar24 >> 0x57,0) & 1) != 0) || (SUB161(auVar24 >> 0x5f,0) & 1) != 0)\r\n                || (SUB161(auVar24 >> 0x67,0) & 1) != 0) || (SUB161(auVar24 >> 0x6f,0) & 1) != 0) ||\r\n              (SUB161(auVar24 >> 0x77,0) & 1) != 0) || auVar24[0xf] < '\\0') {\r\n            return;\r\n          }\r\n          uVar16 = uVar16 + lVar13 + 0x10;\r\n          lVar13 = lVar13 + 0x10;\r\n        } while( true );\r\n      }\r\n      uVar15 = (ushort)(uVar14 - 1) & (ushort)uVar14;\r\n      uVar14 = CONCAT22((short)(uVar14 - 1 >> 0x10),uVar15);\r\n    }\r\n    auVar23[0] = -(auVar26[0] == -1);\r\n    auVar23[1] = -(auVar26[1] == -1);\r\n    auVar23[2] = -(auVar26[2] == -1);\r\n    auVar23[3] = -(auVar26[3] == -1);\r\n    auVar23[4] = -(auVar26[4] == -1);\r\n    auVar23[5] = -(auVar26[5] == -1);\r\n    auVar23[6] = -(auVar26[6] == -1);\r\n    auVar23[7] = -(auVar26[7] == -1);\r\n    auVar23[8] = -(auVar26[8] == -1);\r\n    auVar23[9] = -(auVar26[9] == -1);\r\n    auVar23[10] = -(auVar26[10] == -1);\r\n    auVar23[0xb] = -(auVar26[0xb] == -1);\r\n    auVar23[0xc] = -(auVar26[0xc] == -1);\r\n    auVar23[0xd] = -(auVar26[0xd] == -1);\r\n    auVar23[0xe] = -(auVar26[0xe] == -1);\r\n    auVar23[0xf] = -(auVar26[0xf] == -1);\r\n    if ((((((((((((((((SUB161(auVar23 >> 7,0) & 1) != 0 || (SUB161(auVar23 >> 0xf,0) & 1) != 0) ||\r\n                    (SUB161(auVar23 >> 0x17,0) & 1) != 0) || (SUB161(auVar23 >> 0x1f,0) & 1) != 0)\r\n                  || (SUB161(auVar23 >> 0x27,0) & 1) != 0) || (SUB161(auVar23 >> 0x2f,0) & 1) != 0)\r\n                || (SUB161(auVar23 >> 0x37,0) & 1) != 0) || (SUB161(auVar23 >> 0x3f,0) & 1) != 0) ||\r\n              (SUB161(auVar23 >> 0x47,0) & 1) != 0) || (SUB161(auVar23 >> 0x4f,0) & 1) != 0) ||\r\n            (SUB161(auVar23 >> 0x57,0) & 1) != 0) || (SUB161(auVar23 >> 0x5f,0) & 1) != 0) ||\r\n          (SUB161(auVar23 >> 0x67,0) & 1) != 0) || (SUB161(auVar23 >> 0x6f,0) & 1) != 0) ||\r\n        (SUB161(auVar23 >> 0x77,0) & 1) != 0) || auVar23[0xf] < '\\0') goto code_r0x00014090533e;\r\n    uVar10 = uVar10 + lVar13 + 0x10;\r\n    lVar13 = lVar13 + 0x10;\r\n  } while( true );\r\n}\r\n\r\n",
+        "database": "ccscene_l1"
+      },
+      "result_sha256": "5b18c8787c5e03eb45a78c57aaeb713c09442cd30526107445af82c17a846f9f",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 5,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x1400dd6f0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:49:26.689Z",
+      "completed_at": "2026-10-12T10:49:32.241Z",
+      "source": "actual_mcp_call",
+      "cache_key": "20e0c2fcf306110442bd31018339077052e45ae3c195648208c8f5b522b055b7",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_1400dd6f0",
+        "address": "0x1400DD6F0",
+        "decompiled_code": "\r\nundefined8 FUN_1400dd6f0(longlong param_1,longlong param_2,ulonglong param_3)\r\n\r\n{\r\n  int *piVar1;\r\n  char *pcVar2;\r\n  int iVar3;\r\n  longlong lVar4;\r\n  uint uVar5;\r\n  uint uVar6;\r\n  longlong lVar7;\r\n  undefined8 uVar8;\r\n  ushort uVar9;\r\n  ulonglong uVar10;\r\n  uint uVar11;\r\n  ulonglong uVar12;\r\n  longlong lVar13;\r\n  bool bVar14;\r\n  byte bVar15;\r\n  char cVar16;\r\n  byte bVar17;\r\n  char cVar19;\r\n  char cVar20;\r\n  char cVar21;\r\n  undefined1 auVar18 [16];\r\n  undefined1 auVar22 [16];\r\n  undefined1 auVar23 [16];\r\n  undefined1 auVar24 [16];\r\n  undefined1 auVar25 [16];\r\n  \r\n  bVar17 = (byte)(param_3 >> 0x38);\r\n  if (*(longlong *)(param_1 + 0x50) != 0) {\r\n    lVar4 = *(longlong *)(param_1 + 0x38);\r\n    bVar15 = bVar17 >> 1;\r\n    auVar18 = ZEXT216(CONCAT11(bVar15,bVar15));\r\n    auVar18 = pshuflw(auVar18,auVar18,0);\r\n    lVar13 = 0;\r\n    uVar12 = param_3;\r\n    while( true ) {\r\n      uVar12 = *(ulonglong *)(param_1 + 0x40) & uVar12;\r\n      pcVar2 = (char *)(lVar4 + uVar12);\r\n      cVar16 = auVar18[0];\r\n      auVar24[0] = -(*pcVar2 == cVar16);\r\n      cVar19 = auVar18[1];\r\n      auVar24[1] = -(pcVar2[1] == cVar19);\r\n      cVar20 = auVar18[2];\r\n      auVar24[2] = -(pcVar2[2] == cVar20);\r\n      cVar21 = auVar18[3];\r\n      auVar24[3] = -(pcVar2[3] == cVar21);\r\n      auVar24[4] = -(pcVar2[4] == cVar16);\r\n      auVar24[5] = -(pcVar2[5] == cVar19);\r\n      auVar24[6] = -(pcVar2[6] == cVar20);\r\n      auVar24[7] = -(pcVar2[7] == cVar21);\r\n      auVar24[8] = -(pcVar2[8] == cVar16);\r\n      auVar24[9] = -(pcVar2[9] == cVar19);\r\n      auVar24[10] = -(pcVar2[10] == cVar20);\r\n      auVar24[0xb] = -(pcVar2[0xb] == cVar21);\r\n      auVar24[0xc] = -(pcVar2[0xc] == cVar16);\r\n      auVar24[0xd] = -(pcVar2[0xd] == cVar19);\r\n      auVar24[0xe] = -(pcVar2[0xe] == cVar20);\r\n      auVar24[0xf] = -(pcVar2[0xf] == cVar21);\r\n      uVar9 = (ushort)(SUB161(auVar24 >> 7,0) & 1) | (ushort)(SUB161(auVar24 >> 0xf,0) & 1) << 1 |\r\n              (ushort)(SUB161(auVar24 >> 0x17,0) & 1) << 2 |\r\n              (ushort)(SUB161(auVar24 >> 0x1f,0) & 1) << 3 |\r\n              (ushort)(SUB161(auVar24 >> 0x27,0) & 1) << 4 |\r\n              (ushort)(SUB161(auVar24 >> 0x2f,0) & 1) << 5 |\r\n              (ushort)(SUB161(auVar24 >> 0x37,0) & 1) << 6 |\r\n              (ushort)(SUB161(auVar24 >> 0x3f,0) & 1) << 7 |\r\n              (ushort)(SUB161(auVar24 >> 0x47,0) & 1) << 8 |\r\n              (ushort)(SUB161(auVar24 >> 0x4f,0) & 1) << 9 |\r\n              (ushort)(SUB161(auVar24 >> 0x57,0) & 1) << 10 |\r\n              (ushort)(SUB161(auVar24 >> 0x5f,0) & 1) << 0xb |\r\n              (ushort)(SUB161(auVar24 >> 0x67,0) & 1) << 0xc |\r\n              (ushort)(SUB161(auVar24 >> 0x6f,0) & 1) << 0xd |\r\n              (ushort)(SUB161(auVar24 >> 0x77,0) & 1) << 0xe | (ushort)(auVar24[0xf] >> 7) << 0xf;\r\n      uVar11 = (uint)uVar9;\r\n      while (uVar9 != 0) {\r\n        uVar5 = 0;\r\n        for (uVar6 = uVar11; (uVar6 & 1) == 0; uVar6 = uVar6 >> 1 | 0x80000000) {\r\n          uVar5 = uVar5 + 1;\r\n        }\r\n        uVar10 = uVar5 + uVar12 & *(ulonglong *)(param_1 + 0x40);\r\n        if ((*(longlong *)(lVar4 + -0x18 + uVar10 * -0x18) == param_2) &&\r\n           (*(ulonglong *)(lVar4 + -0x10 + uVar10 * -0x18) == param_3)) {\r\n          return 1;\r\n        }\r\n        uVar9 = (ushort)(uVar11 - 1) & (ushort)uVar11;\r\n        uVar11 = CONCAT22((short)(uVar11 - 1 >> 0x10),uVar9);\r\n      }\r\n      auVar22[0] = -(*pcVar2 == -1);\r\n      auVar22[1] = -(pcVar2[1] == -1);\r\n      auVar22[2] = -(pcVar2[2] == -1);\r\n      auVar22[3] = -(pcVar2[3] == -1);\r\n      auVar22[4] = -(pcVar2[4] == -1);\r\n      auVar22[5] = -(pcVar2[5] == -1);\r\n      auVar22[6] = -(pcVar2[6] == -1);\r\n      auVar22[7] = -(pcVar2[7] == -1);\r\n      auVar22[8] = -(pcVar2[8] == -1);\r\n      auVar22[9] = -(pcVar2[9] == -1);\r\n      auVar22[10] = -(pcVar2[10] == -1);\r\n      auVar22[0xb] = -(pcVar2[0xb] == -1);\r\n      auVar22[0xc] = -(pcVar2[0xc] == -1);\r\n      auVar22[0xd] = -(pcVar2[0xd] == -1);\r\n      auVar22[0xe] = -(pcVar2[0xe] == -1);\r\n      auVar22[0xf] = -(pcVar2[0xf] == -1);\r\n      if ((((((((((((((((SUB161(auVar22 >> 7,0) & 1) != 0 || (SUB161(auVar22 >> 0xf,0) & 1) != 0) ||\r\n                      (SUB161(auVar22 >> 0x17,0) & 1) != 0) || (SUB161(auVar22 >> 0x1f,0) & 1) != 0)\r\n                    || (SUB161(auVar22 >> 0x27,0) & 1) != 0) || (SUB161(auVar22 >> 0x2f,0) & 1) != 0\r\n                   ) || (SUB161(auVar22 >> 0x37,0) & 1) != 0) ||\r\n                 (SUB161(auVar22 >> 0x3f,0) & 1) != 0) || (SUB161(auVar22 >> 0x47,0) & 1) != 0) ||\r\n               (SUB161(auVar22 >> 0x4f,0) & 1) != 0) || (SUB161(auVar22 >> 0x57,0) & 1) != 0) ||\r\n             (SUB161(auVar22 >> 0x5f,0) & 1) != 0) || (SUB161(auVar22 >> 0x67,0) & 1) != 0) ||\r\n           (SUB161(auVar22 >> 0x6f,0) & 1) != 0) || (SUB161(auVar22 >> 0x77,0) & 1) != 0) ||\r\n          auVar22[0xf] < '\\0') break;\r\n      uVar12 = uVar12 + lVar13 + 0x10;\r\n      lVar13 = lVar13 + 0x10;\r\n    }\r\n  }\r\n  uVar11 = *(uint *)(param_1 + 0x58);\r\n  if (uVar11 < 0x3ffffffe) {\r\n    LOCK();\r\n    bVar14 = uVar11 == *(uint *)(param_1 + 0x58);\r\n    if (bVar14) {\r\n      *(uint *)(param_1 + 0x58) = uVar11 + 1;\r\n    }\r\n    UNLOCK();\r\n    if (bVar14) {\r\n      lVar4 = *(longlong *)(param_1 + 0xb8);\r\n      goto joined_r0x0001400dd8bf;\r\n    }\r\n  }\r\n  FUN_1428d8a30(param_1 + 0x58);\r\n  lVar4 = *(longlong *)(param_1 + 0xb8);\r\njoined_r0x0001400dd8bf:\r\n  if (lVar4 == 0) {\r\n    uVar8 = 0;\r\n  }\r\n  else {\r\n    lVar4 = *(longlong *)(param_1 + 0xa0);\r\n    bVar17 = bVar17 >> 1;\r\n    auVar18 = ZEXT216(CONCAT11(bVar17,bVar17));\r\n    auVar18 = pshuflw(auVar18,auVar18,0);\r\n    uVar8 = 0;\r\n    lVar13 = 0;\r\n    uVar12 = param_3;\r\n    while( true ) {\r\n      uVar12 = *(ulonglong *)(param_1 + 0xa8) & uVar12;\r\n      pcVar2 = (char *)(lVar4 + uVar12);\r\n      cVar16 = auVar18[0];\r\n      auVar25[0] = -(*pcVar2 == cVar16);\r\n      cVar19 = auVar18[1];\r\n      auVar25[1] = -(pcVar2[1] == cVar19);\r\n      cVar20 = auVar18[2];\r\n      auVar25[2] = -(pcVar2[2] == cVar20);\r\n      cVar21 = auVar18[3];\r\n      auVar25[3] = -(pcVar2[3] == cVar21);\r\n      auVar25[4] = -(pcVar2[4] == cVar16);\r\n      auVar25[5] = -(pcVar2[5] == cVar19);\r\n      auVar25[6] = -(pcVar2[6] == cVar20);\r\n      auVar25[7] = -(pcVar2[7] == cVar21);\r\n      auVar25[8] = -(pcVar2[8] == cVar16);\r\n      auVar25[9] = -(pcVar2[9] == cVar19);\r\n      auVar25[10] = -(pcVar2[10] == cVar20);\r\n      auVar25[0xb] = -(pcVar2[0xb] == cVar21);\r\n      auVar25[0xc] = -(pcVar2[0xc] == cVar16);\r\n      auVar25[0xd] = -(pcVar2[0xd] == cVar19);\r\n      auVar25[0xe] = -(pcVar2[0xe] == cVar20);\r\n      auVar25[0xf] = -(pcVar2[0xf] == cVar21);\r\n      uVar9 = (ushort)(SUB161(auVar25 >> 7,0) & 1) | (ushort)(SUB161(auVar25 >> 0xf,0) & 1) << 1 |\r\n              (ushort)(SUB161(auVar25 >> 0x17,0) & 1) << 2 |\r\n              (ushort)(SUB161(auVar25 >> 0x1f,0) & 1) << 3 |\r\n              (ushort)(SUB161(auVar25 >> 0x27,0) & 1) << 4 |\r\n              (ushort)(SUB161(auVar25 >> 0x2f,0) & 1) << 5 |\r\n              (ushort)(SUB161(auVar25 >> 0x37,0) & 1) << 6 |\r\n              (ushort)(SUB161(auVar25 >> 0x3f,0) & 1) << 7 |\r\n              (ushort)(SUB161(auVar25 >> 0x47,0) & 1) << 8 |\r\n              (ushort)(SUB161(auVar25 >> 0x4f,0) & 1) << 9 |\r\n              (ushort)(SUB161(auVar25 >> 0x57,0) & 1) << 10 |\r\n              (ushort)(SUB161(auVar25 >> 0x5f,0) & 1) << 0xb |\r\n              (ushort)(SUB161(auVar25 >> 0x67,0) & 1) << 0xc |\r\n              (ushort)(SUB161(auVar25 >> 0x6f,0) & 1) << 0xd |\r\n              (ushort)(SUB161(auVar25 >> 0x77,0) & 1) << 0xe | (ushort)(auVar25[0xf] >> 7) << 0xf;\r\n      uVar11 = (uint)uVar9;\r\n      while (uVar9 != 0) {\r\n        uVar5 = 0;\r\n        for (uVar6 = uVar11; (uVar6 & 1) == 0; uVar6 = uVar6 >> 1 | 0x80000000) {\r\n          uVar5 = uVar5 + 1;\r\n        }\r\n        lVar7 = (uVar5 + uVar12 & *(ulonglong *)(param_1 + 0xa8)) * -0x88;\r\n        if ((*(longlong *)(lVar4 + -0x88 + lVar7) == param_2) &&\r\n           (*(ulonglong *)(lVar4 + -0x80 + lVar7) == param_3)) {\r\n          uVar8 = 1;\r\n          goto code_r0x0001400dd8c7;\r\n        }\r\n        uVar9 = (ushort)(uVar11 - 1) & (ushort)uVar11;\r\n        uVar11 = CONCAT22((short)(uVar11 - 1 >> 0x10),uVar9);\r\n      }\r\n      auVar23[0] = -(*pcVar2 == -1);\r\n      auVar23[1] = -(pcVar2[1] == -1);\r\n      auVar23[2] = -(pcVar2[2] == -1);\r\n      auVar23[3] = -(pcVar2[3] == -1);\r\n      auVar23[4] = -(pcVar2[4] == -1);\r\n      auVar23[5] = -(pcVar2[5] == -1);\r\n      auVar23[6] = -(pcVar2[6] == -1);\r\n      auVar23[7] = -(pcVar2[7] == -1);\r\n      auVar23[8] = -(pcVar2[8] == -1);\r\n      auVar23[9] = -(pcVar2[9] == -1);\r\n      auVar23[10] = -(pcVar2[10] == -1);\r\n      auVar23[0xb] = -(pcVar2[0xb] == -1);\r\n      auVar23[0xc] = -(pcVar2[0xc] == -1);\r\n      auVar23[0xd] = -(pcVar2[0xd] == -1);\r\n      auVar23[0xe] = -(pcVar2[0xe] == -1);\r\n      auVar23[0xf] = -(pcVar2[0xf] == -1);\r\n      if ((((((((((((((((SUB161(auVar23 >> 7,0) & 1) != 0 || (SUB161(auVar23 >> 0xf,0) & 1) != 0) ||\r\n                      (SUB161(auVar23 >> 0x17,0) & 1) != 0) || (SUB161(auVar23 >> 0x1f,0) & 1) != 0)\r\n                    || (SUB161(auVar23 >> 0x27,0) & 1) != 0) || (SUB161(auVar23 >> 0x2f,0) & 1) != 0\r\n                   ) || (SUB161(auVar23 >> 0x37,0) & 1) != 0) ||\r\n                 (SUB161(auVar23 >> 0x3f,0) & 1) != 0) || (SUB161(auVar23 >> 0x47,0) & 1) != 0) ||\r\n               (SUB161(auVar23 >> 0x4f,0) & 1) != 0) || (SUB161(auVar23 >> 0x57,0) & 1) != 0) ||\r\n             (SUB161(auVar23 >> 0x5f,0) & 1) != 0) || (SUB161(auVar23 >> 0x67,0) & 1) != 0) ||\r\n           (SUB161(auVar23 >> 0x6f,0) & 1) != 0) || (SUB161(auVar23 >> 0x77,0) & 1) != 0) ||\r\n          auVar23[0xf] < '\\0') break;\r\n      uVar12 = uVar12 + lVar13 + 0x10;\r\n      lVar13 = lVar13 + 0x10;\r\n    }\r\n  }\r\ncode_r0x0001400dd8c7:\r\n  LOCK();\r\n  piVar1 = (int *)(param_1 + 0x58);\r\n  iVar3 = *piVar1;\r\n  *piVar1 = *piVar1 + -1;\r\n  UNLOCK();\r\n  uVar11 = iVar3 - 1;\r\n  if (SBORROW4(0,uVar11 & 0xbfffffff)) {\r\n    FUN_1428d8d40(param_1 + 0x58,uVar11,uVar11,-(uVar11 & 0xbfffffff));\r\n  }\r\n  return uVar8;\r\n}\r\n\r\n",
+        "database": "ccscene_l1"
+      },
+      "result_sha256": "73024c0e4b300fc000b8ebaa10f9c5be93516137623b290c8e85a275d89fb9c4",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 6,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140906a90"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:49:26.689Z",
+      "completed_at": "2026-10-12T10:49:32.242Z",
+      "source": "actual_mcp_call",
+      "cache_key": "20e0c2fcf306110442bd31018339077052e45ae3c195648208c8f5b522b055b7",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140906a90",
+        "address": "0x140906A90",
+        "decompiled_code": "\r\nvoid FUN_140906a90(longlong param_1,undefined8 param_2)\r\n\r\n{\r\n  longlong lVar1;\r\n  code *pcVar2;\r\n  longlong lStack_1e8;\r\n  undefined1 auStack_1e0 [176];\r\n  longlong alStack_130 [28];\r\n  longlong *plStack_50;\r\n  undefined8 uStack_38;\r\n  longlong lStack_30;\r\n  undefined1 uStack_21;\r\n  undefined8 uStack_20;\r\n  \r\n  uStack_20 = 0xfffffffffffffffe;\r\n  uStack_38 = param_2;\r\n  lStack_30 = param_1;\r\n  if (*(int *)(param_1 + 0x40) == 4) {\r\n    if (*(longlong *)(param_1 + 0x48) != 0) {\r\n      func_0x000140613c20(*(undefined8 *)(param_1 + 0x50),*(longlong *)(param_1 + 0x48) << 3,4);\r\n    }\r\n  }\r\n  else if (*(int *)(param_1 + 0x40) == 1) {\r\n    FUN_140be24b0(param_1 + 0x48);\r\n  }\r\n  lVar1 = lStack_30;\r\n  *(undefined4 *)(lStack_30 + 0x40) = 0;\r\n  *(int *)(lStack_30 + 0x44) = (int)uStack_38;\r\n  func_0x000142923c00(alStack_130,lStack_30,0xf8);\r\n  lStack_1e8 = alStack_130[0];\r\n  alStack_130[0] = 2;\r\n  if (lStack_1e8 != 2) {\r\n    func_0x000142923c00(auStack_1e0,lVar1 + 8,0xb0);\r\n    lVar1 = plStack_50[2];\r\n    if (lVar1 == *plStack_50) {\r\n      FUN_140563300(plStack_50,&UNK_142aaaa00);\r\n    }\r\n    func_0x000142923c10(lVar1 * 0xb8 + plStack_50[1],&lStack_1e8,0xb8);\r\n    plStack_50[2] = lVar1 + 1;\r\n    uStack_21 = 0;\r\n    FUN_1408935c0(alStack_130);\r\n    return;\r\n  }\r\n  FUN_1428d9310(&UNK_142c81680);\r\n                    /* WARNING: Does not return */\r\n  pcVar2 = (code *)invalidInstructionException();\r\n  (*pcVar2)();\r\n}\r\n\r\n",
+        "database": "ccscene_l1"
+      },
+      "result_sha256": "05b75b7ad01c36ada2a715369a75b8bf8b1096fc5d20a5997c1644a3b441b209",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 7,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x14090b460"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:49:26.689Z",
+      "completed_at": "2026-10-12T10:49:32.242Z",
+      "source": "actual_mcp_call",
+      "cache_key": "20e0c2fcf306110442bd31018339077052e45ae3c195648208c8f5b522b055b7",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_14090b460",
+        "address": "0x14090B460",
+        "decompiled_code": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined8 FUN_14090b460(undefined8 param_1,longlong param_2,undefined4 *param_3,longlong param_4)\r\n\r\n{\r\n  float fVar1;\r\n  char cVar2;\r\n  undefined8 uVar3;\r\n  float fVar4;\r\n  float fVar5;\r\n  float fVar6;\r\n  float fVar7;\r\n  float fVar8;\r\n  float fVar9;\r\n  float fVar10;\r\n  undefined4 auStack_3a8 [62];\r\n  undefined1 auStack_2b0 [184];\r\n  undefined1 auStack_1f8 [38];\r\n  char cStack_1d2;\r\n  longlong lStack_1c8;\r\n  float fStack_1b8;\r\n  float fStack_1b4;\r\n  float fStack_1b0;\r\n  float fStack_1ac;\r\n  float fStack_1a8;\r\n  float fStack_1a4;\r\n  float fStack_1a0;\r\n  float fStack_19c;\r\n  float fStack_198;\r\n  float fStack_194;\r\n  float fStack_190;\r\n  float fStack_18c;\r\n  undefined4 uStack_188;\r\n  undefined4 uStack_184;\r\n  undefined4 uStack_180;\r\n  undefined4 uStack_17c;\r\n  undefined1 auStack_100 [38];\r\n  char cStack_da;\r\n  longlong lStack_d0;\r\n  undefined1 uStack_b1;\r\n  undefined8 uStack_b0;\r\n  \r\n  uStack_b0 = 0xfffffffffffffffe;\r\n  uVar3 = *(undefined8 *)(*(longlong *)(param_2 + 0xe0) + 0x1f8);\r\n  cVar2 = *(char *)(param_3 + 1);\r\n  *(char *)(param_2 + 0xf0) = cVar2;\r\n  if (cVar2 == '\\0') {\r\n    func_0x000142923c00(&fStack_1b8,param_2,0xf8);\r\n    if (cStack_da != '\\b') {\r\n      FUN_14096b850(auStack_100,lStack_d0 + 0xe8,0x418a98441f59a54c,1);\r\n    }\r\n    func_0x000142923c00(auStack_2b0,&fStack_1b8,0xf8);\r\n    uStack_b1 = 0x11;\r\n    auStack_3a8[0] = 2;\r\n    FUN_140908c50(&uStack_b1,auStack_2b0,0x11651f4dc9841aa4,0x1d,auStack_3a8);\r\n  }\r\n  else {\r\n    func_0x000142923c00(&fStack_1b8,param_2,0xf8);\r\n    if (cStack_da != '\\b') {\r\n      FUN_14096b850(auStack_100,lStack_d0 + 0xe8,0x418a98441f59a54c,0);\r\n    }\r\n    func_0x000142923c00(auStack_2b0,&fStack_1b8,0xf8);\r\n    uStack_b1 = 0x12;\r\n    auStack_3a8[0] = 2;\r\n    FUN_140908c50(&uStack_b1,auStack_2b0,0x11651f4dc9841aa4,0x1d,auStack_3a8);\r\n  }\r\n  func_0x000142923c00(auStack_3a8,auStack_2b0,0xf8);\r\n  fVar4 = *(float *)(param_4 + 0x20);\r\n  fVar5 = *(float *)(param_4 + 0x24);\r\n  fVar6 = *(float *)(param_4 + 0x2c);\r\n  fVar1 = *(float *)(param_4 + 0x28);\r\n  fVar10 = fVar1 + fVar1;\r\n  fVar9 = fVar5 + fVar5;\r\n  fVar7 = fVar4 * (fVar4 + fVar4);\r\n  fVar8 = (fVar4 + fVar4) * fVar6;\r\n  fStack_1ac = *(float *)(param_4 + 0x3c);\r\n  fStack_19c = *(float *)(param_4 + 0x40);\r\n  fStack_18c = *(float *)(param_4 + 0x44);\r\n  fStack_1b8 = fStack_1ac * (_UNK_142925904 - (fVar5 * fVar9 + fVar1 * fVar10));\r\n  fStack_1b4 = fStack_1ac * (fVar4 * fVar9 + fVar10 * fVar6);\r\n  fStack_1b0 = fStack_1ac * (fVar4 * fVar10 - fVar9 * fVar6);\r\n  fStack_1ac = fStack_1ac * 0.0;\r\n  fStack_1a8 = fStack_19c * (fVar4 * fVar9 - fVar10 * fVar6);\r\n  fStack_1a4 = fStack_19c * (_UNK_142925904 - (fVar1 * fVar10 + fVar7));\r\n  fStack_1a0 = fStack_19c * (fVar5 * fVar10 + fVar8);\r\n  fStack_19c = fStack_19c * 0.0;\r\n  uStack_180 = *(undefined4 *)(param_4 + 0x38);\r\n  fStack_198 = fStack_18c * (fVar9 * fVar6 + fVar4 * fVar10);\r\n  fStack_194 = fStack_18c * (fVar5 * fVar10 - fVar8);\r\n  fStack_190 = fStack_18c * (_UNK_142925904 - (fVar7 + fVar5 * fVar9));\r\n  fStack_18c = fStack_18c * 0.0;\r\n  uStack_188 = *(undefined4 *)(param_4 + 0x30);\r\n  uStack_184 = *(undefined4 *)(param_4 + 0x34);\r\n  uStack_17c = (undefined4)((ulonglong)_UNK_14293e0c8 >> 0x20);\r\n  FUN_141629b90(auStack_2b0,auStack_3a8,0x14658de104bef99d,&fStack_1b8);\r\n  if (cStack_1d2 != '\\b') {\r\n    FUN_14096b570(auStack_1f8,lStack_1c8 + 0xe8,0xc5ab673fb08651f5,cVar2);\r\n  }\r\n  func_0x000142923c00(&fStack_1b8,auStack_2b0,0xf8);\r\n  FUN_141629a20(auStack_2b0,&fStack_1b8,0x1e5485ef2e9f9384,*param_3);\r\n  FUN_141629d20(&fStack_1b8,auStack_2b0,0x531bb9318eea4971,uVar3);\r\n  FUN_1416286f0(param_1,&fStack_1b8);\r\n  return param_1;\r\n}\r\n\r\n",
+        "database": "ccscene_l1"
+      },
+      "result_sha256": "4086586a01ed822099ef5bd77b3e3d4d9d1420697e4fc1a40ffdf647b2308094",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 8,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x1409dd4d0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:49:26.689Z",
+      "completed_at": "2026-10-12T10:49:32.242Z",
+      "source": "actual_mcp_call",
+      "cache_key": "20e0c2fcf306110442bd31018339077052e45ae3c195648208c8f5b522b055b7",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_1409dd4d0",
+        "address": "0x1409DD4D0",
+        "decompiled_code": "\r\nvoid FUN_1409dd4d0(longlong *param_1,undefined8 param_2)\r\n\r\n{\r\n  longlong *plVar1;\r\n  undefined8 *puVar2;\r\n  longlong lVar3;\r\n  longlong lVar4;\r\n  code *pcVar5;\r\n  longlong lVar6;\r\n  longlong lVar7;\r\n  longlong lStack_140;\r\n  undefined4 uStack_138;\r\n  undefined4 uStack_134;\r\n  undefined4 uStack_130;\r\n  undefined4 uStack_12c;\r\n  undefined4 uStack_128;\r\n  undefined4 uStack_124;\r\n  undefined4 uStack_120;\r\n  undefined4 uStack_11c;\r\n  longlong lStack_118;\r\n  longlong lStack_110;\r\n  longlong lStack_108;\r\n  longlong lStack_58;\r\n  longlong lStack_50;\r\n  longlong *plStack_48;\r\n  longlong lStack_40;\r\n  undefined8 uStack_38;\r\n  undefined8 uStack_30;\r\n  \r\n  uStack_30 = 0xfffffffffffffffe;\r\n  lStack_140 = *param_1;\r\n  plStack_48 = param_1;\r\n  lStack_40 = lStack_140;\r\n  uStack_38 = param_2;\r\n  if (SBORROW8(0,lStack_140)) {\r\n    FUN_1428d9310(&UNK_142ac3a78);\r\n  }\r\n  else {\r\n    func_0x000142923c00(&lStack_140,param_2,0xe8);\r\n    lVar6 = func_0x000140613c10(0xe8,8);\r\n    if (lVar6 == 0) {\r\n      FUN_1428d9000(8,0xe8);\r\n    }\r\n    else {\r\n      func_0x000142923c00(lVar6,&lStack_140,0xe8);\r\n      lStack_58 = param_1[5];\r\n      lStack_50 = param_1[6];\r\n      param_1[5] = lVar6;\r\n      param_1[6] = (longlong)&UNK_142ac3b48;\r\n      if (lStack_58 == 0) {\r\n        lVar6 = param_1[8];\r\n        *param_1 = -0x8000000000000000;\r\n        lStack_108 = param_1[7];\r\n        uStack_138 = (undefined4)param_1[1];\r\n        uStack_134 = *(undefined4 *)((longlong)param_1 + 0xc);\r\n        uStack_130 = (undefined4)param_1[2];\r\n        uStack_12c = *(undefined4 *)((longlong)param_1 + 0x14);\r\n        uStack_128 = (undefined4)param_1[3];\r\n        uStack_124 = *(undefined4 *)((longlong)param_1 + 0x1c);\r\n        uStack_120 = (undefined4)param_1[4];\r\n        uStack_11c = *(undefined4 *)((longlong)param_1 + 0x24);\r\n        lStack_118 = param_1[5];\r\n        lStack_110 = param_1[6];\r\n        lVar3 = *(longlong *)(lVar6 + 0xa0);\r\n        if (lVar3 == *(longlong *)(lVar6 + 0x90)) {\r\n          FUN_1405627b0(lVar6 + 0x90,&UNK_142abc8c0);\r\n        }\r\n        lVar4 = *(longlong *)(lVar6 + 0x98);\r\n        lVar7 = lVar3 * 0x40;\r\n        plVar1 = (longlong *)(lVar4 + 0x30 + lVar7);\r\n        *plVar1 = lStack_110;\r\n        plVar1[1] = lStack_108;\r\n        puVar2 = (undefined8 *)(lVar4 + 0x20 + lVar7);\r\n        *puVar2 = CONCAT44(uStack_11c,uStack_120);\r\n        puVar2[1] = lStack_118;\r\n        puVar2 = (undefined8 *)(lVar4 + 0x10 + lVar7);\r\n        *puVar2 = CONCAT44(uStack_12c,uStack_130);\r\n        puVar2[1] = CONCAT44(uStack_124,uStack_128);\r\n        *(longlong *)(lVar4 + lVar7) = lStack_140;\r\n        ((longlong *)(lVar4 + lVar7))[1] = CONCAT44(uStack_134,uStack_138);\r\n        *(longlong *)(lVar6 + 0xa0) = lVar3 + 1;\r\n        return;\r\n      }\r\n      FUN_1428d9430(&UNK_142ac3ab0,0x20,&UNK_142ac3ad0);\r\n    }\r\n  }\r\n                    /* WARNING: Does not return */\r\n  pcVar5 = (code *)invalidInstructionException();\r\n  (*pcVar5)();\r\n}\r\n\r\n",
+        "database": "ccscene_l1"
+      },
+      "result_sha256": "0b7dc001b18ff8cdf66424ddd274404aec0b202f6ad637b7fd637f96457c05fd",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 9,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x1416032a0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:49:26.689Z",
+      "completed_at": "2026-10-12T10:49:32.242Z",
+      "source": "actual_mcp_call",
+      "cache_key": "20e0c2fcf306110442bd31018339077052e45ae3c195648208c8f5b522b055b7",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_1416032a0",
+        "address": "0x1416032A0",
+        "decompiled_code": "\r\nundefined8\r\nFUN_1416032a0(undefined8 param_1,undefined8 param_2,ulonglong param_3,undefined8 param_4,\r\n             undefined8 param_5,longlong param_6,longlong param_7)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  code *pcVar2;\r\n  undefined8 uVar3;\r\n  undefined8 uVar4;\r\n  undefined8 uVar5;\r\n  undefined8 uVar6;\r\n  longlong lVar7;\r\n  undefined8 uVar8;\r\n  longlong lVar9;\r\n  ulonglong uVar10;\r\n  undefined8 *puVar11;\r\n  undefined1 uVar12;\r\n  longlong *plVar13;\r\n  longlong *plVar14;\r\n  bool bVar15;\r\n  undefined8 uStack_458;\r\n  undefined8 uStack_450;\r\n  undefined8 uStack_448;\r\n  undefined8 uStack_440;\r\n  undefined8 uStack_438;\r\n  undefined8 uStack_430;\r\n  undefined4 uStack_428;\r\n  undefined4 uStack_424;\r\n  undefined4 uStack_420;\r\n  undefined4 uStack_41c;\r\n  undefined8 uStack_418;\r\n  undefined8 uStack_410;\r\n  undefined8 uStack_408;\r\n  undefined8 uStack_400;\r\n  int iStack_3f8;\r\n  undefined4 uStack_3f4;\r\n  undefined4 uStack_3f0;\r\n  undefined4 uStack_3ec;\r\n  undefined4 uStack_3e8;\r\n  undefined4 uStack_3e4;\r\n  undefined4 uStack_3e0;\r\n  undefined2 uStack_3dc;\r\n  undefined2 uStack_3da;\r\n  undefined6 uStack_3d8;\r\n  undefined4 uStack_3b0;\r\n  undefined4 uStack_3ac;\r\n  undefined4 uStack_3a8;\r\n  undefined4 uStack_3a4;\r\n  undefined4 uStack_3a0;\r\n  undefined4 uStack_39c;\r\n  undefined4 uStack_398;\r\n  undefined4 uStack_394;\r\n  undefined4 uStack_390;\r\n  undefined4 uStack_38c;\r\n  undefined4 uStack_388;\r\n  undefined4 uStack_384;\r\n  undefined8 uStack_380;\r\n  int iStack_378;\r\n  undefined4 uStack_374;\r\n  undefined4 uStack_370;\r\n  undefined4 uStack_36c;\r\n  undefined4 uStack_368;\r\n  undefined4 uStack_364;\r\n  undefined4 uStack_360;\r\n  undefined2 uStack_35c;\r\n  undefined2 uStack_35a;\r\n  undefined6 uStack_358;\r\n  undefined1 uStack_352;\r\n  byte bStack_351;\r\n  undefined8 uStack_350;\r\n  undefined8 uStack_348;\r\n  undefined8 uStack_340;\r\n  undefined8 uStack_338;\r\n  undefined8 uStack_330;\r\n  undefined8 uStack_328;\r\n  undefined8 uStack_320;\r\n  undefined8 uStack_318;\r\n  undefined4 uStack_2cc;\r\n  undefined4 uStack_2ac;\r\n  undefined4 uStack_2a8;\r\n  undefined4 uStack_2a4;\r\n  undefined8 uStack_2a0;\r\n  undefined8 uStack_298;\r\n  undefined8 uStack_290;\r\n  undefined8 uStack_288;\r\n  undefined8 uStack_280;\r\n  undefined8 uStack_278;\r\n  undefined8 uStack_270;\r\n  undefined8 uStack_268;\r\n  undefined8 uStack_260;\r\n  undefined8 uStack_258;\r\n  undefined4 uStack_250;\r\n  undefined4 uStack_24c;\r\n  undefined4 uStack_248;\r\n  undefined4 uStack_244;\r\n  undefined4 uStack_240;\r\n  undefined4 uStack_23c;\r\n  undefined8 uStack_238;\r\n  undefined8 uStack_230;\r\n  undefined8 uStack_228;\r\n  undefined8 uStack_220;\r\n  undefined8 uStack_218;\r\n  undefined8 uStack_210;\r\n  ulonglong uStack_208;\r\n  undefined8 uStack_200;\r\n  undefined8 uStack_1f8;\r\n  undefined8 uStack_1f0;\r\n  longlong lStack_1e8;\r\n  undefined8 uStack_1e0;\r\n  undefined8 uStack_1d8;\r\n  undefined8 uStack_1d0;\r\n  undefined8 uStack_1c8;\r\n  undefined8 uStack_1c0;\r\n  undefined8 uStack_1b8;\r\n  undefined8 uStack_1b0;\r\n  undefined4 uStack_1a8;\r\n  undefined4 uStack_1a4;\r\n  undefined4 uStack_1a0;\r\n  undefined4 uStack_19c;\r\n  undefined8 uStack_198;\r\n  undefined8 uStack_190;\r\n  undefined8 uStack_188;\r\n  undefined8 uStack_180;\r\n  undefined8 uStack_178;\r\n  undefined8 uStack_170;\r\n  undefined8 uStack_168;\r\n  undefined6 uStack_160;\r\n  undefined2 uStack_15a;\r\n  undefined6 uStack_158;\r\n  undefined1 uStack_152;\r\n  undefined1 uStack_151;\r\n  longlong *plStack_150;\r\n  longlong lStack_148;\r\n  undefined4 uStack_140;\r\n  undefined4 uStack_13c;\r\n  undefined4 uStack_138;\r\n  undefined4 uStack_134;\r\n  undefined4 uStack_130;\r\n  undefined4 uStack_12c;\r\n  undefined4 uStack_128;\r\n  undefined4 uStack_124;\r\n  undefined4 uStack_120;\r\n  undefined4 uStack_11c;\r\n  undefined4 uStack_118;\r\n  undefined4 uStack_114;\r\n  undefined8 uStack_110;\r\n  undefined8 uStack_108;\r\n  longlong lStack_100;\r\n  undefined8 uStack_f0;\r\n  undefined8 uStack_e8;\r\n  longlong *plStack_e0;\r\n  undefined8 uStack_d8;\r\n  undefined8 uStack_d0;\r\n  undefined8 uStack_c8;\r\n  ulonglong uStack_c0;\r\n  undefined8 uStack_b8;\r\n  undefined8 uStack_b0;\r\n  undefined4 uStack_a8;\r\n  undefined4 uStack_a4;\r\n  longlong lStack_a0;\r\n  undefined4 uStack_98;\r\n  undefined4 uStack_94;\r\n  undefined8 uStack_90;\r\n  longlong *plStack_88;\r\n  undefined8 uStack_80;\r\n  longlong lStack_78;\r\n  longlong lStack_70;\r\n  longlong lStack_68;\r\n  longlong *plStack_60;\r\n  longlong *plStack_58;\r\n  undefined1 uStack_49;\r\n  undefined8 uStack_48;\r\n  \r\n  uStack_48 = 0xfffffffffffffffe;\r\n  uStack_e8 = param_5;\r\n  uStack_f0 = param_4;\r\n  uStack_90 = param_1;\r\n  FUN_141620a10(&uStack_458,param_7 + 0x110);\r\n  uStack_280 = param_5;\r\n  uStack_278 = 1;\r\n  uStack_288 = param_4;\r\n  uStack_80 = FUN_1405bdda0(&uStack_288);\r\n  FUN_140909310(&uStack_3b0,param_6);\r\n  uVar10 = 0x2ed189581b92decf;\r\n  lVar7 = FUN_1400dd6f0(param_6 + 0x38,0x2ed189581b92decf,0x15d3d99396065f38);\r\n  if (((lVar7 != 0) && (uVar10 < *(ulonglong *)(param_6 + 0x218))) &&\r\n     (uVar10 = *(ulonglong *)(*(longlong *)(param_6 + 0x210) + uVar10 * 8), uVar10 != 0)) {\r\n    lVar7 = ~uVar10 * 0x60;\r\n    if (*(longlong *)(*(longlong *)(param_6 + 0x1e0) + 0x20 + lVar7) != 0) {\r\n      lVar7 = **(longlong **)(*(longlong *)(param_6 + 0x1e0) + lVar7 + 0x10);\r\n      uVar3 = CONCAT44(uStack_3ac,uStack_3b0);\r\n      puVar11 = &uStack_80;\r\n      uVar8 = FUN_1409378e0(uVar3);\r\n      lVar7 = lVar7 + 0x10;\r\n      if (puVar11 == (undefined8 *)0x0) {\r\n        FUN_1408a4330(&uStack_288,&uStack_f0);\r\n        FUN_140937e10(&iStack_378,param_2,param_3,&uStack_288,lVar7);\r\n        uStack_49 = 1;\r\n        lVar9 = func_0x00014067dd80(&uStack_330);\r\n        plStack_e0 = *(longlong **)(lVar9 + 0x18);\r\n        LOCK();\r\n        lVar9 = *plStack_e0;\r\n        *plStack_e0 = *plStack_e0 + 1;\r\n        UNLOCK();\r\n        if (*plStack_e0 == 0 || SCARRY8(lVar9,1) != *plStack_e0 < 0) goto code_r0x000141603942;\r\n        plStack_58 = plStack_e0;\r\n        func_0x000142923c00(&uStack_288,&iStack_378,0xa0);\r\n        uVar8 = FUN_140937560(uVar3,&uStack_288,uStack_80);\r\n        plVar14 = plStack_58;\r\n      }\r\n      else {\r\n        lVar9 = func_0x00014067dd80(puVar11 + 9);\r\n        plVar14 = *(longlong **)(lVar9 + 0x18);\r\n        LOCK();\r\n        lVar9 = *plVar14;\r\n        *plVar14 = *plVar14 + 1;\r\n        UNLOCK();\r\n        if (*plVar14 == 0 || SCARRY8(lVar9,1) != *plVar14 < 0) goto code_r0x000141603942;\r\n      }\r\n      plStack_88 = plVar14;\r\n      plStack_60 = plVar14;\r\n      uStack_a8 = FUN_140bd4b40(*(undefined8 *)(param_7 + 0xa0));\r\n      lStack_a0 = param_7;\r\n      plStack_e0 = (longlong *)0x0;\r\n      uStack_d8 = 4;\r\n      uStack_d0 = 0;\r\n      uStack_b8 = 0;\r\n      lStack_78 = 0;\r\n      lStack_70 = 8;\r\n      lStack_68 = 0;\r\n      plVar13 = (longlong *)CONCAT44(uStack_384,uStack_388);\r\n      LOCK();\r\n      bVar15 = (char)*plVar13 == '\\0';\r\n      if (bVar15) {\r\n        *(char *)plVar13 = '\\x01';\r\n      }\r\n      UNLOCK();\r\n      uStack_c8 = param_2;\r\n      uStack_c0 = param_3;\r\n      uStack_98 = uStack_a8;\r\n      if (!bVar15) {\r\n        FUN_1428cd210(plVar13);\r\n      }\r\n      FUN_140c81c70(plVar13);\r\n      if (plVar14[0x1d] == 0) {\r\n        uStack_258 = CONCAT44(uStack_258._4_4_,10);\r\n      }\r\n      else {\r\n        plStack_58 = plVar13;\r\n        FUN_140c02740(&iStack_3f8,plVar13 + 1,lVar7,(int)plVar14[0x27],0);\r\n        FUN_140c02450(&iStack_378,&iStack_3f8,lVar7);\r\n        lVar9 = lStack_68;\r\n        uStack_288 = uStack_338;\r\n        uVar3 = uStack_288;\r\n        uStack_280 = uStack_330;\r\n        uVar4 = uStack_280;\r\n        uStack_278 = uStack_328;\r\n        uVar5 = uStack_278;\r\n        uStack_270 = uStack_320;\r\n        uVar6 = uStack_270;\r\n        uStack_268 = uStack_318;\r\n        uStack_298 = uStack_348;\r\n        uStack_290 = uStack_340;\r\n        uStack_2a0 = uStack_350;\r\n        uStack_2ac = (undefined4)(CONCAT26(uStack_35a,CONCAT24(uStack_35c,uStack_360)) >> 0x20);\r\n        uStack_2a8 = (undefined4)uStack_358;\r\n        uStack_2a4 = (undefined4)(CONCAT17(bStack_351,CONCAT16(uStack_352,uStack_358)) >> 0x20);\r\n        uStack_260 = CONCAT44(uStack_2cc,(int)plVar14[0x28]);\r\n        uStack_258 = CONCAT44(uStack_374,iStack_378);\r\n        uStack_250 = uStack_370;\r\n        uStack_24c = uStack_36c;\r\n        uStack_248 = uStack_368;\r\n        uStack_244 = uStack_364;\r\n        uStack_240 = uStack_360;\r\n        uStack_23c = uStack_2ac;\r\n        uStack_238 = CONCAT44(uStack_2a4,uStack_2a8);\r\n        uStack_230 = uStack_350;\r\n        uStack_228 = uStack_348;\r\n        uStack_220 = uStack_340;\r\n        plVar13 = plStack_58;\r\n        if (iStack_378 != 10) {\r\n          uStack_358 = (undefined6)uStack_318;\r\n          uStack_352 = (undefined1)((ulonglong)uStack_318 >> 0x30);\r\n          bStack_351 = (byte)((ulonglong)uStack_318 >> 0x38);\r\n          uStack_288._0_4_ = (int)uStack_338;\r\n          uStack_288._4_4_ = (undefined4)((ulonglong)uStack_338 >> 0x20);\r\n          uStack_280._0_4_ = (undefined4)uStack_330;\r\n          uStack_280._4_4_ = (undefined4)((ulonglong)uStack_330 >> 0x20);\r\n          uStack_278._0_4_ = (undefined4)uStack_328;\r\n          uStack_278._4_4_ = (undefined4)((ulonglong)uStack_328 >> 0x20);\r\n          uStack_270._0_4_ = (undefined4)uStack_320;\r\n          uStack_368 = (undefined4)uStack_278;\r\n          uStack_364 = uStack_278._4_4_;\r\n          uStack_360 = (undefined4)uStack_270;\r\n          uStack_35c = (undefined2)((ulonglong)uStack_320 >> 0x20);\r\n          uStack_35a = (undefined2)((ulonglong)uStack_320 >> 0x30);\r\n          iStack_378 = (int)uStack_288;\r\n          uStack_374 = uStack_288._4_4_;\r\n          uStack_370 = (undefined4)uStack_280;\r\n          uStack_36c = uStack_280._4_4_;\r\n          uStack_288 = uVar3;\r\n          uStack_280 = uVar4;\r\n          uStack_278 = uVar5;\r\n          uStack_270 = uVar6;\r\n          if (lStack_68 == lStack_78) {\r\n            FUN_140b5f9f0(&lStack_78,&UNK_142c7d9d0);\r\n          }\r\n          plVar14 = plStack_58;\r\n          uVar12 = uStack_352;\r\n          *(undefined8 *)(lStack_70 + 0x40 + lVar9 * 0x48) = uStack_220;\r\n          puVar1 = (undefined4 *)(lStack_70 + 0x30 + lVar9 * 0x48);\r\n          *puVar1 = (undefined4)uStack_230;\r\n          puVar1[1] = uStack_230._4_4_;\r\n          puVar1[2] = (undefined4)uStack_228;\r\n          puVar1[3] = uStack_228._4_4_;\r\n          puVar1 = (undefined4 *)(lStack_70 + 0x20 + lVar9 * 0x48);\r\n          *puVar1 = uStack_240;\r\n          puVar1[1] = uStack_23c;\r\n          puVar1[2] = (undefined4)uStack_238;\r\n          puVar1[3] = uStack_238._4_4_;\r\n          puVar11 = (undefined8 *)(lStack_70 + 0x10 + lVar9 * 0x48);\r\n          *puVar11 = CONCAT44(uStack_24c,uStack_250);\r\n          puVar11[1] = CONCAT44(uStack_244,uStack_248);\r\n          puVar11 = (undefined8 *)(lStack_70 + lVar9 * 0x48);\r\n          *puVar11 = uStack_260;\r\n          puVar11[1] = uStack_258;\r\n          lStack_68 = lVar9 + 1;\r\n          iStack_3f8 = iStack_378;\r\n          uStack_3f4 = uStack_374;\r\n          uStack_3f0 = uStack_370;\r\n          uStack_3ec = uStack_36c;\r\n          uStack_3e8 = uStack_368;\r\n          uStack_3e4 = uStack_364;\r\n          uStack_3e0 = uStack_360;\r\n          uStack_3dc = uStack_35c;\r\n          uStack_3da = uStack_35a;\r\n          uStack_3d8 = uStack_358;\r\n          param_3 = (ulonglong)bStack_351;\r\n          FUN_140c81e10();\r\n          LOCK();\r\n          bVar15 = (char)*plVar14 == '\\x01';\r\n          if (bVar15) {\r\n            *(char *)plVar14 = '\\0';\r\n          }\r\n          UNLOCK();\r\n          if (!bVar15) {\r\n            FUN_1428cdb90(plVar14,0);\r\n          }\r\n          goto code_r0x000141603762;\r\n        }\r\n      }\r\n      FUN_140c81e10();\r\n      LOCK();\r\n      bVar15 = (char)*plVar13 == '\\x01';\r\n      if (bVar15) {\r\n        *(char *)plVar13 = '\\0';\r\n      }\r\n      UNLOCK();\r\n      if (!bVar15) {\r\n        FUN_1428cdb90(plVar13,0);\r\n      }\r\n      uVar12 = 8;\r\ncode_r0x000141603762:\r\n      uVar3 = uStack_90;\r\n      uStack_1e0 = CONCAT44(uStack_94,uStack_98);\r\n      lStack_1e8 = lStack_a0;\r\n      uStack_1f0 = CONCAT44(uStack_a4,uStack_a8);\r\n      uStack_1f8 = uStack_b0;\r\n      uStack_208 = uStack_c0;\r\n      uStack_200 = uStack_b8;\r\n      uStack_218 = uStack_d0;\r\n      uStack_210 = uStack_c8;\r\n      uStack_228 = plStack_e0;\r\n      uStack_220 = uStack_d8;\r\n      uStack_178 = CONCAT44(uStack_3f4,iStack_3f8);\r\n      uStack_170 = CONCAT44(uStack_3ec,uStack_3f0);\r\n      uStack_168 = CONCAT44(uStack_3e4,uStack_3e8);\r\n      uStack_160 = CONCAT24(uStack_3dc,uStack_3e0);\r\n      uStack_15a = uStack_3da;\r\n      uStack_158 = uStack_3d8;\r\n      uStack_248 = (undefined4)lStack_68;\r\n      uStack_244 = (undefined4)((ulonglong)lStack_68 >> 0x20);\r\n      uStack_258 = lStack_78;\r\n      uStack_250 = (undefined4)lStack_70;\r\n      uStack_24c = (undefined4)((ulonglong)lStack_70 >> 0x20);\r\n      uStack_188 = uStack_408;\r\n      uStack_180 = uStack_400;\r\n      uStack_198 = uStack_418;\r\n      uStack_190 = uStack_410;\r\n      uStack_1a8 = uStack_428;\r\n      uStack_1a4 = uStack_424;\r\n      uStack_1a0 = uStack_420;\r\n      uStack_19c = uStack_41c;\r\n      uStack_1b8 = uStack_438;\r\n      uStack_1b0 = uStack_430;\r\n      uStack_1c8 = uStack_448;\r\n      uStack_1c0 = uStack_440;\r\n      uStack_1d8 = uStack_458;\r\n      uStack_1d0 = uStack_450;\r\n      plStack_150 = plStack_60;\r\n      uStack_151 = (undefined1)param_3;\r\n      uStack_288 = 0;\r\n      uStack_280 = 4;\r\n      uStack_278 = 0;\r\n      uStack_270 = 0;\r\n      uStack_268 = 4;\r\n      uStack_260 = 0;\r\n      uStack_240 = 0;\r\n      uStack_23c = 0;\r\n      uStack_238 = 1;\r\n      uStack_230 = 0;\r\n      lStack_100 = param_6;\r\n      uStack_140 = uStack_3b0;\r\n      uStack_13c = uStack_3ac;\r\n      uStack_138 = uStack_3a8;\r\n      uStack_134 = uStack_3a4;\r\n      uStack_130 = uStack_3a0;\r\n      uStack_12c = uStack_39c;\r\n      uStack_128 = uStack_398;\r\n      uStack_124 = uStack_394;\r\n      uStack_120 = uStack_390;\r\n      uStack_11c = uStack_38c;\r\n      uStack_118 = uStack_388;\r\n      uStack_114 = uStack_384;\r\n      uStack_110 = uStack_380;\r\n      uStack_152 = uVar12;\r\n      lStack_148 = lVar7;\r\n      uStack_108 = uVar8;\r\n      FUN_1415fc070(uStack_90,&uStack_288);\r\n      return uVar3;\r\n    }\r\n  }\r\n  FUN_1428d9310(&UNK_142c7d9b8);\r\ncode_r0x000141603942:\r\n                    /* WARNING: Does not return */\r\n  pcVar2 = (code *)invalidInstructionException();\r\n  (*pcVar2)();\r\n}\r\n\r\n",
+        "database": "ccscene_l1"
+      },
+      "result_sha256": "5901d627b399c43aa867c6e17af9a9f7b175e139ae83171357d38d7d76735586",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 10,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x14160d110"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:49:26.689Z",
+      "completed_at": "2026-10-12T10:49:32.242Z",
+      "source": "actual_mcp_call",
+      "cache_key": "20e0c2fcf306110442bd31018339077052e45ae3c195648208c8f5b522b055b7",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_14160d110",
+        "address": "0x14160D110",
+        "decompiled_code": "\r\nundefined8 FUN_14160d110(undefined8 param_1,longlong param_2,ulonglong param_3)\r\n\r\n{\r\n  undefined1 auVar1 [16];\r\n  undefined4 uVar2;\r\n  longlong lVar3;\r\n  code *pcVar4;\r\n  uint uVar5;\r\n  uint uVar6;\r\n  undefined1 uVar7;\r\n  longlong lVar8;\r\n  uint uVar9;\r\n  ushort uVar10;\r\n  ulonglong uVar11;\r\n  longlong lVar12;\r\n  ulonglong uVar13;\r\n  byte bVar14;\r\n  char cVar15;\r\n  char cVar17;\r\n  char cVar18;\r\n  char cVar19;\r\n  undefined1 auVar16 [16];\r\n  undefined1 auVar20 [16];\r\n  undefined1 auVar21 [16];\r\n  undefined8 auStack_80 [6];\r\n  int iStack_4c;\r\n  longlong lStack_48;\r\n  undefined8 uStack_40;\r\n  \r\n  uStack_40 = 0xfffffffffffffffe;\r\n  lStack_48 = param_2;\r\n  uVar7 = FUN_140971520(param_2 + 0x148,*(undefined8 *)(param_2 + 0x140),param_2 + 0x60,param_2,0x1a\r\n                       );\r\n  lVar12 = *(longlong *)(lStack_48 + 0x138);\r\n  if (*(longlong *)(lVar12 + 0xb0) != 0) {\r\n    lVar3 = *(longlong *)(lVar12 + 0x98);\r\n    bVar14 = (byte)(param_3 >> 0x39);\r\n    auVar16 = ZEXT216(CONCAT11(bVar14,bVar14));\r\n    auVar16 = pshuflw(auVar16,auVar16,0);\r\n    lVar8 = 0;\r\n    uVar13 = param_3;\r\n    while( true ) {\r\n      uVar13 = *(ulonglong *)(lVar12 + 0xa0) & uVar13;\r\n      auVar1 = *(undefined1 (*) [16])(lVar3 + uVar13);\r\n      cVar15 = auVar16[0];\r\n      auVar21[0] = -(auVar1[0] == cVar15);\r\n      cVar17 = auVar16[1];\r\n      auVar21[1] = -(auVar1[1] == cVar17);\r\n      cVar18 = auVar16[2];\r\n      auVar21[2] = -(auVar1[2] == cVar18);\r\n      cVar19 = auVar16[3];\r\n      auVar21[3] = -(auVar1[3] == cVar19);\r\n      auVar21[4] = -(auVar1[4] == cVar15);\r\n      auVar21[5] = -(auVar1[5] == cVar17);\r\n      auVar21[6] = -(auVar1[6] == cVar18);\r\n      auVar21[7] = -(auVar1[7] == cVar19);\r\n      auVar21[8] = -(auVar1[8] == cVar15);\r\n      auVar21[9] = -(auVar1[9] == cVar17);\r\n      auVar21[10] = -(auVar1[10] == cVar18);\r\n      auVar21[0xb] = -(auVar1[0xb] == cVar19);\r\n      auVar21[0xc] = -(auVar1[0xc] == cVar15);\r\n      auVar21[0xd] = -(auVar1[0xd] == cVar17);\r\n      auVar21[0xe] = -(auVar1[0xe] == cVar18);\r\n      auVar21[0xf] = -(auVar1[0xf] == cVar19);\r\n      uVar10 = (ushort)(SUB161(auVar21 >> 7,0) & 1) | (ushort)(SUB161(auVar21 >> 0xf,0) & 1) << 1 |\r\n               (ushort)(SUB161(auVar21 >> 0x17,0) & 1) << 2 |\r\n               (ushort)(SUB161(auVar21 >> 0x1f,0) & 1) << 3 |\r\n               (ushort)(SUB161(auVar21 >> 0x27,0) & 1) << 4 |\r\n               (ushort)(SUB161(auVar21 >> 0x2f,0) & 1) << 5 |\r\n               (ushort)(SUB161(auVar21 >> 0x37,0) & 1) << 6 |\r\n               (ushort)(SUB161(auVar21 >> 0x3f,0) & 1) << 7 |\r\n               (ushort)(SUB161(auVar21 >> 0x47,0) & 1) << 8 |\r\n               (ushort)(SUB161(auVar21 >> 0x4f,0) & 1) << 9 |\r\n               (ushort)(SUB161(auVar21 >> 0x57,0) & 1) << 10 |\r\n               (ushort)(SUB161(auVar21 >> 0x5f,0) & 1) << 0xb |\r\n               (ushort)(SUB161(auVar21 >> 0x67,0) & 1) << 0xc |\r\n               (ushort)(SUB161(auVar21 >> 0x6f,0) & 1) << 0xd |\r\n               (ushort)(SUB161(auVar21 >> 0x77,0) & 1) << 0xe | (ushort)(auVar21[0xf] >> 7) << 0xf;\r\n      uVar9 = (uint)uVar10;\r\n      while (uVar10 != 0) {\r\n        uVar5 = 0;\r\n        for (uVar6 = uVar9; (uVar6 & 1) == 0; uVar6 = uVar6 >> 1 | 0x80000000) {\r\n          uVar5 = uVar5 + 1;\r\n        }\r\n        uVar11 = uVar5 + uVar13 & *(ulonglong *)(lVar12 + 0xa0);\r\n        if (*(ulonglong *)(lVar3 + -0x10 + uVar11 * -0x10) == param_3) {\r\n          lVar12 = uVar11 * -0x10;\r\n          iStack_4c = *(int *)(lVar3 + -8 + lVar12);\r\n          uVar2 = *(undefined4 *)(lVar3 + -4 + lVar12);\r\n          if (iStack_4c != 0) {\r\n            auStack_80[0] = 0;\r\n            FUN_1428a994f(0,&iStack_4c,&UNK_142c7d9e8,auStack_80,&UNK_142c7dc60);\r\n                    /* WARNING: Does not return */\r\n            pcVar4 = (code *)invalidInstructionException();\r\n            (*pcVar4)();\r\n          }\r\n          lVar12 = *(longlong *)(lStack_48 + 0x28);\r\n          if (lVar12 == *(longlong *)(lStack_48 + 0x18)) {\r\n            FUN_140562e70(lStack_48 + 0x18,&UNK_142c7dc78);\r\n          }\r\n          lVar3 = *(longlong *)(lStack_48 + 0x20);\r\n          *(undefined4 *)(lVar3 + lVar12 * 8) = uVar2;\r\n          *(undefined1 *)(lVar3 + 4 + lVar12 * 8) = uVar7;\r\n          *(longlong *)(lStack_48 + 0x28) = lVar12 + 1;\r\n          goto code_r0x00014160d25c;\r\n        }\r\n        uVar10 = (ushort)(uVar9 - 1) & (ushort)uVar9;\r\n        uVar9 = CONCAT22((short)(uVar9 - 1 >> 0x10),uVar10);\r\n      }\r\n      auVar20[0] = -(auVar1[0] == -1);\r\n      auVar20[1] = -(auVar1[1] == -1);\r\n      auVar20[2] = -(auVar1[2] == -1);\r\n      auVar20[3] = -(auVar1[3] == -1);\r\n      auVar20[4] = -(auVar1[4] == -1);\r\n      auVar20[5] = -(auVar1[5] == -1);\r\n      auVar20[6] = -(auVar1[6] == -1);\r\n      auVar20[7] = -(auVar1[7] == -1);\r\n      auVar20[8] = -(auVar1[8] == -1);\r\n      auVar20[9] = -(auVar1[9] == -1);\r\n      auVar20[10] = -(auVar1[10] == -1);\r\n      auVar20[0xb] = -(auVar1[0xb] == -1);\r\n      auVar20[0xc] = -(auVar1[0xc] == -1);\r\n      auVar20[0xd] = -(auVar1[0xd] == -1);\r\n      auVar20[0xe] = -(auVar1[0xe] == -1);\r\n      auVar20[0xf] = -(auVar1[0xf] == -1);\r\n      if ((((((((((((((((SUB161(auVar20 >> 7,0) & 1) != 0 || (SUB161(auVar20 >> 0xf,0) & 1) != 0) ||\r\n                      (SUB161(auVar20 >> 0x17,0) & 1) != 0) || (SUB161(auVar20 >> 0x1f,0) & 1) != 0)\r\n                    || (SUB161(auVar20 >> 0x27,0) & 1) != 0) || (SUB161(auVar20 >> 0x2f,0) & 1) != 0\r\n                   ) || (SUB161(auVar20 >> 0x37,0) & 1) != 0) ||\r\n                 (SUB161(auVar20 >> 0x3f,0) & 1) != 0) || (SUB161(auVar20 >> 0x47,0) & 1) != 0) ||\r\n               (SUB161(auVar20 >> 0x4f,0) & 1) != 0) || (SUB161(auVar20 >> 0x57,0) & 1) != 0) ||\r\n             (SUB161(auVar20 >> 0x5f,0) & 1) != 0) || (SUB161(auVar20 >> 0x67,0) & 1) != 0) ||\r\n           (SUB161(auVar20 >> 0x6f,0) & 1) != 0) || (SUB161(auVar20 >> 0x77,0) & 1) != 0) ||\r\n          auVar20[0xf] < '\\0') break;\r\n      uVar13 = uVar13 + lVar8 + 0x10;\r\n      lVar8 = lVar8 + 0x10;\r\n    }\r\n  }\r\ncode_r0x00014160d25c:\r\n  func_0x000142923c00(param_1,lStack_48,400);\r\n  return param_1;\r\n}\r\n\r\n",
+        "database": "ccscene_l1"
+      },
+      "result_sha256": "5a91676473f8ff4396987642b58709b934997ba83f295c2783fcb4db9c1867b9",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 11,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x14160d4b0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:49:26.689Z",
+      "completed_at": "2026-10-12T10:49:32.242Z",
+      "source": "actual_mcp_call",
+      "cache_key": "20e0c2fcf306110442bd31018339077052e45ae3c195648208c8f5b522b055b7",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_14160d4b0",
+        "address": "0x14160D4B0",
+        "decompiled_code": "\r\nundefined8 FUN_14160d4b0(undefined8 param_1,longlong param_2,ulonglong param_3)\r\n\r\n{\r\n  undefined1 auVar1 [16];\r\n  undefined4 uVar2;\r\n  longlong lVar3;\r\n  code *pcVar4;\r\n  uint uVar5;\r\n  uint uVar6;\r\n  undefined1 uVar7;\r\n  longlong lVar8;\r\n  uint uVar9;\r\n  ushort uVar10;\r\n  ulonglong uVar11;\r\n  longlong lVar12;\r\n  ulonglong uVar13;\r\n  byte bVar14;\r\n  char cVar15;\r\n  char cVar17;\r\n  char cVar18;\r\n  char cVar19;\r\n  undefined1 auVar16 [16];\r\n  undefined1 auVar20 [16];\r\n  undefined1 auVar21 [16];\r\n  undefined8 auStack_80 [6];\r\n  int iStack_4c;\r\n  longlong lStack_48;\r\n  undefined8 uStack_40;\r\n  \r\n  uStack_40 = 0xfffffffffffffffe;\r\n  lStack_48 = param_2;\r\n  uVar7 = FUN_140970720(param_2 + 0x148,*(undefined8 *)(param_2 + 0x140),param_2 + 0x60,param_2,0x1a\r\n                       );\r\n  lVar12 = *(longlong *)(lStack_48 + 0x138);\r\n  if (*(longlong *)(lVar12 + 0xb0) != 0) {\r\n    lVar3 = *(longlong *)(lVar12 + 0x98);\r\n    bVar14 = (byte)(param_3 >> 0x39);\r\n    auVar16 = ZEXT216(CONCAT11(bVar14,bVar14));\r\n    auVar16 = pshuflw(auVar16,auVar16,0);\r\n    lVar8 = 0;\r\n    uVar13 = param_3;\r\n    while( true ) {\r\n      uVar13 = *(ulonglong *)(lVar12 + 0xa0) & uVar13;\r\n      auVar1 = *(undefined1 (*) [16])(lVar3 + uVar13);\r\n      cVar15 = auVar16[0];\r\n      auVar21[0] = -(auVar1[0] == cVar15);\r\n      cVar17 = auVar16[1];\r\n      auVar21[1] = -(auVar1[1] == cVar17);\r\n      cVar18 = auVar16[2];\r\n      auVar21[2] = -(auVar1[2] == cVar18);\r\n      cVar19 = auVar16[3];\r\n      auVar21[3] = -(auVar1[3] == cVar19);\r\n      auVar21[4] = -(auVar1[4] == cVar15);\r\n      auVar21[5] = -(auVar1[5] == cVar17);\r\n      auVar21[6] = -(auVar1[6] == cVar18);\r\n      auVar21[7] = -(auVar1[7] == cVar19);\r\n      auVar21[8] = -(auVar1[8] == cVar15);\r\n      auVar21[9] = -(auVar1[9] == cVar17);\r\n      auVar21[10] = -(auVar1[10] == cVar18);\r\n      auVar21[0xb] = -(auVar1[0xb] == cVar19);\r\n      auVar21[0xc] = -(auVar1[0xc] == cVar15);\r\n      auVar21[0xd] = -(auVar1[0xd] == cVar17);\r\n      auVar21[0xe] = -(auVar1[0xe] == cVar18);\r\n      auVar21[0xf] = -(auVar1[0xf] == cVar19);\r\n      uVar10 = (ushort)(SUB161(auVar21 >> 7,0) & 1) | (ushort)(SUB161(auVar21 >> 0xf,0) & 1) << 1 |\r\n               (ushort)(SUB161(auVar21 >> 0x17,0) & 1) << 2 |\r\n               (ushort)(SUB161(auVar21 >> 0x1f,0) & 1) << 3 |\r\n               (ushort)(SUB161(auVar21 >> 0x27,0) & 1) << 4 |\r\n               (ushort)(SUB161(auVar21 >> 0x2f,0) & 1) << 5 |\r\n               (ushort)(SUB161(auVar21 >> 0x37,0) & 1) << 6 |\r\n               (ushort)(SUB161(auVar21 >> 0x3f,0) & 1) << 7 |\r\n               (ushort)(SUB161(auVar21 >> 0x47,0) & 1) << 8 |\r\n               (ushort)(SUB161(auVar21 >> 0x4f,0) & 1) << 9 |\r\n               (ushort)(SUB161(auVar21 >> 0x57,0) & 1) << 10 |\r\n               (ushort)(SUB161(auVar21 >> 0x5f,0) & 1) << 0xb |\r\n               (ushort)(SUB161(auVar21 >> 0x67,0) & 1) << 0xc |\r\n               (ushort)(SUB161(auVar21 >> 0x6f,0) & 1) << 0xd |\r\n               (ushort)(SUB161(auVar21 >> 0x77,0) & 1) << 0xe | (ushort)(auVar21[0xf] >> 7) << 0xf;\r\n      uVar9 = (uint)uVar10;\r\n      while (uVar10 != 0) {\r\n        uVar5 = 0;\r\n        for (uVar6 = uVar9; (uVar6 & 1) == 0; uVar6 = uVar6 >> 1 | 0x80000000) {\r\n          uVar5 = uVar5 + 1;\r\n        }\r\n        uVar11 = uVar5 + uVar13 & *(ulonglong *)(lVar12 + 0xa0);\r\n        if (*(ulonglong *)(lVar3 + -0x10 + uVar11 * -0x10) == param_3) {\r\n          lVar12 = uVar11 * -0x10;\r\n          iStack_4c = *(int *)(lVar3 + -8 + lVar12);\r\n          uVar2 = *(undefined4 *)(lVar3 + -4 + lVar12);\r\n          if (iStack_4c != 0) {\r\n            auStack_80[0] = 0;\r\n            FUN_1428a994f(0,&iStack_4c,&UNK_142c7d9e8,auStack_80,&UNK_142c7dc60);\r\n                    /* WARNING: Does not return */\r\n            pcVar4 = (code *)invalidInstructionException();\r\n            (*pcVar4)();\r\n          }\r\n          lVar12 = *(longlong *)(lStack_48 + 0x28);\r\n          if (lVar12 == *(longlong *)(lStack_48 + 0x18)) {\r\n            FUN_140562e70(lStack_48 + 0x18,&UNK_142c7dc78);\r\n          }\r\n          lVar3 = *(longlong *)(lStack_48 + 0x20);\r\n          *(undefined4 *)(lVar3 + lVar12 * 8) = uVar2;\r\n          *(undefined1 *)(lVar3 + 4 + lVar12 * 8) = uVar7;\r\n          *(longlong *)(lStack_48 + 0x28) = lVar12 + 1;\r\n          goto code_r0x00014160d5fc;\r\n        }\r\n        uVar10 = (ushort)(uVar9 - 1) & (ushort)uVar9;\r\n        uVar9 = CONCAT22((short)(uVar9 - 1 >> 0x10),uVar10);\r\n      }\r\n      auVar20[0] = -(auVar1[0] == -1);\r\n      auVar20[1] = -(auVar1[1] == -1);\r\n      auVar20[2] = -(auVar1[2] == -1);\r\n      auVar20[3] = -(auVar1[3] == -1);\r\n      auVar20[4] = -(auVar1[4] == -1);\r\n      auVar20[5] = -(auVar1[5] == -1);\r\n      auVar20[6] = -(auVar1[6] == -1);\r\n      auVar20[7] = -(auVar1[7] == -1);\r\n      auVar20[8] = -(auVar1[8] == -1);\r\n      auVar20[9] = -(auVar1[9] == -1);\r\n      auVar20[10] = -(auVar1[10] == -1);\r\n      auVar20[0xb] = -(auVar1[0xb] == -1);\r\n      auVar20[0xc] = -(auVar1[0xc] == -1);\r\n      auVar20[0xd] = -(auVar1[0xd] == -1);\r\n      auVar20[0xe] = -(auVar1[0xe] == -1);\r\n      auVar20[0xf] = -(auVar1[0xf] == -1);\r\n      if ((((((((((((((((SUB161(auVar20 >> 7,0) & 1) != 0 || (SUB161(auVar20 >> 0xf,0) & 1) != 0) ||\r\n                      (SUB161(auVar20 >> 0x17,0) & 1) != 0) || (SUB161(auVar20 >> 0x1f,0) & 1) != 0)\r\n                    || (SUB161(auVar20 >> 0x27,0) & 1) != 0) || (SUB161(auVar20 >> 0x2f,0) & 1) != 0\r\n                   ) || (SUB161(auVar20 >> 0x37,0) & 1) != 0) ||\r\n                 (SUB161(auVar20 >> 0x3f,0) & 1) != 0) || (SUB161(auVar20 >> 0x47,0) & 1) != 0) ||\r\n               (SUB161(auVar20 >> 0x4f,0) & 1) != 0) || (SUB161(auVar20 >> 0x57,0) & 1) != 0) ||\r\n             (SUB161(auVar20 >> 0x5f,0) & 1) != 0) || (SUB161(auVar20 >> 0x67,0) & 1) != 0) ||\r\n           (SUB161(auVar20 >> 0x6f,0) & 1) != 0) || (SUB161(auVar20 >> 0x77,0) & 1) != 0) ||\r\n          auVar20[0xf] < '\\0') break;\r\n      uVar13 = uVar13 + lVar8 + 0x10;\r\n      lVar8 = lVar8 + 0x10;\r\n    }\r\n  }\r\ncode_r0x00014160d5fc:\r\n  func_0x000142923c00(param_1,lStack_48,400);\r\n  return param_1;\r\n}\r\n\r\n",
+        "database": "ccscene_l1"
+      },
+      "result_sha256": "c196b7bd5bb00beec0a8db6e58fd69b975bec3083edeeace043c24895d29f1ef",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 12,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x14096b570"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:49:26.689Z",
+      "completed_at": "2026-10-12T10:49:32.242Z",
+      "source": "actual_mcp_call",
+      "cache_key": "20e0c2fcf306110442bd31018339077052e45ae3c195648208c8f5b522b055b7",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_14096b570",
+        "address": "0x14096B570",
+        "decompiled_code": "\r\nvoid FUN_14096b570(longlong *param_1,longlong *param_2,ulonglong param_3,undefined4 param_4)\r\n\r\n{\r\n  undefined1 auVar1 [16];\r\n  longlong lVar2;\r\n  code *pcVar3;\r\n  uint uVar4;\r\n  uint uVar5;\r\n  uint uVar6;\r\n  ushort uVar7;\r\n  longlong lVar8;\r\n  ulonglong uVar9;\r\n  ulonglong uVar10;\r\n  byte bVar11;\r\n  char cVar12;\r\n  char cVar14;\r\n  char cVar15;\r\n  char cVar16;\r\n  undefined1 auVar13 [16];\r\n  undefined1 auVar17 [16];\r\n  undefined1 auVar18 [16];\r\n  \r\n  if ((*param_2 != 0) && (param_2[9] != 0)) {\r\n    lVar2 = param_2[6];\r\n    bVar11 = (byte)(param_3 >> 0x39);\r\n    auVar13 = ZEXT216(CONCAT11(bVar11,bVar11));\r\n    auVar13 = pshuflw(auVar13,auVar13,0);\r\n    lVar8 = 0;\r\n    uVar9 = param_3;\r\n    while( true ) {\r\n      uVar9 = param_2[7] & uVar9;\r\n      auVar1 = *(undefined1 (*) [16])(lVar2 + uVar9);\r\n      cVar12 = auVar13[0];\r\n      auVar18[0] = -(auVar1[0] == cVar12);\r\n      cVar14 = auVar13[1];\r\n      auVar18[1] = -(auVar1[1] == cVar14);\r\n      cVar15 = auVar13[2];\r\n      auVar18[2] = -(auVar1[2] == cVar15);\r\n      cVar16 = auVar13[3];\r\n      auVar18[3] = -(auVar1[3] == cVar16);\r\n      auVar18[4] = -(auVar1[4] == cVar12);\r\n      auVar18[5] = -(auVar1[5] == cVar14);\r\n      auVar18[6] = -(auVar1[6] == cVar15);\r\n      auVar18[7] = -(auVar1[7] == cVar16);\r\n      auVar18[8] = -(auVar1[8] == cVar12);\r\n      auVar18[9] = -(auVar1[9] == cVar14);\r\n      auVar18[10] = -(auVar1[10] == cVar15);\r\n      auVar18[0xb] = -(auVar1[0xb] == cVar16);\r\n      auVar18[0xc] = -(auVar1[0xc] == cVar12);\r\n      auVar18[0xd] = -(auVar1[0xd] == cVar14);\r\n      auVar18[0xe] = -(auVar1[0xe] == cVar15);\r\n      auVar18[0xf] = -(auVar1[0xf] == cVar16);\r\n      uVar7 = (ushort)(SUB161(auVar18 >> 7,0) & 1) | (ushort)(SUB161(auVar18 >> 0xf,0) & 1) << 1 |\r\n              (ushort)(SUB161(auVar18 >> 0x17,0) & 1) << 2 |\r\n              (ushort)(SUB161(auVar18 >> 0x1f,0) & 1) << 3 |\r\n              (ushort)(SUB161(auVar18 >> 0x27,0) & 1) << 4 |\r\n              (ushort)(SUB161(auVar18 >> 0x2f,0) & 1) << 5 |\r\n              (ushort)(SUB161(auVar18 >> 0x37,0) & 1) << 6 |\r\n              (ushort)(SUB161(auVar18 >> 0x3f,0) & 1) << 7 |\r\n              (ushort)(SUB161(auVar18 >> 0x47,0) & 1) << 8 |\r\n              (ushort)(SUB161(auVar18 >> 0x4f,0) & 1) << 9 |\r\n              (ushort)(SUB161(auVar18 >> 0x57,0) & 1) << 10 |\r\n              (ushort)(SUB161(auVar18 >> 0x5f,0) & 1) << 0xb |\r\n              (ushort)(SUB161(auVar18 >> 0x67,0) & 1) << 0xc |\r\n              (ushort)(SUB161(auVar18 >> 0x6f,0) & 1) << 0xd |\r\n              (ushort)(SUB161(auVar18 >> 0x77,0) & 1) << 0xe | (ushort)(auVar18[0xf] >> 7) << 0xf;\r\n      uVar6 = (uint)uVar7;\r\n      while (uVar7 != 0) {\r\n        uVar4 = 0;\r\n        for (uVar5 = uVar6; (uVar5 & 1) == 0; uVar5 = uVar5 >> 1 | 0x80000000) {\r\n          uVar4 = uVar4 + 1;\r\n        }\r\n        uVar10 = uVar4 + uVar9 & param_2[7];\r\n        if (*(ulonglong *)(lVar2 + -0x10 + uVar10 * -0x10) == param_3) {\r\n          uVar9 = (ulonglong)*(uint *)(lVar2 + -8 + uVar10 * -0x10);\r\n          if (uVar9 <= (ulonglong)param_1[1]) {\r\n            *(undefined4 *)(*param_1 + uVar9) = param_4;\r\n            return;\r\n          }\r\n          FUN_1428d9830(uVar9,param_1[1],&UNK_142ab5bc0);\r\n          pcVar3 = (code *)swi(3);\r\n          (*pcVar3)();\r\n          return;\r\n        }\r\n        uVar7 = (ushort)(uVar6 - 1) & (ushort)uVar6;\r\n        uVar6 = CONCAT22((short)(uVar6 - 1 >> 0x10),uVar7);\r\n      }\r\n      auVar17[0] = -(auVar1[0] == -1);\r\n      auVar17[1] = -(auVar1[1] == -1);\r\n      auVar17[2] = -(auVar1[2] == -1);\r\n      auVar17[3] = -(auVar1[3] == -1);\r\n      auVar17[4] = -(auVar1[4] == -1);\r\n      auVar17[5] = -(auVar1[5] == -1);\r\n      auVar17[6] = -(auVar1[6] == -1);\r\n      auVar17[7] = -(auVar1[7] == -1);\r\n      auVar17[8] = -(auVar1[8] == -1);\r\n      auVar17[9] = -(auVar1[9] == -1);\r\n      auVar17[10] = -(auVar1[10] == -1);\r\n      auVar17[0xb] = -(auVar1[0xb] == -1);\r\n      auVar17[0xc] = -(auVar1[0xc] == -1);\r\n      auVar17[0xd] = -(auVar1[0xd] == -1);\r\n      auVar17[0xe] = -(auVar1[0xe] == -1);\r\n      auVar17[0xf] = -(auVar1[0xf] == -1);\r\n      if ((((((((((((((((SUB161(auVar17 >> 7,0) & 1) != 0 || (SUB161(auVar17 >> 0xf,0) & 1) != 0) ||\r\n                      (SUB161(auVar17 >> 0x17,0) & 1) != 0) || (SUB161(auVar17 >> 0x1f,0) & 1) != 0)\r\n                    || (SUB161(auVar17 >> 0x27,0) & 1) != 0) || (SUB161(auVar17 >> 0x2f,0) & 1) != 0\r\n                   ) || (SUB161(auVar17 >> 0x37,0) & 1) != 0) ||\r\n                 (SUB161(auVar17 >> 0x3f,0) & 1) != 0) || (SUB161(auVar17 >> 0x47,0) & 1) != 0) ||\r\n               (SUB161(auVar17 >> 0x4f,0) & 1) != 0) || (SUB161(auVar17 >> 0x57,0) & 1) != 0) ||\r\n             (SUB161(auVar17 >> 0x5f,0) & 1) != 0) || (SUB161(auVar17 >> 0x67,0) & 1) != 0) ||\r\n           (SUB161(auVar17 >> 0x6f,0) & 1) != 0) || (SUB161(auVar17 >> 0x77,0) & 1) != 0) ||\r\n          auVar17[0xf] < '\\0') break;\r\n      uVar9 = uVar9 + lVar8 + 0x10;\r\n      lVar8 = lVar8 + 0x10;\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+        "database": "ccscene_l1"
+      },
+      "result_sha256": "8bd73736b38b3f809ccc26f0ef3e8817f5271658149b69051f688582a36759f5",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 13,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x1409dca90"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:49:26.689Z",
+      "completed_at": "2026-10-12T10:49:32.242Z",
+      "source": "actual_mcp_call",
+      "cache_key": "20e0c2fcf306110442bd31018339077052e45ae3c195648208c8f5b522b055b7",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_1409dca90",
+        "address": "0x1409DCA90",
+        "decompiled_code": "\r\nvoid FUN_1409dca90(ulonglong *param_1,uint param_2,uint param_3,undefined4 param_4)\r\n\r\n{\r\n  int *piVar1;\r\n  longlong lVar2;\r\n  ulonglong uVar3;\r\n  code *pcVar4;\r\n  ulonglong uVar5;\r\n  char cVar6;\r\n  undefined4 uVar7;\r\n  longlong lVar8;\r\n  undefined4 *puVar9;\r\n  undefined4 uVar10;\r\n  char cVar11;\r\n  ulonglong uVar12;\r\n  char *pcVar13;\r\n  ulonglong uVar14;\r\n  char cStack_d5;\r\n  undefined4 uStack_d4;\r\n  uint uStack_d0;\r\n  uint uStack_cc;\r\n  ulonglong uStack_c8;\r\n  uint *puStack_c0;\r\n  code *pcStack_b8;\r\n  char *pcStack_b0;\r\n  undefined *puStack_a8;\r\n  undefined4 *puStack_a0;\r\n  code *pcStack_98;\r\n  char *pcStack_90;\r\n  undefined *puStack_88;\r\n  undefined4 *puStack_80;\r\n  code *pcStack_78;\r\n  undefined *puStack_70;\r\n  undefined8 uStack_68;\r\n  uint **ppuStack_60;\r\n  undefined8 uStack_58;\r\n  undefined8 uStack_50;\r\n  \r\n  cVar11 = (char)param_3;\r\n  uVar14 = *param_1;\r\n  cStack_d5 = cVar11;\r\n  uStack_d4 = param_4;\r\n  uStack_cc = param_2;\r\n  if (SBORROW8(0,uVar14)) {\r\ncode_r0x0001409dccdf:\r\n    FUN_1428d9310(&UNK_142ac3910);\r\n  }\r\n  else if ((ulonglong)param_2 < *(ulonglong *)(param_1[8] + 0x40)) {\r\n    lVar2 = *(longlong *)(param_1[8] + 0x38);\r\n    lVar8 = (ulonglong)param_2 * 0x10;\r\n    piVar1 = (int *)(lVar2 + lVar8);\r\n    uVar5 = param_1[9];\r\n    if (*(int *)(lVar2 + lVar8) != (int)uVar5) {\r\n      uVar12 = param_1[2];\r\n      goto code_r0x0001409dcbbe;\r\n    }\r\n    uVar3 = *(ulonglong *)(piVar1 + 2);\r\n    uVar12 = param_1[2];\r\n    uStack_d0 = param_2;\r\n    uStack_c8 = uVar14;\r\n    if (uVar12 <= uVar3) goto code_r0x0001409dccf7;\r\n    uVar14 = param_1[1];\r\n    puVar9 = (undefined4 *)(uVar14 + uVar3 * 0xc + 4);\r\n    if ((*(char *)(uVar14 + 8 + uVar3 * 0xc) == cVar11) &&\r\n       (cVar6 = func_0x000140bece60(puVar9,&uStack_d4), cVar6 != '\\0')) {\r\n      return;\r\n    }\r\n    pcVar13 = (char *)(uVar14 + uVar3 * 0xc + 8);\r\n    cVar6 = func_0x000140bece60(puVar9,&uStack_d4);\r\n    if (cVar6 == '\\0') {\r\ncode_r0x0001409dcb90:\r\n      if ((cVar11 == '7') && ((byte)(*pcVar13 - 0x19U) < 2)) {\r\ncode_r0x0001409dcba6:\r\n        *pcVar13 = '7';\r\n        uStack_d4 = 0;\r\n        *puVar9 = 0;\r\n        uVar14 = uStack_c8;\r\n        param_2 = uStack_d0;\r\ncode_r0x0001409dcbbe:\r\n        *piVar1 = (int)uVar5;\r\n        *(ulonglong *)(piVar1 + 2) = uVar12;\r\n        uVar10 = uStack_d4;\r\n        uVar7 = func_0x000140b25c90(param_3);\r\n        if (uVar12 == uVar14) {\r\n          FUN_140562cf0(param_1,&UNK_142ac3958);\r\n        }\r\n        uVar14 = param_1[1];\r\n        *(uint *)(uVar14 + uVar12 * 0xc) = param_2;\r\n        *(undefined4 *)(uVar14 + 4 + uVar12 * 0xc) = uVar7;\r\n        *(char *)(uVar14 + 8 + uVar12 * 0xc) = (char)uVar10;\r\n        param_1[2] = uVar12 + 1;\r\n        return;\r\n      }\r\n    }\r\n    else {\r\n      cVar6 = *pcVar13;\r\n      if (cVar6 == '\\x17') {\r\n        if (cVar11 == '\\x1d') {\r\ncode_r0x0001409dcc26:\r\n          *pcVar13 = '\\x1e';\r\n          return;\r\n        }\r\n      }\r\n      else if (cVar6 == '\\x1a') {\r\n        if (cVar11 == '\\x02') {\r\n          *pcVar13 = '\\x02';\r\n          return;\r\n        }\r\n        if ((param_3 & 0xff) == 0x37) goto code_r0x0001409dcba6;\r\n      }\r\n      else {\r\n        if (cVar6 != '\\x1d') goto code_r0x0001409dcb90;\r\n        if (cVar11 == '\\x17') goto code_r0x0001409dcc26;\r\n      }\r\n    }\r\n    puStack_c0 = &uStack_cc;\r\n    pcStack_b8 = FUN_1409dc5d0;\r\n    puStack_a8 = &UNK_1409dc5a0;\r\n    pcStack_98 = FUN_1409dc6e0;\r\n    pcStack_90 = &cStack_d5;\r\n    puStack_88 = &UNK_1409dc5a0;\r\n    pcStack_78 = FUN_1409dc6e0;\r\n    puStack_70 = &UNK_142ac3a00;\r\n    uStack_68 = 6;\r\n    uStack_50 = 0;\r\n    ppuStack_60 = &puStack_c0;\r\n    uStack_58 = 5;\r\n    pcStack_b0 = pcVar13;\r\n    puStack_a0 = puVar9;\r\n    puStack_80 = &uStack_d4;\r\n    FUN_1428d9390(&puStack_70,&UNK_142ac3a60);\r\n    goto code_r0x0001409dccdf;\r\n  }\r\n  FUN_1428d9518();\r\ncode_r0x0001409dccf7:\r\n  FUN_1428d9518();\r\n  pcVar4 = (code *)swi(3);\r\n  (*pcVar4)();\r\n  return;\r\n}\r\n\r\n",
+        "database": "ccscene_l1"
+      },
+      "result_sha256": "d5ee76da7bb3e344b177b293c20e333e6b3a66b0b1680eaca75c4cef61187cf3",
+      "ok": true
+    },
+    {
+      "index": 2,
+      "position": 14,
+      "tool": "get_strings",
+      "args": {
+        "filter": "raster"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:49:26.689Z",
+      "completed_at": "2026-10-12T10:49:32.242Z",
+      "source": "actual_mcp_call",
+      "cache_key": "20e0c2fcf306110442bd31018339077052e45ae3c195648208c8f5b522b055b7",
+      "cache_eligible": false,
+      "error": "1 validation error for call[get_strings]\nfilter\n  Unexpected keyword argument [type=unexpected_keyword_argument, input_value='raster', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.14/v/unexpected_keyword_argument",
+      "ok": false
+    },
+    {
+      "index": 2,
+      "position": 15,
+      "tool": "get_strings",
+      "args": {
+        "filter": "terrain"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:49:26.689Z",
+      "completed_at": "2026-10-12T10:49:32.242Z",
+      "source": "actual_mcp_call",
+      "cache_key": "20e0c2fcf306110442bd31018339077052e45ae3c195648208c8f5b522b055b7",
+      "cache_eligible": false,
+      "error": "1 validation error for call[get_strings]\nfilter\n  Unexpected keyword argument [type=unexpected_keyword_argument, input_value='terrain', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.14/v/unexpected_keyword_argument",
+      "ok": false
+    }
+  ],
+  "cleanup": [
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "ccscene_l1",
+        "save": false
+      },
+      "cleanup": true,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"ccscene_l1\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "ccscene_l1"
+        },
+        "isError": false
+      },
+      "ok": true
+    }
+  ],
+  "lock_events": [
+    {
+      "event": "lock_removed",
+      "reason": "per-database workers own separate Ghidra projects; a shared session lock is no longer required"
+    }
+  ],
+  "ok": false,
+  "evidence_limits": [
+    "Static tool outputs do not prove runtime execution.",
+    "Xref completeness is unknown with auto-analysis disabled. Empty or DATA-only references cannot establish whole-program absence.",
+    "Successful cache reuse preserves the original evidence coverage; it does not expand it."
+  ],
+  "cache_policy": {
+    "enabled": false,
+    "reason": "Database analysis cache disabled: both provider_manifest and database_snapshot files are required.",
+    "provider_version_provenance": "job-declared; actual server self-report is recorded separately upon connection"
+  },
+  "identity": {
+    "target": {
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+      "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+    },
+    "provider": {
+      "id": "ghidra",
+      "version": "12.1.4"
+    },
+    "launch_sha256": "c82cc6dd6f528a9f07990202b685f0802e0833733774283e9a497bc4cef41aad",
+    "inputs": []
+  },
+  "job_sha256": "c0f735f543d2f7150b7b090d67d1f7ab95d471e4fceeac013dc583cf7c6eaa12",
+  "actual_server": {
+    "name": "Ghidra",
+    "version": "3.4.8"
+  },
+  "server_capabilities": {
+    "experimental": {},
+    "logging": {},
+    "prompts": {
+      "listChanged": false
+    },
+    "resources": {
+      "subscribe": false,
+      "listChanged": false
+    },
+    "tools": {
+      "listChanged": true
+    },
+    "extensions": {
+      "io.modelcontextprotocol/ui": {}
+    }
+  },
+  "catalog": [
+    {
+      "tools": [
+        {
+          "name": "close_database",
+          "title": "Close Database",
+          "description": "Close a database and terminate its worker process.\n\nSpecify *database* when multiple are open. Fails if the DB is\nnot attached to the current session unless force=True. When other\nsessions still use the DB, detaches this session but keeps the\nworker alive.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "save": {
+                "default": true,
+                "type": "boolean"
+              },
+              "force": {
+                "default": false,
+                "type": "boolean"
+              },
+              "database": {
+                "default": "",
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "annotations": {
+            "title": "Close Database"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": []
+            }
+          }
+        },
+        {
+          "name": "save_database",
+          "title": "Save Database",
+          "description": "Save the current database to disk (may take minutes for large DBs).\n\nSpecify *database* when multiple are open. Fails if the DB is\nnot attached to the current session unless force=True. Progress\nnotifications are sent every 5s during long saves.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "outfile": {
+                "default": "",
+                "type": "string"
+              },
+              "flags": {
+                "default": -1,
+                "type": "integer"
+              },
+              "force": {
+                "default": false,
+                "type": "boolean"
+              },
+              "database": {
+                "default": "",
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "annotations": {
+            "title": "Save Database"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": []
+            }
+          }
+        },
+        {
+          "name": "list_databases",
+          "title": "List Databases",
+          "description": "List all open databases with metadata (includes opening/analyzing status).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "annotations": {
+            "title": "List Databases"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": []
+            }
+          }
+        },
+        {
+          "name": "wait_for_analysis",
+          "title": "Wait for Analysis",
+          "description": "Block until database(s) finish opening and optional auto-analysis.\n\n**Single:** pass ``database`` to wait for one DB.\n**Multi:** pass ``databases`` list — returns when **at least one**\nis ready. Work on the ready one, call again for the rest.\n\nWhile analysis runs, the backend thread is blocked — tool calls queue.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "default": "",
+                "type": "string",
+                "description": "Single database ID to wait for."
+              },
+              "databases": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "List of database IDs (returns when first is ready)."
+              }
+            },
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "annotations": {
+            "title": "Wait for Analysis"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": []
+            }
+          }
+        },
+        {
+          "name": "list_targets",
+          "title": "List Targets",
+          "description": "List available targets (processors, loaders, languages, etc.).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "annotations": {
+            "title": "List Targets"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": []
+            }
+          }
+        },
+        {
+          "name": "open_database",
+          "title": "Open Database",
+          "description": "Open a binary for analysis with Ghidra.\n\nReturns immediately with ``\"opening\": true`` — call\nwait_for_analysis before using other tools on this database.\n\nAn explicit ``database_id`` always opens a worker of its own, so\ndistinct ids open the *same* file several times and let those\nworkers analyze it concurrently (up to the configured maximum).\nWithout ``database_id``, re-opening the same file returns the\nexisting worker.\n\n**Multiple binaries:** use a separate subagent per binary.\n\n**force_new=True** is destructive: deletes existing Ghidra\nproject and all prior analysis.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "file_path": {
+                "type": "string",
+                "description": "Path to the binary file."
+              },
+              "run_auto_analysis": {
+                "default": false,
+                "type": "boolean",
+                "description": "Run Ghidra auto-analysis after opening."
+              },
+              "keep_open": {
+                "default": true,
+                "type": "boolean",
+                "description": "Keep other open databases (default True)."
+              },
+              "database_id": {
+                "default": "",
+                "type": "string",
+                "description": "Custom ID (must match [a-z][a-z0-9_]{0,31}).\nReusing an id that is already open is rejected; a new id\nfor an already-open path opens an additional worker."
+              },
+              "force_new": {
+                "default": false,
+                "type": "boolean",
+                "description": "Delete existing project and start fresh. With no\ndatabase_id it replaces the path's worker; it does not by\nitself create a second one."
+              },
+              "language": {
+                "default": "",
+                "type": "string",
+                "description": "Ghidra language ID (e.g. ``x86:LE:64:default``,\n      ``ARM:LE:32:v8``). Auto-detected when omitted.\n      Use list_targets to see options."
+              },
+              "compiler_spec": {
+                "default": "",
+                "type": "string",
+                "description": "Ghidra compiler spec (e.g. ``gcc``,\n           ``windows``). Auto-detected when omitted."
+              }
+            },
+            "required": [
+              "file_path"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "annotations": {
+            "title": "Open Database"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": []
+            }
+          }
+        },
+        {
+          "name": "set_comment",
+          "title": "Set Comment",
+          "description": "Set a comment at an address.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "Address (hex string, decimal, or symbol name).",
+                "type": "string"
+              },
+              "comment": {
+                "type": "string",
+                "description": "Comment text (empty string to clear)."
+              },
+              "comment_type": {
+                "default": "eol",
+                "type": "string",
+                "description": "One of \"eol\", \"pre\", \"post\", \"plate\", \"repeatable\"."
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "address",
+              "comment",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string"
+              },
+              "comment_type": {
+                "type": "string"
+              },
+              "comment": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "address",
+              "comment_type",
+              "comment",
+              "status"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "comments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "set_decompiler_comment",
+          "title": "Set Decompiler Comment",
+          "description": "Set a pre-comment at an address (visible in decompiler output).\n\nThis sets a PRE comment, which Ghidra's decompiler renders\nabove the corresponding line in the pseudocode.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "Address (hex string, decimal, or symbol name).",
+                "type": "string"
+              },
+              "comment": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "address",
+              "comment",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string"
+              },
+              "comment_type": {
+                "type": "string"
+              },
+              "comment": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "address",
+              "comment_type",
+              "comment",
+              "status"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "comments",
+                "decompiler"
+              ]
+            }
+          }
+        },
+        {
+          "name": "get_database_info",
+          "title": "Get Database Info",
+          "description": "Get metadata about the currently open database.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "file_path": {
+                "description": "Path to the binary.",
+                "type": "string"
+              },
+              "file_type": {
+                "description": "File format.",
+                "type": "string"
+              },
+              "processor": {
+                "description": "Processor/language.",
+                "type": "string"
+              },
+              "compiler_spec": {
+                "description": "Compiler specification.",
+                "type": "string"
+              },
+              "bitness": {
+                "description": "Address size in bits.",
+                "type": "integer"
+              },
+              "endian": {
+                "description": "Byte order (big/little).",
+                "type": "string"
+              },
+              "min_address": {
+                "description": "Minimum address (hex).",
+                "type": "string"
+              },
+              "max_address": {
+                "description": "Maximum address (hex).",
+                "type": "string"
+              },
+              "image_base": {
+                "description": "Image base address (hex).",
+                "type": "string"
+              },
+              "function_count": {
+                "description": "Number of functions.",
+                "type": "integer"
+              },
+              "segment_count": {
+                "description": "Number of memory blocks.",
+                "type": "integer"
+              },
+              "entry_point_count": {
+                "description": "Number of entry points.",
+                "type": "integer"
+              },
+              "capabilities": {
+                "additionalProperties": {
+                  "type": "boolean"
+                },
+                "description": "Available capabilities.",
+                "type": "object"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "file_path",
+              "file_type",
+              "processor",
+              "compiler_spec",
+              "bitness",
+              "endian",
+              "min_address",
+              "max_address",
+              "image_base",
+              "function_count",
+              "segment_count",
+              "entry_point_count",
+              "capabilities"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "database"
+              ]
+            }
+          }
+        },
+        {
+          "name": "list_functions",
+          "title": "List Functions",
+          "description": "List all functions in the database, paginated with optional regex filter.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "offset": {
+                "default": 0,
+                "description": "Pagination offset.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "limit": {
+                "default": 100,
+                "description": "Maximum number of results.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "filter_pattern": {
+                "default": "",
+                "description": "Optional regex to filter results.",
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "additionalProperties": true
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "functions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "decompile_function",
+          "title": "Decompile Function",
+          "description": "Decompile a function to C pseudocode using Ghidra's decompiler.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "Address (hex string, decimal, or symbol name).",
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "address",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "function_name": {
+                "type": "string"
+              },
+              "address": {
+                "type": "string"
+              },
+              "decompiled_code": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "function_name",
+              "address",
+              "decompiled_code"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "decompiler",
+                "functions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "disassemble_function",
+          "title": "Disassemble Function",
+          "description": "Disassemble a function into individual instructions.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "Address (hex string, decimal, or symbol name).",
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "address",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "function_name": {
+                "type": "string"
+              },
+              "start": {
+                "type": "string"
+              },
+              "end": {
+                "type": "string"
+              },
+              "instruction_count": {
+                "type": "integer"
+              },
+              "instructions": {
+                "items": {
+                  "properties": {
+                    "address": {
+                      "type": "string"
+                    },
+                    "bytes": {
+                      "type": "string"
+                    },
+                    "mnemonic": {
+                      "type": "string"
+                    },
+                    "operands": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "address",
+                    "bytes",
+                    "mnemonic",
+                    "operands"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "function_name",
+              "start",
+              "end",
+              "instruction_count",
+              "instructions"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "functions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "rename_function",
+          "title": "Rename Function",
+          "description": "Rename a function.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "Address (hex string, decimal, or symbol name).",
+                "type": "string"
+              },
+              "new_name": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "address",
+              "new_name",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "Address of the renamed item (hex).",
+                "type": "string"
+              },
+              "old_name": {
+                "description": "Previous name.",
+                "type": "string"
+              },
+              "new_name": {
+                "description": "New name.",
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "address",
+              "old_name",
+              "new_name"
+            ],
+            "description": "Result of a rename operation."
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "functions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "list_names",
+          "title": "List Names",
+          "description": "List all named locations, paginated with optional regex filter.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "offset": {
+                "default": 0,
+                "description": "Pagination offset.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "limit": {
+                "default": 100,
+                "description": "Maximum number of results.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "filter_pattern": {
+                "default": "",
+                "description": "Optional regex to filter results.",
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "additionalProperties": true
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "names"
+              ]
+            }
+          }
+        },
+        {
+          "name": "get_strings",
+          "title": "Get Strings",
+          "description": "Get defined strings from the database with optional regex filter.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "offset": {
+                "default": 0,
+                "description": "Pagination offset.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "limit": {
+                "default": 100,
+                "description": "Maximum number of results.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "filter_pattern": {
+                "default": "",
+                "description": "Optional regex to filter results.",
+                "type": "string"
+              },
+              "min_length": {
+                "default": 4,
+                "type": "integer"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "additionalProperties": true
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "search",
+                "strings"
+              ]
+            }
+          }
+        },
+        {
+          "name": "find_code_by_string",
+          "title": "Find Code By String",
+          "description": "Find code references to strings matching a regex pattern.\n\nCombines string search + xref resolution + function lookup.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "pattern": {
+                "type": "string"
+              },
+              "offset": {
+                "default": 0,
+                "description": "Pagination offset.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "limit": {
+                "default": 50,
+                "description": "Maximum number of results.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "pattern",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "additionalProperties": true
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "search",
+                "strings"
+              ]
+            }
+          }
+        },
+        {
+          "name": "list_structures",
+          "title": "List Structures",
+          "description": "List all structures and unions in the database.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "offset": {
+                "default": 0,
+                "description": "Pagination offset.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "limit": {
+                "default": 100,
+                "description": "Maximum number of results.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "filter_pattern": {
+                "default": "",
+                "description": "Optional regex to filter results.",
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "additionalProperties": true
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "structs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "get_structure",
+          "title": "Get Structure",
+          "description": "Get detailed structure info including all members.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "name",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "size": {
+                "type": "integer"
+              },
+              "is_union": {
+                "type": "boolean"
+              },
+              "category": {
+                "type": "string"
+              },
+              "members": {
+                "items": {
+                  "properties": {
+                    "offset": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "size": {
+                      "type": "integer"
+                    },
+                    "comment": {
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "offset",
+                    "name",
+                    "type",
+                    "size"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "name",
+              "size",
+              "is_union",
+              "category",
+              "members"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "structs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "create_structure",
+          "title": "Create Structure",
+          "description": "Create a new structure or union.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "is_union": {
+                "default": false,
+                "type": "boolean"
+              },
+              "size": {
+                "default": 0,
+                "type": "integer"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "name",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "is_union": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "name",
+              "is_union",
+              "status"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "structs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "add_struct_member",
+          "title": "Add Struct Member",
+          "description": "Add a member to a structure.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "struct_name": {
+                "type": "string",
+                "description": "Name of the structure."
+              },
+              "member_name": {
+                "type": "string",
+                "description": "Name for the new member."
+              },
+              "member_type": {
+                "default": "byte",
+                "type": "string",
+                "description": "C type of the member (e.g. \"int\", \"char *\")."
+              },
+              "offset": {
+                "default": -1,
+                "type": "integer",
+                "description": "Byte offset (-1 to append at end)."
+              },
+              "size": {
+                "default": 0,
+                "type": "integer",
+                "description": "Size in bytes (0 to auto-detect from type)."
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "struct_name",
+              "member_name",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "struct_name": {
+                "type": "string"
+              },
+              "member_name": {
+                "type": "string"
+              },
+              "offset": {
+                "type": "integer"
+              },
+              "type": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "struct_name",
+              "member_name",
+              "offset",
+              "type",
+              "status"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "structs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "retype_struct_member",
+          "title": "Retype Struct Member",
+          "description": "Change the type of a structure member.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "struct_name": {
+                "type": "string"
+              },
+              "member_name": {
+                "type": "string"
+              },
+              "new_type": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "struct_name",
+              "member_name",
+              "new_type",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "struct_name": {
+                "type": "string"
+              },
+              "member_name": {
+                "type": "string"
+              },
+              "old_type": {
+                "type": "string"
+              },
+              "new_type": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "struct_name",
+              "member_name",
+              "old_type",
+              "new_type",
+              "status"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "structs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "get_type_info",
+          "title": "Get Type Info",
+          "description": "Get type information at an address.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "Address (hex string, decimal, or symbol name).",
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "address",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string"
+              },
+              "type_name": {
+                "default": "",
+                "type": "string"
+              },
+              "type_size": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "function_signature": {
+                "default": "",
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "address"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "types"
+              ]
+            }
+          }
+        },
+        {
+          "name": "set_type",
+          "title": "Set Type",
+          "description": "Apply a data type at an address.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "Address (hex string, decimal, or symbol name).",
+                "type": "string"
+              },
+              "type_string": {
+                "type": "string",
+                "description": "C type string (e.g. \"int\", \"char *\", \"struct foo\")."
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "address",
+              "type_string",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string"
+              },
+              "type_name": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "address",
+              "type_name",
+              "status"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "types"
+              ]
+            }
+          }
+        },
+        {
+          "name": "list_local_types",
+          "title": "List Local Types",
+          "description": "List locally defined data types.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "offset": {
+                "default": 0,
+                "description": "Pagination offset.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "limit": {
+                "default": 100,
+                "description": "Maximum number of results.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "filter_pattern": {
+                "default": "",
+                "description": "Optional regex to filter results.",
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "additionalProperties": true
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "types"
+              ]
+            }
+          }
+        },
+        {
+          "name": "parse_type_declaration",
+          "title": "Parse Type Declaration",
+          "description": "Parse a C type declaration and add it to the program's type library.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "declaration": {
+                "type": "string",
+                "description": "C declaration (e.g. \"typedef int DWORD;\" or\n         \"struct point { int x; int y; };\")."
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "declaration",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "type_name": {
+                "type": "string"
+              },
+              "size": {
+                "type": "integer"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "type_name",
+              "size",
+              "kind",
+              "status"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "types"
+              ]
+            }
+          }
+        },
+        {
+          "name": "apply_type_at_address",
+          "title": "Apply Type At Address",
+          "description": "Apply a named type from the type library at an address.\n\nThe type must already exist (defined via parse_type_declaration\nor present in the program's built-in types).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "Address (hex string, decimal, or symbol name).",
+                "type": "string"
+              },
+              "type_name": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "address",
+              "type_name",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string"
+              },
+              "type_name": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "required": [
+              "address",
+              "type_name",
+              "status"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "types"
+              ]
+            }
+          }
+        },
+        {
+          "name": "get_xrefs_to",
+          "title": "Get Xrefs To",
+          "description": "Get all cross-references pointing TO an address.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "Address (hex string, decimal, or symbol name).",
+                "type": "string"
+              },
+              "offset": {
+                "default": 0,
+                "description": "Pagination offset.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "limit": {
+                "default": 100,
+                "description": "Maximum number of results.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "address",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "additionalProperties": true
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "xrefs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "get_xrefs_from",
+          "title": "Get Xrefs From",
+          "description": "Get all cross-references FROM an address.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "description": "Address (hex string, decimal, or symbol name).",
+                "type": "string"
+              },
+              "offset": {
+                "default": 0,
+                "description": "Pagination offset.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "limit": {
+                "default": 100,
+                "description": "Maximum number of results.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "database": {
+                "type": "string",
+                "description": "Database to target (stem ID from open_database / list_databases)."
+              }
+            },
+            "required": [
+              "address",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "string",
+                "description": "Database identifier."
+              }
+            },
+            "additionalProperties": true
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          },
+          "execution": {
+            "taskSupport": "optional"
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": [
+                "xrefs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "search_tools",
+          "description": "Search hidden tools by regex (pinned tools excluded; use ``.*`` for all).\n\nReturns one-line signatures by default. Use ``detail=\"detailed\"``\nfor parameter schemas, or follow up with ``get_schema(tools=[...])``.\n\nHidden tools must be called via **call**, **batch**, or **execute**\n— direct calls will fail because they are not in the client tool list.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "pattern": {
+                "description": "Regex pattern to match against tool names, descriptions, and tags",
+                "type": "string"
+              },
+              "detail": {
+                "default": "brief",
+                "description": "'brief' (default) for a one-line signature + summary per tool, 'detailed' for parameter schemas as markdown, 'full' for complete JSON schemas",
+                "enum": [
+                  "brief",
+                  "detailed",
+                  "full"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "pattern"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "result": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "x-fastmcp-wrap-result": true
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": []
+            }
+          }
+        },
+        {
+          "name": "get_schema",
+          "description": "Get parameter schemas for specific tools by name (pinned and hidden).\n\nUse after search_tools or before execute/batch to check parameter\ntypes and return shapes. Pass ``detail=\"full\"`` for complete JSON schemas.\n\nHidden tools must be called via **call**, **batch**, or **execute**\n— direct calls will fail because they are not in the client tool list.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "tools": {
+                "description": "Tool names to get schemas for.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "detail": {
+                "default": "detailed",
+                "description": "'brief' for a one-line signature + summary per tool, 'detailed' for parameter schemas as markdown (default), 'full' for complete JSON schemas",
+                "enum": [
+                  "brief",
+                  "detailed",
+                  "full"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "tools"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "result": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "x-fastmcp-wrap-result": true
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": []
+            }
+          }
+        },
+        {
+          "name": "execute",
+          "description": "Run Python code that chains tool calls. Use `await invoke(name, params)` to call tools; use `return` to produce output.\n\n`database` is auto-injected into every `invoke` — omit it from params. Override per-call with explicit `database` for cross-database work.\n\n## When NOT to use execute\n\n- **Single tool call** → use the **call** meta-tool (or the direct tool if pinned).\n- **N independent calls** → use `batch` (lower overhead, per-item errors).\n  → Otherwise, use the **batch** meta-tool for sequential multi-tool\n    execution with per-item error collection and progress reporting.\n- Check if a tool has a built-in batch parameter first (e.g. get_strings `filters=[...]`).\n\n## When to use execute\n\n**Multi-step pipelines** — chaining one tool's output into another:\n```\ndecomp = await invoke(\"decompile_function\", {\"address\": \"0x1234\"})\naddrs = re.findall(r'sub_([0-9A-Fa-f]+)', decomp[\"pseudocode\"])\nxrefs = [await invoke(\"get_xrefs_to\", {\"address\": f\"0x{a}\"}) for a in addrs]\nreturn {\"decomp\": decomp, \"xrefs\": xrefs}\n```\n\n**Cross-database parallel queries** — use asyncio.gather with explicit `database` params. Same-database calls are serialized by the worker.\n\n## Reference\n\n- **Blocked tools:** open_database, close_database, wait_for_analysis, list_targets, and meta-tools (search_tools, get_schema, execute, batch, call) must be called directly. save_database and list_databases are allowed.\n- **Addresses** are strings: \"0x401000\", \"4010a0\", or symbol names.\n- **filter_pattern** is Python regex — use `re.escape()` for literals.\n- **Available imports:** asyncio, collections, functools, itertools, json, math, operator, re, struct, typing. No FS/network I/O.\n- **Paginated results** have `items`, `total`, `offset`, `limit`, `has_more` — always check `has_more`.\n- Use `get_schema(tools=[...])` to look up parameter names and types.\n- **Return only what you need** — filter before returning to save context.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "description": "Python async code to execute tool calls via invoke(name, arguments)",
+                "type": "string"
+              },
+              "database": {
+                "description": "Database to target (stem ID from open_database). Available as `database` variable in code and auto-injected into invoke params. Individual calls can override by passing `database` explicitly.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": []
+            }
+          }
+        },
+        {
+          "name": "batch",
+          "description": "Run 2+ independent tool calls in a single request with per-item error collection.\n\nPreferred over `execute` for independent calls (no sandbox overhead).\nExamples: decompile/disassemble N functions, rename N symbols, set N\ncomments, fetch N xrefs.\n\nUse `execute` only when chaining one tool's output into another.\n\n`database` is auto-injected into each operation — omit from params.\nOverride per-operation with explicit `database` for cross-DB work.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "operations": {
+                "description": "List of tool calls to execute sequentially (max 50).",
+                "items": {
+                  "description": "A single operation in a batch request.",
+                  "properties": {
+                    "tool": {
+                      "description": "Tool name to call.",
+                      "type": "string"
+                    },
+                    "params": {
+                      "additionalProperties": true,
+                      "description": "Tool parameters.",
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "tool"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              "database": {
+                "description": "Database to target (stem ID from open_database). Auto-injected into each operation's params. Individual operations can override by including `database` in their params.",
+                "type": "string"
+              },
+              "stop_on_error": {
+                "default": true,
+                "description": "Stop on first error instead of continuing.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "operations",
+              "database"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "results": {
+                "description": "Per-operation results.",
+                "items": {
+                  "description": "Result of one operation in a batch.",
+                  "properties": {
+                    "index": {
+                      "description": "0-based position in the input list.",
+                      "type": "integer"
+                    },
+                    "tool": {
+                      "description": "Tool that was called.",
+                      "type": "string"
+                    },
+                    "result": {
+                      "default": null,
+                      "description": "Tool result on success, null on error.",
+                      "title": "Result"
+                    },
+                    "error": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Error message if this item failed."
+                    }
+                  },
+                  "required": [
+                    "index",
+                    "tool"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "succeeded": {
+                "description": "Number of successful operations.",
+                "type": "integer"
+              },
+              "failed": {
+                "description": "Number of failed operations.",
+                "type": "integer"
+              },
+              "cancelled": {
+                "default": false,
+                "description": "Whether batch stopped before completing all operations (stop_on_error or client cancellation).",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "results",
+              "succeeded",
+              "failed"
+            ],
+            "description": "Result of a batch execution."
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": []
+            }
+          }
+        },
+        {
+          "name": "call",
+          "description": "Call any tool by name, including hidden tools not in the client tool list.\n\nUse for single hidden-tool calls. For multiple calls, prefer **batch**.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "tool": {
+                "description": "Tool name to call.",
+                "type": "string"
+              },
+              "arguments": {
+                "additionalProperties": true,
+                "description": "Arguments to pass to the tool.",
+                "type": "object"
+              },
+              "database": {
+                "default": "",
+                "description": "Database to target (stem ID from open_database). Auto-injected into arguments unless already present.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "tool"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "result": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "x-fastmcp-wrap-result": true
+          },
+          "_meta": {
+            "fastmcp": {
+              "tags": []
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "error": "Error: batch operations failed: get_strings, get_strings",
+  "cleanup_ok": true,
+  "completed_at": "2026-10-12T10:49:32.946Z"
+}

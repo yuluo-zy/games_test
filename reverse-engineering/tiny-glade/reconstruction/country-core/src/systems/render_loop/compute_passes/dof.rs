@@ -1,0 +1,711 @@
+//! `dof.rs` — Depth-of-field compute chain（W49 `dof_prepare`，W51 `calc_dof`）。
+//!
+//! # 来源（O）
+//! * `dof_prepare` 0x140a5a020（1347 B）、`calc_dof` 0x140a5a570（12099 B，含内联的 multires 链）、
+//!   5 个 `AsComputeShaderSource` 实现 `impl$3/7/11/15/19`（0x140a5d4f0 起，各 1131 B）、
+//!   `enum_iterator::All<IndirectArgsType>` 的 `from_iter` 闭包 0x1412fdad0。
+//! * 源 HLSL：`reconstruction/shader-source/shaders/dof/*.cs.hlsl`；所有 `movabs r8` 的绑定名都已由 FNV-1a 反解
+//!   （见 `pass_kit::binding_hash`）。
+//!
+//! # `dof_prepare`（O）
+//! 两个 RG 纹理：`"CoC"`（`extent_2d(depth)`，格式 `0x4c`）与 `"CoC tiles"`（CoC 的 `div_up_extent([8,8,1])`，
+//! 格式 `0x53`）；pass `"DoF prepare"` = `/dof/prepare.cs.hlsl`：`depth_tex`(0x19)、`autofocus_buf`（只读 SSBO）、
+//! `coc_out_tex`(0x32)、`tile_output_tex`(0x32)，`dispatch_2d(depth.w, depth.h)`。
+//!
+//! # `calc_dof`（O）
+//! 全局开关 `*0x14362c080`（=`multires`）：
+//! * 关：`"dof output"`（颜色 extent，格式 `0x7a`）+ 单 pass `"Depth of field"` = `/dof/fused.cs.hlsl`，
+//!   绑定 `color_tex/coc_tex/depth_tex/blue_noise_texture`（磁盘纹理）/`img_output`(0x32) + uniform
+//!   `bokeh_anisotropy`，`dispatch_2d(color.w, color.h)`。
+//! * 开：见 [`calc_dof_multires`]。
+//!
+//! # 偏离
+//! * 5 个 DoF 源类型各带一个 `quality: u32`（O：`as_compute_pipeline` 里 `PERM_quality = {quality}`），
+//!   `source_hash = calculate_hash(&(uri:entry, &self))`（O：`0x140a5d4c0` 等）。`PERM_quality` 经
+//!   `AsComputeShaderSource::pipeline_defines`（B 阶段 i_api 追加）进入 `ComputePipelineDesc.defines`。
+//! * 磁盘纹理 `blue_noise_texture` = 真实 `TextureFromDisk(0x579f39ab91a01865)`（`pass_kit::BLUE_NOISE`，A4 外部描述符路径，
+//!   不登记 RG 访问）；不再由调用方传已解析的 `RgTexture`。
+
+use crate::asset_libraries::ssbo_library::SsboType as LibrarySsbo;
+use crate::render::pass_builder::compute_pass_builder::{ExternalSlot, RecordedComputePass};
+use crate::render::pass_builder::pass_resource_access::RgTexture;
+use crate::render::pass_builder::shader_uri::{
+    AsComputeShaderSource, ComputeShaderSource, ShaderDefValue, ShaderDefine, ShaderUri, perm_define,
+};
+use crate::rhapsody_contract::PassResourceSlot;
+use crate::rhapsody_types::TextureDesc;
+
+use super::pass_kit::{BLUE_NOISE, DynSource, PassEnv, binding_hash, div_up_extent, extent_xy, half_res, imm};
+
+// ---------------------------------------------------------------- 绑定名 / 访问码
+
+pub const H_DEPTH_TEX: u64 = binding_hash("depth_tex");
+pub const H_COLOR_TEX: u64 = binding_hash("color_tex");
+pub const H_COC_TEX: u64 = binding_hash("coc_tex");
+pub const H_COC_OUT_TEX: u64 = binding_hash("coc_out_tex");
+pub const H_TILE_OUTPUT_TEX: u64 = binding_hash("tile_output_tex");
+pub const H_AUTOFOCUS_BUF: u64 = binding_hash("autofocus_buf");
+pub const H_BLUE_NOISE: u64 = binding_hash("blue_noise_texture");
+pub const H_IMG_OUTPUT: u64 = binding_hash("img_output");
+pub const H_BOKEH_ANISOTROPY: u64 = binding_hash("bokeh_anisotropy");
+pub const H_COC_TILES_TEX: u64 = binding_hash("coc_tiles_tex");
+pub const H_COC_TILES_DILATED_TEX: u64 = binding_hash("coc_tiles_dilated_tex");
+pub const H_TILE_OFFSETS_BUFFER: u64 = binding_hash("tile_offsets_buffer");
+pub const H_TILE_COORDS_BUFFER: u64 = binding_hash("tile_coords_buffer");
+pub const H_DISPATCH_ARGS_BUFFER: u64 = binding_hash("dispatch_args_buffer");
+pub const H_TILE_OFFSETS_INITIAL: u64 = binding_hash("tile_offsets_initial_values");
+pub const H_SPATIAL_RESOLVE_OFFSETS: u64 = binding_hash("spatial_resolve_offsets");
+pub const H_HALFRES_TEX: u64 = binding_hash("halfres_tex");
+
+/// 采样读 / 存储写（O：`r9b = 0x19 / 0x32`）。
+pub const ACCESS_READ: u8 = 0x19;
+pub const ACCESS_WRITE: u8 = 0x32;
+/// 全局 multires 开关的地址（O：`cmp byte ptr [0x14362c080], 0`）。
+pub const MULTIRES_FLAG_ADDR: u64 = 0x1_4362_c080;
+
+// ---------------------------------------------------------------- 着色器源（5 个实现）
+
+/// 5 种 DoF 源的共同面：URI（含入口，O 的 `source_hash` 字符串）+ `PERM_quality`。
+pub trait DofSource {
+    /// `path:entry`（O：`source_hash` 里 `calculate_hash((&str, &self))` 的字符串）。
+    fn uri_with_entry(&self) -> &'static str;
+    fn quality(&self) -> u32;
+}
+
+macro_rules! dof_source {
+    ($name:ident, $uri:literal, $doc:literal) => {
+        #[doc = $doc]
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+        pub struct $name {
+            pub quality: u32,
+        }
+        impl DofSource for $name {
+            fn uri_with_entry(&self) -> &'static str {
+                $uri
+            }
+            fn quality(&self) -> u32 {
+                self.quality
+            }
+        }
+        impl AsComputeShaderSource for $name {
+            /// O：`calculate_hash(&(uri:entry, &self))`（含 `quality` 字段）。
+            fn source_hash(&self) -> u64 {
+                crate::render::utils::calculate_hash(&(self.uri_with_entry(), self))
+            }
+            fn as_compute_pipeline(&self) -> ComputeShaderSource<'_> {
+                ComputeShaderSource {
+                    uri: ShaderUri::parse(self.uri_with_entry()),
+                    defs: ShaderDefValue::default(),
+                }
+            }
+            /// `as_compute_pipeline` 里的 `defines`：`[("PERM_quality", quality)]`（O：`grow_one` 一次 + `u32` Display）；
+            /// 经 `ComputePass::new` 进入 `ComputePipelineDesc.defines`。
+            fn pipeline_defines(&self) -> Vec<ShaderDefine> {
+                vec![perm_define("PERM_quality", self.quality)]
+            }
+        }
+    };
+}
+
+dof_source!(
+    FullResAllLod0Dof,
+    "/dof/fullres_all_lod0.cs.hlsl:cs_main",
+    "`impl$3`（0x140a5d4f0）。"
+);
+dof_source!(
+    FullResAllLod1Dof,
+    "/dof/fullres_all_lod1.cs.hlsl:cs_main",
+    "`impl$7`（0x140a5d990）。"
+);
+dof_source!(FullResDof, "/dof/fullres.cs.hlsl:cs_main", "`impl$11`（0x140a5de30）。");
+dof_source!(
+    HalfResDof,
+    "/dof/halfres.cs.hlsl:cs_halfres",
+    "`impl$15`（0x140a5e290）。"
+);
+dof_source!(
+    HalfResAllDof,
+    "/dof/halfres.cs.hlsl:cs_halfres_all",
+    "`impl$19`（0x140a5e700）。"
+);
+
+// ---------------------------------------------------------------- IndirectArgsType
+
+/// DoF 间接 dispatch 参数槽（O：`enum_iterator::Sequence`，7 个变体；每槽 16 B，
+/// `dispatch_indirect_raw` 的偏移 = `0x10 * 下标`：upsample 0x30、halfres 0x40、halfres all 0x50、clear 0x60）。
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum IndirectArgsType {
+    FullResAllLod0,
+    FullResAllLod1,
+    FullRes,
+    FullResUpsample,
+    HalfRes,
+    HalfResAll,
+    ClearHalfRes,
+}
+
+impl IndirectArgsType {
+    /// `enum_iterator::all()`（O：跳表码 1..=7）。
+    pub const ALL: [IndirectArgsType; 7] = [
+        IndirectArgsType::FullResAllLod0,
+        IndirectArgsType::FullResAllLod1,
+        IndirectArgsType::FullRes,
+        IndirectArgsType::FullResUpsample,
+        IndirectArgsType::HalfRes,
+        IndirectArgsType::HalfResAll,
+        IndirectArgsType::ClearHalfRes,
+    ];
+    /// 每槽字节数（O：`add r12, 0x10` 每次迭代；`DispatchIndirectCommand` = 3×u32 + pad，I）。
+    pub const SLOT_BYTES: u64 = 0x10;
+
+    pub fn index(self) -> usize {
+        Self::ALL.iter().position(|v| *v == self).unwrap()
+    }
+    /// `dispatch_indirect_raw(buf, offset)` 的偏移（O：0x60/0x40/0x50/0x30 立即数；全分辨率三项由遍历下标算出，I：`0x10 * i`）。
+    pub fn buffer_offset(self) -> u64 {
+        Self::SLOT_BYTES * self.index() as u64
+    }
+    /// 该槽的 tile 容量：下标 `< 3`（全分辨率三种）取 `full`，其余取 `half`（O：`from_iter` 闭包
+    /// `cmp r14b, 4; cmovb` 选 `[env]` / `[env+8]`）。
+    fn tile_capacity(self, full: u32, half: u32) -> u32 {
+        if self.index() < 3 { full } else { half }
+    }
+}
+
+/// `tile_offsets_initial_values`：每槽容量的**独占前缀和**（O：`from_iter` → 展开的 `a[i] = running; running += old`），
+/// 同时返回总和（= `"DoF tile coords"` 缓冲元素数）。
+pub fn tile_offsets_initial_values(tiles_w: u32, tiles_h: u32) -> (Vec<u32>, u32) {
+    // O：`full = w*h`，`half = ceil(w/2) * ceil(h/2)`（`(v - v>>1)`），`imul` 回绕 32 位。
+    let full = tiles_w.wrapping_mul(tiles_h);
+    let half = (tiles_w - tiles_w / 2).wrapping_mul(tiles_h - tiles_h / 2);
+    let mut running = 0u32;
+    let mut out = Vec::with_capacity(IndirectArgsType::ALL.len());
+    for v in IndirectArgsType::ALL {
+        out.push(running);
+        running = running.wrapping_add(v.tile_capacity(full, half));
+    }
+    (out, running)
+}
+
+// ---------------------------------------------------------------- dof_prepare（W49）
+
+/// `dof_prepare` 的产出：CoC 纹理 + CoC tile 纹理（O：返回两份 0x24 B `{resource, desc}`）。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DofPrepared {
+    pub coc: RgTexture,
+    pub coc_tiles: RgTexture,
+}
+
+pub const COC_FORMAT: u32 = 0x4c;
+pub const COC_TILES_FORMAT: u32 = 0x53;
+pub const COC_TILE_SIZE: [u32; 3] = [8, 8, 1];
+
+/// W49 — `dof_prepare`（O 0x140a5a020）。
+pub fn dof_prepare<A: LibrarySsbo>(env: &mut PassEnv<'_>, depth_tex: &RgTexture) -> (DofPrepared, RecordedComputePass) {
+    let (w, h) = extent_xy(&depth_tex.desc);
+    let coc = env.create_texture("CoC", TextureDesc::new_2d([w, h], COC_FORMAT));
+    let tiles_desc = div_up_extent(coc.desc, COC_TILE_SIZE).with_format(COC_TILES_FORMAT);
+    let coc_tiles = env.create_texture("CoC tiles", tiles_desc);
+    let rec = env
+        .new_pass("DoF prepare", &"/dof/prepare.cs.hlsl")
+        .bind_texture(H_DEPTH_TEX, &depth_tex, ACCESS_READ)
+        .read_storage_buffer::<A>(H_AUTOFOCUS_BUF)
+        .bind_texture(H_COC_OUT_TEX, &&coc, ACCESS_WRITE)
+        .bind_texture(H_TILE_OUTPUT_TEX, &&coc_tiles, ACCESS_WRITE)
+        .dispatch_2d(w, h);
+    (DofPrepared { coc, coc_tiles }, rec)
+}
+
+// ---------------------------------------------------------------- calc_dof（W51）
+
+/// `calc_dof` 读到的配置（O：资源 `0x4a142e09642375b9`，`+0x30 + [+0xc0] * 0x40` 处的 f32）。
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DofConfig {
+    pub bokeh_anisotropy: f32,
+}
+
+/// 输出：DoF 结果纹理 + 声明好的 pass 序列。
+pub struct DofOutput {
+    pub output: RgTexture,
+    pub passes: Vec<RecordedComputePass>,
+    /// multires 路径里推到 `DynamicConstants` 的 `tile_offsets_initial_values`（fused 路径为空）。
+    pub tile_offsets_initial: Vec<u32>,
+}
+
+/// W51 — `calc_dof`（O 0x140a5a570）。`multires` = `*0x14362c080`；`quality` = 栈参数字节
+/// （O：`movzx r12d, byte [rbp+0x740]`，multires 的各 DoF 源的 `quality`）。
+#[allow(clippy::too_many_arguments)]
+pub fn calc_dof<S: LibrarySsbo>(
+    env: &mut PassEnv<'_>,
+    multires: bool,
+    color: &RgTexture,
+    depth: &RgTexture,
+    coc: &DofPrepared,
+    spatial_resolve: Option<()>,
+    cfg: &DofConfig,
+    quality: u8,
+) -> DofOutput
+where
+    S: LibrarySsbo,
+{
+    let _ = spatial_resolve;
+    if multires {
+        calc_dof_multires::<S>(env, color, depth, coc, cfg, quality)
+    } else {
+        calc_dof_fullres(env, color, depth, coc, cfg)
+    }
+}
+
+/// 非 multires：`"dof output"` + `"Depth of field"`（`/dof/fused.cs.hlsl`）。
+pub fn calc_dof_fullres(
+    env: &mut PassEnv<'_>,
+    color: &RgTexture,
+    depth: &RgTexture,
+    coc: &DofPrepared,
+    cfg: &DofConfig,
+) -> DofOutput {
+    let (w, h) = extent_xy(&color.desc);
+    let output = env.create_texture("dof output", TextureDesc::new_2d([w, h], 0x7a));
+    let rec = env
+        .new_pass("Depth of field", &"/dof/fused.cs.hlsl")
+        .bind_texture(H_COLOR_TEX, &color, ACCESS_READ)
+        .bind_texture(H_COC_TEX, &&coc.coc, ACCESS_READ)
+        .bind_texture(H_DEPTH_TEX, &depth, ACCESS_READ)
+        .bind_texture(H_BLUE_NOISE, &BLUE_NOISE, ACCESS_READ)
+        .bind_texture(H_IMG_OUTPUT, &&output, ACCESS_WRITE)
+        .uniform(H_BOKEH_ANISOTROPY, cfg.bokeh_anisotropy)
+        .dispatch_2d(w, h);
+    DofOutput {
+        output,
+        passes: vec![rec],
+        tile_offsets_initial: vec![],
+    }
+}
+
+/// multires 链（O：calc_dof 内联体；pass 顺序 / 绑定 / 间接偏移均 O）。
+///
+/// 1. `"CoC dilated"`：CoC tiles 的 desc 改格式 `0x4c`。
+/// 2. 7 槽 tile 容量 → 独占前缀和 [`tile_offsets_initial_values`]；缓冲 `"DoF tile offsets"`
+///    （`(12 + 4n) & !0xf` B，I：`and rsi,-0x10`）、`"DoF tile coords"`（`total * 8` B）、
+///    `"DoF dispatch args"`（`0x10 * n` B）。
+/// 3. `"DoF init buffers"`（`/dof/init_buffers.cs.hlsl`，写两个缓冲 + 外部绑定 initial_values，`dispatch_1d(n)`）。
+/// 4. `"DoF analyze"`（`/dof/analyze.cs.hlsl`，`dispatch_2d(tiles.w, tiles.h)`）。
+/// 5. `"DoF halfres"`/`"DoF output"` 纹理（格式 `0x61`）。
+/// 6. `"DoF clear halfres"`（间接 0x60）→ `"DoF halfres"`（HalfResDof，间接 0x40）→ `"DoF halfres all"`
+///    （HalfResAllDof，间接 0x50）→ 三个全分辨率 pass（`"DoF Fullres all lod0/lod1"`、`"DoF Fullres"`，经
+///    `&dyn AsComputeShaderSource`）→ `"DoF upsample"`（`/dof/fullres_upsample.cs.hlsl`，间接 0x30）。
+#[allow(clippy::too_many_arguments)]
+pub fn calc_dof_multires<S: LibrarySsbo>(
+    env: &mut PassEnv<'_>,
+    color: &RgTexture,
+    depth: &RgTexture,
+    coc: &DofPrepared,
+    cfg: &DofConfig,
+    quality: u8,
+) -> DofOutput {
+    let q = quality as u32;
+    let (cw, ch) = extent_xy(&color.desc);
+    let (tw, th) = extent_xy(&coc.coc_tiles.desc);
+    let half_desc = half_res(color.desc);
+    let dilated = env.create_texture("CoC dilated", coc.coc_tiles.desc.with_format(COC_FORMAT));
+
+    let (offsets, total) = tile_offsets_initial_values(tw, th);
+    let n = IndirectArgsType::ALL.len() as u64;
+    let tile_offsets_size = (12 + 4 * n) & !0xf;
+    let tile_offsets = env.create_buffer("DoF tile offsets", tile_offsets_size as u32, 0);
+    let tile_coords = env.create_buffer("DoF tile coords", (total as u64 * 8) as u32, 0);
+    let dispatch_args = env.create_buffer("DoF dispatch args", (IndirectArgsType::SLOT_BYTES * n) as u32, 0);
+
+    // DynamicConstants::allocate(4n) + push_slice（O：`copy_from_slice` 长度校验 → "len_mismatch_fail"）。
+    let mut constants = env.uniforms.allocate_uniform((offsets.len() * 4) as u32);
+    assert_eq!(
+        constants.len(),
+        offsets.len() * 4,
+        "source slice length does not match destination slice length"
+    );
+    for (dst, v) in constants.chunks_exact_mut(4).zip(&offsets) {
+        dst.copy_from_slice(&v.to_le_bytes());
+    }
+
+    let mut passes = Vec::new();
+
+    passes.push(
+        env.new_pass("DoF init buffers", &"/dof/init_buffers.cs.hlsl")
+            .write_rg_storage_buffer(H_TILE_OFFSETS_BUFFER, &tile_offsets)
+            .write_rg_storage_buffer(H_DISPATCH_ARGS_BUFFER, &dispatch_args)
+            .bind_external_raw(
+                H_TILE_OFFSETS_INITIAL,
+                // O：`DynamicConstantsChunk::into_uniform_buffer_binding`；缓冲号属 rhapsody（U），占位 0。
+                ExternalSlot::Other(PassResourceSlot::UniformBuffer { resource: 0 }),
+            )
+            .dispatch_1d(n as u32),
+    );
+
+    passes.push(
+        env.new_pass("DoF analyze", &"/dof/analyze.cs.hlsl")
+            .bind_texture(H_COC_TILES_TEX, &&coc.coc_tiles, ACCESS_READ)
+            .bind_texture(H_COC_TILES_DILATED_TEX, &&dilated, ACCESS_WRITE)
+            .read_rg_storage_buffer(H_TILE_OFFSETS_BUFFER, &tile_offsets)
+            .write_rg_storage_buffer(H_DISPATCH_ARGS_BUFFER, &dispatch_args)
+            .write_rg_storage_buffer(H_TILE_COORDS_BUFFER, &tile_coords)
+            .dispatch_2d(tw, th),
+    );
+
+    let halfres = env.create_texture(
+        "DoF halfres",
+        TextureDesc::new_2d([half_desc.extent[0], half_desc.extent[1]], 0x61),
+    );
+    let output = env.create_texture("DoF output", TextureDesc::new_2d([cw, ch], 0x61));
+
+    passes.push(
+        env.new_pass("DoF clear halfres", &"/dof/clear_halfres.cs.hlsl")
+            .read_rg_storage_buffer(H_TILE_OFFSETS_BUFFER, &tile_offsets)
+            .read_rg_storage_buffer(H_TILE_COORDS_BUFFER, &tile_coords)
+            .bind_texture(H_IMG_OUTPUT, &&halfres, ACCESS_WRITE)
+            .dispatch_indirect_raw(&dispatch_args, IndirectArgsType::ClearHalfRes.buffer_offset()),
+    );
+
+    // halfres / halfres all：同一组绑定，输出到半分辨率纹理。
+    for (name, source, slot) in [
+        (
+            "DoF halfres",
+            HalfSrc::Half(HalfResDof { quality: q }),
+            IndirectArgsType::HalfRes,
+        ),
+        (
+            "DoF halfres all",
+            HalfSrc::All(HalfResAllDof { quality: q }),
+            IndirectArgsType::HalfResAll,
+        ),
+    ] {
+        let pass = match &source {
+            HalfSrc::Half(s) => env.new_pass(name, s),
+            HalfSrc::All(s) => env.new_pass(name, s),
+        };
+        passes.push(
+            pass.read_rg_storage_buffer(H_TILE_OFFSETS_BUFFER, &tile_offsets)
+                .read_rg_storage_buffer(H_TILE_COORDS_BUFFER, &tile_coords)
+                .bind_texture(H_COLOR_TEX, &color, ACCESS_READ)
+                .bind_texture(H_COC_TEX, &&coc.coc, ACCESS_READ)
+                .bind_texture(H_COC_TILES_DILATED_TEX, &&dilated, ACCESS_READ)
+                .bind_texture(H_DEPTH_TEX, &depth, ACCESS_READ)
+                .bind_texture(H_BLUE_NOISE, &BLUE_NOISE, ACCESS_READ)
+                .uniform(H_BOKEH_ANISOTROPY, cfg.bokeh_anisotropy)
+                .bind_texture(H_IMG_OUTPUT, &&halfres, ACCESS_WRITE)
+                .dispatch_indirect_raw(&dispatch_args, slot.buffer_offset()),
+        );
+    }
+
+    // 三个全分辨率变体（O：`ComputePass::new<&dyn AsComputeShaderSource>`，0x141600570）。
+    let lod0 = FullResAllLod0Dof { quality: q };
+    let lod1 = FullResAllLod1Dof { quality: q };
+    let full = FullResDof { quality: q };
+    let fullres: [(&'static str, &dyn AsComputeShaderSource, IndirectArgsType); 3] = [
+        ("DoF Fullres all lod0", &lod0, IndirectArgsType::FullResAllLod0),
+        ("DoF Fullres all lod1", &lod1, IndirectArgsType::FullResAllLod1),
+        ("DoF Fullres", &full, IndirectArgsType::FullRes),
+    ];
+    for (name, source, slot) in fullres {
+        passes.push(
+            env.new_pass(name, &DynSource(source))
+                .read_rg_storage_buffer(H_TILE_OFFSETS_BUFFER, &tile_offsets)
+                .read_rg_storage_buffer(H_TILE_COORDS_BUFFER, &tile_coords)
+                .bind_texture(H_COLOR_TEX, &color, ACCESS_READ)
+                .bind_texture(H_COC_TEX, &&coc.coc, ACCESS_READ)
+                .bind_texture(H_COC_TILES_DILATED_TEX, &&dilated, ACCESS_READ)
+                .bind_texture(H_DEPTH_TEX, &depth, ACCESS_READ)
+                .bind_texture(H_BLUE_NOISE, &BLUE_NOISE, ACCESS_READ)
+                .uniform(H_BOKEH_ANISOTROPY, cfg.bokeh_anisotropy)
+                .read_storage_buffer::<S>(H_SPATIAL_RESOLVE_OFFSETS)
+                .bind_texture(H_HALFRES_TEX, &&halfres, ACCESS_READ)
+                .bind_texture(H_IMG_OUTPUT, &&output, ACCESS_WRITE)
+                .dispatch_indirect_raw(&dispatch_args, slot.buffer_offset()),
+        );
+    }
+
+    passes.push(
+        env.new_pass("DoF upsample", &"/dof/fullres_upsample.cs.hlsl")
+            .read_rg_storage_buffer(H_TILE_OFFSETS_BUFFER, &tile_offsets)
+            .read_rg_storage_buffer(H_TILE_COORDS_BUFFER, &tile_coords)
+            .read_storage_buffer::<S>(H_SPATIAL_RESOLVE_OFFSETS)
+            .bind_texture(H_BLUE_NOISE, &BLUE_NOISE, ACCESS_READ)
+            .bind_texture(H_HALFRES_TEX, &&halfres, ACCESS_READ)
+            .bind_texture(H_COC_TEX, &&coc.coc, ACCESS_READ)
+            .bind_texture(H_IMG_OUTPUT, &&output, ACCESS_WRITE)
+            .dispatch_indirect_raw(&dispatch_args, IndirectArgsType::FullResUpsample.buffer_offset()),
+    );
+
+    DofOutput {
+        output,
+        passes,
+        tile_offsets_initial: offsets,
+    }
+}
+
+enum HalfSrc {
+    Half(HalfResDof),
+    All(HalfResAllDof),
+}
+
+#[allow(dead_code)]
+const _: fn(TextureDesc) = |_| {};
+#[allow(dead_code)]
+const _IMM: u64 = imm(0);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::render::pass_builder::compute_pass_builder::DispatchMode;
+    use crate::systems::render_loop::compute_passes::pass_kit::test_env::*;
+
+    #[test]
+    fn hashes_are_exe_immediates() {
+        assert_eq!(H_COC_OUT_TEX, 0x4ed61548046f4345);
+        assert_eq!(H_TILE_OUTPUT_TEX, 0x01377d6d27c45165);
+        assert_eq!(H_AUTOFOCUS_BUF, imm(-0x3d9aab3921b4f750));
+        assert_eq!(H_BLUE_NOISE, imm(-0x7ea40afc96996874));
+        assert_eq!(H_IMG_OUTPUT, imm(-0x467e86fdfdbe7438));
+        assert_eq!(H_BOKEH_ANISOTROPY, imm(-0x4cb11f4bb878f755));
+        assert_eq!(H_COC_TEX, imm(-0x46f3e0806caff4a6));
+        assert_eq!(H_COC_TILES_TEX, imm(-0x5f36423df9b2f73c));
+        assert_eq!(H_COC_TILES_DILATED_TEX, imm(-0x7b21290237be2d52));
+        assert_eq!(H_TILE_OFFSETS_BUFFER, imm(-0x3198efafe2ff6183));
+        assert_eq!(H_TILE_COORDS_BUFFER, imm(-0x4682dbab9ab55501));
+        assert_eq!(H_DISPATCH_ARGS_BUFFER, 0x550a4cb62061e4b4);
+        assert_eq!(H_TILE_OFFSETS_INITIAL, imm(-0x89dd658b53f220c));
+        assert_eq!(H_SPATIAL_RESOLVE_OFFSETS, imm(-0x43a527f3f456ea3d));
+        assert_eq!(H_HALFRES_TEX, imm(-0x4f5e15777f498e0c));
+    }
+
+    #[test]
+    fn indirect_offsets_match_the_exe_immediates() {
+        assert_eq!(IndirectArgsType::ClearHalfRes.buffer_offset(), 0x60);
+        assert_eq!(IndirectArgsType::HalfRes.buffer_offset(), 0x40);
+        assert_eq!(IndirectArgsType::HalfResAll.buffer_offset(), 0x50);
+        assert_eq!(IndirectArgsType::FullResUpsample.buffer_offset(), 0x30);
+        assert_eq!(IndirectArgsType::FullResAllLod0.buffer_offset(), 0);
+    }
+
+    #[test]
+    fn tile_offsets_are_an_exclusive_prefix_sum() {
+        // tiles 5x3: full = 15, half = 3*2 = 6
+        let (v, total) = tile_offsets_initial_values(5, 3);
+        assert_eq!(v, [0, 15, 30, 45, 51, 57, 63]);
+        assert_eq!(total, 69);
+    }
+
+    #[test]
+    fn source_uris_hashes_and_defines() {
+        let a = FullResAllLod0Dof { quality: 2 };
+        assert_eq!(a.uri_with_entry(), "/dof/fullres_all_lod0.cs.hlsl:cs_main");
+        assert_eq!(a.uri_with_entry().len(), 0x25);
+        assert_eq!(
+            HalfResDof { quality: 1 }.uri_with_entry(),
+            "/dof/halfres.cs.hlsl:cs_halfres"
+        );
+        assert_eq!(
+            HalfResAllDof { quality: 1 }.uri_with_entry(),
+            "/dof/halfres.cs.hlsl:cs_halfres_all"
+        );
+        assert_eq!(
+            FullResDof { quality: 3 }.pipeline_defines(),
+            [("PERM_quality".to_owned(), "3".to_owned())]
+        );
+        // quality 参与 hash（derive(Hash) 的 u32 字段）。
+        assert_ne!(a.source_hash(), FullResAllLod0Dof { quality: 3 }.source_hash());
+        assert_ne!(a.source_hash(), FullResAllLod1Dof { quality: 2 }.source_hash());
+    }
+
+    fn textures() -> (RgTexture, RgTexture, RgTexture) {
+        (
+            RgTexture {
+                resource: 1,
+                desc: TextureDesc::new([64, 32, 1], 0x25, 0),
+            },
+            RgTexture {
+                resource: 2,
+                desc: TextureDesc::new([64, 32, 1], 0x26, 0),
+            },
+            RgTexture {
+                resource: 3,
+                desc: TextureDesc::new([8, 8, 1], 0x27, 0),
+            },
+        )
+    }
+
+    #[test]
+    fn dof_prepare_creates_coc_and_tiles_then_dispatches_on_depth_extent() {
+        let mut e = env_with(
+            &[H_DEPTH_TEX, H_AUTOFOCUS_BUF, H_COC_OUT_TEX, H_TILE_OUTPUT_TEX],
+            &[],
+            |lib, dev| {
+                lib.add_new::<SsboA>(dev);
+            },
+        );
+        let (depth, ..) = textures();
+        let (prep, rec) = e.run(|penv| dof_prepare::<SsboA>(penv, &depth));
+        assert_eq!(e.frame.textures[0].0, "CoC");
+        assert_eq!(e.frame.textures[1].0, "CoC tiles");
+        let coc = e.frame.textures[0].1;
+        let tiles = e.frame.textures[1].1;
+        assert_eq!((coc.extent, coc.format), ([64, 32, 1], 0x4c));
+        assert_eq!((tiles.extent, tiles.format), ([8, 4, 1], 0x53));
+        assert_eq!(prep.coc.resource, 101);
+        assert_eq!(prep.coc_tiles.resource, 102);
+        assert_eq!(rec.name, "DoF prepare");
+        assert!(matches!(rec.dispatch, DispatchMode::Threads { x: 64, y: 32, z: 1 }));
+        assert_eq!(e.world.backend.paths.borrow()[0], "/dof/prepare.cs.hlsl:cs_main");
+        // 访问：color library(ctor) → depth(0x19) → autofocus(0x1a) → coc_out(0x32) → tile_out(0x32)
+        let acc: Vec<_> = rec.builder.accesses.iter().map(|a| (a.access, a.group)).collect();
+        assert_eq!(acc[1..], [(0x19, 1), (0x1a, 1), (0x32, 0), (0x32, 0)]);
+    }
+
+    #[test]
+    fn fused_path_declares_one_pass() {
+        let mut e = env_with(
+            &[H_COLOR_TEX, H_COC_TEX, H_DEPTH_TEX, H_BLUE_NOISE, H_IMG_OUTPUT],
+            &[H_BOKEH_ANISOTROPY],
+            |_, _| {},
+        );
+        let (color, depth, noise) = textures();
+        let prep = DofPrepared {
+            coc: color,
+            coc_tiles: noise,
+        };
+        let out = e.run(|penv| {
+            calc_dof::<SsboC>(
+                penv,
+                false,
+                &color,
+                &depth,
+                &prep,
+                None,
+                &DofConfig { bokeh_anisotropy: 0.5 },
+                1,
+            )
+        });
+        assert_eq!(e.frame.textures[0].0, "dof output");
+        assert_eq!(e.frame.textures[0].1.format, 0x7a);
+        assert_eq!(out.passes.len(), 1);
+        let p = &out.passes[0];
+        assert_eq!(p.name, "Depth of field");
+        assert_eq!(e.world.backend.paths.borrow()[0], "/dof/fused.cs.hlsl:cs_main");
+        assert!(matches!(p.dispatch, DispatchMode::Threads { x: 64, y: 32, z: 1 }));
+        assert_eq!(e.uniform_f32(p, H_BOKEH_ANISOTROPY), 0.5);
+    }
+
+    #[test]
+    fn multires_chain_order_offsets_and_buffers() {
+        let all = [
+            H_COLOR_TEX,
+            H_COC_TEX,
+            H_DEPTH_TEX,
+            H_BLUE_NOISE,
+            H_IMG_OUTPUT,
+            H_COC_TILES_TEX,
+            H_COC_TILES_DILATED_TEX,
+            H_TILE_OFFSETS_BUFFER,
+            H_TILE_COORDS_BUFFER,
+            H_DISPATCH_ARGS_BUFFER,
+            H_TILE_OFFSETS_INITIAL,
+            H_HALFRES_TEX,
+            H_SPATIAL_RESOLVE_OFFSETS,
+        ];
+        let mut e = env_with(&all, &[H_BOKEH_ANISOTROPY], |lib, dev| {
+            lib.add_new::<SsboC>(dev);
+        });
+        let (color, depth, _noise) = textures();
+        let tiles = RgTexture {
+            resource: 9,
+            desc: TextureDesc::new([8, 4, 1], 0x53, 0),
+        };
+        let prep = DofPrepared {
+            coc: color,
+            coc_tiles: tiles,
+        };
+        let out = e.run(|penv| {
+            calc_dof::<SsboC>(
+                penv,
+                true,
+                &color,
+                &depth,
+                &prep,
+                None,
+                &DofConfig { bokeh_anisotropy: 1.0 },
+                2,
+            )
+        });
+        let names: Vec<_> = out.passes.iter().map(|p| p.name).collect();
+        assert_eq!(
+            names,
+            [
+                "DoF init buffers",
+                "DoF analyze",
+                "DoF clear halfres",
+                "DoF halfres",
+                "DoF halfres all",
+                "DoF Fullres all lod0",
+                "DoF Fullres all lod1",
+                "DoF Fullres",
+                "DoF upsample"
+            ]
+        );
+        // 创建顺序：CoC dilated、三缓冲、halfres、output。
+        // 纹理与缓冲分开记录：纹理 = CoC dilated、DoF halfres、DoF output；缓冲 = 三个；资源号共用计数器（创建序）。
+        let textures: Vec<_> = e.frame.textures.iter().map(|c| c.0.as_str()).collect();
+        assert_eq!(textures, ["CoC dilated", "DoF halfres", "DoF output"]);
+        let buffers: Vec<_> = e.frame.buffers.iter().map(|c| c.0.as_str()).collect();
+        assert_eq!(buffers, ["DoF tile offsets", "DoF tile coords", "DoF dispatch args"]);
+        let order: Vec<u32> = e
+            .frame
+            .textures
+            .iter()
+            .map(|t| t.2.resource)
+            .chain(e.frame.buffers.iter().map(|b| b.2.resource))
+            .collect();
+        // 创建顺序：CoC dilated(101)、三缓冲(102..104)、halfres(105)、output(106)。
+        assert_eq!(order, [101, 105, 106, 102, 103, 104]);
+        assert_eq!(e.frame.textures[0].1.format, 0x4c);
+        // tiles 8x4: full = 32, half = 4*2 = 8 → prefix [0,32,64,96,104,112,120], total 128。
+        assert_eq!(out.tile_offsets_initial, [0, 32, 64, 96, 104, 112, 120]);
+        assert_eq!(e.frame.buffers[0].1.size, 32); // (12 + 28) & !0xf
+        assert_eq!(e.frame.buffers[1].1.size, 128 * 8);
+        assert_eq!(e.frame.buffers[2].1.size, 0x70);
+        assert_eq!(e.frame.textures[1].1.extent, [32, 16, 1]);
+        assert_eq!(e.frame.textures[1].1.format, 0x61);
+        // dispatch 形状
+        assert!(matches!(
+            out.passes[0].dispatch,
+            DispatchMode::Threads { x: 7, y: 1, z: 1 }
+        ));
+        assert!(matches!(
+            out.passes[1].dispatch,
+            DispatchMode::Threads { x: 8, y: 4, z: 1 }
+        ));
+        let offs: Vec<_> = out.passes[2..]
+            .iter()
+            .map(|p| match p.dispatch {
+                DispatchMode::IndirectRaw { offset, .. } => offset,
+                _ => panic!("not indirect"),
+            })
+            .collect();
+        assert_eq!(offs, [0x60, 0x40, 0x50, 0x00, 0x10, 0x20, 0x30]);
+        // 着色器 URI（含入口）
+        let uris = e.world.backend.paths.borrow().clone();
+        assert!(uris.contains(&"/dof/halfres.cs.hlsl:cs_halfres".to_owned()));
+        assert!(uris.contains(&"/dof/halfres.cs.hlsl:cs_halfres_all".to_owned()));
+        assert!(uris.contains(&"/dof/fullres_upsample.cs.hlsl:cs_main".to_owned()));
+        // 常量块大小 = 4 * 7。
+        assert!(
+            e.world.pool.borrow().0.contains(&28),
+            "DynamicConstants::allocate(4 * 7)"
+        );
+        assert_eq!(e.world.pool.borrow().0[0], 28, "常量块先于任何 pass 的 uniform 块分配");
+        // blue_noise 走磁盘外部描述符（不登记 RG 访问）：每个用到它的 pass 都带一条外部绑定。
+        assert_eq!(
+            out.passes[3].external_bindings.len(),
+            1,
+            "DoF halfres：blue_noise（磁盘纹理）"
+        );
+    }
+}

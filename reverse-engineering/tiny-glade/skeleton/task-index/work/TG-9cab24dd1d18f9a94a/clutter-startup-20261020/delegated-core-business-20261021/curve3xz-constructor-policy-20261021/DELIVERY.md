@@ -1,0 +1,7 @@
+# Curve3XZ constructor policy 最窄增量交付
+
+生产改动仅一项编译期策略：CurveCoordSemantic2D的已证原构造域从Vec2扩到Vec3XZ，复用原已审af00的纯f32完整参数流程。原782B不提前拒绝Y非finite；规范化只检查u，duplicates仍是完整XYZ有序相等。没有Y修复、私有Curve或历史镜像。
+
+所有production function body保持af00逐字一致，PROTECTED_API_BODY_HASHES.json记录工程metric、XYZ constructor与坐标/slice入口body哈希；Vec2/XYZ原策略不变，thresholded/custom稳健域保留。新增3测试覆盖NaN/Inf-Y保持与XYZ输出Err分离、fullXYZ duplicates的NaN/±0、原长度/规范化错误先于重复；旧工程XZtiny成功断言已改原f32错误，原其它工程断言保留。
+
+candidate.patch只从exact af00生成，已作者scratch -F0逐字复现；rustfmt仅2024语法解析，不写格式、不运行Cargo。root已通过base utils151，新增3项仍需root执行。真实World interpolate NaN-Y旧history复用/第四opaqueVec/dirty测试由duck同源唯一writer配对，本候选不将该系统测试计划计作已完成，也不声称完整主渲染链已恢复。

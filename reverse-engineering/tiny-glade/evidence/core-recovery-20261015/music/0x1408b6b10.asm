@@ -1,0 +1,405 @@
+0x1408b6b10 push     rbp
+0x1408b6b11 push     r15
+0x1408b6b13 push     r14
+0x1408b6b15 push     r13
+0x1408b6b17 push     r12
+0x1408b6b19 push     rsi
+0x1408b6b1a push     rdi
+0x1408b6b1b push     rbx
+0x1408b6b1c sub      rsp, 0xd8
+0x1408b6b23 lea      rbp, [rsp + 0x80]
+0x1408b6b2b mov      qword ptr [rbp + 0x50], 0xfffffffffffffffe
+0x1408b6b33 mov      r14, r9
+0x1408b6b36 mov      rdi, r8
+0x1408b6b39 mov      rsi, rdx
+0x1408b6b3c mov      r15, rcx
+0x1408b6b3f mov      rbx, qword ptr [rcx + 0xf0]
+0x1408b6b46 mov      rax, qword ptr [rcx + 0xf8]
+0x1408b6b4d mov      qword ptr [rcx + 0xf8], 0
+0x1408b6b58 test     rax, rax
+0x1408b6b5b je       0x1408b6bb3
+0x1408b6b5d add      rbx, 0x30
+0x1408b6b61 mov      ecx, 1
+0x1408b6b66 sub      rcx, rax
+0x1408b6b69 jmp      0x1408b6b81 ; 
+0x1408b6b6b nop      dword ptr [rax + rax]
+0x1408b6b70 add      rbx, 0x30
+0x1408b6b74 mov      rcx, qword ptr [rbp + 0x40]
+0x1408b6b78 inc      rcx
+0x1408b6b7b cmp      rcx, 1
+0x1408b6b7f je       0x1408b6bb3
+0x1408b6b81 mov      qword ptr [rbp + 0x38], rbx
+0x1408b6b85 mov      qword ptr [rbp + 0x40], rcx
+0x1408b6b89 lea      rcx, [rbx - 0x30]
+0x1408b6b8d call     0x14089a280 ; _$LT$country_core..resources..audio_resources..AudioInstance$u20$as$u20$core..ops..drop..Drop$GT$::drop::hc11221fa7cd07512
+0x1408b6b92 mov      rax, qword ptr [rbp + 0x38]
+0x1408b6b96 mov      rdx, qword ptr [rax - 0x20]
+0x1408b6b9a test     rdx, rdx
+0x1408b6b9d mov      rbx, rax
+0x1408b6ba0 je       0x1408b6b70
+0x1408b6ba2 mov      rcx, qword ptr [rbx - 0x18]
+0x1408b6ba6 mov      r8d, 1
+0x1408b6bac call     0x140613c20 ; __rust_dealloc
+0x1408b6bb1 jmp      0x1408b6b70 ; 
+0x1408b6bb3 mov      rbx, qword ptr [r15 + 0xd8]
+0x1408b6bba mov      r12, qword ptr [r15 + 0xe0]
+0x1408b6bc1 mov      qword ptr [r15 + 0xe0], 0
+0x1408b6bcc test     r12, r12
+0x1408b6bcf je       0x1408b6c02
+0x1408b6bd1 add      rbx, 8
+0x1408b6bd5 jmp      0x1408b6be9 ; 
+0x1408b6bd7 nop      word ptr [rax + rax]
+0x1408b6be0 add      rbx, 0x18
+0x1408b6be4 dec      r12
+0x1408b6be7 je       0x1408b6c02
+0x1408b6be9 mov      rdx, qword ptr [rbx - 8]
+0x1408b6bed test     rdx, rdx
+0x1408b6bf0 je       0x1408b6be0
+0x1408b6bf2 mov      rcx, qword ptr [rbx]
+0x1408b6bf5 mov      r8d, 1
+0x1408b6bfb call     0x140613c20 ; __rust_dealloc
+0x1408b6c00 jmp      0x1408b6be0 ; 
+0x1408b6c02 lea      rax, [r15 + 0xe8]
+0x1408b6c09 mov      qword ptr [rbp - 0x48], rax
+0x1408b6c0d lea      rax, [r15 + 0xd0]
+0x1408b6c14 mov      qword ptr [rbp - 0x40], rax
+0x1408b6c18 lea      rax, [r14 + r14*2]
+0x1408b6c1c lea      rax, [rdi + rax*8]
+0x1408b6c20 mov      qword ptr [rbp + 0x40], rax
+0x1408b6c24 mov      rbx, qword ptr [rsi]
+0x1408b6c27 lea      rax, [rbx + 0x10]
+0x1408b6c2b mov      qword ptr [rbp + 0x38], rax
+0x1408b6c2f mov      rsi, rbp
+0x1408b6c32 cmp      rdi, qword ptr [rbp + 0x40]
+0x1408b6c36 jne      0x1408b6c6a
+0x1408b6c38 mov      dword ptr [r15 + 0x118], 0
+0x1408b6c43 add      rsp, 0xd8
+0x1408b6c4a pop      rbx
+0x1408b6c4b pop      rdi
+0x1408b6c4c pop      rsi
+0x1408b6c4d pop      r12
+0x1408b6c4f pop      r13
+0x1408b6c51 pop      r14
+0x1408b6c53 pop      r15
+0x1408b6c55 pop      rbp
+0x1408b6c56 ret      
+0x1408b6c57 nop      word ptr [rax + rax]
+0x1408b6c60 add      rdi, 0x18
+0x1408b6c64 cmp      rdi, qword ptr [rbp + 0x40]
+0x1408b6c68 je       0x1408b6c38
+0x1408b6c6a mov      r13, qword ptr [rdi + 8]
+0x1408b6c6e mov      r12, qword ptr [rdi + 0x10]
+0x1408b6c72 test     rbx, rbx
+0x1408b6c75 je       0x1408b6ca0
+0x1408b6c77 mov      rcx, rsi
+0x1408b6c7a mov      rdx, qword ptr [rbp + 0x38]
+0x1408b6c7e mov      r8, r13
+0x1408b6c81 mov      r9, r12
+0x1408b6c84 call     0x140a54440 ; country_core::resources::audio_resources::AudioCoreInner::instantiate_audio::h8d884187476fbacc
+0x1408b6c89 cmp      qword ptr [rbp], 2
+0x1408b6c8e jne      0x1408b6d0d
+0x1408b6c90 jmp      0x1408b6eaa ; 
+0x1408b6c95 nop      word ptr cs:[rax + rax]
+0x1408b6ca0 test     r12, r12
+0x1408b6ca3 js       0x1408b6edc
+0x1408b6ca9 je       0x1408b6ce1
+0x1408b6cab mov      qword ptr [rbp - 0x50], rdi
+0x1408b6caf mov      rdi, r15
+0x1408b6cb2 movzx    eax, byte ptr [rip + 0x2d7df50]
+0x1408b6cb9 mov      r15d, 1
+0x1408b6cbf mov      edx, 1
+0x1408b6cc4 mov      rcx, r12
+0x1408b6cc7 call     0x140613c10 ; __rust_alloc
+0x1408b6ccc test     rax, rax
+0x1408b6ccf je       0x1408b6edf
+0x1408b6cd5 mov      r14, rax
+0x1408b6cd8 mov      r15, rdi
+0x1408b6cdb mov      rdi, qword ptr [rbp - 0x50]
+0x1408b6cdf jmp      0x1408b6ce7 ; 
+0x1408b6ce1 mov      r14d, 1
+0x1408b6ce7 mov      rcx, r14
+0x1408b6cea mov      rdx, r13
+0x1408b6ced mov      r8, r12
+0x1408b6cf0 call     0x142923c00 ; memcpy
+0x1408b6cf5 mov      qword ptr [rbp], 0
+0x1408b6cfd mov      qword ptr [rbp + 0x10], r12
+0x1408b6d01 mov      qword ptr [rbp + 0x18], r14
+0x1408b6d05 mov      qword ptr [rbp + 0x20], r12
+0x1408b6d09 mov      byte ptr [rbp + 0x28], 2
+0x1408b6d0d mov      rax, qword ptr [rbp]
+0x1408b6d11 mov      rcx, qword ptr [rbp + 8]
+0x1408b6d15 mov      rdx, qword ptr [rbp + 0x10]
+0x1408b6d19 mov      r8, qword ptr [rbp + 0x18]
+0x1408b6d1d mov      r9, qword ptr [rbp + 0x20]
+0x1408b6d21 mov      qword ptr [rbp - 0x10], r9
+0x1408b6d25 movzx    r9d, byte ptr [rbp + 0x28]
+0x1408b6d2a mov      byte ptr [rbp - 8], r9b
+0x1408b6d2e mov      r9d, dword ptr [rbp + 0x29]
+0x1408b6d32 mov      dword ptr [rbp - 7], r9d
+0x1408b6d36 movzx    r9d, word ptr [rbp + 0x2d]
+0x1408b6d3b mov      word ptr [rbp - 3], r9w
+0x1408b6d40 movzx    r9d, byte ptr [rbp + 0x2f]
+0x1408b6d45 mov      byte ptr [rbp - 1], r9b
+0x1408b6d49 mov      qword ptr [rbp - 0x20], rdx
+0x1408b6d4d mov      qword ptr [rbp - 0x18], r8
+0x1408b6d51 mov      qword ptr [rbp - 0x30], rax
+0x1408b6d55 mov      qword ptr [rbp - 0x28], rcx
+0x1408b6d59 test     byte ptr [rbp - 0x30], 1
+0x1408b6d5d je       0x1408b6e80
+0x1408b6d63 mov      byte ptr [rbp + 0x4f], 1
+0x1408b6d67 mov      rcx, rsi
+0x1408b6d6a lea      rdx, [rbp - 0x28]
+0x1408b6d6e lea      r8, [rip + 0x8ab]
+0x1408b6d75 mov      r9d, 0x1000
+0x1408b6d7b call     0x14157c850 ; libfmod::EventInstance::set_callback::h6f9632c770886ef1
+0x1408b6d80 mov      r14, qword ptr [rbp]
+0x1408b6d84 mov      rcx, rsi
+0x1408b6d87 call     0x1408b45c0 ; 
+0x1408b6d8c movabs   rax, 0x8000000000000004
+0x1408b6d96 cmp      r14, rax
+0x1408b6d99 jne      0x1408b6e80
+0x1408b6d9f movaps   xmm0, xmmword ptr [rbp - 0x30]
+0x1408b6da3 movaps   xmm1, xmmword ptr [rbp - 0x20]
+0x1408b6da7 movaps   xmm2, xmmword ptr [rbp - 0x10]
+0x1408b6dab movaps   xmmword ptr [rbp + 0x20], xmm2
+0x1408b6daf movaps   xmmword ptr [rbp + 0x10], xmm1
+0x1408b6db3 movaps   xmmword ptr [rbp], xmm0
+0x1408b6db7 mov      r14, qword ptr [r15 + 0xf8]
+0x1408b6dbe cmp      r14, qword ptr [r15 + 0xe8]
+0x1408b6dc5 jne      0x1408b6dd7
+0x1408b6dc7 mov      rcx, qword ptr [rbp - 0x48]
+0x1408b6dcb lea      rdx, [rip + 0x21e890e]
+0x1408b6dd2 call     0x1405629f0 ; alloc::raw_vec::RawVec$LT$T$C$A$GT$::grow_one::h40a12b3b6f4f57e7 / alloc::raw_vec::RawVec$LT$T$C$A$GT$::grow_one::haee347245c1b18e6
+0x1408b6dd7 mov      rax, qword ptr [r15 + 0xf0]
+0x1408b6dde lea      rcx, [r14 + r14*2]
+0x1408b6de2 shl      rcx, 4
+0x1408b6de6 movaps   xmm0, xmmword ptr [rbp]
+0x1408b6dea movaps   xmm1, xmmword ptr [rbp + 0x10]
+0x1408b6dee movaps   xmm2, xmmword ptr [rbp + 0x20]
+0x1408b6df2 movups   xmmword ptr [rax + rcx + 0x20], xmm2
+0x1408b6df7 movups   xmmword ptr [rax + rcx + 0x10], xmm1
+0x1408b6dfc movups   xmmword ptr [rax + rcx], xmm0
+0x1408b6e00 inc      r14
+0x1408b6e03 mov      qword ptr [r15 + 0xf8], r14
+0x1408b6e0a mov      byte ptr [rbp + 0x4f], 0
+0x1408b6e0e mov      rcx, rsi
+0x1408b6e11 mov      rdx, rdi
+0x1408b6e14 call     0x140d7bd90 ; _$LT$alloc..string..String$u20$as$u20$core..clone..Clone$GT$::clone::h5e4cb1e6752ad8d7
+0x1408b6e19 mov      r14, qword ptr [r15 + 0xe0]
+0x1408b6e20 cmp      r14, qword ptr [r15 + 0xd0]
+0x1408b6e27 jne      0x1408b6e39
+0x1408b6e29 mov      rcx, qword ptr [rbp - 0x40]
+0x1408b6e2d lea      rdx, [rip + 0x21e88c4]
+0x1408b6e34 call     0x140672ed0 ; alloc::raw_vec::RawVec$LT$T$C$A$GT$::grow_one::h3347045e59dcca85 / alloc::raw_vec::RawVec$LT$T$C$A$GT$::grow_one::he21734f5dbb54527
+0x1408b6e39 mov      rax, qword ptr [r15 + 0xd8]
+0x1408b6e40 lea      rcx, [r14 + r14*2]
+0x1408b6e44 mov      rdx, qword ptr [rbp + 0x10]
+0x1408b6e48 mov      qword ptr [rax + rcx*8 + 0x10], rdx
+0x1408b6e4d movups   xmm0, xmmword ptr [rbp]
+0x1408b6e51 movups   xmmword ptr [rax + rcx*8], xmm0
+0x1408b6e55 inc      r14
+0x1408b6e58 mov      qword ptr [r15 + 0xe0], r14
+0x1408b6e5f add      rdi, 0x18
+0x1408b6e63 cmp      rdi, qword ptr [rbp + 0x40]
+0x1408b6e67 jne      0x1408b6c6a
+0x1408b6e6d jmp      0x1408b6c38 ; 
+0x1408b6e72 nop      word ptr cs:[rax + rax]
+0x1408b6e80 lea      rcx, [rbp - 0x30]
+0x1408b6e84 call     0x14089a280 ; _$LT$country_core..resources..audio_resources..AudioInstance$u20$as$u20$core..ops..drop..Drop$GT$::drop::hc11221fa7cd07512
+0x1408b6e89 mov      rdx, qword ptr [rbp - 0x20]
+0x1408b6e8d test     rdx, rdx
+0x1408b6e90 je       0x1408b6c60
+0x1408b6e96 mov      rcx, qword ptr [rbp - 0x18]
+0x1408b6e9a mov      r8d, 1
+0x1408b6ea0 call     0x140613c20 ; __rust_dealloc
+0x1408b6ea5 jmp      0x1408b6c60 ; 
+0x1408b6eaa mov      rax, qword ptr [rbp + 8]
+0x1408b6eae mov      qword ptr [rbp - 0x38], rax
+0x1408b6eb2 lea      rax, [rip + 0x21e880f]
+0x1408b6eb9 mov      qword ptr [rsp + 0x20], rax
+0x1408b6ebe lea      rcx, [rip + 0x21e85d3] ; @0x142a9f498 'called `Result::unwrap()` on an `Err` value'
+0x1408b6ec5 lea      r9, [rip + 0x21e85ac]
+0x1408b6ecc lea      r8, [rbp - 0x38]
+0x1408b6ed0 mov      edx, 0x2b
+0x1408b6ed5 call     0x1428d9760 ; core::result::unwrap_failed::h96d74ae09566f4b3
+0x1408b6eda ud2      
+0x1408b6edc xor      r15d, r15d
+0x1408b6edf lea      r8, [rip + 0x22198ca]
+0x1408b6ee6 mov      rcx, r15
+0x1408b6ee9 mov      rdx, r12
+0x1408b6eec call     0x1428d8fe3 ; alloc::raw_vec::handle_error::hb99beac7784c4464
+0x1408b6ef1 int3     
+0x1408b6ef2 nop      word ptr cs:[rax + rax]
+0x1408b6f00 mov      qword ptr [rsp + 0x10], rdx
+0x1408b6f05 push     rbp
+0x1408b6f06 push     r15
+0x1408b6f08 push     r14
+0x1408b6f0a push     r13
+0x1408b6f0c push     r12
+0x1408b6f0e push     rsi
+0x1408b6f0f push     rdi
+0x1408b6f10 push     rbx
+0x1408b6f11 sub      rsp, 0x28
+0x1408b6f15 lea      rbp, [rdx + 0x80]
+0x1408b6f1c mov      rax, qword ptr [rbp + 0x38]
+0x1408b6f20 mov      rsi, rax
+0x1408b6f23 mov      rdx, qword ptr [rax - 0x20]
+0x1408b6f27 test     rdx, rdx
+0x1408b6f2a je       0x1408b6f3b
+0x1408b6f2c mov      rcx, qword ptr [rsi - 0x18]
+0x1408b6f30 mov      r8d, 1
+0x1408b6f36 call     0x140613c20 ; __rust_dealloc
+0x1408b6f3b cmp      qword ptr [rbp + 0x40], 0
+0x1408b6f40 je       0x1408b6f58
+0x1408b6f42 neg      qword ptr [rbp + 0x40]
+0x1408b6f46 mov      rcx, rsi
+0x1408b6f49 call     0x14014a680 ; core::ptr::drop_in_place$LT$country_core..resources..critters..sheep..SheepAudio$GT$::hfb03c8fee6406828 / bevy_ecs::component::ComponentDescriptor::drop_ptr::h9feafd2efa3d66f6 (.llvm.8002602149119224474)
+0x1408b6f4e add      rsi, 0x30
+0x1408b6f52 dec      qword ptr [rbp + 0x40]
+0x1408b6f56 jne      0x1408b6f46
+0x1408b6f58 add      rsp, 0x28
+0x1408b6f5c pop      rbx
+0x1408b6f5d pop      rdi
+0x1408b6f5e pop      rsi
+0x1408b6f5f pop      r12
+0x1408b6f61 pop      r13
+0x1408b6f63 pop      r14
+0x1408b6f65 pop      r15
+0x1408b6f67 pop      rbp
+0x1408b6f68 ret      
+0x1408b6f69 nop      dword ptr [rax]
+0x1408b6f70 mov      qword ptr [rsp + 0x10], rdx
+0x1408b6f75 push     rbp
+0x1408b6f76 push     r15
+0x1408b6f78 push     r14
+0x1408b6f7a push     r13
+0x1408b6f7c push     r12
+0x1408b6f7e push     rsi
+0x1408b6f7f push     rdi
+0x1408b6f80 push     rbx
+0x1408b6f81 sub      rsp, 0x28
+0x1408b6f85 lea      rbp, [rdx + 0x80]
+0x1408b6f8c mov      rdx, qword ptr [rbp - 0x20]
+0x1408b6f90 test     rdx, rdx
+0x1408b6f93 je       0x1408b6fa4
+0x1408b6f95 mov      rcx, qword ptr [rbp - 0x18]
+0x1408b6f99 mov      r8d, 1
+0x1408b6f9f call     0x140613c20 ; __rust_dealloc
+0x1408b6fa4 nop      
+0x1408b6fa5 add      rsp, 0x28
+0x1408b6fa9 pop      rbx
+0x1408b6faa pop      rdi
+0x1408b6fab pop      rsi
+0x1408b6fac pop      r12
+0x1408b6fae pop      r13
+0x1408b6fb0 pop      r14
+0x1408b6fb2 pop      r15
+0x1408b6fb4 pop      rbp
+0x1408b6fb5 ret      
+0x1408b6fb6 nop      word ptr cs:[rax + rax]
+0x1408b6fc0 mov      qword ptr [rsp + 0x10], rdx
+0x1408b6fc5 push     rbp
+0x1408b6fc6 push     r15
+0x1408b6fc8 push     r14
+0x1408b6fca push     r13
+0x1408b6fcc push     r12
+0x1408b6fce push     rsi
+0x1408b6fcf push     rdi
+0x1408b6fd0 push     rbx
+0x1408b6fd1 sub      rsp, 0x28
+0x1408b6fd5 lea      rbp, [rdx + 0x80]
+0x1408b6fdc mov      byte ptr [rbp + 0x4f], 0
+0x1408b6fe0 mov      rcx, rbp
+0x1408b6fe3 call     0x14014a680 ; core::ptr::drop_in_place$LT$country_core..resources..critters..sheep..SheepAudio$GT$::hfb03c8fee6406828 / bevy_ecs::component::ComponentDescriptor::drop_ptr::h9feafd2efa3d66f6 (.llvm.8002602149119224474)
+0x1408b6fe8 mov      byte ptr [rbp + 0x4f], 0
+0x1408b6fec add      rsp, 0x28
+0x1408b6ff0 pop      rbx
+0x1408b6ff1 pop      rdi
+0x1408b6ff2 pop      rsi
+0x1408b6ff3 pop      r12
+0x1408b6ff5 pop      r13
+0x1408b6ff7 pop      r14
+0x1408b6ff9 pop      r15
+0x1408b6ffb pop      rbp
+0x1408b6ffc ret      
+0x1408b6ffd nop      dword ptr [rax]
+0x1408b7000 mov      qword ptr [rsp + 0x10], rdx
+0x1408b7005 push     rbp
+0x1408b7006 push     r15
+0x1408b7008 push     r14
+0x1408b700a push     r13
+0x1408b700c push     r12
+0x1408b700e push     rsi
+0x1408b700f push     rdi
+0x1408b7010 push     rbx
+0x1408b7011 sub      rsp, 0x28
+0x1408b7015 lea      rbp, [rdx + 0x80]
+0x1408b701c mov      rdx, qword ptr [rbp]
+0x1408b7020 test     rdx, rdx
+0x1408b7023 je       0x1408b7034
+0x1408b7025 mov      rcx, qword ptr [rbp + 8]
+0x1408b7029 mov      r8d, 1
+0x1408b702f call     0x140613c20 ; __rust_dealloc
+0x1408b7034 mov      byte ptr [rbp + 0x4f], 0
+0x1408b7038 add      rsp, 0x28
+0x1408b703c pop      rbx
+0x1408b703d pop      rdi
+0x1408b703e pop      rsi
+0x1408b703f pop      r12
+0x1408b7041 pop      r13
+0x1408b7043 pop      r14
+0x1408b7045 pop      r15
+0x1408b7047 pop      rbp
+0x1408b7048 ret      
+0x1408b7049 nop      dword ptr [rax]
+0x1408b7050 mov      qword ptr [rsp + 0x10], rdx
+0x1408b7055 push     rbp
+0x1408b7056 push     r15
+0x1408b7058 push     r14
+0x1408b705a push     r13
+0x1408b705c push     r12
+0x1408b705e push     rsi
+0x1408b705f push     rdi
+0x1408b7060 push     rbx
+0x1408b7061 sub      rsp, 0x28
+0x1408b7065 lea      rbp, [rdx + 0x80]
+0x1408b706c cmp      byte ptr [rbp + 0x4f], 0
+0x1408b7070 jne      0x1408b7083
+0x1408b7072 add      rsp, 0x28
+0x1408b7076 pop      rbx
+0x1408b7077 pop      rdi
+0x1408b7078 pop      rsi
+0x1408b7079 pop      r12
+0x1408b707b pop      r13
+0x1408b707d pop      r14
+0x1408b707f pop      r15
+0x1408b7081 pop      rbp
+0x1408b7082 ret      
+0x1408b7083 lea      rcx, [rbp - 0x30]
+0x1408b7087 call     0x14014a680 ; core::ptr::drop_in_place$LT$country_core..resources..critters..sheep..SheepAudio$GT$::hfb03c8fee6406828 / bevy_ecs::component::ComponentDescriptor::drop_ptr::h9feafd2efa3d66f6 (.llvm.8002602149119224474)
+0x1408b708c jmp      0x1408b7072 ; 
+0x1408b708e nop      
+0x1408b7090 mov      qword ptr [rsp + 0x10], rdx
+0x1408b7095 push     rbp
+0x1408b7096 push     r15
+0x1408b7098 push     r14
+0x1408b709a push     r13
+0x1408b709c push     r12
+0x1408b709e push     rsi
+0x1408b709f push     rdi
+0x1408b70a0 push     rbx
+0x1408b70a1 sub      rsp, 0x28
+0x1408b70a5 lea      rbp, [rdx + 0x80]
+0x1408b70ac lea      rcx, [rbp - 0x38]
+0x1408b70b0 call     0x140d4cc30 ; anyhow::error::_$LT$impl$u20$core..ops..drop..Drop$u20$for$u20$anyhow..Error$GT$::drop::h2a52e76aa8e9c217
+0x1408b70b5 nop      
+0x1408b70b6 add      rsp, 0x28
+0x1408b70ba pop      rbx
+0x1408b70bb pop      rdi
+0x1408b70bc pop      rsi
+0x1408b70bd pop      r12
+0x1408b70bf pop      r13
+0x1408b70c1 pop      r14
+0x1408b70c3 pop      r15
+0x1408b70c5 pop      rbp
+0x1408b70c6 ret      

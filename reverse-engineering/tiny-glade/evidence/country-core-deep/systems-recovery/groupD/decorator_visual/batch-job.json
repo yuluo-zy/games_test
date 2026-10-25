@@ -1,0 +1,87 @@
+[
+ {
+  "tool": "open_database",
+  "args": {
+   "file_path": "D:/game/reverse-engineering/tiny-glade\\workspace/input/tiny-glade.exe",
+   "run_auto_analysis": false,
+   "database_id": "tg_d1e",
+   "keep_open": true
+  },
+  "timeout_ms": 600000
+ },
+ {
+  "tool": "wait_for_analysis",
+  "args": {
+   "database": "tg_d1e"
+  },
+  "timeout_ms": 600000
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_d1e",
+   "address": "0x140c911d0"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "utils :: xz_projective_rotation_bad"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_d1e",
+   "address": "0x140c90fd0"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "utils :: xz_rotation_bad"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_d1e",
+   "address": "0x1407d9660"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "utils :: random_splits"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_d1e",
+   "address": "0x1407d9780"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "utils :: inverse_lerp"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_d1e",
+   "address": "0x140c8ffb0"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "utils :: halver to_f16"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_d1e",
+   "address": "0x140c90e40"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "utils :: smoothstep (search)"
+ },
+ {
+  "tool": "close_database",
+  "args": {
+   "database": "tg_d1e",
+   "save": false
+  },
+  "timeout_ms": 180000
+ }
+]

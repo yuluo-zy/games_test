@@ -1,0 +1,15 @@
+--- tiny-glade/crates/rhapsody/src/rg/owner_storage.rs
++++ tiny-glade/crates/rhapsody/src/rg/owner_storage.rs
+@@ -67,6 +67,12 @@
+             }
+         }
+     }
++    pub(crate) fn len(&self) -> usize {
++        match &self.storage {
++            Storage::Pooled(list) => list.as_slice().len(),
++            Storage::Local(items) => items.len(),
++        }
++    }
+     pub fn is_empty(&self) -> bool {
+         match &self.storage {
+             Storage::Pooled(list) => list.is_empty(),

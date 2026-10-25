@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nfm = prog.getFunctionManager()\nout = {}\nfor key, a in {\"despawn_caller1\": \"0x141bcc540\", \"despawn_caller2\": \"0x141bd92e0\", \"replay_caller1\": \"0x140e9c870\", \"replay_caller2\": \"0x141bcd720\", \"recalc_caller1\": \"0x141bcc6d0\", \"recalc_caller2\": \"0x141bda800\", \"tmb_caller1\": \"0x141bcc3b0\", \"tmb_caller2\": \"0x141bda0c0\", \"convert_caller1\": \"0x141bcb200\", \"convert_caller2\": \"0x141bdb260\", \"despawn_wrapper\": \"0x141bb2110\"}.items():\n    addr = prog.getAddressFactory().getAddress(a)\n    f = fm.getFunctionContaining(addr)\n    if f is None:\n        out[key] = None\n        continue\n    out[key] = [str(f.getEntryPoint()), str(f.getBody()), str(f.getName())[:4000]]\nwith open(\"/tmp/tree-rest-callers.json\", \"w\") as fh:\n    json.dump(out, fh)\nprint(json.dumps({k: (v[0] if v else None) for k, v in out.items()}))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 240
+  }
+]

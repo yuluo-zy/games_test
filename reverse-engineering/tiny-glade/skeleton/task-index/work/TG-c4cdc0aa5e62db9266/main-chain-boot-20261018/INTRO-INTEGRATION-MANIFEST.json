@@ -1,0 +1,81 @@
+{
+  "baseline": "B",
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "state": "implemented_pending_parent_validation",
+  "function_contracts": {
+    "history_resources": {
+      "va": "0x140943e10",
+      "length": 291,
+      "raw": "history-resources-rne.asm",
+      "facts": [
+        "History cursor/anchor=-1",
+        "ReplayBuffer.speed=1",
+        "Replay elapsed None",
+        "RestoreAppTo tag0",
+        "pending empty",
+        "hold state0"
+      ]
+    },
+    "path_resources": {
+      "va": "0x140b68e40",
+      "length": 1872,
+      "raw": "paths-build-rne.asm",
+      "facts": [
+        "Shared Path publisher",
+        "three Secondary cobblestones sharing that Arc"
+      ]
+    },
+    "wall_systems": {
+      "va": "0x140493120",
+      "length": 1413,
+      "raw": "app-wall-systems-rne.asm",
+      "facts": [
+        "helper335b30 adjust precedes publish",
+        "set19"
+      ]
+    },
+    "history_clear_previous_state": {
+      "va": "0x141439d70",
+      "length": 664,
+      "raw": "history-clear-run-rne.asm",
+      "facts": [
+        "clear only permitted-ID set at Archivist+0x30",
+        "do not extract archive"
+      ]
+    },
+    "archivist_default": {
+      "va": "0x140341370",
+      "length": 712,
+      "raw": "archivist-default-rne.asm",
+      "facts": [
+        "allow_any=false",
+        "empty tracking/collision maps",
+        "None tracked option buckets"
+      ]
+    }
+  },
+  "fixture": "country-core/tests/fixtures/original-intro-history-b.json",
+  "expected_final_walls": {
+    "27": {
+      "height": 4.158195495605469,
+      "points": 11
+    },
+    "28": {
+      "height": 1.5993374586105347,
+      "points": 6
+    },
+    "29": {
+      "height": 3.0318603515625,
+      "points": 4
+    }
+  },
+  "unresolved": [
+    "snapshot motomoto domain apply",
+    "non-Wall serde",
+    "stairs aux structural maps",
+    "wall dirty subscriptions and downstream geometry",
+    "real UiState interaction/input producers",
+    "PlayReplayAudio event payload audit",
+    "world render graph"
+  ]
+}

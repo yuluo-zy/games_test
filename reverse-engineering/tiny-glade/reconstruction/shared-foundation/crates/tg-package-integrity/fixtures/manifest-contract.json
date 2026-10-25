@@ -1,0 +1,356 @@
+{
+  "scope": "B original verify code in isolated DLL loader container, not original game process",
+  "cases": [
+    {
+      "name": "success",
+      "bytes": "{\"version\":1,\"files\":[[\"build-info/manifest.json\",\"ignored\"]]}\t\t\t\t\t\t \t\t    \t \t    ",
+      "expected": {
+        "kind": "ok"
+      }
+    },
+    {
+      "name": "unknown-field",
+      "bytes": "{\"version\":1,\"files\":[[\"build-info/manifest.json\",\"ignored\"]],\"unknown\":{\"nested\":[null,true]}}\t\t \t\t \t \t \t\t\t\t \t    ",
+      "expected": {
+        "kind": "ok"
+      }
+    },
+    {
+      "name": "reordered",
+      "bytes": "{\"files\":[[\"build-info/manifest.json\",\"ignored\"]],\"version\":1} \t\t\t\t \t \t\t \t\t \t     ",
+      "expected": {
+        "kind": "ok"
+      }
+    },
+    {
+      "name": "sequence",
+      "bytes": "[1,[[\"build-info/manifest.json\",\"ignored\"]]]  \t   \t \t \t   \t\t    ",
+      "expected": {
+        "kind": "ok"
+      }
+    },
+    {
+      "name": "version-zero",
+      "bytes": "{\"version\":0,\"files\":[]} \t\t \t    \t \t\t \t     ",
+      "expected": {
+        "kind": "version",
+        "version": 0
+      }
+    },
+    {
+      "name": "version-two",
+      "bytes": "{\"version\":2,\"files\":[]}   \t \t\t  \t  \t\t\t\t\t   ",
+      "expected": {
+        "kind": "version",
+        "version": 2
+      }
+    },
+    {
+      "name": "version-max-u32",
+      "bytes": "{\"version\":4294967295,\"files\":[]}  \t \t\t \t \t\t\t\t       ",
+      "expected": {
+        "kind": "version",
+        "version": 4294967295
+      }
+    },
+    {
+      "name": "version-overflow",
+      "bytes": "{\"version\":4294967296,\"files\":[]} \t \t\t \t\t \t\t \t  \t \t  ",
+      "expected": {
+        "kind": "parse",
+        "message": "invalid value: integer `4294967296`, expected u32 at line 1 column 21"
+      }
+    },
+    {
+      "name": "version-negative",
+      "bytes": "{\"version\":-1,\"files\":[]}\t  \t\t   \t\t\t \t \t \t   ",
+      "expected": {
+        "kind": "parse",
+        "message": "invalid value: integer `-1`, expected u32 at line 1 column 13"
+      }
+    },
+    {
+      "name": "version-float",
+      "bytes": "{\"version\":1.0,\"files\":[]}\t  \t\t\t\t \t\t  \t\t \t\t   ",
+      "expected": {
+        "kind": "parse",
+        "message": "invalid type: floating point `1.0`, expected u32 at line 1 column 14"
+      }
+    },
+    {
+      "name": "version-null",
+      "bytes": "{\"version\":null,\"files\":[]} \t\t\t\t \t  \t\t\t \t\t\t \t  ",
+      "expected": {
+        "kind": "parse",
+        "message": "invalid type: null, expected u32 at line 1 column 15"
+      }
+    },
+    {
+      "name": "version-string",
+      "bytes": "{\"version\":\"1\",\"files\":[]}  \t\t\t\t\t\t \t \t\t \t   \t ",
+      "expected": {
+        "kind": "parse",
+        "message": "invalid type: string \"1\", expected u32 at line 1 column 14"
+      }
+    },
+    {
+      "name": "duplicate-version",
+      "bytes": "{\"version\":1,\"version\":1,\"files\":[]}\t  \t\t  \t\t  \t \t      ",
+      "expected": {
+        "kind": "parse",
+        "message": "duplicate field `version` at line 1 column 22"
+      }
+    },
+    {
+      "name": "duplicate-files",
+      "bytes": "{\"version\":1,\"files\":[],\"files\":[]}\t \t\t     \t\t  \t\t     ",
+      "expected": {
+        "kind": "parse",
+        "message": "duplicate field `files` at line 1 column 31"
+      }
+    },
+    {
+      "name": "missing-version",
+      "bytes": "{\"files\":[]}    \t\t       \t\t\t    ",
+      "expected": {
+        "kind": "parse",
+        "message": "missing field `version` at line 1 column 12"
+      }
+    },
+    {
+      "name": "missing-files",
+      "bytes": "{\"version\":1} \t \t\t\t \t   \t\t\t\t  \t  ",
+      "expected": {
+        "kind": "parse",
+        "message": "missing field `files` at line 1 column 13"
+      }
+    },
+    {
+      "name": "capitalized-version",
+      "bytes": "{\"Version\":1,\"files\":[]} \t\t\t \t \t\t\t\t\t    \t   ",
+      "expected": {
+        "kind": "parse",
+        "message": "missing field `version` at line 1 column 24"
+      }
+    },
+    {
+      "name": "sequence-extra",
+      "bytes": "[1,[[\"build-info/manifest.json\",\"ignored\"]],true]\t\t\t\t\t\t \t       \t  \t ",
+      "expected": {
+        "kind": "parse",
+        "message": "trailing characters at line 1 column 45"
+      }
+    },
+    {
+      "name": "sequence-short",
+      "bytes": "[1]  \t \t \t\t\t\t \t   \t    ",
+      "expected": {
+        "kind": "parse",
+        "message": "invalid length 1, expected struct PackageManifest with 2 elements at line 1 column 3"
+      }
+    },
+    {
+      "name": "tuple-short",
+      "bytes": "{\"version\":1,\"files\":[[\"a\"]]}\t\t\t\t\t\t\t\t\t\t\t\t  \t \t\t  ",
+      "expected": {
+        "kind": "parse",
+        "message": "invalid length 1, expected a tuple of size 2 at line 1 column 27"
+      }
+    },
+    {
+      "name": "tuple-extra",
+      "bytes": "{\"version\":1,\"files\":[[\"a\",\"b\",\"c\"]]}\t \t \t \t     \t\t      ",
+      "expected": {
+        "kind": "parse",
+        "message": "trailing characters at line 1 column 32"
+      }
+    },
+    {
+      "name": "file-object",
+      "bytes": "{\"version\":1,\"files\":[{\"name\":\"a\",\"hash\":\"b\"}]}    \t  \t            ",
+      "expected": {
+        "kind": "parse",
+        "message": "invalid type: map, expected a tuple of size 2 at line 1 column 22"
+      }
+    },
+    {
+      "name": "file-number",
+      "bytes": "{\"version\":1,\"files\":[[1,\"b\"]]}\t\t\t \t \t\t\t\t\t \t\t      ",
+      "expected": {
+        "kind": "parse",
+        "message": "invalid type: integer `1`, expected a string at line 1 column 24"
+      }
+    },
+    {
+      "name": "hash-bool",
+      "bytes": "{\"version\":1,\"files\":[[\"a\",false]]}  \t\t\t\t\t \t\t\t\t\t       ",
+      "expected": {
+        "kind": "parse",
+        "message": "invalid type: boolean `false`, expected a string at line 1 column 32"
+      }
+    },
+    {
+      "name": "parse-after-gate",
+      "bytes": "not json \t\t  \t\t    \t        ",
+      "expected": {
+        "kind": "parse",
+        "message": "expected ident at line 1 column 2"
+      }
+    },
+    {
+      "name": "schema-before-version",
+      "bytes": "{\"version\":2,\"files\":[[1,\"b\"]]}  \t  \t\t\t\t \t\t\t \t\t    ",
+      "expected": {
+        "kind": "parse",
+        "message": "invalid type: integer `1`, expected a string at line 1 column 24"
+      }
+    }
+  ],
+  "ordered_files": {
+    "bytes": "{\"files\":[[\"build-info/manifest.json\",\"ignored\"],[\"good\",\"3fba5250be9ac259c56e7250c526bc83bacb4be825f2799d3d59e5b4878dd74e\"],[\"bad\",\"wrong\"],[\"good\",\"3FBA5250BE9AC259C56E7250C526BC83BACB4BE825F2799D3D59E5B4878DD74E\"],[\"missing-0\",\"wrong\"],[\"missing-1\",\"wrong\"],[\"missing-2\",\"wrong\"],[\"missing-3\",\"wrong\"],[\"missing-4\",\"wrong\"],[\"missing-5\",\"wrong\"],[\"missing-6\",\"wrong\"],[\"missing-7\",\"wrong\"],[\"missing-8\",\"wrong\"],[\"missing-9\",\"wrong\"],[\"missing-10\",\"wrong\"],[\"missing-11\",\"wrong\"],[\"missing-12\",\"wrong\"],[\"missing-13\",\"wrong\"],[\"missing-14\",\"wrong\"],[\"missing-15\",\"wrong\"],[\"missing-16\",\"wrong\"],[\"missing-17\",\"wrong\"],[\"missing-18\",\"wrong\"],[\"missing-19\",\"wrong\"],[\"missing-20\",\"wrong\"],[\"missing-21\",\"wrong\"],[\"missing-22\",\"wrong\"],[\"missing-23\",\"wrong\"],[\"missing-24\",\"wrong\"],[\"missing-25\",\"wrong\"],[\"missing-26\",\"wrong\"],[\"missing-27\",\"wrong\"],[\"missing-28\",\"wrong\"],[\"missing-29\",\"wrong\"],[\"missing-30\",\"wrong\"],[\"missing-31\",\"wrong\"],[\"missing-32\",\"wrong\"],[\"missing-33\",\"wrong\"],[\"missing-34\",\"wrong\"],[\"missing-35\",\"wrong\"],[\"missing-36\",\"wrong\"],[\"missing-37\",\"wrong\"],[\"missing-38\",\"wrong\"],[\"missing-39\",\"wrong\"],[\"missing-40\",\"wrong\"],[\"missing-41\",\"wrong\"],[\"missing-42\",\"wrong\"],[\"missing-43\",\"wrong\"],[\"missing-44\",\"wrong\"],[\"missing-45\",\"wrong\"],[\"missing-46\",\"wrong\"],[\"missing-47\",\"wrong\"],[\"missing-48\",\"wrong\"],[\"missing-49\",\"wrong\"],[\"missing-50\",\"wrong\"],[\"missing-51\",\"wrong\"],[\"missing-52\",\"wrong\"],[\"missing-53\",\"wrong\"],[\"missing-54\",\"wrong\"],[\"missing-55\",\"wrong\"],[\"missing-56\",\"wrong\"],[\"missing-57\",\"wrong\"],[\"missing-58\",\"wrong\"],[\"missing-59\",\"wrong\"],[\"missing-60\",\"wrong\"],[\"missing-61\",\"wrong\"],[\"missing-62\",\"wrong\"],[\"missing-63\",\"wrong\"],[\"missing-64\",\"wrong\"],[\"missing-65\",\"wrong\"],[\"missing-66\",\"wrong\"],[\"missing-67\",\"wrong\"],[\"missing-68\",\"wrong\"],[\"missing-69\",\"wrong\"],[\"missing-70\",\"wrong\"],[\"missing-71\",\"wrong\"],[\"missing-72\",\"wrong\"],[\"missing-73\",\"wrong\"],[\"missing-74\",\"wrong\"],[\"missing-75\",\"wrong\"],[\"missing-76\",\"wrong\"],[\"missing-77\",\"wrong\"],[\"missing-78\",\"wrong\"],[\"missing-79\",\"wrong\"],[\"missing-80\",\"wrong\"],[\"missing-81\",\"wrong\"],[\"missing-82\",\"wrong\"],[\"missing-83\",\"wrong\"],[\"missing-84\",\"wrong\"],[\"missing-85\",\"wrong\"],[\"missing-86\",\"wrong\"],[\"missing-87\",\"wrong\"],[\"missing-88\",\"wrong\"],[\"missing-89\",\"wrong\"],[\"missing-90\",\"wrong\"],[\"missing-91\",\"wrong\"],[\"missing-92\",\"wrong\"],[\"missing-93\",\"wrong\"],[\"missing-94\",\"wrong\"],[\"missing-95\",\"wrong\"],[\"missing-96\",\"wrong\"],[\"missing-97\",\"wrong\"],[\"missing-98\",\"wrong\"],[\"missing-99\",\"wrong\"],[\"missing-100\",\"wrong\"],[\"missing-101\",\"wrong\"],[\"missing-102\",\"wrong\"],[\"missing-103\",\"wrong\"],[\"missing-104\",\"wrong\"],[\"missing-105\",\"wrong\"],[\"missing-106\",\"wrong\"],[\"missing-107\",\"wrong\"],[\"missing-108\",\"wrong\"],[\"missing-109\",\"wrong\"],[\"missing-110\",\"wrong\"],[\"missing-111\",\"wrong\"],[\"missing-112\",\"wrong\"],[\"missing-113\",\"wrong\"],[\"missing-114\",\"wrong\"],[\"missing-115\",\"wrong\"],[\"missing-116\",\"wrong\"],[\"missing-117\",\"wrong\"],[\"missing-118\",\"wrong\"],[\"missing-119\",\"wrong\"],[\"missing-120\",\"wrong\"],[\"missing-121\",\"wrong\"],[\"missing-122\",\"wrong\"],[\"missing-123\",\"wrong\"],[\"missing-124\",\"wrong\"],[\"missing-125\",\"wrong\"],[\"missing-126\",\"wrong\"],[\"missing-127\",\"wrong\"],[\"missing-128\",\"wrong\"],[\"missing-129\",\"wrong\"],[\"missing-0\",\"wrong\"],[\"build-info/manifest.json/../manifest.json\",\"wrong\"]],\"version\":1}\t\t  \t \t\t\t \t \t \t     ",
+    "expected": [
+      [
+        "missing-0",
+        "missing-1",
+        "missing-2",
+        "missing-3",
+        "missing-4",
+        "missing-5",
+        "missing-6",
+        "missing-7",
+        "missing-8",
+        "missing-9",
+        "missing-10",
+        "missing-11",
+        "missing-12",
+        "missing-13",
+        "missing-14",
+        "missing-15",
+        "missing-16",
+        "missing-17",
+        "missing-18",
+        "missing-19",
+        "missing-20",
+        "missing-21",
+        "missing-22",
+        "missing-23",
+        "missing-24",
+        "missing-25",
+        "missing-26",
+        "missing-27",
+        "missing-28",
+        "missing-29",
+        "missing-30",
+        "missing-31",
+        "missing-32",
+        "missing-33",
+        "missing-34",
+        "missing-35",
+        "missing-36",
+        "missing-37",
+        "missing-38",
+        "missing-39",
+        "missing-40",
+        "missing-41",
+        "missing-42",
+        "missing-43",
+        "missing-44",
+        "missing-45",
+        "missing-46",
+        "missing-47",
+        "missing-48",
+        "missing-49",
+        "missing-50",
+        "missing-51",
+        "missing-52",
+        "missing-53",
+        "missing-54",
+        "missing-55",
+        "missing-56",
+        "missing-57",
+        "missing-58",
+        "missing-59",
+        "missing-60",
+        "missing-61",
+        "missing-62",
+        "missing-63",
+        "missing-64",
+        "missing-65",
+        "missing-66",
+        "missing-67",
+        "missing-68",
+        "missing-69",
+        "missing-70",
+        "missing-71",
+        "missing-72",
+        "missing-73",
+        "missing-74",
+        "missing-75",
+        "missing-76",
+        "missing-77",
+        "missing-78",
+        "missing-79",
+        "missing-80",
+        "missing-81",
+        "missing-82",
+        "missing-83",
+        "missing-84",
+        "missing-85",
+        "missing-86",
+        "missing-87",
+        "missing-88",
+        "missing-89",
+        "missing-90",
+        "missing-91",
+        "missing-92",
+        "missing-93",
+        "missing-94",
+        "missing-95",
+        "missing-96",
+        "missing-97",
+        "missing-98",
+        "missing-99",
+        "missing-100",
+        "missing-101",
+        "missing-102",
+        "missing-103",
+        "missing-104",
+        "missing-105",
+        "missing-106",
+        "missing-107",
+        "missing-108",
+        "missing-109",
+        "missing-110",
+        "missing-111",
+        "missing-112",
+        "missing-113",
+        "missing-114",
+        "missing-115",
+        "missing-116",
+        "missing-117",
+        "missing-118",
+        "missing-119",
+        "missing-120",
+        "missing-121",
+        "missing-122",
+        "missing-123",
+        "missing-124",
+        "missing-125",
+        "missing-126",
+        "missing-127",
+        "missing-128",
+        "missing-129",
+        "missing-0"
+      ],
+      [
+        "bad",
+        "good",
+        "build-info/manifest.json/../manifest.json"
+      ],
+      [
+        "extra",
+        "sub/tmp/nested"
+      ]
+    ]
+  }
+}

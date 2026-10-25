@@ -1,0 +1,86 @@
+"""Remove unrecovered APIs from the formal package, preserving research inputs."""
+from pathlib import Path
+import json
+
+ROOT = Path(__file__).resolve().parents[1]
+UTILS = ROOT / 'crates/utils'
+
+path = UTILS / 'src/index_condenser.rs'
+text = path.read_text(encoding='utf-8')
+start = text.index('    /// Producer adapter')
+end = text.index('    pub fn keys(', start)
+text = text[:start] + text[end:]
+text = text.replace('#[cfg(all(test, feature = "experimental-reconstruction"))]', '#[cfg(test)]')
+text = text.replace('        let mut c = IndexCondenser::default();\n        let mut a = c.insert(10);\n        let mut b = c.insert(20);\n        let mut d = c.insert(30);', '''        // Direct fixture setup exercises the recovered remove/get bodies without
+        // claiming an original insertion API or its unknown producer policy.
+        let mut c = IndexCondenser {
+            keys: vec![10, 20, 30],
+            indices: [(10, 0), (20, 1), (30, 2)].into_iter().collect(),
+        };
+        let mut a = IndexHandle { key: 10, cached_index: Cell::new(0) };
+        let mut b = IndexHandle { key: 20, cached_index: Cell::new(1) };
+        let mut d = IndexHandle { key: 30, cached_index: Cell::new(2) };''')
+path.write_text(text, encoding='utf-8')
+
+path = UTILS / 'src/swizzlers.rs'
+text = path.read_text(encoding='utf-8')
+start = text.index('    /// Element access projecting')
+end = text.index('pub trait Vec3SliceAs2', start)
+text = text[:start] + '}\n' + text[end:]
+start = text.index('#[cfg(all(test, feature = "experimental-reconstruction"))]')
+text = text[:start]
+path.write_text(text, encoding='utf-8')
+
+path = UTILS / 'src/natural_cubic.rs'
+text = path.read_text(encoding='utf-8')
+first_impl = text.index('impl Spline2D {')
+start = text.index('    #[cfg(feature = "experimental-reconstruction")]', first_impl)
+end = text.index('impl Spline3D {', start)
+text = text[:start] + '}\n' + text[end:]
+start = text.index('#[cfg(all(test, feature = "experimental-reconstruction"))]\nmod completion_tests')
+end = text.index('#[cfg(test)]', start)
+text = text[:start] + text[end:]
+start = text.index('#[cfg(all(test, feature = "experimental-reconstruction"))]\nmod spline2d_queries')
+text = text[:start]
+path.write_text(text, encoding='utf-8')
+
+path = UTILS / 'Cargo.toml'
+text = path.read_text(encoding='utf-8').replace('\n[features]\ndefault = []\nexperimental-reconstruction = []\n', '')
+path.write_text(text, encoding='utf-8')
+
+path = UTILS / 'src/oracle/index_tests.rs'
+text = path.read_text(encoding='utf-8')
+start = text.index('        let mut indices = IndexCondenser::default();')
+end = text.index('        let handle = Condex', start)
+text = text[:start] + '''        // Native get-cache fixtures provide the dense keys and hash indices.
+        // Initialize their state directly; no speculative insert API is tested.
+        let indices = IndexCondenser {
+            keys: keys.to_vec(),
+            indices: keys.iter().enumerate().map(|(index, &key)| (key, index as u32)).collect(),
+        };
+''' + text[end:]
+text = text.replace('    let mut indices = IndexCondenser::default();\n    let a = indices.insert(10u32);\n    let b = indices.insert(20);', '''    let mut indices = IndexCondenser {
+        keys: vec![10u32, 20],
+        indices: [(10u32, 0), (20, 1)].into_iter().collect(),
+    };
+    let a = Condex { key: 10, cached_index: Cell::new(0) };
+    let b = Condex { key: 20, cached_index: Cell::new(1) };''')
+text = text.replace('    let c = indices.insert(30);', '''    indices.keys.push(30);
+    indices.indices.insert(30, 0);
+    let c = Condex { key: 30, cached_index: Cell::new(0) };''')
+path.write_text(text, encoding='utf-8')
+
+fixture = UTILS / 'tests/oracle/foundation-completion-2026-10-13/base-assets/spline_selector_tests.rs'
+assert fixture.resolve().is_relative_to(UTILS.resolve()), 'Fixture must remain under the formal utils package'
+fixture.unlink()
+audit_path = ROOT / 'provenance/foundation-audit.json'
+audit = json.loads(audit_path.read_text(encoding='utf-8'))
+audit['files'] = [r for r in audit['files'] if r['path'] != fixture.relative_to(ROOT).as_posix()]
+audit['excluded_unrecovered_apis'] = [
+    {'source': 'reconstruction/shared-foundation/crates/utils/src/index_condenser.rs:insert', 'reason': 'Original producer/key/overflow contract unconfirmed; removed from formal package, retained in research tree.'},
+    {'source': 'reconstruction/shared-foundation/crates/utils/src/swizzlers.rs:Vec3SliceView2 projected get/get_unchecked/iter', 'reason': 'Original axes and stride unconfirmed; removed projected access, retained verified borrowed pointer/length transport.'},
+    {'source': 'reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs:Spline2D global queries', 'reason': 'Mirrored from 3D without independent emitted 2D body evidence; removed methods and speculative tests. Verified 2D constructors/local evaluation and 3D real query remain.'},
+    {'source': 'evidence/foundation-completion-2026-10-13/base-assets/spline_selector_tests.rs', 'reason': 'Only validates the speculative 2D shared-policy query; retained in research tree, removed from formal package.'},
+]
+audit_path.write_text(json.dumps(audit, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+print('Removed unrecovered utils APIs and their speculative tests/feature; kept verified bodies and native cache fixtures')

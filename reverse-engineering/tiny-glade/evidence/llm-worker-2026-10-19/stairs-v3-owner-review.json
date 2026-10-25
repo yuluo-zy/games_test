@@ -1,0 +1,25 @@
+{
+  "reviewer":"integration owner (Codex)",
+  "input":"stairs-v3-result.json",
+  "basis":"D1 full decompilation and heldout-checklist.json; no original execution",
+  "verdict":"reject_as_complete_contract",
+  "transport_complete":true,
+  "critical_findings":[
+    {"id":"R1","worker_pointer":"/analysis/branch_matrix/8/condition","problem":"Places the timed branch under tag != 10. The source else belongs to command bit0, inside tag == 10. This would modify unrelated replay commands.","refs":["D1:L183-L184","D1:L335-L354","D1:L517-L519"]},
+    {"id":"R2","worker_pointer":"/analysis/branch_matrix/10/condition","problem":"Uses elapsed > threshold for the complement of elapsed <= threshold, losing unordered/NaN apply behavior. Also says zero divisor implies NaN in preceding row, which is false for nonzero finite numerator.","refs":["D1:L336-L351"]},
+    {"id":"R3","worker_pointer":"/analysis/side_effects","problem":"Omits the actual state-changing helper calls and event discriminant formulas 0x12-direction versus 0x11+direction.","refs":["D1:L208-L215","D1:L369-L376","D1:L497-L516"]},
+    {"id":"R4","worker_pointer":"/analysis/dependency_reuse/0/game_policy_to_preserve","problem":"Conflates cached-table miss (uStack_a0/uStack_fd zero) with decorator metadata miss (uVar67/uVar68 zero); those are separate fields and lookups.","refs":["D1:L272-L327","D1:L432-L489"]},
+    {"id":"R5","worker_pointer":"/analysis/summary","problem":"Invents sorted/unsorted classification; ordinary local reassignment of lVar37 is also incorrectly promoted to an unresolved stride problem.","refs":["D1:L121-L132","D1:L180-L181"]},
+    {"id":"R6","worker_pointer":"/analysis/integration_checks/2","problem":"Confuses emitted output discriminant with later removed-input drop switch, proposing an enum-order claim unsupported by S1.","refs":["D1:L499-L516","D1:L581-L604","S1:L1-L6"]}
+  ],
+  "checklist":[
+    {"id":"H01","status":"pass"}, {"id":"H02","status":"pass"},
+    {"id":"H03","status":"fail"}, {"id":"H04","status":"fail"},
+    {"id":"H05","status":"partial"}, {"id":"H06","status":"partial"},
+    {"id":"H07","status":"pass"}, {"id":"H08","status":"fail"},
+    {"id":"H09","status":"fail"}, {"id":"H10","status":"pass"},
+    {"id":"H11","status":"pass"}, {"id":"H12","status":"partial"},
+    {"id":"H13","status":"fail"}, {"id":"H14","status":"partial"}
+  ],
+  "next_step":"Tighten generic extraction prompt around literal nesting, interacting flags, exact formulas and float complements; compare disabled vs low thinking on identical original evidence. No implementation accepted."
+}

@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\nfrom ghidra.program.model.listing import Function\nfrom ghidra.program.model.data import Undefined4DataType\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x141218e30\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at 0x141218e30\")\nout[\"sig_before\"] = str(f.getSignature())\n# set prototype so params are explicit (RCX,RDX,R8,R9 all qword + stack region)\ntx = None\ntry:\n    tx = prog.startTransaction(\"sig fix\")\n    dt = prog.getDataTypeManager()\n    # simplest: make it take 4 qwords + unspecified stack\n    from ghidra.program.model.data import PointerDataType, LongLongDataType, VoidDataType\n    from ghidra.program.model.symbol import SourceType\n    sig = f.getSignature()\n    # create function definition\n    from ghidra.program.model.data import FunctionDefinitionDataType\n    from ghidra.program.model.data import ParameterDefinitionImpl\n    from ghidra.program.database import function\n    fdef = FunctionDefinitionDataType(\"half_timbering_sig\")\n    fdef.setReturnType(VoidDataType())\n    p0 = ParameterDefinitionImpl(\"rcx\", PointerDataType(), 0)\n    p1 = ParameterDefinitionImpl(\"rdx\", PointerDataType(), 1)\n    p2 = ParameterDefinitionImpl(\"r8\", PointerDataType(), 2)\n    p3 = ParameterDefinitionImpl(\"r9\", PointerDataType(), 3)\n    fdef.addParameter(p0); fdef.addParameter(p1); fdef.addParameter(p2); fdef.addParameter(p3)\n    f.setSignature(fdef, SourceType.USER_DEFINED)\n    prog.endTransaction(tx, True)\n    tx = None\n    out[\"sig_after\"] = str(f.getSignature())\n    d = DecompInterface()\n    try:\n        d.openProgram(prog)\n        res = d.decompileFunction(f, 300, monitor)\n        if not res.decompileCompleted():\n            out[\"error\"] = str(res.getErrorMessage())\n        else:\n            out[\"decompiled\"] = res.getDecompiledFunction().getC()\n    finally:\n        d.dispose()\nfinally:\n    if tx is not None:\n        prog.endTransaction(tx, False)\nprint(json.dumps(out))",
+      "timeoutSeconds": 400
+    },
+    "timeout_seconds": 500
+  }
+]

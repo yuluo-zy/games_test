@@ -1,0 +1,145 @@
+Original SPIR-V disassembly lines 6716..6774
+6716: 
+6717: "
+6718:                OpName %10 "type.ConstantBuffer.SpdConstants"
+6719:                OpMemberName %10 0 "mips"
+6720:                OpMemberName %10 1 "numWorkGroups"
+6721:                OpMemberName %10 2 "workGroupOffset"
+6722:                OpMemberName %10 3 "input_dims"
+6723:                OpName %11 "spdConstants"
+6724:                OpName %12 "type.2d.image"
+6725:                OpName %13 "imgSrc"
+6726:                OpName %14 "type.2d.image.array"
+6727:                OpName %15 "imgDst"
+6728:                OpName %16 "imgDst6"
+6729:                OpName %17 "type.RWStructuredBuffer.SpdGlobalAtomicBuffer"
+6730:                OpName %18 "SpdGlobalAtomicBuffer"
+6731:                OpMemberName %18 0 "counter"
+6732:                OpName %19 "spdGlobalAtomic"
+6733:                OpName %20 "spdCounter"
+6734:                OpName %21 "spdIntermediateR"
+6735:                OpName %2 "cs_main"
+6736:                OpModuleProcessed "dxc-commit-hash: 16ceb560"
+6737:                OpModuleProcessed "dxc-cl-option: /tmp/.tmpaM7zCx -E cs_main -T cs_6_4 -spirv -WX -Ges -fspv-target-env=vulkan1.1 -HV 2021 -Zi -Fo /tmp/.tmptiJ94p -Qembed_debug"
+6738:                OpDecorate %3 BuiltIn WorkgroupId
+6739:                OpDecorate %4 BuiltIn LocalInvocationIndex
+6740:                OpDecorate %5 BuiltIn SubgroupLocalInvocationId
+6741:                OpDecorate %13 DescriptorSet 0
+6742:                OpDecorate %13 Binding 0
+6743:                OpDecorate %15 DescriptorSet 0
+6744:                OpDecorate %15 Binding 1
+6745:                OpDecorate %16 DescriptorSet 0
+6746:                OpDecorate %16 Binding 2
+6747:                OpDecorate %19 DescriptorSet 0
+6748:                OpDecorate %19 Binding 3
+6749:                OpDecorate %16 Coherent
+6750:                OpDecorate %19 Coherent
+6751:                OpMemberDecorate %10 0 Offset 0
+6752:                OpMemberDecorate %10 1 Offset 4
+6753:                OpMemberDecorate %10 2 Offset 8
+6754:                OpMemberDecorate %10 3 Offset 16
+6755:                OpDecorate %10 Block
+6756:                OpDecorate %22 ArrayStride 4
+6757:                OpMemberDecorate %18 0 Offset 0
+6758:                OpDecorate %23 ArrayStride 24
+6759:                OpMemberDecorate %17 0 Offset 0
+6760:                OpDecorate %17 BufferBlock
+6761:          %24 = OpTypeInt 32 1
+6762:          %25 = OpConstant %24 0
+6763:          %26 = OpConstant %24 1
+6764:          %27 = OpConstant %24 2
+6765:          %28 = OpTypeInt 32 0
+6766:          %29 = OpConstant %28 64
+6767:          %30 = OpConstant %28 8
+6768:          %31 = OpConstant %28 6
+6769:          %32 = OpConstant %28 2
+6770:          %33 = OpConstant %28 7
+6771:          %34 = OpConstant %28 0
+6772:          %35 = OpTypeVector %28 2
+6773:          %36 = OpConstant %28 3
+6774:          %37 = OpConstant %28 1
+
+Original SPIR-V disassembly lines 6844..6860
+6844:           %2 = OpFunction %72 None %73
+6845:          %88 = OpLabel
+6846:                OpLine %7 116 1
+6847:          %89 = OpLoad %69 %3
+6848:          %90 = OpLoad %28 %4
+6849:                OpLine %7 118 15
+6850:          %91 = OpVectorShuffle %35 %89 %89 0 1
+6851:                OpLine %7 120 14
+6852:          %92 = OpAccessChain %74 %11 %25
+6853:                OpLine %7 120 27
+6854:          %93 = OpLoad %28 %92
+6855:                OpLine %7 121 14
+6856:          %94 = OpAccessChain %74 %11 %26
+6857:                OpLine %7 121 27
+6858:          %95 = OpLoad %28 %94
+6859:                OpLine %7 122 14
+6860:          %96 = OpCompositeExtract %28 %89 2
+
+Original SPIR-V disassembly lines 9180..9234
+9180:                OpBranch %1244
+9181:        %1244 = OpLabel
+9182:                OpLine %9 758 5
+9183:                OpBranch %1230
+9184:        %1230 = OpLabel
+9185:                OpLine %9 809 1
+9186:                OpBranch %1106
+9187:        %1106 = OpLabel
+9188:                OpLine %9 825 14
+9189:        %1252 = OpULessThanEqual %76 %93 %31
+9190:                OpLine %9 825 20
+9191:                OpSelectionMerge %1253 None
+9192:                OpBranchConditional %1252 %1254 %1253
+9193:        %1254 = OpLabel
+9194:                OpLine %9 825 20
+9195:                OpBranch %100
+9196:        %1253 = OpLabel
+9197:                OpLine %9 394 30
+9198:        %1255 = OpIEqual %76 %90 %34
+9199:                OpLine %9 395 5
+9200:                OpSelectionMerge %1256 None
+9201:                OpBranchConditional %1255 %1257 %1256
+9202:        %1257 = OpLabel
+9203:                OpLine %7 87 39
+9204:        %1258 = OpAccessChain %77 %19 %25 %34 %25 %96
+9205:                OpLine %7 87 5
+9206:        %1259 = OpAtomicIAdd %28 %1258 %37 %34 %37
+9207:                OpLine %7 87 20
+9208:        %1260 = OpBitcast %28 %1259
+9209:                OpLine %7 87 5
+9210:                OpStore %20 %1260
+9211:                OpLine %9 397 5
+9212:                OpBranch %1256
+9213:        %1256 = OpLabel
+9214:                OpLine %9 386 5
+9215:                OpControlBarrier %32 %32 %79
+9216:                OpLine %7 91 12
+9217:        %1261 = OpLoad %28 %20
+9218:                OpLine %9 399 53
+9219:        %1262 = OpISub %28 %95 %37
+9220:                OpLine %9 399 35
+9221:        %1263 = OpINotEqual %76 %1261 %1262
+9222:                OpLine %9 827 71
+9223:                OpSelectionMerge %1264 None
+9224:                OpBranchConditional %1263 %1265 %1264
+9225:        %1265 = OpLabel
+9226:                OpLine %9 827 71
+9227:                OpBranch %100
+9228:        %1264 = OpLabel
+9229:                OpLine %7 95 24
+9230:        %1266 = OpAccessChain %77 %19 %25 %34 %25 %96
+9231:                OpLine %7 95 5
+9232:                OpStore %1266 %34
+9233:                OpNoLine
+9234:                OpSelectionMerge %1267 None
+
+Original SPIR-V disassembly lines 9865..9870
+9865:                OpLine %9 835 1
+9866:                OpBranch %100
+9867:         %100 = OpLabel
+9868:                OpLine %7 124 1
+9869:                OpReturn
+9870:                OpFunctionEnd
+

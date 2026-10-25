@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-10-19T20:33:55.726011+00:00",
+  "reviewer": "07 independent validation",
+  "verdict": "passed_design_scoped",
+  "manifest": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-1d8b7844066af51d6b/cloth-visual-state-20261020/projective-design-v1/DESIGN_MANIFEST_V1.json",
+    "sha256": "610d10b4880858908b8917d74cb259df0a04f820074b218bf7e0d9a0017ad423"
+  },
+  "checked_references": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-1d8b7844066af51d6b/cloth-visual-state-20261020/projective-design-v1/DESIGN_V1.md",
+      "sha256": "46920e2b5f5a5092591e7ddc94f8ead548d2ba921583c79def349bb071f8f25d"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/utils/src/lib.rs",
+      "sha256": "feaaee386a98f4551009dca584c63b3e1b680db0bed21d1c76bb33a7bf5e5fd6"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-52f7fc4f94ad125530/cloth-visual-state-20261020/window-primitives-v1/PROJECTIVE_COMPARISON_V1.json",
+      "sha256": "a4731ec313e5e49831e3ec1b667e605537244245470f4ab8b7dad46948356ccd"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-52f7fc4f94ad125530/cloth-visual-state-20261020/window-primitives-v1/PROJECTIVE_COMPARISON_ADDENDUM_V1.json",
+      "sha256": "8928eaf5b291c653b578644b42f39a4720387c743246b3b37a449ee2145491cd"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-52f7fc4f94ad125530/cloth-visual-state-20261020/window-primitives-v1/NATIVE_PRIMITIVES_V1.json",
+      "sha256": "e93b2ea2faa0ebfd3ea7c59a5735bd4e1b2da637d0565d37aa6e7c99d0582a9b"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-922ae449b0664cec84/cloth-visual-state-20261020/projection-evidence-v1/140c90fd0-full-B-rne.asm",
+      "sha256": "2e0192257eb532ea9b63a8748d50a7b99496f809fb14aab14f7c83c354ecdc35"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/independent-validation/fullvisual-20261020/CLOTH_SHARED_UTILS_CANDIDATE_REVIEW_V1.json",
+      "sha256": "14ce9d05038ffb9b761c5c8a167a11cc43cabf32ecbaecc6bc03c15cad908b04"
+    }
+  ],
+  "original_evidence": {
+    "old_504B": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-922ae449b0664cec84/cloth-visual-state-20261020/projection-evidence-v1/140c90fd0-full-B-rne.asm",
+      "sha256": "2e0192257eb532ea9b63a8748d50a7b99496f809fb14aab14f7c83c354ecdc35",
+      "instruction_count": 131,
+      "continuous_bytes": 504,
+      "start_va": "0x140c90fd0"
+    },
+    "projective_513B": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-52f7fc4f94ad125530/cloth-visual-state-20261020/window-primitives-v1/140c911d0-full-B.asm",
+      "sha256": "010f826d604f9d49cb07e5bee57febbde91eee4eb7c0fdf61bd51b6f5f9a237c",
+      "instruction_count": 133,
+      "continuous_bytes": 513,
+      "start_va": "0x140c911d0"
+    }
+  },
+  "independent_comparison": "Both full bodies rechecked instruction by instruction against B PE. After two actual input loads x=[rdx], z=[rdx+8], all 128 post-prologue operations match under input xmm1/xmm2 permutation, resolved absolute RIP addresses and instruction-index branch targets. Three scratch instructions old95..97/new97..99 retain literal xmm1 because xor redefines it after input is dead. No other normalized instruction difference.",
+  "approved_candidate_scope": "Append only public utils::xz_projective_rotation_bad(Vec3)->Quat delegating xz_rotation_bad(Vec2::new(direction.x,direction.z)). Existing whole feaa source is exact prefix. Do not normalize Vec3, read/gate Y, duplicate quaternion algorithm, alter pinned sign branches or add fallback. Add one meaningful actual helper test covering finite/NaN/infinite Y invariance and invalid XZ equivalence.",
+  "namespace_and_owner": "This is one shared utils function in the already delegated TG1d8 owner. Existing system-decorator local approximate helpers/whole window body are not silently replaced or declared recovered; caller migration requires its own owned source candidate.",
+  "limits": {
+    "candidate_written_or_tested": false,
+    "original_target_executed": false,
+    "whole_windows_or_box_cloth_upstream_accepted": false
+  }
+}

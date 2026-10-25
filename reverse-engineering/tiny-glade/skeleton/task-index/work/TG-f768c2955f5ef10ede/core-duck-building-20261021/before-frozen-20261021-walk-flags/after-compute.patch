@@ -1,0 +1,462 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs.rs
+@@ -17,6 +17,7 @@
+ use country_core::resources::walls::decorator::{DecoratorInfo, DecoratorRotationXZ};
+ use country_core::resources::walls::decorator_storage::DecoratorStorageAddr;
+ use country_core::resources::walls::public_walls::PublicWalls;
++use country_core::resources::walls::public_wall_state::PublicWallState;
+ use country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes;
+ use glam::{Vec2, Vec3};
+ use utils::natural_cubic::{DenseSplineSegment2D, Spline2D};
+@@ -179,6 +180,47 @@
+     (best, best_score)
+ }
+ 
++/// 原 request source530..584 的第二遍有向图旗位传播，先收集再统一修改。
++fn propagate_alignment_flags(
++    alignments: &mut petgraph::graphmap::DiGraphMap<DecoratorId, AlignKind, std::hash::RandomState>,
++) {
++    let mut updates = Vec::new();
++    for node in alignments.nodes() {
++        let mut has_straight = false;
++        let mut has_positive = false;
++        let mut has_nonpositive = false;
++        for neighbor in alignments.neighbors(node) {
++            let alignment = alignments.edge_weight(node, neighbor).expect("alignment graph: missing edge");
++            match alignment.tag {
++                0 => has_straight = true,
++                1 => {
++                    let cross = alignment.first.x * alignment.second.y
++                        - alignment.first.y * alignment.second.x;
++                    // 原先 signum 再有序比较：+0 为正；-0 与 NaN 走另一侧。
++                    if cross.signum() > 0.0 { has_positive = true; }
++                    else { has_nonpositive = true; }
++                }
++                _ => {}
++            }
++        }
++        if !has_straight || !(has_positive || has_nonpositive) { continue; }
++        let flags = u8::from(has_nonpositive) | (u8::from(has_positive) << 1);
++        for neighbor in alignments.neighbors(node) {
++            if alignments.edge_weight(node, neighbor).expect("alignment graph: missing edge").tag <= 1 {
++                updates.push((node, neighbor, flags));
++            }
++        }
++    }
++    for (node, neighbor, flags) in updates {
++        let alignment = alignments.edge_weight_mut(node, neighbor).expect("alignment graph: missing edge");
++        match alignment.tag {
++            2 => {}
++            1 => alignment.flag = 1,
++            _ => { alignment.flag = flags & 1; alignment.byte_2 = (flags >> 1) & 1; }
++        }
++    }
++}
++
+ /// 0x140803dd0（O 结构）：生成玩家楼梯装饰视觉（walk_shape 消费 + 蓝图）。
+ pub fn generate_playermade_stair_decorators(
+     _storage: Res<DecoratorStorage>,
+@@ -195,12 +237,207 @@
+     // U：主体待取证。
+ }
+ 
+-/// 0x140809cc0（O 结构）：形状遍历（多边形 → 边段采样）。
+-/// U：遍历算法主体。
+-pub fn walk_shape(
+-    _shape: &[Vec2],
+-) -> Vec<(u32, Vec3)> {
+-    Vec::new() // U。
++/// 原 walk 返回五个真实 owner，None 与 Some(empty) 不合并。
++struct WalkShapeResult {
++    sub_segments: Option<StairSubSegments>,
++    points: Vec<Vec2>,
++    tangents: Option<Vec<Vec2>>,
++    widths: Option<Vec<f32>>,
++    heights: Option<Vec<f32>>,
++}
++
++impl WalkShapeResult {
++    /// 仅用于原明确返回无路径的分支，不是失败转成功的替身。
++    fn empty() -> Self {
++        Self { sub_segments: None, points: Vec::new(), tangents: None, widths: None, heights: None }
++    }
++}
++
++/// 原矩形 receiver 捕获状态，同一 stream 的所有角点共享，不逐角重置。
++struct RectangleStairReceiver {
++    endpoint_widths: [f32; 2],
++    endpoint_heights: [f32; 2],
++    need_height: bool,
++    previous: Option<(Vec2, f32)>,
++    points: Vec<Vec2>,
++    tangents: Vec<Vec2>,
++    widths: Vec<f32>,
++    heights: Vec<f32>,
++    sub_segments: StairSubSegments,
++}
++
++impl RectangleStairReceiver {
++    /// 原 1412b2540 完整 callback：有序去重、四类段、梯段末行替换。
++    fn receive(&mut self, record: utils::geometry::rectangle::RectangleSlicePoint) {
++        let width = utils::float_grid::lerp(self.endpoint_widths[0], self.endpoint_widths[1], record.relative_u);
++        let point = record.position + record.normal * (0.5 * width);
++        if self.points.last().is_some_and(|&last| last == point) { return; }
++        let tangent = Vec2::new(record.normal.y, -record.normal.x);
++        if !self.need_height {
++            self.points.push(point); self.tangents.push(tangent); self.widths.push(width);
++            return;
++        }
++        let height = utils::float_grid::lerp(self.endpoint_heights[0], self.endpoint_heights[1], record.relative_u);
++        if let Some((previous_point, previous_height)) = self.previous {
++            let kind = if record.tag != 5 { 4 } else {
++                let delta = previous_point - point;
++                let slope = (previous_height - height).abs() / (delta.y * delta.y + delta.x * delta.x).sqrt();
++                if slope > 2.5 { 3 } else if slope > 0.25 { 2 } else { 1 }
++            };
++            let merge = self.sub_segments.last().is_some_and(|last| {
++                last.kind == kind && if kind < 2 { last.flag != 0 } else { last.kind >= 2 }
++            });
++            if merge && kind == 3 {
++                *self.points.last_mut().expect("rectangle stair: missing point") = point;
++                *self.tangents.last_mut().expect("rectangle stair: missing tangent") = tangent;
++                *self.widths.last_mut().expect("rectangle stair: missing width") = width;
++                *self.heights.last_mut().expect("rectangle stair: missing height") = height;
++                self.previous = Some((point, height));
++                return;
++            }
++            if merge {
++                let last = self.sub_segments.last_mut().unwrap();
++                last.count = last.count.wrapping_add(1);
++            } else {
++                self.sub_segments.push(StairSubSegment { kind, flag: 1, count: 1 });
++            }
++        }
++        self.previous = Some((point, height));
++        self.points.push(point); self.tangents.push(tangent);
++        self.widths.push(width); self.heights.push(height);
++    }
++}
++
++/// 原 140809cc0：真实墙周界或 source curve 的完整采样和 offset strip 裁剪。
++fn walk_shape(
++    wall: &PublicWallState, alignments: [AlignKind; 2], directions: [Vec2; 2],
++    widths: [f32; 2], coordinates: [utils::wall_space::WallSpaceCoord; 2],
++) -> WalkShapeResult {
++    use utils::comparative_space::ComparativeSpace;
++    use utils::wall_space::{WallSpace, WallSpaceCoord};
++    let space = WallSpace { is_loop: wall.shape().tag() != 2, length: wall.wall_space_length() };
++    let delta = space.subtract(coordinates[1].u, coordinates[0].u);
++    if let Some(rectangle) = wall.is_rectangle() {
++        let reciprocal = 1.0 / space.length;
++        let mut start = coordinates[0].u * reciprocal;
++        let mut end = coordinates[1].u * reciprocal;
++        let mut endpoint_widths = widths;
++        let mut endpoint_heights = [coordinates[0].y, coordinates[1].y];
++        let inset = |i: usize| if alignments[i].tag == 1 && alignments[i].flag == 1 {
++            0.5 * widths[i] * reciprocal
++        } else { 0.0 };
++        let mut start_offset = inset(0);
++        let mut end_offset = inset(1);
++        if delta < 0.0 {
++            std::mem::swap(&mut start, &mut end);
++            endpoint_widths.reverse(); endpoint_heights.reverse();
++            std::mem::swap(&mut start_offset, &mut end_offset);
++        }
++        let padded_start = start + start_offset;
++        let padded_end = end - end_offset;
++        if (end - start).signum() * (padded_end - padded_start).signum() == 1.0 {
++            start = padded_start; end = padded_end;
++        }
++        // canonical 参数构造器仍有 infinity 失败时序差异，交 root 修同一 owner。
++        let start = utils::curve::curve_u_circular::CurveUCircular::<
++            utils::curve::CurveCoordSemantic2D,
++        >::new(start).get();
++        let end = utils::curve::curve_u_circular::CurveUCircular::<
++            utils::curve::CurveCoordSemantic2D,
++        >::new(end).get();
++        let mut receiver = RectangleStairReceiver {
++            endpoint_widths, endpoint_heights, need_height: true, previous: None,
++            points: Vec::new(), tangents: Vec::new(), widths: Vec::new(), heights: Vec::new(),
++            sub_segments: StairSubSegments::new(),
++        };
++        rectangle.circular_slice_segment_points(start, end,
++            &mut utils::geometry::rectangle::RectangleSliceState::default(),
++            |record| receiver.receive(record));
++        if delta < 0.0 {
++            receiver.points.reverse(); receiver.tangents.reverse();
++            for tangent in &mut receiver.tangents { *tangent = -*tangent; }
++            receiver.widths.reverse(); receiver.heights.reverse(); receiver.sub_segments.reverse();
++        }
++        return WalkShapeResult {
++            sub_segments: Some(receiver.sub_segments), points: receiver.points,
++            tangents: Some(receiver.tangents), widths: Some(receiver.widths), heights: Some(receiver.heights),
++        };
++    }
++
++    if alignments[0].tag != 1 { return WalkShapeResult::empty(); }
++    let side_sign = if alignments[0].byte_2 != 0 { -1.0 } else { 1.0 };
++    let magnitude = delta.abs();
++    if !(magnitude >= f32::from_bits(0x3a83_126f)) { return WalkShapeResult::empty(); }
++    let steps = (magnitude.ceil() as usize).max(1);
++    let count = steps.wrapping_add(1);
++    let mut points = Vec::with_capacity(count);
++    let mut sampled_widths = Vec::new();
++    let sign = delta.signum();
++    let mut start_u = coordinates[0].u;
++    if alignments[0].flag != 0 { start_u = space.project_clamp(start_u + sign * widths[0] * 0.5); }
++    if alignments[1].tag != 1 { return WalkShapeResult::empty(); }
++    let mut end_u = coordinates[1].u;
++    if alignments[1].flag != 0 { end_u = space.project_clamp(end_u + sign * widths[1] * (-0.5)); }
++    let endpoint_normals = directions.map(|direction| {
++        let direction = direction.normalize_or_zero();
++        Vec2::new(-direction.y, direction.x) * sign
++    });
++    let curve = wall.simplified_curve_2d();
++    for i in 0..count {
++        let t = (i as f32) / (steps as f32);
++        let u = space.project_clamp(start_u + space.subtract(end_u, start_u) * t);
++        let width = utils::float_grid::lerp(widths[0], widths[1], t);
++        sampled_widths.push(width);
++        let coordinate = WallSpaceCoord::new(&space, u, 0.0);
++        let position = coordinate.get_pos_xz(curve);
++        let normal = if i == 0 { endpoint_normals[0] }
++            else if i == steps { endpoint_normals[1] }
++            else { let tangent = coordinate.get_tangent(curve); Vec2::new(-tangent.y, tangent.x) };
++        points.push(position + (normal * (width * 0.5)) * side_sign);
++    }
++    if points.len() <= 1 {
++        return WalkShapeResult { points, ..WalkShapeResult::empty() };
++    }
++    let mut tangents: Vec<_> = (0..points.len()).map(|i| {
++        let difference = if i == 0 { points[1] - points[0] }
++            else if i + 1 == points.len() { points[i] - points[i - 1] }
++            else { points[i + 1] - points[i - 1] };
++        difference.normalize_or_zero()
++    }).collect();
++
++    loop {
++        let mut removed = false;
++        for i in 1..points.len() - 1 {
++            let j = i + 1;
++            let offset = |index: usize| {
++                Vec2::new(-tangents[index].y, tangents[index].x)
++                    * (sampled_widths[index] * 0.5 * 1.25) * side_sign
++            };
++            let a = points[i]; let b = points[j];
++            let oa = offset(i); let ob = offset(j);
++            let quad = if side_sign > 0.0 { [a + oa, a - oa, b - ob, b + ob] }
++                else { [b + ob, b - ob, a - oa, a + oa] };
++            let concave = (0..4).any(|corner| {
++                let previous = quad[(corner + 3) % 4] - quad[corner];
++                let next = quad[(corner + 1) % 4] - quad[corner];
++                previous.x * next.y - previous.y * next.x > f32::from_bits(0x322b_cc77)
++            });
++            if !concave { continue; }
++            points.remove(i); tangents.remove(i); sampled_widths.remove(i);
++            tangents[i - 1] = if i == 1 { (points[1] - points[0]).normalize_or_zero() }
++                else { (points[i] - points[i - 2]).normalize_or_zero() };
++            tangents[i] = if i + 1 == points.len() {
++                (points[i] - points[i - 1]).normalize_or_zero()
++            } else { (points[i + 1] - points[i - 1]).normalize_or_zero() };
++            removed = true;
++            break;
++        }
++        if !removed { break; }
++    }
++    WalkShapeResult {
++        sub_segments: None, points, tangents: Some(tangents),
++        widths: Some(sampled_widths), heights: None,
++    }
+ }
+ 
+ /// 0x140806110（O 结构，8 参面）：维护楼梯图（StairsState 消费 +
+@@ -824,4 +1061,188 @@
+             &Default::default());
+     }
+ 
+-}
++    fn turn_alignment() -> AlignKind {
++        AlignKind { tag: 1, first: Vec2::X, second: Vec2::Y, ..AlignKind::default() }
++    }
++
++    #[test]
++    fn alignment_flags_preserve_signed_zero_nan_and_directed_payloads() {
++        for (second, expected) in [(Vec2::Y, (0, 1)), (Vec2::NEG_Y, (1, 0)),
++            (Vec2::ZERO, (0, 1)), (Vec2::new(0.0, -0.0), (1, 0)),
++            (Vec2::splat(f32::NAN), (1, 0))] {
++            let mut graph = petgraph::graphmap::DiGraphMap::<_, _, std::hash::RandomState>::default();
++            let straight = AlignKind { tag: 0, flag: 9, byte_2: 9, first: Vec2::Y, ..AlignKind::default() };
++            let turn = AlignKind { tag: 1, byte_2: 7, first: Vec2::X, second, ..AlignKind::default() };
++            let none = AlignKind { tag: 2, flag: 8, byte_2: 8, ..AlignKind::default() };
++            graph.add_edge(DecoratorId(29), DecoratorId(7), straight);
++            graph.add_edge(DecoratorId(29), DecoratorId(60), turn);
++            graph.add_edge(DecoratorId(29), DecoratorId(90), none);
++            graph.add_edge(DecoratorId(7), DecoratorId(29), straight);
++            propagate_alignment_flags(&mut graph);
++            let actual = graph.edge_weight(DecoratorId(29), DecoratorId(7)).unwrap();
++            assert_eq!((actual.flag, actual.byte_2), expected);
++            assert_eq!(actual.first, Vec2::Y);
++            let actual = graph.edge_weight(DecoratorId(29), DecoratorId(60)).unwrap();
++            assert_eq!(actual.flag, 1); assert_eq!(actual.byte_2, 7);
++            assert_eq!(*graph.edge_weight(DecoratorId(29), DecoratorId(90)).unwrap(), none);
++            assert_eq!(*graph.edge_weight(DecoratorId(7), DecoratorId(29)).unwrap(), straight);
++        }
++    }
++
++    #[test]
++    fn alignment_flags_require_straight_and_accumulate_both_turn_sides() {
++        let mut graph = petgraph::graphmap::DiGraphMap::<_, _, std::hash::RandomState>::default();
++        let straight = AlignKind { tag: 0, first: Vec2::Y, ..AlignKind::default() };
++        graph.add_edge(DecoratorId(1), DecoratorId(2), turn_alignment());
++        graph.add_edge(DecoratorId(1), DecoratorId(3), AlignKind { second: Vec2::NEG_Y, ..turn_alignment() });
++        graph.add_edge(DecoratorId(9), DecoratorId(10), straight);
++        propagate_alignment_flags(&mut graph);
++        assert_eq!(graph.edge_weight(DecoratorId(1), DecoratorId(2)).unwrap().flag, 0);
++        assert_eq!(*graph.edge_weight(DecoratorId(9), DecoratorId(10)).unwrap(), straight);
++        graph.add_edge(DecoratorId(1), DecoratorId(4), straight);
++        propagate_alignment_flags(&mut graph);
++        let actual = graph.edge_weight(DecoratorId(1), DecoratorId(4)).unwrap();
++        assert_eq!((actual.flag, actual.byte_2), (1, 1));
++    }
++
++    fn rectangular_wall() -> (PublicWalls, country_core::resources::walls::WallId) {
++        use country_core::resources::roofs::geometry::surface::Curve2;
++        use country_core::resources::walls::{InnerWalls, WallState};
++        use country_core::resources::walls::publication_source::TerrainHeightGrid512;
++        use country_core::systems::wall::valid_enclosure::{Shape, ShapeParameters};
++        let rectangle = utils::geometry::Rectangle2d { axis: Vec2::X, center: Vec2::ZERO, size: Vec2::new(4.0, 6.0) };
++        let mut points: Vec<_> = rectangle.as_points2().into_iter().map(|p| p.to_array()).collect();
++        points.push(points[0]);
++        let curve = Curve2::try_new(points, false).unwrap();
++        let mut snapshot = WallState::new(curve, 4.0, 0, 0, false).snapshot().clone();
++        snapshot.source.shape = ShapeParameters::from_shape(Shape::Rectangle(rectangle)).to_snapshot();
++        let mut inner = InnerWalls::default();
++        let id = inner.new_wall(WallState::from_snapshot(snapshot, 0));
++        let terrain = TerrainHeightGrid512 { encoded: vec![0; 512 * 512].into(),
++            minimum_y: 0.0, maximum_y: 0.0, sampling_fix: false };
++        let mut walls = PublicWalls::default();
++        walls.consume(&mut inner, &terrain);
++        (walls, id)
++    }
++
++    #[test]
++    fn rectangle_walk_is_the_real_perimeter_stream_and_reverses_all_outputs() {
++        use utils::wall_space::WallSpaceCoord;
++        let (walls, id) = rectangular_wall();
++        let wall = walls.get(id).unwrap();
++        let length = wall.wall_space_length();
++        let forward = walk_shape(wall, [turn_alignment(); 2], [Vec2::splat(f32::NAN); 2],
++            [1.0, 2.0], [WallSpaceCoord::new_unchecked(length * 0.1, 0.0), WallSpaceCoord::new_unchecked(length * 0.4, 4.0)]);
++        let backward = walk_shape(wall, [turn_alignment(); 2], [Vec2::ZERO; 2],
++            [2.0, 1.0], [WallSpaceCoord::new_unchecked(length * 0.4, 4.0), WallSpaceCoord::new_unchecked(length * 0.1, 0.0)]);
++        assert!(forward.points.len() > 2);
++        assert!(forward.points.iter().copied().eq(backward.points.iter().rev().copied()));
++        assert!(forward.tangents.as_ref().unwrap().iter().copied()
++            .eq(backward.tangents.as_ref().unwrap().iter().rev().map(|p| -*p)));
++        assert!(forward.widths.as_ref().unwrap().iter().eq(backward.widths.as_ref().unwrap().iter().rev()));
++        assert!(forward.heights.as_ref().unwrap().iter().eq(backward.heights.as_ref().unwrap().iter().rev()));
++        assert!(forward.sub_segments.as_ref().unwrap().iter().eq(backward.sub_segments.as_ref().unwrap().iter().rev()));
++    }
++
++    #[test]
++    fn rectangle_inset_crossing_reverts_both_endpoints_together() {
++        use utils::wall_space::WallSpaceCoord;
++        let (walls, id) = rectangular_wall();
++        let wall = walls.get(id).unwrap(); let length = wall.wall_space_length();
++        let coords = [WallSpaceCoord::new_unchecked(length * 0.1, 0.0), WallSpaceCoord::new_unchecked(length * 0.15, 2.0)];
++        let a = walk_shape(wall, [turn_alignment(); 2], [Vec2::X; 2], [10.0; 2], coords);
++        let b = walk_shape(wall, [AlignKind { flag: 1, ..turn_alignment() }; 2], [Vec2::X; 2], [10.0; 2], coords);
++        assert_eq!(a.points, b.points);
++        assert_eq!(a.widths, b.widths); assert_eq!(a.heights, b.heights);
++    }
++
++    #[test]
++    fn generic_walk_uses_source_curve_and_central_tangent_and_has_real_empty_gates() {
++        use utils::wall_space::WallSpaceCoord;
++        let (walls, id) = published_wall(); let wall = walls.get(id).unwrap();
++        let coords = [WallSpaceCoord::new_unchecked(1.0, 3.0), WallSpaceCoord::new_unchecked(7.0, 8.0)];
++        let result = walk_shape(wall, [turn_alignment(); 2], [Vec2::X, Vec2::Y], [0.0; 2], coords);
++        assert_eq!(result.points.len(), 7);
++        assert_eq!(result.points[3], Vec2::new(4.0, 0.0));
++        let tangent = result.tangents.unwrap()[3];
++        assert!((tangent - Vec2::ONE.normalize()).length() < 0.000001);
++        assert_ne!(tangent, Vec2::Y);
++        assert!(result.sub_segments.is_none()); assert!(result.heights.is_none());
++        let no_first = walk_shape(wall, [AlignKind::default(), turn_alignment()], [Vec2::X; 2], [1.0; 2], coords);
++        assert!(no_first.points.is_empty() && no_first.widths.is_none());
++        let no_second = walk_shape(wall, [turn_alignment(), AlignKind::default()], [Vec2::X; 2], [1.0; 2], coords);
++        assert!(no_second.points.is_empty() && no_second.tangents.is_none());
++        let tiny = walk_shape(wall, [turn_alignment(); 2], [Vec2::X; 2], [1.0; 2],
++            [coords[0], WallSpaceCoord::new_unchecked(1.0001, 0.0)]);
++        assert!(tiny.points.is_empty());
++    }
++
++    fn receiver(need_height: bool) -> RectangleStairReceiver {
++        RectangleStairReceiver { endpoint_widths: [0.0, 0.0], endpoint_heights: [0.0, 8.0],
++            need_height, previous: None, points: Vec::new(), tangents: Vec::new(), widths: Vec::new(),
++            heights: Vec::new(), sub_segments: StairSubSegments::new() }
++    }
++
++    fn slice_point(x: f32, u: f32, tag: u8) -> utils::geometry::rectangle::RectangleSlicePoint {
++        utils::geometry::rectangle::RectangleSlicePoint { position: Vec2::new(x, 0.0),
++            normal: Vec2::ZERO, relative_u: u, tag }
++    }
++
++    #[test]
++    fn rectangle_receiver_preserves_height_gate_dedup_steep_replace_and_nan() {
++        let mut flat = receiver(false);
++        flat.receive(slice_point(0.0, 0.0, 5)); flat.receive(slice_point(0.0, 1.0, 4));
++        assert_eq!(flat.points.len(), 1); assert!(flat.previous.is_none());
++        assert!(flat.heights.is_empty() && flat.sub_segments.is_empty());
++        let mut steep = receiver(true);
++        for (x, u) in [(0.0, 0.0), (1.0, 0.5), (2.0, 1.0)] { steep.receive(slice_point(x, u, 5)); }
++        assert_eq!(steep.points, vec![Vec2::ZERO, Vec2::new(2.0, 0.0)]);
++        assert_eq!(steep.heights, vec![0.0, 8.0]);
++        assert_eq!(steep.sub_segments.as_slice(), &[StairSubSegment { kind: 3, flag: 1, count: 1 }]);
++        let mut nan = receiver(true); nan.endpoint_heights = [f32::NAN; 2];
++        nan.receive(slice_point(0.0, 0.0, 5)); nan.receive(slice_point(1.0, 1.0, 5));
++        assert_eq!(nan.sub_segments.as_slice(), &[StairSubSegment { kind: 1, flag: 1, count: 1 }]);
++        nan.receive(slice_point(1.0, 0.5, 4));
++        assert_eq!(nan.points.len(), 2);
++        nan.receive(slice_point(2.0, 1.0, 4));
++        assert_eq!(nan.sub_segments.last().unwrap().kind, 4);
++    }
++
++    #[test]
++    fn generic_strip_repeatedly_prunes_concave_interior_and_preserves_endpoints() {
++        use country_core::resources::roofs::geometry::surface::Curve2;
++        use country_core::resources::walls::{InnerWalls, WallState};
++        use country_core::resources::walls::publication_source::TerrainHeightGrid512;
++        use utils::wall_space::WallSpaceCoord;
++        let curve = Curve2::try_new(vec![[0.0, 0.0], [4.0, 0.0], [4.0, 1.0], [0.0, 1.0]], false).unwrap();
++        let mut inner = InnerWalls::default();
++        let id = inner.new_wall(WallState::new(curve, 4.0, 0, 0, false));
++        let terrain = TerrainHeightGrid512 { encoded: vec![0; 512 * 512].into(),
++            minimum_y: 0.0, maximum_y: 0.0, sampling_fix: false };
++        let mut walls = PublicWalls::default(); walls.consume(&mut inner, &terrain);
++        let wall = walls.get(id).unwrap();
++        for side in [0, 1] {
++            let result = walk_shape(wall, [AlignKind { byte_2: side, ..turn_alignment() }; 2],
++                [Vec2::X, Vec2::NEG_X], [4.0; 2],
++                [WallSpaceCoord::new_unchecked(0.0, 0.0), WallSpaceCoord::new_unchecked(9.0, 1.0)]);
++            assert!(result.points.len() >= 2 && result.points.len() < 10);
++            let sign = if side == 0 { 1.0 } else { -1.0 };
++            assert_eq!(result.points[0], Vec2::new(0.0, 2.0 * sign));
++            assert_eq!(*result.points.last().unwrap(), Vec2::new(0.0, 1.0 - 2.0 * sign));
++            assert_eq!(result.points.len(), result.tangents.as_ref().unwrap().len());
++            assert_eq!(result.points.len(), result.widths.as_ref().unwrap().len());
++        }
++    }
++
++    #[test]
++    fn rectangle_receiver_kind_four_wraps_original_u16_count() {
++        let mut state = receiver(true);
++        state.receive(slice_point(0.0, 0.0, 4)); state.receive(slice_point(1.0, 0.1, 4));
++        assert_eq!(state.sub_segments[0].kind, 4);
++        state.sub_segments[0].count = u16::MAX;
++        state.receive(slice_point(2.0, 0.2, 4));
++        assert_eq!(state.sub_segments[0].count, 0);
++        assert_eq!(state.points.len(), 3);
++    }
++
++}

@@ -1,0 +1,25 @@
+# Main loop candidate contract, B scope
+
+Observed original: B RNE SHA256 f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03. Retained main_loop.asm is the full 36,589-byte main_loop at 0x1404d9580; the source-level adapter does not claim native ABI or C equivalence.
+
+- Handoff before OS batch: same SubApp moves at 0x1404da303..33f, then OS receiver is drained at 0x1404da381..420, then outgoing capture/window/visibility/Created requests, then event dispatch. Current synchronous macOS callbacks instead write the loading World before poll can replace it, losing a close/key/mouse batch. Queue semantic OS events outside either World, then poll, capture batch length, flush outgoing requests, and dispatch exactly that batch to the current App.
+- OS absolute custom-cursor SSBO writes occur in the callback before game-side confirmation filtering (0x140557e57..eb4). Keep that write in the callback. A capture request increments sent before dispatch; its OS confirmation arrives after the already captured batch, so do not immediately raise confirmed before dispatching old coordinates.
+- Capture/visibility/Created use the final unread request, while window commands drain all; these existing branches match the retained original and are not changed.
+- WindowSize zero in either dimension bypasses App::update and render at 0x1404dc952..971 and sleeps 1ms. The adapter must keep input edges queued in the World until a real nonzero frame consumes them. The original close-command behavior while zero-sized needs central host-adaptation decision; no substitute ShutdownGame marker is fabricated.
+- A normal nonzero frame begins egui, runs one App::update, ends egui/platform output, renders, and only after successful render return advances RenderTemporalState +0x108, first-frame logging and FPS limiter (0x1404de349, de3d2, de464, de5bc, de63a, de640, de7da). Error API is an adapter preserving the original cause; a frame with no acquired image or the successful OOM fallback may return normally without present.
+- Same-App/same HostTables warmup handoff already exists and is retained: exact owners captured before moving SubApp, worker warmup succeeds before publishing, renderer re-adopts the original shader-Arc owner. No alternate renderer is constructed.
+- Shutdown cancels and joins GameplayPreparation before renderer shutdown, attempts GPU cleanup even when the worker reports an error, and sets shutdown_done only after all required cleanup succeeds. run_game::cancel_and_join is supplied by startup owner; renderer and RenderHost Result APIs are supplied by main/world graph owners.
+
+Current adapter diagnostics count successful gameplay App frames plus their submitted/present-queued subset; failed frames may already have submitted work, so these counters are not total GPU operation counts; they do not prove screen display completion, nonempty W1..W54 data, or original equivalence. They are read-only observations for the shared production fixture.
+
+Performance: one reused VecDeque carries the original event batch; no event copying, per-frame queue recreation, new locks or busy scan. Normal-frame adds constant counter/boolean reads. Worker join occurs only during shutdown. Zero-size throttling is the original 1ms branch. GPU/CPU measurements remain unperformed; root owns execution.
+
+Unresolved external consumers: ordinary Steam entry factory is None; missing declared source modules in synchronized checkout; exact canonical startup custom-cursor notification retention across many async updates; renderer observer details; original input-stream serde and Windows/ICC/Mei ABI branches remain explicit boundaries.
+
+## Frozen implementation and validation boundary
+
+Only game_loop.rs and the necessary event_loop.rs batch/Result/cleanup hunk are changed. Typed renderer observation is exposed without copying actual graph/receipt/list identities. Save shutdown is a separate root-owned candidate and is deliberately not referenced before its symbol exists. Normal zero-size gate is retained; this batch does not fabricate a close marker or assert original zero-size-close CFG closure.
+
+Root must apply the 02/03/04 companion interfaces before type checking. No Cargo/build/GPU/kill/target operation was run by this owner. rustfmt parsed both full candidate sources successfully. This is implemented_unverified and requires independent review.
+
+Minimum production regressions, owned by root: (1) loading ready + same OS batch Close/mouse/wheel writes reach the published gameplay World, (2) capture request rejects pre-confirmation old absolute input and accepts a subsequent batch, (3) nonzero frames run one update, either-zero frames run none and retain edges until restored, (4) non-OOM source error reaches event_loop without scale/temporal/first-frame/progress effects, (5) loading worker cancel/panic/warmup error is joined before GPU cleanup, cleanup failure cannot set shutdown_done or replace the first error, (6) actual loading-to-main multi-frame observation verifies WorldId/shader-owner/receipt/present identity and nonempty scene, not total frame_limit.

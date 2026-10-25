@@ -1,0 +1,331 @@
+{
+ "agent": "water-ice-a",
+ "date": "2026-10-13",
+ "scope": "water/ice surface + software-BVH deferred-RT family (15 scope files + 5 helper incs) under reconstruction/shader-source/candidates/water-ice-a/shaders/",
+ "validation": {
+  "tool": "tools/render-passes/recompile_check.py",
+  "dxc": "/opt/homebrew/bin/dxc (v1.10.2605.37)",
+  "acceptance": "bindings + entry + LocalSize + capabilities must match (hard gate); opcode_histogram residual recorded"
+ },
+ "per_shader": {
+  "calc_deferred_rt_args": [
+   {
+    "module": "cs_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   }
+  ],
+  "deferred_rt": [
+   {
+    "module": "cs_main",
+    "verdict": "FAIL",
+    "hard_gate": false,
+    "diff_categories": [
+     "capabilities",
+     "opcode_histogram"
+    ]
+   }
+  ],
+  "ice_cracks": [
+   {
+    "module": "vs_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   },
+   {
+    "module": "ps_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   },
+   {
+    "module": "vs_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   },
+   {
+    "module": "ps_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   }
+  ],
+  "ice_deferred_rt": [
+   {
+    "module": "cs_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   }
+  ],
+  "ice_plane": [
+   {
+    "module": "vs_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   },
+   {
+    "module": "ps_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   }
+  ],
+  "ice_refl_march": [
+   {
+    "module": "cs_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   }
+  ],
+  "ice_refl_resolve": [
+   {
+    "module": "cs_main",
+    "verdict": "FAIL",
+    "hard_gate": false,
+    "diff_categories": [
+     "capabilities",
+     "opcode_histogram"
+    ]
+   }
+  ],
+  "ice_refr_resolve": [
+   {
+    "module": "cs_main",
+    "verdict": "FAIL",
+    "hard_gate": false,
+    "diff_categories": [
+     "capabilities",
+     "opcode_histogram"
+    ]
+   }
+  ],
+  "refraction_copy": [
+   {
+    "module": "vs_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   },
+   {
+    "module": "ps_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   },
+   {
+    "module": "vs_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   },
+   {
+    "module": "ps_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   }
+  ],
+  "snow_plane": [
+   {
+    "module": "vs_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   },
+   {
+    "module": "ps_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   },
+   {
+    "module": "vs_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   },
+   {
+    "module": "ps_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   }
+  ],
+  "water_plane": [
+   {
+    "module": "vs_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   },
+   {
+    "module": "ps_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   },
+   {
+    "module": "vs_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   },
+   {
+    "module": "ps_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   }
+  ],
+  "waterfall": [
+   {
+    "module": "vs_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   },
+   {
+    "module": "ps_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   },
+   {
+    "module": "vs_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   },
+   {
+    "module": "ps_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   }
+  ],
+  "waterfall_refraction_copy": [
+   {
+    "module": "vs_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   },
+   {
+    "module": "ps_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   },
+   {
+    "module": "vs_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   },
+   {
+    "module": "ps_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   }
+  ],
+  "x_paths": [
+   {
+    "module": "vs_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   },
+   {
+    "module": "ps_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   },
+   {
+    "module": "vs_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   },
+   {
+    "module": "ps_main",
+    "verdict": "FAIL",
+    "hard_gate": true,
+    "diff_categories": [
+     "opcode_histogram"
+    ]
+   }
+  ]
+ }
+}

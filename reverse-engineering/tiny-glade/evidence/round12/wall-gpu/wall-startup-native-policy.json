@@ -1,0 +1,178 @@
+{
+  "source_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "range": "140a92670..140a92f80",
+  "scope": "complete original startup policy; mesh/shader compilation and ECS application are explicit recording boundaries, not GPU evidence",
+  "host_calls": [
+    {
+      "boundary": "load_json_as_mesh",
+      "path": "assets/meshes/brick.json"
+    },
+    {
+      "boundary": "load_mesh_into_library",
+      "name": "brick",
+      "indices": [],
+      "indices_len": 0,
+      "source_none": false,
+      "attribute_rawtable": "0000000000000000000000000000000000000000000000000000000000000000",
+      "label": null
+    },
+    {
+      "boundary": "load_mesh_into_library",
+      "name": "half_cube",
+      "indices": [
+        7,
+        5,
+        4,
+        4,
+        6,
+        7,
+        3,
+        7,
+        6,
+        6,
+        2,
+        3,
+        1,
+        5,
+        7,
+        7,
+        3,
+        1
+      ],
+      "indices_len": 18,
+      "source_none": true,
+      "attribute_rawtable": "b064ac4201000000000000000000000000000000000000000000000000000000",
+      "label": "brick half cube"
+    },
+    {
+      "boundary": "load_shader_into_library",
+      "path": "/wall/wall_brick_lod0.raster.hlsl",
+      "name": "wall_brick_lod0"
+    },
+    {
+      "boundary": "load_shader_into_library",
+      "path": "/wall/wall_brick_lod1.raster.hlsl",
+      "name": "wall_brick_lod1"
+    }
+  ],
+  "command_records": [
+    {
+      "executor": "0x1412d6640",
+      "transform": "0000000000000000000000000000803f0000000000000000000000000000803f0000803f0000803f",
+      "mesh": "0xa11",
+      "shader": "0xb11",
+      "proxy_defined": [
+        0,
+        0
+      ],
+      "entity": 101
+    },
+    {
+      "executor": "0x1412d6640",
+      "transform": "0000000000000000000000000000803f0000000000000000000000000000803f0000803f0000803f",
+      "mesh": "0xa12",
+      "shader": "0xb12",
+      "proxy_defined": [
+        0,
+        0
+      ],
+      "entity": 102
+    },
+    {
+      "executor": "0x1412d6640",
+      "transform": "0000000000000000000000000000803f0000000000000000000000000000803f0000803f0000803f",
+      "mesh": "0xa11",
+      "shader": "0xb11",
+      "proxy_defined": [
+        1,
+        0
+      ],
+      "entity": 103
+    },
+    {
+      "executor": "0x1412d6640",
+      "transform": "0000000000000000000000000000803f0000000000000000000000000000803f0000803f0000803f",
+      "mesh": "0xa12",
+      "shader": "0xb12",
+      "proxy_defined": [
+        1,
+        0
+      ],
+      "entity": 104
+    },
+    {
+      "executor": "0x1412dd190",
+      "transform": "0000000000000000000000000000803f0000000000000000000000000000803f0000803f0000803f",
+      "mesh": "0xa12",
+      "shader": "0xb12",
+      "proxy_defined": [
+        0,
+        1,
+        0
+      ],
+      "entity": 105
+    },
+    {
+      "executor": "0x1412dd190",
+      "transform": "0000000000000000000000000000803f0000000000000000000000000000803f0000803f0000803f",
+      "mesh": "0xa12",
+      "shader": "0xb12",
+      "proxy_defined": [
+        0,
+        1,
+        1
+      ],
+      "entity": 106
+    },
+    {
+      "executor": "0x1412dd190",
+      "transform": "0000000000000000000000000000803f0000000000000000000000000000803f0000803f0000803f",
+      "mesh": "0xa12",
+      "shader": "0xb12",
+      "proxy_defined": [
+        0,
+        1,
+        2
+      ],
+      "entity": 107
+    }
+  ],
+  "bridges": [
+    {
+      "entry": "0x140613c10",
+      "dependency": "std::alloc::__rust_alloc"
+    },
+    {
+      "entry": "0x140613c20",
+      "dependency": "std::alloc::__rust_dealloc"
+    },
+    {
+      "entry": "0x140613c30",
+      "dependency": "std::alloc::__rust_realloc"
+    },
+    {
+      "entry": "0x140613c40",
+      "dependency": "std::alloc::__rust_alloc_zeroed"
+    },
+    {
+      "entry": "0x140b0eeb0",
+      "dependency": "recording file-Mesh input boundary"
+    },
+    {
+      "entry": "0x140b1aca0",
+      "dependency": "recording mesh-library/watch host boundary"
+    },
+    {
+      "entry": "0x1400d9b20",
+      "dependency": "std::hash::RandomState::KEYS thread-local boundary"
+    },
+    {
+      "entry": "0x140b3fe40",
+      "dependency": "recording shader compilation/library host boundary"
+    },
+    {
+      "entry": "0x140d146a0",
+      "dependency": "Bevy Commands::spawn_empty host boundary"
+    }
+  ]
+}

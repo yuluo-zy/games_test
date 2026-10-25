@@ -1,0 +1,690 @@
+{
+  "schema": "tiny-glade-independent-results-review/v1",
+  "reviewer": "render_reviewer",
+  "date": "2026-10-21",
+  "source_epoch": "08ecee0011d9449ebe79dffcd2f9388c490d2f53 plus retained user startup_sheep dirty, as input report66086682",
+  "actual_binaries": {
+    "original_loading_present": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/original_loading_present-aa2d3a324627a9b4",
+      "sha256": "69aab1b5cf0a1a59346e51ae398f397b91d9013fc8ca9874321d1e30b07eadf7"
+    },
+    "original_gameplay_chain": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/original_gameplay_chain-205f7c1acc9fda3a",
+      "sha256": "eeeefe557e18f2ca4d1c638b34436ad55107e810bc13a2d932f529242aebdfba"
+    },
+    "core_render_bridge": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/core_render_bridge-2760ae9a8849e848",
+      "sha256": "2f8b564b7518749ffaefb77370b76ad4357ab93e5c2300fd26a71ee4bb57a066"
+    }
+  },
+  "logs": {
+    "/private/tmp/tg-postpush-bridge-gpu-20261021.log": "61b6b6c950b143ec80ea71a082bf5070b3d93bd8eb7e5e0c1f2e0f983bb98f9a",
+    "/private/tmp/tg-postpush-world30-20261021.log": "6ffdd628cb095d19d41199f77a32446825e60962f1ef9e951feb89aedd696629",
+    "/private/tmp/tg-postpush-gameplay-wsi-20261021.log": "54a60830ce1575fbff2854eca1a7351783e32a67c8edc5a94ec2d6eb0ef87e00"
+  },
+  "bridge": {
+    "actual_result": "8 passed/0failed/0ignored/0filtered 1.94s",
+    "observations": [
+      "已实际执行 completed_old_frame_collection_preserves_new_compiled_imports_and_callbacks，不是仅编译。",
+      "game builder panic是设计内catch fixture，随后该测试ok；无SKIP日志，实际bridge helper错误才会打印SKIP。"
+    ],
+    "scope": "真实GPU-buffer/owner/取消/编译后旧帧维护回归；不证明世界长稳或WSI。"
+  },
+  "world30": {
+    "formal_result": "FAIL exit101, original live3021..3042 span21>16 at line812; all30rows executed53.82s",
+    "unchanged_tests": "原steady rows[2..]、阈值、采样点、caputres均保持；后续peak/memory/pixel断言未执行。",
+    "per_kind_rows": [
+      {
+        "frame": 0,
+        "current_by_kind": [
+          688,
+          68,
+          2212,
+          27
+        ],
+        "retiring_by_kind": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "capacity_by_kind": [
+          1024,
+          1024,
+          2540,
+          256
+        ]
+      },
+      {
+        "frame": 1,
+        "current_by_kind": [
+          690,
+          68,
+          2212,
+          47
+        ],
+        "retiring_by_kind": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "capacity_by_kind": [
+          1792,
+          1792,
+          4445,
+          448
+        ]
+      },
+      {
+        "frame": 2,
+        "current_by_kind": [
+          690,
+          68,
+          2211,
+          52
+        ],
+        "retiring_by_kind": [
+          213,
+          34,
+          455,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 3,
+        "current_by_kind": [
+          689,
+          68,
+          2213,
+          58
+        ],
+        "retiring_by_kind": [
+          328,
+          17,
+          775,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 4,
+        "current_by_kind": [
+          690,
+          68,
+          2213,
+          66
+        ],
+        "retiring_by_kind": [
+          516,
+          56,
+          983,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 5,
+        "current_by_kind": [
+          689,
+          68,
+          2210,
+          68
+        ],
+        "retiring_by_kind": [
+          161,
+          10,
+          558,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 6,
+        "current_by_kind": [
+          689,
+          68,
+          2210,
+          68
+        ],
+        "retiring_by_kind": [
+          253,
+          2,
+          1296,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 7,
+        "current_by_kind": [
+          689,
+          68,
+          2210,
+          68
+        ],
+        "retiring_by_kind": [
+          126,
+          12,
+          310,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 8,
+        "current_by_kind": [
+          689,
+          68,
+          2210,
+          68
+        ],
+        "retiring_by_kind": [
+          194,
+          23,
+          866,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 9,
+        "current_by_kind": [
+          690,
+          68,
+          2211,
+          68
+        ],
+        "retiring_by_kind": [
+          455,
+          43,
+          1279,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 10,
+        "current_by_kind": [
+          689,
+          68,
+          2210,
+          69
+        ],
+        "retiring_by_kind": [
+          286,
+          6,
+          881,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 11,
+        "current_by_kind": [
+          690,
+          68,
+          2210,
+          70
+        ],
+        "retiring_by_kind": [
+          42,
+          0,
+          481,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 12,
+        "current_by_kind": [
+          689,
+          68,
+          2210,
+          70
+        ],
+        "retiring_by_kind": [
+          411,
+          44,
+          1124,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 13,
+        "current_by_kind": [
+          689,
+          68,
+          2211,
+          70
+        ],
+        "retiring_by_kind": [
+          188,
+          7,
+          942,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 14,
+        "current_by_kind": [
+          689,
+          68,
+          2210,
+          70
+        ],
+        "retiring_by_kind": [
+          270,
+          45,
+          619,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 15,
+        "current_by_kind": [
+          689,
+          68,
+          2210,
+          70
+        ],
+        "retiring_by_kind": [
+          306,
+          51,
+          685,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 16,
+        "current_by_kind": [
+          690,
+          68,
+          2210,
+          70
+        ],
+        "retiring_by_kind": [
+          170,
+          7,
+          632,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 17,
+        "current_by_kind": [
+          690,
+          68,
+          2210,
+          70
+        ],
+        "retiring_by_kind": [
+          158,
+          7,
+          506,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 18,
+        "current_by_kind": [
+          689,
+          68,
+          2210,
+          70
+        ],
+        "retiring_by_kind": [
+          374,
+          28,
+          1125,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 19,
+        "current_by_kind": [
+          690,
+          68,
+          2213,
+          70
+        ],
+        "retiring_by_kind": [
+          80,
+          5,
+          627,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 20,
+        "current_by_kind": [
+          691,
+          68,
+          2210,
+          70
+        ],
+        "retiring_by_kind": [
+          187,
+          25,
+          607,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 21,
+        "current_by_kind": [
+          690,
+          68,
+          2210,
+          70
+        ],
+        "retiring_by_kind": [
+          58,
+          1,
+          404,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 22,
+        "current_by_kind": [
+          689,
+          68,
+          2210,
+          70
+        ],
+        "retiring_by_kind": [
+          177,
+          26,
+          957,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 23,
+        "current_by_kind": [
+          690,
+          68,
+          2211,
+          70
+        ],
+        "retiring_by_kind": [
+          157,
+          24,
+          518,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 24,
+        "current_by_kind": [
+          690,
+          68,
+          2210,
+          70
+        ],
+        "retiring_by_kind": [
+          208,
+          27,
+          709,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 25,
+        "current_by_kind": [
+          690,
+          68,
+          2210,
+          70
+        ],
+        "retiring_by_kind": [
+          290,
+          38,
+          1412,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 26,
+        "current_by_kind": [
+          690,
+          68,
+          2210,
+          70
+        ],
+        "retiring_by_kind": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 27,
+        "current_by_kind": [
+          689,
+          68,
+          2211,
+          70
+        ],
+        "retiring_by_kind": [
+          211,
+          21,
+          952,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 28,
+        "current_by_kind": [
+          690,
+          68,
+          2211,
+          70
+        ],
+        "retiring_by_kind": [
+          321,
+          24,
+          1044,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      },
+      {
+        "frame": 29,
+        "current_by_kind": [
+          691,
+          68,
+          2213,
+          70
+        ],
+        "retiring_by_kind": [
+          148,
+          25,
+          452,
+          0
+        ],
+        "capacity_by_kind": [
+          2048,
+          2048,
+          5080,
+          512
+        ]
+      }
+    ],
+    "sampler_facts": [
+      "sampler frame2=52，frame11..29=70；该日志不是口述74。Sampler retiring始终0，frame2后容量512=8页×64保持。",
+      "新headless compile→collect→execute已消除旧一次双帧6022样本，但不能因此标记30门通过。",
+      "期末drain pending0→0/destroyed0/allocated1000618600不变/idle2→2；不支持用GC积压解释这次剩余采样增长。"
+    ],
+    "source_audit": [
+      "SamplerPages按actual ArcHeap找页；PendingSampler按(name,ArcSampler)找缓存并去重，complete group guard持续到finish成功后commit。commit按name唯一替换/新增，不每次盲目追加。",
+      "CachedSampler强持actual sampler与BindlessLease，retiring0与持久缓存匹配。Device builtin虽Weak，Bindings和已发布cached lease强持同Arc，同名正常升级稳定；全仓production无with_sampler caller。",
+      "当前安装404反射目录9builtin名字×8固定页上界72；原Device13startup目录另4iso。70/72支持有界跨页lazy目录逐渐补齐的假设，但未取得本run具体每页键/分配事件，不能冒称运行根因闭合。"
+    ],
+    "next_review_gate": "任何bootstrap须先依据原startup目录/现使用目录/生产生命周期定义，并保public小sampler容量和custom/失败原子；无条件每页9/13会破capacity1只用1合法配置，不能为阈值预热或清weak/删采样。"
+  },
+  "gameplay_wsi": {
+    "formal_result": "FAIL exit1 before first gameplay SubApp update completes",
+    "observed_error": "read_bush_positions_from_gpu: slice_end_index_len_fail; async completed updates0; noPASS/no world-frame progress lines",
+    "scope": "这是双App真实启动/首次Update阻点，当前日志不证明12world/12native presents或save shutdown通过。",
+    "next": "root核真实run_game_thread→load_session→首次update→GPUwarmup/producer顺序；原None不上传与required count越界保留，不擅自填0/删除reader。"
+  },
+  "limits": [
+    "reviewer未运行Cargo/GPU，不替换root actual execution owner。",
+    "本报告保留两正式失败，不能以8bridge成功或离线截图将world30/gameplayWSI视为通过。"
+  ]
+}

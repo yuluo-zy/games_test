@@ -1,0 +1,63 @@
+{
+  "ok": true,
+  "source_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "cases": 142149,
+  "buffer_cases": 6059,
+  "image_cases": 136090,
+  "failure_count": 0,
+  "failures": [],
+  "predicate_binary_only": {
+    "cases": 256,
+    "true_discriminants": [
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55
+    ],
+    "reimplemented": false,
+    "dependency": "vk-sync-fork 0.4.0, original lock path package"
+  },
+  "image_returning_inputs_in_exhaustive_low17": {
+    "0x20": "4",
+    "0x40": "8",
+    "0x80": "10",
+    "0x100": "10",
+    "0x180": "10",
+    "0x200": "20",
+    "0x220": "24",
+    "0x400": "20",
+    "0x600": "20",
+    "0x800": "1",
+    "0x1000": "2",
+    "0x18000": "8"
+  },
+  "candidate_source_sha256": "0cbe51104545c9b40b7c977ed3c38919f794299824e7b5642293fccc04f82897",
+  "renderer_cargo_lock_sha256": "1c6e3c618db02be29d8877ce9d612666108c5b176b7ed177f25ad66ef05e3aa2",
+  "oracle": "Unicorn original function entries, no replaced core calls; stop at actual original Rust panic entry 0x1428d9390 for invalid image masks",
+  "coverage": [
+    "all 1024 combinations of the ten consumed buffer bits",
+    "all 32 single bits and full32 boundary masks",
+    "5000 deterministic random u32 masks per converter",
+    "exhaustive 131072 low17 image masks",
+    "all 256 predicate byte values observed, dependency not reconstructed"
+  ],
+  "limitations": [
+    "No live Vulkan device or game execution",
+    "Panic occurrence compared; panic text/backtrace/allocator/exception ABI excluded",
+    "Unknown input flag names remain raw numeric masks",
+    "No arbitrary high32 exhaustive enumeration; unknown bits tested individually and randomly",
+    "Original vk_sync predicate observed only as caller boundary, excluded from private Rust recovery"
+  ]
+}

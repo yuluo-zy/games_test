@@ -1,0 +1,81 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_draw_terrain.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_draw_terrain.rs
+@@ -32,12 +32,12 @@
+ pub const FOCUS_DISTANCE_GATE: f32 = 0.5;
+ /// 边界检测圆半径（O：反汇编 `MOVSS XMM3,[0x142a16cb8]` = 0.8）。
+ pub const BORDER_CHECK_RADIUS: f32 = 0.8;
+-/// 画布 1（deny）参数（O：反汇编 R8D=0x11、R9D=0，栈字节 1）。
+-pub const DENY_CANVAS_ARGUMENT: u8 = 0x11;
+-pub const DENY_CANVAS_LAYER: u8 = 0;
+-/// 画布 2（draw）参数（O：反汇编 R8D=0xc、R9B=3，栈字节 2）。
+-pub const DRAW_CANVAS_ARGUMENT: u8 = 0x0c;
+-pub const DRAW_CANVAS_LAYER: u8 = 3;
++/// B caller passes name length17 in R8, argument0 in R9 and layer1 on stack.
++pub const DENY_CANVAS_ARGUMENT: u8 = 0;
++pub const DENY_CANVAS_LAYER: u8 = 1;
++/// B caller passes name length12 in R8, argument3 in R9 and layer2 on stack.
++pub const DRAW_CANVAS_ARGUMENT: u8 = 3;
++pub const DRAW_CANVAS_LAYER: u8 = 2;
+ /// 画布名字（O：RNE 直读 @0x142adc2df / @0x142adc2f0）。
+ pub const DENY_CANVAS_NAME: &str = "terrain_deny_draw";
+ pub const DRAW_CANVAS_NAME: &str = "terrain_draw";
+@@ -909,3 +909,59 @@
+         );
+     }
+ }
++
++
++#[cfg(test)]
++mod native_canvas_argument_tests {
++    use super::*;
++    use crate::systems::{
++        terrain::register_terrain_events,
++        ui::resources::ui_state::{UiInteraction, WidgetId},
++    };
++
++    #[test]
++    fn actual_terrain_ui_uses_original_argument_and_layer_ports() {
++        // Original callers 140a9fefb..ff49 and constructor 14092df72/e0bd/e0ca:
++        // R8 is the string length. R9 and stack are distinct argument/layer.
++        for (wet, hit, distance, deny_expected) in [
++            (false, false, 0.0, false),
++            (true, false, 0.0, true),
++            (true, true, 0.5, true),
++            (true, true, 0.6, false),
++        ] {
++            let mut world = World::new();
++            register_terrain_events(&mut world);
++            world.insert_resource(AppMode::Terrain);
++            world.insert_resource(CursorTerrainRaycast {
++                tag: u32::from(hit),
++                pos: glam::Vec3::new(0.0, distance, 0.0),
++                ..Default::default()
++            });
++            let mut water = WaterRaster::new(
++                crate::resources::world_raster::DirtyTilePublisher::unique(),
++            );
++            if wet {
++                water.write_composite(Some(&vec![255; 512 * 512]));
++            }
++            world.insert_resource(water);
++            world.insert_resource(TerrainEditingData(tg_terrain::stroke::TerrainEditingData::default()));
++            world.insert_resource(GladeBorder(BorderShape::Circle(Circle2d::new(Vec2::ZERO, 100.0))));
++            world.insert_resource(UiState::new(UiInteraction {
++                native_tag: 0,
++                native_phase: 2,
++                widget: WidgetId::clearing_canvas(DRAW_CANVAS_NAME),
++            }));
++            let mut schedule = Schedule::default();
++            schedule.add_systems(ui_draw_terrain);
++            schedule.run(&mut world);
++            let ui = world.resource::<UiState>();
++            let draw = ui.clearing_canvas_params(WidgetId::clearing_canvas(DRAW_CANVAS_NAME)).unwrap();
++            assert_eq!((draw.argument_79, draw.layer), (3, 2));
++            let deny = ui.clearing_canvas_params(WidgetId::clearing_canvas(DENY_CANVAS_NAME));
++            assert_eq!(deny.is_some(), deny_expected);
++            if let Some(deny) = deny {
++                assert_eq!((deny.argument_79, deny.layer), (0, 1));
++            }
++        }
++    }
++}

@@ -1,0 +1,20 @@
+// addr 0x140b04e70 sig void __cdecl new(void) size 52
+
+void __cdecl country_core::utils::debug_viz::DebugLine::new(void)
+
+{
+  undefined8 uVar1;
+  undefined8 *in_RCX;
+  undefined8 *in_RDX;
+  
+  *(undefined4 *)(in_RCX + 6) = 0;
+  *(undefined4 *)(in_RCX + 8) = 0x3f800000;
+  uVar1 = in_RDX[1];
+  *in_RCX = *in_RDX;
+  in_RCX[1] = uVar1;
+  in_RCX[2] = in_RDX[2];
+  in_RCX[3] = 0x8000000000000000;
+  *(undefined2 *)((longlong)in_RCX + 0x44) = 1;
+  return;
+}
+

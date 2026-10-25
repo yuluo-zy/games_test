@@ -1,0 +1,110 @@
+{
+  "status": "immutable_observation_v2_not_a_replacement_for_reviewed_candidate_manifest",
+  "observed_at_utc": "2026-10-19T16:46:29.535202+00:00",
+  "provenance_correction": {
+    "error": "The author appended post-review observations to the frozen candidate-manifest in place. Source candidate bytes were unchanged; manifest bytes were not stable.",
+    "recovery": "Reversed only the recorded metadata changes, independently matched both historical expected SHA256 values before writing, preserved exact mutated bytes, restored the historical candidate-manifest entrypoint, and saved separate immutable copies.",
+    "root_integration_binding": {
+      "path": "tiny-glade/reports/main-loop-render-recovery-2026-10-19/validation/nani-nine-integration-v1.json",
+      "sha256": "731ab2cb11ba35963b0ca29700ea4ec3feaf0f90471d57e2e0f8ce98f0f6cb48"
+    },
+    "review_binding": {
+      "path": "tiny-glade/reports/main-loop-render-recovery-2026-10-19/independent-validation/solid-texture-20261020/CANDIDATE_REVIEW.json",
+      "sha256": "47964d8c345db119097c66e7c59928cf9d26aef85c63e16295cca579c0b4697b"
+    },
+    "integration_frozen_manifest": {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bdac7a16d3c26c954b/nani-gpu-counts-20261019/nani-maintain-20261020/candidate-manifest.frozen-doc-final-v1.json",
+      "sha256": "64e7979527710c75d833e976515f1f4536e8eb57d753e0e2d59ab9b64730b773"
+    },
+    "review_frozen_manifest": {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bdac7a16d3c26c954b/nani-gpu-counts-20261019/nani-maintain-20261020/candidate-manifest.frozen-review-v1.json",
+      "sha256": "2a10f0e9f3c46bf1145acc4d5a4f71cf267b572799d6656f25fd0b6e685a2eea"
+    },
+    "archived_mutated_bytes": {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bdac7a16d3c26c954b/nani-gpu-counts-20261019/nani-maintain-20261020/candidate-manifest.postfreeze-mutation-archive.json",
+      "sha256": "3944fe867aa4a47e9b59ae2032e52d02b73a87e6f583743682da75abe36bbf81"
+    },
+    "historical_entrypoint_restored": {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bdac7a16d3c26c954b/nani-gpu-counts-20261019/nani-maintain-20261020/candidate-manifest.json",
+      "sha256": "64e7979527710c75d833e976515f1f4536e8eb57d753e0e2d59ab9b64730b773"
+    },
+    "immutable_rule": "Future observations and errata use new versioned status artifacts. Do not rewrite either frozen manifest or this observation."
+  },
+  "source_observations": [
+    {
+      "source": "tiny-glade/crates/country-core/src/render/nani/systems.rs",
+      "observed_sha256": "3d8318f2d63e0eb28a81de1fc3365571cdb0f6beac3cc5c4cf7f9adb4150d4a8",
+      "frozen_candidate_sha256": "3d8318f2d63e0eb28a81de1fc3365571cdb0f6beac3cc5c4cf7f9adb4150d4a8",
+      "matches_frozen_candidate": true
+    },
+    {
+      "source": "tiny-glade/crates/country-core/src/components/drawable.rs",
+      "observed_sha256": "4adcc7b3a7b955bfa24cc19b54c9ac0ba7357f0320a6efcaef5580877a165d26",
+      "frozen_candidate_sha256": "4adcc7b3a7b955bfa24cc19b54c9ac0ba7357f0320a6efcaef5580877a165d26",
+      "matches_frozen_candidate": true
+    },
+    {
+      "source": "tiny-glade/crates/systems/decorator/src/utils/visual_entity_builder.rs",
+      "observed_sha256": "80a8c5fb106f06378e17aac7df08de5daa9f7e2b9664978d7bf4f070465ffc71",
+      "frozen_candidate_sha256": "80a8c5fb106f06378e17aac7df08de5daa9f7e2b9664978d7bf4f070465ffc71",
+      "matches_frozen_candidate": true
+    },
+    {
+      "source": "tiny-glade/crates/tiny-glade/src/gameplay_startup.rs",
+      "observed_sha256": "cc5484ac74796d91421e08059f5791bf4b3f8bfe108d39efc9ba770d7f05d259",
+      "frozen_candidate_sha256": "cc5484ac74796d91421e08059f5791bf4b3f8bfe108d39efc9ba770d7f05d259",
+      "matches_frozen_candidate": true
+    }
+  ],
+  "central_integration": {
+    "record": "tiny-glade/reports/main-loop-render-recovery-2026-10-19/validation/nani-nine-integration-v1.json",
+    "sha256": "731ab2cb11ba35963b0ca29700ea4ec3feaf0f90471d57e2e0f8ce98f0f6cb48",
+    "author_did_not_write_production": true
+  },
+  "source_reviews": [
+    {
+      "path": "tiny-glade/reports/main-loop-render-recovery-2026-10-19/independent-validation/solid-texture-20261020/CANDIDATE_REVIEW.json",
+      "sha256": "47964d8c345db119097c66e7c59928cf9d26aef85c63e16295cca579c0b4697b"
+    },
+    {
+      "path": "tiny-glade/reports/main-loop-render-recovery-2026-10-19/independent-validation/solid-texture-20261020/CANDIDATE_DOC_DELTA_REVIEW.json",
+      "sha256": "845aa9f3633b5b82c64ff71bdb154e58eee3fca43c731ac74a569ee9e1aeef2e"
+    }
+  ],
+  "performance_correction": {
+    "current_statement": "Bevy0.16 runtime can_run checks archetype_component_access. Single-marker archetypes can run the mutable-key queries concurrently; static ComponentId ambiguity alone does not force runtime serialization. No Without/Key change was made. Bypass change detection preserves native read-only-key ticks. Descriptor preflight has one pass; nine-marker count uses stack array. No timing measurement claimed.",
+    "historical_claim_withdrawn": "Shared mutable InstanceKey ComponentId alone does not prove the nine queries serialize at runtime. Frozen historical manifests retain the withdrawn text for exact hash provenance.",
+    "author_erratum": {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bdac7a16d3c26c954b/nani-gpu-counts-20261019/nani-maintain-20261020/PERFORMANCE_SCHEDULING_CORRECTION.md",
+      "sha256": "f66a4c1d646f93afefd9fb8232ede6def82d8b6120d2004383cee56247a82d52"
+    },
+    "independent_erratum": {
+      "path": "tiny-glade/reports/main-loop-render-recovery-2026-10-19/independent-validation/solid-texture-20261020/PERFORMANCE_INFERENCE_CORRECTION.json",
+      "sha256": "f6039277f7a70f5c2bf81657edb3a09f540f90e2cff6f59509468dd58a4ebd4c"
+    },
+    "performance_review": {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bdac7a16d3c26c954b/nani-gpu-counts-20261019/nani-maintain-20261020/performance-review/MANIFEST.json",
+      "sha256": "a4bd00f1fcf00442630df85b41a50d1b474c01e316622e2c5fb7a9478fc1fe2b"
+    },
+    "limits": "No throughput or scheduling timing measured; current cached ECS defaults and multi-threaded executor semantics are separate facts. No Key/filter/source change made."
+  },
+  "vao_prefix_dependency": {
+    "status": "candidate_only_pending07_source_review_and_root_integration_at_capture",
+    "manifest": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-28ee15b4dac81f8b1c/startup-vao-drawlists-20261019/vao-set44-20261020/delivery-v1.json",
+    "manifest_sha256": "0f30240308adade405016e1e19bc305c492c86651d9307ca53f3bef40251bc4a",
+    "runtime_before": "b150215865f78da4ff11d8d788db67518de6b97ec7e3cef3040f5470cecfc482",
+    "runtime_candidate": "a433ea80c66db7c9e31394045d7d649c7d564ce50dc5c7fd7f5769649d319cb2",
+    "game_loop_before": "b85e4da52697de8e21499644bd20b9d9601a47b592f2d7082484fdee5aea8a70",
+    "game_loop_candidate": "c7fbf68ae9ac5de172b13954663f5f915207bf0376e8623b1574f786a78ffae1",
+    "edge": "(build_missing_vaos,rebuild_vaos).chain_ignore_deferred().before_ignore_deferred(nani_maintain_instances_ecs).in_set44"
+  },
+  "acceptance_limits": {
+    "typecheck": false,
+    "new_tests_executed": false,
+    "GPU": false,
+    "whole_scene_reachability": false,
+    "eleven_update_contracts_unmapped": true
+  },
+  "production_source_modified_by_this_correction": false,
+  "external_commands_running": false
+}

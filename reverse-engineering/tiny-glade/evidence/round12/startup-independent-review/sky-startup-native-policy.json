@@ -1,0 +1,82 @@
+{
+  "source_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "range": "140864430..1408646ac",
+  "scope": "complete original startup policy; explicit recording file/library/compiler/ECS boundaries, not GPU evidence",
+  "host_calls": [
+    {
+      "boundary": "load_json_as_mesh",
+      "path": "assets/meshes/skydome.json"
+    },
+    {
+      "boundary": "load_mesh_into_library",
+      "name": "skydome",
+      "indices": [],
+      "indices_len": 0,
+      "source_none": false,
+      "attribute_rawtable": "0000000000000000000000000000000000000000000000000000000000000000",
+      "label": null
+    },
+    {
+      "boundary": "load_shader_into_library",
+      "path": "/skydome.raster.hlsl",
+      "name": "skydome_shader"
+    }
+  ],
+  "command_record": {
+    "executor": "0x1412dd460",
+    "transform": "0000000000000000000000000000803f00000080000000c0000000800000803f0000803f0000803f",
+    "transform_u32": [
+      0,
+      0,
+      0,
+      1065353216,
+      2147483648,
+      3221225472,
+      2147483648,
+      1065353216,
+      1065353216,
+      1065353216
+    ],
+    "mesh": "0xa11",
+    "shader": "0xb11",
+    "entity": 101
+  },
+  "bridges": [
+    {
+      "entry": "0x140613c10",
+      "dependency": "std::alloc::__rust_alloc"
+    },
+    {
+      "entry": "0x140613c20",
+      "dependency": "std::alloc::__rust_dealloc"
+    },
+    {
+      "entry": "0x140613c30",
+      "dependency": "std::alloc::__rust_realloc"
+    },
+    {
+      "entry": "0x140613c40",
+      "dependency": "std::alloc::__rust_alloc_zeroed"
+    },
+    {
+      "entry": "0x140b0eeb0",
+      "dependency": "recording file-Mesh input boundary"
+    },
+    {
+      "entry": "0x140b1aca0",
+      "dependency": "recording mesh-library/watch host boundary"
+    },
+    {
+      "entry": "0x1400d9b20",
+      "dependency": "std::hash::RandomState::KEYS thread-local boundary"
+    },
+    {
+      "entry": "0x140b3fe40",
+      "dependency": "recording shader compilation/library host boundary"
+    },
+    {
+      "entry": "0x140d146a0",
+      "dependency": "Bevy Commands::spawn_empty host boundary"
+    }
+  ]
+}

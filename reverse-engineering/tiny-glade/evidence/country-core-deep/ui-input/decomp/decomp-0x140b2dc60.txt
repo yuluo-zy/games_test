@@ -1,0 +1,153 @@
+
+longlong * FUN_140b2dc60(longlong param_1,longlong param_2)
+
+{
+  ulonglong *puVar1;
+  undefined1 auVar2 [16];
+  longlong lVar3;
+  longlong *plVar4;
+  code *pcVar5;
+  uint uVar6;
+  uint uVar7;
+  ulonglong uVar8;
+  ushort uVar9;
+  ulonglong uVar10;
+  longlong lVar11;
+  uint uVar12;
+  byte bVar13;
+  char cVar14;
+  char cVar16;
+  char cVar17;
+  char cVar18;
+  undefined1 auVar15 [16];
+  undefined1 auVar19 [16];
+  undefined1 auVar20 [16];
+  longlong alStack_40 [2];
+  
+  alStack_40[1] = 0xfffffffffffffffe;
+  puVar1 = (ulonglong *)(param_1 + 0x60);
+  uVar8 = *(ulonglong *)(param_1 + 0x60);
+  alStack_40[0] = param_2;
+  if (uVar8 < 0xfffffffffffffff0 && (char)(((uint)uVar8 & 8) >> 3) == '\0') {
+    LOCK();
+    uVar10 = *puVar1;
+    if (uVar8 == uVar10) {
+      *puVar1 = uVar8 + 0x10;
+    }
+    UNLOCK();
+    if (uVar8 == uVar10) goto code_r0x000140b2dcb8;
+  }
+  FUN_1428cc4b0(puVar1,0);
+code_r0x000140b2dcb8:
+  FUN_140c81c70(puVar1);
+  FUN_140c81c70((ulonglong)puVar1 | 1);
+  if (*(longlong *)(param_1 + 0x80) != 0) {
+    uVar8 = FUN_1405b0d70(param_1 + 0x88,alStack_40);
+    lVar3 = *(longlong *)(param_1 + 0x68);
+    bVar13 = (byte)(uVar8 >> 0x39);
+    auVar15 = ZEXT216(CONCAT11(bVar13,bVar13));
+    auVar15 = pshuflw(auVar15,auVar15,0);
+    lVar11 = 0;
+    while( true ) {
+      uVar8 = *(ulonglong *)(param_1 + 0x70) & uVar8;
+      auVar2 = *(undefined1 (*) [16])(lVar3 + uVar8);
+      cVar14 = auVar15[0];
+      auVar20[0] = -(auVar2[0] == cVar14);
+      cVar16 = auVar15[1];
+      auVar20[1] = -(auVar2[1] == cVar16);
+      cVar17 = auVar15[2];
+      auVar20[2] = -(auVar2[2] == cVar17);
+      cVar18 = auVar15[3];
+      auVar20[3] = -(auVar2[3] == cVar18);
+      auVar20[4] = -(auVar2[4] == cVar14);
+      auVar20[5] = -(auVar2[5] == cVar16);
+      auVar20[6] = -(auVar2[6] == cVar17);
+      auVar20[7] = -(auVar2[7] == cVar18);
+      auVar20[8] = -(auVar2[8] == cVar14);
+      auVar20[9] = -(auVar2[9] == cVar16);
+      auVar20[10] = -(auVar2[10] == cVar17);
+      auVar20[0xb] = -(auVar2[0xb] == cVar18);
+      auVar20[0xc] = -(auVar2[0xc] == cVar14);
+      auVar20[0xd] = -(auVar2[0xd] == cVar16);
+      auVar20[0xe] = -(auVar2[0xe] == cVar17);
+      auVar20[0xf] = -(auVar2[0xf] == cVar18);
+      uVar9 = (ushort)(SUB161(auVar20 >> 7,0) & 1) | (ushort)(SUB161(auVar20 >> 0xf,0) & 1) << 1 |
+              (ushort)(SUB161(auVar20 >> 0x17,0) & 1) << 2 |
+              (ushort)(SUB161(auVar20 >> 0x1f,0) & 1) << 3 |
+              (ushort)(SUB161(auVar20 >> 0x27,0) & 1) << 4 |
+              (ushort)(SUB161(auVar20 >> 0x2f,0) & 1) << 5 |
+              (ushort)(SUB161(auVar20 >> 0x37,0) & 1) << 6 |
+              (ushort)(SUB161(auVar20 >> 0x3f,0) & 1) << 7 |
+              (ushort)(SUB161(auVar20 >> 0x47,0) & 1) << 8 |
+              (ushort)(SUB161(auVar20 >> 0x4f,0) & 1) << 9 |
+              (ushort)(SUB161(auVar20 >> 0x57,0) & 1) << 10 |
+              (ushort)(SUB161(auVar20 >> 0x5f,0) & 1) << 0xb |
+              (ushort)(SUB161(auVar20 >> 0x67,0) & 1) << 0xc |
+              (ushort)(SUB161(auVar20 >> 0x6f,0) & 1) << 0xd |
+              (ushort)(SUB161(auVar20 >> 0x77,0) & 1) << 0xe | (ushort)(auVar20[0xf] >> 7) << 0xf;
+      uVar12 = (uint)uVar9;
+      while (uVar9 != 0) {
+        uVar6 = 0;
+        for (uVar7 = uVar12; (uVar7 & 1) == 0; uVar7 = uVar7 >> 1 | 0x80000000) {
+          uVar6 = uVar6 + 1;
+        }
+        uVar10 = uVar6 + uVar8 & *(ulonglong *)(param_1 + 0x70);
+        if (alStack_40[0] == *(longlong *)(lVar3 + -0x10 + uVar10 * -0x10)) {
+          plVar4 = *(longlong **)(lVar3 + -8 + uVar10 * -0x10);
+          LOCK();
+          lVar3 = *plVar4;
+          *plVar4 = *plVar4 + 1;
+          UNLOCK();
+          if (*plVar4 != 0 && SCARRY8(lVar3,1) == *plVar4 < 0) {
+            FUN_140c81e10(puVar1);
+            FUN_140c81e10((ulonglong)puVar1 | 1);
+            LOCK();
+            uVar8 = *puVar1;
+            *puVar1 = *puVar1 - 0x10;
+            UNLOCK();
+            if ((uVar8 & 0xfffffffffffffff2) == 0x12) {
+              FUN_1428ccf50(puVar1);
+            }
+            return plVar4;
+          }
+          goto code_r0x000140b2ddea;
+        }
+        uVar9 = (ushort)(uVar12 - 1) & (ushort)uVar12;
+        uVar12 = CONCAT22((short)(uVar12 - 1 >> 0x10),uVar9);
+      }
+      auVar19[0] = -(auVar2[0] == -1);
+      auVar19[1] = -(auVar2[1] == -1);
+      auVar19[2] = -(auVar2[2] == -1);
+      auVar19[3] = -(auVar2[3] == -1);
+      auVar19[4] = -(auVar2[4] == -1);
+      auVar19[5] = -(auVar2[5] == -1);
+      auVar19[6] = -(auVar2[6] == -1);
+      auVar19[7] = -(auVar2[7] == -1);
+      auVar19[8] = -(auVar2[8] == -1);
+      auVar19[9] = -(auVar2[9] == -1);
+      auVar19[10] = -(auVar2[10] == -1);
+      auVar19[0xb] = -(auVar2[0xb] == -1);
+      auVar19[0xc] = -(auVar2[0xc] == -1);
+      auVar19[0xd] = -(auVar2[0xd] == -1);
+      auVar19[0xe] = -(auVar2[0xe] == -1);
+      auVar19[0xf] = -(auVar2[0xf] == -1);
+      if ((((((((((((((((SUB161(auVar19 >> 7,0) & 1) != 0 || (SUB161(auVar19 >> 0xf,0) & 1) != 0) ||
+                      (SUB161(auVar19 >> 0x17,0) & 1) != 0) || (SUB161(auVar19 >> 0x1f,0) & 1) != 0)
+                    || (SUB161(auVar19 >> 0x27,0) & 1) != 0) || (SUB161(auVar19 >> 0x2f,0) & 1) != 0
+                   ) || (SUB161(auVar19 >> 0x37,0) & 1) != 0) ||
+                 (SUB161(auVar19 >> 0x3f,0) & 1) != 0) || (SUB161(auVar19 >> 0x47,0) & 1) != 0) ||
+               (SUB161(auVar19 >> 0x4f,0) & 1) != 0) || (SUB161(auVar19 >> 0x57,0) & 1) != 0) ||
+             (SUB161(auVar19 >> 0x5f,0) & 1) != 0) || (SUB161(auVar19 >> 0x67,0) & 1) != 0) ||
+           (SUB161(auVar19 >> 0x6f,0) & 1) != 0) || (SUB161(auVar19 >> 0x77,0) & 1) != 0) ||
+          auVar19[0xf] < '\0') break;
+      uVar8 = uVar8 + lVar11 + 0x10;
+      lVar11 = lVar11 + 0x10;
+    }
+  }
+  FUN_1428d9310(&UNK_142aeb8c0);
+code_r0x000140b2ddea:
+                    /* WARNING: Does not return */
+  pcVar5 = (code *)invalidInstructionException();
+  (*pcVar5)();
+}
+

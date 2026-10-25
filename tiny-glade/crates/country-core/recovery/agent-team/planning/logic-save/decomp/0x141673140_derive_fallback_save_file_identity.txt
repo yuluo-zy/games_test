@@ -1,0 +1,50 @@
+
+// WARNING: Removing unreachable block (ram,0x000141673299)
+// WARNING: Removing unreachable block (ram,0x0001416732a7)
+// WARNING: Removing unreachable block (ram,0x0001416732c7)
+
+void __cdecl
+country_core::systems::save::save_file_identity::derive_fallback_save_file_identity(void)
+
+{
+  longlong extraout_RAX;
+  longlong in_RDX;
+  int iStack_78;
+  uint local_48;
+  undefined4 uStack_44;
+  undefined8 *local_30;
+  
+  std::path::Path::file_name();
+  ::utils::calculate_hash<enum2_<core::option::Option<ref_<std::ffi::os_str::OsStr>_>_>_>();
+  std::sys::pal::windows::fs::stat();
+  if (extraout_RAX == 2) {
+    if (((uint)in_RDX & 3) != 1) {
+      return;
+    }
+    local_30 = *(undefined8 **)(in_RDX + 7);
+    if ((code *)*local_30 != (code *)0x0) {
+      (*(code *)*local_30)(*(undefined8 *)(in_RDX + -1));
+    }
+  }
+  else {
+    ::utils::calculate_hash<tuple_<u64,ref_<std::time::SystemTime>_>_>();
+    std::fs::Metadata::modified();
+    if (iStack_78 == 0) {
+      ::utils::calculate_hash<tuple_<u64,ref_<std::time::SystemTime>_>_>();
+      return;
+    }
+    if ((local_48 & 3) != 1) {
+      return;
+    }
+    local_30 = *(undefined8 **)(CONCAT44(uStack_44,local_48) + 7);
+    if ((code *)*local_30 != (code *)0x0) {
+      (*(code *)*local_30)(*(undefined8 *)(CONCAT44(uStack_44,local_48) + -1));
+    }
+  }
+  if (local_30[1] != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  std::alloc::__default_lib_allocator::__rust_dealloc();
+  return;
+}
+

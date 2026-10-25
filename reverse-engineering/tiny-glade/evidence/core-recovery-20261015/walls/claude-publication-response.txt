@@ -1,0 +1,18 @@
+## Observations
+
+1. **Shape contradicts a bool.** Four arguments with an out-pointer first; the callee writes 0x2a0 bytes — exactly `PublicWallState`. Both call sites then `memcpy` 0x2a0 from `result.value_head`. A boolean `contains` returns one byte and needs no out-pointer.
+2. **The result owns memory.** `FUN_140895600` runs on the copied record and is described as dropping `PublicWallState` allocations. A destructible, owned 0x2a0 value is not something a predicate can produce.
+3. **Presence logic.** Both loops test the same discriminator. Reading `SBORROW8(0,x)` as a borrow flag (`x != 0`), `!SBORROW8` means `head == 0`; both sites agree — `head == 0` = record present, `head != 0` = absent, and the update path writes `i64::MIN` into the copy as the explicit absent sentinel. Presence is a first-field discriminator, not a boolean.
+4. **Divergent use of the same call.** Deletion drops the returned record and pushes `deleted`, with no visible map erase. Update re-inserts a rebuilt 0x2a0 record afterward.
+5. **Degenerate gate.** `row.count < 2 || row.length <= 0.0` → `continue`. Skip only: no event, no insert, no drop.
+6. **Repeated creation** reaches the assert only when an old public record is present, then `panic("assertion failed: !is_adding")`. Hard failure, not overwrite.
+7. The deletion path's second head check re-tests the same 8 bytes just copied — redundant as decompiled, so variable naming/offsets are imprecise.
+
+## Hypotheses
+
+- **H1 (strong): not `contains`.** It is a keyed lookup returning the public record by value (get + clone/copy). The old label is wrong on shape alone.
+- **H2 (plausible, unresolved): it removes.** The delete loop reads naturally as take-and-drop; the update loop reads as remove-and-rebuild.
+- **Against H2:** the update path memcpys the returned record into `old_public`/`old_record` before mutating. If the caller owned it via remove, that copy is unnecessary. This mildly favors clone over remove, but the erase may sit inside the callee or outside the excerpt. Not decidable here.
+- **Degenerate curves:** likely walls with <2 points or non-positive length keep a stale public entry (H1) or never acquire one; the gate never clears state.
+- **Missing public deletion:** either the erase is inside the callee (H2), or `PublicWalls` retains stale entries for removed walls (H1). The excerpt cannot decide.
+- **Concurrency/ordering:** not asserted. The loops walk different sets (+0x90 removed vs +0x30/+0x60 created/updated); iteration order and set overlap are unproven.

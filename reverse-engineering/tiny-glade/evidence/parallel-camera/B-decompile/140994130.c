@@ -1,0 +1,82 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void __cdecl country_core::systems::camera_rig::walk::WalkCamera::teleport(void)
+
+{
+  undefined4 uVar1;
+  undefined8 uVar2;
+  undefined8 *puVar3;
+  longlong lVar4;
+  undefined8 *puVar5;
+  longlong in_RCX;
+  undefined8 *in_RDX;
+  longlong lVar6;
+  undefined8 *puVar7;
+  undefined8 *puVar8;
+  longlong lVar9;
+  char *local_b8;
+  undefined8 local_b0;
+  char **local_a8;
+  code *local_a0;
+  undefined *local_98;
+  undefined8 local_90;
+  undefined8 **local_88;
+  undefined8 local_80;
+  undefined8 local_78;
+  
+  uVar2 = *in_RDX;
+  uVar1 = *(undefined4 *)(in_RDX + 1);
+  puVar8 = *(undefined8 **)(in_RCX + 8);
+  lVar6 = *(longlong *)(in_RCX + 0x10);
+  lVar9 = lVar6 << 4;
+  puVar7 = puVar8;
+  do {
+    if (lVar9 == 0) {
+      local_b8 = "dolly::drivers::position::PositionNo  driver found in the CameraRig";
+      local_b0 = 0x22;
+      goto LAB_1409942a8;
+    }
+    puVar5 = puVar7 + 2;
+    puVar3 = (undefined8 *)(**(code **)(puVar7[1] + 0x40))(*puVar7);
+    lVar4 = (*(code *)in_RDX[3])(puVar3);
+    lVar9 = lVar9 + -0x10;
+    puVar7 = puVar5;
+  } while (((puVar3 == (undefined8 *)0x0) || (lVar4 != 0x6b8463577afc1a66)) ||
+          (in_RDX != (undefined8 *)0xe4b9f294168d7e3));
+  *puVar3 = uVar2;
+  *(undefined4 *)(puVar3 + 1) = uVar1;
+  lVar6 = lVar6 << 4;
+  lVar9 = 0xe4b9f294168d7e3;
+  while (lVar6 != 0) {
+    puVar7 = puVar8 + 2;
+    puVar5 = (undefined8 *)(**(code **)(puVar8[1] + 0x40))(*puVar8);
+    lVar4 = (**(code **)(lVar9 + 0x18))(puVar5);
+    lVar6 = lVar6 + -0x10;
+    puVar8 = puVar7;
+    if (((puVar5 != (undefined8 *)0x0) && (lVar4 == 0x718e4fd258330fe5)) &&
+       (lVar9 == 0x7f9f9b0da2744bb)) {
+      dolly::util::
+      look_at<dolly::handedness::RightHanded,glam::f32::vec3::Vec3,glam::f32::sse2::quat::Quat>();
+      glam::euler::impl$8::convert_quat();
+      *puVar5 = CONCAT44((float)((ulonglong)local_b8 >> 0x20) * _UNK_142aba9e4,
+                         SUB84(local_b8,0) * ___xmm_000000000000000042652ee142652ee1);
+      return;
+    }
+  }
+  local_b8 = 
+  "dolly::drivers::yaw_pitch::YawPitchdolly::drivers::rotation::Rotationdolly::drivers::look_at::LookAt"
+  ;
+  local_b0 = 0x23;
+LAB_1409942a8:
+  local_a8 = &local_b8;
+  local_a0 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;
+  local_98 = &anon_f854cc98b5e1efe54f6ab98d53b9f85b_10_llvm_5637972437638668905;
+  local_90 = 2;
+  local_78 = 0;
+  local_88 = &local_a8;
+  local_80 = 1;
+                    /* WARNING: Subroutine does not return */
+  core::panicking::panic_fmt();
+}
+

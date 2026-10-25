@@ -1,0 +1,430 @@
+--- a/tiny-glade/crates/country-core/src/resources/tree_storage.rs
++++ b/tiny-glade/crates/country-core/src/resources/tree_storage.rs
+@@ -59,43 +59,65 @@
+ 
+ // ---------------------------------------------------------------- 组 A 接线
+ 
+-/// 可交互森林树（O：`tree_storage::InteractableForestTree`；forest
+-/// manage_tree_prefabs 0x141bf16c0 的候选评估面 + system_critters 消费。
+-/// 字段布局 U——re-analyst-A 契约：树记录 0x50B（{Arc<String> prefab, u64 打包
+-/// 位置, f32 高, f32 缩放, …}），语义字段名 I）。
+-#[derive(Component, Clone, Debug, Default)]
++// Candidate replacement of the forest types in resources/tree_storage.rs.
++// Existing unrelated TreeStorage/event declarations remain untouched.
++
++/// B InteractableForestTree is a24-byte animation component. It refers back
++/// to the canonical80-byte ForestTree record; it does not own that record.
++#[repr(C)]
++#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default, PartialEq)]
+ pub struct InteractableForestTree {
+-    /// 树 id（O：0x58B 树命令 {1,1,变体,树 id} 载荷族；I）。
+-    pub id: u64,
+-    /// 世界位置（I：pack_2x16f_uint 打包位的语义解）。
+-    pub position: glam::Vec3,
+-    /// 缩放（I：fastrand lerp(0.3, 0.75) 族）。
+-    pub scale: f32,
+-    /// typed gap：其余字段（U）。
+-    pub _gap: u64,
++    pub placement_index: usize,
++    pub amplitude: f32,
++    pub progress: f32,
++    pub delay: f32,
+ }
+ 
+-/// 可交互森林放置位点（O：`tree_storage::InteractableForestPlacements`；
+-/// manage_tree_prefabs 的 ResMut 写侧（0x50B 树记录 Vec）+ 36B 默认实例
+-/// （0x142b8fc58 静态初值，re-analyst-A 契约 §2）。字段明细 U。
+-#[derive(Resource, Clone, Debug, Default)]
++/// Native ForestTree,80 bytes: PrefabName@0, placement@10, Entity@40,
++/// billboard expansion@48. The final four bytes are alignment padding.
++/// init_clearing clones the full48-byte placement and preserves every channel.
++#[repr(C)]
++#[derive(Clone, Debug)]
++pub struct ForestTree {
++    pub prefab_name: crate::resources::render::mesh_atlas_library::PrefabName,
++    pub placement: crate::resources::placement_data::PlacementDataSsbo,
++    pub entity: Option<bevy_ecs::entity::Entity>,
++    pub billboard_expansion_scale: f32,
++}
++
++#[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
+ pub struct InteractableForestPlacements {
+-    /// 树记录 Vec（0x50B 条目；语义 I）。
+-    pub records: Vec<InteractableForestTree>,
+-    /// Native resource +0x18: false for the first processing pass of a glade.
+-    /// This belongs to the placement owner, never a system-local cache.
++    pub records: Vec<ForestTree>,
+     pub processed: bool,
+ }
+ 
+ impl InteractableForestPlacements {
+-    /// B uninit_clearing@140a7a718..774: drop all records, retain allocation,
+-    /// and clear the initial-processing flag. Record payload recovery remains
+-    /// separate; this restores the observed lifecycle of their existing owner.
+     pub fn clear(&mut self) {
+         self.records.clear();
+         self.processed = false;
+     }
+ }
++
++#[cfg(test)]
++mod forest_native_layout {
++    use super::*;
++    use core::mem::{offset_of, size_of};
++
++    #[test]
++    fn placement_owner_and_animation_component_are_distinct_native_types() {
++        assert_eq!(size_of::<ForestTree>(), 80);
++        assert_eq!(offset_of!(ForestTree, prefab_name), 0);
++        assert_eq!(offset_of!(ForestTree, placement), 0x10);
++        assert_eq!(offset_of!(ForestTree, entity), 0x40);
++        assert_eq!(offset_of!(ForestTree, billboard_expansion_scale), 0x48);
++        assert_eq!(size_of::<InteractableForestTree>(), 24);
++        assert_eq!(offset_of!(InteractableForestTree, placement_index), 0);
++        assert_eq!(offset_of!(InteractableForestTree, amplitude), 8);
++        assert_eq!(offset_of!(InteractableForestTree, progress), 12);
++        assert_eq!(offset_of!(InteractableForestTree, delay), 16);
++    }
++}
++
+ 
+ /// 树移动命令（O：`tree_storage::MoveTreeCmd`；ui_move_tree 0x14226b1a0 发射、
+ /// process_tree_cmds 0x142267430 消费。载荷 = **0x18B** `{index u64@+0,
+--- a/tiny-glade/crates/country-core/src/startup/clearing.rs
++++ b/tiny-glade/crates/country-core/src/startup/clearing.rs
+@@ -1,17 +1,7 @@
+-//! Clearing（林间空地）资产（B `startup::clearing::init_clearing` @0x140a78aa0，
+-//! `uninit_clearing` @0x140a7a5b0）。
+-//!
+-//! 证据（R10 契约 §2.1，O）：
+-//! * 阶段：`init_clearing` = batch2/OnEnter(Game)；`uninit_clearing` = batch3（同 label）。
+-//! * 无条件网格 `assets/meshes/distant_billboard.json`（name `distant_billboard`）；
+-//!   格调判别 4（I：Winter）时才加载 `assets/meshes/ice_cracks.json`（name `ice_cracks`）
+-//!   与 `/water/ice_cracks.raster.hlsl`（name `ice_cracks`）。
+-//! * 两次 `Commands::spawn`（bundle 0x78）；容量常量 `min(x, 0x44c)` = 1100。
+-//! * `uninit_clearing` 遍历 27×0xc0 花园槽并置 `+0x38 = 1`；FMOD `snapshot:/Loading`。
+-//! * 另：`AudioTriggerLibrary::clear`、`AssetPlacementDataLibrary::clear`（I）。
+-//!
+-//! U：`param_10` 资源类型名；`util_add_clearing_shader` 复用方式；spawn bundle 的
+-//! pass/组件；两库 clear 的调用点类型。
++//! Original clearing lifecycle: complete per-session producer below, plus
++//! the existing canonical unload/despawn owners. The small asset inventory
++//! helper is retained for legacy CPU-only tests; actual gameplay registers
++//! init_clearing_complete on every OnEnter(Game), without run_once.
+ use crate::asset_libraries::mesh_library::AssetMeshLibrary;
+ use crate::resources::session::ActiveSession;
+ use super::{StartupAssetHost, register_mesh_file};
+@@ -35,7 +25,7 @@
+ pub const CLEARING_SPAWN_RECORDS: usize = 2;
+ 
+ /// 无条件 billboard；冬季追加 ice_cracks 与 shader。
+-pub fn init_clearing<H: StartupAssetHost>(host: &mut H, is_winter: bool) {
++pub fn clearing_asset_inventory<H: StartupAssetHost>(host: &mut H, is_winter: bool) {
+     host.load_mesh(BILLBOARD_MESH.0, Some(BILLBOARD_MESH.1));
+     if is_winter {
+         host.load_mesh(ICE_CRACKS_MESH.0, Some(ICE_CRACKS_MESH.1));
+@@ -45,7 +35,7 @@
+         target: "country_core::startup::clearing",
+         "Initializing the glade."
+     );
+-    // U: 两条 spawn 的 bundle/pass；主题产者与 trees spawn 不在 init_clearing 证据内。
++    // Asset inventory only; full spawning and theme policy are below.
+ }
+ 
+ pub fn init_clearing_meshes(meshes: Res<AssetMeshLibrary>, session: Option<Res<ActiveSession>>) {
+@@ -87,7 +77,7 @@
+     #[test]
+     fn winter_adds_ice_cracks_and_the_shader_while_summer_does_not() {
+         let mut summer = Rec::default();
+-        init_clearing(&mut summer, false);
++        clearing_asset_inventory(&mut summer, false);
+         assert_eq!(
+             summer.meshes,
+             [(BILLBOARD_MESH.0, Some(BILLBOARD_MESH.1))].to_vec()
+@@ -95,7 +85,7 @@
+         assert!(summer.shaders.is_empty());
+ 
+         let mut winter = Rec::default();
+-        init_clearing(&mut winter, true);
++        clearing_asset_inventory(&mut winter, true);
+         assert_eq!(winter.meshes.len(), 2);
+         assert_eq!(winter.shaders, [ICE_CRACKS_SHADER].to_vec());
+         assert_eq!(CLEARING_CAPACITY, 1100);
+@@ -154,3 +144,177 @@
+         commands.entity(entity).despawn();
+     }
+ }
++
++
++// Complete B clearing producer candidate; append to startup/clearing.rs.
++// Native6913B main +521B particle closure +500B forest filter map.
++// The theme helpers and canonical forest types are separate owner candidates.
++
++#[path = "native_placement_policy.rs"]
++mod native_placement_policy;
++
++#[allow(clippy::too_many_arguments)]
++pub fn init_clearing_complete(
++    installed: &std::path::Path,
++    session: &crate::resources::session::ActiveSession,
++    device: &dyn crate::render::ssbo::rhapsody_boundary::GraphicsDevice,
++    backend: &dyn crate::render::shader::boundary::ShaderBackend,
++    meshes: &crate::asset_libraries::mesh_library::AssetMeshLibrary,
++    watch: &crate::asset_libraries::meshwatch::MeshWatch,
++    shaders: &crate::asset_libraries::shader_library::AssetShaderLibrary,
++    placements: &mut crate::asset_libraries::placement_data_library::AssetPlacementDataLibrary,
++    ssbos: &mut crate::asset_libraries::ssbo_library::AssetSsboLibrary,
++    emitter_count: &mut crate::systems::render_loop::compute_passes::leaf_particles::LoadedParticleEmitterCount,
++    forest: &mut crate::resources::tree_storage::InteractableForestPlacements,
++    commands: &mut bevy_ecs::prelude::Commands,
++) -> anyhow::Result<()> {
++    use crate::{
++        asset_libraries::mesh_library::MeshAsset,
++        components::drawable::DrawableMeshBundle,
++        resources::{
++            preplaced_autoclutter::PreplacedAutoClutter, render::mesh_atlas_library::PrefabName,
++            session::GladeType, tree_storage::ForestTree,
++        },
++        systems::render_loop::compute_passes::leaf_particles::ParticleEmitterSsbo,
++        utils::components::transform::Transform,
++    };
++    use anyhow::Context;
++
++    fn load_mesh(
++        installed: &std::path::Path,
++        relative: &str,
++        name: &str,
++        meshes: &crate::asset_libraries::mesh_library::AssetMeshLibrary,
++        watch: &crate::asset_libraries::meshwatch::MeshWatch,
++    ) -> anyhow::Result<crate::asset_libraries::Handle<crate::render::mesh::Mesh>> {
++        let path = installed.join(relative);
++        let mesh = crate::utils::load_json::try_load_json_as_mesh(
++            path.to_str().context("clearing mesh path is not UTF-8")?,
++        )?;
++        watch.watch(&mesh);
++        Ok(meshes.add(MeshAsset::new(mesh, Some(name.to_owned()))))
++    }
++
++    log::info!(target: "country_core::startup::clearing", "Initializing the glade.");
++    if session.meta.glade == GladeType::Winter {
++        let mesh = load_mesh(installed, BILLBOARD_ICE_PATH, "ice_cracks", meshes, watch)?;
++        let shader = super::load_shaders::load_shader_into_library(
++            shaders,
++            backend,
++            "/water/ice_cracks.raster.hlsl",
++            "ice_cracks",
++        );
++        commands.spawn(DrawableMeshBundle {
++            mesh,
++            shader,
++            transform: Transform::identity(),
++        });
++    }
++
++    // The original Olden helper returns the whole resource. Other themes
++    // remove it; Flowery's additional scene entities are created first.
++    match session.meta.glade {
++        GladeType::Olden => {
++            let clutter = super::glade_themes::startup_olden(
++                installed, placements, device, session, commands, watch, meshes, shaders,
++            )?;
++            commands.insert_resource(clutter);
++        }
++        GladeType::Flowery => {
++            super::glade_themes::startup_flowery(
++                installed, placements, device, session, commands, watch, meshes, shaders,
++            )?;
++            commands.remove_resource::<PreplacedAutoClutter>();
++        }
++        _ => {
++            commands.remove_resource::<PreplacedAutoClutter>();
++        }
++    }
++    let glade_root = if session.meta.glade == GladeType::Olden {
++        installed.join("assets/glade/olden")
++    } else {
++        installed.join(session.assets_root())
++    };
++    let groups = super::spawn_preplaced_trees::load_tree_groups(glade_root.join("trees.json"))
++        .context("deserialize trees")?;
++    let mut emitters = Vec::<ParticleEmitterSsbo>::new();
++    // Release every previous Arc before replacing the new session records.
++    forest.clear();
++    for group in groups {
++        if group.prefab == "clearing/tree/bush" {
++            continue;
++        }
++        let path = relative_path::RelativePath::new(&group.placements).to_path(&glade_root);
++        let (records, _handle) = placements.load(device, path);
++        let prefab_name = PrefabName::new(&group.prefab);
++        forest.records.extend(records.iter().filter_map(|record| {
++            native_placement_policy::is_interactable_forest_placement(record.position).then(|| {
++                ForestTree {
++                    prefab_name: prefab_name.clone(),
++                    placement: *record,
++                    entity: None,
++                    billboard_expansion_scale: group.billboard_expansion_scale,
++                }
++            })
++        }));
++        if let Some(emitter_mesh) = group.particle_emitter {
++            // Native RelativePath::to_path joins assets/meshes directly; do
++            // not invent a suffix or emit from the prefab's visible mesh.
++            let path = relative_path::RelativePath::new(&emitter_mesh)
++                .to_path(installed.join("assets/meshes"));
++            let mesh = crate::utils::load_json::try_load_json_as_mesh(
++                path.to_str()
++                    .context("particle emitter path is not UTF-8")?,
++            )?;
++            for record in &records {
++                for &vertex in mesh.positions_without_indices() {
++                    if let Some(words) = native_placement_policy::particle_emitter_for_vertex(
++                        record.position,
++                        record.scale,
++                        record.rotation_angle,
++                        vertex,
++                    ) {
++                        emitters.push(ParticleEmitterSsbo { words });
++                    }
++                }
++            }
++        }
++    }
++    // Upload the complete native vector. Only the published count is capped;
++    // silently truncating the upload would discard the original error branch.
++    if let Some(storage) = ssbos.get_mut::<ParticleEmitterSsbo>() {
++        if !emitters.is_empty() {
++            let buffer = &storage.buffer;
++            let bytes: &[u8] = bytemuck::cast_slice(&emitters);
++            anyhow::ensure!(
++                bytes.len() as u64 <= buffer.byte_size,
++                "particle emitter buffer is too small"
++            );
++            device.update_buffer_bytes(buffer, bytes, &[0..bytes.len()], 0)?;
++        }
++    }
++    emitter_count.0 = emitters.len().min(1100) as u64;
++    // The common shader is generated from the actual original format pieces:
++    // ["/clearing/", ".raster.hlsl"] and ["", "_shader"].
++    let shader = super::load_shaders::load_shader_into_library(
++        shaders,
++        backend,
++        "/clearing/distant_billboard.raster.hlsl",
++        "distant_billboard_shader",
++    );
++    let mesh = load_mesh(
++        installed,
++        "assets/meshes/distant_billboard.json",
++        "distant_billboard",
++        meshes,
++        watch,
++    )?;
++    commands.spawn(DrawableMeshBundle {
++        mesh,
++        shader,
++        transform: Transform::identity(),
++    });
++    Ok(())
++}
++
++const BILLBOARD_ICE_PATH: &str = "assets/meshes/ice_cracks.json";
+--- /dev/null
++++ b/tiny-glade/crates/country-core/src/startup/native_placement_policy.rs
+@@ -0,0 +1,29 @@
++use glam::{Affine3A, Quat, Vec3};
++
++/// Original init_clearing closure0 keeps exterior placements, including the
++/// exact +/-65 boundary and unordered coordinates. Preserve its two compares.
++pub fn is_interactable_forest_placement(position: Vec3) -> bool {
++    !(position.x.abs() < 65.0 && position.z.abs() < 65.0)
++}
++
++/// Original closure1: full quaternion/affine transform through the original
++/// dependency, retaining filter order, stored angle units, and all four words.
++pub fn particle_emitter_for_vertex(
++    position: Vec3,
++    scale: f32,
++    rotation: f32,
++    vertex: Vec3,
++) -> Option<[u32; 4]> {
++    let radius =
++        (position.z * position.z + (position.x * position.x + position.y * position.y)).sqrt();
++    if !(radius < 45.0) || !(scale > 0.7) {
++        return None;
++    }
++    let affine = Affine3A::from_scale_rotation_translation(
++        Vec3::splat(scale),
++        Quat::from_rotation_y(rotation),
++        position,
++    );
++    let point = affine.transform_point3(vertex);
++    Some([point.x.to_bits(), point.y.to_bits(), point.z.to_bits(), 0])
++}
+--- a/tiny-glade/crates/country-core/src/systems/audio/game_loading_audio.rs
++++ b/tiny-glade/crates/country-core/src/systems/audio/game_loading_audio.rs
+@@ -130,7 +130,7 @@
+             asset_libraries::{placement_data_library::AssetPlacementDataLibrary,
+                 audio_trigger_library::{AudioTriggerLibrary,AudioTriggerKind}},
+             resources::{rt::{RtWorld,RtMeshHandle,RtUploadData},placement_data::PlacementDataSsbo,
+-                session::SessionId,tree_storage::{InteractableForestPlacements,InteractableForestTree}},
++                session::SessionId,tree_storage::{InteractableForestPlacements,ForestTree}},
+             render::{test_device::TestDevice,nani::gpu_world::{GpuWorld,GpuWorldSubset,
+                 GpuWorldSubsetKind,OwnedGpuWorldSubset,InstanceCullData}},
+             startup::clearing::{begin_glade_unload,uninit_clearing,despawn_glade_entities},
+@@ -158,7 +158,13 @@
+         let water_base;
+         let mut water=WaterAudioGrid::new();
+         water.cells[11].set_sample(1<<11,true,[-1,-5]);water_base=water.cells[11].position;
+-        let forest=InteractableForestPlacements{records:vec![InteractableForestTree::default()],processed:true};
++        let forest=InteractableForestPlacements{records:vec![ForestTree {
++            prefab_name:crate::resources::render::mesh_atlas_library::PrefabName::new("clearing/tree/mid1"),
++            placement:crate::resources::placement_data::PlacementDataSsbo {
++                position:glam::Vec3::new(70.0,2.0,30.0),scale:1.25,rotation_angle:0.5,id:7,
++                custom0:0,custom1:0,anim_t_packed:0x3c003c00,bend_vector:glam::Vec2::ZERO,pad0:0,
++            },entity:None,billboard_expansion_scale:2.2,
++        }],processed:true};
+         let (sender,receiver)=crossbeam_channel::unbounded();
+         let mut autosave=AutoSaveState::default();let session=SessionId::new();
+         autosave.session=session;autosave.attach_command_sender(sender);
+--- a/tiny-glade/crates/tiny-glade/src/gameplay_startup.rs
++++ b/tiny-glade/crates/tiny-glade/src/gameplay_startup.rs
+@@ -86,6 +86,29 @@
+     }
+     app.add_event::<PrefabsModifiedCmd>();
+     app.add_event::<MeshAtlasesModifiedCmd>();
++    // Original clearing is a per-session producer. AssetPlacements and forest
++    // records are cleared by OnExit(Game), then rebuilt for the new theme.
++    app.init_resource::<country_core::systems::render_loop::compute_passes::leaf_particles::LoadedParticleEmitterCount>();
++    let clearing_root = installed.clone();
++    let clearing_backend = hosts.shaders.clone();
++    let clearing_device = hosts.buffers.clone();
++    app.add_systems(
++        bevy_state::state::OnEnter(country_core::app_loading_state::AppLoadingState::Game),
++        (move |session: Res<country_core::resources::session::ActiveSession>,
++               meshes: Res<AssetMeshLibrary>, watch: Res<MeshWatch>,
++               shaders: Res<ApplicationShaderLibrary>,
++               mut placements: ResMut<country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary>,
++               mut ssbos: ResMut<AssetSsboLibrary>,
++               mut count: ResMut<country_core::systems::render_loop::compute_passes::leaf_particles::LoadedParticleEmitterCount>,
++               mut forest: ResMut<country_core::resources::tree_storage::InteractableForestPlacements>,
++               mut commands: Commands| {
++            country_core::startup::clearing::init_clearing_complete(
++                &clearing_root, &session, clearing_device.as_ref(), clearing_backend.as_ref(),
++                &meshes, &watch, &shaders.0, &mut placements, &mut ssbos,
++                &mut count, &mut forest, &mut commands,
++            ).expect("original complete per-session clearing startup");
++        }).after(country_core::startup::startup_session::load_game_session),
++    );
+     let meadow_root = installed.clone();
+     let meadow_backend = hosts.shaders.clone();
+     let meadow_device = hosts.buffers.clone();
+--- a/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ b/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@ -585,7 +585,6 @@
+             country_core::startup::startup_critters::startup_critters_meshes,
+             country_core::startup::startup_roof::startup_roof_meshes,
+             country_core::startup::startup_sheep::startup_sheep_meshes,
+-            country_core::startup::clearing::init_clearing_meshes,
+             country_core::startup::spawn_brush_previews::spawn_brush_previews_meshes,
+         )
+             .chain()

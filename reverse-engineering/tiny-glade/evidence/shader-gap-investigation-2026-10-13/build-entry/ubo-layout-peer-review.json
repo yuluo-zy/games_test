@@ -1,0 +1,48 @@
+{
+  "status": "minimal_source_reorder_review_passed_pending_final_raw_compile",
+  "source": "solid_vertex_color.raster.hlsl",
+  "source_sha256": "ba46924f4bb04ca5b741954e0e373db5af49eee2e969547b83e6c7c09b3e516e",
+  "change": "Move uint is_semitransparent and uint is_flat_lighting before float4x4 model_to_world; int bool_render_shadows remains after matrix.",
+  "original_layout": {
+    "size": 84,
+    "members": [
+      [
+        "current_view_index",
+        0,
+        "UInt32"
+      ],
+      [
+        "is_semitransparent",
+        4,
+        "UInt32"
+      ],
+      [
+        "is_flat_lighting",
+        8,
+        "UInt32"
+      ],
+      [
+        "model_to_world",
+        16,
+        "float4x4 RowMajor stride16"
+      ],
+      [
+        "bool_render_shadows",
+        80,
+        "Int32"
+      ]
+    ]
+  },
+  "before_vs_size": 92,
+  "original_file_scope": [
+    "_solid_vertex_color.raster.hlsl_b903e43ffb3da915.bin",
+    "_solid_vertex_color.raster.hlsl_f0adff76827e73ff.bin"
+  ],
+  "field_names_types_unchanged": true,
+  "function_bodies_unchanged": true,
+  "pack_gate_not_relaxed": true,
+  "other17_no_layout_drift": true,
+  "evidence": "umembers-19-original-fresh.log",
+  "comparison_identity": "full original file path plus stage entry",
+  "note": "Parent applied the proven four-declaration reorder; no concurrent layout patch was generated or applied by this agent."
+}

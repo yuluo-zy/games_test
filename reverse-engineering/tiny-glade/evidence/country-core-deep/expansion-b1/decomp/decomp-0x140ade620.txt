@@ -1,0 +1,71 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_140ade620(undefined8 param_1,undefined4 *param_2,undefined4 *param_3,float param_4)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  undefined4 uVar3;
+  undefined4 uVar4;
+  float fVar5;
+  undefined4 uVar6;
+  ulonglong uVar7;
+  longlong lVar8;
+  undefined8 uVar9;
+  undefined8 uVar10;
+  undefined1 auVar11 [16];
+  float fVar12;
+  undefined1 auVar13 [16];
+  undefined1 auVar14 [16];
+  char cStack_b1;
+  undefined8 auStack_b0 [18];
+  
+  uVar6 = _UNK_14292587c;
+  fVar5 = _UNK_142925874;
+  if ((param_2 != param_3) && (param_2 + 3 != param_3)) {
+    fVar12 = param_4 * _UNK_142925874 + _UNK_142925878;
+    uVar1 = param_2[2];
+    uVar2 = param_2[3];
+    uVar3 = param_2[5];
+    cStack_b1 = '\0';
+    auVar14 = ZEXT416((uint)_UNK_142925874);
+    auStack_b0[0] = param_1;
+    uVar7 = func_0x000142923ef0(*param_2,_UNK_142925874,_UNK_14292587c);
+    auVar13 = auVar14;
+    lVar8 = func_0x000142923ef0(uVar1,fVar5,uVar6);
+    uVar9 = func_0x000140b84e40(uVar7 & 0xffffffff | lVar8 << 0x20);
+    uVar7 = func_0x000142923ef0(uVar2,fVar5,uVar6);
+    lVar8 = func_0x000142923ef0(uVar3,fVar5,uVar6);
+    uVar10 = func_0x000140b84e40(uVar7 & 0xffffffff | lVar8 << 0x20);
+    FUN_140b1e460(uVar9,auVar13._0_8_,uVar10,auVar14._0_8_,fVar12,auStack_b0,&cStack_b1);
+    uVar6 = _UNK_14292587c;
+    fVar5 = _UNK_142925874;
+    if (cStack_b1 == '\0') {
+      param_2 = param_2 + 6;
+      auVar13 = ZEXT416((uint)_UNK_142925874);
+      do {
+        if (param_2 == param_3) {
+          return;
+        }
+        uVar1 = *param_2;
+        uVar4 = param_2[2];
+        cStack_b1 = '\0';
+        uVar7 = func_0x000142923ef0(uVar2,fVar5,uVar6);
+        auVar14 = auVar13;
+        lVar8 = func_0x000142923ef0(uVar3,fVar5,uVar6);
+        uVar9 = func_0x000140b84e40(uVar7 & 0xffffffff | lVar8 << 0x20);
+        uVar7 = func_0x000142923ef0(uVar1,fVar5,uVar6);
+        auVar11 = auVar13;
+        lVar8 = func_0x000142923ef0(uVar4,fVar5,uVar6);
+        uVar10 = func_0x000140b84e40(uVar7 & 0xffffffff | lVar8 << 0x20);
+        FUN_140b1e460(uVar9,auVar14._0_8_,uVar10,auVar11._0_8_,fVar12,auStack_b0,&cStack_b1);
+        param_2 = param_2 + 3;
+        uVar2 = uVar1;
+        uVar3 = uVar4;
+      } while (cStack_b1 != '\x01');
+    }
+  }
+  return;
+}
+

@@ -1,0 +1,49 @@
+{
+  "reviewer": "07",
+  "verdict": "passed_scoped_design",
+  "manifest": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6e76d82e8a953a9a45/boot-leaf-20261018/location-rectangle-20261020/design-v1.json",
+    "sha256": "c35b6989bf2a8d5eb3330ef89f5514a46e63c2ca312da752134ddc213c2cff60"
+  },
+  "contract_sha256": "4ed7ca33221a95f4a58b5e6eb6132872ae3b14bac0e3f5a4f843cec30b739863",
+  "before": {
+    "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/utils/src/geometry/rectangle.rs",
+    "sha256": "7a1bd9cb18f66ced6470372b5ee82c43bad596dafd935c4faa0e5a796d2b6541",
+    "scope": "root delegated existing boot-leaf owner; only isolated candidate after review, no production write"
+  },
+  "frozen_artifacts_verified": 14,
+  "native_preflight": [
+    {
+      "name": "rectangle-closest-u.json",
+      "start_va": "0x140c9b000",
+      "length": 1042,
+      "direct_PE_all_instruction_bytes": true
+    },
+    {
+      "name": "rectangle-closest-perimeter.json",
+      "start_va": "0x140c9ae20",
+      "length": 475,
+      "direct_PE_all_instruction_bytes": true
+    },
+    {
+      "name": "rectangle-closest-edge-pair.json",
+      "start_va": "0x140c9a9d0",
+      "length": 726,
+      "direct_PE_all_instruction_bytes": true
+    }
+  ],
+  "two_dispatch_tables_and_two_constants_direct_PE": true,
+  "accepted": [
+    "Only two actual public perimeter/U helpers plus required private original pair search/projection; existing get_closest_edge_id unchanged. Its squared infinity differs from native distance1000.",
+    "Strict size.x*size.y>0 guard; visit four pairs in original sequence, pair(0,1) initial, true Euclidean sqrt with native addition order, initialbest1000, strict > keeps first tie/default pair when all beyond1000.",
+    "Projection uses actual transformed endpoints, denominator native max(edge dot edge,eps1e-20), clamp with SSE operand policy, b*t+a*(1-t). Do not use alternate point+a*edge formula, squared distance comparison or f32 clamp/min/max that changes NaN priority.",
+    "Closing pointindex4 wraps0 only geometrically; Uindex4 remains1, original finite[0,1] U checks and sourceoperationorder preserved.",
+    "No finite sanitization/newboundedwindow assumptions, allocation layer, App or unrelated Rectangle algorithm change."
+  ],
+  "implementation_requirements": [
+    "NaN dimension fails area guard; NaN coordinate may leave defaultpair then return NaN from closest_point. Only proven U endpoint/output finite guards should panic; do not invent generalclosestpoint finite rejection.",
+    "Source actual corners/axis/center evaluation must follow native instruction grouping, including rotated nonzero test geometry.",
+    "Tests native firsttie, farpoint1000/defaultedge, closingU1, invalidarea and NaN-specific behavior, not only normal closestdistance."
+  ],
+  "execution": "Design only; no source/typecheck/tests/Cargo/GPU/production by reviewer; actual roof/location numerical callers separate."
+}

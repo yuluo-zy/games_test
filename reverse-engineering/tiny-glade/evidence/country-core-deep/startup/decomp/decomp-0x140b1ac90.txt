@@ -1,0 +1,15 @@
+# decomp-0x140b1ac90 — startup::impl$1::build（子插件 build 委托）
+# 机器码手解（Ghidra tg_b2 反编译 = NotFound（8B 小函数），本文件为 rne-read --hex + capstone 手解替代，2026-10-15）
+
+# 0x140b1ac90  mov rcx, rdx   ; rcx = app（第二参）
+# 0x140b1ac93  jmp 0x140b65f80  ; 尾调用共享 build
+# 0x140b1ac98  int3（对齐填充）
+
+# 语义：impl$1::build(&mut self, app) → tail-jump 0x140b65f80（rcx=app），薄转发壳。
+# 共享目标 0x140b65f80 = 插件注册/build 收尾 helper（内部 movabs rdx,0x8e1bd251962ba784；
+#   call FUN_1400dd6f0 哈希查表 —— 与 add_game_startup_systems 尾部同族，
+#   startup/ALGORITHMS.md §1.1 的 Hash 0x8e1bd251962ba784 查表 + panic 0x142af2cc0/0x142af2df0）
+# 邻接下一函数 0x140b1aca0 = load_mesh_into_library（紧邻，与 mod.rs 章一致）
+
+# 证据：rne-read --hex 0x140b1ac90 + capstone；tail 目标 0x140b65f80 反汇编见上
+# 原始 NotFound 见 expansion-b2/decomp/decomp-0x140b1ac90.txt

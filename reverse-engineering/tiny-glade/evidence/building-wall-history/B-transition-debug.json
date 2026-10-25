@@ -1,0 +1,3169 @@
+{
+  "ok": true,
+  "cases": 16,
+  "process_returns": 80,
+  "failure_count": 0,
+  "failures": [],
+  "baseline": "B",
+  "original_binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "candidate_binary_sha256": "f7efa895934a459d20d1090817f5f5bd0bdbbba96e1bd5c9d1fab687f20ba86d",
+  "candidate_sources": {
+    "reconstruction/building/wall_history_transition.rs": "03268d77edcc153b8d4f7ddd1b362fde975f3dda6469e2aa6434c392398c62de",
+    "reconstruction/building/wall_history_replay.rs": "491f4bbdd2f415ff7c44a43e73ae12f7ffbf60b91e10574346dab09eadf1c08e",
+    "reconstruction/building/wall_history_edit.rs": "bb22c45529f73e1b4c19af21b2e14a73fe7134e776bdfd313be90ba48577a8b5",
+    "reconstruction/src/bin/wall-history-transition-probe.rs": "e19b582b69380ae1325ce6f09e6afffbdd9da0e81c54eeea9b023b6b11f88396",
+    "reconstruction/building/wall_authoring.rs": "2043afa2ba091e57d9368a5b2b88acc0803b510fd2d2ea8671e95b9714c7c2bb",
+    "reconstruction/building/wall_freeform_cache.rs": "7d2a2870be3cfd73e4318ce4fb3d240b17f59ac2f3738d5504d11dc7c6b637a6",
+    "reconstruction/building/wall_collection.rs": "b74c6aa577a9c012d4d34fcfb1851a8d33a84ee154872ece077d66e96ab198b6",
+    "reconstruction/building/wall_state.rs": "3ac4555841032f8347e1d28da60be7260eead44ae7408c8de265169ce269cf4d",
+    "reconstruction/roof/surface.rs": "132b17182082410908cae6a0d897638eeebb0e8095183d124767ec886428bbcd",
+    "reconstruction/history/building_transactions.rs": "51d593e965bd25d992702cd3a6c4f19f19940f89ed56e7b0ba6655f775b5214f",
+    "reconstruction/Cargo.lock": "2df647ccdbfef544cb7e8f9aa1cd499f411dbfca76cda7e86bcfe051a4095bcc"
+  },
+  "oracle_sources": {
+    "scripts/multi-version/verify_wall_history_transition.py": "3e96adbbd9c43adb2391ad23089fd6fb337c4673f04fb3fa8be7ff0d7530a82d",
+    "evidence/building-wall-history/native_wall_timed.py": "7157e6f465edc8e867463ec53dd3aebb3977e359cd13883a8c32214ed93a7527",
+    "evidence/building-wall-history/native_wall_history.py": "f1d79d49abf86c39b357db2d1d90eb97b6e80b46166b4cf0c77a2edf7bfac1e0",
+    "evidence/building-authoring/native_authoring.py": "0caa5dc2889b2cb18c5fda8c938d27a1246dca99621ff183650d46a349853aeb",
+    "evidence/building-constructor/native_fixture.py": "3a1d9654cbb346ed458185543ea30778b147e2b658a0301cd59e5ea9b73eec1e"
+  },
+  "inputs": [
+    "0 0 3ecccccd 00000000 0 4077e847 bff8c2be 3dcccccd,3dcccccd,3e4ccccd,00000000,3dcccccd 0000000012a456c03da86d40c50c454009a109be0000000000000000 0000000012a456c03da86d40c50c454009a109be000000000000000076b3aa40874cfcbf33333340ea69f474c200000e004e000000000000 101 0 1 3e19999a 3f59999a",
+    "0 0 3ecccccd 00000000 0 3fbde59c bf80e440 3dcccccd,3dcccccd,3e4ccccd,00000000,3dcccccd 010000000000803f00000000cce37b3f72994e3ffb31d640449bee40 010000000000803f00000000cce37b3f72994e3ffb31d640449bee409ce5bd3f40e480bf33333340aef3317c630101eb014a000000000000 102 1 2 3e19999a 3f59999a",
+    "1 0 3ecccccd 00000000 0 408c545c bdc1b47c 3dcccccd,3dcccccd,3e4ccccd,00000000,3dcccccd 00000000296bf43f04e5923e7101f740e83ea63f0000000000000000 00000000296bf43f04e5923e7101f740e83ea63f00000000000000005c548c407cb4c1bd333333407e5658602200020e0269000000000000 103 2 1 3e19999a 3f59999a",
+    "1 0 3ecccccd 00000000 0 404e55fc 3b5b91b4 3dcccccd,3dcccccd,3e4ccccd,00000000,3dcccccd 010000000000803f000000009dc913c0d9837ec01ef824400f2cb640 010000000000803f000000009dc913c0d9837ec01ef824400f2cb640593c81401f9753bf333333407e5d9174ce0100dc03ce000000000000 104 3 2 3e19999a 3f59999a",
+    "0 1 3ecccccd 00000000 0 400765a0 3fa223a2 3dcccccd,3dcccccd,3e4ccccd,00000000,3dcccccd 00000000f96cb33fdc25d13fb12d1e40fd0b973d0000000000000000 00000000f96cb33fdc25d13fb12d1e40fd0b973d0000000000000000a0650740a223a23f333333404d635917310001ca0077000000000000 105 4 1 3e19999a 3f59999a",
+    "0 1 3ecccccd 00000000 0 3eff9d4f bfd9599d 3dcccccd,3dcccccd,3e4ccccd,00000000,3dcccccd 010000000000803f000000009a2c05bffc5a7cc01862b840b8752f40 010000000000803f000000009a2c05bffc5a7cc01862b840b8752f404f9dff3e9d59d9bf33333340e8849be09901024801da000000000000 106 5 2 3e19999a 3f59999a",
+    "1 1 3ecccccd 00000000 0 408a34d3 3df78bfd 3dcccccd,3dcccccd,3e4ccccd,00000000,3dcccccd 000000009c964a40e60276c0924dec4099ac583f0000000000000000 000000009c964a40e60276c0924dec4099ac583f00000000000000009b33e73f8f839dbf33333340fe611f28b500003e027e000000000000 107 6 1 3e19999a 3f59999a",
+    "1 1 3ecccccd 00000000 0 4055127f bfa9bb67 3dcccccd,3dcccccd,3e4ccccd,00000000,3dcccccd 010000000000803f00000000647cc1bf0c20dd3fec38774008ecc23f 010000000000803f00000000647cc1bf0c20dd3fec38774008ecc23f7f12554067bba9bf3333334070d7736b9e0101eb03f0000000000000 108 7 2 3e19999a 3f59999a",
+    "0 0 3ecccccd bdcccccd 0 4056f226 3f84083b 3dcccccd,3dcccccd,3e19999a,3e19999a,3dcccccd 00000000ae9e19c0d95263c042a8b43e817c40bf0000000000000000 00000000ae9e19c0d95263c042a8b43e817c40bf000000000000000026f256403b08843f33333340614ac347aa0002ec00c7000000000000 109 8 1 3e19999a 3f59999a",
+    "0 0 3ecccccd bdcccccd 0 409aeeea 3f86c7c2 3dcccccd,3dcccccd,3e19999a,3e19999a,3dcccccd 010000000000803f00000000a787f63f220388bfb621ab40f3b79f40 010000000000803f00000000a787f63f220388bfb621ab40f3b79f409f9907400613d93f333333406f297f6d2a0100c30134000000000000 110 9 2 3e19999a 3f59999a",
+    "1 0 3ecccccd bdcccccd 0 4061bf3a 3f05b1e9 3dcccccd,3dcccccd,3e19999a,3e19999a,3dcccccd 00000000f5846840fa5d60c0d6255a400dc82ec00000000000000000 00000000f5846840fa5d60c0d6255a400dc82ec000000000000000003abf6140e9b1053f333333404feeb5f47f00019b025d000000000000 111 10 1 3e19999a 3f59999a",
+    "1 0 3ecccccd bdcccccd 0 40be8d59 bfae1a71 3dcccccd,3dcccccd,3e19999a,3e19999a,3dcccccd 010000000000803f00000000f28d913f5e0d1a4007f7863fbeb58340 010000000000803f00000000f28d913f5e0d1a4007f7863fbeb58340598dbe40711aaebf3333334003f39ae8240102c803c5000000000000 112 11 2 3e19999a 3f59999a",
+    "0 1 3ecccccd bdcccccd 0 3ff4d1cf bfc3094f 3dcccccd,3dcccccd,3e19999a,3e19999a,3dcccccd 00000000c2a21ebfaa06323cba485740d01c353e0000000000000000 00000000c2a21ebfaa06323cba485740d01c353e0000000000000000a304b8400d57c2bf333333403f6d4624200000b000ab000000000000 113 12 1 3e19999a 3f59999a",
+    "0 1 3ecccccd bdcccccd 0 3f3af1be 3f83cc5f 3dcccccd,3dcccccd,3e19999a,3e19999a,3dcccccd 010000000000803f0000000080043cc033970fc0ce312c40f8d72c3f 010000000000803f0000000080043cc033970fc0ce312c40f8d72c3fbef13a3f5fcc833f333333405e4cb0a71c0101ce0144000000000000 114 0 2 3e19999a 3f59999a",
+    "1 1 3ecccccd bdcccccd 0 40c8ff03 bf85da14 3dcccccd,3dcccccd,3e19999a,3e19999a,3dcccccd 000000009c6e54c0887a2bbf652e57406c9a3ec00000000000000000 000000009c6e54c0887a2bbf652e57406c9a3ec0000000000000000003ffc84014da85bf33333340b4557641a600020f027b000000000000 115 1 1 3e19999a 3f59999a",
+    "1 1 3ecccccd bdcccccd 0 40d06d24 3fc1d673 3dcccccd,3dcccccd,3e19999a,3e19999a,3dcccccd 010000000000803f00000000a03be63fdf174e409c903a404f52ef3f 010000000000803f00000000a03be63fdf174e409c903a404f52ef3fa380983f2c5644be3333334096e077f797010037032b000000000000 116 2 2 3e19999a 3f59999a"
+  ],
+  "native": [
+    {
+      "case": 0,
+      "actual_constructor_return": true,
+      "actual_process_returns": 5,
+      "native_steps": [
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 1,
+              "bytes": "000000000000000065000000000000000100000047e87740650000000000000001000000000000001100000000000000"
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcc4c3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 1,
+              "bytes": "000000000000000000c00040000000000100000032c07d40650000000000000001d00040000000001100000000000000"
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 1,
+              "bytes": "000000000000000000e000400000000001000000cd539340650000000000000001f00040000000001100000000000000"
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": 1,
+      "actual_constructor_return": true,
+      "actual_process_returns": 5,
+      "native_steps": [
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": 2,
+      "actual_constructor_return": true,
+      "actual_process_returns": 5,
+      "native_steps": [
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "110000000000000067000000000000008ea784400000403f2679f54002010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcc4c3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "1100000000000000670000000000000035b684400000403f8a74f54002010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000006700000000000000c61c85400000403f4754f54002010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": 3,
+      "actual_constructor_return": true,
+      "actual_process_returns": 5,
+      "native_steps": [
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": 4,
+      "actual_constructor_return": true,
+      "actual_process_returns": 5,
+      "native_steps": [
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              105
+            ],
+            [
+              536871008,
+              105
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000006900000000000000b41b77400000403f72dece3f02010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "187677408d75e83fb41b774072dece3f",
+              "us": "000000000000803f",
+              "length": 1045220555,
+              "n": 2
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "a0650740a223a23f333333404d635917",
+            "metadata": "310001ca0077"
+          }
+        },
+        {
+          "elapsed_bits": "cdcc4c3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              105
+            ],
+            [
+              536871008,
+              105
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "110000000000000069000000000000008d1c77400000403fdd1bcf3f02010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "3f7577402238e83f8d1c7740dd1bcf3f",
+              "us": "000000000000803f",
+              "length": 1044968892,
+              "n": 2
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "a0650740a223a23f333333404d635917",
+            "metadata": "310001ca0077"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              105
+            ],
+            [
+              536871008,
+              105
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "110000000000000069000000000000007c2277400000403fc7c9d03f02010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "506f7740388ae63f7c227740c7c9d03f",
+              "us": "000000000000803f",
+              "length": 1043207293,
+              "n": 2
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "a0650740a223a23f333333404d635917",
+            "metadata": "310001ca0077"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              105
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "187677408d75e83f169476401b79a83f04466f40c54d543f72d86140b030c03e1ed84e40c086ddbc310c37404810b9be0a6e1b404c3a1dbf383efa3f9c5c46bf38baba3fe83f56bf4ed3753fb43d4cbf88a5f53ee4be28bf40bf173d006fdabe741ab3be80bbe0bdd63a2abf149e8e3e623f65bf40ea383f1d1884bfba099a3f97cf88bfdcdfd93fb39480bf4bad0c40667b57bf42f02a40f64916bfb17b4640e88080bee12e5e40086e1c3e731171408d8e1b3f785d7e402b2a8c3fcac382407e28cc3f58228340d491054086468040bd432340989c7440caf23d4072f062404c875440d6414c40a0146640767e3140cce27140dbbe1340187677408975e83f",
+              "us": "00000000f620043d0b21843d9031c63d0b21043e4829253e8b31463ed339673e0921843e2aa5943e4c29a53e6dadb53e8d31c63eadb5d63ecf39e73ef1bdf73e0821043f19630c3f29a5143f3be71c3f4b29253f5b6b2d3f6bad353f7def3d3f8c31463f9e734e3faeb5563fbef75e3fce39673fe07b6f3fefbd773f0000803f",
+              "length": 1098386052,
+              "n": 32
+            },
+            "enclosure": "00000000f96cb33fdc25d13fb12d1e40fd0b973d",
+            "scalar_bits": "a0650740a223a23f333333404d635917",
+            "metadata": "310001ca0077"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "187677408d75e83f169476401b79a83f04466f40c54d543f72d86140b030c03e1ed84e40c086ddbc310c37404810b9be0a6e1b404c3a1dbf383efa3f9c5c46bf38baba3fe83f56bf4ed3753fb43d4cbf88a5f53ee4be28bf40bf173d006fdabe741ab3be80bbe0bdd63a2abf149e8e3e623f65bf40ea383f1d1884bfba099a3f97cf88bfdcdfd93fb39480bf4bad0c40667b57bf42f02a40f64916bfb17b4640e88080bee12e5e40086e1c3e731171408d8e1b3f785d7e402b2a8c3fcac382407e28cc3f58228340d491054086468040bd432340989c7440caf23d4072f062404c875440d6414c40a0146640767e3140cce27140dbbe1340187677408975e83f",
+              "us": "00000000f620043d0b21843d9031c63d0b21043e4829253e8b31463ed339673e0921843e2aa5943e4c29a53e6dadb53e8d31c63eadb5d63ecf39e73ef1bdf73e0821043f19630c3f29a5143f3be71c3f4b29253f5b6b2d3f6bad353f7def3d3f8c31463f9e734e3faeb5563fbef75e3fce39673fe07b6f3fefbd773f0000803f",
+              "length": 1098386052,
+              "n": 32
+            },
+            "enclosure": "00000000f96cb33fdc25d13fb12d1e40fd0b973d",
+            "scalar_bits": "a0650740a223a23f333333404d635917",
+            "metadata": "310001ca0077"
+          }
+        }
+      ]
+    },
+    {
+      "case": 5,
+      "actual_constructor_return": true,
+      "actual_process_returns": 5,
+      "native_steps": [
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              106
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "3ead59c0ec0aaac03ead59c020a024c0f216174020a024c0f2161740ec0aaac03ead59c0ec0aaac0",
+              "us": "00000000ee11253e0000003f7b44293f0000803f",
+              "length": 1099435642,
+              "n": 5
+            },
+            "enclosure": "010000000000803f000000009a2c05bffc5a7cc01862b840b8752f40",
+            "scalar_bits": "4f9dff3e9d59d9bf33333340e8849be0",
+            "metadata": "9901024801da"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "3ead59c0ec0aaac03ead59c020a024c0f216174020a024c0f2161740ec0aaac03ead59c0ec0aaac0",
+              "us": "00000000ee11253e0000003f7b44293f0000803f",
+              "length": 1099435642,
+              "n": 5
+            },
+            "enclosure": "010000000000803f000000009a2c05bffc5a7cc01862b840b8752f40",
+            "scalar_bits": "4f9dff3e9d59d9bf33333340e8849be0",
+            "metadata": "9901024801da"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "3ead59c0ec0aaac03ead59c020a024c0f216174020a024c0f2161740ec0aaac03ead59c0ec0aaac0",
+              "us": "00000000ee11253e0000003f7b44293f0000803f",
+              "length": 1099435642,
+              "n": 5
+            },
+            "enclosure": "010000000000803f000000009a2c05bffc5a7cc01862b840b8752f40",
+            "scalar_bits": "4f9dff3e9d59d9bf33333340e8849be0",
+            "metadata": "9901024801da"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "3ead59c0ec0aaac03ead59c020a024c0f216174020a024c0f2161740ec0aaac03ead59c0ec0aaac0",
+              "us": "00000000ee11253e0000003f7b44293f0000803f",
+              "length": 1099435642,
+              "n": 5
+            },
+            "enclosure": "010000000000803f000000009a2c05bffc5a7cc01862b840b8752f40",
+            "scalar_bits": "4f9dff3e9d59d9bf33333340e8849be0",
+            "metadata": "9901024801da"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "3ead59c0ec0aaac03ead59c020a024c0f216174020a024c0f2161740ec0aaac03ead59c0ec0aaac0",
+              "us": "00000000ee11253e0000003f7b44293f0000803f",
+              "length": 1099435642,
+              "n": 5
+            },
+            "enclosure": "010000000000803f000000009a2c05bffc5a7cc01862b840b8752f40",
+            "scalar_bits": "4f9dff3e9d59d9bf33333340e8849be0",
+            "metadata": "9901024801da"
+          }
+        }
+      ]
+    },
+    {
+      "case": 6,
+      "actual_constructor_return": true,
+      "actual_process_returns": 5,
+      "native_steps": [
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              107
+            ],
+            [
+              536871008,
+              107
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 1,
+              "bytes": "00000000000000006b00000000000000010000009b33e73f6b0000000000000001000000000000001100000000000000"
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "414b0141d731d53f79eb024130dec83f",
+              "us": "000000000000803f",
+              "length": 1041194033,
+              "n": 2
+            },
+            "enclosure": "000000009c964a40e60276c0924dec4099ac583f",
+            "scalar_bits": "9b33e73f8f839dbf33333340fe611f28",
+            "metadata": "b500003e027e"
+          }
+        },
+        {
+          "elapsed_bits": "cdcc4c3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              107
+            ],
+            [
+              536871008,
+              107
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 1,
+              "bytes": "000000000000000000c000400000000001000000964dfb3f6b0000000000000001d00040000000001100000000000000"
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "ae450141195cd53f0bf10241edb3c83f",
+              "us": "000000000000803f",
+              "length": 1041445632,
+              "n": 2
+            },
+            "enclosure": "000000009c964a40e60276c0924dec4099ac583f",
+            "scalar_bits": "9b33e73fbf789dbf33333340fe611f28",
+            "metadata": "b500003e027e"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              107
+            ],
+            [
+              536871008,
+              107
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 1,
+              "bytes": "000000000000000000e000400000000001000000ba0144406b0000000000000001f00040000000001100000000000000"
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "a81e0141f183d63f11180341148cc73f",
+              "us": "000000000000803f",
+              "length": 1043207321,
+              "n": 2
+            },
+            "enclosure": "000000009c964a40e60276c0924dec4099ac583f",
+            "scalar_bits": "9b33e73f05e487bf33333340fe611f28",
+            "metadata": "b500003e027e"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              107
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "10f200410cd6d73fa9440341fa39c63f",
+              "us": "000000000000803f",
+              "length": 1045220555,
+              "n": 2
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "d3348a40fd8bf73d33333340fe611f28",
+            "metadata": "b500003e027e"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "10f200410cd6d73fa9440341fa39c63f",
+              "us": "000000000000803f",
+              "length": 1045220555,
+              "n": 2
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "d3348a40fd8bf73d33333340fe611f28",
+            "metadata": "b500003e027e"
+          }
+        }
+      ]
+    },
+    {
+      "case": 7,
+      "actual_constructor_return": true,
+      "actual_process_returns": 5,
+      "native_steps": [
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              108
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "a85a5cc01054773fa85a5cc0a243953f",
+              "us": "000000000000803f",
+              "length": 1045220560,
+              "n": 2
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "7f12554067bba9bf3333334070d7736b",
+            "metadata": "9e0101eb03f0"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "a85a5cc01054773fa85a5cc0a243953f",
+              "us": "000000000000803f",
+              "length": 1045220560,
+              "n": 2
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "7f12554067bba9bf3333334070d7736b",
+            "metadata": "9e0101eb03f0"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "a85a5cc01054773fa85a5cc0a243953f",
+              "us": "000000000000803f",
+              "length": 1045220560,
+              "n": 2
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "7f12554067bba9bf3333334070d7736b",
+            "metadata": "9e0101eb03f0"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "a85a5cc01054773fa85a5cc0a243953f",
+              "us": "000000000000803f",
+              "length": 1045220560,
+              "n": 2
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "7f12554067bba9bf3333334070d7736b",
+            "metadata": "9e0101eb03f0"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "a85a5cc01054773fa85a5cc0a243953f",
+              "us": "000000000000803f",
+              "length": 1045220560,
+              "n": 2
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "7f12554067bba9bf3333334070d7736b",
+            "metadata": "9e0101eb03f0"
+          }
+        }
+      ]
+    },
+    {
+      "case": 8,
+      "actual_constructor_return": true,
+      "actual_process_returns": 5,
+      "native_steps": [
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000006d0000000000000037eb15c00000403f322d73c002010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000006d0000000000000037eb15c00000403f322d73c002010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "0000803e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000006d0000000000000083cc15c00000403f2b2c73c002010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000006d00000000000000986714c00000403f352073c002010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": 9,
+      "actual_constructor_return": true,
+      "actual_process_returns": 5,
+      "native_steps": [
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": 10,
+      "actual_constructor_return": true,
+      "actual_process_returns": 5,
+      "native_steps": [
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000006f00000000000000395ee73e0000403fb29696c002010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000006f00000000000000395ee73e0000403fb29696c002010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "0000803e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000006f000000000000003b0de73e0000403f318896c002010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000006f00000000000000b45fe33e0000403f9cdf95c002010000"
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": 11,
+      "actual_constructor_return": true,
+      "actual_process_returns": 5,
+      "native_steps": [
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        },
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 0,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": 12,
+      "actual_constructor_return": true,
+      "actual_process_returns": 5,
+      "native_steps": [
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              113
+            ],
+            [
+              536871008,
+              113
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 1,
+              "bytes": "0000000000000000710000000000000001000000cfd1f43f710000000000000001000000000000001100000000000000"
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "42442c40e14b1a3f22922d40cab9ce3e",
+              "us": "000000000000803f",
+              "length": 1045220557,
+              "n": 2
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "cfd1f43f4f09c3bf333333403f6d4624",
+            "metadata": "200000b000ab"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              113
+            ],
+            [
+              536871008,
+              113
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 1,
+              "bytes": "000000000000000000c000400000000001000000cfd1f43f710000000000000001d00040000000001100000000000000"
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "42442c40e14b1a3f22922d40cab9ce3e",
+              "us": "000000000000803f",
+              "length": 1045220557,
+              "n": 2
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "cfd1f43f4f09c3bf333333403f6d4624",
+            "metadata": "200000b000ab"
+          }
+        },
+        {
+          "elapsed_bits": "0000803e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              113
+            ],
+            [
+              536871008,
+              113
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 1,
+              "bytes": "000000000000000000e000400000000001000000edc20940710000000000000001f00040000000001100000000000000"
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "64472c40a4d1193f008f2d4045aecf3e",
+              "us": "000000000000803f",
+              "length": 1044968898,
+              "n": 2
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "cfd1f43fefe9c2bf333333403f6d4624",
+            "metadata": "200000b000ab"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              113
+            ],
+            [
+              536871008,
+              113
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 1,
+              "bytes": "0000000000000000000001400000000001000000b91c9e40710000000000000001100140000000001100000000000000"
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "c66b2c409844143f9d6a2d405cc8da3e",
+              "us": "000000000000803f",
+              "length": 1042043373,
+              "n": 2
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "cfd1f43fba58c2bf333333403f6d4624",
+            "metadata": "200000b000ab"
+          }
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              113
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "42442c40e14b1a3f8c8b2f401b15d23d2c042e405199ccbedeb627403d8364bfaac71c4091c7aebf22750d40f85de7bfa92df43fb3600dc01937c63ff5e523c0840d923feebd36c012b6313fec7c45c080375f3e90ce4fc0aac98dbede7755c0178d47bf755856c0caa5a3bf4d6b52c0c8a2e1bfddc649c0782d0ec0949c3cc0543f29c0b2372bc01a6c41c0bafb15c0942956c01fc4fabf1c0167c0ddeec3bf6c9273c02ab188bfa2957bc098bb14bfeedc7ec04a93a5bd8c557dc0fab9d73e3e0877c085136a3f0c196cc0a88fb13f7ec65cc02026ea3f366849c0c1c40e40f06c32c0014a2540225818c0fc213840cc7df7bff9e04640a889babf9e325140aa6076bfeddb5640a870ebbe83bc57402062203d5bcf5340feff053fec2a4b407a707b3f9e003e40e5dbb33fc19b2c407735e43fc55f174030d80640428cfd3fbcaf1740f3b6c63f0c41244044798b3f42442c40c94b1a3f",
+              "us": "000000004f0cc33c260c433d2649923d3a0cc33d39cff33d2649123eb1aa2a3e310c433ebb6d5b3e3acf733e6218863e2249923ee7799e3eacaaaa3e6bdbb63e300cc33ef23ccf3eb66ddb3e789ee73e3acff33efeffff3e6118063fc3300c3f2549123f8661183fe8791e3f4992243fabaa2a3f0cc3303f6edb363fcef33c3f300c433f9124493ff43c4f3f5555553fb86d5b3f1986613f7b9e673fdcb66d3f3dcf733f9fe7793f0000803f",
+              "length": 1101589783,
+              "n": 43
+            },
+            "enclosure": "00000000c2a21ebfaa06323cba485740d01c353e",
+            "scalar_bits": "a304b8400d57c2bf333333403f6d4624",
+            "metadata": "200000b000ab"
+          }
+        }
+      ]
+    },
+    {
+      "case": 13,
+      "actual_constructor_return": true,
+      "actual_process_returns": 5,
+      "native_steps": [
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              114
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "b40e89c0323225c0b40e89c068f8f3bf32d7cbbf68f8f3bf32d7cbbf323225c0b40e89c0323225c0",
+              "us": "00000000c76acd3dffffff3e59ad193f0000803f",
+              "length": 1087858638,
+              "n": 5
+            },
+            "enclosure": "010000000000803f0000000080043cc033970fc0ce312c40f8d72c3f",
+            "scalar_bits": "bef13a3f5fcc833f333333405e4cb0a7",
+            "metadata": "1c0101ce0144"
+          }
+        },
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "b40e89c0323225c0b40e89c068f8f3bf32d7cbbf68f8f3bf32d7cbbf323225c0b40e89c0323225c0",
+              "us": "00000000c76acd3dffffff3e59ad193f0000803f",
+              "length": 1087858638,
+              "n": 5
+            },
+            "enclosure": "010000000000803f0000000080043cc033970fc0ce312c40f8d72c3f",
+            "scalar_bits": "bef13a3f5fcc833f333333405e4cb0a7",
+            "metadata": "1c0101ce0144"
+          }
+        },
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "b40e89c0323225c0b40e89c068f8f3bf32d7cbbf68f8f3bf32d7cbbf323225c0b40e89c0323225c0",
+              "us": "00000000c76acd3dffffff3e59ad193f0000803f",
+              "length": 1087858638,
+              "n": 5
+            },
+            "enclosure": "010000000000803f0000000080043cc033970fc0ce312c40f8d72c3f",
+            "scalar_bits": "bef13a3f5fcc833f333333405e4cb0a7",
+            "metadata": "1c0101ce0144"
+          }
+        },
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "b40e89c0323225c0b40e89c068f8f3bf32d7cbbf68f8f3bf32d7cbbf323225c0b40e89c0323225c0",
+              "us": "00000000c76acd3dffffff3e59ad193f0000803f",
+              "length": 1087858638,
+              "n": 5
+            },
+            "enclosure": "010000000000803f0000000080043cc033970fc0ce312c40f8d72c3f",
+            "scalar_bits": "bef13a3f5fcc833f333333405e4cb0a7",
+            "metadata": "1c0101ce0144"
+          }
+        },
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "b40e89c0323225c0b40e89c068f8f3bf32d7cbbf68f8f3bf32d7cbbf323225c0b40e89c0323225c0",
+              "us": "00000000c76acd3dffffff3e59ad193f0000803f",
+              "length": 1087858638,
+              "n": 5
+            },
+            "enclosure": "010000000000803f0000000080043cc033970fc0ce312c40f8d72c3f",
+            "scalar_bits": "bef13a3f5fcc833f333333405e4cb0a7",
+            "metadata": "1c0101ce0144"
+          }
+        }
+      ]
+    },
+    {
+      "case": 14,
+      "actual_constructor_return": true,
+      "actual_process_returns": 5,
+      "native_steps": [
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              115
+            ],
+            [
+              536871008,
+              115
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000007300000000000000ccdad4c00000403fbd1486bf02010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "4c75d4c041ee97bfccdad4c0bd1486bf",
+              "us": "000000000000803f",
+              "length": 1041194018,
+              "n": 2
+            },
+            "enclosure": "000000009c6e54c0887a2bbf652e57406c9a3ec0",
+            "scalar_bits": "03ffc84014da85bf33333340b4557641",
+            "metadata": "a600020f027b"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3d",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              115
+            ],
+            [
+              536871008,
+              115
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000007300000000000000ccdad4c00000403fbd1486bf02010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "4c75d4c041ee97bfccdad4c0bd1486bf",
+              "us": "000000000000803f",
+              "length": 1041194018,
+              "n": 2
+            },
+            "enclosure": "000000009c6e54c0887a2bbf652e57406c9a3ec0",
+            "scalar_bits": "03ffc84014da85bf33333340b4557641",
+            "metadata": "a600020f027b"
+          }
+        },
+        {
+          "elapsed_bits": "0000803e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              115
+            ],
+            [
+              536871008,
+              115
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "1100000000000000730000000000000028dcd4c00000403f8ad785bf02010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "ef73d4c0742b98bf28dcd4c08ad785bf",
+              "us": "000000000000803f",
+              "length": 1041445681,
+              "n": 2
+            },
+            "enclosure": "000000009c6e54c0887a2bbf652e57406c9a3ec0",
+            "scalar_bits": "03ffc84014da85bf33333340b4557641",
+            "metadata": "a600020f027b"
+          }
+        },
+        {
+          "elapsed_bits": "cdcccc3e",
+          "actual_return": true,
+          "finished": 0,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              115
+            ],
+            [
+              536871008,
+              115
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 1,
+              "bytes": "11000000000000007300000000000000f5ebd4c00000403f1a1083bf02010000"
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "2264d4c0e4f29abff5ebd4c01a1083bf",
+              "us": "000000000000803f",
+              "length": 1044371205,
+              "n": 2
+            },
+            "enclosure": "000000009c6e54c0887a2bbf652e57406c9a3ec0",
+            "scalar_bits": "03ffc84014da85bf33333340b4557641",
+            "metadata": "a600020f027b"
+          }
+        },
+        {
+          "elapsed_bits": "0000003f",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              115
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "8b5fd4c070c19bbf8cf0d4c08e4182bf",
+              "us": "000000000000803f",
+              "length": 1045220557,
+              "n": 2
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "03ffc84014da85bf33333340b4557641",
+            "metadata": "a600020f027b"
+          }
+        }
+      ]
+    },
+    {
+      "case": 15,
+      "actual_constructor_return": true,
+      "actual_process_returns": 5,
+      "native_steps": [
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [
+            [
+              536871008,
+              116
+            ]
+          ],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "10acae3e4b43124010acae3e18101f40",
+              "us": "000000000000803f",
+              "length": 1045220560,
+              "n": 2
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "246dd04073d6c13f3333334096e077f7",
+            "metadata": "97010037032b"
+          }
+        },
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "10acae3e4b43124010acae3e18101f40",
+              "us": "000000000000803f",
+              "length": 1045220560,
+              "n": 2
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "246dd04073d6c13f3333334096e077f7",
+            "metadata": "97010037032b"
+          }
+        },
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "10acae3e4b43124010acae3e18101f40",
+              "us": "000000000000803f",
+              "length": 1045220560,
+              "n": 2
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "246dd04073d6c13f3333334096e077f7",
+            "metadata": "97010037032b"
+          }
+        },
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "10acae3e4b43124010acae3e18101f40",
+              "us": "000000000000803f",
+              "length": 1045220560,
+              "n": 2
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "246dd04073d6c13f3333334096e077f7",
+            "metadata": "97010037032b"
+          }
+        },
+        {
+          "elapsed_bits": "00000000",
+          "actual_return": true,
+          "finished": 1,
+          "source_count": 1,
+          "counter": 100,
+          "notifications": [],
+          "events": [
+            {
+              "slot": 0,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 1,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 2,
+              "count": 0,
+              "bytes": ""
+            },
+            {
+              "slot": 3,
+              "count": 0,
+              "bytes": ""
+            }
+          ],
+          "source": {
+            "curve": {
+              "points": "10acae3e4b43124010acae3e18101f40",
+              "us": "000000000000803f",
+              "length": 1045220560,
+              "n": 2
+            },
+            "enclosure": "02000000",
+            "scalar_bits": "246dd04073d6c13f3333334096e077f7",
+            "metadata": "97010037032b"
+          }
+        }
+      ]
+    }
+  ],
+  "scope": "Full process140abfb30 operation1 shrink and2 immediate-state ABI inputs; actual entry-to-RET including curve source/elevation writes, height requests and audio. Source absent/found, undo/redo, existing finished, duration/elapsed edges. Captured original constructor StateChange payload modifies only explicit old scalars and operation tag/range. Does not prove these game producers or outer groups; provenance/producer closure pending."
+}

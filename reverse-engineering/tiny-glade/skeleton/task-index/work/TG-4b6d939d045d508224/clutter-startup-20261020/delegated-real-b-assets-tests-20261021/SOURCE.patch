@@ -1,0 +1,283 @@
+--- a/tiny-glade/crates/systems/decorator/src/load_decorators.rs
++++ b/tiny-glade/crates/systems/decorator/src/load_decorators.rs
+@@ -1332,4 +1332,280 @@
+         assert_eq!(record.mesh.uvs(), mesh.uvs_without_indices());
+         assert_eq!(record.triangles, mesh.as_triangles());
+     }
++
++    fn original_b_installation() -> std::path::PathBuf {
++        let root = std::path::PathBuf::from(
++            std::env::var_os("TG_INSTALL_ROOT")
++                .expect("必须设置 TG_INSTALL_ROOT 指向原版 B 安装目录"),
++        )
++        .canonicalize()
++        .expect("解析真实原版安装目录");
++        assert!(
++            root.join(DECORATOR_MESH_DIR).is_dir(),
++            "缺少真实装饰网格目录：{}",
++            root.display()
++        );
++        assert!(
++            root.join("default_settings.ron").is_file(),
++            "必须使用完整原版安装根"
++        );
++        assert!(
++            root.join("compiled-shaders").is_dir(),
++            "必须使用完整原版安装根"
++        );
++        root
++    }
++
++    fn assert_original_asset_collision(
++        root: &Path,
++        assets: &AssetMeshLibrary,
++        record: &DecoratorCollision,
++        source: Source,
++    ) {
++        let name = match source {
++            Source::Bbox(name) | Source::Indexed(name) | Source::Convex(name) => name,
++            Source::Sphere | Source::Empty => {
++                check_collision(record, source);
++                return;
++            }
++            Source::Same => panic!("Same 必须由真实两表之间的 Arc 身份断言检查"),
++        };
++        let asset = required_mesh(assets, name);
++        let source_path = root.join(format!("assets/meshes/{name}.json"));
++        assert_eq!(
++            std::path::Path::new(&asset.source_file.as_ref().expect("真实源文件").path)
++                .canonicalize()
++                .unwrap(),
++            source_path.canonicalize().unwrap(),
++            "原 subtype/rank 必须引用指定安装树里的真实资产：{name}"
++        );
++        let points = asset.positions_without_indices();
++        assert!(!points.is_empty(), "原碰撞资产不能替换为空几何：{name}");
++        let mut minimum = Vec3::splat(f32::INFINITY);
++        let mut maximum = Vec3::splat(f32::NEG_INFINITY);
++        for point in points {
++            assert!(point.is_finite(), "原碰撞位置必须有限：{name}");
++            minimum = minimum.min(*point);
++            maximum = maximum.max(*point);
++        }
++        let dimensions = maximum - minimum;
++        let center = (maximum + minimum) * 0.5;
++        assert_eq!(record.bounds.footprint.axis, Vec2::X, "{name}");
++        assert_eq!(
++            record.bounds.footprint.center,
++            Vec2::new(center.x, center.z),
++            "{name}"
++        );
++        assert_eq!(
++            record.bounds.footprint.size,
++            Vec2::new(dimensions.x, dimensions.z),
++            "{name}"
++        );
++        assert_eq!(
++            (record.bounds.bottom, record.bounds.top),
++            (minimum.y, maximum.y),
++            "{name}"
++        );
++        let shape = record.mesh.shape_ref().expect("真实物理 shape 必须存在");
++        match source {
++            Source::Bbox(_) => {
++                assert_eq!(record.triangles.len(), 12, "原 box 六面 topology：{name}");
++                let shape = shape.as_cuboid().expect("原 bbox 分支必须是真 cuboid");
++                assert_eq!(
++                    shape.half_extents.as_slice(),
++                    &(dimensions * 0.5).to_array(),
++                    "{name}"
++                );
++                assert_eq!(record.mesh.local_transform().translation, center, "{name}");
++            }
++            Source::Indexed(_) => {
++                assert!(
++                    shape.as_trimesh().is_some(),
++                    "不可把原 indexed 分支降级 bbox：{name}"
++                );
++                assert_eq!(record.mesh.vertices(), points, "原顶点序列：{name}");
++                assert_eq!(
++                    record.mesh.indices(),
++                    asset.arrayed_indices(),
++                    "原三角索引：{name}"
++                );
++                assert_eq!(
++                    record.triangles,
++                    asset.as_triangles(),
++                    "真实 source triangles：{name}"
++                );
++                if asset.has_attribute(ATTR_NORMAL) {
++                    assert_eq!(
++                        record.mesh.normals(),
++                        asset.normals_without_indices(),
++                        "{name}"
++                    );
++                } else {
++                    assert!(record.mesh.normals().is_empty(), "{name}");
++                }
++                if asset.has_attribute(ATTR_UV) {
++                    assert_eq!(record.mesh.uvs(), asset.uvs_without_indices(), "{name}");
++                } else {
++                    assert!(record.mesh.uvs().is_empty(), "{name}");
++                }
++            }
++            Source::Convex(_) => {
++                assert!(
++                    shape.as_convex_polyhedron().is_some(),
++                    "不可把原 convex 分支降级 bbox：{name}"
++                );
++                assert_eq!(record.triangles, asset.as_triangles(), "{name}");
++            }
++            _ => unreachable!(),
++        }
++    }
++
++    fn assert_original_asset_lines(root: &Path, name: &str, actual: &[Vec3]) {
++        let path = root.join(format!("assets/meshes/{name}.json"));
++        let mesh = load_json_as_mesh(path.to_str().unwrap());
++        let source = mesh.positions_without_indices();
++        assert!(!source.is_empty(), "真实描边不能是占位：{name}");
++        assert_eq!(
++            actual.len(),
++            source.len() + 1,
++            "保留全部原点，只追加封口：{name}"
++        );
++        assert_eq!(
++            &actual[..source.len()],
++            source,
++            "不能重采样或去重原描边：{name}"
++        );
++        assert_eq!(actual.last(), source.first(), "追加原首点：{name}");
++    }
++
++    fn assert_original_b_catalog(demo: bool) {
++        let root = original_b_installation();
++        let assets = AssetMeshLibrary::new();
++        let watch = MeshWatch::new(false);
++        let mut library = DecoratorMeshLibrary::default();
++        // 完整执行生产入口，不生成 JSON，也不预填四表或替换资产库。
++        load_decorators(&root, &mut library, &assets, &watch, demo);
++        let count = if demo { 34 } else { 52 };
++        assert_eq!(EXPECTED.len(), 52);
++        let mut expected_keys: Vec<_> = EXPECTED
++            .iter()
++            .filter(|e| !(demo && matches!(e.subtype, 6..=9 | 22 | 23)))
++            .map(|e| (e.subtype, e.rank))
++            .collect();
++        expected_keys.sort_unstable();
++        assert_eq!(expected_keys.len(), count);
++        for (table, keys) in [
++            (
++                "collision",
++                library
++                    .collision
++                    .keys()
++                    .map(|k| (k.subtype, k.variant))
++                    .collect::<Vec<_>>(),
++            ),
++            (
++                "interaction",
++                library
++                    .interaction
++                    .keys()
++                    .map(|k| (k.subtype, k.variant))
++                    .collect::<Vec<_>>(),
++            ),
++            (
++                "outline",
++                library
++                    .outline
++                    .keys()
++                    .map(|k| (k.subtype, k.variant))
++                    .collect::<Vec<_>>(),
++            ),
++            (
++                "collision_outline",
++                library
++                    .collision_outline
++                    .keys()
++                    .map(|k| (k.subtype, k.variant))
++                    .collect::<Vec<_>>(),
++            ),
++        ] {
++            let mut keys = keys;
++            keys.sort_unstable();
++            assert_eq!(keys, expected_keys, "真实 B 四表 {table}, demo={demo}");
++        }
++        for expected in EXPECTED {
++            let key = DecoratorLibKey::new(expected.subtype, expected.rank);
++            if demo && matches!(expected.subtype, 6..=9 | 22 | 23) {
++                continue;
++            }
++            let collision = library.collision_record(key);
++            let interaction = library.interaction_record(key);
++            assert_original_asset_collision(&root, &assets, collision, expected.collision);
++            if matches!(expected.interaction, Source::Same) {
++                assert!(
++                    Arc::ptr_eq(&collision.mesh, &interaction.mesh),
++                    "原 same 分支必须共享 mesh Arc：{key:?}"
++                );
++                assert_eq!(collision.triangles, interaction.triangles, "{key:?}");
++                if !collision.triangles.is_empty() {
++                    assert_ne!(
++                        collision.triangles.as_ptr(),
++                        interaction.triangles.as_ptr(),
++                        "三角 Vec 应真实 clone：{key:?}"
++                    );
++                }
++            } else {
++                assert_original_asset_collision(&root, &assets, interaction, expected.interaction);
++                assert!(
++                    !Arc::ptr_eq(&collision.mesh, &interaction.mesh),
++                    "原不同 shape 不可伪共享：{key:?}"
++                );
++            }
++            match (&expected.outline, library.get_outline(key)) {
++                (Outline::Mesh(name), DecoratorOutline::Mesh(actual)) => {
++                    assert_eq!(actual.as_str(), *name, "{key:?}");
++                    let mesh = required_mesh(&assets, name);
++                    assert!(!mesh.positions_without_indices().is_empty(), "{key:?}");
++                    assert!(
++                        std::path::Path::new(&mesh.source_file.as_ref().unwrap().path)
++                            .canonicalize()
++                            .unwrap()
++                            .starts_with(&root)
++                    );
++                }
++                (Outline::Lines(name), DecoratorOutline::Lines(points)) => {
++                    assert_original_asset_lines(&root, name, points)
++                }
++                (Outline::Sphere(radius), DecoratorOutline::Sphere(actual)) => {
++                    assert_eq!(actual, radius, "{key:?}")
++                }
++                _ => panic!("真实 B 主描边类型不符：{key:?}"),
++            }
++            match (
++                &expected.collision_outline,
++                library.get_collision_outline(key),
++            ) {
++                (Outline::Lines(name), DecoratorCollisionOutline::Lines(points)) => {
++                    assert_original_asset_lines(&root, name, points)
++                }
++                (Outline::None, DecoratorCollisionOutline::None) => {}
++                _ => panic!("真实 B 碰撞描边类型不符：{key:?}"),
++            }
++        }
++        eprintln!(
++            "真实 B 装饰目录加载完成：root={}, demo={demo}, 四表各{count}键",
++            root.display()
++        );
++    }
++
++    #[test]
++    #[ignore = "必须显式提供 TG_INSTALL_ROOT 原版 B 完整安装树"]
++    fn original_b_asset_tree_full_populates_52_keys_in_all_four_tables() {
++        assert_original_b_catalog(false);
++    }
++
++    #[test]
++    #[ignore = "必须显式提供 TG_INSTALL_ROOT 原版 B 完整安装树"]
++    fn original_b_asset_tree_demo_populates_34_keys_in_all_four_tables() {
++        assert_original_b_catalog(true);
++    }
+ }

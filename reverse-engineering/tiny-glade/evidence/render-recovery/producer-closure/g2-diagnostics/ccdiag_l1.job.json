@@ -1,0 +1,320 @@
+{
+  "target": {
+    "path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+    "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+  },
+  "provider": {
+    "id": "ghidra",
+    "version": "12.1.4"
+  },
+  "database": "ccdiag_l1",
+  "steps": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "keep_open": true,
+        "database_id": "ccdiag_l1"
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "ccdiag_l1"
+      }
+    },
+    {
+      "tool": "batch",
+      "args": {
+        "database": "ccdiag_l1",
+        "stop_on_error": false,
+        "operations": [
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140be2b40"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140082a00"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140bdd3f0"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140be2710"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140be2880"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140be2990"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140be6a90"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140be6b40"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140be6b50"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140bf09b0"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140bf0b40"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140c02da0"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x14090dda0"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x1408ed880"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x1408fca00"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x1409046b0"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140916140"
+            }
+          },
+          {
+            "tool": "get_xrefs_to",
+            "params": {
+              "address": "0x140be2b40"
+            }
+          },
+          {
+            "tool": "get_xrefs_to",
+            "params": {
+              "address": "0x140be6b50"
+            }
+          },
+          {
+            "tool": "get_xrefs_from",
+            "params": {
+              "address": "0x140be2b40"
+            }
+          },
+          {
+            "tool": "get_xrefs_from",
+            "params": {
+              "address": "0x140bf09b0"
+            }
+          }
+        ]
+      },
+      "expands": [
+        {
+          "tool": "decompile_function",
+          "args": {
+            "database": "ccdiag",
+            "address": "0x140be2b40"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "database": "ccdiag",
+            "address": "0x140082a00"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "database": "ccdiag",
+            "address": "0x140bdd3f0"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "database": "ccdiag",
+            "address": "0x140be2710"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "database": "ccdiag",
+            "address": "0x140be2880"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "database": "ccdiag",
+            "address": "0x140be2990"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "database": "ccdiag",
+            "address": "0x140be6a90"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "database": "ccdiag",
+            "address": "0x140be6b40"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "database": "ccdiag",
+            "address": "0x140be6b50"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "database": "ccdiag",
+            "address": "0x140bf09b0"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "database": "ccdiag",
+            "address": "0x140bf0b40"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "database": "ccdiag",
+            "address": "0x140c02da0"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "database": "ccdiag",
+            "address": "0x14090dda0"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "database": "ccdiag",
+            "address": "0x1408ed880"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "database": "ccdiag",
+            "address": "0x1408fca00"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "database": "ccdiag",
+            "address": "0x1409046b0"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "database": "ccdiag",
+            "address": "0x140916140"
+          }
+        },
+        {
+          "tool": "get_xrefs_to",
+          "args": {
+            "database": "ccdiag",
+            "address": "0x140be2b40"
+          }
+        },
+        {
+          "tool": "get_xrefs_to",
+          "args": {
+            "database": "ccdiag",
+            "address": "0x140be6b50"
+          }
+        },
+        {
+          "tool": "get_xrefs_from",
+          "args": {
+            "database": "ccdiag",
+            "address": "0x140be2b40"
+          }
+        },
+        {
+          "tool": "get_xrefs_from",
+          "args": {
+            "database": "ccdiag",
+            "address": "0x140bf09b0"
+          }
+        }
+      ],
+      "timeout_ms": 600000
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "ccdiag_l1",
+        "save": false
+      }
+    }
+  ]
+}

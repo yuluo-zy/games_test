@@ -1,0 +1,152 @@
+[
+ {
+  "addr": "0x1404896f0",
+  "verdict": "一致（胶水，按规则不计业务）",
+  "detail": "行内 fn 为 path_edit::impl$0::serialize<CompactFormatter>，PDB 精确符号完全吻合（pubsym 同址 RasterEdit::serialize）；文件作用所列 serde 地址（serialize 0x1404896f0/0x1416e8340、deserialize 0x1416e8510）一致；机器码为真实 serde monomorph（prologue+Arc refcount 字段读取），O(入口) 身份成立。",
+  "evidence": "PDB exact/pub sym 吻合；rne-read 0x1404896f0 前 48B：5556574881ec80... 真实函数 prologue；chapters/resources/history/path_edit.rs.md 文件作用行 3 与行 12"
+ },
+ {
+  "addr": "0x140949170",
+  "verdict": "一致",
+  "detail": "按协作方预验证采用：S_PUB32（public-symbols.json）该址含 4 符号——ReplayBuffer::len（行内 fn 存在）、InputStream::sync_point_count（PDB exact）、VertexAttributeValues::array_length、bevy_reflect get_represented_type_info——ICF 折叠族；机器码 48 8b 41 18 c3 = mov rax,[rcx+0x18];ret（5B 读计数字段），与 ReplayBuffer::len（桶数）和 sync_point_count 两语义均吻合，非地址错位。注：行内 evid 所引 expansion-b2 decomp 为 NotFound 无效，但符号+机器码足够。",
+  "evidence": "public-symbols.json 4 符号；rne-read --hex 0x140949170 32：488b4118c3；decomp-0x140949170.txt={error:No function}"
+ },
+ {
+  "addr": "0x140951b80",
+  "verdict": "一致",
+  "detail": "身份 PDB 吻合（replay_wall，2534B）；decomp 13395B 真实；行为断言命中：FUN_140abfb30（WallReplayEditCmd::process）以 8 参调用（line 127，含 fVar3*fVar2 即时/动画速度），niche vtable 0x142ab4910 引用×2，done 标志 0x15×1——与文件作用（前桶 4 命令经 process 分派、done@+0x15、vtable 收集已改墙）吻合。",
+  "evidence": "history/decomp/decomp-0x140951b80.txt（非 error）；grep: FUN_140abfb30×1、ab4910×2、0x15×1"
+ },
+ {
+  "addr": "0x140952570",
+  "verdict": "一致",
+  "detail": "身份 PDB 吻合（_deprecated_morph_curve，556B，符号名自带 _deprecated 佐证弃用）；decomp 2539B 真实；行为为 Vec（元素 4B，f32 曲线数据）分配/增长/复制路径 + 串指向 crates/country-core/src/systems/history/replay_wall.rs——与形态曲线数据操作形态一致，无被否证断言。",
+  "evidence": "history/decomp/decomp-0x140952570.txt；--unks 解析：UNK_142ab4400=replay_wall.rs、UNK_142c38b78=alloc/slice.rs；增长检查+alloc 路径"
+ },
+ {
+  "addr": "0x140a7c550",
+  "verdict": "一致",
+  "detail": "身份 PDB 吻合（replay_mode，1606B）；decomp 10038B 真实；串 Replay mode started/Replay mode finished + replay_mode.rs 源路径均在（UNK_142ad7120/0x142ad7190 等），AppMode 0xd(Replay) 判别×4——与文件作用核心断言吻合；RestoreAppTo/HoldToFastReplay/计时细节未逐项核对但无矛盾。",
+  "evidence": "history/decomp/decomp-0x140a7c550.txt；--unks 解析串；grep 0xd×4"
+ },
+ {
+  "addr": "0x140a844f0",
+  "verdict": "一致",
+  "detail": "身份 PDB 吻合（History::insert_starting_edit，340B）；decomp 1849B 全部断言命中：断言串 assertion failed: self.0 >= -1（即 cursor>-2，UNK_142aed680）+ 条件 -2<iVar1；cursor+1 写回 param_1[0xd]；首部插入（memmove 右移 0x28 步长 + 满时 grow FUN_140562ab0 + 新元素写前端）；nonce 写入 param_1[0xc]（FUN_14132ade0）；count=0（param_1[0xb]=0）。",
+  "evidence": "history/decomp/decomp-0x140a844f0.txt 全文核对；--unks 断言串"
+ },
+ {
+  "addr": "0x140a84a40",
+  "verdict": "一致",
+  "detail": "身份 PDB 吻合（iter_resolved_snapshots，16B）；机器码 488b4120488b512848c1e2044801c2c3 = mov rax,[rcx+0x20]; mov rdx,[rcx+0x28]; shl rdx,4; add rdx,rax;ret——Vec 切片迭代器构造（元素 16B），与切片迭代断言吻合（ZST filter_map 闭包可仅存迭代器，谓词调用在消费点）。注：evid 所引 decomp 为 NotFound 无效，机器码+符号补证；行 109 注记 filter_map 谓词内联进本函数不被 16B 主体支持，建议小修。",
+  "evidence": "rne-read --hex 0x140a84a40：切片迭代构造；PDB exact 16B 吻合；decomp-0x140a84a40.txt=NotFound"
+ },
+ {
+  "addr": "0x140af5b20",
+  "verdict": "一致",
+  "detail": "身份 PDB 吻合（HistoryCmd::interrupt，6B）；机器码 b8 00020002 c3 = mov eax,0x00020002;ret——与行内断言构造中断命令字 0x02000200（mov eax,0x00020002;ret）逐字节吻合。注：evid 所引 decomp 为 NotFound 无效，rne-read 机器码裁决。",
+  "evidence": "rne-read --hex 0x140af5b20：b800020002c3；decomp-0x140af5b20.txt=NotFound"
+ },
+ {
+  "addr": "0x140af6170",
+  "verdict": "不一致",
+  "detail": "身份成立（PDB exact=replay_edit，5173B，本址自有 decomp-0x140af6170.txt 19544B 真实存在），但行内有两处错：(a) evid 错引 decomp-0x140af5b30.txt——那是相邻函数 history_process(0x140af5b30) 的反编译，非本址证据，正确应为 decomp-0x140af6170.txt+DIGEST §3.4；(b) 作用列为 history_process 描述的复制粘贴（undo/redo 游标+第二事件流+log 非本函数行为）；本函数实际为 MultiEdit→ReplayCmd 桶展开（decomp 调用 FUN_14143fb50=generate_replay_cmds_from_edit，24B edit 步长，DIGEST §3.4）。fix：作用按 §3.4 改写，evid 改 decomp-0x140af6170.txt。",
+  "evidence": "history/decomp/decomp-0x140af6170.txt grep FUN_14143fb50×1、0x18×15；chapters/systems/history/history_process.rs.md 行 16-18（三行同描述同 evid，明显复制）；history/DIGEST.md §3.4"
+ },
+ {
+  "addr": "0x140af75b0",
+  "verdict": "一致",
+  "detail": "身份 PDB 吻合（replay_stairs，2640B）；decomp 28136B 真实；文件作用断言经 callee 证实：hashbrown RawTable::remove_entry（FUN_140b76ce0，对应 !=0 从边集 remove_entry）、DecoratorStorage::lookup_decorator_info（FUN_140a1c930）、Arc::drop_slow×3、RawVec::grow_one；判别常量 0xb..0x11 区出现约 10-22 次与前十命令一致。",
+  "evidence": "history/decomp/decomp-0x140af75b0.txt；public-symbols.json 命名 callee"
+ },
+ {
+  "addr": "0x140b31cf0",
+  "verdict": "一致",
+  "detail": "身份 PDB 吻合（HistoryEditChain::iter，17B）；机器码 488b4108488b4910488d0c89488d14c8c3 = mov rax,[rcx+8]; mov rcx,[rcx+0x10]; lea rcx,[rcx+rcx*4]; lea rdx,[rax+rcx*8];ret——Vec 切片迭代器构造（元素 40B=0x28，与 push 元素 0x28 互证）；S_PUB32 该址含 iter+iter_mut 双符号（行内已注记 iter_mut 同址族）。",
+  "evidence": "rne-read --hex 0x140b31cf0；public-symbols.json iter/iter_mut 双符号；PDB exact 17B"
+ },
+ {
+  "addr": "0x140b38250",
+  "verdict": "一致",
+  "detail": "身份 PDB 吻合（replay_pop_bucket，903B）；decomp 3805B 真实；文件作用 diff 链 7 个 callee 全部命中：FUN_1408ff210/140900ba0/14157cec0/140b50cc0/140b50d60/1408fefe0（restore_backup/apply_diff 链）+ FUN_14155ba30（restore_decorators）+ FUN_1409f18f0（ReplayBuffer::pop_front）。",
+  "evidence": "history/decomp/decomp-0x140b38250.txt grep 全部 7 callee 各×1；PDB exact 吻合"
+ },
+ {
+  "addr": "0x141444c70",
+  "verdict": "不一致",
+  "detail": "身份 PDB 吻合（generate_replay_cmds_from_edit<water closure_env$0>，size 10371），分派行为方向正确（按 *param_1 索引跳表间接跳转，各分支含浮点常量 0.1f/0.2f、标志字节、Arc 计数、串引用=各领域命令生成），但两处细节与机器码不符：(a) 316B 跳板错误——316B 只是 Ghidra 跳表恢复失败的截断 decomp 文本；实际函数约 10.4KB（机器码连续运行至 PDB end 0x141446cf3 附近才 ret+nop 填充）。(b) 跳表基址错——本单态实算为 0x142c5f2fc（lea rdx,[rip+0x181A659] 于 0x141444c9c），非行内/文件作用声称的 0x142c5f248（该基址属 0x14143d2c0 单态；四单态各有独立跳表 0x142c5f248/0x284/0x2c0/0x2fc 间距 60B，非 ICF 合并）。fix：作用改写为约 10.4KB 大型按 tag 分派生成核心（本单态跳表 0x142c5f2fc），DIGEST §3.5 同步修正。",
+  "evidence": "rne-read 0x141444c70 400B 起连续代码、0x141446cf0 处 ret+nop 后接新函数（PDB end 吻合）；四单态 lea 实算 0x248/0x284/0x2c0/0x2fc；decomp-0x141444c70.txt 仅 316B（Could not recover jumptable）"
+ },
+ {
+  "addr": "0x1416286d0",
+  "verdict": "不一致",
+  "detail": "身份 PDB 吻合（generate_path_replay_cmds，26B，机器码恰 26B）；niche 过滤形态正确（mov rax,[rcx]; dec; cmp 4; jae 放行 1..=4，0=niche，0..3 变体可作等价描述），但尾调目标地址错：e9 rel32（-0x1E6309）程序化验证目标=0x1414423e0，非行内/文件作用声称的 0x1414433xx；0x1414423e0 恰为本 chunk 第 13 行 generate_replay_cmds_from_edit<generate_path_replay_cmds::closure_env$0> 单态（其自身跳表基址 0x142c5f2c0）。注：evid decomp 为 NotFound（tg_a1），PDB+机器码裁决。fix：尾调目标改 0x1414423e0。",
+  "evidence": "rne-read 0x1416286d0 32B + e9 解码（python 验算 target=0x1414423e0）；PDB exact size 26 吻合"
+ },
+ {
+  "addr": "0x1417c2770",
+  "verdict": "一致（胶水，按规则不计业务）",
+  "detail": "行内 fn 为 tree_edit::impl$0::serialize<serde_json::value::ser::Serializer>，PDB 精确符号完全吻合（pubsym 同址 TreeData::serialize）；文件作用所列 serde 地址（serialize 0x14003d4e0/0x1417c2770/0x1417c2600/0x1417c2a50）一致；机器码为真实 serde monomorph（prologue+字段序列化），O(入口) 身份成立。",
+  "evidence": "PDB exact/pub sym 吻合；rne-read 0x1417c2770 前 48B：5556574881ec9000... 真实 prologue；chapters/resources/history/tree_edit.rs.md 行 3/13"
+ },
+ {
+  "addr": "0x140841d60",
+  "verdict": "一致",
+  "detail": "身份 PDB 吻合（update_prefabs，4093B）；decomp 25762B 真实；触 audio_trigger_library.rs 路径成立——decomp 串引用 UNK_142c77630/648 = crates/country-core/src/asset_libraries/audio_trigger_library.rs（panic 路径，callee FUN_140c81e10 等）；大量 float 矩阵/向量运算 + puffin profile 段（UNK_142a94060/142c3ab70）与 GPU 实例数据刷新形态一致；panic 串 prefab.rs（UNK_142a94158）。",
+  "evidence": "session-save/decomp/decomp-0x140841d60.txt；--unks 解析 UNK_142c77630/648"
+ },
+ {
+  "addr": "0x1408446b0",
+  "verdict": "一致（胶水，按规则不计业务）",
+  "detail": "身份 PDB exact/pub sym 吻合（PrefabInstanceData as bevy_ecs Component::register_required_components）；机器码 callee 全部为 bevy_ecs 注册机器：enforce_no_required_components_recursion（0x140d40d70）、ComponentInfo::new（0x140d3f870）、QueuedRegistration::register（0x140d3fa40）、drop_in_place<ComponentInfo>（0x1405f0b50）、hashbrown drop_inner_table（0x140051340）、Vec resize_with/grow_one——典型 Bevy 注册胶水形态，非业务。",
+  "evidence": "public-symbols.json 命名全部 callee；session-save/decomp/decomp-0x1408446b0.txt；call 扫描 0x1408446b0..0x86a"
+ },
+ {
+  "addr": "0x14092e6a0",
+  "verdict": "一致",
+  "detail": "按协作方预验证采用：S_PUB32 该址双符号 ActiveWidget::is_dragging（PDB exact）+ GladeType::is_flowery（行内 fn 均在）——ICF 折叠；机器码 80 39 02 0f 94 c0 c3 = cmp byte[rcx],2; sete al;ret——tag==2 判别与行内断言逐字节吻合；跨章核对：ui_state.rs.md 行 32 同址记录（round3 复查修正，rne-read 机器码）一致；evid 所引 ui-input decomp 为 NotFound 无效，机器码+符号补证。",
+  "evidence": "public-symbols.json 双符号；rne-read --hex 0x14092e6a0：8039020f94c0c3；chapters/systems/ui/resources/ui_state.rs.md 行 32"
+ },
+ {
+  "addr": "0x14092e6c0",
+  "verdict": "一致",
+  "detail": "按协作方预验证采用：S_PUB32 该址双符号 DragState::is_started（PDB exact）+ GladeType::is_autumn（行内 fn 均在）——ICF 折叠；机器码 80 39 03 0f 94 c0 c3 = cmp byte[rcx],3; sete al;ret——tag==3 判别与行内断言吻合；跨章核对：ui_state.rs.md 行 35 同址记录（单一判别 byte[rcx]==3（sete））一致。",
+  "evidence": "public-symbols.json 双符号；rne-read --hex 0x14092e6c0：8039030f94c0c3；ui_state.rs.md 行 35"
+ },
+ {
+  "addr": "0x140a439b0",
+  "verdict": "一致",
+  "detail": "身份 PDB 吻合（add_history_edit_to_save_file，916B）；decomp 3955B 全部断言逐项命中：(a) 追加 edit 计数——偏移值 push 进 Vec（满时 grow FUN_140562870）；(b) 序列化 0x80B——栈缓冲 alloc 0x80 + 序列化 FUN_140b39b80；(c) 0xa2c——写 2 字节 0xa2c（字节 0x2c,0x0a = 逗号+换行）到编辑偏移尾部；(d) ShadowFile::mark_dirty(0x14091a450)(start,end)×2（逗号换行写入后与序列化追加后各一次）。",
+  "evidence": "session-save/decomp/decomp-0x140a439b0.txt 全文核对（0x80/0xa2c/FUN_140562870/FUN_140b39b80/FUN_14091a450）"
+ },
+ {
+  "addr": "0x140a9fa70",
+  "verdict": "一致",
+  "detail": "身份 PDB exact=SessionLoadReadiness::deny_load 与行内 fn 吻合；机器码 80 39 01 0f 94 c0 c3 = cmp byte[rcx],1; sete al;ret——tag==1 判定与行内断言吻合；S_PUB32 该址三符号 deny_load/is_olden/is_error（与 GladeType::is_olden 同址折叠注记成立）；跨章 session.rs.md 行 16（is_olden，cmp byte[rcx],1; sete）一致。",
+  "evidence": "rne-read --hex 0x140a9fa70：8039010f94c0c3；public-symbols.json 3 符号；PDB exact size 7 吻合"
+ },
+ {
+  "addr": "0x140b46000",
+  "verdict": "一致",
+  "detail": "身份 PDB 吻合（SessionId::save_folder_path，380B）；机器码 call 0x140b9db60（=paths::saves()，行内断言地址精确吻合）+ call 0x140c10290（uuid v4 生成族，SessionId::new 行注记 0x140c102e0 同族）+ call 0x140d62810（join/append）；round2/session-save-CLOSURE.md 机器码对比文档（save_folder_path vs backup_folder_path 逐指令同构，仅根目录 0x140b9db60 vs 0x140b9db90）互证。",
+  "evidence": "call 扫描 0x140b46000（E8 解码：0x140b46023→0x140b9db60、0x140b4607c→0x140c10290）；round2/session-save-CLOSURE.md §2"
+ },
+ {
+  "addr": "0x141552d70",
+  "verdict": "一致",
+  "detail": "身份 PDB 吻合（PrefabLibrary::get<PrefabName>，636B）；机器码为 hashbrown RawTable 查表：call 0x1405b1a70（=core::hash::BuildHasher::hash_one，行内断言地址精确吻合）+ SIMD group probe（pcmpeqb/pmovmskb/tzcnt + 16B 步进掩码循环）+ 槽位计算（lea rax,[rax+rax*4] 等）+ 键访问 PrefabName::as_name_ref（0x141556130）+ eq 检查后返回槽位值（&Prefab）——与 hashbrown 查表（哈希+SIMD group probe+memcmp）返回 &Prefab 断言吻合。",
+  "evidence": "rne-read 0x141552e00 窗口（SIMD 探测字节）；call 解码 0x141552dd3→0x1405b1a70；public-symbols.json 命名 0x1405b1a70/0x141556130"
+ },
+ {
+  "addr": "0x14171f7f0",
+  "verdict": "不一致",
+  "detail": "身份 PDB 吻合（CurrentSaveFile::flush_deferred_and_sync，1934B；decomp 4213B 真实，含 TLS 守卫+断言串 truncate<=history_edit_offsets.len()+vtable 间接调用=落盘结构），但错误日志 Error flushing save file on game thread disconnect. 不属本函数：该串（VA 0x142ccaa28，rne-read 确认在二进制 .rdata）的指针槽 0x142ccaa60 仅被 save_thread 主循环 0x141720680 引用（0x1417212c0 处 48 8b rip-rel load，全 .text 唯一一处）；本函数 decomp 无该串引用（其串为 UNK_142cca30f/311/478/4ab 断言族 + thread local + puffin）。fix：错误日志串归属注记为 save_thread(0x141720680) 调用侧（游戏线程断开时落盘结构成立，仅串归属错）。",
+  "evidence": "全 .text 扫描 rip-rel lea/load 目标 0x142ccaa28/0x142ccaa60 唯一命中 0x1417212c0（在 0x141720680=save_thread 体内，fnlist.txt 证实）；decomp-0x14171f7f0.txt 无 0x142ccaa 引用；串内容 rne-read --hex 0x142ccaa28 证实"
+ },
+ {
+  "addr": "0x14172b280",
+  "verdict": "一致",
+  "detail": "身份 PDB 吻合（snapshot_gc_thread，5660B）；decomp 31259B 真实；行内两条串断言全部证实：UNK_142ccb1b0=Deleting unreferenced snapshot 、UNK_142ccb168=Save file changed before snapshot GC could finish. Shutting down the GC thread（竞态守卫）；另含 parse_save_file_snapshots 相关 Error parsing history snapshots fromfile （UNK_142ccb088）、Error deleting unreferenced snapshot: （UNK_142ccb200）、Snapshot GC thread finished in （UNK_142ccb030）——与 parse→目录比对→删除未引用快照+竞态守卫断言吻合。",
+  "evidence": "session-save/decomp/decomp-0x14172b280.txt --unks 全部串解析"
+ }
+]

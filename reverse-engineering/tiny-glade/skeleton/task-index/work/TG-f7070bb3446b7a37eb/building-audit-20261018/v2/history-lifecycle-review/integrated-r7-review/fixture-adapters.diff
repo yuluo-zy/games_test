@@ -1,0 +1,70 @@
+--- fixture-before/systems/history/recording.rs
++++ current/systems/history/recording.rs
+@@ -628,7 +628,7 @@
+             native_phase: 3,
+             widget: WidgetId::clearing_canvas(DRAW_CANVAS_NAME),
+         }));
+-        let library = crate::asset_libraries::ssbo_library::AssetSsboLibrary::new();
++        let mut library = crate::asset_libraries::ssbo_library::AssetSsboLibrary::new();
+         let device = crate::render::test_device::TestDevice(0);
+         use crate::{
+             resources::terrain_rock_mask::TerrainRockMaskSsbo,
+@@ -749,17 +749,17 @@
+         world.insert_resource(History::<()>::empty_glade());
+         world
+             .resource_mut::<Events<FinishInputRecordingCmd>>()
+-            .write(FinishInputRecordingCmd);
++            .send(FinishInputRecordingCmd);
+         let mut system = IntoSystem::into_system(history_finish_recording_system::<()>);
+         system.initialize(&mut world);
+-        system.run((), &mut world).unwrap();
++        system.run((), &mut world);
+         // Original has no pending group: it has not consumed the event.
+         assert!(!world.resource::<DecoratorStorage>().immutable);
+         world
+             .resource_mut::<History>()
+             .start_input_recording(0)
+             .unwrap();
+-        system.run((), &mut world).unwrap();
++        system.run((), &mut world);
+         assert!(!world.resource::<History>().is_recording());
+         assert!(world.resource::<History>().ledger().entries.is_empty());
+         assert!(world.resource::<Events<InputReplayCommand>>().is_empty());
+@@ -956,7 +956,7 @@
+         world.send_event(FinishInputRecordingCmd);
+         let mut system = IntoSystem::into_system(history_finish_recording_system::<()>);
+         system.initialize(&mut world);
+-        system.run((), &mut world).unwrap();
++        system.run((), &mut world);
+         assert_eq!(world.resource::<History>().ledger().entries.len(), 1);
+         // Reader2 remains unread on the first frame and commits this new group.
+         world
+@@ -964,14 +964,14 @@
+             .start_input_recording(0)
+             .unwrap();
+         world.resource_mut::<History>().add(edit()).unwrap();
+-        system.run((), &mut world).unwrap();
++        system.run((), &mut world);
+         assert_eq!(world.resource::<History>().ledger().entries.len(), 2);
+         // Reader3 was consumed despite Reader1's trigger; it cannot finish this.
+         world
+             .resource_mut::<History>()
+             .start_input_recording(0)
+             .unwrap();
+-        system.run((), &mut world).unwrap();
++        system.run((), &mut world);
+         assert!(world.resource::<History>().is_recording());
+         assert_eq!(world.resource::<Events<InputReplayCommand>>().len(), 2);
+     }
+--- fixture-before/systems/ui_clutter/ui_autoclutter.rs
++++ current/systems/ui_clutter/ui_autoclutter.rs
+@@ -232,7 +232,8 @@
+             matches!(&history.ledger().entries[0].edits[..], [EditType::AutoClutter(edit)] if **edit == (AutoClutterEdit::Delete { id: 73 }))
+         );
+         let events = world.resource::<Events<InstaCreateDeco>>();
+-        let output = events.get_cursor().read(events).next().unwrap();
++        let mut cursor = events.get_cursor();
++        let output = cursor.read(events).next().unwrap();
+         assert_eq!(output.destination, record().destination);
+         assert!(output.extra.is_none());
+         assert_eq!(output.position, record().position);

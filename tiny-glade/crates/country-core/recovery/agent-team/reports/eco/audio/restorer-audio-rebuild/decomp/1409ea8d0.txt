@@ -1,0 +1,89 @@
+// VA 0x1409ea8d0 trigger_audio_init_system
+// SIG void __cdecl trigger_audio_init_system(void)
+
+void __cdecl country_core::systems::audio::trigger_audio::trigger_audio_init_system(void)
+
+{
+  longlong *plVar1;
+  undefined8 *extraout_RAX;
+  char *extraout_RAX_00;
+  undefined8 *extraout_RAX_01;
+  char *extraout_RAX_02;
+  undefined8 *in_RCX;
+  longlong local_138;
+  longlong local_50;
+  
+  plVar1 = (longlong *)*in_RCX;
+  if (*plVar1 == 0) {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX == (undefined8 *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    *(undefined8 *)((longlong)extraout_RAX + 0xd) = 0x657254206172656d;
+    *(undefined8 *)((longlong)extraout_RAX + 0x15) = 0x656c747375522065;
+    *extraout_RAX = 0x532f3a746e657665;
+    extraout_RAX[1] = 0x72656d61432f5846;
+    local_138 = 0;
+  }
+  else {
+    resources::audio_resources::AudioCoreInner::instantiate_audio();
+    if (local_138 == 2) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  if (*plVar1 == 0) {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX_00 == (char *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    builtin_strncpy(extraout_RAX_00,"event:/Amb/High Wind",0x14);
+    local_138 = 0;
+  }
+  else {
+    resources::audio_resources::AudioCoreInner::instantiate_audio();
+    if (local_138 == 2) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  if (*plVar1 == 0) {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX_01 == (undefined8 *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    *extraout_RAX_01 = 0x532f3a746e657665;
+    extraout_RAX_01[1] = 0x72656d61432f5846;
+    extraout_RAX_01[2] = 0x68736f6f68572061;
+  }
+  else {
+    resources::audio_resources::AudioCoreInner::instantiate_audio();
+    if (local_138 == 2) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  if (*plVar1 == 0) {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX_02 == (char *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    builtin_strncpy(extraout_RAX_02,"snapshot:/InForest",0x12);
+  }
+  else {
+    resources::audio_resources::AudioCoreInner::instantiate_audio();
+    if (local_50 == 2) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  bevy_ecs::system::commands::Commands::
+  insert_resource<country_core::systems::audio::trigger_audio::TriggerAudioState>();
+  return;
+}
+
+

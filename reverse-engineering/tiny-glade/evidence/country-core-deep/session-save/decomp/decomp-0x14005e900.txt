@@ -1,0 +1,66 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_14005e900(undefined1 *param_1,longlong param_2)
+
+{
+  undefined1 uVar1;
+  ulonglong uVar2;
+  undefined8 uVar3;
+  ulonglong uVar4;
+  undefined8 uStack_28;
+  longlong *plStack_20;
+  longlong lStack_18;
+  
+  uVar2 = *(ulonglong *)(param_2 + 0x28);
+  if (uVar2 < *(ulonglong *)(param_2 + 0x20)) {
+    do {
+      uVar2 = uVar2 + 1;
+      uVar4 = (ulonglong)*(byte *)(*(longlong *)(param_2 + 0x18) + -1 + uVar2);
+      if (0x22 < uVar4) {
+code_r0x00014005ea29:
+        uVar3 = FUN_1428a0ca0(param_2,&uStack_28,&UNK_14292f3c0);
+code_r0x00014005ea3d:
+        uVar3 = FUN_1428a2200(uVar3,param_2);
+        goto code_r0x00014005e971;
+      }
+      if ((0x100002600U >> (uVar4 & 0x3f) & 1) == 0) {
+        if (uVar4 != 0x22) goto code_r0x00014005ea29;
+        *(ulonglong *)(param_2 + 0x28) = uVar2;
+        *(undefined8 *)(param_2 + 0x10) = 0;
+        FUN_140b89af0(&uStack_28,param_2 + 0x18,param_2);
+        if ((int)uStack_28 != 2) {
+          if (lStack_18 == 0xd) {
+            if (*(longlong *)((longlong)plStack_20 + 5) == CONCAT53(_UNK_1429ccace,_UNK_1429ccacb)
+                && *plStack_20 == CONCAT35(_UNK_1429ccacb,_UNK_1429ccac6)) {
+              uVar1 = 0;
+code_r0x00014005ea1c:
+              param_1[1] = uVar1;
+              *param_1 = 0;
+              return;
+            }
+            uVar1 = 1;
+            if (*(longlong *)((longlong)plStack_20 + 5) == CONCAT53(_UNK_1429ccadb,_UNK_1429ccad8)
+                && *plStack_20 == CONCAT35(_UNK_1429ccad8,_UNK_1429ccad3))
+            goto code_r0x00014005ea1c;
+          }
+          else if ((lStack_18 == 8) && (uVar1 = 2, *plStack_20 == _UNK_1429ccae0))
+          goto code_r0x00014005ea1c;
+          uVar3 = FUN_1428a2480(plStack_20,lStack_18,&UNK_1429ccae8,3);
+          goto code_r0x00014005ea3d;
+        }
+        *(longlong **)(param_1 + 8) = plStack_20;
+        goto code_r0x00014005e9aa;
+      }
+      *(ulonglong *)(param_2 + 0x28) = uVar2;
+    } while (uVar2 != *(ulonglong *)(param_2 + 0x20));
+  }
+  uStack_28 = 5;
+  uVar3 = FUN_1428a0920(param_2,&uStack_28);
+code_r0x00014005e971:
+  *(undefined8 *)(param_1 + 8) = uVar3;
+code_r0x00014005e9aa:
+  *param_1 = 1;
+  return;
+}
+

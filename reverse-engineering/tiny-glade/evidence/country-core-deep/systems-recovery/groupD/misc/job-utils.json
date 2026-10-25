@@ -1,0 +1,67 @@
+[
+ {
+  "tool": "open_database",
+  "args": {
+   "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+   "run_auto_analysis": false,
+   "database_id": "tg_d4",
+   "keep_open": true
+  },
+  "timeout_ms": 600000
+ },
+ {
+  "tool": "wait_for_analysis",
+  "args": {
+   "database": "tg_d4"
+  },
+  "timeout_ms": 600000
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_d4",
+   "address": "0x140caf380"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "time_lerp_acc"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_d4",
+   "address": "0x140c96240"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "per_ent_time"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_d4",
+   "address": "0x140c904e0"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "time_lerp_b"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_d4",
+   "address": "0x1409046e0"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "?"
+ },
+ {
+  "tool": "close_database",
+  "args": {
+   "database": "tg_d4",
+   "save": false
+  },
+  "timeout_ms": 120000
+ }
+]

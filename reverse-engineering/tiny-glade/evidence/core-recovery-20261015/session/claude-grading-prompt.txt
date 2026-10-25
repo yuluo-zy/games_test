@@ -1,0 +1,152 @@
+Bounded reverse-engineering check, no tools. Rust serde object visitor. Helper 0x1428f9bc0 is missing_field. Fields in serializer order: bypass_color(bool +0x28), current_grading_lut(String +0), grading_strength(f32+0x18), ev_shift(f32+0x1c), contrast(f32+0x20), saturation(f32+0x24). In the snippet below, determine whether any missing field has a default. Give at most 6 bullet lines, do not invent fields/types. These are original machine instructions.0x1415ceb01  mov      byte ptr [rbp + 0x30], al
+0x1415ceb04  movups   xmm0, xmmword ptr [rbx + 0x49]
+0x1415ceb08  movups   xmm1, xmmword ptr [rbx + 0x58]
+0x1415ceb0c  movups   xmmword ptr [r14 + 0xf], xmm1
+0x1415ceb11  movups   xmmword ptr [r14], xmm0
+0x1415ceb15  mov      qword ptr [rbp + 0xa8], r13
+0x1415ceb1c  mov      byte ptr [rbp + 0xb7], 1
+0x1415ceb23  mov      rcx, r15
+0x1415ceb26  mov      rdx, r12
+0x1415ceb29  call     0x14159a370
+0x1415ceb2e  test     byte ptr [rbp + 0x78], 1
+0x1415ceb32  jne      0x1415cec16
+0x1415ceb38  movss    xmm6, dword ptr [rbp + 0x7c]
+0x1415ceb3d  mov      dword ptr [rbp + 0x74], 1
+0x1415ceb44  jmp      0x1415ce7c0
+0x1415ceb49  mov      rax, r13
+0x1415ceb4c  neg      rax
+0x1415ceb4f  jno      0x1415ceed0
+0x1415ceb55  movzx    eax, byte ptr [rbp + 8]
+0x1415ceb59  mov      byte ptr [rbp + 8], 6
+0x1415ceb5d  cmp      al, 6
+0x1415ceb5f  je       0x1415cee46
+0x1415ceb65  mov      byte ptr [rbp + 0x30], al
+0x1415ceb68  movups   xmm0, xmmword ptr [rbx + 0x49]
+0x1415ceb6c  movups   xmm1, xmmword ptr [rbx + 0x58]
+0x1415ceb70  movups   xmmword ptr [r14 + 0xf], xmm1
+0x1415ceb75  movups   xmmword ptr [r14], xmm0
+0x1415ceb79  movabs   rax, 0x8000000000000000
+0x1415ceb83  mov      qword ptr [rbp + 0xa8], rax
+0x1415ceb8a  mov      byte ptr [rbp + 0xb7], 1
+0x1415ceb91  mov      rcx, r15
+0x1415ceb94  mov      rdx, r12
+0x1415ceb97  call     0x14159de50
+0x1415ceb9c  mov      r13, qword ptr [rbp + 0x78]
+0x1415ceba0  mov      rax, qword ptr [rbp + 0x80]
+0x1415ceba7  mov      qword ptr [rbp + 0x90], rax
+0x1415cebae  mov      rax, r13
+0x1415cebb1  neg      rax
+0x1415cebb4  jo       0x1415cee71
+0x1415cebba  mov      rax, qword ptr [rbp + 0x88]
+0x1415cebc1  mov      qword ptr [rbp - 0x50], rax
+0x1415cebc5  jmp      0x1415ce7ab
+0x1415cebca  movzx    edx, byte ptr [rbp + 0xb6]
+0x1415cebd1  cmp      dl, 2
+0x1415cebd4  jne      0x1415cec4e
+0x1415cebd6  mov      r13, qword ptr [rbp + 0x98]
+0x1415cebdd  mov      qword ptr [rbp + 0xa8], r13
+0x1415cebe4  mov      byte ptr [rbp + 0xb7], 1
+0x1415cebeb  lea      rcx, [rip + 0x16ab936]
+0x1415cebf2  mov      edx, 0xc
+0x1415cebf7  call     0x1428f9bc0
+0x1415cebfc  lea      rcx, [r13*2]
+0x1415cec04  test     rcx, rcx
+0x1415cec07  mov      rcx, qword ptr [rbp + 0x90]
+0x1415cec0e  je       0x1415cee78
+0x1415cec14  jmp      0x1415cec35
+0x1415cec16  mov      rax, qword ptr [rbp + 0x80]
+0x1415cec1d  lea      rcx, [r13*2]
+0x1415cec25  test     rcx, rcx
+0x1415cec28  mov      rcx, qword ptr [rbp + 0x90]
+0x1415cec2f  je       0x1415cee78
+0x1415cec35  mov      r8d, 1
+0x1415cec3b  mov      rdx, r13
+0x1415cec3e  mov      rdi, rax
+0x1415cec41  call     0x140613c20
+0x1415cec46  mov      rax, rdi
+0x1415cec49  jmp      0x1415cee78
+0x1415cec4e  mov      rcx, qword ptr [rbp + 0x98]
+0x1415cec55  mov      rax, rcx
+0x1415cec58  neg      rax
+0x1415cec5b  jno      0x1415cecaf
+0x1415cec5d  movabs   rax, 0x8000000000000000
+0x1415cec67  mov      qword ptr [rbp + 0xa8], rax
+0x1415cec6e  mov      byte ptr [rbp + 0xb7], 1
+0x1415cec75  lea      rcx, [rip + 0x16ab8b8]
+0x1415cec7c  mov      edx, 0x13
+0x1415cec81  call     0x1428f9bc0
+0x1415cec86  jmp      0x1415cee78
+0x1415cec8b  mov      qword ptr [rbp + 0xa8], r13
+0x1415cec92  mov      byte ptr [rbp + 0xb7], 1
+0x1415cec99  lea      rcx, [rip + 0x16ab5c8]
+0x1415ceca0  mov      edx, 0x10
+0x1415ceca5  call     0x1428fa000
+0x1415cecaa  jmp      0x1415cebfc
+0x1415cecaf  test     byte ptr [rbp + 0x68], 1
+0x1415cecb3  je       0x1415ced26
+0x1415cecb5  test     byte ptr [rbp + 0x6c], 1
+0x1415cecb9  je       0x1415ced39
+0x1415cecbb  test     byte ptr [rbp + 0x70], 1
+0x1415cecbf  je       0x1415ced4c
+0x1415cecc5  test     byte ptr [rbp + 0x74], 1
+0x1415cecc9  je       0x1415ced5f
+0x1415ceccf  cmp      qword ptr [rbp], 0
+0x1415cecd4  mov      rax, qword ptr [rbp + 0x90]
+0x1415cecdb  jne      0x1415cefa8
+0x1415cece1  and      dl, 1
+0x1415cece4  mov      qword ptr [rsi], rcx
+0x1415cece7  mov      qword ptr [rsi + 8], rax
+0x1415ceceb  mov      rax, qword ptr [rbp - 0x50]
+0x1415cecef  mov      qword ptr [rsi + 0x10], rax
+0x1415cecf3  movss    dword ptr [rsi + 0x18], xmm9
+0x1415cecf9  movss    dword ptr [rsi + 0x1c], xmm8
+0x1415cecff  movss    dword ptr [rsi + 0x20], xmm7
+0x1415ced04  movss    dword ptr [rsi + 0x24], xmm6
+0x1415ced09  mov      byte ptr [rsi + 0x28], dl
+0x1415ced0c  mov      eax, dword ptr [rbp - 0x47]
+0x1415ced0f  mov      ecx, dword ptr [rbp - 0x44]
+0x1415ced12  mov      dword ptr [rsi + 0x29], eax
+0x1415ced15  mov      dword ptr [rsi + 0x2c], ecx
+0x1415ced18  lea      rcx, [rbp - 0x40]
+0x1415ced1c  call     0x140887df0
+0x1415ced21  jmp      0x1415cee92
+0x1415ced26  lea      rcx, [rip + 0x16ab81a]
+0x1415ced2d  mov      edx, 0x10
+0x1415ced32  call     0x1428f9bc0
+0x1415ced37  jmp      0x1415ced70
+0x1415ced39  lea      rcx, [rip + 0x16ab817]
+0x1415ced40  mov      edx, 8
+0x1415ced45  call     0x1428f9bc0
+0x1415ced4a  jmp      0x1415ced70
+0x1415ced4c  lea      rcx, [rip + 0x16ab80c]
+0x1415ced53  mov      edx, 8
+0x1415ced58  call     0x1428f9bc0
+0x1415ced5d  jmp      0x1415ced70
+0x1415ced5f  lea      rcx, [rip + 0x16ab801]
+0x1415ced66  mov      edx, 0xa
+0x1415ced6b  call     0x1428f9bc0
+0x1415ced70  mov      rdx, qword ptr [rbp + 0x98]
+0x1415ced77  test     rdx, rdx
+0x1415ced7a  mov      rcx, qword ptr [rbp + 0x90]
+0x1415ced81  je       0x1415cee78
+0x1415ced87  mov      r8d, 1
+0x1415ced8d  jmp      0x1415cec3e
+0x1415ced92  mov      qword ptr [rbp + 0xa8], r13
+0x1415ced99  mov      byte ptr [rbp + 0xb7], 1
+0x1415ceda0  lea      rcx, [rip + 0x16ab4c1]
+0x1415ceda7  mov      edx, 0x10
+0x1415cedac  call     0x1428fa000
+0x1415cedb1  jmp      0x1415cebfc
+0x1415cedb6  mov      qword ptr [rbp + 0xa8], r13
+0x1415cedbd  mov      byte ptr [rbp + 0xb7], 1
+0x1415cedc4  lea      rcx, [rip + 0x16ab49d]
+0x1415cedcb  mov      edx, 0x10
+0x1415cedd0  call     0x1428fa000
+0x1415cedd5  jmp      0x1415cebfc
+0x1415cedda  mov      qword ptr [rbp + 0xa8], r13
+0x1415cede1  mov      byte ptr [rbp + 0xb7], 1
+0x1415cede8  lea      rcx, [rip + 0x16ab479]
+0x1415cedef  mov      edx, 0x10
+0x1415cedf4  call     0x1428fa000
+0x1415cedf9  jmp      0x1415cebfc
+0x1415cedfe  mov      qword ptr [rbp + 0xa8], r13

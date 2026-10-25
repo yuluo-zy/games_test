@@ -1,0 +1,52 @@
+{
+  "status": "immutable_postfreeze_observation_v2_does_not_replace_frozen_audit",
+  "observed_at_utc": "2026-10-19T17:19:05.465657+00:00",
+  "frozen_provenance": {
+    "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bdac7a16d3c26c954b/nani-gpu-counts-20261019/nani-maintain-20261020/domain-audit-20261020/PROVENANCE.json",
+    "sha256": "300b87da4be6040d2bbef4d181c6fa200734d36bb85634d4873b69df081ffd34"
+  },
+  "advanced_sources": [
+    {
+      "source": "tiny-glade/crates/tiny-glade/src/run_game.rs",
+      "observed_sha256": "99ca10051a2998d2686ad52299d7e3c61ce375e6e43c07e8a06a659cd49dfe4b",
+      "snapshot": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bdac7a16d3c26c954b/nani-gpu-counts-20261019/nani-maintain-20261020/domain-audit-20261020/postfreeze-source-v2/tiny-glade/crates/tiny-glade/src/run_game.rs",
+      "difference": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bdac7a16d3c26c954b/nani-gpu-counts-20261019/nani-maintain-20261020/domain-audit-20261020/run_game.postfreeze-v2.patch",
+      "difference_sha256": "38caca55b380a7a06e97cbb6718fa9eb4b358b8831d4f3ddd82f0f2030a7d403"
+    },
+    {
+      "source": "tiny-glade/crates/tiny-glade/src/gameplay_startup.rs",
+      "observed_sha256": "8e321256a300ae55728f6291d4ea55edf6fb128fcf2450e2dece027540f39432",
+      "snapshot": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bdac7a16d3c26c954b/nani-gpu-counts-20261019/nani-maintain-20261020/domain-audit-20261020/postfreeze-source-v2/tiny-glade/crates/tiny-glade/src/gameplay_startup.rs",
+      "difference": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bdac7a16d3c26c954b/nani-gpu-counts-20261019/nani-maintain-20261020/domain-audit-20261020/gameplay_startup.postfreeze-v2.patch",
+      "difference_sha256": "6d52a542a1b60f30bdcc51fd04c51abfb954e0cdb4ac70f51e761433cd67656e"
+    }
+  ],
+  "change_scope_observed": "Root added actual gameplay role/clutter Startup asset-catalog registration and validation. These hunks do not call the roof installer, add roof update producers, add a builder visual-instantiation caller, or change the mapped Nani ECS helper.",
+  "roof_installer_all_current_visible_matches": [
+    {
+      "path": "tiny-glade/crates/systems/roof/src/lib.rs",
+      "line": 10,
+      "text": "//! - `add_roof_systems`\uff080x14062fcb0\uff09\uff1a\u628a\u5c4b\u9876\u7cfb\u7edf\u63a5\u5165 Bevy \u8c03\u5ea6\u3002"
+    },
+    {
+      "path": "tiny-glade/crates/systems/roof/src/lib.rs",
+      "line": 44,
+      "text": "/// \u539f `system_roof::impl$0::add_roof_systems`\uff080x14062fcb0\uff09\u3002"
+    },
+    {
+      "path": "tiny-glade/crates/systems/roof/src/lib.rs",
+      "line": 49,
+      "text": "pub fn add_roof_systems(schedule: &mut Schedule) {"
+    },
+    {
+      "path": "tiny-glade/crates/systems/roof/src/lib.rs",
+      "line": 73,
+      "text": "// \u672c\u6279\u91cd\u5efa\u51fd\u6570\u8865\u6ce8\u518c\uff08reviewer FIX-4\uff0c\u539f add_roof_systems"
+    }
+  ],
+  "direct_roof_producers_in_two_host_sources": [],
+  "limits": "Current visible source only, not a complete App graph or typecheck. Pending user world_frame/source may provide additional registration.",
+  "production_source_edits_by_audit_author": false,
+  "cargo_GPU_tests_executed": false,
+  "external_commands_running": false
+}

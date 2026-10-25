@@ -1,0 +1,44 @@
+Source: /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-eac12c8d24c206af39/no-world-undefined-20261019/reverse-blur-top-20261020/consumer-candidate/candidate/crates/country-core/src/systems/render_loop/compute_passes/blur_pyramid.rs
+SHA256: 20f9f2c642e4cda29b9c8f161e059d540038fe2f9b4522e9fcfaa85f4d7dbcc0
+
+132: }
+133: 
+134: /// `rev_blur_pyramid`（`bidirectional_blur_pyramid` 的后半，O 内联）。
+135: pub fn rev_blur_pyramid(env: &mut PassEnv<'_>, partial: &RgTexture) -> RgTexture {
+136:     let desc = partial.desc;
+137:     let full = env.create_texture(FULL_NAME, desc);
+138:     let n = u32::from(desc.mip_levels);
+139:     let (partial_tex, full_tex) = (partial, &full);
+140:     let extent = desc.extent_2d();
+141:     for i in (0..n).rev() {
+142:         let ext = div_extent(extent, 1 << i);
+143:         let next = (i + 1).min(n - 1);
+144:         let (v_tail, v_in, v_out) = (
+145:             view(USAGE_READ, i),
+146:             view(USAGE_READ, next),
+147:             view(USAGE_WRITE, i),
+148:         );
+149:         let sample_self = i + 1 != n;
+150:         let mut pass = env
+151:             .pass(REV_N_NAME, REV_URI)
+152:             .bind_texture_with_view(HASH_INPUT_TAIL, &partial_tex, TEX_READ, Some(&v_tail))
+153:             .bind_texture_with_view(HASH_INPUT_TEX, &full_tex, TEX_READ, Some(&v_in))
+154:             .bind_texture_with_view(HASH_OUTPUT_TEX, &full_tex, TEX_STORAGE_WRITE, Some(&v_out));
+155:         if !sample_self {
+156:             // Original full SPV still performs nine samples before this flag
+157:             // selects tail RGB. Only this fresh top input/output alias is
+158:             // permitted undefined; tail and all later reverse inputs are strict.
+159:             debug_assert_eq!(next, i);
+160:             pass = pass.allow_undefined_texture_contents(HASH_INPUT_TEX);
+161:         }
+162:         let rec = pass
+163:             .uniform(KEY_OUTPUT_EXTENT, ext)
+164:             .uniform(KEY_SAMPLE_SELF, sample_self)
+165:             .dispatch_2d(ext[0], ext[1]);
+166:         env.record(rec);
+167:     }
+168:     full
+169: }
+170: 
+171: /// `bidirectional_blur_pyramid`（O 0x1409ed860）：`rev_blur_pyramid(blur_pyramid(src))`。
+

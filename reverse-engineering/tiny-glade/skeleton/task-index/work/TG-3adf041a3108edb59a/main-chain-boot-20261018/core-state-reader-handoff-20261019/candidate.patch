@@ -1,0 +1,738 @@
+--- a/crates/country-core/src/systems/save/snapshot.rs
++++ b/crates/country-core/src/systems/save/snapshot.rs
+@@ -1559,160 +1559,597 @@
+     pub points: Vec<[f32; 3]>,
+ }
+ 
+-/// 快照 Decorators 节 addr 判别（① r7-chain1-writeback 契约 §1，非空样本
+-/// 33273486/87775451 反推）：`{"Wall": <id>}` / `"Terrain"` / `{"Stair": <id>}`。
+-#[derive(Clone, Debug)]
++/// B snapshot addresses use unit "Stairs" (plural), not an invented stair ID.
++#[derive(Clone, Copy, Debug, serde::Deserialize)]
+ pub enum DecoratorAddrJson {
+-    Wall { Wall: u64 },
++    Wall(u64),
+     Terrain,
+-    Stair { Stair: u64 },
+-}
+-
+-/// 手写 `Deserialize`（样本契约 `{"Wall": <id>}` / `"Terrain"` / `{"Stair": <id>}`）：
+-/// `#[serde(untagged)]` derive 不能把字符串 `"Terrain"` 解到单元变体
+-/// （untagged 单元变体只接受 `null`），故按判别形状手写 visitor。
+-impl<'de> serde::Deserialize<'de> for DecoratorAddrJson {
+-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+-    where
+-        D: serde::Deserializer<'de>,
+-    {
+-        struct AddrVisitor;
+-        impl<'de> serde::de::Visitor<'de> for AddrVisitor {
+-            type Value = DecoratorAddrJson;
+-            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+-                formatter.write_str(
+-                    "a snapshot decorator addr: {\"Wall\": <id>}, \"Terrain\", or {\"Stair\": <id>}",
+-                )
+-            }
+-            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+-            where
+-                E: serde::de::Error,
+-            {
+-                if value == "Terrain" {
+-                    Ok(DecoratorAddrJson::Terrain)
+-                } else {
+-                    Err(serde::de::Error::unknown_variant(
+-                        value,
+-                        &["Terrain", "Wall", "Stair"],
+-                    ))
+-                }
+-            }
+-            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+-            where
+-                A: serde::de::MapAccess<'de>,
+-            {
+-                let Some(key) = map.next_key::<String>()? else {
+-                    return Err(serde::de::Error::custom(
+-                        "expected one addr key in DecoratorAddrJson",
+-                    ));
+-                };
+-                match key.as_str() {
+-                    "Wall" => Ok(DecoratorAddrJson::Wall {
+-                        Wall: map.next_value()?,
+-                    }),
+-                    "Stair" => Ok(DecoratorAddrJson::Stair {
+-                        Stair: map.next_value()?,
+-                    }),
+-                    _ => Err(serde::de::Error::unknown_variant(
+-                        key.as_str(),
+-                        &["Wall", "Stair"],
+-                    )),
+-                }
+-            }
+-        }
+-        deserializer.deserialize_any(AddrVisitor)
+-    }
+-}
+-
++    #[serde(rename = "Stairs")]
++    Stair,
++}
+ impl DecoratorAddrJson {
+-    /// 判别 → crate 权威存储地址（`DecoratorStorageAddr`：disc 0=Wall/1=Terrain/
+-    /// 2=Stair，payload=WallId）。Stair 的 <id> 判别在 crate 模型为单元变体
+-    /// （多楼梯地址的细分待①）。
+     pub fn to_storage_addr(&self) -> DecoratorStorageAddr {
+         match self {
+-            DecoratorAddrJson::Wall { Wall } => DecoratorStorageAddr::Wall(WallId(*Wall)),
+-            DecoratorAddrJson::Terrain => DecoratorStorageAddr::Terrain,
+-            DecoratorAddrJson::Stair { Stair: _ } => DecoratorStorageAddr::Stair,
+-        }
+-    }
+-}
+-
+-/// 快照 Decorators 节 DecoratorInfo（① r7-chain1-writeback §1，真实样本 8 字段）。
+-#[derive(Clone, Debug, serde::Deserialize)]
++            Self::Wall(id) => DecoratorStorageAddr::Wall(WallId(*id)),
++            Self::Terrain => DecoratorStorageAddr::Terrain,
++            Self::Stair => DecoratorStorageAddr::Stair,
++        }
++    }
++}
++
++fn state_default_one() -> f32 {
++    1.0
++}
++fn state_default_true() -> bool {
++    true
++}
++
++/// Native State map@1415ca5f0 and sequence@1415aaf40. This is a Serde
++/// boundary over the existing owned HistoryState, not another runtime owner.
++/// Field order also preserves the original sixteen-element sequence schema.
++#[derive(Clone, Copy, Debug, serde::Deserialize)]
+ pub struct DecoratorInfoJson {
++    pub dst: DecoratorDstJson,
++    pub ty: DecoratorTypeJson,
++    pub rank: DecoratorRankJson,
++    #[serde(default)]
++    pub color_id: u32,
++    pub seed: u32,
++    #[serde(default)]
++    pub clv: u8,
++    #[serde(default, alias = "chimney_h_offset")]
++    pub h_offset: f32,
++    #[serde(default = "state_default_true")]
+     pub allow_connection: bool,
+-    pub clv: u32,
+-    pub color_id: u32,
+-    pub dst: DecoratorDstJson,
+-    pub rank: DecoratorRankJson,
+-    pub seed: u32,
++    #[serde(default)]
++    pub window_light_color: u32,
++    #[serde(default = "state_default_one")]
++    pub lantern_brightness: f32,
++    #[serde(default = "state_default_true")]
++    pub chimney_smoke: bool,
++    #[serde(default = "state_default_one")]
+     pub stair_width: f32,
+-    pub ty: String,
+-}
+-
+-#[derive(Clone, Debug, serde::Deserialize)]
+-#[serde(untagged)]
++    #[serde(default)]
++    pub ladder_color: u32,
++    #[serde(default)]
++    pub railing: DecoratorRailingJson,
++    #[serde(default)]
++    pub stairs_supports: DecoratorSupportsJson,
++    #[serde(default)]
++    pub magic_color: u32,
++}
++
++#[derive(Clone, Copy, Debug, serde::Deserialize)]
++pub struct DecoratorRankJson {
++    pub x: u8,
++}
++
++#[derive(Clone, Copy, Debug, serde::Deserialize)]
++pub enum DecoratorTypeJson {
++    CottageWindow,
++    GothicWindow,
++    ArrowSlit,
++    Chimney,
++    Lantern,
++    Flag,
++    Clutter { ty: SnapshotClutterMeshJson },
++    Stairs,
++}
++impl DecoratorTypeJson {
++    fn native_tag(self) -> u8 {
++        match self {
++            Self::CottageWindow => 56,
++            Self::GothicWindow => 57,
++            Self::ArrowSlit => 58,
++            Self::Chimney => 59,
++            Self::Lantern => 60,
++            Self::Flag => 61,
++            Self::Clutter { ty } => ty as u8,
++            Self::Stairs => 63,
++        }
++    }
++}
++
++// Exact native enum spellings/order from the original 56-entry variant list.
++// Unit enum Deserialize also accepts the original {"variant":null} shape;
++// decoding only String would incorrectly reject it.
++#[allow(non_camel_case_types)]
++#[derive(Clone, Copy, Debug, serde::Deserialize)]
++#[repr(u8)]
++pub enum SnapshotClutterMeshJson {
++    plant_pot_v1 = 0,
++    ladder = 1,
++    wheel = 2,
++    pitchfork = 3,
++    shovel = 4,
++    box_w_stuff = 5,
++    watering_can = 6,
++    firewood = 7,
++    bucket = 8,
++    birdnest = 9,
++    bench = 10,
++    bench_w_basket = 11,
++    bench_short = 12,
++    barrel_w_plantpot = 13,
++    haystack = 14,
++    plant_pot_v2 = 15,
++    birdhouse = 16,
++    basket = 17,
++    basket_w_food = 18,
++    barrel_w_food_basket = 19,
++    potato_sack = 20,
++    road_sign = 21,
++    sunflower = 22,
++    cart = 23,
++    cart2 = 24,
++    crates_w_tools = 25,
++    crates_w_flowers = 26,
++    window_flowerpot = 27,
++    window_shutter = 28,
++    window_flowerbeds = 29,
++    reed = 30,
++    lilypad = 31,
++    fallen_leaves = 32,
++    fallen_petals = 33,
++    olden_rock = 34,
++    olden_tree_log = 35,
++    olden_tree_stump = 36,
++    pumpkin = 37,
++    pumpkin2 = 38,
++    pumpkin_w_face = 39,
++    cart_w_pumpkins = 40,
++    crates_w_pumpkins = 41,
++    olden_tree_stump_autumn = 42,
++    barrel_w_candles = 43,
++    anvil = 44,
++    fabric_rolls = 45,
++    stall_bread = 46,
++    stall_veggies = 47,
++    crate_fish = 48,
++    rack_brooms = 49,
++    flowerbox = 50,
++    door_bell = 51,
++    door_krans = 52,
++    door_krans_autumn = 53,
++    cart_w_pumpkins_regular = 54,
++    crates_w_pumpkins_regular = 55,
++}
++
++#[derive(Clone, Copy, Debug, Default, serde::Deserialize)]
++pub enum DecoratorRailingJson {
++    #[default]
++    None,
++    Low,
++    High,
++    Wooden,
++}
++#[derive(Clone, Copy, Debug, Default, serde::Deserialize)]
++pub enum DecoratorSupportsJson {
++    #[default]
++    Full,
++    None,
++}
++#[derive(Clone, Copy, Debug, Default, serde::Deserialize)]
++pub enum DecoratorSideJson {
++    Inner,
++    #[default]
++    Outer,
++}
++
++#[derive(Clone, Copy, Debug, serde::Deserialize)]
+ pub enum DecoratorDstJson {
+-    Wall { Wall: DecoratorWallDstJson },
+-    Terrain { Terrain: DecoratorTerrainDstJson },
+-}
+-
+-#[derive(Clone, Debug, serde::Deserialize)]
++    Wall(DecoratorWallDstJson),
++    Roof(DecoratorRoofDstJson),
++    Terrain(DecoratorTerrainDstJson),
++    Stair(DecoratorStairDstJson),
++}
++#[derive(Clone, Copy, Debug, serde::Deserialize)]
+ pub struct DecoratorWallDstJson {
++    pub coord: DecoratorCoordJson,
+     pub anchor: DecoratorAnchorJson,
+-    pub coord: DecoratorCoordJson,
+-}
+-
+-#[derive(Clone, Debug, serde::Deserialize)]
+-pub struct DecoratorAnchorJson {
+-    pub anchor_ws: [f32; 3],
+-    pub corner: u32,
+-    pub platform: u32,
+-    pub wall_height_relative_y: f32,
+-}
+-
+-#[derive(Clone, Debug, serde::Deserialize)]
++}
++#[derive(Clone, Copy, Debug, serde::Deserialize)]
+ pub struct DecoratorCoordJson {
+     pub x: f32,
+     pub y: f32,
+ }
+-
+-#[derive(Clone, Debug, serde::Deserialize)]
++#[derive(Clone, Copy, Debug, serde::Deserialize)]
++pub struct DecoratorAnchorJson {
++    #[serde(default)]
++    pub wall_height_relative_y: f32,
++    #[serde(default)]
++    pub anchor_ws: [f32; 3],
++    pub corner: u8,
++    #[serde(default)]
++    pub platform: u64,
++    #[serde(default)]
++    pub is_bottom_door: bool,
++    #[serde(default)]
++    pub side: DecoratorSideJson,
++}
++#[derive(Clone, Copy, Debug, serde::Deserialize)]
++pub struct DecoratorRoofDstJson {
++    pub mesh_uv: [f32; 2],
++    #[serde(default)]
++    pub relative_yaw_radians: f32,
++}
++#[derive(Clone, Copy, Debug, serde::Deserialize)]
+ pub struct DecoratorTerrainDstJson {
+     pub pos_xz: [f32; 2],
++    #[serde(default)]
+     pub yaw_radians: f32,
+ }
+-
+-#[derive(Clone, Debug, serde::Deserialize)]
+-pub struct DecoratorRankJson {
+-    pub x: u32,
+-}
+-
+-/// 快照 Decorators 节（① r7-chain1-writeback §1）：`{states: [[addr 判别,
+-/// {"state": [ {id, DecoratorInfo}, ... ]}], ...]}`。
++#[derive(Clone, Copy, Debug, serde::Deserialize)]
++pub struct DecoratorStairDstJson {
++    pub graph_edge: (u32, u32),
++    pub uv: [f32; 2],
++    #[serde(default)]
++    pub yaw_radians: f32,
++}
++
++impl DecoratorDstJson {
++    fn projected_bytes(self) -> [u8; 40] {
++        // Only inactive host padding is initialized here. Every active field
++        // comes from the typed wire payload; no native pointers are constructed.
++        let mut b = [0u8; 40];
++        fn f(b: &mut [u8], at: usize, value: f32) {
++            b[at..at + 4].copy_from_slice(&value.to_bits().to_le_bytes());
++        }
++        match self {
++            Self::Wall(wall) => {
++                f(&mut b, 0, wall.coord.x);
++                f(&mut b, 4, wall.coord.y);
++                b[8..16].copy_from_slice(&wall.anchor.platform.to_le_bytes());
++                f(&mut b, 0x10, wall.anchor.wall_height_relative_y);
++                for (i, value) in wall.anchor.anchor_ws.into_iter().enumerate() {
++                    f(&mut b, 0x14 + i * 4, value);
++                }
++                b[0x20] = wall.anchor.corner;
++                b[0x21] = u8::from(wall.anchor.is_bottom_door);
++                b[0x22] = wall.anchor.side as u8;
++            }
++            Self::Roof(roof) => {
++                f(&mut b, 0, roof.mesh_uv[0]);
++                f(&mut b, 4, roof.mesh_uv[1]);
++                f(&mut b, 8, roof.relative_yaw_radians);
++                b[0x22] = 2;
++            }
++            Self::Terrain(terrain) => {
++                f(&mut b, 0, terrain.pos_xz[0]);
++                f(&mut b, 4, terrain.pos_xz[1]);
++                f(&mut b, 8, terrain.yaw_radians);
++                b[0x22] = 3;
++            }
++            Self::Stair(stair) => {
++                b[..4].copy_from_slice(&stair.graph_edge.0.to_le_bytes());
++                b[4..8].copy_from_slice(&stair.graph_edge.1.to_le_bytes());
++                f(&mut b, 8, stair.uv[0]);
++                f(&mut b, 0xc, stair.uv[1]);
++                f(&mut b, 0x10, stair.yaw_radians);
++                b[0x22] = 4;
++            }
++        }
++        b
++    }
++}
++
++impl DecoratorInfoJson {
++    pub fn to_history_state(
++        &self,
++    ) -> crate::resources::history::decorator_edit::DecoratorHistoryState {
++        use crate::resources::history::decorator_edit::DecoratorHistoryState;
++        let dst = self.dst.projected_bytes();
++        let q = |at| u64::from_le_bytes(dst[at..at + 8].try_into().unwrap());
++        let d = |at| u32::from_le_bytes(dst[at..at + 4].try_into().unwrap());
++        DecoratorHistoryState {
++            dst_wall: q(0),
++            dst_secondary: q(8),
++            dst_payload: q(0x10),
++            u18: q(0x18),
++            u20: d(0x20),
++            u24: d(0x24),
++            u28: u64::from(self.color_id) | (u64::from(self.seed) << 32),
++            u30: self.h_offset.to_bits(),
++            u34: self.window_light_color,
++            u38: self.lantern_brightness.to_bits(),
++            u3c: self.stair_width.to_bits(),
++            u40: self.ladder_color,
++            u44: self.magic_color,
++            rank: self.rank.x,
++            u49: self.clv,
++            ty: self.ty.native_tag(),
++            u4b: self.railing as u8,
++            u4c: u8::from(self.allow_connection),
++            u4d: u8::from(self.chimney_smoke),
++            style: self.stairs_supports as u8,
++        }
++    }
++}
++
++pub fn deserialize_decorator_history_state(
++    value: Value,
++) -> anyhow::Result<crate::resources::history::decorator_edit::DecoratorHistoryState> {
++    Ok(serde_json::from_value::<DecoratorInfoJson>(value)?.to_history_state())
++}
++
++#[cfg(test)]
++mod decorator_state_decode_tests {
++    use super::*;
++    use crate::resources::walls::decorator::{DecoratorId, DecoratorIdGen};
++    use serde_json::json;
++
++    fn required() -> Value {
++        json!({"dst":{"Terrain":{"pos_xz":[1.25,-2.5]}},
++            "ty":"CottageWindow","rank":{"x":7},"seed":0x89abcdefu32})
++    }
++
++    #[test]
++    fn native_required_defaults_alias_and_integer_bounds_are_preserved() {
++        let wire = required();
++        let s = deserialize_decorator_history_state(wire.clone()).unwrap();
++        assert_eq!(s.rank, 7);
++        assert_eq!(s.ty, 56);
++        assert_eq!(s.u28, 0x89abcdef00000000);
++        assert_eq!(
++            (s.u30, s.u34, s.u40, s.u44, s.u49, s.u4b, s.style),
++            (0, 0, 0, 0, 0, 0, 0)
++        );
++        assert_eq!((s.u38, s.u3c), (1.0f32.to_bits(), 1.0f32.to_bits()));
++        assert_eq!((s.u4c, s.u4d), (1, 1));
++        assert_eq!(decorator_history_state_json(&s).unwrap(), wire);
++        for key in ["dst", "ty", "rank", "seed"] {
++            let mut missing = wire.clone();
++            missing.as_object_mut().unwrap().remove(key);
++            assert!(
++                deserialize_decorator_history_state(missing).is_err(),
++                "{key}"
++            );
++        }
++        let mut old = wire.clone();
++        old["chimney_h_offset"] = json!(-3.75);
++        old["unknown_future"] = json!({"ignored":[1,2,3]});
++        let state = deserialize_decorator_history_state(old.clone()).unwrap();
++        assert_eq!(state.u30, (-3.75f32).to_bits());
++        old["h_offset"] = json!(0.5);
++        assert!(
++            deserialize_decorator_history_state(old).is_err(),
++            "alias duplicate"
++        );
++        for (key, value) in [
++            ("rank", json!({"x":256})),
++            ("clv", json!(256)),
++            ("seed", json!(4294967296u64)),
++            ("color_id", json!(-1)),
++            ("lantern_brightness", Value::Null),
++            ("allow_connection", json!(1)),
++        ] {
++            let mut invalid = wire.clone();
++            invalid[key] = value;
++            assert!(
++                deserialize_decorator_history_state(invalid).is_err(),
++                "{key}"
++            );
++        }
++    }
++
++    #[test]
++    fn four_destination_payloads_roundtrip_every_active_field() {
++        let destinations = [
++            json!({"Wall":{"coord":{"x":1.25,"y":-2.5},"anchor":{
++                "wall_height_relative_y":0.75,"anchor_ws":[3.0,4.0,5.0],
++                "corner":255,"platform":0x100000007u64,"is_bottom_door":true,"side":"Inner"}}}),
++            json!({"Roof":{"mesh_uv":[0.25,0.75],"relative_yaw_radians":-7.5}}),
++            json!({"Terrain":{"pos_xz":[-6.0,9.0],"yaw_radians":1.5}}),
++            json!({"Stair":{"graph_edge":[0xffffffffu32,9],"uv":[0.4,0.8],"yaw_radians":-2.0}}),
++        ];
++        for dst in destinations {
++            let mut wire = required();
++            wire["dst"] = dst.clone();
++            // Nondefault fields remain in the HistoryState even if the selected
++            // decorator type later interprets only its own extra-style fields.
++            for (key, value) in [
++                ("color_id", json!(0xffffffffu32)),
++                ("clv", json!(255)),
++                ("h_offset", json!(2.0)),
++                ("allow_connection", json!(false)),
++                ("window_light_color", json!(23)),
++                ("lantern_brightness", json!(0.5)),
++                ("chimney_smoke", json!(false)),
++                ("stair_width", json!(2.5)),
++                ("ladder_color", json!(27)),
++                ("railing", json!("Wooden")),
++                ("stairs_supports", json!("None")),
++                ("magic_color", json!(31)),
++            ] {
++                wire[key] = value;
++            }
++            let s = deserialize_decorator_history_state(wire.clone()).unwrap();
++            let output = decorator_history_state_json(&s).unwrap();
++            // Values use exact binary f32 conversion, as does the original Value
++            // visitor. Compare through the actual f32-backed projection.
++            let again = deserialize_decorator_history_state(output.clone()).unwrap();
++            assert_eq!(again.to_bytes(), s.to_bytes());
++            assert_eq!(output["color_id"], 0xffffffffu32);
++            assert_eq!(output["rank"], json!({"x":7}));
++            assert_eq!(output["railing"], "Wooden");
++            assert_eq!(output["stairs_supports"], "None");
++            let variant = dst.as_object().unwrap().keys().next().unwrap();
++            assert!(output["dst"].get(variant).is_some());
++        }
++        let mut wall = required();
++        wall["dst"] = json!({"Wall":{"coord":{"x":0.0,"y":0.0},"anchor":{"corner":0}}});
++        let s = deserialize_decorator_history_state(wall.clone()).unwrap();
++        assert_eq!(s.to_bytes()[0x22], 1, "native missing side defaults Outer");
++        wall["dst"]["Wall"]["anchor"]
++            .as_object_mut()
++            .unwrap()
++            .remove("corner");
++        assert!(
++            deserialize_decorator_history_state(wall).is_err(),
++            "corner is required"
++        );
++    }
++
++    #[test]
++    fn native_sequence_defaults_and_unit_enum_map_forms_are_supported() {
++        let wire = required();
++        let minimum = json!([wire["dst"], wire["ty"], wire["rank"], 0, wire["seed"]]);
++        let state = deserialize_decorator_history_state(minimum.clone()).unwrap();
++        assert_eq!(decorator_history_state_json(&state).unwrap(), wire);
++        let mut too_short = minimum.as_array().unwrap().clone();
++        too_short.pop();
++        assert!(deserialize_decorator_history_state(json!(too_short)).is_err());
++        let mut clutter = required();
++        clutter["ty"] = json!({"Clutter":{"ty":{"ladder":null}}});
++        let s = deserialize_decorator_history_state(clutter).unwrap();
++        assert_eq!(s.ty, 1);
++        assert_eq!(
++            decorator_history_state_json(&s).unwrap()["ty"],
++            json!({"Clutter":{"ty":"ladder"}})
++        );
++        for (index, name) in CLUTTER_MESH_NAMES.into_iter().enumerate() {
++            let mut wire = required();
++            wire["ty"] = json!({"Clutter":{"ty":name}});
++            assert_eq!(
++                deserialize_decorator_history_state(wire).unwrap().ty,
++                index as u8
++            );
++        }
++        let mut invalid = required();
++        invalid["ty"] = json!({"Clutter":{"ty":"not_a_native_mesh"}});
++        assert!(deserialize_decorator_history_state(invalid).is_err());
++    }
++
++    #[test]
++    fn native_destination_sequences_required_fields_and_type_tags_are_preserved() {
++        for (payload, expected) in [
++            (
++                json!({"Wall":[[1.25,-2.5],[0.75,[3.0,4.0,5.0],255,0x100000007u64,true,"Inner"]]}),
++                json!({"Wall":{"coord":{"x":1.25,"y":-2.5},"anchor":{
++                    "wall_height_relative_y":0.75,"anchor_ws":[3.0,4.0,5.0],
++                    "corner":255,"platform":0x100000007u64,"is_bottom_door":true,"side":"Inner"}}}),
++            ),
++            (
++                json!({"Roof":[[0.25,0.75]]}),
++                json!({"Roof":{"mesh_uv":[0.25,0.75]}}),
++            ),
++            (
++                json!({"Terrain":[[4.0,5.0]]}),
++                json!({"Terrain":{"pos_xz":[4.0,5.0]}}),
++            ),
++            (
++                json!({"Stair":[[1,2],[0.25,0.75]]}),
++                json!({"Stair":{"graph_edge":[1,2],"uv":[0.25,0.75]}}),
++            ),
++        ] {
++            let mut wire = required();
++            wire["dst"] = payload;
++            let decoded = deserialize_decorator_history_state(wire).unwrap();
++            assert_eq!(
++                decorator_history_state_json(&decoded).unwrap()["dst"],
++                expected
++            );
++        }
++        for dst in [
++            json!({"Wall":{"anchor":{"corner":0}}}),
++            json!({"Wall":{"coord":{"x":0.0,"y":0.0}}}),
++            json!({"Roof":{}}),
++            json!({"Terrain":{}}),
++            json!({"Stair":{"uv":[0.0,0.0]}}),
++            json!({"Stair":{"graph_edge":[1,2]}}),
++        ] {
++            let mut wire = required();
++            wire["dst"] = dst;
++            assert!(deserialize_decorator_history_state(wire).is_err());
++        }
++        for (ty, tag) in [
++            (json!({"CottageWindow":null}), 56),
++            (json!("GothicWindow"), 57),
++            (json!("ArrowSlit"), 58),
++            (json!("Chimney"), 59),
++            (json!("Lantern"), 60),
++            (json!("Flag"), 61),
++            (json!({"Clutter":{"ty":"ladder"}}), 1),
++            (json!("Stairs"), 63),
++        ] {
++            let mut wire = required();
++            wire["ty"] = ty;
++            assert_eq!(deserialize_decorator_history_state(wire).unwrap().ty, tag);
++        }
++    }
++
++    #[test]
++    fn decoded_nonempty_buckets_restore_real_state_and_reserve_actual_id_owner() {
++        let mut window = required();
++        window["window_light_color"] = json!(0xaabbccddu32);
++        let section: DecoratorsSectionJson = serde_json::from_value(json!({"states":[
++            [{"Wall":0x100000007u64},{"state":[[900,window]]}],
++            ["Terrain",{"state":[]}],
++            ["Stairs",{"state":[[950,required()]]}]
++        ]}))
++        .unwrap();
++        let snapshot = section.into_storage_snapshot().unwrap();
++        assert_eq!(snapshot.states.len(), 3);
++        assert!(snapshot.states[1].1.states.is_empty());
++        let mut storage = DecoratorStorage::default();
++        let mut ids = DecoratorIdGen::default();
++        ids.reserve(DecoratorId(5000));
++        storage.restore_snapshot_with_id_gen(&snapshot, &mut ids);
++        assert_eq!(
++            storage.lookup_storage(DecoratorId(900)),
++            Some(DecoratorStorageAddr::Wall(WallId(0x100000007)))
++        );
++        let info = &storage
++            .get(DecoratorStorageAddr::Wall(WallId(0x100000007)))
++            .unwrap()
++            .decorators[&900];
++        assert_eq!(info.rank, 7);
++        assert_eq!(info.ty, 56);
++        assert_eq!(info.state, 0);
++        assert_eq!(info.u30 as u32, 0xaabbccdd);
++        assert!(storage.get(DecoratorStorageAddr::Terrain).is_some());
++        assert_eq!(
++            storage.lookup_storage(DecoratorId(950)),
++            Some(DecoratorStorageAddr::Stair)
++        );
++        assert_eq!(
++            ids.generate().0,
++            5001,
++            "same caller-owned ID generator survives restore"
++        );
++    }
++}
++
+ #[derive(Clone, Debug, serde::Deserialize)]
+ pub struct DecoratorsSectionJson {
+     pub states: Vec<(DecoratorAddrJson, DecoratorStateListJson)>,
+ }
+-
+-impl DecoratorsSectionJson {
+-    /// 每地址的装饰状态列表 → crate `DecoratorStorageSnapshot` 快照条目。
+-    /// 每 `{id, DecoratorInfo}` 条目 → `DecoratorAddrSnapshot{encoded_id, addr,
+-    /// state, info}`；state 字节语义 U（待①）。crate `restore_snapshot`
+-    /// （0x140a20d70）现按 fresh 重建：removed_ids.remove + modified_ids.insert +
+-    /// 内嵌 map insert(info) + d2s insert（冲突 panic）。
+-    ///
+-    /// 这是 `apply_loaded_snapshot` "Decorators" 分支的真实写回输入面。
+-    pub fn into_storage_snapshot(&self) -> anyhow::Result<DecoratorStorageSnapshot> {
+-        anyhow::bail!("legacy DecoratorInfo JSON is not the native DecoratorHistoryState schema")
+-    }
+-}
+-
+-/// 每地址的装饰状态列表 `{"state": [...]}`。
+ #[derive(Clone, Debug, serde::Deserialize)]
+ pub struct DecoratorStateListJson {
+-    #[serde(rename = "state")]
+     pub state: Vec<(u32, DecoratorInfoJson)>,
++}
++impl DecoratorsSectionJson {
++    pub fn into_storage_snapshot(&self) -> anyhow::Result<DecoratorStorageSnapshot> {
++        use crate::resources::walls::decorator::DecoratorId;
++        Ok(DecoratorStorageSnapshot {
++            states: self
++                .states
++                .iter()
++                .map(|(addr, bucket)| {
++                    (
++                        addr.to_storage_addr(),
++                        DecoratorAddrSnapshot {
++                            states: bucket
++                                .state
++                                .iter()
++                                .map(|(id, wire)| (DecoratorId(*id), wire.to_history_state()))
++                                .collect(),
++                        },
++                    )
++                })
++                .collect(),
++        })
++    }
+ }
+ 
+ impl TerrainSectionJson {
+@@ -1984,7 +2421,8 @@
+     #[test]
+     fn legacy_decorator_json_does_not_fabricate_default_info() {
+         let section: DecoratorsSectionJson = serde_json::from_value(json!({"states": []})).unwrap();
+-        assert!(section.into_storage_snapshot().is_err());
++        let snapshot = section.into_storage_snapshot().unwrap();
++        assert!(snapshot.states.is_empty());
+     }
+ 
+     #[test]

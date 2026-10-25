@@ -1,0 +1,78 @@
+{
+  "module": "tg-package-integrity",
+  "baseline": "B",
+  "status": "implemented_bounded_behavior_verified",
+  "round": "batch-02",
+  "source": "crates/tg-package-integrity/src/lib.rs",
+  "implementation": "reconstruction/shared-foundation/crates/tg-package-integrity/src/lib.rs",
+  "original_lock_dependencies": {
+    "blake3": "1.5.3",
+    "fnv": "1.0.7",
+    "relative-path": "1.9.0",
+    "easy-parallel": "3.2.0",
+    "serde": "1.0.200",
+    "serde_json": "1.0.85"
+  },
+  "round_verification": [
+    {
+      "original": "verify_package_manifest",
+      "address": "0x14067c3d0",
+      "method": "ghidra_decompile",
+      "session": "evidence/toolchain/session-ghidra-shared-integrity-b02.json",
+      "result": "matches_candidate"
+    },
+    {
+      "original": "find_extra_files<&str>",
+      "address": "0x140f79650",
+      "method": "ghidra_decompile",
+      "session": "evidence/toolchain/session-ghidra-shared-integrity-b02.json",
+      "result": "matches_candidate"
+    },
+    {
+      "original": "find_extra_files<PathBuf>",
+      "address": "0x140f78630",
+      "method": "ghidra_decompile",
+      "session": "evidence/toolchain/session-ghidra-shared-integrity-b02.json",
+      "result": "matches_candidate"
+    },
+    {
+      "original": "core::array::impl$11::hash<[u8;32], FnvHasher>",
+      "address": "0x140f737f0",
+      "method": "ghidra_decompile + batch-01 RNE execution",
+      "session": "evidence/toolchain/session-ghidra-shared-integrity-b02.json",
+      "result": "matches_candidate"
+    },
+    {
+      "original": "find_extra_files symlink/permission probes",
+      "method": "candidate_tests_vs_decompile",
+      "result": "symlink skip / read_dir failure silent confirmed",
+      "new_test": "symlink_and_denied_directory_probes"
+    }
+  ],
+  "consumer_wiring": [
+    {
+      "consumer": "tiny_glade::integrity_report_main::verify_package_integrity_and_show_report",
+      "address": "0x1402552f5",
+      "usage": "verify_package_manifest(行147) → 成功'Package_manifest_check_passed'；失败构造'Could not read : '/'File_integrity_check_failed'(行341) → tg_integrity_report::run_integrity_report_gui(行704)"
+    },
+    {
+      "consumer": "tiny_glade::panic_reporter::panic_report::on_game_crashed",
+      "address": "0x1403b040f",
+      "usage": "崩溃处理 verify_package_manifest(行1228) → sentry frame 收集(行1278) → crash_reporter_gui::run_crash_reporter_gui<closure_env_6>(行1365-1366)"
+    }
+  ],
+  "validation": {
+    "cargo_test": "8 passed (batch-01 6 + OS 边界修复 + serde/schema + symlink/权限探针)",
+    "clippy": "pending_unified",
+    "fix": "full_entry_preserves_cross_batch_errors_and_extra_policy OS-dependent manifest self-path classification",
+    "new_test": "unknown_fields_are_ignored_and_version_must_be_u32"
+  },
+  "unchanged": [
+    "library_api"
+  ],
+  "known_remaining": [
+    "原 verify 整入口 shipped-process runtime 全链验收（当前为反编译静态对照+容器 fixture）",
+    "tg-integrity-report / crash-reporter-gui 的真实 GUI 像素验收（属 GUI 范围）",
+    "32 位/大端平台 Hash 长度前缀归一化（原行为跨平台不一致，未改）"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "target_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "retrieval": "Existing retained RE-MCP class-C and original-byte objdump reused; no database query, analysis mutation or new module scheduling in this closeout",
+  "module": [
+    {"role":"whole queue submission class-C", "path":"evidence/render-recovery/parallel-batch-02/gpu-lifecycle/0x140c04e20.c"},
+    {"role":"whole original queue instruction decode", "path":"evidence/render-recovery/parallel-batch-04/record-submit/queue.objdump.txt"},
+    {"role":"executor take/end/delegate caller class-C", "path":"evidence/render-recovery/parallel-batch-02/executor-temporal/0x140bebdf0.c"},
+    {"role":"command creation class-C", "path":"evidence/render-recovery/parallel-batch-02/gpu-lifecycle/0x140bed050.c"},
+    {"role":"command begin class-C", "path":"evidence/render-recovery/parallel-batch-02/gpu-lifecycle/0x140bed230.c"},
+    {"role":"device constructor, queue families, counter/global timeline initialization class-C", "path":"evidence/render-recovery/parallel-batch-04/device-counters/0x140bf2560.c"},
+    {"role":"ensure_active_cb actual caller class-C", "path":"evidence/render-recovery/parallel-batch-02/executor-temporal/0x140bebc90.c"},
+    {"role":"queue completion class-C", "path":"evidence/render-recovery/parallel-batch-02/executor-temporal/0x140bf0b90.c"},
+    {"role":"submission range registration class-C", "path":"evidence/render-recovery/parallel-batch-03/sequence-domain/0x1418c3b80.c"}
+  ],
+  "callers": [
+    {"role":"bounded direct create/begin/submit callsites and pre-call register window", "path":"evidence/render-recovery/parallel-batch-05/queue-callers/callsite-inventory.json", "limit":"9 primary direct sites do not establish absence of auxiliary calls elsewhere"},
+    {"role":"existing ensure_active_cb original-entry observations", "path":"evidence/render-recovery/parallel-batch-05/queue-callers/native-oracle.json", "limit":"create/begin boundaries injected there"},
+    {"role":"full module field/name and PDB span inventory", "path":"evidence/render-recovery/workgraph/functions.json"},
+    {"role":"public symbol classifications", "path":"evidence/render-architecture/public-symbols.json"},
+    {"role":"puffin/parking_lot symbol evidence", "path":"evidence/roof-tiles/call-symbols.json"}
+  ],
+  "central_validation": {"path":"evidence/render-recovery/parallel-batch-06/queue-submit/native-validation.json", "scope":"full original queue CPU entry on existing semantic inputs; backend and explicit boundary capture; no prebuilt submission-array or stack-frame injection"},
+  "consumer_mapping": {"path":"reconstruction/render/execution.rs", "entry":"ExecutionChain::submit_recorded", "acceptance_owner":"root; shared graph chain is separately tested"}
+}

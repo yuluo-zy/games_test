@@ -1,0 +1,129 @@
+{
+  "mode": "original source evidence plus current fully-bound ABI adapter, not a native ABI field claim",
+  "spv": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-781951749030cc43d4/render-world-post-20261018/original-spv/_generate_mips.cs.hlsl_cs_main_0.spvasm",
+  "sha256": "28529c5aa6274760e44222dcce2ce9d6c5a8b3ce9f62dec031b1734fa45a3f49",
+  "actual_fixture_push_mips": 8,
+  "actual_real_array_prefix": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "unused_tail_binding_elements": [
+    8,
+    9,
+    10,
+    11
+  ],
+  "reason": "Each tail store is dominated by the uniform mips>element branch. At mips8 the first mips<=8 exit bypasses elements8..11; subsequent gates are9/10/11. Physical tail aliases the already declared last actual mip8, never a new view range.",
+  "contexts": [
+    {
+      "line": 8334,
+      "context": [
+        "        %777 = OpLabel",
+        "               OpLine %8 794 14",
+        "        %778 = OpULessThanEqual %bool %90 %uint_8",
+        "               OpLine %8 794 26",
+        "               OpSelectionMerge %779 None",
+        "               OpBranchConditional %778 %780 %779",
+        "        %780 = OpLabel",
+        "               OpLine %8 794 26",
+        "               OpBranch %776"
+      ]
+    },
+    {
+      "line": 8434,
+      "context": [
+        "        %804 = OpLabel",
+        "               OpLine %8 798 14",
+        "        %824 = OpULessThanEqual %bool %90 %uint_9",
+        "               OpLine %8 798 30",
+        "               OpSelectionMerge %825 None",
+        "               OpBranchConditional %824 %826 %825",
+        "        %826 = OpLabel",
+        "               OpLine %8 798 30",
+        "               OpBranch %776"
+      ]
+    },
+    {
+      "line": 8531,
+      "context": [
+        "        %828 = OpLabel",
+        "               OpLine %8 802 14",
+        "        %867 = OpULessThanEqual %bool %90 %uint_10",
+        "               OpLine %8 802 30",
+        "               OpSelectionMerge %868 None",
+        "               OpBranchConditional %867 %869 %868",
+        "        %869 = OpLabel",
+        "               OpLine %8 802 30",
+        "               OpBranch %776"
+      ]
+    },
+    {
+      "line": 8626,
+      "context": [
+        "        %871 = OpLabel",
+        "               OpLine %8 806 14",
+        "        %909 = OpULessThanEqual %bool %90 %uint_11",
+        "               OpLine %8 806 30",
+        "               OpSelectionMerge %910 None",
+        "               OpBranchConditional %909 %911 %910",
+        "        %911 = OpLabel",
+        "               OpLine %8 806 30",
+        "               OpBranch %776"
+      ]
+    },
+    {
+      "line": 8403,
+      "context": [
+        "        %811 = OpBitcast %v3uint %810",
+        "               OpLine %6 60 5",
+        "        %812 = OpAccessChain %_ptr_UniformConstant_type_2d_image_array %imgDst %uint_8",
+        "        %813 = OpLoad %type_2d_image_array %812",
+        "               OpImageWrite %813 %811 %801 None",
+        "               OpLine %8 649 40",
+        "        %814 = OpUMod %uint %808 %uint_2"
+      ]
+    },
+    {
+      "line": 8499,
+      "context": [
+        "        %855 = OpBitcast %v3uint %854",
+        "               OpLine %6 60 5",
+        "        %856 = OpAccessChain %_ptr_UniformConstant_type_2d_image_array %imgDst %uint_9",
+        "        %857 = OpLoad %type_2d_image_array %856",
+        "               OpImageWrite %857 %855 %847 None",
+        "               OpLine %8 692 40",
+        "        %858 = OpIAdd %uint %123 %852"
+      ]
+    },
+    {
+      "line": 8594,
+      "context": [
+        "        %897 = OpBitcast %v3uint %896",
+        "               OpLine %6 60 5",
+        "        %898 = OpAccessChain %_ptr_UniformConstant_type_2d_image_array %imgDst %uint_10",
+        "        %899 = OpLoad %type_2d_image_array %898",
+        "               OpImageWrite %899 %897 %889 None",
+        "               OpLine %8 727 40",
+        "        %900 = OpIAdd %uint %892 %118"
+      ]
+    },
+    {
+      "line": 8679,
+      "context": [
+        "        %934 = OpBitcast %v3uint %933",
+        "               OpLine %6 60 5",
+        "        %935 = OpAccessChain %_ptr_UniformConstant_type_2d_image_array %imgDst %uint_11",
+        "        %936 = OpLoad %type_2d_image_array %935",
+        "               OpImageWrite %936 %934 %930 None",
+        "               OpLine %8 757 9",
+        "               OpBranch %931"
+      ]
+    }
+  ]
+}

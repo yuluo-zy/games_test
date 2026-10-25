@@ -1,0 +1,42 @@
+# Generated dependency reconstruction: skeleton/_tools/restore_cargo_manifests.py
+# Evidence-derived manifest, not the original author Cargo.toml.
+# Features, dependency kind (normal/build/dev), target cfg and original aliases are not recovered.
+# Locked edges are materialized in [dependencies] as an inspection union.
+# PDB-observed transitive namespaces do not create extra B/C direct dependencies.
+
+[package]
+name = "feedback-reporter"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+# original_lock_edge; exact package version: 1.0.86
+"anyhow" = { version = "=1.0.86" }
+# original_lock_edge; exact package version: 0.16.0
+"bevy_app" = { version = "=0.16.0" }
+# original_lock_edge; exact package version: 0.16.0
+"bevy_ecs" = { version = "=0.16.0" }
+# original_lock_edge; exact package version: 0.4.27
+"log" = { version = "=0.4.27" }
+# original_lock_edge; exact package version: 0.4.3
+"obfstr" = { version = "=0.4.3" }
+# original_lock_edge; exact package version: 1.9.0
+"relative-path" = { version = "=1.9.0" }
+# original_lock_edge; exact package version: 0.11.22
+"reqwest" = { version = "=0.11.22", default-features = false, features = ["blocking", "multipart", "rustls-tls"] }
+# original_lock_edge; exact package version: 0.6.6
+"zip" = { version = "=0.6.6", default-features = false, features = ["deflate"] }
+
+[package.metadata.reconstruction]
+version = "B"
+manifest_status = "locked_dependency_identity_union"
+original_package_version_known = true
+original_features_known = false
+original_dependency_kinds_known = false
+original_target_cfg_known = false
+original_aliases_known = false
+original_edition_known = false
+complete_build_config_recovered = false
+dependency_evidence = "evidence/multi-version/B-dependencies.json"
+dependency_evidence_sha256 = "f7de09c0689c8947103c5573a20eeeef174351f128b4dd913e3fa727979a0afd"

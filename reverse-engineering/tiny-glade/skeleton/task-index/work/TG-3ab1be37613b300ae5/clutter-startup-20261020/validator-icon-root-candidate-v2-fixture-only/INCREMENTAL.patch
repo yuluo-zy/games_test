@@ -1,0 +1,20 @@
+--- a/crates/systems/decorator/src/ui_systems/ui_place_decorator.rs
++++ b/crates/systems/decorator/src/ui_systems/ui_place_decorator.rs
+@@ -201,13 +201,10 @@
+         let handle = *world
+             .get::<country_core::asset_libraries::Handle<country_core::render::mesh::Mesh>>(id)
+             .unwrap();
+-        assert!(
+-            meshes
+-                .get(handle)
+-                .unwrap()
+-                .positions_without_indices()
+-                .is_empty()
+-        );
++        let mesh = meshes.get(handle).unwrap();
++        // 原Empty分支没有任何attribute，required POSITION accessor本来就应panic。
++        assert!(mesh.attributes.is_empty());
++        assert!(mesh.indices.is_empty());
+         let registry = std::sync::Arc::clone(meshes.transient_meshes());
+         world.despawn(id);
+         assert_eq!(*registry.lock().unwrap(), vec![handle]);

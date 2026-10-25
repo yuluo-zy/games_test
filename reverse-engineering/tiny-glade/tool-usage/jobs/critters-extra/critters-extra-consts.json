@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json, struct\nprog = currentProgram\nout = {}\naddrs = [\n  \"142a7c880\",\"1429cd078\",\"142934694\",\"142934604\",\"142a171f4\",\n  \"1429a9088\",\"1429a9094\",\"1429a9098\",\"1429a90a4\",\"1429a90a8\",\n  \"142aebb84\",\"142f67d14\",\"142f67d24\",\"142f67d44\",\"142f7d784\",\n  \"142f7d788\",\"142f7d78c\",\"142f7d7a4\",\"142f7d7a8\",\"142f7d7ac\",\n  \"1429345b8\",\"142badbc4\",\"14304be94\",\"1429cd0d8\",\"1429cd0dc\",\n  \"142f7d7b4\",\"142f7d7b8\",\"142f7d7bc\",\"142f7d770\",\n]\nfor a in addrs:\n    try:\n        addr = prog.getAddressFactory().getAddress(a)\n        buf = bytearray(4)\n        prog.getMemory().getBytes(addr, buf)\n        f = struct.unpack(\"<f\", buf)[0]\n        out[a] = [f, \"\".join(\"%02x\" % b for b in buf)]\n    except Exception as e:\n        out[a] = \"ERR:\" + str(e)[:100]\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 60
+    },
+    "timeout_seconds": 180
+  }
+]

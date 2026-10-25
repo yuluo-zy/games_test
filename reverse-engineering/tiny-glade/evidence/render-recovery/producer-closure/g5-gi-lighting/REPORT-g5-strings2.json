@@ -1,0 +1,2980 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-10-12T10:50:00.593Z",
+  "completed_at": "2026-10-12T10:50:29.040Z",
+  "server": "re_mcp_ghidra",
+  "lane_count": 1,
+  "lanes": [
+    {
+      "database": "ccgi4_l1",
+      "report": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\producer-closure\\g5-gi-lighting\\ccgi4_l1.report.json",
+      "ok": true,
+      "cleanup_ok": true,
+      "error": null,
+      "steps": 4
+    }
+  ],
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "identity": {
+    "target": {
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+      "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+    },
+    "provider": {
+      "id": "ghidra",
+      "version": "12.1.4"
+    },
+    "launch_sha256": "c82cc6dd6f528a9f07990202b685f0802e0833733774283e9a497bc4cef41aad",
+    "inputs": []
+  },
+  "cache_policy": {
+    "enabled": false,
+    "reason": "Database analysis cache disabled: both provider_manifest and database_snapshot files are required.",
+    "provider_version_provenance": "job-declared; actual server self-report is recorded separately upon connection"
+  },
+  "evidence_limits": [
+    "Static tool outputs do not prove runtime execution.",
+    "Xref completeness is unknown with auto-analysis disabled. Empty or DATA-only references cannot establish whole-program absence.",
+    "Successful cache reuse preserves the original evidence coverage; it does not expand it."
+  ],
+  "results": [
+    {
+      "index": 0,
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "keep_open": true,
+        "database_id": "ccgi4_l1"
+      },
+      "cache_key": "652c9eefc1237b6495258fc72a47038c80894844ac12e78b4fcae6658de33e94",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:50:00.744Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"ccgi4_l1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "ccgi4_l1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:50:11.007Z",
+      "ok": true,
+      "result_sha256": "fc8bf58fad57ebcc170d0141552cd8eba8e1e4b466e9bef8cc128aa8f6ecfd3c",
+      "lane": "ccgi4_l1",
+      "database": "ccgi4_l1"
+    },
+    {
+      "index": 1,
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "ccgi4_l1"
+      },
+      "cache_key": "2bee3aec5a548e86b87116afb5b3d2fe9395ccc52e1c3d957004f265c794b42b",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:50:11.009Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"ccgi4_l1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "ccgi4_l1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:50:23.639Z",
+      "ok": true,
+      "result_sha256": "b5fa2e94f077a072d8d991cf219e395bbbea43f6b7921c0176c3379d2a1818cf",
+      "lane": "ccgi4_l1",
+      "database": "ccgi4_l1"
+    },
+    {
+      "index": 2,
+      "position": 0,
+      "tool": "get_strings",
+      "args": {
+        "limit": 200000,
+        "offset": 0
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:50:23.641Z",
+      "completed_at": "2026-10-12T10:50:27.992Z",
+      "source": "actual_mcp_call",
+      "cache_key": "ad04c2433ba39b506e458e64bbe262f26d38301abf48d88472dd4b0ff5d50507",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "address": "0x14319332A",
+            "value": "AddVectoredExceptionHandler",
+            "length": 27,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193348",
+            "value": "CancelIo",
+            "length": 8,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193354",
+            "value": "CloseHandle",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193362",
+            "value": "CompareStringOrdinal",
+            "length": 20,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319337A",
+            "value": "CopyFileExW",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193388",
+            "value": "CreateDirectoryW",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319339C",
+            "value": "CreateFileMappingW",
+            "length": 18,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431933B2",
+            "value": "CreateFileW",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431933C0",
+            "value": "CreateIoCompletionPort",
+            "length": 22,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431933DA",
+            "value": "CreateMutexA",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431933EA",
+            "value": "CreateNamedPipeW",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431933FE",
+            "value": "CreateProcessW",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193410",
+            "value": "CreateSemaphoreW",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193424",
+            "value": "CreateThread",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193434",
+            "value": "CreateWaitableTimerExW",
+            "length": 22,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319344E",
+            "value": "DeleteCriticalSection",
+            "length": 21,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193466",
+            "value": "DeleteFileW",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193474",
+            "value": "DuplicateHandle",
+            "length": 15,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193486",
+            "value": "EnterCriticalSection",
+            "length": 20,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319349E",
+            "value": "ExitProcess",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431934AC",
+            "value": "FindClose",
+            "length": 9,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431934B8",
+            "value": "FindFirstFileExW",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431934CC",
+            "value": "FindNextFileW",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431934DC",
+            "value": "FlushFileBuffers",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431934F0",
+            "value": "FormatMessageW",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193502",
+            "value": "FreeEnvironmentStringsW",
+            "length": 23,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319351C",
+            "value": "FreeLibrary",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319352A",
+            "value": "GetCommandLineW",
+            "length": 15,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319353C",
+            "value": "GetComputerNameExW",
+            "length": 18,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193552",
+            "value": "GetConsoleMode",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193564",
+            "value": "GetConsoleOutputCP",
+            "length": 18,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319357A",
+            "value": "GetConsoleScreenBufferInfo",
+            "length": 26,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193598",
+            "value": "GetCurrentDirectoryW",
+            "length": 20,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431935B0",
+            "value": "GetCurrentProcess",
+            "length": 17,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431935C4",
+            "value": "GetCurrentProcessId",
+            "length": 19,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431935DA",
+            "value": "GetCurrentThread",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431935EE",
+            "value": "GetCurrentThreadId",
+            "length": 18,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193604",
+            "value": "GetEnvironmentStringsW",
+            "length": 22,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319361E",
+            "value": "GetEnvironmentVariableW",
+            "length": 23,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193638",
+            "value": "GetExitCodeProcess",
+            "length": 18,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319364E",
+            "value": "GetFileAttributesW",
+            "length": 18,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193664",
+            "value": "GetFileInformationByHandle",
+            "length": 26,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193682",
+            "value": "GetFileInformationByHandleEx",
+            "length": 28,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431936A2",
+            "value": "GetFileType",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431936B0",
+            "value": "GetFinalPathNameByHandleW",
+            "length": 25,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431936CC",
+            "value": "GetFullPathNameW",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431936E0",
+            "value": "GetLastError",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431936F0",
+            "value": "GetModuleFileNameW",
+            "length": 18,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193706",
+            "value": "GetModuleHandleA",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319371A",
+            "value": "GetModuleHandleW",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319372E",
+            "value": "GetProcAddress",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193740",
+            "value": "GetProcessHeap",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193752",
+            "value": "GetProcessId",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193762",
+            "value": "GetQueuedCompletionStatusEx",
+            "length": 27,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193780",
+            "value": "GetStdHandle",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193790",
+            "value": "GetSystemDirectoryW",
+            "length": 19,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431937A6",
+            "value": "GetSystemInfo",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431937B6",
+            "value": "GetSystemTimeAsFileTime",
+            "length": 23,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431937D0",
+            "value": "GetSystemTimePreciseAsFileTime",
+            "length": 30,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431937F2",
+            "value": "GetTempPathW",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193802",
+            "value": "GetUserPreferredUILanguages",
+            "length": 27,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193820",
+            "value": "GetWindowsDirectoryW",
+            "length": 20,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193838",
+            "value": "GlobalAlloc",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193846",
+            "value": "GlobalFree",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193854",
+            "value": "GlobalLock",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193862",
+            "value": "GlobalSize",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193870",
+            "value": "GlobalUnlock",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193880",
+            "value": "HeapAlloc",
+            "length": 9,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319388C",
+            "value": "HeapFree",
+            "length": 8,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193898",
+            "value": "HeapReAlloc",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431938A6",
+            "value": "InitializeCriticalSection",
+            "length": 25,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431938C2",
+            "value": "InitializeSListHead",
+            "length": 19,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431938D8",
+            "value": "IsDebuggerPresent",
+            "length": 17,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431938EC",
+            "value": "IsProcessorFeaturePresent",
+            "length": 25,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193908",
+            "value": "LeaveCriticalSection",
+            "length": 20,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193920",
+            "value": "LoadLibraryA",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193930",
+            "value": "LoadLibraryExW",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193942",
+            "value": "LockFileEx",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193950",
+            "value": "MapViewOfFile",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193960",
+            "value": "MoveFileExW",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319396E",
+            "value": "MultiByteToWideChar",
+            "length": 19,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193984",
+            "value": "OpenProcess",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193992",
+            "value": "PostQueuedCompletionStatus",
+            "length": 26,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431939B0",
+            "value": "QueryPerformanceCounter",
+            "length": 23,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431939CA",
+            "value": "QueryPerformanceFrequency",
+            "length": 25,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431939E6",
+            "value": "ReadDirectoryChangesW",
+            "length": 21,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431939FE",
+            "value": "ReadFileEx",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193A0C",
+            "value": "RegisterWaitForSingleObject",
+            "length": 27,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193A2A",
+            "value": "ReleaseMutex",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193A3A",
+            "value": "ReleaseSemaphore",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193A4E",
+            "value": "RemoveVectoredExceptionHandler",
+            "length": 30,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193A70",
+            "value": "RtlCaptureContext",
+            "length": 17,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193A84",
+            "value": "RtlLookupFunctionEntry",
+            "length": 22,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193A9E",
+            "value": "RtlVirtualUnwind",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193AB2",
+            "value": "SetConsoleMode",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193AC4",
+            "value": "SetConsoleTextAttribute",
+            "length": 23,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193ADE",
+            "value": "SetEnvironmentVariableW",
+            "length": 23,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193AF8",
+            "value": "SetFileAttributesW",
+            "length": 18,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193B0E",
+            "value": "SetFileCompletionNotificationModes",
+            "length": 34,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193B34",
+            "value": "SetFileInformationByHandle",
+            "length": 26,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193B52",
+            "value": "SetFilePointerEx",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193B66",
+            "value": "SetHandleInformation",
+            "length": 20,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193B7E",
+            "value": "SetLastError",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193B8E",
+            "value": "SetThreadErrorMode",
+            "length": 18,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193BA4",
+            "value": "SetThreadPriority",
+            "length": 17,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193BB8",
+            "value": "SetThreadStackGuarantee",
+            "length": 23,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193BD2",
+            "value": "SetUnhandledExceptionFilter",
+            "length": 27,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193BF0",
+            "value": "SetWaitableTimer",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193C04",
+            "value": "Sleep",
+            "length": 5,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193C0C",
+            "value": "SleepEx",
+            "length": 7,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193C16",
+            "value": "SwitchToThread",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193C28",
+            "value": "SystemTimeToFileTime",
+            "length": 20,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193C40",
+            "value": "SystemTimeToTzSpecificLocalTime",
+            "length": 31,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193C62",
+            "value": "TerminateProcess",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193C76",
+            "value": "UnhandledExceptionFilter",
+            "length": 24,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193C92",
+            "value": "UnmapViewOfFile",
+            "length": 15,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193CA4",
+            "value": "UnregisterWait",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193CB6",
+            "value": "VirtualProtect",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193CC8",
+            "value": "WaitForSingleObject",
+            "length": 19,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193CDE",
+            "value": "WaitForSingleObjectEx",
+            "length": 21,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193CF6",
+            "value": "WideCharToMultiByte",
+            "length": 19,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193D0C",
+            "value": "WriteConsoleW",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193D1C",
+            "value": "WriteFileEx",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193D2A",
+            "value": "lstrlenW",
+            "length": 8,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193D36",
+            "value": "WaitOnAddress",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193D46",
+            "value": "WakeByAddressAll",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193D5A",
+            "value": "WakeByAddressSingle",
+            "length": 19,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193D70",
+            "value": "AdjustWindowRectEx",
+            "length": 18,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193D86",
+            "value": "ChangeDisplaySettingsExW",
+            "length": 24,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193DA2",
+            "value": "ClientToScreen",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193DB4",
+            "value": "ClipCursor",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193DC2",
+            "value": "CloseClipboard",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193DD4",
+            "value": "CloseTouchInputHandle",
+            "length": 21,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193DEC",
+            "value": "CreateIcon",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193DFA",
+            "value": "CreateWindowExW",
+            "length": 15,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193E0C",
+            "value": "DefWindowProcW",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193E1E",
+            "value": "DestroyIcon",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193E2C",
+            "value": "DestroyWindow",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193E3C",
+            "value": "DispatchMessageW",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193E50",
+            "value": "EmptyClipboard",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193E62",
+            "value": "EnableMenuItem",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193E74",
+            "value": "EnumDisplayMonitors",
+            "length": 19,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193E8A",
+            "value": "EnumDisplaySettingsExW",
+            "length": 22,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193EA4",
+            "value": "FlashWindowEx",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193EB4",
+            "value": "GetActiveWindow",
+            "length": 15,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193EC6",
+            "value": "GetAsyncKeyState",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193EDA",
+            "value": "GetClientRect",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193EEA",
+            "value": "GetClipCursor",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193EFA",
+            "value": "GetClipboardData",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193F0E",
+            "value": "GetCursorPos",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193F1E",
+            "value": "GetDC",
+            "length": 5,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193F26",
+            "value": "GetForegroundWindow",
+            "length": 19,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193F3C",
+            "value": "GetKeyState",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193F4A",
+            "value": "GetKeyboardLayout",
+            "length": 17,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193F5E",
+            "value": "GetKeyboardState",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193F72",
+            "value": "GetMenu",
+            "length": 7,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193F7C",
+            "value": "GetMessageW",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193F8A",
+            "value": "GetMonitorInfoW",
+            "length": 15,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193F9C",
+            "value": "GetRawInputData",
+            "length": 15,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193FAE",
+            "value": "GetSystemMenu",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193FBE",
+            "value": "GetSystemMetrics",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193FD2",
+            "value": "GetTouchInputInfo",
+            "length": 17,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193FE6",
+            "value": "GetWindowLongPtrW",
+            "length": 17,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143193FFA",
+            "value": "GetWindowLongW",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319400C",
+            "value": "GetWindowPlacement",
+            "length": 18,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194022",
+            "value": "GetWindowRect",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194032",
+            "value": "InvalidateRgn",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194042",
+            "value": "IsClipboardFormatAvailable",
+            "length": 26,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194060",
+            "value": "IsIconic",
+            "length": 8,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319406C",
+            "value": "IsProcessDPIAware",
+            "length": 17,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194080",
+            "value": "KillTimer",
+            "length": 9,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319408C",
+            "value": "LoadCursorW",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319409A",
+            "value": "MapVirtualKeyExW",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431940AE",
+            "value": "MapVirtualKeyW",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431940C0",
+            "value": "MessageBoxW",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431940CE",
+            "value": "MonitorFromPoint",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431940E2",
+            "value": "MonitorFromRect",
+            "length": 15,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431940F4",
+            "value": "MonitorFromWindow",
+            "length": 17,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194108",
+            "value": "OpenClipboard",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194118",
+            "value": "PeekMessageW",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194128",
+            "value": "PostMessageW",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194138",
+            "value": "RedrawWindow",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194148",
+            "value": "RegisterClassExW",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319415C",
+            "value": "RegisterClipboardFormatW",
+            "length": 24,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194178",
+            "value": "RegisterRawInputDevices",
+            "length": 23,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194192",
+            "value": "RegisterTouchWindow",
+            "length": 19,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431941A8",
+            "value": "RegisterWindowMessageA",
+            "length": 22,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431941C2",
+            "value": "ReleaseCapture",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431941D4",
+            "value": "ScreenToClient",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431941E6",
+            "value": "SendInput",
+            "length": 9,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431941F2",
+            "value": "SendMessageW",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194202",
+            "value": "SetCapture",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194210",
+            "value": "SetClipboardData",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194224",
+            "value": "SetCursor",
+            "length": 9,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194230",
+            "value": "SetCursorPos",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194240",
+            "value": "SetForegroundWindow",
+            "length": 19,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194256",
+            "value": "SetTimer",
+            "length": 8,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194262",
+            "value": "SetWindowDisplayAffinity",
+            "length": 24,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319427E",
+            "value": "SetWindowLongPtrW",
+            "length": 17,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194292",
+            "value": "SetWindowLongW",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431942A4",
+            "value": "SetWindowPlacement",
+            "length": 18,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431942BA",
+            "value": "SetWindowPos",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431942CA",
+            "value": "ShowCursor",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431942D8",
+            "value": "ShowWindow",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431942E6",
+            "value": "SystemParametersInfoA",
+            "length": 21,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431942FE",
+            "value": "ToUnicodeEx",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319430C",
+            "value": "TrackMouseEvent",
+            "length": 15,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319431E",
+            "value": "TranslateMessage",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194332",
+            "value": "ValidateRect",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194342",
+            "value": "BitBlt",
+            "length": 6,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319434C",
+            "value": "CreateCompatibleDC",
+            "length": 18,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194362",
+            "value": "CreateDIBSection",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194376",
+            "value": "CreateICA",
+            "length": 9,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194382",
+            "value": "CreateRectRgn",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194392",
+            "value": "DeleteDC",
+            "length": 8,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319439E",
+            "value": "DeleteObject",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431943AE",
+            "value": "GetDeviceCaps",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431943BE",
+            "value": "GetICMProfileA",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431943D0",
+            "value": "SelectObject",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431943E0",
+            "value": "WSADuplicateSocketW",
+            "length": 19,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431943F6",
+            "value": "WSAIoctl",
+            "length": 8,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194402",
+            "value": "WSARecv",
+            "length": 7,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319440C",
+            "value": "WSASend",
+            "length": 7,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194416",
+            "value": "WSASocketW",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194424",
+            "value": "freeaddrinfo",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194434",
+            "value": "getaddrinfo",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194442",
+            "value": "DwmEnableBlurBehindWindow",
+            "length": 25,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319445E",
+            "value": "CoCreateInstance",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194472",
+            "value": "CoInitializeEx",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194484",
+            "value": "CoTaskMemFree",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194494",
+            "value": "CoUninitialize",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431944A6",
+            "value": "OleInitialize",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431944B6",
+            "value": "RegisterDragDrop",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431944CA",
+            "value": "RevokeDragDrop",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431944DC",
+            "value": "timeBeginPeriod",
+            "length": 15,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431944EE",
+            "value": "timeEndPeriod",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431944FE",
+            "value": "timeGetDevCaps",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194510",
+            "value": "SteamAPI_GetHSteamPipe",
+            "length": 22,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319452A",
+            "value": "SteamAPI_ISteamApps_GetCurrentGameLanguage",
+            "length": 42,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194558",
+            "value": "SteamAPI_ISteamFriends_ActivateGameOverlayToWebPage",
+            "length": 51,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319458E",
+            "value": "SteamAPI_ISteamInput_ActivateActionSet",
+            "length": 38,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431945B8",
+            "value": "SteamAPI_ISteamInput_GetActionSetHandle",
+            "length": 39,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431945E2",
+            "value": "SteamAPI_ISteamInput_GetAnalogActionData",
+            "length": 40,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319460E",
+            "value": "SteamAPI_ISteamInput_GetAnalogActionHandle",
+            "length": 42,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319463C",
+            "value": "SteamAPI_ISteamInput_GetAnalogActionOrigins",
+            "length": 43,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319466A",
+            "value": "SteamAPI_ISteamInput_GetConnectedControllers",
+            "length": 44,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319469A",
+            "value": "SteamAPI_ISteamInput_GetDigitalActionData",
+            "length": 41,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431946C6",
+            "value": "SteamAPI_ISteamInput_GetDigitalActionHandle",
+            "length": 43,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431946F4",
+            "value": "SteamAPI_ISteamInput_GetDigitalActionOrigins",
+            "length": 44,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194724",
+            "value": "SteamAPI_ISteamInput_GetGlyphForActionOrigin_Legacy",
+            "length": 51,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319475A",
+            "value": "SteamAPI_ISteamInput_Init",
+            "length": 25,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194776",
+            "value": "SteamAPI_ISteamInput_RunFrame",
+            "length": 29,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194796",
+            "value": "SteamAPI_ISteamInput_ShowBindingPanel",
+            "length": 37,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431947BE",
+            "value": "SteamAPI_ISteamNetworkingSockets_CloseConnection",
+            "length": 48,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431947F2",
+            "value": "SteamAPI_ISteamNetworkingSockets_CloseListenSocket",
+            "length": 50,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194828",
+            "value": "SteamAPI_ISteamScreenshots_AddScreenshotToLibrary",
+            "length": 49,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319485C",
+            "value": "SteamAPI_ISteamScreenshots_HookScreenshots",
+            "length": 42,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319488A",
+            "value": "SteamAPI_ISteamUser_GetSteamID",
+            "length": 30,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431948AC",
+            "value": "SteamAPI_ISteamUtils_IsSteamRunningOnSteamDeck",
+            "length": 46,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431948DE",
+            "value": "SteamAPI_ISteamUtils_ShowFloatingGamepadTextInput",
+            "length": 49,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194912",
+            "value": "SteamAPI_InitFlat",
+            "length": 17,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194926",
+            "value": "SteamAPI_ManualDispatch_FreeLastCallback",
+            "length": 40,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194952",
+            "value": "SteamAPI_ManualDispatch_GetAPICallResult",
+            "length": 40,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319497E",
+            "value": "SteamAPI_ManualDispatch_GetNextCallback",
+            "length": 39,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431949A8",
+            "value": "SteamAPI_ManualDispatch_Init",
+            "length": 28,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431949C8",
+            "value": "SteamAPI_ManualDispatch_RunFrame",
+            "length": 32,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431949EC",
+            "value": "SteamAPI_Shutdown",
+            "length": 17,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194A00",
+            "value": "SteamAPI_SteamApps_v008",
+            "length": 23,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194A1A",
+            "value": "SteamAPI_SteamFriends_v017",
+            "length": 26,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194A38",
+            "value": "SteamAPI_SteamInput_v006",
+            "length": 24,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194A54",
+            "value": "SteamAPI_SteamScreenshots_v003",
+            "length": 30,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194A76",
+            "value": "SteamAPI_SteamUser_v023",
+            "length": 23,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194A90",
+            "value": "SteamAPI_SteamUtils_v010",
+            "length": 24,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194AAC",
+            "value": "GFSDK_Aftermath_DisableGpuCrashDumps",
+            "length": 36,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194AD4",
+            "value": "GFSDK_Aftermath_EnableGpuCrashDumps",
+            "length": 35,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194AFA",
+            "value": "GFSDK_Aftermath_GetCrashDumpStatus",
+            "length": 34,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194B20",
+            "value": "GFSDK_Aftermath_GetShaderDebugInfoIdentifier",
+            "length": 44,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194B50",
+            "value": "DragFinish",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194B5E",
+            "value": "DragQueryFileW",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194B70",
+            "value": "SHCreateItemFromParsingName",
+            "length": 27,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194B8E",
+            "value": "SHGetKnownFolderPath",
+            "length": 20,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194BA6",
+            "value": "ImmAssociateContextEx",
+            "length": 21,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194BBE",
+            "value": "ImmGetCompositionStringW",
+            "length": 24,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194BDA",
+            "value": "ImmGetContext",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194BEA",
+            "value": "ImmReleaseContext",
+            "length": 17,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194BFE",
+            "value": "ImmSetCandidateWindow",
+            "length": 21,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194C16",
+            "value": "ImmSetCompositionWindow",
+            "length": 23,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194C30",
+            "value": "SetWindowTheme",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194C42",
+            "value": "ProcessPrng",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194C50",
+            "value": "NtCancelIoFileEx",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194C64",
+            "value": "NtCreateFile",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194C74",
+            "value": "NtDeviceIoControlFile",
+            "length": 21,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194C8C",
+            "value": "NtOpenFile",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194C9A",
+            "value": "NtReadFile",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194CA8",
+            "value": "NtWriteFile",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194CB6",
+            "value": "RtlNtStatusToDosError",
+            "length": 21,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194CCE",
+            "value": "GetErrorInfo",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194CDE",
+            "value": "SysFreeString",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194CEE",
+            "value": "SysStringLen",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194CFE",
+            "value": "ImpersonateAnonymousToken",
+            "length": 25,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194D1A",
+            "value": "RegCloseKey",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194D28",
+            "value": "RegOpenKeyExW",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194D38",
+            "value": "RegQueryValueExW",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194D4C",
+            "value": "RevertToSelf",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194D5C",
+            "value": "SystemFunction036",
+            "length": 17,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194D70",
+            "value": "MiniDumpWriteDump",
+            "length": 17,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194D84",
+            "value": "FMOD_Studio_Bank_GetEventCount",
+            "length": 30,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194DA6",
+            "value": "FMOD_Studio_Bank_GetEventList",
+            "length": 29,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194DC6",
+            "value": "FMOD_Studio_Bank_LoadSampleData",
+            "length": 31,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194DE8",
+            "value": "FMOD_Studio_EventDescription_CreateInstance",
+            "length": 43,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194E16",
+            "value": "FMOD_Studio_EventDescription_GetInstanceCount",
+            "length": 45,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194E46",
+            "value": "FMOD_Studio_EventDescription_GetInstanceList",
+            "length": 44,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194E76",
+            "value": "FMOD_Studio_EventDescription_GetPath",
+            "length": 36,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194E9E",
+            "value": "FMOD_Studio_EventInstance_Get3DAttributes",
+            "length": 41,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194ECA",
+            "value": "FMOD_Studio_EventInstance_GetDescription",
+            "length": 40,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194EF6",
+            "value": "FMOD_Studio_EventInstance_GetParameterByName",
+            "length": 44,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194F26",
+            "value": "FMOD_Studio_EventInstance_GetPaused",
+            "length": 35,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194F4C",
+            "value": "FMOD_Studio_EventInstance_GetPlaybackState",
+            "length": 42,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194F7A",
+            "value": "FMOD_Studio_EventInstance_GetTimelinePosition",
+            "length": 45,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194FAA",
+            "value": "FMOD_Studio_EventInstance_GetVolume",
+            "length": 35,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194FD0",
+            "value": "FMOD_Studio_EventInstance_Release",
+            "length": 33,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143194FF4",
+            "value": "FMOD_Studio_EventInstance_Set3DAttributes",
+            "length": 41,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195020",
+            "value": "FMOD_Studio_EventInstance_SetCallback",
+            "length": 37,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195048",
+            "value": "FMOD_Studio_EventInstance_SetParameterByName",
+            "length": 44,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195078",
+            "value": "FMOD_Studio_EventInstance_SetPaused",
+            "length": 35,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319509E",
+            "value": "FMOD_Studio_EventInstance_SetVolume",
+            "length": 35,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431950C4",
+            "value": "FMOD_Studio_EventInstance_Start",
+            "length": 31,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431950E6",
+            "value": "FMOD_Studio_EventInstance_Stop",
+            "length": 30,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195108",
+            "value": "FMOD_Studio_System_Create",
+            "length": 25,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195124",
+            "value": "FMOD_Studio_System_GetBankCount",
+            "length": 31,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195146",
+            "value": "FMOD_Studio_System_GetBankList",
+            "length": 30,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195168",
+            "value": "FMOD_Studio_System_GetCoreSystem",
+            "length": 32,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319518C",
+            "value": "FMOD_Studio_System_GetEvent",
+            "length": 27,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431951AA",
+            "value": "FMOD_Studio_System_GetVCA",
+            "length": 25,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431951C6",
+            "value": "FMOD_Studio_System_Initialize",
+            "length": 29,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431951E6",
+            "value": "FMOD_Studio_System_LoadBankFile",
+            "length": 31,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195208",
+            "value": "FMOD_Studio_System_SetListenerAttributes",
+            "length": 40,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195234",
+            "value": "FMOD_Studio_System_SetParameterByName",
+            "length": 37,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319525C",
+            "value": "FMOD_Studio_System_Update",
+            "length": 25,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195278",
+            "value": "FMOD_Studio_VCA_SetVolume",
+            "length": 25,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195294",
+            "value": "FMOD_System_GetDSPBufferSize",
+            "length": 28,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431952B4",
+            "value": "FMOD_System_GetSoftwareFormat",
+            "length": 29,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431952D4",
+            "value": "FMOD_System_SetSoftwareFormat",
+            "length": 29,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431952F4",
+            "value": "AssocQueryStringW",
+            "length": 17,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195308",
+            "value": "CreateDXGIFactory",
+            "length": 17,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319531C",
+            "value": "BCryptGenRandom",
+            "length": 15,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319532E",
+            "value": "_CxxThrowException",
+            "length": 18,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195344",
+            "value": "__C_specific_handler",
+            "length": 20,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319535C",
+            "value": "__CxxFrameHandler3",
+            "length": 18,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195372",
+            "value": "__current_exception",
+            "length": 19,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195388",
+            "value": "__current_exception_context",
+            "length": 27,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431953A6",
+            "value": "_set_purecall_handler",
+            "length": 21,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431953BE",
+            "value": "memcmp",
+            "length": 6,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431953C8",
+            "value": "memcpy",
+            "length": 6,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431953D2",
+            "value": "memmove",
+            "length": 7,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431953DC",
+            "value": "memset",
+            "length": 6,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431953E6",
+            "value": "__p__commode",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431953F6",
+            "value": "__stdio_common_vsprintf",
+            "length": 23,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195410",
+            "value": "_set_fmode",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319541E",
+            "value": "fclose",
+            "length": 6,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195428",
+            "value": "fopen",
+            "length": 5,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195430",
+            "value": "fread",
+            "length": 5,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195438",
+            "value": "fseek",
+            "length": 5,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195440",
+            "value": "ftell",
+            "length": 5,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195448",
+            "value": "fwrite",
+            "length": 6,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195452",
+            "value": "puts",
+            "length": 4,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319545A",
+            "value": "__setusermatherr",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319546E",
+            "value": "_dclass",
+            "length": 7,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195478",
+            "value": "_fdclass",
+            "length": 8,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195484",
+            "value": "_hypotf",
+            "length": 7,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319548E",
+            "value": "acos",
+            "length": 4,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195496",
+            "value": "acosf",
+            "length": 5,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319549E",
+            "value": "asin",
+            "length": 4,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431954A6",
+            "value": "asinf",
+            "length": 5,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431954AE",
+            "value": "atan2",
+            "length": 5,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431954B6",
+            "value": "atan2f",
+            "length": 6,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431954C0",
+            "value": "atanf",
+            "length": 5,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431954C8",
+            "value": "cbrtf",
+            "length": 5,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431954D0",
+            "value": "ceil",
+            "length": 4,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431954D8",
+            "value": "ceilf",
+            "length": 5,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431954E6",
+            "value": "cosf",
+            "length": 4,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431954F4",
+            "value": "exp2f",
+            "length": 5,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431954FC",
+            "value": "expf",
+            "length": 4,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195504",
+            "value": "floor",
+            "length": 5,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319550C",
+            "value": "floorf",
+            "length": 6,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195516",
+            "value": "fmaf",
+            "length": 4,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319551E",
+            "value": "fmod",
+            "length": 4,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195526",
+            "value": "fmodf",
+            "length": 5,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195534",
+            "value": "log10",
+            "length": 5,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319553C",
+            "value": "log1pf",
+            "length": 6,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195546",
+            "value": "log2f",
+            "length": 5,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195554",
+            "value": "powf",
+            "length": 4,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319555C",
+            "value": "round",
+            "length": 5,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195564",
+            "value": "roundf",
+            "length": 6,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195574",
+            "value": "sinf",
+            "length": 4,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319557C",
+            "value": "sqrt",
+            "length": 4,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319558A",
+            "value": "tanf",
+            "length": 4,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195592",
+            "value": "trunc",
+            "length": 5,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319559A",
+            "value": "truncf",
+            "length": 6,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431955A4",
+            "value": "_gmtime64",
+            "length": 9,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431955B0",
+            "value": "_time64",
+            "length": 7,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431955BA",
+            "value": "__p___argc",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431955C8",
+            "value": "__p___argv",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431955D6",
+            "value": "_c_exit",
+            "length": 7,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431955E0",
+            "value": "_cexit",
+            "length": 6,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431955EA",
+            "value": "_configure_narrow_argv",
+            "length": 22,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195604",
+            "value": "_crt_atexit",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195612",
+            "value": "_exit",
+            "length": 5,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319561A",
+            "value": "_get_initial_narrow_environment",
+            "length": 31,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319563C",
+            "value": "_initialize_narrow_environment",
+            "length": 30,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319565E",
+            "value": "_initialize_onexit_table",
+            "length": 24,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319567A",
+            "value": "_initterm",
+            "length": 9,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195686",
+            "value": "_initterm_e",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195694",
+            "value": "_invoke_watson",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431956A6",
+            "value": "_register_onexit_function",
+            "length": 25,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431956C2",
+            "value": "_register_thread_local_exe_atexit_callback",
+            "length": 42,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431956F0",
+            "value": "_seh_filter_exe",
+            "length": 15,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195702",
+            "value": "_set_app_type",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195712",
+            "value": "_set_invalid_parameter_handler",
+            "length": 30,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195734",
+            "value": "_wassert",
+            "length": 8,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195740",
+            "value": "abort",
+            "length": 5,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195748",
+            "value": "exit",
+            "length": 4,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195750",
+            "value": "signal",
+            "length": 6,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319575A",
+            "value": "strerror",
+            "length": 8,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195766",
+            "value": "terminate",
+            "length": 9,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195772",
+            "value": "_set_new_mode",
+            "length": 13,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195782",
+            "value": "free",
+            "length": 4,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319578A",
+            "value": "malloc",
+            "length": 6,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195794",
+            "value": "realloc",
+            "length": 7,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319579E",
+            "value": "remove",
+            "length": 6,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431957A8",
+            "value": "strcpy",
+            "length": 6,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431957B2",
+            "value": "strlen",
+            "length": 6,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431957BC",
+            "value": "strncpy",
+            "length": 7,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431957C6",
+            "value": "_configthreadlocale",
+            "length": 19,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431957DA",
+            "value": "KERNEL32.dll",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431957E7",
+            "value": "api-ms-win-core-synch-l1-2-0.dll",
+            "length": 32,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195808",
+            "value": "USER32.dll",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195813",
+            "value": "GDI32.dll",
+            "length": 9,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319581D",
+            "value": "WS2_32.dll",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195828",
+            "value": "dwmapi.dll",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195833",
+            "value": "ole32.dll",
+            "length": 9,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319583D",
+            "value": "winmm.dll",
+            "length": 9,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195847",
+            "value": "steam_api64.dll",
+            "length": 15,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195857",
+            "value": "GFSDK_Aftermath_Lib.x64.dll",
+            "length": 27,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195873",
+            "value": "SHELL32.dll",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x14319587F",
+            "value": "imm32.dll",
+            "length": 9,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195889",
+            "value": "uxtheme.dll",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195895",
+            "value": "bcryptprimitives.dll",
+            "length": 20,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431958AA",
+            "value": "ntdll.dll",
+            "length": 9,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431958B4",
+            "value": "oleaut32.dll",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431958C1",
+            "value": "ADVAPI32.dll",
+            "length": 12,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431958CE",
+            "value": "dbghelp.dll",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431958DA",
+            "value": "fmodstudio.dll",
+            "length": 14,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431958E9",
+            "value": "fmod.dll",
+            "length": 8,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431958F2",
+            "value": "shlwapi.dll",
+            "length": 11,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431958FE",
+            "value": "dxgi.dll",
+            "length": 8,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195907",
+            "value": "bcrypt.dll",
+            "length": 10,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195912",
+            "value": "VCRUNTIME140.dll",
+            "length": 16,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195923",
+            "value": "api-ms-win-crt-stdio-l1-1-0.dll",
+            "length": 31,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195943",
+            "value": "api-ms-win-crt-math-l1-1-0.dll",
+            "length": 30,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195962",
+            "value": "api-ms-win-crt-time-l1-1-0.dll",
+            "length": 30,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195981",
+            "value": "api-ms-win-crt-runtime-l1-1-0.dll",
+            "length": 33,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431959A3",
+            "value": "api-ms-win-crt-heap-l1-1-0.dll",
+            "length": 30,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431959C2",
+            "value": "api-ms-win-crt-filesystem-l1-1-0.dll",
+            "length": 36,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x1431959E7",
+            "value": "api-ms-win-crt-string-l1-1-0.dll",
+            "length": 32,
+            "type": "TerminatedCString"
+          },
+          {
+            "address": "0x143195A08",
+            "value": "api-ms-win-crt-locale-l1-1-0.dll",
+            "length": 32,
+            "type": "TerminatedCString"
+          }
+        ],
+        "total": 466,
+        "offset": 0,
+        "limit": 200000,
+        "has_more": false,
+        "database": "ccgi4_l1"
+      },
+      "result_sha256": "442e36fdd7497501ffc9e7ff893a53f96cdd5ef655b66d6f616438b597c83ae9",
+      "ok": true,
+      "lane": "ccgi4_l1",
+      "database": "ccgi4_l1"
+    },
+    {
+      "index": 3,
+      "tool": "close_database",
+      "args": {
+        "database": "ccgi4_l1",
+        "save": false
+      },
+      "cache_key": "5977e9582abef985023dc2bc71b0ce666772f7ea374410f60b9fa4c32da3e280",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:50:27.997Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"ccgi4_l1\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "ccgi4_l1"
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:50:28.768Z",
+      "ok": true,
+      "result_sha256": "f29fd114ec434f62c37acd2b70d2cfd19f40bcec9a397b8d4bd168952b97f53c",
+      "lane": "ccgi4_l1",
+      "database": "ccgi4_l1"
+    }
+  ],
+  "cleanup": [],
+  "lock_events": [
+    {
+      "event": "lock_removed",
+      "reason": "per-database workers own separate Ghidra projects; a shared session lock is no longer required",
+      "lane": "ccgi4_l1"
+    }
+  ],
+  "ok": true,
+  "cleanup_ok": true
+}

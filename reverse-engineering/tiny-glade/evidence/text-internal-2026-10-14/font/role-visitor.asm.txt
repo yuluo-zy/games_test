@@ -1,0 +1,53 @@
+
+ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+141e5d390: 56                          	pushq	%rsi
+141e5d391: 48 83 ec 30                 	subq	$0x30, %rsp
+141e5d395: 49 83 f8 05                 	cmpq	$0x5, %r8
+141e5d399: 74 49                       	je	0x141e5d3e4 <.text+0x1e5c3e4>
+141e5d39b: 49 83 f8 0a                 	cmpq	$0xa, %r8
+141e5d39f: 75 5f                       	jne	0x141e5d400 <.text+0x1e5c400>
+141e5d3a1: 48 b8 4d 65 6e 75 42 75 74 74       	movabsq	$0x74747542756e654d, %rax # imm = 0x74747542756E654D
+141e5d3ab: 48 33 02                    	xorq	(%rdx), %rax
+141e5d3ae: 44 0f b7 4a 08              	movzwl	0x8(%rdx), %r9d
+141e5d3b3: 49 81 f1 6f 6e 00 00        	xorq	$0x6e6f, %r9            # imm = 0x6E6F
+141e5d3ba: 49 09 c1                    	orq	%rax, %r9
+141e5d3bd: 74 56                       	je	0x141e5d415 <.text+0x1e5c415>
+141e5d3bf: 48 b8 54 65 78 74 45 64 69 74       	movabsq	$0x7469644574786554, %rax # imm = 0x7469644574786554
+141e5d3c9: 48 33 02                    	xorq	(%rdx), %rax
+141e5d3cc: 44 0f b7 4a 08              	movzwl	0x8(%rdx), %r9d
+141e5d3d1: 49 81 f1 6f 72 00 00        	xorq	$0x726f, %r9            # imm = 0x726F
+141e5d3d8: 49 09 c1                    	orq	%rax, %r9
+141e5d3db: 75 46                       	jne	0x141e5d423 <.text+0x1e5c423>
+141e5d3dd: 66 c7 01 32 02              	movw	$0x232, (%rcx)          # imm = 0x232
+141e5d3e2: eb 36                       	jmp	0x141e5d41a <.text+0x1e5c41a>
+141e5d3e4: b8 4c 61 62 65              	movl	$0x6562614c, %eax       # imm = 0x6562614C
+141e5d3e9: 33 02                       	xorl	(%rdx), %eax
+141e5d3eb: 44 0f b6 4a 04              	movzbl	0x4(%rdx), %r9d
+141e5d3f0: 41 83 f1 6c                 	xorl	$0x6c, %r9d
+141e5d3f4: 41 09 c1                    	orl	%eax, %r9d
+141e5d3f7: 75 2a                       	jne	0x141e5d423 <.text+0x1e5c423>
+141e5d3f9: 66 c7 01 32 00              	movw	$0x32, (%rcx)
+141e5d3fe: eb 1a                       	jmp	0x141e5d41a <.text+0x1e5c41a>
+141e5d400: 49 83 f8 04                 	cmpq	$0x4, %r8
+141e5d404: 75 1d                       	jne	0x141e5d423 <.text+0x1e5c423>
+141e5d406: 81 3a 48 61 6e 64           	cmpl	$0x646e6148, (%rdx)     # imm = 0x646E6148
+141e5d40c: 75 15                       	jne	0x141e5d423 <.text+0x1e5c423>
+141e5d40e: 66 c7 01 32 03              	movw	$0x332, (%rcx)          # imm = 0x332
+141e5d413: eb 05                       	jmp	0x141e5d41a <.text+0x1e5c41a>
+141e5d415: 66 c7 01 32 01              	movw	$0x132, (%rcx)          # imm = 0x132
+141e5d41a: 48 89 c8                    	movq	%rcx, %rax
+141e5d41d: 48 83 c4 30                 	addq	$0x30, %rsp
+141e5d421: 5e                          	popq	%rsi
+141e5d422: c3                          	retq
+141e5d423: 48 c7 44 24 20 04 00 00 00  	movq	$0x4, 0x20(%rsp)
+141e5d42c: 4c 8d 0d 05 5c 13 01        	leaq	0x1135c05(%rip), %r9    # 0x142f93038
+141e5d433: 48 89 ce                    	movq	%rcx, %rsi
+141e5d436: e8 05 d2 a6 00              	callq	0x1428ca640 <.text+0x28c9640>
+141e5d43b: 48 89 f0                    	movq	%rsi, %rax
+141e5d43e: 48 83 c4 30                 	addq	$0x30, %rsp
+141e5d442: 5e                          	popq	%rsi
+141e5d443: c3                          	retq

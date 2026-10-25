@@ -1,0 +1,44 @@
+# Load interaction staged restoration, 2026-10-19
+
+Scope is original B RNE only, SHA256 f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03. T13 excluded. No production source changed and no Cargo run. Root retains the frozen v13 source for its own validation. `load_ui.rs` is a staged integration candidate, not a passed/registered game UI.
+
+## Delivered staged business source
+
+`load_ui.rs` contains normal/current-session selection, demo limits, readiness-deny and warning differences, new-session transition, retained scroll Arc, delete confirmation/event, theme confirmation preserving metadata, backup discovery/sort/paging, parse/error/corrupt-rename, current-history backup identity dedup, synchronous save-thread backup acknowledgement, owning parsed NextSession transfer, 2second error expiry and 200ms hover extension, and back-to-Main. Click handling continues constructing the frame's other overlays, preserving original side effects. The local error owns PathBuf/String/Instant; no native pointers or fake ABI are introduced.
+
+The code was parsed and formatted by installed rustfmt1.97.1. That is syntax verification only. It has intentionally not been added to a production module or tested while root's Cargo owns the frozen tree.
+
+Original evidence inherited from `../render/load/HANDOFF.md`: full15632B ui@141e1fe80,12system-param wrapper@141e11780,12closure/helper bounded ranges, original shipped templates. New bounded native evidence and byte identities are in `identity.json`; extra widget/formatter disassembly is linked from `menu-button-vtable.json`, `probe.py`, and below. This work reuses locked time0.3.36 and the current rewritten utils/tg-text/MEI; it does not reconstruct the library algorithm.
+
+## Native conclusions correcting the prior handoff
+
+1. Footer nested1126B@140f9b5c0 is now closed. Strings are UTF8 **← / →**, not ASCII >/<. Native order is left saturated decrement; construct `(page+1)/(maximum+1)` label; right increment iff current page<maximum. Both buttons used in a frame retain that order. Footer skips pagination entirely when maximum=0. Main's maximum is floor(len/8), so exact multiples retain the empty terminal page.
+2. The11x24B original static date-format table@142bb3f08 is decoded as **`[year]-[month]-[day] [hour]:[minute]:[second]`**, zero padding, full Gregorian year with automatic sign, numeric month,24hour clock. Literal pointers@142bb3f02/03/04 contain `-`,space,colon. Native Component tags are compiler-layout values0,3,2,8,9,11; they must not be guessed from Rust source declaration order. `format-component-dispatch.json` binds cases to original branches: tag2 calls PDB `Date::day`@140cb0ed0, tag3 calls `Date::month`@140cb0ec0; tag0 shifts packed date by9 for year;8/9/11 extract hour/minute/second. Reuse original locked time formatter, not manual field formatting.
+3. Contextual caller boolean1 is hovered slot!=1. The first saved slot has **no delete button**. Boolean2 is navigation_boundary. The delete button when present gets flags10 plus18 when boundary. If delete is absent, switch gets18 when boundary. Otherwise switch gets10. Backups always10. Bit8 is the existing navigation default-focus producer, not a business disable condition. Do not disable deletion or theme selection based on the navigation boundary.
+4. Warning position is hover+**(-100,0)**, size(200,30),anchor(-1,-1), from constants1429ae340/142f87ef0/14292e6d0. Contextual root separately is hover+(0,250),anchor(0,-1). Both warning/demo labels explicitly use weight800 and flags2; warning metrics200 and demo metrics50.
+5. Backup row ID is formatted date; date is the MenuButton text. The kind icon is a **separate Label after the date button**, with metrics32 and inherited Label weight/tint. Do not concatenate icon into the date button or its stable identity.
+6. Backup error frame is `save load error`, Relative to the row, offset(0,-20),reference_anchor(0,1),anchor(-0,-1),requested_sizeNone,opaque=true. Original write100.0@140fc5349 is **Node+a8 local_z**, derived from bucket end/table key−c0 and Node−b8. It is not min-width100. Error frame hover or row hover extends expiry200ms.
+7. The common error display uses original `menu/backup_load_error` template, header `⚠️ {New.ErrorLoadingSave}`, body `Context: {original_error}`; no filename inserted into heading. Text max-width700,metrics28,alignLeft,tintffffffe0. The original native literal `Context: ` is142bb4380; heading prefix142bb4365 is7UTF8 bytes. Original header uses inherited Label metrics/weight, not a guessed32/700.
+8. Backup creation failure logs and aborts loading **without writing SaveLoadError**. Staged result distinguishes Ok(None) from parse Err. It drops the parsed owner through ordinary Rust ownership. It does not call direct copy or queue a partial load.
+9. AppLoadingState's canonical variants are Splash0/Game1/**Reload2**. The prior handoff's Loading name was wrong. Successful UI requests use Reload2; no invented variant or state resource.
+10. History native+60 is the existing ledger.mutation_nonce, not a missing separate identity field. A preliminary rg-by-field-name conclusion was retracted after save_migration tied it to finish writes and publish_save_sections. The staged UI reads `history.identity()` projection; do not add another owner.
+
+## Integration contracts being supplied by other owners
+
+* session_owner: `parse_saved_game_data(path,&GladeSettings)` and `NextSession::from_parsed(id,ParsedGameData)` with actual owned version metadata/flags. `load_ui.rs` never reparses an owned payload on the consumer side.
+* save_migration: `History::identity()->HistoryIdentity` typed projection to existing mutation_nonce, native fallback identity, full parser migrations. The current simplified modified-seconds XOR nanos fallback must not be accepted as original.
+* menu_widget: real MenuButtonContent fullvtable; `menu_button(text)->NodeContext`, `pill_button(name,image)->NodeContext`, dynamic `label(impl Into<String>)->NodeContext`, safe `MeiContext::new_relative(...)` wrapping existing FrameKind consumer. See WIDGET-HANDOFF.md and direct coordination messages. No Label/PillButton substitute for MenuButtonContent.
+
+Root integration requires module export `toolbar::menu::load_ui`, registering ui in original set36 gated by Game after MEI pre6/before post44, and adding already-locked direct dependency edges anyhow/utils/time/bevy_state to toolbar. No new package versions. T11 renderer host must explicitly load menu/delete,menu/switch_glade,menu/glade_backups,menu/paper-bg into the same App TextureHost (host already has other load/LUT assets). Session delete→refresh consumer ordering must remain canonical.
+
+`AutoSaveState::create_backup_of` currently takes &mut self but only reads command_sender and waits on a separate reply. Original ui param is Res<AutoSaveState>. The included patch changes receiver to &self, preserving the send/reply transaction. Do not change UI to a guessed ResMut or add filesystem copying.
+
+## Still open, not completion claims
+
+The central owner must apply and compile after all three contracts land, then exercise real retained MEI input capture/bubble (no injected fake click acceptance). Template glyph/shader/physical image owner binding, delete→filesystem rename→refresh, successful owner move→Reload→actual loaded world, and native fixture branches remain required runtime acceptance. Native6 also passes the original early gate but its owned variant spelling/producer remains unestablished; the candidate uses only canonical Load. It does not invent an enum for native6.
+
+Escape GUI39 remains original unresolved main tree/slot closures, beyond the already recovered correct policy. It must produce EscapeMenuJustOpened in do_gui_escape_menu, respecting real MainActionSet27, TimelapseState!=2 and original opening event order. A complete Timelapse owner/MetaCommander lifecycle is still needed; a constant inactive substitute is forbidden. Parent is coordinating an additional specialist. T13 digital31 remains excluded. Thus this stage does not claim the entire Escape→Load caller chain is finished.
+
+## Reusable efficiency/correctness lesson
+
+Do not translate a prior prose handoff straight into code. For each packed field or flag, cross-check native base address, current canonical field/consumer, and real caller constant. Three concrete errors here (default-focus treated as disabled, local_z treated as min-width, mutation_nonce treated as missing identity) would have removed original interaction semantics despite compiling. Keep bounded source hashes and a small symbol/data table; inspect exactly the dependency-facing ABI necessary to decode game constants, then reuse its original locked library. Freeze production and put concurrent candidates in evidence until one integration owner reviews them together.

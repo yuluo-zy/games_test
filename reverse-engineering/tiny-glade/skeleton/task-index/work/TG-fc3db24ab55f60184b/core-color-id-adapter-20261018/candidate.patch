@@ -1,0 +1,43 @@
+--- a/games_test/tiny-glade/crates/systems/color/src/set_halftimber_color_id.rs
++++ b/games_test/tiny-glade/crates/systems/color/src/set_halftimber_color_id.rs
+@@ -12,9 +12,10 @@
+ use glam::Vec2;
+ 
+ use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
+-use country_core::resources::color_id::{HalftimberColorIds, SetHalftimberColorIdCmd, MAX_NUMBER_OF_WALLS};
++use country_core::resources::color_id::{
++    HalftimberColorIds, MAX_NUMBER_OF_WALLS, SetHalftimberColorIdCmd,
++};
+ use country_core::resources::walls::public_walls::PublicWalls;
+-use country_core::resources::walls::WallId;
+ use country_core::systems::audio::PlayWallUiSound;
+ use utils::geometry::aabb::Aabb2;
+ use utils::swizzlers::SwizzlerXVY;
+@@ -29,18 +30,19 @@
+     walls: Res<PublicWalls>,
+ ) {
+     for cmd in cmds.read() {
+-        let idx = cmd.id as usize;
+-        assert!(idx < MAX_NUMBER_OF_WALLS, "wall_index < MAX_NUMBER_OF_WALLS");
++        let wall_id = cmd.wall_id();
++        assert!(
++            wall_id.0 < MAX_NUMBER_OF_WALLS as u64,
++            "wall_index < MAX_NUMBER_OF_WALLS"
++        );
++        let idx = wall_id.0 as usize;
+         colors.0[idx] = cmd.color;
+         // O：custom == 1（反编译 `event+0x14 == '\x01'`）&& 墙命中 → AABB 记录
+         // （反编译 `event+0x14==1` 与 `PublicWalls::get()!=0` 合取）。
+         if cmd.custom == 1 {
+-            if let Some(wall) = walls.get(WallId(u64::from(cmd.id))) {
+-                let aabb = Aabb2::from_points(
+-                    wall.height_outline()
+-                        .iter()
+-                        .map(|p| Vec2::new(p[0], p[2])),
+-                );
++            if let Some(wall) = walls.get(wall_id) {
++                let aabb =
++                    Aabb2::from_points(wall.height_outline().iter().map(|p| Vec2::new(p[0], p[2])));
+                 let center = aabb.center();
+                 let position = center.xvy(wall.max_y());
+                 sounds.write(PlayWallUiSound {

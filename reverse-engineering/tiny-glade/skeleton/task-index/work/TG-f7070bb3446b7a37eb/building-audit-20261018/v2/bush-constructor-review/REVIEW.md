@@ -1,0 +1,18 @@
+# Independent review: canonical Bush CPU constructor
+
+Accepted for the bounded canonical constructor increment, pending root's actual Rust tests. No blocking production findings. No source changes, Cargo, original instruction execution or JIT were performed by this reviewer.
+
+Reviewed freeze14: `TG-6b43449ef07afe08ea/core-bush-cpu-20261018/constructor-frozen-inputs.json`, SHA256 `c3fcae39e2fbea28955f935670ae41e232d2b594b59de0d3329a7fe88bf137c7`. All14 sizes/hashes match, including current canonical device/library/pass and Cargo dependencies. The constructor's complete835 bytes/206 instructions match the B PE and frozen Capstone ASM. Whole B RNE SHA matches its identity. One patch applies to its captured base and exactly produces the candidate.
+
+Raw evidence checked before candidate:
+
+* `14161bd5d/60` branches on initial Option pointer. None goes directly through `xor r14d,r14d` atbdf5 and passes original zero pointer/zero length to create_buffer. There is no default allocation, zero fill or synthesized initial Some on this path.
+* Some validation is length&7 (`bd6c..74`), pointer&3 (`bd7d..85`), then unsigned length<`0x12c10` (`bd8b..92`). Fixed descriptor size is`0x12c08`=`9601*8`; usage`0x22`, memory4, alignment4. The type's `[u32;2]` is exactly8 bytes/alignment4 and Pod permits arbitrary returned raw bits.
+* `14161be36` points to original22 bytes `Bush positions for CPU` at`142c80120`; the PE bytes match the candidate name. The existing GPU pass/resource ID remains canonical. The new actual-library regression checks its NAME-derived key against the existing native key; this reviewer has not executed that assertion or independently recomputed XXH3.
+* create_buffer errors unwrap; absent mapping unwraps; map size is compared against the returned Buffer's size at`14161be89`, not the local requested descriptor. The following mapped len&7 and pointer&3 validations preserve original order. Typed length is full returned len>>3 at`14161bec8`; oversize device mappings must remain oversize rather than silently truncating to9601.
+
+Candidate keeps existing BushCpuSsbo identity and AssetSsboLibrary, replaces the incorrect Gap/one-element TypedStorageBuffer with the actual MappedStorageBuffer owner, and does not modify the generic mapped buffer initialization policy. Its specialized constructor is necessary because this type's original None differs from other recovered types' zero-upload policy. The lifetime extension follows the established device-owned mapping boundary; there is no second CPU buffer or duplicate resource.
+
+The two new source regressions exercise the actual library constructor/key/map pointer/no-upload/oversized returned mapping, exact forwarded Some bytes, and length/alignment/capacity failures before another device create. These are useful unexecuted regressions. They do not claim GPU dispatch/completion/coherency, initialized first-row count, or an upper real consumer. The current mock's captured upload bytes are distinct from its independent mapped vector, and the tests correctly do not assert a fake upload has populated that mapping.
+
+Nonblocking original evidence boundary: the attached `reader-B.bin` is745 bytes, while matched B PDB module1081 record260 reports750. Its last byte at`140eebd88` is opcodeE8; only744 bytes/178 complete instructions decode, as its ASM already shows. The745 bytes all match PE, but this span must not be described as the complete reader function. Root and upper-consumer author were notified; the constructor835-byte complete proof is unaffected. Full reader registration/order and GPU-completed data transport belong to the separate consumer closure.

@@ -1,0 +1,55 @@
+{
+  "original": "D:\\game\\ljxsj_92385\\Tiny Glade\\tiny-glade.rne",
+  "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "artifacts": [
+    {
+      "path": "resize-publisher.asm",
+      "start": "0x1404dacb3",
+      "end_exclusive": "0x1404dad54",
+      "sha256": "bd3a8eed9d743a3e9a92cbc3ceaca97214d708d2b61f003e6a0acd117f867c10"
+    },
+    {
+      "path": "zero-extent-gate.asm",
+      "start": "0x1404dc850",
+      "end_exclusive": "0x1404dc980",
+      "sha256": "20a0bdf3170bddd8accd8cecb47a3512954df2c02771cc417331a6328c55e9a1"
+    },
+    {
+      "path": "common-loop-tail.asm",
+      "start": "0x1404de84d",
+      "end_exclusive": "0x1404de93e",
+      "sha256": "c97d315c69fd629d2ef1701d890a78675520622a87ce41003197aa26b4757c43"
+    }
+  ],
+  "symbols": [
+    {
+      "symbol": "4512600 | S_PUB32 [size = 56] `_ZN3std6thread5sleep17h3fd4c6cfd849a464E`",
+      "section": 1,
+      "offset": 13977984,
+      "va": "0x140d55980",
+      "demangled": "std::thread::sleep::h3fd4c6cfd849a464"
+    },
+    {
+      "symbol": "7028536 | S_PUB32 [size = 140] `_ZN4core3ptr90drop_in_place$LT$alloc..vec..drain..Drain$LT$tiny_glade..event_loop..OsWindowEvent$GT$$GT$17hd66656abfee2c1d9E`",
+      "section": 1,
+      "offset": 6324752,
+      "va": "0x140609210",
+      "demangled": "core::ptr::drop_in_place$LT$alloc..vec..drain..Drain$LT$tiny_glade..event_loop..OsWindowEvent$GT$$GT$::hd66656abfee2c1d9"
+    }
+  ],
+  "observed_branch": {
+    "extent_source": "FrameRenderConfig.extent_0 (TypeId a4c02661e67b048b/eae761e6aa2a67ec)",
+    "zero_condition": "width == 0 || height == 0",
+    "wait": "std::thread::sleep(Duration::new(0, 1000000))",
+    "join": "0x1404de84d (common loop tail)",
+    "skips": [
+      "resolution/resource rebuild",
+      "egui begin/end",
+      "App::update",
+      "MEI frame flush",
+      "render",
+      "temporal frame increment",
+      "FPS limiter"
+    ]
+  }
+}

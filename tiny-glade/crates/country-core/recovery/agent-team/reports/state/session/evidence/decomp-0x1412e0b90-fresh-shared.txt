@@ -1,0 +1,43 @@
+
+void __cdecl
+bevy_ecs::system::commands::Commands::insert_resource<country_core::resources::session::NextSession>
+          (void)
+
+{
+  longlong lVar1;
+  longlong in_RCX;
+  void *in_RDX;
+  longlong *plVar2;
+  longlong lVar3;
+  undefined1 local_170 [160];
+  undefined1 local_d0 [160];
+  undefined8 local_30;
+  
+  local_30 = 0xfffffffffffffffe;
+  plVar2 = *(longlong **)(in_RCX + 8);
+  if (plVar2 == (longlong *)0x0) {
+    plVar2 = *(longlong **)(in_RCX + 0x10);
+    memcpy(local_d0,in_RDX,0xa0);
+    lVar3 = plVar2[2];
+    if ((ulonglong)(*plVar2 - lVar3) < 0xa8) {
+      alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+    }
+  }
+  else {
+    memcpy(local_d0,in_RDX,0xa0);
+    lVar3 = plVar2[2];
+    if ((ulonglong)(*plVar2 - lVar3) < 0xa8) {
+      alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+    }
+  }
+  lVar1 = plVar2[1];
+  memcpy(local_170,local_d0,0xa0);
+  *(code **)(lVar1 + lVar3) =
+       core::ops::function::FnOnce::
+       call_once<bevy_ecs::world::command_queue::impl_4::push::closure_env_0<bevy_ecs::system::commands::command::insert_resource::closure_env_0<country_core::resources::session::NextSession>_>,tuple_<bevy_ptr::OwningPtr<bevy_ptr::Unaligned>,enum2_<core::option::Option<core::ptr::non_null::NonNull<bevy_ecs::world::World>_>_>,ref_mut_<usize>_>_>
+  ;
+  memcpy((void *)(lVar1 + lVar3 + 8),local_170,0xa0);
+  plVar2[2] = lVar3 + 0xa8;
+  return;
+}
+

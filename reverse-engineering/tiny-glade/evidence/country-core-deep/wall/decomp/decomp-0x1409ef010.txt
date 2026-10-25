@@ -1,0 +1,107 @@
+country_core::systems::wall::shapes::utils::shape_signifier_lerp::ShapeSignifierLerp::lerp_radius :: systems/wall/shapes/utils/shape_signifier_lerp.rs
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_1409ef010(undefined4 *param_1,byte *param_2,byte *param_3,float param_4)
+
+{
+  code *pcVar1;
+  undefined4 uVar2;
+  uint uVar3;
+  longlong lVar4;
+  int iVar5;
+  int iVar6;
+  float extraout_XMM0_Da;
+  float fVar7;
+  float fVar8;
+  float fVar9;
+  float fVar10;
+  undefined4 in_XMM3_Dc;
+  undefined1 auVar11 [16];
+  float fVar12;
+  float fVar13;
+  undefined1 auVar14 [16];
+  undefined1 auVar15 [16];
+  undefined1 auVar16 [16];
+  
+  if ((*param_2 & 1) == 0) {
+    if ((*param_3 & 1) != 0) goto code_r0x0001409ef1f5;
+    fVar7 = *(float *)(param_2 + 4);
+    fVar10 = *(float *)(param_3 + 4);
+    fVar8 = (float)func_0x000142923ec0(_UNK_14295c698 * param_4);
+    fVar10 = fVar10 - fVar7;
+    fVar9 = (_UNK_142925904 - fVar8) * fVar10;
+    param_4 = param_4 + param_4;
+    fVar12 = (float)((uint)fVar10 & _UNK_14292e980);
+    fVar8 = fVar12;
+    if (param_4 <= fVar12) {
+      fVar8 = param_4;
+    }
+    fVar10 = (float)(_UNK_142a8d5c4 & -(uint)NAN(fVar10) |
+                    ~-(uint)NAN(fVar10) & (_UNK_1429258f0 & (uint)fVar10 | (uint)UNK_142925930)) *
+             (float)(~-(uint)NAN(param_4) & (uint)fVar8 | -(uint)NAN(param_4) & (uint)fVar12);
+    uVar3 = -(uint)((float)(_UNK_14292e980 & (uint)fVar10) < (float)((uint)fVar9 & _UNK_14292e980));
+    fVar7 = (float)(uVar3 & (uint)fVar9 | ~uVar3 & (uint)fVar10) + fVar7;
+    uVar2 = 0;
+    lVar4 = 4;
+  }
+  else {
+    if ((*param_3 & 1) == 0) {
+code_r0x0001409ef1f5:
+      FUN_1428d9430(&UNK_142ac5368,0x28,&UNK_142ac53e0);
+      pcVar1 = (code *)swi(3);
+      (*pcVar1)();
+      return;
+    }
+    uVar2 = func_0x000142923ec0(_UNK_14295c698 * param_4);
+    auVar14._0_4_ = param_4 + param_4;
+    fVar9 = (float)*(undefined8 *)(param_2 + 4);
+    fVar12 = (float)*(undefined8 *)(param_3 + 4) - fVar9;
+    fVar7 = (float)((ulonglong)*(undefined8 *)(param_2 + 4) >> 0x20);
+    fVar13 = (float)((ulonglong)*(undefined8 *)(param_3 + 4) >> 0x20) - fVar7;
+    fVar8 = (_UNK_142925904 - extraout_XMM0_Da) * fVar12;
+    fVar10 = (_UNK_142925904 - extraout_XMM0_Da) * fVar13;
+    auVar15._4_4_ = (uint)fVar13 & _UNK_14292e984;
+    auVar15._0_4_ = (uint)fVar12 & _UNK_14292e980;
+    auVar14._4_4_ = auVar14._0_4_;
+    auVar14._8_4_ = in_XMM3_Dc;
+    auVar14._12_4_ = in_XMM3_Dc;
+    auVar15._8_8_ = 0;
+    auVar16 = minps(auVar15,auVar14);
+    fVar12 = (float)(-(uint)NAN(fVar12) & _UNK_142a8d610 |
+                    ~-(uint)NAN(fVar12) &
+                    (_UNK_14292e6b0 & _UNK_14292e980 | ~_UNK_14292e980 & (uint)fVar12)) *
+             (float)(~-(uint)NAN(auVar14._0_4_) & auVar16._0_4_ |
+                    (uint)fVar12 & _UNK_14292e980 & -(uint)NAN(auVar14._0_4_));
+    fVar13 = (float)(-(uint)NAN(fVar13) & _UNK_142a8d614 |
+                    ~-(uint)NAN(fVar13) &
+                    (_UNK_14292e6b4 & _UNK_14292e984 | ~_UNK_14292e984 & (uint)fVar13)) *
+             (float)(~-(uint)NAN(auVar14._0_4_) & auVar16._4_4_ |
+                    (uint)fVar13 & _UNK_14292e984 & -(uint)NAN(auVar14._0_4_));
+    iVar5 = -(uint)((float)(_UNK_14292e980 & (uint)fVar12) < (float)((uint)fVar8 & _UNK_14292e980));
+    iVar6 = -(uint)((float)(_UNK_14292e984 & (uint)fVar13) < (float)((uint)fVar10 & _UNK_14292e984))
+    ;
+    auVar11._4_4_ = iVar6;
+    auVar11._0_4_ = iVar5;
+    auVar11._8_4_ = iVar6;
+    auVar11._12_4_ = iVar6;
+    auVar16._8_8_ = auVar11._8_8_;
+    auVar16._4_4_ = iVar5;
+    auVar16._0_4_ = iVar5;
+    uVar3 = movmskpd(uVar2,auVar16);
+    if ((uVar3 & 1) == 0) {
+      fVar8 = fVar12;
+    }
+    if ((uVar3 & 2) == 0) {
+      fVar10 = fVar13;
+    }
+    fVar7 = fVar7 + fVar10;
+    param_1[1] = fVar8 + fVar9;
+    uVar2 = 1;
+    lVar4 = 8;
+  }
+  *(float *)((longlong)param_1 + lVar4) = fVar7;
+  *param_1 = uVar2;
+  return;
+}
+

@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "baseline": "B",
+  "policy": "Only explicit phase acceptance with baseline, scope and existing evidence marks a whole phase complete. Partial implementations and local comparisons do not close a phase.",
+  "modules": {
+    "crates/motomoto/src": {
+      "verification": {
+        "status": "in_progress",
+        "baseline": "B",
+        "scope": "原Reader 173案例；Writer/Drop 20个受控案例及Reader 3组异常恢复对照。真实save/schema与完整模块仍未验收。",
+        "evidence": ["evidence/small-libs-batch-01/REPORT.md", "evidence/small-libs-review-2026-10-13/REPORT.md"]
+      }
+    },
+    "crates/tg-package-integrity/src": {
+      "verification": {
+        "status": "in_progress",
+        "baseline": "B",
+        "scope": "原x64 FNV/数组Hash叶4096案例与128组合gate局部对照；完整verify、报告消费者及极端schema未验收。",
+        "evidence": ["evidence/small-libs-review-2026-10-13/REPORT.md"]
+      }
+    },
+    "crates/tg-text/src": {
+      "verification": {
+        "status": "in_progress",
+        "baseline": "B",
+        "scope": "ShapeStream原append 51与scaled 21案例逐word/bits对照；TextFragment/TextRenderer、glyph/atlas/GPU仍未恢复。",
+        "evidence": ["evidence/small-libs-batch-01/REPORT.md", "evidence/small-libs-review-2026-10-13/REPORT.md"]
+      }
+    }
+  }
+}

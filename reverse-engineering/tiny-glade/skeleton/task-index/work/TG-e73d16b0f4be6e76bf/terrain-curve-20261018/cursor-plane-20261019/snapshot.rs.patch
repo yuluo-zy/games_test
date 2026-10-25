@@ -1,0 +1,11 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/save/snapshot.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/save/snapshot.rs
+@@ -1736,6 +1736,8 @@
+         }
+         crate::resources::terrain_editing::TerrainEditingData(
+             tg_terrain::stroke::TerrainEditingData {
++                // Loaded strokes do not retain a live UI drag's cursor plane.
++                cursor_height_override: None,
+                 strokes,
+                 next_index: self.next_stroke_index,
+                 // Loaded strokes have not yet reached this world's GPU raster.

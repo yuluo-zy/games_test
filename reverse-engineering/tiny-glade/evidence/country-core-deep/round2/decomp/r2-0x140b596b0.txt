@@ -1,0 +1,39 @@
+
+
+undefined8 FUN_140b596b0(byte *param_1)
+
+{
+  code *pcVar1;
+  undefined7 uVar3;
+  undefined8 uVar2;
+  undefined1 auStack_38 [8];
+  undefined *puStack_30;
+  undefined8 uStack_28;
+  undefined1 *puStack_20;
+  undefined8 uStack_18;
+  undefined8 uStack_10;
+  
+  uVar3 = (undefined7)
+          ((ulonglong)(&UNK_142af1278 + *(int *)(&UNK_142af1278 + (ulonglong)*param_1 * 4)) >> 8);
+                    /* WARNING (jumptable): Sanity check requires truncation of jumptable */
+                    /* WARNING: Could not find normalized switch variable to match jumptable */
+  switch(*param_1) {
+  case 0:
+    return CONCAT71(uVar3,1);
+  case 1:
+    return CONCAT71(uVar3,2);
+  case 2:
+    return 0;
+  case 3:
+    puStack_30 = &UNK_142af1188;
+    uStack_28 = 1;
+    puStack_20 = auStack_38;
+    uStack_18 = 0;
+    uStack_10 = 0;
+    FUN_1428d9390(&puStack_30,&UNK_142af11c8);
+    pcVar1 = (code *)swi(3);
+    uVar2 = (*pcVar1)();
+    return uVar2;
+  }
+}
+

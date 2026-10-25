@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "execution": "not_run; root owns all native queries/GPU/Cargo",
+  "counts_order": [
+    "SampledImage",
+    "StorageImage",
+    "StorageBuffer",
+    "Sampler"
+  ],
+  "layout_flags": [
+    "UPDATE_AFTER_BIND_POOL"
+  ],
+  "binding_flags": [
+    "UPDATE_AFTER_BIND",
+    "PARTIALLY_BOUND",
+    "UPDATE_UNUSED_WHILE_PENDING"
+  ],
+  "stage_flags": "ALL",
+  "single_type_rule": "omit zero-count bindings; variable highest binding number; do not alter canonical lowering in production",
+  "rows": [
+    {
+      "name": "production_fixed",
+      "counts": [
+        8192,
+        256,
+        16384,
+        64
+      ],
+      "variable_kind": null,
+      "output_variable_support": false,
+      "total": 24896
+    },
+    {
+      "name": "default_fixed",
+      "counts": [
+        256,
+        256,
+        256,
+        64
+      ],
+      "variable_kind": null,
+      "output_variable_support": false,
+      "total": 832
+    },
+    {
+      "name": "below_guarantee_fixed",
+      "counts": [
+        1,
+        1,
+        1208,
+        1
+      ],
+      "variable_kind": null,
+      "output_variable_support": false,
+      "total": 1211
+    },
+    {
+      "name": "at_guarantee_fixed",
+      "counts": [
+        1,
+        1,
+        1209,
+        1
+      ],
+      "variable_kind": null,
+      "output_variable_support": false,
+      "total": 1212
+    },
+    {
+      "name": "above_guarantee_fixed",
+      "counts": [
+        1,
+        1,
+        1210,
+        1
+      ],
+      "variable_kind": null,
+      "output_variable_support": false,
+      "total": 1213
+    },
+    {
+      "name": "page_candidate_query_only",
+      "counts": [
+        128,
+        64,
+        960,
+        32
+      ],
+      "variable_kind": null,
+      "output_variable_support": false,
+      "total": 1184
+    },
+    {
+      "name": "single_storage_fixed_16384",
+      "counts": [
+        0,
+        0,
+        16384,
+        0
+      ],
+      "variable_kind": null,
+      "output_variable_support": false,
+      "total": 16384
+    },
+    {
+      "name": "single_storage_variable_16384",
+      "counts": [
+        0,
+        0,
+        16384,
+        0
+      ],
+      "variable_kind": "StorageBuffer",
+      "output_variable_support": true,
+      "total": 16384
+    },
+    {
+      "name": "single_storage_variable_31",
+      "counts": [
+        0,
+        0,
+        31,
+        0
+      ],
+      "variable_kind": "StorageBuffer",
+      "output_variable_support": true,
+      "total": 31
+    },
+    {
+      "name": "single_storage_variable_32",
+      "counts": [
+        0,
+        0,
+        32,
+        0
+      ],
+      "variable_kind": "StorageBuffer",
+      "output_variable_support": true,
+      "total": 32
+    }
+  ],
+  "expected_from_installed_1_4_2": "fixed supported iff total < 1212; variable helper can only reject further, never turn false into true; variable storage max31 with no other bindings",
+  "driver_binary_sha256": "05df2d2145b9ef5b86b08ed93a7a6e916815c2bbac244298a50b2d58061600d1"
+}

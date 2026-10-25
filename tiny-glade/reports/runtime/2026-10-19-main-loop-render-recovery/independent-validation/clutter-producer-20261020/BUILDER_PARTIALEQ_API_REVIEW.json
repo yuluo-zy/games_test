@@ -1,0 +1,28 @@
+{
+  "status": "passed_scoped_host_API_only",
+  "manifest_sha256": "cede5c0da88148ddb17103eb95a191b291a8db6e807093ee31ca3b68abe35f01",
+  "checks": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/utils/visual_entity_builder.rs",
+      "sha256": "80a8c5fb106f06378e17aac7df08de5daa9f7e2b9664978d7bf4f070465ffc71",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-1298d15aa21683bbb3/scene-decorator-20261019/blueprint-partialeq-20261020/visual_entity_builder.rs.candidate",
+      "sha256": "a8dbe5fa5ae0a46d1812f2830925b01b7dd660bd23c44f03b6a7fa2ee95249c0",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-1298d15aa21683bbb3/scene-decorator-20261019/blueprint-partialeq-20261020/visual_entity_builder.rs.patch",
+      "sha256": "caa8ad7e023959853b5f1f646d318a2cb6623cb53f089708b857d47a80b58ba4",
+      "matches": true
+    }
+  ],
+  "exact_single_derive_change": true,
+  "reasoning": [
+    "All existing fields are PartialEq-compatible glam Quat/Vec3, canonical ColorId, staticstr, bool, numeric/array/tuple/Option payloads. Standard float NaN remains nonreflexive; no Eq/hash/bitwise float contract introduced.",
+    "One derive exposes current semantic builder field comparison. It does not recover full native builder/blueprint equality, schema or unknown build-external field semantics.",
+    "Actual business differential consumer must independently prove equality fields and original Arc identity; this API alone never permits a native-equivalence or visual lifecycle acceptance claim."
+  ],
+  "execution": "No typecheck/tests/Cargo/GPU run by reviewer."
+}

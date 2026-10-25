@@ -1,0 +1,180 @@
+--- a/tiny-glade/crates/country-core/src/systems/wall/shapes/rectangle/ui_edit_rectangle_orientation.rs
++++ b/tiny-glade/crates/country-core/src/systems/wall/shapes/rectangle/ui_edit_rectangle_orientation.rs
+@@ -78,22 +78,77 @@
+     (vertices, indices)
+ }
+ 
+-/// B 0x140ada0e0 `box_trigger_volume` + inlined closure 0x1414784a0.
+-///
+-/// `indices.chunks(3)` is mapped to [`Triangle`]s: each index addresses the
+-/// 24-entry position table (native `CMP RCX,0x18; JNC panic_bounds_check`),
+-/// then the point is `x*row0 + y*row1 + z*row2 + row3` over four `Vec4` rows —
+-/// exactly `Mat4::transform_point3`. Short trailing chunks panic on
+-/// `chunk[1]`/`chunk[2]`, as the native closure does.
++/// 原 B 140ada0e0：按六个面的原顶点与绕序生成盒体的十二个真实三角形。
++/// 维度可为负、零或非有限值；原入口不修正这些输入。
+ pub fn box_trigger_volume(
++    width: f32,
++    height: f32,
++    depth: f32,
++    transform: &crate::utils::components::transform::Transform,
++) -> Vec<Triangle> {
++    let x0 = width * -0.5;
++    let x1 = width * 0.5;
++    let y0 = height * -0.5;
++    let y1 = height * 0.5;
++    let z0 = depth * -0.5;
++    let z1 = depth * 0.5;
++    // 原表保留每个面的独立顶点；不能改为八点拓扑后重排三角形。
++    let positions = [
++        Vec3::new(x0, y0, z1),
++        Vec3::new(x1, y0, z1),
++        Vec3::new(x1, y1, z1),
++        Vec3::new(x0, y1, z1),
++        Vec3::new(x0, y1, z0),
++        Vec3::new(x1, y1, z0),
++        Vec3::new(x1, y0, z0),
++        Vec3::new(x0, y0, z0),
++        Vec3::new(x1, y0, z0),
++        Vec3::new(x1, y1, z0),
++        Vec3::new(x1, y1, z1),
++        Vec3::new(x1, y0, z1),
++        Vec3::new(x0, y0, z1),
++        Vec3::new(x0, y1, z1),
++        Vec3::new(x0, y1, z0),
++        Vec3::new(x0, y0, z0),
++        Vec3::new(x1, y1, z0),
++        Vec3::new(x0, y1, z0),
++        Vec3::new(x0, y1, z1),
++        Vec3::new(x1, y1, z1),
++        Vec3::new(x1, y0, z1),
++        Vec3::new(x0, y0, z1),
++        Vec3::new(x0, y0, z0),
++        Vec3::new(x1, y0, z0),
++    ];
++    const INDICES: [usize; 36] = [
++        0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4, 8, 9, 10, 10, 11, 8, 12, 13, 14, 14, 15, 12, 16, 17,
++        18, 18, 19, 16, 20, 21, 22, 22, 23, 20,
++    ];
++    box_trigger_triangles(&INDICES, &transform.compute_matrix(), &positions)
++}
++
++/// 原内部映射闭包保留分量乘加顺序，第三点的最后一次加法操作数相反。
++fn box_trigger_triangles(
+     indices: &[usize],
+     transform: &glam::Mat4,
+     positions: &[Vec3; 24],
+ ) -> Vec<Triangle> {
++    let x_axis = transform.x_axis.truncate();
++    let y_axis = transform.y_axis.truncate();
++    let z_axis = transform.z_axis.truncate();
++    let translation = transform.w_axis.truncate();
+     indices
+         .chunks(3)
+         .map(|chunk| {
+-            let point = |slot: usize| transform.transform_point3(positions[chunk[slot]]);
++            let point = |slot: usize| {
++                let local = positions[chunk[slot]];
++                let xy = y_axis * local.y + x_axis * local.x;
++                let xyz = z_axis * local.z + xy;
++                if slot == 2 {
++                    translation + xyz
++                } else {
++                    xyz + translation
++                }
++            };
+             Triangle::new(point(0), point(1), point(2))
+         })
+         .collect()
+@@ -223,12 +278,12 @@
+         positions[1] = Vec3::new(4.0, 5.0, 6.0);
+         positions[2] = Vec3::new(7.0, 8.0, 9.0);
+         let shifted = glam::Mat4::from_translation(Vec3::new(10.0, 0.0, 0.0));
+-        let triangles = box_trigger_volume(&[0, 1, 2], &shifted, &positions);
++        let triangles = box_trigger_triangles(&[0, 1, 2], &shifted, &positions);
+         assert_eq!(triangles.len(), 1);
+         assert_eq!(triangles[0].points[0], Vec3::new(11.0, 2.0, 3.0));
+         assert_eq!(triangles[0].points[2], Vec3::new(17.0, 8.0, 9.0));
+         // Two chunks -> two triangles.
+-        let two = box_trigger_volume(&[0, 1, 2, 2, 1, 0], &glam::Mat4::IDENTITY, &positions);
++        let two = box_trigger_triangles(&[0, 1, 2, 2, 1, 0], &glam::Mat4::IDENTITY, &positions);
+         assert_eq!(two.len(), 2);
+         assert_eq!(two[1].points[0], Vec3::new(7.0, 8.0, 9.0));
+     }
+@@ -237,6 +292,73 @@
+     #[should_panic]
+     fn box_trigger_volume_rejects_out_of_range_vertex() {
+         let positions = [Vec3::ZERO; 24];
+-        let _ = box_trigger_volume(&[0, 1, 24], &glam::Mat4::IDENTITY, &positions);
+-    }
+-}
++        let _ = box_trigger_triangles(&[0, 1, 24], &glam::Mat4::IDENTITY, &positions);
++    }
++    #[test]
++    fn box_trigger_volume_has_all_native_faces_and_srt() {
++        use crate::utils::components::transform::Transform;
++        // 原24点/36索引独立标量lift在尺寸2/4/6下的十二个三角形。
++        let expected = [
++            [[-1., -2., 3.], [1., -2., 3.], [1., 2., 3.]],
++            [[1., 2., 3.], [-1., 2., 3.], [-1., -2., 3.]],
++            [[-1., 2., -3.], [1., 2., -3.], [1., -2., -3.]],
++            [[1., -2., -3.], [-1., -2., -3.], [-1., 2., -3.]],
++            [[1., -2., -3.], [1., 2., -3.], [1., 2., 3.]],
++            [[1., 2., 3.], [1., -2., 3.], [1., -2., -3.]],
++            [[-1., -2., 3.], [-1., 2., 3.], [-1., 2., -3.]],
++            [[-1., 2., -3.], [-1., -2., -3.], [-1., -2., 3.]],
++            [[1., 2., -3.], [-1., 2., -3.], [-1., 2., 3.]],
++            [[-1., 2., 3.], [1., 2., 3.], [1., 2., -3.]],
++            [[1., -2., 3.], [-1., -2., 3.], [-1., -2., -3.]],
++            [[-1., -2., -3.], [1., -2., -3.], [1., -2., 3.]],
++        ];
++        let triangles = box_trigger_volume(2., 4., 6., &Transform::identity());
++        assert_eq!(triangles.len(), 12);
++        for (actual, points) in triangles.iter().zip(expected) {
++            assert_eq!(actual.points, points.map(Vec3::from_array));
++        }
++        let transform = Transform {
++            rotation: glam::Quat::from_xyzw(0., 1., 0., 0.),
++            translation: Vec3::new(10., 20., 30.),
++            scale: Vec3::new(2., 3., 4.),
++        };
++        let triangles = box_trigger_volume(2., 4., 6., &transform);
++        for (actual, points) in triangles.iter().zip(expected) {
++            assert_eq!(
++                actual.points,
++                points.map(|[x, y, z]| Vec3::new(10. - 2. * x, 20. + 3. * y, 30. - 4. * z))
++            );
++        }
++    }
++
++    #[test]
++    fn box_trigger_volume_keeps_reflection_degeneracy_and_nonfinite_lanes() {
++        use crate::utils::components::transform::Transform;
++        let identity = Transform::identity();
++        let positive = box_trigger_volume(2., 4., 6., &identity);
++        let reflected = box_trigger_volume(-2., 4., 6., &identity);
++        for (actual, original) in reflected.iter().zip(&positive) {
++            assert_eq!(
++                actual.points,
++                original.points.map(|p| Vec3::new(-p.x, p.y, p.z))
++            );
++        }
++        let flat = box_trigger_volume(0., 4., 6., &identity);
++        assert_eq!(flat.len(), 12);
++        assert!(flat.iter().flat_map(|t| t.points).all(|p| p.x == 0.));
++        let nonfinite = box_trigger_volume(f32::INFINITY, 4., 6., &identity);
++        assert_eq!(nonfinite.len(), 12);
++        assert!(
++            nonfinite
++                .iter()
++                .flat_map(|t| t.points)
++                .all(|p| !p.is_finite())
++        );
++    }
++
++    #[test]
++    #[should_panic]
++    fn box_trigger_triangle_mapper_keeps_short_chunk_failure() {
++        let _ = box_trigger_triangles(&[0, 1], &glam::Mat4::IDENTITY, &[Vec3::ZERO; 24]);
++    }
++}

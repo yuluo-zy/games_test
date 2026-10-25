@@ -1,0 +1,38 @@
+// load_locale
+// 0x140b9c300 void __cdecl load_locale(void)
+// params: []
+
+void __cdecl lang_lib::load_locale(void)
+
+{
+  undefined8 *puVar1;
+  code *pcVar2;
+  longlong extraout_RAX;
+  longlong extraout_RAX_00;
+  longlong local_68;
+  
+  load_locale_impl();
+  if (extraout_RAX == 0) {
+    paths::standard_app_root_path();
+    std::path::Path::_join();
+    std::sys::os_str::wtf8::Buf::as_mut_slice();
+    std::fs::write::inner();
+    if (local_68 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    if (((uint)extraout_RAX_00 & 3) == 1) {
+      puVar1 = *(undefined8 **)(extraout_RAX_00 + 7);
+      pcVar2 = (code *)*puVar1;
+      if (pcVar2 != (code *)0x0) {
+        (*pcVar2)(*(undefined8 *)(extraout_RAX_00 + -1));
+      }
+      if (puVar1[1] != 0) {
+        std::alloc::__default_lib_allocator::__rust_dealloc();
+      }
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+  }
+  return;
+}
+
+

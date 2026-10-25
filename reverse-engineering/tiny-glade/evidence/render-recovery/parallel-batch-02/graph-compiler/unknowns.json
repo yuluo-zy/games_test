@@ -1,0 +1,13 @@
+{
+  "status":"R2_residuals",
+  "unknowns":[
+    {"id":"R2-GC-01","question":"full original compile-entry differential","reason":"unknown graph/closure/managed-device ABI and temporal state; candidate oracle only"},
+    {"id":"R2-GC-02","question":"graph-local alias/reused=true producer reachability","reason":"local maps initialized empty, no release insertion in observed populate path; consumer exists"},
+    {"id":"R2-GC-03","question":"exact original outer failure atomicity/retirement","reason":"population non-atomic observed; compiler on_retire and state restoration schema unresolved"},
+    {"id":"R2-GC-04","question":"vk-sync-fork provenance/access enum","reason":"trait boundary kept; original local fork source commit unknown"},
+    {"id":"R2-GC-05","question":"Vulkan transition scopes/device checks","reason":"only access from/to decisions; stages/layouts/aspect/queue and generation external"},
+    {"id":"R2-GC-06","question":"zero-pass imports/export recording","reason":"ResourceInfo initializes import last absent and no batch emits; no runtime observation"},
+    {"id":"R2-GC-07","question":"temporal parity/history mapping","reason":"no evidenced schema; omitted instead of synthesized"}
+  ],
+  "claims_not_made":["author original Rust source","stable original ABI","complete renderer","full GPU parity","new native verification count"]
+}

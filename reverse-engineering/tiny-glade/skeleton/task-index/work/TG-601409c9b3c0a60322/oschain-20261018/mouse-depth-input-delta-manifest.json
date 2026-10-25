@@ -1,0 +1,48 @@
+{
+  "status": "candidate_not_compiled",
+  "scope": "follow-on delta after frozen input5 batch; no production write",
+  "files": [
+    {
+      "target": "games_test/tiny-glade/crates/country-core/src/input/recording.rs",
+      "baseline": "games_test/tiny-glade/crates/country-core/src/input/recording.rs",
+      "before_sha256": "79e090065ffbb9afa93466d0bc68be1646fb3f6f99605b9785329d9ae3dfbacf",
+      "candidate": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-601409c9b3c0a60322/oschain-20261018/candidate-recording.rs",
+      "sha256": "a2e92c50962da0674a6820f57741be68ec7b056bce060ce1ce45062ab8d5dc13",
+      "patch": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-601409c9b3c0a60322/oschain-20261018/candidate-recording.patch",
+      "patch_sha256": "9212090b4a564db73937a8cd7a955d60d8f2bc385d6a7189a3b3cbfd3e346e70"
+    },
+    {
+      "target": "games_test/tiny-glade/crates/country-core/src/systems/backend/input/input_record_replay.rs",
+      "baseline": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-dc24c3e2154191d03a/oschain-20261018/candidate-input_record_replay.rs",
+      "before_sha256": "af35a8c6cddb5cff5cce9ed47de9f9d54328741357d94bd6b664b70f8b4fb403",
+      "candidate": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-601409c9b3c0a60322/oschain-20261018/candidate-input_record_replay-after-ready.rs",
+      "sha256": "69f8e8a7893f17c5bcbf551b426146528c29bffa48c48449320c8c4bc6890a41",
+      "patch": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-601409c9b3c0a60322/oschain-20261018/candidate-input_record_replay-after-ready.patch",
+      "patch_sha256": "1b98758bdbe1a6617f3d6f34e9c203cd4a80bbb06f14272c36853982bf70c671"
+    },
+    {
+      "target": "games_test/tiny-glade/crates/country-core/src/resources/read_mouse_depth_value.rs",
+      "baseline": "games_test/tiny-glade/crates/country-core/src/resources/read_mouse_depth_value.rs",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidate": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a544435aa018f21820/oschain-20261018/candidate-read_mouse_depth_value.rs",
+      "sha256": "92a6ef31796ced3e4dfbc006d614bac56c1ca70b0a7ea9584c25ce2cfa11d408",
+      "patch": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-601409c9b3c0a60322/oschain-20261018/candidate-read_mouse_depth_value.patch",
+      "patch_sha256": "0c28c11395b33d57e1163c9ca41bf8e82c40e366abb85068a336fa5498553c58"
+    },
+    {
+      "target": "games_test/tiny-glade/crates/country-core/tests/input_pipeline.rs",
+      "baseline": "games_test/tiny-glade/crates/country-core/tests/input_pipeline.rs",
+      "before_sha256": "e8a58ffa09ecab8022d000698aaa57cefc2746f8c1941d62bcdc26f3df099a54",
+      "candidate": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-601409c9b3c0a60322/oschain-20261018/candidate-input_pipeline-depth.rs",
+      "sha256": "b2628318192be41310a302ea5b58e7b9ae8817b7bffdf048ce41058636536473",
+      "patch": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-601409c9b3c0a60322/oschain-20261018/candidate-input_pipeline-depth.patch",
+      "patch_sha256": "198d23144fa3d03af4604c8660aabe4ca2826c5f9d9c0f35fa9ff2577f29d611"
+    }
+  ],
+  "dependencies": [
+    "canonical MouseDepthValue resource exported and constructed using original zero56B constructor",
+    "camera-ray + terrain + (capture,readback) Update10 shared gameplay-active registration; not PostUpdate",
+    "current mapped MouseDepthValueSsbo same actual AssetSsboLibrary owner",
+    "input_pipeline test: apply resource initialization only after parents GameProfile fixture delta"
+  ]
+}

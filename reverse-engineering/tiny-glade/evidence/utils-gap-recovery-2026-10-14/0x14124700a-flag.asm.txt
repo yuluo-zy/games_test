@@ -1,0 +1,34 @@
+0x141246ffa: mov dword ptr [rsp + 0x30], edx
+0x141246ffe: movsd xmm0, qword ptr [rcx + 0x50]
+0x141247003: movsd qword ptr [rsp + 0x38], xmm0
+0x141247009: mov rax, qword ptr [rip + 0x23e52f8]
+0x141247010: unpcklps xmm7, xmm1
+0x141247013: divps xmm7, xmmword ptr [rip + 0x175cc56]
+0x14124701a: addps xmm7, xmmword ptr [rip + 0x16de8bf]
+0x141247021: cmp byte ptr [rax], 0
+0x141247024: je 0x14124713f
+0x14124702a: movshdup xmm6, xmm7
+0x14124702e: movss xmm0, dword ptr [rip + 0x16de8ce]
+0x141247036: minss xmm6, xmm0
+0x14124703a: minss xmm7, xmm0
+0x14124703e: movss xmm0, dword ptr [rip + 0x175cc6a]
+0x141247046: mulss xmm6, xmm0
+0x14124704a: mulss xmm7, xmm0
+0x14124704e: movss xmm0, dword ptr [rip + 0x1713092]
+0x141247056: addss xmm6, xmm0
+0x14124705a: addss xmm7, xmm0
+0x14124705e: xorps xmm0, xmm0
+0x141247061: maxss xmm6, xmm0
+0x141247065: cvttss2si r15, xmm6
+0x14124706a: xor eax, eax
+0x14124706c: ucomiss xmm6, xmm0
+0x14124706f: cmovb r15d, eax
+0x141247073: maxss xmm7, xmm0
+0x141247077: movss xmm1, dword ptr [rip + 0x1759751]
+0x14124707f: ucomiss xmm6, xmm1
+0x141247082: mov ecx, 0xffffffff
+0x141247087: cmova r15d, ecx
+0x14124708b: cvttss2si rsi, xmm7
+0x141247090: ucomiss xmm7, xmm0
+0x141247093: cmovb esi, eax
+0x141247096: ucomiss xmm7, xmm1

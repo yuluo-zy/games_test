@@ -1,0 +1,9 @@
+# Actual window-extra input dependency, no local codec
+
+B only, read-only contract. The original enum accessor105B tests byte[argument+0x11]==6 and returns the input address; otherwise it panics. Both true window generators pass the address of Info+0x30 (their record-end pointer minus0x18). Thus this caller reads the discriminator fromInfo+0x41 and the returned u32 fromInfo+0x30. It does not read destination payload+0x10. Frame color comes separately fromInfo+0x28; window-glass color comes from this actual window-extra u32.
+
+The current core Info::extra_style() already readsInfo+0x41. Current Info::extra()/extra_disc()/set_extra() remain the older explicit host dialect based ondst_payload high bits, with unproven alternate layout; those functions cannot satisfy these native window call sites. Root's integrated7da destination codec is correct for the first8B coordinate and separate destination fields, and is not being reverted or rewritten here.
+
+Minimal interface proposal for the unique core decorator source owner: expose a required accessor such as `pub fn window_extra(&self)->WindowExtra`, preserving original `extra_style()==6` failure and returning existing canonicalWindowExtra(self.u30 asu32). No new enum/parallel component/default/fallback. The final API name is subject to the core owner/root design review; the window author does not write this foreign source. Do not locally repair bytes or call the incorrect generic extra() in either generator. Actual upstream writing of union+30/+41 by UI/history/load consumers is a separate dependency; merely adding an accessor is not proof of producer closure. No broader extras migration is approved by this contract.
+
+The105B as_window_mut entry has the same address/size and its own PDB70276/70464 symbols; reading reuses as_window. Neither a dependency algorithm nor derived serde is being reconstructed. No source candidate or Cargo/GPU/test execution accompanies this contract.

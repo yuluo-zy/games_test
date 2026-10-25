@@ -1,0 +1,146 @@
+NAME: open_overlay_or_browser_to_webpage<alloc::string::String>
+VA: 0x14026d580
+SIZE: 488
+SIGNATURE: void __cdecl open_overlay_or_browser_to_webpage<alloc::string::String>(void)
+CALLEES:
+  {'name': 'SteamAPI_ISteamUtils_IsSteamRunningOnSteamDeck', 'address': '1429234f0'}
+  {'name': 'SteamAPI_SteamFriends_v017', 'address': '142923550'}
+  {'name': 'SteamAPI_SteamUtils_v010', 'address': '142923570'}
+  {'name': '__rust_dealloc', 'address': '140613c20'}
+  {'name': 'activate_game_overlay_to_web_page<steamworks::ClientManager>', 'address': '1400c6af0'}
+  {'name': 'as_inner_mut', 'address': '14067dd80'}
+  {'name': 'drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>', 'address': '140b85350'}
+  {'name': 'log', 'address': '140d4a330'}
+  {'name': 'open_browser_to_webpage<ref$<str$>_>', 'address': '14026d080'}
+DECOMP:
+
+void __cdecl
+country_core::systems::steam::SteamOverlayOpenResources::
+open_overlay_or_browser_to_webpage<alloc::string::String>(void)
+
+{
+  longlong lVar1;
+  longlong *plVar2;
+  code *pcVar3;
+  char cVar4;
+  undefined8 *extraout_RAX;
+  char *pcVar5;
+  undefined8 *extraout_RAX_00;
+  undefined8 *extraout_RAX_01;
+  undefined8 uVar6;
+  longlong in_RCX;
+  longlong *in_RDX;
+  longlong *local_e0;
+  code *local_d8;
+  longlong *local_d0;
+  char *local_c8;
+  undefined8 local_c0;
+  undefined8 local_b8;
+  undefined8 local_b0;
+  undefined8 uStack_a8;
+  undefined8 local_a0;
+  char *local_98;
+  undefined8 local_90;
+  undefined4 local_88;
+  undefined4 local_84;
+  undefined **local_80;
+  undefined8 local_78;
+  longlong **local_70;
+  undefined8 local_68;
+  undefined8 local_60;
+  longlong local_50;
+  longlong local_48;
+  longlong *local_40;
+  longlong *local_38;
+  longlong local_30;
+  undefined8 local_20;
+  
+  local_20 = 0xfffffffffffffffe;
+  local_50 = in_RDX[1];
+  local_48 = in_RDX[2];
+  local_38 = in_RDX;
+  local_30 = local_50;
+  if (*(longlong *)(in_RCX + 0x20) == 0) {
+    open_browser_to_webpage<ref_<str_>_>();
+    if (*local_38 == 0) {
+      return;
+    }
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+    return;
+  }
+  toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();
+  pcVar5 = (char *)SteamAPI_SteamUtils_v010();
+  plVar2 = (longlong *)*extraout_RAX;
+  LOCK();
+  lVar1 = *plVar2;
+  *plVar2 = *plVar2 + 1;
+  UNLOCK();
+  if (*plVar2 != 0 && SCARRY8(lVar1,1) == *plVar2 < 0) {
+    local_d0 = plVar2;
+    local_c8 = pcVar5;
+    cVar4 = SteamAPI_ISteamUtils_IsSteamRunningOnSteamDeck(pcVar5);
+    LOCK();
+    *plVar2 = *plVar2 + -1;
+    UNLOCK();
+    if (cVar4 == '\0') {
+      if (*plVar2 == 0) {
+        alloc::sync::Arc::
+        drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>();
+      }
+    }
+    else if (*plVar2 == 0) {
+      alloc::sync::Arc::drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>
+                ();
+    }
+    if (2 < *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E) {
+      local_e0 = &local_50;
+      local_d8 = core::fmt::impl$74::fmt<str_>;
+      toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();
+      local_b0 = *extraout_RAX_00;
+      uStack_a8 = extraout_RAX_00[1];
+      local_84 = *(undefined4 *)(extraout_RAX_00 + 2);
+      local_a0 = 3;
+      local_98 = "country_core::systems::steamFailed opening browser window: ";
+      local_90 = 0x1c;
+      local_80 = &anon_f9e01155cc7496a9b2c19d670aea4d75_11_llvm_15509636686585673137;
+      local_78 = 2;
+      local_70 = &local_e0;
+      local_68 = 1;
+      local_60 = 0;
+      local_d0 = (longlong *)0x0;
+      local_c8 = "country_core::systems::steamFailed opening browser window: ";
+      local_c0 = 0x1c;
+      local_b8 = 0;
+      local_88 = 1;
+      ::log::__private_api::impl$2::log();
+    }
+    toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();
+    uVar6 = SteamAPI_SteamFriends_v017();
+    local_40 = (longlong *)*extraout_RAX_01;
+    LOCK();
+    lVar1 = *local_40;
+    *local_40 = *local_40 + 1;
+    UNLOCK();
+    if (*local_40 != 0 && SCARRY8(lVar1,1) == *local_40 < 0) {
+      local_d0 = local_40;
+      local_c8 = (char *)uVar6;
+      steamworks::friends::Friends::activate_game_overlay_to_web_page<steamworks::ClientManager>();
+      LOCK();
+      *local_40 = *local_40 + -1;
+      UNLOCK();
+      if (*local_40 == 0) {
+        alloc::sync::Arc::
+        drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>();
+      }
+      if (*local_38 == 0) {
+        return;
+      }
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+      return;
+    }
+  }
+                    // WARNING: Does not return
+  pcVar3 = (code *)invalidInstructionException();
+  (*pcVar3)();
+}
+

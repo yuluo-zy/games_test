@@ -1,0 +1,57 @@
+{
+  "reviewer": "07-independent-validation",
+  "at_utc": "2026-10-19T19:57:18.104792+00:00",
+  "verdict": "passed_scoped_design",
+  "manifests": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-73ca4b7e51fae48995/clutter-startup-20261020/borrowed-point-ctor-20261020/design-v1.json",
+      "sha256": "01981f206c53a68813f3b37b29c2447a4829212b680f4d76c129181bbbad94b0"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-2dfe262879222ff8a5/deco-trackers-20261020/profile-field-trace-b-v1/MANIFEST_B_V1.json",
+      "sha256": "23cf19d3c8220dd04ef861288e41a3495ef955349b6140957550c27bb568f0e6"
+    }
+  ],
+  "verified": {
+    "frozen_current_reference_checks": 36,
+    "all_match": true,
+    "direct_B_PE_full_bodies": [
+      {
+        "start": "0x1412898e0",
+        "bytes": 921,
+        "sha256": "79d22bb5282ed03260999969842afc4a309d75b426a0dbe147e472ad4abc3220"
+      },
+      {
+        "start": "0x141206c40",
+        "bytes": 10,
+        "sha256": "8b78dcf29da84ee905d257d10d5d626834828a9a7c55dca3df1bceedabe96bcc"
+      },
+      {
+        "start": "0x14146bb70",
+        "bytes": 1555,
+        "sha256": "307cf0ce0241b8052ef210024067264383e86fa6dd966eb22242b9524d2d0759"
+      }
+    ],
+    "full_body_instructions": 537,
+    "selected_publisher_anchor_instructions": 82,
+    "mismatches": 0,
+    "source_before": "f3efbbce53983f4b3395927da6c291d3c8b2a3ae113748b2a2a94a1ae251b20c"
+  },
+  "accepted_facts": [
+    "Publisher sret260 mapped Curve3 stores value+38/+48 headers; anchor uses exact original profile pointer+40/len+48 and remap reads X/Z. Current geometry.outline owns this profile; height_outline may select prepared_path and is not equivalent.",
+    "Shared mapped arithmetic uses R:CurvePoint, not input T. Input array values may remain borrowed without unsafe casting, new curve, eager conversion/scan or allocation.",
+    "Original current coord validation stays single source of truth; identity constructor retains its existing API/CurvePoint restriction. New mapped constructor takes Points:CurvePoints<T>, R:CurvePoint and F:Fn(usize,&T)->R. Only remap_2d needs input T:CurvePoint."
+  ],
+  "implementation_requirements": [
+    "Remove T:CurvePoint only from mapped impl; retain output R bound and add method-specific T bound where projected() is called. Do not add Copy or native arithmetic semantics to [f32;3].",
+    "Keep existing right/left/measure bodies and old test cases byte-identical. Do not silently relax coord segment/range/order/NaN validation or eager endpoint commit before later mapper panic.",
+    "Use actual geometry.outline borrowed array in incoming anchor and explicit original len0/1 failure branches, with XZ mapper. Interpolate Y from this same original profile.",
+    "Focused tests must observe no eager mapper evaluation, actual array XZ distance and coord bits vs Vec3 path, invalid coord failures and late mapper panic retaining committed endpoint.",
+    "Root is sole production/build runner. Current actual56 suite predates this constructor and cannot validate its types/tests until new exact source snapshot is run."
+  ],
+  "scope": [
+    "Root-delegated unique01 author may write narrow existing TG73 candidate only. Foreign Storage/publication unchanged.",
+    "Architecture adapter is accepted; original Rust generic/borrrow spelling or physical layout is not asserted.",
+    "Not a pass for nine-param anchor, main location algorithm, real collision loader, whole utils/core/App/GPU, allocation throughput or performance."
+  ]
+}

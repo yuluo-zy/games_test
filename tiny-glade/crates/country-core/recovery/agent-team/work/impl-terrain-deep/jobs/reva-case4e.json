@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nlisting = currentProgram.getListing()\nregions = {\"setup\": (\"140af02e2\",\"140af02f2\"), \"t0\": (\"140af02f2\",\"140af0310\"), \"t4\": (\"140af0320\",\"140af0344\"), \"t2\": (\"140af0344\",\"140af036c\"), \"t8\": (\"140af036c\",\"140af038c\"), \"t11\": (\"140af038c\",\"140af03b0\")}\nout = {}\nfor name,(s,e) in regions.items():\n    start = currentProgram.getAddressFactory().getAddress(s)\n    end = currentProgram.getAddressFactory().getAddress(e)\n    dis = []\n    addr = start\n    while addr.compareTo(end) < 0:\n        inst = listing.getInstructionAt(addr)\n        if inst is None:\n            addr = addr.add(1); continue\n        dis.append(\"%s  %s\" % (inst.getAddress(), inst))\n        addr = inst.getMinAddress().add(inst.getLength())\n    out[name] = dis\nprint(json.dumps(out))",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 180
+  }
+]

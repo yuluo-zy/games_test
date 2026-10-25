@@ -1,0 +1,13 @@
+# Focused validation plan — unexecuted
+
+These are proposed cases, not reported passes. Root owns all Cargo/GPU execution.
+
+* Real Cuboid AABB: dimensions=(2,4,6), translation=(1,2,3), identity placement must yield min=(0,0,0), max=(2,4,6). Check actual primitive half-extents remain (1,2,3), not a compound or twice-halved geometry. Legacy UVec3 entry receives the translation's float bit patterns and must match the truthful Vec3 entry.
+* Distinct native adapter order: use nonzero local X translation with an external quarter-turn about Y. Tuple upsert applies external*local, while the original Iso adapter applies local*external. Check actual OffsetColliderTransform and actual Rapier collider position, with the existing reconstructed outer-parent compatibility argument explicit.
+* Same owner and same-key edits: real upsert with the same key and identical final pose/hash/source is Kept; changing dimensions while position/rotation stay unchanged is Replaced. Changing local center updates final pose and is Replaced. Changing a decorator storage address under the same id/pose/hash is Replaced. Changing ignored source padding alone must remain Kept.
+* Actual dual-map ownership: use DecoratorPhysicsColliders first/second or equivalent real map instances, same DecoratorId, first tag3 and second tag4, same RaycastWorld. Both slots may allocate Rapier local index0, but global SlotMap keys and source receipts must differ. Resolve Collider.user_data through the same SlotMap, then raycast and overlap through actual Rapier QueryPipeline; expect source id/address/tag from the registered mesh. Removing the first must not alter the second.
+* Generation/lifetime: retain Weak to mesh Arc, remove through remove_collider, check the SlotMap no longer resolves the old key and ownership releases; after actual slot reuse the new generation differs and old key still fails. on_level_reload drops the same registry owner. Do not claim OS Edit/Reload scheduling has run.
+* Missing receipt: a manually inserted Rapier collider with no real registered key must fail at source resolution rather than produce a synthetic successful receipt. Existing geometric query regressions should instead create their fixtures through real upsert registration.
+* Keep existing native query and transform regressions. Identity-only tests cannot prove the translated constructor. A manually forged registry entry cannot prove the actual dual-map producer/consumer path.
+
+Expected evidence after implementation: source before/candidate SHA, exact patch, parser-only result labeled separately, independent implementation review, then root-run focused library tests. GPU results from unrelated renderer work do not validate this physics candidate.

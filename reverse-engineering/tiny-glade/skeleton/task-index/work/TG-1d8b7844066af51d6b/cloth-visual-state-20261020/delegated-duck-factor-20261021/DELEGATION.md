@@ -1,0 +1,1 @@
+root 通过 /root/core_business_lead 在本轮明确委派：仅 existing utils/lib.rs 邻接 time_continuous_lerp_factor 40B，保 old cloth-visual-state-20261020 claim；root 唯一 production/Cargo，duck 唯一此窄候选 writer，不动四参lerp/exports/mod。

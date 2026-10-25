@@ -1,0 +1,24 @@
+// void __cdecl call_once<country_core::systems::terrain::ui_terrain_focus_mode::ui_terrain_focus_mode::closure$1::closure_env$0,tuple$<>_>(void)
+
+void __cdecl
+core::ops::function::FnOnce::
+call_once<country_core::systems::terrain::ui_terrain_focus_mode::ui_terrain_focus_mode::closure_1::closure_env_0,tuple_<>_>
+          (void)
+
+{
+  undefined8 *in_RCX;
+  undefined8 local_40;
+  undefined8 uStack_38;
+  undefined8 local_30;
+  longlong local_28;
+  
+  ::utils::geometry::circle::Circle2d::as_curve3();
+  in_RCX[2] = local_30;
+  *in_RCX = local_40;
+  in_RCX[1] = uStack_38;
+  if (local_28 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  return;
+}
+

@@ -1,0 +1,297 @@
+--- a/tiny-glade/crates/systems/clutter/src/lib.rs
++++ b/tiny-glade/crates/systems/clutter/src/lib.rs
+@@ -86,7 +86,6 @@
+         (
+             autoclutter_subscribe_to_tabloids,
+             autoclutter::autoclutter_animation::autoclutter_animation,
+-            autoclutter::load_clutter_meshes::load_clutter_meshes,
+             autoclutter::add_autoclutter_around_gates::add_autoclutter_around_gates,
+             autoclutter::add_autoclutter_around_windows::add_autoclutter_around_windows,
+             autoclutter::add_autoclutter_on_windows::add_autoclutter_on_windows,
+@@ -134,6 +133,7 @@
+         assert_eq!(world.resource::<AssetSsboLibrary>().get::<BushCpuSsbo>().unwrap().mapped[0].0, [0, 0x12345678]);
+         schedule.initialize(&mut world).unwrap();
+         assert_eq!(schedule.systems().unwrap().filter(|(_, system)| system.name().ends_with("::read_bush_positions_from_gpu")).count(), 1);
++        assert_eq!(schedule.systems().unwrap().filter(|(_, system)| system.name().ends_with("::load_clutter_meshes")).count(), 0);
+         // Running the whole clutter chain requires its separate host owners;
+         // actual reader execution is covered in its World/library regressions.
+     }
+--- a/tiny-glade/crates/tiny-glade/src/gameplay_startup.rs
++++ b/tiny-glade/crates/tiny-glade/src/gameplay_startup.rs
+@@ -24,6 +24,34 @@
+ /// express the original dependency edges; resources remain owned by this App.
+ #[derive(SystemSet, Clone, Copy, Debug, PartialEq, Eq, Hash)]
+ pub enum GameplaySessionStartup { Walls, Sky, Critters, Roof, Sheep, Clearing, Meadow }
++
++/// Registration identity only. Asset completion is the actual canonical
++/// ClutterMeshes resource inserted by the original Startup producer.
++#[derive(Resource)]
++struct ClutterStartupRegistered;
++
++fn install_clutter_startup(app: &mut App, installed: PathBuf) {
++    if app.world().contains_resource::<ClutterStartupRegistered>() {
++        return;
++    }
++    // B ClutterPlugin1406520f9 -> Schedules::add_systems140ed9480:
++    // loader is one of three Startup members, not part of its Update chain.
++    // The two subscription members are separate unresolved producers.
++    app.add_systems(bevy_app::Startup,
++        move |meshes: Res<AssetMeshLibrary>, watch: Res<MeshWatch>,
++              config: Res<GameConfig>, mut commands: Commands| {
++            let catalog = system_clutter::autoclutter::load_clutter_meshes::load_clutter_meshes_from(
++                &installed, &meshes, &watch, config.dev.demo);
++            commands.insert_resource(catalog);
++        });
++    app.insert_resource(ClutterStartupRegistered);
++}
++
++pub(crate) fn require_clutter_catalog(world: &World) -> anyhow::Result<()> {
++    anyhow::ensure!(world.contains_resource::<country_core::resources::clutter_meshes::ClutterMeshes>(),
++        "gameplay Startup did not publish canonical ClutterMeshes");
++    Ok(())
++}
+ 
+ /// The actual gameplay device tuple shared by the window host and headless
+ /// acceptance. Asset tables must already belong to this same physical device.
+@@ -46,6 +74,71 @@
+     Ok(())
+ }
+ 
++#[cfg(test)]
++mod clutter_startup_tests {
++    use super::*;
++    use country_core::resources::clutter_meshes::ClutterMeshes;
++
++    fn startup_app() -> App {
++        let mut app = App::new();
++        let mut config = GameConfig::default();
++        config.dev.demo = false;
++        app.insert_resource(config);
++        app.insert_resource(AssetMeshLibrary::new());
++        app.insert_resource(MeshWatch::new(false));
++        app
++    }
++
++    #[test]
++    fn clutter_loader_registration_is_once_per_app_and_only_in_startup() {
++        for _ in 0..2 {
++            let mut app = startup_app();
++            install_clutter_startup(&mut app, PathBuf::from("not-loaded-at-registration"));
++            install_clutter_startup(&mut app, PathBuf::from("not-loaded-at-registration"));
++            assert_eq!(app.get_schedule(bevy_app::Startup).unwrap().graph().systems()
++                .filter(|(_, system, _)| system.name().contains("install_clutter_startup")).count(), 1);
++            assert_eq!(app.get_schedule(bevy_app::Update).unwrap().graph().systems()
++                .filter(|(_, system, _)| system.name().contains("install_clutter_startup")).count(), 0);
++            assert!(app.world().contains_resource::<ClutterStartupRegistered>());
++            assert!(!app.world().contains_resource::<ClutterMeshes>());
++            assert!(require_clutter_catalog(app.world()).is_err());
++        }
++    }
++
++    #[test]
++    fn a_missing_required_asset_never_publishes_the_canonical_catalog() {
++        let mut app = startup_app();
++        let missing = std::env::temp_dir().join(format!(
++            "tiny-glade-missing-clutter-{}-{}", std::process::id(),
++            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
++        assert!(!missing.exists());
++        install_clutter_startup(&mut app, missing);
++        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| app.update()));
++        assert!(result.is_err());
++        assert!(!app.world().contains_resource::<ClutterMeshes>());
++        assert!(require_clutter_catalog(app.world()).is_err());
++    }
++
++    #[test]
++    #[ignore = "requires the original B installation via TG_INSTALL_ROOT; no fabricated catalog"]
++    fn genuine_clutter_startup_loads_once_from_the_explicit_installation() {
++        let installed = crate::run_game::installation_root().unwrap();
++        let mut app = startup_app();
++        install_clutter_startup(&mut app, installed.clone());
++        app.update();
++        require_clutter_catalog(app.world()).unwrap();
++        assert_eq!(app.world().resource::<AssetMeshLibrary>().mesh_entries.len(), 61);
++        let catalog = app.world().resource::<ClutterMeshes>();
++        assert_eq!(catalog.window_flowerbeds().len(), 6);
++        let first = catalog.window_flowerbeds()[0].mesh.unwrap();
++        let mesh = app.world().resource::<AssetMeshLibrary>().get(first).unwrap();
++        assert!(std::path::Path::new(&mesh.source_file.as_ref().unwrap().path).starts_with(&installed));
++        app.update();
++        assert_eq!(app.world().resource::<AssetMeshLibrary>().mesh_entries.len(), 61);
++        assert_eq!(app.world().resource::<ClutterMeshes>().window_flowerbeds()[0].mesh, Some(first));
++    }
++}
++
+ pub fn install_gameplay_gpu_startup(
+     app: &mut App, device: Arc<rhapsody::device::Device>, hosts: HostTables,
+     installed: PathBuf,
+@@ -54,6 +147,9 @@
+         "gameplay startup belongs to a different GPU owner");
+     anyhow::ensure!(app.world().contains_resource::<AssetSsboLibrary>(),
+         "gameplay GPU asset libraries must be installed before startup registration");
++    // Also cover direct full-runtime callers: this installer is exclusively
++    // for the actual gameplay World, independently of its early state/camera.
++    app.insert_resource(crate::run_game::GameplayApplication);
+     // Original run_game_thread1405a0237..31a: clear_canvas is Update set33,
+     // guarded solely by on_event<ClearCanvasCmd>. OnExit's false command must
+     // execute during Reload before the next session, without an in_state(Game).
+@@ -109,6 +205,7 @@
+     if !app.world().contains_resource::<MeshWatch>() {
+         app.insert_resource(MeshWatch::new(watching));
+     }
++    install_clutter_startup(app, installed.clone());
+     if !app.world().contains_resource::<TextureWatch>() {
+         app.insert_resource(TextureWatch::new(watching));
+     }
+--- a/tiny-glade/crates/country-core/src/resources/mod.rs
++++ b/tiny-glade/crates/country-core/src/resources/mod.rs
+@@ -9,6 +9,7 @@
+ pub mod color_icon;
+ pub mod color_id;
+ pub mod color_id_roof;
++pub mod clutter_meshes;
+ pub mod compute_mouse_depth_value;
+ pub mod read_mouse_depth_value;
+ pub mod editing_highlight;
+--- a/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ b/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@ -61,6 +61,12 @@
+ #[derive(SystemSet, Clone, Copy, Debug, PartialEq, Eq, Hash)]
+ pub struct GameSystemSet(pub u8);
+ 
++/// Actual current-host World role, set by the gameplay App constructor and
++/// retained when its SubApp moves. The independent loading App never copies
++/// this marker. It is not an asset/load-completion flag.
++#[derive(Resource)]
++pub(crate) struct GameplayApplication;
++
+ /// Each original App constructs a separate shader library. The Arc is a Rust
+ /// owner for that App's library; it does not merge the two native libraries.
+ pub use country_core::asset_libraries::shader_library::SharedAssetShaderLibrary as ApplicationShaderLibrary;
+@@ -208,6 +214,7 @@
+         },
+     };
+     let mut app = App::new();
++    app.insert_resource(GameplayApplication);
+     startup_event_runtime::install(&mut app);
+     // Complete the original unchained set7 tuple on the existing App.
+     // The other three leaves were delivered in brush-startup/runtime-registration.rs.
+@@ -1155,6 +1162,8 @@
+                     phase = "gameplay SubApp::update";
+                     gameplay.update();
+                     update_index += 1;
++                    phase = "verify actual gameplay clutter Startup";
++                    crate::gameplay_startup::require_clutter_catalog(gameplay.world())?;
+                     phase = "read original LoadingGameComplete";
+                     let events = gameplay.world().get_resource::<Events<country_core::systems::save::load_game::LoadingGameComplete>>()
+                         .ok_or_else(|| anyhow::anyhow!("B async load: LoadingGameComplete event resource missing"))?;
+@@ -1756,8 +1765,10 @@
+     }
+ 
+     #[test]
+-    fn worker_update_panic_warmup_error_and_cancellation_all_stop_save() {
+-        for phase in ["update panic", "warmup failure", "cancel"] {
++    fn worker_update_panic_missing_catalog_and_cancellation_all_stop_save() {
++        // This small CPU fixture has no genuine gameplay catalog. It can
++        // prove rejection/cleanup, not entry into the real warm-up graph.
++        for phase in ["update panic", "missing catalog", "cancel"] {
+             let mut app = App::new();
+             app.insert_resource(country_core::systems::mode_manager::AppMode::default());
+             app.init_resource::<country_core::systems::save::load_game::LoadGameManager>();
+@@ -1769,15 +1780,19 @@
+             let flags = attach_save_owner(app.world_mut());
+             let gameplay = std::mem::take(app.main_mut());
+             let mut preparation = GameplayPreparation::spawn(gameplay, move |_| {
+-                if phase == "warmup failure" { anyhow::bail!("injected warmup failure"); }
+-                Ok(())
++                panic!("missing gameplay catalog must prevent warmup: {phase}");
+             }).unwrap();
+             if phase == "cancel" {
+-                preparation.cancel_and_join().unwrap();
++                // Immediate cancellation races with the observable catalog
++                // failure; both must finish the same actual save owner.
++                if let Err(error) = preparation.cancel_and_join() {
++                    assert!(error.to_string().contains("ClutterMeshes"));
++                }
+             } else {
+                 let error = preparation.receiver.recv_timeout(std::time::Duration::from_secs(2))
+                     .unwrap().unwrap_err();
+-                assert!(error.to_string().contains(phase));
++                let expected = if phase == "missing catalog" { "ClutterMeshes" } else { phase };
++                assert!(error.to_string().contains(expected));
+                 preparation.cancel_and_join().unwrap();
+             }
+             assert_saved_before_drop(flags);
+--- a/tiny-glade/crates/tiny-glade/src/game_loop.rs
++++ b/tiny-glade/crates/tiny-glade/src/game_loop.rs
+@@ -130,6 +130,29 @@
+         .before_ignore_deferred(country_core::render::nani::systems::nani_maintain_instances_ecs)
+         .in_set(crate::run_game::GameSystemSet(44)));
+     app.insert_resource(AssetLibrarySystemsInstalled);
++}
++
++fn update_application(app: &mut App) -> anyhow::Result<()> {
++    // The asynchronous preparation already has this unwind boundary. The
++    // synchronous skip-splash path must also report a real startup failure
++    // before platform output, render or any completed-frame side effect.
++    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| app.update()))
++        .map_err(|payload| {
++            let message = if let Some(message) = payload.downcast_ref::<String>() {
++                message.as_str()
++            } else if let Some(message) = payload.downcast_ref::<&'static str>() {
++                *message
++            } else {
++                "non-string panic payload"
++            };
++            anyhow::anyhow!("application startup/update panicked: {message}")
++        })?;
++    // Bind this requirement to the actual gameplay World, not a camera or an
++    // early Splash/Game/Reload state. SubApp handoff retains the same role.
++    if app.world().contains_resource::<crate::run_game::GameplayApplication>() {
++        crate::gameplay_startup::require_clutter_catalog(app.world())?;
++    }
++    Ok(())
+ }
+ 
+ impl GameFrameDriver {
+@@ -179,7 +202,7 @@
+         }
+         {
+             puffin::profile_scope!("App update");
+-            self.app.update();
++            update_application(&mut self.app)?;
+         }
+         if has_gui_input {
+             publish_platform_output(self.egui.end_frame());
+@@ -1068,6 +1091,31 @@
+     use super::*;
+     use country_core::{game_config::GameConfig, resources::gui::EscMenuState};
+ 
++    #[test]
++    fn gameplay_catalog_requirement_is_independent_of_loading_state_and_camera() {
++        use country_core::app_loading_state::AppLoadingState;
++        for state in [AppLoadingState::Splash, AppLoadingState::Game, AppLoadingState::Reload] {
++            let mut app = App::new();
++            app.insert_resource(crate::run_game::GameplayApplication);
++            app.insert_resource(bevy_state::state::State::new(state));
++            // An empty negative fixture must fail; do not install a fake
++            // catalog to pretend this small App completed real startup.
++            let error = update_application(&mut app).unwrap_err();
++            assert!(error.to_string().contains("ClutterMeshes"));
++        }
++        let mut separate_loading = App::new();
++        assert!(!separate_loading.world().contains_resource::<crate::run_game::GameplayApplication>());
++        update_application(&mut separate_loading).unwrap();
++    }
++
++    #[test]
++    fn synchronous_application_update_returns_the_actual_panic_text() {
++        let mut app = App::new();
++        app.add_systems(bevy_app::Startup, || -> () { panic!("required asset failed at its actual path"); });
++        let error = update_application(&mut app).unwrap_err();
++        assert!(error.to_string().contains("required asset failed at its actual path"));
++    }
++
+     fn vao_test_app() -> (App, country_core::asset_libraries::Handle<country_core::render::mesh::Mesh>) {
+         use country_core::{asset_libraries::{runtime::AssetLibraryRuntime,
+             mesh_library::{AssetMeshLibrary, MeshAsset}, vao_library::AssetVAOLibrary},

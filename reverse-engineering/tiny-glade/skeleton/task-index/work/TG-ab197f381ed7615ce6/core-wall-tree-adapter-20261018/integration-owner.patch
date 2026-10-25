@@ -1,0 +1,36 @@
+--- a/games_test/tiny-glade/crates/country-core/src/resources/history/serialized.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/history/serialized.rs
+@@ -220,6 +220,7 @@
+ 
+ #[derive(Deserialize)]
+ enum SavedEdit {
++    Tree(super::tree_edit::TreeEdit),
+     Terrain(TerrainEdit),
+     #[serde(alias = "WallNewSystem")]
+     Wall(WallCompoundHistoryEdit),
+@@ -227,6 +228,7 @@
+ impl<'de> Deserialize<'de> for EditType {
+     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+         match SavedEdit::deserialize(d)? {
++            SavedEdit::Tree(tree) => Ok(Self::Tree(Arc::new(tree))),
+             SavedEdit::Terrain(terrain) => Ok(Self::Terrain(Arc::new(terrain))),
+             SavedEdit::Wall(wall) => Ok(Self::Wall(Arc::new(wall))),
+         }
+@@ -236,6 +238,7 @@
+ impl Serialize for EditType {
+     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+         match self {
++            Self::Tree(tree) => s.serialize_newtype_variant("EditType", 12, "Tree", &**tree),
+             Self::Terrain(terrain) => {
+                 s.serialize_newtype_variant("EditType", 0, "Terrain", &**terrain)
+             }
+--- a/games_test/tiny-glade/crates/country-core/src/systems/history/tests.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/history/tests.rs
+@@ -330,6 +330,7 @@
+ fn tree_edit_serializes_native_field_names() {
+     use crate::resources::history::tree_edit::TreeEditData;
+     let data = TreeEditData {
++        storage_index: None,
+         position: glam::Vec3::new(1.0, 2.0, 3.0),
+         scale: 0.5,
+         rotation_degrees: 45.0,

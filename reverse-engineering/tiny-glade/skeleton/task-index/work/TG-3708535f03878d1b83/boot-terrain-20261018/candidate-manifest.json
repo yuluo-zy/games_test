@@ -1,0 +1,32 @@
+{
+  "scope": "original B only; not compiled, not applied; root integrates shared files",
+  "claim": "TG-3708535f03878d1b83",
+  "original_rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "files": [
+    {
+      "production": "games_test/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/object_grass_push.rs",
+      "before_sha256": "fd6ec41e88391f67ccdd64661661633e034b7125a1d7187f3a7381b618385e1b",
+      "candidate_sha256": "c755d8d35d099e6dcc6fff8618f2fe191d2bc182d727727b39c1670e980cd9c1",
+      "patch": "direct-core.patch"
+    },
+    {
+      "production": "games_test/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/d_main_tests.rs",
+      "before_sha256": "afb8c5c10be81be78abba6c42c146757a4c1635c6b5f2a7cc88f458094538d16",
+      "candidate_sha256": "0a6620c627874d0d42c5d8e620541bc80f926e7e33bf94797ecba1e8b7a69b7a",
+      "patch": "companion-tests.patch"
+    },
+    {
+      "production": "games_test/tiny-glade/crates/tiny-glade/src/scene_raster.rs",
+      "before_sha256": "53a3406c82ed5767b7475298d0d66a82de4f19124101d954dc8343c1f4a80045",
+      "candidate_sha256": "c54f0f60d28123b3fd2370731b7b71e1d739286534c0f917e4d7794a2dae4d80",
+      "patch": "shared-raster-context.patch"
+    },
+    {
+      "production": "games_test/tiny-glade/crates/tiny-glade/src/world_terrain.rs",
+      "before_sha256": "58b4b4ed361b6ff246cf5404e88a2eb2c6f2dbcca5fba62177cc44cfa9f83981",
+      "candidate_sha256": "78f48d7df1185742c338ca9941d507193db30fda6bf0b3a917e748f2fbcc87f6",
+      "patch": "typed-host.patch"
+    }
+  ],
+  "format": "rustfmt --edition 2024 candidates only; no Cargo/tests run"
+}

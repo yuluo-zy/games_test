@@ -1,0 +1,32 @@
+{
+  "reviewer": "07-independent-validation",
+  "created_utc": "2026-10-19T19:06:57.437961+00:00",
+  "verdict": "passed_scoped_native_right_algorithm_and_explicit_test_revision_design",
+  "manifest": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-73ca4b7e51fae48995/clutter-startup-20261020/right-f32-20261020/design-v3.json",
+    "sha256": "decdf45242aeb766f257f4142dc8c40ae5d470d196ff3ee02b76714d219917ea"
+  },
+  "verification": {
+    "frozen_inputs_matched": 13,
+    "unchanged_current_curve_test_oracle_fixture_inputs_matched": 6,
+    "reused_native_inputs_matched": 4,
+    "original_complete_PE_range": "1412898e0/921B,179 instructions continuous exact bytes; concrete remapped Vec3->Vec2 instantiations selected by retained matching B PDB",
+    "execution": "Author artifacts are bounded Python scalar lifts only; reviewer ran no lift, Rust/Cargo/native/GPU."
+  },
+  "native_algorithm": [
+    "Same public right API and borrowed/lazy range->take_until->remap->tuple windows, preserving stopping-vertex inclusion and predicate counts. Negative/unordered distance rejects; zero is not an early return, +inf remains accepted. No first pair leaves endpoint unchanged.",
+    "Use f32 metric_squared sqrt rather than robust f64/metric_length fallback. Compute separate residual=((1-old_t)*length)-distance. Ordered >=0 writes1-residual/length; otherwise immediately commit completed endpoint and add next actual length in order. No zero-edge skip/clamp/finite repair. NaN residual traverses/exhausts. Keep endpoint writes observable before later remap/predicate panic.",
+    "Do not change left, measurement, coordinate constructors or other Curve algorithms. Generic trait extension contract stays, but evidence only proves selected concrete original instantiations, not arbitrary user-defined metric behavior."
+  ],
+  "explicit_test_revision_and_found_defect": [
+    "Original seven extreme/zero-edge expected classes contradicted original f32, now explicitly revised under root authorization with full before snapshots and unchanged test inputs, no ignore/deletion/tolerance growth. Keep right->unchanged-host-measure composition assertions, add direct half-coordinate measurement coverage as supplement and retain positive continuation on NaN plus fresh positive slice. Do not call host f64 measure original B parity.",
+    "Reviewer additionally found randomized ordinary-domain exact zero-identity assertion in slice_extensions_preserve_zero_distance_and_match_arc_length_arithmetic: t=1e-8 rounds1-t to1, so native right0 on an ordinary1000 edge yields0, and duplicate zero edge yieldsNaN. This was missing from V2 plan; V3 explicitly preserves all1920 cases and split/left calls while replacing only original-incompatible right expectations.",
+    "V3 frozen lift contains64x5 exact finite-bit/NaN expectations for original320 zero inputs;167 identities differ,65 are duplicate-edge NaN. These are source/assembly-lift observations, not test results. Maintain exact left assertions; finite arc/split checks keep existing3e-5; each NaN branch must assert its concrete duplicate/zero input, single NaN and second-half exhaustion to actual last endpoint, never broadly skip nonfinite cases.",
+    "Ordinary1000/t1e-8/right5e-6 expectation changes to native0, left5e-9 unchanged. Fixture260 existing input/source stays byte-identical;8EPS comparisons masking26 differences cannot serve as exact arithmetic proof."
+  ],
+  "candidate_gate": [
+    "May implement narrow right body and explicit V2+V3 test revisions now in normal owned claim. Freeze full before/candidate/patch for method and two separately authorized existing external test files; no broad reformat or extra algorithm/API changes.",
+    "Source review must inspect actual finite/NaN branches and exact retained inputs/left/measure/predicate behavior, top-level test scopes and numerical witnesses; design approval does not mean current suite passes.",
+    "Actual root Rust execution still required; keep failures or additional original-incompatible assertions visible rather than adapting production to enhanced f64 test assumptions. No complete utils/App/scene/GPU/performance claim."
+  ]
+}

@@ -1,0 +1,1175 @@
+//! `draw_callbacks_a.rs` — `build_draw_lists` 回调的**前一半**本体（d_cb_a，gap 序号 1..=35）。
+//!
+//! 回调签名（O）：`fn(DrawBuilder, &EntityDrawParams, &mut World)`（`UnsafeWorldCell` 即 `&mut World`）。每个闭包都是
+//! 「`EntityDrawParams.entity` 与 World 存进 builder 后面 → 一串 `bind_*` / `write_uniform` → 终结操作」。
+//!
+//! # 覆盖（gap 序号 → 原版地址 → Rust 项）
+//! 1 `stairs_draw` 0x14086a780 [`stairs_draw_cb`]；2/3 `indirect_draw_bricks<1/0>` 0x1408a4ca0/0x1408a53d0
+//! [`bricks_lod1_cb`]/[`bricks_lod0_cb`]；4/5/6 ivy 枝/叶/花 [`ivy_branch_cb`]/[`ivy_leaf_cb`]/[`ivy_flower_cb`]；
+//! 7..=35 `closure_env$6/27/2/48/52/57/45/0/37/39/19/32/41/53/23/8/28/16/11/20/10/55/33/17/40/22/3/30/14` →
+//! [`env6`]、[`env27`]…（函数名 = `env<N>`）。
+//!
+//! # 取值路径（O，类型名不是猜的）
+//! * 资源：`Components::get_resource_id(TypeId)` → `[world+0x210/0x218]` 稀疏表 → `[world+0x1e0]` 资源槽；缺失 →
+//!   `Option::unwrap` panic ＝ `World::get_resource::<T>().unwrap()`（[`res`]）。
+//! * 组件：`world.entities` 取位置（失败 → `Result::unwrap` panic）+ `Components::get_id` + `Table::get_component`
+//!   （失败 → `Option::unwrap` panic，**可选组件**则 `xor reg,reg` 得 `None`）＝ `world.get_entity(e).unwrap().get::<T>()`
+//!   （[`comp`]/[`comp_opt`]）；`get_id` + 稀疏集 `cmp [..+8*id],0; setne` ＝ `EntityRef::contains::<T>()`（[`has`]）。
+//! * **TypeId → 类型名**：`get_id`/`get_resource_id` 的两个 u64 立即数在 EXE 里同时出现在 `init_state<T>` /
+//!   `register_component<T>` / `insert_resource<T>` / `register_resource_with<..T..>` 等泛型实例体里，据此由
+//!   `procs.tsv` + 原始字节搜索反查（脚本思路见 `B_d_cb_a.md` §2，表见同处）。
+//!
+//! # 真实类型 vs 视图类型
+//! crate 里这些资源/组件大多还是 `Gap` 骨架（布局 U），读不出字段。这里每个被读的类型放一个**只含被读字段**的
+//! `*View` 视图（字段偏移 = 机器码观测，文档里写明），真实类型（`ColorId`、`SemiTransparent`、`CursorTerrainRaycast`、
+//! `AssetSsboLibrary`、`AssetMeshLibrary`、`Handle<Mesh>`、`GpuWorld`、`IvyStorage`）直接使用。真实类型落地后把
+//! 读取点换过去即可；视图与 `draw_callbacks_b` 里同名视图是同一语义（并集合并见报告）。
+//!
+//! # 测试结构
+//! 带 uniform 的闭包拆成「读取（`read_*`，从 World 取纯数据）→ 本体（`*_body`，纯逻辑，终结操作由调用者给）→ 回调」，
+//! 这样测试可以在 `draw()` 之前读回 `constants_data()` 断言 uniform 值与绑定顺序。
+
+// Preserve the original instruction-level expression order/NaN policy, API call shapes, and evidence/test transcription. See README.md.
+#![allow(clippy::neg_cmp_op_on_partial_ord)]
+use alloc::vec::Vec;
+
+use bevy_ecs::component::Component;
+use bevy_ecs::entity::Entity;
+use bevy_ecs::resource::Resource;
+use bevy_ecs::world::World;
+use glam::{Mat4, Vec3};
+
+use crate::asset_libraries::Handle;
+use crate::asset_libraries::mesh_library::AssetMeshLibrary;
+use crate::asset_libraries::ssbo_library::{AssetSsboLibrary, SsboId};
+use crate::components::{
+    BackgroundTerrain, DontReceiveContactShadows, OverwriteRoughness, SemiTransparent,
+};
+use crate::name_hash::NameHash;
+use crate::render::mesh::Mesh;
+use crate::render::nani::draw_ext::NaniDrawExt;
+use crate::render::nani::gpu_world::{GpuWorld, GpuWorldSubsetKind};
+use crate::render::pass_builder::bind_resources::WallColorIdSsbo;
+use crate::render::pass_builder::draw_builder::{
+    BRICK_ERASE_CURSOR_UNIFORM, BRICK_ERASE_ENABLED_UNIFORM, BRICK_ERASE_RADIUS_UNIFORM,
+    BrickEraseHighlightInputs, DrawBuilder,
+};
+use crate::render::pass_builder::draw_list::{DrawTopology, EntityDrawParams};
+use crate::render::pass_builder::pass_resource_access::SsboType;
+use crate::resources::color_id::ColorId;
+use crate::resources::cursor_terrain_raycast::CursorTerrainRaycast;
+use crate::resources::render_input_views::IvyDrawView;
+use crate::resources::walls::WallHighlight;
+use crate::rhapsody_contract::ManagedHandle;
+use crate::rhapsody_types::RenderGraph;
+use crate::systems::render_loop::draw_passes::d_main_support::UNWRAP_NONE;
+use crate::systems::render_loop::draw_passes::draw_shaders::common_includes::{
+    DrawModeExt, bind_disk, bind_preset, bind_terrain_heightmap, bind_terrain_lighting,
+};
+use crate::systems::render_loop::draw_passes::draw_shaders::draw_bricks::{
+    BrickEntity, BrickGate, BrickProxy, gate, indirect_draw_bricks_with_mode,
+};
+use crate::systems::render_loop::draw_passes::draw_shaders::instanced_ivy::{
+    draw_instanced_ivy_branch_shader, draw_instanced_ivy_flower_shader,
+    draw_instanced_ivy_leaf_shader,
+};
+use crate::systems::render_loop::draw_passes::draw_shaders::ssbo_tags::{
+    DofAutofocusTag, DrawSsbo, InstanceBufferView, ReadSsboExt, SsboInstanceView,
+};
+use crate::systems::render_loop::draw_passes::draw_shaders::stairs_draw::{
+    StairsEntityData, stairs_draw,
+};
+
+// =====================================================================================================================
+// SSBO 标签（槽名 / SsboId 由 `dsh_ssbo_info.py` 从 EXE 抽取；测试用 xxh3 复算）
+// =====================================================================================================================
+
+macro_rules! ssbo_tag {
+    ($(#[$m:meta])* $tag:ident, $ty:literal, $slot:literal, $id:expr) => {
+        $(#[$m])*
+        #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+        pub struct $tag;
+        impl SsboType for $tag {
+            fn rg_buffer_hash() -> u64 {
+                $id
+            }
+        }
+        impl DrawSsbo for $tag {
+            const SLOT_NAME: &'static str = $slot;
+            const TYPE_NAME: &'static str = $ty;
+        }
+    };
+}
+
+ssbo_tag!(
+    /// `resources::color_id::GateColorIdSsbo`（0x14162a490）。
+    GateColorIdTag,
+    "country_core::resources::color_id::GateColorIdSsbo",
+    "GateColorIds",
+    0x3fca7ef7bb8726b4
+);
+ssbo_tag!(
+    /// `resources::color_id::HalftimberColorIdSsbo`（0x141630190）。
+    HalftimberColorIdTag,
+    "country_core::resources::color_id::HalftimberColorIdSsbo",
+    "HalftimberColorIdSsbo",
+    0x0cf3b7d1045fdc98
+);
+ssbo_tag!(
+    /// `resources::roofs::roof_buffers::WoodenPlankSsbo`（0x141631c90）。
+    WoodenPlankTag,
+    "country_core::resources::roofs::roof_buffers::WoodenPlankSsbo",
+    "WoodenPlank",
+    0x153e2eb3e8651534
+);
+ssbo_tag!(
+    /// `compute_passes::compute_garden::BushSsbo`（0x14162b090）。
+    BushTag,
+    "country_core::systems::render_loop::compute_passes::compute_garden::BushSsbo",
+    "Bushes",
+    0x87df9c07cbe7e324
+);
+ssbo_tag!(
+    /// `compute_passes::compute_garden::FlowerSsbo`（0x14162ce90）。
+    FlowerTag,
+    "country_core::systems::render_loop::compute_passes::compute_garden::FlowerSsbo",
+    "FlowerSsbo",
+    0xb9559015b7cea7e6
+);
+ssbo_tag!(
+    /// `systems::render_loop::resources::critters::SheepAnimationSsbo`（0x14162c890）。
+    SheepAnimationTag,
+    "country_core::systems::render_loop::resources::critters::SheepAnimationSsbo",
+    "Sheep Animation",
+    0xc70858c12c64d9ba
+);
+// 下面三个标签在 `draw_shaders::ssbo_tags` 里已有：DormerHole / DormerHoleCount / RoofColorId。
+use crate::systems::render_loop::draw_passes::draw_shaders::ssbo_tags::{
+    DormerHoleCountTag, DormerHoleTag, RoofColorIdTag,
+};
+
+#[path = "draw_callbacks_a_views.rs"]
+mod views;
+pub use views::*;
+
+// =====================================================================================================================
+// World 取值助手
+// =====================================================================================================================
+
+/// `Components::get_resource_id` + 资源槽；缺失 → `Option::unwrap` panic。
+pub fn res<T: Resource>(w: &World) -> &T {
+    w.get_resource::<T>().expect(UNWRAP_NONE)
+}
+
+/// 必需组件：实体无效 → `Result::unwrap` panic；组件缺失 → `Option::unwrap` panic。
+pub fn comp<T: Component>(w: &World, e: Entity) -> &T {
+    w.get_entity(e).unwrap().get::<T>().expect(UNWRAP_NONE)
+}
+
+/// 可选组件（`get_id` 失败 / `get_component` 返回空 → `None`）；实体无效仍 panic。
+pub fn comp_opt<T: Component>(w: &World, e: Entity) -> Option<&T> {
+    w.get_entity(e).unwrap().get::<T>()
+}
+
+/// 稀疏集存在性（`setne`）。
+pub fn has<T: Component>(w: &World, e: Entity) -> bool {
+    w.get_entity(e).unwrap().contains::<T>()
+}
+
+/// `packet.state` 第 0 字节 `(b & 0xf3) | v`（O：`and al, -0xd; or al, v`）。
+pub fn cull_state(state: u32, v: u8) -> u32 {
+    (state & !0x0c) | v as u32
+}
+
+fn set_cull(b: &mut DrawBuilder<'_>, v: u8) {
+    let p = b.packet_mut();
+    p.state.0 = cull_state(p.state.0, v);
+}
+
+/// `packet.state` 第 3 字节 `(b & 0x9f) | 0x40`（O：`and cl, -0x61; or cl, 0x40`）。
+fn set_byte3_field2(b: &mut DrawBuilder<'_>) {
+    let p = b.packet_mut();
+    p.state = p.state.set_byte3_field_2();
+}
+
+/// `closure_env$35` 同款的拓扑改写（`DrawTopology` tag 1：`state.byte0 = (b & 0xfc) | 2`、`blend = 载荷`）。
+fn apply_topology(b: &mut DrawBuilder<'_>, p: &EntityDrawParams) {
+    if let Some(DrawTopology::Alt(payload)) = p.topology {
+        let pk = b.packet_mut();
+        pk.state.0 = (pk.state.0 & !3) | 2;
+        pk.blend = payload;
+    }
+}
+
+/// `nani_draw`（0x140904ae0）的 World 版：取 `GpuWorld` / `AssetSsboLibrary` 资源（缺失 → `Option::unwrap` panic）。
+/// `RenderGraph` 在 crate 里是占位类型，没有 `Resource` 身份，这里用一次性 `RenderGraph::default()`
+/// （I：`get_rg_buffer` 命中已导入句柄时不碰它）。与 `draw_callbacks_b::nani_draw_world` 同形。
+pub fn nani_draw_world(b: DrawBuilder<'_>, kind: GpuWorldSubsetKind, w: &World) {
+    let gw = res::<GpuWorld>(w);
+    let lib = res::<AssetSsboLibrary>(w);
+    let mut rg = RenderGraph::default();
+    b.nani_draw(kind, gw, lib, &mut rg);
+}
+
+/// `AssetSsboLibrary` → [`SsboInstanceView`]（`FrozenMap::get` + 名字 + 实例缓冲）。与 `draw_callbacks_b::LibView` 同形。
+pub struct LibView<'a>(pub &'a AssetSsboLibrary);
+
+impl SsboInstanceView for LibView<'_> {
+    fn lookup_buffer(&self, ssbo_id: u64) -> Option<(&str, ManagedHandle)> {
+        self.0
+            .lookup_buffer(SsboId(NameHash(ssbo_id)))
+            .map(|(name, handle)| (name, ManagedHandle(handle.0)))
+    }
+
+    fn lookup(&self, ssbo_id: u64) -> Option<(&str, Option<InstanceBufferView>)> {
+        self.0
+            .lookup(SsboId(NameHash(ssbo_id)))
+            .map(|(name, info)| {
+                (
+                    name,
+                    info.map(|i| InstanceBufferView {
+                        instance_count: i.instance_count as u64,
+                        handle: ManagedHandle(i.buffer.id),
+                    }),
+                )
+            })
+    }
+}
+
+/// `bind_terrain_heightmap` + `bind_terrain_lighting`（预设 9 / 10，几乎每个 draw 的开头）。
+fn terrain(b: DrawBuilder<'_>) -> DrawBuilder<'_> {
+    bind_terrain_lighting(bind_terrain_heightmap(b))
+}
+
+/// 预设 15（`bind_water_object_push` 的第一项，名 0x035280b96dab13e6）。
+const PRESET_15: (u8, u64) = (0xf, 0x0352_80b9_6dab_13e6);
+/// 预设 5（名 0xed502fff6dc4021f）。
+const PRESET_5: (u8, u64) = (5, 0xed50_2fff_6dc4_021f);
+/// 预设 0x13（名 0x6ad63ccd18c8f041）。
+const PRESET_19: (u8, u64) = (0x13, 0x6ad6_3ccd_18c8_f041);
+/// 磁盘纹理 `(文件键, 名字哈希)`，被多个闭包共用。
+const DISK_COMMON_A: (u64, u64) = (0x5b9a_9def_bd41_da38, 0x1aca_8782_e36d_bd0e);
+/// 同一个文件键 0x5b9a… 配另一个绑定名（Env0/16/17）。
+const DISK_COMMON_B: (u64, u64) = (0x5b9a_9def_bd41_da38, 0x4174_8af6_1a22_5694);
+const DISK_DORMER: (u64, u64) = (0x4a2b_687d_0c1e_cf58, 0xd0cc_743d_37cf_aefb);
+const DORMER_HOLE_BINDING: u64 = 0x799f_9d8c_5d59_d1d2;
+const DORMER_HOLE_COUNT_BINDING: u64 = 0x6e98_0b4a_cba4_b95d;
+const DISK_ROOF: (u64, u64) = (0x7db9_e748_3fa2_4078, 0xaa8f_0490_dba0_d03c);
+const ROOF_COLOR_BINDING: u64 = 0xd567_2933_3fc9_4f92;
+const HALFTIMBER_COLOR_BINDING: u64 = 0xecec_e750_b6dd_7eda;
+/// `read_storage_buffer` 的 binding 名 0x2106412d631790c6（Env0/10/11 的实例 SSBO 都用它）。
+const INSTANCE_SSBO_BINDING: u64 = 0x2106_412d_6317_90c6;
+/// 名 0xfbdca30f95e604d1（Env6/8/11/27 的反照率磁盘纹理）。
+const NAME_ALBEDO: u64 = 0xfbdc_a30f_95e6_04d1;
+/// 名 0x9140004c9a5b7b9d（Env2/37/41 的磁盘纹理）。
+const NAME_9140: u64 = 0x9140_004c_9a5b_7b9d;
+/// 三个 cloth 闭包共用的 i32 uniform 名（`ColorId`）。
+pub const COLOR_ID_UNIFORM: u64 = 0xbf98_c47f_e61d_9aa0;
+/// `RoofFlagCloth`/`WoodenGate`/… 共用的 i32 uniform 名 0x2cfad118d3ecc02c。
+pub const CLOTH_ID_UNIFORM: u64 = 0x2cfa_d118_d3ec_c02c;
+/// 公用 f32 uniform 名 0x3cc185d80517a5cb（Env19/37）。
+pub const F32_3CC1_UNIFORM: u64 = 0x3cc1_85d8_0517_a5cb;
+
+// =====================================================================================================================
+// 1..=3  楼梯 / 墙砖
+// =====================================================================================================================
+
+/// gap 1 `stairs_draw`（0x14086a780）：`StairsStep` 首字节 → [`StairsEntityData`]（`aux` 恒 0：来自表）。
+pub fn stairs_draw_cb(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+    let flags = comp::<StairsStepView>(w, p.entity).flags;
+    stairs_draw(b, StairsEntityData { flags, aux: 0 });
+}
+
+/// 墙砖回调（LOD0/LOD1 同形）：实体 → 代理字节；`gate` 决定 `discard`（先于任何资源读取）；再取
+/// `AssetSsboLibrary`、`WallHighlight.ty`（仅常规路径）与 `bind_brick_erase_highlight` 的四个资源。
+fn bricks_cb<const LOD: u8>(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+    if w.get_resource::<crate::geometry::runtime::WallBrickUploadStatus>()
+        .is_some_and(|status| !status.gpu_ready)
+    {
+        b.discard();
+        return;
+    }
+    let px = comp::<WallBrickInstancedDrawProxyView>(w, p.entity);
+    let proxy = BrickProxy {
+        b0: px.b0,
+        b1: px.b1,
+        b2: px.b2,
+    };
+    let mode = b.draw_mode();
+    let w = &*w;
+    let proxy_path = match gate::<LOD>(mode, proxy) {
+        BrickGate::Discard => {
+            b.discard();
+            return;
+        }
+        BrickGate::Pass { proxy_index, .. } => proxy_index.is_some(),
+    };
+    let lib = LibView(res::<AssetSsboLibrary>(w));
+    let (brick_mode, erase) = if proxy_path {
+        // 代理路径不读 `WallHighlight` 与擦除高亮资源。
+        (
+            0,
+            BrickEraseHighlightInputs {
+                enabled: false,
+                cursor_position: None,
+                radius: 0.0,
+                suppress: false,
+            },
+        )
+    } else {
+        (res::<WallHighlight>(w).ty, read_erase_highlight(w))
+    };
+    indirect_draw_bricks_with_mode::<LOD>(
+        b,
+        mode,
+        BrickEntity::Proxy(proxy),
+        &lib,
+        brick_mode,
+        &erase,
+    );
+}
+
+/// `bind_brick_erase_highlight` 的四个资源（A：`EditingHighlight`、B：`CursorTerrainRaycast`、C：`EraserSizeMultiplier`、
+/// D：`DebugGui`）。
+pub fn read_erase_highlight(w: &World) -> BrickEraseHighlightInputs {
+    let cursor = res::<CursorTerrainRaycast>(w);
+    BrickEraseHighlightInputs {
+        enabled: res::<EditingHighlightView>(w).enabled,
+        cursor_position: (cursor.tag & 1 != 0).then_some(cursor.pos),
+        radius: res::<EraserSizeMultiplier>(w).0,
+        suppress: res::<DebugGuiView>(w).suppress,
+    }
+}
+
+/// gap 2 `indirect_draw_bricks<1>`（0x1408a4ca0）。
+pub fn bricks_lod1_cb(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+    bricks_cb::<1>(b, p, w);
+}
+
+/// gap 3 `indirect_draw_bricks<0>`（0x1408a53d0）。
+pub fn bricks_lod0_cb(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+    bricks_cb::<0>(b, p, w);
+}
+
+// =====================================================================================================================
+// 4..=6  常春藤
+// =====================================================================================================================
+
+/// 每条藤的段数输入（O：`IvyStorage` 的 `HashMap` 桶 `usize @桶+0x20`；I：藤的折线点数）。
+pub fn ivy_segment_counts(w: &World) -> Vec<usize> {
+    res::<IvyDrawView>(w).point_counts.clone()
+}
+
+/// gap 4 `draw_instanced_ivy_branch_shader`（0x1408dbc50）。
+pub fn ivy_branch_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+    let counts = ivy_segment_counts(w);
+    draw_instanced_ivy_branch_shader(b, counts);
+}
+
+/// 叶 / 花薄壳共用：相机眼位置 + 库视图。
+fn ivy_inputs(w: &World) -> (Vec3, &AssetSsboLibrary) {
+    (res::<MainCameraView>(w).eye, res::<AssetSsboLibrary>(w))
+}
+
+/// gap 5 `draw_instanced_ivy_leaf_shader`（0x1408dc180；21 B 薄壳，世界指针后移后 `jmp ivy_leaf_shader`）。
+pub fn ivy_leaf_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+    let (eye, lib) = ivy_inputs(w);
+    draw_instanced_ivy_leaf_shader(b, eye, &LibView(lib));
+}
+
+/// gap 6 `draw_instanced_ivy_flower_shader`（0x1408dc1a0）。
+pub fn ivy_flower_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+    let (eye, lib) = ivy_inputs(w);
+    draw_instanced_ivy_flower_shader(b, eye, &LibView(lib));
+}
+
+// =====================================================================================================================
+// 7  closure_env$6（0x1409ae900）：反照 / alpha / 法线贴图实体
+// =====================================================================================================================
+
+/// `closure_env$6` 的实体输入：`AlbedoMap`（必需）、`AlphaMap` / `NormalMap`（可选）。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Env6In {
+    pub albedo: u64,
+    pub alpha: Option<u64>,
+    pub normal: Option<u64>,
+}
+
+pub const E6_ALPHA_DEFAULT: u64 = 0x4b2c_611c_0a80_f895;
+pub const E6_NORMAL_DEFAULT: u64 = 0xe410_c6c6_901d_bb51;
+pub const E6_ALPHA_NAME: u64 = 0x0cc9_8d31_5143_2b02;
+pub const E6_NORMAL_UNIFORM: u64 = 0x413c_0862_9d1f_94ce;
+pub const E6_NORMAL_NAME: u64 = 0xda32_9707_5023_f6d7;
+pub const E6_DISK4: (u64, u64) = (0xe6d1_a603_f18a_02b7, 0xfefb_99ae_a78c_d409);
+
+pub fn read_env6(w: &World, e: Entity) -> Env6In {
+    Env6In {
+        albedo: comp::<AlbedoMapView>(w, e).0,
+        alpha: comp_opt::<AlphaMapView>(w, e).map(|a| a.0),
+        normal: comp_opt::<NormalMapView>(w, e).map(|n| n.0),
+    }
+}
+
+/// 绑定序（O）：反照磁盘 → alpha 磁盘（缺省 0x4b2c…）→ `bool(normal.is_some())` → 法线磁盘（缺省 0xe410…）→ 磁盘 0xe6d1… →
+/// 预设 0xf/5/0xe/0x13/9/10。
+pub fn env6_body<'p>(b: DrawBuilder<'p>, i: &Env6In, end: impl FnOnce(DrawBuilder<'p>)) {
+    let b = bind_disk(b, i.albedo, NAME_ALBEDO);
+    let b = bind_disk(b, i.alpha.unwrap_or(E6_ALPHA_DEFAULT), E6_ALPHA_NAME);
+    let b = b.uniform(E6_NORMAL_UNIFORM, i.normal.is_some());
+    let b = bind_disk(b, i.normal.unwrap_or(E6_NORMAL_DEFAULT), E6_NORMAL_NAME);
+    let b = bind_disk(b, E6_DISK4.0, E6_DISK4.1);
+    let b = bind_preset(b, PRESET_15.0, PRESET_15.1);
+    let b = bind_preset(b, PRESET_5.0, PRESET_5.1);
+    let b = bind_preset(b, 0xe, 0x4ee0_98b3_8612_d2b9);
+    let b = bind_preset(b, PRESET_19.0, PRESET_19.1);
+    end(terrain(b));
+}
+
+pub fn env6(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+    let i = read_env6(w, p.entity);
+    env6_body(b, &i, |b| b.draw());
+}
+
+// =====================================================================================================================
+// 8  closure_env$27（0x1409af390）
+// =====================================================================================================================
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Env27In {
+    pub semi_transparent: bool,
+    pub albedo: Option<u64>,
+    pub background_terrain: bool,
+    pub overwrite_roughness: Option<f32>,
+    pub dont_receive_contact_shadows: bool,
+}
+
+pub const E27_ROUGHNESS_DEFAULT: f32 = 0.8;
+/// 标记 `0x66476a13` 存在时的磁盘键（Env45 的最后一项同键）。
+pub const E27_MARKER_KEY: u64 = 0xbd39_5513_3728_5fb6;
+pub const E27_ALBEDO_DEFAULT: u64 = 0x68a6_5811_a585_1b4b;
+pub const E27_BOOL_A: u64 = 0x0229_bc8c_e86f_41df;
+pub const E27_F32: u64 = 0x72b5_d506_7b26_571f;
+pub const E27_BOOL_SEMI: u64 = 0x6183_d59b_2f20_cb8a;
+pub const E27_BOOL_NO_A6C0: u64 = 0x3327_ad9c_dde2_ed53;
+
+pub fn read_env27(w: &World, e: Entity) -> Env27In {
+    Env27In {
+        semi_transparent: has::<SemiTransparent>(w, e),
+        albedo: comp_opt::<AlbedoMapView>(w, e).map(|a| a.0),
+        background_terrain: has::<BackgroundTerrain>(w, e),
+        overwrite_roughness: comp_opt::<OverwriteRoughness>(w, e).map(|f| f.0),
+        dont_receive_contact_shadows: comp_opt::<DontReceiveContactShadows>(w, e).is_some(),
+    }
+}
+
+pub fn env27_body<'p>(b: DrawBuilder<'p>, i: &Env27In, end: impl FnOnce(DrawBuilder<'p>)) {
+    let key = if i.background_terrain {
+        E27_MARKER_KEY
+    } else {
+        i.albedo.unwrap_or(E27_ALBEDO_DEFAULT)
+    };
+    let b = bind_disk(b, key, NAME_ALBEDO);
+    let b = b.uniform(E27_BOOL_A, i.background_terrain);
+    let b = b.uniform(
+        E27_F32,
+        i.overwrite_roughness.unwrap_or(E27_ROUGHNESS_DEFAULT),
+    );
+    let b = b.uniform(E27_BOOL_SEMI, i.semi_transparent);
+    let b = b.uniform(E27_BOOL_NO_A6C0, !i.dont_receive_contact_shadows);
+    end(b);
+}
+
+pub fn env27(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+    let i = read_env27(w, p.entity);
+    env27_body(b, &i, |b| b.draw());
+}
+
+// =====================================================================================================================
+// 9  closure_env$2（0x1409afcc0）：羊
+// =====================================================================================================================
+
+pub const E2_I32_UNIFORM: u64 = 0x7cda_61e1_6dde_d517;
+pub const E2_F32_UNIFORM: u64 = 0xfdeb_6a27_4b96_ec22;
+pub const E2_BOOL_UNIFORM: u64 = 0xdb3b_a7c7_6206_de41;
+pub const E2_MAT4_UNIFORM: u64 = 0x702c_4e77_e30f_d575;
+pub const SHEEP_ANIMATION_BINDING: u64 = NAME_9140;
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Env2In {
+    pub sheep: SheepView,
+    pub prev: PrevTransformView,
+}
+
+pub fn read_env2(w: &World, e: Entity) -> Env2In {
+    Env2In {
+        sheep: {
+            let sheep = comp::<crate::resources::critters::sheep::Sheep>(w, e);
+            let walk = comp::<crate::resources::critters::sheep::SheepWalkRecord>(w, e);
+            SheepView {
+                q28: walk.frame_index,
+                f58: sheep.amplitude,
+                b60: sheep.control_flag,
+            }
+        },
+        prev: *comp::<PrevTransformView>(w, e),
+    }
+}
+
+/// uniform：`i32(sheep.q28)`、`f32(sheep.f58)`、`bool(sheep.b60)`、`Mat4::from_scale_rotation_translation(prev)` →
+/// `read_storage_buffer<SheepAnimationSsbo>` → 终结。
+pub fn env2_body<'p>(b: DrawBuilder<'p>, i: &Env2In, end: impl FnOnce(DrawBuilder<'p>)) {
+    let m =
+        Mat4::from_scale_rotation_translation(i.prev.scale, i.prev.rotation, i.prev.translation);
+    let b = b
+        .uniform(E2_I32_UNIFORM, i.sheep.q28 as i32)
+        .uniform(E2_F32_UNIFORM, i.sheep.f58)
+        .uniform(E2_BOOL_UNIFORM, i.sheep.b60 != 0)
+        .uniform(E2_MAT4_UNIFORM, m)
+        .read_ssbo::<SheepAnimationTag>(SHEEP_ANIMATION_BINDING);
+    end(b);
+}
+
+pub fn env2(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+    let i = read_env2(w, p.entity);
+    env2_body(b, &i, |b| b.draw());
+}
+
+// =====================================================================================================================
+// 10 / 20  closure_env$48 / $53（四张磁盘纹理 + 实例绘制）
+// =====================================================================================================================
+
+/// 两者共用的四张磁盘纹理 `(键, 名)`（O：movabs）。
+pub const E48_DISKS: [(u64, u64); 4] = [
+    (0x82c4_e0fd_167a_78c8, 0x7323_2050_865c_6bbd),
+    (0x3cc1_21b8_971f_81ab, 0x7323_1d50_865c_66a4),
+    (0x376b_c596_d76c_cb4f, 0x7323_1e50_865c_6857),
+    (0xa24b_da8c_91da_535b, 0x7323_1b50_865c_633e),
+];
+
+fn bind_four(b: DrawBuilder<'_>) -> DrawBuilder<'_> {
+    E48_DISKS.iter().fold(b, |b, &(k, n)| bind_disk(b, k, n))
+}
+
+/// gap 10 `closure_env$48`（0x1409b0570）：四磁盘 → `draw_instanced(0x1f4)`。
+pub fn env48(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+    bind_four(b).draw_instanced_w_gl_draw_flag(0x1f4);
+}
+
+/// gap 20 `closure_env$53`（0x1409b2580）：同四磁盘 → `draw_instanced(0x3c)`。
+pub fn env53(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+    bind_four(b).draw_instanced_w_gl_draw_flag(0x3c);
+}
+
+// =====================================================================================================================
+// 11  closure_env$52（0x1409b07f0）：演示边框
+// =====================================================================================================================
+
+pub const E52_DISK: (u64, u64) = (0xbf45_421f_fcbf_fbb9, 0x9799_6ab8_8774_00f5);
+
+/// `Events<ShowDemoBorderOverlay>` 的 `events_a.len | events_b.len`（O：`[+0x30] | [+0x10]` 为 0 → `discard`）。
+pub fn read_env52(w: &World) -> bool {
+    !res::<bevy_ecs::event::Events<ShowDemoBorderOverlay>>(w).is_empty()
+}
+
+pub fn env52(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+    if !read_env52(w) {
+        b.discard();
+        return;
+    }
+    let b = bind_disk(b, E52_DISK.0, E52_DISK.1);
+    terrain(b).draw();
+}
+
+// =====================================================================================================================
+// 12  closure_env$57（0x1409b0b20）：虚线（拓扑 + 网格索引数 + DashedLineLength）
+// =====================================================================================================================
+
+pub const E57_I32_UNIFORM: u64 = 0x7954_3dbe_2df2_68a7;
+pub const E57_F32_UNIFORM: u64 = 0xa8d5_d779_2c24_e874;
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Env57In {
+    /// `FrozenMap<Handle<Mesh>, Mesh>::get(handle)` 的网格 `+0x10` 处 `u64`（I：`indices.len()`），按 `i32` 写入。
+    pub index_count: u64,
+    pub dashed_len: f32,
+}
+
+pub fn read_env57(w: &World, e: Entity) -> Env57In {
+    let lib = res::<AssetMeshLibrary>(w);
+    let handle: Handle<Mesh> = *comp::<Handle<Mesh>>(w, e);
+    let mesh = lib.get(handle).expect(UNWRAP_NONE);
+    Env57In {
+        index_count: mesh.indices.len() as u64,
+        dashed_len: comp::<DashedLineLengthView>(w, e).0,
+    }
+}
+
+pub fn env57_body<'p>(b: DrawBuilder<'p>, i: &Env57In, end: impl FnOnce(DrawBuilder<'p>)) {
+    let b = b
+        .uniform(E57_I32_UNIFORM, i.index_count as i32)
+        .uniform(E57_F32_UNIFORM, i.dashed_len);
+    end(b);
+}
+
+pub fn env57(mut b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+    apply_topology(&mut b, p);
+    let i = read_env57(w, p.entity);
+    env57_body(b, &i, |b| b.draw());
+}
+
+// =====================================================================================================================
+// 13  closure_env$45（0x1409b0fa0）：五磁盘
+// =====================================================================================================================
+
+pub const E45_DISKS: [(u64, u64); 5] = [
+    (0x7ba5_2a63_128e_d90f, 0x49d0_e4c1_dc16_eefc),
+    (0xa241_1d7a_77d1_1653, 0xb4d8_695c_4e6b_b475),
+    (0x7680_2419_cebb_9371, 0xb4d8_665c_4e6b_af5c),
+    (0xe7d0_3869_8437_b5d0, 0xb4d8_675c_4e6b_b10f),
+    (E27_MARKER_KEY, 0x3147_53a9_b77a_bc52),
+];
+
+pub fn env45(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+    E45_DISKS
+        .iter()
+        .fold(b, |b, &(k, n)| bind_disk(b, k, n))
+        .draw();
+}
+
+// =====================================================================================================================
+// 14  closure_env$0（0x1409b12b0）：木板（WoodenPlank）
+// =====================================================================================================================
+
+pub const E0_DISK_A: (u64, u64) = (0x5b9a_9def_bd41_da38, 0x4174_8af6_1a22_5694);
+pub const E0_DISK_C: (u64, u64) = (0x1b61_1d8a_07df_d6ba, 0x7d2e_85e5_9f64_f385);
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Env0In {
+    pub enabled: bool,
+    /// `CursorTerrainRaycast` 的 `Option<Vec3>`（`tag & 1`）。
+    pub cursor: Option<Vec3>,
+    pub radius: f32,
+}
+
+pub fn read_env0(w: &World) -> Env0In {
+    let enabled = res::<EditingHighlightView>(w).enabled;
+    let c = res::<CursorTerrainRaycast>(w);
+    Env0In {
+        enabled,
+        cursor: (c.tag & 1 != 0).then_some(c.pos),
+        radius: res::<EraserSizeMultiplier>(w).0,
+    }
+}
+
+/// `packet.state.byte0 = (b & 0xf3) | 4`；预设 9/10 → `WoodenPlankSsbo` → 磁盘 0x5b9a… → `HalftimberColorIdSsbo` → 磁盘 0x4a2b… →
+/// 磁盘 0x1b61… → `bool`/`Vec3`/`f32`（擦除高亮的三个 uniform，**不含** `DebugGui.suppress`）。
+pub fn env0_body<'p>(mut b: DrawBuilder<'p>, i: &Env0In, end: impl FnOnce(DrawBuilder<'p>)) {
+    set_cull(&mut b, 4);
+    let b = terrain(b);
+    let b = b.read_ssbo::<WoodenPlankTag>(INSTANCE_SSBO_BINDING);
+    let b = bind_disk(b, E0_DISK_A.0, E0_DISK_A.1);
+    let b = b.read_ssbo::<HalftimberColorIdTag>(HALFTIMBER_COLOR_BINDING);
+    let b = bind_disk(b, DISK_DORMER.0, DISK_DORMER.1);
+    let b = bind_disk(b, E0_DISK_C.0, E0_DISK_C.1);
+    let b = b
+        .uniform(BRICK_ERASE_ENABLED_UNIFORM, i.enabled)
+        .uniform(BRICK_ERASE_CURSOR_UNIFORM, i.cursor.unwrap_or(Vec3::ZERO))
+        .uniform(BRICK_ERASE_RADIUS_UNIFORM, i.radius);
+    end(b);
+}
+
+/// `nani_draw(WoodenPlank = 0xd)`。
+pub const E0_KIND: GpuWorldSubsetKind = GpuWorldSubsetKind::WoodenPlank;
+
+pub fn env0(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+    let i = read_env0(w);
+    let w = &*w;
+    env0_body(b, &i, |b| nani_draw_world(b, E0_KIND, w));
+}
+
+// =====================================================================================================================
+// 15  closure_env$37（0x1409b1b00）：logo 动画
+// =====================================================================================================================
+
+pub const E37_DISK_A: (u64, u64) = (0x4d8c_ada3_6b5e_fdb4, 0xce07_f1ad_70ec_5bba);
+pub const E37_DISK_B: u64 = 0xf1fc_76d0_00c6_7928;
+pub const E37_F32_A: u64 = F32_3CC1_UNIFORM;
+pub const E37_F32_B: u64 = 0x1986_3616_2935_9548;
+
+pub fn env37_body<'p>(
+    b: DrawBuilder<'p>,
+    a: &LogoAnimationView,
+    end: impl FnOnce(DrawBuilder<'p>),
+) {
+    let b = bind_disk(b, E37_DISK_A.0, E37_DISK_A.1);
+    let b = bind_disk(b, E37_DISK_B, NAME_9140);
+    let b = b.uniform(E37_F32_A, a.f0).uniform(E37_F32_B, a.f10);
+    end(b);
+}
+
+pub fn env37(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+    let logo = res::<crate::resources::logo_animation::LogoAnimation>(w);
+    let a = LogoAnimationView {
+        f0: logo.progress[0],
+        f10: logo.progress[4],
+    };
+    env37_body(b, &a, |b| b.draw());
+}
+
+// =====================================================================================================================
+// 16 / 23 / 28 / …  只有 nani_draw 的闭包
+// =====================================================================================================================
+
+/// `closure_env$39` 的 `nani_draw` 种类（`LanternEmissive = 0x12`）。
+pub const E39_KIND: GpuWorldSubsetKind = GpuWorldSubsetKind::LanternEmissive;
+/// `closure_env$28` 的 `nani_draw` 种类（`Uber = 0x17`）。
+pub const E28_KIND: GpuWorldSubsetKind = GpuWorldSubsetKind::Uber;
+
+/// gap 16 `closure_env$39`（0x1409b1e90）：`nani_draw(LanternEmissive = 0x12)`。
+pub fn env39(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+    nani_draw_world(b, E39_KIND, w);
+}
+
+/// gap 23 `closure_env$28`（0x1409b3220）：`nani_draw(Uber = 0x17)`。
+pub fn env28(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+    nani_draw_world(b, E28_KIND, w);
+}
+
+// =====================================================================================================================
+// 17  closure_env$19（0x1409b1ee0）：飞溅粒子
+// =====================================================================================================================
+
+pub fn env19_body<'p>(
+    b: DrawBuilder<'p>,
+    s: &SplashParticleView,
+    end: impl FnOnce(DrawBuilder<'p>),
+) {
+    end(b.uniform(F32_3CC1_UNIFORM, s.f8));
+}
+
+pub fn env19(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+    let s = *comp::<SplashParticleView>(w, p.entity);
+    env19_body(b, &s, |b| b.draw());
+}
+
+// =====================================================================================================================
+// 18  closure_env$32（0x1409b2120）：阳台门
+// =====================================================================================================================
+
+pub const E32_DISK_B: (u64, u64) = (0xa041_c59f_6ca9_394d, 0xa944_a09a_6425_57c2);
+
+/// `nani_draw(BalconyDoor = 0x16)`。
+pub const E32_KIND: GpuWorldSubsetKind = GpuWorldSubsetKind::BalconyDoor;
+
+/// 两张磁盘（0x5b9a…、0xa041…）。
+pub fn env32_binds(b: DrawBuilder<'_>) -> DrawBuilder<'_> {
+    let b = bind_disk(b, DISK_COMMON_A.0, DISK_COMMON_A.1);
+    bind_disk(b, E32_DISK_B.0, E32_DISK_B.1)
+}
+
+pub fn env32(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+    nani_draw_world(env32_binds(b), E32_KIND, w);
+}
+
+// =====================================================================================================================
+// 19  closure_env$41（0x1409b2290）：加载界面进度
+// =====================================================================================================================
+
+pub const E41_DISK: u64 = 0x6b1c_7ef6_7821_ce66;
+pub const E41_F32_A: u64 = 0x36e3_6822_19ea_3eb2;
+pub const E41_F32_B: u64 = 0xef27_3979_169a_7bf3;
+
+pub fn env41_body<'p>(
+    mut b: DrawBuilder<'p>,
+    a: &LoadingScreenProgressView,
+    end: impl FnOnce(DrawBuilder<'p>),
+) {
+    set_byte3_field2(&mut b);
+    let b = bind_disk(b, E41_DISK, NAME_9140);
+    end(b.uniform(E41_F32_A, a.f0).uniform(E41_F32_B, a.f4));
+}
+
+pub fn env41(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+    let a = *res::<LoadingScreenProgressView>(w);
+    env41_body(b, &a, |b| b.draw());
+}
+
+// =====================================================================================================================
+// 21 / 32  closure_env$23 / $22：墙 / 屋顶旗帜布
+// =====================================================================================================================
+
+pub const CLOTH_NAME_A: u64 = 0xa545_3e8f_34ef_8850;
+pub const CLOTH_NAME_B: u64 = 0x83b6_32df_d4a3_558c;
+pub const CLOTH_NAME_C: u64 = 0xce84_646a_28bf_8813;
+pub const CLOTH_KEY_B: u64 = 0xb72f_ba71_9985_a58c;
+/// 会话字节里存在 `<= 1` 的字节时的第三张贴图键。
+pub const CLOTH_KEY_C_FOUND: u64 = 0x4c58_d4d6_1ec4_50d2;
+/// 否则的缺省键（`-0x1adc8a43cd569b5c`）。
+pub const CLOTH_KEY_C_DEFAULT: u64 = 0xe523_75bc_32a9_64a4;
+pub const E23_KEY_A: u64 = 0x1f76_9c5a_8505_0876;
+pub const E22_KEY_A: u64 = 0x31aa_53af_c0c8_bbe1;
+pub const E22_F32_4: u64 = 0x6dea_02b3_8501_d0cb;
+pub const E22_F32_8: u64 = 0x1f97_60a0_ebbb_22af;
+pub const E22_F32_C: u64 = 0x635a_e5e9_625d_7840;
+pub const E22_BOOL_10: u64 = 0x23ce_25ba_8132_7d47;
+
+/// `session_bytes.iter().any(|b| *b <= 1)`（O：`cmp byte,1; ja` 循环，遇 `<= 1` 的字节跳出选 `r9`，耗尽则保持缺省）。
+pub fn cloth_key_c(bytes: &[u8]) -> u64 {
+    if bytes.iter().any(|b| *b <= 1) {
+        CLOTH_KEY_C_FOUND
+    } else {
+        CLOTH_KEY_C_DEFAULT
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Env23In {
+    pub color: u32,
+    pub cloth: RoofFlagClothView,
+    pub session: Vec<u8>,
+}
+
+pub fn read_env23(w: &World, e: Entity) -> Env23In {
+    Env23In {
+        cloth: *comp::<RoofFlagClothView>(w, e),
+        color: comp::<ColorId>(w, e).0,
+        session: res::<ActiveSessionView>(w).glade_bytes.clone(),
+    }
+}
+
+/// uniform `i32(ColorId)` → 三张磁盘（第三张按会话字节选键）→ `i32(RoofFlagCloth)`。
+pub fn env23_body<'p>(b: DrawBuilder<'p>, i: &Env23In, end: impl FnOnce(DrawBuilder<'p>)) {
+    let b = b.uniform(COLOR_ID_UNIFORM, i.color as i32);
+    let b = bind_disk(b, E23_KEY_A, CLOTH_NAME_A);
+    let b = bind_disk(b, CLOTH_KEY_B, CLOTH_NAME_B);
+    let b = bind_disk(b, cloth_key_c(&i.session), CLOTH_NAME_C);
+    end(b.uniform(CLOTH_ID_UNIFORM, i.cloth.0 as i32));
+}
+
+pub fn env23(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+    let i = read_env23(w, p.entity);
+    env23_body(b, &i, |b| b.draw());
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Env22In {
+    pub cloth: WallFlagClothView,
+    pub color: u32,
+    pub session: Vec<u8>,
+}
+
+pub fn read_env22(w: &World, e: Entity) -> Env22In {
+    Env22In {
+        cloth: *comp::<WallFlagClothView>(w, e),
+        color: comp::<ColorId>(w, e).0,
+        session: res::<ActiveSessionView>(w).glade_bytes.clone(),
+    }
+}
+
+/// `f32(+4)`、`f32(+8)`、`f32(+0xc)`、`bool(+0x10)`、`i32(+0)`、`i32(ColorId)` → 三张磁盘（第三张按会话字节选键）。
+pub fn env22_body<'p>(b: DrawBuilder<'p>, i: &Env22In, end: impl FnOnce(DrawBuilder<'p>)) {
+    let b = b
+        .uniform(E22_F32_4, i.cloth.f4)
+        .uniform(E22_F32_8, i.cloth.f8)
+        .uniform(E22_F32_C, i.cloth.fc)
+        .uniform(E22_BOOL_10, i.cloth.flag)
+        .uniform(CLOTH_ID_UNIFORM, i.cloth.id)
+        .uniform(COLOR_ID_UNIFORM, i.color as i32);
+    let b = bind_disk(b, E22_KEY_A, CLOTH_NAME_A);
+    let b = bind_disk(b, CLOTH_KEY_B, CLOTH_NAME_B);
+    end(bind_disk(b, cloth_key_c(&i.session), CLOTH_NAME_C));
+}
+
+pub fn env22(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+    let i = read_env22(w, p.entity);
+    env22_body(b, &i, |b| b.draw());
+}
+
+// =====================================================================================================================
+// 22 / 25 / 27 / 29 / 34  预设 + nani 的小闭包
+// =====================================================================================================================
+
+/// gap 22 `closure_env$8`（0x1409b2f40）：预设 9/10/0xf → 磁盘 0x177a… → 预设 0x16 → `nani_draw(PreplacedFlower = 0xe)`。
+pub const E8_DISK: (u64, u64) = (0x177a_df5a_3a02_ba5e, NAME_ALBEDO);
+pub const E8_PRESET: (u8, u64) = (0x16, 0x6570_1816_49ac_6420);
+
+pub const E8_KIND: GpuWorldSubsetKind = GpuWorldSubsetKind::PreplacedFlower;
+
+pub fn env8_binds(b: DrawBuilder<'_>) -> DrawBuilder<'_> {
+    let b = bind_preset(terrain(b), PRESET_15.0, PRESET_15.1);
+    let b = bind_disk(b, E8_DISK.0, E8_DISK.1);
+    bind_preset(b, E8_PRESET.0, E8_PRESET.1)
+}
+
+pub fn env8(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+    nani_draw_world(env8_binds(b), E8_KIND, w);
+}
+
+/// gap 27 `closure_env$10`（0x1409b3cc0）：预设 9/10/0xf → `FlowerSsbo` → `nani_draw(Flower = 0xb)`。
+pub const E10_KIND: GpuWorldSubsetKind = GpuWorldSubsetKind::Flower;
+
+pub fn env10_binds(b: DrawBuilder<'_>) -> DrawBuilder<'_> {
+    let b = bind_preset(terrain(b), PRESET_15.0, PRESET_15.1);
+    b.read_ssbo::<FlowerTag>(INSTANCE_SSBO_BINDING)
+}
+
+pub fn env10(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+    nani_draw_world(env10_binds(b), E10_KIND, w);
+}
+
+/// gap 34 `closure_env$30`（0x1409b55e0）：预设 9/10 → 磁盘 0xc669… → `nani_draw(SolidAlbedoMapEmissive = 0x10)`。
+pub const E30_DISK: (u64, u64) = (0xc669_ad39_661f_a107, 0xdded_b57b_b5d9_df46);
+
+pub const E30_KIND: GpuWorldSubsetKind = GpuWorldSubsetKind::SolidAlbedoMapEmissive;
+
+pub fn env30_binds(b: DrawBuilder<'_>) -> DrawBuilder<'_> {
+    bind_disk(terrain(b), E30_DISK.0, E30_DISK.1)
+}
+
+pub fn env30(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+    nani_draw_world(env30_binds(b), E30_KIND, w);
+}
+
+/// gap 29 `closure_env$33`（0x1409b4180）：磁盘 0x806c… → `nani_draw(Cloth = 0x14)`。
+pub const E33_DISK: (u64, u64) = (0x806c_29bb_f7c5_030d, 0xfcf5_d08d_134a_6988);
+
+pub const E33_KIND: GpuWorldSubsetKind = GpuWorldSubsetKind::Cloth;
+
+pub fn env33_binds(b: DrawBuilder<'_>) -> DrawBuilder<'_> {
+    bind_disk(b, E33_DISK.0, E33_DISK.1)
+}
+
+pub fn env33(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+    nani_draw_world(env33_binds(b), E33_KIND, w);
+}
+
+// =====================================================================================================================
+// 25  closure_env$11（0x1409b3780）：灌木
+// =====================================================================================================================
+
+pub const E11_DISK_A: (u64, u64) = (0x16cb_81de_7659_c00e, 0x4750_1efa_2620_da88);
+pub const E11_NAME_B: u64 = 0x2644_689c_450b_419b;
+pub const E11_KEY_V3: u64 = 0x34c2_37b9_c8c9_523d;
+pub const E11_KEY_V4: u64 = 0x8535_1b12_62ea_af04;
+pub const E11_KEY_OTHER: u64 = 0xdb21_3984_09f3_4377;
+
+/// 第二张磁盘的键由 `ActiveSession` 的变体字节选择（O：`cmp al,3` / `cmp al,4` + `cmov`）。
+pub fn env11_key(variant: u8) -> u64 {
+    match variant {
+        3 => E11_KEY_V3,
+        4 => E11_KEY_V4,
+        _ => E11_KEY_OTHER,
+    }
+}
+
+pub const E11_KIND: GpuWorldSubsetKind = GpuWorldSubsetKind::Bush;
+
+pub fn env11_binds(b: DrawBuilder<'_>, variant: u8) -> DrawBuilder<'_> {
+    let b = bind_disk(b, E11_DISK_A.0, E11_DISK_A.1);
+    let b = bind_disk(b, env11_key(variant), E11_NAME_B);
+    let b = bind_preset(terrain(b), PRESET_15.0, PRESET_15.1);
+    b.read_ssbo::<BushTag>(INSTANCE_SSBO_BINDING)
+}
+
+pub fn env11(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+    let variant = res::<ActiveSessionView>(w).variant;
+    nani_draw_world(env11_binds(b, variant), E11_KIND, w);
+}
+
+// =====================================================================================================================
+// 24 / 30  closure_env$16 / $17：屋顶楼板 / 楼梯楼板
+// =====================================================================================================================
+
+pub const E16_I32_VALUE: u64 = 0x5add_70b0_954f_689d;
+pub const E16_I32_TAG: u64 = 0x052e_7aa4_e36b_047b;
+
+/// 两者共用的前半：`state.byte0 = (b & 0xf3) | 8` → 磁盘 0x4a2b… → Dormer SSBO×2 → 墙色定制 → 磁盘 0x7db9… → `RoofColorIdSsbo`。
+fn floor_head(mut b: DrawBuilder<'_>) -> DrawBuilder<'_> {
+    set_cull(&mut b, 8);
+    let b = bind_disk(b, DISK_DORMER.0, DISK_DORMER.1);
+    let b = b.read_ssbo::<DormerHoleTag>(DORMER_HOLE_BINDING);
+    let b = b.read_ssbo::<DormerHoleCountTag>(DORMER_HOLE_COUNT_BINDING);
+    let b = b.bind_wall_color_customization::<WallColorIdSsbo>();
+    let b = bind_disk(b, DISK_ROOF.0, DISK_ROOF.1);
+    b.read_ssbo::<RoofColorIdTag>(ROOF_COLOR_BINDING)
+}
+
+/// 两者共用的后半：石 / 木地板纹理 → `HalftimberColorIdSsbo` → 磁盘 0x5b9a…。
+fn floor_tail(b: DrawBuilder<'_>) -> DrawBuilder<'_> {
+    let b = b.bind_stone_floor_textures().bind_wooden_floor_textures();
+    let b = b.read_ssbo::<HalftimberColorIdTag>(HALFTIMBER_COLOR_BINDING);
+    bind_disk(b, DISK_COMMON_B.0, DISK_COMMON_B.1)
+}
+
+/// `RoofHighlight`：`value = tag != 0 ? value : 0`，`tag` 原样（O：`movzx esi,[+8]; edi = esi; test; edi = [rax]`）。
+pub fn roof_highlight_uniforms(h: &RoofHighlight) -> (i32, i32) {
+    (if h.tag != 0 { h.value as i32 } else { 0 }, h.tag as i32)
+}
+
+pub fn env16_body<'p>(b: DrawBuilder<'p>, h: &RoofHighlight, end: impl FnOnce(DrawBuilder<'p>)) {
+    let b = floor_head(b);
+    let (v, t) = roof_highlight_uniforms(h);
+    let b = b.uniform(E16_I32_VALUE, v).uniform(E16_I32_TAG, t);
+    end(floor_tail(b));
+}
+
+pub const E16_KIND: GpuWorldSubsetKind = GpuWorldSubsetKind::RoofFloor;
+pub const E17_KIND: GpuWorldSubsetKind = GpuWorldSubsetKind::StairsFloor;
+
+/// gap 24 `closure_env$16`（0x1409b3270）：`nani_draw(RoofFloor = 9)`。
+pub fn env16(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+    let h = *res::<RoofHighlight>(w);
+    let w = &*w;
+    env16_body(b, &h, |b| nani_draw_world(b, E16_KIND, w));
+}
+
+/// `closure_env$17` 在 `nani_draw` 之前的全部绑定。
+pub fn env17_binds(b: DrawBuilder<'_>) -> DrawBuilder<'_> {
+    floor_tail(floor_head(b))
+}
+
+/// gap 30 `closure_env$17`（0x1409b4270）：`nani_draw(StairsFloor = 0x1a)`。
+pub fn env17(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+    nani_draw_world(env17_binds(b), E17_KIND, w);
+}
+
+// =====================================================================================================================
+// 26 / 31  closure_env$20 / $40：预设绑定 + draw
+// =====================================================================================================================
+
+/// gap 26 `closure_env$20`（0x1409b3be0）：预设 0x13 → `draw`。
+pub fn env20(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+    bind_preset(b, PRESET_19.0, PRESET_19.1).draw();
+}
+
+pub const E40_DISK: (u64, u64) = (0x84a0_37e6_97de_0324, 0x0894_8865_8ef7_0e65);
+pub const E40_PRESET: (u8, u64) = (0x15, 0x4a9a_ecb3_eff0_f013);
+
+/// gap 31 `closure_env$40`（0x1409b4600）：预设 0x13/5 → 磁盘 0x84a0…（同 stairs/rocky）→ 预设 0x15 → `draw`。
+pub fn env40(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+    let b = bind_preset(b, PRESET_19.0, PRESET_19.1);
+    let b = bind_preset(b, PRESET_5.0, PRESET_5.1);
+    let b = bind_disk(b, E40_DISK.0, E40_DISK.1);
+    bind_preset(b, E40_PRESET.0, E40_PRESET.1).draw();
+}
+
+// =====================================================================================================================
+// 28  closure_env$55（0x1409b3eb0）：箭头 gizmo
+// =====================================================================================================================
+
+pub const E55_F32_A: u64 = 0x4681_795f_4663_90a2;
+pub const E55_F32_B: u64 = 0xe8e1_50a3_e771_ccff;
+
+/// `state.byte3 = (b & 0x9f) | 0x40` → `f32(+4)` → `f32(+0)` → 终结。
+pub fn env55_body<'p>(
+    mut b: DrawBuilder<'p>,
+    a: &ArrowGizmoView,
+    end: impl FnOnce(DrawBuilder<'p>),
+) {
+    set_byte3_field2(&mut b);
+    end(b.uniform(E55_F32_A, a.f4).uniform(E55_F32_B, a.f0));
+}
+
+pub fn env55(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+    let a = *comp::<ArrowGizmoView>(w, p.entity);
+    env55_body(b, &a, |b| b.draw());
+}
+
+// =====================================================================================================================
+// 33  closure_env$3（0x1409b5140）：雨 / 天气粒子
+// =====================================================================================================================
+
+pub const E3_F32: u64 = 0x282c_f0ae_0abf_82a2;
+pub const E3_BOOL_MODE: u64 = 0xa7cf_8249_443e_bd6d;
+pub const E3_BOOL_SEASON: u64 = 0xa9f3_1975_851a_53b9;
+/// 与 `water_planes_draw` 同一个 `DofAutofocusSsbo` binding 名。
+pub const E3_DOF_BINDING: u64 = 0xc265_54c6_de4b_08b0;
+/// `AppMode` 判别 `== 0x13` 时 `bool` uniform 为真。
+pub const E3_APP_MODE_TAG: u32 = 0x13;
+/// `MainCamera +0x4d0 == 4` 时第二个 `bool` 为真。
+pub const E3_SEASON: u8 = 4;
+/// `draw_instanced(0x2ee0)`。
+pub const E3_INSTANCES: u32 = 0x2ee0;
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Env3In {
+    /// `!(intensity > 0)`（`ucomiss; jbe`，含 NaN）→ `discard`（此时不再读 `AppMode` / `MainCamera`）。
+    Discard,
+    Draw {
+        intensity: f32,
+        mode_is_x13: bool,
+        season_is_4: bool,
+    },
+}
+
+pub fn read_env3(w: &World) -> Env3In {
+    let intensity = res::<WeatherView>(w).intensity;
+    if !(intensity > 0.0) {
+        return Env3In::Discard;
+    }
+    let tag = res::<AppModeView>(w).tag;
+    let season = res::<MainCameraView>(w).season;
+    Env3In::Draw {
+        intensity,
+        mode_is_x13: tag == E3_APP_MODE_TAG,
+        season_is_4: season == E3_SEASON,
+    }
+}
+
+/// uniform `f32(intensity)`、`bool(tag==0x13)`、`bool(season==4)` → `DofAutofocusSsbo` → 终结（`draw_instanced(0x2ee0)`）。
+pub fn env3_body<'p>(
+    b: DrawBuilder<'p>,
+    intensity: f32,
+    mode_is_x13: bool,
+    season_is_4: bool,
+    end: impl FnOnce(DrawBuilder<'p>),
+) {
+    let b = b
+        .uniform(E3_F32, intensity)
+        .uniform(E3_BOOL_MODE, mode_is_x13)
+        .uniform(E3_BOOL_SEASON, season_is_4)
+        .read_ssbo::<DofAutofocusTag>(E3_DOF_BINDING);
+    end(b);
+}
+
+pub fn env3(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+    match read_env3(w) {
+        Env3In::Discard => b.discard(),
+        Env3In::Draw {
+            intensity,
+            mode_is_x13,
+            season_is_4,
+        } => env3_body(b, intensity, mode_is_x13, season_is_4, |b| {
+            b.draw_instanced_w_gl_draw_flag(E3_INSTANCES)
+        }),
+    }
+}
+
+// =====================================================================================================================
+// 35  closure_env$14（0x1409b57c0）：木门
+// =====================================================================================================================
+
+pub const E14_I32_A: u64 = 0x2f7b_21b4_9744_4143;
+pub const E14_DISK_A: u64 = 0x5b9a_9def_bd41_da38;
+pub const E14_DISK_B: (u64, u64) = (0x3c67_9b5e_bb95_098d, 0xda32_9707_5023_f6d7);
+pub const E14_DISK_C: (u64, u64) = (0x3487_e44b_33ff_c800, 0xefae_09f2_705a_bb65);
+pub const E14_GATE_COLOR_BINDING: u64 = 0x3136_164b_8111_4f7f;
+
+/// 磁盘 0x5b9a… → `i32(q18)` → `GateColorIdSsbo` → 磁盘 0x3c67… → 磁盘 0x3487… → `i32(d30)`。
+pub fn env14_body<'p>(b: DrawBuilder<'p>, g: &WoodenGateView, end: impl FnOnce(DrawBuilder<'p>)) {
+    let b = bind_disk(b, E14_DISK_A, DISK_COMMON_A.1);
+    let b = b.uniform(E14_I32_A, g.q18 as i32);
+    let b = b.read_ssbo::<GateColorIdTag>(E14_GATE_COLOR_BINDING);
+    let b = bind_disk(b, E14_DISK_B.0, E14_DISK_B.1);
+    let b = bind_disk(b, E14_DISK_C.0, E14_DISK_C.1);
+    end(b.uniform(CLOTH_ID_UNIFORM, g.d30));
+}
+
+pub fn env14(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+    let g = *comp::<WoodenGateView>(w, p.entity);
+    env14_body(b, &g, |b| b.draw());
+}
+
+#[cfg(test)]
+#[path = "draw_callbacks_a_tests.rs"]
+mod tests;

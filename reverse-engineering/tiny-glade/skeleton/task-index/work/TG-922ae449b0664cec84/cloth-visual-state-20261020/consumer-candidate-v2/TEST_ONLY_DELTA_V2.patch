@@ -1,0 +1,17 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/generate_clothline.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/generate_clothline.rs
+@@ -749,6 +749,14 @@
+                 .unwrap();
+             assert_ne!(expected.part_index, 0);
+             assert_eq!(key.kind, desc.subset_kind);
++            // Fresh maintain allocation, no delete/swap in this fixture: the
++            // returned dense hint is valid here, not promised after deletion.
++            let actual_mesh_index = world
++                .resource::<GpuWorld>()
++                .owned_subset_mut(key.kind)
++                .positions()[key.index as usize]
++                .mesh_index;
++            assert_eq!(u32::from(actual_mesh_index), expected.part_index);
+         }
+     }
+     #[test]

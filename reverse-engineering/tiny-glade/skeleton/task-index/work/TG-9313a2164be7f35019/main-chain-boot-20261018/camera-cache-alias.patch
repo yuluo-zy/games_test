@@ -1,0 +1,15 @@
+--- games_test/tiny-glade/crates/country-core/src/systems/camera_rig/mod.rs
++++ games_test/tiny-glade/crates/country-core/src/systems/camera_rig/mod.rs
+@@ -13,9 +13,11 @@
+ /// 旧 7 字段表（含 position_cache）修正：save 只写 6 字段；position_cache 仅反序列化接受。
+ #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+ pub struct CameraRigParametersCache {
++    #[serde(alias = "yaw_cache")]
+     pub yaw: f32,
++    #[serde(alias = "pitch_cache")]
+     pub pitch: f32,
+-    #[serde(default)]
++    #[serde(default, alias = "position_cache")]
+     pub position: glam::Vec3,
+     pub camera_rig_arm_length: f32,
+     pub pitch_offset: f32,

@@ -1,0 +1,182 @@
+## Exact source lines 7556..7584
+7556:                OpMemberName %type__Globals 0 "input_tex_dims"
+7557:                OpMemberName %type__Globals 1 "blur_pyramid_tex_dims"
+7558:                OpMemberName %type__Globals 2 "grading_lut_tex_dims"
+7559:                OpMemberName %type__Globals 3 "icc_lut_dims"
+7560:                OpMemberName %type__Globals 4 "blue_noise_texture_dims"
+7561:                OpMemberName %type__Globals 5 "is_input_valid"
+7562:                OpMemberName %type__Globals 6 "use_icc"
+7563:                OpMemberName %type__Globals 7 "sharpen_amount"
+7564:                OpMemberName %type__Globals 8 "upsampling_mode"
+7565:                OpMemberName %type__Globals 9 "grading_flags"
+7566:                OpMemberName %type__Globals 10 "grading_strength"
+7567:                OpMemberName %type__Globals 11 "grading_contrast"
+7568:                OpMemberName %type__Globals 12 "grading_saturation"
+7569:                OpMemberName %type__Globals 13 "vignette_amount"
+7570:                OpMemberName %type__Globals 14 "distortion_amount"
+7571:                OpMemberName %type__Globals 15 "ca_amount"
+7572:                OpMemberName %type__Globals 16 "gamma_shift"
+7573:                OpMemberName %type__Globals 17 "framebuffer_dims"
+7574:                OpName %_Globals "$Globals"
+7575:                OpName %input_tex "input_tex"
+7576:                OpName %blur_pyramid_tex "blur_pyramid_tex"
+7577:                OpName %type_3d_image "type.3d.image"
+7578:                OpName %grading_lut_tex "grading_lut_tex"
+7579:                OpName %icc_lut "icc_lut"
+7580:                OpName %blue_noise_texture "blue_noise_texture"
+7581:                OpName %type_StructuredBuffer_float "type.StructuredBuffer.float"
+7582:                OpName %shadow_mask_mean "shadow_mask_mean"
+7583:                OpName %tony_mc_mapface_lut "tony_mc_mapface_lut"
+7584:                OpName %out_var_SV_TARGET "out.var.SV_TARGET"
+
+## Exact source lines 7748..7749
+7748: %float_0_180000007 = OpConstant %float 0.180000007
+7749:          %97 = OpConstantComposite %v3float %float_0_180000007 %float_0_180000007 %float_0_180000007
+
+## Exact source lines 7937..7958
+7937:                OpBranchConditional %239 %241 %242
+7938:         %242 = OpLabel
+7939:                OpLine %6 263 35
+7940:         %243 = OpLoad %type_2d_image %input_tex
+7941:                OpLine %6 263 57
+7942:         %244 = OpLoad %type_sampler %sampler_lnc
+7943:                OpLine %6 263 45
+7944:         %245 = OpSampledImage %type_sampled_image %243 %244
+7945:         %246 = OpImageGather %v4float %245 %224 %int_1 ConstOffset %76
+7946:                OpLine %15 43 17
+7947:         %247 = OpCompositeExtract %float %246 0
+7948:                OpLine %15 43 22
+7949:         %248 = OpCompositeExtract %float %246 1
+7950:                OpLine %15 43 27
+7951:         %249 = OpCompositeExtract %float %246 2
+7952:                OpLine %15 43 32
+7953:         %250 = OpCompositeExtract %float %246 3
+7954:                OpLine %15 39 16
+7955:         %251 = OpExtInst %float %1 NMin %247 %248
+7956:                OpLine %15 39 27
+7957:         %252 = OpExtInst %float %1 NMin %249 %250
+7958:                OpLine %15 39 12
+
+## Exact source lines 10476..10514
+10476:        %1542 = OpVectorShuffle %v3float %1541 %1541 0 1 2
+10477:                OpLine %6 273 5
+10478:                OpBranch %228
+10479:         %228 = OpLabel
+10480:        %1543 = OpPhi %v3float %1537 %232 %1542 %229
+10481:                OpLine %6 277 18
+10482:        %1544 = OpLoad %type_2d_image %blur_pyramid_tex
+10483:                OpLine %6 277 47
+10484:        %1545 = OpLoad %type_sampler %sampler_llc
+10485:                OpLine %6 277 82
+10486:        %1546 = OpAccessChain %_ptr_Uniform_v2uint %_Globals %int_1
+10487:        %1547 = OpLoad %v2uint %1546
+10488:        %1548 = OpConvertUToF %v2float %1547
+10489:                OpLine %15 6 16
+10490:        %1549 = OpCompositeExtract %float %1548 0
+10491:                OpLine %15 6 21
+10492:        %1550 = OpCompositeExtract %float %1548 1
+10493:                OpLine %15 6 12
+10494:        %1551 = OpExtInst %float %1 NMax %1549 %1550
+10495:                OpLine %6 277 75
+10496:        %1552 = OpFMul %float %float_0_00100000005 %1551
+10497:                OpLine %6 277 64
+10498:        %1553 = OpExtInst %float %1 Log2 %1552
+10499:                OpLine %6 277 18
+10500:        %1554 = OpSampledImage %type_sampled_image %1544 %1545
+10501:        %1555 = OpImageSampleExplicitLod %v4float %1554 %224 Lod %1553
+10502:        %1556 = OpVectorShuffle %v3float %1555 %1555 0 1 2
+10503:                OpLine %6 277 107
+10504:        %1557 = OpVectorTimesScalar %v3float %1556 %float_0_119999997
+10505:                OpLine %6 277 15
+10506:        %1558 = OpFAdd %v3float %1543 %1557
+10507:                OpLine %6 278 15
+10508:        %1559 = OpFMul %v3float %1558 %193
+10509:                OpLine %6 281 51
+10510:        %1560 = OpLoad %type_sampler %sampler_lnc
+10511:                OpLine %6 281 78
+10512:        %1561 = OpFMul %float %float_0_0500000007 %1551
+10513:                OpLine %6 281 68
+10514:        %1562 = OpExtInst %float %1 Log2 %1561
+
+## Exact source lines 10730..10809
+10730:        %1687 = OpCompositeConstruct %v3float %1636 %1660 %1686
+10731:                OpLine %6 297 5
+10732:                OpBranch %1577
+10733:        %1577 = OpLabel
+10734:        %1688 = OpPhi %v3float %1572 %228 %1687 %1578
+10735:                OpLine %6 299 45
+10736:        %1689 = OpAccessChain %_ptr_Uniform_float %shadow_mask_mean %int_0 %uint_0
+10737:        %1690 = OpLoad %float %1689
+10738:                OpLine %6 299 36
+10739:        %1691 = OpExtInst %float %1 FClamp %1690 %float_0 %float_1
+10740:                OpLine %6 309 13
+10741:        %1692 = OpExtInst %float %1 SmoothStep %float_0_300000012 %float_1 %1691
+10742:                OpLine %6 306 18
+10743:        %1693 = OpExtInst %float %1 FMix %float_1 %float_0_569999993 %1692
+10744:                OpLine %6 306 15
+10745:        %1694 = OpVectorTimesScalar %v3float %1688 %1693
+10746:                OpLine %6 316 19
+10747:        %1695 = OpAccessChain %_ptr_Uniform_float %_Globals %int_13
+10748:        %1696 = OpLoad %float %1695
+10749:                OpLine %6 316 18
+10750:        %1697 = OpFNegate %float %1696
+10751:                OpLine %6 316 55
+10752:        %1698 = OpFSub %v2float %224 %91
+10753:                OpLine %6 316 48
+10754:        %1699 = OpDot %float %1698 %1698
+10755:                OpLine %6 316 46
+10756:        %1700 = OpFMul %float %float_3_5 %1699
+10757:                OpLine %7 12 24
+10758:        %1701 = OpFMul %float %1700 %1700
+10759:                OpLine %6 316 35
+10760:        %1702 = OpFMul %float %1697 %1701
+10761:                OpLine %6 316 14
+10762:        %1703 = OpExtInst %float %1 Exp %1702
+10763:                OpLine %6 316 11
+10764:        %1704 = OpVectorTimesScalar %v3float %1694 %1703
+10765:                OpLine %6 341 21
+10766:        %1705 = OpExtInst %v3float %1 NMax %73 %1704
+10767:                OpLine %6 341 78
+10768:        %1706 = OpAccessChain %_ptr_Uniform_float %_Globals %int_16
+10769:        %1707 = OpLoad %float %1706
+10770:                OpLine %6 341 76
+10771:        %1708 = OpFAdd %float %float_1_10000002 %1707
+10772:                OpLine %6 341 38
+10773:        %1709 = OpExtInst %float %1 NMax %float_0 %1708
+10774:        %1710 = OpCompositeConstruct %v3float %1709 %1709 %1709
+10775:                OpLine %6 341 17
+10776:        %1711 = OpExtInst %v3float %1 Pow %1705 %1710
+10777:                OpLine %6 343 15
+10778:        %1712 = OpVectorTimesScalar %v3float %1711 %float_1_60000002
+10779:                OpLine %6 112 49
+10780:        %1713 = OpFAdd %v3float %1712 %95
+10781:                OpLine %6 112 37
+10782:        %1714 = OpFDiv %v3float %1712 %1713
+10783:                OpLine %6 116 31
+10784:        %1715 = OpVectorTimesScalar %v3float %1714 %float_0_979166687
+10785:                OpLine %6 116 63
+10786:        %1716 = OpFAdd %v3float %1715 %121
+10787:                OpLine %6 118 12
+10788:        %1717 = OpLoad %type_3d_image %tony_mc_mapface_lut
+10789:        %1718 = OpSampledImage %type_sampled_image_0 %1717 %1560
+10790:        %1719 = OpImageSampleExplicitLod %v4float %1718 %1716 Lod %float_0
+10791:        %1720 = OpVectorShuffle %v3float %1719 %1719 0 1 2
+10792:                OpLine %6 352 13
+10793:        %1721 = OpExtInst %v3float %1 NMax %73 %1720
+10794:                OpLine %6 355 10
+10795:        %1722 = OpAccessChain %_ptr_Uniform_uint %_Globals %int_5
+10796:        %1723 = OpLoad %uint %1722
+10797:        %1724 = OpINotEqual %bool %1723 %uint_0
+10798:                OpLine %6 355 9
+10799:        %1725 = OpLogicalNot %bool %1724
+10800:                OpNoLine
+10801:        %1726 = OpCompositeConstruct %v3bool %1725 %1725 %1725
+10802:        %1727 = OpSelect %v3float %1726 %97 %1721
+10803:                OpLine %25 5 12
+10804:        %1728 = OpDot %float %1727 %118
+10805:                OpLine %6 361 27
+10806:        %1729 = OpCompositeConstruct %v3float %1728 %1728 %1728
+10807:                OpLine %6 361 64
+10808:        %1730 = OpAccessChain %_ptr_Uniform_float %_Globals %int_12
+10809:        %1731 = OpLoad %float %1730
+

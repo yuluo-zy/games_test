@@ -1,0 +1,23 @@
+//! B publish_public_wall_state::process terrain-curve closure recovered from
+//! 0x14146bb70. The field at capture+0x58 has unresolved semantic ownership.
+use glam::{Vec2, Vec3};
+use utils::curve::{Curve2, Curve3, CurveError};
+
+/// Recovered resolved consumer: sampling -> terrain/floor policy -> XYZ cache.
+/// Synthetic name; original closure was monomorphized into the curve helper.
+pub fn resample_public_wall_terrain(
+    curve: &Curve2,
+    spacing: f32,
+    ensure_midpoint: bool,
+    captured_parameter_at_58: f32,
+    mut sample_terrain: impl FnMut(Vec2) -> f32,
+) -> Result<Curve3, CurveError> {
+    let floor = if captured_parameter_at_58 > 0.0 {
+        captured_parameter_at_58
+    } else {
+        -2.7
+    };
+    curve.try_resample_remap_per_segment_2(spacing, ensure_midpoint, |_, _, point| {
+        Vec3::new(point.x, sample_terrain(point).max(floor), point.y)
+    })
+}

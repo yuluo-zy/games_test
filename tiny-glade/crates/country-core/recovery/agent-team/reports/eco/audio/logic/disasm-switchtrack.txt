@@ -1,0 +1,177 @@
+0x1408b70d0      push rbp
+0x1408b70d1      push r15
+0x1408b70d3      push r14
+0x1408b70d5      push rsi
+0x1408b70d6      push rdi
+0x1408b70d7      push rbx
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1408b70d8      sub rsp, 0x48
+0x1408b70dc      lea rbp, [rsp + 0x40]
+0x1408b70e1      mov qword [rbp], 0xfffffffffffffffe
+0x1408b70e9      mov rsi, rcx
+0x1408b70ec      mov rdi, qword [rcx + 0x110]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1408b70f3      test rdi, rdi
+   ; unlikely
+0x1408b70f6      je 0x1408b7104
+0x1408b70f8      mov r14, qword [rsi + 0x108]
+0x1408b70ff      jmp 0x1408b71d6
+0x1408b7104      mov rdi, qword [rsi + 0xf8]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1408b710b      test rdi, rdi
+   ; unlikely
+0x1408b710e      je 0x1408b714e
+0x1408b7110      mov r14, qword [rsi]
+0x1408b7113      mov rbx, qword [rsi + 8]
+0x1408b7117      lea r15, [rdi*8]
+; [0x143634c09:1]=0
+0x1408b711f      movzx eax, byte [0x143634c09]
+0x1408b7126      mov edx, 8
+0x1408b712b      mov rcx, r15
+   ; 0x140613c10(-1, 0x0, 0x8, 0xfffffffffffffff8)
+0x1408b712e      call 0x140613c10
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1408b7133      test rax, rax
+   ; likely
+0x1408b7136      je 0x1408b71c2
+; reloc.WS2_32.dll_closesocket
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1408b713c      cmp rdi, 3
+0x1408b7140      mov qword [rbp - 0x10], r15
+   ; likely
+0x1408b7144      ja 0x1408b7169
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1408b7146      xor r8d, r8d
+0x1408b7149      jmp 0x1408b71ff
+0x1408b714e      mov r14d, 8
+0x1408b7154      mov rdx, qword [rsi + 0x100]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1408b715b      test rdx, rdx
+   ; likely
+0x1408b715e      jne 0x1408b7253
+0x1408b7164      jmp 0x1408b7269
+; 288230376151711740
+0x1408b7169      movabs r8, 0x3fffffffffffffc
+   ; reloc.WS2_32.dll_accept
+0x1408b7173      and r8, rdi
+0x1408b7176      mov rcx, r15
+   ; reloc.WS2_32.dll_accept
+0x1408b7179      and rcx, 0xffffffffffffffe0
+; [0x1429ae300:16]=-1
+   ; reloc.WS2_32.dll_accept
+0x1408b717d      movdqa xmm0, xmmword [0x1429ae300]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1408b7185      xor edx, edx
+; [0x1429ae310:16]=-1
+   ; reloc.WS2_32.dll_bind
+   ; reloc.WS2_32.dll_bind
+0x1408b7187      movdqa xmm1, xmmword [0x1429ae310]
+; [0x1429ae320:16]=-1
+   ; reloc.WS2_32.dll_connect
+   ; reloc.WS2_32.dll_connect
+0x1408b718f      movdqa xmm2, xmmword [0x1429ae320]
+0x1408b7197      nop word [rax + rax]
+0x1408b71a0      movdqa xmm3, xmm0
+0x1408b71a4      paddq xmm3, xmm1
+0x1408b71a8      movdqu xmmword [rax + rdx], xmm0
+0x1408b71ad      movdqu xmmword [rax + rdx + 0x10], xmm3
+0x1408b71b3      paddq xmm0, xmm2
+; 32
+0x1408b71b7      add rdx, 0x20
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1408b71bb      cmp rcx, rdx
+   ; likely
+0x1408b71be      jne 0x1408b71a0
+0x1408b71c0      jmp 0x1408b7206
+   ; (pstr 0x142a9f408) "/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\sr"
+0x1408b71c2      lea r8, [0x142a9f460]
+0x1408b71c9      mov ecx, 8
+0x1408b71ce      mov rdx, r15
+   ; 0x1428d8fe3(-1, 0x0, 0xfffffffffffffff8, 0x8)
+0x1408b71d1      call 0x1428d8fe3
+0x1408b71d6      lea rax, [rdi - 1]
+0x1408b71da      mov qword [rsi + 0x110], rax
+0x1408b71e1      mov rax, qword [r14 + rdi*8 - 8]
+   ; reloc.WS2_32.dll_accept
+0x1408b71e6      mov ecx, 1
+0x1408b71eb      mov qword [rsi], rcx
+0x1408b71ee      mov qword [rsi + 8], rax
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1408b71f2      add rsp, 0x48
+0x1408b71f6      pop rbx
+0x1408b71f7      pop rdi
+0x1408b71f8      pop rsi
+0x1408b71f9      pop r14
+0x1408b71fb      pop r15
+0x1408b71fd      pop rbp
+0x1408b71fe      ret
+0x1408b71ff      mov qword [rax + r8*8], r8
+0x1408b7203      inc r8
+   ; reloc.WS2_32.dll_accept
+0x1408b7206      cmp rdi, r8
+   ; likely
+0x1408b7209      jne 0x1408b71ff
+0x1408b720b      mov qword [rbp - 8], rax
+0x1408b720f      mov qword [rbp - 0x20], rax
+0x1408b7213      mov qword [rbp - 0x18], rdi
+0x1408b7217      lea rcx, [0x142a9f4c8]
+0x1408b721e      lea rdx, [rbp - 0x20]
+   ; 0x14132b1a0(-1, -1, 0xffffffffffffffdf, 0x142a9f4c8)
+0x1408b7222      call 0x14132b1a0
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1408b7227      test r14, r14
+   ; unlikely
+0x1408b722a      je 0x1408b728e
+0x1408b722c      mov r14, qword [rbp - 8]
+0x1408b7230      cmp qword [r14], rbx
+   ; likely
+0x1408b7233      jne 0x1408b7247
+0x1408b7235      mov rax, rdi
+   ; reloc.WS2_32.dll_accept
+0x1408b7238      and rax, 0xfffffffffffffffe
+0x1408b723c      mov rcx, qword [r14 + rax*4]
+0x1408b7240      mov qword [r14], rcx
+0x1408b7243      mov qword [r14 + rax*4], rbx
+0x1408b7247      mov rdx, qword [rsi + 0x100]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1408b724e      test rdx, rdx
+   ; unlikely
+0x1408b7251      je 0x1408b7269
+0x1408b7253      mov rcx, qword [rsi + 0x108]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1408b725a      shl rdx, 3
+0x1408b725e      mov r8d, 8
+   ; 0x140613c20(-1, -1, 0xfffffffffffffff8, -1)
+0x1408b7264      call 0x140613c20
+0x1408b7269      mov qword [rsi + 0x100], rdi
+0x1408b7270      mov qword [rsi + 0x108], r14
+0x1408b7277      mov qword [rsi + 0x110], rdi
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1408b727e      test rdi, rdi
+   ; likely
+0x1408b7281      jne 0x1408b71d6
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1408b7287      xor ecx, ecx
+0x1408b7289      jmp 0x1408b71eb
+0x1408b728e      mov r14, qword [rbp - 8]
+0x1408b7292      mov rdx, qword [rsi + 0x100]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x1408b7299      test rdx, rdx

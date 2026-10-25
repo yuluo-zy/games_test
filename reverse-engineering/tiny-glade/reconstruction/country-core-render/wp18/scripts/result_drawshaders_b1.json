@@ -1,0 +1,755 @@
+{
+  "backend": "ghidra",
+  "worker": "shared",
+  "access": "read",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "get_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x140ae8070,0x140ae8080,0x1409c9830,0x1409ca350,0x14085b8a0,0x14085b8b0,0x140160e330,0x1401631f90,0x140160e630,0x1408a53d0,0x1408a4ca0,0x1409cacb0,0x140b4af70,0x140b4b1d0",
+        "fields": "signature,decompiled_code,callees",
+        "include_call_context": false
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x140ae8070,0x140ae8080,0x1409c9830,0x1409ca350,0x14085b8a0,0x14085b8b0,0x140160e330,0x1401631f90,0x140160e630,0x1408a53d0,0x1408a4ca0,0x1409cacb0,0x140b4af70,0x140b4b1d0",
+        "fields": "signature,decompiled_code,callees",
+        "include_call_context": false
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"functions\":{\"0x140ae8070\":{\"name\":\"build\",\"size\":8,\"address\":\"140ae8070\",\"signature\":\"void __cdecl build(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::systems::render_loop::draw_passes::draw_shaders::billboard_forest::impl$0::build(void)\\n\\n{\\n  bevy_app::sub_app::SubApp::\\n  add_systems<tuple_<bevy_ecs::schedule::config::Infallible,tuple_<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>,bevy_ecs::system::commands::Commands)>_>,bevy_app::main_schedule::Startup,void_(*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>,bevy_ecs::system::commands::Commands)>\\n            ();\\n  return;\\n}\\n\\n\",\"callee_count\":1,\"callees\":[{\"name\":\"add_systems<tuple$<bevy_ecs::schedule::config::Infallible,tuple$<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>,bevy_ecs::system::commands::Commands)>_>,bevy_app::main_schedule::Startup,void_(*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>,bevy_ecs::system::commands::Commands)>\",\"address\":\"140b68050\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140ae8080\":{\"name\":\"startup_billboard_forest\",\"size\":578,\"address\":\"140ae8080\",\"signature\":\"void __cdecl startup_billboard_forest(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::systems::render_loop::draw_passes::draw_shaders::billboard_forest::\\nstartup_billboard_forest(void)\\n\\n{\\n  longlong lVar1;\\n  longlong lVar2;\\n  byte *extraout_RAX;\\n  longlong extraout_RAX_00;\\n  undefined8 extraout_RAX_01;\\n  undefined8 extraout_RAX_02;\\n  undefined8 *puVar3;\\n  longlong *plVar4;\\n  undefined8 local_d8;\\n  longlong *plStack_d0;\\n  longlong *local_c8;\\n  undefined8 local_c0;\\n  undefined8 local_b8;\\n  undefined8 local_a8;\\n  undefined *local_a0;\\n  undefined8 uStack_98;\\n  undefined8 local_90;\\n  undefined8 uStack_88;\\n  longlong local_80;\\n  undefined8 *local_78;\\n  undefined4 uStack_70;\\n  undefined4 local_6c;\\n  undefined4 uStack_68;\\n  uint local_64;\\n  undefined8 local_58;\\n  longlong *plStack_50;\\n  longlong *local_48;\\n  undefined8 local_40;\\n  \\n  local_40 = 0xfffffffffffffffe;\\n  local_d8 = 0;\\n  local_a8 = 0;\\n  local_78 = (undefined8 *)((ulonglong)local_78 & 0xffffffff00000000);\\n  local_6c = 0;\\n  uStack_68 = 1;\\n  local_64 = local_64 & 0xffffff00;\\n  puVar3 = &local_d8;\\n  alloc::vec::spec_from_iter::impl$0::\\n  from_iter<u32,core::iter::adapters::flatten::FlatMap<itertools::tuple_impl::TupleWindows<core::ops::range::RangeInclusive<u32>,tuple_<u32,u32>_>,array_<u32,6>,country_core::systems::render_loop::draw_passes::draw_shaders::clouds::startup_clouds::closure_env_0>_>\\n            ();\\n  std::hash::random::impl$0::new::KEYS::constant$0::closure$1::VAL();\\n  if ((*extraout_RAX & 1) == 0) {\\n    std::sys::random::hashmap_random_keys();\\n    extraout_RAX[0] = 1;\\n    extraout_RAX[1] = 0;\\n    extraout_RAX[2] = 0;\\n    extraout_RAX[3] = 0;\\n    extraout_RAX[4] = 0;\\n    extraout_RAX[5] = 0;\\n    extraout_RAX[6] = 0;\\n    extraout_RAX[7] = 0;\\n    *(longlong *)(extraout_RAX + 8) = extraout_RAX_00;\\n    *(undefined8 **)(extraout_RAX + 0x10) = puVar3;\\n    local_80 = extraout_RAX_00;\\n  }\\n  else {\\n    local_80 = *(longlong *)(extraout_RAX + 8);\\n    puVar3 = *(undefined8 **)(extraout_RAX + 0x10);\\n  }\\n  *(longlong *)(extraout_RAX + 8) = local_80 + 1;\\n  local_c8 = local_48;\\n  local_d8 = local_58;\\n  plStack_d0 = plStack_50;\\n  local_c0 = 0x8000000000000000;\\n  local_a0 = &anon_e5eae2fa848f610737f81e1b032ceca1_0_llvm_3675082498294580552;\\n  uStack_98 = 0;\\n  local_90 = 0;\\n  uStack_88 = 0;\\n  uStack_70 = 0x42ae3628;\\n  local_6c = 1;\\n  uStack_68 = 0x10;\\n  local_64 = 0;\\n  local_78 = puVar3;\\n  startup::load_mesh_into_library();\\n  startup::load_shader_into_library<ref_<str_>_>();\\n  bevy_ecs::system::commands::Commands::spawn_empty();\\n  plVar4 = plStack_d0;\\n  if (plStack_d0 == (longlong *)0x0) {\\n    plVar4 = local_c8;\\n  }\\n  lVar1 = plVar4[2];\\n  if ((ulonglong)(*plVar4 - lVar1) < 0x78) {\\n    alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n  }\\n  lVar2 = plVar4[1];\\n  *(code **)(lVar2 + lVar1) =\\n       core::ops::function::FnOnce::\\n       call_once<bevy_ecs::world::command_queue::impl_4::push::closure_env_0<bevy_ecs::error::command_handling::impl_0::handle_error_with::closure_env_0<bevy_ecs::error::command_handling::impl_3::with_entity::closure_env_0<bevy_ecs::system::commands::entity_command::insert::closure_env_0<tuple_<country_core::components::drawable::DrawableMeshBundle,country_core::components::drawable::DontCastShadow,country_core::components::KeepOnLevelUnload>_>_>,tuple_<>,enum2_<bevy_ecs::world::error::EntityMutableFetchError>_>_>,tuple_<bevy_ptr::OwningPtr<bevy_ptr::Unaligned>,enum2_<core::option::Option<core::ptr::non_null::NonNull<bevy_ecs::world::World>_>_>,ref_mut_<usize>_>_>\\n  ;\\n  puVar3 = (undefined8 *)(lVar2 + 8 + lVar1);\\n  *puVar3 = 0;\\n  puVar3[1] = 0x3f80000000000000;\\n  *(undefined8 *)(lVar2 + 0x18 + lVar1) = 0;\\n  *(undefined4 *)(lVar2 + 0x20 + lVar1) = 0;\\n  *(undefined8 *)(lVar2 + 0x24 + lVar1) = 0x3f8000003f800000;\\n  *(undefined4 *)(lVar2 + 0x2c + lVar1) = 0x3f800000;\\n  *(undefined8 *)(lVar2 + 0x38 + lVar1) = extraout_RAX_01;\\n  *(undefined8 *)(lVar2 + 0x40 + lVar1) = extraout_RAX_02;\\n  *(undefined1 *)(lVar2 + 0x48 + lVar1) = 0;\\n  *(undefined8 *)(lVar2 + 0x58 + lVar1) = local_b8;\\n  *(code **)(lVar2 + 0x68 + lVar1) = bevy_ecs::error::handler::panic;\\n  plVar4[2] = lVar1 + 0x78;\\n  return;\\n}\\n\\n\",\"callee_count\":7,\"callees\":[{\"name\":\"VAL\",\"address\":\"140d4d740\"},{\"name\":\"do_reserve_and_handle<alloc::alloc::Global>\",\"address\":\"1428a9a60\"},{\"name\":\"from_iter<u32,core::iter::adapters::flatten::FlatMap<itertools::tuple_impl::TupleWindows<core::ops::range::RangeInclusive<u32>,tuple$<u32,u32>_>,array$<u32,6>,country_core::systems::render_loop::draw_passes::draw_shaders::clouds::startup_clouds::closure_env$0>_>\",\"address\":\"1412fa8e0\"},{\"name\":\"hashmap_random_keys\",\"address\":\"140d64e00\"},{\"name\":\"load_mesh_into_library\",\"address\":\"140b1aca0\"},{\"name\":\"load_shader_into_library<ref$<str$>_>\",\"address\":\"140b3fe40\"},{\"name\":\"spawn_empty\",\"address\":\"140d146a0\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409c9830\":{\"name\":\"tree_trunk\",\"size\":1643,\"address\":\"1409c9830\",\"signature\":\"void __cdecl tree_trunk(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::systems::render_loop::draw_passes::draw_shaders::clearing_shaders::tree_trunk(void)\\n\\n{\\n  longlong extraout_RAX;\\n  longlong extraout_RAX_00;\\n  longlong extraout_RAX_01;\\n  longlong extraout_RAX_02;\\n  void *in_RCX;\\n  ulonglong uVar1;\\n  longlong in_R8;\\n  undefined4 local_258 [55];\\n  char local_17a;\\n  undefined8 local_160;\\n  undefined4 local_158;\\n  char local_82;\\n  void *local_68;\\n  undefined8 local_60;\\n  undefined4 local_58;\\n  undefined1 local_53;\\n  undefined1 local_52;\\n  undefined1 local_51;\\n  undefined8 local_50;\\n  \\n  local_50 = 0xfffffffffffffffe;\\n  if (*(char *)((longlong)in_RCX + 0xf0) != '\\\\0') {\\n    *(byte *)((longlong)in_RCX + 0xa8) = *(byte *)((longlong)in_RCX + 0xa8) & 0xf3 | 4;\\n  }\\n  local_51 = 1;\\n  uVar1 = 0xd2f519263066413b;\\n  local_68 = in_RCX;\\n  bevy_ecs::component::Components::get_resource_id();\\n  if ((((extraout_RAX == 0) || (*(ulonglong *)(in_R8 + 0x218) <= uVar1)) ||\\n      (uVar1 = *(ulonglong *)(*(longlong *)(in_R8 + 0x210) + uVar1 * 8), uVar1 == 0)) ||\\n     (*(longlong *)(*(longlong *)(in_R8 + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)) {\\n    local_51 = 1;\\n                    // WARNING: Subroutine does not return\\n    core::option::unwrap_failed();\\n  }\\n  local_51 = 1;\\n  uVar1 = 0xbba451ee6a08a3ff;\\n  bevy_ecs::component::Components::get_resource_id();\\n  if (((extraout_RAX_00 == 0) || (*(ulonglong *)(in_R8 + 0x218) <= uVar1)) ||\\n     ((uVar1 = *(ulonglong *)(*(longlong *)(in_R8 + 0x210) + uVar1 * 8), uVar1 == 0 ||\\n      (*(longlong *)(*(longlong *)(in_R8 + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)))) {\\n    local_51 = 1;\\n                    // WARNING: Subroutine does not return\\n    core::option::unwrap_failed();\\n  }\\n  memcpy(&local_160,local_68,0xf8);\\n  local_60 = 0xce1615b9bd3e034;\\n  local_258[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_258,&local_160,0xf8);\\n  local_60 = 0x32dce6939b569f34;\\n  local_160._0_4_ = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(&local_160,local_258,0xf8);\\n  local_60 = 0x8215a488d99562a6;\\n  local_258[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_258,&local_160,0xf8);\\n  local_60 = 0x93201d69003f98d4;\\n  local_160._0_4_ = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(&local_160,local_258,0xf8);\\n  local_60 = 0xaa12b01311b77c4d;\\n  local_258[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_258,&local_160,0xf8);\\n  local_60 = 0x4dbb39acf1c7b7;\\n  local_160 = CONCAT44(local_160._4_4_,2);\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(&local_160,local_258,0xf8);\\n  if (local_82 != '\\\\b') {\\n    country_core::render::pass_builder::uniform_binder::UniformBinder::\\n    write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<f32>,f32>\\n              ();\\n  }\\n  memcpy(local_258,&local_160,0xf8);\\n  local_52 = 1;\\n  uVar1 = 0xbba451ee6a08a3ff;\\n  bevy_ecs::component::Components::get_resource_id();\\n  if (((extraout_RAX_01 != 0) && (uVar1 < *(ulonglong *)(in_R8 + 0x218))) &&\\n     ((uVar1 = *(ulonglong *)(*(longlong *)(in_R8 + 0x210) + uVar1 * 8), uVar1 != 0 &&\\n      (*(longlong *)(*(longlong *)(in_R8 + 0x1e0) + 0x20 + ~uVar1 * 0x60) != 0)))) {\\n    local_52 = 1;\\n    ::utils::camera::CameraMatrices::eye_position();\\n    if (local_17a != '\\\\b') {\\n      local_158 = local_58;\\n      local_160 = local_60;\\n      country_core::render::pass_builder::uniform_binder::UniformBinder::\\n      write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<glam::f32::vec3::Vec3>,glam::f32::vec3::Vec3>\\n                ();\\n    }\\n    memcpy(&local_160,local_258,0xf8);\\n    if (local_82 != '\\\\b') {\\n      country_core::render::pass_builder::uniform_binder::UniformBinder::\\n      write_uniform<country_core::render::pass_builder::draw_builder::impl_2::uniform::closure_env_0<bool>,bool>\\n                ();\\n    }\\n    memcpy(local_258,&local_160,0xf8);\\n    local_53 = 1;\\n    uVar1 = 0x1b4e385d376c1cc0;\\n    bevy_ecs::component::Components::get_resource_id();\\n    if ((((extraout_RAX_02 != 0) && (uVar1 < *(ulonglong *)(in_R8 + 0x218))) &&\\n        (uVar1 = *(ulonglong *)(*(longlong *)(in_R8 + 0x210) + uVar1 * 8), uVar1 != 0)) &&\\n       (*(longlong *)(*(longlong *)(in_R8 + 0x1e0) + 0x20 + ~uVar1 * 0x60) != 0)) {\\n      if (local_17a != '\\\\b') {\\n        country_core::render::pass_builder::uniform_binder::UniformBinder::\\n        write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<f32>,f32>\\n                  ();\\n      }\\n      memcpy(&local_160,local_258,0xf8);\\n      local_60 = CONCAT71(local_60._1_7_,0xe);\\n      local_258[0] = 2;\\n      country_core::render::pass_builder::draw_builder::impl$3::\\n      bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n      memcpy(local_258,&local_160,0xf8);\\n      local_51 = 0;\\n      country_core::render::nani::draw_ext::impl$0::nani_draw();\\n      return;\\n    }\\n    local_53 = 1;\\n                    // WARNING: Subroutine does not return\\n    core::option::unwrap_failed();\\n  }\\n  local_52 = 1;\\n                    // WARNING: Subroutine does not return\\n  core::option::unwrap_failed();\\n}\\n\\n\",\"callee_count\":10,\"callees\":[{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\",\"address\":\"140908610\"},{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>\",\"address\":\"140908c50\"},{\"name\":\"eye_position\",\"address\":\"140c96d40\"},{\"name\":\"get_resource_id\",\"address\":\"1400dd6f0\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"nani_draw\",\"address\":\"140904ae0\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9310\"},{\"name\":\"write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<f32>,f32>\",\"address\":\"14096ba30\"},{\"name\":\"write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<glam::f32::vec3::Vec3>,glam::f32::vec3::Vec3>\",\"address\":\"14096b660\"},{\"name\":\"write_uniform<country_core::render::pass_builder::draw_builder::impl$2::uniform::closure_env$0<bool>,bool>\",\"address\":\"14096b850\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409ca350\":{\"name\":\"tree_canopy\",\"size\":1373,\"address\":\"1409ca350\",\"signature\":\"void __cdecl tree_canopy(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::systems::render_loop::draw_passes::draw_shaders::clearing_shaders::tree_canopy(void)\\n\\n{\\n  longlong extraout_RAX;\\n  longlong extraout_RAX_00;\\n  longlong extraout_RAX_01;\\n  void *in_RCX;\\n  ulonglong uVar1;\\n  longlong in_R8;\\n  undefined4 local_268 [55];\\n  char local_18a;\\n  undefined4 local_170 [55];\\n  char local_92;\\n  void *local_78;\\n  undefined8 local_70;\\n  undefined1 local_62;\\n  undefined1 local_61;\\n  undefined8 local_60;\\n  \\n  local_60 = 0xfffffffffffffffe;\\n  if (*(char *)((longlong)in_RCX + 0xf0) != '\\\\0') {\\n    *(byte *)((longlong)in_RCX + 0xa8) = *(byte *)((longlong)in_RCX + 0xa8) & 0xf3 | 4;\\n  }\\n  local_61 = 1;\\n  uVar1 = 0xbba451ee6a08a3ff;\\n  local_78 = in_RCX;\\n  bevy_ecs::component::Components::get_resource_id();\\n  if ((((extraout_RAX == 0) || (*(ulonglong *)(in_R8 + 0x218) <= uVar1)) ||\\n      (uVar1 = *(ulonglong *)(*(longlong *)(in_R8 + 0x210) + uVar1 * 8), uVar1 == 0)) ||\\n     (*(longlong *)(*(longlong *)(in_R8 + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)) {\\n    local_61 = 1;\\n                    // WARNING: Subroutine does not return\\n    core::option::unwrap_failed();\\n  }\\n  local_61 = 1;\\n  uVar1 = 0xd2f519263066413b;\\n  bevy_ecs::component::Components::get_resource_id();\\n  if (((extraout_RAX_00 == 0) || (*(ulonglong *)(in_R8 + 0x218) <= uVar1)) ||\\n     ((uVar1 = *(ulonglong *)(*(longlong *)(in_R8 + 0x210) + uVar1 * 8), uVar1 == 0 ||\\n      (*(longlong *)(*(longlong *)(in_R8 + 0x1e0) + 0x20 + ~uVar1 * 0x60) == 0)))) {\\n    local_61 = 1;\\n                    // WARNING: Subroutine does not return\\n    core::option::unwrap_failed();\\n  }\\n  memcpy(local_170,local_78,0xf8);\\n  local_70 = 0x579f39ab91a01865;\\n  local_268[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_268,local_170,0xf8);\\n  local_70 = 0x521d5b30024d9662;\\n  local_170[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_170,local_268,0xf8);\\n  local_70 = 0x93201d69003f98d4;\\n  local_268[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_268,local_170,0xf8);\\n  local_70 = 0xaa12b01311b77c4d;\\n  local_170[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_170,local_268,0xf8);\\n  local_70 = 0x4dbb39acf1c7b7;\\n  local_268[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_268,local_170,0xf8);\\n  if (local_18a != '\\\\b') {\\n    country_core::render::pass_builder::uniform_binder::UniformBinder::\\n    write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<f32>,f32>\\n              ();\\n  }\\n  memcpy(local_170,local_268,0xf8);\\n  if (local_92 != '\\\\b') {\\n    country_core::render::pass_builder::uniform_binder::UniformBinder::\\n    write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<f32>,f32>\\n              ();\\n  }\\n  memcpy(local_268,local_170,0xf8);\\n  if (local_18a != '\\\\b') {\\n    country_core::render::pass_builder::uniform_binder::UniformBinder::\\n    write_uniform<country_core::render::pass_builder::draw_builder::impl_2::uniform::closure_env_0<bool>,bool>\\n              ();\\n  }\\n  memcpy(local_170,local_268,0xf8);\\n  local_62 = 1;\\n  uVar1 = 0x1b4e385d376c1cc0;\\n  bevy_ecs::component::Components::get_resource_id();\\n  if (((extraout_RAX_01 != 0) && (uVar1 < *(ulonglong *)(in_R8 + 0x218))) &&\\n     ((uVar1 = *(ulonglong *)(*(longlong *)(in_R8 + 0x210) + uVar1 * 8), uVar1 != 0 &&\\n      (*(longlong *)(*(longlong *)(in_R8 + 0x1e0) + 0x20 + ~uVar1 * 0x60) != 0)))) {\\n    if (local_92 != '\\\\b') {\\n      country_core::render::pass_builder::uniform_binder::UniformBinder::\\n      write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<f32>,f32>\\n                ();\\n    }\\n    memcpy(local_268,local_170,0xf8);\\n    local_61 = 0;\\n    country_core::render::nani::draw_ext::impl$0::nani_draw();\\n    return;\\n  }\\n  local_62 = 1;\\n                    // WARNING: Subroutine does not return\\n  core::option::unwrap_failed();\\n}\\n\\n\",\"callee_count\":7,\"callees\":[{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\",\"address\":\"140908610\"},{\"name\":\"get_resource_id\",\"address\":\"1400dd6f0\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"nani_draw\",\"address\":\"140904ae0\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9310\"},{\"name\":\"write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<f32>,f32>\",\"address\":\"14096ba30\"},{\"name\":\"write_uniform<country_core::render::pass_builder::draw_builder::impl$2::uniform::closure_env$0<bool>,bool>\",\"address\":\"14096b850\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x14085b8a0\":{\"name\":\"build\",\"size\":8,\"address\":\"14085b8a0\",\"signature\":\"void __cdecl build(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::systems::render_loop::draw_passes::draw_shaders::clouds::impl$0::build(void)\\n\\n{\\n  bevy_app::sub_app::SubApp::\\n  add_systems<tuple_<bevy_ecs::schedule::config::Infallible,tuple_<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>,bevy_ecs::system::commands::Commands)>_>,bevy_app::main_schedule::Startup,void_(*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>,bevy_ecs::system::commands::Commands)>\\n            ();\\n  return;\\n}\\n\\n\",\"callee_count\":1,\"callees\":[{\"name\":\"add_systems<tuple$<bevy_ecs::schedule::config::Infallible,tuple$<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>,bevy_ecs::system::commands::Commands)>_>,bevy_app::main_schedule::Startup,void_(*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::change_detection::Res<country_core::asset_libraries::meshwatch::MeshWatch>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::render::shaderwatch::inner::ShaderWatch>,bevy_ecs::system::commands::Commands)>\",\"address\":\"140b67f10\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x14085b8b0\":{\"name\":\"startup_clouds\",\"size\":585,\"address\":\"14085b8b0\",\"signature\":\"void __cdecl startup_clouds(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::systems::render_loop::draw_passes::draw_shaders::clouds::startup_clouds(void)\\n\\n{\\n  longlong lVar1;\\n  longlong lVar2;\\n  byte *extraout_RAX;\\n  longlong extraout_RAX_00;\\n  undefined8 extraout_RAX_01;\\n  undefined8 extraout_RAX_02;\\n  undefined8 *puVar3;\\n  longlong *plVar4;\\n  undefined8 local_d8;\\n  longlong *plStack_d0;\\n  longlong *local_c8;\\n  undefined8 local_c0;\\n  undefined8 local_b8;\\n  undefined8 local_a8;\\n  undefined *local_a0;\\n  undefined8 uStack_98;\\n  undefined8 local_90;\\n  undefined8 uStack_88;\\n  longlong local_80;\\n  undefined8 *local_78;\\n  undefined4 uStack_70;\\n  undefined4 local_6c;\\n  undefined4 uStack_68;\\n  uint local_64;\\n  undefined8 local_58;\\n  longlong *plStack_50;\\n  longlong *local_48;\\n  undefined8 local_40;\\n  \\n  local_40 = 0xfffffffffffffffe;\\n  local_d8 = 0;\\n  local_a8 = 0;\\n  local_78 = (undefined8 *)((ulonglong)local_78 & 0xffffffff00000000);\\n  local_6c = 0;\\n  uStack_68 = 1;\\n  local_64 = local_64 & 0xffffff00;\\n  puVar3 = &local_d8;\\n  alloc::vec::spec_from_iter::impl$0::\\n  from_iter<u32,core::iter::adapters::flatten::FlatMap<itertools::tuple_impl::TupleWindows<core::ops::range::RangeInclusive<u32>,tuple_<u32,u32>_>,array_<u32,6>,country_core::systems::render_loop::draw_passes::draw_shaders::clouds::startup_clouds::closure_env_0>_>\\n            ();\\n  std::hash::random::impl$0::new::KEYS::constant$0::closure$1::VAL();\\n  if ((*extraout_RAX & 1) == 0) {\\n    std::sys::random::hashmap_random_keys();\\n    extraout_RAX[0] = 1;\\n    extraout_RAX[1] = 0;\\n    extraout_RAX[2] = 0;\\n    extraout_RAX[3] = 0;\\n    extraout_RAX[4] = 0;\\n    extraout_RAX[5] = 0;\\n    extraout_RAX[6] = 0;\\n    extraout_RAX[7] = 0;\\n    *(longlong *)(extraout_RAX + 8) = extraout_RAX_00;\\n    *(undefined8 **)(extraout_RAX + 0x10) = puVar3;\\n    local_80 = extraout_RAX_00;\\n  }\\n  else {\\n    local_80 = *(longlong *)(extraout_RAX + 8);\\n    puVar3 = *(undefined8 **)(extraout_RAX + 0x10);\\n  }\\n  *(longlong *)(extraout_RAX + 8) = local_80 + 1;\\n  local_c8 = local_48;\\n  local_d8 = local_58;\\n  plStack_d0 = plStack_50;\\n  local_c0 = 0x8000000000000000;\\n  local_a0 = &anon_6a7339a970014eecaf19421d4b3f97a6_0_llvm_4089674097218605020;\\n  uStack_98 = 0;\\n  local_90 = 0;\\n  uStack_88 = 0;\\n  uStack_70 = 0x42a95191;\\n  local_6c = 1;\\n  uStack_68 = 5;\\n  local_64 = 0;\\n  local_78 = puVar3;\\n  startup::load_mesh_into_library();\\n  startup::load_shader_into_library<ref_<str_>_>();\\n  bevy_ecs::system::commands::Commands::spawn_empty();\\n  plVar4 = plStack_d0;\\n  if (plStack_d0 == (longlong *)0x0) {\\n    plVar4 = local_c8;\\n  }\\n  lVar1 = plVar4[2];\\n  if ((ulonglong)(*plVar4 - lVar1) < 0x88) {\\n    alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n  }\\n  lVar2 = plVar4[1];\\n  *(code **)(lVar2 + lVar1) =\\n       core::ops::function::FnOnce::\\n       call_once<bevy_ecs::world::command_queue::impl_4::push::closure_env_0<bevy_ecs::error::command_handling::impl_0::handle_error_with::closure_env_0<bevy_ecs::error::command_handling::impl_3::with_entity::closure_env_0<bevy_ecs::system::commands::entity_command::insert::closure_env_0<tuple_<country_core::components::drawable::DrawableMeshBundle,country_core::components::drawable::DontCastShadow,country_core::components::KeepOnLevelUnload,country_core::components::drawable::DesignatedRenderPass>_>_>,tuple_<>,enum2_<bevy_ecs::world::error::EntityMutableFetchError>_>_>,tuple_<bevy_ptr::OwningPtr<bevy_ptr::Unaligned>,enum2_<core::option::Option<core::ptr::non_null::NonNull<bevy_ecs::world::World>_>_>,ref_mut_<usize>_>_>\\n  ;\\n  puVar3 = (undefined8 *)(lVar2 + 8 + lVar1);\\n  *puVar3 = 0;\\n  puVar3[1] = 0x3f80000000000000;\\n  *(undefined8 *)(lVar2 + 0x18 + lVar1) = 0;\\n  *(undefined4 *)(lVar2 + 0x20 + lVar1) = 0;\\n  *(undefined8 *)(lVar2 + 0x24 + lVar1) = 0x3f8000003f800000;\\n  *(undefined4 *)(lVar2 + 0x2c + lVar1) = 0x3f800000;\\n  *(undefined8 *)(lVar2 + 0x38 + lVar1) = extraout_RAX_01;\\n  *(undefined8 *)(lVar2 + 0x40 + lVar1) = extraout_RAX_02;\\n  *(undefined4 *)(lVar2 + 0x48 + lVar1) = 0x10;\\n  *(undefined1 *)(lVar2 + 0x58 + lVar1) = 0;\\n  *(undefined8 *)(lVar2 + 0x68 + lVar1) = local_b8;\\n  *(code **)(lVar2 + 0x78 + lVar1) = bevy_ecs::error::handler::panic;\\n  plVar4[2] = lVar1 + 0x88;\\n  return;\\n}\\n\\n\",\"callee_count\":7,\"callees\":[{\"name\":\"VAL\",\"address\":\"140d4d740\"},{\"name\":\"do_reserve_and_handle<alloc::alloc::Global>\",\"address\":\"1428a9a60\"},{\"name\":\"from_iter<u32,core::iter::adapters::flatten::FlatMap<itertools::tuple_impl::TupleWindows<core::ops::range::RangeInclusive<u32>,tuple$<u32,u32>_>,array$<u32,6>,country_core::systems::render_loop::draw_passes::draw_shaders::clouds::startup_clouds::closure_env$0>_>\",\"address\":\"1412fa8e0\"},{\"name\":\"hashmap_random_keys\",\"address\":\"140d64e00\"},{\"name\":\"load_mesh_into_library\",\"address\":\"140b1aca0\"},{\"name\":\"load_shader_into_library<ref$<str$>_>\",\"address\":\"140b3fe40\"},{\"name\":\"spawn_empty\",\"address\":\"140d146a0\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140160e330\":{\"error\":\"Function not found: '0x140160e330' (no function at or containing that address, and no function has that name)\"},\"0x1401631f90\":{\"error\":\"Function not found: '0x1401631f90' (no function at or containing that address, and no function has that name)\"},\"0x140160e630\":{\"error\":\"Function not found: '0x140160e630' (no function at or containing that address, and no function has that name)\"},\"0x1408a53d0\":{\"name\":\"indirect_draw_bricks<0>\",\"size\":1387,\"address\":\"1408a53d0\",\"signature\":\"void __cdecl indirect_draw_bricks<0>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::systems::render_loop::draw_passes::draw_shaders::draw_bricks::indirect_draw_bricks<0>\\n          (void)\\n\\n{\\n  int iVar1;\\n  char *extraout_RAX;\\n  longlong extraout_RAX_00;\\n  undefined8 *extraout_RAX_01;\\n  longlong lVar2;\\n  longlong extraout_RAX_02;\\n  void *in_RCX;\\n  longlong in_RDX;\\n  ulonglong uVar3;\\n  longlong in_R8;\\n  undefined1 local_428 [248];\\n  undefined1 local_330 [248];\\n  undefined *local_238;\\n  undefined8 local_230;\\n  char local_15a;\\n  int local_140;\\n  int iStack_13c;\\n  undefined4 uStack_138;\\n  undefined4 local_134;\\n  ulonglong local_128;\\n  void *local_48;\\n  undefined1 local_3a;\\n  undefined1 local_39;\\n  undefined8 local_38;\\n  \\n  local_38 = 0xfffffffffffffffe;\\n  if (1 < *(byte *)((longlong)in_RCX + 0xf0)) {\\n    memcpy(&local_140,in_RCX,0xf8);\\n    local_39 = 0;\\n    country_core::render::pass_builder::draw_builder::DrawBuilder::discard();\\n    return;\\n  }\\n  local_128 = *(ulonglong *)(in_RDX + 8);\\n  uVar3 = local_128 & 0xffffffff;\\n  iStack_13c = (int)(local_128 >> 0x20);\\n  if ((uVar3 < *(ulonglong *)(in_R8 + 0x10)) &&\\n     (*(int *)(*(longlong *)(in_R8 + 8) + uVar3 * 0x14) == iStack_13c)) {\\n    lVar2 = *(longlong *)(in_R8 + 8) + uVar3 * 0x14;\\n    local_140 = *(int *)(lVar2 + 4);\\n    if (local_140 != -1) {\\n      local_134 = *(undefined4 *)(lVar2 + 0x10);\\n      iStack_13c = (int)*(undefined8 *)(lVar2 + 8);\\n      uStack_138 = (undefined4)((ulonglong)*(undefined8 *)(lVar2 + 8) >> 0x20);\\n      local_39 = 1;\\n      local_48 = in_RCX;\\n      bevy_ecs::world::unsafe_world_cell::UnsafeEntityCell::\\n      get<country_core::geometry::instanced_wall::WallBrickInstancedDrawProxy>();\\n      if (extraout_RAX == (char *)0x0) {\\n        local_39 = 1;\\n                    // WARNING: Subroutine does not return\\n        core::option::unwrap_failed();\\n      }\\n      if (extraout_RAX[1] == '\\\\x01') {\\n        memcpy(&local_140,local_48,0xf8);\\n        local_39 = 0;\\n        country_core::render::pass_builder::draw_builder::DrawBuilder::discard();\\n        return;\\n      }\\n      *(byte *)((longlong)local_48 + 0xa8) = *(byte *)((longlong)local_48 + 0xa8) & 0xf3 | 4;\\n      local_39 = 1;\\n      uVar3 = 0x8226cc786e679355;\\n      bevy_ecs::component::Components::get_resource_id();\\n      if ((((extraout_RAX_00 == 0) || (*(ulonglong *)(in_R8 + 0x218) <= uVar3)) ||\\n          (uVar3 = *(ulonglong *)(*(longlong *)(in_R8 + 0x210) + uVar3 * 8), uVar3 == 0)) ||\\n         (*(longlong *)(*(longlong *)(in_R8 + 0x1e0) + 0x20 + ~uVar3 * 0x60) == 0)) {\\n        local_39 = 1;\\n                    // WARNING: Subroutine does not return\\n        core::option::unwrap_failed();\\n      }\\n      local_39 = 1;\\n      frozen::FrozenMap::\\n      get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>\\n                ();\\n      if (extraout_RAX_01 != (undefined8 *)0x0) {\\n        local_238 = &anon_107183261458dea85466985370debbb6_35_llvm_3641509820080252961;\\n        local_230 = 0x3a;\\n        if ((extraout_RAX_01[3] != 0x3a) ||\\n           (iVar1 = memcmp(&anon_107183261458dea85466985370debbb6_35_llvm_3641509820080252961,\\n                           (void *)extraout_RAX_01[2],0x3a), iVar1 != 0)) {\\n          local_140 = 0;\\n          iStack_13c = 0;\\n          local_39 = 1;\\n                    // WARNING: Subroutine does not return\\n          core::panicking::assert_failed<ref_<str_>,ref_<str_>_>();\\n        }\\n        local_39 = 1;\\n        lVar2 = (**(code **)(extraout_RAX_01[1] + 0x18))(*extraout_RAX_01);\\n        if (lVar2 != 0) {\\n          memcpy(&local_140,local_48,0xf8);\\n          local_39 = 0;\\n          country_core::render::pass_builder::draw_builder::DrawBuilder::\\n          bind_external_storage_buffer();\\n          local_39 = 0;\\n          country_core::render::pass_builder::draw_builder::impl$2::\\n          read_storage_buffer<country_core::geometry::instanced_wall::BrickDrawListSsbo>();\\n          local_3a = 1;\\n          uVar3 = 0x850dbd51eafef756;\\n          bevy_ecs::component::Components::get_resource_id();\\n          if (((extraout_RAX_02 != 0) && (uVar3 < *(ulonglong *)(in_R8 + 0x218))) &&\\n             (uVar3 = *(ulonglong *)(*(longlong *)(in_R8 + 0x210) + uVar3 * 8), uVar3 != 0)) {\\n            lVar2 = ~uVar3 * 0x60;\\n            if (*(longlong *)(*(longlong *)(in_R8 + 0x1e0) + 0x20 + lVar2) != 0) {\\n              if ((*(char *)(*(longlong *)(*(longlong *)(in_R8 + 0x1e0) + lVar2 + 0x10) + 0x10) ==\\n                   '\\\\0') && (*extraout_RAX != '\\\\0')) {\\n                memcpy(&local_140,local_330,0xf8);\\n                local_3a = 0;\\n                country_core::render::pass_builder::draw_builder::DrawBuilder::discard();\\n                return;\\n              }\\n              memcpy(&local_140,local_330,0xf8);\\n              local_3a = 0;\\n              country_core::render::pass_builder::draw_builder::DrawBuilder::\\n              bind_brick_erase_highlight();\\n              local_3a = 0;\\n              country_core::render::pass_builder::draw_builder::DrawBuilder::\\n              bind_wall_color_customization();\\n              local_238 = (undefined *)0x7db9e7483fa24078;\\n              local_140 = 2;\\n              country_core::render::pass_builder::draw_builder::impl$3::\\n              bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\\n                        ();\\n              memcpy(&local_140,local_428,0xf8);\\n              local_3a = 0;\\n              country_core::render::pass_builder::draw_builder::impl$2::\\n              read_storage_buffer<country_core::resources::color_id_roof::RoofColorIdSsbo>();\\n              if (local_15a != '\\\\b') {\\n                country_core::render::pass_builder::uniform_binder::UniformBinder::\\n                write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<i32>,i32>\\n                          ();\\n              }\\n              memcpy(local_330,&local_238,0xf8);\\n              memcpy(&local_140,local_330,0xf8);\\n              local_3a = 0;\\n              country_core::render::pass_builder::draw_builder::DrawBuilder::\\n              multi_draw_indexed_indirect();\\n              return;\\n            }\\n          }\\n          local_3a = 1;\\n                    // WARNING: Subroutine does not return\\n          core::option::unwrap_failed();\\n        }\\n      }\\n      local_39 = 1;\\n                    // WARNING: Subroutine does not return\\n      core::option::unwrap_failed();\\n    }\\n  }\\n  local_140 = (int)local_128;\\n  local_39 = 1;\\n                    // WARNING: Subroutine does not return\\n  core::result::unwrap_failed();\\n}\\n\\n\",\"callee_count\":17,\"callees\":[{\"name\":\"assert_failed<ref$<str$>,ref$<str$>_>\",\"address\":\"1428cab41\"},{\"name\":\"bind_brick_erase_highlight\",\"address\":\"14090be10\"},{\"name\":\"bind_external_storage_buffer\",\"address\":\"140906400\"},{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\",\"address\":\"140908610\"},{\"name\":\"bind_wall_color_customization\",\"address\":\"14090bb70\"},{\"name\":\"discard\",\"address\":\"1409082c0\"},{\"name\":\"get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>\",\"address\":\"140969720\"},{\"name\":\"get<country_core::geometry::instanced_wall::WallBrickInstancedDrawProxy>\",\"address\":\"1408a4050\"},{\"name\":\"get_resource_id\",\"address\":\"1400dd6f0\"},{\"name\":\"memcmp\",\"address\":\"142923bf0\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"multi_draw_indexed_indirect\",\"address\":\"140907990\"},{\"name\":\"read_storage_buffer<country_core::geometry::instanced_wall::BrickDrawListSsbo>\",\"address\":\"14162d190\"},{\"name\":\"read_storage_buffer<country_core::resources::color_id_roof::RoofColorIdSsbo>\",\"address\":\"14162ad90\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9310\"},{\"name\":\"write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<i32>,i32>\",\"address\":\"14096b570\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1408a4ca0\":{\"name\":\"indirect_draw_bricks<1>\",\"size\":1417,\"address\":\"1408a4ca0\",\"signature\":\"void __cdecl indirect_draw_bricks<1>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::systems::render_loop::draw_passes::draw_shaders::draw_bricks::indirect_draw_bricks<1>\\n          (void)\\n\\n{\\n  byte bVar1;\\n  int iVar2;\\n  char *extraout_RAX;\\n  longlong extraout_RAX_00;\\n  undefined8 *extraout_RAX_01;\\n  longlong lVar3;\\n  longlong extraout_RAX_02;\\n  void *in_RCX;\\n  longlong in_RDX;\\n  ulonglong uVar4;\\n  longlong in_R8;\\n  byte bVar5;\\n  undefined1 local_438 [248];\\n  undefined1 local_340 [248];\\n  undefined *local_248;\\n  undefined8 local_240;\\n  char local_16a;\\n  int local_150;\\n  int iStack_14c;\\n  undefined4 uStack_148;\\n  undefined4 local_144;\\n  ulonglong local_138;\\n  void *local_58;\\n  undefined1 local_4a;\\n  undefined1 local_49;\\n  undefined8 local_48;\\n  \\n  local_48 = 0xfffffffffffffffe;\\n  bVar5 = 0x1c >> (*(byte *)((longlong)in_RCX + 0xf0) & 0x1f);\\n  bVar1 = *(byte *)((longlong)in_RCX + 0xf0) & 7;\\n  local_138 = *(ulonglong *)(in_RDX + 8);\\n  uVar4 = local_138 & 0xffffffff;\\n  iStack_14c = (int)(local_138 >> 0x20);\\n  if ((uVar4 < *(ulonglong *)(in_R8 + 0x10)) &&\\n     (*(int *)(*(longlong *)(in_R8 + 8) + uVar4 * 0x14) == iStack_14c)) {\\n    lVar3 = *(longlong *)(in_R8 + 8) + uVar4 * 0x14;\\n    local_150 = *(int *)(lVar3 + 4);\\n    if (local_150 != -1) {\\n      local_144 = *(undefined4 *)(lVar3 + 0x10);\\n      iStack_14c = (int)*(undefined8 *)(lVar3 + 8);\\n      uStack_148 = (undefined4)((ulonglong)*(undefined8 *)(lVar3 + 8) >> 0x20);\\n      local_49 = 1;\\n      local_58 = in_RCX;\\n      bevy_ecs::world::unsafe_world_cell::UnsafeEntityCell::\\n      get<country_core::geometry::instanced_wall::WallBrickInstancedDrawProxy>();\\n      if (extraout_RAX == (char *)0x0) {\\n        local_49 = 1;\\n                    // WARNING: Subroutine does not return\\n        core::option::unwrap_failed();\\n      }\\n      if (extraout_RAX[1] == '\\\\x01') {\\n        if (((bVar5 & 1) == 0) || (extraout_RAX[2] != (char)(0x201000000 >> (bVar1 << 3)))) {\\nLAB_1408a4f2b:\\n          memcpy(&local_150,local_58,0xf8);\\n          local_49 = 0;\\n          country_core::render::pass_builder::draw_builder::DrawBuilder::discard();\\n          return;\\n        }\\n      }\\n      else if ((bVar5 & 1) != 0) goto LAB_1408a4f2b;\\n      *(byte *)((longlong)local_58 + 0xa8) = *(byte *)((longlong)local_58 + 0xa8) & 0xf3;\\n      local_49 = 1;\\n      uVar4 = 0x8226cc786e679355;\\n      bevy_ecs::component::Components::get_resource_id();\\n      if ((((extraout_RAX_00 == 0) || (*(ulonglong *)(in_R8 + 0x218) <= uVar4)) ||\\n          (uVar4 = *(ulonglong *)(*(longlong *)(in_R8 + 0x210) + uVar4 * 8), uVar4 == 0)) ||\\n         (*(longlong *)(*(longlong *)(in_R8 + 0x1e0) + 0x20 + ~uVar4 * 0x60) == 0)) {\\n        local_49 = 1;\\n                    // WARNING: Subroutine does not return\\n        core::option::unwrap_failed();\\n      }\\n      local_49 = 1;\\n      frozen::FrozenMap::\\n      get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>\\n                ();\\n      if (extraout_RAX_01 != (undefined8 *)0x0) {\\n        local_248 = &anon_107183261458dea85466985370debbb6_35_llvm_3641509820080252961;\\n        local_240 = 0x3a;\\n        if ((extraout_RAX_01[3] != 0x3a) ||\\n           (iVar2 = memcmp(&anon_107183261458dea85466985370debbb6_35_llvm_3641509820080252961,\\n                           (void *)extraout_RAX_01[2],0x3a), iVar2 != 0)) {\\n          local_150 = 0;\\n          iStack_14c = 0;\\n          local_49 = 1;\\n                    // WARNING: Subroutine does not return\\n          core::panicking::assert_failed<ref_<str_>,ref_<str_>_>();\\n        }\\n        local_49 = 1;\\n        lVar3 = (**(code **)(extraout_RAX_01[1] + 0x18))(*extraout_RAX_01);\\n        if (lVar3 != 0) {\\n          memcpy(&local_150,local_58,0xf8);\\n          local_49 = 0;\\n          country_core::render::pass_builder::draw_builder::DrawBuilder::\\n          bind_external_storage_buffer();\\n          local_49 = 0;\\n          country_core::render::pass_builder::draw_builder::impl$2::\\n          read_storage_buffer<country_core::geometry::instanced_wall::BrickDrawListSsbo>();\\n          if ((bVar5 & 1) != 0) {\\n            switch(bVar1) {\\n            default:\\n              break;\\n            case 3:\\n              break;\\n            case 4:\\n            }\\nLAB_1408a5139:\\n            memcpy(&local_150,local_340,0xf8);\\n            local_4a = 0;\\n            country_core::render::pass_builder::draw_builder::DrawBuilder::\\n            multi_draw_indexed_indirect();\\n            return;\\n          }\\n          local_4a = 1;\\n          uVar4 = 0x850dbd51eafef756;\\n          bevy_ecs::component::Components::get_resource_id();\\n          if (((extraout_RAX_02 != 0) && (uVar4 < *(ulonglong *)(in_R8 + 0x218))) &&\\n             (uVar4 = *(ulonglong *)(*(longlong *)(in_R8 + 0x210) + uVar4 * 8), uVar4 != 0)) {\\n            lVar3 = ~uVar4 * 0x60;\\n            if (*(longlong *)(*(longlong *)(in_R8 + 0x1e0) + 0x20 + lVar3) != 0) {\\n              if ((*(char *)(*(longlong *)(*(longlong *)(in_R8 + 0x1e0) + lVar3 + 0x10) + 0x10) ==\\n                   '\\\\0') && (*extraout_RAX != '\\\\0')) {\\n                memcpy(&local_150,local_340,0xf8);\\n                local_4a = 0;\\n                country_core::render::pass_builder::draw_builder::DrawBuilder::discard();\\n                return;\\n              }\\n              memcpy(&local_150,local_340,0xf8);\\n              local_4a = 0;\\n              country_core::render::pass_builder::draw_builder::DrawBuilder::\\n              bind_brick_erase_highlight();\\n              local_4a = 0;\\n              country_core::render::pass_builder::draw_builder::DrawBuilder::\\n              bind_wall_color_customization();\\n              local_248 = (undefined *)0x7db9e7483fa24078;\\n              local_150 = 2;\\n              country_core::render::pass_builder::draw_builder::impl$3::\\n              bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\\n                        ();\\n              memcpy(&local_150,local_438,0xf8);\\n              local_4a = 0;\\n              country_core::render::pass_builder::draw_builder::impl$2::\\n              read_storage_buffer<country_core::resources::color_id_roof::RoofColorIdSsbo>();\\n              if (local_16a != '\\\\b') {\\n                country_core::render::pass_builder::uniform_binder::UniformBinder::\\n                write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<i32>,i32>\\n                          ();\\n              }\\n              memcpy(local_340,&local_248,0xf8);\\n              goto LAB_1408a5139;\\n            }\\n          }\\n          local_4a = 1;\\n                    // WARNING: Subroutine does not return\\n          core::option::unwrap_failed();\\n        }\\n      }\\n      local_49 = 1;\\n                    // WARNING: Subroutine does not return\\n      core::option::unwrap_failed();\\n    }\\n  }\\n  local_150 = (int)local_138;\\n  local_49 = 1;\\n                    // WARNING: Subroutine does not return\\n  core::result::unwrap_failed();\\n}\\n\\n\",\"callee_count\":17,\"callees\":[{\"name\":\"assert_failed<ref$<str$>,ref$<str$>_>\",\"address\":\"1428cab41\"},{\"name\":\"bind_brick_erase_highlight\",\"address\":\"14090be10\"},{\"name\":\"bind_external_storage_buffer\",\"address\":\"140906400\"},{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\",\"address\":\"140908610\"},{\"name\":\"bind_wall_color_customization\",\"address\":\"14090bb70\"},{\"name\":\"discard\",\"address\":\"1409082c0\"},{\"name\":\"get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>\",\"address\":\"140969720\"},{\"name\":\"get<country_core::geometry::instanced_wall::WallBrickInstancedDrawProxy>\",\"address\":\"1408a4050\"},{\"name\":\"get_resource_id\",\"address\":\"1400dd6f0\"},{\"name\":\"memcmp\",\"address\":\"142923bf0\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"multi_draw_indexed_indirect\",\"address\":\"140907990\"},{\"name\":\"read_storage_buffer<country_core::geometry::instanced_wall::BrickDrawListSsbo>\",\"address\":\"14162d190\"},{\"name\":\"read_storage_buffer<country_core::resources::color_id_roof::RoofColorIdSsbo>\",\"address\":\"14162ad90\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9760\"},{\"name\":\"unwrap_failed\",\"address\":\"1428d9310\"},{\"name\":\"write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<i32>,i32>\",\"address\":\"14096b570\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1409cacb0\":{\"name\":\"draw_floor_shader\",\"size\":1363,\"address\":\"1409cacb0\",\"signature\":\"void __cdecl draw_floor_shader(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::systems::render_loop::draw_passes::draw_shaders::floor_shader::draw_floor_shader(void)\\n\\n{\\n  void *in_RCX;\\n  undefined1 local_410 [248];\\n  undefined8 local_318 [31];\\n  undefined4 local_220 [62];\\n  undefined4 local_128 [55];\\n  char local_4a;\\n  undefined1 local_29;\\n  undefined8 local_28;\\n  \\n  local_28 = 0xfffffffffffffffe;\\n  *(byte *)((longlong)in_RCX + 0xa8) = *(byte *)((longlong)in_RCX + 0xa8) & 0xf3 | 8;\\n  memcpy(local_128,in_RCX,0xf8);\\n  local_318[0] = CONCAT71(local_318[0]._1_7_,9);\\n  local_220[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n  memcpy(local_220,local_128,0xf8);\\n  local_29 = 10;\\n  local_318[0] = CONCAT44(local_318[0]._4_4_,2);\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n  memcpy(local_318,local_220,0xf8);\\n  local_128[0] = CONCAT31(local_128[0]._1_3_,6);\\n  local_220[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n  memcpy(local_220,local_318,0xf8);\\n  local_318[0] = CONCAT71(local_318[0]._1_7_,0x13);\\n  local_128[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n  memcpy(local_128,local_220,0xf8);\\n  local_318[0] = 0x4a2b687d0c1ecf58;\\n  local_220[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_220,local_128,0xf8);\\n  country_core::render::pass_builder::draw_builder::DrawBuilder::bind_stone_floor_textures();\\n  country_core::render::pass_builder::draw_builder::DrawBuilder::bind_wall_color_customization();\\n  local_318[0] = 0x84b51135b59095ba;\\n  local_128[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_128,local_220,0xf8);\\n  local_318[0] = 0xb484366d00600ae5;\\n  local_220[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_220,local_128,0xf8);\\n  local_318[0] = 0x59b98d76c4e95bd1;\\n  local_128[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_128,local_220,0xf8);\\n  local_318[0]._0_1_ = 0x15;\\n  local_220[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n  memcpy(local_220,local_128,0xf8);\\n  local_318[0]._0_1_ = 7;\\n  local_128[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n  memcpy(local_128,local_220,0xf8);\\n  local_318[0]._0_1_ = 0xc;\\n  local_220[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n  memcpy(local_220,local_128,0xf8);\\n  local_318[0]._0_1_ = 0xe;\\n  local_128[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n  memcpy(local_128,local_220,0xf8);\\n  local_318[0] = CONCAT71(local_318[0]._1_7_,0x14);\\n  local_220[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n  memcpy(local_220,local_128,0xf8);\\n  local_318[0] = 0x954b7e4974bbcd6b;\\n  local_128[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>();\\n  memcpy(local_128,local_220,0xf8);\\n  if (local_4a != '\\\\b') {\\n    country_core::render::pass_builder::uniform_binder::UniformBinder::\\n    write_uniform<country_core::render::pass_builder::draw_builder::impl_2::uniform::closure_env_0<bool>,bool>\\n              ();\\n  }\\n  memcpy(local_410,local_128,0xf8);\\n  country_core::render::pass_builder::draw_builder::DrawBuilder::draw();\\n  return;\\n}\\n\\n\",\"callee_count\":7,\"callees\":[{\"name\":\"bind_stone_floor_textures\",\"address\":\"14090c300\"},{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TextureFromDisk>\",\"address\":\"140908610\"},{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>\",\"address\":\"140908c50\"},{\"name\":\"bind_wall_color_customization\",\"address\":\"14090bb70\"},{\"name\":\"draw\",\"address\":\"140906f40\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"write_uniform<country_core::render::pass_builder::draw_builder::impl$2::uniform::closure_env$0<bool>,bool>\",\"address\":\"14096b850\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140b4af70\":{\"name\":\"draw_grass_shader\",\"size\":412,\"address\":\"140b4af70\",\"signature\":\"void __cdecl draw_grass_shader(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::systems::render_loop::draw_passes::draw_shaders::grass_shader::draw_grass_shader(void)\\n\\n{\\n  void *in_RCX;\\n  undefined4 local_220 [62];\\n  undefined4 local_128 [55];\\n  char local_4a;\\n  void *local_30;\\n  undefined1 local_21;\\n  undefined8 local_20;\\n  \\n  local_20 = 0xfffffffffffffffe;\\n  local_220[0] = CONCAT31(local_220[0]._1_3_,9);\\n  local_128[0] = 2;\\n  local_30 = in_RCX;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n  memcpy(local_128,local_30,0xf8);\\n  local_21 = 10;\\n  local_220[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n  memcpy(local_220,local_128,0xf8);\\n  local_21 = 8;\\n  local_128[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n  memcpy(local_128,local_220,0xf8);\\n  country_core::render::pass_builder::draw_builder::impl$2::\\n  read_storage_buffer<country_core::systems::render_loop::compute_passes::grass::GrassBladeDataSsbo>\\n            ();\\n  country_core::render::pass_builder::draw_builder::impl$2::\\n  read_storage_buffer<country_core::systems::render_loop::indirect_params::AtomicCounterBuffer>();\\n  if (local_4a != '\\\\b') {\\n    country_core::render::pass_builder::uniform_binder::UniformBinder::\\n    write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<i32>,i32>\\n              ();\\n  }\\n  memcpy(local_220,local_128,0xf8);\\n  country_core::render::pass_builder::draw_builder::DrawBuilder::multi_draw_indexed_indirect();\\n  return;\\n}\\n\\n\",\"callee_count\":6,\"callees\":[{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>\",\"address\":\"140908c50\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"multi_draw_indexed_indirect\",\"address\":\"140907990\"},{\"name\":\"read_storage_buffer<country_core::systems::render_loop::compute_passes::grass::GrassBladeDataSsbo>\",\"address\":\"141630790\"},{\"name\":\"read_storage_buffer<country_core::systems::render_loop::indirect_params::AtomicCounterBuffer>\",\"address\":\"141631390\"},{\"name\":\"write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<i32>,i32>\",\"address\":\"14096b570\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140b4b1d0\":{\"name\":\"draw_grass_lod1_shader\",\"size\":410,\"address\":\"140b4b1d0\",\"signature\":\"void __cdecl draw_grass_lod1_shader(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\ncountry_core::systems::render_loop::draw_passes::draw_shaders::grass_shader::draw_grass_lod1_shader\\n          (void)\\n\\n{\\n  void *in_RCX;\\n  undefined4 local_220 [62];\\n  undefined4 local_128 [55];\\n  char local_4a;\\n  void *local_30;\\n  undefined1 local_21;\\n  undefined8 local_20;\\n  \\n  local_20 = 0xfffffffffffffffe;\\n  local_220[0] = CONCAT31(local_220[0]._1_3_,9);\\n  local_128[0] = 2;\\n  local_30 = in_RCX;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n  memcpy(local_128,local_30,0xf8);\\n  local_21 = 10;\\n  local_220[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n  memcpy(local_220,local_128,0xf8);\\n  local_21 = 8;\\n  local_128[0] = 2;\\n  country_core::render::pass_builder::draw_builder::impl$3::\\n  bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();\\n  memcpy(local_128,local_220,0xf8);\\n  country_core::render::pass_builder::draw_builder::impl$2::\\n  read_storage_buffer<country_core::systems::render_loop::compute_passes::grass::GrassBladeDataSsbo>\\n            ();\\n  country_core::render::pass_builder::draw_builder::impl$2::\\n  read_storage_buffer<country_core::systems::render_loop::indirect_params::AtomicCounterBuffer>();\\n  if (local_4a != '\\\\b') {\\n    country_core::render::pass_builder::uniform_binder::UniformBinder::\\n    write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<i32>,i32>\\n              ();\\n  }\\n  memcpy(local_220,local_128,0xf8);\\n  country_core::render::pass_builder::draw_builder::DrawBuilder::multi_draw_indirect();\\n  return;\\n}\\n\\n\",\"callee_count\":6,\"callees\":[{\"name\":\"bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>\",\"address\":\"140908c50\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"},{\"name\":\"multi_draw_indirect\",\"address\":\"1409076b0\"},{\"name\":\"read_storage_buffer<country_core::systems::render_loop::compute_passes::grass::GrassBladeDataSsbo>\",\"address\":\"141630790\"},{\"name\":\"read_storage_buffer<country_core::systems::render_loop::indirect_params::AtomicCounterBuffer>\",\"address\":\"141631390\"},{\"name\":\"write_uniform<country_core::render::pass_builder::compute_pass_builder::impl$3::uniform::closure_env$0<i32>,i32>\",\"address\":\"14096b570\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}}},\"count\":11,\"requested\":14}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "list_instances",
+        "title": null,
+        "description": "\nList known Ghidra instances from UDS discovery and the active TCP fallback.\n\nReturns JSON with each instance's project name, PID, open programs, and\nsocket path or TCP URL. Also shows which instance is currently connected.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "_list_instances_toolArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "connect_instance",
+        "title": null,
+        "description": "\nSwitch the MCP bridge to a different Ghidra instance by project name.\n\nIMPORTANT: Before calling this function only the static bridge tools are\nexposed (list_instances, connect_instance, tool-group management,\ndebugger proxy). After a successful connect the bridge fetches the\ninstance's /mcp/schema and registers Ghidra analysis tools dynamically.\nBy default all tool groups are loaded on connect. When started with\n--lazy, only the default groups are loaded initially and clients may need\nto call load_tool_group() for additional categories. Clients that cache\nthe initial tools/list and don't honor tools/list_changed must re-list\ntools after this call.\n\nUse list_instances() first to see available instances.\n\nArgs:\n    project: Project name (or substring) to connect to\n",
+        "inputSchema": {
+          "properties": {
+            "project": {
+              "description": "Project name (or substring) to connect to",
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          "required": [
+            "project"
+          ],
+          "title": "connect_instanceArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_tool_groups",
+        "title": null,
+        "description": "\nList all available tool groups with their tool counts and loaded status.\n\nReturns each category with: tool count, loaded status, and tool names.\nUse load_tool_group(group) to load a group's tools.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "list_tool_groupsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "load_tool_group",
+        "title": null,
+        "description": "\nLoad all tools in a category. Accepts a category name or \"all\" to load everything.\n\nUse list_tool_groups() to see available categories.\n\nArgs:\n    group: Category name (e.g. \"function\", \"datatype\") or \"all\"\n",
+        "inputSchema": {
+          "properties": {
+            "group": {
+              "description": "Category name (e.g. \"function\", \"datatype\") or \"all\"",
+              "title": "Group",
+              "type": "string"
+            }
+          },
+          "required": [
+            "group"
+          ],
+          "title": "load_tool_groupArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "search_tools",
+        "title": null,
+        "description": "\nSearch the full Ghidra tool catalog by keyword \u2014 including tools whose group\nis not currently loaded. Use this to discover the right tool without paying\nthe context cost of loading all groups (run the bridge with --lazy and search\non demand). Matches against tool name, description, and category.\n\nEach result reports whether the tool is callable right now; if not, it\nincludes the exact load_tool_group(...) call needed to make it callable.\n\nArgs:\n    query: Space-separated keywords, e.g. \"rename function\" or \"xref struct\".\n    limit: Maximum number of results to return (default 15).\n",
+        "inputSchema": {
+          "properties": {
+            "query": {
+              "description": "Space-separated keywords, e.g. \"rename function\" or \"xref struct\".",
+              "title": "Query",
+              "type": "string"
+            },
+            "limit": {
+              "default": 15,
+              "description": "Maximum number of results to return (default 15).",
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "title": "search_toolsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble_function",
+        "title": null,
+        "description": "Get assembly listing of function. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution. When Ghidra's stored function body is degenerate (body_end == body_start, which would truncate the listing to a single instruction), the listing is instead bounded by the next function or the containing memory block and the response adds body_degenerate=true, bounded_by (next_function | memory_block | function_body) and a warning; do not trust this function's stored extent in that case.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "disassemble_functionArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_data_types",
+        "title": null,
+        "description": "Find data types by name or path pattern, category and kind, one record per type (name, kind, category, size, path). With categories=true, list the category paths instead. With no filter it lists every type.",
+        "inputSchema": {
+          "properties": {
+            "pattern": {
+              "default": "",
+              "description": "Case-insensitive substring of the type's name or full path; omit for no name filter.",
+              "title": "Pattern",
+              "type": "string"
+            },
+            "category": {
+              "default": "",
+              "description": "Case-insensitive substring of the category path (e.g. Windows, /MyTypes); omit for any category.",
+              "title": "Category",
+              "type": "string"
+            },
+            "kind": {
+              "default": "",
+              "description": "Only this kind: struct, union, enum, typedef, pointer, array, function or primitive. Omit for all kinds.",
+              "title": "Kind",
+              "type": "string"
+            },
+            "categories": {
+              "default": "false",
+              "description": "True lists the category paths (filtered by pattern) instead of types; category and kind do not apply.",
+              "title": "Categories",
+              "type": "boolean"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "find_data_typesArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_functions",
+        "title": null,
+        "description": "Find functions: every filter is optional, so with none it lists the whole program a page at a time. Filter by name (substring or regex=true), xref count, calling convention, whether the name is user-given, thunk or external, or by tag (tag=a,b keeps functions carrying ANY of them); each result lists its tags; sort by address, name or xref_count. Replaces list_functions, list_functions_enhanced, search_functions and search_functions_enhanced, which returned four different shapes for the same question.",
+        "inputSchema": {
+          "properties": {
+            "name_pattern": {
+              "default": "",
+              "description": "Substring to match, or a regex when regex=true. Omit to match every function.",
+              "title": "Name Pattern",
+              "type": "string"
+            },
+            "regex": {
+              "default": "false",
+              "description": "Treat name_pattern as a regular expression.",
+              "title": "Regex",
+              "type": "boolean"
+            },
+            "min_xrefs": {
+              "default": "",
+              "description": "Only functions with at least this many references to them.",
+              "title": "Min Xrefs",
+              "type": "integer"
+            },
+            "max_xrefs": {
+              "default": "",
+              "description": "Only functions with at most this many references to them.",
+              "title": "Max Xrefs",
+              "type": "integer"
+            },
+            "calling_convention": {
+              "default": "",
+              "description": "Only functions with this calling convention (e.g. __stdcall).",
+              "title": "Calling Convention",
+              "type": "string"
+            },
+            "has_custom_name": {
+              "default": "",
+              "description": "true = only functions somebody has named; false = only auto-generated names (FUN_*, thunk_*).",
+              "title": "Has Custom Name",
+              "type": "boolean"
+            },
+            "is_thunk": {
+              "default": "",
+              "description": "true = only thunks, false = exclude them, omit for both.",
+              "title": "Is Thunk",
+              "type": "boolean"
+            },
+            "is_external": {
+              "default": "",
+              "description": "true = only external functions, false = exclude them.",
+              "title": "Is External",
+              "type": "boolean"
+            },
+            "tag": {
+              "default": "",
+              "description": "Only functions carrying any of these tags: one name or a comma-separated list. A name that is not a defined tag is an error (list_function_tags shows the definitions).",
+              "title": "Tag",
+              "type": "string"
+            },
+            "sort_by": {
+              "default": "address",
+              "description": "address | name | xref_count.",
+              "title": "Sort By",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Page size. 0 means no limit, which on a large binary is a megabytes-long response \u2014 the old list_functions had no pagination at all and returned 1.7MB on a stripped `ls`.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "pattern": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Pattern"
+            },
+            "query": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Query"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            }
+          },
+          "title": "find_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_functions",
+        "title": null,
+        "description": "Everything about one or many functions in a single call. Pass functions= as a comma-separated list of names or addresses for bulk mode (up to 20); omit it and pass function=/name=/address= for one. Pass fields= as a comma-separated subset to skip work you do not need \u2014 omitted or empty returns everything. When the requested fields need no decompiled text (e.g. fields=callers,callees,signature,labels,entry_point), the target function is NOT decompiled (238 ms cold / 5\u201310 ms warm per function); only decompiled_code (and call_context when enabled) pays that cost. Decompiled text renders EOL comments (// style), so comments written with set_comment are visible in the code. Replaces get_function_by_address, get_function_variables, get_function_xrefs, decompile_function, and the former get_function_callers/callees/labels/signature tools. Completeness scoring is NOT included \u2014 call analyze_function_completeness for that.",
+        "inputSchema": {
+          "properties": {
+            "function": {
+              "default": "",
+              "description": "Single mode: function name or address (0x<hex> or <space>:<hex>). Ignored when functions= is set.",
+              "title": "Function",
+              "type": "string"
+            },
+            "functions": {
+              "default": "",
+              "description": "Bulk mode: comma-separated function references (names or addresses). When set, function= is ignored. Returns a map keyed by the reference asked for.",
+              "title": "Functions",
+              "type": "string"
+            },
+            "fields": {
+              "default": "",
+              "description": "Comma-separated subset: signature, classification, return_type, entry_point, body_start, body_end, decompiled_code, plate_comment, comments, labels, tags, parameters, locals, callers, call_context, callees, xrefs, disassembly, jump_targets, refs (the absolute addresses the function uses: data references, the values of literal-pool words, and the memory the decompiled code reads and writes, so a register reached as base + offset is listed by its own address; a pool value is written value<word; asking for refs decompiles). Omit or leave empty for the full bundle.",
+              "title": "Fields",
+              "type": "string"
+            },
+            "include_call_context": {
+              "default": "true",
+              "description": "Include each caller's decompiled call-site line. Costs one decompilation per unique caller (~43ms); set false for the cheapest possible bundle. Ignored unless call_context is requested (explicitly or via an empty fields=).",
+              "title": "Include Call Context",
+              "type": "boolean"
+            },
+            "call_context_limit": {
+              "default": "6",
+              "description": "Maximum number of UNIQUE callers to decompile for call context.",
+              "title": "Call Context Limit",
+              "type": "integer"
+            },
+            "call_context_lines": {
+              "default": "3",
+              "description": "Lines of the caller's decompilation to return per call site, centred on the call. 1 is the call line alone; the default 3 adds the line above and below, which is usually where the guard and the use of the result live. Clamped to 1-21; costs no extra decompilation.",
+              "title": "Call Context Lines",
+              "type": "integer"
+            },
+            "include_disasm": {
+              "default": "false",
+              "description": "Include the raw instruction listing. Off by default: it roughly doubles the payload and agents rarely read it.",
+              "title": "Include Disasm",
+              "type": "boolean"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Address"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "function_address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Address"
+            },
+            "function_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Name"
+            },
+            "call_context_window": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Call Context Window"
+            }
+          },
+          "title": "get_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_metadata",
+        "title": null,
+        "description": "Get program metadata",
+        "inputSchema": {
+          "properties": {
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_metadataArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_struct_layout",
+        "title": null,
+        "description": "Get structure field layout",
+        "inputSchema": {
+          "properties": {
+            "struct_name": {
+              "description": "Structure name",
+              "title": "Struct Name",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "struct_name"
+          ],
+          "title": "get_struct_layoutArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_from",
+        "title": null,
+        "description": "Get cross-references from an address. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "get_xrefs_fromArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_to",
+        "title": null,
+        "description": "Get cross-references to ONE address, or to MANY at once (addresses=comma-separated), which returns a map keyed by the address you asked for. Replaces the former get_bulk_xrefs. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "default": "",
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "addresses": {
+              "default": "",
+              "description": "Comma-separated addresses for the many-at-once form. The result is a map of address to its reference list, and an address that does not resolve gets an empty list rather than failing the whole call.",
+              "title": "Addresses",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_xrefs_toArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read_memory",
+        "title": null,
+        "description": "Read raw memory bytes. Always pass the 'program' argument to target the correct binary \u2014 especially when multiple programs are open. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "length": {
+              "default": "16",
+              "description": "Number of bytes",
+              "title": "Length",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "read_memoryArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

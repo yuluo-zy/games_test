@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-14",
+  "platform": "Windows x86_64",
+  "scope": "18 foundation packages, all targets and all features; real GUI and tg-text GPU Rust sources compiled",
+  "package_flags": "-p utils -p paths -p lang-lib -p tabloid -p motomoto -p tg-package-integrity -p theme-defs -p tg-text -p asset -p asset-pipe -p tg-iced -p tg-integrity-report -p crash-reporter-gui -p tg-gpu-selector -p feedback-reporter -p geforcenow -p theme-fetcher -p theme-server-proto",
+  "check": {
+    "command": "cargo check --locked --offline <package_flags> --all-targets --all-features",
+    "exit_code": 0,
+    "fixes": "tg-integrity-report and crash-reporter-gui native text replacements now borrow Arc<str> values"
+  },
+  "strict_lint": [
+    {
+      "scope": "17 foundation packages excluding tg-text; all targets/all features include native-gui",
+      "command": "cargo clippy --locked --offline <package_flags except tg-text> --all-targets --all-features -- -D warnings",
+      "exit_code": 0
+    },
+    {
+      "scope": "tg-text all targets/all features; own source and GPU example, dependency lint by renderer owner/root matrix",
+      "command": "cargo clippy --locked --offline --no-deps -p tg-text --all-targets --all-features -- -D warnings",
+      "exit_code": 0
+    }
+  ],
+  "production_algorithm_changes": false,
+  "new_gpu_runtime_acceptance": false,
+  "original_gui_pixel_equivalence_accepted": false,
+  "dependency_lock_updated_by_agent": false
+}

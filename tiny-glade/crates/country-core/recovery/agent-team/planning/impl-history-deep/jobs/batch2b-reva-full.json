@@ -1,0 +1,18 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\ndef dump(addr_str, label):\n    addr = currentProgram.getAddressFactory().getAddress(addr_str)\n    f = currentProgram.getFunctionManager().getFunctionAt(addr)\n    if f is None:\n        # try containing function\n        f = currentProgram.getFunctionManager().getFunctionContaining(addr)\n    if f is None:\n        print(json.dumps({\"label\": label, \"address\": addr_str, \"error\": \"no function\"}))\n        return\n    d = DecompInterface()\n    try:\n        d.openProgram(currentProgram)\n        res = d.decompileFunction(f, 120, monitor)\n        if not res.decompileCompleted():\n            print(json.dumps({\"label\": label, \"address\": addr_str, \"func\": str(f.getName()),\n                              \"error\": str(res.getErrorMessage())}))\n            return\n        print(json.dumps({\"label\": label, \"address\": addr_str, \"func\": str(f.getName()),\n                          \"entry\": str(f.getEntryPoint()),\n                          \"size\": int(f.getBody().getNumAddresses()),\n                          \"decomp\": res.getDecompiledFunction().getC()}))\n    finally:\n        d.dispose()\n\ndump(\"140af5b30\", \"history_process\")\ndump(\"140ae5830\", \"get_param\")\ndump(\"140abfb30\", \"wall_process\")\n"
+    },
+    "timeout_seconds": 120
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.program.model.listing import Instruction\naddr = currentProgram.getAddressFactory().getAddress(\"140af5b30\")\nf = currentProgram.getFunctionManager().getFunctionAt(addr)\nif f is None:\n    f = currentProgram.getFunctionManager().getFunctionContaining(addr)\nbody = f.getBody()\nstart = body.getMinAddress()\nend = body.getMaxAddress()\nout = []\nins = currentProgram.getListing().getInstructions(start, True)\ncnt = 0\nfor i in ins:\n    out.append(str(i.getAddress()) + \" \" + str(i))\n    cnt += 1\n    if cnt >= 1500:\n        break\nprint(json.dumps({\"func\": str(f.getName()), \"entry\": str(f.getEntryPoint()), \"start\": str(start), \"end\": str(end), \"disasm\": out}))\n"
+    },
+    "timeout_seconds": 120
+  }
+]

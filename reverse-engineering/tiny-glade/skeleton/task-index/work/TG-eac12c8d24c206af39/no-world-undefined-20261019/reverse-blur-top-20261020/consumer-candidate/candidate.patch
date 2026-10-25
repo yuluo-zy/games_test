@@ -1,0 +1,454 @@
+--- a/crates/country-core/src/systems/render_loop/compute_passes/blur_pyramid.rs
++++ b/crates/country-core/src/systems/render_loop/compute_passes/blur_pyramid.rs
+@@ -146,13 +146,22 @@
+             view(USAGE_READ, next),
+             view(USAGE_WRITE, i),
+         );
+-        let rec = env
++        let sample_self = i + 1 != n;
++        let mut pass = env
+             .pass(REV_N_NAME, REV_URI)
+             .bind_texture_with_view(HASH_INPUT_TAIL, &partial_tex, TEX_READ, Some(&v_tail))
+             .bind_texture_with_view(HASH_INPUT_TEX, &full_tex, TEX_READ, Some(&v_in))
+-            .bind_texture_with_view(HASH_OUTPUT_TEX, &full_tex, TEX_STORAGE_WRITE, Some(&v_out))
++            .bind_texture_with_view(HASH_OUTPUT_TEX, &full_tex, TEX_STORAGE_WRITE, Some(&v_out));
++        if !sample_self {
++            // Original full SPV still performs nine samples before this flag
++            // selects tail RGB. Only this fresh top input/output alias is
++            // permitted undefined; tail and all later reverse inputs are strict.
++            debug_assert_eq!(next, i);
++            pass = pass.allow_undefined_texture_contents(HASH_INPUT_TEX);
++        }
++        let rec = pass
+             .uniform(KEY_OUTPUT_EXTENT, ext)
+-            .uniform(KEY_SAMPLE_SELF, i + 1 != n)
++            .uniform(KEY_SAMPLE_SELF, sample_self)
+             .dispatch_2d(ext[0], ext[1]);
+         env.record(rec);
+     }
+@@ -400,7 +409,7 @@
+     }
+ 
+     #[test]
+-    fn no_world_permission_is_only_on_first_blur_input_and_keeps_every_dispatch() {
++    fn no_world_only_adds_forward_input_permission_and_keeps_every_dispatch() {
+         use crate::render::pass_builder::pass_resource_access::PassBinding;
+         let w = world();
+         let mut strict = TestFrame::default();
+@@ -416,7 +425,6 @@
+         for (index, (ordinary, original_no_world)) in
+             strict.passes.iter().zip(&permitted.passes).enumerate()
+         {
+-            assert!(ordinary.undefined_texture_bindings.is_empty());
+             assert!(original_no_world.inactive_texture_bindings.is_empty());
+             assert_eq!(dispatch_xy(ordinary), dispatch_xy(original_no_world));
+             assert_eq!(
+@@ -424,6 +432,7 @@
+                 original_no_world.builder.accesses
+             );
+             if index == 0 {
++                assert!(ordinary.undefined_texture_bindings.is_empty());
+                 assert_eq!(original_no_world.undefined_texture_bindings.len(), 1);
+                 let slot = original_no_world.undefined_texture_bindings[0] as usize;
+                 assert!(matches!(
+@@ -435,7 +444,45 @@
+                     }
+                 ));
+             } else {
+-                assert!(original_no_world.undefined_texture_bindings.is_empty());
++                assert_eq!(
++                    ordinary.undefined_texture_bindings,
++                    original_no_world.undefined_texture_bindings
++                );
++                assert_eq!(
++                    ordinary.undefined_texture_bindings.len(),
++                    usize::from(index == 5)
++                );
++            }
++        }
++    }
++
++    #[test]
++    fn only_false_top_reverse_input_has_real_undefined_read_permission() {
++        use crate::render::pass_builder::pass_resource_access::PassBinding;
++        for n in [1, 4] {
++            let w = world();
++            let mut frame = TestFrame::default();
++            let partial = RgTexture {
++                desc: TextureDesc::new_2d([64, 32], 0x7a).mip_levels(n),
++                resource: 77,
++            };
++            let full = with_env(&w, &mut frame, |env| rev_blur_pyramid(env, &partial));
++            for (index, pass) in frame.passes.iter().enumerate() {
++                assert!(pass.inactive_texture_bindings.is_empty());
++                assert_eq!(uniform_u32(pass, 32), u32::from(index != 0));
++                if index == 0 {
++                    assert_eq!(pass.undefined_texture_bindings.len(), 1);
++                    let slot = pass.undefined_texture_bindings[0] as usize;
++                    assert!(matches!(pass.bindings[slot], PassBinding::ImageView {
++                        resource, write: false, view,
++                    } if resource == full.resource && view.base_mip_level == u32::from(n - 1)
++                        && view.level_count == Some(1) && view.usage == Some(USAGE_READ)));
++                    let selected = views(pass);
++                    assert_eq!(selected[1].base_mip_level, selected[2].base_mip_level);
++                    assert_eq!(selected[0].base_mip_level, u32::from(n - 1));
++                } else {
++                    assert!(pass.undefined_texture_bindings.is_empty());
++                }
+             }
+         }
+     }
+--- a/crates/rhapsody/src/rg/executor.rs
++++ b/crates/rhapsody/src/rg/executor.rs
+@@ -499,6 +499,17 @@
+     pub errors: &'a std::cell::RefCell<Option<crate::Error>>,
+ }
+ impl PassContext<'_> {
++    /// Native layout of this exact image range in the current scheduled pass.
++    /// Queries validated declarations only; it grants no additional access.
++    /// A descriptor spanning missing uses or different layouts is rejected.
++    pub fn image_layout_for_range(
++        &self,
++        resource: u32,
++        range: crate::rg::AccessRange,
++    ) -> crate::Result<vk::ImageLayout> {
++        image_layout_from_plan(&self.compiled.plan, self.pass_index, resource, range)
++    }
++
+     pub fn history_valid(&self, texture: crate::rg::resource::TextureId) -> crate::Result<bool> {
+         self.named_history_valid(texture.raw(), true)
+     }
+@@ -600,6 +611,179 @@
+             self.report_error(shared.clone().into());
+             shared.into()
+         })
++    }
++}
++
++fn image_layout_from_plan(
++    plan: &super::plan::CompiledPlan,
++    pass_index: usize,
++    resource: u32,
++    range: super::resource::AccessRange,
++) -> crate::Result<vk::ImageLayout> {
++    use crate::resource::range_state::{difference, intersection};
++    let descriptor = plan
++        .definition
++        .resources
++        .get(resource as usize)
++        .ok_or_else(|| crate::Error::invalid_usage("image layout resource is out of range"))?
++        .descriptor;
++    if !matches!(descriptor, super::graph::Descriptor::Image(_)) {
++        return Err(crate::Error::invalid_usage(
++            "image layout query refers to a buffer",
++        ));
++    }
++    let program = &plan.range_program;
++    let pass = program
++        .passes
++        .get(pass_index)
++        .filter(|pass| pass.pass == pass_index)
++        .ok_or_else(|| crate::Error::invalid_usage("image layout scheduled pass is absent"))?;
++    let uses = program
++        .uses
++        .get(pass.uses.clone())
++        .ok_or_else(|| crate::Error::invalid_usage("image layout pass uses are out of range"))?;
++    let requested =
++        super::sync_plan::native_range(range, descriptor, program.separate_depth_stencil)?;
++    let mut missing = smallvec::SmallVec::<[_; 8]>::from_slice(&[requested]);
++    let mut layout = None;
++    for usage in uses.iter().filter(|usage| usage.resource == resource) {
++        if intersection(usage.range, requested).is_none() {
++            continue;
++        }
++        if layout.is_some_and(|layout| layout != usage.layout) {
++            return Err(crate::Error::invalid_usage(
++                "one image descriptor spans different native layouts",
++            ));
++        }
++        layout = Some(usage.layout);
++        let mut next = smallvec::SmallVec::<[_; 8]>::new();
++        for range in missing {
++            next.extend(difference(range, usage.range));
++        }
++        missing = next;
++    }
++    if !missing.is_empty() {
++        return Err(crate::Error::invalid_usage(
++            "image descriptor range has no complete declared native use",
++        ));
++    }
++    layout.ok_or_else(|| {
++        crate::Error::invalid_usage("image descriptor has no declared native layout")
++    })
++}
++
++#[cfg(test)]
++mod exact_image_layout_tests {
++    use super::*;
++    use crate::rg::{
++        AccessRange, AccessTable, GraphDefinition, OriginSource, PlanContext, RenderGraph,
++        ResourceOrigin, ResourceSpec, compile_definition,
++    };
++    fn mips(base: u32, count: u32) -> AccessRange {
++        AccessRange::Texture {
++            aspect_mask: 1,
++            base_mip_level: base,
++            level_count: count,
++            base_array_layer: 0,
++            layer_count: 1,
++        }
++    }
++    fn plan(alias: bool) -> super::super::plan::CompiledPlan {
++        let mut graph = RenderGraph::new();
++        let descriptor = ResourceSpec::Image(
++            crate::resource::TextureDesc::new_2d(16, 16, vk::Format::R32_SFLOAT).mip_levels(3),
++        )
++        .descriptor();
++        let image = graph.import_unowned("image", descriptor, 1, 0x19).unwrap();
++        graph
++            .import_unowned(
++                "wrong kind",
++                super::super::graph::Descriptor::Buffer(super::super::graph::BufferDesc {
++                    word_at_00: 16,
++                    word_at_08: 0,
++                    bytes_at_0c_through_0e: [0; 3],
++                }),
++                2,
++                0x1a,
++            )
++            .unwrap();
++        let scratch = graph
++            .create_raw_resource(
++                "culled scratch",
++                ResourceOrigin {
++                    descriptor,
++                    source: OriginSource::Create,
++                },
++            )
++            .unwrap();
++        let mut culled = graph.add_pass("culled original index0");
++        culled
++            .add_resource_access_range(scratch, 0x37, 0, mips(0, 1))
++            .unwrap();
++        culled.render(|_| true);
++        let mut pass = graph
++            .add_pass("scheduled index0 original index1")
++            .with_side_effect();
++        pass.add_resource_access_range(image, 0x19, 1, mips(0, 1))
++            .unwrap();
++        pass.add_resource_access_range(image, 0x19, 1, mips(1, 1))
++            .unwrap();
++        if alias {
++            pass.add_resource_access_range(image, 0x37, 0, mips(1, 1))
++                .unwrap();
++        }
++        pass.render(|_| true);
++        let definition = GraphDefinition::from_declaration(
++            &graph.build().declaration,
++            &mut AccessTable::original(),
++            PlanContext::default(),
++        )
++        .unwrap();
++        compile_definition(definition).unwrap()
++    }
++    #[test]
++    fn exact_views_use_compiled_scheduled_layout_after_culling() {
++        let plan = plan(true);
++        assert_eq!(plan.retained_passes, [1]);
++        assert_eq!(
++            image_layout_from_plan(&plan, 0, 0, mips(0, 1)).unwrap(),
++            vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL
++        );
++        assert_eq!(
++            image_layout_from_plan(&plan, 0, 0, mips(1, 1)).unwrap(),
++            vk::ImageLayout::GENERAL
++        );
++        assert!(image_layout_from_plan(&plan, 0, 0, mips(0, 2)).is_err());
++        assert!(image_layout_from_plan(&plan, 1, 0, mips(1, 1)).is_err());
++    }
++    #[test]
++    fn union_coverage_is_complete_and_wrong_or_missing_views_fail() {
++        let plan = plan(false);
++        assert_eq!(
++            image_layout_from_plan(&plan, 0, 0, mips(0, 2)).unwrap(),
++            vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL
++        );
++        for range in [
++            mips(0, 3),
++            mips(2, 1),
++            mips(3, 1),
++            mips(0, 0),
++            AccessRange::Whole,
++        ] {
++            assert!(image_layout_from_plan(&plan, 0, 0, range).is_err());
++        }
++        assert!(image_layout_from_plan(&plan, 0, 1, mips(0, 1)).is_err());
++        assert!(image_layout_from_plan(&plan, 0, 99, mips(0, 1)).is_err());
++        assert!(image_layout_from_plan(&plan, 0, 2, mips(0, 1)).is_err());
++    }
++    #[test]
++    fn inconsistent_scheduled_projection_is_rejected() {
++        let mut plan = plan(true);
++        plan.range_program.passes[0].pass = 1;
++        assert!(image_layout_from_plan(&plan, 0, 0, mips(1, 1)).is_err());
++        plan.range_program.passes[0].pass = 0;
++        plan.range_program.passes[0].uses.end = usize::MAX;
++        assert!(image_layout_from_plan(&plan, 0, 0, mips(1, 1)).is_err());
+     }
+ }
+ 
+--- a/crates/tiny-glade/src/render_host.rs
++++ b/crates/tiny-glade/src/render_host.rs
+@@ -867,20 +867,83 @@
+         binding: u32,
+         view: Arc<rhapsody::resource::TextureView>,
+     ) -> rhapsody::Result<BindlessResource> {
+-        match self
++        let layout = match self
+             .abi
+             .slot(BindingLocation { set: 0, binding })
+             .map(|slot| slot.kind)
+         {
+-            Some(BindingKind::StorageImage) => Ok(BindlessResource::StorageImage(view)),
+-            Some(BindingKind::SampledImage) => Ok(BindlessResource::SampledImage {
+-                view,
+-                layout: vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+-            }),
+-            _ => Err(rhapsody::Error::invalid_usage(
+-                "image binding differs from shader ABI",
+-            )),
+-        }
++            Some(BindingKind::StorageImage) => vk::ImageLayout::GENERAL,
++            Some(BindingKind::SampledImage) => vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
++            _ => {
++                return Err(rhapsody::Error::invalid_usage(
++                    "image binding differs from shader ABI",
++                ));
++            }
++        };
++        self.image_with_layout(binding, view, layout)
++    }
++
++    fn image_with_layout(
++        &self,
++        binding: u32,
++        view: Arc<rhapsody::resource::TextureView>,
++        layout: vk::ImageLayout,
++    ) -> rhapsody::Result<BindlessResource> {
++        let kind = self
++            .abi
++            .slot(BindingLocation { set: 0, binding })
++            .map(|slot| slot.kind)
++            .ok_or_else(|| {
++                rhapsody::Error::invalid_usage("image binding is absent from shader ABI")
++            })?;
++        validate_image_binding_layout(kind, layout)?;
++        match kind {
++            BindingKind::StorageImage => Ok(BindlessResource::StorageImage(view)),
++            BindingKind::SampledImage => Ok(BindlessResource::SampledImage { view, layout }),
++            _ => unreachable!("validated image ABI kind"),
++        }
++    }
++
++    fn image_for_pass(
++        &self,
++        ctx: &rhapsody::rg::PassContext<'_>,
++        resource: u32,
++        binding: u32,
++        view: Arc<rhapsody::resource::TextureView>,
++    ) -> rhapsody::Result<BindlessResource> {
++        let selected = view.desc;
++        let layout = ctx.image_layout_for_range(
++            resource,
++            rhapsody::rg::AccessRange::Texture {
++                aspect_mask: selected.aspect.as_raw(),
++                base_mip_level: selected.base_mip_level,
++                level_count: selected.level_count,
++                base_array_layer: selected.base_layer,
++                layer_count: selected.layer_count,
++            },
++        )?;
++        self.image_with_layout(binding, view, layout)
++    }
++}
++
++fn validate_image_binding_layout(
++    kind: BindingKind,
++    layout: vk::ImageLayout,
++) -> rhapsody::Result<()> {
++    let valid = match kind {
++        BindingKind::SampledImage => matches!(
++            layout,
++            vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL | vk::ImageLayout::GENERAL
++        ),
++        BindingKind::StorageImage => layout == vk::ImageLayout::GENERAL,
++        _ => false,
++    };
++    if valid {
++        Ok(())
++    } else {
++        Err(rhapsody::Error::invalid_usage(
++            "planned image layout differs from shader ABI",
++        ))
+     }
+ }
+ 
+@@ -2710,7 +2773,7 @@
+                             let mut elements = Vec::new();
+                             for selected in individual_mip_views(desc, count)? {
+                                 let selected = texture.image_view(&selected)?;
+-                                elements.push(entry.bindings.image(range.resource_index, selected.view.clone())?);
++                                elements.push(entry.bindings.image_for_pass(&ctx, resource, range.resource_index, selected.view.clone())?);
+                             }
+                             image_arrays.push((range.resource_index, elements));
+                             continue;
+@@ -2718,7 +2781,7 @@
+                         let view = texture.image_view(&desc)?;
+                         entry
+                             .bindings
+-                            .image(range.resource_index, view.view.clone())?
++                            .image_for_pass(&ctx, resource, range.resource_index, view.view.clone())?
+                     }
+                 };
+                 upsert_shader_resource(&mut resources, range.resource_index, resource)?;
+@@ -3078,3 +3141,39 @@
+         );
+     }
+ }
++
++#[cfg(test)]
++mod planned_image_layout_abi_tests {
++    use super::*;
++    #[test]
++    fn sampled_general_is_explicit_and_storage_never_accepts_sampled_layout() {
++        for layout in [
++            vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
++            vk::ImageLayout::GENERAL,
++        ] {
++            validate_image_binding_layout(BindingKind::SampledImage, layout).unwrap();
++        }
++        validate_image_binding_layout(BindingKind::StorageImage, vk::ImageLayout::GENERAL).unwrap();
++        assert!(
++            validate_image_binding_layout(
++                BindingKind::StorageImage,
++                vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL
++            )
++            .is_err()
++        );
++        assert!(
++            validate_image_binding_layout(BindingKind::SampledImage, vk::ImageLayout::UNDEFINED)
++                .is_err()
++        );
++        assert!(
++            validate_image_binding_layout(
++                BindingKind::SampledImage,
++                vk::ImageLayout::TRANSFER_SRC_OPTIMAL
++            )
++            .is_err()
++        );
++        assert!(
++            validate_image_binding_layout(BindingKind::Sampler, vk::ImageLayout::GENERAL).is_err()
++        );
++    }
++}

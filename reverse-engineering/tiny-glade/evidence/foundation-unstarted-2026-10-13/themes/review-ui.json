@@ -1,0 +1,117 @@
+{
+  "baseline": "B",
+  "kind": "independent_read_only_native_source_review",
+  "tests_rerun": false,
+  "native_cases_rerun": false,
+  "source_edits": false,
+  "ui_pixel_equivalence_required": false,
+  "verdict": "no blocking game-policy or native-wiring defect identified in reviewed scope",
+  "files": [
+    {
+      "path": "tg-iced/src/gui_runner.rs",
+      "sha256": "5afcdb8cf414277e0f5bb45fc7d6b3bcc271eef1fe719f5bac2e7e37c650950d"
+    },
+    {
+      "path": "tg-iced/src/dialog.rs",
+      "sha256": "0eca51dbf7544abb4184638f1fe0afe730bc6a36788e5f58de14957925585465"
+    },
+    {
+      "path": "tg-integrity-report/src/controls.rs",
+      "sha256": "ed0b9eaf7318f9d1cf6fb0bec41d0aa46edff4c97fe3839cce1617cc8329edd6"
+    },
+    {
+      "path": "tg-integrity-report/src/lib.rs",
+      "sha256": "3c70cbc88400ad25131962cb66e472b7100581b252921e547bf79e500b53ace1"
+    },
+    {
+      "path": "crash-reporter-gui/src/lib.rs",
+      "sha256": "3b2ad8448f33afcbaafd872bec155126839f83f3e5e4ad4aa2fc1c151972d6ac"
+    },
+    {
+      "path": "tg-gpu-selector/src/gpu_selection.rs",
+      "sha256": "e860eca089ca48ff3662d0cd03f6f8823033e5b2d39cde81a426f59cc8d956a4"
+    },
+    {
+      "path": "tg-gpu-selector/src/vulkan_config.rs",
+      "sha256": "c8d47d94fa233915c9dae98fa31214cf4a63f88a1f0297583cd32e885833577d"
+    },
+    {
+      "path": "tg-gpu-selector/src/lib.rs",
+      "sha256": "a4db367036959ed6d13dc45fb74f9e513d1d20c9e058740947c674039a357084"
+    }
+  ],
+  "confirmed": [
+    {
+      "area": "real iced subscription",
+      "finding": "Noncapturing map produces WindowMessage::Tick; update resolves current controls.tick_message instead of capturing a stale message; read guard released before returning Subscription."
+    },
+    {
+      "area": "GenericWindow",
+      "finding": "Controls owns callback state in Arc<Mutex>; view_native returns owned static widgets; mapped commands are preserved; outcome survives Application::run through shared controls, close-without-outcome returns None."
+    },
+    {
+      "area": "crash Sending",
+      "finding": "Report callback consumed once via take; Sending refuses repeated SendReport; Tick only joins is_finished handle; join panic propagates; Sent view uses actual delivery payload."
+    },
+    {
+      "area": "clipboard",
+      "finding": "Native adapter calls arboard and saves success/error; ongoing native tick refreshes strict elapsed.as_secs_f32()<1s success label; error label remains persistent."
+    },
+    {
+      "area": "integrity deletion across crates",
+      "finding": "Embedded integrity messages map to crash RemoveExtra; native routes through same scoped remover and attached tg_integrity_report Controls; unlink success retain removes matching extras then normalizes only all three lists empty; failure leaves report unchanged."
+    },
+    {
+      "area": "GPU",
+      "finding": "Native Select writes index outcome; init_error disables selection control; unsupported driver can IgnoreAndPlay when initialization available; links/log commands handled by concrete OS adapters; ShowMoreInfo sets true."
+    },
+    {
+      "area": "Vulkan",
+      "finding": "Stable first-seen vendor groups with None retained; typed Layer/Vendor toggles preserve variant distinction and remove duplicate matches; six bool selectors map to ordered workarounds; Apply snapshots configuration and runner closes/returns outcome; Cancel closes with None."
+    }
+  ],
+  "nonblocking_notes": [
+    {
+      "severity": "scope",
+      "path": "tg-iced/src/gui_runner.rs",
+      "detail": "16ms native tick cadence is reconstruction glue; exact original cadence/event lifecycle remains unverified; retain this distinction in acceptance.",
+      "resolution": "Owner confirms16ms cadence is candidate native glue and updated manifest."
+    },
+    {
+      "severity": "low",
+      "path": "tg-iced/src/dialog.rs + tg-iced/src/gui_runner.rs",
+      "detail": "Dialog returns CloseWindow while outcome becomes Some, then GenericWindow batches another close; redundant command observed statically, no demonstrated behavioral failure; optional cleanup can avoid duplicate close.",
+      "resolution": "Owner keeps current CPU command contract; no demonstrated failure, deferred optional generic close deduplication."
+    },
+    {
+      "severity": "documentation",
+      "path": "evidence/ui/manifest.json",
+      "detail": "Manifest still lists exact raw Crash advice10/12 body as unknown while current source has filled raw strings and mainview evidence; owner should synchronize the narrowed unknown.",
+      "resolution": "Owner updated manifest, removing obsolete raw10/12 unknown."
+    }
+  ],
+  "reported_to": [
+    "/root/foundation_ui",
+    "/root"
+  ],
+  "evidence": [
+    "../ui/manifest.json",
+    "../ui/0x140620470.c",
+    "../ui/crash-update.asm",
+    "../ui/0x140dbaed0.c",
+    "../ui/0x140dbaed0.asm",
+    "../ui/0x140dbe760.c",
+    "../ui/0x1421bb740.c",
+    "../ui/0x1421bb740.asm",
+    "../ui/0x140df3e70.c",
+    "../ui/0x140df3e70.asm",
+    "../ui/0x140df3d10.c",
+    "../ui/0x140df4020.c",
+    "../ui/mainview.c"
+  ],
+  "limitations": [
+    "Read-only review is not execution of full original GUI or real GPU initialization/report delivery.",
+    "Original fork event lifecycle/options and callback Result ABI retain manifest unknown status.",
+    "Reported source identities cover the snapshot reviewed; subsequent owner edits require updated identities."
+  ]
+}

@@ -1,0 +1,907 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/deferred_terrain_history.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/deferred_terrain_history.rs
+@@ -1,63 +1,38 @@
+-//! `deferred_terrain_history.rs` — 延迟地形历史（B 0x140ac9770，O）。
+-//!
+-//! 证据：`terrain-water/decomp/decomp-0x140ac9770.txt`、章节、re-analyst-interaction：
+-//! - `PendingTerrainHistory` 脏标记（0x8000000000000002 哨兵）；
+-//! - 每帧先置脏哨兵；若**上一状态非哨兵**（本次变化发生）→ 用 pending 4 qword 构建地形
+-//!   历史记录 → `History::add` + push DebugHistoryMsg；之后不重复记录。
+-//!
+-//! decomp 结构：`param_2` = ResMut<PendingTerrainHistory>（`state u64 @0` + `pending [u64;4]
+-//! @8..0x28`）；`param_1` = ResMut<History>；`param_3` = EventWriter（8 B 事件）。
+-//! 历史记录 = 0x38 B 分配（tag 对 + 4 个 pending qword + 旧 state），经 `FUN_140a84ec0`
+-//! 入历史。`TerrainEdit` 字段语义待取证（falloff/height/position/id 序）。
++//! B PendingTerrainHistory owns an optional typed terrain edit. The original
++//! empty niche is i64::MIN+2, so a fresh owner does not record an empty edit.
+ use bevy_ecs::prelude::*;
+ use std::sync::Arc;
+ 
+ use crate::resources::history::{EditType, History};
++pub use crate::systems::history::history_process::DebugHistoryMsg;
++pub use tg_terrain::schema::TerrainEdit;
+ 
+-/// 脏哨兵（O：0x140ac9770 `-0x7ffffffffffffffe` = i64::MIN+2）。
+ pub const DEFERRED_TERRAIN_SENTINEL: u64 = 0x8000_0000_0000_0002;
+ 
+-/// 延迟地形历史状态资源（O：state @0 + pending 4 qword @8）。
+-#[derive(Resource, Clone, Copy, Debug, Default)]
++#[derive(Resource, Clone, Debug, Default)]
+ pub struct PendingTerrainHistory {
+-    /// 状态（哨兵 = 脏/待记录；其他 = 上一记录后的标记）。
+-    pub state: u64,
+-    /// 待构建历史记录的地形编辑数据（4 qword；语义 U，布局 O）。
+-    pub pending: [u64; 4],
++    pub edit: Option<TerrainEdit>,
++}
++impl PendingTerrainHistory {
++    /// Both original tool producers replace then assert the old niche is empty.
++    pub fn stage(&mut self, edit: TerrainEdit) {
++        let previous = self.edit.replace(edit);
++        assert!(previous.is_none(), "terrain history pending edit was not consumed");
++    }
++    pub fn is_empty(&self) -> bool {
++        self.edit.is_none()
++    }
+ }
+ 
+-/// 地形历史编辑记录（I：0x38 B 记录 {tag 对, pending 4 qword, 旧 state}；字段语义 U）。
+-#[derive(Clone, Debug, Default, PartialEq)]
+-pub struct TerrainEdit {
+-    pub pending: [u64; 4],
+-    pub previous_state: u64,
+-}
+-
+-/// `history_record_terrain` @0x140ac9770（O）。
+-///
+-/// 每帧：置脏哨兵；若上帧非哨兵（刚发生变化）→ 构建 [`TerrainEdit`] 并 `History::add` +
+-/// push [`DebugHistoryMsg`]；之后不重复。`DebugHistoryMsg` 载荷语义 U。
++/// B 0x140ac9770: move the edit into History, resetting the pending owner before
++/// add; publish the shared payload-free debug notification unconditionally.
+ pub fn history_record_terrain<S: Send + Sync + 'static>(
+     mut history: ResMut<History<S>>,
+     mut pending: ResMut<PendingTerrainHistory>,
+     mut debug: EventWriter<DebugHistoryMsg>,
+ ) {
+-    let previous = pending.state;
+-    pending.state = DEFERRED_TERRAIN_SENTINEL;
+-    if previous == DEFERRED_TERRAIN_SENTINEL {
+-        return;
++    if let Some(edit) = pending.edit.take() {
++        let _ = history.add(EditType::Terrain(Arc::new(edit)));
++        debug.write(DebugHistoryMsg);
+     }
+-    let edit = TerrainEdit {
+-        pending: pending.pending,
+-        previous_state: previous,
+-    };
+-    // 原版 fresh 0x140ac9770：`History::add()` 后**无条件**写 8B debug 事件，
+-    // 对 add 返回值无分支（`resources::history::History::add()` 行 40 后直接进事件写）。
+-    // 按协议判等修正：删早期 `if let Err → log+return` 错误分支（add 失败时原版仍写）。
+-    let _ = history.add(EditType::Terrain(Arc::new(edit)));
+-    debug.write(DebugHistoryMsg(previous));
+ }
+-
+-/// 地形历史记录后的调试消息（I：8 B 事件，载荷 = 旧状态标记）。
+-#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+-pub struct DebugHistoryMsg(pub u64);
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_edit_terrain.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_edit_terrain.rs
+@@ -50,7 +50,7 @@
+ };
+ 
+ use super::{
+-    deferred_terrain_history::DEFERRED_TERRAIN_SENTINEL, terrain_hover_idx::HoveredTerrainStrokeId,
++    terrain_hover_idx::HoveredTerrainStrokeId,
+ };
+ 
+ /// crate 本地 WindowFocusEvent 承载（I：原生 `country_core::resources::window::
+@@ -95,16 +95,9 @@
+     pub entries: Vec<StairsPlacementEntry>,
+ }
+ 
+-/// 地形编辑历史 pending（O：ui_edit_terrain case 3 写 `*local_118 = 0x8000000000000001`
+-/// 后依次写 `+0x8/+0xc/+0x10/+0x14/+0x18` 五个 u32；校验上一记录首 qword
+-/// `0x8000000000000002` 否则 panic）。
+-#[derive(Resource, Clone, Copy, Debug, Default)]
+-pub struct TerrainEditHistoryPending {
+-    /// 状态（哨兵 = 脏/待记录）。
+-    pub state: u64,
+-    /// `+0x8..+0x18` 的 5 个 u32 载荷（语义 U，布局 O）。
+-    pub payload: [u32; 5],
+-}
++/// The native drawing and editing systems share this one owning pending edit.
++/// Keep the previous public name as an alias for existing host code.
++pub type TerrainEditHistoryPending = super::deferred_terrain_history::PendingTerrainHistory;
+ 
+ /// 地形编辑历史哨兵（O：case 3 `0x8000000000000001`；区别于 deferred 的 `…0002`）。
+ pub const TERRAIN_EDIT_SENTINEL: u64 = 0x8000_0000_0000_0001;
+@@ -121,6 +114,9 @@
+     pub active: u8,
+     /// 拖动累加器（O：`*pfVar22`；case 1 清 0、case 2 累加 `|dx*0.002|`）。
+     pub accum: f32,
++    /// Original drag capture: height then falloff are saved before editing.
++    pub previous_height_ws: f32,
++    pub previous_falloff: f32,
+ }
+ 
+ /// 响应表（O：`&UNK_142ae404d` 4 槽字节 + `*pcVar39` 响应字节；case 6/8/0xc/0xf 写）。
+@@ -241,6 +237,10 @@
+                     (Vec3::ZERO, 0.0)
+                 };
+                 ui.hover = pos;
++                if let Some(stroke) = terrain.strokes.get(&id) {
++                    ui.previous_height_ws = stroke.height_ws;
++                    ui.previous_falloff = stroke.falloff;
++                }
+                 ui.slot_10 = slot_10;
+                 ui.active = 1;
+                 ui.accum = 0.0;
+@@ -293,23 +293,16 @@
+                 }
+             }
+             5 => {
+-                // case 3：TerrainEdit 哨兵（O decomp 行 676-731）。
+-                let previous = pending.state;
+-                pending.state = TERRAIN_EDIT_SENTINEL;
+-                let stroke = terrain.strokes.get(&id);
+-                pending.payload = [
+-                    stroke.map(|s| s.points.first().map(|p| p[0].to_bits()).unwrap_or(0)).unwrap_or(0),
+-                    ui.hover.x.to_bits(),
+-                    stroke.map(|s| s.falloff.to_bits()).unwrap_or(0),
+-                    ui.hover.y.to_bits(),
+-                    stroke.map(|s| s.height_ws.to_bits()).unwrap_or(0),
+-                ];
+-                // O：写新状态后校验旧首 qword 必须为 deferred 哨兵。
+-                assert!(
+-                    previous == DEFERRED_TERRAIN_SENTINEL,
+-                    "terrain edit history pending previous sentinel {previous:#x} != {:#x}",
+-                    DEFERRED_TERRAIN_SENTINEL
+-                );
++                window_focus.write(TerrainWindowFocus(0));
++                let stroke = terrain.strokes.get(&id)
++                    .expect("original terrain editing widget stroke assertion");
++                pending.stage(tg_terrain::schema::TerrainEdit::EditTerrainStroke {
++                    index: id,
++                    prev_height_ws: ui.previous_height_ws,
++                    new_height_ws: stroke.height_ws,
++                    prev_falloff: ui.previous_falloff,
++                    new_falloff: stroke.falloff,
++                });
+             }
+             6 => {
+                 // case 4：`&DAT_142ae405c` 子跳表（fresh UNRECOVERED_JUMPTABLE）。
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/replay_terrain.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/replay_terrain.rs
+@@ -1,204 +1,115 @@
+-//! `replay_terrain.rs` — 地形回放（B 0x140995150，O；`TerrainReplayCmd::forward/backward`
+-//! 0x140994f30 / 0x140995040，O）。
+-//!
+-//! 证据：`terrain-water/decomp/decomp-0x140995150.txt`（365 行）、
+-//! `decomp-0x140994f30.txt`（forward）、`decomp-0x140995040.txt`（backward 同构）、
+-//! RNE 常量直读：默认时长 0.3（`_UNK_1429258d8`=0x3e99999a）、clamp 下限 0.4
+-//! （`_UNK_142925970`=0x3ecccccd）、系数 0.01（`_UNK_142960674`=0x3c23d70a）、
+-//! 上限 3.0（`_UNK_1429cd078`=0x40400000）、1.0（`_UNK_142925904`=0x3f800000）。
+-//!
+-//! decomp 结构（replay_terrain）：
+-//! - 门：ReplayBuffer `+0x18` 活动计数 == 0 → return；speed = `+0x28`；
+-//! - 前桶 cmds（ptr@+0x08, len@+0x10）0x30 步长迭代，**仅 tag 3**；载荷 = TerrainEdit
+-//!   （niche @+0x10 判变体，变体字段 @+0x18 起：点集 ptr/len @+0x20/+0x28、stroke id @+0x34）；
+-//! - **instant 路径**（`duration(+0x10)==0.0 且非 NaN 且 undo(+0x1c)==0`）：拷贝点集
+-//!   （12B/点，断言点数 < 0x3fffff @0x142aae990）→ 更新地形 stroke 计数（+0x38 =
+-//!   max(索引+1, 原值)）→ `FUN_141526d10` 插入 TerrainEditingData → 释放拷贝；构造默认
+-//!   命令 {ptr, 0.4f（0x3ecccccd）, 2, stroke_id}；
+-//! - **动画路径**：`t = clamp(elapsed/duration, 0, 1)`；`eased = 1-(1-t)^3`
+-//!   （ease_out_cubic；duration < 0.4 时 eased = 1.0 立即应用）；`undo==0 → reapply
+-//!   0x1408592d0(payload+0x10, …, eased)`，`!=0 → revert 0x140858d30`；`eased >= 1.0`
+-//!   完成入列表；`elapsed += dt*speed`（+0x10）。
+-//!
+-//! **共享边界**：revert/reapply（0x140858d30/0x1408592d0，CurveU 进度更新）属共享
+-//! `resources/history/terrain_edit` owner（本章 TerrainEdit 仅为延迟历史记录
+-//! `{pending, previous_state}`，无点集载荷）；本模块以 [`TerrainReplayCmd`] 自带
+-//! `TerrainStroke` 点集 + 首帧完整 revert/渐进 reapply 的 CPU 侧模型落地，共享
+-//! revert/reapply 语义待该 owner 恢复（待取证/仲裁）。`ReplayCommand::Terrain` 变体接入
+-//! 共享 `replay_cmd_buffer.rs` 亦经仲裁。
++//! B typed terrain history replay, integrated with the existing stroke and edit
++//! command consumers. Pending history and ReplayBucket share the same schema.
+ use bevy_ecs::prelude::*;
+ use std::sync::Arc;
++use tg_terrain::stroke::TerrainStroke;
++use crate::{
++    resources::{history::{ReplayBuffer, ReplayCommand, terrain_edit::{self, TerrainEdit, TerrainHistoryEffects}}, terrain_editing::{StrokeId, TerrainEditingData}, time::GameTime},
++    systems::terrain::{draw_terrain_stroke::EvTerrainStrokeChanged, edit_terrain_stroke::{EditTerrainStrokeCmd, SetTerrainStrokePtsCmd}},
++};
+ 
+-use crate::{
+-    resources::{
+-        history::{ReplayBuffer, ReplayCommand},
+-        terrain_editing::{StrokeId, TerrainEditingData},
+-        time::GameTime,
+-    },
+-    systems::terrain::deferred_terrain_history::TerrainEdit,
+-};
+-use tg_terrain::stroke::TerrainStroke;
++pub const DEFAULT_DURATION: f32 = 0.3;
++pub const DURATION_MIN: f32 = 0.4;
++pub const DURATION_FACTOR: f32 = 0.01;
++pub const DURATION_MAX: f32 = 3.0;
++pub const ANIMATION_THRESHOLD: f32 = 0.001;
+ 
+-/// 默认时长（O：`_UNK_1429258d8` = 0.3f；非 NewStroke 变体）。
+-pub const DEFAULT_DURATION: f32 = 0.3;
+-/// duration clamp 下限（O：`_UNK_142925970` = 0.4f）。
+-pub const DURATION_MIN: f32 = 0.4;
+-/// 时长系数（O：`_UNK_142960674` = 0.01f，cm→m）。
+-pub const DURATION_FACTOR: f32 = 0.01;
+-/// duration clamp 上限（O：`_UNK_1429cd078` = 3.0f）。
+-pub const DURATION_MAX: f32 = 3.0;
+-/// 动画阈值（O：duration < 0.4 时 eased = 1.0 立即应用）。
+-pub const ANIMATION_THRESHOLD: f32 = 0.4;
+-
+-/// 地形回放命令（O：forward/backward 输出 {data@0, +0x8=0, duration@+0xc, +0x10=2,
+-/// +0x14=undo}；0x30 步长前桶条目 tag 3 判别）。
+ #[derive(Clone, Debug)]
+ pub struct TerrainReplayCmd {
+-    /// 回放的地形笔画（点集 + falloff + height_ws；O 载荷源）。
+-    pub stroke: Arc<TerrainStroke>,
+-    /// 目标 stroke id（O：变体 @+0x34）。
+-    pub stroke_id: StrokeId,
+-    /// 已播放时间（+0x10 槽）。
++    pub edit: Arc<TerrainEdit>,
+     pub elapsed: f32,
+-    /// 时长（+0x0c）。
+     pub duration: f32,
+-    /// undo（+0x14 字节；1 = revert）。
+     pub undo: bool,
++    /// B initializes2 and removes only after the third completed application.
++    pub completion_countdown: i32,
++}
++impl TerrainReplayCmd {
++    pub fn expanded(edit: Arc<TerrainEdit>, undo: bool, instant: bool) -> Self {
++        let duration = if instant { 0.0 } else { terrain_edit::duration(&edit) };
++        Self { edit, elapsed: 0.0, duration, undo, completion_countdown: 2 }
++    }
++    /// Compatibility constructor for callers holding a complete stroke.
++    pub fn forward(stroke: Arc<TerrainStroke>, stroke_id: StrokeId) -> Self {
++        Self::expanded(Arc::new(TerrainEdit::NewTerrainStroke { index: stroke_id, height_ws: stroke.height_ws, stroke_pts: stroke.points.clone() }), false, false)
++    }
++    pub fn backward(stroke: Arc<TerrainStroke>, stroke_id: StrokeId) -> Self {
++        let mut command = Self::forward(stroke, stroke_id);
++        command.undo = true;
++        command
++    }
++    pub fn eased(&self) -> f32 {
++        if self.duration >= ANIMATION_THRESHOLD {
++            let ratio = self.elapsed / self.duration;
++            let t = if ratio >= 0.0 { ratio } else { 0.0 };
++            let t = if t <= 1.0 { t } else { 1.0 };
++            let q = 1.0 - t;
++            1.0 - (q * q) * q
++        } else { 1.0 }
++    }
++    pub fn make_instant(&mut self) { self.duration = 0.0; }
+ }
+ 
+-impl TerrainReplayCmd {
+-    /// `forward` 0x140994f30：duration = clamp(Σ相邻点距*0.01, 0.4, 3.0)，无点 0.3；
+-    /// 断言 `stroke_length.is_finite()`（@0x142a94c34）。
+-    pub fn forward(stroke: Arc<TerrainStroke>, stroke_id: StrokeId) -> Self {
+-        Self::new(stroke, stroke_id, false)
+-    }
+-    /// `backward` 0x140995040（同构）：undo = true。
+-    pub fn backward(stroke: Arc<TerrainStroke>, stroke_id: StrokeId) -> Self {
+-        Self::new(stroke, stroke_id, true)
+-    }
+-    fn new(stroke: Arc<TerrainStroke>, stroke_id: StrokeId, undo: bool) -> Self {
+-        let duration = if stroke.points.is_empty() {
+-            DEFAULT_DURATION
+-        } else {
+-            let length = adjacent_distance_sum(&stroke.points);
+-            assert!(
+-                length.is_finite(),
+-                "assertion failed: stroke_length.is_finite()"
+-            );
+-            (length * DURATION_FACTOR)
+-                .clamp(DURATION_MIN, DURATION_MAX)
+-        };
+-        Self {
+-            stroke,
+-            stroke_id,
+-            elapsed: 0.0,
+-            duration,
+-            undo,
++pub fn adjacent_distance_sum(points: &[[f32; 3]]) -> f32 {
++    points.windows(2).fold(0.0, |length, pair| {
++        let dx = pair[0][0] - pair[1][0];
++        let dy = pair[0][1] - pair[1][1];
++        let dz = pair[0][2] - pair[1][2];
++        length + (dz * dz + (dy * dy + dx * dx)).sqrt()
++    })
++}
++
++fn advance_with_effects(command: &mut TerrainReplayCmd, editing: &mut TerrainEditingData, speed: f32, dt: f32) -> (bool, TerrainHistoryEffects) {
++    if !command.undo && command.elapsed == 0.0 {
++        if let TerrainEdit::NewTerrainStroke { index, height_ws, stroke_pts } = command.edit.as_ref() {
++            assert!(index.0 < tg_terrain::stroke::ID_COUNTER_LIMIT, "terrain stroke ID exceeds native counter limit");
++            editing.next_index = editing.next_index.max(index.0 + 1);
++            editing.strokes.insert(*index, TerrainStroke { points: stroke_pts.clone(), falloff: 0.4, index: *index, height_ws: *height_ws });
+         }
+     }
+-    /// 动画路径进度（O：`t = clamp(elapsed/duration, 0, 1)`；`eased = 1-(1-t)^3`；
+-    /// duration < 0.4 时 eased = 1.0 立即应用）。
+-    pub fn eased(&self) -> f32 {
+-        if self.duration >= ANIMATION_THRESHOLD && self.duration > 0.0 && self.duration.is_finite() {
+-            let t = (self.elapsed / self.duration).clamp(0.0, 1.0);
+-            1.0 - (1.0 - t).powi(3)
+-        } else {
+-            1.0
+-        }
+-    }
+-    /// `make_instant`（O：ReplayBuffer 动画立即化；duration 置 0 → instant 路径）。
+-    pub fn make_instant(&mut self) {
+-        self.duration = 0.0;
+-    }
++    let progress = command.eased();
++    let effects = terrain_edit::apply(&command.edit, editing, progress, command.undo);
++    let complete = if progress >= 1.0 {
++        command.completion_countdown -= 1;
++        command.completion_countdown < 0
++    } else { false };
++    command.elapsed += dt * speed;
++    (complete, effects)
+ }
+ 
+-/// Σ相邻点距（O：`FUN_141476710`，pair-unrolled；点对 [f32;3]，本实现逐相邻点求和）。
+-pub fn adjacent_distance_sum(points: &[[f32; 3]]) -> f32 {
+-    let distance = |a: [f32; 3], b: [f32; 3]| {
+-        let dx = a[0] - b[0];
+-        let dy = a[1] - b[1];
+-        let dz = a[2] - b[2];
+-        (dz * dz + (dy * dy + dx * dx)).sqrt()
+-    };
+-    points
+-        .windows(2)
+-        .map(|pair| distance(pair[0], pair[1]))
+-        .sum()
+-}
+-
+-/// `replay_terrain` 0x140995150（O 语义；CPU 侧模型。共享 revert/reapply 待 owner）。
+-///
+-/// 消费共享 `ReplayBuffer` 前桶中的 `ReplayCommand::Terrain`（中央仲裁接入
+-/// `replay_cmd_buffer.rs`）；按完成序逆序移除（O 收尾同通用骨架）。
+ pub fn replay_terrain(
+-    mut replay: ResMut<ReplayBuffer>,
+-    time: Res<GameTime>,
+-    mut editing: ResMut<TerrainEditingData>,
++    mut replay: ResMut<ReplayBuffer>, time: Res<GameTime>, mut editing: ResMut<TerrainEditingData>,
++    mut edits: EventWriter<EditTerrainStrokeCmd>, mut points: EventWriter<SetTerrainStrokePtsCmd>,
++    mut changed: EventWriter<EvTerrainStrokeChanged>,
+ ) {
+     let speed = replay.speed;
+-    let Some(bucket) = replay.front_mut_bucket() else {
+-        return;
+-    };
+-    let dt = time.delta;
++    let Some(bucket) = replay.front_mut_bucket() else { return; };
+     bucket.commands.retain_mut(|command| {
+-        let ReplayCommand::Terrain(command) = command else {
+-            return true;
+-        };
+-        !advance_terrain_replay(command, &mut editing, speed, dt)
++        let ReplayCommand::Terrain(command) = command else { return true; };
++        let (complete, effects) = advance_with_effects(command, &mut editing, speed, time.delta);
++        for edit in effects.edits { edits.write(EditTerrainStrokeCmd(edit)); }
++        for point_set in effects.point_sets { points.write(point_set); }
++        for id in effects.changed { changed.write(EvTerrainStrokeChanged(id)); }
++        !complete
+     });
+ }
+ 
+-/// 由延迟地形历史记录构建回放命令（I：`TerrainEdit` 载荷 {pending, previous_state}
+-/// 语义 U；此处仅登记转换入口，点集来源待共享 TerrainEdit owner）。
+-pub fn terrain_replay_from_edit(
+-    _edit: &TerrainEdit,
+-    _stroke_id: StrokeId,
+-) -> Option<TerrainReplayCmd> {
+-    None
++pub fn terrain_replay_from_edit(edit: &TerrainEdit, _stroke_id: StrokeId) -> Option<TerrainReplayCmd> {
++    Some(TerrainReplayCmd::expanded(Arc::new(edit.clone()), false, false))
+ }
+ 
+-/// 单条地形回放命令推进（O 语义：instant/动画两路径）。///
+-/// - **instant**（`duration==0.0` 且非 NaN 且 `undo==0`）：整条点集插入
+-///   `TerrainEditingData`，`next_index` 提升（O：+0x38 = max(索引+1, 原值)）；
+-/// - **动画**（其余）：`eased = 1-(1-t)^3`；`undo==0 → 渐进 reapply`（点集按 eased 比例
+-///   写入笔画）；`undo!=0 → revert`（移除笔画；共享 revert 0x140858d30 的局部消除语义
+-///   待 owner）；`elapsed += dt*speed`；`eased >= 1.0` 完成。
+-pub fn advance_terrain_replay(
+-    command: &mut TerrainReplayCmd,
+-    editing: &mut TerrainEditingData,
+-    speed: f32,
+-    dt: f32,
+-) -> bool {
+-    if command.undo {
+-        // revert：移除目标笔画。共享 `TerrainEdit::revert` 0x140858d30 的动画局部
+-        // 消除（CurveU 进度）属共享 terrain_edit owner（待取证）；此处为完整移除。
+-        editing.strokes.remove(&command.stroke_id);
+-        return true;
++/// Resolved CPU convenience path; the scheduled system above publishes through
++/// the actual edit consumers so readback/heightmap/feedback side effects run.
++pub fn advance_terrain_replay(command: &mut TerrainReplayCmd, editing: &mut TerrainEditingData, speed: f32, dt: f32) -> bool {
++    let (complete, effects) = advance_with_effects(command, editing, speed, dt);
++    for command in effects.edits {
++        if let Some(stroke) = editing.strokes.get_mut(&command.id) {
++            let outcome = tg_terrain::edit::apply_resolved(tg_terrain::edit::StrokeParameters { falloff: stroke.falloff, height: stroke.height_ws }, command);
++            stroke.falloff = outcome.state.falloff;
++            stroke.height_ws = outcome.state.height;
++        }
+     }
+-    let eased = command.eased();
+-    let n = command.stroke.points.len();
+-    let k = if n == 0 {
+-        0
+-    } else {
+-        ((eased * n as f32).ceil() as usize).min(n)
+-    };
+-    let entry = editing.strokes.entry(command.stroke_id).or_insert_with(|| TerrainStroke {
+-        points: Vec::new(),
+-        falloff: command.stroke.falloff,
+-        index: command.stroke_id,
+-        height_ws: command.stroke.height_ws,
+-    });
+-    entry.points = command.stroke.points[..k].to_vec();
+-    entry.falloff = command.stroke.falloff;
+-    entry.height_ws = command.stroke.height_ws;
+-    // O：+0x38 = max(索引+1, 原值)。
+-    let next = command.stroke_id.0.saturating_add(1);
+-    if editing.next_index < next {
+-        editing.next_index = next;
++    for command in effects.point_sets {
++        if let Some(stroke) = editing.strokes.get_mut(&command.id) { stroke.points = command.points; }
+     }
+-    if eased >= 1.0 {
+-        return true;
+-    }
+-    command.elapsed += dt * speed;
+-    false
++    complete
+ }
+--- /dev/null
++++ b/games_test/tiny-glade/crates/country-core/src/resources/history/terrain_edit.rs
+@@ -0,0 +1,346 @@
++//! Recovered B terrain history rules, using the workspace's existing persisted
++//! schema and shared Curve/Easing implementations. No native ABI is reproduced.
++pub use tg_terrain::schema::TerrainEdit;
++use tg_terrain::{edit::{Adjustment, EditCommand}, replay::{observe_edit, ReplayDirection}};
++use crate::{resources::terrain_editing::{StrokeId, TerrainEditingData}, systems::terrain::edit_terrain_stroke::SetTerrainStrokePtsCmd};
++use glam::Vec3;
++use utils::{curve::Curve3, easing_functions::{cubic_in_out, EasingFunction}};
++
++#[derive(Default)]
++pub struct TerrainHistoryEffects {
++    pub edits: Vec<EditCommand>,
++    pub point_sets: Vec<SetTerrainStrokePtsCmd>,
++    pub changed: Vec<StrokeId>,
++}
++
++pub fn id(edit: &TerrainEdit) -> StrokeId {
++    match edit {
++        TerrainEdit::NewTerrainStroke { index, .. }
++        | TerrainEdit::EditTerrainStroke { index, .. } => *index,
++        TerrainEdit::MoveTerrainStroke { id, .. } => *id,
++    }
++}
++
++pub fn duration(edit: &TerrainEdit) -> f32 {
++    let TerrainEdit::NewTerrainStroke { stroke_pts, .. } = edit else { return 0.3; };
++    let mut length = 0.0;
++    for pair in stroke_pts.windows(2) {
++        let d = Vec3::from_array(pair[0]) - Vec3::from_array(pair[1]);
++        length += (d.z * d.z + (d.y * d.y + d.x * d.x)).sqrt();
++    }
++    assert!(length.is_finite(), "assertion failed: stroke_length.is_finite()");
++    (length * 0.01).clamp(0.4, 3.0)
++}
++
++/// B 0x140859740. Keep at least 0.1 world units visible, use arc-length slicing,
++/// and raise the stroke during the first quarter of its animation. Degenerate
++/// source curves retain the existing points. The original requires the stroke.
++pub fn update_terrain_curve(
++    editing: &mut TerrainEditingData,
++    index: StrokeId,
++    points: &[[f32; 3]],
++    progress: f32,
++) -> f32 {
++    let stroke = editing.strokes.get_mut(&index)
++        .unwrap_or_else(|| panic!("Requested terrain stroke {} doesn't exist", index.0));
++    assert!(!stroke.points.is_empty(), "terrain stroke must have at least one point");
++    if stroke.points.len() == 1 {
++        return cubic_in_out(progress);
++    }
++    let points = points.iter().copied().map(Vec3::from_array).collect();
++    let Ok(curve) = Curve3::try_new_from_points_remove_duplicates(points) else {
++        return cubic_in_out(progress);
++    };
++    let min_u = 0.1 / curve.length;
++    assert!(min_u.is_finite(), "original minimum curve coordinate assertion");
++    let eased = cubic_in_out(progress);
++    let end = (1.0 - eased) * min_u.clamp(0.0, 1.0) + eased;
++    assert!((0.0..=1.0).contains(&end), "original CurveU range assertion");
++    stroke.points = curve.crashy_slice(0.0, end).points.into_iter().map(|point| point.to_array()).collect();
++    cubic_in_out((progress * 4.0).clamp(0.0, 1.0))
++}
++
++/// B revert/reapply emit the existing editing commands; the completed undo of a
++/// new stroke sets its height to zero and retains the stroke in the ID map.
++pub fn apply(
++    edit: &TerrainEdit,
++    editing: &mut TerrainEditingData,
++    progress: f32,
++    undo: bool,
++) -> TerrainHistoryEffects {
++    let mut effects = TerrainHistoryEffects::default();
++    match edit {
++        TerrainEdit::NewTerrainStroke { index, height_ws, stroke_pts } => {
++            if undo && progress >= 0.99 {
++                editing.strokes.get_mut(index)
++                    .unwrap_or_else(|| panic!("Requested terrain stroke {} doesn't exist", index.0))
++                    .height_ws = 0.0;
++            } else {
++                let fraction = update_terrain_curve(editing, *index, stroke_pts,
++                    if undo { 1.0 - progress } else { progress });
++                let height = fraction * height_ws;
++                let position = stroke_pts.last().map_or([0.0; 3], |p| [p[0], height, p[2]]);
++                effects.edits.push(EditCommand {
++                    id: *index, falloff: Adjustment::Keep,
++                    height: Adjustment::Absolute(height), position,
++                });
++            }
++            effects.changed.push(*index);
++        }
++        TerrainEdit::EditTerrainStroke { .. } => {
++            let direction = if undo { ReplayDirection::Backward } else { ReplayDirection::Forward };
++            effects.edits.push(observe_edit(edit, progress, direction).unwrap().command());
++        }
++        TerrainEdit::MoveTerrainStroke { id, original_stroke_pts, move_vec } => {
++            let t = EasingFunction::CubicOut.apply(progress);
++            let inverse = 1.0 - t;
++            let points: Vec<_> = original_stroke_pts.iter().map(|p| {
++                let q = [p[0] + move_vec[0], p[1] + 0.0, p[2] + move_vec[1]];
++                if undo {
++                    [p[0] * t + inverse * q[0], p[1] * t + inverse * q[1], p[2] * t + inverse * q[2]]
++                } else {
++                    [q[0] * t + inverse * p[0], q[1] * t + inverse * p[1], q[2] * t + inverse * p[2]]
++                }
++            }).collect();
++            let position = Vec3::from_array(points[points.len() / 2]);
++            effects.point_sets.push(SetTerrainStrokePtsCmd { points, position, id: *id });
++        }
++    }
++    effects
++}
++
++#[cfg(test)]
++mod original_curve_history_tests {
++    use super::*;
++    fn points(bits: &[u32]) -> Vec<[f32; 3]> {
++        bits.chunks_exact(3).map(|p| [f32::from_bits(p[0]), f32::from_bits(p[1]), f32::from_bits(p[2])]).collect()
++    }
++    #[test]
++    fn original_b_update_curve_0() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 1065353216, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0, 1065353216, 1065353216, 1065353216]), f32::from_bits(0));
++        assert_eq!(factor.to_bits(), 0);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1036831949, 0, 0]);
++    }
++    #[test]
++    fn original_b_update_curve_1() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 1065353216, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0, 1065353216, 1065353216, 1065353216]), f32::from_bits(1036831949));
++        assert_eq!(factor.to_bits(), 1048777327);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1038074383, 0, 0]);
++    }
++    #[test]
++    fn original_b_update_curve_2() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 1065353216, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0, 1065353216, 1065353216, 1065353216]), f32::from_bits(1048576000));
++        assert_eq!(factor.to_bits(), 1065353216);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1048216186, 0, 0]);
++    }
++    #[test]
++    fn original_b_update_curve_3() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 1065353216, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0, 1065353216, 1065353216, 1065353216]), f32::from_bits(1056964608));
++        assert_eq!(factor.to_bits(), 1065353216);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1065353216, 0, 0, 1065353216, 1043999312, 1043999312]);
++    }
++    #[test]
++    fn original_b_update_curve_4() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 1065353216, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0, 1065353216, 1065353216, 1065353216]), f32::from_bits(1065185444));
++        assert_eq!(factor.to_bits(), 1065353216);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1065353216, 0, 0, 1065353216, 1065353107, 1065353107]);
++    }
++    #[test]
++    fn original_b_update_curve_5() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 1065353216, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0, 1065353216, 1065353216, 1065353216]), f32::from_bits(1065353216));
++        assert_eq!(factor.to_bits(), 1065353216);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1065353216, 0, 0, 1065353216, 1065353216, 1065353216]);
++    }
++    #[test]
++    fn original_b_update_curve_6() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0, 1073741824, 0, 0]), f32::from_bits(0));
++        assert_eq!(factor.to_bits(), 0);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1036831949, 0, 0]);
++    }
++    #[test]
++    fn original_b_update_curve_7() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0, 1073741824, 0, 0]), f32::from_bits(1036831949));
++        assert_eq!(factor.to_bits(), 1048777327);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1037852004, 0, 0]);
++    }
++    #[test]
++    fn original_b_update_curve_8() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0, 1073741824, 0, 0]), f32::from_bits(1048576000));
++        assert_eq!(factor.to_bits(), 1065353216);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1046478848, 0, 0]);
++    }
++    #[test]
++    fn original_b_update_curve_9() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0, 1073741824, 0, 0]), f32::from_bits(1056964608));
++        assert_eq!(factor.to_bits(), 1065353216);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1065772646, 0, 0]);
++    }
++    #[test]
++    fn original_b_update_curve_10() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0, 1073741824, 0, 0]), f32::from_bits(1065185444));
++        assert_eq!(factor.to_bits(), 1065353216);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1073741760, 0, 0]);
++    }
++    #[test]
++    fn original_b_update_curve_11() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0, 1073741824, 0, 0]), f32::from_bits(1065353216));
++        assert_eq!(factor.to_bits(), 1065353216);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1073741824, 0, 0]);
++    }
++    #[test]
++    fn original_b_update_curve_12() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0]), f32::from_bits(0));
++        assert_eq!(factor.to_bits(), 0);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1065353216, 0, 0]);
++    }
++    #[test]
++    fn original_b_update_curve_13() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0]), f32::from_bits(1036831949));
++        assert_eq!(factor.to_bits(), 998445679);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1065353216, 0, 0]);
++    }
++    #[test]
++    fn original_b_update_curve_14() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0]), f32::from_bits(1048576000));
++        assert_eq!(factor.to_bits(), 1031798784);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1065353216, 0, 0]);
++    }
++    #[test]
++    fn original_b_update_curve_15() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0]), f32::from_bits(1056964608));
++        assert_eq!(factor.to_bits(), 1056964608);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1065353216, 0, 0]);
++    }
++    #[test]
++    fn original_b_update_curve_16() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0]), f32::from_bits(1065185444));
++        assert_eq!(factor.to_bits(), 1065353149);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1065353216, 0, 0]);
++    }
++    #[test]
++    fn original_b_update_curve_17() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[0, 0, 0, 1065353216, 0, 0]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 0, 0, 0]), f32::from_bits(1065353216));
++        assert_eq!(factor.to_bits(), 1065353216);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [0, 0, 0, 1065353216, 0, 0]);
++    }
++    #[test]
++    fn original_b_update_curve_18() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[1077936128, 1082130432, 1084227584]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0]), f32::from_bits(0));
++        assert_eq!(factor.to_bits(), 0);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [1077936128, 1082130432, 1084227584]);
++    }
++    #[test]
++    fn original_b_update_curve_19() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[1077936128, 1082130432, 1084227584]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0]), f32::from_bits(1036831949));
++        assert_eq!(factor.to_bits(), 998445679);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [1077936128, 1082130432, 1084227584]);
++    }
++    #[test]
++    fn original_b_update_curve_20() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[1077936128, 1082130432, 1084227584]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0]), f32::from_bits(1048576000));
++        assert_eq!(factor.to_bits(), 1031798784);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [1077936128, 1082130432, 1084227584]);
++    }
++    #[test]
++    fn original_b_update_curve_21() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[1077936128, 1082130432, 1084227584]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0]), f32::from_bits(1056964608));
++        assert_eq!(factor.to_bits(), 1056964608);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [1077936128, 1082130432, 1084227584]);
++    }
++    #[test]
++    fn original_b_update_curve_22() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[1077936128, 1082130432, 1084227584]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0]), f32::from_bits(1065185444));
++        assert_eq!(factor.to_bits(), 1065353149);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [1077936128, 1082130432, 1084227584]);
++    }
++    #[test]
++    fn original_b_update_curve_23() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.strokes.insert(StrokeId(7), tg_terrain::stroke::TerrainStroke { points: points(&[1077936128, 1082130432, 1084227584]), falloff: 0.4, index: StrokeId(7), height_ws: 2.5 });
++        let mut editing = TerrainEditingData(editing);
++        let factor = update_terrain_curve(&mut editing, StrokeId(7), &points(&[0, 0, 0, 1065353216, 0, 0]), f32::from_bits(1065353216));
++        assert_eq!(factor.to_bits(), 1065353216);
++        assert_eq!(editing.strokes[&StrokeId(7)].points.iter().flat_map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(), [1077936128, 1082130432, 1084227584]);
++    }
++
++    #[test]
++    fn completed_new_stroke_undo_retains_the_id_and_zeroes_height() {
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        let id = editing.new_stroke([0.0; 3]).unwrap().unwrap();
++        let mut editing = TerrainEditingData(editing);
++        let edit = TerrainEdit::NewTerrainStroke { index: id, height_ws: 2.5, stroke_pts: vec![[0.0; 3]] };
++        let effects = apply(&edit, &mut editing, 0.99, true);
++        assert_eq!(editing.strokes[&id].height_ws, 0.0);
++        assert_eq!(effects.changed, [id]);
++        assert!(effects.edits.is_empty());
++    }
++}
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_draw_terrain.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_draw_terrain.rs
+@@ -76,6 +76,8 @@
+     pub state: u8,
+     /// subtype==3 时写入的 drag 距离（disasm 0x140aa00c3 `MOVSS [R14],XMM0`）。
+     pub drag_distance: f32,
++    /// Host projection of the original editing resource's active draw flag.
++    pub active: bool,
+ }
+ 
+ /// `ui_draw_terrain` @0x140a9fdc0（逐语句重建）。
+@@ -90,6 +92,8 @@
+     mut changed: EventWriter<EvTerrainStrokeChanged>,
+     mut recalculate: EventWriter<RecalculateHeightMapCmd>,
+     mut draw_state: ResMut<TerrainDrawState>,
++    mut pending: ResMut<PendingTerrainHistory>,
++    mut stairs: ResMut<StairsPlacementBucket>,
+ ) {
+     // 门：AppMode::Terrain（O：0x140a9fdf9 `CMP dword [RAX],0xa`）。
+     if mode.native_tag() != 10 {
+@@ -161,6 +165,7 @@
+     match state {
+         1 => {
+             if let Ok(Some(id)) = editing.new_stroke(position.to_array()) {
++                draw_state.active = true;
+                 changed.write(EvTerrainStrokeChanged(StrokeId(id.0)));
+             }
+         }
+@@ -179,6 +184,19 @@
+                 // returns without changing a point (near duplicate / 1024 cap).
+                 changed.write(EvTerrainStrokeChanged(id));
+             }
++        }
++        3 => {
++            let id = editing.next_index.checked_sub(1).map(StrokeId);
++            if let (Some(id), Ok(stroke)) = (id, editing.get_last_mut_stroke()) {
++                pending.stage(TerrainEdit::NewTerrainStroke {
++                    index: id,
++                    height_ws: stroke.height_ws,
++                    stroke_pts: stroke.points.clone(),
++                });
++                stairs.entries.push(StairsPlacementEntry { tag: 0, ..Default::default() });
++                recalculate.write(RecalculateHeightMapCmd);
++            }
++            draw_state.active = false;
+         }
+         _ => {}
+     }
+@@ -259,3 +277,41 @@
+         assert_eq!(world.resource::<TerrainDrawState>().state, 2);
+     }
+ }
++
++
++#[cfg(test)]
++mod typed_history_release_tests {
++    use super::*;
++    use crate::systems::{terrain::{register_terrain_events, deferred_terrain_history::history_record_terrain}, ui::resources::ui_state::{UiInteraction, WidgetId}};
++    use crate::resources::history::{History, EditType, transactions::ObservedHistoryLedger};
++
++    #[test]
++    fn release_records_an_owned_typed_stroke_once_and_resets_pending() {
++        let mut world = World::new();
++        register_terrain_events(&mut world);
++        world.insert_resource(AppMode::Terrain);
++        world.insert_resource(CursorTerrainRaycast::default());
++        world.insert_resource(TerrainHeightsData::<TerrainHeightSsbo>::new());
++        let mut editing = tg_terrain::stroke::TerrainEditingData::default();
++        editing.new_stroke([1.0, 2.0, 3.0]).unwrap();
++        editing.get_last_mut_stroke().unwrap().points.push([4.0, 5.0, 6.0]);
++        world.insert_resource(TerrainEditingData(editing));
++        world.insert_resource(GladeBorder(BorderShape::Circle(Circle2d::new(Vec2::ZERO, 100.0))));
++        world.insert_resource(UiState::new(UiInteraction { native_tag: 2, native_phase: 5, widget: WidgetId::clearing_canvas(DRAW_CANVAS_NAME) }));
++        world.resource_mut::<TerrainDrawState>().state = 2;
++        world.resource_mut::<TerrainDrawState>().active = true;
++        let mut history: History = History::from_observed(ObservedHistoryLedger { entries: vec![], cursor: -1, undo_anchor: -1, resolved_snapshots: vec![], observed_count_58: 0, mutation_nonce: 0 });
++        history.start_input_recording(7).unwrap();
++        world.insert_resource(history);
++        let mut schedule = Schedule::default();
++        schedule.add_systems((ui_draw_terrain, history_record_terrain::<()>).chain());
++        schedule.run(&mut world);
++        assert!(world.resource::<PendingTerrainHistory>().is_empty());
++        assert!(!world.resource::<TerrainDrawState>().active);
++        let recorded = &world.resource::<History>().pending().unwrap().edits;
++        assert_eq!(recorded.len(), 1);
++        assert!(matches!(&recorded[0], EditType::Terrain(edit) if matches!(edit.as_ref(), TerrainEdit::NewTerrainStroke { index: StrokeId(0), height_ws, stroke_pts } if *height_ws == 2.5 && *stroke_pts == [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])));
++        schedule.run(&mut world);
++        assert_eq!(world.resource::<History>().pending().unwrap().edits.len(), 1);
++    }
++}

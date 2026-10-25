@@ -1,0 +1,29 @@
+[package]
+readme = "README.md"
+name = "system-decorator"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+description = "Decorator systems: lifecycle/history/backup, UI interaction, op application and visual geometry assembly (decorator_visual)"
+
+[dependencies]
+country-core = { workspace = true, features = ["native-physics"] }
+utils.workspace = true
+glam.workspace = true
+fastrand.workspace = true
+half.workspace = true
+itertools.workspace = true
+log.workspace = true
+puffin.workspace = true
+bevy_ecs = { version = "=0.16.0", default-features = false }
+bevy_app = { version = "=0.16.0", default-features = false }
+hashbrown = "=0.14.5"
+petgraph = "=0.8.1"
+bitvec = "=1.0.1"
+
+[dev-dependencies]
+country-core = { workspace = true, features = ["test-support"] }
+
+[lints]
+workspace = true

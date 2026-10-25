@@ -1,0 +1,1 @@
+原B发行RNE SHA f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03。索引默认target C仅库存；本轮不迁移C业务、不恢复旧rhapsody ABI。集成授权来自根任务的intro主链闭合。候选、编译、原行为验收分别记录。

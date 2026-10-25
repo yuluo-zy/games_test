@@ -1,0 +1,1080 @@
+{
+  "tool": "recompile_check.py",
+  "hlsl": "reconstruction/shader-source/shaders/terrain_editing/floor.raster.hlsl",
+  "bin": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/compiled-shaders/_terrain_editing_floor.raster.hlsl_b903e43ffb3da915.bin",
+  "include_root": "reconstruction/shader-source/shaders",
+  "dxc": "/opt/homebrew/bin/dxc",
+  "modules": [
+    {
+      "module_index": 23,
+      "entry": "vs_main",
+      "profile": "vs_6_4",
+      "command": "dxc-cl-option: /tmp/.tmpxakrJN -E vs_main -T vs_6_4 -spirv -WX -Ges -fspv-target-env=vulkan1.1 -HV 2021 -Zi -Fo /tmp/.tmpB7yoPv -Qembed_debug",
+      "replay_command": "dxc -E vs_main -T vs_6_4 -spirv -WX -Ges -fspv-target-env=vulkan1.1 -HV 2021 -Zi -Qembed_debug -Fo <out> -I reconstruction/shader-source/shaders <source>",
+      "target": {
+        "raw_sha256": "a12d54b9fd03a1bcda345249dc85bd151e04d4abe3364ffaf2879c28c2da89aa",
+        "normalized_sha256": "65d8ec21436852e7059d8f3986eb364dbf5f1da66e70b61b6478bfc8c215de7c",
+        "fingerprint": {
+          "entries": [
+            [
+              "Vertex",
+              "vs_main"
+            ]
+          ],
+          "local_size": null,
+          "capabilities": [
+            "RuntimeDescriptorArray",
+            "Shader"
+          ],
+          "bindings": [
+            [
+              0,
+              3,
+              "UniformConstant",
+              "sampler_llc",
+              "Sampler"
+            ],
+            [
+              0,
+              9,
+              "UniformConstant",
+              "sampler_default",
+              "Sampler"
+            ],
+            [
+              0,
+              13,
+              "Uniform",
+              "$Globals",
+              "UniformBuffer(UBO)"
+            ],
+            [
+              0,
+              16,
+              "UniformConstant",
+              "terrain_heightmap",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              18,
+              "UniformConstant",
+              "rocky_terrain",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              20,
+              "UniformConstant",
+              "water_mask",
+              "SampledImage(2D)"
+            ],
+            [
+              1,
+              0,
+              "Uniform",
+              "frame_constants",
+              "UniformBuffer(UBO)"
+            ]
+          ],
+          "opcode_histogram": {
+            "OpAccessChain": 4,
+            "OpBranch": 13,
+            "OpBranchConditional": 10,
+            "OpCapability": 2,
+            "OpCompositeConstruct": 8,
+            "OpCompositeExtract": 26,
+            "OpCompositeInsert": 2,
+            "OpConstant": 26,
+            "OpConstantComposite": 8,
+            "OpConstantTrue": 1,
+            "OpConvertFToS": 1,
+            "OpConvertSToF": 1,
+            "OpConvertUToF": 3,
+            "OpDecorate": 21,
+            "OpEntryPoint": 1,
+            "OpExtInst": 11,
+            "OpExtInstImport": 1,
+            "OpExtension": 1,
+            "OpFAdd": 13,
+            "OpFDiv": 3,
+            "OpFMul": 10,
+            "OpFOrdGreaterThan": 4,
+            "OpFOrdLessThan": 4,
+            "OpFSub": 7,
+            "OpFunction": 1,
+            "OpFunctionEnd": 1,
+            "OpINotEqual": 1,
+            "OpImageGather": 2,
+            "OpImageSampleExplicitLod": 4,
+            "OpLabel": 28,
+            "OpLine": 128,
+            "OpLoad": 11,
+            "OpLogicalNot": 5,
+            "OpMemberDecorate": 97,
+            "OpMemberName": 73,
+            "OpMemoryModel": 1,
+            "OpModuleProcessed": 2,
+            "OpName": 16,
+            "OpNoLine": 4,
+            "OpPhi": 10,
+            "OpReturn": 1,
+            "OpSampledImage": 6,
+            "OpSelectionMerge": 12,
+            "OpSource": 38,
+            "OpSourceContinued": 2,
+            "OpStore": 3,
+            "OpString": 38,
+            "OpSwitch": 2,
+            "OpTypeArray": 1,
+            "OpTypeBool": 1,
+            "OpTypeFloat": 1,
+            "OpTypeFunction": 1,
+            "OpTypeImage": 1,
+            "OpTypeInt": 2,
+            "OpTypeMatrix": 1,
+            "OpTypePointer": 10,
+            "OpTypeSampledImage": 1,
+            "OpTypeSampler": 1,
+            "OpTypeStruct": 3,
+            "OpTypeVector": 5,
+            "OpTypeVoid": 1,
+            "OpUDiv": 1,
+            "OpUMod": 1,
+            "OpUnreachable": 2,
+            "OpVariable": 11,
+            "OpVectorShuffle": 4,
+            "OpVectorTimesMatrix": 1,
+            "OpVectorTimesScalar": 4
+          }
+        }
+      },
+      "candidate": {
+        "raw_sha256": "87f4c0372dd2e85b253f1f4dc116d2d93994034febc7f62ab93066d5f496a784",
+        "normalized_sha256": "b8a0f87700e380f25411505c2d567026d355b4baec1f00c69d9657736c3c6da3",
+        "fingerprint": {
+          "entries": [
+            [
+              "Vertex",
+              "vs_main"
+            ]
+          ],
+          "local_size": null,
+          "capabilities": [
+            "RuntimeDescriptorArray",
+            "Shader"
+          ],
+          "bindings": [
+            [
+              0,
+              3,
+              "UniformConstant",
+              "sampler_llc",
+              "Sampler"
+            ],
+            [
+              0,
+              9,
+              "UniformConstant",
+              "sampler_default",
+              "Sampler"
+            ],
+            [
+              0,
+              13,
+              "Uniform",
+              "$Globals",
+              "UniformBuffer(UBO)"
+            ],
+            [
+              0,
+              16,
+              "UniformConstant",
+              "terrain_heightmap",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              18,
+              "UniformConstant",
+              "rocky_terrain",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              20,
+              "UniformConstant",
+              "water_mask",
+              "SampledImage(2D)"
+            ],
+            [
+              1,
+              0,
+              "Uniform",
+              "frame_constants",
+              "UniformBuffer(UBO)"
+            ]
+          ],
+          "opcode_histogram": {
+            "OpAccessChain": 4,
+            "OpBranch": 13,
+            "OpBranchConditional": 10,
+            "OpCapability": 2,
+            "OpCompositeConstruct": 7,
+            "OpCompositeExtract": 22,
+            "OpCompositeInsert": 2,
+            "OpConstant": 26,
+            "OpConstantComposite": 8,
+            "OpConstantTrue": 1,
+            "OpConvertUToF": 3,
+            "OpDecorate": 21,
+            "OpEntryPoint": 1,
+            "OpExtInst": 11,
+            "OpExtInstImport": 1,
+            "OpExtension": 1,
+            "OpFAdd": 9,
+            "OpFDiv": 2,
+            "OpFMul": 8,
+            "OpFOrdGreaterThan": 4,
+            "OpFOrdLessThan": 3,
+            "OpFSub": 5,
+            "OpFUnordGreaterThanEqual": 1,
+            "OpFunction": 1,
+            "OpFunctionEnd": 1,
+            "OpINotEqual": 1,
+            "OpImageGather": 1,
+            "OpImageSampleExplicitLod": 4,
+            "OpLabel": 26,
+            "OpLine": 125,
+            "OpLoad": 15,
+            "OpLogicalNot": 4,
+            "OpMemberDecorate": 97,
+            "OpMemberName": 73,
+            "OpMemoryModel": 1,
+            "OpModuleProcessed": 2,
+            "OpName": 16,
+            "OpNoLine": 2,
+            "OpPhi": 10,
+            "OpReturn": 1,
+            "OpSampledImage": 5,
+            "OpSelectionMerge": 12,
+            "OpSource": 16,
+            "OpStore": 3,
+            "OpString": 16,
+            "OpSwitch": 2,
+            "OpTypeArray": 1,
+            "OpTypeBool": 1,
+            "OpTypeFloat": 1,
+            "OpTypeFunction": 1,
+            "OpTypeImage": 1,
+            "OpTypeInt": 2,
+            "OpTypeMatrix": 1,
+            "OpTypePointer": 10,
+            "OpTypeSampledImage": 1,
+            "OpTypeSampler": 1,
+            "OpTypeStruct": 3,
+            "OpTypeVector": 5,
+            "OpTypeVoid": 1,
+            "OpUDiv": 1,
+            "OpUMod": 1,
+            "OpVariable": 11,
+            "OpVectorShuffle": 4,
+            "OpVectorTimesMatrix": 1,
+            "OpVectorTimesScalar": 4
+          }
+        }
+      },
+      "structural_match": false,
+      "normalized_hash_match": false,
+      "differences": {
+        "opcode_histogram": {
+          "target_only": {
+            "OpCompositeConstruct": 8,
+            "OpCompositeExtract": 26,
+            "OpConvertFToS": 1,
+            "OpConvertSToF": 1,
+            "OpFAdd": 13,
+            "OpFDiv": 3,
+            "OpFMul": 10,
+            "OpFOrdLessThan": 4,
+            "OpFSub": 7,
+            "OpImageGather": 2,
+            "OpLabel": 28,
+            "OpLine": 128,
+            "OpLoad": 11,
+            "OpLogicalNot": 5,
+            "OpNoLine": 4,
+            "OpSampledImage": 6,
+            "OpSource": 38,
+            "OpSourceContinued": 2,
+            "OpString": 38,
+            "OpUnreachable": 2
+          },
+          "candidate_only": {
+            "OpCompositeConstruct": 7,
+            "OpCompositeExtract": 22,
+            "OpFAdd": 9,
+            "OpFDiv": 2,
+            "OpFMul": 8,
+            "OpFOrdLessThan": 3,
+            "OpFSub": 5,
+            "OpFUnordGreaterThanEqual": 1,
+            "OpImageGather": 1,
+            "OpLabel": 26,
+            "OpLine": 125,
+            "OpLoad": 15,
+            "OpLogicalNot": 4,
+            "OpNoLine": 2,
+            "OpSampledImage": 5,
+            "OpSource": 16,
+            "OpString": 16
+          }
+        }
+      },
+      "verdict": "FAIL"
+    },
+    {
+      "module_index": 27330,
+      "entry": "ps_main",
+      "profile": "ps_6_4",
+      "command": "dxc-cl-option: /tmp/.tmpVQQggD -E ps_main -T ps_6_4 -spirv -WX -Ges -fspv-target-env=vulkan1.1 -HV 2021 -Zi -Fo /tmp/.tmpeY9wqw -Qembed_debug",
+      "replay_command": "dxc -E ps_main -T ps_6_4 -spirv -WX -Ges -fspv-target-env=vulkan1.1 -HV 2021 -Zi -Qembed_debug -Fo <out> -I reconstruction/shader-source/shaders <source>",
+      "target": {
+        "raw_sha256": "75c6694f63fc833da4d8aa71f2ffd505e8f2cacf96827c17505b9428f582774b",
+        "normalized_sha256": "c9def70d4d84a92a82109cb3e6d1c7a48615ae51978a211166155aaa96d9a24c",
+        "fingerprint": {
+          "entries": [
+            [
+              "Fragment",
+              "ps_main"
+            ]
+          ],
+          "local_size": null,
+          "capabilities": [
+            "ImageQuery",
+            "RuntimeDescriptorArray",
+            "Shader"
+          ],
+          "bindings": [
+            [
+              0,
+              0,
+              "UniformConstant",
+              "sampler_lnc",
+              "Sampler"
+            ],
+            [
+              0,
+              1,
+              "UniformConstant",
+              "sampler_llr",
+              "Sampler"
+            ],
+            [
+              0,
+              3,
+              "UniformConstant",
+              "sampler_llc",
+              "Sampler"
+            ],
+            [
+              0,
+              9,
+              "UniformConstant",
+              "sampler_default",
+              "Sampler"
+            ],
+            [
+              0,
+              13,
+              "Uniform",
+              "$Globals",
+              "UniformBuffer(UBO)"
+            ],
+            [
+              0,
+              14,
+              "Uniform",
+              "color_library",
+              "UniformBuffer(UBO)"
+            ],
+            [
+              0,
+              15,
+              "UniformConstant",
+              "buildings_mask",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              18,
+              "UniformConstant",
+              "rocky_terrain",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              19,
+              "UniformConstant",
+              "paths_visual",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              20,
+              "UniformConstant",
+              "water_mask",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              22,
+              "UniformConstant",
+              "mud",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              25,
+              "UniformConstant",
+              "dirthpath_heightmap",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              26,
+              "UniformConstant",
+              "dirt_1",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              27,
+              "UniformConstant",
+              "dirt_2",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              28,
+              "UniformConstant",
+              "grass",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              29,
+              "UniformConstant",
+              "dirt_mask",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              31,
+              "UniformConstant",
+              "brick_colors",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              33,
+              "UniformConstant",
+              "stone_floor_normal",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              34,
+              "UniformConstant",
+              "stone_floor_seed",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              35,
+              "UniformConstant",
+              "stone_floor_height",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              36,
+              "UniformConstant",
+              "stone_floor_roughness",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              37,
+              "UniformConstant",
+              "stone_floor_seed_2",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              38,
+              "UniformConstant",
+              "stone_floor_normal_2",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              39,
+              "UniformConstant",
+              "stone_floor_height_2",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              40,
+              "UniformConstant",
+              "stone_floor_roughness_2",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              41,
+              "UniformConstant",
+              "stone_floor_seed_3",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              42,
+              "UniformConstant",
+              "stone_floor_normal_3",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              43,
+              "UniformConstant",
+              "stone_floor_height_3",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              44,
+              "UniformConstant",
+              "stone_floor_roughness_3",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              45,
+              "UniformConstant",
+              "garden_mask",
+              "SampledImage(2D)"
+            ],
+            [
+              1,
+              0,
+              "Uniform",
+              "frame_constants",
+              "UniformBuffer(UBO)"
+            ]
+          ],
+          "opcode_histogram": {
+            "OpAccessChain": 9,
+            "OpBitcast": 31,
+            "OpBitwiseAnd": 33,
+            "OpBitwiseOr": 18,
+            "OpBitwiseXor": 66,
+            "OpBranch": 37,
+            "OpBranchConditional": 23,
+            "OpCapability": 3,
+            "OpCompositeConstruct": 50,
+            "OpCompositeExtract": 145,
+            "OpCompositeInsert": 3,
+            "OpConstant": 84,
+            "OpConstantComposite": 29,
+            "OpConstantFalse": 1,
+            "OpConstantNull": 2,
+            "OpConstantTrue": 1,
+            "OpConvertFToS": 5,
+            "OpConvertFToU": 8,
+            "OpConvertUToF": 4,
+            "OpDPdx": 2,
+            "OpDPdy": 2,
+            "OpDecorate": 71,
+            "OpDot": 9,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 3,
+            "OpExtInst": 123,
+            "OpExtInstImport": 1,
+            "OpExtension": 1,
+            "OpFAdd": 65,
+            "OpFDiv": 12,
+            "OpFMul": 99,
+            "OpFNegate": 3,
+            "OpFOrdEqual": 2,
+            "OpFOrdGreaterThan": 11,
+            "OpFOrdLessThan": 6,
+            "OpFRem": 3,
+            "OpFSub": 80,
+            "OpFunction": 1,
+            "OpFunctionEnd": 1,
+            "OpIAdd": 71,
+            "OpIEqual": 2,
+            "OpIMul": 16,
+            "OpImageQueryLod": 1,
+            "OpImageSampleExplicitLod": 30,
+            "OpImageSampleImplicitLod": 20,
+            "OpLabel": 67,
+            "OpLine": 1128,
+            "OpLoad": 42,
+            "OpLogicalNot": 3,
+            "OpLoopMerge": 2,
+            "OpMatrixTimesVector": 1,
+            "OpMemberDecorate": 134,
+            "OpMemberName": 110,
+            "OpMemoryModel": 1,
+            "OpModuleProcessed": 2,
+            "OpName": 44,
+            "OpNoLine": 35,
+            "OpPhi": 53,
+            "OpReturn": 1,
+            "OpSampledImage": 51,
+            "OpSelect": 68,
+            "OpSelectionMerge": 25,
+            "OpShiftLeftLogical": 63,
+            "OpShiftRightLogical": 44,
+            "OpSource": 38,
+            "OpSourceContinued": 2,
+            "OpStore": 2,
+            "OpString": 38,
+            "OpSwitch": 4,
+            "OpTranspose": 1,
+            "OpTypeArray": 1,
+            "OpTypeBool": 1,
+            "OpTypeFloat": 1,
+            "OpTypeFunction": 1,
+            "OpTypeImage": 2,
+            "OpTypeInt": 2,
+            "OpTypeMatrix": 2,
+            "OpTypePointer": 14,
+            "OpTypeSampledImage": 2,
+            "OpTypeSampler": 1,
+            "OpTypeStruct": 4,
+            "OpTypeVector": 7,
+            "OpTypeVoid": 1,
+            "OpULessThan": 2,
+            "OpUMod": 1,
+            "OpUndef": 2,
+            "OpUnreachable": 2,
+            "OpVariable": 36,
+            "OpVectorShuffle": 33,
+            "OpVectorTimesMatrix": 8,
+            "OpVectorTimesScalar": 60
+          }
+        }
+      },
+      "candidate": {
+        "raw_sha256": "0c4b8f08fa79ae31cf6433c4431b0d88c4f7c46d5dd94087d8977ddbae6d27a2",
+        "normalized_sha256": "6f9b9db15a907167f390e62b059df578ede05a195d055ec45728d53d05a67d9b",
+        "fingerprint": {
+          "entries": [
+            [
+              "Fragment",
+              "ps_main"
+            ]
+          ],
+          "local_size": null,
+          "capabilities": [
+            "ImageQuery",
+            "RuntimeDescriptorArray",
+            "Shader"
+          ],
+          "bindings": [
+            [
+              0,
+              14,
+              "Uniform",
+              "color_library",
+              "UniformBuffer(UBO)"
+            ]
+          ],
+          "opcode_histogram": {
+            "OpAccessChain": 2,
+            "OpCapability": 3,
+            "OpCompositeConstruct": 1,
+            "OpCompositeExtract": 1,
+            "OpConstant": 7,
+            "OpConstantComposite": 2,
+            "OpConvertFToU": 1,
+            "OpDPdx": 1,
+            "OpDPdy": 1,
+            "OpDecorate": 6,
+            "OpDot": 1,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 3,
+            "OpExtInst": 3,
+            "OpExtInstImport": 1,
+            "OpExtension": 1,
+            "OpFAdd": 1,
+            "OpFMul": 2,
+            "OpFunction": 1,
+            "OpFunctionEnd": 1,
+            "OpLabel": 1,
+            "OpLine": 22,
+            "OpLoad": 3,
+            "OpMemberDecorate": 38,
+            "OpMemberName": 38,
+            "OpMemoryModel": 1,
+            "OpModuleProcessed": 2,
+            "OpName": 6,
+            "OpNoLine": 1,
+            "OpReturn": 1,
+            "OpSource": 16,
+            "OpStore": 2,
+            "OpString": 16,
+            "OpTypeFloat": 1,
+            "OpTypeFunction": 1,
+            "OpTypeInt": 2,
+            "OpTypePointer": 5,
+            "OpTypeStruct": 2,
+            "OpTypeVector": 4,
+            "OpTypeVoid": 1,
+            "OpVariable": 4,
+            "OpVectorShuffle": 2
+          }
+        }
+      },
+      "structural_match": false,
+      "normalized_hash_match": false,
+      "differences": {
+        "bindings": {
+          "target_only": [
+            [
+              0,
+              0,
+              "UniformConstant",
+              "sampler_lnc",
+              "Sampler"
+            ],
+            [
+              0,
+              1,
+              "UniformConstant",
+              "sampler_llr",
+              "Sampler"
+            ],
+            [
+              0,
+              3,
+              "UniformConstant",
+              "sampler_llc",
+              "Sampler"
+            ],
+            [
+              0,
+              9,
+              "UniformConstant",
+              "sampler_default",
+              "Sampler"
+            ],
+            [
+              0,
+              13,
+              "Uniform",
+              "$Globals",
+              "UniformBuffer(UBO)"
+            ],
+            [
+              0,
+              15,
+              "UniformConstant",
+              "buildings_mask",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              18,
+              "UniformConstant",
+              "rocky_terrain",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              19,
+              "UniformConstant",
+              "paths_visual",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              20,
+              "UniformConstant",
+              "water_mask",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              22,
+              "UniformConstant",
+              "mud",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              25,
+              "UniformConstant",
+              "dirthpath_heightmap",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              26,
+              "UniformConstant",
+              "dirt_1",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              27,
+              "UniformConstant",
+              "dirt_2",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              28,
+              "UniformConstant",
+              "grass",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              29,
+              "UniformConstant",
+              "dirt_mask",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              31,
+              "UniformConstant",
+              "brick_colors",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              33,
+              "UniformConstant",
+              "stone_floor_normal",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              34,
+              "UniformConstant",
+              "stone_floor_seed",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              35,
+              "UniformConstant",
+              "stone_floor_height",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              36,
+              "UniformConstant",
+              "stone_floor_roughness",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              37,
+              "UniformConstant",
+              "stone_floor_seed_2",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              38,
+              "UniformConstant",
+              "stone_floor_normal_2",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              39,
+              "UniformConstant",
+              "stone_floor_height_2",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              40,
+              "UniformConstant",
+              "stone_floor_roughness_2",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              41,
+              "UniformConstant",
+              "stone_floor_seed_3",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              42,
+              "UniformConstant",
+              "stone_floor_normal_3",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              43,
+              "UniformConstant",
+              "stone_floor_height_3",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              44,
+              "UniformConstant",
+              "stone_floor_roughness_3",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              45,
+              "UniformConstant",
+              "garden_mask",
+              "SampledImage(2D)"
+            ],
+            [
+              1,
+              0,
+              "Uniform",
+              "frame_constants",
+              "UniformBuffer(UBO)"
+            ]
+          ],
+          "candidate_only": []
+        },
+        "opcode_histogram": {
+          "target_only": {
+            "OpAccessChain": 9,
+            "OpBitcast": 31,
+            "OpBitwiseAnd": 33,
+            "OpBitwiseOr": 18,
+            "OpBitwiseXor": 66,
+            "OpBranch": 37,
+            "OpBranchConditional": 23,
+            "OpCompositeConstruct": 50,
+            "OpCompositeExtract": 145,
+            "OpCompositeInsert": 3,
+            "OpConstant": 84,
+            "OpConstantComposite": 29,
+            "OpConstantFalse": 1,
+            "OpConstantNull": 2,
+            "OpConstantTrue": 1,
+            "OpConvertFToS": 5,
+            "OpConvertFToU": 8,
+            "OpConvertUToF": 4,
+            "OpDPdx": 2,
+            "OpDPdy": 2,
+            "OpDecorate": 71,
+            "OpDot": 9,
+            "OpExtInst": 123,
+            "OpFAdd": 65,
+            "OpFDiv": 12,
+            "OpFMul": 99,
+            "OpFNegate": 3,
+            "OpFOrdEqual": 2,
+            "OpFOrdGreaterThan": 11,
+            "OpFOrdLessThan": 6,
+            "OpFRem": 3,
+            "OpFSub": 80,
+            "OpIAdd": 71,
+            "OpIEqual": 2,
+            "OpIMul": 16,
+            "OpImageQueryLod": 1,
+            "OpImageSampleExplicitLod": 30,
+            "OpImageSampleImplicitLod": 20,
+            "OpLabel": 67,
+            "OpLine": 1128,
+            "OpLoad": 42,
+            "OpLogicalNot": 3,
+            "OpLoopMerge": 2,
+            "OpMatrixTimesVector": 1,
+            "OpMemberDecorate": 134,
+            "OpMemberName": 110,
+            "OpName": 44,
+            "OpNoLine": 35,
+            "OpPhi": 53,
+            "OpSampledImage": 51,
+            "OpSelect": 68,
+            "OpSelectionMerge": 25,
+            "OpShiftLeftLogical": 63,
+            "OpShiftRightLogical": 44,
+            "OpSource": 38,
+            "OpSourceContinued": 2,
+            "OpString": 38,
+            "OpSwitch": 4,
+            "OpTranspose": 1,
+            "OpTypeArray": 1,
+            "OpTypeBool": 1,
+            "OpTypeImage": 2,
+            "OpTypeMatrix": 2,
+            "OpTypePointer": 14,
+            "OpTypeSampledImage": 2,
+            "OpTypeSampler": 1,
+            "OpTypeStruct": 4,
+            "OpTypeVector": 7,
+            "OpULessThan": 2,
+            "OpUMod": 1,
+            "OpUndef": 2,
+            "OpUnreachable": 2,
+            "OpVariable": 36,
+            "OpVectorShuffle": 33,
+            "OpVectorTimesMatrix": 8,
+            "OpVectorTimesScalar": 60
+          },
+          "candidate_only": {
+            "OpAccessChain": 2,
+            "OpCompositeConstruct": 1,
+            "OpCompositeExtract": 1,
+            "OpConstant": 7,
+            "OpConstantComposite": 2,
+            "OpConvertFToU": 1,
+            "OpDPdx": 1,
+            "OpDPdy": 1,
+            "OpDecorate": 6,
+            "OpDot": 1,
+            "OpExtInst": 3,
+            "OpFAdd": 1,
+            "OpFMul": 2,
+            "OpLabel": 1,
+            "OpLine": 22,
+            "OpLoad": 3,
+            "OpMemberDecorate": 38,
+            "OpMemberName": 38,
+            "OpName": 6,
+            "OpNoLine": 1,
+            "OpSource": 16,
+            "OpString": 16,
+            "OpTypePointer": 5,
+            "OpTypeStruct": 2,
+            "OpTypeVector": 4,
+            "OpVariable": 4,
+            "OpVectorShuffle": 2
+          }
+        }
+      },
+      "verdict": "FAIL"
+    }
+  ],
+  "summary": {
+    "checked": 2,
+    "pass_normalized": 0,
+    "pass_structural": 0,
+    "fail": 2
+  }
+}

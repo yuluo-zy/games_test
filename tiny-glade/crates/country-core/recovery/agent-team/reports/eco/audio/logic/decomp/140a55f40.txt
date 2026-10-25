@@ -1,0 +1,39 @@
+// instantiate_audio @ 0x140a55f40
+
+void __cdecl country_core::resources::audio_resources::AudioCore::instantiate_audio(void)
+
+{
+  void *extraout_RAX;
+  undefined8 *in_RCX;
+  longlong *in_RDX;
+  void *_Dst;
+  void *in_R8;
+  size_t in_R9;
+  
+  if (*in_RDX == 0) {
+    if ((longlong)in_R9 < 0) {
+LAB_140a55fdd:
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    if (in_R9 == 0) {
+      _Dst = (void *)0x1;
+    }
+    else {
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      _Dst = extraout_RAX;
+      if (extraout_RAX == (void *)0x0) goto LAB_140a55fdd;
+    }
+    memcpy(_Dst,in_R8,in_R9);
+    *in_RCX = 0;
+    in_RCX[2] = in_R9;
+    in_RCX[3] = _Dst;
+    in_RCX[4] = in_R9;
+    *(undefined1 *)(in_RCX + 5) = 2;
+  }
+  else {
+    AudioCoreInner::instantiate_audio();
+  }
+  return;
+}
+

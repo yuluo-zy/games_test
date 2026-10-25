@@ -1,0 +1,36 @@
+// stop_immediately @ 0x1408b72e0
+
+void __cdecl country_core::systems::audio::music::music_player::MusicPlayer::stop_immediately(void)
+
+{
+  undefined8 *in_RCX;
+  longlong lVar1;
+  longlong lVar2;
+  longlong local_b0;
+  
+  if (in_RCX[0x1f] != 0) {
+    lVar1 = in_RCX[0x1e] + 8;
+    lVar2 = in_RCX[0x1f] * 0x30;
+    do {
+      if (*(int *)(lVar1 + -8) == 1) {
+        libfmod::EventInstance::stop();
+        if (local_b0 != -0x7ffffffffffffffc) {
+                    // WARNING: Subroutine does not return
+          core::result::unwrap_failed();
+        }
+      }
+      lVar1 = lVar1 + 0x30;
+      lVar2 = lVar2 + -0x30;
+    } while (lVar2 != 0);
+  }
+  *in_RCX = 0;
+  if (*(int *)(in_RCX + 2) == 1) {
+    libfmod::EventInstance::stop();
+    if (local_b0 != -0x7ffffffffffffffc) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  return;
+}
+

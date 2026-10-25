@@ -1,0 +1,783 @@
+--- a/tiny-glade/crates/country-core/src/systems/ui/signifiers/signifier_factory.rs
++++ b/tiny-glade/crates/country-core/src/systems/ui/signifiers/signifier_factory.rs
+@@ -1,23 +1,8 @@
+-//! `signifier_factory.rs` — 指示符记录工厂与实体构建器（O，2026-10-17 coregap-1 fresh 反编译）。
++//! 指示符拥有工厂与实体构建器，保留既有 Arc 闭包工厂接口。
+ //!
+-//! 证据：
+-//! - `SignifierFactory::new` 0x14089d8b0：分配并整块拷贝载荷字节 → 40B 记录
+-//!   `{name_len@+0, name_ptr@+8, name_len@+0x10, &inner@+0x18, marker@+0x20}`（O 机器码
+-//!   `memcpy` + 5×qword 写）。原生 40 B 记录 = `{name: String, inner: Arc<dyn Fn(
+-//!   &AssetMeshLibrary, &AssetShaderLibrary, &mut Commands) -> Vec<Entity> + Send + Sync>}`：
+-//!   前 24 B 是 `String {len,ptr,len}`，后 16 B 是 Arc 胖指针 `{data,vtable}`。glade-border
+-//!   perimeter（0x141be0e73）与 `DebugLine::show`（0x140b04f70）都以此形状入
+-//!   `UiSignifierStream`；前者 env = `{1,1, label Vec, perimeter f32}`（0x30 B，
+-//!   vtable 0x142efa150），后者 env = `{points, colors, length, width, ui_pass, dashed}`
+-//!   （ArcInner 数据 0x40 B，vtable 0x142ae70d0）。
+-//! - `SignifierEntityBuilder`（0x90B）：`new` 0x14089d9b0（拷 48B 载荷 + 置默认）、
+-//!   `set_ui_pass` 0x14089dad0（`+0x8a = pass ^ 1`，整块拷 0x90）、`animation_duration`
+-//!   0x14089dc90（写 `+0x78`）、`custom_shader` 0x14089db00（替换 shader 名
+-//!   `{len@+0x60, ptr@+0x68, cap@+0x70}`）、`build` 0x14089dd50（spawn + 组件入队）。
+-//!
+-//! `build` 完整入队需要 `DrawableMeshBundle`/`UiPass`/`WireframePass`/`DontCastShadow`/
+-//! `SignifierMinimumLifespan`/`SignifierParentToVolumeOrigin`/`TransientMesh`（render 边界，
+-//! 未落库）——本实现 spawn 实体并插入已落库的 `SignifierAnimation`，其余登记 GAP（不冒充）。
++//! B PDB486 的 new274B/build3840B 全范围原字节支撑网格五分支、
++//! 动画/scale/pass、严格资源查找和 TransientMesh 生命周期。实体身份
++//! 属于 signifier_create；本构建器不生成假 SignifierId。
+ 
+ use std::sync::Arc;
+ 
+@@ -28,7 +13,6 @@
+ use crate::asset_libraries::shader_library::AssetShaderLibrary;
+ 
+ use super::animation::SignifierAnimation;
+-use super::signifier_create::SignifierId;
+ 
+ /// 原生唤醒签名（O：vtable 0x142ae70d0 / 0x142efa150 的 call 槽）。
+ ///
+@@ -37,11 +21,7 @@
+ /// （0x140b2cfa0）在去重后调用 vtable 槽唤醒它。对应 `Arc::drop_slow` 单态
+ /// 0x14064f9d0（`dyn Fn(tuple<ref AssetMeshLibrary, ref AssetShaderLibrary,
+ /// ref_mut Commands>, Output = Vec<Entity>) + Send + Sync`）。
+-pub type SignifierClosure = dyn Fn(
+-        &AssetMeshLibrary,
+-        &AssetShaderLibrary,
+-        &mut Commands<'_, '_>,
+-    ) -> Vec<Entity>
++pub type SignifierClosure = dyn Fn(&AssetMeshLibrary, &AssetShaderLibrary, &mut Commands<'_, '_>) -> Vec<Entity>
+     + Send
+     + Sync;
+ 
+@@ -191,255 +171,486 @@
+     }
+ }
+ 
+-/// `SignifierEntityBuilder` — 指示符实体构建器（O：0x90 B，`new` 0x14089d9b0）。
+-///
+-/// 布局（O，fresh `new`/`set_ui_pass`/`animation_duration`/`custom_shader`/`build`）：
+-/// ```text
+-/// +0x00  u64 tag                      +0x40  u16 = 0x100
+-/// +0x08  u8  color_flag, f32 1.0@+0xc +0x48  u32 extra_a
+-/// +0x10  u64 mesh_kind (build switch) +0x4c  u32 extra_b
+-/// +0x18  [u64;5] mesh_payload (40B)   +0x50  u32 flag50（byte@+0x50）
+-///                                       +0x54  f32 f54
+-///                                       +0x58  u32 flag58（byte@+0x58 bit0）
+-///                                       +0x5c  f32 f5c
+-/// +0x60  u64 shader_len               +0x78  f32 duration
+-/// +0x68  u64 shader_ptr               +0x7c  u64 u7c
+-/// +0x70  u64 shader_cap               +0x84  u32 u84
+-///                                       +0x88  u8 flag88
+-///                                       +0x89  u8 flag89
+-///                                       +0x8a  u8 ui_pass（= pass ^ 1）
+-/// ```
+-/// 未取证的中间字段保持 O 位模式默认，不发明语义。
++/// 原作 SignifierMesh 的五种网格来源；全部数据由正常 Rust 所有者管理。
++pub enum SignifierMesh {
++    Named(String),
++    Empty,
++    Points(Vec<glam::Vec3>),
++    PointsWithColors {
++        points: Vec<glam::Vec3>,
++        colors: Vec<glam::Vec3>,
++    },
++    Generated(Box<dyn Fn() -> Vec<glam::Vec3> + Send + Sync>),
++}
++
++impl std::fmt::Debug for SignifierMesh {
++    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
++        match self {
++            Self::Named(name) => f.debug_tuple("Named").field(name).finish(),
++            Self::Empty => f.write_str("Empty"),
++            Self::Points(points) => f.debug_tuple("Points").field(points).finish(),
++            Self::PointsWithColors { points, colors } => f
++                .debug_struct("PointsWithColors")
++                .field("points", points)
++                .field("colors", colors)
++                .finish(),
++            Self::Generated(_) => f.write_str("Generated(..)"),
++        }
++    }
++}
++
++/// B 14089d9b0 / 14089dd50：解析真实网格、着色器并建立可回收的绘制实体。
++/// 使用原五分支的安全表示，不把应用对象伪装成可跨生命周期解引用的 qword。
+ #[derive(Debug)]
+ pub struct SignifierEntityBuilder {
+-    /// @+0x00。
+-    pub tag: u64,
+-    /// @+0x08（O：默认 0；`build` 以之为 shader 是否有色的标志）。
+-    pub color_flag: u8,
+-    /// @+0x09..+0x0b。
+-    pub pad_09: [u8; 3],
+-    /// @+0x0c（O：位模式 `0x3f800000` = 1.0）。
+-    pub one: f32,
+-    /// @+0x10（O：`build` 的 switch 键 0/1/2/3/4——`new` 载荷首 qword）。
+-    pub mesh_kind: u64,
+-    /// @+0x18..+0x3f（O：`new` 从输入载荷 `[1..6]` 拷入 5 qword）。
+-    pub mesh_payload: [u64; 5],
+-    /// @+0x40（O：默认 0x100）。
+-    pub flags16: u16,
+-    /// @+0x42..+0x47。
+-    pub pad_42: [u8; 6],
+-    /// @+0x48（O：`build` 读面）。
+-    pub extra_a: u32,
+-    /// @+0x4c（O：`build` 读面）。
+-    pub extra_b: u32,
+-    /// @+0x50（O：整 u32；`build` 读 byte@+0x50）。
+-    pub flag50: u32,
+-    /// @+0x54（O：`flag50` 置位时 `build` 读面）。
+-    pub f54: f32,
+-    /// @+0x58（O：整 u32；`build` 读 byte@+0x58 bit0）。
+-    pub flag58: u32,
+-    /// @+0x5c（O：`flag58` 置位时 `build` 读面）。
+-    pub f5c: f32,
+-    /// @+0x60（shader 名 `{len,ptr,len}` 首部）。
+-    pub shader_len: u64,
+-    /// @+0x68。
+-    pub shader_ptr: *mut u8,
+-    /// @+0x70。
+-    pub shader_cap: u64,
+-    /// @+0x78（O：`animation_duration` 写面；`build` 落到 `SignifierAnimation.duration`）。
+-    pub duration: f32,
+-    /// @+0x7c（O：`build` 读面）。
+-    pub u7c: u64,
+-    /// @+0x84（O：`build` 读面）。
+-    pub u84: u32,
+-    /// @+0x88（O：`build` 读面——SignifierParentToVolumeOrigin 门控）。
+-    pub flag88: u8,
+-    /// @+0x89（O：`build` 读面）。
+-    pub flag89: u8,
+-    /// @+0x8a（O：`set_ui_pass` 写 `pass ^ 1`；`build` 决定 UiPass 槽）。
+-    pub ui_pass: u8,
+-}
+-
+-// SAFETY: 布局与 `SignifierFactory` 相同理由——`shader_ptr` 指向 `Box<[u8]>` 持有的字节；
+-// 仅作布局对齐，deref 由 `shader_name()` 安全封装。
+-unsafe impl Send for SignifierEntityBuilder {}
+-
+-impl Clone for SignifierEntityBuilder {
+-    /// 深拷贝（避免派生 `Clone` 对裸指针 + `Drop` 的双重释放）。
+-    fn clone(&self) -> Self {
+-        let shader = self.shader_name().map(str::to_owned);
+-        let mut b = Self {
+-            tag: self.tag,
+-            color_flag: self.color_flag,
+-            pad_09: self.pad_09,
+-            one: self.one,
+-            mesh_kind: self.mesh_kind,
+-            mesh_payload: self.mesh_payload,
+-            flags16: self.flags16,
+-            pad_42: self.pad_42,
+-            extra_a: self.extra_a,
+-            extra_b: self.extra_b,
+-            flag50: self.flag50,
+-            f54: self.f54,
+-            flag58: self.flag58,
+-            f5c: self.f5c,
+-            shader_len: 0,
+-            shader_ptr: std::ptr::null_mut(),
+-            shader_cap: 0,
+-            duration: self.duration,
+-            u7c: self.u7c,
+-            u84: self.u84,
+-            flag88: self.flag88,
+-            flag89: self.flag89,
+-            ui_pass: self.ui_pass,
++    mesh: SignifierMesh,
++    rotation: glam::Quat,
++    position: glam::Vec3,
++    shader: String,
++    animation: SignifierAnimation,
++    explicit_scale: Option<f32>,
++    minimum_lifespan: Option<f32>,
++    parent_to_volume_origin: bool,
++    wireframe: bool,
++    ui_pass: bool,
++}
++
++impl SignifierEntityBuilder {
++    pub fn new(mesh: SignifierMesh) -> Self {
++        Self {
++            mesh,
++            rotation: glam::Quat::IDENTITY,
++            position: glam::Vec3::ZERO,
++            shader: "vertex_color_shader".to_owned(),
++            animation: SignifierAnimation {
++                head: 1u64.to_le_bytes(),
++                flag_8: 0,
++                flag_9: 1,
++                value: 1.0,
++                duration: 0.2,
++                t: 0.0,
++                eased: 0.0,
++                ..Default::default()
++            },
++            explicit_scale: None,
++            minimum_lifespan: None,
++            parent_to_volume_origin: false,
++            wireframe: false,
++            ui_pass: true,
++        }
++    }
++
++    pub fn from_mesh_name(name: impl Into<String>) -> Self {
++        Self::new(SignifierMesh::Named(name.into()))
++    }
++
++    pub fn from_points(points: Vec<glam::Vec3>) -> Self {
++        Self::new(SignifierMesh::Points(points))
++    }
++
++    pub fn position(mut self, position: glam::Vec3) -> Self {
++        self.position = position;
++        self
++    }
++
++    pub fn rotation(mut self, rotation: glam::Quat) -> Self {
++        self.rotation = rotation;
++        self
++    }
++
++    pub fn scale(mut self, scale: f32) -> Self {
++        self.explicit_scale = Some(scale);
++        self
++    }
++
++    pub fn animation_duration(mut self, duration: f32) -> Self {
++        self.animation.duration = duration;
++        self
++    }
++
++    pub fn custom_shader(mut self, name: &str) -> Self {
++        self.shader = name.to_owned();
++        self
++    }
++
++    pub fn shader_name(&self) -> &str {
++        &self.shader
++    }
++
++    /// 原作写 pass ^ 1，并仅在该字节为零时插入 UiPass。
++    pub fn set_ui_pass(mut self, pass: u8) -> Self {
++        self.ui_pass = (pass ^ 1) == 0;
++        self
++    }
++
++    pub fn mark_as_debug(mut self) -> Self {
++        self.wireframe = true;
++        self
++    }
++
++    pub fn disable_default_animation(mut self) -> Self {
++        self.animation.flag_8 = 1;
++        self
++    }
++
++    pub fn minimum_lifespan(mut self, lifespan: f32) -> Self {
++        self.minimum_lifespan = Some(lifespan);
++        self
++    }
++
++    pub fn parent_to_widget(mut self) -> Self {
++        self.parent_to_volume_origin = true;
++        self
++    }
++
++    pub fn animation_easing(mut self, easing: ::utils::easing_functions::EasingFunction) -> Self {
++        use ::utils::easing_functions::EasingFunction as E;
++        let (tag, value): (u32, f32) = match easing {
++            E::CircularInOut => (0, 0.0),
++            E::CubicInOut => (1, 0.0),
++            E::SineInOut => (2, 0.0),
++            E::Bias(value) => (3, value),
++            E::ElasticInOut => (4, 0.0),
++            E::BackOut => (5, 0.0),
++            E::CubicOut => (6, 0.0),
+         };
+-        if let Some(name) = shader {
+-            b.shader_name_replace(&name);
+-        }
+-        b
+-    }
+-}
+-
+-impl Default for SignifierEntityBuilder {
+-    /// `new` 的默认面（O：0x14089d9b0 置默认值序列 + 装默认 shader
+-    /// `"vertex_color_shader"`（len 0x13 = 19））。
+-    fn default() -> Self {
+-        let mut b = Self {
+-            tag: 0,
+-            color_flag: 0,
+-            pad_09: [0; 3],
+-            one: 1.0,
+-            mesh_kind: 0,
+-            mesh_payload: [0; 5],
+-            flags16: 0x100,
+-            pad_42: [0; 6],
+-            extra_a: 0,
+-            extra_b: 0,
+-            flag50: 0,
+-            f54: 0.0,
+-            flag58: 0,
+-            f5c: 0.0,
+-            shader_len: 0,
+-            shader_ptr: std::ptr::null_mut(),
+-            shader_cap: 0,
+-            duration: 0.2,
+-            u7c: 0,
+-            u84: 0,
+-            flag88: 0,
+-            flag89: 0,
+-            ui_pass: 0,
++        self.animation.head[..4].copy_from_slice(&tag.to_le_bytes());
++        self.animation.head[4..].copy_from_slice(&value.to_le_bytes());
++        self
++    }
++
++    pub fn build(
++        mut self,
++        meshes: &AssetMeshLibrary,
++        shaders: &AssetShaderLibrary,
++        commands: &mut Commands,
++    ) -> Entity {
++        use super::{
++            animation::SignifierParentToVolumeOrigin,
++            signifier_mark_for_delete::SignifierMinimumLifespan,
+         };
+-        b.shader_name_replace("vertex_color_shader");
+-        b
+-    }
+-}
+-
+-impl SignifierEntityBuilder {
+-    /// `SignifierEntityBuilder::new`（0x14089d9b0，O）：拷贝 48B 网格载荷 + 置默认。
+-    /// `payload` 以 `[u64;6]` 承接（O：`new` 拷 6 qword）——**首 qword = `mesh_kind`
+-    /// （`build` switch 键）**，余 5 qword 入 `mesh_payload`（+0x18..+0x3f）。
+-    ///
+-    /// 注意：不能写成 `Self { .., ..Self::default() }`——本类型实现 `Drop`，
+-    /// 结构体更新语法会让默认临时值的 `Drop` 释放掉 `shader_name_replace` 分配的
+-    /// 默认 shader 串，留下悬垂 `shader_ptr`（后续 `custom_shader` 释放时 trap）。
+-    pub fn new(payload: &[u64; 6]) -> Self {
+-        let mut builder = Self::default();
+-        builder.mesh_kind = payload[0];
+-        builder.mesh_payload = [
+-            payload[1],
+-            payload[2],
+-            payload[3],
+-            payload[4],
+-            payload[5],
++        use crate::{
++            asset_libraries::{mesh_library::MeshAsset, transient_mesh::TransientMesh},
++            components::drawable::DrawableMeshBundle,
++            render::mesh::{ATTR_COLOR, Mesh},
++            systems::render_loop::draw_passes::draw_lists::{
++                DontCastShadow, UiPass, WireframePass,
++            },
++            utils::{components::transform::Transform, geo::mesh_from_pts},
++        };
++
++        let (mesh, transient) = match self.mesh {
++            SignifierMesh::Named(name) => (meshes.get_handle_by_name(&name), false),
++            SignifierMesh::Empty => (
++                meshes.add(MeshAsset::new(Mesh::new("signifier empty"), None)),
++                true,
++            ),
++            SignifierMesh::Points(points) => (
++                meshes.add(MeshAsset::new(
++                    mesh_from_pts("signifier custom", &points),
++                    None,
++                )),
++                true,
++            ),
++            SignifierMesh::PointsWithColors { points, colors } => {
++                let mut mesh = mesh_from_pts("signifier custom w colors", &points);
++                mesh.set_attribute(ATTR_COLOR, colors);
++                (meshes.add(MeshAsset::new(mesh, None)), true)
++            }
++            SignifierMesh::Generated(make_points) => {
++                let points = make_points();
++                (
++                    meshes.add(MeshAsset::new(
++                        mesh_from_pts("signifier custom fn", &points),
++                        None,
++                    )),
++                    true,
++                )
++            }
++        };
++        // 原顺序为网格解析 → 预留实体 → 着色器查找；缺资源仍失败。
++        let entity = commands.spawn_empty().id();
++        let scale = self.explicit_scale.unwrap_or(1.0);
++        let initial_scale = if self.animation.flag_8 == 0 {
++            self.animation.value = scale;
++            0.0
++        } else {
++            scale
++        };
++        let shader = shaders.get_raster_handle_by_name(&self.shader).unwrap();
++        commands.entity(entity).insert((
++            DrawableMeshBundle {
++                mesh,
++                shader,
++                transform: Transform {
++                    rotation: self.rotation,
++                    translation: self.position,
++                    scale: glam::Vec3::splat(initial_scale),
++                },
++            },
++            self.animation,
++        ));
++        if self.wireframe {
++            commands.entity(entity).insert(WireframePass);
++        } else if self.ui_pass {
++            commands.entity(entity).insert(UiPass);
++        }
++        commands.entity(entity).insert(DontCastShadow);
++        if let Some(min_lifespan) = self.minimum_lifespan {
++            commands.entity(entity).insert(SignifierMinimumLifespan {
++                t: 0.0,
++                min_lifespan,
++            });
++        }
++        if self.parent_to_volume_origin {
++            commands
++                .entity(entity)
++                .insert(SignifierParentToVolumeOrigin);
++        }
++        if transient {
++            commands
++                .entity(entity)
++                .insert(TransientMesh::new_with_registry(
++                    mesh,
++                    meshes.transient_meshes(),
++                ));
++        }
++        // 名字哈希的身份由 signifier_create 为工厂返回的实体赋予。
++        entity
++    }
++}
++
++#[cfg(test)]
++mod complete_builder_tests {
++    use super::super::signifier_create::SignifierId;
++    use super::*;
++    use crate::{
++        asset_libraries::{
++            mesh_library::MeshAsset,
++            transient_mesh::{TransientMesh, delete_dropped_transient_meshes},
++            vao_library::AssetVAOLibrary,
++        },
++        render::{mesh::Mesh, shader::RasterShaderProgram, test_device::TestDevice},
++        systems::render_loop::draw_passes::draw_lists::{DontCastShadow, UiPass, WireframePass},
++        utils::components::transform::Transform,
++    };
++    use bevy_ecs::world::CommandQueue;
++    use glam::{Quat, Vec3};
++
++    fn libraries() -> (AssetMeshLibrary, AssetShaderLibrary) {
++        let meshes = AssetMeshLibrary::new();
++        meshes.add(MeshAsset::new(Mesh::new("named"), Some("brush".to_owned())));
++        let shaders = AssetShaderLibrary::new();
++        shaders.add_raster(
++            RasterShaderProgram::new_draw(
++                "vertex_color_shader",
++                Default::default(),
++                &TestDevice(1),
++            ),
++            false,
++        );
++        (meshes, shaders)
++    }
++
++    fn build(
++        builder: SignifierEntityBuilder,
++        meshes: &AssetMeshLibrary,
++        shaders: &AssetShaderLibrary,
++        world: &mut World,
++    ) -> Entity {
++        let mut queue = CommandQueue::default();
++        let entity = builder.build(meshes, shaders, &mut Commands::new(&mut queue, world));
++        queue.apply(world);
++        entity
++    }
++
++    #[test]
++    fn named_mesh_keeps_library_ownership_and_original_animation_defaults() {
++        let (meshes, shaders) = libraries();
++        let mut world = World::new();
++        let rotation = Quat::from_rotation_y(0.7);
++        let position = Vec3::new(1.0, 2.0, 3.0);
++        let entity = build(
++            SignifierEntityBuilder::from_mesh_name("brush")
++                .animation_duration(0.0)
++                .rotation(rotation)
++                .position(position)
++                .scale(1.8),
++            &meshes,
++            &shaders,
++            &mut world,
++        );
++        let transform = world.get::<Transform>(entity).unwrap();
++        assert_eq!(transform.rotation, rotation);
++        assert_eq!(transform.translation, position);
++        assert_eq!(transform.scale, Vec3::ZERO);
++        assert_eq!(
++            *world
++                .get::<crate::asset_libraries::Handle<Mesh>>(entity)
++                .unwrap(),
++            meshes.get_handle_by_name("brush"),
++        );
++        assert!(world.get::<UiPass>(entity).is_some());
++        assert!(world.get::<DontCastShadow>(entity).is_some());
++        assert!(world.get::<TransientMesh>(entity).is_none());
++        assert!(world.get::<SignifierId>(entity).is_none());
++        let mut animation = world.get_mut::<SignifierAnimation>(entity).unwrap();
++        assert_eq!(animation.head, 1u64.to_le_bytes());
++        assert_eq!(animation.flag_9, 1);
++        animation.advance(0.0, false);
++        assert_eq!(
++            (animation.t, animation.eased, animation.value),
++            (1.0, 1.0, 1.8)
++        );
++    }
++
++    #[test]
++    fn all_generated_mesh_branches_keep_and_reclaim_their_actual_receipt() {
++        let (mut meshes, shaders) = libraries();
++        let mut vaos = AssetVAOLibrary::new();
++        let mut world = World::new();
++        let points = vec![Vec3::ZERO, Vec3::X];
++        let sources = [
++            SignifierMesh::Empty,
++            SignifierMesh::Points(points.clone()),
++            SignifierMesh::PointsWithColors {
++                points: points.clone(),
++                colors: vec![Vec3::Y, Vec3::Z],
++            },
++            SignifierMesh::Generated(Box::new(move || points.clone())),
+         ];
+-        builder
+-    }
+-
+-    /// `set_ui_pass`（0x14089dad0，O）：写 `+0x8a = pass ^ 1` 后整块返回 0x90B 构建器。
+-    pub fn set_ui_pass(mut self, pass: u8) -> Self {
+-        self.ui_pass = pass ^ 1;
+-        self
+-    }
+-
+-    /// `animation_duration`（0x14089dc90，O）：写 `+0x78`。
+-    pub fn animation_duration(mut self, duration: f32) -> Self {
+-        self.duration = duration;
+-        self
+-    }
+-
+-    /// `custom_shader`（0x14089db00，O）：把 `{len@+0x60, ptr@+0x68, cap@+0x70}` 换成
+-    /// `name` 的新拷贝（旧串先 dealloc）。
+-    pub fn custom_shader(mut self, name: &str) -> Self {
+-        self.shader_name_replace(name);
+-        self
+-    }
+-
+-    /// 替换 shader 名（O：0x14089db00 **先释放旧串**（`+0x60 != 0` → `rust_dealloc`），
+-    /// 再分配拷贝 + 写 `{len@+0x60, ptr@+0x68, cap@+0x70}`）。
+-    fn shader_name_replace(&mut self, name: &str) {
+-        if !self.shader_ptr.is_null() {
+-            // SAFETY: 指针来自此前 `shader_name_replace` 的 `Box<[u8]>`，长度记录在 `shader_len`。
+-            unsafe {
+-                drop(Box::from_raw(std::slice::from_raw_parts_mut(
+-                    self.shader_ptr,
+-                    self.shader_len as usize,
+-                )));
++        for (source, label) in sources.into_iter().zip([
++            "signifier empty",
++            "signifier custom",
++            "signifier custom w colors",
++            "signifier custom fn",
++        ]) {
++            let entity = build(
++                SignifierEntityBuilder::new(source)
++                    .disable_default_animation()
++                    .scale(2.0)
++                    .set_ui_pass(0),
++                &meshes,
++                &shaders,
++                &mut world,
++            );
++            let receipt = world.get::<TransientMesh>(entity).unwrap();
++            let handle = receipt.mesh_handle();
++            assert_eq!(meshes.get(handle).unwrap().label, label);
++            let mesh = meshes.get(handle).unwrap();
++            if label == "signifier empty" {
++                assert!(mesh.indices.is_empty());
++                assert!(mesh.attributes.is_empty());
++            } else {
++                assert_eq!(mesh.positions(), (&[0, 1][..], &[Vec3::ZERO, Vec3::X][..]));
++                let crate::render::mesh::VertexAttributeValues::Float3(colors) =
++                    &mesh.attributes[crate::render::mesh::ATTR_COLOR]
++                else {
++                    panic!("expected original color channel")
++                };
++                let expected = if label == "signifier custom w colors" {
++                    vec![Vec3::Y, Vec3::Z]
++                } else {
++                    vec![Vec3::ONE, Vec3::ONE]
++                };
++                assert_eq!(colors, &expected);
+             }
+-        }
+-        let bytes: Box<[u8]> = name.as_bytes().into();
+-        let ptr = Box::into_raw(bytes) as *mut u8;
+-        self.shader_len = name.len() as u64;
+-        self.shader_ptr = ptr;
+-        self.shader_cap = name.len() as u64;
+-    }
+-
+-    /// shader 名字面（I：`{len,ptr,len}` 记录的安全读面）。
+-    pub fn shader_name(&self) -> Option<&str> {
+-        if self.shader_ptr.is_null() {
+-            return None;
+-        }
+-        // SAFETY: 指针来自 `shader_name_replace` 的 `Box<[u8]>`，长度记录在 `shader_len`。
+-        unsafe {
+-            let bytes = std::slice::from_raw_parts(self.shader_ptr, self.shader_len as usize);
+-            Some(std::str::from_utf8(bytes).unwrap_or(""))
+-        }
+-    }
+-
+-    /// `build`（0x14089dd50，O 消费面）：spawn 指示符实体 + 插入已落库组件。
+-    ///
+-    /// **已实现**：`Commands::spawn_empty` + 插入 `SignifierAnimation`（`duration` 取自
+-    /// `+0x78`）。
+-    /// **GAP（登记）**：原版随后把 `DrawableMeshBundle`/`SignifierAnimation`、
+-    /// `UiPass`/`WireframePass`（按 +0x89/+0x8a）、`DontCastShadow`、
+-    /// `SignifierMinimumLifespan`（按 +0x58 bit0）、`SignifierParentToVolumeOrigin`
+-    /// （按 +0x88）、`TransientMesh`（按 mesh_kind 载荷）压入 Commands——这些组件在
+-    /// country-core render 边界未落库，不冒充。shader 网格经 `AssetMeshLibrary`/
+-    /// `AssetShaderLibrary` 的解析面同样未接。
+-    pub fn build(self, commands: &mut Commands) -> Entity {
+-        let entity = commands.spawn_empty().id();
+-        commands.entity(entity).insert(SignifierAnimation {
+-            duration: self.duration,
+-            ..SignifierAnimation::default()
+-        });
+-        commands.entity(entity).insert(SignifierId(0));
+-        // GAP：DrawableMeshBundle / UiPass / WireframePass / DontCastShadow /
+-        // SignifierMinimumLifespan / SignifierParentToVolumeOrigin / TransientMesh 未落库。
+-        entity
+-    }
+-}
+-
+-impl Drop for SignifierEntityBuilder {
+-    fn drop(&mut self) {
+-        if !self.shader_ptr.is_null() {
+-            // SAFETY: 指针来自 `shader_name_replace` 的 `Box::into_raw`。
+-            unsafe {
+-                drop(Box::from_raw(std::slice::from_raw_parts_mut(
+-                    self.shader_ptr,
+-                    self.shader_len as usize,
+-                )));
++
++            assert_eq!(
++                *world
++                    .get::<crate::asset_libraries::Handle<Mesh>>(entity)
++                    .unwrap(),
++                handle
++            );
++            assert_eq!(
++                world.get::<Transform>(entity).unwrap().scale,
++                Vec3::splat(2.0)
++            );
++            assert!(world.get::<UiPass>(entity).is_none());
++            assert!(world.get::<DontCastShadow>(entity).is_some());
++            world.despawn(entity);
++            assert_eq!(
++                meshes.transient_meshes().lock().unwrap().last(),
++                Some(&handle)
++            );
++            delete_dropped_transient_meshes(&TestDevice(0), &mut meshes, &mut vaos);
++            assert!(meshes.get(handle).is_none());
++        }
++        assert!(meshes.get(meshes.get_handle_by_name("brush")).is_some());
++    }
++
++    #[test]
++    fn wireframe_precedes_ui_and_optional_lifespan_and_parent_are_real_components() {
++        let (meshes, shaders) = libraries();
++        let mut world = World::new();
++        let entity = build(
++            SignifierEntityBuilder::from_mesh_name("brush")
++                .mark_as_debug()
++                .minimum_lifespan(0.7)
++                .parent_to_widget(),
++            &meshes,
++            &shaders,
++            &mut world,
++        );
++        assert!(world.get::<WireframePass>(entity).is_some());
++        assert!(world.get::<UiPass>(entity).is_none());
++        assert!(
++            world
++                .get::<super::super::animation::SignifierParentToVolumeOrigin>(entity)
++                .is_some()
++        );
++        let lifespan = world
++            .get::<super::super::signifier_mark_for_delete::SignifierMinimumLifespan>(entity)
++            .unwrap();
++        assert_eq!((lifespan.t, lifespan.min_lifespan), (0.0, 0.7));
++    }
++
++    #[test]
++    fn generated_callback_runs_once_and_is_dropped_after_its_mesh_is_registered() {
++        use std::sync::atomic::{AtomicUsize, Ordering};
++        struct DropCount(Arc<AtomicUsize>);
++        impl Drop for DropCount {
++            fn drop(&mut self) {
++                self.0.fetch_add(1, Ordering::Relaxed);
+             }
+-            self.shader_ptr = std::ptr::null_mut();
+-        }
+-    }
+-}
+-
++        }
++        let calls = Arc::new(AtomicUsize::new(0));
++        let drops = Arc::new(AtomicUsize::new(0));
++        let closure_calls = Arc::clone(&calls);
++        let capture = DropCount(Arc::clone(&drops));
++        let source = SignifierMesh::Generated(Box::new(move || {
++            let _ = &capture;
++            closure_calls.fetch_add(1, Ordering::Relaxed);
++            vec![Vec3::ZERO, Vec3::X]
++        }));
++        let (meshes, shaders) = libraries();
++        build(
++            SignifierEntityBuilder::new(source),
++            &meshes,
++            &shaders,
++            &mut World::new(),
++        );
++        assert_eq!(calls.load(Ordering::Relaxed), 1);
++        assert_eq!(drops.load(Ordering::Relaxed), 1);
++    }
++
++    #[test]
++    fn missing_mesh_fails_before_reservation_and_missing_shader_fails_after_reservation() {
++        for (mesh_name, expected_reserved) in [("missing", 0), ("brush", 1)] {
++            let (meshes, _) = libraries();
++            let shaders = AssetShaderLibrary::new();
++            let mut world = World::new();
++            let mut queue = CommandQueue::default();
++            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++                SignifierEntityBuilder::from_mesh_name(mesh_name).build(
++                    &meshes,
++                    &shaders,
++                    &mut Commands::new(&mut queue, &world),
++                );
++            }));
++            assert!(result.is_err());
++            assert_eq!(world.entities().used_count(), expected_reserved);
++            queue.apply(&mut world);
++        }
++    }
++}

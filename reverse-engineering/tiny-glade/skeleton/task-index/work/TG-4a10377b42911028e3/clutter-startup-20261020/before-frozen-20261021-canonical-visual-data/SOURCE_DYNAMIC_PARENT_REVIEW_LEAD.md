@@ -1,0 +1,7 @@
+# 农舍老虎窗动态collision parent源码独立复核
+
+core_business_lead，2026-10-21。接受最窄原parent→唯一真实helper闭包。before `83bfdf7b551ceaf2447eee58539bd8a154b39ed0412fe06bc318721db371110b`，after `ec664dc513a7555c2268845869cf3267ad77a858d52814d6974e808b6c14f724`，patch `385be58d5544e19866f2c6fe562a6fc21c0e31a5ade0e8dedec8fffbb037bde0`；已核hash/patch/源码，无Cargo或runtime结论。必须配helper720bdfb6及canonical schema同行集成。
+
+原rank1..3宽度表[.8,1.5,2.2]、height1、pad.2，真实PublicWalls roof关联和cached SRT进入helper；Local保持同一量化缓存owner。helper返回真实convex sameArc双槽，actualWall来源+Info.state在原8229时点先insert_for，原82c1..e7随后复用set_cached_transform。非法rank在entry前失败，convex失败在entry后保留source/flags而未赋变换。没有旧bbox/defaultsphere替代，也不把独立is_out_of_roof_bounds叶错挂为parent额外门；该额外门在完整原prehelper范围确实不存在。
+
+3新增真实Schedule测试覆盖Local跨帧/奇异scale命中、旧bounds叶拒绝却原parent仍构造、entry前后失败副作用；只是源码验收，root须执行。面板/瓦片/其它视觉仍partial，不能将这次动态collider闭包写作完整visual恢复。

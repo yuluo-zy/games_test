@@ -1,0 +1,39 @@
+{
+  "schema": "tiny-glade-independent-review/v1",
+  "reviewer": "render_reviewer",
+  "date": "2026-10-21",
+  "decision": "accept V2 bounded producer maintenance for root actual validation; V1 remains rejected",
+  "manifest": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/headless-frame-maintenance-v2-20261021/MANIFEST.json",
+  "manifest_sha256": "bd8fe829e7cdd852023f6f2256a6ea1ed2c8beb0f3daee353b00950508f494f9",
+  "patch_sha256": "fccc13d2cb13d90b26eef5cd705d85f79049a55318b294ed9e57b689453a66d8",
+  "sources": {
+    "tiny-glade/crates/tiny-glade/src/production_renderer.rs": {
+      "baseline_sha256": "8224b87cc5723ec2929fd5de0356f1b6f0a32e6533b2a19a7ecf161446b94255",
+      "candidate_sha256": "b0aac913dde5659f4375c4c963cde1111a3a869928e08cb83ca71f462f494657"
+    },
+    "tiny-glade/crates/tiny-glade/tests/core_render_bridge.rs": {
+      "baseline_sha256": "ad4820a58ce123b160eea9b8cd9709b9e7c49078950a1d70846a086fc2651a80",
+      "candidate_sha256": "ffb2aa3e6928a87a4b7b244452e8121f4466c0fd74a63e832ea653b73d34acac"
+    }
+  },
+  "independent_checks": [
+    "两源before/after、patch、未改完成/owner依赖全SHA匹配，当前生产仍baseline。",
+    "放置改为compile_built成功之后、execute_compiled之前，对应原窗口compile→begin/drain→execute；原prewarm/compile失败前不新增maintenance。独立原RNE五call bytes/PDB已另存native addendum ff92618a。",
+    "collect只检查device.poll实际snapshot，完整transaction主/aux receipts SyncSet全到达才wait_frame(0)，Timeline.wait alreadyreached直接return；没有idle/人为等未完成帧。",
+    "当前CompiledCoreGraph强持PreparedSessionFrame.registry/callbacks/retire；FrameImports按graph+physical scoped、retire callback强持marker，collect只删除strong_count0旧marker。",
+    "collect_frame_imports的clear_pass_resources只释放projection snapshot/idle pool；executor.record_compiled在真正录制入口重新prepare_compiled_resources，按当前compiled registry+backend.resources重建managed projection。不会删除当前registry/callbacks。",
+    "collect_cached_results使用全部在册frames hits/productions构建pinned token集合；新compiled结果资源不会被旧retired误删。旧pending创建资源尚未还pool，不能在同一新compiled已成为复用hit；named/imported原分支保持。",
+    "maintenance错误先drop新compiled走原cancel_prepared，再按capture_graph_id cancel_unsubmitted截图，保原Error+context；不提交/重试/吞错。",
+    "新增实际bridge回归显式device.wait全部旧receipts但不session.finish，编译新图→collect旧帧→旧retire触发/新retire未触发/新imports保留→执行新图回读[21,22]；测试wait只建立前提，生产不加。"
+  ],
+  "root_gates": [
+    "strict Vulkan实际bridge旧7+新1。",
+    "原30world所有live/peak/memory/pixels原阈值和原采样位置保持；失败继续保留。",
+    "随后真实GameLoop WSI另验，不以headless成功代替。"
+  ],
+  "limits": [
+    "真正两帧GPU同时在途时仍可能同时两批live；此适配不承诺原30门必过。",
+    "reviewer未Cargo/GPU；候选tests尚未执行。",
+    "不更改rhapsody lease/回收算法、统计/容量/帧上限或原测试。"
+  ]
+}

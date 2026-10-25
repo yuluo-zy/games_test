@@ -1,0 +1,208 @@
+
+/* WARNING: Removing unreachable block (ram,0x000141466fe5) */
+/* WARNING: Removing unreachable block (ram,0x000141466f9b) */
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void __cdecl
+utils::curve::Curve::crashy_slice<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>(void)
+
+{
+  undefined8 *puVar1;
+  undefined8 *puVar2;
+  undefined8 uVar3;
+  undefined8 uVar4;
+  longlong lVar5;
+  undefined8 uVar6;
+  uint extraout_EAX;
+  uint extraout_EAX_00;
+  char cVar7;
+  longlong *in_RCX;
+  ulonglong uVar8;
+  ulonglong uVar9;
+  longlong in_RDX;
+  ulonglong uVar10;
+  ulonglong uVar11;
+  longlong lVar12;
+  ulonglong uVar13;
+  ulonglong uVar14;
+  ulonglong uVar15;
+  float extraout_XMM0_Da;
+  float extraout_XMM0_Da_00;
+  float fVar16;
+  float fVar17;
+  float in_XMM2_Da;
+  float in_XMM3_Da;
+  float fVar18;
+  float fVar19;
+  float fVar20;
+  float fVar21;
+  float fVar22;
+  longlong local_f0;
+  longlong lStack_e8;
+  longlong local_e0;
+  longlong lStack_d8;
+  longlong local_d0;
+  longlong lStack_c8;
+  longlong local_c0;
+  longlong local_80;
+  
+  if (in_XMM3_Da <= in_XMM2_Da) {
+                    /* WARNING: Subroutine does not return */
+    core::panicking::panic_fmt();
+  }
+  get_coord_at_u<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic2D>_>
+            ();
+  get_coord_at_u<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic2D>_>
+            ();
+  uVar11 = (ulonglong)extraout_EAX;
+  uVar9 = *(ulonglong *)(in_RDX + 0x10);
+  if (uVar9 <= uVar11) {
+                    /* WARNING: Subroutine does not return */
+    core::panicking::panic_bounds_check();
+  }
+  uVar14 = uVar11 + 1;
+  if (uVar9 <= uVar14) {
+                    /* WARNING: Subroutine does not return */
+    core::panicking::panic_bounds_check();
+  }
+  uVar8 = (ulonglong)extraout_EAX_00;
+  if (uVar9 <= uVar8) {
+                    /* WARNING: Subroutine does not return */
+    core::panicking::panic_bounds_check();
+  }
+  if (uVar9 <= uVar8 + 1) {
+                    /* WARNING: Subroutine does not return */
+    core::panicking::panic_bounds_check();
+  }
+  lVar5 = *(longlong *)(in_RDX + 8);
+  uVar3 = *(undefined8 *)(lVar5 + uVar11 * 8);
+  uVar4 = *(undefined8 *)(lVar5 + 8 + uVar11 * 8);
+  fVar18 = (float)uVar4;
+  fVar19 = (float)((ulonglong)uVar4 >> 0x20);
+  fVar21 = extraout_XMM0_Da * fVar18 + (__real_3f800000 - extraout_XMM0_Da) * (float)uVar3;
+  fVar22 = extraout_XMM0_Da * fVar19 +
+           (__real_3f800000 - extraout_XMM0_Da) * (float)((ulonglong)uVar3 >> 0x20);
+  uVar3 = *(undefined8 *)(lVar5 + uVar8 * 8);
+  fVar16 = (float)uVar3;
+  fVar17 = (float)((ulonglong)uVar3 >> 0x20);
+  uVar3 = *(undefined8 *)(lVar5 + 8 + uVar8 * 8);
+  uVar11 = uVar11 + 2;
+  if (fVar22 != fVar19) {
+    uVar11 = uVar14;
+  }
+  if (fVar21 != fVar18) {
+    uVar11 = uVar14;
+  }
+  fVar19 = extraout_XMM0_Da_00 * (float)uVar3 + (__real_3f800000 - extraout_XMM0_Da_00) * fVar16;
+  fVar20 = extraout_XMM0_Da_00 * (float)((ulonglong)uVar3 >> 0x20) +
+           (__real_3f800000 - extraout_XMM0_Da_00) * fVar17;
+  if (NAN(fVar21) || NAN(fVar18)) {
+    uVar11 = uVar14;
+  }
+  uVar14 = uVar8 - 1;
+  if (uVar8 == 0) {
+    uVar14 = 0;
+  }
+  if (fVar20 != fVar17) {
+    uVar14 = uVar8;
+  }
+  if (fVar19 != fVar16) {
+    uVar14 = uVar8;
+  }
+  if (NAN(fVar19) || NAN(fVar16)) {
+    uVar14 = uVar8;
+  }
+  uVar8 = uVar14 + 1;
+  uVar10 = uVar8 - uVar11;
+  if (uVar8 < uVar11) {
+    uVar10 = 0;
+  }
+  alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+  alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+  _DAT_00000004 = CONCAT44(fVar22,fVar21);
+  local_80 = 1;
+  uVar15 = uVar14 - uVar11;
+  cVar7 = -1;
+  if (uVar14 < uVar11 || uVar15 == 0) {
+    cVar7 = uVar15 != 0;
+  }
+  if (cVar7 == '\0') {
+    if (uVar9 <= uVar11) {
+                    /* WARNING: Subroutine does not return */
+      core::panicking::panic_bounds_check();
+    }
+    _DAT_0000000c = *(undefined8 *)(lVar5 + uVar11 * 8);
+    local_80 = 2;
+    lVar12 = 3;
+    goto LAB_141466e0c;
+  }
+  lVar12 = 2;
+  if (cVar7 == '\x01') goto LAB_141466e0c;
+  uVar13 = uVar8 - uVar11;
+  if (uVar8 < uVar11) {
+                    /* WARNING: Subroutine does not return */
+    core::slice::index::slice_index_order_fail();
+  }
+  if (uVar9 <= uVar14) {
+                    /* WARNING: Subroutine does not return */
+    core::slice::index::slice_end_index_len_fail();
+  }
+  if (uVar8 != uVar11) {
+    if (uVar13 < 0x14) {
+      uVar9 = 0;
+    }
+    else {
+      uVar9 = 0;
+      if (((0xb < uVar15 * 8 + 0xc) && (0xf < uVar15 * 8 + 0x10)) && (uVar15 >> 0x3d == 0)) {
+        uVar9 = uVar13 & 0x1fffffffc;
+        local_80 = uVar9 + 1;
+        lVar12 = uVar11 * 8 + 0x10 + lVar5;
+        uVar14 = 0;
+        do {
+          puVar2 = (undefined8 *)(lVar12 + -0x10 + uVar14 * 8);
+          uVar3 = puVar2[1];
+          puVar1 = (undefined8 *)(lVar12 + uVar14 * 8);
+          uVar4 = *puVar1;
+          uVar6 = puVar1[1];
+          *(undefined8 *)(uVar14 * 8 + 0xc) = *puVar2;
+          *(undefined8 *)(uVar14 * 8 + 0x14) = uVar3;
+          *(undefined8 *)(uVar14 * 8 + 0x1c) = uVar4;
+          *(undefined8 *)(uVar14 * 8 + 0x24) = uVar6;
+          uVar14 = uVar14 + 4;
+        } while (uVar9 != uVar14);
+        if (uVar13 == uVar9) goto LAB_141466dd7;
+      }
+    }
+    uVar11 = uVar11 + uVar9;
+    do {
+      *(undefined8 *)(local_80 * 8 + 4) = *(undefined8 *)(lVar5 + uVar11 * 8);
+      local_80 = local_80 + 1;
+      uVar11 = uVar11 + 1;
+    } while (uVar8 != uVar11);
+  }
+LAB_141466dd7:
+  lVar12 = uVar13 + 2;
+LAB_141466e0c:
+  if (local_80 == 0) {
+    alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+  }
+  *(ulonglong *)(local_80 * 8 + 4) = CONCAT44(fVar20,fVar19);
+  if (lVar12 == uVar10 + 2) {
+    try_new_from_points<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>();
+    if (!SBORROW8(0,local_f0)) {
+      in_RCX[6] = local_c0;
+      in_RCX[4] = local_d0;
+      in_RCX[5] = lStack_c8;
+      in_RCX[2] = local_e0;
+      in_RCX[3] = lStack_d8;
+      *in_RCX = local_f0;
+      in_RCX[1] = lStack_e8;
+      return;
+    }
+                    /* WARNING: Subroutine does not return */
+    core::result::unwrap_failed();
+  }
+                    /* WARNING: Subroutine does not return */
+  core::panicking::assert_failed<usize,usize>();
+}
+

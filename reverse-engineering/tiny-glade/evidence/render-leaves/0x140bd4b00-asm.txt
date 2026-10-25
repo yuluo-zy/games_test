@@ -1,0 +1,17 @@
+0x140bd4b00: 89c8                     mov eax, ecx
+0x140bd4b02: 83e001                   and eax, 1
+0x140bd4b05: c1e008                   shl eax, 8
+0x140bd4b08: 89ca                     mov edx, ecx
+0x140bd4b0a: 83e206                   and edx, 6
+0x140bd4b0d: c1e205                   shl edx, 5
+0x140bd4b10: 09c2                     or edx, eax
+0x140bd4b12: 89c8                     mov eax, ecx
+0x140bd4b14: 83e008                   and eax, 8
+0x140bd4b17: 448d0442                 lea r8d, [rdx + rax*2]
+0x140bd4b1b: f7c160800100             test ecx, 0x18060
+0x140bd4b21: 8d444220                 lea eax, [rdx + rax*2 + 0x20]
+0x140bd4b25: 410f44c0                 cmove eax, r8d
+0x140bd4b29: c1e90b                   shr ecx, 0xb
+0x140bd4b2c: 83e103                   and ecx, 3
+0x140bd4b2f: 09c8                     or eax, ecx
+0x140bd4b31: c3                       ret 

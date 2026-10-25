@@ -1,0 +1,55 @@
+{
+  "status": "implemented_unverified",
+  "target_version": "B",
+  "native_oracle_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "base_head": "bd8f74a5cfb3c9cc279efb1abd27695bb1bfb8bf",
+  "claim": "TG-aff540cfd24b989ccb/main-chain-boot-20261018 (root delegated subdirectory)",
+  "files": [
+    {
+      "source": "tiny-glade/crates/tiny-glade/src/game_loop.rs",
+      "before_sha256": "b10edaf2d544b6a5575e45359712182e771cc3a0c67c299350f94a9ff0b17d83",
+      "current_source_sha256": "b10edaf2d544b6a5575e45359712182e771cc3a0c67c299350f94a9ff0b17d83",
+      "candidate": "candidate/crates/tiny-glade/src/game_loop.rs",
+      "candidate_sha256": "cb10929a53efe31129bb31b75928c53912aa5900723879cc02676665b45a293c"
+    },
+    {
+      "source": "tiny-glade/crates/tiny-glade/src/event_loop.rs",
+      "before_sha256": "dbc0f77073b944d41dc0ae250568e5a33c363418fc6b9cf1dccf15f44f446983",
+      "current_source_sha256": "dbc0f77073b944d41dc0ae250568e5a33c363418fc6b9cf1dccf15f44f446983",
+      "candidate": "candidate/crates/tiny-glade/src/event_loop.rs",
+      "candidate_sha256": "715f1f39537c04f05351b61a76e9333865cb49ff368f90b7426b03ff83181e57"
+    }
+  ],
+  "patch": "main-loop.patch",
+  "patch_sha256": "7bc0f87fa3e83059978abd6c3a4cce589c7d3c1c7706acac236b613ab952bace",
+  "evidence": [
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-aff540cfd24b989ccb/mainchain-20261018/evidence/main_loop.asm",
+      "sha256": "b3953be68700a63acd7f4b7dde0ae2af6ba4d5d12f5ec58df909f3c679750c91",
+      "scope": "B 0x1404d9580 full 36,589-byte range; handoff@da303..33f, batch@da381..420, requests@da49b..daa37, zero-size@dc952..971, frame/update/render/posteffects@de349..de7da"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-40ff43c62ef8791c53/oschain-20261018/os-callback.asm",
+      "sha256": "edac33631f9125dc15356bea4fac00fd33e6fa2ae132a4c1762a27bc56c5cadf",
+      "scope": "B 0x140557b50 full 3,283-byte callback; egui filter/physical Tab, absolute cursor mapped write@557e57..eb4"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-40ff43c62ef8791c53/oschain-20261018/CONTRACT.md",
+      "sha256": "12ea5b6c9b3a0c06e98b0c2a173b05fb7060f8edaaaed2c33988a5203ca241f1",
+      "scope": "retained original B event tags, request order, close marker and Windows/macOS adaptation boundaries"
+    }
+  ],
+  "required_companion_interfaces": [
+    "03 render_frame::render -> Result<(), H::CompileError>; actual Error preserved, only OOM recovery",
+    "02 ProductionRenderer factory finish_render, last_frame_submitted, last_frame_present_queued; typed frame_observation and frame_present_complete",
+    "04 GameplayPreparation::cancel_and_join -> anyhow::Result<()>; completed worker joined before renderer cleanup; loading App canonical shutdown consumer"
+  ],
+  "validation": {
+    "rustfmt_parser": "passed on both candidates; unchanged preexisting formatting restored after parse",
+    "cargo": "not run; root exclusive",
+    "gpu": "not run; root exclusive",
+    "native_differential": "not rerun; retained bounded facts only",
+    "independent_review": "pending 07"
+  },
+  "excluded_followup": "Save-thread shutdown helper is root-owned separate batch; no undefined helper call included. Ordinary Steam None, missing checkout modules, 0-size Close native CFG boundary remain explicit."
+}

@@ -1,0 +1,94 @@
+// take<country_core::utils::dirty_tiles::DirtyTiles>
+// 0x141454590 void __cdecl take<country_core::utils::dirty_tiles::DirtyTiles>(void)
+// params: []
+
+void __cdecl tabloid::Subscriber::take<country_core::utils::dirty_tiles::DirtyTiles>(void)
+
+{
+  ulonglong *puVar1;
+  ulonglong uVar2;
+  longlong lVar3;
+  ulonglong uVar4;
+  longlong *in_RCX;
+  longlong in_RDX;
+  bool bVar5;
+  
+  LOCK();
+  bVar5 = *(char *)(in_RDX + 0x10) == '\0';
+  if (bVar5) {
+    *(char *)(in_RDX + 0x10) = '\x01';
+  }
+  UNLOCK();
+  if (!bVar5) {
+    parking_lot::raw_mutex::RawMutex::lock_slow();
+  }
+  parking_lot_core::parking_lot::deadlock_impl::acquire_resource();
+  lVar3 = *(longlong *)(in_RDX + 0x20);
+  *(undefined8 *)(in_RDX + 0x20) = 0;
+  if (lVar3 == 0) {
+    *in_RCX = 0;
+    goto LAB_1414546f6;
+  }
+  puVar1 = (ulonglong *)(lVar3 + 0x10);
+  uVar4 = *(ulonglong *)(lVar3 + 0x10);
+  if (uVar4 < 0xfffffffffffffff0 && (char)(((uint)uVar4 & 8) >> 3) == '\0') {
+    LOCK();
+    uVar2 = *puVar1;
+    if (uVar4 == uVar2) {
+      *puVar1 = uVar4 + 0x10;
+    }
+    UNLOCK();
+    if (uVar4 != uVar2) goto LAB_1414545fe;
+  }
+  else {
+LAB_1414545fe:
+    parking_lot::raw_rwlock::RawRwLock::lock_shared_slow();
+  }
+  parking_lot_core::parking_lot::deadlock_impl::acquire_resource();
+  parking_lot_core::parking_lot::deadlock_impl::acquire_resource();
+  *(undefined8 *)(in_RDX + 0x18) = *(undefined8 *)(lVar3 + 0x218);
+  parking_lot_core::parking_lot::deadlock_impl::release_resource();
+  parking_lot_core::parking_lot::deadlock_impl::release_resource();
+  LOCK();
+  uVar4 = *puVar1;
+  *puVar1 = *puVar1 - 0x10;
+  UNLOCK();
+  if ((uVar4 & 0xfffffffffffffff2) == 0x12) {
+    parking_lot::raw_rwlock::RawRwLock::unlock_shared_slow();
+  }
+  puVar1 = (ulonglong *)(lVar3 + 0x10);
+  uVar4 = *(ulonglong *)(lVar3 + 0x10);
+  if (uVar4 < 0xfffffffffffffff0 && (char)(((uint)uVar4 & 8) >> 3) == '\0') {
+    LOCK();
+    uVar2 = *puVar1;
+    if (uVar4 == uVar2) {
+      *puVar1 = uVar4 + 0x10;
+    }
+    UNLOCK();
+    if (uVar4 != uVar2) goto LAB_1414546a6;
+  }
+  else {
+LAB_1414546a6:
+    parking_lot::raw_rwlock::RawRwLock::lock_shared_slow();
+  }
+  parking_lot_core::parking_lot::deadlock_impl::acquire_resource();
+  parking_lot_core::parking_lot::deadlock_impl::acquire_resource();
+  *in_RCX = (longlong)puVar1;
+  in_RCX[1] = lVar3 + 0x18;
+  in_RCX[2] = (longlong)puVar1;
+LAB_1414546f6:
+  parking_lot_core::parking_lot::deadlock_impl::release_resource();
+  LOCK();
+  bVar5 = *(char *)(in_RDX + 0x10) == '\x01';
+  if (bVar5) {
+    *(char *)(in_RDX + 0x10) = '\0';
+  }
+  UNLOCK();
+  if (!bVar5) {
+    parking_lot::raw_mutex::RawMutex::unlock_slow();
+    return;
+  }
+  return;
+}
+
+

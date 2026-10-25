@@ -1,0 +1,5 @@
+use std::{fs::File,io::BufReader,time::Instant};
+#[repr(C)]struct Mem{cb:u32,faults:u32,peak_ws:usize,ws:usize,peak_paged:usize,paged:usize,peak_nonpaged:usize,nonpaged:usize,pagefile:usize,peak_pagefile:usize}
+#[link(name="kernel32")] unsafe extern "system"{fn GetCurrentProcess()->isize;fn K32GetProcessMemoryInfo(p:isize,m:*mut Mem,s:u32)->i32;}
+fn memory()->Mem{let mut m:Mem=unsafe{std::mem::zeroed()};m.cb=std::mem::size_of::<Mem>() as u32;assert_ne!(unsafe{K32GetProcessMemoryInfo(GetCurrentProcess(),&mut m,m.cb)},0);m}
+fn main(){let a:Vec<_>=std::env::args().collect();let capacity:usize=a[2].parse().unwrap();let before=memory();let file=File::open(&a[1]).unwrap();let length=file.metadata().unwrap().len();let mut hasher=blake3::Hasher::new();let start=Instant::now();if capacity==0{hasher.update_reader(file).unwrap();}else{hasher.update_reader(BufReader::with_capacity(capacity,file)).unwrap();}let elapsed=start.elapsed().as_secs_f64()*1000.;let end=memory();println!("{{\"capacity_bytes\":{capacity},\"file_bytes\":{length},\"elapsed_ms\":{elapsed},\"baseline_ws\":{},\"peak_ws\":{},\"hash\":\"{}\"}}",before.ws,end.peak_ws,hasher.finalize().to_hex());}

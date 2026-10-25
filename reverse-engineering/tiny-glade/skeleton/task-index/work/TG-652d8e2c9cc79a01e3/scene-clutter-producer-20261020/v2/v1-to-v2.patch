@@ -1,0 +1,19 @@
+--- v1/mod.rs
++++ v2/mod.rs
+@@ -139,12 +139,10 @@
+ pub fn new_clutter_cuboid(
+     dimensions: Vec3,
+     local_translation: Vec3,
+-) -> std::sync::Arc<country_core::systems::collision::world::RaycastMeshData> {
+-    std::sync::Arc::new(
+-        country_core::systems::collision::world::RaycastMeshData::new_cuboid_at(
+-            dimensions,
+-            local_translation,
+-        ),
++) -> country_core::systems::collision::world::RaycastMeshData {
++    country_core::systems::collision::world::RaycastMeshData::new_cuboid_at(
++        dimensions,
++        local_translation,
+     )
+ }
+ 

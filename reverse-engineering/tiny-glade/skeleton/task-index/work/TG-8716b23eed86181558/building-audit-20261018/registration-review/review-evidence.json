@@ -1,0 +1,277 @@
+{
+  "scope": "read-only current registration adapter review; not original global schedule",
+  "manifest": {
+    "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/core-systems-resources-recovery-2026-10-18/audio-registration-lifecycle.json",
+    "sha256": "9a2e4e783e364267257f13a23a59ee6b44cb7286ea52a94d3f34d7ceca6af7bb"
+  },
+  "before": {
+    "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/core-systems-resources-recovery-2026-10-18/before-audio-registration-lifecycle.rs",
+    "sha256": "28263fc24985ad0bb803c8add953469edb9c4b5b08b0b69aa4ae4f40ecf689c7",
+    "matches_root_manifest": true
+  },
+  "after": {
+    "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/audio/mod.rs",
+    "sha256": "e7f7b5e7f8eacb8f521da5c2808ba7fb4506e1adfbb80012e10c9bb24ee3e589",
+    "matches_root_manifest": false
+  },
+  "generic_system_reference_multisets_equal": true,
+  "generic_system_reference_count": 47,
+  "non_generic_ivy_reference_equal": true,
+  "pairs": [
+    {
+      "module": "timberframe_audio",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/audio/timberframe_audio.rs",
+      "sha256": "28af3f2c22e22c6f9ec55618f4bbb1b83f80eb18fba5e4e4adb550ec64ddc99a",
+      "init": "timberframe_audio_init_system",
+      "condition_state": "TimberframeAudioState<S::Event>",
+      "inserted_owner_matches": true,
+      "consumer_owner_matches": true,
+      "resource_derive": true,
+      "registration_pair_matches": 1,
+      "init_source": "pub fn timberframe_audio_init_system<S: Studio + Send + Sync + 'static>(\n    core: Res<AudioCore<S>>,\n    mut commands: Commands,\n) {\n    commands.insert_resource(TimberframeAudioState::<S::Event>::new(&core));\n}",
+      "consumer_signature": "pub fn timberframe_audio<S: Studio + Send + Sync + 'static>(\n    mut state: ResMut<TimberframeAudioState<S::Event>>,\n    mut events: EventReader<PlayTimberframeSound>,\n    core: Res<AudioCore<S>>,\n    speed: Option<Res<crate::systems::audio::audio_update::EditingSpeed>>,\n)"
+    },
+    {
+      "module": "forest_audio",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/audio/forest_audio.rs",
+      "sha256": "d0a85f76a977d25b78df5520f5b59c374fa6a0cef2012fb5017bd233b2b578e3",
+      "init": "forest_audio_init_system",
+      "condition_state": "ForestAudioState<S::Event>",
+      "inserted_owner_matches": true,
+      "consumer_owner_matches": true,
+      "resource_derive": true,
+      "registration_pair_matches": 1,
+      "init_source": "pub fn forest_audio_init_system<S: Studio + Send + Sync + 'static>(\n    core: Res<AudioCore<S>>,\n    mut commands: Commands,\n) {\n    commands.insert_resource(ForestAudioState::<S::Event>::new(&core));\n}",
+      "consumer_signature": "pub fn forest_audio_system<S: Studio + Send + Sync + 'static>(\n    mut state: ResMut<ForestAudioState<S::Event>>,\n    trees: Query<&ForestTree>,\n    menu: Res<EscMenuState>,\n)"
+    },
+    {
+      "module": "tree_audio",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/audio/tree_audio.rs",
+      "sha256": "6c9898a70ddf6de9d34831d4d7916c6e76a2669a591fde36a66850d2155fce32",
+      "init": "tree_audio_init_system",
+      "condition_state": "TreeAudioState<S::Event>",
+      "inserted_owner_matches": true,
+      "consumer_owner_matches": true,
+      "resource_derive": true,
+      "registration_pair_matches": 1,
+      "init_source": "pub fn tree_audio_init_system<S: Studio + Send + Sync + 'static>(\n    core: Res<AudioCore<S>>,\n    mut commands: Commands,\n) {\n    commands.insert_resource(TreeAudioState::<S::Event>::new(&core));\n}",
+      "consumer_signature": "pub fn tree_audio_system<S: Studio + Send + Sync + 'static>(\n    mut state: ResMut<TreeAudioState<S::Event>>,\n    mut events: EventReader<PlayTreeSoundCmd>,\n    core: Res<AudioCore<S>>,\n    camera: Res<MainCamera>,\n    mode: Res<AppMode>,\n    raycast: Res<CursorTerrainRaycast>,\n    trees: Query<&TreeAmbience>,\n)"
+    },
+    {
+      "module": "firstperson_steps",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/audio/firstperson_steps.rs",
+      "sha256": "25171f7c4cc5f7bf6ee36b1b2c5545468d44d9a2dc4977615571a4429378526e",
+      "init": "firstperson_steps_init_system",
+      "condition_state": "FirstPersonViewAudioState<S::Event>",
+      "inserted_owner_matches": true,
+      "consumer_owner_matches": true,
+      "resource_derive": true,
+      "registration_pair_matches": 1,
+      "init_source": "pub fn firstperson_steps_init_system<S: Studio + Send + Sync + 'static>(\n    core: Res<AudioCore<S>>,\n    mut commands: Commands,\n) {\n    commands.insert_resource(FirstPersonViewAudioState::<S::Event>::new(&core));\n}",
+      "consumer_signature": "pub fn firstperson_steps<S: Studio + Send + Sync + 'static>(\n    core: Res<AudioCore<S>>,\n    mut state: ResMut<FirstPersonViewAudioState<S::Event>>,\n    camera: Res<MainCamera>,\n    moving: Option<Res<PlayerMoving>>,\n    water: Option<Res<WaterRaster>>,\n    garden: Option<Res<GardenRaster>>,\n)"
+    },
+    {
+      "module": "garden_audio",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/audio/garden_audio.rs",
+      "sha256": "5f8447170f0c3b6b726eb403a827d05da2551c94184f399bc8d0100aa327cec0",
+      "init": "garden_audio_init_system",
+      "condition_state": "GardenAudioState<S::Event>",
+      "inserted_owner_matches": true,
+      "consumer_owner_matches": true,
+      "resource_derive": true,
+      "registration_pair_matches": 1,
+      "init_source": "pub fn garden_audio_init_system<S: Studio + Send + Sync + 'static>(\n    core: Res<AudioCore<S>>,\n    mut commands: Commands,\n) {\n    commands.insert_resource(GardenAudioState::<S::Event>::new(&core));\n}",
+      "consumer_signature": "pub fn garden_audio_system<S: Studio + Send + Sync + 'static>(\n    mode: Res<AppMode>,\n    mut state: ResMut<GardenAudioState<S::Event>>,\n    mut draws: EventReader<GardenDrawEvent>,\n    mut erases: EventReader<GardenEraseEvent>,\n    cursor: Res<CursorTerrainRaycast>,\n    raster: Res<WaterRaster>,\n)"
+    },
+    {
+      "module": "building_audio",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/audio/building_audio.rs",
+      "sha256": "9c14479dc17b19bc82a078560067ebd0f634473bad43217c91bc7bb8b5107296",
+      "init": "building_audio_init_system",
+      "condition_state": "BuildingAudioState<S::Event>",
+      "inserted_owner_matches": true,
+      "consumer_owner_matches": true,
+      "resource_derive": true,
+      "registration_pair_matches": 1,
+      "init_source": "pub fn building_audio_init_system<S: Studio + Send + Sync + 'static>(\n    core: Res<AudioCore<S>>,\n    mut commands: Commands,\n) {\n    commands.insert_resource(BuildingAudioState::<S::Event>::new(&core));\n}",
+      "consumer_signature": "pub fn building_audio<S: Studio + Send + Sync + 'static>(\n    mut state: ResMut<BuildingAudioState<S::Event>>,\n    mut events: EventReader<PlayBuildingAudio>,\n    core: Res<AudioCore<S>>,\n)"
+    },
+    {
+      "module": "decorator_audio",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/audio/decorator_audio.rs",
+      "sha256": "505866b900c942db96ad8d3552230e3b420d6b621d86b5182a11b7a0cc2f6015",
+      "init": "decorator_audio_init_system",
+      "condition_state": "DecoratorAudioState<S::Event>",
+      "inserted_owner_matches": true,
+      "consumer_owner_matches": true,
+      "resource_derive": true,
+      "registration_pair_matches": 1,
+      "init_source": "pub fn decorator_audio_init_system<S: Studio + Send + Sync + 'static>(\n    core: Res<AudioCore<S>>,\n    mut commands: Commands,\n) {\n    commands.insert_resource(DecoratorAudioState::<S::Event>::new(&core));\n}",
+      "consumer_signature": "pub fn decorator_audio_system<S: Studio + Send + Sync + 'static>(\n    mut state: ResMut<DecoratorAudioState<S::Event>>,\n    mut events: EventReader<PlayDecoratorSoundCmd>,\n    core: Res<AudioCore<S>>,\n)"
+    },
+    {
+      "module": "game_loading_audio",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/audio/game_loading_audio.rs",
+      "sha256": "b28557c602cd26e3877986bc7fde343af0118bf4f55b6bc44a447c99f4378374",
+      "init": "init_game_loading_audio",
+      "condition_state": "GameLoadingAudioState<S::Event>",
+      "inserted_owner_matches": true,
+      "consumer_owner_matches": true,
+      "resource_derive": true,
+      "registration_pair_matches": 1,
+      "init_source": "pub fn init_game_loading_audio<S: Studio + Send + Sync + 'static>(\n    core: Res<AudioCore<S>>,\n    mut commands: Commands,\n) {\n    commands.insert_resource(GameLoadingAudioState::<S::Event>::new(&core));\n}",
+      "consumer_signature": "pub fn loading_audio<S: Studio + Send + Sync + 'static>(\n    mut state: ResMut<GameLoadingAudioState<S::Event>>,\n    core: Res<AudioCore<S>>,\n    time: Res<bevy_time::Time>,\n)"
+    },
+    {
+      "module": "menu_audio",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/audio/menu_audio.rs",
+      "sha256": "ecc4a679d0807f25a7973096d5363c7cc31b3361f7bf6f2e55c567dd6a45e1ea",
+      "init": "menu_audio_init_system",
+      "condition_state": "MenuAudioState<S::Event>",
+      "inserted_owner_matches": true,
+      "consumer_owner_matches": true,
+      "resource_derive": true,
+      "registration_pair_matches": 1,
+      "init_source": "pub fn menu_audio_init_system<S: Studio + Send + Sync + 'static>(\n    core: Res<AudioCore<S>>,\n    mut commands: Commands,\n) {\n    commands.insert_resource(MenuAudioState::<S::Event>::new(&core));\n}",
+      "consumer_signature": "pub fn menu_audio<S: Studio + Send + Sync + 'static>(\n    mut state: ResMut<MenuAudioState<S::Event>>,\n    mut events: EventReader<PlayMenuUiSound>,\n    core: Res<AudioCore<S>>,\n    mode: Res<AppMode>,\n)"
+    },
+    {
+      "module": "path_audio",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/audio/path_audio.rs",
+      "sha256": "4c839386e8b4f9638694dc70ad0d830353a5a5b020d10de18605876e7200f8cf",
+      "init": "path_audio_init_system",
+      "condition_state": "PathAudioState<S::Event>",
+      "inserted_owner_matches": true,
+      "consumer_owner_matches": true,
+      "resource_derive": true,
+      "registration_pair_matches": 1,
+      "init_source": "pub fn path_audio_init_system<S: Studio + Send + Sync + 'static>(\n    core: Res<AudioCore<S>>,\n    mut commands: Commands,\n) {\n    commands.insert_resource(PathAudioState::<S::Event>::new(&core));\n}",
+      "consumer_signature": "pub fn path_audio_system<S: Studio + Send + Sync + 'static>(\n    mut state: ResMut<PathAudioState<S::Event>>,\n    mut draws: EventReader<PathDrawEvent>,\n    mut erases: EventReader<PathEraseEvent>,\n    mut edits: EventReader<PathEditEvent>,\n    _core: Res<AudioCore<S>>,\n)"
+    },
+    {
+      "module": "playermade_stairs_audio",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/audio/playermade_stairs_audio.rs",
+      "sha256": "401359f170b8067e76c70af6ecfb269f0b59b5c250a6d1fd18d410d7229f138b",
+      "init": "stairs_audio_init_system",
+      "condition_state": "StairsAudioState<S::Event>",
+      "inserted_owner_matches": true,
+      "consumer_owner_matches": true,
+      "resource_derive": true,
+      "registration_pair_matches": 1,
+      "init_source": "pub fn stairs_audio_init_system<S: Studio + Send + Sync + 'static>(\n    core: Res<AudioCore<S>>,\n    mut commands: Commands,\n) {\n    commands.insert_resource(StairsAudioState::<S::Event>::new(&core));\n}",
+      "consumer_signature": "pub fn stairs_audio_system<S: Studio + Send + Sync + 'static>(\n    mut state: ResMut<StairsAudioState<S::Event>>,\n    mut events: EventReader<PlayStairsAudioCmd>,\n    core: Res<AudioCore<S>>,\n)"
+    },
+    {
+      "module": "replay_audio",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/audio/replay_audio.rs",
+      "sha256": "29f43511911a2cdc6236190fba4dfa82dba1ee2d855739752b1cb6f640a456a4",
+      "init": "replay_audio_init_system",
+      "condition_state": "ReplayAudioState<S::Event>",
+      "inserted_owner_matches": true,
+      "consumer_owner_matches": true,
+      "resource_derive": true,
+      "registration_pair_matches": 1,
+      "init_source": "pub fn replay_audio_init_system<S: Studio + Send + Sync + 'static>(\n    core: Res<AudioCore<S>>,\n    mut commands: Commands,\n) {\n    commands.insert_resource(ReplayAudioState::<S::Event>::new(&core));\n}",
+      "consumer_signature": "pub fn replay_audio_system<S: Studio + Send + Sync + 'static>(\n    mut state: ResMut<ReplayAudioState<S::Event>>,\n    mut events: EventReader<PlayReplayAudio>,\n    core: Res<AudioCore<S>>,\n    mode: Res<AppMode>,\n)"
+    },
+    {
+      "module": "sheep_audio",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/audio/sheep_audio.rs",
+      "sha256": "859a1dd8c826e09fdd01975d4ea9e421c48cc287b1048b5be538a17a4f047096",
+      "init": "sheep_audio_init_system",
+      "condition_state": "SheepAudioState<S::Event>",
+      "inserted_owner_matches": true,
+      "consumer_owner_matches": true,
+      "resource_derive": true,
+      "registration_pair_matches": 1,
+      "init_source": "pub fn sheep_audio_init_system<S: Studio + Send + Sync + 'static>(\n    core: Res<AudioCore<S>>,\n    mut commands: Commands,\n) {\n    commands.insert_resource(SheepAudioState::<S::Event>::new(&core));\n}",
+      "consumer_signature": "pub fn sheep_audio_system<S: Studio + Send + Sync + 'static>(\n    mut state: ResMut<SheepAudioState<S::Event>>,\n    mut events: EventReader<PlaySheepReactSound>,\n    core: Res<AudioCore<S>>,\n)"
+    },
+    {
+      "module": "signifier_audio",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/audio/signifier_audio.rs",
+      "sha256": "6d74412eb36c62cd85ec8b42d5980b5d8da7072b111406099a3d563ed3389b5e",
+      "init": "signifier_audio_init_system",
+      "condition_state": "SignifierAudioState<S::Event>",
+      "inserted_owner_matches": true,
+      "consumer_owner_matches": true,
+      "resource_derive": true,
+      "registration_pair_matches": 1,
+      "init_source": "pub fn signifier_audio_init_system<S: Studio + Send + Sync + 'static>(\n    core: Res<AudioCore<S>>,\n    mut commands: Commands,\n) {\n    commands.insert_resource(SignifierAudioState::<S::Event>::new(&core));\n}",
+      "consumer_signature": "pub fn signifier_audio_system<S: Studio + Send + Sync + 'static>(\n    mut state: ResMut<SignifierAudioState<S::Event>>,\n    mut stream: ResMut<UiSignifierStream>,\n    core: Res<AudioCore<S>>,\n)"
+    },
+    {
+      "module": "terrain_stairs_audio",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/audio/terrain_stairs_audio.rs",
+      "sha256": "734e8b685b1f8d5d0b731f8177bea731b767dd30063d34baeae0a6db6b64ebb3",
+      "init": "terrain_stairs_audio_init_system",
+      "condition_state": "TerrainStairsAudioState<S::Event>",
+      "inserted_owner_matches": true,
+      "consumer_owner_matches": true,
+      "resource_derive": true,
+      "registration_pair_matches": 1,
+      "init_source": "pub fn terrain_stairs_audio_init_system<S: Studio + Send + Sync + 'static>(\n    core: Res<AudioCore<S>>,\n    mut commands: Commands,\n) {\n    commands.insert_resource(TerrainStairsAudioState::<S::Event>::new(&core));\n}",
+      "consumer_signature": "pub fn terrain_stairs_audio_system<S: Studio + Send + Sync + 'static>(\n    mode: Res<AppMode>,\n    mut state: ResMut<TerrainStairsAudioState<S::Event>>,\n    mut events: EventReader<TerrainStairsAudioEvent>,\n    core: Res<AudioCore<S>>,\n    raster: Res<StairsRasterValue>,\n    raycast: Res<CursorTerrainRaycast>,\n)"
+    },
+    {
+      "module": "trigger_audio",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/audio/trigger_audio.rs",
+      "sha256": "250bc49faa169cbb5b75bb1f2ba14253ccf1fd46010ca0d9e6e52b3b7257b497",
+      "init": "trigger_audio_init_system",
+      "condition_state": "TriggerAudioState<S::Event>",
+      "inserted_owner_matches": true,
+      "consumer_owner_matches": true,
+      "resource_derive": true,
+      "registration_pair_matches": 1,
+      "init_source": "pub fn trigger_audio_init_system<S: Studio + Send + Sync + 'static>(\n    core: Res<AudioCore<S>>,\n    mut commands: Commands,\n) {\n    commands.insert_resource(TriggerAudioState::<S::Event>::new(&core));\n}",
+      "consumer_signature": "pub fn trigger_audio_system<S: Studio + Send + Sync + 'static>(\n    mut state: ResMut<TriggerAudioState<S::Event>>,\n    camera: Res<MainCamera>,\n    triggers: Res<AudioTriggerLibrary>,\n    core: Res<AudioCore<S>>,\n    speed: Res<EditingSpeed>,\n)"
+    },
+    {
+      "module": "wall_audio_fmod",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/audio/wall_audio_fmod.rs",
+      "sha256": "aac96b536f6ef8078dd446c47375757659fa9a792ad9e36089fe8db3b5debcf4",
+      "init": "wall_audio_init_system",
+      "condition_state": "WallAudioState<S::Event>",
+      "inserted_owner_matches": true,
+      "consumer_owner_matches": true,
+      "resource_derive": true,
+      "registration_pair_matches": 1,
+      "init_source": "pub fn wall_audio_init_system<S: Studio + Send + Sync + 'static>(\n    core: Res<AudioCore<S>>,\n    mut commands: Commands,\n) {\n    commands.insert_resource(WallAudioState::<S::Event>::new(&core));\n}",
+      "consumer_signature": "pub fn wall_audio_fmod<S: Studio + Send + Sync + 'static>(\n    mode: Res<AppMode>,\n    core: Res<AudioCore<S>>,\n    mut events: EventReader<PlayWallAudio>,\n    mut state: ResMut<WallAudioState<S::Event>>,\n    speed: Option<Res<crate::systems::audio::audio_update::EditingSpeed>>,\n)"
+    },
+    {
+      "module": "roof_audio",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/audio/roof_audio.rs",
+      "sha256": "b6d2903d243bfc2d009ada431847e9d1154c639f628f05fe8a2e11b27eeec09e",
+      "init": "roof_audio_init_system",
+      "condition_state": "RoofAudioState<S::Event>",
+      "inserted_owner_matches": true,
+      "consumer_owner_matches": true,
+      "resource_derive": true,
+      "registration_pair_matches": 1,
+      "init_source": "pub fn roof_audio_init_system<S: Studio + Send + Sync + 'static>(\n    core: Res<AudioCore<S>>,\n    mut commands: Commands,\n) {\n    let state = RoofAudioState::<S::Event>::new(&core);\n    commands.insert_resource(state);\n}",
+      "consumer_signature": "pub fn roof_audio_system<S: Studio + Send + Sync + 'static>(\n    mut state: ResMut<RoofAudioState<S::Event>>,\n    mut events: EventReader<RoofEditSound>,\n    core: Res<AudioCore<S>>,\n    speed: Option<Res<EditingSpeed>>,\n)"
+    }
+  ],
+  "bevy_ecs_version": "0.16.0",
+  "bevy_local_sources": [
+    {
+      "path": "/Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/schedule/config.rs",
+      "sha256": "fb57f3e4f45a441fb325dc17b67ff3e27a7a00c1125fb41934088004eb10c7ee"
+    },
+    {
+      "path": "/Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/schedule/condition.rs",
+      "sha256": "7969ce4b141e0cffcabc8fc720ee09be5a105bcd2c0906db4323c62be59d1377"
+    },
+    {
+      "path": "/Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/schedule/auto_insert_apply_deferred.rs",
+      "sha256": "4476acf9947239471793890cb505974b21a8c1702adf76125594b05738d91de2"
+    },
+    {
+      "path": "/Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/schedule/schedule.rs",
+      "sha256": "46024cf13725b027d1756a85452f42d26bb8fd67452195cc7bd82f146cd1d59e"
+    }
+  ],
+  "production_source_edited": false,
+  "cargo_run": false
+}

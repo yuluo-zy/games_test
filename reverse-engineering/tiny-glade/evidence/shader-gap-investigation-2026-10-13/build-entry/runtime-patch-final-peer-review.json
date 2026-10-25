@@ -1,0 +1,19 @@
+{
+  "status": "prior_blocker_resolved",
+  "prior_review": "runtime-patch-review-blockers.json",
+  "original_issue": "Vertex semantic rename matched 34 lifted pixel SPIRV_Cross_Input blocks in 28 sources because the generic struct name was shared across stage branches.",
+  "blocks_checked": 34,
+  "sources_checked": 28,
+  "current_restored_blocks": 34,
+  "restoration_matches_pre_vertex_patch": true,
+  "checks": {
+    "pixel_member_names_types_locations_preserved": true,
+    "only_pixel_semantics_reverted_to_pre_patch_TEXCOORD": true,
+    "vertex_semantic_repairs_retained": true,
+    "source_logic_and_arithmetic_unchanged": true
+  },
+  "evidence": "../interfaces/restore-ps-inputs.patch",
+  "limits": [
+    "This resolves the source-stage scope bug; final compiler/module corpus checks remain separate."
+  ]
+}

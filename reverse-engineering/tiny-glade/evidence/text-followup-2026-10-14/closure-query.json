@@ -1,0 +1,38 @@
+[
+  {
+    "tool": "prepare_functions",
+    "args": {
+      "program": "tiny-glade.exe",
+      "targets": [
+        {
+          "name": "tg_text::TextFragment::set_family",
+          "address": "0x140b90c80",
+          "size": 532,
+          "bytes_sha256": "4f15072d946f94c65e213078b6b913a8ead3e0165b0324000c51d960cc44603e",
+          "range_basis": "original B PDB module624 S_LPROC32/S_GPROC32"
+        },
+        {
+          "address": "0x140fac810",
+          "size": 759,
+          "bytes_sha256": "1c6affc9f356842497614d36ef55606b619c8edc2c6c817d9a3037fb790d6c08",
+          "range_basis": "Original B PDB module1185 S_GPROC32 consume toolbar closure; size759"
+        },
+        {
+          "address": "0x141805770",
+          "size": 804,
+          "bytes_sha256": "59e2bd9d21b24512ca96ca73da06f58ce55be589a27514e096ed966df46dddd0",
+          "range_basis": "Original B PE x64 RUNTIME_FUNCTION exact entry range; upload caller private inlined closure; exclude std iteration implementation"
+        }
+      ]
+    }
+  },
+  {
+    "tool": "get_functions",
+    "args": {
+      "program": "tiny-glade.exe",
+      "functions": "0x140b90c80,0x140fac810,0x141805770",
+      "fields": "decompiled_code,signature",
+      "include_call_context": false
+    }
+  }
+]

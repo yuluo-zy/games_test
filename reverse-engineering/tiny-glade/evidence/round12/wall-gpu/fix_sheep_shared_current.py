@@ -1,0 +1,2 @@
+from pathlib import Path
+p=Path('D:/game/reverse-engineering/tiny-glade/evidence/round12/wall-gpu/sheep_shared_current.py');s=p.read_text(encoding='utf-8');s=s.replace("  a=s.index('/// `Wren`');z=s.index('pub struct Wren {',a);z=s.index('\\n}',z)+2\n  s=s[:a]+'pub use country_core::resources::critters::Wren;'+s[z:]", "  if 'pub struct Wren {' in s:\n   a=s.index('pub struct Wren {');a=s.rfind('#[derive',0,a);z=s.index('\\n}',a)+2\n   s=s[:a]+'pub use country_core::resources::critters::Wren;'+s[z:]");p.write_text(s,encoding='utf-8')

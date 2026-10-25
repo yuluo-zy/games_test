@@ -1,0 +1,30 @@
+{
+  "status": "root_delegation_and_readonly_callsite_confirmation",
+  "claim": {
+    "task": "TG-f2c3841f004fb1ad05",
+    "owner": "main-chain-boot-20261018",
+    "metadata_changed": false,
+    "execution_authorized_by_root": true
+  },
+  "review_contract_sha256": "d218e5ab4c0e95dedbd723d216a98bccae6db16f114a6dc65931da970db357a1",
+  "production_before": {
+    "path": "tiny-glade/crates/country-core/src/systems/wall/valid_enclosure/mod.rs",
+    "sha256": "22eb05b20add68b1265eb52147c13b1b1deeec275af9d29cc08dfb9d2da41c78"
+  },
+  "actual_source_occurrences": [
+    {
+      "line": 78,
+      "text": "Self::Rectangle(r) => rectangle_closest_u_from_pos(r, p),"
+    },
+    {
+      "line": 156,
+      "text": "fn rectangle_closest_u_from_pos(rect: Rectangle2d, p: Vec2) -> f32 {"
+    }
+  ],
+  "repo_search_scope": "tiny-glade/crates; rg showed only the call+definition in production source; remaining hits in recovery reports are historical prose",
+  "planned_change": "delegate existing rectangle branch to canonical Rectangle2d::get_closest_u_from_pos, remove only orphan helper, correct dispatch comment, add real wrapper fixtures",
+  "source_changed": false,
+  "candidate_created": false,
+  "tests_executed": false,
+  "approval_gate": "independent design review pending; candidate starts only after review"
+}

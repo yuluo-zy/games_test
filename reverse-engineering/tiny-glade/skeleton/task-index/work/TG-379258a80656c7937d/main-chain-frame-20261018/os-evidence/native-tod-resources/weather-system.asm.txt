@@ -1,0 +1,54 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+1408e5b00: 56                          	pushq	%rsi
+1408e5b01: 57                          	pushq	%rdi
+1408e5b02: 48 83 ec 28                 	subq	$0x28, %rsp
+1408e5b06: 49 8b 00                    	movq	(%r8), %rax
+1408e5b09: 80 78 58 04                 	cmpb	$0x4, 0x58(%rax)
+1408e5b0d: 0f 85 a1 00 00 00           	jne	0x1408e5bb4 <.text+0x8e4bb4>
+1408e5b13: 48 89 ce                    	movq	%rcx, %rsi
+1408e5b16: 48 8b 3a                    	movq	(%rdx), %rdi
+1408e5b19: 48 8b 07                    	movq	(%rdi), %rax
+1408e5b1c: 48 85 c0                    	testq	%rax, %rax
+1408e5b1f: 78 07                       	js	0x1408e5b28 <.text+0x8e4b28>
+1408e5b21: f3 48 0f 2a c8              	cvtsi2ss	%rax, %xmm1
+1408e5b26: eb 15                       	jmp	0x1408e5b3d <.text+0x8e4b3d>
+1408e5b28: 48 89 c1                    	movq	%rax, %rcx
+1408e5b2b: 48 d1 e9                    	shrq	%rcx
+1408e5b2e: 83 e0 01                    	andl	$0x1, %eax
+1408e5b31: 48 09 c8                    	orq	%rcx, %rax
+1408e5b34: f3 48 0f 2a c8              	cvtsi2ss	%rax, %xmm1
+1408e5b39: f3 0f 58 c9                 	addss	%xmm1, %xmm1
+1408e5b3d: f3 0f 2a 47 08              	cvtsi2ssl	0x8(%rdi), %xmm0
+1408e5b42: f3 0f 5e 05 f6 1a 0c 02     	divss	0x20c1af6(%rip), %xmm0  # 0x1429a7640
+1408e5b4a: f3 0f 58 c1                 	addss	%xmm1, %xmm0
+1408e5b4e: f3 0f 5e 05 ea f5 1b 02     	divss	0x21bf5ea(%rip), %xmm0  # 0x142aa5140
+1408e5b56: f3 0f 59 05 46 80 10 02     	mulss	0x2108046(%rip), %xmm0  # 0x1429edba4
+1408e5b5e: e8 6d e4 03 02              	callq	0x142923fd0 <.text+0x2922fd0>
+1408e5b63: f3 0f 10 4f 28              	movss	0x28(%rdi), %xmm1
+1408e5b68: f3 0f 59 0d 14 fe 03 02     	mulss	0x203fe14(%rip), %xmm1  # 0x142925984
+1408e5b70: 8b 46 1c                    	movl	0x1c(%rsi), %eax
+1408e5b73: 48 8b 4e 10                 	movq	0x10(%rsi), %rcx
+1408e5b77: 89 01                       	movl	%eax, (%rcx)
+1408e5b79: 48 8b 06                    	movq	(%rsi), %rax
+1408e5b7c: 0f 28 15 6d fd 03 02        	movaps	0x203fd6d(%rip), %xmm2  # 0x1429258f0
+1408e5b83: 0f 57 d1                    	xorps	%xmm1, %xmm2
+1408e5b86: 0f 57 db                    	xorps	%xmm3, %xmm3
+1408e5b89: 0f 57 e4                    	xorps	%xmm4, %xmm4
+1408e5b8c: f3 0f c2 e0 01              	cmpltss	%xmm0, %xmm4
+1408e5b91: 0f 54 cc                    	andps	%xmm4, %xmm1
+1408e5b94: 0f 55 e2                    	andnps	%xmm2, %xmm4
+1408e5b97: 0f 56 e1                    	orps	%xmm1, %xmm4
+1408e5b9a: f3 0f 58 60 0c              	addss	0xc(%rax), %xmm4
+1408e5b9f: f3 0f 5f dc                 	maxss	%xmm4, %xmm3
+1408e5ba3: f3 0f 10 05 59 fd 03 02     	movss	0x203fd59(%rip), %xmm0  # 0x142925904
+1408e5bab: f3 0f 5d c3                 	minss	%xmm3, %xmm0
+1408e5baf: f3 0f 11 40 0c              	movss	%xmm0, 0xc(%rax)
+1408e5bb4: 48 83 c4 28                 	addq	$0x28, %rsp
+1408e5bb8: 5f                          	popq	%rdi
+1408e5bb9: 5e                          	popq	%rsi
+1408e5bba: c3                          	retq

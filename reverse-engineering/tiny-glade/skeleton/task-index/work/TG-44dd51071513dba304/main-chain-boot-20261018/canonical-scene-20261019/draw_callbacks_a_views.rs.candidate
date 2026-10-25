@@ -1,0 +1,130 @@
+//! `draw_callbacks_a` 用到的**视图 / stub 类型**（只含被读字段；偏移为机器码观测）。见 `draw_callbacks_a.rs` 模块文档。
+
+use alloc::vec::Vec;
+
+use bevy_ecs::component::Component;
+use bevy_ecs::resource::Resource;
+use glam::{Quat, Vec3};
+
+// =====================================================================================================================
+// 视图 / stub 类型（只含被读字段；偏移为机器码观测）
+// =====================================================================================================================
+
+// Preserve old callback import paths while reading the real startup-owned
+// components. Re-exporting tuple constructors keeps existing callers intact.
+pub use crate::components::NormalMap as NormalMapView;
+pub use crate::components::drawable::{AlbedoMap as AlbedoMapView, AlphaMap as AlphaMapView};
+
+/// Same canonical components as the actual flag-cloth producers.
+pub use crate::components::drawable::{WallFlagCloth as WallFlagClothView,
+    RoofFlagCloth as RoofFlagClothView};
+
+/// `components::WoodenGate`（TypeId 0x3b633fbe5a39b5b4/0xd54faa3a72d3ee09；真实类型 `(pub Gap)`）：
+/// `qword @+0x18`（取低 32 位写 `i32` uniform）、`i32 @+0x30`。
+#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct WoodenGateView {
+    pub q18: u64,
+    pub d30: i32,
+}
+
+/// `components::SplashParticle`（TypeId 0x73873257d5f05e11/0xdb3ade5ce1f0e7df）：`f32 @+8`。
+#[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
+pub struct SplashParticleView {
+    pub f8: f32,
+}
+
+/// `components::ArrowGizmo`（TypeId 0xf26b1f0dd0e37102/0x4ea1410c87a9f297）：`f32 @+0`、`f32 @+4`。
+#[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
+pub struct ArrowGizmoView {
+    pub f0: f32,
+    pub f4: f32,
+}
+
+// 保留旧导出名，绘制端与创建端必须使用同一个 ECS 组件身份。
+pub use crate::components::DashedLineLength as DashedLineLengthView;
+
+/// `resources::critters::sheep::Sheep` rendering payload projection (the actual ECS owners are Sheep + SheepWalkRecord)：
+/// `qword @+0x28`（取低 32 位写 `i32`）、`f32 @+0x58`、`u8 @+0x60`（写 `bool`）。
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct SheepView {
+    pub q28: u64,
+    pub f58: f32,
+    pub b60: u8,
+}
+
+/// `components::drawable::PrevTransform`（TypeId 0xa0da022fc84ca3d9/0xfc62e38c26a7c4c9）：`Transform` 布局
+/// （旋转 @0、平移 @0x10、缩放 @0x1c）。
+pub use crate::components::drawable::PrevTransform as PrevTransformView;
+
+/// Compatibility name for the same canonical Component identity. No byte cast
+/// or independently registered View remains on the startup -> draw path.
+pub use crate::components::rendering::StairsStep as StairsStepView;
+
+/// `geometry::instanced_wall::WallBrickInstancedDrawProxy`（组件）：三个字节 `b0 @+0`、`b1 @+1`、`b2 @+2`。真实类型
+/// `{ kind: u16, sub: u8 }` 的字节对应关系 U，故用视图。
+pub use crate::geometry::instanced_wall::WallBrickInstancedDrawProxy as WallBrickInstancedDrawProxyView;
+
+/// `LogoAnimation`（TypeId 0x98df08dcfa7ea5ba/0x67b117a60e632bc3；真实类型无 `Resource` 派生）：`f32 @+0`、`f32 @+0x10`。
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
+pub struct LogoAnimationView {
+    pub f0: f32,
+    pub f10: f32,
+}
+
+/// `LoadingScreenProgress`（TypeId 0x5628183cc22697bc/0x67be6ff8af3d3090；真实类型 `(pub Gap)`）：`f32 @+0`、`f32 @+4`。
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
+pub struct LoadingScreenProgressView {
+    pub f0: f32,
+    pub f4: f32,
+}
+
+/// `glade_border::ShowDemoBorderOverlay`（事件，TypeId 0x5eaaca67868e0174/0x67675b60a5763276 同属 `Events<T>`；
+/// 权威定义在 `resources::glade_border`（组 A restorer 接线，原位置）。
+pub use crate::resources::glade_border::ShowDemoBorderOverlay;
+
+/// `ActiveSession`（TypeId 0x74430dfcc6d8719b/0xca5591f7e464509c）：`byte @+0x58`（变体）与字节序列（`ptr @+8`、`len @+0x10`）。
+#[cfg(test)]
+#[derive(Resource, Clone, Debug, Default, PartialEq, Eq)]
+pub struct ActiveSessionView {
+    pub variant: u8,
+    pub glade_bytes: Vec<u8>,
+}
+
+/// `Weather`（TypeId 0xd2f519263066413b/0x5192b15f962559e4；真实类型 `(pub Gap)`）：`f32 @+0xc`（强度）。
+#[cfg(test)]
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
+pub struct WeatherView {
+    pub intensity: f32,
+}
+
+/// `AppMode`（TypeId 0xc2b8e941c91a6428/0x59f3c6d1d3da43a0）：只读首个 `u32`（判别）。真实 `AppMode` 的判别值域在 crate 里
+/// 只有 5 个变体，与 `== 0x13` 的比较对不上，故用视图（U）。
+#[cfg(test)]
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct AppModeView {
+    pub tag: u32,
+}
+
+/// `MainCamera`（TypeId 0xbba451ee6a08a3ff/0x8d008d15febcf29d；真实类型 `raw: Gap`）：`eye_position()` 与 `byte @+0x4d0`。
+#[cfg(test)]
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
+pub struct MainCameraView {
+    pub eye: Vec3,
+    pub season: u8,
+}
+
+/// `EditingHighlight`（TypeId 0x6efcda1c77e106b4/0x7c999c10e7fa637f；真实类型 `raw: Gap`）：`byte @+0xc`。
+pub use crate::resources::editing_highlight::EditingHighlight as EditingHighlightView;
+
+/// `DebugGui`（TypeId 0x48b321ef779dc301/0xbd65767194d9ddc8）：`byte @+0xfe`。
+pub use crate::resources::gui::DebugGui as DebugGuiView;
+
+/// `systems::wall::eraser::EraserSizeMultiplier`（TypeId 0x0ae77a86a2c6cefc/0xf5509a56b32e81d0）：首个 `f32`。
+pub use crate::resources::walls::EraserSizeMultiplier;
+
+/// `resources::roofs::roof_highlight::RoofHighlight`（TypeId 0x9311cf2688353878/0xfd54118f9a9ee3d4）：`u32 @+0`、`tag @+8`。
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct RoofHighlight {
+    pub value: u32,
+    pub tag: u8,
+}

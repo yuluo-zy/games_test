@@ -1,0 +1,216 @@
+--- a/tiny-glade/crates/country-core/src/startup/startup_roof.rs
++++ b/tiny-glade/crates/country-core/src/startup/startup_roof.rs
+@@ -1,17 +1,20 @@
+-//! 屋顶启动资源（B `startup_roof` @0x1414547d0）。
+-//!
+-//! 证据（expansion-b2 decomp + 字串池 0x142c615d8 区）：
+-//! * 文件式网格 4 个：`assets/meshes/roof_spire.json`（名 `roof_spire`）、
+-//!   `roof_support_beam.json`（名 `roof_support_beam`）、`roof_button.json`
+-//!   （名 `roof_button`）、`roof_delete_scribble.json`（名 `roof_delete_scribble`）。
+-//! * 着色器 2 个：`/instanced_roof_spire.raster.hlsl`→
+-//!   `instanced_roof_spire_shader`、`/instanced_roof_beams.raster.hlsl`→
+-//!   `support_beam_roof_shader`。
+-//! * 2 个 spawn 记录（O）；与 spire/beam 的配对为 I。
+-use crate::asset_libraries::mesh_library::AssetMeshLibrary;
+-use super::{StartupAssetHost, register_mesh_file};
+-use bevy_ecs::prelude::Res;
+-
++//! Complete original B startup_roof1414547d0/1680B, current physical owners.
++use crate::{
++    asset_libraries::{
++        Handle,
++        mesh_library::{AssetMeshLibrary, MeshAsset},
++        meshwatch::MeshWatch,
++        shader_library::AssetShaderLibrary,
++    },
++    components::drawable::DrawableMeshBundle,
++    render::{
++        mesh::Mesh,
++        shader::{RasterShaderProgram, boundary::ShaderBackend},
++    },
++    utils::components::transform::Transform,
++};
++use bevy_ecs::{entity::Entity, system::Commands};
++use std::path::Path;
+ pub const ROOF_MESHES: [(&str, &str); 4] = [
+     ("assets/meshes/roof_spire.json", "roof_spire"),
+     ("assets/meshes/roof_support_beam.json", "roof_support_beam"),
+@@ -21,7 +24,6 @@
+         "roof_delete_scribble",
+     ),
+ ];
+-
+ pub const ROOF_SHADERS: [(&str, &str); 2] = [
+     (
+         "/instanced_roof_spire.raster.hlsl",
+@@ -32,68 +34,118 @@
+         "support_beam_roof_shader",
+     ),
+ ];
+-
+-/// I：两条 spawn 记录的配对。
+ pub const ROOF_DRAWABLES: [(&str, &str); 2] = [
+     ("roof_spire", "instanced_roof_spire_shader"),
+     ("roof_support_beam", "support_beam_roof_shader"),
+ ];
+-
+-pub fn startup_roof<H: StartupAssetHost>(host: &mut H) {
+-    let mut meshes = Vec::new();
++fn spawn_roof_drawable(
++    mesh: Handle<Mesh>,
++    shader: Handle<RasterShaderProgram>,
++    commands: &mut Commands<'_, '_>,
++) -> Entity {
++    commands
++        .spawn(DrawableMeshBundle {
++            mesh,
++            shader,
++            transform: Transform::identity(),
++        })
++        .id()
++}
++/// Preserve interleaved host calls, command writes and failure side effects:
++/// spire mesh/shader/spawn, beam mesh/shader/spawn, button mesh, scribble mesh.
++/// Both native command executors1412dd460 insert only DrawableMeshBundle.
++pub fn startup_roof(
++    meshes: &AssetMeshLibrary,
++    shaders: &AssetShaderLibrary,
++    backend: &dyn ShaderBackend,
++    watch: &MeshWatch,
++    installed: &Path,
++    commands: &mut Commands<'_, '_>,
++) -> [Entity; 2] {
++    let mut entities = Vec::with_capacity(2);
++    for (i, (file, name)) in ROOF_MESHES.into_iter().enumerate() {
++        let path = installed.join(file);
++        let mesh = crate::utils::load_json::load_json_as_mesh(
++            path.to_str()
++                .expect("installed roof mesh path must be UTF-8"),
++        );
++        watch.watch(&mesh);
++        let mesh = meshes.add(MeshAsset::new(mesh, Some(name.into())));
++        if let Some(&(path, name)) = ROOF_SHADERS.get(i) {
++            let shader =
++                super::load_shaders::load_shader_into_library(shaders, backend, path, name);
++            entities.push(spawn_roof_drawable(mesh, shader, commands));
++        }
++    }
++    entities
++        .try_into()
++        .expect("original roof startup has exactly two drawables")
++}
++/// Partial compatibility helper, not the actual device gameplay startup.
++pub fn startup_roof_meshes(meshes: bevy_ecs::prelude::Res<AssetMeshLibrary>) {
+     for (path, name) in ROOF_MESHES {
+-        meshes.push((name, host.load_mesh(path, Some(name))));
+-    }
+-    let mut shaders = Vec::new();
+-    for (path, name) in ROOF_SHADERS {
+-        shaders.push((name, host.load_shader(path, name)));
+-    }
+-    for (mesh_name, shader_name) in ROOF_DRAWABLES {
+-        let mesh = meshes.iter().find(|(n, _)| *n == mesh_name).unwrap().1;
+-        let shader = shaders.iter().find(|(n, _)| *n == shader_name).unwrap().1;
+-        host.spawn_drawable(mesh, shader);
++        super::register_mesh_file(&meshes, path, Some(name));
+     }
+ }
+-
+-pub fn startup_roof_meshes(meshes: Res<AssetMeshLibrary>) {
+-    for (path, name) in ROOF_MESHES {
+-        register_mesh_file(&meshes, path, Some(name));
+-    }
+-}
+-
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+-
+-    #[derive(Default)]
+-    struct Rec {
+-        meshes: Vec<(&'static str, Option<&'static str>)>,
+-        shaders: Vec<(&'static str, &'static str)>,
+-        spawns: usize,
+-    }
+-    impl StartupAssetHost for Rec {
+-        type Mesh = u64;
+-        type Shader = u64;
+-        fn load_mesh(&mut self, path: &'static str, name: Option<&'static str>) -> u64 {
+-            self.meshes.push((path, name));
+-            self.meshes.len() as u64
++    use crate::{
++        components::KeepOnLevelUnload,
++        render::{test_device::TestDevice, vao::Vao},
++        systems::render_loop::draw_passes::draw_lists::{
++            self, DesignatedRenderPass, DontCastShadow, DrawLists, OcclusionCulled,
++        },
++    };
++    use bevy_ecs::{prelude::*, system::SystemState};
++    #[test]
++    fn two_original_roof_globals_are_real_drawables_with_expected_draw_callbacks() {
++        let mut world = World::new();
++        let shaders = AssetShaderLibrary::new();
++        let mut ids = Vec::new();
++        for (path, name) in ROOF_SHADERS {
++            let shader = super::super::load_shaders::load_shader_into_library(
++                &shaders,
++                &TestDevice(1),
++                path,
++                name,
++            );
++            let mesh = Handle::<Mesh>::new();
++            let mut state = SystemState::<Commands>::new(&mut world);
++            let id = spawn_roof_drawable(mesh, shader, &mut state.get_mut(&mut world));
++            state.apply(&mut world);
++            assert_eq!(world.get::<Handle<Mesh>>(id), Some(&mesh));
++            assert_eq!(world.get::<Handle<RasterShaderProgram>>(id), Some(&shader));
++            assert_eq!(world.get::<Transform>(id), Some(&Transform::identity()));
++            assert!(world.get::<OcclusionCulled>(id).is_none());
++            assert!(world.get::<KeepOnLevelUnload>(id).is_none());
++            assert!(world.get::<DontCastShadow>(id).is_none());
++            assert!(world.get::<DesignatedRenderPass>(id).is_none());
++            world.entity_mut(id).insert(Handle::<Vao>::new());
++            ids.push(id);
+         }
+-        fn load_shader(&mut self, path: &'static str, name: &'static str) -> u64 {
+-            self.shaders.push((path, name));
+-            100 + self.shaders.len() as u64
+-        }
+-        fn spawn_drawable(&mut self, mesh: u64, shader: u64) {
+-            assert!(mesh >= 1 && shader >= 101);
+-            self.spawns += 1;
+-        }
+-    }
+-
+-    #[test]
+-    fn roof_registers_four_meshes_two_shaders_and_two_spawns() {
+-        let mut host = Rec::default();
+-        startup_roof(&mut host);
+-        assert_eq!(host.meshes, ROOF_MESHES.map(|(p, n)| (p, Some(n))).to_vec());
+-        assert_eq!(host.shaders, ROOF_SHADERS.to_vec());
+-        assert_eq!(host.spawns, 2);
++        // CPU list admission, not a substitute for real SSBO/indirect uploads.
++        let mut lists = DrawLists::new();
++        draw_lists::build_draw_lists(&mut world, &shaders, &mut lists);
++        lists.sort();
++        assert_eq!(lists.list(draw_lists::list::SHADOW).len(), 2);
++        assert_eq!(lists.list(draw_lists::list::GBUFFER).len(), 2);
++        assert_eq!(lists.total_len(), 4);
++        assert_eq!(
++            lists
++                .list(draw_lists::list::GBUFFER)
++                .iter()
++                .map(|x| x.0.sort_key)
++                .collect::<Vec<_>>(),
++            vec![3100, 3500]
++        );
++        assert_eq!(
++            lists
++                .list(draw_lists::list::GBUFFER)
++                .iter()
++                .map(|x| x.0.params.entity)
++                .collect::<Vec<_>>(),
++            ids
++        );
+     }
+ }

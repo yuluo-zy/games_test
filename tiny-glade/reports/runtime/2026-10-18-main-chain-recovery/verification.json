@@ -1,0 +1,41 @@
+{
+  "created_utc": "2026-10-18T00:04:50.837167+00:00",
+  "source_inputs_sha256": {
+    "crates/tiny-glade/src/egui_backend.rs": "ddf889560e0c02cc7a85ec0d6a768c29d7f6f494f6362474c18430d394d63e7d",
+    "crates/tiny-glade/src/game_loop.rs": "158ac0b60ee14faa1c8befa1ef6c928451dacba6c7b63f8c8e14570050d164cf",
+    "crates/tiny-glade/src/event_loop.rs": "1f62165cf7b175b28f2623ca9c75ecafa1a202a26697164f1304f910278e4746",
+    "Cargo.toml": "75a912c3021333c18dbeceb9567930ee32808a8bd57aaddd27985d04ae170817",
+    "Cargo.lock": "ed24db62aa2d8dbf84d397ce65f16832dfae8dba538fe1ff5c6350429790a7f1",
+    "crates/tiny-glade/Cargo.toml": "22a8a0139ea73e0b515c97e7b28b74b4d4f2ccb1c4ba41497246aafc893bc3d1"
+  },
+  "binary_sha256": {
+    "B_patched": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "B_release": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+  },
+  "checks": [
+    {
+      "command": "cargo test -p tiny-glade --lib --locked --offline",
+      "exit_code": 0,
+      "passed": 27,
+      "failed": 0,
+      "log": "logs/library-tests.log"
+    },
+    {
+      "command": "cargo check -p tiny-glade --all-targets --locked --offline",
+      "exit_code": 0,
+      "log": "logs/all-targets-check.log"
+    }
+  ],
+  "native_validation": {
+    "static": "RNE call and dataflow inspection, fresh B egui decompilation",
+    "dynamic_menu_fps": "failed: exit 132, no acceptance",
+    "full_game_or_gpu": false
+  },
+  "completion": {
+    "analysis_document": true,
+    "egui_ownership_fix": true,
+    "frame_driver_candidate": true,
+    "production_render_host_factory": false,
+    "startup_os_render_present_chain": false
+  }
+}

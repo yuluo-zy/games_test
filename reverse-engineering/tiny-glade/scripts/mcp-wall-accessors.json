@@ -1,0 +1,8 @@
+[
+ {"tool":"open_database","args":{"file_path":"D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe","run_auto_analysis":false,"database_id":"tg_source"}},
+ {"tool":"wait_for_analysis","args":{"database":"tg_source"}},
+ {"tool":"batch","args":{"database":"tg_source","stop_on_error":false,"operations":[{"tool":"create_function","params":{"address":"0x140b2a620"}},{"tool":"create_function","params":{"address":"0x140b2a6e0"}}]}},
+ {"tool":"batch","args":{"database":"tg_source","stop_on_error":false,"operations":[{"tool":"rename_function","params":{"address":"0x140b2a620","new_name":"tg_PublicWallState_max_y"}},{"tool":"rename_function","params":{"address":"0x140b2a6e0","new_name":"tg_PublicWallState_flat_roof_y"}}]}},
+ {"tool":"batch","args":{"database":"tg_source","stop_on_error":false,"operations":[{"tool":"decompile_function","params":{"address":"0x140b2a620"}},{"tool":"decompile_function","params":{"address":"0x140b2a6e0"}},{"tool":"disassemble_function","params":{"address":"0x140b2a620"}},{"tool":"get_xrefs_to","params":{"address":"0x140b2a620","limit":30}},{"tool":"get_call_graph","params":{"address":"0x140b2a620","depth":1}}]}},
+ {"tool":"close_database","args":{"database":"tg_source","save":true}}
+]

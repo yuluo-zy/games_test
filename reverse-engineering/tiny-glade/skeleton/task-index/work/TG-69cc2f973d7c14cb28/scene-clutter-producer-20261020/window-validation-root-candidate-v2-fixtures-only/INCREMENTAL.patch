@@ -1,0 +1,38 @@
+--- a/crates/systems/decorator/src/blueprint.rs
++++ b/crates/systems/decorator/src/blueprint.rs
+@@ -2077,10 +2077,11 @@
+         let mut world = fixture();
+         let addr = DecoratorStorageAddr::Wall(WallId(42));
+         stored(&mut world, 7, addr, terrain_info());
+-        world
+-            .resource_mut::<DecoratorStorage>()
+-            .decorator_to_storage
+-            .insert(DecoratorId(7), DecoratorStorageAddr::Terrain);
++        let mut storage = world.resource_mut::<DecoratorStorage>();
++        // 原d2s.insert拒绝重复键；先明确移除旧地址，才构造本测试故意不一致的索引。
++        assert_eq!(storage.decorator_to_storage.remove(DecoratorId(7)), Some(addr));
++        storage.decorator_to_storage.insert(DecoratorId(7), DecoratorStorageAddr::Terrain);
++        drop(storage);
+         affected(&mut world, 7, addr);
+         world.resource_mut::<DecoratorBackup>().created = true;
+         run(&mut world);
+@@ -2364,14 +2365,11 @@
+         for looped in [false, true] {
+             let mut world = fixture();
+             let mut walls = wall_fixture(looped);
+-            walls
+-                .get_mut(WallId(42))
+-                .unwrap()
+-                .freeform_heights
+-                .as_mut()
+-                .unwrap()
+-                .arch_segment_heights
+-                .truncate(2);
++            let wall = walls.get_mut(WallId(42)).unwrap();
++            // consume可已填regular/gable；本夹具明确只发布目标freeform高度表。
++            wall.regular_heights = None;
++            wall.gable_heights = None;
++            wall.freeform_heights.as_mut().unwrap().arch_segment_heights.truncate(2);
+             world.insert_resource(walls);
+             world
+                 .run_system_once(

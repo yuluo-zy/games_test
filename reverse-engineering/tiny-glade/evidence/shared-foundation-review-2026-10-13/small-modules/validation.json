@@ -1,0 +1,106 @@
+{
+  "commands": [
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--manifest-path",
+        "reconstruction/shared-foundation/Cargo.toml",
+        "-p",
+        "paths",
+        "-p",
+        "lang-lib",
+        "-p",
+        "tabloid",
+        "-p",
+        "theme-defs",
+        "--locked",
+        "--offline"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 3.61,
+      "log": "evidence/shared-foundation-review-2026-10-13/small-modules/validation-0.log",
+      "log_sha256": "8737bbbd5396c5c53a67574405c5d80950a32f0c36973e35156546c20c36264f"
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "--manifest-path",
+        "reconstruction/shared-foundation/Cargo.toml",
+        "-p",
+        "paths",
+        "-p",
+        "lang-lib",
+        "-p",
+        "tabloid",
+        "-p",
+        "theme-defs",
+        "--all-targets",
+        "--locked",
+        "--offline",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.37,
+      "log": "evidence/shared-foundation-review-2026-10-13/small-modules/validation-1.log",
+      "log_sha256": "0ce53679c850aaecad8f1c8c9e68562c0c4715577bae3c0b7df7c37bcdb624ab"
+    },
+    {
+      "command": [
+        "cargo",
+        "run",
+        "--manifest-path",
+        "reconstruction/shared-foundation/Cargo.toml",
+        "-p",
+        "lang-lib",
+        "--example",
+        "review_missing_cache",
+        "--locked",
+        "--offline"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.29,
+      "log": "evidence/shared-foundation-review-2026-10-13/small-modules/validation-2.log",
+      "log_sha256": "125666348f8375a7467506bda262f1fba66a02c49bbe3754fef12e3a70dfc5f1"
+    }
+  ],
+  "source_files": [
+    {
+      "path": "reconstruction/shared-foundation/crates/paths/src/lib.rs",
+      "sha256": "e6d4f87783c1b879e52ad0385a4fc48a331871340e77447258b989b169251103"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/lang-lib/examples/review_missing_cache.rs",
+      "sha256": "8dfe2b910cdbd2d6d9c60949f383379d18df7be3afd496099436bb17fd209376"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/lang-lib/examples/verify_locale_policy.rs",
+      "sha256": "39db4293227d68fb9209aea017a8c92f1f2e7ae36418b0cdaeb513a3b0f375f3"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/lang-lib/examples/verify_original_assets.rs",
+      "sha256": "b8335a52519d1bb3b086d517f8b1264425295d7398f7688bba83e9294c1cf93c"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/lang-lib/src/language_library.rs",
+      "sha256": "152f10cdbd909d0642693c72d0c429dcf981e609fc4887272fec980336851c78"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/lang-lib/src/lib.rs",
+      "sha256": "c97f7e0429a273fd4c1ee1feb0892df59fa4e34c8b4f7c332740e772fe6fb2a6"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/tabloid/src/lib.rs",
+      "sha256": "3e1896ae4b45a7d252f5f6702d7daf659f711675e1537dbeb8a232cd644db3d2"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/theme-defs/src/lib.rs",
+      "sha256": "542b22e4403dfe5b86e86bea1a6f79ed7a4086a7d908188a89d1322c44146216"
+    }
+  ],
+  "original_native_entry_executed": false,
+  "workspace_lock_sha256": "9673c8cc887ac441d3ba891f6ba3e6bab6401c39cb01a7b224851fb6344d0a8c"
+}

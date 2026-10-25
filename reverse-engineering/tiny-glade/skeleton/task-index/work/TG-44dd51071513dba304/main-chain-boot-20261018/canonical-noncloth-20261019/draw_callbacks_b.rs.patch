@@ -1,0 +1,165 @@
+--- a/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_b.rs
++++ b/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_b.rs
+@@ -29,6 +29,12 @@
+ // Preserve the original instruction-level expression order/NaN policy, API call shapes, and evidence/test transcription. See README.md.
+ #![allow(clippy::field_reassign_with_default, clippy::redundant_closure)]
+ use alloc::vec::Vec;
++use crate::resources::{session::ActiveSession, weather::Weather,
++    history::tree_edit::TreeCanopyMaxCullDistance,
++    rocky_terrain::RockyTerrainMeshVertCount};
++use crate::systems::camera_rig::main_camera::MainCamera;
++use crate::systems::render_loop::draw_passes::draw_shaders::clearing_shaders::{
++    SEASON_OFFSETS, SEASON_FIELD_OFFSET};
+ use core::sync::atomic::{AtomicBool, Ordering};
+ use bevy_ecs::component::Component;
+ use bevy_ecs::entity::Entity;
+@@ -139,6 +145,7 @@
+ /// `MainCamera`（TypeId 0xbba451ee6a08a3ff/0x8d008d15febcf29d，`systems::camera_rig::MainCamera`，真实类型 `raw: Gap`）。
+ /// 读取：`CameraMatrices::eye_position`（0x140c96d40：`[+0xc0..+0xf0]` 与 0 相乘后加 `[+0xf0]` → `eye = [+0xf0].xyz`）、
+ /// 字节 `+0x4d0`（`MainCamera` 文档称模式字节；树 shader 里叫 season，I）、按该字节索引的子结构里 `f32 @+0x104`。
++#[cfg(test)]
+ #[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
+ pub struct MainCameraView {
+     /// `eye_position()`（O）。
+@@ -149,12 +156,14 @@
+     pub season_params: [f32; 6],
+ }
+ /// `Weather`（TypeId 0xd2f519263066413b/0x5192b15f962559e4，真实类型 `Weather(pub Gap)`）：`f32 @+4` = 风（O）。
++#[cfg(test)]
+ #[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
+ pub struct WeatherView {
+     pub wind: f32,
+ }
+ /// `TreeCanopyMaxCullDistance`（TypeId 0x1b4e385d376c1cc0/0x8c38d6ede2a437ec）：真实类型是 `(pub f32)` 且**没有** `Resource`
+ /// 派生；前一版文档称机器码读 `f32 @+4`（与单字段 `f32 @0` 不符，U）。视图保存该 f32。
++#[cfg(test)]
+ #[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
+ pub struct TreeCanopyMaxCullDistanceView(pub f32);
+ /// `EditingHighlight`（TypeId 0x6efcda1c77e106b4/0x7c999c10e7fa637f，真实类型 `raw: Gap`）：`byte @+0xc`。
+@@ -205,6 +214,7 @@
+ #[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+ pub struct InstancedDrawFromPlacementData(pub u64);
+ /// `RockyTerrainMeshVertCount`（TypeId 0xfa44538b95ae76c6/0x12146c4ea814069b；真实类型 `(pub u32)` 无 `Resource` 派生）。
++#[cfg(test)]
+ #[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+ pub struct RockyTerrainMeshVertCountView(pub u32);
+ /// `water_planes_draw` 的进程级布尔（`.data` 0x143634d90，O：为真 → `discard`）。
+@@ -489,7 +499,7 @@
+ /// closure_env$43（0x1409b8620）：`rocky_terrain_shader(b, false)`（`r9d = 0`）；顶点数取自
+ /// `RockyTerrainMeshVertCount` 资源（缺失 → `Option::unwrap` panic）。
+ pub fn env43(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+-    let count = res::<RockyTerrainMeshVertCountView>(w).0;
++    let count = res::<RockyTerrainMeshVertCount>(w).0 as u32;
+     rocky_terrain_shader(b, false, count);
+ }
+ // =====================================================================================================================
+@@ -618,28 +628,24 @@
+ // =====================================================================================================================
+ /// `tree_trunk` 适配器（0x1409c9830）：资源 `Weather`（风）、`MainCamera`（eye、季节字节）、`TreeCanopyMaxCullDistance`。
+ pub fn tree_trunk_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+-    let wind = res::<WeatherView>(w).wind;
+-    let cam = *res::<MainCameraView>(w);
+-    let blend = res::<TreeCanopyMaxCullDistanceView>(w).0;
++    let wind = res::<Weather>(w).wind_strength;
++    let cam = res::<MainCamera>(w);
++    let blend = res::<TreeCanopyMaxCullDistance>(w).smoothstep;
+     let inputs = TreeTrunkInputs {
+-        wind,
+-        eye: cam.eye,
+-        season_is_3: cam.season == 3,
+-        blend,
++        wind, eye: cam.eye_position(), season_is_3: cam.mode_byte() == 3, blend,
+     };
+     let w: &World = w;
+     tree_trunk(b, &inputs, |b, k| nani_draw_world(b, k, w));
+ }
+ /// `tree_canopy` 适配器（0x1409ca350）：`season_param` = 季节子结构的 `f32 @+0x104`（`season >= 6` → 越界 panic，同原版的越界读）。
+ pub fn tree_canopy_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+-    let cam = *res::<MainCameraView>(w);
+-    let wind = res::<WeatherView>(w).wind;
+-    let blend = res::<TreeCanopyMaxCullDistanceView>(w).0;
++    let cam = res::<MainCamera>(w);
++    let camera_mode = cam.mode_byte();
++    let lens = cam.read_f32(SEASON_OFFSETS[camera_mode as usize] + SEASON_FIELD_OFFSET);
++    let wind = res::<Weather>(w).wind_strength;
++    let blend = res::<TreeCanopyMaxCullDistance>(w).smoothstep;
+     let inputs = TreeCanopyInputs {
+-        wind,
+-        season_param: cam.season_params[cam.season as usize],
+-        season_is_3: cam.season == 3,
+-        blend,
++        wind, season_param: lens, season_is_3: camera_mode == 3, blend,
+     };
+     let w: &World = w;
+     tree_canopy(b, &inputs, |b, k| nani_draw_world(b, k, w));
+@@ -668,12 +674,16 @@
+ /// `water_planes_draw` 适配器（0x1409d9bc0）：进程布尔、`ActiveSession`（变体字节、字节序列，两次取资源）。
+ /// `bind_ray_tracing<DrawBuilder>` 用 A4 的真实实现（`RtTriangles/RtTriangleMeta/RtBvh/WallColorId`）。
+ pub fn water_planes_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+-    let skip = WATER_PLANES_DISABLED.load(Ordering::Relaxed);
+-    let s = res::<ActiveSessionView>(w);
++    // Original disabled branch discards before touching ActiveSession.
++    if WATER_PLANES_DISABLED.load(Ordering::Relaxed) {
++        b.discard();
++        return;
++    }
++    let session = res::<ActiveSession>(w);
+     let inputs = WaterPlanesInputs {
+-        skip,
+-        variant: s.variant,
+-        all_set: all_nonzero(&s.glade_bytes),
++        skip: false,
++        variant: session.meta.glade.native_tag(),
++        all_set: session.meta.mutators.iter().all(|m| *m as u8 != 0),
+     };
+     water_planes_draw(b, inputs, |b| {
+         b.bind_ray_tracing::<RtTrianglesSsbo, RtTriangleMetaSsbo, RtBvhSsbo, WallColorIdSsbo>()
+@@ -978,7 +988,7 @@
+     #[test]
+     fn env43_passes_false_and_the_vertex_count_resource() {
+         let mut w = World::new();
+-        w.insert_resource(RockyTerrainMeshVertCountView(0x1234));
++        w.insert_resource(RockyTerrainMeshVertCount(0x1234));
+         let p = params(w.spawn_empty().id());
+         let (_, d) = run(&[], &[], |b| env43(b, &p, &mut w));
+         assert_eq!(
+@@ -1455,9 +1465,9 @@
+     #[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
+     fn tree_trunk_adapter_reaches_nani_draw() {
+         let mut w = World::new();
+-        w.insert_resource(WeatherView { wind: 1.0 });
+-        w.insert_resource(MainCameraView::default());
+-        w.insert_resource(TreeCanopyMaxCullDistanceView(0.5));
++        w.insert_resource(Weather::default());
++        w.insert_resource(MainCamera::new(1.0));
++        w.insert_resource(TreeCanopyMaxCullDistance { progress: 0.5, smoothstep: 0.5 });
+         nani_adapter_panics(tree_trunk_cb, &mut w);
+     }
+ 
+@@ -1465,12 +1475,11 @@
+     #[should_panic(expected = "index out of bounds")]
+     fn tree_canopy_adapter_indexes_the_season_table() {
+         let mut w = World::new();
+-        w.insert_resource(WeatherView::default());
+-        w.insert_resource(MainCameraView {
+-            season: 6,
+-            ..Default::default()
+-        });
+-        w.insert_resource(TreeCanopyMaxCullDistanceView(0.5));
++        w.insert_resource(Weather::default());
++        let mut camera = MainCamera::new(1.0);
++        camera.set_mode_byte(crate::systems::camera_rig::main_camera::CameraMode(6));
++        w.insert_resource(camera);
++        w.insert_resource(TreeCanopyMaxCullDistance { progress: 0.5, smoothstep: 0.5 });
+         nani_adapter_panics(tree_canopy_cb, &mut w);
+     }
+ 
+@@ -1522,7 +1531,7 @@
+     fn world_helpers_report_the_original_failure_texts() {
+         let w = World::new();
+         let r = std::panic::catch_unwind(core::panic::AssertUnwindSafe(|| {
+-            let _ = res::<WeatherView>(&w);
++            let _ = res::<Weather>(&w);
+         }));
+         assert!(r.is_err());
+     }

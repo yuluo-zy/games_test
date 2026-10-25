@@ -1,0 +1,12 @@
+--- /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-c459c7f73345e24709/main-chain-boot-20261018/window-audio-event-20261020/run_game.rs.candidate
+@@ -820,6 +820,9 @@
+     app.add_event::<history::history_process::NewReplayCommandEvent>();
+     app.add_event::<history::history_process::DebugHistoryMsg>();
+     app.add_event::<country_core::systems::audio::PlayReplayAudio>();
++    // Original add_audio_events registers this canonical event; App owns its
++    // update lifecycle as well as its storage before the clutter writer runs.
++    app.add_event::<country_core::systems::audio::PlayClutterSoundCmd>();
+     app.add_event::<country_core::systems::timelapse_replay::InterruptTimelapse>();
+     app.add_event::<history::HistoryReplayFailed>();
+     app.add_event::<history::ReplayBucketFinished>();

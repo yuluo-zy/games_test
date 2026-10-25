@@ -1,0 +1,80 @@
+
+void FUN_140aa3360(longlong *param_1,undefined8 param_2,longlong param_3,undefined8 param_4)
+
+{
+  code *pcVar1;
+  longlong lVar2;
+  undefined8 uVar3;
+  longlong lStack_98;
+  longlong lStack_90;
+  longlong lStack_88;
+  longlong lStack_80;
+  longlong lStack_78;
+  undefined1 uStack_70;
+  undefined4 uStack_6f;
+  undefined2 uStack_6b;
+  undefined1 uStack_69;
+  longlong lStack_68;
+  longlong lStack_60;
+  longlong lStack_58;
+  longlong lStack_50;
+  longlong lStack_48;
+  undefined1 uStack_40;
+  undefined4 uStack_3f;
+  undefined2 uStack_3b;
+  undefined1 uStack_39;
+  undefined8 uStack_38;
+  
+  uStack_38 = 0xfffffffffffffffe;
+  if (*param_1 == 0) {
+    if (param_3 < 0) {
+      uVar3 = 0;
+code_r0x000140aa34d5:
+      FUN_1428d8fe3(uVar3,param_3,&UNK_142ad07b0);
+      pcVar1 = (code *)swi(3);
+      (*pcVar1)();
+      return;
+    }
+    if (param_3 == 0) {
+      lVar2 = 1;
+    }
+    else {
+      uVar3 = 1;
+      lVar2 = func_0x000140613c10(param_3,1);
+      if (lVar2 == 0) goto code_r0x000140aa34d5;
+    }
+    func_0x000142923c00(lVar2,param_2,param_3);
+    lStack_98 = 0;
+    uStack_70 = 2;
+    lStack_88 = param_3;
+    lStack_80 = lVar2;
+    lStack_78 = param_3;
+  }
+  else {
+    FUN_140a54440(&lStack_98,*param_1 + 0x10,param_2,param_3);
+    if (lStack_98 == 2) {
+      lStack_68 = lStack_90;
+      FUN_1428d9760(&UNK_142adc7a8,0x2b,&lStack_68,&UNK_142adc788,&UNK_142adcbc0);
+                    /* WARNING: Does not return */
+      pcVar1 = (code *)invalidInstructionException();
+      (*pcVar1)();
+    }
+  }
+  lStack_48 = lStack_78;
+  uStack_40 = uStack_70;
+  uStack_3f = uStack_6f;
+  uStack_3b = uStack_6b;
+  uStack_39 = uStack_69;
+  lStack_58 = lStack_88;
+  lStack_50 = lStack_80;
+  lStack_68 = lStack_98;
+  lStack_60 = lStack_90;
+  FUN_140a57da0(&lStack_68,param_4);
+  FUN_140a57300(&lStack_68);
+  FUN_14089a280(&lStack_68);
+  if (lStack_58 != 0) {
+    func_0x000140613c20(lStack_50,lStack_58,1);
+  }
+  return;
+}
+

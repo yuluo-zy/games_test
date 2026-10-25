@@ -1,0 +1,1651 @@
+{
+  "generated": "2026-10-17",
+  "role": "auditor-ecstate",
+  "scope": [
+    "glade-border",
+    "forest",
+    "tree-tool",
+    "critters",
+    "water",
+    "timberframe",
+    "roof",
+    "color",
+    "decorator"
+  ],
+  "definitions": {
+    "1": "未验证：无任何实现或只有空壳",
+    "2": "restorer 自判：只有 RESTORE/restorer 报告声明判等/重建，无独立 REVIEW 正向 verdict",
+    "3": "独立复核判等：REVIEW 明确给出 判等/fix_verified/数据流判等",
+    "4": "数值断言：tests/numeric_assertions 或 crate 内单测直接断言该函数行为",
+    "5": "差分案例：原指令/RNE 案例（本 9 模块未发现逐函数案例）"
+  },
+  "category_rules": {
+    "A": "判等但无独立复核（最高正向证据=restorer 自判）",
+    "B": "重建但未判等（有实现体；独立复核为未实现-需重做/需修/重建，或修复后未复验）",
+    "C": "有独立复核且判等",
+    "D": "未实现（空壳/仅签名/空循环）",
+    "glue": "非业务胶水，不计入 A-D",
+    "shared-utils": "跨模块 utils，单列不计入 9 模块业务计数"
+  },
+  "counts_explicit": {
+    "A": 1,
+    "B": 57,
+    "C": 59,
+    "D": 24,
+    "total": 141,
+    "percent": {
+      "A": "0.7%",
+      "B": "40.4%",
+      "C": "41.8%",
+      "D": "17.0%"
+    }
+  },
+  "counts_with_decorator_family_estimate": {
+    "A": 1,
+    "B": 57,
+    "C": 59,
+    "D": 170,
+    "total": 287,
+    "percent": {
+      "A": "0.3%",
+      "B": "19.9%",
+      "C": "20.6%",
+      "D": "59.2%"
+    }
+  },
+  "module_counts": {
+    "glade-border": {
+      "A": 0,
+      "B": 2,
+      "C": 2,
+      "D": 0
+    },
+    "forest": {
+      "A": 0,
+      "B": 0,
+      "C": 4,
+      "D": 1
+    },
+    "tree-tool": {
+      "A": 0,
+      "B": 8,
+      "C": 5,
+      "D": 0
+    },
+    "critters": {
+      "A": 1,
+      "B": 23,
+      "C": 18,
+      "D": 2
+    },
+    "water": {
+      "A": 0,
+      "B": 0,
+      "C": 3,
+      "D": 1
+    },
+    "timberframe": {
+      "A": 0,
+      "B": 2,
+      "C": 1,
+      "D": 0
+    },
+    "roof": {
+      "A": 0,
+      "B": 3,
+      "C": 10,
+      "D": 9
+    },
+    "color": {
+      "A": 0,
+      "B": 11,
+      "C": 3,
+      "D": 9
+    },
+    "decorator": {
+      "A": 0,
+      "B": 8,
+      "C": 13,
+      "D": 2
+    }
+  },
+  "shared_utils_counts": {
+    "C": 2,
+    "A": 1
+  },
+  "functions": [
+    {
+      "module": "glade-border",
+      "name": "display_glade_border",
+      "va": "0x141be0ad0",
+      "declared": "未实现-需重做（wave4：perimeter 写路径判等，DebugLine::show 缺）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/glade-border/REVIEW.md; reports/wave3/reviews/tg-tr/REVIEW.md §5; reports/wave4/reviews/misc/REVIEW.md §6",
+      "gap": "DebugLine::show 0x140b04f70 未落库，折线不落 append-only 流"
+    },
+    {
+      "module": "glade-border",
+      "name": "display_glade_border::closure$0",
+      "va": "inline（宿主 from_iter 0x141be6110）",
+      "declared": "判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/eco/glade-border/REVIEW.md §2",
+      "gap": "—"
+    },
+    {
+      "module": "glade-border",
+      "name": "display_glade_border::closure$1",
+      "va": "0x141be1080",
+      "declared": "重建（wave3/wave4 链与 2×insert 判等）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/wave3/reviews/tg-tr/REVIEW.md §6; reports/wave4/reviews/misc/REVIEW.md §6",
+      "gap": "唤醒 vtable 0x142efa150 未接线（dead_code）"
+    },
+    {
+      "module": "glade-border",
+      "name": "feedback_input_out_of_border",
+      "va": "inline（宿主 0x141be2280）",
+      "declared": "判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/wave3/reviews/tg-tr/REVIEW.md §7; reports/gap/review/REVIEW.md #1",
+      "gap": "—"
+    },
+    {
+      "module": "forest",
+      "name": "manage_tree_prefabs",
+      "va": "0x141bf16c0",
+      "declared": "重建+fix_verified；构造形状判定判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/eco/forest/REVIEW.md §2/§9; reports/wave4/reviews/misc/REVIEW.md §4",
+      "gap": "记录 0x50B/实体位/+0x44、SpawnPrefabCmd 0x50 未承载"
+    },
+    {
+      "module": "forest",
+      "name": "handplaced_tree_animation",
+      "va": "0x142279500",
+      "declared": "重建+fix_verified",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/eco/forest/REVIEW.md §4/§9",
+      "gap": "输出指针写未建模；盒扩展 SIMD lane 近似；TreeAnimation[+4] 以 Local 承载"
+    },
+    {
+      "module": "forest",
+      "name": "forest_tree_animation",
+      "va": "0x14227a0d0",
+      "declared": "判等（算法控制流）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/eco/forest/REVIEW.md §5",
+      "gap": "+0x44 清标志、DespawnPrefabCmd 载荷为 core 类型缺口"
+    },
+    {
+      "module": "forest",
+      "name": "is_too_close_to_shape",
+      "va": "inline（宿主 0x141bf1d6a 区）",
+      "declared": "重建+fix_verified（已接线）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/eco/forest/REVIEW.md §3/§9",
+      "gap": "矩形 closest_point_on_perimeter 分解；数值逐指令等价未证"
+    },
+    {
+      "module": "forest",
+      "name": "get_gothic_hat_bones",
+      "va": "0x1407eb500",
+      "declared": "未实现",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/eco/forest/RESTORE.md; planning quickref U2",
+      "gap": "骨架主体待取证"
+    },
+    {
+      "module": "tree-tool",
+      "name": "process_tree_cmds",
+      "va": "0x142267430",
+      "declared": "重建（wave3 Move/Delete 判等；wave4 G4 修；Insert T2）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/wave3/reviews/tg-tr/REVIEW.md §1; reports/wave4/reviews/geometry/REVIEW.md §2.4; reports/consume/types/RESTORE.md §1",
+      "gap": "Insert 0x48 分支、SpawnPrefabCmd 0x50、is_corrupted/drag_started 资源"
+    },
+    {
+      "module": "tree-tool",
+      "name": "despawn_trees",
+      "va": "0x1422686d0",
+      "declared": "判等",
+      "level": 4,
+      "cat": "C",
+      "source": "reports/eco/tree-tool/REVIEW.md §2; reports/tests/numeric-assertions/REPORT.md",
+      "gap": "TreeAnimation α@+4 布局分歧 5"
+    },
+    {
+      "module": "tree-tool",
+      "name": "convert_preplaced_trees",
+      "va": "0x14226be70",
+      "declared": "判等（wave4-misc）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/wave4/reviews/misc/REVIEW.md §5",
+      "gap": "position 源/scale-rotation 记录/候选位图/rock buffer 登记"
+    },
+    {
+      "module": "tree-tool",
+      "name": "replay_tree",
+      "va": "0x141bc34f0",
+      "declared": "判等→重建（wave4 G2 降级）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/wave4/reviews/geometry/REVIEW.md §2.1; reports/consume/types/RESTORE.md §2",
+      "gap": "Move undo 旧位置（edit+0x14/+0x1c）整条事件缺失"
+    },
+    {
+      "module": "tree-tool",
+      "name": "recalc_tree_position_on_terrain_height_change",
+      "va": "0x142268dc0",
+      "declared": "判等",
+      "level": 4,
+      "cat": "C",
+      "source": "reports/eco/tree-tool/REVIEW.md §5; reports/tests/numeric-assertions/REPORT.md",
+      "gap": "—"
+    },
+    {
+      "module": "tree-tool",
+      "name": "tree_move_bend",
+      "va": "0x1422689c0",
+      "declared": "未实现-需重做（bend 数学判等）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/tree-tool/REVIEW.md §6",
+      "gap": "PrefabInstanceData +0x24/+0x28 step 写面缺失"
+    },
+    {
+      "module": "tree-tool",
+      "name": "hide_trees",
+      "va": "0x14226a260",
+      "declared": "未实现（core-type-gap）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/remaining/misc/RESTORE.md §3; reports/wave4/reviews/misc/REVIEW.md §9",
+      "gap": "shape bit/gate byte/可见性数组/Decorators 候选源"
+    },
+    {
+      "module": "tree-tool",
+      "name": "random_tree_prefab",
+      "va": "0x14226a170",
+      "declared": "判等",
+      "level": 4,
+      "cat": "C",
+      "source": "reports/eco/tree-tool/REVIEW.md §8; reports/tests/numeric-assertions/REPORT.md",
+      "gap": "—"
+    },
+    {
+      "module": "tree-tool",
+      "name": "ui_place_tree",
+      "va": "0x142269170",
+      "declared": "未实现-需重做（主体判等）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/tree-tool/REVIEW.md §9",
+      "gap": "raycast+geo_src_to_edit_subject 早退分支缺失"
+    },
+    {
+      "module": "tree-tool",
+      "name": "place_tree",
+      "va": "0x142269970",
+      "declared": "未实现-需重做（splitmix/scale/History 判等）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/tree-tool/REVIEW.md §10; reports/integration/coregap-1/REVIEW.md",
+      "gap": "InsertTreeCmd 0x48 全字段；会话门控硬编码"
+    },
+    {
+      "module": "tree-tool",
+      "name": "ui_move_tree",
+      "va": "0x14226b1a0",
+      "declared": "重建（wave4 G5/G6 修）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/consume/types/RESTORE.md §3; reports/wave4/reviews/geometry/REVIEW.md §2.5",
+      "gap": "候选源 gap9；History Move 旧位 T3"
+    },
+    {
+      "module": "tree-tool",
+      "name": "ui_delete_tree",
+      "va": "0x141bd2510",
+      "declared": "未实现-需重做",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/tree-tool/REVIEW.md §12",
+      "gap": "PathDrawEvent flag@+0x18 / bVar30 门控"
+    },
+    {
+      "module": "tree-tool",
+      "name": "reset_tree_tool",
+      "va": "inline（PDB inlinee）",
+      "declared": "判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/eco/tree-tool/REVIEW.md §13",
+      "gap": "—"
+    },
+    {
+      "module": "critters",
+      "name": "Boid::random_vel_change",
+      "va": "0x141dc2170",
+      "declared": "判等（控制流）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/eco/critters/REVIEW.md §1",
+      "gap": "RAY_DIRS 32 方向字面量未提取"
+    },
+    {
+      "module": "critters",
+      "name": "Boid::frame_update<fish>",
+      "va": "0x141dc2740",
+      "declared": "fix_verified（FIX⑦）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/eco/critters/REVIEW.md §1/§9",
+      "gap": "RAY_DIRS 字面量；query 环境值写未建模"
+    },
+    {
+      "module": "critters",
+      "name": "Boid::frame_update<wren>",
+      "va": "0x141dc3510",
+      "declared": "fix_verified（FIX⑦）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/eco/critters/REVIEW.md §1/§9",
+      "gap": "RAY_DIRS 字面量；viable 探针近似"
+    },
+    {
+      "module": "critters",
+      "name": "apply_fish_motion",
+      "va": "helper（非独立二进制函数）",
+      "declared": "判等（兼容辅助）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/eco/critters/REVIEW.md §1",
+      "gap": "—"
+    },
+    {
+      "module": "critters",
+      "name": "smooth_critter_velocities",
+      "va": "0x142318c10",
+      "declared": "判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/eco/critters/REVIEW.md §1",
+      "gap": "powf(0,dt<0) QNaN 符号位差已登记"
+    },
+    {
+      "module": "critters",
+      "name": "BoidFlock::remove",
+      "va": "0x141dc2340/0x141dc2540",
+      "declared": "重建+未实现-需重做（FIX⑥ 部分验证）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/critters/REVIEW.md §2/§9",
+      "gap": "boid 越界 break vs 二进制 panic（swap_remove assert）；正常态等价"
+    },
+    {
+      "module": "critters",
+      "name": "move_critters",
+      "va": "0x142318fa0",
+      "declared": "fix_verified+残留→wave4 新 FIX（已改未复验）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/critters/REVIEW.md §9; reports/wave4/reviews/misc/REVIEW.md §2.1; reports/remaining/misc/RESTORE.md §6",
+      "gap": "water2 组件 Sheep 已改；纯墙 relate 路径；spherecast 半径参数；PublicWalls panic"
+    },
+    {
+      "module": "critters",
+      "name": "critters_avoid_collisions",
+      "va": "0x1423179a0",
+      "declared": "fix_verified（有残留）→wave4 新 FIX（已改未复验）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/critters/REVIEW.md §9; reports/wave4/reviews/misc/REVIEW.md §2.2; reports/remaining/misc/RESTORE.md §6",
+      "gap": "water8 两位置 4+4 已改；relate 形状 segment-vs-segment 近似"
+    },
+    {
+      "module": "critters",
+      "name": "update_firefly_goals",
+      "va": "0x142316940",
+      "declared": "判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/eco/critters/REVIEW.md §1",
+      "gap": "query 环境值写未建模"
+    },
+    {
+      "module": "critters",
+      "name": "set_firefly_velocities_towards_goals",
+      "va": "0x142317040",
+      "declared": "判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/eco/critters/REVIEW.md §1",
+      "gap": "query 环境值写未建模"
+    },
+    {
+      "module": "critters",
+      "name": "DuckSpawnLocations::new",
+      "va": "0x140f8ee90",
+      "declared": "实现（精确网格+timer=25.0）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/integration/purelogic/RESTORE.md §A",
+      "gap": "仅 restorer 实现；无独立 REVIEW（原 module REVIEW 判未实现）"
+    },
+    {
+      "module": "critters",
+      "name": "spawn_ducks",
+      "va": "0x140f8f210",
+      "declared": "重建",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/critters/RESTORE.md（duck+fish 子 agent A）",
+      "gap": "sorted_by comparator U；demo/corrupted 门未接线"
+    },
+    {
+      "module": "critters",
+      "name": "despawn_ducks",
+      "va": "0x140f8f8b0",
+      "declared": "重建",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/critters/RESTORE.md",
+      "gap": "离场计划=1 点+circle，现 3 点外扩"
+    },
+    {
+      "module": "critters",
+      "name": "FishSpawnLocations::new",
+      "va": "0x140f909f0",
+      "declared": "判等（purelogic restorer 自判）",
+      "level": 2,
+      "cat": "A",
+      "source": "reports/integration/purelogic/RESTORE.md §A",
+      "gap": "无独立复核；原 module REVIEW 判未实现（行列转置），post-fix 无 REVIEW；used 字节 DIVERGE"
+    },
+    {
+      "module": "critters",
+      "name": "despawn_fish",
+      "va": "0x140f90c10",
+      "declared": "未实现（crate 以实体清理建模）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/critters/REVIEW.md §3; reports/integration/purelogic/RESTORE.md §A",
+      "gap": "真实=资源重置（FishBoids Resource + OnExit<AppLoadingState>）"
+    },
+    {
+      "module": "critters",
+      "name": "fish",
+      "va": "0x140f90cd0",
+      "declared": "fix_verified（FIX⑤）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/eco/critters/REVIEW.md §9",
+      "gap": "FishBoids Component 非 Resource；光标/相机逃避未做"
+    },
+    {
+      "module": "critters",
+      "name": "plan_duck_trajectories",
+      "va": "0x14230ff00",
+      "declared": "未实现（简化实现）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/critters/REVIEW.md §3; reports/integration/purelogic/RESTORE.md §A",
+      "gap": "legacy_raycast/Frenet/spawn 10 组件 bundle 未重建"
+    },
+    {
+      "module": "critters",
+      "name": "move_ducks_along_trajectories",
+      "va": "0x142312200",
+      "declared": "未实现（部分）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/critters/REVIEW.md §3",
+      "gap": "Frenet 帧简化；轨迹状态 {0,2} vs 现 {1,3}"
+    },
+    {
+      "module": "critters",
+      "name": "update_duck_goals",
+      "va": "0x142313b30",
+      "declared": "fix_verified（FIX②）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/eco/critters/REVIEW.md §9",
+      "gap": "aux 恒 0；within_glade dev 门 false；旋转精确四元数 U"
+    },
+    {
+      "module": "critters",
+      "name": "set_duck_velocities_towards_goals",
+      "va": "0x142314470",
+      "declared": "判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/eco/critters/REVIEW.md §1",
+      "gap": "query 环境值写未建模"
+    },
+    {
+      "module": "critters",
+      "name": "duck_splash_particle",
+      "va": "0x142322650",
+      "declared": "重建",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/critters/RESTORE.md",
+      "gap": "触发查询 vs 事件语义"
+    },
+    {
+      "module": "critters",
+      "name": "ducks_react_to_being_inside_buildings",
+      "va": "0x14231b140",
+      "declared": "未实现-需重做（FIX⑧ 改判）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/critters/REVIEW.md §2/§9",
+      "gap": "墙组查询结构 U；2D 射线围合近似；GladeBorder 未接线"
+    },
+    {
+      "module": "critters",
+      "name": "update_butterfly_states",
+      "va": "0x141d84d40",
+      "declared": "部分判等→wave4 需修（已改未复验）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/wave2/reviews/critters/REVIEW.md §4; reports/wave4/reviews/misc/REVIEW.md §3.2; reports/remaining/misc/RESTORE.md §4",
+      "gap": "dispatch flag 基线已改；state4-7/audio u32 写值 U"
+    },
+    {
+      "module": "critters",
+      "name": "update_butterfly_goals",
+      "va": "0x141d86060",
+      "declared": "判等（核心）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/eco/critters/REVIEW.md §1",
+      "gap": "per-entity 4B 查询环境写未建模"
+    },
+    {
+      "module": "critters",
+      "name": "set_butterfly_velocities_towards_goals",
+      "va": "0x141d867b0",
+      "declared": "判等（vel 表 4 handler）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/wave2/reviews/critters/REVIEW.md §4.3",
+      "gap": "动画跳表 handler DAT_142f68018 U"
+    },
+    {
+      "module": "critters",
+      "name": "update_butterfly_audio",
+      "va": "0x141d86eb0",
+      "declared": "判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/eco/critters/REVIEW.md §1",
+      "gap": "—"
+    },
+    {
+      "module": "critters",
+      "name": "sim_wren_boids",
+      "va": "0x142326a80",
+      "declared": "重建（近似）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/critters/REVIEW.md §5",
+      "gap": "出生门精确条件/viable 探针/FreeSpot 认领近似"
+    },
+    {
+      "module": "critters",
+      "name": "update_decorator_bird_spots",
+      "va": "0x14231c7d0",
+      "declared": "未实现（Rust 空 body）",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/eco/critters/REVIEW.md §3",
+      "gap": "create_spots 布局/数量、双列表滑动窗口"
+    },
+    {
+      "module": "critters",
+      "name": "update_roof_bird_spots",
+      "va": "0x14231d6c0",
+      "declared": "未实现（Rust 空 body）",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/eco/critters/REVIEW.md §3",
+      "gap": "random_splits 分段语义/停靠分布"
+    },
+    {
+      "module": "critters",
+      "name": "update_wrens",
+      "va": "0x14231e390",
+      "declared": "部分判等→wave4 需修（已改未复验）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/wave2/reviews/critters/REVIEW.md §5; reports/wave4/reviews/misc/REVIEW.md §1.2; reports/remaining/misc/RESTORE.md §5",
+      "gap": "h0 模式门/阈值已改；h1 音频槽/实体映射/PlacementDataSsbo"
+    },
+    {
+      "module": "critters",
+      "name": "update_sheep_goals",
+      "va": "0x142315050",
+      "declared": "重建（主流程一致）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/critters/REVIEW.md §5",
+      "gap": "XMM7/8 寄存器残留、flag_31 死分支"
+    },
+    {
+      "module": "critters",
+      "name": "set_sheep_velocities_towards_goals",
+      "va": "0x142315e40",
+      "declared": "判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/eco/critters/REVIEW.md §1",
+      "gap": "query 环境值写未建模"
+    },
+    {
+      "module": "critters",
+      "name": "update_sheep_audio",
+      "va": "0x142316490",
+      "declared": "判等（核心）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/eco/critters/REVIEW.md §1",
+      "gap": "音频记录 +0x34+=dt 未建模（DIVERGE）"
+    },
+    {
+      "module": "critters",
+      "name": "sheep_walk_on_terrain",
+      "va": "0x14231bd80",
+      "declared": "判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/eco/critters/REVIEW.md §1",
+      "gap": "case4 lerp rate 符号 U"
+    },
+    {
+      "module": "critters",
+      "name": "sheep_unstuck",
+      "va": "0x1423246b0",
+      "declared": "重建（DIVERGE）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/critters/REVIEW.md §5",
+      "gap": "spherecast ABI/rock 逐点采样/is_corrupted"
+    },
+    {
+      "module": "critters",
+      "name": "react_to_being_inside_buildings",
+      "va": "0x14231f610",
+      "declared": "未实现（部分重建）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/critters/REVIEW.md §5",
+      "gap": "emoji/UI spawn glue 之外主体不全"
+    },
+    {
+      "module": "critters",
+      "name": "sheep_reaction_emoji",
+      "va": "0x14231ff70",
+      "declared": "重建",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/critters/REVIEW.md §5",
+      "gap": "EasingFunction 变体未取证"
+    },
+    {
+      "module": "critters",
+      "name": "sheep_floaties",
+      "va": "0x142320cf0",
+      "declared": "重建（DIVERGE）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/critters/REVIEW.md §5",
+      "gap": "spawn bundle glue；DIVERGE"
+    },
+    {
+      "module": "critters",
+      "name": "sheep_umbrellas",
+      "va": "0x142321980",
+      "declared": "重建（DIVERGE）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/critters/REVIEW.md §5",
+      "gap": "0x1a 掩码/翻向音频 U"
+    },
+    {
+      "module": "critters",
+      "name": "sheep_walk_animation",
+      "va": "0x14231a630",
+      "declared": "判等（主循环+2 handler）",
+      "level": 4,
+      "cat": "C",
+      "source": "reports/wave2/reviews/critters/REVIEW.md §2; reports/tests/numeric-assertions/REPORT.md",
+      "gap": "音频槽写未建模"
+    },
+    {
+      "module": "critters",
+      "name": "sheep_pet_animation",
+      "va": "0x14231ac20",
+      "declared": "判等（5 handler）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/wave2/reviews/critters/REVIEW.md §3",
+      "gap": "音频槽写未建模"
+    },
+    {
+      "module": "critters",
+      "name": "sheep_input_record_replay",
+      "va": "0x14231b720",
+      "declared": "重建（DIVERGE）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/critters/REVIEW.md §5",
+      "gap": "会话资源 +0x40 身份 U"
+    },
+    {
+      "module": "critters",
+      "name": "ui_pet_sheep",
+      "va": "0x142324f80",
+      "declared": "重建核心+未实现（UI）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/critters/RESTORE.md/REVIEW.md §5",
+      "gap": "UiWidgetContext/SignifierEntityBuilder/slider3d API 缺"
+    },
+    {
+      "module": "critters",
+      "name": "ui_pet_ducks",
+      "va": "0x142322e30",
+      "declared": "重建核心+未实现（UI）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/eco/critters/RESTORE.md/REVIEW.md §5",
+      "gap": "UI gate/eye 距离/signifier/audio 未接线"
+    },
+    {
+      "module": "water",
+      "name": "draw_water",
+      "va": "0x141ba9130",
+      "declared": "判等（fix_verified）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/state/water/REVIEW.md §1",
+      "gap": "橡皮 signifier name 布局疑点；RasterStrokeCmd.strength 建模补充"
+    },
+    {
+      "module": "water",
+      "name": "draw_water::closure$0",
+      "va": "0x141ba9700",
+      "declared": "未落库-依赖 core signifier 域",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/state/water/REVIEW.md §2",
+      "gap": "SignifierEntityBuilder 链 + brush_circle_scribble 未落库"
+    },
+    {
+      "module": "water",
+      "name": "update_water_audio_grid",
+      "va": "0x141baefe0",
+      "declared": "判等（含 3 项已登记契约差）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/state/water/REVIEW.md §4",
+      "gap": "intersects_any max=1.0 语义差；WaterAudioGrid 语义投影"
+    },
+    {
+      "module": "water",
+      "name": "record_water_history",
+      "va": "inline（宿主 0x140e92a80）",
+      "declared": "判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/state/water/REVIEW.md §5",
+      "gap": "—"
+    },
+    {
+      "module": "timberframe",
+      "name": "construct_timberframe_rectangle",
+      "va": "0x141a41ba0",
+      "declared": "重建+写路径（相位/计数判等）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/state/timberframe/REVIEW.md §1; reports/wave3/reviews/tg-tr/REVIEW.md §8",
+      "gap": "RenderInstance 字段序 I；bit0 代理；ResMut 库面；rotation_from_normal→beam_rotation I"
+    },
+    {
+      "module": "timberframe",
+      "name": "construct_timberframe_circle",
+      "va": "0x1421b67a0",
+      "declared": "重建+写路径（同上）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/state/timberframe/REVIEW.md §2; reports/wave3/reviews/tg-tr/REVIEW.md §9",
+      "gap": "主环 Quat::IDENTITY 占位 GAP；不 clear 忠实"
+    },
+    {
+      "module": "timberframe",
+      "name": "timberframe_beam_count_change_audio",
+      "va": "0x1421b6610",
+      "declared": "判等（主体）",
+      "level": 4,
+      "cat": "C",
+      "source": "reports/state/timberframe/REVIEW.md §3; reports/tests/numeric-assertions/REPORT.md",
+      "gap": "get_building_size_01 size/id 缺；GameClock +0x2c 布局 GAP"
+    },
+    {
+      "module": "shared-utils",
+      "name": "utils::rotation_from_normal",
+      "va": "0x140c90a40",
+      "declared": "判等（4 case 半 sqrt；掩码 FIX-2 已修）",
+      "level": 4,
+      "cat": "C",
+      "source": "reports/gap/review/REVIEW.md #7; reports/gap/utils-toolbar/RESTORE.md §9; reports/tests/numeric-assertions/REPORT.md（utils 4 tests）",
+      "gap": "c 归一化平方和顺序 I（极端输入位级差）；overflow 掩码测试已加"
+    },
+    {
+      "module": "shared-utils",
+      "name": "Rectangle2d::orientation_mat3",
+      "va": "0x140c99570",
+      "declared": "判等",
+      "level": 4,
+      "cat": "C",
+      "source": "reports/gap/review/REVIEW.md #8; reports/tests/numeric-assertions/REPORT.md",
+      "gap": "—"
+    },
+    {
+      "module": "shared-utils",
+      "name": "split_height_into_skirts",
+      "va": "0x140b34f80",
+      "declared": "判等（restorer 自判）",
+      "level": 2,
+      "cat": "A",
+      "source": "reports/integration/coregap-1/RESTORE.md（附带实现）",
+      "gap": "仅 RESTORE 声明；REVIEW 裁决表未列；无独立复核/数值断言"
+    },
+    {
+      "module": "roof",
+      "name": "simulate_roof_tile_for_audio",
+      "va": "0x1421a7090",
+      "declared": "判等（每记录控制流）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/state/roof/REVIEW.md §1.5; reports/wave3/reviews/tg-tr/REVIEW.md §10",
+      "gap": "RoofTileSimulation 单记录 vs 0x18 数组；RoofSound 载荷；GameClock.delta"
+    },
+    {
+      "module": "roof",
+      "name": "wall_height_dt",
+      "va": "0x1421a2b60",
+      "declared": "判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/state/roof/REVIEW.md §1.1",
+      "gap": "—"
+    },
+    {
+      "module": "roof",
+      "name": "roof_animation",
+      "va": "0x1421a2da0",
+      "declared": "判等（经 core 委托）",
+      "level": 4,
+      "cat": "C",
+      "source": "reports/state/roof/REVIEW.md §1.2; reports/tests/numeric-assertions/REPORT.md",
+      "gap": "—"
+    },
+    {
+      "module": "roof",
+      "name": "roof_record_history",
+      "va": "0x141a37fd0",
+      "declared": "判等（经 core 委托）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/state/roof/REVIEW.md §1.3",
+      "gap": "生产端 UI 未接线"
+    },
+    {
+      "module": "roof",
+      "name": "replay_roof",
+      "va": "0x141a37ad0",
+      "declared": "判等（经 core 委托）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/state/roof/REVIEW.md §1.4",
+      "gap": "完成位 byte[21] 映射 I"
+    },
+    {
+      "module": "roof",
+      "name": "replay_roof::impl$0::process",
+      "va": "0x1421b48e0",
+      "declared": "判等（经 core 委托）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/state/roof/REVIEW.md §1.4",
+      "gap": "previous_direction I；非法 tag Err 路径"
+    },
+    {
+      "module": "roof",
+      "name": "switch_roof_ridge_direction",
+      "va": "0x141a3a730",
+      "declared": "判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/state/roof/REVIEW.md §1.6",
+      "gap": "RoofSound 载荷布局 core 面"
+    },
+    {
+      "module": "roof",
+      "name": "record_switch_roof_ridge_history",
+      "va": "0x141a3ac20",
+      "declared": "判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/state/roof/REVIEW.md §1.7",
+      "gap": "—"
+    },
+    {
+      "module": "roof",
+      "name": "generate_roof_stone_floor_and_roof_bottom",
+      "va": "0x1421a6d40",
+      "declared": "重建（CPU 控制流判等；命令执行体未实现）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/state/roof/REVIEW.md §1.8",
+      "gap": "NaniBundle<StoneFloorInstanceData> insert 执行体未实现"
+    },
+    {
+      "module": "roof",
+      "name": "switch_roof_type",
+      "va": "0x1421ac4f0",
+      "declared": "部分重建→mesh 5/5 判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/state/roof/REVIEW.md §2.1（非 mesh 判等）; reports/wave4/reviews/visual/REVIEW.md §2（mesh 5/5）",
+      "gap": "整函数无单一 REVIEW 判等；由两次独立复核拼合"
+    },
+    {
+      "module": "roof",
+      "name": "calculate_roof_trigger_volumes",
+      "va": "0x1421a3220",
+      "declared": "未实现（诚实骨架）",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/state/roof/REVIEW.md §3.1",
+      "gap": "曲面三角化/剖面/檐口/UV/噪声未重建"
+    },
+    {
+      "module": "roof",
+      "name": "highlight_roof（iter 单态）",
+      "va": "0x141a284b0",
+      "declared": "未实现→重建（数据流判等）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/wave3/reviews/tg-tr/REVIEW.md §11; reports/state/roof/REVIEW.md §3.2",
+      "gap": "8B 写覆盖 pad 不可表示；iter/store 读出偏移不同"
+    },
+    {
+      "module": "roof",
+      "name": "highlight_roof（store 单态）",
+      "va": "0x141a31280",
+      "declared": "未实现→重建（数据流判等）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/wave3/reviews/tg-tr/REVIEW.md §11; reports/state/roof/REVIEW.md §3.2",
+      "gap": "同上"
+    },
+    {
+      "module": "roof",
+      "name": "gpu_flush_buffers",
+      "va": "0x140de50a0",
+      "declared": "判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/wave4/reviews/geometry/REVIEW.md §2.2",
+      "gap": "GraphicsDeviceResource +0x188 管线缓存槽 GAP"
+    },
+    {
+      "module": "roof",
+      "name": "ui_edit_roof",
+      "va": "0x141a18dd0",
+      "declared": "未实现",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/state/roof/REVIEW.md §3.4",
+      "gap": "三角拾取/WidgetParams/HighlightRoofCmd"
+    },
+    {
+      "module": "roof",
+      "name": "do_ui_edit_roof",
+      "va": "0x141a19a90",
+      "declared": "未实现",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/state/roof/REVIEW.md §3.4",
+      "gap": "三 case 历史/拖拽量"
+    },
+    {
+      "module": "roof",
+      "name": "ui_edit_roof_ridge_dir",
+      "va": "0x141a386b0",
+      "declared": "未实现",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/state/roof/REVIEW.md §3.5",
+      "gap": "iter_removed_ids/to_world_space/box_trigger_volume"
+    },
+    {
+      "module": "roof",
+      "name": "do_ui_edit_roof_ridge_dir",
+      "va": "0x141a39490",
+      "declared": "未实现（近似体已清退）",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/state/roof/REVIEW.md §3.5/§7",
+      "gap": "方向位 ^1 / SwitchRoofRidgeDirCmd"
+    },
+    {
+      "module": "roof",
+      "name": "ui_edit_roof_ridge_length",
+      "va": "0x1421a8210",
+      "declared": "未实现",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/state/roof/REVIEW.md §3.5",
+      "gap": "TweakerView/project_cursor_onto_ray"
+    },
+    {
+      "module": "roof",
+      "name": "do_ui_edit_roof_ridge_length",
+      "va": "0x1421a8c50",
+      "declared": "未实现（近似体已清退）",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/state/roof/REVIEW.md §3.5/§7",
+      "gap": "inverse_ridge_01_param 投影链"
+    },
+    {
+      "module": "roof",
+      "name": "create_ui_widget",
+      "va": "0x1421aa170",
+      "declared": "未实现",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/state/roof/REVIEW.md §3.5",
+      "gap": "widget 描述 0x18/分发骨架"
+    },
+    {
+      "module": "roof",
+      "name": "ui_edit_roof_ridge_and_height_focused",
+      "va": "0x1421ad440",
+      "declared": "未实现（近似体已清退）",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/state/roof/REVIEW.md §3.5/§7",
+      "gap": "CameraMatrices/project_cursor_onto_ray/inverse_lerp"
+    },
+    {
+      "module": "color",
+      "name": "IconInfo::new_separator",
+      "va": "0x1425f2680",
+      "declared": "判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/state/color/REVIEW.md 总表",
+      "gap": "—"
+    },
+    {
+      "module": "color",
+      "name": "IconInfo::new_flat_roof_rim_ty",
+      "va": "0x1425f26f0",
+      "declared": "判等（输入源 U 登记）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/state/color/REVIEW.md 总表",
+      "gap": "ClutterVersion::is_initial 输入源 U"
+    },
+    {
+      "module": "color",
+      "name": "init_color_ids_buffer",
+      "va": "0x142290750",
+      "declared": "未实现-需重做（SSBO 段阻塞；insert 面判等）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/state/color/REVIEW.md 总表",
+      "gap": "SSBO add_new×4 接线；coregap-2 已补类型但函数未复验"
+    },
+    {
+      "module": "color",
+      "name": "set_wall_color_id",
+      "va": "0x142290820",
+      "declared": "未实现-需重做（SSBO 段阻塞；CPU 面判等）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/state/color/REVIEW.md 总表",
+      "gap": "SSBO get/update_buffer_bytes；selector/value U"
+    },
+    {
+      "module": "color",
+      "name": "set_gate_color_id",
+      "va": "0x142299840",
+      "declared": "未实现-需重做（SSBO 段阻塞；CPU 面判等）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/state/color/REVIEW.md 总表",
+      "gap": "SSBO 段；custom==1 已修"
+    },
+    {
+      "module": "color",
+      "name": "set_halftimber_color_id",
+      "va": "0x142299250",
+      "declared": "未实现-需重做（SSBO 段阻塞；CPU 面判等）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/state/color/REVIEW.md 总表",
+      "gap": "SSBO 段；custom==1 已修"
+    },
+    {
+      "module": "color",
+      "name": "write_roof_color_id_to_gpu",
+      "va": "0x142298520",
+      "declared": "未实现（签名面+空循环）",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/state/color/REVIEW.md 总表",
+      "gap": "双源逐元素 update_buffer_bytes；RoofColorIdSsbo 已补但函数未落"
+    },
+    {
+      "module": "color",
+      "name": "set_decorator_color_id",
+      "va": "0x1422af0c0",
+      "declared": "未实现-需重做（记录 value U 面）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/state/color/REVIEW.md 总表",
+      "gap": "5 层分派/写面判等；记录 value 非 sub==4 为栈值 U"
+    },
+    {
+      "module": "color",
+      "name": "set_flag_connection_and_chimney_smoke",
+      "va": "0x142298970",
+      "declared": "未实现-需重做（烟值 +4 阻塞）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/state/color/REVIEW.md 总表",
+      "gap": "flag 面判等；ChimneyExtra +4 写面 coregap-2 已补未复验"
+    },
+    {
+      "module": "color",
+      "name": "set_window_light",
+      "va": "0x142298260",
+      "declared": "整体判等（REVIEW 表头仍写未实现-需重做）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/state/color/REVIEW.md 总表",
+      "gap": "表头 verdict 与正文矛盾；按正文“整体判等”取 C"
+    },
+    {
+      "module": "color",
+      "name": "set_roof_customization",
+      "va": "0x142299dd0",
+      "declared": "未实现（密集表阻塞；外环近似）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/state/color/REVIEW.md 总表; reports/unlock/publicwalls-tables/RESTORE.md",
+      "gap": "PublicWalls 稀疏位集/密集表；外环第二写遗漏"
+    },
+    {
+      "module": "color",
+      "name": "color_menu",
+      "va": "0x142291230",
+      "declared": "未实现（读取面 stub）",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/state/color/REVIEW.md 总表; reports/wave2/reviews/color/REVIEW.md",
+      "gap": "CustomizationIcon 0xa0/Events 类型/12 参 ABI typed-gap"
+    },
+    {
+      "module": "color",
+      "name": "color_button_animations",
+      "va": "0x1422979b0",
+      "declared": "未实现（空循环）",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/state/color/REVIEW.md 总表",
+      "gap": "CustomizationIcon/Ui2dExtent typed-gap"
+    },
+    {
+      "module": "color",
+      "name": "delete_color_icon_entities",
+      "va": "0x142297ff0",
+      "declared": "未实现（循环体留空）",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/state/color/REVIEW.md 总表",
+      "gap": "progress<=0 门控 typed-gap"
+    },
+    {
+      "module": "color",
+      "name": "show_color_options",
+      "va": "0x14229a7f0",
+      "declared": "重建（结构+case0/1 载荷；其余 GAP）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/wave2/reviews/color/REVIEW.md; reports/wave2/color/RESTORE.md",
+      "gap": "case0 载荷修正后无独立复验；case2..0x26/demo/事件写面 GAP"
+    },
+    {
+      "module": "color",
+      "name": "hide_color_menu",
+      "va": "0x1422adcf0",
+      "declared": "未实现（事件门控已修）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/state/color/REVIEW.md 总表（FIX-2）",
+      "gap": "just_pressed 动作名/图标目录 typed-gap"
+    },
+    {
+      "module": "color",
+      "name": "autoclose_color_menu",
+      "va": "0x142298d30",
+      "declared": "未实现（stub 非判等）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/state/color/REVIEW.md 总表（FIX-3）",
+      "gap": "menu.center 近似、省略光标 2D 跳过、kind 直闭"
+    },
+    {
+      "module": "color",
+      "name": "ColorRadialMenu::create",
+      "va": "0x1425f27c0",
+      "declared": "未实现（仅数据组装）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/state/color/REVIEW.md 总表",
+      "gap": "UI 实体 spawn typed-gap"
+    },
+    {
+      "module": "color",
+      "name": "ui_color_wall_and_roof",
+      "va": "0x141c9ab70",
+      "declared": "未实现（仅模式守卫）",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/state/color/REVIEW.md 总表",
+      "gap": "WidgetParams/raycast +0x1d8/closure"
+    },
+    {
+      "module": "color",
+      "name": "color_cursor_icon",
+      "va": "0x141c9b510",
+      "declared": "未实现（空体）",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/state/color/REVIEW.md 总表",
+      "gap": "SignifierEntityBuilder/UiInactive/Ui2d*"
+    },
+    {
+      "module": "color",
+      "name": "ui_color_gates",
+      "va": "0x1422afe70",
+      "declared": "未实现（仅模式守卫）",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/state/color/REVIEW.md 总表",
+      "gap": "稀疏墙位集/mesh 三角形/signifier"
+    },
+    {
+      "module": "color",
+      "name": "ui_color_windows_and_flags",
+      "va": "0x1422b0e00",
+      "declared": "未实现（仅模式守卫）",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/state/color/REVIEW.md 总表",
+      "gap": "legacy_raycast/StairsState graph/outline"
+    },
+    {
+      "module": "color",
+      "name": "replay_color",
+      "va": "0x141c7f270",
+      "declared": "未实现（空循环+登记）",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/state/color/REVIEW.md 总表; reports/unlock/replay-decorator/RESTORE.md §5.4",
+      "gap": "ReplayBuffer 原始字节/13 写者派发"
+    },
+    {
+      "module": "decorator",
+      "name": "DecoratorBackup::clear",
+      "va": "0x140823660",
+      "declared": "判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/state/decorator/REVIEW.md §一-1",
+      "gap": "—"
+    },
+    {
+      "module": "decorator",
+      "name": "clear_out_wall_holes",
+      "va": "0x1407f98c0",
+      "declared": "判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/state/decorator/REVIEW.md §一-2",
+      "gap": "—"
+    },
+    {
+      "module": "decorator",
+      "name": "ui_decorator_inactive",
+      "va": "0x140791400",
+      "declared": "判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/state/decorator/REVIEW.md §一-3",
+      "gap": "reset_interaction 额外置 active=true（I 级模型 artifact）"
+    },
+    {
+      "module": "decorator",
+      "name": "stairs_reset_for_new_frame",
+      "va": "0x14079c350",
+      "declared": "判等（门控）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/state/decorator/REVIEW.md §一-4",
+      "gap": "unset 落点 [内层+0x10]=3 以 mark_invalid 承载（I）"
+    },
+    {
+      "module": "decorator",
+      "name": "seal_persistent_entities",
+      "va": "0x140811e80",
+      "declared": "判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/state/decorator/REVIEW.md §一-5",
+      "gap": "—"
+    },
+    {
+      "module": "decorator",
+      "name": "add_decorator_visual_entity impl$4",
+      "va": "0x1408119e0",
+      "declared": "判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/state/decorator/REVIEW.md §一-6",
+      "gap": "cap=8 预分配差异 minor"
+    },
+    {
+      "module": "decorator",
+      "name": "DecoratorPersistentVisualEntities::entities",
+      "va": "0x1408119d0",
+      "declared": "判等（退化访问器）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/state/decorator/REVIEW.md §一-7",
+      "gap": "—"
+    },
+    {
+      "module": "decorator",
+      "name": "DecoratorPersistentVisualState::entities",
+      "va": "0x14067dd80",
+      "declared": "判等（退化访问器/胶水级）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/state/decorator/REVIEW.md §一-7",
+      "gap": "—"
+    },
+    {
+      "module": "decorator",
+      "name": "clear_out_visual_entities",
+      "va": "0x1407f9260",
+      "declared": "判等（FIX-1 后）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/state/decorator/REVIEW.md §七",
+      "gap": "param_2 身份 U 登记"
+    },
+    {
+      "module": "decorator",
+      "name": "maintain_dormer_tiles",
+      "va": "0x1407ce920",
+      "declared": "未实现→判等（G3 已修未复验）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/state/decorator/REVIEW.md §一-9; reports/wave4/reviews/geometry/REVIEW.md §2.3; reports/consume/types/RESTORE.md §5",
+      "gap": "游标写序已修；id 单槽 store 已修；rhapsody 注册表/RoofTileSsbo drop 未接线"
+    },
+    {
+      "module": "decorator",
+      "name": "add_decorator_visual_entity impl$5",
+      "va": "0x140811c30",
+      "declared": "判等（瞬态实体表 push）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/wave4/reviews/visual/REVIEW.md §1.4; reports/consume/nani-decorator/RESTORE.md §2.4",
+      "gap": "wave3 autoclutter 表结论被机器码否证；类型 stand-in"
+    },
+    {
+      "module": "decorator",
+      "name": "apply_decorator_op",
+      "va": "0x141276e30",
+      "declared": "未实现-需重做（控制流判等；叶近似）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/state/decorator/REVIEW.md §二-1",
+      "gap": "archive_decorator_state/DecoratorLocator::new/build_op_event 0x88B 叶未还原"
+    },
+    {
+      "module": "decorator",
+      "name": "create_or_restore_decorator_backup",
+      "va": "0x1408238a0",
+      "declared": "未实现-需重做（状态机判等；恢复叶近似）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/state/decorator/REVIEW.md §二-2",
+      "gap": "0x30B 三 map 反向拷贝未接线；桶模型近似"
+    },
+    {
+      "module": "decorator",
+      "name": "decorator_record_history",
+      "va": "0x140817850",
+      "declared": "未实现-需重做（循环/清空判等；载荷映射错）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/state/decorator/REVIEW.md §二-3",
+      "gap": "48B {1,1,kind,f1,f2,f3} kind/f2/f3 丢弃"
+    },
+    {
+      "module": "decorator",
+      "name": "window_lights",
+      "va": "0x1407b5980",
+      "declared": "未实现-需重做（常量/灯态/帧末判等；收集主循环缺失）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/state/decorator/REVIEW.md §二-4; reports/wave3/reviews/toolbar-decorator/REVIEW.md §1",
+      "gap": "PublicWalls 密集窗桶收集主循环；rng 种子/retain 谓词/lerp 实参 U"
+    },
+    {
+      "module": "decorator",
+      "name": "chimney_smoke_anim_thickness",
+      "va": "0x140818df0",
+      "declared": "未实现-需重做（窗口/目标/更新公式判等；收集缺失）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/state/decorator/REVIEW.md §二-5; reports/wave3/reviews/toolbar-decorator/REVIEW.md §1",
+      "gap": "spot 收集主循环；rng 种子/retain 谓词 U"
+    },
+    {
+      "module": "decorator",
+      "name": "replay_decorator",
+      "va": "0x14080c8d0",
+      "declared": "未实现（结构判等；core-gap 诚实壳）",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/wave3/reviews/toolbar-decorator/REVIEW.md §4; reports/unlock/replay-decorator/RESTORE.md",
+      "gap": "ReplayCommand Decorator 变体/ReplayBucket cull 表未落库"
+    },
+    {
+      "module": "decorator",
+      "name": "WindowVisualEntityBuilder::build<Transient>",
+      "va": "0x1412ab270",
+      "declared": "判等（12 类分派+14 位链+impl$5）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/consume/nani-decorator/RESTORE.md §0/§2; reports/wave4/reviews/visual/REVIEW.md §1",
+      "gap": "12 个条件组件以 stand-in 承载；builder 字段名 U"
+    },
+    {
+      "module": "decorator",
+      "name": "WindowVisualEntityBuilder::build<Persistent>",
+      "va": "0x1412a9b30",
+      "declared": "判等（同体；尾部 impl$4）",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/consume/nani-decorator/RESTORE.md §0/§2; reports/wave4/reviews/visual/REVIEW.md §1",
+      "gap": "同上"
+    },
+    {
+      "module": "decorator",
+      "name": "calc_gothic_half_dormer_profile_ws",
+      "va": "0x1407eb160",
+      "declared": "重建+部分未实现",
+      "level": 2,
+      "cat": "B",
+      "source": "reports/wave2/decorator-forest/RESTORE.md §1; reports/wave2/reviews/geometry/REVIEW.md §3.2",
+      "gap": "wall-space A/B/C/D lerp/法线/0..2 索引语义未实现"
+    },
+    {
+      "module": "decorator",
+      "name": "gothic_half_dormer_radius",
+      "va": "0x1412ac9b0（call_once 内联）",
+      "declared": "判等",
+      "level": 3,
+      "cat": "C",
+      "source": "reports/wave2/decorator-forest/RESTORE.md §1; reports/wave2/reviews/geometry/REVIEW.md §3.1",
+      "gap": "rank∉1..3 panic vs 默认 0.38（低影响登记）"
+    },
+    {
+      "module": "decorator",
+      "name": "get_gothic_hat_bones",
+      "va": "0x1407eb500",
+      "declared": "未实现",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/state/decorator/RESTORE.md; planning quickref U9",
+      "gap": "骨架主体待取证"
+    },
+    {
+      "module": "decorator",
+      "name": "~146 业务函数（blueprint/cull_oob/merge/visual 族/stairs/ui_systems）",
+      "va": "族（未逐一列 VA）",
+      "declared": "未实现（本轮未 fresh 复核）",
+      "level": 1,
+      "cat": "D",
+      "source": "reports/state/decorator/RESTORE.md 判定总表末行; planning 2026-10-17-unimplemented-ledger.md",
+      "gap": "族估算 ~146；含 DecoratorBackup/visual 壳（chimney/door_stairs_assemble_bricks）；未逐函数审计"
+    }
+  ],
+  "glue": [
+    {
+      "module": "glade-border",
+      "name": "GladeBorderPlugin::build",
+      "va": "0x140650ab0"
+    },
+    {
+      "module": "forest",
+      "name": "ForestPlugin::build",
+      "va": "0x140650c50"
+    },
+    {
+      "module": "tree-tool",
+      "name": "TreePlugin::build",
+      "va": "0x140650520"
+    },
+    {
+      "module": "critters",
+      "name": "fireflies_send_to_gpu",
+      "va": "0x142316760"
+    },
+    {
+      "module": "critters",
+      "name": "butterflies_send_to_gpu",
+      "va": "0x141d87140"
+    },
+    {
+      "module": "critters",
+      "name": "update_duck_ripples",
+      "va": "0x142314b70"
+    },
+    {
+      "module": "critters",
+      "name": "CritterPlugin::build",
+      "va": "0x14067d440"
+    },
+    {
+      "module": "critters",
+      "name": "sheep::Plugin::build",
+      "va": "0x14067d810"
+    },
+    {
+      "module": "water",
+      "name": "draw_water::closure$1/2/3",
+      "va": "inline"
+    },
+    {
+      "module": "water",
+      "name": "WaterPlugin::build",
+      "va": "0x1406501d0"
+    },
+    {
+      "module": "timberframe",
+      "name": "add_timberframe",
+      "va": "0x140630a20"
+    },
+    {
+      "module": "timberframe",
+      "name": "timberframe_on_glade_unload",
+      "va": "inline（body U）"
+    },
+    {
+      "module": "roof",
+      "name": "register_required_components impl$0",
+      "va": "0x14258d1f0"
+    },
+    {
+      "module": "roof",
+      "name": "register_required_components impl$1",
+      "va": "0x14258d8e0"
+    },
+    {
+      "module": "color",
+      "name": "add_color",
+      "va": "0x140651870"
+    },
+    {
+      "module": "color",
+      "name": "register_required_components",
+      "va": "0x1425f3d60"
+    },
+    {
+      "module": "decorator",
+      "name": "Plugin::build / snapping_direction / try_merge_decorators",
+      "va": "inline"
+    }
+  ],
+  "notes": [
+    "decorator ~146 business function family is an estimate; its D count is not enumerated per function.",
+    "fix_verified is counted as C only when the reviewer re-verifies the fixed code; restorer-only 'fixed' claims remain B.",
+    "Planning quickref/final-progress lag behind per-function wave reviews; reports were treated as source of truth.",
+    "shared-utils (rotation_from_normal/orientation_mat3/split_height_into_skirts) are listed separately and excluded from module totals."
+  ]
+}

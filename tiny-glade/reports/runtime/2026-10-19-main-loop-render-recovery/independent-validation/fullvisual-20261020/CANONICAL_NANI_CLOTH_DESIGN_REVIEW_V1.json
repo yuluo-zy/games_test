@@ -1,0 +1,47 @@
+{
+  "reviewer": "07-independent-validation",
+  "created_utc": "2026-10-19T18:53:26.185814+00:00",
+  "verdict": "passed_scoped_design_with_explicit_ownership_surface",
+  "manifest": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bdac7a16d3c26c954b/nani-gpu-counts-20261019/nani-maintain-20261020/canonical-cloth-design-v1/DESIGN_MANIFEST_V1.json",
+    "sha256": "187c68428f3e851d1f3a4ed1b0e120b2d1919e96962c26c98bf1229c33c20ffa"
+  },
+  "design_sha256": "bf25b016d65628896d9a6d489bc8c11aa4bb762957b3b838837293f507fd22b3",
+  "verification": {
+    "frozen_artifacts_and_reuse_hashes_and_lengths": 23,
+    "visible_current_source_snapshots_matched": 10,
+    "independent_complete_native_instruction_comparisons": [
+      {
+        "start": "0x14207c0a0",
+        "bytes": 3253,
+        "instructions": 771
+      },
+      {
+        "start": "0x14084cc00",
+        "bytes": 13,
+        "instructions": 3
+      }
+    ],
+    "native_identity": "B RNE f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03 / matching PDB2d9686b8 retained records3098:184028 and478:83892"
+  },
+  "accepted": [
+    "Unique non-owning opaque ClothlineCloth([u32;3]) with explicit value constructor/accessor and Clone is justified by native component stride/copies and specialized Bevy clone callback; no original author field names, ABI/repr, discriminant meaning, Default, zero producer or equivalence with ClothInfo/WallFlagCloth.",
+    "Keep builder existing Option<(u64,u32)> carrier used by precise fullvisual Eq; split its present u64 into low/high words and preserve tail exactly when inserting canonical component. Replace unused successful no-argument zero setter with explicit payload. Public pending_core re-export must point at that one same Rust component.",
+    "NormalMap is already canonical rendering::NormalMap(pub u64), publicly exported. Re-export it from builder instead of local raw8 component; insert entire original u64 NameHash, never AssetIndex/descriptor index.",
+    "Original update takes owned subset20 before iteration (14207c334..339), resolves real normal-map name and actual handle_to_bindless_index (14207c7fc), stores all three component words at row12..14 and returned descriptor at15 (14207c938..96a), updates same owned subset through native update_instance_data. New adapter should reuse current build_cloth and same dense hint/dirty/count/flush owner.",
+    "Keep native required With-only query, one subset lock even empty. Extend only actual descriptor-bearing maintain preflight for unique mapped marker/Transform/payload/NormalMap before key/count publication and changed-descriptor processing; no blanket rejection of empty registered kinds, no bypass of other unsupported domains.",
+    "Install sibling updater at original relative member13 within current set44 helper: maintain -> explicit ApplyDeferred -> unordered update tuple -> flush via chain_ignore_deferred. Preserve existing nine mappings, restricted Roof branch, VAO prefix and existing numerical build_cloth unchanged."
+  ],
+  "mandatory_candidate_constraints": [
+    "Root explicitly says do not touch foreign components/mod.rs. Import unique components::drawable::ClothlineCloth directly in all real consumers; no optional root re-export is necessary for this package. Existing NormalMap root re-export already exists. No second component or ownership-lock workaround.",
+    "Only root-delegated drawable.rs, builder and nani/systems.rs source surfaces; freeze each exact before/candidate/patch and current dependency fingerprints. If core or host changed before implementation, refresh before independently; this design does not waive drift.",
+    "Actual test texture must resolve through same AssetTextureLibrary with nonidentity descriptor index, actual Cloth atlas part and same World key/subset. Test real Commands/barrier/update/flush count and all payload bit patterns; failure missing canonical inputs must precede maintain publication, missing texture must fail actual update. These tests are CPU boundary tests until root actually executes them, not GPU/scene evidence.",
+    "Do not reinterpret descriptor preflight as covering descriptorless entities. Keep original required-query domain rather than adding guessed fallback/Option/default rows. Unproven descriptorless semantic expansion needs its own evidence."
+  ],
+  "remaining_gates": [
+    "No source candidate/typecheck/tests/GPU has occurred for this package at review.",
+    "Visible garment consumer still discards quads and lacks actual payload/normal-map writer. This binding design does not recover CacheClothes/numeric geometry, window ClothInfo producers, transient lifetime or unload/schedule.",
+    "Named asset hash mapping, real released B sidecar pairing, actual atlas upload, current-source full App and nonempty WSI pixels/performance remain unverified. Do not label this the tenth complete scene family.",
+    "Reviewer used retained native packs and read-only byte/source checks only; no production, Cargo/rustc/GPU, claim or Git operations."
+  ]
+}

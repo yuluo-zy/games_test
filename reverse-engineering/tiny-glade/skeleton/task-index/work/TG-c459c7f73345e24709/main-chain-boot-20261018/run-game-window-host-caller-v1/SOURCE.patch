@@ -1,0 +1,11 @@
+--- a/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ b/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@ -403,6 +403,8 @@
+     // edit/UI helpers merely to initialize their resources.
+     crate::toolbar_plugin::build(&mut app);
+     crate::decorator_plugin::build_startup_resources(&mut app);
++    // 原DecoratorPlugin的真实帧链装在同一gameplay App，后续device runtime继续使用它。
++    crate::decorator_plugin::build_recovered_visual_systems(&mut app);
+     crate::wall_constructor_plugin::build(&mut app);
+     // Original plugin tuple members WaterPlugin 0x1406501d0 / GladeBorderPlugin 0x140650ab0.
+     crate::app_systems::WallSystems::add_wall_events(&mut app);

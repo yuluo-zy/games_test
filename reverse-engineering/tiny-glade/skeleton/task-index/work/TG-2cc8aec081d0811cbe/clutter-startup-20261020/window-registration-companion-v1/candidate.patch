@@ -1,0 +1,56 @@
+--- /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/clutter/src/lib.rs
++++ /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-2cc8aec081d0811cbe/clutter-startup-20261020/window-registration-companion-v1/lib.rs.candidate
+@@ -9,7 +9,7 @@
+ //! host_geometry：load_clutter_meshes 0x1422c0760 / inter_roof_merlons 0x1422d4870+
+ //!   0x141ce3a70 / inter_shape_stitches 0x141cd1a90+0x141ce65b0+0x141ce7190。
+ //!
+-//! 本 crate 按 B 机器码真实实现（不使用 reconstruction/clutter 的 TODO 占位）。
++//! 原证恢复范围与未闭合的 producer/宿主依赖见恢复报告；本注册入口尚非完整原版调度。
+ 
+ pub mod autoclutter;
+ pub mod inter_roof_merlons;
+@@ -26,17 +26,19 @@
+ use inter_shape_stitches::detect_intra_shape_corners::detect_intra_shape_corners;
+ use inter_shape_stitches::stitch_bricks::{spawn_stitch_bricks, spawn_stitches};
+ 
+-/// 注册全部 clutter 系统与资源（B 0x140652050 `impl$0::build` 语义）。
++/// Existing clutter schedule entry. This still contains legacy producer adapters;
++/// it is not a complete reconstruction of B 0x140652050 or installed by run_game.
+ /// 证据：`add_systems(...).chain()/.chain_ignore_deferred()/.in_set()/.run_if()`
+ /// 组合；`insert_resource`（AutoClutterState 等）；`EventRegistry::register_event`。
+ /// 链序（O）：populate → process → manage；add_* 规则在 process 前；stitch_bricks 与
+ /// preplaced 链按 `.chain()` 组合。
+ pub fn configure(world: &mut World, schedule: &mut Schedule) {
+     world.init_resource::<autoclutter::AutoClutterState>();
++    world.init_resource::<country_core::systems::collision::WindowAutoClutterCandidates>();
++    world.init_resource::<Events<country_core::systems::audio::PlayClutterSoundCmd>>();
+     world.init_resource::<autoclutter::populate_autoclutter_regions::MeshGroupWeights>();
+     world.init_resource::<autoclutter::populate_autoclutter_regions::AutoClutterDirtySubscriptions>();
+     world.init_resource::<autoclutter::populate_autoclutter_regions::DirtyTilesPublisher>();
+-    world.init_resource::<autoclutter::manage_autoclutter_entities::ManageRng>();
+     world.init_resource::<autoclutter::add_lantern_water_setdresssing::LanternRng>();
+     world.init_resource::<autoclutter::add_tree_vegetation_setdressing::TreeRng>();
+     world.init_resource::<inter_roof_merlons::construct_inter_roof_merlons::MerlonRng>();
+@@ -53,7 +55,6 @@
+     world.init_resource::<autoclutter::add_tree_vegetation_setdressing::TreePositions>();
+     world.init_resource::<autoclutter::add_tree_vegetation_setdressing::IsDragging>();
+     world.init_resource::<autoclutter::add_tree_vegetation_setdressing::IsCorrupted>();
+-    world.init_resource::<autoclutter::manage_autoclutter_entities::ExistingAutoClutterKeys>();
+     world.init_resource::<autoclutter::populate_autoclutter_regions::DirtyTilesResource>();
+     world.init_resource::<autoclutter::populate_autoclutter_regions::RockMaskData>();
+     world.init_resource::<autoclutter::populate_autoclutter_regions::SessionMeta>();
+@@ -74,6 +75,14 @@
+     world.init_resource::<Events<inter_roof_merlons::inter_roof_merlons_audio::InterRoofMerlonAudioRequest>>();
+     world.init_resource::<Events<country_core::resources::walls::public_walls::OnWallChanged>>();
+     world.init_resource::<Events<country_core::resources::walls::public_walls::OnWallDeleted>>();
++
++    // The original per-frame reset clears output/stitches and copies the real
++    // GameTime epoch. Keep it before all output producers in this existing
++    // schedule. Actual decorator collector ordering belongs to App integration.
++    schedule.add_systems(
++        autoclutter::reset_autoclutter_for_new_frame
++            .before(autoclutter_subscribe_to_tabloids),
++    );
+ 
+     // Original build65226c/ee2723 registers this canonical reader. Keep the
+     // current chain within Bevy's tuple limit; only add its data dependency.

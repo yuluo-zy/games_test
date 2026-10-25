@@ -1,0 +1,136 @@
+{
+  "server": "re_mcp_ghidra",
+  "actual_mcp_connection": true,
+  "results": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "database_id": "tg_ca1",
+        "keep_open": true
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"tg_ca1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "tg_ca1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "tg_ca1"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"tg_ca1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "tg_ca1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_ca1",
+        "address": "0x1414106e0"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_1414106e0\",\"address\":\"0x1414106E0\",\"decompiled_code\":\"\\r\\nlonglong * FUN_1414106e0(longlong *param_1,longlong param_2)\\r\\n\\r\\n{\\r\\n  char *pcVar1;\\r\\n  byte bVar2;\\r\\n  ulonglong uVar3;\\r\\n  longlong lVar4;\\r\\n  longlong *plVar5;\\r\\n  longlong *plVar6;\\r\\n  longlong lStack_58;\\r\\n  longlong *plStack_50;\\r\\n  longlong lStack_48;\\r\\n  longlong *plStack_40;\\r\\n  undefined1 uStack_31;\\r\\n  undefined8 uStack_30;\\r\\n  \\r\\n  uStack_30 = 0xfffffffffffffffe;\\r\\n  uVar3 = *(ulonglong *)(param_2 + 0x28);\\r\\n  if (uVar3 < *(ulonglong *)(param_2 + 0x20)) {\\r\\n    do {\\r\\n      uVar3 = uVar3 + 1;\\r\\n      bVar2 = *(byte *)(*(longlong *)(param_2 + 0x18) + -1 + uVar3);\\r\\n      if ((0x20 < (ulonglong)bVar2) || ((0x100002600U >> ((ulonglong)bVar2 & 0x3f) & 1) == 0)) {\\r\\n        if (bVar2 == 0x5b) {\\r\\n          pcVar1 = (char *)(param_2 + 0x30);\\r\\n          *pcVar1 = *pcVar1 + -1;\\r\\n          if (*pcVar1 == '\\\\0') {\\r\\n            lStack_58 = 0x15;\\r\\n            goto code_r0x00014141074c;\\r\\n          }\\r\\n          *(ulonglong *)(param_2 + 0x28) = uVar3;\\r\\n          FUN_140967640(&lStack_58,param_2,0x100002601);\\r\\n          *(char *)(param_2 + 0x30) = *(char *)(param_2 + 0x30) + '\\\\x01';\\r\\n          plVar5 = (longlong *)FUN_1400584f0(param_2);\\r\\n          if (SBORROW8(0,lStack_58)) {\\r\\n            plVar6 = plStack_50;\\r\\n            if (plVar5 != (longlong *)0x0) {\\r\\n              plStack_40 = plVar5;\\r\\n              if (*plVar5 == 1) {\\r\\n                FUN_1405e7a00(plVar5 + 1,-lStack_58);\\r\\n              }\\r\\n              else if ((*plVar5 == 0) && (plVar5[2] != 0)) {\\r\\n                func_0x000140613c20(plVar5[1],plVar5[2],1);\\r\\n              }\\r\\n              func_0x000140613c20(plStack_40,0x28,8);\\r\\n            }\\r\\n          }\\r\\n          else {\\r\\n            if (plVar5 == (longlong *)0x0) {\\r\\n              *param_1 = lStack_58;\\r\\n              param_1[1] = (longlong)plStack_50;\\r\\n              param_1[2] = lStack_48;\\r\\n              return param_1;\\r\\n            }\\r\\n            plVar6 = plVar5;\\r\\n            if (lStack_58 != 0) {\\r\\n              func_0x000140613c20(plStack_50,lStack_58 * 0x30,4);\\r\\n            }\\r\\n          }\\r\\n        }\\r\\n        else {\\r\\n          plVar6 = (longlong *)FUN_1428f8c00(param_2,&uStack_31,&UNK_142c5bff0);\\r\\n        }\\r\\n        lVar4 = FUN_1428a2200(plVar6,param_2);\\r\\n        goto code_r0x00014141084c;\\r\\n      }\\r\\n      *(ulonglong *)(param_2 + 0x28) = uVar3;\\r\\n    } while (uVar3 != *(ulonglong *)(param_2 + 0x20));\\r\\n  }\\r\\n  lStack_58 = 5;\\r\\ncode_r0x00014141074c:\\r\\n  lVar4 = FUN_1428a0920(param_2,&lStack_58);\\r\\ncode_r0x00014141084c:\\r\\n  param_1[1] = lVar4;\\r\\n  *param_1 = -0x8000000000000000;\\r\\n  return param_1;\\r\\n}\\r\\n\\r\\n\",\"database\":\"tg_ca1\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_1414106e0",
+          "address": "0x1414106E0",
+          "decompiled_code": "\r\nlonglong * FUN_1414106e0(longlong *param_1,longlong param_2)\r\n\r\n{\r\n  char *pcVar1;\r\n  byte bVar2;\r\n  ulonglong uVar3;\r\n  longlong lVar4;\r\n  longlong *plVar5;\r\n  longlong *plVar6;\r\n  longlong lStack_58;\r\n  longlong *plStack_50;\r\n  longlong lStack_48;\r\n  longlong *plStack_40;\r\n  undefined1 uStack_31;\r\n  undefined8 uStack_30;\r\n  \r\n  uStack_30 = 0xfffffffffffffffe;\r\n  uVar3 = *(ulonglong *)(param_2 + 0x28);\r\n  if (uVar3 < *(ulonglong *)(param_2 + 0x20)) {\r\n    do {\r\n      uVar3 = uVar3 + 1;\r\n      bVar2 = *(byte *)(*(longlong *)(param_2 + 0x18) + -1 + uVar3);\r\n      if ((0x20 < (ulonglong)bVar2) || ((0x100002600U >> ((ulonglong)bVar2 & 0x3f) & 1) == 0)) {\r\n        if (bVar2 == 0x5b) {\r\n          pcVar1 = (char *)(param_2 + 0x30);\r\n          *pcVar1 = *pcVar1 + -1;\r\n          if (*pcVar1 == '\\0') {\r\n            lStack_58 = 0x15;\r\n            goto code_r0x00014141074c;\r\n          }\r\n          *(ulonglong *)(param_2 + 0x28) = uVar3;\r\n          FUN_140967640(&lStack_58,param_2,0x100002601);\r\n          *(char *)(param_2 + 0x30) = *(char *)(param_2 + 0x30) + '\\x01';\r\n          plVar5 = (longlong *)FUN_1400584f0(param_2);\r\n          if (SBORROW8(0,lStack_58)) {\r\n            plVar6 = plStack_50;\r\n            if (plVar5 != (longlong *)0x0) {\r\n              plStack_40 = plVar5;\r\n              if (*plVar5 == 1) {\r\n                FUN_1405e7a00(plVar5 + 1,-lStack_58);\r\n              }\r\n              else if ((*plVar5 == 0) && (plVar5[2] != 0)) {\r\n                func_0x000140613c20(plVar5[1],plVar5[2],1);\r\n              }\r\n              func_0x000140613c20(plStack_40,0x28,8);\r\n            }\r\n          }\r\n          else {\r\n            if (plVar5 == (longlong *)0x0) {\r\n              *param_1 = lStack_58;\r\n              param_1[1] = (longlong)plStack_50;\r\n              param_1[2] = lStack_48;\r\n              return param_1;\r\n            }\r\n            plVar6 = plVar5;\r\n            if (lStack_58 != 0) {\r\n              func_0x000140613c20(plStack_50,lStack_58 * 0x30,4);\r\n            }\r\n          }\r\n        }\r\n        else {\r\n          plVar6 = (longlong *)FUN_1428f8c00(param_2,&uStack_31,&UNK_142c5bff0);\r\n        }\r\n        lVar4 = FUN_1428a2200(plVar6,param_2);\r\n        goto code_r0x00014141084c;\r\n      }\r\n      *(ulonglong *)(param_2 + 0x28) = uVar3;\r\n    } while (uVar3 != *(ulonglong *)(param_2 + 0x20));\r\n  }\r\n  lStack_58 = 5;\r\ncode_r0x00014141074c:\r\n  lVar4 = FUN_1428a0920(param_2,&lStack_58);\r\ncode_r0x00014141084c:\r\n  param_1[1] = lVar4;\r\n  *param_1 = -0x8000000000000000;\r\n  return param_1;\r\n}\r\n\r\n",
+          "database": "tg_ca1"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "get_database_info",
+      "args": {
+        "database": "tg_ca1"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"file_path\":\"/D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe\",\"file_type\":\"Portable Executable (PE)\",\"processor\":\"x86:LE:64:default\",\"compiler_spec\":\"clangwindows\",\"bitness\":64,\"endian\":\"little\",\"min_address\":\"0x140000000\",\"max_address\":\"0x1437CC1FF\",\"image_base\":\"0x140000000\",\"function_count\":116272,\"segment_count\":8,\"entry_point_count\":2,\"capabilities\":{\"decompiler\":true},\"database\":\"tg_ca1\"}"
+          }
+        ],
+        "structuredContent": {
+          "file_path": "/D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+          "file_type": "Portable Executable (PE)",
+          "processor": "x86:LE:64:default",
+          "compiler_spec": "clangwindows",
+          "bitness": 64,
+          "endian": "little",
+          "min_address": "0x140000000",
+          "max_address": "0x1437CC1FF",
+          "image_base": "0x140000000",
+          "function_count": 116272,
+          "segment_count": 8,
+          "entry_point_count": 2,
+          "capabilities": {
+            "decompiler": true
+          },
+          "database": "tg_ca1"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "tg_ca1",
+        "save": false
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"tg_ca1\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "tg_ca1"
+        },
+        "isError": false
+      }
+    }
+  ],
+  "target_execution": false,
+  "ok": true
+}

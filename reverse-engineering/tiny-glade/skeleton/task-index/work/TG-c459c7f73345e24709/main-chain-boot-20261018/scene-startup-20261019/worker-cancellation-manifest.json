@@ -1,0 +1,25 @@
+{
+  "status": "candidate_uncompiled",
+  "scope": "GameplayPreparation cancellation/join host adaptation; no original source equivalence claim",
+  "production_modified": false,
+  "cargo_gpu_run": false,
+  "original_rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "source": "tiny-glade/crates/tiny-glade/src/run_game.rs",
+  "before_sha256": "bd4ab6360d8d03321d826561cf46b269c87e8afaec9ea2d1496c5876277a170b",
+  "candidate_sha256": "5ce22c7f1d0878113f3e1cdf9e4cce879eba50008b571f435ec4fba0d2091d7c",
+  "patch_sha256": "4120ba86c6e1d1c0fe2ab5f12c4207b453ceb06fcf2f504a475fc6eedb3d53ef",
+  "contract": [
+    "retain worker JoinHandle until poll receives completion or explicit shutdown",
+    "check typed cancellation before update, before warmup, after warmup",
+    "join before dropping successful pending/channel SubApp owners",
+    "only typed GameplayPreparationCancelled is normal shutdown; actual load/warmup and panic errors retained",
+    "Drop uses same stop/join path; no device/session lock held around join",
+    "loading App registers same canonical shutdown consumer; original event producer proven1405a4901, PostUpdate placement remains current-host adaptation"
+  ],
+  "integration": "GameLoop must take preparation, cancel_and_join, always renderer.shutdown even if earlier error, preserve earlier error",
+  "validation_suggestions": [
+    "cargo test -p tiny-glade gameplay_preparation_shutdown_tests --locked --offline",
+    "exercise window close during update and warmup; renderer shutdown must start after worker completion"
+  ],
+  "adaptation_boundary": "host cancellation not asserted as original B thread API; original async update/warmup path and ready conditions preserved"
+}

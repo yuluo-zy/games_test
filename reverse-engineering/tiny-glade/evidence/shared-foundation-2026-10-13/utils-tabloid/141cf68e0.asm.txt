@@ -1,0 +1,54 @@
+tabloid::Publisher$LT$T$GT$::subscribe::h0b23f6bc085c96aa
+0x141cf68e0: push rbp
+0x141cf68e1: push rsi
+0x141cf68e2: push rdi
+0x141cf68e3: sub rsp, 0x80
+0x141cf68ea: lea rbp, [rsp + 0x80]
+0x141cf68f2: mov qword ptr [rbp - 8], 0xfffffffffffffffe
+0x141cf68fa: mov rsi, rcx
+0x141cf68fd: xorps xmm0, xmm0
+0x141cf6900: movups xmmword ptr [rbp - 0x50], xmm0
+0x141cf6904: mov qword ptr [rbp - 0x40], 1
+0x141cf690c: mov qword ptr [rbp - 0x38], 1
+0x141cf6914: mov byte ptr [rbp - 0x30], 0
+0x141cf6918: movups xmm0, xmmword ptr [rbp - 0x57]
+0x141cf691c: movups xmmword ptr [rbp - 0x2f], xmm0
+0x141cf6920: mov rax, qword ptr [rbp - 0x48]
+0x141cf6924: mov qword ptr [rbp - 0x20], rax
+0x141cf6928: movzx eax, byte ptr [rip + 0x193e2da]
+0x141cf692f: mov ecx, 0x28
+0x141cf6934: mov edx, 8
+0x141cf6939: call 0x140613c10
+0x141cf693e: test rax, rax
+0x141cf6941: je 0x141cf69a4
+0x141cf6943: mov rcx, qword ptr [rbp - 0x20]
+0x141cf6947: mov qword ptr [rax + 0x20], rcx
+0x141cf694b: movups xmm0, xmmword ptr [rbp - 0x40]
+0x141cf694f: movups xmm1, xmmword ptr [rbp - 0x30]
+0x141cf6953: movups xmmword ptr [rax + 0x10], xmm1
+0x141cf6957: movups xmmword ptr [rax], xmm0
+0x141cf695a: mov qword ptr [rbp - 0x18], rax
+0x141cf695e: lock inc qword ptr [rax]
+0x141cf6962: jle 0x141cf69b3
+0x141cf6964: mov qword ptr [rbp - 0x10], rax
+0x141cf6968: mov qword ptr [rbp - 0x40], rax
+0x141cf696c: mov rdi, qword ptr [rsi + 0x28]
+0x141cf6970: cmp rdi, qword ptr [rsi + 0x18]
+0x141cf6974: jne 0x141cf6986
+0x141cf6976: lea rcx, [rsi + 0x18]
+0x141cf697a: lea rdx, [rip + 0x1244847] ; [0x142f3b1c8]=60b1f342 f32=121.846435546875
+0x141cf6981: call 0x140562870
+0x141cf6986: mov rcx, qword ptr [rsi + 0x20]
+0x141cf698a: mov rax, qword ptr [rbp - 0x10]
+0x141cf698e: mov qword ptr [rcx + rdi*8], rax
+0x141cf6992: inc rdi
+0x141cf6995: mov qword ptr [rsi + 0x28], rdi
+0x141cf6999: add rsp, 0x80
+0x141cf69a0: pop rdi
+0x141cf69a1: pop rsi
+0x141cf69a2: pop rbp
+0x141cf69a3: ret 
+0x141cf69a4: mov ecx, 8
+0x141cf69a9: mov edx, 0x28
+0x141cf69ae: call 0x1428d9000
+0x141cf69b3: ud2 

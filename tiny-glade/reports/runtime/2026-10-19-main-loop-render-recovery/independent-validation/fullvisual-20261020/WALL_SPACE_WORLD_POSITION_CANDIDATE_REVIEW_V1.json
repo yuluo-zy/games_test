@@ -1,0 +1,42 @@
+{
+  "verdict": "passed_scoped_coherent_three_source",
+  "candidate_manifest_sha256": "7a1b2618cc25b56a5f7e2230164582c41c4bc2a9e77a2a01318b8fe0b65b93c6",
+  "source_hashes": [
+    {
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/utils/src/wall_space.rs",
+      "before_sha256": "52c24a0e553ae24ea4c9a6ad6494ccb324c30b171495145b241ebaf980e62002",
+      "candidate": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-d9be0bb590da0f9f7d/clutter-startup-20261020/world-space-f32-20261020/candidate-v1/wall_space.rs",
+      "candidate_sha256": "579296321b301b17c018f5ec23a387e1420fae47596d79b24786ed745f17635c"
+    },
+    {
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/utils/tests/curve_properties.rs",
+      "before_sha256": "2b2c42acec9e97e7e0f2627115a1c00650b5a2eb215b81f8d322304405f5aa22",
+      "candidate": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-d9be0bb590da0f9f7d/clutter-startup-20261020/world-space-f32-20261020/candidate-v1/curve_properties.rs",
+      "candidate_sha256": "4905cd01487afd8d57be78f8bb182658c86f9336de137aba0c728579dd4fe330"
+    },
+    {
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/utils/src/curve/mod.rs",
+      "before_sha256": "e899b8532fe03661f1f34ff1b38a2bde87aa07c6ba8cb18e767d824ec6d08d3b",
+      "candidate": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-9cab24dd1d18f9a94a/clutter-startup-20261020/raw-tangent-20261020/mod.rs",
+      "candidate_sha256": "044c9623a9dde794211790fdafa4fd19c842369192e874879cb1bbe87d9fe987"
+    }
+  ],
+  "whole_patch_matches_current_before_and_candidates": true,
+  "design_review_sha256": "e0e7e076d5418b824fed1659a03d56169b79ac73c0ee70005ef79ee6196ad316",
+  "source_findings": [
+    "Actual WallSpace793B body uses existing CurveU/UBoundlessfinite-range checks and original out-of-rangebranch, noadditionalYfiniteguard. Raw endpoint delta, two explicitf32 recipnormalizations andembeddedzero lane preserved. Negative position−u*tangent; upper position+(u-length)*tangent.",
+    "CanonicalutilsCurve2 onlyadds exactthree-line actualrawtangentoverride, selectedoriginal endpoints; no zero/repeatedpointskip orconstructors/left/measure/start/end API changes. Genericcompatibilitydefault onlyforlegacyhostsnotnativeproof.",
+    "Propertiesfile onlychanges one specificallynamedfunction; allprefix/suffix bytes preserved. Original8x8x3=192inputs andbothsides retained. Finite1e-5tol unchanged; zeroactualendpoint allNaN explicitlyasserted, negativefiniteexpectedcorrected. StationaryactualZERO/length1 input(-1,4)kept, olddocerror correctedappendonly.",
+    "Three actualmethodtests cover negativeactualdirection/rawdelta, normalizedNaN/±infinitypanic, inrangeYNaN propagation. Normalcfg(test)module outsideimpl, noassociatedtest issue."
+  ],
+  "test_state": [
+    "New3+revised192property are unrun by07. Prior53actualrun is oldWallSpace snapshot only.",
+    "Root should rerun complete exact selected-module suite/alloriginalincludes+bothintegrationtargets aftercoherent3sourceintegration, not merelynew3tests. Preserveanyfurtherrealfixture/expectedfailure fornativeadjudication; no covertassertloosening/skip."
+  ],
+  "remaining_gates": [
+    "TruecoreCurve2 borrowedadapter belongslocationpackage andmustforwardactualleading sourcecurve; notpreparedXYZclampedcenter.",
+    "Fullutils sampling/currentcore/App/physicalworld/WSI/performance notaccepted."
+  ],
+  "reviewer_Cargo_rustc_tests_GPU": false,
+  "production_or_claims_modified": false
+}

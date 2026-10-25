@@ -1,0 +1,15 @@
+{
+  "reviewer": "/root/core_business_lead/tree_commands",
+  "scope": "read-only triage only; no claim/source/candidate/Cargo mutation",
+  "failure_log_sha256": "8c2c823bef70882d714de4890592e04143d77fb70c862d18f88b76fe910f8dea",
+  "source_sha256": {
+    "tiny-glade/crates/country-core/src/resources/stairs/stairs_state.rs": "e82f993c7248d5390bd36f95a52cddc946e77f9b0d001cc8b2589526d8d65efd",
+    "tiny-glade/crates/country-core/src/resources/history/stairs_history_edit.rs": "00878ede33c60d450d9f28ccbba665bb156f640a66a05b5cd670cd84916ce50e",
+    "tiny-glade/crates/country-core/src/systems/history/tests.rs": "1d53ea0e05ff6b3398d248b87c9a785d095ef06e9cac3a1100141a5398898905",
+    "tiny-glade/crates/country-core/src/resources/history/decorator_edit.rs": "5f7ef2d924215f7dc67cd5efd4bfa617661ef758b61b4d3c74124fecf431b2e3",
+    "tiny-glade/crates/country-core/src/systems/history/replay_stairs.rs": "37a9d2256d92b16ab4804707359b84223418982898be65a6e2c93628bf17440f"
+  },
+  "candidate_written": false,
+  "root_cause": "stale SupportsDelete expected JSON object; original B serializer shares the exact edge serializer between variants and original shipped history has tuple arrays for both variants",
+  "minimal_direction": "Only change old test expectation to {\"SupportsDelete\":{\"edge\":[7,8]}} after root authorization; do not change StairGraphEdge serde or history producer/consumer business."
+}

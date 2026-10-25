@@ -1,0 +1,181 @@
+
+void __cdecl country_core::resources::time_of_day::TodSequence::snapshot_at_tod(void)
+
+{
+  longlong lVar1;
+  float *pfVar2;
+  float *in_RCX;
+  longlong in_RDX;
+  longlong lVar3;
+  float *pfVar4;
+  float *pfVar5;
+  float fVar6;
+  float extraout_XMM0_Da;
+  float extraout_XMM0_Da_00;
+  float fVar7;
+  float extraout_XMM0_Da_01;
+  float fVar8;
+  float fVar9;
+  float fVar10;
+  float in_XMM2_Da;
+  float fVar11;
+  float fVar12;
+  undefined8 uVar13;
+  undefined8 uVar14;
+  float fVar15;
+  float fVar16;
+  float fVar17;
+  float fVar18;
+  float fVar19;
+  
+  lVar1 = *(longlong *)(in_RDX + 0x10);
+  if (lVar1 == 1) {
+    lVar1 = *(longlong *)(in_RDX + 8);
+    in_RCX[0x10] = *(float *)(lVar1 + 0x4c);
+    fVar6 = *(float *)(lVar1 + 0xc);
+    fVar11 = *(float *)(lVar1 + 0x10);
+    fVar8 = *(float *)(lVar1 + 0x14);
+    fVar7 = *(float *)(lVar1 + 0x18);
+    fVar9 = *(float *)(lVar1 + 0x1c);
+    fVar10 = *(float *)(lVar1 + 0x20);
+    fVar12 = *(float *)(lVar1 + 0x24);
+    fVar19 = *(float *)(lVar1 + 0x28);
+    uVar13 = *(undefined8 *)(lVar1 + 0x2c);
+    uVar14 = *(undefined8 *)(lVar1 + 0x34);
+    fVar15 = *(float *)(lVar1 + 0x3c);
+    fVar16 = *(float *)(lVar1 + 0x40);
+    fVar17 = *(float *)(lVar1 + 0x44);
+    fVar18 = *(float *)(lVar1 + 0x48);
+LAB_140b06ac7:
+    in_RCX[0xc] = fVar15;
+    in_RCX[0xd] = fVar16;
+    in_RCX[0xe] = fVar17;
+    in_RCX[0xf] = fVar18;
+    *(undefined8 *)(in_RCX + 8) = uVar13;
+    *(undefined8 *)(in_RCX + 10) = uVar14;
+    in_RCX[4] = fVar9;
+    in_RCX[5] = fVar10;
+    in_RCX[6] = fVar12;
+    in_RCX[7] = fVar19;
+    *in_RCX = fVar6;
+    in_RCX[1] = fVar11;
+    in_RCX[2] = fVar8;
+    in_RCX[3] = fVar7;
+  }
+  else {
+    fVar6 = fmodf(in_XMM2_Da,1.0);
+    if (lVar1 == 0) {
+                    // WARNING: Subroutine does not return
+      core::panicking::panic_bounds_check();
+    }
+    fVar11 = (float)(~-(uint)(fVar6 < 0.0) & (uint)fVar6 |
+                    (uint)(fVar6 + 1.0) & -(uint)(fVar6 < 0.0));
+    pfVar4 = *(float **)(in_RDX + 8);
+    pfVar5 = pfVar4 + lVar1 * 0x14;
+    fVar6 = 1.0;
+    if (pfVar4[2] <= fVar11) {
+      if ((fVar11 < pfVar4[2]) || (pfVar4[0x16] < fVar11)) {
+        if (lVar1 != 2) {
+          pfVar2 = pfVar4 + 0x16;
+          lVar3 = 0;
+          do {
+            if ((*pfVar2 <= fVar11) && (fVar11 <= pfVar2[0x14])) {
+              pfVar5 = (float *)((longlong)pfVar4 + (0xa0 - lVar3));
+              pfVar4 = pfVar2 + -2;
+              goto LAB_140b069f7;
+            }
+            lVar3 = lVar3 + -0x50;
+            pfVar2 = pfVar2 + 0x14;
+          } while (lVar1 * -0x50 + 0xa0 != lVar3);
+        }
+        if (pfVar5 == (float *)&DAT_00000050) {
+                    // WARNING: Subroutine does not return
+          core::option::unwrap_failed();
+        }
+        ::utils::inverse_lerp();
+        fVar8 = 0.0;
+        fVar11 = extraout_XMM0_Da_00;
+        if (0.0 <= extraout_XMM0_Da_00) {
+          fVar8 = extraout_XMM0_Da_00;
+        }
+        goto LAB_140b068e9;
+      }
+      pfVar5 = pfVar4 + 0x14;
+LAB_140b069f7:
+      pfVar2 = pfVar4 + 3;
+      ::utils::inverse_lerp();
+      fVar11 = 0.0;
+      if (0.0 <= extraout_XMM0_Da_01) {
+        fVar11 = extraout_XMM0_Da_01;
+      }
+      if ((0x7f7fffff < (uint)ABS(extraout_XMM0_Da_01) && 0.0 <= extraout_XMM0_Da_01) &&
+          fVar11 <= 1.0) goto LAB_140b06ab2;
+      if (fVar11 <= 1.0) {
+        fVar6 = fVar11;
+      }
+      country_core::render::atmosphere::SunSkyColors::lerp();
+      fVar7 = pfVar5[0x10] * fVar6;
+      fVar9 = fVar6 * (float)*(undefined8 *)(pfVar5 + 0x11);
+      fVar10 = fVar6 * (float)((ulonglong)*(undefined8 *)(pfVar5 + 0x11) >> 0x20);
+      fVar12 = (pfVar5[0x13] - pfVar4[0x13]) * fVar6 + pfVar4[0x13];
+      fVar11 = pfVar4[0xf];
+      fVar8 = pfVar4[0x10];
+      fVar19 = pfVar5[0xf] - fVar11;
+      fVar15 = (float)*(undefined8 *)(pfVar4 + 0x11);
+      fVar16 = (float)((ulonglong)*(undefined8 *)(pfVar4 + 0x11) >> 0x20);
+    }
+    else {
+      if (pfVar5 == (float *)&DAT_00000050) {
+                    // WARNING: Subroutine does not return
+        core::option::unwrap_failed();
+      }
+      ::utils::inverse_lerp();
+      fVar8 = 0.0;
+      fVar11 = extraout_XMM0_Da;
+      if (0.0 <= extraout_XMM0_Da) {
+        fVar8 = extraout_XMM0_Da;
+      }
+LAB_140b068e9:
+      pfVar2 = pfVar5 + -0x11;
+      if ((0x7f7fffff < (uint)ABS(fVar11) && 0.0 <= fVar11) && fVar8 <= 1.0) {
+LAB_140b06ab2:
+        in_RCX[0x10] = pfVar2[0x10];
+        fVar6 = *pfVar2;
+        fVar11 = pfVar2[1];
+        fVar8 = pfVar2[2];
+        fVar7 = pfVar2[3];
+        fVar9 = pfVar2[4];
+        fVar10 = pfVar2[5];
+        fVar12 = pfVar2[6];
+        fVar19 = pfVar2[7];
+        uVar13 = *(undefined8 *)(pfVar2 + 8);
+        uVar14 = *(undefined8 *)(pfVar2 + 10);
+        fVar15 = pfVar2[0xc];
+        fVar16 = pfVar2[0xd];
+        fVar17 = pfVar2[0xe];
+        fVar18 = pfVar2[0xf];
+        goto LAB_140b06ac7;
+      }
+      if (fVar8 <= 1.0) {
+        fVar6 = fVar8;
+      }
+      country_core::render::atmosphere::SunSkyColors::lerp();
+      fVar7 = pfVar4[0x10] * fVar6;
+      fVar9 = fVar6 * (float)*(undefined8 *)(pfVar4 + 0x11);
+      fVar10 = fVar6 * (float)((ulonglong)*(undefined8 *)(pfVar4 + 0x11) >> 0x20);
+      fVar12 = (pfVar4[0x13] - pfVar5[-1]) * fVar6 + pfVar5[-1];
+      fVar11 = pfVar5[-5];
+      fVar8 = pfVar5[-4];
+      fVar19 = pfVar4[0xf] - fVar11;
+      fVar15 = (float)*(undefined8 *)(pfVar5 + -3);
+      fVar16 = (float)((ulonglong)*(undefined8 *)(pfVar5 + -3) >> 0x20);
+    }
+    in_RCX[0xc] = fVar11 + fVar6 * fVar19;
+    in_RCX[0xd] = fVar7 + fVar8 * (1.0 - fVar6);
+    in_RCX[0xe] = fVar9 + fVar15 * (1.0 - fVar6);
+    in_RCX[0xf] = fVar10 + fVar16 * (1.0 - fVar6);
+    in_RCX[0x10] = fVar12;
+  }
+  return;
+}
+

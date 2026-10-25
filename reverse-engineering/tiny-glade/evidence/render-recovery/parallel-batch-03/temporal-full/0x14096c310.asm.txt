@@ -1,0 +1,327 @@
+
+D:\game\reverse-engineering\tiny-glade/workspace/input/tiny-glade.exe:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+14096c310: 55                          	push	rbp
+14096c311: 41 57                       	push	r15
+14096c313: 41 56                       	push	r14
+14096c315: 41 55                       	push	r13
+14096c317: 41 54                       	push	r12
+14096c319: 56                          	push	rsi
+14096c31a: 57                          	push	rdi
+14096c31b: 53                          	push	rbx
+14096c31c: 48 81 ec b8 01 00 00        	sub	rsp, 0x1b8
+14096c323: 48 8d ac 24 80 00 00 00     	lea	rbp, [rsp + 0x80]
+14096c32b: 48 c7 85 30 01 00 00 fe ff ff ff    	mov	qword ptr [rbp + 0x130], -0x2
+14096c336: 48 89 d7                    	mov	rdi, rdx
+14096c339: 48 89 ce                    	mov	rsi, rcx
+14096c33c: 4c 89 c1                    	mov	rcx, r8
+14096c33f: 4c 89 ca                    	mov	rdx, r9
+14096c342: e8 f9 32 2a 00              	call	0x140c0f640 <.text+0xc0e640>
+14096c347: 48 89 85 10 01 00 00        	mov	qword ptr [rbp + 0x110], rax
+14096c34e: 48 83 bf c8 00 00 00 00     	cmp	qword ptr [rdi + 0xc8], 0x0
+14096c356: 0f 84 2a 01 00 00           	je	0x14096c486 <.text+0x96b486>
+14096c35c: 48 8d 8f d0 00 00 00        	lea	rcx, [rdi + 0xd0]
+14096c363: 48 8d 9d 10 01 00 00        	lea	rbx, [rbp + 0x110]
+14096c36a: 48 89 da                    	mov	rdx, rbx
+14096c36d: e8 ae bd 97 00              	call	0x1412e8120 <.text+0x12e7120>
+14096c372: 4c 8b bf b0 00 00 00        	mov	r15, qword ptr [rdi + 0xb0]
+14096c379: 48 8b 8f b8 00 00 00        	mov	rcx, qword ptr [rdi + 0xb8]
+14096c380: 48 89 ca                    	mov	rdx, rcx
+14096c383: 48 21 c2                    	and	rdx, rax
+14096c386: 48 c1 e8 39                 	shr	rax, 0x39
+14096c38a: 66 0f 6e c0                 	movd	xmm0, eax
+14096c38e: 66 0f 60 c0                 	punpcklbw	xmm0, xmm0      # xmm0 = xmm0[0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7]
+14096c392: f2 0f 70 c0 00              	pshuflw	xmm0, xmm0, 0x0         # xmm0 = xmm0[0,0,0,0,4,5,6,7]
+14096c397: 66 0f 70 c0 00              	pshufd	xmm0, xmm0, 0x0         # xmm0 = xmm0[0,0,0,0]
+14096c39c: 49 8d 47 98                 	lea	rax, [r15 - 0x68]
+14096c3a0: 45 31 c0                    	xor	r8d, r8d
+14096c3a3: 4c 8b b5 10 01 00 00        	mov	r14, qword ptr [rbp + 0x110]
+14096c3aa: 66 0f 76 c9                 	pcmpeqd	xmm1, xmm1
+14096c3ae: f3 41 0f 6f 14 17           	movdqu	xmm2, xmmword ptr [r15 + rdx]
+14096c3b4: 66 0f 6f da                 	movdqa	xmm3, xmm2
+14096c3b8: 66 0f 74 d8                 	pcmpeqb	xmm3, xmm0
+14096c3bc: 66 44 0f d7 cb              	pmovmskb	r9d, xmm3
+14096c3c1: 45 85 c9                    	test	r9d, r9d
+14096c3c4: 74 2a                       	je	0x14096c3f0 <.text+0x96b3f0>
+14096c3c6: f3 45 0f bc d1              	tzcnt	r10d, r9d
+14096c3cb: 49 01 d2                    	add	r10, rdx
+14096c3ce: 49 21 ca                    	and	r10, rcx
+14096c3d1: 49 f7 da                    	neg	r10
+14096c3d4: 4d 6b d2 68                 	imul	r10, r10, 0x68
+14096c3d8: 4e 3b 34 10                 	cmp	r14, qword ptr [rax + r10]
+14096c3dc: 74 34                       	je	0x14096c412 <.text+0x96b412>
+14096c3de: 45 8d 51 ff                 	lea	r10d, [r9 - 0x1]
+14096c3e2: 66 45 21 ca                 	and	r10w, r9w
+14096c3e6: 45 89 d1                    	mov	r9d, r10d
+14096c3e9: 75 db                       	jne	0x14096c3c6 <.text+0x96b3c6>
+14096c3eb: 0f 1f 44 00 00              	nop	dword ptr [rax + rax]
+14096c3f0: 66 0f 74 d1                 	pcmpeqb	xmm2, xmm1
+14096c3f4: 66 44 0f d7 ca              	pmovmskb	r9d, xmm2
+14096c3f9: 45 85 c9                    	test	r9d, r9d
+14096c3fc: 0f 85 87 00 00 00           	jne	0x14096c489 <.text+0x96b489>
+14096c402: 4c 01 c2                    	add	rdx, r8
+14096c405: 48 83 c2 10                 	add	rdx, 0x10
+14096c409: 49 83 c0 10                 	add	r8, 0x10
+14096c40d: 48 21 ca                    	and	rdx, rcx
+14096c410: eb 9c                       	jmp	0x14096c3ae <.text+0x96b3ae>
+14096c412: 43 83 7c 17 a0 02           	cmp	dword ptr [r15 + r10 - 0x60], 0x2
+14096c418: 0f 85 97 02 00 00           	jne	0x14096c6b5 <.text+0x96b6b5>
+14096c41e: 4d 01 d7                    	add	r15, r10
+14096c421: 41 80 7f fe 07              	cmp	byte ptr [r15 - 0x2], 0x7
+14096c426: 0f 85 b9 02 00 00           	jne	0x14096c6e5 <.text+0x96b6e5>
+14096c42c: 49 8d 57 c8                 	lea	rdx, [r15 - 0x38]
+14096c430: 45 0f b6 4f a4              	movzx	r9d, byte ptr [r15 - 0x5c]
+14096c435: 48 8d 4d 70                 	lea	rcx, [rbp + 0x70]
+14096c439: 49 89 f8                    	mov	r8, rdi
+14096c43c: e8 7f 8b 26 00              	call	0x140bd4fc0 <.text+0xbd3fc0>
+14096c441: 8b 85 80 00 00 00           	mov	eax, dword ptr [rbp + 0x80]
+14096c447: 0f 10 45 70                 	movups	xmm0, xmmword ptr [rbp + 0x70]
+14096c44b: 0f 11 45 48                 	movups	xmmword ptr [rbp + 0x48], xmm0
+14096c44f: 41 c7 47 a0 01 00 00 00     	mov	dword ptr [r15 - 0x60], 0x1
+14096c457: 0f 10 45 44                 	movups	xmm0, xmmword ptr [rbp + 0x44]
+14096c45b: 41 0f 11 47 a4              	movups	xmmword ptr [r15 - 0x5c], xmm0
+14096c460: 8b 4d 54                    	mov	ecx, dword ptr [rbp + 0x54]
+14096c463: 41 89 4f b4                 	mov	dword ptr [r15 - 0x4c], ecx
+14096c467: 41 89 47 b8                 	mov	dword ptr [r15 - 0x48], eax
+14096c46b: 48 8b 85 80 00 00 00        	mov	rax, qword ptr [rbp + 0x80]
+14096c472: 48 89 46 10                 	mov	qword ptr [rsi + 0x10], rax
+14096c476: 0f 10 45 70                 	movups	xmm0, xmmword ptr [rbp + 0x70]
+14096c47a: 0f 11 06                    	movups	xmmword ptr [rsi], xmm0
+14096c47d: c6 46 18 01                 	mov	byte ptr [rsi + 0x18], 0x1
+14096c481: e9 18 02 00 00              	jmp	0x14096c69e <.text+0x96b69e>
+14096c486: 49 89 c6                    	mov	r14, rax
+14096c489: 4c 8b bd a0 01 00 00        	mov	r15, qword ptr [rbp + 0x1a0]
+14096c490: 48 8d 9f b0 00 00 00        	lea	rbx, [rdi + 0xb0]
+14096c497: 49 8b 0f                    	mov	rcx, qword ptr [r15]
+14096c49a: 48 85 c9                    	test	rcx, rcx
+14096c49d: 0f 88 bb 02 00 00           	js	0x14096c75e <.text+0x96b75e>
+14096c4a3: 4c 8b af a8 00 00 00        	mov	r13, qword ptr [rdi + 0xa8]
+14096c4aa: 4d 8b 66 f8                 	mov	r12, qword ptr [r14 - 0x8]
+14096c4ae: 74 35                       	je	0x14096c4e5 <.text+0x96b4e5>
+14096c4b0: 0f b6 05 52 87 cc 02        	movzx	eax, byte ptr [rip + 0x2cc8752] # 0x143634c09
+14096c4b7: b8 01 00 00 00              	mov	eax, 0x1
+14096c4bc: 48 89 85 20 01 00 00        	mov	qword ptr [rbp + 0x120], rax
+14096c4c3: ba 01 00 00 00              	mov	edx, 0x1
+14096c4c8: 49 89 cf                    	mov	r15, rcx
+14096c4cb: e8 70 77 ca ff              	call	0x140613c40 <.text+0x612c40>
+14096c4d0: 48 85 c0                    	test	rax, rax
+14096c4d3: 0f 84 93 02 00 00           	je	0x14096c76c <.text+0x96b76c>
+14096c4d9: 4c 89 f9                    	mov	rcx, r15
+14096c4dc: 4c 8b bd a0 01 00 00        	mov	r15, qword ptr [rbp + 0x1a0]
+14096c4e3: eb 05                       	jmp	0x14096c4ea <.text+0x96b4ea>
+14096c4e5: b8 01 00 00 00              	mov	eax, 0x1
+14096c4ea: f3 41 0f 6f 07              	movdqu	xmm0, xmmword ptr [r15]
+14096c4ef: 66 0f 7f 45 c0              	movdqa	xmmword ptr [rbp - 0x40], xmm0
+14096c4f4: 48 89 8d 20 01 00 00        	mov	qword ptr [rbp + 0x120], rcx
+14096c4fb: 48 89 4c 24 30              	mov	qword ptr [rsp + 0x30], rcx
+14096c500: 48 89 85 18 01 00 00        	mov	qword ptr [rbp + 0x118], rax
+14096c507: 48 89 44 24 28              	mov	qword ptr [rsp + 0x28], rax
+14096c50c: 48 8d 45 c0                 	lea	rax, [rbp - 0x40]
+14096c510: 48 89 44 24 20              	mov	qword ptr [rsp + 0x20], rax
+14096c515: 48 8d 8d 88 00 00 00        	lea	rcx, [rbp + 0x88]
+14096c51c: 4c 89 ea                    	mov	rdx, r13
+14096c51f: 4d 89 f0                    	mov	r8, r14
+14096c522: 4d 89 e1                    	mov	r9, r12
+14096c525: e8 96 68 d3 00              	call	0x1416a2dc0 <.text+0x16a1dc0>
+14096c52a: 48 8d 4d d0                 	lea	rcx, [rbp - 0x30]
+14096c52e: 48 8d 95 88 00 00 00        	lea	rdx, [rbp + 0x88]
+14096c535: 4d 89 f8                    	mov	r8, r15
+14096c538: e8 d3 8c c3 00              	call	0x1415a5210 <.text+0x15a4210>
+14096c53d: 0f b6 45 f6                 	movzx	eax, byte ptr [rbp - 0xa]
+14096c541: 48 8b 4d d0                 	mov	rcx, qword ptr [rbp - 0x30]
+14096c545: 3c 05                       	cmp	al, 0x5
+14096c547: 75 2e                       	jne	0x14096c577 <.text+0x96b577>
+14096c549: 48 89 0e                    	mov	qword ptr [rsi], rcx
+14096c54c: c6 46 18 02                 	mov	byte ptr [rsi + 0x18], 0x2
+14096c550: 48 8b 95 20 01 00 00        	mov	rdx, qword ptr [rbp + 0x120]
+14096c557: 48 85 d2                    	test	rdx, rdx
+14096c55a: 0f 84 3e 01 00 00           	je	0x14096c69e <.text+0x96b69e>
+14096c560: 41 b8 01 00 00 00           	mov	r8d, 0x1
+14096c566: 48 8b 8d 18 01 00 00        	mov	rcx, qword ptr [rbp + 0x118]
+14096c56d: e8 ae 76 ca ff              	call	0x140613c20 <.text+0x612c20>
+14096c572: e9 27 01 00 00              	jmp	0x14096c69e <.text+0x96b69e>
+14096c577: 0f 10 45 d8                 	movups	xmm0, xmmword ptr [rbp - 0x28]
+14096c57b: f3 0f 6f 4d e6              	movdqu	xmm1, xmmword ptr [rbp - 0x1a]
+14096c580: f3 0f 7f 8d fe 00 00 00     	movdqu	xmmword ptr [rbp + 0xfe], xmm1
+14096c588: 0f 11 85 f0 00 00 00        	movups	xmmword ptr [rbp + 0xf0], xmm0
+14096c58f: 0f b6 55 f7                 	movzx	edx, byte ptr [rbp - 0x9]
+14096c593: 48 89 8d e8 00 00 00        	mov	qword ptr [rbp + 0xe8], rcx
+14096c59a: 88 85 0e 01 00 00           	mov	byte ptr [rbp + 0x10e], al
+14096c5a0: 88 95 0f 01 00 00           	mov	byte ptr [rbp + 0x10f], dl
+14096c5a6: 48 8b 95 20 01 00 00        	mov	rdx, qword ptr [rbp + 0x120]
+14096c5ad: 48 85 d2                    	test	rdx, rdx
+14096c5b0: 74 12                       	je	0x14096c5c4 <.text+0x96b5c4>
+14096c5b2: 41 b8 01 00 00 00           	mov	r8d, 0x1
+14096c5b8: 48 8b 8d 18 01 00 00        	mov	rcx, qword ptr [rbp + 0x118]
+14096c5bf: e8 5c 76 ca ff              	call	0x140613c20 <.text+0x612c20>
+14096c5c4: c6 85 2f 01 00 00 01        	mov	byte ptr [rbp + 0x12f], 0x1
+14096c5cb: 48 8d 4d 58                 	lea	rcx, [rbp + 0x58]
+14096c5cf: 48 8d 95 e8 00 00 00        	lea	rdx, [rbp + 0xe8]
+14096c5d6: 49 89 f8                    	mov	r8, rdi
+14096c5d9: 45 31 c9                    	xor	r9d, r9d
+14096c5dc: e8 df 89 26 00              	call	0x140bd4fc0 <.text+0xbd3fc0>
+14096c5e1: 48 8b 85 08 01 00 00        	mov	rax, qword ptr [rbp + 0x108]
+14096c5e8: 48 89 85 d0 00 00 00        	mov	qword ptr [rbp + 0xd0], rax
+14096c5ef: 0f 10 85 e8 00 00 00        	movups	xmm0, xmmword ptr [rbp + 0xe8]
+14096c5f6: f3 0f 6f 8d f8 00 00 00     	movdqu	xmm1, xmmword ptr [rbp + 0xf8]
+14096c5fe: f3 0f 7f 8d c0 00 00 00     	movdqu	xmmword ptr [rbp + 0xc0], xmm1
+14096c606: 0f 11 85 b0 00 00 00        	movups	xmmword ptr [rbp + 0xb0], xmm0
+14096c60d: 8b 45 68                    	mov	eax, dword ptr [rbp + 0x68]
+14096c610: 0f 10 45 58                 	movups	xmm0, xmmword ptr [rbp + 0x58]
+14096c614: 0f 11 45 34                 	movups	xmmword ptr [rbp + 0x34], xmm0
+14096c618: c6 85 e6 00 00 00 07        	mov	byte ptr [rbp + 0xe6], 0x7
+14096c61f: c7 85 88 00 00 00 01 00 00 00       	mov	dword ptr [rbp + 0x88], 0x1
+14096c629: 0f 10 45 30                 	movups	xmm0, xmmword ptr [rbp + 0x30]
+14096c62d: 0f 11 85 8c 00 00 00        	movups	xmmword ptr [rbp + 0x8c], xmm0
+14096c634: 8b 4d 40                    	mov	ecx, dword ptr [rbp + 0x40]
+14096c637: 89 8d 9c 00 00 00           	mov	dword ptr [rbp + 0x9c], ecx
+14096c63d: 89 85 a0 00 00 00           	mov	dword ptr [rbp + 0xa0], eax
+14096c643: 4c 8b 85 10 01 00 00        	mov	r8, qword ptr [rbp + 0x110]
+14096c64a: c6 85 2f 01 00 00 00        	mov	byte ptr [rbp + 0x12f], 0x0
+14096c651: 48 8d 4d d0                 	lea	rcx, [rbp - 0x30]
+14096c655: 4c 8d 8d 88 00 00 00        	lea	r9, [rbp + 0x88]
+14096c65c: 48 89 da                    	mov	rdx, rbx
+14096c65f: e8 cc e5 bb 00              	call	0x14152ac30 <.text+0x1529c30>
+14096c664: 83 7d d0 03                 	cmp	dword ptr [rbp - 0x30], 0x3
+14096c668: 74 1f                       	je	0x14096c689 <.text+0x96b689>
+14096c66a: 80 7d 2e 07                 	cmp	byte ptr [rbp + 0x2e], 0x7
+14096c66e: 74 09                       	je	0x14096c679 <.text+0x96b679>
+14096c670: 48 8d 4d f8                 	lea	rcx, [rbp - 0x8]
+14096c674: e8 07 f5 6c ff              	call	0x14003bb80 <.text+0x3ab80>
+14096c679: c6 85 2f 01 00 00 00        	mov	byte ptr [rbp + 0x12f], 0x0
+14096c680: 48 8d 4d f8                 	lea	rcx, [rbp - 0x8]
+14096c684: e8 27 5e 27 00              	call	0x140be24b0 <.text+0xbe14b0>
+14096c689: 48 8b 45 68                 	mov	rax, qword ptr [rbp + 0x68]
+14096c68d: 48 89 46 10                 	mov	qword ptr [rsi + 0x10], rax
+14096c691: f3 0f 6f 45 58              	movdqu	xmm0, xmmword ptr [rbp + 0x58]
+14096c696: f3 0f 7f 06                 	movdqu	xmmword ptr [rsi], xmm0
+14096c69a: c6 46 18 00                 	mov	byte ptr [rsi + 0x18], 0x0
+14096c69e: 48 89 f0                    	mov	rax, rsi
+14096c6a1: 48 81 c4 b8 01 00 00        	add	rsp, 0x1b8
+14096c6a8: 5b                          	pop	rbx
+14096c6a9: 5f                          	pop	rdi
+14096c6aa: 5e                          	pop	rsi
+14096c6ab: 41 5c                       	pop	r12
+14096c6ad: 41 5d                       	pop	r13
+14096c6af: 41 5e                       	pop	r14
+14096c6b1: 41 5f                       	pop	r15
+14096c6b3: 5d                          	pop	rbp
+14096c6b4: c3                          	ret
+14096c6b5: 48 89 9d e8 00 00 00        	mov	qword ptr [rbp + 0xe8], rbx
+14096c6bc: 48 8d 05 ad 30 2a 00        	lea	rax, [rip + 0x2a30ad]   # 0x140c0f770 <.text+0xc0e770>
+14096c6c3: 48 89 85 f0 00 00 00        	mov	qword ptr [rbp + 0xf0], rax
+14096c6ca: 48 8d 05 a7 96 14 02        	lea	rax, [rip + 0x21496a7]  # 0x142ab5d78
+14096c6d1: 48 89 85 88 00 00 00        	mov	qword ptr [rbp + 0x88], rax
+14096c6d8: 48 c7 85 90 00 00 00 01 00 00 00    	mov	qword ptr [rbp + 0x90], 0x1
+14096c6e3: eb 2e                       	jmp	0x14096c713 <.text+0x96b713>
+14096c6e5: 48 89 9d e8 00 00 00        	mov	qword ptr [rbp + 0xe8], rbx
+14096c6ec: 48 8d 05 7d 30 2a 00        	lea	rax, [rip + 0x2a307d]   # 0x140c0f770 <.text+0xc0e770>
+14096c6f3: 48 89 85 f0 00 00 00        	mov	qword ptr [rbp + 0xf0], rax
+14096c6fa: 48 8d 05 2f 96 14 02        	lea	rax, [rip + 0x214962f]  # 0x142ab5d30
+14096c701: 48 89 85 88 00 00 00        	mov	qword ptr [rbp + 0x88], rax
+14096c708: 48 c7 85 90 00 00 00 02 00 00 00    	mov	qword ptr [rbp + 0x90], 0x2
+14096c713: 48 8d 85 e8 00 00 00        	lea	rax, [rbp + 0xe8]
+14096c71a: 48 89 85 98 00 00 00        	mov	qword ptr [rbp + 0x98], rax
+14096c721: 48 c7 85 a0 00 00 00 01 00 00 00    	mov	qword ptr [rbp + 0xa0], 0x1
+14096c72c: 48 c7 85 a8 00 00 00 00 00 00 00    	mov	qword ptr [rbp + 0xa8], 0x0
+14096c737: 48 8d 7d d0                 	lea	rdi, [rbp - 0x30]
+14096c73b: 48 8d 95 88 00 00 00        	lea	rdx, [rbp + 0x88]
+14096c742: 48 89 f9                    	mov	rcx, rdi
+14096c745: e8 46 d8 40 00              	call	0x140d79f90 <.text+0xd78f90>
+14096c74a: 48 89 f9                    	mov	rcx, rdi
+14096c74d: e8 8e bc f3 01              	call	0x1428a83e0 <.text+0x28a73e0>
+14096c752: 48 89 06                    	mov	qword ptr [rsi], rax
+14096c755: c6 46 18 02                 	mov	byte ptr [rsi + 0x18], 0x2
+14096c759: e9 40 ff ff ff              	jmp	0x14096c69e <.text+0x96b69e>
+14096c75e: 49 89 cf                    	mov	r15, rcx
+14096c761: 48 c7 85 20 01 00 00 00 00 00 00    	mov	qword ptr [rbp + 0x120], 0x0
+14096c76c: 4c 8d 05 15 96 14 02        	lea	r8, [rip + 0x2149615]   # 0x142ab5d88
+14096c773: 48 8b 8d 20 01 00 00        	mov	rcx, qword ptr [rbp + 0x120]
+14096c77a: 4c 89 fa                    	mov	rdx, r15
+14096c77d: e8 61 c8 f6 01              	call	0x1428d8fe3 <.text+0x28d7fe3>
+14096c782: cc                          	int3
+14096c783: 66 66 66 66 2e 0f 1f 84 00 00 00 00 00      	nop	word ptr cs:[rax + rax]
+14096c790: 48 89 54 24 10              	mov	qword ptr [rsp + 0x10], rdx
+14096c795: 55                          	push	rbp
+14096c796: 41 57                       	push	r15
+14096c798: 41 56                       	push	r14
+14096c79a: 41 55                       	push	r13
+14096c79c: 41 54                       	push	r12
+14096c79e: 56                          	push	rsi
+14096c79f: 57                          	push	rdi
+14096c7a0: 53                          	push	rbx
+14096c7a1: 48 83 ec 38                 	sub	rsp, 0x38
+14096c7a5: 48 8d aa 80 00 00 00        	lea	rbp, [rdx + 0x80]
+14096c7ac: 48 83 bd 20 01 00 00 00     	cmp	qword ptr [rbp + 0x120], 0x0
+14096c7b4: 74 19                       	je	0x14096c7cf <.text+0x96b7cf>
+14096c7b6: 41 b8 01 00 00 00           	mov	r8d, 0x1
+14096c7bc: 48 8b 8d 18 01 00 00        	mov	rcx, qword ptr [rbp + 0x118]
+14096c7c3: 48 8b 95 20 01 00 00        	mov	rdx, qword ptr [rbp + 0x120]
+14096c7ca: e8 51 74 ca ff              	call	0x140613c20 <.text+0x612c20>
+14096c7cf: 90                          	nop
+14096c7d0: 48 83 c4 38                 	add	rsp, 0x38
+14096c7d4: 5b                          	pop	rbx
+14096c7d5: 5f                          	pop	rdi
+14096c7d6: 5e                          	pop	rsi
+14096c7d7: 41 5c                       	pop	r12
+14096c7d9: 41 5d                       	pop	r13
+14096c7db: 41 5e                       	pop	r14
+14096c7dd: 41 5f                       	pop	r15
+14096c7df: 5d                          	pop	rbp
+14096c7e0: c3                          	ret
+14096c7e1: 66 66 66 66 66 66 2e 0f 1f 84 00 00 00 00 00	nop	word ptr cs:[rax + rax]
+14096c7f0: 48 89 54 24 10              	mov	qword ptr [rsp + 0x10], rdx
+14096c7f5: 55                          	push	rbp
+14096c7f6: 41 57                       	push	r15
+14096c7f8: 41 56                       	push	r14
+14096c7fa: 41 55                       	push	r13
+14096c7fc: 41 54                       	push	r12
+14096c7fe: 56                          	push	rsi
+14096c7ff: 57                          	push	rdi
+14096c800: 53                          	push	rbx
+14096c801: 48 83 ec 38                 	sub	rsp, 0x38
+14096c805: 48 8d aa 80 00 00 00        	lea	rbp, [rdx + 0x80]
+14096c80c: 80 bd 2f 01 00 00 00        	cmp	byte ptr [rbp + 0x12f], 0x0
+14096c813: 74 0c                       	je	0x14096c821 <.text+0x96b821>
+14096c815: 48 8d 8d e8 00 00 00        	lea	rcx, [rbp + 0xe8]
+14096c81c: e8 8f 5c 27 00              	call	0x140be24b0 <.text+0xbe14b0>
+14096c821: 90                          	nop
+14096c822: 48 83 c4 38                 	add	rsp, 0x38
+14096c826: 5b                          	pop	rbx
+14096c827: 5f                          	pop	rdi
+14096c828: 5e                          	pop	rsi
+14096c829: 41 5c                       	pop	r12
+14096c82b: 41 5d                       	pop	r13
+14096c82d: 41 5e                       	pop	r14
+14096c82f: 41 5f                       	pop	r15
+14096c831: 5d                          	pop	rbp
+14096c832: c3                          	ret
+14096c833: 66 66 66 66 2e 0f 1f 84 00 00 00 00 00      	nop	word ptr cs:[rax + rax]
+14096c840: 48 89 54 24 10              	mov	qword ptr [rsp + 0x10], rdx
+14096c845: 55                          	push	rbp
+14096c846: 41 57                       	push	r15
+14096c848: 41 56                       	push	r14
+14096c84a: 41 55                       	push	r13
+14096c84c: 41 54                       	push	r12
+14096c84e: 56                          	push	rsi
+14096c84f: 57                          	push	rdi
+14096c850: 53                          	push	rbx
+14096c851: 48 83 ec 38                 	sub	rsp, 0x38
+14096c855: 48 8d aa 80 00 00 00        	lea	rbp, [rdx + 0x80]
+14096c85c: c6 85 2f 01 00 00 00        	mov	byte ptr [rbp + 0x12f], 0x0
+14096c863: 48 8d 4d f8                 	lea	rcx, [rbp - 0x8]
+14096c867: e8 44 5c 27 00              	call	0x140be24b0 <.text+0xbe14b0>
+14096c86c: c6 85 2f 01 00 00 00        	mov	byte ptr [rbp + 0x12f], 0x0
+14096c873: 48 83 c4 38                 	add	rsp, 0x38
+14096c877: 5b                          	pop	rbx
+14096c878: 5f                          	pop	rdi
+14096c879: 5e                          	pop	rsi
+14096c87a: 41 5c                       	pop	r12
+14096c87c: 41 5d                       	pop	r13
+14096c87e: 41 5e                       	pop	r14
+14096c880: 41 5f                       	pop	r15
+14096c882: 5d                          	pop	rbp
+14096c883: c3                          	ret

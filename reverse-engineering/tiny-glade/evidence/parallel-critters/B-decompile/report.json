@@ -1,0 +1,3341 @@
+{
+  "database": "TinyGlade/tiny-glade.exe",
+  "database_view_writable": false,
+  "domain_api": "getReadOnlyDomainObject",
+  "auto_analysis": false,
+  "target_execution": false,
+  "results": [
+    {
+      "va": "0x14231d6c0",
+      "pdb_name": "system_critters::wren::update_roof_bird_spots",
+      "exact_function": true,
+      "database_name": "system_critters::wren::update_roof_bird_spots",
+      "body_bytes": 2739,
+      "incoming_refs": [
+        {
+          "from": "14377475c",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d9dcd0",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "_ZN8bevy_ecs6system6system6System29run_without_applying_deferred17h36a5035ddfc45462E"
+        },
+        {
+          "from": "141db2148",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "FUN_141db1d60"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140562db0",
+          "name": "alloc::raw_vec::RawVec::grow_one<tuple$<ref$<str$>,enum2$<country_core::resources::gui::SettingsMenuState>_>,alloc::alloc::Global>"
+        },
+        {
+          "va": "140f86340",
+          "name": "country_core::resources::critters::BirdSpotManager::create_spots"
+        },
+        {
+          "va": "140c90350",
+          "name": "utils::random_splits"
+        },
+        {
+          "va": "140613c20",
+          "name": "__rust_dealloc"
+        },
+        {
+          "va": "141dc0f70",
+          "name": "bevy_ecs::system::commands::EntityCommands::queue<bevy_ecs::system::commands::entity_command::insert::closure_env$0<country_core::resources::critters::BirdSpots>,tuple$<>,enum2$<core::result::Result<tuple$<>,enum2$<bevy_ecs::world::error::EntityMutableFetchError>_>_>_>"
+        },
+        {
+          "va": "140c9cde0",
+          "name": "utils::swizzlers::impl$1::xvy"
+        },
+        {
+          "va": "1412348f0",
+          "name": "country_core::resources::roofs::roof_noise::apply_roof_noise"
+        },
+        {
+          "va": "1408e2690",
+          "name": "country_core::resources::roofs::roof_ridge::RoofRidgeDims::from"
+        },
+        {
+          "va": "140c99540",
+          "name": "utils::geometry::rectangle::Rectangle2d::orientation_mat2"
+        },
+        {
+          "va": "140c96240",
+          "name": "utils::rng::init_rng"
+        },
+        {
+          "va": "1400885d0",
+          "name": "minidump_unwind::instruction_seems_valid_by_symbols::async_fn$0::impl$0::get_instruction"
+        },
+        {
+          "va": "140c98900",
+          "name": "utils::geometry::rectangle::Rectangle2d::new_axis_aligned"
+        },
+        {
+          "va": "140c9a470",
+          "name": "utils::geometry::rectangle::Rectangle2d::get_edge_pts"
+        },
+        {
+          "va": "140f86330",
+          "name": "country_core::resources::critters::BirdSpotManager::gen_id"
+        },
+        {
+          "va": "1408e33b0",
+          "name": "country_core::resources::roofs::roof_shape::Roof::is_gable"
+        },
+        {
+          "va": "1408e3260",
+          "name": "country_core::resources::roofs::roof_shape::Roof::height"
+        },
+        {
+          "va": "140a922b0",
+          "name": "country_core::resources::walls::public_walls::PublicWalls::roof_entity"
+        },
+        {
+          "va": "1408e3380",
+          "name": "country_core::resources::roofs::roof_shape::Roof::is_flat"
+        },
+        {
+          "va": "140833230",
+          "name": "country_core::resources::walls::decorator::ClutterVersion::is_initial"
+        },
+        {
+          "va": "1408e30b0",
+          "name": "country_core::resources::roofs::roof_ridge::calc_roof_tip_center_ls"
+        },
+        {
+          "va": "140caf380",
+          "name": "fastrand::Rng::f32"
+        },
+        {
+          "va": "1422f86e0",
+          "name": "country_core::resources::critters::BirdSpotManager::recycle<system_critters::wren::update_roof_bird_spots::closure_env$3>"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x142318c10",
+      "pdb_name": "system_critters::shared::smooth_critter_velocities",
+      "exact_function": true,
+      "database_name": "system_critters::shared::smooth_critter_velocities",
+      "body_bytes": 897,
+      "incoming_refs": [
+        {
+          "from": "143774678",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141da41e5",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::Velocity>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::Velocity>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>)>_>_>"
+        },
+        {
+          "from": "141daab2c",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::Velocity>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::Velocity>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>)>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "142923f70",
+          "name": "powf"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x141d87140",
+      "pdb_name": "system_critters::butterfly::butterflies_send_to_gpu",
+      "exact_function": true,
+      "database_name": "system_critters::butterfly::butterflies_send_to_gpu",
+      "body_bytes": 402,
+      "incoming_refs": [
+        {
+          "from": "14374b6d4",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "140f7c31c",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Butterfly>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Butterfly>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>)>_>"
+        },
+        {
+          "from": "141d9c785",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Butterfly>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Butterfly>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>)>_>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "1428d9430",
+          "name": "core::panicking::panic"
+        },
+        {
+          "va": "140613c20",
+          "name": "__rust_dealloc"
+        },
+        {
+          "va": "141dbe3c0",
+          "name": "alloc::vec::spec_from_iter::impl$0::from_iter<country_core::systems::render_loop::resources::critters::ButterflySsbo,core::iter::adapters::map::Map<bevy_ecs::query::iter::QueryIter<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Butterfly>_>,tuple$<>_>,system_critters::butterfly::butterflies_send_to_gpu::closure_env$0>_>"
+        },
+        {
+          "va": "142923bf0",
+          "name": "memcmp"
+        },
+        {
+          "va": "14230edb0",
+          "name": "country_core::render::ssbo::impl$6::cpu_write<country_core::systems::render_loop::resources::critters::ButterflySsbo>"
+        },
+        {
+          "va": "1428cab41",
+          "name": "core::panicking::assert_failed<ref$<str$>,ref$<str$>_>"
+        },
+        {
+          "va": "14230e780",
+          "name": "frozen::FrozenMap::get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x141d86eb0",
+      "pdb_name": "system_critters::butterfly::update_butterfly_audio",
+      "exact_function": true,
+      "database_name": "system_critters::butterfly::update_butterfly_audio",
+      "body_bytes": 642,
+      "incoming_refs": [
+        {
+          "from": "14374b6c8",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "140f7c225",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::ButterflyAudio>_>,tuple$<>_>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::ButterflyAudio>_>,tuple$<>_>)>_>"
+        },
+        {
+          "from": "141d9ec1e",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::ButterflyAudio>_>,tuple$<>_>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::ButterflyAudio>_>,tuple$<>_>)>_>_>"
+        },
+        {
+          "from": "141da5c6e",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::ButterflyAudio>_>,tuple$<>_>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::ButterflyAudio>_>,tuple$<>_>)>_>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140f85ba0",
+          "name": "country_core::resources::critters::ButterflyAudio::set_position"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x14231ac20",
+      "pdb_name": "system_critters::sheep::sheep_pet_animation::sheep_pet_animation",
+      "exact_function": true,
+      "database_name": "system_critters::sheep::sheep_pet_animation::sheep_pet_animation",
+      "body_bytes": 1013,
+      "incoming_refs": [
+        {
+          "from": "1437746c0",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d9b017",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<ref_mut$<country_core::resources::critters::sheep::Sheep>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::event::reader::EventReader<system_critters::sheep::sheep_pet_animation::PlaySheepPetAnimation>),void_(*)(bevy_ecs::system::query::Query<ref_mut$<country_core::resources::critters::sheep::Sheep>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::event::reader::EventReader<system_critters::sheep::sheep_pet_animation::PlaySheepPetAnimation>)>_>_>"
+        },
+        {
+          "from": "142337b8f",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<ref_mut$<country_core::resources::critters::sheep::Sheep>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::event::reader::EventReader<system_critters::sheep::sheep_pet_animation::PlaySheepPetAnimation>),void_(*)(bevy_ecs::system::query::Query<ref_mut$<country_core::resources::critters::sheep::Sheep>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::event::reader::EventReader<system_critters::sheep::sheep_pet_animation::PlaySheepPetAnimation>)>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "141dbeac0",
+          "name": "alloc::vec::spec_from_iter::impl$0::from_iter<usize,core::iter::adapters::map::Map<bevy_ecs::event::iterators::EventIterator<system_critters::sheep::sheep_pet_animation::PlaySheepPetAnimation>,system_critters::sheep::sheep_pet_animation::sheep_pet_animation::closure_env$0>_>"
+        },
+        {
+          "va": "140613c20",
+          "name": "__rust_dealloc"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x14230ff00",
+      "pdb_name": "system_critters::duck::plan_duck_trajectories",
+      "exact_function": true,
+      "database_name": "system_critters::duck::plan_duck_trajectories",
+      "body_bytes": 5677,
+      "incoming_refs": [
+        {
+          "from": "1437744d4",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d8e682",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "_ZN120_$LT$bevy_ecs..system..schedule_system..InfallibleSystemWrapper$LT$S$GT$$u20$as$u20$bevy_ecs..system..system..System$GT$10run_unsafe17h473224e69366d2e9E.llvm.6988214418030372215"
+        },
+        {
+          "from": "141da1c46",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "_ZN8bevy_ecs6system6system6System29run_without_applying_deferred17h7b544a3736ed84c5E"
+        }
+      ],
+      "callees": [
+        {
+          "va": "14090e070",
+          "name": "country_core::game_config::developer_hotkeys_enabled"
+        },
+        {
+          "va": "140f85bb0",
+          "name": "country_core::resources::critters::Duck::new"
+        },
+        {
+          "va": "14291b030",
+          "name": "std::sys::thread_local::native::lazy::Storage::initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple$<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>"
+        },
+        {
+          "va": "1428d9310",
+          "name": "core::option::unwrap_failed"
+        },
+        {
+          "va": "141dbd970",
+          "name": "alloc::vec::Vec::retain<system_critters::duck::TrajectoryPlan,alloc::alloc::Global,system_critters::duck::plan_duck_trajectories::closure_env$7>"
+        },
+        {
+          "va": "1428d9250",
+          "name": "core::cell::panic_already_borrowed"
+        },
+        {
+          "va": "14230fa90",
+          "name": "core::ops::function::FnOnce::call_once<system_critters::duck::plan_duck_trajectories::closure_env$4,tuple$<f32,f32>_>"
+        },
+        {
+          "va": "140613c10",
+          "name": "__rust_alloc"
+        },
+        {
+          "va": "140b9f180",
+          "name": "alloc::raw_vec::RawVec::grow_one<glam::f32::vec3::Vec3,alloc::alloc::Global>"
+        },
+        {
+          "va": "1405629f0",
+          "name": "alloc::raw_vec::RawVec::grow_one<country_core::render::render_config::LastKnownGraphicsDevice,alloc::alloc::Global>"
+        },
+        {
+          "va": "1428d80d0",
+          "name": "std::thread::local::panic_access_error"
+        },
+        {
+          "va": "1428a57d0",
+          "name": "alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>"
+        },
+        {
+          "va": "140a12650",
+          "name": "country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::position"
+        },
+        {
+          "va": "141dbdb50",
+          "name": "alloc::vec::in_place_collect::impl$1::from_iter<system_critters::duck::Trajectory,core::iter::adapters::map::Map<alloc::vec::into_iter::IntoIter<glam::f32::vec3::Vec3,alloc::alloc::Global>,system_critters::spawn_ducks::spawn_ducks::closure_env$1>_>"
+        },
+        {
+          "va": "140613c20",
+          "name": "__rust_dealloc"
+        },
+        {
+          "va": "14230fae0",
+          "name": "core::str::impl$0::rfind<ref$<str$>_>"
+        },
+        {
+          "va": "140c170f0",
+          "name": "puffin::ThreadProfiler::end_scope"
+        },
+        {
+          "va": "140c90770",
+          "name": "utils::uniform_sample_circle"
+        },
+        {
+          "va": "140c9cde0",
+          "name": "utils::swizzlers::impl$1::xvy"
+        },
+        {
+          "va": "14092d4f0",
+          "name": "country_core::asset_libraries::mesh_library::AssetMeshLibrary::get_handle_by_name"
+        },
+        {
+          "va": "140937aa0",
+          "name": "country_core::asset_libraries::shader_library::AssetShaderLibrary::get_raster_handle_by_name"
+        },
+        {
+          "va": "1428d9940",
+          "name": "core::str::slice_error_fail"
+        },
+        {
+          "va": "14261ed20",
+          "name": "bevy_input::button_input::ButtonInput::just_pressed<enum2$<bevy_input::keyboard::KeyCode>_>"
+        },
+        {
+          "va": "142923c00",
+          "name": "memcpy"
+        },
+        {
+          "va": "141dc15a0",
+          "name": "bevy_ecs::system::commands::Commands::spawn<tuple$<country_core::resources::critters::Duck,enum2$<country_core::resources::critters::DuckState>,country_core::components::drawable::DrawableMeshBundle,enum2$<country_core::resources::critters::CritterLocomotion>,country_core::resources::critters::CritterGoal,country_core::resources::critters::CritterVelocityTarget,country_core::systems::render_loop::compute_passes::grass::ObjectGrassPush,country_core::resources::critters::Velocity,country_core::resources::critters::CritterVelocityMultiplier,country_core::components::drawable::PrevTransform>_>"
+        },
+        {
+          "va": "1428d9518",
+          "name": "core::panicking::panic_bounds_check"
+        },
+        {
+          "va": "140c16a00",
+          "name": "puffin::are_scopes_on"
+        },
+        {
+          "va": "140c9cdc0",
+          "name": "utils::swizzlers::impl$0::x0y"
+        },
+        {
+          "va": "141625ae0",
+          "name": "perchance::PerchanceContext::uniform_f32"
+        },
+        {
+          "va": "140c90940",
+          "name": "utils::golden_spiral"
+        },
+        {
+          "va": "140c16d40",
+          "name": "puffin::ThreadProfiler::begin_scope"
+        },
+        {
+          "va": "1428d9000",
+          "name": "alloc::alloc::handle_alloc_error"
+        },
+        {
+          "va": "140c18130",
+          "name": "puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL"
+        },
+        {
+          "va": "1408cc680",
+          "name": "country_core::systems::collision::world::RaycastWorld::legacy_raycast"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x14231a630",
+      "pdb_name": "system_critters::sheep::sheep_walk_animation::sheep_walk_animation",
+      "exact_function": true,
+      "database_name": "system_critters::sheep::sheep_walk_animation::sheep_walk_animation",
+      "body_bytes": 1084,
+      "incoming_refs": [
+        {
+          "from": "1437746b4",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d9bb85",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<enum2$<core::option::Option<ref_mut$<utils::components::transform::Transform>_>_>,ref_mut$<country_core::resources::critters::sheep::Sheep>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>),void_(*)(bevy_ecs::system::query::Query<tuple$<enum2$<core::option::Option<ref_mut$<utils::components::transform::Transform>_>_>,ref_mut$<country_core::resources::critters::sheep::Sheep>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>)>_>_>"
+        },
+        {
+          "from": "141dc69fc",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<enum2$<core::option::Option<ref_mut$<utils::components::transform::Transform>_>_>,ref_mut$<country_core::resources::critters::sheep::Sheep>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>),void_(*)(bevy_ecs::system::query::Query<tuple$<enum2$<core::option::Option<ref_mut$<utils::components::transform::Transform>_>_>,ref_mut$<country_core::resources::critters::sheep::Sheep>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>)>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "14089d4c0",
+          "name": "country_core::resources::critters::sheep::Sheep::being_petted"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x142313b30",
+      "pdb_name": "system_critters::duck::update_duck_goals",
+      "exact_function": true,
+      "database_name": "system_critters::duck::update_duck_goals",
+      "body_bytes": 2357,
+      "incoming_refs": [
+        {
+          "from": "1437745ac",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d8dc86",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref_mut$<country_core::resources::critters::Duck>,ref_mut$<country_core::resources::critters::CritterGoal>_>,tuple$<>_>,bevy_ecs::change_detection::ResMut<country_core::resources::critters::CritterRng>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::WaterRaster>,country_core::systems::paths::draw_path::PathRastersResources),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref_mut$<country_core::resources::critters::Duck>,ref_mut$<country_core::resources::critters::CritterGoal>_>,tuple$<>_>,bevy_ecs::change_detection::ResMut<country_core::resources::critters::CritterRng>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::WaterRaster>,country_core::systems::paths::draw_path::PathRastersResources)>_>"
+        },
+        {
+          "from": "141da04d4",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref_mut$<country_core::resources::critters::Duck>,ref_mut$<country_core::resources::critters::CritterGoal>_>,tuple$<>_>,bevy_ecs::change_detection::ResMut<country_core::resources::critters::CritterRng>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::WaterRaster>,country_core::systems::paths::draw_path::PathRastersResources),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref_mut$<country_core::resources::critters::Duck>,ref_mut$<country_core::resources::critters::CritterGoal>_>,tuple$<>_>,bevy_ecs::change_detection::ResMut<country_core::resources::critters::CritterRng>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::WaterRaster>,country_core::systems::paths::draw_path::PathRastersResources)>_>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140c90030",
+          "name": "utils::swizzlers::impl$3::x0z"
+        },
+        {
+          "va": "14090dfe0",
+          "name": "country_core::game_config::is_within_glade_shape"
+        },
+        {
+          "va": "141625ae0",
+          "name": "perchance::PerchanceContext::uniform_f32"
+        },
+        {
+          "va": "14067dd80",
+          "name": "toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut"
+        },
+        {
+          "va": "140ae4c20",
+          "name": "country_core::systems::paths::draw_path::PathRastersResources::as_float_grid"
+        },
+        {
+          "va": "140c9cdc0",
+          "name": "utils::swizzlers::impl$0::x0y"
+        },
+        {
+          "va": "140a14df0",
+          "name": "utils::float_grid::impl$0::bilinear_sample_at_world_xz<country_core::resources::world_raster::RasterBufferRef<512>_>"
+        },
+        {
+          "va": "140c90700",
+          "name": "utils::uniform_sample_disk"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x142314470",
+      "pdb_name": "system_critters::duck::set_duck_velocities_towards_goals",
+      "exact_function": true,
+      "database_name": "system_critters::duck::set_duck_velocities_towards_goals",
+      "body_bytes": 1772,
+      "incoming_refs": [
+        {
+          "from": "1437745b8",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d8e165",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Duck>,ref$<enum2$<country_core::resources::critters::DuckState>_>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Duck>,ref$<enum2$<country_core::resources::critters::DuckState>_>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>)>_>"
+        },
+        {
+          "from": "141d9e23e",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Duck>,ref$<enum2$<country_core::resources::critters::DuckState>_>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Duck>,ref$<enum2$<country_core::resources::critters::DuckState>_>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>)>_>_>"
+        },
+        {
+          "from": "141da576e",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Duck>,ref$<enum2$<country_core::resources::critters::DuckState>_>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Duck>,ref$<enum2$<country_core::resources::critters::DuckState>_>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>)>_>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140002370",
+          "name": "_ZN100_$LT$country_core..components..drawable..WireframePass$u20$as$u20$bevy_ecs..component..Component$GT$14clone_behavior17h98754d446e2f5bc0E"
+        },
+        {
+          "va": "14230ec70",
+          "name": "bevy_ecs::query::iter::QueryIterationCursor::init<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Duck>,ref$<enum2$<country_core::resources::critters::DuckState>_>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x140f90cd0",
+      "pdb_name": "system_critters::fish::fish",
+      "exact_function": true,
+      "database_name": "system_critters::fish::fish",
+      "body_bytes": 6787,
+      "incoming_refs": [
+        {
+          "from": "1436ccb4c",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141da1061",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "_ZN8bevy_ecs6system6system6System29run_without_applying_deferred17h78eb9a2c5137602dE"
+        },
+        {
+          "from": "141db47a4",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "_ZN120_$LT$bevy_ecs..system..schedule_system..InfallibleSystemWrapper$LT$S$GT$$u20$as$u20$bevy_ecs..system..system..System$GT$10run_unsafe17h3beee622519a9481E.llvm.11378524256773351091"
+        }
+      ],
+      "callees": [
+        {
+          "va": "141dc2740",
+          "name": "system_critters::boids::Boid::frame_update<system_critters::fish::fish::closure_env$0>"
+        },
+        {
+          "va": "1411ff680",
+          "name": "country_core::systems::wall::valid_enclosure::ShapeParameters::expand"
+        },
+        {
+          "va": "14003bb80",
+          "name": "bevy_app::plugin::Plugin::finish<country_core::systems::main_camera::MainCameraPlugin>"
+        },
+        {
+          "va": "140caf380",
+          "name": "fastrand::Rng::f32"
+        },
+        {
+          "va": "140c90600",
+          "name": "utils::time_continuous_lerp_vec3"
+        },
+        {
+          "va": "140911230",
+          "name": "country_core::systems::camera_rig::MainCamera::mode"
+        },
+        {
+          "va": "1406319d0",
+          "name": "alloc::raw_vec::RawVec::grow_one<enum2$<iced_core::event::Event>,alloc::alloc::Global>"
+        },
+        {
+          "va": "1411ff2a0",
+          "name": "country_core::systems::wall::valid_enclosure::ShapeParameters::center"
+        },
+        {
+          "va": "1428d9390",
+          "name": "core::panicking::panic_fmt"
+        },
+        {
+          "va": "1428d8fe3",
+          "name": "alloc::raw_vec::handle_error"
+        },
+        {
+          "va": "140ae8320",
+          "name": "country_core::systems::save::save_backup_list::BackupSaveFileKind::is_corrupted"
+        },
+        {
+          "va": "140c9d180",
+          "name": "utils::components::transform::impl$1::default"
+        },
+        {
+          "va": "140911dd0",
+          "name": "country_core::systems::camera_rig::MainCamera::eye_position"
+        },
+        {
+          "va": "1428d9310",
+          "name": "core::option::unwrap_failed"
+        },
+        {
+          "va": "140334d80",
+          "name": "dolly::util::look_at<dolly::handedness::RightHanded,glam::f32::vec3::Vec3,glam::f32::sse2::quat::Quat>"
+        },
+        {
+          "va": "140a12650",
+          "name": "country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::position"
+        },
+        {
+          "va": "140a91ef0",
+          "name": "country_core::resources::walls::public_walls::PublicWalls::get"
+        },
+        {
+          "va": "140613c20",
+          "name": "__rust_dealloc"
+        },
+        {
+          "va": "1428a57d0",
+          "name": "alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>"
+        },
+        {
+          "va": "140ad2950",
+          "name": "country_core::resources::glade_border::GladeBorder::is_pos_inside"
+        },
+        {
+          "va": "141dc2340",
+          "name": "system_critters::boids::BoidFlock::remove<system_critters::fish::fish::closure_env$1>"
+        },
+        {
+          "va": "140d146a0",
+          "name": "bevy_ecs::system::commands::Commands::spawn_empty"
+        },
+        {
+          "va": "1428d9518",
+          "name": "core::panicking::panic_bounds_check"
+        },
+        {
+          "va": "14067d380",
+          "name": "alloc::raw_vec::RawVec::grow_one<system_critters::boids::Boid,alloc::alloc::Global>"
+        },
+        {
+          "va": "140b2a5d0",
+          "name": "country_core::resources::walls::public_wall_state::PublicWallState::get_wall_shape"
+        },
+        {
+          "va": "14067dd80",
+          "name": "toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut"
+        },
+        {
+          "va": "140ae4c20",
+          "name": "country_core::systems::paths::draw_path::PathRastersResources::as_float_grid"
+        },
+        {
+          "va": "140613c10",
+          "name": "__rust_alloc"
+        },
+        {
+          "va": "140b81df0",
+          "name": "alloc::raw_vec::RawVec::grow_one<usize,alloc::alloc::Global>"
+        },
+        {
+          "va": "140a14df0",
+          "name": "utils::float_grid::impl$0::bilinear_sample_at_world_xz<country_core::resources::world_raster::RasterBufferRef<512>_>"
+        },
+        {
+          "va": "140c9cdc0",
+          "name": "utils::swizzlers::impl$0::x0y"
+        },
+        {
+          "va": "140aa5730",
+          "name": "country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash::query"
+        },
+        {
+          "va": "140c9cde0",
+          "name": "utils::swizzlers::impl$1::xvy"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x141dc2540",
+      "pdb_name": "system_critters::boids::BoidFlock::remove",
+      "exact_function": true,
+      "database_name": "system_critters::boids::BoidFlock::remove<system_critters::wren_boids::sim_wren_boids::closure_env$6>",
+      "body_bytes": 422,
+      "incoming_refs": [
+        {
+          "from": "14374dae0",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "14232962c",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "system_critters::wren_boids::sim_wren_boids"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140613c20",
+          "name": "__rust_dealloc"
+        },
+        {
+          "va": "140d14770",
+          "name": "bevy_ecs::system::commands::EntityCommands::despawn"
+        },
+        {
+          "va": "1428d9019",
+          "name": "alloc::vec::impl$1::swap_remove::assert_failed"
+        },
+        {
+          "va": "140ceafa0",
+          "name": "bevy_ecs::entity::Entities::contains"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x14231c7d0",
+      "pdb_name": "system_critters::wren::update_decorator_bird_spots",
+      "exact_function": true,
+      "database_name": "system_critters::wren::update_decorator_bird_spots",
+      "body_bytes": 3007,
+      "incoming_refs": [
+        {
+          "from": "143774720",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d9b9ee",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<country_core::components::SittableForBirds>,ref$<utils::components::transform::Transform>_>,tuple$<>_>,bevy_ecs::change_detection::ResMut<country_core::resources::critters::BirdSpotManager>,bevy_ecs::system::system_param::Local<system_critters::wren::DecoratorBirdSpots>,bevy_ecs::system::query::Query<ref$<country_core::resources::critters::BirdSpots>,tuple$<>_>,bevy_ecs::system::commands::Commands),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<country_core::components::SittableForBirds>,ref$<utils::components::transform::Transform>_>,tuple$<>_>,bevy_ecs::change_detection::ResMut<country_core::resources::critters::BirdSpotManager>,bevy_ecs::system::system_param::Local<system_critters::wren::DecoratorBirdSpots>,bevy_ecs::system::query::Query<ref$<country_core::resources::critters::BirdSpots>,tuple$<>_>,bevy_ecs::system::commands::Commands)>_>_>"
+        },
+        {
+          "from": "141db2458",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<country_core::components::SittableForBirds>,ref$<utils::components::transform::Transform>_>,tuple$<>_>,bevy_ecs::change_detection::ResMut<country_core::resources::critters::BirdSpotManager>,bevy_ecs::system::system_param::Local<system_critters::wren::DecoratorBirdSpots>,bevy_ecs::system::query::Query<ref$<country_core::resources::critters::BirdSpots>,tuple$<>_>,bevy_ecs::system::commands::Commands),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<country_core::components::SittableForBirds>,ref$<utils::components::transform::Transform>_>,tuple$<>_>,bevy_ecs::change_detection::ResMut<country_core::resources::critters::BirdSpotManager>,bevy_ecs::system::system_param::Local<system_critters::wren::DecoratorBirdSpots>,bevy_ecs::system::query::Query<ref$<country_core::resources::critters::BirdSpots>,tuple$<>_>,bevy_ecs::system::commands::Commands)>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140613c20",
+          "name": "__rust_dealloc"
+        },
+        {
+          "va": "14291b030",
+          "name": "std::sys::thread_local::native::lazy::Storage::initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple$<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>"
+        },
+        {
+          "va": "1428d9000",
+          "name": "alloc::alloc::handle_alloc_error"
+        },
+        {
+          "va": "140f86330",
+          "name": "country_core::resources::critters::BirdSpotManager::gen_id"
+        },
+        {
+          "va": "140d14770",
+          "name": "bevy_ecs::system::commands::EntityCommands::despawn"
+        },
+        {
+          "va": "140c16a00",
+          "name": "puffin::are_scopes_on"
+        },
+        {
+          "va": "1428d9940",
+          "name": "core::str::slice_error_fail"
+        },
+        {
+          "va": "140c170f0",
+          "name": "puffin::ThreadProfiler::end_scope"
+        },
+        {
+          "va": "1428d9250",
+          "name": "core::cell::panic_already_borrowed"
+        },
+        {
+          "va": "14261f6f0",
+          "name": "hashbrown::map::HashMap::insert<country_core::resources::walls::decorator::DecoratorId,bevy_ecs::entity::Entity,std::hash::random::RandomState,alloc::alloc::Global>"
+        },
+        {
+          "va": "141d91e30",
+          "name": "hashbrown::raw::RawTable::remove_entry<tuple$<country_core::resources::walls::decorator::DecoratorId,bevy_ecs::entity::Entity>,alloc::alloc::Global,hashbrown::map::equivalent_key::closure_env$0<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId,bevy_ecs::entity::Entity>_>"
+        },
+        {
+          "va": "1405b0ed0",
+          "name": "core::hash::BuildHasher::hash_one<std::hash::random::RandomState,ref$<shader_pipeline::reflection::BindingIndex>_>"
+        },
+        {
+          "va": "140f86340",
+          "name": "country_core::resources::critters::BirdSpotManager::create_spots"
+        },
+        {
+          "va": "140ceafa0",
+          "name": "bevy_ecs::entity::Entities::contains"
+        },
+        {
+          "va": "140d146a0",
+          "name": "bevy_ecs::system::commands::Commands::spawn_empty"
+        },
+        {
+          "va": "1428d9518",
+          "name": "core::panicking::panic_bounds_check"
+        },
+        {
+          "va": "140c16d40",
+          "name": "puffin::ThreadProfiler::begin_scope"
+        },
+        {
+          "va": "140b5f870",
+          "name": "alloc::raw_vec::RawVec::grow_one<country_core::render::sparse_instance_buffer::ChunkId,alloc::alloc::Global>"
+        },
+        {
+          "va": "14261f880",
+          "name": "hashbrown::map::HashMap::retain<country_core::resources::walls::decorator::DecoratorId,bevy_ecs::entity::Entity,std::hash::random::RandomState,alloc::alloc::Global,system_critters::wren::update_decorator_bird_spots::closure_env$0>"
+        },
+        {
+          "va": "1428d80d0",
+          "name": "std::thread::local::panic_access_error"
+        },
+        {
+          "va": "14231c3a0",
+          "name": "core::str::impl$0::rfind<ref$<str$>_>"
+        },
+        {
+          "va": "140613c10",
+          "name": "__rust_alloc"
+        },
+        {
+          "va": "141dc0f70",
+          "name": "bevy_ecs::system::commands::EntityCommands::queue<bevy_ecs::system::commands::entity_command::insert::closure_env$0<country_core::resources::critters::BirdSpots>,tuple$<>,enum2$<core::result::Result<tuple$<>,enum2$<bevy_ecs::world::error::EntityMutableFetchError>_>_>_>"
+        },
+        {
+          "va": "140c18130",
+          "name": "puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x142316760",
+      "pdb_name": "system_critters::firefly::fireflies_send_to_gpu",
+      "exact_function": true,
+      "database_name": "system_critters::firefly::fireflies_send_to_gpu",
+      "body_bytes": 402,
+      "incoming_refs": [
+        {
+          "from": "143774600",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d90c1c",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Firefly>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Firefly>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>)>_>"
+        },
+        {
+          "from": "141d9d815",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Firefly>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Firefly>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>)>_>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "14230e780",
+          "name": "frozen::FrozenMap::get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>"
+        },
+        {
+          "va": "140613c20",
+          "name": "__rust_dealloc"
+        },
+        {
+          "va": "1428cab41",
+          "name": "core::panicking::assert_failed<ref$<str$>,ref$<str$>_>"
+        },
+        {
+          "va": "14230f1e0",
+          "name": "country_core::render::ssbo::impl$6::cpu_write<country_core::systems::render_loop::resources::critters::FireflySsbo>"
+        },
+        {
+          "va": "141dbed60",
+          "name": "alloc::vec::spec_from_iter::impl$0::from_iter<country_core::systems::render_loop::resources::critters::FireflySsbo,core::iter::adapters::map::Map<bevy_ecs::query::iter::QueryIter<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Firefly>_>,tuple$<>_>,system_critters::firefly::fireflies_send_to_gpu::closure_env$0>_>"
+        },
+        {
+          "va": "142923bf0",
+          "name": "memcmp"
+        },
+        {
+          "va": "1428d9430",
+          "name": "core::panicking::panic"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x140f909f0",
+      "pdb_name": "system_critters::fish::FishSpawnLocations::new",
+      "exact_function": true,
+      "database_name": "system_critters::fish::FishSpawnLocations::new",
+      "body_bytes": 360,
+      "incoming_refs": [
+        {
+          "from": "1436ccb28",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "14067d688",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "system_critters::impl$0::build"
+        },
+        {
+          "from": "140f90c87",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "system_critters::fish::despawn_fish"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140562cf0",
+          "name": "alloc::raw_vec::RawVec::grow_one<tuple$<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId,u8>,alloc::alloc::Global>"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x141dc3510",
+      "pdb_name": "system_critters::boids::Boid::frame_update",
+      "exact_function": true,
+      "database_name": "system_critters::boids::Boid::frame_update<system_critters::wren_boids::sim_wren_boids::closure_env$3>",
+      "body_bytes": 3523,
+      "incoming_refs": [
+        {
+          "from": "14374db04",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "1423283e5",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "system_critters::wren_boids::sim_wren_boids"
+        }
+      ],
+      "callees": [
+        {
+          "va": "141dc42f0",
+          "name": "system_critters::wren_boids::sim_wren_boids::closure$3"
+        },
+        {
+          "va": "140d8b480",
+          "name": "core::f32::impl$0::clamp::do_panic::runtime"
+        },
+        {
+          "va": "140c90600",
+          "name": "utils::time_continuous_lerp_vec3"
+        },
+        {
+          "va": "141db7f20",
+          "name": "core::ops::function::impls::impl$0::call<tuple$<utils::geometry::ray::Ray,f32>,system_critters::wren_boids::sim_wren_boids::closure_env$3>"
+        },
+        {
+          "va": "141dc2170",
+          "name": "system_critters::boids::Boid::random_vel_change"
+        },
+        {
+          "va": "140c904e0",
+          "name": "utils::time_continuous_lerp"
+        },
+        {
+          "va": "140d4ae30",
+          "name": "glam::f32::sse2::quat::Quat::from_rotation_arc"
+        },
+        {
+          "va": "140c904d0",
+          "name": "utils::lerp"
+        },
+        {
+          "va": "1428d8820",
+          "name": "std::sys::sync::once::futex::Once::call"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x14231bd80",
+      "pdb_name": "system_critters::sheep::sheep_terrain::sheep_walk_on_terrain",
+      "exact_function": true,
+      "database_name": "system_critters::sheep::sheep_terrain::sheep_walk_on_terrain",
+      "body_bytes": 1131,
+      "incoming_refs": [
+        {
+          "from": "1437746fc",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d9f631",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref_mut$<utils::components::transform::Transform>,ref_mut$<enum2$<country_core::resources::critters::CritterLocomotion>_>,ref_mut$<country_core::resources::critters::Velocity>_>,bevy_ecs::query::filter::With<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::WaterRaster>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref_mut$<utils::components::transform::Transform>,ref_mut$<enum2$<country_core::resources::critters::CritterLocomotion>_>,ref_mut$<country_core::resources::critters::Velocity>_>,bevy_ecs::query::filter::With<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::WaterRaster>)>_>_>"
+        },
+        {
+          "from": "141dac5c9",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref_mut$<utils::components::transform::Transform>,ref_mut$<enum2$<country_core::resources::critters::CritterLocomotion>_>,ref_mut$<country_core::resources::critters::Velocity>_>,bevy_ecs::query::filter::With<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::WaterRaster>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref_mut$<utils::components::transform::Transform>,ref_mut$<enum2$<country_core::resources::critters::CritterLocomotion>_>,ref_mut$<country_core::resources::critters::Velocity>_>,bevy_ecs::query::filter::With<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::WaterRaster>)>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "141246fb0",
+          "name": "country_core::resources::terrain_height::TerrainHeightsData::sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>"
+        },
+        {
+          "va": "14067dd80",
+          "name": "toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut"
+        },
+        {
+          "va": "142923ec0",
+          "name": "expf"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x141d84d40",
+      "pdb_name": "system_critters::butterfly::update_butterfly_states",
+      "exact_function": true,
+      "database_name": "system_critters::butterfly::update_butterfly_states",
+      "body_bytes": 3440,
+      "incoming_refs": [
+        {
+          "from": "14374b674",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "140f7bce5",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "FUN_140f7b950"
+        },
+        {
+          "from": "141d9d2e4",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "_ZN8bevy_ecs6system6system6System29run_without_applying_deferred17h274af0bd8b21a78cE"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140613c20",
+          "name": "__rust_dealloc"
+        },
+        {
+          "va": "1428cab41",
+          "name": "core::panicking::assert_failed<ref$<str$>,ref$<str$>_>"
+        },
+        {
+          "va": "14291b030",
+          "name": "std::sys::thread_local::native::lazy::Storage::initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple$<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>"
+        },
+        {
+          "va": "14230ea80",
+          "name": "bevy_ecs::query::iter::QueryIterationCursor::init<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Velocity>,ref_mut$<country_core::resources::critters::Butterfly>,ref_mut$<country_core::resources::critters::ButterflyAudio>,ref$<country_core::resources::critters::CritterGoal>_>,tuple$<>_>"
+        },
+        {
+          "va": "140c16a00",
+          "name": "puffin::are_scopes_on"
+        },
+        {
+          "va": "1428d9940",
+          "name": "core::str::slice_error_fail"
+        },
+        {
+          "va": "140c170f0",
+          "name": "puffin::ThreadProfiler::end_scope"
+        },
+        {
+          "va": "1428d9250",
+          "name": "core::cell::panic_already_borrowed"
+        },
+        {
+          "va": "142923bf0",
+          "name": "memcmp"
+        },
+        {
+          "va": "141dbfba0",
+          "name": "alloc::vec::spec_from_iter::impl$0::from_iter<glam::f32::vec2::Vec2,core::iter::adapters::map::Map<bevy_ecs::query::iter::QueryIter<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::sheep::Sheep>_>,tuple$<>_>,system_critters::butterfly::update_butterfly_states::closure_env$0>_>"
+        },
+        {
+          "va": "141d84910",
+          "name": "core::str::impl$0::rfind<ref$<str$>_>"
+        },
+        {
+          "va": "140911230",
+          "name": "country_core::systems::camera_rig::MainCamera::mode"
+        },
+        {
+          "va": "14230e780",
+          "name": "frozen::FrozenMap::get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>"
+        },
+        {
+          "va": "140c16d40",
+          "name": "puffin::ThreadProfiler::begin_scope"
+        },
+        {
+          "va": "141625ae0",
+          "name": "perchance::PerchanceContext::uniform_f32"
+        },
+        {
+          "va": "14067dd80",
+          "name": "toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut"
+        },
+        {
+          "va": "1428d80d0",
+          "name": "std::thread::local::panic_access_error"
+        },
+        {
+          "va": "140911dd0",
+          "name": "country_core::systems::camera_rig::MainCamera::eye_position"
+        },
+        {
+          "va": "140c18130",
+          "name": "puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL"
+        },
+        {
+          "va": "1428d9310",
+          "name": "core::option::unwrap_failed"
+        },
+        {
+          "va": "140a12650",
+          "name": "country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::position"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x14231ff70",
+      "pdb_name": "system_critters::sheep::sheep_react_to_being_inside_buildings::sheep_reaction_emoji",
+      "exact_function": true,
+      "database_name": "system_critters::sheep::sheep_react_to_being_inside_buildings::sheep_reaction_emoji",
+      "body_bytes": 1264,
+      "incoming_refs": [
+        {
+          "from": "143774798",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141da4635",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref_mut$<system_critters::sheep::sheep_react_to_being_inside_buildings::SheepReactionEmoji>,ref_mut$<country_core::components::Ui2dExtent>,bevy_ecs::entity::Entity>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::resources::window::WindowSize>,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::system::commands::Commands),void_(*)(bevy_ecs::system::query::Query<tuple$<ref_mut$<system_critters::sheep::sheep_react_to_being_inside_buildings::SheepReactionEmoji>,ref_mut$<country_core::components::Ui2dExtent>,bevy_ecs::entity::Entity>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::resources::window::WindowSize>,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::system::commands::Commands)>_>_>"
+        },
+        {
+          "from": "142308660",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref_mut$<system_critters::sheep::sheep_react_to_being_inside_buildings::SheepReactionEmoji>,ref_mut$<country_core::components::Ui2dExtent>,bevy_ecs::entity::Entity>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::resources::window::WindowSize>,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::system::commands::Commands),void_(*)(bevy_ecs::system::query::Query<tuple$<ref_mut$<system_critters::sheep::sheep_react_to_being_inside_buildings::SheepReactionEmoji>,ref_mut$<country_core::components::Ui2dExtent>,bevy_ecs::entity::Entity>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::resources::window::WindowSize>,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::system::commands::Commands)>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140d14770",
+          "name": "bevy_ecs::system::commands::EntityCommands::despawn"
+        },
+        {
+          "va": "140949c10",
+          "name": "country_core::resources::window::WindowSize::as_vec2"
+        },
+        {
+          "va": "140c95ef0",
+          "name": "utils::easing_functions::EasingFunction::apply"
+        },
+        {
+          "va": "140ac8780",
+          "name": "country_core::utils::world_space_to_screen_space"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x142321980",
+      "pdb_name": "system_critters::sheep::sheep_umbrella::sheep_umbrellas",
+      "exact_function": true,
+      "database_name": "system_critters::sheep::sheep_umbrella::sheep_umbrellas",
+      "body_bytes": 2554,
+      "incoming_refs": [
+        {
+          "from": "143774840",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d9eaeb",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<enum2$<country_core::resources::critters::CritterLocomotion>_>,ref_mut$<country_core::resources::critters::sheep::UmbrellaHolder>_>,bevy_ecs::query::filter::With<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::system::query::Query<tuple$<ref_mut$<country_core::resources::critters::sheep::SheepAccessory>,ref_mut$<utils::components::transform::Transform>_>,bevy_ecs::query::filter::Without<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::system::commands::Commands,bevy_ecs::change_detection::Res<country_core::resources::audio_resources::AudioCore>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<enum2$<country_core::resources::critters::CritterLocomotion>_>,ref_mut$<country_core::resources::critters::sheep::UmbrellaHolder>_>,bevy_ecs::query::filter::With<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::system::query::Query<tuple$<ref_mut$<country_core::resources::critters::sheep::SheepAccessory>,ref_mut$<utils::components::transform::Transform>_>,bevy_ecs::query::filter::Without<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::system::commands::Commands,bevy_ecs::change_detection::Res<country_core::resources::audio_resources::AudioCore>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>)>_>_>"
+        },
+        {
+          "from": "141dad036",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<enum2$<country_core::resources::critters::CritterLocomotion>_>,ref_mut$<country_core::resources::critters::sheep::UmbrellaHolder>_>,bevy_ecs::query::filter::With<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::system::query::Query<tuple$<ref_mut$<country_core::resources::critters::sheep::SheepAccessory>,ref_mut$<utils::components::transform::Transform>_>,bevy_ecs::query::filter::Without<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::system::commands::Commands,bevy_ecs::change_detection::Res<country_core::resources::audio_resources::AudioCore>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<enum2$<country_core::resources::critters::CritterLocomotion>_>,ref_mut$<country_core::resources::critters::sheep::UmbrellaHolder>_>,bevy_ecs::query::filter::With<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::system::query::Query<tuple$<ref_mut$<country_core::resources::critters::sheep::SheepAccessory>,ref_mut$<utils::components::transform::Transform>_>,bevy_ecs::query::filter::Without<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::system::commands::Commands,bevy_ecs::change_detection::Res<country_core::resources::audio_resources::AudioCore>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>)>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140a55f40",
+          "name": "country_core::resources::audio_resources::AudioCore::instantiate_audio"
+        },
+        {
+          "va": "140d146a0",
+          "name": "bevy_ecs::system::commands::Commands::spawn_empty"
+        },
+        {
+          "va": "140a57300",
+          "name": "country_core::resources::audio_resources::AudioInstance::start_if_not_playing"
+        },
+        {
+          "va": "1428a57d0",
+          "name": "alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>"
+        },
+        {
+          "va": "140a57da0",
+          "name": "country_core::resources::audio_resources::impl$10::set_position"
+        },
+        {
+          "va": "1428d9760",
+          "name": "core::result::unwrap_failed"
+        },
+        {
+          "va": "1428d9310",
+          "name": "core::option::unwrap_failed"
+        },
+        {
+          "va": "14089a280",
+          "name": "country_core::resources::audio_resources::impl$13::drop"
+        },
+        {
+          "va": "140c95ef0",
+          "name": "utils::easing_functions::EasingFunction::apply"
+        },
+        {
+          "va": "140613c20",
+          "name": "__rust_dealloc"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x140f90c10",
+      "pdb_name": "system_critters::fish::despawn_fish",
+      "exact_function": true,
+      "database_name": "system_critters::fish::despawn_fish",
+      "body_bytes": 191,
+      "incoming_refs": [
+        {
+          "from": "1436ccb40",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d9d607",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<system_critters::fish::FishBoids>,bevy_ecs::change_detection::ResMut<system_critters::fish::FishSpawnLocations>),void_(*)(bevy_ecs::change_detection::ResMut<system_critters::fish::FishBoids>,bevy_ecs::change_detection::ResMut<system_critters::fish::FishSpawnLocations>)>_>_>"
+        },
+        {
+          "from": "141db4c75",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<system_critters::fish::FishBoids>,bevy_ecs::change_detection::ResMut<system_critters::fish::FishSpawnLocations>),void_(*)(bevy_ecs::change_detection::ResMut<system_critters::fish::FishBoids>,bevy_ecs::change_detection::ResMut<system_critters::fish::FishSpawnLocations>)>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140f909f0",
+          "name": "system_critters::fish::FishSpawnLocations::new"
+        },
+        {
+          "va": "140613c20",
+          "name": "__rust_dealloc"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x142316490",
+      "pdb_name": "system_critters::sheep::sheep_behavior::update_sheep_audio",
+      "exact_function": true,
+      "database_name": "system_critters::sheep::sheep_behavior::update_sheep_audio",
+      "body_bytes": 719,
+      "incoming_refs": [
+        {
+          "from": "1437745f4",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d8b60c",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref_mut$<country_core::resources::critters::sheep::SheepAudio>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref_mut$<country_core::resources::critters::sheep::SheepAudio>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>)>_>"
+        },
+        {
+          "from": "141da4375",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref_mut$<country_core::resources::critters::sheep::SheepAudio>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref_mut$<country_core::resources::critters::sheep::SheepAudio>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>)>_>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140a57da0",
+          "name": "country_core::resources::audio_resources::impl$10::set_position"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x142322e30",
+      "pdb_name": "system_critters::ui_pet_ducks::ui_pet_ducks",
+      "exact_function": true,
+      "database_name": "system_critters::ui_pet_ducks::ui_pet_ducks",
+      "body_bytes": 4141,
+      "incoming_refs": [
+        {
+          "from": "1437748b8",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141da4a92",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode>_>,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref_mut$<country_core::resources::critters::Duck>,ref$<utils::components::transform::Transform>,ref$<enum2$<country_core::resources::critters::DuckState>_>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::system::system_param::Local<system_critters::sheep::ui_pet_sheep::IntersectionDepth>,bevy_ecs::change_detection::Res<country_core::resources::mouse_terrain_raycast::CameraCursorRay>),void_(*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode>_>,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref_mut$<country_core::resources::critters::Duck>,ref$<utils::components::transform::Transform>,ref$<enum2$<country_core::resources::critters::DuckState>_>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::system::system_param::Local<system_critters::sheep::ui_pet_sheep::IntersectionDepth>,bevy_ecs::change_detection::Res<country_core::resources::mouse_terrain_raycast::CameraCursorRay>)>_>_>"
+        },
+        {
+          "from": "141da67dd",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode>_>,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref_mut$<country_core::resources::critters::Duck>,ref$<utils::components::transform::Transform>,ref$<enum2$<country_core::resources::critters::DuckState>_>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::system::system_param::Local<system_critters::sheep::ui_pet_sheep::IntersectionDepth>,bevy_ecs::change_detection::Res<country_core::resources::mouse_terrain_raycast::CameraCursorRay>),void_(*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode>_>,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref_mut$<country_core::resources::critters::Duck>,ref$<utils::components::transform::Transform>,ref$<enum2$<country_core::resources::critters::DuckState>_>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::system::system_param::Local<system_critters::sheep::ui_pet_sheep::IntersectionDepth>,bevy_ecs::change_detection::Res<country_core::resources::mouse_terrain_raycast::CameraCursorRay>)>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140911dd0",
+          "name": "country_core::systems::camera_rig::MainCamera::eye_position"
+        },
+        {
+          "va": "1409a8e10",
+          "name": "country_core::systems::ui::resources::widget_params::WidgetParams::new"
+        },
+        {
+          "va": "1409a8fb0",
+          "name": "country_core::systems::ui::resources::widget_params::UiSounds::empty"
+        },
+        {
+          "va": "14123b320",
+          "name": "country_core::systems::ui::resources::ui_state::UiState::add<alloc::string::String>"
+        },
+        {
+          "va": "1409a8f10",
+          "name": "country_core::systems::ui::resources::widget_params::WidgetParams::no_history_recording"
+        },
+        {
+          "va": "14092e680",
+          "name": "country_core::systems::ui::resources::ui_state::UiWidgetContext::is_active"
+        },
+        {
+          "va": "1428d9000",
+          "name": "alloc::alloc::handle_alloc_error"
+        },
+        {
+          "va": "14089d8b0",
+          "name": "country_core::systems::ui::signifiers::SignifierFactory::new"
+        },
+        {
+          "va": "140a57300",
+          "name": "country_core::resources::audio_resources::AudioInstance::start_if_not_playing"
+        },
+        {
+          "va": "140d79f90",
+          "name": "alloc::fmt::format::format_inner"
+        },
+        {
+          "va": "14092e640",
+          "name": "country_core::systems::ui::resources::ui_state::UiWidgetContext::intersecting"
+        },
+        {
+          "va": "140613c10",
+          "name": "__rust_alloc"
+        },
+        {
+          "va": "14092df10",
+          "name": "country_core::systems::ui::resources::slider3d::impl$1::into_drag_state"
+        },
+        {
+          "va": "140b2cf90",
+          "name": "country_core::systems::ui::signifiers::signifier_create::UiSignifierStream::write"
+        },
+        {
+          "va": "140911230",
+          "name": "country_core::systems::camera_rig::MainCamera::mode"
+        },
+        {
+          "va": "1409a8e80",
+          "name": "country_core::systems::ui::resources::widget_params::WidgetParams::sounds"
+        },
+        {
+          "va": "140613c20",
+          "name": "__rust_dealloc"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x142312200",
+      "pdb_name": "system_critters::duck::move_ducks_along_trajectories",
+      "exact_function": true,
+      "database_name": "system_critters::duck::move_ducks_along_trajectories",
+      "body_bytes": 5729,
+      "incoming_refs": [
+        {
+          "from": "14377457c",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d8ea8e",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref_mut$<country_core::resources::critters::Duck>,ref_mut$<enum2$<country_core::resources::critters::DuckState>_>,ref_mut$<utils::components::transform::Transform>,ref_mut$<country_core::resources::critters::Velocity>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>,ref_mut$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::systems::render_loop::compute_passes::grass::ObjectGrassPush>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::systems::audio::water_ambience_audio::WaterAudioGrid>,bevy_ecs::system::commands::Commands,bevy_ecs::event::writer::EventWriter<system_critters::duck_splash_particle::SpawnSplashParticle>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref_mut$<country_core::resources::critters::Duck>,ref_mut$<enum2$<country_core::resources::critters::DuckState>_>,ref_mut$<utils::components::transform::Transform>,ref_mut$<country_core::resources::critters::Velocity>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>,ref_mut$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::systems::render_loop::compute_passes::grass::ObjectGrassPush>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::systems::audio::water_ambience_audio::WaterAudioGrid>,bevy_ecs::system::commands::Commands,bevy_ecs::event::writer::EventWriter<system_critters::duck_splash_particle::SpawnSplashParticle>)>_>"
+        },
+        {
+          "from": "141da2056",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref_mut$<country_core::resources::critters::Duck>,ref_mut$<enum2$<country_core::resources::critters::DuckState>_>,ref_mut$<utils::components::transform::Transform>,ref_mut$<country_core::resources::critters::Velocity>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>,ref_mut$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::systems::render_loop::compute_passes::grass::ObjectGrassPush>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::systems::audio::water_ambience_audio::WaterAudioGrid>,bevy_ecs::system::commands::Commands,bevy_ecs::event::writer::EventWriter<system_critters::duck_splash_particle::SpawnSplashParticle>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref_mut$<country_core::resources::critters::Duck>,ref_mut$<enum2$<country_core::resources::critters::DuckState>_>,ref_mut$<utils::components::transform::Transform>,ref_mut$<country_core::resources::critters::Velocity>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>,ref_mut$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::systems::render_loop::compute_passes::grass::ObjectGrassPush>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::systems::audio::water_ambience_audio::WaterAudioGrid>,bevy_ecs::system::commands::Commands,bevy_ecs::event::writer::EventWriter<system_critters::duck_splash_particle::SpawnSplashParticle>)>_>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140d14770",
+          "name": "bevy_ecs::system::commands::EntityCommands::despawn"
+        },
+        {
+          "va": "14261ef90",
+          "name": "utils::curve::CurveInternalCoord::new_for_point_count<utils::curve::CurveCoordSemantic3D>"
+        },
+        {
+          "va": "140c16a00",
+          "name": "puffin::are_scopes_on"
+        },
+        {
+          "va": "140c9cdc0",
+          "name": "utils::swizzlers::impl$0::x0y"
+        },
+        {
+          "va": "140562630",
+          "name": "alloc::raw_vec::RawVec::grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>"
+        },
+        {
+          "va": "1428d9430",
+          "name": "core::panicking::panic"
+        },
+        {
+          "va": "14230fae0",
+          "name": "core::str::impl$0::rfind<ref$<str$>_>"
+        },
+        {
+          "va": "140a57300",
+          "name": "country_core::resources::audio_resources::AudioInstance::start_if_not_playing"
+        },
+        {
+          "va": "140a593f0",
+          "name": "country_core::utils::audio_utils::AudioLoop::current"
+        },
+        {
+          "va": "14291b030",
+          "name": "std::sys::thread_local::native::lazy::Storage::initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple$<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>"
+        },
+        {
+          "va": "140a57670",
+          "name": "country_core::resources::audio_resources::impl$10::set_parameter"
+        },
+        {
+          "va": "14230eb00",
+          "name": "bevy_ecs::query::iter::QueryIterationCursor::init<tuple$<bevy_ecs::entity::Entity,ref_mut$<country_core::resources::critters::Duck>,ref_mut$<enum2$<country_core::resources::critters::DuckState>_>,ref_mut$<utils::components::transform::Transform>,ref_mut$<country_core::resources::critters::Velocity>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>,ref_mut$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::systems::render_loop::compute_passes::grass::ObjectGrassPush>_>,tuple$<>_>"
+        },
+        {
+          "va": "140c904a0",
+          "name": "utils::inverse_lerp"
+        },
+        {
+          "va": "1428d9250",
+          "name": "core::cell::panic_already_borrowed"
+        },
+        {
+          "va": "140a57da0",
+          "name": "country_core::resources::audio_resources::impl$10::set_position"
+        },
+        {
+          "va": "140a59430",
+          "name": "country_core::utils::audio_utils::AudioLoop::stop"
+        },
+        {
+          "va": "1428d9940",
+          "name": "core::str::slice_error_fail"
+        },
+        {
+          "va": "140a575a0",
+          "name": "country_core::resources::audio_resources::impl$10::set_volume"
+        },
+        {
+          "va": "142924060",
+          "name": "truncf"
+        },
+        {
+          "va": "140a596b0",
+          "name": "country_core::utils::audio_utils::AudioLoop::start_if_not_playing"
+        },
+        {
+          "va": "140d8b480",
+          "name": "core::f32::impl$0::clamp::do_panic::runtime"
+        },
+        {
+          "va": "14261f0c0",
+          "name": "utils::float_grid::impl$0::bilinear_sample_at_world_xz<country_core::systems::audio::water_ambience_audio::WaterAudioGrid>"
+        },
+        {
+          "va": "1428d9310",
+          "name": "core::option::unwrap_failed"
+        },
+        {
+          "va": "140c18130",
+          "name": "puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL"
+        },
+        {
+          "va": "1428d9518",
+          "name": "core::panicking::panic_bounds_check"
+        },
+        {
+          "va": "140c16d40",
+          "name": "puffin::ThreadProfiler::begin_scope"
+        },
+        {
+          "va": "140c170f0",
+          "name": "puffin::ThreadProfiler::end_scope"
+        },
+        {
+          "va": "1428d80d0",
+          "name": "std::thread::local::panic_access_error"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x142324f80",
+      "pdb_name": "system_critters::sheep::ui_pet_sheep::ui_pet_sheep",
+      "exact_function": true,
+      "database_name": "system_critters::sheep::ui_pet_sheep::ui_pet_sheep",
+      "body_bytes": 3764,
+      "incoming_refs": [
+        {
+          "from": "143774948",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141da2da0",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "_ZN8bevy_ecs6system6system6System29run_without_applying_deferred17h9dc705f373396cdaE"
+        },
+        {
+          "from": "142336e7d",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "_ZN120_$LT$bevy_ecs..system..schedule_system..InfallibleSystemWrapper$LT$S$GT$$u20$as$u20$bevy_ecs..system..system..System$GT$10run_unsafe17h8f64928d9253f781E.llvm.6314311127760614901"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140911dd0",
+          "name": "country_core::systems::camera_rig::MainCamera::eye_position"
+        },
+        {
+          "va": "1409a8e10",
+          "name": "country_core::systems::ui::resources::widget_params::WidgetParams::new"
+        },
+        {
+          "va": "1409a8fb0",
+          "name": "country_core::systems::ui::resources::widget_params::UiSounds::empty"
+        },
+        {
+          "va": "14123b320",
+          "name": "country_core::systems::ui::resources::ui_state::UiState::add<alloc::string::String>"
+        },
+        {
+          "va": "1409a8f10",
+          "name": "country_core::systems::ui::resources::widget_params::WidgetParams::no_history_recording"
+        },
+        {
+          "va": "14092e680",
+          "name": "country_core::systems::ui::resources::ui_state::UiWidgetContext::is_active"
+        },
+        {
+          "va": "1428d9000",
+          "name": "alloc::alloc::handle_alloc_error"
+        },
+        {
+          "va": "14127c970",
+          "name": "utils::geometry::ws_to_cs"
+        },
+        {
+          "va": "140562630",
+          "name": "alloc::raw_vec::RawVec::grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>"
+        },
+        {
+          "va": "140a57240",
+          "name": "country_core::resources::audio_resources::AudioInstance::start"
+        },
+        {
+          "va": "14089d8b0",
+          "name": "country_core::systems::ui::signifiers::SignifierFactory::new"
+        },
+        {
+          "va": "140562c30",
+          "name": "alloc::raw_vec::RawVec::grow_one<tuple$<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<system_decorator::decorator_visual::stairs::PreferredNodeAlignment,alloc::alloc::Global>_>,alloc::alloc::Global>"
+        },
+        {
+          "va": "140d79f90",
+          "name": "alloc::fmt::format::format_inner"
+        },
+        {
+          "va": "14092e640",
+          "name": "country_core::systems::ui::resources::ui_state::UiWidgetContext::intersecting"
+        },
+        {
+          "va": "140613c10",
+          "name": "__rust_alloc"
+        },
+        {
+          "va": "14092df10",
+          "name": "country_core::systems::ui::resources::slider3d::impl$1::into_drag_state"
+        },
+        {
+          "va": "140b2cf90",
+          "name": "country_core::systems::ui::signifiers::signifier_create::UiSignifierStream::write"
+        },
+        {
+          "va": "140911230",
+          "name": "country_core::systems::camera_rig::MainCamera::mode"
+        },
+        {
+          "va": "14092e6b0",
+          "name": "country_core::systems::ui::resources::ui_state::DragState::is_some"
+        },
+        {
+          "va": "1409a8e80",
+          "name": "country_core::systems::ui::resources::widget_params::WidgetParams::sounds"
+        },
+        {
+          "va": "140613c20",
+          "name": "__rust_dealloc"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x142320cf0",
+      "pdb_name": "system_critters::sheep::sheep_floatie::sheep_floaties",
+      "exact_function": true,
+      "database_name": "system_critters::sheep::sheep_floatie::sheep_floaties",
+      "body_bytes": 2495,
+      "incoming_refs": [
+        {
+          "from": "1437747ec",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141da3fbb",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<enum2$<country_core::resources::critters::CritterLocomotion>_>,ref_mut$<country_core::resources::critters::sheep::FloatieHolder>_>,bevy_ecs::query::filter::With<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::system::query::Query<tuple$<ref_mut$<country_core::resources::critters::sheep::SheepAccessory>,ref_mut$<utils::components::transform::Transform>_>,bevy_ecs::query::filter::Without<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::system::commands::Commands,bevy_ecs::change_detection::Res<country_core::resources::audio_resources::AudioCore>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<enum2$<country_core::resources::critters::CritterLocomotion>_>,ref_mut$<country_core::resources::critters::sheep::FloatieHolder>_>,bevy_ecs::query::filter::With<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::system::query::Query<tuple$<ref_mut$<country_core::resources::critters::sheep::SheepAccessory>,ref_mut$<utils::components::transform::Transform>_>,bevy_ecs::query::filter::Without<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::system::commands::Commands,bevy_ecs::change_detection::Res<country_core::resources::audio_resources::AudioCore>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>)>_>_>"
+        },
+        {
+          "from": "141dada26",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<enum2$<country_core::resources::critters::CritterLocomotion>_>,ref_mut$<country_core::resources::critters::sheep::FloatieHolder>_>,bevy_ecs::query::filter::With<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::system::query::Query<tuple$<ref_mut$<country_core::resources::critters::sheep::SheepAccessory>,ref_mut$<utils::components::transform::Transform>_>,bevy_ecs::query::filter::Without<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::system::commands::Commands,bevy_ecs::change_detection::Res<country_core::resources::audio_resources::AudioCore>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<enum2$<country_core::resources::critters::CritterLocomotion>_>,ref_mut$<country_core::resources::critters::sheep::FloatieHolder>_>,bevy_ecs::query::filter::With<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::system::query::Query<tuple$<ref_mut$<country_core::resources::critters::sheep::SheepAccessory>,ref_mut$<utils::components::transform::Transform>_>,bevy_ecs::query::filter::Without<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::system::commands::Commands,bevy_ecs::change_detection::Res<country_core::resources::audio_resources::AudioCore>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>)>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140a55f40",
+          "name": "country_core::resources::audio_resources::AudioCore::instantiate_audio"
+        },
+        {
+          "va": "140d146a0",
+          "name": "bevy_ecs::system::commands::Commands::spawn_empty"
+        },
+        {
+          "va": "140a57300",
+          "name": "country_core::resources::audio_resources::AudioInstance::start_if_not_playing"
+        },
+        {
+          "va": "1428a57d0",
+          "name": "alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>"
+        },
+        {
+          "va": "140a57da0",
+          "name": "country_core::resources::audio_resources::impl$10::set_position"
+        },
+        {
+          "va": "1428d9760",
+          "name": "core::result::unwrap_failed"
+        },
+        {
+          "va": "1428d9310",
+          "name": "core::option::unwrap_failed"
+        },
+        {
+          "va": "14089a280",
+          "name": "country_core::resources::audio_resources::impl$13::drop"
+        },
+        {
+          "va": "140c95ef0",
+          "name": "utils::easing_functions::EasingFunction::apply"
+        },
+        {
+          "va": "140613c20",
+          "name": "__rust_dealloc"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x141dc2170",
+      "pdb_name": "system_critters::boids::Boid::random_vel_change",
+      "exact_function": true,
+      "database_name": "system_critters::boids::Boid::random_vel_change",
+      "body_bytes": 456,
+      "incoming_refs": [
+        {
+          "from": "14374dabc",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141dc27e4",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "system_critters::boids::Boid::frame_update<system_critters::fish::fish::closure_env$0>"
+        },
+        {
+          "from": "141dc35c8",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "system_critters::boids::Boid::frame_update<system_critters::wren_boids::sim_wren_boids::closure_env$3>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140caf380",
+          "name": "fastrand::Rng::f32"
+        },
+        {
+          "va": "140c90880",
+          "name": "utils::uniform_sample_cone"
+        },
+        {
+          "va": "140c90600",
+          "name": "utils::time_continuous_lerp_vec3"
+        },
+        {
+          "va": "140d4ae30",
+          "name": "glam::f32::sse2::quat::Quat::from_rotation_arc"
+        },
+        {
+          "va": "140c904d0",
+          "name": "utils::lerp"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x14231b140",
+      "pdb_name": "system_critters::ducks_react_to_being_inside_buildings::ducks_react_to_being_inside_buildings",
+      "exact_function": true,
+      "database_name": "system_critters::ducks_react_to_being_inside_buildings::ducks_react_to_being_inside_buildings",
+      "body_bytes": 1453,
+      "incoming_refs": [
+        {
+          "from": "1437746cc",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d9e857",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::critters::sheep::CmdCheckForSheepInsideBuilding>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::resources::critters::Duck>,ref$<utils::components::transform::Transform>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::system::query::Query<ref$<country_core::resources::roofs::roof_shape::Roof>,tuple$<>_>),void_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::critters::sheep::CmdCheckForSheepInsideBuilding>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::resources::critters::Duck>,ref$<utils::components::transform::Transform>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::system::query::Query<ref$<country_core::resources::roofs::roof_shape::Roof>,tuple$<>_>)>_>_>"
+        },
+        {
+          "from": "141da7402",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::critters::sheep::CmdCheckForSheepInsideBuilding>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::resources::critters::Duck>,ref$<utils::components::transform::Transform>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::system::query::Query<ref$<country_core::resources::roofs::roof_shape::Roof>,tuple$<>_>),void_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::critters::sheep::CmdCheckForSheepInsideBuilding>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::resources::critters::Duck>,ref$<utils::components::transform::Transform>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::system::query::Query<ref$<country_core::resources::roofs::roof_shape::Roof>,tuple$<>_>)>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140b2a5d0",
+          "name": "country_core::resources::walls::public_wall_state::PublicWallState::get_wall_shape"
+        },
+        {
+          "va": "1408e3260",
+          "name": "country_core::resources::roofs::roof_shape::Roof::height"
+        },
+        {
+          "va": "140ad2950",
+          "name": "country_core::resources::glade_border::GladeBorder::is_pos_inside"
+        },
+        {
+          "va": "140a57300",
+          "name": "country_core::resources::audio_resources::AudioInstance::start_if_not_playing"
+        },
+        {
+          "va": "140a922b0",
+          "name": "country_core::resources::walls::public_walls::PublicWalls::roof_entity"
+        },
+        {
+          "va": "1428d9310",
+          "name": "core::option::unwrap_failed"
+        },
+        {
+          "va": "140a91ef0",
+          "name": "country_core::resources::walls::public_walls::PublicWalls::get"
+        },
+        {
+          "va": "140b2a620",
+          "name": "country_core::resources::walls::public_wall_state::PublicWallState::max_y"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x142317040",
+      "pdb_name": "system_critters::firefly::set_firefly_velocities_towards_goals",
+      "exact_function": true,
+      "database_name": "system_critters::firefly::set_firefly_velocities_towards_goals",
+      "body_bytes": 1322,
+      "incoming_refs": [
+        {
+          "from": "143774624",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d91055",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Firefly>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Firefly>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>)>_>"
+        },
+        {
+          "from": "141da3b8e",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Firefly>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Firefly>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>)>_>_>"
+        },
+        {
+          "from": "141da5e2e",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Firefly>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Firefly>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>)>_>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "14230ebf0",
+          "name": "bevy_ecs::query::iter::QueryIterationCursor::init<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::sheep::Sheep>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x142318fa0",
+      "pdb_name": "system_critters::shared::move_critters",
+      "exact_function": true,
+      "database_name": "system_critters::shared::move_critters",
+      "body_bytes": 5066,
+      "incoming_refs": [
+        {
+          "from": "143774684",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141da33ca",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "_ZN8bevy_ecs6system6system6System29run_without_applying_deferred17haa2f4003401041bbE"
+        },
+        {
+          "from": "141daafc2",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "_ZN120_$LT$bevy_ecs..system..schedule_system..InfallibleSystemWrapper$LT$S$GT$$u20$as$u20$bevy_ecs..system..system..System$GT$10run_unsafe17he28d05355dab4e35E.llvm.12044548004321405333"
+        }
+      ],
+      "callees": [
+        {
+          "va": "14261f450",
+          "name": "utils::geometry::line_relation::LineInterval::line_segment"
+        },
+        {
+          "va": "140c16a00",
+          "name": "puffin::are_scopes_on"
+        },
+        {
+          "va": "140a91ef0",
+          "name": "country_core::resources::walls::public_walls::PublicWalls::get"
+        },
+        {
+          "va": "14067dd80",
+          "name": "toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut"
+        },
+        {
+          "va": "14230e780",
+          "name": "frozen::FrozenMap::get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>"
+        },
+        {
+          "va": "142923bf0",
+          "name": "memcmp"
+        },
+        {
+          "va": "1428cab41",
+          "name": "core::panicking::assert_failed<ref$<str$>,ref$<str$>_>"
+        },
+        {
+          "va": "142317580",
+          "name": "core::str::impl$0::rfind<ref$<str$>_>"
+        },
+        {
+          "va": "140a14df0",
+          "name": "utils::float_grid::impl$0::bilinear_sample_at_world_xz<country_core::resources::world_raster::RasterBufferRef<512>_>"
+        },
+        {
+          "va": "140b2a680",
+          "name": "country_core::resources::walls::public_wall_state::PublicWallState::max_y_gable"
+        },
+        {
+          "va": "1408ccc90",
+          "name": "country_core::systems::collision::world::RaycastWorld::legacy_spherecast"
+        },
+        {
+          "va": "140c90030",
+          "name": "utils::swizzlers::impl$3::x0z"
+        },
+        {
+          "va": "14291b030",
+          "name": "std::sys::thread_local::native::lazy::Storage::initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple$<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>"
+        },
+        {
+          "va": "140c97560",
+          "name": "utils::geometry::circle::Circle2d::new_rotated"
+        },
+        {
+          "va": "1428d9250",
+          "name": "core::cell::panic_already_borrowed"
+        },
+        {
+          "va": "140aa5730",
+          "name": "country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash::query"
+        },
+        {
+          "va": "1428d9940",
+          "name": "core::str::slice_error_fail"
+        },
+        {
+          "va": "14230ecf0",
+          "name": "bevy_ecs::query::iter::QueryIterationCursor::init<tuple$<ref_mut$<utils::components::transform::Transform>,ref$<enum2$<country_core::resources::critters::CritterLocomotion>_>,ref$<country_core::resources::critters::Velocity>,enum2$<core::option::Option<ref$<country_core::resources::critters::CritterVelocityMultiplier>_>_>,enum2$<core::option::Option<ref$<country_core::resources::critters::Duck>_>_>,enum2$<core::option::Option<ref$<country_core::resources::critters::sheep::Sheep>_>_>,enum2$<core::option::Option<ref_mut$<country_core::resources::critters::BirdSpots>_>_>_>,tuple$<>_>"
+        },
+        {
+          "va": "142923f70",
+          "name": "powf"
+        },
+        {
+          "va": "1409ea800",
+          "name": "country_core::resources::terrain_rock_mask::impl$1::sample_at_world_xz"
+        },
+        {
+          "va": "14261f470",
+          "name": "utils::geometry::line_relation::LineInterval::relate"
+        },
+        {
+          "va": "1428d9310",
+          "name": "core::option::unwrap_failed"
+        },
+        {
+          "va": "140c18130",
+          "name": "puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL"
+        },
+        {
+          "va": "140c16d40",
+          "name": "puffin::ThreadProfiler::begin_scope"
+        },
+        {
+          "va": "140d4ae30",
+          "name": "glam::f32::sse2::quat::Quat::from_rotation_arc"
+        },
+        {
+          "va": "140c170f0",
+          "name": "puffin::ThreadProfiler::end_scope"
+        },
+        {
+          "va": "1428d80d0",
+          "name": "std::thread::local::panic_access_error"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x141d867b0",
+      "pdb_name": "system_critters::butterfly::set_butterfly_velocities_towards_goals",
+      "exact_function": true,
+      "database_name": "system_critters::butterfly::set_butterfly_velocities_towards_goals",
+      "body_bytes": 1647,
+      "incoming_refs": [
+        {
+          "from": "14374b6bc",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "140f7bf05",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Butterfly>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Butterfly>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>)>_>"
+        },
+        {
+          "from": "141d9fd7e",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Butterfly>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Butterfly>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>)>_>_>"
+        },
+        {
+          "from": "141da550e",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Butterfly>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Butterfly>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>)>_>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "14230ebf0",
+          "name": "bevy_ecs::query::iter::QueryIterationCursor::init<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::sheep::Sheep>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x141d86060",
+      "pdb_name": "system_critters::butterfly::update_butterfly_goals",
+      "exact_function": true,
+      "database_name": "system_critters::butterfly::update_butterfly_goals",
+      "body_bytes": 1836,
+      "incoming_refs": [
+        {
+          "from": "14374b6b0",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "140f7c07e",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Velocity>,ref_mut$<country_core::resources::critters::Butterfly>,ref_mut$<country_core::resources::critters::CritterGoal>_>,tuple$<>_>,bevy_ecs::change_detection::ResMut<country_core::resources::critters::CritterRng>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Velocity>,ref_mut$<country_core::resources::critters::Butterfly>,ref_mut$<country_core::resources::critters::CritterGoal>_>,tuple$<>_>,bevy_ecs::change_detection::ResMut<country_core::resources::critters::CritterRng>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>)>_>"
+        },
+        {
+          "from": "141da39e5",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Velocity>,ref_mut$<country_core::resources::critters::Butterfly>,ref_mut$<country_core::resources::critters::CritterGoal>_>,tuple$<>_>,bevy_ecs::change_detection::ResMut<country_core::resources::critters::CritterRng>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Velocity>,ref_mut$<country_core::resources::critters::Butterfly>,ref_mut$<country_core::resources::critters::CritterGoal>_>,tuple$<>_>,bevy_ecs::change_detection::ResMut<country_core::resources::critters::CritterRng>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>)>_>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140c90030",
+          "name": "utils::swizzlers::impl$3::x0z"
+        },
+        {
+          "va": "140c907d0",
+          "name": "utils::uniform_sample_sphere"
+        },
+        {
+          "va": "141625ae0",
+          "name": "perchance::PerchanceContext::uniform_f32"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x142316940",
+      "pdb_name": "system_critters::firefly::update_firefly_goals",
+      "exact_function": true,
+      "database_name": "system_critters::firefly::update_firefly_goals",
+      "body_bytes": 1753,
+      "incoming_refs": [
+        {
+          "from": "143774618",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d90ead",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Velocity>,ref_mut$<country_core::resources::critters::Firefly>,ref_mut$<country_core::resources::critters::CritterGoal>_>,tuple$<>_>,bevy_ecs::change_detection::ResMut<country_core::resources::critters::CritterRng>,bevy_ecs::change_detection::Res<country_core::resources::critters::CritterControl>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Velocity>,ref_mut$<country_core::resources::critters::Firefly>,ref_mut$<country_core::resources::critters::CritterGoal>_>,tuple$<>_>,bevy_ecs::change_detection::ResMut<country_core::resources::critters::CritterRng>,bevy_ecs::change_detection::Res<country_core::resources::critters::CritterControl>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>)>_>"
+        },
+        {
+          "from": "141d9e084",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Velocity>,ref_mut$<country_core::resources::critters::Firefly>,ref_mut$<country_core::resources::critters::CritterGoal>_>,tuple$<>_>,bevy_ecs::change_detection::ResMut<country_core::resources::critters::CritterRng>,bevy_ecs::change_detection::Res<country_core::resources::critters::CritterControl>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Velocity>,ref_mut$<country_core::resources::critters::Firefly>,ref_mut$<country_core::resources::critters::CritterGoal>_>,tuple$<>_>,bevy_ecs::change_detection::ResMut<country_core::resources::critters::CritterRng>,bevy_ecs::change_detection::Res<country_core::resources::critters::CritterControl>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>)>_>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140c90030",
+          "name": "utils::swizzlers::impl$3::x0z"
+        },
+        {
+          "va": "140c907d0",
+          "name": "utils::uniform_sample_sphere"
+        },
+        {
+          "va": "141625ae0",
+          "name": "perchance::PerchanceContext::uniform_f32"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x141dc2740",
+      "pdb_name": "system_critters::boids::Boid::frame_update",
+      "exact_function": true,
+      "database_name": "system_critters::boids::Boid::frame_update<system_critters::fish::fish::closure_env$0>",
+      "body_bytes": 3525,
+      "incoming_refs": [
+        {
+          "from": "14374daf8",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "140f9164d",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "system_critters::fish::fish"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140d4ae30",
+          "name": "glam::f32::sse2::quat::Quat::from_rotation_arc"
+        },
+        {
+          "va": "140d8b480",
+          "name": "core::f32::impl$0::clamp::do_panic::runtime"
+        },
+        {
+          "va": "140c90600",
+          "name": "utils::time_continuous_lerp_vec3"
+        },
+        {
+          "va": "140a14df0",
+          "name": "utils::float_grid::impl$0::bilinear_sample_at_world_xz<country_core::resources::world_raster::RasterBufferRef<512>_>"
+        },
+        {
+          "va": "140c904d0",
+          "name": "utils::lerp"
+        },
+        {
+          "va": "1428d8820",
+          "name": "std::sys::sync::once::futex::Once::call"
+        },
+        {
+          "va": "141dc2170",
+          "name": "system_critters::boids::Boid::random_vel_change"
+        },
+        {
+          "va": "140c904e0",
+          "name": "utils::time_continuous_lerp"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x14231b720",
+      "pdb_name": "system_critters::sheep::sheep_input_record_replay::sheep_input_record_replay",
+      "exact_function": true,
+      "database_name": "system_critters::sheep::sheep_input_record_replay::sheep_input_record_replay",
+      "body_bytes": 1443,
+      "incoming_refs": [
+        {
+          "from": "1437746d8",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d9c554",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<ref_mut$<utils::components::transform::Transform>,bevy_ecs::query::filter::With<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::change_detection::ResMut<country_core::input::input_stream::InputRecordReplayState>,bevy_ecs::change_detection::Res<country_core::input::panic_repro_state::PanicReproState>,bevy_ecs::change_detection::Res<country_core::resources::gui::DebugGui>),void_(*)(bevy_ecs::system::query::Query<ref_mut$<utils::components::transform::Transform>,bevy_ecs::query::filter::With<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::change_detection::ResMut<country_core::input::input_stream::InputRecordReplayState>,bevy_ecs::change_detection::Res<country_core::input::panic_repro_state::PanicReproState>,bevy_ecs::change_detection::Res<country_core::resources::gui::DebugGui>)>_>_>"
+        },
+        {
+          "from": "141dae31d",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<ref_mut$<utils::components::transform::Transform>,bevy_ecs::query::filter::With<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::change_detection::ResMut<country_core::input::input_stream::InputRecordReplayState>,bevy_ecs::change_detection::Res<country_core::input::panic_repro_state::PanicReproState>,bevy_ecs::change_detection::Res<country_core::resources::gui::DebugGui>),void_(*)(bevy_ecs::system::query::Query<ref_mut$<utils::components::transform::Transform>,bevy_ecs::query::filter::With<country_core::resources::critters::sheep::Sheep>_>,bevy_ecs::change_detection::ResMut<country_core::input::input_stream::InputRecordReplayState>,bevy_ecs::change_detection::Res<country_core::input::panic_repro_state::PanicReproState>,bevy_ecs::change_detection::Res<country_core::resources::gui::DebugGui>)>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "141dbdec0",
+          "name": "alloc::vec::spec_from_iter::impl$0::from_iter<f32,core::iter::adapters::map::Map<bevy_ecs::query::iter::QueryIter<ref$<utils::components::transform::Transform>,bevy_ecs::query::filter::With<country_core::resources::critters::sheep::Sheep>_>,system_critters::sheep::sheep_input_record_replay::sheep_input_record_replay::closure_env$1>_>"
+        },
+        {
+          "va": "140949480",
+          "name": "country_core::input::input_stream::InputStream::last_frame_mut"
+        },
+        {
+          "va": "140613c20",
+          "name": "__rust_dealloc"
+        },
+        {
+          "va": "141dbf100",
+          "name": "alloc::vec::spec_from_iter::impl$0::from_iter<glam::f32::vec3::Vec3,core::iter::adapters::map::Map<bevy_ecs::query::iter::QueryIter<ref$<utils::components::transform::Transform>,bevy_ecs::query::filter::With<country_core::resources::critters::sheep::Sheep>_>,system_critters::sheep::sheep_input_record_replay::sheep_input_record_replay::closure_env$0>_>"
+        },
+        {
+          "va": "140949970",
+          "name": "country_core::input::input_stream::impl$2::index"
+        },
+        {
+          "va": "140d4b440",
+          "name": "glam::euler::impl$46::from_euler_angles"
+        },
+        {
+          "va": "1428d9310",
+          "name": "core::option::unwrap_failed"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x142322650",
+      "pdb_name": "system_critters::duck_splash_particle::duck_splash_particle",
+      "exact_function": true,
+      "database_name": "system_critters::duck_splash_particle::duck_splash_particle",
+      "body_bytes": 1903,
+      "incoming_refs": [
+        {
+          "from": "143774894",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141da0060",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::commands::Commands,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref_mut$<country_core::components::SplashParticle>,ref_mut$<utils::components::transform::Transform>_>,bevy_ecs::query::filter::Without<country_core::resources::critters::Duck>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::resources::critters::Duck>,ref$<utils::components::transform::Transform>_>,bevy_ecs::query::filter::Without<country_core::components::SplashParticle>_>,bevy_ecs::event::reader::EventReader<system_critters::duck_splash_particle::SpawnSplashParticle>),void_(*)(bevy_ecs::system::commands::Commands,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref_mut$<country_core::components::SplashParticle>,ref_mut$<utils::components::transform::Transform>_>,bevy_ecs::query::filter::Without<country_core::resources::critters::Duck>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::resources::critters::Duck>,ref$<utils::components::transform::Transform>_>,bevy_ecs::query::filter::Without<country_core::components::SplashParticle>_>,bevy_ecs::event::reader::EventReader<system_critters::duck_splash_particle::SpawnSplashParticle>)>_>_>"
+        },
+        {
+          "from": "141da91c3",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::commands::Commands,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref_mut$<country_core::components::SplashParticle>,ref_mut$<utils::components::transform::Transform>_>,bevy_ecs::query::filter::Without<country_core::resources::critters::Duck>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::resources::critters::Duck>,ref$<utils::components::transform::Transform>_>,bevy_ecs::query::filter::Without<country_core::components::SplashParticle>_>,bevy_ecs::event::reader::EventReader<system_critters::duck_splash_particle::SpawnSplashParticle>),void_(*)(bevy_ecs::system::commands::Commands,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::change_detection::Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref_mut$<country_core::components::SplashParticle>,ref_mut$<utils::components::transform::Transform>_>,bevy_ecs::query::filter::Without<country_core::resources::critters::Duck>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::resources::critters::Duck>,ref$<utils::components::transform::Transform>_>,bevy_ecs::query::filter::Without<country_core::components::SplashParticle>_>,bevy_ecs::event::reader::EventReader<system_critters::duck_splash_particle::SpawnSplashParticle>)>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140d14770",
+          "name": "bevy_ecs::system::commands::EntityCommands::despawn"
+        },
+        {
+          "va": "1428a57d0",
+          "name": "alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>"
+        },
+        {
+          "va": "140d146a0",
+          "name": "bevy_ecs::system::commands::Commands::spawn_empty"
+        },
+        {
+          "va": "14092d4f0",
+          "name": "country_core::asset_libraries::mesh_library::AssetMeshLibrary::get_handle_by_name"
+        },
+        {
+          "va": "1428d9310",
+          "name": "core::option::unwrap_failed"
+        },
+        {
+          "va": "140937aa0",
+          "name": "country_core::asset_libraries::shader_library::AssetShaderLibrary::get_raster_handle_by_name"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x142315e40",
+      "pdb_name": "system_critters::sheep::sheep_behavior::set_sheep_velocities_towards_goals",
+      "exact_function": true,
+      "database_name": "system_critters::sheep::sheep_behavior::set_sheep_velocities_towards_goals",
+      "body_bytes": 1593,
+      "incoming_refs": [
+        {
+          "from": "1437745e8",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d8b515",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::sheep::Sheep>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::sheep::Sheep>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>)>_>"
+        },
+        {
+          "from": "141da40ee",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::sheep::Sheep>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::sheep::Sheep>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>)>_>_>"
+        },
+        {
+          "from": "141da5f5e",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::sheep::Sheep>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::sheep::Sheep>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>)>_>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "14230ebf0",
+          "name": "bevy_ecs::query::iter::QueryIterationCursor::init<tuple$<ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::sheep::Sheep>,ref$<country_core::resources::critters::CritterGoal>,ref_mut$<country_core::resources::critters::CritterVelocityTarget>,ref_mut$<country_core::resources::critters::CritterVelocityMultiplier>_>,tuple$<>_>"
+        },
+        {
+          "va": "14089d4c0",
+          "name": "country_core::resources::critters::sheep::Sheep::being_petted"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x14231e390",
+      "pdb_name": "system_critters::wren::update_wrens",
+      "exact_function": true,
+      "database_name": "system_critters::wren::update_wrens",
+      "body_bytes": 3164,
+      "incoming_refs": [
+        {
+          "from": "143774780",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d9ef3e",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode>_>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::resources::tree_storage::BirdHaven>,ref$<country_core::systems::prefab::PrefabInstanceData>_>,tuple$<>_>,bevy_ecs::system::system_param::Local<system_critters::wren::WrenGen>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref_mut$<utils::components::transform::Transform>,ref_mut$<country_core::resources::critters::Wren>_>,tuple$<>_>,bevy_ecs::system::query::Query<ref_mut$<country_core::resources::critters::BirdSpots>,tuple$<>_>,bevy_ecs::system::commands::Commands),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode>_>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::resources::tree_storage::BirdHaven>,ref$<country_core::systems::prefab::PrefabInstanceData>_>,tuple$<>_>,bevy_ecs::system::system_param::Local<system_critters::wren::WrenGen>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref_mut$<utils::components::transform::Transform>,ref_mut$<country_core::resources::critters::Wren>_>,tuple$<>_>,bevy_ecs::system::query::Query<ref_mut$<country_core::resources::critters::BirdSpots>,tuple$<>_>,bevy_ecs::system::commands::Commands)>_>_>"
+        },
+        {
+          "from": "141db1c31",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode>_>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::resources::tree_storage::BirdHaven>,ref$<country_core::systems::prefab::PrefabInstanceData>_>,tuple$<>_>,bevy_ecs::system::system_param::Local<system_critters::wren::WrenGen>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref_mut$<utils::components::transform::Transform>,ref_mut$<country_core::resources::critters::Wren>_>,tuple$<>_>,bevy_ecs::system::query::Query<ref_mut$<country_core::resources::critters::BirdSpots>,tuple$<>_>,bevy_ecs::system::commands::Commands),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode>_>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::resources::tree_storage::BirdHaven>,ref$<country_core::systems::prefab::PrefabInstanceData>_>,tuple$<>_>,bevy_ecs::system::system_param::Local<system_critters::wren::WrenGen>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref_mut$<utils::components::transform::Transform>,ref_mut$<country_core::resources::critters::Wren>_>,tuple$<>_>,bevy_ecs::system::query::Query<ref_mut$<country_core::resources::critters::BirdSpots>,tuple$<>_>,bevy_ecs::system::commands::Commands)>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140b02490",
+          "name": "country_core::utils::debug_viz::DebugSphere::new"
+        },
+        {
+          "va": "140b024c0",
+          "name": "country_core::utils::debug_viz::DebugSphere::color"
+        },
+        {
+          "va": "140ad5020",
+          "name": "country_core::resources::placement_data::PlacementDataSsbo::to_affine3a"
+        },
+        {
+          "va": "140613c10",
+          "name": "__rust_alloc"
+        },
+        {
+          "va": "140b02520",
+          "name": "country_core::utils::debug_viz::DebugSphere::show"
+        },
+        {
+          "va": "140b024e0",
+          "name": "country_core::utils::debug_viz::DebugSphere::radius"
+        },
+        {
+          "va": "140a57da0",
+          "name": "country_core::resources::audio_resources::impl$10::set_position"
+        },
+        {
+          "va": "140b04e70",
+          "name": "country_core::utils::debug_viz::DebugLine::new"
+        },
+        {
+          "va": "1428d9000",
+          "name": "alloc::alloc::handle_alloc_error"
+        },
+        {
+          "va": "140b04f70",
+          "name": "country_core::utils::debug_viz::DebugLine::show"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x142314b70",
+      "pdb_name": "system_critters::duck::update_duck_ripples",
+      "exact_function": true,
+      "database_name": "system_critters::duck::update_duck_ripples",
+      "body_bytes": 1135,
+      "incoming_refs": [
+        {
+          "from": "1437745c4",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d8e01e",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref$<utils::components::transform::Transform>,ref$<enum2$<country_core::resources::critters::DuckState>_>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::system::system_param::Local<std::collections::hash::map::HashMap<bevy_ecs::entity::Entity,system_critters::duck::PrevRipple,std::hash::random::RandomState>_>),void_(*)(bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref$<utils::components::transform::Transform>,ref$<enum2$<country_core::resources::critters::DuckState>_>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::system::system_param::Local<std::collections::hash::map::HashMap<bevy_ecs::entity::Entity,system_critters::duck::PrevRipple,std::hash::random::RandomState>_>)>_>"
+        },
+        {
+          "from": "141da1656",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref$<utils::components::transform::Transform>,ref$<enum2$<country_core::resources::critters::DuckState>_>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::system::system_param::Local<std::collections::hash::map::HashMap<bevy_ecs::entity::Entity,system_critters::duck::PrevRipple,std::hash::random::RandomState>_>),void_(*)(bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref$<utils::components::transform::Transform>,ref$<enum2$<country_core::resources::critters::DuckState>_>_>,tuple$<>_>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::system::system_param::Local<std::collections::hash::map::HashMap<bevy_ecs::entity::Entity,system_critters::duck::PrevRipple,std::hash::random::RandomState>_>)>_>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140987ca0",
+          "name": "country_core::render::impl$0::deref"
+        },
+        {
+          "va": "142923ec0",
+          "name": "expf"
+        },
+        {
+          "va": "142923bf0",
+          "name": "memcmp"
+        },
+        {
+          "va": "140613c20",
+          "name": "__rust_dealloc"
+        },
+        {
+          "va": "1428cab41",
+          "name": "core::panicking::assert_failed<ref$<str$>,ref$<str$>_>"
+        },
+        {
+          "va": "140888530",
+          "name": "core::ptr::drop_in_place<backtrace::capture::Backtrace>"
+        },
+        {
+          "va": "14230e780",
+          "name": "frozen::FrozenMap::get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>"
+        },
+        {
+          "va": "142923c20",
+          "name": "memset"
+        },
+        {
+          "va": "142923c00",
+          "name": "memcpy"
+        },
+        {
+          "va": "141dbf8c0",
+          "name": "alloc::vec::spec_from_iter::impl$0::from_iter<array$<u32,4>,core::iter::adapters::take::Take<core::iter::adapters::filter_map::FilterMap<bevy_ecs::query::iter::QueryIter<tuple$<bevy_ecs::entity::Entity,ref$<utils::components::transform::Transform>,ref$<enum2$<country_core::resources::critters::DuckState>_>_>,tuple$<>_>,system_critters::duck::update_duck_ripples::closure_env$0>_>_>"
+        },
+        {
+          "va": "140beefa0",
+          "name": "rhapsody::raw::device::GraphicsDevice::update_buffer_bytes"
+        },
+        {
+          "va": "1428d9310",
+          "name": "core::option::unwrap_failed"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x142326a80",
+      "pdb_name": "system_critters::wren_boids::sim_wren_boids",
+      "exact_function": true,
+      "database_name": "system_critters::wren_boids::sim_wren_boids",
+      "body_bytes": 13654,
+      "incoming_refs": [
+        {
+          "from": "1437749cc",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d9cd2d",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "_ZN8bevy_ecs6system6system6System29run_without_applying_deferred17h26654b2c62688317E"
+        },
+        {
+          "from": "141db7148",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "_ZN120_$LT$bevy_ecs..system..schedule_system..InfallibleSystemWrapper$LT$S$GT$$u20$as$u20$bevy_ecs..system..system..System$GT$10run_unsafe17hf2573d44653e50e5E.llvm.3527529092300137476"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140613c20",
+          "name": "__rust_dealloc"
+        },
+        {
+          "va": "1428d9518",
+          "name": "core::panicking::panic_bounds_check"
+        },
+        {
+          "va": "140caf380",
+          "name": "fastrand::Rng::f32"
+        },
+        {
+          "va": "14261f540",
+          "name": "hashbrown::map::HashMap::insert<bevy_ecs::entity::Entity,system_critters::wren_boids::sim_wren_boids::FreeSpot,std::hash::random::RandomState,alloc::alloc::Global>"
+        },
+        {
+          "va": "140a57540",
+          "name": "country_core::resources::audio_resources::AudioInstance::stop_on_drop"
+        },
+        {
+          "va": "140d00740",
+          "name": "bevy_ecs::storage::table::Table::get_added_ticks_slice_for"
+        },
+        {
+          "va": "141dbf5e0",
+          "name": "alloc::vec::spec_from_iter::impl$0::from_iter<system_critters::wren_boids::sim_wren_boids::FreeSpot,core::iter::adapters::flatten::FlatMap<bevy_ecs::query::iter::QueryIter<ref$<country_core::resources::critters::BirdSpots>,tuple$<>_>,core::iter::adapters::filter_map::FilterMap<core::slice::iter::Iter<country_core::resources::critters::BirdSpot>,system_critters::wren_boids::sim_wren_boids::closure$1::closure_env$0>,system_critters::wren_boids::sim_wren_boids::closure_env$1>_>"
+        },
+        {
+          "va": "14067dd80",
+          "name": "toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut"
+        },
+        {
+          "va": "140c9d180",
+          "name": "utils::components::transform::impl$1::default"
+        },
+        {
+          "va": "1428d8fe3",
+          "name": "alloc::raw_vec::handle_error"
+        },
+        {
+          "va": "140c16d40",
+          "name": "puffin::ThreadProfiler::begin_scope"
+        },
+        {
+          "va": "1428d9250",
+          "name": "core::cell::panic_already_borrowed"
+        },
+        {
+          "va": "140c907d0",
+          "name": "utils::uniform_sample_sphere"
+        },
+        {
+          "va": "141d91ce0",
+          "name": "hashbrown::raw::RawTable::remove_entry<tuple$<bevy_ecs::entity::Entity,system_critters::wren_boids::sim_wren_boids::FreeSpot>,alloc::alloc::Global,hashbrown::map::equivalent_key::closure_env$0<bevy_ecs::entity::Entity,bevy_ecs::entity::Entity,system_critters::wren_boids::sim_wren_boids::FreeSpot>_>"
+        },
+        {
+          "va": "141dc2540",
+          "name": "system_critters::boids::BoidFlock::remove<system_critters::wren_boids::sim_wren_boids::closure_env$6>"
+        },
+        {
+          "va": "142923f10",
+          "name": "fmodf"
+        },
+        {
+          "va": "14291b030",
+          "name": "std::sys::thread_local::native::lazy::Storage::initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple$<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>"
+        },
+        {
+          "va": "14261faf0",
+          "name": "itertools::Itertools::multiunzip<core::iter::adapters::filter_map::FilterMap<bevy_ecs::query::iter::QueryIter<tuple$<bevy_ecs::entity::Entity,ref$<country_core::resources::tree_storage::BirdHaven>,ref$<country_core::systems::prefab::PrefabInstanceData>_>,bevy_ecs::query::filter::Without<country_core::components::TreeMarkedForDeletion>_>,system_critters::wren_boids::sim_wren_boids::closure_env$2>,tuple$<alloc::vec::Vec<utils::geometry::intersect::Sphere,alloc::alloc::Global>,alloc::vec::Vec<bevy_ecs::entity::Entity,alloc::alloc::Global>_>_>"
+        },
+        {
+          "va": "140b81df0",
+          "name": "alloc::raw_vec::RawVec::grow_one<usize,alloc::alloc::Global>"
+        },
+        {
+          "va": "140d4d740",
+          "name": "std::hash::random::impl$0::new::KEYS::constant$0::closure$1::VAL"
+        },
+        {
+          "va": "141dc3510",
+          "name": "system_critters::boids::Boid::frame_update<system_critters::wren_boids::sim_wren_boids::closure_env$3>"
+        },
+        {
+          "va": "142923ee0",
+          "name": "floorf"
+        },
+        {
+          "va": "140c16a00",
+          "name": "puffin::are_scopes_on"
+        },
+        {
+          "va": "14067d380",
+          "name": "alloc::raw_vec::RawVec::grow_one<system_critters::boids::Boid,alloc::alloc::Global>"
+        },
+        {
+          "va": "14230e0d0",
+          "name": "core::iter::adapters::map::impl$2::fold<usize,bevy_ecs::query::iter::QueryIter<tuple$<bevy_ecs::entity::Entity,ref$<country_core::resources::tree_storage::BirdHaven>,ref$<country_core::systems::prefab::PrefabInstanceData>_>,bevy_ecs::query::filter::Without<country_core::components::TreeMarkedForDeletion>_>,system_critters::wren_boids::sim_wren_boids::closure_env$4,usize,core::iter::traits::accum::impl$48::sum::closure_env$0<core::iter::adapters::map::Map<bevy_ecs::query::iter::QueryIter<tuple$<bevy_ecs::entity::Entity,ref$<country_core::resources::tree_storage::BirdHaven>,ref$<country_core::systems::prefab::PrefabInstanceData>_>,bevy_ecs::query::filter::Without<country_core::components::TreeMarkedForDeletion>_>,system_critters::wren_boids::sim_wren_boids::closure_env$4>_>_>"
+        },
+        {
+          "va": "142923fc0",
+          "name": "sin"
+        },
+        {
+          "va": "1428d9940",
+          "name": "core::str::slice_error_fail"
+        },
+        {
+          "va": "142924060",
+          "name": "truncf"
+        },
+        {
+          "va": "1428d9310",
+          "name": "core::option::unwrap_failed"
+        },
+        {
+          "va": "14003bb80",
+          "name": "bevy_app::plugin::Plugin::finish<country_core::systems::main_camera::MainCameraPlugin>"
+        },
+        {
+          "va": "141dc1330",
+          "name": "bevy_ecs::system::commands::Commands::spawn<tuple$<country_core::resources::critters::Wren,country_core::components::drawable::NaniBundle<country_core::render::nani::instance_data::WrenInstanceData>,country_core::components::drawable::PrevTransform>_>"
+        },
+        {
+          "va": "140ad5020",
+          "name": "country_core::resources::placement_data::PlacementDataSsbo::to_affine3a"
+        },
+        {
+          "va": "1428d9019",
+          "name": "alloc::vec::impl$1::swap_remove::assert_failed"
+        },
+        {
+          "va": "1406319d0",
+          "name": "alloc::raw_vec::RawVec::grow_one<enum2$<iced_core::event::Event>,alloc::alloc::Global>"
+        },
+        {
+          "va": "140c18130",
+          "name": "puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL"
+        },
+        {
+          "va": "1428d9760",
+          "name": "core::result::unwrap_failed"
+        },
+        {
+          "va": "140c90670",
+          "name": "utils::time_continuous_lerp_mut"
+        },
+        {
+          "va": "140a55f40",
+          "name": "country_core::resources::audio_resources::AudioCore::instantiate_audio"
+        },
+        {
+          "va": "142326590",
+          "name": "core::str::impl$0::rfind<ref$<str$>_>"
+        },
+        {
+          "va": "140d64e00",
+          "name": "std::sys::random::hashmap_random_keys"
+        },
+        {
+          "va": "140613c10",
+          "name": "__rust_alloc"
+        },
+        {
+          "va": "140d14770",
+          "name": "bevy_ecs::system::commands::EntityCommands::despawn"
+        },
+        {
+          "va": "142923f00",
+          "name": "fmod"
+        },
+        {
+          "va": "140334d80",
+          "name": "dolly::util::look_at<dolly::handedness::RightHanded,glam::f32::vec3::Vec3,glam::f32::sse2::quat::Quat>"
+        },
+        {
+          "va": "140ceafa0",
+          "name": "bevy_ecs::entity::Entities::contains"
+        },
+        {
+          "va": "140d4a330",
+          "name": "log::__private_api::impl$2::log"
+        },
+        {
+          "va": "140c170f0",
+          "name": "puffin::ThreadProfiler::end_scope"
+        },
+        {
+          "va": "1428d80d0",
+          "name": "std::thread::local::panic_access_error"
+        },
+        {
+          "va": "1405b0d70",
+          "name": "core::hash::BuildHasher::hash_one<std::hash::random::RandomState,ref$<country_core::systems::ui::GlobalId>_>"
+        },
+        {
+          "va": "140a57300",
+          "name": "country_core::resources::audio_resources::AudioInstance::start_if_not_playing"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x140f8ee90",
+      "pdb_name": "system_critters::spawn_ducks::DuckSpawnLocations::new",
+      "exact_function": true,
+      "database_name": "system_critters::spawn_ducks::DuckSpawnLocations::new",
+      "body_bytes": 751,
+      "incoming_refs": [
+        {
+          "from": "1436cca80",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "14067d5e0",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "system_critters::impl$0::build"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140562cf0",
+          "name": "alloc::raw_vec::RawVec::grow_one<tuple$<country_core::resources::walls::decorator::DecoratorId,country_core::resources::walls::decorator::DecoratorId,u8>,alloc::alloc::Global>"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x1423179a0",
+      "pdb_name": "system_critters::shared::critters_avoid_collisions",
+      "exact_function": true,
+      "database_name": "system_critters::shared::critters_avoid_collisions",
+      "body_bytes": 4014,
+      "incoming_refs": [
+        {
+          "from": "143774648",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141da50c8",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "_ZN8bevy_ecs6system6system6System29run_without_applying_deferred17he73c60cc36a8c4d2E"
+        },
+        {
+          "from": "141daa7fa",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "_ZN120_$LT$bevy_ecs..system..schedule_system..InfallibleSystemWrapper$LT$S$GT$$u20$as$u20$bevy_ecs..system..system..System$GT$10run_unsafe17h93667012682e5cf6E.llvm.12044548004321405333"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140ae4c20",
+          "name": "country_core::systems::paths::draw_path::PathRastersResources::as_float_grid"
+        },
+        {
+          "va": "140c16d40",
+          "name": "puffin::ThreadProfiler::begin_scope"
+        },
+        {
+          "va": "1409ea800",
+          "name": "country_core::resources::terrain_rock_mask::impl$1::sample_at_world_xz"
+        },
+        {
+          "va": "1428d80d0",
+          "name": "std::thread::local::panic_access_error"
+        },
+        {
+          "va": "14067dd80",
+          "name": "toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut"
+        },
+        {
+          "va": "14261f3e0",
+          "name": "bevy_ecs::event::writer::EventWriter::write<system_critters::spawn_ducks::DespawnDuckCmd>"
+        },
+        {
+          "va": "14261f470",
+          "name": "utils::geometry::line_relation::LineInterval::relate"
+        },
+        {
+          "va": "1408ccc90",
+          "name": "country_core::systems::collision::world::RaycastWorld::legacy_spherecast"
+        },
+        {
+          "va": "140c18130",
+          "name": "puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL"
+        },
+        {
+          "va": "140aa5730",
+          "name": "country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash::query"
+        },
+        {
+          "va": "1428cab41",
+          "name": "core::panicking::assert_failed<ref$<str$>,ref$<str$>_>"
+        },
+        {
+          "va": "140b2a680",
+          "name": "country_core::resources::walls::public_wall_state::PublicWallState::max_y_gable"
+        },
+        {
+          "va": "14230e780",
+          "name": "frozen::FrozenMap::get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>"
+        },
+        {
+          "va": "140c97560",
+          "name": "utils::geometry::circle::Circle2d::new_rotated"
+        },
+        {
+          "va": "140a14df0",
+          "name": "utils::float_grid::impl$0::bilinear_sample_at_world_xz<country_core::resources::world_raster::RasterBufferRef<512>_>"
+        },
+        {
+          "va": "142317580",
+          "name": "core::str::impl$0::rfind<ref$<str$>_>"
+        },
+        {
+          "va": "14291b030",
+          "name": "std::sys::thread_local::native::lazy::Storage::initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple$<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>"
+        },
+        {
+          "va": "14261f450",
+          "name": "utils::geometry::line_relation::LineInterval::line_segment"
+        },
+        {
+          "va": "140c16a00",
+          "name": "puffin::are_scopes_on"
+        },
+        {
+          "va": "142923bf0",
+          "name": "memcmp"
+        },
+        {
+          "va": "140c170f0",
+          "name": "puffin::ThreadProfiler::end_scope"
+        },
+        {
+          "va": "1428d9940",
+          "name": "core::str::slice_error_fail"
+        },
+        {
+          "va": "1428d9310",
+          "name": "core::option::unwrap_failed"
+        },
+        {
+          "va": "1428d9250",
+          "name": "core::cell::panic_already_borrowed"
+        },
+        {
+          "va": "140a91ef0",
+          "name": "country_core::resources::walls::public_walls::PublicWalls::get"
+        },
+        {
+          "va": "140c9cdc0",
+          "name": "utils::swizzlers::impl$0::x0y"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x142315050",
+      "pdb_name": "system_critters::sheep::sheep_behavior::update_sheep_goals",
+      "exact_function": true,
+      "database_name": "system_critters::sheep::sheep_behavior::update_sheep_goals",
+      "body_bytes": 3536,
+      "incoming_refs": [
+        {
+          "from": "1437745dc",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d8bad0",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref_mut$<country_core::resources::critters::sheep::Sheep>,ref_mut$<country_core::resources::critters::CritterGoal>,ref$<enum2$<country_core::resources::critters::CritterLocomotion>_>_>,tuple$<>_>,bevy_ecs::change_detection::ResMut<country_core::resources::critters::CritterRng>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::WaterRaster>,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::GardenRaster>,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref_mut$<country_core::resources::critters::sheep::Sheep>,ref_mut$<country_core::resources::critters::CritterGoal>,ref$<enum2$<country_core::resources::critters::CritterLocomotion>_>_>,tuple$<>_>,bevy_ecs::change_detection::ResMut<country_core::resources::critters::CritterRng>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::WaterRaster>,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::GardenRaster>,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>)>_>"
+        },
+        {
+          "from": "141d9fb37",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref_mut$<country_core::resources::critters::sheep::Sheep>,ref_mut$<country_core::resources::critters::CritterGoal>,ref$<enum2$<country_core::resources::critters::CritterLocomotion>_>_>,tuple$<>_>,bevy_ecs::change_detection::ResMut<country_core::resources::critters::CritterRng>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::WaterRaster>,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::GardenRaster>,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>),void_(*)(bevy_ecs::system::query::Query<tuple$<ref$<utils::components::transform::Transform>,ref_mut$<country_core::resources::critters::sheep::Sheep>,ref_mut$<country_core::resources::critters::CritterGoal>,ref$<enum2$<country_core::resources::critters::CritterLocomotion>_>_>,tuple$<>_>,bevy_ecs::change_detection::ResMut<country_core::resources::critters::CritterRng>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::WaterRaster>,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::GardenRaster>,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>)>_>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "141625ae0",
+          "name": "perchance::PerchanceContext::uniform_f32"
+        },
+        {
+          "va": "140911dd0",
+          "name": "country_core::systems::camera_rig::MainCamera::eye_position"
+        },
+        {
+          "va": "140a14df0",
+          "name": "utils::float_grid::impl$0::bilinear_sample_at_world_xz<country_core::resources::world_raster::RasterBufferRef<512>_>"
+        },
+        {
+          "va": "140a12650",
+          "name": "country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::position"
+        },
+        {
+          "va": "140c90030",
+          "name": "utils::swizzlers::impl$3::x0z"
+        },
+        {
+          "va": "14067dd80",
+          "name": "toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut"
+        },
+        {
+          "va": "140911230",
+          "name": "country_core::systems::camera_rig::MainCamera::mode"
+        },
+        {
+          "va": "140911df0",
+          "name": "country_core::systems::camera_rig::MainCamera::eye_forward"
+        },
+        {
+          "va": "140c90700",
+          "name": "utils::uniform_sample_disk"
+        },
+        {
+          "va": "140c9cdc0",
+          "name": "utils::swizzlers::impl$0::x0y"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x140f8f8b0",
+      "pdb_name": "system_critters::spawn_ducks::despawn_ducks",
+      "exact_function": true,
+      "database_name": "system_critters::spawn_ducks::despawn_ducks",
+      "body_bytes": 2967,
+      "incoming_refs": [
+        {
+          "from": "1436ccac8",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d9f2fb",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<system_critters::duck::DuckTrajectoryPlanner>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Duck>,ref$<enum2$<country_core::resources::critters::DuckState>_>_>,tuple$<>_>,country_core::systems::paths::draw_path::PathRastersResources,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::WaterRaster>,bevy_ecs::event::reader::EventReader<system_critters::spawn_ducks::DespawnDuckCmd>),void_(*)(bevy_ecs::change_detection::ResMut<system_critters::duck::DuckTrajectoryPlanner>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Duck>,ref$<enum2$<country_core::resources::critters::DuckState>_>_>,tuple$<>_>,country_core::systems::paths::draw_path::PathRastersResources,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::WaterRaster>,bevy_ecs::event::reader::EventReader<system_critters::spawn_ducks::DespawnDuckCmd>)>_>_>"
+        },
+        {
+          "from": "141dafb94",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::ResMut<system_critters::duck::DuckTrajectoryPlanner>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Duck>,ref$<enum2$<country_core::resources::critters::DuckState>_>_>,tuple$<>_>,country_core::systems::paths::draw_path::PathRastersResources,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::WaterRaster>,bevy_ecs::event::reader::EventReader<system_critters::spawn_ducks::DespawnDuckCmd>),void_(*)(bevy_ecs::change_detection::ResMut<system_critters::duck::DuckTrajectoryPlanner>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::Duck>,ref$<enum2$<country_core::resources::critters::DuckState>_>_>,tuple$<>_>,country_core::systems::paths::draw_path::PathRastersResources,bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::WaterRaster>,bevy_ecs::event::reader::EventReader<system_critters::spawn_ducks::DespawnDuckCmd>)>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "141625ae0",
+          "name": "perchance::PerchanceContext::uniform_f32"
+        },
+        {
+          "va": "1405629f0",
+          "name": "alloc::raw_vec::RawVec::grow_one<country_core::render::render_config::LastKnownGraphicsDevice,alloc::alloc::Global>"
+        },
+        {
+          "va": "140a14df0",
+          "name": "utils::float_grid::impl$0::bilinear_sample_at_world_xz<country_core::resources::world_raster::RasterBufferRef<512>_>"
+        },
+        {
+          "va": "14067dd80",
+          "name": "toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut"
+        },
+        {
+          "va": "140ae4c20",
+          "name": "country_core::systems::paths::draw_path::PathRastersResources::as_float_grid"
+        },
+        {
+          "va": "140613c10",
+          "name": "__rust_alloc"
+        },
+        {
+          "va": "140c90770",
+          "name": "utils::uniform_sample_circle"
+        },
+        {
+          "va": "1428d9000",
+          "name": "alloc::alloc::handle_alloc_error"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x14231f610",
+      "pdb_name": "system_critters::sheep::sheep_react_to_being_inside_buildings::react_to_being_inside_buildings",
+      "exact_function": true,
+      "database_name": "system_critters::sheep::sheep_react_to_being_inside_buildings::react_to_being_inside_buildings",
+      "body_bytes": 2370,
+      "incoming_refs": [
+        {
+          "from": "14377478c",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d9e539",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::critters::sheep::CmdCheckForSheepInsideBuilding>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::resources::critters::sheep::Sheep>,ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::sheep::SheepAudio>_>,tuple$<>_>,bevy_ecs::system::commands::Commands,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::system::query::Query<ref$<country_core::resources::roofs::roof_shape::Roof>,tuple$<>_>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::sheep_audio::PlaySheepReactSound>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>),void_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::critters::sheep::CmdCheckForSheepInsideBuilding>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::resources::critters::sheep::Sheep>,ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::sheep::SheepAudio>_>,tuple$<>_>,bevy_ecs::system::commands::Commands,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::system::query::Query<ref$<country_core::resources::roofs::roof_shape::Roof>,tuple$<>_>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::sheep_audio::PlaySheepReactSound>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>)>_>_>"
+        },
+        {
+          "from": "142308a21",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::critters::sheep::CmdCheckForSheepInsideBuilding>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::resources::critters::sheep::Sheep>,ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::sheep::SheepAudio>_>,tuple$<>_>,bevy_ecs::system::commands::Commands,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::system::query::Query<ref$<country_core::resources::roofs::roof_shape::Roof>,tuple$<>_>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::sheep_audio::PlaySheepReactSound>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>),void_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::critters::sheep::CmdCheckForSheepInsideBuilding>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::resources::critters::sheep::Sheep>,ref$<utils::components::transform::Transform>,ref$<country_core::resources::critters::sheep::SheepAudio>_>,tuple$<>_>,bevy_ecs::system::commands::Commands,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::system::query::Query<ref$<country_core::resources::roofs::roof_shape::Roof>,tuple$<>_>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::sheep_audio::PlaySheepReactSound>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>)>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140ad2950",
+          "name": "country_core::resources::glade_border::GladeBorder::is_pos_inside"
+        },
+        {
+          "va": "140562c30",
+          "name": "alloc::raw_vec::RawVec::grow_one<tuple$<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<system_decorator::decorator_visual::stairs::PreferredNodeAlignment,alloc::alloc::Global>_>,alloc::alloc::Global>"
+        },
+        {
+          "va": "140a922b0",
+          "name": "country_core::resources::walls::public_walls::PublicWalls::roof_entity"
+        },
+        {
+          "va": "140b2a620",
+          "name": "country_core::resources::walls::public_wall_state::PublicWallState::max_y"
+        },
+        {
+          "va": "142923c00",
+          "name": "memcpy"
+        },
+        {
+          "va": "140a91ef0",
+          "name": "country_core::resources::walls::public_walls::PublicWalls::get"
+        },
+        {
+          "va": "140b2a5d0",
+          "name": "country_core::resources::walls::public_wall_state::PublicWallState::get_wall_shape"
+        },
+        {
+          "va": "140c96240",
+          "name": "utils::rng::init_rng"
+        },
+        {
+          "va": "1428d8fe3",
+          "name": "alloc::raw_vec::handle_error"
+        },
+        {
+          "va": "141dc1110",
+          "name": "bevy_ecs::system::commands::Commands::spawn<tuple$<country_core::components::Ui2dExtent,country_core::components::Ui2dImage,system_critters::sheep::sheep_react_to_being_inside_buildings::SheepReactionEmoji>_>"
+        },
+        {
+          "va": "1408e3260",
+          "name": "country_core::resources::roofs::roof_shape::Roof::height"
+        },
+        {
+          "va": "140613c10",
+          "name": "__rust_alloc"
+        },
+        {
+          "va": "1428d9310",
+          "name": "core::option::unwrap_failed"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x140f8f210",
+      "pdb_name": "system_critters::spawn_ducks::spawn_ducks",
+      "exact_function": true,
+      "database_name": "system_critters::spawn_ducks::spawn_ducks",
+      "body_bytes": 1227,
+      "incoming_refs": [
+        {
+          "from": "1436cca98",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d9b663",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "_ZN8bevy_ecs6system6system6System29run_without_applying_deferred17h095a75a82731b34dE"
+        },
+        {
+          "from": "141daf514",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::WaterRaster>,bevy_ecs::system::query::Query<ref$<country_core::resources::critters::Duck>,tuple$<>_>,bevy_ecs::change_detection::ResMut<system_critters::spawn_ducks::DuckSpawnLocations>,bevy_ecs::change_detection::ResMut<system_critters::duck::DuckTrajectoryPlanner>,bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::event::reader::EventReader<country_core::resources::water::WaterDrawEvent>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>),void_(*)(bevy_ecs::change_detection::Res<country_core::resources::world_raster_defs::WaterRaster>,bevy_ecs::system::query::Query<ref$<country_core::resources::critters::Duck>,tuple$<>_>,bevy_ecs::change_detection::ResMut<system_critters::spawn_ducks::DuckSpawnLocations>,bevy_ecs::change_detection::ResMut<system_critters::duck::DuckTrajectoryPlanner>,bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo>_>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::event::reader::EventReader<country_core::resources::water::WaterDrawEvent>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>)>_>"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140b9f180",
+          "name": "alloc::raw_vec::RawVec::grow_one<glam::f32::vec3::Vec3,alloc::alloc::Global>"
+        },
+        {
+          "va": "140a14df0",
+          "name": "utils::float_grid::impl$0::bilinear_sample_at_world_xz<country_core::resources::world_raster::RasterBufferRef<512>_>"
+        },
+        {
+          "va": "140c9cdc0",
+          "name": "utils::swizzlers::impl$0::x0y"
+        },
+        {
+          "va": "140c9cde0",
+          "name": "utils::swizzlers::impl$1::xvy"
+        },
+        {
+          "va": "141dbdb50",
+          "name": "alloc::vec::in_place_collect::impl$1::from_iter<system_critters::duck::Trajectory,core::iter::adapters::map::Map<alloc::vec::into_iter::IntoIter<glam::f32::vec3::Vec3,alloc::alloc::Global>,system_critters::spawn_ducks::spawn_ducks::closure_env$1>_>"
+        },
+        {
+          "va": "141625ae0",
+          "name": "perchance::PerchanceContext::uniform_f32"
+        },
+        {
+          "va": "141dc03c0",
+          "name": "itertools::Itertools::sorted_by<core::slice::iter::IterMut<tuple$<glam::f32::vec2::Vec2,bool>_>,system_critters::spawn_ducks::spawn_ducks::closure_env$0>"
+        },
+        {
+          "va": "140f8ee50",
+          "name": "alloc::alloc::exchange_malloc"
+        },
+        {
+          "va": "14067dd80",
+          "name": "toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut"
+        },
+        {
+          "va": "140613c20",
+          "name": "__rust_dealloc"
+        },
+        {
+          "va": "140f8edb0",
+          "name": "alloc::vec::Vec::push<system_critters::duck::TrajectoryPlan,alloc::alloc::Global>"
+        },
+        {
+          "va": "140c90940",
+          "name": "utils::golden_spiral"
+        },
+        {
+          "va": "141246fb0",
+          "name": "country_core::resources::terrain_height::TerrainHeightsData::sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>"
+        },
+        {
+          "va": "140ae8320",
+          "name": "country_core::systems::save::save_backup_list::BackupSaveFileKind::is_corrupted"
+        },
+        {
+          "va": "140c90770",
+          "name": "utils::uniform_sample_circle"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x1423246b0",
+      "pdb_name": "system_critters::sheep::sheep_unstuck::sheep_unstuck",
+      "exact_function": true,
+      "database_name": "system_critters::sheep::sheep_unstuck::sheep_unstuck",
+      "body_bytes": 2171,
+      "incoming_refs": [
+        {
+          "from": "143774924",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "141d9c1a6",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "_ZN8bevy_ecs6system6system6System29run_without_applying_deferred17h10867a1e8233142bE"
+        },
+        {
+          "from": "141da81de",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "_ZN120_$LT$bevy_ecs..system..schedule_system..InfallibleSystemWrapper$LT$S$GT$$u20$as$u20$bevy_ecs..system..system..System$GT$10run_unsafe17h4dd9f9de97d8b6beE.llvm.18244707395974305827"
+        }
+      ],
+      "callees": [
+        {
+          "va": "1428cab41",
+          "name": "core::panicking::assert_failed<ref$<str$>,ref$<str$>_>"
+        },
+        {
+          "va": "14067dd80",
+          "name": "toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut"
+        },
+        {
+          "va": "140a14df0",
+          "name": "utils::float_grid::impl$0::bilinear_sample_at_world_xz<country_core::resources::world_raster::RasterBufferRef<512>_>"
+        },
+        {
+          "va": "142923bf0",
+          "name": "memcmp"
+        },
+        {
+          "va": "14230e780",
+          "name": "frozen::FrozenMap::get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>"
+        },
+        {
+          "va": "1409ea800",
+          "name": "country_core::resources::terrain_rock_mask::impl$1::sample_at_world_xz"
+        },
+        {
+          "va": "141246fb0",
+          "name": "country_core::resources::terrain_height::TerrainHeightsData::sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>"
+        },
+        {
+          "va": "1408ccc90",
+          "name": "country_core::systems::collision::world::RaycastWorld::legacy_spherecast"
+        },
+        {
+          "va": "140ae8320",
+          "name": "country_core::systems::save::save_backup_list::BackupSaveFileKind::is_corrupted"
+        },
+        {
+          "va": "1428d9310",
+          "name": "core::option::unwrap_failed"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    },
+    {
+      "va": "0x141dc2340",
+      "pdb_name": "system_critters::boids::BoidFlock::remove",
+      "exact_function": true,
+      "database_name": "system_critters::boids::BoidFlock::remove<system_critters::fish::fish::closure_env$1>",
+      "body_bytes": 422,
+      "incoming_refs": [
+        {
+          "from": "14374dac8",
+          "type": "DATA",
+          "caller": null
+        },
+        {
+          "from": "140f92062",
+          "type": "UNCONDITIONAL_CALL",
+          "caller": "system_critters::fish::fish"
+        }
+      ],
+      "callees": [
+        {
+          "va": "140613c20",
+          "name": "__rust_dealloc"
+        },
+        {
+          "va": "140ceafa0",
+          "name": "bevy_ecs::entity::Entities::contains"
+        },
+        {
+          "va": "140d14770",
+          "name": "bevy_ecs::system::commands::EntityCommands::despawn"
+        },
+        {
+          "va": "1428d9019",
+          "name": "alloc::vec::impl$1::swap_remove::assert_failed"
+        }
+      ],
+      "decompiled": true,
+      "error": ""
+    }
+  ],
+  "executable_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+  "changed_before": false,
+  "changed_after": false,
+  "ok": true
+}

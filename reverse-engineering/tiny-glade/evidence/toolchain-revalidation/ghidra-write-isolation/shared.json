@@ -1,0 +1,157 @@
+{
+  "worker": "shared",
+  "access": "read",
+  "calls": [
+    {
+      "tool": "list_instances",
+      "args": {},
+      "start": 652336.779821458,
+      "end": 652336.810830208,
+      "result": {
+        "instances": [
+          {
+            "socket": "/var/folders/nn/2ymzgfd16j96wv2_mj2bpsfm0000gn/T/ghidra-mcp-yuluo/ghidra-1256.sock",
+            "pid": 1256,
+            "server_kind": "headless",
+            "version": "7.0.0",
+            "endpoint_count": 190,
+            "project": "TinyGlade",
+            "project_path": "/Users/yuluo/Desktop/game/tools/ghidra-projects/mcp/TinyGlade",
+            "tcp_port": 64496,
+            "connected": true,
+            "program_count": 1,
+            "open_programs": [
+              "/tiny-glade.exe"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "tool": "get_functions",
+      "args": {
+        "program": "tiny-glade.exe",
+        "function": "0x140949c20",
+        "fields": "signature,decompiled_code,parameters"
+      },
+      "start": 652368.109645166,
+      "end": 652368.615416333,
+      "result": {
+        "program": "tiny-glade.exe",
+        "name": "aspect_ratio",
+        "size": 20,
+        "address": "140949c20",
+        "signature": "float __fastcall aspect_ratio(uint * size)",
+        "decompiled_code": "\nfloat country_core::resources::window::WindowSize::aspect_ratio(uint *size)\n\n{\n  return (float)*size / (float)size[1];\n}\n\n",
+        "parameters": [
+          {
+            "ordinal": 0,
+            "name": "size",
+            "type": "uint *",
+            "storage": "RCX:8"
+          }
+        ],
+        "revision": {
+          "token": "1791719479858:b17d372d:3",
+          "epoch": "b17d372d",
+          "modification_number": 3,
+          "saved_time": 1791719479858,
+          "unsaved_changes": false,
+          "decompiled": true
+        }
+      }
+    },
+    {
+      "tool": "get_functions",
+      "args": {
+        "program": "tiny-glade.exe",
+        "function": "0x140949c20",
+        "fields": "signature,decompiled_code,parameters"
+      },
+      "start": 652370.126934666,
+      "end": 652370.45956725,
+      "result": {
+        "program": "tiny-glade.exe",
+        "name": "aspect_ratio",
+        "size": 20,
+        "address": "140949c20",
+        "signature": "float __fastcall aspect_ratio(uint * size)",
+        "decompiled_code": "\nfloat country_core::resources::window::WindowSize::aspect_ratio(uint *size)\n\n{\n  return (float)*size / (float)size[1];\n}\n\n",
+        "parameters": [
+          {
+            "ordinal": 0,
+            "name": "size",
+            "type": "uint *",
+            "storage": "RCX:8"
+          }
+        ],
+        "revision": {
+          "token": "1791719479858:b17d372d:3",
+          "epoch": "b17d372d",
+          "modification_number": 3,
+          "saved_time": 1791719479858,
+          "unsaved_changes": false,
+          "decompiled": true
+        }
+      }
+    },
+    {
+      "tool": "read_memory",
+      "args": {
+        "program": "tiny-glade.exe",
+        "address": "0x140949c20",
+        "length": 20
+      },
+      "start": 652370.459615458,
+      "end": 652370.468014708,
+      "result": {
+        "program": "tiny-glade.exe",
+        "address": "140949c20",
+        "length": 20,
+        "data": [
+          139,
+          1,
+          243,
+          72,
+          15,
+          42,
+          192,
+          139,
+          65,
+          4,
+          243,
+          72,
+          15,
+          42,
+          200,
+          243,
+          15,
+          94,
+          193,
+          195
+        ],
+        "hex": "8b01f3480f2ac08b4104f3480f2ac8f30f5ec1c3"
+      }
+    }
+  ],
+  "tools": [
+    "connect_instance",
+    "disassemble_function",
+    "find_data_types",
+    "find_functions",
+    "get_functions",
+    "get_metadata",
+    "get_struct_layout",
+    "get_xrefs_from",
+    "get_xrefs_to",
+    "list_instances",
+    "list_tool_groups",
+    "load_tool_group",
+    "read_memory",
+    "search_tools"
+  ],
+  "backend_pid": 1256,
+  "expected_parameter": "size",
+  "instruction_hex": "8b01f3480f2ac08b4104f3480f2ac8f30f5ec1c3",
+  "ok": true
+}

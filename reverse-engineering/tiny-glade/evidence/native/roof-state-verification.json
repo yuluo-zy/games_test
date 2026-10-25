@@ -1,0 +1,57 @@
+{
+  "source_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "full_game_executed": false,
+  "oracle": "Unicorn x64 模拟原作 RNE 中指令，比较编译后的 Rust 候选",
+  "mxcsr": "0x1f80",
+  "constants": {
+    "0x142925984": {
+      "little_endian_bytes": "cdcccc3d",
+      "u32_bits": "0x3dcccccd",
+      "f32": 0.10000000149011612
+    },
+    "0x142925904": {
+      "little_endian_bytes": "0000803f",
+      "u32_bits": "0x3f800000",
+      "f32": 1.0
+    }
+  },
+  "functions": [
+    {
+      "name": "Roof::new",
+      "va": "0x1408e31c0",
+      "size": 89,
+      "machine_code_hex": "4889c8488b4c2440440fb6542438448b5c2430f30f10442428488910410f1008410f10500c0f1148240f115030410f1009410f10510c0f1148080f115014f30f11404c4489585044885054488b11488950408b4908894848c3",
+      "cases": 256
+    },
+    {
+      "name": "Roof::ty",
+      "va": "0x1408e3250",
+      "size": 16,
+      "machine_code_hex": "f30f10052c2704020f2e41300f92c0c3",
+      "cases": 1348
+    },
+    {
+      "name": "Roof::is_gable",
+      "va": "0x1408e33b0",
+      "size": 44,
+      "machine_code_hex": "f30f104130f30f104934f30f1015422504020fc2d100f30f100db62504020fc2c1060f54c2660f7ec02401c3",
+      "cases": 1348
+    }
+  ],
+  "limitations": [
+    "字段原名和完整 Rust 类型未知",
+    "仅验证局部状态函数的返回布尔值和写入字节，不验证浮点异常状态位",
+    "构造器输入使用互不别名的有效内存",
+    "仅测试 MXCSR 0x1f80",
+    "候选实现采用显式字节接口，不宣称还原完整 Rust ABI"
+  ],
+  "ok": true,
+  "failures": [],
+  "constructor_return_pointer_ok": true,
+  "predicate_pair_cases": 1348,
+  "constructor_cases": 256,
+  "nan_behavior": {
+    "ty": "unordered sets CF, so NaN returns true",
+    "is_gable": "NaN in +0x30 passes CMPNLE; NaN in +0x34 fails equality"
+  }
+}

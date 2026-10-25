@@ -1,0 +1,160 @@
+
+// WARNING: Removing unreachable block (ram,0x0001409e9f0c)
+// WARNING: Removing unreachable block (ram,0x0001409e9f17)
+// WARNING: Removing unreachable block (ram,0x0001409e9f3d)
+// WARNING: Removing unreachable block (ram,0x0001409e9f84)
+// WARNING: Removing unreachable block (ram,0x0001409e9f51)
+// WARNING: Removing unreachable block (ram,0x0001409e9f5a)
+// WARNING: Removing unreachable block (ram,0x0001409ea013)
+
+void __cdecl
+country_core::resources::terrain_height::TerrainHeightsData::
+intersect_ray<country_core::resources::terrain_height::TerrainHeightSsbo>(void)
+
+{
+  float fVar1;
+  undefined8 uVar2;
+  undefined4 *in_RCX;
+  bool bVar3;
+  undefined8 *in_R8;
+  longlong lVar4;
+  uint uVar5;
+  float fVar6;
+  float extraout_XMM0_Da;
+  float extraout_XMM0_Da_00;
+  float extraout_XMM0_Da_01;
+  float extraout_XMM0_Da_02;
+  float extraout_XMM0_Da_03;
+  float extraout_XMM0_Da_04;
+  float extraout_XMM0_Da_05;
+  float extraout_XMM0_Da_06;
+  float extraout_XMM0_Da_07;
+  float in_XMM3_Da;
+  float unaff_XMM7_Da;
+  float unaff_XMM8_Da;
+  float unaff_XMM8_Db;
+  float unaff_XMM9_Da;
+  float fVar7;
+  float fVar8;
+  float fVar9;
+  float fVar10;
+  int local_e4;
+  float local_e0;
+  float local_dc;
+  
+  ::utils::geometry::aabb::Aabb3::classify_ray_intersection();
+  if (local_e4 != 0) {
+    unaff_XMM9_Da = local_e0;
+    if ((local_e4 == 1) && (local_e0 <= 0.0)) {
+      unaff_XMM9_Da = 0.0;
+    }
+    if (unaff_XMM9_Da <= in_XMM3_Da) {
+      fVar6 = in_XMM3_Da;
+      if (local_dc <= in_XMM3_Da) {
+        fVar6 = local_dc;
+      }
+      fVar8 = (float)(~-(uint)NAN(local_dc) & (uint)fVar6 | -(uint)NAN(local_dc) & (uint)in_XMM3_Da)
+              - unaff_XMM9_Da;
+      fVar6 = *(float *)(in_R8 + 1);
+      unaff_XMM8_Da = (float)*in_R8;
+      unaff_XMM8_Db = (float)((ulonglong)*in_R8 >> 0x20);
+      uVar2 = *(undefined8 *)((longlong)in_R8 + 0xc);
+      fVar7 = (float)((ulonglong)uVar2 >> 0x20);
+      fVar1 = *(float *)((longlong)in_R8 + 0x14);
+      lVar4 = 0x20;
+      do {
+        fVar10 = fVar8 * 0.03125 + unaff_XMM9_Da;
+        sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>();
+        if (fVar7 * fVar10 + unaff_XMM8_Db < extraout_XMM0_Da) {
+          if (unaff_XMM9_Da < fVar10) {
+            fVar8 = (unaff_XMM9_Da + fVar10) * 0.5;
+            fVar9 = fVar7 * fVar8 + unaff_XMM8_Db;
+            sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>();
+            uVar5 = -(uint)(fVar9 < extraout_XMM0_Da_00);
+            fVar10 = (float)(~uVar5 & (uint)fVar10 | uVar5 & (uint)fVar8);
+            if (extraout_XMM0_Da_00 <= fVar9) {
+              unaff_XMM9_Da = fVar8;
+            }
+            fVar8 = (fVar10 + unaff_XMM9_Da) * 0.5;
+            fVar9 = fVar7 * fVar8 + unaff_XMM8_Db;
+            sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>();
+            uVar5 = -(uint)(fVar9 < extraout_XMM0_Da_01);
+            fVar10 = (float)(~uVar5 & (uint)fVar10 | uVar5 & (uint)fVar8);
+            if (extraout_XMM0_Da_01 <= fVar9) {
+              unaff_XMM9_Da = fVar8;
+            }
+            fVar8 = (fVar10 + unaff_XMM9_Da) * 0.5;
+            fVar9 = fVar7 * fVar8 + unaff_XMM8_Db;
+            sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>();
+            uVar5 = -(uint)(fVar9 < extraout_XMM0_Da_02);
+            fVar10 = (float)(~uVar5 & (uint)fVar10 | uVar5 & (uint)fVar8);
+            if (extraout_XMM0_Da_02 <= fVar9) {
+              unaff_XMM9_Da = fVar8;
+            }
+            fVar8 = (fVar10 + unaff_XMM9_Da) * 0.5;
+            fVar9 = fVar7 * fVar8 + unaff_XMM8_Db;
+            sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>();
+            uVar5 = -(uint)(fVar9 < extraout_XMM0_Da_03);
+            fVar10 = (float)(~uVar5 & (uint)fVar10 | uVar5 & (uint)fVar8);
+            if (extraout_XMM0_Da_03 <= fVar9) {
+              unaff_XMM9_Da = fVar8;
+            }
+            fVar8 = (fVar10 + unaff_XMM9_Da) * 0.5;
+            fVar9 = fVar7 * fVar8 + unaff_XMM8_Db;
+            sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>();
+            uVar5 = -(uint)(fVar9 < extraout_XMM0_Da_04);
+            fVar10 = (float)(~uVar5 & (uint)fVar10 | uVar5 & (uint)fVar8);
+            if (extraout_XMM0_Da_04 <= fVar9) {
+              unaff_XMM9_Da = fVar8;
+            }
+            fVar8 = (fVar10 + unaff_XMM9_Da) * 0.5;
+            fVar9 = fVar7 * fVar8 + unaff_XMM8_Db;
+            sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>();
+            uVar5 = -(uint)(fVar9 < extraout_XMM0_Da_05);
+            fVar10 = (float)(~uVar5 & (uint)fVar10 | uVar5 & (uint)fVar8);
+            if (extraout_XMM0_Da_05 <= fVar9) {
+              unaff_XMM9_Da = fVar8;
+            }
+            fVar8 = (fVar10 + unaff_XMM9_Da) * 0.5;
+            fVar9 = fVar7 * fVar8 + unaff_XMM8_Db;
+            sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>();
+            uVar5 = -(uint)(fVar9 < extraout_XMM0_Da_06);
+            if (extraout_XMM0_Da_06 <= fVar9) {
+              unaff_XMM9_Da = fVar8;
+            }
+            fVar8 = ((float)(~uVar5 & (uint)fVar10 | uVar5 & (uint)fVar8) + unaff_XMM9_Da) * 0.5;
+            sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>();
+            uVar5 = -(uint)(unaff_XMM8_Db + fVar7 * fVar8 < extraout_XMM0_Da_07);
+            unaff_XMM7_Da = (float)(~uVar5 & (uint)fVar8 | (uint)unaff_XMM9_Da & uVar5);
+            unaff_XMM8_Da = unaff_XMM8_Da + (float)uVar2 * unaff_XMM7_Da;
+            unaff_XMM8_Db = unaff_XMM8_Db + fVar7 * unaff_XMM7_Da;
+            unaff_XMM9_Da = unaff_XMM7_Da * fVar1 + fVar6;
+            bVar3 = true;
+            goto LAB_1409e9eec;
+          }
+          break;
+        }
+        lVar4 = lVar4 + -1;
+        unaff_XMM9_Da = fVar10;
+      } while (lVar4 != 0);
+      bVar3 = false;
+      unaff_XMM7_Da = unaff_XMM8_Db;
+      goto LAB_1409e9eec;
+    }
+  }
+  bVar3 = false;
+LAB_1409e9eec:
+  ::utils::geometry::plane::Plane::intersect_ray();
+  if (bVar3) {
+    *in_RCX = 1;
+    in_RCX[1] = unaff_XMM7_Da;
+    in_RCX[2] = unaff_XMM8_Da;
+    in_RCX[3] = unaff_XMM8_Db;
+    in_RCX[4] = unaff_XMM9_Da;
+  }
+  else {
+    *in_RCX = 0;
+  }
+  return;
+}
+

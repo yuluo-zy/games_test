@@ -1,0 +1,1009 @@
+
+void __cdecl
+country_core::systems::render_loop::draw_passes::transparency_pass::ice_surface_pass(void)
+
+{
+  ulonglong *puVar1;
+  undefined8 uVar2;
+  undefined8 uVar3;
+  code *pcVar4;
+  undefined8 *puVar5;
+  uint extraout_EAX;
+  undefined8 extraout_RAX;
+  longlong extraout_RAX_00;
+  longlong *extraout_RAX_01;
+  longlong in_RDX;
+  ulonglong uVar6;
+  longlong lVar7;
+  longlong in_R8;
+  undefined8 in_R9;
+  undefined4 uVar8;
+  undefined8 in_stack_00000028;
+  char in_stack_00000038;
+  undefined1 *in_stack_00000040;
+  longlong in_stack_00000050;
+  undefined8 local_e18;
+  undefined8 uStack_e10;
+  undefined1 *local_e08;
+  undefined8 uStack_e00;
+  undefined4 local_df8;
+  char local_d3a;
+  undefined8 local_d18;
+  undefined8 uStack_d10;
+  undefined8 local_d08;
+  undefined8 uStack_d00;
+  undefined4 local_cf8;
+  undefined1 local_ce8 [32];
+  undefined4 local_cc8;
+  undefined8 local_cb8;
+  undefined8 uStack_cb0;
+  undefined4 local_c98;
+  undefined8 local_c88;
+  undefined8 uStack_c80;
+  undefined1 local_c6c [4];
+  undefined8 local_c68;
+  undefined8 uStack_c60;
+  undefined8 local_c58;
+  undefined8 uStack_c50;
+  undefined1 local_c48 [4];
+  undefined8 local_c44;
+  undefined8 uStack_c3c;
+  undefined8 local_c34;
+  undefined8 uStack_c2c;
+  undefined1 local_c24 [4];
+  undefined1 *local_c20;
+  undefined8 uStack_c18;
+  undefined8 local_c10;
+  undefined8 uStack_c08;
+  undefined1 local_c00 [4];
+  undefined1 *local_bfc;
+  undefined8 uStack_bf4;
+  undefined8 local_bec;
+  undefined8 uStack_be4;
+  undefined1 local_bdc [4];
+  undefined8 local_bd8;
+  undefined8 uStack_bd0;
+  undefined8 local_bc8;
+  undefined8 uStack_bc0;
+  undefined8 local_bb8;
+  undefined8 uStack_bb0;
+  undefined1 *local_ba8;
+  undefined8 uStack_ba0;
+  undefined4 local_b98;
+  undefined8 local_b88;
+  undefined8 uStack_b80;
+  undefined8 local_b68;
+  undefined8 uStack_b60;
+  undefined8 local_b58;
+  undefined8 uStack_b50;
+  undefined4 local_b48;
+  undefined8 local_b38;
+  undefined8 uStack_b30;
+  undefined8 local_b28;
+  undefined8 uStack_b20;
+  undefined4 local_b18;
+  undefined4 uStack_b14;
+  undefined4 uStack_b10;
+  undefined4 uStack_b0c;
+  undefined4 local_b08;
+  undefined8 uStack_b04;
+  undefined4 uStack_afc;
+  undefined4 local_af8;
+  undefined4 uStack_af4;
+  undefined8 local_af0;
+  undefined8 uStack_ae8;
+  undefined1 *local_ae0;
+  undefined4 local_ad8;
+  undefined4 uStack_ad4;
+  undefined4 uStack_ad0;
+  undefined4 uStack_acc;
+  undefined8 uStack_ac8;
+  undefined8 local_ac0;
+  undefined8 uStack_ab8;
+  undefined8 local_ab0;
+  undefined8 uStack_aa8;
+  undefined8 local_aa0;
+  undefined8 uStack_a98;
+  undefined8 local_a90;
+  undefined8 uStack_a88;
+  undefined8 local_a80;
+  undefined8 uStack_a78;
+  undefined8 local_a70;
+  undefined8 uStack_a68;
+  undefined8 local_a60;
+  undefined8 local_a58;
+  undefined8 uStack_a50;
+  undefined8 local_a48;
+  undefined8 uStack_a40;
+  undefined8 local_a38;
+  undefined8 uStack_a30;
+  char local_a02;
+  undefined8 local_a00;
+  undefined8 local_9b8;
+  undefined8 local_748;
+  undefined8 uStack_740;
+  undefined1 *local_730;
+  undefined8 uStack_728;
+  undefined8 local_720;
+  undefined8 uStack_718;
+  undefined8 local_710;
+  undefined4 uStack_708;
+  undefined4 uStack_704;
+  undefined4 local_700;
+  undefined4 uStack_6fc;
+  undefined4 local_6f8;
+  undefined4 uStack_6f4;
+  undefined8 local_6f0;
+  undefined *local_6c0;
+  undefined8 uStack_6b8;
+  undefined8 local_6b0;
+  undefined8 uStack_6a8;
+  longlong local_6a0;
+  longlong lStack_698;
+  undefined8 local_690;
+  uint local_688;
+  undefined4 local_684;
+  undefined2 local_680;
+  int local_638;
+  undefined4 uStack_634;
+  undefined4 uStack_630;
+  undefined4 uStack_62c;
+  undefined4 uStack_628;
+  undefined4 uStack_624;
+  undefined4 uStack_620;
+  undefined4 uStack_61c;
+  undefined4 uStack_618;
+  undefined4 local_614;
+  undefined4 uStack_610;
+  undefined4 uStack_60c;
+  undefined4 uStack_608;
+  undefined4 local_604;
+  undefined8 uStack_600;
+  undefined4 uStack_5f8;
+  undefined4 uStack_5f4;
+  undefined4 uStack_5f0;
+  undefined4 uStack_5ec;
+  undefined4 uStack_5e8;
+  undefined4 uStack_5e4;
+  undefined1 *local_5e0;
+  undefined4 local_5d8;
+  undefined4 uStack_5d4;
+  undefined8 uStack_5d0;
+  undefined8 local_5c8;
+  undefined8 uStack_5c0;
+  undefined4 local_5b8;
+  undefined4 uStack_5b4;
+  undefined4 uStack_5b0;
+  undefined4 uStack_5ac;
+  undefined4 uStack_5a8;
+  undefined4 uStack_5a4;
+  undefined8 *local_5a0;
+  undefined8 uStack_598;
+  undefined8 uStack_590;
+  undefined8 uStack_588;
+  undefined8 uStack_580;
+  undefined8 local_578;
+  undefined8 uStack_570;
+  undefined8 local_568;
+  undefined8 uStack_560;
+  undefined8 local_558;
+  undefined8 uStack_550;
+  undefined8 local_548;
+  undefined8 uStack_540;
+  undefined8 local_538;
+  undefined8 uStack_530;
+  char local_502;
+  undefined8 local_500;
+  undefined8 local_4b8;
+  longlong local_248;
+  undefined8 local_240;
+  undefined8 local_238;
+  longlong local_230;
+  undefined8 local_228;
+  undefined8 uStack_220;
+  undefined8 local_208;
+  undefined1 *puStack_200;
+  undefined8 local_1f8;
+  undefined8 uStack_1f0;
+  undefined8 local_1e8;
+  undefined8 uStack_1e0;
+  undefined8 local_1d8;
+  undefined8 *puStack_1d0;
+  undefined8 local_1c8;
+  undefined8 uStack_1c0;
+  char local_12a;
+  undefined8 *local_70;
+  uint local_5c;
+  longlong local_58;
+  undefined1 local_4b;
+  undefined1 local_4a;
+  undefined1 local_49;
+  undefined8 local_48;
+  
+  local_48 = 0xfffffffffffffffe;
+  rhapsody::raw::texture::TextureDesc::extent_2d();
+  rhapsody::raw::texture::TextureDesc::extent_2d();
+  rhapsody::raw::texture::TextureDesc::new_2d();
+  local_b28 = local_1f8;
+  uStack_b20 = uStack_1f0;
+  local_b38 = (undefined1 *)local_208;
+  uStack_b30 = puStack_200;
+  rhapsody::rg::resource::impl$4::from();
+  local_638 = 0x42abfc89;
+  uStack_634 = 1;
+  uStack_630 = 0x11;
+  uStack_62c = 0;
+  rhapsody::rg::graph::RenderGraph::create_raw_resource();
+  local_bd8 = local_208;
+  uStack_bd0 = puStack_200;
+  local_bc8 = local_1f8;
+  uStack_bc0 = uStack_1f0;
+  rhapsody::raw::texture::TextureDesc::extent_2d();
+  rhapsody::raw::texture::TextureDesc::new_2d();
+  local_b28 = local_1f8;
+  uStack_b20 = uStack_1f0;
+  local_b38 = (undefined1 *)local_208;
+  uStack_b30 = puStack_200;
+  rhapsody::rg::resource::impl$4::from();
+  local_638 = 0x42abfc9a;
+  uStack_634 = 1;
+  uStack_630 = 0xd;
+  uStack_62c = 0;
+  rhapsody::rg::graph::RenderGraph::create_raw_resource();
+  local_c44 = local_208;
+  uStack_c3c = puStack_200;
+  local_c34 = local_1f8;
+  uStack_c2c = uStack_1f0;
+  local_70 = (undefined8 *)(in_R8 + 4);
+  rhapsody::raw::texture::TextureDesc::extent_2d();
+  rhapsody::raw::texture::TextureDesc::new_2d();
+  rhapsody::raw::texture::TextureDesc::sampled_with_different_format();
+  local_b28 = local_1f8;
+  uStack_b20 = uStack_1f0;
+  local_b38 = (undefined1 *)local_208;
+  uStack_b30 = puStack_200;
+  rhapsody::rg::resource::impl$4::from();
+  local_638 = 0x42abfca7;
+  uStack_634 = 1;
+  uStack_630 = 0x15;
+  uStack_62c = 0;
+  rhapsody::rg::graph::RenderGraph::create_raw_resource();
+  local_c68 = local_208;
+  uStack_c60 = puStack_200;
+  local_c58 = local_1f8;
+  uStack_c50 = uStack_1f0;
+  rhapsody::raw::buffer::BufferDesc::new_gpu_only();
+  local_b38 = (undefined1 *)local_208;
+  uStack_b30 = puStack_200;
+  rhapsody::rg::resource::impl$5::from();
+  local_638 = 0x42abfcbc;
+  uStack_634 = 1;
+  uStack_630 = 0x15;
+  uStack_62c = 0;
+  rhapsody::rg::graph::RenderGraph::create_raw_resource();
+  local_228 = local_208;
+  uStack_220 = puStack_200;
+  rhapsody::raw::buffer::BufferDesc::new_gpu_only();
+  local_b38 = (undefined1 *)local_208;
+  uStack_b30 = puStack_200;
+  rhapsody::rg::resource::impl$5::from();
+  local_638 = 0x42abfcd1;
+  uStack_634 = 1;
+  uStack_630 = 0x13;
+  uStack_62c = 0;
+  rhapsody::rg::graph::RenderGraph::create_raw_resource();
+  local_748 = local_208;
+  uStack_740 = puStack_200;
+  rg_buffer_copy_from_slice<u32>();
+  rg_buffer_copy_from_slice<u32>();
+  rhapsody::raw::texture::TextureDesc::extent_2d();
+  rhapsody::raw::buffer::BufferDesc::new_gpu_only();
+  local_b38 = (undefined1 *)local_208;
+  uStack_b30 = puStack_200;
+  rhapsody::rg::resource::impl$5::from();
+  local_638 = 0x42abfcf4;
+  uStack_634 = 1;
+  uStack_630 = 0x12;
+  uStack_62c = 0;
+  rhapsody::rg::graph::RenderGraph::create_raw_resource();
+  local_b88 = local_208;
+  uStack_b80 = puStack_200;
+  rhapsody::raw::buffer::BufferDesc::new_gpu_only();
+  local_b38 = (undefined1 *)local_208;
+  uStack_b30 = puStack_200;
+  rhapsody::rg::resource::impl$5::from();
+  local_638 = 0x42abfd06;
+  uStack_634 = 1;
+  uStack_630 = 0x11;
+  uStack_62c = 0;
+  rhapsody::rg::graph::RenderGraph::create_raw_resource();
+  local_c88 = local_208;
+  uStack_c80 = puStack_200;
+  local_240 = extraout_RAX;
+  rhapsody::raw::texture::TextureDesc::new_2d();
+  rhapsody::raw::texture::TextureDesc::sampled();
+  rhapsody::raw::texture::TextureDesc::color_attachment();
+  rhapsody::rg::temporal::impl$20::
+  get_or_create_temporal_pair<country_core::render::pass_builder::pass_resources::PassResources,ref_<str_>_>
+            ();
+  if (local_638 == 1) {
+    local_b38 = (undefined1 *)CONCAT44(uStack_62c,uStack_630);
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+  local_cb8 = CONCAT44(uStack_630,uStack_634);
+  uStack_cb0 = CONCAT44(uStack_628,uStack_62c);
+  local_5c = (uint)(byte)uStack_5ec;
+  local_c98 = local_614;
+  local_cc8 = uStack_5f0;
+  local_b38 = (undefined1 *)local_cb8;
+  uStack_b30 = uStack_cb0;
+  rhapsody::raw::texture::TextureDesc::extent_2d();
+  local_638 = 0;
+  uStack_630 = (undefined4)in_R8;
+  uStack_62c = (undefined4)((ulonglong)in_R8 >> 0x20);
+  uStack_618 = 1;
+  local_614 = 0x3f800000;
+  uStack_610 = 0x3f800000;
+  uStack_60c = 0x3f800000;
+  uStack_608 = 0x3f800000;
+  uStack_600 = local_bdc;
+  uStack_5f8 = 1;
+  uStack_5f4 = 0;
+  uStack_5f0 = 0;
+  uStack_5ec = 0;
+  uStack_5e8 = 0;
+  local_5e0 = local_c48;
+  local_5d8 = 2;
+  uStack_5d0 = local_c6c;
+  local_5b8 = 1;
+  uStack_5b4 = 0;
+  uStack_5b0 = 0;
+  uStack_5ac = 0;
+  uStack_5a8 = 0;
+  local_5a0 = &local_cb8;
+  local_208 = (undefined8 *)0x0;
+  local_1f8 = 0;
+  local_238 = in_R9;
+  local_230 = in_R8;
+  country_core::render::pass_builder::draw_stream::RasterPass::new_impl();
+  local_49 = 1;
+  uVar6 = 0x4bc362195b80f729;
+  local_58 = in_RDX;
+  bevy_ecs::component::Components::get_resource_id();
+  if (((extraout_RAX_00 != 0) && (uVar6 < *(ulonglong *)(local_58 + 0x218))) &&
+     (uVar6 = *(ulonglong *)(*(longlong *)(local_58 + 0x210) + uVar6 * 8), uVar6 != 0)) {
+    lVar7 = ~uVar6 * 0x60;
+    if (*(longlong *)(*(longlong *)(local_58 + 0x1e0) + 0x20 + lVar7) != 0) {
+      puVar1 = *(ulonglong **)(*(longlong *)(local_58 + 0x1e0) + lVar7 + 0x10);
+      lVar7 = *(longlong *)(in_stack_00000050 + 0x170);
+      local_248 = *(longlong *)(in_stack_00000050 + 0x178) * 0x80 + lVar7;
+      if (in_stack_00000038 == '\0') {
+        local_5c = 0;
+      }
+      local_b68._0_5_ = (uint5)(uint)((float)(int)puVar1[1] / 1e+09 + (float)*puVar1);
+      if (lVar7 != local_248) {
+        do {
+          uVar2 = *(undefined8 *)(lVar7 + 0x50);
+          uVar3 = *(undefined8 *)(lVar7 + 0x58);
+          local_49 = 1;
+          rhapsody::raw::shader::impl$7::default();
+          local_49 = 1;
+          core::ops::function::FnOnce::
+          call_once<std::hash::random::impl_0::new::KEYS::constant_0::closure_env_1,tuple_<enum2_<core::option::Option<ref_mut_<enum2_<core::option::Option<core::cell::Cell<tuple_<u64,u64>_>_>_>_>_>_>_>_>
+                    ();
+          if (extraout_RAX_01 == (longlong *)0x0) {
+            local_49 = 1;
+                    // WARNING: Subroutine does not return
+            std::thread::local::panic_access_error();
+          }
+          local_680 = 0;
+          local_684 = 0x3f800000;
+          local_730 = (undefined1 *)0x1;
+          local_720 = 0;
+          uStack_718 = 4;
+          local_710 = 0;
+          local_6a0 = *extraout_RAX_01;
+          lStack_698 = extraout_RAX_01[1];
+          *extraout_RAX_01 = *extraout_RAX_01 + 1;
+          local_6b0 = 0;
+          uStack_6a8 = 0;
+          local_6c0 = &anon_65ceffb69360efd323e48f4f8756afaa_2_llvm_13316938065337964131;
+          uStack_6b8 = 0;
+          local_6f0 = 0x100000003;
+          uStack_708 = 0;
+          uStack_704 = 0;
+          local_700 = 1;
+          uStack_6fc = 0;
+          local_6f8 = 0;
+          uStack_6f4 = 0;
+          local_49 = 1;
+          uStack_728 = uVar2;
+          local_690 = uVar3;
+          local_688 = extraout_EAX;
+          country_core::render::pass_builder::draw_builder::DrawBuilder::new();
+          local_49 = 1;
+          country_core::render::pass_builder::draw_builder::DrawBuilder::bind_common();
+          if (local_12a != '\b') {
+            country_core::render::pass_builder::uniform_binder::UniformBinder::
+            write_uniform<country_core::render::pass_builder::draw_builder::impl_2::uniform::closure_env_0<bool>,bool>
+                      ();
+          }
+          memcpy(&local_638,&local_208,0xf8);
+          local_bb8 = CONCAT71(local_bb8._1_7_,0x11);
+          local_730 = (undefined1 *)CONCAT44(local_730._4_4_,2);
+          country_core::render::pass_builder::draw_builder::impl$3::
+          bind_texture_to_draw_builder<country_core::resources::texture_presets::TexturePreset>();
+          memcpy(&local_730,&local_638,0xf8);
+          local_208._4_4_ = (undefined4)((ulonglong)in_stack_00000028 >> 0x20);
+          local_638 = 2;
+          country_core::render::pass_builder::draw_builder::impl$3::
+          bind_texture_to_draw_builder<ref_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                    ();
+          memcpy(&local_638,&local_730,0xf8);
+          local_208 = (undefined8 *)CONCAT44(local_208._4_4_,2);
+          country_core::render::pass_builder::draw_builder::impl$3::
+          bind_texture_to_draw_builder<ref_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                    ();
+          memcpy(&local_208,&local_638,0xf8);
+          local_730 = local_ce8;
+          local_638 = 2;
+          country_core::render::pass_builder::draw_builder::impl$3::
+          bind_texture_to_draw_builder<ref_<rhapsody::rg::temporal::ReadOnlyHandle<rhapsody::raw::texture::Texture>_>_>
+                    ();
+          memcpy(&local_e18,&local_208,0xf8);
+          if (local_d3a != '\b') {
+            country_core::render::pass_builder::uniform_binder::UniformBinder::
+            write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<i32>,i32>
+                      ();
+          }
+          memcpy(&local_638,&local_e18,0xf8);
+          local_208 = (undefined8 *)CONCAT44(local_208._4_4_,2);
+          country_core::render::pass_builder::draw_builder::impl$3::
+          bind_texture_to_draw_builder<ref_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                    ();
+          memcpy(&local_208,&local_638,0xf8);
+          local_730 = in_stack_00000040;
+          local_638 = 2;
+          country_core::render::pass_builder::draw_builder::impl$3::
+          bind_texture_to_draw_builder<ref_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                    ();
+          memcpy(&local_638,&local_208,0xf8);
+          local_49 = 1;
+          country_core::render::pass_builder::draw_builder::DrawBuilder::write_rg_storage_buffer();
+          local_49 = 1;
+          country_core::render::pass_builder::draw_builder::DrawBuilder::write_rg_storage_buffer();
+          local_688 = local_688 & 0x9fffffff | 0x40000000;
+          pcVar4 = *(code **)(lVar7 + 0x70);
+          memcpy(&local_638,&local_730,0xf8);
+          local_49 = 1;
+          (*pcVar4)(&local_638,lVar7,local_58);
+          lVar7 = lVar7 + 0x80;
+        } while (lVar7 != local_248);
+      }
+      memcpy(&local_638,&local_b38,1000);
+      local_49 = 0;
+      country_core::render::pass_builder::draw_stream::RasterPass::render();
+      puVar5 = local_70;
+      uStack_628 = (undefined4)local_70[2];
+      uStack_624 = (undefined4)((ulonglong)local_70[2] >> 0x20);
+      uStack_620 = (undefined4)local_70[3];
+      uStack_61c = (undefined4)((ulonglong)local_70[3] >> 0x20);
+      local_638 = (int)*local_70;
+      uStack_634 = (undefined4)((ulonglong)*local_70 >> 0x20);
+      uStack_630 = (undefined4)local_70[1];
+      uStack_62c = (undefined4)((ulonglong)local_70[1] >> 0x20);
+      rhapsody::raw::texture::TextureDesc::half_res();
+      rhapsody::raw::texture::TextureDesc::extent_2d();
+      rhapsody::raw::texture::TextureDesc::new_2d();
+      rhapsody::raw::texture::TextureDesc::sampled_with_different_format();
+      local_b28 = local_720;
+      uStack_b20 = uStack_718;
+      local_b38 = local_730;
+      uStack_b30 = uStack_728;
+      rhapsody::rg::resource::impl$4::from();
+      local_638 = 0x42abfd91;
+      uStack_634 = 1;
+      uStack_630 = 0x17;
+      uStack_62c = 0;
+      rhapsody::rg::graph::RenderGraph::create_raw_resource();
+      local_bfc = local_730;
+      uStack_bf4 = uStack_728;
+      local_bec = local_720;
+      uStack_be4 = uStack_718;
+      uStack_628 = (undefined4)puVar5[2];
+      uStack_624 = (undefined4)((ulonglong)puVar5[2] >> 0x20);
+      uStack_620 = (undefined4)puVar5[3];
+      uStack_61c = (undefined4)((ulonglong)puVar5[3] >> 0x20);
+      local_638 = (int)*puVar5;
+      uStack_634 = (undefined4)((ulonglong)*puVar5 >> 0x20);
+      uStack_630 = (undefined4)puVar5[1];
+      uStack_62c = (undefined4)((ulonglong)puVar5[1] >> 0x20);
+      rhapsody::raw::texture::TextureDesc::half_res();
+      rhapsody::raw::texture::TextureDesc::extent_2d();
+      rhapsody::raw::texture::TextureDesc::new_2d();
+      local_b28 = local_720;
+      uStack_b20 = uStack_718;
+      local_b38 = local_730;
+      uStack_b30 = uStack_728;
+      rhapsody::rg::resource::impl$4::from();
+      local_638 = 0x42abfda8;
+      uStack_634 = 1;
+      uStack_630 = 0xf;
+      uStack_62c = 0;
+      rhapsody::rg::graph::RenderGraph::create_raw_resource();
+      local_c20 = local_730;
+      uStack_c18 = uStack_728;
+      local_c10 = local_720;
+      uStack_c08 = uStack_718;
+      clear_rg_color_image();
+      country_core::render::pass_builder::compute_pass_builder::ComputePass::new<ref_<str_>_>();
+      country_core::render::pass_builder::compute_pass_builder::ComputePass::read_rg_storage_buffer
+                ();
+      country_core::render::pass_builder::compute_pass_builder::ComputePass::read_rg_storage_buffer
+                ();
+      local_b38 = (undefined1 *)CONCAT44(local_b38._4_4_,2);
+      country_core::render::pass_builder::compute_pass_builder::impl$4::
+      bind_texture_to_compute_pass<ref_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                ();
+      memcpy(&local_b38,&local_638,400);
+      local_638 = 2;
+      country_core::render::pass_builder::compute_pass_builder::impl$4::
+      bind_texture_to_compute_pass<ref_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                ();
+      memcpy(&local_638,&local_b38,400);
+      if (local_502 != '\b') {
+        country_core::render::pass_builder::uniform_binder::UniformBinder::
+        write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<i32>,i32>
+                  ();
+      }
+      memcpy(&local_b38,&local_638,400);
+      local_638 = 2;
+      country_core::render::pass_builder::compute_pass_builder::impl$4::
+      bind_texture_to_compute_pass<ref_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                ();
+      memcpy(&local_638,&local_b38,400);
+      local_208 = (undefined8 *)0x579f39ab91a01865;
+      local_b38 = (undefined1 *)CONCAT44(local_b38._4_4_,2);
+      country_core::render::pass_builder::compute_pass_builder::impl$4::
+      bind_texture_to_compute_pass<country_core::resources::texture_presets::TextureFromDisk>();
+      memcpy(&local_b38,&local_638,400);
+      local_730 = local_bdc;
+      local_638 = 2;
+      country_core::render::pass_builder::compute_pass_builder::impl$4::
+      bind_texture_to_compute_pass<ref_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                ();
+      memcpy(&local_208,&local_b38,400);
+      local_b38 = (undefined1 *)CONCAT71(local_b38._1_7_,9);
+      local_638 = 2;
+      country_core::render::pass_builder::compute_pass_builder::impl$4::
+      bind_texture_to_compute_pass<country_core::resources::texture_presets::TexturePreset>();
+      memcpy(&local_638,&local_208,400);
+      local_730 = (undefined1 *)CONCAT71(local_730._1_7_,10);
+      local_b38._0_4_ = 2;
+      country_core::render::pass_builder::compute_pass_builder::impl$4::
+      bind_texture_to_compute_pass<country_core::resources::texture_presets::TexturePreset>();
+      memcpy(&local_b38,&local_638,400);
+      local_208 = (undefined8 *)CONCAT71(local_208._1_7_,8);
+      local_638 = 2;
+      country_core::render::pass_builder::compute_pass_builder::impl$4::
+      bind_texture_to_compute_pass<country_core::resources::texture_presets::TexturePreset>();
+      memcpy(&local_638,&local_b38,400);
+      local_730 = (undefined1 *)0x579f39ab91a01865;
+      local_208 = (undefined8 *)CONCAT44(local_208._4_4_,2);
+      country_core::render::pass_builder::compute_pass_builder::impl$4::
+      bind_texture_to_compute_pass<country_core::resources::texture_presets::TextureFromDisk>();
+      memcpy(&local_208,&local_638,400);
+      country_core::render::pass_builder::bind_resources::impl$0::
+      bind_ray_tracing<country_core::render::pass_builder::compute_pass_builder::ComputePass>();
+      local_b38._0_4_ = 2;
+      local_208 = (undefined8 *)local_c24;
+      country_core::render::pass_builder::compute_pass_builder::impl$4::
+      bind_texture_to_compute_pass<ref_mut_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                ();
+      memcpy(&local_b38,&local_638,400);
+      local_208 = (undefined8 *)local_c00;
+      local_638 = 2;
+      country_core::render::pass_builder::compute_pass_builder::impl$4::
+      bind_texture_to_compute_pass<ref_mut_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                ();
+      memcpy(&local_638,&local_b38,400);
+      country_core::render::pass_builder::compute_pass_builder::ComputePass::write_rg_storage_buffer
+                ();
+      country_core::render::pass_builder::compute_pass_builder::ComputePass::write_rg_storage_buffer
+                ();
+      country_core::render::pass_builder::compute_pass_builder::ComputePass::dispatch_indirect_raw()
+      ;
+      country_core::render::pass_builder::compute_pass_builder::ComputePass::new<ref_<str_>_>();
+      country_core::render::pass_builder::compute_pass_builder::ComputePass::read_rg_storage_buffer
+                ();
+      country_core::render::pass_builder::compute_pass_builder::ComputePass::read_rg_storage_buffer
+                ();
+      local_b38 = (undefined1 *)CONCAT44(local_b38._4_4_,2);
+      country_core::render::pass_builder::compute_pass_builder::impl$4::
+      bind_texture_to_compute_pass<ref_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                ();
+      memcpy(&local_b38,&local_638,400);
+      local_638 = 2;
+      country_core::render::pass_builder::compute_pass_builder::impl$4::
+      bind_texture_to_compute_pass<ref_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                ();
+      memcpy(&local_638,&local_b38,400);
+      if (local_502 != '\b') {
+        country_core::render::pass_builder::uniform_binder::UniformBinder::
+        write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<i32>,i32>
+                  ();
+      }
+      memcpy(&local_b38,&local_638,400);
+      local_638 = 2;
+      country_core::render::pass_builder::compute_pass_builder::impl$4::
+      bind_texture_to_compute_pass<ref_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                ();
+      memcpy(&local_638,&local_b38,400);
+      local_208 = (undefined8 *)0x579f39ab91a01865;
+      local_b38 = (undefined1 *)CONCAT44(local_b38._4_4_,2);
+      country_core::render::pass_builder::compute_pass_builder::impl$4::
+      bind_texture_to_compute_pass<country_core::resources::texture_presets::TextureFromDisk>();
+      memcpy(&local_b38,&local_638,400);
+      local_208 = (undefined8 *)CONCAT71(local_208._1_7_,9);
+      local_638 = 2;
+      country_core::render::pass_builder::compute_pass_builder::impl$4::
+      bind_texture_to_compute_pass<country_core::resources::texture_presets::TexturePreset>();
+      memcpy(&local_638,&local_b38,400);
+      local_730 = (undefined1 *)CONCAT71(local_730._1_7_,10);
+      local_208 = (undefined8 *)CONCAT44(local_208._4_4_,2);
+      country_core::render::pass_builder::compute_pass_builder::impl$4::
+      bind_texture_to_compute_pass<country_core::resources::texture_presets::TexturePreset>();
+      memcpy(&local_208,&local_638,400);
+      local_b38 = (undefined1 *)CONCAT71(local_b38._1_7_,8);
+      local_638 = 2;
+      country_core::render::pass_builder::compute_pass_builder::impl$4::
+      bind_texture_to_compute_pass<country_core::resources::texture_presets::TexturePreset>();
+      memcpy(&local_638,&local_208,400);
+      local_730 = (undefined1 *)0x579f39ab91a01865;
+      local_b38._0_4_ = 2;
+      country_core::render::pass_builder::compute_pass_builder::impl$4::
+      bind_texture_to_compute_pass<country_core::resources::texture_presets::TextureFromDisk>();
+      memcpy(&local_b38,&local_638,400);
+      country_core::render::pass_builder::bind_resources::impl$0::
+      bind_ray_tracing<country_core::render::pass_builder::compute_pass_builder::ComputePass>();
+      local_208 = (undefined8 *)local_c24;
+      local_b38 = (undefined1 *)CONCAT44(local_b38._4_4_,2);
+      country_core::render::pass_builder::compute_pass_builder::impl$4::
+      bind_texture_to_compute_pass<ref_mut_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                ();
+      memcpy(&local_b38,&local_638,400);
+      local_208 = (undefined8 *)local_c00;
+      local_638 = 2;
+      country_core::render::pass_builder::compute_pass_builder::impl$4::
+      bind_texture_to_compute_pass<ref_mut_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                ();
+      memcpy(&local_638,&local_b38,400);
+      country_core::render::pass_builder::compute_pass_builder::ComputePass::dispatch_indirect_raw()
+      ;
+      rhapsody::raw::texture::TextureDesc::extent_2d();
+      rhapsody::raw::texture::TextureDesc::new_2d();
+      rhapsody::raw::texture::TextureDesc::sampled();
+      rhapsody::raw::texture::TextureDesc::storage();
+      rhapsody::rg::temporal::impl$20::
+      get_or_create_temporal_pair<country_core::render::pass_builder::pass_resources::PassResources,ref_<str_>_>
+                ();
+      if (local_638 != 1) {
+        local_af8 = uStack_5f4;
+        uStack_af4 = uStack_5f0;
+        local_d18 = CONCAT44(uStack_630,uStack_634);
+        uStack_d10 = CONCAT44(uStack_628,uStack_62c);
+        local_d08 = CONCAT44(uStack_620,uStack_624);
+        uStack_d00 = CONCAT44(uStack_618,uStack_61c);
+        uStack_afc = uStack_5f8;
+        local_b18 = local_614;
+        uStack_b14 = uStack_610;
+        uStack_b10 = uStack_60c;
+        uStack_b0c = uStack_608;
+        local_cf8 = local_614;
+        local_ba8 = uStack_600;
+        uStack_ba0 = CONCAT44(uStack_5f4,uStack_5f8);
+        local_bb8 = CONCAT44(uStack_60c,uStack_610);
+        uStack_bb0 = CONCAT44(local_604,uStack_608);
+        local_b98 = uStack_5f0;
+        local_b38 = (undefined1 *)local_d18;
+        uStack_b30 = uStack_d10;
+        local_b28 = local_d08;
+        uStack_b20 = uStack_d00;
+        uStack_b04 = uStack_600;
+        rhapsody::raw::texture::TextureDesc::extent_2d();
+        rhapsody::raw::texture::TextureDesc::new_2d();
+        rhapsody::raw::texture::TextureDesc::sampled();
+        rhapsody::raw::texture::TextureDesc::storage();
+        rhapsody::rg::temporal::impl$20::
+        get_or_create_temporal_pair<country_core::render::pass_builder::pass_resources::PassResources,ref_<str_>_>
+                  ();
+        if (local_638 != 1) {
+          local_af8 = uStack_5f4;
+          uStack_af4 = uStack_5f0;
+          local_b38._0_4_ = uStack_634;
+          local_b38._4_4_ = uStack_630;
+          uStack_b60 = CONCAT44(uStack_628,uStack_62c);
+          local_b58 = CONCAT44(uStack_620,uStack_624);
+          uStack_b50 = CONCAT44(uStack_618,uStack_61c);
+          uStack_afc = uStack_5f8;
+          local_b18 = local_614;
+          uStack_b14 = uStack_610;
+          uStack_b10 = uStack_60c;
+          uStack_b0c = uStack_608;
+          local_b48 = local_614;
+          local_e08 = uStack_600;
+          uStack_e00 = CONCAT44(uStack_5f4,uStack_5f8);
+          local_e18 = CONCAT44(uStack_60c,uStack_610);
+          uStack_e10 = CONCAT44(local_604,uStack_608);
+          local_df8 = uStack_5f0;
+          uStack_b30 = uStack_b60;
+          local_b28 = local_b58;
+          uStack_b20 = uStack_b50;
+          local_b68._0_4_ = (int)local_b38;
+          local_b68._4_4_ = local_b38._4_4_;
+          uStack_b04 = uStack_600;
+          country_core::render::pass_builder::compute_pass_builder::ComputePass::new<ref_<str_>_>();
+          local_208 = (undefined8 *)local_c48;
+          local_b38._0_4_ = 2;
+          country_core::render::pass_builder::compute_pass_builder::impl$4::
+          bind_texture_to_compute_pass<ref_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                    ();
+          memcpy(&local_b38,&local_638,400);
+          local_4a = 1;
+          rhapsody::raw::texture::TextureViewDesc::new();
+          local_4a = 1;
+          rhapsody::raw::texture::TextureViewDesc::format();
+          local_4a = 1;
+          rhapsody::raw::texture::TextureViewDesc::usage();
+          local_208 = (undefined8 *)local_c6c;
+          uStack_608 = local_700;
+          local_604 = uStack_6fc;
+          uStack_600._0_4_ = local_6f8;
+          uStack_618 = (undefined4)local_710;
+          local_614 = (undefined4)((ulonglong)local_710 >> 0x20);
+          uStack_610 = uStack_708;
+          uStack_60c = uStack_704;
+          uStack_628 = (undefined4)local_720;
+          uStack_624 = (undefined4)((ulonglong)local_720 >> 0x20);
+          uStack_620 = (undefined4)uStack_718;
+          uStack_61c = (undefined4)((ulonglong)uStack_718 >> 0x20);
+          local_638 = (int)local_730;
+          uStack_634 = (undefined4)((ulonglong)local_730 >> 0x20);
+          uStack_630 = (undefined4)uStack_728;
+          uStack_62c = (undefined4)((ulonglong)uStack_728 >> 0x20);
+          country_core::render::pass_builder::compute_pass_builder::impl$4::
+          bind_texture_to_compute_pass<ref_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                    ();
+          memcpy(&local_638,&local_b38,400);
+          local_208 = (undefined8 *)local_238;
+          local_b38 = (undefined1 *)CONCAT44(local_b38._4_4_,2);
+          country_core::render::pass_builder::compute_pass_builder::impl$4::
+          bind_texture_to_compute_pass<ref_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                    ();
+          memcpy(&local_b38,&local_638,400);
+          local_638 = 2;
+          local_208 = &local_d18;
+          country_core::render::pass_builder::compute_pass_builder::impl$4::
+          bind_texture_to_compute_pass<ref_mut_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                    ();
+          memcpy(&local_638,&local_b38,400);
+          local_1c8 = uStack_598;
+          uStack_1c0 = uStack_590;
+          local_1d8 = CONCAT44(uStack_5a4,uStack_5a8);
+          puStack_1d0 = local_5a0;
+          local_1e8 = CONCAT44(uStack_5b4,local_5b8);
+          uStack_1e0 = CONCAT44(uStack_5ac,uStack_5b0);
+          local_1f8 = local_5c8;
+          uStack_1f0 = uStack_5c0;
+          local_208 = (undefined8 *)CONCAT44(uStack_5d4,local_5d8);
+          puStack_200 = uStack_5d0;
+          local_b28 = CONCAT44(uStack_624,uStack_628);
+          local_b38 = (undefined1 *)CONCAT44(uStack_634,local_638);
+          uStack_b30 = CONCAT44(uStack_62c,uStack_630);
+          local_b08 = uStack_620;
+          uStack_b04._0_4_ = uStack_61c;
+          uStack_b04._4_4_ = uStack_618;
+          uStack_afc = local_614;
+          local_af8 = uStack_610;
+          uStack_af4 = uStack_60c;
+          uStack_b20 = CONCAT44(local_604,uStack_608);
+          local_b18 = (undefined4)uStack_600;
+          uStack_b14 = uStack_600._4_4_;
+          uStack_b10 = uStack_5f8;
+          uStack_b0c = uStack_5f4;
+          local_ac0 = uStack_588;
+          uStack_ab8 = uStack_580;
+          local_ab0 = local_578;
+          uStack_aa8 = uStack_570;
+          local_aa0 = local_568;
+          uStack_a98 = uStack_560;
+          local_a90 = local_558;
+          uStack_a88 = uStack_550;
+          local_a80 = local_548;
+          uStack_a78 = uStack_540;
+          local_a70 = local_538;
+          uStack_a68 = uStack_530;
+          local_ae0 = local_5e0;
+          local_af0 = CONCAT44(uStack_5ec,uStack_5f0);
+          uStack_ae8 = CONCAT44(uStack_5e4,uStack_5e8);
+          local_a58 = local_4b8;
+          local_a60 = local_500;
+          local_ad8 = 1;
+          uVar8 = (undefined4)((ulonglong)local_240 >> 0x20);
+          uStack_acc = 1;
+          uStack_ad4 = (int)local_240;
+          uStack_ad0 = uVar8;
+          rhapsody::rg::pass_builder::PassBuilder::
+          render<country_core::render::pass_builder::pass_resources::PassResources,country_core::render::pass_builder::compute_pass_builder::impl_0::dispatch_impl::closure_env_0>
+                    ();
+          if (local_502 != '\b') {
+            rhapsody::raw::managed::handle::impl$6::drop();
+          }
+          country_core::render::pass_builder::compute_pass_builder::ComputePass::new<ref_<str_>_>();
+          local_208 = (undefined8 *)((ulonglong)local_208 & 0xffffffffffffff00);
+          local_b38 = (undefined1 *)CONCAT44(local_b38._4_4_,2);
+          country_core::render::pass_builder::compute_pass_builder::impl$4::
+          bind_texture_to_compute_pass<country_core::resources::texture_presets::TexturePreset>();
+          memcpy(&local_b38,&local_638,400);
+          local_208 = (undefined8 *)local_c24;
+          local_638 = 2;
+          country_core::render::pass_builder::compute_pass_builder::impl$4::
+          bind_texture_to_compute_pass<ref_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                    ();
+          memcpy(&local_638,&local_b38,400);
+          local_4b = 1;
+          rhapsody::raw::texture::TextureViewDesc::new();
+          local_4b = 1;
+          rhapsody::raw::texture::TextureViewDesc::format();
+          local_4b = 1;
+          rhapsody::raw::texture::TextureViewDesc::usage();
+          local_208 = (undefined8 *)local_c00;
+          local_b08 = local_700;
+          uStack_b04._0_4_ = uStack_6fc;
+          uStack_b04._4_4_ = local_6f8;
+          local_b18 = (undefined4)local_710;
+          uStack_b14 = (undefined4)((ulonglong)local_710 >> 0x20);
+          uStack_b10 = uStack_708;
+          uStack_b0c = uStack_704;
+          local_b28 = local_720;
+          uStack_b20 = uStack_718;
+          local_b38 = local_730;
+          uStack_b30 = uStack_728;
+          country_core::render::pass_builder::compute_pass_builder::impl$4::
+          bind_texture_to_compute_pass<ref_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                    ();
+          memcpy(&local_b38,&local_638,400);
+          local_208 = (undefined8 *)local_238;
+          local_638 = 2;
+          country_core::render::pass_builder::compute_pass_builder::impl$4::
+          bind_texture_to_compute_pass<ref_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                    ();
+          memcpy(&local_638,&local_b38,400);
+          local_208 = (undefined8 *)0x579f39ab91a01865;
+          local_b38._0_4_ = 2;
+          country_core::render::pass_builder::compute_pass_builder::impl$4::
+          bind_texture_to_compute_pass<country_core::resources::texture_presets::TextureFromDisk>();
+          memcpy(&local_b38,&local_638,400);
+          local_638 = 2;
+          country_core::render::pass_builder::compute_pass_builder::impl$4::
+          bind_texture_to_compute_pass<ref_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                    ();
+          memcpy(&local_638,&local_b38,400);
+          local_208 = (undefined8 *)local_bdc;
+          local_b38 = (undefined1 *)CONCAT44(local_b38._4_4_,2);
+          country_core::render::pass_builder::compute_pass_builder::impl$4::
+          bind_texture_to_compute_pass<ref_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                    ();
+          memcpy(&local_b38,&local_638,400);
+          local_208 = (undefined8 *)local_230;
+          local_638 = 2;
+          country_core::render::pass_builder::compute_pass_builder::impl$4::
+          bind_texture_to_compute_pass<ref_mut_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                    ();
+          memcpy(&local_638,&local_b38,400);
+          if (local_502 != '\b') {
+            country_core::render::pass_builder::uniform_binder::UniformBinder::
+            write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<i32>,i32>
+                      ();
+          }
+          memcpy(&local_b38,&local_638,400);
+          local_208 = &local_bb8;
+          local_638 = 2;
+          country_core::render::pass_builder::compute_pass_builder::impl$4::
+          bind_texture_to_compute_pass<ref_<rhapsody::rg::temporal::ReadOnlyHandle<rhapsody::raw::texture::Texture>_>_>
+                    ();
+          memcpy(&local_638,&local_b38,400);
+          local_b38._0_4_ = 2;
+          local_208 = &local_d18;
+          country_core::render::pass_builder::compute_pass_builder::impl$4::
+          bind_texture_to_compute_pass<ref_mut_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                    ();
+          memcpy(&local_b38,&local_638,400);
+          local_208 = &local_e18;
+          local_638 = 2;
+          country_core::render::pass_builder::compute_pass_builder::impl$4::
+          bind_texture_to_compute_pass<ref_<rhapsody::rg::temporal::ReadOnlyHandle<rhapsody::raw::texture::Texture>_>_>
+                    ();
+          memcpy(&local_638,&local_b38,400);
+          local_208 = &local_b68;
+          local_b38._0_4_ = 2;
+          country_core::render::pass_builder::compute_pass_builder::impl$4::
+          bind_texture_to_compute_pass<ref_mut_<rhapsody::rg::resource::Handle<rhapsody::raw::texture::Texture>_>_>
+                    ();
+          memcpy(&local_b38,&local_638,400);
+          local_1c8 = uStack_a98;
+          uStack_1c0 = local_a90;
+          local_1d8 = uStack_aa8;
+          puStack_1d0 = (undefined8 *)local_aa0;
+          local_1e8 = uStack_ab8;
+          uStack_1e0 = local_ab0;
+          local_1f8 = uStack_ac8;
+          uStack_1f0 = local_ac0;
+          local_208 = (undefined8 *)CONCAT44(uStack_ad4,local_ad8);
+          puStack_200 = (undefined1 *)CONCAT44(uStack_acc,uStack_ad0);
+          uStack_628 = (undefined4)local_b28;
+          uStack_624 = (undefined4)((ulonglong)local_b28 >> 0x20);
+          local_638 = (int)local_b38;
+          uStack_634 = local_b38._4_4_;
+          uStack_630 = (undefined4)uStack_b30;
+          uStack_62c = (undefined4)((ulonglong)uStack_b30 >> 0x20);
+          uStack_608 = (undefined4)uStack_b20;
+          local_604 = (undefined4)((ulonglong)uStack_b20 >> 0x20);
+          uStack_600._0_4_ = local_b18;
+          uStack_600._4_4_ = uStack_b14;
+          uStack_5f8 = uStack_b10;
+          uStack_5f4 = uStack_b0c;
+          uStack_620 = local_b08;
+          uStack_61c = (undefined4)uStack_b04;
+          uStack_618 = uStack_b04._4_4_;
+          local_614 = uStack_afc;
+          uStack_610 = local_af8;
+          uStack_60c = uStack_af4;
+          uStack_5c0 = uStack_a88;
+          local_5b8 = (undefined4)local_a80;
+          uStack_5b4 = (undefined4)((ulonglong)local_a80 >> 0x20);
+          uStack_5b0 = (undefined4)uStack_a78;
+          uStack_5ac = (undefined4)((ulonglong)uStack_a78 >> 0x20);
+          uStack_5a8 = (undefined4)local_a70;
+          uStack_5a4 = (undefined4)((ulonglong)local_a70 >> 0x20);
+          local_5a0 = (undefined8 *)uStack_a68;
+          uStack_598 = local_a60;
+          uStack_590 = local_a58;
+          uStack_588 = uStack_a50;
+          uStack_580 = local_a48;
+          local_578 = uStack_a40;
+          uStack_570 = local_a38;
+          local_568 = uStack_a30;
+          local_5e0 = local_ae0;
+          uStack_5f0 = (undefined4)local_af0;
+          uStack_5ec = (undefined4)((ulonglong)local_af0 >> 0x20);
+          uStack_5e8 = (undefined4)uStack_ae8;
+          uStack_5e4 = (undefined4)((ulonglong)uStack_ae8 >> 0x20);
+          local_558 = local_9b8;
+          uStack_560 = local_a00;
+          local_5d8 = 1;
+          uStack_5d0 = (undefined1 *)CONCAT44(1,uVar8);
+          uStack_5d4 = (int)local_240;
+          rhapsody::rg::pass_builder::PassBuilder::
+          render<country_core::render::pass_builder::pass_resources::PassResources,country_core::render::pass_builder::compute_pass_builder::impl_0::dispatch_impl::closure_env_0>
+                    ();
+          if (local_a02 != '\b') {
+            rhapsody::raw::managed::handle::impl$6::drop();
+          }
+          return;
+        }
+        local_b38 = (undefined1 *)CONCAT44(uStack_62c,uStack_630);
+                    // WARNING: Subroutine does not return
+        core::result::unwrap_failed();
+      }
+      local_b38 = (undefined1 *)CONCAT44(uStack_62c,uStack_630);
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  local_49 = 1;
+                    // WARNING: Subroutine does not return
+  core::option::unwrap_failed();
+}
+

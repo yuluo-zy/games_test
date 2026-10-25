@@ -1,0 +1,185 @@
+{
+  "owner": "foundation_paths_language",
+  "baseline": "B",
+  "author_source_claimed": false,
+  "persistent_worker": "foundation-paths-language",
+  "packages": [
+    {
+      "name": "paths",
+      "original_files": [
+        "crates/paths/src/lib.rs"
+      ],
+      "recovered_files": [
+        "reconstruction/shared-foundation/crates/paths/src/lib.rs"
+      ],
+      "functions": [
+        {
+          "name": "paths::config",
+          "section": 1,
+          "va": "0x140b9db30",
+          "size": 46,
+          "module": 637,
+          "recovered_symbol": "paths::config",
+          "mapping": "B LLVM source module + original native disassembly and decompilation"
+        },
+        {
+          "name": "paths::saves",
+          "section": 1,
+          "va": "0x140b9db60",
+          "size": 41,
+          "module": 637,
+          "recovered_symbol": "paths::saves",
+          "mapping": "B LLVM source module + original native disassembly and decompilation"
+        },
+        {
+          "name": "paths::backup_saves",
+          "section": 1,
+          "va": "0x140b9db90",
+          "size": 46,
+          "module": 637,
+          "recovered_symbol": "paths::backup_saves",
+          "mapping": "B LLVM source module + original native disassembly and decompilation"
+        },
+        {
+          "name": "paths::tmp",
+          "section": 1,
+          "va": "0x140b9dbc0",
+          "size": 46,
+          "module": 637,
+          "recovered_symbol": "paths::tmp",
+          "mapping": "B LLVM source module + original native disassembly and decompilation"
+        },
+        {
+          "name": "paths::deleted_saves",
+          "section": 1,
+          "va": "0x140b9dbf0",
+          "size": 46,
+          "module": 637,
+          "recovered_symbol": "paths::deleted_saves",
+          "mapping": "B LLVM source module + original native disassembly and decompilation"
+        },
+        {
+          "name": "paths::installed",
+          "section": 1,
+          "va": "0x140b9dc20",
+          "size": 46,
+          "module": 637,
+          "recovered_symbol": "paths::installed",
+          "mapping": "B LLVM source module + original native disassembly and decompilation"
+        },
+        {
+          "name": "paths::standard_app_root_path",
+          "section": 1,
+          "va": "0x140b9dc50",
+          "size": 46,
+          "module": 637,
+          "recovered_symbol": "paths::standard_app_root_path",
+          "mapping": "B LLVM source module + original native disassembly and decompilation"
+        },
+        {
+          "name": "paths::find_standard_app_root_path",
+          "section": 1,
+          "va": "0x140b9dc80",
+          "size": 642,
+          "module": 637,
+          "recovered_symbol": "paths::find_standard_app_root_path",
+          "mapping": "B LLVM source module + original native disassembly and decompilation"
+        },
+        {
+          "name": "paths::initialize_paths",
+          "section": 1,
+          "va": "0x140b9df10",
+          "size": 3135,
+          "module": 637,
+          "recovered_symbol": "paths::initialize_paths",
+          "mapping": "B LLVM source module + original native disassembly and decompilation"
+        },
+        {
+          "name": "paths::ensure_path<std::path::PathBuf>",
+          "section": 1,
+          "va": "0x14184a0a0",
+          "size": 355,
+          "module": 1834,
+          "recovered_symbol": "paths::ensure_path<std::path::PathBuf>",
+          "mapping": "B LLVM source module + original native disassembly and decompilation"
+        }
+      ],
+      "status": "candidate_validated_partial",
+      "integration": "lang-lib persistence consumer + independent path policy entry; original tiny-glade startup not wired",
+      "gaps": [
+        "Other platform feature branches unknown",
+        "Original Rust ABI and attributes unknown",
+        "Original machine runtime acceptance not performed"
+      ],
+      "verification": "validation.json: check,3 package tests total,strict Clippy,fmt; direct dependencies exact original identities"
+    },
+    {
+      "name": "theme-defs",
+      "original_files": [
+        "crates/theme-defs/src/lib.rs"
+      ],
+      "recovered_files": [
+        "reconstruction/shared-foundation/crates/theme-defs/src/lib.rs"
+      ],
+      "functions": [
+        {
+          "original": "IPI 0x3F73 clone / 0x3F76 eq",
+          "recovered": "EventDataError Clone/PartialEq/Eq derives",
+          "confidence": "observed families; variant names and Display wording inferred"
+        },
+        {
+          "original": "IPI 0x3F78 clone / 0x3F7A eq",
+          "recovered": "ActiveEvent Clone/PartialEq/Eq derives",
+          "confidence": "observed PathBuf and 2 SystemTime fields; semantic names inferred"
+        }
+      ],
+      "synthetic_functions": [
+        "is_active_interval"
+      ],
+      "status": "implemented_candidate_partial",
+      "integration": "typed producer/consumer transport contract; no original plugin replacement yet",
+      "gaps": [
+        "Original field and variant names unknown",
+        "Display wording and unused serde forms unknown",
+        "Original full transport acceptance not performed"
+      ],
+      "verification": "validation.json candidate compilation and interval boundary test; no original machine execution"
+    },
+    {
+      "name": "lang-lib",
+      "original_files": [
+        "crates/lang-lib/src/lib.rs",
+        "crates/lang-lib/src/language_library.rs"
+      ],
+      "recovered_files": [
+        "reconstruction/shared-foundation/crates/lang-lib/src/lib.rs",
+        "reconstruction/shared-foundation/crates/lang-lib/src/language_library.rs"
+      ],
+      "status": "handed_off_to_new_owner",
+      "verified_at_handoff": [
+        "check",
+        "2 unit tests",
+        "strict all-target Clippy",
+        "15 real B locale assets load/hot replacement/persistence probe",
+        "separate TG_DISABLE_LANG_FALLBACK process probe"
+      ],
+      "verification_kind": "candidate and real-input probe, not native oracle",
+      "evidence": "CONTRACTS.md and lang_*.c/module-*.txt",
+      "gaps": [
+        "CSV/difference/dev feature surfaces unknown",
+        "Original ECS/UI initialization not wired",
+        "New owner should publish final acceptance"
+      ]
+    }
+  ],
+  "validation": "validation.json",
+  "contracts": "CONTRACTS.md",
+  "workspace_lock_drift_owner": "parent integration owner",
+  "files_sha256": {
+    "reconstruction\\shared-foundation\\crates\\paths\\Cargo.toml": "d4af8786eb69111197ba4aa28dfd9dcc773c8f04e4f82f2a0f8f4e180c34608a",
+    "reconstruction\\shared-foundation\\crates\\paths\\src\\lib.rs": "e6d4f87783c1b879e52ad0385a4fc48a331871340e77447258b989b169251103",
+    "reconstruction\\shared-foundation\\crates\\theme-defs\\Cargo.toml": "dd32ade32b31f55292787b4647c9ed19aad46db11eca9005a95c59da6fb8f15c",
+    "reconstruction\\shared-foundation\\crates\\theme-defs\\src\\lib.rs": "542b22e4403dfe5b86e86bea1a6f79ed7a4086a7d908188a89d1322c44146216"
+  },
+  "no_shared_tracking_files_edited": true
+}

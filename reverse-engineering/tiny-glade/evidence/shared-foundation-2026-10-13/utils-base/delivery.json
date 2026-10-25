@@ -1,0 +1,1277 @@
+{
+  "schema": "shared-foundation-delivery-v2",
+  "owner": "foundation_utils_base",
+  "date": "2026-10-13",
+  "baseline": "B",
+  "status": "verified_partial",
+  "source_original_claimed": false,
+  "modified_global_progress": false,
+  "original_binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "files": [
+    {
+      "original_file": "crates/utils/src/angle_range.rs",
+      "recovered_file": "reconstruction/shared-foundation/crates/utils/src/angle_range.rs",
+      "sha256": "d24bbecf97ee0b890445dac75c985695ebae074bfc87288f9fee9ff6639cf392",
+      "classification": "private_algorithm",
+      "candidate_functions": [
+        "wrap",
+        "from_min_and_len",
+        "clamp"
+      ],
+      "function_count_is_lexical_not_original_coverage": true,
+      "original_function_evidence": [
+        {
+          "name": "utils::angle_range::AngleRange::clamp::h1e38e505b21716f7",
+          "address": "0x1425f24d0",
+          "size_to_next_symbol": 205,
+          "assembly": "1425f24d0.asm.txt"
+        },
+        {
+          "name": "utils::angle_range::AngleRange::from_min_and_len::h33d2357d24df0270",
+          "address": "0x1425f2460",
+          "size_to_next_symbol": 108,
+          "assembly": "1425f2460.asm.txt"
+        }
+      ],
+      "verification": "50 B native clamp fixtures; compiled tests pass",
+      "status": "verified_partial",
+      "gaps": [
+        "Serde/wrap constructor edge policies outside fixture scope; A/C untested"
+      ]
+    },
+    {
+      "original_file": "crates/utils/src/camera.rs",
+      "recovered_file": "reconstruction/shared-foundation/crates/utils/src/camera.rs",
+      "sha256": "d0997f45be9bfa01027e9d2282ef825d708715a8e6c3261645c0fad91489fcb9",
+      "classification": "private_strategy_with_original_dependency",
+      "candidate_functions": [
+        "calc_matrices",
+        "from_position_rotation",
+        "eye_position",
+        "eye_direction",
+        "eye_right",
+        "aspect_ratio",
+        "xz_projective_rotation",
+        "new",
+        "immediately_set_vertical_fov_degrees"
+      ],
+      "function_count_is_lexical_not_original_coverage": true,
+      "original_function_evidence": [
+        {
+          "name": "utils::camera::CameraMatrices::eye_right::ha9cbece401b86c69",
+          "address": "0x140c96df0",
+          "size_to_next_symbol": 112,
+          "assembly": "140c96df0.asm.txt"
+        },
+        {
+          "name": "utils::camera::CameraMatrices::eye_position::h197cc691c4961e2b",
+          "address": "0x140c96d40",
+          "size_to_next_symbol": 64,
+          "assembly": "140c96d40.asm.txt"
+        },
+        {
+          "name": "utils::camera::CameraMatrices::xz_projective_rotation::h2a492c1381c13566",
+          "address": "0x140c96e70",
+          "size_to_next_symbol": 356,
+          "assembly": "140c96e70.asm.txt"
+        },
+        {
+          "name": "utils::camera::CameraProjectionParams::calc_matrices::ha4168fdbac703f7b",
+          "address": "0x140c97390",
+          "size_to_next_symbol": 236,
+          "assembly": "140c97390.asm.txt"
+        },
+        {
+          "name": "utils::camera::CameraLens::immediately_set_vertical_fov_degrees::hb8b585f91f9a3e21",
+          "address": "0x140c974f0",
+          "size_to_next_symbol": 16,
+          "assembly": "140c974f0.asm.txt"
+        },
+        {
+          "name": "utils::camera::CameraMatrices::eye_direction::hdd8c9098532097c3",
+          "address": "0x140c96d80",
+          "size_to_next_symbol": 112,
+          "assembly": "140c96d80.asm.txt"
+        },
+        {
+          "name": "utils::camera::CameraBodyMatrices::from_position_rotation::h15f3135b9d882184",
+          "address": "0x140c96fe0",
+          "size_to_next_symbol": 937,
+          "assembly": "140c96fe0.asm.txt"
+        },
+        {
+          "name": "utils::camera::CameraMatrices::aspect_ratio::h2280663f762167ae",
+          "address": "0x140c96e60",
+          "size_to_next_symbol": 16,
+          "assembly": "140c96e60.asm.txt"
+        },
+        {
+          "name": "utils::camera::CameraLens::new::hba96194044b772a6",
+          "address": "0x140c97480",
+          "size_to_next_symbol": 101,
+          "assembly": "140c97480.asm.txt"
+        }
+      ],
+      "verification": "146 B xz rotations +80 B projection fixtures; compiled tests pass",
+      "status": "verified_partial",
+      "gaps": [
+        "Lens smoothing/update/input producer and camera resource assembly not recovered; body matrix constructor only static review"
+      ]
+    },
+    {
+      "original_file": "crates/utils/src/circular_f32.rs",
+      "recovered_file": "reconstruction/shared-foundation/crates/utils/src/circular_f32.rs",
+      "sha256": "88e5a2e7901c24c8c2e4364073319abf43e78ef3cb8d9aff891e48d902c04184",
+      "classification": "private_algorithm",
+      "candidate_functions": [
+        "wrap",
+        "new",
+        "set_value",
+        "as_f32",
+        "distance",
+        "lerp"
+      ],
+      "function_count_is_lexical_not_original_coverage": true,
+      "original_function_evidence": [
+        {
+          "name": "utils::circular_f32::CircularF32::new::h4a370bc0f4ecfd83",
+          "address": "0x1416f31d0",
+          "size_to_next_symbol": 62,
+          "assembly": "1416f31d0.asm.txt"
+        },
+        {
+          "name": "utils::circular_f32::CircularF32::set_value::h2a27842468e6d8cd",
+          "address": "0x1416f3180",
+          "size_to_next_symbol": 71,
+          "assembly": "1416f3180.asm.txt"
+        },
+        {
+          "name": "utils::circular_f32::CircularF32::distance::haeb25b59b8695df4",
+          "address": "0x1416f3260",
+          "size_to_next_symbol": 196,
+          "assembly": "1416f3260.asm.txt"
+        },
+        {
+          "name": "utils::circular_f32::CircularF32::as_f32::h4a622c1cdce81d18",
+          "address": "0x1416f3210",
+          "size_to_next_symbol": 66,
+          "assembly": "1416f3210.asm.txt"
+        },
+        {
+          "name": "utils::circular_f32::CircularF32::lerp::h3fb4800358aded15",
+          "address": "0x1416f3330",
+          "size_to_next_symbol": 290,
+          "assembly": "1416f3330.asm.txt"
+        }
+      ],
+      "verification": "50 B native lerp fixtures; compiled tests pass",
+      "status": "verified_partial",
+      "gaps": [
+        "Constructor serde normalization, NaN/tie endpoint policies not exhaustive"
+      ]
+    },
+    {
+      "original_file": "crates/utils/src/comparative_space.rs",
+      "recovered_file": "reconstruction/shared-foundation/crates/utils/src/comparative_space.rs",
+      "sha256": "1e963bba98f35a2f5252d5c69db94ea09c9c8cde6614b26a120d198ca863b0b7",
+      "classification": "private_algorithm",
+      "candidate_functions": [
+        "distance",
+        "project",
+        "project_clamp",
+        "project_unbounded",
+        "subtract",
+        "distance",
+        "project",
+        "project_clamp",
+        "project_unbounded",
+        "subtract"
+      ],
+      "function_count_is_lexical_not_original_coverage": true,
+      "original_function_evidence": [
+        {
+          "name": "_$LT$utils..wall_space..WallSpace$u20$as$u20$utils..comparative_space..ComparativeSpace$GT$::distance::h7b2c52b959561051",
+          "address": "0x140c91df0",
+          "size_to_next_symbol": 80,
+          "assembly": "140c91df0.asm.txt"
+        },
+        {
+          "name": "_$LT$utils..wall_space..WallSpace$u20$as$u20$utils..comparative_space..ComparativeSpace$GT$::project::hb54ceb2dc35b6a0d",
+          "address": "0x140c91e40",
+          "size_to_next_symbol": 108,
+          "assembly": "140c91e40.asm.txt"
+        },
+        {
+          "name": "_$LT$utils..wall_space..WallSpace$u20$as$u20$utils..comparative_space..ComparativeSpace$GT$::project_unbounded::ha90815c3ad318565",
+          "address": "0x140c91f20",
+          "size_to_next_symbol": 64,
+          "assembly": "140c91f20.asm.txt"
+        },
+        {
+          "name": "_$LT$utils..wall_space..WallSpace$u20$as$u20$utils..comparative_space..ComparativeSpace$GT$::project_clamp::h403dbe9f0dcfece2",
+          "address": "0x140c91eb0",
+          "size_to_next_symbol": 106,
+          "assembly": "140c91eb0.asm.txt"
+        },
+        {
+          "name": "_$LT$utils..comparative_space..CircularComparativeSpace$u20$as$u20$utils..comparative_space..ComparativeSpace$GT$::distance::h63c7050070005b2d",
+          "address": "0x142007170",
+          "size_to_next_symbol": 64,
+          "assembly": "142007170.asm.txt"
+        },
+        {
+          "name": "_$LT$utils..wall_space..WallSpace$u20$as$u20$utils..comparative_space..ComparativeSpace$GT$::subtract::hf7a5d0707cc7372d",
+          "address": "0x140c91f60",
+          "size_to_next_symbol": 80,
+          "assembly": "140c91f60.asm.txt"
+        }
+      ],
+      "verification": "Original B static policy review; compiled",
+      "status": "implemented_partial",
+      "gaps": [
+        "Complete consumers and period=0/negative/nonfinite cases lack native differential"
+      ]
+    },
+    {
+      "original_file": "crates/utils/src/easing_functions.rs",
+      "recovered_file": "reconstruction/shared-foundation/crates/utils/src/easing_functions.rs",
+      "sha256": "fb8011ab85c5e50ed82f2178d385cde3b042aac3550c173af77b96e72289298b",
+      "classification": "private_algorithm",
+      "candidate_functions": [
+        "cubic_in_out",
+        "apply"
+      ],
+      "function_count_is_lexical_not_original_coverage": true,
+      "original_function_evidence": [
+        {
+          "name": "utils::easing_functions::EasingFunction::apply::hb692303304673b5b",
+          "address": "0x140c95ef0",
+          "size_to_next_symbol": 737,
+          "assembly": "140c95ef0.asm.txt"
+        },
+        {
+          "name": "utils::easing_functions::cubic_in_out::h9f90081ff645ad35",
+          "address": "0x140c961e0",
+          "size_to_next_symbol": 96,
+          "assembly": "140c961e0.asm.txt"
+        }
+      ],
+      "verification": "119 B native easing fixtures; compiled tests pass",
+      "status": "verified_partial",
+      "gaps": [
+        "Out-of-range/NaN input and Bias constructors not exhaustively compared"
+      ]
+    },
+    {
+      "original_file": "crates/utils/src/file.rs",
+      "recovered_file": "reconstruction/shared-foundation/crates/utils/src/file.rs",
+      "sha256": "1c53d1f379c7368dfbc50b89a9d9149c4d780a32c6fb163977dcfafa3fda44e5",
+      "classification": "original_dependency_wrapper_with_private_policy",
+      "candidate_functions": [
+        "date_time_string_for_filename_at",
+        "date_time_string_for_filename",
+        "generate_backup_file_path_at",
+        "generate_backup_file_path",
+        "copy_file_to_backup"
+      ],
+      "function_count_is_lexical_not_original_coverage": true,
+      "original_function_evidence": [
+        {
+          "name": "utils::file::generate_backup_file_path::hfb5bed1165e208fd",
+          "address": "0x140c968b0",
+          "size_to_next_symbol": 331,
+          "assembly": "140c968b0.asm.txt"
+        },
+        {
+          "name": "utils::file::copy_file_to_backup::hcb9f224743c1f22d",
+          "address": "0x140c96a80",
+          "size_to_next_symbol": 507,
+          "assembly": "140c96a80.asm.txt"
+        },
+        {
+          "name": "utils::file::date_time_string_for_filename::he181c464f5c8002c",
+          "address": "0x140c96690",
+          "size_to_next_symbol": 359,
+          "assembly": "140c96690.asm.txt"
+        }
+      ],
+      "verification": "B static formatting/path/copy review; candidate path test pass",
+      "status": "implemented_partial",
+      "gaps": [
+        "Filesystem failure/result/logging and non-UTF8 paths not native differential"
+      ]
+    },
+    {
+      "original_file": "crates/utils/src/float_grid.rs",
+      "recovered_file": "reconstruction/shared-foundation/crates/utils/src/float_grid.rs",
+      "sha256": "b975bbff901ab153bd20549fe37eed4c9d64b0793987fcd53293c2f05dfbd650",
+      "classification": "private_algorithm_with_storage_adapter",
+      "candidate_functions": [
+        "dimensions",
+        "load_index_unchecked",
+        "bilinear_sample_at_world_xz",
+        "dimensions",
+        "load_index_unchecked"
+      ],
+      "function_count_is_lexical_not_original_coverage": true,
+      "original_function_evidence": [
+        {
+          "name": "_$LT$T$u20$as$u20$utils..float_grid..FloatGridSampler$GT$::bilinear_sample_at_world_xz::h21c466addbd36c5b (.llvm.10815386406131266915)",
+          "address": "0x140257ba0",
+          "size_to_next_symbol": 798,
+          "assembly": "140257ba0.asm.txt"
+        },
+        {
+          "name": "_$LT$T$u20$as$u20$utils..float_grid..FloatGridSampler$GT$::bilinear_sample_at_world_xz::h5f9a59d6ff3084ac",
+          "address": "0x140a14df0",
+          "size_to_next_symbol": 835,
+          "assembly": "140a14df0.asm.txt"
+        },
+        {
+          "name": "_$LT$T$u20$as$u20$utils..float_grid..FloatGridSampler$GT$::bilinear_sample_at_world_xz::h37f26bb52d35e9a5",
+          "address": "0x140a14df0",
+          "size_to_next_symbol": 835,
+          "assembly": "140a14df0.asm.txt"
+        },
+        {
+          "name": "_$LT$T$u20$as$u20$utils..float_grid..FloatGridSampler$GT$::bilinear_sample_at_world_xz::h6ec8cfbf8d357fe5",
+          "address": "0x140a14df0",
+          "size_to_next_symbol": 835,
+          "assembly": "140a14df0.asm.txt"
+        },
+        {
+          "name": "_$LT$T$u20$as$u20$utils..float_grid..FloatGridSampler$GT$::bilinear_sample_at_world_xz::h72e4e1f27b7e5695",
+          "address": "0x140a14df0",
+          "size_to_next_symbol": 835,
+          "assembly": "140a14df0.asm.txt"
+        },
+        {
+          "name": "_$LT$T$u20$as$u20$utils..float_grid..FloatGridSampler$GT$::bilinear_sample_at_world_xz::h054924d541f34fec",
+          "address": "0x140a14df0",
+          "size_to_next_symbol": 835,
+          "assembly": "140a14df0.asm.txt"
+        },
+        {
+          "name": "_$LT$T$u20$as$u20$utils..float_grid..FloatGridSampler$GT$::bilinear_sample_at_world_xz::h461c683309370f25 (.llvm.9386989208921278972)",
+          "address": "0x140257ba0",
+          "size_to_next_symbol": 798,
+          "assembly": "140257ba0.asm.txt"
+        },
+        {
+          "name": "_$LT$T$u20$as$u20$utils..float_grid..FloatGridSampler$GT$::bilinear_sample_at_world_xz::h7b46bd8afae5f9b9",
+          "address": "0x14261f0c0",
+          "size_to_next_symbol": 799,
+          "assembly": "14261f0c0.asm.txt"
+        },
+        {
+          "name": "_$LT$T$u20$as$u20$utils..float_grid..FloatGridSampler$GT$::bilinear_sample_at_world_xz::h40b3724ed41a6401",
+          "address": "0x140a14df0",
+          "size_to_next_symbol": 835,
+          "assembly": "140a14df0.asm.txt"
+        },
+        {
+          "name": "_$LT$T$u20$as$u20$utils..float_grid..FloatGridSampler$GT$::bilinear_sample_at_world_xz::h9ee14f70b38e34f5",
+          "address": "0x140a14df0",
+          "size_to_next_symbol": 835,
+          "assembly": "140a14df0.asm.txt"
+        },
+        {
+          "name": "_$LT$T$u20$as$u20$utils..float_grid..FloatGridSampler$GT$::bilinear_sample_at_world_xz::hdd12a535fe7377c0",
+          "address": "0x140a14df0",
+          "size_to_next_symbol": 835,
+          "assembly": "140a14df0.asm.txt"
+        }
+      ],
+      "verification": "B static two sampler policies; compiled",
+      "status": "implemented_partial",
+      "gaps": [
+        "Fixed/dynamic grid consumer flags, NaN/edge extrapolation not original differential; ByteFloatGrid is explicit adapter"
+      ]
+    },
+    {
+      "original_file": "crates/utils/src/halver.rs",
+      "recovered_file": "reconstruction/shared-foundation/crates/utils/src/halver.rs",
+      "sha256": "10f1569eb954dfece1d7af10a53b01ee896e2e7b11f67072832edbc77ec19e33",
+      "classification": "original_dependency_wrapper",
+      "candidate_functions": [
+        "to_f16",
+        "to_f16",
+        "to_f16",
+        "to_f16",
+        "to_f16",
+        "to_f16",
+        "to_f16"
+      ],
+      "function_count_is_lexical_not_original_coverage": true,
+      "original_function_evidence": [
+        {
+          "name": "_$LT$glam..f32..sse2..vec4..Vec4$u20$as$u20$utils..halver..Halver$GT$::to_f16::hb66f3c2c26d2deba",
+          "address": "0x1420071f0",
+          "size_to_next_symbol": 57,
+          "assembly": "1420071f0.asm.txt"
+        },
+        {
+          "name": "_$LT$f32$u20$as$u20$utils..halver..Halver$GT$::to_f16::h628d79fa31310e7a",
+          "address": "0x1408b9f20",
+          "size_to_next_symbol": 333,
+          "assembly": "1408b9f20.asm.txt"
+        },
+        {
+          "name": "_$LT$$u5b$f32$u3b$$u20$4$u5d$$u20$as$u20$utils..halver..Halver$GT$::to_f16::h16803eaa118aabc6",
+          "address": "0x141940180",
+          "size_to_next_symbol": 47,
+          "assembly": "141940180.asm.txt"
+        },
+        {
+          "name": "_$LT$$u5b$f32$u3b$$u20$3$u5d$$u20$as$u20$utils..halver..Halver$GT$::to_f16::ha8b503566bb8cdf3",
+          "address": "0x141940140",
+          "size_to_next_symbol": 63,
+          "assembly": "141940140.asm.txt"
+        },
+        {
+          "name": "_$LT$glam..f32..vec3..Vec3$u20$as$u20$utils..halver..Halver$GT$::to_f16::h51c93e75a0ff6032",
+          "address": "0x140c8ffb0",
+          "size_to_next_symbol": 86,
+          "assembly": "140c8ffb0.asm.txt"
+        },
+        {
+          "name": "_$LT$glam..f32..sse2..quat..Quat$u20$as$u20$utils..halver..Halver$GT$::to_f16::h7d373b4258af3426",
+          "address": "0x1420071b0",
+          "size_to_next_symbol": 57,
+          "assembly": "1420071b0.asm.txt"
+        }
+      ],
+      "verification": "Uses original half2.4.1 f16 conversion and glam0.29.3 arrays; compiled",
+      "status": "implemented_partial",
+      "gaps": [
+        "Generic arrays/Vec2 are safe adapters; original all-instance producer graph unverified"
+      ]
+    },
+    {
+      "original_file": "crates/utils/src/index_condenser.rs",
+      "recovered_file": "reconstruction/shared-foundation/crates/utils/src/index_condenser.rs",
+      "sha256": "6f9a86ee03f79b7448a2337542526e6199fa88f78a792b2e6a5994c73168f858",
+      "classification": "private_algorithm_using_std_containers",
+      "candidate_functions": [
+        "last_known_index",
+        "default",
+        "insert",
+        "keys",
+        "remove",
+        "resolve",
+        "get",
+        "clear"
+      ],
+      "function_count_is_lexical_not_original_coverage": true,
+      "original_function_evidence": [
+        {
+          "name": "utils::index_condenser::IndexCondenser$LT$K$GT$::remove::h5522bb7ae0853256",
+          "address": "0x140a19f50",
+          "size_to_next_symbol": 561,
+          "assembly": "140a19f50.asm.txt"
+        }
+      ],
+      "verification": "B remove static;72 original get inline-prefix cases exact; Cell cache/getter and clear statically bound to original PDB consumer; candidate reset tests pass",
+      "status": "implemented_partial",
+      "gaps": [
+        "Insert/default producer key policy and full GPUWorld/startup consumer integration not established; clear/getter no independent original entry differential"
+      ]
+    },
+    {
+      "original_file": "crates/utils/src/local_time.rs",
+      "recovered_file": "reconstruction/shared-foundation/crates/utils/src/local_time.rs",
+      "sha256": "e7987286ead98c76c8fbfad5f527f7c8d5e1ef6666a5e4cf0933c05541748f00",
+      "classification": "original_dependency_wrapper_with_private_cache_policy",
+      "candidate_functions": [
+        "init_local_time",
+        "system_time_to_local_time"
+      ],
+      "function_count_is_lexical_not_original_coverage": true,
+      "original_function_evidence": [
+        {
+          "name": "utils::local_time::init_local_time::h4b7eea84f2234896",
+          "address": "0x140c91d60",
+          "size_to_next_symbol": 46,
+          "assembly": "140c91d60.asm.txt"
+        },
+        {
+          "name": "utils::local_time::system_time_to_local_time::h7f709757ba2dd5da",
+          "address": "0x140c91d90",
+          "size_to_next_symbol": 77,
+          "assembly": "140c91d90.asm.txt"
+        }
+      ],
+      "verification": "B init overwrites cache each call and UTC fallback static review; compiled",
+      "status": "implemented_partial",
+      "gaps": [
+        "Startup call frequency and actual platform offset failure/refresh workflow not native runtime"
+      ]
+    },
+    {
+      "original_file": "crates/utils/src/loop_range.rs",
+      "recovered_file": "reconstruction/shared-foundation/crates/utils/src/loop_range.rs",
+      "sha256": "fdb528c2889f670cc4d28fb4c2321ba9a7c6dd83b082172143c557c6ef9c8891",
+      "classification": "private_algorithm",
+      "candidate_functions": [
+        "raw_idx",
+        "index",
+        "sub",
+        "new_loop",
+        "new_line",
+        "start",
+        "end",
+        "len",
+        "is_empty",
+        "subslice",
+        "next",
+        "size_hint",
+        "next_back"
+      ],
+      "function_count_is_lexical_not_original_coverage": true,
+      "original_function_evidence": [
+        {
+          "name": "utils::loop_range::LoopRange::start::he216921d941dd42d",
+          "address": "0x141200370",
+          "size_to_next_symbol": 16,
+          "assembly": "141200370.asm.txt"
+        },
+        {
+          "name": "utils::loop_range::LoopIdx::raw_idx::h7d0ec4316db23cac",
+          "address": "0x140bece40",
+          "size_to_next_symbol": 16,
+          "assembly": "140bece40.asm.txt"
+        },
+        {
+          "name": "utils::loop_range::LoopRange::len::h037da5194cbf249f",
+          "address": "0x141200350",
+          "size_to_next_symbol": 16,
+          "assembly": "141200350.asm.txt"
+        },
+        {
+          "name": "utils::loop_range::LoopRange::is_empty::h5dcae5a5e640982a",
+          "address": "0x141200360",
+          "size_to_next_symbol": 16,
+          "assembly": "141200360.asm.txt"
+        },
+        {
+          "name": "utils::loop_range::LoopRange::new_loop::hf6cc726d4bea6953",
+          "address": "0x141200390",
+          "size_to_next_symbol": 182,
+          "assembly": "141200390.asm.txt"
+        },
+        {
+          "name": "utils::loop_range::LoopRange::end::hd947be2921f572df",
+          "address": "0x141200380",
+          "size_to_next_symbol": 16,
+          "assembly": "141200380.asm.txt"
+        },
+        {
+          "name": "utils::loop_range::LoopIdx::index::h5da9681895b19d80",
+          "address": "0x141200280",
+          "size_to_next_symbol": 82,
+          "assembly": "141200280.asm.txt"
+        },
+        {
+          "name": "utils::loop_range::LoopRange::subslice::h58705f0479c7b7d3",
+          "address": "0x141200510",
+          "size_to_next_symbol": 118,
+          "assembly": "141200510.asm.txt"
+        },
+        {
+          "name": "utils::loop_range::LoopRange::new_line::h6253d498842a5e06",
+          "address": "0x141200450",
+          "size_to_next_symbol": 181,
+          "assembly": "141200450.asm.txt"
+        }
+      ],
+      "verification": "50 B native LoopIdx fixtures; compiled tests pass",
+      "status": "verified_partial",
+      "gaps": [
+        "Full iterator ABI and exceptional/zero period paths incomplete"
+      ]
+    },
+    {
+      "original_file": "crates/utils/src/name_hash.rs",
+      "recovered_file": "reconstruction/shared-foundation/crates/utils/src/name_hash.rs",
+      "sha256": "4bcb4d8fc8c3a5ef179b669f57d58865caf57394eefd00d880df2a69dfff30c4",
+      "classification": "original_dependency_wrapper",
+      "candidate_functions": [
+        "compute",
+        "debug_name"
+      ],
+      "function_count_is_lexical_not_original_coverage": true,
+      "original_function_evidence": [
+        {
+          "name": "utils::name_hash::NameHash::compute::h6604b19c12e29953",
+          "address": "0x140c9cd80",
+          "size_to_next_symbol": 46,
+          "assembly": "140c9cd80.asm.txt"
+        },
+        {
+          "name": "utils::name_hash::NameHash::debug_name::h9048771f0a8c6cb2",
+          "address": "0x140c9cdb0",
+          "size_to_next_symbol": 16,
+          "assembly": "140c9cdb0.asm.txt"
+        }
+      ],
+      "verification": "Uses xxhash-rust0.8.10 xxh3_64(seed0/default secret); B boundary static review; compiled",
+      "status": "implemented_partial",
+      "gaps": [
+        "Actual asset-name producer and hash consumer integration unverified"
+      ]
+    },
+    {
+      "original_file": "crates/utils/src/natural_cubic.rs",
+      "recovered_file": "reconstruction/shared-foundation/crates/utils/src/natural_cubic.rs",
+      "sha256": "8e5a7d62af2846ff5b875299fe89ae0a4f243a6f5743d48d1af542a48180c268",
+      "classification": "private_algorithm_using_original_glam",
+      "candidate_functions": [
+        "position_at_local_t",
+        "tangent_at_local_t",
+        "position_at_local_t",
+        "tangent_at_local_t",
+        "knots",
+        "second_derivatives",
+        "tridiagonal",
+        "periodic_second_derivatives",
+        "coefficients",
+        "from_control_points_with_tangents",
+        "from_periodic_loop",
+        "from_control_points_with_tangents",
+        "segment_at_t",
+        "position_at_t",
+        "tangent_at_t",
+        "to_owned"
+      ],
+      "function_count_is_lexical_not_original_coverage": true,
+      "original_function_evidence": [
+        {
+          "name": "utils::natural_cubic::Spline2D::from_control_points_with_tangents::h8ff9c8fab7ec82bb",
+          "address": "0x140c926b0",
+          "size_to_next_symbol": 2407,
+          "assembly": "140c926b0.asm.txt"
+        },
+        {
+          "name": "utils::natural_cubic::Spline2D::from_periodic_loop::h2215646c48812760",
+          "address": "0x140c930f0",
+          "size_to_next_symbol": 1983,
+          "assembly": "140c930f0.asm.txt"
+        },
+        {
+          "name": "utils::natural_cubic::Spline3D::from_control_points_with_tangents::h4f96a7d574b7be56",
+          "address": "0x140c93970",
+          "size_to_next_symbol": 3142,
+          "assembly": "140c93970.asm.txt"
+        },
+        {
+          "name": "utils::natural_cubic::SplineSegment2D::position_at_local_t::he9e0d14242507778",
+          "address": "0x140c92610",
+          "size_to_next_symbol": 80,
+          "assembly": "140c92610.asm.txt"
+        },
+        {
+          "name": "utils::natural_cubic::Spline3D::tangent_at_t::h5aeef5094617714b",
+          "address": "0x140c94800",
+          "size_to_next_symbol": 311,
+          "assembly": "140c94800.asm.txt"
+        },
+        {
+          "name": "utils::natural_cubic::Spline3D::position_at_t::h7ec0ddb3ddad631c",
+          "address": "0x140c946a0",
+          "size_to_next_symbol": 340,
+          "assembly": "140c946a0.asm.txt"
+        },
+        {
+          "name": "utils::natural_cubic::SplineSegment2D::tangent_at_local_t::h8fafdc5f1299a652",
+          "address": "0x140c92660",
+          "size_to_next_symbol": 80,
+          "assembly": "140c92660.asm.txt"
+        },
+        {
+          "name": "utils::natural_cubic::Spline3D::to_owned::hef13392e53373cba",
+          "address": "0x140c94940",
+          "size_to_next_symbol": 203,
+          "assembly": "140c94940.asm.txt"
+        }
+      ],
+      "verification": "44 B constructors;120 B position +120 B tangent outputs; compiled comparisons pass",
+      "status": "verified_partial",
+      "gaps": [
+        "Repeated/degenerate/nonfinite/too-few controls and full periodic boundary stress untested; A/C untested"
+      ]
+    },
+    {
+      "original_file": "crates/utils/src/rdp.rs",
+      "recovered_file": "reconstruction/shared-foundation/crates/utils/src/rdp.rs",
+      "sha256": "3734f2f03262624dece0620314d2e5aa8d3fb608d8fdd24e2eebb030418c51b1",
+      "classification": "private_algorithm_using_original_glam",
+      "candidate_functions": [
+        "as_vec3",
+        "as_vec3",
+        "as_vec3",
+        "new_with_opts"
+      ],
+      "function_count_is_lexical_not_original_coverage": true,
+      "original_function_evidence": [
+        {
+          "name": "utils::rdp::Rdp$LT$T$GT$::new_with_opts::hc10fe7c6319b6f02",
+          "address": "0x141fe0b90",
+          "size_to_next_symbol": 2403,
+          "assembly": "141fe0b90.asm.txt"
+        }
+      ],
+      "verification": "108 B original new_with_opts indices exactly match; compiled comparisons pass",
+      "status": "implemented_partial",
+      "gaps": [
+        "Vec2 adapter not native differential; nonfinite/negative epsilon/extreme magnitudes/duplicate control inputs untested"
+      ]
+    },
+    {
+      "original_file": "crates/utils/src/rgb9e5.rs",
+      "recovered_file": "reconstruction/shared-foundation/crates/utils/src/rgb9e5.rs",
+      "sha256": "06063e7fbd43eaf38c5695ff85b1e9a4f87be273ebef060af3b7da8fcbc0b1af",
+      "classification": "private_packing_policy",
+      "candidate_functions": [
+        "sse_max",
+        "sse_min",
+        "pack_rgb9e5"
+      ],
+      "function_count_is_lexical_not_original_coverage": true,
+      "original_function_evidence": [
+        {
+          "name": "utils::rgb9e5::pack_rgb9e5::h1919f53c9d068e05",
+          "address": "0x1417c66b0",
+          "size_to_next_symbol": 176,
+          "assembly": "1417c66b0.asm.txt"
+        }
+      ],
+      "verification": "54 B native packing fixtures; compiled tests pass",
+      "status": "verified_partial",
+      "gaps": [
+        "NaN/infinity/signed-zero and complete serialized field consumers not exhaustive"
+      ]
+    },
+    {
+      "original_file": "crates/utils/src/rng.rs",
+      "recovered_file": "reconstruction/shared-foundation/crates/utils/src/rng.rs",
+      "sha256": "07ac85d69572d5257812dabc93db19a90232c08df12d4c5b8b489ac3171ca08e",
+      "classification": "private_seed_transform_with_original_dependency_producer",
+      "candidate_functions": [
+        "init_rng_u64",
+        "init_rng",
+        "rng_from_seed_u64"
+      ],
+      "function_count_is_lexical_not_original_coverage": true,
+      "original_function_evidence": [
+        {
+          "name": "utils::rng::init_rng_u64::haf5ce7081dff94f8",
+          "address": "0x140c96270",
+          "size_to_next_symbol": 1056,
+          "assembly": "140c96270.asm.txt"
+        },
+        {
+          "name": "utils::rng::init_rng::h2380124e07933713",
+          "address": "0x140c96240",
+          "size_to_next_symbol": 48,
+          "assembly": "140c96240.asm.txt"
+        }
+      ],
+      "verification": "44 B transformed states exact; typed producer calls original fastrand1.8.0 with_seed",
+      "status": "implemented_partial",
+      "gaps": [
+        "Native typed ABI not claimed; downstream generation distributions/shuffle consumers remain external library"
+      ]
+    },
+    {
+      "original_file": "crates/utils/src/selective_deserialize.rs",
+      "recovered_file": "reconstruction/shared-foundation/crates/utils/src/selective_deserialize.rs",
+      "sha256": "f91c7e8beb8f02d01c02f6b24f18ae0c8ccb5a1bac718acce039bfba98beddbb",
+      "classification": "private_serde_visitor_strategy_with_original_dependency",
+      "candidate_functions": [
+        "default",
+        "into_inner",
+        "deserialize",
+        "expecting",
+        "visit_map"
+      ],
+      "function_count_is_lexical_not_original_coverage": true,
+      "original_function_evidence": [],
+      "verification": "B History/snapshots field constants and wrapper swallow-error/default static review;12 candidate nested/partial-success JSON cases pass",
+      "status": "implemented_partial",
+      "gaps": [
+        "Actual snapshot payload type and original full visitor runtime differential unresolved; caller must use direct Deserialize, no synthetic EOF gate"
+      ]
+    },
+    {
+      "original_file": "crates/utils/src/subtractive_1d_boolean.rs",
+      "recovered_file": "reconstruction/shared-foundation/crates/utils/src/subtractive_1d_boolean.rs",
+      "sha256": "4565b4529dae9aadef75964b9d2b3fae5e18d7f62321362d757abd418664ac2e",
+      "classification": "private_algorithm_using_std_vec",
+      "candidate_functions": [
+        "new_range",
+        "result",
+        "subtract"
+      ],
+      "function_count_is_lexical_not_original_coverage": true,
+      "original_function_evidence": [
+        {
+          "name": "utils::subtractive_1d_boolean::SubtractiveBoolean1D::new_range::h38f45a92e1741cd8",
+          "address": "0x141fdc2d0",
+          "size_to_next_symbol": 118,
+          "assembly": "141fdc2d0.asm.txt"
+        },
+        {
+          "name": "utils::subtractive_1d_boolean::SubtractiveBoolean1D::result::hd0197dcae2cf048c",
+          "address": "0x140c37760",
+          "size_to_next_symbol": 16,
+          "assembly": "140c37760.asm.txt"
+        },
+        {
+          "name": "utils::subtractive_1d_boolean::SubtractiveBoolean1D::subtract::h9b7301b3325c1f55",
+          "address": "0x141fdc350",
+          "size_to_next_symbol": 817,
+          "assembly": "141fdc350.asm.txt"
+        }
+      ],
+      "verification": "158 B original interval results bitwise exact; compiled comparisons pass",
+      "status": "verified_partial",
+      "gaps": [
+        "Generated old upper_exclusive states, multiple sequential cuts and nonfinite/reversed ranges not exhaustive"
+      ]
+    },
+    {
+      "original_file": "crates/utils/src/swizzlers.rs",
+      "recovered_file": "reconstruction/shared-foundation/crates/utils/src/swizzlers.rs",
+      "sha256": "04924394691bc65e08f23c77532176c99a2febec67a06121a4be2c9fef0f59cf",
+      "classification": "original_dependency_type_adapter",
+      "candidate_functions": [
+        "x0y",
+        "x0y",
+        "xvy",
+        "xvy",
+        "xvz",
+        "xvz",
+        "x0z",
+        "x0z",
+        "x0y",
+        "xvy",
+        "xvz",
+        "x0z",
+        "as_source",
+        "as_vec2",
+        "as_vec2"
+      ],
+      "function_count_is_lexical_not_original_coverage": true,
+      "original_function_evidence": [],
+      "verification": "4 original coordinate interfaces with256 payload-bit cases exact;6 original borrowed pointer/length passthrough cases; compiled",
+      "status": "implemented_partial",
+      "gaps": [
+        "Vec3SliceAs2 original return wrapper/projected axis/element stride/borrowing aliases and actual consumer remain unresolved; safe adapter preserves source storage only"
+      ]
+    },
+    {
+      "original_file": "crates/utils/src/threshold_range.rs",
+      "recovered_file": "reconstruction/shared-foundation/crates/utils/src/threshold_range.rs",
+      "sha256": "5ca1547b7eaf9487552958e30bd58e23cad75c419aadb0df4445b732410d0579",
+      "classification": "private_algorithm",
+      "candidate_functions": [
+        "threshold_range"
+      ],
+      "function_count_is_lexical_not_original_coverage": true,
+      "original_function_evidence": [
+        {
+          "name": "utils::threshold_range::threshold_range::hbf358fb23f7c7319",
+          "address": "0x1411ffbd0",
+          "size_to_next_symbol": 760,
+          "assembly": "1411ffbd0.asm.txt"
+        },
+        {
+          "name": "utils::threshold_range::threshold_range::h4af01b25adab61ab",
+          "address": "0x1411ff790",
+          "size_to_next_symbol": 942,
+          "assembly": "1411ff790.asm.txt"
+        },
+        {
+          "name": "utils::threshold_range::threshold_range::he03025b31b314fc7",
+          "address": "0x1411fff30",
+          "size_to_next_symbol": 847,
+          "assembly": "1411fff30.asm.txt"
+        }
+      ],
+      "verification": "Three B monomorphizations statically reviewed; compiled",
+      "status": "implemented_partial",
+      "gaps": [
+        "NaN singleton high policy and callback retention behavior lack complete original-entry differential"
+      ]
+    },
+    {
+      "original_file": "crates/utils/src/timer.rs",
+      "recovered_file": "reconstruction/shared-foundation/crates/utils/src/timer.rs",
+      "sha256": "6928585c8d83bb88fb5bae8f8b322d6a4cd4bc60a9fea34cc5f1ce54190d90cf",
+      "classification": "private_filter_policy_using_original_libraries",
+      "candidate_functions": [
+        "default",
+        "from_observed_state",
+        "samples",
+        "delta_secs"
+      ],
+      "function_count_is_lexical_not_original_coverage": true,
+      "original_function_evidence": [
+        {
+          "name": "utils::timer::FilteredWallTime::delta_secs::h894dea9d709deba3",
+          "address": "0x141799e70",
+          "size_to_next_symbol": 404,
+          "assembly": "141799e70.asm.txt"
+        }
+      ],
+      "verification": "B init_state warmup1/dt1/60/deque4 restored;140 original delta transitions all bits exact",
+      "status": "verified_partial",
+      "gaps": [
+        "Standalone state/Default expresses original Local values; Bevy SystemParam integration and Time resource production not yet wired"
+      ]
+    },
+    {
+      "original_file": "crates/utils/src/wall_space.rs",
+      "recovered_file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+      "sha256": "3e034065f8b7f7f00a7c7cd9b76f6f0a86ed92be0e957a84725968c7a86a7218",
+      "classification": "private_coordinate_policy_with_original_curve_bridge",
+      "candidate_functions": [
+        "space_length",
+        "distance",
+        "project",
+        "project_clamp",
+        "project_unbounded",
+        "subtract",
+        "length",
+        "point_u",
+        "position_at_u",
+        "tangent_at_u",
+        "approximate_u",
+        "new_unchecked",
+        "with_y_offset",
+        "with_y",
+        "from_curve_internal_coord",
+        "from_world_space",
+        "get_pos_xz",
+        "get_tangent",
+        "to_world_space"
+      ],
+      "function_count_is_lexical_not_original_coverage": true,
+      "original_function_evidence": [
+        {
+          "name": "utils::wall_space::WallSpaceCoord::get_pos_xz::h8fb9935763211cd2",
+          "address": "0x140c923b0",
+          "size_to_next_symbol": 309,
+          "assembly": "140c923b0.asm.txt"
+        },
+        {
+          "name": "utils::wall_space::WallSpace::space_length::h8863a0d2fe8bbbf2",
+          "address": "0x140c91de0",
+          "size_to_next_symbol": 16,
+          "assembly": "140c91de0.asm.txt"
+        },
+        {
+          "name": "utils::wall_space::WallSpaceCoord::to_world_space::h83d891612441f5e5",
+          "address": "0x140c92090",
+          "size_to_next_symbol": 793,
+          "assembly": "140c92090.asm.txt"
+        },
+        {
+          "name": "utils::wall_space::WallSpaceCoord::with_y::h0af639b6442aa6e3",
+          "address": "0x140c925e0",
+          "size_to_next_symbol": 16,
+          "assembly": "140c925e0.asm.txt"
+        },
+        {
+          "name": "utils::wall_space::WallSpaceCoord::from_world_space::h3dd7969c0bf40780",
+          "address": "0x140c91fb0",
+          "size_to_next_symbol": 72,
+          "assembly": "140c91fb0.asm.txt"
+        },
+        {
+          "name": "utils::wall_space::WallSpaceCoord::with_y_offset::hb75ce7f8b3c3d42c",
+          "address": "0x140c925d0",
+          "size_to_next_symbol": 16,
+          "assembly": "140c925d0.asm.txt"
+        },
+        {
+          "name": "utils::wall_space::WallSpaceCoord::from_curve_internal_coord::h268e5b71461535d7",
+          "address": "0x140c92000",
+          "size_to_next_symbol": 138,
+          "assembly": "140c92000.asm.txt"
+        },
+        {
+          "name": "utils::wall_space::WallSpaceCoord::new_unchecked::h76dae8b6ebe6ff7f",
+          "address": "0x14003bb80",
+          "size_to_next_symbol": 16,
+          "assembly": "14003bb80.asm.txt"
+        },
+        {
+          "name": "utils::wall_space::WallSpaceCoord::get_tangent::h651bf111d4d6fc73",
+          "address": "0x140c924f0",
+          "size_to_next_symbol": 223,
+          "assembly": "140c924f0.asm.txt"
+        },
+        {
+          "name": "_$LT$utils..wall_space..WallSpace$u20$as$u20$utils..comparative_space..ComparativeSpace$GT$::distance::h7b2c52b959561051",
+          "address": "0x140c91df0",
+          "size_to_next_symbol": 80,
+          "assembly": "140c91df0.asm.txt"
+        },
+        {
+          "name": "_$LT$utils..wall_space..WallSpace$u20$as$u20$utils..comparative_space..ComparativeSpace$GT$::project::hb54ceb2dc35b6a0d",
+          "address": "0x140c91e40",
+          "size_to_next_symbol": 108,
+          "assembly": "140c91e40.asm.txt"
+        },
+        {
+          "name": "_$LT$utils..wall_space..WallSpace$u20$as$u20$utils..comparative_space..ComparativeSpace$GT$::project_unbounded::ha90815c3ad318565",
+          "address": "0x140c91f20",
+          "size_to_next_symbol": 64,
+          "assembly": "140c91f20.asm.txt"
+        },
+        {
+          "name": "_$LT$utils..wall_space..WallSpace$u20$as$u20$utils..comparative_space..ComparativeSpace$GT$::project_clamp::h403dbe9f0dcfece2",
+          "address": "0x140c91eb0",
+          "size_to_next_symbol": 106,
+          "assembly": "140c91eb0.asm.txt"
+        },
+        {
+          "name": "_$LT$utils..wall_space..WallSpace$u20$as$u20$utils..comparative_space..ComparativeSpace$GT$::subtract::hf7a5d0707cc7372d",
+          "address": "0x140c91f60",
+          "size_to_next_symbol": 80,
+          "assembly": "140c91f60.asm.txt"
+        }
+      ],
+      "verification": "B static methods; compiled; parent-owned Curve2 CurveSampling bridge now exists",
+      "status": "implemented_partial",
+      "gaps": [
+        "Wall consumers, extrapolation/tangent/nearest-u coordinate chain needs original differential"
+      ]
+    }
+  ],
+  "business_difference_repair_records": [
+    {
+      "module": "camera",
+      "rule": "Project normalized camera-right onto XZ; threshold fallback uses view forward; normalize_or(+X), upright basis, original glam Quat::from_mat3",
+      "difference": "Previous atan2/from_rotation_y used different quaternion chart/sign and degenerate fallback",
+      "fix": "Delegate normalized basis conversion to glam0.29.3; use fov.to_radians() matching original coefficient",
+      "recheck": "146 original rotation+80 projection cases pass"
+    },
+    {
+      "module": "natural_cubic",
+      "rule": "Chord-length knots, scalar tridiagonal curvature solve, natural or clamped endpoint derivative, cyclic periodic boundary, polynomial position/tangent",
+      "difference": "Previous candidate only accepted caller coefficients; control-point producer and cyclic closure missing",
+      "fix": "Implement game scalar solve and constructors; preserve knot span difference in diagonal; use original glam only for vectors",
+      "recheck": "44 native constructor coefficients +120 position +120 tangent outputs pass; measured errors in verification.json"
+    },
+    {
+      "module": "timer",
+      "rule": "Original Local starts warmup=1, previous=1/60, deque capacity4 head0 len0",
+      "difference": "Previous only from_observed_state permitted arbitrary external initial state",
+      "fix": "Default now supplies actual original init_state values; retain explicit resumed-state adapter",
+      "recheck": "140 original stateful steps exact returns/previous/warmup/sample bits"
+    },
+    {
+      "module": "selective_deserialize",
+      "rule": "Select History then snapshots; ignored errors retain any completed selected result; missing result defaults",
+      "difference": "Previous generic field adapter had no concrete original nesting; from_slice EOF validation would impose an extra consumer gate",
+      "fix": "Add exact B marker types and composed SaveHistorySnapshots<T>; test direct Deserialize consumer",
+      "recheck": "12 candidate nested/error/duplicate cases pass; original full visitor runtime NOT executed"
+    },
+    {
+      "module": "local_time",
+      "rule": "init_local_time refreshes cache on every invocation",
+      "difference": "Previous comment incorrectly claimed one-time guard",
+      "fix": "Correct contract; preserve refresh behavior; startup frequency left separate",
+      "recheck": "Original0x140c91d60 directly writes global cache without guard"
+    },
+    {
+      "module": "rng",
+      "rule": "Private transform creates initial state; original fastrand1.8.0 with_seed stores that u64 directly",
+      "difference": "Previous comment incorrectly warned that with_seed would transform again",
+      "fix": "Read installed original dependency source; correct comment and provide typed original-library adapter",
+      "recheck": "44 native state fixtures unchanged; RNG generation remains original dependency"
+    },
+    {
+      "module": "swizzlers",
+      "rule": "Vec2 x0y/xvy and Vec3 x0z/xvz keep original lanes; Vec3 xvz replaces middle y with its parameter",
+      "difference": "Previously only free xvy adapter existed; remaining original trait interfaces had no restored business comparison",
+      "fix": "Add original receiver trait names and lane policies with original glam Vec3::new",
+      "recheck": "256 original coordinate cases bitwise match; no synthetic adapters counted as new original interfaces"
+    },
+    {
+      "module": "swizzlers",
+      "rule": "[Vec3] as_vec2 transports original borrowed pointer and length without repacking",
+      "difference": "The common identity native address has141 aliases and a misleading416-byte next-public upper bound; source consumer semantics are not derivable from that body",
+      "fix": "Bind B PDB procedure size4 and restrict Ghidra body; provide safe borrowed transport without unsafe Vec2 slice casting",
+      "recheck": "6 original transport cases; projected consumer type/axis/stride remains an explicit gap"
+    },
+    {
+      "module": "index_condenser",
+      "rule": "Shared Condex borrow refreshes Cell cached index only when fallback finds key; missing key preserves cached value",
+      "difference": "Previous cached_index:u32 forced mutable handle borrow and did not expose original get/last_known_index APIs",
+      "fix": "Use original std Cell<u32>; implement get(&Condex) and last_known_index, route recovered remove through get",
+      "recheck": "72 original inline-prefix cases exact returns/cache; PDB IPI0x74E3/0x74F0 binds original consumers"
+    },
+    {
+      "module": "index_condenser",
+      "rule": "clear empties dense keys and map through original std clear while preserving capacities",
+      "difference": "Previous candidate lacked clear, leaving original reset consumer interface untouched",
+      "fix": "Call Vec::clear and HashMap::clear; old Condex keys fail get after clearing",
+      "recheck": "Original startup PDB IPI0x74EB clear region statically compared; candidate reset/capacity test pass; whole original startup not executed"
+    }
+  ],
+  "verification": {
+    "baseline": "B",
+    "candidate_source_text_claim": false,
+    "commands": [
+      {
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "utils",
+          "--locked",
+          "--offline",
+          "--",
+          "--nocapture",
+          "--test-threads=1"
+        ],
+        "exit_code": 0,
+        "log": "utils-test.log"
+      },
+      {
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "utils",
+          "--locked",
+          "--offline",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0,
+        "log": "utils-clippy.log"
+      },
+      {
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "utils",
+          "--locked",
+          "--offline",
+          "--all-targets",
+          "--message-format=json"
+        ],
+        "exit_code": 0,
+        "log": "selective-artifacts.log"
+      },
+      {
+        "command": "rustc direct-linked exact workspace serde_json/serde/utils rlibs then run validate_selective.exe",
+        "exit_code": 0,
+        "log": "selective-policy.log"
+      }
+    ],
+    "all_passed": true,
+    "whole_utils_test_count": 54,
+    "spline_actual_max_absolute_errors": {
+      "spline2d_max_coefficient_error": 3.5762787e-07,
+      "spline3d_max_coefficient_error": 4.7683716e-07,
+      "spline_max_position_error": 2.861023e-06,
+      "spline_max_tangent_error": 4.7683716e-07,
+      "periodic_max_coefficient_error": 4.7683716e-07
+    },
+    "source_sha256": {
+      "angle_range.rs": "d24bbecf97ee0b890445dac75c985695ebae074bfc87288f9fee9ff6639cf392",
+      "camera.rs": "d0997f45be9bfa01027e9d2282ef825d708715a8e6c3261645c0fad91489fcb9",
+      "circular_f32.rs": "88e5a2e7901c24c8c2e4364073319abf43e78ef3cb8d9aff891e48d902c04184",
+      "comparative_space.rs": "1e963bba98f35a2f5252d5c69db94ea09c9c8cde6614b26a120d198ca863b0b7",
+      "easing_functions.rs": "fb8011ab85c5e50ed82f2178d385cde3b042aac3550c173af77b96e72289298b",
+      "file.rs": "1c53d1f379c7368dfbc50b89a9d9149c4d780a32c6fb163977dcfafa3fda44e5",
+      "float_grid.rs": "b975bbff901ab153bd20549fe37eed4c9d64b0793987fcd53293c2f05dfbd650",
+      "halver.rs": "10f1569eb954dfece1d7af10a53b01ee896e2e7b11f67072832edbc77ec19e33",
+      "index_condenser.rs": "6f9a86ee03f79b7448a2337542526e6199fa88f78a792b2e6a5994c73168f858",
+      "local_time.rs": "e7987286ead98c76c8fbfad5f527f7c8d5e1ef6666a5e4cf0933c05541748f00",
+      "loop_range.rs": "fdb528c2889f670cc4d28fb4c2321ba9a7c6dd83b082172143c557c6ef9c8891",
+      "name_hash.rs": "4bcb4d8fc8c3a5ef179b669f57d58865caf57394eefd00d880df2a69dfff30c4",
+      "natural_cubic.rs": "8e5a7d62af2846ff5b875299fe89ae0a4f243a6f5743d48d1af542a48180c268",
+      "rdp.rs": "3734f2f03262624dece0620314d2e5aa8d3fb608d8fdd24e2eebb030418c51b1",
+      "rgb9e5.rs": "06063e7fbd43eaf38c5695ff85b1e9a4f87be273ebef060af3b7da8fcbc0b1af",
+      "rng.rs": "07ac85d69572d5257812dabc93db19a90232c08df12d4c5b8b489ac3171ca08e",
+      "selective_deserialize.rs": "f91c7e8beb8f02d01c02f6b24f18ae0c8ccb5a1bac718acce039bfba98beddbb",
+      "subtractive_1d_boolean.rs": "4565b4529dae9aadef75964b9d2b3fae5e18d7f62321362d757abd418664ac2e",
+      "swizzlers.rs": "04924394691bc65e08f23c77532176c99a2febec67a06121a4be2c9fef0f59cf",
+      "threshold_range.rs": "5ca1547b7eaf9487552958e30bd58e23cad75c419aadb0df4445b732410d0579",
+      "timer.rs": "6928585c8d83bb88fb5bae8f8b322d6a4cd4bc60a9fea34cc5f1ce54190d90cf",
+      "wall_space.rs": "3e034065f8b7f7f00a7c7cd9b76f6f0a86ed92be0e957a84725968c7a86a7218"
+    },
+    "scope": "utils top-level business helpers; separate geometry/curve owner tests included in crate test count; no full original game runtime",
+    "spline_metric_scope": "Coefficient maximum accumulates across single-thread fixture tests; final maximum 4.7683716e-7 is exact overall, intermediate test-name keys are cumulative upper bounds for that family. Position/tangent maxima are independently exact across 120 queries each."
+  },
+  "native_fixture_cases": {
+    "inherited_six_families": 367,
+    "camera_xz": 146,
+    "camera_projection": 80,
+    "rdp_indices": 108,
+    "spline_constructors": 44,
+    "spline_position_outputs": 120,
+    "spline_tangent_outputs": 120,
+    "timer_transitions": 140,
+    "interval_subtractions": 158,
+    "interface_batch_02_coordinates": 256,
+    "interface_batch_02_borrowed_transport": 6,
+    "interface_batch_02_original_inline_get": 72
+  },
+  "candidate_only_cases": {
+    "selective_nested": 12
+  },
+  "library_boundary_audit": {
+    "reimplemented_external_libraries": [],
+    "original_dependencies_reused": [
+      "glam0.29.3",
+      "fastrand1.8.0",
+      "half2.4.1",
+      "serde1.0.200",
+      "serde_json1.0.85(validation only)",
+      "xxhash-rust0.8.10",
+      "time0.3.36",
+      "std collections/filesystem/locks/format/math",
+      "std::cell::Cell (shared Condex cache)"
+    ],
+    "rdp_ownership": "utils::rdp::Rdp::new_with_opts original private entry0x141fe0b90; callees Vec/iterator/allocation/panic only; no external simplifier restored",
+    "spline_ownership": "utils::natural_cubic original private entries0x140c926b0/0x140c930f0/0x140c93970 -> private scalar0x140c94a10/0x140c95200 and game closures141941180/141941510; bumpalo allocation and std Fn forwarding not reconstructed",
+    "synthetic_validation_tools": [
+      "native_camera.py",
+      "native_spline_rdp.py",
+      "native_small.py",
+      "query_native.py",
+      "embed_spline_rdp.py",
+      "validate_final.py",
+      "validate_selective.rs",
+      "finalize_delivery.py"
+    ],
+    "tools_do_not_count_as_game_code": true,
+    "validation_only_raw_table": "Original HashMap/SipHash/native lookup executes in oracle; valid raw buckets are supplied as fixture storage, not a delivered hash/container algorithm."
+  },
+  "evidence": [
+    "native-query.json",
+    "extras-query.json",
+    "camera-native-fixtures.json",
+    "spline-rdp-native-fixtures.json",
+    "small-native-fixtures.json",
+    "verification.json",
+    "../utils-tabloid/native-manifest.json",
+    "../utils-tabloid/B-symbols.json",
+    "interface-batch-02/interface-state-updates.json",
+    "interface-batch-02/inline-bindings.json",
+    "interface-batch-02/query-bounded.json"
+  ],
+  "full_original_game_runtime": false,
+  "ownership_released_on_final": true,
+  "interface_coverage": "interface-coverage.json"
+}

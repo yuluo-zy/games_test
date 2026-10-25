@@ -1,0 +1,57 @@
+
+void __cdecl
+country_core::resources::active_raster_stroke::ActiveRasterStroke::resample_and_smooth(void)
+
+{
+  longlong lVar1;
+  longlong lVar2;
+  ulonglong uVar3;
+  longlong lVar4;
+  longlong in_RCX;
+  longlong lVar5;
+  longlong lVar6;
+  longlong lVar7;
+  
+  *(undefined8 *)(in_RCX + 0x58) = 0;
+  lVar2 = *(longlong *)(in_RCX + 0x18);
+  uVar3 = *(ulonglong *)(in_RCX + 0x20);
+  if (*(ulonglong *)(in_RCX + 0x48) < uVar3) {
+    alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+    lVar4 = *(longlong *)(in_RCX + 0x58);
+    lVar5 = *(longlong *)(in_RCX + 0x50);
+    if (uVar3 == 1) goto LAB_140868e7c;
+LAB_140868ebd:
+    lVar1 = lVar5 + lVar4 * 0xc;
+    lVar7 = 0xc;
+    lVar6 = 0;
+    do {
+      *(undefined4 *)(lVar1 + -4 + lVar7) = *(undefined4 *)(lVar2 + -4 + lVar7);
+      *(undefined8 *)(lVar1 + -0xc + lVar7) = *(undefined8 *)(lVar2 + -0xc + lVar7);
+      *(undefined8 *)(lVar1 + lVar7) = *(undefined8 *)(lVar2 + lVar7);
+      *(undefined4 *)(lVar1 + 8 + lVar7) = *(undefined4 *)(lVar2 + 8 + lVar7);
+      lVar7 = lVar7 + 0x18;
+      lVar6 = lVar6 + -2;
+    } while (-lVar6 != (uVar3 & 0xfffffffffffffffe));
+    lVar4 = lVar4 - lVar6;
+    lVar6 = -lVar6;
+  }
+  else {
+    lVar4 = 0;
+    if (uVar3 == 0) goto LAB_140868f3c;
+    lVar5 = *(longlong *)(in_RCX + 0x50);
+    if (uVar3 != 1) goto LAB_140868ebd;
+LAB_140868e7c:
+    lVar6 = 0;
+  }
+  if ((uVar3 & 1) != 0) {
+    *(undefined4 *)(lVar5 + 8 + lVar4 * 0xc) = *(undefined4 *)(lVar2 + 8 + lVar6 * 0xc);
+    *(undefined8 *)(lVar5 + lVar4 * 0xc) = *(undefined8 *)(lVar2 + lVar6 * 0xc);
+    lVar4 = lVar4 + 1;
+  }
+LAB_140868f3c:
+  *(longlong *)(in_RCX + 0x58) = lVar4;
+  InProgressRasterStroke::solidify_fluid_into();
+  ::utils::curve::smooth_in_place<glam::f32::vec3::Vec3,utils::curve::UniformCurveSmoother>();
+  return;
+}
+

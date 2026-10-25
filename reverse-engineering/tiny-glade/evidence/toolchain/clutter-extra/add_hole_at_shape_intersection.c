@@ -1,0 +1,48 @@
+
+void __cdecl
+system_clutter::inter_shape_stitches::detect_intra_shape_corners::add_hole_at_shape_intersection
+          (void)
+
+{
+  float fVar1;
+  float fVar2;
+  undefined1 uVar3;
+  undefined4 *in_RCX;
+  longlong in_RDX;
+  float *in_R9;
+  float extraout_XMM0_Da;
+  undefined4 extraout_XMM0_Da_00;
+  float in_XMM1_Da;
+  float fVar4;
+  float fVar5;
+  
+  fVar1 = *in_R9;
+  fVar2 = in_R9[1];
+  ::utils::swizzlers::impl$1::xvy();
+  ::utils::wall_space::WallSpaceCoord::from_world_space();
+  fVar4 = in_XMM1_Da;
+  ::utils::swizzlers::impl$1::xvy();
+  ::utils::wall_space::WallSpaceCoord::from_world_space();
+  country_core::resources::walls::public_wall_state::PublicWallState::wall_space();
+  ::utils::wall_space::impl$1::subtract();
+  fVar4 = fVar4 - in_XMM1_Da;
+  fVar5 = extraout_XMM0_Da;
+  if (extraout_XMM0_Da < 0.0) {
+    fVar5 = extraout_XMM0_Da + *(float *)(in_RDX + 0x30);
+    fVar4 = fVar4 + *(float *)(in_RDX + 0x30);
+  }
+  country_core::resources::walls::public_wall_state::PublicWallState::wall_space();
+  ::utils::wall_space::impl$1::project_clamp();
+  uVar3 = 5;
+  if (0.0 < fVar5) {
+    fVar4 = fVar4 * 0.0 * __real_3f000000;
+    *in_RCX = extraout_XMM0_Da_00;
+    in_RCX[1] = in_XMM1_Da + fVar4;
+    in_RCX[2] = fVar5;
+    in_RCX[3] = fVar2 - fVar1;
+    uVar3 = 1;
+  }
+  *(undefined1 *)(in_RCX + 4) = uVar3;
+  return;
+}
+

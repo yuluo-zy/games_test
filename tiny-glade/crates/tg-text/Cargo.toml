@@ -1,0 +1,41 @@
+[package]
+name = "tg-text"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+description = "Text editing, font roles, glyph atlas and render stream generation"
+readme = "README.md"
+
+[dependencies]
+thiserror.workspace = true
+serde.workspace = true
+ron = { git = "https://github.com/PounceLight/ron", rev = "2787d8c" }
+
+cosmic-text = { version = "=0.11.2", git = "https://github.com/PounceLight/cosmic-text.git", rev = "3da2a14ea3d063875fdc55695431e74405302b0f", default-features = false, features = ["std", "swash"] }
+etagere = "=0.2.10"
+bytemuck = { version = "=1.16.0", features = ["derive"] }
+sys-locale = "=0.3.1"
+unicode-segmentation = "=1.10.1"
+bevy_ecs = { version = "=0.16.0", default-features = false, features = ["std"] }
+
+ash = { version = "=0.38.0", optional = true }
+rhapsody = { path = "../rhapsody", optional = true }
+shader-pipeline = { workspace = true, optional = true }
+
+[features]
+gpu = ["dep:ash", "dep:rhapsody", "dep:shader-pipeline"]
+
+[package.metadata.reconstruction]
+baseline = "B"
+recovered_scope = "font configuration, shape protocol, text editing/layout, glyph atlas/cache and optional independent GPU adapter"
+renderer_recovered = true
+full_original_behavior_accepted = false
+original_source_claimed = false
+
+[[example]]
+name = "text_gpu"
+required-features = ["gpu"]
+
+[lints]
+workspace = true

@@ -1,0 +1,17 @@
+--- a/tiny-glade/crates/country-core/src/resources/events.rs
++++ b/tiny-glade/crates/country-core/src/resources/events.rs
+@@ -60,10 +60,10 @@
+ #[derive(Event, Clone, Copy, Debug, Default)]
+ pub struct LightLanternCmd;
+ 
+-/// 窗灯命令（O：`resources::events::LightWindowCmd`；color_menu 的 EventWriter 面。
+-/// 载荷语义 U）。
+-#[derive(Event, Clone, Copy, Debug, Default)]
+-pub struct LightWindowCmd;
++/// B1407b5980 消费最后一个未读点灯命令的装饰物编号。
++/// 原事件记录的 u32 载荷位于 +8，事件队列的头部与填充不属于业务字段。
++#[derive(Event, Clone, Copy, Debug)]
++pub struct LightWindowCmd(pub u32);
+ 
+ /// 输入记录收尾命令（O：`resources::history::FinishInputRecordingCmd` 族——原
+ /// 模块 `resources::history`；color_menu 的 EventWriter 面。载荷语义 U）。

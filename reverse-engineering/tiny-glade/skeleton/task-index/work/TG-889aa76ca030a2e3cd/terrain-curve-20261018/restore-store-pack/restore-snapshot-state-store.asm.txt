@@ -1,0 +1,71 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140a21023: c6 84 24 47 01 00 00 00     	movb	$0x0, 0x147(%rsp)
+140a2102b: 44 88 a4 24 44 01 00 00     	movb	%r12b, 0x144(%rsp)
+140a21033: 49 8b 46 30                 	movq	0x30(%r14), %rax
+140a21037: 48 89 84 24 28 01 00 00     	movq	%rax, 0x128(%rsp)
+140a2103f: 40 88 b4 24 45 01 00 00     	movb	%sil, 0x145(%rsp)
+140a21047: 44 89 8c 24 30 01 00 00     	movl	%r9d, 0x130(%rsp)
+140a2104f: 44 88 9c 24 34 01 00 00     	movb	%r11b, 0x134(%rsp)
+140a21057: 44 89 d0                    	movl	%r10d, %eax
+140a2105a: c1 e8 10                    	shrl	$0x10, %eax
+140a2105d: 88 84 24 37 01 00 00        	movb	%al, 0x137(%rsp)
+140a21064: 66 44 89 94 24 35 01 00 00  	movw	%r10w, 0x135(%rsp)
+140a2106d: 0f 13 84 24 38 01 00 00     	movlps	%xmm0, 0x138(%rsp)
+140a21075: 44 88 84 24 40 01 00 00     	movb	%r8b, 0x140(%rsp)
+140a2107d: 88 8c 24 41 01 00 00        	movb	%cl, 0x141(%rsp)
+140a21084: 44 89 6c 24 28              	movl	%r13d, 0x28(%rsp)
+140a21089: f3 0f 6f 45 20              	movdqu	0x20(%rbp), %xmm0
+140a2108e: 66 0f 70 c8 44              	pshufd	$0x44, %xmm0, %xmm1     # xmm1 = xmm0[0,1,0,1]
+140a21093: 66 0f ef ce                 	pxor	%xmm6, %xmm1
+140a21097: 66 0f 7f 4c 24 30           	movdqa	%xmm1, 0x30(%rsp)
+140a2109d: 66 0f 70 c8 ee              	pshufd	$0xee, %xmm0, %xmm1     # xmm1 = xmm0[2,3,2,3]
+140a210a2: 66 0f ef cf                 	pxor	%xmm7, %xmm1
+140a210a6: 66 0f 7f 4c 24 40           	movdqa	%xmm1, 0x40(%rsp)
+140a210ac: 66 0f 7f 44 24 50           	movdqa	%xmm0, 0x50(%rsp)
+140a210b2: 48 8d 44 24 60              	leaq	0x60(%rsp), %rax
+140a210b7: 44 0f 29 00                 	movaps	%xmm8, (%rax)
+140a210bb: 48 c7 40 10 00 00 00 00     	movq	$0x0, 0x10(%rax)
+140a210c3: 44 89 ac 24 48 01 00 00     	movl	%r13d, 0x148(%rsp)
+140a210cb: 41 b8 04 00 00 00           	movl	$0x4, %r8d
+140a210d1: 48 8d 4c 24 30              	leaq	0x30(%rsp), %rcx
+140a210d6: 48 8d b4 24 48 01 00 00     	leaq	0x148(%rsp), %rsi
+140a210de: 48 89 f2                    	movq	%rsi, %rdx
+140a210e1: e8 7a 50 6e ff              	callq	0x140106160 <.text+0x105160>
+140a210e6: 4c 8b 4c 24 60              	movq	0x60(%rsp), %r9
+140a210eb: 49 c1 e1 38                 	shlq	$0x38, %r9
+140a210ef: 4c 0b 4c 24 68              	orq	0x68(%rsp), %r9
+140a210f4: 48 8b 4c 24 40              	movq	0x40(%rsp), %rcx
+140a210f9: 48 8b 44 24 48              	movq	0x48(%rsp), %rax
+140a210fe: 4c 31 c8                    	xorq	%r9, %rax
+140a21101: 48 8b 54 24 30              	movq	0x30(%rsp), %rdx
+140a21106: 48 01 ca                    	addq	%rcx, %rdx
+140a21109: 4c 8b 44 24 38              	movq	0x38(%rsp), %r8
+140a2110e: 48 c1 c1 0d                 	rolq	$0xd, %rcx
+140a21112: 49 01 c0                    	addq	%rax, %r8
+140a21115: 48 31 d1                    	xorq	%rdx, %rcx
+140a21118: 48 c1 c0 10                 	rolq	$0x10, %rax
+140a2111c: 4c 31 c0                    	xorq	%r8, %rax
+140a2111f: 48 c1 c2 20                 	rolq	$0x20, %rdx
+140a21123: 49 01 c8                    	addq	%rcx, %r8
+140a21126: 48 01 c2                    	addq	%rax, %rdx
+140a21129: 48 c1 c1 11                 	rolq	$0x11, %rcx
+140a2112d: 4c 31 c1                    	xorq	%r8, %rcx
+140a21130: 48 c1 c0 15                 	rolq	$0x15, %rax
+140a21134: 49 c1 c0 20                 	rolq	$0x20, %r8
+140a21138: 48 31 d0                    	xorq	%rdx, %rax
+140a2113b: 4c 31 ca                    	xorq	%r9, %rdx
+140a2113e: 49 81 f0 ff 00 00 00        	xorq	$0xff, %r8
+140a21145: 48 01 ca                    	addq	%rcx, %rdx
+140a21148: 49 01 c0                    	addq	%rax, %r8
+140a2114b: 48 c1 c1 0d                 	rolq	$0xd, %rcx
+140a2114f: 48 31 d1                    	xorq	%rdx, %rcx
+140a21152: 48 c1 c0 10                 	rolq	$0x10, %rax
+140a21156: 48 c1 c2 20                 	rolq	$0x20, %rdx
+140a2115a: 4c 31 c0                    	xorq	%r8, %rax
+140a2115d: 49 01 c8                    	addq	%rcx, %r8
+140a21160: 48 c1 c1 11                 	rolq	$0x11, %rcx

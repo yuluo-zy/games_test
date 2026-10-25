@@ -1,0 +1,42 @@
+--- a/crates/country-core/src/systems/render_loop/compute_passes/ssgi.rs
++++ b/crates/country-core/src/systems/render_loop/compute_passes/ssgi.rs
+@@ -105,6 +105,15 @@
+             &WriteTextureUnchecked(pair.current),
+             0x32,
+         );
++    // Original packaged SSGI temporal SPV: history_valid==0 takes the
++    // input-only branch; its sole history_tex sample is unreachable.
++    // Keep this exact read binding and synchronization, skipping only the
++    // previous-content requirement while the temporal pair is invalid.
++    let p3 = if !pair.fresh {
++        p3.inactive_texture_contents(binding::HISTORY_TEX)
++    } else {
++        p3
++    };
+     let p3 = dispatch_extent(p3, &temporal_out);
+ 
+     Ssgi {
+@@ -214,6 +223,23 @@
+     }
+ 
+     #[test]
++    fn only_invalid_ssgi_history_skips_previous_contents() {
++        for valid in [false, true] {
++            let (e, out) = run(valid);
++            let pass = &out.passes[2];
++            assert_eq!(e.uniform_u32(pass, binding::HISTORY_VALID), u32::from(valid));
++            assert_eq!(pass.inactive_texture_bindings,
++                if valid { Vec::<u8>::new() } else { vec![1] });
++            // This is the original five-access sequence, including both
++            // writes and the still-declared history read, not a removed slot.
++            assert_eq!(accesses(pass).iter().map(|a| (a.1, a.2)).collect::<Vec<_>>(),
++                [(0x19, 1), (0x19, 1), (0x19, 1), (0x32, 0), (0x32, 0)]);
++            assert!(out.passes[0].inactive_texture_bindings.is_empty());
++            assert!(out.passes[1].inactive_texture_bindings.is_empty());
++        }
++    }
++
++    #[test]
+     #[should_panic(expected = "called `Result::unwrap()` on an `Err` value")]
+     fn temporal_pair_failure_unwraps() {
+         let mut e = env(&[], &[]);

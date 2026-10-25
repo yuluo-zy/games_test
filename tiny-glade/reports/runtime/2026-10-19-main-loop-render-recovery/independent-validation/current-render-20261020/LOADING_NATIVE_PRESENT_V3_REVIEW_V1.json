@@ -1,0 +1,36 @@
+{
+  "reviewer": "/root/render_reviewer",
+  "date": "2026-10-21",
+  "status": "native_success_guard_fix_accepted_loading_wsi_verified_by_root",
+  "scope": "共同production GameFrameDriver的有限loading World→WSI调用+关闭；不扩大为gameplay WSI/scanout/视觉内容正确性。",
+  "inputs": {
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/swapchain.rs": "c21b1c716b90a82479f4a44da6c4066662056f551efbe91106d53682410bb0bc",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/production_renderer.rs": "8224b87cc5723ec2929fd5de0356f1b6f0a32e6533b2a19a7ecf161446b94255",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/tests/original_loading_present.rs": "bb0c80f12e5c7f3cc38f840d3aec0f31a0abbec886f8868f16354d934580e84b",
+    "/private/tmp/tg-paged-loading-wsi-v3-20261021.log": "be5120c7be342b7123685301d0fc929323448aa9e7d48c4e5584a0a0e540b706",
+    "/private/tmp/tg-native-present-count-tests-20261021.log": "646c7044cdb8c743608ef5894c04098d3be8f6676da912333889e465b1735fdb",
+    "/private/tmp/tg-loading-wsi-build-v3-20261021.jsonl": "409ef52f261bcc446fb0f1d830f35cf37f41df090bd55064bdcc21429b5e76ef",
+    "/private/tmp/tg-loading-wsi-build-v3-20261021.log": "febd9dff3d448295739043a76f2a71c304d12b5977bb0ba37f4fe8a72c192d68",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/original_loading_present-26e8598c37c391a5": "18ea560371d085b1e68d130d6f1daf4a1ae13eae012045aed3309186e1f6ebe6"
+  },
+  "previous_finding_resolved": "LOADING_POSTUPDATE_AND_WSI_V2_REVIEW_V1的P2已解决。旧any_presented在可恢复错误上仍保持原语义，另计native Result::is_ok的成功次数；harness改用该计数，不把原flag当严格成功证明。",
+  "source_review": {
+    "swapchain.rs:375..379": "在present_result错误映射之前，对native Ok(false/true)饱和+1；OUT_OF_DATE/FULL_SCREEN_LOST/SURFACE_LOST/DEVICE_LOST不计。旧PresentProgress、fence/timeline、stale/fullscreen/恢复控制流未变。",
+    "swapchain.rs:611..613; production_renderer.rs:802..805": "只读转出当前交换链代计数，无第二成功标志或driver替代。",
+    "original_loading_present.rs:105..109": "3次真实driver.frame?后以nativecount>0验收，shutdown?成功后才打印实值，不默认成功。"
+  },
+  "tests_observed": "原始swapchain过滤运行28测试，28passed/0failed/0ignored；新增反例先全OUT_OF_DATE/FULL_SCREEN_LOST仍legacy flag=true但nativecount0，再SUCCESS/SUBOPTIMAL计1/2，DEVICE_LOST不增加。其它实际回收/错误矩阵未改语义。",
+  "actual_wsi": "root进程exit0；v3原日志明确3production frames、3native SUCCESS/SUBOPTIMAL presents、shutdown完成。build JSON目标original_loading_present与现场binary SHA18ea560371d085b1e68d130d6f1daf4a1ae13eae012045aed3309186e1f6ebe6吻合root提供身份。",
+  "limits": [
+    "native queuePresent成功不证明屏幕扫描输出完成，当前测试未做像素截图对比。",
+    "有限loading fixture不运行gameplay loader，不能说明完整世界、交互、存档重启或长稳通过。",
+    "v2单行PASS仅保作旧assertion历史，不追认其严格native成功证据。"
+  ],
+  "findings": [],
+  "reviewer_execution": {
+    "production_write": false,
+    "cargo": false,
+    "gpu": false,
+    "ui": false
+  }
+}

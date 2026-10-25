@@ -1,0 +1,17 @@
+--- a/tiny-glade/crates/systems/decorator/src/derive_decorator_subtype.rs
++++ b/tiny-glade/crates/systems/decorator/src/derive_decorator_subtype.rs
+@@ -921,7 +921,13 @@
+     }
+ 
+     fn chimney_world(neighbor: Option<DecoratorInfo>) -> (World, WallId, Vec3) {
+-        let (walls, wall_id) = public_wall(false);
++        let (mut walls, wall_id) = public_wall(false);
++        // 发布后先完成真实路径与 freeform 高度生命周期，再读取 required max_y。
++        let paths = PathRasters512::from_encoded(
++            std::array::from_fn(|_| Arc::<[u8]>::from(vec![0; 512 * 512])),
++            false,
++        ).unwrap();
++        walls.get_mut(wall_id).unwrap().prepare_paths(&paths).unwrap();
+         let maximum = walls.get(wall_id).unwrap().max_y();
+         let point = WallSpaceCoord::new_unchecked(0.0, maximum).to_world_space(walls.get(wall_id).unwrap().simplified_curve_2d());
+         let mut storage = DecoratorStorage::default();

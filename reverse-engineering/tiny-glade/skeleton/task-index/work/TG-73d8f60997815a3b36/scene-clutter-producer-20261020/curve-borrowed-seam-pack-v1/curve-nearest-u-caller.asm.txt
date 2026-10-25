@@ -1,0 +1,57 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+14126a040: 56                          	pushq	%rsi
+14126a041: 57                          	pushq	%rdi
+14126a042: 48 83 ec 28                 	subq	$0x28, %rsp
+14126a046: 4c 89 ce                    	movq	%r9, %rsi
+14126a049: 48 83 79 10 01              	cmpq	$0x1, 0x10(%rcx)
+14126a04e: 76 63                       	jbe	0x14126a0b3 <.text+0x12690b3>
+14126a050: 48 89 cf                    	movq	%rcx, %rdi
+14126a053: e8 58 06 00 00              	callq	0x14126a6b0 <.text+0x12696b0>
+14126a058: 89 c1                       	movl	%eax, %ecx
+14126a05a: 48 8b 57 28                 	movq	0x28(%rdi), %rdx
+14126a05e: 48 39 ca                    	cmpq	%rcx, %rdx
+14126a061: 0f 86 88 00 00 00           	jbe	0x14126a0ef <.text+0x12690ef>
+14126a067: 48 8d 41 01                 	leaq	0x1(%rcx), %rax
+14126a06b: 48 39 d0                    	cmpq	%rdx, %rax
+14126a06e: 0f 83 83 00 00 00           	jae	0x14126a0f7 <.text+0x12690f7>
+14126a074: 48 8b 47 20                 	movq	0x20(%rdi), %rax
+14126a078: f3 0f 10 0d 84 b8 6b 01     	movss	0x16bb884(%rip), %xmm1  # 0x142925904
+14126a080: f3 0f 5c c8                 	subss	%xmm0, %xmm1
+14126a084: f2 0f 10 14 88              	movsd	(%rax,%rcx,4), %xmm2
+14126a089: 0f 14 c8                    	unpcklps	%xmm0, %xmm1            # xmm1 = xmm1[0],xmm0[0],xmm1[1],xmm0[1]
+14126a08c: 0f 59 ca                    	mulps	%xmm2, %xmm1
+14126a08f: f3 0f 16 c1                 	movshdup	%xmm1, %xmm0            # xmm0 = xmm1[1,1,3,3]
+14126a093: f3 0f 58 c1                 	addss	%xmm1, %xmm0
+14126a097: 0f 2e c0                    	ucomiss	%xmm0, %xmm0
+14126a09a: 7a 2b                       	jp	0x14126a0c7 <.text+0x12690c7>
+14126a09c: 66 0f 7e c0                 	movd	%xmm0, %eax
+14126a0a0: 25 ff ff ff 7f              	andl	$0x7fffffff, %eax       # imm = 0x7FFFFFFF
+14126a0a5: 3d 00 00 80 7f              	cmpl	$0x7f800000, %eax       # imm = 0x7F800000
+14126a0aa: 74 2f                       	je	0x14126a0db <.text+0x12690db>
+14126a0ac: 48 83 c4 28                 	addq	$0x28, %rsp
+14126a0b0: 5f                          	popq	%rdi
+14126a0b1: 5e                          	popq	%rsi
+14126a0b2: c3                          	retq
+14126a0b3: 48 8d 0d 4e 86 9b 01        	leaq	0x19b864e(%rip), %rcx   # 0x142c22708
+14126a0ba: ba 29 00 00 00              	movl	$0x29, %edx
+14126a0bf: 49 89 f0                    	movq	%rsi, %r8
+14126a0c2: e8 69 f3 66 01              	callq	0x1428d9430 <.text+0x28d8430>
+14126a0c7: 48 8d 0d 12 96 9b 01        	leaq	0x19b9612(%rip), %rcx   # 0x142c236e0
+14126a0ce: ba 1d 00 00 00              	movl	$0x1d, %edx
+14126a0d3: 49 89 f0                    	movq	%rsi, %r8
+14126a0d6: e8 55 f3 66 01              	callq	0x1428d9430 <.text+0x28d8430>
+14126a0db: 48 8d 0d ae 96 9b 01        	leaq	0x19b96ae(%rip), %rcx   # 0x142c23790
+14126a0e2: ba 22 00 00 00              	movl	$0x22, %edx
+14126a0e7: 49 89 f0                    	movq	%rsi, %r8
+14126a0ea: e8 41 f3 66 01              	callq	0x1428d9430 <.text+0x28d8430>
+14126a0ef: 49 89 f0                    	movq	%rsi, %r8
+14126a0f2: e8 21 f4 66 01              	callq	0x1428d9518 <.text+0x28d8518>
+14126a0f7: 48 89 c1                    	movq	%rax, %rcx
+14126a0fa: 49 89 f0                    	movq	%rsi, %r8
+14126a0fd: e8 16 f4 66 01              	callq	0x1428d9518 <.text+0x28d8518>
+14126a102: cc                          	int3

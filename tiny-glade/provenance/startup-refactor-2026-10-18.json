@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-18",
+  "kind": "engineering_refactor",
+  "authorization": "用户明确优先功能性、正确性、可读性，可偏离逆向设计",
+  "scope": "country-core/src/startup and necessary consumers",
+  "fixes": [
+    "F1 分阶段调度与请求生命周期",
+    "F2 拥有型加载后动作、Arc 信号、重试游标及未知载荷预检",
+    "F3 正确音频参数、主题配置、统一入口与曲库替换",
+    "F4 事务式预制件重载、通知归还与删除消费"
+  ],
+  "dependencies": "复用既有工作区版本；补充 core bevy_app 依赖，将宿主 glam 从开发依赖移到运行依赖",
+  "review": "reports/runtime/2026-10-18-startup-refactor/README.md",
+  "verification": "reports/runtime/2026-10-18-startup-refactor/verification.json",
+  "invalidates_prior_source_validation": [
+    "reports/runtime/2026-10-18-startup-review: defect-reproduction probes do not validate repaired source",
+    "historical native equivalence reports for changed bodies are not acceptance of this engineering implementation"
+  ],
+  "original_behavior_credit": false,
+  "current_source_sha256": {
+    "crates/country-core/src/startup/init_color_library.rs": "8f479f84a3f16bd3e8ac790af830b419808e6915baf3c8fc1de71dbd680afeea",
+    "crates/country-core/src/startup/load_glade_audio.rs": "65317a7fbec863878d30d4c6e4d5b50d2a2e7846ad072890f0130bc9c9b8ec0f",
+    "crates/country-core/src/startup/load_textures.rs": "a76cdba2423ff65cedd36b1d76b879f498314e54dd15563a7935c997f7ba44d6",
+    "crates/country-core/src/startup/load_prefabs.rs": "b800a7c1025c60f50036a90d53665a7d2493ccd43093df7d0b2be0fb05657062",
+    "crates/country-core/src/startup/startup_garden_brush.rs": "06980220fc598eaff4aa3fe60234c99b10f3687b9ed387109b300f118e47e85e",
+    "crates/country-core/src/startup/init_photomode_state.rs": "9ce58aa0560a4810ffc81f8a7437c4f1972f8bef05271b957fe9bf25272195e0",
+    "crates/country-core/src/startup/startup_ivy.rs": "50547d4ac945293cf93f848b45d2d3393a43b8ea2624d78bf0651755a7b17dda",
+    "crates/country-core/src/startup/startup_blit.rs": "f33f775052744dbfd1e4a2af1d556616e57bb6c30e577de1003592fe2212b8f4",
+    "crates/country-core/src/startup/mod.rs": "6163c4e8fd08b4bd2607dd03ebf4b04efa3a8ab7dc19b8316c003b7db6cf032c",
+    "crates/country-core/src/startup/tests.rs": "2bf5d8a1d91f3a76bea38df5576b0af92c76df9249baf37043e537e553df427a",
+    "crates/country-core/src/startup/startup_terrain.rs": "a68c13e626afdf6cf883ace411350492c6df57b43ab9802b4ef57eb4c3fff45c",
+    "crates/country-core/src/startup/run_game.rs": "48e60c9ae2587a6ef6bd62d769843513d0b3064ea9422fe10c3803909ee81044",
+    "crates/country-core/src/startup/startup_session.rs": "494a4e12c85634e329403b0c038e53936a2a5ef4587912e32212a7311e4a3aa9",
+    "crates/country-core/src/startup/load_shaders.rs": "6fa6b8668eca154ddb493a4bdfb6e9045d65d3e92082fe133e4381f3c679f992",
+    "crates/country-core/src/startup/load_glade_tod_and_weather.rs": "6d458366c2ae7d5fa2ff65a751163ea9bb34315a598456199f0f18923c48d9af",
+    "crates/country-core/src/meta_commander.rs": "5ecda2e1925dd8b634c57e91856141b6da7bb19307ec429692b475f10c8889af",
+    "crates/country-core/src/resources/session.rs": "b2bcef4b26957ffec0224e2ec9b01a4f22e9f484d5555174135f40400384c5ea",
+    "crates/country-core/src/systems/save/load_game.rs": "f417b5ca85a384d00342dd0164a750c499155260fce7d2484990a40a3b3ffbdf",
+    "crates/country-core/src/systems/audio/music/load_glade_audio.rs": "0b2ec7416749b4e7d6ddca209f4df3e980d8809a6256e88caa372d6ef48267f3",
+    "crates/country-core/src/systems/audio/music/music_player.rs": "091bc36005e3792405274ebe2ee6444e64dc7f92899d200b17a89e76a32934a1",
+    "crates/country-core/src/systems/audio/music/glade_audio.rs": "68141ffa879833f847ab78e6c53b5c388e062146768e0d228d642a51bc3abf05",
+    "crates/country-core/src/systems/prefab.rs": "b79f363125cbff65ffe2c2a31f6de9ae0d24b57110ffdb6e3167cdf497101abc",
+    "crates/country-core/src/systems/render_loop/draw_passes/deferred_raster.rs": "82978d842cf67bcecc82213f1a501c2eb73ca11d6b7443a1ecec27c3b8b20042",
+    "crates/country-core/src/systems/render_loop/draw_passes/draw_shaders/test_support.rs": "50363763d18ca70e5f734589f04f7c4fa1a8826a8456af8e6a70710dc2469fc0",
+    "Cargo.toml": "cd1a2ee278e61607731f9318e587b59e303e2debed2e233388e8fc4c118a5de9",
+    "Cargo.lock": "c10fecee704ddf9bec867506933a3ed5f6adececc11bfada7d58f3c32b3e40e5",
+    "crates/country-core/Cargo.toml": "aaaf7131989ebbc8a682bc3b5f769535d3f3fb59413836b882339954e2f3ce0d",
+    "crates/tiny-glade/Cargo.toml": "07d28f4a5081c58be9aafd7d6f18856239941a8885a5233595556d2278d6df5e",
+    "crates/country-core/src/resources/stairs/stairs_state.rs": "cdabc2dd52068e7b8c125a35444025b4d29b27b88e8f94c8b676922953d8b3a2"
+  }
+}

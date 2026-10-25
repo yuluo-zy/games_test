@@ -1,0 +1,55 @@
+
+void __cdecl country_core::systems::camera_rig::MainCamera::store_parameters(void)
+
+{
+  uint *in_RCX;
+  longlong in_RDX;
+  uint uVar1;
+  uint uVar2;
+  uint uVar3;
+  uint uVar4;
+  uint uVar5;
+  uint uVar6;
+  
+  uVar1 = (uint)*(undefined8 *)(in_RDX + 0x138);
+  uVar2 = (uint)((ulonglong)*(undefined8 *)(in_RDX + 0x138) >> 0x20);
+  uVar3 = *(uint *)(in_RDX + 0x140);
+  if ((0x7f7fffff < (uVar2 & 0x7fffffff) || 0x7f7fffff < (uVar1 & 0x7fffffff)) ||
+      0x7f7fffff < (uVar3 & 0x7fffffff)) {
+    uVar1 = 0;
+    uVar2 = 0x40a00000;
+    uVar3 = 0;
+    if (*(longlong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E != 0) {
+      toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();
+      ::log::__private_api::impl$2::log();
+    }
+  }
+  uVar4 = *(uint *)(in_RDX + 0x154);
+  if ((0x7f7fffff < (uVar4 & 0x7fffffff)) &&
+     (uVar4 = 0, *(longlong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E != 0)) {
+    toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();
+    ::log::__private_api::impl$2::log();
+  }
+  uVar5 = *(uint *)(in_RDX + 0x150);
+  if ((0x7f7fffff < (uVar5 & 0x7fffffff)) &&
+     (uVar5 = 0, *(longlong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E != 0)) {
+    toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();
+    ::log::__private_api::impl$2::log();
+  }
+  uVar6 = *(uint *)(in_RDX + 400);
+  if ((0x7f7fffff < (uVar6 & 0x7fffffff)) &&
+     (uVar6 = 0, *(longlong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E != 0)) {
+    toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();
+    ::log::__private_api::impl$2::log();
+  }
+  *in_RCX = uVar4;
+  in_RCX[1] = uVar5;
+  *(ulonglong *)(in_RCX + 2) = CONCAT44(uVar2,uVar1);
+  in_RCX[4] = uVar3;
+  in_RCX[5] = 0;
+  in_RCX[6] = uVar6;
+  in_RCX[7] = 0;
+  in_RCX[8] = 0;
+  return;
+}
+

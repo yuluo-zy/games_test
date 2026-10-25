@@ -1,0 +1,142 @@
+{
+  "version": "B",
+  "date": "2026-10-13",
+  "owner": "shader_pipeline",
+  "worker": "shader-pipeline-20261013",
+  "original_package": {
+    "name": "shader-pipeline",
+    "version": "0.1.0",
+    "source": "local/path; public source unknown"
+  },
+  "source_mappings": [
+    {
+      "original_path": "crates/rhapsody/crates/shader-pipeline/src/compiled.rs",
+      "recovered_path": "reconstruction/rhapsody-rebuild/src/shader_pipeline/compiled.rs",
+      "evidence": [
+        "shader_pipeline::compiled::ShaderCompilerArtifacts::load_compiled @0x1409e3c50/@0x1409e4160",
+        "speedy read_from_buffer CompiledShaderPipeline @0x1409e4670",
+        "compiled_file_path @0x141795d10/@0x141796080"
+      ]
+    },
+    {
+      "original_path": "crates/rhapsody/crates/shader-pipeline/src/pipeline_desc.rs",
+      "recovered_path": "reconstruction/rhapsody-rebuild/src/shader_pipeline/pipeline_desc.rs",
+      "evidence": [
+        "PDB source file mapping; constructor @0x1409e3980",
+        "ComputePipelineDesc::with_entry @0x1409e3ab0"
+      ],
+      "verification_level": "PDB source/name localization; candidate constructor interfaces only; compiled file path methods business-confirmed in compiled.rs"
+    },
+    {
+      "original_path": "crates/rhapsody/crates/shader-pipeline/src/reflection.rs",
+      "recovered_path": "reconstruction/rhapsody-rebuild/src/shader_pipeline/reflection.rs",
+      "evidence": [
+        "BindingNameHash::new @0x140c87660",
+        "BindingNameHash::with_suffix_dims @0x140c87650",
+        "original reader nested maps @0x141478b50/@0x141479510/@0x14147a290"
+      ]
+    },
+    {
+      "original_path": "crates/rhapsody/crates/shader-pipeline/src/reflection_ty.rs",
+      "recovered_path": "reconstruction/rhapsody-rebuild/src/shader_pipeline/reflection_ty.rs",
+      "evidence": [
+        "original Type reader @0x14147a7e0 jump-table subblocks; full function interval requires subblock awareness",
+        "PDB reflection_ty.rs source correspondence",
+        "ScalarType::nbyte @0x1420bd380; arithmetic delegated original spirq"
+      ]
+    },
+    {
+      "original_path": "crates/rhapsody/crates/shader-pipeline/src/shader_defines.rs",
+      "recovered_path": "reconstruction/rhapsody-rebuild/src/shader_pipeline/shader_defines.rs",
+      "evidence": [
+        "pair calculate_hash @0x1420cfbf0",
+        "XOR loop compiled_file_path @0x141795d10/@0x141796080",
+        "raster macro producer @0x1417388a0"
+      ]
+    }
+  ],
+  "dependencies_reused": [
+    "speedy=0.8.6",
+    "const-fnv1a-hash=1.1.0",
+    "spirq=0.6.2 git4f22e6f",
+    "std::hash::DefaultHasher",
+    "rspirv=0.11.0 (tests)"
+  ],
+  "validation": {
+    "schema_exploration": {
+      "files": 404,
+      "modules": 638,
+      "complete_bytes_consumed": 404,
+      "uses_magic_scan": false
+    },
+    "rust_tests": {
+      "status": "passed",
+      "tests": 5,
+      "evidence": "evidence/shader-toolchain-2026-10-13/pipeline/validation.json",
+      "full_crate_acceptance": false
+    },
+    "unicorn_key_oracle": {
+      "status": "failed_missing_dependency",
+      "failure": "ModuleNotFoundError: unicorn; not executed",
+      "delivery": false
+    }
+  },
+  "review": {
+    "compiler": "evidence/shader-toolchain-2026-10-13/pipeline/review-compiler.md",
+    "runtime_finding_fixed": "BindingKind tag2 changed from incorrectly inferred AccelerationStructure to original table CombinedImageSampler; final u32 changed from unknown flags to push_constant_size"
+  },
+  "residuals": [
+    "complete original load_compiled anyhow errors/context and cache ownership",
+    "full original pipeline_desc optional fields",
+    "compiler reflection/packing producer and original app pass glue",
+    "A/C equivalence",
+    "native boundary overflow/depth/error side effect validation"
+  ],
+  "overlay": {
+    "path": "D:/game/tools/reverse-runtime/shader-pipeline-20261013/project/TinyGlade.gpr",
+    "mutation": "original byte-SHA-bounded function preparation only",
+    "prototype_changes": false,
+    "seed_synchronized": false
+  },
+  "inputs": {
+    "reconstruction/rhapsody-rebuild/src/shader_pipeline/compiled.rs": "632fa25bf99f8c30369d2b55b9bca97bc4bfbbda4eaab20339dcb1c173cf1ed7",
+    "reconstruction/rhapsody-rebuild/src/shader_pipeline/pipeline_desc.rs": "5dfeb34b124ca41e017faf2354a2f54a6fa89d38750c542b0bf55e9064102e39",
+    "reconstruction/rhapsody-rebuild/src/shader_pipeline/reflection.rs": "d14d2baa47c56de1375dd94ce93a4012d50fc827f9fcb1191f404c8c28843986",
+    "reconstruction/rhapsody-rebuild/src/shader_pipeline/reflection_ty.rs": "5b4be5e91a855b8dbda8e7ed5ceeb7c2573401a1b75749ae7f5ff25b15b095e7",
+    "reconstruction/rhapsody-rebuild/src/shader_pipeline/shader_defines.rs": "3d004b0811c83239ed3e5f29b9aa6638a24bdcbedd38e2753ba307edb6fbfad1",
+    "reconstruction/rhapsody-rebuild/src/shader_pipeline/mod.rs": "45f60348cb6b537cfdfd19368836077e785e608601bfa9aad54d479ee5936bbb",
+    "reconstruction/rhapsody-rebuild/tests/shader_pipeline_contract.rs": "de6e017c0dd3f954725451475bb0fe930f8363edb69eb38173ecb24768196112",
+    "reconstruction/rhapsody-rebuild/Cargo.toml": "cf8eaff2b76c1ffbeecdfaabedf583c42f772df42437aa75418d2f07bd2b35ff",
+    "reconstruction/rhapsody-rebuild/Cargo.lock": "7396b03904060da997f18ab58c31a3c0adcb1b60080b0df420a70f98979b657e"
+  },
+  "original_identity": {
+    "rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "patched_db_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323"
+  },
+  "original_bin_manifest": "evidence/shader-toolchain-2026-10-13/compiler/original-bin-hashes.json",
+  "type_read_evidence": {
+    "entry": "0x14147a7e0",
+    "prepared_exception_prefix_size": 158,
+    "logical_decoder_observed_region": "0x14147a7e0..0x14147b2f0",
+    "basis": "original RNE disassembly jump targets; Ghidra decompiler includes case-labelled subblocks outside exception record",
+    "limitation": "not claiming one contiguous function ABI or full original function body coverage by prepare_functions"
+  },
+  "api_classification": {
+    "observed_business_contract": [
+      "CompiledShaderPipeline.decode serialized field order/error class via original speedy",
+      "CompiledShaderPipeline.encode valid original asset byte roundtrip",
+      "ComputePipelineDesc.compiled_file_path",
+      "RasterPipelineDesc.compiled_file_path",
+      "ShaderDefines.artifact_hash",
+      "BindingNameHash.new/with_suffix_dims",
+      "ShaderReflection effective map projections"
+    ],
+    "candidate_convenience_interfaces": [
+      "ComputePipelineDesc.new",
+      "ComputePipelineDesc.with_entry",
+      "RasterPipelineDesc.new_vertex_fragment",
+      "descriptor field names/new Rust ownership model"
+    ],
+    "explicit_boundary": "PDB constructor source names/addresses locate original code, but no full original defaults/optional fields/ABI recovery claim; shader_variants macro producer outside this API"
+  }
+}

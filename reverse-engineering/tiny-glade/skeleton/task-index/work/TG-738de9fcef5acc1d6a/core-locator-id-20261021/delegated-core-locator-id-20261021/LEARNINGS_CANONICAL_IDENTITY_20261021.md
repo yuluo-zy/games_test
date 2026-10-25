@@ -1,0 +1,8 @@
+# Canonical identity 恢复经验
+
+1. 小构造器也要追真实调用链。原 Locator.new 仅15B，但漏掉u32 ID会让同墙全部编辑在真实 HashMap中合并。正确字段表必须跟上游op key与下游逐locator消费交叉闭合，不能因method非空或derive完整就计业务完成。
+2. 可变业务word不等于map key。Info+2c可被change delta修改，原key来自place+54/change+68。保手工语义模型时应新增独立typed ID并迁移实际构造/存储/事件身份来源，不能靠现字段名DecoratorId猜原义。真实测试用mapkey11/29与word900/1900并存、修改word后仍定位原key，能暴露把两个域混用的错误。
+3. Option niche 是返回值身份问题。insert返回区写flags2不证明向live map写2；原完整producer与typed返回需要分别核。已修code之后，邻近旧doc若仍说2=live也会诱发新worker继续错误重构。本轮只改doc，不屏蔽未知flags或破坏raw accessor测试。
+4. 同一源始终一个writer。cull当前作者在恢复原8143B validator，我们只交两个构造ID literal的精确hunk，由其同一冻结source合并；避免从旧production重造另一个完整候选覆盖复杂恢复。组合索引绑定peer最终after与manifest，不以“已经发消息”当依赖交付完成。
+5. 当前owner必须live查。TG738及两个必要caller实际NULL，和旧印象不一致；正常claim后再写合法work。TG431沿root原owner最窄委派，不为了方便改claim。队列target C不把B原字节证据升级成C行为验收。
+6. 原字段恢复不等于producer已完成。chimney现lookupID仍来自payload0旧门，place+54完整生产者尚未对应生产入口；修明确ID传递可交编译闭包，但必须保留这两项原证缺口。不能用Default ID0或任取同桶id掩盖上游未恢复。

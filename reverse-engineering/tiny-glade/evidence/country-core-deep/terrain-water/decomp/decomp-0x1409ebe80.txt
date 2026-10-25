@@ -1,0 +1,23 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+float FUN_1409ebe80(longlong param_1,ulonglong param_2)
+
+{
+  code *pcVar1;
+  ulonglong uVar2;
+  float fVar3;
+  
+  if (param_2 < *(ulonglong *)(param_1 + 0x10)) {
+    uVar2 = *(ulonglong *)(*(longlong *)(param_1 + 8) + 8 + param_2 * 0x18);
+    uVar2 = uVar2 - (uVar2 >> 1 & 0x5555555555555555);
+    uVar2 = (uVar2 >> 2 & 0x3333333333333333) + (uVar2 & 0x3333333333333333);
+    return (float)(byte)(((uVar2 >> 4) + uVar2 & 0xf0f0f0f0f0f0f0f) * 0x101010101010101 >> 0x38) *
+           _UNK_142ac4d00;
+  }
+  FUN_1428d9518(param_2,*(ulonglong *)(param_1 + 0x10),&UNK_142ac5220);
+  pcVar1 = (code *)swi(3);
+  fVar3 = (float)(*pcVar1)();
+  return fVar3;
+}
+

@@ -1,0 +1,40 @@
+--- a/tiny-glade/crates/tiny-glade/tests/original_load_menu.rs
++++ b/tiny-glade/crates/tiny-glade/tests/original_load_menu.rs
+@@ -95,7 +95,7 @@
+         .add_event::<DeleteSessionCmd>()
+         .insert_resource(mei)
+         .insert_resource(ActiveSession::new(active, SessionMeta::default()))
+-        .insert_resource(History::empty_glade())
++        .insert_resource(History::<country_core::resources::history::MaybePendingSnapshotId>::empty_glade())
+         .insert_resource(AutoSaveState::default())
+         .insert_resource(EscMenuState::Load(state))
+         .insert_resource(NextEscMenuState::default())
+@@ -266,8 +266,7 @@
+     assert_eq!(request.kind, NextSessionKind::LoadParsedGame);
+     assert_eq!(request.id, selected);
+     let parsed = request
+-        .parsed_data
+-        .as_ref()
++        .parsed_data()
+         .expect("real owning parsed payload");
+     assert!(!parsed.edits.is_empty());
+     assert_eq!(parsed.version, 27);
+@@ -339,8 +338,7 @@
+         switching
+             .world()
+             .resource::<NextSession>()
+-            .parsed_data
+-            .as_ref()
++            .parsed_data()
+             .is_some_and(|d| !d.edits.is_empty())
+     );
+ 
+@@ -450,7 +448,7 @@
+     assert_eq!(request.id, restore_id);
+     assert_eq!(request.kind, NextSessionKind::LoadParsedGame);
+     assert_eq!(
+-        request.parsed_data.as_ref().unwrap().identity,
++        request.parsed_data().unwrap().identity,
+         Some(HistoryIdentity(source_identity))
+     );
+     let manual: Vec<_> = std::fs::read_dir(&folder)

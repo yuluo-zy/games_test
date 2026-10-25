@@ -1,0 +1,98 @@
+{
+  "target_version": "B",
+  "module": "InProgressCurve constructor -> raw append/weights -> final smoothed incremental curve",
+  "versions": {
+    "B": {
+      "artifact_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+    },
+    "C": {
+      "artifact_sha256": "d8f9261b1a4cb677fe91b8f5017bcff63b1312228b3f3264a2071ca7d3ad80a9"
+    }
+  },
+  "facts": [
+    {
+      "id": "B-instructions",
+      "version": "B",
+      "kind": "instruction",
+      "evidence": "skeleton/task-index/work/TG-6a0677e64cef08cd63/terrain-curve-20261018/original-identity-ranges.json"
+    },
+    {
+      "id": "B-decompilation",
+      "version": "B",
+      "kind": "instruction",
+      "evidence": "skeleton/task-index/work/TG-6a0677e64cef08cd63/terrain-curve-20261018/curve-fresh-mcp.json"
+    },
+    {
+      "id": "B-constructor",
+      "version": "B",
+      "kind": "instruction",
+      "evidence": "skeleton/task-index/work/TG-6a0677e64cef08cd63/terrain-curve-20261018/curve-new-fresh-mcp.json"
+    },
+    {
+      "id": "B-native-fixtures",
+      "version": "B",
+      "kind": "runtime",
+      "evidence": "skeleton/task-index/work/TG-6a0677e64cef08cd63/terrain-curve-20261018/native-fixtures.json"
+    },
+    {
+      "id": "B-contract",
+      "version": "B",
+      "kind": "source_owner",
+      "evidence": "skeleton/task-index/work/TG-6a0677e64cef08cd63/terrain-curve-20261018/CONTRACT.md"
+    },
+    {
+      "id": "B-frozen-candidate",
+      "version": "B",
+      "kind": "verification",
+      "evidence": "skeleton/task-index/work/TG-6a0677e64cef08cd63/terrain-curve-20261018/frozen-inputs.json",
+      "claim": "Input fingerprints only; generated candidate tests not yet run by owner"
+    }
+  ],
+  "links": [
+    {
+      "name": "input_constructor_and_weight_policy",
+      "status": "implemented_unverified",
+      "fact_ids": [
+        "B-instructions",
+        "B-constructor",
+        "B-contract",
+        "B-native-fixtures"
+      ],
+      "gaps": [
+        "candidate fixture tests pending integration owner",
+        "C not validated"
+      ]
+    },
+    {
+      "name": "append_error_mutation_and_incremental_smoothing",
+      "status": "implemented_unverified",
+      "fact_ids": [
+        "B-instructions",
+        "B-decompilation",
+        "B-native-fixtures"
+      ],
+      "gaps": [
+        "candidate fixture tests pending integration owner",
+        "original process and ECS schedule excluded"
+      ]
+    },
+    {
+      "name": "actual_freehand_wall_consumer",
+      "status": "unknown",
+      "fact_ids": [
+        "B-instructions",
+        "B-contract"
+      ],
+      "gaps": [
+        "production draw_wall does not call the recovered methods yet"
+      ]
+    }
+  ],
+  "dependencies": [
+    "skeleton/B/crates/country-core/src/resources/in_progress_curve.rs.dependencies.json"
+  ],
+  "rust_files": [
+    "skeleton/task-index/work/TG-6a0677e64cef08cd63/terrain-curve-20261018/in_progress_curve.rs",
+    "skeleton/task-index/work/TG-19ff2833ab2a0fd7fa/terrain-curve-20261018/rdp.rs"
+  ]
+}

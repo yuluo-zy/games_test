@@ -1,0 +1,132 @@
+{
+  "package": "wp5",
+  "scope": "country_core::systems::render_loop frame passes (CPU composition)",
+  "target": {
+    "version": "B",
+    "exe": "tiny-glade.exe",
+    "exe_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "pdb": "tiny_glade.pdb",
+    "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911"
+  },
+  "skeleton_bundles": {
+    "root": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/B/crates/country-core/src/systems/render_loop/",
+    "key_sha256": {
+      "compute_passes/gpu_generate_draw_lists.rs.pdb.json": "1f7edbab3534e99e82d403f8042d35dc5bc7edf94ec52b2bdecad740bc95dbdb",
+      "compute_passes/gpu_generate_draw_lists.rs.structures.json.gz": "a219bad3e55c8466318980f7f4621029152fef03ec7beebe001bb4060004c543",
+      "compute_passes/gpu_generate_draw_lists.rs.enriched.json.gz": "47c9011edbc3bbc179be66c9676119d66dd71be8ed7bddc217b7808cb6951080",
+      "compute_passes/gpu_generate_draw_lists.rs.dependencies.json": "3d49df1ed8746aa2385ebdbd7345281ca163df6e6230965c97c03defa7c1f505",
+      "compute_passes/gpu_generate_draw_lists.rs.pdb.jsonl.gz": "present (line table: clear_draw_lists@216, clear_histogram@240, cull_and_bucket@260, draw_indexed_indirect_to_dispatch@506, create_cull_and_bucket_pass@584, histogram_prefix_sum@645, buffer_offset@678, generate_draw_list_dispatch_args@687, clear_draw_cmd_histogram@871, clear_draw_cmd_subtotals@891, allocate_draw_lists@911, prepare_empty_unsorted_draw_lists@1033, fill_unsorted_instance_indirection@1165, reset_wall_draw_indirect_args@1287)",
+      "draw_passes/draw_lists.rs.enriched.json.gz": "d7cda85eaff81a4d0dfaab00291f4a25307e2c2bf0f3d0ef8829af5a58799bae",
+      "draw_passes/main_pass.rs.enriched.json.gz": "e379001a15d9f967e7f965635afbd17f7d1c78524cf5c10531f4490d73f008ee",
+      "draw_passes/transparency_pass.rs.enriched.json.gz": "420d9f6fde9040adb4cb14fc2b72ed6c2e478e7ba18b52edb8e4135816e3d7b9",
+      "compute_passes/dof.rs.enriched.json.gz": "863f21906cef886e018e529ab6e3f4c3543380b46c14eaf4764049d33a71b1d7",
+      "compute_passes/taa.rs.enriched.json.gz": "203f97a081a0d842ab73582dba29cf8ae9a518f27ffff9aaecf4d9cbc2e14ae1"
+    },
+    "source_sha256_observed": {
+      "gpu_generate_draw_lists.rs": "3699a3cd8112fea2de0390f35be320094e12042861c0178fbf8e694d1a1f938f"
+    }
+  },
+  "decompiled_addresses_used": {
+    "render_world": "0x1404ec110 (evidence/render-architecture/0x1404ec110.c, re-read this package)",
+    "gpu_generate_draw_lists": "0x140987dd0 (evidence/render-architecture/0x140987dd0.c, decoded this package)"
+  },
+  "pass_address_resolution": {
+    "method": "public-symbols.json + resolved-calls.json (address -> PDB name)",
+    "entries": {
+      "W1": "0x1403d8bd0..0x1403d9b30 upload_raster_staging_to_texture x6 (params 1/2/3/4/0x13/0x14)",
+      "W2": "0x140a12680 compute_water::water_rasterize_from_cpu",
+      "W3": "0x1408c7120 rasterize_terrain_stroke::rasterize_terrain_stroke",
+      "W4": "0x140a3ee80 displace_rocky_terrain::displace_rocky_terrain",
+      "W5": "0x14098c680 read_terrain_data::read_terrain_data",
+      "W6": "0x1409768b0 mouse_read_terrain_stroke_index::mouse_read_terrain_stroke_index",
+      "W7": "0x1409cb7b0 foliage_exclusion_mask::rasterize_foliage_exclusion_mask",
+      "W8": "0x140a58450 highlight_active_terrain_stroke::highlight_active_terrain_stroke",
+      "W9": "0x1409daaa0 object_grass_push::object_grass_push_pass",
+      "W10": "0x1409014e0 compute_path_masks::compute_path_masks",
+      "W11": "0x140a32770 rasterize_buildings::rasterize_buildings",
+      "W12": "0x140a22140 compute_garden::garden_rasterize_from_cpu",
+      "W13": "0x140a13970 compute_water::water_spawn_vegetation",
+      "W14": "0x1408e4cc0 spawn_vegetation_around_buildings::spawn_vegetation_around_buildings",
+      "W15": "0x140866540 read_bush_positions_for_cpu::read_bush_positions_for_cpu",
+      "W16": "0x140a22b80 compute_garden::garden_spawn_vegetation",
+      "W17": "0x140958f70 path_pebbles::path_pebbles_compute",
+      "W18": "0x1408f4d00 leaf_particles::leaf_particles_compute",
+      "W19": "0x140a29b10 roof_tiles_gravity::roof_tiles_gravity_compute",
+      "W20": "0x140a68a50 stairs::stairs",
+      "W21": "0x14098aaf0 gpu_generate_draw_lists::generate_wall_draw_lists",
+      "W22": "0x140987dd0 gpu_generate_draw_lists (round 0)",
+      "W23": "0x1409cc270 shadow_pass::shadow_pass",
+      "W24": "0x140a51440 terrain_lighting_texture::calc_terrain_lighting_texture",
+      "W25": "0x140833bc0 main_pass::main_pass",
+      "W26": "0x1409286f0 generate_hzb::generate_hzb",
+      "W27": "0x14098b2a0 gpu_generate_draw_lists::generate_wall_draw_lists_pass2",
+      "W28": "0x140987dd0 gpu_generate_draw_lists (round non-0)",
+      "W29": "0x140a60280 grass::grass_compute",
+      "W30": "0x140835a40 main_pass::main_pass_oc2",
+      "W31": "0x140a2f2e0 visibility_queries::run_visibility_queries",
+      "W32": "0x140a17880 dof_autofocus::calculate_dof_autofocus",
+      "W33": "0x140a01620 mouse_depth_value::mouse_depth_compute",
+      "W34": "0x1408373b0 main_pass::late_forward_and_deferred_pass",
+      "W35": "0x1408f6180 half_res::extract_half_res_depth_normals",
+      "W36": "0x140a0d190 reprojection::calculate_reprojection_map",
+      "W37": "0x1408743b0 ssgi::calculate_ssgi",
+      "W38": "0x140a01cf0 ray_trace_gi::ray_trace_gi",
+      "W39": "0x140a44cd0 eval_gi_screen_radiance::eval_gi_screen_radiance",
+      "W40": "0x1409e7770 bin_lights::bin_lights",
+      "W41": "0x140a6fec0 restir_di::restir_sample_direct_lights",
+      "W42": "0x140a39e70 apply_screen_shadows::apply_screen_shadows",
+      "W43": "0x1409d20b0 deferred_raster::deferred_raster",
+      "W44": "0x1409bf320 transparency_pass::refraction_copy_pass",
+      "W45": "0x1409bf800 / 0x1409c08d0 transparency_pass::water_surface_pass / ice_surface_pass",
+      "W46": "0x1409c3a80 transparency_pass::pre_taa_transparency_pass",
+      "W47": "0x140a3a6f0 apply_screen_shadows::compute_shadow_mask_mean",
+      "W48": "0x1408a44c0 apply_volumetrics::apply_volumetrics",
+      "W49": "0x140a5a020 dof::dof_prepare",
+      "W50": "0x1400fb890 generate_mips::generate_mips",
+      "W51": "0x140a5a570 dof::calc_dof",
+      "W52": "0x140a3b2f0 / 0x140a3ba60 taa::calculate_taa / calculate_tgsr",
+      "W53": "0x1409c40b0 transparency_pass::post_taa_transparency_pass",
+      "W54": "0x14098f9f0 shader_refactoring::render_shader_refactoring",
+      "R2": "0x1409ba340 / 0x1409ba540 / 0x1409ba4b0 draw_lists::DrawLists::new / build_draw_lists / DrawLists::sort"
+    },
+    "gpu_generate_draw_lists_helper_resolution": {
+      "0x140a28950": "compute_passes::gpu_generate_draw_lists::create_cull_and_bucket_pass",
+      "0x1409dd4d0": "rhapsody::rg::pass_builder::PassBuilder::render",
+      "0x1409ddbb0": "render_loop::clear_rg_buffer",
+      "0x141609be0 / 0x14160a2e0": "ComputePass::dispatch_with",
+      "0x14160b850": "ComputePass::dispatch_indirect_with",
+      "0x1412d1180 / 0x1412ce810": "AssetSsboLibrary::get_rg_buffer (round 1 / round 2)",
+      "0x14096e2a0": "ComputePass::bind_external_storage_buffer",
+      "0x140bd4e20": "rhapsody::raw::buffer::BufferDesc::new_gpu_only",
+      "0x140be94d0": "rhapsody::rg::graph::RenderGraph::create_raw_resource",
+      "0x140b2b7a0": "itertools::unziptuple::MultiUnzip::multiunzip"
+    }
+  },
+  "judgment_notes": [
+    "All 50+ render_loop passes enumerated from render_world (0x1404ec110) call order = sequence.md W1-W54; every address resolved to a PDB name via public-symbols.json.",
+    "gpu_generate_draw_lists decompile (0x140987dd0.c) fully decoded against pass-declaration API: BufferDesc::new_gpu_only(0x6c000,0) + create_raw_resource, ComputePass::new x2 (clear_draw_lists/clear_histogram), round-dependent AssetSsboLibrary::get_rg_buffer + clear_rg_buffer, cull_and_bucket pass + bind_external_storage_buffer + multiunzip + dispatch_with (closure_env$1), dispatch_indirect_with (group_draw_cmd_prefix_sum, RenderSublistsIter).",
+    "cull_and_bucket iterates enum_iterator::All<GpuWorldSubsetKind> filtered by subset presence, unzips into (Vec<PushConstants>, Vec<u32>) (O from structures/enriched).",
+    "Frame branches re-confirmed in decompile: *0x14362c0d8 (round 2), *0x14362c098 (refraction+water/ice), is_winter (water vs ice), param_6[0xa9+(type==0x13)] (DoF+mips), param_6[0xab] (TAA vs TGSR).",
+    "dispatch/draw mode discriminants (2/3/4 compute, 1/3/4/5/7/8 draw) not mapped to Rust enum names (U) - consistent with wp1/wpass gaps.",
+    "resources:: game state referenced as typed gaps only (BoatSsbo, LilypadSsbo, PebblePlacementSsbo, ... layout unknown).",
+    "Machine-code diff NOT used as implementation method; decompiles used for adjudicating wiring only."
+  ],
+  "gaps": [
+    "global *0x14362c0d8 / *0x14362c098 semantics; param_6 byte semantics; settings+0xac mode byte (U)",
+    "render_world return-struct per-field mapping (layout O, semantics U)",
+    "per-pass exact shader variant (two 16-hex variant pair) binding (U)",
+    "resources:: game-state SSBO field layouts (U)",
+    "DrawLists/DrawData/DrawListItem field layouts (U); draw_shaders/* bodies (U)",
+    "spawn_boats URI (runtime-synthesized, U); W54 shader_refactoring effect (U)",
+    "RenderPassBinding (0x44B) field layout (rhapsody domain)",
+    "handle hash -> resource name mapping (PassResources 7 hashes, wp1 domain)"
+  ],
+  "pass_coverage": {
+    "compute_passes_modules": 44,
+    "draw_passes_modules": 16,
+    "w_number_passes_documented": "W1-W54 (54/54) + R2",
+    "w_number_passes_impl_as_rust_entry": "54/54 pass entry functions written as skeleton (many unimplemented!() bodies, O/I/U-marked)",
+    "deep_implemented": "gpu_generate_draw_lists (decoded chain + 14 sub-functions + line anchors)",
+    "not_covered": "none in scope; draw_shaders/* (per-mesh shader bodies) recorded as naming boundary only"
+  }
+}

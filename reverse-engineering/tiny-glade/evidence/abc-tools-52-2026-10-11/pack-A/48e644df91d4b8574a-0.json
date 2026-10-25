@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "artifact": {
+    "path": "/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe",
+    "sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708",
+    "bytes": 48046080,
+    "id": "abc-tools-52",
+    "version": "A",
+    "format": "PE",
+    "image_base": "0x140000000",
+    "rsds": [
+      {
+        "guid": "98388131-DB1D-D6B0-4C4C-44205044422E",
+        "age": 1,
+        "pdb_name": "tiny_glade.pdb"
+      }
+    ],
+    "debug": {
+      "path": "/Users/yuluo/Desktop/game/Tiny Glade/tiny_glade.pdb",
+      "sha256": "d5d4001583e31abf20b1563bbfdd9e4853629065aa2e461fe5809b205db908a5",
+      "bytes": 213172224,
+      "guid": "98388131-DB1D-D6B0-4C4C-44205044422E",
+      "age": 1
+    }
+  },
+  "request_id": "48e644df91d4b8574a-0",
+  "cache_key": "7f9520dc48e32e225004e428b500970262b1c94528dfa44749209238317819db",
+  "status": "ok",
+  "range": {
+    "rva": "0x6299f0",
+    "length": 9,
+    "start_va": "0x1406299f0",
+    "stop_va_exclusive": "0x1406299f9",
+    "instruction_overhang_bytes": 0,
+    "function_boundary_verified": false
+  },
+  "instructions": [
+    {
+      "va": "0x1406299f0",
+      "rva": "0x6299f0",
+      "bytes": "488b4108",
+      "size": 4,
+      "assembly": "movq\t0x8(%rcx), %rax",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x1406299f4",
+      "rva": "0x6299f4",
+      "bytes": "488b5110",
+      "size": 4,
+      "assembly": "movq\t0x10(%rcx), %rdx",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x1406299f8",
+      "rva": "0x6299f8",
+      "bytes": "c3",
+      "size": 1,
+      "assembly": "retq",
+      "crosses_requested_stop": false
+    }
+  ],
+  "symbolization": [
+    {
+      "Address": "0x6299f0",
+      "ModuleName": "/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe",
+      "Symbol": [
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/wall_holes.rs",
+          "FunctionName": "tiny_http::common::HeaderField::as_str::h44a8a9246c7b570e",
+          "Line": 411,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        }
+      ]
+    }
+  ],
+  "missing_symbol_addresses": [],
+  "raw_assembly": "\n/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe:\tfile format coff-x86-64\n\nDisassembly of section .text:\n\n0000000140001000 <.text>:\n1406299f0: 48 8b 41 08                 \tmovq\t0x8(%rcx), %rax\n1406299f4: 48 8b 51 10                 \tmovq\t0x10(%rcx), %rdx\n1406299f8: c3                          \tretq\n",
+  "original_target_executed": false
+}

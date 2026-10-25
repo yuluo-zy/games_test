@@ -1,0 +1,228 @@
+{
+  "recorded_utc": "2026-10-18T12:04:46.461337+00:00",
+  "scope": "B original-driven integration in current refactored core/rhapsody. Scoped CPU, actual GPU scene chain, and shader Startup scheduling. Full compile_main/world renderer still not connected.",
+  "build": "v40 locked/offline selected lib and integration tests compiled; v39 prior adapter API error retained in logs/world-integration-v39-build-failed.log",
+  "explicit_23_file_drift": [],
+  "dependency_freeze": "23 files only, no full dependency stability or full workspace test claim; foreign systems/resources owner remains active",
+  "binaries": [
+    {
+      "label": "core",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/country_core-414776936c701376",
+      "binary": "/private/tmp/tg-core-v40-tests",
+      "sha256": "c024c38683f2bb47a6480a73ee5cd87f7dc029e54e0da2be13e5e0a824b27df8"
+    },
+    {
+      "label": "atlas",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/original_mesh_atlas_startup-dcf43dac8979643f",
+      "binary": "/private/tmp/tg-atlas-v40-tests",
+      "sha256": "34631480dff231c96ea6a83ef4437488da672da2b08a77bcaef509cada777870"
+    },
+    {
+      "label": "rhapsody",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/rhapsody-0660003cfbe086ef",
+      "binary": "/private/tmp/tg-rhapsody-v40-tests",
+      "sha256": "a8f6ee30797c9a1d5c80ba3a9334f3af9c467aab8ed375209f91c4f021bade6c"
+    },
+    {
+      "label": "tiny-glade",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/tiny_glade-90b5a89024de7d22",
+      "binary": "/private/tmp/tg-tiny-glade-v40-tests",
+      "sha256": "a174b7dce168e34f38496178a407a23c537255ac245370bf4b376c122bd39e20"
+    },
+    {
+      "label": "nani",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/original_nani_gpu-0c0c606c86f9171a",
+      "binary": "/private/tmp/tg-nani-v40-tests",
+      "sha256": "2bfa1c56321e5f1d1f65686af2c6f2c20d773283b20f2e37a031bc91c940a0eb"
+    },
+    {
+      "label": "scene",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/original_scene_compute_gpu-139a09e0350cf041",
+      "binary": "/private/tmp/tg-scene-v40-tests",
+      "sha256": "1447022b2391f065a82e1fe411cf286975d868e382e4d49163014bd95a9765a5"
+    },
+    {
+      "label": "render-host",
+      "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/render_host-b2eb3f6818d26d43",
+      "binary": "/private/tmp/tg-render-host-v40-tests",
+      "sha256": "2548bc91f3eadf167ec85f3dfdd2992424d307aff932ad93080e6307e6974f7e"
+    }
+  ],
+  "cpu": [
+    {
+      "name": "dof-ctor",
+      "args": [
+        "/private/tmp/tg-core-v40-tests",
+        "systems::render_loop::compute_passes::dof_autofocus::ssbo_layout_tests",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "summary": [
+        "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 2378 filtered out; finished in 0.01s"
+      ],
+      "log": "/private/tmp/tg-dof-ctor-v40-cpu.log"
+    },
+    {
+      "name": "shadow-ctor",
+      "args": [
+        "/private/tmp/tg-core-v40-tests",
+        "systems::render_loop::compute_passes::apply_screen_shadows::ssbo_layout_tests",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "summary": [
+        "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 2381 filtered out; finished in 0.00s"
+      ],
+      "log": "/private/tmp/tg-shadow-ctor-v40-cpu.log"
+    },
+    {
+      "name": "pebble-ctor",
+      "args": [
+        "/private/tmp/tg-core-v40-tests",
+        "native_pebble_none_stays_uninitialized_and_some_preserves_input",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "summary": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2383 filtered out; finished in 0.00s"
+      ],
+      "log": "/private/tmp/tg-pebble-ctor-v40-cpu.log"
+    },
+    {
+      "name": "deferred-attachment",
+      "args": [
+        "/private/tmp/tg-core-v40-tests",
+        "deferred_raster_runs_five_entries_with_stencil_state_and_one_pass",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "summary": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2383 filtered out; finished in 0.00s"
+      ],
+      "log": "/private/tmp/tg-deferred-attachment-v40-cpu.log"
+    },
+    {
+      "name": "world-types",
+      "args": [
+        "/private/tmp/tg-core-v40-tests",
+        "systems::render_loop::render_world::tests",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "summary": [
+        "test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 2366 filtered out; finished in 0.00s"
+      ],
+      "log": "/private/tmp/tg-world-types-v40-cpu.log"
+    },
+    {
+      "name": "deferred-startup",
+      "args": [
+        "/private/tmp/tg-core-v40-tests",
+        "original_deferred_startup_registers_four_ordered_materials_and_preserves_forward",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "summary": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2383 filtered out; finished in 0.00s"
+      ],
+      "log": "/private/tmp/tg-deferred-startup-v40-cpu.log"
+    },
+    {
+      "name": "water-schema",
+      "args": [
+        "/private/tmp/tg-core-v40-tests",
+        "systems::render_loop::compute_passes::compute_water::tests",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "summary": [
+        "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 2378 filtered out; finished in 0.00s"
+      ],
+      "log": "/private/tmp/tg-water-schema-v40-cpu.log"
+    },
+    {
+      "name": "garden-schema",
+      "args": [
+        "/private/tmp/tg-core-v40-tests",
+        "systems::render_loop::compute_passes::compute_garden::tests",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "summary": [
+        "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 2374 filtered out; finished in 0.00s"
+      ],
+      "log": "/private/tmp/tg-garden-schema-v40-cpu.log"
+    },
+    {
+      "name": "dynamic-constants",
+      "args": [
+        "/private/tmp/tg-rhapsody-v40-tests",
+        "raw::dynamic_constants::tests",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "summary": [
+        "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 316 filtered out; finished in 0.00s"
+      ],
+      "log": "/private/tmp/tg-dynamic-constants-v40-cpu.log"
+    },
+    {
+      "name": "intro-live-walls",
+      "args": [
+        "/private/tmp/tg-tiny-glade-v40-tests",
+        "--exact",
+        "run_game::intro_history_integration::shipped_intro_reaches_the_same_live_wall_authority",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "summary": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 28 filtered out; finished in 0.04s"
+      ],
+      "log": "/private/tmp/tg-intro-live-walls-v40-cpu.log"
+    },
+    {
+      "name": "shipped-atlas",
+      "args": [
+        "/private/tmp/tg-atlas-v40-tests",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "summary": [
+        "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.11s"
+      ],
+      "log": "/private/tmp/tg-shipped-atlas-v40-cpu.log"
+    }
+  ],
+  "gpu": {
+    "scene": "4 passed, 0 failed, 0 ignored. Includes actual two-frame W1->water W2 and garden W12, all live G/R/B checks, original GPU shader and original resolve readback; actual gameplay Startup shader owner; prior reprojection/copy-depth and six raster regression. No W3..W11 substituted.",
+    "nani": "1 passed, 0 failed, 0 ignored. Actual first-round 18-pass original master with indexed command/indirection/visibility readback; full scene/HZB second round unexecuted.",
+    "view_alias": "1 passed, 0 failed, 0 ignored. Real-device graph declaration fixture only, no GPU command submission."
+  },
+  "diagnostic": "Nani success log no longer contains eager alignment-overflow errors; changed only Error construction laziness, no alignment arithmetic or defaults.",
+  "new_actual_host_wiring": "GameLoop now installs the original deferred producer in gameplay Startup using actual same-App ShaderHost and library. It is excluded from loading App. This source wiring compiled and dedicated real-device Startup fixture passed; full OS binary was not rebuilt/run in v40.",
+  "remaining": [
+    "compile_world_graph and warmup still explicitly Unsupported until full world/outer branches restored; v37 remains latest full OS attempt",
+    "Full72 producer is candidate pending canonical factories and actual PreStartup registration; masks are coordinated with foreign owner",
+    "W3 typed TerrainEditingData state and real BDA resource lifetime missing; W10 true Events<RecalculateHeightMapCmd> and W11 PublicWalls live adapters pending",
+    "W35..43 continuous callable portion compiled; not yet called by full world host; first SSGI history read requires original per-binding conditional contract",
+    "Initial/reload prefab and full atlas integration still require canonical PrefabPart Arc<Mesh>/subset/audio corrections from foreign owner",
+    "Complete two-round descriptor budget not proven on M3; original global game/Steam backend still incomplete"
+  ],
+  "logs": [
+    "logs/world-integration-v40-build.log",
+    "logs/scene-v40-gpu.log",
+    "logs/nani-v40-gpu.log",
+    "logs/view-alias-v40-gpu.log",
+    "logs/dof-ctor-v40-cpu.log",
+    "logs/shadow-ctor-v40-cpu.log",
+    "logs/pebble-ctor-v40-cpu.log",
+    "logs/deferred-attachment-v40-cpu.log",
+    "logs/world-types-v40-cpu.log",
+    "logs/deferred-startup-v40-cpu.log",
+    "logs/water-schema-v40-cpu.log",
+    "logs/garden-schema-v40-cpu.log",
+    "logs/dynamic-constants-v40-cpu.log",
+    "logs/intro-live-walls-v40-cpu.log",
+    "logs/shipped-atlas-v40-cpu.log"
+  ]
+}

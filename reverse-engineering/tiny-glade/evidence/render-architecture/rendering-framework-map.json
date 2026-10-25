@@ -1,0 +1,159 @@
+{
+  "target": {
+    "artifact": "D:\\game\\ljxsj_92385\\Tiny Glade\\tiny-glade.rne",
+    "cargo_lock": "tracking/original-Cargo.lock",
+    "cargo_lock_sha256": "9e0cb4a0fa173122fa7cd552aa639f5ee977abc22c74aec92398808c707184bd",
+    "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+    "engine": "Bevy fork, version family 0.16.0; fork repository and commit unknown"
+  },
+  "architecture": {
+    "summary": "tiny-glade/Bevy App-ECS -> country-core game rendering -> rhapsody render graph -> rhapsody raw Vulkan wrapper -> ash/Vulkan",
+    "bevy_render_present": false,
+    "missing_standard_bevy_render_packages": ["bevy_render", "bevy_pbr", "bevy_core_pipeline", "wgpu", "naga"],
+    "source_inventory": {
+      "pdb_source_files": 93,
+      "rhapsody_files": 55,
+      "country_core_render_files": 38,
+      "native_procedure_records": 4124
+    },
+    "compiled_shader_inventory": {
+      "total": 404,
+      "raster": 234,
+      "compute": 170
+    }
+  },
+  "package_edges": {
+    "runtime": [
+      "tiny-glade -> country-core",
+      "tiny-glade -> rhapsody",
+      "country-core -> rhapsody",
+      "country-core -> shader-compiler",
+      "country-core -> shader-pipeline",
+      "country-core -> shader-variants",
+      "country-core -> fsr",
+      "country-core -> obvhs",
+      "rhapsody -> ash",
+      "rhapsody -> ash-window",
+      "rhapsody -> gpu-allocator",
+      "rhapsody -> vk-sync-fork",
+      "rhapsody -> gpu-profiler",
+      "rhapsody -> aftermath-rs",
+      "rhapsody -> dxgi-enumerate-gpus",
+      "rhapsody -> nvapi-hi",
+      "rhapsody -> shader-compiler",
+      "rhapsody -> shader-pipeline",
+      "rhapsody -> leekspin"
+    ],
+    "build_time": [
+      "asset-pipe-bin -> asset-pipe",
+      "asset-pipe-bin -> shader-compiler",
+      "asset-pipe-bin -> shader-pipeline",
+      "asset-pipe-bin -> shader-variants",
+      "asset-pipe -> asset",
+      "asset-pipe -> image",
+      "asset-pipe -> ddsfile",
+      "asset-pipe -> intel_tex_2",
+      "shader-compiler -> shader-pipeline",
+      "shader-compiler -> rspirv",
+      "shader-compiler -> spirq",
+      "shader-compiler -> shader-prepper",
+      "shader-variants -> shader-pipeline"
+    ],
+    "direct_rhapsody_consumers": [
+      "country-core",
+      "tiny-glade",
+      "system-color",
+      "system-decorator",
+      "system-onboarding",
+      "system-roof",
+      "system-tree",
+      "system-wall-constructor",
+      "system-water",
+      "tg-gpu-selector",
+      "tg-text",
+      "timberframe",
+      "toolbar"
+    ]
+  },
+  "layers": [
+    {
+      "id": "L0",
+      "name": "app-window-scheduling",
+      "packages": ["tiny-glade", "bevy_app", "bevy_ecs", "bevy_tasks", "bevy_input", "bevy_time", "bevy_state", "winit", "raw-window-handle", "ash-window"],
+      "reverse": ["tiny-glade frame loop and render_world", "game consumers of ECS/time/state"],
+      "reuse": ["Bevy implementation", "winit fork implementation", "window handle crates"]
+    },
+    {
+      "id": "L1",
+      "name": "country-core-game-rendering",
+      "packages": ["country-core"],
+      "modules": ["render/nani", "render/pass_builder", "render/ssbo", "render/uniform", "render/shadowed_buffer", "render/sparse_instance_buffer", "render/mesh", "render/shader", "render/render_config", "render/fsr_plugin"],
+      "reverse": ["CPU state to GPU instance layout", "pass resource declarations", "GPU cull/indirect draw glue", "game-specific render parameters"],
+      "reuse": ["glam", "bytemuck", "half", "fastrand", "public math/container dependencies"]
+    },
+    {
+      "id": "L2",
+      "name": "rhapsody-render-graph",
+      "packages": ["rhapsody"],
+      "modules": ["rg/resource", "rg/resource_info", "rg/resource_registry", "rg/resource_pool", "rg/graph", "rg/pass_api", "rg/pass_builder", "rg/compiled", "rg/state", "rg/recorder", "rg/executor", "rg/import_export", "rg/temporal", "rg/binding"],
+      "reverse": ["resource access/lifetime graph", "registry/pool", "compiled graph", "record/execute", "temporal history"],
+      "reuse": ["public synchronization and Vulkan types"]
+    },
+    {
+      "id": "L3",
+      "name": "rhapsody-raw-vulkan-lifecycle",
+      "packages": ["rhapsody"],
+      "modules": ["raw/instance", "raw/init", "raw/physical_device", "raw/device", "raw/buffer", "raw/texture", "raw/sampler", "raw/binding", "raw/descriptor_set", "raw/render_pass", "raw/framebuffer", "raw/shader", "raw/command_buffer", "raw/semaphore", "raw/submit", "raw/barrier", "raw/swapchain", "raw/disposal", "raw/managed"],
+      "reverse": ["create-record-submit-complete-reclaim state chain", "managed handles/resources", "swapchain acquire/present"],
+      "reuse": ["ash API", "Vulkan loader/driver"]
+    },
+    {
+      "id": "L4",
+      "name": "external-vulkan-and-diagnostics",
+      "packages": ["ash", "gpu-allocator", "vk-sync-fork", "gpu-profiler", "aftermath-rs", "dxgi-enumerate-gpus", "nvapi-hi", "leekspin", "fsr", "fsr-sys", "obvhs"],
+      "reverse": ["only game-specific call boundaries and fork differences", "source attribution for local/path packages"],
+      "reuse": ["all external library implementations"]
+    },
+    {
+      "id": "L5",
+      "name": "shader-build-and-reflection",
+      "packages": ["shader-compiler", "shader-pipeline", "shader-variants", "motomoto", "rspirv", "spirq", "shader-prepper", "speedy", "asset-pipe-bin"],
+      "reverse": ["private shader format/variant metadata", "runtime binding/layout consumers"],
+      "reuse": ["SPIR-V parser/reflection and serialization libraries"]
+    },
+    {
+      "id": "L6",
+      "name": "asset-and-texture-pipeline",
+      "packages": ["asset", "asset-pipe", "asset-pipe-bin", "image", "ddsfile", "intel_tex_2", "ispc_rt", "rkyv", "ron", "serde", "serde_json"],
+      "reverse": ["game asset schema", "texture/mesh metadata", "versioned consumers"],
+      "reuse": ["image/DDS codecs", "serialization implementations", "texture compression implementation"]
+    },
+    {
+      "id": "L7",
+      "name": "game-effects-and-external-algorithm-boundaries",
+      "packages": ["FidelityFX", "GPU-Raytracer", "XeGTAO"],
+      "artifacts_and_integrations": ["compiled-shaders/*.bin", "fsr/fsr-sys integration", "rhapsody raw/ray_tracing"],
+      "reverse": ["game pass parameters and scheduling", "shader algorithms where original source is absent", "actual call sites for unclassified local packages"],
+      "reuse": ["confirmed external SDK/library implementations"]
+    }
+  ],
+  "classification_unknowns": [
+    "gpu-allocator source/fork and patch range",
+    "vk-sync-fork source/fork and patch range",
+    "shader-* private source attribution and exact runtime format",
+    "motomoto and leekspin local source attribution",
+    "asset-* private source attribution and build/runtime split",
+    "FidelityFX/GPU-Raytracer/XeGTAO actual linkage and call sites",
+    "full rhapsody graph topology, queue ownership, descriptor extents and shader algorithms"
+  ],
+  "evidence": [
+    "evidence/render-architecture/findings.md",
+    "evidence/render-recovery/bottom-up-plan.md",
+    "evidence/render-skeleton/report.json",
+    "evidence/render-skeleton/files.json",
+    "evidence/render-recovery/verification.json",
+    "tracking/original-Cargo.lock",
+    "tracking/dependency-policy.json",
+    "D:\\game\\ljxsj_92385\\Tiny Glade\\build-info\\manifest.json"
+  ]
+}

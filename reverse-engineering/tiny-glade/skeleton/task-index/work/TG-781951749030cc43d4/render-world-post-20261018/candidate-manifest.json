@@ -1,0 +1,77 @@
+{
+  "mode": "candidate only; no production edits, Cargo or GPU runs",
+  "patch_root": "games_test/tiny-glade (patch -p1)",
+  "patches": [
+    {
+      "patch": "candidate/uniform-bytes-carrier.patch",
+      "source": "games_test/tiny-glade/crates/country-core/src/render/pass_builder/compute_pass_builder.rs",
+      "before_sha256": "901c03c807f070feb9edf67ce98ad3c91ea77c489cb07790a3b0905d0171cfd0",
+      "candidate_sha256": "bb09f0cd0314ee0e93d0fd06cb2d07fd716e282fe4eeb1e77120cd2e0790807b",
+      "patch_sha256": "ad1979676a89e85b4d82da566c4d40ece003309fa5943026f20e5b4b22605e84",
+      "current_source_matches_base": true
+    },
+    {
+      "patch": "candidate/uniform-bytes-physical-host.patch",
+      "source": "games_test/tiny-glade/crates/tiny-glade/src/render_host.rs",
+      "before_sha256": "97fdad0106e1b9c218b3ffcca9545482e1c14770b0d8fa96f827c650685ac89f",
+      "candidate_sha256": "a351ae1eb673f2ace9bea1f15824f7e9e2de1abca7151672948cc83395b807e4",
+      "patch_sha256": "defc94908f45c0c427ab874bdf3937f3d3e0724a34193f371bcde18a11e995e8",
+      "current_source_matches_base": true
+    },
+    {
+      "patch": "candidate/dof-real-uniform-and-partitions.patch",
+      "source": "games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/dof.rs",
+      "before_sha256": "91dc742fba2d3d6f925ee040b02490d51584e17a325ce57efc582d939270271b",
+      "candidate_sha256": "563092f9d04ed5ea1c19ba33fa1453bf67771cd39a770ec90d8d198f014b6f48",
+      "patch_sha256": "dbd91b9cf6d647b31c19aee16e4ee675957f52de90842345f9a2b80263165838",
+      "current_source_matches_base": true
+    },
+    {
+      "patch": "candidate/scene-post-compute-host.patch",
+      "source": "games_test/tiny-glade/crates/tiny-glade/src/scene_compute.rs",
+      "before_sha256": "8137c7fd19cac6d5a10b64187dff4da44fac1b831d0d75aad240d2ab8184e080",
+      "candidate_sha256": "05e1304fe7daf70050e9de8723a87b6dfa6a4caf7c5b9cb8098366db4e416017",
+      "patch_sha256": "aed170e8b2cc2606eccb4eefed12b1508aa3acf3224625c477a9192265a452d7",
+      "current_source_matches_base": true
+    },
+    {
+      "patch": "candidate/world-post-typed-parameters.patch",
+      "source": "games_test/tiny-glade/crates/country-core/src/systems/render_loop/render_world.rs",
+      "before_sha256": "08ffd6d95eb2540b975c2b8d4d4f0f3e0bf90472022542d410100b885cf86016",
+      "candidate_sha256": "ffc39f0e19d7eb46d45918a6a3e310a066dfbec57f705cd14050ee20cf519cbe",
+      "patch_sha256": "a9d3619ce587b455b798123b88d5c1ab5b60fcde4b65d882e9369be6d6277f9e",
+      "current_source_matches_base": true
+    },
+    {
+      "patch": "candidate/dof-tile-offsets-strict-gpu.patch",
+      "source": "games_test/tiny-glade/crates/tiny-glade/tests/original_scene_compute_gpu.rs",
+      "before_sha256": "28c07d550316b332a71d7392cc01caf3b31c559e0a33fa5e29b84d5fcf974edc",
+      "candidate_sha256": "aa544197dcec016f9de886cd6925b74e1ba9b176f5a5e4ced73795bdb776b00e",
+      "patch_sha256": "1497078f18dd4f27767430e20d861059b728e55fae05fd7f9ddb2e098e13d85f",
+      "current_source_matches_base": true
+    },
+    {
+      "patch": "candidate/world-postprocess-module.patch",
+      "source": "games_test/tiny-glade/crates/tiny-glade/src/world_postprocess.rs",
+      "patch_sha256": "256d8d5e41dc28d0a9913587efcfc7cb0aa3e9088085be072397d5ce6c00d4fd",
+      "new_file": true,
+      "required_export": "pub mod world_postprocess; in tiny-glade/src/lib.rs"
+    },
+    {
+      "patch": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-40c65c5fc31e4c20ff/render-world-post-20261018/volumetric-in-place-color.patch",
+      "source": "games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/apply_volumetrics.rs",
+      "before_sha256": "3a179236203e99241fd86fa5c1df970361429e6c7f6008ecac2cbb4d157a7614",
+      "candidate_sha256": "0f765a3e84b5b5df9652aef69f350acd7f8d77600e9b03761ed0374117ec5935",
+      "patch_sha256": "8dbd0b2a0d0dfc835eb38a54721aac6ad7522d0cab2653cd2e9b7f29bebcb8a3",
+      "current_source_matches_base": true
+    },
+    {
+      "patch": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6561ac1c9e7d6ac76a/render-world-post-20261018/spd-exact-content-intent.patch",
+      "source": "games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/generate_mips.rs",
+      "before_sha256": "5f5fd36b449f95f6b353772642859194530d6cc6c57a4425073aa0da55eae410",
+      "candidate_sha256": "d71a267d638fb16c9e12eeb8e260035c5bd9f99a1dfe374fd8b0520a72f9f6b0",
+      "patch_sha256": "112fbf5e15e780f84d0189c34e23b1668ce36b07917d58362db43696da4f8fb9",
+      "current_source_matches_base": true
+    }
+  ]
+}

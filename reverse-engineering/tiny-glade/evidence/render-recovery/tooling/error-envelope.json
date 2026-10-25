@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-10-12T06:29:34.402Z",
+  "server": "fake",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "index": 0,
+      "tool": "open_database",
+      "args": {
+        "database_id": "fixture",
+        "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\target.bin",
+        "run_auto_analysis": false
+      },
+      "cache_key": "4393dbcd451c64f302dbff71bbf23fa710903bf151e1402f75d3c18067348e39",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T06:29:34.405Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"tool\":\"open_database\",\"args\":{\"database_id\":\"fixture\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\evidence\\\\render-recovery\\\\tooling\\\\fixture\\\\target.bin\",\"run_auto_analysis\":false},\"fixture\":true}"
+          }
+        ],
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "ok": true,
+      "result_sha256": "aa9a98565bd6254d5a0cdff78ef20b42125a56c816c536dc6bce93851ac044d8",
+      "completed_at": "2026-10-12T06:29:34.499Z"
+    },
+    {
+      "index": 1,
+      "tool": "decompile_function",
+      "args": {
+        "fail": true
+      },
+      "cache_key": "745da59a456d114bed278f9fbfecdf5e9f6b2ce8ac568d80e6163bb2d547bac9",
+      "cache_eligible": true,
+      "started_at": "2026-10-12T06:29:34.501Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":false,\"tool\":\"decompile_function\",\"args\":{\"fail\":true},\"fixture\":true}"
+          }
+        ],
+        "isError": true
+      },
+      "source": "actual_mcp_call",
+      "ok": false,
+      "result_sha256": "d8043bf5894bf47737232014a20d6f1401e34b79260649cbf6ccbe779b6e9c0a",
+      "completed_at": "2026-10-12T06:29:34.503Z",
+      "error": "Error: decompile_function returned an error envelope"
+    }
+  ],
+  "cleanup": [
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "fixture",
+        "save": false
+      },
+      "cleanup": true,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"ok\":true,\"tool\":\"close_database\",\"args\":{\"database\":\"fixture\",\"save\":false},\"fixture\":true}"
+          }
+        ],
+        "isError": false
+      },
+      "ok": true
+    }
+  ],
+  "lock_events": [
+    {
+      "event": "acquired",
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\locks\\5bd8e715f0439577d14ff4244e744779b21c5ec4354ec24a163b16159a4c4564.lock",
+      "token": "006d296c-39eb-4099-af70-86b7fe6901af",
+      "session_key": "fake:error"
+    },
+    {
+      "event": "released",
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\locks\\5bd8e715f0439577d14ff4244e744779b21c5ec4354ec24a163b16159a4c4564.lock",
+      "token": "006d296c-39eb-4099-af70-86b7fe6901af",
+      "path_boundary_verified": true
+    }
+  ],
+  "ok": false,
+  "evidence_limits": [
+    "Static tool outputs do not prove runtime execution.",
+    "Xref completeness is unknown with auto-analysis disabled. Empty or DATA-only references cannot establish whole-program absence.",
+    "Successful cache reuse preserves the original evidence coverage; it does not expand it."
+  ],
+  "cache_policy": {
+    "enabled": true,
+    "reason": "Caller-supplied provider manifest and DB revision/snapshot hashes; caller must update snapshot after DB changes.",
+    "provider_version_provenance": "job-declared; actual server self-report is recorded separately upon connection"
+  },
+  "identity": {
+    "target": {
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\target.bin",
+      "sha256": "b25bbde7055ac6765755e90cf8c8bdacc1e6bf87d4bb1d8595f1b41fadd4779e"
+    },
+    "provider": {
+      "id": "local-fake",
+      "version": "1"
+    },
+    "launch_sha256": "986e6fefa3ee4b273f5a19801567094d85b501564448dd3e9cb46f3a0bb38fa0",
+    "inputs": [
+      {
+        "path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\input.txt",
+        "sha256": "922fb3a215d0dd772daf3488d626a7c09df0fa32df16b5f2fdc293b59aa3c283"
+      },
+      {
+        "path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\provider-manifest.json",
+        "sha256": "051e563027f30f8f9f9c8585e9a12a2ea7f5f6c2102d272e4986dccb791b2580",
+        "role": "provider_manifest"
+      },
+      {
+        "path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\database-snapshot.json",
+        "sha256": "184ef6577a24d9524b9c0dc6ecc0f81e23676b5a21b7fec19833067d9119d62a",
+        "role": "database_snapshot"
+      }
+    ]
+  },
+  "job_sha256": "65787063a2555a63e6961736479ae921019cbfa0072b5087ed7c718f58efda1a",
+  "actual_server": {
+    "name": "local-fake-mcp",
+    "version": "1"
+  },
+  "server_capabilities": {
+    "tools": {}
+  },
+  "catalog": [
+    {
+      "tools": [
+        {
+          "name": "open_database",
+          "inputSchema": {
+            "type": "object"
+          }
+        },
+        {
+          "name": "close_database",
+          "inputSchema": {
+            "type": "object"
+          }
+        },
+        {
+          "name": "decompile_function",
+          "inputSchema": {
+            "type": "object"
+          }
+        },
+        {
+          "name": "get_xrefs_to",
+          "inputSchema": {
+            "type": "object"
+          }
+        }
+      ]
+    }
+  ],
+  "error": "Error: decompile_function returned an error envelope",
+  "cleanup_ok": true,
+  "completed_at": "2026-10-12T06:29:34.515Z"
+}

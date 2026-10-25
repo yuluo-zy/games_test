@@ -1,0 +1,34 @@
+140c91e40 sub rsp, 0x38
+140c91e44 movaps xmmword ptr [rsp + 0x20], xmm6
+140c91e49 movaps xmm0, xmm1
+140c91e4c test byte ptr [rcx], 1
+140c91e4f je 0x140c91e85
+140c91e51 movss xmm6, dword ptr [rcx + 4]
+140c91e56 movaps xmm1, xmm6
+140c91e59 call 0x142923f10
+140c91e5e movaps xmm1, xmm0
+140c91e61 addss xmm6, xmm0
+140c91e65 xorps xmm2, xmm2
+140c91e68 cmpltss xmm0, xmm2
+140c91e6d andps xmm6, xmm0
+140c91e70 andnps xmm0, xmm1
+140c91e73 orps xmm0, xmm6
+140c91e76 mov eax, 1
+140c91e7b movaps xmm6, xmmword ptr [rsp + 0x20]
+140c91e80 add rsp, 0x38
+140c91e84 ret 
+140c91e85 movss xmm1, dword ptr [rcx + 4]
+140c91e8a xorps xmm2, xmm2
+140c91e8d cmpleps xmm2, xmm0
+140c91e91 movaps xmm3, xmm0
+140c91e94 cmpleps xmm3, xmm1
+140c91e98 andps xmm3, xmm2
+140c91e9b movd eax, xmm3
+140c91e9f and eax, 1
+140c91ea2 movaps xmm6, xmmword ptr [rsp + 0x20]
+140c91ea7 add rsp, 0x38
+140c91eab ret 
+140c91eac int3 
+140c91ead int3 
+140c91eae int3 
+140c91eaf int3 

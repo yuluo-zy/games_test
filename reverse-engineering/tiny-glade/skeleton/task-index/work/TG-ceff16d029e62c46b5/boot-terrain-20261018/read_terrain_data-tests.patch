@@ -1,0 +1,154 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/read_terrain_data.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/read_terrain_data.rs
+@@ -387,10 +387,144 @@
+     }
+ 
+     #[test]
+-    fn raster_plan_constants() {
+-        assert_eq!(VISUAL_HEIGHT_RASTER.pass_name.len(), 0x15);
+-        assert_eq!(VISUAL_HEIGHT_RASTER.depth_preset, TexturePreset(10));
+-        assert_eq!(VISUAL_HEIGHT_RASTER.draws[0].0.len(), 0xe);
+-        assert_eq!(VISUAL_HEIGHT_RASTER.draws[1].0.len(), 0xd);
+-    }
+-}
++    fn visual_height_records_clear_and_both_real_callbacks_with_static_common_params() {
++        use crate::{
++            asset_libraries::color_library::ColorLibrarySsbo,
++            render::pass_builder::{
++                bind_resources::WallColorIdSsbo,
++                draw_builder::{STONE_FLOOR_TEXTURES, WALL_COLOR_TEXTURES},
++                draw_list::DrawListItem,
++                draw_stream::{
++                    DrawKind, ShaderReflection,
++                    test_host::{Log, MockHost},
++                },
++                framebuffer_binding::{AttachmentTexture, DepthClear},
++                pass_resource_access::SsboType,
++            },
++            systems::render_loop::draw_passes::{
++                d_main_support::{DrawPassCtx, NoShaders},
++                draw_shaders::{
++                    floor_shader, rocky_terrain_draw,
++                    ssbo_tags::{RockyTerrainTriangleTag, RockyTerrainVertexTag},
++                },
++            },
++        };
++        use std::{cell::RefCell, rc::Rc, sync::Arc, time::Duration};
++        let log = Rc::new(RefCell::new(Log::default()));
++        let mut factory = || {
++            let (mut host, _) = MockHost::new();
++            host.log = log.clone();
++            for id in [11, 22] {
++                let mut reflection = ShaderReflection::default();
++                reflection.program_name = "w5_actual_callbacks";
++                reflection.has_uniform_block = true;
++                reflection.uniform_block_size = 16;
++                reflection.uniform_block_binding = 7;
++                for (name, offset) in [
++                    (0x418a98441f59a54c, 0), // common flag == Off
++                    (0xc5ab673fb08651f5, 4), // original flag byte
++                    (0x1e5485ef2e9f9384, 8), // static time, not ctx elapsed
++                    (floor_shader::FLOOR_FLAG_UNIFORM, 12),
++                ] {
++                    reflection.uniform_offsets.insert(name, offset);
++                }
++                host.shaders.insert(id, Arc::new(reflection));
++            }
++            for (index, hash) in [
++                ColorLibrarySsbo::rg_buffer_hash(),
++                WallColorIdSsbo::rg_buffer_hash(),
++                RockyTerrainVertexTag::rg_buffer_hash(),
++                RockyTerrainTriangleTag::rg_buffer_hash(),
++            ]
++            .into_iter()
++            .enumerate()
++            {
++                host.rg_buffers.insert(hash, index as u32 + 1);
++            }
++            for preset in 0..=0x15 {
++                host.presets.insert(
++                    preset,
++                    AttachmentTexture {
++                        id: 100 + preset as u32,
++                        extent: (512, 512),
++                        format: 126,
++                        sample_count: 1,
++                    },
++                );
++            }
++            let disks = STONE_FLOOR_TEXTURES
++                .iter()
++                .chain(WALL_COLOR_TEXTURES.iter())
++                .chain(floor_shader::FLOOR_DISK_MID.iter())
++                .copied()
++                .chain([
++                    floor_shader::FLOOR_DISK_HEAD,
++                    floor_shader::FLOOR_DISK_TAIL,
++                    rocky_terrain_draw::ROCKY_DISK_TEXTURE,
++                ]);
++            for (key, _) in disks {
++                host.textures_by_name.insert(
++                    key,
++                    (
++                        crate::rhapsody_contract::ManagedHandle(key),
++                        AttachmentTexture {
++                            id: 500,
++                            extent: (8, 8),
++                            format: 37,
++                            sample_count: 1,
++                        },
++                    ),
++                );
++            }
++            host.boxed()
++        };
++        let mut world = bevy_ecs::world::World::new();
++        let mut ctx = DrawPassCtx::new(
++            &mut world,
++            Duration::from_secs(73),
++            &mut factory,
++            &NoShaders,
++        );
++        let mut floor = DrawListItem::new(11, 0);
++        floor.vao = 101;
++        let mut rocky = DrawListItem::new(22, 0);
++        rocky.vao = 202;
++        render_visual_height(&mut ctx, &floor, &rocky, 123);
++        let log = log.borrow();
++        assert_eq!(log.submissions.len(), 1);
++        let pass = &log.submissions[0];
++        assert_eq!(pass.name, "Visual terrain height");
++        assert_eq!(pass.color_count, 0);
++        assert_eq!(pass.viewport, [512, 512]);
++        let depth = pass.depth.unwrap();
++        assert_eq!(depth.texture_id, 110);
++        assert_eq!(depth.layer, 0);
++        assert!(depth.writable);
++        assert_eq!(depth.clear, DepthClear::Clear(0.0));
++        assert_eq!(pass.draws.len(), 2);
++        assert_eq!(pass.draws[0].shader.0.0, 11);
++        assert_eq!(pass.draws[1].shader.0.0, 22);
++        assert_eq!(pass.draws[0].head, [1, 101]);
++        assert_eq!(pass.draws[1].head, [1, 202]);
++        assert_eq!(
++            pass.draws.iter().map(|d| d.variant).collect::<Vec<_>>(),
++            [1, 1]
++        );
++        assert_eq!(
++            pass.draws[0].kind,
++            DrawKind::InstancedGlDrawFlag { flag: 1 }
++        );
++        assert_eq!(
++            pass.draws[1].kind,
++            DrawKind::NoIndexBuffer { vertex_count: 123 }
++        );
++        assert_eq!(log.flushed_constants.len(), 2);
++        for (_, bytes) in &log.flushed_constants {
++            let words: Vec<_> = bytes
++                .chunks_exact(4)
++                .map(|v| u32::from_le_bytes(v.try_into().unwrap()))
++                .collect();
++            assert_eq!(words, [1, 0, 0, 1]);
++        }
++    }
++}

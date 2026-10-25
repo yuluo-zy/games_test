@@ -1,0 +1,172 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs_assemble.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs_assemble.rs
+@@ -331,13 +331,60 @@
+     Vec::new() // U。
+ }
+ 
+-/// 0x1407de8b0（O 结构，10 参面）：生成梯碰撞 + 实时几何
+-/// （配置数组 {2,3,6,...} + 碰撞生成器链）。
++/// B 0x1407de8b0及141fe5f70：将真实梯路径窗口追加到碰撞与两路渲染几何。
++/// 三路输出各由调用者原 owner 持有；凸包失败仍保留先写入的RT和俯视几何。
++#[allow(clippy::too_many_arguments)]
+ pub fn gen_stairs_collider_and_rt_geo(
+-    _config: &[u64],
+-    _p2: u64,
++    positions: &[Vec3],
++    tangents: &[Vec2],
++    widths: &[f32],
++    stride: usize,
++    colliders: &mut Vec<country_core::systems::collision::world::RaycastMeshData>,
++    rt_points: &mut Vec<Vec3>,
++    floor_points: &mut Vec<glam::Vec4>,
+ ) {
+-    // U。
++    assert!(stride != 0, "assertion failed: step != 0");
++    const RT_INDICES: [usize; 24] = [
++        0, 4, 1, 1, 4, 5, 2, 3, 6, 3, 7, 6,
++        0, 2, 4, 2, 6, 4, 1, 5, 3, 3, 5, 7,
++    ];
++    const FLOOR_INDICES: [usize; 6] = [2, 3, 6, 3, 7, 6];
++    let mut samples = positions.iter().zip(tangents).zip(widths).step_by(stride);
++    let Some(mut previous) = samples.next() else { return; };
++    for current in samples {
++        let points = stair_collider_prism(
++            [*previous.0.0, *current.0.0],
++            [*previous.0.1, *current.0.1],
++            [*previous.1, *current.1],
++        );
++        rt_points.extend(RT_INDICES.into_iter().map(|index| points[index]));
++        floor_points.extend(FLOOR_INDICES.into_iter().map(|index| points[index].extend(1.0)));
++        if let Some(collider) = country_core::systems::collision::world::RaycastMeshData::new_convex(&points) {
++            colliders.push(collider);
++        }
++        previous = current;
++    }
++}
++
++/// 原游戏回调的八顶点构造；保留宽度乘法、左右Y关联与显式+0。
++fn stair_collider_prism(positions: [Vec3; 2], tangents: [Vec2; 2], widths: [f32; 2]) -> [Vec3; 8] {
++    let mut points = [Vec3::ZERO; 8];
++    for index in 0..2 {
++        let position = positions[index];
++        let tangent = tangents[index];
++        let width = widths[index];
++        let dx = (-tangent.y * width) * 0.5;
++        let dy = (0.0 * width) * 0.5;
++        let dz = (tangent.x * width) * 0.5;
++        let base_y = if index == 0 { position.y + -0.375 } else { -0.375 + position.y };
++        let left = Vec3::new(position.x - dx, base_y - dy, position.z - dz);
++        let right = Vec3::new(position.x + dx, dy + base_y, position.z + dz);
++        points[index * 4] = Vec3::new(left.x, left.y + -0.5, left.z);
++        points[index * 4 + 1] = Vec3::new(right.x, -0.5 + right.y, right.z);
++        points[index * 4 + 2] = Vec3::new(left.x + 0.0, left.y + 0.5, left.z + 0.0);
++        points[index * 4 + 3] = Vec3::new(right.x + 0.0, right.y + 0.5, right.z + 0.0);
++    }
++    points
+ }
+ 
+ /// B 1407dec90/955B: construct the eight original structural hull vertices,
+@@ -1012,3 +1059,103 @@
+         }
+     }
+ }
++
++#[cfg(test)]
++mod stair_collider_geometry_tests {
++    use super::*;
++    use country_core::systems::collision::world::RaycastMeshData;
++    use glam::Vec4;
++
++    #[test]
++    fn actual_convex_and_both_ordered_render_streams_preserve_existing_prefixes() {
++        let positions = [Vec3::new(0.0, 1.0, 0.0), Vec3::new(0.0, 2.0, 2.0)];
++        let mut colliders = Vec::new();
++        let mut rt = vec![Vec3::splat(99.0)];
++        let mut floors = vec![Vec4::splat(88.0)];
++        gen_stairs_collider_and_rt_geo(&positions, &[Vec2::Y; 2], &[2.0; 2], 1,
++            &mut colliders, &mut rt, &mut floors);
++        assert_eq!(colliders.len(), 1);
++        let shape = colliders[0].shape.as_ref().expect("原八点应构成真实凸包");
++        let bounds = shape.compute_local_aabb();
++        assert_eq!([bounds.mins.x, bounds.mins.y, bounds.mins.z], [-1.0, 0.125, 0.0]);
++        assert_eq!([bounds.maxs.x, bounds.maxs.y, bounds.maxs.z], [1.0, 2.125, 2.0]);
++        let corners = [
++            Vec3::new(1.0, 0.125, 0.0), Vec3::new(-1.0, 0.125, 0.0),
++            Vec3::new(1.0, 1.125, 0.0), Vec3::new(-1.0, 1.125, 0.0),
++            Vec3::new(1.0, 1.125, 2.0), Vec3::new(-1.0, 1.125, 2.0),
++            Vec3::new(1.0, 2.125, 2.0), Vec3::new(-1.0, 2.125, 2.0),
++        ];
++        assert_eq!(rt[0], Vec3::splat(99.0));
++        let expected = [0, 4, 1, 1, 4, 5, 2, 3, 6, 3, 7, 6, 0, 2, 4, 2, 6, 4, 1, 5, 3, 3, 5, 7]
++            .map(|index| corners[index]);
++        assert_eq!(&rt[1..], &expected);
++        assert_eq!(floors[0], Vec4::splat(88.0));
++        assert_eq!(&floors[1..], &[corners[2].extend(1.0), corners[3].extend(1.0),
++            corners[6].extend(1.0), corners[3].extend(1.0), corners[7].extend(1.0), corners[6].extend(1.0)]);
++        gen_stairs_collider_and_rt_geo(&positions, &[Vec2::Y; 2], &[2.0; 2], 1,
++            &mut colliders, &mut rt, &mut floors);
++        assert_eq!((colliders.len(), rt.len(), floors.len()), (2, 49, 13));
++    }
++
++    #[test]
++    fn zip_uses_shortest_source_and_stride_does_not_append_an_unsampled_tail() {
++        let positions: Vec<_> = (0..6).map(|z| Vec3::new(0.0, 1.0, z as f32)).collect();
++        let mut colliders = Vec::new(); let mut rt = Vec::new(); let mut floors = Vec::new();
++        gen_stairs_collider_and_rt_geo(&positions, &[Vec2::Y; 4], &[2.0; 5], 2,
++            &mut colliders, &mut rt, &mut floors);
++        assert_eq!((colliders.len(), rt.len(), floors.len()), (1, 24, 6));
++        assert_eq!(floors.iter().map(|point| point.z).fold(f32::NEG_INFINITY, f32::max), 2.0);
++        gen_stairs_collider_and_rt_geo(&positions, &[Vec2::Y; 6], &[2.0; 6], 4,
++            &mut colliders, &mut rt, &mut floors);
++        assert_eq!((colliders.len(), rt.len(), floors.len()), (2, 48, 12));
++        assert_eq!(floors[6..].iter().map(|point| point.z).fold(f32::NEG_INFINITY, f32::max), 4.0);
++        gen_stairs_collider_and_rt_geo(&positions, &[Vec2::Y; 1], &[2.0; 6], 1,
++            &mut colliders, &mut rt, &mut floors);
++        assert_eq!((colliders.len(), rt.len(), floors.len()), (2, 48, 12));
++    }
++
++    #[test]
++    fn zero_stride_panics_before_touching_any_output_even_for_empty_input() {
++        let mut colliders: Vec<RaycastMeshData> = Vec::new();
++        let mut rt = vec![Vec3::X]; let mut floors = vec![Vec4::ONE];
++        let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
++            gen_stairs_collider_and_rt_geo(&[], &[], &[], 0, &mut colliders, &mut rt, &mut floors)));
++        assert!(panic.is_err());
++        assert!(colliders.is_empty()); assert_eq!(rt, vec![Vec3::X]); assert_eq!(floors, vec![Vec4::ONE]);
++    }
++
++    #[test]
++    fn degenerate_convex_failure_preserves_the_preceding_two_real_writes() {
++        let mut colliders = Vec::new(); let mut rt = vec![Vec3::X]; let mut floors = vec![Vec4::ONE];
++        gen_stairs_collider_and_rt_geo(&[Vec3::ZERO; 2], &[Vec2::X; 2], &[0.0; 2], 1,
++            &mut colliders, &mut rt, &mut floors);
++        assert!(colliders.is_empty());
++        assert_eq!((rt.len(), floors.len()), (25, 7));
++        assert_eq!(rt[0], Vec3::X); assert_eq!(floors[0], Vec4::ONE);
++        assert!(floors[1..].iter().all(|point| point.w == 1.0));
++    }
++
++    #[test]
++    fn turning_and_negative_widths_keep_each_original_endpoint_geometry() {
++        let positions = [Vec3::new(2.0, 4.0, 6.0), Vec3::new(-3.0, 7.0, 9.0)];
++        let corners = stair_collider_prism(positions, [Vec2::X, Vec2::Y], [4.0, -2.0]);
++        assert_eq!(corners[0], Vec3::new(2.0, 3.125, 4.0));
++        assert_eq!(corners[1], Vec3::new(2.0, 3.125, 8.0));
++        assert_eq!(corners[2], Vec3::new(2.0, 4.125, 4.0));
++        assert_eq!(corners[4], Vec3::new(-4.0, 6.125, 9.0));
++        assert_eq!(corners[5], Vec3::new(-2.0, 6.125, 9.0));
++        assert_eq!(corners[7], Vec3::new(-2.0, 7.125, 9.0));
++    }
++
++    #[test]
++    fn raw_nonfinite_width_and_explicit_positive_zero_are_not_erased() {
++        let points = stair_collider_prism([Vec3::ZERO; 2], [Vec2::X; 2], [f32::INFINITY, f32::NAN]);
++        assert!(points.iter().all(|point| point.y.is_nan()));
++        assert!(points[0].x.is_nan()); assert!(points[1].x.is_nan());
++        let zeros = stair_collider_prism([Vec3::new(-0.0, 0.0, -0.0); 2], [Vec2::ZERO; 2], [0.0; 2]);
++        assert_eq!(zeros[1].x.to_bits(), (-0.0_f32).to_bits());
++        assert_eq!(zeros[3].x.to_bits(), 0.0_f32.to_bits());
++        assert_eq!(zeros[1].z.to_bits(), 0.0_f32.to_bits());
++        assert_eq!(zeros[3].z.to_bits(), 0.0_f32.to_bits());
++    }
++}

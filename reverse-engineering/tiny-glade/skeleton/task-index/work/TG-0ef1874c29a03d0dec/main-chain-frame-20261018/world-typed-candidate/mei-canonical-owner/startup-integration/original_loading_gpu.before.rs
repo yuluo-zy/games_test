@@ -1,0 +1,134 @@
+//! Execute the original B loading closure with packaged assets and shaders.
+//! The text is a bounded test input; the logo meshes/shaders and their draw
+//! callbacks come from the recovered original startup producer. This does not
+//! prove that gameplay's asynchronous load or complete startup UI has finished.
+use std::{path::PathBuf, sync::Arc, time::Duration};
+use ash::vk::{self, Handle};
+use bevy_ecs::world::World;
+use country_core::{
+    asset_libraries::{placement_data_library::AssetPlacementDataLibrary,
+        shader_library::AssetShaderLibrary, configwatch::ConfigWatch},
+    resources::window::WindowSize,
+    systems::render_loop::{draw_passes::draw_lists::DrawLists, painterly::ShaderLoader,
+        vermeer::{self, VermeerState}},
+};
+use tiny_glade::{loading_graph::{self, LoadingGpuResources}, render_bridge::CoreRenderBridge};
+
+#[test]
+fn packaged_loading_background_vermeer_and_actual_text_stream_execute_and_read_back() {
+    let installed = std::env::var_os("TG_INSTALL_ROOT").map(PathBuf::from).unwrap_or_else(||
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../../ljxsj_92385/Tiny Glade"));
+    let installed = installed.canonicalize().unwrap();
+    // This integration-test process has one test. Match the original process's
+    // installation cwd for its original relative mesh paths and restore it on
+    // return/unwind; no installed assets are modified.
+    struct RestoreDirectory(PathBuf);
+    impl Drop for RestoreDirectory {
+        fn drop(&mut self) { std::env::set_current_dir(&self.0).unwrap(); }
+    }
+    let _restore_directory = RestoreDirectory(std::env::current_dir().unwrap());
+    std::env::set_current_dir(&installed).unwrap();
+    let device = match rhapsody::device::Device::new_headless(&rhapsody::device::DeviceConfig::headless()) {
+        Ok(device) => device,
+        Err(error) => {
+            assert!(!std::env::var("RHAPSODY_REQUIRE_VULKAN").is_ok_and(|v| v == "1"),
+                "strict original loading GPU initialization failed: {error}");
+            eprintln!("SKIP original loading GPU initialization: {error}");
+            return;
+        }
+    };
+    let shaders = Arc::new(AssetShaderLibrary::new());
+    let mut bridge = CoreRenderBridge::new(device.clone(), &installed, shaders.clone()).unwrap();
+    country_core::startup::load_shaders::load_ui_shaders(&shaders, bridge.shader_backend());
+    struct Loader<'a>(&'a CoreRenderBridge, &'a AssetShaderLibrary);
+    impl ShaderLoader for Loader<'_> {
+        fn load_shader_into_library(&mut self, path: &'static str, name: &'static str) {
+            country_core::startup::load_shaders::load_shader_into_library(self.1, self.0.shader_backend(), path, name);
+        }
+    }
+    vermeer::startup_vermeer(&mut Loader(&bridge, &shaders));
+    let extent = [320, 180];
+    let mut world = World::new();
+    bridge.install_asset_libraries(&mut world).unwrap();
+    // B's loading App constructs ConfigWatch(false); initialize_loading_resources
+    // then invokes the recovered ColorLibrary producer on this bridge's device.
+    world.insert_resource(ConfigWatch::new(false));
+    world.insert_resource(country_core::render::frame_constants::FrameConstants::default());
+    world.insert_resource(AssetPlacementDataLibrary::new());
+    world.insert_resource(WindowSize::new(extent[0], extent[1]));
+    let mut clock = bevy_time::Time::<()>::default();
+    clock.advance_by(Duration::from_secs_f32(1.0 / 60.0));
+    world.insert_resource(clock);
+    let mut state = VermeerState::default();
+    state.activate(true, true);
+    world.insert_resource(state);
+    loading_graph::initialize_loading_resources(&mut world, device.clone(), bridge.hosts(), &installed, false).unwrap();
+    world.insert_resource(country_core::asset_libraries::meshwatch::MeshWatch::new(false));
+    world.insert_resource(country_core::resources::logo_animation::LogoAnimation::default());
+    country_core::resources::logo_animation::startup_animated_logo(
+        &mut world, bridge.shader_backend(), &shaders).unwrap();
+    let mut maintenance = bevy_ecs::schedule::Schedule::default();
+    country_core::asset_libraries::runtime::add_asset_library_systems(&mut maintenance);
+    maintenance.run(&mut world);
+    let mut lists = DrawLists::new();
+    country_core::systems::render_loop::draw_passes::draw_lists::build_draw_lists(
+        &mut world, shaders.as_ref(), &mut lists);
+    assert_eq!(lists.list(country_core::systems::render_loop::draw_passes::draw_lists::list::LOADING_SCREEN).len(), 2,
+        "both original startup logo meshes must reach their real draw consumer");
+    bridge.raster_resources().refresh_draw_vaos(&mut world, &lists).unwrap();
+    {
+        let table = tg_text::FontTable::from_ron(&std::fs::read_to_string(installed.join("assets/fonts/table.ron")).unwrap()).unwrap();
+        let mut text = world.resource_mut::<tg_text::TextRenderer>();
+        text.set_pixels_per_point(extent[1] as f32 / 1000.0).unwrap();
+        let mut fragment = tg_text::TextFragment::new(32.0, tg_text::FontFamily::Label, Arc::new(table)).unwrap();
+        fragment.set_text(&mut text, "Tiny Glade").unwrap();
+        fragment.prepare(&mut text).unwrap();
+        fragment.render(&mut text, [160.0, 90.0], [300.0, 80.0], u32::MAX).unwrap();
+    }
+    loading_graph::flush_mei_frame(&mut world);
+    assert!(world.resource::<LoadingGpuResources>().mei.output().unwrap().prim_count > 0,
+        "the MEI stream must come from actual glyph producers");
+    let byte_count = extent[0] as usize * extent[1] as usize * 4;
+    let readback = Arc::new(rhapsody::raw::buffer::Buffer::new(device.clone(),
+        &rhapsody::raw::buffer::BufferDesc::new_gpu_to_cpu(byte_count as u64, vk::BufferUsageFlags::TRANSFER_DST)).unwrap());
+    let (output, built) = bridge.build_frame(|frame| {
+        let output = loading_graph::build_loading_frame(frame, &mut world, &shaders, extent, 43, &lists)?;
+        let buffer = frame.import_native_buffer(readback.clone(), 0)?;
+        frame.with_graph(|graph| {
+            let texture = graph.resource_handle(output.id)?;
+            let readback = readback.clone();
+            let device = device.clone();
+            let mut copy = graph.add_pass("fixture readback of original loading output");
+            copy.add_resource_access(texture, 0x25, 0)?;
+            copy.add_resource_access(buffer, 0x34, 0)?;
+            copy.render_with_result_context(move |ctx| {
+                let source = ctx.managed.ok_or_else(|| rhapsody::Error::invalid_usage("missing managed loading output"))?
+                    .texture_for(texture.raw())?;
+                unsafe { device.device.cmd_copy_image_to_buffer(vk::CommandBuffer::from_raw(ctx.command.handle()),
+                    source.raw(), vk::ImageLayout::TRANSFER_SRC_OPTIMAL, readback.handle,
+                    &[vk::BufferImageCopy::default().image_subresource(vk::ImageSubresourceLayers::default()
+                        .aspect_mask(vk::ImageAspectFlags::COLOR).layer_count(1))
+                        .image_extent(vk::Extent3D { width: extent[0], height: extent[1], depth: 1 })]); }
+                Ok(())
+            });
+            graph.export(buffer, 0x26)?;
+            Ok(())
+        })?;
+        Ok(output)
+    }).unwrap();
+    bridge.shader_backend().prewarm(Duration::from_secs(30)).unwrap();
+    let compiled = bridge.compile_built(built).unwrap();
+    let receipt = bridge.execute_compiled(compiled).unwrap();
+    assert!(!receipt.receipts.is_empty(), "loading requires real Vulkan submissions");
+    for name in [vermeer::PASS_GENERATE, vermeer::PASS_RASTER_STROKES,
+        vermeer::PASS_COMBINE, "Mei 2D", "UI shadow combine", "UI"] {
+        assert!(receipt.snapshot.pass_order.iter().any(|pass| pass == name), "missing original pass: {name}");
+    }
+    bridge.wait_submits_done(10_000_000_000).unwrap();
+    let owner = bridge.exported_texture(&receipt, output.id).unwrap();
+    assert_eq!([owner.desc.width, owner.desc.height], extent);
+    let mut pixels = vec![0; byte_count];
+    readback.read_bytes(0, &mut pixels).unwrap();
+    assert!(pixels.chunks_exact(4).any(|pixel| pixel[0] != 0 || pixel[1] != 0 || pixel[2] != 0),
+        "actual packaged background and glyph draws must produce visible RGB data");
+}

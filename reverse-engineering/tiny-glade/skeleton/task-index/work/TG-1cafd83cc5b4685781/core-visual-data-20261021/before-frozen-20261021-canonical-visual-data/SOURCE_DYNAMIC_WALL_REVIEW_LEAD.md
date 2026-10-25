@@ -1,0 +1,7 @@
+# 墙烟囱动态collision源码独立复核
+
+core_business_lead，2026-10-21。接受最窄19/20 collision producer候选：before `7e56477796f7250ac5095c618922c37b887f97a5e5c95c895699885c86ece8d1`，after `49874d591ea4c5b288597b354365dcdaa3475389e4ae42e46610936145687460`，patch `87a8b181bcc2e0a2e1762dddfb0962b0c9aeed6d1b8626463602f55e6d1bfb6a`。已核生产before、完整candidate/hash与patch，隔离副本patch -F0无fuzz复现全文一致。依赖canonical schema和真实box入口；尚未运行Cargo/target/GPU。
+
+完整读source/5测试并对照已独审原合同。19使用实际PublicWallState.raw outline、relative_heights、prepared positions/segment_values、arch height、wall space及实际当前桶所有邻居；20 required不规则asset按原Affine逐点转世界Triangle。entry/as_chimney/cached写面先后、self在required记录查询之后排除、exact rank key、严格有序overlap/arch/path==0门、MAXSS NaN operand、+.3真实bit均保。有效lower先于body，拒绝时body后fallback；真box/new_indexed sequential indices，不weld、不投影bbox、不创建第二registry。
+
+实际测试源码穿InnerWalls→publication→prepared→generate，区分24Triangle同数量却不同点/顺序的两个分支；vent十二个世界vertex与indices独立列出，继续到真实physics两map、source与sameArc；三个独立height/path/elevation gate与missing selfrecord/asset的entry部分mutation均覆盖。不是只测标签或数量。其它visual装配盒/烟雾/跨Terrain-Stair遍历仍未完整恢复，不能写作整visual验收。当前同10源正在进一步核原mixed-world type gate，任何新必要修订须另版before绑定而非回写本freeze。

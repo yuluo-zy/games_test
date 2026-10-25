@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-18",
+  "actor": "current Codex root session",
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "checks": [
+    {
+      "command": "cargo test --offline --locked --target-dir /tmp/tg-country-core-utils-review-20261018-target -p country-core --lib",
+      "exit_code": 0,
+      "summary": "test result: ok. 2100 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.39s",
+      "log": "final-core-tests.log"
+    },
+    {
+      "command": "cargo clippy --offline --locked --target-dir /tmp/tg-country-core-utils-review-20261018-target -p country-core --lib --no-deps --message-format=json",
+      "exit_code": 0,
+      "utils_diagnostics": 0,
+      "other_warnings": 250,
+      "log": "final-clippy.jsonl"
+    },
+    {
+      "command": "rustfmt --edition 2024 --check crates/country-core/src/utils/mod.rs",
+      "exit_code": 0,
+      "log": "format.log"
+    },
+    {
+      "command": "rustc --edition=2024 -O benchmark.rs with real original/current DirtyTiles sources",
+      "exit_code": 0,
+      "log": "final-benchmark.log"
+    }
+  ],
+  "exact_utils_tests": 92,
+  "source_manifest_sha256": "41991dd41dd1916c0aae5251405eaa74d33859ab4a027876f016e23735a58dba",
+  "local_markdown_links_checked": 49,
+  "temporary_probe_cleaned": true,
+  "evidence_sha256": {
+    "final-clippy.jsonl": "3fa18363894fabe589cc7ca6118cb0d1946f1abf2e6169ae14b7498624b8f3bf",
+    "sources.json": "41991dd41dd1916c0aae5251405eaa74d33859ab4a027876f016e23735a58dba",
+    "run_benchmark.py": "9034b37e8e609645a13f9362a547ec0f1e3e5c3d59fe9d53d3fb5856e9e5bbab",
+    "previous-README.md": "9bbb711f2cbbe5fd1d03d1150549aadaae1bf002c6f1a65cb8b68992dad29a54",
+    "utils-tests-build-blocked.log": "46517606fb8108ba5798fd73505cd40a7bd3a6d5428c3dc10d51f04a5b359c31",
+    "format.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "final-core-tests.log": "59e718d6f32b05cfed91e2cd0a62d0b4f805b2b45ed6d68b4c37e8f7330ebab1",
+    "benchmark.rs": "a708b74b03d47aa13dea6d9bbda3d3a234d233e6e0aab828e85f17b45b8b17da",
+    "previous-REVIEW.md": "5c7d7d2a0c8a0296ee8c0beb4ac8ff2c91cef7a1edaf9c024aa9887681d7b608",
+    "core-tests-first.log": "e566f573f7e2a706987f2f09e8ab235258ce6e4a0d1756d19b4dfdbdfe9de5fb",
+    "clippy.log": "2f0d4e62e966d70febb5ad614a1067d3a28e77e04820bb6120d45aefe8af2829",
+    "run_source_checks.py": "e78087a7ef7ab45e10aaf0b14d4613e0e6d02f92b57aad64e00def03f0113388",
+    "clippy.jsonl": "54894b4ca554426b02bf8efaca155a14a8aabd7fd7b28ef696877d28e85accc0",
+    "source-checks.log": "0c5292883ff497b57521cc865e6b70139c882fe7e0f3d709428ae85f57446d6c",
+    "utils-tests.log": "dda9166b10e6438b5a1864e0d408510469be5483e7f5a195c3c498fff7f044c9",
+    "benchmark-baseline.rs": "cdfa42bf508134b98426299c9f901745ccbef4875f4fa64a418dcbed2a8adf59",
+    "benchmark.log": "1402ca44315c0c77e73d8bcc3b15b68b0ae0263995eb91dc292d998ab1f6b4fd",
+    "README.md": "15a97f48201adfdb41b308240de69fccf610ff5936c77d00dd918eb9034d0084",
+    "baseline.json": "2ea523a8b7e8e924dc0aae4a3749a0eb912ebf96a414b3906b8b843aac9278c2",
+    "final-benchmark.log": "f94dbe13c670e3aa38971e27fd0fd01b22fa5fc7a60e53fbdf866e5c2e6c6570",
+    "final-clippy.log": "821c17172e381bc57554aee2b10e400d7c92e1ab53290f7dae2c2d4d77ce5018",
+    "source-checks.json": "aff129016f67d0b7741248e60815b91e6b22887f7e8efa61a425730a1ba5bad8",
+    "baseline-tests.log": "06ab78e27e6ff763f3c8365728de0618fde02e1bbb0b8de5dbac93b8225f27e9",
+    "core-tests.log": "79b99c54f6374c9692b50cc24f9eac5282fd5ad60bc97df59025b505cbaa3650",
+    "utils.patch": "cf516a2e70eea3b74ceec46aafd98effc73c5c4c7e3a74d4335fa81d42275bc8"
+  },
+  "native_equivalence_claimed": false,
+  "remaining_boundaries": [
+    "World load application separately unfinished; helper sampling gate applied only with valid parsed data",
+    "Sphere/rectangle drawing APIs and other raw signifier builder consumers not implemented in this refactor",
+    "GPU frames and actual FMOD device not exercised",
+    "Small rectangles pay additional validation cost; benchmark does not imply global speedup"
+  ]
+}

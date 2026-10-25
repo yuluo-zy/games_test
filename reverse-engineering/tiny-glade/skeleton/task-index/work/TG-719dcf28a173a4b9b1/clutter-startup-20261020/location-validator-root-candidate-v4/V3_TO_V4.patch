@@ -1,0 +1,18 @@
+--- a/tiny-glade/crates/systems/decorator/src/cull_oob_decorators.rs
++++ b/tiny-glade/crates/systems/decorator/src/cull_oob_decorators.rs
+@@ -642,6 +642,7 @@
+     blueprints.remove(id);
+     let op = DecoratorOp {
+         kind: DecoratorOp::KIND_REMOVE,
++        decorator_id: DecoratorId(id),
+         info: *info,
+         extra: [0; 0x20],
+         change: None,
+@@ -697,6 +698,7 @@
+         blueprints.remove(id);
+         let op = DecoratorOp {
+             kind: DecoratorOp::KIND_REMOVE,
++            decorator_id: DecoratorId(id),
+             info,
+             extra: [0; 0x20],
+             change: None,

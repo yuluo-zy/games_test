@@ -1,0 +1,175 @@
+{
+  "tool": "recompile_check.py",
+  "hlsl": "reconstruction/shader-source/shaders/light_binning/cell_prefix_merge.cs.hlsl",
+  "bin": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/compiled-shaders/_light_binning_cell_prefix_merge.cs.hlsl_cs_main_0.bin",
+  "include_root": "reconstruction/shader-source/shaders",
+  "dxc": "/opt/homebrew/bin/dxc",
+  "modules": [
+    {
+      "module_index": 23,
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "command": "dxc-cl-option: /tmp/.tmpvCqejg -E cs_main -T cs_6_4 -spirv -WX -Ges -fspv-target-env=vulkan1.1 -HV 2021 -Zi -Fo /tmp/.tmpq1107W -Qembed_debug",
+      "replay_command": "dxc -E cs_main -T cs_6_4 -spirv -WX -Ges -fspv-target-env=vulkan1.1 -HV 2021 -Zi -Qembed_debug -Fo <out> -I reconstruction/shader-source/shaders <source>",
+      "target": {
+        "raw_sha256": "5210ce741fa9ebee7c17d75e000417719206fb0e4fb52144bce80dc6eaa5c348",
+        "normalized_sha256": "ecfce2bbcef166ca546e3e889cba6714377275ab892c6e025178b9469c981c76",
+        "fingerprint": {
+          "entries": [
+            [
+              "GLCompute",
+              "cs_main"
+            ]
+          ],
+          "local_size": [
+            64,
+            1,
+            1
+          ],
+          "capabilities": [
+            "Shader"
+          ],
+          "bindings": [
+            [
+              0,
+              13,
+              "Uniform",
+              "__alias_inout_buf",
+              "StorageBuffer(SSBO,BufferBlock)"
+            ],
+            [
+              0,
+              14,
+              "Uniform",
+              "subtotals_buf",
+              "StorageBuffer(SSBO,BufferBlock)"
+            ]
+          ],
+          "opcode_histogram": {
+            "OpAccessChain": 2,
+            "OpCapability": 1,
+            "OpCompositeExtract": 1,
+            "OpConstant": 2,
+            "OpDecorate": 8,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpFunction": 1,
+            "OpFunctionEnd": 1,
+            "OpIAdd": 1,
+            "OpLabel": 1,
+            "OpLine": 9,
+            "OpLoad": 3,
+            "OpMemberDecorate": 3,
+            "OpMemoryModel": 1,
+            "OpModuleProcessed": 2,
+            "OpName": 5,
+            "OpNoLine": 1,
+            "OpReturn": 1,
+            "OpSource": 8,
+            "OpStore": 1,
+            "OpString": 8,
+            "OpTypeFunction": 1,
+            "OpTypeInt": 2,
+            "OpTypePointer": 4,
+            "OpTypeRuntimeArray": 1,
+            "OpTypeStruct": 2,
+            "OpTypeVector": 1,
+            "OpTypeVoid": 1,
+            "OpUDiv": 1,
+            "OpVariable": 3
+          }
+        }
+      },
+      "candidate": {
+        "raw_sha256": "b2392b39535ae55a5dbc08befe1d457452eef65a54767c15df232a4c92f4718b",
+        "normalized_sha256": "8fd91646540c6f3a374b10a79c9f9cf318804daec64c996d2fb717d2f070048c",
+        "fingerprint": {
+          "entries": [
+            [
+              "GLCompute",
+              "cs_main"
+            ]
+          ],
+          "local_size": [
+            64,
+            1,
+            1
+          ],
+          "capabilities": [
+            "Shader"
+          ],
+          "bindings": [
+            [
+              0,
+              13,
+              "Uniform",
+              "__alias_inout_buf",
+              "StorageBuffer(SSBO,BufferBlock)"
+            ],
+            [
+              0,
+              14,
+              "Uniform",
+              "subtotals_buf",
+              "StorageBuffer(SSBO,BufferBlock)"
+            ]
+          ],
+          "opcode_histogram": {
+            "OpAccessChain": 2,
+            "OpCapability": 1,
+            "OpCompositeExtract": 1,
+            "OpConstant": 2,
+            "OpDecorate": 8,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpFunction": 1,
+            "OpFunctionEnd": 1,
+            "OpIAdd": 1,
+            "OpLabel": 1,
+            "OpLine": 9,
+            "OpLoad": 3,
+            "OpMemberDecorate": 3,
+            "OpMemoryModel": 1,
+            "OpModuleProcessed": 2,
+            "OpName": 5,
+            "OpNoLine": 1,
+            "OpReturn": 1,
+            "OpSource": 7,
+            "OpStore": 1,
+            "OpString": 7,
+            "OpTypeFunction": 1,
+            "OpTypeInt": 2,
+            "OpTypePointer": 4,
+            "OpTypeRuntimeArray": 1,
+            "OpTypeStruct": 2,
+            "OpTypeVector": 1,
+            "OpTypeVoid": 1,
+            "OpUDiv": 1,
+            "OpVariable": 3
+          }
+        }
+      },
+      "structural_match": false,
+      "normalized_hash_match": false,
+      "differences": {
+        "opcode_histogram": {
+          "target_only": {
+            "OpSource": 8,
+            "OpString": 8
+          },
+          "candidate_only": {
+            "OpSource": 7,
+            "OpString": 7
+          }
+        }
+      },
+      "verdict": "FAIL"
+    }
+  ],
+  "summary": {
+    "checked": 1,
+    "pass_normalized": 0,
+    "pass_structural": 0,
+    "fail": 1
+  }
+}

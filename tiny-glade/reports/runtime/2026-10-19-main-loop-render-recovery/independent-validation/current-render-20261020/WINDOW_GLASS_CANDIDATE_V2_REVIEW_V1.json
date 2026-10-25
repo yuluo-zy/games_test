@@ -1,0 +1,144 @@
+{
+  "status": "bounded_source_review_pass_pending_root_compile_cpu_gpu",
+  "baseline_sha": "fa53d49a61dd7496cddc9af054c6fb1899fa1676",
+  "reviewer": "root/render_reviewer",
+  "candidate": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-5ad4c73c24d3d5c488/window-glass-main-20261020/candidate-v2-rebased-fa53",
+  "manifest_sha256": "8ba3152c537ca12a1c0ae3bc4a11f9a954b84c9bdcc08125d382a594064b4888",
+  "source_patch_sha256": "2c41dd1b9f32b66e4eacae68587f51057d55bfa3b087db394157c65c87aa0901",
+  "source_hashes_verified": [
+    {
+      "path": "tiny-glade/crates/country-core/src/resources/window_lights.rs",
+      "candidate_sha256": "cd64627310ca6ea3f24ed59049e5faf15bba6a90a24b3f9ec96935642122f6cb",
+      "before_sha256": null
+    },
+    {
+      "path": "tiny-glade/crates/country-core/src/resources/mod.rs",
+      "candidate_sha256": "61df16a3bd72bf9ff58b2195dee8c34b893e9f9d13e1e61c5236d14988092b80",
+      "before_sha256": "13197ab8f4b33e5b2f825a63c64b62b82d885ef79c0e7859e35de22eb0cd8fbd"
+    },
+    {
+      "path": "tiny-glade/crates/country-core/src/resources/events.rs",
+      "candidate_sha256": "097fbb77b24f5ba32e20b3b9c48ca40f6c508aa4d6fea440ac415d38b0e4b9cb",
+      "before_sha256": "16e8f140aba309af4239142b38e5fa697dc1a3f5f486e16aeeb1c5bc2f159de6"
+    },
+    {
+      "path": "tiny-glade/crates/systems/decorator/src/window_lights.rs",
+      "candidate_sha256": "2f3a01dcfd5d78b7a4f7d6e5724b20ec8e9053664dbbdc46ce79a79e13472e79",
+      "before_sha256": "55f7f4108da68f8b2c2badef43eb2d75f40c99e736432f152f43317a84807224"
+    },
+    {
+      "path": "tiny-glade/crates/systems/decorator/src/utils/visual_entity_builder.rs",
+      "candidate_sha256": "4e84567a07d8f266edca51867ee686048972784a7676305d92bb94515f2e42ad",
+      "before_sha256": "fbfb35a180152940a9bb94043c7297fce0c4b3158cdcf3d606bf9ed068be16d1"
+    },
+    {
+      "path": "tiny-glade/crates/country-core/src/render/nani/systems.rs",
+      "candidate_sha256": "0ba537b27e7028140ccd3cf213cbe2b9fba461538c193d16935d331d211498d0",
+      "before_sha256": "1b6634f8267bc448cdec2ad333aebf997f44c2f2d8264dd660eef11f79d5f79f"
+    },
+    {
+      "path": "tiny-glade/crates/utils/src/lib.rs",
+      "candidate_sha256": "823ed9c9372bcf1e7e1c5feb9df5a4f427749b6ce3e434ebec0aae5483b32dbe",
+      "before_sha256": "feaaee386a98f4551009dca584c63b3e1b680db0bed21d1c76bb33a7bf5e5fd6"
+    },
+    {
+      "path": "tiny-glade/crates/tiny-glade/src/run_game.rs",
+      "candidate_sha256": "c85e8a6784862de8e6d274b9b44496a568fa84d983e8ef276582f454343ec1a0",
+      "before_sha256": "d06f963c6c40df23e9b88daf92534ea33704a3ab576deb5e4d4feb633ffdcc8c"
+    }
+  ],
+  "native_independent_checks": {
+    "original_rne_identity": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "pdb_binding": "已读selected-native-procedures-v1原PDB记录：427:2044/3098:84992/759:4072/1505:92956；实际raw源码路径用于归属，schema名称不替代机器码。",
+    "byte_check": "用pefile按VA从本机原B RNE读取，以下retained每条机器码全部相等；只作静态字节核，不执行原作或候选。",
+    "artifacts": [
+      {
+        "path": "native-pack-v1/window-light-system.asm.txt",
+        "sha256": "c5dd7266577f07cbb880b63ea26be61d63514d9ead1b7006b851fffa89fc53b6",
+        "instructions_checked": 850,
+        "bytes_checked": 3333
+      },
+      {
+        "path": "native-pack-v1/window-light-retain.asm.txt",
+        "sha256": "943a8de699da323f67b8ec925894922d82c439b8d6659f6298384130919823a4",
+        "instructions_checked": 151,
+        "bytes_checked": 599
+      },
+      {
+        "path": "native-pack-v1/window-glass-consumer.asm.txt",
+        "sha256": "dc472c040a3d673bb57ce2d956a66404ea93511d646e9a5c970463b34f005bd0",
+        "instructions_checked": 1009,
+        "bytes_checked": 4529
+      },
+      {
+        "path": "native-pack-v1/continuous-lerp.asm.txt",
+        "sha256": "1efc22113d553a06a6a7031bcf9c141ac95464fb804fd79fbac162ce55f48426",
+        "instructions_checked": 19,
+        "bytes_checked": 81
+      },
+      {
+        "path": "unload-native-pack-v1/decorators-unload-owner-boundary.asm.txt",
+        "sha256": "b3a28b59824900e3bfc659b39576d2288af8039d430064b3022dee2af72c775b",
+        "instructions_checked": 2123,
+        "bytes_checked": 9451
+      },
+      {
+        "path": "reset-native-pack-v1/global-window-reset-inline.asm.txt",
+        "sha256": "86115cbde7c7abdd664466618251dfa958dd5b0f5822d91206f889b2c4d2c5cd",
+        "instructions_checked": 21,
+        "bytes_checked": 88
+      }
+    ]
+  },
+  "review": [
+    {
+      "area": "canonical组件及所有者",
+      "classification": "schema+工程接线",
+      "result": "恢复原B路径core/resources/window_lights.rs；builder reexport实际Component，window system和Nani共享同一个TypeId、std HashMap<usize,LightInfo> owner。u64→usize checked conversion，未截断键，未声明原Win64布局ABI。"
+    },
+    {
+      "area": "灯系统原算法",
+      "classification": "native事实→实现",
+      "native_pc": "1407b5bf8..5cbc读尽事件取末条payload；5cc6..5d26阈值与change tick；5d9b..5de3 ordinal/frame local RNG；5fc8..626f插入与manual flash；62fe retain；6398..63eb timer/lerp",
+      "result": "候选与这些实际分支一致：跳过项仍占ordinal；非全局RNG；先采live keys再retain Vec.contains；初始timer仅>0推进；MAXSS第二操作数NaN/+0语义；manual仅brightness=1/target=1；expf原序未用sin替代。"
+    },
+    {
+      "area": "真实glass更新",
+      "classification": "native事实+现有宿主适配",
+      "native_pc": "1420759c5..5a80缺键brightness=0；5a91..5e92 present未知albedo失败；5bd0 color高位失败",
+      "result": "更新器先借用真实kind5 owned subset（空query也借用），从canonical light和AssetTextureLibrary取实际descriptor索引，经既有build_window_glass及write_mapped_update写64B。错误前的纹理descriptor分配等既有副作用未事务化；没有复制整行Vec。"
+    },
+    {
+      "area": "Nani admission与deferred",
+      "classification": "工程适配",
+      "result": "maintain preflight新增唯一glass marker、Transform、WindowLight、ColorId检查；真实InstanceKey仍来自maintain。set44保留maintain→显式ApplyDeferred→更新tuple→真实flush；App数字set使用普通before，窗灯set36在Nani44之前；未新增Changed/on_event/in_state门。"
+    },
+    {
+      "area": "卸载片段",
+      "classification": "native事实→有限实现",
+      "native_pc": "140347c11..c63先构建新RandomState，c69写tick，c6b..ca0释放旧表，ca5..cb5空表/新RandomState/lights_on=false；DecoratorPlugin140345371/374→OnExit typed326f80",
+      "result": "*control=GlobalWindowLightsControl::default()符合该窗灯资源片段，未用clear保留容量；原full9451B仍含其他owner，不能把本片段视为完整卸载。实际当前App未发现同时挂了legacy full reset导致双执行。"
+    },
+    {
+      "area": "测试与集成边界",
+      "classification": "当前测试源码（未执行）",
+      "result": "候选测试调用真实builder Commands、真实灯系统、真实Nani维护/ApplyDeferred/更新和真实AssetTextureLibrary；MockDevice仅CPU上传记录，不是GPU。8源manifest hash均已独立验证。根run_game当前audio已修改，必须逐hunk整合，不整文件覆盖。"
+    }
+  ],
+  "findings": [],
+  "known_open_chain_gaps": [
+    "真实decorator_visual上游尚无builder.window_light赋值路径；新测试手工设值不证明原窗场景可达。",
+    "真实LightWindowCmd UI writer缺失；SetWindowLightCmd颜色写回不是该闪亮事件。",
+    "完整decorator placement/edit/delete/全部unload owner及跨进程存档恢复未由本候选完成。",
+    "native expf为UCRT；本机Rust exp最后bit一致性尚无native differential验收。",
+    "尚未typecheck/运行新增测试或真实GPU，本审查不得写通过case统计或完成百分比。"
+  ],
+  "integration_requirements": [
+    "root按8源窄hunk应用，保留并行audio/duck及protected startup_sheep改动。",
+    "root执行实际default/native feature编译、灯/helper/builder/Nani CPU测试，再到真实场景GPU。",
+    "场景renderer无window实体时须继续标记producer缺口，不能用空query通过替代有窗world验证。"
+  ],
+  "production_modified_by_reviewer": false,
+  "cargo_executed_by_reviewer": false,
+  "gpu_executed_by_reviewer": false
+}

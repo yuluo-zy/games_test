@@ -1,0 +1,1492 @@
+#define SHADER_VARIANT_DEPTH_ONLY 0
+#define TGV_b903e43ffb3da915 1
+#line 1 "shaders/billboard_plant.raster.hlsl"
+
+
+#if !((defined(TGV_b903e43ffb3da915) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)) || (defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)))
+
+
+
+
+
+
+
+
+
+
+#line 1 "shaders/inc/common.hlsl"
+
+
+
+
+
+#ifndef TINYGLADE_INC_COMMON_HLSL
+#define TINYGLADE_INC_COMMON_HLSL
+
+#line 1 "shaders/inc/samplers.hlsl"
+
+
+
+
+
+
+
+#ifndef TINYGLADE_INC_SAMPLERS_HLSL
+#define TINYGLADE_INC_SAMPLERS_HLSL
+
+#line 1 "shaders/inc/debug_utils.hlsl"
+
+
+
+
+
+#ifndef TINYGLADE_INC_DEBUG_UTILS_HLSL
+#define TINYGLADE_INC_DEBUG_UTILS_HLSL
+
+#line 1 "shaders/inc/tracked_buffer.hlsl"
+
+
+
+
+
+
+#ifndef TINYGLADE_INC_TRACKED_BUFFER_HLSL
+#define TINYGLADE_INC_TRACKED_BUFFER_HLSL
+
+
+
+
+uint tracked_buffer_reserve(RWByteAddressBuffer counter, uint counter_offset)
+{
+    uint previous;
+    counter.InterlockedAdd(counter_offset, 1u, previous);
+    return previous;
+}
+
+
+void tracked_buffer_store_float(RWByteAddressBuffer buffer, uint base_byte_offset, uint element_index, float value)
+{
+    buffer.Store<float>(base_byte_offset + element_index * 4u, value);
+}
+
+#endif 
+#line 9 "shaders/inc/debug_utils.hlsl"
+
+
+
+float3 debug_heatmap(float v)
+{
+    float t = clamp(v, 0.0f, 1.0f);
+    return lerp(float3(0.0f, 0.0f, 1.0f), float3(1.0f, 0.0f, 0.0f), t);
+}
+
+#endif 
+#line 11 "shaders/inc/samplers.hlsl"
+
+
+SamplerState sampler_lnc : register(s0, space0);
+SamplerState sampler_llr : register(s1, space0);
+SamplerState sampler_nnc : register(s2, space0);
+SamplerState sampler_llc : register(s3, space0);
+SamplerState sampler_llb : register(s4, space0);
+SamplerState sampler_s5 : register(s5, space0);
+SamplerState sampler_s6 : register(s6, space0);
+SamplerState sampler_s7 : register(s7, space0);
+SamplerState sampler_s8 : register(s8, space0);
+SamplerState sampler_default : register(s9, space0);
+SamplerState sampler_mipmap : register(s10, space0);
+SamplerState sampler_shadow_nearest : register(s11, space0);
+SamplerComparisonState sampler_shadow_linear : register(s12, space0);
+
+#endif 
+#line 9 "shaders/inc/common.hlsl"
+
+
+#endif 
+#line 14 "shaders/billboard_plant.raster.hlsl"
+
+#line 1 "shaders/inc/current_view.hlsl"
+
+
+
+
+
+#ifndef TINYGLADE_INC_CURRENT_VIEW_HLSL
+#define TINYGLADE_INC_CURRENT_VIEW_HLSL
+
+#line 1 "shaders/inc/frame_constants.hlsl"
+
+
+
+
+
+
+
+
+#ifndef TINYGLADE_INC_FRAME_CONSTANTS_HLSL
+#define TINYGLADE_INC_FRAME_CONSTANTS_HLSL
+
+#line 1 "shaders/inc/uv.hlsl"
+
+
+
+
+
+
+#ifndef TINYGLADE_INC_UV_HLSL
+#define TINYGLADE_INC_UV_HLSL
+
+
+float2 pixel_to_uv(int2 pixel, float2 dims)
+{
+    return (float2(pixel) + 0.5f) / dims;
+}
+
+
+
+
+float2 uv_to_sample(float2 uv)
+{
+    return uv - 0.5f;
+}
+
+
+float2 sample_to_clip(float2 sample)
+{
+    return sample * float2(2.0f, -2.0f);
+}
+
+
+
+float3 sample_to_view(float4x4 sample_to_view_mat, float2 sample_uv, float depth)
+{
+    return mul(sample_to_view_mat, float4(sample_uv * float2(2.0f, -2.0f), depth, 1.0f)).xyz;
+}
+
+
+float2 view_to_sample(float4x4 view_to_sample_mat, float3 view_pos)
+{
+    return mul(view_to_sample_mat, float4(view_pos, 1.0f)).xy;
+}
+
+
+float2 view_to_clip(float4x4 view_to_clip_mat, float3 view_pos)
+{
+    float4 clip = mul(view_to_clip_mat, float4(view_pos, 1.0f));
+    return clip.xy / clip.w;
+}
+
+
+float3 world_to_view(float4x4 world_to_view_mat, float3 world_pos)
+{
+    return mul(world_to_view_mat, float4(world_pos, 1.0f)).xyz;
+}
+
+
+float2 world_to_sample(float4x4 world_to_sample_mat, float3 world_pos)
+{
+    return mul(world_to_sample_mat, float4(world_pos, 1.0f)).xy;
+}
+
+#endif 
+#line 12 "shaders/inc/frame_constants.hlsl"
+
+
+
+
+
+
+
+
+
+
+Texture2D<float4> bindless_textures_dyn[] : register(t0, space2);
+
+
+struct ViewConstants
+{
+    float4x4 view_to_clip;
+    float4x4 clip_to_view;
+    float4x4 view_to_sample;
+    float4x4 sample_to_view;
+    float4x4 world_to_view;
+    float4x4 view_to_world;
+    float4x4 world_to_sample;
+    float4x4 clip_to_prev_clip;
+    float4x4 prev_view_to_prev_clip;
+    float4x4 prev_clip_to_prev_view;
+    float4x4 prev_world_to_prev_view;
+    float4x4 prev_view_to_prev_world;
+    float2 sample_offset_pixels;
+    float2 sample_offset_clip;
+    float2 prev_sample_offset_pixels;
+    float2 prev_sample_offset_clip;
+};
+
+cbuffer frame_constants : register(b0, space1)
+{
+    float4 sun_color;
+    float4 sky_low_color;
+    float4 sky_high_color;
+    float4 fog_tint_thickness;
+    float4 fake_light_color;
+    float4 fake_light_dir;
+    float4 fake_light2_color;
+    float4 fake_light2_dir;
+    uint frame_index;
+    float delta_time_seconds;
+    float ev_mult;
+    uint glade_theme_id;
+    uint2 inner_rendering_resolution;
+    uint game_time_sec;
+    float game_time_frac;
+    float3 editing_highlight_color;
+    float time_of_day;
+    float3 dir_to_sun;
+    uint camera_idx;
+    float3 dir_to_moon;
+    uint render_overrides;
+    float global_mip_bias;
+    uint highlighted_transient_stair_edge_id;
+    uint pad1;
+    uint pad2;
+    float4 debug_tweakers;
+    ViewConstants view_constants[5];
+};
+
+#endif 
+#line 9 "shaders/inc/current_view.hlsl"
+
+
+uint current_view_index;
+
+
+ViewConstants GetCurrentViewConstants()
+{
+    return view_constants[current_view_index];
+}
+
+#endif 
+#line 15 "shaders/billboard_plant.raster.hlsl"
+
+#line 1 "shaders/inc/ray_cone.hlsl"
+
+
+
+
+
+
+
+#ifndef TINYGLADE_INC_RAY_CONE_HLSL
+#define TINYGLADE_INC_RAY_CONE_HLSL
+
+
+
+struct RayCone
+{
+    float3 origin;
+    float3 direction;
+    float spread; 
+};
+
+
+float ray_cone_half_width(RayCone cone, float t)
+{
+    return t * cone.spread;
+}
+
+
+
+float ray_cone_mip(float2 footprint_world, float2 world_per_texel)
+{
+    float2 footprint_texels = max(footprint_world / max(world_per_texel, 1e-6f.xx), 1.0f.xx);
+    return log2(max(footprint_texels.x, footprint_texels.y));
+}
+
+#endif 
+#line 16 "shaders/billboard_plant.raster.hlsl"
+
+#line 1 "shaders/inc/math_const.hlsl"
+
+
+
+
+
+#ifndef TINYGLADE_INC_MATH_CONST_HLSL
+#define TINYGLADE_INC_MATH_CONST_HLSL
+
+static const float PI = 3.14159265358979323846264338327950288f;
+static const float TWO_PI = 6.28318530717958647692528676655900577f;
+static const float HALF_PI = 1.57079632679489661923132169163975144f;
+static const float INV_PI = 0.31830988618379067153776752674502872f;
+static const float INV_TWO_PI = 0.15915494309189533576888376337251436f;
+
+static const float SQRT_TWO = 1.41421356237309504880168872420969808f;
+static const float INV_SQRT_TWO = 0.70710678118654752440084436210484904f;
+
+static const float GOLDEN_RATIO = 1.61803398874989484820458683436563812f;
+static const float INV_GOLDEN_RATIO = 0.61803398874989484820458683436563812f;
+
+static const float EPSILON = 1.0e-6f;
+static const float FLT_EPSILON = 1.19209290e-7f;
+
+#endif 
+#line 17 "shaders/billboard_plant.raster.hlsl"
+
+#line 1 "shaders/inc/material/solid_material.inc.hlsl"
+
+
+#ifndef TINYGLADE_INC_MATERIAL_SOLID_MATERIAL_HLSL
+#define TINYGLADE_INC_MATERIAL_SOLID_MATERIAL_HLSL
+
+
+struct SolidMaterialParams {
+    float3 albedo;
+    float roughness;
+    uint flags; 
+};
+
+
+SolidMaterialParams init_solid_material(float3 albedo, float roughness, uint flags)
+{
+    SolidMaterialParams p;
+    p.albedo = albedo;
+    p.roughness = saturate(roughness);
+    p.flags = flags;
+    return p;
+}
+
+#endif 
+#line 18 "shaders/billboard_plant.raster.hlsl"
+
+#line 1 "shaders/inc/pack_unpack.hlsl"
+
+
+
+
+#ifndef TINYGLADE_INC_PACK_UNPACK_HLSL
+#define TINYGLADE_INC_PACK_UNPACK_HLSL
+
+
+uint pack_rgba8(float4 c)
+{
+    uint r = uint(clamp(c.x, 0.0f, 1.0f) * 255.0f + 0.5f);
+    uint g = uint(clamp(c.y, 0.0f, 1.0f) * 255.0f + 0.5f);
+    uint b = uint(clamp(c.z, 0.0f, 1.0f) * 255.0f + 0.5f);
+    uint a = uint(clamp(c.w, 0.0f, 1.0f) * 255.0f + 0.5f);
+    return (a << 24u) | (b << 16u) | (g << 8u) | r;
+}
+
+
+uint pack_rgb8(float3 c)
+{
+    uint r = uint(clamp(c.x, 0.0f, 1.0f) * 255.0f + 0.5f);
+    uint g = uint(clamp(c.y, 0.0f, 1.0f) * 255.0f + 0.5f);
+    uint b = uint(clamp(c.z, 0.0f, 1.0f) * 255.0f + 0.5f);
+    return (b << 16u) | (g << 8u) | r;
+}
+
+
+float3 unpack_rgb8(uint p)
+{
+    float3 c;
+    c.r = float(p & 0xFFu) * (1.0f / 255.0f);
+    c.g = float((p >> 8u) & 0xFFu) * (1.0f / 255.0f);
+    c.b = float((p >> 16u) & 0xFFu) * (1.0f / 255.0f);
+    return c;
+}
+
+
+float4 unpack_rgba8(uint p)
+{
+    return float4(unpack_rgb8(p), float((p >> 24u) & 0xFFu) * (1.0f / 255.0f));
+}
+
+
+float3 unpack_normal_rgb8(uint p)
+{
+    return unpack_rgb8(p) * 2.0f - 1.0f;
+}
+
+#endif 
+#line 19 "shaders/billboard_plant.raster.hlsl"
+
+#line 1 "shaders/inc/material_eval.inc.hlsl"
+
+
+#ifndef TINYGLADE_INC_MATERIAL_EVAL_HLSL
+#define TINYGLADE_INC_MATERIAL_EVAL_HLSL
+
+
+
+struct MaterialEvalData {
+    float3 albedo;
+    float3 normal;
+    float roughness;
+    float opacity;
+    float3 emissive;
+};
+
+
+
+float3 unpack_gbuffer_normal(uint packed_normal)
+{
+    float3 n = float3(float(packed_normal & 255u),
+                      float((packed_normal >> 8u) & 255u),
+                      float((packed_normal >> 16u) & 255u)) * (1.0 / 255.0);
+    n = n * 2.0 - 1.0;
+    return normalize(n);
+}
+
+
+void init_material_eval_data(out MaterialEvalData d)
+{
+    d.albedo = float3(1.0, 1.0, 1.0);
+    d.normal = float3(0.0, 1.0, 0.0);
+    d.roughness = 1.0;
+    d.opacity = 1.0;
+    d.emissive = float3(0.0, 0.0, 0.0);
+}
+
+#endif 
+#line 20 "shaders/billboard_plant.raster.hlsl"
+
+#line 1 "shaders/inc/brdf.hlsl"
+
+
+#ifndef TINYGLADE_INC_BRDF_HLSL
+#define TINYGLADE_INC_BRDF_HLSL
+
+
+
+float distribution_ggx(float NdotH, float alphaSq)
+{
+    float d = NdotH * NdotH * (alphaSq - 1.0) + 1.0;
+    return alphaSq / (3.14159265358979323846 * d * d);
+}
+
+
+float visibility_smith_ggx(float NdotL, float NdotV, float alphaSq)
+{
+    float l2 = NdotL * NdotL;
+    float v2 = NdotV * NdotV;
+    return (2.0 * NdotL * NdotV) /
+        (NdotL * sqrt((1.0 - alphaSq) * v2 + alphaSq) +
+         NdotV * sqrt((1.0 - alphaSq) * l2 + alphaSq));
+}
+
+
+float3 fresnel_schlick(float cosTheta, float3 F0)
+{
+    float c = 1.0 - saturate(cosTheta);
+    return F0 + (1.0 - F0) * (c * c * c * c * c);
+}
+
+
+
+float diffuse_ggx(float NdotL, float NdotV, float NdotH, float roughness)
+{
+    float r2 = roughness * roughness;
+    float f = (2.0 * r2 * NdotH * NdotH) - 0.5;
+    float omL = 1.0 - saturate(NdotL);
+    float omV = 1.0 - saturate(NdotV);
+    return ((1.0 + f * pow(omL, 5.0)) * (1.0 + f * pow(omV, 5.0))) * (1.0 / 3.14159265358979323846);
+}
+
+
+float3 cook_torrance_specular(float NdotL, float NdotV, float NdotH, float HdotL, float roughness)
+{
+    float alphaSq = roughness * roughness;
+    alphaSq = alphaSq * alphaSq; 
+    float3 F = fresnel_schlick(HdotL, float3(0.04, 0.04, 0.04));
+    float D = distribution_ggx(NdotH, alphaSq);
+    float G = visibility_smith_ggx(NdotL, NdotV, alphaSq);
+    return (F * D * G) / max(4.0 * NdotV * NdotL, 1e-6);
+}
+
+
+float3 evaluate_brdf(float3 albedo, float roughness, float3 N, float3 V, float3 L)
+{
+    float NdotL = saturate(dot(N, L));
+    float NdotV = saturate(dot(N, V));
+    float3 H = normalize(L + V);
+    float NdotH = saturate(dot(N, H));
+    float HdotL = saturate(dot(H, L));
+    float3 diffuse = albedo * diffuse_ggx(NdotL, NdotV, NdotH, roughness);
+    float3 specular = cook_torrance_specular(NdotL, NdotV, NdotH, HdotL, roughness);
+    return diffuse + specular;
+}
+
+#endif 
+#line 21 "shaders/billboard_plant.raster.hlsl"
+
+#line 1 "shaders/inc/math.hlsl"
+
+
+
+
+
+#ifndef TINYGLADE_INC_MATH_HLSL
+#define TINYGLADE_INC_MATH_HLSL
+
+
+float clamp01(float v)
+{
+    return clamp(v, 0.0f, 1.0f);
+}
+
+float3 clamp01(float3 v)
+{
+    return clamp(v, 0.0f, 1.0f);
+}
+
+
+float length_squared(float3 v)
+{
+    return dot(v, v);
+}
+
+
+float3 safe_normalize(float3 v)
+{
+    float len_sq = dot(v, v);
+    float len = sqrt(len_sq);
+    return len > 1.0e-6f ? v / len : float3(0.0f, 0.0f, 0.0f);
+}
+
+
+float safe_rcp(float v)
+{
+    return 1.0f / max(abs(v), 1.0e-6f);
+}
+
+
+float rcp_keep_sign(float v)
+{
+    return sign(v) * safe_rcp(v);
+}
+
+#endif 
+#line 22 "shaders/billboard_plant.raster.hlsl"
+
+#line 1 "shaders/inc/sun.inc.hlsl"
+
+
+#ifndef TINYGLADE_INC_SUN_HLSL
+#define TINYGLADE_INC_SUN_HLSL
+
+#line 1 "shaders/inc/color_library.hlsl"
+
+
+#ifndef TINYGLADE_INC_COLOR_LIBRARY_HLSL
+#define TINYGLADE_INC_COLOR_LIBRARY_HLSL
+
+
+
+struct ColorLibrary {
+    float4 temp_color_1;
+    float4 temp_color_2;
+    float4 temp_color_3;
+    float4 roof_color_1;
+    float4 roof_color_2;
+    float4 sky_low_day;
+    float4 sky_high_day;
+    float4 sun_tint_day;
+    float4 sky_low_dusk;
+    float4 sky_high_dusk;
+    float4 sun_tint_dusk;
+    float4 indirect_light_tint;
+    float4 fence_color_1;
+    float4 fence_color_2;
+    float4 flower_color_1;
+    float4 flower_color_2;
+    float4 canopy_color_1;
+    float4 canopy_color_2;
+    float4 grass_1;
+    float4 grass_2;
+    float4 path;
+    float4 sky_base;
+    float4 sky_horizon;
+    float4 sky_clouds_1;
+    float4 sky_clouds_2;
+    float4 terrain_1;
+    float4 terrain_2;
+    float4 terrain_flattened;
+    float4 wall_1;
+    float4 wall_2;
+    float4 wall_moss;
+    float4 wall_bricks;
+    float4 ivy_branch;
+    float4 ivy_leaf_1;
+    float4 ivy_leaf_2;
+    float4 terrain_highlight;
+    float4 night_tint;
+};
+
+
+
+
+
+
+#ifndef TINYGLADE_COLOR_LIBRARY_REGISTER
+#define TINYGLADE_COLOR_LIBRARY_REGISTER b14
+#endif
+cbuffer color_library : register(TINYGLADE_COLOR_LIBRARY_REGISTER, space0) {
+    ColorLibrary color_library;
+};
+
+#endif 
+#line 6 "shaders/inc/sun.inc.hlsl"
+
+
+
+float3 get_sun_color()
+{
+    return sun_color.xyz;
+}
+
+float3 get_sky_low_color()
+{
+    return sky_low_color.xyz;
+}
+
+float3 get_sky_high_color()
+{
+    return sky_high_color.xyz;
+}
+
+float3 get_sun_direction()
+{
+    return dir_to_sun;
+}
+
+
+float3 get_sky_color(float3 day_low, float3 day_high, float3 dusk_low, float3 dusk_high)
+{
+    float t = saturate(time_of_day);
+    float3 low = lerp(day_low, dusk_low, t);
+    float3 high = lerp(day_high, dusk_high, t);
+    return low;
+}
+
+#endif 
+#line 23 "shaders/billboard_plant.raster.hlsl"
+
+
+
+#define TINYGLADE_INC_COLOR_LIBRARY_HLSL
+#line 1 "shaders/inc/color_library.hlsl"
+
+
+#ifndef TINYGLADE_INC_COLOR_LIBRARY_HLSL
+#define TINYGLADE_INC_COLOR_LIBRARY_HLSL
+
+
+
+struct ColorLibrary {
+    float4 temp_color_1;
+    float4 temp_color_2;
+    float4 temp_color_3;
+    float4 roof_color_1;
+    float4 roof_color_2;
+    float4 sky_low_day;
+    float4 sky_high_day;
+    float4 sun_tint_day;
+    float4 sky_low_dusk;
+    float4 sky_high_dusk;
+    float4 sun_tint_dusk;
+    float4 indirect_light_tint;
+    float4 fence_color_1;
+    float4 fence_color_2;
+    float4 flower_color_1;
+    float4 flower_color_2;
+    float4 canopy_color_1;
+    float4 canopy_color_2;
+    float4 grass_1;
+    float4 grass_2;
+    float4 path;
+    float4 sky_base;
+    float4 sky_horizon;
+    float4 sky_clouds_1;
+    float4 sky_clouds_2;
+    float4 terrain_1;
+    float4 terrain_2;
+    float4 terrain_flattened;
+    float4 wall_1;
+    float4 wall_2;
+    float4 wall_moss;
+    float4 wall_bricks;
+    float4 ivy_branch;
+    float4 ivy_leaf_1;
+    float4 ivy_leaf_2;
+    float4 terrain_highlight;
+    float4 night_tint;
+};
+
+
+
+
+
+
+#ifndef TINYGLADE_COLOR_LIBRARY_REGISTER
+#define TINYGLADE_COLOR_LIBRARY_REGISTER b14
+#endif
+cbuffer color_library : register(TINYGLADE_COLOR_LIBRARY_REGISTER, space0) {
+    ColorLibrary color_library;
+};
+
+#endif 
+#line 27 "shaders/billboard_plant.raster.hlsl"
+
+#line 1 "shaders/inc/color/srgb.hlsl"
+
+
+
+
+#ifndef TINYGLADE_INC_COLOR_SRGB_HLSL
+#define TINYGLADE_INC_COLOR_SRGB_HLSL
+
+static const float SRGB_ALPHA = 0.04045f;
+static const float SRGB_OFFSET = 0.055f;
+static const float SRGB_GAMMA = 2.4f;
+
+
+float srgb_to_linear(float c)
+{
+    float r;
+    if (c <= SRGB_ALPHA)
+        r = c * 0.077399380505084991455078125f; 
+    else
+        r = pow((c + SRGB_OFFSET) * 0.947867333889007568359375f, SRGB_GAMMA); 
+    return r;
+}
+
+float3 srgb_to_linear(float3 c)
+{
+    return float3(srgb_to_linear(c.r), srgb_to_linear(c.g), srgb_to_linear(c.b));
+}
+
+float4 srgb_to_linear(float4 c)
+{
+    return float4(srgb_to_linear(c.rgb), c.a);
+}
+
+
+float linear_to_srgb(float c)
+{
+    float r;
+    if (c <= 0.0031308f)
+        r = c * 12.92f;
+    else
+        r = 1.055f * pow(c, 1.0f / SRGB_GAMMA) - SRGB_OFFSET;
+    return r;
+}
+
+float3 linear_to_srgb(float3 c)
+{
+    return float3(linear_to_srgb(c.r), linear_to_srgb(c.g), linear_to_srgb(c.b));
+}
+
+float4 linear_to_srgb(float4 c)
+{
+    return float4(linear_to_srgb(c.rgb), c.a);
+}
+
+#endif 
+#line 28 "shaders/billboard_plant.raster.hlsl"
+
+#line 1 "shaders/inc/utils.hlsl"
+
+
+
+
+
+#ifndef TINYGLADE_INC_UTILS_HLSL
+#define TINYGLADE_INC_UTILS_HLSL
+
+#line 1 "shaders/inc/math_const.hlsl"
+
+
+
+
+
+#ifndef TINYGLADE_INC_MATH_CONST_HLSL
+#define TINYGLADE_INC_MATH_CONST_HLSL
+
+static const float PI = 3.14159265358979323846264338327950288f;
+static const float TWO_PI = 6.28318530717958647692528676655900577f;
+static const float HALF_PI = 1.57079632679489661923132169163975144f;
+static const float INV_PI = 0.31830988618379067153776752674502872f;
+static const float INV_TWO_PI = 0.15915494309189533576888376337251436f;
+
+static const float SQRT_TWO = 1.41421356237309504880168872420969808f;
+static const float INV_SQRT_TWO = 0.70710678118654752440084436210484904f;
+
+static const float GOLDEN_RATIO = 1.61803398874989484820458683436563812f;
+static const float INV_GOLDEN_RATIO = 0.61803398874989484820458683436563812f;
+
+static const float EPSILON = 1.0e-6f;
+static const float FLT_EPSILON = 1.19209290e-7f;
+
+#endif 
+#line 9 "shaders/inc/utils.hlsl"
+
+
+
+
+
+
+
+#ifndef TINYGLADE_AFFINE3PACKED
+#define TINYGLADE_AFFINE3PACKED
+struct Affine3Packed
+{
+    float data[12];
+};
+#endif
+
+
+
+float4x4 affine_basis(float3 forward)
+{
+    float3 f = normalize(forward);
+    float3 up = float3(0.0f, 1.0f, 0.0f);
+    float3 right = cross(f, up);
+    float4x4 m = float4x4(
+        float4(f, 0.0f),
+        float4(up, 0.0f),
+        float4(right, 0.0f),
+        float4(0.0f, 0.0f, 0.0f, 1.0f));
+    return transpose(m);
+}
+
+
+float4x4 affine_translation(float3 pos)
+{
+    return float4x4(
+        float4(1.0f, 0.0f, 0.0f, pos.x),
+        float4(0.0f, 1.0f, 0.0f, pos.y),
+        float4(0.0f, 0.0f, 1.0f, pos.z),
+        float4(0.0f, 0.0f, 0.0f, 1.0f));
+}
+
+
+float4x4 affine_scale(float3 s)
+{
+    return float4x4(
+        float4(s.x, 0.0f, 0.0f, 0.0f),
+        float4(0.0f, s.y, 0.0f, 0.0f),
+        float4(0.0f, 0.0f, s.z, 0.0f),
+        float4(0.0f, 0.0f, 0.0f, 1.0f));
+}
+
+
+
+Affine3Packed pack_affine(float4x4 m)
+{
+    Affine3Packed o;
+    o.data[0] = m[0].x; o.data[1] = m[1].x; o.data[2] = m[2].x;
+    o.data[3] = m[0].y; o.data[4] = m[1].y; o.data[5] = m[2].y;
+    o.data[6] = m[0].z; o.data[7] = m[1].z; o.data[8] = m[2].z;
+    o.data[9] = m[0].w; o.data[10] = m[1].w; o.data[11] = m[2].w;
+    return o;
+}
+
+
+float4x4 unpack_affine(Affine3Packed a)
+{
+    float4x4 m;
+    m[0] = float4(a.data[0], a.data[3], a.data[6], a.data[9]);
+    m[1] = float4(a.data[1], a.data[4], a.data[7], a.data[10]);
+    m[2] = float4(a.data[2], a.data[5], a.data[8], a.data[11]);
+    m[3] = float4(0.0f, 0.0f, 0.0f, 1.0f);
+    return m;
+}
+
+
+Affine3Packed compose_affine_packed(float3 pos, float3 forward, float3 scale)
+{
+    return pack_affine(mul(affine_translation(pos), mul(affine_basis(forward), affine_scale(scale))));
+}
+
+#endif 
+#line 29 "shaders/billboard_plant.raster.hlsl"
+
+#line 1 "shaders/inc/consts.hlsl"
+
+
+
+
+
+
+#ifndef TINYGLADE_INC_CONSTS_HLSL
+#define TINYGLADE_INC_CONSTS_HLSL
+
+
+static const float RENDER_SCALE = 1.0f;
+
+#endif 
+#line 30 "shaders/billboard_plant.raster.hlsl"
+
+#line 1 "shaders/inc/hash.hlsl"
+
+
+
+
+
+
+
+#ifndef TINYGLADE_INC_HASH_HLSL
+#define TINYGLADE_INC_HASH_HLSL
+
+#line 1 "shaders/inc/math_const.hlsl"
+
+
+
+
+
+#ifndef TINYGLADE_INC_MATH_CONST_HLSL
+#define TINYGLADE_INC_MATH_CONST_HLSL
+
+static const float PI = 3.14159265358979323846264338327950288f;
+static const float TWO_PI = 6.28318530717958647692528676655900577f;
+static const float HALF_PI = 1.57079632679489661923132169163975144f;
+static const float INV_PI = 0.31830988618379067153776752674502872f;
+static const float INV_TWO_PI = 0.15915494309189533576888376337251436f;
+
+static const float SQRT_TWO = 1.41421356237309504880168872420969808f;
+static const float INV_SQRT_TWO = 0.70710678118654752440084436210484904f;
+
+static const float GOLDEN_RATIO = 1.61803398874989484820458683436563812f;
+static const float INV_GOLDEN_RATIO = 0.61803398874989484820458683436563812f;
+
+static const float EPSILON = 1.0e-6f;
+static const float FLT_EPSILON = 1.19209290e-7f;
+
+#endif 
+#line 11 "shaders/inc/hash.hlsl"
+
+
+
+uint hash(uint x)
+{
+    x += (x << 10u);
+    x ^= (x >> 6u);
+    x += (x << 3u);
+    x ^= (x >> 11u);
+    x += (x << 15u);
+    return x;
+}
+
+
+float rand01(uint x)
+{
+    return asfloat((x & 0x7FFFFFu) | 0x3F800000u) - 1.0f;
+}
+
+
+float hash_angle(uint x)
+{
+    return frac(0.9f + (float(x) * GOLDEN_RATIO)) * TWO_PI;
+}
+
+
+float hash01(float x)
+{
+    return frac(sin(x) * 43758.5453f);
+}
+
+#endif 
+#line 31 "shaders/billboard_plant.raster.hlsl"
+
+#line 1 "shaders/gi/gi_settings.inc.hlsl"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#ifndef TINYGLADE_GI_SETTINGS_INC_HLSL
+#define TINYGLADE_GI_SETTINGS_INC_HLSL
+
+
+
+
+static const uint2 hi_px_subpixels[4] = {
+    uint2(0u, 0u),
+    uint2(0u, 1u),
+    uint2(1u, 1u),
+    uint2(1u, 0u),
+};
+
+
+
+static const float GI_MIN_HALF_NORMAL_Z = 0.3f;          
+static const float GI_DEPTH_WEIGHT_SCALE = 80.0f;        
+static const float GI_DEPTH_WEIGHT_MAX = 30.0f;
+static const float GI_NORMAL_DOT_DAMP = -0.9f;           
+static const float GI_FINAL_WEIGHT_NORM = 0.01f;         
+
+#endif 
+#line 32 "shaders/billboard_plant.raster.hlsl"
+
+#line 1 "shaders/inc/sh.hlsl"
+
+
+
+
+
+
+
+
+
+
+float4 sh_basis(float3 dir)
+{
+    return float4(0.2820949852466583251953125f, 0.48860299587249755859375f * dir);
+}
+
+float sh_eval(float4 sh, float3 dir)
+{
+    return dot(sh, sh_basis(dir));
+}
+#line 33 "shaders/billboard_plant.raster.hlsl"
+
+
+
+
+
+float4x4 model_to_world;
+uint2 flower1_dims;
+uint2 flower2_dims;
+uint2 flower3_dims;
+uint2 grass_patch_dims;
+uint2 terrain_texture_dims;
+int bool_render_shadows;
+
+Texture2D<float4> flower1 : register(t14, space0);
+Texture2D<float4> flower2 : register(t15, space0);
+Texture2D<float4> flower3 : register(t16, space0);
+Texture2D<float4> grass_patch : register(t17, space0);
+Texture2D<float4> terrain_texture : register(t18, space0);
+
+struct VS_IN
+{
+    [[vk::location(0)]] float3 vertex_position: Vertex_Position;
+    [[vk::location(1)]] float3 vertex_normal: Vertex_Normal;
+    [[vk::location(2)]] float2 vertex_uv: Vertex_UV;
+    [[vk::location(3)]] float3 uv2: uv2;
+    [[vk::location(4)]] float bby: bby;
+    [[vk::location(5)]] int plant_id: plant_id;
+    [[vk::location(6)]] int prim_id: prim_id;
+};
+
+struct VS_OUT
+{
+    float2 C0 : TEXCOORD0;
+    float3 C1 : TEXCOORD1;
+    float3 C2 : TEXCOORD2;
+    float2 C3 : TEXCOORD3;
+    float C4 : TEXCOORD4;
+    nointerpolation int C5 : TEXCOORD5;
+    nointerpolation int C6 : TEXCOORD6;
+    float4 position : SV_Position;
+};
+
+VS_OUT vs_main(VS_IN i)
+{
+    VS_OUT o;
+    float4 world = mul(model_to_world, float4(i.vertex_position, 1.0f));
+    o.position = mul(view_constants[current_view_index].world_to_sample, world);
+    o.C0 = i.vertex_uv;
+    o.C1 = mul(model_to_world, float4(i.vertex_normal, 0.0f)).xyz;
+    o.C2 = world.xyz;
+    o.C3 = float2(i.uv2.x, 1.0f - i.uv2.y);
+    o.C4 = i.bby;
+    o.C5 = i.plant_id;
+    o.C6 = i.prim_id;
+    return o;
+}
+
+struct PS_IN
+{
+    float2 C0 : TEXCOORD0;
+    float3 C1 : TEXCOORD1;
+    float2 C3 : TEXCOORD3;
+    float C4 : TEXCOORD4;
+    nointerpolation int C5 : TEXCOORD5;
+    nointerpolation int C6 : TEXCOORD6;
+};
+
+struct PS_OUT
+{
+    uint2 target : SV_Target0;
+};
+
+PS_OUT ps_main(PS_IN i)
+{
+    PS_OUT o;
+    float4 terrain = terrain_texture.Sample(sampler_lnc, i.C3);
+    float3 albedo;
+    float alpha;
+    if (i.C5 == 0)
+    {
+        float4 tex = flower1.SampleBias(sampler_lnc, i.C0, (-1.0f) + global_mip_bias);
+        albedo = lerp(terrain.xyz, tex.xyz, (i.C4 * i.C4).xxx);
+        alpha = tex.w * tex.w;
+    }
+    else if (i.C5 == 2)
+    {
+        float4 tex = flower2.SampleBias(sampler_lnc, i.C0, (-1.0f) + global_mip_bias);
+        albedo = lerp(terrain.xyz, tex.xyz, i.C4.xxx);
+        alpha = tex.w * tex.w;
+    }
+    else if (i.C5 == 3)
+    {
+        float4 tex = flower3.SampleBias(sampler_lnc, i.C0, (-1.0f) + global_mip_bias);
+        albedo = lerp(terrain.xyz, tex.xyz, i.C4.xxx);
+        alpha = tex.w * tex.w;
+    }
+    else
+    {
+        int sub = i.C6 - 4 * (i.C6 / 4);
+        float4 tex = grass_patch.SampleBias(sampler_llr, float2(0.5f * (i.C0.x + float(sub - 2 * (sub / 2))), 0.5f * (i.C0.y + float(int(floor(float(sub / 2)))))), (-1.0f) + global_mip_bias);
+        float3 ga;
+        if (glade_theme_id == 4u)
+        {
+            ga = lerp(terrain.xyz, tex.xyz, pow(i.C4, 2.5f));
+        }
+        else
+        {
+            ga = lerp(terrain.xyz, tex.xyz, pow(i.C4, 1.5f));
+        }
+        albedo = ga;
+        alpha = tex.w * tex.w;
+    }
+    if (alpha < 0.1f)
+    {
+        discard;
+    }
+    float3 n = (normalize(i.C1) * 0.5f) + 0.5f;
+    float3 color = sqrt(clamp(albedo, 0.0f, 1.0f));
+    uint albedo_packed = (uint(clamp(color.x, 0.0f, 1.0f) * 255.0f + 0.5f)
+        + (uint(clamp(color.y, 0.0f, 1.0f) * 255.0f + 0.5f) << 8u)
+        + (uint(clamp(color.z, 0.0f, 1.0f) * 255.0f + 0.5f) << 16u));
+    uint normal_packed = (uint(clamp(n.x, 0.0f, 1.0f) * 255.0f + 0.5f)
+        + (uint(clamp(n.y, 0.0f, 1.0f) * 255.0f + 0.5f) << 8u)
+        + (uint(clamp(n.z, 0.0f, 1.0f) * 255.0f + 0.5f) << 16u)) + 0xE6000000u;
+    o.target = uint2(normal_packed, albedo_packed | 0x06000000u);
+    return o;
+}
+
+#endif
+
+#if defined(TGV_b903e43ffb3da915) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+struct ViewConstants
+{
+    column_major float4x4 view_to_clip;
+    column_major float4x4 clip_to_view;
+    column_major float4x4 view_to_sample;
+    column_major float4x4 sample_to_view;
+    column_major float4x4 world_to_view;
+    column_major float4x4 view_to_world;
+    column_major float4x4 world_to_sample;
+    column_major float4x4 clip_to_prev_clip;
+    column_major float4x4 prev_view_to_prev_clip;
+    column_major float4x4 prev_clip_to_prev_view;
+    column_major float4x4 prev_world_to_prev_view;
+    column_major float4x4 prev_view_to_prev_world;
+    float2 sample_offset_pixels;
+    float2 sample_offset_clip;
+    float2 prev_sample_offset_pixels;
+    float2 prev_sample_offset_clip;
+};
+
+cbuffer frame_constants : register(b0, space1)
+{
+    float4 frame_constants_sun_color : packoffset(c0);
+    float4 frame_constants_sky_low_color : packoffset(c1);
+    float4 frame_constants_sky_high_color : packoffset(c2);
+    float4 frame_constants_fog_tint_thickness : packoffset(c3);
+    float4 frame_constants_fake_light_color : packoffset(c4);
+    float4 frame_constants_fake_light_dir : packoffset(c5);
+    float4 frame_constants_fake_light2_color : packoffset(c6);
+    float4 frame_constants_fake_light2_dir : packoffset(c7);
+    uint frame_constants_frame_index : packoffset(c8);
+    float frame_constants_delta_time_seconds : packoffset(c8.y);
+    float frame_constants_ev_mult : packoffset(c8.z);
+    uint frame_constants_glade_theme_id : packoffset(c8.w);
+    uint2 frame_constants_inner_rendering_resolution : packoffset(c9);
+    uint frame_constants_game_time_sec : packoffset(c9.z);
+    float frame_constants_game_time_frac : packoffset(c9.w);
+    float3 frame_constants_editing_highlight_color : packoffset(c10);
+    float frame_constants_time_of_day : packoffset(c10.w);
+    float3 frame_constants_dir_to_sun : packoffset(c11);
+    uint frame_constants_camera_idx : packoffset(c11.w);
+    float3 frame_constants_dir_to_moon : packoffset(c12);
+    uint frame_constants_render_overrides : packoffset(c12.w);
+    float frame_constants_global_mip_bias : packoffset(c13);
+    uint frame_constants_highlighted_transient_stair_edge_id : packoffset(c13.y);
+    uint frame_constants_pad1 : packoffset(c13.z);
+    uint frame_constants_pad2 : packoffset(c13.w);
+    float4 frame_constants_debug_tweakers : packoffset(c14);
+    ViewConstants frame_constants_view_constants[5] : packoffset(c15);
+};
+
+SamplerState sampler_lnc : register(s0, space0);
+SamplerState sampler_llr : register(s1, space0);
+Texture2D<float4> flower1 : register(t14, space0);
+Texture2D<float4> flower2 : register(t15, space0);
+Texture2D<float4> flower3 : register(t16, space0);
+Texture2D<float4> grass_patch : register(t17, space0);
+Texture2D<float4> terrain_texture : register(t18, space0);
+
+static float2 in_var_C0;
+static float3 in_var_C1;
+static float2 in_var_C3;
+static float in_var_C4;
+static int in_var_C5;
+static int in_var_C6;
+static uint2 out_var_SV_TARGET0;
+
+struct SPIRV_Cross_Input
+{
+    [[vk::location(0)]] float2 in_var_C0 : TEXCOORD0;
+    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+    [[vk::location(3)]] float2 in_var_C3 : TEXCOORD3;
+    [[vk::location(4)]] float in_var_C4 : TEXCOORD4;
+    [[vk::location(5)]] nointerpolation int in_var_C5 : TEXCOORD5;
+    [[vk::location(6)]] nointerpolation int in_var_C6 : TEXCOORD6;
+};
+
+struct SPIRV_Cross_Output
+{
+    uint2 out_var_SV_TARGET0 : SV_Target0;
+};
+
+void frag_main()
+{
+    float4 _103 = terrain_texture.Sample(sampler_lnc, in_var_C3);
+    float3 _198;
+    float _199;
+    if (in_var_C5 == 0)
+    {
+        float4 _113 = flower1.SampleBias(sampler_lnc, in_var_C0, (-1.0f) + frame_constants_global_mip_bias);
+        float _114 = _113.w;
+        _198 = lerp(_103.xyz, _113.xyz, (in_var_C4 * in_var_C4).xxx);
+        _199 = _114 * _114;
+    }
+    else
+    {
+        float3 _196;
+        float _197;
+        if (in_var_C5 == 2)
+        {
+            float4 _130 = flower2.SampleBias(sampler_lnc, in_var_C0, (-1.0f) + frame_constants_global_mip_bias);
+            float _131 = _130.w;
+            _196 = lerp(_103.xyz, _130.xyz, in_var_C4.xxx);
+            _197 = _131 * _131;
+        }
+        else
+        {
+            float3 _194;
+            float _195;
+            if (in_var_C5 == 3)
+            {
+                float4 _146 = flower3.SampleBias(sampler_lnc, in_var_C0, (-1.0f) + frame_constants_global_mip_bias);
+                float _147 = _146.w;
+                _194 = lerp(_103.xyz, _146.xyz, in_var_C4.xxx);
+                _195 = _147 * _147;
+            }
+            else
+            {
+                int _153 = in_var_C6 - 4 * (in_var_C6 / 4);
+                float4 _174 = grass_patch.SampleBias(sampler_llr, float2(0.5f * (in_var_C0.x + float(_153 - 2 * (_153 / 2))), 0.5f * (in_var_C0.y + float(int(floor(float(_153 / 2)))))), (-1.0f) + frame_constants_global_mip_bias);
+                float _175 = _174.w;
+                float3 _193;
+                if (frame_constants_glade_theme_id == 4u)
+                {
+                    _193 = lerp(_103.xyz, _174.xyz, pow(in_var_C4, 2.5f).xxx);
+                }
+                else
+                {
+                    _193 = lerp(_103.xyz, _174.xyz, pow(in_var_C4, 1.5f).xxx);
+                }
+                _194 = _193;
+                _195 = _175 * _175;
+            }
+            _196 = _194;
+            _197 = _195;
+        }
+        _198 = _196;
+        _199 = _197;
+    }
+    if (_199 < 0.100000001490116119384765625f)
+    {
+        discard;
+    }
+    float3 _205 = (normalize(in_var_C1) * 0.5f) + 0.5f.xxx;
+    float3 _227 = sqrt(clamp(_198, 0.0f.xxx, 1.0f.xxx));
+    uint _246 = (uint((clamp(_227.x, 0.0f, 1.0f) * 255.0f) + 0.5f) + (uint((clamp(_227.y, 0.0f, 1.0f) * 255.0f) + 0.5f) << 8u)) + (uint((clamp(_227.z, 0.0f, 1.0f) * 255.0f) + 0.5f) << 16u);
+    uint2 _247 = uint2(((uint((clamp(_205.x, 0.0f, 1.0f) * 255.0f) + 0.5f) + (uint((clamp(_205.y, 0.0f, 1.0f) * 255.0f) + 0.5f) << 8u)) + (uint((clamp(_205.z, 0.0f, 1.0f) * 255.0f) + 0.5f) << 16u)) + 3858759680u, _246);
+    _247.y = _246 | 100663296u;
+    out_var_SV_TARGET0 = _247;
+}
+
+SPIRV_Cross_Output ps_main(SPIRV_Cross_Input stage_input)
+{
+    in_var_C0 = stage_input.in_var_C0;
+    in_var_C1 = stage_input.in_var_C1;
+    in_var_C3 = stage_input.in_var_C3;
+    in_var_C4 = stage_input.in_var_C4;
+    in_var_C5 = stage_input.in_var_C5;
+    in_var_C6 = stage_input.in_var_C6;
+    frag_main();
+    SPIRV_Cross_Output stage_output;
+    stage_output.out_var_SV_TARGET0 = out_var_SV_TARGET0;
+    return stage_output;
+}
+#pragma dxc diagnostic pop
+#endif
+
+#if defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+struct ViewConstants
+{
+    column_major float4x4 view_to_clip;
+    column_major float4x4 clip_to_view;
+    column_major float4x4 view_to_sample;
+    column_major float4x4 sample_to_view;
+    column_major float4x4 world_to_view;
+    column_major float4x4 view_to_world;
+    column_major float4x4 world_to_sample;
+    column_major float4x4 clip_to_prev_clip;
+    column_major float4x4 prev_view_to_prev_clip;
+    column_major float4x4 prev_clip_to_prev_view;
+    column_major float4x4 prev_world_to_prev_view;
+    column_major float4x4 prev_view_to_prev_world;
+    float2 sample_offset_pixels;
+    float2 sample_offset_clip;
+    float2 prev_sample_offset_pixels;
+    float2 prev_sample_offset_clip;
+};
+
+cbuffer frame_constants : register(b0, space1)
+{
+    float4 frame_constants_sun_color : packoffset(c0);
+    float4 frame_constants_sky_low_color : packoffset(c1);
+    float4 frame_constants_sky_high_color : packoffset(c2);
+    float4 frame_constants_fog_tint_thickness : packoffset(c3);
+    float4 frame_constants_fake_light_color : packoffset(c4);
+    float4 frame_constants_fake_light_dir : packoffset(c5);
+    float4 frame_constants_fake_light2_color : packoffset(c6);
+    float4 frame_constants_fake_light2_dir : packoffset(c7);
+    uint frame_constants_frame_index : packoffset(c8);
+    float frame_constants_delta_time_seconds : packoffset(c8.y);
+    float frame_constants_ev_mult : packoffset(c8.z);
+    uint frame_constants_glade_theme_id : packoffset(c8.w);
+    uint2 frame_constants_inner_rendering_resolution : packoffset(c9);
+    uint frame_constants_game_time_sec : packoffset(c9.z);
+    float frame_constants_game_time_frac : packoffset(c9.w);
+    float3 frame_constants_editing_highlight_color : packoffset(c10);
+    float frame_constants_time_of_day : packoffset(c10.w);
+    float3 frame_constants_dir_to_sun : packoffset(c11);
+    uint frame_constants_camera_idx : packoffset(c11.w);
+    float3 frame_constants_dir_to_moon : packoffset(c12);
+    uint frame_constants_render_overrides : packoffset(c12.w);
+    float frame_constants_global_mip_bias : packoffset(c13);
+    uint frame_constants_highlighted_transient_stair_edge_id : packoffset(c13.y);
+    uint frame_constants_pad1 : packoffset(c13.z);
+    uint frame_constants_pad2 : packoffset(c13.w);
+    float4 frame_constants_debug_tweakers : packoffset(c14);
+    ViewConstants frame_constants_view_constants[5] : packoffset(c15);
+};
+
+SamplerState sampler_lnc : register(s0, space0);
+SamplerState sampler_llr : register(s1, space0);
+Texture2D<float4> flower1 : register(t14, space0);
+Texture2D<float4> flower2 : register(t15, space0);
+Texture2D<float4> flower3 : register(t16, space0);
+Texture2D<float4> grass_patch : register(t17, space0);
+
+static float2 in_var_C0;
+static int in_var_C5;
+static int in_var_C6;
+
+struct SPIRV_Cross_Input
+{
+    [[vk::location(0)]] float2 in_var_C0 : TEXCOORD0;
+    [[vk::location(5)]] nointerpolation int in_var_C5 : TEXCOORD5;
+    [[vk::location(6)]] nointerpolation int in_var_C6 : TEXCOORD6;
+};
+
+void frag_main()
+{
+    float _139;
+    if (in_var_C5 == 0)
+    {
+        float4 _84 = flower1.SampleBias(sampler_lnc, in_var_C0, (-1.0f) + frame_constants_global_mip_bias);
+        float _85 = _84.w;
+        _139 = _85 * _85;
+    }
+    else
+    {
+        float _138;
+        if (in_var_C5 == 2)
+        {
+            float4 _97 = flower2.SampleBias(sampler_lnc, in_var_C0, (-1.0f) + frame_constants_global_mip_bias);
+            float _98 = _97.w;
+            _138 = _98 * _98;
+        }
+        else
+        {
+            float _137;
+            if (in_var_C5 == 3)
+            {
+                float4 _110 = flower3.SampleBias(sampler_lnc, in_var_C0, (-1.0f) + frame_constants_global_mip_bias);
+                float _111 = _110.w;
+                _137 = _111 * _111;
+            }
+            else
+            {
+                int _113 = in_var_C6 - 4 * (in_var_C6 / 4);
+                float4 _134 = grass_patch.SampleBias(sampler_llr, float2(0.5f * (in_var_C0.x + float(_113 - 2 * (_113 / 2))), 0.5f * (in_var_C0.y + float(int(floor(float(_113 / 2)))))), (-1.0f) + frame_constants_global_mip_bias);
+                float _135 = _134.w;
+                _137 = _135 * _135;
+            }
+            _138 = _137;
+        }
+        _139 = _138;
+    }
+    if (_139 < 0.100000001490116119384765625f)
+    {
+        discard;
+    }
+}
+
+void ps_main(SPIRV_Cross_Input stage_input)
+{
+    in_var_C0 = stage_input.in_var_C0;
+    in_var_C5 = stage_input.in_var_C5;
+    in_var_C6 = stage_input.in_var_C6;
+    frag_main();
+}
+#pragma dxc diagnostic pop
+#endif

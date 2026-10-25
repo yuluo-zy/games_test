@@ -1,0 +1,240 @@
+
+void __cdecl system_clutter::autoclutter::add_preplaced_autoclutter::add_preplaced_autoclutter(void)
+
+{
+  byte *pbVar1;
+  byte bVar2;
+  byte bVar3;
+  byte bVar4;
+  undefined4 uVar5;
+  longlong lVar6;
+  ulonglong uVar7;
+  ulonglong uVar8;
+  undefined4 *puVar9;
+  char extraout_AL;
+  uint uVar10;
+  longlong extraout_RAX;
+  longlong extraout_RAX_00;
+  longlong *extraout_RAX_01;
+  longlong *extraout_RAX_02;
+  longlong *extraout_RAX_03;
+  longlong *extraout_RAX_04;
+  longlong *extraout_RAX_05;
+  longlong *extraout_RAX_06;
+  longlong *plVar11;
+  ulonglong *puVar12;
+  longlong *in_RDX;
+  ulonglong uVar13;
+  ulonglong uVar14;
+  longlong lVar15;
+  longlong in_R8;
+  char *pcVar16;
+  ulonglong uVar17;
+  undefined8 *in_R9;
+  ulonglong uVar18;
+  ulonglong uVar19;
+  undefined8 *in_stack_00000028;
+  char *in_stack_00000030;
+  longlong *local_c0;
+  
+  plVar11 = in_RDX;
+  puffin::are_scopes_on();
+  if (extraout_AL != '\0') {
+    core::str::impl$0::rfind<ref_<str_>_>();
+    if (extraout_RAX == 1) {
+      if (plVar11 != (longlong *)0x0) {
+        if (&DAT_00000050 < plVar11) {
+          if (plVar11 != (longlong *)&DAT_00000051) goto LAB_141ce59a0;
+        }
+        else if ((char)plVar11[0x285e6bd0] < -0x40) {
+LAB_141ce59a0:
+                    // WARNING: Subroutine does not return
+          core::str::slice_error_fail();
+        }
+      }
+      core::str::impl$0::rfind<ref_<str_>_>();
+      if ((extraout_RAX_00 == 1) && (plVar11 != (longlong *)0xfffffffffffffffe)) {
+        if ((undefined1 *)((longlong)plVar11 + 2) < (undefined1 *)0x51) {
+          if (*(char *)((longlong)plVar11 + 0x142f35e82) < -0x40) {
+LAB_141ce59f4:
+                    // WARNING: Subroutine does not return
+            core::str::slice_error_fail();
+          }
+        }
+        else if ((undefined1 *)((longlong)plVar11 + 2) != (undefined1 *)0x51) goto LAB_141ce59f4;
+      }
+    }
+    pcVar16 = 
+    "preplaced_clutter/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\\library\\core\\src\\str\\pattern.rs"
+    ;
+    do {
+      bVar2 = pcVar16[-1];
+      uVar10 = (uint)(char)bVar2;
+      if ((char)bVar2 < '\0') {
+        bVar3 = pcVar16[-2];
+        if ((char)bVar3 < -0x40) {
+          bVar4 = pcVar16[-3];
+          if ((char)bVar4 < -0x40) {
+            pbVar1 = (byte *)(pcVar16 + -4);
+            pcVar16 = pcVar16 + -4;
+            uVar10 = bVar4 & 0x3f | (*pbVar1 & 7) << 6;
+          }
+          else {
+            pcVar16 = pcVar16 + -3;
+            uVar10 = bVar4 & 0xf;
+          }
+          uVar10 = bVar3 & 0x3f | uVar10 << 6;
+        }
+        else {
+          pcVar16 = pcVar16 + -2;
+          uVar10 = bVar3 & 0x1f;
+        }
+        uVar10 = (uint)(bVar2 & 0x3f) | uVar10 << 6;
+        if (uVar10 != 0x5c) goto LAB_141ce5ab4;
+LAB_141ce5acf:
+        if (pcVar16 == "") break;
+        if (pcVar16 + -0x142f35f9f < (char *)0x43) {
+          if (-0x41 < pcVar16[1]) break;
+        }
+        else if (pcVar16 + -0x142f35f9f == (char *)0x43) break;
+                    // WARNING: Subroutine does not return
+        core::str::slice_error_fail();
+      }
+      pcVar16 = pcVar16 + -1;
+      if (uVar10 == 0x5c) goto LAB_141ce5acf;
+LAB_141ce5ab4:
+      if (uVar10 == 0x2f) goto LAB_141ce5acf;
+    } while (pcVar16 !=
+             "crates/systems/clutter/src/autoclutter/add_preplaced_autoclutter.rspreplaced_clutter/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\\library\\core\\src\\str\\pattern.rs"
+            );
+    puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL();
+    if (*extraout_RAX_01 == 1) {
+      plVar11 = extraout_RAX_01 + 1;
+    }
+    else if ((*extraout_RAX_01 != 0) ||
+            (std::sys::thread_local::native::lazy::Storage::
+             initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple_<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>
+                       (), plVar11 = extraout_RAX_04, extraout_RAX_04 == (longlong *)0x0))
+    goto LAB_141ce5f13;
+    if (*plVar11 != 0) goto LAB_141ce5f1f;
+    *plVar11 = -1;
+    puffin::ThreadProfiler::begin_scope();
+    *plVar11 = *plVar11 + 1;
+  }
+  puVar12 = (ulonglong *)*in_R9;
+  lVar6 = in_R9[1];
+  uVar7 = *puVar12;
+  uVar13 = 0;
+  uVar18 = uVar7 - *(ulonglong *)(lVar6 + 0x18);
+  if (uVar7 < *(ulonglong *)(lVar6 + 0x18)) {
+    uVar18 = uVar13;
+  }
+  uVar17 = uVar7 - *(ulonglong *)(lVar6 + 0x38);
+  if (uVar7 < *(ulonglong *)(lVar6 + 0x38)) {
+    uVar17 = uVar13;
+  }
+  uVar7 = *(ulonglong *)(lVar6 + 0x30);
+  uVar19 = uVar7 - uVar17;
+  if (uVar17 > uVar7) {
+    uVar19 = uVar13;
+  }
+  uVar8 = *(ulonglong *)(lVar6 + 0x10);
+  uVar14 = uVar8 - uVar18;
+  if (uVar18 > uVar8) {
+    uVar14 = uVar13;
+  }
+  uVar13 = *(ulonglong *)(lVar6 + 0x40);
+  *puVar12 = uVar13 - (uVar14 + uVar19);
+  if (uVar18 <= uVar8 && uVar8 - uVar18 != 0 || uVar17 <= uVar7 && uVar7 - uVar17 != 0) {
+LAB_141ce5e22:
+    *puVar12 = uVar13;
+    *in_stack_00000030 = '\0';
+  }
+  else {
+    puVar12 = (ulonglong *)*in_stack_00000028;
+    lVar6 = in_stack_00000028[1];
+    uVar7 = *puVar12;
+    uVar13 = 0;
+    uVar18 = uVar7 - *(ulonglong *)(lVar6 + 0x18);
+    if (uVar7 < *(ulonglong *)(lVar6 + 0x18)) {
+      uVar18 = uVar13;
+    }
+    uVar17 = uVar7 - *(ulonglong *)(lVar6 + 0x38);
+    if (uVar7 < *(ulonglong *)(lVar6 + 0x38)) {
+      uVar17 = uVar13;
+    }
+    uVar7 = *(ulonglong *)(lVar6 + 0x30);
+    uVar19 = uVar7 - uVar17;
+    if (uVar17 > uVar7) {
+      uVar19 = uVar13;
+    }
+    uVar8 = *(ulonglong *)(lVar6 + 0x10);
+    uVar14 = uVar8 - uVar18;
+    if (uVar18 > uVar8) {
+      uVar14 = uVar13;
+    }
+    uVar13 = *(ulonglong *)(lVar6 + 0x40);
+    *puVar12 = uVar13 - (uVar14 + uVar19);
+    if (uVar18 <= uVar8 && uVar8 - uVar18 != 0 || uVar17 <= uVar7 && uVar7 - uVar17 != 0)
+    goto LAB_141ce5e22;
+    if (*in_stack_00000030 != '\0') {
+      lVar6 = *(longlong *)(*in_RDX + 0x10);
+      if (lVar6 != 0) {
+        uVar5 = *(undefined4 *)(in_R8 + 0x1c);
+        puVar9 = *(undefined4 **)(in_R8 + 0x10);
+        lVar15 = 0;
+        do {
+          ::utils::swizzlers::impl$1::xvy();
+          ::utils::swizzlers::impl$0::x0y();
+          *puVar9 = uVar5;
+          ::utils::calculate_hash<tuple_<ref_<str_>,usize>_>();
+          AutoClutterState::add_region();
+          lVar15 = lVar15 + 0x1c;
+        } while (lVar6 * 0x1c != lVar15);
+      }
+      if (extraout_AL == '\0') {
+        return;
+      }
+      puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL();
+      if (*extraout_RAX_02 == 1) {
+        local_c0 = extraout_RAX_02 + 1;
+      }
+      else if ((*extraout_RAX_02 != 0) ||
+              (std::sys::thread_local::native::lazy::Storage::
+               initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple_<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>
+                         (), local_c0 = extraout_RAX_06, extraout_RAX_06 == (longlong *)0x0))
+      goto LAB_141ce5f13;
+      if (*local_c0 != 0) goto LAB_141ce5f1f;
+      *local_c0 = -1;
+      puffin::ThreadProfiler::end_scope();
+      goto LAB_141ce5e68;
+    }
+    *in_stack_00000030 = '\x01';
+  }
+  if (extraout_AL == '\0') {
+    return;
+  }
+  puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL();
+  if (*extraout_RAX_03 == 1) {
+    local_c0 = extraout_RAX_03 + 1;
+  }
+  else if ((*extraout_RAX_03 != 0) ||
+          (std::sys::thread_local::native::lazy::Storage::
+           initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple_<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>
+                     (), local_c0 = extraout_RAX_05, extraout_RAX_05 == (longlong *)0x0)) {
+LAB_141ce5f13:
+                    // WARNING: Subroutine does not return
+    std::thread::local::panic_access_error();
+  }
+  if (*local_c0 != 0) {
+LAB_141ce5f1f:
+                    // WARNING: Subroutine does not return
+    core::cell::panic_already_borrowed();
+  }
+  *local_c0 = -1;
+  puffin::ThreadProfiler::end_scope();
+LAB_141ce5e68:
+  *local_c0 = *local_c0 + 1;
+  return;
+}
+

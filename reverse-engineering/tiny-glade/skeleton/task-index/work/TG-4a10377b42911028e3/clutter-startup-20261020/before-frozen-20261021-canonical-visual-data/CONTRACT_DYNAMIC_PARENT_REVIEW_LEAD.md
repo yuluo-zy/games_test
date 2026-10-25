@@ -1,0 +1,3 @@
+# cottage动态parent补充合同独审
+
+core_business_lead，2026-10-21：按补充原7c8190..82af输入/尺寸/flags证据，合同通过。只借唯一ID subtype==2，actualwall/roof、缓存与rank尺寸表，原helper720bdfb6实际Local缓存/同Arc两槽，复用canonical insert_for在原8229时点写真实WallAddr及Info.state，无末尾legacyinsert。移除旧额外bounds continue已由完整控制流无其inline筛选证明，旧叶及其测试保留；不得只凭无directcall删除可能的inline业务。其余完整visual装配仍按声明未恢复，不以helper已真convex即声称整模块完成。

@@ -1,0 +1,34 @@
+[package]
+name = "tiny-glade-reconstruction"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.86"
+description = "Evidence-backed reconstruction of the supplied Tiny Glade build"
+publish = false
+
+[dependencies]
+fastrand = "=1.8.0"
+perchance = "=0.4.0"
+glam = "=0.29.3"
+half = "=2.4.1"
+tg-history = { path = "crates/tg-history" }
+rapier3d = { git = "https://github.com/PounceLight/rapier.git", rev = "7b5ece73c45a4d39bb983c48c283e773d7241050" }
+parry3d = "=0.17.0"
+slotmap = "=1.0.6"
+
+[features]
+default = ["library"]
+library = []
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "tg-reconstruction"
+path = "src/main.rs"
+
+[profile.release]
+debug = true
+
+[workspace]
+members = [".", "crates/tg-history", "crates/tg-building-runtime", "roof"]

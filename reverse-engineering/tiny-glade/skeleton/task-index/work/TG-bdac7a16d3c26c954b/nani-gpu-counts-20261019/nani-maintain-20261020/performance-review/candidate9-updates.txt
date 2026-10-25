@@ -1,0 +1,140 @@
+Source: /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bdac7a16d3c26c954b/nani-gpu-counts-20261019/nani-maintain-20261020/systems.rs.candidate
+SHA256: 3d8318f2d63e0eb28a81de1fc3365571cdb0f6beac3cc5c4cf7f9adb4150d4a8
+
+732: /// Each original update takes one subset lock before iterating its query,
+733: /// including an empty query. Keep that failure order and lock once per system.
+734: pub fn nani_update_solid_vertex_color_ecs(
+735:     mut rows: Query<(&mut InstanceKey, &Transform, Option<&SemiTransparent>, Option<&FlatLighting>),
+736:         With<InstanceDataMarker<SolidVertexColorInstanceData>>>,
+737:     gpu: Res<GpuWorld>,
+738: ) {
+739:     let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::SolidVertexColor);
+740:     for (mut key, transform, semi, flat) in &mut rows {
+741:         let (p, r, s) = trs(transform);
+742:         write_mapped_update(&mut subset, key.bypass_change_detection(),
+743:             build_solid_vertex_color(p, r, s, semi.is_some(), flat.is_some()),
+744:             |raw| SolidVertexColorInstanceData { raw });
+745:     }
+746: }
+747: 
+748: pub fn nani_update_solid_vertex_color_window_ecs(
+749:     mut rows: Query<(&mut InstanceKey, &Transform, &ColorId, Option<&SemiTransparent>),
+750:         With<InstanceDataMarker<SolidVertexColorWindowInstanceData>>>,
+751:     gpu: Res<GpuWorld>,
+752: ) {
+753:     let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::SolidVertexColorWindow);
+754:     for (mut key, transform, color, semi) in &mut rows {
+755:         let (p, r, s) = trs(transform);
+756:         write_mapped_update(&mut subset, key.bypass_change_detection(),
+757:             build_solid_vertex_color_window(p, r, s, color.0, semi.is_some()),
+758:             |raw| SolidVertexColorWindowInstanceData { raw });
+759:     }
+760: }
+761: 
+762: pub fn nani_update_plant_ecs(
+763:     mut rows: Query<(&mut InstanceKey, &Transform), With<InstanceDataMarker<PlantInstanceData>>>,
+764:     gpu: Res<GpuWorld>,
+765: ) {
+766:     let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::Plant);
+767:     for (mut key, transform) in &mut rows {
+768:         let (p, r, s) = trs(transform);
+769:         write_mapped_update(&mut subset, key.bypass_change_detection(), build_plant(p, r, s),
+770:             |raw| PlantInstanceData { raw });
+771:     }
+772: }
+
+808:         With<InstanceDataMarker<SolidAlbedoMapInstanceData>>>,
+809:     gpu: Res<GpuWorld>,
+810: ) {
+811:     let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::SolidAlbedoMap);
+812:     for (mut key, transform, selector) in &mut rows {
+813:         let (p, r, s) = trs(transform);
+814:         write_mapped_update(&mut subset, key.bypass_change_detection(),
+815:             build_solid_albedo_map(p, r, s, selector.encoded()),
+816:             |raw| SolidAlbedoMapInstanceData { raw });
+817:     }
+818: }
+819: 
+820: pub fn nani_update_solid_albedo_map_emissive_ecs(
+821:     mut rows: Query<(&mut InstanceKey, &Transform, &NaniSolidTexture),
+822:         With<InstanceDataMarker<SolidAlbedoMapEmissiveInstanceData>>>,
+823:     gpu: Res<GpuWorld>,
+824: ) {
+825:     let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::SolidAlbedoMapEmissive);
+826:     for (mut key, transform, selector) in &mut rows {
+827:         let (p, r, s) = trs(transform);
+828:         write_mapped_update(&mut subset, key.bypass_change_detection(),
+829:             build_solid_albedo_map(p, r, s, selector.encoded()),
+830:             |raw| SolidAlbedoMapEmissiveInstanceData { raw });
+831:     }
+832: }
+833: 
+834: pub fn nani_update_balcony_door_ecs(
+835:     mut rows: Query<(&mut InstanceKey, &Transform, &ColorId, Option<&SemiTransparent>),
+836:         With<InstanceDataMarker<BalconyDoorInstanceData>>>,
+837:     gpu: Res<GpuWorld>,
+838: ) {
+839:     let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::BalconyDoor);
+840:     for (mut key, transform, color, semi) in &mut rows {
+841:         let (p, r, s) = trs(transform);
+842:         write_mapped_update(&mut subset, key.bypass_change_detection(),
+843:             build_balcony_door(r, p, s, color.0, semi.is_some()),
+844:             |raw| BalconyDoorInstanceData { raw });
+845:     }
+846: }
+847: 
+848: pub fn nani_update_uber_ecs(
+849:     mut rows: Query<(&mut InstanceKey, &Transform, Option<&SemiTransparent>, Option<&AlbedoMap>),
+850:         With<InstanceDataMarker<UberInstanceData>>>,
+851:     textures: Res<AssetTextureLibrary>, gpu: Res<GpuWorld>,
+852: ) {
+853:     let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::Uber);
+854:     for (mut key, transform, semi, albedo) in &mut rows {
+855:         let albedo_index = albedo.map(|albedo| {
+856:             let asset = textures.get_handle_and_texture_by_name(NameHash(albedo.0))
+857:                 .expect("called `Option::unwrap()` on a `None` value").0;
+858:             textures.handle_to_bindless_index(asset).0
+859:         });
+860:         write_mapped_update(&mut subset, key.bypass_change_detection(),
+861:             build_uber(transform, semi.is_some(), albedo_index), |raw| UberInstanceData { raw });
+862:     }
+863: }
+864: 
+865: pub fn nani_update_velocity_only_ecs(
+866:     mut rows: Query<(&mut InstanceKey, &Transform, &PrevTransform),
+867:         With<InstanceDataMarker<VelocityOnlyInstanceData>>>,
+868:     gpu: Res<GpuWorld>,
+869: ) {
+870:     let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::VelocityOnly);
+871:     for (mut key, transform, previous) in &mut rows {
+872:         let previous = Transform { rotation: previous.rotation,
+873:             translation: previous.translation, scale: previous.scale };
+874:         write_mapped_update(&mut subset, key.bypass_change_detection(),
+875:             build_velocity_only(transform, &previous), |raw| VelocityOnlyInstanceData { raw });
+876:     }
+877: }
+878: 
+879: pub fn nani_flush_instance_updates_ecs(
+880:     device: Res<GraphicsDeviceResource>, mut gpu: ResMut<GpuWorld>,
+881: ) {
+882:     // GraphicsDeviceResource carries this App's same real BufferHost. Flush
+883:     // actual dirty ranges; roll the actual request count only after success.
+884:     nani_flush_instance_updates(&mut gpu, device.device());
+885: }
+886: 
+887: /// Original backend44 fragment: maintain -> explicit ApplyDeferred ->
+888: /// unordered20-update tuple -> flush, outer chain_ignore_deferred.
+889: /// Nine complete current component mappings are installed; the eleven
+890: /// unavailable contracts fail at maintain rather than upload invented data.
+891: pub fn add_mapped_nani_instance_systems<S: SystemSet>(schedule: &mut Schedule, set: S) {
+892:     schedule.add_systems((
+893:         nani_maintain_instances_ecs,
+894:         ApplyDeferred,
+895:         (nani_update_solid_vertex_color_ecs,
+896:          nani_update_solid_vertex_color_window_ecs,
+897:          nani_update_plant_ecs,
+898:          nani_update_preplaced_flower_ecs,
+899:          nani_update_solid_albedo_map_ecs,
+900:          nani_update_solid_albedo_map_emissive_ecs,
+901:          nani_update_balcony_door_ecs,
+

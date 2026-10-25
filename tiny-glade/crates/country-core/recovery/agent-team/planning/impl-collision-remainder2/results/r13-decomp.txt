@@ -1,0 +1,197 @@
+==== 0x1408ccc20 raycast_simple ====
+
+void __cdecl country_core::systems::collision::world::RaycastWorld::raycast_simple(void)
+
+{
+  Rapier::raycast_simple();
+  return;
+}
+
+
+
+==== 0x1408ccc50 raycast_simple_exclude_wall_id ====
+
+void __cdecl
+country_core::systems::collision::world::RaycastWorld::raycast_simple_exclude_wall_id(void)
+
+{
+  Rapier::raycast_simple();
+  return;
+}
+
+
+
+==== 0x1408cc770 legacy_raycast_w_params ====
+
+void __cdecl country_core::systems::collision::world::RaycastWorld::legacy_raycast_w_params(void)
+
+{
+  undefined8 *in_RCX;
+  undefined4 uStack_4c;
+  undefined8 local_48;
+  undefined8 uStack_40;
+  undefined8 local_38;
+  undefined8 local_30;
+  undefined4 local_28;
+  undefined8 local_24;
+  undefined4 local_1c;
+  int local_14;
+  undefined4 uStack_10;
+  undefined4 local_c;
+  
+  Rapier::raycast();
+  if (local_14 == 2) {
+    *(undefined4 *)(in_RCX + 6) = 2;
+  }
+  else {
+    *in_RCX = local_48;
+    in_RCX[1] = uStack_40;
+    *(undefined4 *)(in_RCX + 4) = local_28;
+    *(undefined8 *)((longlong)in_RCX + 0x24) = local_24;
+    *(undefined4 *)((longlong)in_RCX + 0x2c) = local_1c;
+    in_RCX[2] = local_38;
+    in_RCX[3] = local_30;
+    in_RCX[6] = CONCAT44(uStack_10,local_14);
+    in_RCX[7] = CONCAT44(uStack_4c,local_c);
+  }
+  return;
+}
+
+
+
+==== 0x1408cc2e0 raycast ====
+
+void __cdecl country_core::systems::collision::world::Raycasting::raycast(void)
+
+{
+  RaycastWorld::raycast_w_terrain();
+  return;
+}
+
+
+
+==== 0x1408cc320 intersects_any ====
+
+void __cdecl country_core::systems::collision::world::Raycasting::intersects_any(void)
+
+{
+  ulonglong in_R9;
+  undefined1 local_3c;
+  
+  if ((in_R9 & 0x20) != 0) {
+    resources::terrain_height::TerrainHeightsData::
+    intersect_ray<country_core::resources::terrain_height::TerrainHeightSsbo>();
+    if ((local_3c & 1) != 0) {
+      return;
+    }
+  }
+  Rapier::intersects_any();
+  return;
+}
+
+
+
+==== 0x1408cc390 spherecast ====
+
+void __cdecl country_core::systems::collision::world::Raycasting::spherecast(void)
+
+{
+  float fVar1;
+  float fVar2;
+  undefined8 *in_RCX;
+  undefined8 *in_R8;
+  uint uVar3;
+  float fVar4;
+  float fVar5;
+  float fVar6;
+  undefined1 auVar7 [16];
+  float in_XMM3_Da;
+  float fVar8;
+  float fVar9;
+  float fVar10;
+  undefined1 auVar11 [16];
+  float *in_stack_00000028;
+  uint in_stack_00000030;
+  undefined8 local_a0;
+  undefined8 uStack_98;
+  undefined8 local_90;
+  undefined8 uStack_88;
+  undefined8 local_80;
+  undefined8 uStack_78;
+  float local_70;
+  int iStack_6c;
+  undefined4 uStack_68;
+  undefined4 uStack_64;
+  byte local_5c;
+  undefined8 local_54;
+  float local_4c;
+  
+  RaycastWorld::spherecast();
+  if ((in_stack_00000030 & 0x20) != 0) {
+    fVar1 = *in_stack_00000028;
+    resources::terrain_height::TerrainHeightsData::
+    intersect_ray<country_core::resources::terrain_height::TerrainHeightSsbo>();
+    if ((local_5c & 1) != 0) {
+      fVar2 = *(float *)(in_R8 + 1);
+      fVar6 = fVar2 - local_4c;
+      fVar4 = (float)*in_R8;
+      fVar5 = (float)((ulonglong)*in_R8 >> 0x20);
+      fVar9 = fVar4 - (float)local_54;
+      fVar10 = fVar5 - (float)((ulonglong)local_54 >> 0x20);
+      auVar7._0_4_ = SQRT(fVar10 * fVar10 + fVar9 * fVar9 + fVar6 * fVar6) - in_XMM3_Da;
+      fVar10 = (float)*(undefined8 *)((longlong)in_R8 + 0xc);
+      fVar8 = (float)((ulonglong)*(undefined8 *)((longlong)in_R8 + 0xc) >> 0x20);
+      fVar6 = *(float *)((longlong)in_R8 + 0x14);
+      fVar9 = SQRT(fVar6 * fVar6 + fVar8 * fVar8 + fVar10 * fVar10);
+      auVar7._4_4_ = fVar9;
+      auVar7._8_8_ = 0;
+      auVar11 = maxps(ZEXT816(0x1e3ce50800000000),auVar7);
+      uVar3 = -(uint)NAN(fVar9);
+      fVar9 = (float)(~-(uint)NAN(auVar7._0_4_) & auVar11._0_4_) /
+              (float)(~uVar3 & auVar11._4_4_ | uVar3 & 0x1e3ce508);
+      if (fVar9 <= fVar1) {
+        if (iStack_6c == 2) {
+          *(undefined1 *)in_RCX = 0xb;
+        }
+        else {
+          if (local_70 < fVar9) {
+            in_RCX[4] = local_80;
+            in_RCX[5] = uStack_78;
+            in_RCX[2] = local_90;
+            in_RCX[3] = uStack_88;
+            *in_RCX = local_a0;
+            in_RCX[1] = uStack_98;
+            *(float *)(in_RCX + 6) = local_70;
+            *(ulonglong *)((longlong)in_RCX + 0x34) = CONCAT44(uStack_68,iStack_6c);
+            *(undefined4 *)((longlong)in_RCX + 0x3c) = uStack_64;
+            return;
+          }
+          *(undefined1 *)in_RCX = 0xb;
+        }
+        in_RCX[3] = CONCAT44(fVar5 + fVar8 * fVar9,fVar4 + fVar10 * fVar9);
+        *(float *)(in_RCX + 4) = fVar2 + fVar6 * fVar9;
+        *(undefined8 *)((longlong)in_RCX + 0x24) = 0x3f80000000000000;
+        *(undefined4 *)((longlong)in_RCX + 0x2c) = 0;
+        *(float *)(in_RCX + 6) = fVar9;
+        *(undefined4 *)((longlong)in_RCX + 0x34) = 0;
+        return;
+      }
+    }
+  }
+  if (iStack_6c == 2) {
+    *(undefined4 *)((longlong)in_RCX + 0x34) = 2;
+  }
+  else {
+    in_RCX[6] = CONCAT44(iStack_6c,local_70);
+    in_RCX[7] = CONCAT44(uStack_64,uStack_68);
+    in_RCX[4] = local_80;
+    in_RCX[5] = uStack_78;
+    in_RCX[2] = local_90;
+    in_RCX[3] = uStack_88;
+    *in_RCX = local_a0;
+    in_RCX[1] = uStack_98;
+  }
+  return;
+}
+
+

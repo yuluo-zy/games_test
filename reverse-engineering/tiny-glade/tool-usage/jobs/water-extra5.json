@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nfrom ghidra.app.decompiler import DecompInterface\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x1409393b0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"absent\")\nout[\"name\"] = str(f.getName()); out[\"signature\"] = str(f.getSignature())\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    out[\"decompiled\"] = res.getDecompiledFunction().getC() if res.decompileCompleted() else None\nfinally:\n    d.dispose()\n# also callers\nrefmgr = prog.getReferenceManager()\ncallers = []\nfor r in refmgr.getReferencesTo(addr):\n    monitor.checkCancelled()\n    if not r.getReferenceType().isCall(): continue\n    ca = r.getFromAddress(); cf = fm.getFunctionContaining(ca)\n    callers.append([str(ca), str(cf.getEntryPoint()) if cf else \"\", str(cf.getName()) if cf else \"\"])\nout[\"callers\"] = callers\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 150
+  }
+]

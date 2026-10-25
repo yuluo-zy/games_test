@@ -1,0 +1,44 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+141cf9cd0: 4d 85 db                    	testq	%r11, %r11
+141cf9cd3: 74 e2                       	je	0x141cf9cb7 <.text+0x1cf8cb7>
+141cf9cd5: 42 8b 7c 9a 08              	movl	0x8(%rdx,%r11,4), %edi
+141cf9cda: 31 f6                       	xorl	%esi, %esi
+141cf9cdc: 42 3b 3c 9a                 	cmpl	(%rdx,%r11,4), %edi
+141cf9ce0: 40 0f 95 c6                 	setne	%sil
+141cf9ce4: 41 0f 42 f1                 	cmovbl	%r9d, %esi
+141cf9ce8: 49 ff c3                    	incq	%r11
+141cf9ceb: 40 84 f6                    	testb	%sil, %sil
+141cf9cee: 74 e0                       	je	0x141cf9cd0 <.text+0x1cf8cd0>
+141cf9cf0: 44 0f b6 de                 	movzbl	%sil, %r11d
+141cf9cf4: 41 81 fb ff 00 00 00        	cmpl	$0xff, %r11d
+141cf9cfb: 75 ba                       	jne	0x141cf9cb7 <.text+0x1cf8cb7>
+141cf9cfd: 4c 8b 1a                    	movq	(%rdx), %r11
+141cf9d00: 4c 89 1c 24                 	movq	%r11, (%rsp)
+141cf9d04: 4c 8b 5a f8                 	movq	-0x8(%rdx), %r11
+141cf9d08: 4c 89 1a                    	movq	%r11, (%rdx)
+141cf9d0b: 4d 89 c3                    	movq	%r8, %r11
+141cf9d0e: 48 89 ce                    	movq	%rcx, %rsi
+141cf9d11: 49 39 ca                    	cmpq	%rcx, %r10
+141cf9d14: 74 9a                       	je	0x141cf9cb0 <.text+0x1cf8cb0>
+141cf9d16: 4c 89 d6                    	movq	%r10, %rsi
+141cf9d19: 49 83 c2 f8                 	addq	$-0x8, %r10
+141cf9d1d: 31 db                       	xorl	%ebx, %ebx
+141cf9d1f: 90                          	nop
+141cf9d20: 48 83 fb 02                 	cmpq	$0x2, %rbx
+141cf9d24: 74 8a                       	je	0x141cf9cb0 <.text+0x1cf8cb0>
+141cf9d26: 8b 2c 9c                    	movl	(%rsp,%rbx,4), %ebp
+141cf9d29: 31 ff                       	xorl	%edi, %edi
+141cf9d2b: 41 3b 2c 9b                 	cmpl	(%r11,%rbx,4), %ebp
+141cf9d2f: 48 8d 5b 01                 	leaq	0x1(%rbx), %rbx
+141cf9d33: 40 0f 95 c7                 	setne	%dil
+141cf9d37: 41 0f 42 f9                 	cmovbl	%r9d, %edi
+141cf9d3b: 40 84 ff                    	testb	%dil, %dil
+141cf9d3e: 74 e0                       	je	0x141cf9d20 <.text+0x1cf8d20>
+141cf9d40: 40 0f b6 ff                 	movzbl	%dil, %edi
+141cf9d44: 81 ff ff 00 00 00           	cmpl	$0xff, %edi
+141cf9d4a: 0f 85 60 ff ff ff           	jne	0x141cf9cb0 <.text+0x1cf8cb0>

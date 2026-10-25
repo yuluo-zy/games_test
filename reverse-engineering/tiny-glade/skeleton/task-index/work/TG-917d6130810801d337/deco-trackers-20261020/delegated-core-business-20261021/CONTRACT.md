@@ -1,0 +1,5 @@
+# 必要编译迁移：砖烟囱真实ID单值夹具
+
+仅测试的旧LegacyDerivedDecoratorInfoRecord Arc入图改为当前唯一DerivedDecoratorSubtypes.insert(id,DecoratorSubtype(20))；生产chimney_assemble_bricks本来已使用DerivedDecoratorInfoResources.as_view真实owner，无算法修改。删除该测试唯一Legacy import/Arc import，不新增表/碰撞默认值。原真实subtype20为vent管，现测试参数只验证其真实lookup后不产砖、Removed音效/实际InstancedWall allocation消费；保同一World既有完整事件/删除断言。与canonical TG609 afteraa33480b API配对，本source其余算法/slot不改。
+
+原owner/委派/当前before见同目录baseline.json和live-show.json。只有root生产写入/Cargo，worker只候选。

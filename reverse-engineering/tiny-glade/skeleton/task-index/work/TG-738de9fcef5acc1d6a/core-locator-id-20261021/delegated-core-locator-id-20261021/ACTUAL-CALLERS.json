@@ -1,0 +1,44 @@
+{
+  "scope": "Identity caller inventory only; comments do not constitute a caller",
+  "locator_constructor_callers": [
+    {
+      "source": "tiny-glade/crates/systems/decorator/src/apply_decorator_op.rs",
+      "sha256": "056d3a1e84212477478d531d3c98be88ea469e226f87c337232490b7c64e536d",
+      "actual_constructor_lines": [
+        177,
+        193,
+        495
+      ]
+    }
+  ],
+  "op_constructor_migration": [
+    {
+      "source": "tiny-glade/crates/systems/decorator/src/apply_decorator_op.rs",
+      "sources": [
+        "from_change: patch.id",
+        "height_op test: explicit id argument"
+      ]
+    },
+    {
+      "source": "tiny-glade/crates/systems/decorator/src/handle_external_decorator_cmds.rs",
+      "sources": [
+        "ExternalDecoratorCmd.decorator_id"
+      ]
+    },
+    {
+      "source": "tiny-glade/crates/systems/decorator/src/ui_systems/ui_change_chimney_height.rs",
+      "sources": [
+        "existing decorator_id local used in lookup_info; upstream dispatcher payload0 gap remains"
+      ]
+    },
+    {
+      "source": "tiny-glade/crates/systems/decorator/src/cull_oob_decorators.rs",
+      "sources": [
+        "cull_invalid_decorator actual id argument",
+        "remove_ids list from stair bucket map keys"
+      ],
+      "writer": "/root/decorator_chain",
+      "handoff_patch": "ROOT_CULL_OP_ID_HUNKS.patch"
+    }
+  ]
+}

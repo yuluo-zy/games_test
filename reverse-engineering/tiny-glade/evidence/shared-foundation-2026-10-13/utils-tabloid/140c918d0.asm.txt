@@ -1,0 +1,32 @@
+utils::scale_u32_packed_srgba_color::hab58c7254f3033f8
+0x140c918d0: movzx eax, cl
+0x140c918d3: cvtsi2ss xmm0, eax
+0x140c918d7: movss xmm2, dword ptr [rip + 0x1ca9391] ; [0x14293ac70]=00007f43 f32=255.0
+0x140c918df: divss xmm0, xmm2
+0x140c918e3: mulss xmm0, xmm1
+0x140c918e7: mulss xmm0, xmm2
+0x140c918eb: addss xmm0, dword ptr [rip + 0x1c93f7d] ; [0x142925870]=0000003f f32=0.5
+0x140c918f3: xorps xmm1, xmm1
+0x140c918f6: xorps xmm3, xmm3
+0x140c918f9: maxss xmm3, xmm0
+0x140c918fd: minss xmm2, xmm3
+0x140c91901: cvttss2si rax, xmm2
+0x140c91906: xor edx, edx
+0x140c91908: ucomiss xmm2, xmm1
+0x140c9190b: cmovae edx, eax
+0x140c9190e: ucomiss xmm2, dword ptr [rip + 0x1d0eebb] ; [0x1429a07d0]=ffff7f4f f32=4294967040.0
+0x140c91915: mov eax, 0xffffffff
+0x140c9191a: cmovbe eax, edx
+0x140c9191d: and ecx, 0xffffff00
+0x140c91923: or eax, ecx
+0x140c91925: ret 
+0x140c91926: int3 
+0x140c91927: int3 
+0x140c91928: int3 
+0x140c91929: int3 
+0x140c9192a: int3 
+0x140c9192b: int3 
+0x140c9192c: int3 
+0x140c9192d: int3 
+0x140c9192e: int3 
+0x140c9192f: int3 

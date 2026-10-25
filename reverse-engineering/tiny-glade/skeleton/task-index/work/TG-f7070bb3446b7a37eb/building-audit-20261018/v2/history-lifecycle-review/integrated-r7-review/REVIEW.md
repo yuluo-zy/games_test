@@ -1,0 +1,16 @@
+# Integrated history lifecycle and publication adapter: r7 independent audit
+
+Root's recorded command is cargo test country-core lib plus sheep_snapshot_native/core_editing_schedule with native-physics, locked/offline. The recorded process exited0. The actual log reports2365 lib tests, one joined-graph test and three sheep-native tests passing. Independent comparison of4161 pre/post source fingerprints confirms they are identical throughout the test run. All nine specifically reviewed current history/clutter/mode/terrain/full-host/graph source files still match those tested r7 fingerprints at this review time.
+
+The five lifecycle regression names and two typed clutter-chain regressions actually appear as passing in the log. The joined core_editing_schedule test registers real mode/input/history/terrain/wall installers and calls Schedule::initialize, so its successful result validates Bevy graph construction with ModeChangePublication and the new recording adapter. It does not run every business system in the joined schedule. Actual focused lifecycle tests separately run real terrain drawing, deferred record, History commit and next-frame real input Control sync consumer; no additional whole-game claim follows.
+
+The two reported fixture repair diffs modify only cfg(test) code. Everything before the first cfg(test) is byte-identical to the integrated pre-repair snapshot. No assertions were removed or expected outputs changed:
+
+- AssetSsboLibrary local needs mut because its existing add_new/get_mut APIs borrow mutably.
+- Bevy0.16 Events uses send; EventWriter uses write. Fixing the unit event fixture from Events.write to Events.send selects the pinned collection API.
+- Bevy0.16 System::run returns Self::Out, which is () for these infallible systems. Removing .unwrap from run does not swallow an error: a panic still propagates and fails the test. RunSystemOnce retains its own Result and existing unwrap calls.
+- Binding an explicit EventCursor local extends the temporary borrow lifetime before retaining the first event reference. It preserves reader contents and assertions.
+
+Therefore these fixture fixes correct Rust/pinned-Bevy API and lifetime errors without hiding a production behavior failure. New native row assertions, no-pending/cross-frame reader behavior, entity42/clutter73 deletion authority, start-first-canvas, storage second-frame mutability and true next-frame sync checks all remain. Current production lifecycle still matches the frozen source-reviewed candidate before cfg(test); no new production algorithm was inserted during fixture repair.
+
+This supplement also closes the earlier publication review's runtime limitation for the r7 **graph-construction** scope. The old static report was wrong about duplicate function-type dependencies; its separate publication-set-erratum remains the correction. The tested explicit ordinary late-publication set avoids that actual Bevy failure. Remaining upper placement/Stair producer/archive/full-game/global-schedule boundaries remain exactly those in the main review. This reviewer ran no Cargo, changed no production source and relies on the saved command/result/log plus independent fingerprint/source checks.

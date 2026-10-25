@@ -1,0 +1,13 @@
+{
+  "schema_version": 2,
+  "evidence_mode": "static",
+  "types": [
+    {"name":"TemporalKey","type":"ustr::Ustr","size":8,"confidence":"observed public symbols","constructors":{"str":"0x140c0f640","String":"0x140c0f650"}},
+    {"name":"TemporalRecord","stride":104,"fields":[{"offset":0,"role":"Ustr key"},{"offset":8,"role":"discriminant texture0/buffer1/exported2"},{"offset":12,"role":"raw logical resource or exported access byte/payload"},{"offset":48,"size":56,"role":"retained physical managed resource"},{"offset":72,"role":"texture descriptor compare block; buffer layout differs"},{"offset":102,"role":"texture kind or buffer sentinel7"}]},
+    {"name":"TextureDescriptorCompare","size":32,"groups":[{"offset":0,"size":12,"role":"strict fixed words"},{"offset":12,"size":12,"role":"extent recreate trigger"},{"offset":24,"size":4,"role":"strict fixed word"},{"offset":28,"size":3,"role":"strict fixed bytes"},{"offset":31,"size":1,"role":"uncompared padding"}]},
+    {"name":"PairResult","size":80,"fields":[{"offset":0,"role":"success0/error1"},{"offset":4,"size":36,"role":"first texture logical payload"},{"offset":40,"size":36,"role":"second texture logical payload"},{"offset":76,"role":"both-reused bool"}]},
+    {"name":"SingleResult","buffer_tag_offset":24,"texture_tag_offset":36,"tags":{"created":0,"reused":1,"error":2}},
+    {"name":"TemporalState","size":96,"fields":[{"offset":0,"role":"Ustr->record map"},{"offset":48,"role":"Ustr->u32 parity map"}],"persistent_state_offset":144}
+  ],
+  "signature_policy":"Semantic projection, not repr(C) recovered ABI"
+}

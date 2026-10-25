@@ -1,0 +1,59 @@
+--- a/crates/rhapsody/src/rg/plan.rs
++++ b/crates/rhapsody/src/rg/plan.rs
+@@ -8,7 +8,7 @@
+ };
+ use std::collections::{BTreeSet, VecDeque};
+ 
+-pub const COMPILER_VERSION: u32 = 3;
++pub const COMPILER_VERSION: u32 = 4;
+ 
+ #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+ pub enum ResourceOriginKind {
+@@ -927,6 +927,7 @@
+                 }
+             },
+             |g| g.passes[0].accesses[0].reads_previous = true,
++            |g| g.passes[0].accesses[0].allow_undefined_contents = true,
+             |g| g.passes[0].accesses[0].version = AccessVersion::Read(9),
+             |g| g.subgraphs[0].interface.implementation_signature += 1,
+             |g| g.exports[0].access_code = 0x26,
+@@ -1082,6 +1083,7 @@
+             version: AccessVersion::Automatic,
+             reads_previous: false,
+             contents_unused: false,
++            allow_undefined_contents: false,
+             range: AccessRange::Texture {
+                 aspect_mask: 1,
+                 base_mip_level: mip,
+@@ -1175,4 +1177,30 @@
+                 .unwrap()
+         );
+     }
+-}
++    #[test]
++    fn undefined_read_permission_does_not_bypass_cached_ordinary_boundary_validation() {
++        let descriptor = super::super::vulkan::ResourceSpec::Image(
++            crate::raw::texture::TextureDesc::new_2d(8, 8, ash::vk::Format::R32_SFLOAT))
++            .descriptor();
++        for permitted in [false, true] {
++            let mut graph = RenderGraph::new();
++            let h = graph.import_unowned("history", descriptor, 9, 0x19).unwrap();
++            let mut pass = graph.add_pass("history");
++            if permitted {
++                pass.add_undefined_content_read_range(h, 0x19, 0, AccessRange::Whole).unwrap();
++            } else {
++                pass.add_resource_access(h, 0x19, 0).unwrap();
++            }
++            pass.side_effect(); pass.render(|_| true);
++            let mut raw = graph.build().declaration;
++            let context = PlanContext::default();
++            let key = GraphDefinition::from_declaration(&raw, &mut AccessTable::original(), context).unwrap();
++            raw.resources[0].source = OriginSource::ImportUnowned { token: 10, initial_access: 0 };
++            let borrowed = key.matches_declaration(&raw, &mut AccessTable::original(), context);
++            assert_eq!(borrowed.is_ok(), permitted);
++            if permitted { assert!(borrowed.unwrap()); }
++            assert_eq!(GraphDefinition::from_declaration(&raw, &mut AccessTable::original(), context).is_ok(), permitted);
++        }
++    }
++
++}

@@ -1,0 +1,126 @@
+{
+  "results": [
+    {
+      "tool": "open_database",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"wcbfast2\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "wcbfast2",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"wcbfast2\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "wcbfast2",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"No function at 0x14089D560\",\"error_type\":\"NotFound\",\"database\":\"wcbfast2\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"No function at 0x140C9CDC0\",\"error_type\":\"NotFound\",\"database\":\"wcbfast2\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"No function at 0x140C9CDE0\",\"error_type\":\"NotFound\",\"database\":\"wcbfast2\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"No function at 0x140858790\",\"error_type\":\"NotFound\",\"database\":\"wcbfast2\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"No function at 0x1408587C0\",\"error_type\":\"NotFound\",\"database\":\"wcbfast2\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_14120c120\",\"address\":\"0x14120C120\",\"decompiled_code\":\"\\r\\nulonglong FUN_14120c120(longlong *param_1,undefined4 *param_2)\\r\\n\\r\\n{\\r\\n  undefined4 *puVar1;\\r\\n  ulonglong *puVar2;\\r\\n  undefined8 *puVar3;\\r\\n  byte bVar4;\\r\\n  uint uVar5;\\r\\n  longlong lVar6;\\r\\n  longlong *plVar7;\\r\\n  code *pcVar8;\\r\\n  undefined4 uVar9;\\r\\n  undefined4 uVar10;\\r\\n  undefined4 uVar11;\\r\\n  undefined4 uVar12;\\r\\n  undefined4 uVar13;\\r\\n  undefined4 uVar14;\\r\\n  undefined4 uVar15;\\r\\n  undefined4 uVar16;\\r\\n  undefined4 uVar17;\\r\\n  undefined4 uVar18;\\r\\n  undefined4 uVar19;\\r\\n  undefined4 uVar20;\\r\\n  undefined4 uVar21;\\r\\n  undefined4 uVar22;\\r\\n  undefined4 uVar23;\\r\\n  undefined4 uVar24;\\r\\n  undefined8 uVar25;\\r\\n  undefined8 uVar26;\\r\\n  undefined8 uVar27;\\r\\n  undefined8 uVar28;\\r\\n  ulonglong uVar29;\\r\\n  longlong lVar30;\\r\\n  ulonglong uVar31;\\r\\n  longlong *plVar32;\\r\\n  ulonglong uVar33;\\r\\n  ulonglong unaff_R14;\\r\\n  undefined8 uVar34;\\r\\n  \\r\\n  uVar34 = 0xfffffffffffffffe;\\r\\n  uVar5 = *(uint *)(param_1 + 10);\\r\\n  uVar31 = (ulonglong)uVar5;\\r\\n  if (uVar31 < (ulonglong)param_1[1]) {\\r\\n    lVar6 = *param_1;\\r\\n    bVar4 = *(byte *)(lVar6 + uVar31);\\r\\n    if ((ulonglong)bVar4 < 0x20) {\\r\\n      uVar29 = uVar31 << 5 | (ulonglong)bVar4;\\r\\n      *(byte *)(lVar6 + uVar31) = bVar4 + 1;\\r\\n      if ((ulonglong)param_1[6] <= uVar29) goto code_r0x00014120c397;\\r\\n      lVar6 = param_1[5];\\r\\n      lVar30 = uVar29 * 0x60;\\r\\n      uVar34 = *(undefined8 *)(param_2 + 0x16);\\r\\n      puVar3 = (undefined8 *)(lVar6 + 0x50 + lVar30);\\r\\n      *puVar3 = *(undefined8 *)(param_2 + 0x14);\\r\\n      puVar3[1] = uVar34;\\r\\n      uVar34 = *(undefined8 *)(param_2 + 0x12);\\r\\n      puVar3 = (undefined8 *)(lVar6 + 0x40 + lVar30);\\r\\n      *puVar3 = *(undefined8 *)(param_2 + 0x10);\\r\\n      puVar3[1] = uVar34;\\r\\n      uVar9 = *param_2;\\r\\n      uVar10 = param_2[1];\\r\\n      uVar11 = param_2[2];\\r\\n      uVar12 = param_2[3];\\r\\n      uVar34 = *(undefined8 *)(param_2 + 4);\\r\\n      uVar25 = *(undefined8 *)(param_2 + 6);\\r\\n      uVar26 = *(undefined8 *)(param_2 + 8);\\r\\n      uVar27 = *(undefined8 *)(param_2 + 10);\\r\\n      uVar28 = *(undefined8 *)(param_2 + 0xe);\\r\\n      puVar3 = (undefined8 *)(lVar6 + 0x30 + lVar30);\\r\\n      *puVar3 = *(undefined8 *)(param_2 + 0xc);\\r\\n      puVar3[1] = uVar28;\\r\\n      puVar3 = (undefined8 *)(lVar6 + 0x20 + lVar30);\\r\\n      *puVar3 = uVar26;\\r\\n      puVar3[1] = uVar27;\\r\\n      puVar3 = (undefined8 *)(lVar6 + 0x10 + lVar30);\\r\\n      *puVar3 = uVar34;\\r\\n      puVar3[1] = uVar25;\\r\\n      puVar1 = (undefined4 *)(lVar6 + lVar30);\\r\\n      *puVar1 = uVar9;\\r\\n      puVar1[1] = uVar10;\\r\\n      puVar1[2] = uVar11;\\r\\n      puVar1[3] = uVar12;\\r\\n      uVar31 = (ulonglong)(uVar5 >> 6);\\r\\n      if (uVar31 < (ulonglong)param_1[9]) {\\r\\n        LOCK();\\r\\n        puVar2 = (ulonglong *)(param_1[8] + uVar31 * 8);\\r\\n        *puVar2 = *puVar2 | 1L << ((byte)uVar5 & 0x3f);\\r\\n        UNLOCK();\\r\\n        uVar31 = 0;\\r\\n        goto code_r0x00014120c35b;\\r\\n      }\\r\\n      goto code_r0x00014120c3a6;\\r\\n    }\\r\\n    plVar32 = (longlong *)param_1[7];\\r\\n    LOCK();\\r\\n    lVar30 = *plVar32;\\r\\n    if (lVar30 == 0) {\\r\\n      *plVar32 = 8;\\r\\n    }\\r\\n    UNLOCK();\\r\\n    if (lVar30 != 0) {\\r\\n      FUN_1428cb5f0(plVar32,lVar6,1000000000);\\r\\n    }\\r\\n    FUN_140c81c70(plVar32);\\r\\n    uVar31 = (ulonglong)plVar32 | 1;\\r\\n    FUN_140c81c70(uVar31);\\r\\n    lVar6 = plVar32[3];\\r\\n    if (lVar6 == 0) {\\r\\n      FUN_140c81e10(plVar32);\\r\\n      FUN_140c81e10();\\r\\n      LOCK();\\r\\n      lVar6 = *plVar32;\\r\\n      if (lVar6 == 8) {\\r\\n        *plVar32 = 0;\\r\\n      }\\r\\n      UNLOCK();\\r\\n      uVar31 = CONCAT71((int7)((ulonglong)param_1 >> 8),1);\\r\\n      if (lVar6 == 8) goto code_r0x00014120c35b;\\r\\ncode_r0x00014120c382:\\r\\n      FUN_1428cbf60(plVar32,0);\\r\\ncode_r0x00014120c35b:\\r\\n      return uVar31 & 0xffffffff;\\r\\n    }\\r\\n    plVar32[3] = lVar6 + -1;\\r\\n    uVar5 = *(uint *)(plVar32[2] + -4 + lVar6 * 4);\\r\\n    unaff_R14 = (ulonglong)uVar5;\\r\\n    plVar7 = (longlong *)param_1[4];\\r\\n    lVar6 = plVar7[2];\\r\\n    if (lVar6 == *plVar7) {\\r\\n      FUN_140b5f870(plVar7,&UNK_142c1abb0);\\r\\n    }\\r\\n    *(uint *)(plVar7[1] + lVar6 * 4) = uVar5;\\r\\n    plVar7[2] = lVar6 + 1;\\r\\n    if (unaff_R14 < (ulonglong)param_1[1]) {\\r\\n      *(undefined1 *)(*param_1 + unaff_R14) = 1;\\r\\n      if ((ulonglong)param_1[6] <= unaff_R14 * 0x20) {\\r\\n        FUN_1428d9518(unaff_R14 * 0x20,param_1[6],&UNK_142c1abe0);\\r\\n        goto code_r0x00014120c3f4;\\r\\n      }\\r\\n      lVar6 = param_1[5];\\r\\n      lVar30 = unaff_R14 * 0xc00;\\r\\n      uVar25 = *(undefined8 *)(param_2 + 0x16);\\r\\n      puVar3 = (undefined8 *)(lVar6 + 0x50 + lVar30);\\r\\n      *puVar3 = *(undefined8 *)(param_2 + 0x14);\\r\\n      puVar3[1] = uVar25;\\r\\n      uVar25 = *(undefined8 *)(param_2 + 0x12);\\r\\n      puVar3 = (undefined8 *)(lVar6 + 0x40 + lVar30);\\r\\n      *puVar3 = *(undefined8 *)(param_2 + 0x10);\\r\\n      puVar3[1] = uVar25;\\r\\n      uVar9 = *param_2;\\r\\n      uVar10 = param_2[1];\\r\\n      uVar11 = param_2[2];\\r\\n      uVar12 = param_2[3];\\r\\n      uVar13 = param_2[4];\\r\\n      uVar14 = param_2[5];\\r\\n      uVar15 = param_2[6];\\r\\n      uVar16 = param_2[7];\\r\\n      uVar17 = param_2[8];\\r\\n      uVar18 = param_2[9];\\r\\n      uVar19 = param_2[10];\\r\\n      uVar20 = param_2[0xb];\\r\\n      uVar21 = param_2[0xc];\\r\\n      uVar22 = param_2[0xd];\\r\\n      uVar23 = param_2[0xe];\\r\\n      uVar24 = param_2[0xf];\\r\\n      puVar1 = (undefined4 *)(lVar6 + 0x30 + lVar30);\\r\\n      *puVar1 = uVar21;\\r\\n      puVar1[1] = uVar22;\\r\\n      puVar1[2] = uVar23;\\r\\n      puVar1[3] = uVar24;\\r\\n      puVar1 = (undefined4 *)(lVar6 + 0x20 + lVar30);\\r\\n      *puVar1 = uVar17;\\r\\n      puVar1[1] = uVar18;\\r\\n      puVar1[2] = uVar19;\\r\\n      puVar1[3] = uVar20;\\r\\n      puVar1 = (undefined4 *)(lVar6 + 0x10 + lVar30);\\r\\n      *puVar1 = uVar13;\\r\\n      puVar1[1] = uVar14;\\r\\n      puVar1[2] = uVar15;\\r\\n      puVar1[3] = uVar16;\\r\\n      puVar1 = (undefined4 *)(lVar6 + lVar30);\\r\\n      *puVar1 = uVar9;\\r\\n      puVar1[1] = uVar10;\\r\\n      puVar1[2] = uVar11;\\r\\n      puVar1[3] = uVar12;\\r\\n      uVar29 = (ulonglong)(uVar5 >> 6);\\r\\n      if ((ulonglong)param_1[3] <= uVar29) {\\r\\n        FUN_1428d9518(uVar29,param_1[3],&UNK_142c1aa78,uVar21,plVar32,uVar34);\\r\\n        goto code_r0x00014120c3f4;\\r\\n      }\\r\\n      uVar33 = 1L << ((byte)uVar5 & 0x3f);\\r\\n      LOCK();\\r\\n      puVar2 = (ulonglong *)(param_1[2] + uVar29 * 8);\\r\\n      *puVar2 = *puVar2 | uVar33;\\r\\n      UNLOCK();\\r\\n      if ((ulonglong)param_1[9] <= uVar29) {\\r\\n        FUN_1428d9518(uVar29,param_1[9],&UNK_142c1aa78,uVar21,plVar32,uVar34);\\r\\n        goto code_r0x00014120c3f4;\\r\\n      }\\r\\n      LOCK();\\r\\n      puVar2 = (ulonglong *)(param_1[8] + uVar29 * 8);\\r\\n      *puVar2 = *puVar2 | uVar33;\\r\\n      UNLOCK();\\r\\n      *(uint *)(param_1 + 10) = uVar5;\\r\\n      FUN_140c81e10(plVar32);\\r\\n      FUN_140c81e10(uVar31);\\r\\n      uVar31 = 0;\\r\\n      LOCK();\\r\\n      lVar6 = *plVar32;\\r\\n      if (lVar6 == 8) {\\r\\n        *plVar32 = 0;\\r\\n      }\\r\\n      UNLOCK();\\r\\n      if (lVar6 == 8) goto code_r0x00014120c35b;\\r\\n      uVar31 = 0;\\r\\n      goto code_r0x00014120c382;\\r\\n    }\\r\\n  }\\r\\n  else {\\r\\n    uVar29 = FUN_1428d9518(uVar31,param_1[1],&UNK_142c1ab98);\\r\\ncode_r0x00014120c397:\\r\\n    uVar31 = FUN_1428d9518(uVar29);\\r\\ncode_r0x00014120c3a6:\\r\\n    FUN_1428d9518(uVar31);\\r\\n  }\\r\\n  FUN_1428d9518(unaff_R14);\\r\\ncode_r0x00014120c3f4:\\r\\n                    /* WARNING: Does not return */\\r\\n  pcVar8 = (code *)invalidInstructionException();\\r\\n  (*pcVar8)();\\r\\n}\\r\\n\\r\\n\",\"database\":\"wcbfast2\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_14120c120",
+          "address": "0x14120C120",
+          "decompiled_code": "\r\nulonglong FUN_14120c120(longlong *param_1,undefined4 *param_2)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  ulonglong *puVar2;\r\n  undefined8 *puVar3;\r\n  byte bVar4;\r\n  uint uVar5;\r\n  longlong lVar6;\r\n  longlong *plVar7;\r\n  code *pcVar8;\r\n  undefined4 uVar9;\r\n  undefined4 uVar10;\r\n  undefined4 uVar11;\r\n  undefined4 uVar12;\r\n  undefined4 uVar13;\r\n  undefined4 uVar14;\r\n  undefined4 uVar15;\r\n  undefined4 uVar16;\r\n  undefined4 uVar17;\r\n  undefined4 uVar18;\r\n  undefined4 uVar19;\r\n  undefined4 uVar20;\r\n  undefined4 uVar21;\r\n  undefined4 uVar22;\r\n  undefined4 uVar23;\r\n  undefined4 uVar24;\r\n  undefined8 uVar25;\r\n  undefined8 uVar26;\r\n  undefined8 uVar27;\r\n  undefined8 uVar28;\r\n  ulonglong uVar29;\r\n  longlong lVar30;\r\n  ulonglong uVar31;\r\n  longlong *plVar32;\r\n  ulonglong uVar33;\r\n  ulonglong unaff_R14;\r\n  undefined8 uVar34;\r\n  \r\n  uVar34 = 0xfffffffffffffffe;\r\n  uVar5 = *(uint *)(param_1 + 10);\r\n  uVar31 = (ulonglong)uVar5;\r\n  if (uVar31 < (ulonglong)param_1[1]) {\r\n    lVar6 = *param_1;\r\n    bVar4 = *(byte *)(lVar6 + uVar31);\r\n    if ((ulonglong)bVar4 < 0x20) {\r\n      uVar29 = uVar31 << 5 | (ulonglong)bVar4;\r\n      *(byte *)(lVar6 + uVar31) = bVar4 + 1;\r\n      if ((ulonglong)param_1[6] <= uVar29) goto code_r0x00014120c397;\r\n      lVar6 = param_1[5];\r\n      lVar30 = uVar29 * 0x60;\r\n      uVar34 = *(undefined8 *)(param_2 + 0x16);\r\n      puVar3 = (undefined8 *)(lVar6 + 0x50 + lVar30);\r\n      *puVar3 = *(undefined8 *)(param_2 + 0x14);\r\n      puVar3[1] = uVar34;\r\n      uVar34 = *(undefined8 *)(param_2 + 0x12);\r\n      puVar3 = (undefined8 *)(lVar6 + 0x40 + lVar30);\r\n      *puVar3 = *(undefined8 *)(param_2 + 0x10);\r\n      puVar3[1] = uVar34;\r\n      uVar9 = *param_2;\r\n      uVar10 = param_2[1];\r\n      uVar11 = param_2[2];\r\n      uVar12 = param_2[3];\r\n      uVar34 = *(undefined8 *)(param_2 + 4);\r\n      uVar25 = *(undefined8 *)(param_2 + 6);\r\n      uVar26 = *(undefined8 *)(param_2 + 8);\r\n      uVar27 = *(undefined8 *)(param_2 + 10);\r\n      uVar28 = *(undefined8 *)(param_2 + 0xe);\r\n      puVar3 = (undefined8 *)(lVar6 + 0x30 + lVar30);\r\n      *puVar3 = *(undefined8 *)(param_2 + 0xc);\r\n      puVar3[1] = uVar28;\r\n      puVar3 = (undefined8 *)(lVar6 + 0x20 + lVar30);\r\n      *puVar3 = uVar26;\r\n      puVar3[1] = uVar27;\r\n      puVar3 = (undefined8 *)(lVar6 + 0x10 + lVar30);\r\n      *puVar3 = uVar34;\r\n      puVar3[1] = uVar25;\r\n      puVar1 = (undefined4 *)(lVar6 + lVar30);\r\n      *puVar1 = uVar9;\r\n      puVar1[1] = uVar10;\r\n      puVar1[2] = uVar11;\r\n      puVar1[3] = uVar12;\r\n      uVar31 = (ulonglong)(uVar5 >> 6);\r\n      if (uVar31 < (ulonglong)param_1[9]) {\r\n        LOCK();\r\n        puVar2 = (ulonglong *)(param_1[8] + uVar31 * 8);\r\n        *puVar2 = *puVar2 | 1L << ((byte)uVar5 & 0x3f);\r\n        UNLOCK();\r\n        uVar31 = 0;\r\n        goto code_r0x00014120c35b;\r\n      }\r\n      goto code_r0x00014120c3a6;\r\n    }\r\n    plVar32 = (longlong *)param_1[7];\r\n    LOCK();\r\n    lVar30 = *plVar32;\r\n    if (lVar30 == 0) {\r\n      *plVar32 = 8;\r\n    }\r\n    UNLOCK();\r\n    if (lVar30 != 0) {\r\n      FUN_1428cb5f0(plVar32,lVar6,1000000000);\r\n    }\r\n    FUN_140c81c70(plVar32);\r\n    uVar31 = (ulonglong)plVar32 | 1;\r\n    FUN_140c81c70(uVar31);\r\n    lVar6 = plVar32[3];\r\n    if (lVar6 == 0) {\r\n      FUN_140c81e10(plVar32);\r\n      FUN_140c81e10();\r\n      LOCK();\r\n      lVar6 = *plVar32;\r\n      if (lVar6 == 8) {\r\n        *plVar32 = 0;\r\n      }\r\n      UNLOCK();\r\n      uVar31 = CONCAT71((int7)((ulonglong)param_1 >> 8),1);\r\n      if (lVar6 == 8) goto code_r0x00014120c35b;\r\ncode_r0x00014120c382:\r\n      FUN_1428cbf60(plVar32,0);\r\ncode_r0x00014120c35b:\r\n      return uVar31 & 0xffffffff;\r\n    }\r\n    plVar32[3] = lVar6 + -1;\r\n    uVar5 = *(uint *)(plVar32[2] + -4 + lVar6 * 4);\r\n    unaff_R14 = (ulonglong)uVar5;\r\n    plVar7 = (longlong *)param_1[4];\r\n    lVar6 = plVar7[2];\r\n    if (lVar6 == *plVar7) {\r\n      FUN_140b5f870(plVar7,&UNK_142c1abb0);\r\n    }\r\n    *(uint *)(plVar7[1] + lVar6 * 4) = uVar5;\r\n    plVar7[2] = lVar6 + 1;\r\n    if (unaff_R14 < (ulonglong)param_1[1]) {\r\n      *(undefined1 *)(*param_1 + unaff_R14) = 1;\r\n      if ((ulonglong)param_1[6] <= unaff_R14 * 0x20) {\r\n        FUN_1428d9518(unaff_R14 * 0x20,param_1[6],&UNK_142c1abe0);\r\n        goto code_r0x00014120c3f4;\r\n      }\r\n      lVar6 = param_1[5];\r\n      lVar30 = unaff_R14 * 0xc00;\r\n      uVar25 = *(undefined8 *)(param_2 + 0x16);\r\n      puVar3 = (undefined8 *)(lVar6 + 0x50 + lVar30);\r\n      *puVar3 = *(undefined8 *)(param_2 + 0x14);\r\n      puVar3[1] = uVar25;\r\n      uVar25 = *(undefined8 *)(param_2 + 0x12);\r\n      puVar3 = (undefined8 *)(lVar6 + 0x40 + lVar30);\r\n      *puVar3 = *(undefined8 *)(param_2 + 0x10);\r\n      puVar3[1] = uVar25;\r\n      uVar9 = *param_2;\r\n      uVar10 = param_2[1];\r\n      uVar11 = param_2[2];\r\n      uVar12 = param_2[3];\r\n      uVar13 = param_2[4];\r\n      uVar14 = param_2[5];\r\n      uVar15 = param_2[6];\r\n      uVar16 = param_2[7];\r\n      uVar17 = param_2[8];\r\n      uVar18 = param_2[9];\r\n      uVar19 = param_2[10];\r\n      uVar20 = param_2[0xb];\r\n      uVar21 = param_2[0xc];\r\n      uVar22 = param_2[0xd];\r\n      uVar23 = param_2[0xe];\r\n      uVar24 = param_2[0xf];\r\n      puVar1 = (undefined4 *)(lVar6 + 0x30 + lVar30);\r\n      *puVar1 = uVar21;\r\n      puVar1[1] = uVar22;\r\n      puVar1[2] = uVar23;\r\n      puVar1[3] = uVar24;\r\n      puVar1 = (undefined4 *)(lVar6 + 0x20 + lVar30);\r\n      *puVar1 = uVar17;\r\n      puVar1[1] = uVar18;\r\n      puVar1[2] = uVar19;\r\n      puVar1[3] = uVar20;\r\n      puVar1 = (undefined4 *)(lVar6 + 0x10 + lVar30);\r\n      *puVar1 = uVar13;\r\n      puVar1[1] = uVar14;\r\n      puVar1[2] = uVar15;\r\n      puVar1[3] = uVar16;\r\n      puVar1 = (undefined4 *)(lVar6 + lVar30);\r\n      *puVar1 = uVar9;\r\n      puVar1[1] = uVar10;\r\n      puVar1[2] = uVar11;\r\n      puVar1[3] = uVar12;\r\n      uVar29 = (ulonglong)(uVar5 >> 6);\r\n      if ((ulonglong)param_1[3] <= uVar29) {\r\n        FUN_1428d9518(uVar29,param_1[3],&UNK_142c1aa78,uVar21,plVar32,uVar34);\r\n        goto code_r0x00014120c3f4;\r\n      }\r\n      uVar33 = 1L << ((byte)uVar5 & 0x3f);\r\n      LOCK();\r\n      puVar2 = (ulonglong *)(param_1[2] + uVar29 * 8);\r\n      *puVar2 = *puVar2 | uVar33;\r\n      UNLOCK();\r\n      if ((ulonglong)param_1[9] <= uVar29) {\r\n        FUN_1428d9518(uVar29,param_1[9],&UNK_142c1aa78,uVar21,plVar32,uVar34);\r\n        goto code_r0x00014120c3f4;\r\n      }\r\n      LOCK();\r\n      puVar2 = (ulonglong *)(param_1[8] + uVar29 * 8);\r\n      *puVar2 = *puVar2 | uVar33;\r\n      UNLOCK();\r\n      *(uint *)(param_1 + 10) = uVar5;\r\n      FUN_140c81e10(plVar32);\r\n      FUN_140c81e10(uVar31);\r\n      uVar31 = 0;\r\n      LOCK();\r\n      lVar6 = *plVar32;\r\n      if (lVar6 == 8) {\r\n        *plVar32 = 0;\r\n      }\r\n      UNLOCK();\r\n      if (lVar6 == 8) goto code_r0x00014120c35b;\r\n      uVar31 = 0;\r\n      goto code_r0x00014120c382;\r\n    }\r\n  }\r\n  else {\r\n    uVar29 = FUN_1428d9518(uVar31,param_1[1],&UNK_142c1ab98);\r\ncode_r0x00014120c397:\r\n    uVar31 = FUN_1428d9518(uVar29);\r\ncode_r0x00014120c3a6:\r\n    FUN_1428d9518(uVar31);\r\n  }\r\n  FUN_1428d9518(unaff_R14);\r\ncode_r0x00014120c3f4:\r\n                    /* WARNING: Does not return */\r\n  pcVar8 = (code *)invalidInstructionException();\r\n  (*pcVar8)();\r\n}\r\n\r\n",
+          "database": "wcbfast2"
+        },
+        "isError": false
+      }
+    }
+  ]
+}

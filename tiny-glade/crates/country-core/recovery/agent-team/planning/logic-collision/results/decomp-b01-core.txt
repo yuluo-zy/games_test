@@ -1,0 +1,876 @@
+=========================
+ADDR 0x1408cc2e0  NAME raycast  SIG void __cdecl raycast(void)  size 49
+--- callees: raycast_w_terrain@1408cd430
+
+void __cdecl country_core::systems::collision::world::Raycasting::raycast(void)
+
+{
+  RaycastWorld::raycast_w_terrain();
+  return;
+}
+
+
+=========================
+ADDR 0x1408cc320  NAME intersects_any  SIG void __cdecl intersects_any(void)  size 101
+--- callees: intersect_ray<country_core::resources::terrain_height::TerrainHeightSsbo>@1409e9a20, intersects_any@1408cdf80
+
+void __cdecl country_core::systems::collision::world::Raycasting::intersects_any(void)
+
+{
+  ulonglong in_R9;
+  undefined1 local_3c;
+  
+  if ((in_R9 & 0x20) != 0) {
+    resources::terrain_height::TerrainHeightsData::
+    intersect_ray<country_core::resources::terrain_height::TerrainHeightSsbo>();
+    if ((local_3c & 1) != 0) {
+      return;
+    }
+  }
+  Rapier::intersects_any();
+  return;
+}
+
+
+=========================
+ADDR 0x1408cc390  NAME spherecast  SIG void __cdecl spherecast(void)  size 518
+--- callees: intersect_ray<country_core::resources::terrain_height::TerrainHeightSsbo>@1409e9a20, spherecast@1408ccfc0
+
+void __cdecl country_core::systems::collision::world::Raycasting::spherecast(void)
+
+{
+  float fVar1;
+  float fVar2;
+  undefined8 *in_RCX;
+  undefined8 *in_R8;
+  uint uVar3;
+  float fVar4;
+  float fVar5;
+  float fVar6;
+  undefined1 auVar7 [16];
+  float in_XMM3_Da;
+  float fVar8;
+  float fVar9;
+  float fVar10;
+  undefined1 auVar11 [16];
+  float *in_stack_00000028;
+  uint in_stack_00000030;
+  undefined8 local_a0;
+  undefined8 uStack_98;
+  undefined8 local_90;
+  undefined8 uStack_88;
+  undefined8 local_80;
+  undefined8 uStack_78;
+  float local_70;
+  int iStack_6c;
+  undefined4 uStack_68;
+  undefined4 uStack_64;
+  byte local_5c;
+  undefined8 local_54;
+  float local_4c;
+  
+  RaycastWorld::spherecast();
+  if ((in_stack_00000030 & 0x20) != 0) {
+    fVar1 = *in_stack_00000028;
+    resources::terrain_height::TerrainHeightsData::
+    intersect_ray<country_core::resources::terrain_height::TerrainHeightSsbo>();
+    if ((local_5c & 1) != 0) {
+      fVar2 = *(float *)(in_R8 + 1);
+      fVar6 = fVar2 - local_4c;
+      fVar4 = (float)*in_R8;
+      fVar5 = (float)((ulonglong)*in_R8 >> 0x20);
+      fVar9 = fVar4 - (float)local_54;
+      fVar10 = fVar5 - (float)((ulonglong)local_54 >> 0x20);
+      auVar7._0_4_ = SQRT(fVar10 * fVar10 + fVar9 * fVar9 + fVar6 * fVar6) - in_XMM3_Da;
+      fVar10 = (float)*(undefined8 *)((longlong)in_R8 + 0xc);
+      fVar8 = (float)((ulonglong)*(undefined8 *)((longlong)in_R8 + 0xc) >> 0x20);
+      fVar6 = *(float *)((longlong)in_R8 + 0x14);
+      fVar9 = SQRT(fVar6 * fVar6 + fVar8 * fVar8 + fVar10 * fVar10);
+      auVar7._4_4_ = fVar9;
+      auVar7._8_8_ = 0;
+      auVar11 = maxps(ZEXT816(0x1e3ce50800000000),auVar7);
+      uVar3 = -(uint)NAN(fVar9);
+      fVar9 = (float)(~-(uint)NAN(auVar7._0_4_) & auVar11._0_4_) /
+              (float)(~uVar3 & auVar11._4_4_ | uVar3 & 0x1e3ce508);
+      if (fVar9 <= fVar1) {
+        if (iStack_6c == 2) {
+          *(undefined1 *)in_RCX = 0xb;
+        }
+        else {
+          if (local_70 < fVar9) {
+            in_RCX[4] = local_80;
+            in_RCX[5] = uStack_78;
+            in_RCX[2] = local_90;
+            in_RCX[3] = uStack_88;
+            *in_RCX = local_a0;
+            in_RCX[1] = uStack_98;
+            *(float *)(in_RCX + 6) = local_70;
+            *(ulonglong *)((longlong)in_RCX + 0x34) = CONCAT44(uStack_68,iStack_6c);
+            *(undefined4 *)((longlong)in_RCX + 0x3c) = uStack_64;
+            return;
+          }
+          *(undefined1 *)in_RCX = 0xb;
+        }
+        in_RCX[3] = CONCAT44(fVar5 + fVar8 * fVar9,fVar4 + fVar10 * fVar9);
+        *(float *)(in_RCX + 4) = fVar2 + fVar6 * fVar9;
+        *(undefined8 *)((longlong)in_RCX + 0x24) = 0x3f80000000000000;
+        *(undefined4 *)((longlong)in_RCX + 0x2c) = 0;
+        *(float *)(in_RCX + 6) = fVar9;
+        *(undefined4 *)((longlong)in_RCX + 0x34) = 0;
+        return;
+      }
+    }
+  }
+  if (iStack_6c == 2) {
+    *(undefined4 *)((longlong)in_RCX + 0x34) = 2;
+  }
+  else {
+    in_RCX[6] = CONCAT44(iStack_6c,local_70);
+    in_RCX[7] = CONCAT44(uStack_64,uStack_68);
+    in_RCX[4] = local_80;
+    in_RCX[5] = uStack_78;
+    in_RCX[2] = local_90;
+    in_RCX[3] = uStack_88;
+    *in_RCX = local_a0;
+    in_RCX[1] = uStack_98;
+  }
+  return;
+}
+
+
+=========================
+ADDR 0x1408cc620  NAME new  SIG void __cdecl new(void)  size 14
+--- callees: 
+
+void __cdecl country_core::systems::collision::world::SubworldColliderHandle::new(void)
+
+{
+  undefined4 *in_RCX;
+  undefined1 in_DL;
+  undefined4 in_R8D;
+  undefined4 in_R9D;
+  
+  *(undefined1 *)(in_RCX + 2) = in_DL;
+  *in_RCX = in_R8D;
+  in_RCX[1] = in_R9D;
+  return;
+}
+
+
+=========================
+ADDR 0x1408cc670  NAME mesh_intersect_collider_diff_publisher  SIG void __cdecl mesh_intersect_collider_diff_publisher(void)  size 8
+--- callees: 
+
+void __cdecl
+country_core::systems::collision::world::RaycastWorld::mesh_intersect_collider_diff_publisher(void)
+
+{
+  return;
+}
+
+
+=========================
+ADDR 0x1408cc680  NAME legacy_raycast  SIG void __cdecl legacy_raycast(void)  size 227
+--- callees: raycast@1408cdc60
+
+void __cdecl country_core::systems::collision::world::RaycastWorld::legacy_raycast(void)
+
+{
+  undefined8 *in_RCX;
+  undefined4 uStack_4c;
+  undefined8 local_48;
+  undefined8 uStack_40;
+  undefined8 local_38;
+  undefined8 local_30;
+  undefined4 local_28;
+  undefined8 local_24;
+  undefined4 local_1c;
+  int local_14;
+  undefined4 uStack_10;
+  undefined4 local_c;
+  
+  Rapier::raycast();
+  if (local_14 == 2) {
+    *(undefined4 *)(in_RCX + 6) = 2;
+  }
+  else {
+    *in_RCX = local_48;
+    in_RCX[1] = uStack_40;
+    *(undefined4 *)(in_RCX + 4) = local_28;
+    *(undefined8 *)((longlong)in_RCX + 0x24) = local_24;
+    *(undefined4 *)((longlong)in_RCX + 0x2c) = local_1c;
+    in_RCX[2] = local_38;
+    in_RCX[3] = local_30;
+    in_RCX[6] = CONCAT44(uStack_10,local_14);
+    in_RCX[7] = CONCAT44(uStack_4c,local_c);
+  }
+  return;
+}
+
+
+=========================
+ADDR 0x1408cc870  NAME raycast  SIG void __cdecl raycast(void)  size 39
+--- callees: raycast@1408cdc60
+
+void __cdecl country_core::systems::collision::world::RaycastWorld::raycast(void)
+
+{
+  Rapier::raycast();
+  return;
+}
+
+
+=========================
+ADDR 0x1408cec10  NAME new_convex  SIG void __cdecl new_convex(void)  size 415
+--- callees: __rust_alloc@140613c10, __rust_dealloc@140613c20, calculate_hash<ref$<slice2$<glam::u32::uvec3::UVec3>_>_>@14145bfb0, from_convex_mesh@1416b3760, handle_alloc_error@1428d9000, memcpy@142923c00, try_convex_hull@1416c4880
+
+void __cdecl country_core::systems::collision::world::RaycastMeshData::new_convex(void)
+
+{
+  undefined8 extraout_RAX;
+  void *_Dst;
+  undefined8 *in_RCX;
+  longlong in_RDX;
+  undefined8 in_R8;
+  longlong local_1e8 [24];
+  longlong local_128;
+  undefined8 local_120;
+  undefined8 uStack_118;
+  longlong local_110;
+  undefined8 local_108;
+  longlong local_58;
+  undefined8 local_50;
+  undefined8 uStack_48;
+  undefined8 local_40;
+  longlong local_38;
+  undefined8 local_30;
+  
+  local_30 = 0xfffffffffffffffe;
+  local_128 = in_RDX;
+  local_120 = in_R8;
+  ::utils::calculate_hash<ref_<slice2_<glam::u32::uvec3::UVec3>_>_>();
+  parry3d::transformation::convex_hull3::convex_hull::try_convex_hull();
+  if (!SBORROW8(0,local_128)) {
+    local_50 = local_120;
+    uStack_48 = uStack_118;
+    local_38 = local_110;
+    local_58 = local_128;
+    local_40 = local_108;
+    parry3d::shape::convex_polyhedron::ConvexPolyhedron::from_convex_mesh();
+    if (local_38 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    if (!SBORROW8(0,local_1e8[0])) {
+      local_128 = 1;
+      local_120 = 1;
+      memcpy(&uStack_118,local_1e8,0xc0);
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      if (_Dst != (void *)0x0) {
+        memcpy(_Dst,&local_128,0xd0);
+        *in_RCX = 4;
+        in_RCX[1] = 0;
+        in_RCX[2] = 4;
+        in_RCX[3] = 0;
+        in_RCX[4] = _Dst;
+        in_RCX[5] = &
+                    PTR_drop_in_place<parry3d::shape::convex_polyhedron::ConvexPolyhedron>_142aa3fd0
+        ;
+        in_RCX[6] = 0;
+        in_RCX[8] = 0;
+        in_RCX[10] = 0;
+        in_RCX[0xb] = 0;
+        in_RCX[0xc] = 0;
+        in_RCX[0xd] = 0x3f80000000000000;
+        in_RCX[0xe] = extraout_RAX;
+        return;
+      }
+                    // WARNING: Subroutine does not return
+      alloc::alloc::handle_alloc_error();
+    }
+  }
+  *in_RCX = 0;
+  return;
+}
+
+
+=========================
+ADDR 0x14067dd80  NAME as_inner_mut  SIG void __cdecl as_inner_mut(void)  size 4
+--- callees: 
+
+void __cdecl toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut(void)
+
+{
+  return;
+}
+
+
+=========================
+ADDR 0x1408cd430  NAME raycast_w_terrain  SIG void __cdecl raycast_w_terrain(void)  size 383
+--- callees: intersect_ray<country_core::resources::terrain_height::TerrainHeightSsbo>@1409e9a20, raycast@1408cdc60
+
+void __cdecl country_core::systems::collision::world::RaycastWorld::raycast_w_terrain(void)
+
+{
+  undefined8 *in_RCX;
+  uint in_stack_00000030;
+  byte local_7c;
+  undefined4 local_78;
+  undefined8 local_74;
+  undefined4 local_6c;
+  uint local_68;
+  undefined4 uStack_64;
+  undefined8 uStack_60;
+  undefined4 local_58;
+  undefined4 uStack_54;
+  undefined8 uStack_50;
+  undefined8 local_48;
+  undefined8 uStack_40;
+  undefined4 local_38;
+  int local_34;
+  undefined4 uStack_30;
+  undefined4 local_2c;
+  
+  if ((in_stack_00000030 & 0x20) == 0) {
+    Rapier::raycast();
+  }
+  else {
+    Rapier::raycast();
+    if (local_34 == 2) {
+      resources::terrain_height::TerrainHeightsData::
+      intersect_ray<country_core::resources::terrain_height::TerrainHeightSsbo>();
+      if ((local_68 & 1) == 0) {
+        *(undefined4 *)((longlong)in_RCX + 0x34) = 2;
+      }
+      else {
+        *(undefined4 *)(in_RCX + 4) = local_58;
+        in_RCX[3] = uStack_60;
+        *(undefined1 *)in_RCX = 0xb;
+        *(undefined8 *)((longlong)in_RCX + 0x24) = 0x3f80000000000000;
+        *(undefined4 *)((longlong)in_RCX + 0x2c) = 0;
+        *(undefined4 *)(in_RCX + 6) = uStack_64;
+        *(undefined4 *)((longlong)in_RCX + 0x34) = 0;
+      }
+    }
+    else {
+      resources::terrain_height::TerrainHeightsData::
+      intersect_ray<country_core::resources::terrain_height::TerrainHeightSsbo>();
+      if ((local_7c & 1) == 0) {
+        in_RCX[4] = local_48;
+        in_RCX[5] = uStack_40;
+        in_RCX[2] = CONCAT44(uStack_54,local_58);
+        in_RCX[3] = uStack_50;
+        *in_RCX = CONCAT44(uStack_64,local_68);
+        in_RCX[1] = uStack_60;
+        *(ulonglong *)((longlong)in_RCX + 0x34) = CONCAT44(uStack_30,local_34);
+        *(undefined4 *)((longlong)in_RCX + 0x3c) = local_2c;
+        *(undefined4 *)(in_RCX + 6) = local_38;
+      }
+      else {
+        *(undefined4 *)(in_RCX + 4) = local_6c;
+        in_RCX[3] = local_74;
+        *(undefined1 *)in_RCX = 0xb;
+        *(undefined8 *)((longlong)in_RCX + 0x24) = 0x3f80000000000000;
+        *(undefined4 *)((longlong)in_RCX + 0x2c) = 0;
+        *(undefined4 *)((longlong)in_RCX + 0x34) = 0;
+        *(undefined4 *)(in_RCX + 6) = local_78;
+      }
+    }
+  }
+  return;
+}
+
+
+=========================
+ADDR 0x1408cd5b0  NAME intersects_any  SIG void __cdecl intersects_any(void)  size 5
+--- callees: 
+
+void __cdecl country_core::systems::collision::world::RaycastWorld::intersects_any(void)
+
+{
+  undefined8 uVar1;
+  undefined8 uVar2;
+  undefined8 uVar3;
+  longlong in_RCX;
+  undefined8 *in_RDX;
+  longlong lVar4;
+  uint uVar5;
+  uint in_R9D;
+  longlong lVar6;
+  undefined4 in_XMM2_Da;
+  char acStack_1de [2];
+  undefined4 uStack_1dc;
+  char *pcStack_1d8;
+  longlong *plStack_1d0;
+  undefined8 uStack_1c8;
+  undefined8 uStack_1c0;
+  undefined8 uStack_1b8;
+  undefined1 auStack_1a8 [8];
+  longlong lStack_1a0;
+  undefined8 *puStack_198;
+  longlong lStack_190;
+  undefined1 **ppuStack_188;
+  longlong lStack_180;
+  undefined8 *puStack_178;
+  undefined4 *puStack_170;
+  char *pcStack_168;
+  char **ppcStack_160;
+  undefined8 uStack_158;
+  undefined8 uStack_150;
+  undefined8 uStack_148;
+  undefined8 auStack_140 [2];
+  undefined1 *puStack_130;
+  undefined *puStack_128;
+  undefined8 uStack_120;
+  undefined4 uStack_110;
+  undefined4 uStack_104;
+  undefined4 uStack_98;
+  undefined4 uStack_94;
+  undefined4 uStack_90;
+  undefined4 uStack_8c;
+  longlong **pplStack_88;
+  
+  auStack_140[0] = 0;
+  uVar2 = *in_RDX;
+  uVar3 = in_RDX[1];
+  uVar1 = in_RDX[2];
+  lVar4 = in_RCX + 0xe0;
+  uVar5 = 0;
+  lVar6 = 0x3c90;
+  do {
+    if ((in_R9D >> (uVar5 & 0x1f) & 1) != 0) {
+      lStack_1a0 = lVar4 + -0xc0;
+      puStack_198 = auStack_140;
+      acStack_1de[0] = '\0';
+      puStack_130 = auStack_1a8;
+      puStack_128 = &DAT_142aa3888;
+      uStack_120 = 0;
+      uStack_110 = 0;
+      uStack_104 = 0;
+      acStack_1de[1] = 1;
+      pcStack_1d8 = acStack_1de;
+      ppuStack_188 = &puStack_130;
+      puStack_178 = &uStack_1c8;
+      puStack_170 = &uStack_1dc;
+      pcStack_168 = acStack_1de + 1;
+      ppcStack_160 = &pcStack_1d8;
+      plStack_1d0 = &lStack_190;
+      uStack_1dc = in_XMM2_Da;
+      uStack_1c8 = uVar2;
+      uStack_1c0 = uVar3;
+      uStack_1b8 = uVar1;
+      lStack_190 = lStack_1a0;
+      lStack_180 = in_RCX + 0x3d80;
+      uStack_158 = uVar2;
+      uStack_150 = uVar3;
+      uStack_148 = uVar1;
+      parry3d::bounding_volume::simd_aabb::SimdAabb::splat();
+      uStack_98 = uStack_1dc;
+      uStack_94 = uStack_1dc;
+      uStack_90 = uStack_1dc;
+      uStack_8c = uStack_1dc;
+      pplStack_88 = &plStack_1d0;
+      parry3d::partitioning::qbvh::qbvh::Qbvh::
+      traverse_depth_first_node<rapier3d::geometry::collider_components::ColliderHandle,parry3d::query::visitors::ray_intersections_visitor::RayIntersectionsVisitor<rapier3d::geometry::collider_components::ColliderHandle,ref_mut_<rapier3d::pipeline::query_pipeline::impl_7::intersections_with_ray::closure_env_0<country_core::systems::collision::world::impl_14::intersects_any::closure_env_1>_>_>_>
+                ();
+      if (acStack_1de[0] != '\0') {
+        return;
+      }
+    }
+    uVar5 = uVar5 + 1;
+    lVar4 = lVar4 + 0x390;
+    lVar6 = lVar6 + -0x390;
+  } while (lVar6 != 0);
+  return;
+}
+
+
+=========================
+ADDR 0x1408cc770  NAME legacy_raycast_w_params  SIG void __cdecl legacy_raycast_w_params(void)  size 245
+--- callees: raycast@1408cdc60
+
+void __cdecl country_core::systems::collision::world::RaycastWorld::legacy_raycast_w_params(void)
+
+{
+  undefined8 *in_RCX;
+  undefined4 uStack_4c;
+  undefined8 local_48;
+  undefined8 uStack_40;
+  undefined8 local_38;
+  undefined8 local_30;
+  undefined4 local_28;
+  undefined8 local_24;
+  undefined4 local_1c;
+  int local_14;
+  undefined4 uStack_10;
+  undefined4 local_c;
+  
+  Rapier::raycast();
+  if (local_14 == 2) {
+    *(undefined4 *)(in_RCX + 6) = 2;
+  }
+  else {
+    *in_RCX = local_48;
+    in_RCX[1] = uStack_40;
+    *(undefined4 *)(in_RCX + 4) = local_28;
+    *(undefined8 *)((longlong)in_RCX + 0x24) = local_24;
+    *(undefined4 *)((longlong)in_RCX + 0x2c) = local_1c;
+    in_RCX[2] = local_38;
+    in_RCX[3] = local_30;
+    in_RCX[6] = CONCAT44(uStack_10,local_14);
+    in_RCX[7] = CONCAT44(uStack_4c,local_c);
+  }
+  return;
+}
+
+
+=========================
+ADDR 0x1408cc8a0  NAME raycast_intersections_with_ray  SIG void __cdecl raycast_intersections_with_ray(void)  size 773
+--- callees: grow_one<country_core::resources::window::AvailableMonitor,alloc::alloc::Global>@1405627b0, insertion_sort_shift_left<country_core::systems::collision::world::RaycastWorldResult2,core::slice::impl$0::sort_unstable_by::closure_env$0<country_core::systems::collision::world::RaycastWorldResult2,country_core::systems::collision::world::impl$14::raycast_intersections_with_ray::closure_env$2>_>@141338eb0, intersect_ray<country_core::resources::terrain_height::TerrainHeightSsbo>@1409e9a20, ipnsort<country_core::systems::collision::world::RaycastWorldResult2,core::slice::impl$0::sort_unstable_by::closure_env$0<country_core::systems::collision::world::RaycastWorldResult2,country_core::systems::collision::world::impl$14::raycast_intersections_with_ray::closure_env$2>_>@140958920, splat@140b94c20, traverse_depth_first_node<rapier3d::geometry::collider_components::ColliderHandle,parry3d::query::visitors::ray_intersections_visitor::RayIntersectionsVisitor<rapier3d::geometry::collider_components::ColliderHandle,ref_mut$<rapier3d::pipeline::query_pipeline::impl$7::intersections_with_ray::closure_env$0<country_core::systems::collision::world::impl$14::raycast_intersections_with_ray::closure_env$1>_>_>_>@1416c0ce0
+
+void __cdecl
+country_core::systems::collision::world::RaycastWorld::raycast_intersections_with_ray(void)
+
+{
+  uint uVar1;
+  undefined8 uVar2;
+  uint uVar3;
+  undefined8 uVar4;
+  undefined8 uVar5;
+  longlong lVar6;
+  uint uVar7;
+  undefined8 *in_RCX;
+  longlong in_RDX;
+  undefined8 *in_R8;
+  longlong lVar8;
+  uint in_stack_00000030;
+  int local_228;
+  undefined4 uStack_224;
+  undefined8 local_220;
+  undefined4 local_218;
+  undefined1 *local_1a0;
+  undefined *local_198;
+  undefined8 local_190;
+  undefined4 local_180;
+  undefined4 local_174;
+  undefined8 local_168 [2];
+  undefined8 local_158;
+  undefined8 uStack_150;
+  undefined8 local_148;
+  longlong local_138 [3];
+  undefined8 *local_120;
+  longlong local_118;
+  undefined1 **local_110;
+  longlong local_108;
+  undefined8 *local_100;
+  undefined1 *local_f8;
+  undefined1 *local_f0;
+  longlong *local_e8;
+  undefined1 local_e0 [8];
+  longlong local_d8;
+  undefined8 *local_d0;
+  undefined8 local_c8;
+  undefined8 uStack_c0;
+  undefined8 local_b8;
+  longlong *local_b0;
+  undefined8 *local_a8;
+  undefined8 local_a0;
+  undefined1 *puStack_98;
+  ulonglong local_90;
+  undefined1 local_88 [7];
+  undefined1 local_81;
+  undefined8 local_80;
+  
+  local_80 = 0xfffffffffffffffe;
+  local_168[0] = 0;
+  local_a0 = 0;
+  puStack_98 = &DAT_00000008;
+  local_90 = 0;
+  local_a8 = in_RCX;
+  resources::terrain_height::TerrainHeightsData::
+  intersect_ray<country_core::resources::terrain_height::TerrainHeightSsbo>();
+  if (local_228 == 1) {
+    alloc::raw_vec::RawVec::
+    grow_one<country_core::resources::window::AvailableMonitor,alloc::alloc::Global>();
+    *puStack_98 = 0xb;
+    *(undefined8 *)(puStack_98 + 0x18) = local_220;
+    *(undefined4 *)(puStack_98 + 0x20) = local_218;
+    *(undefined8 *)(puStack_98 + 0x24) = 0x3f80000000000000;
+    *(undefined4 *)(puStack_98 + 0x2c) = 0;
+    *(undefined4 *)(puStack_98 + 0x30) = uStack_224;
+    *(undefined4 *)(puStack_98 + 0x34) = 0;
+    local_90 = 1;
+  }
+  uVar4 = *in_R8;
+  uVar5 = in_R8[1];
+  uVar2 = in_R8[2];
+  lVar6 = 0x20;
+  uVar7 = 0;
+  while (lVar8 = lVar6, lVar8 != 0x3cb0) {
+    uVar1 = uVar7 + 1;
+    uVar3 = uVar7 & 0x1f;
+    lVar6 = lVar8 + 0x390;
+    uVar7 = uVar1;
+    if ((in_stack_00000030 >> uVar3 & 1) != 0) {
+      local_138[0] = lVar8 + in_RDX;
+      local_d0 = local_168;
+      local_1a0 = local_e0;
+      local_198 = &DAT_142aa3828;
+      local_190 = 0;
+      local_180 = 0;
+      local_174 = 0;
+      local_120 = &local_a0;
+      local_81 = 1;
+      local_110 = &local_1a0;
+      local_100 = &local_c8;
+      local_f8 = local_88;
+      local_f0 = &local_81;
+      local_e8 = local_138;
+      local_b0 = &local_118;
+      local_158 = uVar4;
+      uStack_150 = uVar5;
+      local_148 = uVar2;
+      local_118 = local_138[0];
+      local_108 = in_RDX + 0x3d80;
+      local_d8 = local_138[0];
+      local_c8 = uVar4;
+      uStack_c0 = uVar5;
+      local_b8 = uVar2;
+      parry3d::bounding_volume::simd_aabb::SimdAabb::splat();
+      parry3d::partitioning::qbvh::qbvh::Qbvh::
+      traverse_depth_first_node<rapier3d::geometry::collider_components::ColliderHandle,parry3d::query::visitors::ray_intersections_visitor::RayIntersectionsVisitor<rapier3d::geometry::collider_components::ColliderHandle,ref_mut_<rapier3d::pipeline::query_pipeline::impl_7::intersections_with_ray::closure_env_0<country_core::systems::collision::world::impl_14::raycast_intersections_with_ray::closure_env_1>_>_>_>
+                ();
+    }
+  }
+  if (1 < local_90) {
+    if (local_90 < 0x15) {
+      core::slice::sort::shared::smallsort::
+      insertion_sort_shift_left<country_core::systems::collision::world::RaycastWorldResult2,core::slice::impl_0::sort_unstable_by::closure_env_0<country_core::systems::collision::world::RaycastWorldResult2,country_core::systems::collision::world::impl_14::raycast_intersections_with_ray::closure_env_2>_>
+                ();
+    }
+    else {
+      core::slice::sort::unstable::
+      ipnsort<country_core::systems::collision::world::RaycastWorldResult2,core::slice::impl_0::sort_unstable_by::closure_env_0<country_core::systems::collision::world::RaycastWorldResult2,country_core::systems::collision::world::impl_14::raycast_intersections_with_ray::closure_env_2>_>
+                ();
+    }
+  }
+  local_a8[2] = local_90;
+  *local_a8 = local_a0;
+  local_a8[1] = puStack_98;
+  return;
+}
+
+
+=========================
+ADDR 0x1408ccc20  NAME raycast_simple  SIG void __cdecl raycast_simple(void)  size 39
+--- callees: raycast_simple@1408ce180
+
+void __cdecl country_core::systems::collision::world::RaycastWorld::raycast_simple(void)
+
+{
+  Rapier::raycast_simple();
+  return;
+}
+
+
+=========================
+ADDR 0x1408ccc50  NAME raycast_simple_exclude_wall_id  SIG void __cdecl raycast_simple_exclude_wall_id(void)  size 57
+--- callees: raycast_simple@1408ce180
+
+void __cdecl
+country_core::systems::collision::world::RaycastWorld::raycast_simple_exclude_wall_id(void)
+
+{
+  Rapier::raycast_simple();
+  return;
+}
+
+
+=========================
+ADDR 0x1408ccc90  NAME legacy_spherecast  SIG void __cdecl legacy_spherecast(void)  size 797
+--- callees: begin_panic<ref$<str$>_>@1428d8725, cast_shape@140b947d0, get_mut_internal@140b93940, unwrap_failed@1428d9310
+
+void __cdecl country_core::systems::collision::world::RaycastWorld::legacy_spherecast(void)
+
+{
+  undefined8 *puVar1;
+  float fVar2;
+  float fVar3;
+  undefined8 uVar4;
+  undefined8 uVar5;
+  longlong lVar6;
+  ulonglong uVar7;
+  ulonglong *extraout_RAX;
+  undefined8 *in_RCX;
+  ulonglong uVar8;
+  longlong in_RDX;
+  longlong lVar9;
+  undefined4 uVar10;
+  undefined8 *in_R8;
+  float unaff_XMM13_Da;
+  float unaff_XMM13_Db;
+  float unaff_XMM14_Da;
+  undefined8 local_1b8;
+  undefined8 uStack_1b0;
+  undefined8 local_1a8;
+  float local_110;
+  char local_dc;
+  
+  fVar2 = *(float *)(in_R8 + 1);
+  uVar4 = *in_R8;
+  uVar5 = *(undefined8 *)((longlong)in_R8 + 0xc);
+  fVar3 = *(float *)((longlong)in_R8 + 0x14);
+  lVar6 = *(longlong *)(in_RDX + 8);
+  uVar7 = *(ulonglong *)(in_RDX + 0x10);
+  uVar10 = 2;
+  lVar9 = 0x10;
+  do {
+    rapier3d::pipeline::query_pipeline::QueryPipeline::cast_shape();
+    if (local_dc != '\x04') {
+      rapier3d::geometry::collider_set::ColliderSet::get_mut_internal();
+      if (extraout_RAX == (ulonglong *)0x0) {
+                    // WARNING: Subroutine does not return
+        core::option::unwrap_failed();
+      }
+      uVar8 = *extraout_RAX & 0xffffffff;
+      if (((uVar7 <= uVar8) || (lVar6 == 0)) ||
+         (*(uint *)(lVar6 + 0x20 + uVar8 * 0x28) != ((uint)(*extraout_RAX >> 0x20) | 1))) {
+                    // WARNING: Subroutine does not return
+        std::panicking::begin_panic<ref_<str_>_>();
+      }
+      puVar1 = (undefined8 *)(lVar6 + uVar8 * 0x28);
+      unaff_XMM13_Da = local_110 * (float)uVar5 + (float)uVar4;
+      unaff_XMM13_Db =
+           local_110 * (float)((ulonglong)uVar5 >> 0x20) + (float)((ulonglong)uVar4 >> 0x20);
+      unaff_XMM14_Da = fVar3 * local_110 + fVar2;
+      local_1a8 = puVar1[2];
+      local_1b8 = *puVar1;
+      uStack_1b0 = puVar1[1];
+      uVar10 = 0;
+    }
+    lVar9 = lVar9 + 1;
+    if (lVar9 == 0x1a) {
+      in_RCX[2] = local_1a8;
+      *in_RCX = local_1b8;
+      in_RCX[1] = uStack_1b0;
+      in_RCX[3] = CONCAT44(unaff_XMM13_Db,unaff_XMM13_Da);
+      *(float *)(in_RCX + 4) = unaff_XMM14_Da;
+      *(undefined8 *)((longlong)in_RCX + 0x24) = 0;
+      *(undefined4 *)((longlong)in_RCX + 0x2c) = 0;
+      *(undefined4 *)(in_RCX + 6) = uVar10;
+      return;
+    }
+  } while( true );
+}
+
+
+=========================
+ADDR 0x1408ccfc0  NAME spherecast  SIG void __cdecl spherecast(void)  size 1113
+--- callees: begin_panic<ref$<str$>_>@1428d8725, cast_shape@140b947d0, get_mut_internal@140b93940, unwrap_failed@1428d9310
+
+void __cdecl country_core::systems::collision::world::RaycastWorld::spherecast(void)
+
+{
+  undefined8 *puVar1;
+  float fVar2;
+  undefined8 uVar3;
+  longlong lVar4;
+  ulonglong uVar5;
+  ulonglong *extraout_RAX;
+  ulonglong uVar6;
+  undefined8 *in_RCX;
+  undefined4 uVar7;
+  longlong in_RDX;
+  float *in_R8;
+  longlong lVar8;
+  uint uVar9;
+  uint uVar10;
+  uint uVar11;
+  float fVar12;
+  undefined4 uVar13;
+  ulonglong unaff_XMM14_Qa;
+  float fVar14;
+  float unaff_XMM15_Da;
+  float unaff_XMM15_Db;
+  float unaff_XMM15_Dc;
+  float unaff_XMM15_Dd;
+  undefined4 *in_stack_00000028;
+  uint in_stack_00000030;
+  undefined8 local_1a8;
+  undefined8 uStack_1a0;
+  undefined8 local_198;
+  undefined4 local_158;
+  float local_154;
+  undefined8 local_150;
+  float local_13c;
+  ulonglong local_138;
+  char local_124;
+  
+  fVar2 = *in_R8;
+  uVar3 = *(undefined8 *)(in_R8 + 1);
+  lVar4 = *(longlong *)(in_RDX + 8);
+  uVar5 = *(ulonglong *)(in_RDX + 0x10);
+  uVar7 = 2;
+  lVar8 = 0x20;
+  uVar9 = 0;
+  uVar13 = *in_stack_00000028;
+  while( true ) {
+    do {
+      lVar8 = -lVar8;
+      uVar11 = uVar9;
+      do {
+        if (lVar8 == -0x3cb0) {
+          in_RCX[2] = local_198;
+          *in_RCX = local_1a8;
+          in_RCX[1] = uStack_1a0;
+          *(float *)(in_RCX + 3) = unaff_XMM15_Da;
+          *(float *)((longlong)in_RCX + 0x1c) = unaff_XMM15_Db;
+          *(float *)(in_RCX + 4) = unaff_XMM15_Dc;
+          *(float *)((longlong)in_RCX + 0x24) = unaff_XMM15_Dd;
+          in_RCX[5] = unaff_XMM14_Qa;
+          *(undefined4 *)(in_RCX + 6) = uVar13;
+          *(undefined4 *)((longlong)in_RCX + 0x34) = uVar7;
+          return;
+        }
+        uVar9 = uVar11 + 1;
+        lVar8 = lVar8 + -0x390;
+        uVar10 = uVar11 & 0x1f;
+        uVar11 = uVar9;
+      } while ((in_stack_00000030 >> uVar10 & 1) == 0);
+      lVar8 = -lVar8;
+      rapier3d::pipeline::query_pipeline::QueryPipeline::cast_shape();
+    } while (local_124 == '\x04');
+    rapier3d::geometry::collider_set::ColliderSet::get_mut_internal();
+    if (extraout_RAX == (ulonglong *)0x0) break;
+    uVar6 = *extraout_RAX & 0xffffffff;
+    if (((uVar5 <= uVar6) || (lVar4 == 0)) ||
+       (*(uint *)(lVar4 + 0x20 + uVar6 * 0x28) != ((uint)(*extraout_RAX >> 0x20) | 1))) {
+                    // WARNING: Subroutine does not return
+      std::panicking::begin_panic<ref_<str_>_>();
+    }
+    unaff_XMM15_Db = (float)local_150;
+    unaff_XMM15_Dc = (float)((ulonglong)local_150 >> 0x20);
+    fVar14 = (float)(local_138 >> 0x20);
+    fVar12 = ((float)((ulonglong)uVar3 >> 0x20) - unaff_XMM15_Dc) * fVar14 +
+             (fVar2 - local_154) * local_13c + ((float)uVar3 - unaff_XMM15_Db) * (float)local_138;
+    unaff_XMM15_Dd = local_13c;
+    if (fVar12 < 0.0) {
+      unaff_XMM15_Dd = -local_13c;
+    }
+    puVar1 = (undefined8 *)(lVar4 + uVar6 * 0x28);
+    uVar11 = (uint)(fVar12 < 0.0);
+    uVar10 = (int)(uVar11 << 0x1f) >> 0x1f;
+    uVar11 = (int)(uVar11 << 0x1f) >> 0x1f;
+    unaff_XMM14_Qa =
+         CONCAT44((uint)-fVar14 & uVar11,(uint)-(float)local_138 & uVar10) |
+         ~CONCAT44(uVar11,uVar10) & local_138;
+    local_1a8 = *puVar1;
+    uStack_1a0 = puVar1[1];
+    local_198 = puVar1[2];
+    uVar7 = 0;
+    uVar13 = local_158;
+    unaff_XMM15_Da = local_154;
+  }
+                    // WARNING: Subroutine does not return
+  core::option::unwrap_failed();
+}
+

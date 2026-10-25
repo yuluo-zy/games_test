@@ -1,0 +1,16 @@
+140c8ff70 PUSH RSI
+140c8ff71 SUB RSP,0x40
+140c8ff75 MOV RSI,RCX
+140c8ff78 MOV EAX,dword ptr [RDX + 0x8]
+140c8ff7b MOV dword ptr [RSP + 0x28],EAX
+140c8ff7f MOV RAX,qword ptr [RDX]
+140c8ff82 MOV qword ptr [RSP + 0x20],RAX
+140c8ff87 MOVAPS XMM0,xmmword ptr [RDX + 0x10]
+140c8ff8b MOVAPS xmmword ptr [RSP + 0x30],XMM0
+140c8ff90 LEA RDX,[RSP + 0x20]
+140c8ff95 LEA R8,[RSP + 0x30]
+140c8ff9a CALL 0x140c96fe0
+140c8ff9f MOV RAX,RSI
+140c8ffa2 ADD RSP,0x40
+140c8ffa6 POP RSI
+140c8ffa7 RET

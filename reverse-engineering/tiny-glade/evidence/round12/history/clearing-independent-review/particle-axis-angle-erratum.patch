@@ -1,0 +1,11 @@
+--- a/tiny-glade/crates/country-core/src/startup/native_placement_policy.rs
++++ b/tiny-glade/crates/country-core/src/startup/native_placement_policy.rs
+@@ -21,7 +21,7 @@
+     }
+     let affine = Affine3A::from_scale_rotation_translation(
+         Vec3::splat(scale),
+-        Quat::from_rotation_y(rotation),
++        Quat::from_axis_angle(Vec3::Y, rotation),
+         position,
+     );
+     let point = affine.transform_point3(vertex);

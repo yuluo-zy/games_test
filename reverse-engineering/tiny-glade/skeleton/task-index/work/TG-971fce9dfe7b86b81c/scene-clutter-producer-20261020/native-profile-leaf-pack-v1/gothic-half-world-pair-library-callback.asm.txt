@@ -1,0 +1,70 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+141275970: 56                          	pushq	%rsi
+141275971: 57                          	pushq	%rdi
+141275972: 48 83 ec 58                 	subq	$0x58, %rsp
+141275976: 48 89 ce                    	movq	%rcx, %rsi
+141275979: 8b 02                       	movl	(%rdx), %eax
+14127597b: 48 8b 7a 10                 	movq	0x10(%rdx), %rdi
+14127597f: a9 fd ff ff ff              	testl	$0xfffffffd, %eax       # imm = 0xFFFFFFFD
+141275984: 75 3f                       	jne	0x1412759c5 <.text+0x12749c5>
+141275986: 48 85 ff                    	testq	%rdi, %rdi
+141275989: 0f 84 c0 00 00 00           	je	0x141275a4f <.text+0x1274a4f>
+14127598f: 4c 8b 07                    	movq	(%rdi), %r8
+141275992: 4c 3b 47 08                 	cmpq	0x8(%rdi), %r8
+141275996: 0f 84 b3 00 00 00           	je	0x141275a4f <.text+0x1274a4f>
+14127599c: 49 8d 40 08                 	leaq	0x8(%r8), %rax
+1412759a0: 48 89 07                    	movq	%rax, (%rdi)
+1412759a3: 48 8d 57 10                 	leaq	0x10(%rdi), %rdx
+1412759a7: 48 8d 4c 24 34              	leaq	0x34(%rsp), %rcx
+1412759ac: e8 ff 6f 03 00              	callq	0x1412ac9b0 <.text+0x12ab9b0>
+1412759b1: 8b 44 24 3c                 	movl	0x3c(%rsp), %eax
+1412759b5: 89 44 24 28                 	movl	%eax, 0x28(%rsp)
+1412759b9: 48 8b 44 24 34              	movq	0x34(%rsp), %rax
+1412759be: 48 89 44 24 20              	movq	%rax, 0x20(%rsp)
+1412759c3: eb 1d                       	jmp	0x1412759e2 <.text+0x12749e2>
+1412759c5: a8 01                       	testb	$0x1, %al
+1412759c7: 0f 84 82 00 00 00           	je	0x141275a4f <.text+0x1274a4f>
+1412759cd: 8b 42 0c                    	movl	0xc(%rdx), %eax
+1412759d0: 89 44 24 28                 	movl	%eax, 0x28(%rsp)
+1412759d4: 48 8b 42 04                 	movq	0x4(%rdx), %rax
+1412759d8: 48 89 44 24 20              	movq	%rax, 0x20(%rsp)
+1412759dd: 48 85 ff                    	testq	%rdi, %rdi
+1412759e0: 74 6d                       	je	0x141275a4f <.text+0x1274a4f>
+1412759e2: 4c 8b 07                    	movq	(%rdi), %r8
+1412759e5: 4c 3b 47 08                 	cmpq	0x8(%rdi), %r8
+1412759e9: 74 64                       	je	0x141275a4f <.text+0x1274a4f>
+1412759eb: 49 8d 40 08                 	leaq	0x8(%r8), %rax
+1412759ef: 48 89 07                    	movq	%rax, (%rdi)
+1412759f2: 48 83 c7 10                 	addq	$0x10, %rdi
+1412759f6: 48 8d 4c 24 34              	leaq	0x34(%rsp), %rcx
+1412759fb: 48 89 fa                    	movq	%rdi, %rdx
+1412759fe: e8 ad 6f 03 00              	callq	0x1412ac9b0 <.text+0x12ab9b0>
+141275a03: 8b 44 24 3c                 	movl	0x3c(%rsp), %eax
+141275a07: 89 44 24 54                 	movl	%eax, 0x54(%rsp)
+141275a0b: 48 8b 44 24 34              	movq	0x34(%rsp), %rax
+141275a10: 48 89 44 24 4c              	movq	%rax, 0x4c(%rsp)
+141275a15: 8b 44 24 28                 	movl	0x28(%rsp), %eax
+141275a19: 89 44 24 48                 	movl	%eax, 0x48(%rsp)
+141275a1d: 48 8b 44 24 20              	movq	0x20(%rsp), %rax
+141275a22: 48 89 44 24 40              	movq	%rax, 0x40(%rsp)
+141275a27: 48 8b 44 24 50              	movq	0x50(%rsp), %rax
+141275a2c: 48 89 46 14                 	movq	%rax, 0x14(%rsi)
+141275a30: 48 8b 44 24 40              	movq	0x40(%rsp), %rax
+141275a35: 48 89 46 04                 	movq	%rax, 0x4(%rsi)
+141275a39: 8b 44 24 48                 	movl	0x48(%rsp), %eax
+141275a3d: 89 46 0c                    	movl	%eax, 0xc(%rsi)
+141275a40: 8b 44 24 4c                 	movl	0x4c(%rsp), %eax
+141275a44: 89 46 10                    	movl	%eax, 0x10(%rsi)
+141275a47: c7 06 01 00 00 00           	movl	$0x1, (%rsi)
+141275a4d: eb 06                       	jmp	0x141275a55 <.text+0x1274a55>
+141275a4f: c7 06 00 00 00 00           	movl	$0x0, (%rsi)
+141275a55: 48 89 f0                    	movq	%rsi, %rax
+141275a58: 48 83 c4 58                 	addq	$0x58, %rsp
+141275a5c: 5f                          	popq	%rdi
+141275a5d: 5e                          	popq	%rsi
+141275a5e: c3                          	retq

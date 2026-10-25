@@ -1,0 +1,139 @@
+NAME: read_state
+VA: 0x1409e86b0
+SIZE: 1006
+SIGNATURE: void __cdecl read_state(void)
+CALLEES:
+  {'name': 'SteamAPI_ISteamInput_GetAnalogActionData', 'address': '142923650'}
+  {'name': 'SteamAPI_ISteamInput_GetDigitalActionData', 'address': '142923660'}
+  {'name': 'SteamAPI_SteamInput_v006', 'address': '142923700'}
+  {'name': 'drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>', 'address': '140b85350'}
+DECOMP:
+
+void __cdecl country_core::resources::steam::SteamMainActionSet::read_state(void)
+
+{
+  longlong lVar1;
+  code *pcVar2;
+  undefined4 uVar3;
+  undefined4 uVar4;
+  undefined4 uVar5;
+  undefined4 uVar6;
+  byte bVar7;
+  byte bVar8;
+  byte bVar9;
+  byte bVar10;
+  byte bVar11;
+  byte bVar12;
+  byte bVar13;
+  byte bVar14;
+  byte bVar15;
+  byte bVar16;
+  byte bVar17;
+  byte bVar18;
+  byte bVar19;
+  byte bVar20;
+  byte bVar21;
+  byte bVar22;
+  byte bVar23;
+  byte bVar24;
+  byte bVar25;
+  byte bVar26;
+  byte bVar27;
+  byte bVar28;
+  byte bVar29;
+  byte bVar30;
+  byte bVar31;
+  undefined8 uVar32;
+  undefined4 *in_RCX;
+  undefined8 *in_R9;
+  undefined1 local_85 [4];
+  undefined4 local_81;
+  undefined4 uStack_7d;
+  longlong *local_78;
+  undefined8 local_70;
+  
+  uVar32 = SteamAPI_SteamInput_v006();
+  local_78 = (longlong *)*in_R9;
+  LOCK();
+  lVar1 = *local_78;
+  *local_78 = *local_78 + 1;
+  UNLOCK();
+  if (*local_78 != 0 && SCARRY8(lVar1,1) == *local_78 < 0) {
+    local_70 = uVar32;
+    SteamAPI_ISteamInput_GetAnalogActionData(local_85,uVar32);
+    uVar5 = uStack_7d;
+    uVar3 = local_81;
+    SteamAPI_ISteamInput_GetAnalogActionData(local_85,uVar32);
+    uVar6 = uStack_7d;
+    uVar4 = local_81;
+    SteamAPI_ISteamInput_GetAnalogActionData(local_85,uVar32);
+    bVar7 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar8 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar9 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar10 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar11 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar12 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar13 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar14 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar15 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar16 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar17 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar18 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar19 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar20 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    uVar32 = local_70;
+    bVar21 = SteamAPI_ISteamInput_GetDigitalActionData(local_70);
+    bVar22 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar23 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar24 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar25 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar26 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar27 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar28 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar29 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar30 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    bVar31 = SteamAPI_ISteamInput_GetDigitalActionData(uVar32);
+    *in_RCX = uVar3;
+    in_RCX[1] = uVar5;
+    in_RCX[2] = uVar4;
+    in_RCX[3] = uVar6;
+    *(ulonglong *)(in_RCX + 4) = CONCAT44(uStack_7d,local_81);
+    *(byte *)(in_RCX + 6) = bVar7 & 1;
+    *(byte *)((longlong)in_RCX + 0x19) = bVar8 & 1;
+    *(byte *)((longlong)in_RCX + 0x1a) = bVar9 & 1;
+    *(byte *)((longlong)in_RCX + 0x1b) = bVar10 & 1;
+    *(byte *)(in_RCX + 7) = bVar11 & 1;
+    *(byte *)((longlong)in_RCX + 0x1d) = bVar12 & 1;
+    *(byte *)((longlong)in_RCX + 0x1e) = bVar13 & 1;
+    *(byte *)((longlong)in_RCX + 0x1f) = bVar14 & 1;
+    *(byte *)(in_RCX + 8) = bVar15 & 1;
+    *(byte *)((longlong)in_RCX + 0x21) = bVar16 & 1;
+    *(byte *)((longlong)in_RCX + 0x22) = bVar17 & 1;
+    *(byte *)((longlong)in_RCX + 0x23) = bVar18 & 1;
+    *(byte *)(in_RCX + 9) = bVar19 & 1;
+    *(byte *)((longlong)in_RCX + 0x25) = bVar20 & 1;
+    *(byte *)((longlong)in_RCX + 0x26) = bVar21 & 1;
+    *(byte *)((longlong)in_RCX + 0x27) = bVar22 & 1;
+    *(byte *)(in_RCX + 10) = bVar23 & 1;
+    *(byte *)((longlong)in_RCX + 0x29) = bVar24 & 1;
+    *(byte *)((longlong)in_RCX + 0x2a) = bVar25 & 1;
+    *(byte *)((longlong)in_RCX + 0x2b) = bVar26 & 1;
+    *(byte *)(in_RCX + 0xb) = bVar27 & 1;
+    *(byte *)((longlong)in_RCX + 0x2d) = bVar28 & 1;
+    *(byte *)((longlong)in_RCX + 0x2e) = bVar29 & 1;
+    *(byte *)((longlong)in_RCX + 0x2f) = bVar30 & 1;
+    *(byte *)(in_RCX + 0xc) = bVar31 & 1;
+    LOCK();
+    *local_78 = *local_78 + -1;
+    UNLOCK();
+    if (*local_78 == 0) {
+      alloc::sync::Arc::drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>
+                ();
+    }
+    return;
+  }
+                    // WARNING: Does not return
+  pcVar2 = (code *)invalidInstructionException();
+  (*pcVar2)();
+}
+

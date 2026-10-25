@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\n\nprog = currentProgram\nfm = prog.getFunctionManager()\nADDRS = {\"0x1422d4870\":\"construct_inter_roof_merlons\",\"0x141ce3a70\":\"detect_inter_roof_merlons\",\"0x141cd1a90\":\"detect_intra_shape_corners\",\"0x141ce65b0\":\"spawn_stitches\",\"0x141ce7190\":\"spawn_stitch_bricks\"}\nout = {}\nfor s, label in ADDRS.items():\n    f = fm.getFunctionAt(prog.getAddressFactory().getAddress(s))\n    if f is None:\n        out[s] = {\"label\": label, \"error\": \"absent\"}\n        continue\n    out[s] = {\"label\": label, \"name\": str(f.getName()), \"entry\": str(f.getEntryPoint()), \"body\": str(f.getBody()), \"signature\": str(f.getSignature())}\nopen(\"/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain/clutter/host_geometry_boundaries.json\",\"w\").write(json.dumps(out, indent=1))\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 60
+    },
+    "timeout_seconds": 120
+  }
+]

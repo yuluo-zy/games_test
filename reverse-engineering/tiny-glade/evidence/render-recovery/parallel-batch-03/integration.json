@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "status": "consistent_partial",
+  "scope": "R2 compiled transitions -> R5A barrier/record -> R5B sequence/timeline plus R5C cross-frame temporal state",
+  "inputs": {
+    "contract": {
+      "path": "evidence/render-recovery/parallel-batch-03/contract.json",
+      "sha256": "6c349f595c25f3f6899f8a4fbe029b458705a92c931e738ad4b7d43ba207cd13"
+    },
+    "barrier_schema": {
+      "path": "evidence/render-recovery/parallel-batch-03/barrier-record/oracle-schema.json",
+      "sha256": "858e8e4ad4e5a4cefab994c96f484d7d9d70e40bf42fb93d920a63026dba052a"
+    },
+    "barrier_validation": {
+      "path": "evidence/render-recovery/parallel-batch-03/barrier-record/validation.json",
+      "sha256": "26b7f079f8884f39f1a7e1df5c39665f6b36a15e348b74b4f64d2448930c8ead"
+    },
+    "barrier_summary": {
+      "path": "evidence/render-recovery/parallel-batch-03/barrier-record/validation-summary.json",
+      "sha256": "d9e629d7f85975fd980437ee48cd1b8ed1516cb2fb3484ae8fc0a7158ade6e38"
+    },
+    "barrier_search": {
+      "path": "evidence/render-recovery/parallel-batch-03/barrier-record/negative-search.json",
+      "sha256": "5cf4727210517a1abb8d6778892eda76d630601d20086ebc149b7d8314a5358c"
+    },
+    "sequence_events": {
+      "path": "evidence/render-recovery/parallel-batch-03/sequence-domain/event-schema.json",
+      "sha256": "2fb83201b965d51d251d3af1a0496e1242deec2568f01b7c286af9b6b4cf2bce"
+    },
+    "sequence_machine": {
+      "path": "evidence/render-recovery/parallel-batch-03/sequence-domain/mapping-state-machine.json",
+      "sha256": "cbfba566b0ed675307f79139f8d629aac950994f5c43d96b14545460afcf72d4"
+    },
+    "sequence_contract": {
+      "path": "evidence/render-recovery/parallel-batch-03/sequence-domain/implementation-contract.json",
+      "sha256": "596526ce8ded6a0619b42c9a190f7ba537dbf659269b99f79f5652e33aa09cb1"
+    },
+    "sequence_unknowns": {
+      "path": "evidence/render-recovery/parallel-batch-03/sequence-domain/unknowns.json",
+      "sha256": "6ccbcfba327cc6050eec99ccde757a9c61f8c0846834e9e89b3cebb28d7f8db5"
+    },
+    "sequence_validation": {
+      "path": "evidence/render-recovery/parallel-batch-03/sequence-domain/validation.json",
+      "sha256": "541941017201557c4c167c5f4e6dd6adde14cc5e8d0f3da2110a4b188a883406"
+    },
+    "temporal_schema": {
+      "path": "evidence/render-recovery/parallel-batch-03/temporal-full/snapshot-schema.json",
+      "sha256": "63ba3ec64ab5745c21954950aa128fd0f5720419a4a364549f8b335f0b68230d"
+    },
+    "temporal_machine": {
+      "path": "evidence/render-recovery/parallel-batch-03/temporal-full/temporal-state-machine.json",
+      "sha256": "f7a31985218f3278ace570f7093afafdc4bd41405bdaa6f8c1a972fdbaee4515"
+    },
+    "temporal_contract": {
+      "path": "evidence/render-recovery/parallel-batch-03/temporal-full/implementation-contract.json",
+      "sha256": "4eb50d9664eff37dd8e1074a40c94985395f4601b4565873c9ca634bc53c208c"
+    },
+    "temporal_unknowns": {
+      "path": "evidence/render-recovery/parallel-batch-03/temporal-full/unknowns.json",
+      "sha256": "1a24f810177f92bd23357a14439674fef03e58ff4ba799611b07c61db5a33520"
+    },
+    "temporal_validation": {
+      "path": "evidence/render-recovery/parallel-batch-03/temporal-full/validation.json",
+      "sha256": "77e954e6e164ea06fac1174d6aa36b3db2640baec905bda4931446a9782174e9"
+    }
+  },
+  "checks": [
+    {
+      "name": "barrier_native_oracle",
+      "ok": true,
+      "detail": "cases=1344, failures=0"
+    },
+    {
+      "name": "barrier_mode_coverage",
+      "ok": true,
+      "detail": "pre, initial-record prefix and final/export gate covered"
+    },
+    {
+      "name": "population_original_entry",
+      "ok": true,
+      "detail": "97 population fixtures and six R2 snapshot checks passed"
+    },
+    {
+      "name": "barrier_partial_boundaries",
+      "ok": true,
+      "detail": "partial oracle remains explicit and repeat-prefix behavior is covered"
+    },
+    {
+      "name": "reuse_marker_bounded_search",
+      "ok": true,
+      "detail": "ordinary marker=0 and two marker=1 consumers are observed; producer conclusion remains bounded"
+    },
+    {
+      "name": "sequence_timeline_domains",
+      "ok": true,
+      "detail": "CB sequence orders disposal; queue timeline gates completion"
+    },
+    {
+      "name": "sequence_queue_ownership",
+      "ok": true,
+      "detail": "candidate rejects cross-queue CB ownership mismatch"
+    },
+    {
+      "name": "sequence_unknown_preserved",
+      "ok": true,
+      "detail": "counter seed/global collision policy remains unresolved"
+    },
+    {
+      "name": "sequence_no_false_native_claim",
+      "ok": true,
+      "detail": "Vulkan-dependent native differential is not claimed"
+    },
+    {
+      "name": "temporal_original_entries",
+      "ok": true,
+      "detail": "four new and three reused static entries captured; database closed without save"
+    },
+    {
+      "name": "temporal_candidate_tests",
+      "ok": true,
+      "detail": "passed: 7 tests"
+    },
+    {
+      "name": "temporal_raw_export_import",
+      "ok": true,
+      "detail": "raw texture/buffer and exported state represented"
+    },
+    {
+      "name": "temporal_reset_unknown_preserved",
+      "ok": true,
+      "detail": "reset/drop is not guessed"
+    }
+  ],
+  "failed_checks": [],
+  "closed_path": [
+    "compiled transition branches to recorded backend events",
+    "command-buffer sequence ownership through timeline-gated reclamation",
+    "temporal single/pair selection and raw/exported cross-frame projection"
+  ],
+  "remaining": [
+    "full pass-recording and Vulkan runtime differential",
+    "device constructor counter seed/global CB sequence uniqueness",
+    "temporal reset/drop and compile take/restore ownership",
+    "pipeline/descriptors/shaders and country-core pass integration"
+  ]
+}

@@ -1,0 +1,323 @@
+--- tiny-glade/crates/country-core/src/render/nani/systems.rs
++++ tiny-glade/crates/country-core/src/render/nani/systems.rs
+@@ -1,8 +1,8 @@
+ //! `render::nani::systems` — nani 的 ECS 系统层：`nani_maintain_instances`、20 个 `nani_update_*`、
+ //! `nani_flush_instance_updates`（B 构建 0x14206f300 / 0x142070ac0..0x14207fcc0 / 0x142080640）。
+ //!
+-//! 原有行视图 API 与下方真实 ECS 适配器共用维护算法。现有完整组件覆盖九类更新；
+-//! 其余十一类组件契约尚未闭合，适配器在新描述符发布前明确报错。载荷数值全部
++//! 原有行视图 API 与下方真实 ECS 适配器共用维护算法。完整组件覆盖九类更新，另限定
++//! 支持 Roof-bearing RoofFloor 支线；Floor-only 与其余未闭合输入在发布前明确报错。载荷数值全部
+ //! 来自 [`super::instance_updates`] 的 `build_*`（逐机器码核对），这里负责三件事：
+ //! 1. 选 subset（每个系统固定一个 kind，见 [`GpuWorldSubsetKind`] 的判别值）；
+ //! 2. 用 `GpuWorld::owned_subset_mut(kind)` 取写锁，`update_instance_data` 写 `position / sort_key / 载荷`；
+@@ -22,7 +22,7 @@
+ //! * 变更：`Named` 要求 `parts.len() == 1`（源码 106:17）且 `part.subset == kind`（108:17），
+ //!   然后 `update_instance_mesh(&mut key, part_index)`。
+ //!
+-//! 未恢复（U）：其余十一路所需组件（`Wren`、`Plaster`、`Smoke`……）的完整契约；行视图只放
++//! 未闭合（U）：Floor-only 支线和 `Wren`、`Plaster`、`Smoke` 等组件/producer 的完整契约；行视图只放
+ //! `build_*` 已经需要的原始字。`NaniInstanceDesc` 在原版里是 24 B（`+0` 判别位、`AtlasPart` u32@+4、`Named` u64@+8、
+ //! `subset_kind` u8@+0x10），Rust 侧用枚举表达，不复刻内存布局。
+ 
+@@ -643,8 +643,8 @@
+     asset_libraries::{ssbo_library::AssetSsboLibrary, texture_library::AssetTextureLibrary},
+     components::{FlatLighting, SemiTransparent, drawable::{AlbedoMap, PrevTransform, NaniSolidTexture}},
+     render::{device::GraphicsDeviceResource, nani::gpu_world::{InstanceDataMarker, OwnedGpuWorldSubset}},
+-    resources::{color_id::ColorId, terrain_rock_mask::TerrainRockMaskSsbo,
+-        world_raster_defs::WaterRaster},
++    resources::{color_id::ColorId, roofs::{Roof, RoofAnimation},
++        terrain_rock_mask::TerrainRockMaskSsbo, world_raster_defs::WaterRaster},
+     systems::paths::PathRastersResources,
+ };
+ 
+@@ -658,13 +658,16 @@
+     Has<InstanceDataMarker<VelocityOnlyInstanceData>>,
+     Has<InstanceDataMarker<SolidAlbedoMapInstanceData>>,
+     Has<InstanceDataMarker<SolidAlbedoMapEmissiveInstanceData>>,
++    Has<InstanceDataMarker<StoneFloorInstanceData>>,
+ );
+ 
+-type MappedNaniMarkerPresence = (bool, bool, bool, bool, bool, bool, bool, bool, bool);
+-type MappedNaniInputs = (MappedNaniMarkers, Has<ColorId>, Has<PrevTransform>, Has<Transform>, Has<NaniSolidTexture>);
++type MappedNaniMarkerPresence = (bool, bool, bool, bool, bool, bool, bool, bool, bool, bool);
++type MappedNaniInputs = (MappedNaniMarkers, Has<ColorId>, Has<PrevTransform>, Has<Transform>,
++    Has<NaniSolidTexture>, Has<Roof>);
+ fn require_mapped_nani_payload(
+     kind: GpuWorldSubsetKind,
+-    (markers, has_color, has_previous, has_transform, has_selector): (MappedNaniMarkerPresence, bool, bool, bool, bool),
++    (markers, has_color, has_previous, has_transform, has_selector, has_roof):
++        (MappedNaniMarkerPresence, bool, bool, bool, bool, bool),
+ ) {
+     let mapped = match kind {
+         GpuWorldSubsetKind::SolidVertexColor => markers.0,
+@@ -676,10 +679,14 @@
+         GpuWorldSubsetKind::VelocityOnly => markers.6 && has_previous,
+         GpuWorldSubsetKind::SolidAlbedoMap => markers.7 && has_selector,
+         GpuWorldSubsetKind::SolidAlbedoMapEmissive => markers.8 && has_selector,
++        // Restricted original kind9 producer domain. Floor-only entities
++        // remain unsupported; do not publish a key without a real Roof.
++        GpuWorldSubsetKind::RoofFloor => markers.9 && has_roof,
+         _ => false,
+     };
+     let marker_count = [markers.0, markers.1, markers.2, markers.3,
+-        markers.4, markers.5, markers.6, markers.7, markers.8].into_iter().filter(|present| *present).count();
++        markers.4, markers.5, markers.6, markers.7, markers.8, markers.9]
++        .into_iter().filter(|present| *present).count();
+     assert!(mapped && has_transform && marker_count == 1,
+         "Nani ECS payload mapping is unavailable or canonical inputs are incomplete: {kind:?}");
+ }
+@@ -756,6 +763,30 @@
+         write_mapped_update(&mut subset, key.bypass_change_detection(),
+             build_solid_vertex_color_window(p, r, s, color.0, semi.is_some()),
+             |raw| SolidVertexColorWindowInstanceData { raw });
++    }
++}
++
++/// Native tuple5 / kind9, restricted to actual Roof-bearing entities. Keep
++/// the original With-only marker domain even if NaniInstanceDesc is absent:
++/// requiring &Roof in the Query would silently skip an unsupported active row.
++/// The original Floor-only component contract is not yet recovered.
++pub fn nani_update_roof_floor_for_roofs_ecs(
++    mut rows: Query<(&mut InstanceKey, &Transform, Option<&Roof>, Option<&RoofAnimation>),
++        With<InstanceDataMarker<StoneFloorInstanceData>>>,
++    gpu: Res<GpuWorld>,
++) {
++    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::RoofFloor);
++    for (mut key, transform, roof, animation) in &mut rows {
++        let roof = roof.expect(
++            "RoofFloor ECS support requires a real Roof; Floor-only or missing Roof inputs are unsupported");
++        let words: RoofWords = std::array::from_fn(|index| {
++            let offset = index * 4;
++            u32::from_le_bytes(roof.observed()[offset..offset + 4].try_into().unwrap())
++        });
++        write_mapped_update(&mut subset, key.bypass_change_detection(),
++            build_stone_floor(transform.translation, Some(&words),
++                animation.map(|animation| animation.values()[0]), None, &circle_tangent_u0),
++            |raw| StoneFloorInstanceData { raw });
+     }
+ }
+ 
+@@ -886,14 +917,16 @@
+ 
+ /// Original backend44 fragment: maintain -> explicit ApplyDeferred ->
+ /// unordered20-update tuple -> flush, outer chain_ignore_deferred.
+-/// Nine complete current component mappings are installed; the eleven
+-/// unavailable contracts fail at maintain rather than upload invented data.
++/// Nine complete current component mappings plus a restricted Roof-bearing
++/// kind9 branch are installed. Floor-only and other unavailable contracts
++/// fail explicitly; this is not ten complete original kind contracts.
+ pub fn add_mapped_nani_instance_systems<S: SystemSet>(schedule: &mut Schedule, set: S) {
+     schedule.add_systems((
+         nani_maintain_instances_ecs,
+         ApplyDeferred,
+         (nani_update_solid_vertex_color_ecs,
+          nani_update_solid_vertex_color_window_ecs,
++         nani_update_roof_floor_for_roofs_ecs,
+          nani_update_plant_ecs,
+          nani_update_preplaced_flower_ecs,
+          nani_update_solid_albedo_map_ecs,
+@@ -937,6 +970,203 @@
+     fn entities(n: usize) -> Vec<Entity> {
+         let mut world = World::new();
+         (0..n).map(|_| world.spawn_empty().id()).collect()
++    }
++
++    // Actual canonical component constructors with explicit nonzero CPU
++    // boundary inputs. This does not claim a complete gameplay/asset startup.
++    fn cpu_boundary_roof(curved: bool) -> Roof {
++        let shape_words = [u32::from(!curved), 2.5f32.to_bits(), (-3.25f32).to_bits(),
++            4.5f32.to_bits(), if curved { 0.73f32.to_bits() } else { 1.25f32.to_bits() },
++            6.0f32.to_bits(), 7.0f32.to_bits()];
++        let parameter_words = [1.125f32.to_bits(), 2.125f32.to_bits(), 1.5f32.to_bits(),
++            0.05f32.to_bits(), 1.0f32.to_bits(), 3.75f32.to_bits(), 1];
++        let mut shape = [0; 28];
++        let mut parameters = [0; 28];
++        let mut flat_style = [0; 12];
++        for (bytes, word) in shape.chunks_exact_mut(4).zip(shape_words) {
++            bytes.copy_from_slice(&word.to_le_bytes());
++        }
++        for (bytes, word) in parameters.chunks_exact_mut(4).zip(parameter_words) {
++            bytes.copy_from_slice(&word.to_le_bytes());
++        }
++        for (bytes, word) in flat_style.chunks_exact_mut(4).zip([0x1002u32, 111, 222]) {
++            bytes.copy_from_slice(&word.to_le_bytes());
++        }
++        Roof::new(7u64.to_le_bytes(), parameters, shape, 1.25f32.to_le_bytes(),
++            13u32.to_le_bytes(), 5, flat_style)
++    }
++
++    fn cpu_boundary_roof_animation(first: f32, second: f32) -> RoofAnimation {
++        let mut bytes = [0; 8];
++        bytes[..4].copy_from_slice(&first.to_le_bytes());
++        bytes[4..].copy_from_slice(&second.to_le_bytes());
++        RoofAnimation::from_inner(crate::resources::roofs::components::RoofAnimation::from_observed(bytes))
++    }
++
++    fn roof_world(dev: &MockDevice) -> World {
++        let mut gpu = GpuWorld::new(dev);
++        gpu.assign_subset(GpuWorldSubsetKind::RoofFloor, GpuWorldSubset::Owned(
++            OwnedGpuWorldSubset::new::<StoneFloorInstanceData>(dev, GpuWorldSubsetKind::RoofFloor)));
++        let mut world = World::new();
++        world.insert_resource(gpu);
++        world.insert_resource(MeshAtlasLibrary::default());
++        world
++    }
++
++    fn spawn_cpu_roof(world: &mut World, curved: bool) -> Entity {
++        world.spawn((crate::components::drawable::NaniBundle::<StoneFloorInstanceData> {
++            desc: desc(0, GpuWorldSubsetKind::RoofFloor),
++            transform: Transform::from_translation(Vec3::new(12.0, 13.0, 14.0)),
++            marker: InstanceDataMarker::default(),
++        }, cpu_boundary_roof(curved))).id()
++    }
++
++    fn actual_roof_payload(world: &World, entity: Entity) -> [u32; 16] {
++        let key = world.get::<InstanceKey>(entity).unwrap();
++        let subset = world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::RoofFloor);
++        subset.data().as_any().downcast_ref::<
++            crate::render::nani::gpu_world::InstanceDataBuffer<StoneFloorInstanceData>>()
++            .unwrap().shadow.data[key.index as usize].raw
++    }
++
++    #[test]
++    fn roof_branch_uses_real_components_barrier_nonzero_payload_and_dirty_flush() {
++        let dev = MockDevice::default();
++        let mut world = roof_world(&dev);
++        let curved = spawn_cpu_roof(&mut world, true);
++        let straight = spawn_cpu_roof(&mut world, false);
++        world.entity_mut(curved).insert(cpu_boundary_roof_animation(0.375, 0.875));
++        let mut schedule = Schedule::default();
++        schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred,
++            nani_update_roof_floor_for_roofs_ecs).chain_ignore_deferred());
++        schedule.run(&mut world);
++        for (entity, is_curved, animation) in [(curved, true, 0.375f32), (straight, false, 1.0)] {
++            let key = *world.get::<InstanceKey>(entity).unwrap();
++            assert_eq!(key.kind, GpuWorldSubsetKind::RoofFloor);
++            let words = actual_roof_payload(&world, entity);
++            let position = if is_curved {
++                Vec3::new(2.5, 1.25 - 0.69, -3.25)
++            } else {
++                Vec3::new(4.5, 1.25 - 0.69, 1.25)
++            };
++            assert_eq!(&words[..4], &[position.x.to_bits(), position.y.to_bits(), position.z.to_bits(), 7]);
++            if is_curved {
++                let angle = 0.73 + std::f32::consts::TAU;
++                assert!((f32::from_bits(words[4]) + angle.sin()).abs() < 1e-6);
++                assert!((f32::from_bits(words[5]) - angle.cos()).abs() < 1e-6);
++                assert_eq!(&words[6..8], &[9.0f32.to_bits(), 9.0f32.to_bits()]);
++            } else {
++                assert_eq!(&words[4..8], &[2.5f32.to_bits(), (-3.25f32).to_bits(),
++                    6.0f32.to_bits(), 7.0f32.to_bits()]);
++            }
++            assert_eq!(words[8], animation.to_bits()); // channel0, or original absent-animation1.0
++            assert_eq!(&words[9..], &[u32::from(!is_curved), 0, 0, 0x12, 111, 222, 0]);
++            let subset = world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::RoofFloor);
++            assert_eq!(subset.instance_count(), 2);
++            assert_eq!(subset.positions()[key.index as usize].position, position);
++            assert_eq!(subset.positions()[key.index as usize].radius.to_f32(), if is_curved { 9.0 } else { 7.0 });
++            let payload = subset.data().as_any().downcast_ref::<
++                crate::render::nani::gpu_world::InstanceDataBuffer<StoneFloorInstanceData>>().unwrap();
++            assert_eq!(payload.shadow.dirty.to_range(), Some(0..2));
++        }
++        nani_flush_instance_updates(&mut world.resource_mut::<GpuWorld>(), &dev);
++        assert_eq!(world.resource::<GpuWorld>().previous_instance_count(), 2);
++        assert_eq!(world.resource::<GpuWorld>().total_instance_count, 0);
++        assert!(dev.writes.borrow().iter().any(|(ranges, offset, bytes)|
++            ranges == &[0..128] && *offset == 0 && *bytes == 128));
++        world.clear_trackers();
++        // Original With-only update domain also contains active keys without
++        // a descriptor. A real Roof still updates through that exact domain.
++        world.entity_mut(curved).remove::<NaniInstanceDesc>();
++        world.entity_mut(curved).insert(cpu_boundary_roof_animation(0.625, 0.125));
++        let mut update_only = Schedule::default();
++        update_only.add_systems(nani_update_roof_floor_for_roofs_ecs);
++        update_only.run(&mut world);
++        assert_eq!(actual_roof_payload(&world, curved)[8], 0.625f32.to_bits());
++        assert_eq!(world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::RoofFloor).instance_count(), 2);
++    }
++
++    #[test]
++    fn new_roof_descriptor_requires_roof_transform_marker_and_unique_mapped_marker() {
++        for missing in ["Roof", "Transform", "marker", "ambiguous marker"] {
++            let dev = MockDevice::default();
++            let mut world = roof_world(&dev);
++            let entity = spawn_cpu_roof(&mut world, true);
++            match missing {
++                "Roof" => { world.entity_mut(entity).remove::<Roof>(); }
++                "Transform" => { world.entity_mut(entity).remove::<Transform>(); }
++                "marker" => { world.entity_mut(entity).remove::<InstanceDataMarker<StoneFloorInstanceData>>(); }
++                _ => { world.entity_mut(entity).insert(InstanceDataMarker::<PlantInstanceData>::default()); }
++            }
++            let mut maintain = Schedule::default();
++            maintain.add_systems(nani_maintain_instances_ecs);
++            assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
++                maintain.run(&mut world))).is_err(), "accepted missing {missing}");
++            assert!(world.get::<InstanceKey>(entity).is_none());
++            let gpu = world.resource::<GpuWorld>();
++            assert_eq!(gpu.total_instance_count, 0);
++            assert_eq!(gpu.owned_subset_mut(GpuWorldSubsetKind::RoofFloor).instance_count(), 0);
++        }
++    }
++
++    #[test]
++    fn missing_roof_is_rejected_for_existing_descriptor_and_descriptorless_active_marker() {
++        for keep_descriptor in [true, false] {
++            let dev = MockDevice::default();
++            let mut world = roof_world(&dev);
++            let entity = spawn_cpu_roof(&mut world, true);
++            let mut allocation = Schedule::default();
++            allocation.add_systems((nani_maintain_instances_ecs, ApplyDeferred,
++                nani_update_roof_floor_for_roofs_ecs).chain_ignore_deferred());
++            allocation.run(&mut world);
++            let key = *world.get::<InstanceKey>(entity).unwrap();
++            let before_payload = actual_roof_payload(&world, entity);
++            nani_flush_instance_updates(&mut world.resource_mut::<GpuWorld>(), &dev);
++            let before_writes = dev.writes.borrow().len();
++            world.clear_trackers();
++            world.entity_mut(entity).remove::<Roof>();
++            if !keep_descriptor { world.entity_mut(entity).remove::<NaniInstanceDesc>(); }
++            let mut update_only = Schedule::default();
++            update_only.add_systems(nani_update_roof_floor_for_roofs_ecs);
++            let error = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++                if keep_descriptor { allocation.run(&mut world); }
++                else { update_only.run(&mut world); }
++            })).expect_err("unsupported active row was silently filtered");
++            if !keep_descriptor {
++                let message = error.downcast_ref::<&str>().copied()
++                    .or_else(|| error.downcast_ref::<String>().map(String::as_str)).unwrap_or("");
++                assert!(message.contains("RoofFloor ECS support requires a real Roof"));
++            }
++            assert_eq!(world.get::<InstanceKey>(entity).unwrap(), &key);
++            assert_eq!(actual_roof_payload(&world, entity), before_payload);
++            let gpu = world.resource::<GpuWorld>();
++            assert_eq!(gpu.total_instance_count, 0);
++            assert_eq!(gpu.previous_instance_count(), 1);
++            let subset = gpu.owned_subset_mut(GpuWorldSubsetKind::RoofFloor);
++            assert_eq!(subset.instance_count(), 1);
++            assert!(subset.positions_dirty().is_empty());
++            let payload = subset.data().as_any().downcast_ref::<
++                crate::render::nani::gpu_world::InstanceDataBuffer<StoneFloorInstanceData>>().unwrap();
++            assert!(payload.shadow.dirty.is_empty());
++            assert_eq!(dev.writes.borrow().len(), before_writes);
++        }
++    }
++
++    #[test]
++    fn empty_registered_roof_subset_stays_a_real_zero_count() {
++        let dev = MockDevice::default();
++        let mut world = roof_world(&dev);
++        let before_writes = dev.writes.borrow().len();
++        let mut schedule = Schedule::default();
++        schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred,
++            nani_update_roof_floor_for_roofs_ecs).chain_ignore_deferred());
++        schedule.run(&mut world);
++        let gpu = world.resource::<GpuWorld>();
++        assert_eq!(gpu.total_instance_count, 0);
++        let subset = gpu.owned_subset_mut(GpuWorldSubsetKind::RoofFloor);
++        assert_eq!(subset.instance_count(), 0);
++        assert!(subset.positions_dirty().is_empty());
++        assert_eq!(dev.writes.borrow().len(), before_writes);
+     }
+ 
+     fn world_with_solid_pair(dev: &MockDevice) -> GpuWorld {

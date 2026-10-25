@@ -1,0 +1,85 @@
+{
+  "original_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "method": "independent PE import parsing and original Capstone CFG; not author fixture/model execution",
+  "math_imports": [
+    {
+      "thunk": "0x142923fd0",
+      "iat": "0x1431931a8",
+      "dll": "api-ms-win-crt-math-l1-1-0.dll",
+      "name": "sinf",
+      "original_6bytes": "ff25d2f18600"
+    },
+    {
+      "thunk": "0x142923eb0",
+      "iat": "0x143193128",
+      "dll": "api-ms-win-crt-math-l1-1-0.dll",
+      "name": "exp2f",
+      "original_6bytes": "ff2572f28600"
+    },
+    {
+      "thunk": "0x142924060",
+      "iat": "0x1431931d0",
+      "dll": "api-ms-win-crt-math-l1-1-0.dll",
+      "name": "truncf",
+      "original_6bytes": "ff256af18600"
+    }
+  ],
+  "human_phase_jump_targets": [
+    "0x1408b2ea0",
+    "0x1408b2e07",
+    "0x1408b2e90",
+    "0x1408b2e07",
+    "0x1408b2e07"
+  ],
+  "replay_math_call_counts": {
+    "sinf": 2,
+    "exp2f": 2,
+    "truncf": 1
+  },
+  "ranges": [
+    {
+      "name": "human",
+      "va": "0x1408b2b30",
+      "size": 2516,
+      "sha256": "9e8d7816a94a4bd75aeaf05c109584f8ac0cd89fc68620a53084887ea1c87fb2"
+    },
+    {
+      "name": "ui2d",
+      "va": "0x14092a100",
+      "size": 1265,
+      "sha256": "2cda0723497fff9890b4d7374709dffbe7d9322f534e30c236e3969114ab210a"
+    },
+    {
+      "name": "mesh",
+      "va": "0x140a68430",
+      "size": 1556,
+      "sha256": "fe0aefb732c656c8a5ba4d36249b7763c88863c5263b0b77134ad2628f19c432"
+    },
+    {
+      "name": "replay",
+      "va": "0x140b1b860",
+      "size": 1959,
+      "sha256": "dfb016969bcf92b2e22037014b917129fedfa391f23654831c8d0f8537b27302"
+    },
+    {
+      "name": "mesh_indexed_collect",
+      "va": "0x1412fd550",
+      "size": 496,
+      "sha256": "202ef2cff4377bf22a1bbcf05b86db1e39cbd7daf14db4524c5793d08fac7c33"
+    }
+  ],
+  "reviewed_source_sha256": {
+    "tiny-glade/crates/country-core/src/systems/debug/human_scale_ref.rs": "b7aed996b41439a9f4a843368640e929e74811d409e05a726f7f88154ec0893d",
+    "tiny-glade/crates/country-core/src/systems/ui_2d_follow_mouse.rs": "e64677a1cc7fee76e013e3aef99bb11c1ac88d6865f975bd510a9710cfeceb3b",
+    "tiny-glade/crates/country-core/src/systems/mesh_follow_terrain.rs": "9afb688530f744bf26c5b8e7d988bc81d7b180323ad17daf8726c7fd6c0346bc",
+    "tiny-glade/crates/country-core/src/systems/history/signifier_replay_active.rs": "8fc37f01099acb7cfd697e65c424bf09f8c400036b43266d41d96eda10a0172c",
+    "tiny-glade/crates/tiny-glade/src/run_game.rs": "493340c02445ebb60a8e194239e32ee97736dcfc790792b0394cfaff2fe70a81",
+    "tiny-glade/crates/tiny-glade/src/audio_host.rs": "e490e4d38b5c532fd2392b40bb64142ffae2b6cbbb368709c65ef32b85a2a798",
+    "tiny-glade/crates/country-core/src/systems/main_camera.rs": "c9db4489f67ac011695b68f9b1d53af2f34a559d25bff65bc2f26304d06deda2",
+    "tiny-glade/crates/country-core/src/systems/camera_rig/main_camera.rs": "c82019183d5a653ff5c4fa1224fef613a1c3e70f05519fe83940dcfef0ac4875",
+    "tiny-glade/crates/country-core/src/systems/camera_rig/free_camera.rs": "1db545987ae8f79b1d8aa4e3918a22975effbc4913d05e510a6be3d4ff15a258",
+    "tiny-glade/crates/country-core/src/systems/camera_rig/walk.rs": "8f6a497517c005d27c992c1ccbdf02a1fb56b3dea5f83fd2cc03610c3e937c01",
+    "tiny-glade/crates/country-core/src/systems/backend/photomode.rs": "4785a5c68a19c298dd8bb4da66323b34487eb651f2715b3bdd9e9cdb75b61c07",
+    "tiny-glade/crates/systems/toolbar/src/photomode.rs": "94f3606284255fc634bb096164d228677e63e8ace6c74d0c1990e7f670cb6d15"
+  }
+}

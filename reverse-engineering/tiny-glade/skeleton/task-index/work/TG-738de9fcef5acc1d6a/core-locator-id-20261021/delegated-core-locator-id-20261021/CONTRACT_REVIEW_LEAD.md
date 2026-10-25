@@ -1,0 +1,7 @@
+# Locator与操作独立ID合同独审
+
+通过，允许唯一writer实现本合同5源必要闭包（cull源仍peer唯一writer，tree只交两个literal增量）。原new15B与apply1468B对原addr+u32key的来源完整，现代语义字段不复刻裸union正确。actualchange patch.id和Info.word2c确实独立，禁止继续猜key；现代Op独立DecoratorId及所有实际构造/存储/事件key一并迁移，能让compiler协助暴露漏网非Default caller。
+
+place用明确OpID，change用目的None沿源/Some实际目标，typed直接patch.id；只保原HashMap集合owner/record先后，不扫桶或选任意装饰。真实external cmd ID/cull循环ID/chimney lookup localID各有来源；chimney gate/payload0与原place producer未闭保持合同边界，不借此扩大dispatcher/UI还原。
+
+要求新增同墙不同ID不合并/同locator去重及record继续增长、mapkey不同mutableword并修改后key保持、目标/沿源、失败后history已写而storage/event未提交等真实owner测试。保持window_extra既有body；cull append现validator候选，不从旧production并写。源码冻结后独审与root Cargo验证，当前不把合同当实现。

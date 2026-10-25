@@ -1,0 +1,157 @@
+/// Actual original W3 shaders and real dynamic BDA/NormalDebug resources.
+/// Uses Fixture's original preset producer (tag1 zero initialization, including
+/// depth preset10). No extra input clear, fake camera or ActiveStrokes is added.
+/// This checks original gate/tick/owner/actual submission/readback, not a full
+/// terrain image oracle: no unproven expected pixel/noise value is asserted.
+#[test]
+fn original_terrain_strokes_empty_clean_then_event_odd_xz_use_the_same_owner() {
+    use bevy_ecs::{change_detection::DetectChanges, event::Events};
+    use country_core::{
+        render::normals_debug::NormalDebugSsbo, resources::terrain_editing::TerrainEditingData,
+        systems::render_loop::compute_passes::rasterize_terrain_stroke::RecalculateHeightMapCmd,
+    };
+    let Some(mut fixture) = Fixture::new() else {
+        return;
+    };
+    assert!(
+        fixture.device.capabilities.buffer_device_address,
+        "actual original terrain shader needs BDA"
+    );
+    let buffers = fixture.bridge.hosts().buffers.clone();
+    fixture
+        .world
+        .resource::<AssetSsboLibrary>()
+        .add_new::<NormalDebugSsbo>(buffers.as_ref());
+    fixture.world.insert_resource(TerrainEditingData(
+        tg_terrain::stroke::TerrainEditingData::default(),
+    ));
+    fixture
+        .world
+        .init_resource::<Events<RecalculateHeightMapCmd>>();
+    assert!(!fixture.world.resource::<TerrainEditingData>().0.rasterized);
+    assert!(
+        fixture
+            .world
+            .resource::<TerrainEditingData>()
+            .strokes
+            .is_empty()
+    );
+
+    for index in 0..3 {
+        if index == 2 {
+            // Real stroke API, odd XYZ points with deliberately distinct Y/Z.
+            // The original uploader must copy XZ; Y is not a terrain coordinate.
+            let mut data = fixture.world.resource_mut::<TerrainEditingData>();
+            assert!(data.0.rasterized, "previous W3 owns the same true flag");
+            let id = data.new_stroke([-6.0, 77.0, -4.0]).unwrap().unwrap();
+            let stroke = data.strokes.get_mut(&id).unwrap();
+            stroke.points.extend([[0.0, 88.0, 1.0], [6.0, 99.0, 4.0]]);
+            assert_eq!(stroke.points.len(), 3);
+            assert!(
+                data.0.rasterized,
+                "editing does not invent a separate reset instead of the original event"
+            );
+            drop(data);
+            fixture
+                .world
+                .resource_mut::<Events<RecalculateHeightMapCmd>>()
+                .send(RecalculateHeightMapCmd);
+        }
+        fixture.world.increment_change_tick();
+        let tick = fixture.world.read_change_tick();
+        let mut output = None;
+        let (recorded, built) = fixture
+            .bridge
+            .build_frame(|frame| {
+                tiny_glade::frame_setup::with_frame_resources(
+                    frame,
+                    &mut fixture.world,
+                    |frame, world| {
+                        // Immutable inspection must not itself mark the resource changed.
+                        let flag = world.resource::<TerrainEditingData>().0.rasterized;
+                        assert_eq!(flag, index != 0);
+                        let recorded =
+                            tiny_glade::world_terrain::rasterize_terrain_stroke(frame, world)?;
+                        assert_eq!(recorded, if index == 1 { 0 } else { 4 });
+                        assert!(world.resource::<TerrainEditingData>().0.rasterized);
+                        let t = world
+                            .resource::<AssetTextureLibrary>()
+                            .get_rg_texture(TexturePreset(9));
+                        output = Some(readback(
+                            frame,
+                            world,
+                            &fixture.shaders,
+                            &fixture.device,
+                            RgTexture {
+                                resource: t.resource as u32,
+                                desc: t.desc,
+                            },
+                        )?);
+                        Ok(recorded)
+                    },
+                )
+            })
+            .unwrap();
+        assert_eq!(recorded, if index == 1 { 0 } else { 4 });
+        assert_eq!(
+            fixture
+                .world
+                .get_resource_ref::<TerrainEditingData>()
+                .unwrap()
+                .last_changed(),
+            tick,
+            "native W3 marks changed even on a clean skip"
+        );
+        assert!(fixture.world.resource::<TerrainEditingData>().0.rasterized);
+        assert_eq!(
+            fixture.world.resource::<TerrainEditingData>().strokes.len(),
+            usize::from(index == 2)
+        );
+        assert_eq!(
+            fixture.world.resource::<TerrainEditingData>().next_index,
+            u32::from(index == 2)
+        );
+        fixture
+            .bridge
+            .shader_backend()
+            .prewarm(Duration::from_secs(30))
+            .unwrap();
+        let receipt = fixture.bridge.execute_built(built).unwrap();
+        assert!(
+            !receipt.receipts.is_empty(),
+            "real Vulkan submissions are mandatory"
+        );
+        for (name, n) in [
+            ("Rasterize Terrain Stroke", 1),
+            ("Blur Terrain Stroke", 2),
+            ("Terrain Derivative", 1),
+        ] {
+            assert_eq!(
+                receipt
+                    .snapshot
+                    .pass_order
+                    .iter()
+                    .filter(|p| p.as_str() == name)
+                    .count(),
+                if index == 1 { 0 } else { n },
+                "frame{index} original {name}"
+            );
+        }
+        fixture.bridge.wait_submits_done(10_000_000_000).unwrap();
+        assert_eq!(
+            fixture
+                .bridge
+                .with_session(|session| session.frame_import_count()),
+            0,
+            "same-session BDA and preset imports retire after actual completion"
+        );
+        let mut bytes = vec![0; 512 * 512 * 4];
+        output.unwrap().read_bytes(0, &mut bytes).unwrap();
+        // Source preset9 is native R16_UNORM, so readback values have a finite
+        // representable range. No guessed terrain/noise image is compared.
+        let checksum: u64 = bytes.iter().map(|v| u64::from(*v)).sum();
+        eprintln!(
+            "original W3 actual frame{index}: passes={recorded}, resolved checksum={checksum}"
+        );
+    }
+}

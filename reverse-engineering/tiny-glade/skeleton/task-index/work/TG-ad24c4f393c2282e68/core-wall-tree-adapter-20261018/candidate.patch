@@ -1,0 +1,143 @@
+--- a/games_test/tiny-glade/crates/systems/tree-tool/src/replay_tree.rs
++++ b/games_test/tiny-glade/crates/systems/tree-tool/src/replay_tree.rs
+@@ -20,8 +20,7 @@
+ //!   0x20 = EventInstance 头 8B + 0x18）。
+ //! - Delete undo / Place non-undo 的 InsertTreeCmd 重建：共享 InsertTreeCmd
+ //!   {id, position, scale, prefab_name} 承载 name/position/scale；真实槽另有
+-//!   height/variant/rotation/flags（stride 0x48）→ **分歧 T2**（tree_edit.rs
+-//!   由 history 组持有，0x48 未落库）。
++//!   rotation/variant/is_preplaced 已从实际编辑数据保留；native +0x40 为 EventId。
+ //! - Move undo：二进制读 edit+0x14/+0x1c（**旧位置**）→ 现由
+ //!   `TreeEditData.previous_position` 承载并重发 MoveTreeCmd（FIX-C1 闭合）。
+ 
+@@ -41,6 +40,8 @@
+     time: Res<GameTime>,
+ ) {
+     let speed = buffer.speed;
++    // Existing id() now requires the original outer storage-index binding;
++    // malformed standalone TreeData must never target placement.variant as ID.
+     if let Some(bucket) = buffer.front_mut_bucket() {
+         // O：待移除索引集（decomp 行 220-242 累计；逆序 Vec::remove）。
+         let mut removal: Vec<usize> = Vec::new();
+@@ -60,6 +61,9 @@
+                                 // rotation/flags → 分歧 T2。
+                                 inserts.write(InsertTreeCmd {
+                                     id: cmd.edit.id(),
++                                    rotation_degrees: cmd.edit.rotation_degrees(),
++                                    variant: cmd.edit.placement_id(),
++                                    is_preplaced: cmd.edit.is_preplaced(),
+                                     position: cmd.edit.edit_position(),
+                                     scale: cmd.edit.edit_scale(),
+                                     prefab_name: cmd.edit.prefab_name().to_string(),
+@@ -90,10 +94,12 @@
+                                 deletes.write(DeleteTreeCmd { id: cmd.edit.id() });
+                             } else {
+                                 // O：重建 0x48B InsertTreeCmd（decomp 行 183-203）。
+-                                // 共享字段承载 name/position/scale；height/
+-                                // variant/rotation/flags → 分歧 T2。
++                                // 保留完整 name/position/scale/rotation/variant/is_preplaced/index。
+                                 inserts.write(InsertTreeCmd {
+                                     id: cmd.edit.id(),
++                                    rotation_degrees: cmd.edit.rotation_degrees(),
++                                    variant: cmd.edit.placement_id(),
++                                    is_preplaced: cmd.edit.is_preplaced(),
+                                     position: cmd.edit.edit_position(),
+                                     scale: cmd.edit.edit_scale(),
+                                     prefab_name: cmd.edit.prefab_name().to_string(),
+@@ -131,3 +137,96 @@
+         }
+     }
+ }
++
++#[cfg(test)]
++mod identity_tests {
++    use super::*;
++    use country_core::resources::{
++        history::{
++            ReplayBucket,
++            tree_edit::{TreeEdit, TreeEditData, TreeReplayCmd},
++        },
++        placement_data::PlacementDataSsbo,
++        tree_storage::TreeStorageIndex,
++    };
++    #[test]
++    fn actual_replay_keeps_storage_index_separate_and_restores_complete_insert_data() {
++        for (kind, undo) in [
++            (0, false),
++            (0, true),
++            (1, false),
++            (1, true),
++            (2, false),
++            (2, true),
++        ] {
++            let mut placement = PlacementDataSsbo::default();
++            placement.position = glam::Vec3::new(1.0, 2.0, 3.0);
++            placement.scale = 0.75;
++            placement.rotation_angle = 45.0;
++            placement.id = -17;
++            let data = TreeEditData::from_placement(
++                TreeStorageIndex(0x123456789abcdef0),
++                &placement,
++                "Oak".into(),
++                true,
++            );
++            let edit = match kind {
++                0 => TreeEdit::Place(data),
++                1 => TreeEdit::Move(TreeEditData::for_move(
++                    TreeStorageIndex(0x123456789abcdef0),
++                    glam::Vec3::new(-1.0, -2.0, -3.0),
++                    placement.position,
++                )),
++                _ => TreeEdit::Delete(data),
++            };
++            // Core tests separately exercise the original outer save schema.
++            let mut buffer = ReplayBuffer::new(1.0);
++            buffer.push(ReplayBucket {
++                entry_index: 0,
++                undo,
++                commands: vec![ReplayCommand::Tree(TreeReplayCmd::expanded(
++                    &edit, undo, true,
++                ))],
++                timing: vec![Default::default()],
++            });
++            let mut world = World::new();
++            world.insert_resource(buffer);
++            world.insert_resource(GameTime::default());
++            world.init_resource::<Events<InsertTreeCmd>>();
++            world.init_resource::<Events<MoveTreeCmd>>();
++            world.init_resource::<Events<DeleteTreeCmd>>();
++            let mut schedule = Schedule::default();
++            schedule.add_systems(replay_tree::<()>);
++            schedule.run(&mut world);
++            if kind == 1 {
++                let events = world.resource::<Events<MoveTreeCmd>>();
++                let mut reader = events.get_cursor();
++                let cmd = reader.read(events).next().unwrap();
++                assert_eq!(cmd.index, 0x123456789abcdef0);
++                assert_eq!(
++                    cmd.position,
++                    if undo {
++                        glam::Vec3::new(-1.0, -2.0, -3.0)
++                    } else {
++                        placement.position
++                    }
++                );
++            } else if (kind == 0 && !undo) || (kind == 2 && undo) {
++                let events = world.resource::<Events<InsertTreeCmd>>();
++                let mut reader = events.get_cursor();
++                let cmd = reader.read(events).next().unwrap();
++                assert_eq!(cmd.id, 0x123456789abcdef0);
++                assert_eq!(cmd.variant, -17);
++                assert_eq!(cmd.rotation_degrees, 45.0);
++                assert!(cmd.is_preplaced);
++                assert_eq!(cmd.scale, 0.75);
++                assert_eq!(cmd.position, placement.position);
++                assert_eq!(cmd.prefab_name, "Oak");
++            } else {
++                let events = world.resource::<Events<DeleteTreeCmd>>();
++                let mut reader = events.get_cursor();
++                assert_eq!(reader.read(events).next().unwrap().id, 0x123456789abcdef0);
++            }
++        }
++    }
++}

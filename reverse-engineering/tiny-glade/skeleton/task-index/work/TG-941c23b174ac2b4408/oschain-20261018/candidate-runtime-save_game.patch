@@ -1,0 +1,1012 @@
+--- games_test/tiny-glade/crates/country-core/src/systems/save/save_game.rs
++++ games_test/tiny-glade/crates/country-core/src/systems/save/save_game.rs
+@@ -8,28 +8,28 @@
+ //! Identity/Camera/Colors 三节已按 re-analyst 域类型证据包组装；其余节（TimeOfDay/
+ //! Sheep/chain_index/history_start/snapshots）由所属域提供序列化载荷，缺失即 panic
+ //! （原版每节必写），不伪造。
+-pub use crate::resources::save_file::SaveFileSection;
++use crate::resources::critters::{
++    sheep::{control::capture_sheep_snapshot, Sheep},
++    CritterGoal,
++};
++use crate::resources::glade_color_customization::GladeColorCustomization;
+ use crate::resources::history::snapshots::current_snapshot;
+ use crate::resources::history::snapshots::set_current_snapshot;
+ use crate::resources::history::transactions::ResolvedHistorySnapshot;
+-use crate::resources::glade_color_customization::GladeColorCustomization;
+ use crate::resources::history::HistoryIdentity;
+ use crate::resources::roofs::roof_animation::RoofMarkedForDeletion;
+ use crate::resources::roofs::roof_shape::Roof;
++pub use crate::resources::save_file::SaveFileSection;
+ use crate::resources::session::SessionId;
+ use crate::resources::session::SessionMeta;
+ use crate::resources::time::GameTime;
+ use crate::systems::camera_rig::CameraRigParametersCache;
+-use crate::resources::critters::{
+-    CritterGoal,
+-    sheep::{Sheep, control::capture_sheep_snapshot},
+-};
+-use crate::utils::components::transform::Transform;
+ use crate::systems::save::save_backup_list::BackupSaveFileKind;
+ use crate::systems::save::save_backup_metronome::SaveBackupMetronome;
++use crate::systems::save::snapshot::capture_game_snapshot_save_data;
+ use crate::systems::save::snapshot::SnapshotDomainData;
+ use crate::systems::save::snapshot::SnapshotSaveData;
+-use crate::systems::save::snapshot::capture_game_snapshot_save_data;
++use crate::utils::components::transform::Transform;
+ use bevy_ecs::prelude::{Query, Res, ResMut, Without};
+ use hashbrown::HashMap;
+ use serde::{Serialize, Serializer};
+@@ -159,10 +159,10 @@
+ // 存档线程命令通道（PDB：`save_game::AsyncSaveCmd`，经 mpsc 传输）
+ // ---------------------------------------------------------------------------
+ 
+-/// 游戏线程 → 存档线程的命令。原版变体标签 **3..=11**（① r6-async-savecmd 契约 §1，
++/// 游戏线程 → 存档线程的命令。原版已观测业务变体标签 **3..=10**（① r6-async-savecmd 契约 §1，
+ /// ALGORITHMS §2.1 save_thread 0x141720680 / 分发 0x141721aa0 权威；0/1/2 未在 switch
+ /// 出现 = 死/历史变体）。判别值显式对齐：3 OpenFile / 4 CloseFile / 9 CaptureSnapshot /
+-/// 10 Flush / 0xb(11) Shutdown；5/6/7/8 = ChangeSection/ReplaceEdits/BackupSave/ManualBackup。
++/// 10 Flush (0xb belongs to outer TryRecvError, not AsyncSaveCmd)；5/6/7/8 = ReplaceEdits/ChangeSection/BackupSave/ManualBackup。
+ ///
+ /// **字段名约定**：各变体的载荷字段名是**语义字段**（由分发行为/存档 codec 合同推导），
+ /// **非**原字节布局字段名。原版载荷仅 tag@+0（qword 判别）与分段偏移已被观测
+@@ -180,19 +180,19 @@
+     } = 3,
+     /// 4 CloseFile。载荷含 session id（语义；分段字段 U）。
+     CloseFile { session: SessionId } = 4,
+-    /// 5 ChangeSection：改节 + mark_dirty。
++    /// 6 ChangeSection：改节 + mark_dirty。
+     /// 载荷分段（O）：param_1[1..2]（+8/+0x10）、[3..4]（+0x18/+0x20）。
+     /// `section`/`value` 为语义字段（change_section 行为合同），字节布局名待取证。
+     ChangeSection {
+         section: SaveFileSection,
+-        value: SerializedJson,
+-    } = 5,
+-    /// 6 ReplaceEdits：截断 + 追加编辑。
++        value: DeferredJsonValue,
++    } = 6,
++    /// 5 ReplaceEdits：截断 + 追加编辑。
+     /// 载荷分段（O）：{byte 标志@+3, edit 列表 ptr/len}。`truncate`/`edits` 为语义字段。
+     ReplaceEdits {
+         truncate: usize,
+         edits: Vec<SerializedJson>,
+-    } = 6,
++    } = 5,
+     /// 7 BackupSave：`history-auto` 前缀备份。
+     /// `path`/`kind` 为语义字段；`remove_counter` = 节拍器返回的 retention 删除候选
+     /// （O：BackupDecision.remove_counter → "Backup limit reached; removing " 删除旧备份）。
+@@ -212,11 +212,15 @@
+         reply: Option<crossbeam_channel::Sender<Result<(), anyhow::Error>>>,
+     } = 8,
+     /// 9 CaptureSnapshot：快照 JSON 落盘。
+-    CaptureSnapshot { snapshot: Arc<SnapshotSaveData> } = 9,
+-    /// 10 Flush。
+-    Flush = 10,
+-    /// 11 Shutdown：需要时 flush_deferred_and_sync + 确认 + 退出线程。
+-    Shutdown { flush: bool } = 11,
++    CaptureSnapshot {
++        snapshot: Arc<SnapshotSaveData>,
++        pending: crate::resources::history::MaybePendingSnapshotId,
++    } = 9,
++    /// Original tag10 carries a one-result channel. The worker applies all
++    /// deferred sections, syncs the actual shadow file, then returns success/error.
++    Flush {
++        reply: crossbeam_channel::Sender<Result<(), anyhow::Error>>,
++    } = 10,
+ }
+ 
+ impl AsyncSaveCmd {
+@@ -227,281 +231,285 @@
+     }
+ }
+ 
+-/// 快照捕获请求（X4：save_game 0x140a3f470 触发时宿主构建 SnapshotSaveData）。
+-#[derive(bevy_ecs::event::Event, Clone, Debug, Default)]
+-pub struct CaptureSnapshotRequested;
+-
+-/// 同步保存载荷（宿主/域采集后注入；O：save_game 0x140a3f470 组装
+-/// `GameSaveData` 的域资源面）。
+-///
+-/// 原生 save_game 在函数内从 ~9 域资源组装 `GameSaveData`（History edits
+-/// `Cloned<Skip<Iter<MultiEdit>>>`、Sheep Query、Roof Query、Camera/Colors/ToD/…），
+-/// 再 `send<AsyncSaveCmd>`（OpenFile/ChangeSection/Flush）+ `SessionMeta::write_to_disk`
+-/// + `sync_channel` 备份请求。域 Query/资源尚未全部在本层注册，`sections`/`edits`
+-/// 由宿主采集后放入本资源；未注册时系统跳过同步保存面（并记录一次），不伪造节载荷。
+-#[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
+-pub struct SaveGameSyncData {
+-    /// 完整 10 节载荷（缺省 = 宿主未接入）。
+-    pub sections: Option<GameSaveSections>,
+-    /// History 编辑（原生 `history.edits.iter().skip(1).cloned()` 的等价输入）。
+-    pub edits: Vec<SerializedJson>,
+-}
+-
+-/// `save_game` 0x140a3f470 的 ECS 系统（本体组装，可接部分）。
+-///
+-/// fresh callees（2026-10-17）确立了本系统的真实调用链：
+-/// `add_active_game_time` → `consider_backing_up`（threshold `+0x148 < 60.0` 门、
+-/// clamp[0,8]、逐秒档位）→ **内联快照采集**（`current_snapshot` 0x140a84650 为空 →
+-/// log "Capturing a game snapshot" → `capture_game_snapshot_save_data` 0x1417a0430 →
+-/// Arc → `send<AsyncSaveCmd>`（tag 9 CaptureSnapshot）→ `set_current_snapshot`
+-/// 0x140a84760）→ 各节 `ChangeSection(5)`（值 != 缓存才发）→ **内联同步保存**
+-/// （History edits → `send<AsyncSaveCmd>`）→ `SessionMeta::write_to_disk` 0x140b463c0 →
+-/// `sync_channel<Result<(),anyhow::Error>>` 手动备份请求-应答 → 错误状态
+-/// `try_recv<AutosaveErrorState>` 吸干。
+-///
+-/// 域 Query（Sheep/Roof/History/TimeOfDay…）在本 crate 能取得的面直接采集；其余
+-/// 节载荷由 [`SaveGameSyncData`] 注入（不伪造）。
++/// B `SaveGameReplayModTracker`: previous pop-attempt counter, distinct from
++/// queue length. It is updated even on frames where queued replay prevents capture.
++#[derive(Default)]
++pub struct SaveGameReplayModTracker {
++    previous_pop_counter: u64,
++}
++
++/// Immutable projection of the six existing CPU raster owners. It adds no
++/// second raster authority and borrows the same composite selected by `read`.
++#[derive(bevy_ecs::system::SystemParam)]
++pub struct SaveRasterRead<'w> {
++    path: Res<'w, crate::resources::world_raster_defs::PathRaster>,
++    cobblestone1: Res<'w, crate::resources::world_raster_defs::Cobblestone1Raster>,
++    cobblestone2: Res<'w, crate::resources::world_raster_defs::Cobblestone2Raster>,
++    cobblestone3: Res<'w, crate::resources::world_raster_defs::Cobblestone3Raster>,
++    water: Res<'w, crate::resources::world_raster_defs::WaterRaster>,
++    garden: Res<'w, crate::resources::world_raster_defs::GardenRaster>,
++}
++impl SaveRasterRead<'_> {
++    fn capture(&self) -> Vec<(&'static str, Vec<u8>)> {
++        crate::resources::world_raster_defs::AllWorldRasterRead {
++            path: &self.path,
++            cobblestone1: &self.cobblestone1,
++            cobblestone2: &self.cobblestone2,
++            cobblestone3: &self.cobblestone3,
++            water: &self.water,
++            garden: &self.garden,
++        }
++        .read()
++        .map(|(name, raster)| (name, raster.data.to_vec()))
++        .into_iter()
++        .collect()
++    }
++}
++
++/// Same live owners as the original 16-param first tuple. Snapshot collection
++/// is inline on the save decision; there is no separately synchronized History
++/// cursor, optional-domain fallback or injected JSON resource.
++#[derive(bevy_ecs::system::SystemParam)]
++pub struct SaveSnapshotWorld<'w, 's> {
++    walls: Res<'w, crate::resources::walls::InnerWalls>,
++    roofs: Query<'w, 's, &'static Roof, Without<RoofMarkedForDeletion>>,
++    terrain: Res<'w, crate::resources::terrain_editing::TerrainEditingData>,
++    heights: Res<
++        'w,
++        crate::resources::terrain_height::TerrainHeightsData<
++            crate::resources::terrain_height::TerrainHeightSsbo,
++        >,
++    >,
++    decorators: Res<'w, crate::resources::walls::decorator_storage::DecoratorStorage>,
++    wall_colors: Res<'w, crate::resources::color_id::WallColorIds>,
++    gate_colors: Res<'w, crate::resources::color_id::GateColorIds>,
++    halftimber_colors: Res<'w, crate::resources::color_id::HalftimberColorIds>,
++    trees: Query<
++        'w,
++        's,
++        (
++            &'static crate::systems::prefab::PrefabInstanceData,
++            &'static crate::resources::prefab::PrefabInstance,
++            &'static crate::components::trees::TreeComponent,
++        ),
++    >,
++    clutter: Res<'w, crate::systems::ui_clutter::DeletedAutoClutter>,
++    raster: SaveRasterRead<'w>,
++    stairs: Res<'w, crate::resources::stairs::stairs_state::StairsState>,
++    removed_supports:
++        Res<'w, crate::resources::stairs::stairs_removed_supports::StairsRemovedSupports>,
++}
++impl SaveSnapshotWorld<'_, '_> {
++    fn capture(&self) -> SnapshotDomainData {
++        use super::snapshot::SnapshotTreesEntry;
++        use crate::resources::color_id::ColorId;
++        use crate::resources::history::tree_edit::TreeEditData;
++        use crate::resources::tree_storage::TreeStorageIndex;
++        let trees: Vec<SnapshotTreesEntry> = self
++            .trees
++            .iter()
++            .map(|(data, instance, tree)| {
++                let placement = &instance.0;
++                SnapshotTreesEntry {
++                    index: TreeStorageIndex(tree.id),
++                    tree: TreeEditData {
++                        storage_index: Some(TreeStorageIndex(tree.id)),
++                        position: placement.position,
++                        scale: placement.scale,
++                        rotation_degrees: placement.rotation_angle,
++                        id: placement.id,
++                        prefab_name: data.prefab_name.as_str().to_owned(),
++                        is_preplaced: tree.is_preplaced,
++                        // This runtime-only field is not part of TreeData's six
++                        // serialized entries; a captured current tree has no move.
++                        previous_position: placement.position,
++                    },
++                }
++            })
++            .collect();
++        SnapshotDomainData::collect(
++            trees,
++            super::snapshot::collect_walls(self.walls.all().map(|(id, wall)| (id, wall.clone()))),
++            self.clutter.0.iter().copied(),
++            Some(super::snapshot::take_stairs_snapshot(&self.stairs)),
++            self.decorators.take_snapshot().states,
++            (
++                self.wall_colors
++                    .iter_nondefault()
++                    .map(|(i, value)| (i, ColorId(value))),
++                self.gate_colors
++                    .iter_nondefault()
++                    .map(|(i, value)| (i, ColorId(value))),
++                self.halftimber_colors
++                    .iter_nondefault()
++                    .map(|(i, value)| (i, ColorId(value))),
++            ),
++            (*self.terrain).clone(),
++            self.raster.capture(),
++            self.roofs.iter().cloned(),
++        )
++        .with_terrain_and_supports(
++            // The current canonical CPU owner packs two u16 cells in each
++            // native u32 word. Preserve its exact 0x80000B allocation bytes;
++            // no height conversion, zero fill or stroke-derived substitute.
++            bytemuck::cast_slice(self.heights.heights()).to_vec(),
++            self.heights.min_height()..self.heights.max_height(),
++            (*self.removed_supports).clone(),
++        )
++        .sorted()
++    }
++}
++
++#[derive(bevy_ecs::system::SystemParam)]
++pub struct SaveFrameWorld<'w, 's> {
++    history: ResMut<'w, crate::resources::history::History>,
++    auto: ResMut<'w, AutoSaveState>,
++    active: ResMut<'w, crate::resources::session::ActiveSession>,
++    camera: Res<'w, crate::systems::camera_rig::main_camera::MainCamera>,
++    tod: Res<'w, crate::resources::time_of_day::TimeOfDay>,
++    colors: Res<'w, GladeColorCustomization>,
++    time: Res<'w, GameTime>,
++    replay: Res<'w, crate::resources::history::ReplayBuffer>,
++    bulldoze:
++        Res<'w, crate::systems::wall::eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer>,
++    image: Res<'w, crate::resources::image_formation::ImageFormationConfigs>,
++    sheep: Query<'w, 's, (&'static Transform, &'static Sheep, &'static CritterGoal)>,
++    save_thread: ResMut<'w, super::save_thread::SaveThreadHandle>,
++}
++
++/// B `save_game` @140a3f470, 17,300 bytes. Registered in numeric set43,
++/// conditioned only on the original Option<Res<ActiveSession>> presence gate.
++/// Save/close requests are consumed regardless of whether capture is stable;
++/// the worker's synchronous flush result decides whether completion is emitted.
+ pub fn save_game_system(
+-    mut auto: ResMut<AutoSaveState>,
+-    time: Res<GameTime>,
+-    active: Res<crate::resources::session::ActiveSession>,
+-    colors: Res<GladeColorCustomization>,
+-    sheep: Query<(&Transform, &Sheep, &CritterGoal)>,
+-    mut snapshot_state: ResMut<SnapshotCaptureState>,
+-    roofs: Query<&Roof, Without<RoofMarkedForDeletion>>,
+-    walls: Option<Res<crate::resources::walls::InnerWalls>>,
+-    terrain: Option<Res<crate::resources::terrain_editing::TerrainEditingData>>,
+-    stairs: Option<Res<crate::resources::stairs::stairs_state::StairsState>>,
+-    sync_data: Option<Res<SaveGameSyncData>>,
+-    save_thread: Option<ResMut<super::save_thread::SaveThreadHandle>>,
++    mut frame: SaveFrameWorld,
++    snapshot_world: SaveSnapshotWorld,
++    mut save_requests: bevy_ecs::event::EventReader<SaveGameCmd>,
++    mut shutdown_requests: bevy_ecs::event::EventReader<crate::resources::events::ShutdownGameCmd>,
++    mut complete: bevy_ecs::event::EventWriter<SavingGameComplete>,
++    mut replay_tracker: bevy_ecs::system::Local<SaveGameReplayModTracker>,
+ ) {
+-    // ① 节拍器：阈值门（+0x148 < 60.0）在 metronome 累计块内。
+-    auto.metronome.add_active_game_time(time.delta);
+-    // ② 触发备份 → 内联快照采集 + 备份生产。
+-    if let Some(decision) = auto.metronome.consider_backing_up() {
+-        // O：`History::current_snapshot` 为空才捕获；否则仅 drop 既有 Arc。
+-        if should_capture_snapshot(&snapshot_state.snapshots, snapshot_state.cursor) {
+-            log::info!("Capturing a game snapshot");
+-            let domain = collect_snapshot_domain(
+-                walls.as_deref(),
+-                roofs.iter(),
+-                terrain.as_deref(),
+-                stairs.as_deref(),
+-            );
+-            let snapshot = capture_game_snapshot_save_data(
+-                active.id,
+-                snapshot_state.cursor as u64, // U：snapshot_id 源待①取证
+-                snapshot_state.cursor,
+-                domain.sorted(),
+-            );
+-            // 原生 `send<AsyncSaveCmd>` 后 unwrap_failed：发送失败 panic。
+-            auto.send_command_expect(AsyncSaveCmd::CaptureSnapshot {
+-                snapshot: snapshot.clone(),
++    frame.save_thread.error_state.drain_pending();
++    publish_history_edits(&mut frame.history, &mut frame.auto);
++    let stored = frame.camera.store_parameters();
++    let camera = CameraRigParametersCache {
++        yaw: stored.yaw,
++        pitch: stored.pitch,
++        position: stored.position,
++        camera_rig_arm_length: stored.camera_rig_arm_length,
++        vertical_fov_degrees: stored.vertical_fov_degrees,
++        pitch_offset: stored.pitch_offset,
++        yaw_offset: stored.yaw_offset,
++    };
++    let sheep = Some(capture_sheep_snapshot(frame.sheep.iter()));
++    let pop_counter = frame.replay.pop_counter();
++    let stable = frame.replay.is_empty()
++        && replay_tracker.previous_pop_counter == pop_counter
++        && frame.bulldoze.0.is_empty()
++        && !frame.history.is_recording();
++    replay_tracker.previous_pop_counter = pop_counter;
++    let backup = if frame.auto.metronome.active_game_threshold() < 60.0 {
++        frame.auto.metronome.add_active_game_time(frame.time.delta);
++        if stable {
++            frame.auto.metronome.consider_backing_up()
++        } else {
++            None
++        }
++    } else {
++        None
++    };
++    // Do not use short-circuit || between readers: both original cursors move
++    // to the end even when the other queue already contains a request.
++    let explicit_save = save_requests.read().count() != 0;
++    let explicit_shutdown = shutdown_requests.read().count() != 0;
++    let requested = explicit_save || explicit_shutdown;
++    if stable
++        && (backup.is_some() || requested)
++        && current_snapshot(
++            &frame.history.ledger().resolved_snapshots,
++            frame.history.ledger().cursor,
++        )
++        .is_none()
++    {
++        log::info!("Capturing a game snapshot");
++        let cursor = frame.history.ledger().cursor;
++        let pending = crate::resources::history::MaybePendingSnapshotId::new();
++        let snapshot =
++            capture_game_snapshot_save_data(frame.active.id, 0, cursor, snapshot_world.capture());
++        frame
++            .auto
++            .send_command_expect(AsyncSaveCmd::CaptureSnapshot {
++                snapshot,
++                pending: pending.clone(),
+             });
+-            let cursor = snapshot_state.cursor;
+-            record_snapshot(&mut snapshot_state.snapshots, cursor, snapshot);
+-        }
+-        // 备份生产（O：SPEC §3.1）：counter → `history-auto-{counter}.json`；
+-        // remove_counter → retention 删除候选（save_thread 执行删除）。
+-        let backup_path = active
++        set_current_snapshot(
++            &mut frame.history.ledger_mut().resolved_snapshots,
++            cursor,
++            pending,
++        );
++    }
++    publish_save_sections(
++        &frame.history,
++        &mut frame.auto,
++        camera,
++        &frame.tod,
++        sheep,
++        *frame.colors,
++    );
++    if let Some(decision) = backup {
++        let path = frame
++            .active
+             .id
+             .backup_folder_path()
+             .join(format!("history-auto-{}.json", decision.counter));
+-        auto.send_command(AsyncSaveCmd::BackupSave {
+-            path: backup_path,
++        frame.auto.send_command_expect(AsyncSaveCmd::BackupSave {
++            path,
+             kind: BackupSaveFileKind::Auto,
+             remove_counter: decision.remove_counter,
+         });
+     }
+-    // ③ 各节 cooldown 值变更 → ChangeSection(5)（可采集节：Colors/Sheep）。
+-    //    Camera/Version/TimeOfDay/chain_index/history_start/snapshots 的载荷由宿主
+-    //    （`SaveGameSyncData.sections` 的对应节）采集；本系统不伪造。
+-    emit_section_change_if_changed(
+-        &mut auto,
+-        SaveFileSection::Colors,
+-        SerializedJson::new(&*colors).expect("GladeColorCustomization serializes"),
+-    );
+-    let sheep_snapshot = capture_sheep_snapshot(sheep.iter());
+-    emit_section_change_if_changed(
+-        &mut auto,
+-        SaveFileSection::Sheep,
+-        sheep_section_serialized(Some(&sheep_snapshot)),
+-    );
+-    // ④ 内联同步保存（O：History edits → `send<AsyncSaveCmd>`）。域资源未接入
+-    //    （sections 缺省）时跳过并登记一次，不编造节载荷。
+-    if let Some(sync_data) = sync_data.as_deref() {
+-        if let Some(sections) = sync_data.sections.clone() {
+-            auto.send_command_expect(AsyncSaveCmd::OpenFile {
+-                session: active.id,
+-                sections,
+-                edits: sync_data.edits.clone(),
+-            });
+-        }
+-    }
+-    // ⑤ SessionMeta 落盘 + Flush(0xa)。
+-    if let Err(error) = active.meta.write_to_disk(active.id) {
+-        log::error!("Error writing session meta to disk: {error}");
+-    }
+-    auto.send_command(AsyncSaveCmd::Flush);
+-    // ⑥ 吸干存档线程回传的错误状态（O：try_recv<AutosaveErrorState> ×3）。
+-    if let Some(mut handle) = save_thread {
+-        handle.error_state.drain_pending();
+-    }
+-}
+-
+-/// 快照域采集（save_game 0x140a3f470 的 Sheep/Roof/域资源面 + capture_snapshot
+-/// 系统共用）。域序列化器未就绪的节（Decorators/WallColors/GateColors/Raster/…）
+-/// 保持空并由宿主经 `section_values` 注入。
+-fn collect_snapshot_domain<'a>(
+-    walls: Option<&crate::resources::walls::InnerWalls>,
+-    roofs: impl Iterator<Item = &'a Roof>,
+-    terrain: Option<&crate::resources::terrain_editing::TerrainEditingData>,
+-    stairs: Option<&crate::resources::stairs::stairs_state::StairsState>,
+-) -> SnapshotDomainData {
+-    // 墙采集：inner_walls::all() → collect_walls（O：closure_env$1）。
+-    let walls = walls
+-        .map(|inner| {
+-            crate::systems::save::snapshot::collect_walls(
+-                inner.all().map(|(id, state)| (id, state.clone())),
+-            )
+-        })
+-        .unwrap_or_default();
+-    // 地形采集：TerrainEditingData（strokes + next_index；flate2 只用于栅格尾）。
+-    let terrain = terrain.cloned().unwrap_or_else(|| {
+-        crate::resources::terrain_editing::TerrainEditingData(
+-            tg_terrain::stroke::TerrainEditingData::default(),
+-        )
+-    });
+-    // 楼梯采集：backup_accurate 断言前置（原生 assert）；未 backup 的 StairsState
+-    // 不触发 panic（宿主备份完成后自动纳入）。
+-    let stairs = stairs
+-        .filter(|state| state.is_backed_up())
+-        .map(crate::systems::save::snapshot::take_stairs_snapshot);
+-    // 9 域收集器在 [`SnapshotDomainData::collect`] 内组装（O：0x1417a0430）。
+-    SnapshotDomainData::collect(
+-        std::iter::empty::<crate::systems::save::snapshot::SnapshotTreesEntry>(), // Trees
+-        walls,                     // ② inner_walls::all() → 0x141308b40
+-        std::iter::empty::<u64>(), // ③ HashSet<u64> → 0x141309840
+-        stairs,                    // ④ take_snapshot → 0x14157d200/0x140901120
+-        std::iter::empty::<(
+-            crate::resources::walls::decorator_storage::DecoratorStorageAddr,
+-            crate::resources::walls::decorator_storage::DecoratorAddrSnapshot,
+-        )>(), // ⑤ DecoratorStorage::take_snapshot
+-        (
+-            std::iter::empty::<(usize, crate::resources::color_id::ColorId)>(), // ⑥ WallColors
+-            std::iter::empty::<(usize, crate::resources::color_id::ColorId)>(), //    GateColors
+-            std::iter::empty::<(usize, crate::resources::color_id::ColorId)>(), //    Halftimber
+-        ),
+-        terrain,                                       // ⑦ Terrain strokes + heights
+-        std::iter::empty::<(&'static str, Vec<u8>)>(), // ⑧ Raster 6 组 fold
+-        roofs.cloned(),                                // ⑨ Roofs Query
+-    )
+-}
+-
+-/// 单节 cooldown 值变更判定（O：save_game 节 cooldown 段 `if (section值!=缓存)`）。
+-/// 值变化才发 `ChangeSection(5)` 并更新缓存；cooldown 秒表值待取证，当前以变更即发
+-/// （不伪造表值）。发送失败仅记录（send_command 已 log）。
+-fn emit_section_change_if_changed(
+-    auto: &mut AutoSaveState,
+-    section: SaveFileSection,
+-    value: SerializedJson,
+-) {
+-    if auto.cached_sections[section as usize].as_ref() != Some(&value) {
+-        if auto.send_command(AsyncSaveCmd::ChangeSection {
+-            section,
+-            value: value.clone(),
+-        }) {
+-            auto.cached_sections[section as usize] = Some(value);
+-        }
+-    }
+-}
+-
+-/// 注册 save_game 系统事件/资源。
++    if requested {
++        let current = frame.image.current();
++        frame.active.meta.image = if image_settings_equal(current, &frame.image.configs[0]) {
++            None
++        } else {
++            Some(current.clone())
++        };
++        if let Err(error) = frame.active.meta.write_to_disk(frame.active.id) {
++            log::error!("Error writing session meta to disk: {error}");
++        }
++        match frame.auto.flush_synchronously() {
++            Ok(()) => {
++                complete.write(SavingGameComplete {
++                    path: frame.active.id.save_folder_path(),
++                });
++            }
++            Err(error) => {
++                log::error!("Error while performing a synchronous save: {error:#}");
++            }
++        }
++    }
++}
++
++/// Native save set's event identities, maintained by the App's real Bevy
++/// registry. Idempotency never initializes an unregistered Events container.
+ pub fn register_save_game_events(world: &mut bevy_ecs::world::World) {
+-    world.init_resource::<bevy_ecs::event::Events<CaptureSnapshotRequested>>();
+-    world.init_resource::<SnapshotCaptureState>();
+-    world.init_resource::<SaveGameSyncData>();
+-}
+-
+-// ---------------------------------------------------------------------------
+-// 快照捕获域内部分（O：save_game 0x140a3f470 触发后内联快照采集）
+-// ---------------------------------------------------------------------------
+-
+-/// 快照捕获决策（O：`History::current_snapshot` 0x140a84650）——已解析快照链中
+-/// 与游标等链索引的快照存在则不捕获。调用方（宿主/系统）从 History 资源取
+-/// `resolved_snapshots` 与 `cursor` 喂入。
++    fn register<T: bevy_ecs::event::Event>(world: &mut bevy_ecs::world::World) {
++        if !world.contains_resource::<bevy_ecs::event::Events<T>>() {
++            bevy_ecs::event::EventRegistry::register_event::<T>(world);
++        }
++    }
++    register::<SaveGameCmd>(world);
++    register::<SavingGameComplete>(world);
++}
++
++/// Canonical ledger helper retained for existing domain tests; no mirrored
++/// SnapshotCaptureState resource is registered or updated.
+ pub fn should_capture_snapshot<S>(snapshots: &[ResolvedHistorySnapshot<S>], cursor: i32) -> bool {
+     current_snapshot(snapshots, cursor).is_none()
+ }
+-
+-/// `History::set_current_snapshot` 0x140a84760：游标已有快照时 panic，否则有序插入。
+ pub fn record_snapshot<S>(snapshots: &mut Vec<ResolvedHistorySnapshot<S>>, cursor: i32, value: S) {
+     set_current_snapshot(snapshots, cursor, value);
+-}
+-
+-/// 快照链状态（save 域自持；O：`History::current_snapshot`/`set_current_snapshot`
+-/// 的链索引/游标语义）。宿主从 History 资源把 `resolved_snapshots`/`cursor` 同步到
+-/// 本资源（History 类型过大且未注册为 Resource，save 域不直接持 History，登记）。
+-/// `snapshot_id` 源 U（原生自快照链计数；当前取游标值，待①取证）。
+-#[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
+-pub struct SnapshotCaptureState {
+-    /// 已解析快照链（值 = 捕获的 [`SnapshotSaveData`]）。
+-    pub snapshots: Vec<ResolvedHistorySnapshot<Arc<SnapshotSaveData>>>,
+-    /// 当前游标（History ledger cursor）。
+-    pub cursor: i32,
+-}
+-
+-/// 快照捕获系统（域内部分；O：save_game 0x140a3f470 触发后内联快照采集）。
+-///
+-/// 消费 `CaptureSnapshotRequested`（save_game 节拍器触发）→ `should_capture_snapshot`
+-/// 决策 → 采集域数据（`Query<&Roof, Without<RoofMarkedForDeletion>>` + Sheep +
+-/// GladeColorCustomization + **可选域资源：InnerWalls/TerrainEditingData/StairsState**）
+-/// → `capture_game_snapshot_save_data` → Arc → `AsyncSaveCmd::CaptureSnapshot(9)` 发送 →
+-/// `record_snapshot`（set_current_snapshot）。
+-///
+-/// 域内可采集节（roofs/sheep/colors + walls/terrain/stairs 域资源在场时）已组装进
+-/// [`SnapshotDomainData`]；Decorators（take_snapshot 空桶前置）/Trees/WallColors/
+-/// GateColors/Raster 的域序列化器未就绪，宿主经域资源采集后把 `section_values` 注入
+-/// （不伪造节载荷）。History::set_current_snapshot 由 `record_snapshot` 在
+-/// `SnapshotCaptureState` 上落地（宿主同步自 History）。可选资源以 `Option<Res>` 承载
+-/// ——宿主注册对应域资源后自动纳入，未注册不阻断快照。
+-pub fn capture_snapshot_system(
+-    mut auto: ResMut<AutoSaveState>,
+-    mut state: ResMut<SnapshotCaptureState>,
+-    active: Res<crate::resources::session::ActiveSession>,
+-    roofs: Query<&Roof, Without<RoofMarkedForDeletion>>,
+-    walls: Option<Res<crate::resources::walls::InnerWalls>>,
+-    terrain: Option<Res<crate::resources::terrain_editing::TerrainEditingData>>,
+-    stairs: Option<Res<crate::resources::stairs::stairs_state::StairsState>>,
+-    mut requested: bevy_ecs::event::EventReader<CaptureSnapshotRequested>,
+-) {
+-    for _ in requested.read() {
+-        // 决策（O：History::current_snapshot 为空才捕获；否则 drop 既有）。
+-        if !should_capture_snapshot(&state.snapshots, state.cursor) {
+-            continue;
+-        }
+-        // 域内可采集节（roofs + walls/terrain/stairs）组装；
+-        // Decorators/Trees/三色/Raster 的域序列化器未就绪，宿主经域资源采集后
+-        // 注入 section_values。
+-        let domain = collect_snapshot_domain(
+-            walls.as_deref(),
+-            roofs.iter(),
+-            terrain.as_deref(),
+-            stairs.as_deref(),
+-        );
+-        let snapshot = capture_game_snapshot_save_data(
+-            active.id,
+-            state.cursor as u64, // U：snapshot_id 源待①取证
+-            state.cursor,
+-            domain.sorted(),
+-        );
+-        if auto.send_command(AsyncSaveCmd::CaptureSnapshot {
+-            snapshot: snapshot.clone(),
+-        }) {
+-            let cursor = state.cursor;
+-            record_snapshot(&mut state.snapshots, cursor, snapshot);
+-        }
+-    }
+ }
+ 
+ // ---------------------------------------------------------------------------
+@@ -510,10 +518,8 @@
+ 
+ /// 游戏线程同步保存请求（PDB：`save_game::SaveGameCmd`）。域资源组装见
+ /// `GameSaveData`；命令载荷在域恢复后接入。
+-#[derive(Clone, Debug)]
+-pub struct SaveGameCmd {
+-    pub data: GameSaveData,
+-}
++#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq)]
++pub struct SaveGameCmd;
+ 
+ /// 删除会话命令（PDB：`save_game::DeleteSessionCmd`）。`SessionFlowPlugin::build`
+ /// 0x140b47840 注册为事件（`register_event<DeleteSessionCmd>`）。
+@@ -523,8 +529,10 @@
+ }
+ 
+ /// 保存完成事件（PDB：`save_game::SavingGameComplete`）。
+-#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq)]
+-pub struct SavingGameComplete;
++#[derive(bevy_ecs::event::Event, Clone, Debug, PartialEq, Eq)]
++pub struct SavingGameComplete {
++    pub path: PathBuf,
++}
+ 
+ /// 同步存档路径的组装数据（PDB：`save_game::GameSaveData`）。原版由
+ /// save_game 0x140a3f470 从 ~9 资源拷贝组装（+0x28..+0x100 密集字段，**240B 完整字段名
+@@ -548,12 +556,36 @@
+     pub last_saved_game_time: f32,
+ }
+ 
+-/// 延迟 JSON 序列化（PDB：`save_game::DeferredJsonSerialize`）。
+-/// 原版用于分帧序列化大节载荷；载荷本身由所属域提供。
++/// B trait object payload of AsyncSaveCmd::ChangeSection. Serialization occurs
++/// on the save worker, after all preceding commands (especially tag9) finish.
++pub trait DeferredJsonSerialize: Send + Sync + core::fmt::Debug {
++    fn to_json_string(&self) -> SerializedJson;
++}
++impl<T> DeferredJsonSerialize for T
++where
++    T: Serialize + Send + Sync + core::fmt::Debug,
++{
++    fn to_json_string(&self) -> SerializedJson {
++        SerializedJson::new(self).expect("serializing an owned save section")
++    }
++}
++pub type DeferredJsonValue = Arc<dyn DeferredJsonSerialize>;
++pub fn defer_json<T>(value: T) -> DeferredJsonValue
++where
++    T: Serialize + Send + Sync + core::fmt::Debug + 'static,
++{
++    Arc::new(value)
++}
++
++/// Owns clones of the same atomic IDs as the canonical History ledger. The
++/// worker reads them only when handling this queued section after capture.
+ #[derive(Clone, Debug)]
+-pub struct DeferredJsonSerialize {
+-    pub section: SaveFileSection,
+-    pub json: SerializedJson,
++pub struct SnapshotReferencesToJson(pub Vec<crate::resources::history::HistoryChainSnapshot>);
++impl Serialize for SnapshotReferencesToJson {
++    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
++        crate::resources::history::snapshots::resolved_snapshot_references(&self.0)
++            .serialize(serializer)
++    }
+ }
+ 
+ /// 自动存档状态资源（PDB：`save_game::AutoSaveState`）。
+@@ -580,6 +612,8 @@
+     /// Async save and startup_session::is_session_ok_to_load.
+     pub unsaved_files: Arc<super::save_thread::UnsavedFileList>,
+     last_error: Option<anyhow::Error>,
++    last_saved_edit_count: usize,
++    frame_cache: Option<AutoSaveFrameCache>,
+     command_sender: Option<crossbeam_channel::Sender<AsyncSaveCmd>>,
+ }
+ 
+@@ -593,6 +627,8 @@
+             cached_sections: std::array::from_fn(|_| None),
+             unsaved_files: Arc::new(super::save_thread::UnsavedFileList::default()),
+             last_error: None,
++            last_saved_edit_count: 0,
++            frame_cache: None,
+             command_sender: None,
+         }
+     }
+@@ -621,6 +657,8 @@
+         self.sections = [AutoSaveSectionState::default(); 10];
+         self.cached_sections = std::array::from_fn(|_| None);
+         self.last_error = None;
++        self.last_saved_edit_count = 0;
++        self.frame_cache = None;
+         // +0x140 / +0x144 / +0x148 重置（O：close_file 尾部常量写入）。
+         self.metronome.reset_after_close();
+     }
+@@ -651,6 +689,17 @@
+                 "save thread disconnected while creating backup: {error}"
+             )),
+         }
++    }
++
++    /// B save_game@140a419b5..41a51: bound1 reply channel, tag10,
++    /// wait for the actual worker result. Send/receive disconnects panic as in
++    /// the original; a file flush error is returned for the caller to log.
++    pub fn flush_synchronously(&mut self) -> Result<(), anyhow::Error> {
++        let (reply, result) = crossbeam_channel::bounded(1);
++        self.send_command_expect(AsyncSaveCmd::Flush { reply });
++        result
++            .recv()
++            .expect("receiving synchronous save completion")
+     }
+ 
+     /// 0x140a439a0：**返回 `+0x10` 错误状态字段的引用**（fresh disasm
+@@ -804,3 +853,255 @@
+ ) -> Result<S::Ok, S::Error> {
+     serializer.serialize_str(value.as_str())
+ }
++
++/// Native AutoSaveState typed comparison cache, kept in the existing owner.
++/// This contains shared snapshot ID owners only; captured world data is never
++/// copied into a second History resource.
++#[derive(Clone, Debug)]
++struct AutoSaveFrameCache {
++    identity: u64,
++    camera: CameraRigParametersCache,
++    tod: crate::resources::time_of_day::TimeOfDay,
++    sheep: Option<crate::resources::critters::sheep::control::SheepControlSnapshot>,
++    colors: GladeColorCustomization,
++    snapshots: Vec<crate::resources::history::HistoryChainSnapshot>,
++    chain_index: i32,
++    history_start: i32,
++}
++
++/// B @140a3f9fb..faf2: write the changed suffix from the actual committed
++/// ledger, then advance both saved-count observations only after send succeeds.
++fn publish_history_edits(
++    history: &mut crate::resources::history::History,
++    auto: &mut AutoSaveState,
++) {
++    let ledger = history.ledger();
++    let count = ledger.entries.len();
++    let truncate = ledger.observed_count_58;
++    if truncate == count && auto.last_saved_edit_count == count {
++        return;
++    }
++    assert!(
++        truncate <= count,
++        "saved history prefix exceeds committed entries"
++    );
++    let edits = ledger.entries[truncate..]
++        .iter()
++        .cloned()
++        .map(crate::resources::history::serialized::SavedMultiEdit)
++        .map(|entry| SerializedJson::new(&entry).expect("serializing actual committed MultiEdit"))
++        .collect();
++    auto.send_command_expect(AsyncSaveCmd::ReplaceEdits { truncate, edits });
++    auto.metronome.set_active_game_threshold(0.0);
++    history.ledger_mut().observed_count_58 = count;
++    auto.last_saved_edit_count = count;
++}
++
++/// B @140a41305..373: pending or invalid IDs force a fresh section command.
++/// Resolved IDs compare by value and chain index; Arc pointer equality is only
++/// an original optimization and is not needed for this same-owner projection.
++fn snapshot_owners_equal(
++    left: &[crate::resources::history::HistoryChainSnapshot],
++    right: &[crate::resources::history::HistoryChainSnapshot],
++) -> bool {
++    left.len() == right.len()
++        && left.iter().zip(right).all(|(left, right)| {
++            let a = left.value.state();
++            let b = right.value.state();
++            left.chain_index == right.chain_index && a >= 2 && b >= 2 && a == b
++        })
++}
++
++/// Original change order: Identity, Camera, TOD, Sheep, Colors, Snapshots,
++/// chain_index, history_start. Initial invocation installs a baseline cache;
++/// the already-open save owns the initial sections. No per-frame OpenFile.
++fn publish_save_sections(
++    history: &crate::resources::history::History,
++    auto: &mut AutoSaveState,
++    camera: CameraRigParametersCache,
++    tod: &crate::resources::time_of_day::TimeOfDay,
++    sheep: Option<crate::resources::critters::sheep::control::SheepControlSnapshot>,
++    colors: GladeColorCustomization,
++) {
++    let ledger = history.ledger();
++    let current = AutoSaveFrameCache {
++        identity: ledger.mutation_nonce,
++        camera,
++        tod: tod.clone(),
++        sheep,
++        colors,
++        snapshots: ledger.resolved_snapshots.clone(),
++        chain_index: ledger.cursor,
++        history_start: ledger.undo_anchor,
++    };
++    if let Some(previous) = auto.frame_cache.take() {
++        if previous.identity != current.identity {
++            auto.send_command_expect(AsyncSaveCmd::ChangeSection {
++                section: SaveFileSection::Identity,
++                value: defer_json(HistoryIdentity(current.identity)),
++            });
++            auto.metronome.set_active_game_threshold(0.0);
++        }
++        if previous.camera != current.camera {
++            auto.send_command_expect(AsyncSaveCmd::ChangeSection {
++                section: SaveFileSection::Camera,
++                value: defer_json(current.camera),
++            });
++        }
++        if previous.tod != current.tod {
++            auto.send_command_expect(AsyncSaveCmd::ChangeSection {
++                section: SaveFileSection::TimeOfDay,
++                value: defer_json(current.tod.clone()),
++            });
++        }
++        if previous.sheep != current.sheep {
++            auto.send_command_expect(AsyncSaveCmd::ChangeSection {
++                section: SaveFileSection::Sheep,
++                value: defer_json(current.sheep.clone()),
++            });
++        }
++        if previous.colors != current.colors {
++            auto.send_command_expect(AsyncSaveCmd::ChangeSection {
++                section: SaveFileSection::Colors,
++                value: defer_json(current.colors),
++            });
++        }
++        if !snapshot_owners_equal(&previous.snapshots, &current.snapshots) {
++            auto.send_command_expect(AsyncSaveCmd::ChangeSection {
++                section: SaveFileSection::Snapshots,
++                value: defer_json(SnapshotReferencesToJson(current.snapshots.clone())),
++            });
++        }
++        if previous.chain_index != current.chain_index {
++            auto.send_command_expect(AsyncSaveCmd::ChangeSection {
++                section: SaveFileSection::ChainIndex,
++                value: defer_json(current.chain_index),
++            });
++            auto.metronome.set_active_game_threshold(0.0);
++        }
++        if previous.history_start != current.history_start {
++            auto.send_command_expect(AsyncSaveCmd::ChangeSection {
++                section: SaveFileSection::HistoryStart,
++                value: defer_json(current.history_start),
++            });
++            auto.metronome.set_active_game_threshold(0.0);
++        }
++    }
++    auto.frame_cache = Some(current);
++}
++
++/// Native SessionMeta image comparison ignores alignment padding and compares
++/// word_38 as f32 (not integer bits). Thus NaN differs and signed zero equals.
++fn image_settings_equal(
++    left: &crate::resources::image_formation::ImageFormationConfig,
++    right: &crate::resources::image_formation::ImageFormationConfig,
++) -> bool {
++    left.name == right.name
++        && left.flag_28 == right.flag_28
++        && left.params_18 == right.params_18
++        && left.params_30 == right.params_30
++        && f32::from_bits(left.word_38) == f32::from_bits(right.word_38)
++        && left.flag_3c == right.flag_3c
++        && left.flag_3d == right.flag_3d
++}
++
++#[cfg(test)]
++mod original_incremental_tests {
++    use super::*;
++    #[test]
++    fn current_history_edits_append_to_the_real_file_without_reopening() {
++        use super::super::save_thread::{execute_save_cmd, CurrentSaveFile, UnsavedFileList};
++        use crate::resources::history::{
++            serialized::SavedMultiEdit, transactions::ObservedHistoryLedger, History,
++        };
++        let original: serde_json::Value = serde_json::from_str(include_str!(
++            "../../../tests/fixtures/original-intro-history-b.json"
++        ))
++        .unwrap();
++        let entries: Vec<SavedMultiEdit> =
++            serde_json::from_value(original["History"]["edit_chain"].clone()).unwrap();
++        let sections = GameSaveSections {
++            values: SaveFileSection::ALL.map(|section| {
++                let owner = if section as u8 >= SaveFileSection::ChainIndex as u8 {
++                    &original["History"]
++                } else {
++                    &original
++                };
++                SerializedJson::new(&owner[section.json_key()]).unwrap()
++            }),
++        };
++        let serialized = entries
++            .iter()
++            .map(|entry| SerializedJson::new(entry).unwrap())
++            .collect::<Vec<_>>();
++        let root = tempfile::tempdir().unwrap();
++        let mut current = Some(CurrentSaveFile::create(root.path(), sections, &serialized));
++        let mut history: History = History::from_observed(ObservedHistoryLedger {
++            entries: entries.into_iter().map(|entry| entry.0).collect(),
++            cursor: 12,
++            undo_anchor: -1,
++            resolved_snapshots: Vec::new(),
++            observed_count_58: 13,
++            mutation_nonce: 17,
++        });
++        let actual_next = history.ledger().entries.last().unwrap().clone();
++        history.ledger_mut().entries.push(actual_next);
++        let (sender, receiver) = crossbeam_channel::unbounded();
++        let mut auto = AutoSaveState::default();
++        auto.attach_command_sender(sender);
++        publish_history_edits(&mut history, &mut auto);
++        let command = receiver.try_recv().unwrap();
++        assert!(
++            matches!(&command, AsyncSaveCmd::ReplaceEdits {truncate:13,edits} if edits.len()==1)
++        );
++        execute_save_cmd(&mut current, command, &UnsavedFileList::default());
++        assert_eq!(history.ledger().observed_count_58, 14);
++        publish_history_edits(&mut history, &mut auto);
++        assert!(receiver.try_recv().is_err());
++        assert!(current.as_mut().unwrap().flush_deferred_and_sync());
++        let saved: serde_json::Value =
++            serde_json::from_slice(&std::fs::read(root.path().join("history.json")).unwrap())
++                .unwrap();
++        assert_eq!(saved["History"]["edit_chain"].as_array().unwrap().len(), 14);
++        assert_eq!(
++            saved["History"]["edit_chain"][13],
++            saved["History"]["edit_chain"][12]
++        );
++    }
++
++    #[test]
++    fn pending_snapshot_cache_requires_late_worker_serialization() {
++        use crate::resources::history::{
++            transactions::ResolvedHistorySnapshot, HistorySnapshotId, MaybePendingSnapshotId,
++        };
++        let owner = MaybePendingSnapshotId::new();
++        let left = vec![ResolvedHistorySnapshot {
++            chain_index: 2,
++            value: owner.clone(),
++        }];
++        let right = left.clone();
++        assert!(!snapshot_owners_equal(&left, &right));
++        owner.assign_invalid();
++        assert!(!snapshot_owners_equal(&left, &right));
++        owner.assign(HistorySnapshotId(73));
++        assert!(snapshot_owners_equal(&left, &right));
++        let other = vec![ResolvedHistorySnapshot {
++            chain_index: 2,
++            value: MaybePendingSnapshotId::from_snapshot_id(HistorySnapshotId(73)),
++        }];
++        assert!(snapshot_owners_equal(&left, &other));
++    }
++
++    #[test]
++    fn session_image_equality_ignores_padding_and_uses_float_comparisons() {
++        use crate::resources::image_formation::ImageFormationConfig;
++        let a = ImageFormationConfig::default_plain();
++        let mut b = a.clone();
++        b._pad_29 = [9; 7];
++        b._pad_3e = [8; 2];
++        b.word_38 = (-0.0f32).to_bits();
++        assert!(image_settings_equal(&a, &b));
++        b.word_38 = f32::NAN.to_bits();
++        assert!(!image_settings_equal(&b, &b));
++    }
++}

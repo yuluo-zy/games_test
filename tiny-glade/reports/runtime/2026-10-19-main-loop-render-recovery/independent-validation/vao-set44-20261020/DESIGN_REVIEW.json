@@ -1,0 +1,54 @@
+{
+  "reviewed_at_utc": "2026-10-19T16:34:34.525885+00:00",
+  "verdict": "passed_design_scoped_original_VAO_prefix_only",
+  "contract": {
+    "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-28ee15b4dac81f8b1c/startup-vao-drawlists-20261019/vao-set44-20261020/CONTRACT.md",
+    "sha256": "d855b48202fa9ab03a1955615717aa81d5b8d627312e797a18d826f7945fd5b8"
+  },
+  "native_manifest": {
+    "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-28ee15b4dac81f8b1c/startup-vao-drawlists-20261019/vao-set44-20261020/evidence/native-manifest.json",
+    "sha256": "b011bfdf5e819ad293147642779e52f2f7b291f943cf64f66a1d83bdaca1e7f3"
+  },
+  "independent_native_body_checks": [
+    {
+      "name": "build_missing_vaos",
+      "va": "0x1408646b0",
+      "length": 1331,
+      "sha256": "2026d1d6e421ed77ec253fd37ba90336ec02c362b5c174abada877e60dc7a907"
+    },
+    {
+      "name": "rebuild_vaos",
+      "va": "0x140864bf0",
+      "length": 1115,
+      "sha256": "f503b827ceed6426d04ba0a2837e5aaabec3249cca31565cea9ebed494f4f40e"
+    }
+  ],
+  "registration": {
+    "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-28ee15b4dac81f8b1c/startup-vao-drawlists-20261019/vao-set44-20261020/evidence/backend44-registration-pdb.json",
+    "sha256": "78b73a069cd1933e85827b44fcfd2705c6235b67844f660782f7902b8826e712"
+  },
+  "checks": [
+    "Original PDB first2 arguments prove missing-VAO Without<Handle<Vao>> query and rebuild with no Query/Commands, before Nani maintain, explicit ApplyDeferred, unordered update tuple and flush in the outer chain_ignore_deferred.",
+    "Original missing builder checks only existing empty CPU mesh for Trace skip; absent mesh enters real add/error path. Success defers Handle<Vao> insertion; failure warns/no publication. Already-present even stale handles are excluded, with no removal/repair invented.",
+    "Rebuild iterates original modified vector order including duplicate entries. No-VAO entry warns then is consumed. Only failed actual rebuilds append to replacement queue; empty original queue returns before changed tick. No sort/dedup or entity scan.",
+    "Required production resources and same runtime device/CPU mesh/VAO owners remain mandatory. Compatibility standalone optional behavior may be expressed at explicit compatibility registration, not by silently no-op production systems.",
+    "One per-App idempotent production installer can register the original2 prefix in Update44 with chain_ignore_deferred and before_ignore_deferred(maintain), plus only remaining asset stages in PostUpdate. The explicit Nani ApplyDeferred covers prefix commands; loading without Nani relies on real Update final deferred application.",
+    "04 gameplay_startup remains sole Nani fragment installer; no second prefix registration there. Existing combined standalone entry must be kept distinct from production installer to avoid running VAO twice."
+  ],
+  "implementation_requirements": [
+    "Preserve exact native filters/error levels/queue order and required resource modes; do not keep old all-entity repair algorithm under renamed functions.",
+    "Marker must travel with actual App/World through warmup/handoff; twice same App no duplicate, separate loading/gameplay each once. Cover these with actual schedules.",
+    "Test observer before explicit barrier sees deferred VAO absent; after original barrier sees actual uploaded canonical handle; do not insert a new earlier ApplyDeferred via ordinary before/chain.",
+    "Compatibility fixtures with absent resource owners need explicit legacy registration guard. Production GameFrameDriver resource prerequisites and loading end-Update barrier need coherent tests."
+  ],
+  "material_host_phase_limit": "PostUpdate reload_meshes/reclaim keep their phase. Relative to moved Update44 VAO prefix they now occur later: modified meshes produced in that PostUpdate rebuild at next Update44, whereas old combined host rebuilt after reload in the same PostUpdate. This is an intentional source-host phase boundary disclosed in revised contract, not proof of original full hot-reload/deletion scheduling. Do not move whole maintenance/reload/reclaim/geometry or duplicate systems just to hide it.",
+  "candidate_accepted": false,
+  "runtime_accepted": false,
+  "reviewer_ran_cargo_gpu": false,
+  "remaining": [
+    "Actual two-source candidate review",
+    "Central typecheck/CPU scheduler/native regression tests",
+    "Actual assets hot reload/deletion integration",
+    "Nonempty VAO->Nani->draw/present GPU acceptance"
+  ]
+}

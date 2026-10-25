@@ -1,0 +1,185 @@
+--- a/tiny-glade/crates/tiny-glade/tests/original_loading_present.rs
++++ b/tiny-glade/crates/tiny-glade/tests/original_loading_present.rs
+@@ -1,6 +1,7 @@
+ //! 默认验证加载图→原 presentation resolve→真实 WSI，使用显式加载 World 与时钟。
+ //! TG_VALIDATE_GAMEPLAY_WSI=1 则验证真实 GameLoop 的双 App 交接、非空游戏帧、
+ //! 原生 present 成功及 OS 关闭、保存线程和 GPU 退出；两种验收分别记结果。
++//! TG_VALIDATE_WINDOW_LIFECYCLE=loading_close/suspended_close 则分别验证真实加载中关闭。
+ use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::Arc, time::Duration};
+ 
+ use anyhow::{Context, Result};
+@@ -24,8 +25,16 @@
+ };
+ 
+ fn main() -> Result<()> {
++    if let Some(value) = std::env::var_os("TG_VALIDATE_WINDOW_LIFECYCLE") {
++        let mode = match value.to_str() {
++            Some("loading_close") => WindowValidationMode::LoadingClose,
++            Some("suspended_close") => WindowValidationMode::SuspendedClose,
++            _ => anyhow::bail!("未知窗口生命周期验收模式：{value:?}"),
++        };
++        return validate_gameplay_present(mode);
++    }
+     if std::env::var_os("TG_VALIDATE_GAMEPLAY_WSI").is_some_and(|value| value == "1") {
+-        return validate_gameplay_present();
++        return validate_gameplay_present(WindowValidationMode::Gameplay);
+     }
+     let installed = std::env::var_os("TG_INSTALL_ROOT")
+         .map(PathBuf::from)
+@@ -134,8 +143,51 @@
+         .context("OS event loop exited without validation result")?
+ }
+ 
+-/// 显式验收完整双 App 交接和游戏窗口；加载专用 fixture 仍由默认入口验证。
+-fn validate_gameplay_present() -> Result<()> {
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++enum WindowValidationMode {
++    Gameplay,
++    LoadingClose,
++    SuspendedClose,
++}
++
++/// 只在独立生命周期模式启动一次真实 UserEvent，Wait 模式也有超时唤醒。
++/// 正常结束会立即停止并 join 此测试线程，不留脱离的定时任务。
++struct WindowLifecycleWatchdog {
++    stop: Option<std::sync::mpsc::Sender<()>>,
++    worker: Option<std::thread::JoinHandle<()>>,
++}
++
++impl WindowLifecycleWatchdog {
++    fn new(proxy: winit::event_loop::EventLoopProxy<()>) -> Result<Self> {
++        let (stop, stopped) = std::sync::mpsc::channel();
++        let worker = std::thread::Builder::new()
++            .name("window-lifecycle-watchdog".into())
++            .spawn(move || {
++                if matches!(stopped.recv_timeout(Duration::from_secs(60)),
++                    Err(std::sync::mpsc::RecvTimeoutError::Timeout))
++                {
++                    let _ = proxy.send_event(());
++                }
++            })?;
++        Ok(Self { stop: Some(stop), worker: Some(worker) })
++    }
++}
++
++impl Drop for WindowLifecycleWatchdog {
++    fn drop(&mut self) {
++        if let Some(stop) = self.stop.take() {
++            let _ = stop.send(());
++        }
++        if let Some(worker) = self.worker.take() {
++            if worker.join().is_err() {
++                eprintln!("window lifecycle watchdog thread panicked");
++            }
++        }
++    }
++}
++
++/// 复用真实双 App、OS 枚举和主循环；关闭模式与完整游戏呈现分别验收。
++fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
+     use clap::Parser;
+     use country_core::resources::{session::ActiveSession, walls::InnerWalls};
+     use country_core::systems::save::{save_game::AutoSaveState, save_thread::SaveThreadHandle};
+@@ -180,6 +232,13 @@
+     let result = Rc::new(RefCell::new(None::<Result<()>>));
+     let observed = result.clone();
+     let started = std::time::Instant::now();
++    let _watchdog = if mode == WindowValidationMode::Gameplay {
++        None
++    } else {
++        Some(WindowLifecycleWatchdog::new(event_loop.create_proxy())?)
++    };
++    let mut close_completed_before_loop_exiting = false;
++    let mut preparation_pending_at_close = false;
+     let mut world_frames = 0u64;
+     let mut loading_frames = 0u64;
+     let mut native_before_world = None;
+@@ -189,6 +248,11 @@
+         let redraw = matches!(&event, Event::WindowEvent { event: WindowEvent::RedrawRequested, .. });
+         let exiting = matches!(&event, Event::LoopExiting);
+         let step = (|| -> Result<()> {
++            // 本模式的唯一 UserEvent 来自 watchdog。必须记失败，再由真实退出事件清理。
++            if mode != WindowValidationMode::Gameplay && matches!(&event, Event::UserEvent(())) {
++                anyhow::bail!("窗口生命周期验收超时：mode={mode:?}, loading={loading_frames}, world={world_frames}, close={close_requested}, preparation_pending={}",
++                    game.gameplay_preparation_pending());
++            }
+             let native_before_frame = game.native_present_success_count();
+             let completed_before = game.frame_progress().completed_frames;
+             game.main_loop(event, target)?;
+@@ -220,12 +284,36 @@
+                         _ => anyhow::bail!("出现空世界或 diagnostic minimal 图"),
+                     }
+                 }
+-                if world_frames >= 12 && !close_requested {
++                if mode != WindowValidationMode::Gameplay && loading_frames > 0 && !close_requested {
++                    // 确认真实 loading 已呈现且 worker owner 仍在，再测试关闭控制路径。
++                    preparation_pending_at_close = game.gameplay_preparation_pending();
++                    anyhow::ensure!(preparation_pending_at_close,
++                        "生命周期关闭尚未注入，真实 gameplay preparation 已经结束");
++                    close_requested = true;
++                    if mode == WindowValidationMode::SuspendedClose {
++                        game.main_loop(Event::Suspended, target)?;
++                    }
++                    game.main_loop(Event::WindowEvent {
++                        window_id: window.id(), event: WindowEvent::CloseRequested,
++                    }, target)?;
++                    if mode == WindowValidationMode::SuspendedClose {
++                        // 不发送 Resumed，且不以 LoopExiting 的兜底 shutdown 冒充通过。
++                        anyhow::ensure!(target.exiting() && !game.gameplay_preparation_pending(),
++                            "暂停关闭返回时尚未完成取消、join 和退出请求");
++                        close_completed_before_loop_exiting = true;
++                    }
++                }
++                if mode == WindowValidationMode::Gameplay && world_frames >= 12 && !close_requested {
+                     // 发送关闭窗口事件，由现有 OS→游戏→保存→GPU 关闭链处理。
+                     close_requested = true;
+                     game.main_loop(Event::WindowEvent {
+                         window_id: window.id(), event: WindowEvent::CloseRequested,
+                     }, target)?;
++                }
++                if mode == WindowValidationMode::LoadingClose && close_requested && target.exiting() {
++                    anyhow::ensure!(!game.gameplay_preparation_pending(),
++                        "加载关闭的主帧返回后 worker owner 仍在");
++                    close_completed_before_loop_exiting = true;
+                 }
+             }
+             if !exiting {
+@@ -234,15 +322,29 @@
+             } else if observed.borrow().is_none() {
+                 let native = game.native_present_success_count();
+                 let world = game.app().world();
+-                anyhow::ensure!(!world.contains_resource::<SaveThreadHandle>()
+-                    && world.get_resource::<AutoSaveState>().is_some_and(|state| !state.is_command_attached()),
+-                    "关闭后保存线程 owner 或 sender 仍然存在");
+-                anyhow::ensure!(loading_frames > 0 && world_frames >= 12 && close_requested,
+-                    "窗口提前退出：loading={loading_frames}, world={world_frames}");
+-                let world_native = native.checked_sub(native_before_world.context("没有游戏 present 起点")?)
+-                    .context("swapchain generation changed during bounded validation")?;
+-                anyhow::ensure!(world_native >= 12, "游戏只完成 {world_native} 次原生 present 成功");
+-                eprintln!("PASS: actual GameLoop loading={loading_frames}, world={world_frames}, world-native-successes={world_native}; OS close/save/GPU shutdown completed");
++                if mode == WindowValidationMode::Gameplay {
++                    anyhow::ensure!(!world.contains_resource::<SaveThreadHandle>()
++                        && world.get_resource::<AutoSaveState>().is_some_and(|state| !state.is_command_attached()),
++                        "关闭后保存线程 owner 或 sender 仍然存在");
++                    anyhow::ensure!(loading_frames > 0 && world_frames >= 12 && close_requested,
++                        "窗口提前退出：loading={loading_frames}, world={world_frames}");
++                    let world_native = native.checked_sub(native_before_world.context("没有游戏 present 起点")?)
++                        .context("swapchain generation changed during bounded validation")?;
++                    anyhow::ensure!(world_native >= 12, "游戏只完成 {world_native} 次原生 present 成功");
++                    eprintln!("PASS: actual GameLoop loading={loading_frames}, world={world_frames}, world-native-successes={world_native}; OS close/save/GPU shutdown completed");
++                } else {
++                    anyhow::ensure!(loading_frames > 0 && close_requested && preparation_pending_at_close
++                        && close_completed_before_loop_exiting && !game.gameplay_preparation_pending(),
++                        "生命周期关闭只依赖退出兜底：mode={mode:?}, loading={loading_frames}, world={world_frames}");
++                    anyhow::ensure!(!world.contains_resource::<SaveThreadHandle>()
++                        && world.get_resource::<AutoSaveState>().is_none_or(|state| !state.is_command_attached()),
++                        "加载关闭后保存线程 owner 或 sender 仍然存在");
++                    if mode == WindowValidationMode::LoadingClose {
++                        anyhow::ensure!(world.contains_resource::<country_core::resources::shutdown::ShutdownGame>(),
++                            "普通加载关闭没有经过真实 ShutdownGameCmd 的 App 消费者");
++                    }
++                    eprintln!("PASS: actual GameLoop window lifecycle mode={mode:?}; loading={loading_frames}, world={world_frames}; pending preparation cancelled/joined and save/GPU cleanup completed before LoopExiting");
++                }
+                 *observed.borrow_mut() = Some(Ok(()));
+             }
+             Ok(())

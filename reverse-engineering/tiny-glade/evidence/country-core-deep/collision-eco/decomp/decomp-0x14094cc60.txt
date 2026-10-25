@@ -1,0 +1,113 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+undefined4 *
+FUN_14094cc60(undefined4 *param_1,undefined8 *param_2,float param_3,float param_4,float param_5,
+             float param_6)
+
+{
+  undefined4 uVar1;
+  float fVar2;
+  float fVar3;
+  float fVar4;
+  float fVar5;
+  float fVar6;
+  float fVar9;
+  undefined1 auVar7 [16];
+  undefined1 auVar8 [16];
+  float fVar10;
+  uint uVar11;
+  uint uVar12;
+  float fVar13;
+  float fVar14;
+  float fVar15;
+  float fVar16;
+  float fVar17;
+  float fVar18;
+  float fVar19;
+  float fVar20;
+  float fVar21;
+  float fVar22;
+  float fVar23;
+  float afStack_ac [3];
+  undefined8 auStack_a0 [19];
+  
+  fVar13 = (float)*param_2;
+  fVar15 = (float)((ulonglong)*param_2 >> 0x20);
+  fVar9 = (float)param_2[1];
+  fVar14 = (float)((ulonglong)param_2[1] >> 0x20);
+  fVar16 = (fVar13 + fVar9) * _UNK_1429258e0;
+  fVar17 = (fVar15 + fVar14) * _UNK_1429258e4;
+  fVar19 = fVar9 - fVar13;
+  fVar20 = fVar14 - fVar15;
+  fVar18 = fVar20 * fVar20 + fVar19 * fVar19;
+  fVar21 = SQRT(fVar18);
+  auVar7._4_4_ = fVar20;
+  auVar7._0_4_ = fVar19;
+  auVar7._8_8_ = 0;
+  auVar8._4_4_ = fVar21;
+  auVar8._0_4_ = fVar21;
+  auVar8._8_8_ = 0;
+  auVar8 = divps(auVar7,auVar8);
+  fVar6 = auVar8._4_4_;
+  fVar22 = (float)((uint)fVar6 ^ _UNK_1429258f0);
+  fVar23 = auVar8._0_4_;
+  FUN_141240b30(afStack_ac,param_2,_UNK_14295a0e8 * fVar21,_UNK_142aa3280,_UNK_142925870 * fVar21,
+                (param_4 - fVar17) * fVar23 + (param_3 - fVar16) * fVar22,
+                (param_4 - fVar17) * fVar6 + (param_3 - fVar16) * fVar23,
+                (param_6 - fVar17) * fVar23 + (param_5 - fVar16) * fVar22,
+                (param_6 - fVar17) * fVar6 + (param_5 - fVar16) * fVar23);
+  fVar3 = _UNK_142925904;
+  if (afStack_ac[0] == 1.4013e-45) {
+    fVar2 = (float)afStack_ac._4_8_;
+    fVar4 = SUB84(afStack_ac._4_8_,4);
+    auStack_a0[0] = CONCAT44((_UNK_142925904 / fVar21) * fVar20,(_UNK_142925904 / fVar21) * fVar19);
+    func_0x000140c9cdc0(afStack_ac,auStack_a0);
+    fVar21 = (float)afStack_ac._4_8_;
+    fVar5 = SUB84(afStack_ac._4_8_,4);
+    fVar10 = fVar5 * 0.0 +
+             (float)((ulonglong)_UNK_142ab31c0 >> 0x20) * fVar21 +
+             (float)_UNK_142ab31c0 * afStack_ac[0];
+    fVar10 = (fVar10 + fVar10) * 0.0;
+    if (fVar18 <= _UNK_142a7baa0) {
+      fVar18 = _UNK_142a7baa0;
+    }
+    fVar18 = (((fVar17 + fVar6 * fVar4 + fVar23 * fVar2) - fVar15) * fVar20 +
+             ((fVar16 + fVar23 * fVar4 + fVar22 * fVar2) - fVar13) * fVar19) / fVar18;
+    fVar6 = 0.0;
+    if (0.0 <= fVar18) {
+      fVar6 = fVar18;
+    }
+    fVar18 = fVar3;
+    if (fVar6 <= fVar3) {
+      fVar18 = fVar6;
+    }
+    fVar13 = fVar9 * fVar18 + (fVar3 - fVar18) * fVar13;
+    fVar14 = fVar14 * fVar18 + (fVar3 - fVar18) * fVar15;
+    fVar3 = ((fVar5 * _UNK_1429cd350 - fVar21 * 0.0) * _UNK_142ab31d0 + afStack_ac[0] * 0.0 + fVar10
+            ) * _UNK_142aa4550 * _UNK_1429258e0;
+    fVar18 = ((fVar21 * _UNK_1429cd354 - _UNK_14292e6f8 * afStack_ac[0]) * _UNK_142ab31d4 +
+             fVar5 * 0.0 + fVar10) * _UNK_142aa4554 * _UNK_1429258e4;
+    fVar6 = fVar13 - fVar3;
+    fVar9 = fVar14 - fVar18;
+    fVar3 = fVar3 + fVar13;
+    fVar18 = fVar18 + fVar14;
+    fVar14 = fVar6 - param_3;
+    fVar13 = fVar9 - param_4;
+    param_3 = fVar3 - param_3;
+    param_4 = fVar18 - param_4;
+    uVar12 = (uint)(fVar13 * fVar13 + fVar14 * fVar14 < param_4 * param_4 + param_3 * param_3);
+    uVar11 = (int)(uVar12 << 0x1f) >> 0x1f;
+    uVar12 = (int)(uVar12 << 0x1f) >> 0x1f;
+    *(ulonglong *)(param_1 + 1) =
+         CONCAT44(~uVar12 & (uint)fVar18,~uVar11 & (uint)fVar3) |
+         CONCAT44((uint)fVar9 & uVar12,(uint)fVar6 & uVar11);
+    uVar1 = 1;
+  }
+  else {
+    uVar1 = 0;
+  }
+  *param_1 = uVar1;
+  return param_1;
+}
+

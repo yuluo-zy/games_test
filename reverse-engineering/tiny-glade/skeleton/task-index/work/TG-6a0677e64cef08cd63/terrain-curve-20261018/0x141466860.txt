@@ -1,0 +1,71 @@
+
+void __cdecl
+utils::curve::Curve::try_extend<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>(void)
+
+{
+  size_t _Size;
+  void *_Src;
+  undefined1 *extraout_RAX;
+  longlong *in_RCX;
+  longlong *in_RDX;
+  void *in_R8;
+  ulonglong in_R9;
+  undefined1 *_Dst;
+  longlong lVar1;
+  ulonglong uVar2;
+  longlong local_70;
+  longlong local_68;
+  longlong lStack_60;
+  longlong local_58;
+  longlong lStack_50;
+  longlong local_48;
+  longlong lStack_40;
+  
+  lVar1 = in_RDX[2];
+  if ((ulonglong)(*in_RDX - lVar1) < in_R9) {
+    alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+    lVar1 = in_RDX[2];
+  }
+  _Src = (void *)in_RDX[1];
+  memcpy((void *)((longlong)_Src + lVar1 * 8),in_R8,in_R9 * 8);
+  uVar2 = lVar1 + in_R9;
+  in_RDX[2] = uVar2;
+  _Size = uVar2 * 8;
+  if ((uVar2 >> 0x3d == 0) && (_Size < 0x7ffffffffffffffd)) {
+    if (_Size == 0) {
+      _Dst = &DAT_00000004;
+    }
+    else {
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      _Dst = extraout_RAX;
+      if (extraout_RAX == (undefined1 *)0x0) goto LAB_141466a24;
+    }
+    memcpy(_Dst,_Src,_Size);
+    try_new_from_points<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>();
+    if (SBORROW8(0,local_70)) {
+      *in_RCX = local_68;
+      in_RCX[1] = lStack_60;
+    }
+    else {
+      if (*in_RDX != 0) {
+        std::alloc::__default_lib_allocator::__rust_dealloc();
+      }
+      if (in_RDX[3] != 0) {
+        std::alloc::__default_lib_allocator::__rust_dealloc();
+      }
+      *in_RDX = local_70;
+      in_RDX[1] = local_68;
+      in_RDX[2] = lStack_60;
+      in_RDX[5] = local_48;
+      in_RDX[6] = lStack_40;
+      in_RDX[3] = local_58;
+      in_RDX[4] = lStack_50;
+      *(undefined1 *)in_RCX = 3;
+    }
+    return;
+  }
+LAB_141466a24:
+                    // WARNING: Subroutine does not return
+  alloc::raw_vec::handle_error();
+}
+

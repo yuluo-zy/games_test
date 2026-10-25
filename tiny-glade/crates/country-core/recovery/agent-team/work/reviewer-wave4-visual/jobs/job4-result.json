@@ -1,0 +1,803 @@
+{
+  "backend": "ghidra",
+  "worker": "reviewer-wave4-visual",
+  "access": "read",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "get_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x141e5fd80,0x140fe0470,0x142923c00,0x140fe7600,0x140fe7790",
+        "fields": "signature,decompiled_code",
+        "include_call_context": false
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x141e5fd80,0x140fe0470,0x142923c00,0x140fe7600,0x140fe7790",
+        "fields": "signature,decompiled_code",
+        "include_call_context": false
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"functions\":{\"0x141e5fd80\":{\"name\":\"write_components<tuple$<toolbar::resouces_and_components::TaffyNode,toolbar::resouces_and_components::UiScaleWithUserSetting,country_core::components::UiInteractionState,toolbar::resouces_and_components::UiAnimationState,country_core::components::UiMouseInteractable,country_core::components::Ui2dExtent,country_core::components::Ui2dImage,country_core::components::UiDrawOrder>,bevy_ecs::archetype::ArchetypeAfterBundleInsert,core::slice::iter::Iter<bevy_ecs::component::RequiredComponentConstructor>_>\",\"size\":2306,\"address\":\"141e5fd80\",\"signature\":\"void __cdecl write_components<tuple$<toolbar::resouces_and_components::TaffyNode,toolbar::resouces_and_components::UiScaleWithUserSetting,country_core::components::UiInteractionState,toolbar::resouces_and_components::UiAnimationState,country_core::components::UiMouseInteractable,country_core::components::Ui2dExtent,country_core::components::Ui2dImage,country_core::components::UiDrawOrder>,bevy_ecs::archetype::ArchetypeAfterBundleInsert,core::slice::iter::Iter<bevy_ecs::component::RequiredComponentConstructor>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\nbevy_ecs::bundle::BundleInfo::\\nwrite_components<tuple_<toolbar::resouces_and_components::TaffyNode,toolbar::resouces_and_components::UiScaleWithUserSetting,country_core::components::UiInteractionState,toolbar::resouces_and_components::UiAnimationState,country_core::components::UiMouseInteractable,country_core::components::Ui2dExtent,country_core::components::Ui2dImage,country_core::components::UiDrawOrder>,bevy_ecs::archetype::ArchetypeAfterBundleInsert,core::slice::iter::Iter<bevy_ecs::component::RequiredComponentConstructor>_>\\n          (void)\\n\\n{\\n  undefined4 uVar1;\\n  char cVar2;\\n  ulonglong uVar3;\\n  undefined8 uVar4;\\n  undefined8 uVar5;\\n  undefined8 uVar6;\\n  code *pcVar7;\\n  undefined3 uVar8;\\n  ulonglong uVar9;\\n  ulonglong *in_RCX;\\n  longlong in_R8;\\n  longlong lVar10;\\n  char *in_stack_00000028;\\n  longlong in_stack_00000038;\\n  longlong in_stack_00000040;\\n  uint in_stack_00000050;\\n  undefined4 in_stack_00000058;\\n  undefined8 *in_stack_00000060;\\n  char in_stack_00000068;\\n  undefined8 local_98;\\n  undefined8 uStack_90;\\n  undefined4 local_88;\\n  undefined4 uStack_84;\\n  undefined4 uStack_80;\\n  undefined4 uStack_7c;\\n  ulonglong local_70;\\n  undefined1 local_61;\\n  undefined8 local_60;\\n  \\n  local_60 = 0xfffffffffffffffe;\\n  local_88 = *(undefined4 *)(in_stack_00000060 + 10);\\n  local_98 = in_stack_00000060[8];\\n  uStack_90 = in_stack_00000060[9];\\n  uVar9 = *in_RCX;\\n  local_70 = *(ulonglong *)(in_R8 + 0x40);\\n  if ((uVar9 < local_70) &&\\n     (uVar3 = *(ulonglong *)(*(longlong *)(in_R8 + 0x38) + uVar9 * 8), uVar3 != 0)) {\\n    lVar10 = ~uVar3 * 0x30 + *(longlong *)(in_R8 + 0x18);\\n  }\\n  else {\\n    lVar10 = 0;\\n  }\\n  uVar8 = *(undefined3 *)(in_stack_00000060 + 0xb);\\n  uVar1 = *(undefined4 *)((longlong)in_stack_00000060 + 0x54);\\n  uVar4 = *in_stack_00000060;\\n  uVar5 = in_stack_00000060[1];\\n  uVar6 = in_stack_00000060[0xc];\\n  if (*in_stack_00000028 == '\\\\0') {\\n    memmove((void *)(*(size_t *)(lVar10 + 8) * (ulonglong)in_stack_00000050 +\\n                    *(longlong *)(lVar10 + 0x10)),&local_98,*(size_t *)(lVar10 + 8));\\n    *(undefined4 *)(*(longlong *)(lVar10 + 0x20) + (ulonglong)in_stack_00000050 * 4) =\\n         in_stack_00000058;\\nLAB_141e5fec8:\\n    *(undefined4 *)(*(longlong *)(lVar10 + 0x28) + (ulonglong)in_stack_00000050 * 4) =\\n         in_stack_00000058;\\n    uVar9 = in_RCX[1];\\n    if (local_70 <= uVar9) goto LAB_141e5ff3c;\\nLAB_141e5fee4:\\n    uVar3 = *(ulonglong *)(*(longlong *)(in_R8 + 0x38) + uVar9 * 8);\\n    if (uVar3 == 0) goto LAB_141e5ff3c;\\n    lVar10 = ~uVar3 * 0x30 + *(longlong *)(in_R8 + 0x18);\\n    if (in_stack_00000028[1] != '\\\\0') goto LAB_141e5ff4c;\\nLAB_141e5ff0d:\\n    memmove((void *)(*(size_t *)(lVar10 + 8) * (ulonglong)in_stack_00000050 +\\n                    *(longlong *)(lVar10 + 0x10)),&local_98,*(size_t *)(lVar10 + 8));\\n    *(undefined4 *)(*(longlong *)(lVar10 + 0x20) + (ulonglong)in_stack_00000050 * 4) =\\n         in_stack_00000058;\\nLAB_141e5ffa7:\\n    *(undefined4 *)(*(longlong *)(lVar10 + 0x28) + (ulonglong)in_stack_00000050 * 4) =\\n         in_stack_00000058;\\n  }\\n  else {\\n    if (in_stack_00000068 == '\\\\0') {\\n      local_61 = 0;\\n      storage::blob_array::BlobArray::replace_unchecked();\\n      goto LAB_141e5fec8;\\n    }\\n    if (((uVar9 < local_70) &&\\n        (uVar9 = *(ulonglong *)(*(longlong *)(in_R8 + 0x38) + uVar9 * 8), uVar9 != 0)) &&\\n       (pcVar7 = *(code **)(*(longlong *)(in_R8 + 0x18) + 0x18 + ~uVar9 * 0x30),\\n       pcVar7 != (code *)0x0)) {\\n      local_61 = 0;\\n      (*pcVar7)(&local_98);\\n    }\\n    uVar9 = in_RCX[1];\\n    if (uVar9 < local_70) goto LAB_141e5fee4;\\nLAB_141e5ff3c:\\n    lVar10 = 0;\\n    if (in_stack_00000028[1] == '\\\\0') goto LAB_141e5ff0d;\\nLAB_141e5ff4c:\\n    if (in_stack_00000068 == '\\\\0') {\\n      local_61 = 0;\\n      storage::blob_array::BlobArray::replace_unchecked();\\n      goto LAB_141e5ffa7;\\n    }\\n    if (((uVar9 < local_70) &&\\n        (uVar9 = *(ulonglong *)(*(longlong *)(in_R8 + 0x38) + uVar9 * 8), uVar9 != 0)) &&\\n       (pcVar7 = *(code **)(*(longlong *)(in_R8 + 0x18) + 0x18 + ~uVar9 * 0x30),\\n       pcVar7 != (code *)0x0)) {\\n      local_61 = 0;\\n      (*pcVar7)(&local_98);\\n    }\\n  }\\n  local_98 = CONCAT53(local_98._3_5_,uVar8);\\n  uVar9 = in_RCX[2];\\n  if (uVar9 < local_70) {\\n    uVar3 = *(ulonglong *)(*(longlong *)(in_R8 + 0x38) + uVar9 * 8);\\n    if (uVar3 == 0) {\\n      cVar2 = in_stack_00000028[2];\\n      goto joined_r0x000141e60048;\\n    }\\n    lVar10 = ~uVar3 * 0x30 + *(longlong *)(in_R8 + 0x18);\\n    if (in_stack_00000028[2] == '\\\\0') goto LAB_141e60009;\\nLAB_141e6004a:\\n    if (in_stack_00000068 == '\\\\0') {\\n      local_61 = 0;\\n      storage::blob_array::BlobArray::replace_unchecked();\\n      goto LAB_141e600a1;\\n    }\\n    if (((uVar9 < local_70) &&\\n        (uVar9 = *(ulonglong *)(*(longlong *)(in_R8 + 0x38) + uVar9 * 8), uVar9 != 0)) &&\\n       (pcVar7 = *(code **)(*(longlong *)(in_R8 + 0x18) + 0x18 + ~uVar9 * 0x30),\\n       pcVar7 != (code *)0x0)) {\\n      local_61 = 0;\\n      (*pcVar7)(&local_98);\\n    }\\n  }\\n  else {\\n    cVar2 = in_stack_00000028[2];\\njoined_r0x000141e60048:\\n    lVar10 = 0;\\n    if (cVar2 != '\\\\0') goto LAB_141e6004a;\\nLAB_141e60009:\\n    memmove((void *)(*(size_t *)(lVar10 + 8) * (ulonglong)in_stack_00000050 +\\n                    *(longlong *)(lVar10 + 0x10)),&local_98,*(size_t *)(lVar10 + 8));\\n    *(undefined4 *)(*(longlong *)(lVar10 + 0x20) + (ulonglong)in_stack_00000050 * 4) =\\n         in_stack_00000058;\\nLAB_141e600a1:\\n    *(undefined4 *)(*(longlong *)(lVar10 + 0x28) + (ulonglong)in_stack_00000050 * 4) =\\n         in_stack_00000058;\\n  }\\n  local_98._0_4_ = *(undefined4 *)(in_stack_00000060 + 4);\\n  local_98._4_4_ = *(undefined4 *)((longlong)in_stack_00000060 + 0x24);\\n  uStack_90 = in_stack_00000060[5];\\n  uVar9 = in_RCX[3];\\n  if (uVar9 < local_70) {\\n    uVar3 = *(ulonglong *)(*(longlong *)(in_R8 + 0x38) + uVar9 * 8);\\n    if (uVar3 == 0) {\\n      cVar2 = in_stack_00000028[3];\\n      goto joined_r0x000141e6013a;\\n    }\\n    lVar10 = ~uVar3 * 0x30 + *(longlong *)(in_R8 + 0x18);\\n    if (in_stack_00000028[3] == '\\\\0') goto LAB_141e600fb;\\nLAB_141e6013c:\\n    if (in_stack_00000068 == '\\\\0') {\\n      local_61 = 0;\\n      storage::blob_array::BlobArray::replace_unchecked();\\n      goto LAB_141e60193;\\n    }\\n    if (((uVar9 < local_70) &&\\n        (uVar9 = *(ulonglong *)(*(longlong *)(in_R8 + 0x38) + uVar9 * 8), uVar9 != 0)) &&\\n       (pcVar7 = *(code **)(*(longlong *)(in_R8 + 0x18) + 0x18 + ~uVar9 * 0x30),\\n       pcVar7 != (code *)0x0)) {\\n      local_61 = 0;\\n      (*pcVar7)(&local_98);\\n    }\\n  }\\n  else {\\n    cVar2 = in_stack_00000028[3];\\njoined_r0x000141e6013a:\\n    lVar10 = 0;\\n    if (cVar2 != '\\\\0') goto LAB_141e6013c;\\nLAB_141e600fb:\\n    memmove((void *)(*(size_t *)(lVar10 + 8) * (ulonglong)in_stack_00000050 +\\n                    *(longlong *)(lVar10 + 0x10)),&local_98,*(size_t *)(lVar10 + 8));\\n    *(undefined4 *)(*(longlong *)(lVar10 + 0x20) + (ulonglong)in_stack_00000050 * 4) =\\n         in_stack_00000058;\\nLAB_141e60193:\\n    *(undefined4 *)(*(longlong *)(lVar10 + 0x28) + (ulonglong)in_stack_00000050 * 4) =\\n         in_stack_00000058;\\n  }\\n  local_98 = CONCAT44(local_98._4_4_,uVar1);\\n  uVar9 = in_RCX[4];\\n  if (uVar9 < local_70) {\\n    uVar3 = *(ulonglong *)(*(longlong *)(in_R8 + 0x38) + uVar9 * 8);\\n    if (uVar3 == 0) {\\n      cVar2 = in_stack_00000028[4];\\n      goto joined_r0x000141e60226;\\n    }\\n    lVar10 = ~uVar3 * 0x30 + *(longlong *)(in_R8 + 0x18);\\n    if (in_stack_00000028[4] == '\\\\0') goto LAB_141e601e7;\\nLAB_141e60228:\\n    if (in_stack_00000068 == '\\\\0') {\\n      local_61 = 0;\\n      storage::blob_array::BlobArray::replace_unchecked();\\n      goto LAB_141e6027f;\\n    }\\n    if (((uVar9 < local_70) &&\\n        (uVar9 = *(ulonglong *)(*(longlong *)(in_R8 + 0x38) + uVar9 * 8), uVar9 != 0)) &&\\n       (pcVar7 = *(code **)(*(longlong *)(in_R8 + 0x18) + 0x18 + ~uVar9 * 0x30),\\n       pcVar7 != (code *)0x0)) {\\n      local_61 = 0;\\n      (*pcVar7)(&local_98);\\n    }\\n  }\\n  else {\\n    cVar2 = in_stack_00000028[4];\\njoined_r0x000141e60226:\\n    lVar10 = 0;\\n    if (cVar2 != '\\\\0') goto LAB_141e60228;\\nLAB_141e601e7:\\n    memmove((void *)(*(size_t *)(lVar10 + 8) * (ulonglong)in_stack_00000050 +\\n                    *(longlong *)(lVar10 + 0x10)),&local_98,*(size_t *)(lVar10 + 8));\\n    *(undefined4 *)(*(longlong *)(lVar10 + 0x20) + (ulonglong)in_stack_00000050 * 4) =\\n         in_stack_00000058;\\nLAB_141e6027f:\\n    *(undefined4 *)(*(longlong *)(lVar10 + 0x28) + (ulonglong)in_stack_00000050 * 4) =\\n         in_stack_00000058;\\n  }\\n  local_98 = in_stack_00000060[6];\\n  uStack_90 = in_stack_00000060[7];\\n  uVar9 = in_RCX[5];\\n  if (uVar9 < local_70) {\\n    uVar3 = *(ulonglong *)(*(longlong *)(in_R8 + 0x38) + uVar9 * 8);\\n    if (uVar3 == 0) {\\n      cVar2 = in_stack_00000028[5];\\n      goto joined_r0x000141e60318;\\n    }\\n    lVar10 = ~uVar3 * 0x30 + *(longlong *)(in_R8 + 0x18);\\n    if (in_stack_00000028[5] == '\\\\0') goto LAB_141e602d9;\\nLAB_141e6031a:\\n    if (in_stack_00000068 == '\\\\0') {\\n      local_61 = 0;\\n      storage::blob_array::BlobArray::replace_unchecked();\\n      goto LAB_141e60371;\\n    }\\n    if (((uVar9 < local_70) &&\\n        (uVar9 = *(ulonglong *)(*(longlong *)(in_R8 + 0x38) + uVar9 * 8), uVar9 != 0)) &&\\n       (pcVar7 = *(code **)(*(longlong *)(in_R8 + 0x18) + 0x18 + ~uVar9 * 0x30),\\n       pcVar7 != (code *)0x0)) {\\n      local_61 = 0;\\n      (*pcVar7)(&local_98);\\n    }\\n  }\\n  else {\\n    cVar2 = in_stack_00000028[5];\\njoined_r0x000141e60318:\\n    lVar10 = 0;\\n    if (cVar2 != '\\\\0') goto LAB_141e6031a;\\nLAB_141e602d9:\\n    memmove((void *)(*(size_t *)(lVar10 + 8) * (ulonglong)in_stack_00000050 +\\n                    *(longlong *)(lVar10 + 0x10)),&local_98,*(size_t *)(lVar10 + 8));\\n    *(undefined4 *)(*(longlong *)(lVar10 + 0x20) + (ulonglong)in_stack_00000050 * 4) =\\n         in_stack_00000058;\\nLAB_141e60371:\\n    *(undefined4 *)(*(longlong *)(lVar10 + 0x28) + (ulonglong)in_stack_00000050 * 4) =\\n         in_stack_00000058;\\n  }\\n  local_88 = *(undefined4 *)(in_stack_00000060 + 2);\\n  uStack_84 = *(undefined4 *)((longlong)in_stack_00000060 + 0x14);\\n  uStack_80 = *(undefined4 *)(in_stack_00000060 + 3);\\n  uStack_7c = *(undefined4 *)((longlong)in_stack_00000060 + 0x1c);\\n  uVar9 = in_RCX[6];\\n  local_98 = uVar4;\\n  uStack_90 = uVar5;\\n  if (uVar9 < local_70) {\\n    uVar3 = *(ulonglong *)(*(longlong *)(in_R8 + 0x38) + uVar9 * 8);\\n    if (uVar3 == 0) {\\n      cVar2 = in_stack_00000028[6];\\n      goto joined_r0x000141e6041b;\\n    }\\n    lVar10 = ~uVar3 * 0x30 + *(longlong *)(in_R8 + 0x18);\\n    if (in_stack_00000028[6] == '\\\\0') goto LAB_141e603dc;\\nLAB_141e6041d:\\n    if (in_stack_00000068 == '\\\\0') {\\n      local_61 = 1;\\n      storage::blob_array::BlobArray::replace_unchecked();\\n      goto LAB_141e60474;\\n    }\\n    if (((uVar9 < local_70) &&\\n        (uVar9 = *(ulonglong *)(*(longlong *)(in_R8 + 0x38) + uVar9 * 8), uVar9 != 0)) &&\\n       (pcVar7 = *(code **)(*(longlong *)(in_R8 + 0x18) + 0x18 + ~uVar9 * 0x30),\\n       pcVar7 != (code *)0x0)) {\\n      local_61 = 1;\\n      (*pcVar7)(&local_98);\\n    }\\n  }\\n  else {\\n    cVar2 = in_stack_00000028[6];\\njoined_r0x000141e6041b:\\n    lVar10 = 0;\\n    if (cVar2 != '\\\\0') goto LAB_141e6041d;\\nLAB_141e603dc:\\n    memmove((void *)(*(size_t *)(lVar10 + 8) * (ulonglong)in_stack_00000050 +\\n                    *(longlong *)(lVar10 + 0x10)),&local_98,*(size_t *)(lVar10 + 8));\\n    *(undefined4 *)(*(longlong *)(lVar10 + 0x20) + (ulonglong)in_stack_00000050 * 4) =\\n         in_stack_00000058;\\nLAB_141e60474:\\n    *(undefined4 *)(*(longlong *)(lVar10 + 0x28) + (ulonglong)in_stack_00000050 * 4) =\\n         in_stack_00000058;\\n  }\\n  uVar9 = in_RCX[7];\\n  local_98 = uVar6;\\n  if (uVar9 < local_70) {\\n    uVar3 = *(ulonglong *)(*(longlong *)(in_R8 + 0x38) + uVar9 * 8);\\n    if (uVar3 == 0) {\\n      cVar2 = in_stack_00000028[7];\\n      goto joined_r0x000141e60520;\\n    }\\n    lVar10 = ~uVar3 * 0x30 + *(longlong *)(in_R8 + 0x18);\\n    if (in_stack_00000028[7] == '\\\\0') goto LAB_141e604d9;\\nLAB_141e60522:\\n    if (in_stack_00000068 != '\\\\0') {\\n      if (((uVar9 < local_70) &&\\n          (uVar9 = *(ulonglong *)(*(longlong *)(in_R8 + 0x38) + uVar9 * 8), uVar9 != 0)) &&\\n         (pcVar7 = *(code **)(*(longlong *)(in_R8 + 0x18) + 0x18 + ~uVar9 * 0x30),\\n         pcVar7 != (code *)0x0)) {\\n        local_61 = 1;\\n        (*pcVar7)(&local_98);\\n      }\\n      goto joined_r0x000141e605a2;\\n    }\\n    local_61 = 1;\\n    storage::blob_array::BlobArray::replace_unchecked();\\n  }\\n  else {\\n    cVar2 = in_stack_00000028[7];\\njoined_r0x000141e60520:\\n    lVar10 = 0;\\n    if (cVar2 != '\\\\0') goto LAB_141e60522;\\nLAB_141e604d9:\\n    memmove((void *)(*(size_t *)(lVar10 + 8) * (ulonglong)in_stack_00000050 +\\n                    *(longlong *)(lVar10 + 0x10)),&local_98,*(size_t *)(lVar10 + 8));\\n    *(undefined4 *)(*(longlong *)(lVar10 + 0x20) + (ulonglong)in_stack_00000050 * 4) =\\n         in_stack_00000058;\\n  }\\n  *(undefined4 *)(*(longlong *)(lVar10 + 0x28) + (ulonglong)in_stack_00000050 * 4) =\\n       in_stack_00000058;\\njoined_r0x000141e605a2:\\n  for (; in_stack_00000038 != in_stack_00000040; in_stack_00000038 = in_stack_00000038 + 0x10) {\\n    component::RequiredComponentConstructor::initialize();\\n  }\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791641839972:dd6fb5a4:3\",\"epoch\":\"dd6fb5a4\",\"modification_number\":3,\"saved_time\":1791641839972,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140fe0470\":{\"name\":\"spawn<tuple$<toolbar::resouces_and_components::TaffyNode,toolbar::resouces_and_components::UiScaleWithUserSetting,country_core::components::UiInteractionState,toolbar::resouces_and_components::UiAnimationState,country_core::components::UiMouseInteractable,country_core::components::Ui2dExtent,country_core::components::Ui2dImage,country_core::components::UiDrawOrder>_>\",\"size\":363,\"address\":\"140fe0470\",\"signature\":\"void __cdecl spawn<tuple$<toolbar::resouces_and_components::TaffyNode,toolbar::resouces_and_components::UiScaleWithUserSetting,country_core::components::UiInteractionState,toolbar::resouces_and_components::UiAnimationState,country_core::components::UiMouseInteractable,country_core::components::Ui2dExtent,country_core::components::Ui2dImage,country_core::components::UiDrawOrder>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl\\nbevy_ecs::system::commands::Commands::\\nspawn<tuple_<toolbar::resouces_and_components::TaffyNode,toolbar::resouces_and_components::UiScaleWithUserSetting,country_core::components::UiInteractionState,toolbar::resouces_and_components::UiAnimationState,country_core::components::UiMouseInteractable,country_core::components::Ui2dExtent,country_core::components::Ui2dImage,country_core::components::UiDrawOrder>_>\\n          (void)\\n\\n{\\n  undefined8 *puVar1;\\n  undefined8 uVar2;\\n  undefined8 uVar3;\\n  longlong lVar4;\\n  undefined8 uVar5;\\n  undefined8 uVar6;\\n  undefined8 uVar7;\\n  undefined8 uVar8;\\n  undefined8 uVar9;\\n  undefined8 *in_RCX;\\n  longlong lVar10;\\n  longlong *plVar11;\\n  undefined8 *in_R8;\\n  undefined8 local_78;\\n  longlong *plStack_70;\\n  longlong *local_68;\\n  undefined8 uStack_60;\\n  undefined8 local_58;\\n  \\n  spawn_empty();\\n  uVar2 = *in_R8;\\n  uVar3 = in_R8[1];\\n  if (plStack_70 == (longlong *)0x0) {\\n    lVar10 = local_68[2];\\n    plVar11 = local_68;\\n    if ((ulonglong)(*local_68 - lVar10) < 0x88) {\\n      alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n    }\\n  }\\n  else {\\n    lVar10 = plStack_70[2];\\n    plVar11 = plStack_70;\\n    if ((ulonglong)(*plStack_70 - lVar10) < 0x88) {\\n      alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n    }\\n  }\\n  lVar4 = plVar11[1];\\n  *(code **)(lVar4 + lVar10) =\\n       core::ops::function::FnOnce::\\n       call_once<bevy_ecs::world::command_queue::impl_4::push::closure_env_0<bevy_ecs::error::command_handling::impl_0::handle_error_with::closure_env_0<bevy_ecs::error::command_handling::impl_3::with_entity::closure_env_0<bevy_ecs::system::commands::entity_command::insert::closure_env_0<tuple_<toolbar::resouces_and_components::TaffyNode,toolbar::resouces_and_components::UiScaleWithUserSetting,country_core::components::UiInteractionState,toolbar::resouces_and_components::UiAnimationState,country_core::components::UiMouseInteractable,country_core::components::Ui2dExtent,country_core::components::Ui2dImage,country_core::components::UiDrawOrder>_>_>,tuple_<>,enum2_<bevy_ecs::world::error::EntityMutableFetchError>_>_>,tuple_<bevy_ptr::OwningPtr<bevy_ptr::Unaligned>,enum2_<core::option::Option<core::ptr::non_null::NonNull<bevy_ecs::world::World>_>_>,ref_mut_<usize>_>_>\\n  ;\\n  *(undefined8 *)(lVar4 + 8 + lVar10) = uVar2;\\n  *(undefined8 *)(lVar4 + 0x10 + lVar10) = uVar3;\\n  uVar2 = in_R8[3];\\n  uVar3 = in_R8[4];\\n  uVar5 = in_R8[5];\\n  uVar6 = in_R8[6];\\n  uVar7 = in_R8[7];\\n  uVar8 = in_R8[8];\\n  uVar9 = in_R8[9];\\n  puVar1 = (undefined8 *)(lVar4 + 0x18 + lVar10);\\n  *puVar1 = in_R8[2];\\n  puVar1[1] = uVar2;\\n  puVar1 = (undefined8 *)(lVar4 + 0x28 + lVar10);\\n  *puVar1 = uVar3;\\n  puVar1[1] = uVar5;\\n  puVar1 = (undefined8 *)(lVar4 + 0x38 + lVar10);\\n  *puVar1 = uVar6;\\n  puVar1[1] = uVar7;\\n  puVar1 = (undefined8 *)(lVar4 + 0x48 + lVar10);\\n  *puVar1 = uVar8;\\n  puVar1[1] = uVar9;\\n  uVar2 = in_R8[0xb];\\n  puVar1 = (undefined8 *)(lVar4 + 0x58 + lVar10);\\n  *puVar1 = in_R8[10];\\n  puVar1[1] = uVar2;\\n  *(undefined8 *)(lVar4 + 0x68 + lVar10) = in_R8[0xc];\\n  *(undefined1 *)(lVar4 + 0x70 + lVar10) = 0;\\n  *(undefined8 *)(lVar4 + 0x78 + lVar10) = local_58;\\n  *(code **)(lVar4 + 0x80 + lVar10) = bevy_ecs::error::handler::panic;\\n  plVar11[2] = lVar10 + 0x88;\\n  in_RCX[4] = local_58;\\n  in_RCX[2] = local_68;\\n  in_RCX[3] = uStack_60;\\n  *in_RCX = local_78;\\n  in_RCX[1] = plStack_70;\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791641839972:dd6fb5a4:3\",\"epoch\":\"dd6fb5a4\",\"modification_number\":3,\"saved_time\":1791641839972,\"unsaved_changes\":false,\"decompiled\":true}},\"0x142923c00\":{\"name\":\"memcpy\",\"size\":6,\"address\":\"142923c00\",\"signature\":\"void * __cdecl memcpy(void * _Dst, void * _Src, size_t _Size)\",\"decompiled_code\":\"\\nvoid * __cdecl memcpy(void *_Dst,void *_Src,size_t _Size)\\n\\n{\\n  void *pvVar1;\\n  \\n                    // WARNING: Could not recover jumptable at 0x000142923c00. Too many branches\\n                    // WARNING: Treating indirect jump as call\\n  pvVar1 = memcpy(_Dst,_Src,_Size);\\n  return pvVar1;\\n}\\n\\n\",\"revision\":{\"token\":\"1791641839972:dd6fb5a4:3\",\"epoch\":\"dd6fb5a4\",\"modification_number\":3,\"saved_time\":1791641839972,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140fe7600\":{\"name\":\"new_leaf\",\"size\":392,\"address\":\"140fe7600\",\"signature\":\"void __cdecl new_leaf(void)\",\"decompiled_code\":\"\\nvoid __cdecl taffy::node::Taffy::new_leaf(void)\\n\\n{\\n  uint uVar1;\\n  ulonglong uVar2;\\n  longlong lVar3;\\n  undefined4 extraout_EAX;\\n  ulonglong uVar4;\\n  undefined4 *in_RCX;\\n  longlong in_RDX;\\n  undefined8 *_Dst;\\n  void *in_R8;\\n  int iVar5;\\n  undefined8 local_358;\\n  undefined8 local_350;\\n  undefined8 local_348;\\n  undefined4 local_200;\\n  undefined4 local_1c4;\\n  undefined4 local_188;\\n  undefined4 local_14c;\\n  undefined4 local_110;\\n  undefined4 local_d4;\\n  undefined4 local_98;\\n  undefined8 local_5c;\\n  undefined8 uStack_54;\\n  undefined8 local_4c;\\n  undefined1 uStack_44;\\n  undefined7 uStack_43;\\n  undefined1 uStack_3c;\\n  undefined8 uStack_3b;\\n  \\n  _Dst = &local_358;\\n  memcpy(_Dst,in_R8,0x158);\\n  local_200 = 2;\\n  local_1c4 = 2;\\n  local_188 = 2;\\n  local_14c = 2;\\n  local_110 = 2;\\n  local_d4 = 2;\\n  local_98 = 2;\\n  local_5c = 0;\\n  uStack_54 = 0;\\n  local_4c = 0;\\n  uStack_44 = 0;\\n  uStack_43 = 0;\\n  uStack_3c = 0;\\n  uStack_3b = 0;\\n  slotmap::basic::SlotMap::\\n  insert_with_key<slotmap::DefaultKey,taffy::data::NodeData,slotmap::basic::impl_5::insert::closure_env_0<slotmap::DefaultKey,taffy::data::NodeData>_>\\n            ();\\n  local_358 = 0;\\n  local_350 = 4;\\n  local_348 = 0;\\n  slotmap::basic::SlotMap::\\n  insert_with_key<slotmap::DefaultKey,alloc::vec::Vec<slotmap::DefaultKey,alloc::alloc::Global>,slotmap::basic::impl_5::insert::closure_env_0<slotmap::DefaultKey,alloc::vec::Vec<slotmap::DefaultKey,alloc::alloc::Global>_>_>\\n            ();\\n  iVar5 = *(int *)(in_RDX + 0x5c) + 1;\\n  if (iVar5 != -1) {\\n    uVar2 = *(ulonglong *)(in_RDX + 0x50);\\n    uVar4 = (ulonglong)*(uint *)(in_RDX + 0x58);\\n    if (uVar4 < uVar2) {\\n      lVar3 = *(longlong *)(in_RDX + 0x48);\\n      uVar1 = *(uint *)(lVar3 + 8 + uVar4 * 0xc);\\n      *(undefined4 *)(in_RDX + 0x58) = *(undefined4 *)(lVar3 + uVar4 * 0xc);\\n      *(undefined4 *)(lVar3 + uVar4 * 0xc) = 0;\\n      *(uint *)(lVar3 + 8 + uVar4 * 0xc) = uVar1 | 1;\\n    }\\n    else {\\n      if (uVar2 == *(ulonglong *)(in_RDX + 0x40)) {\\n        alloc::raw_vec::RawVec::\\n        grow_one<slotmap::basic::Slot<enum2_<core::option::Option<slotmap::DefaultKey>_>_>,alloc::alloc::Global>\\n                  ();\\n      }\\n      lVar3 = *(longlong *)(in_RDX + 0x48);\\n      *(undefined4 *)(lVar3 + uVar2 * 0xc) = 0;\\n      *(undefined4 *)(lVar3 + 8 + uVar2 * 0xc) = 1;\\n      *(ulonglong *)(in_RDX + 0x50) = uVar2 + 1;\\n      *(int *)(in_RDX + 0x58) = (int)uVar2 + 1;\\n    }\\n    *(int *)(in_RDX + 0x5c) = iVar5;\\n    in_RCX[1] = extraout_EAX;\\n    in_RCX[2] = (int)_Dst;\\n    *in_RCX = 4;\\n    return;\\n  }\\n                    // WARNING: Subroutine does not return\\n  std::panicking::begin_panic<ref_<str_>_>();\\n}\\n\\n\",\"revision\":{\"token\":\"1791641839972:dd6fb5a4:3\",\"epoch\":\"dd6fb5a4\",\"modification_number\":3,\"saved_time\":1791641839972,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140fe7790\":{\"name\":\"add_child\",\"size\":442,\"address\":\"140fe7790\",\"signature\":\"void __cdecl add_child(void)\",\"decompiled_code\":\"\\nvoid __cdecl taffy::node::Taffy::add_child(void)\\n\\n{\\n  int *piVar1;\\n  ulonglong uVar2;\\n  longlong lVar3;\\n  longlong lVar4;\\n  ulonglong uVar5;\\n  undefined4 *in_RCX;\\n  ulonglong uVar6;\\n  longlong in_RDX;\\n  longlong lVar7;\\n  int in_R8D;\\n  uint in_R9D;\\n  longlong *plVar8;\\n  int in_stack_00000028;\\n  uint in_stack_00000030;\\n  \\n  uVar6 = (ulonglong)in_stack_00000030;\\n  uVar2 = *(ulonglong *)(in_RDX + 0x50);\\n  if (uVar6 < uVar2) {\\n    lVar3 = *(longlong *)(in_RDX + 0x48);\\n    if (*(int *)(lVar3 + 8 + uVar6 * 0xc) == in_stack_00000028) {\\n      piVar1 = (int *)(lVar3 + uVar6 * 0xc);\\n      *piVar1 = in_R8D;\\n      piVar1[1] = in_R9D;\\n      uVar6 = (ulonglong)in_R9D;\\n      if (uVar6 < *(ulonglong *)(in_RDX + 0x30)) {\\n        if (*(int *)(*(longlong *)(in_RDX + 0x28) + 0x18 + uVar6 * 0x20) == in_R8D) {\\n          plVar8 = (longlong *)(*(longlong *)(in_RDX + 0x28) + uVar6 * 0x20);\\n          lVar4 = plVar8[2];\\n          if (lVar4 == *plVar8) {\\n            alloc::raw_vec::RawVec::grow_one<tuple_<u32,u32>,alloc::alloc::Global>();\\n          }\\n          lVar7 = plVar8[1];\\n          *(int *)(lVar7 + lVar4 * 8) = in_stack_00000028;\\n          *(uint *)(lVar7 + 4 + lVar4 * 8) = in_stack_00000030;\\n          plVar8[2] = lVar4 + 1;\\n          uVar5 = *(ulonglong *)(in_RDX + 0x10);\\n          if (uVar6 < uVar5) {\\n            lVar4 = *(longlong *)(in_RDX + 8);\\n            do {\\n              if (*(int *)(lVar4 + 0x328 + uVar6 * 0x330) != in_R8D) break;\\n              lVar7 = uVar6 * 0x330 + lVar4;\\n              *(undefined4 *)(lVar7 + 0x158) = 2;\\n              *(undefined4 *)(lVar7 + 0x194) = 2;\\n              *(undefined4 *)(lVar7 + 0x1d0) = 2;\\n              *(undefined4 *)(lVar7 + 0x20c) = 2;\\n              *(undefined4 *)(lVar7 + 0x248) = 2;\\n              *(undefined4 *)(lVar7 + 0x284) = 2;\\n              *(undefined4 *)(lVar7 + 0x2c0) = 2;\\n              if ((uVar2 <= uVar6) || (*(int *)(lVar3 + 8 + uVar6 * 0xc) != in_R8D)) {\\nLAB_140fe78ff:\\n                *in_RCX = 4;\\n                return;\\n              }\\n              piVar1 = (int *)(lVar3 + uVar6 * 0xc);\\n              in_R8D = *piVar1;\\n              if (in_R8D == 0) goto LAB_140fe78ff;\\n              uVar6 = (ulonglong)(uint)piVar1[1];\\n            } while (uVar6 < uVar5);\\n          }\\n                    // WARNING: Subroutine does not return\\n          std::panicking::begin_panic<ref_<str_>_>();\\n        }\\n      }\\n                    // WARNING: Subroutine does not return\\n      std::panicking::begin_panic<ref_<str_>_>();\\n    }\\n  }\\n                    // WARNING: Subroutine does not return\\n  std::panicking::begin_panic<ref_<str_>_>();\\n}\\n\\n\",\"revision\":{\"token\":\"1791641839972:dd6fb5a4:3\",\"epoch\":\"dd6fb5a4\",\"modification_number\":3,\"saved_time\":1791641839972,\"unsaved_changes\":false,\"decompiled\":true}}},\"count\":5,\"requested\":5}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "disassemble_function",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "address": "0x141e5fd80"
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "address": "0x141e5fd80"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"instructions\":[{\"address\":\"141e5fd80\",\"instruction\":\"PUSH RBP\"},{\"address\":\"141e5fd81\",\"instruction\":\"PUSH R15\"},{\"address\":\"141e5fd83\",\"instruction\":\"PUSH R14\"},{\"address\":\"141e5fd85\",\"instruction\":\"PUSH R13\"},{\"address\":\"141e5fd87\",\"instruction\":\"PUSH R12\"},{\"address\":\"141e5fd89\",\"instruction\":\"PUSH RSI\"},{\"address\":\"141e5fd8a\",\"instruction\":\"PUSH RDI\"},{\"address\":\"141e5fd8b\",\"instruction\":\"PUSH RBX\"},{\"address\":\"141e5fd8c\",\"instruction\":\"SUB RSP,0xa8\"},{\"address\":\"141e5fd93\",\"instruction\":\"LEA RBP,[RSP + 0x80]\"},{\"address\":\"141e5fd9b\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x10],XMM6\"},{\"address\":\"141e5fd9f\",\"instruction\":\"MOV qword ptr [RBP + 0x8],-0x2\"},{\"address\":\"141e5fda7\",\"instruction\":\"MOV RSI,R9\"},{\"address\":\"141e5fdaa\",\"instruction\":\"MOV RDI,R8\"},{\"address\":\"141e5fdad\",\"instruction\":\"MOV R14,qword ptr [RBP + 0xc8]\"},{\"address\":\"141e5fdb4\",\"instruction\":\"MOV EAX,dword ptr [R14 + 0x50]\"},{\"address\":\"141e5fdb8\",\"instruction\":\"MOV dword ptr [RBP + -0x20],EAX\"},{\"address\":\"141e5fdbb\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [R14 + 0x40]\"},{\"address\":\"141e5fdc0\",\"instruction\":\"MOVAPS xmmword ptr [RBP + -0x30],XMM0\"},{\"address\":\"141e5fdc4\",\"instruction\":\"MOV qword ptr [RBP + -0x38],RCX\"},{\"address\":\"141e5fdc8\",\"instruction\":\"MOV RAX,qword ptr [RCX]\"},{\"address\":\"141e5fdcb\",\"instruction\":\"MOV RCX,qword ptr [R8 + 0x40]\"},{\"address\":\"141e5fdcf\",\"instruction\":\"MOV qword ptr [RBP + -0x8],RCX\"},{\"address\":\"141e5fdd3\",\"instruction\":\"CMP RCX,RAX\"},{\"address\":\"141e5fdd6\",\"instruction\":\"JBE 0x141e5fdf6\"},{\"address\":\"141e5fdd8\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x38]\"},{\"address\":\"141e5fddc\",\"instruction\":\"MOV RCX,qword ptr [RCX + RAX*0x8]\"},{\"address\":\"141e5fde0\",\"instruction\":\"TEST RCX,RCX\"},{\"address\":\"141e5fde3\",\"instruction\":\"JZ 0x141e5fdf6\"},{\"address\":\"141e5fde5\",\"instruction\":\"NOT RCX\"},{\"address\":\"141e5fde8\",\"instruction\":\"LEA R15,[RCX + RCX*0x2]\"},{\"address\":\"141e5fdec\",\"instruction\":\"SHL R15,0x4\"},{\"address\":\"141e5fdf0\",\"instruction\":\"ADD R15,qword ptr [RDI + 0x18]\"},{\"address\":\"141e5fdf4\",\"instruction\":\"JMP 0x141e5fdf9\"},{\"address\":\"141e5fdf6\",\"instruction\":\"XOR R15D,R15D\"},{\"address\":\"141e5fdf9\",\"instruction\":\"MOVZX EBX,byte ptr [R14 + 0x5a]\"},{\"address\":\"141e5fdfe\",\"instruction\":\"MOVZX R13D,word ptr [R14 + 0x58]\"},{\"address\":\"141e5fe03\",\"instruction\":\"MOVSS XMM6,dword ptr [R14 + 0x54]\"},{\"address\":\"141e5fe09\",\"instruction\":\"MOV RDX,qword ptr [R14]\"},{\"address\":\"141e5fe0c\",\"instruction\":\"MOV qword ptr [RBP + -0x40],RDX\"},{\"address\":\"141e5fe10\",\"instruction\":\"MOV RDX,qword ptr [R14 + 0x8]\"},{\"address\":\"141e5fe14\",\"instruction\":\"MOV qword ptr [RBP + -0x48],RDX\"},{\"address\":\"141e5fe18\",\"instruction\":\"MOV R8,qword ptr [R14 + 0x60]\"},{\"address\":\"141e5fe1c\",\"instruction\":\"MOV RDX,qword ptr [RBP + 0x90]\"},{\"address\":\"141e5fe23\",\"instruction\":\"CMP byte ptr [RDX],0x0\"},{\"address\":\"141e5fe26\",\"instruction\":\"MOV qword ptr [RBP + -0x50],R8\"},{\"address\":\"141e5fe2a\",\"instruction\":\"JZ 0x141e5fe7f\"},{\"address\":\"141e5fe2c\",\"instruction\":\"CMP byte ptr [RBP + 0xd0],0x0\"},{\"address\":\"141e5fe33\",\"instruction\":\"JZ 0x141e5feae\"},{\"address\":\"141e5fe35\",\"instruction\":\"CMP qword ptr [RBP + -0x8],RAX\"},{\"address\":\"141e5fe39\",\"instruction\":\"JBE 0x141e5fe6b\"},{\"address\":\"141e5fe3b\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x38]\"},{\"address\":\"141e5fe3f\",\"instruction\":\"MOV RAX,qword ptr [RCX + RAX*0x8]\"},{\"address\":\"141e5fe43\",\"instruction\":\"TEST RAX,RAX\"},{\"address\":\"141e5fe46\",\"instruction\":\"JZ 0x141e5fe6b\"},{\"address\":\"141e5fe48\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x18]\"},{\"address\":\"141e5fe4c\",\"instruction\":\"NOT RAX\"},{\"address\":\"141e5fe4f\",\"instruction\":\"LEA RAX,[RAX + RAX*0x2]\"},{\"address\":\"141e5fe53\",\"instruction\":\"SHL RAX,0x4\"},{\"address\":\"141e5fe57\",\"instruction\":\"MOV RAX,qword ptr [RCX + RAX*0x1 + 0x18]\"},{\"address\":\"141e5fe5c\",\"instruction\":\"TEST RAX,RAX\"},{\"address\":\"141e5fe5f\",\"instruction\":\"JZ 0x141e5fe6b\"},{\"address\":\"141e5fe61\",\"instruction\":\"MOV byte ptr [RBP + 0x7],0x0\"},{\"address\":\"141e5fe65\",\"instruction\":\"LEA RCX,[RBP + -0x30]\"},{\"address\":\"141e5fe69\",\"instruction\":\"CALL RAX\"},{\"address\":\"141e5fe6b\",\"instruction\":\"MOV RAX,qword ptr [RBP + -0x38]\"},{\"address\":\"141e5fe6f\",\"instruction\":\"MOV RAX,qword ptr [RAX + 0x8]\"},{\"address\":\"141e5fe73\",\"instruction\":\"CMP qword ptr [RBP + -0x8],RAX\"},{\"address\":\"141e5fe77\",\"instruction\":\"JBE 0x141e5ff3c\"},{\"address\":\"141e5fe7d\",\"instruction\":\"JMP 0x141e5fee4\"},{\"address\":\"141e5fe7f\",\"instruction\":\"MOV R12D,dword ptr [RBP + 0xb8]\"},{\"address\":\"141e5fe86\",\"instruction\":\"MOV R8,qword ptr [R15 + 0x8]\"},{\"address\":\"141e5fe8a\",\"instruction\":\"MOV RCX,R8\"},{\"address\":\"141e5fe8d\",\"instruction\":\"IMUL RCX,R12\"},{\"address\":\"141e5fe91\",\"instruction\":\"ADD RCX,qword ptr [R15 + 0x10]\"},{\"address\":\"141e5fe95\",\"instruction\":\"LEA RDX,[RBP + -0x30]\"},{\"address\":\"141e5fe99\",\"instruction\":\"CALL 0x142923c10\"},{\"address\":\"141e5fe9e\",\"instruction\":\"MOV RAX,qword ptr [R15 + 0x20]\"},{\"address\":\"141e5fea2\",\"instruction\":\"MOV ECX,dword ptr [RBP + 0xc0]\"},{\"address\":\"141e5fea8\",\"instruction\":\"MOV dword ptr [RAX + R12*0x4],ECX\"},{\"address\":\"141e5feac\",\"instruction\":\"JMP 0x141e5fec8\"},{\"address\":\"141e5feae\",\"instruction\":\"MOV R12D,dword ptr [RBP + 0xb8]\"},{\"address\":\"141e5feb5\",\"instruction\":\"MOV byte ptr [RBP + 0x7],0x0\"},{\"address\":\"141e5feb9\",\"instruction\":\"LEA R8,[RBP + -0x30]\"},{\"address\":\"141e5febd\",\"instruction\":\"MOV RCX,R15\"},{\"address\":\"141e5fec0\",\"instruction\":\"MOV RDX,R12\"},{\"address\":\"141e5fec3\",\"instruction\":\"CALL 0x140cff400\"},{\"address\":\"141e5fec8\",\"instruction\":\"MOV RAX,qword ptr [R15 + 0x28]\"},{\"address\":\"141e5fecc\",\"instruction\":\"MOV ECX,dword ptr [RBP + 0xc0]\"},{\"address\":\"141e5fed2\",\"instruction\":\"MOV dword ptr [RAX + R12*0x4],ECX\"},{\"address\":\"141e5fed6\",\"instruction\":\"MOV RAX,qword ptr [RBP + -0x38]\"},{\"address\":\"141e5feda\",\"instruction\":\"MOV RAX,qword ptr [RAX + 0x8]\"},{\"address\":\"141e5fede\",\"instruction\":\"CMP qword ptr [RBP + -0x8],RAX\"},{\"address\":\"141e5fee2\",\"instruction\":\"JBE 0x141e5ff3c\"},{\"address\":\"141e5fee4\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x38]\"},{\"address\":\"141e5fee8\",\"instruction\":\"MOV RCX,qword ptr [RCX + RAX*0x8]\"},{\"address\":\"141e5feec\",\"instruction\":\"TEST RCX,RCX\"},{\"address\":\"141e5feef\",\"instruction\":\"JZ 0x141e5ff3c\"},{\"address\":\"141e5fef1\",\"instruction\":\"NOT RCX\"},{\"address\":\"141e5fef4\",\"instruction\":\"LEA R15,[RCX + RCX*0x2]\"},{\"address\":\"141e5fef8\",\"instruction\":\"SHL R15,0x4\"},{\"address\":\"141e5fefc\",\"instruction\":\"ADD R15,qword ptr [RDI + 0x18]\"},{\"address\":\"141e5ff00\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x90]\"},{\"address\":\"141e5ff07\",\"instruction\":\"CMP byte ptr [RCX + 0x1],0x0\"},{\"address\":\"141e5ff0b\",\"instruction\":\"JNZ 0x141e5ff4c\"},{\"address\":\"141e5ff0d\",\"instruction\":\"MOV R12D,dword ptr [RBP + 0xb8]\"},{\"address\":\"141e5ff14\",\"instruction\":\"MOV R8,qword ptr [R15 + 0x8]\"},{\"address\":\"141e5ff18\",\"instruction\":\"MOV RCX,R8\"},{\"address\":\"141e5ff1b\",\"instruction\":\"IMUL RCX,R12\"},{\"address\":\"141e5ff1f\",\"instruction\":\"ADD RCX,qword ptr [R15 + 0x10]\"},{\"address\":\"141e5ff23\",\"instruction\":\"LEA RDX,[RBP + -0x30]\"},{\"address\":\"141e5ff27\",\"instruction\":\"CALL 0x142923c10\"},{\"address\":\"141e5ff2c\",\"instruction\":\"MOV RAX,qword ptr [R15 + 0x20]\"},{\"address\":\"141e5ff30\",\"instruction\":\"MOV ECX,dword ptr [RBP + 0xc0]\"},{\"address\":\"141e5ff36\",\"instruction\":\"MOV dword ptr [RAX + R12*0x4],ECX\"},{\"address\":\"141e5ff3a\",\"instruction\":\"JMP 0x141e5ffa7\"},{\"address\":\"141e5ff3c\",\"instruction\":\"XOR R15D,R15D\"},{\"address\":\"141e5ff3f\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x90]\"},{\"address\":\"141e5ff46\",\"instruction\":\"CMP byte ptr [RCX + 0x1],0x0\"},{\"address\":\"141e5ff4a\",\"instruction\":\"JZ 0x141e5ff0d\"},{\"address\":\"141e5ff4c\",\"instruction\":\"CMP byte ptr [RBP + 0xd0],0x0\"},{\"address\":\"141e5ff53\",\"instruction\":\"JZ 0x141e5ff8d\"},{\"address\":\"141e5ff55\",\"instruction\":\"CMP qword ptr [RBP + -0x8],RAX\"},{\"address\":\"141e5ff59\",\"instruction\":\"JBE 0x141e5ffb5\"},{\"address\":\"141e5ff5b\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x38]\"},{\"address\":\"141e5ff5f\",\"instruction\":\"MOV RAX,qword ptr [RCX + RAX*0x8]\"},{\"address\":\"141e5ff63\",\"instruction\":\"TEST RAX,RAX\"},{\"address\":\"141e5ff66\",\"instruction\":\"JZ 0x141e5ffb5\"},{\"address\":\"141e5ff68\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x18]\"},{\"address\":\"141e5ff6c\",\"instruction\":\"NOT RAX\"},{\"address\":\"141e5ff6f\",\"instruction\":\"LEA RAX,[RAX + RAX*0x2]\"},{\"address\":\"141e5ff73\",\"instruction\":\"SHL RAX,0x4\"},{\"address\":\"141e5ff77\",\"instruction\":\"MOV RAX,qword ptr [RCX + RAX*0x1 + 0x18]\"},{\"address\":\"141e5ff7c\",\"instruction\":\"TEST RAX,RAX\"},{\"address\":\"141e5ff7f\",\"instruction\":\"JZ 0x141e5ffb5\"},{\"address\":\"141e5ff81\",\"instruction\":\"MOV byte ptr [RBP + 0x7],0x0\"},{\"address\":\"141e5ff85\",\"instruction\":\"LEA RCX,[RBP + -0x30]\"},{\"address\":\"141e5ff89\",\"instruction\":\"CALL RAX\"},{\"address\":\"141e5ff8b\",\"instruction\":\"JMP 0x141e5ffb5\"},{\"address\":\"141e5ff8d\",\"instruction\":\"MOV R12D,dword ptr [RBP + 0xb8]\"},{\"address\":\"141e5ff94\",\"instruction\":\"MOV byte ptr [RBP + 0x7],0x0\"},{\"address\":\"141e5ff98\",\"instruction\":\"LEA R8,[RBP + -0x30]\"},{\"address\":\"141e5ff9c\",\"instruction\":\"MOV RCX,R15\"},{\"address\":\"141e5ff9f\",\"instruction\":\"MOV RDX,R12\"},{\"address\":\"141e5ffa2\",\"instruction\":\"CALL 0x140cff400\"},{\"address\":\"141e5ffa7\",\"instruction\":\"MOV RAX,qword ptr [R15 + 0x28]\"},{\"address\":\"141e5ffab\",\"instruction\":\"MOV ECX,dword ptr [RBP + 0xc0]\"},{\"address\":\"141e5ffb1\",\"instruction\":\"MOV dword ptr [RAX + R12*0x4],ECX\"},{\"address\":\"141e5ffb5\",\"instruction\":\"SHL EBX,0x10\"},{\"address\":\"141e5ffb8\",\"instruction\":\"OR R13D,EBX\"},{\"address\":\"141e5ffbb\",\"instruction\":\"MOV word ptr [RBP + -0x30],R13W\"},{\"address\":\"141e5ffc0\",\"instruction\":\"SHR R13D,0x10\"},{\"address\":\"141e5ffc4\",\"instruction\":\"MOV byte ptr [RBP + -0x2e],R13B\"},{\"address\":\"141e5ffc8\",\"instruction\":\"MOV RAX,qword ptr [RBP + -0x38]\"},{\"address\":\"141e5ffcc\",\"instruction\":\"MOV RAX,qword ptr [RAX + 0x10]\"},{\"address\":\"141e5ffd0\",\"instruction\":\"CMP qword ptr [RBP + -0x8],RAX\"},{\"address\":\"141e5ffd4\",\"instruction\":\"JBE 0x141e60034\"},{\"address\":\"141e5ffd6\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x38]\"},{\"address\":\"141e5ffda\",\"instruction\":\"MOV RCX,qword ptr [RCX + RAX*0x8]\"},{\"address\":\"141e5ffde\",\"instruction\":\"TEST RCX,RCX\"},{\"address\":\"141e5ffe1\",\"instruction\":\"MOV EDX,dword ptr [RBP + 0xb8]\"},{\"address\":\"141e5ffe7\",\"instruction\":\"JZ 0x141e605ec\"},{\"address\":\"141e5ffed\",\"instruction\":\"NOT RCX\"},{\"address\":\"141e5fff0\",\"instruction\":\"LEA R15,[RCX + RCX*0x2]\"},{\"address\":\"141e5fff4\",\"instruction\":\"SHL R15,0x4\"},{\"address\":\"141e5fff8\",\"instruction\":\"ADD R15,qword ptr [RDI + 0x18]\"},{\"address\":\"141e5fffc\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x90]\"},{\"address\":\"141e60003\",\"instruction\":\"CMP byte ptr [RCX + 0x2],0x0\"},{\"address\":\"141e60007\",\"instruction\":\"JNZ 0x141e6004a\"},{\"address\":\"141e60009\",\"instruction\":\"MOV R12D,EDX\"},{\"address\":\"141e6000c\",\"instruction\":\"MOV R8,qword ptr [R15 + 0x8]\"},{\"address\":\"141e60010\",\"instruction\":\"MOV RCX,R8\"},{\"address\":\"141e60013\",\"instruction\":\"IMUL RCX,R12\"},{\"address\":\"141e60017\",\"instruction\":\"ADD RCX,qword ptr [R15 + 0x10]\"},{\"address\":\"141e6001b\",\"instruction\":\"LEA RDX,[RBP + -0x30]\"},{\"address\":\"141e6001f\",\"instruction\":\"CALL 0x142923c10\"},{\"address\":\"141e60024\",\"instruction\":\"MOV RAX,qword ptr [R15 + 0x20]\"},{\"address\":\"141e60028\",\"instruction\":\"MOV ECX,dword ptr [RBP + 0xc0]\"},{\"address\":\"141e6002e\",\"instruction\":\"MOV dword ptr [RAX + R12*0x4],ECX\"},{\"address\":\"141e60032\",\"instruction\":\"JMP 0x141e600a1\"},{\"address\":\"141e60034\",\"instruction\":\"XOR R15D,R15D\"},{\"address\":\"141e60037\",\"instruction\":\"MOV EDX,dword ptr [RBP + 0xb8]\"},{\"address\":\"141e6003d\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x90]\"},{\"address\":\"141e60044\",\"instruction\":\"CMP byte ptr [RCX + 0x2],0x0\"},{\"address\":\"141e60048\",\"instruction\":\"JZ 0x141e60009\"},{\"address\":\"141e6004a\",\"instruction\":\"CMP byte ptr [RBP + 0xd0],0x0\"},{\"address\":\"141e60051\",\"instruction\":\"JZ 0x141e6008b\"},{\"address\":\"141e60053\",\"instruction\":\"CMP qword ptr [RBP + -0x8],RAX\"},{\"address\":\"141e60057\",\"instruction\":\"JBE 0x141e600af\"},{\"address\":\"141e60059\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x38]\"},{\"address\":\"141e6005d\",\"instruction\":\"MOV RAX,qword ptr [RCX + RAX*0x8]\"},{\"address\":\"141e60061\",\"instruction\":\"TEST RAX,RAX\"},{\"address\":\"141e60064\",\"instruction\":\"JZ 0x141e600af\"},{\"address\":\"141e60066\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x18]\"},{\"address\":\"141e6006a\",\"instruction\":\"NOT RAX\"},{\"address\":\"141e6006d\",\"instruction\":\"LEA RAX,[RAX + RAX*0x2]\"},{\"address\":\"141e60071\",\"instruction\":\"SHL RAX,0x4\"},{\"address\":\"141e60075\",\"instruction\":\"MOV RAX,qword ptr [RCX + RAX*0x1 + 0x18]\"},{\"address\":\"141e6007a\",\"instruction\":\"TEST RAX,RAX\"},{\"address\":\"141e6007d\",\"instruction\":\"JZ 0x141e600af\"},{\"address\":\"141e6007f\",\"instruction\":\"MOV byte ptr [RBP + 0x7],0x0\"},{\"address\":\"141e60083\",\"instruction\":\"LEA RCX,[RBP + -0x30]\"},{\"address\":\"141e60087\",\"instruction\":\"CALL RAX\"},{\"address\":\"141e60089\",\"instruction\":\"JMP 0x141e600af\"},{\"address\":\"141e6008b\",\"instruction\":\"MOV R12D,EDX\"},{\"address\":\"141e6008e\",\"instruction\":\"MOV byte ptr [RBP + 0x7],0x0\"},{\"address\":\"141e60092\",\"instruction\":\"LEA R8,[RBP + -0x30]\"},{\"address\":\"141e60096\",\"instruction\":\"MOV RCX,R15\"},{\"address\":\"141e60099\",\"instruction\":\"MOV RDX,R12\"},{\"address\":\"141e6009c\",\"instruction\":\"CALL 0x140cff400\"},{\"address\":\"141e600a1\",\"instruction\":\"MOV RAX,qword ptr [R15 + 0x28]\"},{\"address\":\"141e600a5\",\"instruction\":\"MOV ECX,dword ptr [RBP + 0xc0]\"},{\"address\":\"141e600ab\",\"instruction\":\"MOV dword ptr [RAX + R12*0x4],ECX\"},{\"address\":\"141e600af\",\"instruction\":\"LEA RAX,[R14 + 0x20]\"},{\"address\":\"141e600b3\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [RAX]\"},{\"address\":\"141e600b6\",\"instruction\":\"MOVAPS xmmword ptr [RBP + -0x30],XMM0\"},{\"address\":\"141e600ba\",\"instruction\":\"MOV RAX,qword ptr [RBP + -0x38]\"},{\"address\":\"141e600be\",\"instruction\":\"MOV RAX,qword ptr [RAX + 0x18]\"},{\"address\":\"141e600c2\",\"instruction\":\"CMP qword ptr [RBP + -0x8],RAX\"},{\"address\":\"141e600c6\",\"instruction\":\"JBE 0x141e60126\"},{\"address\":\"141e600c8\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x38]\"},{\"address\":\"141e600cc\",\"instruction\":\"MOV RCX,qword ptr [RCX + RAX*0x8]\"},{\"address\":\"141e600d0\",\"instruction\":\"TEST RCX,RCX\"},{\"address\":\"141e600d3\",\"instruction\":\"MOV EDX,dword ptr [RBP + 0xb8]\"},{\"address\":\"141e600d9\",\"instruction\":\"JZ 0x141e60605\"},{\"address\":\"141e600df\",\"instruction\":\"NOT RCX\"},{\"address\":\"141e600e2\",\"instruction\":\"LEA R15,[RCX + RCX*0x2]\"},{\"address\":\"141e600e6\",\"instruction\":\"SHL R15,0x4\"},{\"address\":\"141e600ea\",\"instruction\":\"ADD R15,qword ptr [RDI + 0x18]\"},{\"address\":\"141e600ee\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x90]\"},{\"address\":\"141e600f5\",\"instruction\":\"CMP byte ptr [RCX + 0x3],0x0\"},{\"address\":\"141e600f9\",\"instruction\":\"JNZ 0x141e6013c\"},{\"address\":\"141e600fb\",\"instruction\":\"MOV R12D,EDX\"},{\"address\":\"141e600fe\",\"instruction\":\"MOV R8,qword ptr [R15 + 0x8]\"},{\"address\":\"141e60102\",\"instruction\":\"MOV RCX,R8\"},{\"address\":\"141e60105\",\"instruction\":\"IMUL RCX,R12\"},{\"address\":\"141e60109\",\"instruction\":\"ADD RCX,qword ptr [R15 + 0x10]\"},{\"address\":\"141e6010d\",\"instruction\":\"LEA RDX,[RBP + -0x30]\"},{\"address\":\"141e60111\",\"instruction\":\"CALL 0x142923c10\"},{\"address\":\"141e60116\",\"instruction\":\"MOV RAX,qword ptr [R15 + 0x20]\"},{\"address\":\"141e6011a\",\"instruction\":\"MOV ECX,dword ptr [RBP + 0xc0]\"},{\"address\":\"141e60120\",\"instruction\":\"MOV dword ptr [RAX + R12*0x4],ECX\"},{\"address\":\"141e60124\",\"instruction\":\"JMP 0x141e60193\"},{\"address\":\"141e60126\",\"instruction\":\"XOR R15D,R15D\"},{\"address\":\"141e60129\",\"instruction\":\"MOV EDX,dword ptr [RBP + 0xb8]\"},{\"address\":\"141e6012f\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x90]\"},{\"address\":\"141e60136\",\"instruction\":\"CMP byte ptr [RCX + 0x3],0x0\"},{\"address\":\"141e6013a\",\"instruction\":\"JZ 0x141e600fb\"},{\"address\":\"141e6013c\",\"instruction\":\"CMP byte ptr [RBP + 0xd0],0x0\"},{\"address\":\"141e60143\",\"instruction\":\"JZ 0x141e6017d\"},{\"address\":\"141e60145\",\"instruction\":\"CMP qword ptr [RBP + -0x8],RAX\"},{\"address\":\"141e60149\",\"instruction\":\"JBE 0x141e601a1\"},{\"address\":\"141e6014b\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x38]\"},{\"address\":\"141e6014f\",\"instruction\":\"MOV RAX,qword ptr [RCX + RAX*0x8]\"},{\"address\":\"141e60153\",\"instruction\":\"TEST RAX,RAX\"},{\"address\":\"141e60156\",\"instruction\":\"JZ 0x141e601a1\"},{\"address\":\"141e60158\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x18]\"},{\"address\":\"141e6015c\",\"instruction\":\"NOT RAX\"},{\"address\":\"141e6015f\",\"instruction\":\"LEA RAX,[RAX + RAX*0x2]\"},{\"address\":\"141e60163\",\"instruction\":\"SHL RAX,0x4\"},{\"address\":\"141e60167\",\"instruction\":\"MOV RAX,qword ptr [RCX + RAX*0x1 + 0x18]\"},{\"address\":\"141e6016c\",\"instruction\":\"TEST RAX,RAX\"},{\"address\":\"141e6016f\",\"instruction\":\"JZ 0x141e601a1\"},{\"address\":\"141e60171\",\"instruction\":\"MOV byte ptr [RBP + 0x7],0x0\"},{\"address\":\"141e60175\",\"instruction\":\"LEA RCX,[RBP + -0x30]\"},{\"address\":\"141e60179\",\"instruction\":\"CALL RAX\"},{\"address\":\"141e6017b\",\"instruction\":\"JMP 0x141e601a1\"},{\"address\":\"141e6017d\",\"instruction\":\"MOV R12D,EDX\"},{\"address\":\"141e60180\",\"instruction\":\"MOV byte ptr [RBP + 0x7],0x0\"},{\"address\":\"141e60184\",\"instruction\":\"LEA R8,[RBP + -0x30]\"},{\"address\":\"141e60188\",\"instruction\":\"MOV RCX,R15\"},{\"address\":\"141e6018b\",\"instruction\":\"MOV RDX,R12\"},{\"address\":\"141e6018e\",\"instruction\":\"CALL 0x140cff400\"},{\"address\":\"141e60193\",\"instruction\":\"MOV RAX,qword ptr [R15 + 0x28]\"},{\"address\":\"141e60197\",\"instruction\":\"MOV ECX,dword ptr [RBP + 0xc0]\"},{\"address\":\"141e6019d\",\"instruction\":\"MOV dword ptr [RAX + R12*0x4],ECX\"},{\"address\":\"141e601a1\",\"instruction\":\"MOVSS dword ptr [RBP + -0x30],XMM6\"},{\"address\":\"141e601a6\",\"instruction\":\"MOV RAX,qword ptr [RBP + -0x38]\"},{\"address\":\"141e601aa\",\"instruction\":\"MOV RAX,qword ptr [RAX + 0x20]\"},{\"address\":\"141e601ae\",\"instruction\":\"CMP qword ptr [RBP + -0x8],RAX\"},{\"address\":\"141e601b2\",\"instruction\":\"JBE 0x141e60212\"},{\"address\":\"141e601b4\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x38]\"},{\"address\":\"141e601b8\",\"instruction\":\"MOV RCX,qword ptr [RCX + RAX*0x8]\"},{\"address\":\"141e601bc\",\"instruction\":\"TEST RCX,RCX\"},{\"address\":\"141e601bf\",\"instruction\":\"MOV EDX,dword ptr [RBP + 0xb8]\"},{\"address\":\"141e601c5\",\"instruction\":\"JZ 0x141e6061e\"},{\"address\":\"141e601cb\",\"instruction\":\"NOT RCX\"},{\"address\":\"141e601ce\",\"instruction\":\"LEA R15,[RCX + RCX*0x2]\"},{\"address\":\"141e601d2\",\"instruction\":\"SHL R15,0x4\"},{\"address\":\"141e601d6\",\"instruction\":\"ADD R15,qword ptr [RDI + 0x18]\"},{\"address\":\"141e601da\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x90]\"},{\"address\":\"141e601e1\",\"instruction\":\"CMP byte ptr [RCX + 0x4],0x0\"},{\"address\":\"141e601e5\",\"instruction\":\"JNZ 0x141e60228\"},{\"address\":\"141e601e7\",\"instruction\":\"MOV R12D,EDX\"},{\"address\":\"141e601ea\",\"instruction\":\"MOV R8,qword ptr [R15 + 0x8]\"},{\"address\":\"141e601ee\",\"instruction\":\"MOV RCX,R8\"},{\"address\":\"141e601f1\",\"instruction\":\"IMUL RCX,R12\"},{\"address\":\"141e601f5\",\"instruction\":\"ADD RCX,qword ptr [R15 + 0x10]\"},{\"address\":\"141e601f9\",\"instruction\":\"LEA RDX,[RBP + -0x30]\"},{\"address\":\"141e601fd\",\"instruction\":\"CALL 0x142923c10\"},{\"address\":\"141e60202\",\"instruction\":\"MOV RAX,qword ptr [R15 + 0x20]\"},{\"address\":\"141e60206\",\"instruction\":\"MOV ECX,dword ptr [RBP + 0xc0]\"},{\"address\":\"141e6020c\",\"instruction\":\"MOV dword ptr [RAX + R12*0x4],ECX\"},{\"address\":\"141e60210\",\"instruction\":\"JMP 0x141e6027f\"},{\"address\":\"141e60212\",\"instruction\":\"XOR R15D,R15D\"},{\"address\":\"141e60215\",\"instruction\":\"MOV EDX,dword ptr [RBP + 0xb8]\"},{\"address\":\"141e6021b\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x90]\"},{\"address\":\"141e60222\",\"instruction\":\"CMP byte ptr [RCX + 0x4],0x0\"},{\"address\":\"141e60226\",\"instruction\":\"JZ 0x141e601e7\"},{\"address\":\"141e60228\",\"instruction\":\"CMP byte ptr [RBP + 0xd0],0x0\"},{\"address\":\"141e6022f\",\"instruction\":\"JZ 0x141e60269\"},{\"address\":\"141e60231\",\"instruction\":\"CMP qword ptr [RBP + -0x8],RAX\"},{\"address\":\"141e60235\",\"instruction\":\"JBE 0x141e6028d\"},{\"address\":\"141e60237\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x38]\"},{\"address\":\"141e6023b\",\"instruction\":\"MOV RAX,qword ptr [RCX + RAX*0x8]\"},{\"address\":\"141e6023f\",\"instruction\":\"TEST RAX,RAX\"},{\"address\":\"141e60242\",\"instruction\":\"JZ 0x141e6028d\"},{\"address\":\"141e60244\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x18]\"},{\"address\":\"141e60248\",\"instruction\":\"NOT RAX\"},{\"address\":\"141e6024b\",\"instruction\":\"LEA RAX,[RAX + RAX*0x2]\"},{\"address\":\"141e6024f\",\"instruction\":\"SHL RAX,0x4\"},{\"address\":\"141e60253\",\"instruction\":\"MOV RAX,qword ptr [RCX + RAX*0x1 + 0x18]\"},{\"address\":\"141e60258\",\"instruction\":\"TEST RAX,RAX\"},{\"address\":\"141e6025b\",\"instruction\":\"JZ 0x141e6028d\"},{\"address\":\"141e6025d\",\"instruction\":\"MOV byte ptr [RBP + 0x7],0x0\"},{\"address\":\"141e60261\",\"instruction\":\"LEA RCX,[RBP + -0x30]\"},{\"address\":\"141e60265\",\"instruction\":\"CALL RAX\"},{\"address\":\"141e60267\",\"instruction\":\"JMP 0x141e6028d\"},{\"address\":\"141e60269\",\"instruction\":\"MOV R12D,EDX\"},{\"address\":\"141e6026c\",\"instruction\":\"MOV byte ptr [RBP + 0x7],0x0\"},{\"address\":\"141e60270\",\"instruction\":\"LEA R8,[RBP + -0x30]\"},{\"address\":\"141e60274\",\"instruction\":\"MOV RCX,R15\"},{\"address\":\"141e60277\",\"instruction\":\"MOV RDX,R12\"},{\"address\":\"141e6027a\",\"instruction\":\"CALL 0x140cff400\"},{\"address\":\"141e6027f\",\"instruction\":\"MOV RAX,qword ptr [R15 + 0x28]\"},{\"address\":\"141e60283\",\"instruction\":\"MOV ECX,dword ptr [RBP + 0xc0]\"},{\"address\":\"141e60289\",\"instruction\":\"MOV dword ptr [RAX + R12*0x4],ECX\"},{\"address\":\"141e6028d\",\"instruction\":\"LEA RAX,[R14 + 0x30]\"},{\"address\":\"141e60291\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [RAX]\"},{\"address\":\"141e60294\",\"instruction\":\"MOVAPS xmmword ptr [RBP + -0x30],XMM0\"},{\"address\":\"141e60298\",\"instruction\":\"MOV RAX,qword ptr [RBP + -0x38]\"},{\"address\":\"141e6029c\",\"instruction\":\"MOV RAX,qword ptr [RAX + 0x28]\"},{\"address\":\"141e602a0\",\"instruction\":\"CMP qword ptr [RBP + -0x8],RAX\"},{\"address\":\"141e602a4\",\"instruction\":\"JBE 0x141e60304\"},{\"address\":\"141e602a6\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x38]\"},{\"address\":\"141e602aa\",\"instruction\":\"MOV RCX,qword ptr [RCX + RAX*0x8]\"},{\"address\":\"141e602ae\",\"instruction\":\"TEST RCX,RCX\"},{\"address\":\"141e602b1\",\"instruction\":\"MOV EDX,dword ptr [RBP + 0xb8]\"},{\"address\":\"141e602b7\",\"instruction\":\"JZ 0x141e60637\"},{\"address\":\"141e602bd\",\"instruction\":\"NOT RCX\"},{\"address\":\"141e602c0\",\"instruction\":\"LEA R15,[RCX + RCX*0x2]\"},{\"address\":\"141e602c4\",\"instruction\":\"SHL R15,0x4\"},{\"address\":\"141e602c8\",\"instruction\":\"ADD R15,qword ptr [RDI + 0x18]\"},{\"address\":\"141e602cc\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x90]\"},{\"address\":\"141e602d3\",\"instruction\":\"CMP byte ptr [RCX + 0x5],0x0\"},{\"address\":\"141e602d7\",\"instruction\":\"JNZ 0x141e6031a\"},{\"address\":\"141e602d9\",\"instruction\":\"MOV R12D,EDX\"},{\"address\":\"141e602dc\",\"instruction\":\"MOV R8,qword ptr [R15 + 0x8]\"},{\"address\":\"141e602e0\",\"instruction\":\"MOV RCX,R8\"},{\"address\":\"141e602e3\",\"instruction\":\"IMUL RCX,R12\"},{\"address\":\"141e602e7\",\"instruction\":\"ADD RCX,qword ptr [R15 + 0x10]\"},{\"address\":\"141e602eb\",\"instruction\":\"LEA RDX,[RBP + -0x30]\"},{\"address\":\"141e602ef\",\"instruction\":\"CALL 0x142923c10\"},{\"address\":\"141e602f4\",\"instruction\":\"MOV RAX,qword ptr [R15 + 0x20]\"},{\"address\":\"141e602f8\",\"instruction\":\"MOV ECX,dword ptr [RBP + 0xc0]\"},{\"address\":\"141e602fe\",\"instruction\":\"MOV dword ptr [RAX + R12*0x4],ECX\"},{\"address\":\"141e60302\",\"instruction\":\"JMP 0x141e60371\"},{\"address\":\"141e60304\",\"instruction\":\"XOR R15D,R15D\"},{\"address\":\"141e60307\",\"instruction\":\"MOV EDX,dword ptr [RBP + 0xb8]\"},{\"address\":\"141e6030d\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x90]\"},{\"address\":\"141e60314\",\"instruction\":\"CMP byte ptr [RCX + 0x5],0x0\"},{\"address\":\"141e60318\",\"instruction\":\"JZ 0x141e602d9\"},{\"address\":\"141e6031a\",\"instruction\":\"CMP byte ptr [RBP + 0xd0],0x0\"},{\"address\":\"141e60321\",\"instruction\":\"JZ 0x141e6035b\"},{\"address\":\"141e60323\",\"instruction\":\"CMP qword ptr [RBP + -0x8],RAX\"},{\"address\":\"141e60327\",\"instruction\":\"JBE 0x141e6037f\"},{\"address\":\"141e60329\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x38]\"},{\"address\":\"141e6032d\",\"instruction\":\"MOV RAX,qword ptr [RCX + RAX*0x8]\"},{\"address\":\"141e60331\",\"instruction\":\"TEST RAX,RAX\"},{\"address\":\"141e60334\",\"instruction\":\"JZ 0x141e6037f\"},{\"address\":\"141e60336\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x18]\"},{\"address\":\"141e6033a\",\"instruction\":\"NOT RAX\"},{\"address\":\"141e6033d\",\"instruction\":\"LEA RAX,[RAX + RAX*0x2]\"},{\"address\":\"141e60341\",\"instruction\":\"SHL RAX,0x4\"},{\"address\":\"141e60345\",\"instruction\":\"MOV RAX,qword ptr [RCX + RAX*0x1 + 0x18]\"},{\"address\":\"141e6034a\",\"instruction\":\"TEST RAX,RAX\"},{\"address\":\"141e6034d\",\"instruction\":\"JZ 0x141e6037f\"},{\"address\":\"141e6034f\",\"instruction\":\"MOV byte ptr [RBP + 0x7],0x0\"},{\"address\":\"141e60353\",\"instruction\":\"LEA RCX,[RBP + -0x30]\"},{\"address\":\"141e60357\",\"instruction\":\"CALL RAX\"},{\"address\":\"141e60359\",\"instruction\":\"JMP 0x141e6037f\"},{\"address\":\"141e6035b\",\"instruction\":\"MOV R12D,EDX\"},{\"address\":\"141e6035e\",\"instruction\":\"MOV byte ptr [RBP + 0x7],0x0\"},{\"address\":\"141e60362\",\"instruction\":\"LEA R8,[RBP + -0x30]\"},{\"address\":\"141e60366\",\"instruction\":\"MOV RCX,R15\"},{\"address\":\"141e60369\",\"instruction\":\"MOV RDX,R12\"},{\"address\":\"141e6036c\",\"instruction\":\"CALL 0x140cff400\"},{\"address\":\"141e60371\",\"instruction\":\"MOV RAX,qword ptr [R15 + 0x28]\"},{\"address\":\"141e60375\",\"instruction\":\"MOV ECX,dword ptr [RBP + 0xc0]\"},{\"address\":\"141e6037b\",\"instruction\":\"MOV dword ptr [RAX + R12*0x4],ECX\"},{\"address\":\"141e6037f\",\"instruction\":\"ADD R14,0x10\"},{\"address\":\"141e60383\",\"instruction\":\"MOV RAX,qword ptr [RBP + -0x40]\"},{\"address\":\"141e60387\",\"instruction\":\"MOV qword ptr [RBP + -0x30],RAX\"},{\"address\":\"141e6038b\",\"instruction\":\"MOV RAX,qword ptr [RBP + -0x48]\"},{\"address\":\"141e6038f\",\"instruction\":\"MOV qword ptr [RBP + -0x28],RAX\"},{\"address\":\"141e60393\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [R14]\"},{\"address\":\"141e60397\",\"instruction\":\"MOVUPS xmmword ptr [RBP + -0x20],XMM0\"},{\"address\":\"141e6039b\",\"instruction\":\"MOV RAX,qword ptr [RBP + -0x38]\"},{\"address\":\"141e6039f\",\"instruction\":\"MOV RAX,qword ptr [RAX + 0x30]\"},{\"address\":\"141e603a3\",\"instruction\":\"CMP qword ptr [RBP + -0x8],RAX\"},{\"address\":\"141e603a7\",\"instruction\":\"JBE 0x141e60407\"},{\"address\":\"141e603a9\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x38]\"},{\"address\":\"141e603ad\",\"instruction\":\"MOV RCX,qword ptr [RCX + RAX*0x8]\"},{\"address\":\"141e603b1\",\"instruction\":\"TEST RCX,RCX\"},{\"address\":\"141e603b4\",\"instruction\":\"MOV EDX,dword ptr [RBP + 0xb8]\"},{\"address\":\"141e603ba\",\"instruction\":\"JZ 0x141e60650\"},{\"address\":\"141e603c0\",\"instruction\":\"NOT RCX\"},{\"address\":\"141e603c3\",\"instruction\":\"LEA R15,[RCX + RCX*0x2]\"},{\"address\":\"141e603c7\",\"instruction\":\"SHL R15,0x4\"},{\"address\":\"141e603cb\",\"instruction\":\"ADD R15,qword ptr [RDI + 0x18]\"},{\"address\":\"141e603cf\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x90]\"},{\"address\":\"141e603d6\",\"instruction\":\"CMP byte ptr [RCX + 0x6],0x0\"},{\"address\":\"141e603da\",\"instruction\":\"JNZ 0x141e6041d\"},{\"address\":\"141e603dc\",\"instruction\":\"MOV R12D,EDX\"},{\"address\":\"141e603df\",\"instruction\":\"MOV R8,qword ptr [R15 + 0x8]\"},{\"address\":\"141e603e3\",\"instruction\":\"MOV RCX,R8\"},{\"address\":\"141e603e6\",\"instruction\":\"IMUL RCX,R12\"},{\"address\":\"141e603ea\",\"instruction\":\"ADD RCX,qword ptr [R15 + 0x10]\"},{\"address\":\"141e603ee\",\"instruction\":\"LEA RDX,[RBP + -0x30]\"},{\"address\":\"141e603f2\",\"instruction\":\"CALL 0x142923c10\"},{\"address\":\"141e603f7\",\"instruction\":\"MOV RAX,qword ptr [R15 + 0x20]\"},{\"address\":\"141e603fb\",\"instruction\":\"MOV ECX,dword ptr [RBP + 0xc0]\"},{\"address\":\"141e60401\",\"instruction\":\"MOV dword ptr [RAX + R12*0x4],ECX\"},{\"address\":\"141e60405\",\"instruction\":\"JMP 0x141e60474\"},{\"address\":\"141e60407\",\"instruction\":\"XOR R15D,R15D\"},{\"address\":\"141e6040a\",\"instruction\":\"MOV EDX,dword ptr [RBP + 0xb8]\"},{\"address\":\"141e60410\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x90]\"},{\"address\":\"141e60417\",\"instruction\":\"CMP byte ptr [RCX + 0x6],0x0\"},{\"address\":\"141e6041b\",\"instruction\":\"JZ 0x141e603dc\"},{\"address\":\"141e6041d\",\"instruction\":\"CMP byte ptr [RBP + 0xd0],0x0\"},{\"address\":\"141e60424\",\"instruction\":\"JZ 0x141e6045e\"},{\"address\":\"141e60426\",\"instruction\":\"CMP qword ptr [RBP + -0x8],RAX\"},{\"address\":\"141e6042a\",\"instruction\":\"JBE 0x141e60482\"},{\"address\":\"141e6042c\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x38]\"},{\"address\":\"141e60430\",\"instruction\":\"MOV RAX,qword ptr [RCX + RAX*0x8]\"},{\"address\":\"141e60434\",\"instruction\":\"TEST RAX,RAX\"},{\"address\":\"141e60437\",\"instruction\":\"JZ 0x141e60482\"},{\"address\":\"141e60439\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x18]\"},{\"address\":\"141e6043d\",\"instruction\":\"NOT RAX\"},{\"address\":\"141e60440\",\"instruction\":\"LEA RAX,[RAX + RAX*0x2]\"},{\"address\":\"141e60444\",\"instruction\":\"SHL RAX,0x4\"},{\"address\":\"141e60448\",\"instruction\":\"MOV RAX,qword ptr [RCX + RAX*0x1 + 0x18]\"},{\"address\":\"141e6044d\",\"instruction\":\"TEST RAX,RAX\"},{\"address\":\"141e60450\",\"instruction\":\"JZ 0x141e60482\"},{\"address\":\"141e60452\",\"instruction\":\"MOV byte ptr [RBP + 0x7],0x1\"},{\"address\":\"141e60456\",\"instruction\":\"LEA RCX,[RBP + -0x30]\"},{\"address\":\"141e6045a\",\"instruction\":\"CALL RAX\"},{\"address\":\"141e6045c\",\"instruction\":\"JMP 0x141e60482\"},{\"address\":\"141e6045e\",\"instruction\":\"MOV R12D,EDX\"},{\"address\":\"141e60461\",\"instruction\":\"MOV byte ptr [RBP + 0x7],0x1\"},{\"address\":\"141e60465\",\"instruction\":\"LEA R8,[RBP + -0x30]\"},{\"address\":\"141e60469\",\"instruction\":\"MOV RCX,R15\"},{\"address\":\"141e6046c\",\"instruction\":\"MOV RDX,R12\"},{\"address\":\"141e6046f\",\"instruction\":\"CALL 0x140cff400\"},{\"address\":\"141e60474\",\"instruction\":\"MOV RAX,qword ptr [R15 + 0x28]\"},{\"address\":\"141e60478\",\"instruction\":\"MOV ECX,dword ptr [RBP + 0xc0]\"},{\"address\":\"141e6047e\",\"instruction\":\"MOV dword ptr [RAX + R12*0x4],ECX\"},{\"address\":\"141e60482\",\"instruction\":\"MOV RAX,qword ptr [RBP + -0x50]\"},{\"address\":\"141e60486\",\"instruction\":\"MOV qword ptr [RBP + -0x30],RAX\"},{\"address\":\"141e6048a\",\"instruction\":\"MOV RAX,qword ptr [RBP + -0x38]\"},{\"address\":\"141e6048e\",\"instruction\":\"MOV RAX,qword ptr [RAX + 0x38]\"},{\"address\":\"141e60492\",\"instruction\":\"CMP qword ptr [RBP + -0x8],RAX\"},{\"address\":\"141e60496\",\"instruction\":\"JBE 0x141e604fe\"},{\"address\":\"141e60498\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x38]\"},{\"address\":\"141e6049c\",\"instruction\":\"MOV RCX,qword ptr [RCX + RAX*0x8]\"},{\"address\":\"141e604a0\",\"instruction\":\"TEST RCX,RCX\"},{\"address\":\"141e604a3\",\"instruction\":\"MOV EBX,dword ptr [RBP + 0xc0]\"},{\"address\":\"141e604a9\",\"instruction\":\"MOV EDX,dword ptr [RBP + 0xb8]\"},{\"address\":\"141e604af\",\"instruction\":\"MOVZX R8D,byte ptr [RBP + 0xd0]\"},{\"address\":\"141e604b7\",\"instruction\":\"JZ 0x141e60669\"},{\"address\":\"141e604bd\",\"instruction\":\"NOT RCX\"},{\"address\":\"141e604c0\",\"instruction\":\"LEA R14,[RCX + RCX*0x2]\"},{\"address\":\"141e604c4\",\"instruction\":\"SHL R14,0x4\"},{\"address\":\"141e604c8\",\"instruction\":\"ADD R14,qword ptr [RDI + 0x18]\"},{\"address\":\"141e604cc\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x90]\"},{\"address\":\"141e604d3\",\"instruction\":\"CMP byte ptr [RCX + 0x7],0x0\"},{\"address\":\"141e604d7\",\"instruction\":\"JNZ 0x141e60522\"},{\"address\":\"141e604d9\",\"instruction\":\"MOV R15D,EDX\"},{\"address\":\"141e604dc\",\"instruction\":\"MOV R8,qword ptr [R14 + 0x8]\"},{\"address\":\"141e604e0\",\"instruction\":\"MOV RCX,R8\"},{\"address\":\"141e604e3\",\"instruction\":\"IMUL RCX,R15\"},{\"address\":\"141e604e7\",\"instruction\":\"ADD RCX,qword ptr [R14 + 0x10]\"},{\"address\":\"141e604eb\",\"instruction\":\"LEA RDX,[RBP + -0x30]\"},{\"address\":\"141e604ef\",\"instruction\":\"CALL 0x142923c10\"},{\"address\":\"141e604f4\",\"instruction\":\"MOV RAX,qword ptr [R14 + 0x20]\"},{\"address\":\"141e604f8\",\"instruction\":\"MOV dword ptr [RAX + R15*0x4],EBX\"},{\"address\":\"141e604fc\",\"instruction\":\"JMP 0x141e60575\"},{\"address\":\"141e604fe\",\"instruction\":\"XOR R14D,R14D\"},{\"address\":\"141e60501\",\"instruction\":\"MOV EBX,dword ptr [RBP + 0xc0]\"},{\"address\":\"141e60507\",\"instruction\":\"MOV EDX,dword ptr [RBP + 0xb8]\"},{\"address\":\"141e6050d\",\"instruction\":\"MOVZX R8D,byte ptr [RBP + 0xd0]\"},{\"address\":\"141e60515\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x90]\"},{\"address\":\"141e6051c\",\"instruction\":\"CMP byte ptr [RCX + 0x7],0x0\"},{\"address\":\"141e60520\",\"instruction\":\"JZ 0x141e604d9\"},{\"address\":\"141e60522\",\"instruction\":\"TEST R8B,R8B\"},{\"address\":\"141e60525\",\"instruction\":\"JZ 0x141e6055f\"},{\"address\":\"141e60527\",\"instruction\":\"CMP qword ptr [RBP + -0x8],RAX\"},{\"address\":\"141e6052b\",\"instruction\":\"JBE 0x141e60583\"},{\"address\":\"141e6052d\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x38]\"},{\"address\":\"141e60531\",\"instruction\":\"MOV RAX,qword ptr [RCX + RAX*0x8]\"},{\"address\":\"141e60535\",\"instruction\":\"TEST RAX,RAX\"},{\"address\":\"141e60538\",\"instruction\":\"JZ 0x141e60583\"},{\"address\":\"141e6053a\",\"instruction\":\"MOV RCX,qword ptr [RDI + 0x18]\"},{\"address\":\"141e6053e\",\"instruction\":\"NOT RAX\"},{\"address\":\"141e60541\",\"instruction\":\"LEA RAX,[RAX + RAX*0x2]\"},{\"address\":\"141e60545\",\"instruction\":\"SHL RAX,0x4\"},{\"address\":\"141e60549\",\"instruction\":\"MOV RAX,qword ptr [RCX + RAX*0x1 + 0x18]\"},{\"address\":\"141e6054e\",\"instruction\":\"TEST RAX,RAX\"},{\"address\":\"141e60551\",\"instruction\":\"JZ 0x141e60583\"},{\"address\":\"141e60553\",\"instruction\":\"MOV byte ptr [RBP + 0x7],0x1\"},{\"address\":\"141e60557\",\"instruction\":\"LEA RCX,[RBP + -0x30]\"},{\"address\":\"141e6055b\",\"instruction\":\"CALL RAX\"},{\"address\":\"141e6055d\",\"instruction\":\"JMP 0x141e60583\"},{\"address\":\"141e6055f\",\"instruction\":\"MOV R15D,EDX\"},{\"address\":\"141e60562\",\"instruction\":\"MOV byte ptr [RBP + 0x7],0x1\"},{\"address\":\"141e60566\",\"instruction\":\"LEA R8,[RBP + -0x30]\"},{\"address\":\"141e6056a\",\"instruction\":\"MOV RCX,R14\"},{\"address\":\"141e6056d\",\"instruction\":\"MOV RDX,R15\"},{\"address\":\"141e60570\",\"instruction\":\"CALL 0x140cff400\"},{\"address\":\"141e60575\",\"instruction\":\"MOV RAX,qword ptr [R14 + 0x28]\"},{\"address\":\"141e60579\",\"instruction\":\"MOV ECX,dword ptr [RBP + 0xc0]\"},{\"address\":\"141e6057f\",\"instruction\":\"MOV dword ptr [RAX + R15*0x4],ECX\"},{\"address\":\"141e60583\",\"instruction\":\"MOV RBX,qword ptr [RBP + 0xa8]\"},{\"address\":\"141e6058a\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0xa0]\"},{\"address\":\"141e60591\",\"instruction\":\"CMP RCX,RBX\"},{\"address\":\"141e60594\",\"instruction\":\"MOV R12D,dword ptr [RBP + 0xc0]\"},{\"address\":\"141e6059b\",\"instruction\":\"MOV R13D,dword ptr [RBP + 0xb8]\"},{\"address\":\"141e605a2\",\"instruction\":\"JZ 0x141e605d4\"},{\"address\":\"141e605a4\",\"instruction\":\"MOV R14,qword ptr [RBP + 0xb0]\"},{\"address\":\"141e605ab\",\"instruction\":\"NOP dword ptr [RAX + RAX*0x1]\"},{\"address\":\"141e605b0\",\"instruction\":\"LEA R15,[RCX + 0x10]\"},{\"address\":\"141e605b4\",\"instruction\":\"MOV qword ptr [RSP + 0x28],R14\"},{\"address\":\"141e605b9\",\"instruction\":\"MOV dword ptr [RSP + 0x20],R13D\"},{\"address\":\"141e605be\",\"instruction\":\"MOV RDX,RDI\"},{\"address\":\"141e605c1\",\"instruction\":\"MOV R8,RSI\"},{\"address\":\"141e605c4\",\"instruction\":\"MOV R9D,R12D\"},{\"address\":\"141e605c7\",\"instruction\":\"CALL 0x140d40890\"},{\"address\":\"141e605cc\",\"instruction\":\"MOV RCX,R15\"},{\"address\":\"141e605cf\",\"instruction\":\"CMP R15,RBX\"},{\"address\":\"141e605d2\",\"instruction\":\"JNZ 0x141e605b0\"},{\"address\":\"141e605d4\",\"instruction\":\"MOVAPS XMM6,xmmword ptr [RBP + 0x10]\"},{\"address\":\"141e605d8\",\"instruction\":\"ADD RSP,0xa8\"},{\"address\":\"141e605df\",\"instruction\":\"POP RBX\"},{\"address\":\"141e605e0\",\"instruction\":\"POP RDI\"},{\"address\":\"141e605e1\",\"instruction\":\"POP RSI\"},{\"address\":\"141e605e2\",\"instruction\":\"POP R12\"},{\"address\":\"141e605e4\",\"instruction\":\"POP R13\"},{\"address\":\"141e605e6\",\"instruction\":\"POP R14\"},{\"address\":\"141e605e8\",\"instruction\":\"POP R15\"},{\"address\":\"141e605ea\",\"instruction\":\"POP RBP\"},{\"address\":\"141e605eb\",\"instruction\":\"RET\"},{\"address\":\"141e605ec\",\"instruction\":\"XOR R15D,R15D\"},{\"address\":\"141e605ef\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x90]\"},{\"address\":\"141e605f6\",\"instruction\":\"CMP byte ptr [RCX + 0x2],0x0\"},{\"address\":\"141e605fa\",\"instruction\":\"JNZ 0x141e6004a\"},{\"address\":\"141e60600\",\"instruction\":\"JMP 0x141e60009\"},{\"address\":\"141e60605\",\"instruction\":\"XOR R15D,R15D\"},{\"address\":\"141e60608\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x90]\"},{\"address\":\"141e6060f\",\"instruction\":\"CMP byte ptr [RCX + 0x3],0x0\"},{\"address\":\"141e60613\",\"instruction\":\"JNZ 0x141e6013c\"},{\"address\":\"141e60619\",\"instruction\":\"JMP 0x141e600fb\"},{\"address\":\"141e6061e\",\"instruction\":\"XOR R15D,R15D\"},{\"address\":\"141e60621\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x90]\"},{\"address\":\"141e60628\",\"instruction\":\"CMP byte ptr [RCX + 0x4],0x0\"},{\"address\":\"141e6062c\",\"instruction\":\"JNZ 0x141e60228\"},{\"address\":\"141e60632\",\"instruction\":\"JMP 0x141e601e7\"},{\"address\":\"141e60637\",\"instruction\":\"XOR R15D,R15D\"},{\"address\":\"141e6063a\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x90]\"},{\"address\":\"141e60641\",\"instruction\":\"CMP byte ptr [RCX + 0x5],0x0\"},{\"address\":\"141e60645\",\"instruction\":\"JNZ 0x141e6031a\"},{\"address\":\"141e6064b\",\"instruction\":\"JMP 0x141e602d9\"},{\"address\":\"141e60650\",\"instruction\":\"XOR R15D,R15D\"},{\"address\":\"141e60653\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x90]\"},{\"address\":\"141e6065a\",\"instruction\":\"CMP byte ptr [RCX + 0x6],0x0\"},{\"address\":\"141e6065e\",\"instruction\":\"JNZ 0x141e6041d\"},{\"address\":\"141e60664\",\"instruction\":\"JMP 0x141e603dc\"},{\"address\":\"141e60669\",\"instruction\":\"XOR R14D,R14D\"},{\"address\":\"141e6066c\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x90]\"},{\"address\":\"141e60673\",\"instruction\":\"CMP byte ptr [RCX + 0x7],0x0\"},{\"address\":\"141e60677\",\"instruction\":\"JNZ 0x141e60522\"},{\"address\":\"141e6067d\",\"instruction\":\"JMP 0x141e604d9\"}],\"count\":591}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "disassemble_function",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "address": "0x141e4e426"
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "address": "0x141e4e426"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"instructions\":[{\"address\":\"141e4dc40\",\"instruction\":\"PUSH RBP\"},{\"address\":\"141e4dc41\",\"instruction\":\"PUSH R15\"},{\"address\":\"141e4dc43\",\"instruction\":\"PUSH R14\"},{\"address\":\"141e4dc45\",\"instruction\":\"PUSH R13\"},{\"address\":\"141e4dc47\",\"instruction\":\"PUSH R12\"},{\"address\":\"141e4dc49\",\"instruction\":\"PUSH RSI\"},{\"address\":\"141e4dc4a\",\"instruction\":\"PUSH RDI\"},{\"address\":\"141e4dc4b\",\"instruction\":\"PUSH RBX\"},{\"address\":\"141e4dc4c\",\"instruction\":\"SUB RSP,0x2d8\"},{\"address\":\"141e4dc53\",\"instruction\":\"LEA RBP,[RSP + 0x80]\"},{\"address\":\"141e4dc5b\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x240],XMM6\"},{\"address\":\"141e4dc62\",\"instruction\":\"MOV qword ptr [RBP + 0x238],-0x2\"},{\"address\":\"141e4dc6d\",\"instruction\":\"MOV EBX,R8D\"},{\"address\":\"141e4dc70\",\"instruction\":\"MOV R14D,EDX\"},{\"address\":\"141e4dc73\",\"instruction\":\"MOV RDI,RCX\"},{\"address\":\"141e4dc76\",\"instruction\":\"MOV RAX,qword ptr [RBP + 0x2c8]\"},{\"address\":\"141e4dc7d\",\"instruction\":\"MOV qword ptr [RBP + 0x228],RAX\"},{\"address\":\"141e4dc84\",\"instruction\":\"MOV RSI,qword ptr [RBP + 0x2c0]\"},{\"address\":\"141e4dc8b\",\"instruction\":\"MOV qword ptr [RBP + 0x210],R9\"},{\"address\":\"141e4dc92\",\"instruction\":\"MOVZX EAX,byte ptr [R9]\"},{\"address\":\"141e4dc96\",\"instruction\":\"CMP EAX,0x4\"},{\"address\":\"141e4dc99\",\"instruction\":\"MOV dword ptr [RBP + 0x224],EAX\"},{\"address\":\"141e4dc9f\",\"instruction\":\"JZ 0x141e4df8c\"},{\"address\":\"141e4dca5\",\"instruction\":\"CMP EAX,0x5\"},{\"address\":\"141e4dca8\",\"instruction\":\"JNZ 0x141e4e26c\"},{\"address\":\"141e4dcae\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x210]\"},{\"address\":\"141e4dcb5\",\"instruction\":\"MOV RAX,qword ptr [RCX + 0x18]\"},{\"address\":\"141e4dcb9\",\"instruction\":\"MOV qword ptr [RBP + 0x1a0],RAX\"},{\"address\":\"141e4dcc0\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [RCX + 0x8]\"},{\"address\":\"141e4dcc4\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x190],XMM0\"},{\"address\":\"141e4dccb\",\"instruction\":\"MOV word ptr [RBP + 0x178],0x0\"},{\"address\":\"141e4dcd4\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2738]\"},{\"address\":\"141e4dcdb\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0xe8],XMM0\"},{\"address\":\"141e4dce2\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2748]\"},{\"address\":\"141e4dce9\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0xf8],XMM0\"},{\"address\":\"141e4dcf0\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2758]\"},{\"address\":\"141e4dcf7\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x108],XMM0\"},{\"address\":\"141e4dcfe\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2768]\"},{\"address\":\"141e4dd05\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x118],XMM0\"},{\"address\":\"141e4dd0c\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2778]\"},{\"address\":\"141e4dd13\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x128],XMM0\"},{\"address\":\"141e4dd1a\",\"instruction\":\"MOV qword ptr [RBP + 0x90],0x0\"},{\"address\":\"141e4dd25\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2788]\"},{\"address\":\"141e4dd2c\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x138],XMM0\"},{\"address\":\"141e4dd33\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2798]\"},{\"address\":\"141e4dd3a\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x148],XMM0\"},{\"address\":\"141e4dd41\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc26e8]\"},{\"address\":\"141e4dd48\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x98],XMM0\"},{\"address\":\"141e4dd4f\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc26f8]\"},{\"address\":\"141e4dd56\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0xa8],XMM0\"},{\"address\":\"141e4dd5d\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2718]\"},{\"address\":\"141e4dd64\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0xc8],XMM0\"},{\"address\":\"141e4dd6b\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2708]\"},{\"address\":\"141e4dd72\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0xb8],XMM0\"},{\"address\":\"141e4dd79\",\"instruction\":\"MOV dword ptr [RBP + 0x17d],0x7070704\"},{\"address\":\"141e4dd83\",\"instruction\":\"MOV word ptr [RBP + 0x181],0x409\"},{\"address\":\"141e4dd8c\",\"instruction\":\"MOVAPS XMM0,xmmword ptr [0x142bb1370]\"},{\"address\":\"141e4dd93\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0xd8],XMM0\"},{\"address\":\"141e4dd9a\",\"instruction\":\"MOV byte ptr [RBP + 0x17b],0x1\"},{\"address\":\"141e4dda1\",\"instruction\":\"MOV byte ptr [RBP + 0x17a],0x0\"},{\"address\":\"141e4dda8\",\"instruction\":\"MOV qword ptr [RBP + 0x158],0x2\"},{\"address\":\"141e4ddb3\",\"instruction\":\"MOVSD XMM0,qword ptr [0x1429345b0]\"},{\"address\":\"141e4ddbb\",\"instruction\":\"MOVSD qword ptr [RBP + 0x170],XMM0\"},{\"address\":\"141e4ddc3\",\"instruction\":\"MOV RAX,qword ptr [0x142bc2690]\"},{\"address\":\"141e4ddca\",\"instruction\":\"MOV qword ptr [RBP + 0x40],RAX\"},{\"address\":\"141e4ddce\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2680]\"},{\"address\":\"141e4ddd5\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x30],XMM0\"},{\"address\":\"141e4ddd9\",\"instruction\":\"MOV RAX,qword ptr [0x142bc26a8]\"},{\"address\":\"141e4dde0\",\"instruction\":\"MOV qword ptr [RBP + 0x58],RAX\"},{\"address\":\"141e4dde4\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2698]\"},{\"address\":\"141e4ddeb\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x48],XMM0\"},{\"address\":\"141e4ddef\",\"instruction\":\"MOV RAX,qword ptr [0x142bc26c0]\"},{\"address\":\"141e4ddf6\",\"instruction\":\"MOV qword ptr [RBP + 0x70],RAX\"},{\"address\":\"141e4ddfa\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc26b0]\"},{\"address\":\"141e4de01\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x60],XMM0\"},{\"address\":\"141e4de05\",\"instruction\":\"MOV RAX,qword ptr [0x142bc26d8]\"},{\"address\":\"141e4de0c\",\"instruction\":\"MOV qword ptr [RBP + 0x88],RAX\"},{\"address\":\"141e4de13\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc26c8]\"},{\"address\":\"141e4de1a\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x78],XMM0\"},{\"address\":\"141e4de1e\",\"instruction\":\"MOV byte ptr [RBP + 0x17c],0x0\"},{\"address\":\"141e4de25\",\"instruction\":\"XORPS XMM0,XMM0\"},{\"address\":\"141e4de28\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x160],XMM0\"},{\"address\":\"141e4de2f\",\"instruction\":\"MOV byte ptr [RBP + 0x234],0x1\"},{\"address\":\"141e4de36\",\"instruction\":\"LEA RCX,[RBP + 0x1b0]\"},{\"address\":\"141e4de3d\",\"instruction\":\"LEA R8,[RBP + 0x30]\"},{\"address\":\"141e4de41\",\"instruction\":\"MOV RDX,RDI\"},{\"address\":\"141e4de44\",\"instruction\":\"CALL 0x140fe7600\"},{\"address\":\"141e4de49\",\"instruction\":\"CMP dword ptr [RBP + 0x1b0],0x4\"},{\"address\":\"141e4de50\",\"instruction\":\"JNZ 0x141e4ed31\"},{\"address\":\"141e4de56\",\"instruction\":\"MOV R15D,dword ptr [RBP + 0x1b4]\"},{\"address\":\"141e4de5d\",\"instruction\":\"MOV R12D,dword ptr [RBP + 0x1b8]\"},{\"address\":\"141e4de64\",\"instruction\":\"MOV byte ptr [RBP + 0x234],0x1\"},{\"address\":\"141e4de6b\",\"instruction\":\"MOV dword ptr [RSP + 0x28],R12D\"},{\"address\":\"141e4de70\",\"instruction\":\"MOV dword ptr [RSP + 0x20],R15D\"},{\"address\":\"141e4de75\",\"instruction\":\"LEA RCX,[RBP + 0x1d0]\"},{\"address\":\"141e4de7c\",\"instruction\":\"MOV RDX,RDI\"},{\"address\":\"141e4de7f\",\"instruction\":\"MOV R8D,R14D\"},{\"address\":\"141e4de82\",\"instruction\":\"MOV R9D,EBX\"},{\"address\":\"141e4de85\",\"instruction\":\"CALL 0x140fe7790\"},{\"address\":\"141e4de8a\",\"instruction\":\"CMP dword ptr [RBP + 0x1d0],0x4\"},{\"address\":\"141e4de91\",\"instruction\":\"JNZ 0x141e4ee2a\"},{\"address\":\"141e4de97\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x190]\"},{\"address\":\"141e4de9e\",\"instruction\":\"MOV RDX,qword ptr [RBP + 0x198]\"},{\"address\":\"141e4dea5\",\"instruction\":\"MOV RAX,qword ptr [RBP + 0x1a0]\"},{\"address\":\"141e4deac\",\"instruction\":\"MOV R14,RAX\"},{\"address\":\"141e4deaf\",\"instruction\":\"SHL R14,0x6\"},{\"address\":\"141e4deb3\",\"instruction\":\"LEA R8,[RDX + R14*0x1]\"},{\"address\":\"141e4deb7\",\"instruction\":\"MOV qword ptr [RBP + 0x30],RDX\"},{\"address\":\"141e4debb\",\"instruction\":\"MOV qword ptr [RBP + 0x38],RDX\"},{\"address\":\"141e4debf\",\"instruction\":\"MOV qword ptr [RBP + 0x200],RCX\"},{\"address\":\"141e4dec6\",\"instruction\":\"MOV qword ptr [RBP + 0x40],RCX\"},{\"address\":\"141e4deca\",\"instruction\":\"MOV qword ptr [RBP + 0x48],R8\"},{\"address\":\"141e4dece\",\"instruction\":\"MOV qword ptr [RBP + 0x1f8],RDX\"},{\"address\":\"141e4ded5\",\"instruction\":\"MOV R9,RDX\"},{\"address\":\"141e4ded8\",\"instruction\":\"TEST RAX,RAX\"},{\"address\":\"141e4dedb\",\"instruction\":\"JZ 0x141e4e6d9\"},{\"address\":\"141e4dee1\",\"instruction\":\"MOV qword ptr [RBP + 0x218],R8\"},{\"address\":\"141e4dee8\",\"instruction\":\"LEA R13,[RBP + -0x17]\"},{\"address\":\"141e4deec\",\"instruction\":\"MOV RAX,qword ptr [RBP + 0x1f8]\"},{\"address\":\"141e4def3\",\"instruction\":\"LEA R9,[RAX + 0x40]\"},{\"address\":\"141e4def7\",\"instruction\":\"LEA RBX,[RBP + -0x50]\"},{\"address\":\"141e4defb\",\"instruction\":\"NOP dword ptr [RAX + RAX*0x1]\"},{\"address\":\"141e4df00\",\"instruction\":\"MOVZX EAX,byte ptr [R9 + -0x8]\"},{\"address\":\"141e4df05\",\"instruction\":\"CMP AL,0x2\"},{\"address\":\"141e4df07\",\"instruction\":\"JZ 0x141e4e6ce\"},{\"address\":\"141e4df0d\",\"instruction\":\"LEA RCX,[R9 + -0x40]\"},{\"address\":\"141e4df11\",\"instruction\":\"MOV RDX,qword ptr [RCX + 0x30]\"},{\"address\":\"141e4df15\",\"instruction\":\"MOV qword ptr [RBP + -0x20],RDX\"},{\"address\":\"141e4df19\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [RCX]\"},{\"address\":\"141e4df1c\",\"instruction\":\"MOVUPS XMM1,xmmword ptr [RCX + 0x10]\"},{\"address\":\"141e4df20\",\"instruction\":\"MOVUPS XMM2,xmmword ptr [RCX + 0x20]\"},{\"address\":\"141e4df24\",\"instruction\":\"MOVAPS xmmword ptr [RBP + -0x30],XMM2\"},{\"address\":\"141e4df28\",\"instruction\":\"MOVAPS xmmword ptr [RBP + -0x40],XMM1\"},{\"address\":\"141e4df2c\",\"instruction\":\"MOVAPS xmmword ptr [RBP + -0x50],XMM0\"},{\"address\":\"141e4df30\",\"instruction\":\"MOV byte ptr [RBP + -0x18],AL\"},{\"address\":\"141e4df33\",\"instruction\":\"MOV EAX,dword ptr [R9 + -0x7]\"},{\"address\":\"141e4df37\",\"instruction\":\"MOV ECX,dword ptr [R9 + -0x4]\"},{\"address\":\"141e4df3b\",\"instruction\":\"MOV dword ptr [R13 + 0x3],ECX\"},{\"address\":\"141e4df3f\",\"instruction\":\"MOV dword ptr [R13],EAX\"},{\"address\":\"141e4df43\",\"instruction\":\"MOV RAX,qword ptr [RBP + 0x228]\"},{\"address\":\"141e4df4a\",\"instruction\":\"MOV qword ptr [RSP + 0x28],RAX\"},{\"address\":\"141e4df4f\",\"instruction\":\"MOV qword ptr [RSP + 0x20],RSI\"},{\"address\":\"141e4df54\",\"instruction\":\"MOV RCX,RDI\"},{\"address\":\"141e4df57\",\"instruction\":\"MOV EDX,R15D\"},{\"address\":\"141e4df5a\",\"instruction\":\"MOV R8D,R12D\"},{\"address\":\"141e4df5d\",\"instruction\":\"MOV qword ptr [RBP + 0x208],R9\"},{\"address\":\"141e4df64\",\"instruction\":\"MOV R9,RBX\"},{\"address\":\"141e4df67\",\"instruction\":\"CALL 0x141e4dc40\"},{\"address\":\"141e4df6c\",\"instruction\":\"MOV R9,qword ptr [RBP + 0x208]\"},{\"address\":\"141e4df73\",\"instruction\":\"ADD R9,0x40\"},{\"address\":\"141e4df77\",\"instruction\":\"ADD R14,-0x40\"},{\"address\":\"141e4df7b\",\"instruction\":\"JNZ 0x141e4df00\"},{\"address\":\"141e4df7d\",\"instruction\":\"MOV R8,qword ptr [RBP + 0x218]\"},{\"address\":\"141e4df84\",\"instruction\":\"MOV R9,R8\"},{\"address\":\"141e4df87\",\"instruction\":\"JMP 0x141e4e6d5\"},{\"address\":\"141e4df8c\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x210]\"},{\"address\":\"141e4df93\",\"instruction\":\"MOV RAX,qword ptr [RCX + 0x18]\"},{\"address\":\"141e4df97\",\"instruction\":\"MOV qword ptr [RBP + 0x1a0],RAX\"},{\"address\":\"141e4df9e\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [RCX + 0x8]\"},{\"address\":\"141e4dfa2\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x190],XMM0\"},{\"address\":\"141e4dfa9\",\"instruction\":\"MOV word ptr [RBP + 0x178],0x0\"},{\"address\":\"141e4dfb2\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2738]\"},{\"address\":\"141e4dfb9\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0xe8],XMM0\"},{\"address\":\"141e4dfc0\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2748]\"},{\"address\":\"141e4dfc7\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0xf8],XMM0\"},{\"address\":\"141e4dfce\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2758]\"},{\"address\":\"141e4dfd5\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x108],XMM0\"},{\"address\":\"141e4dfdc\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2768]\"},{\"address\":\"141e4dfe3\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x118],XMM0\"},{\"address\":\"141e4dfea\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2778]\"},{\"address\":\"141e4dff1\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x128],XMM0\"},{\"address\":\"141e4dff8\",\"instruction\":\"MOV qword ptr [RBP + 0x90],0x0\"},{\"address\":\"141e4e003\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2788]\"},{\"address\":\"141e4e00a\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x138],XMM0\"},{\"address\":\"141e4e011\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2798]\"},{\"address\":\"141e4e018\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x148],XMM0\"},{\"address\":\"141e4e01f\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc26e8]\"},{\"address\":\"141e4e026\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x98],XMM0\"},{\"address\":\"141e4e02d\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc26f8]\"},{\"address\":\"141e4e034\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0xa8],XMM0\"},{\"address\":\"141e4e03b\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2718]\"},{\"address\":\"141e4e042\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0xc8],XMM0\"},{\"address\":\"141e4e049\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2708]\"},{\"address\":\"141e4e050\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0xb8],XMM0\"},{\"address\":\"141e4e057\",\"instruction\":\"MOV dword ptr [RBP + 0x17d],0x7070704\"},{\"address\":\"141e4e061\",\"instruction\":\"MOV word ptr [RBP + 0x181],0x409\"},{\"address\":\"141e4e06a\",\"instruction\":\"MOVAPS XMM0,xmmword ptr [0x142bb1370]\"},{\"address\":\"141e4e071\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0xd8],XMM0\"},{\"address\":\"141e4e078\",\"instruction\":\"MOV byte ptr [RBP + 0x17b],0x0\"},{\"address\":\"141e4e07f\",\"instruction\":\"MOV byte ptr [RBP + 0x17a],0x0\"},{\"address\":\"141e4e086\",\"instruction\":\"MOV qword ptr [RBP + 0x158],0x2\"},{\"address\":\"141e4e091\",\"instruction\":\"MOVSD XMM0,qword ptr [0x1429345b0]\"},{\"address\":\"141e4e099\",\"instruction\":\"MOVSD qword ptr [RBP + 0x170],XMM0\"},{\"address\":\"141e4e0a1\",\"instruction\":\"MOV RAX,qword ptr [0x142bc2690]\"},{\"address\":\"141e4e0a8\",\"instruction\":\"MOV qword ptr [RBP + 0x40],RAX\"},{\"address\":\"141e4e0ac\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2680]\"},{\"address\":\"141e4e0b3\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x30],XMM0\"},{\"address\":\"141e4e0b7\",\"instruction\":\"MOV RAX,qword ptr [0x142bc26a8]\"},{\"address\":\"141e4e0be\",\"instruction\":\"MOV qword ptr [RBP + 0x58],RAX\"},{\"address\":\"141e4e0c2\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2698]\"},{\"address\":\"141e4e0c9\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x48],XMM0\"},{\"address\":\"141e4e0cd\",\"instruction\":\"MOV RAX,qword ptr [0x142bc26c0]\"},{\"address\":\"141e4e0d4\",\"instruction\":\"MOV qword ptr [RBP + 0x70],RAX\"},{\"address\":\"141e4e0d8\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc26b0]\"},{\"address\":\"141e4e0df\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x60],XMM0\"},{\"address\":\"141e4e0e3\",\"instruction\":\"MOV RAX,qword ptr [0x142bc26d8]\"},{\"address\":\"141e4e0ea\",\"instruction\":\"MOV qword ptr [RBP + 0x88],RAX\"},{\"address\":\"141e4e0f1\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc26c8]\"},{\"address\":\"141e4e0f8\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x78],XMM0\"},{\"address\":\"141e4e0fc\",\"instruction\":\"MOV byte ptr [RBP + 0x17c],0x0\"},{\"address\":\"141e4e103\",\"instruction\":\"XORPS XMM0,XMM0\"},{\"address\":\"141e4e106\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x160],XMM0\"},{\"address\":\"141e4e10d\",\"instruction\":\"MOV byte ptr [RBP + 0x235],0x1\"},{\"address\":\"141e4e114\",\"instruction\":\"LEA RCX,[RBP + 0x1b0]\"},{\"address\":\"141e4e11b\",\"instruction\":\"LEA R8,[RBP + 0x30]\"},{\"address\":\"141e4e11f\",\"instruction\":\"MOV RDX,RDI\"},{\"address\":\"141e4e122\",\"instruction\":\"CALL 0x140fe7600\"},{\"address\":\"141e4e127\",\"instruction\":\"CMP dword ptr [RBP + 0x1b0],0x4\"},{\"address\":\"141e4e12e\",\"instruction\":\"JNZ 0x141e4ed84\"},{\"address\":\"141e4e134\",\"instruction\":\"MOV R15D,dword ptr [RBP + 0x1b4]\"},{\"address\":\"141e4e13b\",\"instruction\":\"MOV R12D,dword ptr [RBP + 0x1b8]\"},{\"address\":\"141e4e142\",\"instruction\":\"MOV byte ptr [RBP + 0x235],0x1\"},{\"address\":\"141e4e149\",\"instruction\":\"MOV dword ptr [RSP + 0x28],R12D\"},{\"address\":\"141e4e14e\",\"instruction\":\"MOV dword ptr [RSP + 0x20],R15D\"},{\"address\":\"141e4e153\",\"instruction\":\"LEA RCX,[RBP + 0x1d0]\"},{\"address\":\"141e4e15a\",\"instruction\":\"MOV RDX,RDI\"},{\"address\":\"141e4e15d\",\"instruction\":\"MOV R8D,R14D\"},{\"address\":\"141e4e160\",\"instruction\":\"MOV R9D,EBX\"},{\"address\":\"141e4e163\",\"instruction\":\"CALL 0x140fe7790\"},{\"address\":\"141e4e168\",\"instruction\":\"CMP dword ptr [RBP + 0x1d0],0x4\"},{\"address\":\"141e4e16f\",\"instruction\":\"JNZ 0x141e4ee74\"},{\"address\":\"141e4e175\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x190]\"},{\"address\":\"141e4e17c\",\"instruction\":\"MOV RDX,qword ptr [RBP + 0x198]\"},{\"address\":\"141e4e183\",\"instruction\":\"MOV RAX,qword ptr [RBP + 0x1a0]\"},{\"address\":\"141e4e18a\",\"instruction\":\"MOV R14,RAX\"},{\"address\":\"141e4e18d\",\"instruction\":\"SHL R14,0x6\"},{\"address\":\"141e4e191\",\"instruction\":\"LEA R8,[RDX + R14*0x1]\"},{\"address\":\"141e4e195\",\"instruction\":\"MOV qword ptr [RBP + 0x30],RDX\"},{\"address\":\"141e4e199\",\"instruction\":\"MOV qword ptr [RBP + 0x38],RDX\"},{\"address\":\"141e4e19d\",\"instruction\":\"MOV qword ptr [RBP + 0x200],RCX\"},{\"address\":\"141e4e1a4\",\"instruction\":\"MOV qword ptr [RBP + 0x40],RCX\"},{\"address\":\"141e4e1a8\",\"instruction\":\"MOV qword ptr [RBP + 0x48],R8\"},{\"address\":\"141e4e1ac\",\"instruction\":\"MOV qword ptr [RBP + 0x1f8],RDX\"},{\"address\":\"141e4e1b3\",\"instruction\":\"MOV R9,RDX\"},{\"address\":\"141e4e1b6\",\"instruction\":\"TEST RAX,RAX\"},{\"address\":\"141e4e1b9\",\"instruction\":\"JZ 0x141e4e733\"},{\"address\":\"141e4e1bf\",\"instruction\":\"MOV qword ptr [RBP + 0x218],R8\"},{\"address\":\"141e4e1c6\",\"instruction\":\"LEA R13,[RBP + 0x29]\"},{\"address\":\"141e4e1ca\",\"instruction\":\"MOV RAX,qword ptr [RBP + 0x1f8]\"},{\"address\":\"141e4e1d1\",\"instruction\":\"LEA R9,[RAX + 0x40]\"},{\"address\":\"141e4e1d5\",\"instruction\":\"LEA RBX,[RBP + -0x10]\"},{\"address\":\"141e4e1d9\",\"instruction\":\"NOP dword ptr [RAX]\"},{\"address\":\"141e4e1e0\",\"instruction\":\"MOVZX EAX,byte ptr [R9 + -0x8]\"},{\"address\":\"141e4e1e5\",\"instruction\":\"CMP AL,0x2\"},{\"address\":\"141e4e1e7\",\"instruction\":\"JZ 0x141e4e728\"},{\"address\":\"141e4e1ed\",\"instruction\":\"LEA RCX,[R9 + -0x40]\"},{\"address\":\"141e4e1f1\",\"instruction\":\"MOV RDX,qword ptr [RCX + 0x30]\"},{\"address\":\"141e4e1f5\",\"instruction\":\"MOV qword ptr [RBP + 0x20],RDX\"},{\"address\":\"141e4e1f9\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [RCX]\"},{\"address\":\"141e4e1fc\",\"instruction\":\"MOVUPS XMM1,xmmword ptr [RCX + 0x10]\"},{\"address\":\"141e4e200\",\"instruction\":\"MOVUPS XMM2,xmmword ptr [RCX + 0x20]\"},{\"address\":\"141e4e204\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x10],XMM2\"},{\"address\":\"141e4e208\",\"instruction\":\"MOVAPS xmmword ptr [RBP],XMM1\"},{\"address\":\"141e4e20c\",\"instruction\":\"MOVAPS xmmword ptr [RBP + -0x10],XMM0\"},{\"address\":\"141e4e210\",\"instruction\":\"MOV byte ptr [RBP + 0x28],AL\"},{\"address\":\"141e4e213\",\"instruction\":\"MOV EAX,dword ptr [R9 + -0x7]\"},{\"address\":\"141e4e217\",\"instruction\":\"MOV ECX,dword ptr [R9 + -0x4]\"},{\"address\":\"141e4e21b\",\"instruction\":\"MOV dword ptr [R13 + 0x3],ECX\"},{\"address\":\"141e4e21f\",\"instruction\":\"MOV dword ptr [R13],EAX\"},{\"address\":\"141e4e223\",\"instruction\":\"MOV RAX,qword ptr [RBP + 0x228]\"},{\"address\":\"141e4e22a\",\"instruction\":\"MOV qword ptr [RSP + 0x28],RAX\"},{\"address\":\"141e4e22f\",\"instruction\":\"MOV qword ptr [RSP + 0x20],RSI\"},{\"address\":\"141e4e234\",\"instruction\":\"MOV RCX,RDI\"},{\"address\":\"141e4e237\",\"instruction\":\"MOV EDX,R15D\"},{\"address\":\"141e4e23a\",\"instruction\":\"MOV R8D,R12D\"},{\"address\":\"141e4e23d\",\"instruction\":\"MOV qword ptr [RBP + 0x208],R9\"},{\"address\":\"141e4e244\",\"instruction\":\"MOV R9,RBX\"},{\"address\":\"141e4e247\",\"instruction\":\"CALL 0x141e4dc40\"},{\"address\":\"141e4e24c\",\"instruction\":\"MOV R9,qword ptr [RBP + 0x208]\"},{\"address\":\"141e4e253\",\"instruction\":\"ADD R9,0x40\"},{\"address\":\"141e4e257\",\"instruction\":\"ADD R14,-0x40\"},{\"address\":\"141e4e25b\",\"instruction\":\"JNZ 0x141e4e1e0\"},{\"address\":\"141e4e25d\",\"instruction\":\"MOV R8,qword ptr [RBP + 0x218]\"},{\"address\":\"141e4e264\",\"instruction\":\"MOV R9,R8\"},{\"address\":\"141e4e267\",\"instruction\":\"JMP 0x141e4e72f\"},{\"address\":\"141e4e26c\",\"instruction\":\"MOV word ptr [RBP + 0x178],0x0\"},{\"address\":\"141e4e275\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2738]\"},{\"address\":\"141e4e27c\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0xe8],XMM0\"},{\"address\":\"141e4e283\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2748]\"},{\"address\":\"141e4e28a\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0xf8],XMM0\"},{\"address\":\"141e4e291\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2758]\"},{\"address\":\"141e4e298\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x108],XMM0\"},{\"address\":\"141e4e29f\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2768]\"},{\"address\":\"141e4e2a6\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x118],XMM0\"},{\"address\":\"141e4e2ad\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2778]\"},{\"address\":\"141e4e2b4\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x128],XMM0\"},{\"address\":\"141e4e2bb\",\"instruction\":\"MOV qword ptr [RBP + 0x90],0x0\"},{\"address\":\"141e4e2c6\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2788]\"},{\"address\":\"141e4e2cd\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x138],XMM0\"},{\"address\":\"141e4e2d4\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2798]\"},{\"address\":\"141e4e2db\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x148],XMM0\"},{\"address\":\"141e4e2e2\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc26f8]\"},{\"address\":\"141e4e2e9\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0xa8],XMM0\"},{\"address\":\"141e4e2f0\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc26e8]\"},{\"address\":\"141e4e2f7\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x98],XMM0\"},{\"address\":\"141e4e2fe\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2718]\"},{\"address\":\"141e4e305\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0xc8],XMM0\"},{\"address\":\"141e4e30c\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2708]\"},{\"address\":\"141e4e313\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0xb8],XMM0\"},{\"address\":\"141e4e31a\",\"instruction\":\"MOV dword ptr [RBP + 0x17d],0x7070704\"},{\"address\":\"141e4e324\",\"instruction\":\"MOV word ptr [RBP + 0x181],0x409\"},{\"address\":\"141e4e32d\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2728]\"},{\"address\":\"141e4e334\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0xd8],XMM0\"},{\"address\":\"141e4e33b\",\"instruction\":\"MOV word ptr [RBP + 0x17a],0x0\"},{\"address\":\"141e4e344\",\"instruction\":\"MOV qword ptr [RBP + 0x158],0x2\"},{\"address\":\"141e4e34f\",\"instruction\":\"MOVSD XMM0,qword ptr [0x1429345b0]\"},{\"address\":\"141e4e357\",\"instruction\":\"MOVSD qword ptr [RBP + 0x170],XMM0\"},{\"address\":\"141e4e35f\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2680]\"},{\"address\":\"141e4e366\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x30],XMM0\"},{\"address\":\"141e4e36a\",\"instruction\":\"MOV RAX,qword ptr [0x142bc2690]\"},{\"address\":\"141e4e371\",\"instruction\":\"MOV qword ptr [RBP + 0x40],RAX\"},{\"address\":\"141e4e375\",\"instruction\":\"MOV RAX,qword ptr [0x142bc26a8]\"},{\"address\":\"141e4e37c\",\"instruction\":\"MOV qword ptr [RBP + 0x58],RAX\"},{\"address\":\"141e4e380\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc2698]\"},{\"address\":\"141e4e387\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x48],XMM0\"},{\"address\":\"141e4e38b\",\"instruction\":\"MOV RAX,qword ptr [0x142bc26c0]\"},{\"address\":\"141e4e392\",\"instruction\":\"MOV qword ptr [RBP + 0x70],RAX\"},{\"address\":\"141e4e396\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc26b0]\"},{\"address\":\"141e4e39d\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x60],XMM0\"},{\"address\":\"141e4e3a1\",\"instruction\":\"MOV RAX,qword ptr [0x142bc26d8]\"},{\"address\":\"141e4e3a8\",\"instruction\":\"MOV qword ptr [RBP + 0x88],RAX\"},{\"address\":\"141e4e3af\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [0x142bc26c8]\"},{\"address\":\"141e4e3b6\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x78],XMM0\"},{\"address\":\"141e4e3ba\",\"instruction\":\"MOV byte ptr [RBP + 0x17c],0x0\"},{\"address\":\"141e4e3c1\",\"instruction\":\"XORPS XMM0,XMM0\"},{\"address\":\"141e4e3c4\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x160],XMM0\"},{\"address\":\"141e4e3cb\",\"instruction\":\"MOV byte ptr [RBP + 0x237],0x1\"},{\"address\":\"141e4e3d2\",\"instruction\":\"LEA RCX,[RBP + 0x1b0]\"},{\"address\":\"141e4e3d9\",\"instruction\":\"LEA R8,[RBP + 0x30]\"},{\"address\":\"141e4e3dd\",\"instruction\":\"MOV RDX,RDI\"},{\"address\":\"141e4e3e0\",\"instruction\":\"CALL 0x140fe7600\"},{\"address\":\"141e4e3e5\",\"instruction\":\"CMP dword ptr [RBP + 0x1b0],0x4\"},{\"address\":\"141e4e3ec\",\"instruction\":\"JNZ 0x141e4edd7\"},{\"address\":\"141e4e3f2\",\"instruction\":\"MOV R12D,dword ptr [RBP + 0x1b4]\"},{\"address\":\"141e4e3f9\",\"instruction\":\"MOV R15D,dword ptr [RBP + 0x1b8]\"},{\"address\":\"141e4e400\",\"instruction\":\"MOV byte ptr [RBP + 0x237],0x1\"},{\"address\":\"141e4e407\",\"instruction\":\"MOV dword ptr [RSP + 0x28],R15D\"},{\"address\":\"141e4e40c\",\"instruction\":\"MOV dword ptr [RSP + 0x20],R12D\"},{\"address\":\"141e4e411\",\"instruction\":\"LEA RCX,[RBP + 0x1d0]\"},{\"address\":\"141e4e418\",\"instruction\":\"MOV RDX,RDI\"},{\"address\":\"141e4e41b\",\"instruction\":\"MOV R8D,R14D\"},{\"address\":\"141e4e41e\",\"instruction\":\"MOV R9D,EBX\"},{\"address\":\"141e4e421\",\"instruction\":\"CALL 0x140fe7790\"},{\"address\":\"141e4e426\",\"instruction\":\"CMP dword ptr [RBP + 0x1d0],0x4\"},{\"address\":\"141e4e42d\",\"instruction\":\"JNZ 0x141e4eebe\"},{\"address\":\"141e4e433\",\"instruction\":\"MOV RAX,qword ptr [RBP + 0x210]\"},{\"address\":\"141e4e43a\",\"instruction\":\"MOVSD XMM6,qword ptr [RAX + 0x30]\"},{\"address\":\"141e4e43f\",\"instruction\":\"MOV RBX,qword ptr [RAX + 0x20]\"},{\"address\":\"141e4e443\",\"instruction\":\"MOV RDI,qword ptr [RAX + 0x28]\"},{\"address\":\"141e4e447\",\"instruction\":\"XORPS XMM0,XMM0\"},{\"address\":\"141e4e44a\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x60],XMM0\"},{\"address\":\"141e4e44e\",\"instruction\":\"TEST RDI,RDI\"},{\"address\":\"141e4e451\",\"instruction\":\"JS 0x141e4ef05\"},{\"address\":\"141e4e457\",\"instruction\":\"JZ 0x141e4e481\"},{\"address\":\"141e4e459\",\"instruction\":\"MOVZX EAX,byte ptr [0x143634c09]\"},{\"address\":\"141e4e460\",\"instruction\":\"MOV R13D,0x1\"},{\"address\":\"141e4e466\",\"instruction\":\"MOV EDX,0x1\"},{\"address\":\"141e4e46b\",\"instruction\":\"MOV RCX,RDI\"},{\"address\":\"141e4e46e\",\"instruction\":\"CALL 0x140613c10\"},{\"address\":\"141e4e473\",\"instruction\":\"TEST RAX,RAX\"},{\"address\":\"141e4e476\",\"instruction\":\"JZ 0x141e4ef08\"},{\"address\":\"141e4e47c\",\"instruction\":\"MOV R14,RAX\"},{\"address\":\"141e4e47f\",\"instruction\":\"JMP 0x141e4e487\"},{\"address\":\"141e4e481\",\"instruction\":\"MOV R14D,0x1\"},{\"address\":\"141e4e487\",\"instruction\":\"MOV RCX,R14\"},{\"address\":\"141e4e48a\",\"instruction\":\"MOV RDX,RBX\"},{\"address\":\"141e4e48d\",\"instruction\":\"MOV R8,RDI\"},{\"address\":\"141e4e490\",\"instruction\":\"CALL 0x142923c00\"},{\"address\":\"141e4e495\",\"instruction\":\"MOV qword ptr [RBP + 0x30],RDI\"},{\"address\":\"141e4e499\",\"instruction\":\"MOV qword ptr [RBP + 0x38],R14\"},{\"address\":\"141e4e49d\",\"instruction\":\"MOV qword ptr [RBP + 0x40],RDI\"},{\"address\":\"141e4e4a1\",\"instruction\":\"MOV dword ptr [RBP + 0x48],0x0\"},{\"address\":\"141e4e4a8\",\"instruction\":\"MULPS XMM6,xmmword ptr [0x142f8f600]\"},{\"address\":\"141e4e4af\",\"instruction\":\"MOV dword ptr [RBP + 0x70],R12D\"},{\"address\":\"141e4e4b3\",\"instruction\":\"MOV dword ptr [RBP + 0x74],R15D\"},{\"address\":\"141e4e4b7\",\"instruction\":\"UNPCKLPD XMM6,xmmword ptr [0x142f8f610]\"},{\"address\":\"141e4e4bf\",\"instruction\":\"MOVUPS xmmword ptr [RBP + 0x78],XMM6\"},{\"address\":\"141e4e4c3\",\"instruction\":\"MOV word ptr [RBP + 0x88],0x0\"},{\"address\":\"141e4e4cc\",\"instruction\":\"MOV byte ptr [RBP + 0x8a],0x0\"},{\"address\":\"141e4e4d3\",\"instruction\":\"MOV qword ptr [RBP + 0x50],0x0\"},{\"address\":\"141e4e4db\",\"instruction\":\"MOV dword ptr [RBP + 0x58],0x0\"},{\"address\":\"141e4e4e2\",\"instruction\":\"MOV byte ptr [RBP + 0x5c],0x2\"},{\"address\":\"141e4e4e6\",\"instruction\":\"MOV qword ptr [RBP + 0x90],0x0\"},{\"address\":\"141e4e4f1\",\"instruction\":\"MOV byte ptr [RBP + 0x237],0x1\"},{\"address\":\"141e4e4f8\",\"instruction\":\"LEA R9,[0x142f8f6c0]\"},{\"address\":\"141e4e4ff\",\"instruction\":\"LEA RCX,[RBP + 0x1d0]\"},{\"address\":\"141e4e506\",\"instruction\":\"LEA R8,[RBP + 0x30]\"},{\"address\":\"141e4e50a\",\"instruction\":\"MOV RDX,RSI\"},{\"address\":\"141e4e50d\",\"instruction\":\"CALL 0x140fe0470\"},{\"address\":\"141e4e512\",\"instruction\":\"MOV R12,qword ptr [RBP + 0x1f0]\"},{\"address\":\"141e4e519\",\"instruction\":\"MOV R15,qword ptr [RBP + 0x1d8]\"},{\"address\":\"141e4e520\",\"instruction\":\"MOV RSI,qword ptr [RBP + 0x1e0]\"},{\"address\":\"141e4e527\",\"instruction\":\"TEST R15,R15\"},{\"address\":\"141e4e52a\",\"instruction\":\"MOV RDI,R15\"},{\"address\":\"141e4e52d\",\"instruction\":\"CMOVZ RDI,RSI\"},{\"address\":\"141e4e531\",\"instruction\":\"MOV RAX,qword ptr [RDI]\"},{\"address\":\"141e4e534\",\"instruction\":\"MOV R14,qword ptr [RDI + 0x10]\"},{\"address\":\"141e4e538\",\"instruction\":\"SUB RAX,R14\"},{\"address\":\"141e4e53b\",\"instruction\":\"CMP RAX,0x27\"},{\"address\":\"141e4e53f\",\"instruction\":\"JBE 0x141e4eb25\"},{\"address\":\"141e4e545\",\"instruction\":\"MOV RAX,qword ptr [RDI + 0x8]\"},{\"address\":\"141e4e549\",\"instruction\":\"LEA RCX,[0x140fdf5f0]\"},{\"address\":\"141e4e550\",\"instruction\":\"MOV qword ptr [RAX + R14*0x1],RCX\"},{\"address\":\"141e4e554\",\"instruction\":\"LEA R13,[0x141e4f860]\"},{\"address\":\"141e4e55b\",\"instruction\":\"MOV qword ptr [RAX + R14*0x1 + 0x8],R13\"},{\"address\":\"141e4e560\",\"instruction\":\"MOV qword ptr [RAX + R14*0x1 + 0x10],R12\"},{\"address\":\"141e4e565\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x228]\"},{\"address\":\"141e4e56c\",\"instruction\":\"MOV qword ptr [RAX + R14*0x1 + 0x18],RCX\"},{\"address\":\"141e4e571\",\"instruction\":\"MOV byte ptr [RAX + R14*0x1 + 0x20],0x0\"},{\"address\":\"141e4e577\",\"instruction\":\"LEA RBX,[R14 + 0x28]\"},{\"address\":\"141e4e57b\",\"instruction\":\"MOV qword ptr [RDI + 0x10],RBX\"},{\"address\":\"141e4e57f\",\"instruction\":\"MOV RAX,qword ptr [RBP + 0x210]\"},{\"address\":\"141e4e586\",\"instruction\":\"CMP byte ptr [RAX + 0x38],0x0\"},{\"address\":\"141e4e58a\",\"instruction\":\"JZ 0x141e4e5dd\"},{\"address\":\"141e4e58c\",\"instruction\":\"MOV RAX,qword ptr [RDI]\"},{\"address\":\"141e4e58f\",\"instruction\":\"SUB RAX,RBX\"},{\"address\":\"141e4e592\",\"instruction\":\"CMP RAX,0x1f\"},{\"address\":\"141e4e596\",\"instruction\":\"JBE 0x141e4eb7c\"},{\"address\":\"141e4e59c\",\"instruction\":\"MOV RAX,qword ptr [RDI + 0x8]\"},{\"address\":\"141e4e5a0\",\"instruction\":\"LEA RCX,[0x140fde4d0]\"},{\"address\":\"141e4e5a7\",\"instruction\":\"MOV qword ptr [RAX + R14*0x1 + 0x28],RCX\"},{\"address\":\"141e4e5ac\",\"instruction\":\"MOV qword ptr [RAX + R14*0x1 + 0x30],R13\"},{\"address\":\"141e4e5b1\",\"instruction\":\"MOV qword ptr [RAX + R14*0x1 + 0x38],R12\"},{\"address\":\"141e4e5b6\",\"instruction\":\"MOV byte ptr [RAX + R14*0x1 + 0x40],0x0\"},{\"address\":\"141e4e5bc\",\"instruction\":\"ADD R14,0x48\"},{\"address\":\"141e4e5c0\",\"instruction\":\"MOV qword ptr [RDI + 0x10],R14\"},{\"address\":\"141e4e5c4\",\"instruction\":\"MOV EAX,dword ptr [RBP + 0x224]\"},{\"address\":\"141e4e5ca\",\"instruction\":\"LEA RCX,[0x142f8f774]\"},{\"address\":\"141e4e5d1\",\"instruction\":\"MOVSXD RAX,dword ptr [RCX + RAX*0x4]\"},{\"address\":\"141e4e5d5\",\"instruction\":\"ADD RAX,RCX\"},{\"address\":\"141e4e5d8\",\"instruction\":\"MOV RBX,R14\"},{\"address\":\"141e4e5db\",\"instruction\":\"JMP RAX\"},{\"address\":\"141e4e5dd\",\"instruction\":\"MOV EAX,dword ptr [RBP + 0x224]\"},{\"address\":\"141e4e5e3\",\"instruction\":\"LEA RCX,[0x142f8f774]\"},{\"address\":\"141e4e5ea\",\"instruction\":\"MOVSXD RAX,dword ptr [RCX + RAX*0x4]\"},{\"address\":\"141e4e5ee\",\"instruction\":\"ADD RAX,RCX\"},{\"address\":\"141e4e5f1\",\"instruction\":\"JMP RAX\"},{\"address\":\"141e4e6ce\",\"instruction\":\"MOV R8,qword ptr [RBP + 0x218]\"},{\"address\":\"141e4e6d5\",\"instruction\":\"MOV qword ptr [RBP + 0x38],R9\"},{\"address\":\"141e4e6d9\",\"instruction\":\"SUB R8,R9\"},{\"address\":\"141e4e6dc\",\"instruction\":\"SHR R8,0x6\"},{\"address\":\"141e4e6e0\",\"instruction\":\"MOV qword ptr [RBP + 0x218],R8\"},{\"address\":\"141e4e6e7\",\"instruction\":\"MOV qword ptr [RBP + 0x228],0x0\"},{\"address\":\"141e4e6f2\",\"instruction\":\"MOV qword ptr [RBP + 0x208],R9\"},{\"address\":\"141e4e6f9\",\"instruction\":\"MOV RCX,R9\"},{\"address\":\"141e4e6fc\",\"instruction\":\"NOP dword ptr [RAX]\"},{\"address\":\"141e4e700\",\"instruction\":\"MOV RAX,qword ptr [RBP + 0x228]\"},{\"address\":\"141e4e707\",\"instruction\":\"CMP qword ptr [RBP + 0x218],RAX\"},{\"address\":\"141e4e70e\",\"instruction\":\"JZ 0x141e4e788\"},{\"address\":\"141e4e710\",\"instruction\":\"INC RAX\"},{\"address\":\"141e4e713\",\"instruction\":\"MOV qword ptr [RBP + 0x228],RAX\"},{\"address\":\"141e4e71a\",\"instruction\":\"LEA RSI,[RCX + 0x40]\"},{\"address\":\"141e4e71e\",\"instruction\":\"CALL 0x140faa6e0\"},{\"address\":\"141e4e723\",\"instruction\":\"MOV RCX,RSI\"},{\"address\":\"141e4e726\",\"instruction\":\"JMP 0x141e4e700\"},{\"address\":\"141e4e728\",\"instruction\":\"MOV R8,qword ptr [RBP + 0x218]\"},{\"address\":\"141e4e72f\",\"instruction\":\"MOV qword ptr [RBP + 0x38],R9\"},{\"address\":\"141e4e733\",\"instruction\":\"SUB R8,R9\"},{\"address\":\"141e4e736\",\"instruction\":\"SHR R8,0x6\"},{\"address\":\"141e4e73a\",\"instruction\":\"MOV qword ptr [RBP + 0x218],R8\"},{\"address\":\"141e4e741\",\"instruction\":\"MOV qword ptr [RBP + 0x228],0x0\"},{\"address\":\"141e4e74c\",\"instruction\":\"MOV qword ptr [RBP + 0x208],R9\"},{\"address\":\"141e4e753\",\"instruction\":\"MOV RCX,R9\"},{\"address\":\"141e4e756\",\"instruction\":\"NOP word ptr CS:[RAX + RAX*0x1]\"},{\"address\":\"141e4e760\",\"instruction\":\"MOV RAX,qword ptr [RBP + 0x228]\"},{\"address\":\"141e4e767\",\"instruction\":\"CMP qword ptr [RBP + 0x218],RAX\"},{\"address\":\"141e4e76e\",\"instruction\":\"JZ 0x141e4e788\"},{\"address\":\"141e4e770\",\"instruction\":\"INC RAX\"},{\"address\":\"141e4e773\",\"instruction\":\"MOV qword ptr [RBP + 0x228],RAX\"},{\"address\":\"141e4e77a\",\"instruction\":\"LEA RSI,[RCX + 0x40]\"},{\"address\":\"141e4e77e\",\"instruction\":\"CALL 0x140faa6e0\"},{\"address\":\"141e4e783\",\"instruction\":\"MOV RCX,RSI\"},{\"address\":\"141e4e786\",\"instruction\":\"JMP 0x141e4e760\"},{\"address\":\"141e4e788\",\"instruction\":\"MOV RDX,qword ptr [RBP + 0x200]\"},{\"address\":\"141e4e78f\",\"instruction\":\"TEST RDX,RDX\"},{\"address\":\"141e4e792\",\"instruction\":\"JZ 0x141e4e7aa\"},{\"address\":\"141e4e794\",\"instruction\":\"SHL RDX,0x6\"},{\"address\":\"141e4e798\",\"instruction\":\"MOV R8D,0x8\"},{\"address\":\"141e4e79e\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x1f8]\"},{\"address\":\"141e4e7a5\",\"instruction\":\"CALL 0x140613c20\"},{\"address\":\"141e4e7aa\",\"instruction\":\"MOV EAX,dword ptr [RBP + 0x224]\"},{\"address\":\"141e4e7b0\",\"instruction\":\"AND AL,0x6\"},{\"address\":\"141e4e7b2\",\"instruction\":\"CMP AL,0x4\"},{\"address\":\"141e4e7b4\",\"instruction\":\"JZ 0x141e4eb0a\"},{\"address\":\"141e4e7ba\",\"instruction\":\"MOV RCX,qword ptr [RBP + 0x210]\"},{\"address\":\"141e4e7c1\",\"instruction\":\"MOVAPS XMM6,xmmword ptr [RBP + 0x240]\"},{\"address\":\"141e4e7c8\",\"instruction\":\"ADD RSP,0x2d8\"},{\"address\":\"141e4e7cf\",\"instruction\":\"POP RBX\"},{\"address\":\"141e4e7d0\",\"instruction\":\"POP RDI\"},{\"address\":\"141e4e7d1\",\"instruction\":\"POP RSI\"},{\"address\":\"141e4e7d2\",\"instruction\":\"POP R12\"},{\"address\":\"141e4e7d4\",\"instruction\":\"POP R13\"},{\"address\":\"141e4e7d6\",\"instruction\":\"POP R14\"},{\"address\":\"141e4e7d8\",\"instruction\":\"POP R15\"},{\"address\":\"141e4e7da\",\"instruction\":\"POP RBP\"},{\"address\":\"141e4e7db\",\"instruction\":\"JMP 0x141e4ca30\"},{\"address\":\"141e4eb0a\",\"instruction\":\"MOVAPS XMM6,xmmword ptr [RBP + 0x240]\"},{\"address\":\"141e4eb11\",\"instruction\":\"ADD RSP,0x2d8\"},{\"address\":\"141e4eb18\",\"instruction\":\"POP RBX\"},{\"address\":\"141e4eb19\",\"instruction\":\"POP RDI\"},{\"address\":\"141e4eb1a\",\"instruction\":\"POP RSI\"},{\"address\":\"141e4eb1b\",\"instruction\":\"POP R12\"},{\"address\":\"141e4eb1d\",\"instruction\":\"POP R13\"},{\"address\":\"141e4eb1f\",\"instruction\":\"POP R14\"},{\"address\":\"141e4eb21\",\"instruction\":\"POP R15\"},{\"address\":\"141e4eb23\",\"instruction\":\"POP RBP\"},{\"address\":\"141e4eb24\",\"instruction\":\"RET\"},{\"address\":\"141e4eb25\",\"instruction\":\"MOV byte ptr [RBP + 0x237],0x1\"},{\"address\":\"141e4eb2c\",\"instruction\":\"MOV qword ptr [RSP + 0x20],0x1\"},{\"address\":\"141e4eb35\",\"instruction\":\"MOV R8D,0x28\"},{\"address\":\"141e4eb3b\",\"instruction\":\"MOV R9D,0x1\"},{\"address\":\"141e4eb41\",\"instruction\":\"MOV RCX,RDI\"},{\"address\":\"141e4eb44\",\"instruction\":\"MOV RDX,R14\"},{\"address\":\"141e4eb47\",\"instruction\":\"CALL 0x1428a58d0\"},{\"address\":\"141e4eb4c\",\"instruction\":\"JMP 0x141e4e545\"},{\"address\":\"141e4eb7c\",\"instruction\":\"MOV byte ptr [RBP + 0x237],0x1\"},{\"address\":\"141e4eb83\",\"instruction\":\"MOV qword ptr [RSP + 0x20],0x1\"},{\"address\":\"141e4eb8c\",\"instruction\":\"MOV R8D,0x20\"},{\"address\":\"141e4eb92\",\"instruction\":\"MOV R9D,0x1\"},{\"address\":\"141e4eb98\",\"instruction\":\"MOV RCX,RDI\"},{\"address\":\"141e4eb9b\",\"instruction\":\"MOV RDX,RBX\"},{\"address\":\"141e4eb9e\",\"instruction\":\"CALL 0x1428a58d0\"},{\"address\":\"141e4eba3\",\"instruction\":\"JMP 0x141e4e59c\"},{\"address\":\"141e4ed31\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [RBP + 0x1b0]\"},{\"address\":\"141e4ed38\",\"instruction\":\"MOVUPS XMM1,xmmword ptr [RBP + 0x1c0]\"},{\"address\":\"141e4ed3f\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x1e0],XMM1\"},{\"address\":\"141e4ed46\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x1d0],XMM0\"},{\"address\":\"141e4ed4d\",\"instruction\":\"MOV byte ptr [RBP + 0x234],0x1\"},{\"address\":\"141e4ed54\",\"instruction\":\"LEA RAX,[0x142f8f4e8]\"},{\"address\":\"141e4ed5b\",\"instruction\":\"MOV qword ptr [RSP + 0x20],RAX\"},{\"address\":\"141e4ed60\",\"instruction\":\"LEA RCX,[0x142f8f358]\"},{\"address\":\"141e4ed67\",\"instruction\":\"LEA R9,[0x142f8f338]\"},{\"address\":\"141e4ed6e\",\"instruction\":\"LEA R8,[RBP + 0x1d0]\"},{\"address\":\"141e4ed75\",\"instruction\":\"MOV EDX,0x2b\"},{\"address\":\"141e4ed7a\",\"instruction\":\"CALL 0x1428d9760\"},{\"address\":\"141e4ed84\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [RBP + 0x1b0]\"},{\"address\":\"141e4ed8b\",\"instruction\":\"MOVUPS XMM1,xmmword ptr [RBP + 0x1c0]\"},{\"address\":\"141e4ed92\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x1e0],XMM1\"},{\"address\":\"141e4ed99\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x1d0],XMM0\"},{\"address\":\"141e4eda0\",\"instruction\":\"MOV byte ptr [RBP + 0x235],0x1\"},{\"address\":\"141e4eda7\",\"instruction\":\"LEA RAX,[0x142f8f4e8]\"},{\"address\":\"141e4edae\",\"instruction\":\"MOV qword ptr [RSP + 0x20],RAX\"},{\"address\":\"141e4edb3\",\"instruction\":\"LEA RCX,[0x142f8f358]\"},{\"address\":\"141e4edba\",\"instruction\":\"LEA R9,[0x142f8f338]\"},{\"address\":\"141e4edc1\",\"instruction\":\"LEA R8,[RBP + 0x1d0]\"},{\"address\":\"141e4edc8\",\"instruction\":\"MOV EDX,0x2b\"},{\"address\":\"141e4edcd\",\"instruction\":\"CALL 0x1428d9760\"},{\"address\":\"141e4edd7\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [RBP + 0x1b0]\"},{\"address\":\"141e4edde\",\"instruction\":\"MOVUPS XMM1,xmmword ptr [RBP + 0x1c0]\"},{\"address\":\"141e4ede5\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x1e0],XMM1\"},{\"address\":\"141e4edec\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x1d0],XMM0\"},{\"address\":\"141e4edf3\",\"instruction\":\"MOV byte ptr [RBP + 0x237],0x1\"},{\"address\":\"141e4edfa\",\"instruction\":\"LEA RAX,[0x142f8f4e8]\"},{\"address\":\"141e4ee01\",\"instruction\":\"MOV qword ptr [RSP + 0x20],RAX\"},{\"address\":\"141e4ee06\",\"instruction\":\"LEA RCX,[0x142f8f358]\"},{\"address\":\"141e4ee0d\",\"instruction\":\"LEA R9,[0x142f8f338]\"},{\"address\":\"141e4ee14\",\"instruction\":\"LEA R8,[RBP + 0x1d0]\"},{\"address\":\"141e4ee1b\",\"instruction\":\"MOV EDX,0x2b\"},{\"address\":\"141e4ee20\",\"instruction\":\"CALL 0x1428d9760\"},{\"address\":\"141e4ee2a\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [RBP + 0x1d0]\"},{\"address\":\"141e4ee31\",\"instruction\":\"MOVUPS XMM1,xmmword ptr [RBP + 0x1e0]\"},{\"address\":\"141e4ee38\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x40],XMM1\"},{\"address\":\"141e4ee3c\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x30],XMM0\"},{\"address\":\"141e4ee40\",\"instruction\":\"MOV byte ptr [RBP + 0x234],0x1\"},{\"address\":\"141e4ee47\",\"instruction\":\"LEA RAX,[0x142f8f5b8]\"},{\"address\":\"141e4ee4e\",\"instruction\":\"MOV qword ptr [RSP + 0x20],RAX\"},{\"address\":\"141e4ee53\",\"instruction\":\"LEA RCX,[0x142f8f358]\"},{\"address\":\"141e4ee5a\",\"instruction\":\"LEA R9,[0x142f8f338]\"},{\"address\":\"141e4ee61\",\"instruction\":\"LEA R8,[RBP + 0x30]\"},{\"address\":\"141e4ee65\",\"instruction\":\"MOV EDX,0x2b\"},{\"address\":\"141e4ee6a\",\"instruction\":\"CALL 0x1428d9760\"},{\"address\":\"141e4ee74\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [RBP + 0x1d0]\"},{\"address\":\"141e4ee7b\",\"instruction\":\"MOVUPS XMM1,xmmword ptr [RBP + 0x1e0]\"},{\"address\":\"141e4ee82\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x40],XMM1\"},{\"address\":\"141e4ee86\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x30],XMM0\"},{\"address\":\"141e4ee8a\",\"instruction\":\"MOV byte ptr [RBP + 0x235],0x1\"},{\"address\":\"141e4ee91\",\"instruction\":\"LEA RAX,[0x142f8f5b8]\"},{\"address\":\"141e4ee98\",\"instruction\":\"MOV qword ptr [RSP + 0x20],RAX\"},{\"address\":\"141e4ee9d\",\"instruction\":\"LEA RCX,[0x142f8f358]\"},{\"address\":\"141e4eea4\",\"instruction\":\"LEA R9,[0x142f8f338]\"},{\"address\":\"141e4eeab\",\"instruction\":\"LEA R8,[RBP + 0x30]\"},{\"address\":\"141e4eeaf\",\"instruction\":\"MOV EDX,0x2b\"},{\"address\":\"141e4eeb4\",\"instruction\":\"CALL 0x1428d9760\"},{\"address\":\"141e4eebe\",\"instruction\":\"MOVUPS XMM0,xmmword ptr [RBP + 0x1d0]\"},{\"address\":\"141e4eec5\",\"instruction\":\"MOVUPS XMM1,xmmword ptr [RBP + 0x1e0]\"},{\"address\":\"141e4eecc\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x40],XMM1\"},{\"address\":\"141e4eed0\",\"instruction\":\"MOVAPS xmmword ptr [RBP + 0x30],XMM0\"},{\"address\":\"141e4eed4\",\"instruction\":\"MOV byte ptr [RBP + 0x237],0x1\"},{\"address\":\"141e4eedb\",\"instruction\":\"LEA RAX,[0x142f8f5b8]\"},{\"address\":\"141e4eee2\",\"instruction\":\"MOV qword ptr [RSP + 0x20],RAX\"},{\"address\":\"141e4eee7\",\"instruction\":\"LEA RCX,[0x142f8f358]\"},{\"address\":\"141e4eeee\",\"instruction\":\"LEA R9,[0x142f8f338]\"},{\"address\":\"141e4eef5\",\"instruction\":\"LEA R8,[RBP + 0x30]\"},{\"address\":\"141e4eef9\",\"instruction\":\"MOV EDX,0x2b\"},{\"address\":\"141e4eefe\",\"instruction\":\"CALL 0x1428d9760\"},{\"address\":\"141e4ef05\",\"instruction\":\"XOR R13D,R13D\"},{\"address\":\"141e4ef08\",\"instruction\":\"MOV byte ptr [RBP + 0x237],0x1\"},{\"address\":\"141e4ef0f\",\"instruction\":\"LEA R8,[0x142f8c828]\"},{\"address\":\"141e4ef16\",\"instruction\":\"MOV RCX,R13\"},{\"address\":\"141e4ef19\",\"instruction\":\"MOV RDX,RDI\"},{\"address\":\"141e4ef1c\",\"instruction\":\"CALL 0x1428d8fe3\"}],\"count\":611}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "list_instances",
+        "title": null,
+        "description": "\nList known Ghidra instances from UDS discovery and the active TCP fallback.\n\nReturns JSON with each instance's project name, PID, open programs, and\nsocket path or TCP URL. Also shows which instance is currently connected.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "_list_instances_toolArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "connect_instance",
+        "title": null,
+        "description": "\nSwitch the MCP bridge to a different Ghidra instance by project name.\n\nIMPORTANT: Before calling this function only the static bridge tools are\nexposed (list_instances, connect_instance, tool-group management,\ndebugger proxy). After a successful connect the bridge fetches the\ninstance's /mcp/schema and registers Ghidra analysis tools dynamically.\nBy default all tool groups are loaded on connect. When started with\n--lazy, only the default groups are loaded initially and clients may need\nto call load_tool_group() for additional categories. Clients that cache\nthe initial tools/list and don't honor tools/list_changed must re-list\ntools after this call.\n\nUse list_instances() first to see available instances.\n\nArgs:\n    project: Project name (or substring) to connect to\n",
+        "inputSchema": {
+          "properties": {
+            "project": {
+              "description": "Project name (or substring) to connect to",
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          "required": [
+            "project"
+          ],
+          "title": "connect_instanceArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_tool_groups",
+        "title": null,
+        "description": "\nList all available tool groups with their tool counts and loaded status.\n\nReturns each category with: tool count, loaded status, and tool names.\nUse load_tool_group(group) to load a group's tools.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "list_tool_groupsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "load_tool_group",
+        "title": null,
+        "description": "\nLoad all tools in a category. Accepts a category name or \"all\" to load everything.\n\nUse list_tool_groups() to see available categories.\n\nArgs:\n    group: Category name (e.g. \"function\", \"datatype\") or \"all\"\n",
+        "inputSchema": {
+          "properties": {
+            "group": {
+              "description": "Category name (e.g. \"function\", \"datatype\") or \"all\"",
+              "title": "Group",
+              "type": "string"
+            }
+          },
+          "required": [
+            "group"
+          ],
+          "title": "load_tool_groupArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "search_tools",
+        "title": null,
+        "description": "\nSearch the full Ghidra tool catalog by keyword \u2014 including tools whose group\nis not currently loaded. Use this to discover the right tool without paying\nthe context cost of loading all groups (run the bridge with --lazy and search\non demand). Matches against tool name, description, and category.\n\nEach result reports whether the tool is callable right now; if not, it\nincludes the exact load_tool_group(...) call needed to make it callable.\n\nArgs:\n    query: Space-separated keywords, e.g. \"rename function\" or \"xref struct\".\n    limit: Maximum number of results to return (default 15).\n",
+        "inputSchema": {
+          "properties": {
+            "query": {
+              "description": "Space-separated keywords, e.g. \"rename function\" or \"xref struct\".",
+              "title": "Query",
+              "type": "string"
+            },
+            "limit": {
+              "default": 15,
+              "description": "Maximum number of results to return (default 15).",
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "title": "search_toolsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble_function",
+        "title": null,
+        "description": "Get assembly listing of function. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution. When Ghidra's stored function body is degenerate (body_end == body_start, which would truncate the listing to a single instruction), the listing is instead bounded by the next function or the containing memory block and the response adds body_degenerate=true, bounded_by (next_function | memory_block | function_body) and a warning; do not trust this function's stored extent in that case.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "disassemble_functionArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_data_types",
+        "title": null,
+        "description": "Find data types by name or path pattern, category and kind, one record per type (name, kind, category, size, path). With categories=true, list the category paths instead. With no filter it lists every type.",
+        "inputSchema": {
+          "properties": {
+            "pattern": {
+              "default": "",
+              "description": "Case-insensitive substring of the type's name or full path; omit for no name filter.",
+              "title": "Pattern",
+              "type": "string"
+            },
+            "category": {
+              "default": "",
+              "description": "Case-insensitive substring of the category path (e.g. Windows, /MyTypes); omit for any category.",
+              "title": "Category",
+              "type": "string"
+            },
+            "kind": {
+              "default": "",
+              "description": "Only this kind: struct, union, enum, typedef, pointer, array, function or primitive. Omit for all kinds.",
+              "title": "Kind",
+              "type": "string"
+            },
+            "categories": {
+              "default": "false",
+              "description": "True lists the category paths (filtered by pattern) instead of types; category and kind do not apply.",
+              "title": "Categories",
+              "type": "boolean"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "find_data_typesArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_functions",
+        "title": null,
+        "description": "Find functions: every filter is optional, so with none it lists the whole program a page at a time. Filter by name (substring or regex=true), xref count, calling convention, whether the name is user-given, thunk or external, or by tag (tag=a,b keeps functions carrying ANY of them); each result lists its tags; sort by address, name or xref_count. Replaces list_functions, list_functions_enhanced, search_functions and search_functions_enhanced, which returned four different shapes for the same question.",
+        "inputSchema": {
+          "properties": {
+            "name_pattern": {
+              "default": "",
+              "description": "Substring to match, or a regex when regex=true. Omit to match every function.",
+              "title": "Name Pattern",
+              "type": "string"
+            },
+            "regex": {
+              "default": "false",
+              "description": "Treat name_pattern as a regular expression.",
+              "title": "Regex",
+              "type": "boolean"
+            },
+            "min_xrefs": {
+              "default": "",
+              "description": "Only functions with at least this many references to them.",
+              "title": "Min Xrefs",
+              "type": "integer"
+            },
+            "max_xrefs": {
+              "default": "",
+              "description": "Only functions with at most this many references to them.",
+              "title": "Max Xrefs",
+              "type": "integer"
+            },
+            "calling_convention": {
+              "default": "",
+              "description": "Only functions with this calling convention (e.g. __stdcall).",
+              "title": "Calling Convention",
+              "type": "string"
+            },
+            "has_custom_name": {
+              "default": "",
+              "description": "true = only functions somebody has named; false = only auto-generated names (FUN_*, thunk_*).",
+              "title": "Has Custom Name",
+              "type": "boolean"
+            },
+            "is_thunk": {
+              "default": "",
+              "description": "true = only thunks, false = exclude them, omit for both.",
+              "title": "Is Thunk",
+              "type": "boolean"
+            },
+            "is_external": {
+              "default": "",
+              "description": "true = only external functions, false = exclude them.",
+              "title": "Is External",
+              "type": "boolean"
+            },
+            "tag": {
+              "default": "",
+              "description": "Only functions carrying any of these tags: one name or a comma-separated list. A name that is not a defined tag is an error (list_function_tags shows the definitions).",
+              "title": "Tag",
+              "type": "string"
+            },
+            "sort_by": {
+              "default": "address",
+              "description": "address | name | xref_count.",
+              "title": "Sort By",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Page size. 0 means no limit, which on a large binary is a megabytes-long response \u2014 the old list_functions had no pagination at all and returned 1.7MB on a stripped `ls`.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "pattern": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Pattern"
+            },
+            "query": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Query"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            }
+          },
+          "title": "find_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_functions",
+        "title": null,
+        "description": "Everything about one or many functions in a single call. Pass functions= as a comma-separated list of names or addresses for bulk mode (up to 20); omit it and pass function=/name=/address= for one. Pass fields= as a comma-separated subset to skip work you do not need \u2014 omitted or empty returns everything. When the requested fields need no decompiled text (e.g. fields=callers,callees,signature,labels,entry_point), the target function is NOT decompiled (238 ms cold / 5\u201310 ms warm per function); only decompiled_code (and call_context when enabled) pays that cost. Decompiled text renders EOL comments (// style), so comments written with set_comment are visible in the code. Replaces get_function_by_address, get_function_variables, get_function_xrefs, decompile_function, and the former get_function_callers/callees/labels/signature tools. Completeness scoring is NOT included \u2014 call analyze_function_completeness for that.",
+        "inputSchema": {
+          "properties": {
+            "function": {
+              "default": "",
+              "description": "Single mode: function name or address (0x<hex> or <space>:<hex>). Ignored when functions= is set.",
+              "title": "Function",
+              "type": "string"
+            },
+            "functions": {
+              "default": "",
+              "description": "Bulk mode: comma-separated function references (names or addresses). When set, function= is ignored. Returns a map keyed by the reference asked for.",
+              "title": "Functions",
+              "type": "string"
+            },
+            "fields": {
+              "default": "",
+              "description": "Comma-separated subset: signature, classification, return_type, entry_point, body_start, body_end, decompiled_code, plate_comment, comments, labels, tags, parameters, locals, callers, call_context, callees, xrefs, disassembly, jump_targets, refs (the absolute addresses the function uses: data references, the values of literal-pool words, and the memory the decompiled code reads and writes, so a register reached as base + offset is listed by its own address; a pool value is written value<word; asking for refs decompiles). Omit or leave empty for the full bundle.",
+              "title": "Fields",
+              "type": "string"
+            },
+            "include_call_context": {
+              "default": "true",
+              "description": "Include each caller's decompiled call-site line. Costs one decompilation per unique caller (~43ms); set false for the cheapest possible bundle. Ignored unless call_context is requested (explicitly or via an empty fields=).",
+              "title": "Include Call Context",
+              "type": "boolean"
+            },
+            "call_context_limit": {
+              "default": "6",
+              "description": "Maximum number of UNIQUE callers to decompile for call context.",
+              "title": "Call Context Limit",
+              "type": "integer"
+            },
+            "call_context_lines": {
+              "default": "3",
+              "description": "Lines of the caller's decompilation to return per call site, centred on the call. 1 is the call line alone; the default 3 adds the line above and below, which is usually where the guard and the use of the result live. Clamped to 1-21; costs no extra decompilation.",
+              "title": "Call Context Lines",
+              "type": "integer"
+            },
+            "include_disasm": {
+              "default": "false",
+              "description": "Include the raw instruction listing. Off by default: it roughly doubles the payload and agents rarely read it.",
+              "title": "Include Disasm",
+              "type": "boolean"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Address"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "function_address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Address"
+            },
+            "function_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Name"
+            },
+            "call_context_window": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Call Context Window"
+            }
+          },
+          "title": "get_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_metadata",
+        "title": null,
+        "description": "Get program metadata",
+        "inputSchema": {
+          "properties": {
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_metadataArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_struct_layout",
+        "title": null,
+        "description": "Get structure field layout",
+        "inputSchema": {
+          "properties": {
+            "struct_name": {
+              "description": "Structure name",
+              "title": "Struct Name",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "struct_name"
+          ],
+          "title": "get_struct_layoutArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_from",
+        "title": null,
+        "description": "Get cross-references from an address. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "get_xrefs_fromArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_to",
+        "title": null,
+        "description": "Get cross-references to ONE address, or to MANY at once (addresses=comma-separated), which returns a map keyed by the address you asked for. Replaces the former get_bulk_xrefs. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "default": "",
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "addresses": {
+              "default": "",
+              "description": "Comma-separated addresses for the many-at-once form. The result is a map of address to its reference list, and an address that does not resolve gets an empty list rather than failing the whole call.",
+              "title": "Addresses",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_xrefs_toArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read_memory",
+        "title": null,
+        "description": "Read raw memory bytes. Always pass the 'program' argument to target the correct binary \u2014 especially when multiple programs are open. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "length": {
+              "default": "16",
+              "description": "Number of bytes",
+              "title": "Length",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "read_memoryArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

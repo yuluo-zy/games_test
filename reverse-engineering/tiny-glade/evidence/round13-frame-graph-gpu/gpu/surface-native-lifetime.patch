@@ -1,0 +1,144 @@
+--- a/tiny-glade/crates/rhapsody/src/raw/swapchain.rs
++++ b/tiny-glade/crates/rhapsody/src/raw/swapchain.rs
+@@ -183,6 +183,10 @@
+     /// Sticky VK_ERROR_SURFACE_LOST_KHR. A lost surface never recovers; the
+     /// host must create a new one and call [`Swapchain::replace_surface`].
+     lost: std::sync::atomic::AtomicBool,
++    // Dropped after Surface::drop destroys VkSurfaceKHR. Swapchain teardown
++    // may retain this Surface on an unproven WSI timeout, so keep its actual
++    // native window alive with it rather than relying on a host's field order.
++    native_owner: Option<Arc<dyn std::any::Any + Send + Sync>>,
+ }
+ 
+ impl Surface {
+@@ -224,6 +228,7 @@
+             owned,
+             win32: false,
+             lost: std::sync::atomic::AtomicBool::new(false),
++            native_owner: None,
+         }
+     }
+     /// Wrap an existing Win32 Vulkan surface, allowing explicit fullscreen.
+@@ -247,14 +252,40 @@
+         hinstance: vk::HINSTANCE,
+         hwnd: vk::HWND,
+     ) -> Result<Arc<Self>> {
++        unsafe { Self::create_win32(instance, hinstance, hwnd, None) }
++    }
++
++    /// Create a Win32 surface retaining the actual HWND owner until Vulkan
++    /// surface destruction, including deliberately retained WSI generations.
++    /// This is one bounded owner slot; cloning/replacing a swapchain does not
++    /// append additional native-window leases.
++    ///
++    /// # Safety
++    /// In addition to from_win32's requirements, native_owner must retain the
++    /// window that owns hwnd. The owner must not strongly refer to this Surface.
++    pub unsafe fn from_win32_retained(
++        instance: Arc<VulkanInstance>,
++        hinstance: vk::HINSTANCE,
++        hwnd: vk::HWND,
++        native_owner: Arc<dyn std::any::Any + Send + Sync>,
++    ) -> Result<Arc<Self>> {
++        unsafe { Self::create_win32(instance, hinstance, hwnd, Some(native_owner)) }
++    }
++
++    unsafe fn create_win32(
++        instance: Arc<VulkanInstance>,
++        hinstance: vk::HINSTANCE,
++        hwnd: vk::HWND,
++        native_owner: Option<Arc<dyn std::any::Any + Send + Sync>>,
++    ) -> Result<Arc<Self>> {
+         let loader = ash::khr::win32_surface::Instance::new(&instance.entry, &instance.instance);
+         let info = vk::Win32SurfaceCreateInfoKHR::default()
+             .hinstance(hinstance)
+             .hwnd(hwnd);
+         let handle = unsafe { loader.create_win32_surface(&info, None) }?;
+-        Ok(Arc::new(unsafe {
+-            Self::from_win32_raw(instance, handle, true)
+-        }))
++        let mut surface = unsafe { Self::from_win32_raw(instance, handle, true) };
++        surface.native_owner = native_owner;
++        Ok(Arc::new(surface))
+     }
+ }
+ impl Drop for Surface {
+--- a/tiny-glade/crates/tiny-glade/src/production_renderer.rs
++++ b/tiny-glade/crates/tiny-glade/src/production_renderer.rs
+@@ -1362,35 +1362,45 @@
+ }
+ 
+ // Host platform integration. This uses winit's actual Win32 handles and the
+-// existing ash surface owner; it does not introduce another Vulkan lifetime.
++// existing Surface owner, including its native-window lifetime on failed WSI teardown.
+ #[cfg(target_os = "windows")]
+ struct PlatformSurface {
+     hwnd: vk::HWND,
+     hinstance: vk::HINSTANCE,
++    window: Arc<winit::window::Window>,
+ }
+ #[cfg(target_os = "windows")]
+ impl PlatformSurface {
+-    fn new(window: &winit::window::Window) -> Result<Self> {
++    fn native_handles(window: &winit::window::Window) -> Result<(vk::HWND, vk::HINSTANCE)> {
+         use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
+         let handle = match window.window_handle()?.as_raw() {
+             RawWindowHandle::Win32(handle) => handle,
+             _ => anyhow::bail!("winit did not return a Win32 window handle"),
+         };
+-        Ok(Self {
+-            hwnd: handle.hwnd.get(),
+-            hinstance: handle
++        Ok((
++            handle.hwnd.get(),
++            handle
+                 .hinstance
+                 .context("winit Win32 window has no module instance")?
+                 .get(),
++        ))
++    }
++
++    fn new(window: &Arc<winit::window::Window>) -> Result<Self> {
++        let (hwnd, hinstance) = Self::native_handles(window)?;
++        Ok(Self {
++            hwnd,
++            hinstance,
++            window: window.clone(),
+         })
+     }
+ 
+     fn update(&self, window: &winit::window::Window) -> Result<()> {
+         // Win32 owns the client extent. ProductionRenderer::resize updates the
+         // swapchain separately; never create a second surface on resize/resume.
+-        let current = Self::new(window)?;
++        let (hwnd, hinstance) = Self::native_handles(window)?;
+         anyhow::ensure!(
+-            self.hwnd == current.hwnd && self.hinstance == current.hinstance,
++            self.hwnd == hwnd && self.hinstance == hinstance,
+             "Vulkan surface belongs to a different Win32 window"
+         );
+         Ok(())
+@@ -1400,11 +1410,18 @@
+         &self,
+         instance: Arc<rhapsody::interop::VulkanInstance>,
+     ) -> Result<Arc<rhapsody::present::Surface>> {
+-        // Keep the existing Win32-specific Surface constructor: in addition
+-        // to owning destruction it marks the surface as Win32 for fullscreen.
+-        // ProductionRenderer retains the winit Window through all WSI owners.
+-        unsafe { rhapsody::present::Surface::from_win32(instance, self.hinstance, self.hwnd) }
+-            .context("create Vulkan Win32 surface")
++        // Keep both the native Win32 identity and its actual window owner.
++        // Surface destruction releases this lease after vkDestroySurfaceKHR;
++        // failed swapchain teardown retains the same lease with the Surface.
++        unsafe {
++            rhapsody::present::Surface::from_win32_retained(
++                instance,
++                self.hinstance,
++                self.hwnd,
++                self.window.clone(),
++            )
++        }
++        .context("create Vulkan Win32 surface")
+     }
+ }
+ 

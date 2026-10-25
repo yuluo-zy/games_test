@@ -1,0 +1,40 @@
+0x14227e0c1      mov rax, qword [rsp + 0x140]
+0x14227e0c9      mov rsi, qword [rsp + 0x128]
+0x14227e0d1      mov rdx, qword [rax]
+0x14227e0d4      lea rcx, [rsp + 0x88]
+   ; 0x141c3de00(0x0, -1, 0x0, 0x88)
+0x14227e0dc      call 0x141c3de00
+0x14227e0e1      movups xmm0, xmmword [rsp + 0x20]
+0x14227e0e6      movaps xmmword [rsp + 0x70], xmm0
+; [0x100:2]=0xffff
+; 256
+0x14227e0eb      mov word [rsp + 0xb8], 0x100
+; [0x101:2]=0xffff
+; 257
+0x14227e0f5      mov word [rsp + 0x80], 0x101
+   ; (pstr 0x143038624) "crates/systems/onboarding/src/hint_focused_edit.rs"
+0x14227e0ff      lea r8, [0x143038688]
+0x14227e106      lea rdx, [rsp + 0x70]
+0x14227e10b      mov rcx, rsi
+   ; 0x14227ba70(0x0, -1, 0x68, -1)
+0x14227e10e      call 0x14227ba70
+0x14227e113      nop
+   ; reloc.WS2_32.dll_accept
+0x14227e114      add rsp, 0xc0
+0x14227e11b      pop rbx
+0x14227e11c      pop rdi
+0x14227e11d      pop rsi
+0x14227e11e      pop r12
+0x14227e120      pop r13
+0x14227e122      pop r14
+0x14227e124      pop r15
+0x14227e126      ret
+   ; (pstr 0x143038624) "crates/systems/onboarding/src/hint_focused_edit.rs"
+0x14227e127      lea rcx, [0x143038670]
+   ; 0x1428d9310(-1, -1, 0x68, 0x143038670)
+0x14227e12e      call 0x1428d9310
+0x14227e133      int3
+0x14227e134      int3
+0x14227e135      int3
+0x14227e136      int3
+0x14227e137      int3

@@ -1,0 +1,57 @@
+{
+  "reviewed_at_utc": "2026-10-19T15:57:32.928018+00:00",
+  "verdict": "passed_scoped_static",
+  "manifest": {
+    "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-8020f37bb27d3fedc3/main-chain-frame-20261018/no-world-undefined-20261019/implementation-manifest.json",
+    "sha256": "895cf24a5c6eba67f3f773e75ffa31c41c2ac21c19e50a8b936aba407f01b959"
+  },
+  "patch": {
+    "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-8020f37bb27d3fedc3/main-chain-frame-20261018/no-world-undefined-20261019/candidate.patch",
+    "sha256": "bb0d9052d60a377e51a76e725a4ff89948d65064c1618da9e6e3a01f9994e269"
+  },
+  "source_inputs": [
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-8020f37bb27d3fedc3/main-chain-frame-20261018/no-world-undefined-20261019/candidate/crates/country-core/src/render/pass_builder/draw_builder.rs",
+      "sha256": "5a52bd6a00fe3e5c9ff7aead795387a152d5957705b6fb3868a206cee67c8ae0"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-0f3042e78112fb54f8/render-surface-world-20261018/no-world-undefined-20261019/candidate/crates/country-core/src/render/pass_builder/draw_stream.rs",
+      "sha256": "11ee052cb00d47f33e1656d4ddc2f921600f5768ce8fff1a48c0c615923ddba5"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-08b1f097c058d1fd4e/main-chain-frame-20261018/no-world-undefined-20261019/candidate/crates/country-core/src/systems/render_loop/draw_passes/final_post.rs",
+      "sha256": "ff4173e253d5e9084d33eb09d718baa844384f470aa4dc3a6712bad24142a082"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-eac12c8d24c206af39/no-world-undefined-20261019/candidate/crates/country-core/src/systems/render_loop/compute_passes/blur_pyramid.rs",
+      "sha256": "764171015fc201e85aa538c9225148a49ee113b0dff1cccc848dd19c6c4a7ff8"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-8020f37bb27d3fedc3/main-chain-frame-20261018/no-world-undefined-20261019/candidate/crates/tiny-glade/src/raster_host.rs",
+      "sha256": "fad73d40098384db0d643cd265697d135094a934eb3a441a5e7f174c7a4877d6"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-8020f37bb27d3fedc3/main-chain-frame-20261018/no-world-undefined-20261019/candidate/crates/tiny-glade/src/world_postprocess.rs",
+      "sha256": "196bf7f0caf83015e595707f88d33e901694ff123c42a63cf57ef89185f982ed"
+    }
+  ],
+  "checks": [
+    "New DrawPacket per-binding permission defaults empty. Graph, raw image, external buffer and graph-storage rebinding clear permission; granting again rejects multiple historical accesses or raw override instead of widening.",
+    "Builder and raster host reject permission lacking a unique real image non-write access, stale slot, inactive conflict, preserving-buffer conflict or raw override.",
+    "Same pass slot merges DefinedRequired > UndefinedAllowed > Inactive independent of packet order. Distinct slots/views preserve exact existing resource, range, access code and synchronization group, allowing existing ledger to enforce overlapping strict aliases.",
+    "Only flag94 == 0 marks finalpost B_SRC0; world postprocess passes the same authoritative flag to the first blur0 input only. Other blur levels, reverse passes, LUT, Tony and shadow remain strict.",
+    "No producer, real shader binding/fetch or dispatch is removed. Attachments and indirect/vertex/index reads do not inherit the permission.",
+    "Existing rhapsody UndefinedRead API and its cache policy bit reused without planner changes. Permission does not initialize contents or satisfy a later ordinary read.",
+    "Seven authored domain tests exercise real builder/host and existing graph ledger, including both alias orders and strict later read; not executed by reviewer."
+  ],
+  "performance_scope": "Packet adds one empty Vec by default (no default allocation). Selected finalpost permission adds a binding entry. Existing host BTreeMap is reused with a three-state value; no new planner/cache architecture. Runtime allocation and performance have not been measured.",
+  "evidence_scope": "Frozen original B finalpost SPV dd921e013549a6b4e3101e621e3e2e1d207f47b906271447443c11fd2ebbb04c and previously reviewed exact fetch/load/OpSelect snippets. No claim about arbitrary hot-reloaded shader CFG.",
+  "remaining": [
+    "Central typecheck and authored tests",
+    "Actual no-world original shader GPU execution and output readback",
+    "Full-game nonempty-world WSI acceptance",
+    "Reverse top-mip sample_self=false CFG remains unproven and was not loosened"
+  ],
+  "reviewer_ran_cargo_gpu": false,
+  "runtime_accepted": false
+}

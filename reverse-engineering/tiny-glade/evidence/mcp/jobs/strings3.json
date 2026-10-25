@@ -1,0 +1,8 @@
+[
+  {"tool": "open_database", "args": {"file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe", "run_auto_analysis": false, "database_id": "tg_str3", "keep_open": true}, "timeout_ms": 300000},
+  {"tool": "wait_for_analysis", "args": {"database": "tg_str3"}, "timeout_ms": 300000},
+  {"tool": "get_strings", "args": {"database": "tg_str3", "limit": 10}, "timeout_ms": 120000},
+  {"tool": "find_code_by_string", "args": {"database": "tg_str3", "pattern": "None is not allowed"}, "timeout_ms": 120000},
+  {"tool": "find_code_by_string", "args": {"database": "tg_str3", "pattern": "Tried writing to History"}, "timeout_ms": 120000},
+  {"tool": "close_database", "args": {"database": "tg_str3", "save": false}, "timeout_ms": 120000}
+]

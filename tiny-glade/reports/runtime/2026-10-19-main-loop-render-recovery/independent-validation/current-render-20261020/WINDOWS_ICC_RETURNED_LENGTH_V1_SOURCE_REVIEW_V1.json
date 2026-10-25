@@ -1,0 +1,27 @@
+{
+  "scope": "Win32 ICC successful output CString decoding, source only",
+  "manifest_sha256": "fb1ea2457c6431e555b492a9bfce44bc310a357a6b3c8ebcca14ee55bcb37dea",
+  "before_sha256": "9c6d80de65effe3c94a6e5e5999d11ddc2d3940d4fdf159db441cc4d26e49bc4",
+  "after_sha256": "0687de6c7db01d5076c4933ad934242034ff95fc465569b8616d0443d5379d45",
+  "patch_sha256": "58f654ad82229eef891942e99f30a10eba70a4bece77c19684eafc0fa808f6fd",
+  "native_byte_proof": {
+    "start": "0x1403ac625",
+    "bytes": 82,
+    "sha256": "2e358893b0e9e8f40933055ef2393804a84ba0b0b767b216592c19defae4c72d",
+    "continuous_RNE_equal": true
+  },
+  "independent_PDB_symbol": "llvm-symbolizer actual0x140d79ce0 -> alloc::ffi::c_str::CString::from_vec_with_nul::he1089e990fd57973, alloc/src/ffi/c_str.rs:669",
+  "conclusion": [
+    "Original1403ac625..644 reads returned u32 size and sets Vec.len=min(size,2048) before CString. Current omitted truncate turns any normal short path into interior-NUL error due trailing zero-filled allocation.",
+    "Candidate applies safe Vec::truncate to actual buffer length before unchanged CString/UTF8 checks. No expansion/out-of-bounds, no default path, no new unsafe or modified Win32 call/DeleteDC error order.",
+    "cfg(any(windows,test)) exposes same pure path decoder for current Mac tests without pretending Win32 API executed. Source tests cover successful short path, missing/interior NUL/zero len, oversized length and bad UTF8."
+  ],
+  "verdict": "F0 source_ready_for_root_CPU_and_Windows_validation; fixes real producer blocker rather than a fixture relaxation",
+  "unverified": [
+    "Four tests unexecuted by child.",
+    "Real GetICMProfileA result and event tracker delivery need Windows runtime; Mac-only decoder tests do not prove OS source.",
+    "Original documented CString error DC leakage retained; no blanket full-platform correctness claim."
+  ],
+  "production_written": false,
+  "cargo_gpu_executed": false
+}

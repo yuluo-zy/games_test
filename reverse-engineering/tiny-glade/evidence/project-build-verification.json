@@ -1,0 +1,99 @@
+{
+  "ok": true,
+  "locked_release_build": true,
+  "checks": [
+    {
+      "args": [
+        "identity"
+      ],
+      "expected": {
+        "source_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+      },
+      "actual": {
+        "source_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+      },
+      "ok": true
+    },
+    {
+      "args": [
+        "aspect",
+        "1920",
+        "1080"
+      ],
+      "expected": {
+        "f32_bits": "3fe38e39"
+      },
+      "actual": {
+        "value": "1.7777778",
+        "f32_bits": "3fe38e39"
+      },
+      "ok": true
+    },
+    {
+      "args": [
+        "roof-state",
+        "0.5",
+        "1.0"
+      ],
+      "expected": {
+        "ty_byte": 1,
+        "is_gable": true
+      },
+      "actual": {
+        "ty_byte": 1,
+        "is_gable": true
+      },
+      "ok": true
+    },
+    {
+      "args": [
+        "roof-state",
+        "NaN",
+        "1.0"
+      ],
+      "expected": {
+        "ty_byte": 1,
+        "is_gable": true
+      },
+      "actual": {
+        "ty_byte": 1,
+        "is_gable": true
+      },
+      "ok": true
+    },
+    {
+      "args": [
+        "roof-state",
+        "0.5",
+        "NaN"
+      ],
+      "expected": {
+        "ty_byte": 1,
+        "is_gable": false
+      },
+      "actual": {
+        "ty_byte": 1,
+        "is_gable": false
+      },
+      "ok": true
+    },
+    {
+      "args": [
+        "roof-tiles",
+        "original default Rectangle/Roof bytes",
+        "packed output"
+      ],
+      "actual": {
+        "records": 769,
+        "record_size": 64,
+        "edges": 44,
+        "ridge_caps": 5,
+        "faces_and_fillers": 720
+      },
+      "expected_records": 769,
+      "ok": true
+    }
+  ],
+  "scope": "Cargo 实际二进制 CLI 接线验证；独立原作参照见各算法机器码差分报告",
+  "full_game_implemented": false
+}

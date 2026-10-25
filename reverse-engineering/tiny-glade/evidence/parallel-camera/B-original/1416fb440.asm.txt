@@ -1,0 +1,82 @@
+1416fb440 push rsi
+1416fb441 sub rsp, 0x20
+1416fb445 mov rsi, rcx
+1416fb448 lea rax, [r8 - 3]
+1416fb44c cmp rax, 0x12
+1416fb450 ja 0x1416fb55e
+1416fb456 lea rcx, [rip + 0x1596f5b]
+1416fb45d movsxd rax, dword ptr [rcx + rax*4]
+1416fb461 add rax, rcx
+1416fb464 jmp rax
+1416fb466 movzx eax, word ptr [rdx]
+1416fb469 xor eax, 0x6179
+1416fb46e movzx ecx, byte ptr [rdx + 2]
+1416fb472 xor ecx, 0x77
+1416fb475 or cx, ax
+1416fb478 jne 0x1416fb55e
+1416fb47e jmp 0x1416fb523
+1416fb483 lea rax, [rip + 0x1596ac2]
+1416fb48a jmp 0x1416fb4f4
+1416fb48c movabs rax, 0x61635f6863746970
+1416fb496 xor rax, qword ptr [rdx]
+1416fb499 movabs rcx, 0x65686361635f6863
+1416fb4a3 xor rcx, qword ptr [rdx + 3]
+1416fb4a7 or rcx, rax
+1416fb4aa jne 0x1416fb55e
+1416fb4b0 jmp 0x1416fb4c8
+1416fb4b2 mov eax, 0x63746970
+1416fb4b7 xor eax, dword ptr [rdx]
+1416fb4b9 movzx ecx, byte ptr [rdx + 4]
+1416fb4bd xor ecx, 0x68
+1416fb4c0 or ecx, eax
+1416fb4c2 jne 0x1416fb55e
+1416fb4c8 mov byte ptr [rsi + 1], 1
+1416fb4cc jmp 0x1416fb565
+1416fb4d1 lea rax, [rip + 0x1596d23]
+1416fb4d8 mov rcx, rdx
+1416fb4db mov rdx, rax
+1416fb4de call 0x142923bf0
+1416fb4e3 test eax, eax
+1416fb4e5 jne 0x1416fb55e
+1416fb4e7 mov byte ptr [rsi + 1], 4
+1416fb4eb jmp 0x1416fb565
+1416fb4ed lea rax, [rip + 0x1596d31]
+1416fb4f4 mov rcx, rdx
+1416fb4f7 mov rdx, rax
+1416fb4fa call 0x142923bf0
+1416fb4ff test eax, eax
+1416fb501 jne 0x1416fb55e
+1416fb503 mov byte ptr [rsi + 1], 2
+1416fb507 jmp 0x1416fb565
+1416fb509 movabs rax, 0x686361635f776179
+1416fb513 xor rax, qword ptr [rdx]
+1416fb516 movzx ecx, byte ptr [rdx + 8]
+1416fb51a xor rcx, 0x65
+1416fb51e or rcx, rax
+1416fb521 jne 0x1416fb55e
+1416fb523 mov byte ptr [rsi + 1], 0
+1416fb527 jmp 0x1416fb565
+1416fb529 lea rax, [rip + 0x1596cd7]
+1416fb530 mov rcx, rdx
+1416fb533 mov rdx, rax
+1416fb536 call 0x142923bf0
+1416fb53b lea rcx, [rsi + 1]
+1416fb53f test eax, eax
+1416fb541 jne 0x1416fb562
+1416fb543 mov byte ptr [rcx], 5
+1416fb546 jmp 0x1416fb565
+1416fb548 lea rax, [rip + 0x1596c97]
+1416fb54f mov rcx, rdx
+1416fb552 mov rdx, rax
+1416fb555 call 0x142923bf0
+1416fb55a test eax, eax
+1416fb55c je 0x1416fb571
+1416fb55e lea rcx, [rsi + 1]
+1416fb562 mov byte ptr [rcx], 6
+1416fb565 mov byte ptr [rsi], 0
+1416fb568 mov rax, rsi
+1416fb56b add rsp, 0x20
+1416fb56f pop rsi
+1416fb570 ret 
+1416fb571 mov byte ptr [rsi + 1], 3
+1416fb575 jmp 0x1416fb565

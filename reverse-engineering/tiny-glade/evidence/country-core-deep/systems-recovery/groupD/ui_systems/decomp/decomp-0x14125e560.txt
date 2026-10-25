@@ -1,0 +1,22 @@
+// 
+
+undefined8 FUN_14125e560(longlong *param_1)
+
+{
+  longlong lVar1;
+  longlong lVar2;
+  undefined8 uVar3;
+  
+  *(undefined4 *)param_1[2] = *(undefined4 *)((longlong)param_1 + 0x1c);
+  lVar1 = *param_1;
+  lVar2 = *(longlong *)(lVar1 + 0x30);
+  uVar3 = *(undefined8 *)(lVar1 + 0x40);
+  if (lVar2 == *(longlong *)(lVar1 + 0x20)) {
+    FUN_140562870(lVar1 + 0x20,&UNK_142c21f80);
+  }
+  *(undefined8 *)(*(longlong *)(lVar1 + 0x28) + lVar2 * 8) = uVar3;
+  *(longlong *)(lVar1 + 0x30) = lVar2 + 1;
+  *(longlong *)(lVar1 + 0x40) = *(longlong *)(lVar1 + 0x40) + 1;
+  return uVar3;
+}
+

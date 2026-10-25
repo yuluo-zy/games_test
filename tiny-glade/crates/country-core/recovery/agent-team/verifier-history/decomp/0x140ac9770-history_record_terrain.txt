@@ -1,0 +1,59 @@
+
+void __cdecl country_core::systems::terrain::deferred_terrain_history::history_record_terrain(void)
+
+{
+  undefined8 *puVar1;
+  undefined1 *puVar2;
+  longlong lVar3;
+  longlong lVar4;
+  undefined8 uVar5;
+  undefined8 uVar6;
+  undefined8 uVar7;
+  undefined8 uVar8;
+  undefined8 *extraout_RAX;
+  longlong in_RCX;
+  undefined8 *in_RDX;
+  longlong *in_R8;
+  
+  *(undefined4 *)in_RDX[2] = *(undefined4 *)((longlong)in_RDX + 0x1c);
+  puVar1 = (undefined8 *)*in_RDX;
+  puVar2 = (undefined1 *)*puVar1;
+  *puVar1 = &DAT_8000000000000002;
+  if (puVar2 != &DAT_8000000000000002) {
+    uVar5 = puVar1[1];
+    uVar6 = puVar1[2];
+    uVar7 = puVar1[3];
+    uVar8 = puVar1[4];
+    **(undefined4 **)(in_RCX + 0x10) = *(undefined4 *)(in_RCX + 0x1c);
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX == (undefined8 *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::alloc::handle_alloc_error();
+    }
+    extraout_RAX[6] = uVar8;
+    extraout_RAX[4] = uVar6;
+    extraout_RAX[5] = uVar7;
+    extraout_RAX[2] = puVar2;
+    extraout_RAX[3] = uVar5;
+    *extraout_RAX = 1;
+    extraout_RAX[1] = 1;
+    resources::history::History::add();
+    *(undefined4 *)in_R8[2] = *(undefined4 *)((longlong)in_R8 + 0x1c);
+    lVar3 = *in_R8;
+    lVar4 = *(longlong *)(lVar3 + 0x30);
+    uVar5 = *(undefined8 *)(lVar3 + 0x40);
+    if (lVar4 == *(longlong *)(lVar3 + 0x20)) {
+      alloc::raw_vec::RawVec::
+      grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>
+                ();
+    }
+    *(undefined8 *)(*(longlong *)(lVar3 + 0x28) + lVar4 * 8) = uVar5;
+    *(longlong *)(lVar3 + 0x30) = lVar4 + 1;
+    *(longlong *)(lVar3 + 0x40) = *(longlong *)(lVar3 + 0x40) + 1;
+  }
+  return;
+}
+
+
+
+CALLEES: [{"name": "__rust_alloc", "address": "140613c10"}, {"name": "add", "address": "140a84ec0"}, {"name": "grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>", "address": "140562870"}, {"name": "handle_alloc_error", "address": "1428d9000"}]

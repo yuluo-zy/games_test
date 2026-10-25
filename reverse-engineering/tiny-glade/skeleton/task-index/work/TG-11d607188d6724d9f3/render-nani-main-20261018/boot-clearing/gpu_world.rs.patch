@@ -1,0 +1,21 @@
+--- a/games_test/tiny-glade/crates/country-core/src/render/nani/gpu_world.rs
++++ b/games_test/tiny-glade/crates/country-core/src/render/nani/gpu_world.rs
+@@ -599,6 +599,18 @@
+ }
+ 
+ impl GpuWorld {
++    /// B uninit_clearing@140a7a675..708 only clears owned instance IDs and
++    /// their count. Retain actual GPU buffers, dirty ranges, mesh part count,
++    /// next ID, external subsets, None slots and global frame counts.
++    pub fn clear_owned_instances(&mut self) {
++        for slot in &mut self.subsets {
++            if let Some(GpuWorldSubset::Owned(subset)) = slot.get_mut() {
++                subset.condenser.clear();
++                subset.instance_count = 0;
++            }
++        }
++    }
++
+     /// 构造（0x1409917d0，O）：
+     /// 1. `nani_calculate_draw_list_params()`；克隆 `max_instance_offsets`；
+     /// 2. 27 槽默认值（`array::default<RwLock<Option<GpuWorldSubset>>>`）；

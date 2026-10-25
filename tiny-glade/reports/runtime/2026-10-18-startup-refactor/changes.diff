@@ -1,0 +1,3235 @@
+--- before/crates/tiny-glade/Cargo.toml
++++ crates/tiny-glade/Cargo.toml
+@@ -26,12 +26,13 @@
+ harness = false
+ 
+ [dependencies]
++glam.workspace = true
+ tg-terrain.workspace = true
+ tg-history.workspace = true
+ tg-text = { path = "../tg-text" }
+ bytemuck.workspace = true
+ walkdir = "=2.3.2"
+-country-core.workspace = true
++country-core = { workspace = true, features = ["native-physics"] }
+ system-roof.workspace = true
+ rhapsody.workspace = true
+ utils.workspace = true
+@@ -74,7 +75,6 @@
+ 
+ [dev-dependencies]
+ rspirv.workspace = true
+-glam.workspace = true
+ 
+ # B `icc.rs` 使用 winapi 0.3.9 的 wingdi（original-Cargo.lock）。
+ [target.'cfg(windows)'.dependencies]
+--- before/crates/country-core/src/meta_commander.rs
++++ crates/country-core/src/meta_commander.rs
+@@ -17,7 +17,8 @@
+ //! 会话加载链（case 0）：AppMode 门控 → 新 fence → 建临时 on_load Vec →
+ //! append_on_load<Fence> → 应用 → 命令带 fence 重入队；on_load 回放见
+ //! `systems::save::load_game::advance_load_game`。
+-use crate::resources::session::{OnLoadEntry, ON_LOAD_VARIANT_MASK};
++
++use crate::resources::session::ON_LOAD_VARIANT_MASK;
+ use ahash::RandomState;
+ use bevy_ecs::prelude::{Commands, Local, Res, ResMut};
+ use hashbrown::HashMap;
+@@ -42,18 +43,9 @@
+ #[derive(Clone, Debug)]
+ pub struct MetaCommandFence(pub Arc<Mutex<(bool, bool)>>);
+ impl MetaCommandFence {
+-    /// 0x14091ef90：分配 0x18B Arc；+0x10 单字节显式写 true（阻塞）。
+-    /// RE-SESSION-SWITCH 定案：**fence 标志偏移 = +0x10**（0x14091f450 movzx [rax+0x10]）。
+-    ///
+-    /// 原生 **strong=2**：一引用由调用方持有，另一"载荷引用"预留给 raw 指针使用
+-    /// （append_on_load / reenqueue 的 payload）。本实现用 `Arc::into_raw` 泄漏一个
+-    /// 克隆来镜像该语义；泄漏引用由 load_game 首遍 variant2 的 `Arc::from_raw`+drop 平衡
+-    /// （O 0x14146dc 区内联 unblock + Arc drop）。
++    /// 创建拥有完整所有权的阻塞信号；克隆和取消均由 Arc 自动管理。
+     pub fn new_pair_blocked() -> Self {
+-        let arc = Arc::new(Mutex::new((true, true)));
+-        let reserved = Arc::clone(&arc);
+-        let _ = Arc::into_raw(reserved);
+-        Self(arc)
++        Self(Arc::new(Mutex::new((true, true))))
+     }
+     /// 清除阻塞标志（写 +0x10 字节）。
+     pub fn unblock(&self) {
+@@ -63,11 +55,18 @@
+     pub fn is_blocked(&self) -> bool {
+         self.0.lock().expect("fence poisoned").0
+     }
+-    /// 载荷编码（on_load 条目 / MetaCommand +0x18 携带的 Arc 指针值）。
++    /// 非拥有的身份标记，只用于命令判别；禁止从该整数重新构造 Arc。
+     pub fn as_payload(&self) -> u64 {
+         Arc::as_ptr(&self.0) as usize as u64
+     }
+ }
++
++impl PartialEq for MetaCommandFence {
++    fn eq(&self, other: &Self) -> bool {
++        Arc::ptr_eq(&self.0, &other.0)
++    }
++}
++impl Eq for MetaCommandFence {}
+ 
+ /// 元命令器（PDB：`MetaCommander`；80B：commands VecDeque + profiler_sinks HashMap +
+ /// RandomState）。为 Bevy 资源（commander_update 系统消费）。
+@@ -247,7 +246,8 @@
+ /// → 新 fence + on_load + `insert_resource<NextSession>` + 带 fence 重入队。
+ pub fn commander_update_system(
+     mut commander: ResMut<MetaCommander>,
+-    next_session: Res<crate::resources::session::NextSession>,
++    next_session: Option<Res<crate::resources::session::NextSession>>,
++    active_session: Option<Res<crate::resources::session::ActiveSession>>,
+     app_mode: Res<crate::systems::mode_manager::AppMode>,
+     mut fence_state: Local<Option<MetaCommandFence>>,
+     mut commands: Commands,
+@@ -266,14 +266,14 @@
+             }
+             // 门控未命中（正常游戏态）：新 fence + on_load + insert_resource + 重入队。
+             let fence = MetaCommandFence::new_pair_blocked();
+-            let on_load = vec![OnLoadEntry::Command {
+-                tag: ON_LOAD_VARIANT_MASK,
+-                payload_a: fence.as_payload(),
+-                payload_b: 0,
+-                payload_c: 0,
+-            }];
+-            let mut session = next_session.clone();
+-            session.on_load = on_load;
++            let mut session = next_session.as_deref().cloned().unwrap_or_else(|| {
++                active_session.as_deref().map_or_else(
++                    || crate::resources::session::NextSession::load_latest(&Default::default()),
++                    |active| crate::resources::session::NextSession::load(active.id),
++                )
++            });
++            session.on_load.clear();
++            session.append_fence_release(fence.clone());
+             session.kind = crate::resources::session::NextSessionKind::LoadOnLoad;
+             commands.insert_resource(session);
+             *fence_state = Some(fence.clone());
+@@ -377,13 +377,19 @@
+         // 重入队后到达：+0x18 != 0 → 路径 B。
+         let fence = MetaCommandFence::new_pair_blocked();
+         commander.reenqueue_session_load(&fence);
+-        assert!(matches!(commander.update(), Some(CommanderOutcome::SessionLoadWait)));
++        assert!(matches!(
++            commander.update(),
++            Some(CommanderOutcome::SessionLoadWait)
++        ));
+ 
+         // 未知命令 → Unknown。
+         commander.extend_script([MetaCommand {
+             tag: 0x8000_0000_0000_0099,
+             payloads: [0; 6],
+         }]);
+-        assert!(matches!(commander.update(), Some(CommanderOutcome::Unknown)));
+-    }
+-}
++        assert!(matches!(
++            commander.update(),
++            Some(CommanderOutcome::Unknown)
++        ));
++    }
++}
+--- before/crates/country-core/src/resources/session.rs
++++ crates/country-core/src/resources/session.rs
+@@ -332,6 +332,9 @@
+ /// 变体解码 `decoded = tag ^ 0x8000000000000000`，**`decoded > 2 → 1`**（非 min(·,2)）。
+ #[derive(Clone, Debug, PartialEq, Eq)]
+ pub enum OnLoadEntry {
++    /// 加载完成信号；持有 Arc，复制、取消或重试不会泄漏引用或解引用裸地址。
++    Fence(crate::meta_commander::MetaCommandFence),
++
+     /// 单命令条目：0x20B = {tag, payload_a, payload_b, payload_c}。
+     Command {
+         tag: u64,
+@@ -438,16 +441,9 @@
+             None => Self::load(SessionId::new()),
+         }
+     }
+-    /// `append_on_load<MetaCommandFence>` 0x141328ac0：追加**变体 0 会话加载命令**
+-    /// 条目 `{tag=0x8000000000000000, payload=fence}`（RE-SESSION-SWITCH 定案：
+-    /// payload 是 fence Arc，**非** 0x8000000000000003；fence 释放走变体 2 条目）。
++    /// 加载完成后释放信号。请求、管理器和调用方各自持有安全的 Arc 引用。
+     pub fn append_fence(&mut self, fence: crate::meta_commander::MetaCommandFence) {
+-        self.on_load.push(OnLoadEntry::Command {
+-            tag: ON_LOAD_VARIANT_MASK,
+-            payload_a: fence.as_payload(),
+-            payload_b: 0,
+-            payload_c: 0,
+-        });
++        self.on_load.push(OnLoadEntry::Fence(fence));
+     }
+     /// 追加两遍回放终止哨兵 `{tag=0x8000000000000003}`（0x8000000000000003 =
+     /// 回放 break 条件；生产者写入残留待追源，RE-SESSION-SWITCH）。
+@@ -459,17 +455,9 @@
+             payload_c: 0,
+         });
+     }
+-    /// 追加变体 2 **fence 释放条目** `{tag=0x8000000000000002, payload_a=fence}`：
+-    /// load_game 首遍回放遇 decoded==2 内联 unblock + Arc drop（O 0x14146d030 首遍
+-    /// uVar23==2 段）。生产者在会话切换 on_load 末尾追加，fence 释放后才让 commander
+-    /// path B 完成切换。本方法不释放强引用语义（fence 的 raw 引用仍待 from_raw 平衡）。
++    /// 兼容旧接口，统一使用拥有所有权的加载完成信号。
+     pub fn append_fence_release(&mut self, fence: crate::meta_commander::MetaCommandFence) {
+-        self.on_load.push(OnLoadEntry::Command {
+-            tag: ON_LOAD_VARIANT_MASK | 2,
+-            payload_a: fence.as_payload(),
+-            payload_b: 0,
+-            payload_c: 0,
+-        });
++        self.append_fence(fence);
+     }
+     /// `append_on_load<[MetaCommand;3]>` 0x1403b5150：追加**批量条目**（机器码 tag=3，
+     /// 载荷 = Box<0xa8B>；reviewer 二轮修正，非单条 payload）。
+@@ -627,15 +615,14 @@
+ ///   on_event<DeleteSessionCmd>)))`。
+ /// crate 无 bevy_app 的 Startup/Update 分表，宿主按运行期语义接入同一 Schedule。
+ pub fn configure_session_flow_systems(schedule: &mut bevy_ecs::schedule::Schedule) {
+-    use bevy_ecs::schedule::common_conditions::on_event;
+     use bevy_ecs::schedule::Condition as _;
+     use bevy_ecs::schedule::IntoScheduleConfigs as _;
++    use bevy_ecs::schedule::common_conditions::on_event;
+     schedule.add_systems(refresh_session_list_system);
+     schedule.add_systems((
+         delete_session_system.run_if(on_event::<DeleteSessionCmd>),
+-        refresh_session_list_system.run_if(
+-            on_event::<DeleteSessionCmd>.or(on_event::<SavingGameComplete>),
+-        ),
++        refresh_session_list_system
++            .run_if(on_event::<DeleteSessionCmd>.or(on_event::<SavingGameComplete>)),
+     ));
+ }
+ 
+--- before/crates/country-core/src/startup/init_color_library.rs
++++ crates/country-core/src/startup/init_color_library.rs
+@@ -1,20 +1,12 @@
+-//! B `init_color_library` at 0x14082c000: default palette → GPU buffer →
+-//! deferred CPU resource insertion → watch `assets/colors.json`. This producer
+-//! does not read the JSON or select a theme. Native evidence is retained in
+-//! task-index/work/TG-07278b540192d36392/main-chain-frame-20261018.
+-
++//! 默认调色板上传和配置监听。返回的 CPU 调色板由宿主插入同一个 World。
+ use crate::{
+     asset_libraries::{
+-        color_library::ColorLibrarySsbo,
+-        configwatch::ConfigWatch,
+-        ssbo_library::AssetSsboLibrary,
++        color_library::ColorLibrarySsbo, configwatch::ConfigWatch, ssbo_library::AssetSsboLibrary,
+     },
+     render::ssbo::rhapsody_boundary::GraphicsDevice,
+ };
+ 
+-/// The host supplies the same graphics-device buffer table used by the App's
+-/// render graph. The returned palette is the original Commands payload and
+-/// must be inserted into that same App's World after successful registration.
++/// 使用渲染图所属设备上传默认调色板，再监听全局颜色配置。
+ pub fn init_color_library(
+     device: &dyn GraphicsDevice,
+     ssbos: &AssetSsboLibrary,
+--- before/crates/country-core/src/startup/load_glade_audio.rs
++++ crates/country-core/src/startup/load_glade_audio.rs
+@@ -1,22 +1,16 @@
+-//! `load_glade_audio.rs` — glade 音频的常量（B `startup::load_glade_audio`，串池 0x142aa0c33 起，逐字节核对）。
+-//!
+-//! `GladeAudio::load`（0x1408bf460）读 `{path}/audio.json`，随后创建 4 个 Halloween 音乐事件，并绑定两个 FMOD 参数。
+-//! 两个参数名共享尾部串：`IsHalloween`（0x142aa0cf1）是 `GladeTypeIsHalloween`（0x142aa0ce8）从第 9 字节起的后缀，
+-//! 文档里的"(9)"是这个偏移，不是长度。
+-//!
+-//! `load_glade_audio`（0x1408be360）本体（2026-10-17 接线）：`MusicPlayer::stop_immediately` →
+-//! `GladeAudio::load`（读 audio.json，serde `Option<GladeAudio>`；**audio.json schema U 待①取证**，
+-//! 本函数以 `HALLOWEEN_MUSIC_EVENTS` 常量承载曲目名）→ 建 4 个 `event:/Music/Halloween/...` 路径 →
+-//! `MusicPlayer::load_tracks` → 主题字节（`+0x58 == 4`，Winter）写 `glade_theme_flag = 0.25`
+-//! （f32 `0x3e800000` @0x142925950；其余 0）→ `MusicBackend::set_global_parameter`
+-//! （`GladeTypeIsHalloween` / `IsHalloween`）→ 实例化/启动。audio.json 解析面与 FMOD
+-//! 实例化面留待音频域/host（本函数只接库内可接链）。
++//! 主题音频加载的公共实现。主题编号、Halloween 开关和音乐音量分别处理。
++//! 具体主题曲目复用 GladeAudio 配置，避免所有主题都使用 Halloween 曲库。
+ 
++use crate::{
++    resources::session::GladeType,
++    systems::audio::music::{
++        glade_audio::GladeAudio,
++        music_player::{MusicBackend, MusicEvent, MusicPlayer},
++    },
++};
+ use std::path::Path;
+ 
+-use crate::systems::audio::music::music_player::{MusicBackend, MusicEvent, MusicPlayer};
+-
+-/// 4 个 Halloween 音乐事件（O：串池顺序）。
++/// 缺少 Halloween 配置时使用的曲库，不作为普通主题的默认曲库。
+ pub const HALLOWEEN_MUSIC_EVENTS: [&str; 4] = [
+     "event:/Music/Halloween/Single Leaf",
+     "event:/Music/Halloween/Tiny Olden Glade",
+@@ -24,88 +18,108 @@
+     "event:/Music/Halloween/Enchanted Forest",
+ ];
+ 
+-/// 绑定的 FMOD 参数名（O）。
+-pub const GLADE_TYPE_IS_HALLOWEEN_PARAMETER: &str = "GladeTypeIsHalloween";
++/// 两个相邻但独立的 FMOD 参数名，不能把它们拼成一个参数。
++pub const GLADE_TYPE_PARAMETER: &str = "GladeType";
+ pub const IS_HALLOWEEN_PARAMETER: &str = "IsHalloween";
+ 
+-/// `{path}/audio.json`（O：日志 `Reading {path}/audio.json`，0x142aa0d44）。
++/// 兼容依赖这个路径工具的 GladeAudio 读取器。
+ pub fn audio_json_path(glade_dir: &str) -> String {
+-    format!("{glade_dir}/audio.json")
++    Path::new(glade_dir)
++        .join("audio.json")
++        .to_string_lossy()
++        .into_owned()
+ }
+ 
+-/// 主题音量门（O：load_glade_audio 0x1408be360 写 `0.25`（f32 0x3e800000）当主题字节
+-/// `+0x58 == 4`（Winter）否则 `0`）。MusicPlayer 的 `glade_theme_flag` 字段即此语义。
++/// 冬季音乐标量，与主题编号和 Halloween 布尔值没有数值上的关联。
+ pub const fn halloween_theme_flag(theme_byte: u8) -> f32 {
+-    if theme_byte == 4 {
+-        f32::from_bits(0x3e800000) // 0.25
++    if theme_byte == GladeType::Winter as u8 {
++        0.25
+     } else {
+         0.0
+     }
+ }
+ 
+-/// `load_glade_audio` 0x1408be360（域内可接链，2026-10-17 接线）。
+-///
+-/// 原生流程：`MusicPlayer::stop_immediately` → `GladeAudio::load`（读 audio.json）→
+-/// 建 4 个 Halloween 音乐事件路径 → `MusicPlayer::load_tracks` → 主题音量门 → 绑定
+-/// `GladeTypeIsHalloween`/`IsHalloween` 参数 → 实例化/启动。
+-///
+-/// 本函数落库内可接链：`stop_immediately` + `load_tracks(HALLOWEEN_MUSIC_EVENTS)` +
+-/// `glade_theme_flag` 主题门 + `MusicBackend::set_global_parameter`。audio.json 的
+-/// `GladeAudio` serde schema（U）与 FMOD 实例化/启动由音频域/host 接入，不伪造解析。
++fn set_parameter<B: MusicBackend>(backend: &B, name: &str, value: f32) {
++    if let Err(error) = backend.set_global_parameter(name, value) {
++        log::warn!("无法设置音频参数 {name}={value}：{error:?}");
++    }
++}
++
++/// 类型明确的主题入口；曲目替换会清理旧播放列表，重复调用不会积累实例。
++/// 只有显式使用 halloween 目录时开启节日参数；正常冬季仍是普通主题。
++pub fn load_theme_audio<E, B>(
++    player: &mut MusicPlayer<E>,
++    backend: &B,
++    glade_dir: &Path,
++    theme: GladeType,
++) -> anyhow::Result<()>
++where
++    E: MusicEvent,
++    B: MusicBackend<Event = E>,
++{
++    let is_halloween = glade_dir
++        .file_name()
++        .and_then(|name| name.to_str())
++        .is_some_and(|name| name.eq_ignore_ascii_case("halloween"));
++    let description = match GladeAudio::try_load_path(glade_dir) {
++        Ok(description) => description,
++        Err(error)
++            if is_halloween
++                && error.chain().any(|cause| {
++                    cause
++                        .downcast_ref::<std::io::Error>()
++                        .is_some_and(|io| io.kind() == std::io::ErrorKind::NotFound)
++                }) =>
++        {
++            GladeAudio::default()
++        }
++        Err(error) => return Err(error),
++    };
++    if is_halloween && description.music.is_empty() {
++        player.load_tracks(backend, &HALLOWEEN_MUSIC_EVENTS);
++    } else {
++        player.load_tracks(backend, &description.music);
++    }
++    player.glade_theme_flag = halloween_theme_flag(theme.native_tag());
++    set_parameter(backend, GLADE_TYPE_PARAMETER, theme.audio_id());
++    set_parameter(
++        backend,
++        IS_HALLOWEEN_PARAMETER,
++        if is_halloween { 1.0 } else { 0.0 },
++    );
++    Ok(())
++}
++
++/// 兼容字节形式的宿主调用；无效主题会在产生音频副作用前失败。
+ pub fn load_glade_audio<E, B>(
+     player: &mut MusicPlayer<E>,
+     backend: &B,
+-    _glade_dir: &Path,
++    glade_dir: &Path,
+     theme_byte: u8,
+-) where
++) -> anyhow::Result<()>
++where
+     E: MusicEvent,
+     B: MusicBackend<Event = E>,
+ {
+-    // 1. 停止当前音乐（O：MusicPlayer::stop_immediately）。
+-    player.stop_immediately();
+-    // 2. 加载 4 个 Halloween 音乐事件（O：event:/Music/Halloween/... 串池，逐个
+-    //    instantiate_audio + beat 回调注册）。
+-    let tracks: Vec<String> = HALLOWEEN_MUSIC_EVENTS
+-        .iter()
+-        .map(|event| (*event).to_string())
+-        .collect();
+-    player.load_tracks(backend, &tracks);
+-    // 3. 主题音量门（O：theme==4 → 0.25；其余 0）。
+-    let flag = halloween_theme_flag(theme_byte);
+-    player.glade_theme_flag = flag;
+-    // 4. 绑定 FMOD 参数（O：GladeTypeIsHalloween / IsHalloween 两参数）。
+-    let _ = backend.set_global_parameter(GLADE_TYPE_IS_HALLOWEEN_PARAMETER, flag);
+-    let _ = backend.set_global_parameter(IS_HALLOWEEN_PARAMETER, flag);
++    let theme = GladeType::ALL
++        .get(theme_byte as usize)
++        .copied()
++        .ok_or_else(|| anyhow::anyhow!("无效的音频主题编号：{theme_byte}"))?;
++    load_theme_audio(player, backend, glade_dir, theme)
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+-
+     #[test]
+-    fn parameter_names_share_a_suffix_at_offset_nine() {
+-        assert!(GLADE_TYPE_IS_HALLOWEEN_PARAMETER.ends_with(IS_HALLOWEEN_PARAMETER));
+-        assert_eq!(
+-            GLADE_TYPE_IS_HALLOWEEN_PARAMETER.len() - IS_HALLOWEEN_PARAMETER.len(),
+-            9
+-        );
++    fn parameter_names_are_independent() {
++        assert_eq!(GLADE_TYPE_PARAMETER, "GladeType");
++        assert_eq!(IS_HALLOWEEN_PARAMETER, "IsHalloween");
+     }
+-
+     #[test]
+-    fn events_live_under_the_halloween_music_bus() {
+-        assert!(
+-            HALLOWEEN_MUSIC_EVENTS
+-                .iter()
+-                .all(|e| e.starts_with("event:/Music/Halloween/"))
+-        );
+-        assert_eq!(HALLOWEEN_MUSIC_EVENTS.len(), 4);
+-    }
+-
+-    #[test]
+-    fn audio_json_is_joined_with_a_forward_slash() {
+-        assert_eq!(
+-            audio_json_path("assets/glade/olden"),
+-            "assets/glade/olden/audio.json"
+-        );
++    fn winter_volume_is_distinct_from_theme_id() {
++        assert_eq!(halloween_theme_flag(4), 0.25);
++        assert_eq!(GladeType::Winter.audio_id(), 4.0);
++        assert_eq!(halloween_theme_flag(0), 0.0);
+     }
+ }
+--- before/crates/country-core/src/startup/load_prefabs.rs
++++ crates/country-core/src/startup/load_prefabs.rs
+@@ -1,32 +1,6 @@
+-//! `startup::load_prefabs` — 预制体资产载入与热重载（O：`crates/country-core/src/startup/load_prefabs.rs`）。
+-//!
+-//! fresh 证据（2026-10-17，ghidra shared）：
+-//! * `PrefabWatcher::new` 0x1412a8e00：`hotwatch::GenericHotwatch::new_with_custom_delay`
+-//!   （`MOV R8D,0x5f5e100` = **100 ms**）+ 两个 `Arc<Mutex<HashSet<…>>>`（+0x30/+0x38）。
+-//!   监视关闭时 watcher 判别 = 3（不调用 hotwatch）。
+-//! * `watch_prefab` / `watch_atlas`：`Hotwatch::watch(path, closure)`；closure 捕获
+-//!   `Arc<Mutex<HashSet<PrefabName>>>` + `Vec<PrefabName>`，或
+-//!   `Arc<Mutex<HashSet<GpuWorldSubsetKind>>>` + kind 字节。
+-//! * closure body 0x140922830 / 0x140922a80：仅当
+-//!   `*event >> 1 == 0x4000000000000001` 时锁集合并逐个 insert。
+-//! * `reload_prefabs` 0x1412a1a60：Mutex 守卫 + 重入检查 → `load_prefabs_impl`
+-//!   → 清空变更集。
+-//! * `load_prefabs_impl` 0x1412a1df0：大 monolith（`assets/prefabs` RON →
+-//!   `asset::prefab::config::PrefabConfig` → `load_prefab_mesh` +
+-//!   `filter_mesh_by_vertex_color`×2 → `PrefabLibrary::add` + 依赖图 + canopy quad）。
+-//! * `PrefabWatchPlugin::build` 0x1408e4b00（胶水）：注册 `PrefabsModifiedCmd` /
+-//!   `MeshAtlasesModifiedCmd` 事件、插入 `PrefabWatcher`、`add_systems(Update, …)`。
+-//!
+-//! # seam / 登记
+-//! 1. `hotwatch` 在 O 上实例化为 `GenericHotwatch<notify::windows::ReadDirectoryChangesWatcher>`；
+-//!    本 crate 用平台别名 `hotwatch::Hotwatch`（`RecommendedWatcher`）。
+-//! 2. closure 的事件判别是原始 tag 谓词 `*event >> 1 == 0x4000000000000001`；本 crate 以
+-//!    `DebouncedEvent::Write` 近似（枚举 tag 未锚定，登记）。
+-//! 3. `load_prefab_mesh`（mesh 属性提取 / `MeshProcessorConfig` panic）依赖 AssetMeshLibrary，
+-//!    尚未接线：`PrefabPart.mesh` 留空、`bounds` 为默认，登记 mesh 载入 seam。
+-//! 4. `PrefabPartConfig` → `PrefabPart` 的逐字段映射只实现已锚定部分（albedo 三套、
+-//!    audio kind、rt_kind 1/2）；`rt.semantic`、`audio.shape_scale/name/rank` 的运行时
+-//!    映射未锚定，登记。
++//! 预制件配置扫描和热更新。监听回调只入队；文件 I/O 在锁外执行。
++//! 配置全部解析成功后再替换库，失败归还通知并保留旧资产。
++//! 网格与部分音频字段仍需资产域接入，不能将配置映射视为完整渲染资产。
+ 
+ use std::collections::HashSet;
+ use std::path::Path;
+@@ -41,20 +15,16 @@
+ use crate::resources::render::mesh_atlas_library::PrefabName;
+ use crate::utils_contract::Aabb3;
+ 
+-/// hotwatch 的防抖延迟（O：`PrefabWatcher::new` 0x1412a8e00 `MOV R8D,0x5f5e100` = 100 ms）。
++/// 文件监听防抖时间。
+ pub const WATCH_DELAY: Duration = Duration::from_millis(100);
+ 
+-/// 预制体热重载 watcher（O：`startup::load_prefabs::PrefabWatcher`，0x40 B）。
+-///
+-/// 布局（fresh disasm）：`+0x00..0x30` = `Result<Hotwatch>`（判别 3 = 未监视）、
+-/// `+0x30` = `Arc<Mutex<HashSet<PrefabName>>>`、`+0x38` =
+-/// `Arc<Mutex<HashSet<GpuWorldSubsetKind>>>`。
++/// 预制件和图集的变更集合；同一资源的重复通知会自动合并。
+ pub struct PrefabWatcher {
+-    /// `+0x00`：`None` = O 判别 3（未监视）。
++    /// 关闭监听时不创建操作系统 watcher。
+     watcher: Option<hotwatch::Hotwatch>,
+-    /// `+0x30`：预制体变更集合。
++    /// 等待重载的预制件名称。
+     pub prefab_changes: Arc<Mutex<HashSet<PrefabName>>>,
+-    /// `+0x38`：mesh atlas subset 变更集合。
++    /// 等待重建的图集子集。
+     pub atlas_changes: Arc<Mutex<HashSet<GpuWorldSubsetKind>>>,
+ }
+ 
+@@ -65,26 +35,26 @@
+ }
+ 
+ impl PrefabWatcher {
+-    /// O：0x1412a8e00。`watching == false` → 不初始化 hotwatch（判别 3），但仍建两个集合。
+-    /// hotwatch 初始化失败按原版 `unwrap_failed` panic。
++    /// 建立可选监听；需要处理平台初始化错误的宿主可以使用 try_new。
+     pub fn new(watching: bool) -> Self {
++        Self::try_new(watching).expect("无法启动预制件文件监听")
++    }
++
++    /// 复用 hotwatch 的平台实现，不自行创建轮询线程。
++    pub fn try_new(watching: bool) -> Result<Self, hotwatch::Error> {
+         let watcher = if watching {
+-            Some(
+-                hotwatch::Hotwatch::new_with_custom_delay(WATCH_DELAY)
+-                    .unwrap_or_else(|_| panic!("called `Result::unwrap()` on an `Err` value")),
+-            )
++            Some(hotwatch::Hotwatch::new_with_custom_delay(WATCH_DELAY)?)
+         } else {
+             None
+         };
+-        Self {
++        Ok(Self {
+             watcher,
+             prefab_changes: Arc::new(Mutex::new(HashSet::new())),
+             atlas_changes: Arc::new(Mutex::new(HashSet::new())),
+-        }
+-    }
+-
+-    /// O：`impl$1::watch_prefab`。监视 `path`；命中事件时把捕获的 `names` 全部插入集合。
+-    /// 未监视（判别 3）→ 直接成功（原版跳过 `watch`）。
++        })
++    }
++
++    /// 监听源文件；命中事件时合并其依赖预制件名称。
+     pub fn watch_prefab(
+         &mut self,
+         path: impl AsRef<Path>,
+@@ -102,7 +72,7 @@
+         })
+     }
+ 
+-    /// O：`impl$1::watch_atlas`。监视 `path`；命中事件时把捕获的 `kind` 插入集合。
++    /// 监听图集源文件；图集通知直接交给宿主重建，无需重读 RON。
+     pub fn watch_atlas(
+         &mut self,
+         path: impl AsRef<Path>,
+@@ -120,10 +90,8 @@
+         })
+     }
+ 
+-    /// 取走两个变更集合（O：`reload_prefabs` 之后的 `drop_inner_table` 清空语义）。
+-    pub fn take_changed(
+-        &self,
+-    ) -> (HashSet<PrefabName>, HashSet<GpuWorldSubsetKind>) {
++    /// 取走当前批次；此后到达的事件会进入新集合，不与当前文件读取争用锁。
++    pub fn take_changed(&self) -> (HashSet<PrefabName>, HashSet<GpuWorldSubsetKind>) {
+         let prefabs = std::mem::take(
+             &mut *self
+                 .prefab_changes
+@@ -140,40 +108,76 @@
+     }
+ }
+ 
+-/// O：closure 0x140922830/0x140922a80 的原始谓词 `*event >> 1 == 0x4000000000000001`。
+-///
+-/// 该 tag 未映射到具名 `DebouncedEvent` 变体（登记）；这里用 `Write` 近似。
++/// 支持普通写入与编辑器的临时文件 rename 原子保存。
+ pub fn is_relevant_event(event: &hotwatch::Event) -> bool {
+-    matches!(event, hotwatch::Event::Write(_))
+-}
+-
+-/// `reload_prefabs`（O：0x1412a1a60）的语义模型：仅在 watcher 有变更时重扫描，
+-/// 并返回被消费的两个变更集合（宿主据此写 `PrefabsModifiedCmd` /
+-/// `MeshAtlasesModifiedCmd`）。
++    matches!(
++        event,
++        hotwatch::Event::Write(_)
++            | hotwatch::Event::Create(_)
++            | hotwatch::Event::Rename(_, _)
++            | hotwatch::Event::Remove(_)
++            | hotwatch::Event::Rescan
++    )
++}
++
++/// 重载有通知的批次。解析失败归还本批通知，不覆盖读取期间新到的事件。
++/// 图集独立变化时跳过配置扫描，避免每次贴图保存都重读整个预制件目录。
+ pub fn reload_prefabs(
+     root: &Path,
+     watcher: &mut PrefabWatcher,
+     library: &mut PrefabLibrary,
+ ) -> anyhow::Result<(HashSet<PrefabName>, HashSet<GpuWorldSubsetKind>)> {
+-    let (prefabs, atlases) = watcher.take_changed();
+-    if prefabs.is_empty() && atlases.is_empty() {
++    let (mut prefabs, atlases) = watcher.take_changed();
++    if prefabs.is_empty() {
+         return Ok((prefabs, atlases));
+     }
+-    load_prefabs_impl(root, library)?;
++    let replacement = match read_prefab_library(root) {
++        Ok(replacement) => replacement,
++        Err(error) => {
++            watcher
++                .prefab_changes
++                .lock()
++                .expect("预制件通知锁已损坏")
++                .extend(prefabs);
++            watcher
++                .atlas_changes
++                .lock()
++                .expect("图集通知锁已损坏")
++                .extend(atlases);
++            return Err(error);
++        }
++    };
++    // 补上新增与删除的名称，消费者才能同步清理已不存在的实例内容。
++    prefabs.extend(
++        library
++            .inner
++            .keys()
++            .filter(|name| !replacement.inner.contains_key(*name))
++            .cloned(),
++    );
++    prefabs.extend(
++        replacement
++            .inner
++            .keys()
++            .filter(|name| !library.inner.contains_key(*name))
++            .cloned(),
++    );
++    *library = replacement;
+     Ok((prefabs, atlases))
+ }
+ 
+-/// `load_prefabs_impl`（O：0x1412a1df0）的可落地部分：`assets/prefabs` 树扫描
+-/// （`asset::prefab::scan::scan_asset_tree`）→ `PrefabConfig` → 运行时 `Prefab` →
+-/// `PrefabLibrary::add`。
+-///
+-/// 已实现（fresh 锚定）：albedo 三套（+0x60/0x6c/0x78 组）、rt_kind（1 = AABB、
+-/// 2 = 无 RT）、audio kind 名/tag 门（`"Tree"` → tag 4）。
+-/// 登记：mesh 载入（`load_prefab_mesh`）、AABB 缓存（+0x48）、audio name/rank、
+-/// `rt.semantic` 到 kind 的映射。
++/// 从完整目录创建库快照；调用者应为该目录使用独立的 PrefabLibrary。
++/// 解析失败保留旧快照；成功时同时删除磁盘中已经移除的预制件。
+ pub fn load_prefabs_impl(root: &Path, library: &mut PrefabLibrary) -> anyhow::Result<()> {
++    *library = read_prefab_library(root)?;
++    Ok(())
++}
++
++fn read_prefab_library(root: &Path) -> anyhow::Result<PrefabLibrary> {
+     let scan = asset::prefab::scan::scan_asset_tree(root)?;
+-    for (name, config) in &scan.prefabs {
++    let mut library = PrefabLibrary::default();
++    library.inner.reserve(scan.prefabs.len());
++    for (name, config) in scan.prefabs {
+         let parts = config
+             .parts
+             .values()
+@@ -182,7 +186,7 @@
+             .collect();
+         library.add(PrefabName::new(name.as_str()), Prefab { parts });
+     }
+-    Ok(())
++    Ok(library)
+ }
+ 
+ /// `asset::prefab::config::PrefabPartConfig` → 运行时 [`PrefabPart`]（已锚定字段）。
+@@ -230,7 +234,11 @@
+     fn watcher_starts_disabled_with_empty_sets() {
+         let mut watcher = PrefabWatcher::new(false);
+         assert!(watcher.watcher.is_none());
+-        assert!(watcher.watch_prefab("nope", vec![PrefabName::new("x")]).is_ok());
++        assert!(
++            watcher
++                .watch_prefab("nope", vec![PrefabName::new("x")])
++                .is_ok()
++        );
+         let (prefabs, atlases) = watcher.take_changed();
+         assert!(prefabs.is_empty() && atlases.is_empty());
+     }
+@@ -240,7 +248,7 @@
+         // O：原始谓词 `*event >> 1 == 0x4000000000000001`（具名变体映射登记）。
+         let event = hotwatch::Event::Write(std::path::PathBuf::from("a.ron"));
+         assert!(is_relevant_event(&event));
+-        assert!(!is_relevant_event(&hotwatch::Event::Rescan));
++        assert!(is_relevant_event(&hotwatch::Event::Rescan));
+     }
+ 
+     #[test]
+--- before/crates/country-core/src/startup/startup_garden_brush.rs
++++ crates/country-core/src/startup/startup_garden_brush.rs
+@@ -1,55 +1,28 @@
+-//! B `startup_garden_brush` 0x1415f87c0: per brush asset, in order —
+-//! `load_json_as_mesh<&str>` → `load_mesh_into_library` →
+-//! `load_shader_into_library<&str>` → `Commands::spawn_empty()` + one `insert`
+-//! record. Two iterations; the second `insert` carries
+-//! `(DrawableMeshBundle, DontCastShadow)` (O, fresh disassembly 2026-10-17:
+-//! the two push closure_env_0 at 0x1415f8a63 / 0x1415f88eb).
+-//!
+-//! Machine-verified strings (read_memory on the B image, 0x142c7d468…):
+-//! - meshes: `assets/meshes/garden_stone.json` (0x142c7d468, len 31) →
+-//!   name `garden_stone` (0x142c7d487, len 12);
+-//!   `assets/meshes/lowpoly_flower.json` (0x142c7d4de, len 33) → name
+-//!   `garden_flower_03` (0x142c7d4ff, len 16);
+-//! - raster shaders: `/solid_vertex_color_garden_stone.raster.hlsl`
+-//!   (0x142c7d493, len 44) → program `solid_vertex_color_garden_stone`
+-//!   (0x142c7d4bf, len 31); `/garden_lowpoly_flower.raster.hlsl`
+-//!   (0x142c7d50f, len 34) → program `garden_lowpoly_flower`
+-//!   (0x142c7d531, len 21).
+-//!   (2026-10-17 correction: RESTORE.md's `garden_stone/…` /
+-//!   `garden_flower_03/…` shader-path prefix is **not** in the image; paths
+-//!   start with `/`, and the shader program names are the file stems, not the
+-//!   mesh names.)
+-//!
+-//! The mesh part is wired to the ECS G2 mesh-load group ([`startup_garden_brush`]).
+-//! The shader loads and the two spawn/insert records depend on the render
+-//! shader/spawn pipeline, expressed through the [`GardenBrushHost`] boundary —
+-//! the same decoupling as `startup_quad.rs::StartupHost`.
++//! 花园笔刷资源：石头与花朵按 mesh、shader、实体顺序初始化。
++//! ECS 入口只负责网格；完整渲染生成复用 GardenBrushHost，花朵关闭投影。
+ use crate::asset_libraries::mesh_library::{AssetMeshLibrary, MeshAsset};
+ use crate::utils::load_json::load_json_as_mesh;
+ use bevy_ecs::prelude::*;
+ 
+-/// Named meshes registered by `startup_garden_brush` (O: names at 0x142c7d487 /
+-/// 0x142c7d4ff). Note the file mesh for the flower is `lowpoly_flower.json`,
+-/// registered under the name `garden_flower_03`.
++/// 笔刷网格路径与库内名称；花朵资源路径和注册名有意不同。
+ pub const GARDEN_BRUSH_MESHES: [(&str, &str); 2] = [
+     ("assets/meshes/garden_stone.json", "garden_stone"),
+     ("assets/meshes/lowpoly_flower.json", "garden_flower_03"),
+ ];
+ 
+-/// Raster shader programs loaded per brush asset, same order as
+-/// [`GARDEN_BRUSH_MESHES`]: `(path, program name)`.
+-/// O: read_memory 0x142c7d493/0x142c7d4bf and 0x142c7d50f/0x142c7d531.
++/// 与网格表同序的着色器路径和业务名称。
+ pub const GARDEN_BRUSH_SHADERS: [(&str, &str); 2] = [
+     (
+         "/solid_vertex_color_garden_stone.raster.hlsl",
+         "solid_vertex_color_garden_stone",
+     ),
+-    ("/garden_lowpoly_flower.raster.hlsl", "garden_lowpoly_flower"),
++    (
++        "/garden_lowpoly_flower.raster.hlsl",
++        "garden_lowpoly_flower",
++    ),
+ ];
+ 
+-/// Steps 1-2 of the native sequence per brush asset: `load_json_as_mesh<&str>`
+-/// (panicking loader, O) + `load_mesh_into_library` (`AssetMeshLibrary::add`).
+-/// `AssetMeshLibrary::add` uses interior mutability, so a shared `Res` suffices.
++/// 读取并注册一个网格。资产库内部同步，共享借用即可完成注册。
+ pub fn register_brush_mesh(
+     meshes: &AssetMeshLibrary,
+     path: &str,
+@@ -59,42 +32,31 @@
+     meshes.add(MeshAsset::new(mesh, Some(name.to_string())))
+ }
+ 
+-/// `startup_garden_brush` (0x1415f87c0), ECS G2 mesh-load wiring: registers the
+-/// garden brush meshes. The shader loads and spawn records are reconstructed by
+-/// [`run_garden_brush`] through the [`GardenBrushHost`] render boundary.
++/// 一次性网格初始化；着色器和实体由 run_garden_brush 的宿主接口完成。
+ pub fn startup_garden_brush(meshes: Res<AssetMeshLibrary>) {
+     for (path, name) in GARDEN_BRUSH_MESHES {
+         register_brush_mesh(&meshes, path, name);
+     }
+ }
+ 
+-/// Render-pipeline boundary for the native shader-load and spawn steps:
+-/// `load_shader_into_library<&str>` (0x140b3fe40) and
+-/// `Commands::spawn_empty` (0x140d146a0) + `insert<DrawableMeshBundle>` /
+-/// `insert<(DrawableMeshBundle, DontCastShadow)>`. Mirrors
+-/// `startup_quad.rs::StartupHost`.
++/// 宿主提供网格、着色器和实体创建；本模块只负责顺序与数据传递。
+ pub trait GardenBrushHost {
+-    /// The mesh handle type produced by `load_mesh_into_library`.
++    /// 注册后的网格句柄类型。
+     type Mesh;
+-    /// The shader handle type produced by `load_shader_into_library`.
++    /// 注册后的着色器句柄类型。
+     type Shader;
+ 
+-    /// `load_mesh_into_library` (0x140b1aca0): register a JSON-loaded mesh.
++    /// 注册已经读取的网格。
+     fn load_mesh_into_library(
+         &mut self,
+         name: &'static str,
+         mesh: crate::render::mesh::Mesh,
+     ) -> Self::Mesh;
+ 
+-    /// `load_shader_into_library<&str>` (0x140b3fe40).
+-    fn load_shader_into_library(
+-        &mut self,
+-        path: &'static str,
+-        name: &'static str,
+-    ) -> Self::Shader;
++    /// 根据路径加载并注册着色器。
++    fn load_shader_into_library(&mut self, path: &'static str, name: &'static str) -> Self::Shader;
+ 
+-    /// `Commands::spawn_empty().insert(...)`: the second iteration (flower)
+-    /// inserts `(DrawableMeshBundle, DontCastShadow)` (O).
++    /// 创建绘制实体，按参数决定是否关闭投影。
+     fn spawn_empty_insert(
+         &mut self,
+         mesh: Self::Mesh,
+@@ -103,25 +65,18 @@
+     );
+ }
+ 
+-/// Full native control flow of 0x1415f87c0, two iterations, in order:
+-/// `load_json_as_mesh<&str>` → `load_mesh_into_library` →
+-/// `load_shader_into_library<&str>` → `spawn_empty` + `insert` (2nd with
+-/// `DontCastShadow`). The inserted bundle is `Transform::IDENTITY` + mesh
+-/// handle + shader handle + a `false` flag (O bundle stores at
+-/// 0x1415f88f0…0x1415f8960).
+-///
+-/// `load_mesh` is injectable so tests do not read the game's brush JSON from
+-/// disk; the ECS system uses the real [`load_json_as_mesh`].
++/// 每项依次加载网格、加载着色器、创建实体。第二项花朵禁用投影。
++/// 网格读取函数可注入，测试不需要访问实际游戏安装目录。
+ pub fn run_garden_brush<H: GardenBrushHost>(
+     host: &mut H,
+     mut load_mesh: impl FnMut(&str) -> crate::render::mesh::Mesh,
+ ) {
+-    for (i, (path, name)) in GARDEN_BRUSH_MESHES.iter().enumerate() {
+-        let mesh = load_mesh(path);
+-        let mesh_handle = host.load_mesh_into_library(name, mesh);
+-        let (shader_path, shader_name) = GARDEN_BRUSH_SHADERS[i];
++    for (brush_index, (mesh_path, mesh_name)) in GARDEN_BRUSH_MESHES.iter().enumerate() {
++        let mesh = load_mesh(mesh_path);
++        let mesh_handle = host.load_mesh_into_library(mesh_name, mesh);
++        let (shader_path, shader_name) = GARDEN_BRUSH_SHADERS[brush_index];
+         let shader = host.load_shader_into_library(shader_path, shader_name);
+-        host.spawn_empty_insert(mesh_handle, shader, i == 1);
++        host.spawn_empty_insert(mesh_handle, shader, brush_index == 1);
+     }
+ }
+ 
+@@ -140,7 +95,11 @@
+     impl GardenBrushHost for Rec {
+         type Mesh = u64;
+         type Shader = u64;
+-        fn load_mesh_into_library(&mut self, name: &'static str, mesh: crate::render::mesh::Mesh) -> u64 {
++        fn load_mesh_into_library(
++            &mut self,
++            name: &'static str,
++            mesh: crate::render::mesh::Mesh,
++        ) -> u64 {
+             self.order.push("mesh");
+             self.meshes.push((name, mesh.indices.len() as u64));
+             100 + self.meshes.len() as u64
+@@ -161,16 +120,29 @@
+     fn two_iterations_run_mesh_shader_spawn_and_second_insert_casts_no_shadow() {
+         let mut h = Rec::default();
+         run_garden_brush(&mut h, |_path| crate::render::mesh::Mesh::new("brush"));
+-        assert_eq!(h.order, vec!["mesh", "shader", "spawn", "mesh", "shader", "spawn"]);
++        assert_eq!(
++            h.order,
++            vec!["mesh", "shader", "spawn", "mesh", "shader", "spawn"]
++        );
+         assert_eq!(h.meshes[0].0, "garden_stone");
+         assert_eq!(h.meshes[1].0, "garden_flower_03");
+         assert_eq!(
+             h.shaders,
+             vec![
+-                ("/solid_vertex_color_garden_stone.raster.hlsl", "solid_vertex_color_garden_stone"),
+-                ("/garden_lowpoly_flower.raster.hlsl", "garden_lowpoly_flower"),
++                (
++                    "/solid_vertex_color_garden_stone.raster.hlsl",
++                    "solid_vertex_color_garden_stone"
++                ),
++                (
++                    "/garden_lowpoly_flower.raster.hlsl",
++                    "garden_lowpoly_flower"
++                ),
+             ]
+         );
+-        assert_eq!(h.casts, vec![false, true], "2nd insert carries DontCastShadow");
++        assert_eq!(
++            h.casts,
++            vec![false, true],
++            "2nd insert carries DontCastShadow"
++        );
+     }
+ }
+--- before/crates/country-core/src/startup/init_photomode_state.rs
++++ crates/country-core/src/startup/init_photomode_state.rs
+@@ -1,25 +1,24 @@
+-//! B PhotomodeState constructor (0x1408705b0) and enable reset (0x140870570).
+-//! Offsets document native provenance; this type does not promise its Rust ABI.
++//! 拍照模式状态初始化与进入时的字段重置。未知字段不假定业务含义。
+ use crate::resources::photo_mode::PhotoModeCameraMode;
+ use bevy_ecs::resource::Resource;
+ 
+ #[derive(Resource, Clone, Copy, Debug, PartialEq)]
+ pub struct PhotomodeState {
+-    /// B +0, initialized to 1 in demo and 3 in full game.
++    /// 拍照标量；demo 初值为 1，完整版为 3。
+     pub scalar: f32,
+-    /// B +4; do_photomode writes the focus camera tag or u32::MAX.
++    /// 焦点相机标签；u32::MAX 表示未选择。
+     pub index: u32,
+-    /// B +8; meaning not yet established by a recovered consumer.
++    /// 尚未确认含义的状态位；只保留已知重置行为。
+     pub flag_08: bool,
+-    /// B +9; preserved across enabling photomode.
++    /// 相机模式；再次进入拍照模式时保留。
+     pub camera_mode: PhotoModeCameraMode,
+-    /// B +0xa; consumed by hide_ui.
++    /// 隐藏界面开关。
+     pub hide_ui: bool,
+-    /// B +0xb; match_free_camera_to_normal is called only while false.
++    /// 自由相机是否已从普通相机初始化。
+     pub free_camera_initialized: bool,
+-    /// B +0xc; reset on each entry; init_walk_camera sets it true.
++    /// 漫游相机是否初始化；每次进入拍照模式时重新初始化。
+     pub walk_camera_initialized: bool,
+-    /// B +0xd; gates focus-marker drawing in do_photomode.
++    /// 是否显示焦点标记。
+     pub show_focus_marker: bool,
+ }
+ 
+@@ -30,7 +29,7 @@
+ }
+ 
+ impl PhotomodeState {
+-    /// B 0x1408705b0: +4..+0xb is 0x00000000ffffffff; +0xc..+0xd is 0x0100.
++    /// 构造初始状态，demo 只影响拍照标量。
+     pub fn new(demo: bool) -> Self {
+         Self {
+             scalar: if demo { 1.0 } else { 3.0 },
+@@ -44,8 +43,7 @@
+         }
+     }
+ 
+-    /// B 0x140870570. Camera selection, free-camera initialization and marker
+-    /// visibility survive; the walk camera is initialized again on next use.
++    /// 重置本次拍照状态，保留相机模式、自由相机初始化状态和标记开关。
+     pub fn on_enable_photomode(&mut self, demo: bool) {
+         self.scalar = if demo { 1.0 } else { 3.0 };
+         self.index = u32::MAX;
+--- before/crates/country-core/src/startup/startup_ivy.rs
++++ crates/country-core/src/startup/startup_ivy.rs
+@@ -1,31 +1,16 @@
+-//! B `startup_ivy` 0x140a21a30: loads the ivy branch/leaf/flower meshes into
+-//! the asset mesh library.
+-//!
+-//! Machine-verified mesh strings (read_memory on the B image):
+-//! - named meshes (FUN_140b1aca0): `ivy_debug_cube` (0x142ac9723, len 14),
+-//!   `ivy_branch` (0x142ac9798, len 10), `ivy_leaf` (0x142ac9818, len 8),
+-//!   `ivy_flower` (0x142ac9898, len 10);
+-//! - file meshes (FUN_140b0eeb0): `assets/meshes/ivy_branch.json`
+-//!   (0x142ac9731, len 29), `assets/meshes/ivy_leaf.json` (0x142ac97e2,
+-//!   len 27), `assets/meshes/ivy_flower.json` (0x142ac985c, len 29).
+-//!
+-//! The shader registrations (instanced_ivy_branch / instanced_ivy_leaf raster
+-//! programs) and the three 0x78-byte spawn records (FUN_1412dd460) depend on
+-//! the render shader/spawn pipeline, which this crate has not restored (待接线).
+-//! `ivy_debug_cube` has no JSON geometry (a generated cube) — 待取证.
++//! 加载常春藤枝干、叶片和花朵网格；着色器与实体由宿主渲染阶段装配。
+ use crate::asset_libraries::mesh_library::{AssetMeshLibrary, MeshAsset};
+ use crate::utils::load_json::load_json_as_mesh;
+ use bevy_ecs::prelude::*;
+ 
+-/// Named meshes registered by `startup_ivy` (O: names at 0x142ac9798 etc.).
++/// 常春藤网格路径与库内业务名称。
+ pub const IVY_MESHES: [(&str, &str); 3] = [
+     ("assets/meshes/ivy_branch.json", "ivy_branch"),
+     ("assets/meshes/ivy_leaf.json", "ivy_leaf"),
+     ("assets/meshes/ivy_flower.json", "ivy_flower"),
+ ];
+ 
+-/// `startup_ivy` (0x140a21a30): register the ivy meshes under their names.
+-/// `AssetMeshLibrary::add` uses interior mutability, so a shared `Res` suffices.
++/// 一次性注册三类常春藤网格，复用已有 JSON 网格读取和资产库。
+ pub fn startup_ivy(meshes: Res<AssetMeshLibrary>) {
+     for (path, name) in IVY_MESHES {
+         let mesh = load_json_as_mesh(path);
+--- before/crates/country-core/src/startup/README.md
++++ crates/country-core/src/startup/README.md
+@@ -1,87 +1,83 @@
+-# startup：启动资源与会话初始化
++# startup：游戏启动与会话初始化
+ 
+-本目录负责把配置、存档请求和磁盘资产转为游戏启动时需要的 ECS 资源、资产句柄和加载任务。它包含业务实现、宿主接口和历史上的聚合注册入口；**当前尚不是一个能独立完成整场游戏启动的插件**。
++本目录把配置、磁盘资产和会话请求转为 ECS 资源、资产句柄和加载任务。2026-10-18 已按工程正确性重新整理；代码注释以中文职责说明为主，原逆向地址和旧结论保留在历史证据中。本轮有意调整旧设计，不据此宣称原版等价。
+ 
+-本文以 2026-10-18 的当前源码和实际调用方为准。正确性审查见 [REVIEW.md](REVIEW.md)，复现与验证记录见 [startup-review 报告](../../../../reports/startup-review-2026-10-18/README.md)。源码中 B 地址用于追溯恢复来源，不代表全部行为已与原版等价。
++原审查与修复状态见 [REVIEW.md](REVIEW.md)，变更与验证记录见 [修复报告](../../../../reports/startup-refactor-2026-10-18/README.md)。
+ 
+-## 业务流程
++## 启动阶段
+ 
+-```mermaid
+-flowchart TD
+-    H[宿主建立 App、设备与配置] --> A[建立资产库、事件与会话请求]
+-    A --> S[扫描已有会话]
+-    S --> N[load_game_session 选择继续或新建]
+-    N --> E[ActiveSession、GladeSettings、会话事件]
+-    N --> L[LoadGameManager：来源路径、选项、加载后命令]
+-    E --> T[主题时间序列、天气与音频]
+-    H --> R[加载 shader、颜色、网格和预制件]
+-    L --> C[save/load_game：后续快照或历史应用]
+-    R --> W[宿主消费句柄并建立渲染实体]
++原来的单一 Schedule 混合了初始化、请求处理和运行系统，现在拆为三个表：
++
++| 阶段 | 注册入口 | 建议宿主位置 | 责任 |
++|---|---|---|---|
++| 资源装配 | `initialize_core_resources` | 构建 App 时 | 注册共享资源、事件和已有域存储，保留现有配置与会话请求 |
++| 一次性启动 | `register_startup_systems<B>` | Startup | 首次扫描会话列表、初始化音乐；重复运行不会重建已有音乐状态 |
++| 会话请求 | `register_session_systems` | PreUpdate | 先运行命令器并提交 Commands，再消费存在的 NextSession |
++| 每帧更新 | `register_update_systems<B, S>` | Update | 事件驱动的会话刷新，以及历史、存档、输入、地形、墙、生态、音频等已有系统 |
++
++`register_core_startup<B, S>(world, startup, session, update)` 是上述装配的便捷入口；`add_game_startup_systems` 使用相同的四参数形式，并把花园/ivy 网格初始化加入启动表。**这是对旧二参数 API 的明确调整**；同一表不再承担三个生命周期。
++
++宿主必须按 startup 一次 → session 每帧 → update 每帧的顺序运行；图形设备、资产库、相机、天气、时钟等域资源和事件轮转仍由宿主提供。真实 [tiny-glade 宿主](../../../tiny-glade/src/run_game.rs) 采用自身的 App 调度装配，没有调用这个便捷入口；不要再额外叠加注册一遍。
++
++## 会话请求与完成
++
++`load_game_session` 只准备加载，不把 JSON 解析或路径选择当作场景已经就绪：
++
++1. 没有 NextSession 时直接跳过；None 请求只移除一次。已有加载尚未完成时保留后续请求，不覆盖当前动作和信号。
++2. 选择最近会话或指定 ID，检查可加载状态与历史文件。新建时从 demo/full 模板选择起始历史；第一次用 intro，以后排序并循环其他目录。没有候选目录返回错误。
++3. 新存档的 meta 和 snapshots 在同分区临时目录中准备，全部成功后 rename 发布。复制失败自动清理，不再忽略错误、留下半成品会话。新会话的历史来源仍是选中模板文件。
++4. 从主题资产载入 GladeSettings。demo 优先读取当前 World 的 GameConfig，并覆盖主题、颜色和落叶设置；进程级 setter 只保留为旧宿主兼容入口。
++5. 准备成功后更新 ActiveSession、配置和 AppMode，移动 on_load 动作到 LoadGameManager，移除请求并发送会话选择事件。失败保留请求及其动作，不提前发成功通知。
++
++`OnLoadEntry::Batch` 拥有完整命令，`OnLoadEntry::Fence` 拥有 Arc 信号；取消、复制和重试不再依赖把整数还原为 Arc。旧式裸地址 fence 被明确拒绝，其他尚未知含义的旧命令交给宿主处理，不能静默丢弃。
++
++`make_post_load_commands` 保持动作顺序，忽略终止标记之后的内容，最终模式切换放在末尾。世界实际应用完成后，管理器的 `finish_after_world_applied` 按游标消费动作；失败重试不重复入队已完成命令，所有可能失败的动作成功后才切换模式和释放 fence。ECS 加载器的 Loaded 分支消费同一组拥有型动作，并通过 LoadingGameComplete 通知宿主处理模式；成功后清空活动请求，避免重复通知。未接入的域动作会在任何通知或信号释放前被拒绝。
++
++下游存档模块在同期接入了无有效快照时的历史恢复分支。本轮保留这些修改，完整快照和全游戏仍未在本轮验收。**本模块的请求提交成功不代表完整场景加载已实现。**
++
++## 预制件与热重载
++
++`PrefabWatcher` 复用 hotwatch 的平台监听和 100 ms 防抖；回调仅合并通知，文件 I/O 全部在锁外完成。接受 Write、Create、Rename、Remove 和 Rescan，支持编辑器的原子保存。`try_new` 可处理平台监听初始化失败，`new` 是保留的快捷接口。
++
++重载先取走本批通知并构建独立配置快照；失败时保留旧库，将预制件和图集通知合并回队列，不覆盖期间新到的事件。成功后一次替换；新增和删除的名字也会通知消费者。图集独立变化时直接返回图集通知，不再重读整棵 RON 目录。
++
++`load_prefabs_impl` 现在把完整目录视为库快照，因此一个 PrefabLibrary 应对应一个扫描根目录；成功重扫会移除已删除配置。实例消费者收到删除通知后只清理旧内容，保留引用实体以支持资源重新出现。
++
++配置解析、继承和校验复用 asset 库。**网格、AABB 和部分音频字段仍是未接入的恢复占位**，本轮未把它们包装成完整可绘制资产。文件依赖监听仍由宿主注册；只有配置扫描不会自动建立所有监听。
++
++## 主题音频
++
++startup 与音频 ECS 域复用同一个 `load_theme_audio`：
++
++- 正常主题读取自己的 audio.json 曲目；只有显式使用 halloween 目录且配置文件缺失或曲目为空时，才使用 Halloween 常量曲库。
++- 参数 GladeType 使用 `GladeType::audio_id()`；IsHalloween 为独立的 0/1 开关。冬季的 player 标量仍为 0.25，不再拿来充当主题编号。
++- 配置读取/解析失败返回错误，保留原曲库与参数；无效主题编号在产生副作用前拒绝。
++- 新曲库创建后再替换旧曲库，清空旧播放索引与播放列表；重复加载不会积累实例。字符串切片与 String 复用同一接口，常量不再先分配临时 Vec<String>。
++
++后端参数失败会记录参数名和值；事件实例化/停止的错误策略仍由现有 MusicPlayer/后端接口管理。本轮没有真实 FMOD 设备验收。
++
++## 其他启动资源
++
++| 文件 | 责任 |
++|---|---|
++| init_color_library | 上传默认调色板并登记 colors.json 监听，返回 CPU 资源供宿主插入 |
++| init_photomode_state | 初始化拍照状态；重新进入时保留相机模式、自由相机初始化状态和焦点标记开关；未知字段不编造语义 |
++| load_shaders / startup_blit | 注册 UI、通用和交换链 shader；底层 Result 入口现在真正传播编译错误；现有简便包装保留 expect 策略 |
++| load_textures | 仅提供路径分量白名单和 demo/full 背景选择，不解码或上传纹理 |
++| startup_garden_brush / startup_ivy | 一次性网格注册；花园完整 mesh→shader→spawn 流程使用已有宿主接口 |
++| load_glade_tod_and_weather | 用 BufReader 读取时间序列；全部解析成功后替换资源，读取失败回退默认文件，坏 JSON 返回错误并保留旧状态 |
++| startup_terrain | 四列分块追加 CW/CCW 索引；消除递归和回绕运算，写入前检查区间、u32 索引与平台容量，只预留一次输出空间 |
++
++地形接口不建立顶点或 GPU 资源；无效尺寸在改变输出前 panic，调用者仍负责顶点布局。性能调整是明确减少分配、重复扫描与重复初始化；没有做帧率或吞吐基准，不报告量化加速。
++
++## 检查命令
++
++在 games_test/tiny-glade 下运行：
++
++```sh
++CARGO_INCREMENTAL=0 cargo test -p country-core --lib --offline --locked
++CARGO_INCREMENTAL=0 cargo check -p tiny-glade --all-targets --offline --locked
++CARGO_INCREMENTAL=0 cargo clippy -p country-core --lib --offline --locked
+ ```
+ 
+-图中的后续消费关系说明责任边界，不表示所有箭头已经接入生产调度。尤其快照/历史的完整应用仍在下游明确报错，不能把启动函数返回理解为场景已加载。
+-
+-### 会话选择与加载请求
+-
+-`startup_session::load_game_session` 消费 `NextSession`：
+-
+-1. 排队移除请求资源；当前要求 `on_load` 为空，非空会立即 panic。
+-2. `LoadSavedGame` 从已排序会话列表取首项，`LoadOnLoad` 使用请求中的 ID；`None` 会 panic。校验已有会话失败时发损坏警告并改走新建。
+-3. 继续会话使用其 `history.json`；新建会话生成 ID、建立目录、写 `meta.json`，再选起始模板。新建主题取最近会话可读取的 meta，否则为 Autumn；请求模板中的额外载荷未参与此主题选择。
+-4. 首次新建（`new_glade_count == 0`）选择 `intro`；以后将其他子目录排序，按 `(count - 1) % len` 循环。demo/full 使用各自模板根目录；后续没有候选目录时 panic。
+-5. 新会话直接从选中模板的 `history.json` 加载，只把存在的 `snapshots` 子目录复制到新存档。当前复制结果被忽略，不复制整个模板根目录。
+-6. 从会话 meta 确定主题，读取主题资产下的 `GladeSettings`。demo 强制 Summer，并覆盖建筑/墙/屋顶颜色与落叶数量。
+-7. 更新或延迟插入 `ActiveSession`，把 `AppMode` 设为 `LoadGame`；向 `LoadGameManager` 提交文件路径、快照忽略选项、新会话揭示选项和完成后切换模式的命令。
+-
+-`NewSessionStartedCmd` / `SessionLoadedCmd` 在完整历史应用之前发出，表示会话选择阶段的通知。真正完成应由后续加载系统确认。文件、meta、模板和 JSON 的若干失败分支会 panic；没有事务回滚，失败可能留下已建立的会话目录。
+-
+-`copy_dir_all` 只是逐层建目录和复制文件，不排序、不排除 `intro`、不处理业务上的模板选择。`STARTUP_DEMO_MODE` 是进程级原子开关，宿主在加载前设置；它不是每个 World 独立的配置。
+-
+-### 资源加载
+-
+-| 文件 | 功能与输出 | 当前范围 |
+-|---|---|---|
+-| [init_color_library.rs](init_color_library.rs) | 默认调色板上传 SSBO，登记 `assets/colors.json` 监听，返回 CPU 调色板 | 宿主负责把返回值插入同一个 World；该函数本身不读颜色 JSON |
+-| [init_photomode_state.rs](init_photomode_state.rs) | 建立拍照状态，进入拍照时重置指定字段 | full/demo 的 scalar 为 3/1；保留相机模式、自由相机初始化状态和焦点标记开关 |
+-| [load_shaders.rs](load_shaders.rs) | 6 个 UI shader、13 个通用 shader 的有序注册 | 第 5 个通用 shader 写入 FinalPost 槽位；编译由宿主后端提供，失败 panic |
+-| [startup_blit.rs](startup_blit.rs) | 注册 3 个 swapchain 解析/拉伸 blit shader | 复用共享 shader 载入入口 |
+-| [load_textures.rs](load_textures.rs) | 启动纹理白名单与 demo/full 背景选择 | 只有筛选谓词，未扫描、解码或上传纹理；使用路径分量匹配，`logo.png` 不匹配 `logo` |
+-| [startup_garden_brush.rs](startup_garden_brush.rs) | 注册石头、花朵网格；另有完整 mesh→shader→spawn 的宿主接口 | ECS 入口只注册网格；`run_garden_brush` 通过 `GardenBrushHost` 委托渲染和生成，花朵带不投影标志 |
+-| [startup_ivy.rs](startup_ivy.rs) | 注册 ivy branch、leaf、flower 三个网格 | debug cube、shader 和实体生成未接入 |
+-| [load_prefabs.rs](load_prefabs.rs) | 递归扫描 RON、继承与删除部件筛选，建立 `PrefabLibrary`；收集热重载通知 | 只映射部分运行字段；网格和 AABB 仍为空，未消费扫描结果的依赖表 |
+-| [load_glade_audio.rs](load_glade_audio.rs) | 停止音乐、载入 4 条 Halloween 曲目、写主题标量与后端参数 | 忽略传入目录，不读取 `audio.json`；参数存在已确认错误，见审查 |
+-| [load_glade_tod_and_weather.rs](load_glade_tod_and_weather.rs) | 载入主题 `tod.json`，失败读取时回退默认文件；重建 Weather | malformed JSON 直接 panic；雾、风来自设置，冬季 snow_amount=1，其余为 0；已导出但未找到生产调用 |
+-| [startup_terrain.rs](startup_terrain.rs) | 向已有索引 Vec 追加规则网格的 CW/CCW 三角形 | 按最多 4 列分块，块内逐行；不建立顶点、完整地形或 GPU 资源 |
+-
+-网格索引接口使用调用方提供的列区间、行数与行宽，采用 `u32` wrapping 运算；不会核验顶点缓冲长度或自动清空输出。反向区间 panic，空区间或零行不追加索引。调用方必须提供与顶点布局一致的尺寸。
+-
+-### 预制件与热重载
+-
+-`PrefabWatcher::new(true)` 建立 100 ms 防抖监听，回调只把预制件名或 atlas subset 放进集合；关闭监听仍保留可手动写入的集合。当前只接受 `Write` 事件。
+-
+-`reload_prefabs` 先取走两个集合；有变化则全目录重扫，再返回集合供宿主发送修改事件。当前存在失败丢通知问题。成功重扫采用逐项覆盖，磁盘中消失的预制件不会删除；`scan.dependencies` 未用于自动注册监听。因此仅调用 `load_prefabs_impl` 不会自动获得可用的完整热更新链。
+-
+-部件只恢复季节 albedo、部分 RT kind 和音频 kind；`Mesh::new("")`、零尺寸 bounds、空音频 name/rank 是现有占位值。不能将加载成功的库直接当作完整的可绘制、可射线检测或完整音频资产。
+-
+-## 调度与宿主责任
+-
+-`run_game::register_core_startup<B, S>` 建立会话、命令器、配置、存档等资源，并把音乐初始化、会话加载和历史/地形/墙/常春藤/花园/输入/羊等运行系统注册到**同一个外部 Schedule**。`add_game_startup_systems` 再增加两组网格加载。`B` 是宿主音乐后端，`S` 是 Studio；依赖资源仍须由宿主注入。
+-
+-这个聚合 API 存在一次性系统与每帧系统混排的问题，见 F1。函数内的调用书写顺序也不等于 ECS 执行顺序；该入口没有统一建立生产者与消费者的先后边。
+-
+-当前真实宿主 [tiny-glade/src/run_game.rs](../../../tiny-glade/src/run_game.rs) 没有调用这个聚合入口，而是分别装配 `Startup`、`Update` 和 `OnEnter(AppLoadingState::Game)`，其中会话加载带 `resource_exists<NextSession>` 条件。生产 shader 消费者在 [production_renderer.rs](../../../tiny-glade/src/production_renderer.rs) 直接调用通用/UI/blit 加载函数。两条入口不能混为已经验收的一条完整启动链。
+-
+-宿主还需管理事件轮转、资源初始化时机、设备与资产库的一致性、主题加载时机，以及快照/历史真正应用后的完成通知。完整地形、ivy/花园实体、预制件 mesh/atlas 和部分主题资源仍有缺口。
+-
+-## 审查与验证
+-
+-本轮结论为 `changes_required`：2 项 P1、2 项 P2，详见 [REVIEW.md](REVIEW.md)。只新增文档与审查证据，没有修改业务源码。
+-
+-标准限定测试命令为：
+-
+-```sh
+-# 在 games_test/tiny-glade 下
+-cargo test -p country-core --lib startup:: --offline --locked
+-```
+-
+-本轮该命令因工作区清单与 Cargo.lock 不同步而退出 101，未进入编译。替代验证直接编译六个当前 startup 源文件，配合已记录 SHA256 的缓存支持库：18 个既有测试和 4 个审查探针共 22 项通过。它验证限定源码行为，不能替代最新整 crate 构建；其中探针通过表示缺陷或限制成功复现。音频参数另对身份确认的 B 原发行 RNE 做了局部静态指令与常量核对；没有执行原程序、GPU 或整游戏验收。
++具体成功范围、未解决的外部构建问题和源指纹以本轮报告为准。上一轮 22 项隔离探针是修复前缺口的历史复现，不能作为当前源码验收。
+--- before/crates/country-core/src/startup/startup_blit.rs
++++ crates/country-core/src/startup/startup_blit.rs
+@@ -1,14 +1,26 @@
+-//! B `startup_blit` 0x140901430: exact three registrations from original RNE.
+-use crate::{asset_libraries::shader_library::AssetShaderLibrary,
+-    render::shader::boundary::ShaderBackend};
++//! 交换链解析与拉伸所需的三个 blit 着色器。
+ use super::load_shaders::load_shader_into_library;
++use crate::{
++    asset_libraries::shader_library::AssetShaderLibrary, render::shader::boundary::ShaderBackend,
++};
+ 
+ pub const BLIT_SHADERS: [(&str, &str); 3] = [
+-    ("/blit/resolve_to_swapchain.raster.hlsl", "raster_resolve_to_swapchain"),
+-    ("/blit/resolve_msaa_to_swapchain.raster.hlsl", "raster_resolve_msaa_to_swapchain"),
+-    ("/blit/blit_stretch_decode_srgb.raster.hlsl", "blit_stretch_decode_srgb"),
++    (
++        "/blit/resolve_to_swapchain.raster.hlsl",
++        "raster_resolve_to_swapchain",
++    ),
++    (
++        "/blit/resolve_msaa_to_swapchain.raster.hlsl",
++        "raster_resolve_msaa_to_swapchain",
++    ),
++    (
++        "/blit/blit_stretch_decode_srgb.raster.hlsl",
++        "blit_stretch_decode_srgb",
++    ),
+ ];
+ 
+ pub fn startup_blit(library: &AssetShaderLibrary, backend: &dyn ShaderBackend) {
+-    for (path, name) in BLIT_SHADERS { load_shader_into_library(library, backend, path, name); }
++    for (path, name) in BLIT_SHADERS {
++        load_shader_into_library(library, backend, path, name);
++    }
+ }
+--- before/crates/country-core/src/startup/mod.rs
++++ crates/country-core/src/startup/mod.rs
+@@ -1,106 +1,70 @@
+-//! `country_core::startup` — 启动期生产者。只放已经对着 EXE 核对过的纯函数部分；
+-//! 载入网格/着色器/实体生成的系统（`load_prefabs`、`startup_terrain` 本体等）依赖 ECS 与资产库，尚未做。
+-//! `startup_ivy` / `startup_garden_brush` 的网格注册链（路径/名字已对 B 图像 read_memory 核实）已实现；
+-//! shader 与 spawn 记录依赖渲染管线，登记待接线。
+-//!
+-//! `add_game_startup_systems` 0x140941110（O）：GameStartup 插件 build 注册 28-系统 tuple；
+-//! `load_shader_into_library` / `load_mesh_into_library`（O）。
++//! 游戏启动与主题资源加载。调度分为一次性启动、会话请求、每帧更新。
++//! 各资产加载器也可以由宿主独立调用，设备资源必须来自实际渲染上下文。
+ 
++pub mod init_color_library;
+ pub mod init_photomode_state;
+-pub mod init_color_library;
+ pub mod load_glade_audio;
++pub mod load_glade_tod_and_weather;
+ pub mod load_prefabs;
++pub mod load_shaders;
+ pub mod load_textures;
+-pub mod load_shaders;
++pub mod run_game;
+ pub mod startup_blit;
+-pub mod run_game;
+ pub mod startup_garden_brush;
+ pub mod startup_ivy;
+ pub mod startup_session;
+ pub mod startup_terrain;
+ 
++#[cfg(test)]
++mod tests;
++
++use crate::render::shader::compile_shader_variants;
+ use crate::{
+-    asset_libraries::{shader_library::AssetShaderLibrary, Handle},
+-    render::shader::{boundary::ShaderBackend, RasterShaderProgram},
++    asset_libraries::{Handle, shader_library::AssetShaderLibrary},
++    render::shader::{RasterShaderProgram, boundary::ShaderBackend},
+     rhapsody_types::RasterPipelineDesc,
+ };
+ 
+-/// `load_shader_into_library`（O 0x140b3fe40<&str> / 0x140b40210<String>）：clone 名字 +
+-/// `compile_shader_variants` + `AssetShaderLibrary::add_raster`。失败按原版 `unwrap` panic。
++/// 编译两个光栅变体后注册；编译失败返回错误，避免 Result 接口内部隐藏 panic。
+ pub fn load_shader_into_library(
+     name: &'static str,
+     desc: RasterPipelineDesc,
+     device: &dyn ShaderBackend,
+     library: &AssetShaderLibrary,
+ ) -> anyhow::Result<Handle<RasterShaderProgram>> {
+-    let program = RasterShaderProgram::new_draw(name, desc, device);
+-    Ok(library.add_raster(program, false))
++    let variants = compile_shader_variants(&desc, device)?;
++    Ok(library.add_raster(
++        RasterShaderProgram {
++            name,
++            desc,
++            variants,
++        },
++        false,
++    ))
+ }
+ 
+-/// `add_game_startup_systems` 0x140941110：GameStartup 注册合同。
+-///
+-/// **fresh 反编译（2026-10-17，134 B）**：`country_core::startup::impl$0::
+-/// add_game_startup_systems` **无参数**（PDB `void __cdecl (void)`；由 `run_game`
+-/// 0x1405949c5 无条件调用）。函数体 = 5 次 `SubApp::add_systems`，调度分别为
+-/// `PreStartup` → `OnEnter<AppLoadingState>` → `OnExit<AppLoadingState>` → 再两次
+-/// `add_systems`（调度面由宿主装配）。**不是 `Startup` 单调度**。
+-///
+-/// 系统清单经 `IntoScheduleConfigs::into_configs` 组构建器（模板实参即系统）：
+-/// - **G1** 0x140a2bf40（10 系统）：load_textures / load_shader 变体×2 /
+-///   config-watch(ConfigWatch) / custom-cursor SSBO(CustomCursorSsboCreatedCmd) /
+-///   audio-samples promise / terrain-height / 纯 Commands×2 / load_prefabs(PrefabWatcher)。
+-/// - **G2** 0x140839b80（8 系统）：init_photomode_state(closure_env$0) /
+-///   mesh 载入族(AssetMeshLibrary) / ActiveSession+AssetTextureLibrary(create_preset_textures) /
+-///   TodSequence+Weather 等。
+-/// - **G3** 0x1415f4750（1）：PrefabLibrary 装配；**G4** 0x1409c8600（1）：
+-///   GraphicsDeviceResource shader 变体。
+-/// - **G5** 0x141736760（11）/ **G6** 0x140b6bd50（7）：mesh 载入族×7 + shader +
+-///   AudioCore + ImageFormationConfigs（G5）；AudioCore/MainCamera + AppMode 门 +
+-///   forest_audio / clutter_audio(PlayClutterSoundCmd) / elevation_supports_audio
+-///   （PlayElevationSupportSoundCmd）等（G6）。
+-///
+-/// 当前可挂载的注册见 `run_game::register_core_startup`；域系统（墙/屋顶/地形/水…）由
+-/// 各域恢复后并入，不在这里注册空系统。B = 宿主 MusicBackend，S = 宿主 Studio
+-/// （audio 系统族通用；feature native-audio 提供 FmodMusicBackend / FMOD Studio 绑定）。
+-///
+-/// ⑤轮 A 块（① a-ecs-scheduler-integration 契约 §1）：G1-G4 asset 载入组并入。
+-/// 现 crate 可挂载的 ECS 系统为 G2 mesh 组（startup_garden_brush / startup_ivy，
+-/// `Res<AssetMeshLibrary>`；宿主提供该渲染资源）；G1 其余（load_textures/load_shader/
+-/// SSBO-cursor/load_prefabs/config-watch/terrain-height/audio-samples）与 G3/G4 为渲染
+-/// 域系统（GraphicsDevice 依赖，D组 rhapsody/host 装配面），登记待接线；28-tuple 槽位
+-/// 精确映射待①取证。
+-///
+-/// **⑥轮收官（① r6-28-system-names 契约 §1，宿主接线面）**：GameStartup 28-系统 =
+-/// G1→G4 顺序 add_systems(Startup)，宿主 GameLoop 驱动。系统名（into_configs 权威）：
+-/// - **G1**（FUN_140a2bf40，10 资产载入）：load_textures / load_shader 变体1 /
+-///   load_shader+FinalPost / custom-cursor SSBO / load_prefabs / config-watch /
+-///   纯 Commands（身份待①）/ terrain 高度+PathRaster / audio-samples promise。
+-/// - **G2**（0x140839b80，8 启动/渲染）：init_photomode_state / startup ToD·weather·glade /
+-///   mesh 载入族 ×3 / color-SSBO / load_textures 变体 / ScheduledTerrainReadback。
+-/// - **G3**（0x1415f4750，1）：mesh-atlas 装配；**G4**（0x1409c8600，1）：shader 变体。
+-/// - **G5/G6**（0x141736760 / 0x140b6bd50，6+6 音频/渲染）：见 round5 a 契约。
+-/// 实体由宿主/D组提供，本 crate 不重建（纯 Commands 身份待①）。
++/// 装配启动、会话、更新三个阶段；网格初始化只进入启动表。
+ pub fn add_game_startup_systems<B, S>(
+     world: &mut bevy_ecs::world::World,
+-    schedule: &mut bevy_ecs::schedule::Schedule,
+-)
+-where
+-    B: crate::systems::audio::music::music_player::MusicBackend + bevy_ecs::resource::Resource + 'static,
++    startup_schedule: &mut bevy_ecs::schedule::Schedule,
++    session_schedule: &mut bevy_ecs::schedule::Schedule,
++    update_schedule: &mut bevy_ecs::schedule::Schedule,
++) where
++    B: crate::systems::audio::music::music_player::MusicBackend + bevy_ecs::resource::Resource,
+     S: crate::resources::audio_resources::Studio + Send + Sync + 'static,
+ {
+-    run_game::register_core_startup::<B, S>(world, schedule);
+-    // G2 mesh 载入族（0x140839b80，O）：startup_garden_brush / startup_ivy
+-    // （Res<AssetMeshLibrary>；宿主提供 AssetMeshLibrary 资源）。
+-    schedule.add_systems((
+-        startup_garden_brush::startup_garden_brush,
+-        startup_ivy::startup_ivy,
+-    ));
+-    // 音频曲库接线（2026-10-17）：`music_audio_init_system<B>` 已建 MusicAudioState；
+-    // 宿主在 Glade 会话主题确定后调用
+-    // `load_glade_audio::load_glade_audio(&mut player, &backend, glade_dir, theme_byte)`
+-    // （0x1408be360 域内链：stop_immediately + HALLOWEEN_MUSIC_EVENTS load_tracks +
+-    // 主题音量门 + GladeTypeIsHalloween/IsHalloween 参数）。GladeAudio::load（audio.json）
+-    // 的 ambience/stinger 实例化与 FMOD 启动由音频域/host 接入，不在此注册空系统。
++    use bevy_ecs::schedule::{IntoScheduleConfigs, common_conditions::run_once};
++    run_game::register_core_startup::<B, S>(
++        world,
++        startup_schedule,
++        session_schedule,
++        update_schedule,
++    );
++    startup_schedule.add_systems(
++        (
++            startup_garden_brush::startup_garden_brush,
++            startup_ivy::startup_ivy,
++        )
++            .run_if(run_once),
++    );
+ }
+-
+-pub mod load_glade_tod_and_weather;
+--- before/crates/country-core/src/startup/REVIEW.md
++++ crates/country-core/src/startup/REVIEW.md
+@@ -1,3 +1,6 @@
++> 2026-10-18 更新：以下是修复前的历史审查，F1–F4 已在后续工程修复中处理。
++> 当前行为、验证与保留缺口见 [修复报告](../../../../reports/startup-refactor-2026-10-18/README.md) 和 [README](README.md)。旧探针与原生静态证据保留，不直接验收改动后的源码。
++
+ # startup 代码正确性审查（2026-10-18）
+ 
+ 审查对象：本目录 14 个 Rust 文件，以及会话、存档、音乐、预制件和真实宿主的相关调用方。actor：当前聊天主审查者。用户授权为分析、README 和代码 review，本轮未修改业务源码或数据库。
+--- before/crates/country-core/src/startup/startup_terrain.rs
++++ crates/country-core/src/startup/startup_terrain.rs
+@@ -1,42 +1,41 @@
+-//! `startup::startup_terrain::{grid_gen_cw, grid_gen_ccw}` — 地形网格的三角形索引。
+-//!
+-//! O 0x140928100（`grid_gen_cw`，B 构建）与 0x140928350（`grid_gen_ccw`）。两个函数结构相同、只差
+-//! 每个 quad 的两个三角形的顶点顺序。参数（Win64）：`(&mut Vec<u32>, col_start, col_end, rows, cells_per_row)`。
+-//!
+-//! 顶点按行排布，每行 `S = cells_per_row + 1` 个；对列区间 `[a, b)` 的每一行 `r`、每一列 `k`（相对 `a`），
+-//! 令 `p = r·S + k`、`q = (r+1)·S + k`、`s = (r+1)·S + k + 1`，顶点下标都再加 `a`，推入：
+-//!
+-//! * CW：`(p, q, p+1)`、`(p+1, q, s)`；
+-//! * CCW：`(p, p+1, q)`、`(q, p+1, s)`。
+-//!
+-//! 外层是缓存分块：区间 `[a, b)` 满足 `(b + 1) - a > 5` 时先递归处理 `[a, min(a+4, b))`，`a` 前移 4，
+-//! 反复直到余下不超过 4 列（`end + 1 - head <= 5`），再在本层处理 `[a, b)`——所以输出顺序是"每 4 列一块、块内逐行逐列"，
+-//! 不是整行优先。三角形集合与顺序无关的整行实现相同。`a > b` 时落到 `Option::unwrap` 失败
+-//! （0x1428d9310，位置 `startup_terrain.rs:290:27`）。`rows == 0` 或区间为空不输出。
++//! 为按行排列的规则网格追加三角形索引；每四列一块，保留已有的输出顺序。
++//! 先检查尺寸和索引容量，再一次预留输出空间，不使用递归或整数回绕。
+ 
+ fn emit_block(
+     indices: &mut Vec<u32>,
+-    start: u32,
+-    end: u32,
++    column_start: u32,
++    column_end: u32,
+     rows: u32,
+     cells_per_row: u32,
+-    ccw: bool,
++    counter_clockwise: bool,
+ ) {
+-    if rows == 0 || start >= end {
+-        return;
+-    }
+-    let stride = cells_per_row.wrapping_add(1);
++    let row_stride = cells_per_row + 1;
+     for row in 0..rows {
+-        let top = row.wrapping_mul(stride);
+-        let bottom = row.wrapping_add(1).wrapping_mul(stride);
+-        for k in 0..end - start {
+-            let p = start.wrapping_add(top).wrapping_add(k);
+-            let q = start.wrapping_add(bottom).wrapping_add(k);
+-            let s = q.wrapping_add(1);
+-            if ccw {
+-                indices.extend_from_slice(&[p, p.wrapping_add(1), q, q, p.wrapping_add(1), s]);
++        let top_row = row * row_stride;
++        let bottom_row = (row + 1) * row_stride;
++        for column in column_start..column_end {
++            let top_left = top_row + column;
++            let top_right = top_left + 1;
++            let bottom_left = bottom_row + column;
++            let bottom_right = bottom_left + 1;
++            if counter_clockwise {
++                indices.extend_from_slice(&[
++                    top_left,
++                    top_right,
++                    bottom_left,
++                    bottom_left,
++                    top_right,
++                    bottom_right,
++                ]);
+             } else {
+-                indices.extend_from_slice(&[p, q, p.wrapping_add(1), p.wrapping_add(1), q, s]);
++                indices.extend_from_slice(&[
++                    top_left,
++                    bottom_left,
++                    top_right,
++                    top_right,
++                    bottom_left,
++                    bottom_right,
++                ]);
+             }
+         }
+     }
+@@ -44,30 +43,69 @@
+ 
+ fn grid_gen(
+     indices: &mut Vec<u32>,
+-    mut start: u32,
+-    end: u32,
++    column_start: u32,
++    column_end: u32,
+     rows: u32,
+     cells_per_row: u32,
+-    ccw: bool,
++    counter_clockwise: bool,
+ ) {
+-    assert!(start <= end, "called `Option::unwrap()` on a `None` value");
+-    let mut head = start;
+-    while end.wrapping_add(1).wrapping_sub(head) > 5 {
+-        head = start.wrapping_add(4).min(end);
+-        grid_gen(indices, start, head, rows, cells_per_row, ccw);
+-        start = head;
++    assert!(column_start <= column_end, "网格列区间不能反向");
++    assert!(column_end <= cells_per_row, "网格列区间超出行宽");
++    if column_start == column_end || rows == 0 {
++        return;
+     }
+-    emit_block(indices, head, end, rows, cells_per_row, ccw);
++    let row_stride = cells_per_row.checked_add(1).expect("网格行宽溢出");
++    rows.checked_mul(row_stride)
++        .and_then(|last_row| last_row.checked_add(column_end))
++        .expect("网格顶点索引超出 u32 范围");
++    let additional = (column_end - column_start) as usize;
++    let additional = additional
++        .checked_mul(rows as usize)
++        .and_then(|count| count.checked_mul(6))
++        .expect("网格索引数量超出平台容量");
++    indices.reserve(additional);
++    let mut block_start = column_start;
++    while block_start < column_end {
++        let block_end = block_start + (column_end - block_start).min(4);
++        emit_block(
++            indices,
++            block_start,
++            block_end,
++            rows,
++            cells_per_row,
++            counter_clockwise,
++        );
++        block_start = block_end;
++    }
+ }
+ 
+-/// O 0x140928100。
+-pub fn grid_gen_cw(indices: &mut Vec<u32>, start: u32, end: u32, rows: u32, cells_per_row: u32) {
+-    grid_gen(indices, start, end, rows, cells_per_row, false);
++/// 追加顺时针三角形；无效尺寸在改变输出之前报错。
++pub fn grid_gen_cw(
++    indices: &mut Vec<u32>,
++    column_start: u32,
++    column_end: u32,
++    rows: u32,
++    cells_per_row: u32,
++) {
++    grid_gen(
++        indices,
++        column_start,
++        column_end,
++        rows,
++        cells_per_row,
++        false,
++    );
+ }
+ 
+-/// O 0x140928350。
+-pub fn grid_gen_ccw(indices: &mut Vec<u32>, start: u32, end: u32, rows: u32, cells_per_row: u32) {
+-    grid_gen(indices, start, end, rows, cells_per_row, true);
++/// 追加逆时针三角形；顶点布局和分块规则与顺时针版本一致。
++pub fn grid_gen_ccw(
++    indices: &mut Vec<u32>,
++    column_start: u32,
++    column_end: u32,
++    rows: u32,
++    cells_per_row: u32,
++) {
++    grid_gen(indices, column_start, column_end, rows, cells_per_row, true);
+ }
+ 
+ #[cfg(test)]
+@@ -147,7 +185,7 @@
+     }
+ 
+     #[test]
+-    #[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
++    #[should_panic(expected = "网格列区间不能反向")]
+     fn reversed_range_panics() {
+         grid_gen_cw(&mut Vec::new(), 5, 4, 1, 8);
+     }
+--- before/crates/country-core/src/startup/run_game.rs
++++ crates/country-core/src/startup/run_game.rs
+@@ -1,31 +1,23 @@
+-//! B `startup/run_game` — 宿主可调的核心启动链（order 8 收口）。
+-//!
+-//! 原版 run_game_thread 0x1405a3440（39KB）装配整个游戏线程；本文件给出库内可接的
+-//! `register_core_startup`（会话/存档/历史/命令器/音频/会话切换注册），供宿主（tiny-glade）调用。
+-//! 域系统（墙/屋顶/地形/水/常春藤…）由各域恢复后经 `add_game_startup_systems` 并入；
+-//! 未注册不冒充原 28-系统顺序。
+-//!
+-//! 装配顺序按 ① T2 契约 round4/contracts/t2-run_game_thread-register_core_startup-CONTRACT.md §1
+-//! （run_game_thread 359 直接调用序 O）对齐本地可落地部分：
+-//! 会话流 → MetaCommander → GameConfig → 事件注册 → 域资源/系统 → 后台线程（init_save_thread）。
++//! 核心资源初始化、一次性启动、会话请求和每帧更新的分阶段装配。
++//! 各阶段只复用现有业务系统，宿主负责运行顺序和图形/音频设备资源。
+ 
+ use crate::{
+     game_config::GameConfig,
+     meta_commander::{MetaCommand, MetaCommander},
+-    resources::{history::History, session::SessionFlowPlugin},
++    resources::history::History,
+     startup::startup_session,
+     systems::{
+         audio::{
+             add_audio_events, add_audio_systems, music::music_system::music_audio_init_system,
+         },
+         backend::input::{add_input_cpu_consumers, register_input_events},
+-        debug::sheep_controls::{sheep_controls, SheepControl},
++        debug::sheep_controls::{SheepControl, sheep_controls},
+         garden::{add_garden_cpu_systems, register_garden_events},
+         history::{add_history_cpu_systems, register_history_events},
+         ivy::registration::{add_ivy_systems, register_ivy_storage},
+         save::{
+             add_save_load_events_and_resources, add_save_load_systems_impl,
+-            save_game::{sheep_save_section_system, SheepSaveSectionValue},
++            save_game::{SheepSaveSectionValue, sheep_save_section_system},
+         },
+         terrain::{add_terrain_cpu_systems, add_terrain_tool_systems, register_terrain_events},
+         wall::registration::{add_wall_cpu_systems, register_wall_cpu_resources},
+@@ -33,29 +25,25 @@
+ };
+ use bevy_ecs::prelude::*;
+ 
+-/// `run_game_thread` 新会话初始命令集（X7，RE-X5X7 §2，RNE 原字节）。
+-/// 数组 3 × 0x38B（cmd0@+0xb00/cmd1@+0xb38/cmd2@+0xb70）；cmd2 = **变体 8**
+-/// （0x8000000000000008，0x1405a340c 直写），+0x08 = [rbx+0x2230] 16B、
+-/// +0x18 = [rbx+0x2240] 16B、+0x28 = rdi。cmd0/cmd1 的 tag/逐字段载荷需 ReVa
+-/// p-code 定点（残留），由调用方按已定位源字段传入。
++/// 组合三条初始命令。最后一条的业务类型尚未确认，保持完整载荷由调用方解释。
+ pub fn new_session_on_load_commands(
+-    cmd0: MetaCommand,
+-    cmd1: MetaCommand,
+-    cmd2_payload_a: [u64; 2],
+-    cmd2_payload_b: [u64; 2],
+-    cmd2_payload_c: u64,
++    first_command: MetaCommand,
++    second_command: MetaCommand,
++    final_payload_header: [u64; 2],
++    final_payload_body: [u64; 2],
++    final_payload_tail: u64,
+ ) -> [MetaCommand; 3] {
+     [
+-        cmd0,
+-        cmd1,
++        first_command,
++        second_command,
+         MetaCommand {
+             tag: 0x8000_0000_0000_0008,
+             payloads: [
+-                cmd2_payload_a[0],
+-                cmd2_payload_a[1],
+-                cmd2_payload_b[0],
+-                cmd2_payload_b[1],
+-                cmd2_payload_c,
++                final_payload_header[0],
++                final_payload_header[1],
++                final_payload_body[0],
++                final_payload_body[1],
++                final_payload_tail,
+                 0,
+             ],
+         },
+@@ -71,103 +59,112 @@
+     next.append_replay_terminator();
+ }
+ 
+-/// 注册 core 资源/事件与可挂载系统（库内可接部分）。
+-/// - 会话流：SessionFlowPlugin::build（SavedSessionList/NextSession/AutoSaveState +
+-///   会话事件）+ configure_session_flow_systems（Startup 刷新 / DeleteSession 处理器）
+-///   （ActiveSession 由 startup_session 的 load_game_session 生产，build 不插占位）
+-/// - 命令器：MetaCommander 资源 + configure_session_switch_systems（会话切换链，卡2）
+-/// - GameConfig（native 0x140522ad0 载入；crate 语义结构 Default 注册）
+-/// - 事件：add_save_load_events_and_resources（存档/读档事件）、register_input_events
+-///   （输入游标族）、register_history_events（历史事件集）、add_audio_events（16 音频事件）
+-/// - 音频：music_audio_init_system<B> + add_audio_systems::<S, B>（S = 宿主 Studio /
+-///   B = 宿主 MusicBackend，feature native-audio 提供 FmodMusicBackend）
+-/// - 会话切换：startup_session::load_game_session（13-param，NewSessionStartedCmd /
+-///   SessionLoadedCmd / DisplayCorruptedSaveFileWarning 生产者）
+-/// - 存档系统：add_save_load_systems_impl（save_game 节拍器 + load_game + init_save_thread
+-///   后台线程生产）
+-/// - 地形：register_terrain_events + add_terrain_cpu_systems + add_terrain_tool_systems
+-/// - **A 块（⑤轮，③ 基线盘点 F2 闭合）孤儿系统并入生产 Schedule**：
+-///   ivy（register_ivy_storage + add_ivy_systems 7 系统链；原 22 系统 0x140944070 序
+-///   待①契约）、garden（register_garden_events + add_garden_cpu_systems::<(),()>）、
+-///   input（add_input_cpu_consumers）、sheep（SheepControl 资源 + sheep_controls）、
+-///   audio（add_audio_events + add_audio_systems）。宿主按各域资源面注入运行期资源。
+-pub fn register_core_startup<B, S>(world: &mut World, schedule: &mut Schedule)
++/// 分别装配一次性启动、会话请求和每帧更新，宿主按此顺序运行三个调度表。
++/// 对 Bevy App 分别挂载 Startup、PreUpdate、Update，避免初始化反复覆盖运行状态。
++/// 这里只注册已存在的业务系统，设备、相机等域资源仍由宿主提供。
++pub fn register_core_startup<B, S>(
++    world: &mut World,
++    startup_schedule: &mut Schedule,
++    session_schedule: &mut Schedule,
++    update_schedule: &mut Schedule,
++) where
++    B: crate::systems::audio::music::music_player::MusicBackend + Resource + 'static,
++    S: crate::resources::audio_resources::Studio + Send + Sync + 'static,
++{
++    initialize_core_resources(world);
++    register_startup_systems::<B>(startup_schedule);
++    register_session_systems(session_schedule);
++    register_update_systems::<B, S>(update_schedule);
++}
++
++/// 初始化共享资源；已由宿主载入的配置、会话列表和请求不会被默认值覆盖。
++pub fn initialize_core_resources(world: &mut World) {
++    use crate::resources::session::{
++        NextSession, NextSessionKind, NextSessionTail, NextSessionTemplate, SavedSessionList,
++        SessionId,
++    };
++    world.init_resource::<SavedSessionList>();
++    if !world.contains_resource::<NextSession>() {
++        world.insert_resource(NextSession::create(
++            &NextSessionTemplate::new(SessionId(uuid::Uuid::nil()), NextSessionKind::LoadSavedGame),
++            &NextSessionTail::EMPTY,
++        ));
++    }
++    world.init_resource::<MetaCommander>();
++    world.init_resource::<GameConfig>();
++    add_save_load_events_and_resources(world);
++    register_input_events(world);
++    register_history_events(world);
++    add_audio_events(world);
++    register_terrain_events(world);
++    register_wall_cpu_resources(world);
++    register_ivy_storage(world);
++    register_garden_events(world);
++    if !world.contains_resource::<History<()>>() {
++        world.insert_resource(History::<()>::empty_glade());
++    }
++    world.init_resource::<SheepControl>();
++    world.init_resource::<SheepSaveSectionValue>();
++    world.init_resource::<Events<crate::systems::save::save_game::DeleteSessionCmd>>();
++    world.init_resource::<Events<crate::resources::session::NewSessionStartedCmd>>();
++    world.init_resource::<Events<crate::resources::session::SessionLoadedCmd>>();
++    world.init_resource::<Events<crate::systems::save::load_game::LoadingGameComplete>>();
++}
++
++/// 只在应用启动阶段执行；额外保护音乐状态，重复运行启动表也不会将其覆盖。
++pub fn register_startup_systems<B>(schedule: &mut Schedule)
++where
++    B: crate::systems::audio::music::music_player::MusicBackend + Resource,
++{
++    use crate::systems::audio::music::music_system::MusicAudioState;
++    use bevy_ecs::schedule::common_conditions::{not, resource_exists, run_once};
++    schedule.add_systems((
++        crate::resources::session::refresh_session_list_system.run_if(run_once),
++        music_audio_init_system::<B>.run_if(not(resource_exists::<MusicAudioState<B::Event>>)),
++    ));
++}
++
++/// 每帧先处理命令，再消费本帧新请求；chain 保证 Commands 在消费者之前提交。
++pub fn register_session_systems(schedule: &mut Schedule) {
++    use bevy_ecs::schedule::common_conditions::resource_exists;
++    schedule.add_systems(
++        (
++            crate::meta_commander::commander_update_system,
++            startup_session::load_game_session
++                .run_if(resource_exists::<crate::resources::session::NextSession>),
++        )
++            .chain(),
++    );
++}
++
++/// 每帧系统不再包含磁盘初始扫描、音乐重建和启动网格加载。
++pub fn register_update_systems<B, S>(schedule: &mut Schedule)
+ where
+     B: crate::systems::audio::music::music_player::MusicBackend + Resource + 'static,
+     S: crate::resources::audio_resources::Studio + Send + Sync + 'static,
+ {
+-    // ① T2 契约 §1 装配顺序（run_game_thread 359 调用序 O，本地可落地部分）：
+-    // 会话流 → MetaCommander → GameConfig → 事件注册 → 域资源/系统 → 后台线程。
+-    //
+-    // 1. 会话流资源（SavedSessionList/NextSession/AutoSaveState + 会话事件）+
+-    //    会话流系统（Startup 刷新 + DeleteSession/SavingGameComplete 处理器，O 0x140b47840）。
+-    SessionFlowPlugin.build(world);
+-    crate::resources::session::configure_session_flow_systems(schedule);
+-    // 2. 命令器资源 + 会话切换系统（commander_update case 0 写 NextSession）。
+-    world.init_resource::<MetaCommander>();
+-    crate::meta_commander::configure_session_switch_systems(schedule);
+-    // 3. GameConfig（native 0x140522ad0 从配置文件载入；crate 语义结构，Default 注册）。
+-    world.init_resource::<GameConfig>();
+-    // 4. 事件注册（存档/读档 + 输入游标族 + 历史 + 音频）。
+-    add_save_load_events_and_resources(world);
+-    register_input_events(world);
+-    register_history_events(world);
+-    add_audio_events(world);
+-    // 5. 域资源/系统：音频 → 历史回放链 → 会话切换 → 存档 → 地形 →
+-    //    A 块孤儿系统（ivy/garden/input/sheep）。
+-    schedule.add_systems(music_audio_init_system::<B>);
++    use crate::systems::save::save_game::{DeleteSessionCmd, SavingGameComplete};
++    use bevy_ecs::schedule::{Condition, common_conditions::on_event};
++    schedule.add_systems(
++        (
++            crate::resources::session::delete_session_system.run_if(on_event::<DeleteSessionCmd>),
++            crate::resources::session::refresh_session_list_system
++                .run_if(on_event::<DeleteSessionCmd>.or(on_event::<SavingGameComplete>)),
++        )
++            .chain(),
++    );
+     add_audio_systems::<S, B>(schedule);
+     add_history_cpu_systems::<()>(schedule);
+-    schedule.add_systems(startup_session::load_game_session);
+     add_save_load_systems_impl(schedule);
+-    // 地形 CPU 系统 + 工具 UI/历史生产（terrain 域；宿主注入 AppMode/History/SSBO）。
+-    register_terrain_events(world);
+     add_terrain_cpu_systems(schedule);
+     add_terrain_tool_systems::<()>(schedule);
+-    // ⑥轮收官（① r6-28-system-names 合同，宿主调度面）：墙域 CPU 系统批量并入
+-    // （0x140941110 28-系统 tuple 的域系统面；原版经 into_configs 组构建器注册进
+-    // PreStartup/OnEnter/OnExit 调度，宿主把本 Schedule 挂到对应调度点）。
+-    // wall：InnerWalls/PublicWalls/DecoratorStorage 权威存储 + 编辑/发布/空间哈希/
+-    // 洞/砖/删除链 + 墙高度/录制/屋顶事件（真实资源与事件，非空系统）。
+-    register_wall_cpu_resources(world);
+     add_wall_cpu_systems(schedule);
+-    // History 资源（新鲜空地账本；历史回放/记录系统消费 ResMut<History<()>>）。
+-    // 宿主 load 到观测账本后 insert_resource 覆盖重装；存在则不重复插入。
+-    if world.get_resource::<History<()>>().is_none() {
+-        world.insert_resource(History::<()>::empty_glade());
+-    }
+-    // A 块：ivy（资源注册 + 7 系统链；原 22 系统 0x140944070 序待①契约）。
+-    register_ivy_storage(world);
+     add_ivy_systems(schedule);
+-    // A 块：garden（build 0x140b6d290 CPU 生产面：事件 + Draw/Record 链）。
+-    register_garden_events(world);
+     add_garden_cpu_systems::<(), ()>(schedule);
+-    // A 块：input（translate_input→cursor_moved→delta→reset + mod_key +
+-    //   update_cursor_position + 回放族）。
+     add_input_cpu_consumers(schedule);
+-    // A 块：sheep（debug 域 sheep_controls；仲裁批准落地；宿主注入控制值）。
+-    world.init_resource::<SheepControl>();
+-    schedule.add_systems(sheep_controls);
+-    // Canonical TOD consumer. The production App owns the original resources
+-    // and set36 ordering: it loads the real glade sequence/weather, creates the
+-    // actual directional light/camera, then updates DerivedAtmosphere. This
+-    // compatibility registry does not fabricate those inputs or another seam.
+-    world
+-        .init_resource::<bevy_ecs::event::Events<crate::resources::session::NewSessionStartedCmd>>(
+-        );
+-    world.init_resource::<bevy_ecs::event::Events<crate::systems::save::load_game::LoadingGameComplete>>();
+-    schedule.add_systems(crate::systems::time_of_day::time_of_day::<S>);
+-    // ⑦轮链3（① c-snapshot-apply-session-consumers + r6-28-system-names §2，宿主接线面）：
+-    // 会话切换消费者完整链 = load_game_session（生产 NewSessionStartedCmd/SessionLoadedCmd）
+-    // → 库内消费端（reset_input_state 用 on_event<NewSessionStartedCmd>、
+-    //   time_of_day/input_record_replay 用 resource_exists<NextSession>，已接线）
+-    // → **库外 3 消费系统**（add_preplaced_autoclutter [system_clutter] /
+-    //   detect_overhang_support_segments [system_wall_constructor] /
+-    //   sheep_unstuck [system_critters]，各带 ER<NewSessionStartedCmd>/ER<SessionLoadedCmd>）
+-    //   宿主注册点——crate 只保证事件已注册 + 资源在场，不实现库外系统（round5 c 契约 §2）。
+-    // B 块（⑤轮，① b-sheep-write-path 契约）：Sheep 节生产链——
+-    // sheep_controls 捕获活羊 → SheepControl → sheep_save_section_system →
+-    // SheepSaveSectionValue（宿主 assemble 从该资源取 SaveFileSection::Sheep 真实值）。
+-    world.init_resource::<SheepSaveSectionValue>();
+-    schedule.add_systems(sheep_save_section_system);
++    schedule.add_systems((
++        sheep_controls.after(crate::systems::history::finish_replay::finish_replay),
++        sheep_save_section_system.after(sheep_controls),
++        crate::systems::time_of_day::time_of_day::<S>,
++    ));
+ }
+--- before/crates/country-core/src/startup/startup_session.rs
++++ crates/country-core/src/startup/startup_session.rs
+@@ -1,23 +1,13 @@
+-//! `startup_session.rs` — 新会话的起始存档目录与复制（B `startup::startup_session`）。
+-//!
+-//! 证据（`startup/ALGORITHMS.md` §1.2、§2.5）：
+-//! - 新会话复制的模板目录：`demo` 开关（0x143634d90）为真时 `assets/starting-builds/demo`（0x142c849cb），否则
+-//!   `assets/starting-builds/full`（0x142c849b0，长 0x1b），两个串已逐字节核对；
+-//! - `copy_dir_all<PathBuf, PathBuf>`（0x141740c00）：**纯递归复制**——`create_dir_all` →
+-//!   `read_dir` → 目录条目递归 / 文件条目 `std::fs::copy`。fresh 反编译（2026-10-16 本批）
+-//!   disasm 全 CALL 清单**无排序、无 "intro" 比较**，旧实现的 sort_by_key + intro 跳过已删。
+-//!
+-//! `load_game_session`（0x14166e7d0）本体已落地为 13-param ECS 系统（① T2 契约
+-//! round4/contracts/t2-load_game_session-session-switch-CONTRACT.md）：会话切换核心
+-//! （continue_latest → 新建/继续 → 建目录/meta/起始 build → 载入 → 事件发射）。主题跳表、
+-//! attempt 精确字段、未消费 SystemParam 的面内消耗待取证，见函数 doc。
++//! 会话启动请求：先准备磁盘与配置，再一次性发布活动会话和加载任务。
++//! 初始动作与完成信号按所有权转交给 LoadGameManager，不使用裸指针回放。
++
+ use std::fs;
+ use std::io;
+ use std::path::Path;
+ 
+ use crate::{
++    game_config::GameConfig,
+     game_profile::GameProfile,
+-    meta_commander::MetaCommander,
+     resources::{
+         glade_settings::GladeSettings,
+         session::{
+@@ -49,10 +39,7 @@
+     }
+ }
+ 
+-/// Original startup_session @0x14166f861..0x141670239 chooses one initial
+-/// build directory; it never recursively copies the whole starting-build root.
+-/// First glade uses `intro`. Subsequent glades cycle through sorted directories
+-/// excluding `intro`. Selection does not create a session or mark loading done.
++/// 首次选择 intro，后续按排序后的目录循环；不创建存档或提交加载状态。
+ pub fn select_starting_build(
+     demo: bool,
+     new_glade_count: usize,
+@@ -75,18 +62,18 @@
+             builds.push(path);
+         }
+     }
+-    // The original unwrap/panic boundary for an empty directory is retained:
+-    // returning a nonexistent or invented fallback build would hide bad assets.
+-    assert!(!builds.is_empty(), "No starting builds found");
++    if builds.is_empty() {
++        return Err(io::Error::new(
++            io::ErrorKind::NotFound,
++            "没有可用的起始场景",
++        ));
++    }
+     builds.sort();
+     let index = (new_glade_count - 1) % builds.len();
+     Ok(builds.swap_remove(index))
+ }
+ 
+-/// `copy_dir_all`（O 0x141740c00 fresh 反编译）：**纯递归复制**——`DirBuilder::create`
+-/// → `readdir` → 目录条目递归 `copy_dir_all` / 文件条目 `std::fs::copy`。原生**无排序、
+-/// 无 "intro" 跳过**（disasm 全 CALL 清单无 sort/intro 比较；旧实现 sort_by_key + intro
+-/// 跳过已按 fresh 反编译删去）。
++/// 递归复制目录。错误直接交给调用方，避免把不完整快照发布成有效会话。
+ pub fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
+     let (src, dst) = (src.as_ref(), dst.as_ref());
+     fs::create_dir_all(dst)?;
+@@ -102,134 +89,182 @@
+     Ok(())
+ }
+ 
+-// This corresponds to the original process-global demo byte. The host supplies
+-// the config-derived value before creating the async-load thread.
++// 兼容尚未注入 GameConfig 的宿主；新宿主优先使用各自 World 中的 demo 配置。
+ static STARTUP_DEMO_MODE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+ pub fn set_startup_demo_mode(demo: bool) {
+     STARTUP_DEMO_MODE.store(demo, std::sync::atomic::Ordering::Relaxed);
+ }
+ 
+-/// B @14166e7d0: real 13-param request producer. NextSession is consumed and
+-/// removed, ActiveSession is inserted when absent, and the selected history
+-/// path is transferred into LoadGameManager. Domain application happens later.
++/// 消费一次会话请求。准备失败时保留请求，且不发布事件、活动会话或半成品任务。
+ #[allow(clippy::too_many_arguments)]
+ pub fn load_game_session(
+-    saved_list: Res<SavedSessionList>,
++    saved_sessions: Res<SavedSessionList>,
+     mut active_session: Option<ResMut<ActiveSession>>,
+-    game_profile: Res<GameProfile>,
++    profile: Res<GameProfile>,
+     auto_save: Res<AutoSaveState>,
+-    mut next_session: ResMut<NextSession>,
+-    mut load_mgr: ResMut<LoadGameManager>,
++    next_session: Option<ResMut<NextSession>>,
++    mut load_manager: ResMut<LoadGameManager>,
+     mut app_mode: ResMut<AppMode>,
+     mut glade_settings: ResMut<GladeSettings>,
+-    _meta_cmdr: ResMut<MetaCommander>,
+-    mut new_session_evt: EventWriter<NewSessionStartedCmd>,
+-    mut session_loaded: EventWriter<SessionLoadedCmd>,
+-    mut corrupt_warn: EventWriter<DisplayCorruptedSaveFileWarning>,
++    config: Option<Res<GameConfig>>,
++    mut new_session_events: EventWriter<NewSessionStartedCmd>,
++    mut session_loaded_events: EventWriter<SessionLoadedCmd>,
++    mut corrupted_save_events: EventWriter<DisplayCorruptedSaveFileWarning>,
+     mut commands: Commands,
+-) {
+-    use crate::resources::session::{GladeType, NextSessionKind};
++) -> bevy_ecs::error::Result {
++    use crate::resources::session::NextSessionKind;
+     use crate::systems::save::{
+         load_completion_checker::is_session_ok_to_load,
+-        load_game::{ActiveLoadOptions, LoadGameSource, PostGameLoadCommand},
++        load_game::{ActiveLoadOptions, LoadGameSource},
+     };
+-    commands.remove_resource::<NextSession>();
+-    // Original on_load conversion owns typed MetaCommand/PostGameLoadCommand
+-    // payloads. The existing raw-u64 adapter does not yet preserve all owners.
+-    assert!(
+-        next_session.on_load.is_empty(),
+-        "B startup_session @14166e7d0: owned on_load conversion is not restored"
++    let Some(mut request) = next_session else {
++        return Ok(());
++    };
++    if request.kind == NextSessionKind::None {
++        commands.remove_resource::<NextSession>();
++        return Ok(());
++    }
++    // 已有请求尚未应用到世界时保留新请求，避免覆盖未完成的动作和信号。
++    if load_manager.options.is_some() {
++        return Ok(());
++    }
++    // 先完成文件和配置准备；出错时 request.on_load 仍由原请求持有。
++    let requested_id = match request.kind {
++        NextSessionKind::LoadSavedGame => saved_sessions.sessions.first().map(|session| session.id),
++        NextSessionKind::LoadOnLoad => Some(request.id),
++        NextSessionKind::None => unreachable!(),
++    };
++    let valid_session =
++        requested_id.filter(|id| is_session_ok_to_load(*id, &auto_save.unsaved_files).is_ok());
++    let demo = config.as_deref().map_or_else(
++        || STARTUP_DEMO_MODE.load(std::sync::atomic::Ordering::Relaxed),
++        |config| config.dev.demo,
+     );
+-    let ignore_snapshot = next_session.ignore_snapshot;
+-    let requested = match next_session.kind {
+-        NextSessionKind::None => panic!("internal error: entered unreachable code"),
+-        NextSessionKind::LoadSavedGame => saved_list.sessions.first().map(|entry| entry.id),
+-        NextSessionKind::LoadOnLoad => Some(next_session.id),
++    let is_new = valid_session.is_none();
++    let (session_id, history_path) = if let Some(session_id) = valid_session {
++        (
++            session_id,
++            session_id.save_folder_path().join("history.json"),
++        )
++    } else {
++        let build = select_starting_build(demo, profile.new_glade_count)?;
++        let history_path = build.join("history.json");
++        if !history_path.is_file() {
++            return Err(format!("起始场景缺少历史文件：{}", history_path.display()).into());
++        }
++        let previous_theme = saved_sessions
++            .sessions
++            .first()
++            .and_then(|session| {
++                SessionMeta::try_load_from_path(session.id.save_folder_path().join("meta.json"))
++                    .ok()
++            })
++            .map_or(crate::resources::session::GladeType::Autumn, |meta| {
++                meta.glade
++            });
++        let session_id = SessionId::new();
++        let meta = SessionMeta {
++            glade: previous_theme,
++            ..Default::default()
++        };
++        create_session_files(
++            &session_id.save_folder_path(),
++            &meta,
++            &build.join("snapshots"),
++        )?;
++        (session_id, history_path)
+     };
+-    let mut selected = requested;
+-    if let Some(id) = selected {
+-        if !is_session_ok_to_load(id, &auto_save.unsaved_files).is_ok() {
+-            corrupt_warn.write(DisplayCorruptedSaveFileWarning);
+-            selected = None;
+-        }
+-    }
+-    let demo = STARTUP_DEMO_MODE.load(std::sync::atomic::Ordering::Relaxed);
+-    let (session_id, history_path, is_new, snapshots_source) = match selected {
+-        Some(id) => {
+-            log::info!("Continuing game session {}", id.0);
+-            session_loaded.write(SessionLoadedCmd);
+-            (id, id.save_folder_path().join("history.json"), false, None)
+-        }
+-        None => {
+-            log::info!("Starting a new game session");
+-            let id = SessionId::new();
+-            fs::create_dir_all(id.save_folder_path()).expect("Creating folder for game session");
+-            let theme = saved_list
+-                .sessions
+-                .first()
+-                .and_then(|entry| {
+-                    SessionMeta::try_load_from_path(entry.id.save_folder_path().join("meta.json"))
+-                        .ok()
+-                })
+-                .map_or(GladeType::Autumn, |meta| meta.glade);
+-            SessionMeta {
+-                glade: theme,
+-                ..Default::default()
+-            }
+-            .write_to_disk(id)
+-            .expect("Writing new session meta.json");
+-            new_session_evt.write(NewSessionStartedCmd);
+-            let build = select_starting_build(demo, game_profile.new_glade_count)
+-                .expect("Selecting initial game state");
+-            let snapshots = build.join("snapshots");
+-            (id, build.join("history.json"), true, Some(snapshots))
+-        }
+-    };
+-    assert!(
+-        history_path.is_file(),
+-        "Failed to load game session or even create a new one"
+-    );
+-    if let Some(source) = snapshots_source.filter(|path| path.is_dir()) {
+-        // Original copy helper only copies the selected snapshot directory.
+-        // Its caller ignores the io result after dropping it.
+-        let _ = copy_dir_all(source, session_id.snapshots_folder_path());
+-    }
+-    let mut meta = SessionMeta::try_load_from_path(session_id.save_folder_path().join("meta.json"))
+-        .unwrap_or_else(|error| {
+-            log::warn!("Failed to load session meta. Using default. Error: {error}");
+-            SessionMeta::default()
+-        });
++    if !history_path.is_file() {
++        return Err(format!("会话历史文件不存在：{}", history_path.display()).into());
++    }
++    let mut metadata =
++        SessionMeta::try_load_from_path(session_id.save_folder_path().join("meta.json"))
++            .unwrap_or_else(|error| {
++                log::warn!("无法读取会话元数据，使用默认设置：{error}");
++                SessionMeta::default()
++            });
+     if demo {
+-        meta.glade = GladeType::Summer;
+-    }
+-    // Original @1416713a8 joins assets/glade + selected theme, then calls
+-    // GladeSettings::load @1408bbbc0. It does not read settings from the save.
+-    *glade_settings = GladeSettings::load(meta.assets_root());
++        metadata.glade = crate::resources::session::GladeType::Summer;
++    }
++    let mut settings = GladeSettings::load(metadata.assets_root());
+     if demo {
+-        glade_settings.default_building_color_id = 8;
+-        glade_settings.default_freeform_wall_color_id = 0;
+-        glade_settings.default_roof_color_id = 0;
+-        glade_settings.leaf_particle_count = 0;
+-    }
+-    let active = ActiveSession::new(session_id, meta);
+-    if let Some(existing) = active_session.as_mut() {
+-        **existing = active;
+-    } else {
+-        commands.insert_resource(active);
+-    }
+-    *app_mode = AppMode::LoadGame;
+-    load_mgr.begin(
++        settings.default_building_color_id = 8;
++        settings.default_freeform_wall_color_id = 0;
++        settings.default_roof_color_id = 0;
++        settings.leaf_particle_count = 0;
++    }
++    let pending_actions = make_post_load_commands(std::mem::take(&mut request.on_load));
++    load_manager.begin(
+         LoadGameSource::Path(history_path),
+         ActiveLoadOptions {
+-            ignore_snapshot,
++            ignore_snapshot: request.ignore_snapshot,
+             request_reveal: is_new,
+             new_session: is_new,
+         },
+-        vec![PostGameLoadCommand::SwitchAppMode(AppMode::default())],
++        pending_actions,
+     );
+-    // The on_load Vec was asserted empty above; take still preserves ownership
+-    // transfer rather than leaving a duplicate request in the deferred world.
+-    let _ = std::mem::take(&mut next_session.on_load);
++    *glade_settings = settings;
++    let session = ActiveSession::new(session_id, metadata);
++    if let Some(existing) = active_session.as_mut() {
++        **existing = session;
++    } else {
++        commands.insert_resource(session);
++    }
++    *app_mode = AppMode::LoadGame;
++    commands.remove_resource::<NextSession>();
++    if requested_id.is_some() && valid_session.is_none() {
++        corrupted_save_events.write(DisplayCorruptedSaveFileWarning);
++    }
++    if is_new {
++        new_session_events.write(NewSessionStartedCmd);
++    } else {
++        session_loaded_events.write(SessionLoadedCmd);
++    }
++    Ok(())
++}
++
++/// 在同一存档分区的临时目录中完成元数据与快照，再用 rename 发布。
++/// 复制失败时 TempDir 自动清理，新会话列表不会看到半成品目录。
++fn create_session_files(
++    destination: &Path,
++    metadata: &SessionMeta,
++    snapshots: &Path,
++) -> anyhow::Result<()> {
++    use anyhow::Context;
++    let parent = destination.parent().context("存档目录没有父目录")?;
++    fs::create_dir_all(parent)?;
++    let staging = tempfile::Builder::new()
++        .prefix(".new-session-")
++        .tempdir_in(parent)?;
++    metadata.write_to_path(staging.path().join("meta.json"))?;
++    if snapshots.is_dir() {
++        copy_dir_all(snapshots, staging.path().join("snapshots"))?;
++    }
++    fs::rename(staging.path(), destination).context("发布新会话目录")?;
++    Ok(())
++}
++
++/// 按顺序移动请求中的动作。终止标记之后的动作不执行，最终模式切换始终排在末尾。
++pub fn make_post_load_commands(
++    entries: Vec<crate::resources::session::OnLoadEntry>,
++) -> Vec<crate::systems::save::load_game::PostGameLoadCommand> {
++    use crate::resources::session::{ON_LOAD_FENCE, OnLoadEntry};
++    use crate::systems::save::load_game::PostGameLoadCommand;
++    let mut commands = Vec::with_capacity(entries.len() + 1);
++    for entry in entries {
++        if matches!(
++            entry,
++            OnLoadEntry::Command {
++                tag: ON_LOAD_FENCE,
++                ..
++            }
++        ) {
++            break;
++        }
++        commands.push(PostGameLoadCommand::SessionEntry(entry));
++    }
++    commands.push(PostGameLoadCommand::SwitchAppMode(AppMode::default()));
++    commands
+ }
+ 
+ #[cfg(test)]
+@@ -280,4 +315,67 @@
+         assert!(copy_dir_all(root.join("nope"), root.join("dst")).is_err());
+         fs::remove_dir_all(root).unwrap();
+     }
+-}
++
++    #[test]
++    fn later_builds_cycle_in_sorted_order_and_empty_roots_return_error() {
++        let directory = tempfile::tempdir().unwrap();
++        for name in ["z-last", "intro", "a-first"] {
++            fs::create_dir(directory.path().join(name)).unwrap();
++        }
++        assert!(
++            select_starting_build_in(directory.path(), 0)
++                .unwrap()
++                .ends_with("intro")
++        );
++        for (count, expected) in [(1, "a-first"), (2, "z-last"), (3, "a-first")] {
++            assert!(
++                select_starting_build_in(directory.path(), count)
++                    .unwrap()
++                    .ends_with(expected)
++            );
++        }
++        let empty = tempfile::tempdir().unwrap();
++        assert_eq!(
++            select_starting_build_in(empty.path(), 1)
++                .unwrap_err()
++                .kind(),
++            io::ErrorKind::NotFound
++        );
++    }
++
++    #[test]
++    fn staged_session_publishes_metadata_and_all_snapshots() {
++        let directory = tempfile::tempdir().unwrap();
++        let snapshots = directory.path().join("source");
++        fs::create_dir(&snapshots).unwrap();
++        fs::write(snapshots.join("sample.json"), b"snapshot").unwrap();
++        let destination = directory.path().join("sessions/new");
++        let metadata = SessionMeta::default();
++        create_session_files(&destination, &metadata, &snapshots).unwrap();
++        assert_eq!(
++            SessionMeta::try_load_from_path(destination.join("meta.json")).unwrap(),
++            metadata
++        );
++        assert_eq!(
++            fs::read(destination.join("snapshots/sample.json")).unwrap(),
++            b"snapshot"
++        );
++    }
++
++    #[cfg(unix)]
++    #[test]
++    fn failed_snapshot_copy_leaves_no_half_created_session() {
++        let directory = tempfile::tempdir().unwrap();
++        let snapshots = directory.path().join("source");
++        fs::create_dir(&snapshots).unwrap();
++        std::os::unix::fs::symlink(directory.path().join("missing"), snapshots.join("bad-link"))
++            .unwrap();
++        let destination = directory.path().join("sessions/new");
++        assert!(create_session_files(&destination, &SessionMeta::default(), &snapshots).is_err());
++        assert!(!destination.exists());
++        assert_eq!(
++            fs::read_dir(destination.parent().unwrap()).unwrap().count(),
++            0
++        );
++    }
++}
+--- before/crates/country-core/src/startup/load_shaders.rs
++++ crates/country-core/src/startup/load_shaders.rs
+@@ -1,11 +1,4 @@
+-//! B startup shader producers, recovered from original RNE instructions.
+-//!
+-//! `load_ui_shaders` 0x140aaaf80 (6 calls), `load_shaders` 0x140aab0c0
+-//! (13 calls), shared helper 0x140b3fe40. Each helper builds the path-only
+-//! descriptor (empty entry/defines), compiles both raster variants, unwraps on
+-//! failure, then `AssetShaderLibrary::add_raster(program, false)`.
+-//! Original path/name lengths and call order are retained in
+-//! TG-0ef1874c29a03d0dec/main-chain-frame-20261018/0x140aaaf80.asm etc.
++//! 启动期 UI 和通用着色器注册。路径表与业务名称保持分离。
+ use crate::{
+     asset_libraries::{Handle, shader_library::AssetShaderLibrary},
+     render::shader::{RasterShaderProgram, boundary::ShaderBackend},
+@@ -13,12 +6,22 @@
+ };
+ 
+ pub fn load_shader_into_library(
+-    library: &AssetShaderLibrary, backend: &dyn ShaderBackend,
+-    path: &str, name: &'static str,
++    library: &AssetShaderLibrary,
++    backend: &dyn ShaderBackend,
++    path: &str,
++    name: &'static str,
+ ) -> Handle<RasterShaderProgram> {
+-    super::load_shader_into_library(name, RasterPipelineDesc {
+-        path: path.to_owned(), entry: String::new(), defines: Vec::new(),
+-    }, backend, library).expect("load_shader_into_library")
++    super::load_shader_into_library(
++        name,
++        RasterPipelineDesc {
++            path: path.to_owned(),
++            entry: String::new(),
++            defines: Vec::new(),
++        },
++        backend,
++        library,
++    )
++    .expect("load_shader_into_library")
+ }
+ 
+ pub const UI_SHADERS: [(&str, &str); 6] = [
+@@ -31,7 +34,9 @@
+ ];
+ 
+ pub fn load_ui_shaders(library: &AssetShaderLibrary, backend: &dyn ShaderBackend) {
+-    for (path, name) in UI_SHADERS { load_shader_into_library(library, backend, path, name); }
++    for (path, name) in UI_SHADERS {
++        load_shader_into_library(library, backend, path, name);
++    }
+ }
+ 
+ pub const COMMON_SHADERS: [(&str, &str); 13] = [
+@@ -42,23 +47,33 @@
+     ("/final_post.raster.hlsl", "final_post"),
+     ("/egui.raster.hlsl", "egui"),
+     ("/solid_vertex_color.raster.hlsl", "solid_vertex_color"),
+-    ("/solid_vertex_color_albedo_map.raster.hlsl", "solid_vertex_color_albedo_map"),
+-    ("/solid_vertex_color_wooden_gate.raster.hlsl", "solid_vertex_color_wooden_gate"),
++    (
++        "/solid_vertex_color_albedo_map.raster.hlsl",
++        "solid_vertex_color_albedo_map",
++    ),
++    (
++        "/solid_vertex_color_wooden_gate.raster.hlsl",
++        "solid_vertex_color_wooden_gate",
++    ),
+     ("/flag_roof_cloth.raster.hlsl", "flag_roof_cloth"),
+     ("/flag_wall_cloth.raster.hlsl", "flag_wall_cloth"),
+     ("/flag_small.raster.hlsl", "flag_small"),
+-    ("/stairs_foliage_exclusion.raster.hlsl", "stairs_foliage_exclusion"),
++    (
++        "/stairs_foliage_exclusion.raster.hlsl",
++        "stairs_foliage_exclusion",
++    ),
+ ];
+ 
+-/// The original also writes the fifth returned handle into FinalPostResources
+-/// immediately before loading Egui (0x140aab1c7..1da). The caller supplies that
+-/// actual slot here so the side effect and its ordering are preserved.
++/// 第五项 final_post 的句柄立即交给宿主槽位，后续注册不改变其身份。
+ pub fn load_shaders(
+-    library: &AssetShaderLibrary, backend: &dyn ShaderBackend,
++    library: &AssetShaderLibrary,
++    backend: &dyn ShaderBackend,
+     final_post_shader: &mut Option<Handle<RasterShaderProgram>>,
+ ) {
+     for (index, (path, name)) in COMMON_SHADERS.into_iter().enumerate() {
+         let handle = load_shader_into_library(library, backend, path, name);
+-        if index == 4 { *final_post_shader = Some(handle); }
++        if index == 4 {
++            *final_post_shader = Some(handle);
++        }
+     }
+ }
+--- before/crates/country-core/src/startup/load_glade_tod_and_weather.rs
++++ crates/country-core/src/startup/load_glade_tod_and_weather.rs
+@@ -1,6 +1,4 @@
+-//! Original B load_glade_tod_and_weather@140ae7810.
+-//! Caller must preserve original asset working-directory context; no invented
+-//! empty sequence is installed if both real files fail.
++//! 主题时间序列和天气初始化；新配置解析成功后才替换活动资源。
+ use crate::resources::{
+     glade_settings::GladeSettings, session::ActiveSession, time_of_day::TodSequence,
+     weather::Weather,
+@@ -12,17 +10,20 @@
+     mut weather: ResMut<Weather>,
+     settings: Res<GladeSettings>,
+     session: Res<ActiveSession>,
+-) {
++) -> bevy_ecs::error::Result {
++    use anyhow::Context;
+     let glade_path = session.assets_root().join("tod.json");
+-    let json = match std::fs::read_to_string(glade_path) {
+-        Ok(json) => json,
+-        Err(_) => std::fs::read_to_string("assets/tod/default.json").unwrap(),
++    let input = match std::fs::File::open(&glade_path) {
++        Ok(file) => file,
++        Err(_) => std::fs::File::open("assets/tod/default.json").context("读取默认时间序列")?,
+     };
+-    // A malformed glade-specific JSON does not fall back in the original.
+-    *sequence = serde_json::from_str(&json).unwrap();
++    let replacement = serde_json::from_reader(std::io::BufReader::new(input))
++        .with_context(|| format!("解析主题时间序列：{}", glade_path.display()))?;
++    *sequence = replacement;
+     *weather = Weather::default();
+     weather.weather_fog = settings.weather_fog;
+     weather.wind_strength = settings.wind_strength;
+     weather.field_8 = 0.0;
+     weather.snow_amount = if session.is_winter() { 1.0 } else { 0.0 };
++    Ok(())
+ }
+--- before/crates/country-core/src/systems/save/load_game.rs
++++ crates/country-core/src/systems/save/load_game.rs
+@@ -12,7 +12,7 @@
+ //! 两遍回放终止哨兵 = tag 0x8000000000000003（fence 是变体 0 载荷，非终止）；fence 释放
+ //! 走变体 2（unblock +0x10 + Arc drop）。MetaCommand 应用（commander_update case 0）与
+ //! `init_game_state_from_snapshot` 依赖游戏资源，由宿主/域恢复后接入；不伪造加载成功。
+-use crate::meta_commander::MetaCommand;
++use crate::meta_commander::{MetaCommand, MetaCommander};
+ use crate::resources::history::wall_edit::WallCompoundHistoryEdit;
+ use crate::resources::history::wall_edit::WallHistoryEdit;
+ use crate::resources::save_file::LoadVersionGates;
+@@ -29,7 +29,6 @@
+ use bevy_ecs::prelude::Resource;
+ use serde_json::Value;
+ use std::path::Path;
+-use std::sync::Arc;
+ 
+ /// B state byte at +0x48. The old `+9` interpretation confused a
+ /// qword index with a byte offset. Constructor @140944bc6 stores 2.
+@@ -53,7 +52,11 @@
+     /// Native niche 0x8000000000000001; owns the selected history.json path.
+     Path(std::path::PathBuf),
+     /// The original other active variant owns pre-parsed game data.
+-    Parsed(Box<ParsedGameData>),
++    Parsed {
++        data: Box<ParsedGameData>,
++        /// Native active parsed-source also owns the actual snapshot base.
++        snapshot_root: std::path::PathBuf,
++    },
+ }
+ 
+ /// Active request flags are initialized by startup_session, not by the idle
+@@ -73,6 +76,8 @@
+     pub source: LoadGameSource,
+     pub options: Option<ActiveLoadOptions>,
+     pub post_load_commands: Vec<PostGameLoadCommand>,
++    /// 已成功执行的命令数；失败重试时不重复执行前面的副作用。
++    post_load_cursor: usize,
+     /// Original active initializer writes +0x50=0. No later meaning is claimed.
+     pub selection_word_50: Option<u64>,
+ }
+@@ -92,6 +97,7 @@
+             source: LoadGameSource::None,
+             options: None,
+             post_load_commands: vec![PostGameLoadCommand::SwitchAppMode(AppMode::default())],
++            post_load_cursor: 0,
+             selection_word_50: None,
+         }
+     }
+@@ -110,8 +116,47 @@
+             source,
+             options: Some(options),
+             post_load_commands,
++            post_load_cursor: 0,
+             selection_word_50: Some(0),
+         };
++    }
++
++    /// 世界状态实际应用成功后调用。失败保留当前命令，重试从失败处继续。
++    /// 域命令由宿主执行；这里只处理已知的命令队列、模式和安全信号。
++    pub fn finish_after_world_applied(
++        &mut self,
++        commander: &mut MetaCommander,
++        app_mode: &mut AppMode,
++        mut apply_domain: impl FnMut(&PostGameLoadCommand) -> anyhow::Result<()>,
++    ) -> anyhow::Result<()> {
++        anyhow::ensure!(self.options.is_some(), "没有正在加载的会话");
++        while let Some(command) = self.post_load_commands.get(self.post_load_cursor) {
++            match command {
++                PostGameLoadCommand::SwitchAppMode(_) => {}
++                PostGameLoadCommand::SessionEntry(OnLoadEntry::Batch { commands }) => {
++                    commander.extend_script(commands.iter().copied());
++                }
++                PostGameLoadCommand::SessionEntry(OnLoadEntry::Fence(_)) => {}
++                PostGameLoadCommand::SessionEntry(OnLoadEntry::Command { tag, .. })
++                    if *tag == ON_LOAD_FENCE => {}
++                other => apply_domain(other)?,
++            }
++            self.post_load_cursor += 1;
++        }
++        // 所有可能失败的动作都已完成，才切换模式和解除等待，避免提前宣告完成。
++        for command in &self.post_load_commands {
++            match command {
++                PostGameLoadCommand::SwitchAppMode(mode) => *app_mode = *mode,
++                PostGameLoadCommand::SessionEntry(OnLoadEntry::Fence(fence)) => fence.unblock(),
++                _ => {}
++            }
++        }
++        self.post_load_commands.clear();
++        self.post_load_cursor = 0;
++        self.state = LoadGameState::Loaded;
++        self.source = LoadGameSource::None;
++        self.options = None;
++        Ok(())
+     }
+ }
+ 
+@@ -139,10 +184,13 @@
+     pub colors: crate::resources::glade_color_customization::GladeColorCustomization,
+     pub identity: Option<crate::resources::history::HistoryIdentity>,
+     pub chain_index: i32,
+-    /// `History.history_start`（初始 MultiEdit 集合；JSON 镜像）。
+-    pub history_start: Vec<Value>,
+-    /// `History.edit_chain`（当前编辑链；JSON 镜像）。
+-    pub edits: Vec<Value>,
++    /// Native +6c undo boundary; serde visit_object @1415bd861 reads i32,
++    /// and the omitted-field branch @1415bd97d supplies -1.
++    pub history_start: i32,
++    /// Saved MultiEdits decoded into the same owners used by live replay.
++    pub edits: Vec<
++        crate::resources::history::transactions::HistoryEntry<crate::resources::history::EditType>,
++    >,
+     /// `History.snapshots`（`HistoryChainSnapshot` JSON 镜像）。
+     pub snapshots: Vec<Value>,
+ }
+@@ -163,14 +211,79 @@
+ /// "snapshots"…,"edit_chain":[…]}`；deserialize_struct 字段数 4）。
+ #[derive(Clone, Debug, Default, serde::Deserialize)]
+ pub struct HistorySectionJson {
+-    #[serde(default)]
+     pub chain_index: i32,
+-    #[serde(default)]
+-    pub history_start: Value,
++    #[serde(default = "default_history_start")]
++    pub history_start: i32,
+     #[serde(default)]
+     pub snapshots: Vec<Value>,
+-    #[serde(default)]
+-    pub edit_chain: Vec<Value>,
++    pub edit_chain: Vec<crate::resources::history::serialized::SavedMultiEdit>,
++}
++
++/// Original ResolvedHistoryChainSnapshot serde fields (1415ce1c0): both are
++/// required. The unresolved snapshot payload itself is never a unit value.
++#[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
++struct SavedSnapshotReference {
++    chain_index: i32,
++    snapshot_id: u64,
++}
++
++/// Original validate loop removes records whose actual file cannot be opened,
++/// then tries the closest remaining record again. An opened snapshot must
++/// reach the real domain loader; current partial JSON helpers cannot certify
++/// the motomoto stream or all its world writes, so that boundary remains Err.
++fn require_no_valid_snapshot(
++    parsed: &mut ParsedGameData,
++    snapshot_root: &Path,
++    ignore_snapshot: bool,
++) -> anyhow::Result<()> {
++    let mut snapshots: Vec<
++        crate::resources::history::transactions::ResolvedHistorySnapshot<SavedSnapshotReference>,
++    > = parsed
++        .snapshots
++        .iter()
++        .cloned()
++        .map(|value| {
++            serde_json::from_value::<SavedSnapshotReference>(value).map(|record| {
++                crate::resources::history::transactions::ResolvedHistorySnapshot {
++                    chain_index: record.chain_index,
++                    value: record,
++                }
++            })
++        })
++        .collect::<Result<_, _>>()
++        .context("parsing snapshot references")?;
++    if ignore_snapshot {
++        anyhow::ensure!(
++            snapshots.is_empty(),
++            "B ignore_snapshot retains nonempty snapshot owners; the live History snapshot payload type is not restored"
++        );
++        return Ok(());
++    }
++    while let Some(index) =
++        crate::resources::history::snapshots::nearest_snapshot_index(&snapshots, parsed.chain_index)
++    {
++        let record = snapshots[index].value;
++        let path = snapshot_root.join(format!("{}.snapshot", record.snapshot_id));
++        match std::fs::File::open(&path) {
++            Ok(_) => anyhow::bail!(
++                "B snapshot {} opened; original motomoto chunk/domain application @1417a9c50 is not restored",
++                path.display()
++            ),
++            Err(error) => {
++                log::warn!(
++                    "Failed to load history snapshot {}: {error}",
++                    path.display()
++                );
++                snapshots.retain(|item| item.value.snapshot_id != record.snapshot_id);
++            }
++        }
++    }
++    parsed.snapshots.clear();
++    Ok(())
++}
++
++fn default_history_start() -> i32 {
++    -1
+ }
+ 
+ /// 存档版本兼容区间（O：fresh 反编译 `parse_saved_game_data` 结束段，
+@@ -188,6 +301,8 @@
+ #[allow(dead_code)] // Recovered contract type; replayed commands surface as ReplayedOnLoadCommand.
+ #[derive(Clone, Debug)]
+ pub enum PostGameLoadCommand {
++    /// 请求中的拥有型加载后动作，按原顺序移动，不复制裸指针。
++    SessionEntry(OnLoadEntry),
+     SwitchAppMode(AppMode),
+     /// 变体 1：{tag, 载荷×2}；域载荷由所属模块提供。
+     Apply {
+@@ -311,11 +426,7 @@
+     let history_value = object.get("History").cloned().unwrap_or(Value::Null);
+     let history: HistorySectionJson =
+         serde_json::from_value(history_value).context("parsing history")?;
+-    let history_start = history
+-        .history_start
+-        .as_array()
+-        .cloned()
+-        .unwrap_or_default();
++    let history_start = history.history_start;
+ 
+     // Identity：失败 → log + `derive_fallback_save_file_identity`。
+     let identity = match object.get("Identity") {
+@@ -353,7 +464,11 @@
+         identity,
+         chain_index: history.chain_index,
+         history_start,
+-        edits: history.edit_chain,
++        edits: history
++            .edit_chain
++            .into_iter()
++            .map(|entry| entry.0)
++            .collect(),
+         snapshots: history.snapshots,
+     })
+ }
+@@ -493,22 +608,16 @@
+                         }));
+                     }
+                     2 => {
+-                        // 原生内联 fence 释放：unblock +0x10 + Arc drop。
+-                        // payload_a = fence Arc 指针（append_on_load<Fence> 写入）。
++                        // 原始整数不是 Arc 所有权凭据，禁止从任意地址构造 Arc。
++                        // 新请求统一使用 OnLoadEntry::Fence。
+                         if *payload_a != 0 {
+-                            let fence = unsafe {
+-                                Arc::from_raw(*payload_a as *const std::sync::Mutex<(bool, bool)>)
+-                            };
+-                            {
+-                                let mut guard = fence.lock().expect("fence poisoned");
+-                                guard.0 = false;
+-                            }
+-                            drop(fence);
++                            log::error!("拒绝旧式裸地址 fence；请使用拥有型加载信号");
+                         }
+                     }
+                     _ => {}
+                 }
+             }
++            OnLoadEntry::Fence(fence) => fence.unblock(),
+             OnLoadEntry::Batch { commands } => {
+                 for command in commands {
+                     out.push(ReplayedOnLoadCommand::MetaCommand(*command));
+@@ -559,6 +668,7 @@
+                     }
+                 }
+             }
++            OnLoadEntry::Fence(_) => {}
+             OnLoadEntry::Batch { commands } => {
+                 for command in commands {
+                     out.push(ReplayedOnLoadCommand::Apply {
+@@ -618,6 +728,16 @@
+                     Ok((Some(parsed), Vec::new()))
+                 }
+                 2 => {
++                    if next.on_load.iter().any(|entry| {
++                        matches!(entry,
++                        OnLoadEntry::Command { tag, payload_a, .. }
++                        if (*tag ^ ON_LOAD_VARIANT_MASK) == 2 && *payload_a != 0)
++                    }) {
++                        return Err(anyhow::anyhow!(
++                            "旧式裸地址 fence 无法安全回放，请改用拥有型信号"
++                        )
++                        .into());
++                    }
+                     let mut commands = Vec::new();
+                     replay_meta_commands(manager, &next.on_load, &mut commands);
+                     replay_post_game_load_commands(&next.on_load, &mut commands);
+@@ -697,6 +817,156 @@
+ ///
+ /// PostGameLoadCommand::Apply 的应用（FUN_1412e0b90）与
+ /// `init_game_state_from_snapshot` 依赖游戏资源，由宿主/域恢复后接入；不伪造加载成功。
++/// B no-valid-snapshot branch @14146dfa6. The authoritative starting state is
++/// the real saved edit chain at cursor-1, not an invented empty snapshot.
++fn apply_history_without_snapshot(
++    world: &mut bevy_ecs::world::World,
++    mut parsed: ParsedGameData,
++    options: ActiveLoadOptions,
++    source_file: Option<&Path>,
++) -> anyhow::Result<()> {
++    use super::save_game::{
++        AsyncSaveCmd, AutoSaveState, SerializedJson, assemble_game_save_sections,
++    };
++    use crate::resources::{
++        history::{History, transactions::ObservedHistoryLedger},
++        session::ActiveSession,
++        time_of_day::TimeOfDay,
++        walls::InnerWalls,
++    };
++    use crate::systems::camera_rig::{CameraRigParametersCache, main_camera::MainCamera};
++    // Validate/prepare fallible owners before publishing a half-applied World.
++    let session = world
++        .get_resource::<ActiveSession>()
++        .context("B active session producer missing")?
++        .id;
++    let config = world
++        .get_resource::<crate::game_config::GameConfig>()
++        .context("B GameConfig missing")?;
++    let demo = config.dev.demo;
++    let target_fov = config.game.camera_fov;
++    let mut camera = world
++        .get_resource::<MainCamera>()
++        .context("B MainCamera missing")?
++        .clone();
++    camera.load_parameters(
++        parsed.camera.as_ref().context("B parsed Camera missing")?,
++        options.ignore_snapshot,
++    );
++    camera.finish_loaded_normal_interpolation(demo)?;
++    // Original new-session flag replaces the incoming version with0x1b.
++    if options.new_session {
++        parsed.version = LATEST_SAVE_VERSION;
++    }
++    let gates = version_gates(parsed.version);
++    let mut time = world
++        .get_resource::<TimeOfDay>()
++        .context("B TimeOfDay producer missing")?
++        .clone();
++    time.time_of_day = parsed.time_of_day.time_of_day;
++    time.sun_xz_rotation = parsed.time_of_day.sun_xz_rotation;
++    time.latitude_degrees = parsed.time_of_day.latitude_degrees;
++    let max_id = parsed
++        .edits
++        .iter()
++        .flat_map(|entry| &entry.edits)
++        .filter_map(|edit| {
++            if let crate::resources::history::EditType::Wall(wall) = edit {
++                Some((**wall).clone())
++            } else {
++                None
++            }
++        });
++    let max_id = extract_max_wall_id_from_history(max_id).unwrap_or(0);
++    anyhow::ensure!(
++        world.contains_resource::<InnerWalls>(),
++        "B InnerWalls constructor missing"
++    );
++    anyhow::ensure!(
++        world.contains_resource::<AutoSaveState>(),
++        "B Async save owner missing"
++    );
++    let saved_pose = camera.store_parameters();
++    let saved_camera = CameraRigParametersCache {
++        yaw: saved_pose.yaw,
++        pitch: saved_pose.pitch,
++        position: saved_pose.position,
++        camera_rig_arm_length: saved_pose.camera_rig_arm_length,
++        vertical_fov_degrees: saved_pose.vertical_fov_degrees,
++        pitch_offset: saved_pose.pitch_offset,
++        yaw_offset: saved_pose.yaw_offset,
++    };
++    let undo_boundary = parsed.history_start.max(0);
++    let sections = assemble_game_save_sections(
++        parsed.version,
++        parsed
++            .identity
++            .context("B parsed history identity missing")?,
++        &saved_camera,
++        &parsed.colors,
++        SerializedJson::new(&time)?,
++        SerializedJson::new(&parsed.sheep)?,
++        SerializedJson::new(&parsed.chain_index)?,
++        SerializedJson::new(&undo_boundary)?,
++        SerializedJson::new(&parsed.snapshots)?,
++    );
++    let edits = parsed
++        .edits
++        .iter()
++        .cloned()
++        .map(crate::resources::history::serialized::SavedMultiEdit)
++        .map(|entry| SerializedJson::new(&entry))
++        .collect::<Result<Vec<_>, _>>()?;
++    let backups = super::save_backup_list::SaveBackupList::new_from_session(session);
++    if let Some(path) = source_file {
++        let _ = make_upgrade_backup(path);
++    }
++    gates.apply_centered_path(&crate::utils::float_grid::CENTERED_PATH);
++    // The second version global is likewise the original shared owner.
++    crate::resources::stairs::stairs_state::VERIFY_STAIR_CHECKSUMS
++        .store(gates.stairs_checksum, std::sync::atomic::Ordering::Relaxed);
++    let count = parsed.edits.len();
++    world.insert_resource(History::<()>::from_observed(ObservedHistoryLedger {
++        entries: parsed.edits,
++        cursor: -1,
++        undo_anchor: undo_boundary,
++        resolved_snapshots: Vec::new(),
++        observed_count_58: count,
++        // Native serde object @1415bd9f6..bda3d explicitly writes zero here.
++        mutation_nonce: 0,
++    }));
++    camera.write_f32(0x194, target_fov);
++    world.insert_resource(camera);
++    world.insert_resource(time);
++    world.insert_resource(parsed.colors);
++    // Existing canonical SheepControl is the deferred snapshot owner. This
++    // does not spawn a sheep or fake the downstream critter query's contents.
++    world.insert_resource(crate::systems::debug::sheep_controls::SheepControl {
++        snapshot: parsed.sheep,
++    });
++    {
++        let mut walls = world.resource_mut::<InnerWalls>();
++        let restored_max = walls.max_id().max(max_id);
++        walls.set_max_id(restored_max);
++    }
++    {
++        let mut auto = world.resource_mut::<AutoSaveState>();
++        auto.session = session;
++        auto.metronome =
++            super::save_backup_metronome::SaveBackupMetronome::new_from_backup_list(&backups);
++        auto.send_command_expect(AsyncSaveCmd::OpenFile {
++            session,
++            sections,
++            edits,
++        });
++    }
++    let mut manager = world.resource_mut::<LoadGameManager>();
++    manager.progress_counter = parsed.chain_index.wrapping_sub(-1);
++    manager.source = LoadGameSource::None;
++    manager.state = LoadGameState::ApplyCounter;
++    Ok(())
++}
++
+ pub fn load_game_system(world: &mut bevy_ecs::world::World) -> bevy_ecs::error::Result {
+     try_load_game_system(world).map_err(|error| error.to_string().into())
+ }
+@@ -711,35 +981,120 @@
+             let options = manager
+                 .options
+                 .context("B active load has no startup options")?;
+-            let parsed = match &manager.source {
+-                LoadGameSource::Path(path) => parse_saved_game_data(path)
+-                    .with_context(|| format!("B load_game source {}", path.display()))?,
+-                LoadGameSource::Parsed(data) => (**data).clone(),
++            let (mut parsed, snapshot_root, source_file) = match &manager.source {
++                LoadGameSource::Path(path) => (
++                    parse_saved_game_data(path)
++                        .with_context(|| format!("B load_game source {}", path.display()))?,
++                    path.parent()
++                        .context("B source history path has no parent")?
++                        .join("snapshots"),
++                    Some(path.clone()),
++                ),
++                LoadGameSource::Parsed {
++                    data,
++                    snapshot_root,
++                } => ((**data).clone(), snapshot_root.clone(), None),
+                 LoadGameSource::None => {
+                     anyhow::bail!("B LoadGameState::LoadGameData has no source")
+                 }
+             };
+-            // The native next step validates/loads the closest snapshot and
+-            // invokes init_game_state_from_snapshot @1417a9c50, or replays the
+-            // full History start/edit chain. Current partial snapshot helpers
+-            // omit Roofs/Trees/colors; successful JSON parsing is not completion.
+-            anyhow::bail!(
+-                "B load_game @14146d030 parsed version {} ({} history edits), but original {} application @1417a9c50 is not restored; LoadingGameComplete was not emitted",
+-                parsed.version,
+-                parsed.edits.len(),
+-                if options.ignore_snapshot {
+-                    "history replay"
+-                } else {
+-                    "snapshot/history"
+-                }
+-            )
++            require_no_valid_snapshot(&mut parsed, &snapshot_root, options.ignore_snapshot)?;
++            apply_history_without_snapshot(world, parsed, options, source_file.as_deref())
+         }
+         LoadGameState::ApplyCounter => {
+-            anyhow::bail!("B load_game state1 requires original signed counter input producer")
++            world.resource_scope(|world, mut manager: bevy_ecs::prelude::Mut<LoadGameManager>| {
++                emit_load_history_commands(&mut manager, &mut world.resource_mut::<bevy_ecs::event::Events<crate::systems::mode_manager::HistoryCommand>>());
++            });
++            Ok(())
+         }
+         LoadGameState::Loaded => {
+-            // Idle is a real constructor state; it cannot create a completion.
++            // Only a real active request may consume post-load commands. The
++            // idle constructor also holds a default SwitchAppMode command.
++            if world.resource::<LoadGameManager>().options.is_none() {
++                return Ok(());
++            }
++            // 先拒绝当前没有消费者的旧载荷，避免先通知完成或释放信号后才报错。
++            anyhow::ensure!(
++                world
++                    .resource::<LoadGameManager>()
++                    .post_load_commands
++                    .iter()
++                    .all(|command| {
++                        matches!(
++                            command,
++                            PostGameLoadCommand::SwitchAppMode(_)
++                                | PostGameLoadCommand::SessionEntry(
++                                    OnLoadEntry::Batch { .. } | OnLoadEntry::Fence(_)
++                                )
++                                | PostGameLoadCommand::SessionEntry(OnLoadEntry::Command {
++                                    tag: ON_LOAD_FENCE,
++                                    ..
++                                })
++                        )
++                    }),
++                "加载后动作包含尚未接入的域命令"
++            );
++            // Original state2 consumes commands in order. SwitchAppMode is a
++            // sixteen-byte LoadingGameComplete payload, not a direct mode
++            // mutation here. In particular it is not delayed until replay has
++            // drained, nor moved past following command/fence side effects.
++            loop {
++                let manager = world.resource::<LoadGameManager>();
++                let Some(command) = manager
++                    .post_load_commands
++                    .get(manager.post_load_cursor)
++                    .cloned()
++                else {
++                    break;
++                };
++                match command {
++                    PostGameLoadCommand::SwitchAppMode(restore_to) => {
++                        world
++                            .resource_mut::<bevy_ecs::event::Events<LoadingGameComplete>>()
++                            .send(LoadingGameComplete { restore_to });
++                    }
++                    PostGameLoadCommand::SessionEntry(OnLoadEntry::Batch { commands }) => world
++                        .resource_mut::<MetaCommander>()
++                        .extend_script(commands),
++                    PostGameLoadCommand::SessionEntry(OnLoadEntry::Fence(fence)) => fence.unblock(),
++                    PostGameLoadCommand::SessionEntry(OnLoadEntry::Command {
++                        tag: ON_LOAD_FENCE,
++                        ..
++                    }) => break,
++                    other => anyhow::bail!(
++                        "B load_game post-load domain command requires its original consumer: {other:?}"
++                    ),
++                }
++                world.resource_mut::<LoadGameManager>().post_load_cursor += 1;
++            }
++            let mut manager = world.resource_mut::<LoadGameManager>();
++            manager.post_load_commands.clear();
++            manager.post_load_cursor = 0;
++            manager.source = LoadGameSource::None;
++            manager.options = None;
+             Ok(())
+         }
+     }
+ }
++
++/// Original B state1 @14146d8a2 /14146d952. Preserve signed NEG and the
++/// signed loop bound (including its empty loop for i32::MIN). The ready event
++/// is a later state2 post-command; consuming a delta never fabricates it.
++pub fn emit_load_history_commands(
++    manager: &mut LoadGameManager,
++    commands: &mut bevy_ecs::event::Events<crate::systems::mode_manager::HistoryCommand>,
++) {
++    assert_eq!(manager.state, LoadGameState::ApplyCounter);
++    let delta = manager.progress_counter;
++    let (count, payload) = if delta < 0 {
++        (delta.wrapping_neg(), 0x0301_0001_u32)
++    } else {
++        (delta, 0x0301_0101_u32)
++    };
++    for _ in 0..count {
++        commands.send(crate::systems::mode_manager::HistoryCommand {
++            bytes: payload.to_le_bytes(),
++        });
++    }
++    manager.state = LoadGameState::Loaded;
++}
+--- before/crates/country-core/src/systems/save/tests.rs
++++ crates/country-core/src/systems/save/tests.rs
+@@ -55,9 +55,9 @@
+         },
+         "History": {
+             "chain_index": -1,
+-            "history_start": [{"edit": "start"}],
++            "history_start": -1,
+             "snapshots": [{"chain_index": -1, "snapshot_id": 7}],
+-            "edit_chain": [{"edit": "current"}]
++            "edit_chain": [{"edits": []}]
+         },
+         "Identity": 123456789
+     });
+@@ -71,7 +71,7 @@
+     assert_eq!(parsed.colors.building.0, 2);
+     assert_eq!(parsed.identity.unwrap().0, 123456789);
+     assert_eq!(parsed.chain_index, -1);
+-    assert_eq!(parsed.history_start.len(), 1);
++    assert_eq!(parsed.history_start, -1);
+     assert_eq!(parsed.edits.len(), 1);
+     assert_eq!(parsed.snapshots.len(), 1);
+ 
+--- before/crates/country-core/src/systems/render_loop/draw_passes/deferred_raster.rs
++++ crates/country-core/src/systems/render_loop/draw_passes/deferred_raster.rs
+@@ -34,7 +34,7 @@
+ //! - `draw_no_vao(3)`。循环结束后 `render`。
+ //!
+ //! 对 A4 的适配（I）：`bind_ray_tracing<DrawBuilder>`（0x1416289d0）用 A4 的 `DrawBuilder::bind_ray_tracing::<Tri, Meta, Bvh, Wall>`
+-//! （本函数对四个 `SsboType` 载体泛型）；Lantern 的 uniform 值 = `PassHost::ssbo_buffer_word(LanternSsbo)`（缓冲首字低 32 位）；
++//! （本函数对四个 `SsboType` 载体泛型）；Lantern 的 uniform 值 = `PassHost::ssbo_instance_count(LanternSsbo)`（实际实例数量）；
+ //! `LanternSsbo` 在 crate 里是 typed gap（无 `SsboType`），这里用本文件的 [`LanternBuffer`] / [`SpatialResolveOffsetsBuffer`]
+ //! 载体（`rg_buffer_hash` = `get_rg_buffer<T>` 的立即数）。
+ 
+@@ -161,7 +161,7 @@
+     mut b: DrawBuilder<'p>,
+     i: &DeferredInputs<'_>,
+     time: f32,
+-    lantern_value: u32,
++    lantern_instance_count: u32,
+ ) -> DrawBuilder<'p> {
+     b = b.uniform(U_ARG6, i.arg6 as u32);
+     b = sampled(b, &i.lighting[0], B_LIGHTING_0);
+@@ -183,7 +183,7 @@
+     b = b.optional_uniform(U_TIME, time);
+     b = b.uniform(U_FLAG_INT, 0u32);
+     b = b.optional_uniform(U_DEPTH_DIMS, [i.depth.extent.0, i.depth.extent.1]);
+-    b = b.uniform(U_LANTERN, lantern_value);
++    b = b.uniform(U_LANTERN, lantern_instance_count);
+     b = sampled(b, &i.arg10, B_ARG10);
+     b = sampled(b, &i.gbuffer[0], B_GBUFFER_0);
+     b = sampled(b, &i.gbuffer[1], B_GBUFFER_1);
+@@ -228,10 +228,10 @@
+     i: &DeferredInputs<'_>,
+ ) {
+     let time = ctx.elapsed.as_secs_f32();
+-    // O：`AssetSsboLibrary::get::<LanternSsbo>` → 缺失 `expect`；值 = 缓冲首字低 32 位。
+-    let lantern_value = ctx
++    // O：`AssetSsboLibrary::get::<LanternSsbo>` → 缺失 `expect`；值为实际灯笼实例数量。
++    let lantern_instance_count = ctx
+         .host()
+-        .ssbo_buffer_word(LanternBuffer::rg_buffer_hash())
++        .ssbo_instance_count(LanternBuffer::rg_buffer_hash())
+         .expect(UNWRAP_NONE);
+     let colors = [ColorSpec::tag1(i.lighting[1])];
+     let depth = DepthSpec::Write {
+@@ -251,7 +251,7 @@
+         );
+         let mut b = DrawBuilder::new(&mut pass, packet, 0);
+         b.packet_mut().unknown_b1 = stencil;
+-        let mut b = bind_all::<Tri, Meta, Bvh, Wall>(b, i, time, lantern_value);
++        let mut b = bind_all::<Tri, Meta, Bvh, Wall>(b, i, time, lantern_instance_count);
+         let p = b.packet_mut();
+         p.state.0 = final_state(p.state.0);
+         b.draw_no_vao(3);
+--- before/crates/country-core/src/systems/render_loop/draw_passes/draw_shaders/test_support.rs
++++ crates/country-core/src/systems/render_loop/draw_passes/draw_shaders/test_support.rs
+@@ -68,9 +68,9 @@
+     ) -> Option<DynamicConstantsBinding> {
+         self.inner.allocate_dynamic_constants(r)
+     }
+-    fn ssbo_buffer_word(&self, h: u64) -> Option<u32> {
+-        // `bind_ray_tracing<DrawBuilder>` 取 Tri / Bvh 缓冲字（不记 `Call`：原版里是库查询，不是 `get_rg_buffer`）。
+-        self.inner.ssbo_buffer_word(h)
++    fn ssbo_instance_count(&self, h: u64) -> Option<u32> {
++        // `bind_ray_tracing<DrawBuilder>` 读取 Tri / Bvh 实例数量（不记 `Call`：原版里是库查询，不是 `get_rg_buffer`）。
++        self.inner.ssbo_instance_count(h)
+     }
+     fn rg_buffer_resource(&self, h: u64) -> Option<u32> {
+         self.calls.borrow_mut().push(Call::RgBuffer(h));
+--- before/crates/country-core/src/systems/audio/music/load_glade_audio.rs
++++ crates/country-core/src/systems/audio/music/load_glade_audio.rs
+@@ -1,79 +1,25 @@
+-//! `load_glade_audio` — glade 音频 producer（B `startup::load_glade_audio` 系统
+-//! 0x1408be360）。
+-//!
+-//! O 主流程（decomp-0x1408be360）：
+-//! 1. `player.pause()`（FUN_1408b72e0）+ 清 current-track（`puVar7[0x72]=0`）。
+-//! 2. `GladeAudio::load`（0x1408bf460）读 `assets/glade/{theme}/audio.json`。
+-//! 3. 拼 4 个 `event:/Music/Halloween/{Single Leaf, Tiny Olden Glade, Forgotten Ruins,
+-//!    Enchanted Forest}`（串表 @0x142aa0c33）。
+-//! 4. `player.load_tracks`（0x1408b6b10）用这 4 个名字。
+-//! 5. 逐 track `AudioCoreInner::instantiate_audio` + 容器注册（0x14089a280）——
+-//!    由 `MusicPlayer::load_tracks` 的实例化路径覆盖（注册细节 I）。
+-//! 6. `set_parameter("GladeTypeIsHalloween", table[theme])`（0x142aa152c f32
+-//!    [0,3,1,2,4] = `GladeType::audio_id()`）与 `set_parameter("IsHalloween",
+-//!    1.0|0.0)`（文件夹串非空 → 1.0，`_UNK_142925904`；GladeType 恒有效 → 恒 1.0）。
+-//! 7. theme 旗标 `0.25`（`_UNK_142925950`）当 theme==4（Winter）否则 `0`，写 player
+-//!    `+0x1c0/+0x1c4`（映射为 [`MusicPlayer::glade_theme_flag`]）。
+-//!
+-//! 调度：native 在 GameStartup（0x140941110）装配为启动期系统（主题载入时运行一次）；
+-//! 本模块提供 [`configure_glade_audio`] 注册点供宿主调用（run_game.rs 库外，需仲裁/宿主接线）。
+-use crate::{
+-    resources::session::{ActiveSession, GladeType},
+-    startup::load_glade_audio::{
+-        GLADE_TYPE_IS_HALLOWEEN_PARAMETER, HALLOWEEN_MUSIC_EVENTS, IS_HALLOWEEN_PARAMETER,
+-    },
+-};
++//! ECS 主题音频入口，复用 startup 的唯一加载实现。
++use super::{music_player::MusicBackend, music_system::MusicAudioState};
++use crate::{resources::session::ActiveSession, startup::load_glade_audio::load_theme_audio};
+ use bevy_ecs::prelude::*;
+ 
+-use super::{
+-    glade_audio::GladeAudio,
+-    music_player::MusicBackend,
+-    music_system::MusicAudioState,
+-};
+-
+-fn set_parameter<B: MusicBackend>(backend: &B, name: &str, value: f32) {
+-    // AudioCoreInner::set_parameter（0x140a53db0）失败 → 全局报告 + 继续（O）。
+-    if let Err(error) = backend.set_global_parameter(name, value) {
+-        log::warn!("Could not set audio parameter {name}: {error:?}");
+-    }
+-}
+-
+-/// `load_glade_audio` @0x1408be360：`(Res<AudioCore>|backend, Res<ActiveSession>,
+-/// ResMut<MusicAudioState>)`（native 后端是 `Res<AudioCore>`；本实现按 `B: MusicBackend`
+-/// 泛型，`AudioCore` 经 [`super::audio_core_backend`] 适配实现后端）。
++/// 在活动会话已建立、音乐资源已初始化后运行。
+ pub fn load_glade_audio<B: MusicBackend + Resource>(
+     backend: Res<B>,
+     session: Res<ActiveSession>,
+     mut state: ResMut<MusicAudioState<B::Event>>,
+-) {
+-    let theme = session.meta.glade;
+-
+-    // 1. pause + 清 current-track（O）。
+-    state.player.pause();
+-    state.player.current_track = None;
+-
+-    // 2. GladeAudio::load（O：0x1408bf460 读 `{folder}/audio.json`，失败 default 回退）。
+-    let _glade_audio = GladeAudio::load(&session.meta.assets_root().to_string_lossy());
+-
+-    // 3+4. 4 个 Halloween 事件 → load_tracks（O：串表 + 0x1408b6b10）。
+-    let paths: Vec<String> = HALLOWEEN_MUSIC_EVENTS.iter().map(|s| s.to_string()).collect();
+-    state.player.load_tracks(&*backend, &paths);
+-
+-    // 6. 参数（O）。
+-    set_parameter(&*backend, GLADE_TYPE_IS_HALLOWEEN_PARAMETER, theme.audio_id());
+-    // `IsHalloween` = 1.0 当主题文件夹串非空（O，`_UNK_142925904`）；GladeType 恒有效。
+-    set_parameter(&*backend, IS_HALLOWEEN_PARAMETER, 1.0);
+-
+-    // 7. theme 旗标（O：theme==4 → 0.25，否则 0）。
+-    state.player.glade_theme_flag = if theme == GladeType::Winter { 0.25 } else { 0.0 };
++) -> bevy_ecs::error::Result {
++    load_theme_audio(
++        &mut state.player,
++        &*backend,
++        &session.assets_root(),
++        session.meta.glade,
++    )?;
++    Ok(())
+ }
+ 
+-/// `load_glade_audio` 注册点（启动期，主题载入时运行一次）。宿主在 GameStartup 装配
+-/// （0x140941110）；country-core 无自身 App，由宿主 schedule 调用本函数。
+-pub fn configure_glade_audio<B>(schedule: &mut Schedule)
+-where
+-    B: MusicBackend + Resource,
+-{
++/// 主题加载阶段注册点，不应放入无条件运行的每帧更新表。
++pub fn configure_glade_audio<B: MusicBackend + Resource>(schedule: &mut Schedule) {
+     schedule.add_systems(load_glade_audio::<B>);
+ }
+ 
+@@ -81,6 +27,8 @@
+ mod tests {
+     use super::*;
+     use crate::resources::audio_instance::PlaybackState;
++    use crate::resources::session::GladeType;
++    use crate::startup::load_glade_audio::HALLOWEEN_MUSIC_EVENTS;
+     use crate::systems::audio::music::music_player::{MusicEvent, MusicPlayer, StopMode};
+     use std::convert::Infallible;
+ 
+@@ -135,13 +83,25 @@
+         let backend = Backend;
+         let mut player = MusicPlayer::init(&backend);
+         // O 步骤 3+4：4 个 Halloween 事件名 → load_tracks。
+-        let paths: Vec<String> = HALLOWEEN_MUSIC_EVENTS.iter().map(|s| s.to_string()).collect();
++        let paths: Vec<String> = HALLOWEEN_MUSIC_EVENTS
++            .iter()
++            .map(|s| s.to_string())
++            .collect();
+         player.load_tracks(&backend, &paths);
+         assert_eq!(player.track_names.len(), 4);
+         assert_eq!(player.track_names[0], "event:/Music/Halloween/Single Leaf");
+-        assert_eq!(player.track_names[1], "event:/Music/Halloween/Tiny Olden Glade");
+-        assert_eq!(player.track_names[2], "event:/Music/Halloween/Forgotten Ruins");
+-        assert_eq!(player.track_names[3], "event:/Music/Halloween/Enchanted Forest");
++        assert_eq!(
++            player.track_names[1],
++            "event:/Music/Halloween/Tiny Olden Glade"
++        );
++        assert_eq!(
++            player.track_names[2],
++            "event:/Music/Halloween/Forgotten Ruins"
++        );
++        assert_eq!(
++            player.track_names[3],
++            "event:/Music/Halloween/Enchanted Forest"
++        );
+         // load_tracks 只留 install_beat_callback 成功的实例（O：0x1408b6b10）。
+         assert!(
+             player
+@@ -160,7 +120,21 @@
+         assert_eq!(GladeType::Autumn.audio_id(), 2.0);
+         assert_eq!(GladeType::Winter.audio_id(), 4.0);
+         // theme 旗标：theme==4（Winter）→ 0.25（`_UNK_142925950`），否则 0（O）。
+-        assert_eq!(if GladeType::Winter == GladeType::Winter { 0.25 } else { 0.0 }, 0.25);
+-        assert_eq!(if GladeType::Summer == GladeType::Winter { 0.25 } else { 0.0 }, 0.0);
++        assert_eq!(
++            if GladeType::Winter == GladeType::Winter {
++                0.25
++            } else {
++                0.0
++            },
++            0.25
++        );
++        assert_eq!(
++            if GladeType::Summer == GladeType::Winter {
++                0.25
++            } else {
++                0.0
++            },
++            0.0
++        );
+     }
+ }
+--- before/crates/country-core/src/systems/audio/music/music_player.rs
++++ crates/country-core/src/systems/audio/music/music_player.rs
+@@ -126,19 +126,33 @@
+             glade_theme_flag: 0.0,
+         }
+     }
+-    /// 0x1408b6b10: creation errors panic; disabled instances and callback failures
+-    /// are dropped. Existing playlist/current index are intentionally retained.
+-    pub fn load_tracks<B: MusicBackend<Event = E>>(&mut self, backend: &B, paths: &[String]) {
+-        self.track_names.clear();
++    /// 先创建替代曲库，再停止旧曲目并整体替换，避免部分新曲目污染旧状态。
++    /// 字符串切片与 String 共用入口，启动常量无需先分配 Vec<String>。
++    pub fn load_tracks<B: MusicBackend<Event = E>, P: AsRef<str>>(
++        &mut self,
++        backend: &B,
++        paths: &[P],
++    ) {
++        let mut tracks = Vec::with_capacity(paths.len());
++        let mut track_names = Vec::with_capacity(paths.len());
+         for path in paths {
++            let path = path.as_ref();
+             let mut instance = MusicInstance::create(backend, path);
+             if let Some(event) = instance.event_mut() {
+                 if event.install_beat_callback().is_ok() {
+-                    self.tracks.push(instance);
+-                    self.track_names.push(path.clone());
+-                }
+-            }
+-        }
++                    tracks.push(instance);
++                    track_names.push(path.to_owned());
++                }
++            }
++        }
++        if !self.tracks.is_empty() {
++            self.stop_immediately();
++        }
++        self.current_track = None;
++        self.tracks = tracks;
++        self.track_names = track_names;
++        self.playlist.clear();
++        self.last_timeline_position = 0;
+         self.state = PlayerState::SwitchTrack;
+     }
+     /// Native compares element zero before popping the end, including for one track.
+@@ -398,7 +412,7 @@
+             position: position.clone(),
+         };
+         let mut player = MusicPlayer::init(&backend);
+-        player.load_tracks(&backend, &["track".into()]);
++        player.load_tracks(&backend, &["track"]);
+         let take = || std::mem::take(&mut *calls.lock().unwrap());
+         player.update_with_random(100.0, || panic!("not sampled before first loop"));
+         assert_eq!(player.state, PlayerState::Playing { elapsed_time: 0.0 });

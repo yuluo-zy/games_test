@@ -1,0 +1,33 @@
+{
+  "scope": "原归属三函数；不包含demo/raise UI和slider消费者联合验收",
+  "source": "crates/country-core/src/utils/project_cursor_onto_ray.rs",
+  "source_sha256": "a4951336806c1a7071c98f7625c624202c5321a14703e81045da42cdcd23a116",
+  "corrected_behavior": [
+    "from_window_size直接u32转f32，保留零尺寸，无max(1)",
+    "transform执行原mouse_ss_to_cs完整函数，Y为2*((1-y)/height)+1，再乘unit",
+    "原两级输入均为三维点，不把view计算出的w传到projection平移权重",
+    "保留length_squared.max(1e-20)、逆w的两次原lerp、total_weight.max(1e-10)",
+    "删除非原有限检查/负w检查/最后clip重新投影/None退回origin",
+    "最终是endpoint*weight+origin*(1-weight)，不改写origin+direction*weight",
+    "try接口作为当前API适配保留，仅非法range为None，其余使用同一个原算法"
+  ],
+  "proof": {
+    "whole_functions": "44B/70B/722B",
+    "native_cases": {
+      "window": 8,
+      "transform": 56,
+      "ray": 538
+    },
+    "candidate_direct_source_tests": "2 passed; finite/nonNaN bits exact; NaN only classification due ARM/x86 invalid-division sign/payload",
+    "panics": "3逆序/NaN范围只观察原panic入口；合法范围完全返回，无数学桥",
+    "cargo_core_tests": "cargo test -p country-core --lib utils::project_cursor_onto_ray::tests --offline: 2 passed, 0 ignored",
+    "consumer_tests": "同一成功Cargo生产测试产物直接运行：slider3d 2 passed、wall-height 16 passed，产物SHA见consumer-direct.json。后续Cargo回归被并发ui_raise_shape.rs PublicWalls导入错误阻塞，已通知所有者；未把该暂态错误算投影模块恢复。"
+  },
+  "experience": [
+    "函数名/常规NDC直觉不能修正看似异常的Y公式，原依赖整体执行裁决",
+    "先选utils实际Cargo指纹对应glam，mtime选择不同feature rlib会报重复crate类型；直接harness是窄源码验证，不代替Cargo生产集成",
+    "RON固定数组使用元组编码，首轮编码失败日志保留，不更改数学预期",
+    "NaN硬件符号/载荷单独声明；非NaN结果未用容差放宽"
+  ],
+  "performance": "固定次数向量运算、无正常路径分配；删除额外投影检查，未声称测得性能提升"
+}

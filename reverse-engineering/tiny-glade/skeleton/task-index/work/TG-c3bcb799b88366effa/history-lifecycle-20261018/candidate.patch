@@ -1,0 +1,102 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/ui_clutter/rmb_autoclutter.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/ui_clutter/rmb_autoclutter.rs
+@@ -10,11 +10,11 @@
+ //!   `base = (¬roof) ? -π/2-fmod(entry,2π) : atan2(-y_local,x_local)` →
+ //!   `diff = fmod(rot1-base, 2π)` → 半角 sin/cos → `rot = atan2(2·sin·cos, cos²-sin²)`
+ //!   （早期 Rust `|sqrt(-2wy-2x²)-(-π/2-fmod(entry))|·0.5` 公式在 fresh 无对应，已删）；
+-//! - 推 0x48 B `EvRightClickedAutoClutter` 事件（tag=2@0、subtype=3@+0x29、
+-//!   rotation@+0x2c、type@+0x3c、entity@+0x40）；
++//! - 推实际 `InstaCreateDeco` 创建事件（24-byte destination、空 extra tag3@+0x29、
++//!   rotation@+0x2c、type@+0x3c、native EventId@+0x40）；
+ //! - 末尾 alloc 0x18 B Arc → 入历史（tag 0xd = AutoClutter，**无条件**）并调
+-//!   `FUN_140a86270` = `History::start_input_recording`；crate 以 [`RecordAutoClutterHistory`]
+-//!   事件 → 判等 defered 链再 `History::add`（机制不同、结局近似，LOGIC 附注）；
++//!   `FUN_140a86270` = `History::start_input_recording`；现实现直接 start/add，
++//!   删除集合与历史均使用 source AutoClutter 的生成 ID，而不是 UI Entity bits；
+ //! - 入口 `if *(in_RDX+0x18)!=0` 直达路径（emit rot1，跳过 probe）：crate 事件模型
+ //!   的命中实体即已知目标，该直达面由事件承载，登记 I。
+ //!
+@@ -24,9 +24,9 @@
+ //! 语义对应）。
+ use bevy_ecs::prelude::*;
+ 
+-use crate::resources::history::auto_clutter_edit::AutoClutterEdit;
+ use crate::resources::history::EditType;
+ use crate::resources::history::History;
++use crate::resources::history::auto_clutter_edit::AutoClutterEdit;
+ use crate::systems::mode_manager::AppMode;
+ use crate::systems::mode_manager::ClutterMeshTy;
+ 
+@@ -42,14 +42,12 @@
+ #[derive(Resource, Clone, Copy, Debug, Default)]
+ pub struct RmbAutoClutterDirect(pub Option<AutoClutterRecord>);
+ 
+-/// 右键转换产生的 0x48 B spawn 事件（O 布局：tag=2@0、subtype=3@+0x29、
+-/// rotation@+0x2c、type@+0x3c、entity@+0x40；payload 其余字段语义 I）。
+-#[derive(Event, Clone, Copy, Debug)]
++/// Original EvRightClickedAutoClutter input carries a generation-bearing ECS entity.
++/// Its original 16-byte EventInstance includes an additional native EventId,
++/// which is not part of this owned business payload.
++#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+ pub struct EvRightClickedAutoClutter {
+     pub entity: u64,
+-    pub ty: ClutterMeshTy,
+-    pub position: glam::Vec3,
+-    pub rotation: f32,
+ }
+ 
+ /// `CircularF32::as_f32`（O：0x1416f3210）= 角度归约到 [0, 2π)。
+@@ -105,7 +103,7 @@
+ ///
+ /// 入口直达（`RmbAutoClutterDirect` 有值）→ 跳过 probe；否则 hashbrown entity probe
+ /// （未中 `unwrap_failed` panic）→ 旋转（atan2f 链 + fmod + 半角）→ 0x48B
+-/// `EvRightClickedAutoClutter`（@+0x29=3）→ `History::start_input_recording` →
++/// `InstaCreateDeco`（空 extra 判别@+0x29=3）→ `History::start_input_recording` →
+ /// **直接 `History::add(tag 0xd)`**（无条件；fresh alloc 0x18 `{1,1,id}`）。
+ pub fn handle_rmb_autoclutter<S: Send + Sync + 'static>(
+     mut hits: EventReader<RmbAutoClutterHit>,
+@@ -113,7 +111,8 @@
+     index: Res<super::AutoClutterEntityIndex>,
+     mode: Res<AppMode>,
+     mut history: ResMut<History<S>>,
+-    mut right_clicked: EventWriter<EvRightClickedAutoClutter>,
++    mut deleted: ResMut<super::DeletedAutoClutter>,
++    mut instant_creates: EventWriter<super::ui_autoclutter::InstaCreateDeco>,
+ ) {
+     for hit in hits.read() {
+         // 入口门（O：`*(int*)(in_RDX+0x18) != 0` → LAB_140976f99，跳过 probe）。
+@@ -141,18 +140,27 @@
+             record.local_x,
+             record.local_y,
+         );
+-        // 0x48B EvRightClickedAutoClutter（@+0x29 = 3）。
+-        right_clicked.write(EvRightClickedAutoClutter {
+-            entity: hit.0,
++        // B @140977063..706c: generated source ID, not UI entity bits.
++        deleted.0.insert(record.clutter_id);
++        // B @140977092..711b: InstaCreateDeco; no native EventId/entity.
++        instant_creates.write(super::ui_autoclutter::InstaCreateDeco {
++            destination: record.destination,
++            extra: None,
+             ty: record.ty,
+             position: record.position,
+             rotation,
+         });
+         // O：`History::start_input_recording()`（0x140a86270）→ alloc 0x18 `{1,1,id}` →
+         // `History::add`（tag 0xd），**无条件、无录音门**。
+-        let _ = history.start_input_recording(mode.native_tag());
+-        let _ = history.add(EditType::AutoClutter(std::sync::Arc::new(
+-            AutoClutterEdit::Delete { id: hit.0 },
+-        )));
++        history
++            .start_input_recording(mode.native_tag())
++            .expect("original non-Replay recording invariant");
++        history
++            .add(EditType::AutoClutter(std::sync::Arc::new(
++                AutoClutterEdit::Delete {
++                    id: record.clutter_id,
++                },
++            )))
++            .expect("original open history recording group");
+     }
+ }

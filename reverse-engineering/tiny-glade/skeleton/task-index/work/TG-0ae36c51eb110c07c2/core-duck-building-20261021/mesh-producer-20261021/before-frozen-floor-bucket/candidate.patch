@@ -1,0 +1,44 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs_assemble.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs_assemble.rs
+@@ -483,9 +483,10 @@
+     (points, fallback_center)
+ }
+ 
+-/// 梯三角计数 → 图集索引（内联，O callee 面；U 映射）。
+-pub fn floor_tri_count_to_atlas_idx(_tri_count: u32) -> u32 {
+-    0 // U。
++/// B gen_stair_floors 1407dd7f8..dd83c：按真实三角形数选择Nani图集桶。
++/// 调用者已经将索引数除以3；这里保原两次饱和减法与整数log2。
++pub fn floor_tri_count_to_atlas_idx(tri_count: u32) -> u32 {
++    tri_count.saturating_sub(1).checked_ilog2().unwrap_or(0).saturating_sub(1)
+ }
+ 
+ #[cfg(test)]
+@@ -1159,3 +1160,27 @@
+         assert_eq!(zeros[3].z.to_bits(), 0.0_f32.to_bits());
+     }
+ }
++
++#[cfg(test)]
++mod stair_floor_bucket_tests {
++    use super::floor_tri_count_to_atlas_idx;
++
++    #[test]
++    fn all_native_meshlet_triangle_counts_select_the_original_five_buckets() {
++        for (range, expected) in [(0..=4, 0), (5..=8, 1), (9..=16, 2), (17..=32, 3), (33..=64, 4)] {
++            for count in range {
++                assert_eq!(floor_tri_count_to_atlas_idx(count), expected, "triangle count {count}");
++            }
++        }
++    }
++
++    #[test]
++    fn integer_bucket_math_preserves_zero_and_larger_unsigned_boundaries() {
++        assert_eq!(floor_tri_count_to_atlas_idx(0), 0);
++        assert_eq!(floor_tri_count_to_atlas_idx(1), 0);
++        assert_eq!(floor_tri_count_to_atlas_idx(65), 5);
++        assert_eq!(floor_tri_count_to_atlas_idx(128), 5);
++        assert_eq!(floor_tri_count_to_atlas_idx(129), 6);
++        assert_eq!(floor_tri_count_to_atlas_idx(u32::MAX), 30);
++    }
++}

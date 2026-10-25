@@ -1,0 +1,758 @@
+
+void __cdecl
+country_core::systems::world_raster::
+draw_raster<country_core::resources::world_raster_defs::PathRasterStagingSsbo,country_core::resources::world_raster::WorldRaster<512>,country_core::systems::paths::draw_path::draw_path::closure_env_0,country_core::systems::paths::draw_path::draw_path::closure_env_1,country_core::systems::paths::draw_path::draw_path::closure_env_2>
+          (void)
+
+{
+  longlong lVar1;
+  undefined4 uVar2;
+  ulonglong uVar3;
+  undefined8 uVar4;
+  ulonglong uVar5;
+  ulonglong uVar6;
+  undefined8 uVar7;
+  undefined8 uVar8;
+  undefined8 uVar9;
+  int iVar10;
+  undefined8 *extraout_RAX;
+  longlong lVar11;
+  undefined8 *extraout_RAX_00;
+  longlong lVar12;
+  uint *in_RCX;
+  longlong lVar13;
+  longlong lVar14;
+  float *in_RDX;
+  longlong lVar15;
+  longlong *in_R8;
+  longlong in_R9;
+  longlong lVar16;
+  float fVar17;
+  float fVar18;
+  float fVar19;
+  longlong *in_stack_00000028;
+  longlong *in_stack_00000030;
+  longlong *in_stack_00000038;
+  
+  *(undefined4 *)in_R8[2] = *(undefined4 *)((longlong)in_R8 + 0x1c);
+  lVar11 = *in_R8;
+  lVar12 = 0;
+  if (1 < (ulonglong)*in_RCX) {
+    lVar12 = (ulonglong)*in_RCX - 1;
+  }
+  if (lVar12 == 0) {
+    *(undefined4 *)in_R8[6] = *(undefined4 *)((longlong)in_R8 + 0x3c);
+    *(undefined1 *)(in_R8[4] + 0x1e0) = 1;
+    resources::active_raster_stroke::ActiveRasterStroke::start_new();
+    return;
+  }
+  if (lVar12 != 1) {
+    if (*(ulonglong *)(lVar11 + 0x58) < 2) {
+      return;
+    }
+    *(undefined4 *)in_R8[0x16] = *(undefined4 *)((longlong)in_R8 + 0xbc);
+    lVar12 = in_R8[0x14];
+    lVar13 = *(longlong *)(lVar12 + 0x30);
+    uVar4 = *(undefined8 *)(lVar12 + 0x40);
+    if (lVar13 == *(longlong *)(lVar12 + 0x20)) {
+      alloc::raw_vec::RawVec::
+      grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>
+                ();
+    }
+    *(undefined8 *)(*(longlong *)(lVar12 + 0x28) + lVar13 * 8) = uVar4;
+    *(longlong *)(lVar12 + 0x30) = lVar13 + 1;
+    *(longlong *)(lVar12 + 0x40) = *(longlong *)(lVar12 + 0x40) + 1;
+    *(undefined4 *)in_stack_00000038[2] = *(undefined4 *)((longlong)in_stack_00000038 + 0x1c);
+    lVar12 = *in_stack_00000038;
+    lVar13 = *(longlong *)(lVar12 + 0x30);
+    uVar4 = *(undefined8 *)(lVar12 + 0x40);
+    if (lVar13 == *(longlong *)(lVar12 + 0x20)) {
+      alloc::raw_vec::RawVec::
+      grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>
+                ();
+    }
+    *(undefined8 *)(*(longlong *)(lVar12 + 0x28) + lVar13 * 8) = uVar4;
+    *(longlong *)(lVar12 + 0x30) = lVar13 + 1;
+    *(longlong *)(lVar12 + 0x40) = *(longlong *)(lVar12 + 0x40) + 1;
+    *(undefined4 *)in_R8[0x12] = *(undefined4 *)((longlong)in_R8 + 0x9c);
+    lVar12 = in_R8[0x10];
+    lVar13 = *(longlong *)(lVar12 + 0x30);
+    uVar4 = *(undefined8 *)(lVar12 + 0x40);
+    if (lVar13 == *(longlong *)(lVar12 + 0x20)) {
+      alloc::raw_vec::RawVec::
+      grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>
+                ();
+    }
+    *(undefined8 *)(*(longlong *)(lVar12 + 0x28) + lVar13 * 8) = uVar4;
+    *(longlong *)(lVar12 + 0x30) = lVar13 + 1;
+    *(longlong *)(lVar12 + 0x40) = *(longlong *)(lVar12 + 0x40) + 1;
+    uVar3 = *(ulonglong *)(lVar11 + 0x78);
+    uVar5 = *(ulonglong *)(lVar11 + 0x80);
+    uVar6 = *(ulonglong *)(lVar11 + 0x88);
+    *(ulonglong *)(in_R9 + 0x98) = *(ulonglong *)(in_R9 + 0x98) | *(ulonglong *)(lVar11 + 0x70);
+    *(ulonglong *)(in_R9 + 0xa0) = *(ulonglong *)(in_R9 + 0xa0) | uVar3;
+    *(ulonglong *)(in_R9 + 0xa8) = *(ulonglong *)(in_R9 + 0xa8) | uVar5;
+    *(ulonglong *)(in_R9 + 0xb0) = *(ulonglong *)(in_R9 + 0xb0) | uVar6;
+    uVar3 = *(ulonglong *)(lVar11 + 0x98);
+    uVar5 = *(ulonglong *)(lVar11 + 0xa0);
+    uVar6 = *(ulonglong *)(lVar11 + 0xa8);
+    *(ulonglong *)(in_R9 + 0xb8) = *(ulonglong *)(lVar11 + 0x90) | *(ulonglong *)(in_R9 + 0xb8);
+    *(ulonglong *)(in_R9 + 0xc0) = uVar3 | *(ulonglong *)(in_R9 + 0xc0);
+    *(ulonglong *)(in_R9 + 200) = uVar5 | *(ulonglong *)(in_R9 + 200);
+    *(ulonglong *)(in_R9 + 0xd0) = uVar6 | *(ulonglong *)(in_R9 + 0xd0);
+    uVar3 = *(ulonglong *)(lVar11 + 0xb8);
+    uVar5 = *(ulonglong *)(lVar11 + 0xc0);
+    uVar6 = *(ulonglong *)(lVar11 + 200);
+    *(ulonglong *)(in_R9 + 0xd8) = *(ulonglong *)(in_R9 + 0xd8) | *(ulonglong *)(lVar11 + 0xb0);
+    *(ulonglong *)(in_R9 + 0xe0) = *(ulonglong *)(in_R9 + 0xe0) | uVar3;
+    *(ulonglong *)(in_R9 + 0xe8) = *(ulonglong *)(in_R9 + 0xe8) | uVar5;
+    *(ulonglong *)(in_R9 + 0xf0) = *(ulonglong *)(in_R9 + 0xf0) | uVar6;
+    uVar3 = *(ulonglong *)(lVar11 + 0xd8);
+    uVar5 = *(ulonglong *)(lVar11 + 0xe0);
+    uVar6 = *(ulonglong *)(lVar11 + 0xe8);
+    *(ulonglong *)(in_R9 + 0xf8) = *(ulonglong *)(in_R9 + 0xf8) | *(ulonglong *)(lVar11 + 0xd0);
+    *(ulonglong *)(in_R9 + 0x100) = *(ulonglong *)(in_R9 + 0x100) | uVar3;
+    *(ulonglong *)(in_R9 + 0x108) = *(ulonglong *)(in_R9 + 0x108) | uVar5;
+    *(ulonglong *)(in_R9 + 0x110) = *(ulonglong *)(in_R9 + 0x110) | uVar6;
+    uVar3 = *(ulonglong *)(lVar11 + 0xf8);
+    uVar5 = *(ulonglong *)(lVar11 + 0x100);
+    uVar6 = *(ulonglong *)(lVar11 + 0x108);
+    *(ulonglong *)(in_R9 + 0x118) = *(ulonglong *)(in_R9 + 0x118) | *(ulonglong *)(lVar11 + 0xf0);
+    *(ulonglong *)(in_R9 + 0x120) = *(ulonglong *)(in_R9 + 0x120) | uVar3;
+    *(ulonglong *)(in_R9 + 0x128) = *(ulonglong *)(in_R9 + 0x128) | uVar5;
+    *(ulonglong *)(in_R9 + 0x130) = *(ulonglong *)(in_R9 + 0x130) | uVar6;
+    uVar3 = *(ulonglong *)(lVar11 + 0x118);
+    uVar5 = *(ulonglong *)(lVar11 + 0x120);
+    uVar6 = *(ulonglong *)(lVar11 + 0x128);
+    *(ulonglong *)(in_R9 + 0x138) = *(ulonglong *)(in_R9 + 0x138) | *(ulonglong *)(lVar11 + 0x110);
+    *(ulonglong *)(in_R9 + 0x140) = *(ulonglong *)(in_R9 + 0x140) | uVar3;
+    *(ulonglong *)(in_R9 + 0x148) = *(ulonglong *)(in_R9 + 0x148) | uVar5;
+    *(ulonglong *)(in_R9 + 0x150) = *(ulonglong *)(in_R9 + 0x150) | uVar6;
+    uVar3 = *(ulonglong *)(lVar11 + 0x138);
+    uVar5 = *(ulonglong *)(lVar11 + 0x140);
+    uVar6 = *(ulonglong *)(lVar11 + 0x148);
+    *(ulonglong *)(in_R9 + 0x158) = *(ulonglong *)(in_R9 + 0x158) | *(ulonglong *)(lVar11 + 0x130);
+    *(ulonglong *)(in_R9 + 0x160) = *(ulonglong *)(in_R9 + 0x160) | uVar3;
+    *(ulonglong *)(in_R9 + 0x168) = *(ulonglong *)(in_R9 + 0x168) | uVar5;
+    *(ulonglong *)(in_R9 + 0x170) = *(ulonglong *)(in_R9 + 0x170) | uVar6;
+    uVar3 = *(ulonglong *)(lVar11 + 0x158);
+    uVar5 = *(ulonglong *)(lVar11 + 0x160);
+    uVar6 = *(ulonglong *)(lVar11 + 0x168);
+    *(ulonglong *)(in_R9 + 0x178) = *(ulonglong *)(in_R9 + 0x178) | *(ulonglong *)(lVar11 + 0x150);
+    *(ulonglong *)(in_R9 + 0x180) = *(ulonglong *)(in_R9 + 0x180) | uVar3;
+    *(ulonglong *)(in_R9 + 0x188) = *(ulonglong *)(in_R9 + 0x188) | uVar5;
+    *(ulonglong *)(in_R9 + 400) = *(ulonglong *)(in_R9 + 400) | uVar6;
+    uVar3 = *(ulonglong *)(lVar11 + 0x178);
+    uVar5 = *(ulonglong *)(lVar11 + 0x180);
+    uVar6 = *(ulonglong *)(lVar11 + 0x188);
+    *(ulonglong *)(in_R9 + 0x198) = *(ulonglong *)(in_R9 + 0x198) | *(ulonglong *)(lVar11 + 0x170);
+    *(ulonglong *)(in_R9 + 0x1a0) = *(ulonglong *)(in_R9 + 0x1a0) | uVar3;
+    *(ulonglong *)(in_R9 + 0x1a8) = *(ulonglong *)(in_R9 + 0x1a8) | uVar5;
+    *(ulonglong *)(in_R9 + 0x1b0) = *(ulonglong *)(in_R9 + 0x1b0) | uVar6;
+    uVar3 = *(ulonglong *)(lVar11 + 0x198);
+    uVar5 = *(ulonglong *)(lVar11 + 0x1a0);
+    uVar6 = *(ulonglong *)(lVar11 + 0x1a8);
+    *(ulonglong *)(in_R9 + 0x1b8) = *(ulonglong *)(in_R9 + 0x1b8) | *(ulonglong *)(lVar11 + 400);
+    *(ulonglong *)(in_R9 + 0x1c0) = *(ulonglong *)(in_R9 + 0x1c0) | uVar3;
+    *(ulonglong *)(in_R9 + 0x1c8) = *(ulonglong *)(in_R9 + 0x1c8) | uVar5;
+    *(ulonglong *)(in_R9 + 0x1d0) = *(ulonglong *)(in_R9 + 0x1d0) | uVar6;
+    uVar3 = *(ulonglong *)(lVar11 + 0x1b8);
+    uVar5 = *(ulonglong *)(lVar11 + 0x1c0);
+    uVar6 = *(ulonglong *)(lVar11 + 0x1c8);
+    *(ulonglong *)(in_R9 + 0x1d8) = *(ulonglong *)(in_R9 + 0x1d8) | *(ulonglong *)(lVar11 + 0x1b0);
+    *(ulonglong *)(in_R9 + 0x1e0) = *(ulonglong *)(in_R9 + 0x1e0) | uVar3;
+    *(ulonglong *)(in_R9 + 0x1e8) = *(ulonglong *)(in_R9 + 0x1e8) | uVar5;
+    *(ulonglong *)(in_R9 + 0x1f0) = *(ulonglong *)(in_R9 + 0x1f0) | uVar6;
+    uVar3 = *(ulonglong *)(lVar11 + 0x1d8);
+    uVar5 = *(ulonglong *)(lVar11 + 0x1e0);
+    uVar6 = *(ulonglong *)(lVar11 + 0x1e8);
+    *(ulonglong *)(in_R9 + 0x1f8) = *(ulonglong *)(in_R9 + 0x1f8) | *(ulonglong *)(lVar11 + 0x1d0);
+    *(ulonglong *)(in_R9 + 0x200) = *(ulonglong *)(in_R9 + 0x200) | uVar3;
+    *(ulonglong *)(in_R9 + 0x208) = *(ulonglong *)(in_R9 + 0x208) | uVar5;
+    *(ulonglong *)(in_R9 + 0x210) = *(ulonglong *)(in_R9 + 0x210) | uVar6;
+    uVar3 = *(ulonglong *)(lVar11 + 0x1f8);
+    uVar5 = *(ulonglong *)(lVar11 + 0x200);
+    uVar6 = *(ulonglong *)(lVar11 + 0x208);
+    *(ulonglong *)(in_R9 + 0x218) = *(ulonglong *)(in_R9 + 0x218) | *(ulonglong *)(lVar11 + 0x1f0);
+    *(ulonglong *)(in_R9 + 0x220) = *(ulonglong *)(in_R9 + 0x220) | uVar3;
+    *(ulonglong *)(in_R9 + 0x228) = *(ulonglong *)(in_R9 + 0x228) | uVar5;
+    *(ulonglong *)(in_R9 + 0x230) = *(ulonglong *)(in_R9 + 0x230) | uVar6;
+    uVar3 = *(ulonglong *)(lVar11 + 0x218);
+    uVar5 = *(ulonglong *)(lVar11 + 0x220);
+    uVar6 = *(ulonglong *)(lVar11 + 0x228);
+    *(ulonglong *)(in_R9 + 0x238) = *(ulonglong *)(in_R9 + 0x238) | *(ulonglong *)(lVar11 + 0x210);
+    *(ulonglong *)(in_R9 + 0x240) = *(ulonglong *)(in_R9 + 0x240) | uVar3;
+    *(ulonglong *)(in_R9 + 0x248) = *(ulonglong *)(in_R9 + 0x248) | uVar5;
+    *(ulonglong *)(in_R9 + 0x250) = *(ulonglong *)(in_R9 + 0x250) | uVar6;
+    uVar3 = *(ulonglong *)(lVar11 + 0x238);
+    uVar5 = *(ulonglong *)(lVar11 + 0x240);
+    uVar6 = *(ulonglong *)(lVar11 + 0x248);
+    *(ulonglong *)(in_R9 + 600) = *(ulonglong *)(in_R9 + 600) | *(ulonglong *)(lVar11 + 0x230);
+    *(ulonglong *)(in_R9 + 0x260) = *(ulonglong *)(in_R9 + 0x260) | uVar3;
+    *(ulonglong *)(in_R9 + 0x268) = *(ulonglong *)(in_R9 + 0x268) | uVar5;
+    *(ulonglong *)(in_R9 + 0x270) = *(ulonglong *)(in_R9 + 0x270) | uVar6;
+    uVar3 = *(ulonglong *)(lVar11 + 600);
+    uVar5 = *(ulonglong *)(lVar11 + 0x260);
+    uVar6 = *(ulonglong *)(lVar11 + 0x268);
+    *(ulonglong *)(in_R9 + 0x278) = *(ulonglong *)(in_R9 + 0x278) | *(ulonglong *)(lVar11 + 0x250);
+    *(ulonglong *)(in_R9 + 0x280) = *(ulonglong *)(in_R9 + 0x280) | uVar3;
+    *(ulonglong *)(in_R9 + 0x288) = *(ulonglong *)(in_R9 + 0x288) | uVar5;
+    *(ulonglong *)(in_R9 + 0x290) = *(ulonglong *)(in_R9 + 0x290) | uVar6;
+    memset((void *)(lVar11 + 0x70),0,0x200);
+    resources::world_raster::impl$2::commit_scratch_to_composite<512>();
+    frozen::FrozenMap::
+    get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>
+              ();
+    if (extraout_RAX != (undefined8 *)0x0) {
+      if ((extraout_RAX[3] != 0x41) ||
+         (iVar10 = memcmp(&anon_107183261458dea85466985370debbb6_29_llvm_3641509820080252961,
+                          (void *)extraout_RAX[2],0x41), iVar10 != 0)) {
+                    // WARNING: Subroutine does not return
+        core::panicking::assert_failed<ref_<str_>,ref_<str_>_>();
+      }
+      lVar11 = (**(code **)(extraout_RAX[1] + 0x18))(*extraout_RAX);
+      if (lVar11 != 0) {
+        resources::world_raster::impl$2::copy_to_staging<512>();
+        return;
+      }
+    }
+                    // WARNING: Subroutine does not return
+    core::option::unwrap_failed();
+  }
+  lVar12 = *(longlong *)(lVar11 + 0x38);
+  if ((lVar12 == 0) || (*(longlong *)(lVar11 + 0x30) + lVar12 * 0xc == 0xc)) {
+                    // WARNING: Subroutine does not return
+    core::option::unwrap_failed();
+  }
+  lVar12 = *(longlong *)(lVar11 + 0x30) + lVar12 * 0xc;
+  fVar17 = in_RDX[1] - *(float *)(lVar12 + -8);
+  fVar18 = *in_RDX - *(float *)(lVar12 + -0xc);
+  fVar19 = in_RDX[2] - *(float *)(lVar12 + -4);
+  if (SQRT(fVar19 * fVar19 + fVar17 * fVar17 + fVar18 * fVar18) <= 0.001) {
+    return;
+  }
+  resources::active_raster_stroke::InProgressRasterStroke::add_point();
+  *(undefined8 *)(lVar11 + 0x58) = 0;
+  lVar12 = *(longlong *)(lVar11 + 0x18);
+  uVar3 = *(ulonglong *)(lVar11 + 0x20);
+  if (*(ulonglong *)(lVar11 + 0x48) < uVar3) {
+    alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+    lVar14 = *(longlong *)(lVar11 + 0x58);
+    lVar13 = *(longlong *)(lVar11 + 0x50);
+    if (uVar3 == 1) goto LAB_140aba8aa;
+LAB_140abae17:
+    lVar1 = lVar13 + lVar14 * 0xc;
+    lVar16 = 0xc;
+    lVar15 = 0;
+    do {
+      *(undefined4 *)(lVar1 + -4 + lVar16) = *(undefined4 *)(lVar12 + -4 + lVar16);
+      *(undefined8 *)(lVar1 + -0xc + lVar16) = *(undefined8 *)(lVar12 + -0xc + lVar16);
+      *(undefined8 *)(lVar1 + lVar16) = *(undefined8 *)(lVar12 + lVar16);
+      *(undefined4 *)(lVar1 + 8 + lVar16) = *(undefined4 *)(lVar12 + 8 + lVar16);
+      lVar16 = lVar16 + 0x18;
+      lVar15 = lVar15 + -2;
+    } while (-lVar15 != (uVar3 & 0xfffffffffffffffe));
+    lVar14 = lVar14 - lVar15;
+    lVar15 = -lVar15;
+  }
+  else {
+    lVar14 = 0;
+    if (uVar3 == 0) goto LAB_140abae9e;
+    lVar13 = *(longlong *)(lVar11 + 0x50);
+    if (uVar3 != 1) goto LAB_140abae17;
+LAB_140aba8aa:
+    lVar15 = 0;
+  }
+  if ((uVar3 & 1) != 0) {
+    *(undefined4 *)(lVar13 + 8 + lVar14 * 0xc) = *(undefined4 *)(lVar12 + 8 + lVar15 * 0xc);
+    *(undefined8 *)(lVar13 + lVar14 * 0xc) = *(undefined8 *)(lVar12 + lVar15 * 0xc);
+    lVar14 = lVar14 + 1;
+  }
+LAB_140abae9e:
+  *(longlong *)(lVar11 + 0x58) = lVar14;
+  resources::active_raster_stroke::InProgressRasterStroke::solidify_fluid_into();
+  ::utils::curve::smooth_in_place<glam::f32::vec3::Vec3,utils::curve::UniformCurveSmoother>();
+  memset((void *)(lVar11 + 0x270),0,0x200);
+  country_core::utils::dirty_tiles::DirtyTiles::
+  rasterize_world_space_stroke<core::iter::adapters::map::Map<core::slice::iter::Iter<glam::f32::vec3::Vec3>,country_core::resources::raster_stroke::impl_3::iter_points_xz::closure_env_0>_>
+            ();
+  uVar3 = *(ulonglong *)(lVar11 + 0x278);
+  uVar5 = *(ulonglong *)(lVar11 + 0x280);
+  uVar6 = *(ulonglong *)(lVar11 + 0x288);
+  *(ulonglong *)(in_R9 + 0x98) = *(ulonglong *)(in_R9 + 0x98) | *(ulonglong *)(lVar11 + 0x270);
+  *(ulonglong *)(in_R9 + 0xa0) = *(ulonglong *)(in_R9 + 0xa0) | uVar3;
+  *(ulonglong *)(in_R9 + 0xa8) = *(ulonglong *)(in_R9 + 0xa8) | uVar5;
+  *(ulonglong *)(in_R9 + 0xb0) = *(ulonglong *)(in_R9 + 0xb0) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x298);
+  uVar5 = *(ulonglong *)(lVar11 + 0x2a0);
+  uVar6 = *(ulonglong *)(lVar11 + 0x2a8);
+  *(ulonglong *)(in_R9 + 0xb8) = *(ulonglong *)(lVar11 + 0x290) | *(ulonglong *)(in_R9 + 0xb8);
+  *(ulonglong *)(in_R9 + 0xc0) = uVar3 | *(ulonglong *)(in_R9 + 0xc0);
+  *(ulonglong *)(in_R9 + 200) = uVar5 | *(ulonglong *)(in_R9 + 200);
+  *(ulonglong *)(in_R9 + 0xd0) = uVar6 | *(ulonglong *)(in_R9 + 0xd0);
+  uVar3 = *(ulonglong *)(lVar11 + 0x2b8);
+  uVar5 = *(ulonglong *)(lVar11 + 0x2c0);
+  uVar6 = *(ulonglong *)(lVar11 + 0x2c8);
+  *(ulonglong *)(in_R9 + 0xd8) = *(ulonglong *)(in_R9 + 0xd8) | *(ulonglong *)(lVar11 + 0x2b0);
+  *(ulonglong *)(in_R9 + 0xe0) = *(ulonglong *)(in_R9 + 0xe0) | uVar3;
+  *(ulonglong *)(in_R9 + 0xe8) = *(ulonglong *)(in_R9 + 0xe8) | uVar5;
+  *(ulonglong *)(in_R9 + 0xf0) = *(ulonglong *)(in_R9 + 0xf0) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x2d8);
+  uVar5 = *(ulonglong *)(lVar11 + 0x2e0);
+  uVar6 = *(ulonglong *)(lVar11 + 0x2e8);
+  *(ulonglong *)(in_R9 + 0xf8) = *(ulonglong *)(in_R9 + 0xf8) | *(ulonglong *)(lVar11 + 0x2d0);
+  *(ulonglong *)(in_R9 + 0x100) = *(ulonglong *)(in_R9 + 0x100) | uVar3;
+  *(ulonglong *)(in_R9 + 0x108) = *(ulonglong *)(in_R9 + 0x108) | uVar5;
+  *(ulonglong *)(in_R9 + 0x110) = *(ulonglong *)(in_R9 + 0x110) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x2f8);
+  uVar5 = *(ulonglong *)(lVar11 + 0x300);
+  uVar6 = *(ulonglong *)(lVar11 + 0x308);
+  *(ulonglong *)(in_R9 + 0x118) = *(ulonglong *)(in_R9 + 0x118) | *(ulonglong *)(lVar11 + 0x2f0);
+  *(ulonglong *)(in_R9 + 0x120) = *(ulonglong *)(in_R9 + 0x120) | uVar3;
+  *(ulonglong *)(in_R9 + 0x128) = *(ulonglong *)(in_R9 + 0x128) | uVar5;
+  *(ulonglong *)(in_R9 + 0x130) = *(ulonglong *)(in_R9 + 0x130) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x318);
+  uVar5 = *(ulonglong *)(lVar11 + 800);
+  uVar6 = *(ulonglong *)(lVar11 + 0x328);
+  *(ulonglong *)(in_R9 + 0x138) = *(ulonglong *)(in_R9 + 0x138) | *(ulonglong *)(lVar11 + 0x310);
+  *(ulonglong *)(in_R9 + 0x140) = *(ulonglong *)(in_R9 + 0x140) | uVar3;
+  *(ulonglong *)(in_R9 + 0x148) = *(ulonglong *)(in_R9 + 0x148) | uVar5;
+  *(ulonglong *)(in_R9 + 0x150) = *(ulonglong *)(in_R9 + 0x150) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x338);
+  uVar5 = *(ulonglong *)(lVar11 + 0x340);
+  uVar6 = *(ulonglong *)(lVar11 + 0x348);
+  *(ulonglong *)(in_R9 + 0x158) = *(ulonglong *)(in_R9 + 0x158) | *(ulonglong *)(lVar11 + 0x330);
+  *(ulonglong *)(in_R9 + 0x160) = *(ulonglong *)(in_R9 + 0x160) | uVar3;
+  *(ulonglong *)(in_R9 + 0x168) = *(ulonglong *)(in_R9 + 0x168) | uVar5;
+  *(ulonglong *)(in_R9 + 0x170) = *(ulonglong *)(in_R9 + 0x170) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x358);
+  uVar5 = *(ulonglong *)(lVar11 + 0x360);
+  uVar6 = *(ulonglong *)(lVar11 + 0x368);
+  *(ulonglong *)(in_R9 + 0x178) = *(ulonglong *)(in_R9 + 0x178) | *(ulonglong *)(lVar11 + 0x350);
+  *(ulonglong *)(in_R9 + 0x180) = *(ulonglong *)(in_R9 + 0x180) | uVar3;
+  *(ulonglong *)(in_R9 + 0x188) = *(ulonglong *)(in_R9 + 0x188) | uVar5;
+  *(ulonglong *)(in_R9 + 400) = *(ulonglong *)(in_R9 + 400) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x378);
+  uVar5 = *(ulonglong *)(lVar11 + 0x380);
+  uVar6 = *(ulonglong *)(lVar11 + 0x388);
+  *(ulonglong *)(in_R9 + 0x198) = *(ulonglong *)(in_R9 + 0x198) | *(ulonglong *)(lVar11 + 0x370);
+  *(ulonglong *)(in_R9 + 0x1a0) = *(ulonglong *)(in_R9 + 0x1a0) | uVar3;
+  *(ulonglong *)(in_R9 + 0x1a8) = *(ulonglong *)(in_R9 + 0x1a8) | uVar5;
+  *(ulonglong *)(in_R9 + 0x1b0) = *(ulonglong *)(in_R9 + 0x1b0) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x398);
+  uVar5 = *(ulonglong *)(lVar11 + 0x3a0);
+  uVar6 = *(ulonglong *)(lVar11 + 0x3a8);
+  *(ulonglong *)(in_R9 + 0x1b8) = *(ulonglong *)(in_R9 + 0x1b8) | *(ulonglong *)(lVar11 + 0x390);
+  *(ulonglong *)(in_R9 + 0x1c0) = *(ulonglong *)(in_R9 + 0x1c0) | uVar3;
+  *(ulonglong *)(in_R9 + 0x1c8) = *(ulonglong *)(in_R9 + 0x1c8) | uVar5;
+  *(ulonglong *)(in_R9 + 0x1d0) = *(ulonglong *)(in_R9 + 0x1d0) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x3b8);
+  uVar5 = *(ulonglong *)(lVar11 + 0x3c0);
+  uVar6 = *(ulonglong *)(lVar11 + 0x3c8);
+  *(ulonglong *)(in_R9 + 0x1d8) = *(ulonglong *)(in_R9 + 0x1d8) | *(ulonglong *)(lVar11 + 0x3b0);
+  *(ulonglong *)(in_R9 + 0x1e0) = *(ulonglong *)(in_R9 + 0x1e0) | uVar3;
+  *(ulonglong *)(in_R9 + 0x1e8) = *(ulonglong *)(in_R9 + 0x1e8) | uVar5;
+  *(ulonglong *)(in_R9 + 0x1f0) = *(ulonglong *)(in_R9 + 0x1f0) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x3d8);
+  uVar5 = *(ulonglong *)(lVar11 + 0x3e0);
+  uVar6 = *(ulonglong *)(lVar11 + 1000);
+  *(ulonglong *)(in_R9 + 0x1f8) = *(ulonglong *)(in_R9 + 0x1f8) | *(ulonglong *)(lVar11 + 0x3d0);
+  *(ulonglong *)(in_R9 + 0x200) = *(ulonglong *)(in_R9 + 0x200) | uVar3;
+  *(ulonglong *)(in_R9 + 0x208) = *(ulonglong *)(in_R9 + 0x208) | uVar5;
+  *(ulonglong *)(in_R9 + 0x210) = *(ulonglong *)(in_R9 + 0x210) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x3f8);
+  uVar5 = *(ulonglong *)(lVar11 + 0x400);
+  uVar6 = *(ulonglong *)(lVar11 + 0x408);
+  *(ulonglong *)(in_R9 + 0x218) = *(ulonglong *)(in_R9 + 0x218) | *(ulonglong *)(lVar11 + 0x3f0);
+  *(ulonglong *)(in_R9 + 0x220) = *(ulonglong *)(in_R9 + 0x220) | uVar3;
+  *(ulonglong *)(in_R9 + 0x228) = *(ulonglong *)(in_R9 + 0x228) | uVar5;
+  *(ulonglong *)(in_R9 + 0x230) = *(ulonglong *)(in_R9 + 0x230) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x418);
+  uVar5 = *(ulonglong *)(lVar11 + 0x420);
+  uVar6 = *(ulonglong *)(lVar11 + 0x428);
+  *(ulonglong *)(in_R9 + 0x238) = *(ulonglong *)(in_R9 + 0x238) | *(ulonglong *)(lVar11 + 0x410);
+  *(ulonglong *)(in_R9 + 0x240) = *(ulonglong *)(in_R9 + 0x240) | uVar3;
+  *(ulonglong *)(in_R9 + 0x248) = *(ulonglong *)(in_R9 + 0x248) | uVar5;
+  *(ulonglong *)(in_R9 + 0x250) = *(ulonglong *)(in_R9 + 0x250) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x438);
+  uVar5 = *(ulonglong *)(lVar11 + 0x440);
+  uVar6 = *(ulonglong *)(lVar11 + 0x448);
+  *(ulonglong *)(in_R9 + 600) = *(ulonglong *)(in_R9 + 600) | *(ulonglong *)(lVar11 + 0x430);
+  *(ulonglong *)(in_R9 + 0x260) = *(ulonglong *)(in_R9 + 0x260) | uVar3;
+  *(ulonglong *)(in_R9 + 0x268) = *(ulonglong *)(in_R9 + 0x268) | uVar5;
+  *(ulonglong *)(in_R9 + 0x270) = *(ulonglong *)(in_R9 + 0x270) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x458);
+  uVar5 = *(ulonglong *)(lVar11 + 0x460);
+  uVar6 = *(ulonglong *)(lVar11 + 0x468);
+  *(ulonglong *)(in_R9 + 0x278) = *(ulonglong *)(in_R9 + 0x278) | *(ulonglong *)(lVar11 + 0x450);
+  *(ulonglong *)(in_R9 + 0x280) = *(ulonglong *)(in_R9 + 0x280) | uVar3;
+  *(ulonglong *)(in_R9 + 0x288) = *(ulonglong *)(in_R9 + 0x288) | uVar5;
+  *(ulonglong *)(in_R9 + 0x290) = *(ulonglong *)(in_R9 + 0x290) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x78);
+  uVar5 = *(ulonglong *)(lVar11 + 0x80);
+  uVar6 = *(ulonglong *)(lVar11 + 0x88);
+  *(ulonglong *)(in_R9 + 0x98) = *(ulonglong *)(in_R9 + 0x98) | *(ulonglong *)(lVar11 + 0x70);
+  *(ulonglong *)(in_R9 + 0xa0) = *(ulonglong *)(in_R9 + 0xa0) | uVar3;
+  *(ulonglong *)(in_R9 + 0xa8) = *(ulonglong *)(in_R9 + 0xa8) | uVar5;
+  *(ulonglong *)(in_R9 + 0xb0) = *(ulonglong *)(in_R9 + 0xb0) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x98);
+  uVar5 = *(ulonglong *)(lVar11 + 0xa0);
+  uVar6 = *(ulonglong *)(lVar11 + 0xa8);
+  *(ulonglong *)(in_R9 + 0xb8) = *(ulonglong *)(in_R9 + 0xb8) | *(ulonglong *)(lVar11 + 0x90);
+  *(ulonglong *)(in_R9 + 0xc0) = *(ulonglong *)(in_R9 + 0xc0) | uVar3;
+  *(ulonglong *)(in_R9 + 200) = *(ulonglong *)(in_R9 + 200) | uVar5;
+  *(ulonglong *)(in_R9 + 0xd0) = *(ulonglong *)(in_R9 + 0xd0) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0xb8);
+  uVar5 = *(ulonglong *)(lVar11 + 0xc0);
+  uVar6 = *(ulonglong *)(lVar11 + 200);
+  *(ulonglong *)(in_R9 + 0xd8) = *(ulonglong *)(in_R9 + 0xd8) | *(ulonglong *)(lVar11 + 0xb0);
+  *(ulonglong *)(in_R9 + 0xe0) = *(ulonglong *)(in_R9 + 0xe0) | uVar3;
+  *(ulonglong *)(in_R9 + 0xe8) = *(ulonglong *)(in_R9 + 0xe8) | uVar5;
+  *(ulonglong *)(in_R9 + 0xf0) = *(ulonglong *)(in_R9 + 0xf0) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0xd8);
+  uVar5 = *(ulonglong *)(lVar11 + 0xe0);
+  uVar6 = *(ulonglong *)(lVar11 + 0xe8);
+  *(ulonglong *)(in_R9 + 0xf8) = *(ulonglong *)(in_R9 + 0xf8) | *(ulonglong *)(lVar11 + 0xd0);
+  *(ulonglong *)(in_R9 + 0x100) = *(ulonglong *)(in_R9 + 0x100) | uVar3;
+  *(ulonglong *)(in_R9 + 0x108) = *(ulonglong *)(in_R9 + 0x108) | uVar5;
+  *(ulonglong *)(in_R9 + 0x110) = *(ulonglong *)(in_R9 + 0x110) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0xf8);
+  uVar5 = *(ulonglong *)(lVar11 + 0x100);
+  uVar6 = *(ulonglong *)(lVar11 + 0x108);
+  *(ulonglong *)(in_R9 + 0x118) = *(ulonglong *)(in_R9 + 0x118) | *(ulonglong *)(lVar11 + 0xf0);
+  *(ulonglong *)(in_R9 + 0x120) = *(ulonglong *)(in_R9 + 0x120) | uVar3;
+  *(ulonglong *)(in_R9 + 0x128) = *(ulonglong *)(in_R9 + 0x128) | uVar5;
+  *(ulonglong *)(in_R9 + 0x130) = *(ulonglong *)(in_R9 + 0x130) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x118);
+  uVar5 = *(ulonglong *)(lVar11 + 0x120);
+  uVar6 = *(ulonglong *)(lVar11 + 0x128);
+  *(ulonglong *)(in_R9 + 0x138) = *(ulonglong *)(in_R9 + 0x138) | *(ulonglong *)(lVar11 + 0x110);
+  *(ulonglong *)(in_R9 + 0x140) = *(ulonglong *)(in_R9 + 0x140) | uVar3;
+  *(ulonglong *)(in_R9 + 0x148) = *(ulonglong *)(in_R9 + 0x148) | uVar5;
+  *(ulonglong *)(in_R9 + 0x150) = *(ulonglong *)(in_R9 + 0x150) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x138);
+  uVar5 = *(ulonglong *)(lVar11 + 0x140);
+  uVar6 = *(ulonglong *)(lVar11 + 0x148);
+  *(ulonglong *)(in_R9 + 0x158) = *(ulonglong *)(in_R9 + 0x158) | *(ulonglong *)(lVar11 + 0x130);
+  *(ulonglong *)(in_R9 + 0x160) = *(ulonglong *)(in_R9 + 0x160) | uVar3;
+  *(ulonglong *)(in_R9 + 0x168) = *(ulonglong *)(in_R9 + 0x168) | uVar5;
+  *(ulonglong *)(in_R9 + 0x170) = *(ulonglong *)(in_R9 + 0x170) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x158);
+  uVar5 = *(ulonglong *)(lVar11 + 0x160);
+  uVar6 = *(ulonglong *)(lVar11 + 0x168);
+  *(ulonglong *)(in_R9 + 0x178) = *(ulonglong *)(in_R9 + 0x178) | *(ulonglong *)(lVar11 + 0x150);
+  *(ulonglong *)(in_R9 + 0x180) = *(ulonglong *)(in_R9 + 0x180) | uVar3;
+  *(ulonglong *)(in_R9 + 0x188) = *(ulonglong *)(in_R9 + 0x188) | uVar5;
+  *(ulonglong *)(in_R9 + 400) = *(ulonglong *)(in_R9 + 400) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x178);
+  uVar5 = *(ulonglong *)(lVar11 + 0x180);
+  uVar6 = *(ulonglong *)(lVar11 + 0x188);
+  *(ulonglong *)(in_R9 + 0x198) = *(ulonglong *)(in_R9 + 0x198) | *(ulonglong *)(lVar11 + 0x170);
+  *(ulonglong *)(in_R9 + 0x1a0) = *(ulonglong *)(in_R9 + 0x1a0) | uVar3;
+  *(ulonglong *)(in_R9 + 0x1a8) = *(ulonglong *)(in_R9 + 0x1a8) | uVar5;
+  *(ulonglong *)(in_R9 + 0x1b0) = *(ulonglong *)(in_R9 + 0x1b0) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x198);
+  uVar5 = *(ulonglong *)(lVar11 + 0x1a0);
+  uVar6 = *(ulonglong *)(lVar11 + 0x1a8);
+  *(ulonglong *)(in_R9 + 0x1b8) = *(ulonglong *)(in_R9 + 0x1b8) | *(ulonglong *)(lVar11 + 400);
+  *(ulonglong *)(in_R9 + 0x1c0) = *(ulonglong *)(in_R9 + 0x1c0) | uVar3;
+  *(ulonglong *)(in_R9 + 0x1c8) = *(ulonglong *)(in_R9 + 0x1c8) | uVar5;
+  *(ulonglong *)(in_R9 + 0x1d0) = *(ulonglong *)(in_R9 + 0x1d0) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x1b8);
+  uVar5 = *(ulonglong *)(lVar11 + 0x1c0);
+  uVar6 = *(ulonglong *)(lVar11 + 0x1c8);
+  *(ulonglong *)(in_R9 + 0x1d8) = *(ulonglong *)(in_R9 + 0x1d8) | *(ulonglong *)(lVar11 + 0x1b0);
+  *(ulonglong *)(in_R9 + 0x1e0) = *(ulonglong *)(in_R9 + 0x1e0) | uVar3;
+  *(ulonglong *)(in_R9 + 0x1e8) = *(ulonglong *)(in_R9 + 0x1e8) | uVar5;
+  *(ulonglong *)(in_R9 + 0x1f0) = *(ulonglong *)(in_R9 + 0x1f0) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x1d8);
+  uVar5 = *(ulonglong *)(lVar11 + 0x1e0);
+  uVar6 = *(ulonglong *)(lVar11 + 0x1e8);
+  *(ulonglong *)(in_R9 + 0x1f8) = *(ulonglong *)(in_R9 + 0x1f8) | *(ulonglong *)(lVar11 + 0x1d0);
+  *(ulonglong *)(in_R9 + 0x200) = *(ulonglong *)(in_R9 + 0x200) | uVar3;
+  *(ulonglong *)(in_R9 + 0x208) = *(ulonglong *)(in_R9 + 0x208) | uVar5;
+  *(ulonglong *)(in_R9 + 0x210) = *(ulonglong *)(in_R9 + 0x210) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x1f8);
+  uVar5 = *(ulonglong *)(lVar11 + 0x200);
+  uVar6 = *(ulonglong *)(lVar11 + 0x208);
+  *(ulonglong *)(in_R9 + 0x218) = *(ulonglong *)(in_R9 + 0x218) | *(ulonglong *)(lVar11 + 0x1f0);
+  *(ulonglong *)(in_R9 + 0x220) = *(ulonglong *)(in_R9 + 0x220) | uVar3;
+  *(ulonglong *)(in_R9 + 0x228) = *(ulonglong *)(in_R9 + 0x228) | uVar5;
+  *(ulonglong *)(in_R9 + 0x230) = *(ulonglong *)(in_R9 + 0x230) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x218);
+  uVar5 = *(ulonglong *)(lVar11 + 0x220);
+  uVar6 = *(ulonglong *)(lVar11 + 0x228);
+  *(ulonglong *)(in_R9 + 0x238) = *(ulonglong *)(in_R9 + 0x238) | *(ulonglong *)(lVar11 + 0x210);
+  *(ulonglong *)(in_R9 + 0x240) = *(ulonglong *)(in_R9 + 0x240) | uVar3;
+  *(ulonglong *)(in_R9 + 0x248) = *(ulonglong *)(in_R9 + 0x248) | uVar5;
+  *(ulonglong *)(in_R9 + 0x250) = *(ulonglong *)(in_R9 + 0x250) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 0x238);
+  uVar5 = *(ulonglong *)(lVar11 + 0x240);
+  uVar6 = *(ulonglong *)(lVar11 + 0x248);
+  *(ulonglong *)(in_R9 + 600) = *(ulonglong *)(in_R9 + 600) | *(ulonglong *)(lVar11 + 0x230);
+  *(ulonglong *)(in_R9 + 0x260) = *(ulonglong *)(in_R9 + 0x260) | uVar3;
+  *(ulonglong *)(in_R9 + 0x268) = *(ulonglong *)(in_R9 + 0x268) | uVar5;
+  *(ulonglong *)(in_R9 + 0x270) = *(ulonglong *)(in_R9 + 0x270) | uVar6;
+  uVar3 = *(ulonglong *)(lVar11 + 600);
+  uVar5 = *(ulonglong *)(lVar11 + 0x260);
+  uVar6 = *(ulonglong *)(lVar11 + 0x268);
+  *(ulonglong *)(in_R9 + 0x278) = *(ulonglong *)(in_R9 + 0x278) | *(ulonglong *)(lVar11 + 0x250);
+  *(ulonglong *)(in_R9 + 0x280) = *(ulonglong *)(in_R9 + 0x280) | uVar3;
+  *(ulonglong *)(in_R9 + 0x288) = *(ulonglong *)(in_R9 + 0x288) | uVar5;
+  *(ulonglong *)(in_R9 + 0x290) = *(ulonglong *)(in_R9 + 0x290) | uVar6;
+  uVar4 = *(undefined8 *)(lVar11 + 0x270);
+  uVar7 = *(undefined8 *)(lVar11 + 0x278);
+  uVar8 = *(undefined8 *)(lVar11 + 0x280);
+  uVar9 = *(undefined8 *)(lVar11 + 0x288);
+  *(undefined8 *)(lVar11 + 0x270) = *(undefined8 *)(lVar11 + 0x70);
+  *(undefined8 *)(lVar11 + 0x278) = *(undefined8 *)(lVar11 + 0x78);
+  *(undefined8 *)(lVar11 + 0x280) = *(undefined8 *)(lVar11 + 0x80);
+  *(undefined8 *)(lVar11 + 0x288) = *(undefined8 *)(lVar11 + 0x88);
+  *(undefined8 *)(lVar11 + 0x70) = uVar4;
+  *(undefined8 *)(lVar11 + 0x78) = uVar7;
+  *(undefined8 *)(lVar11 + 0x80) = uVar8;
+  *(undefined8 *)(lVar11 + 0x88) = uVar9;
+  uVar4 = *(undefined8 *)(lVar11 + 0x290);
+  uVar7 = *(undefined8 *)(lVar11 + 0x298);
+  uVar8 = *(undefined8 *)(lVar11 + 0x2a0);
+  uVar9 = *(undefined8 *)(lVar11 + 0x2a8);
+  *(undefined8 *)(lVar11 + 0x290) = *(undefined8 *)(lVar11 + 0x90);
+  *(undefined8 *)(lVar11 + 0x298) = *(undefined8 *)(lVar11 + 0x98);
+  *(undefined8 *)(lVar11 + 0x2a0) = *(undefined8 *)(lVar11 + 0xa0);
+  *(undefined8 *)(lVar11 + 0x2a8) = *(undefined8 *)(lVar11 + 0xa8);
+  *(undefined8 *)(lVar11 + 0x90) = uVar4;
+  *(undefined8 *)(lVar11 + 0x98) = uVar7;
+  *(undefined8 *)(lVar11 + 0xa0) = uVar8;
+  *(undefined8 *)(lVar11 + 0xa8) = uVar9;
+  uVar4 = *(undefined8 *)(lVar11 + 0x2b0);
+  uVar7 = *(undefined8 *)(lVar11 + 0x2b8);
+  uVar8 = *(undefined8 *)(lVar11 + 0x2c0);
+  uVar9 = *(undefined8 *)(lVar11 + 0x2c8);
+  *(undefined8 *)(lVar11 + 0x2b0) = *(undefined8 *)(lVar11 + 0xb0);
+  *(undefined8 *)(lVar11 + 0x2b8) = *(undefined8 *)(lVar11 + 0xb8);
+  *(undefined8 *)(lVar11 + 0x2c0) = *(undefined8 *)(lVar11 + 0xc0);
+  *(undefined8 *)(lVar11 + 0x2c8) = *(undefined8 *)(lVar11 + 200);
+  *(undefined8 *)(lVar11 + 0xb0) = uVar4;
+  *(undefined8 *)(lVar11 + 0xb8) = uVar7;
+  *(undefined8 *)(lVar11 + 0xc0) = uVar8;
+  *(undefined8 *)(lVar11 + 200) = uVar9;
+  uVar4 = *(undefined8 *)(lVar11 + 0x2d0);
+  uVar7 = *(undefined8 *)(lVar11 + 0x2d8);
+  uVar8 = *(undefined8 *)(lVar11 + 0x2e0);
+  uVar9 = *(undefined8 *)(lVar11 + 0x2e8);
+  *(undefined8 *)(lVar11 + 0x2d0) = *(undefined8 *)(lVar11 + 0xd0);
+  *(undefined8 *)(lVar11 + 0x2d8) = *(undefined8 *)(lVar11 + 0xd8);
+  *(undefined8 *)(lVar11 + 0x2e0) = *(undefined8 *)(lVar11 + 0xe0);
+  *(undefined8 *)(lVar11 + 0x2e8) = *(undefined8 *)(lVar11 + 0xe8);
+  *(undefined8 *)(lVar11 + 0xd0) = uVar4;
+  *(undefined8 *)(lVar11 + 0xd8) = uVar7;
+  *(undefined8 *)(lVar11 + 0xe0) = uVar8;
+  *(undefined8 *)(lVar11 + 0xe8) = uVar9;
+  uVar4 = *(undefined8 *)(lVar11 + 0x2f0);
+  uVar7 = *(undefined8 *)(lVar11 + 0x2f8);
+  uVar8 = *(undefined8 *)(lVar11 + 0x300);
+  uVar9 = *(undefined8 *)(lVar11 + 0x308);
+  *(undefined8 *)(lVar11 + 0x2f0) = *(undefined8 *)(lVar11 + 0xf0);
+  *(undefined8 *)(lVar11 + 0x2f8) = *(undefined8 *)(lVar11 + 0xf8);
+  *(undefined8 *)(lVar11 + 0x300) = *(undefined8 *)(lVar11 + 0x100);
+  *(undefined8 *)(lVar11 + 0x308) = *(undefined8 *)(lVar11 + 0x108);
+  *(undefined8 *)(lVar11 + 0xf0) = uVar4;
+  *(undefined8 *)(lVar11 + 0xf8) = uVar7;
+  *(undefined8 *)(lVar11 + 0x100) = uVar8;
+  *(undefined8 *)(lVar11 + 0x108) = uVar9;
+  uVar4 = *(undefined8 *)(lVar11 + 0x310);
+  uVar7 = *(undefined8 *)(lVar11 + 0x318);
+  uVar8 = *(undefined8 *)(lVar11 + 800);
+  uVar9 = *(undefined8 *)(lVar11 + 0x328);
+  *(undefined8 *)(lVar11 + 0x310) = *(undefined8 *)(lVar11 + 0x110);
+  *(undefined8 *)(lVar11 + 0x318) = *(undefined8 *)(lVar11 + 0x118);
+  *(undefined8 *)(lVar11 + 800) = *(undefined8 *)(lVar11 + 0x120);
+  *(undefined8 *)(lVar11 + 0x328) = *(undefined8 *)(lVar11 + 0x128);
+  *(undefined8 *)(lVar11 + 0x110) = uVar4;
+  *(undefined8 *)(lVar11 + 0x118) = uVar7;
+  *(undefined8 *)(lVar11 + 0x120) = uVar8;
+  *(undefined8 *)(lVar11 + 0x128) = uVar9;
+  uVar4 = *(undefined8 *)(lVar11 + 0x330);
+  uVar7 = *(undefined8 *)(lVar11 + 0x338);
+  uVar8 = *(undefined8 *)(lVar11 + 0x340);
+  uVar9 = *(undefined8 *)(lVar11 + 0x348);
+  *(undefined8 *)(lVar11 + 0x330) = *(undefined8 *)(lVar11 + 0x130);
+  *(undefined8 *)(lVar11 + 0x338) = *(undefined8 *)(lVar11 + 0x138);
+  *(undefined8 *)(lVar11 + 0x340) = *(undefined8 *)(lVar11 + 0x140);
+  *(undefined8 *)(lVar11 + 0x348) = *(undefined8 *)(lVar11 + 0x148);
+  *(undefined8 *)(lVar11 + 0x130) = uVar4;
+  *(undefined8 *)(lVar11 + 0x138) = uVar7;
+  *(undefined8 *)(lVar11 + 0x140) = uVar8;
+  *(undefined8 *)(lVar11 + 0x148) = uVar9;
+  uVar4 = *(undefined8 *)(lVar11 + 0x350);
+  uVar7 = *(undefined8 *)(lVar11 + 0x358);
+  uVar8 = *(undefined8 *)(lVar11 + 0x360);
+  uVar9 = *(undefined8 *)(lVar11 + 0x368);
+  *(undefined8 *)(lVar11 + 0x350) = *(undefined8 *)(lVar11 + 0x150);
+  *(undefined8 *)(lVar11 + 0x358) = *(undefined8 *)(lVar11 + 0x158);
+  *(undefined8 *)(lVar11 + 0x360) = *(undefined8 *)(lVar11 + 0x160);
+  *(undefined8 *)(lVar11 + 0x368) = *(undefined8 *)(lVar11 + 0x168);
+  *(undefined8 *)(lVar11 + 0x150) = uVar4;
+  *(undefined8 *)(lVar11 + 0x158) = uVar7;
+  *(undefined8 *)(lVar11 + 0x160) = uVar8;
+  *(undefined8 *)(lVar11 + 0x168) = uVar9;
+  uVar4 = *(undefined8 *)(lVar11 + 0x370);
+  uVar7 = *(undefined8 *)(lVar11 + 0x378);
+  uVar8 = *(undefined8 *)(lVar11 + 0x380);
+  uVar9 = *(undefined8 *)(lVar11 + 0x388);
+  *(undefined8 *)(lVar11 + 0x370) = *(undefined8 *)(lVar11 + 0x170);
+  *(undefined8 *)(lVar11 + 0x378) = *(undefined8 *)(lVar11 + 0x178);
+  *(undefined8 *)(lVar11 + 0x380) = *(undefined8 *)(lVar11 + 0x180);
+  *(undefined8 *)(lVar11 + 0x388) = *(undefined8 *)(lVar11 + 0x188);
+  *(undefined8 *)(lVar11 + 0x170) = uVar4;
+  *(undefined8 *)(lVar11 + 0x178) = uVar7;
+  *(undefined8 *)(lVar11 + 0x180) = uVar8;
+  *(undefined8 *)(lVar11 + 0x188) = uVar9;
+  uVar4 = *(undefined8 *)(lVar11 + 0x390);
+  uVar7 = *(undefined8 *)(lVar11 + 0x398);
+  uVar8 = *(undefined8 *)(lVar11 + 0x3a0);
+  uVar9 = *(undefined8 *)(lVar11 + 0x3a8);
+  *(undefined8 *)(lVar11 + 0x390) = *(undefined8 *)(lVar11 + 400);
+  *(undefined8 *)(lVar11 + 0x398) = *(undefined8 *)(lVar11 + 0x198);
+  *(undefined8 *)(lVar11 + 0x3a0) = *(undefined8 *)(lVar11 + 0x1a0);
+  *(undefined8 *)(lVar11 + 0x3a8) = *(undefined8 *)(lVar11 + 0x1a8);
+  *(undefined8 *)(lVar11 + 400) = uVar4;
+  *(undefined8 *)(lVar11 + 0x198) = uVar7;
+  *(undefined8 *)(lVar11 + 0x1a0) = uVar8;
+  *(undefined8 *)(lVar11 + 0x1a8) = uVar9;
+  uVar4 = *(undefined8 *)(lVar11 + 0x3b0);
+  uVar7 = *(undefined8 *)(lVar11 + 0x3b8);
+  uVar8 = *(undefined8 *)(lVar11 + 0x3c0);
+  uVar9 = *(undefined8 *)(lVar11 + 0x3c8);
+  *(undefined8 *)(lVar11 + 0x3b0) = *(undefined8 *)(lVar11 + 0x1b0);
+  *(undefined8 *)(lVar11 + 0x3b8) = *(undefined8 *)(lVar11 + 0x1b8);
+  *(undefined8 *)(lVar11 + 0x3c0) = *(undefined8 *)(lVar11 + 0x1c0);
+  *(undefined8 *)(lVar11 + 0x3c8) = *(undefined8 *)(lVar11 + 0x1c8);
+  *(undefined8 *)(lVar11 + 0x1b0) = uVar4;
+  *(undefined8 *)(lVar11 + 0x1b8) = uVar7;
+  *(undefined8 *)(lVar11 + 0x1c0) = uVar8;
+  *(undefined8 *)(lVar11 + 0x1c8) = uVar9;
+  uVar4 = *(undefined8 *)(lVar11 + 0x3d0);
+  uVar7 = *(undefined8 *)(lVar11 + 0x3d8);
+  uVar8 = *(undefined8 *)(lVar11 + 0x3e0);
+  uVar9 = *(undefined8 *)(lVar11 + 1000);
+  *(undefined8 *)(lVar11 + 0x3d0) = *(undefined8 *)(lVar11 + 0x1d0);
+  *(undefined8 *)(lVar11 + 0x3d8) = *(undefined8 *)(lVar11 + 0x1d8);
+  *(undefined8 *)(lVar11 + 0x3e0) = *(undefined8 *)(lVar11 + 0x1e0);
+  *(undefined8 *)(lVar11 + 1000) = *(undefined8 *)(lVar11 + 0x1e8);
+  *(undefined8 *)(lVar11 + 0x1d0) = uVar4;
+  *(undefined8 *)(lVar11 + 0x1d8) = uVar7;
+  *(undefined8 *)(lVar11 + 0x1e0) = uVar8;
+  *(undefined8 *)(lVar11 + 0x1e8) = uVar9;
+  uVar4 = *(undefined8 *)(lVar11 + 0x3f0);
+  uVar7 = *(undefined8 *)(lVar11 + 0x3f8);
+  uVar8 = *(undefined8 *)(lVar11 + 0x400);
+  uVar9 = *(undefined8 *)(lVar11 + 0x408);
+  *(undefined8 *)(lVar11 + 0x3f0) = *(undefined8 *)(lVar11 + 0x1f0);
+  *(undefined8 *)(lVar11 + 0x3f8) = *(undefined8 *)(lVar11 + 0x1f8);
+  *(undefined8 *)(lVar11 + 0x400) = *(undefined8 *)(lVar11 + 0x200);
+  *(undefined8 *)(lVar11 + 0x408) = *(undefined8 *)(lVar11 + 0x208);
+  *(undefined8 *)(lVar11 + 0x1f0) = uVar4;
+  *(undefined8 *)(lVar11 + 0x1f8) = uVar7;
+  *(undefined8 *)(lVar11 + 0x200) = uVar8;
+  *(undefined8 *)(lVar11 + 0x208) = uVar9;
+  uVar4 = *(undefined8 *)(lVar11 + 0x410);
+  uVar7 = *(undefined8 *)(lVar11 + 0x418);
+  uVar8 = *(undefined8 *)(lVar11 + 0x420);
+  uVar9 = *(undefined8 *)(lVar11 + 0x428);
+  *(undefined8 *)(lVar11 + 0x410) = *(undefined8 *)(lVar11 + 0x210);
+  *(undefined8 *)(lVar11 + 0x418) = *(undefined8 *)(lVar11 + 0x218);
+  *(undefined8 *)(lVar11 + 0x420) = *(undefined8 *)(lVar11 + 0x220);
+  *(undefined8 *)(lVar11 + 0x428) = *(undefined8 *)(lVar11 + 0x228);
+  *(undefined8 *)(lVar11 + 0x210) = uVar4;
+  *(undefined8 *)(lVar11 + 0x218) = uVar7;
+  *(undefined8 *)(lVar11 + 0x220) = uVar8;
+  *(undefined8 *)(lVar11 + 0x228) = uVar9;
+  uVar4 = *(undefined8 *)(lVar11 + 0x430);
+  uVar7 = *(undefined8 *)(lVar11 + 0x438);
+  uVar8 = *(undefined8 *)(lVar11 + 0x440);
+  uVar9 = *(undefined8 *)(lVar11 + 0x448);
+  *(undefined8 *)(lVar11 + 0x430) = *(undefined8 *)(lVar11 + 0x230);
+  *(undefined8 *)(lVar11 + 0x438) = *(undefined8 *)(lVar11 + 0x238);
+  *(undefined8 *)(lVar11 + 0x440) = *(undefined8 *)(lVar11 + 0x240);
+  *(undefined8 *)(lVar11 + 0x448) = *(undefined8 *)(lVar11 + 0x248);
+  *(undefined8 *)(lVar11 + 0x230) = uVar4;
+  *(undefined8 *)(lVar11 + 0x238) = uVar7;
+  *(undefined8 *)(lVar11 + 0x240) = uVar8;
+  *(undefined8 *)(lVar11 + 0x248) = uVar9;
+  uVar4 = *(undefined8 *)(lVar11 + 0x450);
+  uVar7 = *(undefined8 *)(lVar11 + 0x458);
+  uVar8 = *(undefined8 *)(lVar11 + 0x460);
+  uVar9 = *(undefined8 *)(lVar11 + 0x468);
+  *(undefined8 *)(lVar11 + 0x450) = *(undefined8 *)(lVar11 + 0x250);
+  *(undefined8 *)(lVar11 + 0x458) = *(undefined8 *)(lVar11 + 600);
+  *(undefined8 *)(lVar11 + 0x460) = *(undefined8 *)(lVar11 + 0x260);
+  *(undefined8 *)(lVar11 + 0x468) = *(undefined8 *)(lVar11 + 0x268);
+  *(undefined8 *)(lVar11 + 0x250) = uVar4;
+  *(undefined8 *)(lVar11 + 600) = uVar7;
+  *(undefined8 *)(lVar11 + 0x260) = uVar8;
+  *(undefined8 *)(lVar11 + 0x268) = uVar9;
+  resources::world_raster::impl$2::copy_composite_to_scratch<512>();
+  resources::world_raster::impl$2::
+  rasterize_stroke<512,core::iter::adapters::map::Map<core::slice::iter::Iter<glam::f32::vec3::Vec3>,country_core::resources::raster_stroke::impl_2::iter_points_xz::closure_env_0>_>
+            ();
+  frozen::FrozenMap::
+  get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>
+            ();
+  if (extraout_RAX_00 != (undefined8 *)0x0) {
+    if ((extraout_RAX_00[3] != 0x41) ||
+       (iVar10 = memcmp(&anon_107183261458dea85466985370debbb6_29_llvm_3641509820080252961,
+                        (void *)extraout_RAX_00[2],0x41), iVar10 != 0)) {
+                    // WARNING: Subroutine does not return
+      core::panicking::assert_failed<ref_<str_>,ref_<str_>_>();
+    }
+    lVar12 = (**(code **)(extraout_RAX_00[1] + 0x18))(*extraout_RAX_00);
+    if (lVar12 != 0) {
+      resources::world_raster::impl$2::copy_to_staging<512>();
+      uVar2 = *(undefined4 *)(lVar11 + 0x60);
+      if (*(char *)(lVar11 + 100) == '\0') {
+        *(undefined4 *)in_stack_00000030[2] = *(undefined4 *)((longlong)in_stack_00000030 + 0x1c);
+        lVar11 = *in_stack_00000030;
+        lVar12 = *(longlong *)(lVar11 + 0x30);
+        uVar4 = *(undefined8 *)(lVar11 + 0x40);
+        if (lVar12 == *(longlong *)(lVar11 + 0x20)) {
+          alloc::raw_vec::RawVec::
+          grow_one<tuple_<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<system_decorator::decorator_visual::stairs::PreferredNodeAlignment,alloc::alloc::Global>_>,alloc::alloc::Global>
+                    ();
+        }
+        lVar13 = *(longlong *)(lVar11 + 0x28);
+        lVar14 = lVar12 * 0x20;
+        *(undefined8 *)(lVar13 + lVar14) = uVar4;
+        *(undefined8 *)(lVar13 + 8 + lVar14) = *(undefined8 *)in_RDX;
+        *(float *)(lVar13 + 0x10 + lVar14) = in_RDX[2];
+        *(undefined4 *)(lVar13 + 0x14 + lVar14) = uVar2;
+        *(undefined1 *)(lVar13 + 0x18 + lVar14) = 0;
+      }
+      else {
+        *(undefined4 *)in_stack_00000028[2] = *(undefined4 *)((longlong)in_stack_00000028 + 0x1c);
+        lVar11 = *in_stack_00000028;
+        lVar12 = *(longlong *)(lVar11 + 0x30);
+        uVar4 = *(undefined8 *)(lVar11 + 0x40);
+        if (lVar12 == *(longlong *)(lVar11 + 0x20)) {
+          alloc::raw_vec::RawVec::
+          grow_one<tuple_<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<system_decorator::decorator_visual::stairs::PreferredNodeAlignment,alloc::alloc::Global>_>,alloc::alloc::Global>
+                    ();
+        }
+        lVar13 = *(longlong *)(lVar11 + 0x28);
+        lVar14 = lVar12 * 0x20;
+        *(undefined8 *)(lVar13 + lVar14) = uVar4;
+        *(undefined8 *)(lVar13 + 8 + lVar14) = *(undefined8 *)in_RDX;
+        *(float *)(lVar13 + 0x10 + lVar14) = in_RDX[2];
+        *(undefined4 *)(lVar13 + 0x14 + lVar14) = uVar2;
+        *(undefined1 *)(lVar13 + 0x18 + lVar14) = 0;
+        *(undefined1 *)(lVar13 + 0x1c + lVar14) = 0;
+      }
+      *(longlong *)(lVar11 + 0x30) = lVar12 + 1;
+      *(longlong *)(lVar11 + 0x40) = *(longlong *)(lVar11 + 0x40) + 1;
+      return;
+    }
+  }
+                    // WARNING: Subroutine does not return
+  core::option::unwrap_failed();
+}
+

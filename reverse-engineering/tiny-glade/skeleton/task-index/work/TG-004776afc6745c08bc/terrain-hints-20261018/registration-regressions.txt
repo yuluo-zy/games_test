@@ -1,0 +1,42 @@
+
+    #[test]
+    fn configured_cpu_chain_completes_profile_and_requests_settings_once_per_event() {
+        use country_core::resources::events::WriteSettingsFileCmd;
+        let mut world = World::new();
+        world.insert_resource(GameProfile::default());
+        world.insert_resource(AppMode::Terrain);
+        let mut schedule = Schedule::default();
+        crate::configure(&mut world, &mut schedule);
+        world.send_event(NotifyHintSystemTerrain { tag: 1 });
+        world.send_event(NotifyHintSystemTerrain { tag: 2 });
+        world.send_event(NotifyHintSystemTerrainSteepness { tag: 1 });
+        schedule.run(&mut world);
+        let profile = world.resource::<GameProfile>();
+        assert!(profile.terrain_layering_completed);
+        assert!(profile.terrain_focus_completed);
+        assert!(profile.terrain_steepness_completed);
+        assert_eq!(world.resource::<Events<WriteSettingsFileCmd>>().len(), 3);
+        world.resource_mut::<HintTerrainConditions>().count = 9;
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<HintTerrainConditions>().count, 9);
+        assert_eq!(world.resource::<Events<WriteSettingsFileCmd>>().len(), 3);
+    }
+
+    #[test]
+    fn configure_reuses_profile_startup_without_resetting_supplied_conditions() {
+        let mut world = World::new();
+        let mut profile = GameProfile::default();
+        profile.terrain_layering_completed = true;
+        profile.terrain_focus_completed = true;
+        profile.terrain_steepness_completed = true;
+        world.insert_resource(profile);
+        let mut first = Schedule::default();
+        crate::configure(&mut world, &mut first);
+        assert!(world.resource::<HintTerrainConditions>().hint_done);
+        assert!(world.resource::<HintFocusTerrainConditions>().hint_done);
+        assert_eq!(world.resource::<HintTerrainSteepnessConditions>().event_byte, 1);
+        world.resource_mut::<HintTerrainConditions>().count = 9;
+        let mut second = Schedule::default();
+        crate::configure(&mut world, &mut second);
+        assert_eq!(world.resource::<HintTerrainConditions>().count, 9);
+    }

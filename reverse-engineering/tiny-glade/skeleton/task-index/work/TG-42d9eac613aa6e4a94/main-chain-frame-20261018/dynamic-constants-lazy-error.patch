@@ -1,0 +1,11 @@
+--- games_test/tiny-glade/crates/rhapsody/src/raw/dynamic_constants.rs
++++ games_test/tiny-glade/crates/rhapsody/src/raw/dynamic_constants.rs
+@@ -503,7 +503,7 @@
+     value
+         .checked_add(alignment - 1)
+         .map(|v| v & !(alignment - 1))
+-        .ok_or(Error::invalid_usage("常量区段对齐溢出"))
++        .ok_or_else(|| Error::invalid_usage("常量区段对齐溢出"))
+ }
+ 
+ #[cfg(test)]

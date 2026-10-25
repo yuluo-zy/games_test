@@ -1,0 +1,10 @@
+{
+  "scope": "UI event oracle setup failure, before candidate comparison",
+  "entry": "0x14165c5f2",
+  "actual_stop": "0x14165c712",
+  "failure": "Observed event len=1/next-id=1, expected len=1/next-id=18",
+  "cause": "Fixture packed four u64 at Events+20, placing intended next-event-id17 at+38; original counter is+40",
+  "fix": "Pack cap/ptr/len at+20/+28/+30; explicitly write next-event-id17 at+40",
+  "candidate_changed": false,
+  "native_game_output_hooked": false
+}

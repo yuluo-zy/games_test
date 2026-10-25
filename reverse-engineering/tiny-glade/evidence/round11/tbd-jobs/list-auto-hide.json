@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "timeoutSeconds": 120,
+      "code": "from ghidra.program.model.address import AddressSet\nfm=currentProgram.getFunctionManager()\naf=currentProgram.getAddressFactory()\nf=fm.getFunctionAt(af.getAddress('142343a10'))\nprint('BODY', f.getBody().getMinAddress(), f.getBody().getMaxAddress(), f.getBody().getNumAddresses())\nlisting=currentProgram.getListing()\nfor ins in listing.getInstructions(f.getBody(), True):\n    print(ins.getAddress(), ins.toString())\n"
+    },
+    "timeout_seconds": 180
+  }
+]

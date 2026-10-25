@@ -1,0 +1,54 @@
+{
+  "scope": "current visible Snap mesh producer boundary only; original loader not recovered/modified here",
+  "sources": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/run_game.rs",
+      "sha256": "34afbd675a88f374fa0b03c1535e57cb02fd1ccc96bd3299760705fdd8ea392b",
+      "bytes": 92481
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/decorator_plugin.rs",
+      "sha256": "bdbef25c4e7ed59722caa54bb6b187e7654da4e474ed511a88cda6ea2689eb72",
+      "bytes": 3565
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/lib.rs",
+      "sha256": "e822814b592b4226dfd4ae7a7c018ac082577dffb7ac844c082d327115983a25",
+      "bytes": 11522
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/load_decorators.rs",
+      "sha256": "ba7acd2da87e49cb34cbb7ea6eb825fcff857357dbcffe4c5bb6980c1cd33cbd",
+      "bytes": 4924
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/walls/decorator_subtype.rs",
+      "sha256": "cf93fcc6010ac800468d6c716a5e95e04dfece937e0316d27f4b04228fb01271",
+      "bytes": 12769
+    }
+  ],
+  "observed_current_path": [
+    "run_game.rs366 calls decorator_plugin::build_startup_resources",
+    "decorator_plugin.rs55 forwards to add_decorator_events_and_resources",
+    "system-decorator/lib.rs219 init_resource default DecoratorMeshLibrary",
+    "get_collision_bbx_ls does exact collision.get(key)"
+  ],
+  "required_actual_keys": {
+    "dtype0x38": [
+      "(subtype4,actualrank)",
+      "(subtype0,actualrank)"
+    ],
+    "dtype0x39": [
+      "(subtype9,actualrank)",
+      "(subtype6,actualrank)"
+    ]
+  },
+  "current_source_search_findings": [
+    "load_decorators is generic DecoratorMeshHost; no production trait implementation/caller found in current workspace Rust sources",
+    "only collision.insert writer found is canonical library insert helper; current default constructor/initialization does not populate it"
+  ],
+  "gate": "Do not claim actual validate consumer closure merely because the resource exists. Actual same-World producer/data and loading phase remain necessary; missing-key original panic is retained, no default BBX/None/fixture supplied as runtime data.",
+  "not_proven": "No target runtime or global external host behavior is inferred from this current source search. Original loader/register details require their own owner/evidence.",
+  "production_mutated": false,
+  "runtime_executed": false
+}

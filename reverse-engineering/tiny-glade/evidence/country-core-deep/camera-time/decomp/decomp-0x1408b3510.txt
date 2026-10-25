@@ -1,0 +1,80 @@
+
+void FUN_1408b3510(longlong *param_1,undefined8 *param_2)
+
+{
+  uint *puVar1;
+  uint uVar2;
+  longlong lVar3;
+  longlong lVar4;
+  undefined8 uVar5;
+  undefined8 uVar6;
+  undefined8 uVar7;
+  undefined8 uVar8;
+  longlong lVar9;
+  longlong lVar10;
+  uint *puVar11;
+  undefined8 uStack_68;
+  undefined8 uStack_60;
+  undefined8 uStack_58;
+  undefined8 uStack_50;
+  ulonglong uStack_48;
+  
+  lVar3 = *param_1;
+  lVar4 = param_1[1];
+  puVar11 = *(uint **)(lVar3 + 0xf8);
+  puVar1 = puVar11 + *(longlong *)(lVar3 + 0x100);
+  uVar5 = *param_2;
+  uVar6 = param_2[1];
+  uVar7 = param_2[3];
+  uVar8 = param_2[2];
+  if (*(char *)(lVar3 + 0x108) == '\0') {
+    while (puVar11 != puVar1) {
+      uVar2 = *puVar11;
+      puVar11 = puVar11 + 1;
+      lVar3 = *(longlong *)(lVar4 + 0x100);
+      lVar9 = *(longlong *)(lVar3 + 0x58 + (ulonglong)uVar2 * 0xa0);
+      if (lVar9 != 0) {
+        lVar3 = *(longlong *)(lVar3 + (ulonglong)uVar2 * 0xa0 + 0x50);
+        lVar10 = 0;
+        do {
+          uStack_48 = *(ulonglong *)(lVar3 + lVar10 * 0x10);
+          if (uStack_48 >> 0x20 == 0) {
+            return;
+          }
+          lVar10 = lVar10 + 1;
+          uStack_68 = uVar5;
+          uStack_60 = uVar6;
+          uStack_58 = uVar8;
+          uStack_50 = uVar7;
+          FUN_140d14770(&uStack_68,&UNK_142a9f170);
+        } while (lVar10 != lVar9);
+      }
+    }
+  }
+  else {
+    while (puVar11 != puVar1) {
+      uVar2 = *puVar11;
+      puVar11 = puVar11 + 1;
+      lVar3 = *(longlong *)(lVar4 + 0x1a8);
+      lVar9 = *(longlong *)(lVar3 + 0x10 + (ulonglong)uVar2 * 0x48);
+      if (lVar9 != 0) {
+        lVar3 = *(longlong *)(lVar3 + (ulonglong)uVar2 * 0x48 + 8);
+        lVar10 = 0;
+        do {
+          uStack_48 = *(ulonglong *)(lVar3 + lVar10 * 8);
+          if (uStack_48 >> 0x20 == 0) {
+            return;
+          }
+          lVar10 = lVar10 + 1;
+          uStack_68 = uVar5;
+          uStack_60 = uVar6;
+          uStack_58 = uVar8;
+          uStack_50 = uVar7;
+          FUN_140d14770(&uStack_68,&UNK_142a9f170);
+        } while (lVar10 != lVar9);
+      }
+    }
+  }
+  return;
+}
+

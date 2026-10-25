@@ -1,0 +1,423 @@
+--- /dev/null
++++ b/tiny-glade/crates/country-core/src/systems/backend/icc.rs
+@@ -0,0 +1,308 @@
++//! 显示器 ICC 的原版 LUT 生成及当前 App 的纹理所有权。
++//!
++//! B：update_window_icc_profile@0x14093d830、网格 collect@0x1413036c0。
++//! Little CMS 使用原锁定的公开依赖，不以简化矩阵替代完整 ICC 变换。
++
++use std::{path::{Path, PathBuf}, sync::Arc};
++
++use bevy_app::{App, Plugin, Update};
++use bevy_ecs::prelude::*;
++
++use crate::render::load_texture::boundary::{Texture, TextureDesc, TextureDevice};
++
++pub const ICC_LUT_EDGE: u32 = 32;
++pub const ICC_LUT_FORMAT: u32 = 0x5b;
++
++#[derive(Event, Clone, Debug)]
++pub struct IccProfileChanged(pub PathBuf);
++
++/// 原设备调用的工程边界；必须注入本 App 已有的 TextureHost。
++#[derive(Resource, Clone)]
++pub struct IccTextureDevice(pub Arc<dyn TextureDevice + Send + Sync>);
++
++struct OwnedIccLut {
++    name: String,
++    texture: Texture,
++    device: Arc<dyn TextureDevice + Send + Sync>,
++}
++
++impl Drop for OwnedIccLut {
++    fn drop(&mut self) {
++        // 只注销本 App 的 CPU 身份；图和描述符持有的实际 GPU owner 继续延迟回收。
++        self.device.release_texture(&self.texture);
++    }
++}
++
++/// 原资源的默认值是 None；Some 同时拥有显示名称、纹理及其原设备命名空间。
++#[derive(Resource, Default)]
++pub struct ActiveIccProfile {
++    active: Option<OwnedIccLut>,
++}
++
++impl ActiveIccProfile {
++    pub fn name(&self) -> Option<&str> {
++        self.active.as_ref().map(|active| active.name.as_str())
++    }
++
++    /// 同时返回 owner，避免不同 App 的数字句柄相同而误绑纹理。
++    pub fn texture_and_device(
++        &self,
++    ) -> Option<(&Texture, &Arc<dyn TextureDevice + Send + Sync>)> {
++        self.active.as_ref().map(|active| (&active.texture, &active.device))
++    }
++}
++
++pub struct IccProfilePlugin;
++
++impl Plugin for IccProfilePlugin {
++    fn build(&self, app: &mut App) {
++        app.init_resource::<ActiveIccProfile>()
++            .add_event::<IccProfileChanged>()
++            .add_systems(Update, update_window_icc_profile);
++    }
++}
++
++/// R 最快、G 次之、B 最慢。原整数除法截断，alpha 为 255，不能改成 65535。
++fn input_grid() -> Vec<[u16; 4]> {
++    let mut values = Vec::with_capacity(ICC_LUT_EDGE.pow(3) as usize);
++    let channel = |value: u32| (value * u32::from(u16::MAX) / (ICC_LUT_EDGE - 1)) as u16;
++    for b in 0..ICC_LUT_EDGE {
++        for g in 0..ICC_LUT_EDGE {
++            for r in 0..ICC_LUT_EDGE {
++                values.push([channel(r), channel(g), channel(b), 255]);
++            }
++        }
++    }
++    values
++}
++
++fn generate_icc_lut(path: &Path) -> anyhow::Result<Vec<[u16; 4]>> {
++    let output = lcms2::Profile::new_file(path)?;
++    let input = lcms2::Profile::new_srgb();
++    let transform = lcms2::Transform::<[u16; 4], [u16; 4]>::new(
++        &input,
++        lcms2::PixelFormat::RGBA_16,
++        &output,
++        lcms2::PixelFormat::RGBA_16,
++        lcms2::Intent::Perceptual,
++    )?;
++    let mut values = input_grid();
++    transform.transform_in_place(&mut values);
++    Ok(values)
++}
++
++fn update_window_icc_profile(
++    mut events: EventReader<IccProfileChanged>,
++    mut active: ResMut<ActiveIccProfile>,
++    device: Option<Res<IccTextureDevice>>,
++) {
++    let Some(event) = events.read().last() else { return; };
++    // 原版在文件读取和解析前释放旧 Some；坏的新路径也必须回到 None。
++    drop(active.active.take());
++    let device = device.expect("ICC profile event requires this App's texture device");
++    match generate_icc_lut(&event.0) {
++        Ok(values) => {
++            let texture = device.0.create_texture(
++                "ICC",
++                &TextureDesc::new_3d([ICC_LUT_EDGE; 3], ICC_LUT_FORMAT).sampled(),
++                bytemuck::cast_slice(&values),
++            ).expect("ICC LUT texture");
++            let mut next = OwnedIccLut {
++                name: String::new(),
++                texture,
++                device: device.0.clone(),
++            };
++            let shown = event.0.file_name().unwrap_or_else(|| event.0.as_os_str());
++            next.name = shown.to_string_lossy().into_owned();
++            active.active = Some(next);
++        }
++        Err(error) => log::warn!(target: "country_core::systems::backend::icc",
++            "Failed creating an ICC LUT: {error}"),
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use parking_lot::Mutex;
++    use crate::render::load_texture::boundary::BackendError;
++
++    #[derive(Default)]
++    struct Device {
++        calls: Mutex<Vec<Call>>,
++        next_id: Mutex<u64>,
++        fail_create: Mutex<bool>,
++    }
++    enum Call {
++        Create { desc: TextureDesc, pixels: Vec<[u16; 4]> },
++        Release(u64),
++    }
++    impl TextureDevice for Device {
++        fn release_texture(&self, texture: &Texture) {
++            self.calls.lock().push(Call::Release(texture.id));
++        }
++        fn create_texture(&self, name: &str, desc: &TextureDesc, data: &[u8]) -> Result<Texture, BackendError> {
++            assert_eq!(name, "ICC");
++            self.calls.lock().push(Call::Create {
++                desc: *desc,
++                pixels: data.chunks_exact(8).map(|pixel| std::array::from_fn(|i| {
++                    u16::from_ne_bytes([pixel[2 * i], pixel[2 * i + 1]])
++                })).collect(),
++            });
++            if *self.fail_create.lock() {
++                return Err(BackendError::OutOfDeviceMemory);
++            }
++            let mut id = self.next_id.lock();
++            *id += 1;
++            Ok(Texture { id: *id, width: desc.extent[0], height: desc.extent[1], format: desc.format })
++        }
++    }
++    fn app(device: Arc<Device>) -> App {
++        let mut app = App::new();
++        app.insert_resource(IccTextureDevice(device));
++        app.add_plugins(IccProfilePlugin);
++        app
++    }
++    fn profile_file() -> tempfile::NamedTempFile {
++        let mut file = tempfile::NamedTempFile::new().unwrap();
++        std::io::Write::write_all(&mut file, &lcms2::Profile::new_srgb().icc().unwrap()).unwrap();
++        file
++    }
++    fn send(app: &mut App, path: &Path) {
++        app.world_mut().send_event(IccProfileChanged(path.to_path_buf()));
++    }
++    fn creates(device: &Device) -> usize {
++        device.calls.lock().iter().filter(|call| matches!(call, Call::Create { .. })).count()
++    }
++
++    #[test]
++    fn icc_grid_preserves_native_order_alpha_and_integer_quotients() {
++        let values = input_grid();
++        assert_eq!(values.len(), 32768);
++        for (i, value) in values.iter().enumerate() {
++            let convert = |channel: usize| (channel as u32 * 65535 / 31) as u16;
++            assert_eq!(*value, [convert(i % 32), convert(i / 32 % 32), convert(i / 1024), 255]);
++        }
++    }
++
++    #[test]
++    fn icc_reuses_exact_lcms_215_and_srgb_profile_is_identity() {
++        assert_eq!(lcms2::version(), 2150);
++        let file = profile_file();
++        let actual = generate_icc_lut(file.path()).unwrap();
++        let expected = input_grid();
++        for (actual, expected) in actual.iter().zip(&expected) {
++            for channel in 0..3 {
++                assert!(actual[channel].abs_diff(expected[channel]) <= 1);
++            }
++            assert_eq!(actual[3], 255);
++        }
++    }
++
++    #[test]
++    fn icc_linear_output_profile_applies_non_identity_transfer_curve() {
++        let xy = |x, y| lcms2::CIExyY { x, y, Y: 1.0 };
++        let primaries = lcms2::CIExyYTRIPLE {
++            Red: xy(0.64, 0.33), Green: xy(0.30, 0.60), Blue: xy(0.15, 0.06),
++        };
++        let curve = lcms2::ToneCurve::new(1.0);
++        let output = lcms2::Profile::new_rgb(&xy(0.3127, 0.3290), &primaries, &[&curve; 3]).unwrap();
++        let mut file = tempfile::NamedTempFile::new().unwrap();
++        std::io::Write::write_all(&mut file, &output.icc().unwrap()).unwrap();
++        let actual = generate_icc_lut(file.path()).unwrap();
++        let middle = actual[16 * 1024 + 16 * 32 + 16];
++        // sRGB 码值16/31转线性约0.229；不能返回原输入约0.516或默认LUT。
++        for channel in &middle[..3] { assert!((14000..16000).contains(channel)); }
++        assert_eq!(middle[3], 255);
++        assert_eq!(actual[0], [0, 0, 0, 255]);
++    }
++
++    #[test]
++    fn icc_last_event_only_and_real_3d_texture_upload() {
++        let device = Arc::new(Device::default());
++        let mut app = app(device.clone());
++        let file = profile_file();
++        send(&mut app, &file.path().with_extension("missing"));
++        send(&mut app, file.path());
++        app.update();
++        assert_eq!(creates(&device), 1);
++        let calls = device.calls.lock();
++        let Call::Create { desc, pixels } = &calls[0] else { panic!("expected texture upload") };
++        assert_eq!(desc.extent, [32; 3]);
++        assert_eq!(desc.kind, 4);
++        assert_eq!(desc.format, 0x5b);
++        assert!(desc.sampled);
++        assert_eq!(pixels.len(), 32768);
++        assert_eq!(pixels[31], [65535, 0, 0, 255]);
++        assert_eq!(app.world().resource::<ActiveIccProfile>().name(), file.path().file_name().unwrap().to_str());
++        drop(calls);
++        app.update();
++        assert_eq!(creates(&device), 1);
++    }
++
++    #[test]
++    fn icc_bad_last_profile_clears_old_lut_before_parse_and_does_not_upload() {
++        let device = Arc::new(Device::default());
++        let mut app = app(device.clone());
++        let good = profile_file();
++        send(&mut app, good.path());
++        app.update();
++        let mut bad = tempfile::NamedTempFile::new().unwrap();
++        std::io::Write::write_all(&mut bad, b"invalid ICC").unwrap();
++        send(&mut app, good.path());
++        send(&mut app, bad.path());
++        app.update();
++        assert!(app.world().resource::<ActiveIccProfile>().texture_and_device().is_none());
++        assert_eq!(creates(&device), 1);
++        assert!(matches!(device.calls.lock().last(), Some(Call::Release(1))));
++        drop(app);
++        assert_eq!(device.calls.lock().iter().filter(|call| matches!(call, Call::Release(_))).count(), 1);
++    }
++
++    #[test]
++    fn icc_gpu_create_failure_is_fatal_and_old_owner_is_released_once() {
++        let device = Arc::new(Device::default());
++        let mut app = app(device.clone());
++        let file = profile_file();
++        send(&mut app, file.path());
++        app.update();
++        *device.fail_create.lock() = true;
++        send(&mut app, file.path());
++        let failed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| app.update()));
++        assert!(failed.is_err());
++        assert!(app.world().resource::<ActiveIccProfile>().texture_and_device().is_none());
++        assert_eq!(creates(&device), 2);
++        assert_eq!(device.calls.lock().iter().filter(|call| matches!(call, Call::Release(1))).count(), 1);
++    }
++
++    #[test]
++    fn icc_apps_keep_distinct_owners_even_with_equal_numeric_texture_ids() {
++        let first = Arc::new(Device::default());
++        let second = Arc::new(Device::default());
++        let mut a = app(first.clone());
++        let mut b = app(second.clone());
++        let file = profile_file();
++        send(&mut a, file.path());
++        send(&mut b, file.path());
++        a.update();
++        b.update();
++        let aa = a.world().resource::<ActiveIccProfile>().texture_and_device().unwrap();
++        let bb = b.world().resource::<ActiveIccProfile>().texture_and_device().unwrap();
++        assert_eq!(aa.0.id, bb.0.id);
++        assert!(!Arc::ptr_eq(aa.1, bb.1));
++        drop(a);
++        assert!(matches!(first.calls.lock().last(), Some(Call::Release(1))));
++        assert_eq!(second.calls.lock().len(), 1);
++        b.world_mut().remove_resource::<IccTextureDevice>();
++        drop(b);
++        assert!(matches!(second.calls.lock().last(), Some(Call::Release(1))));
++    }
++
++    #[test]
++    fn icc_no_event_without_gpu_keeps_true_default_none() {
++        let mut app = App::new();
++        app.add_plugins(IccProfilePlugin);
++        app.update();
++        assert!(app.world().resource::<ActiveIccProfile>().texture_and_device().is_none());
++    }
++}
+--- a/tiny-glade/crates/country-core/src/systems/backend/mod.rs
++++ b/tiny-glade/crates/country-core/src/systems/backend/mod.rs
+@@ -1,5 +1,6 @@
+ pub mod flush_screen_log;
+ pub mod gui;
++pub mod icc;
+ pub mod input;
+ pub mod photomode;
+ 
+--- a/tiny-glade/crates/country-core/Cargo.toml
++++ b/tiny-glade/crates/country-core/Cargo.toml
+@@ -53,6 +53,9 @@
+ hotwatch = { git = "https://github.com/h3r2tic/hotwatch.git", rev = "7576ad4ab2535f20d3c59d65b334355d4170cb97" }
+ flate2 = "=1.0.24"
+ itertools.workspace = true
++# 原 B 的 ICC 解析/变换及其完整 Little CMS 2.15 实现。
++lcms2 = { version = "=5.6.0", features = ["static"] }
++lcms2-sys = "=4.0.1"
+ log.workspace = true
+ log-once.workspace = true
+ nohash-hasher.workspace = true
+--- a/tiny-glade/crates/tiny-glade/src/render_bridge.rs
++++ b/tiny-glade/crates/tiny-glade/src/render_bridge.rs
+@@ -196,6 +196,10 @@
+         world.init_resource::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>();
+         world.init_resource::<country_core::geometry::runtime::WallBrickUploadStatus>();
+         world.insert_resource(textures);
++        // 原 ICC 创建复用此 App 的同一 TextureHost，不能建立第二纹理命名空间。
++        world.insert_resource(country_core::systems::backend::icc::IccTextureDevice(
++            self.tables.textures.clone(),
++        ));
+         world.insert_resource(AssetLibraryRuntime::new(
+             self.tables.buffers.clone(),
+             self.tables.textures.clone(),
+--- a/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ b/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@ -348,7 +348,11 @@
+         );
+     }
+     // Original first add_to_app tuple @run_game_thread decomp L1248.
+-    app.add_plugins((InputPlugin, bevy_time::TimePlugin));
++    app.add_plugins((
++        InputPlugin,
++        bevy_time::TimePlugin,
++        country_core::systems::backend::icc::IccProfilePlugin,
++    ));
+     // Aspect-ratio call and constructor are adjacent original instructions
+     // @0x14059dba3 and @0x14059dbe3. Never use MainCamera::default's zero buffer.
+     let camera = MainCamera::new(window.aspect_ratio());
+@@ -1090,7 +1094,11 @@
+             GameSystemSet(stage).before(GameSystemSet(stage + 1)),
+         );
+     }
+-    app.add_plugins((InputPlugin, bevy_time::TimePlugin));
++    app.add_plugins((
++        InputPlugin,
++        bevy_time::TimePlugin,
++        country_core::systems::backend::icc::IccProfilePlugin,
++    ));
+     app.insert_resource(
+         source
+             .get_resource::<GameConfig>()
+--- a/tiny-glade/crates/tiny-glade/src/world_postprocess.rs
++++ b/tiny-glade/crates/tiny-glade/src/world_postprocess.rs
+@@ -1128,6 +1128,38 @@
+         .get_raster_handle_by_name("final_post")
+         .map(|handle| DrawHandle(ManagedHandle(handle.id().raw()), core::marker::PhantomData))
+         .ok_or_else(|| tail_missing("final_post shader (loaded by startup load_shaders)"))?;
++    let active_icc = world
++        .get_resource::<country_core::systems::backend::icc::ActiveIccProfile>()
++        .ok_or_else(|| tail_missing("ActiveIccProfile (IccProfilePlugin)"))?;
++    let custom_lut = if let Some((texture, owner)) = active_icc.texture_and_device() {
++        let frame_owner: std::sync::Arc<
++            dyn country_core::render::load_texture::boundary::TextureDevice + Send + Sync,
++        > = frame.hosts().textures.clone();
++        if !std::sync::Arc::ptr_eq(owner, &frame_owner) {
++            return Err(rhapsody::Error::invalid_usage(
++                "ICC LUT belongs to another App's texture namespace",
++            ));
++        }
++        let native = frame.hosts().textures.get(texture)
++            .ok_or_else(|| tail_missing("active ICC LUT texture owner"))?;
++        if native.desc.kind != rhapsody::resource::TextureKind::D3
++            || [native.desc.width, native.desc.height, native.desc.depth] != [32; 3]
++            || native.desc.format.as_raw() != 0x5b
++            || native.desc.sample_count != 1
++            || !native.desc.usage.contains(ash::vk::ImageUsageFlags::SAMPLED)
++        {
++            return Err(rhapsody::Error::invalid_usage("active ICC LUT has an invalid texture description"));
++        }
++        // Raw 路径保真实物理 owner；RasterPassHost 在声明期导入采样访问和 descriptor lease。
++        Some((ManagedHandle(texture.id), AttachmentTexture {
++            id: 0,
++            extent: (native.desc.width, native.desc.height),
++            format: native.desc.format.as_raw() as u32,
++            sample_count: native.desc.sample_count,
++        }))
++    } else {
++        None
++    };
+     let args = final_post::FinalPostArgs {
+         out_extent: (out_extent[0], out_extent[1]),
+         src0: attachment(*taa),
+@@ -1142,7 +1174,7 @@
+         cfg: grading_config(&formation),
+         // TypeId c2b8... is AppMode, independently proved by registration.
+         theme: mode,
+-        custom_lut: None, // no custom LUT texture producer is recovered (U)
++        custom_lut,
+     };
+     let elapsed = world
+         .get_resource::<bevy_time::Time>()

@@ -1,0 +1,23 @@
+
+void FUN_1416f7a50(longlong *param_1,longlong param_2,undefined8 param_3,undefined4 param_4)
+
+{
+  code *pcVar1;
+  undefined4 uVar2;
+  
+  uVar2 = 0x1f;
+  if (*(int *)(param_2 + 0x30) != 0) {
+    if (*(int *)(param_2 + 0x30) != 1) {
+      FUN_1428d9430(&UNK_142c91768,0xf,&UNK_142c91778);
+      pcVar1 = (code *)swi(3);
+      (*pcVar1)();
+      return;
+    }
+    uVar2 = 0x20;
+  }
+  (**(code **)(param_1[1] + 0x410))
+            (*(undefined8 *)(*param_1 + 0x48),*(undefined8 *)(param_2 + 0x20),uVar2,0,param_4,
+             param_3);
+  return;
+}
+

@@ -1,0 +1,11767 @@
+; SPIR-V
+; Version: 1.3
+; Generator: Google rspirv; 0
+; Bound: 1021
+; Schema: 0
+               OpCapability Shader
+               OpCapability RuntimeDescriptorArray
+               OpCapability PhysicalStorageBufferAddresses
+               OpCapability StorageBufferArrayDynamicIndexing
+               OpCapability SampledImageArrayDynamicIndexing
+               OpCapability StorageImageArrayDynamicIndexing
+               OpExtension "SPV_EXT_descriptor_indexing"
+               OpExtension "SPV_KHR_physical_storage_buffer"
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel PhysicalStorageBuffer64 GLSL450
+               OpEntryPoint Vertex %2 "vs_main" %3 %4 %5 %6 %7 %8 %9 %10 %11 %12 %13 %14 %15
+         %16 = OpString "/tmp/.tmpa2ZGDD"
+         %17 = OpString "shaders/inc/common.hlsl"
+         %18 = OpString "shaders/inc/samplers.hlsl"
+         %19 = OpString "shaders/inc/debug_utils.hlsl"
+         %20 = OpString "shaders/inc/tracked_buffer.hlsl"
+         %21 = OpString "shaders/nani_plaster.raster.hlsl"
+         %22 = OpString "shaders/inc/current_view.hlsl"
+         %23 = OpString "shaders/inc/frame_constants.hlsl"
+         %24 = OpString "shaders/inc/uv.hlsl"
+         %25 = OpString "shaders/inc/ray_cone.hlsl"
+         %26 = OpString "shaders/inc/math_const.hlsl"
+         %27 = OpString "shaders/inc/simplex_noise.hlsl"
+         %28 = OpString "shaders/inc/perlin.hlsl"
+         %29 = OpString "shaders/inc/hash.hlsl"
+         %30 = OpString "shaders/inc/fbm_noise.hlsl"
+         %31 = OpString "shaders/inc/color_library.hlsl"
+         %32 = OpString "shaders/inc/wall_color_customization.hlsl"
+         %33 = OpString "shaders/inc/utils.hlsl"
+         %34 = OpString "shaders/inc/consts.hlsl"
+         %35 = OpString "shaders/inc/wall_color_ids.hlsl"
+         %36 = OpString "shaders/inc/wall_distortion.hlsl"
+         %37 = OpString "shaders/nani/inc/user.hlsl"
+         %38 = OpString "shaders/plaster.inc.hlsl"
+         %39 = OpString "shaders/inc/material/solid_material.inc.hlsl"
+         %40 = OpString "shaders/inc/pack_unpack.hlsl"
+         %41 = OpString "shaders/inc/material_eval.inc.hlsl"
+         %42 = OpString "shaders/inc/brdf.hlsl"
+         %43 = OpString "shaders/inc/math.hlsl"
+         %44 = OpString "shaders/inc/lighting.hlsl"
+         %45 = OpString "shaders/inc/sun.inc.hlsl"
+         %46 = OpString "shaders/inc/color/srgb.hlsl"
+         %47 = OpString "shaders/gi/gi_settings.inc.hlsl"
+         %48 = OpString "shaders/inc/sh.hlsl"
+         %49 = OpString "shaders/inc/highlight_color.hlsl"
+               OpSource HLSL 640 %16 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSourceContinued "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %17 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %18 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %19 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %20 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %21 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %22 "
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %23 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %24 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %25 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %26 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %27 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %28 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %29 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %30 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %31 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %32 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %33 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %34 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %35 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %36 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %37 "
+
+
+
+
+
+"
+               OpSource HLSL 640 %38 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %39 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %40 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %41 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %42 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %43 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %44 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %45 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %46 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %47 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %48 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %49 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpName %50 "type.ConstantBuffer.FrameConstants"
+               OpMemberName %50 0 "sun_color"
+               OpMemberName %50 1 "sky_low_color"
+               OpMemberName %50 2 "sky_high_color"
+               OpMemberName %50 3 "fog_tint_thickness"
+               OpMemberName %50 4 "fake_light_color"
+               OpMemberName %50 5 "fake_light_dir"
+               OpMemberName %50 6 "fake_light2_color"
+               OpMemberName %50 7 "fake_light2_dir"
+               OpMemberName %50 8 "frame_index"
+               OpMemberName %50 9 "delta_time_seconds"
+               OpMemberName %50 10 "ev_mult"
+               OpMemberName %50 11 "glade_theme_id"
+               OpMemberName %50 12 "inner_rendering_resolution"
+               OpMemberName %50 13 "game_time_sec"
+               OpMemberName %50 14 "game_time_frac"
+               OpMemberName %50 15 "editing_highlight_color"
+               OpMemberName %50 16 "time_of_day"
+               OpMemberName %50 17 "dir_to_sun"
+               OpMemberName %50 18 "camera_idx"
+               OpMemberName %50 19 "dir_to_moon"
+               OpMemberName %50 20 "render_overrides"
+               OpMemberName %50 21 "global_mip_bias"
+               OpMemberName %50 22 "highlighted_transient_stair_edge_id"
+               OpMemberName %50 23 "pad1"
+               OpMemberName %50 24 "pad2"
+               OpMemberName %50 25 "debug_tweakers"
+               OpMemberName %50 26 "view_constants"
+               OpName %51 "ViewConstants"
+               OpMemberName %51 0 "view_to_clip"
+               OpMemberName %51 1 "clip_to_view"
+               OpMemberName %51 2 "view_to_sample"
+               OpMemberName %51 3 "sample_to_view"
+               OpMemberName %51 4 "world_to_view"
+               OpMemberName %51 5 "view_to_world"
+               OpMemberName %51 6 "world_to_sample"
+               OpMemberName %51 7 "clip_to_prev_clip"
+               OpMemberName %51 8 "prev_view_to_prev_clip"
+               OpMemberName %51 9 "prev_clip_to_prev_view"
+               OpMemberName %51 10 "prev_world_to_prev_view"
+               OpMemberName %51 11 "prev_view_to_prev_world"
+               OpMemberName %51 12 "sample_offset_pixels"
+               OpMemberName %51 13 "sample_offset_clip"
+               OpMemberName %51 14 "prev_sample_offset_pixels"
+               OpMemberName %51 15 "prev_sample_offset_clip"
+               OpName %52 "frame_constants"
+               OpName %53 "type.$Globals"
+               OpMemberName %53 0 "current_view_index"
+               OpMemberName %53 1 "highlight_bricks_to_delete"
+               OpMemberName %53 2 "brush_position"
+               OpMemberName %53 3 "eraser_mult"
+               OpMemberName %53 4 "highlight_mode"
+               OpMemberName %53 5 "highlighted_wall_id"
+               OpMemberName %53 6 "normal_map_dims"
+               OpMemberName %53 7 "mortar_dims"
+               OpName %54 "$Globals"
+               OpName %55 "type.StructuredBuffer.uint"
+               OpName %56 "instance_indirection_buffer"
+               OpName %57 "type.StructuredBuffer.PlasterInstanceData"
+               OpName %58 "PlasterInstanceData"
+               OpMemberName %58 0 "bounding_sphere"
+               OpMemberName %58 1 "wall_id"
+               OpMemberName %58 2 "wall_length"
+               OpMemberName %58 3 "blend_uv_seam"
+               OpMemberName %58 4 "quad_count"
+               OpMemberName %58 5 "verts_gpu_address"
+               OpMemberName %58 6 "row_stride"
+               OpMemberName %58 7 "peel_strength"
+               OpName %59 "nani_instance_data"
+               OpName %6 "out.var.C0"
+               OpName %7 "out.var.C1"
+               OpName %8 "out.var.C2"
+               OpName %9 "out.var.C3"
+               OpName %10 "out.var.C4"
+               OpName %11 "out.var.C5"
+               OpName %12 "out.var.C6"
+               OpName %13 "out.var.C7"
+               OpName %14 "out.var.C8"
+               OpName %15 "out.var.C9"
+               OpName %2 "vs_main"
+               OpModuleProcessed "dxc-commit-hash: 16ceb560"
+               OpModuleProcessed "dxc-cl-option: /tmp/.tmpa2ZGDD -E vs_main -T vs_6_4 -spirv -WX -Ges -fspv-target-env=vulkan1.1 -HV 2021 -Zi -Fo /tmp/.tmpCZgflO -Qembed_debug"
+               OpDecorate %3 BuiltIn VertexIndex
+               OpDecorate %4 BuiltIn InstanceIndex
+               OpDecorate %5 BuiltIn Position
+               OpDecorate %6 Flat
+               OpDecorate %6 Location 0
+               OpDecorate %7 Location 1
+               OpDecorate %8 Location 2
+               OpDecorate %9 Location 3
+               OpDecorate %10 Location 4
+               OpDecorate %11 Location 5
+               OpDecorate %12 Location 6
+               OpDecorate %13 Location 7
+               OpDecorate %14 Location 8
+               OpDecorate %15 Location 9
+               OpMemberDecorate %51 0 Offset 0
+               OpMemberDecorate %51 0 MatrixStride 16
+               OpMemberDecorate %51 0 RowMajor
+               OpMemberDecorate %51 1 Offset 64
+               OpMemberDecorate %51 1 MatrixStride 16
+               OpMemberDecorate %51 1 RowMajor
+               OpMemberDecorate %51 2 Offset 128
+               OpMemberDecorate %51 2 MatrixStride 16
+               OpMemberDecorate %51 2 RowMajor
+               OpMemberDecorate %51 3 Offset 192
+               OpMemberDecorate %51 3 MatrixStride 16
+               OpMemberDecorate %51 3 RowMajor
+               OpMemberDecorate %51 4 Offset 256
+               OpMemberDecorate %51 4 MatrixStride 16
+               OpMemberDecorate %51 4 RowMajor
+               OpMemberDecorate %51 5 Offset 320
+               OpMemberDecorate %51 5 MatrixStride 16
+               OpMemberDecorate %51 5 RowMajor
+               OpMemberDecorate %51 6 Offset 384
+               OpMemberDecorate %51 6 MatrixStride 16
+               OpMemberDecorate %51 6 RowMajor
+               OpMemberDecorate %51 7 Offset 448
+               OpMemberDecorate %51 7 MatrixStride 16
+               OpMemberDecorate %51 7 RowMajor
+               OpMemberDecorate %51 8 Offset 512
+               OpMemberDecorate %51 8 MatrixStride 16
+               OpMemberDecorate %51 8 RowMajor
+               OpMemberDecorate %51 9 Offset 576
+               OpMemberDecorate %51 9 MatrixStride 16
+               OpMemberDecorate %51 9 RowMajor
+               OpMemberDecorate %51 10 Offset 640
+               OpMemberDecorate %51 10 MatrixStride 16
+               OpMemberDecorate %51 10 RowMajor
+               OpMemberDecorate %51 11 Offset 704
+               OpMemberDecorate %51 11 MatrixStride 16
+               OpMemberDecorate %51 11 RowMajor
+               OpMemberDecorate %51 12 Offset 768
+               OpMemberDecorate %51 13 Offset 776
+               OpMemberDecorate %51 14 Offset 784
+               OpMemberDecorate %51 15 Offset 792
+               OpDecorate %60 ArrayStride 800
+               OpMemberDecorate %50 0 Offset 0
+               OpMemberDecorate %50 1 Offset 16
+               OpMemberDecorate %50 2 Offset 32
+               OpMemberDecorate %50 3 Offset 48
+               OpMemberDecorate %50 4 Offset 64
+               OpMemberDecorate %50 5 Offset 80
+               OpMemberDecorate %50 6 Offset 96
+               OpMemberDecorate %50 7 Offset 112
+               OpMemberDecorate %50 8 Offset 128
+               OpMemberDecorate %50 9 Offset 132
+               OpMemberDecorate %50 10 Offset 136
+               OpMemberDecorate %50 11 Offset 140
+               OpMemberDecorate %50 12 Offset 144
+               OpMemberDecorate %50 13 Offset 152
+               OpMemberDecorate %50 14 Offset 156
+               OpMemberDecorate %50 15 Offset 160
+               OpMemberDecorate %50 16 Offset 172
+               OpMemberDecorate %50 17 Offset 176
+               OpMemberDecorate %50 18 Offset 188
+               OpMemberDecorate %50 19 Offset 192
+               OpMemberDecorate %50 20 Offset 204
+               OpMemberDecorate %50 21 Offset 208
+               OpMemberDecorate %50 22 Offset 212
+               OpMemberDecorate %50 23 Offset 216
+               OpMemberDecorate %50 24 Offset 220
+               OpMemberDecorate %50 25 Offset 224
+               OpMemberDecorate %50 26 Offset 240
+               OpDecorate %50 Block
+               OpMemberDecorate %53 0 Offset 0
+               OpMemberDecorate %53 1 Offset 4
+               OpMemberDecorate %53 2 Offset 16
+               OpMemberDecorate %53 3 Offset 28
+               OpMemberDecorate %53 4 Offset 32
+               OpMemberDecorate %53 5 Offset 36
+               OpMemberDecorate %53 6 Offset 40
+               OpMemberDecorate %53 7 Offset 48
+               OpDecorate %53 Block
+               OpDecorate %61 ArrayStride 4
+               OpMemberDecorate %55 0 Offset 0
+               OpMemberDecorate %55 0 NonWritable
+               OpDecorate %55 Block
+               OpMemberDecorate %58 0 Offset 0
+               OpMemberDecorate %58 1 Offset 16
+               OpMemberDecorate %58 2 Offset 20
+               OpMemberDecorate %58 3 Offset 24
+               OpMemberDecorate %58 4 Offset 28
+               OpMemberDecorate %58 5 Offset 32
+               OpMemberDecorate %58 6 Offset 40
+               OpMemberDecorate %58 7 Offset 44
+               OpDecorate %62 ArrayStride 48
+               OpMemberDecorate %57 0 Offset 0
+               OpMemberDecorate %57 0 NonWritable
+               OpDecorate %57 Block
+               OpDecorate %970 ArrayStride 4
+               OpDecorate %971 Block
+               OpMemberDecorate %971 0 Offset 0
+               OpDecorate %975 Block
+               OpMemberDecorate %975 0 Offset 0
+               OpDecorate %52 DescriptorSet 0
+               OpDecorate %52 Binding 2
+               OpDecorate %52 Aliased
+               OpDecorate %54 DescriptorSet 0
+               OpDecorate %54 Binding 2
+               OpDecorate %54 Aliased
+               OpDecorate %56 DescriptorSet 0
+               OpDecorate %56 Binding 2
+               OpDecorate %56 Aliased
+               OpDecorate %59 DescriptorSet 0
+               OpDecorate %59 Binding 2
+               OpDecorate %59 Aliased
+               OpDecorate %974 DescriptorSet 0
+               OpDecorate %974 Binding 2
+               OpDecorate %974 Aliased
+         %63 = OpTypeInt 32 1
+         %64 = OpConstant %63 1
+         %65 = OpConstant %63 2
+         %66 = OpConstant %63 3
+         %67 = OpTypeFloat 32
+         %68 = OpTypeInt 32 0
+         %69 = OpConstant %68 0
+         %70 = OpConstant %68 1
+         %71 = OpConstant %68 3
+         %72 = OpTypeBool
+         %73 = OpTypeVector %67 2
+         %74 = OpTypeVector %67 3
+         %75 = OpConstant %67 0.5
+         %76 = OpTypeVector %68 2
+         %77 = OpConstant %67 1
+         %78 = OpConstantComposite %73 %75 %75
+         %79 = OpConstant %67 2
+         %80 = OpConstant %67 3
+         %81 = OpConstant %63 0
+         %82 = OpConstant %68 65535
+         %83 = OpConstant %68 16
+         %84 = OpConstant %68 48
+         %85 = OpConstant %68 32
+         %86 = OpTypeVector %67 4
+         %87 = OpTypeMatrix %74 3
+         %88 = OpConstant %67 0
+         %89 = OpConstantComposite %74 %88 %77 %88
+         %90 = OpConstant %67 0.400000006
+         %91 = OpConstant %67 2.5
+         %92 = OpConstant %67 -0.5
+         %93 = OpConstantComposite %73 %92 %92
+         %94 = OpConstant %67 0.0599999987
+         %95 = OpConstant %63 26
+         %96 = OpConstantComposite %74 %80 %80 %80
+         %97 = OpConstant %68 1664525
+         %98 = OpConstant %68 1013904223
+         %99 = OpConstant %68 11
+        %100 = OpConstant %68 7
+        %101 = OpConstant %68 2636928640
+        %102 = OpConstant %68 15
+        %103 = OpConstant %68 4022730752
+        %104 = OpConstant %68 18
+        %105 = OpConstant %68 8388607
+        %106 = OpConstant %68 1065353216
+        %107 = OpConstant %68 10
+        %108 = OpConstant %68 6
+        %109 = OpConstant %68 5
+        %110 = OpTypeMatrix %86 4
+         %51 = OpTypeStruct %110 %110 %110 %110 %110 %110 %110 %110 %110 %110 %110 %110 %73 %73 %73 %73
+         %60 = OpTypeArray %51 %109
+         %50 = OpTypeStruct %86 %86 %86 %86 %86 %86 %86 %86 %68 %67 %67 %68 %76 %68 %67 %74 %67 %74 %68 %74 %68 %67 %68 %68 %68 %86 %60
+        %111 = OpTypePointer StorageBuffer %50
+         %53 = OpTypeStruct %68 %63 %74 %67 %68 %68 %76 %76
+        %112 = OpTypePointer StorageBuffer %53
+         %61 = OpTypeRuntimeArray %68
+         %55 = OpTypeStruct %61
+        %113 = OpTypePointer StorageBuffer %55
+         %58 = OpTypeStruct %86 %68 %67 %68 %68 %76 %63 %67
+         %62 = OpTypeRuntimeArray %58
+         %57 = OpTypeStruct %62
+        %114 = OpTypePointer StorageBuffer %57
+        %115 = OpTypePointer Input %68
+        %116 = OpTypePointer Output %86
+        %117 = OpTypePointer Output %68
+        %118 = OpTypePointer Output %74
+        %119 = OpTypePointer Output %73
+        %120 = OpTypePointer Output %67
+        %121 = OpTypePointer Output %87
+        %122 = OpTypeVoid
+        %123 = OpTypeFunction %122
+        %124 = OpTypePointer Function %68
+        %125 = OpTypeVector %68 4
+        %126 = OpTypePointer Function %125
+        %127 = OpTypePointer Function %76
+        %128 = OpTypePointer Function %74
+        %129 = OpTypePointer Function %67
+        %130 = OpTypePointer Function %73
+        %131 = OpTypePointer Function %86
+        %132 = OpTypePointer StorageBuffer %68
+        %133 = OpTypePointer PhysicalStorageBuffer %125
+        %134 = OpTypePointer PhysicalStorageBuffer %76
+        %135 = OpTypeVector %68 3
+        %136 = OpTypeVector %63 3
+        %137 = OpTypePointer Function %135
+        %138 = OpConstant %63 -1
+        %139 = OpConstantComposite %136 %64 %81 %81
+        %140 = OpConstantComposite %136 %81 %64 %81
+        %141 = OpConstantComposite %136 %64 %64 %81
+        %142 = OpConstantComposite %136 %81 %81 %64
+        %143 = OpConstantComposite %136 %64 %81 %64
+        %144 = OpConstantComposite %136 %81 %64 %64
+        %145 = OpConstantComposite %136 %64 %64 %64
+        %146 = OpConstantNull %86
+        %147 = OpConstant %67 0x1.7ffffep+128
+        %148 = OpConstantComposite %86 %147 %147 %147 %147
+        %149 = OpConstantComposite %74 %147 %147 %147
+        %150 = OpConstantComposite %73 %147 %147
+        %151 = OpConstantComposite %87 %149 %149 %149
+        %152 = OpConstant %68 4
+        %153 = OpTypePointer StorageBuffer %76
+        %154 = OpTypePointer StorageBuffer %63
+        %155 = OpTypePointer StorageBuffer %67
+        %156 = OpTypePointer StorageBuffer %110
+               OpLine %21 36 1
+               OpNoLine
+        %969 = OpConstant %68 9
+        %970 = OpTypeArray %68 %969
+        %971 = OpTypeStruct %970
+        %972 = OpTypeRuntimeArray %971
+        %973 = OpTypePointer StorageBuffer %972
+        %975 = OpTypeStruct %68
+        %976 = OpTypePointer PushConstant %975
+        %978 = OpTypeRuntimeArray %50
+        %979 = OpTypePointer StorageBuffer %978
+        %980 = OpTypeRuntimeArray %53
+        %981 = OpTypePointer StorageBuffer %980
+        %982 = OpTypeRuntimeArray %55
+        %983 = OpTypePointer StorageBuffer %982
+        %984 = OpTypeRuntimeArray %57
+        %985 = OpTypePointer StorageBuffer %984
+        %986 = OpTypePointer PushConstant %68
+        %987 = OpConstant %68 0
+        %990 = OpTypePointer StorageBuffer %68
+        %991 = OpConstant %68 4
+        %996 = OpConstant %68 5
+       %1013 = OpConstant %68 1
+       %1018 = OpConstant %68 8
+         %52 = OpVariable %979 StorageBuffer
+         %54 = OpVariable %981 StorageBuffer
+         %56 = OpVariable %983 StorageBuffer
+         %59 = OpVariable %985 StorageBuffer
+          %3 = OpVariable %115 Input
+          %4 = OpVariable %115 Input
+          %5 = OpVariable %116 Output
+          %6 = OpVariable %117 Output
+          %7 = OpVariable %118 Output
+          %8 = OpVariable %118 Output
+          %9 = OpVariable %119 Output
+         %10 = OpVariable %118 Output
+         %11 = OpVariable %118 Output
+         %12 = OpVariable %120 Output
+         %13 = OpVariable %120 Output
+         %14 = OpVariable %120 Output
+         %15 = OpVariable %121 Output
+        %974 = OpVariable %973 StorageBuffer
+        %977 = OpVariable %976 PushConstant
+          %2 = OpFunction %122 None %123
+        %157 = OpLabel
+        %158 = OpVariable %130 Function
+        %159 = OpVariable %130 Function
+        %160 = OpVariable %130 Function
+        %161 = OpVariable %130 Function
+        %162 = OpVariable %130 Function
+        %163 = OpVariable %130 Function
+        %164 = OpVariable %130 Function
+        %165 = OpVariable %130 Function
+        %166 = OpVariable %127 Function
+        %167 = OpVariable %137 Function
+        %168 = OpVariable %128 Function
+        %169 = OpVariable %130 Function
+        %170 = OpVariable %127 Function
+        %171 = OpVariable %127 Function
+        %172 = OpVariable %127 Function
+        %173 = OpVariable %126 Function
+        %174 = OpVariable %127 Function
+        %175 = OpVariable %126 Function
+        %176 = OpVariable %127 Function
+        %177 = OpVariable %127 Function
+        %178 = OpVariable %131 Function
+               OpLine %21 36 1
+        %179 = OpLoad %68 %3
+        %180 = OpLoad %68 %4
+               OpNoLine
+               OpSelectionMerge %181 None
+               OpSwitch %69 %182
+        %182 = OpLabel
+               OpLine %21 40 34
+        %988 = OpAccessChain %986 %977 %987
+        %989 = OpLoad %68 %988
+        %992 = OpAccessChain %990 %974 %989 %987 %991
+        %993 = OpLoad %68 %992
+        %183 = OpAccessChain %132 %56 %993 %81 %180
+        %184 = OpLoad %68 %183
+               OpNoLine
+        %994 = OpAccessChain %986 %977 %987
+        %995 = OpLoad %68 %994
+        %997 = OpAccessChain %990 %974 %995 %987 %996
+        %998 = OpLoad %68 %997
+        %185 = OpAccessChain %132 %59 %998 %81 %184 %152
+        %186 = OpLoad %68 %185
+        %999 = OpAccessChain %986 %977 %987
+       %1000 = OpLoad %68 %999
+       %1001 = OpAccessChain %990 %974 %1000 %987 %996
+       %1002 = OpLoad %68 %1001
+        %187 = OpAccessChain %153 %59 %1002 %81 %184 %109
+        %188 = OpLoad %76 %187
+       %1003 = OpAccessChain %986 %977 %987
+       %1004 = OpLoad %68 %1003
+       %1005 = OpAccessChain %990 %974 %1004 %987 %996
+       %1006 = OpLoad %68 %1005
+        %189 = OpAccessChain %154 %59 %1006 %81 %184 %108
+        %190 = OpLoad %63 %189
+       %1007 = OpAccessChain %986 %977 %987
+       %1008 = OpLoad %68 %1007
+       %1009 = OpAccessChain %990 %974 %1008 %987 %996
+       %1010 = OpLoad %68 %1009
+        %191 = OpAccessChain %155 %59 %1010 %81 %184 %100
+        %192 = OpLoad %67 %191
+               OpLine %21 43 38
+        %193 = OpBitwiseAnd %68 %179 %82
+               OpLine %21 44 38
+        %194 = OpShiftRightLogical %68 %179 %83
+               OpLine %21 46 16
+        %195 = OpUGreaterThan %72 %193 %186
+               OpLine %21 46 35
+               OpSelectionMerge %196 None
+               OpBranchConditional %195 %197 %196
+        %197 = OpLabel
+               OpLine %21 47 9
+               OpBranch %181
+        %196 = OpLabel
+               OpLine %21 52 32
+               OpStore %174 %188
+               OpLine %21 52 80
+        %198 = OpBitcast %68 %190
+               OpLine %21 52 78
+        %199 = OpIMul %68 %194 %198
+               OpLine %21 52 69
+        %200 = OpIAdd %68 %193 %199
+               OpLine %21 52 59
+        %201 = OpIMul %68 %84 %200
+               OpLine %21 52 56
+        %202 = OpBitcast %63 %201
+               OpLine %17 372 16
+        %203 = OpSGreaterThanEqual %72 %202 %81
+               OpLine %17 372 22
+               OpSelectionMerge %204 None
+               OpBranchConditional %203 %205 %206
+        %206 = OpLabel
+               OpLine %17 376 17
+        %207 = OpAccessChain %124 %174 %81
+        %208 = OpLoad %68 %207
+               OpLine %17 376 26
+        %209 = OpBitcast %68 %202
+               OpLine %17 376 24
+        %210 = OpIAdd %68 %208 %209
+               OpLine %17 376 9
+        %211 = OpAccessChain %124 %172 %81
+               OpStore %211 %210
+               OpLine %17 377 17
+        %212 = OpAccessChain %124 %174 %64
+        %213 = OpLoad %68 %212
+               OpLine %17 377 27
+        %214 = OpLoad %68 %211
+               OpLine %17 377 35
+        %215 = OpLoad %68 %207
+               OpLine %17 377 33
+        %216 = OpUGreaterThan %72 %214 %215
+               OpNoLine
+        %217 = OpSelect %63 %216 %138 %81
+               OpLine %17 377 26
+        %218 = OpBitcast %68 %217
+               OpLine %17 377 24
+        %219 = OpIAdd %68 %213 %218
+               OpLine %17 377 9
+        %220 = OpAccessChain %124 %172 %64
+               OpStore %220 %219
+               OpLine %17 378 5
+               OpBranch %204
+        %205 = OpLabel
+               OpLine %17 373 17
+        %221 = OpAccessChain %124 %174 %81
+        %222 = OpLoad %68 %221
+               OpLine %17 373 26
+        %223 = OpBitcast %68 %202
+               OpLine %17 373 24
+        %224 = OpIAdd %68 %222 %223
+               OpLine %17 373 9
+        %225 = OpAccessChain %124 %172 %81
+               OpStore %225 %224
+               OpLine %17 374 17
+        %226 = OpAccessChain %124 %174 %64
+        %227 = OpLoad %68 %226
+               OpLine %17 374 27
+        %228 = OpLoad %68 %225
+               OpLine %17 374 35
+        %229 = OpLoad %68 %221
+               OpLine %17 374 33
+        %230 = OpULessThan %72 %228 %229
+               OpNoLine
+        %231 = OpSelect %63 %230 %64 %81
+               OpLine %17 374 26
+        %232 = OpBitcast %68 %231
+               OpLine %17 374 24
+        %233 = OpIAdd %68 %227 %232
+               OpLine %17 374 9
+        %234 = OpAccessChain %124 %172 %64
+               OpStore %234 %233
+               OpLine %17 378 5
+               OpBranch %204
+        %204 = OpLabel
+               OpLine %17 379 12
+        %235 = OpLoad %76 %172
+               OpLine %21 51 26
+        %236 = OpBitcast %133 %235
+        %237 = OpLoad %125 %236 Aligned 16
+               OpLine %21 51 17
+               OpStore %173 %237
+               OpLine %21 56 32
+               OpStore %176 %188
+               OpLine %21 56 59
+        %238 = OpIAdd %68 %83 %201
+               OpLine %21 56 56
+        %239 = OpBitcast %63 %238
+               OpLine %17 372 16
+        %240 = OpSGreaterThanEqual %72 %239 %81
+               OpLine %17 372 22
+               OpSelectionMerge %241 None
+               OpBranchConditional %240 %242 %243
+        %243 = OpLabel
+               OpLine %17 376 17
+        %244 = OpAccessChain %124 %176 %81
+        %245 = OpLoad %68 %244
+               OpLine %17 376 26
+        %246 = OpBitcast %68 %239
+               OpLine %17 376 24
+        %247 = OpIAdd %68 %245 %246
+               OpLine %17 376 9
+        %248 = OpAccessChain %124 %171 %81
+               OpStore %248 %247
+               OpLine %17 377 17
+        %249 = OpAccessChain %124 %176 %64
+        %250 = OpLoad %68 %249
+               OpLine %17 377 27
+        %251 = OpLoad %68 %248
+               OpLine %17 377 35
+        %252 = OpLoad %68 %244
+               OpLine %17 377 33
+        %253 = OpUGreaterThan %72 %251 %252
+               OpNoLine
+        %254 = OpSelect %63 %253 %138 %81
+               OpLine %17 377 26
+        %255 = OpBitcast %68 %254
+               OpLine %17 377 24
+        %256 = OpIAdd %68 %250 %255
+               OpLine %17 377 9
+        %257 = OpAccessChain %124 %171 %64
+               OpStore %257 %256
+               OpLine %17 378 5
+               OpBranch %241
+        %242 = OpLabel
+               OpLine %17 373 17
+        %258 = OpAccessChain %124 %176 %81
+        %259 = OpLoad %68 %258
+               OpLine %17 373 26
+        %260 = OpBitcast %68 %239
+               OpLine %17 373 24
+        %261 = OpIAdd %68 %259 %260
+               OpLine %17 373 9
+        %262 = OpAccessChain %124 %171 %81
+               OpStore %262 %261
+               OpLine %17 374 17
+        %263 = OpAccessChain %124 %176 %64
+        %264 = OpLoad %68 %263
+               OpLine %17 374 27
+        %265 = OpLoad %68 %262
+               OpLine %17 374 35
+        %266 = OpLoad %68 %258
+               OpLine %17 374 33
+        %267 = OpULessThan %72 %265 %266
+               OpNoLine
+        %268 = OpSelect %63 %267 %64 %81
+               OpLine %17 374 26
+        %269 = OpBitcast %68 %268
+               OpLine %17 374 24
+        %270 = OpIAdd %68 %264 %269
+               OpLine %17 374 9
+        %271 = OpAccessChain %124 %171 %64
+               OpStore %271 %270
+               OpLine %17 378 5
+               OpBranch %241
+        %241 = OpLabel
+               OpLine %17 379 12
+        %272 = OpLoad %76 %171
+               OpLine %21 55 26
+        %273 = OpBitcast %133 %272
+        %274 = OpLoad %125 %273 Aligned 16
+               OpLine %21 55 17
+               OpStore %175 %274
+               OpLine %21 60 32
+               OpStore %177 %188
+               OpLine %21 60 59
+        %275 = OpIAdd %68 %85 %201
+               OpLine %21 60 56
+        %276 = OpBitcast %63 %275
+               OpLine %17 372 16
+        %277 = OpSGreaterThanEqual %72 %276 %81
+               OpLine %17 372 22
+               OpSelectionMerge %278 None
+               OpBranchConditional %277 %279 %280
+        %280 = OpLabel
+               OpLine %17 376 17
+        %281 = OpAccessChain %124 %177 %81
+        %282 = OpLoad %68 %281
+               OpLine %17 376 26
+        %283 = OpBitcast %68 %276
+               OpLine %17 376 24
+        %284 = OpIAdd %68 %282 %283
+               OpLine %17 376 9
+        %285 = OpAccessChain %124 %170 %81
+               OpStore %285 %284
+               OpLine %17 377 17
+        %286 = OpAccessChain %124 %177 %64
+        %287 = OpLoad %68 %286
+               OpLine %17 377 27
+        %288 = OpLoad %68 %285
+               OpLine %17 377 35
+        %289 = OpLoad %68 %281
+               OpLine %17 377 33
+        %290 = OpUGreaterThan %72 %288 %289
+               OpNoLine
+        %291 = OpSelect %63 %290 %138 %81
+               OpLine %17 377 26
+        %292 = OpBitcast %68 %291
+               OpLine %17 377 24
+        %293 = OpIAdd %68 %287 %292
+               OpLine %17 377 9
+        %294 = OpAccessChain %124 %170 %64
+               OpStore %294 %293
+               OpLine %17 378 5
+               OpBranch %278
+        %279 = OpLabel
+               OpLine %17 373 17
+        %295 = OpAccessChain %124 %177 %81
+        %296 = OpLoad %68 %295
+               OpLine %17 373 26
+        %297 = OpBitcast %68 %276
+               OpLine %17 373 24
+        %298 = OpIAdd %68 %296 %297
+               OpLine %17 373 9
+        %299 = OpAccessChain %124 %170 %81
+               OpStore %299 %298
+               OpLine %17 374 17
+        %300 = OpAccessChain %124 %177 %64
+        %301 = OpLoad %68 %300
+               OpLine %17 374 27
+        %302 = OpLoad %68 %299
+               OpLine %17 374 35
+        %303 = OpLoad %68 %295
+               OpLine %17 374 33
+        %304 = OpULessThan %72 %302 %303
+               OpNoLine
+        %305 = OpSelect %63 %304 %64 %81
+               OpLine %17 374 26
+        %306 = OpBitcast %68 %305
+               OpLine %17 374 24
+        %307 = OpIAdd %68 %301 %306
+               OpLine %17 374 9
+        %308 = OpAccessChain %124 %170 %64
+               OpStore %308 %307
+               OpLine %17 378 5
+               OpBranch %278
+        %278 = OpLabel
+               OpLine %17 379 12
+        %309 = OpLoad %76 %170
+               OpLine %21 59 26
+        %310 = OpBitcast %134 %309
+        %311 = OpLoad %76 %310 Aligned 16
+               OpLine %21 66 44
+        %312 = OpVectorShuffle %135 %237 %237 0 1 2
+               OpLine %21 66 36
+        %313 = OpBitcast %74 %312
+               OpLine %21 67 31
+        %314 = OpAccessChain %124 %173 %66
+        %315 = OpLoad %68 %314
+               OpLine %21 67 23
+        %316 = OpBitcast %67 %315
+               OpLine %21 68 42
+        %317 = OpVectorShuffle %135 %274 %274 0 1 2
+               OpLine %21 68 34
+        %318 = OpBitcast %74 %317
+               OpLine %21 69 44
+        %319 = OpAccessChain %124 %175 %66
+        %320 = OpLoad %68 %319
+               OpLine %21 69 36
+        %321 = OpBitcast %67 %320
+               OpLine %21 70 30
+        %322 = OpBitcast %73 %311
+               OpLine %21 72 27
+        %323 = OpCompositeExtract %67 %313 0
+        %324 = OpCompositeExtract %67 %313 1
+        %325 = OpCompositeExtract %67 %313 2
+        %326 = OpCompositeConstruct %86 %323 %324 %325 %77
+               OpLine %21 72 12
+               OpStore %178 %326
+               OpLine %21 73 42
+        %327 = OpVectorShuffle %74 %326 %326 0 1 2
+               OpLine %36 13 46
+        %328 = OpVectorTimesScalar %74 %327 %90
+               OpLine %28 111 14
+        %329 = OpExtInst %74 %1 Floor %328
+        %330 = OpConvertFToS %136 %329
+               OpLine %28 112 16
+        %331 = OpExtInst %74 %1 Fract %328
+               OpLine %28 120 37
+        %332 = OpBitcast %135 %330
+               OpStore %167 %332
+               OpLine %29 39 23
+        %333 = OpAccessChain %124 %167 %81
+        %334 = OpLoad %68 %333
+               OpLine %29 39 34
+        %335 = OpVectorShuffle %76 %332 %332 1 2
+               OpStore %166 %335
+               OpLine %29 35 23
+        %336 = OpAccessChain %124 %166 %81
+        %337 = OpLoad %68 %336
+               OpLine %29 35 34
+        %338 = OpAccessChain %124 %166 %64
+        %339 = OpLoad %68 %338
+               OpLine %29 7 10
+        %340 = OpShiftLeftLogical %68 %339 %107
+               OpLine %29 7 4
+        %341 = OpIAdd %68 %339 %340
+               OpLine %29 8 10
+        %342 = OpShiftRightLogical %68 %341 %108
+               OpLine %29 8 4
+        %343 = OpBitwiseXor %68 %341 %342
+               OpLine %29 9 10
+        %344 = OpShiftLeftLogical %68 %343 %71
+               OpLine %29 9 4
+        %345 = OpIAdd %68 %343 %344
+               OpLine %29 10 10
+        %346 = OpShiftRightLogical %68 %345 %99
+               OpLine %29 10 4
+        %347 = OpBitwiseXor %68 %345 %346
+               OpLine %29 11 10
+        %348 = OpShiftLeftLogical %68 %347 %102
+               OpLine %29 11 4
+        %349 = OpIAdd %68 %347 %348
+               OpLine %29 24 20
+        %350 = OpIMul %68 %337 %97
+               OpLine %29 24 24
+        %351 = OpIAdd %68 %350 %349
+               OpLine %29 24 28
+        %352 = OpIAdd %68 %351 %98
+               OpLine %29 24 33
+        %353 = OpIMul %68 %352 %97
+               OpLine %29 27 19
+        %354 = OpShiftRightLogical %68 %353 %99
+               OpLine %29 27 10
+        %355 = OpBitwiseXor %68 %353 %354
+               OpLine %29 28 19
+        %356 = OpShiftLeftLogical %68 %355 %100
+               OpLine %29 28 26
+        %357 = OpBitwiseAnd %68 %356 %101
+               OpLine %29 28 10
+        %358 = OpBitwiseXor %68 %355 %357
+               OpLine %29 29 19
+        %359 = OpShiftLeftLogical %68 %358 %102
+               OpLine %29 29 27
+        %360 = OpBitwiseAnd %68 %359 %103
+               OpLine %29 29 10
+        %361 = OpBitwiseXor %68 %358 %360
+               OpLine %29 30 19
+        %362 = OpShiftRightLogical %68 %361 %104
+               OpLine %29 30 10
+        %363 = OpBitwiseXor %68 %361 %362
+               OpLine %29 24 20
+        %364 = OpIMul %68 %334 %97
+               OpLine %29 24 24
+        %365 = OpIAdd %68 %364 %363
+               OpLine %29 24 28
+        %366 = OpIAdd %68 %365 %98
+               OpLine %29 24 33
+        %367 = OpIMul %68 %366 %97
+               OpLine %29 27 19
+        %368 = OpShiftRightLogical %68 %367 %99
+               OpLine %29 27 10
+        %369 = OpBitwiseXor %68 %367 %368
+               OpLine %29 28 19
+        %370 = OpShiftLeftLogical %68 %369 %100
+               OpLine %29 28 26
+        %371 = OpBitwiseAnd %68 %370 %101
+               OpLine %29 28 10
+        %372 = OpBitwiseXor %68 %369 %371
+               OpLine %29 29 19
+        %373 = OpShiftLeftLogical %68 %372 %102
+               OpLine %29 29 27
+        %374 = OpBitwiseAnd %68 %373 %103
+               OpLine %29 29 10
+        %375 = OpBitwiseXor %68 %372 %374
+               OpLine %29 30 19
+        %376 = OpShiftRightLogical %68 %375 %104
+               OpLine %29 30 10
+        %377 = OpBitwiseXor %68 %375 %376
+               OpLine %29 7 10
+        %378 = OpShiftLeftLogical %68 %377 %107
+               OpLine %29 7 4
+        %379 = OpIAdd %68 %377 %378
+               OpLine %29 8 10
+        %380 = OpShiftRightLogical %68 %379 %108
+               OpLine %29 8 4
+        %381 = OpBitwiseXor %68 %379 %380
+               OpLine %29 9 10
+        %382 = OpShiftLeftLogical %68 %381 %71
+               OpLine %29 9 4
+        %383 = OpIAdd %68 %381 %382
+               OpLine %29 10 10
+        %384 = OpShiftRightLogical %68 %383 %99
+               OpLine %29 10 4
+        %385 = OpBitwiseXor %68 %383 %384
+               OpLine %29 11 10
+        %386 = OpShiftLeftLogical %68 %385 %102
+               OpLine %29 11 4
+        %387 = OpIAdd %68 %385 %386
+               OpLine %29 50 4
+        %388 = OpBitwiseAnd %68 %377 %105
+               OpLine %29 51 4
+        %389 = OpBitwiseOr %68 %388 %106
+               OpLine %29 53 13
+        %390 = OpBitcast %67 %389
+               OpLine %29 54 12
+        %391 = OpFSub %67 %390 %77
+               OpLine %29 64 5
+        %392 = OpAccessChain %129 %165 %69
+               OpStore %392 %391
+               OpLine %29 50 4
+        %393 = OpBitwiseAnd %68 %387 %105
+               OpLine %29 51 4
+        %394 = OpBitwiseOr %68 %393 %106
+               OpLine %29 53 13
+        %395 = OpBitcast %67 %394
+               OpLine %29 54 12
+        %396 = OpFSub %67 %395 %77
+               OpLine %29 65 5
+        %397 = OpAccessChain %129 %165 %70
+               OpStore %397 %396
+               OpLine %28 120 39
+        %398 = OpIAdd %136 %330 %139
+               OpLine %28 120 37
+        %399 = OpBitcast %135 %398
+               OpStore %167 %399
+               OpLine %29 39 23
+        %400 = OpLoad %68 %333
+               OpLine %29 39 34
+        %401 = OpVectorShuffle %76 %399 %399 1 2
+               OpStore %166 %401
+               OpLine %29 35 23
+        %402 = OpLoad %68 %336
+               OpLine %29 35 34
+        %403 = OpLoad %68 %338
+               OpLine %29 7 10
+        %404 = OpShiftLeftLogical %68 %403 %107
+               OpLine %29 7 4
+        %405 = OpIAdd %68 %403 %404
+               OpLine %29 8 10
+        %406 = OpShiftRightLogical %68 %405 %108
+               OpLine %29 8 4
+        %407 = OpBitwiseXor %68 %405 %406
+               OpLine %29 9 10
+        %408 = OpShiftLeftLogical %68 %407 %71
+               OpLine %29 9 4
+        %409 = OpIAdd %68 %407 %408
+               OpLine %29 10 10
+        %410 = OpShiftRightLogical %68 %409 %99
+               OpLine %29 10 4
+        %411 = OpBitwiseXor %68 %409 %410
+               OpLine %29 11 10
+        %412 = OpShiftLeftLogical %68 %411 %102
+               OpLine %29 11 4
+        %413 = OpIAdd %68 %411 %412
+               OpLine %29 24 20
+        %414 = OpIMul %68 %402 %97
+               OpLine %29 24 24
+        %415 = OpIAdd %68 %414 %413
+               OpLine %29 24 28
+        %416 = OpIAdd %68 %415 %98
+               OpLine %29 24 33
+        %417 = OpIMul %68 %416 %97
+               OpLine %29 27 19
+        %418 = OpShiftRightLogical %68 %417 %99
+               OpLine %29 27 10
+        %419 = OpBitwiseXor %68 %417 %418
+               OpLine %29 28 19
+        %420 = OpShiftLeftLogical %68 %419 %100
+               OpLine %29 28 26
+        %421 = OpBitwiseAnd %68 %420 %101
+               OpLine %29 28 10
+        %422 = OpBitwiseXor %68 %419 %421
+               OpLine %29 29 19
+        %423 = OpShiftLeftLogical %68 %422 %102
+               OpLine %29 29 27
+        %424 = OpBitwiseAnd %68 %423 %103
+               OpLine %29 29 10
+        %425 = OpBitwiseXor %68 %422 %424
+               OpLine %29 30 19
+        %426 = OpShiftRightLogical %68 %425 %104
+               OpLine %29 30 10
+        %427 = OpBitwiseXor %68 %425 %426
+               OpLine %29 24 20
+        %428 = OpIMul %68 %400 %97
+               OpLine %29 24 24
+        %429 = OpIAdd %68 %428 %427
+               OpLine %29 24 28
+        %430 = OpIAdd %68 %429 %98
+               OpLine %29 24 33
+        %431 = OpIMul %68 %430 %97
+               OpLine %29 27 19
+        %432 = OpShiftRightLogical %68 %431 %99
+               OpLine %29 27 10
+        %433 = OpBitwiseXor %68 %431 %432
+               OpLine %29 28 19
+        %434 = OpShiftLeftLogical %68 %433 %100
+               OpLine %29 28 26
+        %435 = OpBitwiseAnd %68 %434 %101
+               OpLine %29 28 10
+        %436 = OpBitwiseXor %68 %433 %435
+               OpLine %29 29 19
+        %437 = OpShiftLeftLogical %68 %436 %102
+               OpLine %29 29 27
+        %438 = OpBitwiseAnd %68 %437 %103
+               OpLine %29 29 10
+        %439 = OpBitwiseXor %68 %436 %438
+               OpLine %29 30 19
+        %440 = OpShiftRightLogical %68 %439 %104
+               OpLine %29 30 10
+        %441 = OpBitwiseXor %68 %439 %440
+               OpLine %29 7 10
+        %442 = OpShiftLeftLogical %68 %441 %107
+               OpLine %29 7 4
+        %443 = OpIAdd %68 %441 %442
+               OpLine %29 8 10
+        %444 = OpShiftRightLogical %68 %443 %108
+               OpLine %29 8 4
+        %445 = OpBitwiseXor %68 %443 %444
+               OpLine %29 9 10
+        %446 = OpShiftLeftLogical %68 %445 %71
+               OpLine %29 9 4
+        %447 = OpIAdd %68 %445 %446
+               OpLine %29 10 10
+        %448 = OpShiftRightLogical %68 %447 %99
+               OpLine %29 10 4
+        %449 = OpBitwiseXor %68 %447 %448
+               OpLine %29 11 10
+        %450 = OpShiftLeftLogical %68 %449 %102
+               OpLine %29 11 4
+        %451 = OpIAdd %68 %449 %450
+               OpLine %29 50 4
+        %452 = OpBitwiseAnd %68 %441 %105
+               OpLine %29 51 4
+        %453 = OpBitwiseOr %68 %452 %106
+               OpLine %29 53 13
+        %454 = OpBitcast %67 %453
+               OpLine %29 54 12
+        %455 = OpFSub %67 %454 %77
+               OpLine %29 64 5
+        %456 = OpAccessChain %129 %164 %69
+               OpStore %456 %455
+               OpLine %29 50 4
+        %457 = OpBitwiseAnd %68 %451 %105
+               OpLine %29 51 4
+        %458 = OpBitwiseOr %68 %457 %106
+               OpLine %29 53 13
+        %459 = OpBitcast %67 %458
+               OpLine %29 54 12
+        %460 = OpFSub %67 %459 %77
+               OpLine %29 65 5
+        %461 = OpAccessChain %129 %164 %70
+               OpStore %461 %460
+               OpLine %28 120 39
+        %462 = OpIAdd %136 %330 %140
+               OpLine %28 120 37
+        %463 = OpBitcast %135 %462
+               OpStore %167 %463
+               OpLine %29 39 23
+        %464 = OpLoad %68 %333
+               OpLine %29 39 34
+        %465 = OpVectorShuffle %76 %463 %463 1 2
+               OpStore %166 %465
+               OpLine %29 35 23
+        %466 = OpLoad %68 %336
+               OpLine %29 35 34
+        %467 = OpLoad %68 %338
+               OpLine %29 7 10
+        %468 = OpShiftLeftLogical %68 %467 %107
+               OpLine %29 7 4
+        %469 = OpIAdd %68 %467 %468
+               OpLine %29 8 10
+        %470 = OpShiftRightLogical %68 %469 %108
+               OpLine %29 8 4
+        %471 = OpBitwiseXor %68 %469 %470
+               OpLine %29 9 10
+        %472 = OpShiftLeftLogical %68 %471 %71
+               OpLine %29 9 4
+        %473 = OpIAdd %68 %471 %472
+               OpLine %29 10 10
+        %474 = OpShiftRightLogical %68 %473 %99
+               OpLine %29 10 4
+        %475 = OpBitwiseXor %68 %473 %474
+               OpLine %29 11 10
+        %476 = OpShiftLeftLogical %68 %475 %102
+               OpLine %29 11 4
+        %477 = OpIAdd %68 %475 %476
+               OpLine %29 24 20
+        %478 = OpIMul %68 %466 %97
+               OpLine %29 24 24
+        %479 = OpIAdd %68 %478 %477
+               OpLine %29 24 28
+        %480 = OpIAdd %68 %479 %98
+               OpLine %29 24 33
+        %481 = OpIMul %68 %480 %97
+               OpLine %29 27 19
+        %482 = OpShiftRightLogical %68 %481 %99
+               OpLine %29 27 10
+        %483 = OpBitwiseXor %68 %481 %482
+               OpLine %29 28 19
+        %484 = OpShiftLeftLogical %68 %483 %100
+               OpLine %29 28 26
+        %485 = OpBitwiseAnd %68 %484 %101
+               OpLine %29 28 10
+        %486 = OpBitwiseXor %68 %483 %485
+               OpLine %29 29 19
+        %487 = OpShiftLeftLogical %68 %486 %102
+               OpLine %29 29 27
+        %488 = OpBitwiseAnd %68 %487 %103
+               OpLine %29 29 10
+        %489 = OpBitwiseXor %68 %486 %488
+               OpLine %29 30 19
+        %490 = OpShiftRightLogical %68 %489 %104
+               OpLine %29 30 10
+        %491 = OpBitwiseXor %68 %489 %490
+               OpLine %29 24 20
+        %492 = OpIMul %68 %464 %97
+               OpLine %29 24 24
+        %493 = OpIAdd %68 %492 %491
+               OpLine %29 24 28
+        %494 = OpIAdd %68 %493 %98
+               OpLine %29 24 33
+        %495 = OpIMul %68 %494 %97
+               OpLine %29 27 19
+        %496 = OpShiftRightLogical %68 %495 %99
+               OpLine %29 27 10
+        %497 = OpBitwiseXor %68 %495 %496
+               OpLine %29 28 19
+        %498 = OpShiftLeftLogical %68 %497 %100
+               OpLine %29 28 26
+        %499 = OpBitwiseAnd %68 %498 %101
+               OpLine %29 28 10
+        %500 = OpBitwiseXor %68 %497 %499
+               OpLine %29 29 19
+        %501 = OpShiftLeftLogical %68 %500 %102
+               OpLine %29 29 27
+        %502 = OpBitwiseAnd %68 %501 %103
+               OpLine %29 29 10
+        %503 = OpBitwiseXor %68 %500 %502
+               OpLine %29 30 19
+        %504 = OpShiftRightLogical %68 %503 %104
+               OpLine %29 30 10
+        %505 = OpBitwiseXor %68 %503 %504
+               OpLine %29 7 10
+        %506 = OpShiftLeftLogical %68 %505 %107
+               OpLine %29 7 4
+        %507 = OpIAdd %68 %505 %506
+               OpLine %29 8 10
+        %508 = OpShiftRightLogical %68 %507 %108
+               OpLine %29 8 4
+        %509 = OpBitwiseXor %68 %507 %508
+               OpLine %29 9 10
+        %510 = OpShiftLeftLogical %68 %509 %71
+               OpLine %29 9 4
+        %511 = OpIAdd %68 %509 %510
+               OpLine %29 10 10
+        %512 = OpShiftRightLogical %68 %511 %99
+               OpLine %29 10 4
+        %513 = OpBitwiseXor %68 %511 %512
+               OpLine %29 11 10
+        %514 = OpShiftLeftLogical %68 %513 %102
+               OpLine %29 11 4
+        %515 = OpIAdd %68 %513 %514
+               OpLine %29 50 4
+        %516 = OpBitwiseAnd %68 %505 %105
+               OpLine %29 51 4
+        %517 = OpBitwiseOr %68 %516 %106
+               OpLine %29 53 13
+        %518 = OpBitcast %67 %517
+               OpLine %29 54 12
+        %519 = OpFSub %67 %518 %77
+               OpLine %29 64 5
+        %520 = OpAccessChain %129 %163 %69
+               OpStore %520 %519
+               OpLine %29 50 4
+        %521 = OpBitwiseAnd %68 %515 %105
+               OpLine %29 51 4
+        %522 = OpBitwiseOr %68 %521 %106
+               OpLine %29 53 13
+        %523 = OpBitcast %67 %522
+               OpLine %29 54 12
+        %524 = OpFSub %67 %523 %77
+               OpLine %29 65 5
+        %525 = OpAccessChain %129 %163 %70
+               OpStore %525 %524
+               OpLine %28 120 39
+        %526 = OpIAdd %136 %330 %141
+               OpLine %28 120 37
+        %527 = OpBitcast %135 %526
+               OpStore %167 %527
+               OpLine %29 39 23
+        %528 = OpLoad %68 %333
+               OpLine %29 39 34
+        %529 = OpVectorShuffle %76 %527 %527 1 2
+               OpStore %166 %529
+               OpLine %29 35 23
+        %530 = OpLoad %68 %336
+               OpLine %29 35 34
+        %531 = OpLoad %68 %338
+               OpLine %29 7 10
+        %532 = OpShiftLeftLogical %68 %531 %107
+               OpLine %29 7 4
+        %533 = OpIAdd %68 %531 %532
+               OpLine %29 8 10
+        %534 = OpShiftRightLogical %68 %533 %108
+               OpLine %29 8 4
+        %535 = OpBitwiseXor %68 %533 %534
+               OpLine %29 9 10
+        %536 = OpShiftLeftLogical %68 %535 %71
+               OpLine %29 9 4
+        %537 = OpIAdd %68 %535 %536
+               OpLine %29 10 10
+        %538 = OpShiftRightLogical %68 %537 %99
+               OpLine %29 10 4
+        %539 = OpBitwiseXor %68 %537 %538
+               OpLine %29 11 10
+        %540 = OpShiftLeftLogical %68 %539 %102
+               OpLine %29 11 4
+        %541 = OpIAdd %68 %539 %540
+               OpLine %29 24 20
+        %542 = OpIMul %68 %530 %97
+               OpLine %29 24 24
+        %543 = OpIAdd %68 %542 %541
+               OpLine %29 24 28
+        %544 = OpIAdd %68 %543 %98
+               OpLine %29 24 33
+        %545 = OpIMul %68 %544 %97
+               OpLine %29 27 19
+        %546 = OpShiftRightLogical %68 %545 %99
+               OpLine %29 27 10
+        %547 = OpBitwiseXor %68 %545 %546
+               OpLine %29 28 19
+        %548 = OpShiftLeftLogical %68 %547 %100
+               OpLine %29 28 26
+        %549 = OpBitwiseAnd %68 %548 %101
+               OpLine %29 28 10
+        %550 = OpBitwiseXor %68 %547 %549
+               OpLine %29 29 19
+        %551 = OpShiftLeftLogical %68 %550 %102
+               OpLine %29 29 27
+        %552 = OpBitwiseAnd %68 %551 %103
+               OpLine %29 29 10
+        %553 = OpBitwiseXor %68 %550 %552
+               OpLine %29 30 19
+        %554 = OpShiftRightLogical %68 %553 %104
+               OpLine %29 30 10
+        %555 = OpBitwiseXor %68 %553 %554
+               OpLine %29 24 20
+        %556 = OpIMul %68 %528 %97
+               OpLine %29 24 24
+        %557 = OpIAdd %68 %556 %555
+               OpLine %29 24 28
+        %558 = OpIAdd %68 %557 %98
+               OpLine %29 24 33
+        %559 = OpIMul %68 %558 %97
+               OpLine %29 27 19
+        %560 = OpShiftRightLogical %68 %559 %99
+               OpLine %29 27 10
+        %561 = OpBitwiseXor %68 %559 %560
+               OpLine %29 28 19
+        %562 = OpShiftLeftLogical %68 %561 %100
+               OpLine %29 28 26
+        %563 = OpBitwiseAnd %68 %562 %101
+               OpLine %29 28 10
+        %564 = OpBitwiseXor %68 %561 %563
+               OpLine %29 29 19
+        %565 = OpShiftLeftLogical %68 %564 %102
+               OpLine %29 29 27
+        %566 = OpBitwiseAnd %68 %565 %103
+               OpLine %29 29 10
+        %567 = OpBitwiseXor %68 %564 %566
+               OpLine %29 30 19
+        %568 = OpShiftRightLogical %68 %567 %104
+               OpLine %29 30 10
+        %569 = OpBitwiseXor %68 %567 %568
+               OpLine %29 7 10
+        %570 = OpShiftLeftLogical %68 %569 %107
+               OpLine %29 7 4
+        %571 = OpIAdd %68 %569 %570
+               OpLine %29 8 10
+        %572 = OpShiftRightLogical %68 %571 %108
+               OpLine %29 8 4
+        %573 = OpBitwiseXor %68 %571 %572
+               OpLine %29 9 10
+        %574 = OpShiftLeftLogical %68 %573 %71
+               OpLine %29 9 4
+        %575 = OpIAdd %68 %573 %574
+               OpLine %29 10 10
+        %576 = OpShiftRightLogical %68 %575 %99
+               OpLine %29 10 4
+        %577 = OpBitwiseXor %68 %575 %576
+               OpLine %29 11 10
+        %578 = OpShiftLeftLogical %68 %577 %102
+               OpLine %29 11 4
+        %579 = OpIAdd %68 %577 %578
+               OpLine %29 50 4
+        %580 = OpBitwiseAnd %68 %569 %105
+               OpLine %29 51 4
+        %581 = OpBitwiseOr %68 %580 %106
+               OpLine %29 53 13
+        %582 = OpBitcast %67 %581
+               OpLine %29 54 12
+        %583 = OpFSub %67 %582 %77
+               OpLine %29 64 5
+        %584 = OpAccessChain %129 %162 %69
+               OpStore %584 %583
+               OpLine %29 50 4
+        %585 = OpBitwiseAnd %68 %579 %105
+               OpLine %29 51 4
+        %586 = OpBitwiseOr %68 %585 %106
+               OpLine %29 53 13
+        %587 = OpBitcast %67 %586
+               OpLine %29 54 12
+        %588 = OpFSub %67 %587 %77
+               OpLine %29 65 5
+        %589 = OpAccessChain %129 %162 %70
+               OpStore %589 %588
+               OpLine %28 120 39
+        %590 = OpIAdd %136 %330 %142
+               OpLine %28 120 37
+        %591 = OpBitcast %135 %590
+               OpStore %167 %591
+               OpLine %29 39 23
+        %592 = OpLoad %68 %333
+               OpLine %29 39 34
+        %593 = OpVectorShuffle %76 %591 %591 1 2
+               OpStore %166 %593
+               OpLine %29 35 23
+        %594 = OpLoad %68 %336
+               OpLine %29 35 34
+        %595 = OpLoad %68 %338
+               OpLine %29 7 10
+        %596 = OpShiftLeftLogical %68 %595 %107
+               OpLine %29 7 4
+        %597 = OpIAdd %68 %595 %596
+               OpLine %29 8 10
+        %598 = OpShiftRightLogical %68 %597 %108
+               OpLine %29 8 4
+        %599 = OpBitwiseXor %68 %597 %598
+               OpLine %29 9 10
+        %600 = OpShiftLeftLogical %68 %599 %71
+               OpLine %29 9 4
+        %601 = OpIAdd %68 %599 %600
+               OpLine %29 10 10
+        %602 = OpShiftRightLogical %68 %601 %99
+               OpLine %29 10 4
+        %603 = OpBitwiseXor %68 %601 %602
+               OpLine %29 11 10
+        %604 = OpShiftLeftLogical %68 %603 %102
+               OpLine %29 11 4
+        %605 = OpIAdd %68 %603 %604
+               OpLine %29 24 20
+        %606 = OpIMul %68 %594 %97
+               OpLine %29 24 24
+        %607 = OpIAdd %68 %606 %605
+               OpLine %29 24 28
+        %608 = OpIAdd %68 %607 %98
+               OpLine %29 24 33
+        %609 = OpIMul %68 %608 %97
+               OpLine %29 27 19
+        %610 = OpShiftRightLogical %68 %609 %99
+               OpLine %29 27 10
+        %611 = OpBitwiseXor %68 %609 %610
+               OpLine %29 28 19
+        %612 = OpShiftLeftLogical %68 %611 %100
+               OpLine %29 28 26
+        %613 = OpBitwiseAnd %68 %612 %101
+               OpLine %29 28 10
+        %614 = OpBitwiseXor %68 %611 %613
+               OpLine %29 29 19
+        %615 = OpShiftLeftLogical %68 %614 %102
+               OpLine %29 29 27
+        %616 = OpBitwiseAnd %68 %615 %103
+               OpLine %29 29 10
+        %617 = OpBitwiseXor %68 %614 %616
+               OpLine %29 30 19
+        %618 = OpShiftRightLogical %68 %617 %104
+               OpLine %29 30 10
+        %619 = OpBitwiseXor %68 %617 %618
+               OpLine %29 24 20
+        %620 = OpIMul %68 %592 %97
+               OpLine %29 24 24
+        %621 = OpIAdd %68 %620 %619
+               OpLine %29 24 28
+        %622 = OpIAdd %68 %621 %98
+               OpLine %29 24 33
+        %623 = OpIMul %68 %622 %97
+               OpLine %29 27 19
+        %624 = OpShiftRightLogical %68 %623 %99
+               OpLine %29 27 10
+        %625 = OpBitwiseXor %68 %623 %624
+               OpLine %29 28 19
+        %626 = OpShiftLeftLogical %68 %625 %100
+               OpLine %29 28 26
+        %627 = OpBitwiseAnd %68 %626 %101
+               OpLine %29 28 10
+        %628 = OpBitwiseXor %68 %625 %627
+               OpLine %29 29 19
+        %629 = OpShiftLeftLogical %68 %628 %102
+               OpLine %29 29 27
+        %630 = OpBitwiseAnd %68 %629 %103
+               OpLine %29 29 10
+        %631 = OpBitwiseXor %68 %628 %630
+               OpLine %29 30 19
+        %632 = OpShiftRightLogical %68 %631 %104
+               OpLine %29 30 10
+        %633 = OpBitwiseXor %68 %631 %632
+               OpLine %29 7 10
+        %634 = OpShiftLeftLogical %68 %633 %107
+               OpLine %29 7 4
+        %635 = OpIAdd %68 %633 %634
+               OpLine %29 8 10
+        %636 = OpShiftRightLogical %68 %635 %108
+               OpLine %29 8 4
+        %637 = OpBitwiseXor %68 %635 %636
+               OpLine %29 9 10
+        %638 = OpShiftLeftLogical %68 %637 %71
+               OpLine %29 9 4
+        %639 = OpIAdd %68 %637 %638
+               OpLine %29 10 10
+        %640 = OpShiftRightLogical %68 %639 %99
+               OpLine %29 10 4
+        %641 = OpBitwiseXor %68 %639 %640
+               OpLine %29 11 10
+        %642 = OpShiftLeftLogical %68 %641 %102
+               OpLine %29 11 4
+        %643 = OpIAdd %68 %641 %642
+               OpLine %29 50 4
+        %644 = OpBitwiseAnd %68 %633 %105
+               OpLine %29 51 4
+        %645 = OpBitwiseOr %68 %644 %106
+               OpLine %29 53 13
+        %646 = OpBitcast %67 %645
+               OpLine %29 54 12
+        %647 = OpFSub %67 %646 %77
+               OpLine %29 64 5
+        %648 = OpAccessChain %129 %161 %69
+               OpStore %648 %647
+               OpLine %29 50 4
+        %649 = OpBitwiseAnd %68 %643 %105
+               OpLine %29 51 4
+        %650 = OpBitwiseOr %68 %649 %106
+               OpLine %29 53 13
+        %651 = OpBitcast %67 %650
+               OpLine %29 54 12
+        %652 = OpFSub %67 %651 %77
+               OpLine %29 65 5
+        %653 = OpAccessChain %129 %161 %70
+               OpStore %653 %652
+               OpLine %28 120 39
+        %654 = OpIAdd %136 %330 %143
+               OpLine %28 120 37
+        %655 = OpBitcast %135 %654
+               OpStore %167 %655
+               OpLine %29 39 23
+        %656 = OpLoad %68 %333
+               OpLine %29 39 34
+        %657 = OpVectorShuffle %76 %655 %655 1 2
+               OpStore %166 %657
+               OpLine %29 35 23
+        %658 = OpLoad %68 %336
+               OpLine %29 35 34
+        %659 = OpLoad %68 %338
+               OpLine %29 7 10
+        %660 = OpShiftLeftLogical %68 %659 %107
+               OpLine %29 7 4
+        %661 = OpIAdd %68 %659 %660
+               OpLine %29 8 10
+        %662 = OpShiftRightLogical %68 %661 %108
+               OpLine %29 8 4
+        %663 = OpBitwiseXor %68 %661 %662
+               OpLine %29 9 10
+        %664 = OpShiftLeftLogical %68 %663 %71
+               OpLine %29 9 4
+        %665 = OpIAdd %68 %663 %664
+               OpLine %29 10 10
+        %666 = OpShiftRightLogical %68 %665 %99
+               OpLine %29 10 4
+        %667 = OpBitwiseXor %68 %665 %666
+               OpLine %29 11 10
+        %668 = OpShiftLeftLogical %68 %667 %102
+               OpLine %29 11 4
+        %669 = OpIAdd %68 %667 %668
+               OpLine %29 24 20
+        %670 = OpIMul %68 %658 %97
+               OpLine %29 24 24
+        %671 = OpIAdd %68 %670 %669
+               OpLine %29 24 28
+        %672 = OpIAdd %68 %671 %98
+               OpLine %29 24 33
+        %673 = OpIMul %68 %672 %97
+               OpLine %29 27 19
+        %674 = OpShiftRightLogical %68 %673 %99
+               OpLine %29 27 10
+        %675 = OpBitwiseXor %68 %673 %674
+               OpLine %29 28 19
+        %676 = OpShiftLeftLogical %68 %675 %100
+               OpLine %29 28 26
+        %677 = OpBitwiseAnd %68 %676 %101
+               OpLine %29 28 10
+        %678 = OpBitwiseXor %68 %675 %677
+               OpLine %29 29 19
+        %679 = OpShiftLeftLogical %68 %678 %102
+               OpLine %29 29 27
+        %680 = OpBitwiseAnd %68 %679 %103
+               OpLine %29 29 10
+        %681 = OpBitwiseXor %68 %678 %680
+               OpLine %29 30 19
+        %682 = OpShiftRightLogical %68 %681 %104
+               OpLine %29 30 10
+        %683 = OpBitwiseXor %68 %681 %682
+               OpLine %29 24 20
+        %684 = OpIMul %68 %656 %97
+               OpLine %29 24 24
+        %685 = OpIAdd %68 %684 %683
+               OpLine %29 24 28
+        %686 = OpIAdd %68 %685 %98
+               OpLine %29 24 33
+        %687 = OpIMul %68 %686 %97
+               OpLine %29 27 19
+        %688 = OpShiftRightLogical %68 %687 %99
+               OpLine %29 27 10
+        %689 = OpBitwiseXor %68 %687 %688
+               OpLine %29 28 19
+        %690 = OpShiftLeftLogical %68 %689 %100
+               OpLine %29 28 26
+        %691 = OpBitwiseAnd %68 %690 %101
+               OpLine %29 28 10
+        %692 = OpBitwiseXor %68 %689 %691
+               OpLine %29 29 19
+        %693 = OpShiftLeftLogical %68 %692 %102
+               OpLine %29 29 27
+        %694 = OpBitwiseAnd %68 %693 %103
+               OpLine %29 29 10
+        %695 = OpBitwiseXor %68 %692 %694
+               OpLine %29 30 19
+        %696 = OpShiftRightLogical %68 %695 %104
+               OpLine %29 30 10
+        %697 = OpBitwiseXor %68 %695 %696
+               OpLine %29 7 10
+        %698 = OpShiftLeftLogical %68 %697 %107
+               OpLine %29 7 4
+        %699 = OpIAdd %68 %697 %698
+               OpLine %29 8 10
+        %700 = OpShiftRightLogical %68 %699 %108
+               OpLine %29 8 4
+        %701 = OpBitwiseXor %68 %699 %700
+               OpLine %29 9 10
+        %702 = OpShiftLeftLogical %68 %701 %71
+               OpLine %29 9 4
+        %703 = OpIAdd %68 %701 %702
+               OpLine %29 10 10
+        %704 = OpShiftRightLogical %68 %703 %99
+               OpLine %29 10 4
+        %705 = OpBitwiseXor %68 %703 %704
+               OpLine %29 11 10
+        %706 = OpShiftLeftLogical %68 %705 %102
+               OpLine %29 11 4
+        %707 = OpIAdd %68 %705 %706
+               OpLine %29 50 4
+        %708 = OpBitwiseAnd %68 %697 %105
+               OpLine %29 51 4
+        %709 = OpBitwiseOr %68 %708 %106
+               OpLine %29 53 13
+        %710 = OpBitcast %67 %709
+               OpLine %29 54 12
+        %711 = OpFSub %67 %710 %77
+               OpLine %29 64 5
+        %712 = OpAccessChain %129 %160 %69
+               OpStore %712 %711
+               OpLine %29 50 4
+        %713 = OpBitwiseAnd %68 %707 %105
+               OpLine %29 51 4
+        %714 = OpBitwiseOr %68 %713 %106
+               OpLine %29 53 13
+        %715 = OpBitcast %67 %714
+               OpLine %29 54 12
+        %716 = OpFSub %67 %715 %77
+               OpLine %29 65 5
+        %717 = OpAccessChain %129 %160 %70
+               OpStore %717 %716
+               OpLine %28 120 39
+        %718 = OpIAdd %136 %330 %144
+               OpLine %28 120 37
+        %719 = OpBitcast %135 %718
+               OpStore %167 %719
+               OpLine %29 39 23
+        %720 = OpLoad %68 %333
+               OpLine %29 39 34
+        %721 = OpVectorShuffle %76 %719 %719 1 2
+               OpStore %166 %721
+               OpLine %29 35 23
+        %722 = OpLoad %68 %336
+               OpLine %29 35 34
+        %723 = OpLoad %68 %338
+               OpLine %29 7 10
+        %724 = OpShiftLeftLogical %68 %723 %107
+               OpLine %29 7 4
+        %725 = OpIAdd %68 %723 %724
+               OpLine %29 8 10
+        %726 = OpShiftRightLogical %68 %725 %108
+               OpLine %29 8 4
+        %727 = OpBitwiseXor %68 %725 %726
+               OpLine %29 9 10
+        %728 = OpShiftLeftLogical %68 %727 %71
+               OpLine %29 9 4
+        %729 = OpIAdd %68 %727 %728
+               OpLine %29 10 10
+        %730 = OpShiftRightLogical %68 %729 %99
+               OpLine %29 10 4
+        %731 = OpBitwiseXor %68 %729 %730
+               OpLine %29 11 10
+        %732 = OpShiftLeftLogical %68 %731 %102
+               OpLine %29 11 4
+        %733 = OpIAdd %68 %731 %732
+               OpLine %29 24 20
+        %734 = OpIMul %68 %722 %97
+               OpLine %29 24 24
+        %735 = OpIAdd %68 %734 %733
+               OpLine %29 24 28
+        %736 = OpIAdd %68 %735 %98
+               OpLine %29 24 33
+        %737 = OpIMul %68 %736 %97
+               OpLine %29 27 19
+        %738 = OpShiftRightLogical %68 %737 %99
+               OpLine %29 27 10
+        %739 = OpBitwiseXor %68 %737 %738
+               OpLine %29 28 19
+        %740 = OpShiftLeftLogical %68 %739 %100
+               OpLine %29 28 26
+        %741 = OpBitwiseAnd %68 %740 %101
+               OpLine %29 28 10
+        %742 = OpBitwiseXor %68 %739 %741
+               OpLine %29 29 19
+        %743 = OpShiftLeftLogical %68 %742 %102
+               OpLine %29 29 27
+        %744 = OpBitwiseAnd %68 %743 %103
+               OpLine %29 29 10
+        %745 = OpBitwiseXor %68 %742 %744
+               OpLine %29 30 19
+        %746 = OpShiftRightLogical %68 %745 %104
+               OpLine %29 30 10
+        %747 = OpBitwiseXor %68 %745 %746
+               OpLine %29 24 20
+        %748 = OpIMul %68 %720 %97
+               OpLine %29 24 24
+        %749 = OpIAdd %68 %748 %747
+               OpLine %29 24 28
+        %750 = OpIAdd %68 %749 %98
+               OpLine %29 24 33
+        %751 = OpIMul %68 %750 %97
+               OpLine %29 27 19
+        %752 = OpShiftRightLogical %68 %751 %99
+               OpLine %29 27 10
+        %753 = OpBitwiseXor %68 %751 %752
+               OpLine %29 28 19
+        %754 = OpShiftLeftLogical %68 %753 %100
+               OpLine %29 28 26
+        %755 = OpBitwiseAnd %68 %754 %101
+               OpLine %29 28 10
+        %756 = OpBitwiseXor %68 %753 %755
+               OpLine %29 29 19
+        %757 = OpShiftLeftLogical %68 %756 %102
+               OpLine %29 29 27
+        %758 = OpBitwiseAnd %68 %757 %103
+               OpLine %29 29 10
+        %759 = OpBitwiseXor %68 %756 %758
+               OpLine %29 30 19
+        %760 = OpShiftRightLogical %68 %759 %104
+               OpLine %29 30 10
+        %761 = OpBitwiseXor %68 %759 %760
+               OpLine %29 7 10
+        %762 = OpShiftLeftLogical %68 %761 %107
+               OpLine %29 7 4
+        %763 = OpIAdd %68 %761 %762
+               OpLine %29 8 10
+        %764 = OpShiftRightLogical %68 %763 %108
+               OpLine %29 8 4
+        %765 = OpBitwiseXor %68 %763 %764
+               OpLine %29 9 10
+        %766 = OpShiftLeftLogical %68 %765 %71
+               OpLine %29 9 4
+        %767 = OpIAdd %68 %765 %766
+               OpLine %29 10 10
+        %768 = OpShiftRightLogical %68 %767 %99
+               OpLine %29 10 4
+        %769 = OpBitwiseXor %68 %767 %768
+               OpLine %29 11 10
+        %770 = OpShiftLeftLogical %68 %769 %102
+               OpLine %29 11 4
+        %771 = OpIAdd %68 %769 %770
+               OpLine %29 50 4
+        %772 = OpBitwiseAnd %68 %761 %105
+               OpLine %29 51 4
+        %773 = OpBitwiseOr %68 %772 %106
+               OpLine %29 53 13
+        %774 = OpBitcast %67 %773
+               OpLine %29 54 12
+        %775 = OpFSub %67 %774 %77
+               OpLine %29 64 5
+        %776 = OpAccessChain %129 %159 %69
+               OpStore %776 %775
+               OpLine %29 50 4
+        %777 = OpBitwiseAnd %68 %771 %105
+               OpLine %29 51 4
+        %778 = OpBitwiseOr %68 %777 %106
+               OpLine %29 53 13
+        %779 = OpBitcast %67 %778
+               OpLine %29 54 12
+        %780 = OpFSub %67 %779 %77
+               OpLine %29 65 5
+        %781 = OpAccessChain %129 %159 %70
+               OpStore %781 %780
+               OpLine %28 120 39
+        %782 = OpIAdd %136 %330 %145
+               OpLine %28 120 37
+        %783 = OpBitcast %135 %782
+               OpStore %167 %783
+               OpLine %29 39 23
+        %784 = OpLoad %68 %333
+               OpLine %29 39 34
+        %785 = OpVectorShuffle %76 %783 %783 1 2
+               OpStore %166 %785
+               OpLine %29 35 23
+        %786 = OpLoad %68 %336
+               OpLine %29 35 34
+        %787 = OpLoad %68 %338
+               OpLine %29 7 10
+        %788 = OpShiftLeftLogical %68 %787 %107
+               OpLine %29 7 4
+        %789 = OpIAdd %68 %787 %788
+               OpLine %29 8 10
+        %790 = OpShiftRightLogical %68 %789 %108
+               OpLine %29 8 4
+        %791 = OpBitwiseXor %68 %789 %790
+               OpLine %29 9 10
+        %792 = OpShiftLeftLogical %68 %791 %71
+               OpLine %29 9 4
+        %793 = OpIAdd %68 %791 %792
+               OpLine %29 10 10
+        %794 = OpShiftRightLogical %68 %793 %99
+               OpLine %29 10 4
+        %795 = OpBitwiseXor %68 %793 %794
+               OpLine %29 11 10
+        %796 = OpShiftLeftLogical %68 %795 %102
+               OpLine %29 11 4
+        %797 = OpIAdd %68 %795 %796
+               OpLine %29 24 20
+        %798 = OpIMul %68 %786 %97
+               OpLine %29 24 24
+        %799 = OpIAdd %68 %798 %797
+               OpLine %29 24 28
+        %800 = OpIAdd %68 %799 %98
+               OpLine %29 24 33
+        %801 = OpIMul %68 %800 %97
+               OpLine %29 27 19
+        %802 = OpShiftRightLogical %68 %801 %99
+               OpLine %29 27 10
+        %803 = OpBitwiseXor %68 %801 %802
+               OpLine %29 28 19
+        %804 = OpShiftLeftLogical %68 %803 %100
+               OpLine %29 28 26
+        %805 = OpBitwiseAnd %68 %804 %101
+               OpLine %29 28 10
+        %806 = OpBitwiseXor %68 %803 %805
+               OpLine %29 29 19
+        %807 = OpShiftLeftLogical %68 %806 %102
+               OpLine %29 29 27
+        %808 = OpBitwiseAnd %68 %807 %103
+               OpLine %29 29 10
+        %809 = OpBitwiseXor %68 %806 %808
+               OpLine %29 30 19
+        %810 = OpShiftRightLogical %68 %809 %104
+               OpLine %29 30 10
+        %811 = OpBitwiseXor %68 %809 %810
+               OpLine %29 24 20
+        %812 = OpIMul %68 %784 %97
+               OpLine %29 24 24
+        %813 = OpIAdd %68 %812 %811
+               OpLine %29 24 28
+        %814 = OpIAdd %68 %813 %98
+               OpLine %29 24 33
+        %815 = OpIMul %68 %814 %97
+               OpLine %29 27 19
+        %816 = OpShiftRightLogical %68 %815 %99
+               OpLine %29 27 10
+        %817 = OpBitwiseXor %68 %815 %816
+               OpLine %29 28 19
+        %818 = OpShiftLeftLogical %68 %817 %100
+               OpLine %29 28 26
+        %819 = OpBitwiseAnd %68 %818 %101
+               OpLine %29 28 10
+        %820 = OpBitwiseXor %68 %817 %819
+               OpLine %29 29 19
+        %821 = OpShiftLeftLogical %68 %820 %102
+               OpLine %29 29 27
+        %822 = OpBitwiseAnd %68 %821 %103
+               OpLine %29 29 10
+        %823 = OpBitwiseXor %68 %820 %822
+               OpLine %29 30 19
+        %824 = OpShiftRightLogical %68 %823 %104
+               OpLine %29 30 10
+        %825 = OpBitwiseXor %68 %823 %824
+               OpLine %29 7 10
+        %826 = OpShiftLeftLogical %68 %825 %107
+               OpLine %29 7 4
+        %827 = OpIAdd %68 %825 %826
+               OpLine %29 8 10
+        %828 = OpShiftRightLogical %68 %827 %108
+               OpLine %29 8 4
+        %829 = OpBitwiseXor %68 %827 %828
+               OpLine %29 9 10
+        %830 = OpShiftLeftLogical %68 %829 %71
+               OpLine %29 9 4
+        %831 = OpIAdd %68 %829 %830
+               OpLine %29 10 10
+        %832 = OpShiftRightLogical %68 %831 %99
+               OpLine %29 10 4
+        %833 = OpBitwiseXor %68 %831 %832
+               OpLine %29 11 10
+        %834 = OpShiftLeftLogical %68 %833 %102
+               OpLine %29 11 4
+        %835 = OpIAdd %68 %833 %834
+               OpLine %29 50 4
+        %836 = OpBitwiseAnd %68 %825 %105
+               OpLine %29 51 4
+        %837 = OpBitwiseOr %68 %836 %106
+               OpLine %29 53 13
+        %838 = OpBitcast %67 %837
+               OpLine %29 54 12
+        %839 = OpFSub %67 %838 %77
+               OpLine %29 64 5
+        %840 = OpAccessChain %129 %158 %69
+               OpStore %840 %839
+               OpLine %29 50 4
+        %841 = OpBitwiseAnd %68 %835 %105
+               OpLine %29 51 4
+        %842 = OpBitwiseOr %68 %841 %106
+               OpLine %29 53 13
+        %843 = OpBitcast %67 %842
+               OpLine %29 54 12
+        %844 = OpFSub %67 %843 %77
+               OpLine %29 65 5
+        %845 = OpAccessChain %129 %158 %70
+               OpStore %845 %844
+               OpLine %28 9 18
+        %846 = OpFMul %74 %331 %331
+               OpLine %28 9 35
+        %847 = OpVectorTimesScalar %74 %331 %79
+               OpLine %28 9 29
+        %848 = OpFSub %74 %96 %847
+               OpLine %28 9 22
+        %849 = OpFMul %74 %846 %848
+               OpLine %28 126 12
+               OpStore %168 %849
+               OpLine %28 134 27
+        %850 = OpLoad %73 %165
+               OpLine %28 135 39
+        %851 = OpAccessChain %129 %168 %81
+        %852 = OpLoad %67 %851
+               OpLine %28 135 37
+        %853 = OpFSub %67 %77 %852
+               OpLine %28 135 21
+        %854 = OpVectorTimesScalar %73 %850 %853
+               OpLine %28 136 39
+        %855 = OpAccessChain %129 %168 %64
+        %856 = OpLoad %67 %855
+               OpLine %28 136 37
+        %857 = OpFSub %67 %77 %856
+               OpLine %28 136 21
+        %858 = OpVectorTimesScalar %73 %854 %857
+               OpLine %28 137 39
+        %859 = OpAccessChain %129 %168 %65
+        %860 = OpLoad %67 %859
+               OpLine %28 137 37
+        %861 = OpFSub %67 %77 %860
+               OpLine %28 137 21
+        %862 = OpVectorTimesScalar %73 %858 %861
+               OpLine %28 134 27
+        %863 = OpLoad %73 %164
+               OpLine %28 135 28
+        %864 = OpLoad %67 %851
+               OpLine %28 135 21
+        %865 = OpVectorTimesScalar %73 %863 %864
+               OpLine %28 136 39
+        %866 = OpLoad %67 %855
+               OpLine %28 136 37
+        %867 = OpFSub %67 %77 %866
+               OpLine %28 136 21
+        %868 = OpVectorTimesScalar %73 %865 %867
+               OpLine %28 137 39
+        %869 = OpLoad %67 %859
+               OpLine %28 137 37
+        %870 = OpFSub %67 %77 %869
+               OpLine %28 137 21
+        %871 = OpVectorTimesScalar %73 %868 %870
+               OpLine %28 134 24
+        %872 = OpFAdd %73 %862 %871
+               OpLine %28 134 27
+        %873 = OpLoad %73 %163
+               OpLine %28 135 39
+        %874 = OpLoad %67 %851
+               OpLine %28 135 37
+        %875 = OpFSub %67 %77 %874
+               OpLine %28 135 21
+        %876 = OpVectorTimesScalar %73 %873 %875
+               OpLine %28 136 28
+        %877 = OpLoad %67 %855
+               OpLine %28 136 21
+        %878 = OpVectorTimesScalar %73 %876 %877
+               OpLine %28 137 39
+        %879 = OpLoad %67 %859
+               OpLine %28 137 37
+        %880 = OpFSub %67 %77 %879
+               OpLine %28 137 21
+        %881 = OpVectorTimesScalar %73 %878 %880
+               OpLine %28 134 24
+        %882 = OpFAdd %73 %872 %881
+               OpLine %28 134 27
+        %883 = OpLoad %73 %162
+               OpLine %28 135 28
+        %884 = OpLoad %67 %851
+               OpLine %28 135 21
+        %885 = OpVectorTimesScalar %73 %883 %884
+               OpLine %28 136 28
+        %886 = OpLoad %67 %855
+               OpLine %28 136 21
+        %887 = OpVectorTimesScalar %73 %885 %886
+               OpLine %28 137 39
+        %888 = OpLoad %67 %859
+               OpLine %28 137 37
+        %889 = OpFSub %67 %77 %888
+               OpLine %28 137 21
+        %890 = OpVectorTimesScalar %73 %887 %889
+               OpLine %28 134 24
+        %891 = OpFAdd %73 %882 %890
+               OpLine %28 134 27
+        %892 = OpLoad %73 %161
+               OpLine %28 135 39
+        %893 = OpLoad %67 %851
+               OpLine %28 135 37
+        %894 = OpFSub %67 %77 %893
+               OpLine %28 135 21
+        %895 = OpVectorTimesScalar %73 %892 %894
+               OpLine %28 136 39
+        %896 = OpLoad %67 %855
+               OpLine %28 136 37
+        %897 = OpFSub %67 %77 %896
+               OpLine %28 136 21
+        %898 = OpVectorTimesScalar %73 %895 %897
+               OpLine %28 137 28
+        %899 = OpLoad %67 %859
+               OpLine %28 137 21
+        %900 = OpVectorTimesScalar %73 %898 %899
+               OpLine %28 134 24
+        %901 = OpFAdd %73 %891 %900
+               OpLine %28 134 27
+        %902 = OpLoad %73 %160
+               OpLine %28 135 28
+        %903 = OpLoad %67 %851
+               OpLine %28 135 21
+        %904 = OpVectorTimesScalar %73 %902 %903
+               OpLine %28 136 39
+        %905 = OpLoad %67 %855
+               OpLine %28 136 37
+        %906 = OpFSub %67 %77 %905
+               OpLine %28 136 21
+        %907 = OpVectorTimesScalar %73 %904 %906
+               OpLine %28 137 28
+        %908 = OpLoad %67 %859
+               OpLine %28 137 21
+        %909 = OpVectorTimesScalar %73 %907 %908
+               OpLine %28 134 24
+        %910 = OpFAdd %73 %901 %909
+               OpLine %28 134 27
+        %911 = OpLoad %73 %159
+               OpLine %28 135 39
+        %912 = OpLoad %67 %851
+               OpLine %28 135 37
+        %913 = OpFSub %67 %77 %912
+               OpLine %28 135 21
+        %914 = OpVectorTimesScalar %73 %911 %913
+               OpLine %28 136 28
+        %915 = OpLoad %67 %855
+               OpLine %28 136 21
+        %916 = OpVectorTimesScalar %73 %914 %915
+               OpLine %28 137 28
+        %917 = OpLoad %67 %859
+               OpLine %28 137 21
+        %918 = OpVectorTimesScalar %73 %916 %917
+               OpLine %28 134 24
+        %919 = OpFAdd %73 %910 %918
+               OpLine %28 134 27
+        %920 = OpLoad %73 %158
+               OpLine %28 135 28
+        %921 = OpLoad %67 %851
+               OpLine %28 135 21
+        %922 = OpVectorTimesScalar %73 %920 %921
+               OpLine %28 136 28
+        %923 = OpLoad %67 %855
+               OpLine %28 136 21
+        %924 = OpVectorTimesScalar %73 %922 %923
+               OpLine %28 137 28
+        %925 = OpLoad %67 %859
+               OpLine %28 137 21
+        %926 = OpVectorTimesScalar %73 %924 %925
+               OpLine %28 134 24
+        %927 = OpFAdd %73 %919 %926
+               OpLine %36 13 59
+        %928 = OpFSub %73 %927 %78
+               OpLine %36 16 12
+        %929 = OpVectorTimesScalar %73 %928 %91
+               OpLine %36 17 14
+        %930 = OpExtInst %73 %1 FClamp %929 %93 %78
+               OpLine %36 17 5
+               OpStore %169 %930
+               OpLine %36 22 9
+        %931 = OpAccessChain %129 %169 %81
+        %932 = OpLoad %67 %931
+               OpLine %36 24 9
+        %933 = OpAccessChain %129 %169 %64
+        %934 = OpLoad %67 %933
+               OpLine %36 21 18
+        %935 = OpCompositeConstruct %74 %932 %88 %934
+               OpLine %36 25 7
+        %936 = OpVectorTimesScalar %74 %935 %94
+               OpLine %21 73 5
+        %937 = OpLoad %86 %178
+        %938 = OpVectorShuffle %74 %937 %937 0 1 2
+               OpLine %21 73 16
+        %939 = OpFAdd %74 %938 %936
+               OpLine %21 73 5
+        %940 = OpVectorShuffle %86 %937 %939 4 5 6 3
+               OpStore %178 %940
+               OpLine %22 8 43
+       %1011 = OpAccessChain %986 %977 %987
+       %1012 = OpLoad %68 %1011
+       %1014 = OpAccessChain %990 %974 %1012 %987 %1013
+       %1015 = OpLoad %68 %1014
+        %941 = OpAccessChain %132 %54 %1015 %81
+        %942 = OpLoad %68 %941
+               OpNoLine
+       %1016 = OpAccessChain %986 %977 %987
+       %1017 = OpLoad %68 %1016
+       %1019 = OpAccessChain %990 %974 %1017 %987 %1018
+       %1020 = OpLoad %68 %1019
+        %943 = OpAccessChain %156 %52 %1020 %95 %942 %108
+        %944 = OpLoad %110 %943
+               OpLine %21 76 23
+        %945 = OpVectorTimesMatrix %86 %940 %944
+               OpLine %21 78 31
+        %946 = OpVectorShuffle %74 %939 %146 0 1 2
+               OpLine %21 82 28
+        %947 = OpExtInst %74 %1 Cross %318 %89
+               OpLine %21 84 22
+        %948 = OpExtInst %74 %1 Normalize %947
+               OpLine %21 85 22
+        %949 = OpExtInst %74 %1 Normalize %89
+               OpLine %21 86 22
+        %950 = OpExtInst %74 %1 Normalize %318
+               OpLine %21 87 44
+        %951 = OpCompositeConstruct %87 %948 %949 %950
+               OpLine %21 87 26
+        %952 = OpTranspose %87 %951
+               OpLine %21 96 76
+        %953 = OpAccessChain %129 %178 %64
+        %954 = OpLoad %67 %953
+               OpLine %21 96 55
+        %955 = OpExtInst %67 %1 SmoothStep %88 %77 %954
+               OpLine %21 96 54
+        %956 = OpFSub %67 %77 %955
+               OpLine %21 96 48
+        %957 = OpFAdd %67 %321 %956
+               OpLine %21 100 5
+               OpBranch %181
+        %181 = OpLabel
+        %958 = OpPhi %86 %148 %197 %945 %278
+        %959 = OpPhi %68 %69 %197 %184 %278
+        %960 = OpPhi %74 %149 %197 %318 %278
+        %961 = OpPhi %74 %149 %197 %946 %278
+        %962 = OpPhi %73 %150 %197 %322 %278
+        %963 = OpPhi %74 %149 %197 %947 %278
+        %964 = OpPhi %74 %149 %197 %89 %278
+        %965 = OpPhi %67 %147 %197 %316 %278
+        %966 = OpPhi %67 %147 %197 %957 %278
+        %967 = OpPhi %67 %147 %197 %192 %278
+        %968 = OpPhi %87 %151 %197 %952 %278
+               OpLine %21 36 1
+               OpStore %5 %958
+               OpStore %6 %959
+               OpStore %7 %960
+               OpStore %8 %961
+               OpStore %9 %962
+               OpStore %10 %963
+               OpStore %11 %964
+               OpStore %12 %965
+               OpStore %13 %966
+               OpStore %14 %967
+               OpStore %15 %968
+               OpLine %21 101 1
+               OpReturn
+               OpFunctionEnd

@@ -1,0 +1,7 @@
+# map输入与返回副本勘误（2026-10-21）
+
+绑定原冻结合同STORAGE-NICHE-AUDIT.md，SHA b413de3fd9c50359e7abdb1ff3476bf48d31e171e098da5b96416855106d1e1a；不修改旧正文或freeze。
+
+第3点“当前手写结构将其声明为任意u8，并在上游强制写2，使原本不可能的载荷变成可进入map的live记录”对当前正常applyplace路径的描述过度：现apply_decorator_place先向map插入原输入Info，然后只把返回副本placed.state改为2，未把正常input.state0/1强制改2再存map。当前Default的state为0。现能构造raw2的明确来源是错误fixture或外部任意u8输入；未证明正常放置必然把2存入map，也未证明因此导致实际启动/physics panic。
+
+本勘误不撤回已独立证明的判断对象错误：applyplace/restore都丢弃插入返回旧Option后按新info.state决定d2s，而原按旧Option决定。三loop依赖next的None niche误写成有效live2规则及错误fixture仍需owner配套纠正，但不能把它升级成已经复现的正常启动阻塞。本文未修改源码、未运行Cargo或游戏。

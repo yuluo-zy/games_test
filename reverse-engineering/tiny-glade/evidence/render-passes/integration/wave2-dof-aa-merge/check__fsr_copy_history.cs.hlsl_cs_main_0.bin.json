@@ -1,0 +1,171 @@
+{
+  "tool": "recompile_check.py",
+  "hlsl": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/fsr_copy_history.cs.hlsl",
+  "bin": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/compiled-shaders/_fsr_copy_history.cs.hlsl_cs_main_0.bin",
+  "include_root": "reconstruction/shader-source/shaders",
+  "dxc": "/opt/homebrew/bin/dxc",
+  "modules": [
+    {
+      "module_index": 23,
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "command": "dxc-cl-option: /tmp/.tmpwCfllF -E cs_main -T cs_6_4 -spirv -WX -Ges -fspv-target-env=vulkan1.1 -HV 2021 -Zi -Fo /tmp/.tmprpdpvn -Qembed_debug",
+      "replay_command": "dxc -E cs_main -T cs_6_4 -spirv -WX -Ges -fspv-target-env=vulkan1.1 -HV 2021 -Zi -Qembed_debug -Fo <out> -I reconstruction/shader-source/shaders <source>",
+      "target": {
+        "raw_sha256": "a7f18cc567a4f8d563f7af180113b9ccd5d52fb4f5d5d7443101b14f8f260274",
+        "normalized_sha256": "1313a3d6792b775295a28909a149c631c0851036a95762c4988763fe38c4b9ff",
+        "fingerprint": {
+          "entries": [
+            [
+              "GLCompute",
+              "cs_main"
+            ]
+          ],
+          "local_size": [
+            8,
+            8,
+            1
+          ],
+          "capabilities": [
+            "Shader"
+          ],
+          "bindings": [
+            [
+              0,
+              14,
+              "UniformConstant",
+              "input_tex",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              15,
+              "UniformConstant",
+              "output_tex",
+              "StorageImage(2D)"
+            ]
+          ],
+          "opcode_histogram": {
+            "OpCapability": 1,
+            "OpConstant": 1,
+            "OpDecorate": 5,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpFunction": 1,
+            "OpFunctionEnd": 1,
+            "OpImageFetch": 1,
+            "OpImageWrite": 1,
+            "OpLabel": 1,
+            "OpLine": 5,
+            "OpLoad": 3,
+            "OpMemoryModel": 1,
+            "OpModuleProcessed": 2,
+            "OpName": 5,
+            "OpNoLine": 1,
+            "OpReturn": 1,
+            "OpSource": 6,
+            "OpString": 6,
+            "OpTypeFloat": 1,
+            "OpTypeFunction": 1,
+            "OpTypeImage": 2,
+            "OpTypeInt": 1,
+            "OpTypePointer": 3,
+            "OpTypeVector": 3,
+            "OpTypeVoid": 1,
+            "OpVariable": 3,
+            "OpVectorShuffle": 1
+          }
+        }
+      },
+      "candidate": {
+        "raw_sha256": "e2ee8a4278f093c5a5cb456241f2a922effe8009301e03535aabec3d6f6d6123",
+        "normalized_sha256": "06e9da9fb3f034584ff5188267bd7afc676c8a34e8dd12972900943371017307",
+        "fingerprint": {
+          "entries": [
+            [
+              "GLCompute",
+              "cs_main"
+            ]
+          ],
+          "local_size": [
+            8,
+            8,
+            1
+          ],
+          "capabilities": [
+            "Shader"
+          ],
+          "bindings": [
+            [
+              0,
+              14,
+              "UniformConstant",
+              "input_tex",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              15,
+              "UniformConstant",
+              "output_tex",
+              "StorageImage(2D)"
+            ]
+          ],
+          "opcode_histogram": {
+            "OpCapability": 1,
+            "OpConstant": 1,
+            "OpDecorate": 5,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpFunction": 1,
+            "OpFunctionEnd": 1,
+            "OpImageFetch": 1,
+            "OpImageWrite": 1,
+            "OpLabel": 1,
+            "OpLine": 6,
+            "OpLoad": 3,
+            "OpMemoryModel": 1,
+            "OpModuleProcessed": 2,
+            "OpName": 5,
+            "OpNoLine": 1,
+            "OpReturn": 1,
+            "OpSource": 5,
+            "OpString": 5,
+            "OpTypeFloat": 1,
+            "OpTypeFunction": 1,
+            "OpTypeImage": 2,
+            "OpTypeInt": 1,
+            "OpTypePointer": 3,
+            "OpTypeVector": 3,
+            "OpTypeVoid": 1,
+            "OpVariable": 3,
+            "OpVectorShuffle": 1
+          }
+        }
+      },
+      "structural_match": false,
+      "normalized_hash_match": false,
+      "differences": {
+        "opcode_histogram": {
+          "target_only": {
+            "OpLine": 5,
+            "OpSource": 6,
+            "OpString": 6
+          },
+          "candidate_only": {
+            "OpLine": 6,
+            "OpSource": 5,
+            "OpString": 5
+          }
+        }
+      },
+      "verdict": "FAIL"
+    }
+  ],
+  "summary": {
+    "checked": 1,
+    "pass_normalized": 0,
+    "pass_structural": 0,
+    "fail": 1
+  }
+}

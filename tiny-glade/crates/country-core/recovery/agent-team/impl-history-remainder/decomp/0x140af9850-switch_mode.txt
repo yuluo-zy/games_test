@@ -1,0 +1,204 @@
+# 0x140af9850 switch_mode size=518
+# sig void __cdecl switch_mode(void)
+
+
+void __cdecl country_core::resources::toolbar::Toolbar::switch_mode(void)
+
+{
+  char cVar1;
+  char cVar2;
+  uint uVar3;
+  uint uVar4;
+  longlong lVar5;
+  char extraout_AL;
+  longlong in_RCX;
+  longlong lVar6;
+  byte bVar7;
+  uint *in_RDX;
+  longlong lVar8;
+  longlong lVar9;
+  longlong lVar10;
+  longlong lVar11;
+  longlong lVar12;
+  ulonglong uVar13;
+  longlong lVar14;
+  byte bVar15;
+  undefined1 local_80 [8];
+  code *local_78;
+  undefined **local_70;
+  undefined8 local_68;
+  undefined1 *local_60;
+  undefined8 local_58;
+  undefined8 local_50;
+  
+  lVar10 = *(longlong *)(in_RCX + 0x10) << 5;
+  lVar9 = 1;
+  lVar5 = *(longlong *)(in_RCX + 8);
+  do {
+    lVar6 = lVar5;
+    if (lVar10 == 0) {
+      local_78 = systems::mode_manager::impl$28::fmt;
+      local_70 = &PTR_s_Error__Switched_to_mode_but_no_t_142ae56f0;
+      local_68 = 2;
+      local_50 = 0;
+      local_60 = local_80;
+      local_58 = 1;
+                    // WARNING: Subroutine does not return
+      core::panicking::panic_fmt();
+    }
+    ToolbarCategoryModes::contains();
+    lVar10 = lVar10 + -0x20;
+    lVar9 = lVar9 + -1;
+    lVar5 = lVar6 + 0x20;
+  } while (extraout_AL == '\0');
+  if (10 < (ulonglong)-lVar9) {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic();
+  }
+  lVar5 = *(longlong *)(lVar6 + 0x10);
+  if (lVar5 != 0) {
+    lVar10 = *(longlong *)(lVar6 + 8);
+    uVar3 = *in_RDX;
+    uVar13 = (ulonglong)uVar3;
+    lVar14 = 0;
+    if (5 < uVar13) {
+      lVar14 = uVar13 - 5;
+    }
+    cVar1 = (char)in_RDX[1];
+    bVar7 = cVar1 - 0x38;
+    if (7 < bVar7) {
+      bVar7 = 6;
+    }
+    if (uVar13 < 6) {
+      lVar12 = 0;
+      lVar8 = 0;
+      do {
+        uVar4 = *(uint *)(lVar10 + lVar12);
+        lVar11 = (ulonglong)uVar4 - 5;
+        if (0xe < uVar4 - 6) {
+          lVar11 = 0;
+        }
+        if (lVar11 == lVar14) {
+          switch(lVar14) {
+          case 0:
+            if (uVar4 == uVar3) {
+                    // WARNING: Could not recover jumptable at 0x000140af9993. Too many branches
+                    // WARNING: Treating indirect jump as call
+              (*(code *)(&UNK_142ae5f38 + *(int *)(&UNK_142ae5f38 + uVar13 * 4)))();
+              return;
+            }
+            break;
+          case 1:
+          case 4:
+            if (*(char *)(lVar10 + 4 + lVar12) == cVar1) goto LAB_140af9b15;
+            break;
+          default:
+            goto LAB_140af9b15;
+          case 3:
+            if (*(longlong *)(lVar10 + 8 + lVar12) == *(longlong *)(in_RDX + 2)) goto LAB_140af9b15;
+            break;
+          case 6:
+            cVar2 = *(char *)(lVar10 + 4 + lVar12);
+            bVar15 = cVar2 - 0x38;
+            if (7 < bVar15) {
+              bVar15 = 6;
+            }
+            if ((bVar15 == bVar7) && (bVar7 != 6 || cVar2 == cVar1)) goto LAB_140af9b15;
+          }
+        }
+        lVar8 = lVar8 + 1;
+        lVar12 = lVar12 + 0x10;
+      } while (lVar5 << 4 != lVar12);
+    }
+    else {
+      switch(uVar3) {
+      case 6:
+        lVar14 = 0;
+        lVar8 = 0;
+        do {
+          if ((*(int *)(lVar10 + lVar14) == 6) && (*(char *)(lVar10 + 4 + lVar14) == cVar1)) {
+LAB_140af9b15:
+            *(longlong *)(lVar6 + 0x18) = lVar8;
+            *(char *)(in_RCX + 0x18) = -(char)lVar9;
+            return;
+          }
+          lVar8 = lVar8 + 1;
+          lVar14 = lVar14 + 0x10;
+        } while (lVar5 << 4 != lVar14);
+        break;
+      default:
+        lVar12 = 0;
+        lVar8 = 0;
+        do {
+          lVar11 = (ulonglong)*(uint *)(lVar10 + lVar12) - 5;
+          if (0xe < *(uint *)(lVar10 + lVar12) - 6) {
+            lVar11 = 0;
+          }
+          if (lVar11 == lVar14) goto LAB_140af9b15;
+          lVar8 = lVar8 + 1;
+          lVar12 = lVar12 + 0x10;
+        } while (lVar5 << 4 != lVar12);
+        break;
+      case 8:
+        lVar14 = 0;
+        lVar8 = 0;
+        do {
+          if ((*(int *)(lVar10 + lVar14) == 8) &&
+             (*(longlong *)(lVar10 + 8 + lVar14) == *(longlong *)(in_RDX + 2))) goto LAB_140af9b15;
+          lVar8 = lVar8 + 1;
+          lVar14 = lVar14 + 0x10;
+        } while (lVar5 << 4 != lVar14);
+        break;
+      case 9:
+        lVar14 = 0;
+        lVar8 = 0;
+        do {
+          if ((*(int *)(lVar10 + lVar14) == 9) && (*(char *)(lVar10 + 4 + lVar14) == cVar1))
+          goto LAB_140af9b15;
+          lVar8 = lVar8 + 1;
+          lVar14 = lVar14 + 0x10;
+        } while (lVar5 << 4 != lVar14);
+        break;
+      case 0xb:
+        lVar14 = 0;
+        lVar8 = 0;
+        do {
+          if (*(int *)(lVar10 + lVar14) == 0xb) {
+            cVar2 = *(char *)(lVar10 + 4 + lVar14);
+            bVar15 = cVar2 - 0x38;
+            if (7 < bVar15) {
+              bVar15 = 6;
+            }
+            if ((bVar15 == bVar7) && (bVar7 != 6 || cVar2 == cVar1)) goto LAB_140af9b15;
+          }
+          lVar8 = lVar8 + 1;
+          lVar14 = lVar14 + 0x10;
+        } while (lVar5 << 4 != lVar14);
+      }
+    }
+  }
+                    // WARNING: Subroutine does not return
+  core::option::unwrap_failed();
+}
+
+
+
+## callees
+[
+ {
+  "name": "contains",
+  "address": "140af89d0"
+ },
+ {
+  "name": "panic",
+  "address": "1428d9430"
+ },
+ {
+  "name": "panic_fmt",
+  "address": "1428d9390"
+ },
+ {
+  "name": "unwrap_failed",
+  "address": "1428d9310"
+ }
+]

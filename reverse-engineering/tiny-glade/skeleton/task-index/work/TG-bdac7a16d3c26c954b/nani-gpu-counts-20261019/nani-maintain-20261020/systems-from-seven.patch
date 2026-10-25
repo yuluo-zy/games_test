@@ -1,0 +1,226 @@
+--- frozen-seven/systems.rs
++++ combined-nine/systems.rs
+@@ -1,8 +1,8 @@
+ //! `render::nani::systems` — nani 的 ECS 系统层：`nani_maintain_instances`、20 个 `nani_update_*`、
+ //! `nani_flush_instance_updates`（B 构建 0x14206f300 / 0x142070ac0..0x14207fcc0 / 0x142080640）。
+ //!
+-//! 原有行视图 API 与下方真实 ECS 适配器共用维护算法。现有完整组件覆盖七类更新；
+-//! 其余十三类组件契约尚未闭合，适配器在新描述符发布前明确报错。载荷数值全部
++//! 原有行视图 API 与下方真实 ECS 适配器共用维护算法。现有完整组件覆盖九类更新；
++//! 其余十一类组件契约尚未闭合，适配器在新描述符发布前明确报错。载荷数值全部
+ //! 来自 [`super::instance_updates`] 的 `build_*`（逐机器码核对），这里负责三件事：
+ //! 1. 选 subset（每个系统固定一个 kind，见 [`GpuWorldSubsetKind`] 的判别值）；
+ //! 2. 用 `GpuWorld::owned_subset_mut(kind)` 取写锁，`update_instance_data` 写 `position / sort_key / 载荷`；
+@@ -22,7 +22,7 @@
+ //! * 变更：`Named` 要求 `parts.len() == 1`（源码 106:17）且 `part.subset == kind`（108:17），
+ //!   然后 `update_instance_mesh(&mut key, part_index)`。
+ //!
+-//! 未恢复（U）：其余十三路所需组件（`Wren`、`Plaster`、`Smoke`……）的完整契约；行视图只放
++//! 未恢复（U）：其余十一路所需组件（`Wren`、`Plaster`、`Smoke`……）的完整契约；行视图只放
+ //! `build_*` 已经需要的原始字。`NaniInstanceDesc` 在原版里是 24 B（`+0` 判别位、`AtlasPart` u32@+4、`Named` u64@+8、
+ //! `subset_kind` u8@+0x10），Rust 侧用枚举表达，不复刻内存布局。
+ 
+@@ -629,7 +629,7 @@
+ }
+ 
+ // Actual ECS adapter for the component contracts that currently exist in this
+-// workspace. The remaining thirteen payload contracts are explicit gaps; a new
++// workspace. The remaining eleven payload contracts are explicit gaps; a new
+ // descriptor for one of those kinds fails before an uninitialized instance can
+ // be published. This completeness guard is a host boundary, not a native branch.
+ use bevy_ecs::{
+@@ -641,7 +641,7 @@
+ };
+ use crate::{
+     asset_libraries::{ssbo_library::AssetSsboLibrary, texture_library::AssetTextureLibrary},
+-    components::{FlatLighting, SemiTransparent, drawable::{AlbedoMap, PrevTransform}},
++    components::{FlatLighting, SemiTransparent, drawable::{AlbedoMap, PrevTransform, NaniSolidTexture}},
+     render::{device::GraphicsDeviceResource, nani::gpu_world::{InstanceDataMarker, OwnedGpuWorldSubset}},
+     resources::{color_id::ColorId, terrain_rock_mask::TerrainRockMaskSsbo,
+         world_raster_defs::WaterRaster},
+@@ -656,13 +656,15 @@
+     Has<InstanceDataMarker<BalconyDoorInstanceData>>,
+     Has<InstanceDataMarker<UberInstanceData>>,
+     Has<InstanceDataMarker<VelocityOnlyInstanceData>>,
++    Has<InstanceDataMarker<SolidAlbedoMapInstanceData>>,
++    Has<InstanceDataMarker<SolidAlbedoMapEmissiveInstanceData>>,
+ );
+ 
+-type MappedNaniMarkerPresence = (bool, bool, bool, bool, bool, bool, bool);
+-type MappedNaniInputs = (MappedNaniMarkers, Has<ColorId>, Has<PrevTransform>, Has<Transform>);
++type MappedNaniMarkerPresence = (bool, bool, bool, bool, bool, bool, bool, bool, bool);
++type MappedNaniInputs = (MappedNaniMarkers, Has<ColorId>, Has<PrevTransform>, Has<Transform>, Has<NaniSolidTexture>);
+ fn require_mapped_nani_payload(
+     kind: GpuWorldSubsetKind,
+-    (markers, has_color, has_previous, has_transform): (MappedNaniMarkerPresence, bool, bool, bool),
++    (markers, has_color, has_previous, has_transform, has_selector): (MappedNaniMarkerPresence, bool, bool, bool, bool),
+ ) {
+     let mapped = match kind {
+         GpuWorldSubsetKind::SolidVertexColor => markers.0,
+@@ -672,10 +674,12 @@
+         GpuWorldSubsetKind::BalconyDoor => markers.4 && has_color,
+         GpuWorldSubsetKind::Uber => markers.5,
+         GpuWorldSubsetKind::VelocityOnly => markers.6 && has_previous,
++        GpuWorldSubsetKind::SolidAlbedoMap => markers.7 && has_selector,
++        GpuWorldSubsetKind::SolidAlbedoMapEmissive => markers.8 && has_selector,
+         _ => false,
+     };
+     let marker_count = [markers.0, markers.1, markers.2, markers.3,
+-        markers.4, markers.5, markers.6].into_iter().filter(|present| *present).count();
++        markers.4, markers.5, markers.6, markers.7, markers.8].into_iter().filter(|present| *present).count();
+     assert!(mapped && has_transform && marker_count == 1,
+         "Nani ECS payload mapping is unavailable or canonical inputs are incomplete: {kind:?}");
+ }
+@@ -797,6 +801,36 @@
+     }
+ }
+ 
++/// Original tuple8/9: With-only updates read the same canonical selector
++/// emitted by the real decorator builder. No per-entity texture lookup.
++pub fn nani_update_solid_albedo_map_ecs(
++    mut rows: Query<(&mut InstanceKey, &Transform, &NaniSolidTexture),
++        With<InstanceDataMarker<SolidAlbedoMapInstanceData>>>,
++    gpu: Res<GpuWorld>,
++) {
++    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::SolidAlbedoMap);
++    for (mut key, transform, selector) in &mut rows {
++        let (p, r, s) = trs(transform);
++        write_mapped_update(&mut subset, key.bypass_change_detection(),
++            build_solid_albedo_map(p, r, s, selector.encoded()),
++            |raw| SolidAlbedoMapInstanceData { raw });
++    }
++}
++
++pub fn nani_update_solid_albedo_map_emissive_ecs(
++    mut rows: Query<(&mut InstanceKey, &Transform, &NaniSolidTexture),
++        With<InstanceDataMarker<SolidAlbedoMapEmissiveInstanceData>>>,
++    gpu: Res<GpuWorld>,
++) {
++    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::SolidAlbedoMapEmissive);
++    for (mut key, transform, selector) in &mut rows {
++        let (p, r, s) = trs(transform);
++        write_mapped_update(&mut subset, key.bypass_change_detection(),
++            build_solid_albedo_map(p, r, s, selector.encoded()),
++            |raw| SolidAlbedoMapEmissiveInstanceData { raw });
++    }
++}
++
+ pub fn nani_update_balcony_door_ecs(
+     mut rows: Query<(&mut InstanceKey, &Transform, &ColorId, Option<&SemiTransparent>),
+         With<InstanceDataMarker<BalconyDoorInstanceData>>>,
+@@ -852,7 +886,7 @@
+ 
+ /// Original backend44 fragment: maintain -> explicit ApplyDeferred ->
+ /// unordered20-update tuple -> flush, outer chain_ignore_deferred.
+-/// Seven complete current component mappings are installed; the thirteen
++/// Nine complete current component mappings are installed; the eleven
+ /// unavailable contracts fail at maintain rather than upload invented data.
+ pub fn add_mapped_nani_instance_systems<S: SystemSet>(schedule: &mut Schedule, set: S) {
+     schedule.add_systems((
+@@ -862,6 +896,8 @@
+          nani_update_solid_vertex_color_window_ecs,
+          nani_update_plant_ecs,
+          nani_update_preplaced_flower_ecs,
++         nani_update_solid_albedo_map_ecs,
++         nani_update_solid_albedo_map_emissive_ecs,
+          nani_update_balcony_door_ecs,
+          nani_update_uber_ecs,
+          nani_update_velocity_only_ecs),
+@@ -901,6 +937,97 @@
+     fn entities(n: usize) -> Vec<Entity> {
+         let mut world = World::new();
+         (0..n).map(|_| world.spawn_empty().id()).collect()
++    }
++
++    fn world_with_solid_pair(dev: &MockDevice) -> GpuWorld {
++        let mut gpu = GpuWorld::new(dev);
++        gpu.assign_subset(GpuWorldSubsetKind::SolidAlbedoMap, GpuWorldSubset::Owned(
++            OwnedGpuWorldSubset::new::<SolidAlbedoMapInstanceData>(dev,
++                GpuWorldSubsetKind::SolidAlbedoMap)));
++        gpu.assign_subset(GpuWorldSubsetKind::SolidAlbedoMapEmissive, GpuWorldSubset::Owned(
++            OwnedGpuWorldSubset::new::<SolidAlbedoMapEmissiveInstanceData>(dev,
++                GpuWorldSubsetKind::SolidAlbedoMapEmissive)));
++        gpu
++    }
++
++    #[test]
++    fn solid_pair_uses_canonical_nonzero_codes_through_barrier_payload_and_flush() {
++        let dev = MockDevice::default();
++        let mut world = World::new();
++        world.insert_resource(world_with_solid_pair(&dev));
++        world.insert_resource(MeshAtlasLibrary::default());
++        let plain_transform = Transform::from_translation(Vec3::new(2.0, 3.0, 4.0));
++        let emissive_transform = Transform::from_translation(Vec3::new(-5.0, 6.0, 7.0));
++        let plain = world.spawn((desc(0, GpuWorldSubsetKind::SolidAlbedoMap),
++            plain_transform, InstanceDataMarker::<SolidAlbedoMapInstanceData>::default(),
++            NaniSolidTexture::try_from(2).unwrap())).id();
++        let emissive = world.spawn((desc(0, GpuWorldSubsetKind::SolidAlbedoMapEmissive),
++            emissive_transform, InstanceDataMarker::<SolidAlbedoMapEmissiveInstanceData>::default(),
++            NaniSolidTexture::try_from(8).unwrap())).id();
++        let mut schedule = Schedule::default();
++        schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred,
++            (nani_update_solid_albedo_map_ecs, nani_update_solid_albedo_map_emissive_ecs))
++            .chain_ignore_deferred());
++        schedule.run(&mut world);
++        for (entity, kind, position, expected) in [
++            (plain, GpuWorldSubsetKind::SolidAlbedoMap, plain_transform.translation, 8),
++            (emissive, GpuWorldSubsetKind::SolidAlbedoMapEmissive, emissive_transform.translation, 7),
++        ] {
++            let key = *world.get::<InstanceKey>(entity).unwrap();
++            assert_eq!(key.kind, kind);
++            let gpu = world.resource::<GpuWorld>();
++            let subset = gpu.owned_subset_mut(kind);
++            assert_eq!(subset.instance_count(), 1);
++            assert_eq!(subset.positions()[key.index as usize].position, position);
++            assert_eq!(subset.positions_dirty().to_range(), Some(0..1));
++            let words = if kind == GpuWorldSubsetKind::SolidAlbedoMap {
++                let data = subset.data().as_any().downcast_ref::<
++                    crate::render::nani::gpu_world::InstanceDataBuffer<SolidAlbedoMapInstanceData>>()
++                    .unwrap();
++                assert_eq!(data.shadow.dirty.to_range(), Some(0..1));
++                data.shadow.data[key.index as usize].raw
++            } else {
++                let data = subset.data().as_any().downcast_ref::<
++                    crate::render::nani::gpu_world::InstanceDataBuffer<SolidAlbedoMapEmissiveInstanceData>>()
++                    .unwrap();
++                assert_eq!(data.shadow.dirty.to_range(), Some(0..1));
++                data.shadow.data[key.index as usize].raw
++            };
++            assert_eq!(words[12], expected); // code2 maps to8, not identity2
++            assert_eq!(&words[13..16], &[0, 0, 0]);
++        }
++        nani_flush_instance_updates(&mut world.resource_mut::<GpuWorld>(), &dev);
++        assert_eq!(world.resource::<GpuWorld>().previous_instance_count(), 2);
++        assert_eq!(world.resource::<GpuWorld>().total_instance_count, 0);
++        assert_eq!(dev.writes.borrow().iter().filter(|(r, o, n)|
++            r == &[0..64] && *o == 0 && *n == 64).count(), 2);
++        world.clear_trackers();
++        schedule.run(&mut world); // original With-only updates run again unchanged
++        let gpu = world.resource::<GpuWorld>();
++        let subset = gpu.owned_subset_mut(GpuWorldSubsetKind::SolidAlbedoMap);
++        let data = subset.data().as_any().downcast_ref::<
++            crate::render::nani::gpu_world::InstanceDataBuffer<SolidAlbedoMapInstanceData>>()
++            .unwrap();
++        assert_eq!(data.shadow.dirty.to_range(), Some(0..1));
++        assert_eq!(subset.instance_count(), 1);
++    }
++
++    #[test]
++    fn solid_descriptor_missing_canonical_selector_fails_before_allocation() {
++        let dev = MockDevice::default();
++        let mut world = World::new();
++        world.insert_resource(world_with_solid_pair(&dev));
++        world.insert_resource(MeshAtlasLibrary::default());
++        let entity = world.spawn((desc(0, GpuWorldSubsetKind::SolidAlbedoMap),
++            Transform::default(), InstanceDataMarker::<SolidAlbedoMapInstanceData>::default())).id();
++        let mut schedule = Schedule::default();
++        schedule.add_systems(nani_maintain_instances_ecs);
++        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
++            schedule.run(&mut world))).is_err());
++        assert!(world.get::<InstanceKey>(entity).is_none());
++        let gpu = world.resource::<GpuWorld>();
++        assert_eq!(gpu.total_instance_count, 0);
++        assert_eq!(gpu.owned_subset_mut(GpuWorldSubsetKind::SolidAlbedoMap).instance_count(), 0);
+     }
+ 
+     // Exercise actual component insertion and the explicit schedule barrier;

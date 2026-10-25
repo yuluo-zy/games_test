@@ -1,0 +1,43 @@
+--- a/crates/tiny-glade/src/run_game.rs
++++ b/crates/tiny-glade/src/run_game.rs
+@@ -793,6 +793,17 @@
+     );
+     // add_wall_events @1404939a6/3b99 and original new empty publishers.
+     app.init_resource::<PublicWalls>();
++    // Canonical inputs/outputs of the recovered base-brick section. Preserve
++    // any existing owners; this does not mount the old aggregate CPU installer.
++    app.init_resource::<country_core::resources::walls::public_walls::WallEntities>();
++    app.init_resource::<country_core::resources::walls::public_walls::WallPlasters>();
++    app.init_resource::<country_core::resources::walls::wall_holes::WallHoles>();
++    app.init_resource::<country_core::systems::wall::construct_wall_bricks::WallBrickBuildState>();
++    app.add_event::<country_core::systems::wall::construct_wall_bricks::WallBricksChanged>();
++    app.add_event::<country_core::resources::roofs::commands::RecalculateWallBricks>();
++    app.add_event::<country_core::resources::roofs::commands::WallGableChanged>();
++    app.add_event::<country_core::resources::roofs::commands::WallRoofPresenceChanged>();
++    app.add_event::<country_core::resources::roofs::commands::RoofGeometryChanged>();
+     app.init_resource::<WallSpatialHash>();
+     app.init_resource::<WallPublicationDirty>();
+     app.init_resource::<country_core::systems::wall::eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer>();
+@@ -872,6 +883,22 @@
+         )
+             .chain_ignore_deferred()
+             .in_set(GameSystemSet(19)),
++    );
++    // Original add_wall_systems49338e..3414 assigns its nine-member chain to
++    // set28; slot5 is construct_walls (33e263 -> 2c90, original name bytes).
++    // Mount only its recovered base-brick/trigger/RT section. The original
++    // 757d34..7e6b hole-table pass also catches holes-only changes, so keep the
++    // actual finalizer before the producer. Its event writes are immediate;
++    // the producer's Commands retain normal schedule-completion visibility.
++    // This is not the complete native nine-member group or the set25 assembly.
++    app.add_systems(
++        bevy_app::Update,
++        (
++            country_core::systems::wall::construct_wall_bricks::finalize_wall_holes,
++            country_core::systems::wall::construct_wall_bricks::construct_wall_bricks,
++        )
++            .chain_ignore_deferred()
++            .in_set(GameSystemSet(28)),
+     );
+     // add_history_systems @1409438dc/e1 and @140943981 prove sets35/40.
+     app.add_systems(

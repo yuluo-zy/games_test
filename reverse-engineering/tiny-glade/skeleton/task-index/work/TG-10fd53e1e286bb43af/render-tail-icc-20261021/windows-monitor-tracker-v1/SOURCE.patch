@@ -1,0 +1,136 @@
+--- a/tiny-glade/crates/tiny-glade/src/icc.rs
++++ b/tiny-glade/crates/tiny-glade/src/icc.rs
+@@ -118,3 +118,105 @@
+         assert_eq!(error.to_string(), "Invalid ICC profile path");
+     }
+ }
++
++
++/// 原 OS 查询的主线程适配；旧 App 只保 Weak 身份，不延长其纹理/设备寿命。
++#[derive(Default)]
++pub struct MonitorIccTracker {
++    #[cfg(windows)]
++    monitor: Option<winit::monitor::MonitorHandle>,
++    #[cfg(windows)]
++    owner: Option<std::sync::Weak<
++        dyn country_core::render::load_texture::boundary::TextureDevice + Send + Sync,
++    >>,
++}
++
++impl MonitorIccTracker {
++    pub fn publish_if_changed(
++        &mut self,
++        window: &winit::window::Window,
++        world: &mut bevy_ecs::world::World,
++    ) -> anyhow::Result<()> {
++        #[cfg(windows)]
++        {
++            use anyhow::Context;
++            let owner = world.get_resource::<country_core::systems::backend::icc::IccTextureDevice>()
++                .context("ICC monitor query requires this App's texture namespace")?;
++            let key = std::sync::Arc::downgrade(&owner.0);
++            let monitor = window.current_monitor();
++            if self.owner.as_ref().is_some_and(|owner| std::sync::Weak::ptr_eq(owner, &key))
++                && self.monitor == monitor
++            {
++                return Ok(());
++            }
++            // 原版先清查询 dirty，再执行可能失败的查询；不能每个普通帧反复读取文件。
++            self.owner = Some(key);
++            self.monitor = monitor;
++            if let Some(monitor) = &self.monitor {
++                publish_monitor_profile_result(world, get_monitor_icc_profile(monitor))?;
++            }
++        }
++        #[cfg(not(windows))]
++        {
++            // 原B的Win32来源不存在于其他后端。Mac实际sRGB交换链由MoltenVK设置
++            // CAMetalLayer色彩空间，再由系统做显示转换，不能重复套显示器ICC。
++            // 不伪造profile事件；核心显式ICC事件仍执行完整原变换。
++            let _ = (window, world);
++        }
++        Ok(())
++    }
++}
++
++#[cfg(any(windows, test))]
++fn publish_monitor_profile_result(
++    world: &mut bevy_ecs::world::World,
++    result: anyhow::Result<String>,
++) -> anyhow::Result<()> {
++    match result {
++        Ok(path) => {
++            use anyhow::Context;
++            world.send_event(country_core::systems::backend::icc::IccProfileChanged(path.into()))
++                .context("ICC monitor event owner is not installed in the current App")?;
++        }
++        // 原查询失败只警告，不发事件，不清原 active profile；送达坏路径才由核心清旧值。
++        Err(error) => log::warn!(target: "tiny_glade::event_loop", "{error:#}"),
++    }
++    Ok(())
++}
++
++#[cfg(test)]
++mod monitor_publish_tests {
++    use super::publish_monitor_profile_result;
++    use bevy_ecs::{event::Events, world::World};
++    use country_core::systems::backend::icc::{ActiveIccProfile, IccProfileChanged};
++
++    #[test]
++    fn icc_query_failure_preserves_existing_app_resource_and_does_not_emit_event() {
++        let mut world = World::new();
++        world.insert_resource(ActiveIccProfile::default());
++        world.init_resource::<Events<IccProfileChanged>>();
++        let original = world.resource::<ActiveIccProfile>() as *const ActiveIccProfile;
++        publish_monitor_profile_result(&mut world, Err(anyhow::anyhow!("real OS query failed"))).unwrap();
++        assert_eq!(world.resource::<ActiveIccProfile>() as *const ActiveIccProfile, original);
++        assert!(world.resource::<Events<IccProfileChanged>>().is_empty());
++    }
++
++    #[test]
++    fn icc_successful_query_publishes_exact_path_only_to_current_world() {
++        let mut world = World::new();
++        let mut other = World::new();
++        world.init_resource::<Events<IccProfileChanged>>();
++        other.init_resource::<Events<IccProfileChanged>>();
++        publish_monitor_profile_result(&mut world, Ok("C:\\display.icm".into())).unwrap();
++        let events: Vec<_> = world.resource_mut::<Events<IccProfileChanged>>().drain().collect();
++        assert_eq!(events.len(), 1);
++        assert_eq!(events[0].0, std::path::PathBuf::from("C:\\display.icm"));
++        assert!(other.resource::<Events<IccProfileChanged>>().is_empty());
++    }
++
++    #[test]
++    fn icc_successful_query_requires_real_event_owner() {
++        let mut world = World::new();
++        assert!(publish_monitor_profile_result(&mut world, Ok("profile.icm".into())).is_err());
++    }
++}
+--- a/tiny-glade/crates/tiny-glade/src/game_loop.rs
++++ b/tiny-glade/crates/tiny-glade/src/game_loop.rs
+@@ -307,6 +307,7 @@
+     pub(crate) suspended: bool,
+     pub(crate) shutdown_done: bool,
+     pub(crate) pending_os_events: std::collections::VecDeque<crate::event_loop::OsWindowEvent>,
++    monitor_icc: crate::icc::MonitorIccTracker,
+     preparation: Option<crate::run_game::GameplayPreparation>,
+     custom_cursor_events: bevy_ecs::event::EventCursor<
+         country_core::resources::mouse_capture::CustomCursorSsboCreatedCmd,
+@@ -519,6 +520,7 @@
+             suspended: false,
+             shutdown_done: false,
+             pending_os_events: Default::default(),
++            monitor_icc: crate::icc::MonitorIccTracker::default(),
+             preparation,
+             custom_cursor_events: Default::default(),
+             capture_events: Default::default(),
+@@ -860,6 +862,9 @@
+             std::thread::sleep(std::time::Duration::from_millis(1));
+             return Ok(true);
+         }
++        // 原OS批次后的ICC发布在实际App交接之后、当前App更新之前。
++        // 未发生显示器/设备身份变化时，不查询OS、不读取profile或创建纹理。
++        self.monitor_icc.publish_if_changed(&self.window, self.driver.app.world_mut())?;
+         // B 1404ddf28..3c: real OS egui input is consumed only while the
+         // debug or experimental window is active. Other frames still begin
+         // and end egui with RawInput::default (1404ddf49 -> 140c2c770).

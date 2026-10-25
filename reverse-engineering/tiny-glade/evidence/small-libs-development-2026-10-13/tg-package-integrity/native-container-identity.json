@@ -1,0 +1,40 @@
+{
+  "source": "D:\\game\\ljxsj_92385\\Tiny Glade\\tiny-glade.rne",
+  "original_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "container_sha256": "281fc876c5543e3553856fdfc0fb925bbf9be72e2dce375b39ec43aec1771772",
+  "patches": [
+    {
+      "offset": 142,
+      "before": "2200",
+      "after": "2220",
+      "reason": "DLL loader container"
+    },
+    {
+      "offset": 160,
+      "before": "acae8902",
+      "after": "00000000",
+      "reason": "No EXE entrypoint or DllMain execution"
+    },
+    {
+      "offset": 51944000,
+      "before": "d011194301000000",
+      "after": "0000000000000000",
+      "reason": "Suppress application TLS callbacks; loader still supplies TLS template/index"
+    }
+  ],
+  "import_descriptors_removed": [
+    "steam_api64.dll",
+    "GFSDK_Aftermath_Lib.x64.dll",
+    "fmodstudio.dll",
+    "fmod.dll"
+  ],
+  "original_verify_ranges": [
+    {
+      "rva": "0x67c3d0",
+      "size": 2447,
+      "sha256": "5646cdb57855ea9bc2b4e28dd93a21b5465c1f42016a6d6d6d9f85bd602e1a39",
+      "unchanged_from_original": true
+    }
+  ],
+  "scope": "Original verify code in DLL loader container; not original shipped-process execution; no hash/parser/filesystem code replacements"
+}

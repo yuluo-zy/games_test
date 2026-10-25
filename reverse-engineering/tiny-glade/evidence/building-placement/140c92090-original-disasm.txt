@@ -1,0 +1,130 @@
+140c92090: push rsi
+140c92091: push rdi
+140c92092: push rbx
+140c92093: sub rsp, 0xc0
+140c9209a: movaps xmmword ptr [rsp + 0xb0], xmm10
+140c920a3: movaps xmmword ptr [rsp + 0xa0], xmm9
+140c920ac: movaps xmmword ptr [rsp + 0x90], xmm8
+140c920b5: movaps xmmword ptr [rsp + 0x80], xmm7
+140c920bd: movaps xmmword ptr [rsp + 0x70], xmm6
+140c920c2: mov rbx, r8
+140c920c5: mov rdi, rdx
+140c920c8: mov rsi, rcx
+140c920cb: movss xmm6, dword ptr [rdx]
+140c920cf: movss xmm7, dword ptr [r8 + 0x30]
+140c920d5: movaps xmm1, xmm6
+140c920d8: divss xmm1, xmm7
+140c920dc: xorps xmm0, xmm0
+140c920df: ucomiss xmm0, xmm6
+140c920e2: ja 0x140c9217e
+140c920e8: ucomiss xmm6, xmm7
+140c920eb: ja 0x140c9217e
+140c920f1: movss dword ptr [rsp + 0x2c], xmm1
+140c920f7: ucomiss xmm1, xmm0
+140c920fa: jb 0x140c92305
+140c92100: movss xmm6, dword ptr [rip + 0x1c937fc]
+140c92108: ucomiss xmm6, xmm1
+140c9210b: jb 0x140c92305
+140c92111: ucomiss xmm1, xmm1
+140c92114: jp 0x140c9235d
+140c9211a: mov rcx, rbx
+140c9211d: call 0x141940780
+140c92122: mov ecx, eax
+140c92124: mov rdx, qword ptr [rbx + 0x10]
+140c92128: cmp rdx, rcx
+140c9212b: jbe 0x140c9238d
+140c92131: lea rax, [rcx + 1]
+140c92135: cmp rax, rdx
+140c92138: jae 0x140c92399
+140c9213e: mov rax, qword ptr [rbx + 8]
+140c92142: subss xmm6, xmm0
+140c92146: movss xmm3, dword ptr [rax + rcx*8]
+140c9214b: mulss xmm3, xmm6
+140c9214f: mulss xmm6, dword ptr [rax + rcx*8 + 4]
+140c92155: movss xmm1, dword ptr [rax + rcx*8 + 8]
+140c9215b: mulss xmm1, xmm0
+140c9215f: movss xmm2, dword ptr [rax + rcx*8 + 0xc]
+140c92165: mulss xmm2, xmm0
+140c92169: addss xmm2, xmm6
+140c9216d: addss xmm1, xmm3
+140c92171: movss xmm0, dword ptr [rdi + 4]
+140c92176: unpcklps xmm1, xmm0
+140c92179: jmp 0x140c922af
+140c9217e: ucomiss xmm1, xmm1
+140c92181: jp 0x140c922ed
+140c92187: movd eax, xmm1
+140c9218b: and eax, 0x7fffffff
+140c92190: cmp eax, 0x7f800000
+140c92195: je 0x140c92375
+140c9219b: maxss xmm0, xmm1
+140c9219f: movss xmm8, dword ptr [rip + 0x1c9375c]
+140c921a8: movaps xmm1, xmm8
+140c921ac: minss xmm1, xmm0
+140c921b0: mov rcx, rbx
+140c921b3: call 0x141940780
+140c921b8: mov ecx, eax
+140c921ba: mov rdx, qword ptr [rbx + 0x10]
+140c921be: cmp rdx, rcx
+140c921c1: jbe 0x140c9238d
+140c921c7: lea rax, [rcx + 1]
+140c921cb: cmp rax, rdx
+140c921ce: jae 0x140c92399
+140c921d4: mov rax, qword ptr [rbx + 8]
+140c921d8: ucomiss xmm6, xmm7
+140c921db: movaps xmm1, xmm8
+140c921df: subss xmm1, xmm0
+140c921e3: movss xmm3, dword ptr [rdi + 4]
+140c921e8: movsd xmm4, qword ptr [rax + rcx*8]
+140c921ed: movsd xmm5, qword ptr [rax + rcx*8 + 8]
+140c921f3: movshdup xmm9, xmm4
+140c921f8: mulss xmm9, xmm1
+140c921fd: movaps xmm10, xmm1
+140c92201: mulss xmm10, xmm4
+140c92206: movaps xmm1, xmm0
+140c92209: mulss xmm1, xmm5
+140c9220d: movshdup xmm2, xmm5
+140c92211: mulss xmm2, xmm0
+140c92215: addss xmm2, xmm9
+140c9221a: addss xmm1, xmm10
+140c9221f: subps xmm5, xmm4
+140c92222: movaps xmm0, xmm5
+140c92225: mulps xmm0, xmm5
+140c92228: movshdup xmm4, xmm0
+140c9222c: addss xmm4, xmm0
+140c92230: xorps xmm0, xmm0
+140c92233: sqrtss xmm0, xmm4
+140c92237: movaps xmm4, xmm8
+140c9223b: divss xmm4, xmm0
+140c9223f: movsldup xmm9, xmm4
+140c92244: mulps xmm9, xmm5
+140c92248: xorps xmm4, xmm4
+140c9224b: movlhps xmm4, xmm9
+140c9224f: shufps xmm4, xmm9, 0xe2
+140c92254: movshdup xmm0, xmm9
+140c92259: mulps xmm9, xmm9
+140c9225d: movshdup xmm5, xmm9
+140c92262: addss xmm5, xmm9
+140c92267: sqrtss xmm5, xmm5
+140c9226b: divss xmm8, xmm5
+140c92270: movsldup xmm5, xmm8
+140c92275: mulps xmm4, xmm5
+140c92278: mulss xmm0, xmm8
+140c9227d: jbe 0x140c9229a
+140c9227f: subss xmm6, xmm7
+140c92283: movsldup xmm5, xmm6
+140c92287: mulps xmm5, xmm4
+140c9228a: mulss xmm6, xmm0
+140c9228e: unpcklps xmm1, xmm3
+140c92291: addps xmm1, xmm5
+140c92294: addss xmm2, xmm6
+140c92298: jmp 0x140c922af
+140c9229a: movsldup xmm5, xmm6
+140c9229e: mulps xmm5, xmm4
+140c922a1: unpcklps xmm1, xmm3
+140c922a4: subps xmm1, xmm5
+140c922a7: mulss xmm0, xmm6
+140c922ab: subss xmm2, xmm0
+140c922af: movlps qword ptr [rsi], xmm1
+140c922b2: movss dword ptr [rsi + 8], xmm2
+140c922b7: mov rax, rsi
+140c922ba: movaps xmm6, xmmword ptr [rsp + 0x70]

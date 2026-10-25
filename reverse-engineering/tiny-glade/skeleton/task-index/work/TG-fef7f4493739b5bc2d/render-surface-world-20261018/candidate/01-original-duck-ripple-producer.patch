@@ -1,0 +1,163 @@
+--- a/games_test/tiny-glade/crates/systems/critters/src/duck.rs
++++ b/games_test/tiny-glade/crates/systems/critters/src/duck.rs
+@@ -69,11 +69,12 @@
+     DevReplay = 1,
+ }
+ 
+-/// `PrevRipple`（duck.rs PDB 命名实体；水波 SSBO 记录，GPU 侧）。
++/// B closure141d900d0: HashMap bucket has Entity8 + {XZ8,strength4},
++/// rounded to24B. This is the actual per-entity smoothing state, not an age.
+ #[derive(Clone, Copy, Debug, Default, PartialEq)]
+ pub struct PrevRipple {
+-    pub pos: Vec3,
+-    pub age: f32,
++    pub pos: Vec2,
++    pub strength: f32,
+ }
+ 
+ /// 计划点采样闭包（B `closure_env_4` / `closure_env_5`，0x14230fa90 / 0x14230fa40）：
+@@ -754,24 +755,67 @@
+     }
+ }
+ 
+-/// update_duck_ripples（0x142314b70，源码 735–796）：GPU 水波 SSBO 的 CPU 记录。
++/// B142314b70/1235B and filter_map closure141d900d0/737B. Local state
++/// survives updates; absent entities are not pruned by this original function.
++/// The first32 accepted query rows update state and become packed GPU records.
++/// Rows beyond Take32 are not evaluated, including their local smoothing state.
++pub fn collect_duck_ripple_payload(
++    delta: f32,
++    rows: impl IntoIterator<Item = (Entity, Vec3, DuckState)>,
++    previous: &mut std::collections::HashMap<Entity, PrevRipple>,
++) -> [u32; 132] {
++    let position_alpha = 1.0 - (-2.5 * delta).exp();
++    let strength_alpha = 1.0 - (-5.0 * delta).exp();
++    let mut words = [0u32; 132];
++    let mut count = 0usize;
++    for (entity, position, state) in rows {
++        let current = Vec2::new(position.x, position.z);
++        let target = if matches!(state, DuckState::TrajectoryForward | DuckState::FreeSwim) {
++            1.0
++        } else { 0.0 };
++        let previous = previous.entry(entity).or_insert(PrevRipple { pos: current, strength: 0.0 });
++        // Preserve SSE operation order: target*alpha + old*(1-alpha),
++        // without fused multiply-add or frame-delta clamping.
++        previous.strength = target * strength_alpha + previous.strength * (1.0 - strength_alpha);
++        previous.pos = current * position_alpha + previous.pos * (1.0 - position_alpha);
++        // ucomiss threshold,strength; jae rejects <=; unordered passes.
++        if previous.strength <= f32::from_bits(0x3a83126f) { continue; }
++        let pack = country_core::render::nani::instance_updates::pack_2x16f_uint;
++        words[count * 4] = pack(current.x, current.y);
++        words[count * 4 + 1] = pack(previous.pos.x, previous.pos.y);
++        words[count * 4 + 2] = previous.strength.to_bits();
++        // Native record word3 stays zero. Native counter is the *last*16B,
++        // after32 records, not a header before them.
++        count += 1;
++        if count == 32 { break; }
++    }
++    words[128] = count as u32;
++    words
++}
++
++/// Original Update producer. The actual canonical library buffer was already
++/// created by full startup. Even no ducks uploads the proven528-byte zero
++/// aggregate: this is the real producer, not a fixture clear or None default.
+ pub fn update_duck_ripples(
++    query: Query<(Entity, &Transform, &DuckState)>,
++    library: Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,
++    device: Res<country_core::render::device::GraphicsDeviceResource>,
+     time: Res<GameTime>,
+-    mut ripples: ResMut<DuckRipples>,
+-    query: Query<(&Transform, &DuckState)>,
++    mut previous: Local<std::collections::HashMap<Entity, PrevRipple>>,
+ ) {
+-    let dt = time.delta;
+-    let retention_1 = 1.0 - (-2.5 * dt).exp();
+-    let retention_2 = 1.0 - (-5.0 * dt).exp();
+-    let _ = (retention_1, retention_2);
+-    ripples.ripples.clear();
+-    for (transform, state) in &query {
+-        if state.to_byte() == 2 {
+-            ripples
+-                .ripples
+-                .push(PrevRipple { pos: transform.translation, age: 0.0 });
+-        }
+-    }
++    use country_core::render::ssbo::rhapsody_boundary::GraphicsDevice;
++    use country_core::resources::water::RippleSourceSsbo;
++    let words = collect_duck_ripple_payload(time.delta,
++        query.iter().map(|(entity, transform, state)| (entity, transform.translation, *state)),
++        &mut previous);
++    let buffer = library.get_buffer::<RippleSourceSsbo>().expect("RippleSourceSsbo producer missing");
++    // Native142314e16 skips update if capacity<=0x20f. It does not replace
++    // the owner or enlarge it. The actual canonical constructor creates528B.
++    if buffer.byte_size < 528 { return; }
++    let bytes: Vec<u8> = words.iter().flat_map(|word| word.to_le_bytes()).collect();
++    // Original update result is dropped (142314e7a..f6f), not unwrapped.
++    // Keep that policy; the graph still requires actual initialized contents.
++    let _ = device.device().update_buffer_bytes(buffer, &bytes, &[0..528], 0);
+ }
+ 
+ /// 水波记录资源（CPU 侧；SSBO 上传后置）。
+@@ -857,3 +901,61 @@
+ // 保留：AssetShaderLibrary/AssetMeshLibrary 类型在签名面被使用（Option 资源包装）。
+ #[allow(dead_code)]
+ fn _asset_type_anchor(_m: &AssetMeshLibrary, _s: &AssetShaderLibrary, _r: &RaycastWorld) {}
++
++#[cfg(test)]
++mod ripple_native_tests {
++    use super::*;
++    use std::collections::HashMap;
++
++    #[test]
++    fn native_ripple_take32_stops_query_and_preserves_unvisited_state() {
++        let mut world = World::new();
++        let entities: Vec<_> = (0..40).map(|_| world.spawn_empty().id()).collect();
++        let mut previous = HashMap::new();
++        let payload = collect_duck_ripple_payload(0.25,
++            entities.iter().map(|&entity| (entity, Vec3::new(1.0, 99.0, 2.0), DuckState::FreeSwim)),
++            &mut previous);
++        assert_eq!(payload[128..], [32, 0, 0, 0]);
++        assert_eq!(previous.len(), 32);
++        assert!(!previous.contains_key(&entities[32]));
++        for row in payload[..128].chunks_exact(4) {
++            assert_eq!(row[0], 0x40003c00);
++            assert_eq!(row[1], 0x40003c00);
++            assert_eq!(row[2], (1.0 - (-1.25f32).exp()).to_bits());
++            assert_eq!(row[3], 0);
++        }
++    }
++
++    #[test]
++    fn native_ripple_smooths_xz_and_strength_and_keeps_absent_entities() {
++        let mut world = World::new();
++        let entity = world.spawn_empty().id();
++        let mut previous = HashMap::new();
++        let first = collect_duck_ripple_payload(0.1, [(entity, Vec3::new(1.0, 55.0, 2.0), DuckState::TrajectoryForward)], &mut previous);
++        let old = previous[&entity];
++        let second = collect_duck_ripple_payload(0.2, [(entity, Vec3::new(3.0, -77.0, 4.0), DuckState::TrajectoryReverse)], &mut previous);
++        let pos_alpha = 1.0 - (-0.5f32).exp();
++        let strength_alpha = 1.0 - (-1.0f32).exp();
++        let pos = Vec2::new(3.0,4.0) * pos_alpha + old.pos * (1.0 - pos_alpha);
++        let strength = 0.0 * strength_alpha + old.strength * (1.0 - strength_alpha);
++        let pack = country_core::render::nani::instance_updates::pack_2x16f_uint;
++        assert_eq!(first[128], 1);
++        assert_eq!(&second[..4], &[pack(3.0,4.0), pack(pos.x,pos.y), strength.to_bits(), 0]);
++        assert_eq!(collect_duck_ripple_payload(0.2, [], &mut previous), [0;132]);
++        assert_eq!(previous.len(), 1);
++    }
++
++    #[test]
++    fn native_ripple_threshold_preserves_unordered_nan_and_updates_inactive_ducks() {
++        let mut world = World::new();
++        let entity = world.spawn_empty().id();
++        let mut previous = HashMap::new();
++        assert_eq!(collect_duck_ripple_payload(0.5, [(entity,Vec3::ZERO,DuckState::Initial)], &mut previous)[128], 0);
++        assert!(previous.contains_key(&entity));
++        previous.get_mut(&entity).unwrap().strength = f32::NAN;
++        let payload = collect_duck_ripple_payload(0.5, [(entity,Vec3::ZERO,DuckState::Initial)], &mut previous);
++        assert_eq!(payload[128], 1);
++        assert!(f32::from_bits(payload[2]).is_nan());
++        assert_eq!(std::mem::size_of::<PrevRipple>(), 12);
++    }
++}

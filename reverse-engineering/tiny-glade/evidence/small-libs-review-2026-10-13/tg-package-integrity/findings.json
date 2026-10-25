@@ -1,0 +1,147 @@
+{
+  "module": "tg-package-integrity",
+  "baseline": "B Windows x86_64",
+  "date": "2026-10-13",
+  "reviewer": "review-integrity-20261013",
+  "scope": "source read-only; evidence-only independent probes; no crate/Cargo/tracking edits",
+  "confirmed_B_business_bugs": 0,
+  "findings": [
+    {
+      "id": "INTEGRITY-PERF-01",
+      "severity": "medium",
+      "category": "performance",
+      "status": "confirmed_measured_cost_not_regression",
+      "source": {
+        "file": "reconstruction/shared-foundation/crates/tg-package-integrity/src/lib.rs",
+        "line": 87,
+        "related_lines": [
+          88,
+          93,
+          101
+        ]
+      },
+      "trigger": "Large manifest, many tiny files, or up to 64 simultaneous large reads.",
+      "original_evidence": [
+        "evidence/small-libs-batch-01/tg-package-integrity/0x14067c3d0.c: one easy-parallel each/run across all entries",
+        "Original and candidate easy-parallel 3.2.0 lib.rs Parallel::run/finish: one spawned thread for every closure except the final caller-thread closure",
+        "evidence/small-libs-review-2026-10-13/tg-package-integrity/dependency-audit-independent.json"
+      ],
+      "actual_reproduction": "perf-results.json: 1792 repeated zero-byte entries 109.601 ms; 64 entries reading the same 2 MiB file 37.890 ms with peak working set 22,327,296 bytes vs baseline 3,395,584. All returned Ok. Existing dev-profile library, optimized harness, one run per workload, cached repeated-file synthetic workload, not original-run or production throughput.",
+      "impact": "Batching reduces live spawned-thread ceiling to 63, but creates N-ceil(N/64) new threads across the full run (1764 at N=1792 vs original 1791). Reads materialize every live file: time O(total read bytes + directory entries + N thread startups); extra memory O(sum sizes of live reads + names/issues), not bounded independently of file sizes. No demonstrated regression or pathological slowdown.",
+      "suggestion": "Keep 64 batch as acceptable scoped choice. Before high-frequency use, benchmark real release consumer; if needed use a persistent pool from an already original-locked dependency (rayon only after lock/source/features audit), and blake3::Hasher::update_reader / std buffered IO for streaming. Preserve Missing on any read failure and ordered duplicate results.",
+      "resolution": "Optional optimization; no business-policy change requested by this review."
+    },
+    {
+      "id": "INTEGRITY-GAP-01",
+      "severity": "medium",
+      "category": "functional_completeness",
+      "status": "feature_gap_in_game_consumer_closure",
+      "source": {
+        "file": "reconstruction/shared-foundation/crates/tg-package-integrity/src/lib.rs",
+        "line": 47,
+        "related_lines": [
+          28,
+          55
+        ]
+      },
+      "trigger": "Actual game integrity report or crash reporter attempts to consume verification result.",
+      "original_evidence": [
+        "skeleton/B/crates/tg-package-integrity/src/lib.rs: direct callers tiny_glade::integrity_report_main::verify_package_integrity_and_show_report at RVA 0x2552f5 and tiny_glade::panic_reporter::panic_report::on_game_crashed at RVA 0x3b040f",
+        "evidence/small-libs-batch-01/tg-package-integrity/0x1402552b0.c"
+      ],
+      "actual_reproduction": "consumer-search.txt: bounded search across shared-foundation Rust finds only library/tests/inspect_package example, no recovered game report/crash consumer. probe-result.txt verifies candidate enum categories on controlled disk; original full verify/report entry was not executed.",
+      "impact": "Core library policy is callable, but cannot yet claim full original game business closure or error-report compatibility. This is an integration/acceptance gap, not evidence of a library algorithm bug.",
+      "suggestion": "Restore one real original consumer using the root/paths owner, map new enum to report semantics and implement local report output. Validate read/checksum/parse/version/missing/corrupt/extra through this shared consumer. Do not send reports during validation.",
+      "resolution": "Remaining work outside current core library scope."
+    },
+    {
+      "id": "INTEGRITY-UNKNOWN-01",
+      "severity": "medium",
+      "category": "schema_compatibility",
+      "status": "unknown_original_extreme_schema_behavior",
+      "source": {
+        "file": "reconstruction/shared-foundation/crates/tg-package-integrity/src/lib.rs",
+        "line": 14,
+        "related_lines": [
+          16,
+          17,
+          62
+        ]
+      },
+      "trigger": "Unknown fields, sequence-form struct, duplicate or missing fields, negative/overflow/floating version, malformed tuple.",
+      "original_evidence": [
+        "skeleton/B/crates/tg-package-integrity/src/lib.rs: PackageManifest serde derive deserialize/visit_map/visit_seq symbols and tuple(String,String), serde u32 monomorph references",
+        "evidence/small-libs-batch-01/tg-package-integrity/0x14067c3d0.c: parser before version==1 branch, 32-bit comparison",
+        "Original shipped B manifest schema"
+      ],
+      "actual_reproduction": "probe-result.txt: gated raw JSON accepts unknown_field and sequence_form; rejects u32_overflow, negative_version, float_version, duplicate_version, missing_files and one-element tuple as ManifestParse. These are candidate runtime observations; matching exact original serde attributes/accepted input set remains unproved. Independent original-review MCP failed before ready state, not a parser result.",
+      "impact": "Main shipped schema works. Rare accepted/rejected schema set cannot yet be called fully compatible; no confirmed mismatch, and PDB visit_seq makes candidate sequence support plausible rather than suspicious.",
+      "suggestion": "Use focused original parser/visitor control-flow or controlled original entry oracle to verify the listed input classes. Keep serde 1.0.200 and serde_json 1.0.85; do not hand-write validators or parser to guess stricter behavior.",
+      "resolution": "Unknown retained, not classified as a bug."
+    },
+    {
+      "id": "INTEGRITY-UNKNOWN-02",
+      "severity": "low",
+      "category": "operational_errors",
+      "status": "inherited_dependency_failure_semantics_not_runtime_reproduced",
+      "source": {
+        "file": "reconstruction/shared-foundation/crates/tg-package-integrity/src/lib.rs",
+        "line": 88,
+        "related_lines": [
+          101
+        ]
+      },
+      "trigger": "OS thread creation failure or a worker panic while Parallel::finish is spawning/collecting jobs.",
+      "original_evidence": [
+        "easy-parallel 3.2.0 lib.rs: thread::spawn plus NoPanic guard aborts process if unwinding during startup; normal worker panic resumes after joining",
+        "Original entry directly uses same easy-parallel dependency"
+      ],
+      "actual_reproduction": "No system exhaustion or panic injection performed; normal 134-outcome cross-batch probe preserves all Missing entries and ordered Corrupt results. Thread-exhaustion behavior is established from the reused dependency source, not original or candidate fault-injection runtime.",
+      "impact": "Public Result does not encompass all operational failures: resource exhaustion can terminate process. Same mechanism exists in original; candidate batching lowers live demand. No evidence this is newly introduced or relevant to the observed package.",
+      "suggestion": "Document inherited operational boundary. If used in a resilient tool or frequent consumer, prefer an existing audited persistent pool or controlled sequential fallback; evaluate behavior change explicitly.",
+      "resolution": "Not a confirmed business defect."
+    },
+    {
+      "id": "INTEGRITY-DIFF-01",
+      "severity": "info",
+      "category": "intentional_representation",
+      "status": "accepted_for_stable_filesystem",
+      "source": {
+        "file": "reconstruction/shared-foundation/crates/tg-package-integrity/src/lib.rs",
+        "line": 47,
+        "related_lines": [
+          55,
+          87
+        ]
+      },
+      "trigger": "Root selection differs from original CWD or files change during verification.",
+      "original_evidence": [
+        "evidence/small-libs-batch-01/tg-package-integrity/0x14067c3d0.c: fixed CWD manifest and one Parallel run",
+        "evidence/small-libs-batch-01/tg-package-integrity/DIFFERENCES.md"
+      ],
+      "actual_reproduction": "Explicit isolated root probes, exact self path, duplicates, root tmp/nested tmp and ordered aggregation all pass. Concurrent mutation schedule not compared.",
+      "impact": "Root parameter is a useful interface representation and 64 batches limit concurrency. File mutation timing can differ, so stable-filesystem scope must remain explicit.",
+      "suggestion": "Keep these choices; consumer must select the original package root. Do not label batching or readable error enum names a defect solely for non-1:1 implementation.",
+      "resolution": "Intentional difference, unchanged."
+    },
+    {
+      "id": "INTEGRITY-LIMIT-01",
+      "severity": "low",
+      "category": "portability",
+      "status": "unsupported_architecture_boundary",
+      "source": {
+        "file": "reconstruction/shared-foundation/crates/tg-package-integrity/src/lib.rs",
+        "line": 42
+      },
+      "trigger": "Porting B package verifier to 32-bit or big-endian target, or future std Hash encoding changes.",
+      "original_evidence": [
+        "evidence/small-libs-batch-01/tg-package-integrity/0x140f737f0.c: original 8-byte little-endian length 32 prefix",
+        "hash-leaf-identity.json and native-hash-result.json"
+      ],
+      "actual_reproduction": "4096 original x64 hash-leaf inputs and 128 raw-byte checksum compositions match candidate on current Windows x64. Other architectures not compiled/executed.",
+      "impact": "std Hash array prefix depends on host usize/encoding; current B host is verified, general portable format promise is not. No current B bug.",
+      "suggestion": "If cross-host support is intended, encode the evidenced 32u64 little-endian prefix then digest bytes through the same fnv Hasher dependency instead of relying on native array Hash; this is policy composition, not a custom FNV implementation.",
+      "resolution": "Current baseline limited to B Windows x86_64."
+    }
+  ]
+}

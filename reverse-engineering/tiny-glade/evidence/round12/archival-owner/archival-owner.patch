@@ -1,0 +1,1098 @@
+--- a/tiny-glade/crates/country-core/src/resources/walls/decorator_archivist.rs
++++ b/tiny-glade/crates/country-core/src/resources/walls/decorator_archivist.rs
+@@ -1,23 +1,8 @@
+-//! Shared archive owner; reuse the existing storage/restore implementation.
+-//!
+-//! 2026-10-17 archivist 迭代链 5 实现（impl-history-difftypes，fresh decomp
+-//! batch1 0x140b2cb30 / 0x140b2be70 / 0x1412b2a70 / 0x1412b3910 / 0x14123b5c0 /
+-//! 0x1412b4f10）：
+-//! - `extract_diff`（0x140b2cb30）：清碰撞 map → memmove before@+0xc0 / after@+0x150
+-//!   （0x90B Decorators，即 recovered 模型 special1/special2）→ 三路 chain
+-//!   （walls Drain + special1/2 IntoIter，均经 `extract_archived_decorators` 闭包
+-//!   映射为 `(DecoratorStorageAddr, Decorators)`）→ `from_iter<Addr,(AddrState,AddrState)>`
+-//!   → filter_map `extract_before_after_all` → `HashMap<Addr, DecoratorStorageHistoryDiff>`；
+-//!   后置断言 walls/before/after len==0。
+-//! - `extract_before_after_impl`（0x140b2be70）：单地址状态构建（桶 items 逐条目
+-//!   `DecoratorInfo → DecoratorHistoryState`，`impl$1::from` 0x140b3f930）。
+-//! - `archive_storage_decorators<&str/String>`（0x1412b2a70/0x1412b3910）：
+-//!   0=墙（已存在 return + clone 入 walls）/ 1=special1（before @+0xc0，已存在
+-//!   return）/ 2=special2（after @+0x150）。**collision collider/mesh 重建**（
+-//!   `RaycastWorld::get_collider/get_collider_mesh → HashMap insert (DecoratorId,
+-//!   (OffsetColliderTransform, RaycastMesh))`）为 collision 域，登记不实现。
+-//! - `archive_current_decorators_in_storage/_in_storages`（0x14123b5c0/0x1412b4f10）：
+-//!   经 `DecoratorStorage::get`(0x140a1c2c0) 逐地址归档。
++//! B address-scoped decorator archival and restoration owners.
++//! The native resource adapter retains both actual collision channels and mesh
++//! Arcs. extract_diff_against_storage follows the original live after-state
++//! and semantic equality algorithm; the older no-storage API remains a legacy
++//! approximation for callers not yet migrated and is not an equivalence gate.
+ pub use crate::resources::walls::decorator_archivist::changes::DecoratorArchivist;
+ pub use crate::resources::walls::decorator_archivist::changes::DecoratorStorage;
+ pub use crate::resources::walls::decorator_archivist::changes::ObservedDecoratorInfo;
+@@ -76,6 +61,99 @@
+ }
+ 
+ impl<C: Send + Sync + 'static> DecoratorArchivist<C> {
++    /// B140b2cb30 uses each archived address as its before state and reads its
++    /// after state from live storage. The bool reaches extract_before_after_impl
++    /// as allow_preview (fold140b2ab29/35); strict missing-before is false.
++    /// This concrete API avoids the legacy no-storage approximation below.
++    pub fn extract_diff_against_storage(
++        &mut self,
++        storage: &LiveDecoratorStorage,
++        allow_preview: bool,
++    ) -> HashMap<DecoratorStorageAddr, DecoratorStorageHistoryDiff> {
++        self.collision_a.clear();
++        self.collision_b.clear();
++        let walls = std::mem::take(&mut self.walls);
++        let terrain = self.special1.take();
++        let stairs = self.special2.take();
++        let addresses = walls
++            .into_iter()
++            .map(|(wall, bucket)| (DecoratorStorageAddr::Wall(WallId(wall.0)), bucket))
++            .chain(
++                terrain
++                    .into_iter()
++                    .map(|bucket| (DecoratorStorageAddr::Terrain, bucket)),
++            )
++            .chain(
++                stairs
++                    .into_iter()
++                    .map(|bucket| (DecoratorStorageAddr::Stair, bucket)),
++            );
++        let mut out = HashMap::new();
++        for (address, bucket) in addresses {
++            let mut before: HashMap<_, _> = bucket
++                .items
++                .iter()
++                .map(|(id, info)| {
++                    (
++                        DecoratorId(*id),
++                        DecoratorHistoryState::from(&observed_to_info(info)),
++                    )
++                })
++                .collect();
++            let mut after = HashMap::new();
++            if let Some(live) = storage.get(address) {
++                for (id, info) in &live.decorators {
++                    if !allow_preview && info.state != 0 {
++                        panic!(
++                            "Found a preview decorator while trying to extract history diff. {:?}: {:?}",
++                            DecoratorId(*id),
++                            info
++                        );
++                    }
++                    after.insert(DecoratorId(*id), DecoratorHistoryState::from(info));
++                }
++            }
++            // Original1415237c0 removes matching IDs from both snapshots using
++            // the game's semantic state comparison (float ordered equality).
++            let equal: Vec<_> = before
++                .iter()
++                .filter_map(|(id, b)| {
++                    after
++                        .get(id)
++                        .filter(|a| archived_history_equal(b, a))
++                        .map(|_| *id)
++                })
++                .collect();
++            for id in equal {
++                before.remove(&id);
++                after.remove(&id);
++            }
++            if !before.is_empty() || !after.is_empty() {
++                out.insert(
++                    address,
++                    DecoratorStorageHistoryDiff {
++                        // The original AddrHistoryState is one48B map. Legacy
++                        // projection removed-sets have no native producer here.
++                        before: DecoratorStorageAddrHistoryState {
++                            states: before,
++                            removed: HashSet::new(),
++                        },
++                        after: DecoratorStorageAddrHistoryState {
++                            states: after,
++                            removed: HashSet::new(),
++                        },
++                    },
++                );
++            }
++        }
++        assert!(self.walls.is_empty());
++        assert!(self.special1.is_none());
++        assert!(self.special2.is_none());
++        self.culling.allowed_ids.clear();
++        self.culling.allow_any = false;
++        out
++    }
++
+     /// B 0x140b2bbf0 changes this flag only, preserving the ID set.
+     pub fn decorator_cull_allow_any(&mut self) {
+         self.culling.allow_any = true;
+@@ -125,33 +203,25 @@
+             )
+     }
+ 
+-    /// 0x140b2bc00（fresh 反编译 2026-10-17）：walls 探针（GlobalId 键，stride
+-    /// 0x98 = 8 键 + 0x90 桶）命中后 `fold` 该墙 decorators 集；任一 id 通过
+-    /// `is_decorator_cull_allowed` 即 true。未命中 false。
+-    pub fn decorator_cull_allow_wall(&self, wall: WallId) -> bool {
+-        self.walls
+-            .get(&RecoveredWallId(wall.0))
+-            .map(|decorators| {
+-                decorators
+-                    .items
+-                    .keys()
+-                    .any(|id| self.is_decorator_cull_allowed(*id))
+-            })
+-            .unwrap_or(false)
+-    }
+-
+-    /// 0x140b2bd30（fresh 反编译 2026-10-17）：`Map::fold` 单态，对 stairs 桶
+-    /// （special2）逐 id 做 cull 判定。桶缺失 false。
+-    pub fn decorator_cull_allow_stairs(&self) -> bool {
+-        self.special2
+-            .as_ref()
+-            .map(|decorators| {
+-                decorators
+-                    .items
+-                    .keys()
+-                    .any(|id| self.is_decorator_cull_allowed(*id))
+-            })
+-            .unwrap_or(false)
++    /// Original140b2bc00 mutates the permitted-ID set using this live wall's
++    /// keys. The fold's accumulator is (), not the result of an `any` query.
++    pub fn decorator_cull_allow_wall(&mut self, wall: WallId, storage: &LiveDecoratorStorage) {
++        if let Some(decorators) = storage.get(DecoratorStorageAddr::Wall(wall)) {
++            // Original140b2bc00 calls the unit-valued HashSet::extend fold
++            //140b76260 over the live bucket's keys, targeting self+0x30.
++            self.culling
++                .allowed_ids
++                .extend(decorators.decorators.keys().copied());
++        }
++    }
++
++    /// Original140b2bd30 extends the same set with live stair-bucket keys.
++    pub fn decorator_cull_allow_stairs(&mut self, storage: &LiveDecoratorStorage) {
++        if let Some(decorators) = storage.get(DecoratorStorageAddr::Stair) {
++            self.culling
++                .allowed_ids
++                .extend(decorators.decorators.keys().copied());
++        }
+     }
+ }
+ 
+@@ -286,6 +356,47 @@
+             removed: after_removed,
+         },
+     )
++}
++
++/// Original141523a60..141523eef. Destination variants compare only their
++/// active payload; all subsequent common fields are still compared. Inactive
++/// bytes and padding must not create edits. NaN differs, signed zero is equal.
++fn archived_history_equal(before: &DecoratorHistoryState, after: &DecoratorHistoryState) -> bool {
++    let b = before.to_bytes();
++    let a = after.to_bytes();
++    let read32 = |s: &[u8; 0x50], p| u32::from_le_bytes(s[p..p + 4].try_into().unwrap());
++    let feq = |p| f32::from_bits(read32(&b, p)) == f32::from_bits(read32(&a, p));
++    let sel_b = if b[0x22].wrapping_sub(2) < 3 {
++        b[0x22] - 1
++    } else {
++        0
++    };
++    let sel_a = if a[0x22] >= 2 { a[0x22] - 1 } else { 0 };
++    if sel_b != sel_a {
++        return false;
++    }
++    let destination_equal = match sel_b {
++        1 | 2 => [0, 4, 8].into_iter().all(feq),
++        3 => b[..8] == a[..8] && [8, 12, 16].into_iter().all(feq),
++        _ => {
++            [0, 4, 16, 20, 24, 28].into_iter().all(feq)
++                && b[8..16] == a[8..16]
++                && b[0x20..0x23] == a[0x20..0x23]
++        }
++    };
++    if !destination_equal {
++        return false;
++    }
++    // Native normalizes the decorator type to0..7 / fallback6, and when
++    // fallback6 it additionally compares the full byte. This is exact identity.
++    b[0x4a] == a[0x4a]
++        && [0x48, 0x49, 0x4b, 0x4c, 0x4d, 0x4e]
++            .into_iter()
++            .all(|p| b[p] == a[p])
++        && [0x28, 0x2c, 0x34, 0x40, 0x44]
++            .into_iter()
++            .all(|p| read32(&b, p) == read32(&a, p))
++        && [0x30, 0x38, 0x3c].into_iter().all(feq)
+ }
+ 
+ impl<C: Send + Sync + 'static> DecoratorArchivist<C> {
+@@ -432,27 +543,101 @@
+             _ => unreachable!("archive_storage_decorators: invalid selector"),
+         }
+     }
+-
+-    /// B `archive_current_decorators_in_storage` 0x14123b5c0：经
+-    /// `DecoratorStorage::get`(0x140a1c2c0) 逐地址 → 归档入 archivist。
+-    /// special1/2 分别承载 Terrain/Stair 桶（判别 1/2 与 `DecoratorStorageAddr`
+-    /// disc 1/2 对应）。
+-    pub fn archive_current_decorators_in_storage(&mut self, storage: &LiveDecoratorStorage) {
+-        for (wall, decos) in storage.iter_walls() {
+-            self.archive_storage_decorators(0, decos, Some(wall));
+-        }
+-        if let Some(decos) = storage.terrain.as_ref() {
+-            self.archive_storage_decorators(1, decos, None);
+-        }
+-        if let Some(decos) = storage.stairs.as_ref() {
+-            self.archive_storage_decorators(2, decos, None);
+-        }
+-    }
+-
+-    /// B `archive_current_decorators_in_storages` 0x1412b4f10：多存储批量归档。
+-    pub fn archive_current_decorators_in_storages(&mut self, storages: &[LiveDecoratorStorage]) {
+-        for storage in storages {
+-            self.archive_current_decorators_in_storage(storage);
++}
++
++/// Original SystemParam carries these two canonical shared owners. It never
++/// clones RaycastWorld or builds a second collision world for editing.
++#[cfg(feature = "native-physics")]
++#[derive(bevy_ecs::system::SystemParam)]
++pub struct DecoratorArchivalResources<'w> {
++    pub world: bevy_ecs::prelude::Res<'w, crate::systems::collision::world::RaycastWorld>,
++    pub colliders: bevy_ecs::prelude::Res<
++        'w,
++        crate::resources::walls::decorator_collision::DecoratorPhysicsColliders,
++    >,
++}
++
++#[cfg(feature = "native-physics")]
++impl LiveDecoratorArchivist {
++    /// B1421a0470: archive exactly the requested address, including both
++    /// collider channels and their owned meshes. An absent live bucket is
++    /// archived as an empty before-state; it is not an ignored request.
++    pub fn archive_current_decorators_at_address(
++        &mut self,
++        address: DecoratorStorageAddr,
++        storage: &LiveDecoratorStorage,
++        resources: &DecoratorArchivalResources<'_>,
++        reason: &str,
++    ) {
++        self.archive_current_decorators_with_collision(
++            address,
++            storage,
++            &resources.world,
++            &resources.colliders,
++            reason,
++        );
++    }
++
++    fn archive_current_decorators_with_collision(
++        &mut self,
++        address: DecoratorStorageAddr,
++        storage: &LiveDecoratorStorage,
++        world: &crate::systems::collision::world::RaycastWorld,
++        colliders: &crate::resources::walls::decorator_collision::DecoratorPhysicsColliders,
++        _reason: &str,
++    ) {
++        let already_archived = match address {
++            DecoratorStorageAddr::Wall(wall) => self.walls.contains_key(&RecoveredWallId(wall.0)),
++            DecoratorStorageAddr::Terrain => self.special1.is_some(),
++            DecoratorStorageAddr::Stair => self.special2.is_some(),
++        };
++        if already_archived {
++            return;
++        }
++        // The full original's0622..0c4c cold path supplies empty Decorators
++        // when get(address) is None. The reason participates only in the
++        // temporary diagnostic string; it is not a persisted archive field.
++        let source = storage.get(address).cloned().unwrap_or_default();
++        let (selector, wall) = match address {
++            DecoratorStorageAddr::Wall(wall) => (0, Some(wall)),
++            DecoratorStorageAddr::Terrain => (1, None),
++            DecoratorStorageAddr::Stair => (2, None),
++        };
++        self.archive_storage_decorators(selector, &source, wall);
++        // The two original loops visit all current keys, first channel then
++        // second. Missing collision entries skip; stale actual handles panic.
++        for (live, archived) in [
++            (&colliders.first, &mut self.collision_a),
++            (&colliders.second, &mut self.collision_b),
++        ] {
++            for &id in source.decorators.keys() {
++                let Some(instance) = live.get(&DecoratorId(id)) else {
++                    continue;
++                };
++                if instance.slot == crate::systems::collision::EMPTY_COLLIDER_HANDLE_TAG {
++                    continue;
++                }
++                let physical = instance.handle();
++                let collider = world.get_collider(physical);
++                let mesh = world
++                    .get_collider_mesh(collider.generation_low as u32, collider.generation)
++                    .clone();
++                let transform = world.into_transformed_shape(physical);
++                archived.insert(id, (transform, mesh));
++            }
++        }
++    }
++
++    /// Original plural entry receives addresses into one live storage owner.
++    pub fn archive_current_decorators_in_storages(
++        &mut self,
++        addresses: impl IntoIterator<Item = DecoratorStorageAddr>,
++        storage: &LiveDecoratorStorage,
++        resources: &DecoratorArchivalResources<'_>,
++        reason: &str,
++    ) {
++        for address in addresses {
++            self.archive_current_decorators_at_address(address, storage, resources, reason);
+         }
+     }
+ }
+@@ -505,7 +690,7 @@
+     }
+ 
+     #[test]
+-    fn archive_current_decorators_in_storage_archives_wall_and_specials() {
++    fn archive_tracking_preserves_the_first_wall_and_specials_snapshots() {
+         let mut storage = LiveDecoratorStorage::default();
+         storage
+             .get_or_insert_default(DecoratorStorageAddr::Wall(WallId(3)))
+@@ -538,11 +723,24 @@
+                 allow_any: false,
+             },
+         };
+-        archivist.archive_current_decorators_in_storage(&storage);
++        archivist.archive_storage_decorators(
++            0,
++            storage.get(DecoratorStorageAddr::Wall(WallId(3))).unwrap(),
++            Some(WallId(3)),
++        );
++        archivist.archive_storage_decorators(
++            1,
++            storage.get(DecoratorStorageAddr::Terrain).unwrap(),
++            None,
++        );
+         assert!(archivist.walls.contains_key(&RecoveredWallId(3)));
+         assert!(archivist.special1.is_some());
+         // 再归档：已存在 → return。
+-        archivist.archive_current_decorators_in_storage(&storage);
++        archivist.archive_storage_decorators(
++            1,
++            storage.get(DecoratorStorageAddr::Terrain).unwrap(),
++            None,
++        );
+         assert!(archivist.special1.is_some());
+     }
+ 
+@@ -581,17 +779,194 @@
+     #[test]
+     fn decorator_cull_allow_wall_and_stairs_fold_buckets() {
+         let mut archivist = empty_archivist();
++        let mut storage = LiveDecoratorStorage::default();
++        storage.per_wall.insert(WallId(1), live_bucket(10, 0));
++        storage.stairs = Some(live_bucket(20, 0));
+         archivist
+             .walls
+             .insert(RecoveredWallId(1), tracked_bucket(10));
+         archivist.special2 = Some(tracked_bucket(20));
+-        assert!(!archivist.decorator_cull_allow_wall(WallId(1)));
+-        assert!(!archivist.decorator_cull_allow_stairs());
+-        archivist.culling.allowed_ids.insert(10);
+-        archivist.culling.allowed_ids.insert(20);
+-        assert!(archivist.decorator_cull_allow_wall(WallId(1)));
+-        assert!(archivist.decorator_cull_allow_stairs());
+-        assert!(!archivist.decorator_cull_allow_wall(WallId(2)));
++        archivist.decorator_cull_allow_wall(WallId(1), &storage);
++        assert!(archivist.is_decorator_cull_allowed(10));
++        assert!(!archivist.is_decorator_cull_allowed(20));
++        archivist.decorator_cull_allow_stairs(&storage);
++        assert!(archivist.is_decorator_cull_allowed(20));
++        archivist.decorator_cull_allow_wall(WallId(2), &storage);
++        assert_eq!(archivist.culling.allowed_ids.len(), 2);
++    }
++
++    #[cfg(feature = "native-physics")]
++    fn add_live_collider(
++        world: &mut crate::systems::collision::world::RaycastWorld,
++        map: &mut HashMap<DecoratorId, crate::systems::collision::world::ColliderMeshInstance>,
++        id: u32,
++        source: crate::systems::collision::world::RaycastGeoSource,
++        position: glam::Vec3,
++    ) -> std::sync::Arc<crate::systems::collision::world::RaycastMeshData> {
++        use crate::systems::collision::world::{RaycastMeshData, upsert_collider};
++        let mesh = std::sync::Arc::new(RaycastMeshData::new_cuboid(
++            glam::Vec3::splat(0.5),
++            glam::UVec3::splat(id),
++        ));
++        upsert_collider(
++            world,
++            map,
++            DecoratorId(id),
++            source,
++            mesh.clone(),
++            position,
++            glam::Quat::IDENTITY,
++        );
++        mesh
++    }
++
++    #[cfg(feature = "native-physics")]
++    #[test]
++    fn address_archive_keeps_both_real_collision_channels_and_meshes_after_live_deletion() {
++        use crate::resources::walls::decorator_collision::DecoratorPhysicsColliders;
++        use crate::systems::collision::world::{RaycastGeoSource, RaycastWorld, remove_collider};
++        let mut world = RaycastWorld::new();
++        let mut physics = DecoratorPhysicsColliders::default();
++        let first = add_live_collider(
++            &mut world,
++            &mut physics.first,
++            10,
++            RaycastGeoSource::Slot0,
++            glam::Vec3::new(1.0, 2.0, 3.0),
++        );
++        let second = add_live_collider(
++            &mut world,
++            &mut physics.second,
++            11,
++            RaycastGeoSource::Slot1,
++            glam::Vec3::new(-2.0, 4.0, 1.0),
++        );
++        let unrelated = add_live_collider(
++            &mut world,
++            &mut physics.first,
++            20,
++            RaycastGeoSource::Slot0,
++            glam::Vec3::ZERO,
++        );
++        let mut storage = LiveDecoratorStorage::default();
++        let mut selected = live_bucket(10, 0);
++        selected.insert(
++            DecoratorId(11),
++            DecoratorInfo {
++                decorator_id: 11,
++                ..Default::default()
++            },
++        );
++        selected.insert(
++            DecoratorId(12),
++            DecoratorInfo {
++                decorator_id: 12,
++                ..Default::default()
++            },
++        );
++        storage.per_wall.insert(WallId(3), selected);
++        storage.per_wall.insert(WallId(4), live_bucket(20, 0));
++        storage.terrain = Some(live_bucket(30, 0));
++        let mut archive = LiveDecoratorArchivist::default();
++        archive.archive_current_decorators_with_collision(
++            DecoratorStorageAddr::Wall(WallId(3)),
++            &storage,
++            &world,
++            &physics,
++            "roof_edit",
++        );
++        assert_eq!(archive.walls.len(), 1);
++        assert!(archive.special1.is_none() && archive.special2.is_none());
++        assert_eq!(archive.walls[&RecoveredWallId(3)].items.len(), 3);
++        assert_eq!(
++            (archive.collision_a.len(), archive.collision_b.len()),
++            (1, 1)
++        );
++        assert!(std::sync::Arc::ptr_eq(
++            &archive.collision_a[&10].1.data,
++            &first
++        ));
++        assert!(std::sync::Arc::ptr_eq(
++            &archive.collision_b[&11].1.data,
++            &second
++        ));
++        assert_eq!(
++            archive.collision_a[&10].0.position,
++            glam::Vec3::new(1.0, 2.0, 3.0)
++        );
++        assert_eq!(
++            archive.collision_b[&11].0.position,
++            glam::Vec3::new(-2.0, 4.0, 1.0)
++        );
++        // First archival owns the before-state. Later live edits do not replace it.
++        storage
++            .per_wall
++            .get_mut(&WallId(3))
++            .unwrap()
++            .decorators
++            .remove(&10);
++        archive.archive_current_decorators_with_collision(
++            DecoratorStorageAddr::Wall(WallId(3)),
++            &storage,
++            &world,
++            &physics,
++            "roof_edit_again",
++        );
++        assert!(archive.walls[&RecoveredWallId(3)].items.contains_key(&10));
++        let weak = std::sync::Arc::downgrade(&first);
++        remove_collider(&mut world, &mut physics.first, &DecoratorId(10)).unwrap();
++        drop(first);
++        assert!(
++            weak.upgrade().is_some(),
++            "archival collision owns the deleted live mesh"
++        );
++        assert!(!archive.collision_a.contains_key(&20));
++        archive.archive_current_decorators_with_collision(
++            DecoratorStorageAddr::Wall(WallId(99)),
++            &storage,
++            &world,
++            &physics,
++            "absent before-state",
++        );
++        assert!(archive.walls[&RecoveredWallId(99)].items.is_empty());
++        drop(archive);
++        assert!(weak.upgrade().is_none());
++        drop((second, unrelated));
++    }
++
++    #[cfg(feature = "native-physics")]
++    #[test]
++    fn invalid_actual_collider_generation_panics_after_the_before_state_is_archived() {
++        use crate::resources::walls::decorator_collision::DecoratorPhysicsColliders;
++        use crate::systems::collision::world::{RaycastGeoSource, RaycastWorld};
++        let mut world = RaycastWorld::new();
++        let mut physics = DecoratorPhysicsColliders::default();
++        let _mesh = add_live_collider(
++            &mut world,
++            &mut physics.first,
++            10,
++            RaycastGeoSource::Slot0,
++            glam::Vec3::ZERO,
++        );
++        let instance = physics.first.get_mut(&DecoratorId(10)).unwrap();
++        let (index, generation) = instance.collider.into_raw_parts();
++        instance.collider =
++            rapier3d::geometry::ColliderHandle::from_raw_parts(index, generation.wrapping_add(1));
++        let mut storage = LiveDecoratorStorage::default();
++        storage.per_wall.insert(WallId(3), live_bucket(10, 0));
++        let mut archive = LiveDecoratorArchivist::default();
++        let failed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++            archive.archive_current_decorators_with_collision(
++                DecoratorStorageAddr::Wall(WallId(3)),
++                &storage,
++                &world,
++                &physics,
++                "roof_edit",
++            );
++        }));
++        assert!(failed.is_err());
++        assert!(archive.walls[&RecoveredWallId(3)].items.contains_key(&10));
++        assert!(archive.collision_a.is_empty());
+     }
+ 
+     #[test]
+@@ -647,6 +1022,109 @@
+     }
+ 
+     #[test]
++    fn diff_uses_each_live_address_prunes_unchanged_and_resets_culling() {
++        let mut archive = DecoratorArchivist::<()>::default();
++        let make = |id| DecoratorInfo {
++            decorator_id: id,
++            ..Default::default()
++        };
++        let first = make(1);
++        let second = make(2);
++        let third = make(3);
++        archive.walls.insert(
++            RecoveredWallId(3),
++            TrackedDecorators {
++                items: [
++                    (1, info_to_observed(&first)),
++                    (2, info_to_observed(&second)),
++                ]
++                .into(),
++                ..Default::default()
++            },
++        );
++        archive.special1 = Some(TrackedDecorators {
++            items: [(3, info_to_observed(&third))].into(),
++            ..Default::default()
++        });
++        archive.culling.allow_any = true;
++        archive.culling.allowed_ids.insert(99);
++        let mut storage = LiveDecoratorStorage::default();
++        storage
++            .get_or_insert_default(DecoratorStorageAddr::Wall(WallId(3)))
++            .insert(DecoratorId(1), first);
++        // ID2 is removed, ID4 is new, terrain ID3 is unrelated and unchanged.
++        storage
++            .get_or_insert_default(DecoratorStorageAddr::Wall(WallId(3)))
++            .insert(DecoratorId(4), make(4));
++        storage
++            .get_or_insert_default(DecoratorStorageAddr::Terrain)
++            .insert(DecoratorId(3), third);
++        let out = archive.extract_diff_against_storage(&storage, false);
++        assert_eq!(out.len(), 1);
++        let wall = &out[&DecoratorStorageAddr::Wall(WallId(3))];
++        assert_eq!(
++            wall.before.states.keys().copied().collect::<HashSet<_>>(),
++            [DecoratorId(2)].into()
++        );
++        assert_eq!(
++            wall.after.states.keys().copied().collect::<HashSet<_>>(),
++            [DecoratorId(4)].into()
++        );
++        assert!(archive.walls.is_empty() && archive.special1.is_none());
++        assert!(!archive.culling.allow_any && archive.culling.allowed_ids.is_empty());
++    }
++
++    #[test]
++    fn diff_preview_validation_runs_on_live_after_and_flag_allows_it() {
++        let mut archive = DecoratorArchivist::<()>::default();
++        archive.special1 = Some(TrackedDecorators::default());
++        let mut storage = LiveDecoratorStorage::default();
++        storage
++            .get_or_insert_default(DecoratorStorageAddr::Terrain)
++            .insert(
++                DecoratorId(8),
++                DecoratorInfo {
++                    decorator_id: 8,
++                    state: 1,
++                    ..Default::default()
++                },
++            );
++        let mut strict = DecoratorArchivist::<()>::default();
++        strict.special1 = Some(TrackedDecorators::default());
++        assert!(
++            std::panic::catch_unwind(std::panic::AssertUnwindSafe(
++                || strict.extract_diff_against_storage(&storage, false)
++            ))
++            .is_err()
++        );
++        assert!(strict.special1.is_none());
++        assert_eq!(
++            archive.extract_diff_against_storage(&storage, true).len(),
++            1
++        );
++    }
++
++    #[test]
++    fn history_equality_keeps_nan_and_respects_active_destination_and_common_fields() {
++        let zero = DecoratorHistoryState::default();
++        let mut signed = zero;
++        signed.dst_wall = u64::from((-0.0f32).to_bits());
++        assert!(archived_history_equal(&zero, &signed));
++        let mut n = zero;
++        n.dst_wall = u64::from(f32::NAN.to_bits());
++        assert!(!archived_history_equal(&n, &n));
++        for tag in [2, 3, 4] {
++            let mut b = zero;
++            b.u20 = tag << 16;
++            let mut inactive = b;
++            inactive.u18 = 99 << 56;
++            assert!(archived_history_equal(&b, &inactive));
++            inactive.u4c = 1;
++            assert!(!archived_history_equal(&b, &inactive));
++        }
++    }
++
++    #[test]
+     fn extract_diff_also_emits_terrain_and_stair_entries() {
+         let mut archivist = empty_archivist();
+         archivist
+--- a/tiny-glade/crates/country-core/src/systems/collision/world.rs
++++ b/tiny-glade/crates/country-core/src/systems/collision/world.rs
+@@ -238,8 +238,19 @@
+ /// `None`，调用方回退到旧句柄打包——登记项：`upsert_collider_entry` 的注册接线未落地
+ /// （`upsert_collider` 0x140b40b50 的 registry 插入面未锚定）。
+ #[cfg(feature = "native-physics")]
+-fn registry_handle_region(world: &RaycastWorld, handle: ColliderHandle) -> Option<[u64; 3]> {
+-    let (index, generation) = handle.into_raw_parts();
++fn registry_handle_region(
++    world: &RaycastWorld,
++    handle: ColliderHandle,
++    slot: usize,
++) -> Option<[u64; 3]> {
++    // B reads the mesh SlotMap key from Collider::user_data. Rapier indices
++    // are local to each subworld and cannot identify that global mesh owner.
++    let collider = world.slots[slot]
++        .colliders
++        .get(handle)
++        .expect("get_collider: collider handle invalid");
++    let raw = collider.user_data as u64;
++    let (index, generation) = (raw as u32, (raw >> 32) as u32);
+     let entry = world.colliders.get(index as usize)?;
+     if entry.generation | 1 != generation | 1 {
+         panic!("get_collider: collider handle invalid");
+@@ -1111,11 +1122,9 @@
+     /// take-and-clear 后 `publish<DirtyTiles,DirtyTiles>`）。`on_level_reload` 0x1408d8710
+     /// 显示每槽另有内联 `Publisher<DirtyTiles>`（slot+0x150）；world 级发布器为订阅合同。
+     dirty_tiles_publisher: Publisher<crate::utils::dirty_tiles::DirtyTiles>,
+-    /// 网格实例源（O：@+0x3dc8；`slotmap<RaycastMeshKey, RaycastMesh>`）。
+-    /// `on_level_reload`/`update_rapier_colliders` 消费；非 native-physics 壳不落地。
+-    /// `update_rapier_colliders` 实现后接入；当前 `#[allow(dead_code)]`（待消费）。
+-    #[cfg(feature = "native-physics")]
+-    #[allow(dead_code)]
++    /// Canonical owned mesh SlotMap. Native upsert inserts here and writes its
++    /// key to Collider::user_data; get_collider_mesh returns its live value.
++    /// The existing field name is retained; no native memory offset is claimed.
+     mesh_sources: MeshInstanceSources,
+ }
+ 
+@@ -1164,7 +1173,6 @@
+             slots: std::array::from_fn(|_| RapierSubWorld::default()),
+             publisher: Publisher::new(),
+             dirty_tiles_publisher: Publisher::new(),
+-            #[cfg(feature = "native-physics")]
+             mesh_sources: MeshInstanceSources::new(),
+         }
+     }
+@@ -1235,6 +1243,9 @@
+             self.colliders.push(ColliderRegistryEntry::empty());
+         }
+         let entry = &mut self.colliders[index];
++        if self.registry_free_head == index as u32 {
++            self.registry_free_head = entry.free_next();
++        }
+         entry.set_kind(kind);
+         entry.generation = generation;
+         self.registry_live += 1;
+@@ -1275,13 +1286,24 @@
+     /// `RaycastWorld::get_collider_mesh`（0x1408cdbd0，O）：注册表 (index, generation) 校验；
+     /// fresh 用**精确相等**（`entry.generation@+0x20 == generation`，无 `|1`），
+     /// 失败 panic（`begin_panic`）。
+-    pub fn get_collider_mesh(&self, index: u32, generation: u32) {
+-        let index_usize = index as usize;
+-        let ok = index_usize < self.colliders.len()
+-            && self.colliders[index_usize].generation == generation;
+-        if !ok {
+-            panic!("get_collider_mesh: collider handle invalid");
+-        }
++    pub fn get_collider_mesh(&self, index: u32, generation: u32) -> &RaycastMesh {
++        // Native1408cdbea compares the supplied version exactly. KeyData's
++        // FFI constructor normalizes the low version bit; do not let it turn
++        // a caller's invalid even generation into a valid odd generation.
++        assert!(
++            self.colliders
++                .get(index as usize)
++                .is_some_and(|entry| entry.generation == generation),
++            "get_collider_mesh: collider handle invalid"
++        );
++        let raw = u64::from(index) | (u64::from(generation) << 32);
++        let key = RaycastMeshKey::from(slotmap::KeyData::from_ffi(raw));
++        // Reuse the existing SlotMap's version/liveness check and its
++        // actual owned RaycastMesh, rather than validating a header and
++        // discarding the return value.
++        self.mesh_sources
++            .get(key)
++            .expect("get_collider_mesh: collider handle invalid")
+     }
+ 
+     /// `RaycastWorld::subscribe_to_changes`（0x1408cdc20，O）：`Publisher::subscribe<DirtyTiles>`
+@@ -1696,11 +1718,12 @@
+         }
+     }
+ 
+-    /// `SubworldColliderHandle` 表示（index/generation/slot 均来自注册表 +0 区）。
++    /// Physical Rapier handle. The separate registry key lives in user_data.
+     pub fn handle(&self) -> SubworldColliderHandle {
++        let (index, generation) = self.collider.into_raw_parts();
+         SubworldColliderHandle {
+-            index: self.registry_index,
+-            generation: self.generation,
++            index,
++            generation,
+             slot: self.slot,
+         }
+     }
+@@ -1741,6 +1764,42 @@
+     position: glam::Vec3,
+     rotation: glam::Quat,
+ ) -> ColliderUpsert {
++    upsert_collider_with_shape(world, map, key, source, mesh, position, rotation, None)
++}
++
++/// The archived transform owns the actual collider shape separately from its
++/// RaycastMesh metadata. Original141298110 consumes both owners on restoration.
++#[cfg(feature = "native-physics")]
++pub fn upsert_archived_collider<K: std::hash::Hash + Eq>(
++    world: &mut RaycastWorld,
++    map: &mut std::collections::HashMap<K, ColliderMeshInstance>,
++    key: K,
++    mesh: &RaycastMesh,
++    transform: &OffsetColliderTransform,
++) -> ColliderUpsert {
++    upsert_collider_with_shape(
++        world,
++        map,
++        key,
++        mesh.source,
++        mesh.data.clone(),
++        transform.position,
++        transform.rotation,
++        Some(transform.shape.clone()),
++    )
++}
++
++#[cfg(feature = "native-physics")]
++fn upsert_collider_with_shape<K: std::hash::Hash + Eq>(
++    world: &mut RaycastWorld,
++    map: &mut std::collections::HashMap<K, ColliderMeshInstance>,
++    key: K,
++    source: RaycastGeoSource,
++    mesh: Arc<RaycastMeshData>,
++    position: glam::Vec3,
++    rotation: glam::Quat,
++    shape: Option<Arc<dyn Shape>>,
++) -> ColliderUpsert {
+     let slot = source.subworld() as usize;
+     // O：先取旧值；实时 collider 的 Isometry 与入参逐位比较。
+     let existing = map.get(&key).copied();
+@@ -1770,17 +1829,24 @@
+         dispose_collider_mesh_instance(world, &existing);
+     }
+     // O：`to_offset_collider_builder` + `ColliderBuilder::build`（sensor 字节 true）。
+-    let shape = mesh
+-        .shape_ref()
+-        .expect("upsert_collider: mesh has no shape")
+-        .clone_dyn();
+-    let collider = ColliderBuilder::new(SharedShape(Arc::from(shape)))
+-        .position(Isometry::from_parts(
+-            nalgebra::Translation3::new(position.x, position.y, position.z),
+-            nalgebra::UnitQuaternion::from_quaternion(nalgebra::Quaternion::new(
+-                rotation.w, rotation.x, rotation.y, rotation.z,
+-            )),
+-        ))
++    let shape = shape.unwrap_or_else(|| {
++        Arc::from(
++            mesh.shape_ref()
++                .expect("upsert_collider: mesh has no shape")
++                .clone_dyn(),
++        )
++    });
++    // Original upsert calls SlotMap<RaycastMeshKey, RaycastMesh>::insert
++    // @141558ea0 and writes that key to ColliderBuilder::user_data.
++    use slotmap::Key as _;
++    let mesh_key = world.mesh_sources.insert(RaycastMesh::new(mesh, source));
++    let raw_key = mesh_key.data().as_ffi();
++    let registry_index = raw_key as u32;
++    let registry_generation = (raw_key >> 32) as u32;
++    world.ensure_registry_entry(registry_index, registry_generation, source.tag());
++    let collider = ColliderBuilder::new(SharedShape(shape))
++        .position(collider_isometry(position, rotation))
++        .user_data(u128::from(raw_key))
+         .sensor(true)
+         .build();
+     // O：槽脏标志 + compute_aabb → xz_flatten_aabb → rasterize_world_space_rect。
+@@ -1796,13 +1862,17 @@
+     // O：`ColliderSet::insert`；注册表与 collider set 同 (index, generation)。
+     let collider_handle = world.slots[slot].colliders.insert(collider);
+     let (index, generation) = collider_handle.into_raw_parts();
+-    world.ensure_registry_entry(index, generation, 2);
+     let handle = SubworldColliderHandle {
+         index,
+         generation,
+         slot: slot as u8,
+     };
+-    let instance = ColliderMeshInstance::new(index, generation, collider_handle, slot as u8);
++    let instance = ColliderMeshInstance::new(
++        registry_index,
++        registry_generation,
++        collider_handle,
++        slot as u8,
++    );
+     // O：`Rapier::on_collider_upserted`（发布 ColliderDiff 新增/变更增量）。
+     world.on_collider_upserted(ColliderDelta {
+         handle: Some(handle),
+@@ -1890,6 +1960,15 @@
+     world.registry_free_head = index as u32;
+     world.registry_live -= 1;
+     world.colliders[index].generation = generation + 1;
++    let key = RaycastMeshKey::from(slotmap::KeyData::from_ffi(
++        u64::from(instance.registry_index) | (u64::from(generation) << 32),
++    ));
++    // Dropping the owned mesh releases its Arc once. Already archived meshes
++    // keep their own reference and therefore survive live collider deletion.
++    let _mesh = world
++        .mesh_sources
++        .remove(key)
++        .expect("dispose_collider_mesh_instance: mesh key invalid");
+     // O：kind == 0x11 → unwrap_failed（在 free-list/bump 之后）。
+     if kind == crate::systems::collision::EMPTY_COLLIDER_HANDLE_TAG {
+         panic!("dispose_collider_mesh_instance: empty collider handle tag");
+@@ -1955,7 +2034,7 @@
+                 maximum_toi = intersection.time_of_impact;
+                 // O：命中后校验注册表并拷贝条目前 24 B（0x1408cdc60 → 0x1408ce4a0）。
+                 result = RaycastWorldResult {
+-                    handle: registry_handle_region(world, handle)
++                    handle: registry_handle_region(world, handle, slot_index)
+                         .unwrap_or_else(|| handle_region(handle, slot_index as u32)),
+                     position: origin + dir * intersection.time_of_impact,
+                     normal: glam::Vec3::new(
+@@ -2055,7 +2134,7 @@
+                     normal1
+                 };
+                 result = RaycastWorldResult {
+-                    handle: registry_handle_region(world, handle)
++                    handle: registry_handle_region(world, handle, slot_index)
+                         .unwrap_or_else(|| handle_region(handle, slot_index as u32)),
+                     position: witness1,
+                     normal,
+@@ -2099,7 +2178,7 @@
+                 // B 0x1408ce180: a hit shortens the next slot's maximum TOI.
+                 maximum_toi = toi;
+                 result = RaycastSimpleResult {
+-                    handle: registry_handle_region(world, handle)
++                    handle: registry_handle_region(world, handle, slot_index)
+                         .unwrap_or_else(|| handle_region(handle, slot_index as u32)),
+                     position: origin + dir * toi,
+                     toi,
+@@ -2150,7 +2229,7 @@
+                 // O：legacy 命中写 handle + position；normal 写 0；+0x30 写 0（命中判别）。
+                 // 句柄区 = 注册表条目前 24 B（0x1408ccc90 的 `local_1b8 = *puVar1` 序列）。
+                 result = RaycastWorldResult {
+-                    handle: registry_handle_region(world, handle)
++                    handle: registry_handle_region(world, handle, slot_index)
+                         .unwrap_or_else(|| handle_region(handle, slot_index as u32)),
+                     position: origin + dir * hit.time_of_impact,
+                     normal: glam::Vec3::ZERO,
+@@ -2359,18 +2438,15 @@
+     }
+ }
+ 
+-/// `MeshInstanceSources`（O：`RaycastWorld +0x3dc8` 的 slotmap 网格实例源；
+-/// `RaycastMeshKey → RaycastMesh`）。on_level_reload 重建时 drop 旧值（0xe0 B
+-/// 默认副本）→ 新空 slotmap。布局含 slotmap 头 + slots Vec + free list（登记
+-/// 精确字段偏移：`Vec<Slot<RaycastMesh>> data@+0xe0/len@+0xe8`）。
+-#[cfg(feature = "native-physics")]
++/// Owned RaycastMesh keys. Original upsert141558ea0 is the SlotMap's
++/// insert; get_collider_mesh1408cdbd0 validates the key and returns its value.
++/// Reuse that dependency's liveness/generation/free-list implementation.
+ #[derive(Default)]
+ pub struct MeshInstanceSources {
+     /// 底层 slotmap（O：`slotmap::basic::SlotMap<RaycastMeshKey, RaycastMesh>`）。
+     meshes: slotmap::basic::SlotMap<RaycastMeshKey, RaycastMesh>,
+ }
+ 
+-#[cfg(feature = "native-physics")]
+ impl MeshInstanceSources {
+     /// 新建空源（O：on_level_reload 的 0xe0 B 默认副本）。
+     pub fn new() -> Self {
+@@ -2914,13 +2990,113 @@
+             ColliderUpsert::Inserted { handle } => handle,
+             other => panic!("expected Inserted, got {other:?}"),
+         };
+-        let before = world.collider_registry()[handle.index as usize].generation;
++        let registry_index = map[&7u64].registry_index;
++        let before = world.collider_registry()[registry_index as usize].generation;
+         let removed = remove_collider(&mut world, &mut map, &7u64).expect("present");
+         assert_eq!(removed, handle);
+-        let entry = world.collider_registry()[handle.index as usize];
++        let entry = world.collider_registry()[registry_index as usize];
+         assert_eq!(entry.generation, before + 1);
+-        assert_eq!(world.registry_free_head, handle.index);
++        assert_eq!(world.registry_free_head, registry_index);
+         assert_eq!(world.registry_live, 0);
++    }
++
++    #[test]
++    fn owned_mesh_keys_are_global_across_subworlds_and_reject_removed_generations() {
++        let mut world = RaycastWorld::new();
++        let first_data = Arc::new(RaycastMeshData::new_cuboid(
++            glam::Vec3::splat(0.5),
++            glam::UVec3::splat(1),
++        ));
++        let second_data = Arc::new(RaycastMeshData::new_cuboid(
++            glam::Vec3::splat(0.75),
++            glam::UVec3::splat(2),
++        ));
++        let mut map = std::collections::HashMap::new();
++        upsert_collider(
++            &mut world,
++            &mut map,
++            10u32,
++            RaycastGeoSource::Slot0,
++            first_data.clone(),
++            glam::Vec3::ZERO,
++            glam::Quat::IDENTITY,
++        );
++        upsert_collider(
++            &mut world,
++            &mut map,
++            20u32,
++            RaycastGeoSource::Slot1,
++            second_data.clone(),
++            glam::Vec3::ZERO,
++            glam::Quat::IDENTITY,
++        );
++        let first = map[&10];
++        let second = map[&20];
++        // Rapier reuses the same local index in two different worlds. Mesh
++        // SlotMap keys must nevertheless identify different owned meshes.
++        assert_eq!(
++            first.collider.into_raw_parts(),
++            second.collider.into_raw_parts()
++        );
++        assert_ne!(first.registry_index, second.registry_index);
++        assert!(Arc::ptr_eq(
++            &world
++                .get_collider_mesh(first.registry_index, first.generation)
++                .data,
++            &first_data
++        ));
++        assert!(
++            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++                world.get_collider_mesh(first.registry_index, first.generation ^ 1)
++            }))
++            .is_err()
++        );
++        assert!(Arc::ptr_eq(
++            &world
++                .get_collider_mesh(second.registry_index, second.generation)
++                .data,
++            &second_data
++        ));
++        let first_snapshot = world.get_collider(first.handle());
++        assert_eq!(first_snapshot.generation_low as u32, first.registry_index);
++        assert_eq!(first_snapshot.generation, first.generation);
++        remove_collider(&mut world, &mut map, &10).unwrap();
++        assert!(
++            std::panic::catch_unwind(std::panic::AssertUnwindSafe(
++                || world.get_collider_mesh(first.registry_index, first.generation)
++            ))
++            .is_err()
++        );
++        upsert_collider(
++            &mut world,
++            &mut map,
++            30u32,
++            RaycastGeoSource::Slot0,
++            first_data.clone(),
++            glam::Vec3::ONE,
++            glam::Quat::IDENTITY,
++        );
++        let reused = map[&30];
++        assert_eq!(reused.registry_index, first.registry_index);
++        assert_ne!(reused.generation, first.generation);
++        assert!(
++            std::panic::catch_unwind(std::panic::AssertUnwindSafe(
++                || world.get_collider_mesh(first.registry_index, first.generation)
++            ))
++            .is_err()
++        );
++        assert!(Arc::ptr_eq(
++            &world
++                .get_collider_mesh(reused.registry_index, reused.generation)
++                .data,
++            &first_data
++        ));
++        assert!(Arc::ptr_eq(
++            &world
++                .get_collider_mesh(second.registry_index, second.generation)
++                .data,
++            &second_data
++        ));
+     }
+ 
+     #[test]

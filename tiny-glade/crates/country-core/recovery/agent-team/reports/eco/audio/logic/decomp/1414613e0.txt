@@ -1,0 +1,33 @@
+// terrain_audio_init_system @ 0x1414613e0
+
+void __cdecl country_core::systems::audio::terrain_audio::terrain_audio_init_system(void)
+
+{
+  undefined8 local_220;
+  undefined8 local_168;
+  
+  resources::audio_resources::AudioCore::instantiate_loop();
+  if (SBORROW8(0,local_168)) {
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+  resources::audio_resources::AudioCore::instantiate_loop();
+  if (SBORROW8(0,local_168)) {
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+  resources::audio_resources::AudioCore::instantiate_loop();
+  if (SBORROW8(0,local_168)) {
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+  resources::audio_resources::AudioCore::instantiate_loop();
+  if (!SBORROW8(0,local_220)) {
+    bevy_ecs::system::commands::Commands::
+    insert_resource<country_core::systems::audio::terrain_audio::TerrainAudioState>();
+    return;
+  }
+                    // WARNING: Subroutine does not return
+  core::result::unwrap_failed();
+}
+

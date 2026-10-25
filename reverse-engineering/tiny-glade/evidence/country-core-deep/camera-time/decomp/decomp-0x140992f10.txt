@@ -1,0 +1,52 @@
+
+undefined8 * FUN_140992f10(undefined8 *param_1,longlong param_2)
+
+{
+  undefined8 *puVar1;
+  undefined4 uVar2;
+  code *pcVar3;
+  undefined8 *puVar4;
+  longlong lVar5;
+  undefined8 *puVar6;
+  longlong lVar7;
+  undefined **ppuStack_80;
+  undefined *puStack_78;
+  undefined *puStack_70;
+  undefined8 uStack_68;
+  undefined *puStack_60;
+  undefined8 uStack_58;
+  undefined8 **ppuStack_50;
+  undefined8 uStack_48;
+  undefined8 uStack_40;
+  
+  lVar7 = *(longlong *)(param_2 + 0x10) << 4;
+  puVar6 = *(undefined8 **)(param_2 + 8);
+  do {
+    if (lVar7 == 0) {
+      puStack_70 = &UNK_142aecce8;
+      uStack_68 = 0x22;
+      ppuStack_80 = &puStack_70;
+      puStack_78 = &UNK_140109e90;
+      puStack_60 = &UNK_142aecd30;
+      uStack_58 = 2;
+      uStack_40 = 0;
+      ppuStack_50 = &ppuStack_80;
+      uStack_48 = 1;
+      FUN_1428d9390(&puStack_60,&UNK_142aece28);
+      pcVar3 = (code *)swi(3);
+      puVar6 = (undefined8 *)(*pcVar3)();
+      return puVar6;
+    }
+    puVar1 = puVar6 + 2;
+    puVar4 = (undefined8 *)(**(code **)(puVar6[1] + 0x38))(*puVar6);
+    lVar5 = (**(code **)(param_2 + 0x18))(puVar4);
+    lVar7 = lVar7 + -0x10;
+    puVar6 = puVar1;
+  } while (((puVar4 == (undefined8 *)0x0) || (lVar5 != 0x6b8463577afc1a66)) ||
+          (param_2 != 0xe4b9f294168d7e3));
+  uVar2 = *(undefined4 *)(puVar4 + 1);
+  *param_1 = *puVar4;
+  *(undefined4 *)(param_1 + 1) = uVar2;
+  return param_1;
+}
+

@@ -1,0 +1,39 @@
+0x142002142: mov dh, 0x7d
+0x142002144: jae 0x14200212f
+0x142002146: fld dword ptr [rax]
+0x142002148: add byte ptr [rax], al
+0x14200214a: ucomiss xmm11, xmm10
+0x14200214e: jbe 0x14200221c
+0x142002154: movaps xmm0, xmm11
+0x142002158: mulss xmm0, dword ptr [rbp + 0x1a8]
+0x142002160: movaps xmm2, xmm10
+0x142002164: mulss xmm2, dword ptr [rbp + 0x1b0]
+0x14200216c: addss xmm2, xmm0
+0x142002170: mulss xmm11, xmm8
+0x142002175: mulss xmm10, xmm6
+0x14200217a: addss xmm10, xmm11
+0x14200217f: lea rcx, [rbp + 0x40]
+0x142002183: movaps xmm1, xmm10
+0x142002187: call 0x140c91f60
+0x14200218c: movaps xmm1, xmm15
+0x142002190: subss xmm1, xmm9
+0x142002195: subss xmm9, xmm15
+0x14200219a: xorps xmm10, xmm10
+0x14200219e: cmpnltss xmm0, xmm10
+0x1420021a4: andps xmm9, xmm0
+0x1420021a8: andnps xmm0, xmm1
+0x1420021ab: orps xmm9, xmm0
+0x1420021af: mulss xmm9, dword ptr [rip + 0x9236b8]
+0x1420021b8: mov dword ptr [rbp - 8], r12d
+0x1420021bc: movd dword ptr [rbp - 4], xmm7
+0x1420021c1: addss xmm9, xmm8
+0x1420021c6: lea rcx, [rbp - 8]
+0x1420021ca: movaps xmm1, xmm9
+0x1420021ce: call 0x140c91e40
+0x1420021d3: cmp eax, 1
+0x1420021d6: jne 0x142001fb8
+0x1420021dc: movaps xmm8, xmm0
+0x1420021e0: cmp byte ptr [rbp + 0x77], 9
+0x1420021e4: jne 0x1420021f8
+0x1420021e6: movaps xmm10, xmm13
+0x1420021ea: subss xmm10, xmm14

@@ -1,0 +1,23 @@
+//! 原装饰网格库使用的描边载荷；此处仅恢复真实拥有类型。
+//!
+//! 原140b33b00与两条四表插入链分别证明String、Vec<Vec3>和半径载荷。
+//! display回调与动画需要其完整业务合同，不能用None或空实现代替。
+
+use glam::Vec3;
+
+/// 原主描边的四种载荷；显式None与库中没有exact key不同。
+#[derive(Clone, Debug, PartialEq)]
+pub enum DecoratorOutline {
+    Mesh(String),
+    Lines(Vec<Vec3>),
+    Sphere(f32),
+    None,
+}
+
+/// 原碰撞描边只保存线点、球半径或显式None。
+#[derive(Clone, Debug, PartialEq)]
+pub enum DecoratorCollisionOutline {
+    Lines(Vec<Vec3>),
+    Sphere(f32),
+    None,
+}

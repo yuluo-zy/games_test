@@ -1,0 +1,96 @@
+
+void __cdecl country_core::systems::audio::music::music_player::MusicPlayer::switch_track(void)
+
+{
+  longlong lVar1;
+  ulonglong in_RAX;
+  longlong *extraout_RAX;
+  ulonglong extraout_RAX_00;
+  ulonglong extraout_RAX_01;
+  longlong *in_RCX;
+  longlong lVar2;
+  ulonglong uVar3;
+  ulonglong uVar4;
+  ulonglong uVar5;
+  longlong *plVar6;
+  longlong lVar7;
+  longlong lVar8;
+  
+  uVar4 = in_RCX[0x22];
+  if (uVar4 == 0) {
+    uVar4 = in_RCX[0x1f];
+    if (uVar4 == 0) {
+      plVar6 = (longlong *)&DAT_00000008;
+      lVar2 = in_RCX[0x20];
+    }
+    else {
+      lVar2 = *in_RCX;
+      lVar1 = in_RCX[1];
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      if (extraout_RAX == (longlong *)0x0) {
+                    // WARNING: Subroutine does not return
+        alloc::raw_vec::handle_error();
+      }
+      if (3 < uVar4) {
+        uVar5 = uVar4 & 0x3fffffffffffffc;
+        lVar7 = 0;
+        lVar8 = 1;
+        uVar3 = 0;
+        do {
+          *(longlong *)((longlong)extraout_RAX + uVar3) = lVar7;
+          ((longlong *)((longlong)extraout_RAX + uVar3))[1] = lVar8;
+          plVar6 = (longlong *)((longlong)extraout_RAX + uVar3 + 0x10);
+          *plVar6 = lVar7 + 2;
+          plVar6[1] = lVar8 + 2;
+          lVar7 = lVar7 + 4;
+          lVar8 = lVar8 + 4;
+          uVar3 = uVar3 + 0x20;
+          if ((uVar4 * 8 & 0xffffffffffffffe0) == uVar3) goto LAB_1408b7206;
+        } while( true );
+      }
+      uVar5 = 0;
+      do {
+        extraout_RAX[uVar5] = uVar5;
+        uVar5 = uVar5 + 1;
+LAB_1408b7206:
+      } while (uVar4 != uVar5);
+      std::thread::local::LocalKey::
+      with<fastrand::Rng,fastrand::shuffle::closure_env_0<usize>,tuple_<>_>();
+      in_RAX = extraout_RAX_00;
+      plVar6 = extraout_RAX;
+      if (lVar2 == 0) {
+        lVar2 = in_RCX[0x20];
+      }
+      else {
+        if (*extraout_RAX == lVar1) {
+          in_RAX = uVar4 & 0xfffffffffffffffe;
+          *extraout_RAX = *(longlong *)((longlong)extraout_RAX + in_RAX * 4);
+          *(longlong *)((longlong)extraout_RAX + in_RAX * 4) = lVar1;
+        }
+        lVar2 = in_RCX[0x20];
+      }
+    }
+    if (lVar2 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+      in_RAX = extraout_RAX_01;
+    }
+    in_RCX[0x20] = uVar4;
+    in_RCX[0x21] = (longlong)plVar6;
+    in_RCX[0x22] = uVar4;
+    if (uVar4 == 0) {
+      lVar2 = 0;
+      goto LAB_1408b71eb;
+    }
+  }
+  else {
+    plVar6 = (longlong *)in_RCX[0x21];
+  }
+  in_RCX[0x22] = uVar4 - 1;
+  in_RAX = plVar6[uVar4 - 1];
+  lVar2 = 1;
+LAB_1408b71eb:
+  *in_RCX = lVar2;
+  in_RCX[1] = in_RAX;
+  return;
+}
+

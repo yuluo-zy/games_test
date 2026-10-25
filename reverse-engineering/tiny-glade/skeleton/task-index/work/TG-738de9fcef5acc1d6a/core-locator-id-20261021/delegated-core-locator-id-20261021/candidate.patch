@@ -1,0 +1,272 @@
+--- a/tiny-glade/crates/systems/decorator/src/apply_decorator_op.rs
++++ b/tiny-glade/crates/systems/decorator/src/apply_decorator_op.rs
+@@ -54,17 +54,17 @@
+     DeferredDecoratorEditHistory, DeferredDecoratorRecord,
+ };
+ 
+-/// 装饰操作记录（112B = {kind u64 @0, DecoratorInfo @8, 32B pad}）。
+-/// 机器码读面（O）：`param_1[0..0xd]`（0x70B）；`[1]=wall`（DecoratorLocator
+-/// 参数 1）、`[2]=secondary`、`[0xb]@0x5c..0x5f` 状态字节簇、`[0xc]/[0xd]`
+-/// 载荷（语义 U）。pad 区语义 U。
++/// 原 112B 操作 union 的现代语义模型，不复刻原传输布局。
++/// 独立 map key 与 Info.word2c 分离；typed change 由 change 载荷表达。
+ #[derive(Clone, Copy, Debug, Default, PartialEq)]
+ pub struct DecoratorOp {
+     /// +0x00：操作 kind（3=place、4=remove、其余=change/move）。
+     pub kind: u64,
+-    /// +0x08：DecoratorInfo 主体。
++    /// 原 place +0x54 / change +0x68 的独立 map key，不是 Info.word2c。
++    pub decorator_id: DecoratorId,
++    /// 完整记录或旧兼容载荷；不能从该记录反推操作的 map key。
+     pub info: DecoratorInfo,
+-    /// +0x50：未解析载荷（含 +0x5c..0x5f 状态字节簇，U）。
++    /// 保留旧兼容载荷；这里不声明本 Rust 字段的 native ABI 偏移。
+     pub extra: [u8; 0x20],
+     /// 原生 `+0x10` 第二定位器；`None` = 哨兵 3（原地更新，不迁移存储）。
+     pub dst: Option<DecoratorStorageAddr>,
+@@ -122,7 +122,8 @@
+ 
+ impl DecoratorOp {
+     pub fn from_change(addr: DecoratorStorageAddr, patch: DecoratorChangePatch) -> Self {
+-        Self { kind: address_words(addr).0, info: DecoratorInfo { decorator_id: patch.id.0, ..Default::default() },
++        Self { kind: address_words(addr).0, decorator_id: patch.id,
++            info: DecoratorInfo { decorator_id: patch.id.0, ..Default::default() },
+             extra: [0; 32], dst: patch.destination.map(|(addr, _)| addr), change: Some(patch) }
+     }
+     /// kind 常量（O：dispatch `(kind-3)<2` → place/remove）。
+@@ -162,7 +163,7 @@
+ 
+ /// `write_place_op_history`（PDB 行 156，内联）：延迟记录 kind=4 + 存续登记
+ /// （O：records.push(kind) + `DecoratorLocator::new` +
+-/// `HashMap<DecoratorLocator,()>::insert`；locator 构造参 U，以 dst 承载）。
++/// `HashMap<DecoratorLocator,()>::insert`；原地址和独立 key 同时入集合）。
+ #[inline]
+ pub fn write_place_op_history(
+     history: &mut DeferredDecoratorEditHistory,
+@@ -174,7 +175,7 @@
+         f1: u64::from(op.info.decorator_id),
+         ..DeferredDecoratorRecord::default()
+     });
+-    history.add_potentially_surviving_affected_decorator(DecoratorLocator::new(dst));
++    history.add_potentially_surviving_affected_decorator(DecoratorLocator::new(dst, op.decorator_id.0));
+     history.pending = true;
+ }
+ 
+@@ -190,7 +191,10 @@
+         f1: u64::from(op.info.decorator_id),
+         ..DeferredDecoratorRecord::default()
+     });
+-    history.add_potentially_surviving_affected_decorator(DecoratorLocator::new(dst));
++    // 原 destination 判别3沿源，否则使用明确目标地址；记录仍先于集合写入。
++    history.add_potentially_surviving_affected_decorator(DecoratorLocator::new(
++        op.dst.unwrap_or(dst), op.decorator_id.0,
++    ));
+     history.pending = true;
+ }
+ 
+@@ -333,7 +337,7 @@
+     write_u64(0x18, op.info.dst_payload);
+     write_u64(0x20, op.info.u18);
+     write_u64(0x28, u64::from(op.info.u20));
+-    write_u64(0x30, u64::from(op.info.decorator_id));
++    write_u64(0x30, u64::from(op.decorator_id.0));
+     drop(write_u64);
+     // +0x38..0x40：op.extra 状态字节簇（机器码 op[0xb]@0x5c..0x5f 放置，U）。
+     event[0x38..0x3c].copy_from_slice(&op.extra[0x0c..0x10]);
+@@ -439,7 +443,7 @@
+     }
+ 
+     // 存储应用（O，在历史之后）。
+-    let id = DecoratorId(op.info.decorator_id);
++    let id = op.decorator_id;
+     match kind {
+         DecoratorOpKind::Place => {
+             storage.apply_decorator_place(dst, id, &op.info);
+@@ -492,7 +496,7 @@
+         // Native add writes only the record discriminant; the other three
+         // qwords are inactive padding. Commit is armed by the UI release path.
+         history.add(DeferredDecoratorRecord { kind: DeferredDecoratorRecord::KIND_CHANGE, f1: 0, f2: 0, f3: 0 });
+-        history.add_potentially_surviving_affected_decorator(DecoratorLocator::new(target));
++        history.add_potentially_surviving_affected_decorator(DecoratorLocator::new(target, patch.id.0));
+     }
+     let mut after = before;
+     patch.apply_fields(&mut after);
+@@ -662,6 +666,7 @@
+     fn height_op(id: u32, height: f32, dst: Option<DecoratorStorageAddr>) -> DecoratorOp {
+         DecoratorOp {
+             kind: 0,
++            decorator_id: DecoratorId(id),
+             info: DecoratorInfo {
+                 decorator_id: id,
+                 dst_secondary: 3,
+@@ -774,4 +779,169 @@
+         }));
+         assert!(result.is_err());
+     }
+-}
++    fn identity_storage(source: DecoratorStorageAddr) -> DecoratorStorage {
++        let mut storage = DecoratorStorage::default();
++        for (id, word) in [(11, 900), (29, 1900)] {
++            storage.apply_decorator_place(source, DecoratorId(id), &DecoratorInfo {
++                decorator_id: word, state: 1, ..DecoratorInfo::default()
++            });
++        }
++        storage
++    }
++
++    fn identity_patch(id: u32) -> DecoratorChangePatch {
++        DecoratorChangePatch {
++            id: DecoratorId(id), destination: None, rank: None, ty: None,
++            word_2c_delta: Some(1), extra_low: None, extra_high: None,
++            extra_byte: None, event_position: glam::Vec3::new(1.0, 2.0, 3.0),
++        }
++    }
++
++    #[test]
++    fn same_wall_place_ids_survive_and_repeated_locator_only_merges_the_set() {
++        let addr = DecoratorStorageAddr::Wall(WallId(7));
++        let mut storage = DecoratorStorage::default();
++        storage.get_or_insert_default(addr);
++        let mut archivist = DecoratorArchivist::<()>::default();
++        let mut history = DeferredDecoratorEditHistory::default();
++        let events = DeferredDecoratorOpEvents::default();
++        for (id, word) in [(11, 900), (29, 1900)] {
++            let op = DecoratorOp {
++                kind: DecoratorOp::KIND_PLACE, decorator_id: DecoratorId(id),
++                info: DecoratorInfo { decorator_id: word, state: 1, ..Default::default() },
++                ..DecoratorOp::default()
++            };
++            apply_decorator_op(&op, 0, addr, &mut storage, Some(&mut archivist),
++                Some(&mut history), &events);
++            assert_eq!(storage.get(addr).unwrap().get(DecoratorId(id)).unwrap().decorator_id, word);
++            assert!(storage.get(addr).unwrap().get(DecoratorId(word)).is_none());
++        }
++        // 原集合按完整 locator 去重，逐次历史记录不因同键去重。
++        let repeat = DecoratorOp { kind: DecoratorOp::KIND_PLACE,
++            decorator_id: DecoratorId(11), ..Default::default() };
++        write_place_op_history(&mut history, &repeat, addr);
++        assert_eq!(history.records.len(), 3);
++        assert!(history.records.iter().all(|record| record.kind == DeferredDecoratorRecord::KIND_PLACE));
++        assert_eq!(history.potentially_surviving_affected_decorators.len(), 2);
++        for id in [11, 29] {
++            assert!(history.potentially_surviving_affected_decorators.contains_key(&DecoratorLocator::new(addr, id)));
++        }
++        let remove = DecoratorOp { kind: DecoratorOp::KIND_REMOVE,
++            decorator_id: DecoratorId(29), info: *storage.get(addr).unwrap().get(DecoratorId(29)).unwrap(),
++            ..Default::default() };
++        let mut remove_history = DeferredDecoratorEditHistory::default();
++        apply_decorator_op(&remove, 0, addr, &mut storage, Some(&mut archivist),
++            Some(&mut remove_history), &events);
++        assert!(storage.get(addr).unwrap().get(DecoratorId(29)).is_none());
++        assert!(storage.get(addr).unwrap().get(DecoratorId(11)).is_some());
++        assert_eq!(remove_history.records[0].kind, DeferredDecoratorRecord::KIND_REMOVE);
++        assert!(remove_history.potentially_surviving_affected_decorators.is_empty());
++    }
++
++    #[test]
++    fn change_history_keeps_same_id_at_distinct_addresses_and_none_uses_source() {
++        let source = DecoratorStorageAddr::Wall(WallId(7));
++        let target = DecoratorStorageAddr::Terrain;
++        let mut history = DeferredDecoratorEditHistory::default();
++        let mut op = DecoratorOp { decorator_id: DecoratorId(29),
++            info: DecoratorInfo { decorator_id: 1900, ..Default::default() },
++            ..Default::default() };
++        write_change_op_history(&mut history, &op, source);
++        op.dst = Some(target);
++        write_change_op_history(&mut history, &op, source);
++        write_change_op_history(&mut history, &op, source);
++        assert_eq!(history.records.len(), 3);
++        assert!(history.records.iter().all(|record| record.kind == DeferredDecoratorRecord::KIND_CHANGE));
++        assert_eq!(history.potentially_surviving_affected_decorators.len(), 2);
++        for addr in [source, target] {
++            assert!(history.potentially_surviving_affected_decorators.contains_key(&DecoratorLocator::new(addr, 29)));
++            assert!(!history.potentially_surviving_affected_decorators.contains_key(&DecoratorLocator::new(addr, 1900)));
++        }
++    }
++
++    #[test]
++    fn typed_changes_preserve_map_ids_while_mutable_info_word_changes() {
++        let source = DecoratorStorageAddr::Wall(WallId(7));
++        let mut storage = identity_storage(source);
++        let mut archivist = DecoratorArchivist::<()>::default();
++        let mut history = DeferredDecoratorEditHistory::default();
++        let events = DeferredDecoratorOpEvents::default();
++        for id in [11, 29, 11] {
++            let mut op = DecoratorOp::from_change(source, identity_patch(id));
++            assert_eq!(op.decorator_id, DecoratorId(id));
++            // typed 分支不读取旧兼容 Info carrier，更不能以它重定位 map key。
++            op.info.decorator_id = 4000;
++            apply_decorator_op(&op, 0, source, &mut storage, Some(&mut archivist),
++                Some(&mut history), &events);
++        }
++        let bucket = storage.get(source).unwrap();
++        assert_eq!(bucket.get(DecoratorId(11)).unwrap().decorator_id, 902);
++        assert_eq!(bucket.get(DecoratorId(29)).unwrap().decorator_id, 1901);
++        assert!(bucket.get(DecoratorId(4000)).is_none());
++        assert_eq!(history.records.len(), 3);
++        assert_eq!(history.potentially_surviving_affected_decorators.len(), 2);
++        for id in [11, 29] {
++            assert!(history.potentially_surviving_affected_decorators.contains_key(&DecoratorLocator::new(source, id)));
++            assert!(bucket.modified_ids.contains(&id));
++            assert!(!bucket.removed_ids.contains(&id));
++        }
++        let mut emitted = Vec::new();
++        events.unleash(&mut emitted);
++        let ids: Vec<_> = emitted.iter().map(|event| u32::from_le_bytes(event[0x68..0x6c].try_into().unwrap())).collect();
++        assert_eq!(ids, vec![11, 29, 11]);
++    }
++
++    #[test]
++    fn typed_move_registers_actual_target_with_the_independent_patch_id() {
++        use country_core::resources::walls::decorator::{DecoratorRotationXZ, TerrainDecoratorDst};
++        let source = DecoratorStorageAddr::Wall(WallId(7));
++        let target = DecoratorStorageAddr::Terrain;
++        let mut storage = identity_storage(source);
++        let mut archivist = DecoratorArchivist::<()>::default();
++        let mut history = DeferredDecoratorEditHistory::default();
++        let events = DeferredDecoratorOpEvents::default();
++        let mut patch = identity_patch(29);
++        patch.destination = Some((target, DecoratorDst::Terrain(TerrainDecoratorDst {
++            position_xz: glam::Vec2::new(5.0, 7.0), yaw: DecoratorRotationXZ(0.0),
++        })));
++        let op = DecoratorOp::from_change(source, patch);
++        apply_decorator_op(&op, 0, source, &mut storage, Some(&mut archivist),
++            Some(&mut history), &events);
++        assert!(storage.get(source).unwrap().get(DecoratorId(29)).is_none());
++        assert_eq!(storage.get(target).unwrap().get(DecoratorId(29)).unwrap().decorator_id, 1901);
++        assert_eq!(storage.lookup_storage(DecoratorId(29)), Some(target));
++        assert_eq!(history.potentially_surviving_affected_decorators.len(), 1);
++        assert!(history.potentially_surviving_affected_decorators.contains_key(&DecoratorLocator::new(target, 29)));
++        assert!(!history.potentially_surviving_affected_decorators.contains_key(&DecoratorLocator::new(source, 29)));
++        let mut emitted = Vec::new();
++        events.unleash(&mut emitted);
++        assert_eq!(u32::from_le_bytes(emitted[0][0x68..0x6c].try_into().unwrap()), 29);
++    }
++
++    #[test]
++    fn invalid_typed_field_keeps_registered_locator_before_storage_and_event_commit() {
++        let source = DecoratorStorageAddr::Wall(WallId(7));
++        let mut storage = identity_storage(source);
++        let before = *storage.get(source).unwrap().get(DecoratorId(11)).unwrap();
++        let mut archivist = DecoratorArchivist::<()>::default();
++        let mut history = DeferredDecoratorEditHistory::default();
++        let events = DeferredDecoratorOpEvents::default();
++        let mut patch = identity_patch(11);
++        patch.word_2c_delta = None;
++        patch.extra_byte = Some(9); // 真实分支要求 extra tag5，当前记录tag0会在赋值前失败。
++        let op = DecoratorOp::from_change(source, patch);
++        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++            apply_decorator_op(&op, 0, source, &mut storage, Some(&mut archivist),
++                Some(&mut history), &events);
++        }));
++        assert!(result.is_err());
++        assert_eq!(history.records.len(), 1);
++        assert_eq!(history.potentially_surviving_affected_decorators.len(), 1);
++        assert!(history.potentially_surviving_affected_decorators.contains_key(&DecoratorLocator::new(source, 11)));
++        assert_eq!(*storage.get(source).unwrap().get(DecoratorId(11)).unwrap(), before);
++        let mut emitted = Vec::new();
++        events.unleash(&mut emitted);
++        assert!(emitted.is_empty());
++    }
++
++}

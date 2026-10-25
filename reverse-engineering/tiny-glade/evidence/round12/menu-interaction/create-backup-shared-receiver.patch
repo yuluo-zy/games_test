@@ -1,0 +1,9 @@
+diff --git a/tiny-glade/crates/country-core/src/systems/save/save_game.rs b/tiny-glade/crates/country-core/src/systems/save/save_game.rs
+--- a/tiny-glade/crates/country-core/src/systems/save/save_game.rs
++++ b/tiny-glade/crates/country-core/src/systems/save/save_game.rs
+@@ -669,4 +669,4 @@ impl AutoSaveState {
+-    pub fn create_backup_of(&mut self, path: PathBuf) -> Result<(), anyhow::Error> {
++    pub fn create_backup_of(&self, path: PathBuf) -> Result<(), anyhow::Error> {
+         let (reply_sender, reply_receiver) = crossbeam_channel::bounded(1);
+         let command = AsyncSaveCmd::ManualBackup {
+             path,

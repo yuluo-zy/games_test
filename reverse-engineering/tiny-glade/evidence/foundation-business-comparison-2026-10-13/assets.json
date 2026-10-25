@@ -1,0 +1,1019 @@
+{
+  "schema_version": 1,
+  "scope": "shared-foundation asset + asset-pipe source-only comparison; B primary, C separate",
+  "policy": "缺验证不等于缺实现；无同名helper不等于无业务操作；派生默认/继承按schema属性和值任务，不展开宏；consumer缺口单列",
+  "tests_rerun": false,
+  "source_modified": false,
+  "features": [
+    {
+      "feature_id": "asset:01",
+      "id": "asset:01",
+      "name": "配置继承",
+      "baseline": "B",
+      "comparison_status": "partial_missing_logic",
+      "status": "partial_missing_logic",
+      "current_implementation": [
+        {
+          "path": "reconstruction/shared-foundation/crates/asset/src/inheritable.rs",
+          "functions": [
+            "Inheritable::{inherit_shallow,as_concrete,into_concrete}",
+            "impl Inherit for Inheritable<T>/Option<T>/HashMap<K,V>",
+            "deserialize_inheritable",
+            "deserialize_inheritable_option"
+          ],
+          "sha256": "47461cdea243ef0fca1fb44fa4daebd85f1dd2c4673b9e7b406fbfaff92eded7"
+        },
+        {
+          "path": "reconstruction/shared-foundation/crates/asset/src/prefab/config.rs",
+          "functions": [
+            "PrefabConfig::inherit_from",
+            "PrefabPartConfig::resolved_defaults",
+            "PrefabPartConfig/PrefabRenderConfig/PrefabRtConfig/PrefabAudioConfig/AudioTriggerConfig::inherit_from",
+            "deserialize_float3"
+          ],
+          "sha256": "3a9a3528466ab8b5568f89b930f3c0c565eeb750a53425bb2c0b56562d307690"
+        },
+        {
+          "path": "reconstruction/shared-foundation/crates/asset/src/texture/config.rs",
+          "functions": [
+            "InheritableTextureOpts::{concrete_default,inherit_from,into_concrete}",
+            "TextureGroupConfig"
+          ],
+          "sha256": "e2066688d980b3c446fafe598dcea9f3367ac1084a75f9b2a978a0973ba67088"
+        }
+      ],
+      "implemented_library_logic": [
+        "已实现Inherit/MissingDefault/Value三状态、浅继承、具体值深继承、显式None保留、HashMap亲子合并。",
+        "现有RON裸值/Some/None/unit、typed值/错误回调均已实现。"
+      ],
+      "missing_library_logic": [
+        "RT/audio/trigger的具体默认属性与值、泛型concrete_default owner及最终化应用次序尚未全部恢复；现有外层part/render默认不能保证具体Some内所有缺字段被解析。按类型级schema/默认/继承任务处理，不逆向派生Default或宏展开。"
+      ],
+      "unresolved_library_contracts": [
+        "default-gap-prefab-deep（与asset:03共享一项库内缺口，不按helper重复计数）"
+      ],
+      "validation_gaps": [
+        "160000浅继承原指令案例只覆盖四种纹理实例，不证明所有复合继承分支。",
+        "RON-only RawValue回调的外层extensions、借用值和其他serde格式未验证；原实际更广使用未证明。"
+      ],
+      "consumer_gaps": [
+        "原country-core资产生产消费/热更新运行链未接线或验收；属于外部consumer边界，不据此判断本库该策略未实现。"
+      ],
+      "original_interfaces": [
+        "asset::inheritable::Inheritable::{inherit_shallow,as_concrete,into_concrete}",
+        "asset::inheritable::{deserialize_inheritable,deserialize_inheritable_option}",
+        "asset::inheritable::impl$1::inherit_from",
+        "asset::inheritable::impl$5::inherit_from"
+      ],
+      "evidence": [
+        "tracking/foundation-business-functions.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/business-comparison.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/shallow-native-comparison.json",
+        "evidence/shared-foundation-review-2026-10-13/assets/interface-classification.json"
+      ],
+      "full_original_feature_accepted": false,
+      "source_identical_required": false,
+      "original_catalog_remaining": "全部concrete_default owner、错误路径及类型",
+      "legacy_remaining_is_not_missing_code_count": true
+    },
+    {
+      "feature_id": "asset:02",
+      "id": "asset:02",
+      "name": "prefab发现",
+      "baseline": "B",
+      "comparison_status": "implemented_scoped",
+      "status": "implemented_scoped",
+      "current_implementation": [
+        {
+          "path": "reconstruction/shared-foundation/crates/asset/src/prefab/scan.rs",
+          "functions": [
+            "scan_asset_tree",
+            "scan_asset_tree_walker",
+            "load_prefab_config",
+            "PrefabDependencies::add_file_to_prefab_dependency"
+          ],
+          "sha256": "ad310c2aaa55c750d80195c2ac6f9bb061bfad32e9c3f30b04ff0d9dde1cf062"
+        },
+        {
+          "path": "reconstruction/shared-foundation/crates/asset/src/prefab.rs",
+          "functions": [
+            "PrefabName",
+            "PrefabNameRef",
+            "Borrow<PrefabNameRef>"
+          ],
+          "sha256": "6692ce67bee015587c93db7c507160e85fe396718e14b55940fb1d2fb900bcfb"
+        }
+      ],
+      "implemented_library_logic": [
+        "递归read_dir遍历、每层default.ron继承、忽略asset-filter、拒绝不支持扩展、相对名/Arc借用名字、读取RON已实现。",
+        "每个prefab关联祖先default文件与自身文件，duplicate依赖登记保留；正常返回截断目录依赖栈。",
+        "原do_load是load_prefab_config内联读文件/RON流程；候选不保留同名helper但已有对应实质操作。"
+      ],
+      "missing_library_logic": [],
+      "unresolved_library_contracts": [],
+      "validation_gaps": [
+        "错误上下文文本、异常目录/IO与walker失败时外露partial result/依赖栈副作用尚未逐边界原入口核对。",
+        "PrefabScanResult::add_file_to_prefab_dependency wrapper仅PDB定位；已有直接dependencies登记路径，不能仅缺wrapper名字就宣称功能未写。其是否额外规则仍待证。"
+      ],
+      "consumer_gaps": [
+        "原country-core资产生产消费/热更新运行链未接线或验收；属于外部consumer边界，不据此判断本库该策略未实现。"
+      ],
+      "original_interfaces": [
+        "asset::prefab::scan::{scan_asset_tree,scan_asset_tree_walker,load_prefab_config}",
+        "asset::prefab::scan::load_prefab_config::do_load",
+        "asset::prefab::scan::PrefabDependencies::add_file_to_prefab_dependency",
+        "asset::prefab::scan::PrefabScanResult::add_file_to_prefab_dependency"
+      ],
+      "evidence": [
+        "tracking/foundation-business-functions.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets/readable-0x14200ba50.c",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "reconstruction/shared-foundation/crates/asset/tests/shipped_prefabs.rs"
+      ],
+      "full_original_feature_accepted": false,
+      "source_identical_required": false,
+      "original_catalog_remaining": "全部扫描异常、side effects与真实热重载",
+      "legacy_remaining_is_not_missing_code_count": true
+    },
+    {
+      "feature_id": "asset:03",
+      "id": "asset:03",
+      "name": "prefab参数合成",
+      "baseline": "B",
+      "comparison_status": "partial_missing_logic",
+      "status": "partial_missing_logic",
+      "current_implementation": [
+        {
+          "path": "reconstruction/shared-foundation/crates/asset/src/prefab/config.rs",
+          "functions": [
+            "PrefabConfig::inherit_from",
+            "PrefabPartConfig::resolved_defaults",
+            "PrefabPartConfig/PrefabRenderConfig/PrefabRtConfig/PrefabAudioConfig/AudioTriggerConfig::inherit_from",
+            "deserialize_float3"
+          ],
+          "sha256": "3a9a3528466ab8b5568f89b930f3c0c565eeb750a53425bb2c0b56562d307690"
+        },
+        {
+          "path": "reconstruction/shared-foundation/crates/asset/src/inheritable.rs",
+          "functions": [
+            "Inheritable::{inherit_shallow,as_concrete,into_concrete}",
+            "impl Inherit for Inheritable<T>/Option<T>/HashMap<K,V>",
+            "deserialize_inheritable",
+            "deserialize_inheritable_option"
+          ],
+          "sha256": "47461cdea243ef0fca1fb44fa4daebd85f1dd2c4673b9e7b406fbfaff92eded7"
+        },
+        {
+          "path": "reconstruction/shared-foundation/crates/asset/src/prefab/scan.rs",
+          "functions": [
+            "scan_asset_tree",
+            "scan_asset_tree_walker",
+            "load_prefab_config",
+            "PrefabDependencies::add_file_to_prefab_dependency"
+          ],
+          "sha256": "ad310c2aaa55c750d80195c2ac6f9bb061bfad32e9c3f30b04ff0d9dde1cf062"
+        }
+      ],
+      "implemented_library_logic": [
+        "RT mesh_scale、季节albedo、audio shape_scale使用三个float序列，长度错误拒绝。",
+        "child字段覆盖、parent缺part补齐、render mesh/shader缺省失败marker、delete=false、mesh_processor=None、rt/audio=None外层默认及文件依赖已实现。"
+      ],
+      "missing_library_logic": [
+        "RT/audio/trigger的具体默认属性与值、泛型concrete_default owner及最终化应用次序尚未全部恢复；现有外层part/render默认不能保证具体Some内所有缺字段被解析。按类型级schema/默认/继承任务处理，不逆向派生Default或宏展开。"
+      ],
+      "unresolved_library_contracts": [
+        "default-gap-prefab-deep（与asset:01同一缺口）"
+      ],
+      "validation_gaps": [
+        "完整深层默认值与原typed consumer合同尚未证实；不能自行填unit scale/white albedo。",
+        "按当前代码读取可知：具体Some(RT/audio)内缺字段未由None外层默认填充；最终原默认值及是否必须由asset库最终化仍需原证据裁决。"
+      ],
+      "consumer_gaps": [
+        "原country-core资产生产消费/热更新运行链未接线或验收；属于外部consumer边界，不据此判断本库该策略未实现。"
+      ],
+      "original_interfaces": [
+        "asset::prefab::config::inherit_from families",
+        "asset::prefab::config::concrete_default families"
+      ],
+      "evidence": [
+        "tracking/foundation-business-functions.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-review-2026-10-13/assets/review.json",
+        "evidence/shared-foundation-review-2026-10-13/assets/interface-classification.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/business-comparison.json"
+      ],
+      "full_original_feature_accepted": false,
+      "source_identical_required": false,
+      "original_catalog_remaining": "所有资产默认值和消费者约束",
+      "legacy_remaining_is_not_missing_code_count": true
+    },
+    {
+      "feature_id": "asset:04",
+      "id": "asset:04",
+      "name": "纹理描述扫描",
+      "baseline": "B",
+      "comparison_status": "implemented_scoped",
+      "status": "implemented_scoped",
+      "current_implementation": [
+        {
+          "path": "reconstruction/shared-foundation/crates/asset/src/texture/scan.rs",
+          "functions": [
+            "scan_asset_tree",
+            "scan_asset_tree_walker"
+          ],
+          "sha256": "fa5c157bf0cfdc58949d4869683ee7a2d21a725a9b5133ae15059dfb5550f929"
+        },
+        {
+          "path": "reconstruction/shared-foundation/crates/asset/src/texture/config.rs",
+          "functions": [
+            "InheritableTextureOpts::{concrete_default,inherit_from,into_concrete}",
+            "TextureGroupConfig"
+          ],
+          "sha256": "e2066688d980b3c446fafe598dcea9f3367ac1084a75f9b2a978a0973ba67088"
+        },
+        {
+          "path": "reconstruction/shared-foundation/crates/asset/src/texture/desc.rs",
+          "functions": [
+            "TextureAssetDesc",
+            "TextureOpts",
+            "source_files"
+          ],
+          "sha256": "c87be9f80e1c2deb1d4df1a67a547582bd594a94eea9334dae2216aa42892843"
+        },
+        {
+          "path": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+          "functions": [
+            "process_decoded_image",
+            "process_regular_image",
+            "process_texture_asset",
+            "compile_texture_assets"
+          ],
+          "sha256": "581d6ee69449a5a33426241589d81e23775c0a0e29de1f3bde2cc42cc234dfba"
+        }
+      ],
+      "implemented_library_logic": [
+        "扫描png/jpg/dds，忽略txt/asset-filter，assets.ron默认及按stem覆盖。",
+        "array_目录形成layer descriptors，相对名称与编号连续检查；compile_texture_assets对持久list名称排序（scan自身返回HashMap，排序已在生产端）。"
+      ],
+      "missing_library_logic": [],
+      "unresolved_library_contracts": [],
+      "validation_gaps": [
+        "原CLI外层flags/cwd适配及异常目录/非Unicode等完整副作用未验收；属于验证或外部入口边界。"
+      ],
+      "consumer_gaps": [
+        "asset-pipe-bin原CLI及country-core消费者未集成；CLI不属于此次asset/asset-pipe库内逻辑实现分母。"
+      ],
+      "original_interfaces": [
+        "asset::texture::scan::{scan_asset_tree,scan_asset_tree_walker,load_texture_group_config}",
+        "asset_pipe::texture::compile_texture_assets"
+      ],
+      "evidence": [
+        "tracking/foundation-business-functions.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets/readable-0x1420d8d00.c",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md",
+        "evidence/shared-foundation-review-2026-10-13/assets/validation.json"
+      ],
+      "full_original_feature_accepted": false,
+      "source_identical_required": false,
+      "original_catalog_remaining": "原CLI外层与异常目录",
+      "legacy_remaining_is_not_missing_code_count": true
+    },
+    {
+      "feature_id": "asset:05",
+      "id": "asset:05",
+      "name": "纹理默认策略",
+      "baseline": "B",
+      "comparison_status": "implemented_scoped",
+      "status": "implemented_scoped",
+      "current_implementation": [
+        {
+          "path": "reconstruction/shared-foundation/crates/asset/src/texture/config.rs",
+          "functions": [
+            "InheritableTextureOpts::{concrete_default,inherit_from,into_concrete}",
+            "TextureGroupConfig"
+          ],
+          "sha256": "e2066688d980b3c446fafe598dcea9f3367ac1084a75f9b2a978a0973ba67088"
+        },
+        {
+          "path": "reconstruction/shared-foundation/crates/asset/src/texture/desc.rs",
+          "functions": [
+            "Gamma",
+            "MipChain",
+            "CompressionMethod",
+            "TextureOpts"
+          ],
+          "sha256": "c87be9f80e1c2deb1d4df1a67a547582bd594a94eea9334dae2216aa42892843"
+        }
+      ],
+      "implemented_library_logic": [
+        "根具体默认None/Linear/MipNone/Color，missing输入marker与具体默认分离；浅继承保留显式None。",
+        "into_concrete按字段取值，未解析状态失败，不造fallback。"
+      ],
+      "missing_library_logic": [],
+      "unresolved_library_contracts": [],
+      "validation_gaps": [
+        "原泛型opaque默认owner、作者字段类型/enum名称未全部证明；按schema owner/value任务保留，不据同名派生helper判未实现根策略。"
+      ],
+      "consumer_gaps": [
+        "原country-core资产生产消费/热更新运行链未接线或验收；属于外部consumer边界，不据此判断本库该策略未实现。"
+      ],
+      "original_interfaces": [
+        "asset::texture::config::InheritableTextureOpts::{concrete_default,inherit_from,into_concrete}"
+      ],
+      "evidence": [
+        "tracking/foundation-business-functions.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/business-comparison.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-batch-02/shallow-native-comparison.json",
+        "evidence/shared-foundation-2026-10-13/assets/readable-0x142456250.c"
+      ],
+      "full_original_feature_accepted": false,
+      "source_identical_required": false,
+      "original_catalog_remaining": "未证明全部默认owner和原字段声明",
+      "legacy_remaining_is_not_missing_code_count": true
+    },
+    {
+      "feature_id": "asset:06",
+      "id": "asset:06",
+      "name": "纹理数组检查",
+      "baseline": "B",
+      "comparison_status": "implemented_scoped",
+      "status": "implemented_scoped",
+      "current_implementation": [
+        {
+          "path": "reconstruction/shared-foundation/crates/asset/src/texture/scan.rs",
+          "functions": [
+            "scan_asset_tree",
+            "scan_asset_tree_walker"
+          ],
+          "sha256": "fa5c157bf0cfdc58949d4869683ee7a2d21a725a9b5133ae15059dfb5550f929"
+        },
+        {
+          "path": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+          "functions": [
+            "assemble_array",
+            "process_texture_asset"
+          ],
+          "sha256": "581d6ee69449a5a33426241589d81e23775c0a0e29de1f3bde2cc42cc234dfba"
+        }
+      ],
+      "implemented_library_logic": [
+        "编号0..N-1连续性与缺层错误已写。",
+        "逐层尺寸/mip/format/kind相等检查，按layer-major拼接，输出layers/count与array kind已写。"
+      ],
+      "missing_library_logic": [],
+      "unresolved_library_contracts": [],
+      "validation_gaps": [
+        "全部异常header/超大layers和原运行时消费者未验收；当前已有mixed header/顺序合成测试。"
+      ],
+      "consumer_gaps": [
+        "原country-core资产生产消费/热更新运行链未接线或验收；属于外部consumer边界，不据此判断本库该策略未实现。"
+      ],
+      "original_interfaces": [
+        "asset::texture::scan::scan_asset_tree_walker",
+        "asset_pipe::texture::process_image_array"
+      ],
+      "evidence": [
+        "tracking/foundation-business-functions.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/bounded-report.artifacts/001.stdout.txt",
+        "evidence/shared-foundation-review-2026-10-13/assets/validation.json"
+      ],
+      "full_original_feature_accepted": false,
+      "source_identical_required": false,
+      "original_catalog_remaining": "真实运行时消费及全错误边界",
+      "legacy_remaining_is_not_missing_code_count": true
+    },
+    {
+      "feature_id": "asset:07",
+      "id": "asset:07",
+      "name": "纹理交换格式",
+      "baseline": "B",
+      "comparison_status": "implemented_scoped",
+      "status": "implemented_scoped",
+      "current_implementation": [
+        {
+          "path": "reconstruction/shared-foundation/crates/asset/src/texture/blob.rs",
+          "functions": [
+            "TextureAssetBlob",
+            "TEXTURE_MAGIC",
+            "TEXTURE_VERSION",
+            "TextureAssetBlob::{load,to_file_bytes}"
+          ],
+          "sha256": "3c167d325ab2942eae36a6d150a28ea536ee8d80b82ce085b6e084f41901df84"
+        }
+      ],
+      "implemented_library_logic": [
+        "magic=0x48502183/version=8，dimensions/mips/layers/format/kind/data archive结构已生产及读取。",
+        "原rkyv验证/解码/归档直接复用，alignment安全 staging、坏header/坏archive错误已写。"
+      ],
+      "missing_library_logic": [],
+      "unresolved_library_contracts": [],
+      "validation_gaps": [
+        "388发行纹理逐字节回写仅证明本档案格式范围；精确作者nominal native类型及所有坏archive边界未证明。",
+        "完整图片producer未对原payload重新生产，对archive函数本身不构成未实现。"
+      ],
+      "consumer_gaps": [
+        "原country-core资产生产消费/热更新运行链未接线或验收；属于外部consumer边界，不据此判断本库该策略未实现。"
+      ],
+      "original_interfaces": [
+        "asset::texture::blob::TextureAssetBlob archived schema",
+        "asset_pipe texture producer to_bytes call"
+      ],
+      "evidence": [
+        "tracking/foundation-business-functions.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md",
+        "evidence/shared-foundation-review-2026-10-13/assets/validation.json",
+        "reconstruction/shared-foundation/crates/asset/tests/shipped_textures.rs"
+      ],
+      "full_original_feature_accepted": false,
+      "source_identical_required": false,
+      "original_catalog_remaining": "archive回写已验证，不等于原全图片producer",
+      "legacy_remaining_is_not_missing_code_count": true
+    },
+    {
+      "feature_id": "asset:08",
+      "id": "asset:08",
+      "name": "资源依赖与热更新",
+      "baseline": "B",
+      "comparison_status": "implemented_scoped",
+      "status": "implemented_scoped",
+      "current_implementation": [
+        {
+          "path": "reconstruction/shared-foundation/crates/asset/src/prefab/scan.rs",
+          "functions": [
+            "scan_asset_tree",
+            "scan_asset_tree_walker",
+            "load_prefab_config",
+            "PrefabDependencies::add_file_to_prefab_dependency"
+          ],
+          "sha256": "ad310c2aaa55c750d80195c2ac6f9bb061bfad32e9c3f30b04ff0d9dde1cf062"
+        },
+        {
+          "path": "reconstruction/shared-foundation/crates/asset/src/texture/desc.rs",
+          "functions": [
+            "TextureAssetDesc::source_files"
+          ],
+          "sha256": "c87be9f80e1c2deb1d4df1a67a547582bd594a94eea9334dae2216aa42892843"
+        }
+      ],
+      "implemented_library_logic": [
+        "库内PrefabDependencies.by_file反向索引已维护，祖先配置及自身文件关联prefab名字，重复登记保留。",
+        "描述树保留源path/layers，source_files可递归枚举实际layer路径。"
+      ],
+      "missing_library_logic": [],
+      "unresolved_library_contracts": [],
+      "validation_gaps": [
+        "原ScanResult wrapper是否附加策略未核实；不要等同整个依赖登记未实现。",
+        "基础库可用索引不等于观察过原热更新event→资产库替换。"
+      ],
+      "consumer_gaps": [
+        "文件watch/event→受影响资源选择→country-core资产库缓存失效/替换/所有权交接尚未写入本共享实现。此段属于consumer/调用链边界；现有B asset源只有扫描/描述/依赖映射，未证明watcher算法定义在asset库，不能据此外造一个库内未实现任务。"
+      ],
+      "original_interfaces": [
+        "asset::prefab::scan::PrefabDependencies::add_file_to_prefab_dependency",
+        "asset::prefab::scan::PrefabScanResult::add_file_to_prefab_dependency"
+      ],
+      "evidence": [
+        "tracking/foundation-business-functions.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json",
+        "evidence/shared-foundation-review-2026-10-13/assets/interface-classification.json"
+      ],
+      "full_original_feature_accepted": false,
+      "source_identical_required": false,
+      "original_catalog_remaining": "游戏缓存、热重载与资源所有权",
+      "legacy_remaining_is_not_missing_code_count": true
+    },
+    {
+      "feature_id": "asset:09",
+      "id": "asset:09",
+      "name": "C网格与植被资产",
+      "baseline": "C-only, outside B comparison",
+      "comparison_status": "out_of_baseline",
+      "status": "out_of_baseline",
+      "current_implementation": [],
+      "implemented_library_logic": [],
+      "missing_library_logic": [],
+      "unresolved_library_contracts": [
+        "C-only: crates/asset/src/mesh.rs, crates/asset/src/foliage.rs"
+      ],
+      "validation_gaps": [
+        "C独立schema、迁移/导入策略与实际调用链尚未恢复/验证；B代码与地址不构成C实现。"
+      ],
+      "consumer_gaps": [
+        "C资源生产/消费链另立基线，不记作B失败。"
+      ],
+      "original_interfaces": [
+        "C mesh/foliage source scope"
+      ],
+      "evidence": [
+        "tracking/foundation-business-functions.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/source-size-by-version.json"
+      ],
+      "full_original_feature_accepted": false,
+      "source_identical_required": false,
+      "original_catalog_remaining": "C独立schema、导入与调用链",
+      "legacy_remaining_is_not_missing_code_count": true
+    },
+    {
+      "feature_id": "asset:10",
+      "id": "asset:10",
+      "name": "C旧Mod资源兼容",
+      "baseline": "C-only, outside B comparison",
+      "comparison_status": "out_of_baseline",
+      "status": "out_of_baseline",
+      "current_implementation": [],
+      "implemented_library_logic": [],
+      "missing_library_logic": [],
+      "unresolved_library_contracts": [
+        "C-only: crates/asset/src/legacy_mod.rs, crates/asset/src/texture.rs"
+      ],
+      "validation_gaps": [
+        "C独立schema、迁移/导入策略与实际调用链尚未恢复/验证；B代码与地址不构成C实现。"
+      ],
+      "consumer_gaps": [
+        "C资源生产/消费链另立基线，不记作B失败。"
+      ],
+      "original_interfaces": [
+        "C legacy Mod source scope"
+      ],
+      "evidence": [
+        "tracking/foundation-business-functions.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/source-size-by-version.json"
+      ],
+      "full_original_feature_accepted": false,
+      "source_identical_required": false,
+      "original_catalog_remaining": "C实际字段与迁移策略",
+      "legacy_remaining_is_not_missing_code_count": true
+    },
+    {
+      "feature_id": "asset-pipe:01",
+      "id": "asset-pipe:01",
+      "name": "图像工作空间",
+      "baseline": "B",
+      "comparison_status": "implemented_scoped",
+      "status": "implemented_scoped",
+      "current_implementation": [
+        {
+          "path": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+          "functions": [
+            "process_regular_image",
+            "process_decoded_image",
+            "srgb_eotf",
+            "srgb_oetf",
+            "with_rgba8"
+          ],
+          "sha256": "581d6ee69449a5a33426241589d81e23775c0a0e29de1f3bde2cc42cc234dfba"
+        }
+      ],
+      "implemented_library_logic": [
+        "Linear RGBA8/Srgb float工作空间、RGB-only EOTF/OETF及alpha不变已写。",
+        "原无序/NaN transfer分支、shader format gamma选择已写；原依赖转换直接复用。"
+      ],
+      "missing_library_logic": [],
+      "unresolved_library_contracts": [],
+      "validation_gaps": [
+        "原完整source图片输入缺失，未执行原完整pixel/filter/compression producer到发行payload的黄金对照；这是验证缺口，当前Rust对应逻辑已经实现。",
+        "原OETF64-byte指令4364case为限定数学验证，EOTF/完整image转换native入口未全覆盖；本次不重跑。"
+      ],
+      "consumer_gaps": [
+        "原country-core资产生产消费/热更新运行链未接线或验收；属于外部consumer边界，不据此判断本库该策略未实现。"
+      ],
+      "original_interfaces": [
+        "asset_pipe::texture::{apply_transfer_function,srgb_eotf,srgb_oetf,with_rgba8}"
+      ],
+      "evidence": [
+        "tracking/foundation-business-functions.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/bounded-report.artifacts/001.stdout.txt",
+        "evidence/shared-foundation-review-2026-10-13/assets/validation.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/gamma-verification.json"
+      ],
+      "full_original_feature_accepted": false,
+      "source_identical_required": false,
+      "original_catalog_remaining": "真实游戏消费者与全部边界未验收",
+      "legacy_remaining_is_not_missing_code_count": true
+    },
+    {
+      "feature_id": "asset-pipe:02",
+      "id": "asset-pipe:02",
+      "name": "尺寸与压缩资格",
+      "baseline": "B",
+      "comparison_status": "implemented_scoped",
+      "status": "implemented_scoped",
+      "current_implementation": [
+        {
+          "path": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+          "functions": [
+            "process_decoded_image",
+            "align"
+          ],
+          "sha256": "581d6ee69449a5a33426241589d81e23775c0a0e29de1f3bde2cc42cc234dfba"
+        }
+      ],
+      "implemented_library_logic": [
+        "是否压缩依据解码源图两维>3，先决定资格再应用resize；可压缩目标两维向4对齐。",
+        "None/small图使用block=1，源小图resize变大仍保持非压缩。"
+      ],
+      "missing_library_logic": [],
+      "unresolved_library_contracts": [],
+      "validation_gaps": [
+        "原完整source图片输入缺失，未执行原完整pixel/filter/compression producer到发行payload的黄金对照；这是验证缺口，当前Rust对应逻辑已经实现。"
+      ],
+      "consumer_gaps": [
+        "原country-core资产生产消费/热更新运行链未接线或验收；属于外部consumer边界，不据此判断本库该策略未实现。"
+      ],
+      "original_interfaces": [
+        "asset_pipe::texture::process_regular_image"
+      ],
+      "evidence": [
+        "tracking/foundation-business-functions.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/bounded-report.artifacts/001.stdout.txt",
+        "evidence/shared-foundation-review-2026-10-13/assets/validation.json"
+      ],
+      "full_original_feature_accepted": false,
+      "source_identical_required": false,
+      "original_catalog_remaining": "真实游戏消费者与全部边界未验收",
+      "legacy_remaining_is_not_missing_code_count": true
+    },
+    {
+      "feature_id": "asset-pipe:03",
+      "id": "asset-pipe:03",
+      "name": "图像缩放",
+      "baseline": "B",
+      "comparison_status": "implemented_scoped",
+      "status": "implemented_scoped",
+      "current_implementation": [
+        {
+          "path": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+          "functions": [
+            "process_decoded_image",
+            "next_level"
+          ],
+          "sha256": "581d6ee69449a5a33426241589d81e23775c0a0e29de1f3bde2cc42cc234dfba"
+        }
+      ],
+      "implemented_library_logic": [
+        "resize及mip采样都直接调用原image resize_exact(CatmullRom)，已实现显式resize和对齐触发策略。"
+      ],
+      "missing_library_logic": [],
+      "unresolved_library_contracts": [],
+      "validation_gaps": [
+        "原完整source图片输入缺失，未执行原完整pixel/filter/compression producer到发行payload的黄金对照；这是验证缺口，当前Rust对应逻辑已经实现。"
+      ],
+      "consumer_gaps": [
+        "原country-core资产生产消费/热更新运行链未接线或验收；属于外部consumer边界，不据此判断本库该策略未实现。"
+      ],
+      "original_interfaces": [
+        "asset_pipe::texture::{resize_image,process_regular_image}"
+      ],
+      "evidence": [
+        "tracking/foundation-business-functions.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/bounded-report.artifacts/001.stdout.txt",
+        "evidence/shared-foundation-review-2026-10-13/assets/validation.json"
+      ],
+      "full_original_feature_accepted": false,
+      "source_identical_required": false,
+      "original_catalog_remaining": "真实游戏消费者与全部边界未验收",
+      "legacy_remaining_is_not_missing_code_count": true
+    },
+    {
+      "feature_id": "asset-pipe:04",
+      "id": "asset-pipe:04",
+      "name": "mip生成",
+      "baseline": "B",
+      "comparison_status": "implemented_scoped",
+      "status": "implemented_scoped",
+      "current_implementation": [
+        {
+          "path": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+          "functions": [
+            "mip_count",
+            "next_level",
+            "pad_edges",
+            "encode_level"
+          ],
+          "sha256": "581d6ee69449a5a33426241589d81e23775c0a0e29de1f3bde2cc42cc234dfba"
+        }
+      ],
+      "implemented_library_logic": [
+        "None/Full/Limited层数、max维log2、每层直接采base、min尺寸1、RGBA8物化、重复右/底边至block对齐及层级数据追加已写。",
+        "Limited(0)仍编码base且header mips=0，保留现有原观察行为，不按理想mip规则补修。"
+      ],
+      "missing_library_logic": [],
+      "unresolved_library_contracts": [],
+      "validation_gaps": [
+        "原完整source图片输入缺失，未执行原完整pixel/filter/compression producer到发行payload的黄金对照；这是验证缺口，当前Rust对应逻辑已经实现。"
+      ],
+      "consumer_gaps": [
+        "原country-core资产生产消费/热更新运行链未接线或验收；属于外部consumer边界，不据此判断本库该策略未实现。"
+      ],
+      "original_interfaces": [
+        "asset_pipe::texture::{pad_image,resize_image,process_regular_image}"
+      ],
+      "evidence": [
+        "tracking/foundation-business-functions.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/bounded-report.artifacts/001.stdout.txt",
+        "evidence/shared-foundation-review-2026-10-13/assets/validation.json"
+      ],
+      "full_original_feature_accepted": false,
+      "source_identical_required": false,
+      "original_catalog_remaining": "真实游戏消费者与全部边界未验收",
+      "legacy_remaining_is_not_missing_code_count": true
+    },
+    {
+      "feature_id": "asset-pipe:05",
+      "id": "asset-pipe:05",
+      "name": "压缩模式选择",
+      "baseline": "B",
+      "comparison_status": "implemented_scoped",
+      "status": "implemented_scoped",
+      "current_implementation": [
+        {
+          "path": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+          "functions": [
+            "compress",
+            "bc7_settings",
+            "process_decoded_image"
+          ],
+          "sha256": "581d6ee69449a5a33426241589d81e23775c0a0e29de1f3bde2cc42cc234dfba"
+        }
+      ],
+      "implemented_library_logic": [
+        "Color→BC7，按alpha是否全255选opaque_basic/alpha_basic；Grayscale→BC4；BC5 helper通道组合及模式拒绝已写，压缩算法直接复用Intel。",
+        "压缩sRGB grayscale保留原panic资格；small非压缩图可以输出sRGB。"
+      ],
+      "missing_library_logic": [],
+      "unresolved_library_contracts": [],
+      "validation_gaps": [
+        "原完整source图片输入缺失，未执行原完整pixel/filter/compression producer到发行payload的黄金对照；这是验证缺口，当前Rust对应逻辑已经实现。",
+        "BcMode::block_bytes没有同名Rust方法；依赖按surface尺寸生成blocks、现有blob字节数验证覆盖它的用途，不是单凭缺方法名认定模式选择没实现。独立原block-bytes映射尚未核对。",
+        "新分配探针仅Rust分配与依赖参考BC7字节，不声称原整producer性能/字节验收。"
+      ],
+      "consumer_gaps": [
+        "原country-core资产生产消费/热更新运行链未接线或验收；属于外部consumer边界，不据此判断本库该策略未实现。"
+      ],
+      "original_interfaces": [
+        "asset_pipe::texture::{compress,BcMode::block_bytes,process_regular_image}"
+      ],
+      "evidence": [
+        "tracking/foundation-business-functions.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/bounded-report.artifacts/001.stdout.txt",
+        "evidence/shared-foundation-review-2026-10-13/assets/validation.json"
+      ],
+      "full_original_feature_accepted": false,
+      "source_identical_required": false,
+      "original_catalog_remaining": "真实游戏消费者与全部边界未验收",
+      "legacy_remaining_is_not_missing_code_count": true
+    },
+    {
+      "feature_id": "asset-pipe:06",
+      "id": "asset-pipe:06",
+      "name": "DDS输入透传",
+      "baseline": "B",
+      "comparison_status": "implemented_scoped",
+      "status": "implemented_scoped",
+      "current_implementation": [
+        {
+          "path": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+          "functions": [
+            "process_dds_image",
+            "process_dds",
+            "process_texture_asset"
+          ],
+          "sha256": "581d6ee69449a5a33426241589d81e23775c0a0e29de1f3bde2cc42cc234dfba"
+        }
+      ],
+      "implemented_library_logic": [
+        "DXGI/legacy格式白名单、dimension kind、mips/layers/尺寸原信息保留，复制get_data(0)，忽略普通图opts。",
+        "legacy DXT1/DXT5固定sRGB，未知格式/非texture dimension报错与层数界限已写。"
+      ],
+      "missing_library_logic": [],
+      "unresolved_library_contracts": [],
+      "validation_gaps": [
+        "原完整source图片输入缺失，未执行原完整pixel/filter/compression producer到发行payload的黄金对照；这是验证缺口，当前Rust对应逻辑已经实现。"
+      ],
+      "consumer_gaps": [
+        "原country-core资产生产消费/热更新运行链未接线或验收；属于外部consumer边界，不据此判断本库该策略未实现。"
+      ],
+      "original_interfaces": [
+        "asset_pipe::texture::process_dds_image"
+      ],
+      "evidence": [
+        "tracking/foundation-business-functions.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/bounded-report.artifacts/001.stdout.txt",
+        "evidence/shared-foundation-review-2026-10-13/assets/validation.json"
+      ],
+      "full_original_feature_accepted": false,
+      "source_identical_required": false,
+      "original_catalog_remaining": "真实游戏消费者与全部边界未验收",
+      "legacy_remaining_is_not_missing_code_count": true
+    },
+    {
+      "feature_id": "asset-pipe:07",
+      "id": "asset-pipe:07",
+      "name": "纹理数组产出",
+      "baseline": "B",
+      "comparison_status": "implemented_scoped",
+      "status": "implemented_scoped",
+      "current_implementation": [
+        {
+          "path": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+          "functions": [
+            "process_texture_asset",
+            "assemble_array"
+          ],
+          "sha256": "581d6ee69449a5a33426241589d81e23775c0a0e29de1f3bde2cc42cc234dfba"
+        }
+      ],
+      "implemented_library_logic": [
+        "每层按原规则走process_regular_image，不擅自转DDS dispatcher；合并一致header与顺序data，设置数组layers/kind。"
+      ],
+      "missing_library_logic": [],
+      "unresolved_library_contracts": [],
+      "validation_gaps": [
+        "原完整source图片输入缺失，未执行原完整pixel/filter/compression producer到发行payload的黄金对照；这是验证缺口，当前Rust对应逻辑已经实现。"
+      ],
+      "consumer_gaps": [
+        "原country-core资产生产消费/热更新运行链未接线或验收；属于外部consumer边界，不据此判断本库该策略未实现。"
+      ],
+      "original_interfaces": [
+        "asset_pipe::texture::process_image_array"
+      ],
+      "evidence": [
+        "tracking/foundation-business-functions.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/bounded-report.artifacts/001.stdout.txt",
+        "evidence/shared-foundation-review-2026-10-13/assets/validation.json"
+      ],
+      "full_original_feature_accepted": false,
+      "source_identical_required": false,
+      "original_catalog_remaining": "真实游戏消费者与全部边界未验收",
+      "legacy_remaining_is_not_missing_code_count": true
+    },
+    {
+      "feature_id": "asset-pipe:08",
+      "id": "asset-pipe:08",
+      "name": "增量构建缓存",
+      "baseline": "B",
+      "comparison_status": "implemented_scoped",
+      "status": "implemented_scoped",
+      "current_implementation": [
+        {
+          "path": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+          "functions": [
+            "cache_is_current",
+            "compile_texture_asset"
+          ],
+          "sha256": "581d6ee69449a5a33426241589d81e23775c0a0e29de1f3bde2cc42cc234dfba"
+        }
+      ],
+      "implemented_library_logic": [
+        "对完整desc、desc.path mtime、已有输出magic/version匹配后命中；八字节header-only命中、旧version重建。",
+        "源mtime查询、缺输出重建、建目标目录、归档输出和返回新meta均已写；数组沿用目录mtime。"
+      ],
+      "missing_library_logic": [],
+      "unresolved_library_contracts": [],
+      "validation_gaps": [
+        "原完整source图片输入缺失，未执行原完整pixel/filter/compression producer到发行payload的黄金对照；这是验证缺口，当前Rust对应逻辑已经实现。",
+        "目录mtime不能检测既有layer内容变化、header-only可接受缺payload，是保留的原缓存策略风险；不是候选漏写，应另作行为兼容裁决。"
+      ],
+      "consumer_gaps": [
+        "原country-core资产生产消费/热更新运行链未接线或验收；属于外部consumer边界，不据此判断本库该策略未实现。"
+      ],
+      "original_interfaces": [
+        "asset_pipe::texture::compile_texture_asset"
+      ],
+      "evidence": [
+        "tracking/foundation-business-functions.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/bounded-report.artifacts/001.stdout.txt",
+        "evidence/shared-foundation-review-2026-10-13/assets/validation.json"
+      ],
+      "full_original_feature_accepted": false,
+      "source_identical_required": false,
+      "original_catalog_remaining": "真实游戏消费者与全部边界未验收",
+      "legacy_remaining_is_not_missing_code_count": true
+    },
+    {
+      "feature_id": "asset-pipe:09",
+      "id": "asset-pipe:09",
+      "name": "多资源构建汇总",
+      "baseline": "B",
+      "comparison_status": "implemented_scoped",
+      "status": "implemented_scoped",
+      "current_implementation": [
+        {
+          "path": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+          "functions": [
+            "compile_texture_assets",
+            "compile_or_load_texture_assets"
+          ],
+          "sha256": "581d6ee69449a5a33426241589d81e23775c0a0e29de1f3bde2cc42cc234dfba"
+        }
+      ],
+      "implemented_library_logic": [
+        "旧meta读取/parse失败→默认；扫描names排序；原easy-parallel each/run每descriptor任务、全部join后收结果；错误/panic时不写meta/list。",
+        "成功写meta及list；read-only先载发行list，allow_compile且source tree存在时构建，现有完整函数入口已写。"
+      ],
+      "missing_library_logic": [],
+      "unresolved_library_contracts": [],
+      "validation_gaps": [
+        "原完整source图片输入缺失，未执行原完整pixel/filter/compression producer到发行payload的黄金对照；这是验证缺口，当前Rust对应逻辑已经实现。",
+        "原CLI flags/日志外层与所有IO错误状态未逐项原入口验证；每asset线程数与大批并发内存没有实测original性能。"
+      ],
+      "consumer_gaps": [
+        "原country-core资产生产消费/热更新运行链未接线或验收；属于外部consumer边界，不据此判断本库该策略未实现。"
+      ],
+      "original_interfaces": [
+        "asset_pipe::texture::{compile_texture_assets,compile_or_load_texture_assets}"
+      ],
+      "evidence": [
+        "tracking/foundation-business-functions.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/bounded-report.artifacts/001.stdout.txt",
+        "evidence/shared-foundation-review-2026-10-13/assets/validation.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/parallel-policy.json"
+      ],
+      "full_original_feature_accepted": false,
+      "source_identical_required": false,
+      "original_catalog_remaining": "真实游戏消费者与全部边界未验收",
+      "legacy_remaining_is_not_missing_code_count": true
+    },
+    {
+      "feature_id": "asset-pipe:10",
+      "id": "asset-pipe:10",
+      "name": "C新增纹理处理",
+      "baseline": "C-only, outside B comparison",
+      "comparison_status": "out_of_baseline",
+      "status": "out_of_baseline",
+      "current_implementation": [],
+      "implemented_library_logic": [],
+      "missing_library_logic": [],
+      "unresolved_library_contracts": [
+        "C-only: crates/asset-pipe/src/mip_flood.rs, store.rs, texture_processing.rs"
+      ],
+      "validation_gaps": [
+        "C新处理/构建策略尚未独立恢复/验证。"
+      ],
+      "consumer_gaps": [
+        "C构建与资源消费链单列，不计B失败。"
+      ],
+      "original_interfaces": [
+        "C mip_flood/store/texture_processing source scope"
+      ],
+      "evidence": [
+        "tracking/foundation-business-functions.json",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/delivery.json",
+        "evidence/shared-foundation-2026-10-13/source-size-by-version.json"
+      ],
+      "full_original_feature_accepted": false,
+      "source_identical_required": false,
+      "original_catalog_remaining": "C来源/算法与新资源构建链",
+      "legacy_remaining_is_not_missing_code_count": true
+    }
+  ],
+  "counts": {
+    "partial_missing_logic": 2,
+    "implemented_scoped": 15,
+    "out_of_baseline": 3
+  },
+  "note": "两条partial共享一个深层默认/最终化缺口；其余当前列举策略已实现于限定B范围，不升级原功能验收。",
+  "source_sha256": {
+    "reconstruction/shared-foundation/crates/asset/src/inheritable.rs": "47461cdea243ef0fca1fb44fa4daebd85f1dd2c4673b9e7b406fbfaff92eded7",
+    "reconstruction/shared-foundation/crates/asset/src/lib.rs": "293e0615754a8491caece8a084c75fe110e4fea0e01e583190f6f5c661cf04e3",
+    "reconstruction/shared-foundation/crates/asset/src/prefab/config.rs": "3a9a3528466ab8b5568f89b930f3c0c565eeb750a53425bb2c0b56562d307690",
+    "reconstruction/shared-foundation/crates/asset/src/prefab/scan.rs": "ad310c2aaa55c750d80195c2ac6f9bb061bfad32e9c3f30b04ff0d9dde1cf062",
+    "reconstruction/shared-foundation/crates/asset/src/prefab.rs": "6692ce67bee015587c93db7c507160e85fe396718e14b55940fb1d2fb900bcfb",
+    "reconstruction/shared-foundation/crates/asset/src/texture/blob.rs": "3c167d325ab2942eae36a6d150a28ea536ee8d80b82ce085b6e084f41901df84",
+    "reconstruction/shared-foundation/crates/asset/src/texture/config.rs": "e2066688d980b3c446fafe598dcea9f3367ac1084a75f9b2a978a0973ba67088",
+    "reconstruction/shared-foundation/crates/asset/src/texture/desc.rs": "c87be9f80e1c2deb1d4df1a67a547582bd594a94eea9334dae2216aa42892843",
+    "reconstruction/shared-foundation/crates/asset/src/texture/scan.rs": "fa5c157bf0cfdc58949d4869683ee7a2d21a725a9b5133ae15059dfb5550f929",
+    "reconstruction/shared-foundation/crates/asset/src/texture.rs": "9d107c5aa5b10184e6bb26744e13f28ebd1a38a6d0c8b8351032ba35b2921851",
+    "reconstruction/shared-foundation/crates/asset-pipe/src/lib.rs": "9edc23d6191c33d74a6327671ce66036425614b9e9e190ac22c99340d92ed8b9",
+    "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs": "581d6ee69449a5a33426241589d81e23775c0a0e29de1f3bde2cc42cc234dfba"
+  },
+  "legacy_table_interpretation": "旧remaining与194接口映射表混合了未恢复schema、仅缺原入口验证、外部consumer和C-only范围，不能当作库内未写功能数。原helper名称、Rust代码结构无需一致：do_load已有load_prefab_config读文件/RON组合，Result依赖包装已有walker直接登记。"
+}

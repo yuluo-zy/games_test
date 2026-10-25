@@ -1,0 +1,1036 @@
+--- a/crates/country-core/src/components/drawable.rs
++++ b/crates/country-core/src/components/drawable.rs
+@@ -1,30 +1,12 @@
+-//! `drawable.rs` — nani 可绘制组件族里已恢复的部分（B `components::drawable`）。
++//! 可绘制实体的网格描述与显式组件组合。
+ //!
+-//! - `NaniInstanceMeshDesc::from<MeshAtlasPart>`（`impl$1::from`，0x14082bd60，机器码 `mov [rcx+4], edx; mov dword [rcx], 1`）：
+-//!   判别 `1`（AtlasPart）+ 值 `edx`（part 索引**原样保留**）。此前重建里的 `AtlasPart(0)` 与证据不符。
+-//!   另一个变体 `Named(NameHash)` 由 `From<&str>` 之类内联构造（判别 0，I）。
+-//! - `DrawableMeshBundle::build`（`impl$2::build`，0x14082bd70）：`mov rcx, rdx; jmp 0x140b66340`，纯尾调用到共享的
+-//!   Bundle build，没有自己的逻辑。
++//! NaniBundle 用于实例化渲染，DrawableMeshBundle 用于普通网格绘制。
++//! 使用 Bevy Bundle 派生完成插入，不另实现原作的库转发胶水。
++//! 原生字段复制范围与本机 Rust 分配大小分别记录在布局测试中。
+ //!
+-//! 本文件还是两个 `#[derive(Bundle)]` 的归属（PDB 全名
+-//! `country_core::components::drawable::{NaniBundle, DrawableMeshBundle}`）：
+-//!
+-//! * `NaniBundle<T>`：`component_ids<NaniBundle<UberInstanceData>>`（0x14267a9e0，fresh 2026-10-17）
+-//!   依次注册 `NaniInstanceDesc`、`Transform`、`InstanceDataMarker<T>`；字段声明序即此序。
+-//!   因 `repr(Rust)` 的字段重排（`Transform` 对齐 16），实际内存布局
+-//!   `{ Transform @0x00 (0x30), NaniInstanceDesc @0x30 (0x18), InstanceDataMarker<T> @0x48 (ZST) }`，
+-//!   总大小 0x48 —— `write_components<NaniBundle<StoneFloorInstanceData>>`（0x141a07f20）的两段
+-//!   拷贝分别读 bundle `+0x30..0x48`（desc）与 `+0x00..0x30`（Transform），第三段 0 长度（marker），O。
+-//!   `WindowVisualEntityBuilder::build` 的 insert 闭包（0x1412ab270）以 `+0x08` 起写入同一布局，O。
+-//! * `DrawableMeshBundle`：`component_ids`（0x14267c2a0，fresh）依次注册
+-//!   `Handle<Mesh>`、`Handle<RasterShaderProgram>`、`Transform`；`write_components`（0x141fe7aa0）
+-//!   读 `Transform` @0x00..0x30、两个 8B 句柄 @0x30/@0x38，总大小 0x40，O。
+-//!
+-//! 未做：`cache_prev_object_transforms`（0x14082bd80，依赖稀疏实例缓冲两种布局与 `PrevTransform` 槽，见
+-//! `components-geometry/ALGORITHMS.md` §3）；`NaniActiveInstance`、`AlbedoMap`、`AlphaMap`、`NaniSolidTexture`、
+-//! `PrevTransform` 的字段。
++//! 当前仍未在本文件恢复 cache_prev_object_transforms 系统和完整的材质组件族；
++//! 详见 recovery/components-2026-10-18.md。
+ use bevy_ecs::bundle::Bundle;
+-use bevy_ecs::component::Component;
+ 
+ use crate::asset_libraries::Handle;
+ use crate::name_hash::NameHash;
+@@ -33,9 +15,7 @@
+ use crate::render::shader::RasterShaderProgram;
+ use crate::utils::components::transform::Transform;
+ 
+-/// 原始类型路径是 `country_core::components::drawable::NaniInstanceDesc`
+-/// （`component_ids` 里 `register_component` 的 PDB 名，O）；当前实现位于
+-/// `render::nani::systems`，此处按原模块路径重导出（类型同一，非新类型）。
++/// 共享实例描述组件的原模块入口，保持同一 ECS 类型身份。
+ pub use crate::render::nani::systems::NaniInstanceDesc;
+ 
+ /// 图集里的 part 索引（O：`From<MeshAtlasPart>` 存 `edx`，一个 u32）。
+@@ -44,7 +24,7 @@
+ pub type AtlasPartIndex = u32;
+ 
+ /// 网格描述：按名字或按图集 part 选择（O：`u32` 判别 @0）。
+-#[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+ pub enum NaniInstanceMeshDesc {
+     /// 判别 0（I）。
+     Named(NameHash),
+@@ -69,26 +49,11 @@
+     }
+ }
+ 
+-/// nani 实例实体 bundle（B `components::drawable::NaniBundle<T>`，O）。
++/// 实例渲染实体：网格描述、世界变换和实例数据类型标记。
+ ///
+-/// 字段**声明序**（`component_ids<NaniBundle<UberInstanceData>>` 0x14267a9e0 的注册序，O）：
+-/// `NaniInstanceDesc` → `Transform` → `InstanceDataMarker<T>`。
+-///
+-/// 内存布局（O，`write_components<NaniBundle<StoneFloorInstanceData>>` 0x141a07f20 +
+-/// `WindowVisualEntityBuilder::build` insert 闭包 0x1412ab270 的写偏移）：
+-///
+-/// | 偏移 | 字段 | 大小 |
+-/// |---|---|---|
+-/// | 0x00 | `transform`（`utils::components::transform::Transform`） | 0x30 |
+-/// | 0x30 | `NaniInstanceDesc`（16B 网格选择器 + 1B subset kind） | 0x18 |
+-/// | 0x48 | `InstanceDataMarker<T>`（ZST） | 0 |
+-///
+-/// 这是 `repr(Rust)` 的字段重排结果（`Transform` 对齐 16 排在最前），不是声明序，
+-/// 所以本结构**不能**加 `#[repr(C)]`（那会把 desc 移到 +0x00，与机器码不符）。
+-///
+-/// 字段名是 U（机器码只给布局）；类型与偏移是 O。
+-/// `T: Send + Sync + 'static` 是 `InstanceDataMarker<T>: Component` 的隐含约束
+-/// （所有实例数据类型都是纯数据；原版 derive 同样需要它，I）。
++/// B component_ids 注册序为 desc → transform → marker；字段物理顺序由 Rust
++/// 布局决定。本机 transform@0、desc@0x30、marker@0x48，尾部对齐后大小 0x50。
++/// 原作写入器的有效复制范围至 0x48；不能将其当作本机分配大小。
+ #[derive(Bundle)]
+ pub struct NaniBundle<T: Send + Sync + 'static> {
+     /// `NaniInstanceDesc`（+0x30，O）。
+@@ -99,24 +64,10 @@
+     pub marker: InstanceDataMarker<T>,
+ }
+ 
+-/// 普通网格可绘制 bundle（B `components::drawable::DrawableMeshBundle`，O）。
++/// 普通网格实体：网格句柄、光栅着色器句柄和世界变换。
+ ///
+-/// 字段**声明序**（`component_ids` 0x14267c2a0 的注册序，O）：
+-/// `Handle<Mesh>` → `Handle<RasterShaderProgram>` → `Transform`。
+-///
+-/// 内存布局（O，`write_components<DrawableMeshBundle>` 0x141fe7aa0）：
+-///
+-/// | 偏移 | 字段 | 大小 |
+-/// |---|---|---|
+-/// | 0x00 | `transform` | 0x30 |
+-/// | 0x30 | `mesh`（`Handle<Mesh>`） | 8 |
+-/// | 0x38 | `shader`（`Handle<RasterShaderProgram>`） | 8 |
+-///
+-/// 同上：`repr(Rust)` 把对齐 16 的 `Transform` 排到最前；总大小 0x40。
+-/// 没有 bool 字段——早期证据里“DrawableMeshBundle 内一个 bool”位于 insert 闭包
+-/// （命令/错误处理状态，闭包 +0x48/0x58），不在 bundle 载荷内（fresh 复核）。
+-///
+-/// 字段名是 U；类型与偏移是 O。
++/// B component_ids 注册序为 mesh → shader → transform；本机物理偏移见测试。
++/// Bundle 载荷不含 bool，旧证据中的 bool 属于外层命令闭包。
+ #[derive(Bundle)]
+ pub struct DrawableMeshBundle {
+     /// 网格句柄（+0x30，O）。
+@@ -149,7 +100,10 @@
+         use crate::render::nani::instance_data::StoneFloorInstanceData;
+         use core::mem::{align_of, offset_of, size_of};
+ 
+-        assert_eq!(offset_of!(NaniBundle<StoneFloorInstanceData>, transform), 0x00);
++        assert_eq!(
++            offset_of!(NaniBundle<StoneFloorInstanceData>, transform),
++            0x00
++        );
+         assert_eq!(offset_of!(NaniBundle<StoneFloorInstanceData>, desc), 0x30);
+         assert_eq!(offset_of!(NaniBundle<StoneFloorInstanceData>, marker), 0x48);
+         // `Transform` 对齐 16 → 结构体尾部补齐到 16 的倍数：0x48 补齐为 0x50。
+--- a/crates/country-core/src/components/mod.rs
++++ b/crates/country-core/src/components/mod.rs
+@@ -1,36 +1,24 @@
+-//! Observed zero-sized rendering component tags (B components/mod.rs).
++//! 场景实体的共享 ECS 数据：可绘制对象、树和二维 UI。
+ //!
+-//! 子模块：[`registry`]（57 个组件的名字/注册地址/克隆策略，全部无 required 组件）、[`drawable`]。
++//! 组件保存数据或标记，更新逻辑由系统消费；Bundle 显式组合创建所需的组件。
++//! [`registry`] 是原作 B 的逆向证据清单，不负责运行时注册。
++//! 字段证据和本轮修正见 crate 的 `recovery/components-2026-10-18.md`。
++
+ pub mod drawable;
+ pub mod registry;
++pub mod rendering;
+ pub mod trees;
++pub mod ui;
+ 
++pub use rendering::{
++    BackgroundTerrain, DashedLineLength, DontReceiveContactShadows, FlatLighting,
++    OverwriteRoughness, SemiTransparent,
++};
+ pub use trees::{
+-    ConvertedPreplacedTree, PrefabInstanceData, TreeAnimation, TreeCanopyMaxCullDistance,
+-    TreeComponent, TreeMarkedForDeletion, TreeMoveBend, Ui2dExtent, Ui2dImage, UiDrawOrder,
++    ConvertedPreplacedTree, TreeAnimation, TreeComponent, TreeMarkedForDeletion, TreeMoveBend,
+ };
++pub use ui::{Ui2dExtent, Ui2dImage, UiDrawOrder};
+ 
+-#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
+-pub struct SemiTransparent;
+-#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
+-pub struct FlatLighting;
+-
+-/// 虚线长度（O：`country_core::components::DashedLineLength`，TypeId
+-/// 0x4782fcee8a8c578b/0x8dfbde843e1dee9d，`f32 @+0`；注册 0x140849b70）。
+-///
+-/// 指示符闭包（`DebugLine::show` 0x140b04f70 / glade-border 0x141be1080）在
+-/// `dashed` 时插入：DebugLine = `length * 4.0`，glade-border = `perimeter * 0.7`。
+-#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default, PartialEq)]
+-pub struct DashedLineLength(pub f32);
+-
+-/// 背景地形标记（O：TypeId `0x66476a13bbcc5e41`，`components::impl$66`；`contains` 判断，存在 → 绑磁盘键 0xbd39551337285fb6）。
+-/// 真名由 `bevy_ecs::bundle::impl$24::component_ids<KeepOnLevelUnload, DrawableMeshBundle, BackgroundTerrain,
+-/// DontReceiveContactShadows, OverwriteRoughness, …>`（0x1416dcd10）的 bundle 顺序反查（`render-gap/DIGEST.md §3.6`）。
+-#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+-pub struct BackgroundTerrain;
+-/// 不接收接触阴影（O：TypeId `0xa6c0fc01ec67ef4c`，`components::impl$25`；`Option<&T>` 读 → `bool(!has)`）。
+-#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+-pub struct DontReceiveContactShadows;
+-/// 覆盖粗糙度（O：TypeId `0x192600af2434483b`，`components::impl$29`；`f32 @+0`，缺省 0.8）。
+-#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default, PartialEq)]
+-pub struct OverwriteRoughness(pub f32);
++// 保持已有公共入口；权威定义分别属于 prefab 系统和树编辑资源。
++pub use crate::resources::history::tree_edit::TreeCanopyMaxCullDistance;
++pub use crate::systems::prefab::PrefabInstanceData;
+--- a/crates/country-core/src/components/registry.rs
++++ b/crates/country-core/src/components/registry.rs
+@@ -1,25 +1,20 @@
+-//! `registry.rs` — 游戏自有组件的注册表（B `components::*`，57 个组件的 `register_required_components` 与 `clone_behavior`）。
++//! 原作 B 的组件证据清单，供恢复源码和核对接口使用。
+ //!
+-//! 证据（`components-geometry/ALGORITHMS.md` §1–§2，并用汇编独立复核）：
+-//! - **没有任何组件声明 required components**：57 个注册函数的大小只有 0x6f0 与 0x700 两种（同一份单态化模板），
+-//!   逐个反汇编后没有一个调用或跳转到别的组件的 `register_required_components`（已知 151 个注册函数范围内）。
+-//!   也就是说原版里 Transform、可见性等一律由外部 bundle / spawn 显式插入，不依赖 `#[require(...)]`；
+-//!   因此"required 映射"是**空集**，这里不提供也不需要接线；
+-//! - `clone_behavior`：`31 c0 c3`（`xor eax,eax; ret`，共享于 0x140002370）= `Default`（组件没有 `Clone`）；
+-//!   `lea rdx,[…]; mov eax,2; ret` = `Custom(component_clone_via_clone::<T>)`，57 个里恰好 11 个（逐个核对了字节）。
+-//!   另有 6 个 Custom 属于别的域（`BrushPreview`、`Roof`、`CurvedHalfTimberInstanceData`、`ColorId`、`Transform`、
+-//!   `CritterLocomotion`），不在这张表里。
++//! 记录 57 个类型的名称、register_required_components 地址及 clone_behavior。
++//! 表中全部 required 集合为空；这不是运行时注册器，也不表示 57 种载荷均已实现。
++//! 注册/克隆胶水由锁定版本的 Bevy 依赖提供，不计独立业务恢复。
+ //!
+-//! 组件字段只有一小部分恢复了（见 [`super`] 与 [`super::drawable`]）；这张表记录的是**名字、注册函数地址、克隆策略**这些
+-//! 已经由机器码确定的事实，供对账和后续落码使用。
++//! Default 是 Bevy 的默认克隆策略，不能理解为调用组件的 Default::default；
++//! Custom 表示原入口选择 component_clone_via_clone::<T>。
++//! 证据入口：country-core-deep/components-geometry/ALGORITHMS.md §1–§2。
+ 
+ /// `ComponentCloneBehavior`（bevy_ecs 0.16）里原版实际出现的两种。
+ #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+ pub enum CloneBehavior {
+-    /// 组件没有 `Clone`。
++    /// 原入口返回 Bevy Default（本清单中为未实现 Clone 的类型）。
+     Default,
+-    /// 组件 derive `Clone`；`handler_va` 是该组件独立的 `clone_behavior` 函数。
+-    Custom { handler_va: u64 },
++    /// 原入口选择 Clone 专用处理；clone_behavior_va 记录该选择入口的地址。
++    Custom { clone_behavior_va: u64 },
+ }
+ 
+ /// 一个组件的已确认事实。
+@@ -31,7 +26,7 @@
+     pub clone: CloneBehavior,
+ }
+ 
+-/// 57 个组件（O）。按注册函数地址升序：`components/mod.rs` 44 个、`components/drawable.rs` 12 个、
++/// 57 个组件（O）。按原文件分组，各组内按注册函数地址升序：`components/mod.rs` 44 个、`components/drawable.rs` 12 个、
+ /// `components/transient_mesh.rs` 1 个。
+ pub const COMPONENTS: [ComponentEntry; 57] = [
+     ComponentEntry {
+@@ -123,21 +118,21 @@
+         name: "ClothlineCloth",
+         register_va: 0x14084c510,
+         clone: CloneBehavior::Custom {
+-            handler_va: 0x14084cc00,
++            clone_behavior_va: 0x14084cc00,
+         },
+     },
+     ComponentEntry {
+         name: "GothicWindowBrickDeformation",
+         register_va: 0x14084cc10,
+         clone: CloneBehavior::Custom {
+-            handler_va: 0x14084d300,
++            clone_behavior_va: 0x14084d300,
+         },
+     },
+     ComponentEntry {
+         name: "BrickColor",
+         register_va: 0x14084d310,
+         clone: CloneBehavior::Custom {
+-            handler_va: 0x14084da00,
++            clone_behavior_va: 0x14084da00,
+         },
+     },
+     ComponentEntry {
+@@ -189,7 +184,7 @@
+         name: "HistoryButton",
+         register_va: 0x140851880,
+         clone: CloneBehavior::Custom {
+-            handler_va: 0x140851f70,
++            clone_behavior_va: 0x140851f70,
+         },
+     },
+     ComponentEntry {
+@@ -221,21 +216,21 @@
+         name: "Smoke",
+         register_va: 0x140854230,
+         clone: CloneBehavior::Custom {
+-            handler_va: 0x140854920,
++            clone_behavior_va: 0x140854920,
+         },
+     },
+     ComponentEntry {
+         name: "RoofFlagCloth",
+         register_va: 0x140854930,
+         clone: CloneBehavior::Custom {
+-            handler_va: 0x140855020,
++            clone_behavior_va: 0x140855020,
+         },
+     },
+     ComponentEntry {
+         name: "WallFlagCloth",
+         register_va: 0x140855030,
+         clone: CloneBehavior::Custom {
+-            handler_va: 0x140855720,
++            clone_behavior_va: 0x140855720,
+         },
+     },
+     ComponentEntry {
+@@ -252,7 +247,7 @@
+         name: "LanternLightParams",
+         register_va: 0x140856510,
+         clone: CloneBehavior::Custom {
+-            handler_va: 0x140856c00,
++            clone_behavior_va: 0x140856c00,
+         },
+     },
+     ComponentEntry {
+@@ -274,7 +269,7 @@
+         name: "DrawTopology",
+         register_va: 0x14082c3d0,
+         clone: CloneBehavior::Custom {
+-            handler_va: 0x14082cac0,
++            clone_behavior_va: 0x14082cac0,
+         },
+     },
+     ComponentEntry {
+@@ -326,14 +321,14 @@
+         name: "NaniSolidTexture",
+         register_va: 0x140830940,
+         clone: CloneBehavior::Custom {
+-            handler_va: 0x140831030,
++            clone_behavior_va: 0x140831030,
+         },
+     },
+     ComponentEntry {
+         name: "PrevTransform",
+         register_va: 0x140831040,
+         clone: CloneBehavior::Custom {
+-            handler_va: 0x140831730,
++            clone_behavior_va: 0x140831730,
+         },
+     },
+     ComponentEntry {
+@@ -387,11 +382,15 @@
+     }
+ 
+     #[test]
+-    fn custom_handlers_sit_next_to_their_register_function() {
++    fn clone_behavior_entries_sit_next_to_their_register_function() {
+         for c in &COMPONENTS {
+-            if let CloneBehavior::Custom { handler_va } = c.clone {
+-                assert_ne!(handler_va, c.register_va, "{}", c.name);
+-                assert!(handler_va.abs_diff(c.register_va) < 0x2000, "{}", c.name);
++            if let CloneBehavior::Custom { clone_behavior_va } = c.clone {
++                assert_ne!(clone_behavior_va, c.register_va, "{}", c.name);
++                assert!(
++                    clone_behavior_va.abs_diff(c.register_va) < 0x2000,
++                    "{}",
++                    c.name
++                );
+             }
+         }
+     }
+--- a/crates/country-core/src/components/rendering.rs
++++ b/crates/country-core/src/components/rendering.rs
+@@ -0,0 +1,33 @@
++//! 渲染查询使用的标记和逐对象参数。
++//!
++//! 原作这些组件的 ECS 克隆策略均为 Default，因此不派生 Clone/Copy。
++
++use bevy_ecs::component::Component;
++
++/// 使对象进入半透明绘制路径。
++#[derive(Component, Debug, Default)]
++pub struct SemiTransparent;
++
++/// 使用平面光照。
++#[derive(Component, Debug, Default)]
++pub struct FlatLighting;
++
++/// 虚线参数。DebugLine 写入长度 × 4，边界线写入周长 × 0.7。
++///
++/// B 注册入口 0x140849b70，载荷为一个 f32。
++#[derive(Component, Debug, Default, PartialEq)]
++pub struct DashedLineLength(pub f32);
++
++/// 背景地形；绘制端按该标记选择背景纹理。
++#[derive(Component, Debug, Default, PartialEq, Eq)]
++pub struct BackgroundTerrain;
++
++/// 禁止对象接收接触阴影。
++#[derive(Component, Debug, Default, PartialEq, Eq)]
++pub struct DontReceiveContactShadows;
++
++/// 对象的粗糙度覆盖值；未挂此组件时由绘制端使用 0.8。
++///
++/// Default 的零值仅用于显式构造，不等于缺少组件时的回退值。
++#[derive(Component, Debug, Default, PartialEq)]
++pub struct OverwriteRoughness(pub f32);
+--- a/crates/country-core/src/components/trees.rs
++++ b/crates/country-core/src/components/trees.rs
+@@ -1,101 +1,103 @@
+-//! trees.rs — 树组件族（组 A restorer 接线；B skeleton `components/` 的树/预制体
+-//! 组件，`components/registry.rs` 已登记名称串）。
++//! 树的身份、生长/树冠动画及移动弯曲状态。
+ //!
+-//! 消费方（O，BASELINE 参数面）：`forest::*`（handplaced/forest_tree_animation 的
+-//! `TreeAnimation`/`TreeMarkedForDeletion`）、`system_tree::*`（ui_delete_tree 的
+-//! `TreeComponent`、tree_move_bend 的 `TreeMoveBend`、convert_preplaced_trees 的
+-//! `ConvertedPreplacedTree`）。字段布局除登记项外 U（typed gap 或单元组件，
+-//! 不造数据）。
++//! B 的注册描述符和创建/读取指令共同确定载荷；这里的字段名是恢复命名。
++//! 组件的 ECS 克隆策略保持 Default，不从载荷的可复制性推导 Clone。
+ 
++use asset::prefab::PrefabName;
+ use bevy_ecs::component::Component;
+ use glam::Vec2;
+ 
+-/// 树删除标记（O：`components::TreeMarkedForDeletion` 名称；`system_tree`
+-/// despawn_trees 以 `Query<(Entity, &TreeAnimation, &TreeMarkedForDeletion)>`
+-/// 遍历回收）。单元组件，载荷 U。
+-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
++/// 树与 TreeStorage 条目的关联。B：id@0、is_preplaced@8，大小 0x10。
++#[repr(C)]
++#[derive(Component, Debug, PartialEq, Eq)]
++pub struct TreeComponent {
++    pub id: u64,
++    pub is_preplaced: bool,
++}
++
++/// 预置树转换时使用的原 prefab 名；持有共享名称的所有权。
++///
++/// B 注册大小为 0x10，spawn_preplaced_trees 克隆 Arc，转换时读取名称。
++#[repr(transparent)]
++#[derive(Component, Debug, PartialEq, Eq)]
++pub struct ConvertedPreplacedTree(pub PrefabName);
++
++/// 删除请求标记。生长进度衰减至严格小于 0.01 时才回收实体。
++#[derive(Component, Debug, Default, PartialEq, Eq)]
+ pub struct TreeMarkedForDeletion;
+ 
+-/// 树动画组件（O：`components::TreeAnimation`；`forest::tree_animation`
+-/// 0x142279500/0x14227a0d0 驱动。字段布局 U（sway 相位/速率族）——
+-/// `alpha` 消退进度为 `despawn_trees` 的 α≤0.01 门控读取面（组 A 修复，I）。
+-#[derive(Component, Clone, Debug, Default)]
++/// 手放树的生长与树冠可见性，B 载荷为 0x10 字节、对齐 4。
++///
++/// process_tree_cmds 初始化时长和零进度；动画系统更新后两项并清除隐藏请求。
++/// despawn_trees 读取 progress@4，而不是 duration@0。
++#[repr(C)]
++#[derive(Component, Debug, PartialEq)]
+ pub struct TreeAnimation {
+-    /// 消退进度 α（I：0x142960674 = 0.01 阈值的读取面；字段偏移 U）。
+-    pub alpha: f32,
+-    /// typed gap：动画相位/速率字段（U）。
+-    pub _gap: u64,
++    /// 生长耗时，秒。
++    pub duration: f32,
++    /// 生长/收缩进度；删除系统读取此值。
++    pub progress: f32,
++    /// 树冠可见性的线性进度；渲染打包前再做二次缓动。
++    pub canopy_visibility: f32,
++    /// 本帧隐藏请求，消费后清零。B 偏移 +0x0c。
++    pub hidden_this_frame: bool,
+ }
+ 
+-/// 树移动弯曲组件（O：`components::TreeMoveBend`；`system_tree::tree_move_bend`
+-/// 0x1422689c0 驱动。字段布局 U）。
+-#[derive(Component, Clone, Copy, Debug, Default)]
+-pub struct TreeMoveBend {
+-    /// typed gap。
+-    pub _gap: u64,
++impl TreeAnimation {
++    /// 新放置的树从零进度开始；调用方提供原作计算的生长时长。
++    pub fn new(duration: f32) -> Self {
++        Self {
++            duration,
++            progress: 0.0,
++            canopy_visibility: 0.0,
++            hidden_this_frame: false,
++        }
++    }
++
++    /// B spawn_preplaced_trees 写入的初始值：0.75 / 1 / 1 / false。
++    pub fn preplaced() -> Self {
++        Self {
++            duration: 0.75,
++            progress: 1.0,
++            canopy_visibility: 1.0,
++            hidden_this_frame: false,
++        }
++    }
++
++    /// 推进原作逐树动画，返回生长或树冠可见性是否发生变化。
++    ///
++    /// B 0x142279cdf–0x142279dc9。隐藏/删除以 -0.4 秒收缩；
++    /// 生长完成且允许显示时淡入。无变化也会消费本帧隐藏标志。
++    pub fn advance(&mut self, delta: f32, marked: bool, show_canopy: bool) -> bool {
++        let old_progress = self.progress;
++        let old_visibility = self.canopy_visibility;
++        let step = delta
++            / if marked || self.hidden_this_frame {
++                -0.4
++            } else {
++                self.duration
++            };
++        self.progress = (self.progress + step).clamp(0.0, 1.0);
++        self.canopy_visibility = if show_canopy && self.progress == 1.0 {
++            (self.canopy_visibility + delta).min(1.0)
++        } else {
++            (self.canopy_visibility - delta).clamp(0.0, 1.0)
++        };
++        self.hidden_this_frame = false;
++        self.progress != old_progress || self.canopy_visibility != old_visibility
++    }
+ }
+ 
+-/// 树实体标记（O：`components::TreeComponent`；ui_delete_tree 的
+-/// `Query<(&PrefabInstanceData, &PrefabInstance, &TreeComponent)>` 面）。
+-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+-pub struct TreeComponent;
+-
+-/// 已转换的预置树标记（O：`components::ConvertedPreplacedTree`；
+-/// convert_preplaced_trees 的 `Query<(&PrefabInstanceData, &ConvertedPreplacedTree)>`）。
+-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+-pub struct ConvertedPreplacedTree;
+-
+-/// 树 canopy 最大剔除距离（O：`tree_edit::TreeCanopyMaxCullDistance`——权威定义在
+-/// `resources/history/tree_edit.rs`，见该处）。
+-pub use crate::resources::history::tree_edit::TreeCanopyMaxCullDistance;
+-
+-/// 预制体实例数据组件（O：`systems::prefab::PrefabInstanceData`，**原生 0x58 B**）。
++/// 树移动时追随目标位置的 XZ 缓动位置，供弯曲系统计算位移。
+ ///
+-/// 跨文件统一（2026-10-17 ui-restorer-seams）：权威定义在
+-/// [`crate::systems::prefab::PrefabInstanceData`]（`+0x08` GPU Vec / `+0x20` RT Vec /
+-/// `+0x38` 音频 Vec / `+0x48` PrefabName）。此处只 re-export，避免同名不同体。
+-pub use crate::systems::prefab::PrefabInstanceData;
+-
+-/// UI 2D 范围组件（O：`components::Ui2dExtent`，**原生 0x10 B**）。
+-///
+-/// 2026-10-17 fresh 反编译（0x142338990 `render_taffy_ui_to_widgets`）：
+-/// `+0x00` = `pos`（中心，Vec2）、`+0x08` = `size`（Vec2）；
+-/// 矩形 = `pos ± (size + expand) / 2`（`fVar25=((float)size.x+expand)*0.5`、
+-/// `rect_min=pos-half`、`rect_max=pos+half`）。
+-/// `color_button_animations` 0x1422979b0 以 `idx*0x10` 取元素，分别写
+-/// `+0x00/+0x08` 两个 Vec2（位置插值/尺寸缩放）。
+-#[repr(C)]
+-#[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
+-pub struct Ui2dExtent {
+-    /// +0x00：中心位置（UI 屏幕空间）。
+-    pub pos: Vec2,
+-    /// +0x08：尺寸。
+-    pub size: Vec2,
++/// B tree_move_bend 0x1422689c0 按两个 f32 读写，大小 8、对齐 4。
++#[repr(transparent)]
++#[derive(Component, Debug, Default, PartialEq)]
++pub struct TreeMoveBend {
++    pub position: Vec2,
+ }
+ 
+-/// UI 2D 图像组件（O：`components::Ui2dImage`；color_menu 查询面）。
+-#[derive(Component, Clone, Copy, Debug, Default)]
+-pub struct Ui2dImage {
+-    /// typed gap。
+-    pub _gap: u64,
+-}
+-
+-/// UI 绘制序组件（O：`components::UiDrawOrder`；color_button_animations 的
+-/// `&mut UiDrawOrder` 面）。
+-#[derive(Component, Clone, Copy, Debug, Default)]
+-pub struct UiDrawOrder(pub u32);
+-
+-#[cfg(test)]
+-mod tests {
+-    use super::*;
+-
+-    /// 原生 0x10 B：pos@0x00、size@0x08（0x142338990 / 0x1422979b0）。
+-    #[test]
+-    fn ui2d_extent_matches_native_0x10() {
+-        assert_eq!(core::mem::size_of::<Ui2dExtent>(), 0x10);
+-        let e = Ui2dExtent::default();
+-        let base = &e as *const _ as usize;
+-        assert_eq!(&e.pos as *const _ as usize - base, 0x00);
+-        assert_eq!(&e.size as *const _ as usize - base, 0x08);
+-    }
+-}
++// 兼容旧入口；新代码从 components 或各权威模块导入。
++pub use super::ui::{Ui2dExtent, Ui2dImage, UiDrawOrder};
++pub use crate::resources::history::tree_edit::TreeCanopyMaxCullDistance;
++pub use crate::systems::prefab::PrefabInstanceData;
+--- a/crates/country-core/src/components/ui.rs
++++ b/crates/country-core/src/components/ui.rs
+@@ -0,0 +1,40 @@
++//! 二维 UI 的范围、图像和绘制顺序。
++
++use bevy_ecs::component::Component;
++use glam::Vec2;
++
++/// 屏幕空间中的中心位置与尺寸。B 大小 0x10，pos@0、size@8。
++#[repr(C)]
++#[derive(Component, Debug, Default, PartialEq)]
++pub struct Ui2dExtent {
++    pub pos: Vec2,
++    pub size: Vec2,
++}
++
++/// UI 纹理资源名和数组图层。
++///
++/// B 大小 0x20；String 占前 24 字节，layer@0x18。持有字符串，不能作为
++/// Copy 数据或无载荷标记；ECS 克隆策略保持原作 Default。
++#[repr(C)]
++#[derive(Component, Debug, Default, PartialEq, Eq)]
++pub struct Ui2dImage {
++    pub name: String,
++    pub layer: u32,
++}
++
++impl Ui2dImage {
++    /// B 内联构造 Ui2dImage::new：移入名称，图层初值为零。
++    pub fn new(name: impl Into<String>) -> Self {
++        Self {
++            name: name.into(),
++            layer: 0,
++        }
++    }
++}
++
++/// 二维 UI 的 64 位排序键；缺少该组件的元素排在有排序键的元素之前。
++///
++/// B register 0x140850aa0 记录大小/对齐均为 8；绘制端按 u64 比较。
++#[repr(transparent)]
++#[derive(Component, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
++pub struct UiDrawOrder(pub u64);
+--- a/crates/country-core/src/render/nani/systems.rs
++++ b/crates/country-core/src/render/nani/systems.rs
+@@ -42,15 +42,11 @@
+ 
+ const LOG_TARGET: &str = "country_core::render::nani::systems";
+ 
+-/// 网格选择器（O：`NaniInstanceDesc` 的 `+0` 判别位：1 = `AtlasPart`，0 = `Named`）。
+-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+-pub enum NaniMeshSelector {
+-    AtlasPart(u32),
+-    Named(NameHash),
+-}
++/// 与 components::drawable 共用网格选择器，保持已有导入路径。
++pub use crate::components::drawable::NaniInstanceMeshDesc as NaniMeshSelector;
+ 
+ /// 实例描述组件（O：24 B）。
+-#[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
++#[derive(Component, Debug, PartialEq, Eq)]
+ pub struct NaniInstanceDesc {
+     pub mesh: NaniMeshSelector,
+     pub subset_kind: GpuWorldSubsetKind,
+--- a/crates/country-core/src/systems/render_loop/draw_passes/ui_2d_pass.rs
++++ b/crates/country-core/src/systems/render_loop/draw_passes/ui_2d_pass.rs
+@@ -19,7 +19,7 @@
+ //! `write_uniform<u32>(-0x3a5498c04f79ae0b, 1)`、Vec3(`0x120d…`) = ws.+8 起 12 B、Vec2(`-0x5903…`) = ws.+0/+4、Vec2(`0x69fd…`) = 窗口，
+ //! 同样的图像绑定与状态改写，`draw_no_vao(6)`。两个循环共用同一个 `RasterPass`，最后 `render` 一次。
+ //!
+-//! 组件名由 PDB 查询类型确定（O）；组件布局在 `components::Ui2d*` / `resources::color_icon` 里仍是 typed gap，下面的 `*Read` 记录只含被机器码读取的字段（字段真名 U）。
++//! Ui2dExtent/Ui2dImage/UiDrawOrder 已有共享组件定义；下面的 owned 绘制快照从组件转换。color_icon 等其余读取视图仍保留各自证据边界。
+ //!
+ //! # `mei_pass`（O）
+ //! `AssetShaderLibrary` → `("text")`；`WindowSize`；`TextRenderer`（tg_text，外部库）`render()` → 文本图元数 `n` 与图集纹理；
+@@ -123,6 +123,15 @@
+ pub struct Ui2dImageRef {
+     pub name: String,
+     pub layer: u32,
++}
++
++impl From<&crate::components::Ui2dImage> for Ui2dImageRef {
++    fn from(image: &crate::components::Ui2dImage) -> Self {
++        Self {
++            name: image.name.clone(),
++            layer: image.layer,
++        }
++    }
+ }
+ 
+ /// 视图描述（`view_type(1).base_layer(layer).layer_count(1, 1)`；A4 的 `TextureViewDesc` 是单元占位，这里只记参数）。
+--- a/crates/country-core/tests/components_recovery.rs
++++ b/crates/country-core/tests/components_recovery.rs
+@@ -0,0 +1,147 @@
++use bevy_ecs::component::{Component, ComponentCloneBehavior};
++use bevy_ecs::world::World;
++use core::mem::{align_of, offset_of, size_of};
++use country_core::components::*;
++
++#[test]
++fn recovered_payloads_match_b_registration_and_field_offsets() {
++    use country_core::render::nani::instance_data::StoneFloorInstanceData;
++    type Nani = drawable::NaniBundle<StoneFloorInstanceData>;
++
++    assert_eq!(size_of::<SemiTransparent>(), 0);
++    assert_eq!(size_of::<FlatLighting>(), 0);
++    assert_eq!(size_of::<BackgroundTerrain>(), 0);
++    assert_eq!(size_of::<DontReceiveContactShadows>(), 0);
++    assert_eq!(size_of::<DashedLineLength>(), 4);
++    assert_eq!(size_of::<OverwriteRoughness>(), 4);
++    assert_eq!(size_of::<drawable::NaniInstanceDesc>(), 24);
++    assert_eq!(offset_of!(Nani, transform), 0);
++    assert_eq!(offset_of!(Nani, desc), 0x30);
++    assert_eq!(offset_of!(Nani, marker), 0x48);
++    assert_eq!(size_of::<Nani>(), 0x50);
++    assert_eq!(size_of::<drawable::DrawableMeshBundle>(), 0x40);
++    assert_eq!(
++        (size_of::<TreeAnimation>(), align_of::<TreeAnimation>()),
++        (0x10, 4)
++    );
++    assert_eq!(offset_of!(TreeAnimation, duration), 0);
++    assert_eq!(offset_of!(TreeAnimation, progress), 4);
++    assert_eq!(offset_of!(TreeAnimation, canopy_visibility), 8);
++    assert_eq!(offset_of!(TreeAnimation, hidden_this_frame), 12);
++    assert_eq!(
++        (size_of::<TreeMoveBend>(), align_of::<TreeMoveBend>()),
++        (8, 4)
++    );
++    assert_eq!(
++        (size_of::<TreeComponent>(), align_of::<TreeComponent>()),
++        (16, 8)
++    );
++    assert_eq!(offset_of!(TreeComponent, is_preplaced), 8);
++    assert_eq!(size_of::<ConvertedPreplacedTree>(), 16);
++    assert_eq!(size_of::<TreeMarkedForDeletion>(), 0);
++    assert_eq!(size_of::<Ui2dExtent>(), 16);
++    assert_eq!(offset_of!(Ui2dExtent, size), 8);
++    assert_eq!((size_of::<Ui2dImage>(), align_of::<Ui2dImage>()), (32, 8));
++    assert_eq!(offset_of!(Ui2dImage, layer), 24);
++    assert_eq!(
++        (size_of::<UiDrawOrder>(), align_of::<UiDrawOrder>()),
++        (8, 8)
++    );
++}
++
++#[test]
++fn implemented_components_keep_original_default_clone_behavior() {
++    fn check<T: Component>() {
++        assert!(
++            matches!(T::clone_behavior(), ComponentCloneBehavior::Default),
++            "{}",
++            core::any::type_name::<T>()
++        );
++        let mut world = World::new();
++        let id = world.register_component::<T>();
++        assert_eq!(
++            world
++                .components()
++                .get_info(id)
++                .unwrap()
++                .required_components()
++                .iter_ids()
++                .count(),
++            0
++        );
++    }
++    check::<SemiTransparent>();
++    check::<FlatLighting>();
++    check::<DashedLineLength>();
++    check::<BackgroundTerrain>();
++    check::<DontReceiveContactShadows>();
++    check::<OverwriteRoughness>();
++    check::<TreeAnimation>();
++    check::<TreeMoveBend>();
++    check::<TreeComponent>();
++    check::<ConvertedPreplacedTree>();
++    check::<TreeMarkedForDeletion>();
++    check::<Ui2dExtent>();
++    check::<Ui2dImage>();
++    check::<UiDrawOrder>();
++    check::<drawable::NaniInstanceDesc>();
++}
++
++#[test]
++fn tree_progress_stays_with_entity_across_removal_and_archetype_changes() {
++    let mut world = World::new();
++    let removed = world.spawn(TreeAnimation::new(1.0)).id();
++    let survivor = world.spawn(TreeAnimation::preplaced()).id();
++    world.get_mut::<TreeAnimation>(survivor).unwrap().progress = 0.5;
++    for mut animation in world.query::<&mut TreeAnimation>().iter_mut(&mut world) {
++        animation.advance(0.1, false, true);
++    }
++    let before = world.get::<TreeAnimation>(survivor).unwrap().progress;
++    world.despawn(removed);
++    world.entity_mut(survivor).insert(TreeMarkedForDeletion);
++    for (mut animation, marked) in world
++        .query::<(&mut TreeAnimation, Option<&TreeMarkedForDeletion>)>()
++        .iter_mut(&mut world)
++    {
++        animation.advance(0.1, marked.is_some(), true);
++    }
++    assert_eq!(
++        world.get::<TreeAnimation>(survivor).unwrap().progress,
++        before - 0.25
++    );
++
++    let mut animation = TreeAnimation::preplaced();
++    animation.hidden_this_frame = true;
++    animation.advance(0.4, false, true);
++    assert_eq!(animation.progress, 0.0);
++    assert!(!animation.hidden_this_frame);
++    // 回收条件读取 progress；固定的生长时长仍为 0.75。
++    assert!(country_core::recovered_systems::tree::should_despawn_tree(
++        true,
++        animation.progress
++    ));
++    animation.progress = 0.01;
++    assert!(!country_core::recovered_systems::tree::should_despawn_tree(
++        true,
++        animation.progress
++    ));
++    animation.progress = f32::NAN;
++    assert!(!country_core::recovered_systems::tree::should_despawn_tree(
++        true,
++        animation.progress
++    ));
++}
++
++#[test]
++fn image_name_and_high_order_bits_survive_the_shared_component_boundary() {
++    use country_core::systems::render_loop::draw_passes::ui_2d_pass::Ui2dImageRef;
++    let mut image = Ui2dImage::new(String::from("toolbar/undo"));
++    assert_eq!(image.layer, 0);
++    image.layer = 7;
++    let snapshot = Ui2dImageRef::from(&image);
++    image.name.clear();
++    assert_eq!(snapshot.name, "toolbar/undo");
++    assert_eq!(snapshot.view().base_layer, 7);
++    let order = UiDrawOrder(1 << 40);
++    assert!(order > UiDrawOrder(u32::MAX as u64));
++}
+--- a/crates/systems/forest/src/tree_animation.rs
++++ b/crates/systems/forest/src/tree_animation.rs
+@@ -30,10 +30,9 @@
+ //!
+ //! ## ⚠ 与当前 country_core 类型的分歧（未实现面，详见 RESTORE.md）
+ //!
+-//! `TreeAnimation` 真实 stride 0x10 {+0 自定时长, +4 进度, +8 淡出, +0xc 标志}；当前
+-//! `{alpha f32, _gap u64}` 缺 `+4` 进度位。`PrefabInstanceData` 真实 stride 0x30（本函数写
+-//! `+0xc` / `+0x20`）；当前 0x58 Vec 布局。`InteractableForestTree` 真实 stride 0x18
+-//! {+0x8 幅度, +0xc 进度, +0x10 延迟计时器}——当前 `position: Vec3` 的 x/y/z 偏移恰好对齐
++//! TreeAnimation 已恢复为实体自身的时长/进度/树冠可见性/临时隐藏标志。
++//! PrefabInstanceData 的放置记录写面仍缺失；InteractableForestTree 的
++//! 动画字段仍借 position 的 x/y/z 偏移承载
+ //! （+0x8/+0xc/+0x10），语义名分歧（以 position 承载）。`Aabb3::intersect_segment` 原为
+ //! 3D AABB 线段求交（0x141240570），当前 utils 无此方法（本地等效实现落地并标注）。
+ 
+@@ -52,14 +51,6 @@
+ use country_core::systems::prefab::DespawnPrefabCmd;
+ use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
+ use utils::easing_functions::EasingFunction;
+-
+-/// 手放树逐树进度跟踪（分歧 I：真实进度存于 `TreeAnimation[+4]`；当前 country_core 类型缺
+-/// 该位，以 `Local<Vec<f32>>` 按查询迭代序承载——树集稳定时行为等价）。
+-#[derive(Default)]
+-pub struct HandplacedTreeProgress {
+-    /// 每树进度（按查询迭代序索引）。
+-    pub per_tree: Vec<f32>,
+-}
+ 
+ /// 手放树 canopy 全局生长状态（分歧 I：真实为 `ResMut<TreeCanopyMaxCullDistance>` 的
+ /// **值结构** `{progress f32 @+0, smoothstep f32 @+4}`（第 7 参 change-detection 包装）；
+@@ -108,7 +99,6 @@
+     audio: Res<AudioTriggerLibrary>,
+     _signifiers: Res<UiSignifierStream>,
+     mut canopy: Local<HandplacedCanopyState>,
+-    mut per_tree: Local<HandplacedTreeProgress>,
+ ) {
+     let delta = time.delta;
+ 
+@@ -153,45 +143,14 @@
+     }
+ 
+     // ---------------------------------------------------------------- 逐树循环（O）
+-    // TreeAnimation 真实 stride 0x10 {+0 时长, +4 进度, +8 淡出, +0xc 标志字节}；
+-    // core 型 {alpha f32 @0, _gap u64 @8} 缺 +4 → 进度以 `Local<Vec<f32>>` 承载
+-    // （分歧 I），`+8` 淡出以 `_gap` 低 32 位承载、`+0xc` 标志以 `_gap` 高字节承载。
+-    let mut idx = 0usize;
++    // 进度属于实体；查询顺序改变、实体删除或切换 archetype 不会串用别的树状态。
+     for (mut animation, _instance, marked) in trees.iter_mut() {
+-        // O：step = 标记树或 `+0xc` 标志非 0 → `delta / -0.4`（0x142a7fcb0）；
+-        //      否则 `delta / [anim+0]`（每树自定时长）。
+-        let step = if marked.is_some() || (animation._gap >> 32) as u8 != 0 {
+-            delta / -0.4
+-        } else {
+-            delta / animation.alpha
+-        };
+-        // O：`progress = clamp(progress + step, 0, 1)`（写回真实 `[anim+4]`；此处写 Local）。
+-        let old_progress = per_tree.per_tree.get(idx).copied().unwrap_or(0.0);
+-        let new_progress = (old_progress + step).clamp(0.0, 1.0);
+-        if per_tree.per_tree.len() <= idx {
+-            per_tree.per_tree.resize(idx + 1, 0.0);
+-        }
+-        per_tree.per_tree[idx] = new_progress;
+-        // O：`at_max = (progress == 1.0)`（UCOMISS vs 1.0；SETZ/SETNP）。
+-        let at_max = new_progress == 1.0;
+-        // O：淡出分支（0x142279d75/d90）：`!(subtract & !audio_hit) & at_max`
+-        //   → 淡出 += delta（min 1）；否则淡出 -= delta（clamp[0,1]）。
+-        let old_fade = f32::from_bits(animation._gap as u32).clamp(0.0, 1.0);
+-        let fade = if !(subtract && !audio_hit) && at_max {
+-            (old_fade + delta).min(1.0)
+-        } else {
+-            (old_fade - delta).clamp(0.0, 1.0)
+-        };
+-        animation._gap = u64::from(f32::to_bits(fade));
+-        // O：变化检测（progress/fade 与旧值比，含 NaN）→
+-        // `pack_2x16f_uint(progress, 1-(1-fade)²)` 写 `PrefabInstanceData[+0x20]`（真实）。
+-        // ⚠ 权威布局修正后 core `PrefabInstanceData` 无该字段 → **未实现
+-        // （core-type-gap，登记）**；打包值仍按原式计算。
+-        if new_progress != old_progress || fade != old_fade {
+-            let _packed = pack_2x16f_uint(new_progress, 1.0 - (1.0 - fade) * (1.0 - fade));
+-        }
+-        // O：写 `[anim+0xc] = 0` 清标志（由 `_gap` 高 32 位写 0 隐含）。
+-        idx += 1;
++        let changed = animation.advance(delta, marked.is_some(), !(subtract && !audio_hit));
++        // PrefabInstanceData 的 GPU 放置记录写面尚待接线；打包公式保持原式。
++        if changed {
++            let fade = animation.canopy_visibility;
++            let _packed = pack_2x16f_uint(animation.progress, 1.0 - (1.0 - fade) * (1.0 - fade));
++        }
+     }
+ }
+ 
+--- a/crates/systems/toolbar/src/resouces_and_components/toolbar_layout.rs
++++ b/crates/systems/toolbar/src/resouces_and_components/toolbar_layout.rs
+@@ -104,7 +104,7 @@
+ /// - kind 处理器的命令记录载荷（0x60B/0x20B、fn@0x140fdf9a0/0x140fdf500、
+ ///   [rax+0x18] vtable、0x140c904a0 朝向）类型 U——本实现以 `kind_handler` 枚举占位，
+ ///   不伪造记录编码。
+-/// - `Ui2dImage::new(label)` 载荷面 typed-gap（core 类型字段未落）。
++/// - 图像名称/图层已接入 core Ui2dImage；其余未恢复面见下方 kind_handler。
+ /// - **签名/节点接线为重建（I）**：B 函数 6 参（rcx、edx、r8d、r9、栈×2），
+ ///   `0x140fe7600`/`0x140fe7790`（new_leaf/add_child 包装）返回两个 NodeId
+ ///   （`[rbp+0x1b4]/[rbp+0x1b8]`），递归沿用该结果——本实现简化为
+@@ -157,10 +157,8 @@
+     // 其余 kind：new_leaf + add_child → spawn 8 组件 → 插入 UiShowIfParentIsInFocus →
+     // 条件插入 ShowOnlyInFpvAndFree → kind 处理器。
+     let leaf = crate::resouces_and_components::TaffyNode::spawn_leaf(taffy, parent);
+-    // O：label 以 `Box<str>` 读面（ptr@+0x20、len@+0x28）克隆；B 把它移入
+-    // `Ui2dImage::new(label)`。core 的 Ui2dImage 仍是 typed-gap（{_gap: u64}），
+-    // 本实现保留克隆并登记，组件暂以 default() 落库。
+-    let _label = item.label().to_owned();
++    // B 克隆 label（ptr@+0x20、len@+0x28）并移入 Ui2dImage，图层初值为零。
++    let label = item.label().to_owned();
+     // O：+0x30 两 f32（ToolbarItemKind::size）。
+     let size = item.size();
+     // **FIX（2026-10-17 unlock-mei-toolbar）**：fresh `register_component` 证明
+@@ -178,7 +176,7 @@
+         crate::resouces_and_components::UiAnimationState::for_spawn(),
+         crate::resouces_and_components::UiMouseInteractable::default(),
+         country_core::components::Ui2dExtent::default(),
+-        country_core::components::Ui2dImage::default(),
++        country_core::components::Ui2dImage::new(label),
+         country_core::components::UiDrawOrder::default(),
+     ));
+     entity.insert(crate::resouces_and_components::UiShowIfParentIsInFocus::default());
+--- a/crates/systems/tree-tool/src/process_tree_cmds.rs
++++ b/crates/systems/tree-tool/src/process_tree_cmds.rs
+@@ -191,12 +191,15 @@
+         // 命令队列，顺序 TreeComponent → TreeAnimation → TreeMoveBend →
+         // TreeAmbience）。
+         let entity = commands.spawn_empty().id();
+-        commands.entity(entity).insert(TreeComponent);
+-        commands.entity(entity).insert(TreeAnimation { alpha, _gap: 0 });
+-        // O：TreeMoveBend = 8B {x, z}（`[R12+0x18]`→+0x78、`[R12+0x20]`→+0x7c；
+-        // 共享组件以 `_gap` 承载打包位）。
++        // 当前 InsertTreeCmd 尚无原版 is_preplaced 字段；这条手放入口写 false。
++        commands.entity(entity).insert(TreeComponent {
++            id: cmd.id,
++            is_preplaced: false,
++        });
++        commands.entity(entity).insert(TreeAnimation::new(alpha));
++        // B：初始缓动位置等于树的世界 XZ 位置。
+         commands.entity(entity).insert(TreeMoveBend {
+-            _gap: (pos.x.to_bits() as u64) | ((pos.z.to_bits() as u64) << 32),
++            position: glam::Vec2::new(pos.x, pos.z),
+         });
+         // O：TreeAmbience 位置 = (x, y + scale*10, z)（常量 0x142a95db0 =
+         // {0.0, 10.0} 广播乘 scale；decomp 行 487-503）。
+@@ -283,8 +286,8 @@
+ ) {
+     for (entity, animation, _marked) in trees.iter_mut() {
+         // O：α 严格小于 0.01（`<=0.01 && !=0.01`，排除 NaN；decomp 行 75/122）。
+-        // TreeAnimation.alpha 字段语义 I（共享型 α@+0 与真实 +4 差异登记分歧 5）。
+-        if animation.alpha < DESPAWN_ALPHA_THRESHOLD {
++        // 读取生长进度 +4；+0 是时长，不能用于删除判断。
++        if animation.progress < DESPAWN_ALPHA_THRESHOLD {
+             despawns.write(DespawnPrefabCmd {
+                 entity: Some(entity),
+                 _gap: 0,
+--- a/crates/systems/tree-tool/src/tree_move_bend.rs
++++ b/crates/systems/tree-tool/src/tree_move_bend.rs
+@@ -56,10 +56,9 @@
+         // 投影：native 目标 = PrefabInstanceData[0..0xc]（0x30 B 放置记录）；
+         // core 无该字段，用 Transform.translation 承载（登记 I）。
+         let target = data.translation;
+-        // TreeMoveBend 是 8 B 组件 {x f32 @+0, y f32 @+4}（原生迭代步长 8）——
+-        // core 型以 `_gap: u64` 承载，按位解包读写。
+-        let mut bx = f32::from_bits(bend._gap as u32);
+-        let mut by = f32::from_bits((bend._gap >> 32) as u32);
++        // 组件保存 XZ 平面中的缓动位置。
++        let mut bx = bend.position.x;
++        let mut by = bend.position.y;
+         bx = time_continuous_lerp(bx, target.x, delta, TREE_BEND_RATE);
+         by = time_continuous_lerp(by, target.z, delta, TREE_BEND_RATE);
+         let dx = bx - target.x;
+@@ -76,6 +75,6 @@
+             // O：变更检测 + 写 PrefabInstanceData +0x24/+0x28 = {step_x, step_z}
+             // （反汇编 142268d47-142268d68）。core 无这些字段 → 未实现面。
+         }
+-        bend._gap = (bx.to_bits() as u64) | ((by.to_bits() as u64) << 32);
++        bend.position = glam::Vec2::new(bx, by);
+     }
+ }
+--- a/crates/systems/tree-tool/tests/components_lifecycle.rs
++++ b/crates/systems/tree-tool/tests/components_lifecycle.rs
+@@ -0,0 +1,35 @@
++use bevy_ecs::prelude::*;
++use country_core::components::{TreeAnimation, TreeMarkedForDeletion};
++use country_core::systems::prefab::DespawnPrefabCmd;
++use system_tree::process_tree_cmds::despawn_trees;
++
++#[test]
++fn deletion_reads_entity_progress_and_requires_the_marker() {
++    let mut world = World::new();
++    world.init_resource::<Events<DespawnPrefabCmd>>();
++    // 很短的生长时长不应触发删除；已完成的进度仍为 1。
++    let mut growing = TreeAnimation::new(0.001);
++    growing.progress = 1.0;
++    world.spawn((growing, TreeMarkedForDeletion));
++    // 很长的生长时长不能阻止已衰减树的回收。
++    let mut shrinking = TreeAnimation::new(10.0);
++    shrinking.progress = 0.009;
++    let expected = world.spawn((shrinking, TreeMarkedForDeletion)).id();
++    world.spawn(TreeAnimation::new(1.0));
++    let mut at_boundary = TreeAnimation::new(1.0);
++    at_boundary.progress = 0.01;
++    world.spawn((at_boundary, TreeMarkedForDeletion));
++    let mut not_a_number = TreeAnimation::new(1.0);
++    not_a_number.progress = f32::NAN;
++    world.spawn((not_a_number, TreeMarkedForDeletion));
++
++    let mut schedule = Schedule::default();
++    schedule.add_systems(despawn_trees);
++    schedule.run(&mut world);
++    let events: Vec<_> = world
++        .resource_mut::<Events<DespawnPrefabCmd>>()
++        .drain()
++        .map(|event| event.entity)
++        .collect();
++    assert_eq!(events, [Some(expected)]);
++}

@@ -1,0 +1,76 @@
+{
+  "reviewer": "/root/render_reviewer",
+  "date": "2026-10-21",
+  "status": "frozen_source_pair_static_review_accepted_not_mounted_or_runtime_verified",
+  "scope": "墙窗v2/角窗v1及共享真实flowerbed/lintel helper的业务恢复源审；必须配对canonical四表与loader迁移，不准据此提前mount缺依赖宿主。",
+  "inputs": {
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-52f7fc4f94ad125530/cloth-visual-state-20261020/window-producer-root-candidate-v2/SOURCE_CANDIDATE_MANIFEST_V2.json": "ea7af4e8611f43e6d80dde4ccef43ddf144c23f1786c8d51fcadf2e10350be92",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-52f7fc4f94ad125530/cloth-visual-state-20261020/window-producer-root-candidate-v2/SOURCE.patch": "0266f3a6e3601d3062124b1c341e0566adfa8ae045051f8c36c00fe9af329bf5",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-52f7fc4f94ad125530/cloth-visual-state-20261020/window-producer-root-candidate-v2/candidate/tiny-glade/crates/systems/decorator/src/decorator_visual/cottage_wall_window.rs": "5f8660de5304d9a04373e463963ddf762d70898cc252ec61e68c90af593f75c1",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-22f30e59ceb8a973c8/cloth-visual-state-20261020/corner-window-root-candidate-v1/SOURCE_CANDIDATE_MANIFEST_V1.json": "88985f70c05cefcf66bef28a6125989502636aae2d6eaa0a5d1529e8618e74d6",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-22f30e59ceb8a973c8/cloth-visual-state-20261020/corner-window-root-candidate-v1/SOURCE.patch": "80f091ac81ddc96c4170ba3334a812d325c819bcdf581e82c4d9c7dad5d2bb0a",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-22f30e59ceb8a973c8/cloth-visual-state-20261020/corner-window-root-candidate-v1/candidate/tiny-glade/crates/systems/decorator/src/decorator_visual/cottage_corner_window.rs": "78c7a41e1dc53d5c91f0f99b750467ea490aa6eeec1e6d7e80534a6e66749e0c",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/Cargo.toml": "d79f9fcb3c0e07f0d1165bfa9ff588221ec5ee16b467b0a403d734c08ae8e0d3",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/Cargo.lock": "bd15d0c57f95c3dc16f8b1cd91ffc12de4bbc24c51115f85fef9f209816968f2",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/blueprint.rs": "a72b3901990f3256baf669451b532d033c8c6cb439e26e25d8ef2a6346838ec9",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-52f7fc4f94ad125530/cloth-visual-state-20261020/window-producer-root-continuation-v1/WALL_MAIN_CONTRACT_V1.md": "5b729a4d376910abafe2a901d5b7e38a5da3f992a6e5ed4a579ef3755784a956",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-22f30e59ceb8a973c8/cloth-visual-state-20261020/corner-window-root-continuation-v1/CORNER_MAIN_CONTRACT_V1.md": "e5e1278b5fe881ab016061347d91cfad9f13e72a1d124a52540e9ffe106cf461"
+  },
+  "dependencies": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-60901c6c8508b1af76/clutter-startup-20261020/canonical-values-candidate-20261021/paired-candidates.json",
+      "sha256": "d6a8fa69c662efa9a6f5075dbe97c8395a95d93dc3c86f95ff7fee0f6b0d7cf8"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-652d8e2c9cc79a01e3/scene-clutter-producer-20261020/subdivision-root-candidate-v3/MANIFEST.json",
+      "sha256": "16a90ab493f3383da1eba20355d50b8a19356ddd8906600ac89231d5969a7d39"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6e76d82e8a953a9a45/boot-leaf-20261018/corner-edge-dirs-root-candidate-v1/MANIFEST.json",
+      "sha256": "55d40baa7f573bb4df39b474b546de34d98e286ce9386c9fdce43bec0a240b58"
+    }
+  ],
+  "fingerprint_checks": "两候选manifest全部文件/依赖SHA现场吻合；两个production current分别与frozen before相同。没有接管worker claim或改生产。",
+  "native_independent": "原RNE f507a6ce：墙main14303B/2637指令、角main9983B/1878指令、flowerbed473B/108指令、lintel2637B/439指令逐条实际PE字节与连续性核对；不把字节数当完成度。墙12mesh名和新hash406/434B已在先前独立报告核；角矩形edge598B已独审并由root真实6测试通过。",
+  "source_findings": [
+    {
+      "path": "cottage_wall_window.rs wall_window_pose/generate_cottage_wall_windows",
+      "conclusion": "真实subtype0/1、outer PublicWall、required collision bounds先于insert；insert后rank失败，非shape1 dst校验/曲线点映射、两端各乘.5再加、dx²+dz²归一化与原XZ helper保持。premade偏移.14/glass减.07、同Arc碰撞/交互、outline、frame/glass、hole发布顺序与原对应。缺interaction时仅insert已发生，frame/outline未发布。"
+    },
+    {
+      "path": "cottage_wall_window.rs random branches",
+      "conclusion": "第一独立Rng按storedID init；仅rank2在subtype1检查前消费u32 bit31。subtype0 rank1/2用真实曲线分段与flags0 lintels，rank3无lintels；nonpremade沿同Rng实际采样位置选择broken mesh，随后结束。premade重seed，同wrap谓词与rank<3布分支不消费RNG，否则u32高2bits==1后每真实样本usize0..6。shutter两候选在Cloth分支后仍追加，key用actualModified、wall用outer，符合原被覆盖栈槽勘误。"
+    },
+    {
+      "path": "cottage_wall_window.rs flowerbed_xforms/add_lintels",
+      "conclusion": "只读实际AssetMeshLibrary位置/Float3 normal，zip到短边，父scale只复制不乘位置。lintel先required key后追加真实hole，即使sources空；首/中/末不同缩放与旋转X位移、单元素首分支、flags bit0和height/.9顺序、typed builder完整字段沿原语义，无镜像或空输出。"
+    },
+    {
+      "path": "cottage_corner_window.rs corner_directions/corner_poses",
+      "conclusion": "subtype精确3；实际cached/outer；矩形attachment-1走原Rectangle helper，非矩形同curve±.1 project_clamp并各try_normalize，失败在insert前continue。span=width/sqrt2、B*.5+A*.5、.35/.65两侧、.3563818 forward精确bits保持。两固定side数组替原恒push2临时Vec为工程内存适配，未声称原分配失败ABI等价。"
+    },
+    {
+      "path": "cottage_corner_window.rs generate_cottage_corner_windows",
+      "conclusion": "rank检查在insert前；insert→frame→outline后才required interaction，缺表保已发布frame/outline，区别于墙窗。glass与frame同pose；原专用hole宽收缩及两侧lintels flags1/height span保持。nonpremade到此结束。premadeCloth storedID谓词/actualModified/outerwall、rank1 span/rank2 width与+.3偏移保持；角窗无shutter。"
+    },
+    {
+      "path": "shared canonical and dependencies",
+      "conclusion": "同一DerivedDecoratorInfoResources/View/DecoratorMeshLibrary四表/实际Arc，bounds仅Copy而非复制triangles；同DecoratorBlueprints、WindowVisualEntityBuilder、RawWallHole、ClothInfo、WindowAutoClutterCandidate。当前workspace fastrand精确=1.8.0，局部u32/usize消费匹配已读原wyhash序；hash复用当前DefaultHasher零key，未来工具链变化须重审原hash依赖。"
+    }
+  ],
+  "coverage_limits": [
+    "作者12+6项源码测试均尚待root执行，rustfmt解析不证明类型/API或业务通过。",
+    "fixture默认storedID1且花槽mesh属性空，主要走Cloth；rank2 dormer只断言1..2，未锁定RNG0/1两极，非空flowerbed/mesh_index与shutter固定seed输出仍需有原期望的增量场景。已明确发作者补界。",
+    "现source API依赖corelead冻结canonical三源与其真实loader/producer迁移族，不能单独迁移造成双库/旧构造器。",
+    "实际host set25/两次flush/clear wallholes set10、cached transforms/stairs validator等上游未完整审接；该源无宿主可达承诺。UI LightWindowCmd writer、编辑历史、完整unload仍独立缺口。",
+    "B原行为静态重建，不声称C parity或跨目标任意NaN payload逐bit相同。"
+  ],
+  "findings": [],
+  "root_gate": "可在canonical迁移族配对后整合编译这两个生产源并跑实际tests；实际宿主mount须满足作者HOST_CONTRACT硬依赖及独审，不用小场景替代真实gameplay。",
+  "reviewer_execution": {
+    "cargo": false,
+    "gpu": false,
+    "production_write": false,
+    "native_oracle_execution": false
+  }
+}

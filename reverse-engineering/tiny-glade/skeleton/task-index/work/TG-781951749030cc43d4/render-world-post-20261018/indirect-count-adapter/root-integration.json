@@ -1,0 +1,43 @@
+{
+  "status": "source integrated; real CPU/GPU validation pending; explicit platform adapter, not original game shader",
+  "patches": [
+    {
+      "patch": "count-multiframe-strict-gpu.patch",
+      "sha256": "5ebfe6368dda0d6fc89a5ae8b707ebef43f03c25e4dfd180cbf77a8da4f0750e",
+      "dry_run_exit": 0,
+      "dry_run": "patching file 'crates/tiny-glade/tests/original_raster_gpu.rs'\n"
+    },
+    {
+      "patch": "indirect_count-module.patch",
+      "sha256": "577d264cab4a9265fc9d47d3dff22cc52ddd55af8854296421a1782bd80d58ae",
+      "dry_run_exit": 0,
+      "dry_run": "patching file 'crates/rhapsody/src/rg/indirect_count.rs'\n"
+    },
+    {
+      "patch": "indirect_count_spirv-module.patch",
+      "sha256": "858e7d40bd5ac57abba66fca7642928cfc35e4f73e4d175b11a3dd9bac9d8d18",
+      "dry_run_exit": 0,
+      "dry_run": "patching file 'crates/rhapsody/src/rg/indirect_count_spirv.rs'\n"
+    },
+    {
+      "patch": "raster_host-count-adapter.patch",
+      "sha256": "5f6a5dbb317a45d75b817a059bc52e1cf258463d24d04f33469e96674302f3ce",
+      "dry_run_exit": 0,
+      "dry_run": "patching file 'crates/tiny-glade/src/raster_host.rs'\n"
+    },
+    {
+      "patch": "render_host-count-adapter.patch",
+      "sha256": "5ad3b4ae82d3f5b1e9e7c09df72626a849808065112400b9f972372169d9c583",
+      "dry_run_exit": 0,
+      "dry_run": "patching file 'crates/tiny-glade/src/render_host.rs'\n"
+    },
+    {
+      "patch": "rg-mod-export.patch",
+      "sha256": "562cdfab7f4fc1273a55ba9a8b72ce4f6e290c00bc72ad59d468901c3bf887ec",
+      "dry_run_exit": 0,
+      "dry_run": "patching file 'crates/rhapsody/src/rg/mod.rs'\n"
+    }
+  ],
+  "review": "independent boot review found duplicate name P1; revised fresh names and two-packet fixture now integrated",
+  "same_existing_shader_heap_and_allocator": true
+}

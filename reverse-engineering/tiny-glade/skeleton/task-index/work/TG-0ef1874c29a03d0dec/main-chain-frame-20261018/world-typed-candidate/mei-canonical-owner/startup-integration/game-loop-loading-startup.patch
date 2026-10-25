@@ -1,0 +1,18 @@
+--- games_test/tiny-glade/crates/tiny-glade/src/game_loop.rs
++++ games_test/tiny-glade/crates/tiny-glade/src/game_loop.rs
+@@ -314,11 +314,11 @@
+                 .resource::<country_core::game_config::GameConfig>()
+                 .dev
+                 .demo;
+-            crate::loading_graph::initialize_loading_resources(
+-                app.world_mut(),
++            crate::loading_graph::install_loading_startup(
++                &mut app,
+                 renderer.device().clone(),
+-                renderer.bridge().hosts(),
+-                paths::installed(),
++                renderer.bridge().hosts().clone(),
++                paths::installed().to_path_buf(),
+                 demo,
+             )?;
+             app.insert_resource(country_core::render::device::GraphicsDeviceResource::new(

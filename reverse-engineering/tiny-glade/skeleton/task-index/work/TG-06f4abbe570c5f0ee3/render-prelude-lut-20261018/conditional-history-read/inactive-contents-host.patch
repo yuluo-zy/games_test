@@ -1,0 +1,168 @@
+--- games_test/tiny-glade/crates/country-core/src/render/pass_builder/compute_pass_builder.rs
++++ games_test/tiny-glade/crates/country-core/src/render/pass_builder/compute_pass_builder.rs
+@@ -199,6 +199,8 @@
+     pub builder: RecordingPassBuilder,
+     pub bindings: Vec<PassBinding>,
+     pub access_ranges: Vec<AccessRange>,
++    /// Binding-table indices with a proven uniformly disabled texel read.
++    pub inactive_texture_bindings: Vec<u8>,
+     pub external_bindings: Vec<ExternalBinding>,
+     pub uniform_binder: Option<UniformBinder>,
+     pub push_constants: Vec<u8>,
+@@ -383,6 +385,7 @@
+     pub(crate) bindings: Vec<PassBinding>,
+     /// `+0x18`：访问范围表（8 B/项）。
+     pub(crate) access_ranges: Vec<AccessRange>,
++    pub(crate) inactive_texture_bindings: Vec<u8>,
+     /// `+0x30`：外部绑定表（0x48 B/项）。
+     pub(crate) external_bindings: Vec<ExternalBinding>,
+     /// `+0x60`：`PassBuilder`。
+@@ -464,6 +467,7 @@
+         let pass = ComputePass {
+             bindings: Vec::new(),
+             access_ranges: Vec::new(),
++            inactive_texture_bindings: Vec::new(),
+             external_bindings: Vec::new(),
+             builder: RecordingPassBuilder {
+                 name,
+@@ -652,6 +656,31 @@
+                 [e.width, e.height]
+             });
+         }
++    }
++
++    /// Current-host metadata for a bound texture whose configured shader
++    /// branch cannot fetch texels. The binding and native access stay intact.
++    pub fn inactive_texture_contents(mut self, hash: u64) -> Self {
++        let Some(binding) = self.resolve(hash) else {
++            return self;
++        };
++        let range = self
++            .access_ranges
++            .iter()
++            .rev()
++            .find(|range| range.resource_index == binding)
++            .expect("inactive texture contents requires an existing graph binding");
++        assert!(
++            matches!(
++                self.bindings.get(range.access_index as usize),
++                Some(PassBinding::ImageView { write: false, .. })
++            ),
++            "inactive texture contents requires a non-writing image binding"
++        );
++        if !self.inactive_texture_bindings.contains(&range.access_index) {
++            self.inactive_texture_bindings.push(range.access_index);
++        }
++        self
+     }
+ 
+     /// `bind_texture_to_compute_pass<A>`（0x140905260 等）：无视图版。见 [`ComputePass::bind_texture_with_view`]。
+@@ -753,6 +782,7 @@
+             builder: self.builder,
+             bindings: self.bindings,
+             access_ranges: self.access_ranges,
++            inactive_texture_bindings: self.inactive_texture_bindings,
+             external_bindings: self.external_bindings,
+             uniform_binder: self.uniform_binder,
+             push_constants: self.push_constants,
+--- games_test/tiny-glade/crates/tiny-glade/src/render_host.rs
++++ games_test/tiny-glade/crates/tiny-glade/src/render_host.rs
+@@ -2194,6 +2194,7 @@
+             builder,
+             bindings,
+             access_ranges,
++            inactive_texture_bindings,
+             external_bindings,
+             uniform_binder,
+             push_constants,
+@@ -2376,8 +2377,10 @@
+                     _ => None,
+                 }
+             });
++            let mut contents_unused = false;
+             let range = if let Some((index, view)) = view {
+                 used_image_views[index] = true;
++                contents_unused = inactive_texture_bindings.contains(&(index as u8));
+                 let resource = graph.resource_handle(access.resource)?;
+                 compute_view_range(
+                     graph.declaration().resources[resource.raw() as usize].descriptor,
+@@ -2386,7 +2389,7 @@
+             } else {
+                 rhapsody::rg::resource::AccessRange::Whole
+             };
+-            declared_accesses.push((*access, range));
++            declared_accesses.push((*access, range, contents_unused));
+         }
+         if bindings.iter().enumerate().any(|(index, binding)| {
+             matches!(binding, CorePassBinding::ImageView { .. }) && !used_image_views[index]
+@@ -2397,9 +2400,13 @@
+         }
+         let mut declared = graph.add_pass(name);
+         declared.on_queue(rhapsody::device::QueueClass::Compute);
+-        for (a, range) in &declared_accesses {
++        for (a, range, contents_unused) in &declared_accesses {
+             let resource = declared.resource_handle(a.resource)?;
+-            declared.add_resource_access_range(resource, a.access, a.group, *range)?;
++            if *contents_unused && !rhapsody::raw::access_table::is_write(a.access) {
++                declared.add_inactive_resource_read_range(resource, a.access, a.group, *range)?;
++            } else {
++                declared.add_resource_access_range(resource, a.access, a.group, *range)?;
++            }
+         }
+         for (resource, range, code) in external_accesses {
+             declared.add_resource_access_range(resource, code, 0, range)?;
+--- games_test/tiny-glade/crates/tiny-glade/src/compute_frame.rs
++++ games_test/tiny-glade/crates/tiny-glade/src/compute_frame.rs
+@@ -199,6 +199,7 @@
+             builder: Default::default(),
+             bindings: Vec::new(),
+             access_ranges: Vec::new(),
++            inactive_texture_bindings: Vec::new(),
+             external_bindings: Vec::new(),
+             uniform_binder: None,
+             push_constants: Vec::new(),
+--- games_test/tiny-glade/crates/tiny-glade/tests/render_host.rs
++++ games_test/tiny-glade/crates/tiny-glade/tests/render_host.rs
+@@ -561,6 +561,7 @@
+                         access_index: 0,
+                     }]
+                 },
++                inactive_texture_bindings: Vec::new(),
+                 external_bindings: if external {
+                     vec![ExternalBinding {
+                         binding: 0,
+@@ -1337,6 +1338,7 @@
+                 builder: Default::default(),
+                 bindings: vec![],
+                 access_ranges: vec![],
++                inactive_texture_bindings: Vec::new(),
+                 external_bindings: vec![
+                     ExternalBinding {
+                         binding: 0,
+--- games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/reprojection.rs
++++ games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/reprojection.rs
+@@ -65,6 +65,14 @@
+         .bind_texture(PREV_DEPTH_TEX, &&prev.texture, 0x19)
+         .bind_texture(VELOCITY_TEX, &velocity, 0x19)
+         .bind_texture(binding::OUTPUT_TEX, &WriteTextureUnchecked(map), 0x32);
++    // The original packaged shader's history_valid==0 branch cannot reach
++    // prev_depth_tex's sole ImageGather. Keep its original binding/sync while
++    // informing the current graph that this configuration reads no texels.
++    let pass = if prev.valid == 0 {
++        pass.inactive_texture_contents(PREV_DEPTH_TEX)
++    } else {
++        pass
++    };
+     let map_pass = dispatch_extent(pass, &map);
+ 
+     let copy = env
+@@ -166,7 +174,9 @@
+     fn history_valid_flag_passes_through_unmodified() {
+         let (e, out) = run(0);
+         assert_eq!(e.uniform_u32(&out.map_pass, binding::HISTORY_VALID), 0);
++        assert_eq!(out.map_pass.inactive_texture_bindings.len(), 1);
+         let (e, out) = run(7);
++        assert!(out.map_pass.inactive_texture_bindings.is_empty());
+         assert_eq!(
+             e.uniform_u32(&out.map_pass, binding::HISTORY_VALID),
+             7,

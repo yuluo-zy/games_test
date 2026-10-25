@@ -1,0 +1,12 @@
+// name: system_wall_constructor::arch_walker::ArchWalker::new (0x14074c2d0)
+// 17 bytes, Ghidra NotFound (not created) — hand-decoded from RNE/B machine code.
+// Bytes: 48 89 c8 f3 0f 11 49 08 c7 41 0c cd cc cc 3d 44 89 01 f3 0f 11 59 04 c3
+//   mov rax, rcx                      ; self
+//   movss [rcx+0x08], xmm1            ; +0x08 = f32 brick_len (2nd float arg)
+//   mov dword [rcx+0x0c], 0x3dcccccd  ; +0x0c = f32 0.1f (CONSTANT, tail threshold)
+//   mov [rcx], r8d                     ; +0x00 = u32 (call sites pass 0)
+//   movss [rcx+0x04], xmm3            ; +0x04 = f32 (call site: [rbp+0x3e4])
+//   ret
+// Layout: {+0x00 u32, +0x04 f32, +0x08 f32 brick_len, +0x0c f32 0.1}
+// Call sites (scan of .text): 0x14049877e, 0x14049eb1c (construct_playermade_stairs_arches_n_walls)
+//   lea rcx,[rbp+0x640]; movaps xmm1,xmm12; xor r8d,r8d; movss xmm3,[rbp+0x3e4]; call

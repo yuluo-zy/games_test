@@ -1,0 +1,40 @@
+0x141238420: mov rcx, r14
+0x141238423: mov rdx, rbx
+0x141238426: call 0x141200320
+0x14123842b: test byte ptr [rsp + 0x24], 1
+0x141238430: je 0x141238485
+0x141238432: mov r15, qword ptr [rsi + 8]
+0x141238436: mov ecx, dword ptr [rsp + 0x28]
+0x14123843a: mov edx, dword ptr [rsp + 0x2c]
+0x14123843e: call 0x141200280
+0x141238443: cmp rax, r15
+0x141238446: jae 0x141238493
+0x141238448: dec rdi
+0x14123844b: jne 0x141238420
+0x14123844d: lea rdx, [rsi + 0x10]
+0x141238451: lea rcx, [rsp + 0x24]
+0x141238456: call 0x141200320
+0x14123845b: cmp dword ptr [rsp + 0x24], 1
+0x141238460: jne 0x141238485
+0x141238462: mov rdi, qword ptr [rsi]
+0x141238465: mov rsi, qword ptr [rsi + 8]
+0x141238469: mov ecx, dword ptr [rsp + 0x28]
+0x14123846d: mov edx, dword ptr [rsp + 0x2c]
+0x141238471: call 0x141200280
+0x141238476: cmp rax, rsi
+0x141238479: jae 0x1412384a5
+0x14123847b: lea rax, [rax + rax*2]
+0x14123847f: lea rax, [rdi + rax*4]
+0x141238483: jmp 0x141238487
+0x141238485: xor eax, eax
+0x141238487: add rsp, 0x30
+0x14123848b: pop rbx
+0x14123848c: pop rdi
+0x14123848d: pop rsi
+0x14123848e: pop r14
+0x141238490: pop r15
+0x141238492: ret 
+0x141238493: lea r8, [rip + 0x19e226e]
+0x14123849a: mov rcx, rax
+0x14123849d: mov rdx, r15
+0x1412384a0: call 0x1428d9518

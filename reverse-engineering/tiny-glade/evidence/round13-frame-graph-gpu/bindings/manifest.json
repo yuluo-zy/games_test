@@ -1,0 +1,38 @@
+{
+  "status": "implemented_unverified",
+  "files": [
+    {
+      "path": "tiny-glade/crates/tiny-glade/src/raster_host.rs",
+      "base_sha256": "679e0aa0e7ab3cbfc8cd725d654881018c5b0e9bb181a834cd6c8675212f73ab",
+      "candidate_sha256": "19b3b8e08cac9b9b3b6008556e667c739145f68329b8383ba8f2bd7c9a0a9450",
+      "current_source_sha256": "679e0aa0e7ab3cbfc8cd725d654881018c5b0e9bb181a834cd6c8675212f73ab",
+      "base_still_matches_production": true
+    },
+    {
+      "path": "tiny-glade/crates/tiny-glade/src/render_host.rs",
+      "base_sha256": "c4e7f4641e93c3e468cd0e863e9b74b82afd38eb23d80d955de2a68a73f7e851",
+      "candidate_sha256": "5e9f37fe0a8fdfb6b9ac01f6501c62df6d4ef17e9233255ab7108048f3b9309d",
+      "current_source_sha256": "c4e7f4641e93c3e468cd0e863e9b74b82afd38eb23d80d955de2a68a73f7e851",
+      "base_still_matches_production": true
+    }
+  ],
+  "patch": "candidate.patch",
+  "patch_sha256": "b33c3d17a6e9c0f1bcba5c79a36097ec600b6c2ac37445c1e24351cb421a37cb",
+  "ownership": "root integrates; this worker made no production changes",
+  "validation": {
+    "rustfmt": "passed",
+    "cargo": "not_run_worker_contract",
+    "gpu": "not_run",
+    "original_range_identity": "passed_4_full_pdb_ranges_rne_equal_patched"
+  },
+  "requested_root_checks": [
+    "cargo test -p tiny-glade --lib raster_binding_range_tests --locked --offline",
+    "cargo test -p tiny-glade --lib original_surface_raster_intent_tests --locked --offline",
+    "nonempty production frame/GPU acceptance after integrating other workers"
+  ],
+  "remaining": [
+    "raster attachments still use current owner-wide range; depth layer and opaque ColorViewWords require separate complete attachment projection",
+    "external SSBO original reflection contains no readonly qualifier; conservative RW left intact",
+    "no actual GPU equivalence/runtime claim from these static facts or unexecuted tests"
+  ]
+}

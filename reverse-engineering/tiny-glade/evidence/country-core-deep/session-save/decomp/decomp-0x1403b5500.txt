@@ -1,0 +1,228 @@
+
+/* WARNING: Control flow encountered bad instruction data */
+/* WARNING: Instruction at (ram,0x0001403b5c83) overlaps instruction at (ram,0x0001403b5c82)
+    */
+
+int * FUN_1403b5500(byte *param_1,int *param_2,undefined8 param_3,int param_4)
+
+{
+  uint *puVar1;
+  code *pcVar2;
+  undefined1 uVar3;
+  int iVar4;
+  longlong lVar5;
+  undefined8 uVar6;
+  char *pcVar7;
+  int *piVar8;
+  char cVar9;
+  ulonglong uVar10;
+  undefined *puVar11;
+  char unaff_BL;
+  ulonglong uVar12;
+  undefined8 unaff_RBP;
+  int *unaff_RSI;
+  undefined8 uStack_28;
+  undefined8 uStack_20;
+  undefined8 uStack_18;
+  undefined8 uStack_10;
+  
+  piVar8 = param_2 + 2;
+  uVar10 = (ulonglong)*(int *)(&UNK_1429ccf90 + (ulonglong)*param_1 * 4);
+  puVar11 = &UNK_1429ccf90 + uVar10;
+  iVar4 = (int)param_2;
+  cVar9 = (char)puVar11;
+                    /* WARNING (jumptable): Sanity check requires truncation of jumptable */
+                    /* WARNING: Could not find normalized switch variable to match jumptable */
+  switch(*param_1) {
+  case 0:
+    puVar11 = &UNK_1429ccb18;
+    goto code_r0x0001403b5553;
+  case 1:
+    lVar5 = FUN_1404b6100(param_2,piVar8,&UNK_1429ccb1e,5);
+    goto joined_r0x0001403b5585;
+  case 2:
+    lVar5 = FUN_1404b6100(param_2,piVar8,&UNK_1429ccb23,7);
+    goto joined_r0x0001403b5585;
+  case 3:
+    puVar11 = &UNK_1429ccb2a;
+    goto code_r0x0001403b5553;
+  case 4:
+    puVar11 = &UNK_1429ccb30;
+code_r0x0001403b5553:
+    lVar5 = FUN_1404b6100(param_2,piVar8,puVar11,6);
+joined_r0x0001403b5585:
+    if (lVar5 == 0) {
+      return (int *)0x0;
+    }
+    uStack_10 = 0xfffffffffffffffe;
+    uStack_20 = 0;
+    uStack_18 = 0;
+    piVar8 = (int *)func_0x000140613c10(0x28,8);
+    if (piVar8 != (int *)0x0) {
+      *(undefined8 *)(piVar8 + 8) = uStack_18;
+      *(undefined8 *)(piVar8 + 4) = uStack_28;
+      *(undefined8 *)(piVar8 + 6) = uStack_20;
+      piVar8[0] = 1;
+      piVar8[1] = 0;
+      *(longlong *)(piVar8 + 2) = lVar5;
+      return piVar8;
+    }
+    FUN_1428d9000(8,0x28);
+                    /* WARNING: Does not return */
+    pcVar2 = (code *)invalidInstructionException();
+    (*pcVar2)();
+  case 5:
+                    /* WARNING: Could not recover jumptable at 0x0001403b563e. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+    piVar8 = (int *)(*(code *)(&UNK_1429ccfa4 +
+                              *(int *)(&UNK_1429ccfa4 +
+                                      ((ulonglong)param_2 & 0xffffffffffffff21) * 4)))();
+    return piVar8;
+  case 6:
+    *piVar8 = *piVar8 + iVar4;
+    uVar3 = 0;
+    goto code_r0x0001403b5713;
+  case 7:
+    cRam0000000102cdd0ee = cRam0000000102cdd0ee - cVar9;
+    goto code_r0x0001403b578a;
+  case 8:
+    *(int *)(puVar11 + (longlong)unaff_RSI) = *(int *)(puVar11 + (longlong)unaff_RSI) + iVar4;
+                    /* WARNING: Bad instruction - Truncating control flow here */
+    halt_baddata();
+  case 9:
+    lVar5 = CONCAT62((int6)((ulonglong)puVar11 >> 0x10),
+                     CONCAT11((char)((ulonglong)puVar11 >> 8) + unaff_BL,cVar9));
+    if (param_4 != 0x7d) {
+      uVar6 = FUN_1428a0fa0(lVar5,&stack0xfffffffffffffff8);
+      goto code_r0x0001403b570d;
+    }
+    *(ulonglong *)(lVar5 + 0x28) = (ulonglong)piVar8 & 0xffffffff;
+    *(char *)((longlong)unaff_RSI + 1) = unaff_BL;
+    param_2 = (int *)0x0;
+code_r0x0001403b578a:
+    uVar3 = SUB81(param_2,0);
+code_r0x0001403b5713:
+    *(undefined1 *)unaff_RSI = uVar3;
+    return unaff_RSI;
+  case 10:
+  case 0xb:
+  case 0xc:
+  case 0xd:
+  case 0xe:
+    uVar6 = FUN_1428a0920();
+code_r0x0001403b570d:
+    *(undefined8 *)(unaff_RSI + 2) = uVar6;
+    uVar3 = 1;
+    goto code_r0x0001403b5713;
+  case 0xf:
+    puVar1 = (uint *)((longlong)param_2 + -0x77);
+    *puVar1 = *puVar1 >> 0x10 | *puVar1 << 0x10;
+    *(undefined **)(unaff_RSI + 2) = puVar11;
+    *(undefined1 *)param_2 = 1;
+    return param_2;
+  default:
+    *param_2 = *param_2 + 0x429ccf90;
+    goto code_r0x0001403b5cc5;
+  case 0x11:
+    if ((int)puVar11 == 0 && iVar4 == 0) {
+      *(undefined1 *)((longlong)unaff_RSI + 1) = 0;
+      goto code_r0x0001403b5cc5;
+    }
+    break;
+  case 0x14:
+                    /* WARNING: Bad instruction - Truncating control flow here */
+    halt_baddata();
+  case 0x15:
+    pcVar7 = (char *)((ulonglong)&uStack_28 & 0xffffffff);
+    *pcVar7 = *pcVar7 + (char)pcVar7;
+    pcVar7[-0x73] = pcVar7[-0x73] + cVar9;
+    *(undefined **)(((ulonglong)param_2 & 0xffffffff) - 8) = &UNK_1403b5c43;
+    iVar4 = func_0x000142923bf0(piVar8,(int)&uStack_28 + 0x2616ded);
+    if (iVar4 == 0) {
+      *(undefined1 *)((longlong)unaff_RSI + 1) = 4;
+      goto code_r0x0001403b5cc5;
+    }
+    break;
+  case 0x16:
+    iVar4 = func_0x000142923bf0(piVar8,&UNK_1429cca3b);
+    if (iVar4 == 0) {
+      *(undefined1 *)((longlong)unaff_RSI + 1) = 2;
+      goto code_r0x0001403b5cc5;
+    }
+    break;
+  case 0x17:
+    if (0xfffffffebd63306f < uVar10 || puVar11 == (undefined *)0x0) {
+                    /* WARNING: Could not recover jumptable at 0x0001403b5bc4. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+      piVar8 = (int *)(*(code *)(&UNK_1429ccfcc + *(int *)(&UNK_1429ccfcc + (longlong)param_2 * 4)))
+                                ();
+      return piVar8;
+    }
+    break;
+  case 0x18:
+                    /* WARNING: Bad instruction - Truncating control flow here */
+    halt_baddata();
+  case 0x1a:
+                    /* WARNING: Bad instruction - Truncating control flow here */
+    halt_baddata();
+  case 0x21:
+                    /* WARNING: Bad instruction - Truncating control flow here */
+    halt_baddata();
+  case 0x22:
+    pcVar2 = (code *)swi(3);
+    piVar8 = (int *)(*pcVar2)();
+    return piVar8;
+  case 0x23:
+    uVar12 = (ulonglong)((int)&uStack_28 - 0x38);
+                    /* WARNING (jumptable): Sanity check requires truncation of jumptable */
+                    /* WARNING: Could not find normalized switch variable to match jumptable */
+    switch(*puVar11) {
+    case 0:
+      puVar11 = &UNK_1429cce48;
+      break;
+    case 1:
+      puVar11 = &UNK_1429cce52;
+      uVar6 = 0xd;
+      goto FUN_140d86b90;
+    case 2:
+      puVar11 = &UNK_1429cce5f;
+      break;
+    case 3:
+      puVar11 = &UNK_1429cce69;
+      uVar6 = 0xb;
+      goto FUN_140d86b90;
+    case 4:
+      *(undefined **)(uVar12 + 0x30) = &UNK_1429ccf91 + uVar10;
+      *(undefined **)(uVar12 + 0x20) = &UNK_1429cce78;
+      *(undefined **)(uVar12 - 8) = &UNK_1403b6131;
+      piVar8 = (int *)FUN_140d872d0(piVar8,&UNK_1429cce98,0x10,uVar12 + 0x30);
+      return piVar8;
+    }
+    uVar6 = 10;
+FUN_140d86b90:
+    *(undefined8 *)(uVar12 + 0x30) = unaff_RBP;
+                    /* WARNING: Could not recover jumptable at 0x000140d86ba4. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+    piVar8 = (int *)(**(code **)(*(longlong *)(param_2 + 0x10) + 0x18))
+                              (*(undefined8 *)(param_2 + 0xe),puVar11,uVar6,
+                               *(code **)(*(longlong *)(param_2 + 0x10) + 0x18));
+    return piVar8;
+  case 0x24:
+    pcVar2 = (code *)swi(3);
+    piVar8 = (int *)(*pcVar2)();
+    return piVar8;
+  case 0x25:
+    pcVar2 = (code *)swi(3);
+    piVar8 = (int *)(*pcVar2)();
+    return piVar8;
+  case 0x26:
+    pcVar2 = (code *)swi(3);
+    piVar8 = (int *)(*pcVar2)();
+    return piVar8;
+  }
+  *(undefined1 *)((longlong)unaff_RSI + 1) = 6;
+code_r0x0001403b5cc5:
+  *(undefined1 *)unaff_RSI = 0;
+  return unaff_RSI;
+}
+

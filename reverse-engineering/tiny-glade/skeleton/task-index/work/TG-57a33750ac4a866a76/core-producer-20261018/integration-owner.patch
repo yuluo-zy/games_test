@@ -1,0 +1,47 @@
+diff --git a/games_test/tiny-glade/crates/country-core/src/resources/walls/mod.rs b/games_test/tiny-glade/crates/country-core/src/resources/walls/mod.rs
+--- a/games_test/tiny-glade/crates/country-core/src/resources/walls/mod.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/walls/mod.rs
+@@ -1,4 +1,5 @@
+ pub mod height_rules;
++pub mod dormers;
+ pub mod decorator;
+ pub mod decorator_archivist;
+ #[cfg(feature = "native-physics")]
+diff --git a/games_test/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_shaders/ssbo_tags.rs b/games_test/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_shaders/ssbo_tags.rs
+--- a/games_test/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_shaders/ssbo_tags.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_shaders/ssbo_tags.rs
+@@ -141,20 +141,20 @@
+     "LeafParticles",
+     0xda2386d830255aac
+ );
+-ssbo_tag!(
+-    /// `resources::walls::dormers::DormerHoleCountPerCellSsbo`（0x14162bc90）。
+-    DormerHoleCountTag,
+-    "country_core::resources::walls::dormers::DormerHoleCountPerCellSsbo",
+-    "Dormer Hole Count",
+-    0x96675839a35d7e8f
+-);
+-ssbo_tag!(
+-    /// `resources::walls::dormers::DormerHoleSsbo`（0x141631090）。
+-    DormerHoleTag,
+-    "country_core::resources::walls::dormers::DormerHoleSsbo",
+-    "Dormer Holes",
+-    0x13c9c799697a906c
+-);
++// These draw names are aliases of the actual library owners, not zero-sized
++// parallel tags with matching NAME hashes.
++pub use crate::resources::walls::dormers::{
++    DormerHoleCountPerCellSsbo as DormerHoleCountTag, DormerHoleSsbo as DormerHoleTag,
++};
++impl DrawSsbo for DormerHoleCountTag {
++    const SLOT_NAME: &'static str = "Dormer Hole Count";
++    const TYPE_NAME: &'static str =
++        "country_core::resources::walls::dormers::DormerHoleCountPerCellSsbo";
++}
++impl DrawSsbo for DormerHoleTag {
++    const SLOT_NAME: &'static str = "Dormer Holes";
++    const TYPE_NAME: &'static str = "country_core::resources::walls::dormers::DormerHoleSsbo";
++}
+ ssbo_tag!(
+     /// `compute_passes::stairs::StairsTransformSsbo`（0x14162cb90）。
+     StairsTransformTag,

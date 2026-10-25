@@ -1,0 +1,287 @@
+
+void __cdecl
+country_core::resources::terrain_height::TerrainHeightsData::
+copy_from_gpu<country_core::resources::terrain_height::TerrainHeightSsbo>(void)
+
+{
+  byte *pbVar1;
+  byte bVar2;
+  byte bVar3;
+  byte bVar4;
+  bool bVar5;
+  bool bVar6;
+  bool bVar7;
+  char extraout_AL;
+  longlong extraout_RAX;
+  longlong extraout_RAX_00;
+  undefined *puVar8;
+  longlong *extraout_RAX_01;
+  longlong lVar9;
+  longlong *extraout_RAX_02;
+  longlong *extraout_RAX_03;
+  longlong *extraout_RAX_04;
+  uint uVar10;
+  longlong in_RCX;
+  longlong lVar11;
+  longlong *plVar12;
+  longlong in_RDX;
+  ulonglong uVar13;
+  undefined8 uVar14;
+  longlong lVar15;
+  longlong lVar16;
+  char cVar17;
+  undefined1 local_470 [512];
+  ulonglong local_270 [64];
+  undefined8 local_70;
+  longlong *local_50;
+  undefined8 local_48;
+  
+  local_48 = 0xfffffffffffffffe;
+  puffin::are_scopes_on();
+  if (extraout_AL == '\0') {
+    local_70 = 0;
+  }
+  else {
+    uVar13 = 0x4d;
+    core::str::impl$0::rfind<ref_<str_>_>();
+    if (extraout_RAX == 1) {
+      if (uVar13 != 0) {
+        if (uVar13 < 0x4d) {
+          if ((char)(&DAT_142ac4ee9)[uVar13] < -0x40) {
+LAB_1409ea097:
+                    /* WARNING: Subroutine does not return */
+            core::str::slice_error_fail();
+          }
+        }
+        else if (uVar13 != 0x4d) goto LAB_1409ea097;
+      }
+      core::str::impl$0::rfind<ref_<str_>_>();
+      if ((extraout_RAX_00 == 1) && (uVar13 != 0xfffffffffffffffe)) {
+        if (uVar13 + 2 < 0x4d) {
+          if ((char)(&UNK_142ac4eeb)[uVar13] < -0x40) {
+LAB_1409ea0f5:
+                    /* WARNING: Subroutine does not return */
+            core::str::slice_error_fail();
+          }
+        }
+        else if (uVar13 + 2 != 0x4d) goto LAB_1409ea0f5;
+      }
+    }
+    puVar8 = &DAT_142ac503b;
+    do {
+      bVar2 = puVar8[-1];
+      uVar10 = (uint)(char)bVar2;
+      if ((char)bVar2 < '\0') {
+        bVar3 = puVar8[-2];
+        if ((char)bVar3 < -0x40) {
+          bVar4 = puVar8[-3];
+          if ((char)bVar4 < -0x40) {
+            pbVar1 = puVar8 + -4;
+            puVar8 = puVar8 + -4;
+            uVar10 = bVar4 & 0x3f | (*pbVar1 & 7) << 6;
+          }
+          else {
+            puVar8 = puVar8 + -3;
+            uVar10 = bVar4 & 0xf;
+          }
+          uVar10 = bVar3 & 0x3f | uVar10 << 6;
+        }
+        else {
+          puVar8 = puVar8 + -2;
+          uVar10 = bVar3 & 0x1f;
+        }
+        uVar10 = (uint)(bVar2 & 0x3f) | uVar10 << 6;
+        if (uVar10 != 0x5c) goto LAB_1409ea1b9;
+LAB_1409ea1cf:
+        if (puVar8 == &UNK_142ac5007) break;
+        if (puVar8 + -0x142ac5007 < (undefined *)0x33) {
+          if (-0x41 < (char)puVar8[1]) break;
+        }
+        else if (puVar8 + -0x142ac5007 == (undefined *)0x33) break;
+                    /* WARNING: Subroutine does not return */
+        core::str::slice_error_fail();
+      }
+      puVar8 = puVar8 + -1;
+      if (uVar10 == 0x5c) goto LAB_1409ea1cf;
+LAB_1409ea1b9:
+      if (uVar10 == 0x2f) goto LAB_1409ea1cf;
+    } while (puVar8 != &DAT_142ac5008);
+    puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL();
+    if (*extraout_RAX_01 == 1) {
+      plVar12 = extraout_RAX_01 + 1;
+    }
+    else if ((*extraout_RAX_01 != 0) ||
+            (std::sys::thread_local::native::lazy::Storage::
+             initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple_<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>
+                       (), plVar12 = extraout_RAX_03, extraout_RAX_03 == (longlong *)0x0))
+    goto LAB_1409ea6ed;
+    if (*plVar12 != 0) goto LAB_1409ea6f9;
+    *plVar12 = -1;
+    local_50 = plVar12;
+    puffin::ThreadProfiler::begin_scope();
+    *local_50 = *local_50 + 1;
+    local_70 = 1;
+  }
+  uVar14 = 0;
+  memset(local_270,0,0x200);
+  bVar5 = __real_c0200000 != *(float *)(in_RCX + 0x50);
+  bVar6 = __real_41c00000 != *(float *)(in_RCX + 0x54);
+  bVar7 = bVar5 || bVar6;
+  if (bVar5 || bVar6) {
+    *(undefined8 *)(in_RCX + 0x50) = __xmm_000000000000000041c00000c0200000;
+    memset(local_270,(int)CONCAT71((int7)((ulonglong)uVar14 >> 8),0xff),0x200);
+  }
+  lVar9 = *(longlong *)(in_RCX + 8);
+  lVar15 = 0;
+  do {
+    lVar16 = 0;
+    lVar11 = 0;
+    do {
+      if ((*(longlong *)(in_RDX + lVar16) != *(longlong *)(lVar9 + lVar16)) ||
+         (*(longlong *)(in_RDX + 8 + lVar16) != *(longlong *)(lVar9 + 8 + lVar16))) {
+        uVar14 = ((undefined8 *)(in_RDX + lVar16))[1];
+        *(undefined8 *)(lVar9 + lVar16) = *(undefined8 *)(in_RDX + lVar16);
+        ((undefined8 *)(lVar9 + lVar16))[1] = uVar14;
+        local_270[lVar15] = local_270[lVar15] | 1L << ((byte)lVar11 & 0x3f);
+        bVar7 = true;
+      }
+      lVar11 = lVar11 + 1;
+      lVar16 = lVar16 + 0x10;
+    } while (lVar11 != 0x40);
+    lVar16 = 0x400;
+    lVar11 = 0;
+    do {
+      if ((*(longlong *)(in_RDX + lVar16) != *(longlong *)(lVar9 + lVar16)) ||
+         (*(longlong *)(in_RDX + 8 + lVar16) != *(longlong *)(lVar9 + 8 + lVar16))) {
+        uVar14 = ((undefined8 *)(in_RDX + lVar16))[1];
+        *(undefined8 *)(lVar9 + lVar16) = *(undefined8 *)(in_RDX + lVar16);
+        ((undefined8 *)(lVar9 + lVar16))[1] = uVar14;
+        local_270[lVar15] = local_270[lVar15] | 1L << ((byte)lVar11 & 0x3f);
+        bVar7 = true;
+      }
+      lVar11 = lVar11 + 1;
+      lVar16 = lVar16 + 0x10;
+    } while (lVar11 != 0x40);
+    lVar16 = 0x800;
+    lVar11 = 0;
+    do {
+      if ((*(longlong *)(in_RDX + lVar16) != *(longlong *)(lVar9 + lVar16)) ||
+         (*(longlong *)(in_RDX + 8 + lVar16) != *(longlong *)(lVar9 + 8 + lVar16))) {
+        uVar14 = ((undefined8 *)(in_RDX + lVar16))[1];
+        *(undefined8 *)(lVar9 + lVar16) = *(undefined8 *)(in_RDX + lVar16);
+        ((undefined8 *)(lVar9 + lVar16))[1] = uVar14;
+        local_270[lVar15] = local_270[lVar15] | 1L << ((byte)lVar11 & 0x3f);
+        bVar7 = true;
+      }
+      lVar11 = lVar11 + 1;
+      lVar16 = lVar16 + 0x10;
+    } while (lVar11 != 0x40);
+    lVar16 = 0xc00;
+    lVar11 = 0;
+    do {
+      if ((*(longlong *)(in_RDX + lVar16) != *(longlong *)(lVar9 + lVar16)) ||
+         (*(longlong *)(in_RDX + 8 + lVar16) != *(longlong *)(lVar9 + 8 + lVar16))) {
+        uVar14 = ((undefined8 *)(in_RDX + lVar16))[1];
+        *(undefined8 *)(lVar9 + lVar16) = *(undefined8 *)(in_RDX + lVar16);
+        ((undefined8 *)(lVar9 + lVar16))[1] = uVar14;
+        local_270[lVar15] = local_270[lVar15] | 1L << ((byte)lVar11 & 0x3f);
+        bVar7 = true;
+      }
+      lVar11 = lVar11 + 1;
+      lVar16 = lVar16 + 0x10;
+    } while (lVar11 != 0x40);
+    lVar16 = 0x1000;
+    lVar11 = 0;
+    do {
+      if ((*(longlong *)(in_RDX + lVar16) != *(longlong *)(lVar9 + lVar16)) ||
+         (*(longlong *)(in_RDX + 8 + lVar16) != *(longlong *)(lVar9 + 8 + lVar16))) {
+        uVar14 = ((undefined8 *)(in_RDX + lVar16))[1];
+        *(undefined8 *)(lVar9 + lVar16) = *(undefined8 *)(in_RDX + lVar16);
+        ((undefined8 *)(lVar9 + lVar16))[1] = uVar14;
+        local_270[lVar15] = local_270[lVar15] | 1L << ((byte)lVar11 & 0x3f);
+        bVar7 = true;
+      }
+      lVar11 = lVar11 + 1;
+      lVar16 = lVar16 + 0x10;
+    } while (lVar11 != 0x40);
+    lVar16 = 0x1400;
+    lVar11 = 0;
+    do {
+      if ((*(longlong *)(in_RDX + lVar16) != *(longlong *)(lVar9 + lVar16)) ||
+         (*(longlong *)(in_RDX + 8 + lVar16) != *(longlong *)(lVar9 + 8 + lVar16))) {
+        uVar14 = ((undefined8 *)(in_RDX + lVar16))[1];
+        *(undefined8 *)(lVar9 + lVar16) = *(undefined8 *)(in_RDX + lVar16);
+        ((undefined8 *)(lVar9 + lVar16))[1] = uVar14;
+        local_270[lVar15] = local_270[lVar15] | 1L << ((byte)lVar11 & 0x3f);
+        bVar7 = true;
+      }
+      lVar11 = lVar11 + 1;
+      lVar16 = lVar16 + 0x10;
+    } while (lVar11 != 0x40);
+    lVar16 = 0x1800;
+    lVar11 = 0;
+    do {
+      if ((*(longlong *)(in_RDX + lVar16) != *(longlong *)(lVar9 + lVar16)) ||
+         (*(longlong *)(in_RDX + 8 + lVar16) != *(longlong *)(lVar9 + 8 + lVar16))) {
+        uVar14 = ((undefined8 *)(in_RDX + lVar16))[1];
+        *(undefined8 *)(lVar9 + lVar16) = *(undefined8 *)(in_RDX + lVar16);
+        ((undefined8 *)(lVar9 + lVar16))[1] = uVar14;
+        local_270[lVar15] = local_270[lVar15] | 1L << ((byte)lVar11 & 0x3f);
+        bVar7 = true;
+      }
+      lVar11 = lVar11 + 1;
+      lVar16 = lVar16 + 0x10;
+    } while (lVar11 != 0x40);
+    lVar16 = 0x1c00;
+    lVar11 = 0;
+    do {
+      if ((*(longlong *)(in_RDX + lVar16) != *(longlong *)(lVar9 + lVar16)) ||
+         (*(longlong *)(in_RDX + 8 + lVar16) != *(longlong *)(lVar9 + 8 + lVar16))) {
+        uVar14 = ((undefined8 *)(in_RDX + lVar16))[1];
+        *(undefined8 *)(lVar9 + lVar16) = *(undefined8 *)(in_RDX + lVar16);
+        ((undefined8 *)(lVar9 + lVar16))[1] = uVar14;
+        local_270[lVar15] = local_270[lVar15] | 1L << ((byte)lVar11 & 0x3f);
+        bVar7 = true;
+      }
+      lVar11 = lVar11 + 1;
+      lVar16 = lVar16 + 0x10;
+    } while (lVar11 != 0x40);
+    lVar15 = lVar15 + 1;
+    in_RDX = in_RDX + 0x2000;
+    lVar9 = lVar9 + 0x2000;
+  } while (lVar15 != 0x40);
+  cVar17 = extraout_AL;
+  if (bVar7) {
+    local_50 = (longlong *)CONCAT71(local_50._1_7_,extraout_AL);
+    memcpy(local_470,local_270,0x200);
+    tabloid::Publisher::
+    publish<country_core::utils::dirty_tiles::DirtyTiles,country_core::utils::dirty_tiles::DirtyTiles>
+              ();
+    cVar17 = (char)local_50;
+  }
+  if (cVar17 != '\0') {
+    puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL();
+    if (*extraout_RAX_02 == 1) {
+      plVar12 = extraout_RAX_02 + 1;
+    }
+    else if ((*extraout_RAX_02 != 0) ||
+            (std::sys::thread_local::native::lazy::Storage::
+             initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple_<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>
+                       (), plVar12 = extraout_RAX_04, extraout_RAX_04 == (longlong *)0x0)) {
+LAB_1409ea6ed:
+                    /* WARNING: Subroutine does not return */
+      std::thread::local::panic_access_error();
+    }
+    if (*plVar12 != 0) {
+LAB_1409ea6f9:
+                    /* WARNING: Subroutine does not return */
+      core::cell::panic_already_borrowed();
+    }
+    *plVar12 = -1;
+    local_50 = plVar12;
+    puffin::ThreadProfiler::end_scope();
+    *local_50 = *local_50 + 1;
+  }
+  return;
+}
+

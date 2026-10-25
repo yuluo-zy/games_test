@@ -1,0 +1,21 @@
+--- games_test/tiny-glade/crates/country-core/src/resources/mod.rs
++++ games_test/tiny-glade/crates/country-core/src/resources/mod.rs
+@@ -46,6 +46,7 @@
+ pub mod glade_settings;
+ pub mod mouse_capture;
+ pub mod mouse_terrain_raycast;
++pub mod read_mouse_depth_value;
+ pub mod image_formation;
+ pub mod garden_mask;
+ pub mod render;
+--- games_test/tiny-glade/crates/country-core/src/components/mod.rs
++++ games_test/tiny-glade/crates/country-core/src/components/mod.rs
+@@ -11,7 +11,7 @@
+ pub mod ui;
+ 
+ pub use rendering::{
+-    BackgroundTerrain, DashedLineLength, DontReceiveContactShadows, FlatLighting,
++    BackgroundTerrain, DashedLineLength, DontReceiveContactShadows, FlatLighting, FollowMouse,
+     OverwriteRoughness, SemiTransparent, StairsStep,
+ };
+ pub use trees::{

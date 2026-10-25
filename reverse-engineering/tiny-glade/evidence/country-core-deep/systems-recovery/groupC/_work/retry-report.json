@@ -1,0 +1,137 @@
+{
+  "server": "re_mcp_ghidra",
+  "actual_mcp_connection": true,
+  "results": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "database_id": "tg_xc1_retry",
+        "keep_open": true
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"tg_xc1_retry\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "tg_xc1_retry",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "tg_xc1_retry"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"tg_xc1_retry\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "tg_xc1_retry",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "disassemble_function",
+      "args": {
+        "database": "tg_xc1_retry",
+        "address": "0x141218e30"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_141218e30\",\"start\":\"0x141218E30\",\"end\":\"0x141218E31\",\"instruction_count\":0,\"instructions\":[],\"database\":\"tg_xc1_retry\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_141218e30",
+          "start": "0x141218E30",
+          "end": "0x141218E31",
+          "instruction_count": 0,
+          "instructions": [],
+          "database": "tg_xc1_retry"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_xc1_retry",
+        "address": "0x141218e30"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"\\nRecoverable Error: Unable to find unique hash for varnode\",\"error_type\":\"DecompilationFailed\",\"database\":\"tg_xc1_retry\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_xc1_retry",
+        "address": "0x14074c2d0"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"No function at 0x14074C2D0\",\"error_type\":\"NotFound\",\"database\":\"tg_xc1_retry\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "tg_xc1_retry",
+        "save": false
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"tg_xc1_retry\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "tg_xc1_retry"
+        },
+        "isError": false
+      }
+    }
+  ],
+  "target_execution": false,
+  "ok": true
+}

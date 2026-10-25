@@ -1,0 +1,31 @@
+{
+  "schema": "tiny-glade-independent-review/v1",
+  "reviewer": "render_reviewer",
+  "date": "2026-10-21",
+  "decision": "block V1 placement; author accepted correction and is preparing immutable V2",
+  "manifest_sha256": "a9137e5e935c25eb2c9b4a4baac76741defe09108ca2d73199f891607e9a7fc4",
+  "candidate_source_sha256": "0b6eed9aa5f0ada702cb7bae3692cb70cc3fbb5dee527d5a4de924c0d6312b44",
+  "finding": {
+    "priority": 1,
+    "source": "tiny-glade/crates/tiny-glade/src/production_renderer.rs",
+    "candidate_line": 144,
+    "reason": "候选在 headless helper 第一行collect，合同宣称原窗口先drain再compile；实际render_inner先build_draw_lists和compile_loading/world_graph，随后begin_frame/drain_finished_frames，再execute_main_graph。",
+    "independent_current_source": "tiny-glade/crates/country-core/src/systems/render_loop/render_frame.rs:295..341",
+    "native_anchors_retained": [
+      "B1404e8799 build_draw_lists",
+      "B1404e883b compile branch",
+      "B1404e954f之后begin/drain",
+      "B1404e9a40 execution timer→execute"
+    ],
+    "minimal_counterexample": "预编译失败时原窗口没有drain副作用，V1会在失败前回收旧帧；另前帧在本帧compile期间完成，V1过早poll不能回收，但原执行前drain可以。",
+    "narrow_correction": "collect置于compile_built成功后且execute_compiled前，复核active_prepared/compiled owner不被误清；保V1原冻及错误合同，不原地覆写。"
+  },
+  "unchanged_accepted_facts": [
+    "既有collect_completed_frames以实际Transaction全部receipts的SyncSet检查，仅reached队头wait_frame(0)；Timeline.wait先poll，alreadyreached不发nativewait。",
+    "wholepool真实peak固定6022且index2current双帧6022是实际owner待查，不应改live阈值/steady起点/采样。"
+  ],
+  "lessons": "审调度顺序必须读consumer前后完整区域，不能用drain_finished_frames名字推断它位于整帧最前。",
+  "limits": [
+    "reviewer无Cargo/GPU；V1不应合入。"
+  ]
+}

@@ -1,0 +1,21 @@
+1408393b0: 4883ec68 sub rsp, 0x68
+1408393b4: 48894c2420 mov qword ptr [rsp + 0x20], rcx
+1408393b9: 80791106 cmp byte ptr [rcx + 0x11], 6
+1408393bd: 7508 jne 0x1408393c7
+1408393bf: 4889c8 mov rax, rcx
+1408393c2: 4883c468 add rsp, 0x68
+1408393c6: c3 ret 
+1408393c7: 488d442420 lea rax, [rsp + 0x20]
+1408393cc: 4889442428 mov qword ptr [rsp + 0x28], rax
+1408393d1: 488d0538af2000 lea rax, [rip + 0x20af38]
+1408393d8: 4889442430 mov qword ptr [rsp + 0x30], rax
+1408393dd: 488d051c992502 lea rax, [rip + 0x225991c]
+1408393e4: 4889442438 mov qword ptr [rsp + 0x38], rax
+1408393e9: 48c744244001000000 mov qword ptr [rsp + 0x40], 1
+1408393f2: 48c744245800000000 mov qword ptr [rsp + 0x58], 0
+1408393fb: 488d442428 lea rax, [rsp + 0x28]
+140839400: 4889442448 mov qword ptr [rsp + 0x48], rax
+140839405: 48c744245001000000 mov qword ptr [rsp + 0x50], 1
+14083940e: 488d4c2438 lea rcx, [rsp + 0x38]
+140839413: e878ff0902 call 0x1428d9390
+140839418: cc int3 

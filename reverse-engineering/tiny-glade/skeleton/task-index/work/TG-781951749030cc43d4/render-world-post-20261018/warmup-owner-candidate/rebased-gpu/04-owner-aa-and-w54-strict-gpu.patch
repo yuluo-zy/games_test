@@ -1,0 +1,331 @@
+--- a/crates/tiny-glade/tests/original_scene_compute_gpu.rs
++++ b/crates/tiny-glade/tests/original_scene_compute_gpu.rs
+@@ -972,114 +972,222 @@
+ /// there is deliberately no history clear and no history import-as-initialized.
+ #[test]
+ fn original_taa_and_tgsr_read_first_undefined_history_then_use_real_previous_output() {
+-    use country_core::systems::render_loop::{
+-        compute_passes::taa::{HistoryTexture, TaaInputs, TgsrInputs},
+-        render_world::formats,
+-    };
+     for use_tgsr in [false, true] {
+         let Some(mut fixture) = Fixture::new() else { return; };
+-        for frame_index in 0..2 {
+-            fixture.world.resource_mut::<FrameConstants>().frame_counter = frame_index;
+-            let device = fixture.device.clone();
+-            let shaders = fixture.shaders.clone();
+-            let ((readback_buffer, history_resource), built) = fixture.bridge.build_frame(|frame| {
+-                tiny_glade::frame_setup::with_frame_resources(frame, &mut fixture.world, |frame, world| {
+-                    let mut inputs = Vec::new();
+-                    for (format, clear) in [
+-                        (vk::Format::B10G11R11_UFLOAT_PACK32, [1.0, 0.0, 0.0, 1.0]),
+-                        (vk::Format::R16G16B16A16_SFLOAT, [0.0; 4]),
+-                        (vk::Format::R32_SFLOAT, [1.0, 0.0, 0.0, 0.0]),
+-                    ] {
+-                        let texture = Arc::new(rhapsody::raw::texture::Texture::new(device.clone(),
+-                            &rhapsody::raw::texture::TextureDesc::new_2d(16, 16, format)
+-                                .usage(vk::ImageUsageFlags::SAMPLED | vk::ImageUsageFlags::TRANSFER_DST))?);
+-                        let id = frame.import_native_texture(texture.clone(), 0)?;
+-                        frame.with_graph(|graph| {
+-                            let device = device.clone();
+-                            let mut pass = graph.add_pass("fixture current AA input");
+-                            pass.add_resource_access(id, 0x34, 0)?;
+-                            pass.render_with_result_context(move |ctx| {
+-                                unsafe { device.device.cmd_clear_color_image(
+-                                    vk::CommandBuffer::from_raw(ctx.command.handle()), texture.handle,
+-                                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+-                                    &vk::ClearColorValue { float32: clear },
+-                                    &[vk::ImageSubresourceRange::default()
+-                                        .aspect_mask(vk::ImageAspectFlags::COLOR)
+-                                        .level_count(1).layer_count(1)]); }
+-                                Ok(())
+-                            });
+-                            Ok(())
+-                        })?;
+-                        inputs.push(RgTexture { resource: id.raw(),
+-                            desc: TextureDesc::new_2d([16, 16], format.as_raw() as u32).sampled() });
+-                    }
+-                    let (pair, output) = frame.with_compute(|compute| {
+-                        let desc = TextureDesc::new_2d([16, 16], formats::COLOR_HDR).sampled().storage();
+-                        let pair = compute.get_or_create_temporal_texture_pair(
+-                            if use_tgsr { "tgsr_history" } else { "taa_history" }, &desc)
+-                            .map_err(|e| rhapsody::Error::invalid_usage(format!("AA history: {e}")))?;
+-                        Ok((pair, compute.create_raw_texture("fixture actual AA output", &desc)))
+-                    })?;
+-                    assert_eq!(pair.fresh, frame_index != 0, "fresh is valid-history, not allocation freshness");
+-                    let history = HistoryTexture { tex: pair.previous, valid: pair.fresh };
+-                    let min_subgroup_size = frame.hosts().buffers.graphics_device().min_subgroup_size_option();
+-                    let mut compute = scene_compute::SceneComputeHost::new(frame, world);
+-                    let aa = if use_tgsr {
+-                        compute.calculate_tgsr(&TgsrInputs {
+-                            color: &inputs[0], reprojection: &inputs[1], depth: &inputs[2],
+-                            output: &output, history_output: &pair.current, history: &history,
+-                            sharpen_amount: 0.0, bypass_clamp: 0, history_global: false,
+-                            min_subgroup_size,
+-                        })?
+-                    } else {
+-                        compute.calculate_taa(&TaaInputs {
+-                            color: &inputs[0], reprojection: &inputs[1], output: &output,
+-                            history_output: &pair.current, history: &history,
+-                            sharpen_amount: 0.0, bypass_clamp: 0, history_global: false,
+-                        })?
+-                    };
+-                    frame.with_graph(|graph| {
+-                        let accesses: Vec<_> = graph.declaration().passes.iter().flat_map(|p| &p.accesses)
+-                            .filter(|a| a.resource_index == pair.previous.resource).collect();
+-                        assert!(!accesses.is_empty(), "actual history remains bound and declared");
+-                        assert!(accesses.iter().all(|a| !a.contents_unused));
+-                        assert_eq!(accesses.iter().any(|a| a.allow_undefined_contents), frame_index == 0);
+-                        let source = &graph.declaration().resources[pair.previous.resource as usize].source;
+-                        if frame_index == 0 {
+-                            assert!(matches!(source,
+-                                rhapsody::rg::graph::OriginSource::ImportOwned { initial_access: 0, .. }
+-                                | rhapsody::rg::graph::OriginSource::ImportUnowned { initial_access: 0, .. }));
+-                        }
++        for frame_index in 0..2 { run_original_aa_fixture_frame(&mut fixture, use_tgsr, frame_index); }
++    }
++}
++
++
++fn run_original_aa_fixture_frame(fixture: &mut Fixture, use_tgsr: bool, frame_index: u32)
++    -> (Arc<rhapsody::raw::texture::Texture>, Option<Arc<rhapsody::raw::texture::Texture>>) {
++    use country_core::systems::render_loop::{
++        compute_passes::taa::{HistoryTexture, TaaInputs, TgsrInputs}, render_world::formats,
++    };
++    fixture.world.resource_mut::<FrameConstants>().frame_counter = frame_index;
++    let device = fixture.device.clone();
++    let shaders = fixture.shaders.clone();
++    let ((readback_buffer, history_resource, current_resource), built) = fixture.bridge.build_frame(|frame| {
++        tiny_glade::frame_setup::with_frame_resources(frame, &mut fixture.world, |frame, world| {
++            let mut inputs = Vec::new();
++            for (format, clear) in [
++                (vk::Format::B10G11R11_UFLOAT_PACK32, [1.0, 0.0, 0.0, 1.0]),
++                (vk::Format::R16G16B16A16_SFLOAT, [0.0; 4]),
++                (vk::Format::R32_SFLOAT, [1.0, 0.0, 0.0, 0.0]),
++            ] {
++                let texture = Arc::new(rhapsody::raw::texture::Texture::new(device.clone(),
++                    &rhapsody::raw::texture::TextureDesc::new_2d(16, 16, format)
++                        .usage(vk::ImageUsageFlags::SAMPLED | vk::ImageUsageFlags::TRANSFER_DST))?);
++                let id = frame.import_native_texture(texture.clone(), 0)?;
++                frame.with_graph(|graph| {
++                    let device = device.clone();
++                    let mut pass = graph.add_pass("fixture current AA input");
++                    pass.add_resource_access(id, 0x34, 0)?;
++                    pass.render_with_result_context(move |ctx| {
++                        unsafe { device.device.cmd_clear_color_image(
++                            vk::CommandBuffer::from_raw(ctx.command.handle()), texture.handle,
++                            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
++                            &vk::ClearColorValue { float32: clear },
++                            &[vk::ImageSubresourceRange::default()
++                                .aspect_mask(vk::ImageAspectFlags::COLOR)
++                                .level_count(1).layer_count(1)]); }
+                         Ok(())
+-                    })?;
+-                    let buffer = readback(frame, world, &shaders, &device, aa)?;
+-                    Ok((buffer, pair.previous.resource))
+-                })
+-            }).unwrap();
+-            fixture.bridge.shader_backend().prewarm(Duration::from_secs(30)).unwrap();
+-            let receipt = fixture.bridge.execute_built(built).unwrap();
+-            if use_tgsr {
+-                for required in ["TGSR blur lum", "TGSR reproject", "TGSR"] {
+-                    assert!(receipt.snapshot.pass_order.iter().any(|p| p == required), "missing {required}");
++                    });
++                    Ok(())
++                })?;
++                inputs.push(RgTexture { resource: id.raw(),
++                    desc: TextureDesc::new_2d([16, 16], format.as_raw() as u32).sampled() });
++            }
++            let (pair, output) = frame.with_compute(|compute| {
++                let desc = TextureDesc::new_2d([16, 16], formats::COLOR_HDR).sampled().storage();
++                let pair = compute.get_or_create_temporal_texture_pair(
++                    if use_tgsr { "tgsr_history" } else { "taa_history" }, &desc)
++                    .map_err(|e| rhapsody::Error::invalid_usage(format!("AA history: {e}")))?;
++                Ok((pair, compute.create_raw_texture("fixture actual AA output", &desc)))
++            })?;
++            assert_eq!(pair.fresh, frame_index != 0, "fresh is valid-history, not allocation freshness");
++            let history = HistoryTexture { tex: pair.previous, valid: pair.fresh };
++            let min_subgroup_size = frame.hosts().buffers.graphics_device().min_subgroup_size_option();
++            let mut compute = scene_compute::SceneComputeHost::new(frame, world);
++            let aa = if use_tgsr {
++                compute.calculate_tgsr(&TgsrInputs {
++                    color: &inputs[0], reprojection: &inputs[1], depth: &inputs[2],
++                    output: &output, history_output: &pair.current, history: &history,
++                    sharpen_amount: 0.0, bypass_clamp: 0, history_global: false,
++                    min_subgroup_size,
++                })?
++            } else {
++                compute.calculate_taa(&TaaInputs {
++                    color: &inputs[0], reprojection: &inputs[1], output: &output,
++                    history_output: &pair.current, history: &history,
++                    sharpen_amount: 0.0, bypass_clamp: 0, history_global: false,
++                })?
++            };
++            frame.with_graph(|graph| {
++                let accesses: Vec<_> = graph.declaration().passes.iter().flat_map(|p| &p.accesses)
++                    .filter(|a| a.resource_index == pair.previous.resource).collect();
++                assert!(!accesses.is_empty(), "actual history remains bound and declared");
++                assert!(accesses.iter().all(|a| !a.contents_unused));
++                assert_eq!(accesses.iter().any(|a| a.allow_undefined_contents), frame_index == 0);
++                let source = &graph.declaration().resources[pair.previous.resource as usize].source;
++                if frame_index == 0 {
++                    assert!(matches!(source,
++                        rhapsody::rg::graph::OriginSource::ImportOwned { initial_access: 0, .. }
++                        | rhapsody::rg::graph::OriginSource::ImportUnowned { initial_access: 0, .. }));
+                 }
+-            } else { assert!(receipt.snapshot.pass_order.iter().any(|p| p == "TAA")); }
+-            assert!(!receipt.receipts.is_empty(), "must record and submit real AA work");
+-            fixture.bridge.wait_submits_done(10_000_000_000).unwrap();
+-            let mut bytes = vec![0; 16 * 16 * 4];
+-            readback_buffer.read_bytes(0, &mut bytes).unwrap();
+-            let pixel = &bytes[(8 * 16 + 8) * 4..][..4];
+-            // Original TGSR main writes RGB + exp2(frexp(RGB).exponent-[8,8,7])
+-            // to BOTH output/history. Its first-frame clamped-zero B becomes
+-            // 2^-7, exactly representable in B10G11R11; original resolve then
+-            // encodes it to UNORM22. TAA applies that bias only to history.
+-            // Keep the later-frame check separate: it consumes real history.
+-            // Constant current color has exact zero weighted variance. On
+-            // frame1, neighborhood clamping collapses history to that same
+-            // current YUV; inverse blue is still negative -> exact0 before
+-            // the identical TGSR output bias. Both TGSR frames require22.
+-            let blue_matches = if use_tgsr { pixel[2] == 22 } else { pixel[2] <= 3 };
+-            assert!(pixel[0] >= 250 && pixel[1] <= 3 && blue_matches && pixel[3] == 255,
+-                "original AA constant red center, TGSR={use_tgsr} frame={frame_index} prev={history_resource}: {pixel:?}");
++                Ok(())
++            })?;
++            let buffer = readback(frame, world, &shaders, &device, aa)?;
++            Ok((buffer, pair.previous.resource, pair.current.resource))
++        })
++    }).unwrap();
++    fixture.bridge.shader_backend().prewarm(Duration::from_secs(30)).unwrap();
++    let receipt = fixture.bridge.execute_built(built).unwrap();
++    if use_tgsr {
++        for required in ["TGSR blur lum", "TGSR reproject", "TGSR"] {
++            assert!(receipt.snapshot.pass_order.iter().any(|p| p == required), "missing {required}");
+         }
+-    }
+-}
++    } else { assert!(receipt.snapshot.pass_order.iter().any(|p| p == "TAA")); }
++    assert!(!receipt.receipts.is_empty(), "must record and submit real AA work");
++    fixture.bridge.wait_submits_done(10_000_000_000).unwrap();
++    let mut bytes = vec![0; 16 * 16 * 4];
++    readback_buffer.read_bytes(0, &mut bytes).unwrap();
++    let pixel = &bytes[(8 * 16 + 8) * 4..][..4];
++    // Original TGSR main writes RGB + exp2(frexp(RGB).exponent-[8,8,7])
++    // to BOTH output/history. Its first-frame clamped-zero B becomes
++    // 2^-7, exactly representable in B10G11R11; original resolve then
++    // encodes it to UNORM22. TAA applies that bias only to history.
++    // Keep the later-frame check separate: it consumes real history.
++    // Constant current color has exact zero weighted variance. On
++    // frame1, neighborhood clamping collapses history to that same
++    // current YUV; inverse blue is still negative -> exact0 before
++    // the identical TGSR output bias. Both TGSR frames require22.
++    let blue_matches = if use_tgsr { pixel[2] == 22 } else { pixel[2] <= 3 };
++    assert!(pixel[0] >= 250 && pixel[1] <= 3 && blue_matches && pixel[3] == 255,
++        "original AA constant red center, TGSR={use_tgsr} frame={frame_index} prev={history_resource}: {pixel:?}");
++    let current = fixture.bridge.exported_texture(&receipt, current_resource).unwrap();
++    let previous = (frame_index != 0).then(|| fixture.bridge.exported_texture(&receipt, history_resource).unwrap());
++    (current, previous)
++}
++
++
++/// Same current HostTables/heap/dynamic owners, real worker GPU completion,
++/// then original main-session temporal adoption and an actual second TAA frame.
++#[test]
++fn completed_background_warmup_preserves_actual_pair_owner_parity_and_pixels() {
++    let Some(mut fixture) = Fixture::new() else { return; };
++    let owners = fixture.bridge.warmup_owners().unwrap();
++    let device = fixture.device.clone();
++    let shaders = fixture.shaders.clone();
++    let world = std::mem::take(&mut fixture.world);
++    let worker = std::thread::spawn(move || {
++        let bridge = CoreRenderBridge::from_owners(owners).unwrap();
++        let mut worker_fixture = Fixture { device, bridge, shaders, world };
++        let (actual_current, none) = run_original_aa_fixture_frame(&mut worker_fixture, false, 0);
++        assert!(none.is_none());
++        let completed = worker_fixture.bridge.complete_gameplay_warmup(10_000_000_000).unwrap();
++        (worker_fixture.world, completed, actual_current)
++    });
++    let (world, completed, actual_warmup_current) = worker.join().unwrap();
++    fixture.world = world;
++    fixture.bridge.accept_gameplay_warmup(&completed).unwrap();
++    // Repeated activation is harmless after the single actual ownership move.
++    fixture.bridge.accept_gameplay_warmup(&completed).unwrap();
++    let (_, previous) = run_original_aa_fixture_frame(&mut fixture, false, 1);
++    let previous = previous.expect("same actual valid previous texture survives worker handoff");
++    assert!(Arc::ptr_eq(&actual_warmup_current, &previous),
++        "must reuse the actual GPU image, not copy content into a replacement");
++}
++
++
++/// W54 diagnostic phases use the original capture as the real persistent
++/// reference producer. Explicit fixture phases are not a gameplay state machine
++/// shortcut, and no CPU image is substituted for the captured reference.
++#[test]
++fn original_shader_refactoring_replaces_the_full_frame_and_keeps_real_reference() {
++    use country_core::resources::shader_refactoring_state::ShaderRefactoringState;
++    let Some(mut fixture) = Fixture::new() else { return; };
++    for phase in 0..4 {
++        fixture.world.increment_change_tick();
++        let (disc, payload) = if phase == 0 { (0, 0) }
++            else if phase == 1 { (2, 3) } else { (3, 3) };
++        fixture.world.insert_resource(ShaderRefactoringState { disc, payload });
++        let device = fixture.device.clone();
++        let shaders = fixture.shaders.clone();
++        let ((output, source_id, result), built) = fixture.bridge.build_frame(|frame| {
++            tiny_glade::frame_setup::with_frame_resources(frame, &mut fixture.world, |frame, world| {
++                let texture = Arc::new(rhapsody::raw::texture::Texture::new(device.clone(),
++                    &rhapsody::raw::texture::TextureDesc::new_2d(16, 16, vk::Format::B10G11R11_UFLOAT_PACK32)
++                        .usage(vk::ImageUsageFlags::SAMPLED | vk::ImageUsageFlags::TRANSFER_DST))?);
++                let input = frame.import_native_texture(texture.clone(), 0)?;
++                frame.with_graph(|graph| {
++                    let device = device.clone();
++                    let mut pass = graph.add_pass("fixture original W54 input");
++                    pass.add_resource_access(input, 0x34, 0)?;
++                    pass.render_with_result_context(move |ctx| {
++                        unsafe { device.device.cmd_clear_color_image(
++                            vk::CommandBuffer::from_raw(ctx.command.handle()), texture.handle,
++                            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
++                            &vk::ClearColorValue { float32: [if phase == 3 { 0.75 } else { 0.25 }, 0.5, 0.75, 1.0] },
++                            &[vk::ImageSubresourceRange::default().aspect_mask(vk::ImageAspectFlags::COLOR)
++                                .level_count(1).layer_count(1)]); }
++                        Ok(())
++                    }); Ok(())
++                })?;
++                let source = RgTexture { resource: input.raw(), desc: TextureDesc::new_2d([16, 16], 0x7a).sampled() };
++                let result = tiny_glade::world_postprocess::render_shader_refactoring(frame, world, source)?;
++                if phase < 2 { assert_eq!(result, source); }
++                else {
++                    assert_ne!(result.resource, source.resource, "must replace resource ID, not just desc bits");
++                    assert_eq!(result.desc, TextureDesc::new_2d([16, 16], 0x7a).storage().sampled());
++                }
++                if phase == 0 {
++                    assert_eq!(*world.resource::<ShaderRefactoringState>(), ShaderRefactoringState { disc: 0, payload: 0 });
++                    frame.with_graph(|graph| { assert!(!graph.declaration().resources.iter()
++                        .any(|r| r.name.contains("shader refactoring"))); Ok(()) })?;
++                } else if phase == 1 {
++                    assert_eq!(*world.resource::<ShaderRefactoringState>(), ShaderRefactoringState { disc: 2, payload: 4 });
++                } else {
++                    assert_eq!(*world.resource::<ShaderRefactoringState>(), ShaderRefactoringState { disc: 3, payload: 4 });
++                }
++                Ok((readback(frame, world, &shaders, &device, result)?, source.resource, result))
++            })
++        }).unwrap();
++        fixture.bridge.shader_backend().prewarm(Duration::from_secs(30)).unwrap();
++        let receipt = fixture.bridge.execute_built(built).unwrap();
++        let count = |name: &str| receipt.snapshot.pass_order.iter().filter(|p| p.as_str() == name).count();
++        assert_eq!(count("Shader refactoring capture"), usize::from(phase != 0));
++        assert_eq!(count("Shader refactoring compare"), usize::from(phase >= 2));
++        fixture.bridge.wait_submits_done(10_000_000_000).unwrap();
++        let mut bytes = vec![0; 16 * 16 * 4]; output.read_bytes(0, &mut bytes).unwrap();
++        let pixel = &bytes[(8 * 16 + 8) * 4..][..4];
++        if phase >= 2 {
++            // Exact original compare: reference RGB * .08 * (0,1,1)
++            // plus red1 iff any absolute difference exceeds1e-5. Original
++            // packed storage rounds G.04/B.06, then resolve applies sRGB.
++            let expected = [if phase == 3 { 255i16 } else { 0 }, 56, 69, 255];
++            for c in 0..4 { assert!((i16::from(pixel[c]) - expected[c]).abs() <= 1,
++                "phase={phase} source={source_id} result={} pixel={pixel:?} expected={expected:?}", result.resource); }
++        }
++    }
++}

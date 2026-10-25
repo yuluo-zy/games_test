@@ -1,0 +1,159 @@
+{
+  "scope": "Source defects and precise native requirements, not completion percentages. No resource patch prepared by this worker outside delegated three constructors.",
+  "items": [
+    {
+      "ordinals": [
+        18
+      ],
+      "types": [
+        "systems::audio::terrain_stairs_audio::StairsCounterSsbo"
+      ],
+      "current": "Missing canonical type; StairsCounterBuf is a foreign zero-sized pass tag.",
+      "original": "14161ddb0: u32 x1; NAME Stairs Counter; size4/usage22/memory4/align4; None uploads4 zero bytes then maps. add_new1412c0850 stores MappedStorageBuffer56.",
+      "required": "Define canonical u32 newtype+StorageElement+library/pass SsboType. Use real MappedStorageBuffer; pass_kit StairsCounterBuf must reexport canonical identity, not keep duplicate NAME."
+    },
+    {
+      "ordinals": [
+        25,
+        26
+      ],
+      "types": [
+        "resources::walls::dormers::DormerHoleSsbo",
+        "resources::walls::dormers::DormerHoleCountPerCellSsbo"
+      ],
+      "current": "No canonical module/types; draw ssbo_tags are consumer tags, not real library storage.",
+      "original": "Full newly extracted14161a760:48B x11250,size0x83d60,NAME Dormer Holes.1416159e0:u32 x225,size0x384,NAME Dormer Hole Count. Both usage22/mem1/align4, None no upload; native add_new wrappers allocate InstanceBuffer48 with count0.",
+      "required": "Actual canonical elements (raw words acceptable for unobserved fields) and InstanceBuffer factories preserving count0/None. Reuse TypedStorageBuffer::from_created_buffer; do not invent semantic CPU fields or register tags."
+    },
+    {
+      "ordinals": [
+        31,
+        45
+      ],
+      "types": [
+        "dof_autofocus::DofAutofocusSsbo",
+        "apply_screen_shadows::ShadowMaskHistogramSsbo"
+      ],
+      "current": "Existing factories omit original None payloads.",
+      "original": "Dof 1416101f0: full512B repeated0x41f00000(30.0), original constant142ac7e60. Histogram141612170: full1024B zero. Mean remains no upload.",
+      "required": "Delivered narrow3-constructor patch and family claims; see constructor-corrections/CONTRACT.md."
+    },
+    {
+      "ordinals": [
+        35,
+        55
+      ],
+      "types": [
+        "compute_passes::stairs::StairsTransformSsbo",
+        "compute_passes::spawn_boats::BoatSsbo"
+      ],
+      "current": "Gap/one-element carriers still in production; old OS legal candidates already exist.",
+      "original": "Stairs48B x41000,0x1e0780,NAME Stairs transforms,Typed40/align4. Boat64B x4096,0x40000,NAME Boats,Instance48/align16,count0. None uploads nothing.",
+      "required": "Merge candidate-stairs.rs from TG-cdd2907758d9e3a316/frameinputs-20261018 and candidate-spawn_boats.rs from TG-26b5e861be8fcfa7dd/frameinputs-20261018 by bounded hunks, preserving external-owner current algorithms."
+    },
+    {
+      "ordinals": [
+        39
+      ],
+      "types": [
+        "path_pebbles::PebblePlacementSsbo"
+      ],
+      "current": "None incorrectly uses zero-uploading TypedStorageBuffer::new.",
+      "original": "141610db0 None skips directly to descriptor,48B x576,0x6c00/usage22/mem1/align4, no upload.",
+      "required": "Delivered narrow3-constructor patch; use fixed byte constructor for None/Some."
+    },
+    {
+      "ordinals": [
+        43,
+        44
+      ],
+      "types": [
+        "draw_passes::ui_2d_pass::TextPrimSsbo",
+        "draw_passes::ui_2d_pass::ShapeStreamSsbo"
+      ],
+      "current": "Both Gap tags have no canonical library factory.",
+      "original": "TextPrim141611730:48B x131072,size0x600000,NAME TextPrim. ShapeStream14160fb70:u32 x1048576,size0x400000,NAME ShapeStream. Both Typed40,usage22/mem1/align4,None no upload.",
+      "required": "Define actual canonical element rows and library SsboType; keep existing pass consumers on the same identities. Existing tg-text/shape-stream payload types may be reused only after matching original byte schema; raw words do not imply recovered field semantics."
+    },
+    {
+      "ordinals": [
+        47,
+        48,
+        49,
+        53,
+        56
+      ],
+      "types": [
+        "compute_water::LilypadSsbo",
+        "compute_water::LilypadFlowerSsbo",
+        "compute_water::ReedSsbo",
+        "compute_garden::Flower03Ssbo",
+        "compute_garden::GardenStoneSsbo"
+      ],
+      "current": "Water3 are Gap and lack library factories; garden2 are fake one-element carriers.",
+      "original": "Seven-constructor original pack: Lilypad64x50625/NAME Lilypads/align16; Flower64x50625/NAME Lilypad Flowers/align16; Reed48x22500/NAME Reeds/align4; Flower03 16x160000/NAME Small lowpoly flowers/align4; GardenStone64x32400/NAME Garden Stone/align16. All Instance48,count0,usage22/mem1,None no upload.",
+      "required": "Coordinate existing water/garden owners using os-populate-review-20261018/remaining-seven-constructors/SEVEN-CONSTRUCTOR-CONTRACT.md; no parallel substitute types."
+    },
+    {
+      "ordinals": [
+        50
+      ],
+      "types": [
+        "resources::render_ssbo::LanternSsbo"
+      ],
+      "current": "Existing unique type is render_ssbo, original was render::lantern. InstanceBuffer generic None calls TypedStorageBuffer::new and adds a zero upload.",
+      "original": "Fresh full141615bb0 confirms16B x32768,size0x80000,NAME LanternSsbo,Instance count0,usage22/mem1/align4,None no upload.",
+      "required": "Fix this actual factory locally. Candidate imports the current unique type so consumers remain same identity. A future original-path module must reexport/move that definition, not duplicate it."
+    },
+    {
+      "ordinals": [
+        51,
+        52
+      ],
+      "types": [
+        "compute_garden::BushSsbo",
+        "compute_garden::FlowerSsbo"
+      ],
+      "current": "fixed_len_typed_storage(None) calls TypedStorageBuffer::new, adding zero upload.",
+      "original": "141610b60 Bush48B x9600,size0x70800,NAME Bushes;141613b90 Flower64B x53120,size0x33e000,NAME FlowerSsbo. Both Typed40,usage22/mem1/align4,None no upload.",
+      "required": "Per-type factories can directly use TypedStorageBuffer::new_storage_buffer; do not change generic None policy globally."
+    },
+    {
+      "ordinals": [
+        54
+      ],
+      "types": [
+        "rasterize_buildings::GroundedBuildingsSsbo"
+      ],
+      "current": "NAME currently GroundedBuildingsSsbo disagrees with original registration key; generic Instance None additionally uploads zeros.",
+      "original": "Fresh full141617840 confirms NAME Building Shapes,32B x5000,size0x27100,usage22/mem1/align4,None no upload. add_new1412c0350 registers Instance count0 with key1c53e91811919db1.",
+      "required": "Correct actual type NAME and local Instance factory; preserve actual source/GPU schema, do not add another Grounded type."
+    },
+    {
+      "ordinals": [
+        59,
+        60,
+        61
+      ],
+      "types": [
+        "resources::water_mask::WaterMaskSsbo",
+        "resources::water_exclude_clutter_mask::WaterExcludeClutterMaskSsbo",
+        "resources::garden_mask::GardenMaskSsbo"
+      ],
+      "current": "Water is Gap and wrong NAME/capacity; exclusion/garden u32 types still capacity0x8000 elements and suffixed NAME, four times native buffer size.",
+      "original": "14161d570 WaterMask,14161c080 WaterExcludeClutterMask,14161f660 GardenMask: u32 x8192, size0x8000/usage22/mem4/align4,None fullzero upload and actual map.",
+      "required": "Canonical u32 types with short native NAME and BUFFER_LEN0x2000, same existing MappedStorageBuffer factory after correction. Use real pass hash from canonical NAME; Water current hash0 is invalid."
+    },
+    {
+      "ordinals": [
+        66
+      ],
+      "types": [
+        "read_bush_positions_for_cpu::BushCpuSsbo"
+      ],
+      "current": "Gap/BUFFER_LEN1/NAME BushCpuSsbo; old comment0x40000 is contradicted by full original body.",
+      "original": "14161bd30: element8B(len&7, mapped len>>3),capacity9601,size0x12c08,NAME Bush positions for CPU,usage22/mem4/align4,None NO upload; explicit actual mapping returned.",
+      "required": "Actual8B raw row type plus local mapped factory preserving None, checked len%8/ptr%4/len<0x12c10. Existing MappedStorageBuffer::new_storage_buffer unconditionally uploads zero defaults, so this one needs bounded manual create/map or an explicit specialized adapter; fields mapped/buffer are already public."
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+undefined8 FUN_140a86510(longlong param_1,undefined8 *param_2)
+
+{
+  code *pcVar1;
+  undefined4 uVar2;
+  undefined4 uVar3;
+  longlong lVar4;
+  longlong lVar5;
+  undefined8 uVar6;
+  undefined4 uVar7;
+  undefined4 uVar8;
+  undefined4 uVar9;
+  char cVar10;
+  undefined8 *puVar11;
+  longlong *plVar12;
+  undefined8 *puVar13;
+  
+  cVar10 = func_0x000140a825e0(*param_2,&UNK_142ad83e8);
+  if ((cVar10 != '\0') && (SBORROW8(0,*(longlong *)(param_1 + 0x30)))) {
+    puVar11 = (undefined8 *)func_0x000140613c10(0x40,8);
+    if (puVar11 == (undefined8 *)0x0) {
+      FUN_1428d9000(8,0x40);
+    }
+    else {
+      plVar12 = (longlong *)FUN_1400d9b20(0);
+      if (plVar12 == (longlong *)0x0) {
+        FUN_1428d80d0(&UNK_142c3aaa0);
+      }
+      else {
+        lVar4 = *plVar12;
+        uVar2 = *(undefined4 *)((longlong)plVar12 + 4);
+        lVar5 = plVar12[1];
+        uVar3 = *(undefined4 *)((longlong)plVar12 + 0xc);
+        *plVar12 = *plVar12 + 1;
+        *puVar11 = 1;
+        puVar11[1] = 1;
+        uVar6 = _UNK_142af1478;
+        puVar11[2] = _UNK_142af1470;
+        puVar11[3] = uVar6;
+        uVar9 = _UNK_142af148c;
+        uVar8 = _UNK_142af1488;
+        uVar7 = _UNK_142af1484;
+        *(undefined4 *)(puVar11 + 4) = _UNK_142af1480;
+        *(undefined4 *)((longlong)puVar11 + 0x24) = uVar7;
+        *(undefined4 *)(puVar11 + 5) = uVar8;
+        *(undefined4 *)((longlong)puVar11 + 0x2c) = uVar9;
+        *(int *)(puVar11 + 6) = (int)lVar4;
+        *(undefined4 *)((longlong)puVar11 + 0x34) = uVar2;
+        *(int *)(puVar11 + 7) = (int)lVar5;
+        *(undefined4 *)((longlong)puVar11 + 0x3c) = uVar3;
+        puVar13 = (undefined8 *)func_0x000140613c10(0x60,8);
+        if (puVar13 != (undefined8 *)0x0) {
+          *puVar13 = 1;
+          puVar13[1] = 1;
+          puVar13[2] = 0;
+          puVar13[4] = 0;
+          puVar13[6] = 0;
+          puVar13[7] = 4;
+          puVar13[8] = 0;
+          puVar13[9] = 0;
+          puVar13[10] = 4;
+          puVar13[0xb] = 0;
+          *(undefined8 *)(param_1 + 0x40) = 0;
+          *(undefined8 *)(param_1 + 0x30) = 0;
+          *(undefined8 *)(param_1 + 0x38) = 8;
+          *(undefined8 **)(param_1 + 0x48) = puVar11;
+          *(undefined8 **)(param_1 + 0x50) = puVar13;
+          return 1;
+        }
+        FUN_1428d9000(8,0x60);
+      }
+    }
+                    /* WARNING: Does not return */
+    pcVar1 = (code *)invalidInstructionException();
+    (*pcVar1)();
+  }
+  return 0;
+}
+

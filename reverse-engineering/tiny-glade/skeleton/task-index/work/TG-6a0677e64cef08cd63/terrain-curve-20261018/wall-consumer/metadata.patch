@@ -1,0 +1,11 @@
+--- a/games_test/tiny-glade/crates/country-core/src/resources/in_progress_curve.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/in_progress_curve.rs
+@@ -16,6 +16,8 @@
+     pub current_wall: WallId,
+     pub flags: u8,
+     pub final_curve: Option<Curve2>,
++    /// Live draw metadata; shares this curve and wall ID with existing snapping.
++    pub drawing: Option<crate::resources::walls::in_progress_wall::WallDrawingMetadata>,
+     point_weights: Vec<usize>,
+     raw_curve: Option<InputCurve>,
+     simplified: Option<Rdp<Vec2>>,

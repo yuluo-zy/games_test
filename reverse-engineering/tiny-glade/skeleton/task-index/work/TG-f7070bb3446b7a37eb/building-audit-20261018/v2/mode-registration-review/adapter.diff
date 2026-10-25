@@ -1,0 +1,118 @@
+--- root-before/crates/country-core/src/startup/run_game.rs
++++ root-current/crates/country-core/src/startup/run_game.rs
+@@ -72,6 +72,20 @@
+     S: crate::resources::audio_resources::Studio + Send + Sync + 'static,
+ {
+     initialize_core_resources(world);
++    let demo = world.resource::<GameConfig>().dev.demo;
++    crate::systems::mode_manager::configure_mode_manager::<crate::resources::history::EditType, ()>(
++        world,
++        update_schedule,
++        demo,
++    );
++    update_schedule.add_systems(
++        crate::systems::mode_manager::synchronize_mode_manager_ui_context
++            .after(crate::systems::backend::input::InputSystemSet::Derive)
++            .before(crate::systems::mode_manager::mode_manager::<
++                crate::resources::history::EditType,
++                (),
++            >),
++    );
+     register_startup_systems::<B>(startup_schedule);
+     register_session_systems(session_schedule);
+     register_update_systems::<B, S>(update_schedule);
+@@ -92,6 +106,16 @@
+     }
+     world.init_resource::<MetaCommander>();
+     world.init_resource::<GameConfig>();
++    // Reuse the UI's real constructor and projection. Preserve a host's live
++    // UI; the local CPU entry needs the same mode consumer as the full host.
++    if !world.contains_resource::<crate::systems::ui::resources::ui_state::UiState>() {
++        world.insert_resource(crate::systems::ui::resources::ui_state::UiState::at_startup());
++    }
++    let context = crate::systems::mode_manager::ModeManagerUiContext::from_ui_state(
++        world.resource::<crate::systems::ui::resources::ui_state::UiState>(),
++    );
++    world.insert_resource(context);
++    world.init_resource::<crate::resources::gui::TimeOfDayScreen>();
+     add_save_load_events_and_resources(world);
+     register_input_events(world);
+     register_history_events(world);
+--- root-before/crates/country-core/src/systems/terrain/mod.rs
++++ root-current/crates/country-core/src/systems/terrain/mod.rs
+@@ -6,11 +6,11 @@
+ pub mod edit_terrain_stroke;
+ pub mod replay_terrain;
+ pub mod terrain_hover_idx;
++#[cfg(test)]
++mod tests;
+ pub mod ui_draw_terrain;
+ pub mod ui_edit_terrain;
+ pub mod ui_terrain_focus_mode;
+-#[cfg(test)]
+-mod tests;
+ 
+ pub use crate::systems::render_loop::compute_passes::rasterize_terrain_stroke::RecalculateHeightMapCmd;
+ use bevy_ecs::prelude::*;
+@@ -38,7 +38,10 @@
+         height: f32,
+         magnitude: f32,
+     },
+-    CreateChunk { position: Vec3, height: f32 },
++    CreateChunk {
++        position: Vec3,
++        height: f32,
++    },
+     Removed {
+         position: Vec3,
+         falloff: f32,
+@@ -138,8 +141,14 @@
+     schedule.add_systems(
+         (
+             terrain_hover_idx::terrain_hover_idx,
+-            crate::systems::ui_edit_focus::ui_edit_focus_terrain,
+-            ui_terrain_focus_mode::ui_terrain_focus_mode,
++            crate::systems::ui_edit_focus::ui_edit_focus_terrain.before(
++                crate::systems::mode_manager::mode_manager::<
++                    crate::resources::history::EditType,
++                    S,
++                >,
++            ),
++            ui_terrain_focus_mode::ui_terrain_focus_mode
++                .after(crate::systems::mode_manager::send_mode_just_changed_event),
+             ui_draw_terrain::ui_draw_terrain,
+             ui_edit_terrain::ui_edit_terrain,
+         )
+@@ -160,6 +169,10 @@
+     schedule.configure_sets(
+         TerrainCpuStage::Changed.before(crate::systems::history::HistoryCpuStage::Pop),
+     );
++    schedule.configure_sets(
++        crate::systems::history::HistoryCpuStage::Cursor
++            .after(crate::systems::mode_manager::send_mode_just_changed_event),
++    );
+     schedule.add_systems(
+         deferred_terrain_history::history_record_terrain::<S>
+             .after(ui_edit_terrain::ui_edit_terrain)
+--- root-before/crates/country-core/tests/core_editing_schedule.rs
++++ root-current/crates/country-core/tests/core_editing_schedule.rs
+@@ -5,6 +5,7 @@
+ use country_core::systems::{
+     backend::input::add_input_cpu_consumers,
+     history::add_history_cpu_systems,
++    mode_manager::configure_mode_manager,
+     terrain::{add_terrain_cpu_systems, add_terrain_tool_systems},
+     wall::registration::add_wall_cpu_systems,
+ };
+@@ -13,6 +14,11 @@
+ fn registered_editing_stages_have_no_dependency_cycle() {
+     let mut world = World::new();
+     let mut schedule = Schedule::default();
++    configure_mode_manager::<country_core::resources::history::EditType, ()>(
++        &mut world,
++        &mut schedule,
++        false,
++    );
+     add_input_cpu_consumers(&mut schedule);
+     add_history_cpu_systems::<()>(&mut schedule);
+     add_terrain_cpu_systems(&mut schedule);

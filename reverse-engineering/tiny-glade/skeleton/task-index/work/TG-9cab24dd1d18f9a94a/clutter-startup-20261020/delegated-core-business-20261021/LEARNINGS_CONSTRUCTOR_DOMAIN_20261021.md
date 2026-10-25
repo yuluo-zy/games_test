@@ -1,0 +1,8 @@
+# canonical数值叶恢复经验补充
+
+- 相同方法名不保证原业务值域。通用稳健距离的f64补偿会让原f32平方下溢/上溢的构造器从Err变成功，后续取样/比较实际会走另一业务路径。必须绑定完整原单态、参数marker与Point类型，不一刀切回退通用API。
+- 恢复失败序需看Result构造/drop及真正track_caller。try方法R8是bool，crashy相同位置R8却是Location；不能拿寄存器低bit替bool。保现公开兼容参数，原业务call明确false，并让Rust传播真实caller位置。
+- 保留工程增强API时，可在原canonical构造器用默认兼容的编译期策略，仅已证类型组合启用；原有metric/normalize/method逐字hash可辅助独审验证边界，不能把一份私有producer算法当完成。
+- 浮点branch补集包含unordered。WallSpace的原JA返回与else减法，等价有序双<后else；写>=看似普通代数重排，会在NaN length时把原NaN改成有限值。必须从每个实际Jcc和比较operand方向推控制流，不能只抄伪代码。
+- 旧host测试的“稳健成功”若和原构造器相反，不应逼业务维持错误算法。保独立稳健slice断言，仅按原证改直接constructor预期，原beforeSHA/窄hunk配对根集成。
+- canonical全局要区分重定位引用slot和状态本体，14362c018只是指向14362c010的指针，不能各造一份bool。原初始化1不等于已证明运行期writer，现代AtomicBool排序同样不能从x86普通load单独声称原证。

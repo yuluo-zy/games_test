@@ -1,0 +1,290 @@
+--- a/tiny-glade/crates/country-core/src/systems/time_update.rs
++++ b/tiny-glade/crates/country-core/src/systems/time_update.rs
+@@ -3,7 +3,7 @@
+ 
+ use crate::{
+     resources::{
+-        game_clock::{ClockGate, DeltaSource},
++        game_clock::{ClockGate, DeltaSource, GameClockError},
+         gui::EscMenuState,
+         shader_refactoring_state::ShaderRefactoringState,
+         time::GameTime,
+@@ -15,18 +15,14 @@
+     elapsed: Res<bevy_time::Time>,
+     refactoring: Res<ShaderRefactoringState>,
+     menu: Res<EscMenuState>,
+-    mut replay: ResMut<InputRecordReplayState>,
++    replay: Res<InputRecordReplayState>,
+     mut game: ResMut<GameTime>,
+ ) {
+     let gate = ClockGate::from_menu(refactoring.disabled(), &menu, game.paused);
+-    let source = if let Some(frame) = replay.current_frame() {
+-        if let Err(error) = frame.validate() {
+-            replay.fail_current_frame(error);
+-            game.delta = 0.0;
+-            game.ticks_60 = 0;
+-            game.ran = false;
+-            return;
+-        }
++    // B 140922c61..c83 checks the replay index before reading +0xc8.
++    // Replay mode with no current frame is an invariant failure, not live time.
++    let source = if replay.mode == crate::input::InputRecordReplayMode::Replay {
++        let frame = replay.current_frame().expect("Out of bounds access");
+         DeltaSource::Replay {
+             frame_delta: frame.time_delta_seconds,
+         }
+@@ -37,15 +33,18 @@
+             nanos: delta.subsec_nanos(),
+         }
+     };
+-    // GameClock 保留原算法的写入顺序；先更新副本，避免错误留下半更新时钟。
+-    let mut next_clock = *game;
+-    match next_clock.update(gate, source) {
+-        Ok(()) => *game = next_clock,
+-        Err(error) => {
+-            replay.fail_current_frame(error);
+-            game.delta = 0.0;
+-            game.ticks_60 = 0;
+-            game.ran = false;
++    // B writes delta at 140922ca0/140922d7f, then converts and adds it.
++    // Invalid input/overflow panics before any later clock writes. Keep those
++    // effects on the actual resource; rolling back or zeroing it changes B.
++    if let Err(error) = game.update(gate, source) {
++        match error {
++            GameClockError::InvalidDelta if game.delta < 0.0 => {
++                panic!("cannot convert float seconds to Duration: value is negative");
++            }
++            GameClockError::InvalidDelta => {
++                panic!("cannot convert float seconds to Duration: value is either too big or NaN");
++            }
++            GameClockError::DurationOverflow => panic!("overflow when adding durations"),
+         }
+     }
+ }
+--- a/tiny-glade/crates/country-core/src/systems/backend/input/input_record_replay.rs
++++ b/tiny-glade/crates/country-core/src/systems/backend/input/input_record_replay.rs
+@@ -34,7 +34,6 @@
+     pub mode: InputRecordReplayMode,
+     next_frame_index: usize,
+     frame_applied: bool,
+-    input_suppressed_this_frame: bool,
+     release_capture_requested: bool,
+     /// 命令失败可供 UI 展示；错误不会清空正在进行的录制。
+     pub last_error: Option<String>,
+@@ -46,7 +45,6 @@
+             mode: InputRecordReplayMode::AutoRecordPanicRepro,
+             next_frame_index: 0,
+             frame_applied: false,
+-            input_suppressed_this_frame: false,
+             release_capture_requested: false,
+             last_error: None,
+         }
+@@ -80,15 +78,6 @@
+         if std::mem::take(&mut self.release_capture_requested) {
+             capture.restore_for_replay(None);
+         }
+-    }
+-    /// 时钟失败时终止回放，并屏蔽本帧已经采集到的实时动作。
+-    pub(crate) fn fail_current_frame(&mut self, error: impl std::fmt::Display) {
+-        self.stop();
+-        self.release_capture_requested = true;
+-        self.input_suppressed_this_frame = true;
+-        let message = error.to_string();
+-        log::error!("输入帧已停止：{message}");
+-        self.last_error = Some(message);
+     }
+     /// 先检查回退目标，再修改模式和资源；从不使用减一回绕的哨兵索引。
+     pub fn seek(
+@@ -135,9 +124,6 @@
+ /// an exclusive world entry keeps CursorCapturePolicy private to this module's
+ /// implementation while allowing the actual tiny-glade host to begin a frame.
+ pub fn begin_input_frame(world: &mut World) {
+-    world
+-        .resource_mut::<InputRecordReplayState>()
+-        .input_suppressed_this_frame = false;
+     *world.resource_mut::<CursorCapturePolicy>() = CursorCapturePolicy::Live;
+ }
+ 
+@@ -205,11 +191,6 @@
+     let (mut cursor, mut screen_cursor) = cursor_state;
+     replay.frame_applied = false;
+     replay.release_capture_if_requested(&mut capture);
+-    if replay.input_suppressed_this_frame {
+-        *actions = ActionSetStates::default();
+-        values.current = Default::default();
+-        return;
+-    }
+     match replay.mode {
+         InputRecordReplayMode::AutoRecordPanicRepro | InputRecordReplayMode::Records => {
+             let frame = InputFrame {
+--- a/tiny-glade/crates/country-core/tests/input_pipeline.rs
++++ b/tiny-glade/crates/country-core/tests/input_pipeline.rs
+@@ -422,55 +422,43 @@
+ }
+ 
+ #[test]
+-fn clock_overflow_stops_replay_without_partial_clock_or_live_action_leak() {
+-    let (mut world, mut schedule) = fixture();
+-    observe_frame(&mut world, &mut schedule);
++fn clock_overflow_panics_after_delta_write_without_advancing_other_fields() {
++    let (mut world, mut schedule) = fixture();
+     two_frame_recording(&mut world);
+     world.resource_mut::<GameTime>().elapsed = std::time::Duration::MAX;
+     let mut expected = *world.resource::<GameTime>();
+-    expected.delta = 0.0;
+-    expected.ticks_60 = 0;
+-    expected.ran = false;
+-    world.resource_mut::<MouseButtonInput>().press(0);
++    expected.delta = 0.1;
+     world.send_event(InputReplayCommand::Replay { rewind: 0 });
+-    schedule.run(&mut world);
+-    assert_eq!(world.resource::<ObservedFrame>().clock, expected);
+-    assert_eq!(
+-        *world.resource::<ActionSetStates>(),
+-        MainActionSet::default()
+-    );
++    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++        schedule.run(&mut world);
++    }));
++    assert!(result.is_err());
++    assert_eq!(*world.resource::<GameTime>(), expected);
+     let replay = world.resource::<InputRecordReplayState>();
+-    assert_eq!(replay.mode, InputRecordReplayMode::None);
++    assert_eq!(replay.mode, InputRecordReplayMode::Replay);
+     assert_eq!(replay.stream.frame_count(), 2);
+-    assert!(replay.last_error.as_ref().unwrap().contains("overflow"));
+-}
+-
+-#[test]
+-fn malformed_in_memory_replay_frame_is_stopped_before_consumption() {
+-    let (mut world, mut schedule) = fixture();
+-    two_frame_recording(&mut world);
+-    world
+-        .resource_mut::<InputRecordReplayState>()
+-        .stream
+-        .last_frame_mut()
+-        .unwrap()
+-        .time_delta_seconds = f32::MAX;
+-    world.send_event(InputReplayCommand::Replay { rewind: 0 });
+-    schedule.run(&mut world);
+-    let before = *world.resource::<GameTime>();
+-    schedule.run(&mut world);
+-    assert_eq!(world.resource::<GameTime>().elapsed, before.elapsed);
+-    assert_eq!(world.resource::<GameTime>().delta, 0.0);
+-    assert_eq!(
+-        *world.resource::<ActionSetStates>(),
+-        MainActionSet::default()
+-    );
+-    assert!(
+-        world
+-            .resource::<InputRecordReplayState>()
+-            .last_error
+-            .is_some()
+-    );
++    assert!(replay.last_error.is_none());
++}
++
++#[test]
++fn malformed_in_memory_replay_time_panics_after_publishing_the_bad_delta() {
++    for bad in [-1.0, f32::MAX, f32::NAN] {
++        let (mut world, mut schedule) = fixture();
++        two_frame_recording(&mut world);
++        world.resource_mut::<InputRecordReplayState>()
++            .stream.last_frame_mut().unwrap().time_delta_seconds = bad;
++        world.send_event(InputReplayCommand::Replay { rewind: 0 });
++        schedule.run(&mut world);
++        let before = *world.resource::<GameTime>();
++        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++            schedule.run(&mut world);
++        }));
++        assert!(result.is_err());
++        let after = *world.resource::<GameTime>();
++        assert_eq!(after.delta.to_bits(), bad.to_bits());
++        assert_eq!(GameTime { delta: before.delta, ..after }, before);
++        assert_eq!(world.resource::<InputRecordReplayState>().mode, InputRecordReplayMode::Replay);
++    }
+ }
+ 
+ #[test]
+@@ -635,24 +623,14 @@
+ }
+ 
+ #[test]
+-fn stop_and_invalid_frame_release_capture_and_allow_future_live_requests() {
++fn stop_releases_capture_and_allows_future_live_requests() {
+     use country_core::resources::mouse_capture::CursorCaptureCmd;
+-    for invalid_frame in [false, true] {
++    {
+         let (mut world, mut schedule) = fixture();
+         captured_recording(&mut world, &mut schedule);
+         schedule.run(&mut world);
+         capture_commands(&mut world);
+-        if invalid_frame {
+-            world
+-                .resource_mut::<InputRecordReplayState>()
+-                .stream
+-                .last_frame_mut()
+-                .unwrap()
+-                .time_delta_seconds = f32::NAN;
+-            schedule.run(&mut world);
+-        } else {
+-            world.send_event(InputReplayCommand::Stop);
+-        }
++        world.send_event(InputReplayCommand::Stop);
+         world.send_event(CursorCaptureCmd(false));
+         schedule.run(&mut world);
+         assert_capture_released(&mut world);
+--- a/tiny-glade/crates/tiny-glade/src/game_loop.rs
++++ b/tiny-glade/crates/tiny-glade/src/game_loop.rs
+@@ -62,6 +62,12 @@
+     } else {
+         RenderMode::LoadingScreen
+     }
++}
++
++/// B 1404ddf28..3c: absent DebugGui has the default-input behavior.
++pub fn frame_egui_input_enabled(world: &World) -> bool {
++    world.get_resource::<country_core::resources::gui::DebugGui>()
++        .is_some_and(|debug| debug.enabled || debug.experimental_window)
+ }
+ 
+ fn apply_menu_fps_limit(fps: f32, menu_limits: bool, profiling: bool) -> f32 {
+@@ -696,7 +702,14 @@
+         {
+             return Ok(false);
+         }
+-        let input = self.egui_io.take_egui_input(&self.window);
++        // B 1404ddf28..3c: real OS egui input is consumed only while the
++        // debug or experimental window is active. Other frames still begin
++        // and end egui with RawInput::default (1404ddf49 -> 140c2c770).
++        let input = if frame_egui_input_enabled(self.driver.app.world()) {
++            self.egui_io.take_egui_input(&self.window)
++        } else {
++            egui::RawInput::default()
++        };
+         let egui_io = &self.egui_io;
+         let window = &self.window;
+         self.driver
+@@ -922,6 +935,22 @@
+     }
+ 
+     #[test]
++    fn debug_window_flags_choose_actual_os_egui_input() {
++        use country_core::resources::gui::DebugGui;
++        let mut world = World::new();
++        assert!(!frame_egui_input_enabled(&world));
++        world.insert_resource(DebugGui::default());
++        assert!(!frame_egui_input_enabled(&world));
++        world.resource_mut::<DebugGui>().enabled = true;
++        assert!(frame_egui_input_enabled(&world));
++        world.resource_mut::<DebugGui>().enabled = false;
++        world.resource_mut::<DebugGui>().experimental_window = true;
++        assert!(frame_egui_input_enabled(&world));
++        world.resource_mut::<DebugGui>().experimental_window = false;
++        assert!(!frame_egui_input_enabled(&world));
++    }
++
++    #[test]
+     fn camera_resource_presence_selects_the_native_frame_mode() {
+         let mut world = World::new();
+         assert_eq!(frame_render_mode(&world), RenderMode::LoadingScreen);

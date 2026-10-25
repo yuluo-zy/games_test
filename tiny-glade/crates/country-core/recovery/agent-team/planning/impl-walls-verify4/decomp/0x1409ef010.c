@@ -1,0 +1,105 @@
+
+// WARNING: Globals starting with '_' overlap smaller symbols at the same address
+
+void __cdecl
+country_core::systems::wall::shapes::utils::shape_signifier_lerp::ShapeVal::interpolate(void)
+
+{
+  undefined4 extraout_EAX;
+  uint uVar1;
+  undefined4 uVar2;
+  undefined4 *in_RCX;
+  longlong lVar3;
+  byte *in_RDX;
+  byte *in_R8;
+  int iVar4;
+  int iVar5;
+  float fVar6;
+  float fVar7;
+  float fVar8;
+  float fVar9;
+  float in_XMM3_Da;
+  undefined4 in_XMM3_Dc;
+  undefined1 auVar10 [16];
+  float fVar11;
+  float fVar12;
+  undefined1 auVar13 [16];
+  undefined1 auVar14 [16];
+  undefined1 auVar15 [16];
+  
+  if ((*in_RDX & 1) == 0) {
+    if ((*in_R8 & 1) != 0) goto LAB_1409ef1f5;
+    fVar7 = *(float *)(in_RDX + 4);
+    fVar6 = *(float *)(in_R8 + 4);
+    fVar8 = expf(in_XMM3_Da * -20.0);
+    fVar6 = fVar6 - fVar7;
+    fVar9 = (1.0 - fVar8) * fVar6;
+    fVar12 = in_XMM3_Da + in_XMM3_Da;
+    fVar11 = ABS(fVar6);
+    fVar8 = fVar11;
+    if (fVar12 <= fVar11) {
+      fVar8 = fVar12;
+    }
+    fVar6 = (float)(-(uint)NAN(fVar6) & 0x7fc00000 |
+                   ~-(uint)NAN(fVar6) &
+                   ((uint)fVar6 & 0x80000000 | (uint)__xmm_3f8000003f8000003f8000003f800000)) *
+            (float)(~-(uint)NAN(fVar12) & (uint)fVar8 | -(uint)NAN(fVar12) & (uint)fVar11);
+    uVar1 = -(uint)(ABS(fVar6) < ABS(fVar9));
+    fVar7 = (float)(uVar1 & (uint)fVar9 | ~uVar1 & (uint)fVar6) + fVar7;
+    uVar2 = 0;
+    lVar3 = 4;
+  }
+  else {
+    if ((*in_R8 & 1) == 0) {
+LAB_1409ef1f5:
+                    // WARNING: Subroutine does not return
+      core::panicking::panic();
+    }
+    fVar6 = expf(in_XMM3_Da * -20.0);
+    auVar13._0_4_ = in_XMM3_Da + in_XMM3_Da;
+    fVar9 = (float)*(undefined8 *)(in_RDX + 4);
+    fVar11 = (float)*(undefined8 *)(in_R8 + 4) - fVar9;
+    fVar7 = (float)((ulonglong)*(undefined8 *)(in_RDX + 4) >> 0x20);
+    fVar12 = (float)((ulonglong)*(undefined8 *)(in_R8 + 4) >> 0x20) - fVar7;
+    fVar8 = (1.0 - fVar6) * fVar11;
+    fVar6 = (1.0 - fVar6) * fVar12;
+    auVar13._4_4_ = auVar13._0_4_;
+    auVar13._8_4_ = in_XMM3_Dc;
+    auVar13._12_4_ = in_XMM3_Dc;
+    auVar14._8_8_ = 0;
+    auVar14._0_8_ = CONCAT44(fVar12,fVar11) & 0x7fffffff7fffffff;
+    auVar15 = minps(auVar14,auVar13);
+    fVar11 = (float)(-(uint)NAN(fVar11) & 0x7fc00000 |
+                    ~-(uint)NAN(fVar11) & ((uint)fVar11 & 0x80000000 | 0x3f800000)) *
+             (float)(~-(uint)NAN(auVar13._0_4_) & auVar15._0_4_ |
+                    (uint)ABS(fVar11) & -(uint)NAN(auVar13._0_4_));
+    fVar12 = (float)(-(uint)NAN(fVar12) & 0x7fc00000 |
+                    ~-(uint)NAN(fVar12) & ((uint)fVar12 & 0x80000000 | 0x3f800000)) *
+             (float)(~-(uint)NAN(auVar13._0_4_) & auVar15._4_4_ |
+                    (uint)ABS(fVar12) & -(uint)NAN(auVar13._0_4_));
+    iVar4 = -(uint)(ABS(fVar11) < ABS(fVar8));
+    iVar5 = -(uint)(ABS(fVar12) < ABS(fVar6));
+    auVar10._4_4_ = iVar5;
+    auVar10._0_4_ = iVar4;
+    auVar10._8_4_ = iVar5;
+    auVar10._12_4_ = iVar5;
+    auVar15._8_8_ = auVar10._8_8_;
+    auVar15._4_4_ = iVar4;
+    auVar15._0_4_ = iVar4;
+    uVar1 = movmskpd(extraout_EAX,auVar15);
+    if ((uVar1 & 1) == 0) {
+      fVar8 = fVar11;
+    }
+    if ((uVar1 & 2) == 0) {
+      fVar6 = fVar12;
+    }
+    fVar7 = fVar7 + fVar6;
+    in_RCX[1] = fVar8 + fVar9;
+    uVar2 = 1;
+    lVar3 = 8;
+  }
+  *(float *)((longlong)in_RCX + lVar3) = fVar7;
+  *in_RCX = uVar2;
+  return;
+}
+

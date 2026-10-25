@@ -1,0 +1,128 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/wall/ui_draw_wall.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/wall/ui_draw_wall.rs
+@@ -108,6 +108,9 @@
+                     .culling
+                     .allowed_ids
+                     .extend(terrain.decorators().keys().copied());
++            } else {
++                // Original archive_current records an empty before bucket too.
++                archivist.archive_storage_decorators(1, &Default::default(), None);
+             }
+             nursery.points.clear();
+             nursery.kind = u8::from(fence);
+@@ -590,4 +593,62 @@
+             }
+         }
+     }
++    #[test]
++    fn empty_terrain_before_is_archived_once_and_survives_later_bucket_creation() {
++        use crate::resources::walls::{
++            decorator::{DecoratorId, DecoratorInfo},
++            decorator_storage::Decorators,
++        };
++        let mut world = World::new();
++        world.insert_resource(AppMode::Wall(WallShape::Freeform));
++        world.insert_resource(CursorTerrainRaycast::default());
++        world.insert_resource(GladeBorder(BorderShape::Circle(Circle2d::new(
++            Vec2::ZERO,
++            10.0,
++        ))));
++        world.insert_resource(UiState::new(UiInteraction {
++            native_tag: 2,
++            native_phase: 3,
++            widget: WidgetId::clearing_canvas("wall"),
++        }));
++        world.init_resource::<WallDrawState>();
++        world.init_resource::<CurveNursery>();
++        world.init_resource::<InProgressCurve>();
++        world.init_resource::<SuppressContinueWall>();
++        world.init_resource::<LiveDecoratorArchivist>();
++        world.init_resource::<DecoratorStorage>();
++        world.init_resource::<Events<RecordMouseInputIntoWall>>();
++        world.init_resource::<Events<FinishWall>>();
++        world.init_resource::<Events<DebugHistoryMsg>>();
++        world.init_resource::<Events<WallBendAudioParamReset>>();
++        world.init_resource::<Events<DisplayOutOfBorder>>();
++        world.init_resource::<Events<FeedbackInputOutOfBorder>>();
++        world.init_resource::<Events<HideTreesNextToWallCmd>>();
++        assert!(
++            world
++                .resource::<UiState>()
++                .clearing_canvas_params(WidgetId::clearing_canvas("wall"))
++                .is_none()
++        );
++        let mut schedule = Schedule::default();
++        schedule.add_systems(ui_draw_wall);
++        schedule.run(&mut world);
++        assert!(world.resource::<DecoratorStorage>().terrain.is_none());
++        let archive = world.resource::<LiveDecoratorArchivist>();
++        let before = archive
++            .special1
++            .as_ref()
++            .expect("empty terrain before must be Some");
++        assert!(before.items.is_empty() && before.removed.is_empty() && before.added.is_empty());
++        assert!(archive.culling.allowed_ids.is_empty());
++        let mut terrain = Decorators::default();
++        terrain.insert(DecoratorId(17), DecoratorInfo::default());
++        world.resource_mut::<DecoratorStorage>().terrain = Some(terrain);
++        schedule.run(&mut world); // phase3 attempts archive again
++        let archive = world.resource::<LiveDecoratorArchivist>();
++        let before = archive.special1.as_ref().unwrap();
++        assert!(before.items.is_empty() && before.removed.is_empty() && before.added.is_empty());
++        // Only cull permission reads today's real bucket on the second call.
++        assert!(archive.culling.allowed_ids.contains(&17));
++    }
+ }
+--- a/games_test/tiny-glade/crates/country-core/src/systems/wall/ui_continue_wall.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/wall/ui_continue_wall.rs
+@@ -195,6 +195,9 @@
+                                     .culling
+                                     .allowed_ids
+                                     .extend(terrain.decorators().keys().copied());
++                            } else {
++                                // Original archive_current records an empty before bucket too.
++                                archivist.archive_storage_decorators(1, &Default::default(), None);
+                             }
+                         }
+                         let position = if cursor.tag & 1 != 0 {
+@@ -746,4 +749,40 @@
+             }
+         }
+     }
++    #[test]
++    fn empty_terrain_before_is_archived_once_and_survives_later_bucket_creation() {
++        use crate::resources::walls::{
++            decorator::{DecoratorId, DecoratorInfo},
++            decorator_storage::Decorators,
++        };
++        let (mut world, wall) = endpoint_world(false);
++        let mut schedule = Schedule::default();
++        schedule.add_systems(ui_continue_wall);
++        endpoint_frame(&mut world, &mut schedule, wall, false, 3, Vec3::X);
++        assert!(
++            world
++                .resource::<LiveDecoratorArchivist>()
++                .special1
++                .is_none()
++        );
++        endpoint_frame(&mut world, &mut schedule, wall, false, 4, Vec3::X);
++        assert!(world.resource::<DecoratorStorage>().terrain.is_none());
++        let archive = world.resource::<LiveDecoratorArchivist>();
++        let before = archive
++            .special1
++            .as_ref()
++            .expect("empty terrain before must be Some");
++        assert!(before.items.is_empty() && before.removed.is_empty() && before.added.is_empty());
++        assert!(archive.culling.allowed_ids.is_empty());
++        let mut terrain = Decorators::default();
++        terrain.insert(DecoratorId(17), DecoratorInfo::default());
++        world.resource_mut::<DecoratorStorage>().terrain = Some(terrain);
++        world.resource_mut::<WallContinueState>().state = 1;
++        endpoint_frame(&mut world, &mut schedule, wall, false, 4, Vec3::X);
++        let archive = world.resource::<LiveDecoratorArchivist>();
++        let before = archive.special1.as_ref().unwrap();
++        assert!(before.items.is_empty() && before.removed.is_empty() && before.added.is_empty());
++        // Only cull permission reads today's real bucket on the second call.
++        assert!(archive.culling.allowed_ids.contains(&17));
++    }
+ }

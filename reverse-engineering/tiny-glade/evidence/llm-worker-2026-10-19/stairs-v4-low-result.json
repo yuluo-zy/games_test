@@ -1,0 +1,401 @@
+{
+  "id": "B-replay-stairs-v4-low",
+  "input_sha256": "3a61a05931b2ef4443e2707e236b3c72a5c5af3d932131d26ffee6c5ec034a1c",
+  "prompt_sha256": "5c66b1acd11c82c31604b80c6412cf264e05c1a53e811b8e8837139c7ba0ed55",
+  "packet_sha256": "6ad2146b88b68b736c479aef9009d1396fd2086777c7617793b6e255dec76624",
+  "model": "deepseek-ai/DeepSeek-V4.1-Flash",
+  "endpoint_origin": "https://it-litellm.espressif.cn",
+  "request_options": {
+    "max_tokens": 18000,
+    "thinking": "template-low"
+  },
+  "elapsed_seconds": 84.391,
+  "finish_reason": "stop",
+  "usage": {
+    "completion_tokens": 11471,
+    "prompt_tokens": 15943,
+    "total_tokens": 27414,
+    "completion_tokens_details": {
+      "reasoning_tokens": 7312
+    }
+  },
+  "accepted_transport": true,
+  "semantically_verified": false,
+  "validation_errors": [],
+  "analysis": {
+    "summary": "Decompiled replay_stairs walks fixed-stride records, schedules commands, collects indices, reverses them, removes records by tail compaction, and drops per-tag payloads. Early return occurs when puVar33[3] is zero; a param1 write precedes it. Two separate lookups supply distinct payload fields.",
+    "observations": [
+      {
+        "id": "O1",
+        "claim": "Observed: before the early-return test, the function writes *(u32*)param_1[2] from offset 0x1c of param_1 and reads a float from puVar33+5.",
+        "refs": [
+          "D1:L114-L119"
+        ]
+      },
+      {
+        "id": "O2",
+        "claim": "Observed: the outer record walk advances by 0x30 and processes only records whose first byte is '\\n'; non-'\\n' records are skipped without collection or output.",
+        "refs": [
+          "D1:L176-L184",
+          "D1:L499-L518"
+        ]
+      },
+      {
+        "id": "O3",
+        "claim": "Observed: two distinct lookups exist: FUN_140a1c930(uVar6, cmd+4) produces puVar31 payload, while FUN_1405b0ed0(plVar24,&uStack_a0) probes a table and produces separate uStack_a0/uStack_fd fields.",
+        "refs": [
+          "D1:L196-L205",
+          "D1:L218-L280",
+          "D1:L313-L324"
+        ]
+      },
+      {
+        "id": "O4",
+        "claim": "Inferred: collected indices are reversed in place, then used high-to-low so each tail memmove preserves lower unprocessed indices.",
+        "refs": [
+          "D1:L521-L565",
+          "D1:L567-L601"
+        ]
+      }
+    ],
+    "branch_matrix": [
+      {
+        "condition": "puVar33[3] == 0 at L118",
+        "effect": "return immediately after the preceding param1[2] write; no collection/removal/output.",
+        "refs": [
+          "D1:L114-L120"
+        ]
+      },
+      {
+        "condition": "record first byte != '\\n' at L183",
+        "effect": "advance to next 0x30 record; no index collection and no output record write.",
+        "refs": [
+          "D1:L181-L183",
+          "D1:L499-L518"
+        ]
+      },
+      {
+        "condition": "record first byte == '\\n' and (byte[record+8] & 1) == 0 at L184",
+        "effect": "enter first processing path; collect index at L190, then select 77bd or 782f by nested flag at L192.",
+        "refs": [
+          "D1:L183-L193"
+        ]
+      },
+      {
+        "condition": "record first byte == '\\n' and (byte[record+8] & 1) != 0 at L184",
+        "effect": "enter second processing path; compute ratio, possibly continue, otherwise collect index and possibly add time before selecting target.",
+        "refs": [
+          "D1:L183-L184",
+          "D1:L335-L354"
+        ]
+      },
+      {
+        "condition": "ratio = *(float*)(record+0xc)/fVar3; ratio <= fVar22 at L337",
+        "effect": "set fVar17 = fVar22; otherwise leave fVar17 as ratio (including unordered/NaN case).",
+        "refs": [
+          "D1:L336-L339"
+        ]
+      },
+      {
+        "condition": "*(float*)(record+0x18) <= fVar17 ordered at L340",
+        "effect": "add *(float*)(lVar34+0x28) to record+0x18 and continue outer loop without collecting or emitting.",
+        "refs": [
+          "D1:L340-L343"
+        ]
+      },
+      {
+        "condition": "!(*(float*)(record+0x18) <= fVar17), including unordered, at L340",
+        "effect": "collect index, add *(float*)(lVar34+0x28) to record+0x18, then branch on nested flag at L353.",
+        "refs": [
+          "D1:L340-L351"
+        ]
+      },
+      {
+        "condition": "nested flag (*(byte*)(*(record+0x10)+0x10) & 1) == 0 at L192 in first processing path",
+        "effect": "goto 77bd; final tag uses cmd[0x1c]+0x11 and helper dispatch uses cmd[0x1c]==0 selector.",
+        "refs": [
+          "D1:L192-L193",
+          "D1:L355-L376"
+        ]
+      },
+      {
+        "condition": "nested flag at L192 != 0 in first processing path",
+        "effect": "fall through to 782f; final tag uses (0x12-cmd[0x1c])+0x11 and helper dispatch is reversed vs 77bd.",
+        "refs": [
+          "D1:L192-L214",
+          "D1:L215",
+          "D1:L497"
+        ]
+      },
+      {
+        "condition": "nested flag at L353 != 0 in second processing path",
+        "effect": "goto 782f after L350 index store and L351 time add.",
+        "refs": [
+          "D1:L350-L354"
+        ]
+      },
+      {
+        "condition": "nested flag at L353 == 0 in second processing path",
+        "effect": "fall through to 77bd after L350 index store and L351 time add.",
+        "refs": [
+          "D1:L350-L355"
+        ]
+      },
+      {
+        "condition": "77bd path: cmd[0x1c] == 0 at L369",
+        "effect": "call FUN_1402c8640(lStack_e8, cmd+4, cmd+8); final record tag = cmd[0x1c] + 0x11.",
+        "refs": [
+          "D1:L367-L370",
+          "D1:L497"
+        ]
+      },
+      {
+        "condition": "77bd path: cmd[0x1c] != 0 at L369",
+        "effect": "call FUN_1405b1be0 then FUN_140b76ce0(&uStack_118,lStack_e8,uVar27); final record tag = cmd[0x1c] + 0x11.",
+        "refs": [
+          "D1:L367-L374",
+          "D1:L497"
+        ]
+      },
+      {
+        "condition": "782f path: cmd[0x1c] == 0 at L208",
+        "effect": "call FUN_1405b1be0 then FUN_140b76ce0; final record tag = (0x12-cmd[0x1c]) + 0x11.",
+        "refs": [
+          "D1:L206-L210",
+          "D1:L215",
+          "D1:L497"
+        ]
+      },
+      {
+        "condition": "782f path: cmd[0x1c] != 0 at L208",
+        "effect": "call FUN_1402c8640(lStack_e8, cmd+4, cmd+8); final record tag = (0x12-cmd[0x1c]) + 0x11.",
+        "refs": [
+          "D1:L206-L214",
+          "D1:L215",
+          "D1:L497"
+        ]
+      },
+      {
+        "condition": "FUN_140a1c930(uVar6, cmd+4) returns 0, or returned byte check at +0x41 makes puVar31 null",
+        "effect": "uVar67/uVar68 payload become zero; otherwise copied from *puVar31 low/high 32 bits.",
+        "refs": [
+          "D1:L196-L205",
+          "D1:L317-L324",
+          "D1:L479-L486"
+        ]
+      },
+      {
+        "condition": "plStack_b0[3] == 0 before second lookup",
+        "effect": "skip probing; uStack_a0/uStack_98/uStack_fd become zero via L313-L315.",
+        "refs": [
+          "D1:L218",
+          "D1:L313-L315"
+        ]
+      },
+      {
+        "condition": "second lookup probe finds key (int at base+idx*-0x40 == iVar4)",
+        "effect": "load separate uStack_a0 and uStack_fd from found entry and join record assembly.",
+        "refs": [
+          "D1:L270-L276",
+          "D1:L431-L437"
+        ]
+      },
+      {
+        "condition": "second lookup probe exhausts candidates without key match",
+        "effect": "uStack_a0=0, uStack_98=0, uStack_fd=uStack_98 before record assembly.",
+        "refs": [
+          "D1:L281-L315",
+          "D1:L442-L476"
+        ]
+      },
+      {
+        "condition": "removal index uVar41 >= *(uVar28 at lVar25+0x10)",
+        "effect": "panic path through FUN_1428d90e9 then invalidInstructionException; no normal removal for that index.",
+        "refs": [
+          "D1:L573-L580"
+        ]
+      },
+      {
+        "condition": "removal index uVar41 < current count",
+        "effect": "load 0x30 record, memmove tail down by one record, decrement count, then switch on removed tag for drop.",
+        "refs": [
+          "D1:L581-L602"
+        ]
+      },
+      {
+        "condition": "removed record tag byte uStack_118 selects switch case 0..9 or default",
+        "effect": "cases 0,1,2,5,6,7,8,9,default use atomic decrement and conditional destructor call; case 3 uses alternate pointer/FUN_140b5c2a0; case 4 calls FUN_140891eb0.",
+        "refs": [
+          "D1:L602-L695"
+        ]
+      }
+    ],
+    "side_effects": [
+      {
+        "order": 1,
+        "effect": "Write *(u32*)param_1[2] = *(u32*)((longlong)param_1+0x1c); load fVar3 from puVar33+5. If puVar33[3]==0, return before any later phases.",
+        "refs": [
+          "D1:L114-L120"
+        ]
+      },
+      {
+        "order": 2,
+        "effect": "For each processed '\\n' record, append record index uVar38 into temp buffer at puStack_c8[uVar28]; if count==capacity call FUN_140b81df0(&uStack_d0,&UNK_...).",
+        "refs": [
+          "D1:L187-L190",
+          "D1:L347-L350"
+        ]
+      },
+      {
+        "order": 3,
+        "effect": "For +8 flag != 0 path, if ordered record+0x18 <= scheduled fVar17, add *(float*)(lVar34+0x28) to record+0x18 and continue without emitting.",
+        "refs": [
+          "D1:L336-L343"
+        ]
+      },
+      {
+        "order": 4,
+        "effect": "For emitted records, call helper(s) according to cmd[0x1c] and target 77bd/782f. Final record tag formulas: 77bd -> cmd[0x1c]+0x11; 782f -> (0x12-cmd[0x1c])+0x11. Add time at L351 only in the +8 flag !=0 emitted path.",
+        "refs": [
+          "D1:L206-L215",
+          "D1:L350-L374",
+          "D1:L497"
+        ]
+      },
+      {
+        "order": 5,
+        "effect": "First lookup FUN_140a1c930(uVar6, cmd+4) supplies puVar31 payload or null; separately second lookup FUN_1405b0ed0(plVar24,&uStack_a0) probes table and supplies uStack_a0/uStack_fd only when found, else zeros.",
+        "refs": [
+          "D1:L196-L205",
+          "D1:L218-L280",
+          "D1:L313-L327"
+        ]
+      },
+      {
+        "order": 6,
+        "effect": "Write output record at base lVar8+0x28, index lVar35, stride 0x38: +0=*(lVar8+0x40); +8=final tag; +9..+0x27 assembled stack bytes; +0x28=CONCAT44(uVar67,uVar68) where zero if puVar31 null; +0x30=1. Then increment lVar8+0x30 and lVar8+0x40.",
+        "refs": [
+          "D1:L328-L333",
+          "D1:L489-L516"
+        ]
+      },
+      {
+        "order": 7,
+        "effect": "If collected count >1, reverse index array in place by swapping halves; no comparison sort observed.",
+        "refs": [
+          "D1:L521-L565"
+        ]
+      },
+      {
+        "order": 8,
+        "effect": "Iterate reversed indices; bounds-check each, copy out 0x30 record, call func_0x142923c10(lVar37+lVar34, lVar37+lVar34+0x30, (~uVar41+uVar28)*0x30), then write *(lVar25+0x10)=uVar28-1.",
+        "refs": [
+          "D1:L567-L601"
+        ]
+      },
+      {
+        "order": 9,
+        "effect": "Per removed record byte, switch drops payload variants; then if plStack_b0 != 0 call func_0x140613c20(puStack_b8, plStack_b0<<3, 8) to release temp buffer.",
+        "refs": [
+          "D1:L602-L700"
+        ]
+      }
+    ],
+    "dependency_reuse": [
+      {
+        "operation": "Temp index buffer growth helper FUN_140b81df0",
+        "game_policy_to_preserve": "Inferred: preserve call placement and length/capacity pair when count equals capacity; do not rebuild a replacement index container.",
+        "refs": [
+          "D1:L187-L190",
+          "D1:L347-L350",
+          "D1:L521-L569"
+        ]
+      },
+      {
+        "operation": "Output record vector growth helper FUN_1406319d0",
+        "game_policy_to_preserve": "Inferred: preserve length-vs-capacity test at lVar8+0x30/+0x20 and call before record assembly; do not reimplement vector growth.",
+        "refs": [
+          "D1:L328-L333",
+          "D1:L490-L495"
+        ]
+      },
+      {
+        "operation": "Removal tail compaction and per-tag drop",
+        "game_policy_to_preserve": "Observed: memmove via func_0x142923c10 and switch-based drops are game-owned ordering; preserve index order, count decrement, atomic decrements and conditional destructor calls.",
+        "refs": [
+          "D1:L600-L695"
+        ]
+      }
+    ],
+    "unknowns": [
+      {
+        "question": "What are the exact types and meanings of param_1..param_6 and offsets puVar33[3], lVar8+0x30, lVar8+0x40?",
+        "needed_evidence": "Caller decompilation and retained type/PDB information for replay_stairs parameters.",
+        "refs": [
+          "D1:L114-L141",
+          "D1:L499-L516"
+        ]
+      },
+      {
+        "question": "What do FUN_1405b1be0, FUN_1402c8640, and FUN_140b76ce0 do, and is uStack_118 an output event discriminant or another byte tag?",
+        "needed_evidence": "Disassembly/type evidence for those callees and the written record layout.",
+        "refs": [
+          "D1:L206-L214",
+          "D1:L367-L374",
+          "D1:L503-L514"
+        ]
+      },
+      {
+        "question": "What are the exact key/value layout and semantics of FUN_1405b0ed0 and FUN_140a1c930 lookups?",
+        "needed_evidence": "Callee disassembly or type information covering the two probes and their result fields.",
+        "refs": [
+          "D1:L196-L205",
+          "D1:L218-L280",
+          "D1:L379-L441"
+        ]
+      },
+      {
+        "question": "Are the XMM equality-flag computations at L142-L169 real inputs or decompiler artifacts?",
+        "needed_evidence": "Instruction-level review around the original bytes preceding L142.",
+        "refs": [
+          "D1:L142-L169"
+        ]
+      },
+      {
+        "question": "What are drop-variant tags 0..9 and the refcount target semantics in the removal switch?",
+        "needed_evidence": "Callee/type evidence for FUN_140891eb0, FUN_140b5c2a0, FUN_140b5cfc0 and related drop functions.",
+        "refs": [
+          "D1:L602-L695"
+        ]
+      }
+    ],
+    "integration_checks": [
+      "Verify the param1[2] write at L116 still occurs even when puVar33[3]==0 causes the L119 return.",
+      "Verify both record+8 bit0 paths are retained and that the nested +0x10->+0x10 bit selects 77bd vs 782f with the correct time-add placement.",
+      "Verify final record tag formulas are exactly cmd[0x1c]+0x11 for 77bd and (0x12-cmd[0x1c])+0x11 for 782f.",
+      "Verify the first lookup payload and second lookup payload remain separate when constructing the output record, and removal uses reversed collected indices with tail memmove and per-tag drop."
+    ],
+    "independent_followups": [
+      {
+        "task": "Resolve helper contracts and result layouts for FUN_140a1c930 and FUN_1405b0ed0.",
+        "input_needed": "Callee disassembly at both addresses plus any retained PDB type information.",
+        "output_contract": "Field-by-field mapping of return value/null checks, table key compare, and loaded payload bytes at the two lookup sites.",
+        "depends_on": [
+          "D1:L196-L280",
+          "D1:L379-L441"
+        ]
+      },
+      {
+        "task": "Resolve caller parameter types and record/container layouts for param_1..param_6.",
+        "input_needed": "Caller decompilation of the call site to 0x140af75b0 and retained type/PDB evidence.",
+        "output_contract": "Mappings for puVar33[3], lVar8+0x30, lVar8+0x40, lVar25+0x10, and record offsets 0x0/0x8/0xc/0x10/0x18/0x1c.",
+        "depends_on": [
+          "S1:L4",
+          "D1:L114-L141",
+          "D1:L499-L516"
+        ]
+      }
+    ]
+  },
+  "content": "{\n  \"summary\": \"Decompiled replay_stairs walks fixed-stride records, schedules commands, collects indices, reverses them, removes records by tail compaction, and drops per-tag payloads. Early return occurs when puVar33[3] is zero; a param1 write precedes it. Two separate lookups supply distinct payload fields.\",\n  \"observations\": [\n    {\n      \"id\": \"O1\",\n      \"claim\": \"Observed: before the early-return test, the function writes *(u32*)param_1[2] from offset 0x1c of param_1 and reads a float from puVar33+5.\",\n      \"refs\": [\"D1:L114-L119\"]\n    },\n    {\n      \"id\": \"O2\",\n      \"claim\": \"Observed: the outer record walk advances by 0x30 and processes only records whose first byte is '\\\\n'; non-'\\\\n' records are skipped without collection or output.\",\n      \"refs\": [\"D1:L176-L184\",\"D1:L499-L518\"]\n    },\n    {\n      \"id\": \"O3\",\n      \"claim\": \"Observed: two distinct lookups exist: FUN_140a1c930(uVar6, cmd+4) produces puVar31 payload, while FUN_1405b0ed0(plVar24,&uStack_a0) probes a table and produces separate uStack_a0/uStack_fd fields.\",\n      \"refs\": [\"D1:L196-L205\",\"D1:L218-L280\",\"D1:L313-L324\"]\n    },\n    {\n      \"id\": \"O4\",\n      \"claim\": \"Inferred: collected indices are reversed in place, then used high-to-low so each tail memmove preserves lower unprocessed indices.\",\n      \"refs\": [\"D1:L521-L565\",\"D1:L567-L601\"]\n    }\n  ],\n  \"branch_matrix\": [\n    {\n      \"condition\": \"puVar33[3] == 0 at L118\",\n      \"effect\": \"return immediately after the preceding param1[2] write; no collection/removal/output.\",\n      \"refs\": [\"D1:L114-L120\"]\n    },\n    {\n      \"condition\": \"record first byte != '\\\\n' at L183\",\n      \"effect\": \"advance to next 0x30 record; no index collection and no output record write.\",\n      \"refs\": [\"D1:L181-L183\",\"D1:L499-L518\"]\n    },\n    {\n      \"condition\": \"record first byte == '\\\\n' and (byte[record+8] & 1) == 0 at L184\",\n      \"effect\": \"enter first processing path; collect index at L190, then select 77bd or 782f by nested flag at L192.\",\n      \"refs\": [\"D1:L183-L193\"]\n    },\n    {\n      \"condition\": \"record first byte == '\\\\n' and (byte[record+8] & 1) != 0 at L184\",\n      \"effect\": \"enter second processing path; compute ratio, possibly continue, otherwise collect index and possibly add time before selecting target.\",\n      \"refs\": [\"D1:L183-L184\",\"D1:L335-L354\"]\n    },\n    {\n      \"condition\": \"ratio = *(float*)(record+0xc)/fVar3; ratio <= fVar22 at L337\",\n      \"effect\": \"set fVar17 = fVar22; otherwise leave fVar17 as ratio (including unordered/NaN case).\",\n      \"refs\": [\"D1:L336-L339\"]\n    },\n    {\n      \"condition\": \"*(float*)(record+0x18) <= fVar17 ordered at L340\",\n      \"effect\": \"add *(float*)(lVar34+0x28) to record+0x18 and continue outer loop without collecting or emitting.\",\n      \"refs\": [\"D1:L340-L343\"]\n    },\n    {\n      \"condition\": \"!(*(float*)(record+0x18) <= fVar17), including unordered, at L340\",\n      \"effect\": \"collect index, add *(float*)(lVar34+0x28) to record+0x18, then branch on nested flag at L353.\",\n      \"refs\": [\"D1:L340-L351\"]\n    },\n    {\n      \"condition\": \"nested flag (*(byte*)(*(record+0x10)+0x10) & 1) == 0 at L192 in first processing path\",\n      \"effect\": \"goto 77bd; final tag uses cmd[0x1c]+0x11 and helper dispatch uses cmd[0x1c]==0 selector.\",\n      \"refs\": [\"D1:L192-L193\",\"D1:L355-L376\"]\n    },\n    {\n      \"condition\": \"nested flag at L192 != 0 in first processing path\",\n      \"effect\": \"fall through to 782f; final tag uses (0x12-cmd[0x1c])+0x11 and helper dispatch is reversed vs 77bd.\",\n      \"refs\": [\"D1:L192-L214\",\"D1:L215\",\"D1:L497\"]\n    },\n    {\n      \"condition\": \"nested flag at L353 != 0 in second processing path\",\n      \"effect\": \"goto 782f after L350 index store and L351 time add.\",\n      \"refs\": [\"D1:L350-L354\"]\n    },\n    {\n      \"condition\": \"nested flag at L353 == 0 in second processing path\",\n      \"effect\": \"fall through to 77bd after L350 index store and L351 time add.\",\n      \"refs\": [\"D1:L350-L355\"]\n    },\n    {\n      \"condition\": \"77bd path: cmd[0x1c] == 0 at L369\",\n      \"effect\": \"call FUN_1402c8640(lStack_e8, cmd+4, cmd+8); final record tag = cmd[0x1c] + 0x11.\",\n      \"refs\": [\"D1:L367-L370\",\"D1:L497\"]\n    },\n    {\n      \"condition\": \"77bd path: cmd[0x1c] != 0 at L369\",\n      \"effect\": \"call FUN_1405b1be0 then FUN_140b76ce0(&uStack_118,lStack_e8,uVar27); final record tag = cmd[0x1c] + 0x11.\",\n      \"refs\": [\"D1:L367-L374\",\"D1:L497\"]\n    },\n    {\n      \"condition\": \"782f path: cmd[0x1c] == 0 at L208\",\n      \"effect\": \"call FUN_1405b1be0 then FUN_140b76ce0; final record tag = (0x12-cmd[0x1c]) + 0x11.\",\n      \"refs\": [\"D1:L206-L210\",\"D1:L215\",\"D1:L497\"]\n    },\n    {\n      \"condition\": \"782f path: cmd[0x1c] != 0 at L208\",\n      \"effect\": \"call FUN_1402c8640(lStack_e8, cmd+4, cmd+8); final record tag = (0x12-cmd[0x1c]) + 0x11.\",\n      \"refs\": [\"D1:L206-L214\",\"D1:L215\",\"D1:L497\"]\n    },\n    {\n      \"condition\": \"FUN_140a1c930(uVar6, cmd+4) returns 0, or returned byte check at +0x41 makes puVar31 null\",\n      \"effect\": \"uVar67/uVar68 payload become zero; otherwise copied from *puVar31 low/high 32 bits.\",\n      \"refs\": [\"D1:L196-L205\",\"D1:L317-L324\",\"D1:L479-L486\"]\n    },\n    {\n      \"condition\": \"plStack_b0[3] == 0 before second lookup\",\n      \"effect\": \"skip probing; uStack_a0/uStack_98/uStack_fd become zero via L313-L315.\",\n      \"refs\": [\"D1:L218\",\"D1:L313-L315\"]\n    },\n    {\n      \"condition\": \"second lookup probe finds key (int at base+idx*-0x40 == iVar4)\",\n      \"effect\": \"load separate uStack_a0 and uStack_fd from found entry and join record assembly.\",\n      \"refs\": [\"D1:L270-L276\",\"D1:L431-L437\"]\n    },\n    {\n      \"condition\": \"second lookup probe exhausts candidates without key match\",\n      \"effect\": \"uStack_a0=0, uStack_98=0, uStack_fd=uStack_98 before record assembly.\",\n      \"refs\": [\"D1:L281-L315\",\"D1:L442-L476\"]\n    },\n    {\n      \"condition\": \"removal index uVar41 >= *(uVar28 at lVar25+0x10)\",\n      \"effect\": \"panic path through FUN_1428d90e9 then invalidInstructionException; no normal removal for that index.\",\n      \"refs\": [\"D1:L573-L580\"]\n    },\n    {\n      \"condition\": \"removal index uVar41 < current count\",\n      \"effect\": \"load 0x30 record, memmove tail down by one record, decrement count, then switch on removed tag for drop.\",\n      \"refs\": [\"D1:L581-L602\"]\n    },\n    {\n      \"condition\": \"removed record tag byte uStack_118 selects switch case 0..9 or default\",\n      \"effect\": \"cases 0,1,2,5,6,7,8,9,default use atomic decrement and conditional destructor call; case 3 uses alternate pointer/FUN_140b5c2a0; case 4 calls FUN_140891eb0.\",\n      \"refs\": [\"D1:L602-L695\"]\n    }\n  ],\n  \"side_effects\": [\n    {\n      \"order\": 1,\n      \"effect\": \"Write *(u32*)param_1[2] = *(u32*)((longlong)param_1+0x1c); load fVar3 from puVar33+5. If puVar33[3]==0, return before any later phases.\",\n      \"refs\": [\"D1:L114-L120\"]\n    },\n    {\n      \"order\": 2,\n      \"effect\": \"For each processed '\\\\n' record, append record index uVar38 into temp buffer at puStack_c8[uVar28]; if count==capacity call FUN_140b81df0(&uStack_d0,&UNK_...).\",\n      \"refs\": [\"D1:L187-L190\",\"D1:L347-L350\"]\n    },\n    {\n      \"order\": 3,\n      \"effect\": \"For +8 flag != 0 path, if ordered record+0x18 <= scheduled fVar17, add *(float*)(lVar34+0x28) to record+0x18 and continue without emitting.\",\n      \"refs\": [\"D1:L336-L343\"]\n    },\n    {\n      \"order\": 4,\n      \"effect\": \"For emitted records, call helper(s) according to cmd[0x1c] and target 77bd/782f. Final record tag formulas: 77bd -> cmd[0x1c]+0x11; 782f -> (0x12-cmd[0x1c])+0x11. Add time at L351 only in the +8 flag !=0 emitted path.\",\n      \"refs\": [\"D1:L206-L215\",\"D1:L350-L374\",\"D1:L497\"]\n    },\n    {\n      \"order\": 5,\n      \"effect\": \"First lookup FUN_140a1c930(uVar6, cmd+4) supplies puVar31 payload or null; separately second lookup FUN_1405b0ed0(plVar24,&uStack_a0) probes table and supplies uStack_a0/uStack_fd only when found, else zeros.\",\n      \"refs\": [\"D1:L196-L205\",\"D1:L218-L280\",\"D1:L313-L327\"]\n    },\n    {\n      \"order\": 6,\n      \"effect\": \"Write output record at base lVar8+0x28, index lVar35, stride 0x38: +0=*(lVar8+0x40); +8=final tag; +9..+0x27 assembled stack bytes; +0x28=CONCAT44(uVar67,uVar68) where zero if puVar31 null; +0x30=1. Then increment lVar8+0x30 and lVar8+0x40.\",\n      \"refs\": [\"D1:L328-L333\",\"D1:L489-L516\"]\n    },\n    {\n      \"order\": 7,\n      \"effect\": \"If collected count >1, reverse index array in place by swapping halves; no comparison sort observed.\",\n      \"refs\": [\"D1:L521-L565\"]\n    },\n    {\n      \"order\": 8,\n      \"effect\": \"Iterate reversed indices; bounds-check each, copy out 0x30 record, call func_0x142923c10(lVar37+lVar34, lVar37+lVar34+0x30, (~uVar41+uVar28)*0x30), then write *(lVar25+0x10)=uVar28-1.\",\n      \"refs\": [\"D1:L567-L601\"]\n    },\n    {\n      \"order\": 9,\n      \"effect\": \"Per removed record byte, switch drops payload variants; then if plStack_b0 != 0 call func_0x140613c20(puStack_b8, plStack_b0<<3, 8) to release temp buffer.\",\n      \"refs\": [\"D1:L602-L700\"]\n    }\n  ],\n  \"dependency_reuse\": [\n    {\n      \"operation\": \"Temp index buffer growth helper FUN_140b81df0\",\n      \"game_policy_to_preserve\": \"Inferred: preserve call placement and length/capacity pair when count equals capacity; do not rebuild a replacement index container.\",\n      \"refs\": [\"D1:L187-L190\",\"D1:L347-L350\",\"D1:L521-L569\"]\n    },\n    {\n      \"operation\": \"Output record vector growth helper FUN_1406319d0\",\n      \"game_policy_to_preserve\": \"Inferred: preserve length-vs-capacity test at lVar8+0x30/+0x20 and call before record assembly; do not reimplement vector growth.\",\n      \"refs\": [\"D1:L328-L333\",\"D1:L490-L495\"]\n    },\n    {\n      \"operation\": \"Removal tail compaction and per-tag drop\",\n      \"game_policy_to_preserve\": \"Observed: memmove via func_0x142923c10 and switch-based drops are game-owned ordering; preserve index order, count decrement, atomic decrements and conditional destructor calls.\",\n      \"refs\": [\"D1:L600-L695\"]\n    }\n  ],\n  \"unknowns\": [\n    {\n      \"question\": \"What are the exact types and meanings of param_1..param_6 and offsets puVar33[3], lVar8+0x30, lVar8+0x40?\",\n      \"needed_evidence\": \"Caller decompilation and retained type/PDB information for replay_stairs parameters.\",\n      \"refs\": [\"D1:L114-L141\",\"D1:L499-L516\"]\n    },\n    {\n      \"question\": \"What do FUN_1405b1be0, FUN_1402c8640, and FUN_140b76ce0 do, and is uStack_118 an output event discriminant or another byte tag?\",\n      \"needed_evidence\": \"Disassembly/type evidence for those callees and the written record layout.\",\n      \"refs\": [\"D1:L206-L214\",\"D1:L367-L374\",\"D1:L503-L514\"]\n    },\n    {\n      \"question\": \"What are the exact key/value layout and semantics of FUN_1405b0ed0 and FUN_140a1c930 lookups?\",\n      \"needed_evidence\": \"Callee disassembly or type information covering the two probes and their result fields.\",\n      \"refs\": [\"D1:L196-L205\",\"D1:L218-L280\",\"D1:L379-L441\"]\n    },\n    {\n      \"question\": \"Are the XMM equality-flag computations at L142-L169 real inputs or decompiler artifacts?\",\n      \"needed_evidence\": \"Instruction-level review around the original bytes preceding L142.\",\n      \"refs\": [\"D1:L142-L169\"]\n    },\n    {\n      \"question\": \"What are drop-variant tags 0..9 and the refcount target semantics in the removal switch?\",\n      \"needed_evidence\": \"Callee/type evidence for FUN_140891eb0, FUN_140b5c2a0, FUN_140b5cfc0 and related drop functions.\",\n      \"refs\": [\"D1:L602-L695\"]\n    }\n  ],\n  \"integration_checks\": [\n    \"Verify the param1[2] write at L116 still occurs even when puVar33[3]==0 causes the L119 return.\",\n    \"Verify both record+8 bit0 paths are retained and that the nested +0x10->+0x10 bit selects 77bd vs 782f with the correct time-add placement.\",\n    \"Verify final record tag formulas are exactly cmd[0x1c]+0x11 for 77bd and (0x12-cmd[0x1c])+0x11 for 782f.\",\n    \"Verify the first lookup payload and second lookup payload remain separate when constructing the output record, and removal uses reversed collected indices with tail memmove and per-tag drop.\"\n  ],\n  \"independent_followups\": [\n    {\n      \"task\": \"Resolve helper contracts and result layouts for FUN_140a1c930 and FUN_1405b0ed0.\",\n      \"input_needed\": \"Callee disassembly at both addresses plus any retained PDB type information.\",\n      \"output_contract\": \"Field-by-field mapping of return value/null checks, table key compare, and loaded payload bytes at the two lookup sites.\",\n      \"depends_on\": [\"D1:L196-L280\",\"D1:L379-L441\"]\n    },\n    {\n      \"task\": \"Resolve caller parameter types and record/container layouts for param_1..param_6.\",\n      \"input_needed\": \"Caller decompilation of the call site to 0x140af75b0 and retained type/PDB evidence.\",\n      \"output_contract\": \"Mappings for puVar33[3], lVar8+0x30, lVar8+0x40, lVar25+0x10, and record offsets 0x0/0x8/0xc/0x10/0x18/0x1c.\",\n      \"depends_on\": [\"S1:L4\",\"D1:L114-L141\",\"D1:L499-L516\"]\n    }\n  ]\n}"
+}

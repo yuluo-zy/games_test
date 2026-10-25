@@ -1,0 +1,1560 @@
+{
+  "id": "TG-cd69690eb11f94361f",
+  "source_path": "crates/country-core/src/systems/debug/sheep_controls.rs",
+  "category": "business",
+  "target_version": "C",
+  "versions": [
+    "A",
+    "B",
+    "C"
+  ],
+  "priority_score": 27,
+  "family": "other_game_or_owner_review",
+  "claim_mode": "candidate_reconstruction",
+  "cross_version_pairs": [
+    {
+      "versions": [
+        "A",
+        "B"
+      ],
+      "same_file_source_checksum_set": false,
+      "shared_source_checksums": [],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    },
+    {
+      "versions": [
+        "A",
+        "C"
+      ],
+      "same_file_source_checksum_set": false,
+      "shared_source_checksums": [],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    },
+    {
+      "versions": [
+        "B",
+        "C"
+      ],
+      "same_file_source_checksum_set": false,
+      "shared_source_checksums": [],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    }
+  ],
+  "function_ids": [
+    "2ff5a55b9b7ea159ac",
+    "69a10e5bafa2ace9fb",
+    "7b5bab99e99c185382",
+    "9be8483d6b544a3d90",
+    "9d9e4dee5fe038186a",
+    "b6c38850850827c5ea",
+    "c2aef04fe243727773",
+    "f1b454a6589a4e91ef",
+    "f2a0a03d831aa40fe1",
+    "18d6c03fc165f41f60",
+    "45e13b873524009e08",
+    "582c8a87dc85403f24",
+    "7175557fb7ca8b0772",
+    "9602809878d2ce5d8d",
+    "b54c1e3711b305b757",
+    "bce4fe8cda9dd96c4b",
+    "c8d49a670b1de63305",
+    "d4b2e4dd8676a9c1ad",
+    "e8037ad8618bdbb0fb",
+    "f3e45a9122749315c8",
+    "250bd280a35d16af38",
+    "2b8df9dea85aac76b2",
+    "328730a800d4429743",
+    "3c8d90c3e7a75627e4",
+    "3cdde6ea0bb8b31413",
+    "51528df153524b8d7d",
+    "53ae38816728cf0479",
+    "7cd1b520e7c2969fb4",
+    "a256ceb67c754c62d2",
+    "d8fb4f9824b8dff9c7",
+    "fe432b9fe55f49814c"
+  ],
+  "related_callee_tasks": [
+    "TG-3a373700ea0ffafb23",
+    "TG-02d434d8a34881854e",
+    "TG-eaad2744cc23e7bee9",
+    "TG-ccf08468a03ad34915",
+    "TG-76b27d74509516b085",
+    "TG-d2c94f036a54bdd78e",
+    "TG-b3f2fab7b5a228d75a",
+    "TG-099d9836aac44a50a4",
+    "TG-27aa1146cf8ff64436",
+    "TG-ec1b1ac8f0c2acb8cd",
+    "TG-268a3bb2f466c1c2b3"
+  ],
+  "related_caller_tasks": [
+    "TG-9d5671102a5cdc8f2b"
+  ],
+  "source_inputs": {
+    "A": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/A/crates/country-core/src/systems/debug/sheep_controls.rs",
+      "sha256": "b6c3b644a709076b1c3cf35c9e5467e00cfa408ad1f443e4cf8eab982216b82b",
+      "binary_sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708",
+      "pdb_sha256": "d5d4001583e31abf20b1563bbfdd9e4853629065aa2e461fe5809b205db908a5"
+    },
+    "B": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/B/crates/country-core/src/systems/debug/sheep_controls.rs",
+      "sha256": "bc8f3bc9808e865e7638827278445f59c19e4bf1e29e1d5d422aaa98fd136f58",
+      "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+      "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911"
+    },
+    "C": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/C/crates/country-core/src/systems/debug/sheep_controls.rs",
+      "sha256": "882c0de6849b3f4ee71e272528f462c95dc9a9955d9e59f6a4e95a062fa2d519",
+      "binary_sha256": "d8f9261b1a4cb677fe91b8f5017bcff63b1312228b3f3264a2071ca7d3ad80a9",
+      "pdb_sha256": "df472d8e6ae642baed96127151b18685291468518ea8dc71557bce4508c78902"
+    }
+  },
+  "assignment_unit": "one source-file family across A/B/C; one owner to prevent overlapping file edits",
+  "deliverable": "independent candidate Rust + ABI/field/dependency contracts + producer/consumer and removal/history boundaries + evidence handoff",
+  "implementation_status": "not_assessed; existing Rust must be checked before duplicate work",
+  "semantic_acceptance": false,
+  "existing_reconstruction_candidates": [],
+  "known_B_evidence_function_ids": [
+    "582c8a87dc85403f24"
+  ],
+  "data_structure_metadata": {
+    "A": "skeleton/A/crates/country-core/src/systems/debug/sheep_controls.rs.structures.json.gz",
+    "B": "skeleton/B/crates/country-core/src/systems/debug/sheep_controls.rs.structures.json.gz",
+    "C": "skeleton/C/crates/country-core/src/systems/debug/sheep_controls.rs.structures.json.gz"
+  },
+  "handoff": "task-index/handoffs/TG-cd69690eb11f94361f.json",
+  "handoff_audit": "task-index/handoffs/TG-cd69690eb11f94361f.audit.json",
+  "claim": {
+    "task_id": "TG-cd69690eb11f94361f",
+    "owner": "core-audit-sheep-20261018",
+    "status": "claimed",
+    "claimed_at_utc": "2026-10-18T03:53:11.998769+00:00",
+    "target_version": "C",
+    "versions": [
+      "A",
+      "B",
+      "C"
+    ],
+    "function_scope": null,
+    "work_dir": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-cd69690eb11f94361f/core-audit-sheep-20261018",
+    "worker": "idx-tg-cd69690eb11f94361f-core-audit-sheep-20261018",
+    "source_inputs": {
+      "A": {
+        "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/A/crates/country-core/src/systems/debug/sheep_controls.rs",
+        "sha256": "b6c3b644a709076b1c3cf35c9e5467e00cfa408ad1f443e4cf8eab982216b82b",
+        "binary_sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708",
+        "pdb_sha256": "d5d4001583e31abf20b1563bbfdd9e4853629065aa2e461fe5809b205db908a5"
+      },
+      "B": {
+        "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/B/crates/country-core/src/systems/debug/sheep_controls.rs",
+        "sha256": "bc8f3bc9808e865e7638827278445f59c19e4bf1e29e1d5d422aaa98fd136f58",
+        "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+        "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911"
+      },
+      "C": {
+        "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/C/crates/country-core/src/systems/debug/sheep_controls.rs",
+        "sha256": "882c0de6849b3f4ee71e272528f462c95dc9a9955d9e59f6a4e95a062fa2d519",
+        "binary_sha256": "d8f9261b1a4cb677fe91b8f5017bcff63b1312228b3f3264a2071ca7d3ad80a9",
+        "pdb_sha256": "df472d8e6ae642baed96127151b18685291468518ea8dc71557bce4508c78902"
+      }
+    },
+    "handoff": "task-index/handoffs/TG-cd69690eb11f94361f.json",
+    "rule": "one owner for this A/B/C file family; deliver independent candidate/patch/contract, never overwrite another owner or original artifacts"
+  },
+  "function_preview": [
+    {
+      "id": "f3e45a9122749315c8",
+      "version": "B",
+      "path": "crates/country-core/src/systems/debug/sheep_controls.rs",
+      "name": "country_core::systems::debug::sheep_controls::sheep_controls",
+      "logical_group_id": "8057f6f6ed7ed29288",
+      "source_sha256": [
+        "e7991bda4c63ae738ce1f14ba5e712807f2cbb0b80e4207b5115af22e60fc36c"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [
+        {
+          "module": 1674,
+          "record_offset": 46204,
+          "rva": 24056224,
+          "code_size": 4929
+        }
+      ],
+      "body_hashes": [
+        "5ef4bffe1d8cb19f2d455743d029f2bd3d0f31e68b2cf0a40883fbd27d390ee2"
+      ],
+      "body_sizes": [
+        4929
+      ],
+      "physical_reference_callers": [
+        16338544,
+        31072704
+      ],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "bevy_ecs",
+        "bevy_input",
+        "bevy_platform",
+        "bevy_ptr",
+        "core",
+        "country_core",
+        "egui",
+        "glam",
+        "hashbrown",
+        "log",
+        "nonmax"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 19,
+        "pdb_inline_transitive": 130,
+        "native_direct_call_in_physical_body": 19
+      },
+      "ambiguous_alias_groups": 12,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 1,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 4,
+        "unique_observed_physical_reference_callers": 2,
+        "native_max_bytes": 4929,
+        "native_min_bytes": 4929,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 12,
+        "library_namespace_count": 12,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 27,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": [
+        "0659d651ab2a21c8e7",
+        "45e13b873524009e08",
+        "aa92f1d1f0471ff0ca",
+        "b54c1e3711b305b757"
+      ]
+    },
+    {
+      "id": "9602809878d2ce5d8d",
+      "version": "B",
+      "path": "crates/country-core/src/systems/debug/sheep_controls.rs",
+      "name": "country_core::systems::debug::sheep_controls::SheepControl::new",
+      "logical_group_id": "2af51be3642eb15639",
+      "source_sha256": [
+        "e7991bda4c63ae738ce1f14ba5e712807f2cbb0b80e4207b5115af22e60fc36c"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [
+        {
+          "module": 1674,
+          "record_offset": 44676,
+          "rva": 24055456,
+          "code_size": 759
+        }
+      ],
+      "body_hashes": [
+        "e51d2cd6d68cae8c558a2732e2587794bd5b90de6b11c17131681c11b0e978f4"
+      ],
+      "body_sizes": [
+        759
+      ],
+      "physical_reference_callers": [
+        10523616
+      ],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "bevy_ecs",
+        "core",
+        "country_core"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 5,
+        "pdb_inline_transitive": 25,
+        "native_direct_call_in_physical_body": 10
+      },
+      "ambiguous_alias_groups": 4,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 1,
+        "cross_file_callers": 1,
+        "unique_private_callees": 6,
+        "unique_observed_physical_reference_callers": 1,
+        "native_max_bytes": 759,
+        "native_min_bytes": 759,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 4,
+        "library_namespace_count": 4,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 26,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [
+        "7e293ca409e68501a4"
+      ],
+      "private_callees": [
+        "0dd07d611ee79c5e80",
+        "165675a9080532edcd",
+        "1d44114b875780f833",
+        "72fd94b8cf358b2dc5",
+        "dd06fbcaa31f5dfeb7",
+        "f7baef26d85e11842f"
+      ]
+    },
+    {
+      "id": "b54c1e3711b305b757",
+      "version": "B",
+      "path": "crates/country-core/src/systems/debug/sheep_controls.rs",
+      "name": "country_core::systems::debug::sheep_controls::handle_mouse_picking",
+      "logical_group_id": "6a4a8e2ad2ed183e49",
+      "source_sha256": [
+        "e7991bda4c63ae738ce1f14ba5e712807f2cbb0b80e4207b5115af22e60fc36c"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "bevy_ecs",
+        "bevy_ptr",
+        "core",
+        "glam",
+        "nonmax"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 14,
+        "pdb_inline_transitive": 74
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 1,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 7,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 6,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 18,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [
+        "f3e45a9122749315c8"
+      ],
+      "private_callees": [
+        "3fadd67a1b256866ce",
+        "79bd535263acdc3d60",
+        "839b9880acd723a3c8",
+        "9f89d8b541d20aa75e",
+        "aa92f1d1f0471ff0ca",
+        "d39e682ba76e00ee92",
+        "d4b2e4dd8676a9c1ad"
+      ]
+    },
+    {
+      "id": "bce4fe8cda9dd96c4b",
+      "version": "B",
+      "path": "crates/country-core/src/systems/debug/sheep_controls.rs",
+      "name": "country_core::systems::debug::sheep_controls::impl$2::register_required_components",
+      "logical_group_id": "b97a57ae7729005647",
+      "source_sha256": [
+        "e7991bda4c63ae738ce1f14ba5e712807f2cbb0b80e4207b5115af22e60fc36c"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [
+        {
+          "module": 1674,
+          "record_offset": 70728,
+          "rva": 24062224,
+          "code_size": 2154
+        }
+      ],
+      "body_hashes": [
+        "f0422d3c82bd59d00f16e103b42e046fc94ba1071af1be9b02495064039607e2"
+      ],
+      "body_sizes": [
+        2154
+      ],
+      "physical_reference_callers": [
+        16341152,
+        24062224,
+        24534512
+      ],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "bevy_ecs",
+        "bevy_platform",
+        "core",
+        "equivalent",
+        "hashbrown",
+        "std"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 3,
+        "pdb_inline_transitive": 98,
+        "native_direct_call_in_physical_body": 11
+      },
+      "ambiguous_alias_groups": 6,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 0,
+        "unique_observed_physical_reference_callers": 3,
+        "native_max_bytes": 2154,
+        "native_min_bytes": 2154,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 6,
+        "library_namespace_count": 7,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 8,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": []
+    },
+    {
+      "id": "45e13b873524009e08",
+      "version": "B",
+      "path": "crates/country-core/src/systems/debug/sheep_controls.rs",
+      "name": "country_core::systems::debug::sheep_controls::apply_sheep_snapshot",
+      "logical_group_id": "a4736cb1def32fce44",
+      "source_sha256": [
+        "e7991bda4c63ae738ce1f14ba5e712807f2cbb0b80e4207b5115af22e60fc36c"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [
+        {
+          "module": 1674,
+          "record_offset": 64788,
+          "rva": 24061168,
+          "code_size": 773
+        }
+      ],
+      "body_hashes": [
+        "cf958db610d50283b07bf633d97b621e19ac1e2b6a6bfc6978086aa7e5a350fd"
+      ],
+      "body_sizes": [
+        773
+      ],
+      "physical_reference_callers": [
+        24039696,
+        24047296,
+        24056224
+      ],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "bevy_ecs",
+        "bevy_ptr",
+        "core",
+        "nonmax"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 4,
+        "pdb_inline_transitive": 58
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 1,
+        "cross_file_callers": 0,
+        "unique_private_callees": 0,
+        "unique_observed_physical_reference_callers": 3,
+        "native_max_bytes": 773,
+        "native_min_bytes": 773,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 5,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 7,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "bytes_differ_or_codegen_changed",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [
+        "f3e45a9122749315c8"
+      ],
+      "private_callees": []
+    },
+    {
+      "id": "18d6c03fc165f41f60",
+      "version": "B",
+      "path": "crates/country-core/src/systems/debug/sheep_controls.rs",
+      "name": "country_core::systems::debug::sheep_controls::sheep_controls::closure$0::closure$0",
+      "logical_group_id": "8d074ade94603e5d5a",
+      "source_sha256": [
+        "e7991bda4c63ae738ce1f14ba5e712807f2cbb0b80e4207b5115af22e60fc36c"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "bevy_ecs",
+        "core",
+        "egui",
+        "glam"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 8,
+        "pdb_inline_transitive": 57
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 2,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 5,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 4,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": [
+        "aa92f1d1f0471ff0ca",
+        "e9b45646d2d320eff9"
+      ]
+    },
+    {
+      "id": "d4b2e4dd8676a9c1ad",
+      "version": "B",
+      "path": "crates/country-core/src/systems/debug/sheep_controls.rs",
+      "name": "country_core::systems::debug::sheep_controls::PickingMode::is_some",
+      "logical_group_id": "5b1d5b590a11a4e6ff",
+      "source_sha256": [
+        "e7991bda4c63ae738ce1f14ba5e712807f2cbb0b80e4207b5115af22e60fc36c"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [],
+      "dependency_relations": {},
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 1,
+        "direct_inline_callers": 1,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 0,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 0,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 1,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 4,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [
+        "b54c1e3711b305b757"
+      ],
+      "private_callees": []
+    },
+    {
+      "id": "7175557fb7ca8b0772",
+      "version": "B",
+      "path": "crates/country-core/src/systems/debug/sheep_controls.rs",
+      "name": "country_core::systems::debug::sheep_controls::sheep_controls::closure$0",
+      "logical_group_id": "d0927b4cdc755ca3b4",
+      "source_sha256": [
+        "e7991bda4c63ae738ce1f14ba5e712807f2cbb0b80e4207b5115af22e60fc36c"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "bevy_ecs",
+        "bevy_ptr",
+        "core",
+        "egui",
+        "glam",
+        "nonmax"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 14,
+        "pdb_inline_transitive": 98
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 1,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 7,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 2,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": [
+        "96284690ad0c687d41"
+      ]
+    },
+    {
+      "id": "e8037ad8618bdbb0fb",
+      "version": "B",
+      "path": "crates/country-core/src/systems/debug/sheep_controls.rs",
+      "name": "country_core::systems::debug::sheep_controls::sheep_controls::closure$0::closure$0::closure$0",
+      "logical_group_id": "ba41dee8e62b079e96",
+      "source_sha256": [
+        "e7991bda4c63ae738ce1f14ba5e712807f2cbb0b80e4207b5115af22e60fc36c"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "core",
+        "egui",
+        "log",
+        "rfd",
+        "serde",
+        "serde_json",
+        "std"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 18,
+        "pdb_inline_transitive": 69
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 0,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 8,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 0,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": []
+    },
+    {
+      "id": "c8d49a670b1de63305",
+      "version": "B",
+      "path": "crates/country-core/src/systems/debug/sheep_controls.rs",
+      "name": "country_core::systems::debug::sheep_controls::sheep_controls::closure$0::closure$1",
+      "logical_group_id": "9913818769f70ffaa7",
+      "source_sha256": [
+        "e7991bda4c63ae738ce1f14ba5e712807f2cbb0b80e4207b5115af22e60fc36c"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [],
+      "body_hashes": [],
+      "body_sizes": [],
+      "physical_reference_callers": [],
+      "native_public_alias_ambiguity": false,
+      "library_dependencies": [
+        "alloc",
+        "core",
+        "egui"
+      ],
+      "dependency_relations": {
+        "pdb_inline_direct": 5,
+        "pdb_inline_transitive": 14
+      },
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility",
+        "inline-only or absent standalone range; difficulty remains uncertain"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 0,
+        "unique_observed_physical_reference_callers": 0,
+        "native_max_bytes": 0,
+        "native_min_bytes": 0,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 3,
+        "target_public_alias_ambiguity": false,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 0,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "A",
+            "B"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "A",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        },
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": false,
+          "some_native_instances_identical": false,
+          "shared_body_sha256": [],
+          "native_status": "native_ranges_missing",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": []
+    },
+    {
+      "id": "582c8a87dc85403f24",
+      "version": "B",
+      "path": "crates/country-core/src/systems/debug/sheep_controls.rs",
+      "name": "country_core::systems::debug::sheep_controls::impl$2::clone_behavior",
+      "logical_group_id": "daed1436b64adec75f",
+      "source_sha256": [
+        "e7991bda4c63ae738ce1f14ba5e712807f2cbb0b80e4207b5115af22e60fc36c"
+      ],
+      "ownership": "private_game_scope_candidate",
+      "category": "business",
+      "native_instances": [
+        {
+          "module": 1674,
+          "record_offset": 76996,
+          "rva": 9072,
+          "code_size": 3
+        }
+      ],
+      "body_hashes": [
+        "251447ee91a9067dcd6ab96703133f617565974cd6c4819021760c4688c91abf"
+      ],
+      "body_sizes": [
+        3
+      ],
+      "physical_reference_callers": [
+        244624,
+        527808,
+        531680,
+        533360,
+        763392,
+        978240,
+        1032496,
+        1042224,
+        1406896,
+        1408576,
+        2473344,
+        2823712,
+        3327216,
+        3328336,
+        3362944,
+        3419152,
+        3436688,
+        3550960,
+        3568240,
+        3581520,
+        3583216,
+        3584912,
+        3586608,
+        3589920,
+        3595568,
+        3597248,
+        3598928,
+        3600608,
+        3602288,
+        3603968,
+        3605648,
+        3611520,
+        3613200,
+        3983616,
+        4732016,
+        4733696,
+        4735376,
+        4737056,
+        4740368,
+        4743680,
+        5438528,
+        5599440,
+        6627408,
+        7980752,
+        8035344,
+        8087264,
+        16341152,
+        16436080,
+        18931632,
+        19328944,
+        19335856,
+        19337584,
+        19339312,
+        19346224,
+        19347952,
+        19349728,
+        19353136,
+        19375232,
+        19386224,
+        30354720,
+        31664496,
+        31666224,
+        31669968,
+        31671600,
+        31674864,
+        31676496,
+        31678128,
+        31679760,
+        33561920,
+        35244672,
+        35246304,
+        35248304,
+        35252736,
+        35255136,
+        35257168,
+        35303072,
+        36098384,
+        36100112,
+        36104576,
+        36106256,
+        36107888,
+        36109520,
+        36111152,
+        36114080,
+        36116112,
+        36132080,
+        36134112,
+        36136160,
+        36137888,
+        36140000,
+        36205872,
+        36379984,
+        36382192,
+        36383824,
+        36385456,
+        36387088,
+        36388720,
+        36390352,
+        36391984,
+        36393616,
+        36395248,
+        36396880,
+        36398512,
+        36400144,
+        36401776,
+        36410032,
+        36412080,
+        36413808,
+        36415536,
+        36417488,
+        36419168,
+        36420800,
+        36422432,
+        36454272,
+        36456016,
+        36458064,
+        36459744,
+        36461424,
+        36463104,
+        36466768,
+        36470160,
+        36471840,
+        36670736,
+        36672368,
+        36674000,
+        36677264,
+        36678896,
+        36680528,
+        36682160,
+        36683792,
+        36685424,
+        36687056,
+        36688688,
+        36690320,
+        36705568,
+        36707248,
+        36708928,
+        36710608,
+        36712288,
+        36713920,
+        36721712,
+        36723392,
+        36725072,
+        36726704,
+        36728336,
+        36740592,
+        36742416,
+        36744480,
+        36746112,
+        36748112,
+        36750512,
+        36755248,
+        36783216,
+        39357584,
+        39883888,
+        39966432,
+        39969984,
+        40335408,
+        40337712,
+        40339344,
+        40348832,
+        40352832,
+        40354640,
+        42376576,
+        42397088,
+        42402496,
+        42404576,
+        42408736,
+        42410816,
+        42436352,
+        42507680,
+        42540480
+      ],
+      "native_public_alias_ambiguity": true,
+      "library_dependencies": [],
+      "dependency_relations": {},
+      "ambiguous_alias_groups": 0,
+      "indirect_call_groups": 0,
+      "candidate_interfaces": 0,
+      "reasons": [
+        "ordinary business or insufficient evidence for a small utility"
+      ],
+      "metrics": {
+        "unique_indexed_callers": 0,
+        "direct_inline_callers": 0,
+        "physical_native_callers": 0,
+        "cross_file_callers": 0,
+        "unique_private_callees": 0,
+        "unique_observed_physical_reference_callers": 172,
+        "native_max_bytes": 3,
+        "native_min_bytes": 3,
+        "indirect_call_groups": 0,
+        "ambiguous_alias_groups": 0,
+        "library_namespace_count": 0,
+        "target_public_alias_ambiguity": true,
+        "instantiated_or_overlap_caller_nodes": 0,
+        "ambiguous_caller_source_groups": 0
+      },
+      "difficulty": "needs_contract_analysis",
+      "implementation_readiness": "candidate_after_abi_field_and_dependency_checks",
+      "priority_score": 0,
+      "existing_rust_name_candidates": [],
+      "existing_rust_mapping_status": "name-only candidates; native/ABI correspondence must be checked",
+      "retained_B_native_evidence": [
+        {
+          "va": "0x140002370",
+          "names": [
+            "core::error::Error::cause<enum2$<utils::curve::CurveError> >"
+          ],
+          "ranges": [
+            {
+              "code_size": 3,
+              "end_exclusive": "0x140002373"
+            }
+          ],
+          "pdb_sources": [
+            "evidence/roof-surface/procedures.json"
+          ],
+          "verification": []
+        }
+      ],
+      "cross_version_pairs": [
+        {
+          "versions": [
+            "B",
+            "C"
+          ],
+          "same_file_source_checksum_set": false,
+          "shared_source_checksums": [],
+          "source_scope": "entire source-file checksum, not isolated function text",
+          "behavior_equivalence": "unverified",
+          "same_native_byte_sets": true,
+          "some_native_instances_identical": true,
+          "shared_body_sha256": [
+            "251447ee91a9067dcd6ab96703133f617565974cd6c4819021760c4688c91abf"
+          ],
+          "native_status": "same_observed_body_byte_sets",
+          "abi_equivalence": "unknown; placeholder TPI indices are not ABI evidence"
+        }
+      ],
+      "distinct_callers": [],
+      "private_callees": []
+    }
+  ]
+}

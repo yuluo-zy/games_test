@@ -1,0 +1,60 @@
+--- a/tiny-glade/crates/country-core/src/resources/walls/decorator_subtype.rs
++++ b/tiny-glade/crates/country-core/src/resources/walls/decorator_subtype.rs
+@@ -173,8 +173,14 @@
+         })
+     }
+ 
+-    pub fn insert(&mut self, id: u32, subtype: DecoratorSubtype) {
+-        self.map.insert(id, subtype);
++    /// 原producer清同一map并保留allocation/hasher，删除上一帧不再存在的ID。
++    pub fn clear(&mut self) {
++        self.map.clear();
++    }
++
++    /// 返回真实旧值，供原producer检测重复ID；第二遍可显式忽略覆盖结果。
++    pub fn insert(&mut self, id: u32, subtype: DecoratorSubtype) -> Option<DecoratorSubtype> {
++        self.map.insert(id, subtype)
+     }
+ }
+ 
+@@ -359,6 +365,22 @@
+     }
+ 
+     #[test]
++    fn id_map_clear_retains_capacity_and_insert_reports_the_replaced_value() {
++        let mut subtypes = DerivedDecoratorSubtypes::default();
++        for id in 0..64 {
++            assert_eq!(subtypes.insert(id, DecoratorSubtype(24)), None);
++        }
++        let capacity = subtypes.map.capacity();
++        assert_eq!(subtypes.insert(7, DecoratorSubtype(25)), Some(DecoratorSubtype(24)));
++        subtypes.clear();
++        assert!(subtypes.map.is_empty());
++        assert_eq!(subtypes.map.capacity(), capacity);
++        assert_eq!(subtypes.insert(7, DecoratorSubtype(19)), None);
++        assert_eq!(subtypes.get(7), DecoratorSubtype(19));
++        assert_eq!(subtypes.map.capacity(), capacity);
++    }
++
++    #[test]
+     fn into_decorator_subtype_forwarding() {
+         assert_eq!(DecoratorSubtype(5).into_decorator_subtype(), DecoratorSubtype(5));
+         let d = LegacyDerivedDecoratorInfoRecord::new(DecoratorSubtype(6), glam::Vec3::ZERO, glam::Vec3::ONE);
+@@ -368,7 +390,7 @@
+     fn derived_view_borrows_existing_entry_without_cloning_arc() {
+         let mut subtypes = DerivedDecoratorSubtypes::default();
+         let mesh_lib = DecoratorMeshLibrary::default();
+-        subtypes.insert(7, DecoratorSubtype(20));
++        assert_eq!(subtypes.insert(7, DecoratorSubtype(20)), None);
+         let view = DerivedDecoratorInfoView::new(&subtypes, &mesh_lib);
+         assert!(core::ptr::eq(view.subtype_library(), &subtypes));
+         assert!(core::ptr::eq(view.mesh_library(), &mesh_lib));
+@@ -401,7 +423,7 @@
+             assert!(core::ptr::eq(view.mesh_library(), world.resource::<DecoratorMeshLibrary>()));
+             assert_eq!(view.try_get_subtype(DecoratorId(7)), None);
+         }
+-        world.resource_mut::<DerivedDecoratorSubtypes>().insert(7, DecoratorSubtype(5));
++        assert_eq!(world.resource_mut::<DerivedDecoratorSubtypes>().insert(7, DecoratorSubtype(5)), None);
+         let resources = state.get(&world);
+         assert_eq!(resources.as_view().subtype(DecoratorId(7)), DecoratorSubtype(5));
+     }

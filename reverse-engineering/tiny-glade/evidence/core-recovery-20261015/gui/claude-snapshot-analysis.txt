@@ -1,0 +1,38 @@
+## 观察（可直接引用）
+
+- 值指针 `pcVar4 = (char*)in_RCX[4]`；唯一读取 `*pcVar4 != '\0'`，唯一写入是末尾 `*pcVar4 = cVar10`（仅写 AL 一字节）。→ **值宽度 = 1 字节**。
+- 16 字节桶 = key u64(+0) + value u8(+8) + 7 字节 padding，与"值只需一字节"自洽。
+- 按钮 1 分支里 `*puVar3 = 0; puVar3[1] = uVar1;` 写的是 in_RCX[0]/in_RCX[1] 指向的**另一个 8 字节对象**（疑似带 tag 的 Option），不是 map 值，勿混淆。
+
+## 状态机（byte ∈ {0,1}）
+
+- 按钮 1（无门控）：点击路径写那个 8 字节对象；该路径上 cVar10 未被赋值（反编译缺失），但流程仍落到 `*pcVar4 = cVar10`。
+- 按钮 2（门控 `*pcVar4 != '\0'`）：状态非 0 才渲染；点击即 `cVar10 = 1` 并 goto 赋值点。
+- 按钮 3（无门控）：默认 cVar10=1；`local_164==0 && local_165==0` → 0；`local_164==0 && local_165==1` → cVar10 = clicked_by 的 bool；`local_164!=0` → 保持 1。
+- 三条路径汇合后统一回写，取值仅 0/1。
+
+## 确认 / 取消 / 删除
+
+- **确认（entry）**：按钮 1，恒显示，点击时改动外部选择对象。
+- **取消/删除**：按钮 2 受"状态非 0"门控，是典型的"进入状态后才出现"的取消/删除；但其点击**置 1**，语义更像保持而非取消。
+- 按钮 3 每帧把状态重算为 clicked，像"进入/触发"。
+
+因此"哪个是 cancel、哪个是 delete"**无法由本片段判定**：`Button::opt_image_and_text` 的字符串实参在反编译中被省略（无字面量），只能按位置与门控推测。
+
+## 歧义（假设，非结论）
+
+1. cVar10 在按钮 1 路径未赋值（可能寄存器复用/反编译缺失）；
+2. local_d4/d5/164/165 与 `clicked()` / `clicked_by()` / `hovered()` 的对应关系；
+3. 0/1 极性（0=Idle 还是 0=Armed）；
+4. 按钮 2 点击置 1 的真实语义（"保持打开" vs "确认"）。
+
+## 最安全的 Rust 模型
+
+```rust
+type TodSnapshotState = std::collections::HashMap<TempUiId, bool>;
+
+// 取用点，与 in_RCX[4] 的 &mut bool 一一对应
+let st: &mut bool = map.entry(id).or_insert(false);
+```
+
+闭包签名按 `FnOnce(&mut Ui)` 捕获 `&mut bool`，即可复现"1 字节值 + 值指针入闭包"。**不要**复刻 hashbrown 的 bucket/ctrl 布局——`entry().or_insert(false)` 已覆盖同一语义。若后续证据确认存在第三态，再改 `#[repr(u8)] enum { Idle, Armed, … }`；当前证据只支持一个 bool。

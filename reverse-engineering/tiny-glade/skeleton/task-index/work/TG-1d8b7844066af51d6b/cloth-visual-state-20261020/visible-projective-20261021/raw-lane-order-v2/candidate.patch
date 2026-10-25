@@ -1,0 +1,11 @@
+--- a/tiny-glade/crates/utils/src/lib.rs
++++ b/tiny-glade/crates/utils/src/lib.rs
+@@ -95,7 +95,7 @@
+     };
+     let up = glam::Vec3::Y;
+     let right = up.cross(forward);
+-    let length = (right.y * right.y + (right.z * right.z + right.x * right.x)).sqrt();
++    let length = (right.z * right.z + (right.x * right.x + right.y * right.y)).sqrt();
+     let right = right / length;
+     glam::Quat::from_mat3(&glam::Mat3::from_cols(right, up, forward))
+ }

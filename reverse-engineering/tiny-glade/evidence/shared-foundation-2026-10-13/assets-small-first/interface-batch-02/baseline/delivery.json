@@ -1,0 +1,376 @@
+{
+  "schema_version": 1,
+  "baseline": "B",
+  "original_binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "patched_program_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+  "policy": "business rules and algorithm equivalence; independent source/API wrapping; original external dependencies reused",
+  "worker": "foundation-assets-small-first",
+  "current_program": "tiny-glade.exe",
+  "scope": {
+    "asset_pipe_B_original_files": 2,
+    "asset_B_original_files": 9,
+    "union_inventory_not_B_denominator": true,
+    "C_only_unrestored": [
+      "crates/asset-pipe/src/mip_flood.rs",
+      "crates/asset-pipe/src/store.rs",
+      "crates/asset-pipe/src/texture_processing.rs",
+      "crates/asset/src/foliage.rs",
+      "crates/asset/src/mesh.rs",
+      "crates/asset/src/legacy_mod.rs",
+      "crates/asset/src/texture.rs"
+    ]
+  },
+  "files": [
+    {
+      "original_path": "crates/asset-pipe/src/lib.rs",
+      "implementation_path": "reconstruction/shared-foundation/crates/asset-pipe/src/lib.rs",
+      "sha256": "9edc23d6191c33d74a6327671ce66036425614b9e9e190ac22c99340d92ed8b9",
+      "version": "B",
+      "functions": [],
+      "status": "module_glue_only",
+      "original_text_identical": false,
+      "full_original_file_accepted": false
+    },
+    {
+      "original_path": "crates/asset-pipe/src/texture.rs",
+      "implementation_path": "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs",
+      "sha256": "1420bcb75fcefff8e88978acf7432828c8d9e92396dd02092fda7b7e57152232",
+      "version": "B",
+      "functions": [
+        {
+          "restored_function": "compile_or_load_texture_assets",
+          "original_address": "0x1417b7300",
+          "validation": "index loading/conditional build; modern root argument; outer flags/logs not recreated"
+        },
+        {
+          "restored_function": "compile_texture_assets",
+          "original_address": "0x1417b7790",
+          "validation": "original easy-parallel 3.2.0 each→run; one descriptor per task; join before collecting Results/persisting; normal/error/panic fixtures"
+        },
+        {
+          "restored_function": "compile_texture_asset",
+          "original_address": "0x1417b8f50",
+          "validation": "descriptor+mtime+magic/version cache and output; synthetic actual-file fixture"
+        },
+        {
+          "restored_function": "process_regular_image / process_decoded_image",
+          "original_address": "0x1417bbc10",
+          "validation": "gamma, resize, mips, format; instruction/control-flow comparison, contracts; no full original entry differential"
+        },
+        {
+          "restored_function": "next_level",
+          "original_address": "0x1417bc930",
+          "validation": "private mip closure; base resize/padding/type conversion; original address is closure, new API is own port"
+        },
+        {
+          "restored_function": "with_rgba8",
+          "original_address": "0x1420e2bd0,0x1420e3080",
+          "validation": "RGB-only output transfer; original generic specializations; wrapper differs in API"
+        },
+        {
+          "restored_function": "srgb_oetf",
+          "original_address": "0x1417bcd20",
+          "validation": "4364 original private instruction cases bit-identical"
+        },
+        {
+          "restored_function": "compress / bc7_settings",
+          "original_address": "0x1417bcd60",
+          "validation": "original channel selection/basic presets; dependency codecs reused; contract only, not compressed-pixel native differential"
+        },
+        {
+          "restored_function": "process_dds_image / process_dds",
+          "original_address": "0x1417ba565..0x1417bafb7",
+          "validation": "inlined DDS route in compile_texture_asset; format/layer-zero/dimensions clauses checked"
+        },
+        {
+          "restored_function": "assemble_array",
+          "original_address": "0x1417b99bc..0x1417ba6e4",
+          "validation": "inlined array route in compile_texture_asset; invariants and layer-major join checked"
+        }
+      ],
+      "status": "verified_scopes_partial",
+      "original_text_identical": false,
+      "full_original_file_accepted": false
+    },
+    {
+      "original_path": "crates/asset/src/lib.rs",
+      "implementation_path": "reconstruction/shared-foundation/crates/asset/src/lib.rs",
+      "sha256": "293e0615754a8491caece8a084c75fe110e4fea0e01e583190f6f5c661cf04e3",
+      "version": "B",
+      "functions": [],
+      "status": "module_glue_only",
+      "original_text_identical": false,
+      "full_original_file_accepted": false
+    },
+    {
+      "original_path": "crates/asset/src/inheritable.rs",
+      "implementation_path": "reconstruction/shared-foundation/crates/asset/src/inheritable.rs",
+      "sha256": "f3efcf1fb1f1333e82161b28304c990aeb38ba3db8e1ef15232ade3b7818b3bf",
+      "version": "B",
+      "functions": [
+        {
+          "restored_function": "Inheritable::inherit_from / Option::inherit_from / HashMap::inherit_from",
+          "original_address": "0x142689b90,0x142689ed0,0x14268a2e0,0x14268a700,0x142424d90",
+          "validation": "control-flow comparison; own semantic data types; not native ABI"
+        },
+        {
+          "restored_function": "deserialize_inheritable_option",
+          "original_address": "0x14268aa60,0x14268aee0,0x14268b260,0x14268b770",
+          "validation": "typed RON thin adaptation; actual prefab plus bare/Some/None/unit/error contracts"
+        }
+      ],
+      "status": "verified_scopes_partial",
+      "original_text_identical": false,
+      "full_original_file_accepted": false
+    },
+    {
+      "original_path": "crates/asset/src/prefab.rs",
+      "implementation_path": "reconstruction/shared-foundation/crates/asset/src/prefab.rs",
+      "sha256": "4460ece01c744391a9d4a9a36ca7b410806a6a3ddb5ae8d822eb16471cd6a647",
+      "version": "B",
+      "functions": [
+        {
+          "restored_function": "PrefabName::new",
+          "original_address": "0x141556080",
+          "validation": "Arc<str> wrapper, dependency allocation semantics reused"
+        },
+        {
+          "restored_function": "PrefabName::as_name_ref / AsRef<str>::as_ref",
+          "original_address": "0x141556130",
+          "validation": "borrowed str view/access; original nominal PrefabNameRef interfaces remain separate coverage gaps"
+        }
+      ],
+      "status": "verified_scopes_partial",
+      "original_text_identical": false,
+      "full_original_file_accepted": false
+    },
+    {
+      "original_path": "crates/asset/src/prefab/config.rs",
+      "implementation_path": "reconstruction/shared-foundation/crates/asset/src/prefab/config.rs",
+      "sha256": "3a9a3528466ab8b5568f89b930f3c0c565eeb750a53425bb2c0b56562d307690",
+      "version": "B",
+      "functions": [
+        {
+          "restored_function": "PrefabConfig::inherit_from / PrefabPartConfig::inherit_from",
+          "original_address": "0x142424d90",
+          "validation": "map merge and default resolution candidate; unresolved/default paths not exhaustive"
+        },
+        {
+          "restored_function": "PrefabRtConfig::inherit_from / PrefabRenderConfig::inherit_from / AudioTriggerConfig::inherit_from",
+          "original_address": "0x142879c20,0x142879de0,0x142689ed0,0x142689b90",
+          "validation": "field-level override candidates; semantic mappings, not native structure declarations"
+        },
+        {
+          "restored_function": "deserialize_float3",
+          "original_address": null,
+          "validation": "owned serde adapter for original three-element RON sequence syntax; source type name unknown"
+        }
+      ],
+      "status": "verified_scopes_partial",
+      "original_text_identical": false,
+      "full_original_file_accepted": false
+    },
+    {
+      "original_path": "crates/asset/src/prefab/scan.rs",
+      "implementation_path": "reconstruction/shared-foundation/crates/asset/src/prefab/scan.rs",
+      "sha256": "ad310c2aaa55c750d80195c2ac6f9bb061bfad32e9c3f30b04ff0d9dde1cf062",
+      "version": "B",
+      "functions": [
+        {
+          "restored_function": "PrefabDependencies::add_file_to_prefab_dependency",
+          "original_address": "0x142009df0",
+          "validation": "file→prefab vector relationship; duplicate registrations retained"
+        },
+        {
+          "restored_function": "scan_asset_tree",
+          "original_address": "0x14200a1b0",
+          "validation": "25 original shipped prefabs/28 dependency files parse+merge"
+        },
+        {
+          "restored_function": "scan_asset_tree_walker",
+          "original_address": "0x14200a5f0",
+          "validation": "default.ron inheritance and recursion; consumer native differential remains"
+        },
+        {
+          "restored_function": "load_prefab_config",
+          "original_address": "0x14200ba50",
+          "validation": "original RON delegation; modern compiler adaptation"
+        }
+      ],
+      "status": "verified_scopes_partial",
+      "original_text_identical": false,
+      "full_original_file_accepted": false
+    },
+    {
+      "original_path": "crates/asset/src/texture/blob.rs",
+      "implementation_path": "reconstruction/shared-foundation/crates/asset/src/texture/blob.rs",
+      "sha256": "3c167d325ab2942eae36a6d150a28ea536ee8d80b82ce085b6e084f41901df84",
+      "version": "B",
+      "functions": [
+        {
+          "restored_function": "TextureAssetBlob transport / load / to_file_bytes",
+          "original_address": "0x1417b55c0",
+          "validation": "28-byte archive root inferred from producer and validated against all 388 originals; loader/writer APIs are own safe adapters"
+        }
+      ],
+      "status": "verified_scopes_partial",
+      "original_text_identical": false,
+      "full_original_file_accepted": false
+    },
+    {
+      "original_path": "crates/asset/src/texture/config.rs",
+      "implementation_path": "reconstruction/shared-foundation/crates/asset/src/texture/config.rs",
+      "sha256": "375dc886c37294c95c8aebb3f091cf78ce0114eb0cce2e04b07e4fd20e99c072",
+      "version": "B",
+      "functions": [
+        {
+          "restored_function": "InheritableTextureOpts::inherit_from / into_concrete",
+          "original_address": "0x142456250",
+          "validation": "field resolution candidate; defaults/source file syntax validated; all panic/default cases not exhaustive"
+        }
+      ],
+      "status": "verified_scopes_partial",
+      "original_text_identical": false,
+      "full_original_file_accepted": false
+    },
+    {
+      "original_path": "crates/asset/src/texture/desc.rs",
+      "implementation_path": "reconstruction/shared-foundation/crates/asset/src/texture/desc.rs",
+      "sha256": "c87be9f80e1c2deb1d4df1a67a547582bd594a94eea9334dae2216aa42892843",
+      "version": "B",
+      "functions": [
+        {
+          "restored_function": "TextureOpts / TextureAssetDesc / Gamma / MipChain / CompressionMethod",
+          "original_address": null,
+          "validation": "original serialization fields/variants; Color default corrected from original scanner"
+        },
+        {
+          "restored_function": "TextureAssetDesc::source_files",
+          "original_address": null,
+          "validation": "owned helper; not counted as an identified original function"
+        }
+      ],
+      "status": "verified_scopes_partial",
+      "original_text_identical": false,
+      "full_original_file_accepted": false
+    },
+    {
+      "original_path": "crates/asset/src/texture/scan.rs",
+      "implementation_path": "reconstruction/shared-foundation/crates/asset/src/texture/scan.rs",
+      "sha256": "92c817eb0019027d66802be15775707814d2493d7ef51600172d0fa53b328b87",
+      "version": "B",
+      "functions": [
+        {
+          "restored_function": "scan_asset_tree",
+          "original_address": "0x1420d8ba0",
+          "validation": "root defaults and mapping; original configs/fixture scan"
+        },
+        {
+          "restored_function": "scan_asset_tree_walker",
+          "original_address": "0x1420d8d00",
+          "validation": "configuration inheritance, extension selection, consecutive array indexing; fixtures"
+        }
+      ],
+      "status": "verified_scopes_partial",
+      "original_text_identical": false,
+      "full_original_file_accepted": false
+    }
+  ],
+  "synthetic_glue": [
+    {
+      "path": "reconstruction/shared-foundation/crates/asset/src/texture.rs",
+      "sha256": "9d107c5aa5b10184e6bb26744e13f28ebd1a38a6d0c8b8351032ba35b2921851",
+      "not_C_original_file_recovery": true
+    }
+  ],
+  "differences_fixed": [
+    {
+      "old": "CompressionMethod default None",
+      "original": "Color",
+      "fix": "Default Color; scanner/compile fixture"
+    },
+    {
+      "old": "BC7 slow presets",
+      "original": "basic presets",
+      "fix": "original dependency opaque_basic/alpha_basic; original literal constants checked"
+    },
+    {
+      "old": "untagged option loses Code enum on Rust 1.97",
+      "original": "bare/Some/None/unit accepted preserving enums",
+      "fix": "original RON RawValue and typed parsing thin adapter"
+    },
+    {
+      "old": "prefab vector fields expected RON tuples",
+      "original": "shipped input uses three-element sequences",
+      "fix": "serde Vec boundary validates length and stores fixed array"
+    },
+    {
+      "old": "later RKYV archive(check_bytes) macro",
+      "original": "fork API archive_attr + bytecheck derive",
+      "fix": "compile/format compatibility only, not algorithm recovery"
+    },
+    {
+      "old": "EOTF NaN takes powf branch",
+      "original": "unordered comparison takes linear division",
+      "fix": "strict-greater nonlinear branch"
+    },
+    {
+      "old": "sequential caller loop with manually delayed error",
+      "original": "easy_parallel each→run joins every per-asset task, preserves added result order, propagates panic after join",
+      "fix": "reuse exact easy-parallel3.2.0 each→run; first error while collecting results; no meta/list on error or panic"
+    }
+  ],
+  "verification": {
+    "cargo_tests": {
+      "passed": 14,
+      "command": "cargo test -p asset -p asset-pipe --locked --offline -- --nocapture",
+      "log": "cargo-test.log"
+    },
+    "clippy": {
+      "passed": true,
+      "command": "cargo clippy -p asset -p asset-pipe --all-targets --locked --offline -- -D warnings",
+      "log": "clippy.log"
+    },
+    "fmt": {
+      "passed": true,
+      "command": "cargo fmt -p asset -p asset-pipe"
+    },
+    "shipped_archives": {
+      "count": 388,
+      "bytes": 311679016,
+      "byte_identical_roundtrip": true,
+      "not_image_recompilation": true
+    },
+    "shipped_prefabs": {
+      "prefabs": 25,
+      "dependency_files": 28,
+      "parse_and_inherit": true,
+      "not_native_consumer_equivalence": true
+    },
+    "original_scalar": {
+      "report": "gamma-verification.json",
+      "cases": 4364,
+      "mismatches": 0,
+      "scope": "private OETF 64-byte entry; reused public UCRT powf"
+    },
+    "tool_query": {
+      "report": "bounded-report.json",
+      "ok": true,
+      "private_functions": 9,
+      "not_business_acceptance": true
+    }
+  },
+  "gaps": [
+    "No original PNG/JPG/DDS source texture corpus: shipped assets-src/textures has 16 RON files only; full input→pixel/compressed archive original-entry differential pending",
+    "Prefab original field/native type names and all unresolved-default/error/side-effect paths not exhaustively proven",
+    "Original print/log controls and outer CLI flags not reproduced; easy_parallel per-asset each→run has now been restored from original dependency",
+    "Country-core live asset library/hot reload integration not yet recovered",
+    "A/C independent identities and C new files need independent analysis; no B address transfer"
+  ],
+  "interface_inventory": "interface-coverage.json",
+  "dependency_reuse_audit": "dependency-reuse-audit.json",
+  "parallel_policy": "parallel-policy.json",
+  "full_module_accepted": false,
+  "full_original_game_executed": false,
+  "report": "DELIVERY.md"
+}

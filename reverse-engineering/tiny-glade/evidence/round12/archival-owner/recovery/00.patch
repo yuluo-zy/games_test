@@ -1,0 +1,172 @@
+*** Begin Patch
+*** Update File: D:/game/reverse-engineering/tiny-glade/evidence/round12/archival-owner/candidate/tiny-glade/crates/country-core/src/resources/walls/decorator_archivist.rs
+@@
+-    pub fn decorator_cull_allow_wall(&self, wall: WallId) -> bool {
+-        self.walls
+-            .get(&RecoveredWallId(wall.0))
+-            .map(|decorators| {
+-                decorators
+-                    .items
+-                    .keys()
+-                    .any(|id| self.is_decorator_cull_allowed(*id))
+-            })
+-            .unwrap_or(false)
++    pub fn decorator_cull_allow_wall(&mut self, wall: WallId, storage: &LiveDecoratorStorage) {
++        if let Some(decorators) = storage.get(DecoratorStorageAddr::Wall(wall)) {
++            // Original140b2bc00 calls the unit-valued HashSet::extend fold
++            //140b76260 over the live bucket's keys, targeting self+0x30.
++            self.culling.allowed_ids.extend(decorators.decorators.keys().copied());
++        }
+@@
+-    pub fn decorator_cull_allow_stairs(&self) -> bool {
+-        self.special2
+-            .as_ref()
+-            .map(|decorators| {
+-                decorators
+-                    .items
+-                    .keys()
+-                    .any(|id| self.is_decorator_cull_allowed(*id))
+-            })
+-            .unwrap_or(false)
++    pub fn decorator_cull_allow_stairs(&mut self, storage: &LiveDecoratorStorage) {
++        if let Some(decorators) = storage.get(DecoratorStorageAddr::Stair) {
++            self.culling.allowed_ids.extend(decorators.decorators.keys().copied());
++        }
+@@
+-    /// B `archive_current_decorators_in_storage` 0x14123b5c0：经
+-    /// `DecoratorStorage::get`(0x140a1c2c0) 逐地址 → 归档入 archivist。
+-    /// special1/2 分别承载 Terrain/Stair 桶（判别 1/2 与 `DecoratorStorageAddr`
+-    /// disc 1/2 对应）。
+-    pub fn archive_current_decorators_in_storage(&mut self, storage: &LiveDecoratorStorage) {
+-        for (wall, decos) in storage.iter_walls() {
+-            self.archive_storage_decorators(0, decos, Some(wall));
+-        }
+-        if let Some(decos) = storage.terrain.as_ref() {
+-            self.archive_storage_decorators(1, decos, None);
+-        }
+-        if let Some(decos) = storage.stairs.as_ref() {
+-            self.archive_storage_decorators(2, decos, None);
+-        }
+-    }
+-
+-    /// B `archive_current_decorators_in_storages` 0x1412b4f10：多存储批量归档。
+-    pub fn archive_current_decorators_in_storages(&mut self, storages: &[LiveDecoratorStorage]) {
+-        for storage in storages {
+-            self.archive_current_decorators_in_storage(storage);
+-        }
+-    }
+ }
++
++/// Original SystemParam carries these two canonical shared owners. It never
++/// clones RaycastWorld or builds a second collision world for editing.
++#[cfg(feature = "native-physics")]
++#[derive(bevy_ecs::system::SystemParam)]
++pub struct DecoratorArchivalResources<'w> {
++    pub world: bevy_ecs::prelude::Res<'w, crate::systems::collision::world::RaycastWorld>,
++    pub colliders: bevy_ecs::prelude::Res<'w, crate::resources::walls::decorator_collision::DecoratorPhysicsColliders>,
++}
++
++#[cfg(feature = "native-physics")]
++impl LiveDecoratorArchivist {
++    /// B1421a0470: archive exactly the requested address, including both
++    /// collider channels and their owned meshes. An absent live bucket is
++    /// archived as an empty before-state; it is not an ignored request.
++    pub fn archive_current_decorators_at_address(
++        &mut self,
++        address: DecoratorStorageAddr,
++        storage: &LiveDecoratorStorage,
++        resources: &DecoratorArchivalResources<'_>,
++        reason: &str,
++    ) {
++        self.archive_current_decorators_with_collision(
++            address, storage, &resources.world, &resources.colliders, reason,
++        );
++    }
++
++    fn archive_current_decorators_with_collision(
++        &mut self,
++        address: DecoratorStorageAddr,
++        storage: &LiveDecoratorStorage,
++        world: &crate::systems::collision::world::RaycastWorld,
++        colliders: &crate::resources::walls::decorator_collision::DecoratorPhysicsColliders,
++        _reason: &str,
++    ) {
++        let already_archived = match address {
++            DecoratorStorageAddr::Wall(wall) => self.walls.contains_key(&RecoveredWallId(wall.0)),
++            DecoratorStorageAddr::Terrain => self.special1.is_some(),
++            DecoratorStorageAddr::Stair => self.special2.is_some(),
++        };
++        if already_archived { return; }
++        // The full original's0622..0c4c cold path supplies empty Decorators
++        // when get(address) is None. The reason participates only in the
++        // temporary diagnostic string; it is not a persisted archive field.
++        let source = storage.get(address).cloned().unwrap_or_default();
++        let (selector, wall) = match address {
++            DecoratorStorageAddr::Wall(wall) => (0, Some(wall)),
++            DecoratorStorageAddr::Terrain => (1, None),
++            DecoratorStorageAddr::Stair => (2, None),
++        };
++        self.archive_storage_decorators(selector, &source, wall);
++        // The two original loops visit all current keys, first channel then
++        // second. Missing collision entries skip; stale actual handles panic.
++        for (live, archived) in [
++            (&colliders.first, &mut self.collision_a),
++            (&colliders.second, &mut self.collision_b),
++        ] {
++            for &id in source.decorators.keys() {
++                let Some(instance) = live.get(&DecoratorId(id)) else { continue; };
++                if instance.slot == crate::systems::collision::EMPTY_COLLIDER_HANDLE_TAG { continue; }
++                let physical = instance.handle();
++                let collider = world.get_collider(physical);
++                let mesh = world.get_collider_mesh(collider.generation_low as u32, collider.generation).clone();
++                let transform = world.into_transformed_shape(physical);
++                archived.insert(id, (transform, mesh));
++            }
++        }
++    }
++
++    /// Original plural entry receives addresses into one live storage owner.
++    pub fn archive_current_decorators_in_storages(
++        &mut self,
++        addresses: impl IntoIterator<Item = DecoratorStorageAddr>,
++        storage: &LiveDecoratorStorage,
++        resources: &DecoratorArchivalResources<'_>,
++        reason: &str,
++    ) {
++        for address in addresses {
++            self.archive_current_decorators_at_address(address, storage, resources, reason);
++        }
++    }
++}
+@@
+-    fn archive_current_decorators_in_storage_archives_wall_and_specials() {
++    fn archive_tracking_preserves_the_first_wall_and_specials_snapshots() {
+@@
+-        archivist.archive_current_decorators_in_storage(&storage);
++        archivist.archive_storage_decorators(0, storage.get(DecoratorStorageAddr::Wall(WallId(3))).unwrap(), Some(WallId(3)));
++        archivist.archive_storage_decorators(1, storage.get(DecoratorStorageAddr::Terrain).unwrap(), None);
+@@
+-        archivist.archive_current_decorators_in_storage(&storage);
++        archivist.archive_storage_decorators(1, storage.get(DecoratorStorageAddr::Terrain).unwrap(), None);
+@@
+     fn decorator_cull_allow_wall_and_stairs_fold_buckets() {
+         let mut archivist = empty_archivist();
++        let mut storage = LiveDecoratorStorage::default();
++        storage.per_wall.insert(WallId(1), live_bucket(10, 0));
++        storage.stairs = Some(live_bucket(20, 0));
+@@
+-        assert!(!archivist.decorator_cull_allow_wall(WallId(1)));
+-        assert!(!archivist.decorator_cull_allow_stairs());
+-        archivist.culling.allowed_ids.insert(10);
+-        archivist.culling.allowed_ids.insert(20);
+-        assert!(archivist.decorator_cull_allow_wall(WallId(1)));
+-        assert!(archivist.decorator_cull_allow_stairs());
+-        assert!(!archivist.decorator_cull_allow_wall(WallId(2)));
++        archivist.decorator_cull_allow_wall(WallId(1), &storage);
++        assert!(archivist.is_decorator_cull_allowed(10));
++        assert!(!archivist.is_decorator_cull_allowed(20));
++        archivist.decorator_cull_allow_stairs(&storage);
++        assert!(archivist.is_decorator_cull_allowed(20));
++        archivist.decorator_cull_allow_wall(WallId(2), &storage);
++        assert_eq!(archivist.culling.allowed_ids.len(), 2);
+*** End Patch

@@ -1,0 +1,42 @@
+[
+  {
+    "tool": "get_metadata",
+    "args": { "program": "tiny-glade.exe" },
+    "timeout_seconds": 120
+  },
+  {
+    "tool": "get_functions",
+    "args": {
+      "program": "tiny-glade.exe",
+      "functions": "0x140833130,0x140833150,0x140833160,0x140833170,0x140833180,0x140833190,0x1408331b0,0x1408331c0,0x1408339c0,0x1408339e0,0x140833a00,0x140833a20,0x140833ac0,0x140833b20,0x140833b80,0x1408336b0,0x1408337c0,0x140839520,0x140839530,0x140839540",
+      "fields": "signature,decompiled_code,callees",
+      "include_call_context": false
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "get_functions",
+    "args": {
+      "program": "tiny-glade.exe",
+      "functions": "0x140839550,0x140839560,0x140839340,0x1408394b0,0x140839490,0x140839420,0x1408393b0,0x1408392d0,0x140833570",
+      "fields": "signature,decompiled_code,callees",
+      "include_call_context": false
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "disassemble_function",
+    "args": { "program": "tiny-glade.exe", "function": "0x1408339e0" },
+    "timeout_seconds": 120
+  },
+  {
+    "tool": "disassemble_function",
+    "args": { "program": "tiny-glade.exe", "function": "0x140833a00" },
+    "timeout_seconds": 120
+  },
+  {
+    "tool": "disassemble_function",
+    "args": { "program": "tiny-glade.exe", "function": "0x140833130" },
+    "timeout_seconds": 120
+  }
+]

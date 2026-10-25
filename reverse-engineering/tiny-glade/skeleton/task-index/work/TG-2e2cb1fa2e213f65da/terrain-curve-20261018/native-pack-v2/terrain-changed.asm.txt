@@ -1,0 +1,126 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140a03ba0: 41 57                       	pushq	%r15
+140a03ba2: 41 56                       	pushq	%r14
+140a03ba4: 56                          	pushq	%rsi
+140a03ba5: 57                          	pushq	%rdi
+140a03ba6: 53                          	pushq	%rbx
+140a03ba7: 48 83 ec 20                 	subq	$0x20, %rsp
+140a03bab: 48 8b 01                    	movq	(%rcx), %rax
+140a03bae: 48 8b 49 08                 	movq	0x8(%rcx), %rcx
+140a03bb2: 4c 8b 10                    	movq	(%rax), %r10
+140a03bb5: 45 31 db                    	xorl	%r11d, %r11d
+140a03bb8: 4c 89 d6                    	movq	%r10, %rsi
+140a03bbb: 48 2b 71 18                 	subq	0x18(%rcx), %rsi
+140a03bbf: 49 0f 42 f3                 	cmovbq	%r11, %rsi
+140a03bc3: 4c 2b 51 38                 	subq	0x38(%rcx), %r10
+140a03bc7: 4d 0f 42 d3                 	cmovbq	%r11, %r10
+140a03bcb: 48 8b 79 30                 	movq	0x30(%rcx), %rdi
+140a03bcf: 4c 29 d7                    	subq	%r10, %rdi
+140a03bd2: 49 0f 42 fb                 	cmovbq	%r11, %rdi
+140a03bd6: 41 0f 97 c2                 	seta	%r10b
+140a03bda: 48 8b 59 10                 	movq	0x10(%rcx), %rbx
+140a03bde: 48 29 f3                    	subq	%rsi, %rbx
+140a03be1: 49 0f 42 db                 	cmovbq	%r11, %rbx
+140a03be5: 48 8b 49 40                 	movq	0x40(%rcx), %rcx
+140a03be9: 41 0f 97 c3                 	seta	%r11b
+140a03bed: 48 01 fb                    	addq	%rdi, %rbx
+140a03bf0: 48 89 ce                    	movq	%rcx, %rsi
+140a03bf3: 48 29 de                    	subq	%rbx, %rsi
+140a03bf6: 48 89 30                    	movq	%rsi, (%rax)
+140a03bf9: 45 08 d3                    	orb	%r10b, %r11b
+140a03bfc: 0f 84 a1 00 00 00           	je	0x140a03ca3 <.text+0xa02ca3>
+140a03c02: 48 89 08                    	movq	%rcx, (%rax)
+140a03c05: 41 8b 40 1c                 	movl	0x1c(%r8), %eax
+140a03c09: 49 8b 48 10                 	movq	0x10(%r8), %rcx
+140a03c0d: 89 01                       	movl	%eax, (%rcx)
+140a03c0f: 49 8b 30                    	movq	(%r8), %rsi
+140a03c12: 48 8b 7e 30                 	movq	0x30(%rsi), %rdi
+140a03c16: 48 8b 5e 40                 	movq	0x40(%rsi), %rbx
+140a03c1a: 48 3b 7e 20                 	cmpq	0x20(%rsi), %rdi
+140a03c1e: 75 1f                       	jne	0x140a03c3f <.text+0xa02c3f>
+140a03c20: 48 8d 4e 20                 	leaq	0x20(%rsi), %rcx
+140a03c24: 48 8d 05 1d 65 23 02        	leaq	0x223651d(%rip), %rax   # 0x142c3a148
+140a03c2b: 49 89 d6                    	movq	%rdx, %r14
+140a03c2e: 48 89 c2                    	movq	%rax, %rdx
+140a03c31: 4d 89 cf                    	movq	%r9, %r15
+140a03c34: e8 37 ec b5 ff              	callq	0x140562870 <.text+0x561870>
+140a03c39: 4c 89 f2                    	movq	%r14, %rdx
+140a03c3c: 4d 89 f9                    	movq	%r15, %r9
+140a03c3f: 48 8b 46 28                 	movq	0x28(%rsi), %rax
+140a03c43: 48 89 1c f8                 	movq	%rbx, (%rax,%rdi,8)
+140a03c47: 48 ff c7                    	incq	%rdi
+140a03c4a: 48 89 7e 30                 	movq	%rdi, 0x30(%rsi)
+140a03c4e: 48 ff 46 40                 	incq	0x40(%rsi)
+140a03c52: 48 8b 02                    	movq	(%rdx), %rax
+140a03c55: f0                          	lock
+140a03c56: 48 ff 00                    	incq	(%rax)
+140a03c59: 41 8b 41 1c                 	movl	0x1c(%r9), %eax
+140a03c5d: 49 8b 49 10                 	movq	0x10(%r9), %rcx
+140a03c61: 89 01                       	movl	%eax, (%rcx)
+140a03c63: 49 8b 31                    	movq	(%r9), %rsi
+140a03c66: 48 8b 7e 30                 	movq	0x30(%rsi), %rdi
+140a03c6a: 48 8b 5e 40                 	movq	0x40(%rsi), %rbx
+140a03c6e: 48 3b 7e 20                 	cmpq	0x20(%rsi), %rdi
+140a03c72: 75 10                       	jne	0x140a03c84 <.text+0xa02c84>
+140a03c74: 48 8d 4e 20                 	leaq	0x20(%rsi), %rcx
+140a03c78: 48 8d 15 c9 64 23 02        	leaq	0x22364c9(%rip), %rdx   # 0x142c3a148
+140a03c7f: e8 2c ee b5 ff              	callq	0x140562ab0 <.text+0x561ab0>
+140a03c84: 48 8b 46 28                 	movq	0x28(%rsi), %rax
+140a03c88: 48 8d 0c bf                 	leaq	(%rdi,%rdi,4), %rcx
+140a03c8c: 48 89 1c c8                 	movq	%rbx, (%rax,%rcx,8)
+140a03c90: c7 44 c8 08 00 00 00 00     	movl	$0x0, 0x8(%rax,%rcx,8)
+140a03c98: 48 ff c7                    	incq	%rdi
+140a03c9b: 48 89 7e 30                 	movq	%rdi, 0x30(%rsi)
+140a03c9f: 48 ff 46 40                 	incq	0x40(%rsi)
+140a03ca3: 48 83 c4 20                 	addq	$0x20, %rsp
+140a03ca7: 5b                          	popq	%rbx
+140a03ca8: 5f                          	popq	%rdi
+140a03ca9: 5e                          	popq	%rsi
+140a03caa: 41 5e                       	popq	%r14
+140a03cac: 41 5f                       	popq	%r15
+140a03cae: c3                          	retq
+140a03caf: cc                          	int3
+140a03cb0: 41 56                       	pushq	%r14
+140a03cb2: 56                          	pushq	%rsi
+140a03cb3: 57                          	pushq	%rdi
+140a03cb4: 53                          	pushq	%rbx
+140a03cb5: 48 83 ec 68                 	subq	$0x68, %rsp
+140a03cb9: 48 89 d7                    	movq	%rdx, %rdi
+140a03cbc: 48 89 ce                    	movq	%rcx, %rsi
+140a03cbf: 83 39 01                    	cmpl	$0x1, (%rcx)
+140a03cc2: 75 60                       	jne	0x140a03d24 <.text+0xa02d24>
+140a03cc4: 48 8b 87 a0 05 00 00        	movq	0x5a0(%rdi), %rax
+140a03ccb: 48 89 44 24 30              	movq	%rax, 0x30(%rsp)
+140a03cd0: 48 39 46 18                 	cmpq	%rax, 0x18(%rsi)
+140a03cd4: 0f 84 81 00 00 00           	je	0x140a03d5b <.text+0xa02d5b>
+140a03cda: 48 8d 05 6f 22 0c 02        	leaq	0x20c226f(%rip), %rax   # 0x142ac5f50
+140a03ce1: 48 89 44 24 38              	movq	%rax, 0x38(%rsp)
+140a03ce6: 48 c7 44 24 40 01 00 00 00  	movq	$0x1, 0x40(%rsp)
+140a03cef: 48 c7 44 24 48 08 00 00 00  	movq	$0x8, 0x48(%rsp)
+140a03cf8: 0f 57 c0                    	xorps	%xmm0, %xmm0
+140a03cfb: 0f 11 44 24 50              	movups	%xmm0, 0x50(%rsp)
+140a03d00: 48 83 c6 18                 	addq	$0x18, %rsi
+140a03d04: 48 8d 05 c5 22 0c 02        	leaq	0x20c22c5(%rip), %rax   # 0x142ac5fd0
+140a03d0b: 48 89 44 24 20              	movq	%rax, 0x20(%rsp)
+140a03d10: 4c 8d 44 24 30              	leaq	0x30(%rsp), %r8
+140a03d15: 4c 8d 4c 24 38              	leaq	0x38(%rsp), %r9
+140a03d1a: 31 c9                       	xorl	%ecx, %ecx
+140a03d1c: 48 89 f2                    	movq	%rsi, %rdx
+140a03d1f: e8 bd a3 ec 01              	callq	0x1428ce0e1 <.text+0x28cd0e1>
+140a03d24: 48 8d 5e 20                 	leaq	0x20(%rsi), %rbx
+140a03d28: 48 89 f9                    	movq	%rdi, %rcx
+140a03d2b: 48 89 da                    	movq	%rbx, %rdx
+140a03d2e: e8 2d fb 9a 00              	callq	0x1413b3860 <.text+0x13b2860>
+140a03d33: 49 89 c6                    	movq	%rax, %r14
+140a03d36: 48 89 f9                    	movq	%rdi, %rcx
+140a03d39: 48 89 da                    	movq	%rbx, %rdx
+140a03d3c: e8 ef 42 9b 00              	callq	0x1413b8030 <.text+0x13b7030>
+140a03d41: 48 8b 8f a0 05 00 00        	movq	0x5a0(%rdi), %rcx
+140a03d48: 48 c7 06 01 00 00 00        	movq	$0x1, (%rsi)
+140a03d4f: 4c 89 76 08                 	movq	%r14, 0x8(%rsi)
+140a03d53: 48 89 46 10                 	movq	%rax, 0x10(%rsi)

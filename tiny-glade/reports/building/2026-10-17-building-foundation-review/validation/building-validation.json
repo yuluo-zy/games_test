@@ -1,0 +1,48 @@
+[
+  {
+    "check": "building-clippy",
+    "exit": 0,
+    "command": [
+      "cargo",
+      "clippy",
+      "--offline",
+      "-p",
+      "tg-building-runtime",
+      "--all-targets",
+      "--no-deps",
+      "--target-dir",
+      "/private/tmp/tg-runtime-review-target",
+      "--",
+      "-D",
+      "warnings"
+    ]
+  },
+  {
+    "check": "building-test",
+    "exit": 0,
+    "command": [
+      "cargo",
+      "test",
+      "--offline",
+      "-p",
+      "tg-building-runtime",
+      "--all-targets",
+      "--target-dir",
+      "/private/tmp/tg-runtime-review-target"
+    ]
+  },
+  {
+    "check": "building-doc",
+    "exit": 101,
+    "command": [
+      "cargo",
+      "test",
+      "--offline",
+      "-p",
+      "tg-building-runtime",
+      "--doc",
+      "--target-dir",
+      "/private/tmp/tg-runtime-review-target"
+    ]
+  }
+]

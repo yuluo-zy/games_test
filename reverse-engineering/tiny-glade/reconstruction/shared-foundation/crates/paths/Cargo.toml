@@ -1,0 +1,18 @@
+[package]
+name = "paths"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+known-folders = "=1.0.1"
+
+[package.metadata.reconstruction]
+behavior_policy = "owned product implementation; historical native equivalence reports do not cover these repairs"
+original_file = "crates/paths/src/lib.rs"
+baseline = "B"
+other_platform_policy = "Windows Saved Games; macOS Application Support; Linux XDG data home"

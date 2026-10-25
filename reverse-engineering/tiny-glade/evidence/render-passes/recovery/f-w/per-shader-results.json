@@ -1,0 +1,236 @@
+{
+  "agent": "F-W",
+  "date": "2026-10-13",
+  "scope": "water mask/spawn (6) + garden (10) + garden_lowpoly_flower.raster (1) under reconstruction/shader-source/shaders/",
+  "validation": {
+    "tool": "tools/render-passes/recompile_check.py",
+    "dxc": "/opt/homebrew/bin/dxc (v1.10.2605.37)",
+    "acceptance": "bindings + entry + LocalSize + capabilities must match (structural fingerprint); opcode_histogram/normalized-hash converge, residual recorded"
+  },
+  "per_shader": {
+    "water/draw_water_mask.cs.hlsl": [
+      {
+        "module": "cs_main",
+        "verdict": "FAIL",
+        "structural_categories_match": false,
+        "BEc_match": true,
+        "diff_categories": [
+          "opcode_histogram"
+        ]
+      }
+    ],
+    "water/read_water_mask.cs.hlsl": [
+      {
+        "module": "cs_main",
+        "verdict": "FAIL",
+        "structural_categories_match": false,
+        "BEc_match": true,
+        "diff_categories": [
+          "opcode_histogram"
+        ]
+      }
+    ],
+    "water/spawn_boats.cs.hlsl": [
+      {
+        "module": "cs_main",
+        "verdict": "FAIL",
+        "structural_categories_match": false,
+        "BEc_match": true,
+        "diff_categories": [
+          "opcode_histogram"
+        ]
+      }
+    ],
+    "water/spawn_lilypads.cs.hlsl": [
+      {
+        "module": "cs_main",
+        "verdict": "FAIL",
+        "structural_categories_match": false,
+        "BEc_match": true,
+        "diff_categories": [
+          "opcode_histogram"
+        ]
+      }
+    ],
+    "water/spawn_reeds.cs.hlsl": [
+      {
+        "module": "cs_main",
+        "verdict": "FAIL",
+        "structural_categories_match": false,
+        "BEc_match": true,
+        "diff_categories": [
+          "opcode_histogram"
+        ]
+      }
+    ],
+    "water/spawn_waterwheels.cs.hlsl": [
+      {
+        "module": "cs_main",
+        "verdict": "PASS_STRUCTURAL",
+        "structural_categories_match": true,
+        "BEc_match": true,
+        "diff_categories": []
+      }
+    ],
+    "garden/exclude_other_masks.cs.hlsl": [
+      {
+        "module": "cs_main",
+        "verdict": "FAIL",
+        "structural_categories_match": false,
+        "BEc_match": true,
+        "diff_categories": [
+          "opcode_histogram"
+        ]
+      }
+    ],
+    "garden/read_garden_mask.cs.hlsl": [
+      {
+        "module": "cs_main",
+        "verdict": "FAIL",
+        "structural_categories_match": false,
+        "BEc_match": true,
+        "diff_categories": [
+          "opcode_histogram"
+        ]
+      }
+    ],
+    "garden/read_bush_positions_for_cpu.cs.hlsl": [
+      {
+        "module": "cs_main",
+        "verdict": "FAIL",
+        "structural_categories_match": false,
+        "BEc_match": true,
+        "diff_categories": [
+          "opcode_histogram"
+        ]
+      }
+    ],
+    "garden/marching_squares.cs.hlsl": [
+      {
+        "module": "cs_main",
+        "verdict": "FAIL",
+        "structural_categories_match": false,
+        "BEc_match": true,
+        "diff_categories": [
+          "opcode_histogram"
+        ]
+      }
+    ],
+    "garden/spawn_bushes_buildings.cs.hlsl": [
+      {
+        "module": "cs_main",
+        "verdict": "FAIL",
+        "structural_categories_match": false,
+        "BEc_match": true,
+        "diff_categories": [
+          "opcode_histogram"
+        ]
+      }
+    ],
+    "garden/spawn_bushes_garden.cs.hlsl": [
+      {
+        "module": "cs_main",
+        "verdict": "FAIL",
+        "structural_categories_match": false,
+        "BEc_match": true,
+        "diff_categories": [
+          "opcode_histogram"
+        ]
+      }
+    ],
+    "garden/spawn_flowers_buildings.cs.hlsl": [
+      {
+        "module": "cs_main",
+        "verdict": "FAIL",
+        "structural_categories_match": false,
+        "BEc_match": true,
+        "diff_categories": [
+          "opcode_histogram"
+        ]
+      }
+    ],
+    "garden/spawn_flowers_garden.cs.hlsl": [
+      {
+        "module": "cs_main",
+        "verdict": "FAIL",
+        "structural_categories_match": false,
+        "BEc_match": true,
+        "diff_categories": [
+          "opcode_histogram"
+        ]
+      }
+    ],
+    "garden/spawn_small_flowers_garden.cs.hlsl": [
+      {
+        "module": "cs_main",
+        "verdict": "FAIL",
+        "structural_categories_match": false,
+        "BEc_match": true,
+        "diff_categories": [
+          "opcode_histogram"
+        ]
+      }
+    ],
+    "garden_lowpoly_flower.raster.hlsl (b903)": [
+      {
+        "module": "vs_main",
+        "verdict": "FAIL",
+        "structural_categories_match": false,
+        "BEc_match": true,
+        "diff_categories": [
+          "opcode_histogram"
+        ]
+      },
+      {
+        "module": "ps_main",
+        "verdict": "FAIL",
+        "structural_categories_match": false,
+        "BEc_match": true,
+        "diff_categories": [
+          "opcode_histogram"
+        ]
+      }
+    ],
+    "garden_lowpoly_flower.raster.hlsl (f0ad)": [
+      {
+        "module": "vs_main",
+        "verdict": "FAIL",
+        "structural_categories_match": false,
+        "BEc_match": true,
+        "diff_categories": [
+          "opcode_histogram"
+        ]
+      },
+      {
+        "module": "ps_main",
+        "verdict": "FAIL",
+        "structural_categories_match": false,
+        "BEc_match": true,
+        "diff_categories": [
+          "opcode_histogram"
+        ]
+      }
+    ],
+    "garden/defs.inc.hlsl (include)": {
+      "kind": "include_only",
+      "note": "structs BushXform/FlowerXform (64B); no compile target"
+    },
+    "garden/placement_utils.inc.hlsl (include)": {
+      "kind": "include_only",
+      "note": "Flower03Xform + placement helpers; compiled in via consumers"
+    }
+  },
+  "summary": {
+    "shader_files": 18,
+    "full_structural_pass": 1,
+    "BEc_match_only": 15,
+    "dxc_fail": 0,
+    "residual_classes": {
+      "OpSource/OpString +N": "reconstructed inc/ include-graph drift (consts->math_const, tracked_buffer->smooth_max, pack_unpack->bilinear, hash->math_const pull extra files vs original)",
+      "OpLoad/image-load hoisting": "installed dxc emits per-use descriptor loads; original dxc hoisted (version drift)",
+      "comparison folds": "installed dxc folds !(x>c) into FUnordLessThanEqual and drops redundant int2 bitcasts",
+      "control-flow": "complex spawners' nested do/switch/ternary structure differs; behavior verified equivalent",
+      "array load": "read_bush whole-array load vs per-element lowering (version drift)"
+    }
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "source_before": "8758d39656e9efb36aad4cd80c260511fd49b75b5d331366ffa0360d41a4f4ef",
+  "source_after": "8758d39656e9efb36aad4cd80c260511fd49b75b5d331366ffa0360d41a4f4ef",
+  "source_stable": true,
+  "source_scope": "all",
+  "builds": [
+    {
+      "command": [
+        "cargo",
+        "test",
+        "-j2",
+        "-p",
+        "rhapsody",
+        "--all-features",
+        "--test",
+        "transfers",
+        "--no-run"
+      ],
+      "log": "crates/rhapsody/reports/refactor/2026-10-17-v9-transfer-queue/transfer-identity-build-final.log",
+      "binary": "/private/tmp/rhapsody-v9-transfer-queue-final",
+      "sha256": "3d7163e0555a10fbf9bcebf67b4b41662f047e55ff87980b84c40a7677be21c2"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "-j2",
+        "-p",
+        "tiny-glade",
+        "--all-features",
+        "--test",
+        "render_host",
+        "--no-run"
+      ],
+      "log": "crates/rhapsody/reports/refactor/2026-10-17-v9-transfer-queue/tiny-host-identity-build-final.log",
+      "binary": "/private/tmp/rhapsody-v9-tiny-host-queue-final",
+      "sha256": "4b63e82fbe200dbdd4c2f2905c371dfc06ffbe25f915cc981cdb56d939d5704c"
+    }
+  ],
+  "validation": {
+    "rhapsody_lib_passed": 280,
+    "tiny_gpu_tests_passed": 1,
+    "reference_and_cached_frames_each": 7,
+    "complete_uploads_each": 6,
+    "unknown_uploads_each": 1,
+    "asserted_hits": 3,
+    "asserted_misses": 3,
+    "asserted_dependency_invalidations": 1,
+    "asserted_subgraph_hits_minimum": 3,
+    "validation_errors": 0,
+    "scope": "immutable complete CPU upload sources only; unknown business dependencies explicitly remain uncached",
+    "country_default_helpers_passed": 6,
+    "country_all_features_link": {
+      "status": "BLOCKED",
+      "reason": "optional native-audio requires external libfmod/libfmodstudio; ld: library 'fmod' not found",
+      "log": "country-all-features-link-blocked.log",
+      "default_feature_tests_do_not_satisfy_this_gate": true
+    }
+  }
+}

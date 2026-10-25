@@ -1,0 +1,40 @@
+{
+  "status": "contract_ready_no_candidate",
+  "owner": "rhapsody_correctness_team",
+  "original_version": "B",
+  "original_rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "contract_sha256": "8cd6a067383fbe76639059316e99b532dbdefd33d6dcfb7c49afc22a0d5a3a7c",
+  "sources": [
+    {
+      "path": "crates/country-core/src/render/pass_builder/draw_builder.rs",
+      "before_sha256": "9fc507ff280e6af4d6b2053eba412b56f2fc671bf82a92b364e1b13f8c156b11"
+    },
+    {
+      "path": "crates/country-core/src/render/pass_builder/draw_stream.rs",
+      "before_sha256": "7e7f5ea1ca3be6002f9d8276e2484f6a3f88afef8f9d4750a1db41be784115c2"
+    },
+    {
+      "path": "crates/country-core/src/systems/render_loop/draw_passes/final_post.rs",
+      "before_sha256": "c5aa02cad4c0ba24879873e0ea59078274339b546ee4285b086454f188e7d9f2"
+    },
+    {
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/blur_pyramid.rs",
+      "before_sha256": "10b0126eaeec730debfdc572a003ecd9882ce20ba3c9529dbede75a1928f4592"
+    },
+    {
+      "path": "crates/tiny-glade/src/raster_host.rs",
+      "before_sha256": "9b43123150034fd90e431ca4fd48a0cd93a0b0e0fd5e4180c45378bf578e4932"
+    },
+    {
+      "path": "crates/tiny-glade/src/world_postprocess.rs",
+      "before_sha256": "e658859cdfbd26f2d5738c2fe34ba4bed3c5f0fe43ae12a8d2fd563c812130c7"
+    }
+  ],
+  "per_access_api_reused": "PassBuilder::add_undefined_content_read_range",
+  "no_planner_changes": true,
+  "selected_accesses": [
+    "finalpost B_SRC0 iff env.flag94==0",
+    "first blur0 input iff same tail controls.flag_0x1ac0==false"
+  ],
+  "validation": "not run; root sole Cargo/GPU owner; 07 independent contract review required"
+}

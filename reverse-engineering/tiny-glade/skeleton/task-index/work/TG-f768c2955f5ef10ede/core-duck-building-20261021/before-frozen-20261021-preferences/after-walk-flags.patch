@@ -1,0 +1,175 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs.rs
+@@ -132,16 +132,56 @@
+     (anchor, degree)
+ }
+ 
+-/// 0x14080beb0（O 结构，6+ 参面）：对齐偏好计算。
+-/// U：偏好准则（邻墙对齐）主体。
+-pub fn find_alignment_preferences(
+-    _p1: u64,
+-    _p2: u64,
+-    _p3: u64,
+-    _f4: f32,
+-    _f5: f32,
+-) -> Vec<(u32, f32)> {
+-    Vec::new() // U。
++/// 原 14080beb0：按实际墙法线与权威地址生成有序偏好，不提前排序或修复 NaN。
++fn find_alignment_preferences(
++    from: &StairPoint, to: &StairPoint, delta: Vec2,
++    storage: &DecoratorStorage, walls: &PublicWalls,
++) -> Vec<(AlignKind, f32)> {
++    use utils::comparative_space::ComparativeSpace;
++    let Some(normal) = from.wall_normal else { return Vec::new(); };
++    let from_info = storage.get(from.addr).and_then(|bucket| bucket.get(from.id))
++        .expect("alignment preferences: missing source decorator");
++    from_info.dst_as_wall();
++    let from_tag = from_info.dst_tag();
++    let from_u = from_info.wall_space_coord().u;
++    let to_info = storage.get(to.addr).and_then(|bucket| bucket.get(to.id))
++        .expect("alignment preferences: missing target decorator");
++    let from_wall = from.addr.as_wall();
++    let same_wall = matches!(to.addr, DecoratorStorageAddr::Wall(wall) if wall == from_wall)
++        && to_info.dst_tag() < 2;
++    if !same_wall {
++        let mut options = Vec::with_capacity(3);
++        let direction = delta.normalize_or_zero();
++        let sign = (direction.y * normal.x - direction.x * normal.y).signum();
++        let turn = Vec2::new((-normal.y) * sign, normal.x * sign);
++        let straight_dot = direction.y * normal.y + direction.x * normal.x;
++        let turn_dot = direction.y * turn.y + direction.x * turn.x;
++        let factor = if straight_dot > 0.0 { f32::from_bits(0x3ed4_13cd) } else { 1.0 };
++        options.push((AlignKind { tag: 0, first: normal, ..AlignKind::default() }, straight_dot * factor));
++        options.push((AlignKind { tag: 1, byte_2: from_tag ^ 1, first: normal, second: turn,
++                                  ..AlignKind::default() }, turn_dot));
++        // 原第三项直接 XOR 两个符号位与 score，不重新求 dot。
++        options.push((AlignKind { tag: 1, byte_2: from_tag ^ 1, first: normal, second: -turn,
++                                  ..AlignKind::default() }, -turn_dot));
++        return options;
++    }
++    let square_length = delta.y * delta.y + delta.x * delta.x;
++    if square_length < f32::from_bits(0x3586_37bd) {
++        return vec![(AlignKind { tag: 0, first: normal, ..AlignKind::default() }, 1.0)];
++    }
++    let wall = walls.get(from_wall).expect("alignment preferences: missing wall");
++    let space = utils::wall_space::WallSpace {
++        is_loop: wall.shape().tag() != 2, length: wall.wall_space_length(),
++    };
++    let difference = space.subtract(to_info.wall_space_coord().u, from_u);
++    let mut options = Vec::with_capacity(1);
++    // 原先 signum 再取负；(-difference).signum() 会改变 NaN 的符号。
++    let sign = -difference.signum();
++    let mut turn = Vec2::new((-normal.y) * sign, normal.x * sign);
++    if from_tag == 0 { turn = -turn; }
++    options.push((AlignKind { tag: 1, byte_2: from_tag ^ 1, first: normal, second: turn,
++                              ..AlignKind::default() }, 1.0));
++    options
+ }
+ 
+ /// B 0x14080c360：遍历完整邻接候选组合，返回所有选择及其总分。
+@@ -1245,4 +1285,104 @@
+         assert_eq!(state.points.len(), 3);
+     }
+ 
+-}
++    fn preference_fixture(side: u8, target_tag: u8) -> (DecoratorStorage, PublicWalls, StairPoint, StairPoint) {
++        use country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransform;
++        let (walls, wall) = published_wall();
++        let mut storage = DecoratorStorage::default();
++        let mut cached = CachedDecoratorTransforms::default();
++        let mut stairs = StairsState::new();
++        for (raw_id, tag, u) in [(29, side, 1.0f32), (7, target_tag, 4.0f32)] {
++            let mut info = stair_info(tag, 2.0, 1.5);
++            info.dst_wall = u64::from(u.to_bits()) | (u64::from(2.0f32.to_bits()) << 32);
++            let addr = if tag == 3 { DecoratorStorageAddr::Terrain } else { DecoratorStorageAddr::Wall(wall) };
++            storage.apply_decorator_place(addr, DecoratorId(raw_id), &info);
++            cached.insert(raw_id, CachedDecoratorTransform { rotation: glam::Quat::IDENTITY,
++                translation: Vec3::new(u, 2.0, 0.0), scale: Vec3::ONE });
++            stairs.add_node(raw_id);
++        }
++        stairs.add_edge(29, 7);
++        let points = collect_stair_points(&storage, &cached, &walls, &stairs);
++        (storage, walls, points[&DecoratorId(29)], points[&DecoratorId(7)])
++    }
++
++    #[test]
++    fn preference_none_skips_all_owner_reads_and_samewall_tiny_skips_public_wall() {
++        let (storage, _walls, from, terrain) = preference_fixture(0, 3);
++        assert!(find_alignment_preferences(&terrain, &from, Vec2::X,
++            &DecoratorStorage::default(), &PublicWalls::default()).is_empty());
++        let (same_storage, _, same_from, same_to) = preference_fixture(0, 0);
++        let result = find_alignment_preferences(&same_from, &same_to, Vec2::ZERO,
++            &same_storage, &PublicWalls::default());
++        assert_eq!(result.len(), 1); assert_eq!(result[0].0.tag, 0);
++        assert_eq!(result[0].0.first, Vec2::NEG_Y); assert_eq!(result[0].1, 1.0);
++        assert!(storage.get(from.addr).is_some());
++    }
++
++    #[test]
++    fn preference_three_candidates_preserve_order_discount_and_negated_score_bits() {
++        for side in [0, 1] {
++            let (storage, walls, from, to) = preference_fixture(side, 3);
++            let normal = from.wall_normal.unwrap();
++            let result = find_alignment_preferences(&from, &to, normal * 100.0, &storage, &walls);
++            assert_eq!(result.len(), 3);
++            assert_eq!(result.iter().map(|item| item.0.tag).collect::<Vec<_>>(), vec![0, 1, 1]);
++            assert_eq!(result[0].0.first, normal);
++            assert_eq!(result[0].1.to_bits(), 0x3ed4_13cd);
++            assert_eq!(result[1].0.byte_2, side ^ 1);
++            assert_eq!(result[2].0.byte_2, side ^ 1);
++            assert_eq!(result[2].0.second.x.to_bits(), result[1].0.second.x.to_bits() ^ 0x8000_0000);
++            assert_eq!(result[2].0.second.y.to_bits(), result[1].0.second.y.to_bits() ^ 0x8000_0000);
++            assert_eq!(result[2].1.to_bits(), result[1].1.to_bits() ^ 0x8000_0000);
++            let zero = find_alignment_preferences(&from, &to, Vec2::ZERO, &storage, &walls);
++            assert_eq!(zero.len(), 3);
++            assert_eq!(zero[2].1.to_bits(), zero[1].1.to_bits() ^ 0x8000_0000);
++        }
++    }
++
++    #[test]
++    fn samewall_preference_uses_authoritative_coord_delta_and_keeps_ordered_nan_gate() {
++        for side in [0, 1] {
++            let (storage, walls, from, to) = preference_fixture(side, 0);
++            // caller 位移故意不指向目标；samewall实际使用Info的u差，不从position猜。
++            let result = find_alignment_preferences(&from, &to, Vec2::NEG_X, &storage, &walls);
++            assert_eq!(result.len(), 1); assert_eq!(result[0].0.tag, 1);
++            assert_eq!(result[0].0.byte_2, side ^ 1);
++            assert_eq!(result[0].0.second, Vec2::X); assert_eq!(result[0].1, 1.0);
++            let nan_delta = find_alignment_preferences(&from, &to, Vec2::splat(f32::NAN), &storage, &walls);
++            assert_eq!(nan_delta[0].0.tag, 1);
++        }
++    }
++
++    #[test]
++    #[should_panic(expected = "destination is not a wall")]
++    fn preferences_checks_source_dst_before_missing_target() {
++        let (mut storage, walls, from, mut to) = preference_fixture(0, 0);
++        storage.apply_decorator_place(from.addr, from.id, &stair_info(2, 0.0, 1.0));
++        to.id = DecoratorId(999);
++        find_alignment_preferences(&from, &to, Vec2::X, &storage, &walls);
++    }
++
++    #[test]
++    #[should_panic(expected = "missing target decorator")]
++    fn preferences_checks_target_before_source_wall_address() {
++        let (mut storage, walls, mut from, mut to) = preference_fixture(0, 0);
++        let info = *storage.get(from.addr).unwrap().get(from.id).unwrap();
++        from.addr = DecoratorStorageAddr::Terrain;
++        storage.apply_decorator_place(from.addr, from.id, &info);
++        to.id = DecoratorId(999);
++        find_alignment_preferences(&from, &to, Vec2::X, &storage, &walls);
++    }
++
++    #[test]
++    fn samewall_preference_negates_signum_before_nan_payload_multiplication() {
++        let (mut storage, walls, from, to) = preference_fixture(1, 0);
++        let mut info = *storage.get(to.addr).unwrap().get(to.id).unwrap();
++        info.dst_wall = (info.dst_wall & 0xffff_ffff_0000_0000) | u64::from(0x7fc1_2345u32);
++        storage.apply_decorator_place(to.addr, to.id, &info);
++        let result = find_alignment_preferences(&from, &to, Vec2::X, &storage, &walls);
++        assert_eq!(result[0].0.tag, 1);
++        assert_eq!(result[0].0.second.x.to_bits(), 0xffc0_0000);
++        assert_eq!(result[0].0.second.y.to_bits(), 0xffc0_0000);
++    }
++
++}

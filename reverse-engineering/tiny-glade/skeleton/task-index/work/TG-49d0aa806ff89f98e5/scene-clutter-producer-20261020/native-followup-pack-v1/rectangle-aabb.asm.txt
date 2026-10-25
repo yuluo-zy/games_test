@@ -1,0 +1,27 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140c9b680: 48 89 c8                    	movq	%rcx, %rax
+140c9b683: f2 0f 10 42 10              	movsd	0x10(%rdx), %xmm0
+140c9b688: 0f 59 05 51 a2 c8 01        	mulps	0x1c8a251(%rip), %xmm0  # 0x1429258e0
+140c9b68f: f3 0f 10 4a 04              	movss	0x4(%rdx), %xmm1
+140c9b694: f3 0f 12 c9                 	movsldup	%xmm1, %xmm1            # xmm1 = xmm1[0,0,2,2]
+140c9b698: 0f 54 0d e1 32 c9 01        	andps	0x1c932e1(%rip), %xmm1  # 0x14292e980
+140c9b69f: f3 0f 10 12                 	movss	(%rdx), %xmm2
+140c9b6a3: 0f c6 d2 00                 	shufps	$0x0, %xmm2, %xmm2      # xmm2 = xmm2[0,0,0,0]
+140c9b6a7: 0f 54 15 d2 32 c9 01        	andps	0x1c932d2(%rip), %xmm2  # 0x14292e980
+140c9b6ae: 0f 59 c8                    	mulps	%xmm0, %xmm1
+140c9b6b1: f2 0f 12 c0                 	movddup	%xmm0, %xmm0            # xmm0 = xmm0[0,0]
+140c9b6b5: 0f 59 c2                    	mulps	%xmm2, %xmm0
+140c9b6b8: 0f c6 c9 11                 	shufps	$0x11, %xmm1, %xmm1     # xmm1 = xmm1[1,0,1,0]
+140c9b6bc: 0f 58 c8                    	addps	%xmm0, %xmm1
+140c9b6bf: f2 0f 10 42 08              	movsd	0x8(%rdx), %xmm0
+140c9b6c4: f2 0f 12 d0                 	movddup	%xmm0, %xmm2            # xmm2 = xmm0[0,0]
+140c9b6c8: 0f 5c c1                    	subps	%xmm1, %xmm0
+140c9b6cb: 0f 58 d1                    	addps	%xmm1, %xmm2
+140c9b6ce: f2 0f 10 d0                 	movsd	%xmm0, %xmm2            # xmm2 = xmm0[0],xmm2[1]
+140c9b6d2: 66 0f 11 11                 	movupd	%xmm2, (%rcx)
+140c9b6d6: c3                          	retq

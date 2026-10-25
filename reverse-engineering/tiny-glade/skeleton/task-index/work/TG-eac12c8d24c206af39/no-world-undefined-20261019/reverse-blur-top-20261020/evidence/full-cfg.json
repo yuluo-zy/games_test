@@ -1,0 +1,503 @@
+{
+  "entry": "%50",
+  "block_count": 11,
+  "blocks": {
+    "%50": {
+      "line": 1637,
+      "instructions": [
+        {
+          "line": 1637,
+          "text": "%50 = OpLabel"
+        },
+        {
+          "line": 1638,
+          "text": "OpLine %9 12 1"
+        },
+        {
+          "line": 1639,
+          "text": "%51 = OpLoad %v3uint %gl_GlobalInvocationID"
+        },
+        {
+          "line": 1640,
+          "text": "%52 = OpVectorShuffle %v2uint %51 %51 0 1"
+        },
+        {
+          "line": 1641,
+          "text": "OpLine %9 13 26"
+        },
+        {
+          "line": 1642,
+          "text": "%53 = OpLoad %type_2d_image %input_tail_tex"
+        },
+        {
+          "line": 1643,
+          "text": "%54 = OpImageFetch %v4float %53 %52 Lod %uint_0"
+        },
+        {
+          "line": 1644,
+          "text": "%55 = OpVectorShuffle %v3float %54 %54 0 1 2"
+        },
+        {
+          "line": 1645,
+          "text": "OpLine %9 22 22"
+        },
+        {
+          "line": 1646,
+          "text": "OpBranch %56"
+        }
+      ],
+      "successors": [
+        "%56"
+      ]
+    },
+    "%56": {
+      "line": 1647,
+      "instructions": [
+        {
+          "line": 1647,
+          "text": "%56 = OpLabel"
+        },
+        {
+          "line": 1648,
+          "text": "%57 = OpPhi %v3float %28 %50 %58 %59"
+        },
+        {
+          "line": 1649,
+          "text": "%60 = OpPhi %int %int_n1 %50 %61 %59"
+        },
+        {
+          "line": 1650,
+          "text": "OpLine %9 22 24"
+        },
+        {
+          "line": 1651,
+          "text": "%62 = OpSLessThanEqual %bool %60 %int_1"
+        },
+        {
+          "line": 1652,
+          "text": "OpLine %9 22 27"
+        },
+        {
+          "line": 1653,
+          "text": "OpLoopMerge %63 %59 None"
+        },
+        {
+          "line": 1654,
+          "text": "OpBranchConditional %62 %64 %63"
+        }
+      ],
+      "successors": [
+        "%64",
+        "%63"
+      ],
+      "condition": "%62"
+    },
+    "%64": {
+      "line": 1655,
+      "instructions": [
+        {
+          "line": 1655,
+          "text": "%64 = OpLabel"
+        },
+        {
+          "line": 1656,
+          "text": "OpLine %9 23 26"
+        },
+        {
+          "line": 1657,
+          "text": "OpBranch %65"
+        }
+      ],
+      "successors": [
+        "%65"
+      ]
+    },
+    "%65": {
+      "line": 1658,
+      "instructions": [
+        {
+          "line": 1658,
+          "text": "%65 = OpLabel"
+        },
+        {
+          "line": 1659,
+          "text": "%58 = OpPhi %v3float %57 %64 %66 %67"
+        },
+        {
+          "line": 1660,
+          "text": "%68 = OpPhi %int %int_n1 %64 %69 %67"
+        },
+        {
+          "line": 1661,
+          "text": "OpLine %9 23 28"
+        },
+        {
+          "line": 1662,
+          "text": "%70 = OpSLessThanEqual %bool %68 %int_1"
+        },
+        {
+          "line": 1663,
+          "text": "OpLine %9 23 31"
+        },
+        {
+          "line": 1664,
+          "text": "OpLoopMerge %71 %67 None"
+        },
+        {
+          "line": 1665,
+          "text": "OpBranchConditional %70 %67 %71"
+        }
+      ],
+      "successors": [
+        "%67",
+        "%71"
+      ],
+      "condition": "%70"
+    },
+    "%67": {
+      "line": 1666,
+      "instructions": [
+        {
+          "line": 1666,
+          "text": "%67 = OpLabel"
+        },
+        {
+          "line": 1667,
+          "text": "OpLine %9 24 26"
+        },
+        {
+          "line": 1668,
+          "text": "%72 = OpConvertUToF %v2float %52"
+        },
+        {
+          "line": 1669,
+          "text": "OpLine %9 24 37"
+        },
+        {
+          "line": 1670,
+          "text": "%73 = OpFAdd %v2float %72 %32"
+        },
+        {
+          "line": 1671,
+          "text": "OpLine %9 24 52"
+        },
+        {
+          "line": 1672,
+          "text": "%74 = OpConvertSToF %float %68"
+        },
+        {
+          "line": 1673,
+          "text": "OpLine %9 24 55"
+        },
+        {
+          "line": 1674,
+          "text": "%75 = OpConvertSToF %float %60"
+        },
+        {
+          "line": 1675,
+          "text": "OpLine %9 24 51"
+        },
+        {
+          "line": 1676,
+          "text": "%76 = OpCompositeConstruct %v2float %74 %75"
+        },
+        {
+          "line": 1677,
+          "text": "OpLine %9 24 43"
+        },
+        {
+          "line": 1678,
+          "text": "%77 = OpFAdd %v2float %73 %76"
+        },
+        {
+          "line": 1679,
+          "text": "OpLine %9 24 68"
+        },
+        {
+          "line": 1680,
+          "text": "%78 = OpAccessChain %_ptr_Uniform_v2uint %_Globals %int_0"
+        },
+        {
+          "line": 1681,
+          "text": "%79 = OpLoad %v2uint %78"
+        },
+        {
+          "line": 1682,
+          "text": "OpLine %9 24 61"
+        },
+        {
+          "line": 1683,
+          "text": "%80 = OpConvertUToF %v2float %79"
+        },
+        {
+          "line": 1684,
+          "text": "OpLine %9 24 59"
+        },
+        {
+          "line": 1685,
+          "text": "%81 = OpFDiv %v2float %77 %80"
+        },
+        {
+          "line": 1686,
+          "text": "OpLine %9 25 25"
+        },
+        {
+          "line": 1687,
+          "text": "%82 = OpLoad %type_2d_image %input_tex"
+        },
+        {
+          "line": 1688,
+          "text": "OpLine %9 25 47"
+        },
+        {
+          "line": 1689,
+          "text": "%83 = OpLoad %type_sampler %sampler_lnc"
+        },
+        {
+          "line": 1690,
+          "text": "OpLine %9 25 25"
+        },
+        {
+          "line": 1691,
+          "text": "%84 = OpSampledImage %type_sampled_image %82 %83"
+        },
+        {
+          "line": 1692,
+          "text": "%85 = OpImageSampleExplicitLod %v4float %84 %81 Lod %float_0"
+        },
+        {
+          "line": 1693,
+          "text": "%86 = OpVectorShuffle %v3float %85 %85 0 1 2"
+        },
+        {
+          "line": 1694,
+          "text": "OpLine %9 25 22"
+        },
+        {
+          "line": 1695,
+          "text": "%66 = OpFAdd %v3float %58 %86"
+        },
+        {
+          "line": 1696,
+          "text": "OpLine %9 23 34"
+        },
+        {
+          "line": 1697,
+          "text": "%69 = OpIAdd %int %68 %int_1"
+        },
+        {
+          "line": 1698,
+          "text": "OpLine %9 26 9"
+        },
+        {
+          "line": 1699,
+          "text": "OpBranch %65"
+        }
+      ],
+      "successors": [
+        "%65"
+      ]
+    },
+    "%71": {
+      "line": 1700,
+      "instructions": [
+        {
+          "line": 1700,
+          "text": "%71 = OpLabel"
+        },
+        {
+          "line": 1701,
+          "text": "OpLine %9 27 5"
+        },
+        {
+          "line": 1702,
+          "text": "OpBranch %59"
+        }
+      ],
+      "successors": [
+        "%59"
+      ]
+    },
+    "%59": {
+      "line": 1703,
+      "instructions": [
+        {
+          "line": 1703,
+          "text": "%59 = OpLabel"
+        },
+        {
+          "line": 1704,
+          "text": "OpLine %9 22 30"
+        },
+        {
+          "line": 1705,
+          "text": "%61 = OpIAdd %int %60 %int_1"
+        },
+        {
+          "line": 1706,
+          "text": "OpLine %9 27 5"
+        },
+        {
+          "line": 1707,
+          "text": "OpBranch %56"
+        }
+      ],
+      "successors": [
+        "%56"
+      ]
+    },
+    "%63": {
+      "line": 1708,
+      "instructions": [
+        {
+          "line": 1708,
+          "text": "%63 = OpLabel"
+        },
+        {
+          "line": 1709,
+          "text": "OpLine %9 29 14"
+        },
+        {
+          "line": 1710,
+          "text": "%87 = OpFMul %v3float %57 %49"
+        },
+        {
+          "line": 1711,
+          "text": "OpLine %9 37 27"
+        },
+        {
+          "line": 1712,
+          "text": "%88 = OpAccessChain %_ptr_Uniform_uint %_Globals %int_1"
+        },
+        {
+          "line": 1713,
+          "text": "%89 = OpLoad %uint %88"
+        },
+        {
+          "line": 1714,
+          "text": "%90 = OpINotEqual %bool %89 %uint_0"
+        },
+        {
+          "line": 1715,
+          "text": "OpSelectionMerge %91 None"
+        },
+        {
+          "line": 1716,
+          "text": "OpBranchConditional %90 %92 %93"
+        }
+      ],
+      "successors": [
+        "%92",
+        "%93"
+      ],
+      "condition": "%90"
+    },
+    "%93": {
+      "line": 1717,
+      "instructions": [
+        {
+          "line": 1717,
+          "text": "%93 = OpLabel"
+        },
+        {
+          "line": 1718,
+          "text": "OpLine %9 39 11"
+        },
+        {
+          "line": 1719,
+          "text": "OpBranch %91"
+        }
+      ],
+      "successors": [
+        "%91"
+      ]
+    },
+    "%92": {
+      "line": 1720,
+      "instructions": [
+        {
+          "line": 1720,
+          "text": "%92 = OpLabel"
+        },
+        {
+          "line": 1721,
+          "text": "OpLine %9 38 11"
+        },
+        {
+          "line": 1722,
+          "text": "%94 = OpExtInst %v3float %1 FMix %87 %55 %35"
+        },
+        {
+          "line": 1723,
+          "text": "OpLine %9 38 58"
+        },
+        {
+          "line": 1724,
+          "text": "OpBranch %91"
+        }
+      ],
+      "successors": [
+        "%91"
+      ]
+    },
+    "%91": {
+      "line": 1725,
+      "instructions": [
+        {
+          "line": 1725,
+          "text": "%91 = OpLabel"
+        },
+        {
+          "line": 1726,
+          "text": "%95 = OpPhi %v3float %94 %92 %55 %93"
+        },
+        {
+          "line": 1727,
+          "text": "OpLine %9 41 5"
+        },
+        {
+          "line": 1728,
+          "text": "%96 = OpLoad %type_2d_image_0 %output_tex"
+        },
+        {
+          "line": 1729,
+          "text": "OpImageWrite %96 %52 %95 None"
+        },
+        {
+          "line": 1730,
+          "text": "OpLine %9 42 1"
+        },
+        {
+          "line": 1731,
+          "text": "OpReturn"
+        },
+        {
+          "line": 1732,
+          "text": "OpFunctionEnd"
+        }
+      ],
+      "successors": []
+    }
+  },
+  "input_tex_fetch_block": "%67",
+  "sample_self_load_block": "%63",
+  "false_branch": "%93",
+  "true_branch": "%92",
+  "join": "%91",
+  "false_output_value": "%55 = RGB(input_tail_tex integer fetch)",
+  "true_output_value": "%94 = FMix(%87 average9 input_tex, %55 tail, .3)",
+  "all_memory_operations": [
+    {
+      "line": 1643,
+      "text": "         %54 = OpImageFetch %v4float %53 %52 Lod %uint_0"
+    },
+    {
+      "line": 1692,
+      "text": "         %85 = OpImageSampleExplicitLod %v4float %84 %81 Lod %float_0"
+    },
+    {
+      "line": 1729,
+      "text": "               OpImageWrite %96 %52 %95 None"
+    }
+  ]
+}

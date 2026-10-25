@@ -1,0 +1,19 @@
+{
+  "scope": "Manually prepared from D1 by integration owner before reading worker output. Not sent to the model. This evaluates static reading of the supplied decompilation, not original runtime equivalence.",
+  "checks": [
+    {"id":"H01","expected":"param_1[2] change-tick write occurs before empty replay guard","refs":["D1:L114-L120"]},
+    {"id":"H02","expected":"bucket index difference uses zero fallback when logical end precedes front, stride 0x40","refs":["D1:L121-L127"]},
+    {"id":"H03","expected":"all records count toward original indices, stride 0x30, only discriminant 10 processed","refs":["D1:L175-L184"]},
+    {"id":"H04","expected":"command bit0 controls immediate/animated scheduling; separate payload bit0 controls graph operation direction","refs":["D1:L183-L208","D1:L335-L369"]},
+    {"id":"H05","expected":"animated threshold uses duration/speed with decompiled ordered <= clamp to original 0.05; elapsed <= threshold increments and skips; elapsed > threshold increments and applies; equality stays pending","refs":["D1:L335-L354","C1:L1"]},
+    {"id":"H06","expected":"payload-bit0=0: direction0 calls FUN_1402c8640, direction!=0 calls FUN_1405b1be0 then FUN_140b76ce0; payload-bit0=1 inverts. Callee semantic names remain unproven by supplied symbols","refs":["D1:L191-L214","D1:L352-L375"]},
+    {"id":"H07","expected":"decorator lookup absence/type filtering nulls metadata, but does not suppress state mutation or event output","refs":["D1:L196-L214","D1:L317-L334","D1:L357-L375","D1:L479-L516"]},
+    {"id":"H08","expected":"cached lookup key is first edge id; missing table/key uses zero event-position fields, without skipping event","refs":["D1:L216-L219","D1:L272-L276","D1:L313-L315","D1:L377-L380","D1:L432-L437","D1:L474-L476"]},
+    {"id":"H09","expected":"event discriminant differs by scheduling path: immediate 0x12-direction, animated 0x11+direction","refs":["D1:L215-L215","D1:L376-L376","D1:L497-L516"]},
+    {"id":"H10","expected":"event slot stride 0x38, capacity growth, resource change marker, event-id counter and length each advance","refs":["D1:L327-L333","D1:L489-L516"]},
+    {"id":"H11","expected":"collected completion indices are reversed, then stable removal shifts tail bytes and decrements command length; not swap_remove or full-clear","refs":["D1:L521-L601"]},
+    {"id":"H12","expected":"variant-dependent drop follows each removed command; final temporary index allocation freed; do not reconstruct dependency internals","refs":["D1:L602-L700"]},
+    {"id":"H13","expected":"unknown ABI, exact event payload interpretation, call semantics, SIMD artifacts and scheduler remain explicit; no invented implementation/defaults/claimed runtime","refs":["D1:L1-L111","S1:L1-L2"]},
+    {"id":"H14","expected":"floating-point NaN is not silently converted to Rust max: q<=0.05 false for NaN, elapsed<=q false, so animated command applies and elapsed increments","refs":["D1:L335-L354"]}
+  ]
+}

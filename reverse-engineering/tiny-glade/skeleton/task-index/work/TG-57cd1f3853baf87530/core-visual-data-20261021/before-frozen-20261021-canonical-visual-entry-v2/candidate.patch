@@ -1,0 +1,42 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/lantern.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/lantern.rs
+@@ -195,7 +195,7 @@
+ ) {
+     let derived = derived.as_view();
+     let mesh_lib = derived.mesh_library();
+-    for (_wall, decorators) in decorator_storage.iter() {
++    for (wall, decorators) in decorator_storage.iter() {
+         for (id, info) in decorators.iter_modified() {
+             let subtype = derived
+                 .subtype(country_core::resources::walls::decorator::DecoratorId(id))
+@@ -203,21 +203,25 @@
+             if !matches!(subtype, 16..=18) {
+                 continue;
+             }
++            let blueprint = blueprints.insert_for(
++                id,
++                country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Wall(wall),
++                info.state(),
++            );
+             let transform = cached_transforms.transform(id);
+-            // O 判别：DecoratorExtraInfo::as_lantern（非灯笼 panic）。
+-            let lantern = info.extra().as_lantern();
+-            let _payload = lantern.0; // U：灯载荷语义。
+             // O：六键（DecoratorLibKey::new ×6 + rank ×6 = 碰撞/交互/描边 ×
+             // 2 侧；I 键面）。
+             let key = DecoratorLibKey::new(subtype, info.rank());
+-            let mut blueprint = DecoratorBlueprint::new();
++
+             blueprint.set_positioned_colliders(
+                 std::sync::Arc::clone(&mesh_lib.collision_record(key).mesh),
+                 std::sync::Arc::clone(&mesh_lib.interaction_record(key).mesh),
+                 &transform.translation,
+                 &transform.rotation,
+             );
+-            blueprints.insert(id, blueprint);
++            // O 判别：DecoratorExtraInfo::as_lantern（非灯笼 panic）。
++            let lantern = info.extra().as_lantern();
++            let _payload = lantern.0; // U：灯载荷语义。
+             // 视觉实体与实际碰撞槽共同消费同一缓存位姿；其它灯光装配仍按既有分支。
+             let builder =
+                 WindowVisualEntityBuilder::new(transform.translation, transform.rotation, id);

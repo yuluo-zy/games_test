@@ -1,0 +1,28 @@
+# Frozen graph stage2 independent review
+
+Reviewed patch: `graph/graph-stage2.patch`, SHA256 `e3aa50aa9ccf9740bff106ba06fe8ebce4700b497393eff984d34bbc5ab0a013`. All eight frozen candidate files match `graph/candidate-sha256.json`; see `stage2-identity.json`. This is a bounded static approval for integrating these corrections. It is not Cargo, GPU or complete-tail acceptance. No production source was edited by this reviewer.
+
+## Confirmed corrections
+
+- `select_main_world` matches all six original before-world decision steps, including the late 0x140163c68 static-capture helper and the conditional profiler lookup. Painterly-enabled is separately carried through the idle path.
+- flag94 follows the actual selected-world/Primary RT decision, including zero; screenshot purpose comes from the active request scan, with no Awaiting request represented by 7. No production load-time fallback controls remain in this patch.
+- The primary-RT debug branch calls the actual existing algorithm, not a clear substitute. The two original fallback resources remain independent: world-sized format0x82 `main depth`, and [1,1] format9 `coc`. They are not zero-initialized by the candidate.
+- Purpose1/5 choose the initial image-formation configuration only for the caller's flattened override. The final-post consumer still uses its current configuration for grading/lens values.
+- Painterly receives the actual depth/CoC auxiliaries and the menu policy state; the Settings(Image) early return and Disabled transition occur before Time/asset consumption. FrameConstants is read only when the immediate DebugGui flag is false. Vermeer gets its independent FrameRenderConfig+0x20 skip-generate byte, menu state, and full f64 delta instead of the prior alias and rounded delta.
+- The 4x MSAA target's sample count survives the EffectsHost projection. Single-sample temporals retain their own description.
+- MEI direct/shadow branches now match: direct target/tag0 and no temp/combine when shadows are false; shadow temp/tag1 with all-zero view words and the original combine when true. The stage1 candidate's tag2 error was independently demonstrated by `mei-full.asm` at 0x1409c6bb8..0x1409c6c0d and corrected before this freeze. The tag2 at 0x1409c6c14 belongs to absent depth, not the color attachment.
+- MEI prerequisites are under the original UI gate. Loading screen and optional EguiBackend remain outside the reveal/UI gate. Screenshot purposes3/4/6 are placed at the corresponding original points. T13 remains excluded.
+
+## Main-color cache adjudication
+
+The original no-world branch does not render or clear the raw `main color`; adding a persistent cache owner just to initialize that input would change the original graph. The original shader positively handles it with flag94=0. This was independently verified against the shipped binary, not only reconstructed HLSL:
+
+`original-input-valid-shader.json` records the original fragment module SHA `dd921e013549a6b4e3101e621e3e2e1d207f47b906271447443c11fd2ebbb04c`. Its Globals member5 is named `is_input_valid`. The original instructions load it, compare against zero, invert the bool, construct a bool3, and select constant vector `(0.18,0.18,0.18)` when the input is invalid; the other operand is the sampled/tonemapped value. The original container SHA `5efbfd4191994b4916c7651be3827fbc7aa10c70430ce941d4cb8de7dbbeaa94` matches both oracle-bin and the local shipped compiled-shaders file. Therefore this reviewer withdraws the earlier suggestion to add a main-color cache; preserving the raw allocation and true flag94 branch is correct. Painterly's own temporal target is the source used for its static capture.
+
+## Concrete outstanding chains
+
+1. `custom_lut: None` is a pre-existing unresolved consumer, not restored by stage2. The canonical owner is now positively identified as `country_core::systems::backend::icc::ActiveIccProfile`, not an anonymous resource. Both original TypeId words were found in final_post and in exact PDB specializations `Res<ActiveIccProfile>` @0x1401845d0, `ResMut<ActiveIccProfile>` @0x141394900 and `App::insert_resource<ActiveIccProfile>` @0x14154a700. Evidence: `custom-lut-typeid-scan.json`, `custom-lut-pdb-procedures.json`. Original producer `update_window_icc_profile` @0x14093d830 and plugin build trampoline @0x140a58440 ->0x140b65a80 are retained in backend-misc decompilation. The production country-core package currently lacks this module; the older reconstruction contains only a Gap. A subsequent concrete patch must restore file-change consumption, lcms profile/transform ownership and failure/drop behavior, generated 32-cube GPU LUT publication, and the final-post Some/None consumer. It must not install a permanently-empty ActiveIccProfile resource and call this closed.
+2. `MetaCommander::is_profiling` getter is now connected correctly, but its current production `profiler_sinks: HashMap<String,()>` has no live profiling sink writer and profiling commands are explicitly rejected. Stage2's true branch is a control-flow restoration; profiling start/stop sink lifecycle remains required work and cannot be counted complete by injecting a test sink.
+3. Integrated original branching, GPU output, compile/submit failures and OOM retry state require root-owned validation. This reviewer ran no Cargo or GPU operations and does not certify those checks.
+
+The identified ICC and profiling producer gaps have been sent to graph_chain and root with canonical symbols and original evidence. Stage2 can be integrated as the bounded correction above while those chains continue; it cannot serve as a declaration that every compile_main path is recovered.

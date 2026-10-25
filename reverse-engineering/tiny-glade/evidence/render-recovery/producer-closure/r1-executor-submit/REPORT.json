@@ -1,0 +1,1710 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-10-12T10:23:31.434Z",
+  "completed_at": "2026-10-12T10:24:04.770Z",
+  "server": "re_mcp_ghidra",
+  "lane_count": 2,
+  "lanes": [
+    {
+      "database": "revsub_l1",
+      "report": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\producer-closure\\r1-executor-submit\\revsub_l1.report.json",
+      "ok": true,
+      "cleanup_ok": true,
+      "error": null,
+      "steps": 23
+    },
+    {
+      "database": "revsub_l2",
+      "report": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\producer-closure\\r1-executor-submit\\revsub_l2.report.json",
+      "ok": true,
+      "cleanup_ok": true,
+      "error": null,
+      "steps": 23
+    }
+  ],
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "identity": {
+    "target": {
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+      "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+    },
+    "provider": {
+      "id": "ghidra",
+      "version": "12.1.4"
+    },
+    "launch_sha256": "c82cc6dd6f528a9f07990202b685f0802e0833733774283e9a497bc4cef41aad",
+    "inputs": []
+  },
+  "cache_policy": {
+    "enabled": false,
+    "reason": "Database analysis cache disabled: both provider_manifest and database_snapshot files are required.",
+    "provider_version_provenance": "job-declared; actual server self-report is recorded separately upon connection"
+  },
+  "evidence_limits": [
+    "Static tool outputs do not prove runtime execution.",
+    "Xref completeness is unknown with auto-analysis disabled. Empty or DATA-only references cannot establish whole-program absence.",
+    "Successful cache reuse preserves the original evidence coverage; it does not expand it."
+  ],
+  "results": [
+    {
+      "index": 0,
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "keep_open": true,
+        "database_id": "revsub_l1"
+      },
+      "cache_key": "38a03139b0ba417c212bb32469361f0077214886847334dc123e7c88e715e8d8",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:23:31.582Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"revsub_l1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "revsub_l1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:23:44.919Z",
+      "ok": true,
+      "result_sha256": "87648cfdf7d822e4f2f23b621a243f95e4d9d55d27f5f599738336bc1e9658d5",
+      "lane": "revsub_l1",
+      "database": "revsub_l1"
+    },
+    {
+      "index": 1,
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "revsub_l1"
+      },
+      "cache_key": "98b5b4212ad70a822cd74ecdc7eba20b1f768ffd84e2fb936ddd9cf97e1ada58",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:23:44.921Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"revsub_l1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "revsub_l1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:24:02.461Z",
+      "ok": true,
+      "result_sha256": "02ab27ef1095111dfcdf039001a6e264c385b7adca44ab0c0cb012ae33452077",
+      "lane": "revsub_l1",
+      "database": "revsub_l1"
+    },
+    {
+      "index": 2,
+      "position": 0,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140c04e20"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:02.467Z",
+      "completed_at": "2026-10-12T10:24:02.724Z",
+      "source": "actual_mcp_call",
+      "cache_key": "7a6bbfa3a49b3eb39f57361aa716dfc046fd5d37bdb5bbd00b44feb6a0b4ab53",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A68CC",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l1"
+      },
+      "result_sha256": "fd915ed59a073a22f6a3406416419e27295a2b9f5d4b22c6a4f1c47ed48c878c",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l1",
+      "database": "revsub_l1"
+    },
+    {
+      "index": 2,
+      "position": 1,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x1418c8710"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:02.467Z",
+      "completed_at": "2026-10-12T10:24:02.724Z",
+      "source": "actual_mcp_call",
+      "cache_key": "7a6bbfa3a49b3eb39f57361aa716dfc046fd5d37bdb5bbd00b44feb6a0b4ab53",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x14372273C",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l1"
+      },
+      "result_sha256": "b3e3b980827a918c8edf9591ab896ebc748c563951ff4be033afd749e8b7143f",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l1",
+      "database": "revsub_l1"
+    },
+    {
+      "index": 2,
+      "position": 2,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140bfc780"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:02.467Z",
+      "completed_at": "2026-10-12T10:24:02.724Z",
+      "source": "actual_mcp_call",
+      "cache_key": "7a6bbfa3a49b3eb39f57361aa716dfc046fd5d37bdb5bbd00b44feb6a0b4ab53",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A62FC",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l1"
+      },
+      "result_sha256": "e55d7f8d77e9fcc60fc6a662db3a0c53977edab226df356a0d9cbaa310bdd18a",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l1",
+      "database": "revsub_l1"
+    },
+    {
+      "index": 2,
+      "position": 3,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140bfcf80"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:02.467Z",
+      "completed_at": "2026-10-12T10:24:02.724Z",
+      "source": "actual_mcp_call",
+      "cache_key": "7a6bbfa3a49b3eb39f57361aa716dfc046fd5d37bdb5bbd00b44feb6a0b4ab53",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A635C",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l1"
+      },
+      "result_sha256": "d403a96615f261026902ba923d8d58a485e516304cbbd90a3d9e01b8acb4fec3",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l1",
+      "database": "revsub_l1"
+    },
+    {
+      "index": 2,
+      "position": 4,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140beabd0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:02.467Z",
+      "completed_at": "2026-10-12T10:24:02.724Z",
+      "source": "actual_mcp_call",
+      "cache_key": "7a6bbfa3a49b3eb39f57361aa716dfc046fd5d37bdb5bbd00b44feb6a0b4ab53",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A59E4",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l1"
+      },
+      "result_sha256": "f8243ce5c55571763e40db518183917e7de6833b15a459c5f88420bf50a5cf50",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l1",
+      "database": "revsub_l1"
+    },
+    {
+      "index": 2,
+      "position": 5,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140bec400"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:02.467Z",
+      "completed_at": "2026-10-12T10:24:02.724Z",
+      "source": "actual_mcp_call",
+      "cache_key": "7a6bbfa3a49b3eb39f57361aa716dfc046fd5d37bdb5bbd00b44feb6a0b4ab53",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A5AF8",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l1"
+      },
+      "result_sha256": "1576cfd7771dc0c4918540545eb2516bf4ecd5e913b6af3d15a86734170b00b4",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l1",
+      "database": "revsub_l1"
+    },
+    {
+      "index": 2,
+      "position": 6,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x1400fa190"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:02.467Z",
+      "completed_at": "2026-10-12T10:24:02.724Z",
+      "source": "actual_mcp_call",
+      "cache_key": "7a6bbfa3a49b3eb39f57361aa716dfc046fd5d37bdb5bbd00b44feb6a0b4ab53",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x14364482C",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l1"
+      },
+      "result_sha256": "7c0e0a306c058641a38daec07a4cf267c11e71c5cd587b09776261c59e7bdd0b",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l1",
+      "database": "revsub_l1"
+    },
+    {
+      "index": 2,
+      "position": 7,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140bebdf0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:02.467Z",
+      "completed_at": "2026-10-12T10:24:02.724Z",
+      "source": "actual_mcp_call",
+      "cache_key": "7a6bbfa3a49b3eb39f57361aa716dfc046fd5d37bdb5bbd00b44feb6a0b4ab53",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A5AC8",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l1"
+      },
+      "result_sha256": "f1dde7246e6a391fde005442f716b5ecc280bfaaacae0d4114aa83a348abdbb8",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l1",
+      "database": "revsub_l1"
+    },
+    {
+      "index": 2,
+      "position": 8,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140bebc90"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:02.467Z",
+      "completed_at": "2026-10-12T10:24:02.724Z",
+      "source": "actual_mcp_call",
+      "cache_key": "7a6bbfa3a49b3eb39f57361aa716dfc046fd5d37bdb5bbd00b44feb6a0b4ab53",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A5AA4",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l1"
+      },
+      "result_sha256": "2fa7a35e7a508be94958fd9884e74bc8fc164ed3a2d15e807cbed50570eb20df",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l1",
+      "database": "revsub_l1"
+    },
+    {
+      "index": 2,
+      "position": 9,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140bfc750"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:02.467Z",
+      "completed_at": "2026-10-12T10:24:02.724Z",
+      "source": "actual_mcp_call",
+      "cache_key": "7a6bbfa3a49b3eb39f57361aa716dfc046fd5d37bdb5bbd00b44feb6a0b4ab53",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A62F0",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l1"
+      },
+      "result_sha256": "515a6a78cc7f236a37fae706f851388c690a63815a5af0d3d77dd058f905e1a0",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l1",
+      "database": "revsub_l1"
+    },
+    {
+      "index": 2,
+      "position": 10,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140bea680"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:02.467Z",
+      "completed_at": "2026-10-12T10:24:02.724Z",
+      "source": "actual_mcp_call",
+      "cache_key": "7a6bbfa3a49b3eb39f57361aa716dfc046fd5d37bdb5bbd00b44feb6a0b4ab53",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A59A8",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l1"
+      },
+      "result_sha256": "196599e0cc1b62db99bfe686deda34c0d5fd0f50f8e60f207db8b2df24a1ae14",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l1",
+      "database": "revsub_l1"
+    },
+    {
+      "index": 2,
+      "position": 11,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x1418c3300"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:02.467Z",
+      "completed_at": "2026-10-12T10:24:02.724Z",
+      "source": "actual_mcp_call",
+      "cache_key": "7a6bbfa3a49b3eb39f57361aa716dfc046fd5d37bdb5bbd00b44feb6a0b4ab53",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x143722484",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l1"
+      },
+      "result_sha256": "ecca67dcb45af2c74f0f5f711f71d7a318d9cc9fc2e69c3b091423f9f6e1947e",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l1",
+      "database": "revsub_l1"
+    },
+    {
+      "index": 2,
+      "position": 12,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140bf0b90"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:02.467Z",
+      "completed_at": "2026-10-12T10:24:02.724Z",
+      "source": "actual_mcp_call",
+      "cache_key": "7a6bbfa3a49b3eb39f57361aa716dfc046fd5d37bdb5bbd00b44feb6a0b4ab53",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A5E28",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l1"
+      },
+      "result_sha256": "2aa79eb846eea86002a6d27b304aacf0cb23d96be6cc3b23cade47d31329cb4b",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l1",
+      "database": "revsub_l1"
+    },
+    {
+      "index": 2,
+      "position": 13,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140bf84e0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:02.467Z",
+      "completed_at": "2026-10-12T10:24:02.724Z",
+      "source": "actual_mcp_call",
+      "cache_key": "7a6bbfa3a49b3eb39f57361aa716dfc046fd5d37bdb5bbd00b44feb6a0b4ab53",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A6050",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l1"
+      },
+      "result_sha256": "b63bdaefb0fe14945b287d750b95dfa8fe214975f6bf7eb80d680d94cb648679",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l1",
+      "database": "revsub_l1"
+    },
+    {
+      "index": 2,
+      "position": 14,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140be9d00"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:02.467Z",
+      "completed_at": "2026-10-12T10:24:02.724Z",
+      "source": "actual_mcp_call",
+      "cache_key": "7a6bbfa3a49b3eb39f57361aa716dfc046fd5d37bdb5bbd00b44feb6a0b4ab53",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A5918",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l1"
+      },
+      "result_sha256": "b64e87b9e20c4a3dd8430c7473ecc0bd3d8fb9f844112d58e30a27156a63fafd",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l1",
+      "database": "revsub_l1"
+    },
+    {
+      "index": 2,
+      "position": 15,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140bf2560"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:02.467Z",
+      "completed_at": "2026-10-12T10:24:02.724Z",
+      "source": "actual_mcp_call",
+      "cache_key": "7a6bbfa3a49b3eb39f57361aa716dfc046fd5d37bdb5bbd00b44feb6a0b4ab53",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A5F24",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l1"
+      },
+      "result_sha256": "2a0b6a2bd55f0cbcb3e35c98b6376d41c1168053a0da01fdf269f392ec80d058",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l1",
+      "database": "revsub_l1"
+    },
+    {
+      "index": 2,
+      "position": 16,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140bea2d0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:02.467Z",
+      "completed_at": "2026-10-12T10:24:02.724Z",
+      "source": "actual_mcp_call",
+      "cache_key": "7a6bbfa3a49b3eb39f57361aa716dfc046fd5d37bdb5bbd00b44feb6a0b4ab53",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A5978",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l1"
+      },
+      "result_sha256": "8320e752cd333fb2d55922c2d12476e75ecd661b0593f9dbc023faeda64d0220",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l1",
+      "database": "revsub_l1"
+    },
+    {
+      "index": 2,
+      "position": 17,
+      "tool": "get_xrefs_from",
+      "args": {
+        "address": "0x140c04e20"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:02.467Z",
+      "completed_at": "2026-10-12T10:24:02.724Z",
+      "source": "actual_mcp_call",
+      "cache_key": "7a6bbfa3a49b3eb39f57361aa716dfc046fd5d37bdb5bbd00b44feb6a0b4ab53",
+      "cache_eligible": false,
+      "result": {
+        "items": [],
+        "total": 0,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l1"
+      },
+      "result_sha256": "e2368543c446808278a144fbf789b42c6538a51567e127543e79d660cec0ecf1",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l1",
+      "database": "revsub_l1"
+    },
+    {
+      "index": 2,
+      "position": 18,
+      "tool": "get_xrefs_from",
+      "args": {
+        "address": "0x140beabd0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:02.467Z",
+      "completed_at": "2026-10-12T10:24:02.724Z",
+      "source": "actual_mcp_call",
+      "cache_key": "7a6bbfa3a49b3eb39f57361aa716dfc046fd5d37bdb5bbd00b44feb6a0b4ab53",
+      "cache_eligible": false,
+      "result": {
+        "items": [],
+        "total": 0,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l1"
+      },
+      "result_sha256": "e2368543c446808278a144fbf789b42c6538a51567e127543e79d660cec0ecf1",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l1",
+      "database": "revsub_l1"
+    },
+    {
+      "index": 2,
+      "position": 19,
+      "tool": "get_xrefs_from",
+      "args": {
+        "address": "0x140bec400"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:02.467Z",
+      "completed_at": "2026-10-12T10:24:02.724Z",
+      "source": "actual_mcp_call",
+      "cache_key": "7a6bbfa3a49b3eb39f57361aa716dfc046fd5d37bdb5bbd00b44feb6a0b4ab53",
+      "cache_eligible": false,
+      "result": {
+        "items": [],
+        "total": 0,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l1"
+      },
+      "result_sha256": "e2368543c446808278a144fbf789b42c6538a51567e127543e79d660cec0ecf1",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l1",
+      "database": "revsub_l1"
+    },
+    {
+      "index": 3,
+      "tool": "close_database",
+      "args": {
+        "database": "revsub_l1",
+        "save": false
+      },
+      "cache_key": "cc45d655922589a118fc2bffad790901382c4fa5f74774e5882fdd5784a74947",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:24:02.726Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"revsub_l1\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "revsub_l1"
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:24:03.343Z",
+      "ok": true,
+      "result_sha256": "a2bcb3a1851dc5f4a7798688f8e4ba3215209a016b32aab5939b6f17aa28b2ab",
+      "lane": "revsub_l1",
+      "database": "revsub_l1"
+    },
+    {
+      "index": 0,
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "keep_open": true,
+        "database_id": "revsub_l2"
+      },
+      "cache_key": "a9b45b47432900a07c2d8c582027a12af91d15524b5fc6e0722f03be84a15226",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:23:31.745Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"revsub_l2\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "revsub_l2",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:23:46.930Z",
+      "ok": true,
+      "result_sha256": "deb6685fcc6a74f806cec72613790fb10185ae5740790ab4f8042e3d5c478950",
+      "lane": "revsub_l2",
+      "database": "revsub_l2"
+    },
+    {
+      "index": 1,
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "revsub_l2"
+      },
+      "cache_key": "85e7ee7f51e3e9e82bb0d9adfe50bb7e1c43634b09ea08ffe8c6d87ec0898923",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:23:46.931Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"revsub_l2\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "revsub_l2",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:24:03.927Z",
+      "ok": true,
+      "result_sha256": "bd2eaa21c04beb74e7acd8a07ee73ce0c288b968fc7e0fd249185e53ffafda7f",
+      "lane": "revsub_l2",
+      "database": "revsub_l2"
+    },
+    {
+      "index": 2,
+      "position": 0,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140c04e20"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:03.929Z",
+      "completed_at": "2026-10-12T10:24:04.072Z",
+      "source": "actual_mcp_call",
+      "cache_key": "0f439dac387a056367e82d289657d710bd63e6fbc5b8cb01c9d674655e578bb3",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A68CC",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l2"
+      },
+      "result_sha256": "1c057572fa75cf8a4617fc49d97e28585a562bc5f426c14a661d4b90c313a177",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l2",
+      "database": "revsub_l2"
+    },
+    {
+      "index": 2,
+      "position": 1,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x1418c8710"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:03.929Z",
+      "completed_at": "2026-10-12T10:24:04.072Z",
+      "source": "actual_mcp_call",
+      "cache_key": "0f439dac387a056367e82d289657d710bd63e6fbc5b8cb01c9d674655e578bb3",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x14372273C",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l2"
+      },
+      "result_sha256": "f7ed75c0ce46b2ef0137cb29765fca0b5151e131ddb6c1075f0cbb22aab87906",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l2",
+      "database": "revsub_l2"
+    },
+    {
+      "index": 2,
+      "position": 2,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140bfc780"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:03.929Z",
+      "completed_at": "2026-10-12T10:24:04.072Z",
+      "source": "actual_mcp_call",
+      "cache_key": "0f439dac387a056367e82d289657d710bd63e6fbc5b8cb01c9d674655e578bb3",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A62FC",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l2"
+      },
+      "result_sha256": "b911bf69a3e9485c10006d45dba30d091a77a830aa8d185f9711f32ba8bb5317",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l2",
+      "database": "revsub_l2"
+    },
+    {
+      "index": 2,
+      "position": 3,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140bfcf80"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:03.929Z",
+      "completed_at": "2026-10-12T10:24:04.072Z",
+      "source": "actual_mcp_call",
+      "cache_key": "0f439dac387a056367e82d289657d710bd63e6fbc5b8cb01c9d674655e578bb3",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A635C",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l2"
+      },
+      "result_sha256": "c5129e2eec5a98cfbcfd95ac0a139ac6d1f9ffb71b7ed3a42ef6e60cbc9a0cc7",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l2",
+      "database": "revsub_l2"
+    },
+    {
+      "index": 2,
+      "position": 4,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140beabd0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:03.929Z",
+      "completed_at": "2026-10-12T10:24:04.072Z",
+      "source": "actual_mcp_call",
+      "cache_key": "0f439dac387a056367e82d289657d710bd63e6fbc5b8cb01c9d674655e578bb3",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A59E4",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l2"
+      },
+      "result_sha256": "2ed376903334f42e6b4801222a1ce8db2db3a511db823138680ba62ee1ab7512",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l2",
+      "database": "revsub_l2"
+    },
+    {
+      "index": 2,
+      "position": 5,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140bec400"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:03.929Z",
+      "completed_at": "2026-10-12T10:24:04.072Z",
+      "source": "actual_mcp_call",
+      "cache_key": "0f439dac387a056367e82d289657d710bd63e6fbc5b8cb01c9d674655e578bb3",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A5AF8",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l2"
+      },
+      "result_sha256": "e251f1471b1d677b4c85b87a51e82746e4d91d3bd98f1999ac71c95a274b3b1c",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l2",
+      "database": "revsub_l2"
+    },
+    {
+      "index": 2,
+      "position": 6,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x1400fa190"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:03.929Z",
+      "completed_at": "2026-10-12T10:24:04.072Z",
+      "source": "actual_mcp_call",
+      "cache_key": "0f439dac387a056367e82d289657d710bd63e6fbc5b8cb01c9d674655e578bb3",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x14364482C",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l2"
+      },
+      "result_sha256": "629f1ff744694c484f7b84d2ef56fdbd4f47a8ea8e312a7fc6ec48146761e0de",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l2",
+      "database": "revsub_l2"
+    },
+    {
+      "index": 2,
+      "position": 7,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140bebdf0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:03.929Z",
+      "completed_at": "2026-10-12T10:24:04.072Z",
+      "source": "actual_mcp_call",
+      "cache_key": "0f439dac387a056367e82d289657d710bd63e6fbc5b8cb01c9d674655e578bb3",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A5AC8",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l2"
+      },
+      "result_sha256": "6c502c4fc258c95abd344f44fa59fcad2c92e3451d403a4408ea4cc6a0fdfa47",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l2",
+      "database": "revsub_l2"
+    },
+    {
+      "index": 2,
+      "position": 8,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140bebc90"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:03.929Z",
+      "completed_at": "2026-10-12T10:24:04.072Z",
+      "source": "actual_mcp_call",
+      "cache_key": "0f439dac387a056367e82d289657d710bd63e6fbc5b8cb01c9d674655e578bb3",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A5AA4",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l2"
+      },
+      "result_sha256": "e0df29d578ca3255e7dd822989521970bdcffe01db9fedb4f9d0e100a18cc14e",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l2",
+      "database": "revsub_l2"
+    },
+    {
+      "index": 2,
+      "position": 9,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140bfc750"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:03.929Z",
+      "completed_at": "2026-10-12T10:24:04.072Z",
+      "source": "actual_mcp_call",
+      "cache_key": "0f439dac387a056367e82d289657d710bd63e6fbc5b8cb01c9d674655e578bb3",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A62F0",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l2"
+      },
+      "result_sha256": "18e7cfff431c461b39b56f25493d3b5e6cd18ca8e5b0119ec7db026f1887204f",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l2",
+      "database": "revsub_l2"
+    },
+    {
+      "index": 2,
+      "position": 10,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140bea680"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:03.929Z",
+      "completed_at": "2026-10-12T10:24:04.072Z",
+      "source": "actual_mcp_call",
+      "cache_key": "0f439dac387a056367e82d289657d710bd63e6fbc5b8cb01c9d674655e578bb3",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A59A8",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l2"
+      },
+      "result_sha256": "18984f1e602d77146f86c72a8b6a2941e7759ab85d0f51b8c53dde13e3128a55",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l2",
+      "database": "revsub_l2"
+    },
+    {
+      "index": 2,
+      "position": 11,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x1418c3300"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:03.929Z",
+      "completed_at": "2026-10-12T10:24:04.072Z",
+      "source": "actual_mcp_call",
+      "cache_key": "0f439dac387a056367e82d289657d710bd63e6fbc5b8cb01c9d674655e578bb3",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x143722484",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l2"
+      },
+      "result_sha256": "308c637ee751e729d18443d41745919939fdd8c4b0987fd1f6316384a3c3e305",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l2",
+      "database": "revsub_l2"
+    },
+    {
+      "index": 2,
+      "position": 12,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140bf0b90"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:03.929Z",
+      "completed_at": "2026-10-12T10:24:04.072Z",
+      "source": "actual_mcp_call",
+      "cache_key": "0f439dac387a056367e82d289657d710bd63e6fbc5b8cb01c9d674655e578bb3",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A5E28",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l2"
+      },
+      "result_sha256": "0fa5f6a87f9ec27411947a90be9d9f64624edb5dc7133fdb4b1e73c99ffeb659",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l2",
+      "database": "revsub_l2"
+    },
+    {
+      "index": 2,
+      "position": 13,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140bf84e0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:03.929Z",
+      "completed_at": "2026-10-12T10:24:04.072Z",
+      "source": "actual_mcp_call",
+      "cache_key": "0f439dac387a056367e82d289657d710bd63e6fbc5b8cb01c9d674655e578bb3",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A6050",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l2"
+      },
+      "result_sha256": "c78ccb389e33baba50ce46e66598ec93b7702ee3cb9e3159f09741ef2a33d872",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l2",
+      "database": "revsub_l2"
+    },
+    {
+      "index": 2,
+      "position": 14,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140be9d00"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:03.929Z",
+      "completed_at": "2026-10-12T10:24:04.072Z",
+      "source": "actual_mcp_call",
+      "cache_key": "0f439dac387a056367e82d289657d710bd63e6fbc5b8cb01c9d674655e578bb3",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A5918",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l2"
+      },
+      "result_sha256": "8853690fef4ce145f7de62ae091691ad6b5091ec5cfaa39f902d52ac8ce4a594",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l2",
+      "database": "revsub_l2"
+    },
+    {
+      "index": 2,
+      "position": 15,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140bf2560"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:03.929Z",
+      "completed_at": "2026-10-12T10:24:04.072Z",
+      "source": "actual_mcp_call",
+      "cache_key": "0f439dac387a056367e82d289657d710bd63e6fbc5b8cb01c9d674655e578bb3",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A5F24",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l2"
+      },
+      "result_sha256": "9c5e771d0dc32e2046916755c589627a88ec51123a4663caa9d09bcfe30596c7",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l2",
+      "database": "revsub_l2"
+    },
+    {
+      "index": 2,
+      "position": 16,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140bea2d0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:03.929Z",
+      "completed_at": "2026-10-12T10:24:04.072Z",
+      "source": "actual_mcp_call",
+      "cache_key": "0f439dac387a056367e82d289657d710bd63e6fbc5b8cb01c9d674655e578bb3",
+      "cache_eligible": false,
+      "result": {
+        "items": [
+          {
+            "from_address": "0x1436A5978",
+            "from_function": "",
+            "ref_type": "DATA",
+            "is_call": false
+          }
+        ],
+        "total": 1,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l2"
+      },
+      "result_sha256": "50ff9aef8af0f8bd517029f1cb63d6b2086c150d2ba7603e133fd675c6f6130c",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l2",
+      "database": "revsub_l2"
+    },
+    {
+      "index": 2,
+      "position": 17,
+      "tool": "get_xrefs_from",
+      "args": {
+        "address": "0x140c04e20"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:03.929Z",
+      "completed_at": "2026-10-12T10:24:04.072Z",
+      "source": "actual_mcp_call",
+      "cache_key": "0f439dac387a056367e82d289657d710bd63e6fbc5b8cb01c9d674655e578bb3",
+      "cache_eligible": false,
+      "result": {
+        "items": [],
+        "total": 0,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l2"
+      },
+      "result_sha256": "4ad97d6fd58263e660230297878f3111e6e7678ecf26c83af342947c85b8291f",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l2",
+      "database": "revsub_l2"
+    },
+    {
+      "index": 2,
+      "position": 18,
+      "tool": "get_xrefs_from",
+      "args": {
+        "address": "0x140beabd0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:03.929Z",
+      "completed_at": "2026-10-12T10:24:04.072Z",
+      "source": "actual_mcp_call",
+      "cache_key": "0f439dac387a056367e82d289657d710bd63e6fbc5b8cb01c9d674655e578bb3",
+      "cache_eligible": false,
+      "result": {
+        "items": [],
+        "total": 0,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l2"
+      },
+      "result_sha256": "4ad97d6fd58263e660230297878f3111e6e7678ecf26c83af342947c85b8291f",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l2",
+      "database": "revsub_l2"
+    },
+    {
+      "index": 2,
+      "position": 19,
+      "tool": "get_xrefs_from",
+      "args": {
+        "address": "0x140bec400"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:24:03.929Z",
+      "completed_at": "2026-10-12T10:24:04.072Z",
+      "source": "actual_mcp_call",
+      "cache_key": "0f439dac387a056367e82d289657d710bd63e6fbc5b8cb01c9d674655e578bb3",
+      "cache_eligible": false,
+      "result": {
+        "items": [],
+        "total": 0,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revsub_l2"
+      },
+      "result_sha256": "4ad97d6fd58263e660230297878f3111e6e7678ecf26c83af342947c85b8291f",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revsub_l2",
+      "database": "revsub_l2"
+    },
+    {
+      "index": 3,
+      "tool": "close_database",
+      "args": {
+        "database": "revsub_l2",
+        "save": false
+      },
+      "cache_key": "d8b6d9a0592adea4eeb0d52fac01876a605c381d390226da69a3a7dd68458001",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:24:04.074Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"revsub_l2\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "revsub_l2"
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:24:04.572Z",
+      "ok": true,
+      "result_sha256": "ee54bed4cf98a2a891037b5ce19221054b5e0fedf47d55947d1806ade24f855e",
+      "lane": "revsub_l2",
+      "database": "revsub_l2"
+    }
+  ],
+  "cleanup": [],
+  "lock_events": [
+    {
+      "event": "lock_removed",
+      "reason": "per-database workers own separate Ghidra projects; a shared session lock is no longer required",
+      "lane": "revsub_l1"
+    },
+    {
+      "event": "lock_removed",
+      "reason": "per-database workers own separate Ghidra projects; a shared session lock is no longer required",
+      "lane": "revsub_l2"
+    }
+  ],
+  "ok": true,
+  "cleanup_ok": true
+}

@@ -1,0 +1,49 @@
+{
+  "review": "RECORD_CPU_PROBE_V2_CLONE_TALLY_INCREMENT_ERRATUM",
+  "reviewer": "/root/render_reviewer",
+  "previous_review": "OPTIONAL_RECORD_CPU_PROBE_V1_SOURCE_REVIEW_V1.json",
+  "verdict": "V1整合后实际E0277成立；本三源必要修正静态无阻断，可root实际编译/5纯测试。旧源审不等于编译通过，保留失败及漏审记录。",
+  "inputs": {
+    "manifest_path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/record-cpu-probe-v2-clone-tally-20261021/MANIFEST.json",
+    "manifest_sha256": "21a6d13aec50911b3526a4a448a18ff9977c2396051b0dc97430c13ea01e2534",
+    "patch_sha256": "58ab9cbb9f6db4e5514dfb5b91e368152803cadf15c3c78099897abdd6ff432e",
+    "source_files": [
+      {
+        "source": "tiny-glade/crates/rhapsody/src/rg/profiling.rs",
+        "before_sha256": "74bf25a6d63343c905f1792f8cc913b7973117edf63f5d4c22e3657d02fdb6c4",
+        "after_sha256": "4b78a92928b74c6140d0ac9b041fb1212e3d9056b1a02ebaa5c63952f36b0c73",
+        "patch_sha256": "f30baddfd0d90b290dcb8b63987b17d415b90e56f3301f39532cfef4291fd193"
+      },
+      {
+        "source": "tiny-glade/crates/rhapsody/src/bindless.rs",
+        "before_sha256": "d6e4af3b7dccd4147815bd71e8c371303000e31fd968bba3db5f96a666ea97f9",
+        "after_sha256": "9de3fcb83c949150140e5ede5fb9710121e755d3347d9744cf2ec56b460d0606",
+        "patch_sha256": "a898c9b22d829ff16e6b644ba023848c7675d8cc66e35ac21dc00ea47e3180a0"
+      },
+      {
+        "source": "tiny-glade/crates/rhapsody/src/bindless_parameters.rs",
+        "before_sha256": "1504e6534488a25bfa2a7dc8bc41b91a6b30ebec24518d2ffda779c57d5f9db7",
+        "after_sha256": "f159ef66f820d82673ba97ccbf3bf3c1496c83c74aef913f9d7fddfd1cc9c5a5",
+        "patch_sha256": "3cd3c136df201be2362e628ce095d1ff791a9c684e965628432af129f02c5a59"
+      }
+    ]
+  },
+  "actual_failure": {
+    "path": "/private/tmp/tg-cache-sparse-tree-cpu-20261021.log",
+    "sha256": "fba24edf8f3d94d62570aab3cb4955678dfc32ad89a07a5f32e50c63f5b64d9f",
+    "error": "covers_iter要求Iterator+Clone；filter捕获&mut RecordTally，故不能Clone。旧静审漏过这一真实泛型义务。"
+  },
+  "independent_checks": [
+    "三before/candidate与审查时已合V1生产SHA一致，除profiling计数存储/add/Drop和两个调用去mut及必要tests没有其它生产逻辑。",
+    "直接读原resource_contracts::covers_iter(Iterator<Item=AccessRange>+Clone)及其contains首轮/区间并集writes.clone多轮；不改此helper也不提前收集访问范围。",
+    "RecordTally两个stack Cell<u64>、add(&self)只借共享引用，filter及嵌套find closure可Clone，该Clone只复制&Tally，不复制计数容器；每轮原真实访问累入相同Cell。无unsafe、heap、atomic、锁或Send/Sync放宽；数据仅在本同步函数栈内被消费。",
+    "off id0分支不触Cell/TLS统计；Drop一次get汇总，原callback外scope/timing/owner/PGO次序与V1修正后保持。",
+    "新增直接调用实际covers_iter回归：相邻两4B range覆盖8B，contains2访问+两轮union各2=6访问，semantics共15；包含首range早返1访问/2semantics，没有提前消费。原4tests及off Cell未增、parallel仍隔离。"
+  ],
+  "tests_scope": {
+    "total_pure": 5,
+    "new": 1,
+    "executed_by_reviewer_or_author": false
+  },
+  "execution": "未Cargo/rustc/GPU/游戏/生产改动。root唯一实测。"
+}

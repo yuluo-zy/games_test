@@ -1,0 +1,102 @@
+{
+  "date": "2026-10-11",
+  "scope": "Actual MCP transport, Rust-game analysis capability, concurrent access and persistence. Not full-game reconstruction acceptance.",
+  "result": "validated critical paths with repaired configuration and documented limits",
+  "default_mcp_profiles": {
+    "ghidra": {
+      "shared_read_tools": 14,
+      "worker_write_tools": 19
+    },
+    "reva": {
+      "shared_read_tools": 6,
+      "worker_write_tools": 10
+    }
+  },
+  "optional_backends": [
+    "re-mcp",
+    "rea",
+    "radare2"
+  ],
+  "operator": "/Users/yuluo/.codex/mcp-tools/reverse-operator.py",
+  "skills": [
+    "native-rust-reconstruction",
+    "pyghidra-scripting"
+  ],
+  "providers": [
+    {
+      "name": "ghidra",
+      "version": "7.0.0",
+      "verdict": "retain, primary retained-database analysis",
+      "proof": "Three ClientSessions,45 game-function reads, byte and reference identity, PID-pinned default routing with multiple simultaneous backends; two same-function writers use separate clones, save and restart preserve distinct parameters.",
+      "report": "ghidra-parallel/summary.json",
+      "write_report": "ghidra-write-isolation/summary.json",
+      "limitations": "Worker overlay merges require review; parallel submissions do not establish a speed multiplier."
+    },
+    {
+      "name": "reva",
+      "version_commit": "1f13d969d36dfee9766d4c23789c62cd255c613c",
+      "verdict": "retain, PyGhidra/P-code and type recovery",
+      "proof": "Fixed Python dependencies and built Java extension. Four clients decompile; three simultaneous scripts have isolated stdout. Signatures and P-code recovered, saved and reopened. Compact worker gateway positive script/lifecycle and negative script error detection passed.",
+      "report": "reva/reva-report.json",
+      "limitations": "get-functions builds global cache and took107.7s, excluded. Incoming-reference context disabled by default. Shared read6, script/write worker10; script integer-to-Java-int overload must not truncate64-bit addresses."
+    },
+    {
+      "name": "re-mcp",
+      "version": "3.0.3 with documented local compatibility patch",
+      "verdict": "retain on demand, multi-database worker pool",
+      "proof": "Two 131517-function existingB clones reused without reanalysis. Two proxy clients share daemon and26 calls passed; same-address comments isolated and durable after manual/automatic save/reopen.",
+      "report": "re-mcp/summary.json",
+      "patch": "re-mcp/ghidra-project-save.patch",
+      "limitations": "Stock3.0.3 save fails with project-owned transaction; local patch uses GhidraProject.save. Each worker serializes APIs; different workers can progress concurrently. One SDK teardown race preserved; final message barrier passed retest. Mac state uses Library/Application Support, ignoresXDG_STATE_HOME."
+    },
+    {
+      "name": "rea",
+      "version": "6.3.0",
+      "verdict": "retain on demand, independent native oracle",
+      "proof": "Original B identity plus real20-byte aspect machine code in explicitPE fixture; decompilation/P-code and second-target sameVA isolation passed in independent concurrentstdio clients.",
+      "report": "rea-radare/validation-summary.json",
+      "limitations": "Ephemeral project, no retainedGhidra project reuse; around93s cold startup in fixture test. No full B autoanalysis was rerun. Full139 tool catalog not default-exposed."
+    },
+    {
+      "name": "radare2",
+      "version": "r2 6.2.4 / r2mcp1.8.8 / r2ghidra6.2.4 / SLEIGH6.1.4",
+      "verdict": "retain on demand, original bytes/disassembly and independent decompiler",
+      "proof": "Restored installation and missingpdg plugin. OriginalB reads, local functions, nonemptycalls andtwo-client target isolation passed.",
+      "report": "rea-radare/validation-summary.json",
+      "limitations": "DefaultMCP sandbox and actualTPI parser limitations are distinct. PDB publics work in CLI but fullMCP publics/types import was not established; LLVM remains metadata source."
+    }
+  ],
+  "reva_script_semantics": {
+    "positive_steps": [
+      {
+        "step": 1,
+        "success": true,
+        "stdout": "{\"sha\": \"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\", \"signature\": \"float __cdecl aspect_ratio(uint * reva_operator_size)\", \"program\": \"tiny-glade.exe\"}\n"
+      },
+      {
+        "step": 4,
+        "success": true,
+        "stdout": "reva_operator_after\n"
+      }
+    ],
+    "negative_script_detected": true,
+    "negative_report": "operator/reva-negative.json"
+  },
+  "source_preservation": "Original releaseB byte identity and original Ghidra source content/mtime preserved in provider reports. No game execution or business Rust edits.",
+  "registered_catalog_note": "SDK operator usable by current agents; native MCP catalog requires reconnect/new session for updated registrations.",
+  "integration_policy": "Shared read only. Each modifying agent chooses unique --worker and --write; database and named script files isolated. Never merge entire databases wholesale.",
+  "final_verification": {
+    "default_registration": true,
+    "all_five_operator_entries": true,
+    "negative_script_error_detected": true,
+    "two_ghidra_write_workers_persisted_after_restart": true,
+    "helper_sha256": {
+      "/Users/yuluo/.codex/mcp-tools/ghidra/launch.py": "60fbd153a4dd70852af276b63bb94e581d09e9226472c51c4e9d2740b3b94656",
+      "/Users/yuluo/.codex/mcp-tools/ghidra/bridge_entry.py": "cb5178f14da67927f2066b1daac534c8b04e0ddf3320249f4a97dd817785e67e",
+      "/Users/yuluo/.codex/mcp-tools/ghidra/client.py": "079e1053716d58afaaf276abd1a0bcaeaae2d9940cf2410e8786732212bda260",
+      "/Users/yuluo/.codex/mcp-tools/reva/manage.py": "8557b13ead84bb40c99b30c30bfa334c0a842f2362f099ada8680dcc07f590cb",
+      "/Users/yuluo/.codex/mcp-tools/reva/proxy.py": "2bcf1aa47f70f079d7eb5ccf11d4d3fc0565281fd57b57e4badb9622ba1c7c70",
+      "/Users/yuluo/.codex/mcp-tools/reverse-operator.py": "d8128decdb0878549fcb775a51ae653112df3ebbe5241c054e9eaa7cca76124d"
+    }
+  }
+}

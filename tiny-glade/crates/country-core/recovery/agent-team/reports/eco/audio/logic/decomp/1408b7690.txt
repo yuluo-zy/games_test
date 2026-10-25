@@ -1,0 +1,448 @@
+// wall_audio_ui @ 0x1408b7690
+
+// WARNING: Instruction at (ram,0x000142a9fa59) overlaps instruction at (ram,0x000142a9fa58)
+// 
+// WARNING: Control flow encountered bad instruction data
+// WARNING: Removing unreachable block (ram,0x000142a9fa3c)
+// WARNING: Removing unreachable block (ram,0x000142a9fa40)
+// WARNING: Removing unreachable block (ram,0x000142a9fa41)
+// WARNING: Removing unreachable block (ram,0x000142a9fa3d)
+
+void __cdecl country_core::systems::audio::wall_audio_ui::wall_audio_ui(void)
+
+{
+  byte *pbVar1;
+  int iVar2;
+  ulonglong *puVar3;
+  ulonglong uVar4;
+  longlong *plVar5;
+  code *pcVar6;
+  byte bVar7;
+  longlong *extraout_RAX;
+  longlong *extraout_RAX_00;
+  longlong *extraout_RAX_01;
+  longlong *extraout_RAX_02;
+  longlong *in_RCX;
+  longlong lVar9;
+  undefined8 *in_RDX;
+  ulonglong uVar10;
+  longlong lVar11;
+  longlong lVar12;
+  ulonglong uVar13;
+  ulonglong uVar14;
+  longlong lVar15;
+  longlong lVar16;
+  longlong lVar17;
+  longlong lVar18;
+  undefined2 in_DS;
+  bool bVar19;
+  float10 in_ST0;
+  longlong lStack_d8;
+  undefined8 uStack_d0;
+  longlong lStack_c8;
+  longlong *plStack_c0;
+  undefined8 uStack_b8;
+  undefined1 uStack_b0;
+  undefined4 uStack_af;
+  undefined2 uStack_ab;
+  undefined1 uStack_a9;
+  longlong lStack_a0;
+  undefined4 uStack_98;
+  undefined4 uStack_94;
+  longlong lStack_90;
+  longlong *plStack_88;
+  undefined8 uStack_80;
+  undefined1 uStack_78;
+  undefined4 uStack_77;
+  undefined2 uStack_73;
+  undefined1 uStack_71;
+  undefined8 local_70;
+  char cVar8;
+  
+  local_70 = 0xfffffffffffffffe;
+  puVar3 = (ulonglong *)*in_RDX;
+  lVar9 = in_RDX[1];
+  uVar4 = *puVar3;
+  uVar10 = 0;
+  uVar14 = uVar4 - *(ulonglong *)(lVar9 + 0x18);
+  if (uVar4 < *(ulonglong *)(lVar9 + 0x18)) {
+    uVar14 = uVar10;
+  }
+  uVar13 = uVar4 - *(ulonglong *)(lVar9 + 0x38);
+  if (uVar4 < *(ulonglong *)(lVar9 + 0x38)) {
+    uVar13 = uVar10;
+  }
+  lVar11 = uVar14 * 0x20 + *(longlong *)(lVar9 + 8);
+  uVar4 = *(ulonglong *)(lVar9 + 0x10) - uVar14;
+  if (*(ulonglong *)(lVar9 + 0x10) < uVar14) {
+    lVar11 = 8;
+    uVar4 = uVar10;
+  }
+  lVar17 = uVar13 * 0x20 + *(longlong *)(lVar9 + 0x28);
+  uVar14 = *(ulonglong *)(lVar9 + 0x30) - uVar13;
+  if (*(ulonglong *)(lVar9 + 0x30) < uVar13) {
+    lVar17 = 8;
+    uVar14 = uVar10;
+  }
+  *puVar3 = (*(longlong *)(lVar9 + 0x40) - uVar14) - uVar4;
+  lVar15 = uVar4 * 0x20 + lVar11;
+  plVar5 = (longlong *)*in_RCX;
+  lVar9 = lVar17;
+LAB_1408b7790:
+  if ((lVar11 == 0) || (lVar11 == lVar15)) {
+    if ((lVar9 == 0) || (lVar9 == uVar14 * 0x20 + lVar17)) {
+      return;
+    }
+    *puVar3 = *puVar3 + 1;
+    lVar18 = lVar9 + 0x20;
+    iVar2 = *(int *)(&DAT_142a9fa44 + (ulonglong)*(byte *)(lVar9 + 8) * 4);
+    lVar16 = 0;
+    lVar12 = lVar9;
+    lVar11 = lVar16;
+                    // WARNING (jumptable): Sanity check requires truncation of jumptable
+                    // WARNING: Could not find normalized switch variable to match jumptable
+    switch(*(byte *)(lVar9 + 8)) {
+    case 0:
+      goto code_r0x0001408b7947;
+    case 1:
+      goto code_r0x0001408b7770;
+    case 2:
+      goto code_r0x0001408b78ec;
+    case 3:
+      goto code_r0x0001408b7923;
+    case 4:
+      goto code_r0x0001408b789b;
+    case 5:
+      goto code_r0x0001408b7980;
+    case 6:
+      goto code_r0x0001408b79d1;
+    case 7:
+      goto code_r0x0001408b7935;
+    case 8:
+      goto code_r0x0001408b7a21;
+    case 9:
+      goto code_r0x0001408b78bf;
+    case 10:
+      goto code_r0x0001408b7a0f;
+    case 0xb:
+      goto code_r0x0001408b7889;
+    case 0xc:
+      goto code_r0x0001408b78ad;
+    case 0xd:
+      goto code_r0x0001408b7992;
+    case 0xe:
+      goto code_r0x0001408b784b;
+    case 0xf:
+      goto code_r0x0001408b78fe;
+    case 0x10:
+      goto code_r0x0001408b780e;
+    default:
+      goto code_r0x0001408b77fc;
+    case 0x13:
+    case 0x14:
+      goto code_r0x0001408b7755;
+    case 0x15:
+    case 0x16:
+      goto code_r0x000142a9fa44;
+    }
+  }
+  lVar16 = lVar11 + 0x20;
+  *puVar3 = *puVar3 + 1;
+  pbVar1 = (byte *)(lVar11 + 8);
+  iVar2 = *(int *)(&DAT_142a9fa44 + (ulonglong)*pbVar1 * 4);
+  lVar12 = lVar11;
+  lVar11 = lVar16;
+  lVar18 = lVar9;
+                    // WARNING (jumptable): Sanity check requires truncation of jumptable
+                    // WARNING: Could not find normalized switch variable to match jumptable
+  switch(*pbVar1) {
+  case 0:
+code_r0x0001408b7947:
+    lVar11 = lVar16;
+    if (*plVar5 != 0) {
+      resources::audio_resources::AudioCoreInner::set_parameter();
+    }
+    break;
+  case 1:
+    break;
+  case 2:
+code_r0x0001408b78ec:
+    lVar11 = lVar16;
+    break;
+  case 3:
+code_r0x0001408b7923:
+    lVar11 = lVar16;
+    break;
+  case 4:
+code_r0x0001408b789b:
+    lVar11 = lVar16;
+    break;
+  case 5:
+code_r0x0001408b7980:
+    lVar11 = lVar16;
+    break;
+  case 6:
+code_r0x0001408b79d1:
+    if (*plVar5 == 0) {
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      if (extraout_RAX_02 == (longlong *)0x0) {
+                    // WARNING: Subroutine does not return
+        alloc::raw_vec::handle_error();
+      }
+      *extraout_RAX_02 = 0x532f3a746e657665;
+      extraout_RAX_02[1] = 0x726f6c6f432f5846;
+      *(undefined8 *)((longlong)extraout_RAX_02 + 0xe) = 0x736b63697242726f;
+      lStack_a0 = 0;
+      lStack_90 = 0x16;
+      uStack_80 = 0x16;
+      uStack_78 = 2;
+      plStack_88 = extraout_RAX_02;
+    }
+    else {
+      resources::audio_resources::AudioCoreInner::instantiate_audio();
+      if (lStack_a0 == 2) {
+        lStack_d8 = CONCAT44(uStack_94,uStack_98);
+                    // WARNING: Subroutine does not return
+        core::result::unwrap_failed();
+      }
+    }
+    uStack_d0 = CONCAT44(uStack_94,uStack_98);
+    uStack_b8 = uStack_80;
+    uStack_b0 = uStack_78;
+    uStack_af = uStack_77;
+    uStack_ab = uStack_73;
+    uStack_a9 = uStack_71;
+    lStack_c8 = lStack_90;
+    plStack_c0 = plStack_88;
+    lStack_d8 = lStack_a0;
+    uStack_98 = *(undefined4 *)(lVar12 + 0x18);
+    lStack_a0 = *(longlong *)(lVar12 + 0x10);
+    in_RCX = &lStack_d8;
+    resources::audio_resources::impl$10::set_position();
+    resources::audio_resources::impl$10::set_parameter();
+    resources::audio_resources::AudioInstance::start_if_not_playing();
+    resources::audio_resources::impl$13::drop();
+    lVar9 = lVar18;
+    if (lStack_c8 != 0) {
+      in_RCX = plStack_c0;
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    goto LAB_1408b7790;
+  case 7:
+code_r0x0001408b7935:
+    lVar11 = lVar16;
+    break;
+  case 8:
+code_r0x0001408b7a21:
+    lVar11 = lVar16;
+    break;
+  case 9:
+code_r0x0001408b78bf:
+    lVar11 = lVar16;
+    break;
+  case 10:
+code_r0x0001408b7a0f:
+    lVar11 = lVar16;
+    break;
+  case 0xb:
+code_r0x0001408b7889:
+    lVar11 = lVar16;
+    break;
+  case 0xc:
+code_r0x0001408b78ad:
+    lVar11 = lVar16;
+    break;
+  case 0xd:
+code_r0x0001408b7992:
+    if (*plVar5 == 0) {
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      if (extraout_RAX_01 == (longlong *)0x0) {
+                    // WARNING: Subroutine does not return
+        alloc::raw_vec::handle_error();
+      }
+      *extraout_RAX_01 = 0x532f3a746e657665;
+      extraout_RAX_01[1] = 0x726f6c6f432f5846;
+      *(undefined8 *)((longlong)extraout_RAX_01 + 0xf) = 0x6e7265746e614c72;
+      lStack_a0 = 0;
+      lStack_90 = 0x17;
+      uStack_80 = 0x17;
+      uStack_78 = 2;
+      plStack_88 = extraout_RAX_01;
+    }
+    else {
+      resources::audio_resources::AudioCoreInner::instantiate_audio();
+      if (lStack_a0 == 2) {
+        lStack_d8 = CONCAT44(uStack_94,uStack_98);
+                    // WARNING: Subroutine does not return
+        core::result::unwrap_failed();
+      }
+    }
+    uStack_d0 = CONCAT44(uStack_94,uStack_98);
+    uStack_b8 = uStack_80;
+    uStack_b0 = uStack_78;
+    uStack_af = uStack_77;
+    uStack_ab = uStack_73;
+    uStack_a9 = uStack_71;
+    lStack_c8 = lStack_90;
+    plStack_c0 = plStack_88;
+    lStack_d8 = lStack_a0;
+    uStack_98 = *(undefined4 *)(lVar12 + 0x18);
+    lStack_a0 = *(longlong *)(lVar12 + 0x10);
+    in_RCX = &lStack_d8;
+    resources::audio_resources::impl$10::set_position();
+    resources::audio_resources::impl$10::set_parameter();
+    resources::audio_resources::AudioInstance::start_if_not_playing();
+    resources::audio_resources::impl$13::drop();
+    lVar9 = lVar18;
+    if (lStack_c8 != 0) {
+      in_RCX = plStack_c0;
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    goto LAB_1408b7790;
+  case 0xe:
+code_r0x0001408b784b:
+    if (*plVar5 == 0) {
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      if (extraout_RAX_00 == (longlong *)0x0) {
+                    // WARNING: Subroutine does not return
+        alloc::raw_vec::handle_error();
+      }
+      *(undefined8 *)((longlong)extraout_RAX_00 + 9) = 0x7265746e614c2f58;
+      *(undefined8 *)((longlong)extraout_RAX_00 + 0x11) = 0x6e4f6e7275542f6e;
+      *extraout_RAX_00 = 0x532f3a746e657665;
+      extraout_RAX_00[1] = 0x65746e614c2f5846;
+      lStack_a0 = 0;
+      lStack_90 = 0x19;
+      uStack_80 = 0x19;
+      uStack_78 = 2;
+      plStack_88 = extraout_RAX_00;
+    }
+    else {
+      resources::audio_resources::AudioCoreInner::instantiate_audio();
+      if (lStack_a0 == 2) {
+        lStack_d8 = CONCAT44(uStack_94,uStack_98);
+                    // WARNING: Subroutine does not return
+        core::result::unwrap_failed();
+      }
+    }
+    uStack_d0 = CONCAT44(uStack_94,uStack_98);
+    uStack_b8 = uStack_80;
+    uStack_b0 = uStack_78;
+    uStack_af = uStack_77;
+    uStack_ab = uStack_73;
+    uStack_a9 = uStack_71;
+    lStack_c8 = lStack_90;
+    plStack_c0 = plStack_88;
+    lStack_d8 = lStack_a0;
+    uStack_98 = *(undefined4 *)(lVar12 + 0x18);
+    lStack_a0 = *(longlong *)(lVar12 + 0x10);
+    in_RCX = &lStack_d8;
+    resources::audio_resources::impl$10::set_position();
+    resources::audio_resources::impl$10::set_parameter();
+    resources::audio_resources::AudioInstance::start_if_not_playing();
+    resources::audio_resources::impl$13::drop();
+    lVar9 = lVar18;
+    if (lStack_c8 != 0) {
+      in_RCX = plStack_c0;
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    goto LAB_1408b7790;
+  case 0xf:
+code_r0x0001408b78fe:
+    lVar11 = lVar16;
+    break;
+  case 0x10:
+    goto code_r0x0001408b780e;
+  default:
+code_r0x0001408b77fc:
+    lVar11 = lVar16;
+    break;
+  case 0x13:
+  case 0x14:
+code_r0x0001408b7755:
+    lVar11 = lVar16;
+    break;
+  case 0x15:
+  case 0x16:
+code_r0x000142a9fa44:
+    cVar8 = (char)(&DAT_142a9fa44 + iVar2);
+    bVar7 = cVar8 + 0x83;
+    lVar9 = (longlong)in_RCX + -1;
+    if ((lVar9 == 0 || bVar7 != 0) || (cVar8 < '}')) {
+      bVar19 = (bVar7 & 0x7e) != 0;
+      lVar9 = (longlong)in_RCX + -2;
+      if ((lVar9 == 0 || bVar19) || (bVar19)) {
+        *(longlong *)((longlong)plVar5 + -0x1f) = (longlong)ROUND(in_ST0);
+        if (!bVar19) {
+          halt_baddata();
+        }
+        pcVar6 = (code *)swi(1);
+        (*pcVar6)((longlong)in_RCX + -3,&DAT_142a9f730);
+        return;
+      }
+    }
+    else {
+      *(undefined2 *)((ulonglong)(uint)((int)lVar12 + *(int *)(lVar12 + -0x1f)) - 0x1f) = in_DS;
+    }
+    do {
+      lVar9 = lVar9 + -1;
+    } while (lVar9 != 0 && ((ulonglong)(&DAT_142a9fa44 + iVar2) & 0x4000) != 0);
+                    // WARNING: Bad instruction - Truncating control flow here
+    halt_baddata();
+  }
+code_r0x0001408b7770:
+  uStack_98 = *(undefined4 *)(lVar12 + 0x18);
+  lStack_a0 = *(longlong *)(lVar12 + 0x10);
+  in_RCX = plVar5;
+  roof_audio::instantiate_audio_w_position();
+  lVar9 = lVar18;
+  goto LAB_1408b7790;
+code_r0x0001408b780e:
+  if (*plVar5 == 0) {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX == (longlong *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    *(undefined8 *)((longlong)extraout_RAX + 10) = 0x5765676e6168432f;
+    *(undefined8 *)((longlong)extraout_RAX + 0x12) = 0x656c7974536c6c61;
+    *extraout_RAX = 0x532f3a746e657665;
+    extraout_RAX[1] = 0x676e6168432f5846;
+    lStack_a0 = 0;
+    lStack_90 = 0x1a;
+    uStack_80 = 0x1a;
+    uStack_78 = 2;
+    plStack_88 = extraout_RAX;
+  }
+  else {
+    resources::audio_resources::AudioCoreInner::instantiate_audio();
+    if (lStack_a0 == 2) {
+      lStack_d8 = CONCAT44(uStack_94,uStack_98);
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  uStack_d0 = CONCAT44(uStack_94,uStack_98);
+  uStack_b8 = uStack_80;
+  uStack_b0 = uStack_78;
+  uStack_af = uStack_77;
+  uStack_ab = uStack_73;
+  uStack_a9 = uStack_71;
+  lStack_c8 = lStack_90;
+  plStack_c0 = plStack_88;
+  lStack_d8 = lStack_a0;
+  uStack_98 = *(undefined4 *)(lVar12 + 0x18);
+  lStack_a0 = *(longlong *)(lVar12 + 0x10);
+  in_RCX = &lStack_d8;
+  resources::audio_resources::impl$10::set_position();
+  resources::audio_resources::impl$10::set_parameter();
+  resources::audio_resources::AudioInstance::start_if_not_playing();
+  resources::audio_resources::impl$13::drop();
+  lVar9 = lVar18;
+  if (lStack_c8 != 0) {
+    in_RCX = plStack_c0;
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  goto LAB_1408b7790;
+}
+

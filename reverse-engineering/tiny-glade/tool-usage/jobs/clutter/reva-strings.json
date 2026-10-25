@@ -1,0 +1,20 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\n\nprog = currentProgram\nout = {}\ndef read_cstr(addr_str, maxlen=48):\n    addr = prog.getAddressFactory().getAddress(addr_str)\n    mem = prog.getMemory()\n    b = mem.getBytes(addr, maxlen)\n    s = bytes(b)\n    z = s.find(b\"\\x00\")\n    s = s[:z] if z != -1 else s\n    return s.decode(\"utf-8\", \"replace\")\nfor a in [\"0x143042260\",\"0x143042d28\",\"0x143042d91\",\"0x143042370\",\"0x142925904\",\"0x1429cd0c0\",\"0x143042618\",\"0x143042660\",\"0x1430425d0\",\"0x1430423a0\"]:\n    try:\n        out[a] = read_cstr(a)\n    except Exception as e:\n        out[a] = \"ERR \" + str(e)\nopen(\"/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain/clutter/strings.json\",\"w\").write(json.dumps(out, indent=1))\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 60
+    },
+    "timeout_seconds": 120
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\nprog = currentProgram\naddr = prog.getAddressFactory().getAddress(\"0x140652050\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nout = {\"name\": str(f.getName()), \"body\": str(f.getBody()), \"signature\": str(f.getSignature())}\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 60, monitor)\n    if not res.decompileCompleted():\n        out[\"error\"] = str(res.getErrorMessage())\n    else:\n        out[\"c\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nopen(\"/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain/clutter/build_decompiled.c\",\"w\").write(json.dumps(out, indent=1))\nprint(json.dumps({\"name\": out[\"name\"], \"c_len\": len(out.get(\"c\",\"\")), \"error\": out.get(\"error\",\"\")}))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 300
+  }
+]

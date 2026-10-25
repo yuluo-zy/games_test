@@ -1,0 +1,182 @@
+{
+  "server": "re_mcp_ghidra",
+  "actual_mcp_connection": true,
+  "results": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "database_id": "bgrp_probe",
+        "keep_open": true
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"bgrp_probe\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "bgrp_probe",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "bgrp_probe"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"bgrp_probe\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "bgrp_probe",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "get_database_info",
+      "args": {
+        "database": "bgrp_probe"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"file_path\":\"/D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe\",\"file_type\":\"Portable Executable (PE)\",\"processor\":\"x86:LE:64:default\",\"compiler_spec\":\"clangwindows\",\"bitness\":64,\"endian\":\"little\",\"min_address\":\"0x140000000\",\"max_address\":\"0x1437CC1FF\",\"image_base\":\"0x140000000\",\"function_count\":116272,\"segment_count\":8,\"entry_point_count\":2,\"capabilities\":{\"decompiler\":true},\"database\":\"bgrp_probe\"}"
+          }
+        ],
+        "structuredContent": {
+          "file_path": "/D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+          "file_type": "Portable Executable (PE)",
+          "processor": "x86:LE:64:default",
+          "compiler_spec": "clangwindows",
+          "bitness": 64,
+          "endian": "little",
+          "min_address": "0x140000000",
+          "max_address": "0x1437CC1FF",
+          "image_base": "0x140000000",
+          "function_count": 116272,
+          "segment_count": 8,
+          "entry_point_count": 2,
+          "capabilities": {
+            "decompiler": true
+          },
+          "database": "bgrp_probe"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "list_functions",
+      "args": {
+        "database": "bgrp_probe",
+        "filter_pattern": "14008be360",
+        "limit": 10
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"items\":[],\"total\":0,\"offset\":0,\"limit\":10,\"has_more\":false,\"database\":\"bgrp_probe\"}"
+          }
+        ],
+        "structuredContent": {
+          "items": [],
+          "total": 0,
+          "offset": 0,
+          "limit": 10,
+          "has_more": false,
+          "database": "bgrp_probe"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "list_functions",
+      "args": {
+        "database": "bgrp_probe",
+        "filter_pattern": "MusicPlayer",
+        "limit": 20
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"items\":[],\"total\":0,\"offset\":0,\"limit\":20,\"has_more\":false,\"database\":\"bgrp_probe\"}"
+          }
+        ],
+        "structuredContent": {
+          "items": [],
+          "total": 0,
+          "offset": 0,
+          "limit": 20,
+          "has_more": false,
+          "database": "bgrp_probe"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x14008be360",
+        "database": "bgrp_probe"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"No function at 0x14008BE360\",\"error_type\":\"NotFound\",\"database\":\"bgrp_probe\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "bgrp_probe",
+        "save": true
+      },
+      "cleanup": true,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"bgrp_probe\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "bgrp_probe"
+        },
+        "isError": false
+      }
+    }
+  ],
+  "target_execution": false,
+  "ok": false,
+  "error": "Error: disassemble_function returned error"
+}

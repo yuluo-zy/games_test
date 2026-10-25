@@ -1,0 +1,37 @@
+[
+  {
+    "tool": "get_metadata",
+    "args": {
+      "program": "tiny-glade.exe"
+    },
+    "timeout_seconds": 120
+  },
+  {
+    "tool": "read_memory",
+    "args": {
+      "program": "tiny-glade.exe",
+      "address": "0x142adf408",
+      "length": 160
+    },
+    "timeout_seconds": 120
+  },
+  {
+    "tool": "read_memory",
+    "args": {
+      "program": "tiny-glade.exe",
+      "address": "0x142adf44c",
+      "length": 160
+    },
+    "timeout_seconds": 120
+  },
+  {
+    "tool": "get_functions",
+    "args": {
+      "program": "tiny-glade.exe",
+      "functions": "0x140abfb30,0x140951b80",
+      "fields": "signature,decompiled_code,callees",
+      "include_call_context": false
+    },
+    "timeout_seconds": 300
+  }
+]

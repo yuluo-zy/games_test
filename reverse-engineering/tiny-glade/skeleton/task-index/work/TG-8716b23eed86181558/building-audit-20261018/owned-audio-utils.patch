@@ -1,0 +1,48 @@
+--- a/games_test/tiny-glade/crates/country-core/src/utils/audio_utils.rs
++++ b/games_test/tiny-glade/crates/country-core/src/utils/audio_utils.rs
+@@ -2,6 +2,7 @@
+ //!
+ //! 通过 LoopEntry 适配实际音频后端；计时使用 Duration，不把真实时间压缩为 u32 毫秒。
+ use core::time::Duration;
++use std::{sync::OnceLock, time::Instant};
+ 
+ /// 循环事件使用的音频参数名。
+ pub const LOOP_PARAMETER: &str = "loop";
+@@ -84,6 +85,12 @@
+         Ok(())
+     }
+ 
++    /// 使用单调实时时钟请求停止；显式时钟调用方仍可使用 [`Self::stop`]。
++    pub fn stop_now(&mut self) -> Result<(), E::Error> {
++        static CLOCK_ORIGIN: OnceLock<Instant> = OnceLock::new();
++        self.stop(CLOCK_ORIGIN.get_or_init(Instant::now).elapsed())
++    }
++
+     /// 首次调用记录时间，严格超过阈值后停止；时间倒退按零耗时处理。
+     pub fn stop(&mut self, now: Duration) -> Result<(), E::Error> {
+         let requested_at = *self.start.get_or_insert(now);
+@@ -174,6 +181,24 @@
+         l.start = Some(ms(5));
+         l.start_if_not_playing().unwrap();
+         assert_eq!(l.start, None);
++    }
++
++    #[test]
++    fn live_stop_clock_advances_and_releases_a_started_loop() {
++        let mut player = AudioLoop::new(vec![entry(true), entry(true)], 0, false, false);
++        player.start_if_not_playing().unwrap();
++        player.stop_now().unwrap();
++        assert!(player.start.is_some());
++        assert!(player.started);
++        assert_eq!(player.entries[0].log, ["start"]);
++
++        // A zero delay still requires a later instant, just like stop(now).
++        std::thread::sleep(ms(2));
++        player.stop_now().unwrap();
++        assert_eq!(player.entries[0].log, ["start", "stop"]);
++        assert_eq!(player.cursor, 1);
++        assert!(!player.started);
++        assert_eq!(player.start, None);
+     }
+ 
+     #[test]

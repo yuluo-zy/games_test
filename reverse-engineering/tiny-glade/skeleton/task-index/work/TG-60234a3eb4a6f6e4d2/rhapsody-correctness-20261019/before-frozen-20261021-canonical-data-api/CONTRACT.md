@@ -1,0 +1,9 @@
+# 真实 canonical owner 的最窄数据调用适配合同
+
+root 2026-10-21 明确延续窄委派，live show 保持 rhapsody-correctness-20261019 旧 claim；before.rs/hash 单独冻结。原B RNE/PDB身份及完整调用合同沿同task原 calculate/merge 包，不外推C运行等价。
+
+本包仅消除 canonical 四表与唯一 subtype ID map 改型后的真实类型/数据读取缺口，不重写既有交互/合并算法，不删除分支、不生成默认几何。原调用已证：ID表required取得Copy DecoratorSubtype；exact subtype+Info.rank key从唯一碰撞表借用DecoratorCollision；宽度读取bounds.footprint.size.x，垂直界读取bounds.bottom/top差值。这里不恢复尚未绑定签名的get_collision_bbx_ls或dims_wall_space，也不从旋转AABB猜宽度。
+
+collision_detection的existing_collision_metrics改用同表借用值，当前其余公开旧legacy helper仍显式legacy输入，不将其造为canonical owner。roof selector仅真实typed subtype与宽度读取适配，原已记录rank/sign/family/selector等业务差异保持显式未完成，不把此窄包称完整合并复现。wall selector消费existing_collision_metrics，若无直接旧值引用不强造无意义代码改动。UI同源现已恢复的balcony snap高度读取直接同collision.bounds；其真实几何ECS测试用真实cuboid/typedoutline载荷替换错误bbox factory，不能以defaultshape遮盖requiredkey。
+
+验收：保留required缺key失败顺序与零额外Vec复制；新增有旋转footprint轴/非零底高夹具，证明取逻辑宽高而非旧AABB投影。仅测试与真实数据adapt，不宣称旧calculate空合并/角吸附或全merges已完成。root唯一Cargo/生产整合；候选需独审后成组应用。

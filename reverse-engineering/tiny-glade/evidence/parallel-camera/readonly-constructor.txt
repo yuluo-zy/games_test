@@ -1,0 +1,134 @@
+public ghidra.framework.data.DefaultProjectData(ghidra.framework.model.ProjectLocator, boolean, boolean) throws ghidra.util.exception.NotFoundException, ghidra.util.NotOwnerException, java.io.IOException, ghidra.framework.store.LockException;
+    Code:
+         0: aload_0
+         1: invokespecial #1                  // Method java/lang/Object."<init>":()V
+         4: aload_0
+         5: new           #7                  // class ghidra/framework/data/DomainFileIndex
+         8: dup
+         9: aload_0
+        10: invokespecial #9                  // Method ghidra/framework/data/DomainFileIndex."<init>":(Lghidra/framework/data/DefaultProjectData;)V
+        13: putfield      #12                 // Field fileIndex:Lghidra/framework/data/DomainFileIndex;
+        16: aload_0
+        17: new           #18                 // class ghidra/framework/data/DomainFolderChangeListenerList
+        20: dup
+        21: aload_0
+        22: getfield      #12                 // Field fileIndex:Lghidra/framework/data/DomainFileIndex;
+        25: invokespecial #20                 // Method ghidra/framework/data/DomainFolderChangeListenerList."<init>":(Lghidra/framework/data/DomainFileIndex;)V
+        28: putfield      #23                 // Field listenerList:Lghidra/framework/data/DomainFolderChangeListenerList;
+        31: aload_0
+        32: new           #27                 // class java/util/HashMap
+        35: dup
+        36: invokespecial #29                 // Method java/util/HashMap."<init>":()V
+        39: putfield      #30                 // Field openDomainObjects:Ljava/util/Map;
+        42: aload_0
+        43: new           #34                 // class ghidra/util/task/TaskMonitorAdapter
+        46: dup
+        47: invokespecial #36                 // Method ghidra/util/task/TaskMonitorAdapter."<init>":()V
+        50: putfield      #37                 // Field projectDisposalMonitor:Lghidra/util/task/TaskMonitorAdapter;
+        53: aload_0
+        54: iconst_0
+        55: putfield      #41                 // Field inUseCount:I
+        58: aload_0
+        59: iconst_0
+        60: putfield      #45                 // Field closed:Z
+        63: aload_0
+        64: iconst_0
+        65: putfield      #49                 // Field disposed:Z
+        68: aload_1
+        69: invokevirtual #52                 // Method ghidra/framework/model/ProjectLocator.checkProjectExistence:()V
+        72: aload_0
+        73: aload_1
+        74: putfield      #57                 // Field localStorageLocator:Lghidra/framework/model/ProjectLocator;
+        77: iconst_0
+        78: istore        4
+        80: aload_0
+        81: iconst_0
+        82: iload_2
+        83: invokevirtual #61                 // Method init:(ZZ)V
+        86: iload_3
+        87: ifeq          121
+        90: aload_0
+        91: aload_0
+        92: invokevirtual #65                 // Method getUserName:()Ljava/lang/String;
+        95: putfield      #69                 // Field owner:Ljava/lang/String;
+        98: aload_0
+        99: getfield      #73                 // Field properties:Lghidra/util/PropertyFile;
+       102: ldc           #77                 // String OWNER
+       104: aload_0
+       105: getfield      #69                 // Field owner:Ljava/lang/String;
+       108: invokevirtual #79                 // Method ghidra/util/PropertyFile.putString:(Ljava/lang/String;Ljava/lang/String;)V
+       111: aload_0
+       112: getfield      #73                 // Field properties:Lghidra/util/PropertyFile;
+       115: invokevirtual #85                 // Method ghidra/util/PropertyFile.writeState:()V
+       118: goto          170
+       121: iload_2
+       122: ifeq          170
+       125: aload_0
+       126: aload_0
+       127: getfield      #69                 // Field owner:Ljava/lang/String;
+       130: invokevirtual #88                 // Method isOwner:(Ljava/lang/String;)Z
+       133: ifne          170
+       136: aload_0
+       137: getfield      #69                 // Field owner:Ljava/lang/String;
+       140: ifnonnull     153
+       143: new           #92                 // class ghidra/util/NotOwnerException
+       146: dup
+       147: ldc           #94                 // String Older projects may only be opened as a View.\nYou must first create a new project or open an existing current project, \nthen use the \"Project->View\" menu action to open the older project as a view.\nYou can then drag old files into your active project.
+       149: invokespecial #96                 // Method ghidra/util/NotOwnerException."<init>":(Ljava/lang/String;)V
+       152: athrow
+       153: new           #92                 // class ghidra/util/NotOwnerException
+       156: dup
+       157: aload_0
+       158: getfield      #69                 // Field owner:Ljava/lang/String;
+       161: invokedynamic #99,  0             // InvokeDynamic #0:makeConcatWithConstants:(Ljava/lang/String;)Ljava/lang/String;
+       166: invokespecial #96                 // Method ghidra/util/NotOwnerException."<init>":(Ljava/lang/String;)V
+       169: athrow
+       170: aload_0
+       171: getfield      #103                // Field fileSystem:Lghidra/framework/store/local/LocalFileSystem;
+       174: dup
+       175: astore        5
+       177: monitorenter
+       178: aload_0
+       179: iload_2
+       180: invokevirtual #107                // Method getVersionedFileSystem:(Z)V
+       183: aload_0
+       184: new           #111                // class ghidra/framework/data/RootGhidraFolderData
+       187: dup
+       188: aload_0
+       189: aload_0
+       190: getfield      #23                 // Field listenerList:Lghidra/framework/data/DomainFolderChangeListenerList;
+       193: invokespecial #113                // Method ghidra/framework/data/RootGhidraFolderData."<init>":(Lghidra/framework/data/DefaultProjectData;Lghidra/framework/model/DomainFolderChangeListener;)V
+       196: putfield      #116                // Field rootFolderData:Lghidra/framework/data/RootGhidraFolderData;
+       199: aload_0
+       200: invokevirtual #120                // Method initVersionedFSListener:()V
+       203: aload_0
+       204: invokevirtual #123                // Method scheduleUserDataReconcilation:()V
+       207: aload         5
+       209: monitorexit
+       210: goto          221
+       213: astore        6
+       215: aload         5
+       217: monitorexit
+       218: aload         6
+       220: athrow
+       221: iconst_1
+       222: istore        4
+       224: iload         4
+       226: ifne          250
+       229: aload_0
+       230: invokevirtual #126                // Method dispose:()V
+       233: goto          250
+       236: astore        7
+       238: iload         4
+       240: ifne          247
+       243: aload_0
+       244: invokevirtual #126                // Method dispose:()V
+       247: aload         7
+       249: athrow
+       250: return
+      Exception table:
+         from    to  target type
+           178   210   213   any
+           213   218   213   any
+            80   224   236   any
+           236   238   236   any

@@ -1,0 +1,57 @@
+{
+  "reviewer": "/root/render_reviewer",
+  "date": "2026-10-21",
+  "status": "static_original_order_review_accepted_cpu_logs_audited_world_still_fails",
+  "scope": "只审共同gameplay App维护原16音频事件及root指定CPU日志；不声称全部音频域已注册或世界长稳通过。",
+  "inputs": {
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/startup_event_runtime.rs": "182354733ef59a662f9f4a0406be17ecd872b94ad2704f396e7c263f3965d211",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/run_game.rs": "9b9b49aaf810282f44d34fd681096257c7194f8f6325775d762da52cd7eeb0d2",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/audio_host.rs": "4f46490086c8c16fdaf11d15c71b17739824cc8a2962f7156c997d709efc7e60",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/audio/mod.rs": "4b4b399ae59badc42e64d735dd00819bb4e9b7a943c8ba7ea8a8d884741b5a6d",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/multi-baseline/audio-events-analysis.md": "64f198a259f3429050d1e503d5c24216551569f287a19d25911328989734a431",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/independent-validation/current-render-20261020/AUDIO_EVENTS_NATIVE_CALL_ORDER_V1.json": "1a825a5aa953bb70c36ad7819417370aa6fca45f22b8973bbd8c34897e0cfb44",
+    "/Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_app-0.16.0/src/sub_app.rs": "6900f05d35c9eda6acdd5b855ca47042eda110eeac78eedc73ca8c88fbe7abfc"
+  },
+  "native_independent": "没有只信旧统计/分析表：直接对实际原RNE 140941450/1495B静态Capstone解码330指令，并以实际PDB procedure511:25392核函数范围；16个register_event调用PC、目标和PDB事件类型逐项吻合当前顺序。body SHA e223f49fbc8bd91b4b0598027439f121676edd088a838c59ac6d8c6ba8fc1978；精确列表见独立AUDIO_EVENTS_NATIVE_CALL_ORDER_V1.json。",
+  "source_findings": [
+    {
+      "source": "startup_event_runtime.rs:31..50",
+      "conclusion": "16通道为实际业务事件，不受Native/FM0D feature保护；序与原register_event完全一致。当前canonical PlayTerrainSound由terrain生产与audio consumer共享同TypeId，SuppressPathSound等沿当前audio canonical类型，不新增同名事件。"
+    },
+    {
+      "source": "run_game.rs:255..260",
+      "conclusion": "startup_event_runtime::install在所有原plugin和World-only资源helper前调用，先App::add_event维持registry和事件每帧更新，避免仅init_resource事件存在导致后续App::add_event跳过真正维护。"
+    },
+    {
+      "source": "bevy_app0.16 sub_app.rs:339..347; audio_host.rs event list",
+      "conclusion": "独立读锁定Bevy：add_event仅在Events<T>不存在时注册。Native后续同名add_event因此安全复用已维护事件，不重复channel/清空事件。默认host也保timberframe等原producer，未关闭系统或插伪资源。"
+    }
+  ],
+  "cpu_logs": {
+    "/private/tmp/tg-batch3-host-disabled-tests-20261021.log": "bd2d41c5c641da8ce1b77e15433b888bfad9762c67d18631924898e1f6d77a1a",
+    "/private/tmp/tg-batch3-remaining-cpu-20261021/results.json": "c0a0be23aede0c1681dfb62f35b9331bcdc8b9a0ba71ab476f15fe107851e630",
+    "/private/tmp/tg-batch3-remaining-cpu-20261021/border.log": "b7db122ab7e2f59a6a38395902c2a96dbe3c5b04129522d56607f4c591092645",
+    "/private/tmp/tg-batch3-remaining-cpu-20261021/rectangle.log": "945a1482467dfea5f8d9c9f3068f197fb2a0e6fbb9c79adf48ebf378f1b665ae",
+    "/private/tmp/tg-batch3-remaining-cpu-20261021/critters.log": "61e8a70091afd0c03f32792ef22980e7c791feab3d55adfac482d10a79f1fdca",
+    "/private/tmp/tg-batch3-remaining-cpu-20261021/native-feature.log": "b532390e652eef5973f89dc3c7542ed02021ff68cdd09d988cc92d99c3481206"
+  },
+  "actual_cpu_observed": {
+    "disabled": "3实跑通过/0failed/0ignored；仅Startup construction/demo skipped consumer/loading生命周期。",
+    "rectangle": "original_corner_edge_directions过滤精确命中6测试，全部通过；不是0tests或ignored。",
+    "critters": "35实跑通过/0failed/0ignored；包含births同owner及drop/error测试，不等于真实Native FMOD场景。",
+    "border": "closure_1_wakes_and_inserts_dashed_border_components精确1实跑通过。",
+    "native_feature": "cargo check --offline --locked -p tiny-glade --features native-audio实际完成21.53秒；非Native runtime启动验证。"
+  },
+  "world_progress": {
+    "path": "/private/tmp/tg-paging-world-thirty-v2-20261021.log",
+    "sha256": "5e58b5b28007ff7d3dbcb640afbf609e59edb71e75bfa6ae2aa00a5a42a189e3",
+    "observed": "frame0打印session=true,walls=0，越过上一事件未初始化失败；随后worker warm-up frame返回Vulkan ERROR_INITIALIZATION_FAILED。不能据此定位为某shader或驱动功能，也不能记30帧通过。"
+  },
+  "findings": [],
+  "reviewer_execution": {
+    "cargo": false,
+    "gpu": false,
+    "production_write": false,
+    "original_native_execution": false
+  }
+}

@@ -1,0 +1,251 @@
+{
+  "target": {
+    "path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+    "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+  },
+  "provider": {
+    "id": "ghidra",
+    "version": "12.1.4"
+  },
+  "database": "ccgi_l2",
+  "steps": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "keep_open": true,
+        "database_id": "ccgi_l2"
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "ccgi_l2"
+      }
+    },
+    {
+      "tool": "batch",
+      "args": {
+        "database": "ccgi_l2",
+        "stop_on_error": false,
+        "operations": [
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140a51440"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x1408743b0"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140a01cf0"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140a44cd0"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x1409e7770"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140a6fec0"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140a39e70"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140a3a6f0"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x1409d20b0"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x1408f6180"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140a0d190"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140833bc0"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x1408373b0"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140835a40"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x1409e8db0"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x140b0da50"
+            }
+          },
+          {
+            "tool": "decompile_function",
+            "params": {
+              "address": "0x1417c93d0"
+            }
+          }
+        ]
+      },
+      "expands": [
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140a51440"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x1408743b0"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140a01cf0"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140a44cd0"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x1409e7770"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140a6fec0"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140a39e70"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140a3a6f0"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x1409d20b0"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x1408f6180"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140a0d190"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140833bc0"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x1408373b0"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140835a40"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x1409e8db0"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x140b0da50"
+          }
+        },
+        {
+          "tool": "decompile_function",
+          "args": {
+            "address": "0x1417c93d0"
+          }
+        }
+      ],
+      "timeout_ms": 600000
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "ccgi_l2",
+        "save": false
+      }
+    }
+  ]
+}

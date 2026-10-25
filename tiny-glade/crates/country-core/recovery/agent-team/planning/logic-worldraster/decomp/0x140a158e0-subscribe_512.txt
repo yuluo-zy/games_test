@@ -1,0 +1,53 @@
+NAME: subscribe<512>
+SIGNATURE: void __cdecl subscribe<512>(void)
+SIZE: 240
+CALLEES: acquire_resource,lock_slow,panic_fmt,release_resource,subscribe<country_core::utils::dirty_tiles::DirtyTiles>,unlock_slow
+----DECOMP----
+
+void __cdecl country_core::resources::world_raster::WorldRaster::subscribe<512>(void)
+
+{
+  char *pcVar1;
+  char *pcVar2;
+  longlong lVar3;
+  longlong in_RCX;
+  bool bVar4;
+  
+  lVar3 = 0;
+  if (*(longlong *)(in_RCX + 0x60) < -0x7ffffffffffffffe) {
+    lVar3 = *(longlong *)(in_RCX + 0x60) + -0x7fffffffffffffff;
+  }
+  if (lVar3 == 0) {
+    tabloid::Publisher::subscribe<country_core::utils::dirty_tiles::DirtyTiles>();
+    return;
+  }
+  if (lVar3 != 1) {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic_fmt();
+  }
+  pcVar1 = (char *)(*(longlong *)(in_RCX + 0x68) + 0x10);
+  pcVar2 = (char *)(*(longlong *)(in_RCX + 0x68) + 0x10);
+  LOCK();
+  bVar4 = *pcVar2 == '\0';
+  if (bVar4) {
+    *pcVar2 = '\x01';
+  }
+  UNLOCK();
+  if (!bVar4) {
+    parking_lot::raw_mutex::RawMutex::lock_slow();
+  }
+  parking_lot_core::parking_lot::deadlock_impl::acquire_resource();
+  tabloid::Publisher::subscribe<country_core::utils::dirty_tiles::DirtyTiles>();
+  parking_lot_core::parking_lot::deadlock_impl::release_resource();
+  LOCK();
+  bVar4 = *pcVar1 == '\x01';
+  if (bVar4) {
+    *pcVar1 = '\0';
+  }
+  UNLOCK();
+  if (!bVar4) {
+    parking_lot::raw_mutex::RawMutex::unlock_slow();
+  }
+  return;
+}
+

@@ -1,0 +1,62 @@
+// 0x140a1aeb0 swap_buffers_and_clear size=136
+
+void __cdecl
+country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms::
+swap_buffers_and_clear(void)
+
+{
+  void *_Dst;
+  longlong lVar1;
+  undefined8 uVar2;
+  ulonglong uVar3;
+  undefined8 uVar4;
+  undefined8 uVar5;
+  undefined8 uVar6;
+  undefined8 uVar7;
+  ulonglong uVar8;
+  undefined8 *in_RCX;
+  undefined4 in_EDX;
+  undefined4 in_register_00000014;
+  
+  _Dst = *(void **)CONCAT44(in_register_00000014,in_EDX);
+  uVar3 = *(ulonglong *)(CONCAT44(in_register_00000014,in_EDX) + 8);
+  uVar2 = *(undefined8 *)(CONCAT44(in_register_00000014,in_EDX) + 0x10);
+  uVar4 = *in_RCX;
+  uVar5 = in_RCX[1];
+  *in_RCX = _Dst;
+  *(undefined8 *)CONCAT44(in_register_00000014,in_EDX) = uVar4;
+  ((undefined8 *)CONCAT44(in_register_00000014,in_EDX))[1] = uVar5;
+  uVar4 = *(undefined8 *)(CONCAT44(in_register_00000014,in_EDX) + 0x18);
+  uVar5 = *(undefined8 *)(CONCAT44(in_register_00000014,in_EDX) + 0x20);
+  lVar1 = *(longlong *)(CONCAT44(in_register_00000014,in_EDX) + 0x18);
+  uVar6 = in_RCX[2];
+  uVar7 = in_RCX[3];
+  in_RCX[1] = uVar3;
+  in_RCX[2] = uVar2;
+  *(undefined8 *)(CONCAT44(in_register_00000014,in_EDX) + 0x10) = uVar6;
+  *(undefined8 *)(CONCAT44(in_register_00000014,in_EDX) + 0x18) = uVar7;
+  uVar2 = *(undefined8 *)(CONCAT44(in_register_00000014,in_EDX) + 0x28);
+  uVar6 = in_RCX[4];
+  uVar7 = in_RCX[5];
+  in_RCX[3] = uVar4;
+  in_RCX[4] = uVar5;
+  in_RCX[5] = uVar2;
+  *(undefined8 *)(CONCAT44(in_register_00000014,in_EDX) + 0x20) = uVar6;
+  *(undefined8 *)(CONCAT44(in_register_00000014,in_EDX) + 0x28) = uVar7;
+  if (lVar1 != 0) {
+    if (uVar3 != 0) {
+      memset(_Dst,CONCAT31((int3)((uint)in_EDX >> 8),0xff),uVar3 + 0x11);
+    }
+    in_RCX[3] = 0;
+    uVar8 = (uVar3 + 1 & 0xfffffffffffffff8) - (uVar3 + 1 >> 3);
+    if (uVar3 < 8) {
+      uVar8 = uVar3;
+    }
+    in_RCX[2] = uVar8;
+  }
+  return;
+}
+
+
+// CALLEES:
+{'name': 'memset', 'address': '142923c20'}

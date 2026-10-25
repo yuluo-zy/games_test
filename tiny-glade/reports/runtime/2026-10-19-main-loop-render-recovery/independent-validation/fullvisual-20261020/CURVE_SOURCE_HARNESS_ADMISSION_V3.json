@@ -1,0 +1,33 @@
+{
+  "verdict": "passed_scoped_harness_admission_delta",
+  "subject_manifest_sha256": "5078f50ba0761a4d7dea4a88e0c2c7ac55fea3e6a997b0f0a6bae519185266eb",
+  "supersedes_admission_only": "CURVE_SOURCE_HARNESS_ADMISSION_V2.json",
+  "prior_real_failure": {
+    "receipt_sha256": "b839298307a7f66b6b13b069e63f9242933bdf2be3155f68171df88bc9922dea",
+    "cargo_exit": 101,
+    "errors": [
+      "E0432 unresolved import lerp",
+      "E0599 missing Lerp trait method"
+    ],
+    "artifacts": [],
+    "attribution": "V2 driver omitted an existing dependency used by its complete canonical source, not evidence of a canonical implementation defect. V2 admission did not catch this dependency omission."
+  },
+  "independent_checks": [
+    "All 31 canonical current/template source and fixture pairs match their frozen SHA256 and byte counts. Every V3 source/test byte matches V2.",
+    "All four driver artifacts match the V3 manifest. Only Cargo dependency lerp = =0.4.0 and README failure annotation changed.",
+    "Canonical utils Cargo.toml hash 88c9cfcc10c437400b40925497e225a53bbc8138ee847f29e494edd4ae9e91ea declares lerp = =0.4.0. Complete curve_u_circular.rs imports lerp::Lerp and calls its wrapping_lerp method. No FloatExt replacement, source alteration, test deletion or mock."
+  ],
+  "root_execution_requirements": [
+    "Use a fresh independent runtime directory; leave V1/V2/V3 frozen templates and prior diagnostics intact.",
+    "Seed from frozen workspace lock; offline metadata and compare every selected public package identity/checksum and feature differences, including newly selected lerp, before --locked test.",
+    "Run selected --lib plus both complete curve_properties and curve_review targets. Preserve real failures and immediately retain actual binaries, logs, resolved lock and commands."
+  ],
+  "scope": "Eight selected complete utils module families and existing include dependencies/current integration fixtures. Not full utils, country-core, App, original executable, scene, GPU, WSI or performance acceptance.",
+  "execution_by_reviewer": {
+    "Cargo": false,
+    "rustc": false,
+    "tests": false,
+    "GPU": false
+  },
+  "production_modified": false
+}

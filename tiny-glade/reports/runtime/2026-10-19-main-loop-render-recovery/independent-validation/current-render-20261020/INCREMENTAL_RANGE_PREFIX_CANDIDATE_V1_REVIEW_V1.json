@@ -1,0 +1,78 @@
+{
+  "reviewer": "/root/render_reviewer",
+  "date": "2026-10-21",
+  "decision": "冻结三源/设计无静态阻断；root进入实际CPU差分与同真实世界probe验证，尚未证明性能改善/长稳",
+  "manifest_sha256": "9ba25a9eab44b88b94d97a500967caa63d84c55c4bfb8e4f748c7ff3a55f479b",
+  "patch_sha256": "db21933ad0f8aae1709bfdbc285056b9ebd2d2d98faa6d4c4e356891c2fee200",
+  "sources": [
+    {
+      "source": "tiny-glade/crates/rhapsody/src/resource/range_state.rs",
+      "baseline_sha256": "e5a579fcb67b773fba4dd39d04bdb738dd652548d6bb8610bd0d7e1bf0bfc106",
+      "candidate_sha256": "cf5acb80bc7bfb3f0ba141c09a6277b6b645e7152c914d8a2152efb052e41c8e",
+      "classification": "existing Rust resource-state engineering adaptation; root delegated necessary incremental closure",
+      "authority": "root integration only; original rawbinding work retained, no claim change"
+    },
+    {
+      "source": "tiny-glade/crates/rhapsody/src/resource/tracked.rs",
+      "baseline_sha256": "aa75cfe89d63094b233f4ea58b05e280c1ccc25eeba9bec696ce04243b9b2ccb",
+      "candidate_sha256": "ec7b27648151f6b707158f771c94a93d1b49ea091d2d14180e3118038b59b026",
+      "classification": "existing Rust resource-state engineering adaptation; root delegated necessary incremental closure",
+      "authority": "root integration only; original rawbinding work retained, no claim change"
+    },
+    {
+      "source": "tiny-glade/crates/rhapsody/src/raw/command_buffer.rs",
+      "baseline_sha256": "7110f4f7d6f53a92b7dd342c4b57f304643a4f416bb2c7350e5083eaa547f3ee",
+      "candidate_sha256": "1b3923a9dfe6bb15e29c5f7f3c7b8a6741a69a54cbc61c56ca59e61b1be040fa",
+      "classification": "existing Rust resource-state engineering adaptation; root delegated necessary incremental closure",
+      "authority": "root integration only; original rawbinding work retained, no claim change"
+    }
+  ],
+  "independent_source_identity": "三baseline/candidate各SHA和审时生产baseline逐一匹配；旧prepare完整for-patch loop与提取helper逐UTF8字节相等，loop SHA256=0b77c86f2084a1660caf7ccb44d059f31f2662049583a4821d0cfdfaff025eb1",
+  "native_fact": "本包优化当前Rust工程状态机实现，不声称发现新的B原生游戏算法；不改业务、shader、passes、draws、实际GPU同步点",
+  "measured_input": {
+    "log": "/private/tmp/tg-submit-trace-world-20261021.log",
+    "sha256": "d708c25d21d5b8b4c654787e0da7f8302c97164faf7ba59376f05c056b5613dd",
+    "actual_lines": [
+      "RHAPSODY_SUBMIT_TRACE scope=native_state_prepare total_ns=11188508625 phases_ns=[(\"prepare_all_cells\", 11188506542)] counts=[(\"commands\", 1), (\"uses\", 4438), (\"state_patches\", 3536), (\"opaque_ranges\", 0), (\"private_upload_reads\", 1478), (\"physical_cells\", 635)]",
+      "RHAPSODY_SUBMIT_TRACE scope=rg_submit total_ns=11307128667 phases_ns=[(\"capture_and_command_refs\", 12917), (\"validate1\", 30000916), (\"semaphore_refs\", 8667), (\"uses_merge\", 295375), (\"state_locks\", 263750), (\"validate2\", 28462708), (\"prepare_states\", 11188875167), (\"dependencies\", 8833), (\"device_submit_prepared\", 25182709)] counts=[(\"batches\", 1), (\"commands\", 1), (\"unique_uses\", 4438)]"
+    ],
+    "scope": "directly read actual root-executed trace，635 physical cells/3536 patches/1478 privateReads/4438 uses；native_state_prepare11.1885s，vkQueueSubmit2约25ms，vkWaitSemaphores约101ms；单帧内容仍pass。计时probe已独审SUBMIT_TRACE...；这不是新优化后的测量"
+  },
+  "ordered_review": [
+    {
+      "boundary": "原prepare",
+      "finding": "原cancel→committed克隆保留；仅提取for-patch helper并共用admit；每patch range/revision/ownership/layout/overflow/deps、before固定迭代和split预算原字节未变"
+    },
+    {
+      "boundary": "append资格",
+      "finding": "同queue+family且非host的成功prefix；任何append开始撤queue/family，非法prefix cancel；apply或admit错误无publish资格，committed不变"
+    },
+    {
+      "boundary": "取消/发布",
+      "finding": "prepared_family新元数据在cancel和publish撤销；原host/opaque/discard/preview走cancel路径；guard仍在全部submission gates持有下，跨cell错误Drop全取消"
+    },
+    {
+      "boundary": "逐prefix预算",
+      "finding": "保每个原prepare末尾cells.grow和每split scratch.grow，旧+新backing同时计费；不把原中途准入推迟到尾部。Storage::grow先capacity>=wanted返回，prepare只split不merge，容量单调，省掉的初始scratch.grow/重放旧prefix确为无新alloc的工作"
+    },
+    {
+      "boundary": "实际raw调用",
+      "finding": "每当前read仍先declared/opaque overlap，再首prepare或append前一read生成后缀，再producer/revision取自真实prepared cells，再scratch.add；不提前应用末尾patch改首错误次序"
+    },
+    {
+      "boundary": "最终依赖",
+      "finding": "最后read后缀append成功才合并同table最终staged deps；无privateReads仍原prepare_cell；从未重排/合并私有read或伪造timelinepoint"
+    },
+    {
+      "boundary": "借用与锁",
+      "finding": "同cpu_state_patches mutex、同native_state mutex/资源gate顺序，新增SyncCell wrapper只借既有已初始化table，不造owner/锁/缓存或跨submit保留prefix"
+    }
+  ],
+  "new_tests_pending": "7项作者仅parse。全prefix原prepare作为差分oracle；每边界比较全部PreparedCell cell/writer/readers/release、deps、committed、容量、budget current/peak；覆盖96重叠private read序列、image/release/acquire、错误矩阵和预算边界；raw guard测试跨cell取消/重试一次发布。后者是手工guard真实状态测试，并非直接执行完整prepare_submission_states资源录制链。",
+  "root_validation_required": [
+    "实际原range_state及native_state_submission测试，失败须核fixture或实现，不能削减断言",
+    "原1478privateReads世界输入同probe和像素，验证真实prepare_submission_states接线及降耗，再禁用trace比较",
+    "保持30帧live/peak/memory/pixel/TAA断言原样；该优化未消除已观测描述符/内存漂移，不能合并结论"
+  ],
+  "execution": "独审未运行Cargo/rustc/GPU、未写production/Cargo/Git；只读源码/原测日志并写此报告"
+}

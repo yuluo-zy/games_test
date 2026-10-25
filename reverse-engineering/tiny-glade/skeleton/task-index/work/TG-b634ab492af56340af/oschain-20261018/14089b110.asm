@@ -1,0 +1,42 @@
+14089b110: mov rax, rcx
+14089b113: mov dword ptr [rcx], 0x2a
+14089b119: mov dword ptr [rcx + 0xc], 0x26
+14089b120: mov dword ptr [rcx + 0x18], 0x14
+14089b127: mov dword ptr [rcx + 0x24], 0x17
+14089b12e: mov dword ptr [rcx + 0x30], 0x18
+14089b135: mov dword ptr [rcx + 0x3c], 0x24
+14089b13c: mov dword ptr [rcx + 0x48], 0xc3
+14089b143: mov dword ptr [rcx + 0x54], 0xc3
+14089b14a: mov dword ptr [rcx + 0x60], 0xc3
+14089b151: mov dword ptr [rcx + 0x6c], 0xc3
+14089b158: mov dword ptr [rcx + 0x78], 7
+14089b15f: mov dword ptr [rcx + 0x84], 8
+14089b169: mov dword ptr [rcx + 0x90], 9
+14089b173: mov dword ptr [rcx + 0x9c], 0xa
+14089b17d: mov dword ptr [rcx + 0xa8], 0xb
+14089b187: mov dword ptr [rcx + 0xb4], 0xc
+14089b191: mov dword ptr [rcx + 0xc0], 0xd
+14089b19b: mov dword ptr [rcx + 0xcc], 0xe
+14089b1a5: mov dword ptr [rcx + 0xd8], 0xf
+14089b1af: mov dword ptr [rcx + 0xe4], 0x23
+14089b1b9: mov dword ptr [rcx + 0xf0], 0x27
+14089b1c3: mov dword ptr [rcx + 0xfc], 0x2d
+14089b1cd: mov dword ptr [rcx + 0x108], 0x2b
+14089b1d7: mov dword ptr [rcx + 0x114], 0xc3
+14089b1e1: mov dword ptr [rcx + 0x120], 0x38
+14089b1eb: mov dword ptr [rcx + 0x12c], 0xab
+14089b1f5: mov dword ptr [rcx + 0x138], 0xa5
+14089b1ff: mov dword ptr [rcx + 0x144], 0x1b
+14089b209: mov dword ptr [rcx + 0x150], 0x49
+14089b213: mov dword ptr [rcx + 0x15c], 0x3a
+14089b21d: mov dword ptr [rcx + 0x168], 0x51
+14089b227: mov dword ptr [rcx + 0x174], 0x52
+14089b231: mov dword ptr [rcx + 0x180], 0x50
+14089b23b: mov dword ptr [rcx + 0x18c], 0x53
+14089b245: mov dword ptr [rcx + 0x198], 0x4f
+14089b24f: mov dword ptr [rcx + 0x1a4], 0x4e
+14089b259: mov word ptr [rcx + 0x1bc], 1
+14089b262: mov word ptr [rcx + 0x1c0], 2
+14089b26b: mov word ptr [rcx + 0x1c4], 1
+14089b274: mov dword ptr [rcx + 0x1b0], 0xc3
+14089b27e: ret 

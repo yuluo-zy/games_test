@@ -1,0 +1,213 @@
+{
+ "layers": [
+  {
+   "layer": 0,
+   "component": "A1 mesh/vao/杂项",
+   "procs": 58,
+   "KiB": 31,
+   "depends_on": []
+  },
+  {
+   "layer": 0,
+   "component": "A1 shader_uri/shader程序",
+   "procs": 10,
+   "KiB": 6,
+   "depends_on": []
+  },
+  {
+   "layer": 0,
+   "component": "A1 ssbo/buffer基元",
+   "procs": 156,
+   "KiB": 92,
+   "depends_on": []
+  },
+  {
+   "layer": 0,
+   "component": "A1 uniform/frame/view常量",
+   "procs": 3,
+   "KiB": 3,
+   "depends_on": []
+  },
+  {
+   "layer": 0,
+   "component": "A4 帧pass辅助(clear/copy)",
+   "procs": 4,
+   "KiB": 2,
+   "depends_on": []
+  },
+  {
+   "layer": 1,
+   "component": "A2 mesh_atlas",
+   "procs": 1,
+   "KiB": 3,
+   "depends_on": [
+    "A1"
+   ]
+  },
+  {
+   "layer": 1,
+   "component": "A2 sparse_instance_buffer",
+   "procs": 34,
+   "KiB": 36,
+   "depends_on": [
+    "A1"
+   ]
+  },
+  {
+   "layer": 2,
+   "component": "A3 资产库(SSBO/shader/mesh/纹理)",
+   "procs": 324,
+   "KiB": 173,
+   "depends_on": [
+    "A1",
+    "A2"
+   ]
+  },
+  {
+   "layer": 3,
+   "component": "A4 pass_builder(资源声明/绑定/draw/compute)",
+   "procs": 341,
+   "KiB": 220,
+   "depends_on": [
+    "A1",
+    "A3"
+   ]
+  },
+  {
+   "layer": 4,
+   "component": "N nani(GPU驱动)",
+   "procs": 157,
+   "KiB": 152,
+   "depends_on": [
+    "A1",
+    "A3",
+    "A4"
+   ]
+  },
+  {
+   "layer": 5,
+   "component": "D draw_passes",
+   "procs": 63,
+   "KiB": 121,
+   "depends_on": [
+    "A3",
+    "A4",
+    "N"
+   ]
+  },
+  {
+   "layer": 6,
+   "component": "C compute帧pass",
+   "procs": 77,
+   "KiB": 199,
+   "depends_on": [
+    "A2",
+    "A3",
+    "A4",
+    "D"
+   ]
+  },
+  {
+   "layer": 7,
+   "component": "H 帧编排器 render_world",
+   "procs": 3,
+   "KiB": 20,
+   "depends_on": [
+    "A4",
+    "C",
+    "D"
+   ]
+  },
+  {
+   "layer": 7,
+   "component": "S 风格化/预览/LUT/菜单背景",
+   "procs": 21,
+   "KiB": 47,
+   "depends_on": [
+    "A3",
+    "A4",
+    "C"
+   ]
+  }
+ ],
+ "inner": {
+  "A1 mesh/vao/杂项": {
+   "units": 41,
+   "sublayers": {
+    "0": 35,
+    "1": 4,
+    "2": 2
+   },
+   "cycles": 0
+  },
+  "A1 ssbo/buffer基元": {
+   "units": 10,
+   "sublayers": {
+    "0": 8,
+    "1": 2
+   },
+   "cycles": 0
+  },
+  "A2 sparse_instance_buffer": {
+   "units": 11,
+   "sublayers": {
+    "0": 10,
+    "1": 1
+   },
+   "cycles": 0
+  },
+  "A3 资产库(SSBO/shader/mesh/纹理)": {
+   "units": 82,
+   "sublayers": {
+    "0": 71,
+    "1": 10,
+    "2": 1
+   },
+   "cycles": 0
+  },
+  "A4 pass_builder(资源声明/绑定/draw/compute)": {
+   "units": 65,
+   "sublayers": {
+    "0": 49,
+    "1": 11,
+    "2": 5
+   },
+   "cycles": 0
+  },
+  "C compute帧pass": {
+   "units": 67,
+   "sublayers": {
+    "0": 62,
+    "1": 5
+   },
+   "cycles": 0
+  },
+  "D draw_passes": {
+   "units": 61,
+   "sublayers": {
+    "0": 56,
+    "1": 5
+   },
+   "cycles": 0
+  },
+  "N nani(GPU驱动)": {
+   "units": 68,
+   "sublayers": {
+    "0": 43,
+    "1": 24,
+    "2": 1
+   },
+   "cycles": 0
+  },
+  "S 风格化/预览/LUT/菜单背景": {
+   "units": 21,
+   "sublayers": {
+    "0": 20,
+    "1": 1
+   },
+   "cycles": 0
+  }
+ },
+ "trait_dispatch_edges": 20,
+ "indirect_call_sites": 209
+}

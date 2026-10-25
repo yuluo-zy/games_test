@@ -1,0 +1,25 @@
+0x140680540 push r14
+0x140680542 push rsi
+0x140680543 push rdi
+0x140680544 push rbx
+0x140680545 sub rsp, 0x28
+0x140680549 mov rsi, r8
+0x14068054c mov rdi, rdx
+0x14068054f mov rbx, rcx
+0x140680552 lea r14, [rdx + 0x18]
+0x140680556 mov rcx, r14
+0x140680559 call 0x140b92590
+0x14068055e mov r8, qword ptr [rsi + 0x10]
+0x140680562 lea r9, [rip + 0x2396c2f]
+0x140680569 mov rcx, r14
+0x14068056c mov rdx, rdi
+0x14068056f call 0x140b92340
+0x140680574 xorps xmm0, xmm0
+0x140680577 movups xmmword ptr [rbx], xmm0
+0x14068057a mov rax, rbx
+0x14068057d add rsp, 0x28
+0x140680581 pop rbx
+0x140680582 pop rdi
+0x140680583 pop rsi
+0x140680584 pop r14
+0x140680586 ret 

@@ -1,0 +1,163 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+1411fbfa0: 41 57                       	pushq	%r15
+1411fbfa2: 41 56                       	pushq	%r14
+1411fbfa4: 41 54                       	pushq	%r12
+1411fbfa6: 56                          	pushq	%rsi
+1411fbfa7: 57                          	pushq	%rdi
+1411fbfa8: 55                          	pushq	%rbp
+1411fbfa9: 53                          	pushq	%rbx
+1411fbfaa: 48 83 ec 70                 	subq	$0x70, %rsp
+1411fbfae: 4c 89 cf                    	movq	%r9, %rdi
+1411fbfb1: 44 89 c3                    	movl	%r8d, %ebx
+1411fbfb4: 49 89 d6                    	movq	%rdx, %r14
+1411fbfb7: 48 89 ce                    	movq	%rcx, %rsi
+1411fbfba: 44 89 44 24 20              	movl	%r8d, 0x20(%rsp)
+1411fbfbf: 4c 8d 7a 20                 	leaq	0x20(%rdx), %r15
+1411fbfc3: 48 8d 54 24 20              	leaq	0x20(%rsp), %rdx
+1411fbfc8: 4c 89 f9                    	movq	%r15, %rcx
+1411fbfcb: e8 00 4f 3b ff              	callq	0x1405b0ed0 <.text+0x5afed0>
+1411fbfd0: 49 83 7e 10 00              	cmpq	$0x0, 0x10(%r14)
+1411fbfd5: 0f 84 cc 01 00 00           	je	0x1411fc1a7 <.text+0x11fb1a7>
+1411fbfdb: 49 8b 0e                    	movq	(%r14), %rcx
+1411fbfde: 4d 8b 46 08                 	movq	0x8(%r14), %r8
+1411fbfe2: 48 89 c2                    	movq	%rax, %rdx
+1411fbfe5: 48 c1 ea 39                 	shrq	$0x39, %rdx
+1411fbfe9: 66 0f 6e c2                 	movd	%edx, %xmm0
+1411fbfed: 66 0f 60 c0                 	punpcklbw	%xmm0, %xmm0    # xmm0 = xmm0[0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7]
+1411fbff1: f2 0f 70 c0 00              	pshuflw	$0x0, %xmm0, %xmm0      # xmm0 = xmm0[0,0,0,0,4,5,6,7]
+1411fbff6: 66 0f 70 c0 00              	pshufd	$0x0, %xmm0, %xmm0      # xmm0 = xmm0[0,0,0,0]
+1411fbffb: 45 31 d2                    	xorl	%r10d, %r10d
+1411fbffe: 66 0f 76 c9                 	pcmpeqd	%xmm1, %xmm1
+1411fc002: 45 31 db                    	xorl	%r11d, %r11d
+1411fc005: 4c 21 c0                    	andq	%r8, %rax
+1411fc008: f3 0f 6f 14 01              	movdqu	(%rcx,%rax), %xmm2
+1411fc00d: 66 0f 6f da                 	movdqa	%xmm2, %xmm3
+1411fc011: 66 0f 74 d8                 	pcmpeqb	%xmm0, %xmm3
+1411fc015: 66 44 0f d7 fb              	pmovmskb	%xmm3, %r15d
+1411fc01a: 45 85 ff                    	testl	%r15d, %r15d
+1411fc01d: 74 31                       	je	0x1411fc050 <.text+0x11fb050>
+1411fc01f: f3 45 0f bc e7              	tzcntl	%r15d, %r12d
+1411fc024: 49 01 c4                    	addq	%rax, %r12
+1411fc027: 4d 21 c4                    	andq	%r8, %r12
+1411fc02a: 49 f7 dc                    	negq	%r12
+1411fc02d: 4f 8d 24 a4                 	leaq	(%r12,%r12,4), %r12
+1411fc031: 49 c1 e4 04                 	shlq	$0x4, %r12
+1411fc035: 42 39 5c 21 b0              	cmpl	%ebx, -0x50(%rcx,%r12)
+1411fc03a: 74 69                       	je	0x1411fc0a5 <.text+0x11fb0a5>
+1411fc03c: 41 8d 6f ff                 	leal	-0x1(%r15), %ebp
+1411fc040: 66 44 21 fd                 	andw	%r15w, %bp
+1411fc044: 41 89 ef                    	movl	%ebp, %r15d
+1411fc047: 75 d6                       	jne	0x1411fc01f <.text+0x11fb01f>
+1411fc049: 0f 1f 80 00 00 00 00        	nopl	(%rax)
+1411fc050: 49 83 fb 01                 	cmpq	$0x1, %r11
+1411fc054: 74 39                       	je	0x1411fc08f <.text+0x11fb08f>
+1411fc056: 66 0f d7 ea                 	pmovmskb	%xmm2, %ebp
+1411fc05a: 85 ed                       	testl	%ebp, %ebp
+1411fc05c: 74 45                       	je	0x1411fc0a3 <.text+0x11fb0a3>
+1411fc05e: f3 44 0f bc cd              	tzcntl	%ebp, %r9d
+1411fc063: 49 01 c1                    	addq	%rax, %r9
+1411fc066: 4d 21 c1                    	andq	%r8, %r9
+1411fc069: 45 31 db                    	xorl	%r11d, %r11d
+1411fc06c: 66 85 ed                    	testw	%bp, %bp
+1411fc06f: 41 0f 95 c3                 	setne	%r11b
+1411fc073: 66 0f 74 d1                 	pcmpeqb	%xmm1, %xmm2
+1411fc077: 66 0f d7 ea                 	pmovmskb	%xmm2, %ebp
+1411fc07b: 85 ed                       	testl	%ebp, %ebp
+1411fc07d: 75 7c                       	jne	0x1411fc0fb <.text+0x11fb0fb>
+1411fc07f: 4c 01 d0                    	addq	%r10, %rax
+1411fc082: 48 83 c0 10                 	addq	$0x10, %rax
+1411fc086: 49 83 c2 10                 	addq	$0x10, %r10
+1411fc08a: e9 76 ff ff ff              	jmp	0x1411fc005 <.text+0x11fb005>
+1411fc08f: 41 bb 01 00 00 00           	movl	$0x1, %r11d
+1411fc095: 66 0f 74 d1                 	pcmpeqb	%xmm1, %xmm2
+1411fc099: 66 0f d7 ea                 	pmovmskb	%xmm2, %ebp
+1411fc09d: 85 ed                       	testl	%ebp, %ebp
+1411fc09f: 75 5a                       	jne	0x1411fc0fb <.text+0x11fb0fb>
+1411fc0a1: eb dc                       	jmp	0x1411fc07f <.text+0x11fb07f>
+1411fc0a3: eb c4                       	jmp	0x1411fc069 <.text+0x11fb069>
+1411fc0a5: 4c 01 e1                    	addq	%r12, %rcx
+1411fc0a8: 48 8b 41 f8                 	movq	-0x8(%rcx), %rax
+1411fc0ac: 48 89 46 40                 	movq	%rax, 0x40(%rsi)
+1411fc0b0: 0f 10 41 b8                 	movups	-0x48(%rcx), %xmm0
+1411fc0b4: 0f 10 49 c8                 	movups	-0x38(%rcx), %xmm1
+1411fc0b8: 0f 10 51 d8                 	movups	-0x28(%rcx), %xmm2
+1411fc0bc: 0f 10 59 e8                 	movups	-0x18(%rcx), %xmm3
+1411fc0c0: 0f 11 5e 30                 	movups	%xmm3, 0x30(%rsi)
+1411fc0c4: 0f 11 56 20                 	movups	%xmm2, 0x20(%rsi)
+1411fc0c8: 0f 11 4e 10                 	movups	%xmm1, 0x10(%rsi)
+1411fc0cc: 0f 11 06                    	movups	%xmm0, (%rsi)
+1411fc0cf: 0f 10 07                    	movups	(%rdi), %xmm0
+1411fc0d2: 0f 10 4f 10                 	movups	0x10(%rdi), %xmm1
+1411fc0d6: 0f 10 57 20                 	movups	0x20(%rdi), %xmm2
+1411fc0da: 0f 10 5f 30                 	movups	0x30(%rdi), %xmm3
+1411fc0de: 0f 11 41 b8                 	movups	%xmm0, -0x48(%rcx)
+1411fc0e2: 0f 11 49 c8                 	movups	%xmm1, -0x38(%rcx)
+1411fc0e6: 0f 11 51 d8                 	movups	%xmm2, -0x28(%rcx)
+1411fc0ea: 0f 11 59 e8                 	movups	%xmm3, -0x18(%rcx)
+1411fc0ee: 48 8b 47 40                 	movq	0x40(%rdi), %rax
+1411fc0f2: 48 89 41 f8                 	movq	%rax, -0x8(%rcx)
+1411fc0f6: e9 9a 00 00 00              	jmp	0x1411fc195 <.text+0x11fb195>
+1411fc0fb: 42 0f b6 04 09              	movzbl	(%rcx,%r9), %eax
+1411fc100: 84 c0                       	testb	%al, %al
+1411fc102: 0f 89 bd 00 00 00           	jns	0x1411fc1c5 <.text+0x11fb1c5>
+1411fc108: 4c 8b 57 40                 	movq	0x40(%rdi), %r10
+1411fc10c: 4c 89 54 24 68              	movq	%r10, 0x68(%rsp)
+1411fc111: 0f 10 07                    	movups	(%rdi), %xmm0
+1411fc114: 0f 10 4f 10                 	movups	0x10(%rdi), %xmm1
+1411fc118: 0f 10 57 20                 	movups	0x20(%rdi), %xmm2
+1411fc11c: 0f 10 5f 30                 	movups	0x30(%rdi), %xmm3
+1411fc120: 0f 11 5c 24 58              	movups	%xmm3, 0x58(%rsp)
+1411fc125: 0f 11 54 24 48              	movups	%xmm2, 0x48(%rsp)
+1411fc12a: 0f 11 4c 24 38              	movups	%xmm1, 0x38(%rsp)
+1411fc12f: 24 01                       	andb	$0x1, %al
+1411fc131: 0f b6 c0                    	movzbl	%al, %eax
+1411fc134: 49 29 46 10                 	subq	%rax, 0x10(%r14)
+1411fc138: 0f 11 44 24 28              	movups	%xmm0, 0x28(%rsp)
+1411fc13d: 49 8d 41 f0                 	leaq	-0x10(%r9), %rax
+1411fc141: 4c 21 c0                    	andq	%r8, %rax
+1411fc144: 42 88 14 09                 	movb	%dl, (%rcx,%r9)
+1411fc148: 88 54 01 10                 	movb	%dl, 0x10(%rcx,%rax)
+1411fc14c: 49 ff 46 18                 	incq	0x18(%r14)
+1411fc150: 49 f7 d9                    	negq	%r9
+1411fc153: 4b 8d 04 89                 	leaq	(%r9,%r9,4), %rax
+1411fc157: 48 c1 e0 04                 	shlq	$0x4, %rax
+1411fc15b: 89 5c 01 b0                 	movl	%ebx, -0x50(%rcx,%rax)
+1411fc15f: 0f 10 44 24 24              	movups	0x24(%rsp), %xmm0
+1411fc164: 0f 10 4c 24 34              	movups	0x34(%rsp), %xmm1
+1411fc169: 0f 10 54 24 44              	movups	0x44(%rsp), %xmm2
+1411fc16e: 0f 10 5c 24 54              	movups	0x54(%rsp), %xmm3
+1411fc173: 0f 11 44 01 b4              	movups	%xmm0, -0x4c(%rcx,%rax)
+1411fc178: 0f 11 4c 01 c4              	movups	%xmm1, -0x3c(%rcx,%rax)
+1411fc17d: 0f 11 54 01 d4              	movups	%xmm2, -0x2c(%rcx,%rax)
+1411fc182: 0f 11 5c 01 e4              	movups	%xmm3, -0x1c(%rcx,%rax)
+1411fc187: 0f 10 44 24 60              	movups	0x60(%rsp), %xmm0
+1411fc18c: 0f 11 44 01 f0              	movups	%xmm0, -0x10(%rcx,%rax)
+1411fc191: c6 46 47 02                 	movb	$0x2, 0x47(%rsi)
+1411fc195: 48 89 f0                    	movq	%rsi, %rax
+1411fc198: 48 83 c4 70                 	addq	$0x70, %rsp
+1411fc19c: 5b                          	popq	%rbx
+1411fc19d: 5d                          	popq	%rbp
+1411fc19e: 5f                          	popq	%rdi
+1411fc19f: 5e                          	popq	%rsi
+1411fc1a0: 41 5c                       	popq	%r12
+1411fc1a2: 41 5e                       	popq	%r14
+1411fc1a4: 41 5f                       	popq	%r15
+1411fc1a6: c3                          	retq
+1411fc1a7: ba 01 00 00 00              	movl	$0x1, %edx
+1411fc1ac: 4c 89 f1                    	movq	%r14, %rcx
+1411fc1af: 4d 89 f8                    	movq	%r15, %r8
+1411fc1b2: 41 b1 01                    	movb	$0x1, %r9b
+1411fc1b5: 49 89 c7                    	movq	%rax, %r15
+1411fc1b8: e8 13 04 6b 01              	callq	0x1428ac5d0 <.text+0x28ab5d0>
+1411fc1bd: 4c 89 f8                    	movq	%r15, %rax
+1411fc1c0: e9 16 fe ff ff              	jmp	0x1411fbfdb <.text+0x11fafdb>
+1411fc1c5: 66 0f 6f 01                 	movdqa	(%rcx), %xmm0
+1411fc1c9: 66 0f d7 c0                 	pmovmskb	%xmm0, %eax
+1411fc1cd: f3 44 0f bc c8              	tzcntl	%eax, %r9d
+1411fc1d2: 42 0f b6 04 09              	movzbl	(%rcx,%r9), %eax
+1411fc1d7: e9 2c ff ff ff              	jmp	0x1411fc108 <.text+0x11fb108>

@@ -1,0 +1,1837 @@
+{
+  "backend": "radare2",
+  "worker": "reviewer-consumers",
+  "access": "read",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "open_file",
+      "requested_args": {
+        "file_path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.exe"
+      },
+      "args": {
+        "file_path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.exe"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "File opened successfully.",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "disassemble",
+      "requested_args": {
+        "address": "0x141c50acb",
+        "num_instructions": 130
+      },
+      "args": {
+        "address": "0x141c50acb",
+        "num_instructions": 130
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "0x141c50acb      mov rax, qword [rbp + 0x80]\n0x141c50ad2      movsd xmm8, qword [rax]\n0x141c50ad7      addps xmm8, xmm6\n0x141c50adb      jmp 0x141c515e0\n0x141c50ae0      mov rcx, r15\n   ; 0x140949c10(0x0, 0x0, 0x0, 0x0)\n0x141c50ae3      call 0x140949c10\n0x141c50ae8      movaps xmm8, xmm0\n0x141c50aec      unpcklps xmm8, xmm1\n0x141c50af0      mulps xmm8, xmm14\n0x141c50af4      jmp 0x141c515e0\n0x141c50af9      mov qword [rbp + 0x168], r13\n0x141c50b00      mov qword [rbp + 0x1b8], rbx\n0x141c50b07      mov qword [rbp + 0x1b0], r12\n0x141c50b0e      mov rax, qword [rbp - 0x18]\n0x141c50b12      movss xmm2, dword [rax + 0x28]\n0x141c50b17      lea rcx, [rbp + 0x90]\n0x141c50b1e      mov rdx, qword [rbp - 8]\n   ; 0x140c98b90(0x0, 0x0, -1, 0x90)\n0x141c50b22      call 0x140c98b90\n0x141c50b27      mov eax, dword [rbp + 0x98]\n0x141c50b2d      mov dword [rbp + 0xf8], eax\n0x141c50b33      mov rax, qword [rbp + 0x90]\n0x141c50b3a      mov qword [rbp + 0xf0], rax\n0x141c50b41      mov rcx, r15\n   ; 0x140949c10(0x0, 0x0, -1, 0x0)\n0x141c50b44      call 0x140949c10\n0x141c50b49      movaps xmm2, xmm1\n0x141c50b4c      lea rbx, [rbp + 0xf0]\n0x141c50b53      mov rcx, rbx\n0x141c50b56      movaps xmm1, xmm0\n0x141c50b59      mov r13, r15\n0x141c50b5c      mov r15, qword [rbp + 0x180]\n0x141c50b63      mov r9, r15\n   ; 0x140ac8780(0x0, 0x0, -1, 0xf0)\n0x141c50b66      call 0x140ac8780\n0x141c50b6b      movaps xmm8, xmm0\n0x141c50b6f      movaps xmmword [rbp + 0x60], xmm1\n0x141c50b73      lea r12, [rbp + 0xb0]\n0x141c50b7a      mov eax, dword [r12 - 0xc]\n0x141c50b7f      mov dword [rbp + 0xf8], eax\n0x141c50b85      mov rax, qword [r12 - 0x14]\n0x141c50b8a      mov qword [rbp + 0xf0], rax\n0x141c50b91      mov rcx, r13\n   ; 0x140949c10(0x0, 0x0, -1, 0x0)\n0x141c50b94      call 0x140949c10\n0x141c50b99      movaps xmm2, xmm1\n0x141c50b9c      mov rcx, rbx\n0x141c50b9f      movaps xmm1, xmm0\n0x141c50ba2      mov r9, r15\n   ; 0x140ac8780(0x0, 0x0, -1, 0xf0)\n0x141c50ba5      call 0x140ac8780\n0x141c50baa      movaps xmm14, xmm6\n0x141c50bae      movaps xmm6, xmm7\n0x141c50bb1      movaps xmm7, xmm10\n0x141c50bb5      movaps xmm10, xmm0\n0x141c50bb9      movaps xmm9, xmm12\n0x141c50bbd      movaps xmm12, xmm1\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c50bc1      xor esi, esi\n0x141c50bc3      ucomiss xmm0, xmm8\n0x141c50bc7      seta sil\n0x141c50bcb      mov eax, dword [r12]\n0x141c50bcf      mov dword [rbp + 0xf8], eax\n0x141c50bd5      mov rax, qword [r12 - 8]\n0x141c50bda      mov qword [rbp + 0xf0], rax\n0x141c50be1      mov rcx, r13\n   ; 0x140949c10(0x0, 0x0, -1, 0x0)\n0x141c50be4      call 0x140949c10\n0x141c50be9      movaps xmm2, xmm1\n0x141c50bec      mov rcx, rbx\n0x141c50bef      movaps xmm1, xmm0\n0x141c50bf2      mov r9, r15\n   ; 0x140ac8780(0x0, 0x0, -1, 0xf0)\n0x141c50bf5      call 0x140ac8780\n0x141c50bfa      movaps xmm11, xmm0\n0x141c50bfe      movaps xmm13, xmm1\n0x141c50c02      mov eax, dword [r12 + 0xc]\n0x141c50c07      mov dword [rbp + 0xf8], eax\n0x141c50c0d      mov rax, qword [r12 + 4]\n0x141c50c12      mov qword [rbp + 0xf0], rax\n0x141c50c19      mov rcx, r13\n   ; 0x140949c10(0x0, 0x0, -1, 0x0)\n0x141c50c1c      call 0x140949c10\n0x141c50c21      movaps xmm2, xmm1\n0x141c50c24      mov rcx, rbx\n0x141c50c27      mov rbx, qword [rbp + 0x1b8]\n0x141c50c2e      movaps xmm1, xmm0\n0x141c50c31      mov r9, r15\n0x141c50c34      mov r15, r13\n0x141c50c37      mov r13, qword [rbp + 0x168]\n0x141c50c3e      mov r12, qword [rbp + 0x1b0]\n   ; 0x140ac8780(0x0, 0x0, -1, 0xf0)\n0x141c50c45      call 0x140ac8780\n0x141c50c4a      movd xmm2, esi\n0x141c50c4e      pshufd xmm2, xmm2, 0x50\n0x141c50c53      pslld xmm2, 0x1f\n0x141c50c58      psrad xmm2, 0x1f\n0x141c50c5d      unpcklps xmm10, xmm12\n0x141c50c61      movaps xmm12, xmm9\n0x141c50c65      unpcklps xmm8, xmmword [rbp + 0x60]\n0x141c50c6a      andps xmm10, xmm2\n0x141c50c6e      andnps xmm2, xmm8\n0x141c50c72      orps xmm2, xmm10\n0x141c50c76      movaps xmm10, xmm7\n0x141c50c7a      movaps xmm7, xmm6\n0x141c50c7d      movaps xmm6, xmm14\n; [0x1429258e0:16]=-1\n0x141c50c81      movaps xmm14, xmmword [0x1429258e0]\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c50c89      xor eax, eax\n0x141c50c8b      ucomiss xmm11, xmm2\n0x141c50c8f      seta al\n0x141c50c92      movd xmm3, eax\n0x141c50c96      pshufd xmm3, xmm3, 0x50\n0x141c50c9b      pslld xmm3, 0x1f\n0x141c50ca0      psrad xmm3, 0x1f\n0x141c50ca5      unpcklps xmm11, xmm13\n0x141c50ca9      xorps xmm13, xmm13\n0x141c50cad      andps xmm11, xmm3\n0x141c50cb1      andnps xmm3, xmm2\n0x141c50cb4      orps xmm3, xmm11\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c50cb8      xor eax, eax\n0x141c50cba      ucomiss xmm0, xmm3\n0x141c50cbd      seta al\n0x141c50cc0      movd xmm2, eax\n0x141c50cc4      pshufd xmm8, xmm2, 0x50\n0x141c50cca      pslld xmm8, 0x1f\n0x141c50cd0      psrad xmm8, 0x1f\n0x141c50cd6      unpcklps xmm0, xmm1\n0x141c50cd9      andps xmm0, xmm8\n0x141c50cdd      andnps xmm8, xmm3\n0x141c50ce1      orps xmm8, xmm0\n0x141c50ce5      addps xmm8, xmm10\n0x141c50ce9      jmp 0x141c515e0\n0x141c50cee      mov edx, dword [rax + 4]\n0x141c50cf1      mov rsi, qword [rax + 8]\n0x141c50cf5      movzx eax, byte [rax + 0x10]\n0x141c50cf9      mov byte [rbp + 0x168], al\n0x141c50cff      mov r8d, ecx\n0x141c50d02      lea rcx, [0x142f14844]\n0x141c50d09      mov qword [rbp + 0x30], r8\n0x141c50d0d      movsxd rax, dword [rcx + r8*4]\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "disassemble",
+      "requested_args": {
+        "address": "0x141c50af9",
+        "num_instructions": 230
+      },
+      "args": {
+        "address": "0x141c50af9",
+        "num_instructions": 230
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "0x141c50af9      mov qword [rbp + 0x168], r13\n0x141c50b00      mov qword [rbp + 0x1b8], rbx\n0x141c50b07      mov qword [rbp + 0x1b0], r12\n0x141c50b0e      mov rax, qword [rbp - 0x18]\n0x141c50b12      movss xmm2, dword [rax + 0x28]\n0x141c50b17      lea rcx, [rbp + 0x90]\n0x141c50b1e      mov rdx, qword [rbp - 8]\n   ; 0x140c98b90(0x0, 0x0, -1, 0x90)\n0x141c50b22      call 0x140c98b90\n0x141c50b27      mov eax, dword [rbp + 0x98]\n0x141c50b2d      mov dword [rbp + 0xf8], eax\n0x141c50b33      mov rax, qword [rbp + 0x90]\n0x141c50b3a      mov qword [rbp + 0xf0], rax\n0x141c50b41      mov rcx, r15\n   ; 0x140949c10(0x0, 0x0, -1, 0x0)\n0x141c50b44      call 0x140949c10\n0x141c50b49      movaps xmm2, xmm1\n0x141c50b4c      lea rbx, [rbp + 0xf0]\n0x141c50b53      mov rcx, rbx\n0x141c50b56      movaps xmm1, xmm0\n0x141c50b59      mov r13, r15\n0x141c50b5c      mov r15, qword [rbp + 0x180]\n0x141c50b63      mov r9, r15\n   ; 0x140ac8780(0x0, 0x0, -1, 0xf0)\n0x141c50b66      call 0x140ac8780\n0x141c50b6b      movaps xmm8, xmm0\n0x141c50b6f      movaps xmmword [rbp + 0x60], xmm1\n0x141c50b73      lea r12, [rbp + 0xb0]\n0x141c50b7a      mov eax, dword [r12 - 0xc]\n0x141c50b7f      mov dword [rbp + 0xf8], eax\n0x141c50b85      mov rax, qword [r12 - 0x14]\n0x141c50b8a      mov qword [rbp + 0xf0], rax\n0x141c50b91      mov rcx, r13\n   ; 0x140949c10(0x0, 0x0, -1, 0x0)\n0x141c50b94      call 0x140949c10\n0x141c50b99      movaps xmm2, xmm1\n0x141c50b9c      mov rcx, rbx\n0x141c50b9f      movaps xmm1, xmm0\n0x141c50ba2      mov r9, r15\n   ; 0x140ac8780(0x0, 0x0, -1, 0xf0)\n0x141c50ba5      call 0x140ac8780\n0x141c50baa      movaps xmm14, xmm6\n0x141c50bae      movaps xmm6, xmm7\n0x141c50bb1      movaps xmm7, xmm10\n0x141c50bb5      movaps xmm10, xmm0\n0x141c50bb9      movaps xmm9, xmm12\n0x141c50bbd      movaps xmm12, xmm1\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c50bc1      xor esi, esi\n0x141c50bc3      ucomiss xmm0, xmm8\n0x141c50bc7      seta sil\n0x141c50bcb      mov eax, dword [r12]\n0x141c50bcf      mov dword [rbp + 0xf8], eax\n0x141c50bd5      mov rax, qword [r12 - 8]\n0x141c50bda      mov qword [rbp + 0xf0], rax\n0x141c50be1      mov rcx, r13\n   ; 0x140949c10(0x0, 0x0, -1, 0x0)\n0x141c50be4      call 0x140949c10\n0x141c50be9      movaps xmm2, xmm1\n0x141c50bec      mov rcx, rbx\n0x141c50bef      movaps xmm1, xmm0\n0x141c50bf2      mov r9, r15\n   ; 0x140ac8780(0x0, 0x0, -1, 0xf0)\n0x141c50bf5      call 0x140ac8780\n0x141c50bfa      movaps xmm11, xmm0\n0x141c50bfe      movaps xmm13, xmm1\n0x141c50c02      mov eax, dword [r12 + 0xc]\n0x141c50c07      mov dword [rbp + 0xf8], eax\n0x141c50c0d      mov rax, qword [r12 + 4]\n0x141c50c12      mov qword [rbp + 0xf0], rax\n0x141c50c19      mov rcx, r13\n   ; 0x140949c10(0x0, 0x0, -1, 0x0)\n0x141c50c1c      call 0x140949c10\n0x141c50c21      movaps xmm2, xmm1\n0x141c50c24      mov rcx, rbx\n0x141c50c27      mov rbx, qword [rbp + 0x1b8]\n0x141c50c2e      movaps xmm1, xmm0\n0x141c50c31      mov r9, r15\n0x141c50c34      mov r15, r13\n0x141c50c37      mov r13, qword [rbp + 0x168]\n0x141c50c3e      mov r12, qword [rbp + 0x1b0]\n   ; 0x140ac8780(0x0, 0x0, -1, 0xf0)\n0x141c50c45      call 0x140ac8780\n0x141c50c4a      movd xmm2, esi\n0x141c50c4e      pshufd xmm2, xmm2, 0x50\n0x141c50c53      pslld xmm2, 0x1f\n0x141c50c58      psrad xmm2, 0x1f\n0x141c50c5d      unpcklps xmm10, xmm12\n0x141c50c61      movaps xmm12, xmm9\n0x141c50c65      unpcklps xmm8, xmmword [rbp + 0x60]\n0x141c50c6a      andps xmm10, xmm2\n0x141c50c6e      andnps xmm2, xmm8\n0x141c50c72      orps xmm2, xmm10\n0x141c50c76      movaps xmm10, xmm7\n0x141c50c7a      movaps xmm7, xmm6\n0x141c50c7d      movaps xmm6, xmm14\n; [0x1429258e0:16]=-1\n0x141c50c81      movaps xmm14, xmmword [0x1429258e0]\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c50c89      xor eax, eax\n0x141c50c8b      ucomiss xmm11, xmm2\n0x141c50c8f      seta al\n0x141c50c92      movd xmm3, eax\n0x141c50c96      pshufd xmm3, xmm3, 0x50\n0x141c50c9b      pslld xmm3, 0x1f\n0x141c50ca0      psrad xmm3, 0x1f\n0x141c50ca5      unpcklps xmm11, xmm13\n0x141c50ca9      xorps xmm13, xmm13\n0x141c50cad      andps xmm11, xmm3\n0x141c50cb1      andnps xmm3, xmm2\n0x141c50cb4      orps xmm3, xmm11\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c50cb8      xor eax, eax\n0x141c50cba      ucomiss xmm0, xmm3\n0x141c50cbd      seta al\n0x141c50cc0      movd xmm2, eax\n0x141c50cc4      pshufd xmm8, xmm2, 0x50\n0x141c50cca      pslld xmm8, 0x1f\n0x141c50cd0      psrad xmm8, 0x1f\n0x141c50cd6      unpcklps xmm0, xmm1\n0x141c50cd9      andps xmm0, xmm8\n0x141c50cdd      andnps xmm8, xmm3\n0x141c50ce1      orps xmm8, xmm0\n0x141c50ce5      addps xmm8, xmm10\n0x141c50ce9      jmp 0x141c515e0\n0x141c50cee      mov edx, dword [rax + 4]\n0x141c50cf1      mov rsi, qword [rax + 8]\n0x141c50cf5      movzx eax, byte [rax + 0x10]\n0x141c50cf9      mov byte [rbp + 0x168], al\n0x141c50cff      mov r8d, ecx\n0x141c50d02      lea rcx, [0x142f14844]\n0x141c50d09      mov qword [rbp + 0x30], r8\n0x141c50d0d      movsxd rax, dword [rcx + r8*4]\n0x141c50d11      add rax, rcx\n0x141c50d14      mov dword [rbp + 0x60], edx\n0x141c50d17      jmp rax\n0x141c50d19      mov rcx, qword [rbp + 0x150]\n0x141c50d20      mov rdx, rsi\n0x141c50d23      lea r8, [0x142f144e0]\n   ; 0x140a91ef0(0x0, -1, -1, -1)\n0x141c50d2a      call 0x140a91ef0\n0x141c50d2f      test rax, rax\n   ; unlikely\n0x141c50d32      je 0x141c51252\n0x141c50d38      mov rcx, rax\n0x141c50d3b      mov qword [rbp + 0x1a8], rsi\n0x141c50d42      mov rax, qword [rax + 0x48]\n0x141c50d46      mov rdi, rax\n; 0xc\n; 12\n0x141c50d49      mov edx, listen\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c50d4e      mul rdx\n0x141c50d51      mov r9, rax\n   ; likely\n0x141c50d54      jo 0x141c5185d\n0x141c50d5a      mov esi, 0\n; 9223372036854775804\n0x141c50d5f      movabs rax, 0x7ffffffffffffffc\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c50d69      cmp r9, rax\n   ; likely\n0x141c50d6c      ja 0x141c5185f\n0x141c50d72      mov rdx, qword [rcx + 0x40]\n   ; reloc.WS2_32.dll_accept\n0x141c50d76      test r9, r9\n   ; unlikely\n0x141c50d79      je 0x141c51263\n0x141c50d7f      mov qword [rbp + 0x38], rdx\n; [0x143634c09:1]=0\n0x141c50d83      movzx eax, byte [0x143634c09]\n   ; reloc.WS2_32.dll_connect\n0x141c50d8a      mov esi, 4\n   ; reloc.WS2_32.dll_connect\n0x141c50d8f      mov edx, 4\n0x141c50d94      mov rcx, r9\n0x141c50d97      mov qword [rbp + 0x1b8], r9\n   ; 0x140613c10(-1, 0x4, 0x4, 0xfffffffffffffff4)\n0x141c50d9e      call 0x140613c10\n0x141c50da3      mov r9, qword [rbp + 0x1b8]\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c50daa      test rax, rax\n   ; likely\n0x141c50dad      je 0x141c5185f\n0x141c50db3      mov rsi, rdi\n0x141c50db6      mov qword [rbp + 0x190], rdi\n0x141c50dbd      mov rdx, qword [rbp + 0x38]\n0x141c50dc1      jmp 0x141c51276\n0x141c50dc6      mov qword [rbp + 0x168], r13\n0x141c50dcd      mov qword [rbp + 0x1b0], r12\n0x141c50dd4      mov rsi, qword [rbp - 0x10]\n0x141c50dd8      movss xmm2, dword [rsi + 0x20]\n0x141c50ddd      lea rcx, [rbp + 0xf0]\n0x141c50de4      mov rdx, qword [rbp]\n   ; 0x140c9cde0(-1, -1, -1, 0xf0)\n0x141c50de8      call 0x140c9cde0\n0x141c50ded      mov r12, rbx\n0x141c50df0      lea rbx, [rbp + 0x90]\n0x141c50df7      mov rcx, rbx\n0x141c50dfa      mov r13, r15\n0x141c50dfd      mov r15, qword [rbp + 0x180]\n0x141c50e04      mov rdx, r15\n   ; 0x140c96df0(-1, -1, -1, 0x90)\n0x141c50e07      call 0x140c96df0\n0x141c50e0c      movss xmm0, dword [rsi + 0x18]\n0x141c50e11      addss xmm0, xmm15\n0x141c50e16      movsldup xmm1, xmm0\n0x141c50e1a      mulss xmm0, dword [rbp + 0x98]\n0x141c50e22      movsd xmm2, qword [rbp + 0x90]\n0x141c50e2a      mulps xmm2, xmm1\n0x141c50e2d      movsd xmm1, qword [rbp + 0xf0]\n0x141c50e35      addps xmm1, xmm2\n0x141c50e38      addss xmm0, dword [rbp + 0xf8]\n0x141c50e40      movlps qword [rbp + 0x90], xmm1\n0x141c50e47      movss dword [rbp + 0x98], xmm0\n0x141c50e4f      mov rcx, r13\n   ; 0x140949c10(-1, -1, -1, 0x0)\n0x141c50e52      call 0x140949c10\n0x141c50e57      movaps xmm2, xmm1\n0x141c50e5a      mov rcx, rbx\n0x141c50e5d      mov rbx, r12\n0x141c50e60      movaps xmm1, xmm0\n0x141c50e63      mov r9, r15\n0x141c50e66      mov r15, r13\n0x141c50e69      mov r13, qword [rbp + 0x168]\n0x141c50e70      mov r12, qword [rbp + 0x1b0]\n   ; 0x140ac8780(-1, -1, -1, 0x90)\n0x141c50e77      call 0x140ac8780\n0x141c50e7c      movaps xmm8, xmm0\n0x141c50e80      unpcklps xmm8, xmm1\n0x141c50e84      addps xmm8, xmm10\n0x141c50e88      jmp 0x141c515e0\n0x141c50e8d      mov rcx, qword [rbp + 0x150]\n0x141c50e94      mov rdx, rsi\n   ; 0x140a922b0(-1, -1, -1, -1)\n0x141c50e97      call 0x140a922b0\n0x141c50e9c      mov rcx, rax\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c50e9f      shr rcx, 0x20\n   ; likely\n0x141c50ea3      je 0x141c51252\n0x141c50ea9      mov eax, eax\n0x141c50eab      mov rdx, qword [rbp + 0x170]\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c50eb2      cmp rax, qword [rdx + 0x10]\n   ; unlikely\n0x141c50eb6      jae 0x141c51252\n0x141c50ebc      mov rdx, qword [rbp + 0x170]\n0x141c50ec3      mov rdx, qword [rdx + 8]\n0x141c50ec7      lea rax, [rax + rax*4]\n0x141c50ecb      cmp dword [rdx + rax*4], ecx\n   ; likely\n0x141c50ece      jne 0x141c51252\n0x141c50ed4      lea rax, [rdx + rax*4]\n0x141c50ed8      mov ecx, dword [rax + 4]\n; -1\n0x141c50edb      mov edx, 0xffffffff\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c50ee0      cmp rcx, rdx\n   ; likely\n0x141c50ee3      je 0x141c51252\n0x141c50ee9      mov rdx, qword [rbp + 0x178]\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c50ef0      cmp qword [rdx + 0x38], rcx\n   ; unlikely\n0x141c50ef4      jbe 0x141c51252\n0x141c50efa      mov rdx, qword [rbp + 0x178]\n0x141c50f01      mov rdx, qword [rdx + 0x28]\n0x141c50f05      mov r8d, ecx\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c50f08      shr r8d, 6\n0x141c50f0c      mov rdx, qword [rdx + r8*8]\n   ; reloc.WS2_32.dll_accept\n0x141c50f10      bt rdx, rcx\n   ; unlikely\n0x141c50f14      jae 0x141c51252\n0x141c50f1a      mov qword [rbp + 0x1a8], rsi\n0x141c50f21      mov qword [rbp + 0x1b0], r12\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "disassemble",
+      "requested_args": {
+        "address": "0x141c50dc6",
+        "num_instructions": 180
+      },
+      "args": {
+        "address": "0x141c50dc6",
+        "num_instructions": 180
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "0x141c50dc6      mov qword [rbp + 0x168], r13\n0x141c50dcd      mov qword [rbp + 0x1b0], r12\n0x141c50dd4      mov rsi, qword [rbp - 0x10]\n0x141c50dd8      movss xmm2, dword [rsi + 0x20]\n0x141c50ddd      lea rcx, [rbp + 0xf0]\n0x141c50de4      mov rdx, qword [rbp]\n   ; 0x140c9cde0(0x0, -1, -1, 0xf0)\n0x141c50de8      call 0x140c9cde0\n0x141c50ded      mov r12, rbx\n0x141c50df0      lea rbx, [rbp + 0x90]\n0x141c50df7      mov rcx, rbx\n0x141c50dfa      mov r13, r15\n0x141c50dfd      mov r15, qword [rbp + 0x180]\n0x141c50e04      mov rdx, r15\n   ; 0x140c96df0(0x0, -1, -1, 0x90)\n0x141c50e07      call 0x140c96df0\n0x141c50e0c      movss xmm0, dword [rsi + 0x18]\n0x141c50e11      addss xmm0, xmm15\n0x141c50e16      movsldup xmm1, xmm0\n0x141c50e1a      mulss xmm0, dword [rbp + 0x98]\n0x141c50e22      movsd xmm2, qword [rbp + 0x90]\n0x141c50e2a      mulps xmm2, xmm1\n0x141c50e2d      movsd xmm1, qword [rbp + 0xf0]\n0x141c50e35      addps xmm1, xmm2\n0x141c50e38      addss xmm0, dword [rbp + 0xf8]\n0x141c50e40      movlps qword [rbp + 0x90], xmm1\n0x141c50e47      movss dword [rbp + 0x98], xmm0\n0x141c50e4f      mov rcx, r13\n   ; 0x140949c10(0x0, -1, -1, 0x0)\n0x141c50e52      call 0x140949c10\n0x141c50e57      movaps xmm2, xmm1\n0x141c50e5a      mov rcx, rbx\n0x141c50e5d      mov rbx, r12\n0x141c50e60      movaps xmm1, xmm0\n0x141c50e63      mov r9, r15\n0x141c50e66      mov r15, r13\n0x141c50e69      mov r13, qword [rbp + 0x168]\n0x141c50e70      mov r12, qword [rbp + 0x1b0]\n   ; 0x140ac8780(0x0, -1, -1, 0x90)\n0x141c50e77      call 0x140ac8780\n0x141c50e7c      movaps xmm8, xmm0\n0x141c50e80      unpcklps xmm8, xmm1\n0x141c50e84      addps xmm8, xmm10\n0x141c50e88      jmp 0x141c515e0\n0x141c50e8d      mov rcx, qword [rbp + 0x150]\n0x141c50e94      mov rdx, rsi\n   ; 0x140a922b0(0x0, -1, -1, -1)\n0x141c50e97      call 0x140a922b0\n0x141c50e9c      mov rcx, rax\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c50e9f      shr rcx, 0x20\n   ; likely\n0x141c50ea3      je 0x141c51252\n0x141c50ea9      mov eax, eax\n0x141c50eab      mov rdx, qword [rbp + 0x170]\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c50eb2      cmp rax, qword [rdx + 0x10]\n   ; unlikely\n0x141c50eb6      jae 0x141c51252\n0x141c50ebc      mov rdx, qword [rbp + 0x170]\n0x141c50ec3      mov rdx, qword [rdx + 8]\n0x141c50ec7      lea rax, [rax + rax*4]\n0x141c50ecb      cmp dword [rdx + rax*4], ecx\n   ; likely\n0x141c50ece      jne 0x141c51252\n0x141c50ed4      lea rax, [rdx + rax*4]\n0x141c50ed8      mov ecx, dword [rax + 4]\n; -1\n0x141c50edb      mov edx, 0xffffffff\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c50ee0      cmp rcx, rdx\n   ; likely\n0x141c50ee3      je 0x141c51252\n0x141c50ee9      mov rdx, qword [rbp + 0x178]\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c50ef0      cmp qword [rdx + 0x38], rcx\n   ; unlikely\n0x141c50ef4      jbe 0x141c51252\n0x141c50efa      mov rdx, qword [rbp + 0x178]\n0x141c50f01      mov rdx, qword [rdx + 0x28]\n0x141c50f05      mov r8d, ecx\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c50f08      shr r8d, 6\n0x141c50f0c      mov rdx, qword [rdx + r8*8]\n   ; reloc.WS2_32.dll_accept\n0x141c50f10      bt rdx, rcx\n   ; unlikely\n0x141c50f14      jae 0x141c51252\n0x141c50f1a      mov qword [rbp + 0x1a8], rsi\n0x141c50f21      mov qword [rbp + 0x1b0], r12\n0x141c50f28      mov r12, r15\n0x141c50f2b      mov ecx, dword [rax + 0xc]\n0x141c50f2e      mov eax, dword [rax + 0x10]\n0x141c50f31      mov rdx, qword [rbp + 0x170]\n0x141c50f38      mov rdx, qword [rdx + 0x1a8]\n0x141c50f3f      lea rcx, [rcx + rcx*8]\n0x141c50f43      mov r8, qword [rbp + 0x178]\n0x141c50f4a      mov r8, qword [r8 + 0x110]\n0x141c50f51      mov r9, qword [rdx + rcx*8 + 0x18]\n0x141c50f56      mov rcx, qword [rdx + rcx*8 + 0x38]\n0x141c50f5b      mov rcx, qword [rcx + r8*8]\n0x141c50f5f      not rcx\n0x141c50f62      lea rcx, [rcx + rcx*2]\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c50f66      shl rcx, 4\n0x141c50f6a      mov rsi, qword [r9 + rcx + 0x10]\n; 88\n0x141c50f6f      imul r15, rax, 0x58\n0x141c50f73      lea rdx, [rsi + r15]\n0x141c50f77      lea rcx, [rbp - 0x4c]\n   ; 0x1408e3220(0x0, -1, 0x57ffffffa7, 0xffffffffffffffb4)\n0x141c50f7b      call 0x1408e3220\n0x141c50f80      lea rdx, [rsi + r15]\n   ; reloc.WS2_32.dll_accept\n0x141c50f84      add rdx, 8\n0x141c50f88      lea rcx, [rbp + 0x90]\n   ; 0x1411ff2b0(0x0, -1, 0x57ffffffaf, 0x90)\n0x141c50f8f      call 0x1411ff2b0\n0x141c50f94      mov rax, qword [rbp + 0x98]\n0x141c50f9b      mov rcx, qword [rbp + 0xa0]\n0x141c50fa2      lea rcx, [rax + rcx*8]\n0x141c50fa6      mov qword [rbp + 0xf0], rax\n0x141c50fad      mov qword [rbp + 0xf8], rcx\n0x141c50fb4      lea rax, [rbp - 0x48]\n0x141c50fb8      mov qword [rbp + 0x100], rax\n0x141c50fbf      lea rcx, [rbp + 0x40]\n0x141c50fc3      lea rdx, [rbp + 0xf0]\n   ; (pstr 0x142f14300) \"/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\\library\\core\\sr\"\n0x141c50fca      lea r8, [0x142f14358]\n   ; 0x1412fcdf0(0x0, -1, 0xf0, 0x40)\n0x141c50fd1      call 0x1412fcdf0\n0x141c50fd6      mov rsi, qword [rbp + 0x40]\n0x141c50fda      mov rdi, qword [rbp + 0x48]\n0x141c50fde      mov r15, qword [rbp + 0x50]\n0x141c50fe2      lea rcx, [rbp + 0x90]\n   ; 0x1405d24f0(-1, -1, 0xf0, 0x90)\n0x141c50fe9      call 0x1405d24f0\n0x141c50fee      mov rax, rsi\n0x141c50ff1      mov qword [rbp + 0x190], rsi\n0x141c50ff8      mov rsi, r15\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c50ffb      neg rax\n0x141c50ffe      mov r15, r12\n0x141c51001      mov r12, qword [rbp + 0x1b0]\n0x141c51008      mov rax, qword [rbp + 0x1a8]\n   ; likely\n0x141c5100f      jno 0x141c5128b\n0x141c51015      jmp 0x141c51252\n0x141c5101a      mov rcx, qword [rbp + 0x18]\n   ; 0x140a1c930(-1, -1, 0xf0, -1)\n0x141c5101e      call 0x140a1c930\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c51023      test rax, rax\n   ; unlikely\n0x141c51026      je 0x141c51252\n0x141c5102c      mov qword [rbp + 0x1a8], rsi\n0x141c51033      movzx edx, byte [rax + 0x46]\n0x141c51037      lea eax, [rdx - 0x38]\n; 8\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c5103a      cmp al, 8\n0x141c5103c      setb cl\n; reloc.WS2_32.dll_getsockname\n   ; reloc.WS2_32.dll_accept\n0x141c5103f      cmp al, 6\n   ; reloc.WS2_32.dll_accept\n0x141c51041      setne al\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c51044      test cl, al\n   ; unlikely\n0x141c51046      jne 0x141c517b9\n0x141c5104c      lea rsi, [rbp + 0x90]\n0x141c51053      mov rcx, rsi\n0x141c51056      mov r8, qword [rbp + 0x20]\n   ; 0x1408b8e90(-1, 0x90, 0xff, 0x90)\n0x141c5105a      call 0x1408b8e90\n0x141c5105f      mov rax, qword [rbp + 0x90]\n0x141c51066      movups xmm0, xmmword [rax]\n0x141c51069      movups xmm1, xmmword [rax + 0x10]\n0x141c5106d      movaps xmmword [rbp + 0x50], xmm1\n0x141c51071      movaps xmmword [rbp + 0x40], xmm0\n0x141c51075      mov rcx, rsi\n0x141c51078      mov rdx, qword [rbp + 0x88]\n0x141c5107f      mov r8d, dword [rbp + 0x60]\n   ; 0x140a1ac80(-1, 0x90, -1, 0x90)\n0x141c51083      call 0x140a1ac80\n0x141c51088      test byte [rbp + 0x90], 1\n   ; unlikely\n0x141c5108f      je 0x141c50749\n0x141c51095      mov rdi, r15\n0x141c51098      mov qword [rbp + 0x1b8], rbx\n0x141c5109f      lea rcx, [rbp + 0xb0]\n0x141c510a6      mov eax, dword [rcx + 8]\n0x141c510a9      mov dword [rbp - 0x28], eax\n0x141c510ac      mov rax, qword [rcx]\n0x141c510af      mov qword [rbp - 0x30], rax\n0x141c510b3      movaps xmm1, xmmword [rbp + 0xa0]\n0x141c510ba      movaps xmm2, xmm1\n0x141c510bd      mulps xmm2, xmm1\n0x141c510c0      movshdup xmm0, xmm2\n0x141c510c4      addss xmm0, xmm2\n0x141c510c8      movaps xmm3, xmm2\n0x141c510cb      unpckhpd xmm3, xmm2\n0x141c510cf      addss xmm3, xmm0\n0x141c510d3      shufps xmm3, xmm3, 0\n0x141c510d7      shufps xmm2, xmm2, 0xff\n0x141c510db      subps xmm2, xmm3\n; [0x142925904:4]=0x3f800000\n0x141c510de      movss xmm3, dword [0x142925904]\n0x141c510e6      mulps xmm2, xmm3\n0x141c510e9      movaps xmm0, xmm1\n0x141c510ec      mulps xmm0, xmm3\n0x141c510ef      movshdup xmm3, xmm0\n0x141c510f3      addss xmm3, xmm0\n0x141c510f7      movhlps xmm0, xmm0\n0x141c510fa      addss xmm0, xmm3\n0x141c510fe      addss xmm0, xmm0\n0x141c51102      shufps xmm0, xmm0, 0\n0x141c51106      mulps xmm0, xmm1\n0x141c51109      addps xmm0, xmm2\n0x141c5110c      movaps xmm2, xmm1\n0x141c5110f      shufps xmm2, xmm1, 0xc5\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "disassemble",
+      "requested_args": {
+        "address": "0x141c515c0",
+        "num_instructions": 140
+      },
+      "args": {
+        "address": "0x141c515c0",
+        "num_instructions": 140
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "0x141c515c0      lea edi, [rax - 0x17ffffff]\n0x141c515c6      push rsi\n0x141c515c7      pushfq\n   ; reloc.WS2_32.dll_accept\n0x141c515c9      dec byte [rbx + rcx*4 - 0x5b]\n   ; reloc.WS2_32.dll_accept\n0x141c515cd      mov al, 1\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c515cf      add byte [rax], al\n0x141c515d1      mov r15, rsi\n0x141c515d4      nop word cs:[rax + rax]\n0x141c515e0      mov rcx, r15\n   ; 0x140949c10(0xe8000001, 0x0, 0x0, 0x0)\n0x141c515e3      call 0x140949c10\n0x141c515e8      movsd xmm3, qword [r13]\n0x141c515ee      movsd xmm2, qword [r13 + 8]\n0x141c515f4      subps xmm2, xmm3\n0x141c515f7      movsd xmm3, qword [r13 + 0x10]\n0x141c515fd      addps xmm8, xmm2\n0x141c51601      unpcklps xmm0, xmm1\n0x141c51604      subps xmm0, xmm3\n0x141c51607      subps xmm0, xmm12\n0x141c5160b      movaps xmm1, xmm12\n0x141c5160f      maxps xmm1, xmm8\n0x141c51613      cmpunordps xmm8, xmm8\n0x141c51618      movaps xmm3, xmm12\n0x141c5161c      andps xmm3, xmm8\n0x141c51620      andnps xmm8, xmm1\n0x141c51624      orps xmm8, xmm3\n0x141c51628      movaps xmm1, xmm0\n0x141c5162b      minps xmm1, xmm8\n0x141c5162f      cmpunordps xmm8, xmm8\n0x141c51634      andps xmm0, xmm8\n0x141c51638      andnps xmm8, xmm1\n0x141c5163c      orps xmm8, xmm0\n0x141c51640      subps xmm8, xmm2\n0x141c51644      mov esi, dword [rbp + 0x12c]\n0x141c5164a      mov rax, qword [rbp + 0x140]\n0x141c51651      mov dword [rax], esi\n0x141c51653      mov rax, qword [rbp + 0x158]\n0x141c5165a      movlps qword [rax], xmm8\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c5165e      cmp byte [rax + 0x10], 0\n   ; unlikely\n0x141c51662      je 0x141c50730\n0x141c51668      mov rdi, qword [rbp + 0x158]\n0x141c5166f      movss xmm0, dword [rdi + 8]\n0x141c51674      mov r13, qword [rbp + 0x140]\n0x141c5167b      mov qword [rbp + 0x1b8], rbx\n0x141c51682      mov rbx, r12\n0x141c51685      mov r12, qword [rbp - 0x20]\n0x141c51689      movss xmm2, dword [r12 + 0x28]\n0x141c51690      movaps xmm1, xmm8\n0x141c51694      movaps xmm3, xmm7\n   ; 0x140c904e0(-1, -1, 0x0, 0x0)\n0x141c51697      call 0x140c904e0\n0x141c5169c      mov dword [r13], esi\n0x141c516a0      movss dword [rdi + 8], xmm0\n0x141c516a5      movss xmm1, dword [rdi + 4]\n0x141c516aa      movss xmm0, dword [rdi + 0xc]\n0x141c516af      movss xmm2, dword [r12 + 0x28]\n0x141c516b6      mov r12, rbx\n0x141c516b9      mov rbx, qword [rbp + 0x1b8]\n0x141c516c0      movaps xmm3, xmm7\n   ; 0x140c904e0(-1, -1, 0x0, 0x0)\n0x141c516c3      call 0x140c904e0\n0x141c516c8      mov dword [r13], esi\n0x141c516cc      movss dword [rdi + 0xc], xmm0\n0x141c516d1      jmp 0x141c50749\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c516d6      xor ecx, ecx\n0x141c516d8      mov eax, dword [rax + 0x10]\n; 88\n0x141c516db      imul rsi, rax, 0x58\n0x141c516df      add rsi, rcx\n0x141c516e2      lea rcx, [rbp + 0x90]\n0x141c516e9      mov rdx, rsi\n   ; 0x1408e3220(-1, 0x57ffffffa8, 0x57ffffffa8, 0x90)\n0x141c516ec      call 0x1408e3220\n0x141c516f1      mov rcx, rsi\n   ; 0x1408e3260(-1, 0x57ffffffa8, 0x57ffffffa8, 0x57ffffffa8)\n0x141c516f4      call 0x1408e3260\n0x141c516f9      mulss xmm0, dword [0x142925950]\n0x141c51701      movaps xmm1, xmm0\n0x141c51704      mulss xmm1, xmm13\n0x141c51709      movsd xmm2, qword [rbp + 0x90]\n0x141c51711      movaps xmm3, xmm1\n0x141c51714      unpcklps xmm3, xmm0\n0x141c51717      addps xmm3, xmm2\n0x141c5171a      addss xmm1, dword [rbp + 0x98]\n0x141c51722      movlps qword [rbp + 0xf0], xmm3\n0x141c51729      movss dword [rbp + 0xf8], xmm1\n0x141c51731      mov rcx, r15\n   ; 0x140949c10(-1, 0x57ffffffa8, 0x57ffffffa8, 0x0)\n0x141c51734      call 0x140949c10\n0x141c51739      movaps xmm2, xmm1\n0x141c5173c      lea rcx, [rbp + 0xf0]\n0x141c51743      movaps xmm1, xmm0\n0x141c51746      mov r9, qword [rbp + 0x180]\n   ; 0x140ac8780(-1, 0x57ffffffa8, 0x57ffffffa8, 0xf0)\n0x141c5174d      call 0x140ac8780\n0x141c51752      jmp 0x141c51593\n0x141c51757      movaps xmm6, xmmword [rbp + 0x1d0]\n0x141c5175e      movaps xmm7, xmmword [rbp + 0x1e0]\n0x141c51765      movaps xmm8, xmmword [rbp + 0x1f0]\n0x141c5176d      movaps xmm9, xmmword [rbp + 0x200]\n0x141c51775      movaps xmm10, xmmword [rbp + 0x210]\n0x141c5177d      movaps xmm11, xmmword [rbp + 0x220]\n0x141c51785      movaps xmm12, xmmword [rbp + 0x230]\n0x141c5178d      movaps xmm13, xmmword [rbp + 0x240]\n0x141c51795      movaps xmm14, xmmword [rbp + 0x250]\n0x141c5179d      movaps xmm15, xmmword [rbp + 0x260]\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c517a5      add rsp, 0x2f8\n0x141c517ac      pop rbx\n0x141c517ad      pop rdi\n0x141c517ae      pop rsi\n0x141c517af      pop r12\n0x141c517b1      pop r13\n0x141c517b3      pop r14\n0x141c517b5      pop r15\n0x141c517b7      pop rbp\n0x141c517b8      ret\n   ; (pstr 0x142f144f8) \"internal error: entered unreachable code: Hints around non-clut\"\n0x141c517b9      lea rax, [0x142f14560]\n0x141c517c0      mov qword [rbp + 0x90], rax\n0x141c517c7      mov qword [rbp + 0x98], 1\n0x141c517d2      lea rax, [rbp + 0x188]\n0x141c517d9      mov qword [rbp + 0xa0], rax\n0x141c517e0      xorps xmm0, xmm0\n0x141c517e3      movups xmmword [rbp + 0xa8], xmm0\n0x141c517ea      lea rdx, [0x142f14570]\n0x141c517f1      lea rcx, [rbp + 0x90]\n   ; 0x1428d9390(-1, -1, 0x142f14570, 0x8f)\n0x141c517f8      call 0x1428d9390\n; \"internal error: entered unreachable code\\x88D\\xf1B\\x01\"\n0x141c517fd      lea rcx, [0x142f14600]\n0x141c51804      lea r8, [0x142f14658]\n; '('\n; 40\n0x141c5180b      mov edx, 0x28\n   ; 0x1428d9430(-1, -1, 0x28, 0x142f14600)\n0x141c51810      call 0x1428d9430\n; \"not yet implemented\"\n0x141c51815      lea rcx, [0x142f145d0]\n0x141c5181c      lea r8, [0x142f14640]\n; 0x13\n   ; reloc.WS2_32.dll_send\n0x141c51823      mov edx, reloc.WS2_32.dll_send\n   ; 0x1428d9430(-1, -1, 0x13, 0x142f145d0)\n0x141c51828      call 0x1428d9430\n; \"internal error: entered unreachable code\\x88D\\xf1B\\x01\"\n0x141c5182d      lea rcx, [0x142f14600]\n0x141c51834      lea r8, [0x142f14628]\n; '('\n; 40\n0x141c5183b      mov edx, 0x28\n   ; 0x1428d9430(-1, -1, 0x28, 0x142f14600)\n0x141c51840      call 0x1428d9430\n0x141c51845      jmp 0x141c51897\n   ; (pstr 0x142f14370) \"/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\\library\\alloc\\s\"\n0x141c51847      lea r8, [0x142f143c0]\n   ; reloc.WS2_32.dll_connect\n0x141c5184e      mov ecx, 4\n; '`'\n; 96\n0x141c51853      mov edx, 0x60\n   ; 0x1428d8fe3(-1, -1, 0x60, 0x4)\n0x141c51858      call 0x1428d8fe3\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x141c5185d      xor esi, esi\n   ; (pstr 0x142f16318) \"/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\\library\\alloc\\s\"\n0x141c5185f      lea r8, [0x142f16398]\n0x141c51866      mov rcx, rsi\n0x141c51869      mov rdx, r9\n   ; 0x1428d8fe3(-1, 0x0, -1, 0x0)\n0x141c5186c      call 0x1428d8fe3\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "disassemble",
+      "requested_args": {
+        "address": "0x1408cc680",
+        "num_instructions": 60
+      },
+      "args": {
+        "address": "0x1408cc680",
+        "num_instructions": 60
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "0x1408cc680      push rsi\n   ; reloc.WS2_32.dll_accept\n0x1408cc681      sub rsp, 0xc0\n0x1408cc688      mov rsi, rcx\n; [0xfb:4]=-1\n; 251\n0x1408cc68b      mov dword [rsp + 0x30], 0xfb\n; [0x7f7fffff:4]=-1\n0x1408cc693      mov dword [rsp + 0x28], 0x7f7fffff\n0x1408cc69b      lea rcx, [rsp + 0x80]\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x1408cc6a3      xor r9d, r9d\n   ; 0x1408cdc60(0x0, 0x0, 0x0, 0xffffffffffffffb8)\n0x1408cc6a6      call 0x1408cdc60\n   ; reloc.WS2_32.dll_accept\n0x1408cc6ab      cmp dword [rsp + 0xb4], 2\n   ; likely\n0x1408cc6b3      jne 0x1408cc6c1\n0x1408cc6b5      mov dword [rsi + 0x30], 2\n0x1408cc6bc      jmp 0x1408cc757\n0x1408cc6c1      lea rax, [rsp + 0xb4]\n0x1408cc6c9      mov ecx, dword [rsp + 0xa0]\n0x1408cc6d0      mov dword [rsp + 0x60], ecx\n0x1408cc6d4      mov rcx, qword [rsp + 0x98]\n0x1408cc6dc      mov qword [rsp + 0x58], rcx\n0x1408cc6e1      mov ecx, dword [rsp + 0xac]\n0x1408cc6e8      mov dword [rsp + 0x6c], ecx\n0x1408cc6ec      mov rcx, qword [rsp + 0xa4]\n0x1408cc6f4      mov qword [rsp + 0x64], rcx\n0x1408cc6f9      mov ecx, dword [rax + 8]\n0x1408cc6fc      mov dword [rsp + 0x78], ecx\n0x1408cc700      mov rax, qword [rax]\n0x1408cc703      mov qword [rsp + 0x70], rax\n0x1408cc708      mov rax, qword [rsp + 0x90]\n0x1408cc710      mov qword [rsp + 0x50], rax\n0x1408cc715      movups xmm0, xmmword [rsp + 0x80]\n0x1408cc71d      movaps xmmword [rsp + 0x40], xmm0\n0x1408cc722      movups xmmword [rsi], xmm0\n0x1408cc725      mov eax, dword [rsp + 0x60]\n0x1408cc729      mov dword [rsi + 0x20], eax\n0x1408cc72c      mov rax, qword [rsp + 0x64]\n0x1408cc731      mov qword [rsi + 0x24], rax\n0x1408cc735      mov eax, dword [rsp + 0x6c]\n0x1408cc739      mov dword [rsi + 0x2c], eax\n0x1408cc73c      mov rax, qword [rsp + 0x50]\n0x1408cc741      mov qword [rsi + 0x10], rax\n0x1408cc745      mov rax, qword [rsp + 0x58]\n0x1408cc74a      mov qword [rsi + 0x18], rax\n0x1408cc74e      movaps xmm0, xmmword [rsp + 0x70]\n0x1408cc753      movups xmmword [rsi + 0x30], xmm0\n0x1408cc757      mov rax, rsi\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x1408cc75a      add rsp, 0xc0\n0x1408cc761      pop rsi\n0x1408cc762      ret\n0x1408cc763      int3\n0x1408cc764      int3\n0x1408cc765      int3\n0x1408cc766      int3\n0x1408cc767      int3\n0x1408cc768      int3\n0x1408cc769      int3\n0x1408cc76a      int3\n0x1408cc76b      int3\n0x1408cc76c      int3\n0x1408cc76d      int3\n0x1408cc76e      int3\n0x1408cc76f      int3\n0x1408cc770      push rsi\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "disassemble",
+      "requested_args": {
+        "address": "0x1408cc870",
+        "num_instructions": 90
+      },
+      "args": {
+        "address": "0x1408cc870",
+        "num_instructions": 90
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "0x1408cc870      push rsi\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x1408cc871      sub rsp, 0x40\n0x1408cc875      mov rsi, rcx\n0x1408cc878      mov eax, dword [rsp + 0x70]\n0x1408cc87c      mov dword [rsp + 0x30], eax\n0x1408cc880      movss dword [rsp + 0x28], xmm3\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x1408cc886      xor r9d, r9d\n   ; 0x1408cdc60(0x0, 0x0, 0x0, 0x0)\n0x1408cc889      call 0x1408cdc60\n0x1408cc88e      mov rax, rsi\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x1408cc891      add rsp, 0x40\n0x1408cc895      pop rsi\n0x1408cc896      ret\n0x1408cc897      int3\n0x1408cc898      int3\n0x1408cc899      int3\n0x1408cc89a      int3\n0x1408cc89b      int3\n0x1408cc89c      int3\n0x1408cc89d      int3\n0x1408cc89e      int3\n0x1408cc89f      int3\n0x1408cc8a0      push rbp\n0x1408cc8a1      push r15\n0x1408cc8a3      push r14\n0x1408cc8a5      push r13\n0x1408cc8a7      push r12\n0x1408cc8a9      push rsi\n0x1408cc8aa      push rdi\n0x1408cc8ab      push rbx\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x1408cc8ac      sub rsp, 0x208\n0x1408cc8b3      lea rbp, [rsp + 0x80]\n0x1408cc8bb      movaps xmmword [rbp + 0x170], xmm8\n0x1408cc8c3      movaps xmmword [rbp + 0x160], xmm7\n0x1408cc8ca      movaps xmmword [rbp + 0x150], xmm6\n0x1408cc8d1      mov qword [rbp + 0x148], 0xfffffffffffffffe\n0x1408cc8dc      mov rdi, r8\n0x1408cc8df      mov rbx, rdx\n0x1408cc8e2      mov qword [rbp + 0x120], rcx\n0x1408cc8e9      movss xmm6, dword [rbp + 0x1f0]\n0x1408cc8f1      mov qword [rbp + 0x60], 0\n0x1408cc8f9      mov qword [rbp + 0x128], 0\n0x1408cc904      mov qword [rbp + 0x130], 8\n0x1408cc90f      mov qword [rbp + 0x138], 0\n0x1408cc91a      lea rcx, [rbp - 0x60]\n0x1408cc91e      mov rdx, r9\n0x1408cc921      movaps xmm3, xmm6\n   ; 0x1409e9a20(0x0, -1, 0x0, 0xfffffffffffffdd8)\n0x1408cc924      call 0x1409e9a20\n   ; reloc.WS2_32.dll_accept\n0x1408cc929      cmp dword [rbp - 0x60], 1\n   ; likely\n0x1408cc92d      jne 0x1408cc98b\n0x1408cc92f      movss xmm7, dword [rbp - 0x5c]\n   ; (pstr 0x142aa38b8) \"crates/country-core/src/systems/collision/world.rsFlushing coll\"\n0x1408cc934      lea rdx, [0x142aa3c18]\n0x1408cc93b      lea rcx, [rbp + 0x128]\n   ; 0x1405627b0(0x0, -1, 0x142aa3c18, 0xffffffffffffff60)\n0x1408cc942      call 0x1405627b0\n0x1408cc947      mov rax, qword [rbp + 0x130]\n; [0xb:1]=255\n; 11\n0x1408cc94e      mov byte [rax], listen\n0x1408cc951      mov rcx, qword [rbp - 0x58]\n0x1408cc955      mov qword [rax + 0x18], rcx\n0x1408cc959      mov ecx, dword [rbp - 0x50]\n0x1408cc95c      mov dword [rax + 0x20], ecx\n; 4575657221408423936\n0x1408cc95f      movabs rcx, 0x3f80000000000000\n0x1408cc969      mov qword [rax + 0x24], rcx\n0x1408cc96d      mov dword [rax + 0x2c], 0\n0x1408cc974      movss dword [rax + 0x30], xmm7\n0x1408cc979      mov dword [rax + 0x34], 0\n0x1408cc980      mov qword [rbp + 0x138], 1\n0x1408cc98b      lea rsi, [rbx + 0x3d80]\n0x1408cc992      movups xmm7, xmmword [rdi]\n0x1408cc995      movsd xmm8, qword [rdi + 0x10]\n; 32\n0x1408cc99b      mov r15d, 0x20\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x1408cc9a1      xor eax, eax\n0x1408cc9a3      lea r14, [rbp - 0x60]\n0x1408cc9a7      nop word [rax + rax]\n   ; reloc.WS2_32.dll_accept\n   ; reloc.WS2_32.dll_accept\n0x1408cc9b0      cmp r15, 0x3cb0\n   ; unlikely\n0x1408cc9b7      je 0x1408ccb1e\n0x1408cc9bd      mov r12, r15\n; 912\n0x1408cc9c0      add r15, 0x390\n   ; reloc.WS2_32.dll_accept\n0x1408cc9c7      lea r13, [rax + 1]\n0x1408cc9cb      mov ecx, dword [rbp + 0x1f8]\n   ; reloc.WS2_32.dll_accept\n0x1408cc9d1      bt ecx, eax\n   ; reloc.WS2_32.dll_accept\n0x1408cc9d4      mov rax, r13\n   ; unlikely\n0x1408cc9d7      jae 0x1408cc9b0\n0x1408cc9d9      movaps xmmword [rbp + 0x100], xmm7\n0x1408cc9e0      movlps qword [rbp + 0x110], xmm8\n0x1408cc9e8      mov rax, qword [rbp + 0x110]\n0x1408cc9ef      mov qword [rbp + 0x80], rax\n0x1408cc9f6      add r12, rbx\n0x1408cc9f9      mov qword [rbp + 0xe8], rbx\n0x1408cca00      mov qword [rbp + 0xf0], r12\n0x1408cca07      lea rax, [rbp + 0x60]\n0x1408cca0b      mov qword [rbp + 0xf8], rax\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "disassemble",
+      "requested_args": {
+        "address": "0x140002450",
+        "num_instructions": 6
+      },
+      "args": {
+        "address": "0x140002450",
+        "num_instructions": 6
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "0x140002450      lea rax, [rcx + 0x18]\n0x140002454      ret\n0x140002455      int3\n0x140002456      int3\n0x140002457      int3\n0x140002458      int3\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x1430386a0",
+        "size": "24"
+      },
+      "args": {
+        "address": "0x1430386a0",
+        "size": "24"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   A0A1 A2A3 A4A5 A6A7 A8A9 AAAB ACAD AEAF  0123456789ABCDEF\n0x1430386a0  735a 24ff ff59 24ff 215a 24ff 735a 24ff  sZ$..Y$.!Z$.sZ$.\n0x1430386b0  735a 24ff 735a 24ff                      sZ$.sZ$.\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142f14830",
+        "size": "32"
+      },
+      "args": {
+        "address": "0x142f14830",
+        "size": "32"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   3031 3233 3435 3637 3839 3A3B 3C3D 3E3F  0123456789ABCDEF\n0x142f14830  9bc2 d3fe 96c5 d3fe c9c2 d3fe bec4 d3fe  ................\n0x142f14840  b0c2 d3fe b9cf d3fe d5c4 d3fe 49c6 d3fe  ............I...\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142f14844",
+        "size": "128"
+      },
+      "args": {
+        "address": "0x142f14844",
+        "size": "128"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   4445 4647 4849 4A4B 4C4D 4E4F 5051 5253  456789ABCDEF0123\n0x142f14844  b9cf d3fe d5c4 d3fe 49c6 d3fe d6c7 d3fe  ........I.......\n0x142f14854  d1cf d3fe b9cf d3fe d1cf d3fe f8ca d3fe  ................\n0x142f14864  6dcb d3fe 4fcc d3fe 15d0 d3fe d1cf d3fe  m...O...........\n0x142f14874  14e8 d3fe f6de d3fe 89e2 d3fe 48e3 d3fe  ............H...\n0x142f14884  0fdf d3fe 29e8 d3fe dce4 d3fe afe5 d3fe  ....)...........\n0x142f14894  09e4 d3fe 0000 0000 0000 0000 2f68 6f6d  ............/hom\n0x142f148a4  652f 6833 2f2e 6361 7267 6f2f 7265 6769  e/h3/.cargo/regi\n0x142f148b4  7374 7279 2f73 7263 2f69 6e64 6578 2e63  stry/src/index.c\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x143038ae8",
+        "size": "80"
+      },
+      "args": {
+        "address": "0x143038ae8",
+        "size": "80"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   E8E9 EAEB ECED EEEF F0F1 F2F3 F4F5 F6F7  89ABCDEF01234567\n0x143038ae8  0000 0000 9a99 993e 0000 0000 0000 0000  .......>........\n0x143038af8  9a99 993e 9a99 993e 9a99 993e 9a99 993e  ...>...>...>...>\n0x143038b08  0000 0000 0000 0000 9a99 993e 9a99 993e  ...........>...>\n0x143038b18  9a99 993e 0000 0000 0000 0000 0000 0000  ...>............\n0x143038b28  0000 0000 0000 0000 0000 0000 0000 0000  ................\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x143038b38",
+        "size": "152"
+      },
+      "args": {
+        "address": "0x143038b38",
+        "size": "152"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   3839 3A3B 3C3D 3E3F 4041 4243 4445 4647  89ABCDEF01234567\n0x143038b38  0800 0000 0000 0000 0900 0000 0000 0000  ................\n0x143038b48  0400 0000 0000 0000 0f00 0000 0000 0000  ................\n0x143038b58  1000 0000 0000 0000 0c00 0000 0000 0000  ................\n0x143038b68  0700 0000 0000 0000 0900 0000 0000 0000  ................\n0x143038b78  0d00 0000 0000 0000 0700 0000 0000 0000  ................\n0x143038b88  0900 0000 0000 0000 0c00 0000 0000 0000  ................\n0x143038b98  0a00 0000 0000 0000 1100 0000 0000 0000  ................\n0x143038ba8  1200 0000 0000 0000 0b00 0000 0000 0000  ................\n0x143038bb8  0e00 0000 0000 0000 1400 0000 0000 0000  ................\n0x143038bc8  1300 0000 0000 0000                      ........\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x143038bd0",
+        "size": "80"
+      },
+      "args": {
+        "address": "0x143038bd0",
+        "size": "80"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   D0D1 D2D3 D4D5 D6D7 D8D9 DADB DCDD DEDF  0123456789ABCDEF\n0x143038bd0  a0fd ffff a8fd ffff b1fd ffff b5fd ffff  ................\n0x143038be0  c4fd ffff d4fd ffff e0fd ffff e7fd ffff  ................\n0x143038bf0  f0fd ffff fdfd ffff 04fe ffff 0dfe ffff  ................\n0x143038c00  19fe ffff 23fe ffff 34fe ffff 46fe ffff  ....#...4...F...\n0x143038c10  51fe ffff 5ffe ffff 73fe ffff 4158 24ff  Q..._...s...AX$.\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x1430388b8",
+        "size": "64"
+      },
+      "args": {
+        "address": "0x1430388b8",
+        "size": "64"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   B8B9 BABB BCBD BEBF C0C1 C2C3 C4C5 C6C7  89ABCDEF01234567\n0x1430388b8  0100 0000 0000 0000 0000 0000 0000 0000  ................\n0x1430388c8  b088 0343 0100 0000 0100 0000 0000 0000  ...C............\n0x1430388d8  526f 6c6c 6572 636f 6173 7465 722e 5269  Rollercoaster.Ri\n0x1430388e8  6465 20f0 9f8e a200 0100 0000 0000 0000  de .............\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x1430388f0",
+        "size": "64"
+      },
+      "args": {
+        "address": "0x1430388f0",
+        "size": "64"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   F0F1 F2F3 F4F5 F6F7 F8F9 FAFB FCFD FEFF  0123456789ABCDEF\n0x1430388f0  0100 0000 0000 0000 0000 0000 0000 0000  ................\n0x143038900  ea88 0343 0100 0000 0500 0000 0000 0000  ...C............\n0x143038910  4869 6e74 2e00 0000 1089 0343 0100 0000  Hint.......C....\n0x143038920  0500 0000 0000 0000 4088 0343 0100 0000  ........@..C....\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x143038918",
+        "size": "48"
+      },
+      "args": {
+        "address": "0x143038918",
+        "size": "48"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   1819 1A1B 1C1D 1E1F 2021 2223 2425 2627  89ABCDEF01234567\n0x143038918  1089 0343 0100 0000 0500 0000 0000 0000  ...C............\n0x143038928  4088 0343 0100 0000 3200 0000 0000 0000  @..C....2.......\n0x143038938  b100 0000 2c00 0000 4088 0343 0100 0000  ....,...@..C....\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x143038890",
+        "size": "48"
+      },
+      "args": {
+        "address": "0x143038890",
+        "size": "48"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   9091 9293 9495 9697 9899 9A9B 9C9D 9E9F  0123456789ABCDEF\n0x143038890  4b65 7942 696e 6469 6e67 732e 556e 646f  KeyBindings.Undo\n0x1430388a0  4b65 7942 696e 6469 6e67 732e 5265 646f  KeyBindings.Redo\n0x1430388b0  2f00 0000 0000 0000 0100 0000 0000 0000  /...............\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x1429345a8",
+        "size": "4"
+      },
+      "args": {
+        "address": "0x1429345a8",
+        "size": "4"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   A8A9 AAAB ACAD AEAF B0B1 B2B3 B4B5 B6B7  89ABCDEF01234567\n0x1429345a8  0000 2041                                .. A\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x14295b630",
+        "size": "4"
+      },
+      "args": {
+        "address": "0x14295b630",
+        "size": "4"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   3031 3233 3435 3637 3839 3A3B 3C3D 3E3F  0123456789ABCDEF\n0x14295b630  0000 7a44                                ..zD\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142a7fa30",
+        "size": "4"
+      },
+      "args": {
+        "address": "0x142a7fa30",
+        "size": "4"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   3031 3233 3435 3637 3839 3A3B 3C3D 3E3F  0123456789ABCDEF\n0x142a7fa30  0000 a041                                ...A\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x1429cd034",
+        "size": "4"
+      },
+      "args": {
+        "address": "0x1429cd034",
+        "size": "4"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   3435 3637 3839 3A3B 3C3D 3E3F 4041 4243  456789ABCDEF0123\n0x1429cd034  0000 f041                                ...A\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142925870",
+        "size": "4"
+      },
+      "args": {
+        "address": "0x142925870",
+        "size": "4"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   7071 7273 7475 7677 7879 7A7B 7C7D 7E7F  0123456789ABCDEF\n0x142925870  0000 003f                                ...?\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x1429df1c0",
+        "size": "4"
+      },
+      "args": {
+        "address": "0x1429df1c0",
+        "size": "4"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   C0C1 C2C3 C4C5 C6C7 C8C9 CACB CCCD CECF  0123456789ABCDEF\n0x1429df1c0  0000 20c0                                .. .\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142925904",
+        "size": "4"
+      },
+      "args": {
+        "address": "0x142925904",
+        "size": "4"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -    4 5  6 7  8 9  A B  C D  E F 1011 1213  456789ABCDEF0123\n0x142925904  0000 803f                                ...?\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142a8cc64",
+        "size": "4"
+      },
+      "args": {
+        "address": "0x142a8cc64",
+        "size": "4"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   6465 6667 6869 6A6B 6C6D 6E6F 7071 7273  456789ABCDEF0123\n0x142a8cc64  9a99 99bf                                ....\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142925980",
+        "size": "4"
+      },
+      "args": {
+        "address": "0x142925980",
+        "size": "4"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   8081 8283 8485 8687 8889 8A8B 8C8D 8E8F  0123456789ABCDEF\n0x142925980  ffff 7f7f                                ....\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x1429cd030",
+        "size": "4"
+      },
+      "args": {
+        "address": "0x1429cd030",
+        "size": "4"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   3031 3233 3435 3637 3839 3A3B 3C3D 3E3F  0123456789ABCDEF\n0x1429cd030  3333 333f                                333?\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "hexdump",
+      "requested_args": {
+        "address": "0x142934694",
+        "size": "4"
+      },
+      "args": {
+        "address": "0x142934694",
+        "size": "4"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "- offset -   9495 9697 9899 9A9B 9C9D 9E9F A0A1 A2A3  456789ABCDEF0123\n0x142934694  0000 8040                                ...@\n",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "close_file",
+      "requested_args": {},
+      "args": {},
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "File closed successfully.",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "open_file",
+        "title": null,
+        "description": "Opens a binary file with radare2 for analysis <think>Call this tool before any other one from r2mcp. Use an absolute file_path</think>",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "file_path": {
+              "type": "string",
+              "description": "Path to the file to open"
+            },
+            "baddr": {
+              "type": "string",
+              "description": "Optional base address for PIE binaries, same as radare2 -B / -m (for example 0x400000). For raw/headerless files (no ELF/PE magic), this now also creates an explicit io map so the file's content actually appears at this address, matching radare2 CLI's -m behavior"
+            },
+            "arch": {
+              "type": "string",
+              "description": "Optional asm.arch override (eg. 'arm'), same as radare2 -a. Needed for raw/headerless binaries which cannot be autodetected and would otherwise default to the host arch"
+            },
+            "bits": {
+              "type": "string",
+              "description": "Optional asm.bits override (eg. 16 for ARM Thumb), same as radare2 -b"
+            },
+            "cpu": {
+              "type": "string",
+              "description": "Optional asm.cpu override (eg. 'cortex'), same as radare2 -k/-e asm.cpu"
+            }
+          },
+          "required": [
+            "file_path"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "sql",
+        "title": null,
+        "description": "Runs one SQL statement through a loaded SQL core plugin such as r2xsql; supports reads and writes",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "SQL statement to pass to the loaded SQL core plugin (r2xsql)"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "close_file",
+        "title": null,
+        "description": "Close the currently open file",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_functions",
+        "title": null,
+        "description": "Lists all functions discovered during analysis",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "only_named": {
+              "type": "boolean",
+              "description": "If true, only list functions with named symbols (excludes functions with numeric suffixes like sym.func.1000016c8)"
+            },
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "start": {
+              "type": "integer",
+              "description": "Starting index for pagination (default: 0)"
+            },
+            "max_length": {
+              "type": "integer",
+              "description": "Maximum number of results to return, -1 for all (default: 50)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_functions_tree",
+        "title": null,
+        "description": "Lists functions and successors (aflmu)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_libraries",
+        "title": null,
+        "description": "Lists all shared libraries linked to the binary",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_imports",
+        "title": null,
+        "description": "Lists imported symbols (note: use list_symbols for addresses with sym.imp. prefix)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_exports",
+        "title": null,
+        "description": "Lists exported symbols from the binary or process",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_sections",
+        "title": null,
+        "description": "Displays memory sections and segments from the binary",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_memory_maps",
+        "title": null,
+        "description": "Lists memory regions of the process with addresses and permissions",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "show_function_details",
+        "title": null,
+        "description": "Displays detailed information about the current function",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_current_address",
+        "title": null,
+        "description": "Shows the current position and function name",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "show_info",
+        "title": null,
+        "description": "Displays information about the binary or target process",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_symbols",
+        "title": null,
+        "description": "Shows all symbols (functions, variables, imports) with addresses",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_entrypoints",
+        "title": null,
+        "description": "Displays program entrypoints, constructors and main function",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_methods",
+        "title": null,
+        "description": "Lists all methods belonging to the specified class",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "classname": {
+              "type": "string",
+              "description": "Name of the class to list methods for"
+            },
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          },
+          "required": [
+            "classname"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_classes",
+        "title": null,
+        "description": "Lists class names from various languages (C++, ObjC, Swift, Java, Dalvik)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_decompilers",
+        "title": null,
+        "description": "Shows all available decompiler backends",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "rename_function",
+        "title": null,
+        "description": "Renames the function at the specified address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "New function name"
+            },
+            "address": {
+              "type": "string",
+              "description": "Address of the function to rename"
+            }
+          },
+          "required": [
+            "name",
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "rename_flag",
+        "title": null,
+        "description": "Renames a local variable or data reference within the specified address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address of the flag containing the variable or data reference"
+            },
+            "name": {
+              "type": "string",
+              "description": "Current variable name or data reference"
+            },
+            "new_name": {
+              "type": "string",
+              "description": "New variable name or data reference"
+            }
+          },
+          "required": [
+            "address",
+            "name",
+            "new_name"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "use_decompiler",
+        "title": null,
+        "description": "Selects which decompiler backend to use (default: pdc)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Name of the decompiler"
+            }
+          },
+          "required": [
+            "name"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_function_prototype",
+        "title": null,
+        "description": "Retrieves the function signature at the specified address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address of the function"
+            }
+          },
+          "required": [
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "set_function_prototype",
+        "title": null,
+        "description": "Sets the function signature (return type, name, arguments)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address of the function"
+            },
+            "prototype": {
+              "type": "string",
+              "description": "Function signature in C-like syntax"
+            }
+          },
+          "required": [
+            "address",
+            "prototype"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "set_comment",
+        "title": null,
+        "description": "Adds a comment at the specified address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address to put the comment in"
+            },
+            "message": {
+              "type": "string",
+              "description": "Comment text to use"
+            }
+          },
+          "required": [
+            "address",
+            "message"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_strings",
+        "title": null,
+        "description": "Lists strings from data sections with optional regex filter",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_all_strings",
+        "title": null,
+        "description": "Scans the entire binary for strings with optional regex filter",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "analyze",
+        "title": null,
+        "description": "Runs binary analysis with optional depth level",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "level": {
+              "type": "number",
+              "description": "Analysis level (0-4, higher is more thorough)"
+            },
+            "timeout_seconds": {
+              "type": "integer",
+              "description": "Optional maximum analysis time in seconds for this call only. Use 0 to disable the timeout."
+            }
+          },
+          "required": []
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "xrefs_to",
+        "title": null,
+        "description": "Finds all code references to the specified address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address to check for cross-references"
+            }
+          },
+          "required": [
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "decompile_function",
+        "title": null,
+        "description": "Show C-like pseudocode of the function in the given address. <think>Use this to inspect the code in a function, do not run multiple times in the same offset</think>",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address of the function to decompile"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          },
+          "required": [
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_files",
+        "title": null,
+        "description": "Lists files in the specified path using radare2's ls -q command. Files ending with / are directories, otherwise they are files.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Path to list files from"
+            },
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          },
+          "required": [
+            "path"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble_function",
+        "title": null,
+        "description": "Shows assembly listing of the function at the specified address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address of the function to disassemble"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          },
+          "required": [
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble",
+        "title": null,
+        "description": "Disassembles a specific number of instructions from an address <think>Use this tool to inspect a portion of memory as code without depending on function analysis boundaries. Use this tool when functions are large and you are only interested on few instructions</think>",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address to start disassembly"
+            },
+            "num_instructions": {
+              "type": "integer",
+              "description": "Number of instructions to disassemble (default: 10)"
+            }
+          },
+          "required": [
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "calculate",
+        "title": null,
+        "description": "Evaluate a math expression using core->num (r_num_math). Usecases: do proper 64-bit math, resolve addresses for flag names/symbols, and avoid hallucinated results.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "expression": {
+              "type": "string",
+              "description": "Math expression to evaluate (eg. 0x100 + sym.flag - 4)"
+            }
+          },
+          "required": [
+            "expression"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_pid",
+        "title": null,
+        "description": "Get the process ID of the target process",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_threads",
+        "title": null,
+        "description": "List all threads in the target process with their IDs and state",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "dump_registers",
+        "title": null,
+        "description": "Show register values for the target process threads",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "thread_id": {
+              "type": "integer",
+              "description": "Optional thread ID to show registers for a specific thread"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "hexdump",
+        "title": null,
+        "description": "Print memory contents in hexdump style at the given address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address to hexdump"
+            },
+            "size": {
+              "type": "string",
+              "description": "Number of bytes to dump (empty string for default size)"
+            }
+          },
+          "required": [
+            "address",
+            "size"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "memory_map_here",
+        "title": null,
+        "description": "Show memory map information at the current address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_heap_allocations",
+        "title": null,
+        "description": "List malloc/heap memory ranges in the target process",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "string",
+              "description": "Regular expression to filter the results"
+            },
+            "count": {
+              "type": "boolean",
+              "description": "If true, return only the number of matching results instead of the full list"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for pagination (line number to start from)"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "Number of lines per page (default: 1000, max: 10000)"
+            }
+          }
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "search",
+        "title": null,
+        "description": "Search for strings, hex patterns, wide strings, or numeric values",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "The search query (string, hex bytes, or numeric value)"
+            },
+            "type": {
+              "type": "string",
+              "description": "Search type: string (default), hex, wide, or value"
+            },
+            "value_size": {
+              "type": "integer",
+              "description": "For value search: byte width 1, 2, 4 (default), or 8"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "lookup_address",
+        "title": null,
+        "description": "Describe what is at a given address (flag name, symbol, module)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address to describe"
+            }
+          },
+          "required": [
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "lookup_export",
+        "title": null,
+        "description": "Resolve an export name to its implementation address",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Export name to look up"
+            }
+          },
+          "required": [
+            "name"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "lookup_symbol",
+        "title": null,
+        "description": "Resolve an address to its symbol name",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "Address to resolve"
+            }
+          },
+          "required": [
+            "address"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": null,
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 2,
+  "ok": true
+}

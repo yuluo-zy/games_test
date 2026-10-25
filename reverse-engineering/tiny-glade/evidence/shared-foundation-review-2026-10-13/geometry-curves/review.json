@@ -1,0 +1,2335 @@
+{
+  "schema_version": 1,
+  "scope": [
+    "reconstruction/shared-foundation/crates/utils/src/components",
+    "reconstruction/shared-foundation/crates/utils/src/curve",
+    "reconstruction/shared-foundation/crates/utils/src/geometry"
+  ],
+  "findings": [
+    {
+      "id": "GEO-01",
+      "severity": "P1",
+      "kind": "business_logic_defect",
+      "status": "fixed",
+      "location": "crates/utils/src/geometry/triangle_triangle/cross_intersect.rs:9",
+      "original_interface": "utils::geometry::triangle_triangle::cross_intersect::cross_intersect",
+      "evidence_kind": "original B entry execution plus retained private decompilation",
+      "original_entry": "0x141fdfd80",
+      "private_callee": "0x1424181a0",
+      "before": "Plane-side tolerance was incorrectly treated as vertex snapping, followed by sorted interval clipping; original chooses edges using tolerant tetrahedron signs and allows edge-line extrapolation.",
+      "reproduction": {
+        "artifact": "evidence/shared-foundation-review-2026-10-13/geometry-curves/extra-triangle-fixtures.json",
+        "case_indices": [
+          38,
+          48,
+          55
+        ],
+        "before_candidate_tag": 3,
+        "original_tag": 1,
+        "input_scale": 0.001
+      },
+      "fix": "Use original tolerant edge selection, glam Mat4 determinant and edge-plane arithmetic; retain emitted endpoint order and finite checks.",
+      "validation": "304 new original-entry cases and 257 prior cases pass classification and ordered endpoint checks; bounds on numerical residual remain explicit."
+    },
+    {
+      "id": "GEO-02",
+      "severity": "P2",
+      "kind": "dependency_reimplementation",
+      "status": "fixed",
+      "location": "crates/utils/src/curve/mod.rs:166",
+      "original_interface": "utils::curve::Curve::get_coord_at_u",
+      "evidence_kind": "original native query fixture and source dependency audit",
+      "before": "Candidate hand-coded sorted-slice binary search, duplicating std.",
+      "fix": "Use slice::partition_point(value <= u); preserve original right bias, clamps and segment interpolation.",
+      "validation": "41 original Curve2 inputs / 328 coord-position-tangent samples, including repeated and short segments, still pass exact bit checks."
+    },
+    {
+      "id": "GEO-03",
+      "severity": "P1",
+      "kind": "functional_completeness_gap",
+      "status": "open",
+      "location": "crates/utils/src/curve/mod.rs:52",
+      "original_interface": "CurveCoordSemanticThresholded3D and generic Curve/CurveSlice APIs",
+      "evidence_kind": "PDB typed instantiations and current authoritative interface audit",
+      "gap": "Thresholded3D length/sampling policy is not implemented. Curve3 query policies, transform required-component wiring, source schema and caller closure policies are not fully recovered. Candidate source existence is not full original interface validation.",
+      "fix": "Requires original type/consumer evidence; no invented substitution or placeholders added."
+    },
+    {
+      "id": "GEO-04",
+      "severity": "P2",
+      "kind": "performance_risk",
+      "status": "open",
+      "location": "crates/utils/src/curve/mod.rs:229",
+      "original_interface": "utils::curve::Curve::reverse",
+      "evidence_kind": "static candidate source and original 0x14146c190 retained decompilation",
+      "gap": "reverse reverses then clones all points and reallocates cumulative lengths, adding O(n) copy and two allocations. Original observed entry also clones; therefore this is a potential optimization, not an original behavior mismatch.",
+      "benchmark_verified": false,
+      "fix": "Kept unchanged pending actual consumer hot-path evidence; no speedup claim."
+    }
+  ],
+  "source_hashes": [
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/components/mod.rs",
+      "sha256": "e05ce78b275d81473d160c16b611657b805dc793e81ff228ac6486e550ba33a0"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/components/transform.rs",
+      "sha256": "8a9f3e6e97da11df6fd1e13f14b041af90a8088d52d6b90ed7d10e770440424d"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/curve/curve_slice.rs",
+      "sha256": "e5ee88978bc70ab389af2425a453d85898300010266cf66f88c005197c76f24c"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/curve/curve_u.rs",
+      "sha256": "840b5bcc9323b08ef3de677afdfa242dbd90607ecce21bc9095bf6c9ce8bf4c2"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/curve/curve_u_circular.rs",
+      "sha256": "28d2222378fc125db45cf5537f23fe255bb398daf9c223ff15e5c11b3c9b38db"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/curve/mod.rs",
+      "sha256": "8c813a6a073be33d482718200e2ca1de67fcfcc7d80ddf37a61beb3ceb3d8484"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/aabb.rs",
+      "sha256": "3042d689b2e91e3c444e5dda0bd34ce7f8f0d9d88345865e3868cdc4955187b2"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/barycentric.rs",
+      "sha256": "681ee2c1fc95232336d9af710ccca87d4ce45019a83f77f4e14bcb7930c2476a"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/circle.rs",
+      "sha256": "9d4cc5c8a63fe25a680bcd085bc774882f207bc0550f6a47af3b6a18d6933fb5"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/intersect.rs",
+      "sha256": "c4719ffbc6344d1362deef9a9ac6cd32b8fae3d8db15e9ef23c425f4f55dbd8e"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/line_relation.rs",
+      "sha256": "fe50d4b1a589e41095e0009e4698a5e3b98ef3be8b7a28be9487a30596938496"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/mod.rs",
+      "sha256": "62cef87c502ed353756b483d62cc8c2fd32f78334172f750ac341886200a62a8"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/plane.rs",
+      "sha256": "b4d0ccd0daabf6257939b422919c1528cac97e9ff2f8454048e5fc78157b0502"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/position_from_mesh_uvs.rs",
+      "sha256": "83566b0cb078427626dafd6c436589508cc32f8dc87c580573f57cb7588bc213"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/ray.rs",
+      "sha256": "f9b854034c69bcf4e9e3c1dff2248498faa22c3c1b5c300f71033bc8c5cfc95b"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/rectangle.rs",
+      "sha256": "cf862528fd5bd696f79da36aa636a2ebca78f0112c3ab981958e0a86b16a5649"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/split_heightmap.rs",
+      "sha256": "4b09386aeaeb389970be08d9182cb43a24379115ef0c54926e302acfe8f4b5e6"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/triangle_triangle/cross_intersect.rs",
+      "sha256": "59ed8b31b4d0a705431329ea907c534e40fc2abeed878c46ae07b2e4cd06d991"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/triangle_triangle/mod.rs",
+      "sha256": "6fc65e0892a4ca9ca60602fe1ea3e2a09d284717addc4729781ba1c9907a7890"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/triangle_triangle/triangles_intersect.rs",
+      "sha256": "c8f18409adf8b1cf74f2d108f1efec4cb166a42ccffa4a4c9e7d4cab3f1292ce"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/utils/src/geometry/triangle_triangle/utils.rs",
+      "sha256": "b725f0bd3e30cdb73e99b2ac431344283a055acbe470c6b983bc8fe141ec2f15"
+    }
+  ],
+  "native_review_validation": "evidence/shared-foundation-review-2026-10-13/geometry-curves/validation.json",
+  "authoritative_audit_input": {
+    "path": "evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json",
+    "sha256": "c2586aac3a42128d078dda95b9583468c38d08b3eb9bbdde11db7544e97cbff3",
+    "known_interfaces": 326,
+    "status_counts": {
+      "native_compared": 40,
+      "untouched": 197,
+      "implemented_static": 82,
+      "analyzed_only": 7
+    },
+    "counts_are_prior_authoritative_status_not_review_promotions": true
+  },
+  "function_implementation_gaps": [
+    {
+      "interface_id": "utils::components::transform::Transform::compute_affine",
+      "original_source": "crates/utils/src/components/transform.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "compute_affine",
+      "original_addresses": [
+        "0x1407a45b0"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::components::transform::Transform::compute_matrix",
+      "original_source": "crates/utils/src/components/transform.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "compute_matrix",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::components::transform::Transform::forward",
+      "original_source": "crates/utils/src/components/transform.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "forward",
+      "original_addresses": [
+        "0x1407a4700"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::components::transform::Transform::from_scale",
+      "original_source": "crates/utils/src/components/transform.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "from_scale",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::components::transform::Transform::from_translation",
+      "original_source": "crates/utils/src/components/transform.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "from_translation",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::components::transform::Transform::from_translation_scale",
+      "original_source": "crates/utils/src/components/transform.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "from_translation_scale",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::components::transform::Transform::identity",
+      "original_source": "crates/utils/src/components/transform.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "identity",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::components::transform::Transform::with_translation",
+      "original_source": "crates/utils/src/components/transform.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "with_translation",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::components::transform::impl$1::default",
+      "original_source": "crates/utils/src/components/transform.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "default",
+      "original_addresses": [
+        "0x140c9d180"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::components::transform::impl$2::clone",
+      "original_source": "crates/utils/src/components/transform.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "clone",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::components::transform::impl$4::clone_behavior",
+      "original_source": "crates/utils/src/components/transform.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "clone_behavior",
+      "original_addresses": [
+        "0x140c9da40"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::components::transform::impl$4::register_required_components",
+      "original_source": "crates/utils/src/components/transform.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "register_required_components",
+      "original_addresses": [
+        "0x140c9d1c0"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::components::transform::impl$7::eq",
+      "original_source": "crates/utils/src/components/transform.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "eq",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve3XZ::into_curve3",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "into_curve3",
+      "original_addresses": [
+        "0x140c9cc60"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::_deprecated_new_empty",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "_deprecated_new_empty",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::bounding_box_2d",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "bounding_box_2d",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::calculate_points_u_and_length",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "calculate_points_u_and_length",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::crashy_lerp",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "crashy_lerp",
+      "original_addresses": [
+        "0x141466a40"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::crashy_resample",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "crashy_resample",
+      "original_addresses": [
+        "0x1411f8ed0",
+        "0x1411f97b0",
+        "0x141467fa0"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::crashy_resample_approx_pt_count",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "crashy_resample_approx_pt_count",
+      "original_addresses": [
+        "0x14146a830"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::crashy_resample_approx_pt_count_remap",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "crashy_resample_approx_pt_count_remap",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::crashy_resample_per_segment",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "crashy_resample_per_segment",
+      "original_addresses": [
+        "0x1411fa6b0",
+        "0x14146a2a0"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::crashy_resample_remap",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "crashy_resample_remap",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::crashy_resample_remap_per_segment",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "crashy_resample_remap_per_segment",
+      "original_addresses": [
+        "0x14146afe0",
+        "0x14146b5f0"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::crashy_resample_remap_per_segment_2",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "crashy_resample_remap_per_segment_2",
+      "original_addresses": [
+        "0x14146bb70"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::crashy_to_curve2",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "crashy_to_curve2",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::end_pos",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "end_pos",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::get_coord_at_2d_ws_distance",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "get_coord_at_2d_ws_distance",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::get_coord_at_wall_space",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "get_coord_at_wall_space",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::get_curve_segment_from_u",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "get_curve_segment_from_u",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::get_pos_at_coord_unchecked",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "get_pos_at_coord_unchecked",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::get_u_at_coord",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "get_u_at_coord",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::get_unnormalized_central_tangent_at_coord",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "get_unnormalized_central_tangent_at_coord",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::get_unnormalized_tangent_at_coord",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "get_unnormalized_tangent_at_coord",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::is_empty",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "is_empty",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::is_on_right_side",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "analyzed_only",
+      "method": "is_on_right_side",
+      "original_addresses": [
+        "0x141469000"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::is_valid",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "is_valid",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::length_ws",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "length_ws",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::point_count",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "point_count",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::point_u",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "point_u",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::points_with_u",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "points_with_u",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::reinterpret_as_curve2",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "reinterpret_as_curve2",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::segments",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "segments",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::segments_with_u",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "segments_with_u",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::smooth",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "smooth",
+      "original_addresses": [
+        "0x140154490"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::smooth_in_place",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "smooth_in_place",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::smooth_weighted",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "smooth_weighted",
+      "original_addresses": [
+        "0x141468880"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::start_pos",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "start_pos",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::translate",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "translate",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::try_extend",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "analyzed_only",
+      "method": "try_extend",
+      "original_addresses": [
+        "0x141466860"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::try_new_from_points_remove_duplicates",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "try_new_from_points_remove_duplicates",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::try_resample",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "try_resample",
+      "original_addresses": [
+        "0x140152b00",
+        "0x141268e90"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::try_resample_approx_pt_count",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "analyzed_only",
+      "method": "try_resample_approx_pt_count",
+      "original_addresses": [
+        "0x140153de0"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::try_resample_approx_pt_count_remap",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "try_resample_approx_pt_count_remap",
+      "original_addresses": [
+        "0x1411fac00"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::try_resample_remap",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "try_resample_remap",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::try_resample_remap_per_segment_2",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "try_resample_remap_per_segment_2",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::Curve<T,CSem>::try_to_curve2",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "try_to_curve2",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::CurveInternalCoord<CSem>::i0",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "i0",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::CurveInternalCoord<CSem>::i0_t",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "i0_t",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::CurveInternalCoord<CSem>::i1",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "i1",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::CurveInternalCoord<CSem>::new",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "new",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::CurveInternalCoord<CSem>::new_unchecked",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "new_unchecked",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::_::impl$0::deserialize",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "deserialize",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::_::impl$0::deserialize::impl$0::visit_str",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "visit_str",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::_::impl$0::deserialize::impl$1::deserialize",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "deserialize",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::_::impl$0::deserialize::impl$2::expecting",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "expecting",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::_::impl$0::deserialize::impl$2::visit_map",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "visit_map",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::_::impl$0::deserialize::impl$2::visit_seq",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "visit_seq",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::_::impl$0::serialize",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "serialize",
+      "original_addresses": [
+        "0x1401528c0",
+        "0x1401529e0",
+        "0x1414659e0",
+        "0x141465b60",
+        "0x141465c80"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve2_serialized_as_curve3::deserialize",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "deserialize",
+      "original_addresses": [
+        "0x141285770"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve2_serialized_as_curve3::serialize",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "serialize",
+      "original_addresses": [
+        "0x141285a70"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurvePoints::is_empty",
+      "original_source": "crates/utils/src/curve/curve_slice.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "is_empty",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::end",
+      "original_source": "crates/utils/src/curve/curve_slice.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "end",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::extend_left",
+      "original_source": "crates/utils/src/curve/curve_slice.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "extend_left",
+      "original_addresses": [
+        "0x141206c50",
+        "0x141206ed0"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::extend_left_until",
+      "original_source": "crates/utils/src/curve/curve_slice.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "extend_left_until",
+      "original_addresses": [
+        "0x141207310"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::extend_right",
+      "original_source": "crates/utils/src/curve/curve_slice.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "extend_right",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::extend_right_until",
+      "original_source": "crates/utils/src/curve/curve_slice.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "extend_right_until",
+      "original_addresses": [
+        "0x1412075e0",
+        "0x141207a10",
+        "0x141207c10",
+        "0x1412898e0",
+        "0x1422e1e40"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::from_coord_range",
+      "original_source": "crates/utils/src/curve/curve_slice.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "from_coord_range",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::from_curve_range",
+      "original_source": "crates/utils/src/curve/curve_slice.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "from_curve_range",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::from_point_range",
+      "original_source": "crates/utils/src/curve/curve_slice.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "from_point_range",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::iter_coords",
+      "original_source": "crates/utils/src/curve/curve_slice.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "iter_coords",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::measure_length",
+      "original_source": "crates/utils/src/curve/curve_slice.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "measure_length",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::remap",
+      "original_source": "crates/utils/src/curve/curve_slice.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "remap",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::remap_2d",
+      "original_source": "crates/utils/src/curve/curve_slice.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "remap_2d",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::start",
+      "original_source": "crates/utils/src/curve/curve_slice.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "start",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::impl$0::iter",
+      "original_source": "crates/utils/src/curve/curve_slice.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "iter",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::impl$1::iter",
+      "original_source": "crates/utils/src/curve/curve_slice.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "iter",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::impl$1::len",
+      "original_source": "crates/utils/src/curve/curve_slice.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "len",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_u::CurveU<CSem>::clamp",
+      "original_source": "crates/utils/src/curve/curve_u.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "clamp",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_u::CurveU<CSem>::lerp",
+      "original_source": "crates/utils/src/curve/curve_u.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "lerp",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_u::CurveU<CSem>::max",
+      "original_source": "crates/utils/src/curve/curve_u.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "max",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_u::CurveU<CSem>::min",
+      "original_source": "crates/utils/src/curve/curve_u.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "min",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_u::CurveU<CSem>::u",
+      "original_source": "crates/utils/src/curve/curve_u.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "u",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_u::CurveUBoundless::clamp",
+      "original_source": "crates/utils/src/curve/curve_u.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "clamp",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_u::CurveUBoundless::is_within_01_range",
+      "original_source": "crates/utils/src/curve/curve_u.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "is_within_01_range",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_u::CurveUBoundless::new",
+      "original_source": "crates/utils/src/curve/curve_u.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "new",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_u::CurveUBoundless::u",
+      "original_source": "crates/utils/src/curve/curve_u.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "u",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_u::impl$0::serialize",
+      "original_source": "crates/utils/src/curve/curve_u.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "serialize",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_u::impl$12::eq",
+      "original_source": "crates/utils/src/curve/curve_u.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "eq",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_u::impl$13::partial_cmp",
+      "original_source": "crates/utils/src/curve/curve_u.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "partial_cmp",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_u::impl$2::expecting",
+      "original_source": "crates/utils/src/curve/curve_u.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "expecting",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_u::impl$2::visit_f64",
+      "original_source": "crates/utils/src/curve/curve_u.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "visit_f64",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_u::impl$3::deserialize",
+      "original_source": "crates/utils/src/curve/curve_u.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "deserialize",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::curve_u::impl$8::fmt",
+      "original_source": "crates/utils/src/curve/curve_u.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "fmt",
+      "original_addresses": [
+        "0x140155380",
+        "0x1411fb490",
+        "0x14126b0e0",
+        "0x14146c780",
+        "0x14146c800",
+        "0x141cd6700"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::impl$0::vector_norm",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "vector_norm",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::impl$11::sub",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "sub",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::impl$12::sample_at_coord",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "sample_at_coord",
+      "original_addresses": [
+        "0x141208d10"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::impl$13::smooth",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "smooth",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::impl$14::smooth",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "smooth",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::impl$1::vector_norm",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "vector_norm",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::impl$2::vector_norm",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "vector_norm",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::impl$3::default",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "default",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::impl$42::clone",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "clone",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::impl$46::fmt",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "fmt",
+      "original_addresses": [
+        "0x1405b88c0",
+        "0x140a30120",
+        "0x140a52e60",
+        "0x140a787d0",
+        "0x1411fb3e0",
+        "0x14126b030",
+        "0x14146c6d0",
+        "0x141940d30",
+        "0x142197b40"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::impl$48::fmt",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "fmt",
+      "original_addresses": [
+        "0x140c9cc90"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::impl$5::hint_capacity",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "hint_capacity",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::impl$5::receive_points",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "receive_points",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::impl$78::fmt",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "fmt",
+      "original_addresses": [
+        "0x141207fb0"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::curve::smooth_in_place",
+      "original_source": "crates/utils/src/curve/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "smooth_in_place",
+      "original_addresses": [
+        "0x141465260"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::aabb::Aabb2::from_points",
+      "original_source": "crates/utils/src/geometry/aabb.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "from_points",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::aabb::Aabb2::overlaps_segment",
+      "original_source": "crates/utils/src/geometry/aabb.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "overlaps_segment",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::aabb::Aabb3::from_center_extent",
+      "original_source": "crates/utils/src/geometry/aabb.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "from_center_extent",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::aabb::Aabb3::from_points",
+      "original_source": "crates/utils/src/geometry/aabb.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "from_points",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::aabb::intersection_aabb_segment2",
+      "original_source": "crates/utils/src/geometry/aabb.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "intersection_aabb_segment2",
+      "original_addresses": [
+        "0x141240b30"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::aabb::intersection_aabb_segment3",
+      "original_source": "crates/utils/src/geometry/aabb.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "intersection_aabb_segment3",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::barycentric::barycentric2",
+      "original_source": "crates/utils/src/geometry/barycentric.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "barycentric2",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::circle::Circle2d::as_curve2",
+      "original_source": "crates/utils/src/geometry/circle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "analyzed_only",
+      "method": "as_curve2",
+      "original_addresses": [
+        "0x140c97cf0"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::circle::Circle2d::as_curve2_range",
+      "original_source": "crates/utils/src/geometry/circle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "as_curve2_range",
+      "original_addresses": [
+        "0x140c97f50"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::circle::Circle2d::as_curve3",
+      "original_source": "crates/utils/src/geometry/circle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "as_curve3",
+      "original_addresses": [
+        "0x140c97e10"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::circle::Circle2d::lerp",
+      "original_source": "crates/utils/src/geometry/circle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "lerp",
+      "original_addresses": [
+        "0x140c98170"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::circle::Circle2d::yaw_radians",
+      "original_source": "crates/utils/src/geometry/circle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "yaw_radians",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::circle::Segment2d::new",
+      "original_source": "crates/utils/src/geometry/circle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "new",
+      "original_addresses": [
+        "0x140c97560"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::circle::_::impl$0::deserialize",
+      "original_source": "crates/utils/src/geometry/circle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "deserialize",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::circle::_::impl$0::deserialize::impl$0::expecting",
+      "original_source": "crates/utils/src/geometry/circle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "expecting",
+      "original_addresses": [
+        "0x140c98340"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::circle::_::impl$0::deserialize::impl$0::visit_bytes",
+      "original_source": "crates/utils/src/geometry/circle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "visit_bytes",
+      "original_addresses": [
+        "0x1416e6e60"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::circle::_::impl$0::deserialize::impl$0::visit_str",
+      "original_source": "crates/utils/src/geometry/circle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "visit_str",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::circle::_::impl$0::deserialize::impl$0::visit_u64",
+      "original_source": "crates/utils/src/geometry/circle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "visit_u64",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::circle::_::impl$0::deserialize::impl$1::deserialize",
+      "original_source": "crates/utils/src/geometry/circle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "deserialize",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::circle::_::impl$0::deserialize::impl$2::expecting",
+      "original_source": "crates/utils/src/geometry/circle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "expecting",
+      "original_addresses": [
+        "0x140c98360"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::circle::_::impl$0::deserialize::impl$2::visit_map",
+      "original_source": "crates/utils/src/geometry/circle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "visit_map",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::circle::_::impl$0::deserialize::impl$2::visit_seq",
+      "original_source": "crates/utils/src/geometry/circle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "visit_seq",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::circle::_::impl$0::serialize",
+      "original_source": "crates/utils/src/geometry/circle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "serialize",
+      "original_addresses": [
+        "0x1403d8a70",
+        "0x1416e7940"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::circle::impl$3::fmt",
+      "original_source": "crates/utils/src/geometry/circle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "fmt",
+      "original_addresses": [
+        "0x1409a43e0",
+        "0x14165bd40"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::circle::impl$6::eq",
+      "original_source": "crates/utils/src/geometry/circle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "eq",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::circle::is_default",
+      "original_source": "crates/utils/src/geometry/circle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "is_default",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::intersect::impl$1::hash",
+      "original_source": "crates/utils/src/geometry/intersect.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "hash",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::line_relation::LineInterval::cross",
+      "original_source": "crates/utils/src/geometry/line_relation.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "cross",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::line_relation::LineInterval::div",
+      "original_source": "crates/utils/src/geometry/line_relation.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "div",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::line_relation::LineInterval::t_coord_to_point",
+      "original_source": "crates/utils/src/geometry/line_relation.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "t_coord_to_point",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::position_from_mesh_uvs::get_triangle_coords_from_mesh_uv",
+      "original_source": "crates/utils/src/geometry/position_from_mesh_uvs.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "get_triangle_coords_from_mesh_uv",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::ray::Ray::from_mouse_ss",
+      "original_source": "crates/utils/src/geometry/ray.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "from_mouse_ss",
+      "original_addresses": [
+        "0x14127cab0"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::_get_normal_at_u",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "_get_normal_at_u",
+      "original_addresses": [
+        "0x140c99e30"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::apply_orientation_to_normal",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "apply_orientation_to_normal",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::as_curve3",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "as_curve3",
+      "original_addresses": [
+        "0x140c991f0"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::as_points3",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "as_points3",
+      "original_addresses": [
+        "0x140c98b90"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::as_transformation_and_size",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "as_transformation_and_size",
+      "original_addresses": [
+        "0x140c995c0"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::circular_slice",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "circular_slice",
+      "original_addresses": [
+        "0x140c9bd90"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::circular_slice_segment_points",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "circular_slice_segment_points",
+      "original_addresses": [
+        "0x1412b1b60"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::closest_edge_normal",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "closest_edge_normal",
+      "original_addresses": [
+        "0x140c9a8f0"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::closest_point_on_perimeter",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "closest_point_on_perimeter",
+      "original_addresses": [
+        "0x140c9ae20"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::distance_to_closest_edge",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "analyzed_only",
+      "method": "distance_to_closest_edge",
+      "original_addresses": [
+        "0x140c9a750"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::expand_along_edge",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "expand_along_edge",
+      "original_addresses": [
+        "0x140c9c620"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::get_closest_edge_id",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "get_closest_edge_id",
+      "original_addresses": [
+        "0x140c9acb0"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::get_closest_edge_pt_indices",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "get_closest_edge_pt_indices",
+      "original_addresses": [
+        "0x140c9a9d0"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::get_closest_u_from_pos",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "get_closest_u_from_pos",
+      "original_addresses": [
+        "0x140c9b000"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::get_corner_unnormal",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "get_corner_unnormal",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::get_edge_dirs_from_corner_id",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "get_edge_dirs_from_corner_id",
+      "original_addresses": [
+        "0x140c9a210"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::get_edge_id_at_u",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "get_edge_id_at_u",
+      "original_addresses": [
+        "0x140c9acc0"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::get_normal_at_u",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "get_normal_at_u",
+      "original_addresses": [
+        "0x140c99e10"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::get_normal_at_u_non_normalized_corners",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "analyzed_only",
+      "method": "get_normal_at_u_non_normalized_corners",
+      "original_addresses": [
+        "0x140c99e20"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::half_dimensions",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "half_dimensions",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::intersects",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "intersects",
+      "original_addresses": [
+        "0x140c9b990"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::intersects_circle",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "intersects_circle",
+      "original_addresses": [
+        "0x140c9b6e0"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::lerp",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "lerp",
+      "original_addresses": [
+        "0x140c9c730"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::local_aabb_of",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "local_aabb_of",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::orientation_mat2",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "orientation_mat2",
+      "original_addresses": [
+        "0x140c99540"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::orientation_mat3",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "orientation_mat3",
+      "original_addresses": [
+        "0x140c99570"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle2d::signed_distance_to_closest_edge",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "analyzed_only",
+      "method": "signed_distance_to_closest_edge",
+      "original_addresses": [
+        "0x140c9a820"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle3d::center",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "center",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle3d::height",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "height",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle3d::length",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "length",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle3d::rotate_projective_xz",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "rotate_projective_xz",
+      "original_addresses": [
+        "0x140c984f0"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::Rectangle3d::width",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "width",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::_::impl$0::deserialize",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "deserialize",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::_::impl$0::deserialize::impl$0::expecting",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "expecting",
+      "original_addresses": [
+        "0x140c9cc20"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::_::impl$0::deserialize::impl$0::visit_bytes",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "visit_bytes",
+      "original_addresses": [
+        "0x14157b930"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::_::impl$0::deserialize::impl$0::visit_str",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "visit_str",
+      "original_addresses": [
+        "0x14157ba70"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::_::impl$0::deserialize::impl$0::visit_u64",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "visit_u64",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::_::impl$0::deserialize::impl$1::deserialize",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "deserialize",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::_::impl$0::deserialize::impl$2::expecting",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "expecting",
+      "original_addresses": [
+        "0x140c9cc40"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::_::impl$0::deserialize::impl$2::visit_map",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "visit_map",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::_::impl$0::deserialize::impl$2::visit_seq",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "visit_seq",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::_::impl$0::serialize",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "serialize",
+      "original_addresses": [
+        "0x1400efde0",
+        "0x14157c4c0",
+        "0x14157c5e0"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::impl$10::eq",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "eq",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::impl$2::from",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "from",
+      "original_addresses": [
+        "0x140c9cb90"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::impl$3::clone",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "clone",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::impl$6::clone",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "clone",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::rectangle::impl$7::fmt",
+      "original_source": "crates/utils/src/geometry/rectangle.rs",
+      "ownership": "private_or_generated_schema_trait_policy_requires_classification",
+      "status": "untouched",
+      "method": "fmt",
+      "original_addresses": [
+        "0x140b00840",
+        "0x141559ce0"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::triangle_triangle::cross_intersect::compute_line_intersection",
+      "original_source": "crates/utils/src/geometry/triangle_triangle/cross_intersect.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "compute_line_intersection",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::triangle_triangle::cross_intersect::intersect_plane",
+      "original_source": "crates/utils/src/geometry/triangle_triangle/cross_intersect.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "intersect_plane",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::triangle_triangle::cross_intersect::make_tri_a_vertex_alone",
+      "original_source": "crates/utils/src/geometry/triangle_triangle/cross_intersect.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "make_tri_a_vertex_alone",
+      "original_addresses": [],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::triangle_triangle::cross_intersect::make_tri_a_vertex_positive",
+      "original_source": "crates/utils/src/geometry/triangle_triangle/cross_intersect.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "make_tri_a_vertex_positive",
+      "original_addresses": [
+        "0x142418dc0"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::ws_to_cs",
+      "original_source": "crates/utils/src/geometry/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "ws_to_cs",
+      "original_addresses": [
+        "0x14127c970"
+      ],
+      "gap": null
+    },
+    {
+      "interface_id": "utils::geometry::ws_to_ss",
+      "original_source": "crates/utils/src/geometry/mod.rs",
+      "ownership": "private_game_business_interface",
+      "status": "untouched",
+      "method": "ws_to_ss",
+      "original_addresses": [
+        "0x14127c950"
+      ],
+      "gap": null
+    }
+  ],
+  "curve_slice_interface_review": [
+    {
+      "interface_id": "utils::curve::curve_slice::CurvePoints::is_empty",
+      "current_audit_status": "untouched",
+      "candidate_method": "CurvePoints::is_empty",
+      "review_scope": "Borrowed ordinary and LoopCurvePoints views implemented; candidate does not establish original semantic strategy, caller closure, generic specialization or consumer acceptance.",
+      "native_fixture_scope": "Extension Vec3-to-XZ donor projection; coordinate constructors and inclusive point-center ranges only; no blanket acceptance of all 17 interfaces."
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::end",
+      "current_audit_status": "untouched",
+      "candidate_method": "CurveSlice::end",
+      "review_scope": "Borrowed ordinary and LoopCurvePoints views implemented; candidate does not establish original semantic strategy, caller closure, generic specialization or consumer acceptance.",
+      "native_fixture_scope": "Extension Vec3-to-XZ donor projection; coordinate constructors and inclusive point-center ranges only; no blanket acceptance of all 17 interfaces."
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::extend_left",
+      "current_audit_status": "untouched",
+      "candidate_method": "CurveSlice::extend_left",
+      "review_scope": "Borrowed ordinary and LoopCurvePoints views implemented; candidate does not establish original semantic strategy, caller closure, generic specialization or consumer acceptance.",
+      "native_fixture_scope": "Extension Vec3-to-XZ donor projection; coordinate constructors and inclusive point-center ranges only; no blanket acceptance of all 17 interfaces."
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::extend_left_until",
+      "current_audit_status": "untouched",
+      "candidate_method": "CurveSlice::extend_left_until",
+      "review_scope": "Borrowed ordinary and LoopCurvePoints views implemented; candidate does not establish original semantic strategy, caller closure, generic specialization or consumer acceptance.",
+      "native_fixture_scope": "Extension Vec3-to-XZ donor projection; coordinate constructors and inclusive point-center ranges only; no blanket acceptance of all 17 interfaces."
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::extend_right",
+      "current_audit_status": "untouched",
+      "candidate_method": "CurveSlice::extend_right",
+      "review_scope": "Borrowed ordinary and LoopCurvePoints views implemented; candidate does not establish original semantic strategy, caller closure, generic specialization or consumer acceptance.",
+      "native_fixture_scope": "Extension Vec3-to-XZ donor projection; coordinate constructors and inclusive point-center ranges only; no blanket acceptance of all 17 interfaces."
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::extend_right_until",
+      "current_audit_status": "untouched",
+      "candidate_method": "CurveSlice::extend_right_until",
+      "review_scope": "Borrowed ordinary and LoopCurvePoints views implemented; candidate does not establish original semantic strategy, caller closure, generic specialization or consumer acceptance.",
+      "native_fixture_scope": "Extension Vec3-to-XZ donor projection; coordinate constructors and inclusive point-center ranges only; no blanket acceptance of all 17 interfaces."
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::from_coord_range",
+      "current_audit_status": "untouched",
+      "candidate_method": "CurveSlice::from_coord_range",
+      "review_scope": "Borrowed ordinary and LoopCurvePoints views implemented; candidate does not establish original semantic strategy, caller closure, generic specialization or consumer acceptance.",
+      "native_fixture_scope": "Extension Vec3-to-XZ donor projection; coordinate constructors and inclusive point-center ranges only; no blanket acceptance of all 17 interfaces."
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::from_curve_range",
+      "current_audit_status": "untouched",
+      "candidate_method": "CurveSlice::from_curve_range",
+      "review_scope": "Borrowed ordinary and LoopCurvePoints views implemented; candidate does not establish original semantic strategy, caller closure, generic specialization or consumer acceptance.",
+      "native_fixture_scope": "Extension Vec3-to-XZ donor projection; coordinate constructors and inclusive point-center ranges only; no blanket acceptance of all 17 interfaces."
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::from_point_range",
+      "current_audit_status": "untouched",
+      "candidate_method": "CurveSlice::from_point_range",
+      "review_scope": "Borrowed ordinary and LoopCurvePoints views implemented; candidate does not establish original semantic strategy, caller closure, generic specialization or consumer acceptance.",
+      "native_fixture_scope": "Extension Vec3-to-XZ donor projection; coordinate constructors and inclusive point-center ranges only; no blanket acceptance of all 17 interfaces."
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::iter_coords",
+      "current_audit_status": "untouched",
+      "candidate_method": "CurveSlice::iter_coords",
+      "review_scope": "Borrowed ordinary and LoopCurvePoints views implemented; candidate does not establish original semantic strategy, caller closure, generic specialization or consumer acceptance.",
+      "native_fixture_scope": "Extension Vec3-to-XZ donor projection; coordinate constructors and inclusive point-center ranges only; no blanket acceptance of all 17 interfaces."
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::measure_length",
+      "current_audit_status": "untouched",
+      "candidate_method": "CurveSlice::measure_length",
+      "review_scope": "Borrowed ordinary and LoopCurvePoints views implemented; candidate does not establish original semantic strategy, caller closure, generic specialization or consumer acceptance.",
+      "native_fixture_scope": "Extension Vec3-to-XZ donor projection; coordinate constructors and inclusive point-center ranges only; no blanket acceptance of all 17 interfaces."
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::remap",
+      "current_audit_status": "untouched",
+      "candidate_method": "CurveSlice::remap",
+      "review_scope": "Borrowed ordinary and LoopCurvePoints views implemented; candidate does not establish original semantic strategy, caller closure, generic specialization or consumer acceptance.",
+      "native_fixture_scope": "Extension Vec3-to-XZ donor projection; coordinate constructors and inclusive point-center ranges only; no blanket acceptance of all 17 interfaces."
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::remap_2d",
+      "current_audit_status": "untouched",
+      "candidate_method": "CurveSlice::remap_2d",
+      "review_scope": "Borrowed ordinary and LoopCurvePoints views implemented; candidate does not establish original semantic strategy, caller closure, generic specialization or consumer acceptance.",
+      "native_fixture_scope": "Extension Vec3-to-XZ donor projection; coordinate constructors and inclusive point-center ranges only; no blanket acceptance of all 17 interfaces."
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::CurveSlice<T,Points,CSem,RemapT,RemapF>::start",
+      "current_audit_status": "untouched",
+      "candidate_method": "CurveSlice::start",
+      "review_scope": "Borrowed ordinary and LoopCurvePoints views implemented; candidate does not establish original semantic strategy, caller closure, generic specialization or consumer acceptance.",
+      "native_fixture_scope": "Extension Vec3-to-XZ donor projection; coordinate constructors and inclusive point-center ranges only; no blanket acceptance of all 17 interfaces."
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::impl$0::iter",
+      "current_audit_status": "untouched",
+      "candidate_method": "CurvePoints::iter (slice/loop receiver ownership requires confirmation)",
+      "review_scope": "Borrowed ordinary and LoopCurvePoints views implemented; candidate does not establish original semantic strategy, caller closure, generic specialization or consumer acceptance.",
+      "native_fixture_scope": "Extension Vec3-to-XZ donor projection; coordinate constructors and inclusive point-center ranges only; no blanket acceptance of all 17 interfaces."
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::impl$1::iter",
+      "current_audit_status": "untouched",
+      "candidate_method": "CurvePoints::iter (slice/loop receiver ownership requires confirmation)",
+      "review_scope": "Borrowed ordinary and LoopCurvePoints views implemented; candidate does not establish original semantic strategy, caller closure, generic specialization or consumer acceptance.",
+      "native_fixture_scope": "Extension Vec3-to-XZ donor projection; coordinate constructors and inclusive point-center ranges only; no blanket acceptance of all 17 interfaces."
+    },
+    {
+      "interface_id": "utils::curve::curve_slice::impl$1::len",
+      "current_audit_status": "untouched",
+      "candidate_method": "CurvePoints::len (receiver ownership requires confirmation)",
+      "review_scope": "Borrowed ordinary and LoopCurvePoints views implemented; candidate does not establish original semantic strategy, caller closure, generic specialization or consumer acceptance.",
+      "native_fixture_scope": "Extension Vec3-to-XZ donor projection; coordinate constructors and inclusive point-center ranges only; no blanket acceptance of all 17 interfaces."
+    }
+  ],
+  "dependency_audit": {
+    "reused": [
+      "glam 0.29.3 vectors/cross/dot/normalize/Quat/Mat4 determinant",
+      "lerp 0.4.0 circular interpolation",
+      "itertools 0.14.0 tuple_windows",
+      "take-until 0.2.0 inclusive stop policy",
+      "std Vec/slice/iterators/partition_point"
+    ],
+    "removed_duplicate_implementation": [
+      "hand-coded binary search"
+    ],
+    "retained_private_rules": [
+      "XY/XZ/XYZ metric choice",
+      "curve cumulative length and repeated point policy",
+      "directed circular interval",
+      "triangle tolerant edge selection",
+      "ray/rectangle/circle boundary and float operand order"
+    ],
+    "custom_iterator_wrapper": "CirclePoints2 is a thin private circle sampling policy wrapper around iteration; no independent math/container library implementation.",
+    "scope_limit": "These owned directories only; does not certify all historic restorations or resolve engine-fork commit."
+  }
+}

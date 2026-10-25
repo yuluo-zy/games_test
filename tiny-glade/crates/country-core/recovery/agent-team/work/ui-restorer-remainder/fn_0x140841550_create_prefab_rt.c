@@ -1,0 +1,190 @@
+void __cdecl create_prefab_rt(void)
+
+
+void __cdecl country_core::systems::prefab::create_prefab_rt(void)
+
+{
+  float *pfVar1;
+  byte bVar2;
+  undefined4 uVar3;
+  undefined4 *puVar4;
+  longlong lVar5;
+  undefined8 uVar6;
+  longlong lVar7;
+  float fVar8;
+  float fVar9;
+  float *extraout_RAX;
+  uint uVar10;
+  longlong in_RCX;
+  char in_DL;
+  uint uVar11;
+  longlong *plVar12;
+  longlong *in_R8;
+  uint uVar13;
+  float *in_R9;
+  longlong lVar14;
+  uint uVar15;
+  float fVar16;
+  float fVar17;
+  float fVar18;
+  float fVar20;
+  undefined1 auVar19 [16];
+  float fVar21;
+  float fVar22;
+  float fVar23;
+  float fVar24;
+  float fVar25;
+  float fVar26;
+  float fVar27;
+  float fVar28;
+  longlong *in_stack_00000028;
+  longlong in_stack_00000030;
+  longlong local_130;
+  undefined4 local_128;
+  undefined4 uStack_124;
+  float local_e8;
+  float fStack_e4;
+  float fStack_e0;
+  
+  bVar2 = *(byte *)(in_RCX + 0x84);
+  if (bVar2 != 2) {
+    uVar3 = *(undefined4 *)((longlong)in_R8 + 0x1c);
+    puVar4 = (undefined4 *)in_R8[2];
+    *puVar4 = uVar3;
+    lVar5 = *(longlong *)(*in_R8 + 0x30);
+    *(longlong *)(*in_R8 + 0x30) = lVar5 + 1;
+    *puVar4 = uVar3;
+    resources::rt::RtWorld::get_mut<enum2_<country_core::resources::rt::RtMeshHandle>_>();
+    lVar14 = (longlong)in_DL;
+    fVar16 = SQRT(*(float *)(in_RCX + *(longlong *)(&DAT_142a94358 + lVar14 * 8))) * 255.0 + 0.5;
+    uVar11 = 0;
+    uVar10 = (uint)(longlong)fVar16;
+    if (fVar16 < 0.0) {
+      uVar10 = uVar11;
+    }
+    if (4.294967e+09 < fVar16) {
+      uVar10 = 0xffffffff;
+    }
+    auVar19._4_4_ = *(uint *)(in_RCX + *(longlong *)(&DAT_142a943a8 + lVar14 * 8));
+    auVar19._0_4_ = *(undefined4 *)(in_RCX + *(longlong *)(&DAT_142a94380 + lVar14 * 8));
+    auVar19._8_8_ = 0;
+    auVar19 = sqrtps(ZEXT416(*(uint *)(in_RCX + *(longlong *)(&DAT_142a943a8 + lVar14 * 8))),auVar19
+                    );
+    fVar16 = auVar19._0_4_ * 255.0 + 0.5;
+    fVar20 = auVar19._4_4_ * 255.0 + 0.5;
+    uVar13 = (uint)(longlong)fVar20;
+    if (fVar20 < 0.0) {
+      uVar13 = uVar11;
+    }
+    if (4.294967e+09 < fVar20) {
+      uVar13 = 0xffffffff;
+    }
+    uVar15 = (uint)(longlong)fVar16;
+    if (fVar16 < 0.0) {
+      uVar15 = uVar11;
+    }
+    if (4.294967e+09 < fVar16) {
+      uVar15 = 0xffffffff;
+    }
+    extraout_RAX[0x16] = (float)(uVar13 << 0x10 | uVar15 << 8 | uVar10);
+    geometry::cube::impl$5::from();
+    fVar16 = in_R9[4];
+    fVar17 = sinf(fVar16 * 0.5);
+    fVar18 = cosf(fVar16 * 0.5);
+    fVar24 = fVar17 * 0.0;
+    fVar16 = *in_R9;
+    fVar20 = in_R9[1];
+    fVar8 = in_R9[2];
+    fVar9 = in_R9[3];
+    fVar21 = fVar17 + fVar17;
+    fVar22 = fVar24 + fVar24;
+    fVar25 = fVar24 * fVar22;
+    fVar23 = fVar22 * fVar18;
+    fVar26 = 1.0 - (fVar17 * fVar21 + fVar25);
+    fVar27 = fVar25 - fVar21 * fVar18;
+    fVar28 = fVar17 * fVar22 + fVar23;
+    *extraout_RAX = fVar9 * fVar26;
+    extraout_RAX[1] = fVar9 * (fVar24 * fVar21 + fVar23);
+    extraout_RAX[2] = fVar9 * fVar27;
+    extraout_RAX[3] = fVar9 * fVar27;
+    extraout_RAX[4] = fVar9 * (fVar24 * fVar21 - fVar23);
+    extraout_RAX[5] = fVar9 * (1.0 - (fVar25 + fVar25));
+    extraout_RAX[6] = fVar9 * fVar28;
+    extraout_RAX[7] = fVar9 * fVar28;
+    extraout_RAX[8] = fVar9 * (fVar21 * fVar18 + fVar25);
+    extraout_RAX[9] = fVar9 * (fVar17 * fVar22 - fVar23);
+    extraout_RAX[10] = fVar9 * fVar26;
+    extraout_RAX[0xb] = fVar9 * fVar26;
+    extraout_RAX[0xc] = fVar16;
+    extraout_RAX[0xd] = fVar20;
+    extraout_RAX[0xe] = fVar8;
+    extraout_RAX[0xf] = fVar8;
+    country_core::render::mesh::Mesh::positions();
+    pfVar1 = extraout_RAX + 0x14;
+    lVar14 = *(longlong *)(extraout_RAX + 0x14);
+    if ((ulonglong)(*(longlong *)(extraout_RAX + 0x10) - lVar14) <
+        (ulonglong)(CONCAT44(uStack_124,local_128) - local_130) >> 2) {
+      alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+      lVar14 = *(longlong *)pfVar1;
+    }
+    core::iter::adapters::copied::impl$1::
+    fold<core::slice::iter::Iter<u32>,u32,tuple_<>,core::iter::adapters::map::map_fold::closure_env_0<u32,glam::f32::vec3::Vec3,tuple_<>,country_core::render::mesh::impl_0::positions::closure_env_0,core::iter::traits::iterator::Iterator::for_each::call::closure_env_0<glam::f32::vec3::Vec3,alloc::vec::impl_20::extend_trusted::closure_env_0<glam::f32::vec3::Vec3,alloc::alloc::Global,core::iter::adapters::map::Map<core::iter::adapters::copied::Copied<core::slice::iter::Iter<u32>_>,country_core::render::mesh::impl_0::positions::closure_env_0>_>_>_>_>
+              ();
+    if ((bVar2 & 1) != 0) {
+      ::utils::geometry::aabb::Aabb3::center();
+      ::utils::geometry::aabb::Aabb3::extent();
+      local_e8 = SUB84(pfVar1,0);
+      fStack_e4 = (float)((ulonglong)pfVar1 >> 0x20);
+      fStack_e0 = (float)lVar14;
+      plVar12 = *(longlong **)(in_stack_00000030 + 8);
+      if (plVar12 == (longlong *)0x0) {
+        plVar12 = *(longlong **)(in_stack_00000030 + 0x10);
+      }
+      uVar6 = *(undefined8 *)(in_stack_00000030 + 0x20);
+      lVar14 = plVar12[2];
+      if ((ulonglong)(*plVar12 - lVar14) < 0x48) {
+        alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+      }
+      fVar16 = fStack_e0;
+      if (fStack_e4 <= fStack_e0) {
+        fVar16 = fStack_e4;
+      }
+      fVar16 = (float)(~-(uint)NAN(fStack_e4) & (uint)fVar16 |
+                      (uint)fStack_e0 & -(uint)NAN(fStack_e4));
+      fVar20 = fVar16;
+      if (local_e8 <= fVar16) {
+        fVar20 = local_e8;
+      }
+      lVar7 = plVar12[1];
+      *(code **)(lVar7 + lVar14) =
+           core::ops::function::FnOnce::
+           call_once<bevy_ecs::world::command_queue::impl_4::push::closure_env_0<bevy_ecs::error::command_handling::impl_0::handle_error_with::closure_env_0<bevy_ecs::error::command_handling::impl_3::with_entity::closure_env_0<bevy_ecs::system::commands::entity_command::insert::closure_env_0<country_core::resources::tree_storage::BirdHaven>_>,tuple_<>,enum2_<bevy_ecs::world::error::EntityMutableFetchError>_>_>,tuple_<bevy_ptr::OwningPtr<bevy_ptr::Unaligned>,enum2_<core::option::Option<core::ptr::non_null::NonNull<bevy_ecs::world::World>_>_>,ref_mut_<usize>_>_>
+      ;
+      *(undefined8 *)(lVar7 + 8 + lVar14) = uVar6;
+      *(undefined4 *)(lVar7 + 0x10 + lVar14) = 0;
+      *(undefined4 *)(lVar7 + 0x20 + lVar14) = 0;
+      *(longlong *)(lVar7 + 0x24 + lVar14) = local_130;
+      *(undefined4 *)(lVar7 + 0x2c + lVar14) = local_128;
+      *(float *)(lVar7 + 0x30 + lVar14) =
+           (float)(~-(uint)NAN(local_e8) & (uint)fVar20 | -(uint)NAN(local_e8) & (uint)fVar16) * 0.5
+      ;
+      *(undefined4 *)(lVar7 + 0x34 + lVar14) = 0x41200000;
+      *(undefined1 *)(lVar7 + 0x38 + lVar14) = 0;
+      *(code **)(lVar7 + 0x40 + lVar14) = bevy_ecs::error::handler::panic;
+      plVar12[2] = lVar14 + 0x48;
+    }
+    core::ptr::drop_in_place<country_core::render::mesh::Mesh>();
+    lVar14 = in_stack_00000028[2];
+    if (lVar14 == *in_stack_00000028) {
+      alloc::raw_vec::RawVec::
+      grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>
+                ();
+    }
+    lVar7 = in_stack_00000028[1];
+    *(undefined8 *)(lVar7 + lVar14 * 0x10) = 2;
+    *(longlong *)(lVar7 + 8 + lVar14 * 0x10) = lVar5;
+    in_stack_00000028[2] = lVar14 + 1;
+  }
+  return;
+}
+

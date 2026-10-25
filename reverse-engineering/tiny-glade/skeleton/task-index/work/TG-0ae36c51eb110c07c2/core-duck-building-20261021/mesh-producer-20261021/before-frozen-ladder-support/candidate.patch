@@ -1,0 +1,140 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs_assemble.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs_assemble.rs
+@@ -28,22 +28,36 @@
+ /// 移除类；I 枚举面）。
+ const STAIR_KIND_REMOVE: u8 = 0x11;
+ 
+-/// 0x1407de800：梯支撑判定（**结构面，主体 U**）。
+-///
+-/// 4 参面 {a: {f32@4}, b: {f32@4}, segments: &[0x20B {u32@0, f32@4, u8@0x18}],
+-/// flag: {+0x14/+0 字节}} → u8 {0,1,2,3,4}。原字节可见：比较 a/b 高度选取两个
+-/// 0x20B 段（b<=a → 段1，否则段2）与后续逐段校验分支；段阈值常量与 flag 语义
+-/// 未闭合，返回 0 为显式未恢复值（不是“全文恢复”）。
++/// B 0x1407de800/167B：按两端锚点、邻接度与低端对齐种类决定梯支撑。
++/// 返回原五种判别值；相等或无序高度都将第二端作为低端。
+ pub fn determine_ladder_support(
+-    a: f32,
+-    b: f32,
+-    _segments: &[(u32, f32, u8)],
+-    _flag: u8,
++    from: Vec3,
++    to: Vec3,
++    nodes: &[(StairNodeAnchor, u8); 2],
++    alignments: &[country_core::resources::stairs::stairs_assembly_params::AlignKind; 2],
+ ) -> u8 {
+-    // O 数学：edx = (b<=a) ? 0x20 : 0；eax = (b>a) ? 0x20 : 0；逐段校验 + 返回
+-    // 分支。U：段数组/flag 精确语义 → 恒 0 为显式未恢复面。
+-    let _ = (a, b);
+-    0
++    let (lower, higher) = if to.y > from.y { (0, 1) } else { (1, 0) };
++    let near_ground = |anchor: &StairNodeAnchor| match anchor {
++        StairNodeAnchor::Terrain { height } | StairNodeAnchor::Roof { height } =>
++            *height <= f32::from_bits(0x3e05_1eb8),
++        StairNodeAnchor::Wall(_) => false,
++    };
++    let lower_supported = nodes[lower].1 != 1 || match &nodes[lower].0 {
++        StairNodeAnchor::Wall(_) => alignments[lower].tag == 0,
++        anchor => near_ground(anchor),
++    };
++    let higher_supported = nodes[higher].1 != 1 || match &nodes[higher].0 {
++        StairNodeAnchor::Wall(_) => true,
++        anchor => near_ground(anchor),
++    };
++    if !lower_supported {
++        return 4 - u8::from(higher_supported);
++    }
++    if higher_supported {
++        return 0;
++    }
++    // 原最后一次锚点高度检查不受邻接度门控制，不能复用 lower_supported。
++    if near_ground(&nodes[lower].0) { 1 } else { 2 }
+ }
+ 
+ /// 0x1407d4990（O，944B）：结构图订阅（事件回调注册）。
+@@ -915,3 +929,86 @@
+         assert!(owner.previous.sampled_points[&id].auxiliary_words.is_empty());
+     }
+ }
++
++#[cfg(test)]
++mod ladder_support_tests {
++    use super::*;
++    use country_core::resources::stairs::stairs_assembly_params::{AlignKind, StairWallAnchor};
++    use country_core::resources::walls::WallId;
++
++    fn terrain(height: f32, degree: u8) -> (StairNodeAnchor, u8) {
++        (StairNodeAnchor::Terrain { height }, degree)
++    }
++    fn roof(height: f32, degree: u8) -> (StairNodeAnchor, u8) {
++        (StairNodeAnchor::Roof { height }, degree)
++    }
++    fn wall(degree: u8) -> (StairNodeAnchor, u8) {
++        (StairNodeAnchor::Wall(StairWallAnchor::new(WallId(7), 0.0)), degree)
++    }
++    fn support(nodes: [(StairNodeAnchor, u8); 2], tags: [u8; 2]) -> u8 {
++        determine_ladder_support(Vec3::ZERO, Vec3::Y, &nodes,
++            &tags.map(|tag| AlignKind { tag, ..Default::default() }))
++    }
++
++    #[test]
++    fn all_five_native_support_results_use_actual_anchors() {
++        assert_eq!(support([terrain(0.0, 1), roof(0.0, 1)], [0, 0]), 0);
++        assert_eq!(support([terrain(0.0, 1), roof(1.0, 1)], [0, 0]), 1);
++        assert_eq!(support([wall(1), roof(1.0, 1)], [0, 0]), 2);
++        assert_eq!(support([terrain(1.0, 1), roof(0.0, 1)], [0, 0]), 3);
++        assert_eq!(support([terrain(1.0, 1), roof(1.0, 1)], [0, 0]), 4);
++    }
++
++    #[test]
++    fn reversing_both_real_endpoints_preserves_the_support_result() {
++        let nodes = [wall(1), roof(1.0, 1)];
++        let aligns = [AlignKind::default(), AlignKind { tag: 1, ..Default::default() }];
++        assert_eq!(determine_ladder_support(Vec3::ZERO, Vec3::Y, &nodes, &aligns), 2);
++        assert_eq!(determine_ladder_support(Vec3::Y, Vec3::ZERO,
++            &[nodes[1], nodes[0]], &[aligns[1], aligns[0]]), 2);
++    }
++
++    #[test]
++    fn equal_and_unordered_position_heights_choose_the_second_lower_endpoint() {
++        let nodes = [roof(1.0, 1), wall(1)];
++        let aligns = [AlignKind::default(), AlignKind { tag: 1, ..Default::default() }];
++        assert_eq!(determine_ladder_support(Vec3::ZERO, Vec3::Y, &nodes, &aligns), 3);
++        for (from, to) in [(Vec3::ZERO, Vec3::ZERO),
++            (Vec3::new(0.0, f32::NAN, 0.0), Vec3::ZERO),
++            (Vec3::ZERO, Vec3::new(0.0, f32::NAN, 0.0))] {
++            assert_eq!(determine_ladder_support(from, to, &nodes, &aligns), 4);
++        }
++    }
++
++    #[test]
++    fn ground_height_threshold_is_inclusive_and_nan_is_unsupported() {
++        let threshold = f32::from_bits(0x3e05_1eb8);
++        let above = f32::from_bits(threshold.to_bits() + 1);
++        assert_eq!(support([terrain(threshold, 1), roof(threshold, 1)], [0, 0]), 0);
++        assert_eq!(support([terrain(above, 1), roof(0.0, 1)], [0, 0]), 3);
++        assert_eq!(support([terrain(0.0, 1), roof(above, 1)], [0, 0]), 1);
++        assert_eq!(support([terrain(f32::NAN, 1), roof(0.0, 1)], [0, 0]), 3);
++        assert_eq!(support([terrain(0.0, 1), roof(f32::NAN, 1)], [0, 0]), 1);
++        assert_eq!(support([terrain(f32::NEG_INFINITY, 1), roof(0.0, 1)], [0, 0]), 0);
++    }
++
++    #[test]
++    fn lower_wall_checks_tag_only_and_higher_wall_has_no_alignment_gate() {
++        let nodes = [wall(1), wall(1)];
++        let aligns = [AlignKind { tag: 0, flag: 1, byte_2: 1, ..Default::default() },
++            AlignKind { tag: 1, ..Default::default() }];
++        assert_eq!(determine_ladder_support(Vec3::ZERO, Vec3::Y, &nodes, &aligns), 0);
++        assert_eq!(support(nodes, [1, 0]), 3);
++        assert_eq!(support([terrain(0.0, 1), wall(1)], [0, 2]), 0);
++    }
++
++    #[test]
++    fn final_lower_height_check_is_independent_of_the_degree_gate() {
++        for degree in [0, 2, u8::MAX] {
++            assert_eq!(support([terrain(0.0, degree), roof(1.0, 1)], [0, 0]), 1);
++            assert_eq!(support([terrain(1.0, degree), roof(1.0, 1)], [0, 0]), 2);
++            assert_eq!(support([terrain(f32::NAN, degree), roof(1.0, 1)], [0, 0]), 2);
++            assert_eq!(support([wall(degree), roof(0.0, 1)], [1, 0]), 0);
++        }
++    }
++}

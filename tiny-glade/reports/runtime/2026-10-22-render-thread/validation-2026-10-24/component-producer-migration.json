@@ -1,0 +1,584 @@
+{
+  "types": {
+    "utils/components/transform.rs": [
+      "Transform"
+    ],
+    "components/ui.rs": [
+      "Ui2dExtent",
+      "Ui2dImage",
+      "Ui2dWsExtent",
+      "UiDrawOrder",
+      "UiInactive",
+      "UiInteractionState"
+    ],
+    "components/drawable.rs": [
+      "AlbedoMap",
+      "AlphaMap",
+      "PrevTransform"
+    ],
+    "components/rendering.rs": [
+      "StairsStep",
+      "NormalMap",
+      "SemiTransparent",
+      "BackgroundTerrain",
+      "OverwriteRoughness",
+      "DontReceiveContactShadows",
+      "DashedLineLength"
+    ],
+    "geometry/instanced_wall.rs": [
+      "WallBrickInstancedDrawProxy"
+    ],
+    "systems/render_loop/draw_passes/draw_callbacks_a_views.rs": [
+      "SplashParticleView",
+      "RoofFlagClothView",
+      "WallFlagClothView",
+      "ArrowGizmoView",
+      "WoodenGateView"
+    ],
+    "systems/render_loop/draw_passes/draw_callbacks_b.rs": [
+      "RoofFlagClothView",
+      "InstancedDrawFromPlacementData",
+      "Duck",
+      "DuckState"
+    ],
+    "resources/color_id.rs": [
+      "ColorId"
+    ],
+    "resources/color_icon.rs": [
+      "CustomizationIcon"
+    ],
+    "resources/critters/sheep.rs": [
+      "Sheep",
+      "SheepWalkRecord"
+    ],
+    "resources/roofs/roof_shape.rs": [
+      "Roof"
+    ],
+    "resources/roofs/roof_animation.rs": [
+      "RoofAnimation"
+    ],
+    "resources/roofs/roof_tiles.rs": [
+      "RoofTiles"
+    ],
+    "resources/roofs/roof_tile_sim.rs": [
+      "RoofTileSimulation"
+    ],
+    "systems/render_loop/compute_passes/grass.rs": [
+      "ObjectGrassPush"
+    ]
+  },
+  "files": [
+    {
+      "file": "crates/tg-building-runtime/tests/nani_registration.rs",
+      "query_writes": 0,
+      "direct_writes": 1,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 0
+    },
+    {
+      "file": "crates/tg-building-runtime/tests/roof_edit_chain.rs",
+      "query_writes": 0,
+      "direct_writes": 4,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 0
+    },
+    {
+      "file": "crates/tg-building-runtime/tests/asset_parameter_history_chain.rs",
+      "query_writes": 0,
+      "direct_writes": 2,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 0
+    },
+    {
+      "file": "crates/tg-building-runtime/src/roof_runtime.rs",
+      "query_writes": 3,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 3
+    },
+    {
+      "file": "crates/tg-building-runtime/src/roof_edits.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/country-core/src/resources/mouse_terrain_raycast.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/country-core/src/components/drawable.rs",
+      "query_writes": 2,
+      "direct_writes": 1,
+      "restored_original_doc_signatures": 1,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/country-core/src/components/mod.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 1,
+      "actual_query_writes": 0
+    },
+    {
+      "file": "crates/country-core/src/geometry/runtime.rs",
+      "query_writes": 2,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 2
+    },
+    {
+      "file": "crates/country-core/src/systems/arrow_gizmo_animation.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/country-core/src/systems/ui_2d_follow_mouse.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/country-core/src/systems/paths.rs",
+      "query_writes": 2,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 1,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/country-core/src/systems/brush_preview.rs",
+      "query_writes": 2,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 1,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/country-core/src/systems/look_at_camera.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/country-core/src/resources/roofs/roof_tiles.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 1,
+      "actual_query_writes": 0
+    },
+    {
+      "file": "crates/country-core/src/resources/roofs/customization.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 1,
+      "actual_query_writes": 0
+    },
+    {
+      "file": "crates/country-core/src/geometry/tests/runtime.rs",
+      "query_writes": 0,
+      "direct_writes": 3,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 0
+    },
+    {
+      "file": "crates/country-core/src/systems/wall/upload_instanced_wall_ssbo.rs",
+      "query_writes": 3,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 3
+    },
+    {
+      "file": "crates/country-core/src/systems/wall/construct_wall_bricks.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/country-core/src/systems/history/signifier_replay_active.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/country-core/src/systems/debug/sheep_controls.rs",
+      "query_writes": 2,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 2
+    },
+    {
+      "file": "crates/country-core/src/systems/ui/signifiers/animation.rs",
+      "query_writes": 2,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 1,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/country-core/src/systems/wall/adjust_wall_height/ui_adjust_wall_height_mode.rs",
+      "query_writes": 4,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 2,
+      "actual_query_writes": 2
+    },
+    {
+      "file": "crates/country-core/src/systems/wall/snapping/telegraph_walls_are_merged.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a.rs",
+      "query_writes": 0,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 0
+    },
+    {
+      "file": "crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_b.rs",
+      "query_writes": 0,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 0
+    },
+    {
+      "file": "crates/country-core/src/systems/render_loop/draw_passes/draw_lists.rs",
+      "query_writes": 0,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 0
+    },
+    {
+      "file": "crates/tiny-glade/tests/toolbar_focus_chain.rs",
+      "query_writes": 0,
+      "direct_writes": 1,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 0
+    },
+    {
+      "file": "crates/tiny-glade/tests/original_birdspot_recycle.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/tiny-glade/tests/geometry_gpu.rs",
+      "query_writes": 0,
+      "direct_writes": 1,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 0
+    },
+    {
+      "file": "crates/tiny-glade/src/world_geometry.rs",
+      "query_writes": 0,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 0
+    },
+    {
+      "file": "crates/tiny-glade/src/world_postprocess.rs",
+      "query_writes": 0,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 0
+    },
+    {
+      "file": "crates/tiny-glade/src/render_extract.rs",
+      "query_writes": 0,
+      "direct_writes": 1,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 0
+    },
+    {
+      "file": "crates/tiny-glade/src/world_terrain.rs",
+      "query_writes": 0,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 0
+    },
+    {
+      "file": "crates/tiny-glade/src/world_walls.rs",
+      "query_writes": 0,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 0
+    },
+    {
+      "file": "crates/systems/decorator/src/ui_systems/decorator_interaction_intent.rs",
+      "query_writes": 0,
+      "direct_writes": 1,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 0
+    },
+    {
+      "file": "crates/systems/color/src/set_roof_customization.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/color/src/color_menu.rs",
+      "query_writes": 5,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 5
+    },
+    {
+      "file": "crates/systems/toolbar/tests/tb_g_slider_lifecycle.rs",
+      "query_writes": 0,
+      "direct_writes": 1,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 0
+    },
+    {
+      "file": "crates/systems/toolbar/src/ui_interaction.rs",
+      "query_writes": 3,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 1,
+      "actual_query_writes": 2
+    },
+    {
+      "file": "crates/systems/toolbar/src/taffy_update.rs",
+      "query_writes": 2,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 1,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/toolbar/src/toolbar_button.rs",
+      "query_writes": 8,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 4,
+      "actual_query_writes": 4
+    },
+    {
+      "file": "crates/systems/toolbar/src/toolbar_systems.rs",
+      "query_writes": 2,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 1,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/toolbar/src/photomode.rs",
+      "query_writes": 2,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 2
+    },
+    {
+      "file": "crates/systems/toolbar/src/ui_interaction/focus.rs",
+      "query_writes": 3,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 3
+    },
+    {
+      "file": "crates/systems/toolbar/src/ui_interaction/hide.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/toolbar/src/ui_interaction/ordering.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/toolbar/src/ui_interaction/focus_tests.rs",
+      "query_writes": 0,
+      "direct_writes": 3,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 0
+    },
+    {
+      "file": "crates/systems/critters/src/ducks_react_to_being_inside_buildings.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/critters/src/ui_pet_ducks.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/critters/src/wren.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/critters/src/wren_boids.rs",
+      "query_writes": 2,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 1,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/critters/src/duck.rs",
+      "query_writes": 7,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 7
+    },
+    {
+      "file": "crates/systems/critters/src/shared.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/critters/src/sheep/sheep_input_record_replay.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/critters/src/sheep/sheep_walk_animation.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/critters/src/sheep/sheep_unstuck.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/critters/src/sheep/sheep_terrain.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/critters/src/sheep/sheep_umbrella.rs",
+      "query_writes": 2,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 1,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/critters/src/sheep/sheep_floatie.rs",
+      "query_writes": 2,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 1,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/critters/src/sheep/ui_pet_sheep.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/critters/src/sheep/sheep_behavior.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/critters/src/sheep/sheep_pet_animation.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/critters/src/wren/recycle.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/roof/src/edit_roof.rs",
+      "query_writes": 4,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 4
+    },
+    {
+      "file": "crates/systems/roof/src/ui_edit_roof_ridge_dir.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/roof/src/simulate_roof_tile_for_audio.rs",
+      "query_writes": 2,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 1,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/roof/src/update_roof_spatial.rs",
+      "query_writes": 2,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 2
+    },
+    {
+      "file": "crates/systems/roof/src/wall_height_dt.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/roof/src/visual/roof_animation.rs",
+      "query_writes": 2,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 1,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/roof/src/visual/assemble_roof_tiles.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/clutter/src/autoclutter/autoclutter_animation.rs",
+      "query_writes": 1,
+      "direct_writes": 0,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    },
+    {
+      "file": "crates/systems/clutter/src/autoclutter/manage_autoclutter_entities.rs",
+      "query_writes": 1,
+      "direct_writes": 1,
+      "restored_original_doc_signatures": 0,
+      "actual_query_writes": 1
+    }
+  ],
+  "actual_query_writes": 81
+}

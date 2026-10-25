@@ -1,0 +1,40 @@
+country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms::transform :: resources/walls/cached_decorator_transforms.rs
+
+void FUN_140a1ada0(undefined8 param_1,undefined4 param_2,undefined4 *param_3)
+
+{
+  code *pcVar1;
+  undefined4 uVar2;
+  int iVar3;
+  undefined1 auStack_68 [16];
+  undefined4 uStack_58;
+  undefined4 uStack_54;
+  undefined4 uStack_50;
+  undefined4 uStack_4c;
+  
+  if ((((param_3[4] & 0x7fffffff) < 0x7f800000) && ((param_3[5] & 0x7fffffff) < 0x7f800000)) &&
+     ((param_3[6] & 0x7fffffff) < 0x7f800000)) {
+    uStack_58 = *param_3;
+    uStack_54 = param_3[1];
+    uStack_50 = param_3[2];
+    uStack_4c = param_3[3];
+    uVar2 = func_0x0001412b7f50(auStack_68,&uStack_58);
+    iVar3 = movmskps(uVar2,auStack_68);
+    if (iVar3 != 0xf) goto code_r0x000140a1ae88;
+    if ((((param_3[7] & 0x7fffffff) < 0x7f800000) && ((param_3[8] & 0x7fffffff) < 0x7f800000)) &&
+       ((param_3[9] & 0x7fffffff) < 0x7f800000)) {
+      FUN_14152aee0(&uStack_58,param_1,param_2,param_3);
+      return;
+    }
+  }
+  else {
+    FUN_1428d9430(&UNK_142ac8e00,0x33,&UNK_142ac8e80);
+  }
+  FUN_1428d9430(&UNK_142ac8ee0,0x2d,&UNK_142ac8f10);
+code_r0x000140a1ae88:
+  FUN_1428d9430(&UNK_142ac8e98,0x30,&UNK_142ac8ec8);
+  pcVar1 = (code *)swi(3);
+  (*pcVar1)();
+  return;
+}
+

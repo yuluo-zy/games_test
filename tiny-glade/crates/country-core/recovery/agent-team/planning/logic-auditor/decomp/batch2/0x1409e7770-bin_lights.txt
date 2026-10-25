@@ -1,0 +1,478 @@
+
+void __cdecl country_core::systems::render_loop::compute_passes::bin_lights::bin_lights(void)
+
+{
+  undefined *puVar1;
+  undefined8 uVar2;
+  int iVar3;
+  undefined4 extraout_EAX;
+  undefined4 extraout_EAX_00;
+  undefined4 extraout_EAX_01;
+  undefined4 extraout_EAX_02;
+  longlong extraout_RAX;
+  undefined8 *extraout_RAX_00;
+  undefined8 *puVar4;
+  undefined4 *extraout_RAX_01;
+  undefined8 *in_RCX;
+  ulonglong uVar5;
+  longlong in_R8;
+  undefined4 uStack_404;
+  undefined *local_3d8;
+  undefined8 uStack_3d0;
+  undefined8 local_3c8;
+  undefined8 local_3c0;
+  undefined8 uStack_3b8;
+  undefined8 local_3b0;
+  undefined8 local_3a8;
+  undefined8 uStack_3a0;
+  undefined8 local_398;
+  longlong local_390;
+  undefined8 uStack_388;
+  undefined8 local_380;
+  undefined8 local_378;
+  undefined8 uStack_370;
+  undefined8 local_368;
+  undefined8 uStack_360;
+  undefined8 local_358;
+  undefined8 uStack_350;
+  undefined8 local_348;
+  undefined8 uStack_340;
+  undefined8 local_338;
+  undefined8 uStack_330;
+  undefined8 local_328;
+  undefined8 uStack_320;
+  undefined8 local_318;
+  undefined8 uStack_310;
+  undefined8 local_308;
+  undefined8 uStack_300;
+  undefined8 local_2f8;
+  undefined8 uStack_2f0;
+  undefined8 local_2e8;
+  undefined8 uStack_2e0;
+  undefined8 local_2d8;
+  undefined8 uStack_2d0;
+  char local_2a2;
+  undefined8 local_2a0;
+  undefined8 local_258;
+  undefined *local_248;
+  undefined8 uStack_240;
+  undefined4 local_238;
+  undefined4 uStack_234;
+  undefined *local_228;
+  undefined8 uStack_220;
+  undefined8 local_218;
+  undefined8 local_210;
+  undefined8 uStack_208;
+  undefined8 local_200;
+  undefined8 local_1f8;
+  undefined8 uStack_1f0;
+  undefined8 local_1e8;
+  longlong local_1e0;
+  undefined8 uStack_1d8;
+  undefined8 local_1d0;
+  undefined4 local_1c8;
+  int iStack_1c4;
+  undefined8 uStack_1c0;
+  undefined8 uStack_1b8;
+  undefined8 local_1b0;
+  undefined8 uStack_1a8;
+  undefined8 local_1a0;
+  undefined8 uStack_198;
+  undefined8 local_190;
+  undefined8 uStack_188;
+  undefined8 local_180;
+  undefined8 uStack_178;
+  undefined8 local_170;
+  undefined8 uStack_168;
+  undefined8 local_160;
+  undefined8 uStack_158;
+  undefined8 local_150;
+  undefined8 local_148;
+  undefined8 uStack_140;
+  undefined8 local_138;
+  undefined8 uStack_130;
+  undefined8 local_128;
+  undefined8 uStack_120;
+  char local_f2;
+  undefined8 local_f0;
+  undefined8 local_a8;
+  undefined *local_98;
+  undefined8 uStack_90;
+  undefined8 local_88;
+  undefined8 uStack_80;
+  undefined8 local_78;
+  undefined8 uStack_70;
+  undefined8 local_68;
+  undefined8 uStack_60;
+  undefined8 local_58;
+  undefined8 uStack_50;
+  undefined8 local_48;
+  
+  local_48 = 0xfffffffffffffffe;
+  uVar5 = 0x8226cc786e679355;
+  bevy_ecs::component::Components::get_resource_id();
+  if ((((extraout_RAX == 0) || (*(ulonglong *)(in_R8 + 0x218) <= uVar5)) ||
+      (uVar5 = *(ulonglong *)(*(longlong *)(in_R8 + 0x210) + uVar5 * 8), uVar5 == 0)) ||
+     (*(longlong *)(*(longlong *)(in_R8 + 0x1e0) + 0x20 + ~uVar5 * 0x60) == 0)) {
+                    // WARNING: Subroutine does not return
+    core::option::unwrap_failed();
+  }
+  frozen::FrozenMap::
+  get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>
+            ();
+  if (extraout_RAX_00 != (undefined8 *)0x0) {
+    local_3d8 = &anon_107183261458dea85466985370debbb6_16_llvm_3641509820080252961;
+    uStack_3d0 = 0x35;
+    if (extraout_RAX_00[3] == 0x35) {
+      iVar3 = memcmp(&anon_107183261458dea85466985370debbb6_16_llvm_3641509820080252961,
+                     (void *)extraout_RAX_00[2],0x35);
+      if (iVar3 == 0) {
+        puVar4 = (undefined8 *)(**(code **)(extraout_RAX_00[1] + 0x18))(*extraout_RAX_00);
+        if (puVar4 != (undefined8 *)0x0) {
+          iVar3 = (int)*puVar4;
+          if (iVar3 == 0) {
+            rhapsody::raw::buffer::BufferDesc::new_gpu_only();
+            local_3d8 = local_98;
+            uStack_3d0 = uStack_90;
+            rhapsody::rg::resource::impl$5::from();
+            local_228 = &DAT_142ac4960;
+            uStack_220 = 0x22;
+            rhapsody::rg::graph::RenderGraph::create_raw_resource();
+            *in_RCX = local_98;
+            in_RCX[1] = uStack_90;
+            *(undefined4 *)(in_RCX + 2) = extraout_EAX_01;
+            rhapsody::raw::buffer::BufferDesc::new_gpu_only();
+            local_3d8 = local_98;
+            uStack_3d0 = uStack_90;
+            rhapsody::rg::resource::impl$5::from();
+            local_228 = &DAT_142ac4982;
+            uStack_220 = 0x19;
+            rhapsody::rg::graph::RenderGraph::create_raw_resource();
+            in_RCX[3] = local_98;
+            in_RCX[4] = uStack_90;
+            *(undefined4 *)(in_RCX + 5) = extraout_EAX_02;
+          }
+          else {
+            rhapsody::raw::buffer::BufferDesc::new_gpu_only();
+            local_3d8 = local_98;
+            uStack_3d0 = uStack_90;
+            rhapsody::rg::resource::impl$5::from();
+            local_228 = &DAT_142ac499b;
+            uStack_220 = 0x16;
+            rhapsody::rg::graph::RenderGraph::create_raw_resource();
+            local_248 = local_98;
+            uStack_240 = uStack_90;
+            local_238 = extraout_EAX;
+            clear_rg_buffer();
+            country_core::render::pass_builder::compute_pass_builder::ComputePass::
+            new<country_core::systems::render_loop::compute_passes::bin_lights::BinLights>();
+            country_core::render::pass_builder::compute_pass_builder::impl$3::
+            read_storage_buffer<country_core::resources::render::lantern::LanternSsbo>();
+            country_core::render::pass_builder::compute_pass_builder::ComputePass::
+            write_rg_storage_buffer();
+            if (local_f2 != '\b') {
+              country_core::render::pass_builder::uniform_binder::UniformBinder::
+              write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<i32>,i32>
+                        ();
+            }
+            memcpy(&local_3d8,&local_228,400);
+            local_58 = local_338;
+            uStack_50 = uStack_330;
+            local_68 = local_348;
+            uStack_60 = uStack_340;
+            local_78 = local_358;
+            uStack_70 = uStack_350;
+            local_88 = local_368;
+            uStack_80 = uStack_360;
+            local_98 = local_378;
+            uStack_90 = uStack_370;
+            local_218 = local_3c8;
+            local_228 = local_3d8;
+            uStack_220 = uStack_3d0;
+            local_1f8 = local_3c0;
+            uStack_1f0 = uStack_3b8;
+            local_1e8 = local_3b0;
+            local_210 = local_3a8;
+            uStack_208 = uStack_3a0;
+            local_200 = local_398;
+            local_1b0 = local_328;
+            uStack_1a8 = uStack_320;
+            local_1a0 = local_318;
+            uStack_198 = uStack_310;
+            local_190 = local_308;
+            uStack_188 = uStack_300;
+            local_180 = local_2f8;
+            uStack_178 = uStack_2f0;
+            local_170 = local_2e8;
+            uStack_168 = uStack_2e0;
+            local_160 = local_2d8;
+            uStack_158 = uStack_2d0;
+            local_1d0 = local_380;
+            local_1e0 = local_390;
+            uStack_1d8 = uStack_388;
+            local_148 = local_258;
+            local_150 = local_2a0;
+            local_1c8 = 1;
+            uStack_1c0 = 0x100000001;
+            iStack_1c4 = iVar3;
+            rhapsody::rg::pass_builder::PassBuilder::
+            render<country_core::render::pass_builder::pass_resources::PassResources,country_core::render::pass_builder::compute_pass_builder::impl_0::dispatch_impl::closure_env_0>
+                      ();
+            if (local_2a2 != '\b') {
+              rhapsody::raw::managed::handle::impl$6::drop();
+            }
+            rhapsody::raw::buffer::BufferDesc::new_gpu_only();
+            local_3d8 = local_98;
+            uStack_3d0 = uStack_90;
+            rhapsody::rg::resource::impl$5::from();
+            local_228 = &DAT_142ac49c2;
+            uStack_220 = 0x1b;
+            rhapsody::rg::graph::RenderGraph::create_raw_resource();
+            country_core::render::pass_builder::compute_pass_builder::ComputePass::new<ref_<str_>_>
+                      ();
+            country_core::render::pass_builder::compute_pass_builder::ComputePass::
+            write_rg_storage_buffer();
+            country_core::render::pass_builder::compute_pass_builder::ComputePass::
+            write_rg_storage_buffer();
+            local_58 = uStack_188;
+            uStack_50 = local_180;
+            local_68 = uStack_198;
+            uStack_60 = local_190;
+            local_78 = uStack_1a8;
+            uStack_70 = local_1a0;
+            local_88 = uStack_1b8;
+            uStack_80 = local_1b0;
+            local_98 = (undefined *)CONCAT44(iStack_1c4,local_1c8);
+            uStack_90 = uStack_1c0;
+            local_3c8 = local_218;
+            local_3d8 = local_228;
+            uStack_3d0 = uStack_220;
+            local_3a8 = local_210;
+            uStack_3a0 = uStack_208;
+            local_398 = local_200;
+            local_3c0 = local_1f8;
+            uStack_3b8 = uStack_1f0;
+            local_3b0 = local_1e8;
+            uStack_360 = uStack_178;
+            local_358 = local_170;
+            uStack_350 = uStack_168;
+            local_348 = local_160;
+            uStack_340 = uStack_158;
+            local_338 = local_150;
+            uStack_330 = local_148;
+            local_328 = uStack_140;
+            uStack_320 = local_138;
+            local_318 = uStack_130;
+            uStack_310 = local_128;
+            local_308 = uStack_120;
+            local_380 = local_1d0;
+            local_390 = local_1e0;
+            uStack_388 = uStack_1d8;
+            local_2f8 = local_a8;
+            uStack_300 = local_f0;
+            local_378 = (undefined *)0x200000000001;
+            uStack_370 = 0x100000001;
+            rhapsody::rg::pass_builder::PassBuilder::
+            render<country_core::render::pass_builder::pass_resources::PassResources,country_core::render::pass_builder::compute_pass_builder::impl_0::dispatch_impl::closure_env_0>
+                      ();
+            if (local_f2 != '\b') {
+              rhapsody::raw::managed::handle::impl$6::drop();
+            }
+            country_core::render::pass_builder::compute_pass_builder::ComputePass::new<ref_<str_>_>
+                      ();
+            country_core::render::pass_builder::compute_pass_builder::ComputePass::
+            write_rg_storage_buffer();
+            std::alloc::__default_lib_allocator::__rust_alloc();
+            if (extraout_RAX_01 == (undefined4 *)0x0) {
+                    // WARNING: Subroutine does not return
+              alloc::raw_vec::handle_error();
+            }
+            *extraout_RAX_01 = 0x10;
+            if (local_390 != 0) {
+              std::alloc::__default_lib_allocator::__rust_dealloc();
+            }
+            local_390 = 4;
+            local_380 = 4;
+            memcpy(&local_228,&local_3d8,400);
+            local_58 = uStack_188;
+            uStack_50 = local_180;
+            local_68 = uStack_198;
+            uStack_60 = local_190;
+            local_78 = uStack_1a8;
+            uStack_70 = local_1a0;
+            local_88 = uStack_1b8;
+            uStack_80 = local_1b0;
+            local_98 = (undefined *)CONCAT44(iStack_1c4,local_1c8);
+            uStack_90 = uStack_1c0;
+            local_3c8 = local_218;
+            local_3d8 = local_228;
+            uStack_3d0 = uStack_220;
+            local_3a8 = local_210;
+            uStack_3a0 = uStack_208;
+            local_398 = local_200;
+            local_3c0 = local_1f8;
+            uStack_3b8 = uStack_1f0;
+            local_3b0 = local_1e8;
+            uStack_360 = uStack_178;
+            local_358 = local_170;
+            uStack_350 = uStack_168;
+            local_348 = local_160;
+            uStack_340 = uStack_158;
+            local_338 = local_150;
+            uStack_330 = local_148;
+            local_328 = uStack_140;
+            uStack_320 = local_138;
+            local_318 = uStack_130;
+            uStack_310 = local_128;
+            local_308 = uStack_120;
+            local_380 = local_1d0;
+            local_390 = local_1e0;
+            uStack_388 = uStack_1d8;
+            local_2f8 = local_a8;
+            uStack_300 = local_f0;
+            local_378 = (undefined *)0x800000001;
+            uStack_370 = 0x100000001;
+            rhapsody::rg::pass_builder::PassBuilder::
+            render<country_core::render::pass_builder::pass_resources::PassResources,country_core::render::pass_builder::compute_pass_builder::impl_0::dispatch_impl::closure_env_0>
+                      ();
+            if (local_f2 != '\b') {
+              rhapsody::raw::managed::handle::impl$6::drop();
+            }
+            country_core::render::pass_builder::compute_pass_builder::ComputePass::new<ref_<str_>_>
+                      ();
+            country_core::render::pass_builder::compute_pass_builder::ComputePass::
+            write_rg_storage_buffer();
+            country_core::render::pass_builder::compute_pass_builder::ComputePass::
+            read_rg_storage_buffer();
+            local_58 = uStack_188;
+            uStack_50 = local_180;
+            local_68 = uStack_198;
+            uStack_60 = local_190;
+            local_78 = uStack_1a8;
+            uStack_70 = local_1a0;
+            local_88 = uStack_1b8;
+            uStack_80 = local_1b0;
+            local_98 = (undefined *)CONCAT44(iStack_1c4,local_1c8);
+            uStack_90 = uStack_1c0;
+            local_3c8 = local_218;
+            local_3d8 = local_228;
+            uStack_3d0 = uStack_220;
+            local_3a8 = local_210;
+            uStack_3a0 = uStack_208;
+            local_398 = local_200;
+            local_3c0 = local_1f8;
+            uStack_3b8 = uStack_1f0;
+            local_3b0 = local_1e8;
+            uStack_360 = uStack_178;
+            local_358 = local_170;
+            uStack_350 = uStack_168;
+            local_348 = local_160;
+            uStack_340 = uStack_158;
+            local_338 = local_150;
+            uStack_330 = local_148;
+            local_328 = uStack_140;
+            uStack_320 = local_138;
+            local_318 = uStack_130;
+            uStack_310 = local_128;
+            local_308 = uStack_120;
+            local_380 = local_1d0;
+            local_390 = local_1e0;
+            uStack_388 = uStack_1d8;
+            local_2f8 = local_a8;
+            uStack_300 = local_f0;
+            local_378 = (undefined *)0x400000000001;
+            uStack_370 = 0x100000001;
+            rhapsody::rg::pass_builder::PassBuilder::
+            render<country_core::render::pass_builder::pass_resources::PassResources,country_core::render::pass_builder::compute_pass_builder::impl_0::dispatch_impl::closure_env_0>
+                      ();
+            if (local_f2 != '\b') {
+              rhapsody::raw::managed::handle::impl$6::drop();
+            }
+            rhapsody::raw::buffer::BufferDesc::new_gpu_only();
+            local_3d8 = local_98;
+            uStack_3d0 = uStack_90;
+            rhapsody::rg::resource::impl$5::from();
+            local_228 = &DAT_142ac4a9f;
+            uStack_220 = 0xd;
+            rhapsody::rg::graph::RenderGraph::create_raw_resource();
+            uVar2 = uStack_90;
+            puVar1 = local_98;
+            country_core::render::pass_builder::compute_pass_builder::ComputePass::
+            new<country_core::systems::render_loop::compute_passes::bin_lights::BinLights>();
+            country_core::render::pass_builder::compute_pass_builder::impl$3::
+            read_storage_buffer<country_core::resources::render::lantern::LanternSsbo>();
+            country_core::render::pass_builder::compute_pass_builder::ComputePass::
+            write_rg_storage_buffer();
+            country_core::render::pass_builder::compute_pass_builder::ComputePass::
+            write_rg_storage_buffer();
+            if (local_2a2 != '\b') {
+              country_core::render::pass_builder::uniform_binder::UniformBinder::
+              write_uniform<country_core::render::pass_builder::compute_pass_builder::impl_3::uniform::closure_env_0<i32>,i32>
+                        ();
+            }
+            memcpy(&local_228,&local_3d8,400);
+            local_58 = uStack_188;
+            uStack_50 = local_180;
+            local_68 = uStack_198;
+            uStack_60 = local_190;
+            local_78 = uStack_1a8;
+            uStack_70 = local_1a0;
+            local_88 = uStack_1b8;
+            uStack_80 = local_1b0;
+            local_98 = (undefined *)CONCAT44(iStack_1c4,local_1c8);
+            uStack_90 = uStack_1c0;
+            local_3c8 = local_218;
+            local_3d8 = local_228;
+            uStack_3d0 = uStack_220;
+            local_3a8 = local_210;
+            uStack_3a0 = uStack_208;
+            local_398 = local_200;
+            local_3c0 = local_1f8;
+            uStack_3b8 = uStack_1f0;
+            local_3b0 = local_1e8;
+            uStack_360 = uStack_178;
+            local_358 = local_170;
+            uStack_350 = uStack_168;
+            local_348 = local_160;
+            uStack_340 = uStack_158;
+            local_338 = local_150;
+            uStack_330 = local_148;
+            local_328 = uStack_140;
+            uStack_320 = local_138;
+            local_318 = uStack_130;
+            uStack_310 = local_128;
+            local_308 = uStack_120;
+            local_380 = local_1d0;
+            local_390 = local_1e0;
+            uStack_388 = uStack_1d8;
+            local_2f8 = local_a8;
+            uStack_300 = local_f0;
+            local_378 = (undefined *)CONCAT44(iVar3,1);
+            uStack_370 = 0x100000001;
+            rhapsody::rg::pass_builder::PassBuilder::
+            render<country_core::render::pass_builder::pass_resources::PassResources,country_core::render::pass_builder::compute_pass_builder::impl_0::dispatch_impl::closure_env_0>
+                      ();
+            if (local_f2 != '\b') {
+              rhapsody::raw::managed::handle::impl$6::drop();
+            }
+            in_RCX[2] = CONCAT44(uStack_234,local_238);
+            *in_RCX = local_248;
+            in_RCX[1] = uStack_240;
+            in_RCX[3] = puVar1;
+            in_RCX[4] = uVar2;
+            in_RCX[5] = CONCAT44(uStack_404,extraout_EAX_00);
+          }
+          return;
+        }
+        goto LAB_1409e8439;
+      }
+    }
+    local_228 = (undefined *)0x0;
+                    // WARNING: Subroutine does not return
+    core::panicking::assert_failed<ref_<str_>,ref_<str_>_>();
+  }
+LAB_1409e8439:
+                    // WARNING: Subroutine does not return
+  core::option::unwrap_failed();
+}
+

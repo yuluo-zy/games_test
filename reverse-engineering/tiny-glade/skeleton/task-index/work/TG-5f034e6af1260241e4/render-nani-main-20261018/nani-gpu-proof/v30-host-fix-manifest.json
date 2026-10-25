@@ -1,0 +1,22 @@
+{
+  "actual_failure": "/private/tmp/tg-original-nani-v30-gpu.log",
+  "status": "source_fix_ready_unverified_GPU",
+  "cause": "native uniform-buffer usage0x12 persistent owner meets current uniform-to-storage shader-heap lowering; host admits physical STORAGE_BUFFER without changing core descriptor; graph transient usage0 still follows current inferred flags",
+  "evidence": {
+    "native_new_gpu_only": "0x140bd4e20+59B passes usage unchanged; no source usage guessing",
+    "lowering": "rhapsody/src/bindless_parameters.rs::expected maps UniformBuffer to StorageBuffer",
+    "owner": "NaniDrawListOffsetDefaults actual432B InstanceBuffer usage0x12",
+    "resolve": "TG-43850f1acd4119553a/frameinputs-20261018/resolve-review/readback-review.json independent original SPV evidence;17 becomes73.022 before UNORM round"
+  },
+  "source_freeze": true,
+  "sources": [
+    {
+      "path": "games_test/tiny-glade/crates/tiny-glade/src/render_host.rs",
+      "sha256": "ea3b428c305a138844a9bbf0383b4af579b7c1ecd85e2b9e17831bbbaf3fbac1"
+    },
+    {
+      "path": "games_test/tiny-glade/crates/tiny-glade/tests/original_scene_compute_gpu.rs",
+      "sha256": "abf3b5be86f60586ea16586c8230ecc86c5eeb75c6dcd80a70b45c0f1aff8680"
+    }
+  ]
+}

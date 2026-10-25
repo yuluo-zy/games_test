@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "source": "reconstruction/render/work-packages/descriptor-binding-r8/src/lib.rs",
+  "consumer_entry": "prepare_compute_pass",
+  "existing_pipeline_consumer_entry": "compute_pass_bind_plan",
+  "backend_entry": "BindPlan::execute",
+  "input": {
+    "interface": "caller-selected descriptor sets of SparseBinding with explicit push_constant_bytes",
+    "target": "actual command buffer, pipeline layout, descriptor set and set_index",
+    "resource_mapping": "PassResourceBinding(u32 BindingIndex,u8 slot) and resolved ResourceBinding image/buffer payloads",
+    "device_limit": "observed original device scalar; precise Vulkan property name unknown"
+  },
+  "output": ["sparse layout/persistent pool plans", "COMPUTE optional push range", "VkWriteDescriptorSet array", "update-before-bind events and dynamic offsets"],
+  "private_inputs_unclosed": ["shader-library/interface selection producer", "DescriptorSetState allocation/cache", "raw resource/image-view/sampler provider and managed lifetime"],
+  "scope": "framework consumer with original CPU entry evidence; shared callback integration owned by root",
+  "native_entries": ["0x1418c1a10", "0x140b06020", "0x1416a5380", "0x1416a6010"],
+  "reflected_catalog_adapter": false,
+  "real_game_pass_association": false,
+  "real_vulkan_gpu": false,
+  "private_source_status": "verified_partial"
+}

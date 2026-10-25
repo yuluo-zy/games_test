@@ -1,0 +1,87 @@
+_$LT$f32$u20$as$u20$utils..halver..Halver$GT$::to_f16::h628d79fa31310e7a
+0x1408b9f20: sub rsp, 0x38
+0x1408b9f24: movdqa xmmword ptr [rsp + 0x20], xmm6
+0x1408b9f2a: mov rax, qword ptr [rip + 0x2d7687f] ; [0x1436307b0]=f0956343 f32=227.585693359375
+0x1408b9f31: mov rax, qword ptr [rax]
+0x1408b9f34: test rax, rax
+0x1408b9f37: je 0x1408ba047
+0x1408b9f3d: bt rax, 0x30
+0x1408b9f42: jb 0x1408ba05f
+0x1408b9f48: movd eax, xmm0
+0x1408b9f4c: mov edx, eax
+0x1408b9f4e: and edx, 0x80000000
+0x1408b9f54: mov r9d, eax
+0x1408b9f57: and r9d, 0x7f800000
+0x1408b9f5e: mov r8d, eax
+0x1408b9f61: and r8d, 0x7fffff
+0x1408b9f68: cmp r9d, 0x7f800000
+0x1408b9f6f: jne 0x1408b9f9d
+0x1408b9f71: xor eax, eax
+0x1408b9f73: test r8d, r8d
+0x1408b9f76: setne al
+0x1408b9f79: shl eax, 9
+0x1408b9f7c: shr edx, 0x10
+0x1408b9f7f: shr r8d, 0xd
+0x1408b9f83: or r8d, edx
+0x1408b9f86: or r8d, eax
+0x1408b9f89: or r8d, 0x7c00
+0x1408b9f90: mov eax, r8d
+0x1408b9f93: movaps xmm6, xmmword ptr [rsp + 0x20]
+0x1408b9f98: add rsp, 0x38
+0x1408b9f9c: ret 
+0x1408b9f9d: shr edx, 0x10
+0x1408b9fa0: cmp r9d, 0x47000000
+0x1408b9fa7: jbe 0x1408b9fbb
+0x1408b9fa9: or edx, 0x7c00
+0x1408b9faf: mov eax, edx
+0x1408b9fb1: movaps xmm6, xmmword ptr [rsp + 0x20]
+0x1408b9fb6: add rsp, 0x38
+0x1408b9fba: ret 
+0x1408b9fbb: cmp r9d, 0x38800000
+0x1408b9fc2: jae 0x1408ba015
+0x1408b9fc4: cmp r9d, 0x33000000
+0x1408b9fcb: jb 0x1408b9faf
+0x1408b9fcd: shr r9d, 0x17
+0x1408b9fd1: or r8d, 0x800000
+0x1408b9fd8: mov cl, 0x1e
+0x1408b9fda: sub cl, r9b
+0x1408b9fdd: mov eax, r8d
+0x1408b9fe0: shr eax, cl
+0x1408b9fe2: mov ecx, 0x1d
+0x1408b9fe7: sub ecx, r9d
+0x1408b9fea: and ecx, 0x1f
+0x1408b9fed: bt r8d, ecx
+0x1408b9ff1: jae 0x1408ba009
+0x1408b9ff3: mov r9d, 3
+0x1408b9ff9: shl r9d, cl
+0x1408b9ffc: dec r9d
+0x1408b9fff: and r9d, r8d
+0x1408ba002: cmp r9d, 1
+0x1408ba006: sbb eax, -1
+0x1408ba009: or eax, edx
+0x1408ba00b: movaps xmm6, xmmword ptr [rsp + 0x20]
+0x1408ba010: add rsp, 0x38
+0x1408ba014: ret 
+0x1408ba015: shr r9d, 0xd
+0x1408ba019: shr r8d, 0xd
+0x1408ba01d: mov ecx, eax
+0x1408ba01f: shr ecx, 0xc
+0x1408ba022: test eax, 0x2fff
+0x1408ba027: setne al
+0x1408ba02a: and al, cl
+0x1408ba02c: lea ecx, [r9 + r8]
+0x1408ba030: add ecx, 0x4000
+0x1408ba036: or ecx, edx
+0x1408ba038: movzx eax, al
+0x1408ba03b: add eax, ecx
+0x1408ba03d: movaps xmm6, xmmword ptr [rsp + 0x20]
+0x1408ba042: add rsp, 0x38
+0x1408ba046: ret 
+0x1408ba047: movdqa xmm6, xmm0
+0x1408ba04b: call 0x1428fa130
+0x1408ba050: movdqa xmm0, xmm6
+0x1408ba054: bt rax, 0x30
+0x1408ba059: jae 0x1408b9f48
+0x1408ba05f: movaps xmm6, xmmword ptr [rsp + 0x20]
+0x1408ba064: add rsp, 0x38
+0x1408ba068: jmp 0x1408ba070

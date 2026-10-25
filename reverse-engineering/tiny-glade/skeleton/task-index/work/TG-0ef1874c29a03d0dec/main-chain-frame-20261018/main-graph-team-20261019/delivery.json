@@ -1,0 +1,59 @@
+{
+  "status": "implemented_unverified",
+  "baseline": "bd8f74a5cfb3c9cc279efb1abd27695bb1bfb8bf",
+  "claim": {
+    "task": "TG-0ef1874c29a03d0dec",
+    "owner": "main-chain-frame-20261018",
+    "delegation": "root-authorized subdirectory; original claim unchanged"
+  },
+  "source_files": [
+    {
+      "path": "crates/tiny-glade/src/production_renderer.rs",
+      "before_sha256": "d81e268322452b8d770e684f001460666683c4a701b703df001e01be00390409",
+      "candidate_sha256": "c981f651caa4fded8028b230bf1def161b7a8ba505ecd9fcbbe36693b84dccc5",
+      "current_production_matches_before": true
+    },
+    {
+      "path": "crates/tiny-glade/src/world_postprocess.rs",
+      "before_sha256": "0d6ac501c40159cf79257bbcc71549cd403e59bea24af1ca3e0463a67d632bea",
+      "candidate_sha256": "e658859cdfbd26f2d5738c2fe34ba4bed3c5f0fe43ae12a8d2fd563c812130c7",
+      "current_production_matches_before": true
+    },
+    {
+      "path": "crates/tiny-glade/src/effects_host.rs",
+      "before_sha256": "421d030f82b09bc51ad75608a0b9dcc2930fd1cea92f6e8bd8bee7938d73bf8e",
+      "candidate_sha256": "7db6e7667cad9d96c597e5be4be95f43aef9e9ac1a732ba978c359f07be0192e",
+      "current_production_matches_before": true
+    }
+  ],
+  "patch_sha256": "c969f080747b8deae5e0a23721181a7988376374fe69103dea3cca096e3c0ac9",
+  "checks": {
+    "rustfmt_parser_production_renderer": "passed after all edits --emit stdout --config skip_children=true; not typecheck",
+    "rustfmt_parser_world_postprocess": "passed after all edits --emit stdout --config skip_children=true; not typecheck",
+    "cargo": "not run; root only (45 missing modules pending sync; explicit temporary compile seams are separate)",
+    "gpu": "not run; root only",
+    "rustfmt_final_recheck": "3 changed candidates parser passed after removing prewarm optimization; production parser passed again after immediate-submit correction; no typecheck"
+  },
+  "original_evidence": {
+    "version": "B",
+    "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "compile_main": "../evidence/compile_main.asm; ../0x140161cd0.c",
+    "vermeer_pass": "evidence/vermeer-pass-rne.asm + .json",
+    "final_post_fragment": "evidence/final-post-original.json + final-post-original-1.spvasm (bounded single bin extraction; real pre-select fetches proved)"
+  },
+  "boundaries": [
+    "No C behavior equivalence claimed",
+    "No missing host implementations recreated; 3 explicitly authorized compile-only pending stubs are separate and fail at runtime",
+    "No undefined main-color clear added",
+    "No acceptance that complete native compile_main is closed",
+    "ICC custom_lut producer left for root pending source sync",
+    "Current patch depends on 01 factory methods and 03 RenderHost Result/error/abort methods"
+  ],
+  "temporary_stubs": "WITHDRAWN FROM APPLICATION: historical pending-sync-stubs/stub-manifest.json; user now says skip missing files",
+  "contract_sha256": "08e7cb4c85a6dbbf6893d3f477f4de92471b78a8ada03428ce2faea169b562e7",
+  "root_review_corrections": [
+    "Removed pending-count-based prewarm skip; all four original full ticket prewarm calls preserved",
+    "frame_submitted=true immediately on execute_compiled Ok(receipt), independent of later export/capture failures; abort preserves fact",
+    "temporary compile stubs not part of active application scope"
+  ]
+}

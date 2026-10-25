@@ -1,0 +1,99 @@
+
+void __cdecl country_core::systems::save::save_thread::UnsavedFileList::add(void)
+
+{
+  undefined8 *puVar1;
+  char cVar2;
+  longlong lVar3;
+  longlong lVar4;
+  undefined8 uVar5;
+  undefined8 uVar6;
+  undefined8 uVar7;
+  undefined8 uVar8;
+  undefined8 uVar9;
+  undefined8 uVar10;
+  undefined8 uVar11;
+  undefined8 uVar12;
+  undefined8 uVar13;
+  undefined8 uVar14;
+  undefined8 uVar15;
+  undefined8 uVar16;
+  undefined8 uVar17;
+  undefined8 uVar18;
+  undefined8 uVar19;
+  undefined8 uVar20;
+  char *in_RCX;
+  longlong lVar21;
+  undefined8 *in_RDX;
+  
+  LOCK();
+  cVar2 = *in_RCX;
+  if (cVar2 == '\0') {
+    *in_RCX = '\x01';
+  }
+  UNLOCK();
+  if (cVar2 != '\0') {
+    parking_lot::raw_mutex::RawMutex::lock_slow();
+  }
+  parking_lot_core::parking_lot::deadlock_impl::acquire_resource();
+  uVar5 = in_RDX[0xe];
+  uVar6 = in_RDX[0xf];
+  uVar7 = in_RDX[0xc];
+  uVar8 = in_RDX[0xd];
+  uVar9 = in_RDX[10];
+  uVar10 = in_RDX[0xb];
+  uVar11 = in_RDX[8];
+  uVar12 = in_RDX[9];
+  uVar13 = *in_RDX;
+  uVar14 = in_RDX[1];
+  uVar15 = in_RDX[2];
+  uVar16 = in_RDX[3];
+  uVar17 = in_RDX[4];
+  uVar18 = in_RDX[5];
+  uVar19 = in_RDX[6];
+  uVar20 = in_RDX[7];
+  lVar3 = *(longlong *)(in_RCX + 0x18);
+  if (lVar3 == *(longlong *)(in_RCX + 8)) {
+    alloc::raw_vec::RawVec::
+    grow_one<enum2_<iced_runtime::command::action::Action<enum2_<crash_reporter_gui::Message>_>_>,alloc::alloc::Global>
+              ();
+  }
+  lVar4 = *(longlong *)(in_RCX + 0x10);
+  lVar21 = lVar3 * 0x80;
+  puVar1 = (undefined8 *)(lVar4 + 0x70 + lVar21);
+  *puVar1 = uVar5;
+  puVar1[1] = uVar6;
+  puVar1 = (undefined8 *)(lVar4 + 0x60 + lVar21);
+  *puVar1 = uVar7;
+  puVar1[1] = uVar8;
+  puVar1 = (undefined8 *)(lVar4 + 0x50 + lVar21);
+  *puVar1 = uVar9;
+  puVar1[1] = uVar10;
+  puVar1 = (undefined8 *)(lVar4 + 0x40 + lVar21);
+  *puVar1 = uVar11;
+  puVar1[1] = uVar12;
+  puVar1 = (undefined8 *)(lVar4 + 0x30 + lVar21);
+  *puVar1 = uVar19;
+  puVar1[1] = uVar20;
+  puVar1 = (undefined8 *)(lVar4 + 0x20 + lVar21);
+  *puVar1 = uVar17;
+  puVar1[1] = uVar18;
+  puVar1 = (undefined8 *)(lVar4 + 0x10 + lVar21);
+  *puVar1 = uVar15;
+  puVar1[1] = uVar16;
+  *(undefined8 *)(lVar4 + lVar21) = uVar13;
+  ((undefined8 *)(lVar4 + lVar21))[1] = uVar14;
+  *(longlong *)(in_RCX + 0x18) = lVar3 + 1;
+  parking_lot_core::parking_lot::deadlock_impl::release_resource();
+  LOCK();
+  cVar2 = *in_RCX;
+  if (cVar2 == '\x01') {
+    *in_RCX = '\0';
+  }
+  UNLOCK();
+  if (cVar2 != '\x01') {
+    parking_lot::raw_mutex::RawMutex::unlock_slow();
+  }
+  return;
+}
+

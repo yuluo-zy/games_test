@@ -1,0 +1,135 @@
+{
+  "scope": "C v1.16.0 sheep pet observed-row state slice; B patched analysis context only; no full game acceptance",
+  "semantic_acceptance": false,
+  "target_execution": false,
+  "recipe_sha256": "d0bdb6fdca6e19333c7e5aa6a712219a854f9eb7d2fd00a850def9cb0dc7e3b8",
+  "runner_sha256": "37bd12925ea247d5b484cd4b67ffbc9be51190015e6dd888586383da3b7e0765",
+  "skip_mcp": false,
+  "stages": [
+    {
+      "id": "mcp-batch",
+      "argv": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/yuluo/.codex/skills/native-tool-batch/scripts/run_batch.py",
+        "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/critters-batch-plan.json",
+        "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/final-workflow/mcp-batch"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 3.241331,
+      "script_sha256": "1e1ccbd0dfed987a131754d621b737e9cd9e9ee0ee18f32a170da1741183995a",
+      "report": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/final-workflow/mcp-batch/summary.json",
+      "report_sha256": "f6033d3799ca4f546d873b3ec8f46b0839b624771c7b21d1089092ca22d03f53",
+      "metrics": {
+        "operator_processes": 1,
+        "mcp_steps": 2,
+        "requested_steps": 2,
+        "unique_steps": 2,
+        "deduplicated_steps": 0,
+        "raw_report_bytes": 67970,
+        "payload_bytes": 36090
+      },
+      "ok": true
+    },
+    {
+      "id": "pack-cold",
+      "argv": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/yuluo/.codex/skills/native-evidence-pack/scripts/collect.py",
+        "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/pack-C-pet/manifest.json",
+        "--output",
+        "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/final-workflow/pack-cold",
+        "--cache",
+        "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/final-workflow/cache"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.610349,
+      "script_sha256": "4dd0f5fe198b2975111345e8630c9100890ade45dc67ece766f329ae137c2688",
+      "report": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/final-workflow/pack-cold/report.json",
+      "report_sha256": "b5f73b6bbce08626ec17a6b72a4d37a16a56d7f5e6e074c27e7930cc97a93ab1",
+      "metrics": {
+        "requests": 2,
+        "unique_requests": 2,
+        "cache_hits": 0,
+        "cache_misses": 2,
+        "symbolization_points": 4,
+        "evidence_output_bytes": 367798,
+        "tool_processes": 5,
+        "version_processes": 2,
+        "analysis_processes": 3,
+        "tool_stdout_bytes": 75279,
+        "tool_stderr_bytes": 0,
+        "elapsed_seconds": 0.5616992079885677
+      },
+      "ok": true
+    },
+    {
+      "id": "pack-warm",
+      "argv": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/yuluo/.codex/skills/native-evidence-pack/scripts/collect.py",
+        "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/pack-C-pet/manifest.json",
+        "--output",
+        "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/final-workflow/pack-warm",
+        "--cache",
+        "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/final-workflow/cache"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.40522,
+      "script_sha256": "4dd0f5fe198b2975111345e8630c9100890ade45dc67ece766f329ae137c2688",
+      "report": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/final-workflow/pack-warm/report.json",
+      "report_sha256": "fa588d7444f41ff2f978e7396922e0de70f5d74e293b6a0ddde14ea8e0fdec32",
+      "metrics": {
+        "requests": 2,
+        "unique_requests": 2,
+        "cache_hits": 2,
+        "cache_misses": 0,
+        "symbolization_points": 0,
+        "evidence_output_bytes": 367798,
+        "tool_processes": 2,
+        "version_processes": 2,
+        "analysis_processes": 0,
+        "tool_stdout_bytes": 1794,
+        "tool_stderr_bytes": 0,
+        "elapsed_seconds": 0.3470281249610707
+      },
+      "ok": true
+    },
+    {
+      "id": "dependency-lock",
+      "argv": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/yuluo/.codex/skills/native-rust-reconstruction/scripts/compare_cargo_locks.py",
+        "/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/build-info/Cargo.lock",
+        "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/reconstruction/critters/c-harness/Cargo.lock",
+        "--output",
+        "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/final-workflow/dependency-lock.json"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.076908,
+      "script_sha256": "a57f496014b82227d3768851f1c2570cb6ab4e50cf4be6fdc9166540df52a620",
+      "report": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/final-workflow/dependency-lock.json",
+      "report_sha256": "23d54ef63790362d5b9b310d243d28c7b76090155e527b93c1933555215d00f5",
+      "metrics": {},
+      "ok": true
+    },
+    {
+      "id": "handoff",
+      "argv": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/yuluo/.codex/skills/native-module-handoff/scripts/audit_handoff.py",
+        "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/critters-handoff.json",
+        "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade",
+        "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/final-workflow/handoff.json"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.040107,
+      "script_sha256": "0bd23f0749abe4957699d738beda4f7cec7d9d9f6475ed39b59c8de755d236b6",
+      "report": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-pet-pilot-2026-10-11/final-workflow/handoff.json",
+      "report_sha256": "4afe5c428b0fabdb43d9f2be7fe6934af27f99633275506075f74733f7f0c663",
+      "metrics": {},
+      "ok": true
+    }
+  ],
+  "ok": true,
+  "elapsed_seconds": 4.377161
+}

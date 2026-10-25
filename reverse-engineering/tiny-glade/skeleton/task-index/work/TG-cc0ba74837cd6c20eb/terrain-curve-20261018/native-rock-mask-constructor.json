@@ -1,0 +1,99 @@
+{
+  "target": "B",
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "entry": "0x141620320",
+  "cases": [
+    {
+      "name": "none_zero_initial",
+      "initial_size": null,
+      "calls": [
+        {
+          "kind": "descriptor",
+          "byte_size": 32768,
+          "usage": 34,
+          "memory": 4
+        },
+        {
+          "kind": "alignment",
+          "value": 4
+        },
+        {
+          "kind": "create_buffer",
+          "name": "TerrainRockMask",
+          "initial_bytes": 32768,
+          "initial_sha256": "c35020473aed1b4642cd726cad727b63fff2824ad68cedd7ffb73c7cbd890479"
+        }
+      ],
+      "mapped_words": 8192,
+      "buffer_bytes": 32768,
+      "panic": null
+    },
+    {
+      "name": "one_u32",
+      "initial_size": 4,
+      "calls": [
+        {
+          "kind": "descriptor",
+          "byte_size": 32768,
+          "usage": 34,
+          "memory": 4
+        },
+        {
+          "kind": "alignment",
+          "value": 4
+        },
+        {
+          "kind": "create_buffer",
+          "name": "TerrainRockMask",
+          "initial_bytes": 4,
+          "initial_sha256": "1a2de690568587e6cd9adbd7d9f65ef269becd2f89fb89c224975b0c5944b973"
+        }
+      ],
+      "mapped_words": 8192,
+      "buffer_bytes": 32768,
+      "panic": null
+    },
+    {
+      "name": "full_native_capacity",
+      "initial_size": 32768,
+      "calls": [
+        {
+          "kind": "descriptor",
+          "byte_size": 32768,
+          "usage": 34,
+          "memory": 4
+        },
+        {
+          "kind": "alignment",
+          "value": 4
+        },
+        {
+          "kind": "create_buffer",
+          "name": "TerrainRockMask",
+          "initial_bytes": 32768,
+          "initial_sha256": "c35020473aed1b4642cd726cad727b63fff2824ad68cedd7ffb73c7cbd890479"
+        }
+      ],
+      "mapped_words": 8192,
+      "buffer_bytes": 32768,
+      "panic": null
+    },
+    {
+      "name": "excessive_one_word",
+      "initial_size": 32772,
+      "calls": [],
+      "mapped_words": null,
+      "buffer_bytes": null,
+      "panic": "0x1428d9390"
+    },
+    {
+      "name": "misaligned_byte_count",
+      "initial_size": 3,
+      "calls": [],
+      "mapped_words": null,
+      "buffer_bytes": null,
+      "panic": "0x1428d9596"
+    }
+  ],
+  "method": "Original constructor executes allocation/default fill, initial-size guards, BufferDesc construction, mapped byte/word conversion and return; graphics create/map are supplied boundaries; native allocator/CRT use shared harness."
+}

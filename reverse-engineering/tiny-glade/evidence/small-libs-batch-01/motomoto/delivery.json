@@ -1,0 +1,132 @@
+{
+  "module": "motomoto",
+  "baseline": "B",
+  "status": "implemented_bounded_behavior_verified",
+  "source": "crates/motomoto/src/lib.rs",
+  "source_checksum": "47bf8eb6b797a4bc4169386dd82cfdc8a32cf5b9c582a2cc27b014b0006ed058",
+  "original_lock_dependency": {
+    "byteorder": "1.5.0"
+  },
+  "implementation": "reconstruction/shared-foundation/crates/motomoto/src/lib.rs",
+  "interface_mapping": [
+    {
+      "original": "impl$0::as_tag",
+      "address": "0x1400885d0",
+      "recovered": "AsTag for u64",
+      "comparison": "static"
+    },
+    {
+      "original": "impl$1::as_tag/tag_from_str",
+      "address": "0x142080ca0",
+      "recovered": "AsTag for &str/tag_from_str",
+      "comparison": "static_and_candidate"
+    },
+    {
+      "original": "tag_from_le_bytes_truncated/tag_from_str_trunc",
+      "address": "0x142080d00",
+      "recovered": "tag_from_le_bytes_truncated/tag_from_str_trunc",
+      "comparison": "static_and_candidate"
+    },
+    {
+      "original": "Writer::new",
+      "recovered": "Writer::new",
+      "comparison": "inline_metadata_and_candidate"
+    },
+    {
+      "original": "Writer::add_chunk",
+      "addresses": [
+        "0x141552690",
+        "0x141552820"
+      ],
+      "recovered": "Writer::add_chunk",
+      "comparison": "original_rne_static_rules_and_candidate"
+    },
+    {
+      "original": "impl$3::write",
+      "recovered": "Write for ChunkWriter::write",
+      "comparison": "pdb_dependency_reuse_and_candidate"
+    },
+    {
+      "original": "ChunkWriter::seek_back_and_write_length/impl$5::drop",
+      "host_address": "0x14087abf0",
+      "recovered": "ChunkWriter::seek_back_and_write_length/Drop",
+      "comparison": "pdb_and_rne_static_rules_and_candidate"
+    },
+    {
+      "original": "Reader::new",
+      "address": "0x14067dd80",
+      "recovered": "Reader::new",
+      "comparison": "metadata_shared_alias_no_independent_execution"
+    },
+    {
+      "original": "Reader::iter",
+      "address": "0x142080d50",
+      "recovered": "Reader::iter",
+      "comparison": "static"
+    },
+    {
+      "original": "ChunkIterator::try_next/impl$9::next",
+      "address": "0x142080d70",
+      "recovered": "try_next/Iterator::next",
+      "comparison": "173_original_rne_instruction_cases_zero_differences"
+    }
+  ],
+  "extensions": [
+    "Writer::finish",
+    "ChunkWriter::flush std adapter; original flush unverified"
+  ],
+  "validation": {
+    "cargo_check": "passed_by_integration_owner",
+    "cargo_test": "6 passed",
+    "original_reader_instruction_cases": 173,
+    "reader_differences": 0,
+    "original_writer_execution": false,
+    "original_game_execution": false,
+    "original_panic_execution": false,
+    "real_save_file_replay": false
+  },
+  "consumer": {
+    "source": "country-core/src/systems/save/snapshot.rs",
+    "producer": "capture_game_snapshot",
+    "producer_address": "0x1417a1d00",
+    "reader": "validate_and_load_closest_snapshot_data",
+    "reader_address": "0x1417a6e50",
+    "observed_tags": [
+      "Snapshot",
+      "Terrain",
+      "dynamic tag_from_str_trunc"
+    ]
+  },
+  "evidence": [
+    "BUSINESS_RULES.md",
+    "DEPENDENCY_AUDIT.md",
+    "reader-oracle.json",
+    "reader_oracle.py",
+    "reader-rne-disassembly.txt",
+    "tags-rne-disassembly.txt",
+    "writer-rne-disassembly.txt",
+    "drop-rne-disassembly.txt",
+    "pdb-module-485.txt",
+    "consumer-tags.json",
+    "consumer-chunk1-rne.txt",
+    "consumer-chunk2-rne.txt",
+    "consumer-chunk3-rne.txt",
+    "cargo-test-msvc.log"
+  ],
+  "remaining": [
+    "Full save consumer/schema/compression settings and integration",
+    "Original Writer/Drop execution and generic IO errors",
+    "Original flush",
+    "Final deferred-error consumer",
+    "Identity-bound real B save sample",
+    "Reader::new shared alias ABI"
+  ],
+  "worker": {
+    "name": "small-motomoto-20261013",
+    "project": "D:/game/tools/reverse-runtime/small-motomoto-20261013/project/TinyGlade.gpr",
+    "program": "/tiny-glade.exe",
+    "patched_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "database_mutations": [],
+    "original_database_synchronized": false
+  }
+}

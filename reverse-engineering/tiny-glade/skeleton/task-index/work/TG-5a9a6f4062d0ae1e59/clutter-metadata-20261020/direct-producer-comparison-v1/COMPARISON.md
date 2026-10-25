@@ -1,0 +1,33 @@
+# Direct selector5 water/tree: bounded comparison V1
+
+Read-only original B and current source comparison requested by root. No new producer claim, source candidate, current four-source amendment, compilation, CPU/GPU or original execution. Original native bodies are2135B water and2594B tree; smaller old source comments are not the selected PDB bounds.
+
+## Original system params and owners
+
+Water1422d2fa0 has six params: ResMut<AutoClutterState>, Res<ClutterMeshes>, Res<WaterRaster>, Res<DecoratorStorage>, Res<CachedDecoratorTransforms>, Res<ActiveSession>. Original140a1e280 call at1422d30f0 obtains the actual terrain decorator iterator, filters the original decorator subtype/flag, and uses that decorator's actual cached position/transform. Its selected ClutterMesh references come from the canonical catalog slots+100/+108/+110 (Reed/Lilypad/FallenLeaves). The string literal "lantern" participates in placement-key hashing; it is not the chosen prefab/asset name.
+
+Tree1422d3800 has six params: ResMut<AutoClutterState>, Res<UiSignifierStream>, Res<ClutterMeshes>, Res<WaterRaster>, Query<(&TreeComponent,&PrefabInstanceData)>, Res<ActiveSession>. Its real input is the existing ECS tree identity joined with48B PrefabInstanceData placement. It reads actual placement position/scale/pad0 and chooses the real catalog, also including FallenPetals+118. The literal "tree" is a hash salt, not a prefab owner.
+
+Both emit source tag5 (no owning source payload) and selector5. They bypass original Convertable insertion by its actual `(selector & 6) != 4 && selector > 2` predicate, without changing that guard. They still need original manager selector5 rendering/color behavior; current integrated Window manager deliberately rejects retained selector5 inputs. This report does not change that assertion or treat optional absence of Convertable as generic Window equivalence.
+
+## A concrete original alias error in current inputs
+
+Water passes ActiveSession's original GladeType value at+58 to140ae8320 and returns early for byte4. Tree likewise passes the same session value to14092e6a0/6c0/ae8320. Complete7B helpers are retained: byte2/3/4 tests, respectively original **GladeType::is_flowery/is_autumn/is_winter**, also ICF-aliased to unrelated UI DragState/backup names. The actual receiver and full PDB signature select the seasonal meaning here.
+
+Consequently current local IsDragging/IsStarted/IsCorrupted resources are not the original owner. Current canonical ActiveSession already exposes all three correct seasonal methods. Replacing their effect with default false or a fabricated state resource would retain the bug; names selected from one folded symbol cannot prove a call's receiver semantics.
+
+## Current mirror inputs and true producers
+
+Full current source search found TreePositions and TerrainDecoratorPositions only in their own declaration/Res reads and two Default init_resource calls in clutter/lib. There is no non-test code that populates either entries Vec. Current water/tree functions therefore consume unpopulated mirrors and erase selected mesh/direction into Prefab("lantern"/"tree") and zero direction bits. Neither is presently a shorter live route merely because its native body is smaller.
+
+Existing canonical water-side authorities are real types: DecoratorStorage owns terrain/per-wall/stair buckets and IDs, with iter_terrain_decorators; CachedDecoratorTransforms owns the double-buffered real transforms, with checked transform/position lookups. system_decorator::cache_decorator_transforms writes this same cache from real storage/derived wall/terrain inputs, and the legacy add_decorator_systems entry point mounts it. Actual run_game initializes DecoratorStorage, but no call to add_decorator_systems, cache_decorator_transforms, or initialization of CachedDecoratorTransforms was found in the inspected actual App sources. Thus no already mounted, nonempty cached terrain-decorator producer was demonstrated. Missing installers/checked-out source are not replaced with a successful empty Vec.
+
+Existing canonical tree-side authorities are also real: TreeComponent{id,is_preplaced}; PrefabInstanceData(PlacementDataSsbo); process_tree_cmds spawns the former and sends actual SpawnPrefabCmd, while the actual prefab runtime should publish the latter. The snapshot restore implementation can create actual TreeComponent and issue real prefab commands. Actual run_game initializes TreeStorage and explicitly mounts the preplaced-spawn/conversion pair, but that startup source is currently absent and the actual prefab runtime module implementation referenced by current core source is also absent in this checkout. No invocation of process_tree_cmds or the complete tree-tool setup was found on the inspected actual App source path. A nonempty joined query is therefore not established by source presence alone.
+
+The newly recovered Forest path is **not interchangeable** with that query. Actual gameplay_startup mounts manage_tree_prefabs and the forest animations in set36; that owner creates InteractableForestTree and SpawnPrefabCmd from InteractableForestPlacements. It does not insert TreeComponent. Replacing the native query with Forest placement iteration would add a different population and is not justified by the original direct tree-setdressing contract.
+
+## Shared mesh/resource registration and selection consequence
+
+Actual GameFrameDriver construction invokes install_gameplay_device_runtime→install_gameplay_gpu_startup on the same App and HostTables. Its install_clutter_startup registers the real asset loader in Startup; that producer creates the canonical55 fixed meshes/six flowerbeds, and has no empty/default catalog success. This supplies a true catalog owner from the existing mesh/watch tables, though no new real startup execution/live-resource count is claimed here. Canonical WaterRaster/ActiveSession already have world/session owners; source existence does not waive their actual installation/lifetime requirements.
+
+Neither current water nor tree producer is mounted by actual gameplay_startup/run_game; the old clutter configure entry is not installed. Tree has more upstream placement/runtime prerequisites; water could be a smaller future subdomain only if central integration already supplies the real terrain storage + complete cached transforms in original order. That condition is not demonstrated by the inspected current source. Accordingly this report **does not select a faster replacement task** or activate either mirror. Process/region remains the delegated main closure until root chooses a proven same-owner route. No positioning Vec, hard-coded mesh, forced counts, empty deleted set, changed Convertable guard or fake Nani success is proposed.

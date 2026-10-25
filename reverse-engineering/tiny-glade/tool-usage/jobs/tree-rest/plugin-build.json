@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nfrom ghidra.app.decompiler import DecompInterface\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x140650520\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 240
+  }
+]

@@ -1,0 +1,112 @@
+{
+  "generated_at": "2026-10-18T10:30:11.962190+08:00",
+  "actor": "Codex primary agent",
+  "target": "Tiny Glade B; current input source review",
+  "conclusion": "changes_required",
+  "business_source_modified_by_this_review": false,
+  "scope": "4 input source files and listed producer/consumer boundaries; not a frozen whole-workspace delivery",
+  "reviewed_source_manifest": {
+    "path": "reviewed-sources.json",
+    "sha256": "09b04152df36c190a977c3a576876c757c02648303eddc3e1a2c081f1267b1d0",
+    "file_count": 22
+  },
+  "host_input_references_rechecked": [
+    "188:             action_set::{ActionSetStates, ActionSetValues},",
+    "198:             backend::{gui::configure_gui_consumers, input::register_input_events},",
+    "251:     app.init_resource::<ActionSetValues>();",
+    "264:     register_input_events(app.world_mut());",
+    "286:         country_core::systems::backend::input::reset_input_state::reset_input_state",
+    "366:             action_set::{ActionSetStates, ActionSetValues},",
+    "435:     app.init_resource::<ActionSetValues>();",
+    "446:     country_core::systems::backend::input::register_input_events(app.world_mut());"
+  ],
+  "native_evidence": {
+    "../reverse-engineering/tiny-glade/evidence/country-core-deep/input/ALGORITHMS.md": "1bf24904f1cfdcf63fa6e1eebcabe45a70dd2a317fe5d790e10c55174473b451",
+    "crates/country-core/recovery/agent-team/reports/interaction/input/evidence/logic-input-rebuild-2026-10-17/140949660-fresh.c.txt": "8b09327c7d828e205d7fd9d4df498fce64588db4fe391b171fdf5500530396a6",
+    "crates/country-core/recovery/agent-team/reports/interaction/input/evidence/logic-input-rebuild-2026-10-17/140941a30-fresh.c.txt": "c01167b0af07bdc0b7da1b744d570994e44877b2bb2cee9779b760fcac7626eb",
+    "crates/country-core/recovery/agent-team/reports/interaction/input/evidence/logic-input-rebuild-2026-10-17/1409423d0-fresh.c.txt": "c910d2607ab042204aae14a57a09515c08d6bd71c364fb3fc88259a6ca8dbf75"
+  },
+  "toolchain": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: aarch64-apple-darwin\nrelease: 1.98.1\nLLVM version: 22.1.8\n",
+  "checks": [
+    {
+      "command": "cargo test -p country-core --lib input:: --offline --locked",
+      "exit_code": 0,
+      "passed": 46,
+      "failed": 0,
+      "ignored": 0,
+      "log": "input-tests.log",
+      "scope": "unit tests before later unrelated concurrent source edits"
+    },
+    {
+      "command": "Cargo probes, first attempt",
+      "exit_code": 101,
+      "log": "probes-build-blocked.log",
+      "reason": "unrelated asset_libraries/descriptor_table.rs:46 E0502"
+    },
+    {
+      "command": "Cargo probes, first executable attempt",
+      "exit_code": 101,
+      "passed": 3,
+      "failed": 1,
+      "log": "probes-harness-failed.log",
+      "reason": "F4 harness read graph.systems after build transferred systems; fixed to Schedule::systems"
+    },
+    {
+      "command": "Cargo probes, corrected harness",
+      "exit_code": 101,
+      "log": "probes.log",
+      "reason": "unrelated render/sparse_instance_buffer.rs:425 E0502"
+    },
+    {
+      "command": "rustc --test probes.rs with Cargo-fingerprint-selected cached artifacts",
+      "compile_exit": 0,
+      "test_exit": 0,
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "log": "cached-probes.log",
+      "artifacts": "cached-artifacts.json",
+      "scope": "cached compiled snapshot, not fresh full-crate build"
+    }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "priority": 1,
+      "summary": "Sync point lacks owned toolbar modes; seek can produce out-of-bounds index"
+    },
+    {
+      "id": "F2",
+      "priority": 1,
+      "summary": "File load has no sync points; seek panics or uses stale stream"
+    },
+    {
+      "id": "F3",
+      "priority": 1,
+      "summary": "Frame conversion discards actions; no actual action consumer bridge"
+    },
+    {
+      "id": "F4",
+      "priority": 2,
+      "summary": "CPU helper has no ordering dependencies"
+    }
+  ],
+  "native_runtime_oracle_run": false,
+  "semantic_acceptance": false,
+  "source_drift_note": "Host run_game.rs changed concurrently; input references rechecked and captured above. Input/backend reviewed source hashes did not change. Manifest describes the captured snapshot and does not freeze other work.",
+  "artifacts": {
+    "README.md": "e92bb24017e50564ad6d22c56b6b86614b112ec555059a2c589d8c379fb10b5e",
+    "cached-artifacts.json": "82f2044ac505e2f6b39f6814266f1ed75d1346939122409902ff3dd624eba4c9",
+    "cached-probes.log": "5dda8019dbced83d9a02c3456a5e896d50deb2c49d5ce43649cbc497c4cd2380",
+    "input-tests.log": "0e37ef27979485abbe536b936d1c7424d6702229953a10d56911680f2d9e18bf",
+    "probes-build-blocked.log": "13d3262f431693112dc1d44f946cc0d6d8e5c0378f03d8752b93da1885a3cf39",
+    "probes-harness-failed.log": "05f167ad23103302b7e1355c64a1a6ae90d554637c34c058b00fd3b23b6a3708",
+    "probes.log": "26ee818fb68809f51d34ea7a682d2a4f12ce086f6f34d2950e9cbac22268b008",
+    "probes.rs": "af09d20810dd77d3be2e5c8c8f5e36f3519659ef5fd1997af186f66c3f7b8593",
+    "reviewed-sources.json": "09b04152df36c190a977c3a576876c757c02648303eddc3e1a2c081f1267b1d0",
+    "run_cached_probes.py": "d0f26289f6171697c43c90b0524a81bb4d1373fcdcefc72c1154057b09d242cb",
+    "run_probes.py": "12544ab8b332d4128acb713e9cc898f340a18e6bf7b98e38034a39e1de335b20",
+    "crates/country-core/src/input/README.md": "a80c628dc75aaa7688b815e919e9611255acae7609fdbd9c9a24f95e5ff98807",
+    "crates/country-core/src/input/REVIEW.md": "3f96a1fc1df74c0668addbf7faca34cd9b85445faaac2f70167d898e2dce1d54"
+  }
+}

@@ -1,0 +1,29 @@
+
+// WARNING: Removing unreachable block (ram,0x000140a892f2)
+
+void __cdecl country_core::systems::audio::garden_audio::garden_audio_init_system(void)
+
+{
+  undefined8 local_138;
+  
+  resources::audio_resources::AudioCore::instantiate_loop();
+  if (SBORROW8(0,local_138)) {
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+  resources::audio_resources::AudioCore::instantiate_loop();
+  if (!SBORROW8(0,local_138)) {
+    resources::audio_resources::AudioCore::instantiate_loop();
+    if (!SBORROW8(0,local_138)) {
+      resources::audio_resources::AudioCore::instantiate_loop();
+      bevy_ecs::system::commands::Commands::
+      insert_resource<country_core::systems::audio::garden_audio::GardenAudioState>();
+      return;
+    }
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+                    // WARNING: Subroutine does not return
+  core::result::unwrap_failed();
+}
+

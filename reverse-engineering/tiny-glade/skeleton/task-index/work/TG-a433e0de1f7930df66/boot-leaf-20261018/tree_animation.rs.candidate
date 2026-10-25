@@ -1,0 +1,151 @@
+//! Original B forest animations on the current owned placement components.
+//! handplaced@142279500/3017B; forest@14227a0d0/2228B. No position-field
+//! alias or Local canopy surrogate; both consumers update actual GPU placement.
+use bevy_ecs::prelude::*;
+use country_core::{
+    asset_libraries::audio_trigger_library::{AudioTriggerKind, AudioTriggerLibrary},
+    components::{TreeAnimation, TreeMarkedForDeletion},
+    render::nani::instance_updates::pack_2x16f_uint,
+    resources::{
+        history::tree_edit::TreeCanopyMaxCullDistance,
+        prefab::PrefabInstance,
+        time::GameTime,
+        tree_storage::{InteractableForestPlacements, InteractableForestTree},
+    },
+    systems::{
+        camera_rig::main_camera::MainCamera,
+        mode_manager::{AppMode, EditSubject, EraserLayer},
+        prefab::DespawnPrefabCmd,
+        ui::signifiers::signifier_create::UiSignifierStream,
+    },
+};
+use glam::Vec3;
+use utils::{easing_functions::EasingFunction, geometry::Aabb3};
+
+/// MAXSS(0,x) then MINSS(1,x): unordered value remains unordered.
+fn clamp_progress(x: f32) -> f32 {
+    let lower = if 0.0 > x { 0.0 } else { x };
+    if 1.0 < lower { 1.0 } else { lower }
+}
+
+/// The original tag9 branch checks payload EraserLayer6; other erasers grow.
+fn subtract_canopy(mode: AppMode) -> bool {
+    matches!(
+        mode,
+        AppMode::Editing(EditSubject::None | EditSubject::DecoClutter { .. })
+            | AppMode::Eraser(EraserLayer::Tree)
+            | AppMode::Terrain
+            | AppMode::Replay
+            | AppMode::LoadGame
+            | AppMode::Tree
+            | AppMode::CloneClutter
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn handplaced_tree_animation(
+    mut trees: Query<(
+        &mut TreeAnimation,
+        &mut PrefabInstance,
+        Option<&TreeMarkedForDeletion>,
+    )>,
+    time: Res<GameTime>,
+    mode: Res<AppMode>,
+    camera: Res<MainCamera>,
+    audio: Res<AudioTriggerLibrary>,
+    _signifiers: Res<UiSignifierStream>,
+    mut canopy: ResMut<TreeCanopyMaxCullDistance>,
+) {
+    let delta = time.delta;
+    let subtract = subtract_canopy(*mode);
+    canopy.progress = clamp_progress(if subtract {
+        canopy.progress - delta
+    } else {
+        canopy.progress + delta
+    });
+    let p = canopy.progress;
+    canopy.smoothstep = (p * p) * (3.0 - (p + p));
+    let eye = camera.eye_position();
+    let forward = camera.eye_forward();
+    // Preserve the original two multiplies rather than replacing them by4.5.
+    let ray_end = eye + (forward * 3.0) * 1.5;
+    let hit = audio
+        .get_triggers(AudioTriggerKind::Primary)
+        .boxes()
+        .any(|(_, bounds)| {
+            Aabb3 {
+                min: bounds.min + Vec3::new(-2.5, -1.0, -2.5),
+                max: bounds.max + Vec3::new(2.5, 1.0, 2.5),
+            }
+            .intersect_segment(eye, ray_end)
+            .is_some()
+        });
+    let show = !(subtract && !hit);
+    for (mut animation, mut instance, marked) in &mut trees {
+        if animation.advance(delta, marked.is_some(), show) {
+            let fade = animation.canopy_visibility;
+            instance.0.anim_t_packed =
+                pack_2x16f_uint(animation.progress, 1.0 - (1.0 - fade) * (1.0 - fade));
+        }
+    }
+}
+
+pub fn forest_tree_animation(
+    mut trees: Query<(
+        Entity,
+        &mut InteractableForestTree,
+        &mut PrefabInstance,
+        Option<&TreeMarkedForDeletion>,
+    )>,
+    time: Res<GameTime>,
+    mut despawns: EventWriter<DespawnPrefabCmd>,
+    mut placements: ResMut<InteractableForestPlacements>,
+) {
+    for (entity, mut tree, mut instance, marked) in &mut trees {
+        let (step, growing) = if marked.is_some() {
+            (time.delta / -0.3, false)
+        } else if tree.delay > 0.0 {
+            tree.delay -= time.delta;
+            (0.0, true)
+        } else {
+            (time.delta + time.delta, true)
+        };
+        let before = tree.progress;
+        tree.progress = clamp_progress(before + step);
+        if tree.progress != before {
+            instance.0.scale = EasingFunction::CubicOut.apply(tree.progress) * tree.amplitude;
+        }
+        if !growing && tree.progress == 0.0 {
+            // Original Despawn payload is Entity8; foreign canonical carrier
+            // migration must remove the old extra _gap before this integrates.
+            despawns.write(DespawnPrefabCmd {
+                entity: Some(entity),
+            });
+            // Native bounds checks this index and clears only the entity's
+            // generation word. Owned Option::None preserves that meaning.
+            placements.records[tree.placement_index].entity = None;
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn eraser_branch_is_only_the_native_tree_layer_and_nan_progress_is_not_faked() {
+        assert!(subtract_canopy(AppMode::Eraser(EraserLayer::Tree)));
+        for layer in [
+            EraserLayer::All,
+            EraserLayer::Wall,
+            EraserLayer::Path,
+            EraserLayer::Bulldoze,
+            EraserLayer::Water,
+            EraserLayer::Garden,
+        ] {
+            assert!(!subtract_canopy(AppMode::Eraser(layer)));
+        }
+        assert!(clamp_progress(f32::NAN).is_nan());
+        assert_eq!(clamp_progress(-1.0), 0.0);
+        assert_eq!(clamp_progress(2.0), 1.0);
+    }
+}

@@ -1,0 +1,32 @@
+1408e3380 movss xmm0, dword ptr [rip + 0x20425fc]
+1408e3388 ucomiss xmm0, dword ptr [rcx + 0x30]
+1408e338c setae al
+1408e338f ret 
+1408e3390 movss xmm0, dword ptr [rip + 0x20425ec]
+1408e3398 ucomiss xmm0, dword ptr [rcx + 0x30]
+1408e339c setae dl
+1408e339f cmp byte ptr [rcx + 0x3d], 0
+1408e33a3 setne al
+1408e33a6 and al, dl
+1408e33a8 ret 
+1408e33a9 int3 
+1408e33aa int3 
+1408e33ab int3 
+1408e33ac int3 
+1408e33ad int3 
+1408e33ae int3 
+1408e33af int3 
+1408e33b0 movss xmm0, dword ptr [rcx + 0x30]
+1408e33b5 movss xmm1, dword ptr [rcx + 0x34]
+1408e33ba movss xmm2, dword ptr [rip + 0x2042542]
+1408e33c2 cmpeqps xmm2, xmm1
+1408e33c6 movss xmm1, dword ptr [rip + 0x20425b6]
+1408e33ce cmpnleps xmm0, xmm1
+1408e33d2 andps xmm0, xmm2
+1408e33d5 movd eax, xmm0
+1408e33d9 and al, 1
+1408e33db ret 
+1408e33dc int3 
+1408e33dd int3 
+1408e33de int3 
+1408e33df int3 

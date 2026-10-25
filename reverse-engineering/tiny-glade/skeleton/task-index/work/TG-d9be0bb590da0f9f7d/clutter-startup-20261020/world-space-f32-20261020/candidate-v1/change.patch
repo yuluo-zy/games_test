@@ -1,0 +1,170 @@
+--- a/tiny-glade/crates/utils/src/wall_space.rs
++++ b/tiny-glade/crates/utils/src/wall_space.rs
+@@ -79,6 +79,15 @@
+     fn point_u(&self, index: usize) -> f32;
+     fn position_at_u(&self, u: f32) -> Vec2;
+     fn tangent_at_u(&self, u: f32) -> Vec2;
++
++    /// Actual selected segment difference for native endpoint extrapolation.
++    /// Canonical Curve2 overrides this with its raw point difference. Existing
++    /// custom host implementations retain source compatibility through tangent;
++    /// a normalized custom tangent is not proof of original Curve2 equivalence.
++    fn raw_tangent_at_u(&self, u: f32) -> Vec2 {
++        self.tangent_at_u(u)
++    }
++
+     fn approximate_u(&self, point: Vec2) -> f32;
+ 
+     /// Unit direction used before the start; zero means no extrapolation.
+@@ -214,16 +223,69 @@
+     pub fn get_tangent(self, curve: &impl CurveSampling) -> Vec2 {
+         curve.tangent_at_u((self.u / curve.length()).clamp(0.0, 1.0))
+     }
++    /// B140c92090/793B: real selected endpoint, original two f32 normalizations.
+     pub fn to_world_space(self, curve: &impl CurveSampling) -> Vec3 {
++        use crate::curve::{CurveCoordSemantic2D, CurveU, CurveUBoundless};
+         let length = curve.length();
+         let normalized = self.u / length;
+-        let u = normalized.clamp(0.0, 1.0);
+-        let mut p = curve.position_at_u(u);
+-        if self.u < 0.0 {
+-            p += curve.start_tangent() * self.u;
+-        } else if self.u > length {
+-            p += curve.end_tangent() * (self.u - length);
+-        }
+-        Vec3::new(p.x, self.y, p.y)
+-    }
+-}
++        if self.u < 0.0 || self.u > length {
++            let u = CurveUBoundless::<CurveCoordSemantic2D>::new(normalized)
++                .clamp()
++                .get();
++            let p = curve.position_at_u(u);
++            let position = Vec3::new(p.x, self.y, p.y);
++            let delta = curve.raw_tangent_at_u(u);
++            let reciprocal = 1.0 / (delta.y * delta.y + delta.x * delta.x).sqrt();
++            let q = delta * reciprocal;
++            let reciprocal = 1.0 / (q.y * q.y + q.x * q.x).sqrt();
++            // Preserve zero*NaN in the middle lane for a zero endpoint segment.
++            let tangent = Vec3::new(q.x, 0.0, q.y) * reciprocal;
++            if self.u > length {
++                position + tangent * (self.u - length)
++            } else {
++                // Native actual direction is B-A and negativeU is subtracted.
++                position - tangent * self.u
++            }
++        } else {
++            let u = CurveU::<CurveCoordSemantic2D>::new(normalized).get();
++            let p = curve.position_at_u(u);
++            Vec3::new(p.x, self.y, p.y)
++        }
++    }
++}
++
++#[cfg(test)]
++mod world_position_original_tests {
++    use super::*;
++    use crate::curve::Curve2;
++
++    #[test]
++    fn negative_distance_subtracts_actual_forward_endpoint_tangent() {
++        let curve = Curve2::try_new(
++            vec![Vec2::ZERO, Vec2::new(3.0, 4.0), Vec2::new(6.0, 0.0)],
++            false,
++        ).unwrap();
++        let position = WallSpaceCoord::new_unchecked(-1.0, 2.0).to_world_space(&curve);
++        assert_eq!(position, Vec3::new(0.6, 2.0, 0.8));
++        assert_eq!(curve.raw_tangent_at_u(0.0), Vec2::new(3.0, 4.0));
++    }
++
++    #[test]
++    fn nonfinite_normalized_coordinate_is_an_observable_failure() {
++        let curve = Curve2::try_new(vec![Vec2::ZERO, Vec2::X], false).unwrap();
++        for u in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
++            assert!(std::panic::catch_unwind(|| {
++                WallSpaceCoord::new_unchecked(u, 2.0).to_world_space(&curve)
++            }).is_err());
++        }
++    }
++
++    #[test]
++    fn in_range_input_y_nan_propagates_without_an_extra_guard() {
++        let curve = Curve2::try_new(vec![Vec2::ZERO, Vec2::new(3.0, 4.0)], false).unwrap();
++        let position = WallSpaceCoord::new_unchecked(2.5, f32::NAN).to_world_space(&curve);
++        assert_eq!(position.x, 1.5);
++        assert!(position.y.is_nan());
++        assert_eq!(position.z, 2.0);
++    }
++}
+--- a/tiny-glade/crates/utils/tests/curve_properties.rs
++++ b/tiny-glade/crates/utils/tests/curve_properties.rs
+@@ -358,7 +358,7 @@
+ }
+ 
+ #[test]
+-fn wall_extrapolation_uses_first_and_last_nonzero_segment() {
++fn wall_extrapolation_uses_actual_endpoint_segments_and_original_negative_direction() {
+     for repeated_start in 0..8 {
+         for repeated_end in 0..8 {
+             let mut points = vec![Vec2::ZERO; repeated_start + 1];
+@@ -369,15 +369,26 @@
+                 let left = WallSpaceCoord::new_unchecked(-distance, 2.0).to_world_space(&curve);
+                 let right = WallSpaceCoord::new_unchecked(curve.length + distance, 2.0)
+                     .to_world_space(&curve);
+-                assert!(left.is_finite() && right.is_finite());
+-                assert!(left.distance(Vec3::new(-0.6 * distance, 2.0, -0.8 * distance)) < 1e-5);
+-                assert!(
+-                    right.distance(Vec3::new(6.0 + 0.6 * distance, 2.0, -0.8 * distance)) < 1e-5
+-                );
+-            }
+-        }
+-    }
+-    // Default methods keep pre-existing CurveSampling implementations compatible.
++                if repeated_start == 0 {
++                    assert!(left.is_finite());
++                    assert!(left.distance(Vec3::new(0.6 * distance, 2.0, 0.8 * distance)) < 1e-5);
++                } else {
++                    // Original actual zero first segment is not skipped.
++                    assert!(left.x.is_nan() && left.y.is_nan() && left.z.is_nan());
++                }
++                if repeated_end == 0 {
++                    assert!(right.is_finite());
++                    assert!(
++                        right.distance(Vec3::new(6.0 + 0.6 * distance, 2.0, -0.8 * distance)) < 1e-5
++                    );
++                } else {
++                    assert!(right.x.is_nan() && right.y.is_nan() && right.z.is_nan());
++                }
++            }
++        }
++    }
++    // Host custom-domain fixture, not an original shipped Curve2. Preserve its
++    // original input; rawZERO now propagates through both native normalizations.
+     struct Stationary;
+     impl CurveSampling for Stationary {
+         fn length(&self) -> f32 {
+@@ -396,10 +407,8 @@
+             0.0
+         }
+     }
+-    assert_eq!(
+-        WallSpaceCoord::new_unchecked(-1.0, 4.0).to_world_space(&Stationary),
+-        Vec3::new(0.0, 4.0, 0.0)
+-    );
++    let stationary = WallSpaceCoord::new_unchecked(-1.0, 4.0).to_world_space(&Stationary);
++    assert!(stationary.x.is_nan() && stationary.y.is_nan() && stationary.z.is_nan());
+ }
+ 
+ #[test]
+--- a/tiny-glade/crates/utils/src/curve/mod.rs
++++ b/tiny-glade/crates/utils/src/curve/mod.rs
+@@ -540,6 +540,9 @@
+     fn tangent_at_u(&self, u: f32) -> Vec2 {
+         self.get_tangent_at_u(u)
+     }
++    fn raw_tangent_at_u(&self, u: f32) -> Vec2 {
++        self.get_unnormalized_tangent_at_coord(self.get_coord_at_u(u))
++    }
+     fn approximate_u(&self, point: Vec2) -> f32 {
+         self.get_approx_u_from_pos(point)
+     }

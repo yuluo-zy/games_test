@@ -1,0 +1,45 @@
+{
+  "recorded_utc": "2026-10-24T06:32:24.549565+00:00",
+  "status": "implementation complete; final build, cleanup regression and measured runtime evidence pending",
+  "removed": [
+    "TimeOfDayState alias",
+    "append_fence_release alias",
+    "check_load_completion/check_load_completion_in filesystem wrappers and LoadingCompletionState mirror",
+    "six CPU mesh-only startup systems and add_startup_mesh_systems",
+    "STARTUP_DEMO_MODE/set_startup_demo_mode: per-World GameConfig required",
+    "load_theme_audio/load_glade_audio byte wrapper and audio_json_path; sole load_session_audio owner",
+    "WorldAssetHost/register_mesh_file unused adapter",
+    "MusicPlayer.glade_theme_flag redundant projection; MusicAudioState richness/target_richness authoritative",
+    "SteamInput prev_digital/frame_actions/pressed+released counts duplicate projection",
+    "HistoryTransactions global decorator/stairs mirrors; per-entry auxiliary authoritative",
+    "snapshot to_section_values/capture_game_snapshot/inflate_terrain_entry wrappers and unused speculative parse_terrain_section"
+  ],
+  "preserved": [
+    "original save-file version migrations and documented native failure policies",
+    "full device startup OnEnter(Game) and resource lifetime owners",
+    "existing native-value and GPU correctness assertions; obsolete helper-only tests migrated to canonical consumers"
+  ],
+  "perf_workload_scope": {
+    "static": "actual original intro scene with fixed frame delta",
+    "many_draws": "actual ECS entity clones retaining current asset owners; renderer+ECS stress, not original native scene equivalence",
+    "local_edit": "bounded PathRaster edits every 30 frames through actual staging owner; not UI gesture/Undo",
+    "continuous_edit": "same bounded producer edit every frame",
+    "loading_switch": "actual initial loading→gameplay handoff per independent process; startup samples separate from steady frames, not repeated App switches"
+  },
+  "source_sha256": {
+    "crates/country-core/src/resources/time_of_day.rs": "00a9a21135492b5a720e5432bfb0d12ce5909a2a75b3bdd019c321c0a08179a2",
+    "crates/country-core/src/resources/session.rs": "a10c041606c65b27d0294a1509e4e849e292e22978b0902fc66ba0b3a90586ff",
+    "crates/country-core/src/startup/mod.rs": "c8aa7a5605888af4656056fe532d065fb88b0ebbaff8bc7273dc6c3145d377ae",
+    "crates/country-core/src/startup/run_game.rs": "c16446437f04a089d9b0efa35a2b3f77366473ce42eed8d3234791f7342293ec",
+    "crates/country-core/src/startup/startup_session.rs": "869e1dbbdaabea832bc8c3b6a930358ff8134b36ab229598a027efc1576b824b",
+    "crates/country-core/src/startup/load_glade_audio.rs": "1db73edb95df8e2264c5816f838462d7d9111524a828f6938ff5e853bef1f73e",
+    "crates/country-core/src/systems/audio/music/glade_audio.rs": "a750cb0b1c10c79642df457b49832b75377b4ce51dd0c90f3dbcbb2c2e80d539",
+    "crates/country-core/src/systems/audio/music/music_player.rs": "e5ec511553cf788cf7010986323ee2026194f5f8eb55968070f72f3b7a27f5ec",
+    "crates/country-core/src/systems/save/load_completion_checker.rs": "aca25763a24d9571461786435b72e6d5d1d7979e857f0110c062f146ac69f0cd",
+    "crates/country-core/src/systems/save/snapshot.rs": "7ea96b0e294010522116da4dd451bbf75dd66909bbfd7f4c01762a163f5f2248",
+    "crates/country-core/src/resources/steam.rs": "fcbb29ac2f83f2203f1f11b60abd66cd49a0fc20ea864aa638fcf2447ff767f1",
+    "crates/country-core/src/resources/history/transactions.rs": "7c80c89af50c20af18b790cb5d8f4568da1181feaf69d0951949fef9bfff61c3",
+    "crates/country-core/src/resources/history/decorator_edit.rs": "ac7b9c6dbaa77bca86ef92247a8e3a37194f1cd2e9f753f7709ef912f8fe6400",
+    "crates/tiny-glade/tests/original_loading_present.rs": "8dba1039f98d29bb31a142c2f8cdf91045ca283b713d6ff7e5228e53810e0177"
+  }
+}

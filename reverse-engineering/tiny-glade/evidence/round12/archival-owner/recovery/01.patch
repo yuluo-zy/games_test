@@ -1,0 +1,97 @@
+*** Begin Patch
+*** Update File: D:/game/reverse-engineering/tiny-glade/evidence/round12/archival-owner/candidate/tiny-glade/crates/country-core/src/resources/walls/decorator_archivist.rs
+@@
+-    /// 0x140b2bc00（fresh 反编译 2026-10-17）：walls 探针（GlobalId 键，stride
+-    /// 0x98 = 8 键 + 0x90 桶）命中后 `fold` 该墙 decorators 集；任一 id 通过
+-    /// `is_decorator_cull_allowed` 即 true。未命中 false。
++    /// Original140b2bc00 mutates the permitted-ID set using this live wall's
++    /// keys. The fold's accumulator is (), not the result of an `any` query.
+@@
+-    /// 0x140b2bd30（fresh 反编译 2026-10-17）：`Map::fold` 单态，对 stairs 桶
+-    /// （special2）逐 id 做 cull 判定。桶缺失 false。
++    /// Original140b2bd30 extends the same set with live stair-bucket keys.
+@@
+     fn decorator_cull_allow_wall_and_stairs_fold_buckets() {
+@@
+         assert_eq!(archivist.culling.allowed_ids.len(), 2);
+     }
++
++    #[cfg(feature = "native-physics")]
++    fn add_live_collider(
++        world: &mut crate::systems::collision::world::RaycastWorld,
++        map: &mut HashMap<DecoratorId, crate::systems::collision::world::ColliderMeshInstance>,
++        id: u32,
++        source: crate::systems::collision::world::RaycastGeoSource,
++        position: glam::Vec3,
++    ) -> std::sync::Arc<crate::systems::collision::world::RaycastMeshData> {
++        use crate::systems::collision::world::{RaycastMeshData, upsert_collider};
++        let mesh = std::sync::Arc::new(RaycastMeshData::new_cuboid(glam::Vec3::splat(0.5), glam::UVec3::splat(id)));
++        upsert_collider(world, map, DecoratorId(id), source, mesh.clone(), position, glam::Quat::IDENTITY);
++        mesh
++    }
++
++    #[cfg(feature = "native-physics")]
++    #[test]
++    fn address_archive_keeps_both_real_collision_channels_and_meshes_after_live_deletion() {
++        use crate::systems::collision::world::{RaycastGeoSource, RaycastWorld, remove_collider};
++        use crate::resources::walls::decorator_collision::DecoratorPhysicsColliders;
++        let mut world = RaycastWorld::new();
++        let mut physics = DecoratorPhysicsColliders::default();
++        let first = add_live_collider(&mut world, &mut physics.first, 10, RaycastGeoSource::Slot0, glam::Vec3::new(1.0, 2.0, 3.0));
++        let second = add_live_collider(&mut world, &mut physics.second, 11, RaycastGeoSource::Slot1, glam::Vec3::new(-2.0, 4.0, 1.0));
++        let unrelated = add_live_collider(&mut world, &mut physics.first, 20, RaycastGeoSource::Slot0, glam::Vec3::ZERO);
++        let mut storage = LiveDecoratorStorage::default();
++        let mut selected = live_bucket(10, 0);
++        selected.insert(DecoratorId(11), DecoratorInfo { decorator_id: 11, ..Default::default() });
++        selected.insert(DecoratorId(12), DecoratorInfo { decorator_id: 12, ..Default::default() });
++        storage.per_wall.insert(WallId(3), selected);
++        storage.per_wall.insert(WallId(4), live_bucket(20, 0));
++        storage.terrain = Some(live_bucket(30, 0));
++        let mut archive = LiveDecoratorArchivist::default();
++        archive.archive_current_decorators_with_collision(DecoratorStorageAddr::Wall(WallId(3)), &storage, &world, &physics, "roof_edit");
++        assert_eq!(archive.walls.len(), 1);
++        assert!(archive.special1.is_none() && archive.special2.is_none());
++        assert_eq!(archive.walls[&RecoveredWallId(3)].items.len(), 3);
++        assert_eq!((archive.collision_a.len(), archive.collision_b.len()), (1, 1));
++        assert!(std::sync::Arc::ptr_eq(&archive.collision_a[&10].1.data, &first));
++        assert!(std::sync::Arc::ptr_eq(&archive.collision_b[&11].1.data, &second));
++        assert_eq!(archive.collision_a[&10].0.position, glam::Vec3::new(1.0, 2.0, 3.0));
++        assert_eq!(archive.collision_b[&11].0.position, glam::Vec3::new(-2.0, 4.0, 1.0));
++        // First archival owns the before-state. Later live edits do not replace it.
++        storage.per_wall.get_mut(&WallId(3)).unwrap().decorators.remove(&10);
++        archive.archive_current_decorators_with_collision(DecoratorStorageAddr::Wall(WallId(3)), &storage, &world, &physics, "roof_edit_again");
++        assert!(archive.walls[&RecoveredWallId(3)].items.contains_key(&10));
++        let weak = std::sync::Arc::downgrade(&first);
++        remove_collider(&mut world, &mut physics.first, &DecoratorId(10)).unwrap();
++        drop(first);
++        assert!(weak.upgrade().is_some(), "archival collision owns the deleted live mesh");
++        assert!(!archive.collision_a.contains_key(&20));
++        archive.archive_current_decorators_with_collision(DecoratorStorageAddr::Wall(WallId(99)), &storage, &world, &physics, "absent before-state");
++        assert!(archive.walls[&RecoveredWallId(99)].items.is_empty());
++        drop(archive);
++        assert!(weak.upgrade().is_none());
++        drop((second, unrelated));
++    }
++
++    #[cfg(feature = "native-physics")]
++    #[test]
++    fn invalid_actual_collider_generation_panics_after_the_before_state_is_archived() {
++        use crate::systems::collision::world::{RaycastGeoSource, RaycastWorld};
++        use crate::resources::walls::decorator_collision::DecoratorPhysicsColliders;
++        let mut world = RaycastWorld::new();
++        let mut physics = DecoratorPhysicsColliders::default();
++        let _mesh = add_live_collider(&mut world, &mut physics.first, 10, RaycastGeoSource::Slot0, glam::Vec3::ZERO);
++        let instance = physics.first.get_mut(&DecoratorId(10)).unwrap();
++        let (index, generation) = instance.collider.into_raw_parts();
++        instance.collider = rapier3d::geometry::ColliderHandle::from_raw_parts(index, generation.wrapping_add(1));
++        let mut storage = LiveDecoratorStorage::default();
++        storage.per_wall.insert(WallId(3), live_bucket(10, 0));
++        let mut archive = LiveDecoratorArchivist::default();
++        let failed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++            archive.archive_current_decorators_with_collision(DecoratorStorageAddr::Wall(WallId(3)), &storage, &world, &physics, "roof_edit");
++        }));
++        assert!(failed.is_err());
++        assert!(archive.walls[&RecoveredWallId(3)].items.contains_key(&10));
++        assert!(archive.collision_a.is_empty());
++    }
+*** End Patch

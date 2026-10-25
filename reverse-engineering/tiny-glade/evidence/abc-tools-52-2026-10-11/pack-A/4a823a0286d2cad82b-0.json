@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "artifact": {
+    "path": "/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe",
+    "sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708",
+    "bytes": 48046080,
+    "id": "abc-tools-52",
+    "version": "A",
+    "format": "PE",
+    "image_base": "0x140000000",
+    "rsds": [
+      {
+        "guid": "98388131-DB1D-D6B0-4C4C-44205044422E",
+        "age": 1,
+        "pdb_name": "tiny_glade.pdb"
+      }
+    ],
+    "debug": {
+      "path": "/Users/yuluo/Desktop/game/Tiny Glade/tiny_glade.pdb",
+      "sha256": "d5d4001583e31abf20b1563bbfdd9e4853629065aa2e461fe5809b205db908a5",
+      "bytes": 213172224,
+      "guid": "98388131-DB1D-D6B0-4C4C-44205044422E",
+      "age": 1
+    }
+  },
+  "request_id": "4a823a0286d2cad82b-0",
+  "cache_key": "6a630d6d43af385c16bb4b835f3412ef7118a4944a1d0db181c9a68cad25a3d6",
+  "status": "ok",
+  "range": {
+    "rva": "0x1024ed0",
+    "length": 12,
+    "start_va": "0x141024ed0",
+    "stop_va_exclusive": "0x141024edc",
+    "instruction_overhang_bytes": 0,
+    "function_boundary_verified": false
+  },
+  "instructions": [
+    {
+      "va": "0x141024ed0",
+      "rva": "0x1024ed0",
+      "bytes": "488b01",
+      "size": 3,
+      "assembly": "movq\t(%rcx), %rax",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x141024ed3",
+      "rva": "0x1024ed3",
+      "bytes": "488b5108",
+      "size": 4,
+      "assembly": "movq\t0x8(%rcx), %rdx",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x141024ed7",
+      "rva": "0x1024ed7",
+      "bytes": "4883c010",
+      "size": 4,
+      "assembly": "addq\t$0x10, %rax",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x141024edb",
+      "rva": "0x1024edb",
+      "bytes": "c3",
+      "size": 1,
+      "assembly": "retq",
+      "crosses_requested_stop": false
+    }
+  ],
+  "symbolization": [
+    {
+      "Address": "0x1024ed0",
+      "ModuleName": "/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe",
+      "Symbol": [
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/code/pouncelight/country-slice-private/crates/asset/src/prefab.rs",
+          "FunctionName": "asset::prefab::impl$5::as_ref",
+          "Line": 70,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        },
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/code/pouncelight/country-slice-private/crates/asset/src/prefab.rs",
+          "FunctionName": "_$LT$asset..prefab..PrefabName$u20$as$u20$core..convert..AsRef$LT$str$GT$$GT$::as_ref::hc51f9d8acb1eb655",
+          "Line": 32,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        }
+      ]
+    }
+  ],
+  "missing_symbol_addresses": [],
+  "raw_assembly": "\n/Users/yuluo/Desktop/game/Tiny Glade/tiny-glade.exe:\tfile format coff-x86-64\n\nDisassembly of section .text:\n\n0000000140001000 <.text>:\n141024ed0: 48 8b 01                    \tmovq\t(%rcx), %rax\n141024ed3: 48 8b 51 08                 \tmovq\t0x8(%rcx), %rdx\n141024ed7: 48 83 c0 10                 \taddq\t$0x10, %rax\n141024edb: c3                          \tretq\n",
+  "original_target_executed": false
+}

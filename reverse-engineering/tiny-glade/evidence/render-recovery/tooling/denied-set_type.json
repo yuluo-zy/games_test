@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-10-12T06:29:36.782Z",
+  "server": "fake",
+  "actual_mcp_connection": false,
+  "target_execution": false,
+  "results": [],
+  "cleanup": [],
+  "lock_events": [],
+  "ok": false,
+  "evidence_limits": [
+    "Static tool outputs do not prove runtime execution.",
+    "Xref completeness is unknown with auto-analysis disabled. Empty or DATA-only references cannot establish whole-program absence.",
+    "Successful cache reuse preserves the original evidence coverage; it does not expand it."
+  ],
+  "cache_policy": {
+    "enabled": true,
+    "reason": "Caller-supplied provider manifest and DB revision/snapshot hashes; caller must update snapshot after DB changes.",
+    "provider_version_provenance": "job-declared; actual server self-report is recorded separately upon connection"
+  },
+  "identity": {
+    "target": {
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\target.bin",
+      "sha256": "b25bbde7055ac6765755e90cf8c8bdacc1e6bf87d4bb1d8595f1b41fadd4779e"
+    },
+    "provider": {
+      "id": "local-fake",
+      "version": "1"
+    },
+    "launch_sha256": "986e6fefa3ee4b273f5a19801567094d85b501564448dd3e9cb46f3a0bb38fa0",
+    "inputs": [
+      {
+        "path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\input.txt",
+        "sha256": "922fb3a215d0dd772daf3488d626a7c09df0fa32df16b5f2fdc293b59aa3c283"
+      },
+      {
+        "path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\provider-manifest.json",
+        "sha256": "051e563027f30f8f9f9c8585e9a12a2ea7f5f6c2102d272e4986dccb791b2580",
+        "role": "provider_manifest"
+      },
+      {
+        "path": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\tooling\\fixture\\database-snapshot.json",
+        "sha256": "ae7322e8823905aa81b9c825d0b5b2a442cf7467473c29dd729480b3cdf99b61",
+        "role": "database_snapshot"
+      }
+    ]
+  },
+  "error": "Error: operation outside static read-only allowlist: set_type",
+  "cleanup_ok": true,
+  "completed_at": "2026-10-12T06:29:36.783Z"
+}

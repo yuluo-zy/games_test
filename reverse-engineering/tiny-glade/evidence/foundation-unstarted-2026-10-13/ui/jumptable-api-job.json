@@ -1,0 +1,1 @@
+[{"tool":"run-script","args":{"programPath":"/tiny-glade.exe","code":"import jpype,json\nfor n in ['ghidra.program.model.pcode.JumpTable','ghidra.program.model.pcode.HighFunction']:\n c=jpype.JClass(n)\n print(n)\n print([str(x) for x in c.class_.getConstructors()])\n print([str(x) for x in c.class_.getMethods() if 'override' in str(x).lower() or 'jump' in str(x).lower()])\n"}}]

@@ -1,0 +1,312 @@
+{
+  "date": "2026-10-14",
+  "baseline": "B Windows x86_64",
+  "package": "tg-text",
+  "requested_internal_rules": [
+    "owned shared font table / role selection / base-vs-scaled metrics",
+    "u32 frame/stamp and exact glyph cache validation/reclamation"
+  ],
+  "status": "restored_and_verified_scoped_internal_rules",
+  "author_metrics_type_name_known": false,
+  "recovered_metrics_type_name": "FontMetrics",
+  "unproven_tuple_conversion_added": false,
+  "game_callers_changed": false,
+  "gpu_wiring_changed": false,
+  "gpu_executed": false,
+  "original_source_text_claimed": false,
+  "whole_library_or_game_accepted": false,
+  "native_cases": {
+    "font": 17,
+    "cache": 791,
+    "same_id": 21
+  },
+  "public_dependency_identities_original": 113,
+  "report": "../../reverse-engineering/tiny-glade/evidence/text-internal-2026-10-14/REPORT.md",
+  "verification": "../../reverse-engineering/tiny-glade/evidence/text-internal-2026-10-14/verification.json",
+  "checks": [
+    {
+      "name": "test",
+      "command": [
+        "C:/Users/liyu/.cargo/bin/cargo.exe",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "tg-text",
+        "--all-targets"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.679,
+      "log": "test.log",
+      "log_sha256": "025a188f625bcca96a41e51bd13d111cb76b0069f982c957f6d42b70bf4934ce",
+      "passed": 33,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "name": "release-test",
+      "command": [
+        "C:/Users/liyu/.cargo/bin/cargo.exe",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "tg-text",
+        "--all-targets",
+        "--release"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 45.754,
+      "log": "release-test.log",
+      "log_sha256": "eb96777e8ef274610d27ea959a1542434ccc7c4afcbaca3f53aa69c3ff87eda6",
+      "passed": 33,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "name": "clippy",
+      "command": [
+        "C:/Users/liyu/.cargo/bin/cargo.exe",
+        "clippy",
+        "--offline",
+        "--locked",
+        "-p",
+        "tg-text",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.914,
+      "log": "clippy.log",
+      "log_sha256": "7a06474167e206551ea20de9ea596ca98e174e7e38e53f494bd765fd8091e80b"
+    },
+    {
+      "name": "gpu-api-check",
+      "command": [
+        "C:/Users/liyu/.cargo/bin/cargo.exe",
+        "check",
+        "--offline",
+        "--locked",
+        "-p",
+        "tg-text",
+        "--features",
+        "gpu",
+        "--all-targets"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.668,
+      "log": "gpu-api-check.log",
+      "log_sha256": "7d4778d713a522de7c9a35a52be7afb74c408ebd3910a825d3929d58d50df4ce"
+    },
+    {
+      "name": "fmt",
+      "command": [
+        "C:/Users/liyu/.cargo/bin/cargo.exe",
+        "fmt",
+        "-p",
+        "tg-text",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.342,
+      "log": "fmt.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "files": [
+    {
+      "path": "crates/tg-text/Cargo.toml",
+      "sha256": "0ab4b101e843b17d212a4a78f4dcfc52356b263e4e8a09ffe106ba665bb461bb",
+      "before_sha256": "5de03382985564d5662134e016775217e88d4dae2caed44ac9ad209025fb8042",
+      "changed": false,
+      "original_sha256": "5de03382985564d5662134e016775217e88d4dae2caed44ac9ad209025fb8042",
+      "path_status": "content_changed",
+      "current_path": "crates/tg-text/Cargo.toml"
+    },
+    {
+      "path": "crates/tg-text/examples/text_gpu.rs",
+      "sha256": "2a81e848b5f3511a7788ff0b63aa10676ebdafb1da8574503f77ff469a280e5f",
+      "before_sha256": "0ee0d1b92e71ce62e54475a38275f34029bb184e42e31484d64875ab1e586354",
+      "changed": true,
+      "original_sha256": "da1abe91cba9d83e6b6e2eaa89c585b1b88a7a2cb616446ac36a20c074c915c4",
+      "path_status": "content_changed",
+      "current_path": "crates/tg-text/examples/text_gpu.rs"
+    },
+    {
+      "path": "crates/tg-text/README.md",
+      "sha256": "c2bbf1e0b265ebcd29a08ae14e25b36a380cf32a526923e762b6983de13fb0e7",
+      "before_sha256": "f5f8a8096d4b0587bc34f1d99f6a20642fb1a5888c4e4c8bfb0ad3088278f74e",
+      "changed": true,
+      "original_sha256": "db1c0730094e46b2edf95faa57a2bf63a591049147e1014bb81a6f650a2536a4",
+      "path_status": "content_changed",
+      "current_path": "crates/tg-text/README.md"
+    },
+    {
+      "path": "crates/tg-text/src/color.rs",
+      "sha256": "12e4761ff8994158f2427c9b3b91873ce79b446acc7a8c82b16bebcfc36e7935",
+      "before_sha256": "49cc734560cf450cd6d28388ed2ba737a80930c14e880e4a87d1c31215714825",
+      "changed": false,
+      "original_sha256": "49cc734560cf450cd6d28388ed2ba737a80930c14e880e4a87d1c31215714825",
+      "path_status": "content_changed",
+      "current_path": "crates/tg-text/src/color.rs"
+    },
+    {
+      "path": "crates/tg-text/src/font_table.rs",
+      "sha256": "3135eccd7d6ffc445f8e0f663da63f8c6f88d34c4f2347b97377bd545ed271b3",
+      "before_sha256": "924b6499adc9b1abe1ded2905382bf851951d582d3c290826db8594c173760ea",
+      "changed": true,
+      "original_sha256": "4c9e5e7c9c949b06fc00045e7afe1def2d962ac17bfc6eeaf5f2dfb7f91e5574",
+      "path_status": "content_changed",
+      "current_path": "crates/tg-text/src/font_table.rs"
+    },
+    {
+      "path": "crates/tg-text/src/fragment.rs",
+      "sha256": "189490144976a45893b3f2d796fa0edd47ff4443622e650e33a518fdaf6d1066",
+      "before_sha256": "a4c2f8d55620cf122f1bb821a82408c235457d2dcd1bbb7975ed993927bf5e02",
+      "changed": true,
+      "original_sha256": "19a9e28f5225fcff6e45b7865787f0db7387043c217d56308cd82ae0edd6fb2b",
+      "path_status": "content_changed",
+      "current_path": "crates/tg-text/src/fragment.rs"
+    },
+    {
+      "path": "crates/tg-text/src/gpu.rs",
+      "sha256": "048ea536afc49a8c5d214cc1a0961be0ed8735f23b700479932637cb3555517e",
+      "before_sha256": "a5ed310e8fda06bdf20ab59113a90d4310d7f6e5baad6fc0f954b768e55d1d2a",
+      "changed": false,
+      "original_sha256": "a5ed310e8fda06bdf20ab59113a90d4310d7f6e5baad6fc0f954b768e55d1d2a",
+      "path_status": "content_changed",
+      "current_path": "crates/tg-text/src/gpu.rs"
+    },
+    {
+      "path": "crates/tg-text/src/lib.rs",
+      "sha256": "9c3082db1886ae3b283292edd3e709dd34a3534986147e4efddb3393dd6fcf62",
+      "before_sha256": "abc9ad9de6c877504ad6ddf277c766b35863e4cb8057ef0ef739ee5290dafc6b",
+      "changed": true,
+      "original_sha256": "ea50bb3d9c6d88d4007495ef34615c3fddf5642b6587b9d1c1f8018b1c06da2e",
+      "path_status": "content_changed",
+      "current_path": "crates/tg-text/src/lib.rs"
+    },
+    {
+      "path": "crates/tg-text/src/renderer.rs",
+      "sha256": "4b49b61d25b332c33756f3f7cdf224a984b96780833b3a36750f9a705e0c9c8d",
+      "before_sha256": "29767ea08aa4e8f37f4b7f888e8b6c5ad8f48cbec529a78992a4318e9cb8d6b1",
+      "changed": true,
+      "original_sha256": "7ed9f9ee89c44775774831d3120f3f87de2b308218c9a7ed1c7e5a321a677be2",
+      "path_status": "content_changed",
+      "current_path": "crates/tg-text/src/renderer.rs"
+    },
+    {
+      "path": "crates/tg-text/src/shape_stream.rs",
+      "sha256": "cb2da2139bbabbb8c9e00a0d2ced3140bc858cfeab59c50144d4b9cdaf937432",
+      "before_sha256": "0c04c42a4ffb582e5b1fcdb400619607d4d7083fe69691293efc44f35f00851d",
+      "changed": false,
+      "original_sha256": "0c04c42a4ffb582e5b1fcdb400619607d4d7083fe69691293efc44f35f00851d",
+      "path_status": "content_changed",
+      "current_path": "crates/tg-text/src/shape_stream.rs"
+    },
+    {
+      "path": "crates/tg-text/tests/behavior.rs",
+      "sha256": "6d470c499dde80ed79a01d26153514a4b07ad423132450a78b7250d5d81a32c9",
+      "before_sha256": "a0e0a9871f3afcaf6399bfb01730d2ce33b9bb1be0a6140a16a93a10eced3d81",
+      "changed": false,
+      "original_sha256": "a0e0a9871f3afcaf6399bfb01730d2ce33b9bb1be0a6140a16a93a10eced3d81",
+      "path_status": "content_changed",
+      "current_path": "crates/tg-text/tests/behavior.rs"
+    },
+    {
+      "path": "crates/tg-text/tests/fixtures/font-table.ron",
+      "sha256": "0b9b4cd55916b7c4af0dd1322ce5d5330f72cfcb5fa6be1582d60b93961d8834",
+      "before_sha256": "0b9b4cd55916b7c4af0dd1322ce5d5330f72cfcb5fa6be1582d60b93961d8834",
+      "changed": false,
+      "path_status": "current",
+      "current_path": "crates/tg-text/tests/fixtures/font-table.ron"
+    },
+    {
+      "path": "crates/tg-text/tests/fixtures/internal-native-cache-oracle.json",
+      "sha256": "6400bccc22e53a66e6d7caa2267a382527b9a99f708b2512350158776fadf003",
+      "before_sha256": null,
+      "changed": true,
+      "original_path": "crates/tg-text/tests/fixtures/internal-native-cache-oracle.json",
+      "removal_reason": "fixture removed/replaced in tg-text tests",
+      "path_status": "removed",
+      "current_path": null
+    },
+    {
+      "path": "crates/tg-text/tests/fixtures/internal-native-font.json",
+      "sha256": "caf446feb0fae2e9e230c681e5df03e92a1f0b6b638e28755ba78f2fe5509b70",
+      "before_sha256": null,
+      "changed": true,
+      "original_path": "crates/tg-text/tests/fixtures/internal-native-font.json",
+      "removal_reason": "fixture removed/replaced in tg-text tests",
+      "path_status": "removed",
+      "current_path": null
+    },
+    {
+      "path": "crates/tg-text/tests/fixtures/internal-native-same-id.json",
+      "sha256": "fc10192babe059c974872c7d410164b55d83be9b1a0585cd8671701199418f9b",
+      "before_sha256": null,
+      "changed": true,
+      "original_path": "crates/tg-text/tests/fixtures/internal-native-same-id.json",
+      "removal_reason": "fixture removed/replaced in tg-text tests",
+      "path_status": "removed",
+      "current_path": null
+    },
+    {
+      "path": "crates/tg-text/tests/fixtures/native-oracle.json",
+      "sha256": "c489f562387de50c00fe5152e83044d4df3b15b4385b2e1f37b10ce2a36ac503",
+      "before_sha256": "c489f562387de50c00fe5152e83044d4df3b15b4385b2e1f37b10ce2a36ac503",
+      "changed": false,
+      "original_path": "crates/tg-text/tests/fixtures/native-oracle.json",
+      "removal_reason": "fixture removed/replaced in tg-text tests",
+      "path_status": "removed",
+      "current_path": null
+    },
+    {
+      "path": "crates/tg-text/tests/fixtures/opacity-native-oracle.json",
+      "sha256": "e8cd9ef3fd5c9b677d61ea9218fd4a2cd3faa0d8b945b268fb4c929dac5c5b1d",
+      "before_sha256": "e8cd9ef3fd5c9b677d61ea9218fd4a2cd3faa0d8b945b268fb4c929dac5c5b1d",
+      "changed": false,
+      "original_path": "crates/tg-text/tests/fixtures/opacity-native-oracle.json",
+      "removal_reason": "fixture removed/replaced in tg-text tests",
+      "path_status": "removed",
+      "current_path": null
+    },
+    {
+      "path": "crates/tg-text/tests/fixtures/rect-native-oracle.json",
+      "sha256": "bbf42eac48cfb817f9993062817c0af0268c2150a9a548f658ff7a39078aecf9",
+      "before_sha256": "bbf42eac48cfb817f9993062817c0af0268c2150a9a548f658ff7a39078aecf9",
+      "changed": false,
+      "original_path": "crates/tg-text/tests/fixtures/rect-native-oracle.json",
+      "removal_reason": "fixture removed/replaced in tg-text tests",
+      "path_status": "removed",
+      "current_path": null
+    },
+    {
+      "path": "crates/tg-text/tests/followup_contract.rs",
+      "sha256": "7f567995dd6a119a877c28741df07179b54abcf51d37fe31945afa29eb725304",
+      "before_sha256": "e18c45a4f9772255ae06e2c18acd2bbeb26bea54746dfc17da5244996fd78921",
+      "changed": true,
+      "original_sha256": "d6426719c645a01eb1b80c5c3dbbe907fa818cfee58bfe53ac7bfbad2e7ce916",
+      "path_status": "content_changed",
+      "current_path": "crates/tg-text/tests/followup_contract.rs"
+    },
+    {
+      "path": "crates/tg-text/tests/text_pipeline.rs",
+      "sha256": "b6b31680c0cafc7058d8e75ed6fefa387bb0efc77318796581da0359994a8f97",
+      "before_sha256": "5fcb20dd6ca2bdf7ae8cba55cbd1a2d379572613db4cc659db136cb512589d6d",
+      "changed": true,
+      "original_sha256": "e0327a62dc59b4e1869651b9333d8dd0e24f7ce6ecdcfd3c9d9a2f8b9898ef99",
+      "path_status": "content_changed",
+      "current_path": "crates/tg-text/tests/text_pipeline.rs"
+    }
+  ],
+  "ledger_updated": "2026-10-24",
+  "ledger_state": "current paths and hashes; audited original_path/original_sha256 retained",
+  "path_loss_summary": {
+    "content_changed": 13,
+    "current": 1,
+    "removed": 6
+  }
+}

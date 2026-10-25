@@ -1,0 +1,141 @@
+{
+  "target": "B",
+  "reviewer": "terrain-curve-20261018",
+  "frozen_files": 16,
+  "frozen_all_match": true,
+  "original_two_ranges": [
+    {
+      "start": "0x14173db1f",
+      "end_exclusive": "0x14173dba5",
+      "bytes": 134,
+      "sha256": "81d20dde5177eaf3647035e630279b03072f193b7ffa2560cf132fec293eba9c",
+      "instructions": 35
+    },
+    {
+      "start": "0x1414fbcc2",
+      "end_exclusive": "0x1414fbd48",
+      "bytes": 134,
+      "sha256": "325ac94e15c7062ee405184a84aac2c7736ae0bc2209ef5bf962d9d59fbec965",
+      "instructions": 35
+    }
+  ],
+  "metadata_sha256": "825da1e968524bb332fbed8e1be4b8bf3ab2eca03ab20310091d06779ed7e549",
+  "original_inline_executions": 20,
+  "original_rerun_all_output_bits_equal": true,
+  "independent_extra_cases": [
+    {
+      "name": "mixed_signed_zero",
+      "input_bits": [
+        0,
+        2147483648
+      ],
+      "hardware_bits": [
+        0,
+        0
+      ],
+      "captured": true,
+      "initial_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "output_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "event_payload_bits": [],
+      "event_count_after": 7,
+      "cursor_changed_tick": 0,
+      "events_changed_tick": 0
+    },
+    {
+      "name": "captured_nan",
+      "input_bits": [
+        0,
+        2143294004
+      ],
+      "hardware_bits": [
+        0,
+        0
+      ],
+      "captured": true,
+      "initial_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "output_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "event_payload_bits": [
+        [
+          0,
+          2143294004
+        ]
+      ],
+      "event_count_after": 8,
+      "cursor_changed_tick": 0,
+      "events_changed_tick": 77
+    },
+    {
+      "name": "captured_nonzero_zero_hardware",
+      "input_bits": [
+        1065353216,
+        0
+      ],
+      "hardware_bits": [
+        0,
+        0
+      ],
+      "captured": true,
+      "initial_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "output_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "event_payload_bits": [
+        [
+          1065353216,
+          0
+        ]
+      ],
+      "event_count_after": 8,
+      "cursor_changed_tick": 0,
+      "events_changed_tick": 77
+    },
+    {
+      "name": "uncaptured_x_zero_y_subnormal",
+      "input_bits": [
+        0,
+        1
+      ],
+      "hardware_bits": [
+        0,
+        0
+      ],
+      "captured": false,
+      "initial_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "output_position_bits": [
+        1112014848,
+        1101004800
+      ],
+      "event_payload_bits": [
+        [
+          0,
+          1
+        ]
+      ],
+      "event_count_after": 8,
+      "cursor_changed_tick": 77,
+      "events_changed_tick": 77
+    }
+  ],
+  "candidate_sha256": "3d51a1bef9d9ba09d774483b87197d38f0db07d00e91528f1579248dc1f4c6d4",
+  "findings": [],
+  "scope": "Existing event payload and nonzero gate; captured event preservation. Current manual cursor anchor/clamp policy intentionally retained. No claim of full original wrapper/dependency parity or C."
+}

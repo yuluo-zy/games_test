@@ -1,0 +1,17 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/ui_clutter/mod.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/ui_clutter/mod.rs
+@@ -37,7 +37,13 @@
+ /// 字段名按旋转公式（0x140976ca0 atan2f 链输入语义）命名；0x58B 布局字段名待取证。
+ #[derive(Clone, Copy, Debug)]
+ pub struct AutoClutterRecord {
+-    /// 世界位置（0x48B 事件 @+0x18 载荷）。
++    /// Source AutoClutter first qword; distinct from the ECS entity index key.
++    pub clutter_id: u64,
++    /// Actual source component destination union (+0x18..0x30), copied by the
++    /// original InstaCreateDeco producer. Host supplies this source value; an
++    /// entity ID cannot reconstruct it. Semantic destination decoding is open.
++    pub destination: [u64; 3],
++    /// Transform.translation（原创建载荷 @+0x30）。
+     pub position: glam::Vec3,
+     /// 记录四元数分量 w/x/y/z（0x140976ca0 旋转公式输入，O）。
+     pub w: f32,

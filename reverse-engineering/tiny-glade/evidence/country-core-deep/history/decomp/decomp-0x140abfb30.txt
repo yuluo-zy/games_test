@@ -1,0 +1,45 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_140abfb30(byte *param_1)
+
+{
+  longlong lVar1;
+  float fVar2;
+  float fVar3;
+  
+  if (param_1[0x15] != 0) {
+    return;
+  }
+  if ((*param_1 & 1) != 0) {
+    fVar3 = 0.0;
+    if (0.0 <= *(float *)(param_1 + 0x10) / *(float *)(param_1 + 4)) {
+      fVar3 = *(float *)(param_1 + 0x10) / *(float *)(param_1 + 4);
+    }
+    fVar2 = _UNK_142925904;
+    if (fVar3 <= _UNK_142925904) {
+      fVar2 = fVar3;
+    }
+    func_0x000140c961e0(fVar2);
+    lVar1 = 0;
+    if (*(longlong *)(*(longlong *)(param_1 + 8) + 0x10) < -0x7ffffffffffffff0) {
+      lVar1 = *(longlong *)(*(longlong *)(param_1 + 8) + 0x10) + -0x7fffffffffffffff;
+    }
+                    /* WARNING: Could not emulate address calculation at 0x000140abfc1c */
+                    /* WARNING: Treating indirect jump as call */
+    (*(code *)(&UNK_142adf44c + *(int *)(&UNK_142adf44c + lVar1 * 4)))
+              (&UNK_142adf44c + *(int *)(&UNK_142adf44c + lVar1 * 4));
+    return;
+  }
+  param_1[0x15] = 1;
+  lVar1 = 0;
+  if (*(longlong *)(*(longlong *)(param_1 + 8) + 0x10) < -0x7ffffffffffffff0) {
+    lVar1 = *(longlong *)(*(longlong *)(param_1 + 8) + 0x10) + -0x7fffffffffffffff;
+  }
+                    /* WARNING: Could not emulate address calculation at 0x000140abfc69 */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)(&UNK_142adf408 + *(int *)(&UNK_142adf408 + lVar1 * 4)))
+            (&UNK_142adf408 + *(int *)(&UNK_142adf408 + lVar1 * 4));
+  return;
+}
+

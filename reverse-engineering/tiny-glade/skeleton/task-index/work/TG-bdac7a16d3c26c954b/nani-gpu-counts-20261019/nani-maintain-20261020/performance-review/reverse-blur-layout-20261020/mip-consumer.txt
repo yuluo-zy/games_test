@@ -1,0 +1,43 @@
+Source: /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/generate_mips.rs
+SHA256: d71a267d638fb16c9e12eeb8e260035c5bd9f99a1dfe374fd8b0520a72f9f6b0
+
+87: 
+88: /// SPD 的两个 mip 写视图（B、C）的描述。
+89: pub fn individual_mips_view() -> TextureViewDesc {
+90:     TextureViewDesc::new()
+91:         .bind_individual_mips(true)
+92:         .base_mip_level(1)
+93:         .view_type(VIEW_TYPE_2D_ARRAY)
+94: }
+95: pub fn last_mip_view(mips: u8) -> TextureViewDesc {
+96:     TextureViewDesc::new()
+97:         .view_type(VIEW_TYPE_2D_ARRAY)
+98:         .base_mip_level(last_view_base_mip(mips))
+99:         .level_count(Some(1))
+100: }
+101: 
+
+121:         texture,
+122:         TEX_STORAGE_WRITE,
+123:         TextureViewDesc::new()
+124:             .base_mip_level(0)
+125:             .level_count(Some(1)),
+126:     );
+127:     let pass = bind_with_view(
+128:         pass,
+129:         HASH_MIPS,
+130:         texture,
+131:         TEX_STORAGE_WRITE,
+132:         individual_mips_view(),
+133:     );
+134:     let pass = bind_with_view(
+135:         pass,
+136:         HASH_MIP_LAST,
+137:         texture,
+138:         TEX_STORAGE_WRITE,
+139:         last_mip_view(mips),
+140:     );
+141:     // Original packaged shader declares imgSrc readonly despite its legacy
+142:     // RW synchronization code. Preserve only the exact mip0 binding range.
+143:     let pass = pass.preserve_storage_texture_contents(HASH_MIP0)
+

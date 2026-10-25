@@ -1,0 +1,58 @@
+{
+  "pid": 80322,
+  "binary": "/tmp/tg-render-perf-baseline",
+  "binary_sha256": "b67555b3313a9cd76638ae094d91cccefae4c382b621186e1acf90a5509356f5",
+  "scenario": "loading_switch",
+  "mode": "parallel",
+  "warmup": 200,
+  "frames": 1000,
+  "stack_sampling": false,
+  "gpu_timestamps": false,
+  "stage_timing": false,
+  "started_utc": "2026-10-24T08:42:15.047629+00:00",
+  "source_sha256_at_start": {
+    "Cargo.lock": "57ab0932c38ecdec6a2056504fec3695970859798b63f33a3ba93b1ff2db503a",
+    "crates/tiny-glade/tests/original_loading_present.rs": "df5e57da70e31b37a8bca58305e5d635314dc75aada4f96370f920c013fb9c4b",
+    "crates/tiny-glade/src/production_renderer.rs": "2e6f719e7bbdcc5d91b277495547109def74a836adf5ef473ebf234702e62c00"
+  },
+  "environment": {
+    "VK_ICD_FILENAMES": "/opt/homebrew/etc/vulkan/icd.d/MoltenVK_icd.json",
+    "VK_LAYER_PATH": "/opt/homebrew/share/vulkan/explicit_layer.d",
+    "DYLD_FALLBACK_LIBRARY_PATH": "/opt/homebrew/lib",
+    "RHAPSODY_REQUIRE_VULKAN": "1",
+    "TG_INSTALL_ROOT": "/Users/yuluo/Desktop/game/B\u7248\u672c\u5185\u5bb9",
+    "TG_VALIDATE_GAMEPLAY_WSI": "1",
+    "TG_VALIDATE_WORLD_FRAMES": "1200",
+    "TG_VALIDATE_TIMEOUT_SECONDS": "900",
+    "TG_PERF_SCENARIO": "loading_switch",
+    "TG_FRAME_TIMING": "0",
+    "TG_FRAME_TIMING_EVERY": "1",
+    "TG_DRAW_COLLECT": "parallel",
+    "TG_DRAW_COLLECT_CHUNK": "64",
+    "TG_REQUIRE_CROSS_PASS": "1"
+  },
+  "exit_code": 1,
+  "elapsed_s": 67.06591637502424,
+  "log_sha256": "39d0c132855f295ef456bd173a1d539203c87d6c58e05e495b31e05c82f92e27",
+  "cpu": {
+    "average_process_cpu_percent": 67.03857097261047,
+    "sampled_cpu_ms_per_observed_frame": 61.702127659574465,
+    "peak_rss_kib": 405792,
+    "observed_frame_range": [
+      203,
+      673
+    ],
+    "scope": "1-second process snapshots; 100% is one CPU core; sampled subrange excludes startup/warmup, not exact full-frame CPU attribution."
+  },
+  "cpu_summary_original": {
+    "average_process_cpu_percent": 67.03857097261047,
+    "peak_rss_kib": 405792,
+    "observed_frame_range": [
+      203,
+      673
+    ],
+    "scope": "1-second process snapshots; 100% is one CPU core; sampled subrange excludes startup/warmup, not exact full-frame CPU attribution."
+  },
+  "cpu_summary_revision": "exclude macOS exited-child zero-RSS samples; include sampled CPU ms/frame",
+  "allocator": "system allocator: historical WSI fixture; does not match shipped mimalloc binaries"
+}

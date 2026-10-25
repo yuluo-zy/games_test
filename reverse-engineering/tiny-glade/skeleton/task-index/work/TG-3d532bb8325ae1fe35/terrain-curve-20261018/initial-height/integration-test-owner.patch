@@ -1,0 +1,10 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/tests.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/tests.rs
+@@ -155,6 +155,7 @@
+         widget: draw_id,
+     }));
+     let mut schedule = Schedule::default();
++    ui_draw_terrain::register_test_buffers(&mut world);
+     schedule.add_systems(ui_draw_terrain::ui_draw_terrain);
+     schedule.run(&mut world);
+     // height=0 → canvas 1（terrain_deny_draw）不注册；canvas 2（terrain_draw）无条件注册。

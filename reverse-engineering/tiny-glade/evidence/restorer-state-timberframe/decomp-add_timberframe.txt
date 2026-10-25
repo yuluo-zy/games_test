@@ -1,0 +1,376 @@
+ADDR: 0x140630a20
+SIG: void __cdecl add_timberframe(void)
+SIZE: 511
+---- DECOMP ----
+
+void __cdecl timberframe::impl$0::add_timberframe(void)
+
+{
+  longlong extraout_RAX;
+  longlong extraout_RAX_00;
+  longlong extraout_RAX_01;
+  longlong in_RCX;
+  longlong lVar1;
+  ulonglong uVar2;
+  char *local_118;
+  undefined8 uStack_110;
+  longlong local_108;
+  undefined8 uStack_100;
+  undefined8 local_f8;
+  undefined8 uStack_f0;
+  undefined8 local_e8;
+  undefined8 uStack_e0;
+  undefined8 local_d8;
+  undefined8 uStack_d0;
+  undefined8 local_c8;
+  undefined8 uStack_c0;
+  undefined8 local_b8;
+  undefined8 uStack_b0;
+  char *local_a8;
+  undefined8 uStack_a0;
+  undefined8 local_98;
+  undefined8 uStack_90;
+  undefined8 local_88;
+  undefined8 uStack_80;
+  undefined8 local_78;
+  undefined8 uStack_70;
+  undefined8 local_68;
+  undefined8 uStack_60;
+  undefined8 local_58;
+  undefined8 uStack_50;
+  undefined8 local_48;
+  undefined8 uStack_40;
+  char **local_38;
+  code *local_30;
+  undefined8 local_28;
+  
+  local_28 = 0xfffffffffffffffe;
+  bevy_app::app::App::insert_resource<timberframe::TimberframeInstanceBuffer>();
+  local_a8 = (char *)0x0;
+  uStack_a0 = 0;
+  local_98 = (char ***)((ulonglong)local_98._4_4_ << 0x20);
+  bevy_app::app::App::
+  insert_resource<timberframe::timberframe_beam_count_change_audio::TimberframeBeamCount>();
+  uVar2 = 0x94f6926d9af7d16f;
+  bevy_ecs::component::Components::get_resource_id();
+  if ((((extraout_RAX_00 == 0) || (*(ulonglong *)(extraout_RAX + 0x218) <= uVar2)) ||
+      (uVar2 = *(ulonglong *)(*(longlong *)(extraout_RAX + 0x210) + uVar2 * 8), uVar2 == 0)) ||
+     (*(longlong *)(*(longlong *)(extraout_RAX + 0x1e0) + 0x20 + ~uVar2 * 0x60) == 0)) {
+    bevy_ecs::event::registry::EventRegistry::
+    register_event<country_core::resources::events::ConstructTimberframeCmd>();
+  }
+  _ZN8bevy_ecs8schedule6config19IntoScheduleConfigs21chain_ignore_deferred17h3680329104544db8E();
+  local_38 = (char **)CONCAT71(local_38._1_7_,0x1b);
+  bevy_ecs::intern::Interner::intern<dyn_<bevy_ecs::schedule::set::SystemSet>_>();
+  bevy_ecs::schedule::config::ScheduleConfigs::
+  in_set_inner<alloc::boxed::Box<dyn_<bevy_ecs::system::system::System<assoc_<In,tuple_<>_>,assoc_<Out,enum2_<core::result::Result<tuple_<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>
+            ();
+  local_b8 = local_48;
+  uStack_b0 = uStack_40;
+  local_c8 = local_58;
+  uStack_c0 = uStack_50;
+  local_d8 = local_68;
+  uStack_d0 = uStack_60;
+  local_e8 = local_78;
+  uStack_e0 = uStack_70;
+  local_f8 = local_88;
+  uStack_f0 = uStack_80;
+  local_108 = (longlong)local_98;
+  uStack_100 = uStack_90;
+  local_118 = local_a8;
+  uStack_110 = uStack_a0;
+  bevy_app::sub_app::SubApp::
+  add_systems<tuple_<bevy_ecs::schedule::config::ScheduleConfigTupleMarker,tuple_<>_>,bevy_app::main_schedule::Update,tuple_<enum2_<bevy_ecs::schedule::config::ScheduleConfigs<alloc::boxed::Box<dyn_<bevy_ecs::system::system::System<assoc_<In,tuple_<>_>,assoc_<Out,enum2_<core::result::Result<tuple_<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>_>_>_>
+            ();
+  uVar2 = 0x8e1bd251962ba784;
+  bevy_ecs::component::Components::get_resource_id();
+  if (((extraout_RAX_01 != 0) && (uVar2 < *(ulonglong *)(in_RCX + 0x218))) &&
+     (uVar2 = *(ulonglong *)(*(longlong *)(in_RCX + 0x210) + uVar2 * 8), uVar2 != 0)) {
+    lVar1 = ~uVar2 * 0x60;
+    if (*(longlong *)(*(longlong *)(in_RCX + 0x1e0) + 0x20 + lVar1) != 0) {
+      *(undefined4 *)(*(longlong *)(in_RCX + 0x1e0) + lVar1 + 0x5c) =
+           *(undefined4 *)(in_RCX + 0x5b0);
+      bevy_ecs::schedule::schedule::Schedules::
+      add_systems<tuple_<bevy_ecs::schedule::config::Infallible,tuple_<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(bevy_ecs::change_detection::ResMut<timberframe::TimberframeInstanceBuffer>)>_>,bevy_state::state::transitions::OnExit<country_core::app_loading_state::AppLoadingState>,void_(*)(bevy_ecs::change_detection::ResMut<timberframe::TimberframeInstanceBuffer>)>
+                ();
+      return;
+    }
+  }
+  local_118 = 
+  "bevy_ecs::schedule::schedule::SchedulesRequested resource  does not exist in the `World`.\n                Did you forget to add it using `app.insert_resource` / `app.init_resource`?\n                Resources are also implicitly added via `app.add_event`,\n                and can be added by plugins."
+  ;
+  uStack_110 = 0x27;
+  local_30 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;
+  local_a8 = &anon_4f7ea673f19eb6df435b590533e3856a_5_llvm_16680299505998994554;
+  uStack_a0 = 2;
+  local_88 = 0;
+  uStack_90 = 1;
+  local_98 = &local_38;
+  local_38 = &local_118;
+                    // WARNING: Subroutine does not return
+  core::panicking::panic_fmt();
+}
+
+
+---- LOCALS ----
+[
+ {
+  "name": "local_b8",
+  "type": "undefined8",
+  "storage": "Stack[-0xb8]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "local_c8",
+  "type": "undefined8",
+  "storage": "Stack[-0xc8]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "local_d8",
+  "type": "undefined8",
+  "storage": "Stack[-0xd8]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "local_e8",
+  "type": "undefined8",
+  "storage": "Stack[-0xe8]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "local_f8",
+  "type": "undefined8",
+  "storage": "Stack[-0xf8]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "local_108",
+  "type": "longlong",
+  "storage": "Stack[-0x108]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "local_118",
+  "type": "char *",
+  "storage": "Stack[-0x118]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "local_38",
+  "type": "char * *",
+  "storage": "Stack[-0x38]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "local_48",
+  "type": "undefined8",
+  "storage": "Stack[-0x48]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "uStack_f0",
+  "type": "undefined8",
+  "storage": "Stack[-0xf0]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "local_58",
+  "type": "undefined8",
+  "storage": "Stack[-0x58]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "local_68",
+  "type": "undefined8",
+  "storage": "Stack[-0x68]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "uStack_e0",
+  "type": "undefined8",
+  "storage": "Stack[-0xe0]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "local_78",
+  "type": "undefined8",
+  "storage": "Stack[-0x78]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "local_88",
+  "type": "undefined8",
+  "storage": "Stack[-0x88]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "uStack_110",
+  "type": "undefined8",
+  "storage": "Stack[-0x110]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "local_98",
+  "type": "undefined8",
+  "storage": "Stack[-0x98]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "local_a8",
+  "type": "char *",
+  "storage": "Stack[-0xa8]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "uStack_100",
+  "type": "undefined8",
+  "storage": "Stack[-0x100]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "uStack_b0",
+  "type": "undefined8",
+  "storage": "Stack[-0xb0]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "uStack_a0",
+  "type": "undefined8",
+  "storage": "Stack[-0xa0]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "uStack_d0",
+  "type": "undefined8",
+  "storage": "Stack[-0xd0]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "local_28",
+  "type": "undefined8",
+  "storage": "Stack[-0x28]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "local_30",
+  "type": "undefined *",
+  "storage": "Stack[-0x30]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "uStack_c0",
+  "type": "undefined8",
+  "storage": "Stack[-0xc0]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "uStack_70",
+  "type": "undefined8",
+  "storage": "Stack[-0x70]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "uStack_60",
+  "type": "undefined8",
+  "storage": "Stack[-0x60]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "uStack_90",
+  "type": "undefined8",
+  "storage": "Stack[-0x90]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "uStack_80",
+  "type": "undefined8",
+  "storage": "Stack[-0x80]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "extraout_RAX_00",
+  "type": "longlong",
+  "storage": "RAX:8",
+  "is_phantom": true,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "extraout_RAX",
+  "type": "longlong",
+  "storage": "RAX:8",
+  "is_phantom": true,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "uStack_50",
+  "type": "undefined8",
+  "storage": "Stack[-0x50]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "uStack_40",
+  "type": "undefined8",
+  "storage": "Stack[-0x40]:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "in_RCX",
+  "type": "longlong",
+  "storage": "RCX:8",
+  "is_phantom": true,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "extraout_RAX_01",
+  "type": "longlong",
+  "storage": "RAX:8",
+  "is_phantom": true,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "uVar2",
+  "type": "ulonglong",
+  "storage": "RDX:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ },
+ {
+  "name": "lVar1",
+  "type": "longlong",
+  "storage": "RCX:8",
+  "is_phantom": false,
+  "in_decompiled_code": true
+ }
+]

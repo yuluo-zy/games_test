@@ -1,0 +1,273 @@
+[
+  {
+    "label": "aspect-decomp",
+    "tool": "get-decompilation",
+    "arguments": {
+      "programPath": "/tiny-glade.exe",
+      "functionNameOrAddress": "0x140949c20",
+      "limit": 30,
+      "includeCallers": true,
+      "includeCallees": true,
+      "includeReferenceContext": false
+    },
+    "elapsed": 25.056810459005646,
+    "result": {
+      "_meta": null,
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"callerCount\":2,\"totalCallerCount\":2,\"metadata\":{\"callingConvention\":\"__cdecl\",\"isExternal\":\"false\",\"signature\":\"void __cdecl aspect_ratio(void)\",\"parameterCount\":\"0\",\"isThunk\":\"false\",\"returnType\":\"void\"},\"address\":\"0x140949c20\",\"sizeInBytes\":20,\"calleeCount\":0,\"offset\":1,\"functionName\":\"aspect_ratio\",\"startAddress\":\"0x140949c20\",\"callees\":[],\"inputAddress\":\"0x140949c20\",\"totalIncomingReferences\":4,\"incomingReferences\":[{\"fromFunction\":\"run_game_thread\",\"referenceType\":\"UNCONDITIONAL_CALL\",\"fromAddress\":\"0x14059dba3\"},{\"fromLine\":568,\"fromFunction\":\"do_photomode\",\"referenceType\":\"UNCONDITIONAL_CALL\",\"fromAddress\":\"0x14234bac4\"},{\"fromLine\":648,\"fromFunction\":\"do_photomode\",\"referenceType\":\"UNCONDITIONAL_CALL\",\"fromAddress\":\"0x14234bc65\"},{\"fromLine\":657,\"fromFunction\":\"do_photomode\",\"referenceType\":\"UNCONDITIONAL_CALL\",\"fromAddress\":\"0x14234bcc0\"}],\"decompSignature\":\"void __cdecl country_core::resources::window::WindowSize::aspect_ratio(void);\",\"programName\":\"tiny-glade.exe\",\"isUndefinedFunction\":false,\"resolvedFrom\":\"address/symbol\",\"totalLines\":6,\"limit\":30,\"decompilation\":\"   1\\t\\n   2\\tvoid __cdecl country_core::resources::window::WindowSize::aspect_ratio(void)\\n   3\\t\\n   4\\t{\\n   5\\t  return;\\n   6\\t}\\n\",\"callers\":[{\"address\":\"0x14234b010\",\"signature\":\"void do_photomode(void)\",\"name\":\"do_photomode\",\"callCount\":3},{\"address\":\"0x14059d450\",\"signature\":\"void run_game_thread(void)\",\"name\":\"run_game_thread\",\"callCount\":1}],\"totalCalleeCount\":0,\"parameters\":[],\"endAddress\":\"0x140949c33\"}",
+          "annotations": null,
+          "_meta": null
+        }
+      ],
+      "structuredContent": null,
+      "isError": false,
+      "resultType": "complete"
+    }
+  },
+  {
+    "label": "roof-xrefs",
+    "tool": "find-cross-references",
+    "arguments": {
+      "programPath": "/tiny-glade.exe",
+      "location": "0x1421aaea0",
+      "direction": "to",
+      "limit": 5
+    },
+    "elapsed": 0.03758529096376151,
+    "result": {
+      "_meta": null,
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"programPath\":\"/tiny-glade.exe\",\"pagination\":{\"totalFromCount\":0,\"hasMoreTo\":false,\"hasMoreFrom\":false,\"limit\":5,\"totalToCount\":3,\"offset\":0},\"referencesFrom\":[],\"location\":{\"symbol\":\"create_roof\",\"address\":\"0x1421aaea0\",\"isFunctionEntry\":true,\"function\":\"create_roof\",\"namespace\":\"system_roof::create_roof\",\"symbolType\":\"Function\"},\"referencesTo\":[{\"sourceType\":\"DEFAULT\",\"isData\":true,\"isPrimary\":true,\"isRead\":false,\"referenceType\":\"DATA\",\"isCall\":false,\"toSymbol\":{\"name\":\"create_roof\",\"namespace\":\"system_roof::create_roof\",\"type\":\"Function\"},\"fromAddress\":\"0x14376a88c\",\"isJump\":false,\"toAddress\":\"0x1421aaea0\",\"operandIndex\":0,\"isWrite\":false},{\"fromFunction\":{\"entry\":\"0x141a29b40\",\"name\":\"run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::roofs::commands::CreateRoofCmd>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::commands::RecalculateRoofCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::wall_state::wall_roof_hashmap::RecalculateGableRoofWallHeights>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::roof_sounds::PlayRoofSound>,bevy_ecs::system::commands::Commands),void_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::roofs::commands::CreateRoofCmd>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::commands::RecalculateRoofCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::wall_state::wall_roof_hashmap::RecalculateGableRoofWallHeights>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::roof_sounds::PlayRoofSound>,bevy_ecs::system::commands::Commands)>_>_>\"},\"isRead\":false,\"referenceType\":\"UNCONDITIONAL_CALL\",\"isCall\":true,\"toSymbol\":{\"name\":\"create_roof\",\"namespace\":\"system_roof::create_roof\",\"type\":\"Function\"},\"toAddress\":\"0x1421aaea0\",\"operandIndex\":0,\"sourceType\":\"DEFAULT\",\"isData\":false,\"isPrimary\":true,\"fromAddress\":\"0x141a29e4c\",\"isJump\":false,\"isWrite\":false},{\"fromFunction\":{\"entry\":\"0x141a33400\",\"name\":\"run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::roofs::commands::CreateRoofCmd>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::commands::RecalculateRoofCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::wall_state::wall_roof_hashmap::RecalculateGableRoofWallHeights>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::roof_sounds::PlayRoofSound>,bevy_ecs::system::commands::Commands),void_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::roofs::commands::CreateRoofCmd>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::commands::RecalculateRoofCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::wall_state::wall_roof_hashmap::RecalculateGableRoofWallHeights>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::roof_sounds::PlayRoofSound>,bevy_ecs::system::commands::Commands)>_>\"},\"isRead\":false,\"referenceType\":\"UNCONDITIONAL_CALL\",\"isCall\":true,\"toSymbol\":{\"name\":\"create_roof\",\"namespace\":\"system_roof::create_roof\",\"type\":\"Function\"},\"toAddress\":\"0x1421aaea0\",\"operandIndex\":0,\"sourceType\":\"DEFAULT\",\"isData\":false,\"isPrimary\":true,\"fromAddress\":\"0x141a33707\",\"isJump\":false,\"isWrite\":false}]}",
+          "annotations": null,
+          "_meta": null
+        }
+      ],
+      "structuredContent": null,
+      "isError": false,
+      "resultType": "complete"
+    }
+  },
+  {
+    "label": "type-float",
+    "tool": "get-data-type-by-string",
+    "arguments": {
+      "programPath": "/tiny-glade.exe",
+      "dataTypeString": "float"
+    },
+    "elapsed": 0.028472583973780274,
+    "result": {
+      "_meta": null,
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"sourceArchiveName\":\"BuiltInTypes\",\"size\":4,\"displayName\":\"float\",\"categoryPath\":\"/\",\"dataTypeName\":\"FloatDataType\",\"archiveName\":\"BuiltInTypes\",\"name\":\"float\",\"requestedString\":\"float\",\"description\":\"Compiler-defined 'float' IEEE 754 floating-point type (32-bit / 4-byte format, aligned-length is 4-bytes)\",\"id\":null,\"alignment\":4}",
+          "annotations": null,
+          "_meta": null
+        }
+      ],
+      "structuredContent": null,
+      "isError": false,
+      "resultType": "complete"
+    }
+  },
+  {
+    "label": "pcode-two-functions",
+    "tool": "run-script",
+    "arguments": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\nfrom ghidra.util.task import TaskMonitor\ndec=DecompInterface()\ndec.openProgram(currentProgram)\nrows=[]\nfor raw in ['140949c20','1421aaea0']:\n addr=currentProgram.getAddressFactory().getAddress(raw)\n fn=currentProgram.getFunctionManager().getFunctionAt(addr)\n r=dec.decompileFunction(fn,30,monitor)\n high=r.getHighFunction()\n ops=[]\n if high is not None:\n  it=high.getPcodeOps()\n  while it.hasNext() and len(ops)<30:\n   op=it.next()\n   ops.append({'address':str(op.getSeqnum().getTarget()),'opcode':str(op.getMnemonic()),'text':str(op)})\n rows.append({'address':str(addr),'name':str(fn.getName()),'signature':str(fn.getSignature()),'completed':bool(r.decompileCompleted()),'pcode':ops})\ndec.dispose()\nprint(json.dumps({'program':str(currentProgram.getName()),'executableSHA256':str(currentProgram.getExecutableSHA256()),'rows':rows}))\n",
+      "timeoutSeconds": 60
+    },
+    "elapsed": 3.0570362079888582,
+    "result": {
+      "_meta": null,
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"program\\\": \\\"tiny-glade.exe\\\", \\\"executableSHA256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"rows\\\": [{\\\"address\\\": \\\"140949c20\\\", \\\"name\\\": \\\"aspect_ratio\\\", \\\"signature\\\": \\\"void __cdecl aspect_ratio(void)\\\", \\\"completed\\\": true, \\\"pcode\\\": [{\\\"address\\\": \\\"140949c33\\\", \\\"opcode\\\": \\\"RETURN\\\", \\\"text\\\": \\\" ---  RETURN (const, 0x0, 8)\\\"}]}, {\\\"address\\\": \\\"1421aaea0\\\", \\\"name\\\": \\\"create_roof\\\", \\\"signature\\\": \\\"void __cdecl create_roof(void)\\\", \\\"completed\\\": true, \\\"pcode\\\": [{\\\"address\\\": \\\"1421aaee4\\\", \\\"opcode\\\": \\\"LOAD\\\", \\\"text\\\": \\\"(unique, 0x10000bcd, 8) LOAD (const, 0x1b1, 4) , (register, 0x8, 8)\\\"}, {\\\"address\\\": \\\"1421aaee4\\\", \\\"opcode\\\": \\\"CAST\\\", \\\"text\\\": \\\"(unique, 0x23d00, 8) CAST (unique, 0x10000bcd, 8)\\\"}, {\\\"address\\\": \\\"1421aaee7\\\", \\\"opcode\\\": \\\"LOAD\\\", \\\"text\\\": \\\"(unique, 0x23d00, 8) LOAD (const, 0x1b1, 4) , (unique, 0x8e00, 8)\\\"}, {\\\"address\\\": \\\"1421aaee7\\\", \\\"opcode\\\": \\\"PTRADD\\\", \\\"text\\\": \\\"(unique, 0x8e00, 8) PTRADD (register, 0x8, 8) , (const, 0x1, 8) , (const, 0x8, 8)\\\"}, {\\\"address\\\": \\\"1421aaeeb\\\", \\\"opcode\\\": \\\"LOAD\\\", \\\"text\\\": \\\"(unique, 0x23d00, 8) LOAD (const, 0x1b1, 4) , (unique, 0x23d00, 8)\\\"}, {\\\"address\\\": \\\"1421aaeee\\\", \\\"opcode\\\": \\\"COPY\\\", \\\"text\\\": \\\"(register, 0x98, 8) COPY (const, 0x0, 8)\\\"}, {\\\"address\\\": \\\"1421aaef4\\\", \\\"opcode\\\": \\\"INT_ADD\\\", \\\"text\\\": \\\"(unique, 0x10000bd5, 8) INT_ADD (unique, 0x23d00, 8) , (const, 0x18, 8)\\\"}, {\\\"address\\\": \\\"1421aaef4\\\", \\\"opcode\\\": \\\"LOAD\\\", \\\"text\\\": \\\"(unique, 0x23d00, 8) LOAD (const, 0x1b1, 4) , (unique, 0x8e00, 8)\\\"}, {\\\"address\\\": \\\"1421aaef4\\\", \\\"opcode\\\": \\\"INT_LESS\\\", \\\"text\\\": \\\"(register, 0x200, 1) INT_LESS (unique, 0x23d00, 8) , (unique, 0x23d00, 8)\\\"}, {\\\"address\\\": \\\"1421aaef4\\\", \\\"opcode\\\": \\\"LOAD\\\", \\\"text\\\": \\\"(unique, 0x23d00, 8) LOAD (const, 0x1b1, 4) , (unique, 0x8e00, 8)\\\"}, {\\\"address\\\": \\\"1421aaef4\\\", \\\"opcode\\\": \\\"INT_SUB\\\", \\\"text\\\": \\\"(register, 0x0, 8) INT_SUB (unique, 0x23d00, 8) , (unique, 0x23d00, 8)\\\"}, {\\\"address\\\": \\\"1421aaef4\\\", \\\"opcode\\\": \\\"CAST\\\", \\\"text\\\": \\\"(unique, 0x8e00, 8) CAST (unique, 0x10000bd5, 8)\\\"}, {\\\"address\\\": \\\"1421aaef8\\\", \\\"opcode\\\": \\\"CBRANCH\\\", \\\"text\\\": \\\" ---  CBRANCH (ram, 0x1421aaefc, 1) , (register, 0x200, 1)\\\"}, {\\\"address\\\": \\\"1421aaef8\\\", \\\"opcode\\\": \\\"COPY\\\", \\\"text\\\": \\\"(unique, 0x10000b55, 8) COPY (register, 0x0, 8)\\\"}, {\\\"address\\\": \\\"1421aaef8\\\", \\\"opcode\\\": \\\"COPY\\\", \\\"text\\\": \\\"(unique, 0x10000b5d, 8) COPY (register, 0x98, 8)\\\"}, {\\\"address\\\": \\\"1421aaefc\\\", \\\"opcode\\\": \\\"INT_ADD\\\", \\\"text\\\": \\\"(unique, 0x10000bdd, 8) INT_ADD (unique, 0x23d00, 8) , (const, 0x38, 8)\\\"}, {\\\"address\\\": \\\"1421aaefc\\\", \\\"opcode\\\": \\\"LOAD\\\", \\\"text\\\": \\\"(unique, 0x23d00, 8) LOAD (const, 0x1b1, 4) , (unique, 0x8e00, 8)\\\"}, {\\\"address\\\": \\\"1421aaefc\\\", \\\"opcode\\\": \\\"INT_LESS\\\", \\\"text\\\": \\\"(register, 0x200, 1) INT_LESS (unique, 0x23d00, 8) , (unique, 0x23d00, 8)\\\"}, {\\\"address\\\": \\\"1421aaefc\\\", \\\"opcode\\\": \\\"LOAD\\\", \\\"text\\\": \\\"(unique, 0x23d00, 8) LOAD (const, 0x1b1, 4) , (unique, 0x8e00, 8)\\\"}, {\\\"address\\\": \\\"1421aaefc\\\", \\\"opcode\\\": \\\"INT_SUB\\\", \\\"text\\\": \\\"(register, 0x30, 8) INT_SUB (unique, 0x23d00, 8) , (unique, 0x23d00, 8)\\\"}, {\\\"address\\\": \\\"1421aaefc\\\", \\\"opcode\\\": \\\"MULTIEQUAL\\\", \\\"text\\\": \\\"(register, 0x0, 8) MULTIEQUAL (unique, 0x10000b55, 8) , (unique, 0x10000b5d, 8)\\\"}, {\\\"address\\\": \\\"1421aaefc\\\", \\\"opcode\\\": \\\"CAST\\\", \\\"text\\\": \\\"(unique, 0x8e00, 8) CAST (unique, 0x10000bdd, 8)\\\"}, {\\\"address\\\": \\\"1421aaf00\\\", \\\"opcode\\\": \\\"CBRANCH\\\", \\\"text\\\": \\\" ---  CBRANCH (ram, 0x1421aaf04, 1) , (register, 0x200, 1)\\\"}, {\\\"address\\\": \\\"1421aaf00\\\", \\\"opcode\\\": \\\"COPY\\\", \\\"text\\\": \\\"(unique, 0x10000b65, 8) COPY (register, 0x30, 8)\\\"}, {\\\"address\\\": \\\"1421aaf00\\\", \\\"opcode\\\": \\\"COPY\\\", \\\"text\\\": \\\"(unique, 0x10000b6d, 8) COPY (register, 0x98, 8)\\\"}, {\\\"address\\\": \\\"1421aaf04\\\", \\\"opcode\\\": \\\"MULTIEQUAL\\\", \\\"text\\\": \\\"(register, 0x30, 8) MULTIEQUAL (unique, 0x10000b65, 8) , (unique, 0x10000b6d, 8)\\\"}, {\\\"address\\\": \\\"1421aaf07\\\", \\\"opcode\\\": \\\"INT_MULT\\\", \\\"text\\\": \\\"(register, 0xa0, 8) INT_MULT (register, 0x0, 8) , (const, 0x40, 8)\\\"}, {\\\"address\\\": \\\"1421aaf0b\\\", \\\"opcode\\\": \\\"INT_ADD\\\", \\\"text\\\": \\\"(unique, 0x10000be5, 8) INT_ADD (unique, 0x23d00, 8) , (const, 0x8, 8)\\\"}, {\\\"address\\\": \\\"1421aaf0b\\\", \\\"opcode\\\": \\\"LOAD\\\", \\\"text\\\": \\\"(unique, 0x23d00, 8) LOAD (const, 0x1b1, 4) , (unique, 0x8e00, 8)\\\"}, {\\\"address\\\": \\\"1421aaf0b\\\", \\\"opcode\\\": \\\"INT_ADD\\\", \\\"text\\\": \\\"(register, 0xa0, 8) INT_ADD (register, 0xa0, 8) , (unique, 0x23d00, 8)\\\"}]}]}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":2888}",
+          "annotations": null,
+          "_meta": null
+        }
+      ],
+      "structuredContent": null,
+      "isError": false,
+      "resultType": "complete"
+    }
+  },
+  {
+    "label": "parallel-read-1",
+    "tool": "get-decompilation",
+    "arguments": {
+      "programPath": "/tiny-glade.exe",
+      "functionNameOrAddress": "0x1421aaea0",
+      "limit": 25,
+      "includeReferenceContext": false
+    },
+    "elapsed": 5.055566292023286,
+    "result": {
+      "_meta": null,
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"metadata\":{\"callingConvention\":\"__cdecl\",\"isExternal\":\"false\",\"signature\":\"void __cdecl create_roof(void)\",\"parameterCount\":\"0\",\"isThunk\":\"false\",\"returnType\":\"void\"},\"address\":\"0x1421aaea0\",\"sizeInBytes\":1803,\"offset\":1,\"functionName\":\"create_roof\",\"startAddress\":\"0x1421aaea0\",\"inputAddress\":\"0x1421aaea0\",\"totalIncomingReferences\":3,\"incomingReferences\":[{\"referenceType\":\"DATA\",\"fromAddress\":\"0x14376a88c\"},{\"fromLine\":116,\"fromFunction\":\"run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::roofs::commands::CreateRoofCmd>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::commands::RecalculateRoofCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::wall_state::wall_roof_hashmap::RecalculateGableRoofWallHeights>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::roof_sounds::PlayRoofSound>,bevy_ecs::system::commands::Commands),void_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::roofs::commands::CreateRoofCmd>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::commands::RecalculateRoofCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::wall_state::wall_roof_hashmap::RecalculateGableRoofWallHeights>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::roof_sounds::PlayRoofSound>,bevy_ecs::system::commands::Commands)>_>_>\",\"referenceType\":\"UNCONDITIONAL_CALL\",\"fromAddress\":\"0x141a29e4c\"},{\"fromLine\":113,\"fromFunction\":\"run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::roofs::commands::CreateRoofCmd>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::commands::RecalculateRoofCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::wall_state::wall_roof_hashmap::RecalculateGableRoofWallHeights>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::roof_sounds::PlayRoofSound>,bevy_ecs::system::commands::Commands),void_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::roofs::commands::CreateRoofCmd>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::commands::RecalculateRoofCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::wall_state::wall_roof_hashmap::RecalculateGableRoofWallHeights>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::roof_sounds::PlayRoofSound>,bevy_ecs::system::commands::Commands)>_>\",\"referenceType\":\"UNCONDITIONAL_CALL\",\"fromAddress\":\"0x141a33707\"}],\"decompSignature\":\"void __cdecl system_roof::create_roof::create_roof(void);\",\"programName\":\"tiny-glade.exe\",\"isUndefinedFunction\":false,\"resolvedFrom\":\"address/symbol\",\"totalLines\":199,\"limit\":25,\"decompilation\":\"   1\\t\\n   2\\tvoid __cdecl system_roof::create_roof::create_roof(void)\\n   3\\t\\n   4\\t{\\n   5\\t  undefined8 *puVar1;\\n   6\\t  undefined4 uVar2;\\n   7\\t  undefined4 uVar3;\\n   8\\t  undefined4 uVar4;\\n   9\\t  undefined4 uVar5;\\n  10\\t  ulonglong *puVar6;\\n  11\\t  longlong lVar7;\\n  12\\t  undefined4 *puVar8;\\n  13\\t  longlong lVar9;\\n  14\\t  undefined4 *puVar10;\\n  15\\t  longlong lVar11;\\n  16\\t  undefined4 *puVar12;\\n  17\\t  undefined8 uVar13;\\n  18\\t  longlong lVar14;\\n  19\\t  undefined8 uVar15;\\n  20\\t  longlong lVar16;\\n  21\\t  char extraout_AL;\\n  22\\t  char extraout_AL_00;\\n  23\\t  uint extraout_EAX;\\n  24\\t  longlong extraout_RAX;\\n  25\\t  longlong extraout_RAX_00;\\n\",\"parameters\":[],\"endAddress\":\"0x1421ab5c1\"}",
+          "annotations": null,
+          "_meta": null
+        }
+      ],
+      "structuredContent": null,
+      "isError": false,
+      "resultType": "complete"
+    }
+  },
+  {
+    "label": "parallel-read-3",
+    "tool": "get-decompilation",
+    "arguments": {
+      "programPath": "/tiny-glade.exe",
+      "functionNameOrAddress": "0x1421aaea0",
+      "limit": 25,
+      "includeReferenceContext": false
+    },
+    "elapsed": 5.05380333296489,
+    "result": {
+      "_meta": null,
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"metadata\":{\"callingConvention\":\"__cdecl\",\"isExternal\":\"false\",\"signature\":\"void __cdecl create_roof(void)\",\"parameterCount\":\"0\",\"isThunk\":\"false\",\"returnType\":\"void\"},\"address\":\"0x1421aaea0\",\"sizeInBytes\":1803,\"offset\":1,\"functionName\":\"create_roof\",\"startAddress\":\"0x1421aaea0\",\"inputAddress\":\"0x1421aaea0\",\"totalIncomingReferences\":3,\"incomingReferences\":[{\"referenceType\":\"DATA\",\"fromAddress\":\"0x14376a88c\"},{\"fromLine\":116,\"fromFunction\":\"run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::roofs::commands::CreateRoofCmd>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::commands::RecalculateRoofCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::wall_state::wall_roof_hashmap::RecalculateGableRoofWallHeights>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::roof_sounds::PlayRoofSound>,bevy_ecs::system::commands::Commands),void_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::roofs::commands::CreateRoofCmd>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::commands::RecalculateRoofCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::wall_state::wall_roof_hashmap::RecalculateGableRoofWallHeights>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::roof_sounds::PlayRoofSound>,bevy_ecs::system::commands::Commands)>_>_>\",\"referenceType\":\"UNCONDITIONAL_CALL\",\"fromAddress\":\"0x141a29e4c\"},{\"fromLine\":113,\"fromFunction\":\"run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::roofs::commands::CreateRoofCmd>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::commands::RecalculateRoofCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::wall_state::wall_roof_hashmap::RecalculateGableRoofWallHeights>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::roof_sounds::PlayRoofSound>,bevy_ecs::system::commands::Commands),void_(*)(bevy_ecs::event::reader::EventReader<country_core::resources::roofs::commands::CreateRoofCmd>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::commands::RecalculateRoofCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::wall_state::wall_roof_hashmap::RecalculateGableRoofWallHeights>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::roof_sounds::PlayRoofSound>,bevy_ecs::system::commands::Commands)>_>\",\"referenceType\":\"UNCONDITIONAL_CALL\",\"fromAddress\":\"0x141a33707\"}],\"decompSignature\":\"void __cdecl system_roof::create_roof::create_roof(void);\",\"programName\":\"tiny-glade.exe\",\"isUndefinedFunction\":false,\"resolvedFrom\":\"address/symbol\",\"totalLines\":199,\"limit\":25,\"decompilation\":\"   1\\t\\n   2\\tvoid __cdecl system_roof::create_roof::create_roof(void)\\n   3\\t\\n   4\\t{\\n   5\\t  undefined8 *puVar1;\\n   6\\t  undefined4 uVar2;\\n   7\\t  undefined4 uVar3;\\n   8\\t  undefined4 uVar4;\\n   9\\t  undefined4 uVar5;\\n  10\\t  ulonglong *puVar6;\\n  11\\t  longlong lVar7;\\n  12\\t  undefined4 *puVar8;\\n  13\\t  longlong lVar9;\\n  14\\t  undefined4 *puVar10;\\n  15\\t  longlong lVar11;\\n  16\\t  undefined4 *puVar12;\\n  17\\t  undefined8 uVar13;\\n  18\\t  longlong lVar14;\\n  19\\t  undefined8 uVar15;\\n  20\\t  longlong lVar16;\\n  21\\t  char extraout_AL;\\n  22\\t  char extraout_AL_00;\\n  23\\t  uint extraout_EAX;\\n  24\\t  longlong extraout_RAX;\\n  25\\t  longlong extraout_RAX_00;\\n\",\"parameters\":[],\"endAddress\":\"0x1421ab5c1\"}",
+          "annotations": null,
+          "_meta": null
+        }
+      ],
+      "structuredContent": null,
+      "isError": false,
+      "resultType": "complete"
+    }
+  },
+  {
+    "label": "parallel-read-2",
+    "tool": "get-decompilation",
+    "arguments": {
+      "programPath": "/tiny-glade.exe",
+      "functionNameOrAddress": "0x140949c20",
+      "limit": 25,
+      "includeReferenceContext": false
+    },
+    "elapsed": 14.114573916071095,
+    "result": {
+      "_meta": null,
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"metadata\":{\"callingConvention\":\"__cdecl\",\"isExternal\":\"false\",\"signature\":\"void __cdecl aspect_ratio(void)\",\"parameterCount\":\"0\",\"isThunk\":\"false\",\"returnType\":\"void\"},\"address\":\"0x140949c20\",\"sizeInBytes\":20,\"offset\":1,\"functionName\":\"aspect_ratio\",\"startAddress\":\"0x140949c20\",\"inputAddress\":\"0x140949c20\",\"totalIncomingReferences\":4,\"incomingReferences\":[{\"fromFunction\":\"run_game_thread\",\"referenceType\":\"UNCONDITIONAL_CALL\",\"fromAddress\":\"0x14059dba3\"},{\"fromLine\":568,\"fromFunction\":\"do_photomode\",\"referenceType\":\"UNCONDITIONAL_CALL\",\"fromAddress\":\"0x14234bac4\"},{\"fromLine\":648,\"fromFunction\":\"do_photomode\",\"referenceType\":\"UNCONDITIONAL_CALL\",\"fromAddress\":\"0x14234bc65\"},{\"fromLine\":657,\"fromFunction\":\"do_photomode\",\"referenceType\":\"UNCONDITIONAL_CALL\",\"fromAddress\":\"0x14234bcc0\"}],\"decompSignature\":\"void __cdecl country_core::resources::window::WindowSize::aspect_ratio(void);\",\"programName\":\"tiny-glade.exe\",\"isUndefinedFunction\":false,\"resolvedFrom\":\"address/symbol\",\"totalLines\":6,\"limit\":25,\"decompilation\":\"   1\\t\\n   2\\tvoid __cdecl country_core::resources::window::WindowSize::aspect_ratio(void)\\n   3\\t\\n   4\\t{\\n   5\\t  return;\\n   6\\t}\\n\",\"parameters\":[],\"endAddress\":\"0x140949c33\"}",
+          "annotations": null,
+          "_meta": null
+        }
+      ],
+      "structuredContent": null,
+      "isError": false,
+      "resultType": "complete"
+    }
+  },
+  {
+    "label": "parallel-read-0",
+    "tool": "get-decompilation",
+    "arguments": {
+      "programPath": "/tiny-glade.exe",
+      "functionNameOrAddress": "0x140949c20",
+      "limit": 25,
+      "includeReferenceContext": false
+    },
+    "elapsed": 14.090046999976039,
+    "result": {
+      "_meta": null,
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"metadata\":{\"callingConvention\":\"__cdecl\",\"isExternal\":\"false\",\"signature\":\"void __cdecl aspect_ratio(void)\",\"parameterCount\":\"0\",\"isThunk\":\"false\",\"returnType\":\"void\"},\"address\":\"0x140949c20\",\"sizeInBytes\":20,\"offset\":1,\"functionName\":\"aspect_ratio\",\"startAddress\":\"0x140949c20\",\"inputAddress\":\"0x140949c20\",\"totalIncomingReferences\":4,\"incomingReferences\":[{\"fromFunction\":\"run_game_thread\",\"referenceType\":\"UNCONDITIONAL_CALL\",\"fromAddress\":\"0x14059dba3\"},{\"fromLine\":568,\"fromFunction\":\"do_photomode\",\"referenceType\":\"UNCONDITIONAL_CALL\",\"fromAddress\":\"0x14234bac4\"},{\"fromLine\":648,\"fromFunction\":\"do_photomode\",\"referenceType\":\"UNCONDITIONAL_CALL\",\"fromAddress\":\"0x14234bc65\"},{\"fromLine\":657,\"fromFunction\":\"do_photomode\",\"referenceType\":\"UNCONDITIONAL_CALL\",\"fromAddress\":\"0x14234bcc0\"}],\"decompSignature\":\"void __cdecl country_core::resources::window::WindowSize::aspect_ratio(void);\",\"programName\":\"tiny-glade.exe\",\"isUndefinedFunction\":false,\"resolvedFrom\":\"address/symbol\",\"totalLines\":6,\"limit\":25,\"decompilation\":\"   1\\t\\n   2\\tvoid __cdecl country_core::resources::window::WindowSize::aspect_ratio(void)\\n   3\\t\\n   4\\t{\\n   5\\t  return;\\n   6\\t}\\n\",\"parameters\":[],\"endAddress\":\"0x140949c33\"}",
+          "annotations": null,
+          "_meta": null
+        }
+      ],
+      "structuredContent": null,
+      "isError": false,
+      "resultType": "complete"
+    }
+  },
+  {
+    "label": "parallel-script-2",
+    "tool": "run-script",
+    "arguments": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import time\nfor i in range(8):\n print('CLIENT_2_'+str(i),flush=True)\n time.sleep(0.15)\n",
+      "timeoutSeconds": 20
+    },
+    "elapsed": 1.3943467499921098,
+    "result": {
+      "_meta": null,
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"CLIENT_2_0\\nCLIENT_2_1\\nCLIENT_2_2\\nCLIENT_2_3\\nCLIENT_2_4\\nCLIENT_2_5\\nCLIENT_2_6\\nCLIENT_2_7\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":1281}",
+          "annotations": null,
+          "_meta": null
+        }
+      ],
+      "structuredContent": null,
+      "isError": false,
+      "resultType": "complete"
+    }
+  },
+  {
+    "label": "parallel-script-1",
+    "tool": "run-script",
+    "arguments": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import time\nfor i in range(8):\n print('CLIENT_1_'+str(i),flush=True)\n time.sleep(0.15)\n",
+      "timeoutSeconds": 20
+    },
+    "elapsed": 1.4190204170299694,
+    "result": {
+      "_meta": null,
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"CLIENT_1_0\\nCLIENT_1_1\\nCLIENT_1_2\\nCLIENT_1_3\\nCLIENT_1_4\\nCLIENT_1_5\\nCLIENT_1_6\\nCLIENT_1_7\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":1257}",
+          "annotations": null,
+          "_meta": null
+        }
+      ],
+      "structuredContent": null,
+      "isError": false,
+      "resultType": "complete"
+    }
+  },
+  {
+    "label": "parallel-script-0",
+    "tool": "run-script",
+    "arguments": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import time\nfor i in range(8):\n print('CLIENT_0_'+str(i),flush=True)\n time.sleep(0.15)\n",
+      "timeoutSeconds": 20
+    },
+    "elapsed": 1.4508475000038743,
+    "result": {
+      "_meta": null,
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"CLIENT_0_0\\nCLIENT_0_1\\nCLIENT_0_2\\nCLIENT_0_3\\nCLIENT_0_4\\nCLIENT_0_5\\nCLIENT_0_6\\nCLIENT_0_7\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":1399}",
+          "annotations": null,
+          "_meta": null
+        }
+      ],
+      "structuredContent": null,
+      "isError": false,
+      "resultType": "complete"
+    }
+  }
+]

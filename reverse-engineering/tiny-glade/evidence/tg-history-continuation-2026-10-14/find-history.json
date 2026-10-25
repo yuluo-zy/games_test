@@ -1,0 +1,64 @@
+{
+  "backend": "ghidra",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "tg-history-loader-20261014",
+  "pid": 44948,
+  "project": "D:\\game\\tools\\reverse-runtime\\tg-history-loader-20261014\\project\\TinyGlade.gpr",
+  "backend_reused": false,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": false,
+  "results": [
+    {
+      "tool": "find_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "name_pattern": "(?i)(history|snapshot|save_game|load_game|starting_build)",
+        "regex": true,
+        "limit": 150,
+        "sort_by": "name"
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\tg-history-continuation-2026-10-14\\find-history.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"\",\"success\":false,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"Traceback (most recent call last):\\n  File \\\"C:\\\\Users\\\\liyu\\\\AppData\\\\Local\\\\Temp\\\\reva_12893194300481221583.py\\\", line 9, in <module>\\n    exec(compile('import json\\\\np=currentProgram\\\\nfm=p.getFunctionManager()\\\\naf=p.getAddressFactory()\\\\nv=json.loads(\\\\'{\\\"program\\\": \\\"tiny-glade.exe\\\", \\\"name_pattern\\\": \\\"(?i)(history|snapshot|save_game|load_game|starting_build)\\\", \\\"regex\\\": true, \\\"limit\\\": 150, \\\"sort_by\\\": \\\"name\\\"}\\\\')\\\\ndef addr(a):\\\\n    return af.getAddress(str(a).removeprefix(\\\"0x\\\"))\\\\nfrom pathlib import Path\\\\nimport re\\\\nsymbols=json.loads(Path(\\\\'D:\\\\\\\\\\\\\\\\game\\\\\\\\\\\\\\\\reverse-engineering\\\\\\\\\\\\\\\\tiny-glade\\\\\\\\\\\\\\\\evidence\\\\\\\\\\\\\\\\render-architecture\\\\\\\\\\\\\\\\public-symbols.json\\\\').read_text(encoding=\\\"utf-8\\\"))\\\\npattern=v.get(\\\"pattern\\\",v.get(\\\"query\\\",v.get(\\\"name\\\",\\\"\\\")))\\\\nlimit=int(v.get(\\\"limit\\\",20))\\\\nif not 1<=limit<=100: raise ValueError(\\\"limit must be 1..100\\\")\\\\nrx=re.compile(pattern) if v.get(\\\"regex\\\",False) else None\\\\nrows=[]\\\\nfor s in symbols:\\\\n    n=s.get(\\\"demangled\\\",\\\"\\\")\\\\n    if s.get(\\\"va\\\") and ((rx.search(n) if rx else pattern.lower() in n.lower())):\\\\n        rows.append({\\\"address\\\":s[\\\"va\\\"],\\\"name\\\":n,\\\"basis\\\":\\\"original LLVM PDB public symbol; not ABI\\\"})\\\\noffset=int(v.get(\\\"offset\\\",0))\\\\nprint(json.dumps({\\\"total_matches\\\":len(rows),\\\"functions\\\":rows[offset:offset+limit]}))\\\\n', \\\"<retained-job>\\\", \\\"exec\\\"), globals())\\n  File \\\"<retained-job>\\\", line 13, in <module>\\nValueError: limit must be 1..100\\n\\r\\n\",\"durationMs\":567}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.578,
+      "stdout": "",
+      "passed": false,
+      "error": "run-script: failed, timed out or truncated; inspect the retained result"
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 3.485,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":187}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "error": "unhandled errors in a TaskGroup (1 sub-exception)",
+  "exception_trace": "  + Exception Group Traceback (most recent call last):\n  |   File \"D:\\game\\reverse-engineering\\tiny-glade\\scripts\\reverse_tools\\reverse_operator.py\", line 116, in run\n  |     limits=httpx.Limits(max_keepalive_connections=0)) as http_client, streamable_http_client(\n  |                                                                       ^^^^^^^^^^^^^^^^^^^^^^^\n  |   File \"C:\\Users\\liyu\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\contextlib.py\", line 231, in __aexit__\n  |     await self.gen.athrow(value)\n  |   File \"D:\\tools\\reverse-engineering\\venvs\\reverse-engineering-assistant\\Lib\\site-packages\\mcp\\client\\streamable_http.py\", line 672, in streamable_http_client\n  |     async with anyio.create_task_group() as tg:\n  |                ^^^^^^^^^^^^^^^^^^^^^^^^^\n  |   File \"D:\\tools\\reverse-engineering\\venvs\\reverse-engineering-assistant\\Lib\\site-packages\\anyio\\_backends\\_asyncio.py\", line 847, in __aexit__\n  |     raise BaseExceptionGroup(\n  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)\n  +-+---------------- 1 ----------------\n    | Exception Group Traceback (most recent call last):\n    |   File \"D:\\tools\\reverse-engineering\\venvs\\reverse-engineering-assistant\\Lib\\site-packages\\mcp\\client\\streamable_http.py\", line 695, in streamable_http_client\n    |     yield (\n    |   File \"D:\\game\\reverse-engineering\\tiny-glade\\scripts\\reverse_tools\\reverse_operator.py\", line 118, in run\n    |     async with ClientSession(read, write) as session:\n    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^\n    |   File \"D:\\tools\\reverse-engineering\\venvs\\reverse-engineering-assistant\\Lib\\site-packages\\mcp\\shared\\session.py\", line 238, in __aexit__\n    |     return await self._task_group.__aexit__(exc_type, exc_val, exc_tb)\n    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    |   File \"D:\\tools\\reverse-engineering\\venvs\\reverse-engineering-assistant\\Lib\\site-packages\\anyio\\_backends\\_asyncio.py\", line 847, in __aexit__\n    |     raise BaseExceptionGroup(\n    | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)\n    +-+---------------- 1 ----------------\n      | Traceback (most recent call last):\n      |   File \"D:\\game\\reverse-engineering\\tiny-glade\\scripts\\reverse_tools\\reverse_operator.py\", line 201, in run\n      |     validate_result(result, name)\n      |   File \"D:\\game\\reverse-engineering\\tiny-glade\\scripts\\reverse_tools\\reverse_operator.py\", line 34, in validate_result\n      |     raise RuntimeError(name + ': failed, timed out or truncated; inspect the retained result')\n      | RuntimeError: run-script: failed, timed out or truncated; inspect the retained result\n      +------------------------------------\n"
+}

@@ -1,0 +1,1250 @@
+{
+"0x140b34f20": [
+"WallId::is_valid（u64!=0；PDB 索引名 get_inner 错位，真 get_inner 在 0x140885d0）",
+"O-h"
+],
+"0x140b34f30": [
+"HighlightColor::to_rgb（判别==1 → (0.1,0.03,0) 否则 (0.07,0.08,0.07)）",
+"O-d"
+],
+"0x140b34f80": [
+"split_height_into_skirts（>=5.9 起 4.5 每 +3.5，条件 height>f+1.4）",
+"O-d"
+],
+"0x1408c5660": [
+"FreehandHeightType::toggle（*self ^= 1）",
+"O-h"
+],
+"0x1408c5670": [
+"WallStyle::is_halftimbered（cmp byte,2; setae）",
+"O-h"
+],
+"0x1408c5680": [
+"StructureType::is_fence（判别读取，比较内联调用方）",
+"O-h"
+],
+"0x1408c5690": [
+"is_default_arch_height（cmpeqss 2.8f@0x142a8cc60 + and 1 → arch_height==2.8f）",
+"O-h"
+],
+"0x1408c56b0": [
+"WallState::get_enclosure_params（tag@+0x38<2 ? &self+0x38 : null）",
+"O-h"
+],
+"0x14085ebc0": [
+"deserialize_wall_style 兼容反序列化（Stone/StoneWithSkirts/HalfTimbered + 13 字段名表）",
+"O-d"
+],
+"0x140859f90": [
+"InnerWalls::new",
+"O-d"
+],
+"0x14085a200": [
+"InnerWalls::wall_ids（+0xc0 脏代计数递增 + map 遍历）",
+"O-d"
+],
+"0x14085a730": [
+"InnerWalls::max_id",
+"O-d"
+],
+"0x14085a370": [
+"InnerWalls::new_wall_w_params（参数化建墙）",
+"O-d"
+],
+"0x14085a4a0": [
+"InnerWalls::new_wall_with_id（FUN_141529bb0 收集 + 尾调 FUN_1402ca2f0(self+0x30,id) 工厂）",
+"O-d"
+],
+"0x14085a550": [
+"InnerWalls::reset_max_id",
+"I"
+],
+"0x14085a560": [
+"InnerWalls::get",
+"O-d"
+],
+"0x14085a650": [
+"InnerWalls::get_unwrapped",
+"O-d"
+],
+"0x14085aa60": [
+"InnerWalls::remove",
+"O-d"
+],
+"0x14085ad20": [
+"InnerWalls::update_arch_height（→ _try_update_state<update_arch_height> 0x140aaa710）",
+"O-d"
+],
+"0x14085ad40": [
+"InnerWalls::update_arch_type（→ 0x140aa9eb0 写 WallState+0x64）",
+"O-d"
+],
+"0x14085ad60": [
+"InnerWalls::update_wall_state_height（→ 0x140aaaca0 写 WallState+0x54）",
+"O-d"
+],
+"0x140aa9800": [
+"_try_update_state<update_supports>（写 WallState+0x67 removed_supports u8）",
+"O-d"
+],
+"0x140aa99e0": [
+"_try_update_state<update_freehand_ty>（写 WallState+0x60 u8）",
+"O-d"
+],
+"0x140aa9eb0": [
+"_try_update_state<update_arch_type>（写 WallState+0x64 u8）",
+"O-d"
+],
+"0x140aaa090": [
+"_try_update_state<update_wall_state_curve>（drop 旧双 Vec 换入新曲线）",
+"O-d"
+],
+"0x140aaa8f0": [
+"_try_update_state<mark_as_non_enclosed>（写 enclosure tag 2 = Freehand）",
+"O-d"
+],
+"0x140aaaca0": [
+"_try_update_state<update_wall_state_height>（写 WallState+0x54 f32）",
+"O-d"
+],
+"0x140aaa710": [
+"_try_update_state<update_arch_height>（写偏移待解，候选 arch_height f32）",
+"I"
+],
+"0x140aaa530": [
+"_try_update_state<update_style> 实例化",
+"I"
+],
+"0x140aaa350": [
+"_try_update_state<update_plaster_peel> 实例化",
+"I"
+],
+"0x140aa9bc0": [
+"_try_update_state 实例化（bulldoze 增长路径）",
+"I"
+],
+"0x140b2a5d0": [
+"get_wall_shape（tag<2 否则 unwrap panic）",
+"O-d"
+],
+"0x140b2a600": [
+"try_get_wall_shape（tag>=2 → None）",
+"O-d"
+],
+"0x140b2a620": [
+"max_y（+0x108 位0 → +0x10c，否则 panic wall heights not calculated）",
+"O-d"
+],
+"0x140b2a680": [
+"max_y_gable（+0x110 位0 → +0x114；PDB 名 is_premade_shape 错位）",
+"O-d"
+],
+"0x140b2a6e0": [
+"flat_roof_y（max_y - 0.79）",
+"O-d"
+],
+"0x140b2a740": [
+"wall_space（{tag!=2, f32@+0x28c} = Option<f32> 发布长度）",
+"O-h"
+],
+"0x140b2a760": [
+"wall_space_length（纯 +0x28c）",
+"O-h"
+],
+"0x140b2a770": [
+"u_space（{tag!=2, 1.0f@0x142925904} = Option<f32> 归一全区间）",
+"O-h"
+],
+"0x140b2a790": [
+"is_rectangle（tag==1 复制 24B）",
+"O-d"
+],
+"0x140b2a7d0": [
+"is_circle（tag==0 复制 16B）",
+"O-d"
+],
+"0x140b2a800": [
+"corner_pos_and_normal_xz（仅 Rectangle：Rectangle2d::get_point/get_corner_normal）",
+"O-d"
+],
+"0x140b2a890": [
+"get_wall_attachment_height（premade→max_y；freehand→u×raw_len→clamp01→2D 插值→3D 投影→高度数组插值）",
+"O-d"
+],
+"0x140a923a0": [
+"PublicWalls::roof_entity（hashbrown 查表 Option<Entity>）",
+"O-d"
+],
+"0x140b256b0": [
+"WallCornerAttachment::is_attached（字节!=0）",
+"O-d"
+],
+"0x140b256c0": [
+"WallCornerAttachment::from_rectangle_corner_id（id<4 否则 panic）",
+"O-d"
+],
+"0x140b256f0": [
+"WallCornerAttachment::to_rectangle_corner_id（{present, id-1}）",
+"O-h"
+],
+"0x1408332c0": [
+"DecoratorInfo::dst_as_wall_mut（unreachable dst is Roof/Stair/Terrain）",
+"O-d"
+],
+"0x140833410": [
+"DecoratorInfo::dst_as_terrain",
+"O-d"
+],
+"0x1408334e0": [
+"DecoratorDst::as_roof",
+"O-d"
+],
+"0x140839340": [
+"DecoratorExtraInfo::as_flag",
+"O-d"
+],
+"0x1408394b0": [
+"DecoratorExtraInfo::as_stair",
+"O-d"
+],
+"0x140839490": [
+"DecoratorExtraInfo::try_as_stair",
+"O-d"
+],
+"0x140833260": [
+"DecoratorInfo::dst_as_wall（tag<=1 → &self 否则 panic 行 40）",
+"O-h"
+],
+"0x1408333a0": [
+"DecoratorInfo::try_dst_as_wall（[+0x22]<2 ? &self : null）",
+"O-h"
+],
+"0x140833540": [
+"DecoratorDst::as_wall_mut（tag<=1 → &mut self，否则 unreachable）",
+"O-h"
+],
+"0x140833570": [
+"DecoratorOpEventKind::id（返回 u32 id；v1 名 as_wall_mut 错位）",
+"O-h"
+],
+"0x1408334d0": [
+"DecoratorDst::is_wall（tag<2 setb）",
+"O-h"
+],
+"0x1408339e0": [
+"TransientDecoratorIdGen::generate（两模式：直写 base 或偏移累加）",
+"O-h"
+],
+"0x1408339c0": [
+"TransientDecoratorIdGen::new",
+"I"
+],
+"0x140833150": [
+"DecoratorType::can_change_seed（(t+0xc8)<8 && 0x27>>shifted&1 → {0x38,0x39,0x3a,0x3d}）",
+"O-h"
+],
+"0x140833160": [
+"DecoratorType::is_window（(t+0xc8)<3 → {0x38,0x39,0x3a}）",
+"O-h"
+],
+"0x140833170": [
+"DecoratorType::spawns_clutter（(t&0x3e)==0x38 → {0x38,0x39}）",
+"O-h"
+],
+"0x140833180": [
+"DecoratorType::can_place_on_flat_roof（t!=0x3a）",
+"O-h"
+],
+"0x140833190": [
+"DecoratorType::can_place_on_stair_top（(t+0xc4)<3 || (t&0x38)!=0x38）",
+"O-h"
+],
+"0x1408331b0": [
+"DecoratorType::can_place_on_terrain（(t&0x3c)!=0x38）",
+"O-h"
+],
+"0x1408331c0": [
+"DecoratorType::should_offer_snap_to_corner（t!=0x3f）",
+"O-h"
+],
+"0x140833230": [
+"ClutterVersion::is_initial（cmp byte,0; sete）",
+"O-h"
+],
+"0x140833240": [
+"DecoratorLocator::new",
+"I"
+],
+"0x140833250": [
+"DecoratorRank::new",
+"I"
+],
+"0x1408336b0": [
+"DeferredDecoratorOpEvents::send",
+"O-d"
+],
+"0x140833a00": [
+"DecoratorRotationXZ::from_xz_forward_vector",
+"O-d"
+],
+"0x140833a20": [
+"DecoratorRotationXZ::from_quat",
+"O-d"
+],
+"0x140833ac0": [
+"DecoratorRotationXZ::to_quat",
+"O-d"
+],
+"0x140833b80": [
+"DecoratorRotationXZ::offset",
+"I"
+],
+"0x140833ba0": [
+"DerivedDecoratorInfo::collision_mesh（偏移表尾跳转发）",
+"O-h"
+],
+"0x14003bb80": [
+"decorator_subtype::queue（空函数 ret，no-op）",
+"O-h"
+],
+"0x140b25c90": [
+"impl$1::get::closure$0（两参交换）",
+"O-h"
+],
+"0x140b25b50": [
+"DecoratorSubtype::can_be_on_corner（字节标志读取）",
+"O-d"
+],
+"0x140b25b60": [
+"DerivedDecoratorSubtypes::get（HashMap<u32,Arc<DerivedDecoratorInfo>> 未命中 panic）",
+"O-d"
+],
+"0x140b25ca0": [
+"DecoratorCollision::empty（Rectangle3d+parry3d cuboid+IsoTransform）",
+"O-d"
+],
+"0x140b25ef0": [
+"DecoratorMeshLibrary::insert_collision_and_interaction_as_same",
+"O-d"
+],
+"0x140b262a0": [
+"DecoratorMeshLibrary::insert（克隆后插 4 表）",
+"O-d"
+],
+"0x140b26690": [
+"DecoratorMeshLibrary::get_outline（map3@+0x60）",
+"O-d"
+],
+"0x140b267f0": [
+"DecoratorMeshLibrary::get_collision_outline（map4@+0x90）",
+"O-d"
+],
+"0x140b26970": [
+"DerivedDecoratorInfo::subtype",
+"O-d"
+],
+"0x140b26980": [
+"DerivedDecoratorInfo::try_get_subtype",
+"O-d"
+],
+"0x141fdc7b0": [
+"DerivedDecoratorInfo::dims_wall_space（bbx 差值）",
+"O-d"
+],
+"0x140a1c290": [
+"DecoratorStorage serde CompactFormatter",
+"O-d"
+],
+"0x140a1c930": [
+"lookup_decorator_info（0x98 步长墙 map 查 Decorators，内嵌 DecoratorId map@+0x30 再查）",
+"O-d"
+],
+"0x140a1cf30": [
+"get_or_insert_default（21KB；!self.immutable 断言）",
+"O-d"
+],
+"0x140a1e300": [
+"wall_decorators（墙集合访问）",
+"O-d"
+],
+"0x140a1e540": [
+"iter_walls_mut",
+"O-d"
+],
+"0x140a1e280": [
+"iter_terrain_decorators（迭代器 {tag=1, ptr=self+0x90}）",
+"O-h"
+],
+"0x140a1e2c0": [
+"iter_stair_decorators（迭代器 {tag=1, ptr=self+0x120}）",
+"O-h"
+],
+"0x140a1e5b0": [
+"iter（墙集合@+0x0 迭代器）",
+"O-h"
+],
+"0x140a1e630": [
+"iter_mut",
+"O-d"
+],
+"0x140a1e6e0": [
+"iter_removed_storages（[+0x30]/[+0x38]/[+0x48]）",
+"O-h"
+],
+"0x140a1b030": [
+"Decorators::iter_modified_ids（[+0x60]/[+0x68]/[+0x78]）",
+"O-h"
+],
+"0x140a1b070": [
+"Decorators::iter_modified",
+"O-h"
+],
+"0x140a1b0b0": [
+"Decorators::iter_modified_mut（闭包）",
+"O-h"
+],
+"0x140a1b140": [
+"Decorators::mark_all_modified",
+"O-d"
+],
+"0x140a1b1e0": [
+"DecoratorMaybeMut::get_mut（helper([+8],[+0x10]) 后返回 [+0] 指针）",
+"O-h"
+],
+"0x140a1b430": [
+"DecoMoveToStorage::new（3 字段 {r8,r9,rdx}）",
+"O-h"
+],
+"0x140a1c240": [
+"DecoratorStorageAddr::as_wall（[+0]==0 → [+8]）",
+"O-h"
+],
+"0x140a1c2b0": [
+"DecoratorStorage::mark_mutable（清 +0x1b0 标志）",
+"O-h"
+],
+"0x140a1c2c0": [
+"DecoratorStorage::get",
+"O-d"
+],
+"0x140a1c3e0": [
+"DecoratorStorage::lookup_storage（+0x78 的 0x18B {DecoratorId u32, ptr} 索引）",
+"O-d"
+],
+"0x140a1c510": [
+"DecoratorStorage::try_lookup_storage",
+"O-d"
+],
+"0x140a1c5f0": [
+"DecoratorStorage::decorator_info",
+"O-d"
+],
+"0x140a1cde0": [
+"DecoratorStorage::get_mut",
+"O-d"
+],
+"0x140a1ea40": [
+"on_walls_merged（21KB；panic d2s remove: no such）",
+"O-d"
+],
+"0x140a1f590": [
+"on_wall_split（46KB；装饰迁移主逻辑）",
+"O-d"
+],
+"0x140a20890": [
+"apply_decorator_remove 闭包",
+"O-d"
+],
+"0x140a20d70": [
+"take_snapshot（26KB；+0x1b0 门控 + 16B XOR 掩码 0x1429cd080）",
+"O-d"
+],
+"0x141257900": [
+"Decorators::clear_modification_tracking",
+"O-d"
+],
+"0x141560920": [
+"Decorators::clone_from 闭包",
+"O-d"
+],
+"0x140a1e190": [
+"DecoratorArchivist::all_storages 闭包",
+"O-d"
+],
+"0x1403c03c0": [
+"decorator_interactions（返回 &self+0x90）",
+"O-h"
+],
+"0x140005c60": [
+"extract_diff 闭包（环境 +0x60）",
+"O-h"
+],
+"0x140b2bb00": [
+"validate_param（pmovmskb 零字节位图 → 校验描述符）",
+"O-h"
+],
+"0x140b2bc00": [
+"decorator_cull_allow_any（0x98 步长 map 命中回调）",
+"O-d"
+],
+"0x140b2be70": [
+"archive_storage_decorators",
+"O-d"
+],
+"0x140b2c4b0": [
+"extract_before_after_all",
+"O-d"
+],
+"0x140f86500": [
+"WallHoles::add（entry_or_default + 指纹累加）",
+"O-d"
+],
+"0x140f867c0": [
+"WallHoles::clear_for_next_frame（advance_frame + finalized 迁入 PrevWallHoles）",
+"O-d"
+],
+"0x140f87300": [
+"WallHoleStorage::finalize（raw→Aabb2，maxX 排序，闭合跨 seam 副本；panic not cleared yet）",
+"O-d"
+],
+"0x140f86de0": [
+"WallHoleStorage::new_in_progress",
+"O-d"
+],
+"0x140f86e50": [
+"WallHoleStorage::new_finalized",
+"O-d"
+],
+"0x140f86eb0": [
+"as_finalized（phase==1 否则 panic）",
+"O-d"
+],
+"0x140f86f00": [
+"as_wip_mut（phase==0 否则 panic）",
+"O-d"
+],
+"0x140f86f50": [
+"clone_and_reopen（深拷贝 + phase 复位 0）",
+"O-d"
+],
+"0x140f87860": [
+"InProgressHoleStorage::add（0x14 步长 push）",
+"O-d"
+],
+"0x140f86d00": [
+"PrevWallHoles::wall_holes（contains_key）",
+"O-d"
+],
+"0x140f86cd0": [
+"clear_for_next_frame 闭包（+8/+0x10 ×4 缩放迭代）",
+"O-h"
+],
+"0x140f86cf0": [
+"holes_no_duplicates 闭包（f32@+0x18 wall_length）",
+"O-h"
+],
+"0x140c37760": [
+"InProgressHoleStorage::holes（{ptr@+8,len@+0x10}）",
+"O-h"
+],
+"0x14067dd80": [
+"FinalizedHoleStorage::inner（恒等返回）",
+"O-h"
+],
+"0x14123fc70": [
+"FinalizedWallHoles::iter_holes_with_padding",
+"O-d"
+],
+"0x140a88280": [
+"init_this_update（帧初状态推进）",
+"O-d"
+],
+"0x140a88320": [
+"set_pillar_placements（自旋锁 + futex 式等待 + 换入 Vec@+0x70{cap,ptr,len}）",
+"O-d"
+],
+"0x140a88420": [
+"set_lintel_pillars_count（u32@+0xb4）",
+"O-h"
+],
+"0x140a88430": [
+"set_arch_pillars_count（u32@+0xbc）",
+"O-h"
+],
+"0x140a88440": [
+"set_path_segmentation_count（u32@+0xac）",
+"O-h"
+],
+"0x140a88450": [
+"add_lintels_length（CAS +0x94+=x, +0x9c-=x）",
+"O-h"
+],
+"0x140a884a0": [
+"add_arches_length（CAS +0x98+=x, +0x90-=x）",
+"O-h"
+],
+"0x140a884f0": [
+"add_gate_length（CAS +0xa0+=x, +0x90-=x）",
+"O-h"
+],
+"0x140a88540": [
+"add_sewer_length（CAS +0xa8+=x, +0x90-=x）",
+"O-h"
+],
+"0x140a88590": [
+"add_stairs_length（CAS +0xa4+=x, +0x90-=x）",
+"O-h"
+],
+"0x140a885e0": [
+"set_lintels_segments_count（u32@+0xb0）",
+"O-h"
+],
+"0x140a885f0": [
+"set_arches_segments_count（u32@+0xb8）",
+"O-h"
+],
+"0x140a88600": [
+"set_gates_segments_count（u32@+0xc0）",
+"O-h"
+],
+"0x140a88610": [
+"set_sewer_segments_count（u32@+0xc4）",
+"O-h"
+],
+"0x140a88620": [
+"set_fences_segments_count（u32@+0xc8）",
+"O-h"
+],
+"0x140a88630": [
+"set_fences_segments_seed（u64@+0x88）",
+"O-h"
+],
+"0x140a88640": [
+"max_pillar_movement",
+"I"
+],
+"0x140a887d0": [
+"which_material_changed_the_most（7 对 |cur-prev| argmax 索引 0..6，plain 带 -0.01 bias，前 5 对和>0 门控）",
+"O-d"
+],
+"0x1408e80f0": [
+"get_tris（quad 0x60B → tri 0x48B 输出；panic !triangles.is_empty()）",
+"O-d"
+],
+"0x1408eae40": [
+"recompute_quads（27KB；panic !mesh_uvs/!normals.is_empty()）",
+"O-d"
+],
+"0x1408e80e0": [
+"register_required_components（返回 {+0x20,+0x28} 对）",
+"O-h"
+],
+"0x140a1ada0": [
+"transform（缓存 3×3 矩阵 9 分量有限性校验 + panic）",
+"O-d"
+],
+"0x140a1a9f0": [
+"变换缓存方法族",
+"O-d"
+],
+"0x140a1aa20": [
+"变换缓存方法族",
+"O-d"
+],
+"0x140a1ab80": [
+"变换缓存方法族",
+"O-d"
+],
+"0x140a1ac80": [
+"变换缓存方法族",
+"O-d"
+],
+"0x140a1af40": [
+"变换缓存方法族",
+"O-d"
+],
+"0x140b33920": [
+"DecoratorCollisionOutline::display（Mat3+平移逐顶点）",
+"O-d"
+],
+"0x140b33b00": [
+"DecoratorOutline::display 闭包",
+"O-d"
+],
+"0x140b348e0": [
+"DecoratorOutline::display 闭包",
+"O-d"
+],
+"0x141286680": [
+"DormerHoleSsbo::gothic（0x30B 构造，尾区 4×f32）",
+"O-h"
+],
+"0x1412866e0": [
+"DormerHoleSsbo::cottage（0x30B 构造，+0x28 处 f64）",
+"O-h"
+],
+"0x140901270": [
+"StairsPillarProposals::add（7KB）",
+"O-d"
+],
+"0x140a78880": [
+"StoneColumnCollisionStorage（11.4KB）",
+"O-d"
+],
+"0x140a8b530": [
+"publish_public_wall_state（14 参；lazy 源→重建 public→SparseInstanceBuffer::allocate→OnWallChanged/Deleted）",
+"O-d"
+],
+"0x140a8fd90": [
+"spatial_hash_update（EventReader×2+Res<PublicWalls>+ResMut<WallSpatialHash>；simplified_curve_2d→add_segment/remove_wall_id）",
+"O-d"
+],
+"0x1409ef210": [
+"WallSpatialHash::new（bbx 越界断言族）",
+"O-d"
+],
+"0x140aa5dd0": [
+"WallSpatialHash::add_segment（逐格 0x38B 成员 push）",
+"O-d"
+],
+"0x140aa5360": [
+"WallSpatialHash::remove_wall_id（hashbrown erase）",
+"O-d"
+],
+"0x140a94cd0": [
+"wall_roof_hashmap（Query 遍历 + 双向映射维护）",
+"O-d"
+],
+"0x1408ec0e0": [
+"spatial_hash_debug（逐格 DebugRectangle 调试）",
+"O-d"
+],
+"0x140a8b0c0": [
+"debug_viz_threshold_curve（逐墙 DebugSphere）",
+"O-d"
+],
+"0x140a8a710": [
+"calc_wall_bend（>5 点算 bend，acos clamp<=1.0；写 WallBendChangedEvent）",
+"O-d"
+],
+"0x140aac1e0": [
+"delete_wall（三 map remove + Commands::despawn 双类型）",
+"O-d"
+],
+"0x140a7cba0": [
+"draw_wall（4 ResMut；CurveNursery + crashy_new_from_points + update_freehand_ty）",
+"O-d"
+],
+"0x140a800a0": [
+"finish_wall（5 ResMut；no temp curve/doesn't exist panic；CompoundEditBuilder 历史）",
+"O-d"
+],
+"0x140999920": [
+"merge_walls（地形采样 + crashy_new_from_points + decorator_cull_allow_any）",
+"O-d"
+],
+"0x1409a2290": [
+"set_wall_style（三读器 + CompoundEditBuilder + RequestWallMaterialAudio 0x20B）",
+"O-d"
+],
+"0x140a74c20": [
+"wall_splitter（get_curve_segment_from_u/get_u_at_coord + ChildWall::new + convert_to_stone_version）",
+"O-d"
+],
+"0x140981390": [
+"wall_highlight（WallEntities 查表 + WallHighlight 写入 + ty→rgba 四常量）",
+"O-d"
+],
+"0x14082c170": [
+"upload_instanced_wall_ssbo（get_mut<BrickTransformSsbo> unwrap + 脏区间双路径 + gpu_flush）",
+"O-d"
+],
+"0x1408dc9f0": [
+"PendingWallChanged::try_new（投影/clamp01/严格 low<high/i64::MIN 哨兵）",
+"O-d"
+],
+"0x1408dccf0": [
+"history_record_wall_changed（pending → ConcurrentEdits 组）",
+"O-d"
+],
+"0x1408dd1b0": [
+"history_record_merge_walls",
+"O-d"
+],
+"0x140a876a0": [
+"CompoundEditBuilder::wall_deleted（Delete 组 3 分支）",
+"O-d"
+],
+"0x140959fc0": [
+"structure_outline（Esc 门控 + ShapeParameters + outline_* signifier 族）",
+"O-d"
+],
+"0x140aadbb0": [
+"suppress_continue_wall（修饰键/光标移动抑制；Res<GameTime>）",
+"O-d"
+],
+"0x140aadd30": [
+"ui_continue_wall（端点续画 + GladeBorder + WallContinueState）",
+"O-d"
+],
+"0x140aafe40": [
+"ui_draw_wall（5 ResMut；RecordMouseInputIntoWall 转发 + FinishWall）",
+"O-d"
+],
+"0x140ade610": [
+"SnappingMode::new（11B {mode@0,snapped@1}）",
+"O-h"
+],
+"0x140ada600": [
+"snapping_init（重置；首段<=1.65 返回；投影<=1.5 → mode=1）",
+"O-d"
+],
+"0x140a6ad00": [
+"snapping_maintain（跳表分发 + mod key 切换 + NotifyHintSystemSnapping）",
+"O-h"
+],
+"0x140a6a650": [
+"snapping_signifiers（段/端双查询预览线）",
+"O-d"
+],
+"0x140a6a560": [
+"check_for_disable_snapping（mode∈{2,3} → 写事件）",
+"O-h"
+],
+"0x140a6ad80": [
+"snapping_to_ends（首输入点投影墙曲线→最近端→mode=2）",
+"O-d"
+],
+"0x140a6b5e0": [
+"snapping_to_segments（raw 长度 + closest_segment_to_snap_to → mode=1）",
+"O-d"
+],
+"0x140a6a480": [
+"snapping_audio（mode==2 且 +0x20 状态字节!=2 / mode==3 且 <=1 → PlayWallUiSound）",
+"O-h"
+],
+"0x14086ad70": [
+"telegraph_walls_are_merged（连线两墙端点 signifier）",
+"O-d"
+],
+"0x140ac1f20": [
+"adjust_wall_height_impl（0x30B 命令 + clamp 回退 + 地形采样 + _try_update_state<height>×2 + 0x28B/0x20B 事件）",
+"O-d"
+],
+"0x140ac7f30": [
+"clamp_wall_height（机器码=PublicWalls 查墙→roof_entity→bool；数值策略另在 S02 height_rules，名实冲突待裁决）",
+"O-d"
+],
+"0x140ac6d60": [
+"ui_adjust_wall_height_mode（模式进出 + 光线拾取 + TestCube + 装饰 cull）",
+"O-d"
+],
+"0x140ac7400": [
+"get_closest_point_u_to_cursor（points_with_u/segments_with_u 投影；panic !curve.points.is_empty()）",
+"O-d"
+],
+"0x140ac79e0": [
+"history_record_adjust_wall_height（ev_height_changed）",
+"O-d"
+],
+"0x140b2fc00": [
+"ui_adjust_wall_height（未拖动选中预置墙→UiWallHeight；roof flat/no-rim/动画分支）",
+"O-d"
+],
+"0x1409566d0": [
+"UiWallHeight::new/widget 族",
+"O-d"
+],
+"0x140957390": [
+"adjust_wall_height_curve（插值曲线）",
+"O-d"
+],
+"0x14085bb50": [
+"signifier_animation（flat_w_no_rim → 重算曲线；否则 SignifierAnimation::t）",
+"O-d"
+],
+"0x140a82b20": [
+"AnimateWallBulldozeBuffer::new",
+"O-d"
+],
+"0x140ac27e0": [
+"animate_wall_bulldoze（phase 推进 CubicInOut + 曲线切片 + authority 移除）",
+"O-d"
+],
+"0x1409de170": [
+"wall_eraser_bulldoze_condition（AppMode{tag==9,+4==3}）",
+"O-h"
+],
+"0x1409de190": [
+"wall_eraser_bulldoze（装饰排空 + 楼梯断开 + RoofDelete FIRST 双组）",
+"O-d"
+],
+"0x140accab0": [
+"wall_eraser（拖笔选段 + archivist + ChildWall::new + 平屋顶高度补偿）",
+"O-d"
+],
+"0x14092e6e0": [
+"WallEraserArchivist::new",
+"O-d"
+],
+"0x14092e8e0": [
+"WallEraserArchivist::record_rewiring_event",
+"O-d"
+],
+"0x14092ea50": [
+"WallEraserArchivist::cache_if_original_wall",
+"O-d"
+],
+"0x14092eff0": [
+"WallEraserArchivist::shrink_wall",
+"O-d"
+],
+"0x14092f990": [
+"WallEraserArchivist::finish（CompoundEditBuilder::build；!before_wall.curve.is_empty() 断言）",
+"O-d"
+],
+"0x140945f50": [
+"add_wall_shape_ux（4 资源注册）",
+"O-d"
+],
+"0x140ac80e0": [
+"calc_shape_height（base 6.0/8.0、-0.46、clamp[0.7,14.0]、写预览+0x40）",
+"O-d"
+],
+"0x14097f970": [
+"shape_placement_params（光标位→new_unsnapped + 吸附）",
+"O-d"
+],
+"0x140980db0": [
+"snap_to_roof_ridge（Roof::pivot_3d/RoofRidgeDims::calc）",
+"O-d"
+],
+"0x1408dec70": [
+"shape_placement_signifiers（吸附线 + outline）",
+"O-d"
+],
+"0x1408dfc60": [
+"shape_placement_signifiers（!u.is_nan()/!u.is_infinite() 断言）",
+"O-d"
+],
+"0x1409ef010": [
+"ShapeSignifierLerp 族（circle/rectangle 插值）",
+"O-d"
+],
+"0x14097e560": [
+"create_circle（曲线+enclosure+roof+历史）",
+"O-d"
+],
+"0x14165bed0": [
+"ui_create_circle（射线拖拽半径 → PreviewCircle）",
+"O-d"
+],
+"0x14165d460": [
+"ui_edit_circle（update_circle_radius → curve/enclosure；finish 历史）",
+"O-d"
+],
+"0x1409ac910": [
+"ui_rotate_circle（屏幕空间旋转 → curve/enclosure）",
+"O-d"
+],
+"0x140b35120": [
+"circle edit_arrow signifier",
+"O-d"
+],
+"0x140a64a40": [
+"circle edit_line signifier",
+"O-d"
+],
+"0x140a93790": [
+"create_rectangle（smoothstep 角 + roof + 历史）",
+"O-d"
+],
+"0x14097f620": [
+"edit_rectangle（update curve + enclosure）",
+"O-d"
+],
+"0x141464a60": [
+"finish_edit_rectangle（0.01 阈值双判据 + ConcurrentEdits + 恢复）",
+"O-d"
+],
+"0x14155d410": [
+"ui_create_rectangle（dims_from_cursor_pos + orientation）",
+"O-d"
+],
+"0x140ad6250": [
+"ui_edit_rectangle_dims（get_distance_to_edge 拖边）",
+"O-d"
+],
+"0x140ad6e00": [
+"ui_edit_rectangle_dims（变体）",
+"O-d"
+],
+"0x140ad8000": [
+"ui_edit_rectangle_orientation（触发体旋转）",
+"O-d"
+],
+"0x140ad8be0": [
+"ui_edit_rectangle_orientation（变体）",
+"O-d"
+],
+"0x1408dda10": [
+"signifier_edit_dims_line",
+"O-d"
+],
+"0x14155eba0": [
+"ui_modes edit_dims widget",
+"O-d"
+],
+"0x14083d3f0": [
+"ui_modes edit_orientation widget",
+"O-d"
+],
+"0x1411ff2a0": [
+"ShapeParameters::center（15B 极短）",
+"O-d"
+],
+"0x1411ff2b0": [
+"ShapeParameters::as_curve2",
+"O-d"
+],
+"0x1411ff2f0": [
+"ShapeParameters::as_curve3",
+"O-d"
+],
+"0x1411ff330": [
+"ShapeParameters::contains_shape（parry3d 路径）",
+"O-d"
+],
+"0x1411ff600": [
+"ShapeParameters::get_normal_at_u（位 0 判别分发）",
+"O-h"
+],
+"0x1411ff620": [
+"ShapeParameters::get_pos_at_u（位 0 判别分发）",
+"O-h"
+],
+"0x1411ff660": [
+"ShapeParameters::perimeter（位 0 判别分发 + 载荷几何）",
+"O-h"
+],
+"0x1411ff680": [
+"ShapeParameters::expand（向外扩张 amount）",
+"O-d"
+],
+"0x1411ff6f0": [
+"ShapeParameters::as_circle/as_rectangle",
+"O-d"
+],
+"0x140ad2950": [
+"ShapeParameters::contains_point/get_closest_u_from_pos（叶转发）",
+"O-d"
+],
+"0x140a1aeb0": [
+"CachedDecoratorTransforms::swap_buffers（双缓冲字段互换）",
+"O-d"
+],
+"0x1408337c0": [
+"DeferredDecoratorOpEvents::unleash（冲刷延迟装饰操作）",
+"O-d"
+],
+"0x140833130": [
+"DecoratorType::max_rank（(t+0xc8)<3 → 3 否则 1）",
+"O-h"
+],
+"0x140b2bb80": [
+"DecoratorArchivist::all_storages（遍历五集合）",
+"O-d"
+],
+"0x140b2bbf0": [
+"decorator_cull_allow_any 状态置位（byte[+0x1e0]=1）",
+"O-h"
+],
+"0x140b2bd30": [
+"decorator_cull_allow_stairs（标志读取）",
+"O-d"
+],
+"0x140b2cb30": [
+"DecoratorArchivist::extract_diff（before/after 差异提取）",
+"O-d"
+],
+"0x141256e40": [
+"Decorators::tracked_clone_from（实例化 1）",
+"O-d"
+],
+"0x1412573b0": [
+"Decorators::tracked_clone_from（实例化 2）",
+"O-d"
+],
+"0x14155b170": [
+"Decorators::merge_with（装饰集合合并）",
+"O-d"
+],
+"0x140a1c800": [
+"DecoratorStorage::decorator_info_mut",
+"O-d"
+],
+"0x140a1e420": [
+"DecoratorStorage::wall_decorators_mut",
+"O-d"
+],
+"0x140a20670": [
+"DecoratorStorage::apply_decorator_remove（装饰移除应用）",
+"O-d"
+],
+"0x140a20c70": [
+"DecoratorStorage::apply_decorator_place（装饰放置应用）",
+"O-d"
+],
+"0x1412b2a70": [
+"archive_storage_decorators 实例化",
+"O-d"
+],
+"0x1412b3910": [
+"archive_storage_decorators 实例化",
+"O-d"
+],
+"0x14123b5c0": [
+"archive_current_decorators_* 实例化（84KB）",
+"O-d"
+],
+"0x1412b4f10": [
+"archive_current_decorators_* 实例化（46KB）",
+"O-d"
+],
+"0x1400885d0": [
+"WallId::get_inner（mov rax,[rcx] 返回内值 u64）",
+"O-h"
+],
+"0x141286660": [
+"DormerHoleSsbo::dummy（3×16B 清零 = 全零 48B）",
+"O-h"
+],
+"0x140002370": [
+"edit_arrow clone_behavior（xor eax,eax 返回 0）",
+"O-h"
+],
+"0x1408333b0": [
+"DecoratorInfo::dst_as_roof（tag 判别访问）",
+"I"
+],
+"0x140833470": [
+"DecoratorInfo::dst_as_stair（tag 判别访问）",
+"I"
+],
+"0x141234970": [
+"WallPathSegment::pt_count（尾跳到 +0x58 Vec 长度取用）",
+"O-h"
+],
+"0x141234980": [
+"WallPathSegment::length_ws（+0x20 点数组逐段 3D 长度累加 sqrt）",
+"O-h"
+],
+"0x141234ad0": [
+"WallPathSegment::length_ws_2d（同 length_ws 仅 XY）",
+"O-h"
+],
+"0x140aa50e0": [
+"WallSegment::terrain_height_closest_to_ws_pos（f64 距离加权地形高）",
+"O-h"
+],
+"0x140aa5c70": [
+"WallSpatialHash 查询/换算方法（[+0x48] 分支，0x110 帧）",
+"I"
+],
+"0x140aa6520": [
+"world_space_to_grid_coord 浮点换算（[+0x50]/[+0x54] + 常量）",
+"O-h"
+],
+"0x140aa65d0": [
+"grid_coord_to_cell_index（gy×dims.x+gx：imul [rcx+0x48]）",
+"O-h"
+],
+"0x140aa65e0": [
+"浮点网格坐标换算（cvtsi2ss [+0x48]/[+0x50]/[+0x54]）",
+"O-h"
+],
+"0x140aa6600": [
+"cell 中心 f64 换算（movddup [+0x50] × 常量）",
+"O-h"
+],
+"0x1411ff640": [
+"ShapeParameters::perimeter（位 0 判别分发）",
+"O-h"
+],
+"0x140a91e00": [
+"WallEntities::wall_entity（hashbrown 查表 → Option<Entity>）",
+"O-h"
+],
+"0x140a922b0": [
+"PublicWalls::roof_entity（map@+0x48 区查表，与 0x140a923a0 并存实例）",
+"O-h"
+],
+"0x140a91e00_": [
+"WallEntities::wall_entity",
+"O-h"
+],
+"0x1422785d0": [
+"WallSpatialHash::query_with_circle_callback 闭包实例（圆查询：f64 网格坐标换算 + 半径过滤 + 逐格成员距离校验 + bbx_min/RESAMPLING 断言）",
+"O-d"
+],
+"0x1425defd0": [
+"WallSpatialHash::query_with_circle_callback 闭包实例（同 0x1422785d0）",
+"O-d"
+],
+"0x1425df320": [
+"WallSpatialHash::query_with_circle_callback 闭包实例（同 0x1422785d0，含 bbx_max 断言）",
+"O-d"
+],
+"0x140956cd0": [
+"UiWallHeight::signifier（构建 wall_height_edit_ signifier：读预览曲线点数组 +0x90/+0xe0、长度 +0x98/+0xe8）",
+"O-d"
+],
+"0x140a1b2c0": [
+"Decorators 集合 len 访问器（mov rax,[rcx+0x20]）",
+"O-h"
+],
+"0x140a1b5a0": [
+"键值集合 update（hashbrown 探针 + 0x14B 元素，修改追踪集合维护）",
+"I"
+],
+"0x1408bc520": [
+"From 转换（xor eax,eax 零构造）",
+"O-h"
+],
+"0x140a1c2a0": [
+"From 转换（单字段提取）",
+"O-h"
+],
+"0x140b26a70": [
+"From 转换（双字段提取 {+0x0,+0x20}）",
+"O-h"
+],
+"0x140839520": [
+"DecoratorExtraInfo From 变体 4（写判别字节 +0x11=4 + 字段拷贝）",
+"O-h"
+],
+"0x140839530": [
+"DecoratorExtraInfo From 变体 5（写判别字节 +0x11=5）",
+"O-h"
+],
+"0x140839540": [
+"DecoratorExtraInfo From 变体 6（写判别字节 +0x11=6）",
+"O-h"
+],
+"0x140839550": [
+"DecoratorExtraInfo From 变体 7（写判别字节 +0x11=7）",
+"O-h"
+],
+"0x140839560": [
+"DecoratorExtraInfo From 变体 8（写判别字节 +0x11=8）",
+"O-h"
+],
+"0x14165cd40": [
+"circle_signifier（构建 cursor_circle_ 预览 signifier：FUN_14165bd40 圆圈预览 + signifier 流）",
+"O-d"
+],
+"0x14155e460": [
+"rectangle_signifier（构建 cursor_rectangle_ 预览 signifier：FUN_141559ce0 矩形预览 + signifier 流）",
+"O-d"
+]
+}

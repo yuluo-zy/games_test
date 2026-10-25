@@ -1,0 +1,91 @@
+country_core::systems::wall::wall_state::wall_spatial_hash::impl$4::query_with_circle_callback::closure$0 :: systems/wall/wall_state/wall_spatial_hash.rs
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_140aa5a10(longlong param_1,float *param_2,longlong param_3)
+
+{
+  float fVar1;
+  float fVar2;
+  float fVar3;
+  float fVar4;
+  ulonglong uVar5;
+  longlong lVar6;
+  longlong lVar7;
+  float fVar8;
+  float fVar9;
+  ulonglong uVar10;
+  ulonglong uVar11;
+  float fVar12;
+  float fVar13;
+  float fVar14;
+  float fVar15;
+  float fVar16;
+  float fVar17;
+  undefined1 uStack_31;
+  undefined1 *apuStack_30 [5];
+  
+  fVar14 = *(float *)(param_1 + 0x50) * _UNK_14295a0e8;
+  fVar16 = _UNK_14295a0e8 * *(float *)(param_1 + 0x54);
+  fVar17 = *(float *)(param_1 + 0x50) * _UNK_142925870;
+  fVar12 = *(float *)(param_1 + 0x54) * _UNK_142925870;
+  fVar1 = *param_2;
+  fVar2 = param_2[1];
+  fVar15 = fVar14;
+  if (fVar14 <= fVar1) {
+    fVar15 = fVar1;
+  }
+  fVar8 = fVar16;
+  if (fVar16 <= fVar2) {
+    fVar8 = fVar2;
+  }
+  fVar3 = param_2[2];
+  fVar4 = param_2[3];
+  fVar9 = fVar17;
+  if (fVar3 <= fVar17) {
+    fVar9 = fVar3;
+  }
+  fVar13 = fVar12;
+  if (fVar4 <= fVar12) {
+    fVar13 = fVar4;
+  }
+  FUN_1409f12e0(fVar13,~-(uint)NAN(fVar1) & (uint)fVar15 | -(uint)NAN(fVar1) & (uint)fVar14,
+                ~-(uint)NAN(fVar2) & (uint)fVar8 | -(uint)NAN(fVar2) & (uint)fVar16,
+                ~-(uint)NAN(fVar3) & (uint)fVar9 | -(uint)NAN(fVar3) & (uint)fVar17,
+                ~-(uint)NAN(fVar4) & (uint)fVar13 | -(uint)NAN(fVar4) & (uint)fVar12,0,param_3,
+                param_1);
+  uVar5 = *(ulonglong *)(param_3 + 0x10);
+  apuStack_30[0] = &uStack_31;
+  if (1 < uVar5) {
+    if (uVar5 < 0x15) {
+      FUN_141338a90(*(undefined8 *)(param_3 + 8),uVar5,1,apuStack_30);
+      uVar5 = *(ulonglong *)(param_3 + 0x10);
+    }
+    else {
+      FUN_1409583c0(*(undefined8 *)(param_3 + 8),uVar5,apuStack_30);
+      uVar5 = *(ulonglong *)(param_3 + 0x10);
+    }
+    if (1 < uVar5) {
+      lVar6 = *(longlong *)(param_3 + 8);
+      uVar10 = 1;
+      do {
+        uVar11 = uVar10;
+        if (*(int *)(*(longlong *)(lVar6 + uVar10 * 8) + 0x30) ==
+            *(int *)(*(longlong *)(lVar6 + -8 + uVar10 * 8) + 0x30)) {
+          while (uVar11 = uVar11 + 1, uVar11 < uVar5) {
+            lVar7 = *(longlong *)(lVar6 + uVar11 * 8);
+            if (*(int *)(lVar7 + 0x30) != *(int *)(*(longlong *)(lVar6 + -8 + uVar10 * 8) + 0x30)) {
+              *(longlong *)(lVar6 + uVar10 * 8) = lVar7;
+              uVar10 = uVar10 + 1;
+            }
+          }
+          *(ulonglong *)(param_3 + 0x10) = uVar10;
+          return;
+        }
+        uVar10 = uVar10 + 1;
+      } while (uVar5 != uVar10);
+    }
+  }
+  return;
+}
+

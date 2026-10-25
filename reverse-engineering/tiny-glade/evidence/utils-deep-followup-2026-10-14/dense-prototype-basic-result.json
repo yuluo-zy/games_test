@@ -1,0 +1,90 @@
+{
+  "backend": "reva",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "utils-gap-20261014",
+  "pid": 42260,
+  "project": "D:\\game\\tools\\reverse-runtime\\utils-gap-20261014\\project\\TinyGlade.gpr",
+  "backend_reused": true,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": true,
+  "results": [
+    {
+      "tool": "set-function-prototype",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "location": "0x140809ad0",
+        "signature": "void* dense_segment_B(void* out, void* spline, ulonglong index)",
+        "createIfNotExists": false
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"usingCustomStorage\":false,\"address\":\"0x140809ad0\",\"customStorageEnabled\":false,\"success\":true,\"created\":false,\"function\":{\"callerCount\":0,\"address\":\"0x140809ad0\",\"sizeInBytes\":400,\"isExternal\":false,\"isDefaultName\":false,\"calleeCount\":2,\"signature\":\"void * dense_segment_B(void * out, void * spline, ulonglong index)\",\"isThunk\":false,\"tags\":[],\"name\":\"dense_segment_B\",\"parameters\":[{\"dataType\":\"void *\",\"name\":\"out\"},{\"dataType\":\"void *\",\"name\":\"spline\"},{\"dataType\":\"ulonglong\",\"name\":\"index\"}],\"endAddress\":\"0x140809c5f\",\"returnType\":\"void *\"},\"parsedSignature\":\"void * dense_segment_B(void * out, void * spline, ulonglong index)\"}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.109,
+      "passed": true
+    },
+    {
+      "tool": "get-decompilation",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "functionNameOrAddress": "0x140809ad0",
+        "offset": 1,
+        "limit": 90,
+        "includeCallees": true
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"metadata\":{\"callingConvention\":\"unknown\",\"isExternal\":\"false\",\"signature\":\"void * dense_segment_B(void * out, void * spline, ulonglong index)\",\"parameterCount\":\"3\",\"isThunk\":\"false\",\"returnType\":\"void *\"},\"address\":\"0x140809ad0\",\"sizeInBytes\":400,\"calleeCount\":2,\"offset\":1,\"functionName\":\"dense_segment_B\",\"startAddress\":\"0x140809ad0\",\"callees\":[{\"address\":\"0x1428d9518\",\"signature\":\"undefined FUN_1428d9518(void)\",\"name\":\"FUN_1428d9518\",\"callCount\":1},{\"address\":\"0x141261550\",\"signature\":\"undefined FUN_141261550(void)\",\"name\":\"FUN_141261550\",\"callCount\":1}],\"inputAddress\":\"0x140809ad0\",\"totalIncomingReferences\":1,\"incomingReferences\":[{\"referenceType\":\"DATA\",\"fromAddress\":\"0x143680c58\"}],\"decompSignature\":\"void * dense_segment_B(void *out,void *spline,ulonglong index);\",\"programName\":\"tiny-glade.exe\",\"isUndefinedFunction\":false,\"resolvedFrom\":\"address/symbol\",\"totalLines\":75,\"limit\":90,\"decompilation\":\"   1\\t\\r\\n   2\\t/* WARNING: Unknown calling convention -- yet parameter storage is locked */\\r\\n   3\\t\\r\\n   4\\tvoid * dense_segment_B(void *out,void *spline,ulonglong index)\\r\\n   5\\t\\r\\n   6\\t{\\r\\n   7\\t  longlong lVar1;\\r\\n   8\\t  longlong lVar2;\\r\\n   9\\t  code *pcVar3;\\r\\n  10\\t  float *pfVar4;\\r\\n  11\\t  ulonglong uVar5;\\r\\n  12\\t  void *pvVar6;\\r\\n  13\\t  ulonglong uVar7;\\r\\n  14\\t  longlong lVar8;\\r\\n  15\\t  float fVar9;\\r\\n  16\\t  undefined4 uVar10;\\r\\n  17\\t  undefined4 uVar11;\\r\\n  18\\t  undefined4 uVar12;\\r\\n  19\\t  float fVar13;\\r\\n  20\\t  float *pfStack_90;\\r\\n  21\\t  longlong lStack_88;\\r\\n  22\\t  undefined8 uStack_80;\\r\\n  23\\t  ulonglong uStack_78;\\r\\n  24\\t  undefined8 uStack_70;\\r\\n  25\\t  undefined8 uStack_68;\\r\\n  26\\t  undefined8 uStack_60;\\r\\n  27\\t  float afStack_54 [15];\\r\\n  28\\t  \\r\\n  29\\t  afStack_54[1] = -NAN;\\r\\n  30\\t  afStack_54[2] = -NAN;\\r\\n  31\\t  uVar5 = *(ulonglong *)((longlong)spline + 8);\\r\\n  32\\t  if (index < uVar5) {\\r\\n  33\\t    lVar2 = *(longlong *)spline;\\r\\n  34\\t    lVar8 = index * 0x2c;\\r\\n  35\\t    lVar1 = lVar2 + lVar8;\\r\\n  36\\t    pfVar4 = (float *)(lVar2 + 0x2c + lVar8);\\r\\n  37\\t    if (uVar5 <= index + 1) {\\r\\n  38\\t      pfVar4 = (float *)((longlong)spline + 0x14);\\r\\n  39\\t    }\\r\\n  40\\t    fVar13 = *pfVar4 - *(float *)(lVar2 + lVar8);\\r\\n  41\\t    fVar9 = (float)func_0x000142923e60(fVar13 + fVar13);\\r\\n  42\\t    uVar5 = 0;\\r\\n  43\\t    if (0.0 <= fVar9) {\\r\\n  44\\t      uVar5 = (longlong)(fVar9 - 9.223372e+18) & (longlong)fVar9 >> 0x3f | (longlong)fVar9;\\r\\n  45\\t    }\\r\\n  46\\t    uVar7 = 0xffffffffffffffff;\\r\\n  47\\t    if (fVar9 <= 1.8446743e+19) {\\r\\n  48\\t      uVar7 = uVar5;\\r\\n  49\\t    }\\r\\n  50\\t    uStack_78 = 2;\\r\\n  51\\t    if (2 < uVar7) {\\r\\n  52\\t      uStack_78 = uVar7;\\r\\n  53\\t    }\\r\\n  54\\t    afStack_54[0] = fVar13 / (float)(uStack_78 - 1);\\r\\n  55\\t    uStack_80 = 0;\\r\\n  56\\t    pfStack_90 = afStack_54;\\r\\n  57\\t    lStack_88 = lVar1;\\r\\n  58\\t    FUN_141261550(&uStack_70,&pfStack_90,&UNK_142c296c0);\\r\\n  59\\t    uVar12 = 0;\\r\\n  60\\t    uVar10 = func_0x000140c92660(lVar1);\\r\\n  61\\t    uVar11 = func_0x000140c92660(lVar1);\\r\\n  62\\t    *(undefined8 *)((longlong)out + 0x10) = uStack_60;\\r\\n  63\\t    *(undefined8 *)out = uStack_70;\\r\\n  64\\t    *(undefined8 *)((longlong)out + 8) = uStack_68;\\r\\n  65\\t    *(undefined4 *)((longlong)out + 0x18) = uVar10;\\r\\n  66\\t    *(undefined4 *)((longlong)out + 0x1c) = uVar12;\\r\\n  67\\t    *(ulonglong *)((longlong)out + 0x20) = CONCAT44(fVar13,uVar11) ^ 0x8000000080000000;\\r\\n  68\\t    return out;\\r\\n  69\\t  }\\r\\n  70\\t  FUN_1428d9518(index,uVar5,&UNK_142a8e0b0);\\r\\n  71\\t  pcVar3 = (code *)swi(3);\\r\\n  72\\t  pvVar6 = (void *)(*pcVar3)();\\r\\n  73\\t  return pvVar6;\\r\\n  74\\t}\\r\\n  75\\t\\r\\n\",\"totalCalleeCount\":2,\"parameters\":[{\"dataType\":\"void *\",\"name\":\"out\",\"ordinal\":\"0\"},{\"dataType\":\"void *\",\"name\":\"spline\",\"ordinal\":\"1\"},{\"dataType\":\"ulonglong\",\"name\":\"index\",\"ordinal\":\"2\"}],\"endAddress\":\"0x140809c5f\"}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.422,
+      "passed": true
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 1.203,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":9}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "save_result": {
+    "nonce": "4ba482c40cbf1cdc3517979faeb40efc",
+    "success": true,
+    "was_changed": true,
+    "changed_after_save": false,
+    "path": "/tiny-glade.exe",
+    "saved_locally": true
+  }
+}

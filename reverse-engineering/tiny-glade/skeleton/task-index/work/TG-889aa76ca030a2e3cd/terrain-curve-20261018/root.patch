@@ -1,0 +1,657 @@
+--- a/games_test/tiny-glade/crates/country-core/src/resources/walls/decorator_storage.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/walls/decorator_storage.rs
+@@ -361,68 +361,34 @@
+     }
+ }
+ 
+-/// B DecoratorAddrSnapshot：快照单条记录（地址 + 编码 DecoratorId + 状态字节 +
+-/// 待恢复 DecoratorInfo）。take_snapshot/restore_snapshot 0x140a20d70 以 16B XOR
+-/// 掩码编码 id；fresh（2026-10-17）证实原生 **逐 0x28B 记录恢复 DecoratorInfo 入
+-/// 内嵌 map**（非 16B 近似、非仅标 removed）。0x28B/0x16B 节格式逐字段名待①取证；
+-/// 本 crate 以携带完整 DecoratorInfo 的捕获模型承载，restore 真写回。
+-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++/// One storage bucket in a save snapshot. B capture maps every existing bucket,
++/// including an empty bucket, to its actual ids and normalized history states.
++/// Native mapper 0x141559890 sorts ids; 0x1412ff7b0 emits 0x58-byte items.
++#[derive(Clone, Debug, Default, PartialEq)]
+ pub struct DecoratorAddrSnapshot {
+-    /// 编码 DecoratorId（64 位半字旋转 XOR 掩码）。
+-    pub encoded_id: u64,
+-    /// 所在存储地址。
+-    pub addr: DecoratorStorageAddr,
+-    /// 状态字节（判别跳表 0x142ac9bdc/0x142ac9bfc，U：状态语义待取证）。
+-    pub state: u8,
+-    /// 待恢复的 DecoratorInfo（fresh restore_snapshot 回填内嵌 map）。
+-    pub info: DecoratorInfo,
+-}
+-
+-/// B DecoratorStorageSnapshot：装饰存储快照（`sort` 行 1240 内联）。
+-/// **① c-apply-api-formats 契约 §2 格式标注**：原生 restore_snapshot（0x140a20d70）
+-/// 载荷 = `&[0x28B 记录]`（{状态 16B + 子计数 8B} + 0x16B 子记录）；本 crate
+-/// `DecoratorAddrSnapshot` 为携带完整 DecoratorInfo 的捕获模型（非 16B 近似）。
+-/// 0x28B/0x16B 逐槽字段名待①（中优先）。`restore_snapshot` 签名 + 空桶前置 +
+-/// 逐装饰恢复序（get_or_insert_default → removed_ids.remove + modified_ids.insert +
+-/// 内嵌 map insert + d2s insert）可直接用（0x140a20d70），节格式对齐待①。
+-#[derive(Clone, Debug, Default)]
++    pub states: Vec<(DecoratorId, DecoratorHistoryState)>,
++}
++
++/// B save snapshot: 0x28-byte native outer rows are (storage address, bucket Vec).
++/// The representation preserves absent versus present-but-empty terrain/stairs.
++#[derive(Clone, Debug, Default, PartialEq)]
+ pub struct DecoratorStorageSnapshot {
+-    /// 快照条目。
+-    pub states: Vec<DecoratorAddrSnapshot>,
++    pub states: Vec<(DecoratorStorageAddr, DecoratorAddrSnapshot)>,
+ }
+ 
+ impl DecoratorStorageSnapshot {
+-    /// 行 1240（内联）：排序（U：原排序键待取证；按（地址，编码 id）稳定序）。
++    /// Explicit canonical ordering for callers that request it. Capture itself
++    /// retains the wall iterator order followed by terrain and stairs.
+     pub fn sort(&mut self) {
+-        self.states.sort_by_key(|s| {
+-            (
+-                match s.addr {
+-                    DecoratorStorageAddr::Wall(w) => w.0,
+-                    DecoratorStorageAddr::Terrain => u64::MAX - 1,
+-                    DecoratorStorageAddr::Stair => u64::MAX,
+-                },
+-                s.encoded_id,
+-            )
++        self.states.sort_by_key(|(addr, _)| match addr {
++            DecoratorStorageAddr::Wall(wall) => (0, wall.0),
++            DecoratorStorageAddr::Terrain => (1, 0),
++            DecoratorStorageAddr::Stair => (2, 0),
+         });
+-    }
+-}
+-
+-/// 快照 id 编码掩码（_UNK_1429cd080/_UNK_1429cd090，U：数值待取证，暂 0）。
+-const SNAPSHOT_ID_MASK: u64 = 0;
+-
+-/// 编码：`rotate_right32(id) XOR mask`（原 `(uVar18<<0x20|uVar18>>0x20) ^ mask`）。
+-/// take_snapshot 捕获面使用（当前快照记录为空存储前置断言下无内容，保留供
+-/// capture 路径接线）。
+-#[allow(dead_code)]
+-#[inline]
+-fn encode_snapshot_id(id: u32) -> u64 {
+-    (u64::from(id)).rotate_right(32) ^ SNAPSHOT_ID_MASK
+-}
+-
+-/// 解码：`(encoded ^ mask).rotate_left(32)`。
+-#[inline]
+-fn decode_snapshot_id(encoded: u64) -> u32 {
+-    (encoded ^ SNAPSHOT_ID_MASK).rotate_left(32) as u32
++        for (_, bucket) in &mut self.states {
++            bucket.states.sort_by_key(|(id, _)| *id);
++        }
++    }
+ }
+ 
+ /// 子侧状态字节公式（E2 取证定案，2026-10-16；fresh 0x140a1f590）：
+@@ -1057,11 +1023,44 @@
+         }
+     }
+ 
+-    /// 0x140a20d70（O，26KB）：快照（take_snapshot 内联于同址）。前置 6 断言：
+-    /// per_wall/removed/d2s 空 + terrain/stairs None + !immutable。**前置断言已保证
+-    /// 各桶为空**，故捕获面为空；原生同址逐 0x28B 记录重建由 restore_snapshot 消费，
+-    /// capture 路径未接线（快照条目由 take 侧填充待①）。
++    /// B take_snapshot, inlined into capture_save_data 0x1417a0430. The actual
++    /// collector 0x1412fbcd0 visits walls, then optional terrain and stair buckets;
++    /// 0x141559890/0x1412ff7b0 collect and sort real (DecoratorId, HistoryState).
++    /// Mutability and mutation-tracking sets do not restrict a read-only capture.
+     pub fn take_snapshot(&self) -> DecoratorStorageSnapshot {
++        let capture = |bucket: &Decorators| {
++            let mut states: Vec<_> = bucket.decorators.iter().map(|(&id, info)| {
++                (DecoratorId(id), DecoratorHistoryState::from_info(info))
++            }).collect();
++            states.sort_by_key(|(id, _)| *id);
++            DecoratorAddrSnapshot { states }
++        };
++        let mut states: Vec<_> = self.iter_walls().map(|(wall, bucket)| {
++            (DecoratorStorageAddr::Wall(wall), capture(bucket))
++        }).collect();
++        if let Some(bucket) = &self.terrain {
++            states.push((DecoratorStorageAddr::Terrain, capture(bucket)));
++        }
++        if let Some(bucket) = &self.stairs {
++            states.push((DecoratorStorageAddr::Stair, capture(bucket)));
++        }
++        DecoratorStorageSnapshot { states }
++    }
++
++    /// Compatibility entry point. A runtime loader must use
++    /// `restore_snapshot_with_id_gen` with its authoritative generator.
++    pub fn restore_snapshot(&mut self, snapshot: &DecoratorStorageSnapshot) {
++        self.restore_snapshot_with_id_gen(snapshot, &mut DecoratorIdGen::default());
++    }
++
++    /// B restore_snapshot 0x140a20d70: empty mutable destination, create each
++    /// captured bucket even when empty, reserve ids, restore live state and d2s.
++    pub fn restore_snapshot_with_id_gen(
++        &mut self,
++        snapshot: &DecoratorStorageSnapshot,
++        id_gen: &mut DecoratorIdGen,
++    ) {
++        assert!(!self.immutable, "assertion failed: !self.immutable");
+         assert!(self.per_wall.is_empty(), "assertion failed: per_wall.is_empty()");
+         assert!(self.terrain.is_none(), "assertion failed: terrain.is_none()");
+         assert!(self.stairs.is_none(), "assertion failed: stairs.is_none()");
+@@ -1070,32 +1069,22 @@
+             self.decorator_to_storage.is_empty(),
+             "assertion failed: decorator_to_storage.map.is_empty()"
+         );
+-        assert!(!self.immutable, "assertion failed: !self.immutable");
+-        DecoratorStorageSnapshot::default()
+-    }
+-
+-    /// 0x140a20d70（O，26KB）：恢复快照。前置断言同 take_snapshot；逐条解码
+-    /// 编码 id（旋转还原）→ `get_or_insert_default` 目标桶 → **removed_ids.remove +
+-    /// modified_ids.insert + 内嵌 map insert(info) + d2s insert（冲突 panic）**。
+-    /// fresh（2026-10-17）证实原生确实回填内嵌 map 并逐状态还原；Rust 此前仅
+-    /// removed_ids.insert + d2s.update，**不恢复 DecoratorInfo**。
+-    pub fn restore_snapshot(&mut self, snapshot: &DecoratorStorageSnapshot) {
+-        assert!(self.per_wall.is_empty(), "assertion failed: per_wall.is_empty()");
+-        assert!(self.terrain.is_none(), "assertion failed: terrain.is_none()");
+-        assert!(self.stairs.is_none(), "assertion failed: stairs.is_none()");
+-        assert!(self.removed.is_empty(), "assertion failed: removed.is_empty()");
+-        assert!(
+-            self.decorator_to_storage.is_empty(),
+-            "assertion failed: decorator_to_storage.map.is_empty()"
+-        );
+-        assert!(!self.immutable, "assertion failed: !self.immutable");
+-        for s in &snapshot.states {
+-            let id = decode_snapshot_id(s.encoded_id);
+-            let decorators = self.get_or_insert_default(s.addr);
+-            decorators.removed_ids.remove(&id);
+-            decorators.modified_ids.insert(id);
+-            decorators.decorators.insert(id, s.info);
+-            self.decorator_to_storage.insert(DecoratorId(id), s.addr);
++        for (addr, snapshot) in &snapshot.states {
++            // Original get_or_insert_default precedes the bucket's len check.
++            self.get_or_insert_default(*addr);
++            for (id, state) in &snapshot.states {
++                id_gen.reserve(*id);
++                let decorators = self.get_mut(*addr).expect("created bucket");
++                decorators.removed_ids.remove(&id.0);
++                decorators.modified_ids.insert(id.0);
++                let old = decorators.decorators.insert(id.0, state.to_info());
++                if old.is_none() {
++                    self.decorator_to_storage.insert(*id, *addr);
++                } else {
++                    self.decorator_to_storage.update(*id, *addr)
++                        .expect("d2s update: no such decorator");
++                }
++            }
+         }
+     }
+ 
+@@ -1517,10 +1506,70 @@
+     }
+ 
+     #[test]
+-    fn snapshot_id_encode_decode_roundtrip() {
+-        for id in [0u32, 1, 0x1234_5678, u32::MAX] {
+-            assert_eq!(decode_snapshot_id(encode_snapshot_id(id)), id);
+-        }
++    fn snapshot_collects_nonempty_buckets_and_retains_empty_owners() {
++        let mut storage = DecoratorStorage::default();
++        for (id, ty, style) in [(u32::MAX, 0x38, 6), (7, 0x3d, 5)] {
++            let mut value = info(id);
++            value.ty = ty;
++            value.u40 = style << 8;
++            storage.apply_decorator_place(
++                DecoratorStorageAddr::Wall(WallId(4)), DecoratorId(id), &value,
++            );
++        }
++        storage.get_or_insert_default(DecoratorStorageAddr::Wall(WallId(8)));
++        storage.get_or_insert_default(DecoratorStorageAddr::Terrain);
++        storage.get_or_insert_default(DecoratorStorageAddr::Stair);
++        storage.removed.insert(DecoratorStorageAddr::Wall(WallId(99)), HashSet::from([42]));
++        storage.mark_immutable();
++        let mut snapshot = storage.take_snapshot();
++        snapshot.sort();
++        assert_eq!(snapshot.states.len(), 4);
++        assert_eq!(snapshot.states[0].0, DecoratorStorageAddr::Wall(WallId(4)));
++        assert_eq!(snapshot.states[0].1.states.iter().map(|(id, _)| id.0).collect::<Vec<_>>(), vec![7, u32::MAX]);
++        for (_, bucket) in &snapshot.states[1..] { assert!(bucket.states.is_empty()); }
++        let source = storage.lookup_decorator_info(DecoratorId(7)).unwrap();
++        assert_eq!(snapshot.states[0].1.states[0].1, DecoratorHistoryState::from_info(source));
++        assert!(storage.immutable);
++        assert!(storage.removed.contains_key(&DecoratorStorageAddr::Wall(WallId(99))));
++    }
++
++    #[test]
++    fn snapshot_distinguishes_absent_and_empty_and_rejects_preview() {
++        let storage = DecoratorStorage::default();
++        assert!(storage.take_snapshot().states.is_empty());
++        let mut preview = DecoratorStorage::default();
++        let mut value = info(9);
++        value.state = 1;
++        preview.get_or_insert_default(DecoratorStorageAddr::Terrain).insert(DecoratorId(9), value);
++        assert!(std::panic::catch_unwind(|| preview.take_snapshot()).is_err());
++    }
++
++    #[test]
++    fn snapshot_restores_real_ids_buckets_and_generator_for_next_edit() {
++        let mut source = DecoratorStorage::default();
++        let mut value = info(90);
++        value.ty = 0x38;
++        value.u40 = 6 << 8;
++        value.u30 = 0; // default window style must survive without inference.
++        source.apply_decorator_place(DecoratorStorageAddr::Wall(WallId(2)), DecoratorId(90), &value);
++        source.get_or_insert_default(DecoratorStorageAddr::Terrain);
++        source.get_or_insert_default(DecoratorStorageAddr::Stair);
++        let snapshot = source.take_snapshot();
++        let mut restored = DecoratorStorage::default();
++        let mut generator = DecoratorIdGen::default();
++        restored.restore_snapshot_with_id_gen(&snapshot, &mut generator);
++        assert_eq!(generator.generate(), DecoratorId(91));
++        assert_eq!(restored.lookup_storage(DecoratorId(90)), Some(DecoratorStorageAddr::Wall(WallId(2))));
++        let actual = restored.lookup_decorator_info(DecoratorId(90)).unwrap();
++        assert_eq!(actual.extra_style(), 6);
++        assert_eq!(actual.state, 0);
++        assert!(restored.terrain.as_ref().unwrap().decorators.is_empty());
++        assert!(restored.stairs.as_ref().unwrap().decorators.is_empty());
++        assert!(restored.get(DecoratorStorageAddr::Wall(WallId(2))).unwrap().modified_ids.contains(&90));
++        let mut captured_again = restored.take_snapshot();
++        let mut expected = snapshot;
++        captured_again.sort(); expected.sort();
++        assert_eq!(captured_again, expected);
+     }
+ 
+     #[test]
+--- a/games_test/tiny-glade/crates/country-core/src/resources/history/decorator_edit.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/history/decorator_edit.rs
+@@ -113,71 +113,44 @@
+         f32::from_bits(self.u3c) == 1.0
+     }
+ 
+-    /// `from` 的逆映射（restore_decorators 0x14155ba30 回填 DecoratorInfo 用）。
+-    ///
+-    /// style 派生簇按 [`From<&DecoratorInfo>`] 逐 style 收敛回 `DecoratorInfo.u30/
+-    /// u38/u3c/u40`；`style`/`u4b` 收敛回 `u40` byte1/byte0。**登记 U**：原生
+-    /// restore 的 state 字节写语义未逐句还原，本处写 2=live（fresh 0x14155afe0
+-    /// insert 写入 2）。
++    /// B restore_snapshot 0x140a20f44..0x140a2107d chooses extra data by
++    /// DecoratorType, including default-valued extras. It does not infer the
++    /// variant from which optional field happens to differ from its default.
+     pub fn to_info(&self) -> DecoratorInfo {
+-        // style 字节：`from` 只在 read_branch（style 8+ 或 <2）写入 +0x4e；style 2..7
+-        // 的 style 字节为 0，需由派生簇推断（唯一非默认者）——**登记 U**（原生
+-        // restore 的 style 判定经桶内 DecoratorInfo `u40` byte1 直读，本处为
+-        // state 侧重建推断）。
+-        let style = if self.style != 0 {
+-            self.style
+-        } else if self.u4d != 1 {
+-            4 // Chimney u8 非默认
+-        } else if self.u4c != 0 {
+-            5 // Flag u8 非默认
+-        } else if self.u34 != 0 {
+-            6 // Window u32 非默认
+-        } else if f32::from_bits(self.u38) != 1.0 {
+-            7 // Lantern f32 非默认
+-        } else {
+-            0
++        let style = match self.ty {
++            0x38..=0x3a => 6,
++            0x3b => 4,
++            0x3c => 7,
++            0x3d => 5,
++            0x3f => self.style,
++            _ => 3,
+         };
+-        let mut info = DecoratorInfo {
++        let (u30, u38, u3c, extra_byte) = match self.ty {
++            0x38..=0x3a => (u64::from(self.u34), 0, 0, 0),
++            0x3b => (u64::from(self.u30) | (u64::from(self.u4d) << 32), 0, 0, 0),
++            0x3c => (u64::from(self.u38), 0, 0, 0),
++            0x3d => (u64::from(self.u4c), 0, 0, 0),
++            0x3f => (u64::from(self.u30) | (u64::from(self.u3c) << 32), self.u40, self.u44, self.u4b),
++            _ => (0, 0, 0, 0),
++        };
++        DecoratorInfo {
+             dst_wall: self.dst_wall,
+             dst_secondary: self.dst_secondary,
+             dst_payload: self.dst_payload,
+             u18: self.u18,
+             u20: self.u20,
+             u24: self.u24,
+-            u28: (self.u28 & 0xffff_ffff) as u32,
++            u28: self.u28 as u32,
+             decorator_id: (self.u28 >> 32) as u32,
+-            u30: self.u30 as u64,
+-            u38: self.u40,
+-            u3c: self.u44,
+-            u40: ((style as u32) << 8) | (self.u4b as u32),
++            u30,
++            u38,
++            u3c,
++            u40: (u32::from(style) << 8) | u32::from(extra_byte),
+             rank: self.rank,
+             u45: self.u49,
+             ty: self.ty,
+-            state: 2,
+-        };
+-        match style {
+-            // Chimney{ f32,u8 }：u8 → u30 byte4。
+-            4 => {
+-                info.u30 = (info.u30 & 0xffff_ffff) | ((self.u4d as u64) << 32);
+-            }
+-            // Flag{ u8 }：u8 → u30 byte0。
+-            5 => {
+-                info.u30 = (info.u30 & !0xff) | (self.u4c as u64);
+-            }
+-            // Window{ u32 }：u32 → u30 low。
+-            6 => {
+-                info.u30 = self.u34 as u64;
+-            }
+-            // Lantern{ f32 }：f32 → u30 low。
+-            7 => {
+-                info.u30 = self.u38 as u64;
+-            }
+-            // 默认簇：u30 = (u3c<<32)|u30、u38=u40 面、u3c=u44 面。
+-            _ => {
+-                info.u30 = ((self.u3c as u64) << 32) | (self.u30 as u64);
+-            }
+-        }
+-        info
++            state: 0,
++        }
+     }
+ }
+ 
+@@ -562,8 +535,7 @@
+ /// `+0x08` 存储判别、`+0x10` 存储载荷、`+0x10..+0x68` 变更/状态负载、
+ /// `+0x68` DecoratorId、`+0x7c` =1、`+0x81` DecoratorType。
+ /// 原生未写出的 padding 字节（`+0x6c..+0x70` 等）按 0 建模并登记 U。
+-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+-pub struct DecoratorDiffEvent(pub [u8; 0x88]);
++pub use crate::resources::walls::decorator::DecoratorOpEvent as DecoratorDiffEvent;
+ 
+ impl DecoratorDiffEvent {
+     pub const SIZE: usize = 0x88;
+@@ -584,11 +556,7 @@
+     /// 事件记录 id：按判别取不同偏移（fresh `DecoratorOpEventKind::id`
+     /// 0x140833570 同式：disc 3 → +0x40，disc 4 → +0x60，其余 → +0x68）。
+     pub fn decorator_id(&self) -> u32 {
+-        match self.kind() {
+-            3 => u32_at(&self.0, 0x40),
+-            4 => u32_at(&self.0, 0x60),
+-            _ => u32_at(&self.0, 0x68),
+-        }
++        self.id()
+     }
+     /// +0x81：DecoratorType。
+     pub fn decorator_ty(&self) -> u8 {
+@@ -1019,11 +987,16 @@
+ 
+     #[test]
+     fn to_info_roundtrips_per_style_fields() {
++        fn valid_info(style: u8) -> DecoratorInfo {
++            let mut src = info(style, 0);
++            src.ty = match style { 4 => 0x3b, 5 => 0x3d, 6 => 0x38, 7 => 0x3c, _ => 0x3f };
++            src
++        }
+         // 各 style：from → to_info 收敛回 DecoratorInfo 的直拷簇 + style 字节。
+         // 派生簇为**有损**（原生 state 只保留 Chimney/Flag/Window/Lantern 子面，
+         // 未保留 u30 高字节）——只对非有损面断言全量回填。
+         for style in [4u8, 5, 6, 7, 8, 0] {
+-            let src = info(style, 0);
++            let src = valid_info(style);
+             let state = DecoratorHistoryState::from(&src);
+             let back = state.to_info();
+             // 直拷簇完整回填。
+@@ -1043,21 +1016,35 @@
+         }
+         // 非有损默认簇（style 8+/<2）：u30/u38/u3c 全量回填。
+         for style in [8u8, 0] {
+-            let src = info(style, 0);
++            let src = valid_info(style);
+             let back = DecoratorHistoryState::from(&src).to_info();
+             assert_eq!(back.u30, src.u30, "style {style}");
+             assert_eq!(back.u38, src.u38, "style {style}");
+             assert_eq!(back.u3c, src.u3c, "style {style}");
+         }
+         // 有损子面（style 4/5/6/7）：捕获子字节回填到 u30 对应字节。
+-        let c = DecoratorHistoryState::from(&info(4, 0)).to_info();
++        let c = DecoratorHistoryState::from(&valid_info(4)).to_info();
+         assert_eq!(c.u30 >> 32, 0x78); // Chimney u8 @ u30 byte4
+-        let f = DecoratorHistoryState::from(&info(5, 0)).to_info();
++        let f = DecoratorHistoryState::from(&valid_info(5)).to_info();
+         assert_eq!(f.u30 & 0xff, 0xf0); // Flag u8 @ u30 byte0
+-        let w = DecoratorHistoryState::from(&info(6, 0)).to_info();
++        let w = DecoratorHistoryState::from(&valid_info(6)).to_info();
+         assert_eq!(w.u30, 0x9abc_def0); // Window u32
+-        let l = DecoratorHistoryState::from(&info(7, 0)).to_info();
++        let l = DecoratorHistoryState::from(&valid_info(7)).to_info();
+         assert_eq!(l.u30, 0x9abc_def0); // Lantern f32
++    }
++
++    #[test]
++    fn to_info_type_selects_default_extras_and_live_state() {
++        for (ty, expected_style) in [(0x38, 6), (0x39, 6), (0x3a, 6), (0x3b, 4), (0x3c, 7), (0x3d, 5), (0x3e, 3)] {
++            let state = DecoratorHistoryState {
++                ty, u38: 1.0_f32.to_bits(), u3c: 1.0_f32.to_bits(), u4d: 1,
++                ..DecoratorHistoryState::default()
++            };
++            let actual = state.to_info();
++            assert_eq!(actual.extra_style(), expected_style, "type {ty:#x}");
++            assert_eq!(actual.state, 0);
++            assert_eq!(DecoratorHistoryState::from_info(&actual).ty, ty);
++        }
+     }
+ 
+     // ---- diff 事件链（0x140b3fab0 / 0x1417bdae0 / 0x140a854a0）----
+--- a/games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs
+@@ -778,10 +778,14 @@
+ /// disc==3 → +0x40；disc==4 → +0x60；其余 → +0x68。即从事件记录按判别
+ /// 取不同字段偏移的 u32，**非** 固定变体→0/1/2。旧 Place/Remove/Change 三变体
+ /// 近似已弃（载荷待取证，U：disc 0/1/2 的变体名/语义未单解）。
+-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+-pub struct DecoratorOpEventKind(pub [u8; 0x88]);
+-
+-impl DecoratorOpEventKind {
++/// The canonical 136-byte payload consumed by the native EventWriter. Kind and
++/// historical diff names are compatibility imports of this same type.
++#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, PartialEq, Eq, Hash)]
++pub struct DecoratorOpEvent(pub [u8; 0x88]);
++
++pub use DecoratorOpEvent as DecoratorOpEventKind;
++
++impl DecoratorOpEvent {
+     /// 0x140833570：事件判别 → 跳表偏移 → 返回该字段 u32。
+     pub fn id(&self) -> u32 {
+         let disc = u64::from_le_bytes(self.0[0..8].try_into().unwrap());
+@@ -831,31 +835,27 @@
+         self.wake.notify_all();
+     }
+ 
+-    /// 0x1408337c0（O，fresh 2026-10-17）：逐条 drain 待发事件到 out。
+-    ///
+-    /// fresh 结构：
+-    /// 1. 队列 len 清零（`*(inner+0x18)=0`）后遍历旧元素；
+-    /// 2. 每条读 tag@+0（u64）；**tag==5 哨兵 → 提前 return**（剩余已清空元素
+-    ///    不再输出）；
+-    /// 3. 其余元素拷贝为 **0x90B 输出记录**：tag@+0 + 0x80B 载荷 @+8..+0x88 +
+-    ///    计数器 @+0x88（`out+0x40` 递增的下一事件号，BeVy Events 缓冲区语义）。
+-    ///
+-    /// 载荷字段（16 qword @+8..+0x88）由 send 方填写，本函数原样搬运；
+-    /// 计数器在 Rust 侧以 `out.len()` 为当前序号（无 BeVy Events 结构，登记 U）。
+-    pub fn unleash(&self, out: &mut Vec<[u8; 0x90]>) {
+-        let mut g = self.inner.lock().unwrap();
+-        let drained = std::mem::take(&mut *g);
++    /// Drain one batch. B 0x1408337fc clears queue len before traversal;
++    /// tag 5 terminates that batch and drops its remaining already-drained rows.
++    fn drain_into(&self, mut emit: impl FnMut(DecoratorOpEvent)) {
++        let drained = std::mem::take(&mut *self.inner.lock().unwrap());
+         for event in drained {
+-            let tag = u64::from_le_bytes(event[0..8].try_into().unwrap());
+-            if tag == 5 {
+-                // 哨兵：后续已清空元素不再输出。
++            if u64::from_le_bytes(event[..8].try_into().unwrap()) == 5 {
+                 return;
+             }
++            emit(DecoratorOpEvent(event));
++        }
++    }
++
++    /// Raw-record compatibility adapter. Live delivery uses the EventWriter
++    /// system below so Bevy, rather than this Vec, owns the event counter.
++    pub fn unleash(&self, out: &mut Vec<[u8; 0x90]>) {
++        self.drain_into(|event| {
+             let mut record = [0u8; 0x90];
+-            record[..0x88].copy_from_slice(&event);
+-            record[0x88..0x90].copy_from_slice(&(out.len() as u64).to_le_bytes());
++            record[..0x88].copy_from_slice(&event.0);
++            record[0x88..].copy_from_slice(&(out.len() as u64).to_le_bytes());
+             out.push(record);
+-        }
++        });
+     }
+ 
+     /// 挂起至队列非空（帧末等待装饰操作到达）。
+@@ -865,6 +865,18 @@
+             g = self.wake.wait(g).unwrap();
+         }
+     }
++}
++
++/// B DeferredDecoratorOpEvents::unleash (0x1408337c0): the original typed
++/// parameters are ResMut<DeferredDecoratorOpEvents>, EventWriter<DecoratorOpEvent>.
++/// Original output rows are payload[136] + EventId[8], without transformation.
++pub fn unleash_decorator_op_events(
++    mut deferred: bevy_ecs::prelude::ResMut<DeferredDecoratorOpEvents>,
++    mut writer: bevy_ecs::event::EventWriter<DecoratorOpEvent>,
++) {
++    // DerefMut also preserves the original unconditional resource change tick.
++    let deferred = &mut *deferred;
++    deferred.drain_into(|event| { writer.write(event); });
+ }
+ 
+ /// B DecoratorRotationXZ：XZ 平面旋转（角度编码，O，2026-10-17 fresh disasm）。
+@@ -1154,3 +1166,121 @@
+ pub mod anchors;
+ 
+ pub mod placement;
++
++#[cfg(test)]
++mod canonical_decorator_event_tests {
++    use super::*;
++    use bevy_ecs::{event::Events, prelude::{Schedule, World}};
++    use crate::resources::history::decorator_edit::DecoratorDiffEvent;
++
++    fn payload(tag: u64, fill: u8) -> [u8; 0x88] {
++        let mut event = [fill; 0x88];
++        event[..8].copy_from_slice(&tag.to_le_bytes());
++        event
++    }
++
++    #[test]
++    fn canonical_aliases_share_type_id_and_tuple_constructor() {
++        use std::any::TypeId;
++        assert_eq!(TypeId::of::<DecoratorOpEvent>(), TypeId::of::<DecoratorOpEventKind>());
++        assert_eq!(TypeId::of::<DecoratorOpEvent>(), TypeId::of::<DecoratorDiffEvent>());
++        assert_eq!(DecoratorOpEventKind([0; 0x88]), DecoratorDiffEvent([0; 0x88]));
++        // Native id dispatch compares the full u64 tag, not its lower dword.
++        let mut event = payload((1_u64 << 32) | 3, 0);
++        event[0x40..0x44].copy_from_slice(&7_u32.to_le_bytes());
++        event[0x68..0x6c].copy_from_slice(&9_u32.to_le_bytes());
++        assert_eq!(DecoratorDiffEvent(event).decorator_id(), 9);
++    }
++
++    #[test]
++    fn actual_world_drain_preserves_payloads_and_bevy_ids_across_frames() {
++        let mut world = World::new();
++        world.init_resource::<DeferredDecoratorOpEvents>();
++        world.init_resource::<Events<DecoratorOpEvent>>();
++        let mut schedule = Schedule::default();
++        schedule.add_systems(unleash_decorator_op_events);
++        let a = payload(3, 0xa1);
++        let b = payload(4, 0xb2);
++        let c = payload(2, 0xc3);
++        world.resource::<DeferredDecoratorOpEvents>().send(a);
++        world.resource::<DeferredDecoratorOpEvents>().send(b);
++        schedule.run(&mut world);
++        let mut cursor = world.resource::<Events<DecoratorOpEvent>>().get_cursor();
++        let first: Vec<_> = cursor.read_with_id(world.resource::<Events<DecoratorOpEvent>>())
++            .map(|(event, id)| (event.0, id.id)).collect();
++        assert_eq!(first, vec![(a, 0), (b, 1)]);
++        schedule.run(&mut world);
++        assert_eq!(cursor.read(world.resource::<Events<DecoratorOpEvent>>()).count(), 0);
++        world.resource_mut::<Events<DecoratorOpEvent>>().update();
++        world.resource::<DeferredDecoratorOpEvents>().send(c);
++        schedule.run(&mut world);
++        let next: Vec<_> = cursor.read_with_id(world.resource::<Events<DecoratorOpEvent>>())
++            .map(|(event, id)| (event.0, id.id)).collect();
++        assert_eq!(next, vec![(c, 2)]);
++    }
++
++    #[test]
++    fn empty_unleash_still_marks_the_deferred_resource_changed() {
++        use bevy_ecs::change_detection::DetectChanges;
++        let mut world = World::new();
++        world.init_resource::<DeferredDecoratorOpEvents>();
++        world.init_resource::<Events<DecoratorOpEvent>>();
++        world.clear_trackers();
++        let mut schedule = Schedule::default();
++        schedule.add_systems(unleash_decorator_op_events);
++        schedule.run(&mut world);
++        assert!(world.get_resource_ref::<DeferredDecoratorOpEvents>().unwrap().is_changed());
++        assert!(world.resource::<Events<DecoratorOpEvent>>().is_empty());
++    }
++
++    #[test]
++    fn existing_history_diff_producer_reaches_the_canonical_stream() {
++        use crate::resources::history::decorator_edit::{
++            send_state_diff_events, DecoratorBeforeAfterWithStorage,
++            DecoratorHistoryState, DecoratorStateWithStorage,
++        };
++        let mut world = World::new();
++        world.init_resource::<DeferredDecoratorOpEvents>();
++        world.init_resource::<Events<DecoratorOpEvent>>();
++        let after = DecoratorStateWithStorage {
++            storage_disc: 1, storage_payload: 0,
++            state: DecoratorHistoryState { ty: 0x3c, ..Default::default() },
++        };
++        let diffs = std::collections::HashMap::from([(
++            DecoratorId(71), DecoratorBeforeAfterWithStorage {
++                before: DecoratorStateWithStorage { storage_disc: 3, ..Default::default() },
++                after,
++            },
++        )]);
++        send_state_diff_events(&diffs, world.resource::<DeferredDecoratorOpEvents>());
++        let mut schedule = Schedule::default();
++        schedule.add_systems(unleash_decorator_op_events);
++        schedule.run(&mut world);
++        let events = world.resource::<Events<DecoratorOpEvent>>();
++        let actual: Vec<_> = events.get_cursor().read(events).copied().collect();
++        assert_eq!(actual, vec![DecoratorDiffEvent::from_added(DecoratorId(71), &after)]);
++        assert_eq!(actual[0].decorator_id(), 71);
++    }
++
++    #[test]
++    fn sentinel_discards_current_remainder_and_allows_later_batch() {
++        let mut world = World::new();
++        world.init_resource::<DeferredDecoratorOpEvents>();
++        world.init_resource::<Events<DecoratorOpEvent>>();
++        let mut schedule = Schedule::default();
++        schedule.add_systems(unleash_decorator_op_events);
++        let a = payload(1, 10);
++        let b = payload(0, 20);
++        for value in [a, payload(5, 0), payload(3, 30)] {
++            world.resource::<DeferredDecoratorOpEvents>().send(value);
++        }
++        schedule.run(&mut world);
++        let mut cursor = world.resource::<Events<DecoratorOpEvent>>().get_cursor();
++        let first: Vec<_> = cursor.read(world.resource::<Events<DecoratorOpEvent>>()).map(|e| e.0).collect();
++        assert_eq!(first, vec![a]);
++        world.resource::<DeferredDecoratorOpEvents>().send(b);
++        schedule.run(&mut world);
++        let next: Vec<_> = cursor.read(world.resource::<Events<DecoratorOpEvent>>()).map(|e| e.0).collect();
++        assert_eq!(next, vec![b]);
++    }
++}

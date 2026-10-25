@@ -1,0 +1,35 @@
+{
+  "server": "re_mcp_ghidra",
+  "actual_mcp_connection": true,
+  "results": [
+    {
+      "tool": "get_schema",
+      "args": {
+        "tools": [
+          "open_database",
+          "decompile_function",
+          "list_functions"
+        ]
+      },
+      "result": {
+        "_meta": {
+          "fastmcp": {
+            "wrap_result": true
+          }
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "### open_database\n\nOpen a binary for analysis with Ghidra.\n\nReturns immediately with ``\"opening\": true`` — call\nwait_for_analysis before using other tools on this database.\n\nAn explicit ``database_id`` always opens a worker of its own, so\ndistinct ids open the *same* file several times and let those\nworkers analyze it concurrently (up to the configured maximum).\nWithout ``database_id``, re-opening the same file returns the\nexisting worker.\n\n**Multiple binaries:** use a separate subagent per binary.\n\n**force_new=True** is destructive: deletes existing Ghidra\nproject and all prior analysis.\n\n**Parameters**\n- `file_path` (string, required)\n- `run_auto_analysis` (boolean)\n- `keep_open` (boolean)\n- `database_id` (string)\n- `force_new` (boolean)\n- `language` (string)\n- `compiler_spec` (string)\n\n**Returns**\n- `value` (object)\n\n### decompile_function\n\nDecompile a function to C pseudocode using Ghidra's decompiler.\n\n**Parameters**\n- `address` (string, required)\n- `database` (string, required)\n\n**Returns**\n- `function_name` (string, required)\n- `address` (string, required)\n- `decompiled_code` (string, required)\n- `database` (string)\n\n### list_functions\n\nList all functions in the database, paginated with optional regex filter.\n\n**Parameters**\n- `offset` (integer)\n- `limit` (integer)\n- `filter_pattern` (string)\n- `database` (string, required)\n\n**Returns**\n- `database` (string)"
+          }
+        ],
+        "structuredContent": {
+          "result": "### open_database\n\nOpen a binary for analysis with Ghidra.\n\nReturns immediately with ``\"opening\": true`` — call\nwait_for_analysis before using other tools on this database.\n\nAn explicit ``database_id`` always opens a worker of its own, so\ndistinct ids open the *same* file several times and let those\nworkers analyze it concurrently (up to the configured maximum).\nWithout ``database_id``, re-opening the same file returns the\nexisting worker.\n\n**Multiple binaries:** use a separate subagent per binary.\n\n**force_new=True** is destructive: deletes existing Ghidra\nproject and all prior analysis.\n\n**Parameters**\n- `file_path` (string, required)\n- `run_auto_analysis` (boolean)\n- `keep_open` (boolean)\n- `database_id` (string)\n- `force_new` (boolean)\n- `language` (string)\n- `compiler_spec` (string)\n\n**Returns**\n- `value` (object)\n\n### decompile_function\n\nDecompile a function to C pseudocode using Ghidra's decompiler.\n\n**Parameters**\n- `address` (string, required)\n- `database` (string, required)\n\n**Returns**\n- `function_name` (string, required)\n- `address` (string, required)\n- `decompiled_code` (string, required)\n- `database` (string)\n\n### list_functions\n\nList all functions in the database, paginated with optional regex filter.\n\n**Parameters**\n- `offset` (integer)\n- `limit` (integer)\n- `filter_pattern` (string)\n- `database` (string, required)\n\n**Returns**\n- `database` (string)"
+        },
+        "isError": false
+      }
+    }
+  ],
+  "target_execution": false,
+  "ok": true
+}

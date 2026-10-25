@@ -1,0 +1,268 @@
+--- a/games_test/tiny-glade/crates/country-core/src/resources/water_mask.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/water_mask.rs
+@@ -1,7 +1,7 @@
+ //! water_mask.rs — `country_core::resources::water_mask` 水 mask 资源（WP7 恢复）。
+ //!
+ //! 源（B skeleton）：`crates/country-core/src/resources/water_mask.rs`（metadata-only，
+-//! 5 记录，0 procedure）。PDB 命名实体 `WaterMaskSsbo` `name_and_relations_only`。
++//! 5 记录，0 procedure）。实际映射构造器 B 14161d570 明确 u32x8192/0x8000B。
+ //! 语义（I，`reconstruction/shader-source/shaders/water/read_water_mask.cs.hlsl` O）：
+ //! 512×512 水 mask 纹理 `.y` 通道打包回读为水/排除位（`>0.5` water bit / `>0.2` clutter bit）。
+ //! 生命周期（O，泛型胶水）：`AssetSsboLibrary::add_new/get_rg_buffer`、
+@@ -11,16 +11,19 @@
+ #![allow(dead_code, unused_imports)]
+ 
+ use crate::render::pass_builder::pass_resource_access::SsboType as PassSsboType;
+-use crate::typed_gap::Gap;
+-
+-/// 水 mask 回读缓冲（O 名，布局 U）。
++
++/// B constructor 14161d570: one packed u32 word per 32 mask cells.
++#[repr(transparent)]
+ #[derive(Clone, Copy, Debug, Default)]
+-pub struct WaterMaskSsbo(pub Gap);
++pub struct WaterMaskSsbo(pub u32);
++
++unsafe impl bytemuck::Zeroable for WaterMaskSsbo {}
++unsafe impl bytemuck::Pod for WaterMaskSsbo {}
+ 
+ impl PassSsboType for WaterMaskSsbo {
+-    /// typed gap：原值 = `utils::name_hash("…WaterMaskSsbo")`。
++    /// Same canonical short-name key as the actual SSBO library registration.
+     fn rg_buffer_hash() -> u64 {
+-        0
++        crate::name_hash::NameHash::compute(<Self as crate::render::ssbo::StorageElement>::NAME).0
+     }
+ }
+ 
+@@ -36,8 +39,8 @@
+     }
+ }
+ impl crate::render::ssbo::StorageElement for WaterMaskSsbo {
+-    const NAME: &'static str = "WaterMaskSsbo";
+-    const BUFFER_LEN: usize = 0x8000;
++    const NAME: &'static str = "WaterMask";
++    const BUFFER_LEN: usize = 0x2000;
+     const MAPPED_MEMORY: u8 = crate::render::ssbo::MAPPED_MEMORY_READBACK;
+ }
+ 
+@@ -54,3 +57,155 @@
+ pub const WATER_WORLD_HALF_EXTENT: f32 = 65.0;
+ /// 水笔刷覆盖半径（O：`draw_water_mask.cs.hlsl` `2.0 - clamp(dist, 0, 2)`）。
+ pub const WATER_BRUSH_RADIUS: f32 = 2.0;
++
++#[cfg(test)]
++mod native_mask_storage_tests {
++    use super::*;
++    use crate::{
++        asset_libraries::ssbo_library::{AssetSsboLibrary, SsboId, SsboType},
++        render::{
++            pass_builder::pass_resource_access::SsboType as PassSsboType,
++            ssbo::{MappedStorageBuffer, StorageElement, tests::MockDevice},
++        },
++        resources::{
++            garden_mask::GardenMaskSsbo, water_exclude_clutter_mask::WaterExcludeClutterMaskSsbo,
++        },
++    };
++
++    fn check_storage<T>(name: &str, original_key: u64)
++    where
++        T: SsboType<Storage = MappedStorageBuffer<'static, T>> + bytemuck::Pod + PassSsboType,
++    {
++        assert_eq!(
++            (core::mem::size_of::<T>(), core::mem::align_of::<T>()),
++            (4, 4)
++        );
++        let device = MockDevice::default();
++        device.map.borrow_mut().resize(0x8000, 0);
++        let mut library = AssetSsboLibrary::new();
++        library.add_new::<T>(&device);
++        let storage = library.get::<T>().unwrap();
++        assert_eq!(storage.mapped.len(), 0x2000);
++        assert_eq!(
++            storage.mapped.as_ptr() as usize,
++            device.map.borrow().as_ptr() as usize
++        );
++        assert_eq!(storage.buffer.byte_size, 0x8000);
++        {
++            let calls = device.created.borrow();
++            let (desc, actual_name, initial) = &calls[0];
++            assert_eq!(calls.len(), 1);
++            assert_eq!(actual_name, name);
++            assert_eq!(
++                (desc.size, desc.usage, desc.memory, desc.alignment),
++                (0x8000, 0x22, 4, 4)
++            );
++            let initial = initial.as_ref().unwrap();
++            assert_eq!(initial.len(), 0x8000);
++            assert!(initial.iter().all(|byte| *byte == 0));
++        }
++        let words: &mut [u32] =
++            bytemuck::cast_slice_mut(&mut library.get_mut::<T>().unwrap().mapped[..]);
++        words[0x1fff] = 0x8000_0001;
++        let words: &[u32] = bytemuck::cast_slice(&library.get::<T>().unwrap().mapped[..]);
++        assert_eq!((words[0], words[0x1fff]), (0, 0x8000_0001));
++        assert_eq!(<T as PassSsboType>::rg_buffer_hash(), original_key);
++        assert_eq!(SsboId::of::<T>().0.0, original_key);
++
++        let device = MockDevice::default();
++        let library = AssetSsboLibrary::new();
++        let words = [0x1122_3344u32, 0xaabb_ccdd];
++        library.add_new_with_data::<T>(&device, bytemuck::cast_slice(&words));
++        let calls = device.created.borrow();
++        assert_eq!(
++            calls[0].2.as_ref().unwrap().as_slice(),
++            bytemuck::cast_slice::<u32, u8>(&words)
++        );
++        assert_eq!(library.get::<T>().unwrap().mapped.len(), 0x2000);
++    }
++
++    #[test]
++    fn original_three_mapped_mask_library_constructors() {
++        check_storage::<WaterMaskSsbo>("WaterMask", 0x4652_4552_97da_b420);
++        check_storage::<WaterExcludeClutterMaskSsbo>(
++            "WaterExcludeClutterMask",
++            0x8dbc_70d3_68e4_3c84,
++        );
++        check_storage::<GardenMaskSsbo>("GardenMask", 0x6fd8_113d_2359_5a99);
++    }
++
++    #[test]
++    fn actual_readback_passes_use_the_same_registered_mask_types() {
++        use crate::systems::render_loop::compute_passes::{
++            pass_kit::test_env::{env, threads},
++            read_terrain_data::{self as read, TerrainReadbackSsbos},
++        };
++        let mut environment = env(
++            &[
++                read::H_WATER_MASK,
++                read::H_MASK_OUT,
++                read::H_MASK_OUT_CLUTTER,
++                read::H_GARDEN_MASK,
++            ],
++            &[],
++        );
++        let device = MockDevice::default();
++        environment.world.ssbos.add_new::<WaterMaskSsbo>(&device);
++        environment
++            .world
++            .ssbos
++            .add_new::<WaterExcludeClutterMaskSsbo>(&device);
++        environment.world.ssbos.add_new::<GardenMaskSsbo>(&device);
++        // The shared recording mock returns one handle for every allocation;
++        // assign distinct observed handles here so graph bindings stay distinct.
++        environment
++            .world
++            .ssbos
++            .get_mut::<WaterMaskSsbo>()
++            .unwrap()
++            .buffer
++            .id = 101;
++        environment
++            .world
++            .ssbos
++            .get_mut::<WaterExcludeClutterMaskSsbo>()
++            .unwrap()
++            .buffer
++            .id = 102;
++        environment
++            .world
++            .ssbos
++            .get_mut::<GardenMaskSsbo>()
++            .unwrap()
++            .buffer
++            .id = 103;
++        let mut water = environment.run(|env| read::read_water_mask::<TerrainReadbackSsbos>(env));
++        let mut garden = environment.run(|env| read::read_garden_mask::<TerrainReadbackSsbos>(env));
++        assert_eq!(threads(&water), (0x2000, 1, 1));
++        assert_eq!(threads(&garden), (0x2000, 1, 1));
++        let a = environment
++            .world
++            .ssbos
++            .get_rg_buffer::<WaterMaskSsbo>(&mut water.builder.render_graph)
++            .resource as u32;
++        let b = environment
++            .world
++            .ssbos
++            .get_rg_buffer::<WaterExcludeClutterMaskSsbo>(&mut water.builder.render_graph)
++            .resource as u32;
++        let c = environment
++            .world
++            .ssbos
++            .get_rg_buffer::<GardenMaskSsbo>(&mut garden.builder.render_graph)
++            .resource as u32;
++        assert_ne!(a, b);
++        for (pass, resource) in [(&water, a), (&water, b), (&garden, c)] {
++            assert!(
++                pass.builder
++                    .accesses
++                    .iter()
++                    .any(|v| v.resource == resource && v.access == 0x32)
++            );
++        }
++    }
++}
+--- a/games_test/tiny-glade/crates/country-core/src/resources/water_exclude_clutter_mask.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/water_exclude_clutter_mask.rs
+@@ -4,7 +4,7 @@
+ //! `write_storage_buffer<WaterExcludeClutterMaskSsbo>`（与 WaterMaskSsbo 同一次回读双写）。
+ //! SSBO 载体实现与 `TerrainHeightSsbo` 同族。
+ use crate::asset_libraries::ssbo_library::SsboType;
+-use crate::render::ssbo::{MappedStorageBuffer, StorageElement, MAPPED_MEMORY_READBACK};
++use crate::render::ssbo::{MAPPED_MEMORY_READBACK, MappedStorageBuffer, StorageElement};
+ 
+ /// 水位排除杂物 mask 回读 SSBO（O：`WaterExcludeClutterMaskSsbo`，0x2000 线程回读）。
+ #[repr(transparent)]
+@@ -15,8 +15,8 @@
+ unsafe impl bytemuck::Pod for WaterExcludeClutterMaskSsbo {}
+ 
+ impl StorageElement for WaterExcludeClutterMaskSsbo {
+-    const NAME: &'static str = "WaterExcludeClutterMaskSsbo";
+-    const BUFFER_LEN: usize = 0x8000;
++    const NAME: &'static str = "WaterExcludeClutterMask";
++    const BUFFER_LEN: usize = 0x2000;
+     const MAPPED_MEMORY: u8 = MAPPED_MEMORY_READBACK;
+ }
+ 
+@@ -29,3 +29,9 @@
+         MappedStorageBuffer::new_storage_buffer(device, initial)
+     }
+ }
++
++impl crate::render::pass_builder::pass_resource_access::SsboType for WaterExcludeClutterMaskSsbo {
++    fn rg_buffer_hash() -> u64 {
++        crate::name_hash::NameHash::compute(<Self as StorageElement>::NAME).0
++    }
++}
+--- a/games_test/tiny-glade/crates/country-core/src/resources/garden_mask.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/garden_mask.rs
+@@ -3,7 +3,7 @@
+ //! 证据：read_terrain_data.rs "Read garden" pass `write_storage_buffer<GardenMaskSsbo>`
+ //! （0x14098c680 族）。SSBO 载体实现与 `TerrainHeightSsbo` 同族。
+ use crate::asset_libraries::ssbo_library::SsboType;
+-use crate::render::ssbo::{MappedStorageBuffer, StorageElement, MAPPED_MEMORY_READBACK};
++use crate::render::ssbo::{MAPPED_MEMORY_READBACK, MappedStorageBuffer, StorageElement};
+ 
+ /// 花园 mask 回读 SSBO（O：`GardenMaskSsbo`，0x2000 线程回读）。
+ #[repr(transparent)]
+@@ -14,8 +14,8 @@
+ unsafe impl bytemuck::Pod for GardenMaskSsbo {}
+ 
+ impl StorageElement for GardenMaskSsbo {
+-    const NAME: &'static str = "GardenMaskSsbo";
+-    const BUFFER_LEN: usize = 0x8000;
++    const NAME: &'static str = "GardenMask";
++    const BUFFER_LEN: usize = 0x2000;
+     const MAPPED_MEMORY: u8 = MAPPED_MEMORY_READBACK;
+ }
+ 
+@@ -28,3 +28,9 @@
+         MappedStorageBuffer::new_storage_buffer(device, initial)
+     }
+ }
++
++impl crate::render::pass_builder::pass_resource_access::SsboType for GardenMaskSsbo {
++    fn rg_buffer_hash() -> u64 {
++        crate::name_hash::NameHash::compute(<Self as StorageElement>::NAME).0
++    }
++}

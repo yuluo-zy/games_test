@@ -1,0 +1,71 @@
+--- games_test/tiny-glade/crates/country-core/src/game_profile.rs
++++ games_test/tiny-glade/crates/country-core/src/game_profile.rs
+@@ -736,9 +736,68 @@
+     commands.insert_resource(GameProfile::load_from_disk());
+ }
+ 
++/// Canonical request consumed by the original on_event condition, set43.
++#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default)]
++pub struct SaveGameProfileCmd;
++
++/// B write_profile_via_tmp @140917360. Keep tempfile/ron implementations;
++/// the existing config-directory producer owns directory creation.
++pub fn write_profile_via_tmp(profile: &GameProfile) -> anyhow::Result<()> {
++    write_profile_in_directory(profile, &paths::config())
++}
++
++fn write_profile_in_directory(
++    profile: &GameProfile,
++    directory: &std::path::Path,
++) -> anyhow::Result<()> {
++    use std::io::Write;
++    let mut temporary = tempfile::Builder::new()
++        .prefix(".tmp")
++        .tempfile_in(directory)?;
++    // Original Options default recursion limit128 and PrettyConfig::default;
++    // serialization failure unwraps, while filesystem failure returns/logs.
++    let text = ron::Options::default()
++        .to_string_pretty(profile, ron::ser::PrettyConfig::default())
++        .expect("serializing GameProfile to RON");
++    temporary.write_all(text.as_bytes())?;
++    temporary.persist(directory.join("profile.ron"))?;
++    Ok(())
++}
++
++/// Native save_game_profile @140917230: one current profile write, log Err.
++/// The on_event<SaveGameProfileCmd> reader belongs to the registration condition.
++pub fn save_game_profile(profile: bevy_ecs::change_detection::Res<GameProfile>) {
++    if let Err(error) = write_profile_via_tmp(&profile) {
++        log::error!(target: "country_core::game_profile", "Error writing profile.ron: {error}");
++    }
++}
++
+ #[cfg(test)]
+ mod tests {
+     use super::*;
++
++    #[test]
++    fn original_profile_tempfile_write_replaces_the_file_with_the_loaded_binding_schema() {
++        use bevy_input::{keyboard::KeyCode, mouse::MouseButton};
++        let directory = tempfile::tempdir().unwrap();
++        std::fs::write(directory.path().join("profile.ron"), "previous contents").unwrap();
++        let mut profile = GameProfile::default();
++        profile.key_bindings.bindings[21] = Some(KeyCode::KeyU);
++        profile.key_bindings.mouse[2] = Some(MouseButton::Left);
++        profile.new_glade_count = 7;
++        write_profile_in_directory(&profile, directory.path()).unwrap();
++        let saved = std::fs::read_to_string(directory.path().join("profile.ron")).unwrap();
++        let loaded: GameProfile = ron::from_str(&saved).unwrap();
++        assert_eq!(loaded.key_bindings, profile.key_bindings);
++        assert_eq!(loaded.player_id, profile.player_id);
++        assert_eq!(loaded.new_glade_count, 7);
++        assert_eq!(
++            std::fs::read_dir(directory.path()).unwrap().count(),
++            1,
++            "successful persist must not leave a temporary file"
++        );
++        assert!(write_profile_in_directory(&profile, &directory.path().join("missing")).is_err());
++    }
+ 
+     #[test]
+     fn native_binding_schema_preserves_unbound_keys_and_left_mouse() {

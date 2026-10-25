@@ -1,0 +1,590 @@
+{
+  "calls": [
+    {
+      "agent": "b",
+      "tool": "open_database",
+      "args": {
+        "file_path": "/Users/yuluo/Desktop/game/tools/mcp-servers/re-mcp/test-workers/worker-b/tiny-glade.exe",
+        "database_id": "b_b",
+        "run_auto_analysis": false,
+        "force_new": false,
+        "keep_open": true
+      },
+      "start": 653184.013184083,
+      "end": 653184.034011208,
+      "isError": false,
+      "decoded": {
+        "status": "opening",
+        "database": "b_b",
+        "file_path": "/Users/yuluo/Desktop/game/tools/mcp-servers/re-mcp/test-workers/worker-b/tiny-glade.exe",
+        "opening": true
+      }
+    },
+    {
+      "agent": "a",
+      "tool": "open_database",
+      "args": {
+        "file_path": "/Users/yuluo/Desktop/game/tools/mcp-servers/re-mcp/test-workers/worker-a/tiny-glade.exe",
+        "database_id": "b_a",
+        "run_auto_analysis": false,
+        "force_new": false,
+        "keep_open": true
+      },
+      "start": 653184.012801833,
+      "end": 653184.037364708,
+      "isError": false,
+      "decoded": {
+        "status": "opening",
+        "database": "b_a",
+        "file_path": "/Users/yuluo/Desktop/game/tools/mcp-servers/re-mcp/test-workers/worker-a/tiny-glade.exe",
+        "opening": true
+      }
+    },
+    {
+      "agent": "a",
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "b_a"
+      },
+      "start": 653184.037629791,
+      "end": 653193.9669875,
+      "isError": false,
+      "decoded": {
+        "status": "ready",
+        "database": "b_a",
+        "file_path": "/Users/yuluo/Desktop/game/tools/mcp-servers/re-mcp/test-workers/worker-a/tiny-glade.exe",
+        "processor": "x86:LE:64:default",
+        "bitness": 64,
+        "file_type": "Portable Executable (PE)",
+        "function_count": 131517,
+        "segment_count": 8,
+        "capabilities": {
+          "decompiler": true
+        },
+        "session_count": 1
+      }
+    },
+    {
+      "agent": "b",
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "b_b"
+      },
+      "start": 653184.034542666,
+      "end": 653194.0728375,
+      "isError": false,
+      "decoded": {
+        "status": "ready",
+        "database": "b_b",
+        "file_path": "/Users/yuluo/Desktop/game/tools/mcp-servers/re-mcp/test-workers/worker-b/tiny-glade.exe",
+        "processor": "x86:LE:64:default",
+        "bitness": 64,
+        "file_type": "Portable Executable (PE)",
+        "function_count": 131517,
+        "segment_count": 8,
+        "capabilities": {
+          "decompiler": true
+        },
+        "session_count": 1
+      }
+    },
+    {
+      "agent": "b",
+      "tool": "list_databases",
+      "args": {},
+      "start": 653194.076134416,
+      "end": 653194.144667416,
+      "isError": false,
+      "decoded": {
+        "databases": [
+          {
+            "database": "b_b",
+            "file_path": "/Users/yuluo/Desktop/game/tools/mcp-servers/re-mcp/test-workers/worker-b/tiny-glade.exe",
+            "processor": "x86:LE:64:default",
+            "bitness": 64,
+            "file_type": "Portable Executable (PE)",
+            "function_count": 131517,
+            "segment_count": 8,
+            "capabilities": {
+              "decompiler": true
+            },
+            "session_count": 1,
+            "attached": true
+          },
+          {
+            "database": "b_a",
+            "file_path": "/Users/yuluo/Desktop/game/tools/mcp-servers/re-mcp/test-workers/worker-a/tiny-glade.exe",
+            "processor": "x86:LE:64:default",
+            "bitness": 64,
+            "file_type": "Portable Executable (PE)",
+            "function_count": 131517,
+            "segment_count": 8,
+            "capabilities": {
+              "decompiler": true
+            },
+            "session_count": 1,
+            "attached": false
+          }
+        ],
+        "database_count": 2
+      }
+    },
+    {
+      "agent": "a",
+      "tool": "list_databases",
+      "args": {},
+      "start": 653194.0768355,
+      "end": 653194.14731925,
+      "isError": false,
+      "decoded": {
+        "databases": [
+          {
+            "database": "b_b",
+            "file_path": "/Users/yuluo/Desktop/game/tools/mcp-servers/re-mcp/test-workers/worker-b/tiny-glade.exe",
+            "processor": "x86:LE:64:default",
+            "bitness": 64,
+            "file_type": "Portable Executable (PE)",
+            "function_count": 131517,
+            "segment_count": 8,
+            "capabilities": {
+              "decompiler": true
+            },
+            "session_count": 1,
+            "attached": false
+          },
+          {
+            "database": "b_a",
+            "file_path": "/Users/yuluo/Desktop/game/tools/mcp-servers/re-mcp/test-workers/worker-a/tiny-glade.exe",
+            "processor": "x86:LE:64:default",
+            "bitness": 64,
+            "file_type": "Portable Executable (PE)",
+            "function_count": 131517,
+            "segment_count": 8,
+            "capabilities": {
+              "decompiler": true
+            },
+            "session_count": 1,
+            "attached": true
+          }
+        ],
+        "database_count": 2
+      }
+    },
+    {
+      "agent": "a",
+      "tool": "decompile_function",
+      "args": {
+        "database": "b_a",
+        "address": "0x14090e510"
+      },
+      "start": 653194.148135166,
+      "end": 653194.67852,
+      "isError": false,
+      "decoded": {
+        "function_name": "init_walk_camera",
+        "address": "0x14090E510",
+        "decompiled_code": "\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\n/* re-mcp shared daemon agent a proof */\n\nvoid __cdecl country_core::systems::camera_rig::MainCamera::init_walk_camera(void)\n\n{\n  resources::terrain_height::TerrainHeightsData::\n  sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>();\n  ::utils::swizzlers::impl$1::xvy();\n  collision::world::Rapier::raycast_simple();\n  ::utils::swizzlers::impl$0::x0y();\n  walk::WalkCamera::teleport();\n  return;\n}\n\n",
+        "database": "b_a"
+      }
+    },
+    {
+      "agent": "b",
+      "tool": "decompile_function",
+      "args": {
+        "database": "b_b",
+        "address": "0x14090e6f0"
+      },
+      "start": 653194.148434541,
+      "end": 653194.708913958,
+      "isError": false,
+      "decoded": {
+        "function_name": "match_free_camera_to_normal",
+        "address": "0x14090E6F0",
+        "decompiled_code": "\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\n\nvoid __cdecl country_core::systems::camera_rig::MainCamera::match_free_camera_to_normal(void)\n\n{\n  undefined4 uVar1;\n  undefined8 uVar2;\n  longlong lVar3;\n  longlong lVar4;\n  longlong lVar5;\n  undefined8 *puVar6;\n  longlong lVar7;\n  undefined8 *extraout_RAX;\n  undefined8 *extraout_RAX_00;\n  undefined8 *extraout_RAX_01;\n  longlong in_RCX;\n  longlong lVar8;\n  undefined8 *puVar9;\n  undefined4 uStack_b4;\n  longlong local_a8;\n  undefined8 *puStack_a0;\n  longlong local_98;\n  undefined4 uStack_90;\n  undefined8 local_88;\n  undefined8 uStack_80;\n  undefined8 local_78;\n  undefined4 local_70;\n  longlong *local_68;\n  undefined8 local_60;\n  \n  local_60 = 0xfffffffffffffffe;\n  uVar2 = *(undefined8 *)(in_RCX + 0x138);\n  uVar1 = *(undefined4 *)(in_RCX + 0x140);\n  std::alloc::__default_lib_allocator::__rust_alloc();\n  if (extraout_RAX == (undefined8 *)0x0) {\n                    /* WARNING: Subroutine does not return */\n    alloc::alloc::handle_alloc_error();\n  }\n  *extraout_RAX = uVar2;\n  *(undefined4 *)(extraout_RAX + 1) = uVar1;\n  local_68 = extraout_RAX;\n  alloc::raw_vec::RawVec::\n  grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>\n            ();\n  _DAT_00000008 = local_68;\n  _DAT_00000010 = &anon_f854cc98b5e1efe54f6ab98d53b9f85b_26_llvm_5637972437638668905;\n  local_a8 = 0;\n  puStack_a0 = (undefined8 *)&DAT_00000008;\n  local_98 = 1;\n  uVar2 = *(undefined8 *)(in_RCX + 0x150);\n  std::alloc::__default_lib_allocator::__rust_alloc();\n  lVar8 = local_98;\n  if (extraout_RAX_00 != (undefined8 *)0x0) {\n    *extraout_RAX_00 = CONCAT44((int)uVar2,(int)((ulonglong)uVar2 >> 0x20));\n    local_68 = extraout_RAX_00;\n    if (local_98 == local_a8) {\n      alloc::raw_vec::RawVec::\n      grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>\n                ();\n    }\n    puStack_a0[lVar8 * 2] = local_68;\n    puStack_a0[lVar8 * 2 + 1] = &anon_f854cc98b5e1efe54f6ab98d53b9f85b_30_llvm_5637972437638668905;\n    local_78 = lVar8 + 1;\n    local_88 = local_a8;\n    uStack_80 = puStack_a0;\n    std::alloc::__default_lib_allocator::__rust_alloc();\n    lVar8 = local_78;\n    if (extraout_RAX_01 != (undefined8 *)0x0) {\n      *extraout_RAX_01 = 0;\n      extraout_RAX_01[1] = 0;\n      *(undefined4 *)(extraout_RAX_01 + 4) = 0;\n      extraout_RAX_01[6] = __xmm_00000000000000003f8000003f800000;\n      *(undefined4 *)(extraout_RAX_01 + 7) = 0x3f800000;\n      local_68 = extraout_RAX_01;\n      if (local_78 == local_88) {\n        alloc::raw_vec::RawVec::\n        grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>\n                  ();\n      }\n      puVar6 = uStack_80;\n      lVar4 = local_88;\n      uStack_80[lVar8 * 2] = local_68;\n      uStack_80[lVar8 * 2 + 1] = &anon_f854cc98b5e1efe54f6ab98d53b9f85b_28_llvm_5637972437638668905;\n      lVar8 = lVar8 + 1;\n      local_78 = CONCAT44(_UNK_142aece54,_UNK_142aece50);\n      local_70 = _UNK_142aece58;\n      local_88 = CONCAT44(_UNK_142aece44,\n                          _anon_f854cc98b5e1efe54f6ab98d53b9f85b_17_llvm_5637972437638668905);\n      uStack_80 = (undefined8 *)CONCAT44(_DAT_142aece4c,_UNK_142aece48);\n      if (lVar8 != 0) {\n        puVar9 = puVar6;\n        do {\n          (**(code **)(puVar9[1] + 0x30))(&local_a8,*puVar9,&local_88,0);\n          puVar9 = puVar9 + 2;\n          local_70 = uStack_90;\n          local_78 = local_98;\n          local_88 = local_a8;\n          uStack_80 = puStack_a0;\n        } while (puVar9 != puVar6 + lVar8 * 2);\n      }\n      lVar7 = local_78;\n      puVar9 = uStack_80;\n      lVar5 = local_88;\n      lVar3 = CONCAT44(uStack_b4,local_70);\n      local_68 = (longlong *)(in_RCX + 0x270);\n      core::ptr::\n      drop_in_place<alloc::vec::Vec<alloc::boxed::Box<dyn_<bevy_app::plugin::Plugin>,alloc::alloc::Global>,alloc::alloc::Global>_>\n                ();\n      local_68[6] = lVar3;\n      local_68[4] = (longlong)puVar9;\n      local_68[5] = lVar7;\n      local_68[2] = lVar8;\n      local_68[3] = lVar5;\n      *local_68 = lVar4;\n      local_68[1] = (longlong)puVar6;\n      return;\n    }\n                    /* WARNING: Subroutine does not return */\n    alloc::alloc::handle_alloc_error();\n  }\n                    /* WARNING: Subroutine does not return */\n  alloc::alloc::handle_alloc_error();\n}\n\n",
+        "database": "b_b"
+      }
+    },
+    {
+      "agent": "a",
+      "tool": "set_comment",
+      "args": {
+        "database": "b_a",
+        "address": "0x14090e510",
+        "comment_type": "plate",
+        "comment": "re-mcp shared daemon agent a proof"
+      },
+      "start": 653194.709785666,
+      "end": 653194.75102425,
+      "isError": false,
+      "decoded": {
+        "address": "0x14090E510",
+        "comment_type": "plate",
+        "comment": "re-mcp shared daemon agent a proof",
+        "status": "ok",
+        "database": "b_a"
+      }
+    },
+    {
+      "agent": "b",
+      "tool": "set_comment",
+      "args": {
+        "database": "b_b",
+        "address": "0x14090e510",
+        "comment_type": "plate",
+        "comment": "re-mcp shared daemon agent b proof"
+      },
+      "start": 653194.709628208,
+      "end": 653194.753363083,
+      "isError": false,
+      "decoded": {
+        "address": "0x14090E510",
+        "comment_type": "plate",
+        "comment": "re-mcp shared daemon agent b proof",
+        "status": "ok",
+        "database": "b_b"
+      }
+    },
+    {
+      "agent": "b",
+      "tool": "call",
+      "args": {
+        "database": "b_b",
+        "tool": "get_comment",
+        "arguments": {
+          "address": "0x14090e510"
+        }
+      },
+      "start": 653194.754361708,
+      "end": 653194.781314916,
+      "isError": false,
+      "decoded": {
+        "result": {
+          "address": "0x14090E510",
+          "eol_comment": "",
+          "pre_comment": "",
+          "post_comment": "",
+          "plate_comment": "re-mcp shared daemon agent b proof",
+          "repeatable_comment": "",
+          "database": "b_b"
+        }
+      }
+    },
+    {
+      "agent": "a",
+      "tool": "call",
+      "args": {
+        "database": "b_a",
+        "tool": "get_comment",
+        "arguments": {
+          "address": "0x14090e510"
+        }
+      },
+      "start": 653194.75460525,
+      "end": 653194.783693333,
+      "isError": false,
+      "decoded": {
+        "result": {
+          "address": "0x14090E510",
+          "eol_comment": "",
+          "pre_comment": "",
+          "post_comment": "",
+          "plate_comment": "re-mcp shared daemon agent a proof",
+          "repeatable_comment": "",
+          "database": "b_a"
+        }
+      }
+    },
+    {
+      "agent": "b",
+      "tool": "save_database",
+      "args": {
+        "database": "b_b"
+      },
+      "start": 653194.784476791,
+      "end": 653195.071219333,
+      "isError": false,
+      "decoded": {
+        "status": "saved",
+        "path": "/Users/yuluo/Desktop/game/tools/mcp-servers/re-mcp/test-workers/worker-b/tiny-glade.exe",
+        "database": "b_b"
+      }
+    },
+    {
+      "agent": "a",
+      "tool": "save_database",
+      "args": {
+        "database": "b_a"
+      },
+      "start": 653194.784333958,
+      "end": 653195.086134,
+      "isError": false,
+      "decoded": {
+        "status": "saved",
+        "path": "/Users/yuluo/Desktop/game/tools/mcp-servers/re-mcp/test-workers/worker-a/tiny-glade.exe",
+        "database": "b_a"
+      }
+    },
+    {
+      "agent": "b",
+      "tool": "close_database",
+      "args": {
+        "database": "b_b",
+        "save": true
+      },
+      "start": 653195.087378625,
+      "end": 653195.453322791,
+      "isError": false,
+      "decoded": {
+        "status": "closed",
+        "database": "b_b"
+      }
+    },
+    {
+      "agent": "a",
+      "tool": "close_database",
+      "args": {
+        "database": "b_a",
+        "save": true
+      },
+      "start": 653195.087115708,
+      "end": 653195.454752958,
+      "isError": false,
+      "decoded": {
+        "status": "closed",
+        "database": "b_a"
+      }
+    },
+    {
+      "agent": "b",
+      "tool": "open_database",
+      "args": {
+        "file_path": "/Users/yuluo/Desktop/game/tools/mcp-servers/re-mcp/test-workers/worker-b/tiny-glade.exe",
+        "database_id": "b_b",
+        "run_auto_analysis": false,
+        "force_new": false
+      },
+      "start": 653195.455366,
+      "end": 653195.472846375,
+      "isError": false,
+      "decoded": {
+        "status": "opening",
+        "database": "b_b",
+        "file_path": "/Users/yuluo/Desktop/game/tools/mcp-servers/re-mcp/test-workers/worker-b/tiny-glade.exe",
+        "opening": true
+      }
+    },
+    {
+      "agent": "a",
+      "tool": "open_database",
+      "args": {
+        "file_path": "/Users/yuluo/Desktop/game/tools/mcp-servers/re-mcp/test-workers/worker-a/tiny-glade.exe",
+        "database_id": "b_a",
+        "run_auto_analysis": false,
+        "force_new": false
+      },
+      "start": 653195.455239916,
+      "end": 653195.4774405,
+      "isError": false,
+      "decoded": {
+        "status": "opening",
+        "database": "b_a",
+        "file_path": "/Users/yuluo/Desktop/game/tools/mcp-servers/re-mcp/test-workers/worker-a/tiny-glade.exe",
+        "opening": true
+      }
+    },
+    {
+      "agent": "a",
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "b_a"
+      },
+      "start": 653195.478068375,
+      "end": 653206.917761166,
+      "isError": false,
+      "decoded": {
+        "status": "ready",
+        "database": "b_a",
+        "file_path": "/Users/yuluo/Desktop/game/tools/mcp-servers/re-mcp/test-workers/worker-a/tiny-glade.exe",
+        "processor": "x86:LE:64:default",
+        "bitness": 64,
+        "file_type": "Portable Executable (PE)",
+        "function_count": 131517,
+        "segment_count": 8,
+        "capabilities": {
+          "decompiler": true
+        },
+        "session_count": 1
+      }
+    },
+    {
+      "agent": "b",
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "b_b"
+      },
+      "start": 653195.473518458,
+      "end": 653207.701824625,
+      "isError": false,
+      "decoded": {
+        "status": "ready",
+        "database": "b_b",
+        "file_path": "/Users/yuluo/Desktop/game/tools/mcp-servers/re-mcp/test-workers/worker-b/tiny-glade.exe",
+        "processor": "x86:LE:64:default",
+        "bitness": 64,
+        "file_type": "Portable Executable (PE)",
+        "function_count": 131517,
+        "segment_count": 8,
+        "capabilities": {
+          "decompiler": true
+        },
+        "session_count": 1
+      }
+    },
+    {
+      "agent": "b",
+      "tool": "call",
+      "args": {
+        "database": "b_b",
+        "tool": "get_comment",
+        "arguments": {
+          "address": "0x14090e510"
+        }
+      },
+      "start": 653207.702631416,
+      "end": 653207.770671125,
+      "isError": false,
+      "decoded": {
+        "result": {
+          "address": "0x14090E510",
+          "eol_comment": "",
+          "pre_comment": "",
+          "post_comment": "",
+          "plate_comment": "re-mcp shared daemon agent b proof",
+          "repeatable_comment": "",
+          "database": "b_b"
+        }
+      }
+    },
+    {
+      "agent": "a",
+      "tool": "call",
+      "args": {
+        "database": "b_a",
+        "tool": "get_comment",
+        "arguments": {
+          "address": "0x14090e510"
+        }
+      },
+      "start": 653207.703080666,
+      "end": 653207.775708166,
+      "isError": false,
+      "decoded": {
+        "result": {
+          "address": "0x14090E510",
+          "eol_comment": "",
+          "pre_comment": "",
+          "post_comment": "",
+          "plate_comment": "re-mcp shared daemon agent a proof",
+          "repeatable_comment": "",
+          "database": "b_a"
+        }
+      }
+    },
+    {
+      "agent": "a",
+      "tool": "close_database",
+      "args": {
+        "database": "b_a",
+        "save": true
+      },
+      "start": 653207.776661208,
+      "end": 653208.169662791,
+      "isError": false,
+      "decoded": {
+        "status": "closed",
+        "database": "b_a"
+      }
+    },
+    {
+      "agent": "b",
+      "tool": "close_database",
+      "args": {
+        "database": "b_b",
+        "save": true
+      },
+      "start": 653207.776924708,
+      "end": 653208.177700208,
+      "isError": false,
+      "decoded": {
+        "status": "closed",
+        "database": "b_b"
+      }
+    },
+    {
+      "agent": "b",
+      "tool": "list_databases",
+      "args": {},
+      "start": 653208.17833575,
+      "end": 653208.187907166,
+      "isError": false,
+      "decoded": {
+        "databases": [],
+        "database_count": 0
+      }
+    },
+    {
+      "agent": "a",
+      "tool": "list_databases",
+      "args": {},
+      "start": 653208.178440791,
+      "end": 653208.1895585,
+      "isError": false,
+      "decoded": {
+        "databases": [],
+        "database_count": 0
+      }
+    }
+  ],
+  "mode": "two independent stdio proxy clients, one test-owned persistent daemon",
+  "state_directory": "/Users/yuluo/Library/Application Support/re-mcp-ghidra",
+  "auto_analysis": false,
+  "daemon_identity_per_client": [
+    {
+      "agent": "b",
+      "pid": 12050,
+      "port": 50226,
+      "version": "3.0.3"
+    },
+    {
+      "agent": "a",
+      "pid": 12050,
+      "port": 50226,
+      "version": "3.0.3"
+    }
+  ],
+  "catalog_counts": [
+    33,
+    33
+  ],
+  "daemon_state_metadata": [
+    {
+      "path": "/Users/yuluo/Library/Application Support/re-mcp-ghidra/daemon.json",
+      "pid": 12050,
+      "port": 50226,
+      "keys_only": [
+        "pid",
+        "host",
+        "port",
+        "token",
+        "version"
+      ]
+    }
+  ],
+  "same_daemon_pid": true,
+  "ok": true,
+  "stop": {
+    "exit_code": 0,
+    "stdout": "Daemon stopped.\n",
+    "stderr": ""
+  }
+}

@@ -1,0 +1,90 @@
+--- a/tiny-glade/crates/tiny-glade/src/production_renderer.rs
++++ b/tiny-glade/crates/tiny-glade/src/production_renderer.rs
+@@ -165,6 +165,13 @@
+     let capture_graph_id = built.graph_id();
+     let compiled = bridge.compile_built(built).context("compile world graph")?;
+     let compile = started.elapsed();
++    // 原窗口链在 compile 成功后、execute 前 drain_finished_frames；只处理真实已完成帧。
++    // 新 compiled 仍持有自己的声明和回调，未完成的旧帧也不会在此提前释放。
++    if let Err(error) = bridge.collect_completed_frames() {
++        drop(compiled);
++        crate::screenshot::shared_texture_capture::cancel_unsubmitted(world, capture_graph_id);
++        return Err(anyhow::Error::from(error).context("collect completed gameplay frames"));
++    }
+     let started = std::time::Instant::now();
+     let receipt = match bridge.execute_compiled(compiled) {
+         Ok(receipt) => receipt,
+--- a/tiny-glade/crates/tiny-glade/tests/core_render_bridge.rs
++++ b/tiny-glade/crates/tiny-glade/tests/core_render_bridge.rs
+@@ -409,3 +409,71 @@
+     );
+     other.cancel_built(built).unwrap();
+ }
++
++#[test]
++fn completed_old_frame_collection_preserves_new_compiled_imports_and_callbacks() {
++    let Some(mut bridge) = bridge() else { return };
++    let buffers = bridge.hosts().buffers.clone();
++    let device = bridge.with_session(|session| session.backend.device.clone());
++    let mut world = bevy_ecs::world::World::new();
++    bridge.install_asset_libraries(&mut world).unwrap();
++    let canonical = world.resource::<country_core::render::device::GraphicsDeviceResource>();
++    let target = GraphicsDevice::create_buffer(
++        canonical.device(), &BufferDesc::new(8, 0x22, 2), "compiled maintenance target", None,
++    ).unwrap();
++    let first_retired = Rc::new(Cell::new(false));
++    let first_flag = first_retired.clone();
++    let (_, first) = bridge.render_frame(|frame| {
++        let id = frame.import_buffer(&target, 0)?;
++        frame.with_compute(|compute| {
++            rg_buffer_copy_from_slice_u32(compute, id.raw(), 8, &[11, 12], UploadContentVersion::Unknown)
++        })?;
++        frame.with_graph(|graph| {
++            graph.export(id, 0x26)?;
++            graph.on_retire(move || first_flag.set(true));
++            Ok(())
++        })
++    }).unwrap();
++    // 仅测试先确认全部真实回执完成，故意不走会 finish 旧帧的 session wait。
++    let mut completion = rhapsody::sync::SyncSet::EMPTY;
++    for point in &first.receipts {
++        completion.insert(*point);
++    }
++    assert!(!completion.is_empty());
++    device.wait(&completion, 10_000_000_000).unwrap();
++    assert!(completion.is_reached(&device.poll().unwrap()));
++    assert!(!first_retired.get());
++    assert_eq!(bridge.with_session(|session| session.pending_frame_count()), 1);
++
++    let second_retired = Rc::new(Cell::new(false));
++    let second_flag = second_retired.clone();
++    let (_, built) = bridge.build_frame(|frame| {
++        let id = frame.import_buffer(&target, 0)?;
++        frame.with_compute(|compute| {
++            rg_buffer_copy_from_slice_u32(compute, id.raw(), 8, &[21, 22], UploadContentVersion::Unknown)
++        })?;
++        frame.with_graph(|graph| {
++            graph.export(id, 0x26)?;
++            graph.on_retire(move || second_flag.set(true));
++            Ok(())
++        })
++    }).unwrap();
++    let compiled = bridge.compile_built(built).unwrap();
++    assert!(!first_retired.get(), "compile 不代替旧帧 finish");
++    assert!(!second_retired.get());
++    let imports_before = bridge.with_session(|session| session.frame_import_count());
++    assert!(imports_before > 0);
++    assert_eq!(bridge.collect_completed_frames().unwrap(), 1);
++    assert!(first_retired.get());
++    assert!(!second_retired.get(), "未提交 compiled 的 retire 回调不能被旧帧维护触发");
++    let imports_after = bridge.with_session(|session| session.frame_import_count());
++    assert!(imports_after > 0 && imports_after < imports_before,
++        "只清旧 graph marker，新 compiled 的导入必须保留");
++    let second = bridge.execute_compiled(compiled).unwrap();
++    assert!(!second.receipts.is_empty());
++    bridge.wait_submits_done(10_000_000_000).unwrap();
++    assert!(second_retired.get());
++    let expected: Vec<u8> = [21_u32, 22].into_iter().flat_map(u32::to_ne_bytes).collect();
++    assert_eq!(&buffers.mapped_slice_mut(&target).unwrap()[..8], expected);
++    GraphicsDevice::release_buffer(canonical.device(), &target);
++}

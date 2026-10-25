@@ -1,0 +1,1172 @@
+{
+  "kind": "radare",
+  "label": "two",
+  "started": "2026-10-11T12:10:17.387Z",
+  "calls": [
+    {
+      "name": "open_file",
+      "args": {
+        "file_path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "File opened successfully."
+          }
+        ]
+      },
+      "elapsed_ms": 4069
+    },
+    {
+      "name": "show_info",
+      "args": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "fd       3\nfile     /Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne\nsize     0x37c0800\nhumansz  55.8M\nmode     r-x\nformat   pe64\niorw     true\nblock    0x100\ntype     EXEC (Executable file)\narch     x86\nbaddr    0x140000000\nbinsz    58460160\nbintype  pe\nbits     64\ncanary   true\ninjprot  false\nretguard false\nclass    PE32+\ncmp.csum 0x037c2f11\ncompiled Wed Oct  8 10:36:14 2025\ncrypto   false\ndbg_file tiny_glade.pdb\nendian   little\nhavecode true\nhdr.csum 0x00000000\nguid     09F1A02A49F2F8C84C4C44205044422E1\nladdr    0x0\nlang     c\nlinenum  false\nlsyms    false\nmachine  AMD 64\nnx       true\nos       windows\noverlay  false\ncc       ms\npic      true\nrelocs   false\nsigned   false\nsanitize false\nstatic   false\nstripped false\nuncaps   false\nsubsys   Windows GUI\nva       true\nPE file header:\nIMAGE_NT_HEADERS\n  Signature : 0x4550\nIMAGE_FILE_HEADERS\n  Machine : 0x8664\n  NumberOfSections : 0x7\n  TimeDateStamp : 0x68e63e9e\n  PointerToSymbolTable : 0x0\n  NumberOfSymbols : 0x0\n  SizeOfOptionalHeader : 0xf0\n  Characteristics : 0x22\nIMAGE_OPTIONAL_HEADERS\n  Magic : 0x20b\n  MajorLinkerVersion : 0xe\n  MinorLinkerVersion : 0x0\n  SizeOfCode : 0x2923200\n  SizeOfInitializedData : 0xe9d200\n  SizeOfUninitializedData : 0x0\n  AddressOfEntryPoint : 0x289aeac\n  BaseOfCode : 0x1000\n  ImageBase : 0x140000000\n  SectionAlignment : 0x1000\n  FileAlignment : 0x200\n  MajorOperatingSystemVersion : 0x6\n  MinorOperatingSystemVersion : 0x0\n  MajorImageVersion : 0x0\n  MinorImageVersion : 0x0\n  MajorSubsystemVersion : 0x6\n  MinorSubsystemVersion : 0x0\n  Win32VersionValue : 0x0\n  SizeOfImage : 0x37cd000\n  SizeOfHeaders : 0x400\n  CheckSum : 0x0\n  Subsystem : 0x2\n  DllCharacteristics : 0x8160\n  SizeOfStackReserve : 0x100000\n  SizeOfStackCommit : 0x1000\n  SizeOfHeapReserve : 0x100000\n  SizeOfHeapCommit : 0x1000\n  LoaderFlags : 0x0\n  NumberOfRvaAndSizes : 0x10\nRICH_FIELDS\nIMAGE_DIRECTORY_ENTRY_IMPORT\n  VirtualAddress : 0x3191200\n  Size : 0x294\nIMAGE_DIRECTORY_ENTRY_EXCEPTION\n  VirtualAddress : 0x363c000\n  Size : 0x154a1c\nIMAGE_DIRECTORY_ENTRY_BASERELOC\n  VirtualAddress : 0x3793000\n  Size : 0x391c4\nIMAGE_DIRECTORY_ENTRY_DEBUG\n  VirtualAddress : 0x3191118\n  Size : 0x1c\nIMAGE_DIRECTORY_ENTRY_TLS\n  VirtualAddress : 0x318b428\n  Size : 0x28\nIMAGE_DIRECTORY_ENTRY_LOAD_CONFIG\n  VirtualAddress : 0x318b2f0\n  Size : 0x138\nIMAGE_DIRECTORY_ENTRY_IAT\n  VirtualAddress : 0x31923e0\n  Size : 0xf48\n"
+          }
+        ]
+      },
+      "elapsed_ms": 3
+    },
+    {
+      "name": "disassemble",
+      "args": {
+        "address": "0x140949c20",
+        "num_instructions": 7
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "0x140949c20      mov eax, dword [rcx]\n0x140949c22      cvtsi2ss xmm0, rax\n0x140949c27      mov eax, dword [rcx + 4]\n0x140949c2a      cvtsi2ss xmm1, rax\n0x140949c2f      divss xmm0, xmm1\n0x140949c33      ret\n0x140949c34      int3\n"
+          }
+        ]
+      },
+      "elapsed_ms": 2
+    },
+    {
+      "name": "run_command",
+      "args": {
+        "command": "af @ 0x140949c20"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<log>\n[WARN] Limiting jump table at 0x140592cf6 to 512 cases\n\n</log>\n"
+          }
+        ],
+        "structuredContent": {
+          "content": "<log>\n[WARN] Limiting jump table at 0x140592cf6 to 512 cases\n\n</log>\n"
+        }
+      },
+      "elapsed_ms": 9506
+    },
+    {
+      "name": "list_functions",
+      "args": {
+        "filter": "140949c20",
+        "max_length": 5
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "0x140949c20 fcn.140949c20"
+          }
+        ]
+      },
+      "elapsed_ms": 512
+    },
+    {
+      "name": "xrefs_to",
+      "args": {
+        "address": "0x140949c20"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          }
+        ]
+      },
+      "elapsed_ms": 1
+    },
+    {
+      "name": "list_decompilers",
+      "args": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "pdc\nCLd\n"
+          }
+        ]
+      },
+      "elapsed_ms": 1
+    },
+    {
+      "name": "run_command",
+      "args": {
+        "command": "idp?"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Usage: id  Debug information\n| id               show DWARF source lines information\n| idj              show addrline information in json format\n| idl[?]           show debug link file name\n| idp [file.pdb]   load pdb file information\n| idpd             download pdb file on remote server\n| idpi [file.pdb]  show pdb file information\n| idpi*            show symbols from pdb as flags (prefix with dot to import)\n| idx              display source files used via dwarf (previously known as iX)\n"
+          }
+        ],
+        "structuredContent": {
+          "content": "Usage: id  Debug information\n| id               show DWARF source lines information\n| idj              show addrline information in json format\n| idl[?]           show debug link file name\n| idp [file.pdb]   load pdb file information\n| idpd             download pdb file on remote server\n| idpi [file.pdb]  show pdb file information\n| idpi*            show symbols from pdb as flags (prefix with dot to import)\n| idx              display source files used via dwarf (previously known as iX)\n"
+        }
+      },
+      "elapsed_ms": 1
+    },
+    {
+      "name": "close_file",
+      "args": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "File closed successfully."
+          }
+        ]
+      },
+      "elapsed_ms": 150
+    },
+    {
+      "name": "open_file",
+      "args": {
+        "file_path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/rea-radare/isolation-fixture.exe"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "File opened successfully."
+          }
+        ]
+      },
+      "elapsed_ms": 12
+    },
+    {
+      "name": "analyze",
+      "args": {
+        "level": 0
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Analysis completed with level 0.\nFound 1 functions.\n\n<log>\n[INFO] Analyze all flags starting with sym. and entry0 (aa)\n[INFO] Analyze imports (af@@@i)\n[INFO] Name local plt stubs from their got relocs (anal.plt)\n[INFO] Analyze entrypoint (af@ entry0)\n[WARN] select the calling convention with `e anal.cc=?`\n[INFO] Analyze symbols (af@@@s)\n[INFO] Recovering variables (afva@@F)\n[INFO] Running plugin pre-analysis hooks\n[INFO] Analyze all functions arguments/locals (afva@@F)\n\n</log>\n"
+          }
+        ]
+      },
+      "elapsed_ms": 10
+    },
+    {
+      "name": "show_info",
+      "args": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "fd       3\nfile     /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/rea-radare/isolation-fixture.exe\nsize     0x400\nhumansz  1K\nmode     r-x\nformat   pe64\niorw     true\nblock    0x100\ntype     EXEC (Executable file)\narch     x86\nbaddr    0x140000000\nbinsz    1024\nbintype  pe\nbits     64\ncanary   true\ninjprot  false\nretguard false\nclass    PE32+\ncmp.csum 0x00002f36\ncompiled Thu Jan  1 00:00:00 1970\ncrypto   false\nendian   little\nhavecode true\nhdr.csum 0x00000000\nladdr    0x0\nlang     c\nlinenum  false\nlsyms    false\nmachine  AMD 64\nnx       true\nos       windows\noverlay  false\ncc       ms\npic      true\nrelocs   false\nsigned   false\nsanitize false\nstatic   true\nstripped false\nuncaps   false\nsubsys   Windows CUI\nva       true\nPE file header:\nIMAGE_NT_HEADERS\n  Signature : 0x4550\nIMAGE_FILE_HEADERS\n  Machine : 0x8664\n  NumberOfSections : 0x1\n  TimeDateStamp : 0x0\n  PointerToSymbolTable : 0x0\n  NumberOfSymbols : 0x0\n  SizeOfOptionalHeader : 0xf0\n  Characteristics : 0x22\nIMAGE_OPTIONAL_HEADERS\n  Magic : 0x20b\n  MajorLinkerVersion : 0x0\n  MinorLinkerVersion : 0x0\n  SizeOfCode : 0x200\n  SizeOfInitializedData : 0x0\n  SizeOfUninitializedData : 0x0\n  AddressOfEntryPoint : 0x1000\n  BaseOfCode : 0x1000\n  ImageBase : 0x140000000\n  SectionAlignment : 0x1000\n  FileAlignment : 0x200\n  MajorOperatingSystemVersion : 0x6\n  MinorOperatingSystemVersion : 0x0\n  MajorImageVersion : 0x0\n  MinorImageVersion : 0x0\n  MajorSubsystemVersion : 0x6\n  MinorSubsystemVersion : 0x0\n  Win32VersionValue : 0x0\n  SizeOfImage : 0x2000\n  SizeOfHeaders : 0x200\n  CheckSum : 0x0\n  Subsystem : 0x3\n  DllCharacteristics : 0x160\n  SizeOfStackReserve : 0x100000\n  SizeOfStackCommit : 0x1000\n  SizeOfHeapReserve : 0x100000\n  SizeOfHeapCommit : 0x1000\n  LoaderFlags : 0x0\n  NumberOfRvaAndSizes : 0x10\nRICH_FIELDS\n"
+          }
+        ]
+      },
+      "elapsed_ms": 3
+    },
+    {
+      "name": "disassemble",
+      "args": {
+        "address": "0x140001000",
+        "num_instructions": 7
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "; [00] -r-x section size 4096 named .text\n  ;-- section..text:\n6: entry0 ();\n; '%'\n; 37\n0x140001000      mov eax, 0x25\n0x140001005      ret\n0x140001006      add byte [rax], al\n0x140001008      add byte [rax], al\n0x14000100a      add byte [rax], al\n0x14000100c      add byte [rax], al\n0x14000100e      add byte [rax], al\n"
+          }
+        ]
+      },
+      "elapsed_ms": 3
+    },
+    {
+      "name": "list_functions",
+      "args": {
+        "max_length": 5
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "0x140001000 entry0"
+          }
+        ]
+      },
+      "elapsed_ms": 1
+    },
+    {
+      "name": "decompile_function",
+      "args": {
+        "address": "0x140001000"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "void entry0 (void) {\n// [00] -r-x section size 4096 named .text\n// '%'\n// 37\neax = 0x25\nreturn\n}\n\n"
+          }
+        ],
+        "structuredContent": {
+          "content": "void entry0 (void) {\n// [00] -r-x section size 4096 named .text\n// '%'\n// 37\neax = 0x25\nreturn\n}\n\n"
+        }
+      },
+      "elapsed_ms": 3
+    },
+    {
+      "name": "close_file",
+      "args": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "File closed successfully."
+          }
+        ]
+      },
+      "elapsed_ms": 7
+    }
+  ],
+  "ok": true,
+  "stderr": "INFO: [R2MCP] r2mcp starting\nINFO: [R2MCP] sandbox grain: exec,socket\nINFO: Radare2 core initialized\n\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r[WARN] Limiting jump table at 0x140592cf6 to 512 cases\n\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r\u001b[2K\r[INFO] Analyze all flags starting with sym. and entry0 (aa)\n[INFO] Analyze imports (af@@@i)\n[INFO] Name local plt stubs from their got relocs (anal.plt)\n[INFO] Analyze entrypoint (af@ entry0)\n[WARN] select the calling convention with `e anal.cc=?`\n\u001b[2K\r[INFO] Analyze symbols (af@@@s)\n[INFO] Recovering variables (afva@@F)\n[INFO] Running plugin pre-analysis hooks\n[INFO] Analyze all functions arguments/locals (afva@@F)\n",
+  "server": {
+    "name": "Radare2 MCP Connector",
+    "version": "1.8.8"
+  },
+  "tools": [
+    {
+      "name": "open_file",
+      "description": "Opens a binary file with radare2 for analysis <think>Call this tool before any other one from r2mcp. Use an absolute file_path</think>",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "Path to the file to open"
+          },
+          "baddr": {
+            "type": "string",
+            "description": "Optional base address for PIE binaries, same as radare2 -B / -m (for example 0x400000). For raw/headerless files (no ELF/PE magic), this now also creates an explicit io map so the file's content actually appears at this address, matching radare2 CLI's -m behavior"
+          },
+          "arch": {
+            "type": "string",
+            "description": "Optional asm.arch override (eg. 'arm'), same as radare2 -a. Needed for raw/headerless binaries which cannot be autodetected and would otherwise default to the host arch"
+          },
+          "bits": {
+            "type": "string",
+            "description": "Optional asm.bits override (eg. 16 for ARM Thumb), same as radare2 -b"
+          },
+          "cpu": {
+            "type": "string",
+            "description": "Optional asm.cpu override (eg. 'cortex'), same as radare2 -k/-e asm.cpu"
+          }
+        },
+        "required": [
+          "file_path"
+        ]
+      }
+    },
+    {
+      "name": "run_javascript",
+      "description": "Executes JavaScript code using radare2's qjs runtime",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "script": {
+            "type": "string",
+            "description": "The JavaScript code to execute"
+          }
+        },
+        "required": [
+          "script"
+        ]
+      }
+    },
+    {
+      "name": "run_command",
+      "description": "Executes a raw radare2 command directly",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "description": "The radare2 command to execute"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      }
+    },
+    {
+      "name": "sql",
+      "description": "Runs one SQL statement through a loaded SQL core plugin such as r2xsql; supports reads and writes",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "SQL statement to pass to the loaded SQL core plugin (r2xsql)"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "run_script",
+      "description": "Runs a local radare2 command script file through r2's command-file API. The path must satisfy MCP path policy and the active r2 sandbox.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "Absolute path to the radare2 script file to execute"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        },
+        "required": [
+          "file_path"
+        ]
+      }
+    },
+    {
+      "name": "close_file",
+      "description": "Close the currently open file",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "list_functions",
+      "description": "Lists all functions discovered during analysis",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "only_named": {
+            "type": "boolean",
+            "description": "If true, only list functions with named symbols (excludes functions with numeric suffixes like sym.func.1000016c8)"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "start": {
+            "type": "integer",
+            "description": "Starting index for pagination (default: 0)"
+          },
+          "max_length": {
+            "type": "integer",
+            "description": "Maximum number of results to return, -1 for all (default: 50)"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_functions_tree",
+      "description": "Lists functions and successors (aflmu)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_libraries",
+      "description": "Lists all shared libraries linked to the binary",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_imports",
+      "description": "Lists imported symbols (note: use list_symbols for addresses with sym.imp. prefix)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_exports",
+      "description": "Lists exported symbols from the binary or process",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_sections",
+      "description": "Displays memory sections and segments from the binary",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_memory_maps",
+      "description": "Lists memory regions of the process with addresses and permissions",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "show_function_details",
+      "description": "Displays detailed information about the current function",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "get_current_address",
+      "description": "Shows the current position and function name",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "show_info",
+      "description": "Displays information about the binary or target process",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "list_symbols",
+      "description": "Shows all symbols (functions, variables, imports) with addresses",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_entrypoints",
+      "description": "Displays program entrypoints, constructors and main function",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "list_methods",
+      "description": "Lists all methods belonging to the specified class",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "classname": {
+            "type": "string",
+            "description": "Name of the class to list methods for"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        },
+        "required": [
+          "classname"
+        ]
+      }
+    },
+    {
+      "name": "list_classes",
+      "description": "Lists class names from various languages (C++, ObjC, Swift, Java, Dalvik)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_decompilers",
+      "description": "Shows all available decompiler backends",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "rename_function",
+      "description": "Renames the function at the specified address",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "New function name"
+          },
+          "address": {
+            "type": "string",
+            "description": "Address of the function to rename"
+          }
+        },
+        "required": [
+          "name",
+          "address"
+        ]
+      }
+    },
+    {
+      "name": "rename_flag",
+      "description": "Renames a local variable or data reference within the specified address",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address of the flag containing the variable or data reference"
+          },
+          "name": {
+            "type": "string",
+            "description": "Current variable name or data reference"
+          },
+          "new_name": {
+            "type": "string",
+            "description": "New variable name or data reference"
+          }
+        },
+        "required": [
+          "address",
+          "name",
+          "new_name"
+        ]
+      }
+    },
+    {
+      "name": "use_decompiler",
+      "description": "Selects which decompiler backend to use (default: pdc)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the decompiler"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "get_function_prototype",
+      "description": "Retrieves the function signature at the specified address",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address of the function"
+          }
+        },
+        "required": [
+          "address"
+        ]
+      }
+    },
+    {
+      "name": "set_function_prototype",
+      "description": "Sets the function signature (return type, name, arguments)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address of the function"
+          },
+          "prototype": {
+            "type": "string",
+            "description": "Function signature in C-like syntax"
+          }
+        },
+        "required": [
+          "address",
+          "prototype"
+        ]
+      }
+    },
+    {
+      "name": "set_comment",
+      "description": "Adds a comment at the specified address",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address to put the comment in"
+          },
+          "message": {
+            "type": "string",
+            "description": "Comment text to use"
+          }
+        },
+        "required": [
+          "address",
+          "message"
+        ]
+      }
+    },
+    {
+      "name": "list_strings",
+      "description": "Lists strings from data sections with optional regex filter",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_all_strings",
+      "description": "Scans the entire binary for strings with optional regex filter",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "analyze",
+      "description": "Runs binary analysis with optional depth level",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "number",
+            "description": "Analysis level (0-4, higher is more thorough)"
+          },
+          "timeout_seconds": {
+            "type": "integer",
+            "description": "Optional maximum analysis time in seconds for this call only. Use 0 to disable the timeout."
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "xrefs_to",
+      "description": "Finds all code references to the specified address",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address to check for cross-references"
+          }
+        },
+        "required": [
+          "address"
+        ]
+      }
+    },
+    {
+      "name": "decompile_function",
+      "description": "Show C-like pseudocode of the function in the given address. <think>Use this to inspect the code in a function, do not run multiple times in the same offset</think>",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address of the function to decompile"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        },
+        "required": [
+          "address"
+        ]
+      }
+    },
+    {
+      "name": "list_files",
+      "description": "Lists files in the specified path using radare2's ls -q command. Files ending with / are directories, otherwise they are files.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path to list files from"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "disassemble_function",
+      "description": "Shows assembly listing of the function at the specified address",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address of the function to disassemble"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        },
+        "required": [
+          "address"
+        ]
+      }
+    },
+    {
+      "name": "disassemble",
+      "description": "Disassembles a specific number of instructions from an address <think>Use this tool to inspect a portion of memory as code without depending on function analysis boundaries. Use this tool when functions are large and you are only interested on few instructions</think>",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address to start disassembly"
+          },
+          "num_instructions": {
+            "type": "integer",
+            "description": "Number of instructions to disassemble (default: 10)"
+          }
+        },
+        "required": [
+          "address"
+        ]
+      }
+    },
+    {
+      "name": "calculate",
+      "description": "Evaluate a math expression using core->num (r_num_math). Usecases: do proper 64-bit math, resolve addresses for flag names/symbols, and avoid hallucinated results.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "expression": {
+            "type": "string",
+            "description": "Math expression to evaluate (eg. 0x100 + sym.flag - 4)"
+          }
+        },
+        "required": [
+          "expression"
+        ]
+      }
+    },
+    {
+      "name": "get_pid",
+      "description": "Get the process ID of the target process",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "list_threads",
+      "description": "List all threads in the target process with their IDs and state",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "dump_registers",
+      "description": "Show register values for the target process threads",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "thread_id": {
+            "type": "integer",
+            "description": "Optional thread ID to show registers for a specific thread"
+          }
+        }
+      }
+    },
+    {
+      "name": "hexdump",
+      "description": "Print memory contents in hexdump style at the given address",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address to hexdump"
+          },
+          "size": {
+            "type": "string",
+            "description": "Number of bytes to dump (empty string for default size)"
+          }
+        },
+        "required": [
+          "address",
+          "size"
+        ]
+      }
+    },
+    {
+      "name": "memory_map_here",
+      "description": "Show memory map information at the current address",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "list_heap_allocations",
+      "description": "List malloc/heap memory ranges in the target process",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Regular expression to filter the results"
+          },
+          "count": {
+            "type": "boolean",
+            "description": "If true, return only the number of matching results instead of the full list"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination (line number to start from)"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of lines per page (default: 1000, max: 10000)"
+          }
+        }
+      }
+    },
+    {
+      "name": "search",
+      "description": "Search for strings, hex patterns, wide strings, or numeric values",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The search query (string, hex bytes, or numeric value)"
+          },
+          "type": {
+            "type": "string",
+            "description": "Search type: string (default), hex, wide, or value"
+          },
+          "value_size": {
+            "type": "integer",
+            "description": "For value search: byte width 1, 2, 4 (default), or 8"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "lookup_address",
+      "description": "Describe what is at a given address (flag name, symbol, module)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address to describe"
+          }
+        },
+        "required": [
+          "address"
+        ]
+      }
+    },
+    {
+      "name": "lookup_export",
+      "description": "Resolve an export name to its implementation address",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Export name to look up"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "lookup_symbol",
+      "description": "Resolve an address to its symbol name",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address to resolve"
+          }
+        },
+        "required": [
+          "address"
+        ]
+      }
+    }
+  ],
+  "finished": "2026-10-11T12:10:31.908Z"
+}

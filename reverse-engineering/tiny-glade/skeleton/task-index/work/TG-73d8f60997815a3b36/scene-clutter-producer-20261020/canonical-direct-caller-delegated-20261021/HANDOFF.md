@@ -1,0 +1,7 @@
+# Gothic现有partial的唯一canonical直接caller迁移
+
+root/corelead明确要求canonical四表、26loader、ID producer先形成可编译源码组，不等待完整新业务。保原TG73d scene-clutter-producer-20261020 claim，唯一candidate writer是decorator_chain。当前source真实profile/hat完整合同仍在旧work；本次不扩gothic完整生成算法。
+
+只将旧Arc<LegacyDerivedDecoratorInfoRecord>改为唯一ID→DecoratorSubtype，然后exact (subtype,rank) required读取真实collision/interaction Arc，同当前实际cached Transform送入shared insert_for/set_positioned_colliders/set_cached_transform；actual modified ID与outer storage WallId、Info.state原样保留。无bbox构造、新registry、默认pose或mesh。现get_window_holes和主producer仍partial，不注册到生产宿主，不计完整gothic可视化。测试/Cargo/rustc/GPU未执行。
+
+依赖唯一canonical三源+26loader/ID map组，现blueprint真实owner/API和cached变换。不得独立对未迁移canonical库的生产应用本候选。

@@ -1,0 +1,185 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void __cdecl country_core::resources::history::History::add(void)
+
+{
+  undefined8 *puVar1;
+  longlong lVar2;
+  undefined8 uVar3;
+  undefined8 *extraout_RAX;
+  longlong *extraout_RAX_00;
+  undefined8 *extraout_RAX_01;
+  longlong lVar4;
+  longlong in_RCX;
+  longlong *plVar5;
+  int *in_RDX;
+  longlong lVar6;
+  longlong *plVar7;
+  longlong lVar8;
+  undefined8 local_a8;
+  undefined8 uStack_a0;
+  longlong local_98;
+  longlong *local_90;
+  undefined **local_88;
+  undefined8 uStack_80;
+  undefined8 *local_78;
+  undefined8 local_70;
+  undefined8 uStack_68;
+  undefined8 *local_58;
+  undefined1 local_49;
+  undefined8 local_48;
+  
+  local_48 = 0xfffffffffffffffe;
+  lVar4 = *(longlong *)(in_RCX + 0x30);
+  if (!SBORROW8(0,lVar4)) {
+    plVar7 = (longlong *)(in_RCX + 0x30);
+    local_90 = plVar7;
+    if ((*(longlong *)(in_RCX + 0x40) == 0) &&
+       (*(int *)(in_RCX + 0x68) - *(int *)(in_RCX + 0x10) < -1)) {
+      local_49 = 1;
+      nuke_future_states();
+      local_88 = (undefined **)0x0;
+      uStack_80 = 8;
+      local_78 = (undefined8 *)0x0;
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      if (extraout_RAX == (undefined8 *)0x0) {
+                    /* WARNING: Subroutine does not return */
+        alloc::alloc::handle_alloc_error();
+      }
+      local_58 = extraout_RAX;
+      core::ops::function::FnOnce::
+      call_once<std::hash::random::impl_0::new::KEYS::constant_0::closure_env_1,tuple_<enum2_<core::option::Option<ref_mut_<enum2_<core::option::Option<core::cell::Cell<tuple_<u64,u64>_>_>_>_>_>_>_>_>
+                ();
+      if (extraout_RAX_00 == (longlong *)0x0) {
+                    /* WARNING: Subroutine does not return */
+        std::thread::local::panic_access_error();
+      }
+      lVar4 = *extraout_RAX_00;
+      lVar6 = extraout_RAX_00[1];
+      *extraout_RAX_00 = *extraout_RAX_00 + 1;
+      *local_58 = 1;
+      local_58[1] = 1;
+      uVar3 = _UNK_142af1478;
+      local_58[2] = anon_869b53123b80c82212150de940b3e437_14_llvm_8061242415410628904;
+      local_58[3] = uVar3;
+      uVar3 = _UNK_142af1488;
+      local_58[4] = _DAT_142af1480;
+      local_58[5] = uVar3;
+      local_58[6] = lVar4;
+      local_58[7] = lVar6;
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      if (extraout_RAX_01 == (undefined8 *)0x0) {
+                    /* WARNING: Subroutine does not return */
+        alloc::alloc::handle_alloc_error();
+      }
+      *extraout_RAX_01 = 1;
+      extraout_RAX_01[1] = 1;
+      extraout_RAX_01[2] = 0;
+      extraout_RAX_01[4] = 0;
+      extraout_RAX_01[6] = 0;
+      extraout_RAX_01[7] = 4;
+      extraout_RAX_01[8] = 0;
+      extraout_RAX_01[9] = 0;
+      extraout_RAX_01[10] = 4;
+      extraout_RAX_01[0xb] = 0;
+      local_98 = (longlong)local_78;
+      local_a8 = local_88;
+      uStack_a0 = (code *)uStack_80;
+      if (!SBORROW8(0,*plVar7)) {
+        core::ptr::drop_in_place<country_core::resources::history::MultiEdit>();
+      }
+      local_90[2] = local_98;
+      *(undefined4 *)local_90 = (undefined4)local_a8;
+      *(undefined4 *)((longlong)local_90 + 4) = local_a8._4_4_;
+      *(undefined4 *)(local_90 + 1) = (undefined4)uStack_a0;
+      *(undefined4 *)((longlong)local_90 + 0xc) = uStack_a0._4_4_;
+      *(undefined8 **)(in_RCX + 0x48) = local_58;
+      *(undefined8 **)(in_RCX + 0x50) = extraout_RAX_01;
+      lVar4 = *(longlong *)(in_RCX + 0x30);
+      if (SBORROW8(0,lVar4)) goto LAB_140a8525b;
+    }
+    if ((*in_RDX == 7) && (*(longlong *)(in_RDX + 4) != 0)) {
+      plVar7 = *(longlong **)(in_RDX + 2);
+      plVar5 = plVar7 + *(longlong *)(in_RDX + 4) * 2;
+      do {
+        if (plVar7[1] != 0) {
+          lVar6 = 0;
+          do {
+            lVar2 = *(longlong *)(*plVar7 + lVar6);
+            lVar8 = *(longlong *)(lVar2 + 0x10) + -0x7fffffffffffffff;
+            if (-0x7ffffffffffffff1 < *(longlong *)(lVar2 + 0x10)) {
+              lVar8 = 0;
+            }
+            if (lVar8 == 0) {
+              if (*(uint *)(lVar2 + 0xf8) < 2) {
+                if (*(float *)(lVar2 + 0x100) < *(float *)(lVar2 + 0xfc) ||
+                    *(float *)(lVar2 + 0x100) == *(float *)(lVar2 + 0xfc)) {
+                  local_88 = &PTR_s_Slice_start_u_must_be_smaller_th_142ad8170;
+                  uStack_80 = 1;
+                  local_78 = (undefined8 *)0x8;
+                  local_70 = 0;
+                  uStack_68 = 0;
+                  local_49 = 1;
+                    /* WARNING: Subroutine does not return */
+                  core::panicking::panic_fmt();
+                }
+              }
+            }
+            else if (lVar8 == 1) {
+              if (SBORROW8(0,*(longlong *)(lVar2 + 0x18))) {
+                local_88 = &PTR_s_None_is_not_allowed_in__CreateWa_142ad81b8;
+                uStack_80 = 1;
+                local_78 = (undefined8 *)0x8;
+                local_70 = 0;
+                uStack_68 = 0;
+                local_49 = 1;
+                    /* WARNING: Subroutine does not return */
+                core::panicking::panic_fmt();
+              }
+            }
+            else if ((lVar8 == 2) && (SBORROW8(0,*(longlong *)(lVar2 + 0x18)))) {
+              local_88 = &PTR_s_None_is_not_allowed_in__DeleteWa_142ad8200;
+              uStack_80 = 1;
+              local_78 = (undefined8 *)0x8;
+              local_70 = 0;
+              uStack_68 = 0;
+              local_49 = 1;
+                    /* WARNING: Subroutine does not return */
+              core::panicking::panic_fmt();
+            }
+            lVar6 = lVar6 + 8;
+          } while (plVar7[1] << 3 != lVar6);
+        }
+        plVar7 = plVar7 + 2;
+      } while (plVar7 != plVar5);
+    }
+    local_78 = *(undefined8 **)(in_RDX + 4);
+    local_88 = *(undefined ***)in_RDX;
+    uStack_80 = *(undefined8 *)(in_RDX + 2);
+    lVar6 = *(longlong *)(in_RCX + 0x40);
+    if (lVar6 == lVar4) {
+      alloc::raw_vec::RawVec::
+      grow_one<tuple_<ref_<str_>,enum2_<country_core::resources::gui::SettingsMenuState>_>,alloc::alloc::Global>
+                ();
+    }
+    lVar4 = *(longlong *)(in_RCX + 0x38);
+    *(undefined8 **)(lVar4 + 0x10 + lVar6 * 0x18) = local_78;
+    puVar1 = (undefined8 *)(lVar4 + lVar6 * 0x18);
+    *puVar1 = local_88;
+    puVar1[1] = uStack_80;
+    *(longlong *)(in_RCX + 0x40) = lVar6 + 1;
+    return;
+  }
+LAB_140a8525b:
+  uStack_a0 = history::impl$14::fmt;
+  local_88 = &PTR_s_Tried_writing_to_History_when_th_142ad8250;
+  uStack_80 = 2;
+  uStack_68 = 0;
+  local_78 = &local_a8;
+  local_70 = 1;
+  local_49 = 1;
+                    /* WARNING: Subroutine does not return */
+  core::panicking::panic_fmt();
+}
+

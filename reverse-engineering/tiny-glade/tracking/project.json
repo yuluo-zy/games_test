@@ -1,0 +1,958 @@
+{
+  "schema_version": 1,
+  "target": "/Users/yuluo/Desktop/game/B版本内容",
+  "source_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "user_scope_2026_10_19": {
+    "excluded": [
+      "T13 feedback capture/state producer"
+    ],
+    "execution": "Multiple agents continue all other unknown, unrecovered and unverified paths through complete producer-state-consumer-interaction chains",
+    "current_priority": "Concentrate all parallel work on completing startup -> assembly -> main loop, including first and repeated sessions with independent runtime acceptance"
+  },
+  "latest_increment": {
+    "date": "2026-10-19",
+    "report": "evidence/round11/REPORT.md",
+    "validation": "evidence/round11/verification.json",
+    "scope": "startup-camera-meadow-grading; history-entry-owned-aux-stairs-prefab; world-tail-T12-T16-T21",
+    "all_three_main_flows_complete": false,
+    "current_startup_checkpoint": "evidence/round12/startup-focus/dispatch.json",
+    "startup_complete": false
+  },
+  "objective": "完成一个 Rust 项目，完整复现当前原作构建的游戏实现与行为",
+  "overall_completion_percent": null,
+  "percent_policy": "完整功能枚举与验收分母尚未建立，不从函数数、文件数或里程碑数量推算整游戏百分比",
+  "milestones": [
+    {
+      "id": "M00",
+      "title": "原作身份与研究输入",
+      "status": "complete",
+      "depends_on": [],
+      "acceptance": [
+        "RNE/PDB 匹配身份；副本哈希一致；EXE 差异登记"
+      ],
+      "evidence": [
+        "evidence/binary/baseline.json",
+        "workspace/input/identity.json"
+      ],
+      "remaining": []
+    },
+    {
+      "id": "M01",
+      "title": "可构建 Rust 工程与证据追踪",
+      "status": "complete",
+      "depends_on": [
+        "M00"
+      ],
+      "acceptance": [
+        "Cargo 锁定构建成功；每个已验收算法对应原作地址/报告；追踪工具可复现"
+      ],
+      "evidence": [
+        "reconstruction/Cargo.toml",
+        "reconstruction/Cargo.lock",
+        "evidence/project-build-verification.json",
+        "scripts/update-progress.py"
+      ],
+      "remaining": []
+    },
+    {
+      "id": "M02",
+      "title": "已定位 Roof 状态函数",
+      "status": "complete",
+      "depends_on": [
+        "M00"
+      ],
+      "acceptance": [
+        "Roof::new/ty/is_gable 的观察输出通过机器码差分；浮点/内存边界登记"
+      ],
+      "evidence": [
+        "reconstruction/roof/roof_state.rs",
+        "evidence/native/roof-state-verification.json"
+      ],
+      "remaining": []
+    },
+    {
+      "id": "M03",
+      "title": "屋顶曲面核心",
+      "status": "in_progress",
+      "depends_on": [
+        "M00",
+        "M01"
+      ],
+      "acceptance": [
+        "原作实际曲面类型及参数来源确定；曲面/导数/法线 Rust 可运行；各原作分支差分通过"
+      ],
+      "evidence": [
+        "reconstruction/roof/surface.rs",
+        "evidence/roof-surface/verification.json"
+      ],
+      "remaining": [],
+      "source_gate": {
+        "status": "verified",
+        "scope": "截面/profile/Curve2构造与采样完整CPU链；23810用例"
+      }
+    },
+    {
+      "id": "M04",
+      "title": "脊线与屋顶形状组装",
+      "status": "in_progress",
+      "depends_on": [
+        "M00",
+        "M01"
+      ],
+      "acceptance": [
+        "脊向/脊长/檐口/屋顶分支输入输出明确；完整几何子链 Rust 与机器码差分"
+      ],
+      "evidence": [
+        "reconstruction/roof/ridge.rs",
+        "evidence/roof-ridge/verification.json"
+      ],
+      "remaining": [],
+      "source_gate": {
+        "status": "verified",
+        "scope": "脊长/脊向/尖顶偏移及世界点/线段；14776用例"
+      }
+    },
+    {
+      "id": "M05",
+      "title": "铺瓦核心",
+      "status": "in_progress",
+      "depends_on": [
+        "M00",
+        "M01"
+      ],
+      "acceptance": [
+        "屋顶采样到瓦实例布局/索引/变换的完整原作链恢复；CPU/GPU职责明确；差分通过"
+      ],
+      "evidence": [
+        "reconstruction/roof/pipeline.rs",
+        "evidence/roof-pipeline-verification.json",
+        "evidence/roof-tiles/circular-verification.json"
+      ],
+      "remaining": [],
+      "source_gate": {
+        "status": "verified",
+        "scope": "矩形33输入19024条完整记录；圆形37输入11467条，其中12为完整原函数入口"
+      }
+    },
+    {
+      "id": "M06",
+      "title": "屋顶编辑与完整场景验收",
+      "status": "in_progress",
+      "depends_on": [
+        "M02",
+        "M03",
+        "M04",
+        "M05"
+      ],
+      "acceptance": [
+        "历史命令到状态/曲面/脊线/瓦实例贯通；矩形、圆形及原作其他已观察类型编辑与撤销验证"
+      ],
+      "evidence": [
+        "reconstruction/roof/edit_rules.rs",
+        "evidence/source-edits/verification.json",
+        "evidence/source-edits/findings.md"
+      ],
+      "remaining": [
+        "实体解析/失败分支与游戏系统注册、事件读取调度",
+        "create/update/delete/switch生命周期与游戏状态消费者",
+        "最终场景验收后置"
+      ],
+      "source_gate": {
+        "status": "verified_partial",
+        "scope": "4514案例：已解析Roof/Event的编辑后段、变化量与数值通知规则；ECS查询/调度未完成；场景后置"
+      }
+    },
+    {
+      "id": "M07",
+      "title": "世界数据/历史/保存恢复",
+      "status": "in_progress",
+      "depends_on": [
+        "M00",
+        "M01"
+      ],
+      "acceptance": [
+        "33 历史样本消费者、版本迁移、ID与快照恢复实现；撤销/重做/重放与原作对照；缺失样本显式登记"
+      ],
+      "evidence": [
+        "reconstruction/history/findings.md",
+        "reconstruction/history/sample-verification.json"
+      ],
+      "remaining": [],
+      "source_gate": {
+        "status": "in_progress",
+        "scope": "静态历史结构已解析；Rust消费者/字段映射待恢复"
+      }
+    },
+    {
+      "id": "M08",
+      "title": "墙体与砖/支撑/开口",
+      "status": "in_progress",
+      "depends_on": [
+        "M01",
+        "M07"
+      ],
+      "acceptance": [
+        "各实际原作形状与相交关系实现；墙编辑到实例输出差分；建筑场景验收"
+      ],
+      "evidence": [
+        "reconstruction/wall/height_rules.rs",
+        "evidence/scope-priorities/wall-rules-verification.json"
+      ],
+      "remaining": [
+        "clamp对象查询/合法性与特殊flag生产者",
+        "墙轮廓、砖块/支撑/开口源码和原码校验",
+        "最终场景验收后置"
+      ],
+      "source_gate": {
+        "status": "verified_partial",
+        "scope": "6624案例：已解析状态的墙高约束后段及3个标高缓存叶函数；墙轮廓/砖/支撑/开口待恢复"
+      }
+    },
+    {
+      "id": "M09",
+      "title": "门窗/装饰/附着关系",
+      "status": "not_started",
+      "depends_on": [
+        "M06",
+        "M07",
+        "M08"
+      ],
+      "acceptance": [
+        "放置/尺寸/变形/冲突/宿主变化与恢复实现；原作样本与局部规则验证"
+      ],
+      "evidence": [],
+      "remaining": []
+    },
+    {
+      "id": "M10",
+      "title": "地形/道路/水/园景",
+      "status": "not_started",
+      "depends_on": [
+        "M01",
+        "M07"
+      ],
+      "acceptance": [
+        "坐标/笔刷/曲线/插值及跨对象变化传播实现；对应原作场景操作对照"
+      ],
+      "evidence": [],
+      "remaining": []
+    },
+    {
+      "id": "M11",
+      "title": "输入/拾取/任务调度",
+      "status": "not_started",
+      "depends_on": [
+        "M06",
+        "M08",
+        "M09",
+        "M10"
+      ],
+      "acceptance": [
+        "原作时序与脏更新依赖明确；连续拖动、反向、撤销与异步任务一致性通过"
+      ],
+      "evidence": [],
+      "remaining": []
+    },
+    {
+      "id": "M12",
+      "title": "资源/着色器/渲染",
+      "status": "in_progress",
+      "depends_on": [
+        "M01",
+        "M06",
+        "M08",
+        "M09",
+        "M10"
+      ],
+      "acceptance": [
+        "原作实际 pass、实例、材质与资源格式恢复；固定相机画面及性能对照"
+      ],
+      "evidence": [
+        "reconstruction/render/Cargo.toml",
+        "reconstruction/render/original-skeleton/crates/rhapsody/Cargo.toml",
+        "reconstruction/render/original-skeleton/crates/rhapsody/structure.json",
+        "reconstruction/render/original-skeleton/crates/rhapsody/verification.json",
+        "reconstruction/render/resource_info.rs",
+        "reconstruction/render/resource_usage.rs",
+        "evidence/render-recovery/verification.json",
+        "evidence/render-recovery/findings.md",
+        "evidence/render-skeleton/report.json",
+        "evidence/render-architecture/rendering-framework-map.md",
+        "evidence/render-architecture/rendering-framework-map.json",
+        "evidence/render-recovery/BATCHED_RHAPSODY_RECOVERY_PLAN.md",
+        "evidence/render-recovery/workgraph/summary.json",
+        "evidence/render-recovery/workgraph/functions.json",
+        "evidence/render-recovery/workgraph/calls.json",
+        "evidence/render-recovery/workgraph/work-packages.json",
+        "evidence/render-recovery/graph-compiler/contract.json",
+        "evidence/render-recovery/graph-compiler/query-queue.json",
+        "evidence/render-recovery/parallel/integration.json",
+        "evidence/render-recovery/parallel-batch-02/contract.json",
+        "evidence/render-recovery/parallel-batch-02/integration.json",
+        "evidence/render-recovery/parallel-batch-03/contract.json",
+        "evidence/render-recovery/parallel-batch-03/integration.json",
+        "evidence/render-recovery/RHAPSODY_PROGRESS.md",
+        "evidence/render-recovery/parallel-batch-04/contract.json",
+        "evidence/render-recovery/parallel-batch-04/device-counters/validation.json",
+        "evidence/render-recovery/parallel-batch-04/record-submit/validation.json",
+        "evidence/render-recovery/parallel-batch-04/pipeline-shader-interfaces/validation.json",
+        "reconstruction/render/work-packages/graph-compiler-r2/Cargo.toml",
+        "reconstruction/render/work-packages/gpu-lifecycle-r3/Cargo.toml",
+        "reconstruction/render/work-packages/executor-temporal-r4/Cargo.toml",
+        "reconstruction/render/work-packages/barrier-record-r5/Cargo.toml",
+        "reconstruction/render/work-packages/sequence-domain-r5/Cargo.toml",
+        "reconstruction/render/work-packages/temporal-r5/Cargo.toml",
+        "evidence/render-recovery/TOOLING_AUDIT_2026-10-12.md",
+        "evidence/render-recovery/tooling/README.md",
+        "evidence/render-recovery/tooling/runner-validation.json",
+        "evidence/render-recovery/parallel-batch-04/integration.json",
+        "evidence/render-recovery/parallel-batch-05/README.md",
+        "evidence/render-recovery/parallel-batch-05/integration.json",
+        "evidence/render-recovery/parallel-batch-05/queue-callers/validation.json",
+        "evidence/render-recovery/parallel-batch-05/record-resources/validation.json",
+        "evidence/render-recovery/parallel-batch-05/pipeline-descriptors/validation.json",
+        "reconstruction/render/work-packages/queue-callers-r7/Cargo.toml",
+        "reconstruction/render/work-packages/record-resources-r7/Cargo.toml",
+        "reconstruction/render/work-packages/pipeline-descriptors-r7/Cargo.toml",
+        "reconstruction/rhapsody-rebuild/MODULE_STATUS.md",
+        "reconstruction/rhapsody-rebuild/evidence/functional-project-validation.json",
+        "evidence/render-recovery/consumer-chain-review-2026-10-12/README.md"
+      ],
+      "remaining": [
+        "完整compile、并行录制与queue_submit前段及真实Vulkan/GPU执行",
+        "真实sequence生产API适配；多队列内联/间接caller与bucket冲突可达性",
+        "temporal reset/drop、compile take/restore unwind及图内alias生产者",
+        "原vk-sync-fork 0.4.0精确来源/必要补丁核实；不重写公开库",
+        "sparse layout producer、descriptor writes、shader module/完整pipeline及游戏pass绑定",
+        "shader算法、GPU/场景/性能对照"
+      ],
+      "source_gate": {
+        "status": "verified_partial",
+        "scope": "五批CPU/API合同统一门禁通过；第四批50/50、第五批27/27；新增Primary caller180、非空record774、descriptor创建5184原指令案例；生产sequence适配/并行queue/sparse layout/writes/完整pipeline/真实pass/GPU仍未验收",
+        "verification_reports": [
+          "evidence/render-recovery/verification.json"
+        ]
+      }
+    },
+    {
+      "id": "M13",
+      "title": "生态/天气/音频/UI/相机",
+      "status": "not_started",
+      "depends_on": [
+        "M07",
+        "M11",
+        "M12"
+      ],
+      "acceptance": [
+        "观察到的外围系统行为/参数/资源依赖逐项实现并验证"
+      ],
+      "evidence": [],
+      "remaining": []
+    },
+    {
+      "id": "M14",
+      "title": "完整 Rust 游戏集成验收",
+      "status": "not_started",
+      "depends_on": [
+        "M06",
+        "M07",
+        "M08",
+        "M09",
+        "M10",
+        "M11",
+        "M12",
+        "M13"
+      ],
+      "acceptance": [
+        "可运行交互游戏；全部确认的原作功能清单关闭；历史、场景、视觉、性能及异常恢复回归通过"
+      ],
+      "evidence": [],
+      "remaining": []
+    }
+  ],
+  "local_algorithms": [
+    {
+      "name": "WindowSize::aspect_ratio",
+      "status": "verified_local",
+      "source": "reconstruction/math/window_aspect.rs",
+      "report": "evidence/native/window-aspect-verification.json",
+      "scope": "仅局部 f32 结果，1280 输入"
+    },
+    {
+      "name": "Roof::new/ty/is_gable",
+      "status": "verified_local",
+      "source": "reconstruction/roof/roof_state.rs",
+      "report": "evidence/native/roof-state-verification.json",
+      "scope": "仅字节写入/布尔返回；256 构造器 + 两函数各1348输入"
+    },
+    {
+      "name": "Roof surface/Curve2",
+      "status": "verified_local",
+      "source": "reconstruction/roof/surface.rs",
+      "report": "evidence/roof-surface/verification.json",
+      "scope": "23810用例，原指令/CRT/曲线链；异常范围见报告"
+    },
+    {
+      "name": "RoofRidgeDims/tip",
+      "status": "verified_local",
+      "source": "reconstruction/roof/ridge.rs",
+      "report": "evidence/roof-ridge/verification.json",
+      "scope": "14776用例，点/线段脊线核心"
+    },
+    {
+      "name": "Rectangular CPU full pipeline",
+      "status": "verified_local",
+      "source": "reconstruction/roof/pipeline.rs",
+      "report": "evidence/roof-pipeline-verification.json",
+      "scope": "33完整输入、19024条64字节记录；没有prepared geometry注入"
+    },
+    {
+      "name": "Circular CPU tiles",
+      "status": "verified_local",
+      "source": "reconstruction/roof/tiles.rs",
+      "report": "evidence/roof-tiles/circular-verification.json",
+      "scope": "37输入、11467记录；25prepared/12完整入口"
+    },
+    {
+      "name": "Wall height numeric policy / cached heights",
+      "status": "verified_local",
+      "source": "reconstruction/wall/height_rules.rs",
+      "report": "evidence/scope-priorities/wall-rules-verification.json",
+      "scope": "6624案例；clamp仅数值后段，3个缓存叶函数含缺失panic条件；ECS/哈希实现排除"
+    },
+    {
+      "name": "Roof resolved edit core / feedback rules",
+      "status": "verified_local",
+      "source": "reconstruction/roof/edit_rules.rs",
+      "report": "evidence/source-edits/verification.json",
+      "scope": "4514案例；完整88字节状态、changed tick、变化量、gable重建及反馈数值；已解析后段，不是完整ECS系统"
+    },
+    {
+      "name": "Renderer resource graph rules",
+      "status": "verified_local",
+      "source": "reconstruction/render/resource_info.rs",
+      "report": "evidence/render-recovery/verification.json",
+      "scope": "访问链、生命周期事件、并发判断；依赖classifier外供；78867案例"
+    },
+    {
+      "name": "Renderer Vulkan usage conversions",
+      "status": "verified_local",
+      "source": "reconstruction/render/resource_usage.rs",
+      "report": "evidence/render-recovery/verification.json",
+      "scope": "2个完整private用途转换叶函数；ash原版本复用；142149案例"
+    }
+  ],
+  "system_acceptances": [],
+  "next_actions": [
+    "共享基础差分收口：攻 closest_edge_normal 法线组装（常量已定位）；curve2_rules/easing 定点反编译对照；circle_boundary 记为 MSVC-vs-macOS libm 平台差异",
+    "rhapsody：按新目录MODULE_STATUS/统一功能验收记进度；将主图registry与正在录制的Command注入首个shader callback，闭合managed descriptor→同一submit/completion；随后核对原并行/跨族、资产关联/缓存与分叉依赖，禁止按路径/函数数计完成",
+    "S01/S03/S04：恢复Roof/Wall权威类型、create/update/edit状态消费者和事件触发；复用Bevy查询/容器",
+    "S02/S05：定位特殊墙高flag生产者，恢复height history提交/撤销与游戏对象合法性规则",
+    "S06/S07：优先恢复墙轮廓、construct_brick_columns与支撑源码；复用glam/RNG/half",
+    "S21/S22：恢复原rkyv/ron fork之上的游戏schema与版本迁移；不运行场景回放"
+  ],
+  "known_gaps": [
+    "utils 4 个差分测试失败：closest_edge_normal 法线约定、circle_boundary(libm)、curve2_rules NaN 符号、easing 1 ULP（详见 utils-gaps REPORT.md）",
+    "发行树/PDB没有取回作者原始Rust文本，当前为行为恢复源码",
+    "Roof历史字段名字到ABI偏移和Width/Length bit映射待原消费者核实",
+    "屋顶CPU算法通过限定原码校验；Flat屋顶/完整ECS调用者及全部异常路径未完成",
+    "22个快照引用目标缺失",
+    "完整游戏、场景回放与GPU尚未验收；GPU源码按最新用户要求开始恢复"
+  ],
+  "updated_at_utc": "2026-10-14T00:00:00Z",
+  "render_recovery_progress": {
+    "report": "evidence/render-recovery/RHAPSODY_PROGRESS.md",
+    "phase": "candidate_functional_project_original_equivalence_pending",
+    "overall_completion_percent": null,
+    "integrated_batches": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "batch_04_status": "consistent_partial",
+    "active_agents": 0,
+    "batch_05_status": "historical_tool_input_changed",
+    "tooling_audit": "evidence/render-recovery/TOOLING_AUDIT_2026-10-12.md",
+    "batch_04_reports": {
+      "device_counters": {
+        "native_cases": 2840,
+        "mismatches": 0,
+        "rust_tests": 6,
+        "scope": "original CPU sequence-selection slice plus static constructor evidence"
+      },
+      "record_submit": {
+        "native_cases": 108,
+        "mismatches": 0,
+        "rust_tests": 3,
+        "scope": "empty-resource sequential record, submit entry, injected queue tail and twelve chain cases"
+      },
+      "shader_interfaces": {
+        "files": 404,
+        "modules": 638,
+        "reflected_modules": 638,
+        "reflection_failures": 0,
+        "layout_families": 240,
+        "interface_families": 402,
+        "rust_tests": 4,
+        "scope": "shipped SPIR-V interfaces; shader algorithms and concrete pass binding remain pending"
+      }
+    },
+    "gpu_runtime_acceptance": "candidate_functional_partial",
+    "summary": "新rhapsody-rebuild候选功能统一验收通过：64测试、严格Clippy、13真实GPU探针，25命令无失败；112输入/53外部依赖经只读复核。旧共享入口新增当前Command/compiled callback上下文，4链级场景通过。新目录自动首个shader callback仍为两阶段桥，原并行/跨族/资产关联/分叉与原整帧等价性未验收。",
+    "tooling_validation": "evidence/render-recovery/tooling/runner-validation.json",
+    "batch_05_reports": {
+      "queue_callers": {
+        "report": "evidence/render-recovery/parallel-batch-05/queue-callers/validation.json",
+        "native_entry_cases": 180,
+        "mismatches": 0,
+        "bounded_primary_direct_sites": 9,
+        "scope": "ensure_active_cb private caller entry; create/begin injected boundaries"
+      },
+      "record_resources": {
+        "report": "evidence/render-recovery/parallel-batch-05/record-resources/validation.json",
+        "native_cases": 774,
+        "mismatches": 0,
+        "nonempty_pass_access_cases": 726,
+        "export_no_last_access_cases": 48,
+        "record_to_submit_transfers": 330,
+        "rust_tests": 5,
+        "scope": "nonempty sequential record/helper/pre/tracking/submit; command/queue backend boundaries injected"
+      },
+      "pipeline_descriptors": {
+        "report": "evidence/render-recovery/parallel-batch-05/pipeline-descriptors/validation.json",
+        "native_cases": 5184,
+        "layout_entry_cases": 4438,
+        "pool_injected_layout_entry_cases": 486,
+        "compute_injected_slice_cases": 256,
+        "vulkan_error_stops": 4,
+        "mismatches": 0,
+        "rust_tests": 2,
+        "original_registry_dependencies": 21,
+        "scope": "persistent layout/pool and compute pipeline-layout API contract; declaration adapters do not prove game pass binding"
+      }
+    },
+    "batch_06_status": "shared_candidate_partial",
+    "batch_06_report": "evidence/render-recovery/parallel-batch-06/README.md",
+    "workflow": "evidence/render-recovery/WORKFLOW_RESET.md",
+    "workflow_migration_status": "first_shared_entry_connected",
+    "dependency_revalidation_report": "evidence/render-recovery/consumer-chain-review-2026-10-12/context-entry-validation.json",
+    "shared_consumer_chain": {
+      "entry": "ExecutionChain::execute_graph_with_context",
+      "source": "reconstruction/render/execution.rs",
+      "report": "evidence/render-recovery/consumer-chain-review-2026-10-12/context-entry-validation.json",
+      "candidate_entry_tests": 4,
+      "candidate_entry_status": "passed",
+      "whole_original_chain_validated": false,
+      "live_gpu": false,
+      "module_complete": false,
+      "removed_fixed_inputs": [
+        "manual first/last access",
+        "manual compiled snapshot",
+        "constant sequence7",
+        "prebuilt VkSubmitInfo arrays"
+      ]
+    },
+    "original_gpu_frame_acceptance": "pending",
+    "functional_project": {
+      "path": "reconstruction/rhapsody-rebuild",
+      "module_status": "reconstruction/rhapsody-rebuild/MODULE_STATUS.md",
+      "report": "reconstruction/rhapsody-rebuild/evidence/functional-project-validation.json",
+      "review": "evidence/render-recovery/consumer-chain-review-2026-10-12/functional-evidence-review.json",
+      "status": "passed_current_candidate_functional_scope",
+      "candidate_tests": 64,
+      "live_gpu_probes": 13,
+      "validation_commands": 25,
+      "original_complete_equivalence": false,
+      "ownership": "separate user-authorized chat; read-only by this review"
+    },
+    "historical_integrated_batches": [
+      5
+    ],
+    "batch_05_current_stale_inputs": [
+      {
+        "path": "scripts\\render-recovery\\mcp-evidence-job.mjs",
+        "recorded_sha256": "b0e3d57218acdb7e8ce5e2c0392fecb471e04eefc8b5a8daabf542227692ccf9",
+        "current_sha256": "3e34436212d14660243da21a3c5982067d7243f9f3955975df83ee3278f922c7"
+      }
+    ],
+    "batch_05_validity_note": "旧原码/Rust结果保留其原范围；工具runner内容已变，旧统一门禁不再列为当前输入一致，未覆盖改写旧报告。当前功能进度以新目录统一验收和本轮共享context入口验收为准。"
+  },
+  "rust_project": "reconstruction/Cargo.toml",
+  "engine_dependency_evidence": "evidence/resources/dependency-evidence.json",
+  "current_priority": "source_recovery_first",
+  "deferred_work": [
+    "完整场景回放与运行交互验收仍后置",
+    "GPU/渲染按用户最新指示开始源码恢复；完整shader动态/画面验收尚未开展"
+  ],
+  "source_discovery": "evidence/source-discovery/report.json",
+  "source_recovery_status": "SOURCE_RECOVERY.md",
+  "project_memory": "PROJECT_MEMORY.md",
+  "source_task_backlog": "TASK_BACKLOG.md",
+  "dependency_policy": "tracking/dependency-policy.json",
+  "engine": {
+    "family": "Bevy",
+    "version": "0.16.0",
+    "fork": true,
+    "fork_provenance": "explicit user statement",
+    "version_provenance": "original Cargo.lock and PDB",
+    "fork_repository": null,
+    "fork_commit": null,
+    "policy": "reuse dependency code; recover only game rules and necessary evidenced fork differences"
+  },
+  "dependency_reuse": {
+    "status": "verified",
+    "report": "evidence/roof-tiles/dependency-boundary.json",
+    "versions": {
+      "fastrand": "1.8.0",
+      "glam": "0.29.3",
+      "half": "2.4.1"
+    },
+    "counted_as_game_source_recovery": false
+  },
+  "render_recovery_authorization": {
+    "date": "2026-10-12",
+    "scope": "用户提出按PDB骨架和原反汇编恢复Rust并编译测试；本轮开始渲染CPU框架恢复",
+    "report": "evidence/render-recovery/findings.md"
+  },
+  "schedule_estimate": {
+    "status": "withdrawn_unmeasured",
+    "previous_ranges": "2–4 weeks minimal GPU / 6–12 weeks complete rhapsody",
+    "reason": "No measured chain-integration throughput; recalibrate after shared entry and original-side chain validation."
+  },
+  "shader_build_recovery": {
+    "date": "2026-10-13",
+    "baseline": "B",
+    "status": "runnable_build_workflow_verified_original_manifest_and_semantics_partial",
+    "report": "evidence/shader-build-2026-10-13/integration.json",
+    "summary": "evidence/shader-build-2026-10-13/SUMMARY.md",
+    "new_packages": 404,
+    "new_stages": 638,
+    "official_dxc_1_9_packages": 393,
+    "official_preview_dxc_1_10_packages": 11,
+    "complete_reflection_equal_packages": 210,
+    "public_interface_equal_stages": 302,
+    "original_compute_macro_tuples_unproven": 170,
+    "nonzero_compute_define_keys_unknown": 38,
+    "affected_tests_passed": 10,
+    "strict_all_targets_clippy": true,
+    "fresh_gpu_compute_readback": true,
+    "raster_draw_or_whole_frame": false,
+    "original_dxc_identity_known": false,
+    "whole_original_shader_algorithm_equivalence": false,
+    "provenance": "evidence/shader-build-2026-10-13/provenance/PROVENANCE.md",
+    "local_tool_packages_public_upstream_confirmed": false,
+    "public_dependency_reimplementation": false
+  },
+  "shader_gap_recovery": {
+    "date": "2026-10-13",
+    "baseline": "B",
+    "summary": "evidence/shader-gap-investigation-2026-10-13/SUMMARY.md",
+    "report": "evidence/shader-gap-investigation-2026-10-13/corpus-final-native/report.json",
+    "new_packages": 404,
+    "new_stages": 638,
+    "failed_assets": 0,
+    "complete_reflection_equal_packages": 397,
+    "public_interface_equal_stages": 313,
+    "capability_equal_stages": 300,
+    "original_nonzero_compute_tuples_recovered": 38,
+    "original_zero_key_compute_tuples_unproven": 132,
+    "source_dependency_sets_equal_packages": 187,
+    "affected_tests_passed": 21,
+    "strict_all_targets_clippy": true,
+    "fresh_gpu_compute_readback": true,
+    "recipe_defines_are_original": false,
+    "original_dxc_identity_known": false,
+    "whole_original_shader_algorithm_equivalence": false,
+    "raster_draw_or_whole_frame": false
+  },
+  "small_libraries_recovery": {
+    "baseline": "B",
+    "status": "scoped_candidates_independently_reviewed_partial",
+    "report": "evidence/small-libs-batch-01/REPORT.md",
+    "summary": "evidence/small-libs-batch-01/integration/summary.json",
+    "parallel_owners": 3,
+    "candidate_tests": 16,
+    "public_dependency_identities_verified": 22,
+    "source_workspace": "reconstruction/shared-foundation",
+    "full_original_libraries_accepted": false,
+    "tg_text_scope": "FontTable and ShapeStream CPU only",
+    "original_game_consumers_accepted": false,
+    "current_source_review": "evidence/small-libs-review-2026-10-13/integration/summary.json",
+    "historical_batch_source_hashes_current": false,
+    "hash_change_reason": "tg-text comment and README correction only; executable code unchanged, historical hashes retained"
+  },
+  "shared_foundation_code_review": {
+    "source": "tracking/shared-foundation-code-review.json",
+    "report": "evidence/shared-foundation-review-2026-10-13/REVIEW.md",
+    "fixed_findings": 6,
+    "original_functionality_complete": false,
+    "unrecovered_interface_source": "tracking/unrecovered-shared-foundation-interfaces.json",
+    "candidate_tests_passed": 85,
+    "external_dependencies_original_identity_matched": 104,
+    "interface_classification": {
+      "source": "tracking/shared-foundation-interface-classification.json",
+      "report": "INTERFACE_CLASSIFICATION.md",
+      "raw_observations": 609,
+      "business_observations": 468,
+      "generated_reuse": 62,
+      "schema_helper_records": 46,
+      "unresolved": 33,
+      "business_unmapped": 194,
+      "business_untouched": 188,
+      "classification_is_not_new_recovery": true
+    }
+  },
+  "small_libraries_review": {
+    "baseline": "B Windows x86_64",
+    "status": "parallel_review_complete",
+    "report": "evidence/small-libs-review-2026-10-13/REPORT.md",
+    "summary": "evidence/small-libs-review-2026-10-13/integration/summary.json",
+    "reviewers": 3,
+    "confirmed_algorithm_defects": 0,
+    "confirmed_dependency_reimplementations": 0,
+    "confirmed_documentation_defects_fixed": 1,
+    "performance": "Integrity per-file thread creation/full-file buffering measured; no original regression demonstrated",
+    "full_functionality_complete": false,
+    "actual_code_behavior_changed": false,
+    "historical_batch_hashes_preserved": true,
+    "failed_owned_worker_residue_cleared": true
+  },
+  "shared_foundation_business_comparison": {
+    "reference": "FOUNDATION_BUSINESS_FUNCTIONS.md",
+    "report": "FOUNDATION_BUSINESS_COMPARISON.md",
+    "source": "tracking/shared-foundation-business-comparison.json",
+    "scope": [
+      "utils",
+      "tabloid",
+      "paths",
+      "lang-lib",
+      "theme-defs",
+      "asset",
+      "asset-pipe"
+    ],
+    "functional_rows": 98,
+    "states": {
+      "implemented_scoped": 60,
+      "partial_missing_logic": 22,
+      "not_implemented": 9,
+      "out_of_baseline": 4,
+      "integration_pending": 1,
+      "contract_only": 2
+    },
+    "full_original_functionality_accepted": false,
+    "raw_interface_count_is_not_functional_workload": true,
+    "snapshot_of_pre_completion": true,
+    "superseded_by": "tracking/foundation-business-functions.json",
+    "current_state_report": "evidence/foundation-completion-2026-10-13/utils-gaps-2026-10-13/REPORT.md",
+    "differential_status": "utils 87 passed/3 failed (rectangle_deformation + rectangle_distance_normals fixed; circle_boundary-libm / curve2-NaN-sign / easing-1ULP remain)"
+  },
+  "foundation_unstarted_recovery": {
+    "baseline": "B",
+    "scope": "User explicitly deferred C; recover B own library policies with original dependency reuse",
+    "libraries": [
+      "tg-iced",
+      "tg-gpu-selector",
+      "theme-fetcher",
+      "theme-server-proto"
+    ],
+    "status": "candidate_partial_shared_workspace",
+    "full_module_accepted": false,
+    "source": "reconstruction/shared-foundation/Cargo.toml",
+    "report": "evidence/foundation-unstarted-2026-10-13/REPORT.md",
+    "dependency_audit": {
+      "report": "evidence/foundation-unstarted-2026-10-13/integration/dependency-validation.json",
+      "public_packages": 414,
+      "mismatches": 0
+    },
+    "tests": {
+      "ordinary_rust": 32,
+      "gfn_fixture_rust": 1,
+      "gfn_fixture_internal_cases": 14,
+      "strict_all_targets_clippy": true,
+      "original_ui_cases": 131,
+      "original_gfn_feedback_cases": 66,
+      "scope": "Bounded tests/slices; no original whole pipeline equivalence"
+    },
+    "c_deferred_by_user": true,
+    "remaining": [
+      "原GUI默认尺寸/调度频率/完整选项与精确widget样式",
+      "真实游戏启动消费者；A/C未适配",
+      "原verify入口至实际启动报告消费者",
+      "完整原GUI样式/平台失败边界与A/C适配",
+      "原panic报告producer/callback payload ABI与发送入口",
+      "完整原GUI样式/clipboard OS实效/真实崩溃端到端",
+      "A/C未适配",
+      "rhapsody真实AvailableGraphicsDevice/driver_support生产者",
+      "opaque allowlist u32字段语义和实际device创建消费",
+      "原GUI像素与A/C适配",
+      "公开字段与两ready路径语义原名/ABI",
+      "完整原report/zip入口oracle",
+      "country-core/UI实际反馈producer和A/C适配",
+      "完整原run入口oracle和tiny-glade主题plugin/ECS消费",
+      "原完整reqwest feature/日志callback与A/C适配",
+      "原服务兼容/版本契约；未证明独立手写迁移/校验",
+      "完整主题plugin消费与A/C适配",
+      "真实GFN SDK未加载/云服务未运行",
+      "实际游戏启动/路径/配置消费者",
+      "原错误枚举标签/Display与A/C适配"
+    ],
+    "business_catalog": "tracking/foundation-business-functions.json",
+    "module_progress": "tracking/module-progress.json"
+  },
+  "scope_exclusions": [
+    {
+      "package": "crash-reporter-gui",
+      "path": "tiny-glade/crates/crash-reporter-gui",
+      "status": "excluded_by_user",
+      "reason": "2026-10-14 user excluded reporting and GeForce NOW packages; removed from current workspace; no further reverse engineering or restoration."
+    },
+    {
+      "package": "feedback-reporter",
+      "path": "tiny-glade/crates/feedback-reporter",
+      "status": "excluded_by_user",
+      "reason": "2026-10-14 user excluded reporting and GeForce NOW packages; removed from current workspace; no further reverse engineering or restoration."
+    },
+    {
+      "package": "geforcenow",
+      "path": "tiny-glade/crates/geforcenow",
+      "status": "excluded_by_user",
+      "reason": "2026-10-14 user excluded reporting and GeForce NOW packages; removed from current workspace; no further reverse engineering or restoration."
+    },
+    {
+      "package": "tg-integrity-report",
+      "path": "tiny-glade/crates/tg-integrity-report",
+      "status": "excluded_by_user",
+      "reason": "2026-10-14 user excluded reporting and GeForce NOW packages; removed from current workspace; no further reverse engineering or restoration."
+    }
+  ],
+  "small_libraries_followup": {
+    "date": "2026-10-14",
+    "baseline": "B Windows x86_64",
+    "status": "verified_scoped_followup",
+    "source_workspace": "../../tiny-glade",
+    "packages": [
+      "tg-package-integrity",
+      "tg-text"
+    ],
+    "report": "evidence/small-libs-followup-2026-10-14/REPORT.md",
+    "verification": "evidence/small-libs-followup-2026-10-14/verification.json",
+    "evidence": [
+      "evidence/integrity-followup-2026-10-14/REPORT.md",
+      "evidence/text-followup-2026-10-14/REPORT.md"
+    ],
+    "whole_original_libraries_accepted": false,
+    "original_game_consumers_accepted": false
+  },
+  "theme_static_recovery": {
+    "schema_version": 1,
+    "date": "2026-10-14",
+    "baseline": "B",
+    "packages": [
+      "theme-defs",
+      "theme-fetcher",
+      "theme-server-proto"
+    ],
+    "source_root": "tiny-glade/crates",
+    "historical_shared_foundation_mirror_modified": false,
+    "status": "observed_B_library_surface_statically_completed_and_candidate_tests_passed",
+    "known_unimplemented_observed_B_library_algorithms": [],
+    "full_original_behavior_equivalence_accepted": false,
+    "original_game_consumer_integrated": false,
+    "real_theme_service_requests": 0,
+    "original_game_execution": false,
+    "original_pipeline_oracle_execution": false,
+    "report": "evidence/theme-static-2026-10-14/REPORT.md",
+    "validation": {
+      "tests_passed": 26,
+      "tests_failed": 0,
+      "tests_ignored": 0,
+      "offline_cross_crate_tests": 3,
+      "clippy_all_targets_warnings_denied": true,
+      "fmt_check_passed": true,
+      "offline": true,
+      "locked": true,
+      "test_log": "integration/test-delivery.log",
+      "clippy_log": "integration/clippy-delivery.log",
+      "lock_sha256": "418226d9802e5d98ced64c648c23dfa0d8f29c6a8c56e40d7236a4774db59aaa",
+      "lock_unchanged_during_delivery_gate": true
+    },
+    "dependencies": {
+      "original_lock": "ljxsj_92385/Tiny Glade/build-info/Cargo.lock",
+      "public_packages": 138,
+      "identity_mismatches": 0,
+      "audit": "integration/dependency-audit.json",
+      "gate_audit": "integration/dependency-gate.json",
+      "later_lock_comparison": "integration/post-gate-lock-comparison.json",
+      "later_workspace_lock_sha256": "4307fedd90c2ca3700ae9b4e86478030fc386297be315b9cd18e39f86bdad992",
+      "closure_unchanged_after_gate": true
+    },
+    "remaining_boundaries": [
+      "Unemitted author field/variant names and unit-error Display texts remain reconstruction names.",
+      "Complete original HTTP/CAS/ZIP runtime oracle and all OS failure combinations have not been accepted.",
+      "Real tiny_glade plugin, language/session/history/credits consumption and visuals are outside this three-crate delivery.",
+      "Server-side API/unemitted sources and A/C behavior are not covered."
+    ],
+    "summary": "evidence/theme-static-2026-10-14/integration/summary.json"
+  },
+  "theme_live_probe": {
+    "date": "2026-10-14",
+    "report": "evidence/theme-live-once-2026-10-14/result.json",
+    "live_get_invocations": 1,
+    "redirects": false,
+    "blob_downloads": 0,
+    "http_status": 200,
+    "body_bytes": 123,
+    "parsed_events": 1,
+    "producer_verification": "offline replay of the same captured response",
+    "refresh_seconds": 3600,
+    "full_theme_pipeline_accepted": false
+  },
+  "utils_gap_recovery": {
+    "status": "partial",
+    "report": "evidence/utils-gap-recovery-2026-10-14/REPORT.md",
+    "tracking": "tracking/utils-gap-recovery.json",
+    "source": "D:/game/tiny-glade/crates/utils",
+    "full_original_module_accepted": false
+  },
+  "tg_text_internal_recovery": {
+    "date": "2026-10-14",
+    "baseline": "B Windows x86_64",
+    "status": "restored_and_verified_scoped_internal_rules",
+    "requested_internal_rules": [
+      "owned shared font table / role selection / base-vs-scaled metrics",
+      "u32 frame/stamp and exact glyph cache validation/reclamation"
+    ],
+    "report": "evidence/text-internal-2026-10-14/REPORT.md",
+    "verification": "evidence/text-internal-2026-10-14/verification.json",
+    "native_cases": {
+      "font": 17,
+      "cache": 791,
+      "same_id": 21
+    },
+    "game_callers_changed": false,
+    "gpu_wiring_changed": false,
+    "remaining_in_requested_scope": [],
+    "whole_library_accepted": false
+  },
+  "utils_deep_followup": {
+    "baseline": "B",
+    "status": "partial",
+    "report": "evidence/utils-deep-followup-2026-10-14/REPORT.md",
+    "validation": "evidence/utils-deep-followup-2026-10-14/validation.json",
+    "user_scope": "Only B"
+  },
+  "toolbar_origin_investigation": {
+    "date": "2026-10-16",
+    "baseline": "B",
+    "status": "scoped_provenance_verified",
+    "report": "evidence/toolbar-origin-2026-10-16/REPORT.md",
+    "evidence": "evidence/toolbar-origin-2026-10-16/provenance.json",
+    "taffy_version": "0.3.13",
+    "pdb_source_files_matching_registry_package": 31,
+    "original_code_ranges_matching_patched_exe": 8,
+    "whole_toolbar_public_gui_fork": "not_established",
+    "game_implementation_changed": false,
+    "counts_as_business_recovery": false
+  }
+}

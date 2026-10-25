@@ -1,0 +1,334 @@
+{
+  "application_gpu_memory": {
+    "scope": "Application VkDeviceMemory: native suballocator blocks including free space, plus dedicated allocations. Excludes driver-internal allocations and swapchain memory. Sampled at graph submission and frame completion.",
+    "current": {
+      "resource_range_bytes": 8706048,
+      "suballocated_used_bytes": 8706048,
+      "suballocator_reserved_bytes": 335544320,
+      "suballocator_unused_bytes": 326838272,
+      "dedicated_bytes": 0,
+      "application_vk_memory_bytes": 335544320,
+      "native_memory_blocks": 2
+    },
+    "sampled_peak_application_vk_memory_bytes": 335544320,
+    "sampled_peak_native_memory_blocks": 2
+  },
+  "performance": {
+    "acquire_call": {
+      "samples": 60,
+      "min_ms": 0.036209,
+      "mean_ms": 0.05610553333333331,
+      "p50_ms": 0.053875,
+      "p95_ms": 0.09575,
+      "p99_ms": 0.111208,
+      "max_ms": 0.111208
+    },
+    "display_record": {
+      "samples": 60,
+      "min_ms": 0.065333,
+      "mean_ms": 0.08478958333333335,
+      "p50_ms": 0.080875,
+      "p95_ms": 0.11775,
+      "p99_ms": 0.15,
+      "max_ms": 0.15
+    },
+    "display_submit_present": {
+      "samples": 60,
+      "min_ms": 1.169125,
+      "mean_ms": 13.058371483333335,
+      "p50_ms": 13.140791,
+      "p95_ms": 13.7445,
+      "p99_ms": 25.306375,
+      "max_ms": 25.306375
+    },
+    "warmup_frames": 300,
+    "requested_samples": 60,
+    "samples_seen_after_warmup": 60,
+    "sampling": "first requested samples after warmup",
+    "scope": "CPU wall time. Graph framework is compile+record+submit only. Frame protocol also includes graph CPU, acquire/present/display recording; completion wait and CPU pixel reference are separate. This is not GPU timestamp or pure vsync latency.",
+    "total_frame": {
+      "samples": 60,
+      "min_ms": 4.238,
+      "mean_ms": 16.30818963333334,
+      "p50_ms": 16.378166,
+      "p95_ms": 17.090084,
+      "p99_ms": 28.420875,
+      "max_ms": 28.420875
+    },
+    "build_and_begin_frame": {
+      "samples": 60,
+      "min_ms": 0.036417,
+      "mean_ms": 0.05525346666666668,
+      "p50_ms": 0.054375,
+      "p95_ms": 0.069875,
+      "p99_ms": 0.109583,
+      "max_ms": 0.109583
+    },
+    "graph_compile": {
+      "samples": 60,
+      "min_ms": 0.120209,
+      "mean_ms": 0.19605274999999994,
+      "p50_ms": 0.186042,
+      "p95_ms": 0.280417,
+      "p99_ms": 0.284417,
+      "max_ms": 0.284417
+    },
+    "graph_record": {
+      "samples": 60,
+      "min_ms": 0.277375,
+      "mean_ms": 0.3686577000000001,
+      "p50_ms": 0.36625,
+      "p95_ms": 0.439959,
+      "p99_ms": 0.496167,
+      "max_ms": 0.496167
+    },
+    "graph_submit": {
+      "samples": 60,
+      "min_ms": 0.349083,
+      "mean_ms": 0.44064453333333337,
+      "p50_ms": 0.436084,
+      "p95_ms": 0.534875,
+      "p99_ms": 0.606125,
+      "max_ms": 0.606125
+    },
+    "graph_framework": {
+      "samples": 60,
+      "min_ms": 0.766833,
+      "mean_ms": 1.005354983333333,
+      "p50_ms": 1.009043,
+      "p95_ms": 1.162583,
+      "p99_ms": 1.16925,
+      "max_ms": 1.16925
+    },
+    "frame_protocol_including_wsi": {
+      "samples": 60,
+      "min_ms": 2.738625,
+      "mean_ms": 14.548585449999996,
+      "p50_ms": 14.631,
+      "p95_ms": 15.205375,
+      "p99_ms": 26.758291,
+      "max_ms": 26.758291
+    },
+    "completion_wait": {
+      "samples": 60,
+      "min_ms": 0.517958,
+      "mean_ms": 0.8952827,
+      "p50_ms": 0.879834,
+      "p95_ms": 1.078125,
+      "p99_ms": 1.1625,
+      "max_ms": 1.1625
+    },
+    "host_readback": {
+      "samples": 60,
+      "min_ms": 0.011667,
+      "mean_ms": 0.015780516666666668,
+      "p50_ms": 0.015917,
+      "p95_ms": 0.019417,
+      "p99_ms": 0.019917,
+      "max_ms": 0.019917
+    },
+    "cpu_reference": {
+      "samples": 60,
+      "min_ms": 0.678,
+      "mean_ms": 0.7545424000000002,
+      "p50_ms": 0.790375,
+      "p95_ms": 0.816542,
+      "p99_ms": 0.910625,
+      "max_ms": 0.910625
+    }
+  },
+  "plan_cache_enabled": true,
+  "subgraph_cache_enabled": true,
+  "result_cache_enabled": true,
+  "schema_version": 1,
+  "milestone": "M6 / S05 transient attachment chain",
+  "platform": "macos",
+  "window_backend": "AppKit / CAMetalLayer / Vulkan",
+  "status": "pass",
+  "command": [
+    "tools/window-lab/target/debug/rhapsody-window-lab",
+    "--scene",
+    "transient",
+    "--transient-aliasing",
+    "off",
+    "--warmup",
+    "300",
+    "--samples",
+    "60",
+    "--frames",
+    "360",
+    "--fps",
+    "240",
+    "--require-validation",
+    "--report",
+    "crates/rhapsody/reports/refactor/2026-10-17-v6/native-off/report.json"
+  ],
+  "git_revision_at_launch": "400900f6531f5dbe66b6c800fcccd000febb9411",
+  "git_dirty_at_launch": true,
+  "device": "Apple M3",
+  "driver_version_raw": 10402,
+  "api_version_raw": 4202853,
+  "instance_api_version_raw": 4202496,
+  "physical_api_version_raw": 4202853,
+  "enabled_device_extensions": [
+    "VK_EXT_memory_budget",
+    "VK_EXT_swapchain_maintenance1",
+    "VK_KHR_dynamic_rendering",
+    "VK_KHR_portability_subset",
+    "VK_KHR_swapchain",
+    "VK_KHR_synchronization2"
+  ],
+  "validation_enabled": true,
+  "validation_errors": [],
+  "validation_warnings": [],
+  "validation_error_count": 0,
+  "validation_warning_count": 0,
+  "fixture_hash": "fnv1a64:6b486145f1998eca",
+  "requested_frames": 360,
+  "presented_frames": 360,
+  "pixel_verified_frames": 360,
+  "source_hash": "e3a8a4bb968a6125",
+  "readback_hash": "e3a8a4bb968a6125",
+  "visited_clips": [
+    "S05 GPU transient attachment chain"
+  ],
+  "resize_events": 0,
+  "recreate_events": 0,
+  "minimized_iterations": 0,
+  "script_completed": false,
+  "presentation_shutdown_complete": true,
+  "retained_wsi_generations": 0,
+  "wsi_stress": null,
+  "scene": {
+    "scene": "transient",
+    "rendering": "auto",
+    "bindless_enabled": false,
+    "bindless_verified_frames": 0,
+    "bindless_capacity": 0,
+    "bindless_peak_live": 0,
+    "bindless_peak_retiring": 0,
+    "dynamic_rendering_frames": 0,
+    "legacy_rendering_frames": 0,
+    "rendering_comparison_pairs": 0,
+    "attachment_cache_views": 0,
+    "attachment_cache_render_passes": 0,
+    "attachment_cache_framebuffers": 0,
+    "gpu_program_hash": null,
+    "pipeline_cache_status": null,
+    "pipeline_cache_saved": false,
+    "pipeline_compiled_requests": 0,
+    "pipeline_merged_requests": 0,
+    "pipeline_peak_pending": 0,
+    "pipeline_peak_request_bytes": 0,
+    "shader_rejected_edits": 0,
+    "shader_frame_boundary_publications": 0,
+    "shader_preserved_frames": 0,
+    "shader_reloaded_verified_frames": 0,
+    "shader_initial_implementation_hash": null,
+    "shader_published_implementation_hash": null,
+    "rasterized_frames": 0,
+    "postprocessed_frames": 0,
+    "reference_verified_frames": 0,
+    "worst_reference_mismatches": 0,
+    "worst_boundary_pixels": 0,
+    "history_verified_frames": 0,
+    "history_reset_count": 0,
+    "history_initializations": 0,
+    "history_reset_reasons": [],
+    "injected_failed_frames": 0,
+    "failure_recovery_verified_frames": 0
+  },
+  "transfer": null,
+  "transient": {
+    "committed_scope": "Resource ranges and dedicated backings only; excludes retained suballocator block slack. See application_gpu_memory for actual native reservations.",
+    "aliasing_enabled": false,
+    "attachments": 8,
+    "attachment_width": 640,
+    "attachment_height": 360,
+    "verified_frames": 360,
+    "current_committed_bytes": 710656,
+    "peak_committed_bytes": 8706048,
+    "current_allocation_records": 3,
+    "peak_allocation_records": 11,
+    "dependency_edge_count": 9,
+    "dependency_edges": [
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        2,
+        3
+      ],
+      [
+        3,
+        4
+      ],
+      [
+        4,
+        5
+      ],
+      [
+        5,
+        6
+      ],
+      [
+        6,
+        7
+      ],
+      [
+        7,
+        8
+      ],
+      [
+        8,
+        9
+      ]
+    ],
+    "added_dependency_edges": 0,
+    "planned_backings": 0,
+    "planned_bytes": 0,
+    "unaliased_requirement_bytes": 0,
+    "reuse_bytes": 0,
+    "shared_backing_allocations": 0,
+    "shared_backing_frees": 0,
+    "shared_backing_allocated_bytes": 0,
+    "shared_backing_freed_bytes": 0,
+    "physical_plan_dump": "policy=PreserveParallelism added_edges=0 planned_bytes=0 unaliased=0 saved=0 allocations=0\n",
+    "shutdown_complete": true
+  },
+  "result_cache_scene": null,
+  "pause_actions": 0,
+  "next_actions": 0,
+  "step_actions": 0,
+  "cpu_frame_ms_p50": 16.378166,
+  "cpu_frame_ms_p95": 17.090084,
+  "cpu_frame_ms_p99": 28.420875,
+  "elapsed_seconds": 7.012854708,
+  "gpu_time_ms": null,
+  "peak_gpu_bytes": null,
+  "memory_budget_usage": {
+    "known_cpu_live_bytes": 2816,
+    "known_cpu_cache_bytes": 69616,
+    "known_cpu_peak_bytes": 72432,
+    "scope": "Known resource ranges/backings and reserved CPU arenas/compiler payload bounds; excludes suballocator block slack, unregistered CPU containers and opaque driver allocations. Native reservations are reported separately.",
+    "live_bytes": 713472,
+    "in_flight_bytes": 0,
+    "cache_bytes": 69616,
+    "retiring_bytes": 0,
+    "total_bytes": 783088,
+    "sampled_peak_total_bytes": 8778480
+  },
+  "window_visual_check": "pending; offscreen readback is verified separately",
+  "limitations": [
+    "Production FrameLoop submits the offscreen graph and display work with timeline dependencies",
+    "Per-frame CPU fixture generation and GPU readback are correctness checks, not renderer benchmarks",
+    "Production presentation requires maintenance1 and waits actual presentation fences at shutdown",
+    "GPU timestamps and memory budget counters are not instrumented in V0"
+  ],
+  "failure": null
+}

@@ -1,0 +1,159 @@
+--- a/tiny-glade/crates/tiny-glade/src/raster_host.rs
++++ b/tiny-glade/crates/tiny-glade/src/raster_host.rs
+@@ -441,6 +441,19 @@
+     /// and written by the raster callback. It must not be replaced per pass.
+     pub fn dynamic_constants(&self) -> &Mutex<DynamicConstants> {
+         &self.dynamic
++    }
++
++    /// 只克隆本 App 已有 owner；禁止把另一个设备的常量页接入当前 session。
++    pub(crate) fn dynamic_constants_owner(
++        &self,
++        expected_device: &Arc<rhapsody::device::Device>,
++    ) -> rhapsody::Result<Arc<Mutex<DynamicConstants>>> {
++        if !Arc::ptr_eq(&self.device, expected_device) {
++            return Err(rhapsody::Error::invalid_usage(
++                "App constants belong to another device",
++            ));
++        }
++        Ok(self.dynamic.clone())
+     }
+ 
+     pub fn new(
+--- a/tiny-glade/crates/tiny-glade/src/render_host.rs
++++ b/tiny-glade/crates/tiny-glade/src/render_host.rs
+@@ -1915,15 +1915,36 @@
+ 
+ impl<'session> GraphPasses<'session> {
+     pub fn new(graph: Rc<RefCell<RhGraph>>, device: Arc<Device>) -> Result<Self, rhapsody::Error> {
+-        let dynamic = DynamicConstants::new(device.clone())?;
+-        Ok(Self {
++        let dynamic = Arc::new(Mutex::new(DynamicConstants::new(device.clone())?));
++        Ok(Self::from_parts(graph, device, dynamic))
++    }
++
++    /// 生产计算入口沿用本 App 的常量 owner；独立消费者仍可使用 new。
++    pub(crate) fn new_with_app_constants(
++        graph: Rc<RefCell<RhGraph>>,
++        device: Arc<Device>,
++        raster: &crate::raster_host::RasterShared,
++    ) -> rhapsody::Result<Self> {
++        if device.is_device_lost() {
++            return Err(rhapsody::Error::DeviceLost);
++        }
++        let dynamic = raster.dynamic_constants_owner(&device)?;
++        Ok(Self::from_parts(graph, device, dynamic))
++    }
++
++    fn from_parts(
++        graph: Rc<RefCell<RhGraph>>,
++        device: Arc<Device>,
++        dynamic: Arc<Mutex<DynamicConstants>>,
++    ) -> Self {
++        Self {
+             graph,
+             device,
+-            dynamic: Arc::new(Mutex::new(dynamic)),
++            dynamic,
+             tables: None,
+             cache_session: None,
+             uniform_uploads: Vec::new(),
+-        })
++        }
+     }
+ 
+     pub fn with_tables(mut self, tables: HostTables) -> Self {
+--- a/tiny-glade/crates/tiny-glade/src/render_bridge.rs
++++ b/tiny-glade/crates/tiny-glade/src/render_bridge.rs
+@@ -525,9 +525,13 @@
+     ) -> rhapsody::Result<T> {
+         let result = (|| {
+             let device = self.bridge.session.borrow().backend.device().clone();
+-            let passes = GraphPasses::new(self.graph(), device)?
+-                .with_tables(self.bridge.tables.clone())
+-                .with_shared_session(self.bridge.session.clone())?;
++            let passes = GraphPasses::new_with_app_constants(
++                self.graph(),
++                device,
++                &self.bridge.raster,
++            )?
++            .with_tables(self.bridge.tables.clone())
++            .with_shared_session(self.bridge.session.clone())?;
+             let mut frame = CoreComputeFrame::new(passes, &self.bridge.shaders)
+                 .with_resource_graph(self.resource_graph());
+             let result = build(&mut frame);
+--- a/tiny-glade/crates/tiny-glade/tests/core_render_bridge.rs
++++ b/tiny-glade/crates/tiny-glade/tests/core_render_bridge.rs
+@@ -340,3 +340,72 @@
+     bridge.cancel_built(retry).unwrap();
+     assert!(buffers.release(&target));
+ }
++
++#[test]
++fn compute_entry_points_share_app_constants_keep_cancelled_chunks_and_isolate_other_apps() {
++    use country_core::render::rg_helpers::rg_boundary::{RenderGraph as _, StagingAlloc};
++    use rhapsody::resource::DynamicConstantsChunk;
++    fn chunk(staging: &StagingAlloc) -> &DynamicConstantsChunk {
++        staging.lease.as_ref().unwrap().downcast_ref().unwrap()
++    }
++    let Some(mut bridge) = bridge() else { return };
++    let raster = bridge.raster_resources().clone();
++    let before = raster.dynamic_constants().lock().stats();
++    let ((first, second), built) = bridge
++        .build_frame(|frame| {
++            let first = frame.with_compute(|compute| compute.allocate_dynamic(64))?;
++            let second = frame.with_compute(|compute| compute.allocate_dynamic(64))?;
++            Ok((first, second))
++        })
++        .unwrap();
++    let after = raster.dynamic_constants().lock().stats();
++    assert_eq!(
++        after.allocations - before.allocations,
++        2,
++        "both actual with_compute entries must allocate from this App owner"
++    );
++    assert_eq!(after.page_creations - before.page_creations, 1);
++    assert!(Arc::ptr_eq(&chunk(&first).buffer, &chunk(&second).buffer));
++    assert!(chunk(&first).offset + chunk(&first).size <= chunk(&second).offset);
++    chunk(&first).write_bytes(&[0x35; 64]).unwrap();
++    chunk(&second).write_bytes(&[0xa7; 64]).unwrap();
++    bridge.cancel_built(built).unwrap();
++    // 取消只释放图 owner，仍被 CPU 租约保留的内容不能被下一入口覆盖。
++    let (third, built) = bridge
++        .build_frame(|frame| frame.with_compute(|compute| compute.allocate_dynamic(64)))
++        .unwrap();
++    assert!(Arc::ptr_eq(&chunk(&first).buffer, &chunk(&third).buffer));
++    assert!(chunk(&second).offset + chunk(&second).size <= chunk(&third).offset);
++    chunk(&third).write_bytes(&[0x59; 64]).unwrap();
++    bridge.cancel_built(built).unwrap();
++    for (staging, expected) in [(&first, 0x35), (&second, 0xa7), (&third, 0x59)] {
++        let chunk = chunk(staging);
++        let mut actual = [0; 64];
++        chunk.buffer.read_bytes(chunk.offset, &mut actual).unwrap();
++        assert_eq!(actual, [expected; 64]);
++    }
++    let device = bridge.hosts().buffers.graphics_device().clone();
++    let mut other =
++        CoreRenderBridge::new(device, ".", Arc::new(AssetShaderLibrary::new())).unwrap();
++    let (other_chunk, built) = other
++        .build_frame(|frame| frame.with_compute(|compute| compute.allocate_dynamic(64)))
++        .unwrap();
++    assert!(
++        !Arc::ptr_eq(&chunk(&first).buffer, &chunk(&other_chunk).buffer),
++        "different Apps on one Device must retain distinct constants owners"
++    );
++    assert_eq!(
++        raster.dynamic_constants().lock().stats().allocations - before.allocations,
++        3
++    );
++    assert_eq!(
++        other
++            .raster_resources()
++            .dynamic_constants()
++            .lock()
++            .stats()
++            .allocations,
++        1
++    );
++    other.cancel_built(built).unwrap();
++}

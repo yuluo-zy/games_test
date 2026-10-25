@@ -1,0 +1,27 @@
+{
+  "status": "PASS",
+  "gpu": {
+    "command_file": "native-suballocation-gpu.command.txt",
+    "log": "native-suballocation-gpu.log",
+    "exitcode": 0,
+    "native_tests": 4,
+    "alias_tests": 5,
+    "validation_messages": 0
+  },
+  "cpu": {
+    "native_spare_ledger_tests": 3,
+    "queue_contract_tests": 3,
+    "static_entry_resource_test": 1
+  },
+  "clippy": {
+    "all_features_library_and_owned_gpu_tests": "PASS"
+  },
+  "limits": [
+    "gpu-allocator 0.27 ignores AllocatorCreateDesc.allocation_sizes and uses 64MiB host-visible / 256MiB device-local native blocks.",
+    "Existing free ranges are reused. If a new native block would leave insufficient budget headroom, the established dedicated allocation path is used.",
+    "The dependency exposes native allocation deltas after vkAllocateMemory. Rejected native growth is rolled back before publishing a resource; no strict pre-vkAllocateMemory instantaneous bound is claimed.",
+    "suballocator_peak_reserved_bytes retains the observed native reservation peak, including rejected transient growth.",
+    "All native capacity beyond exposed logical ranges, including internal aligned chunk padding, is charged as GPU Cache. Only wholly empty memory-type shards can be trimmed.",
+    "Dedicated S05 comparison saves 16512 bytes of actual native memory. Default suballocated comparison preserves identical pixels and does not add native memory blocks; range saving alone does not imply a reduction in retained native capacity."
+  ]
+}

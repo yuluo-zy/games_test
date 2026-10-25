@@ -1,0 +1,86 @@
+[
+ {
+  "addr": "0x14003ae40",
+  "verdict": "一致",
+  "detail": "O（胶水）成立。机器码为典型 serde 派生 visit_str：先 add r8,-7; cmp r8,13; ja error 的长度跳表分派（len 7..20 共 14 档），逐档 xor/SSE pcmpeqb 比较字符串；已核到 'monitor'（7 字，xor 双 4B 比较）、'fullscreen'（10 字，8B xor + 尾 2B 'en'）、16 字族（movdqu+pcmpeqb+pmovmskb cmp 0xffff），命中写判别字节后 ret。PDB exact（impl$0::deserialize::impl$0::visit_str<ron::Error>）与行内 fn 吻合；S_PUB32 权威名更精确：DisplayConfig::deserialize::__FieldVisitor as serde::de::Visitor>::visit_str::hd4bc82dcd1047e5d（与 pdb_exact 同函数，CU 与 pub 两流命名差异）。注意：'字符串枚举'措辞宜改'字段名匹配'（DisplayConfig 为 struct，'monitor'/'fullscreen' 是字段名而非枚举变体），serde derive 胶水属性不变，O 身份成立。",
+  "evidence": "rne-read --hex 0x14003ae40 288；public-symbols.json S_PUB32 [size=264]；pdb_exact size 282 与行内 fn 一致"
+ },
+ {
+  "addr": "0x1409d00a0",
+  "verdict": "一致",
+  "detail": "O 成立：raster_single_object 泛型实例（resolve_to_swapchain 变体）。PDB exact 与行内 fn 逐字吻合（size 2081），S_PUB32 = raster_single_object::h8f595bae67ac5d00。MCP 反编译（MCP 会话 tg_oa2w2）显示渲染图建节点结构：FUN_140867970（多参节点注册）、FUN_141629d20 带类型哈希 0x531bb9318eea4971（add_node 式 ID）、FUN_1408ee800 带 0x11ba5697cc40b3dd kind 0x1d（建边）、FUN_140906a90 kind 3、param_5 为 closure env（uStack_4e8=param_5），失败路径为 panic（FUN_1428d80d0 不返回，含路径串扫描）。行为形态与'渲染图单例光栅化'相符。",
+  "evidence": "MCP decompile 0x1409d00a0（oa2-out/w2-decomp-1409d00a0.txt，8292B）；pdb_exact/pdb_pubsym 一致"
+ },
+ {
+  "addr": "0x140a08440",
+  "verdict": "一致",
+  "detail": "O 行为成立，但行内尺寸注记有误。机器码：movsxd+add+jmp 判别值跳表（lea rax,[rip+0x20bebe8] 跳表），分派后按变体做 Vec 追加（4 个分派臂，元素尺寸 4/0x10/8/0xc 各调用扩容+拷贝，容量检查 cmp cap<need; jb 扩容）；异变体分支（cmp len 不等 jne）走 format_args 双参数 + panic 调用（[rsp+0x60]=2 参数、lea fmt、call 0x1422d9390 附近 panic 机）+ int3，即'异变体 → panic fmt'。唯一问题：行内结论写'**O**（170 B）'，与 PDB size 570 B 及实际代码长度（≥0x240B）矛盾，建议把'170 B'改为'570 B'；O 判定与'同变体跳表分派/异变体 panic'本身属实。",
+  "evidence": "rne-read --hex 0x140a08440 96 + 0x140a08540 160；pdb_exact size 570；S_PUB32 = VertexAttributeValues::append::hd7a65e5918800eea"
+ },
+ {
+  "addr": "0x140b18f60",
+  "verdict": "一致",
+  "detail": "O 成立。decomp（23614B，内容有效非 error）核对：①完整矩阵链——4x4 点积式矩阵乘多处（L184-199、316-355、413-438、490-541 为多组 16 浮点乘加）；输入含 3 组矩阵（param_2+0x40、+0x104 起 prev 系、+0x200 系），输出写 ~0x320 B（末位写至 +0x310/+0x314/+0x318/+0x31c）；②逆/除法——两处 divps（L371、L550，配合 2x 与符号翻转 xor 0x80000000），与'逆矩阵'相符；③时间重投影——+0x104..0x1fc 的 prev view-proj 矩阵参与乘加；④像素偏移——像素尺寸值 2x 加倍与减法（L361-371、544-550）；⑤输出矩阵以 0x40 步长交错分布（0x80/0xc0/0x100/0x140/0x180/0x1c0/0x200 区段两两交错存）。行内'逐列精确映射重且留为 I'自洽。",
+  "evidence": "backend-misc/decomp/decomp-0x140b18f60.txt 全文核对；pdb_exact size 2339 与行内 fn 一致"
+ },
+ {
+  "addr": "0x14156e880",
+  "verdict": "一致",
+  "detail": "O 成立（同泛型 21 实例之一，SolidVertexColorWindowInstanceData 单态）。MCP 反编译核对：①fast-path——L76-78 `index<compact.len && compact[index]==key.id` 直命中；②CAS min/max——L80-111 LOCK/UNLOCK CAS 循环对 param_1+0x48（min 语义：piVar25=min）与 +0x50（max 语义）原子更新，T 缓冲内还有一对 +0x18/+0x20 同构 CAS；③紧凑 key 写——0x10 步长槽位写 Vec3 12B + FUN_1408b9f20（f16 转换）2B radius + mesh_index（共 16B）；④T 数据——类型哈希校验 0x7354381398c13ef6/0xa3f87c56906c219 后按 0x40 步长写 param_5；⑤慢路径——hashmap 存在时 swiss-table 探测（FUN_1405b0ed0 哈希 + 16B 组 SIMD 比较），命中后 param_2[1]=索引回写 key.index；⑥缺 → unwrap panic（FUN_1428d9310 + panic 位置串 + int3）。行为断言逐项属实。",
+  "evidence": "MCP decompile 0x14156e880（oa2-out/w2-decomp-14156e880.txt，11797B）；rne-read --hex 首 48B fast-path 形态一致；pdb_exact 与行内 fn 一致"
+ },
+ {
+  "addr": "0x14156f290",
+  "verdict": "一致",
+  "detail": "O 成立（VelocityOnlyInstanceData 单态，size 868）。rne-read 首 48B 与 0x14156e880 同构：index<compact.len 边界检查（cmp [rcx+0x10],rbx; jbe）、compact[index] 读、与 key.id 比较（je 直命中）、hashmap 空检（cmp [rdi+0x30],0; je 慢路径）——fast-path 形态逐项一致，仅寄存器分配略异（合法单态差异）。PDB exact/S_PUB32（update_instance_data::h37a2d2a7dc20cb05）与行内 fn 吻合；同泛型行为已由 0x14156e880 反编译整体证实（慢路径 HashMap 回写/unwrap、CAS min/max、0x10 紧凑 key + f16、0x40 T 数据）。",
+  "evidence": "rne-read --hex 0x14156f290 48；pdb_exact size 868 一致；同泛型 decomp 0x14156e880"
+ },
+ {
+  "addr": "0x14156f950",
+  "verdict": "一致",
+  "detail": "O 成立（SolidVertexColorWindowGlassInstanceData 单态，size 836）。rne-read 首 48B 与 0x14156e880 完全相同形态（同一 fast-path：44 8b 72 04 / 4c 39 71 10 / 48 8b 47 08 / 42 8b 04 b0 / 3b 06 / je 命中 / 48 83 7f 30 00 hashmap 空检），PDB exact/S_PUB32（update_instance_data::h4cb9744225f4a749）与行内 fn 吻合；同泛型慢路径/CAS/紧凑 key 行为由 0x14156e880 反编译证实。",
+  "evidence": "rne-read --hex 0x14156f950 48；pdb_exact size 836 一致；同泛型 decomp 0x14156e880"
+ },
+ {
+  "addr": "0x1415722c0",
+  "verdict": "一致",
+  "detail": "O（胶水）成立。11B = `mov rax,rcx; lea rdx,[rip+0x170471e]; ret`——dyn Any 升/降级胖指针胶水（self 数据指针 + vtable 指针），与'Any 降级（vtable +0x20）'描述相符；PDB exact = impl$14::as_any<SolidAlbedoMapInstanceData> size 11，与行内 fn 一致。章节另有 as_any_mut 两行同址（0x1415722c0/0x141572340），机器码为单一 11B 函数，支持 as_any 与 as_any_mut 同址 ICF 折叠注记（本 chunk 仅 as_any 行，as_any_mut 行覆盖于注记）。",
+  "evidence": "rne-read --hex 0x1415722c0 16；pdb_exact size 11 一致；章节 gpu_world.rs.md L91/L112 同址"
+ },
+ {
+  "addr": "0x141572340",
+  "verdict": "一致",
+  "detail": "O（胶水）成立。11B = `mov rax,rcx; lea rdx,[rip+0x170471e→0x142a769e5]; ret` 胖指针胶水，与 0x1415722c0 仅 lea disp 不同（指向本类型 vtable/type-id 表）；PDB exact = impl$14::as_any<SolidVertexColorBricksInstanceData> size 11，与行内 fn 一致；同址 as_any_mut ICF 折叠（章节 L92/L113 同址）。",
+  "evidence": "rne-read --hex 0x141572340 16；pdb_exact size 11 一致；章节 gpu_world.rs.md L92/L113 同址"
+ },
+ {
+  "addr": "0x141576500",
+  "verdict": "一致",
+  "detail": "O（胶水，按规则不计业务）成立。PDB exact = impl$36::register_required_components<WrenInstanceData> size 1776，S_PUB32 = InstanceDataMarker<InstanceData> as bevy_ecs::component::Component>::register_required_components::h530053955bf03004（bevy 派生展开）与行内 fn 吻合。MCP 反编译核对：开头 FUN_140d40d70 注册调用；FUN_140082c20(*param_2+0x18, 0x96166d8dfc1d6af8, 0x767ca54e1d4f88c4, ...) 以 InstanceDataMarker<T> 类型哈希为键插入 registry 表；对自身递归调用 FUN_141576500(_UNK_142c75e70,param_2)（T 自身 required components 递归）；哈希表 control-byte/计数簿记（0x80/0xff 槽位、+0x90/+0x98 计数增减）——纯 ECS 胶水，无游戏数值。",
+  "evidence": "MCP decompile 0x141576500（oa2-out/w2-decomp-141576500.txt，17825B）；pdb_exact/pdb_pubsym 一致；rne-read 首 48B 与其余三实例同构"
+ },
+ {
+  "addr": "0x1415780c0",
+  "verdict": "一致",
+  "detail": "O（胶水）成立（BalconyDoorInstanceData 实例，size 1776）。rne-read 首 48B 与 0x141576500 逐字节相同（仅尾部 call 目标不同——不同 T 的 register_component 目标，e827a87c vs e8678c7c 等）；PDB exact 与行内 fn 一致，S_PUB32 = InstanceDataMarker<InstanceData> as Component::register_required_components::h6981590c234b8ea1。胶水形态由 0x141576500 反编译证实（类型哈希插入 + 递归 + 表簿记，无游戏数值）。",
+  "evidence": "rne-read --hex 0x1415780c0 48；pdb_exact/pdb_pubsym 一致；同泛型 decomp 0x141576500"
+ },
+ {
+  "addr": "0x141579590",
+  "verdict": "一致",
+  "detail": "O（胶水）成立（SolidVertexColorBricksInstanceData 实例，size 1776）。首 48B 与 0x141576500 逐字节相同（仅 call 目标 e897777c 不同）；PDB exact 与行内 fn 一致，S_PUB32 = InstanceDataMarker<InstanceData> as Component::register_required_components::ha51e1a3d5d21349f。胶水形态由 0x141576500 反编译证实。",
+  "evidence": "rne-read --hex 0x141579590 48；pdb_exact/pdb_pubsym 一致；同泛型 decomp 0x141576500"
+ },
+ {
+  "addr": "0x14157aa60",
+  "verdict": "一致",
+  "detail": "O（胶水）成立（PlantInstanceData 实例，size 1776）。首 48B 与 0x141576500 逐字节相同（仅 call 目标 e8c7627c 不同）；PDB exact 与行内 fn 一致，S_PUB32 = InstanceDataMarker<InstanceData> as Component::register_required_components::hea7316d6e923a635。胶水形态由 0x141576500 反编译证实。",
+  "evidence": "rne-read --hex 0x14157aa60 48；pdb_exact/pdb_pubsym 一致；同泛型 decomp 0x141576500"
+ },
+ {
+  "addr": "0x142072b50",
+  "verdict": "一致",
+  "detail": "O 成立：发光贴图系统，kind 0x10，机器码与 albedo_map 同体。MCP 反编译 0x142072b50 与 0x142072010 逐行 diff：除地址/标签外仅 3 处实质差异——①kind 常量 `uVar19 = CONCAT71(...,0xf)`（albedo）vs `,0x10)`（emissive）——kind 0x10 断言精确命中；②panic 消息串指针 UNK_142fd30b8（len 0x41，内含自身函数名 '...nani_update_solid_albedo_map::f...'）vs UNK_142fd2da4（len 0x4a，内含 '..._emissive::f...'，均 UTF-8 可读）；③update_instance_data 单态调用 FUN_141570d30（albedo）vs FUN_14156f600（emissive，不同 T 实例）。其余 750 行逐行相同——'同体'成立。PDB exact/S_PUB32（nani_update_solid_albedo_map_emissive::h32d699f8d2b098ed）与行内 fn 一致。",
+  "evidence": "MCP decompile 0x142072b50 + 0x142072010（oa2-out/w2-decomp-*.txt）difflib 逐行 diff；rne-read 0x142fd30b8/0x142fd2da4 消息串；pdb_exact size 2874 一致"
+ }
+]

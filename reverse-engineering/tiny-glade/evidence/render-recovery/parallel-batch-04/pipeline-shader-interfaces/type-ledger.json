@@ -1,0 +1,15 @@
+{
+  "schema_version":1,
+  "status":"artifact_reflected_interface_schema_not_rust_ABI",
+  "types":[
+    {"name":"ShaderContainer","fields":["file","bytes","sha256","kind","modules"]},
+    {"name":"SpirvModule","fields":["offset","word_count","container_end","sha256","spirv_version","entries","raw_declarations"],"error_policy":"failure retained/countable"},
+    {"name":"ShaderEntry","fields":["stage","entry_point","descriptors","inputs","outputs","push_constants","specialization_constants","execution_modes","layout_family","interface_family"]},
+    {"name":"DescriptorBinding","fields":["set","binding","descriptor_type","count","name","type"],"runtime_array":"count0"},
+    {"name":"TypeLayout","fields":["minimum_bytes","detail"],"detail_variants":["scalar/vector/image strings","Struct members offsets/types","Array count/stride/element","Matrix major/count/stride/vector","DevicePointer target"],"dynamic_limits":"minimum_bytes is not full runtime allocation size"},
+    {"name":"StageLocation","fields":["location","component","type","name"],"limits":"BuiltIn declarations/decorations separately retained; full built-in linker unresolved"},
+    {"name":"ReflectedFamily","fields":["id","signature","members"],"hash":"SHA256 canonical declaration signature after debug-name removal"},
+    {"name":"PdbConsumerLink","fields":["rhapsody_va","country_core_owner","evidence","confidence"],"limits":"generic type association != runtime trace"}
+  ],
+  "original_dependencies":{"spirq":"0.6.2 fork4f22e6f149750401705d47ae15a60e77cd5a6905","serde":"1.0.200","serde_json":"1.0.85"}
+}

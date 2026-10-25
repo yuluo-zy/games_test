@@ -1,0 +1,93 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/compute_garden.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/compute_garden.rs
+@@ -291,17 +291,35 @@
+         HASH_INDIRECT,
+         CONCURRENT_GROUP,
+     )
++    // Actual instanceCount atomics retain original command words/other slots.
++    .preserve_storage_buffer_contents(HASH_INDIRECT)
+     .uniform(KEY_SLOT, slot)
+ }
+ 
+ /// W16（O 0x140a22b80）：四个 pass。
+ pub fn garden_spawn_vegetation(env: &mut PassEnv<'_>) {
++    garden_spawn_vegetation_with_building_prefix(env, true);
++}
++
++/// Original building gate controls whether the shared slot10/11 prefixes
++/// exist before this stage. A false gate makes this the first producer.
++/// The real main prelude must have reset those instanceCount words to zero.
++pub fn garden_spawn_vegetation_with_building_prefix(
++    env: &mut PassEnv<'_>,
++    has_building_prefix: bool,
++) {
+     // 1. bushes（90×90）
+     let pass = env
+         .pass("Spawn bushes", "/garden/spawn_bushes_garden.cs.hlsl")
+         .write_storage_buffer_concurrent::<BushSsbo>(HASH_BUSH_BUFFER, CONCURRENT_GROUP)
+         .write_storage_buffer_concurrent::<FlowerSsbo>(HASH_BUSH_FLOWERS, CONCURRENT_GROUP)
+         .uniform(KEY_GRID, [90u32, 90]);
++    let pass = if has_building_prefix {
++        pass.preserve_storage_buffer_contents(HASH_BUSH_BUFFER)
++            .preserve_storage_buffer_contents(HASH_BUSH_FLOWERS)
++    } else {
++        pass
++    };
+     let pass = bind_garden_exclusion_compute(presets_9_a(pass))
+         .bind_texture(HASH_PRESET_14, &TexturePreset(0x14), TEX_READ)
+         .bind_texture(HASH_PRESET_16, &TexturePreset(0x16), TEX_READ);
+@@ -312,6 +330,7 @@
+     let pass = env
+         .pass("Spawn flowers", "/garden/spawn_flowers_garden.cs.hlsl")
+         .write_storage_buffer_concurrent::<FlowerSsbo>(HASH_FLOWER_BUFFER, CONCURRENT_GROUP)
++        .preserve_storage_buffer_contents(HASH_FLOWER_BUFFER)
+         .uniform(KEY_GRID, [150u32, 150]);
+     let pass = bind_garden_exclusion_compute(presets_9_a(pass))
+         .bind_texture(HASH_PRESET_14, &TexturePreset(0x14), TEX_READ)
+@@ -537,6 +556,20 @@
+         want.extend(std::iter::repeat((0x19, 1)).take(2 + 4 + 2));
+         want.push((0x37, 1));
+         assert_eq!(acc(0), want);
++        // Prefix-producing buffers retain preceding stages; first-producer
++        // stones/small flowers retain only the atomically updated draw packet.
++        let resources = |i: usize| f.passes[i].builder.accesses.iter()
++            .map(|a| a.resource).collect::<Vec<_>>();
++        let r0 = resources(0);
++        assert_eq!(f.passes[0].preserving_buffers,
++            [r0[1], r0[2], *r0.last().unwrap()]);
++        let r1 = resources(1);
++        assert_eq!(f.passes[1].preserving_buffers,
++            [r1[1], *r1.last().unwrap()]);
++        for i in [2, 3] {
++            let r = resources(i);
++            assert_eq!(f.passes[i].preserving_buffers, [*r.last().unwrap()]);
++        }
+         // stones：exclusion×4、0x14 先于 GardenStone 写(0x32,0 = 非并发)。
+         let a2 = acc(2);
+         assert_eq!(
+@@ -555,6 +588,25 @@
+         let a3 = acc(3);
+         assert_eq!(a3[1], (0x32, 0));
+         assert_eq!(*a3.last().unwrap(), (0x37, 1));
++    }
++
++    #[test]
++    fn disabled_building_stage_makes_garden_bushes_the_first_position_producer() {
++        let w = spawn_world();
++        let mut f = TestFrame::default();
++        with_env(&w, &mut f, |env| {
++            garden_spawn_vegetation_with_building_prefix(env, false)
++        });
++        let first = &f.passes[0];
++        assert_eq!(first.preserving_buffers,
++            [first.builder.accesses.last().unwrap().resource]);
++        // Flower pass still continues flowers from this frame's bushes pass.
++        let flowers = &f.passes[1];
++        assert_eq!(flowers.preserving_buffers, [
++            flowers.builder.accesses[1].resource,
++            flowers.builder.accesses.last().unwrap().resource,
++        ]);
++        assert_eq!(f.passes.len(), 4);
+     }
+ 
+     #[test]

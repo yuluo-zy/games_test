@@ -1,0 +1,65 @@
+utils::xz_rotation_mat3_bad::hbd3c0e8330b32808
+0x140c90ed0: sub rsp, 0x18
+0x140c90ed4: movaps xmmword ptr [rsp], xmm6
+0x140c90ed8: mov rax, rcx
+0x140c90edb: movaps xmm0, xmm1
+0x140c90ede: mulss xmm0, xmm1
+0x140c90ee2: movaps xmm3, xmm2
+0x140c90ee5: mulss xmm3, xmm2
+0x140c90ee9: addss xmm3, xmm0
+0x140c90eed: sqrtss xmm3, xmm3
+0x140c90ef1: movss xmm0, dword ptr [rip + 0x1c94a0b] ; [0x142925904]=0000803f f32=1.0
+0x140c90ef9: movaps xmm4, xmm0
+0x140c90efc: divss xmm4, xmm3
+0x140c90f00: movd ecx, xmm4
+0x140c90f04: test ecx, ecx
+0x140c90f06: setns dl
+0x140c90f09: mov r8d, ecx
+0x140c90f0c: and r8d, 0x7fffffff
+0x140c90f13: add r8d, 0xff800000
+0x140c90f1a: cmp r8d, 0x7f000000
+0x140c90f21: setb r8b
+0x140c90f25: and r8b, dl
+0x140c90f28: dec ecx
+0x140c90f2a: cmp ecx, 0x7fffff
+0x140c90f30: setb cl
+0x140c90f33: or cl, r8b
+0x140c90f36: xorps xmm3, xmm3
+0x140c90f39: jne 0x140c90f43
+0x140c90f3b: xorps xmm2, xmm2
+0x140c90f3e: movaps xmm1, xmm0
+0x140c90f41: jmp 0x140c90f4b
+0x140c90f43: mulss xmm1, xmm4
+0x140c90f47: mulss xmm2, xmm4
+0x140c90f4b: movaps xmm4, xmm1
+0x140c90f4e: mulss xmm4, xmm3
+0x140c90f52: movaps xmm5, xmm2
+0x140c90f55: mulss xmm5, xmm3
+0x140c90f59: subss xmm4, xmm5
+0x140c90f5d: subss xmm3, xmm1
+0x140c90f61: movaps xmm5, xmm2
+0x140c90f64: mulss xmm5, xmm2
+0x140c90f68: movaps xmm6, xmm2
+0x140c90f6b: unpcklps xmm6, xmm4
+0x140c90f6e: mulss xmm4, xmm4
+0x140c90f72: addss xmm4, xmm5
+0x140c90f76: movaps xmm5, xmm3
+0x140c90f79: mulss xmm5, xmm3
+0x140c90f7d: addss xmm5, xmm4
+0x140c90f81: xorps xmm4, xmm4
+0x140c90f84: sqrtss xmm4, xmm5
+0x140c90f88: divss xmm0, xmm4
+0x140c90f8c: mulss xmm3, xmm0
+0x140c90f90: movsldup xmm0, xmm0
+0x140c90f94: mulps xmm0, xmm6
+0x140c90f97: movlps qword ptr [rax], xmm0
+0x140c90f9a: movss dword ptr [rax + 8], xmm3
+0x140c90f9f: movsd xmm0, qword ptr [rip + 0x1ca3609] ; [0x1429345b0]=00000000 f32=0.0
+0x140c90fa7: movsd qword ptr [rax + 0xc], xmm0
+0x140c90fac: mov dword ptr [rax + 0x14], 0
+0x140c90fb3: movss dword ptr [rax + 0x18], xmm1
+0x140c90fb8: mov dword ptr [rax + 0x1c], 0
+0x140c90fbf: movss dword ptr [rax + 0x20], xmm2
+0x140c90fc4: movaps xmm6, xmmword ptr [rsp]
+0x140c90fc8: add rsp, 0x18
+0x140c90fcc: ret 

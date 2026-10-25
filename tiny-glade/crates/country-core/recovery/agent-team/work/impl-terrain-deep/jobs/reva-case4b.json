@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\n\n# disassemble the case-4 dispatcher region 140af02e2..140af03a0\nstart = currentProgram.getAddressFactory().getAddress(\"140af02e2\")\nend = currentProgram.getAddressFactory().getAddress(\"140af03a0\")\nlisting = currentProgram.getListing()\ndis = []\naddr = start\nwhile addr.compareTo(end) < 0:\n    inst = listing.getInstructionAt(addr)\n    if inst is None:\n        addr = addr.add(1); continue\n    dis.append(\"%s  %s\" % (inst.getAddress(), inst))\n    addr = inst.getMinAddress().add(inst.getLength())\n\nD = DecompInterface()\ntry:\n    D.openProgram(currentProgram)\n    targets = [\"140af02f2\",\"140af0320\",\"140af0344\",\"140af036c\",\"140af038c\",\"140af03b5\"]\n    decs = {}\n    fm = currentProgram.getFunctionManager()\n    for ta in targets:\n        a = currentProgram.getAddressFactory().getAddress(ta)\n        f = fm.getFunctionAt(a)\n        if f is None:\n            body = currentProgram.getAddressFactory().getAddressSet()\n            body.add(a)\n            body.add(a.add(0x40))\n            f = fm.createFunction(\"case4_\"+ta, a, body, a)\n        res = D.decompileFunction(f, 60, monitor)\n        decs[ta] = res.getDecompiledFunction().getC() if res.decompileCompleted() else \"ERR:\"+str(res.getErrorMessage())\n    print(json.dumps({\"dispatcher\": dis, \"targets\": decs}))\nfinally:\n    D.dispose()\n",
+      "timeoutSeconds": 180
+    },
+    "timeout_seconds": 240
+  }
+]

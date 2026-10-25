@@ -1,0 +1,5 @@
+# Root整合类型显式化接受记录
+
+原冻结候选509478f1cc0bc462b81d2064ac49e6ae7bee5bef6480ac216dc322ecabfcc2dc及其patch/freeze不修改。root实际编译发现新World测试的TerrainHeightsData::new存在泛型推导E0282，由root唯一生产writer机械补成TerrainHeightsData::<TerrainHeightSsbo>::new()。本worker独立比对当前真实生产，唯一差异确为该测试一行类型显式化；生产算法无变化。
+
+当前实际after ac39d6038c7aa9e0542c938716c5db350ae07c76dacef84976f0d4598f950a1a。任何后续candidate应从当前实际source冻结，不重新应用旧5094候选覆盖root修正。本记录只接受已发生的编译类型修正；测试运行结果尚未由root交回，不标15测试已通过。worker未Cargo/未修改生产。

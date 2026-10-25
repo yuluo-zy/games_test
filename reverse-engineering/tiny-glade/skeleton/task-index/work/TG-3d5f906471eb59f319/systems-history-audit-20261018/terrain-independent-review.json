@@ -1,0 +1,87 @@
+{
+  "reviewer": "history_audit",
+  "static_verdict": "pass_with_explicit_scope",
+  "raw_binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "range_identity": [
+    {
+      "va": "0x140ad3070",
+      "size": 3556,
+      "raw_sha256": "4845803b8f3101b9ece4c260740375b01bcb8ab6f3438968726738f1c49cb24b",
+      "patched_equal": true
+    },
+    {
+      "va": "0x140ad3f50",
+      "size": 498,
+      "raw_sha256": "9697188aa7a761aa394402954fff1d8aaaeb018276c0c013d88547c42619caa9",
+      "patched_equal": true
+    },
+    {
+      "va": "0x140ad41a0",
+      "size": 3114,
+      "raw_sha256": "40d1b0e3290acc1180ca87b337049278d010daa57de68b0f14d9e5475302850f",
+      "patched_equal": true
+    },
+    {
+      "va": "0x140ad1fe0",
+      "size": 1733,
+      "raw_sha256": "14e6fb21ad8936d3aa3aee5debc37dbb4cf50a15ee9ecbcea43a7fe38833e66d",
+      "patched_equal": true
+    },
+    {
+      "va": "0x141466860",
+      "size": 470,
+      "raw_sha256": "f9d9806f993a85ba902d83900fc4778fe6f7fa47c9711ccad70506c9c5f5320d",
+      "patched_equal": true
+    }
+  ],
+  "candidate_sha256": {
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6a0677e64cef08cd63/terrain-curve-20261018/in_progress_curve.rs": "6e1422fa669a48f691796a62ccdaffca0d295a420668288758fd48c12f61b6ed",
+    "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-19ff2833ab2a0fd7fa/terrain-curve-20261018/rdp.rs": "0d6adf00188f47ef06a43be47c04995654bf4bfc50eeae55b655ff44f263a4b4"
+  },
+  "native_reexecution": {
+    "attempted": true,
+    "exit_code": 0,
+    "cases_executed": 5,
+    "exact_bit_matches": [
+      {
+        "case": 0,
+        "status": "exact_bits_match_retained_native_fixture",
+        "raw_point_count": 2,
+        "smooth": false
+      },
+      {
+        "case": 3,
+        "status": "exact_bits_match_retained_native_fixture",
+        "raw_point_count": 22,
+        "smooth": true
+      },
+      {
+        "case": 10,
+        "status": "exact_bits_match_retained_native_fixture",
+        "raw_point_count": 40,
+        "smooth": false
+      },
+      {
+        "case": 13,
+        "status": "exact_bits_match_retained_native_fixture",
+        "raw_point_count": 59,
+        "smooth": true
+      },
+      {
+        "case": 15,
+        "status": "exact_bits_match_retained_native_fixture",
+        "raw_point_count": 24,
+        "smooth": true
+      }
+    ],
+    "duplicate_failure_exact": true,
+    "bridge": "existing allocation/CRT only",
+    "host_execution": "macOS host JIT allowed after sandbox exit132"
+  },
+  "limits": "Root validates Rust candidates. No original-process/ECS consumer proof.",
+  "previous_failure": {
+    "exit_code": 132,
+    "cases_executed": 0,
+    "boundary": "sandbox Unicorn JIT startup"
+  }
+}

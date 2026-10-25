@@ -1,0 +1,532 @@
+{
+  "backend": "reva",
+  "worker": "tree-owner",
+  "access": "write",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json\nprog = currentProgram\nout = {}\nstart = prog.getAddressFactory().getAddress(\"0x142268a30\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\ninsns = []\ncnt = 0\nwhile it.hasNext() and cnt < 260:\n    monitor.checkCancelled()\n    ins = it.next()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(ins.getAddress()), ins.getMnemonicString(), ops, hexb])\n    cnt += 1\nout[\"insn_count\"] = len(insns)\nout[\"insns\"] = insns\nprint(json.dumps(out))\n",
+        "timeoutSeconds": 90
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json\nprog = currentProgram\nout = {}\nstart = prog.getAddressFactory().getAddress(\"0x142268a30\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\ninsns = []\ncnt = 0\nwhile it.hasNext() and cnt < 260:\n    monitor.checkCancelled()\n    ins = it.next()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(ins.getAddress()), ins.getMnemonicString(), ops, hexb])\n    cnt += 1\nout[\"insn_count\"] = len(insns)\nout[\"insns\"] = insns\nprint(json.dumps(out))\n",
+        "timeoutSeconds": 90
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"insn_count\\\": 260, \\\"insns\\\": [[\\\"142268a30\\\", \\\"MOV\\\", [\\\"byte ptr [RSP + 0x2b]\\\", \\\"AL\\\"], \\\"8844242b\\\"], [\\\"142268a34\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [RDX]\\\"], \\\"488b02\\\"], [\\\"142268a37\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x78]\\\", \\\"RAX\\\"], \\\"4889442478\\\"], [\\\"142268a3c\\\", \\\"MOV\\\", [\\\"EAX\\\", \\\"0x8\\\"], \\\"b808000000\\\"], [\\\"142268a41\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x60]\\\", \\\"RAX\\\"], \\\"4889442460\\\"], [\\\"142268a46\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x30]\\\", \\\"0x0\\\"], \\\"48c744243000000000\\\"], [\\\"142268a4f\\\", \\\"MOVSS\\\", [\\\"XMM6\\\", \\\"dword ptr [0x142925988]\\\"], \\\"f30f103531cf6b00\\\"], [\\\"142268a57\\\", \\\"MOVSS\\\", [\\\"XMM9\\\", \\\"dword ptr [0x142925984]\\\"], \\\"f3440f100d24cf6b00\\\"], [\\\"142268a60\\\", \\\"MOVSS\\\", [\\\"XMM10\\\", \\\"dword ptr [0x142925904]\\\"], \\\"f3440f10159bce6b00\\\"], [\\\"142268a69\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x38]\\\", \\\"0x0\\\"], \\\"48c744243800000000\\\"], [\\\"142268a72\\\", \\\"XOR\\\", [\\\"R14D\\\", \\\"R14D\\\"], \\\"4531f6\\\"], [\\\"142268a75\\\", \\\"XOR\\\", [\\\"EDX\\\", \\\"EDX\\\"], \\\"31d2\\\"], [\\\"142268a77\\\", \\\"MOV\\\", [\\\"R13\\\", \\\"qword ptr [RSP + 0x78]\\\"], \\\"4c8b6c2478\\\"], [\\\"142268a7c\\\", \\\"MOV\\\", [\\\"EBX\\\", \\\"dword ptr [RSP + 0x2c]\\\"], \\\"8b5c242c\\\"], [\\\"142268a80\\\", \\\"JMP\\\", [\\\"0x142268aa9\\\"], \\\"eb27\\\"], [\\\"142268a90\\\", \\\"SHL\\\", [\\\"RCX\\\", \\\"0x20\\\"], \\\"48c1e120\\\"], [\\\"142268a94\\\", \\\"MOV\\\", [\\\"EAX\\\", \\\"EAX\\\"], \\\"89c0\\\"], [\\\"142268a96\\\", \\\"OR\\\", [\\\"RAX\\\", \\\"RCX\\\"], \\\"4809c8\\\"], [\\\"142268a99\\\", \\\"MOV\\\", [\\\"ECX\\\", \\\"dword ptr [RSP + 0x2c]\\\"], \\\"8b4c242c\\\"], [\\\"142268a9d\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [RSP + 0x68]\\\"], \\\"4c8b442468\\\"], [\\\"142268aa2\\\", \\\"MOV\\\", [\\\"dword ptr [R8]\\\", \\\"ECX\\\"], \\\"418908\\\"], [\\\"142268aa5\\\", \\\"MOV\\\", [\\\"qword ptr [RDI + 0x24]\\\", \\\"RAX\\\"], \\\"48894724\\\"], [\\\"142268aa9\\\", \\\"CMP\\\", [\\\"byte ptr [RSP + 0x2b]\\\", \\\"0x0\\\"], \\\"807c242b00\\\"], [\\\"142268aae\\\", \\\"JZ\\\", [\\\"0x142268af0\\\"], \\\"7440\\\"], [\\\"142268ab0\\\", \\\"CMP\\\", [\\\"RDX\\\", \\\"R14\\\"], \\\"4c39f2\\\"], [\\\"142268ab3\\\", \\\"JNZ\\\", [\\\"0x142268ba2\\\"], \\\"0f85e9000000\\\"], [\\\"142268ab9\\\", \\\"CMP\\\", [\\\"R15\\\", \\\"R12\\\"], \\\"4d39e7\\\"], [\\\"142268abc\\\", \\\"JZ\\\", [\\\"0x142268d7c\\\"], \\\"0f84ba020000\\\"], [\\\"142268ac2\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [RSP + 0x40]\\\"], \\\"488b442440\\\"], [\\\"142268ac7\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [RAX + 0x1a8]\\\"], \\\"488b80a8010000\\\"], [\\\"142268ace\\\", \\\"NOP\\\", [], \\\"6690\\\"], [\\\"142268ad0\\\", \\\"MOV\\\", [\\\"ECX\\\", \\\"dword ptr [R15]\\\"], \\\"418b0f\\\"], [\\\"142268ad3\\\", \\\"LEA\\\", [\\\"RCX\\\", \\\"[RCX + RCX*0x8]\\\"], \\\"488d0cc9\\\"], [\\\"142268ad7\\\", \\\"MOV\\\", [\\\"R14\\\", \\\"qword ptr [RAX + RCX*0x8 + 0x10]\\\"], \\\"4c8b74c810\\\"], [\\\"142268adc\\\", \\\"TEST\\\", [\\\"R14\\\", \\\"R14\\\"], \\\"4d85f6\\\"], [\\\"142268adf\\\", \\\"JNZ\\\", [\\\"0x142268b37\\\"], \\\"7556\\\"], [\\\"142268ae1\\\", \\\"ADD\\\", [\\\"R15\\\", \\\"0x4\\\"], \\\"4983c704\\\"], [\\\"142268ae5\\\", \\\"CMP\\\", [\\\"R15\\\", \\\"R12\\\"], \\\"4d39e7\\\"], [\\\"142268ae8\\\", \\\"JNZ\\\", [\\\"0x142268ad0\\\"], \\\"75e6\\\"], [\\\"142268aea\\\", \\\"JMP\\\", [\\\"0x142268d7c\\\"], \\\"e98d020000\\\"], [\\\"142268af0\\\", \\\"CMP\\\", [\\\"RDX\\\", \\\"R14\\\"], \\\"4c39f2\\\"], [\\\"142268af3\\\", \\\"JNZ\\\", [\\\"0x142268c39\\\"], \\\"0f8540010000\\\"], [\\\"142268af9\\\", \\\"CMP\\\", [\\\"R15\\\", \\\"R12\\\"], \\\"4d39e7\\\"], [\\\"142268afc\\\", \\\"JZ\\\", [\\\"0x142268d7c\\\"], \\\"0f847a020000\\\"], [\\\"142268b02\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [RSP + 0x40]\\\"], \\\"488b442440\\\"], [\\\"142268b07\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [RAX + 0x100]\\\"], \\\"488b8000010000\\\"], [\\\"142268b0e\\\", \\\"NOP\\\", [], \\\"6690\\\"], [\\\"142268b10\\\", \\\"MOV\\\", [\\\"ECX\\\", \\\"dword ptr [R15]\\\"], \\\"418b0f\\\"], [\\\"142268b13\\\", \\\"LEA\\\", [\\\"RCX\\\", \\\"[RCX + RCX*0x4]\\\"], \\\"488d0c89\\\"], [\\\"142268b17\\\", \\\"SHL\\\", [\\\"RCX\\\", \\\"0x5\\\"], \\\"48c1e105\\\"], [\\\"142268b1b\\\", \\\"MOV\\\", [\\\"R14\\\", \\\"qword ptr [RAX + RCX*0x1 + 0x58]\\\"], \\\"4c8b740858\\\"], [\\\"142268b20\\\", \\\"TEST\\\", [\\\"R14\\\", \\\"R14\\\"], \\\"4d85f6\\\"], [\\\"142268b23\\\", \\\"JNZ\\\", [\\\"0x142268bae\\\"], \\\"0f8585000000\\\"], [\\\"142268b29\\\", \\\"ADD\\\", [\\\"R15\\\", \\\"0x4\\\"], \\\"4983c704\\\"], [\\\"142268b2d\\\", \\\"CMP\\\", [\\\"R15\\\", \\\"R12\\\"], \\\"4d39e7\\\"], [\\\"142268b30\\\", \\\"JNZ\\\", [\\\"0x142268b10\\\"], \\\"75de\\\"], [\\\"142268b32\\\", \\\"JMP\\\", [\\\"0x142268d7c\\\"], \\\"e945020000\\\"], [\\\"142268b37\\\", \\\"LEA\\\", [\\\"RAX\\\", \\\"[RAX + RCX*0x8]\\\"], \\\"488d04c8\\\"], [\\\"142268b3b\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [RSP + 0x58]\\\"], \\\"488b542458\\\"], [\\\"142268b40\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RDX + 0x110]\\\"], \\\"488b8a10010000\\\"], [\\\"142268b47\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [RDX + 0x118]\\\"], \\\"488b9218010000\\\"], [\\\"142268b4e\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [RAX + 0x18]\\\"], \\\"4c8b4018\\\"], [\\\"142268b52\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [RAX + 0x38]\\\"], \\\"488b4038\\\"], [\\\"142268b56\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RAX + RCX*0x8]\\\"], \\\"488b0cc8\\\"], [\\\"142268b5a\\\", \\\"NOT\\\", [\\\"RCX\\\"], \\\"48f7d1\\\"], [\\\"142268b5d\\\", \\\"LEA\\\", [\\\"RCX\\\", \\\"[RCX + RCX*0x2]\\\"], \\\"488d0c49\\\"], [\\\"142268b61\\\", \\\"SHL\\\", [\\\"RCX\\\", \\\"0x4\\\"], \\\"48c1e104\\\"], [\\\"142268b65\\\", \\\"MOV\\\", [\\\"R9\\\", \\\"qword ptr [R8 + RCX*0x1 + 0x10]\\\"], \\\"4d8b4c0810\\\"], [\\\"142268b6a\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x38]\\\", \\\"R9\\\"], \\\"4c894c2438\\\"], [\\\"142268b6f\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [R8 + RCX*0x1 + 0x28]\\\"], \\\"498b4c0828\\\"], [\\\"142268b74\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x50]\\\", \\\"RCX\\\"], \\\"48894c2450\\\"], [\\\"142268b79\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [RAX + RDX*0x8]\\\"], \\\"488b04d0\\\"], [\\\"142268b7d\\\", \\\"NOT\\\", [\\\"RAX\\\"], \\\"48f7d0\\\"], [\\\"142268b80\\\", \\\"LEA\\\", [\\\"RAX\\\", \\\"[RAX + RAX*0x2]\\\"], \\\"488d0440\\\"], [\\\"142268b84\\\", \\\"SHL\\\", [\\\"RAX\\\", \\\"0x4\\\"], \\\"48c1e004\\\"], [\\\"142268b88\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [R8 + RAX*0x1 + 0x10]\\\"], \\\"498b4c0010\\\"], [\\\"142268b8d\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x30]\\\", \\\"RCX\\\"], \\\"48894c2430\\\"], [\\\"142268b92\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [R8 + RAX*0x1 + 0x28]\\\"], \\\"498b440028\\\"], [\\\"142268b97\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x48]\\\", \\\"RAX\\\"], \\\"4889442448\\\"], [\\\"142268b9c\\\", \\\"ADD\\\", [\\\"R15\\\", \\\"0x4\\\"], \\\"4983c704\\\"], [\\\"142268ba0\\\", \\\"XOR\\\", [\\\"EDX\\\", \\\"EDX\\\"], \\\"31d2\\\"], [\\\"142268ba2\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x70]\\\", \\\"RDX\\\"], \\\"4889542470\\\"], [\\\"142268ba7\\\", \\\"MOV\\\", [\\\"EAX\\\", \\\"EDX\\\"], \\\"89d0\\\"], [\\\"142268ba9\\\", \\\"JMP\\\", [\\\"0x142268c4e\\\"], \\\"e9a0000000\\\"], [\\\"142268bae\\\", \\\"ADD\\\", [\\\"RAX\\\", \\\"RCX\\\"], \\\"4801c8\\\"], [\\\"142268bb1\\\", \\\"MOV\\\", [\\\"ECX\\\", \\\"dword ptr [RAX + 0x94]\\\"], \\\"8b8894000000\\\"], [\\\"142268bb7\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [RSP + 0x40]\\\"], \\\"488b542440\\\"], [\\\"142268bbc\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [RDX + 0x1a8]\\\"], \\\"488b92a8010000\\\"], [\\\"142268bc3\\\", \\\"LEA\\\", [\\\"RCX\\\", \\\"[RCX + RCX*0x8]\\\"], \\\"488d0cc9\\\"], [\\\"142268bc7\\\", \\\"MOV\\\", [\\\"R9\\\", \\\"qword ptr [RSP + 0x58]\\\"], \\\"4c8b4c2458\\\"], [\\\"142268bcc\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [R9 + 0x110]\\\"], \\\"4d8b8110010000\\\"], [\\\"142268bd3\\\", \\\"MOV\\\", [\\\"R9\\\", \\\"qword ptr [R9 + 0x118]\\\"], \\\"4d8b8918010000\\\"], [\\\"142268bda\\\", \\\"MOV\\\", [\\\"R10\\\", \\\"qword ptr [RDX + RCX*0x8 + 0x18]\\\"], \\\"4c8b54ca18\\\"], [\\\"142268bdf\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RDX + RCX*0x8 + 0x38]\\\"], \\\"488b4cca38\\\"], [\\\"142268be4\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [RCX + R8*0x8]\\\"], \\\"4a8b14c1\\\"], [\\\"142268be8\\\", \\\"NOT\\\", [\\\"RDX\\\"], \\\"48f7d2\\\"], [\\\"142268beb\\\", \\\"LEA\\\", [\\\"RDX\\\", \\\"[RDX + RDX*0x2]\\\"], \\\"488d1452\\\"], [\\\"142268bef\\\", \\\"SHL\\\", [\\\"RDX\\\", \\\"0x4\\\"], \\\"48c1e204\\\"], [\\\"142268bf3\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [R10 + RDX*0x1 + 0x10]\\\"], \\\"4d8b441210\\\"], [\\\"142268bf8\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x38]\\\", \\\"R8\\\"], \\\"4c89442438\\\"], [\\\"142268bfd\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [R10 + RDX*0x1 + 0x28]\\\"], \\\"498b541228\\\"], [\\\"142268c02\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x50]\\\", \\\"RDX\\\"], \\\"4889542450\\\"], [\\\"142268c07\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RCX + R9*0x8]\\\"], \\\"4a8b0cc9\\\"], [\\\"142268c0b\\\", \\\"NOT\\\", [\\\"RCX\\\"], \\\"48f7d1\\\"], [\\\"142268c0e\\\", \\\"LEA\\\", [\\\"RCX\\\", \\\"[RCX + RCX*0x2]\\\"], \\\"488d0c49\\\"], [\\\"142268c12\\\", \\\"SHL\\\", [\\\"RCX\\\", \\\"0x4\\\"], \\\"48c1e104\\\"], [\\\"142268c16\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [R10 + RCX*0x1 + 0x10]\\\"], \\\"498b540a10\\\"], [\\\"142268c1b\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x30]\\\", \\\"RDX\\\"], \\\"4889542430\\\"], [\\\"142268c20\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [R10 + RCX*0x1 + 0x28]\\\"], \\\"498b4c0a28\\\"], [\\\"142268c25\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x48]\\\", \\\"RCX\\\"], \\\"48894c2448\\\"], [\\\"142268c2a\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [RAX + 0x50]\\\"], \\\"488b4050\\\"], [\\\"142268c2e\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x60]\\\", \\\"RAX\\\"], \\\"4889442460\\\"], [\\\"142268c33\\\", \\\"ADD\\\", [\\\"R15\\\", \\\"0x4\\\"], \\\"4983c704\\\"], [\\\"142268c37\\\", \\\"XOR\\\", [\\\"EDX\\\", \\\"EDX\\\"], \\\"31d2\\\"], [\\\"142268c39\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x70]\\\", \\\"RDX\\\"], \\\"4889542470\\\"], [\\\"142268c3e\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"RDX\\\"], \\\"4889d0\\\"], [\\\"142268c41\\\", \\\"SHL\\\", [\\\"RAX\\\", \\\"0x4\\\"], \\\"48c1e004\\\"], [\\\"142268c45\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RSP + 0x60]\\\"], \\\"488b4c2460\\\"], [\\\"142268c4a\\\", \\\"MOV\\\", [\\\"EAX\\\", \\\"dword ptr [RCX + RAX*0x1 + 0x8]\\\"], \\\"8b440108\\\"], [\\\"142268c4e\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RSP + 0x38]\\\"], \\\"488b4c2438\\\"], [\\\"142268c53\\\", \\\"LEA\\\", [\\\"RSI\\\", \\\"[RCX + RAX*0x8]\\\"], \\\"488d34c1\\\"], [\\\"142268c57\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RSP + 0x50]\\\"], \\\"488b4c2450\\\"], [\\\"142268c5c\\\", \\\"LEA\\\", [\\\"RBP\\\", \\\"[RCX + RAX*0x4]\\\"], \\\"488d2c81\\\"], [\\\"142268c60\\\", \\\"LEA\\\", [\\\"RDI\\\", \\\"[RAX + RAX*0x2]\\\"], \\\"488d3c40\\\"], [\\\"142268c64\\\", \\\"SHL\\\", [\\\"RDI\\\", \\\"0x4\\\"], \\\"48c1e704\\\"], [\\\"142268c68\\\", \\\"ADD\\\", [\\\"RDI\\\", \\\"qword ptr [RSP + 0x30]\\\"], \\\"48037c2430\\\"], [\\\"142268c6d\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RSP + 0x48]\\\"], \\\"488b4c2448\\\"], [\\\"142268c72\\\", \\\"LEA\\\", [\\\"RAX\\\", \\\"[RCX + RAX*0x4]\\\"], \\\"488d0481\\\"], [\\\"142268c76\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x68]\\\", \\\"RAX\\\"], \\\"4889442468\\\"], [\\\"142268c7b\\\", \\\"LEA\\\", [\\\"RCX\\\", \\\"[RSP + 0x84]\\\"], \\\"488d8c2484000000\\\"], [\\\"142268c83\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"RDI\\\"], \\\"4889fa\\\"], [\\\"142268c86\\\", \\\"CALL\\\", [\\\"0x140ad51a0\\\"], \\\"e815c586fe\\\"], [\\\"142268c8b\\\", \\\"MOVSS\\\", [\\\"XMM7\\\", \\\"dword ptr [RSP + 0x84]\\\"], \\\"f30f10bc2484000000\\\"], [\\\"142268c94\\\", \\\"MOVSS\\\", [\\\"XMM8\\\", \\\"dword ptr [RSP + 0x8c]\\\"], \\\"f3440f1084248c000000\\\"], [\\\"142268c9e\\\", \\\"MOVSS\\\", [\\\"XMM0\\\", \\\"dword ptr [RSI]\\\"], \\\"f30f1006\\\"], [\\\"142268ca2\\\", \\\"MOVSS\\\", [\\\"XMM2\\\", \\\"dword ptr [R13 + 0x28]\\\"], \\\"f3410f105528\\\"], [\\\"142268ca8\\\", \\\"MOVAPS\\\", [\\\"XMM1\\\", \\\"XMM7\\\"], \\\"0f28cf\\\"], [\\\"142268cab\\\", \\\"MOVAPS\\\", [\\\"XMM3\\\", \\\"XMM6\\\"], \\\"0f28de\\\"], [\\\"142268cae\\\", \\\"CALL\\\", [\\\"0x140c904e0\\\"], \\\"e82d78a2fe\\\"], [\\\"142268cb3\\\", \\\"MOV\\\", [\\\"dword ptr [RBP]\\\", \\\"EBX\\\"], \\\"895d00\\\"], [\\\"142268cb6\\\", \\\"MOVSS\\\", [\\\"dword ptr [RSI]\\\", \\\"XMM0\\\"], \\\"f30f1106\\\"], [\\\"142268cba\\\", \\\"MOVSS\\\", [\\\"XMM0\\\", \\\"dword ptr [RSI + 0x4]\\\"], \\\"f30f104604\\\"], [\\\"142268cbf\\\", \\\"MOVSS\\\", [\\\"XMM2\\\", \\\"dword ptr [R13 + 0x28]\\\"], \\\"f3410f105528\\\"], [\\\"142268cc5\\\", \\\"MOVAPS\\\", [\\\"XMM1\\\", \\\"XMM8\\\"], \\\"410f28c8\\\"], [\\\"142268cc9\\\", \\\"MOVAPS\\\", [\\\"XMM3\\\", \\\"XMM6\\\"], \\\"0f28de\\\"], [\\\"142268ccc\\\", \\\"CALL\\\", [\\\"0x140c904e0\\\"], \\\"e80f78a2fe\\\"], [\\\"142268cd1\\\", \\\"MOV\\\", [\\\"dword ptr [RBP]\\\", \\\"EBX\\\"], \\\"895d00\\\"], [\\\"142268cd4\\\", \\\"MOVSS\\\", [\\\"dword ptr [RSI + 0x4]\\\", \\\"XMM0\\\"], \\\"f30f114604\\\"], [\\\"142268cd9\\\", \\\"MOVSS\\\", [\\\"XMM1\\\", \\\"dword ptr [RSI]\\\"], \\\"f30f100e\\\"], [\\\"142268cdd\\\", \\\"UNPCKLPS\\\", [\\\"XMM1\\\", \\\"XMM0\\\"], \\\"0f14c8\\\"], [\\\"142268ce0\\\", \\\"UNPCKLPS\\\", [\\\"XMM7\\\", \\\"XMM8\\\"], \\\"410f14f8\\\"], [\\\"142268ce4\\\", \\\"SUBPS\\\", [\\\"XMM1\\\", \\\"XMM7\\\"], \\\"0f5ccf\\\"], [\\\"142268ce7\\\", \\\"MOVAPS\\\", [\\\"XMM0\\\", \\\"XMM1\\\"], \\\"0f28c1\\\"], [\\\"142268cea\\\", \\\"MULPS\\\", [\\\"XMM0\\\", \\\"XMM1\\\"], \\\"0f59c1\\\"], [\\\"142268ced\\\", \\\"MOVSHDUP\\\", [\\\"XMM2\\\", \\\"XMM0\\\"], \\\"f30f16d0\\\"], [\\\"142268cf1\\\", \\\"ADDSS\\\", [\\\"XMM2\\\", \\\"XMM0\\\"], \\\"f30f58d0\\\"], [\\\"142268cf5\\\", \\\"XORPS\\\", [\\\"XMM0\\\", \\\"XMM0\\\"], \\\"0f57c0\\\"], [\\\"142268cf8\\\", \\\"SQRTSS\\\", [\\\"XMM0\\\", \\\"XMM2\\\"], \\\"f30f51c2\\\"], [\\\"142268cfc\\\", \\\"XOR\\\", [\\\"EAX\\\", \\\"EAX\\\"], \\\"31c0\\\"], [\\\"142268cfe\\\", \\\"UCOMISS\\\", [\\\"XMM9\\\", \\\"XMM0\\\"], \\\"440f2ec8\\\"], [\\\"142268d02\\\", \\\"MOV\\\", [\\\"ECX\\\", \\\"0x0\\\"], \\\"b900000000\\\"], [\\\"142268d07\\\", \\\"JA\\\", [\\\"0x142268d3f\\\"], \\\"7736\\\"], [\\\"142268d09\\\", \\\"MOVAPS\\\", [\\\"XMM2\\\", \\\"XMM10\\\"], \\\"410f28d2\\\"], [\\\"142268d0d\\\", \\\"DIVSS\\\", [\\\"XMM2\\\", \\\"XMM0\\\"], \\\"f30f5ed0\\\"], [\\\"142268d11\\\", \\\"MOVAPS\\\", [\\\"XMM3\\\", \\\"XMM6\\\"], \\\"0f28de\\\"], [\\\"142268d14\\\", \\\"MINSS\\\", [\\\"XMM3\\\", \\\"XMM0\\\"], \\\"f30f5dd8\\\"], [\\\"142268d18\\\", \\\"MOV\\\", [\\\"EAX\\\", \\\"dword ptr [RSP + 0x2c]\\\"], \\\"8b44242c\\\"], [\\\"142268d1c\\\", \\\"MOV\\\", [\\\"dword ptr [RBP]\\\", \\\"EAX\\\"], \\\"894500\\\"], [\\\"142268d1f\\\", \\\"MOVSLDUP\\\", [\\\"XMM0\\\", \\\"XMM2\\\"], \\\"f30f12c2\\\"], [\\\"142268d23\\\", \\\"MULPS\\\", [\\\"XMM1\\\", \\\"XMM0\\\"], \\\"0f59c8\\\"], [\\\"142268d26\\\", \\\"MOVSLDUP\\\", [\\\"XMM0\\\", \\\"XMM3\\\"], \\\"f30f12c3\\\"], [\\\"142268d2a\\\", \\\"MULPS\\\", [\\\"XMM0\\\", \\\"XMM1\\\"], \\\"0f59c1\\\"], [\\\"142268d2d\\\", \\\"MOVD\\\", [\\\"EAX\\\", \\\"XMM0\\\"], \\\"660f7ec0\\\"], [\\\"142268d31\\\", \\\"MOVSHDUP\\\", [\\\"XMM1\\\", \\\"XMM0\\\"], \\\"f30f16c8\\\"], [\\\"142268d35\\\", \\\"MOVD\\\", [\\\"ECX\\\", \\\"XMM1\\\"], \\\"660f7ec9\\\"], [\\\"142268d39\\\", \\\"ADDPS\\\", [\\\"XMM7\\\", \\\"XMM0\\\"], \\\"0f58f8\\\"], [\\\"142268d3c\\\", \\\"MOVLPS\\\", [\\\"qword ptr [RSI]\\\", \\\"XMM7\\\"], \\\"0f133e\\\"], [\\\"142268d3f\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [RSP + 0x70]\\\"], \\\"488b542470\\\"], [\\\"142268d44\\\", \\\"INC\\\", [\\\"RDX\\\"], \\\"48ffc2\\\"], [\\\"142268d47\\\", \\\"MOVD\\\", [\\\"XMM0\\\", \\\"EAX\\\"], \\\"660f6ec0\\\"], [\\\"142268d4b\\\", \\\"MOVSS\\\", [\\\"XMM1\\\", \\\"dword ptr [RDI + 0x24]\\\"], \\\"f30f104f24\\\"], [\\\"142268d50\\\", \\\"UCOMISS\\\", [\\\"XMM1\\\", \\\"XMM0\\\"], \\\"0f2ec8\\\"], [\\\"142268d53\\\", \\\"JNZ\\\", [\\\"0x142268a90\\\"], \\\"0f8537fdffff\\\"], [\\\"142268d59\\\", \\\"JP\\\", [\\\"0x142268a90\\\"], \\\"0f8a31fdffff\\\"], [\\\"142268d5f\\\", \\\"MOVD\\\", [\\\"XMM0\\\", \\\"ECX\\\"], \\\"660f6ec1\\\"], [\\\"142268d63\\\", \\\"MOVSS\\\", [\\\"XMM1\\\", \\\"dword ptr [RDI + 0x28]\\\"], \\\"f30f104f28\\\"], [\\\"142268d68\\\", \\\"UCOMISS\\\", [\\\"XMM1\\\", \\\"XMM0\\\"], \\\"0f2ec8\\\"], [\\\"142268d6b\\\", \\\"JNZ\\\", [\\\"0x142268a90\\\"], \\\"0f851ffdffff\\\"], [\\\"142268d71\\\", \\\"JP\\\", [\\\"0x142268a90\\\"], \\\"0f8a19fdffff\\\"], [\\\"142268d77\\\", \\\"JMP\\\", [\\\"0x142268aa9\\\"], \\\"e92dfdffff\\\"], [\\\"142268d7c\\\", \\\"MOVAPS\\\", [\\\"XMM6\\\", \\\"xmmword ptr [RSP + 0x90]\\\"], \\\"0f28b42490000000\\\"], [\\\"142268d84\\\", \\\"MOVAPS\\\", [\\\"XMM7\\\", \\\"xmmword ptr [RSP + 0xa0]\\\"], \\\"0f28bc24a0000000\\\"], [\\\"142268d8c\\\", \\\"MOVAPS\\\", [\\\"XMM8\\\", \\\"xmmword ptr [RSP + 0xb0]\\\"], \\\"440f288424b0000000\\\"], [\\\"142268d95\\\", \\\"MOVAPS\\\", [\\\"XMM9\\\", \\\"xmmword ptr [RSP + 0xc0]\\\"], \\\"440f288c24c0000000\\\"], [\\\"142268d9e\\\", \\\"MOVAPS\\\", [\\\"XMM10\\\", \\\"xmmword ptr [RSP + 0xd0]\\\"], \\\"440f289424d0000000\\\"], [\\\"142268da7\\\", \\\"ADD\\\", [\\\"RSP\\\", \\\"0xe8\\\"], \\\"4881c4e8000000\\\"], [\\\"142268dae\\\", \\\"POP\\\", [\\\"RBX\\\"], \\\"5b\\\"], [\\\"142268daf\\\", \\\"POP\\\", [\\\"RBP\\\"], \\\"5d\\\"], [\\\"142268db0\\\", \\\"POP\\\", [\\\"RDI\\\"], \\\"5f\\\"], [\\\"142268db1\\\", \\\"POP\\\", [\\\"RSI\\\"], \\\"5e\\\"], [\\\"142268db2\\\", \\\"POP\\\", [\\\"R12\\\"], \\\"415c\\\"], [\\\"142268db4\\\", \\\"POP\\\", [\\\"R13\\\"], \\\"415d\\\"], [\\\"142268db6\\\", \\\"POP\\\", [\\\"R14\\\"], \\\"415e\\\"], [\\\"142268db8\\\", \\\"POP\\\", [\\\"R15\\\"], \\\"415f\\\"], [\\\"142268dba\\\", \\\"RET\\\", [], \\\"c3\\\"], [\\\"142268dc0\\\", \\\"PUSH\\\", [\\\"R15\\\"], \\\"4157\\\"], [\\\"142268dc2\\\", \\\"PUSH\\\", [\\\"R14\\\"], \\\"4156\\\"], [\\\"142268dc4\\\", \\\"PUSH\\\", [\\\"R13\\\"], \\\"4155\\\"], [\\\"142268dc6\\\", \\\"PUSH\\\", [\\\"R12\\\"], \\\"4154\\\"], [\\\"142268dc8\\\", \\\"PUSH\\\", [\\\"RSI\\\"], \\\"56\\\"], [\\\"142268dc9\\\", \\\"PUSH\\\", [\\\"RDI\\\"], \\\"57\\\"], [\\\"142268dca\\\", \\\"PUSH\\\", [\\\"RBP\\\"], \\\"55\\\"], [\\\"142268dcb\\\", \\\"PUSH\\\", [\\\"RBX\\\"], \\\"53\\\"], [\\\"142268dcc\\\", \\\"SUB\\\", [\\\"RSP\\\", \\\"0x88\\\"], \\\"4881ec88000000\\\"], [\\\"142268dd3\\\", \\\"MOVAPS\\\", [\\\"xmmword ptr [RSP + 0x70]\\\", \\\"XMM8\\\"], \\\"440f29442470\\\"], [\\\"142268dd9\\\", \\\"MOVAPS\\\", [\\\"xmmword ptr [RSP + 0x60]\\\", \\\"XMM7\\\"], \\\"0f297c2460\\\"], [\\\"142268dde\\\", \\\"MOVAPS\\\", [\\\"xmmword ptr [RSP + 0x50]\\\", \\\"XMM6\\\"], \\\"0f29742450\\\"], [\\\"142268de3\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [R8]\\\"], \\\"498b00\\\"], [\\\"142268de6\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [R8 + 0x8]\\\"], \\\"4d8b4008\\\"], [\\\"142268dea\\\", \\\"MOV\\\", [\\\"R9\\\", \\\"qword ptr [RAX]\\\"], \\\"4c8b08\\\"], [\\\"142268ded\\\", \\\"XOR\\\", [\\\"R10D\\\", \\\"R10D\\\"], \\\"4531d2\\\"], [\\\"142268df0\\\", \\\"MOV\\\", [\\\"R11\\\", \\\"R9\\\"], \\\"4d89cb\\\"], [\\\"142268df3\\\", \\\"SUB\\\", [\\\"R11\\\", \\\"qword ptr [R8 + 0x18]\\\"], \\\"4d2b5818\\\"], [\\\"142268df7\\\", \\\"CMOVC\\\", [\\\"R11\\\", \\\"R10\\\"], \\\"4d0f42da\\\"], [\\\"142268dfb\\\", \\\"SUB\\\", [\\\"R9\\\", \\\"qword ptr [R8 + 0x38]\\\"], \\\"4d2b4838\\\"], [\\\"142268dff\\\", \\\"CMOVC\\\", [\\\"R9\\\", \\\"R10\\\"], \\\"4d0f42ca\\\"], [\\\"142268e03\\\", \\\"MOV\\\", [\\\"RSI\\\", \\\"qword ptr [R8 + 0x30]\\\"], \\\"498b7030\\\"], [\\\"142268e07\\\", \\\"SUB\\\", [\\\"RSI\\\", \\\"R9\\\"], \\\"4c29ce\\\"], [\\\"142268e0a\\\", \\\"CMOVC\\\", [\\\"RSI\\\", \\\"R10\\\"], \\\"490f42f2\\\"], [\\\"142268e0e\\\", \\\"SETBE\\\", [\\\"R9B\\\"], \\\"410f96c1\\\"], [\\\"142268e12\\\", \\\"MOV\\\", [\\\"RDI\\\", \\\"qword ptr [R8 + 0x10]\\\"], \\\"498b7810\\\"], [\\\"142268e16\\\", \\\"SUB\\\", [\\\"RDI\\\", \\\"R11\\\"], \\\"4c29df\\\"], [\\\"142268e19\\\", \\\"CMOVC\\\", [\\\"RDI\\\", \\\"R10\\\"], \\\"490f42fa\\\"], [\\\"142268e1d\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [R8 + 0x40]\\\"], \\\"4d8b4040\\\"], [\\\"142268e21\\\", \\\"SETBE\\\", [\\\"R10B\\\"], \\\"410f96c2\\\"], [\\\"142268e25\\\", \\\"ADD\\\", [\\\"RDI\\\", \\\"RSI\\\"], \\\"4801f7\\\"], [\\\"142268e28\\\", \\\"MOV\\\", [\\\"R11\\\", \\\"R8\\\"], \\\"4d89c3\\\"], [\\\"142268e2b\\\", \\\"SUB\\\", [\\\"R11\\\", \\\"RDI\\\"], \\\"4929fb\\\"], [\\\"142268e2e\\\", \\\"MOV\\\", [\\\"qword ptr [RAX]\\\", \\\"R11\\\"], \\\"4c8918\\\"], [\\\"142268e31\\\", \\\"TEST\\\", [\\\"R10B\\\", \\\"R9B\\\"], \\\"4584ca\\\"], [\\\"142268e34\\\", \\\"JZ\\\", [\\\"0x142268e5a\\\"], \\\"7424\\\"], [\\\"142268e36\\\", \\\"MOVAPS\\\", [\\\"XMM6\\\", \\\"xmmword ptr [RSP + 0x50]\\\"], \\\"0f28742450\\\"], [\\\"142268e3b\\\", \\\"MOVAPS\\\", [\\\"XMM7\\\", \\\"xmmword ptr [RSP + 0x60]\\\"], \\\"0f287c2460\\\"], [\\\"142268e40\\\", \\\"MOVAPS\\\", [\\\"XMM8\\\", \\\"xmmword ptr [RSP + 0x70]\\\"], \\\"440f28442470\\\"], [\\\"142268e46\\\", \\\"ADD\\\", [\\\"RSP\\\", \\\"0x88\\\"], \\\"4881c488000000\\\"], [\\\"142268e4d\\\", \\\"POP\\\", [\\\"RBX\\\"], \\\"5b\\\"], [\\\"142268e4e\\\", \\\"POP\\\", [\\\"RBP\\\"], \\\"5d\\\"], [\\\"142268e4f\\\", \\\"POP\\\", [\\\"RDI\\\"], \\\"5f\\\"], [\\\"142268e50\\\", \\\"POP\\\", [\\\"RSI\\\"], \\\"5e\\\"], [\\\"142268e51\\\", \\\"POP\\\", [\\\"R12\\\"], \\\"415c\\\"], [\\\"142268e53\\\", \\\"POP\\\", [\\\"R13\\\"], \\\"415d\\\"], [\\\"142268e55\\\", \\\"POP\\\", [\\\"R14\\\"], \\\"415e\\\"], [\\\"142268e57\\\", \\\"POP\\\", [\\\"R15\\\"], \\\"415f\\\"], [\\\"142268e59\\\", \\\"RET\\\", [], \\\"c3\\\"], [\\\"142268e5a\\\", \\\"MOV\\\", [\\\"qword ptr [RAX]\\\", \\\"R8\\\"], \\\"4c8900\\\"], [\\\"142268e5d\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [RCX]\\\"], \\\"4c8b01\\\"], [\\\"142268e60\\\", \\\"MOV\\\", [\\\"R10\\\", \\\"qword ptr [RCX + 0x8]\\\"], \\\"4c8b5108\\\"], [\\\"142268e64\\\", \\\"MOV\\\", [\\\"R14D\\\", \\\"dword ptr [RCX + 0x14]\\\"], \\\"448b7114\\\"], [\\\"142268e68\\\", \\\"MOV\\\", [\\\"R12\\\", \\\"qword ptr [R8 + 0xf8]\\\"], \\\"4d8ba0f8000000\\\"], [\\\"142268e6f\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [R8 + 0x100]\\\"], \\\"498b8000010000\\\"]]}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":139}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "get-function-count",
+        "title": "Get Function Count",
+        "description": "Get the total count of functions in the program (use this before calling get-functions to plan pagination)",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "type": "string",
+              "description": "Path in the Ghidra Project to the program to get functions from"
+            },
+            "filterDefaultNames": {
+              "default": true,
+              "type": "boolean",
+              "description": "Whether to filter out default Ghidra generated names like FUN_, DAT_, etc."
+            }
+          },
+          "required": [
+            "programPath"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "set-function-prototype",
+        "title": "Set Function Prototype",
+        "description": "Set or update a function prototype using C-style function signatures. Can create new functions or update existing ones.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "type": "string",
+              "description": "Path in the Ghidra Project to the program"
+            },
+            "signature": {
+              "type": "string",
+              "description": "C-style function signature (e.g., 'int main(int argc, char** argv)')"
+            },
+            "location": {
+              "type": "string",
+              "description": "Address or symbol name where the function is located"
+            },
+            "createIfNotExists": {
+              "default": true,
+              "type": "boolean",
+              "description": "Create function if it doesn't exist at the location"
+            }
+          },
+          "required": [
+            "programPath",
+            "location",
+            "signature"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get-decompilation",
+        "title": "Get Function Decompilation",
+        "description": "Get decompiled code for a function with line range support. Defaults to 50 lines to conserve context - start with small chunks (10-20 lines) then expand as needed using offset/limit. Updating variable data types and names can significantly improve decompilation quality. Use includeCallers/includeCallees to get caller/callee lists in one call (avoids separate tool invocations).",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "functionNameOrAddress": {
+              "type": "string",
+              "description": "Function name, address, or symbol to decompile (e.g. 'main', '0x00401000', or 'start'). For addresses pointing inside a function, the containing function will be decompiled."
+            },
+            "includeCallers": {
+              "default": false,
+              "type": "boolean",
+              "description": "Include list of functions that call this one (name, address, signature). Use for understanding function usage without bulk decompilation."
+            },
+            "programPath": {
+              "type": "string",
+              "description": "Path in the Ghidra Project to the program containing the function"
+            },
+            "offset": {
+              "default": 1,
+              "type": "integer",
+              "description": "Line number to start reading from (1-based). Defaults to 1."
+            },
+            "includeDisassembly": {
+              "default": false,
+              "type": "boolean",
+              "description": "Whether to include assembly listing alongside decompilation for sync"
+            },
+            "includeIncomingReferences": {
+              "default": false,
+              "type": "boolean",
+              "description": "Whether to include incoming cross references to this function on the function declaration line"
+            },
+            "limit": {
+              "default": 50,
+              "type": "integer",
+              "description": "Number of lines to return. Defaults to 50 lines to conserve context. Use smaller chunks (10-20 lines) for initial exploration, then expand as needed."
+            },
+            "includeReferenceContext": {
+              "default": false,
+              "type": "boolean",
+              "description": "Whether to include code context snippets from calling functions (requires includeIncomingReferences)"
+            },
+            "includeComments": {
+              "default": false,
+              "type": "boolean",
+              "description": "Whether to include comments in the decompilation output"
+            },
+            "includeCallees": {
+              "default": false,
+              "type": "boolean",
+              "description": "Include list of functions this one calls (name, address, signature). Use for understanding function dependencies without bulk decompilation."
+            },
+            "signatureOnly": {
+              "default": false,
+              "type": "boolean",
+              "description": "Return only signature/metadata without decompiled code. Saves output tokens."
+            }
+          },
+          "required": [
+            "programPath",
+            "functionNameOrAddress"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find-cross-references",
+        "title": "Find Cross References",
+        "description": "Find all references to or from a memory location, symbol, or function. Returns incoming and/or outgoing references with optional decompilation context.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "includeContext": {
+              "default": false,
+              "type": "boolean",
+              "description": "Include decompilation context snippets for code references"
+            },
+            "contextLines": {
+              "default": 2,
+              "type": "integer",
+              "description": "Number of lines before and after to include in context snippets"
+            },
+            "programPath": {
+              "type": "string",
+              "description": "Path in the Ghidra Project to the program to get references from"
+            },
+            "offset": {
+              "default": 0,
+              "type": "integer",
+              "description": "Starting offset for pagination (0-based)"
+            },
+            "includeFlow": {
+              "default": true,
+              "type": "boolean",
+              "description": "Include flow references (calls, jumps, branches)"
+            },
+            "limit": {
+              "default": 100,
+              "type": "integer",
+              "description": "Maximum number of references to return per direction"
+            },
+            "location": {
+              "type": "string",
+              "description": "Address or symbol name to get references for (e.g., '0x00400123', 'main', 'FUN_00401000')"
+            },
+            "includeData": {
+              "default": true,
+              "type": "boolean",
+              "description": "Include data references (reads, writes)"
+            },
+            "direction": {
+              "type": "string",
+              "default": "both",
+              "description": "Direction of references to retrieve: 'to' (incoming), 'from' (outgoing), or 'both' (default)",
+              "enum": [
+                "to",
+                "from",
+                "both"
+              ]
+            }
+          },
+          "required": [
+            "programPath",
+            "location"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get-data-type-by-string",
+        "title": "Get Data Type by String",
+        "description": "Get a data type by its string representation",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "type": "string",
+              "description": "Path in the Ghidra Project to the program"
+            },
+            "dataTypeString": {
+              "type": "string",
+              "description": "String representation of the data type (e.g., 'char**', 'int[10]')"
+            },
+            "archiveName": {
+              "default": "",
+              "type": "string",
+              "description": "Optional name of the data type archive to search in. If not provided, all archives will be searched."
+            }
+          },
+          "required": [
+            "programPath",
+            "dataTypeString"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "run-script",
+        "title": "Run Python Script",
+        "description": "Execute a Python script in the Ghidra PyGhidra runtime against a specific program. Requires Ghidra to be launched via PyGhidra (mcp-reva or pyghidra-gui). Returns captured stdout/stderr, duration, and timeout flag. Script failures appear in stderr with success=false; tool failures (bad args, PyGhidra unavailable) are MCP errors. Cancellation is cooperative: long-running scripts should periodically check monitor.isCancelled() so the timeout can fire on tight loops.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "type": "string",
+              "description": "Absolute path to an existing .py script to run."
+            },
+            "programPath": {
+              "type": "string",
+              "description": "Path to the program in the Ghidra Project"
+            },
+            "code": {
+              "type": "string",
+              "description": "Inline Python source. The script runs as a Ghidra script with currentProgram, FlatProgramAPI helpers, and monitor available. Wrap state changes in currentProgram.startTransaction(...) / endTransaction(...) yourself \u2014 the tool does not open a transaction. Provide exactly one of: code, scriptPath, scriptName."
+            },
+            "scriptName": {
+              "type": "string",
+              "description": "Name of a script (e.g., 'MyAnalysis.py') resolved across registered Ghidra script directories."
+            },
+            "timeoutSeconds": {
+              "default": 60,
+              "type": "integer",
+              "description": "Per-call timeout override in seconds. Defaults to the configured script timeout."
+            }
+          },
+          "required": [
+            "programPath"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list-scripts",
+        "title": "List Scripts",
+        "description": "List Python scripts visible to Ghidra across all registered script directories (user dir + system dirs + bundle dirs). Filterable by path or name; supports pagination.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "pathFilter": {
+              "default": "",
+              "type": "string",
+              "description": "Optional substring filter on script absolute path"
+            },
+            "startIndex": {
+              "default": 0,
+              "type": "integer",
+              "description": "Pagination start (0-indexed)"
+            },
+            "nameFilter": {
+              "default": "",
+              "type": "string",
+              "description": "Optional substring filter on script file name"
+            },
+            "maxCount": {
+              "default": 100,
+              "type": "integer",
+              "description": "Maximum entries to return"
+            }
+          },
+          "required": []
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read-script",
+        "title": "Read Script",
+        "description": "Read a script's source, returned with cat -n style line numbers so you can reference exact lines in edit-script. Supports chunked reads via offset/limit. Sets truncated=true if more lines remain.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "type": "string",
+              "description": "Absolute path to the script. Provide either scriptPath or scriptName."
+            },
+            "offset": {
+              "default": 1,
+              "type": "integer",
+              "description": "1-indexed starting line"
+            },
+            "limit": {
+              "default": 2000,
+              "type": "integer",
+              "description": "Maximum lines to return"
+            },
+            "scriptName": {
+              "type": "string",
+              "description": "Script file name resolved across registered script directories."
+            }
+          },
+          "required": []
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "write-script",
+        "title": "Write Script",
+        "description": "Create a new script or fully replace an existing one in a writeable script directory. System directories are read-only. Use edit-script for targeted changes instead of full rewrites.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "type": "string",
+              "description": "Absolute path; must resolve under a writeable script directory."
+            },
+            "code": {
+              "type": "string",
+              "description": "Script source to write."
+            },
+            "scriptName": {
+              "type": "string",
+              "description": "File name (e.g., 'MyAnalysis.py') \u2014 written to the default writeable scripts directory."
+            },
+            "overwrite": {
+              "default": false,
+              "type": "boolean",
+              "description": "Overwrite existing file. Default false: errors if file exists."
+            }
+          },
+          "required": [
+            "code"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "edit-script",
+        "title": "Edit Script",
+        "description": "Replace exact old_string with new_string in a script. Errors if old_string isn't found, or if it matches multiple locations and replace_all is false. Use this instead of write-script when iterating on an existing script.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "type": "string",
+              "description": "Absolute path to the script to edit (must be writeable)."
+            },
+            "old_string": {
+              "type": "string",
+              "description": "Exact text to find. Must occur exactly once unless replace_all is true; surround with enough context to make it unique."
+            },
+            "scriptName": {
+              "type": "string",
+              "description": "Script file name resolved under the default writeable scripts directory."
+            },
+            "replace_all": {
+              "default": false,
+              "type": "boolean",
+              "description": "Replace every occurrence. Default false: errors if old_string matches more than one location."
+            },
+            "new_string": {
+              "type": "string",
+              "description": "Replacement text. Must differ from old_string."
+            }
+          },
+          "required": [
+            "old_string",
+            "new_string"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

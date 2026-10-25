@@ -1,0 +1,494 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void __cdecl
+system_wall_constructor::segmentation::calculate_wall_path_segmentation::process_segment(void)
+
+{
+  undefined8 *puVar1;
+  uint *puVar2;
+  ulonglong uVar3;
+  longlong *plVar4;
+  float fVar5;
+  uint uVar6;
+  uint uVar7;
+  bool bVar8;
+  bool bVar9;
+  longlong lVar10;
+  undefined1 auVar11 [16];
+  undefined8 **ppuVar12;
+  undefined ***pppuVar13;
+  int iVar14;
+  uint extraout_EAX;
+  undefined ***extraout_RAX;
+  longlong extraout_RAX_00;
+  undefined **extraout_RAX_01;
+  undefined ***extraout_RAX_02;
+  uint *extraout_RAX_03;
+  uint *puVar15;
+  undefined ***extraout_RAX_04;
+  undefined ***extraout_RAX_05;
+  longlong lVar16;
+  undefined **ppuVar17;
+  longlong extraout_RAX_06;
+  undefined ***extraout_RAX_07;
+  longlong *in_RCX;
+  undefined **ppuVar18;
+  undefined ***pppuVar19;
+  longlong *in_RDX;
+  undefined8 **ppuVar20;
+  undefined ***pppuVar21;
+  undefined ***in_R8;
+  undefined8 *puVar22;
+  undefined ***in_R9;
+  bool bVar23;
+  float fVar24;
+  float fVar25;
+  undefined4 extraout_XMM0_Da;
+  float fVar27;
+  undefined1 extraout_XMM0 [16];
+  undefined1 auVar26 [16];
+  float fVar28;
+  longlong lVar29;
+  undefined8 local_200 [2];
+  longlong local_1f0;
+  undefined8 **local_1e8;
+  undefined ***local_1e0;
+  longlong *local_1d8;
+  longlong *local_1d0;
+  undefined **local_1c8;
+  undefined **ppuStack_1c0;
+  undefined **local_1b8;
+  undefined **ppuStack_1b0;
+  undefined8 *local_1a8;
+  undefined ***local_1a0;
+  undefined ***local_198;
+  undefined ***local_190;
+  undefined ***local_188;
+  code *pcStack_180;
+  undefined ****local_178;
+  undefined8 uStack_170;
+  undefined ***local_168;
+  undefined8 local_160;
+  longlong local_158;
+  undefined ****local_150;
+  undefined4 local_148;
+  undefined **local_128;
+  longlong local_120;
+  undefined8 *local_118;
+  undefined **local_110;
+  undefined ***local_108;
+  undefined ***local_100;
+  longlong lStack_f8;
+  undefined ***local_f0;
+  undefined ***local_e8;
+  undefined **ppuStack_e0;
+  undefined ****local_d8;
+  undefined **ppuStack_d0;
+  undefined8 local_c8;
+  float local_b4;
+  undefined ***local_b0;
+  uint *local_a8;
+  undefined8 local_a0;
+  
+  local_a0 = 0xfffffffffffffffe;
+  local_1e0 = in_R9;
+  local_b0 = in_R8;
+  ::utils::loop_range::LoopRange::len();
+  if ((longlong)extraout_RAX < 0) {
+LAB_140751019:
+                    /* WARNING: Subroutine does not return */
+    alloc::raw_vec::handle_error();
+  }
+  if (extraout_RAX == (undefined ***)0x0) {
+    lStack_f8 = 1;
+  }
+  else {
+    std::alloc::__default_lib_allocator::__rust_alloc_zeroed();
+    lStack_f8 = extraout_RAX_00;
+    if (extraout_RAX_00 == 0) goto LAB_140751019;
+  }
+  local_100 = extraout_RAX;
+  local_f0 = extraout_RAX;
+  ::utils::loop_range::LoopRange::len();
+  local_128 = (undefined **)0x0;
+  if (extraout_RAX_01 == (undefined **)0x1) {
+                    /* WARNING: Subroutine does not return */
+    core::option::unwrap_failed();
+  }
+  if (extraout_RAX_01 == (undefined **)0x0) {
+    local_e8 = &local_128;
+    ppuStack_e0 = (undefined **)core::fmt::num::imp::impl$9::fmt;
+    ppuStack_d0 = (undefined **)core::fmt::num::imp::impl$9::fmt;
+    local_188 = (undefined ***)&anon_8226dd3aab0d3f13e2fa6def72838753_72_llvm_2319672265491296867;
+    pcStack_180 = (code *)0x2;
+    local_168 = (undefined ***)0x0;
+    local_178 = &local_e8;
+    uStack_170 = (code *)0x2;
+    local_d8 = (undefined ****)&local_1c8;
+                    /* WARNING: Subroutine does not return */
+    core::panicking::panic_fmt();
+  }
+  local_1c8 = extraout_RAX_01;
+  ::utils::loop_range::LoopRange::len();
+  uVar3 = (longlong)extraout_RAX_02 * 8;
+  if (((ulonglong)extraout_RAX_02 >> 0x3d != 0) || (0x7ffffffffffffffc < uVar3)) {
+LAB_14075102b:
+                    /* WARNING: Subroutine does not return */
+    alloc::raw_vec::handle_error();
+  }
+  local_198 = extraout_RAX_02;
+  if (uVar3 == 0) {
+    puVar15 = (uint *)&DAT_00000004;
+    local_190 = (undefined ***)0x0;
+  }
+  else {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (extraout_RAX_03 == (uint *)0x0) goto LAB_14075102b;
+    local_190 = local_198;
+    puVar15 = extraout_RAX_03;
+  }
+  local_1d8 = in_RCX;
+  local_1d0 = in_RDX;
+  local_a8 = puVar15;
+  if (local_198 < (undefined ***)0x2) {
+    if (local_198 != (undefined ***)0x0) goto LAB_1407505c8;
+  }
+  else {
+    memset(puVar15,0,uVar3 - 8);
+    puVar15 = puVar15 + (longlong)extraout_RAX_02 * 2 + -2;
+LAB_1407505c8:
+    puVar15[0] = 0;
+    puVar15[1] = 0;
+  }
+  ::utils::loop_range::LoopRange::len();
+  local_108 = extraout_RAX_04;
+  ::utils::loop_range::LoopRange::len();
+  fVar28 = __real_3a83126f;
+  fVar5 = __real_3f800000;
+  fVar25 = __real_3f000000;
+  local_e8 = extraout_RAX_05;
+  if (extraout_RAX_05 != local_108) {
+    local_188 = (undefined ***)0x0;
+                    /* WARNING: Subroutine does not return */
+    core::panicking::assert_failed<usize,usize>();
+  }
+  if (local_108 < (undefined ***)0x2) {
+                    /* WARNING: Subroutine does not return */
+    core::panicking::panic();
+  }
+  local_1e8 = (undefined8 **)((longlong)local_108 + -1);
+  puVar1 = (undefined8 *)((longlong)local_108 - 2);
+  local_188 = (undefined ***)0x0;
+  pcStack_180 = (code *)0x1;
+  local_178 = (undefined ****)CONCAT71(local_178._1_7_,2);
+  uStack_170 = (code *)local_1e8;
+  local_168 = (undefined ***)puVar1;
+  local_160 = (code *)CONCAT71(local_160._1_7_,4);
+  lVar16 = 0;
+  do {
+    pppuVar13 = local_198;
+    local_158 = lVar16 + 1;
+    local_e8 = (undefined ***)*local_b0;
+    ppuStack_e0 = local_b0[1];
+    local_d8 = (undefined ****)local_b0[2];
+    ppuStack_d0 = local_b0[3];
+    if ((uint)ppuStack_d0 == 0) {
+                    /* WARNING: Subroutine does not return */
+      core::panicking::panic_const::panic_const_rem_by_zero();
+    }
+    iVar14 = (int)(&pcStack_180)[lVar16 * 3] + (int)local_d8;
+    local_1f0 = local_158;
+    if (iVar14 == -0x80000000 && (uint)ppuStack_d0 == 0xffffffff) {
+                    /* WARNING: Subroutine does not return */
+      core::panicking::panic_const::panic_const_rem_overflow();
+    }
+    iVar14 = iVar14 % (int)(uint)ppuStack_d0;
+    uVar6 = -(uint)ppuStack_d0;
+    if ((int)-(uint)ppuStack_d0 < 0) {
+      uVar6 = (uint)ppuStack_d0;
+    }
+    ppuVar18 = (undefined **)(longlong)(int)((iVar14 >> 0x1f & uVar6) + iVar14);
+    if (ppuStack_e0 <= ppuVar18) {
+                    /* WARNING: Subroutine does not return */
+      core::panicking::panic_bounds_check();
+    }
+    iVar14 = (int)(&local_188)[lVar16 * 3];
+    if ((int)local_d8 + iVar14 == -0x80000000 && (uint)ppuStack_d0 == 0xffffffff) {
+                    /* WARNING: Subroutine does not return */
+      core::panicking::panic_const::panic_const_rem_overflow();
+    }
+    iVar14 = ((int)local_d8 + iVar14) % (int)(uint)ppuStack_d0;
+    ppuVar17 = (undefined **)(longlong)(int)((iVar14 >> 0x1f & uVar6) + iVar14);
+    if (ppuStack_e0 <= ppuVar17) {
+                    /* WARNING: Subroutine does not return */
+      core::panicking::panic_bounds_check();
+    }
+    fVar24 = *(float *)((longlong)local_e8 + (longlong)ppuVar18 * 0xc) -
+             *(float *)((longlong)local_e8 + (longlong)ppuVar17 * 0xc);
+    fVar27 = *(float *)((longlong)local_e8 + (longlong)ppuVar18 * 0xc + 8) -
+             *(float *)((longlong)local_e8 + (longlong)ppuVar17 * 0xc + 8);
+    fVar24 = SQRT(fVar27 * fVar27 + fVar24 * fVar24);
+    if (fVar24 <= fVar28) {
+      fVar24 = fVar28;
+    }
+    fVar27 = 0.0 / fVar24;
+    if (fVar5 <= 0.0 / fVar24) {
+      fVar27 = fVar5;
+    }
+    pppuVar21 = (undefined ***)(&pcStack_180)[lVar16 * 3];
+    if (fVar27 < fVar25) {
+      pppuVar21 = (&local_188)[lVar16 * 3];
+    }
+    if (local_f0 <= pppuVar21) {
+                    /* WARNING: Subroutine does not return */
+      core::panicking::panic_bounds_check();
+    }
+    *(byte *)(lStack_f8 + (longlong)pppuVar21) =
+         *(byte *)(lStack_f8 + (longlong)pppuVar21) | *(byte *)(&local_178 + lVar16 * 3);
+    ::utils::loop_range::LoopRange::len();
+    ::utils::curve::CurveInternalCoord::
+    new_for_point_count<utils::curve::CurveCoordSemanticThresholded3D>();
+    puVar15 = local_a8;
+    ppuVar12 = local_1e8;
+    if (pppuVar13 <= pppuVar21) {
+                    /* WARNING: Subroutine does not return */
+      core::panicking::panic_bounds_check();
+    }
+    local_a8[(longlong)pppuVar21 * 2] = extraout_EAX;
+    local_a8[(longlong)pppuVar21 * 2 + 1] = extraout_XMM0._0_4_;
+    lVar16 = local_1f0;
+  } while (local_1f0 != 2);
+  ppuVar18 = (undefined **)((longlong)local_1e8 - 1);
+  if (local_1e8 == (undefined8 **)0x0) {
+    ppuVar18 = (undefined **)0x0;
+  }
+  if (((ulonglong)ppuVar18 >> 0x3d != 0) ||
+     (0x7ffffffffffffff8 < (ulonglong)((longlong)ppuVar18 * 8))) {
+LAB_14075103f:
+                    /* WARNING: Subroutine does not return */
+    alloc::raw_vec::handle_error();
+  }
+  if ((longlong)ppuVar18 * 8 == 0) {
+    local_120 = 8;
+    ppuVar18 = (undefined **)0x0;
+    lVar16 = ___xmm_00000000000000020000000000000002;
+    lVar10 = _UNK_1429ae318;
+    auVar11 = ___xmm_00000000000000040000000000000004;
+    auVar26 = ___xmm_00000000000000020000000000000001;
+  }
+  else {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    local_120 = extraout_RAX_06;
+    lVar16 = ___xmm_00000000000000020000000000000002;
+    lVar10 = _UNK_1429ae318;
+    auVar11 = ___xmm_00000000000000040000000000000004;
+    auVar26 = ___xmm_00000000000000020000000000000001;
+    if (extraout_RAX_06 == 0) goto LAB_14075103f;
+  }
+  ___xmm_00000000000000020000000000000002 = lVar16;
+  _UNK_1429ae318 = lVar10;
+  ___xmm_00000000000000040000000000000004 = auVar11;
+  ___xmm_00000000000000020000000000000001 = auVar26;
+  if (ppuVar12 < (undefined8 **)0x2) {
+    local_118 = (undefined8 *)0x0;
+  }
+  else {
+    if (puVar1 < (undefined8 *)0x4) {
+      ppuVar20 = (undefined8 **)0x1;
+      local_118 = (undefined8 *)0x0;
+    }
+    else {
+      local_118 = (undefined8 *)((ulonglong)puVar1 & 0xfffffffffffffffc);
+      ppuVar20 = (undefined8 **)((longlong)local_118 + 1);
+      puVar22 = (undefined8 *)0x0;
+      do {
+        lVar29 = auVar26._8_8_;
+        *(undefined1 (*) [16])(local_120 + (longlong)puVar22 * 8) = auVar26;
+        plVar4 = (longlong *)(local_120 + 0x10 + (longlong)puVar22 * 8);
+        *plVar4 = auVar26._0_8_ + lVar16;
+        plVar4[1] = lVar29 + lVar10;
+        puVar22 = (undefined8 *)((longlong)puVar22 + 4);
+        auVar26._0_8_ = auVar26._0_8_ + auVar11._0_8_;
+        auVar26._8_8_ = lVar29 + auVar11._8_8_;
+      } while (local_118 != puVar22);
+      if (puVar1 == local_118) goto LAB_14075090f;
+    }
+    do {
+      *(undefined8 ***)(local_120 + (longlong)local_118 * 8) = ppuVar20;
+      ppuVar20 = (undefined8 **)((longlong)ppuVar20 + 1);
+      local_118 = (undefined8 *)((longlong)local_118 + 1);
+    } while (ppuVar12 != ppuVar20);
+  }
+LAB_14075090f:
+  local_128 = ppuVar18;
+  while (local_118 != (undefined8 *)0x0) {
+    local_1a8 = (undefined8 *)0x0;
+    local_b4 = 0.0;
+    local_200[0] = 0;
+    pcStack_180 = (code *)&local_100;
+    local_178 = (undefined ****)&local_b4;
+    local_188 = local_1e0;
+    uStack_170 = (code *)&local_1a8;
+    local_168 = (undefined ***)local_200;
+    alloc::vec::Vec::
+    retain<usize,alloc::alloc::Global,system_wall_constructor::segmentation::calculate_wall_path_segmentation::process_segment::closure_env_0>
+              ();
+    puVar15 = local_a8;
+    if (local_b4 <= 0.0) break;
+    if (local_118 <= local_1a8) {
+                    /* WARNING: Subroutine does not return */
+      alloc::vec::impl$1::swap_remove::assert_failed();
+    }
+    pppuVar21 = *(undefined ****)(local_120 + (longlong)local_1a8 * 8);
+    lVar16 = (longlong)local_118 * 8;
+    local_118 = (undefined8 *)((longlong)local_118 - 1);
+    *(undefined8 *)(local_120 + (longlong)local_1a8 * 8) = *(undefined8 *)(local_120 + -8 + lVar16);
+    local_1c8 = *local_b0;
+    ppuStack_1c0 = local_b0[1];
+    local_1b8 = local_b0[2];
+    ppuStack_1b0 = local_b0[3];
+    if (local_f0 <= pppuVar21) {
+                    /* WARNING: Subroutine does not return */
+      core::panicking::panic_bounds_check();
+    }
+    *(byte *)(lStack_f8 + (longlong)pppuVar21) = *(byte *)(lStack_f8 + (longlong)pppuVar21) | 1;
+    ::utils::loop_range::LoopRange::len();
+    local_1a0 = pppuVar21;
+    if (extraout_RAX_07 <= pppuVar21) {
+      local_e8 = (undefined ***)&local_1a0;
+      ppuStack_e0 = (undefined **)core::fmt::num::imp::impl$9::fmt;
+      local_d8 = (undefined ****)&local_110;
+      ppuStack_d0 = (undefined **)core::fmt::num::imp::impl$9::fmt;
+      local_188 = (undefined ***)&anon_8226dd3aab0d3f13e2fa6def72838753_72_llvm_2319672265491296867;
+      pcStack_180 = (code *)0x2;
+      local_168 = (undefined ***)0x0;
+      local_178 = &local_e8;
+      uStack_170 = (code *)0x2;
+                    /* WARNING: Subroutine does not return */
+      core::panicking::panic_fmt();
+    }
+    pppuVar19 = pppuVar21;
+    fVar25 = 0.0;
+    if ((extraout_RAX_07 <= (undefined ***)((longlong)pppuVar21 + 1U)) &&
+       (pppuVar19 = (undefined ***)((longlong)pppuVar21 - 1), fVar25 = fVar5,
+       pppuVar21 == (undefined ***)0x0)) {
+                    /* WARNING: Subroutine does not return */
+      core::option::unwrap_failed();
+    }
+    if (pppuVar13 <= pppuVar21) {
+                    /* WARNING: Subroutine does not return */
+      core::panicking::panic_bounds_check();
+    }
+    local_a8[(longlong)pppuVar21 * 2] = (uint)pppuVar19;
+    local_a8[(longlong)pppuVar21 * 2 + 1] = (uint)fVar25;
+    puVar15 = local_a8;
+  }
+  pppuVar21 = (undefined ***)0x0;
+  bVar8 = true;
+  while (pppuVar21 < local_108) {
+    if (local_f0 <= pppuVar21) {
+                    /* WARNING: Subroutine does not return */
+      core::panicking::panic_bounds_check();
+    }
+    pppuVar19 = (undefined ***)((longlong)pppuVar21 + 1);
+    bVar23 = (*(byte *)(lStack_f8 + (longlong)pppuVar21) & 0xf) != 0;
+    bVar9 = !bVar8;
+    pppuVar21 = pppuVar19;
+    bVar8 = bVar23;
+    if (bVar9 && bVar23) {
+      local_188 = (undefined ***)*local_b0;
+      pcStack_180 = (code *)local_b0[1];
+      local_178 = (undefined ****)local_b0[2];
+      uStack_170 = (code *)local_b0[3];
+      add_splits_in_empty_range();
+      puVar15 = local_a8;
+    }
+  }
+  if (!bVar8) {
+    local_188 = (undefined ***)*local_b0;
+    pcStack_180 = (code *)local_b0[1];
+    local_178 = (undefined ****)local_b0[2];
+    uStack_170 = (code *)local_b0[3];
+    add_splits_in_empty_range();
+    puVar15 = local_a8;
+  }
+  if (pppuVar13 == (undefined ***)0x0) {
+                    /* WARNING: Subroutine does not return */
+    core::panicking::panic_bounds_check();
+  }
+  puVar2 = puVar15 + (longlong)pppuVar13 * 2;
+  if (puVar2 == (uint *)&DAT_00000008) {
+                    /* WARNING: Subroutine does not return */
+    core::option::unwrap_failed();
+  }
+  fVar25 = (float)puVar15[1];
+  uVar6 = *puVar15;
+  local_d8 = *(undefined *****)puVar15;
+  local_110 = *(undefined ***)puVar15;
+  puVar15 = puVar2 + -2;
+  uVar7 = *puVar15;
+  fVar5 = (float)puVar2[-1];
+  ppuStack_d0 = *(undefined ***)puVar15;
+  local_1c8 = *(undefined ***)puVar15;
+  fVar28 = (fVar5 - fVar25) + (float)(longlong)((ulonglong)uVar7 - (ulonglong)uVar6);
+  if (0.0 <= fVar28) {
+    local_e8 = local_b0;
+    ppuStack_e0 = (undefined **)
+                  core::ops::function::FnOnce::
+                  call_once<utils::curve::curve_slice::impl_3::from_coord::closure_env_0<glam::f32::vec3::Vec3,slice2_<glam::f32::vec3::Vec3>,utils::curve::CurveCoordSemanticThresholded3D>,tuple_<usize,ref_<glam::f32::vec3::Vec3>_>_>
+    ;
+    pcStack_180 = (code *)((ulonglong)(-(uint)(__real_3f800000 == fVar25) & 1) + (ulonglong)uVar6 +
+                          1);
+    local_178 = (undefined ****)(((ulonglong)uVar7 - (ulonglong)(-(uint)(fVar5 == 0.0) & 1)) + 1);
+    if (local_178 < pcStack_180) {
+      local_178 = (undefined ****)pcStack_180;
+    }
+    local_188 = (undefined ***)0x1;
+    uStack_170 = (code *)CONCAT44(uVar6,1);
+    local_168 = (undefined ***)CONCAT44(local_168._4_4_,fVar25);
+    local_160 = (code *)CONCAT44(uVar7,1);
+    local_158 = CONCAT44(local_158._4_4_,fVar5);
+    local_150 = &local_e8;
+    local_148 = 0;
+    _ZN102__LT_core__iter__adapters__map__Map_LT_I_C_F_GT__u20_as_u20_core__iter__traits__iterator__Iterator_GT_4fold17h50ac60d5af60c513E
+              ();
+    local_1d8[2] = (longlong)local_f0;
+    *local_1d8 = (longlong)local_100;
+    local_1d8[1] = lStack_f8;
+    local_1d8[8] = 0;
+    local_1d8[9] = 0;
+    local_1d8[0xb] = 0;
+    local_1d8[0xc] = 0;
+    local_1d8[0xf] = *local_1d0;
+    *(int *)(local_1d8 + 0x10) = (int)local_1d0[1];
+    local_1d8[3] = (longlong)local_190;
+    local_1d8[4] = (longlong)local_a8;
+    local_1d8[5] = (longlong)pppuVar13;
+    local_1d8[6] = 0;
+    local_1d8[7] = 4;
+    local_1d8[10] = 4;
+    local_1d8[0xd] = 8;
+    local_1d8[0xe] = 0;
+    *(undefined4 *)((longlong)local_1d8 + 0x84) = extraout_XMM0_Da;
+    if (local_128 != (undefined **)0x0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    return;
+  }
+  local_1a0 = (undefined ***)CONCAT44(local_1a0._4_4_,fVar28);
+  local_188 = &local_110;
+  pcStack_180 = ::utils::curve::impl$78::fmt<utils::curve::CurveCoordSemanticThresholded3D>;
+  uStack_170 = ::utils::curve::impl$78::fmt<utils::curve::CurveCoordSemanticThresholded3D>;
+  local_168 = (undefined ***)&local_1a0;
+  local_160 = core::fmt::float::impl$5::fmt;
+  local_e8 = (undefined ***)&anon_b39537831f1a59b9674a4ac6ff90c671_10_llvm_11859952856572111394;
+  ppuStack_e0 = (undefined **)0x3;
+  local_c8 = 0;
+  ppuStack_d0 = (undefined **)0x3;
+  local_178 = (undefined ****)&local_1c8;
+  local_d8 = &local_188;
+                    /* WARNING: Subroutine does not return */
+  core::panicking::panic_fmt();
+}
+

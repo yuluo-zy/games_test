@@ -1,0 +1,113 @@
+// PATCHED: modules lsl_f0adff76827e73ff.bin:ps_main are lifted from the oracle bins by tools/render-passes/batch_lift.py;
+// the hand-written code below is excluded for exactly those (variant, stage) pairs.
+// === 中文说明 ===
+// egui(即时模式 UI)纹理四边形:打包顶点缓冲(20 字节步长: xy=像素位置, zw=uv,
+//   第 16 字节起 RGBA8 颜色)在 VS 解码;PS 用顶点颜色乘采样字体/纹理。
+// 入口: vs_main / ps_main。变体: b903e43ffb3da915 与 f0adff76827e73ff;
+//   f0ad 变体的 ps 被 lifted(空函数,深度只写)。
+// 绑定: vertices t13 (ByteAddressBuffer), color_tex t14, push_constants (screen_size),
+//   sampler_llc s3。
+#if !((defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)))
+// ==RECONSTRUCTED== shaders/egui.raster.hlsl | F-E | bins: _egui.raster.hlsl_{b903e43ffb3da915,f0adff76827e73ff}.bin | entries vs:vs_main ps:ps_main
+// egui (immediate-mode UI) textured quad: a packed vertex buffer (20-byte stride:
+// xy = pixel position, zw = uv, byte16 = RGBA8 color) is decoded in the VS; ps
+// multiplies the vertex color by the sampled font/texture.
+
+#include "inc/common.hlsl"            // samplers (sampler_llc s3)
+#include "inc/uv.hlsl"
+#include "inc/pack_unpack.hlsl"
+#include "inc/color/srgb.hlsl"
+
+struct PushConstants
+{
+    float2 screen_size;
+};
+
+[[vk::push_constant]]
+PushConstants push_constants;
+
+ByteAddressBuffer vertices : register(t13, space0);
+Texture2D<float4> color_tex : register(t14, space0);
+
+struct VsOut
+{
+    float4 color : TEXCOORD0;
+    float2 uv : TEXCOORD1;
+    float4 position : SV_Position;
+};
+
+VsOut vs_main(uint vertex_id : SV_VertexID)
+{
+    VsOut o;
+
+    // 顶点缓冲步长 20 字节:先读 xy/zw 像素坐标与 UV。
+    uint byte_base = 20u * vertex_id;
+    uint pos_word = byte_base >> 2u;
+    float4 pos = asfloat(uint4(
+        vertices.Load<uint>(pos_word * 4u + 0u),
+        vertices.Load<uint>((pos_word + 1u) * 4u + 0u),
+        vertices.Load<uint>((pos_word + 2u) * 4u + 0u),
+        vertices.Load<uint>((pos_word + 3u) * 4u + 0u)));
+
+    // 第 16 字节起读打包的 RGBA8 颜色。
+    uint col_word = (byte_base + 16u) >> 2u;
+    uint packed = vertices.Load<uint>(col_word * 4u + 0u);
+    float r_raw = float(packed & 255u);
+    float g_raw = float((packed >> 8u) & 255u);
+    float b_raw = float((packed >> 16u) & 255u);
+    float a = float((packed >> 24u) & 255u) * (1.0f / 255.0f);
+
+    // sRGB -> linear 逐通道转换(原始字节算术与发布代码生成一致)。
+    float r = r_raw * 0.003921568859f;
+    float g = g_raw * 0.003921568859f;
+    float b = b_raw * 0.003921568859f;
+    float rl;
+    float gl;
+    float bl;
+    if (0.04045f < r) rl = pow((r + 0.055f) * 0.947867333f, 2.4f);
+    else rl = r_raw * 0.000303526991f;
+    if (0.04045f < g) gl = pow((g + 0.055f) * 0.947867333f, 2.4f);
+    else gl = g_raw * 0.000303526991f;
+    if (0.04045f < b) bl = pow((b + 0.055f) * 0.947867333f, 2.4f);
+    else bl = b_raw * 0.000303526991f;
+
+    // 像素位置 -> 裁剪空间。
+    o.position = float4((pos.xy / push_constants.screen_size - 0.5f) * float2(2.0f, -2.0f), 0.0f, 1.0f);
+    o.color = float4(rl, gl, bl, a);
+    o.uv = pos.zw;
+    return o;
+}
+
+// 原 SHADER_VARIANT_DEPTH_ONLY=1 的片元入口无资源、输入、输出或 discard。
+#if SHADER_VARIANT_DEPTH_ONLY
+void ps_main()
+{
+}
+#else
+float4 ps_main(VsOut vin) : SV_Target0
+{
+    // 顶点颜色乘采样纹理。
+    return vin.color * color_tex.Sample(sampler_llc, vin.uv);
+}
+#endif // SHADER_VARIANT_DEPTH_ONLY fallback
+
+#endif
+
+#if defined(TGV_f0adff76827e73ff) && (__SHADER_TARGET_STAGE == __SHADER_STAGE_PIXEL)
+// lifted from _egui.raster.hlsl_f0adff76827e73ff.bin (spirv-cross; behaviour-exact, names are SPIR-V ids)
+// === 中文说明 ===
+// f0ad 变体的片元段:目标 bin 为空函数(深度只写模式,无资源/输出)。
+#pragma dxc diagnostic push
+#pragma dxc diagnostic ignored "-Wconversion"
+#pragma dxc diagnostic ignored "-Wunused-value"
+#pragma dxc diagnostic ignored "-Wambig-lit-shift"
+void frag_main()
+{
+}
+
+void ps_main()
+{
+    frag_main();
+}
+#pragma dxc diagnostic pop
+#endif

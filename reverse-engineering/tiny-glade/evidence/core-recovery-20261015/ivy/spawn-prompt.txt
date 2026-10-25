@@ -1,0 +1,104 @@
+You are a bounded reverse-analysis assistant. Do not use tools. Analyze ONLY the supplied B function decompilation. Need concise <=400 words: reconstruct offsets of Ivy value built on stack from uStack_128 through uStack_9c and explain RNG call order and next-id initialization. Avoid guessing meanings; mark unknown fields. param1 is storage, param2 and param3 point/direction 12B, param4/5 float range, param6/7 usize range, param8 unknown u64. FUN_141625a50 = perchance usize_less_than; 141625ae0=uniform_f32; FUN_141527820=map insert. Ignore std allocation/drop details. Explicitly check that id at Storage+40 is used BEFORE increment and next_point_id at Ivy+58 is initialized1 despite root point id0. No implementation, no extra broad analysis.
+void FUN_1408696f0(longlong param_1,undefined8 *param_2,undefined8 *param_3,float param_4,
+                  float param_5,ulonglong param_6,ulonglong param_7,undefined8 param_8)
+
+{
+  undefined8 uVar1;
+  code *pcVar2;
+  longlong lVar3;
+  ulonglong uVar4;
+  float fVar5;
+  undefined4 uStack_1b8;
+  undefined4 uStack_1b4;
+  longlong lStack_1b0;
+  ulonglong uStack_128;
+  longlong lStack_120;
+  undefined4 uStack_118;
+  undefined4 uStack_114;
+  longlong lStack_110;
+  undefined8 uStack_108;
+  undefined8 uStack_100;
+  undefined8 uStack_f8;
+  undefined4 uStack_f0;
+  undefined8 uStack_ec;
+  undefined4 uStack_e4;
+  undefined4 uStack_e0;
+  longlong lStack_d8;
+  undefined8 uStack_d0;
+  undefined8 uStack_c8;
+  undefined4 uStack_c0;
+  undefined4 uStack_a4;
+  float fStack_a0;
+  undefined1 uStack_9c;
+  ulonglong uStack_98;
+  longlong lStack_90;
+  ulonglong uStack_88;
+  longlong lStack_80;
+  undefined8 uStack_78;
+  longlong lStack_70;
+  undefined1 uStack_61;
+  undefined8 uStack_60;
+  
+  uStack_60 = 0xfffffffffffffffe;
+  uStack_88 = 0;
+  uStack_78 = 0;
+  lStack_70 = 0;
+  lStack_80 = 8;
+  uStack_61 = 1;
+  FUN_140b5a980(&uStack_88,&UNK_142a96b30);
+  uVar4 = 0;
+  if (uStack_88 <= (ulonglong)(uStack_78 + lStack_70)) {
+    uVar4 = uStack_88;
+  }
+  lVar3 = (uStack_78 + lStack_70) - uVar4;
+  *(undefined8 *)(lStack_80 + lVar3 * 0x28) = 0;
+  *(undefined8 *)(lStack_80 + 8 + lVar3 * 0x28) = *param_2;
+  *(undefined4 *)(lStack_80 + 0x10 + lVar3 * 0x28) = *(undefined4 *)(param_2 + 1);
+  *(undefined8 *)(lStack_80 + 0x14 + lVar3 * 0x28) = *param_3;
+  *(undefined4 *)(lStack_80 + 0x1c + lVar3 * 0x28) = *(undefined4 *)(param_3 + 1);
+  *(undefined4 *)(lStack_80 + 0x20 + lVar3 * 0x28) = 0;
+  lStack_70 = lStack_70 + 1;
+  uVar1 = *(undefined8 *)(param_1 + 0x40);
+  uStack_98 = uStack_88;
+  lStack_90 = lStack_80;
+  uStack_1b8 = (undefined4)uStack_78;
+  uStack_1b4 = uStack_78._4_4_;
+  lStack_1b0 = lStack_70;
+  if (param_6 <= param_7) {
+    lVar3 = FUN_141625a50(param_1 + 0x30,param_7 - param_6);
+    fVar5 = (float)func_0x000141625ae0(param_1 + 0x30);
+    lStack_d8 = lVar3 + param_6;
+    fStack_a0 = (param_5 - param_4) * fVar5 + param_4;
+    uStack_100 = 0;
+    uStack_f8 = *param_2;
+    uStack_f0 = *(undefined4 *)(param_2 + 1);
+    uStack_ec = *param_3;
+    uStack_e4 = *(undefined4 *)(param_3 + 1);
+    uStack_e0 = 0;
+    uStack_128 = uStack_98;
+    lStack_120 = lStack_90;
+    uStack_118 = uStack_1b8;
+    uStack_114 = uStack_1b4;
+    uStack_c0 = 0;
+    uStack_a4 = 0;
+    uStack_d0 = 1;
+    uStack_c8 = param_8;
+    uStack_9c = 0;
+    uStack_61 = 0;
+    uStack_108 = uVar1;
+    lStack_110 = lStack_1b0;
+    FUN_141527820(&uStack_1b8,param_1,*(undefined8 *)(param_1 + 0x40),&uStack_128);
+    lVar3 = CONCAT44(uStack_1b4,uStack_1b8);
+    if ((!SBORROW8(0,lVar3)) && (lVar3 != 0)) {
+      func_0x000140613c20(lStack_1b0,lVar3 * 0x28,8);
+    }
+    *(longlong *)(param_1 + 0x40) = *(longlong *)(param_1 + 0x40) + 1;
+    return;
+  }
+  FUN_1428d9430(&UNK_142aa5710,0x1e,&UNK_142aa5788);
+                    /* WARNING: Does not return */
+  pcVar2 = (code *)invalidInstructionException();
+  (*pcVar2)();
+}
+
+

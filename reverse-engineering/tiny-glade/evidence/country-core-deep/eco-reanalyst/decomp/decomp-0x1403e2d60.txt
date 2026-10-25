@@ -1,0 +1,75 @@
+// name: serialize_field<enum2$<country_core::resources::critters::sheep::SheepMoveState>_>
+// sig: void __cdecl serialize_field<enum2$<country_core::resources::critters::sheep::SheepMoveState>_>(void)
+// size: 375
+
+void __cdecl
+serde_json::value::ser::impl$8::
+serialize_field<enum2_<country_core::resources::critters::sheep::SheepMoveState>_>(void)
+
+{
+  longlong lVar1;
+  void *_Dst;
+  longlong *in_RCX;
+  void *in_RDX;
+  void *pvVar2;
+  size_t in_R8;
+  char local_a0;
+  undefined1 local_68;
+  longlong local_60;
+  
+  if ((longlong)in_R8 < 0) {
+LAB_1403e2f09:
+                    // WARNING: Subroutine does not return
+    alloc::raw_vec::handle_error();
+  }
+  if (in_R8 == 0) {
+    pvVar2 = (void *)0x1;
+    lVar1 = *in_RCX;
+  }
+  else {
+    std::alloc::__default_lib_allocator::__rust_alloc();
+    if (_Dst == (void *)0x0) goto LAB_1403e2f09;
+    memcpy(_Dst,in_RDX,in_R8);
+    lVar1 = *in_RCX;
+    pvVar2 = _Dst;
+  }
+  if ((!SBORROW8(0,lVar1)) && (lVar1 != 0)) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  in_RCX[1] = (longlong)pvVar2;
+  in_RCX[2] = in_R8;
+  *in_RCX = -0x8000000000000000;
+  country_core::resources::critters::sheep::_::impl$0::serialize<serde_json::value::ser::Serializer>
+            ();
+  if (local_a0 == '\x06') {
+    if (in_R8 == 0) {
+      return;
+    }
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+    return;
+  }
+  alloc::collections::btree::map::BTreeMap::
+  insert<alloc::string::String,enum2_<serde_json::value::Value>,alloc::alloc::Global>();
+  switch(local_68) {
+  case 0:
+  case 1:
+  case 2:
+  case 6:
+    goto LAB_1403e2ef4;
+  case 3:
+    break;
+  case 4:
+    core::ptr::drop_in_place<slice2_<enum2_<serde_json::value::Value>_>_>();
+    break;
+  default:
+    core::ptr::
+    drop_in_place<serde_json::map::Map<alloc::string::String,enum2_<serde_json::value::Value>_>_>();
+    goto LAB_1403e2ef4;
+  }
+  if (local_60 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+LAB_1403e2ef4:
+  return;
+}
+

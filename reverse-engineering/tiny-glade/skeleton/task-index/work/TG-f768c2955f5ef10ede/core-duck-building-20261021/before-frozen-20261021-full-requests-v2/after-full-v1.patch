@@ -1,0 +1,132 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs.rs
+@@ -406,14 +406,14 @@
+         path.clear();
+         control_points.clear();
+         remaining.remove_edge(raw_a, raw_b);
+-        path.push_back(raw_a);
+-        path.push_back(raw_b);
++        path.push_back(DecoratorId(raw_a));
++        path.push_back(DecoratorId(raw_b));
+         let mut front_is_wall = false;
+         let mut back_is_wall = false;
+         let mut closed = false;
+         loop {
+             let a = *path.front().expect("stair requests: empty path front");
+-            if storage.lookup_decorator_info(DecoratorId(a)).is_some_and(|info| info.is_wall_dst()) {
++            if storage.lookup_decorator_info(a).is_some_and(|info| info.is_wall_dst()) {
+                 front_is_wall = true;
+                 break;
+             }
+@@ -421,13 +421,13 @@
+                 closed = true;
+                 break;
+             }
+-            let Some(b) = remaining.neighbors(a).next() else { break; };
+-            remaining.remove_edge(a, b);
+-            path.push_front(b);
++            let Some(b) = remaining.neighbors(a.0).next() else { break; };
++            remaining.remove_edge(a.0, b);
++            path.push_front(DecoratorId(b));
+         }
+         loop {
+             let a = *path.back().expect("stair requests: empty path back");
+-            if storage.lookup_decorator_info(DecoratorId(a)).is_some_and(|info| info.is_wall_dst()) {
++            if storage.lookup_decorator_info(a).is_some_and(|info| info.is_wall_dst()) {
+                 back_is_wall = true;
+                 break;
+             }
+@@ -435,13 +435,13 @@
+                 closed = true;
+                 break;
+             }
+-            let Some(b) = remaining.neighbors(a).next() else { break; };
+-            remaining.remove_edge(a, b);
+-            path.push_back(b);
++            let Some(b) = remaining.neighbors(a.0).next() else { break; };
++            remaining.remove_edge(a.0, b);
++            path.push_back(DecoratorId(b));
+         }
+         if front_is_wall && back_is_wall && path.len() == 2 {
+-            let a = DecoratorId(path[0].min(path[1]));
+-            let b = DecoratorId(path[0].max(path[1]));
++            let a = path[0].min(path[1]);
++            let b = path[0].max(path[1]);
+             let from = points.get(&a).expect("wall stair request: missing first point");
+             let to = points.get(&b).expect("wall stair request: missing second point");
+             if let (DecoratorStorageAddr::Wall(first_wall), DecoratorStorageAddr::Wall(second_wall)) = (from.addr, to.addr) {
+@@ -481,9 +481,8 @@
+             }
+         }
+         let mut start_tangent = None;
+-        for (&raw_from, &raw_to) in path.iter().zip(path.iter().skip(1)) {
+-            let (position, alignment) = aligned_stair_control_point(&points, &alignments,
+-                DecoratorId(raw_from), DecoratorId(raw_to));
++        for (&from, &to) in path.iter().zip(path.iter().skip(1)) {
++            let (position, alignment) = aligned_stair_control_point(&points, &alignments, from, to);
+             if !closed && control_points.is_empty() {
+                 start_tangent = match alignment.tag {
+                     0 => Some(alignment.first), 1 => Some(alignment.second), _ => None,
+@@ -492,14 +491,15 @@
+             control_points.push(position);
+         }
+         let spline = if closed {
+-            assert!(control_points.len() >= 3, "closed stair path needs at least three control points");
++            // 原 caller source817 在 ctor 前独立断言，并 Debug 输出真实 ID path。
++            assert!(control_points.len() >= 3, "A loop must have at least 3 points; {path:?}");
+             let spline = Spline2D::from_periodic_loop(&control_points);
+             let first = *control_points.first().expect("closed stair path: missing first control point");
+             control_points.push(first);
+             spline
+         } else {
+-            let a = DecoratorId(*path.back().expect("open stair path: missing last node"));
+-            let b = DecoratorId(*path.get(path.len() - 2).expect("open stair path: missing previous node"));
++            let a = *path.back().expect("open stair path: missing last node");
++            let b = *path.get(path.len() - 2).expect("open stair path: missing previous node");
+             let (last, alignment) = aligned_stair_control_point(&points, &alignments, a, b);
+             let end_tangent = match alignment.tag {
+                 0 => Some(-alignment.first), 1 => Some(-alignment.second), _ => None,
+@@ -510,8 +510,8 @@
+         let mut any_success = false;
+         for (index, control_pair) in control_points.windows(2).enumerate() {
+             let mut dense = densely_sample_spline_segment(&spline, index);
+-            let mut a = DecoratorId(*path.get(index).expect("stair spline: missing first node"));
+-            let mut b = DecoratorId(*path.get(index + 1).expect("stair spline: missing second node"));
++            let mut a = *path.get(index).expect("stair spline: missing first node");
++            let mut b = *path.get(index + 1).expect("stair spline: missing second node");
+             let mut positions = [control_pair[0], control_pair[1]];
+             let mut outgoing = [dense.start_tangent, dense.end_tangent];
+             if a > b {
+@@ -544,7 +544,7 @@
+         // 原不是每段 Err 均补短请求：只有整条 path 没有产出才补首 pair 一次。
+         if !any_success {
+             if let (Some(&a), Some(&b)) = (path.front(), path.get(1)) {
+-                failed_edges.push([DecoratorId(a), DecoratorId(b)]);
++                failed_edges.push([a, b]);
+             }
+         }
+     }
+@@ -1663,6 +1663,7 @@
+     fn preferences_checks_target_before_source_wall_address() {
+         let (mut storage, walls, mut from, mut to) = preference_fixture(0, 0);
+         let info = *storage.get(from.addr).unwrap().get(from.id).unwrap();
++        storage.apply_decorator_remove(from.addr, from.id);
+         from.addr = DecoratorStorageAddr::Terrain;
+         storage.apply_decorator_place(from.addr, from.id, &info);
+         to.id = DecoratorId(999);
+@@ -1765,6 +1766,7 @@
+         let (walls, wall_id) = published_wall();
+         let mut world = compute_world([4.0, 0.0], [2.0, 2.0]);
+         world.insert_resource(walls);
++        world.resource_mut::<DecoratorStorage>().apply_decorator_remove(DecoratorStorageAddr::Terrain, DecoratorId(29));
+         world.resource_mut::<DecoratorStorage>().apply_decorator_place(
+             DecoratorStorageAddr::Wall(wall_id), DecoratorId(29), &stair_info(0, 4.0, 2.0));
+         world.resource_mut::<CachedDecoratorTransforms>().insert(29, CachedDecoratorTransform {
+@@ -1946,6 +1948,7 @@
+         let mut world = request_graph_world(&[Vec3::ZERO, Vec3::new(4.0, 0.0, 0.0)], &[(1, 2)]);
+         world.insert_resource(walls);
+         for id in [1, 2] {
++            world.resource_mut::<DecoratorStorage>().apply_decorator_remove(DecoratorStorageAddr::Terrain, DecoratorId(id));
+             world.resource_mut::<DecoratorStorage>().apply_decorator_place(DecoratorStorageAddr::Wall(wall_id),
+                 DecoratorId(id), &stair_info(0, 4.0, 1.0));
+             world.resource_mut::<CachedDecoratorTransforms>().insert(id, CachedDecoratorTransform {

@@ -1,0 +1,160 @@
+{
+  "target_version": "C",
+  "module": "system-critters/sheep/sheep_pet_animation selected-row chain",
+  "versions": {
+    "A": {
+      "artifact_sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708"
+    },
+    "B": {
+      "artifact_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+    },
+    "C": {
+      "artifact_sha256": "d8f9261b1a4cb677fe91b8f5017bcff63b1312228b3f3264a2071ca7d3ad80a9"
+    }
+  },
+  "facts": [
+    {
+      "id": "owner-A",
+      "version": "A",
+      "kind": "source_owner",
+      "evidence": "evidence/toolchain-pet-pilot-2026-10-11/critters-three-version.json",
+      "pointer": "versions.A"
+    },
+    {
+      "id": "owner-B",
+      "version": "B",
+      "kind": "source_owner",
+      "evidence": "evidence/toolchain-pet-pilot-2026-10-11/critters-three-version.json",
+      "pointer": "versions.B"
+    },
+    {
+      "id": "owner-C",
+      "version": "C",
+      "kind": "source_owner",
+      "evidence": "evidence/toolchain-pet-pilot-2026-10-11/critters-three-version.json",
+      "pointer": "versions.C"
+    },
+    {
+      "id": "C-pet-opcodes",
+      "version": "C",
+      "kind": "instruction",
+      "evidence": "evidence/toolchain-pet-pilot-2026-10-11/critters-C-pet-original.asm.txt"
+    },
+    {
+      "id": "C-consumer-opcodes",
+      "version": "C",
+      "kind": "instruction",
+      "evidence": "evidence/toolchain-pet-pilot-2026-10-11/critters-C-consumer-original.asm.txt"
+    },
+    {
+      "id": "C-business",
+      "version": "C",
+      "kind": "behavior",
+      "evidence": "evidence/toolchain-pet-pilot-2026-10-11/critters-findings.md"
+    },
+    {
+      "id": "C-native-small-proof",
+      "version": "C",
+      "kind": "verification",
+      "evidence": "evidence/toolchain-pet-pilot-2026-10-11/critters-C-pet-verification.json"
+    },
+    {
+      "id": "C-world-adapter",
+      "version": "C",
+      "kind": "runtime",
+      "evidence": "evidence/toolchain-pet-pilot-2026-10-11/critters-local-world-results.md"
+    },
+    {
+      "id": "C-public-deps",
+      "version": "C",
+      "kind": "dependency",
+      "evidence": "evidence/toolchain-pet-pilot-2026-10-11/critters-final-dependency-lock-comparison.json"
+    }
+  ],
+  "links": [
+    {
+      "name": "Original source ownership/address candidates",
+      "status": "evidence_ready",
+      "fact_ids": [
+        "owner-A",
+        "owner-B",
+        "owner-C"
+      ]
+    },
+    {
+      "name": "C selected-row fivephaseFSM/getter withresolvedmembership + publicCBevyMessage/state/petgate/finish/removaladapter",
+      "status": "verified",
+      "fact_ids": [
+        "C-pet-opcodes",
+        "C-consumer-opcodes",
+        "C-business",
+        "C-native-small-proof",
+        "C-world-adapter"
+      ]
+    },
+    {
+      "name": "OriginalUIpicking/widget->Message sender andSheepstartup/ID producer",
+      "status": "unknown",
+      "fact_ids": [
+        "owner-C"
+      ],
+      "gaps": [
+        "UIrange staticavailable; complete input/query/resource sender notimplemented",
+        "104B input remains observed source projection, no guessed constructor/default"
+      ]
+    },
+    {
+      "name": "Source+60 renderer/control semantics andactualanimation/GPU consumer",
+      "status": "unknown",
+      "fact_ids": [
+        "C-pet-opcodes"
+      ],
+      "gaps": [
+        "Original flag storespreserved; adapter carries field without claimingunknownmeaning"
+      ]
+    },
+    {
+      "name": "ActualCfork scheduler/GameTimeowner",
+      "status": "unknown",
+      "fact_ids": [],
+      "gaps": [
+        "PublicBevy0.17.3 adapter chain; deltaexplicit required, original scheduler/startup producer unclosed"
+      ]
+    },
+    {
+      "name": "Resolved113registry identities reused",
+      "status": "evidence_ready",
+      "fact_ids": [
+        "C-public-deps"
+      ],
+      "gaps": [
+        "All113 version/source/checksum match originalC; originalfeatures/forknotaccepted"
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "bevy_app",
+      "version": "0.17.3",
+      "reuse": "publicApp/Update/Messageintegration"
+    },
+    {
+      "name": "bevy_ecs",
+      "version": "0.17.3",
+      "reuse": "actualQuery/MessageReader/Component/Commands/changedticks; no handwrittenECS/storage"
+    }
+  ],
+  "rust_files": [
+    "reconstruction/critters/sheep_pet.rs",
+    "reconstruction/critters/sheep_pet_runtime.rs",
+    "reconstruction/critters/sheep_pet_c.rs",
+    "reconstruction/critters/c-harness/probe.rs",
+    "reconstruction/critters/c-harness/tests/pet_chain.rs"
+  ],
+  "canonical_verifier": "evidence/toolchain-pet-pilot-2026-10-11/critters-verify-pet.py",
+  "commands": [
+    "cargo test --manifest-path reconstruction/critters/c-harness/Cargo.toml --release --locked",
+    "/Users/yuluo/Desktop/game/tools/venv/bin/python evidence/toolchain-pet-pilot-2026-10-11/critters-verify-pet.py"
+  ],
+  "status": "bounded-C-pet-slice-verified; originalproducer/System/backendgapsretained"
+}

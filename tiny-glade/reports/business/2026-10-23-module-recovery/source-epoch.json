@@ -1,0 +1,740 @@
+{
+  "created_utc": "2026-10-23T07:27:51.633953+00:00",
+  "meaning": "User-stopped WIP checkpoint of current worktree source identity, including existing render workspace dependencies. Prior passing logs do not validate later changes or a clean committed HEAD.",
+  "sources": {
+    "tiny-glade/crates/country-core/src/systems/audio/signifier_audio.rs": "10b97eab7d2f4da7e804d5f1f9d0c120792f409919f66b7d15c39dba4d3b67a2",
+    "tiny-glade/crates/country-core/src/systems/audio/signifier_audio_tests.rs": "169b9d288e254e7c5258edd026832142f606aa5955709639d31911bb1a1b077f",
+    "tiny-glade/crates/country-core/src/systems/ui/hover_intersection.rs": "295319ecf1937fffb63e0905801bd895b443fbf7ec4a9208c315c78edbb4d93f",
+    "tiny-glade/crates/country-core/src/systems/ui/mod.rs": "0cc6db6461135263c04ff8992734fd7d1be4c8c3710176ab82d1c55466aac931",
+    "tiny-glade/crates/country-core/src/systems/ui/resources/mod.rs": "e2b9687f3330cea8df7e2442c0af42c006f4439fb4afcb53506eb17a56754090",
+    "tiny-glade/crates/country-core/src/systems/ui/resources/slider3d.rs": "00a9402eea9a4f6385240178ee23dc7a11c7d0fedf81467b56761b94b79baeec",
+    "tiny-glade/crates/country-core/src/systems/ui/resources/ui_state.rs": "5a3a9bc7fc992af1add7281d2b441afc5a7d3291afcd2090c2ab73008b1c084f",
+    "tiny-glade/crates/country-core/src/systems/ui/resources/widget_params.rs": "f67d47a84ced7fbb41cf1771da52d03f38eba36ff5690b9d6ac74f473d5ed15a",
+    "tiny-glade/crates/country-core/src/systems/ui/signifiers/animation.rs": "935972e1161754b59d29c1cf36385ae52736df44eb8dceda387adf92af3e613f",
+    "tiny-glade/crates/country-core/src/systems/ui/signifiers/mod.rs": "49b7923f01fe0485c673474f92231f18393239195445dfc88341cd83685e1636",
+    "tiny-glade/crates/country-core/src/systems/ui/signifiers/signifier_create.rs": "170bccbd3000e6606bee0fe122bcaccefc5bf06a03e3beb6c68e3209ff0c5d0c",
+    "tiny-glade/crates/country-core/src/systems/ui/signifiers/signifier_factory.rs": "afda838dea64f4368a27c6f74038e37c7a536ca6c66ef35c1f2318041fcf4d95",
+    "tiny-glade/crates/country-core/src/systems/ui/signifiers/signifier_mark_for_delete.rs": "3b407c99def41aed184c979752ef22be546e93faa2c81c7bd39e795e1e5ca82a",
+    "tiny-glade/crates/country-core/src/systems/ui/signifiers/tests.rs": "9ffeebead346ee4ced4da5f0918996dd5a010220d83e8434389d3550e46e1b19",
+    "tiny-glade/crates/country-core/src/systems/ui/ui_update.rs": "1f2074474b8c872e8612ddf26ed95be7c354eac327da68fc7d55555c30a02320",
+    "tiny-glade/crates/country-core/src/systems/ui/ui_update_chain_tests.rs": "3811cc71b6d438eff52b5ca4b1b61715d7de05a4d406dab28ea41c123318f6ee",
+    "tiny-glade/crates/country-core/src/systems/ui/ui_update_native_tests.rs": "871792c80c9068fd61d64cf381e8f6cf593af1a5f885d04b389ec54488964cfc",
+    "tiny-glade/crates/country-core/src/systems/ui/ui_update_owner_lifecycle_tests.rs": "53c8bebd2e7a7c2bf893f5b48e8f580969f6dac2bace3c4ffae83f5fda737e5d",
+    "tiny-glade/crates/rhapsody/src/device/memory.rs": "b62088cfaa18787d78eb44d0b1fe2295a3392ab887a05daf1e7bc6bf23bd2950",
+    "tiny-glade/crates/systems/toolbar/src/lib.rs": "9fb514a625f0cceb0ae6bf2644b404b5c29e27e0a78c3cef2304a996edb81ef5",
+    "tiny-glade/crates/systems/toolbar/src/mei/config.rs": "73e2550e182930a1ff796373968303713a96dffe5ba3ad15a560f0587e72a48e",
+    "tiny-glade/crates/systems/toolbar/src/mei/core.rs": "5f85fed035bcf8555a74222331da8f14d99db57d933ae9e216d31a9f2631322d",
+    "tiny-glade/crates/systems/toolbar/src/mei/layout.rs": "892dcabb5ef765945a65f8527d89ae0d2dcbf5e8c279cc7d5fdd0fd2bac575d8",
+    "tiny-glade/crates/systems/toolbar/src/mei/mod.rs": "1c673e810d1037aedf63d41ca466062e35bbc0f8dcba6d57c73e8003c86c17c9",
+    "tiny-glade/crates/systems/toolbar/src/mei/systems.rs": "04e24251246aece1a10b85edd2bc9887d5397f5ca2baedaafd3e40a1f1b41bc6",
+    "tiny-glade/crates/systems/toolbar/src/mei/widgets.rs": "fe0144a786060144bef2e820a385ca7c19947f264f30f07659efe45de9c6388c",
+    "tiny-glade/crates/systems/toolbar/src/mei/widgets/menu_button.rs": "733d339b17a78936ab8e673f01bc0649ca03b5c16689ad4a538f27be97bac3b4",
+    "tiny-glade/crates/systems/toolbar/src/menu/credits.rs": "089fe773a2b8370da385cd4a9190e526afe2e5ad6daa0c010daebc1b6e294886",
+    "tiny-glade/crates/systems/toolbar/src/menu/load.rs": "540d4c96d56170d781467835d38b3d6d097988defbfd761fe1af580dcaadafc2",
+    "tiny-glade/crates/systems/toolbar/src/menu/load_ui.rs": "8cef3a876a4e5cf39adadaeeeb4f8c1319eaa3c8450b14b2120d098ffa6a7d75",
+    "tiny-glade/crates/systems/toolbar/src/menu/mod.rs": "c35379c0a6b59345fdcb090d3d3fc3966fc6bcadeb7b247d5204d16f51c02b91",
+    "tiny-glade/crates/systems/toolbar/src/menu/report_bug.rs": "a4d7b8925f23e289c6238c1c521df8f5e3cf9da472c3eafacbfec90e35662c91",
+    "tiny-glade/crates/systems/toolbar/src/menu/splash.rs": "b18942451793ec26a6bf58bac715d4d247d83d3f81bf227168a73c625e6432c6",
+    "tiny-glade/crates/systems/toolbar/src/menu/welcome.rs": "4b3965c981895aa71a57c0f9c33e883085517b745bc46ce01424a6c2fbb081fb",
+    "tiny-glade/crates/systems/toolbar/src/menu/welcome/tests.rs": "f47c0a21d609520899d865d7e2a37a0c7af0fa437b3888c80d0f888f88938e41",
+    "tiny-glade/crates/systems/toolbar/src/photomode.rs": "a9a30aa32160416172b048f056b7097b4c42c9164dfe6a084b75e3e16885e9ed",
+    "tiny-glade/crates/systems/toolbar/src/photomode/lut_gallery.rs": "41a8a42b2ba59a0dbb3986555083feb7c5468339c5586b4e7952dca8332e5976",
+    "tiny-glade/crates/systems/toolbar/src/photomode/setup_photomode_toolbar.rs": "130a03d0965482a45d9feb6280e46b1ea77ce1e7e3b70e2758e8a9d2744201c4",
+    "tiny-glade/crates/systems/toolbar/src/photomode/setup_photomode_toolbar_tests.rs": "7d63cb243e62ad38fed163d0c97120f8f4fa409daa2388e97b68a2fb4c6de7ff",
+    "tiny-glade/crates/systems/toolbar/src/photomode/slider_math.rs": "5b66994a670be3d2efdec301774abf5b9aa9b3f4fcb44e1628634b5cd680df52",
+    "tiny-glade/crates/systems/toolbar/src/photomode/timelapse.rs": "08b649b5fd73c5aa94f3c9d3cce3dd7fa44117ab90bcce478a407e46f6579353",
+    "tiny-glade/crates/systems/toolbar/src/photomode/ui_slider.rs": "6d6a0fe69813917b113503548bc7a7c36b0c780ac2210273ac769147b7c14472",
+    "tiny-glade/crates/systems/toolbar/src/resouces_and_components/mod.rs": "b1296a71af97535bda5bfc4c89a4b6a919a383445edec89cc012088dc1ae9d64",
+    "tiny-glade/crates/systems/toolbar/src/resouces_and_components/taffy_layout.rs": "69c76c1f431be0174e1b9f0801adb1122bb8e40ca5ef1a8ddc099084169cc289",
+    "tiny-glade/crates/systems/toolbar/src/resouces_and_components/toolbar_layout.rs": "29cd3d5227591d0d2311d8d3507b323099903bc72b524e6dfe42868881adccb8",
+    "tiny-glade/crates/systems/toolbar/src/resouces_and_components/toolbar_layout_tests.rs": "a516447295dece63c4797980023101480fef7d6b6d2ddfd1e5680180b0865c94",
+    "tiny-glade/crates/systems/toolbar/src/resouces_and_components/undo_redo_layout.rs": "befbfd1e98df10bf4b7513e32999745226def0eed763eddf4c276e70ecd8ed72",
+    "tiny-glade/crates/systems/toolbar/src/taffy_update.rs": "871f2eb2bdf7ba50d8a15198d802dbb18ed7fd95d8a28b94419f1235052cd98b",
+    "tiny-glade/crates/systems/toolbar/src/toolbar_button.rs": "688a9fb97380600342a55a12bf89f46a04eb931ebe6d822deb88a3d19f7301a2",
+    "tiny-glade/crates/systems/toolbar/src/toolbar_startup.rs": "3067c81f8df4712246e4a612b23ab77b989f2ad3d291228727157f266f547a78",
+    "tiny-glade/crates/systems/toolbar/src/toolbar_startup_tests.rs": "1d44c5f8a0bfa580f07006c2a92ff6a689c1cf94cf696ec92b3e2cb223cbaaa0",
+    "tiny-glade/crates/systems/toolbar/src/toolbar_systems.rs": "69e3978809ecb1ccebe665f2c3e119c56b11c7922b22312b0ede48e5b76b9200",
+    "tiny-glade/crates/systems/toolbar/src/toolbar_update.rs": "20c7f59ebd7682a3fc7840a7a4115508cdbb99c32ef601699d9d6c68956c2b92",
+    "tiny-glade/crates/systems/toolbar/src/ui_interaction.rs": "b7f35276490fab451d86b2e739156c7778d66f9d9be1d29de8b5b1bf8d3192e5",
+    "tiny-glade/crates/systems/toolbar/src/ui_interaction/focus.rs": "1c54421749fd4b516cd18664aa9494fba99fc0f65eb31b5812960e4f6c313992",
+    "tiny-glade/crates/systems/toolbar/src/ui_interaction/focus_native_fixtures.rs": "96b97b0f547238a896417e66c602055ddfe5fd5141a284729e3ddb0ee575dd87",
+    "tiny-glade/crates/systems/toolbar/src/ui_interaction/focus_tests.rs": "e21d4f54305045673c8e87377adf9458de9785d06e111c7abcd3bc2fd02188f0",
+    "tiny-glade/crates/systems/toolbar/src/ui_interaction/hide.rs": "978ef332b3397e01304599448b998f4ebc8d62f5658ea7604224b26498a8c2b2",
+    "tiny-glade/crates/systems/toolbar/src/ui_interaction/hide_tests.rs": "7a9c7cade6d99cdbfb039c75e194136a3ff6c8ffc0df79429a9cd8f907a10a9c",
+    "tiny-glade/crates/systems/toolbar/src/ui_interaction/ordering.rs": "385bb71e9aa3233c047ac6046f59115b7b9e8c4c9d4407b4a8af498314d067ae",
+    "tiny-glade/crates/systems/toolbar/src/ui_interaction/replay.rs": "8fb2b7a007e386140fba9bae8b6c1e29c91e8452ace1ee3540c7ba82ecb78ee8",
+    "tiny-glade/crates/systems/toolbar/src/ui_interaction/widget_geometry_tests.rs": "318f9e98be113aee639cc24368edd53e295e5f576a6d40f33e473ecb714944b4",
+    "tiny-glade/crates/systems/toolbar/src/ui_presentation.rs": "cc157bee81ba3939adac0575278fa365cd2360679e74b7dd99fb17e3eca820c9",
+    "tiny-glade/crates/systems/toolbar/src/undo_redo_systems.rs": "e493d9174f112d9a511f5a87a8d9368ff3bb4d78463eb1d35c04e59b727dbf46",
+    "tiny-glade/crates/tiny-glade/src/gui/gui_tod.rs": "a1521a3aace08f4ee7d6b0319ec8040f7e08e95d50b7fed1cb1f5e191ecd0b25",
+    "tiny-glade/crates/tiny-glade/src/mei_host.rs": "988eed4be2e99aa85f33d8683cd580ca8ef3ac6697509c0dd6fc7c1c09a4870c",
+    "tiny-glade/crates/tiny-glade/src/startup_event_runtime.rs": "9da417d1914e3fd2c761296ea7d81b3b554c61a53751742b7abaf4ce10afc235",
+    "tiny-glade/crates/tiny-glade/src/toolbar_plugin.rs": "4e1eed7edbf47b4c833bc9495f0352fba375812c1a23b721feb155ff81f2c660",
+    "tiny-glade/crates/tiny-glade/src/vram.rs": "088e75e38b288a01dce99e482a82e305b7edd4297f5a7dbb0397c6e3027024bc",
+    "tiny-glade/crates/tiny-glade/tests/toolbar_module_chain/history.rs": "11f235ab94d3bd400bebc55d1f8e9cd3f7c80d3eb988a12b629da46217fcc937",
+    "tiny-glade/crates/tiny-glade/tests/toolbar_module_chain/reload.rs": "68028de96ca73e4f4abfc5a100d1ac6f32cb1e28da1e3d17cd4189857232dea2",
+    "tiny-glade/crates/tiny-glade/tests/toolbar_window_chain.rs": "115c18f02edcb92de010be3d474c7ade95c369a0c0a83b975a7a3ba5056bebcb",
+    "tiny-glade/crates/tiny-glade/tests/toolbar_window_chain/x11_controller.py": "1f5122426e6d768cb2596a6f67434004e62154bcb3204df16a1fb3ca2fc82528"
+  },
+  "updated_utc": "2026-10-24T07:41:22.134178+00:00",
+  "window_attempt_v2": {
+    "binary": "/tmp/tg-target/debug/deps/toolbar_window_chain-70811705edc4d8a6",
+    "sha256": "39d82e67a3ba8a263ddc0f54a8912d5167e258d8cb39463d98ca1069cd2223b0",
+    "log": "/tmp/toolbar-b-window-v2.log",
+    "profile": "debug",
+    "display": ":1",
+    "vulkan": "lvp software",
+    "result": "exit 1: 240-second diagnostic deadline at phase 0; not accepted",
+    "command": "env -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY -u http_proxy -u https_proxy -u all_proxy -u CARGO_HTTP_PROXY NO_PROXY='*' no_proxy='*' DISPLAY=:1 LD_LIBRARY_PATH=/tmp/render-build-deps/sysroot/usr/lib/x86_64-linux-gnu RHAPSODY_VULKAN_LIBRARY=/usr/lib/x86_64-linux-gnu/libvulkan.so.1 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json TG_INSTALL_ROOT='/home/ubuntu/test/games_test/Tiny Glade' TG_FRAME_TIMING=1 TG_FRAME_TIMING_EVERY=1 TG_TOOLBAR_WINDOW_TIMEOUT_SECONDS=240 /tmp/tg-target/debug/deps/toolbar_window_chain-70811705edc4d8a6"
+  },
+  "checkpoint": {
+    "status": "user stopped; module not accepted",
+    "latest_toolbar_library_passed": 97,
+    "latest_slider_lifecycle_passed": 8,
+    "later_changes_unverified": [
+      "photomode focus",
+      "TOD GUI and pending host wiring",
+      "latest lifecycle and OS verification"
+    ],
+    "release_build_exit": 130,
+    "window_attempts": "diagnostics only, no full OS chain pass"
+  },
+  "resumed_2026_10_24": {
+    "scope": "Toolbar host/TOD changes; rendering is concurrently owned by another task. Post-run source capture is not a frozen whole-workspace build identity.",
+    "sources_after_runs": {
+      "tiny-glade/crates/tiny-glade/src/gui/gui_tod.rs": "f88785dc1d0fc0299211f908cb2eb36a8d3e02594ac51974b5fecfac43b56000",
+      "tiny-glade/crates/tiny-glade/src/toolbar_plugin.rs": "cfd81b8a7aca0225da407f29d8198a8b5085c999079bda6ea85317a01f2471d5",
+      "tiny-glade/crates/tiny-glade/src/run_game.rs": "8d56381a86cea3aeaea3b27c82107ff4389340c791e774ff75c1d3e1433beba5"
+    },
+    "runs": [
+      {
+        "log": "resume-2026-10-24-check.log",
+        "exit_code": 0,
+        "sha256": "565ef97e882b1756203758673c1f9ede5ba8126ef06646fc1a1f76d5f8ba4639",
+        "test_summary": []
+      },
+      {
+        "log": "resume-2026-10-24-tod.log",
+        "exit_code": 0,
+        "sha256": "afbac2f8971b2d46a29341a8301b5c46e2b91d1fe0451cfde018922297bdec89",
+        "test_summary": [
+          "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 219 filtered out; finished in 0.04s"
+        ]
+      },
+      {
+        "log": "resume-2026-10-24-registration.log",
+        "exit_code": 0,
+        "sha256": "f14baa7153d01aaf547e95c5967a55b79acd4a9476d247c40da5c4d3b8484ad9",
+        "test_summary": [
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 222 filtered out; finished in 0.18s"
+        ]
+      },
+      {
+        "log": "resume-2026-10-24-lib.log",
+        "exit_code": 101,
+        "sha256": "7d1e04bc261234602972f88dc3294123770fef9b5defdc160bf111e6671b8b23",
+        "test_summary": [
+          "test result: FAILED. 99 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s"
+        ]
+      }
+    ]
+  },
+  "toolbar_focus_followup_2026_10_24": {
+    "status": "M01 not accepted; OS input deferred by user; later B function audit confirms source/business gaps as well",
+    "environment": {
+      "host": "macOS-26.3-arm64-arm-64bit-Mach-O",
+      "machine": "arm64",
+      "profile": "debug; no Release/performance acceptance"
+    },
+    "gpu_environment": {
+      "VK_ICD_FILENAMES": "/opt/homebrew/etc/vulkan/icd.d/MoltenVK_icd.json",
+      "VK_LAYER_PATH": "/opt/homebrew/share/vulkan/explicit_layer.d",
+      "DYLD_FALLBACK_LIBRARY_PATH": "/opt/homebrew/lib",
+      "RHAPSODY_REQUIRE_VULKAN": "1",
+      "TG_INSTALL_ROOT": "/Users/yuluo/Desktop/game/B版本内容"
+    },
+    "source_capture_limit": "Bounded post-run source snapshot; original run scopes retained separately. Concurrent renderer work is not a whole-workspace frozen identity. Ghost source added after earlier autofocus GPU/window attempts.",
+    "sources_after_runs": {
+      "tiny-glade/crates/systems/toolbar/src/photomode.rs": "bdee74e263edbb3d2abb1a1c931a0667d23d4ef96ac34df9109569cbf0f18b76",
+      "tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/dof_autofocus.rs": "55e14e0c9cf9b0be2e5f887389caae8729d625dab0e7d1d50337f806f0487e35",
+      "tiny-glade/crates/tiny-glade/tests/toolbar_window_chain.rs": "980e54f92aac908ee71ff188491627178e89f28b8989ab4992c08f7e912e7d29",
+      "tiny-glade/tests/fixtures/native/toolbar-autofocus.json": "0505c64a3aa032d3aa2d185444e466cdb806ef6ea145b221dd2a7cc57c88da70",
+      "tiny-glade/reports/business/2026-10-23-module-recovery/native_autofocus.py": "83e9ba755a4c42b52d27f655bc0826e4a6dac4e50e39e042c966901a89a5d211",
+      "tiny-glade/reports/business/2026-10-23-module-recovery/autofocus-uniform-original.asm": "6d21060890e0b602f740c00b8c561caff130a88b53c0242f52a86660e52f33c1",
+      "tiny-glade/reports/business/2026-10-23-module-recovery/photomode-parameter-original.asm": "8b0004c73ec36061681b47e06dd38ca3b790f9437aae3372cf2958c2d83892c4",
+      "tiny-glade/reports/business/2026-10-23-module-recovery/photomode-walk-overlay-original.asm": "4dade9701f9923c4043ebc826d996666e5ff42fad126331ddb6be5321e782f41",
+      "tiny-glade/Cargo.lock": "70e1e74dc8c98ab8ef0689f0ec01820683ccee64cfd55ed5432bed95cfa55279"
+    },
+    "native_oracle": {
+      "binary": "B版本内容/tiny-glade.rne",
+      "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+      "command": "tools/venv/bin/python tiny-glade/reports/business/2026-10-23-module-recovery/native_autofocus.py",
+      "first_sandbox_exit": 132,
+      "authorized_execution_exit": 0,
+      "cases": 180,
+      "scope": "original selector/camera UV instructions only; no hooks; no mouse mode2/library lookup/ECS gates/GPU/OS acceptance"
+    },
+    "ghidra_evidence": "reverse-engineering/tiny-glade/evidence/toolchain/toolbar-focus-resume-20261024.json",
+    "os_input": {
+      "accepted": false,
+      "python_AXIsProcessTrusted": false,
+      "python_CGPreflightPostEventAccess": false,
+      "computer_use_result": "Computer Use was not approved to use Tiny Glade Toolbar Validation",
+      "request_directory": "/tmp/tg-toolbar-input-tTJS3s",
+      "request_sequence": 1,
+      "physical_mouse_releases": 0,
+      "physical_enter_releases": 0,
+      "user_authorization_question": "answered: 暂不进行真实输入验收"
+    },
+    "remaining": [
+      "actual OS input/menu/save/Reload/window performance",
+      "photomode original PROMPT_ROLLERCOASTER producer and event consumer chain",
+      "actual photographic point/readback/marker pixel closure and lifecycle"
+    ],
+    "runs": [
+      {
+        "log": "followup-2026-10-24-focus-resume-tests.log",
+        "sha256": "ff06da9caec7c1450a08c49fc2281ebed1ac188efea8fc637b0af11bcd1e9ec6",
+        "exit_code": 0,
+        "command": "cargo test -p toolbar --lib --locked --offline -- --test-threads=1",
+        "scope": "marker layout-stage regression; before ghost addition",
+        "test_summary": [
+          "test result: ok. 100 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s"
+        ]
+      },
+      {
+        "log": "followup-2026-10-24-autofocus-native-tests.log",
+        "sha256": "0e27bb6cd55841a616653bdebb65bb3aa41cbb6b6cfb6c2189c58172a9781f65",
+        "exit_code": 0,
+        "command": "cargo test -p country-core --lib systems::render_loop::compute_passes::dof_autofocus::tests --locked --offline -- --test-threads=1",
+        "scope": "7 tests including 180 actual RNE execution rows",
+        "test_summary": [
+          "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 2839 filtered out; finished in 0.01s"
+        ]
+      },
+      {
+        "log": "followup-2026-10-24-focus-ghost-tests.log",
+        "sha256": "dea0180b507d730f7f260fbd328dc5acefb1893acf4adef89ec66878e12fed54",
+        "exit_code": 101,
+        "command": "cargo test -p toolbar --lib --locked --offline -- --test-threads=1",
+        "scope": "preserved failure: new test used bare RON reader without production IMPLICIT_SOME",
+        "test_summary": [
+          "test result: FAILED. 100 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s"
+        ]
+      },
+      {
+        "log": "followup-2026-10-24-focus-ghost-final-tests.log",
+        "sha256": "3c332555344c67a3b4edb19dd4cd4a531a6a0f5092de8252a5af1733e7ddaabe",
+        "exit_code": 0,
+        "command": "cargo test -p toolbar --lib --locked --offline -- --test-threads=1",
+        "scope": "101 passed; actual ghost template through production loader",
+        "test_summary": [
+          "test result: ok. 101 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s"
+        ]
+      },
+      {
+        "log": "followup-2026-10-24-window-mac-build-final.log",
+        "sha256": "85942da67d8a152c167ade1731f74819a9fa6110e2520da6fe211fc6e73ae393",
+        "exit_code": 0,
+        "command": "cargo test -p tiny-glade --test toolbar_window_chain --no-run --locked --offline",
+        "scope": "external driver and Welcome choreography built; before final message/ghost changes",
+        "test_summary": []
+      },
+      {
+        "log": "followup-2026-10-24-window-mac-build-last.log",
+        "sha256": "9b1b36d30082ec0dcae821f68f837e3bd9f30e37f6bd65fbce79e203ec309815",
+        "exit_code": 0,
+        "command": "cargo test -p tiny-glade --test toolbar_window_chain --no-run --locked --offline",
+        "scope": "OS driver-neutral success wording; before ghost changes",
+        "test_summary": []
+      },
+      {
+        "log": "followup-2026-10-24-autofocus-gameplay-build.log",
+        "sha256": "6f6f8d96a26f4b070a6dde65d7101291dc31f12ba5c78197d87a7fa4200b2874",
+        "exit_code": 0,
+        "command": "cargo test -p tiny-glade --test original_gameplay_chain --no-run --locked --offline",
+        "scope": "autofocus production build, before ghost changes",
+        "test_summary": []
+      },
+      {
+        "log": "followup-2026-10-24-ghost-gameplay-build.log",
+        "sha256": "d067b248ed5e657cf42712f57f04441539103aebe5f8a7991f3119c3d21aacb2",
+        "exit_code": 0,
+        "command": "cargo test -p tiny-glade --test original_gameplay_chain --no-run --locked --offline",
+        "scope": "latest ghost resource consumer production build",
+        "test_summary": []
+      },
+      {
+        "log": "followup-2026-10-24-autofocus-gameplay-gpu.log",
+        "sha256": "c0c3ee96fcaa4d054e7e79acaca127f1ff4ca4ff13465df61045dcb12a1e485b",
+        "exit_code": 0,
+        "command": "original_gameplay_chain-98f3ec68f6ae98de shipped_session_through_actual_app_and_production_world_graph --exact --nocapture --test-threads=1",
+        "scope": "Apple M3/MoltenVK; before ghost addition; full env below",
+        "test_summary": [
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 36.63s"
+        ]
+      },
+      {
+        "log": "followup-2026-10-24-window-mac-run.log",
+        "sha256": "7547a777f9de6771425e88c9c9314c39076339ca9741274430e18d7f6957d57d",
+        "exit_code": 143,
+        "command": "toolbar_window_chain-5413ddbbb80b31a8",
+        "scope": "direct unbundled OS window; own PID17787 stopped; no OS inputs; 300s budget",
+        "test_summary": []
+      },
+      {
+        "log": "followup-2026-10-24-window-mac-bundle-run.log",
+        "sha256": "b2033dafdd5670ab3a569f283f5d3e489dd2c4e936b453c28ae50df56b3d82c3",
+        "exit_code": 1,
+        "command": "/tmp/tg-toolbar-app-ei8emezl/TinyGladeToolbarValidation.app/Contents/MacOS/toolbar-validation",
+        "scope": "300s timeout phase0; original script waited for Welcome-hidden button; no OS inputs",
+        "test_summary": []
+      },
+      {
+        "log": "followup-2026-10-24-window-mac-fixed-order.log",
+        "sha256": "66dd3123c49ae8d27ecade9a332eb9656fc29c369f341bd34568128cbd4624d9",
+        "exit_code": 1,
+        "command": "/tmp/tg-toolbar-app-ei8emezl/TinyGladeToolbarValidation.app/Contents/MacOS/toolbar-validation",
+        "scope": "90s timeout phase1 after request sequence1 at frame93; real inputs=0; before ghost addition",
+        "test_summary": []
+      },
+      {
+        "log": "followup-2026-10-24-ghost-gameplay-gpu.log",
+        "sha256": "8bd1a19d29c1c54af83d27ce749a835bc516153e14caa7884ff422b6667a33e2",
+        "exit_code": 0,
+        "command": "original_gameplay_chain-98f3ec68f6ae98de shipped_session_through_actual_app_and_production_world_graph --exact --nocapture --test-threads=1",
+        "scope": "latest ghost Modifiers resource consumer; Apple M3/MoltenVK real production App/world graph; full env in gpu_environment",
+        "test_summary": [
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 29.66s"
+        ]
+      },
+      {
+        "log": "followup-2026-10-24-window-ghost-final-build.log",
+        "sha256": "ca368e569668fc7145c723e633ea526d5eeb6ea1d69b98e613054580cdaf21e0",
+        "exit_code": 0,
+        "command": "cargo test -p tiny-glade --test toolbar_window_chain --no-run --locked --offline",
+        "scope": "latest complete modified OS harness and toolbar source compiled; no new OS runtime acceptance",
+        "test_summary": []
+      }
+    ],
+    "artifacts_after_final_runs": {
+      "tiny-glade/target/debug/deps/original_gameplay_chain-98f3ec68f6ae98de": "61ea7a30320cb695d20145b16eb04a10a998f764c12fbddb304761d6bbcbc7c5",
+      "tiny-glade/target/debug/deps/toolbar_window_chain-5413ddbbb80b31a8": "40147b201b21f56b094fce853a8a9a7c26516fcec7e5cb3d5577b7b6a8503c7b",
+      "reverse-engineering/tiny-glade/evidence/toolchain/toolbar-focus-resume-20261024.json": "649617385110cdf02128ec91afb61542f9f718bfd3d5c322123c33715bbe9ceb"
+    }
+  },
+  "toolbar_b_function_audit_2026_10_24": {
+    "status": "B toolbar incomplete: confirmed missing families, simplified scroll algorithm and Pill hotkey field handoff defect; audit only",
+    "user_os_input_decision": "暂不进行真实输入验收",
+    "production_code_modified": false,
+    "report": "B-FUNCTION-AUDIT.md",
+    "index": "toolbar-b-function-audit.json",
+    "review_limit": "All B metadata entries accounted for; business-family static review with targeted original decompilation, not all-functions native equivalence or module acceptance.",
+    "probe_limit": "Existing toolbar artifact real widget/setter to consumer-field handoff; no OS input, no original instruction execution, no pre_update dispatch.",
+    "files": {
+      "B-FUNCTION-AUDIT.md": "f54a50212d75f65dc79e094955650c756d18f46d194d8ac7ed66fded47ddc5e1",
+      "toolbar-b-function-audit.json": "9457f544b13f38e61c4ad19f92e586fcd270b08bae99932383498fb2652b6ff8",
+      "audit_toolbar_b.py": "eec6de9be4809c4d4073fb7e8dd12634a66997ace76e8b4123a9e8346f30206d",
+      "toolbar-b-native-audit.json": "f882b30a07d50501bc9cc75fc8465bc37981aa4e8ba3b27a7ab0123b4ff1e21d",
+      "toolbar-b-controls-native-audit.json": "042563426729909374ded509cc8cd223a22b1c889f1140f661ab0abd04a43631",
+      "toolbar-b-audit-original.asm": "cfbf0b1b3d232b96fc009393dcc78fd281b83f514ec90e177898e2d0608a2e12",
+      "pill-hotkey-audit-probe.rs": "9b54d242799b53223b58f98c030fa34239a1effa2f0e6eacbeb2ae8dc3ece31f",
+      "pill-hotkey-field-audit-run.log": "d98e32d1ca2815ef2046fab4f6a6f5b89986466dcec90d3b96057606ddb6788b"
+    }
+  },
+  "toolbar_controls_followup_2026_10_24": {
+    "recorded_utc": "2026-10-24T05:05:50.249891+00:00",
+    "scope": "仅toolbar原owner的Pill输入字段交接、Credits滚动/背景；M01未完成/未验收；未修改渲染agent owner。源码指纹不是共享整个工程冻结构建。",
+    "sources": {
+      "tiny-glade/crates/systems/toolbar/src/mei/widgets.rs": "dd2d2614af168d4e6ab7b509e0791004a3d1b066a25474af30d92776bfce8cf2",
+      "tiny-glade/crates/systems/toolbar/src/mei/widgets/menu_button.rs": "44a6b9be9edb15847f743581fa1e2d1e6c590e7f145e4b2518abeb1172389c6b",
+      "tiny-glade/crates/systems/toolbar/src/menu/credits.rs": "8fe2b15e12bbef918c177b1cf42fc331fc866b0822e1b03b7660ed674158fffd",
+      "tiny-glade/crates/systems/toolbar/tests/original_menu_widget.rs": "a82c44b6034e9d7dc81729a10c536f25258f5f2d4bf318f246dca38143663916",
+      "tiny-glade/Cargo.toml": "cc7c15e1f9330bd51f5cbedd508a859be77a2bc0c9e393ebcc493c352a8f14ec",
+      "tiny-glade/Cargo.lock": "3973cebf0f27268955a1db2e215560dcb497a55efd7fedb1b375b4969b9c22b5",
+      "tiny-glade/crates/systems/toolbar/Cargo.toml": "3ec7a60d4e1ce2d446851220a5dad0db641efad95dd365f8baa5a1e532c852ce",
+      "tiny-glade/crates/country-core/src/resources/time_of_day.rs": "1113b6b69d395b99263e03acf31315abff8000ec2d8ccf2920a58564c973c4ce",
+      "tiny-glade/crates/country-core/src/input/action_set.rs": "76a081520b2025b73cf688259c776400bb4ed0a64c4662a1e47c5fc1e2adc5a7",
+      "tiny-glade/tests/fixtures/native/toolbar-scroll.ron": "3bdb4bb64c03bbd1930bb13ebcabbf9b489bc76e686beb57595aaf5ff417ec33"
+    },
+    "evidence": {
+      "native_scroll.py": "375e2e16a77e31922d0e131375404e02068dfd7cea8aced31c3bfffdacbb5d59",
+      "toolbar-scroll-native.json": "9f0d44b529ec62a291de02f2c5c3a7bc19f987a2af65cc5e2cdad6417b9d0db4",
+      "credits-scroll-original.asm": "efbbc3b4c449ec9c43633dbdeb0e056251b5bbcbc050430537dfe09960be35df",
+      "toolbar-controls-followup-native.json": "369f8bbc5a9555bb55043bc45db2b1d28ba2439fe1bae73165e9cccb639a4896",
+      "audit_toolbar_b.py": "fb0d15333c1c6f272c46a2d2608d9e8b70b0982579c9a398cafcda9f7921635a",
+      "toolbar-b-function-audit.json": "380b9cac9f11f49a806a1f87db7f02acc60db3a3a493c3746034a684744961e0",
+      "B-FUNCTION-AUDIT.md": "2f752f6238bd119ee3181ab32bb21e15f7016cbb8ecedf9e20b9363a06191000",
+      "STATUS.md": "b29838bdf8ac10a3544b27f41db86c0b833fa3af73fccc79a659bbd6fb71c20c"
+    },
+    "logs": {
+      "toolbar-pill-repair-tests.log": {
+        "path": "tiny-glade/reports/business/2026-10-23-module-recovery/toolbar-pill-repair-tests.log",
+        "sha256": "b8086a1c7129927b18e7a942a888318804939d56feac2375f067d3c79e3ac920"
+      },
+      "toolbar-controls-repair-final.log": {
+        "path": "tiny-glade/reports/business/2026-10-23-module-recovery/toolbar-controls-repair-final.log",
+        "sha256": "a83966d9fbf51db5705c2a336494804d152df6379bb77b74bef39651b14e305d"
+      },
+      "toolbar-controls-repair-verified.log": {
+        "path": "tiny-glade/reports/business/2026-10-23-module-recovery/toolbar-controls-repair-verified.log",
+        "sha256": "1cf7ada8539d8b4786b77bd6b8c440618675ca6e4347a41bb831d32b4d1580c9"
+      },
+      "toolbar-controls-repair-complete.log": {
+        "path": "tiny-glade/reports/business/2026-10-23-module-recovery/toolbar-controls-repair-complete.log",
+        "sha256": "0135532431854a8d16f423a7c3a45b4e74708ebae3b12f027513e54b63f47277"
+      },
+      "toolbar-controls-host-final.log": {
+        "path": "tiny-glade/reports/business/2026-10-23-module-recovery/toolbar-controls-host-final.log",
+        "sha256": "23aee00fe266bfc520f2a95c79aa003112e7cb574df72acc063727a5471ebc18"
+      }
+    },
+    "verification": [
+      {
+        "command": "cargo test -p toolbar --lib --test original_menu_widget --offline",
+        "exit": 0,
+        "log": "toolbar-controls-repair-complete.log",
+        "library_passed": 103,
+        "integration_passed": 2,
+        "integration_ignored": 1
+      },
+      {
+        "command": "cargo check -p tiny-glade --offline",
+        "exit": 0,
+        "log": "toolbar-controls-host-final.log"
+      },
+      {
+        "command": "tools/venv/bin/python tiny-glade/reports/business/2026-10-23-module-recovery/native_scroll.py",
+        "exit": 0,
+        "original_cases": 100,
+        "comparison": "6个状态字段f32 bits完全一致",
+        "limit": "原滚动/lerp指令执行；expf是宿主依赖桥；非Windows CRT、页面或OS全域判等"
+      },
+      {
+        "command": "rustfmt --edition 2024 --check（本轮3个改动文件）",
+        "exit": 0,
+        "limit": "widgets.rs只有注释变更；没有格式化无关owner"
+      }
+    ],
+    "preserved_failures": [
+      {
+        "log": "toolbar-pill-repair-tests.log",
+        "exit": 101,
+        "reason": "首次测试额外假定按键声音2，实际无事件。仅输入字段/激活已有原证；删除无原证的声音断言，未修改声音实现，声音验收没有升级。"
+      },
+      {
+        "log": "toolbar-controls-repair-final.log",
+        "exit": 101,
+        "reason": "原指令夹具RON将定长数组编码成列表，反序列化ExpectedStructLike，尚未执行位值比较。修正为元组后100例一致。"
+      }
+    ],
+    "remaining": [
+      "ActionHint/Tab/Tweaker原业务族",
+      "Credits页面/生产注册/构造器布局设置",
+      "Image file缓存和纹理上传消费者",
+      "NewSession/Settings/告警页面",
+      "摄影PROMPT写者与事件链"
+    ],
+    "os_input": "按用户选择暂不验收，本轮未启动游戏/发送OS输入",
+    "gpu_or_performance_acceptance": false,
+    "module_accepted": false
+  },
+  "toolbar_scope_and_controls_2026_10_24": {
+    "recorded_utc": "2026-10-24T07:06:43.486401+00:00",
+    "scope": "M01工作轮续修与用户删除范围收束。以下为相关调用闭包当前文件指纹，不是整个共享工程冻结，也不代表所有列出文件均由本任务修改。渲染生产owner未编辑；render_loop/lut_gallery.rs仅调整删除Credits后的一个测试样本。",
+    "sources": {
+      "tiny-glade/README.md": "c2dcc64f2bf6fb958d5eb96c6f48cebb03326fa2d7d3ae816f7426068bbd5887",
+      "tiny-glade/Cargo.toml": "f72a636d5c1f1e066ba6450948bd5ac5af35f26e976bd720aba75730f4a36f5d",
+      "tiny-glade/Cargo.lock": "01a907050c717083c7659d84232a4c4b049971b8b74d7ead375773f902ac13c0",
+      "tiny-glade/crates/systems/toolbar/Cargo.toml": "eb614fec09b9e3400013dfaf2f5958f1c735feb6d70e8b236afc829a55fb0879",
+      "tiny-glade/crates/systems/toolbar/src/lib.rs": "5d0521350b77ce94c6ac6f3861e79f28778da0859e3406a9428b6a7ba4734861",
+      "tiny-glade/crates/systems/toolbar/src/mei/core.rs": "a7891ed836750abf3b2e7a324f0863f31cfa3a79fbc0a19ccb15669edf78e6e8",
+      "tiny-glade/crates/systems/toolbar/src/mei/systems.rs": "62d9885c09a380024af21c0a17ebf4bd3ae3c0fe9d4e9e0599e1dde6476b4243",
+      "tiny-glade/crates/systems/toolbar/src/mei/widgets.rs": "6c9cd94ab570fcb4a1a969028b217fa90199c8c8c5a0a661286b1f60825c5879",
+      "tiny-glade/crates/systems/toolbar/src/mei/widgets/menu_button.rs": "af55c6999ad2cce04df9632005463a4df18341cad4dff55bbc749f6368366afb",
+      "tiny-glade/crates/systems/toolbar/src/mei/widgets/tweaker.rs": "378afecede12e52842b7086b9e9c971882d188a50ffce03bbee2569fb1a61958",
+      "tiny-glade/crates/systems/toolbar/src/mei/layout.rs": "87bfed3710e63e1a1cccc1629e92bc747129595f6ed13ea1b5064a2f4a13ab73",
+      "tiny-glade/crates/systems/toolbar/src/menu/mod.rs": "fa24759f558193c07a02e7c09e4ee2db29b8cec35f1bd13a47996e43436dfd50",
+      "tiny-glade/crates/systems/toolbar/src/menu/corrupted_save_file.rs": "95c6685cd1d3647f6e19c764fba32618db8f1bc8c48f019952a65cdc908b1d49",
+      "tiny-glade/crates/systems/toolbar/src/menu/welcome/tests.rs": "47eea7b9b434517ae6af1e0c6384aff3bdbe8572e535ae67d27be4cecf03546d",
+      "tiny-glade/crates/systems/toolbar/tests/original_menu_widget.rs": "467d845c1e4e1a30906e613226ad983d1d9b31a43e7f43034e2d10a5cd7208d7",
+      "tiny-glade/crates/country-core/src/resources/gui.rs": "7e71a88d6257e55fddf692110abac2b958ca71a2876a7679b7981d154c1d4f69",
+      "tiny-glade/crates/country-core/src/resources/steam.rs": "fcbb29ac2f83f2203f1f11b60abd66cd49a0fc20ea864aa638fcf2447ff767f1",
+      "tiny-glade/crates/country-core/src/resources/onboarding.rs": "d2540e0d34cc6ec002a00785d87705b26615a58fe08ed6f5f100cd97977c5899",
+      "tiny-glade/crates/country-core/src/systems/steam/mod.rs": "968d326477422ad3736f3da85b20b8498500bf627948d449f3a31ceb91cf4dab",
+      "tiny-glade/crates/country-core/src/game_profile.rs": "639b3ae74479ebaf47f563d1cd339a46f2c2b5bd00a45ca9fb470c06b157adb7",
+      "tiny-glade/crates/country-core/src/render/render_config.rs": "f4722a8d66b9caee246ff35a736373af11b1fc1fc57bc57c0631230d3fa79472",
+      "tiny-glade/crates/country-core/src/systems/render_loop/lut_gallery.rs": "8542ced9b9c12f1ff82065289f27d3f15587136f85be4faeb4350920066a2064",
+      "tiny-glade/crates/country-core/src/systems/wall/structure_outline.rs": "35af7b10241fd220a92ad672665524e2eac2f58486a082261bf0ad8f20269f70",
+      "tiny-glade/crates/systems/onboarding/src/lib.rs": "5581ecfa35ca9d26ae9585d2d14e31729accf0b2f2f5ed1428476c30ca03102f",
+      "tiny-glade/crates/systems/onboarding/src/reset_hints.rs": "77633faf80b4f75bc0ffdd4ac020b18ba27d162d6b49202d7f421f6cb04d4ae1",
+      "tiny-glade/crates/systems/onboarding/src/tutorial_completion.rs": "3c541ad93e0b0c09f41d6c49fcc805ebefecf603ff5006eeab7d63f62fa795c4",
+      "tiny-glade/crates/systems/onboarding/src/exponential_back_off.rs": "451dfa058cd306ce305edade6a748087d88692b814229e36e590192c31c79290",
+      "tiny-glade/crates/systems/onboarding/src/hint_terrain.rs": "47ac0181fc427d728f670b484db45d9aef76ac56805cd4c309fbc2c6ee6d1a37",
+      "tiny-glade/crates/tiny-glade/src/gui/settings.rs": "93b6074eabbaec101b44b4a1a09a9962ca71a275e6b423f87a81778034908629",
+      "tiny-glade/crates/tiny-glade/src/gui/gui_controls.rs": "a77ccef6395c1cc306e877fa891d1c66ff096f86d7fbcda72f86eb6074dac190",
+      "tiny-glade/crates/tiny-glade/src/gui/gui_escape_menu.rs": "657dcdd8cd3e55fd2baa2df760ecfaedb9352936bc8f4f420b87aad1ac48d6e7",
+      "tiny-glade/crates/tiny-glade/src/event_loop.rs": "00851de658e362b889c2356003d821334da2a68944738b0cb41d3c6f5fc4bd40",
+      "tiny-glade/crates/tiny-glade/src/loading_graph.rs": "6ea8b32d5d1a534479578b9d340148fe8f6d93439035be7106b5226c0e12f80c",
+      "tiny-glade/crates/tiny-glade/src/mei_host.rs": "3a5037193d45b7a5706cd951de6e32a40c90e4a7d7b59dc670388b23873e6632",
+      "tiny-glade/crates/tiny-glade/src/gameplay_startup.rs": "87b56de1186025716b5aa9e317b3b9dbdfb0b30264461f01b5e620e02d2b5208",
+      "tiny-glade/crates/tiny-glade/src/screenshot_capture.rs": "117c779b07438ae5c6c2243d39e4cf8d44dedecc034ef150c5b6593f666c6eeb",
+      "tiny-glade/crates/tiny-glade/tests/asset_libraries_gpu.rs": "34729e63b02fc32b42de0c38bc70835740d1d9980c8a90301a44c0a4eec1fd66",
+      "tiny-glade/tests/fixtures/native/toolbar-tweaker-float.ron": "a9d48352f50237d32cf5e205e49e7a020ab652ba93919def48b04953cf01cbd7",
+      "tiny-glade/tests/fixtures/native/toolbar-konami.ron": "ef9b0289dc42656751f5e1341ff0047fbd9f66cc26ec548d1f4b222cec2d7fd7",
+      "tiny-glade/tests/fixtures/native/toolbar-video-apply.ron": "a9607c05ed836eebf52400ae4a8d3b4774d77e08745521d21fb93cb8fd73fc0c",
+      "tiny-glade/tests/fixtures/native/steam-action-origin-map.ron": "00214808651b7b12bab18bfbc6a17f3416abd534ac0b976e9b8cb1ad7fa9c67f"
+    },
+    "deleted": [
+      "tiny-glade/crates/systems/toolbar/src/menu/credits.rs"
+    ],
+    "evidence": {
+      "native_tweaker.py": "3ae9e5f1f410d75ababe7dc3ee09628e907bbe0ead1b6423f598ae89df702df4",
+      "native_konami.py": "32777b61c9265e06422bcb33e5be56e54f8fc2bf011fbbfdb8a85067881d15bc",
+      "native_video_apply.py": "5c754aa24464d6a53464b0ad51d2bce5d020157c9b3812978d75c0e50737754a",
+      "extract_steam_hint_map.py": "d15720b8e551c61c5f008b6aec0bb52106141fdeda194507fa5a93451be4b9cf",
+      "toolbar-tweaker-float-native.json": "19493a69d905cd66b248aef483a818244a84689cd8505ba2b2b7ae7aebb2ecf4",
+      "toolbar-konami-native.json": "cea3e628a7bba8f0ca7b5e098f9f2b5beda3824edb91b811a7a8b7c32e62ad99",
+      "toolbar-video-apply-native.json": "03d75ab36d8f883419fd1d431e2aa11a29b32e07cf16266888239d2e062501ff",
+      "steam-action-origin-map.json": "a5ccedd6022f263b4d23d1607f00a9ab3322b76f13f634ee99969b0333b5c2a7",
+      "toolbar-image-hint-native.json": "000de0258a5236378da84ea51452e0b5d664eb29af30384ddce21dffde64ae56",
+      "toolbar-tabs-native.json": "4e4840c4822a90679ddacee287a433bc8f2dd2b07cbb9941f7e63aa30c7f4d6d",
+      "toolbar-steam-page-native.json": "8b177f18e477265b9ec8ade057f01386f6e4c57dcede8d27b443c29b77a6ceae",
+      "toolbar-steam-rest-native.json": "437aff517a4503795b62088e156e49ca75f39e59bb6ad9c3e9ed0953ee4e6fa4",
+      "toolbar-steam-handles-native.json": "d097220da84340882345ded679a206a632cbd7da584b94b2b206402ed10d06c5",
+      "toolbar-tweakers-native.json": "40ec93e979da17541e8288795cc8e41e69d0bc67bb71e4ab7e9e3a96d6e8f46a",
+      "toolbar-settings-followup-native.json": "50767ecb16127352dc83dc488c1f9c7ee73d8d6b251a42297c01ee9cf830d861",
+      "toolbar-settings-slots-native.json": "9dd5566a2e4c58ef1c3ea6f73731c8e7b0d3c46e6b986e7f34a9a489f70e19b6",
+      "toolbar-fullscreen-native.json": "73c747b3c9d3a296d4b7058c506d652ebafd5020af18c8dd6d4a4ca8a6a11637",
+      "toolbar-settings-button-native.json": "491e85a7a4381abd5986c0c6f68c2ffcaf24872ea559d0664da4c48dd8fbd734",
+      "toolbar-rect-points-native.json": "6510fa0de8a21338d021f92478b71ec413ef59b9c836f42b8eeef152c67d59b8",
+      "toolbar-rect-points-native.asm": "3b5bc35423a48f5260b1b7e2a809590e1e59ed49788fb8e657d2bb7b42958a64",
+      "toolbar-tutorial-event-identity.json": "7af9b8b54d9550e6510dc0f96f4fe892c62d247ee2ab6a18ee6a6f6c2c3c8e78",
+      "toolbar-input-sound-order-native.json": "b146cdfa9e42faa0684e98f3a46933871d3448960a71ed79c55bc5223807f7e9",
+      "audit_toolbar_b.py": "908c4a7fd5b6cbfc29862a5b7cf1df708354d17e3f8c1cabe698fa0348c97813",
+      "toolbar-b-function-audit.json": "2dd3032d494b51a80c597092085709f2f0476d8882678b2e219bebaa286bc43f",
+      "B-FUNCTION-AUDIT.md": "ed7c485718cd73ce2ca8ee59a5cafdc2649662351efaa64a2e78c52312dfe594",
+      "STATUS.md": "b7c8e5ee802b9a3a8367fe8e6ebe91bbbf03d05790ff8747d0207ae737e70b0e"
+    },
+    "logs": {
+      "toolbar-tweaker-tests.log": {
+        "path": "tiny-glade/reports/business/2026-10-23-module-recovery/toolbar-tweaker-tests.log",
+        "sha256": "56693cdd3fcc5827656dee7e8eaab5dae34cb7382a0b8a68d275c18a12968582"
+      },
+      "toolbar-tweaker-tree-corrected.log": {
+        "path": "tiny-glade/reports/business/2026-10-23-module-recovery/toolbar-tweaker-tree-corrected.log",
+        "sha256": "ecd68d36e36fa8d3b474e8ec70b26c2db70fa36a5effee3172ae7e06787c126a"
+      },
+      "toolbar-settings-consumer-frame-run.log": {
+        "path": "tiny-glade/reports/business/2026-10-23-module-recovery/toolbar-settings-consumer-frame-run.log",
+        "sha256": "57f36d6c08c483819dc0f2776963c2ae19101a13265db3a4a76a6c6e80851aa0"
+      },
+      "toolbar-file-image-current-gpu-build.log": {
+        "path": "tiny-glade/reports/business/2026-10-23-module-recovery/toolbar-file-image-current-gpu-build.log",
+        "sha256": "3829f99fb5540410490c34d0a4c97c9f4d116369ea0dc97e73ee2c59cc3a9ed6"
+      },
+      "toolbar-file-image-current-gpu-run.log": {
+        "path": "tiny-glade/reports/business/2026-10-23-module-recovery/toolbar-file-image-current-gpu-run.log",
+        "sha256": "080b489105800e0e4618453fd9ae188a3eb04f24758b8fad68afa8312e7f3872"
+      },
+      "toolbar-all-real-font-cpu.log": {
+        "path": "tiny-glade/reports/business/2026-10-23-module-recovery/toolbar-all-real-font-cpu.log",
+        "sha256": "2a7d60976723ddb3605b4e9ad5af89320795864f2e129a8ef9779caac5682de5"
+      },
+      "toolbar-menu-widget-assets.log": {
+        "path": "tiny-glade/reports/business/2026-10-23-module-recovery/toolbar-menu-widget-assets.log",
+        "sha256": "6b77ef8a9b228ecf5f6655923202fb3e1e5952d5586299af177c25dcdd6fd834"
+      },
+      "toolbar-menu-widget-final-assets.log": {
+        "path": "tiny-glade/reports/business/2026-10-23-module-recovery/toolbar-menu-widget-final-assets.log",
+        "sha256": "f589961a88049e8ee086d4b01e016084f943bbc5b9b4ce7802499d98fa1ffc5c"
+      },
+      "toolbar-menu-widget-native-order-assets.log": {
+        "path": "tiny-glade/reports/business/2026-10-23-module-recovery/toolbar-menu-widget-native-order-assets.log",
+        "sha256": "8ca1f8cba0b3c31888504752343b06b879066dff783d194edfe7bd7ea81cee7a"
+      },
+      "toolbar-menu-widget-order-rebuild.log": {
+        "path": "tiny-glade/reports/business/2026-10-23-module-recovery/toolbar-menu-widget-order-rebuild.log",
+        "sha256": "d3bdfeeb384db3fec7fcd3634ca60b94b3265f557efd5dbde0a7259747e12e8a"
+      },
+      "toolbar-scope-removal-final-tests.log": {
+        "path": "tiny-glade/reports/business/2026-10-23-module-recovery/toolbar-scope-removal-final-tests.log",
+        "sha256": "b40fd86c8e94dc3cd505e7041d95c4b375c7f79357681a35063f15f6d5156653"
+      },
+      "toolbar-onboarding-events-final.log": {
+        "path": "tiny-glade/reports/business/2026-10-23-module-recovery/toolbar-onboarding-events-final.log",
+        "sha256": "8324fad0812461becc261e681972b339a467e369b349f90a6c8a32e2f2d89f89"
+      },
+      "toolbar-scope-removal-host-check.log": {
+        "path": "tiny-glade/reports/business/2026-10-23-module-recovery/toolbar-scope-removal-host-check.log",
+        "sha256": "6548cdf0fa861b9eaa8e8e916938f98bfb12036c438ee1edabf43962ecd3c592"
+      },
+      "toolbar-settings-consumer-run.log": {
+        "path": "tiny-glade/reports/business/2026-10-23-module-recovery/toolbar-settings-consumer-run.log",
+        "sha256": "43929c46084cab99a3010c8d5ac9d5515f8bec2320d7c8ca453f2fe283dc5a7f"
+      },
+      "toolbar-settings-consumer-assets-run.log": {
+        "path": "tiny-glade/reports/business/2026-10-23-module-recovery/toolbar-settings-consumer-assets-run.log",
+        "sha256": "bfc836ce495a2e8b0079a6c79be55f8dfe02ab7abb9cf0e24288bc2d078e17ef"
+      },
+      "toolbar-settings-tests-final.log": {
+        "path": "tiny-glade/reports/business/2026-10-23-module-recovery/toolbar-settings-tests-final.log",
+        "sha256": "630a0421d8c98caebf0a573e262639f267d8cd89becf998ae14353bc9b4a41bb"
+      },
+      "toolbar-input-sound-order-query.log": {
+        "path": "tiny-glade/reports/business/2026-10-23-module-recovery/toolbar-input-sound-order-query.log",
+        "sha256": "3c09941eb3001724b178fa25f44383b94fe600ad0229cc655728c184e6304018"
+      }
+    },
+    "verification": [
+      {
+        "command": "cargo test -p toolbar --lib --test original_menu_widget --offline",
+        "exit": 0,
+        "log": "toolbar-scope-removal-final-tests.log",
+        "library_passed": 103,
+        "library_ignored": 2,
+        "integration_passed": 5,
+        "integration_ignored": 1,
+        "limit": "随后仅依据原证修正原字体集成的阶段/声音断言并格式化测试，最终集成单独运行如下。"
+      },
+      {
+        "command": "env TG_INSTALL_ROOT=/Users/yuluo/Desktop/game/B版本内容 ./target/debug/deps/toolbar-bd7d046db1f60c07 --include-ignored",
+        "exit": 0,
+        "log": "toolbar-all-real-font-cpu.log",
+        "passed": 105,
+        "ignored": 0,
+        "limit": "原字体/模板CPU库消费者，不发送OS输入。"
+      },
+      {
+        "command": "env TG_INSTALL_ROOT=/Users/yuluo/Desktop/game/B版本内容 ./target/debug/deps/original_menu_widget-74b8c517a7c0202d --include-ignored",
+        "exit": 0,
+        "log": "toolbar-menu-widget-native-order-assets.log",
+        "passed": 6,
+        "ignored": 0,
+        "limit": "真实MEI pre_update/文字draw，合成输入资源；非OS或整游戏。测试随后仅rustfmt，不改语义。"
+      },
+      {
+        "command": "cargo test -p system-onboarding --lib --offline",
+        "exit": 0,
+        "log": "toolbar-onboarding-events-final.log",
+        "passed": 35
+      },
+      {
+        "command": "cargo check -p tiny-glade --tests --offline",
+        "exit": 0,
+        "log": "toolbar-scope-removal-host-check.log",
+        "limit": "源码/测试目标检查，不是运行时验收。"
+      },
+      {
+        "command": "env TG_INSTALL_ROOT=/Users/yuluo/Desktop/game/B版本内容 ./target/debug/deps/tiny_glade-e3e9b08c878e0ab8 gui::settings::tests --include-ignored",
+        "exit": 0,
+        "log": "toolbar-settings-consumer-frame-run.log",
+        "passed": 4,
+        "ignored": 0,
+        "limit": "126个原Konami和420个应用掩码夹具，真实页面/教学/档案保存请求与光标事件；不含顶层settings路由、真实磁盘落盘或OS。"
+      },
+      {
+        "command": "env VK_ICD_FILENAMES=/opt/homebrew/etc/vulkan/icd.d/MoltenVK_icd.json VK_LAYER_PATH=/opt/homebrew/share/vulkan/explicit_layer.d DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib RHAPSODY_REQUIRE_VULKAN=1 TG_INSTALL_ROOT=/Users/yuluo/Desktop/game/B版本内容 ./target/debug/deps/asset_libraries_gpu-f3e090949d4c719d mei_file_image_uses_real_upload_cache_descriptor_and_releases_host_slot --exact --nocapture",
+        "exit": 0,
+        "log": "toolbar-file-image-current-gpu-run.log",
+        "passed": 1,
+        "limit": "Apple M3真实MoltenVK无窗口上传、descriptor、2×1像素回读、缓存和owner释放；不是完整菜单画面/资源长稳或性能验收。"
+      },
+      {
+        "command": "原native_tweaker.py / native_konami.py / native_video_apply.py（本轮已执行，具体参数见脚本）",
+        "exit": 0,
+        "cases": {
+          "tweaker_float": 216,
+          "konami": 126,
+          "video_apply": 420
+        },
+        "limit": "原函数入口执行；tweaker roundf桥接宿主libSystem，memcmp桥仅返回字节相等判别；有限浮点逐bit、NaN类别；边界分别见原native元数据。无整函数族或全域等价宣称。"
+      }
+    ],
+    "preserved_failures": [
+      {
+        "log": "toolbar-menu-widget-assets.log",
+        "reason": "旧原字体测试在prepare后要求图元，当前文字库在render时才生成；将图元断言移到实际draw后，未改生产文字。"
+      },
+      {
+        "log": "toolbar-menu-widget-final-assets.log",
+        "reason": "旧测试错误要求cancel热键产生点击声音；重新获取原6842e0确认pre_update先置bit20再记录声音旧状态，按原时序修正期望，未改生产声音。"
+      },
+      {
+        "log": "toolbar-settings-consumer-run.log",
+        "reason": "未设置TG_INSTALL_ROOT，尚未进入消费者验证。"
+      },
+      {
+        "log": "toolbar-settings-consumer-assets-run.log",
+        "reason": "测试未等下一帧构建确认子树；按原帧边界修正。"
+      },
+      {
+        "log": "toolbar-settings-tests-final.log",
+        "reason": "共享源码修改期间编译读到尚未完整切换的TutorialOp/CompletionId；后续稳定源码编译/消费者及onboarding回归通过，不当业务差分失败。"
+      }
+    ],
+    "user_removed_scope": [
+      "许可证HTTP模块、按钮、端口",
+      "Credits整页、菜单变体/入口、专属滚动控件与测试",
+      "此前已删除的反馈报告入口"
+    ],
+    "remaining": [
+      "Settings顶层/视频/键位/语言完整路由及应用/写盘",
+      "NewSession到Reload的真实请求载荷",
+      "DailyWelcome及DailyThemeInfo",
+      "自动保存错误实际异步owner到提示",
+      "摄影PROMPT_ROLLERCOASTER writer与事件分支",
+      "两个原Demo提示",
+      "完整历史/保存/重入/卸载联合验收",
+      "真实Steam平台SDK接线与验收"
+    ],
+    "os_input": "按用户要求暂停；本轮无OS输入",
+    "performance_acceptance": false,
+    "module_accepted": false
+  },
+  "toolbar_deep_review_2026_10_24": {
+    "recorded_utc": "2026-10-24T07:41:22.134178+00:00",
+    "scope": "用户要求深入review；没有修改生产业务源码，也没有真实OS输入。相关31文件读取后的指纹复核一致，不宣称整个共享工程冻结。",
+    "review": "toolbar-deep-review.json",
+    "review_sha256": "6bff9b9ba5cb836a2245d5af7937bdb4f54353f1b05676b1bfe8d69e982f9eaf",
+    "findings": [
+      "TB-R1",
+      "TB-R2",
+      "TB-R3",
+      "TB-R4",
+      "TB-R5",
+      "TB-R6",
+      "TB-R7",
+      "TB-R8"
+    ],
+    "evidence_and_documents": {
+      "STATUS.md": "00ac8aa76ebaa78467bcd80c68bfeaf0d044f47ef5a5c40552e287a02d2055f5",
+      "B-FUNCTION-AUDIT.md": "59433ef092ca7f194ec1132026d6b63346c8d057cf540c1fc44ac3c75d4bec03",
+      "toolbar-b-function-audit.json": "d62e560cb82c9458fba70b517d7cc52a8f4e04aa17629a898ecb9094539c89a0",
+      "audit_toolbar_b.py": "c4685525fa6e7369fa829a3b12a62a59ad6271c7f47ab983fe84da5fde1b1871",
+      "toolbar-deep-review-native.json": "83bc9b333d8455192f9e49772b56057a6b3e1615ada9be004bec0f3fb286e6e6",
+      "toolbar-deep-review-input-native.json": "cde931e10f3854370560662f584730f0e37ee2d22443c08ec6fad93df0158639",
+      "toolbar-deep-review-input-cases.json": "b02c98a65d72eb90f39de6d512119c6b34719df41c807b7f1804c8ef13895748",
+      "toolbar-deep-review-static-checks.json": "81e2e5eb8f8228791e8627d1cbadde71069aa102d846ab79727c1a6879dd43f6",
+      "review_toolbar_input_native.py": "7de800501831cfd9af587f100b9d32c7598fb2c39917b1eb39cfbf079682bd93",
+      "toolbar-review-current-input.rs": "7817bd95e6d7ea6475ff96c835b9a138eee6c70dcac27fdb5cd8611ed77cdfcd",
+      "toolbar-review-quality.asm": "5015d294cbaa9919ba69bbd0b9149f31a7ee0ead7dc88451521d43881571222e",
+      "toolbar-review-prompt-head.asm": "bfa6a56e51c4e897b014cbc0136af959c3f878a9b0350920428f820a6eb114eb",
+      "toolbar-review-input-head.asm": "0fa3fd2cb7b1001120d085efb9c378fc576f7f5b3d3684c88f2e21e4edaf0649"
+    },
+    "original_input_comparison": {
+      "whole_native_function": true,
+      "native_cases": 2,
+      "mismatches": 2,
+      "bridges": [],
+      "production_code_fixed": false
+    },
+    "escape_menu_regression": {
+      "exit": 0,
+      "passed": 4,
+      "settings_consumer_covered": false
+    },
+    "module_accepted": false,
+    "lesson": "菜单状态生产不等于目标页消费；长按首次连发与过期补偿不可简化；坏跳表用原PE表项核对；每轮重新确认缺口，避免把已接收的保存错误误报无人接收。"
+  }
+}

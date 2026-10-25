@@ -1,0 +1,249 @@
+//! 摆放数据注册表。按路径去重，保存数据缓冲、元素数与资产句柄。
+//! 原作来源见项目 evidence；当前接口、行为变化与验证范围见 README.md。
+
+use std::collections::HashMap;
+use std::path::PathBuf;
+
+use bevy_ecs::resource::Resource;
+
+use crate::asset_libraries::Handle;
+use crate::render::ssbo::TypedStorageBuffer;
+use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
+use crate::resources::placement_data::PlacementDataSsbo;
+use crate::render::{extract::{ChangeCursor, ChangeJournal}, asset_ack::{AssetChangeCursor, AssetEntryKey, AssetSnapshot}};
+
+/// 持有已加载的摆放数据缓冲及来源索引。
+#[derive(Resource)]
+pub struct AssetPlacementDataLibrary {
+    buffers: HashMap<Handle<PlacementDataSsbo>, (TypedStorageBuffer<PlacementDataSsbo>, usize)>,
+    paths: HashMap<PathBuf, Handle<PlacementDataSsbo>>,
+    changes: ChangeJournal<AssetEntryKey>,
+    source_cursor: Option<ChangeCursor>,
+}
+
+impl Clone for AssetPlacementDataLibrary {
+    fn clone(&self) -> Self {
+        let source_cursor = Some(self.changes.cursor());
+        Self { buffers: self.buffers.clone(), paths: self.paths.clone(),
+            changes: ChangeJournal::default(), source_cursor }
+    }
+}
+impl AssetSnapshot for AssetPlacementDataLibrary {
+    fn asset_cursor(&self) -> AssetChangeCursor { AssetChangeCursor(self.changes.cursor()) }
+    fn asset_changes(&self, cursor: Option<AssetChangeCursor>) -> Option<(AssetChangeCursor, Vec<AssetEntryKey>)> {
+        self.changes.since(cursor.map(|cursor| cursor.0)).map(|(cursor, keys)| (AssetChangeCursor(cursor), keys))
+    }
+    fn asset_keys(&self) -> Vec<AssetEntryKey> {
+        self.buffers.keys().map(|handle| AssetEntryKey::Id(handle.id().raw()))
+            .chain(self.paths.keys().cloned().map(AssetEntryKey::Path)).collect()
+    }
+    fn asset_contains(&self, key: &AssetEntryKey) -> bool {
+        match key {
+            AssetEntryKey::Id(id) => self.buffers.contains_key(&Handle::from_raw(*id)),
+            AssetEntryKey::Path(path) => self.paths.contains_key(path),
+            _ => false,
+        }
+    }
+    fn update_asset_snapshot(&self, destination: &mut Self) {
+        let Some((cursor, keys)) = self.changes.since(destination.source_cursor) else {
+            *destination = self.clone(); return;
+        };
+        for key in keys.into_iter().collect::<std::collections::HashSet<_>>() {
+            match key {
+                AssetEntryKey::Id(id) => {
+                    let handle = Handle::from_raw(id);
+                    if let Some(entry) = self.buffers.get(&handle) { destination.buffers.insert(handle, entry.clone()); }
+                    else { destination.buffers.remove(&handle); }
+                }
+                AssetEntryKey::Path(path) => {
+                    if let Some(handle) = self.paths.get(&path) { destination.paths.insert(path, *handle); }
+                    else { destination.paths.remove(&path); }
+                }
+                _ => unreachable!(),
+            }
+        }
+        destination.source_cursor = Some(cursor);
+    }
+}
+
+impl AssetPlacementDataLibrary {
+    /// 创建初始状态。
+    pub fn new() -> Self {
+        AssetPlacementDataLibrary {
+            buffers: HashMap::new(),
+            paths: HashMap::new(),
+            changes: ChangeJournal::default(),
+            source_cursor: None,
+        }
+    }
+
+    /// Read the registered owners without exposing unjournaled table edits.
+    pub fn buffers(&self) -> &HashMap<Handle<PlacementDataSsbo>, (TypedStorageBuffer<PlacementDataSsbo>, usize)> {
+        &self.buffers
+    }
+
+    pub fn paths(&self) -> &HashMap<PathBuf, Handle<PlacementDataSsbo>> {
+        &self.paths
+    }
+
+    /// B uninit_clearing@140a7a5fd..60c drops buffers before path keys.
+    /// Retain table allocations, and let each typed buffer release its real lease.
+    pub fn clear(&mut self) {
+        for key in self.asset_keys() { self.changes.record(key); }
+        self.buffers.clear();
+        self.paths.clear();
+    }
+
+    /// 加载并注册摆放数据，同一路径不能重复加载。
+    pub fn load(
+        &mut self,
+        device: &dyn GraphicsDevice,
+        path: PathBuf,
+    ) -> (Vec<PlacementDataSsbo>, Handle<PlacementDataSsbo>) {
+        if !self.paths.is_empty() && self.paths.contains_key(&path) {
+            panic!(
+                "AssetPlacementDataLibrary: the placement data from {} has already been loaded",
+                path.display()
+            );
+        }
+        let json_text = std::fs::read_to_string(&path)
+            .unwrap_or_else(|_| panic!("Couldn't find {}", path.display()));
+        let placements: Vec<PlacementDataSsbo> = serde_json::from_str(&json_text).unwrap();
+        let storage_buffer = TypedStorageBuffer::new(device, Some(&placements));
+        let handle = Handle::new();
+        self.buffers
+            .insert(handle, (storage_buffer, placements.len()));
+        self.changes.record(AssetEntryKey::Id(handle.id().raw()));
+        self.changes.record(AssetEntryKey::Path(path.clone()));
+        self.paths.insert(path, handle);
+        (placements, handle)
+    }
+}
+
+impl Default for AssetPlacementDataLibrary {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::render::test_device::TestDevice as Device;
+
+    fn tmp_file(tag: &str, text: &str) -> PathBuf {
+        let d = std::env::temp_dir().join(format!("placement_lib_{}_{}", tag, std::process::id()));
+        std::fs::create_dir_all(&d).unwrap();
+        let f = d.join("placement.json");
+        std::fs::write(&f, text).unwrap();
+        f
+    }
+
+    #[test]
+    fn new_has_two_empty_tables() {
+        let lib = AssetPlacementDataLibrary::new();
+        assert!(lib.buffers.is_empty());
+        assert!(lib.paths.is_empty());
+    }
+
+    #[test]
+    fn placement_registration_and_clear_publish_entry_changes_and_preserve_snapshot_owners() {
+        let mut library = AssetPlacementDataLibrary::new();
+        let path = tmp_file("entry_ack", "[]");
+        let before = library.asset_cursor();
+        let (_, handle) = library.load(&Device(1), path.clone());
+        let keys = library.asset_changes(Some(before)).unwrap().1;
+        assert!(keys.contains(&AssetEntryKey::Id(handle.id().raw())));
+        assert!(keys.contains(&AssetEntryKey::Path(path)));
+        let mut render = library.clone();
+        let before = library.asset_cursor();
+        library.clear();
+        assert!(!render.buffers.is_empty());
+        assert_eq!(library.asset_changes(Some(before)).unwrap().1.len(), 2);
+        library.update_asset_snapshot(&mut render);
+        assert!(render.buffers.is_empty() && render.paths.is_empty());
+    }
+
+    #[test]
+    fn load_registers_buffer_and_path_and_returns_data_with_handle() {
+        let f = tmp_file(
+            "ok",
+            r#"[{"position":[1,0,2],"scale":1,"rotation_angle":0,"id":1},{"position":[3,0,4],"scale":2,"rotation_angle":90,"id":2}]"#,
+        );
+        let mut lib = AssetPlacementDataLibrary::new();
+        let (data, handle) = lib.load(&Device(1), f.clone());
+        assert_eq!(data.len(), 2);
+        assert_eq!(lib.paths.get(&f), Some(&handle));
+        let (buf, len) = lib.buffers.get(&handle).unwrap();
+        assert_eq!(*len, 2, "条目里的 usize 是元素个数");
+        // BUFFER_LEN == 0：缓冲大小 = 元素数 * size_of::<T>()
+        assert_eq!(
+            buf.byte_size(),
+            2 * core::mem::size_of::<PlacementDataSsbo>()
+        );
+    }
+
+    #[test]
+    fn each_load_gets_a_fresh_handle() {
+        let a = tmp_file("a", "[]");
+        let b = tmp_file("b", "[]");
+        let mut lib = AssetPlacementDataLibrary::new();
+        let (_, ha) = lib.load(&Device(1), a);
+        let (_, hb) = lib.load(&Device(1), b);
+        assert_ne!(ha, hb);
+        assert_eq!(lib.buffers.len(), 2);
+        assert_eq!(lib.paths.len(), 2);
+    }
+
+    #[test]
+    fn empty_array_creates_zero_element_entry() {
+        let f = tmp_file("empty", "[]");
+        let mut lib = AssetPlacementDataLibrary::new();
+        let (data, handle) = lib.load(&Device(1), f);
+        assert!(data.is_empty());
+        assert_eq!(lib.buffers.get(&handle).unwrap().1, 0);
+    }
+
+    #[test]
+    #[should_panic(expected = "AssetPlacementDataLibrary: the placement data from ")]
+    fn loading_the_same_path_twice_panics() {
+        let f = tmp_file("dup", "[]");
+        let mut lib = AssetPlacementDataLibrary::new();
+        lib.load(&Device(1), f.clone());
+        lib.load(&Device(1), f);
+    }
+
+    #[test]
+    #[should_panic(expected = "has already been loaded")]
+    fn duplicate_message_tail() {
+        let f = tmp_file("dup2", "[]");
+        let mut lib = AssetPlacementDataLibrary::new();
+        lib.load(&Device(1), f.clone());
+        lib.load(&Device(1), f);
+    }
+
+    #[test]
+    #[should_panic(expected = "Couldn't find ")]
+    fn missing_file_panics_with_couldnt_find() {
+        AssetPlacementDataLibrary::new()
+            .load(&Device(1), PathBuf::from("/nonexistent/placement.json"));
+    }
+
+    #[test]
+    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value")]
+    fn bad_json_panics_via_unwrap() {
+        let f = tmp_file("bad", "{not json");
+        AssetPlacementDataLibrary::new().load(&Device(1), f);
+    }
+
+    #[test]
+    fn failed_load_leaves_tables_untouched() {
+        let f = tmp_file("bad2", "nope");
+        let mut lib = AssetPlacementDataLibrary::new();
+        let r = std::panic::catch_unwind(core::panic::AssertUnwindSafe(|| {
+            lib.load(&Device(1), f);
+        }));
+        assert!(r.is_err());
+        assert!(lib.buffers.is_empty() && lib.paths.is_empty());
+    }
+}

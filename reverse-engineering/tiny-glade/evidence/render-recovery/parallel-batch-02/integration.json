@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "status": "consistent_partial",
+  "scope": "R2 compile projection -> R4 executor/temporal -> R3 tracked GPU lifecycle",
+  "inputs": {
+    "contract": {
+      "path": "evidence/render-recovery/parallel-batch-02/contract.json",
+      "sha256": "5c97f029ac79e8b5348b90a73c39243737335fc061433e195c9765e3661977f3"
+    },
+    "graph_schema": {
+      "path": "evidence/render-recovery/parallel-batch-02/graph-compiler/snapshot-schema.json",
+      "sha256": "13ec94d095e5060a72f0e8078a02001d41534086986da001f731c275f6b52659"
+    },
+    "graph_contract": {
+      "path": "evidence/render-recovery/parallel-batch-02/graph-compiler/implementation-contract.json",
+      "sha256": "d483915407ac23f298e9a1ee3cdfbc8b9ca46500e1f7d1e32838aeb865e982a9"
+    },
+    "graph_validation": {
+      "path": "evidence/render-recovery/parallel-batch-02/graph-compiler/validation.json",
+      "sha256": "a42ea91c32c526f45d83526b7de90adcedaa03c6ac174a89703670a7323a4809"
+    },
+    "lifecycle_schema": {
+      "path": "evidence/render-recovery/parallel-batch-02/gpu-lifecycle/event-schema.json",
+      "sha256": "df667d184c5d681900354afee829f79dc3c19829145f2a4b9b4dfd48e63c5281"
+    },
+    "lifecycle_state": {
+      "path": "evidence/render-recovery/parallel-batch-02/gpu-lifecycle/lifecycle-state-machine.json",
+      "sha256": "0c1c6f0a63473965806220e6f80635d70177baec06f028fe11a59cb42a06c3c7"
+    },
+    "lifecycle_contract": {
+      "path": "evidence/render-recovery/parallel-batch-02/gpu-lifecycle/implementation-contract.json",
+      "sha256": "dce72b72a7749f90357a8f8abbdfc7afc61fabdd8b73cac9241a6936bfe4d654"
+    },
+    "lifecycle_validation": {
+      "path": "evidence/render-recovery/parallel-batch-02/gpu-lifecycle/validation.json",
+      "sha256": "cece3ad93e2898b0742d1ed7303a4e8a96caded4e9eb63567a866af3bb45abe9"
+    },
+    "executor_timeline": {
+      "path": "evidence/render-recovery/parallel-batch-02/executor-temporal/execution-timeline.json",
+      "sha256": "005dbf1d35bc393b813f890fa5b23dc954990daf68206b93d2c189b12f6c6c09"
+    },
+    "executor_temporal": {
+      "path": "evidence/render-recovery/parallel-batch-02/executor-temporal/temporal-schema.json",
+      "sha256": "963daeba2e3b5f631213fe00d498decbd47700507edb65827baf763baf3f2a91"
+    },
+    "executor_contract": {
+      "path": "evidence/render-recovery/parallel-batch-02/executor-temporal/implementation-contract.json",
+      "sha256": "a5fece491de72c3f1db5e120056427f1c27cd36ce12df7fd3c7891355ce4c35d"
+    },
+    "executor_validation": {
+      "path": "evidence/render-recovery/parallel-batch-02/executor-temporal/validation.json",
+      "sha256": "8ae183bcf958629c5882cfe6ceee468ff8ffbf01a7e1287d47296943f226321f"
+    }
+  },
+  "checks": [
+    {
+      "name": "initial_transition_reused_split",
+      "ok": true,
+      "detail": "record_batch handles ordinary initial transitions; pre-pass handles explicit reused resources"
+    },
+    {
+      "name": "pool_hit_not_graph_alias",
+      "ok": true,
+      "detail": "persistent pool reuse is not promoted to graph-local alias evidence"
+    },
+    {
+      "name": "graph_candidate_boundary",
+      "ok": true,
+      "detail": "17 projection tests pass; full original compile entry remains unverified"
+    },
+    {
+      "name": "command_sequence_vs_queue_timeline",
+      "ok": true,
+      "detail": "R3 preserves separate command and submission ordering domains"
+    },
+    {
+      "name": "cpu_retire_not_completion",
+      "ok": true,
+      "detail": "CPU pool return is immediate while tracked handles protect GPU lifetime"
+    },
+    {
+      "name": "lifecycle_native_leaves",
+      "ok": true,
+      "detail": "cases=29692, failures=0"
+    },
+    {
+      "name": "generation_failure_policy",
+      "ok": true,
+      "detail": "stale track is ignored; generation advances only at disposal"
+    },
+    {
+      "name": "executor_decoupled_paths",
+      "ok": true,
+      "detail": "R4 CPU retirement and R3 GPU disposal are separate paths"
+    },
+    {
+      "name": "temporal_parity_per_key",
+      "ok": true,
+      "detail": "parity is keyed state, not one global bool"
+    },
+    {
+      "name": "temporal_export_no_flip",
+      "ok": true,
+      "detail": "export_temporal and get_and_flip_parity remain separate operations"
+    },
+    {
+      "name": "executor_candidate_tests",
+      "ok": true,
+      "detail": "passed: 4 tests (--locked --offline)"
+    }
+  ],
+  "failed_checks": [],
+  "closed_path": [
+    "graph declarations to deterministic CPU compiled snapshot",
+    "compiled batches to command-buffer and submit events",
+    "immediate CPU retirement with deferred tracked GPU disposal",
+    "per-key temporal parity and export state projection"
+  ],
+  "remaining": [
+    "full original compile/record/submit entry differential",
+    "Vulkan runtime and real GPU execution",
+    "graph-local alias producer or proof it is disabled",
+    "same-resource cross-domain sequence mapping",
+    "full temporal key/payload/reset schema",
+    "pipeline/descriptors/shaders and country-core pass integration"
+  ]
+}

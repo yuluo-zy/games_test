@@ -1,0 +1,57 @@
+
+void __cdecl
+country_core::resources::history::path_edit::_::impl$0::
+deserialize<enum2_<serde_json::value::Value>_>(void)
+
+{
+  undefined8 *puVar1;
+  undefined8 *extraout_RAX;
+  undefined8 *extraout_RAX_00;
+  undefined4 *in_RCX;
+  size_t sVar2;
+  longlong local_90;
+  void *local_88;
+  longlong local_80;
+  undefined4 local_78;
+  undefined4 local_74;
+  undefined4 local_70;
+  undefined1 local_6c;
+  
+  serde_json::value::de::impl$2::
+  deserialize_struct<country_core::resources::history::path_edit::_::impl_0::deserialize::__Visitor>
+            ();
+  if (SBORROW8(0,local_90)) {
+    *(void **)(in_RCX + 2) = local_88;
+    *in_RCX = 2;
+  }
+  else {
+    sVar2 = local_80 * 0xc;
+    alloc::sync::arcinner_layout_for_value_layout();
+    puVar1 = extraout_RAX;
+    if (sVar2 != 0) {
+      std::alloc::__default_lib_allocator::__rust_alloc();
+      puVar1 = extraout_RAX_00;
+    }
+    if (puVar1 == (undefined8 *)0x0) {
+                    // WARNING: Subroutine does not return
+      alloc::alloc::handle_alloc_error();
+    }
+    *puVar1 = 1;
+    puVar1[1] = 1;
+    memcpy(puVar1 + 2,local_88,local_80 * 0xc);
+    if (local_90 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    *(undefined8 **)(in_RCX + 2) = puVar1;
+    *(longlong *)(in_RCX + 4) = local_80;
+    in_RCX[6] = local_70;
+    *(undefined1 *)(in_RCX + 7) = local_6c;
+    *in_RCX = local_78;
+    in_RCX[1] = local_74;
+  }
+  return;
+}
+
+
+
+CALLEES: [{"name": "__rust_alloc", "address": "140613c10"}, {"name": "__rust_dealloc", "address": "140613c20"}, {"name": "arcinner_layout_for_value_layout", "address": "140d7c180"}, {"name": "deserialize_struct<country_core::resources::history::path_edit::_::impl$0::deserialize::__Visitor>", "address": "14159f130"}, {"name": "handle_alloc_error", "address": "1428d9000"}, {"name": "memcpy", "address": "142923c00"}]

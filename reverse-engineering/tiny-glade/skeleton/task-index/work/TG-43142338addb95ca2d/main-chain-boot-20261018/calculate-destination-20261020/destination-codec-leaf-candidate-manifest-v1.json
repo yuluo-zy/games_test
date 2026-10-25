@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "scope": "canonical destination payload/Info codec/raw first8B coordinate leaf only",
+  "task_id": "TG-43142338addb95ca2d",
+  "claim_owner": "main-chain-boot-20261018",
+  "delegated_executor": "rhapsody-correctness-20261019",
+  "production_writes": false,
+  "cargo_or_target_execution": false,
+  "source": {
+    "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs",
+    "before_sha256": "ea8407fdad82fb8caf8cb16213d2def019b410cda6e17d865ebeb4164946db38",
+    "candidate": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-43142338addb95ca2d/main-chain-boot-20261018/calculate-destination-20261020/candidate/decorator.rs",
+    "candidate_sha256": "7da61633c1ec7be6662533fa7cd61ab9229942fa2e03e5f3221641425aeb8976"
+  },
+  "patch": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-43142338addb95ca2d/main-chain-boot-20261018/calculate-destination-20261020/destination-codec-leaf-v1.patch",
+    "sha256": "2a11d06c3b07b900037ba1b1c4022c4e880d299741671035a57bdf17b996d373"
+  },
+  "inventory": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-43142338addb95ca2d/main-chain-boot-20261018/calculate-destination-20261020/current-dst-consumers-leaf-v1.txt",
+    "sha256": "c1a58653780e8a0c6e2854ad2dbdea3fde8c9fa4528f02a6adc35385f73ff808"
+  },
+  "references": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-43142338addb95ca2d/main-chain-boot-20261018/calculate-destination-20261020/design-frozen-manifest-v1.json",
+      "sha256": "5399cf63bdbc1409ab5ece113959475a018cfa89b6afcb43a7339d688882dc78"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-43142338addb95ca2d/main-chain-boot-20261018/calculate-destination-20261020/coordinate-read-addendum-v1/frozen-manifest-v1.json",
+      "sha256": "662d90a9acc2f8dba16bcfcce3a3d35e91433bb5096edf22dfda2adfd393ed96"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/independent-validation/fullvisual-20261020/DESTINATION_CODEC_LEAF_DESIGN_REVIEW_V1.json",
+      "sha256": "b2194269a935e82683c9be159d9ee763766a7c64f9301ad6e4f198010ae96232"
+    }
+  ],
+  "tests": {
+    "status": "UNRUN",
+    "new_tests": 5,
+    "migrated_existing_test": "decorator_dst_is_wall_and_tags",
+    "actual_contracts": [
+      "defined bytes plus all other Info and padding preserved",
+      "wall 0/1 and actual optional bool",
+      "nonfinite yaw/coordinates and signed zero bit roundtrip",
+      "stair real IDs and coordinates",
+      "malformed boolean/tag rejected",
+      "raw tag255 first8B coordinate read without strict decode"
+    ]
+  },
+  "not_claimed": [
+    "calculate/intent/carrier/512B actual move conversion",
+    "whole place/move UI",
+    "mesh producer or actual application execution",
+    "adapter source not yet integrated"
+  ]
+}

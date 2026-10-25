@@ -1,0 +1,41 @@
+
+// WARNING: Globals starting with '_' overlap smaller symbols at the same address
+
+void __cdecl
+country_core::resources::terrain_height::TerrainHeightsData::
+sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>(void)
+
+{
+  undefined4 in_XMM1_Da;
+  undefined4 in_XMM1_Db;
+  undefined1 in_XMM2 [16];
+  undefined1 auVar1 [16];
+  undefined1 auVar2 [16];
+  undefined1 auVar3 [16];
+  undefined1 auVar4 [16];
+  
+  auVar1._0_8_ = in_XMM2._0_8_;
+  auVar1._8_4_ = in_XMM2._4_4_;
+  auVar1._12_4_ = in_XMM1_Db;
+  auVar2._8_8_ = auVar1._8_8_;
+  auVar2._0_4_ = in_XMM2._0_4_;
+  auVar2._4_4_ = in_XMM1_Da;
+  auVar2 = divps(auVar2,___xmm_00000000000000004302000043020000);
+  auVar3._0_4_ = auVar2._0_4_ + 0.5;
+  auVar3._4_4_ = auVar2._4_4_ + 0.5;
+  auVar3._8_4_ = auVar2._8_4_ + 0.0;
+  auVar3._12_4_ = auVar2._12_4_ + 0.0;
+  if (*__imp__ZN5utils10float_grid27USE_FLOAT_GRID_SAMPLING_FIX17h1da07c56e07a6074E == '\0') {
+    auVar2 = maxps(ZEXT816(0),auVar3);
+    auVar4._0_4_ = -(uint)!NAN(auVar3._0_4_) & auVar2._0_4_;
+    auVar4._4_4_ = -(uint)!NAN(auVar3._4_4_) & auVar2._4_4_;
+    auVar4._8_4_ = -(uint)!NAN(auVar3._8_4_) & auVar2._8_4_;
+    auVar4._12_4_ = -(uint)!NAN(auVar3._12_4_) & auVar2._12_4_;
+    minps(___xmm_00000000000000003f8000003f800000,auVar4);
+  }
+  ::utils::lerp();
+  ::utils::lerp();
+  ::utils::lerp();
+  return;
+}
+

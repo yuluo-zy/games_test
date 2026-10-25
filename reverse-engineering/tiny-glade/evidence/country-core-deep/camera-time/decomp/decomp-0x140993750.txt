@@ -1,0 +1,67 @@
+
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_140993750(longlong param_1,float param_2,float param_3)
+
+{
+  undefined8 *puVar1;
+  code *pcVar2;
+  float *pfVar3;
+  longlong lVar4;
+  longlong in_RDX;
+  longlong lVar5;
+  undefined8 *puVar6;
+  float fVar7;
+  float fVar8;
+  undefined **ppuStack_98;
+  undefined *puStack_90;
+  undefined *puStack_88;
+  undefined8 uStack_80;
+  undefined *puStack_78;
+  undefined8 uStack_70;
+  undefined8 **ppuStack_68;
+  undefined8 uStack_60;
+  undefined8 uStack_58;
+  
+  lVar5 = *(longlong *)(param_1 + 0x10) << 4;
+  puVar6 = *(undefined8 **)(param_1 + 8);
+  do {
+    if (lVar5 == 0) {
+      puStack_88 = &UNK_142aecdc0;
+      uStack_80 = 0x23;
+      ppuStack_98 = &puStack_88;
+      puStack_90 = &UNK_140109e90;
+      puStack_78 = &UNK_142aecd30;
+      uStack_70 = 2;
+      uStack_58 = 0;
+      ppuStack_68 = &ppuStack_98;
+      uStack_60 = 1;
+      FUN_1428d9390(&puStack_78,&UNK_142aecda8);
+      pcVar2 = (code *)swi(3);
+      (*pcVar2)();
+      return;
+    }
+    puVar1 = puVar6 + 2;
+    pfVar3 = (float *)(**(code **)(puVar6[1] + 0x40))(*puVar6);
+    lVar4 = (**(code **)(in_RDX + 0x18))(pfVar3);
+    lVar5 = lVar5 + -0x10;
+    puVar6 = puVar1;
+  } while (((pfVar3 == (float *)0x0) || (lVar4 != 0x718e4fd258330fe5)) ||
+          (in_RDX != 0x7f9f9b0da2744bb));
+  param_3 = param_3 * _UNK_142925870;
+  fVar7 = (float)func_0x000142923f10(param_2 * _UNK_142925870 + *pfVar3,_UNK_142aba9ac);
+  *pfVar3 = fVar7;
+  param_3 = param_3 + pfVar3[1];
+  fVar7 = _UNK_142aba9b0;
+  if (_UNK_142aba9b0 <= param_3) {
+    fVar7 = param_3;
+  }
+  fVar8 = _UNK_1429edb94;
+  if (fVar7 <= _UNK_1429edb94) {
+    fVar8 = fVar7;
+  }
+  pfVar3[1] = fVar8;
+  return;
+}
+

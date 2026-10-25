@@ -1,0 +1,294 @@
+--- games_test/tiny-glade/crates/country-core/src/systems/render_loop/render_world.rs
++++ games_test/tiny-glade/crates/country-core/src/systems/render_loop/render_world.rs
+@@ -92,7 +92,7 @@
+     pub desc: TextureDesc,
+ }
+ 
+-/// `get_or_create_temporal` 返回的单张历史纹理（40 B：`RgTexture` + `+0x24` 标志字节，I：标志 = 本帧新建）。
++/// `get_or_create_temporal` 返回的单张历史纹理（40 B：`RgTexture` + `+0x24` 标志字节，O：1 = 历史有效，0 = 本帧新建）。
+ /// `+0x24 == 2` 是 `Result::Err` 的 niche（O：`cmp byte [rbp+0x364], 2; je err`）。
+ #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+ pub struct TemporalTexture {
+@@ -101,7 +101,7 @@
+ }
+ 
+ /// `get_or_create_temporal_pair`（0x1404f7450）的结果：当前帧 + 上一帧（各 36 B）+ 末尾标志字节
+-/// （O：`+0x4c`，之后以 `& 1` 传给 `ray_trace_gi`、原样传给 deferred/透明 pass；I：`history_is_fresh`）。
++/// （O：`+0x4c`，之后以 `& 1` 传给 `ray_trace_gi`、原样传给 deferred/透明 pass；1 表示历史有效）。
+ #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+ pub struct TemporalPair {
+     pub cur: RgTexture,
+@@ -125,17 +125,13 @@
+     pub velocity: RgTexture,
+ }
+ 
+-/// `generate_hzb` 的 sret（44 B，内部布局 U）。
+-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+-pub struct HzbHandles(pub [u32; 11]);
+-/// `bin_lights` 的 sret（32 B，布局 U）。
+-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+-pub struct LightBins(pub [u32; 8]);
+-/// 36 B 的 pass 输出（`calculate_reprojection_map`/`calculate_ssgi`/`ray_trace_gi`/`eval_gi_screen_radiance`/
+-/// `restir_sample_direct_lights`/`apply_screen_shadows`/`dof_prepare`/`calc_dof`/`calculate_taa|tgsr`），
+-/// 内部字段 U；它们之间只是原样传递。
+-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+-pub struct PassHandle(pub [u32; 9]);
++// Typed current-core outputs. These names describe real consumer values,
++// never byte arrays intended to imitate an original compiler's sret ABI.
++pub use super::compute_passes::{
++    bin_lights::LightBinning as LightBins, dof::DofPrepared as DofTargets,
++    generate_hzb::Hzb as HzbHandles, ray_trace_gi::RestirTextures as RayTracedGi,
++};
++pub type PassHandle = crate::render::pass_builder::pass_resource_access::RgTexture;
+ 
+ /// `param_6` 指向的设置字节（O 偏移；仅读取这几项）。
+ #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+@@ -161,11 +157,11 @@
+ }
+ 
+ /// 返回体（O：sret 0x6c B，三个 36 B 片段依次在 `+0x00/+0x24/+0x48`）。
+-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+ pub struct RenderWorldOutputs {
+     /// `+0x00`：深度纹理拷贝（`uStack_2a8`，与 `param_7` 相同）。
+     pub depth: RgTexture,
+-    /// `+0x24`：`dof_prepare` 的输出。
++    /// `+0x24`：`dof_prepare` 内部两张纹理中的第一张 CoC；tile 纹理仅在函数内传给 calc_dof。
+     pub dof_prepare: PassHandle,
+     /// `+0x48`：TAA/TGSR 的输出。
+     pub taa: PassHandle,
+@@ -319,12 +315,12 @@
+         history_fresh: bool,
+         reprojection: &PassHandle,
+         ssgi: &PassHandle,
+-    ) -> PassHandle;
++    ) -> RayTracedGi;
+     fn eval_gi_screen_radiance(
+         &mut self,
+         half: &HalfResTargets,
+         ssgi: &PassHandle,
+-        rt_gi: &PassHandle,
++        rt_gi: &RayTracedGi,
+         reprojection: &PassHandle,
+     ) -> PassHandle;
+     fn bin_lights(&mut self) -> LightBins;
+@@ -348,7 +344,7 @@
+         history_fresh: bool,
+         ssgi: &PassHandle,
+         half: &HalfResTargets,
+-        rt_gi: &PassHandle,
++        rt_gi: &RayTracedGi,
+         gi_radiance: &PassHandle,
+         shadows: &PassHandle,
+         restir: &PassHandle,
+@@ -394,7 +390,7 @@
+     );
+     fn compute_shadow_mask_mean(&mut self);
+     fn apply_volumetrics(&mut self, color: &RgTexture, depth: &RgTexture);
+-    fn dof_prepare(&mut self, depth: &RgTexture) -> PassHandle;
++    fn dof_prepare(&mut self, depth: &RgTexture) -> DofTargets;
+ 
+     // ---- W50-W54：DoF / TAA|TGSR / 收尾 ----
+     /// `generate_mips<WriteTexture…>(rg, world, &color.desc, &color, "dof_mips", 8)`。
+@@ -404,7 +400,7 @@
+         &mut self,
+         color: &RgTexture,
+         depth: &RgTexture,
+-        dof_prepare: &PassHandle,
++        dof_prepare: &DofTargets,
+         multires: bool,
+     ) -> RgTexture;
+     #[allow(clippy::too_many_arguments)]
+@@ -643,7 +639,7 @@
+ 
+     RenderWorldOutputs {
+         depth,
+-        dof_prepare,
++        dof_prepare: dof_prepare.coc,
+         taa,
+     }
+ }
+@@ -678,6 +674,13 @@
+         }
+         fn p(&mut self, s: impl Into<String>) {
+             self.log.push(s.into());
++        }
++    }
++
++    fn core_tex(id: u32) -> PassHandle {
++        PassHandle {
++            resource: id,
++            desc: crate::rhapsody_types::TextureDesc::new_2d([16, 16], 0x4c),
+         }
+     }
+ 
+@@ -827,7 +830,10 @@
+         }
+         fn generate_hzb(&mut self, depth: &RgTexture, name: &str) -> HzbHandles {
+             self.p(format!("generate_hzb depth={} name={name}", depth.id));
+-            HzbHandles([9; 11])
++            HzbHandles {
++                half_extent: [8, 8],
++                texture: core_tex(9),
++            }
+         }
+         fn generate_wall_draw_lists_pass2(&mut self, _h: &HzbHandles) {
+             self.p("generate_wall_draw_lists_pass2");
+@@ -873,7 +879,7 @@
+                 "calculate_reprojection_map vel={} prev_depth={}",
+                 v.id, pd.tex.id
+             ));
+-            PassHandle([1; 9])
++            core_tex(1)
+         }
+         fn calculate_ssgi(
+             &mut self,
+@@ -882,7 +888,7 @@
+             _r: &PassHandle,
+         ) -> PassHandle {
+             self.p(format!("calculate_ssgi a={} b={}", h.a.id, h.b.id));
+-            PassHandle([2; 9])
++            core_tex(2)
+         }
+         fn ray_trace_gi(
+             &mut self,
+@@ -892,23 +898,35 @@
+             fresh: bool,
+             _r: &PassHandle,
+             _s: &PassHandle,
+-        ) -> PassHandle {
++        ) -> RayTracedGi {
+             self.p(format!("ray_trace_gi hist={} fresh={fresh}", hist.id));
+-            PassHandle([3; 9])
++            RayTracedGi {
++                radiance: core_tex(3),
++                ray_dir: core_tex(30),
++                reservoir: core_tex(31),
++            }
+         }
+         fn eval_gi_screen_radiance(
+             &mut self,
+             _h: &HalfResTargets,
+             _s: &PassHandle,
+-            _t: &PassHandle,
++            _t: &RayTracedGi,
+             _r: &PassHandle,
+         ) -> PassHandle {
++            assert_eq!(_t.radiance, core_tex(3));
++            assert_eq!(_t.ray_dir, core_tex(30));
++            assert_eq!(_t.reservoir, core_tex(31));
+             self.p("eval_gi_screen_radiance");
+-            PassHandle([4; 9])
++            core_tex(4)
+         }
+         fn bin_lights(&mut self) -> LightBins {
+             self.p("bin_lights");
+-            LightBins([5; 8])
++            LightBins {
++                grid: crate::render::pass_builder::compute_pass_builder::RgBuffer { resource: 5 },
++                indices: crate::render::pass_builder::compute_pass_builder::RgBuffer {
++                    resource: 6,
++                },
++            }
+         }
+         fn restir_sample_direct_lights(
+             &mut self,
+@@ -916,12 +934,14 @@
+             _r: &PassHandle,
+             _b: &LightBins,
+         ) -> PassHandle {
++            assert_eq!(_b.grid.resource, 5);
++            assert_eq!(_b.indices.resource, 6);
+             self.p("restir_sample_direct_lights");
+-            PassHandle([6; 9])
++            core_tex(6)
+         }
+         fn apply_screen_shadows(&mut self, _g: &GBufferTargets, _r: &PassHandle) -> PassHandle {
+             self.p("apply_screen_shadows");
+-            PassHandle([7; 9])
++            core_tex(7)
+         }
+         fn deferred_raster(
+             &mut self,
+@@ -931,12 +951,15 @@
+             _f: bool,
+             _s: &PassHandle,
+             _half: &HalfResTargets,
+-            _t: &PassHandle,
++            _t: &RayTracedGi,
+             _gi: &PassHandle,
+             _sh: &PassHandle,
+             _re: &PassHandle,
+             _b: &LightBins,
+         ) {
++            assert_eq!(_t.radiance, core_tex(3));
++            assert_eq!(_t.ray_dir, core_tex(30));
++            assert_eq!(_t.reservoir, core_tex(31));
+             self.p("deferred_raster");
+         }
+         fn refraction_copy_pass(&mut self, r: &RgTexture, _c: &RgTexture, _d: &RgTexture) {
+@@ -982,9 +1005,12 @@
+         fn apply_volumetrics(&mut self, _c: &RgTexture, _d: &RgTexture) {
+             self.p("apply_volumetrics");
+         }
+-        fn dof_prepare(&mut self, _d: &RgTexture) -> PassHandle {
++        fn dof_prepare(&mut self, _d: &RgTexture) -> DofTargets {
+             self.p("dof_prepare");
+-            PassHandle([8; 9])
++            DofTargets {
++                coc: core_tex(8),
++                coc_tiles: core_tex(80),
++            }
+         }
+         fn generate_mips(&mut self, _c: &RgTexture, name: &str, n: u64) {
+             self.p(format!("generate_mips {name} {n}"));
+@@ -993,9 +1019,11 @@
+             &mut self,
+             c: &RgTexture,
+             _d: &RgTexture,
+-            _p: &PassHandle,
++            _p: &DofTargets,
+             multires: bool,
+         ) -> RgTexture {
++            assert_eq!(_p.coc, core_tex(8));
++            assert_eq!(_p.coc_tiles, core_tex(80));
+             self.p(format!("calc_dof multires={multires}"));
+             RgTexture {
+                 id: c.id + 1000,
+@@ -1015,7 +1043,7 @@
+                 "calculate_taa in={} out={} cur={} prev={} param={param}",
+                 c.id, o.id, cur.id, prev.id
+             ));
+-            PassHandle([10; 9])
++            core_tex(10)
+         }
+         fn calculate_tgsr(
+             &mut self,
+@@ -1031,13 +1059,13 @@
+                 "calculate_tgsr in={} out={} {:?} cur={} prev={} param={param}",
+                 c.id, o.id, o.desc.extent, cur.id, prev.id
+             ));
+-            PassHandle([11; 9])
++            core_tex(11)
+         }
+         fn post_taa_transparency_pass(&mut self, t: &PassHandle) {
+-            self.p(format!("post_taa_transparency_pass {}", t.0[0]));
++            self.p(format!("post_taa_transparency_pass {}", t.resource));
+         }
+         fn render_shader_refactoring(&mut self, t: &PassHandle) {
+-            self.p(format!("render_shader_refactoring {}", t.0[0]));
++            self.p(format!("render_shader_refactoring {}", t.resource));
+         }
+     }
+ 
+@@ -1155,8 +1183,8 @@
+         ];
+         assert_eq!(n, expected);
+         assert_eq!(out.depth.id, 1);
+-        assert_eq!(out.dof_prepare, PassHandle([8; 9]));
+-        assert_eq!(out.taa, PassHandle([10; 9]));
++        assert_eq!(out.dof_prepare, core_tex(8));
++        assert_eq!(out.taa, core_tex(10));
+     }
+ 
+     #[test]

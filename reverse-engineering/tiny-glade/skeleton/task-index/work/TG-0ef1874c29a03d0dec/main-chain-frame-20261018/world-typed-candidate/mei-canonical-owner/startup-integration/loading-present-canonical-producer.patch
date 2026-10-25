@@ -1,0 +1,15 @@
+--- games_test/tiny-glade/crates/tiny-glade/tests/original_loading_present.rs
++++ games_test/tiny-glade/crates/tiny-glade/tests/original_loading_present.rs
+@@ -68,6 +68,12 @@
+     vermeer.activate(true, true);
+     world.insert_resource(vermeer);
+     world.insert_resource(LogoAnimation::default());
++    // This explicit World fixture has no App scheduler; call the same two-entry
++    // producer directly before the public helper. GameLoop uses real Startup.
++    country_core::startup::init_populate_minimal_startup_ssbo_library::init_populate_minimal_startup_ssbo_library(
++        renderer.bridge().hosts().buffers.as_ref(),
++        world.resource::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>(),
++    );
+     loading_graph::initialize_loading_resources(
+         &mut world,
+         renderer.device().clone(),

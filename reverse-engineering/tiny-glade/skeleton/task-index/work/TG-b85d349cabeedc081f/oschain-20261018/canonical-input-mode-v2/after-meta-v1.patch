@@ -1,0 +1,14 @@
+--- candidate-meta_commander.rs
++++ candidate-meta_commander.rs
+@@ -351,8 +351,10 @@
+                 commands.insert_resource(bevy_time::TimeUpdateStrategy::ManualDuration(duration));
+             }
+             CommanderOutcome::DisableInput => {
++                // B14092010e writes niche3, exactly the current canonical
++                // DisableInput variant. None4 would resume live translation.
+                 let mut disabled = crate::systems::backend::input::input_record_replay::InputRecordReplayState::default();
+-                disabled.stop();
++                disabled.mode = crate::input::InputRecordReplayMode::DisableInput;
+                 commands.insert_resource(disabled);
+             }
+             CommanderOutcome::Freeze { paused } => time.paused = paused,

@@ -1,0 +1,23 @@
+{
+  "reviewer": "foundation_mods",
+  "scope": [
+    "theme-fetcher/src/lib.rs",
+    "theme-fetcher/src/checked_zip.rs",
+    "theme-server-proto/src/lib.rs",
+    "themes/contract.json",
+    "themes/prior-run.c"
+  ],
+  "changes_to_reviewed_crates": false,
+  "repeated_tests": false,
+  "findings": [],
+  "checks": [
+    "304 retains prior fetch_error and cached intervals",
+    "Date whole-second skew conversion and clamp0",
+    "active interval half-open, last match wins",
+    "retry exponential cap300, no reset",
+    "CAS age14days seconds+nanos strict comparison",
+    "checked_zip path/hash order and aggregate first, partial extraction persists",
+    "owner new Path::is_dir cache-hit correction accepted"
+  ],
+  "suggestion": "contract download_blob wording should explicitly say existing directory (Path::is_dir), replacing previous broad existing path"
+}

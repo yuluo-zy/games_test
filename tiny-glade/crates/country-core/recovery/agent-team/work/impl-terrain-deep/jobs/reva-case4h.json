@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nmem = currentProgram.getMemory()\ndef hexdump(addr, n):\n    a = currentProgram.getAddressFactory().getAddress(addr)\n    buf = bytearray(n)\n    mem.getBytes(a, buf)\n    return \" \".join(\"%02x\" % (x & 0xff) for x in buf)\nprint(json.dumps({\"03b0\": hexdump(\"140af03b0\", 48)}))",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 180
+  }
+]

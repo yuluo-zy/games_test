@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "status": "success",
+  "exit_code": 0,
+  "timeout_seconds": 300.0,
+  "prompt_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\ui-clutter\\claude-timing-prompt.txt",
+  "stdout_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\ui-clutter\\claude-timing.stdout.json",
+  "stderr_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\ui-clutter\\claude-timing.stderr.txt",
+  "command": [
+    "C:\\Users\\liyu\\AppData\\Roaming\\npm\\node_modules\\@anthropic-ai\\claude-code\\bin\\claude.exe",
+    "-p",
+    "--tools",
+    "",
+    "--output-format",
+    "json",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "{\"mcpServers\":{}}"
+  ],
+  "result": "**Timing.** Untimed (`+8` bit0=0) → 0x140aa4ca0: append, no dt. Timed: `eff = duration/speed`; `maxss eff,0.05`; `ucomiss elapsed,eff; jbe keep`. Both branches reach 0x140aa4b45, so `elapsed += dt` runs even on the frame the index is queued for removal. Predicate is strictly `elapsed > eff`; equality keeps.\n\n**NaN.** `maxss` returns its second operand (0.05) when the first is NaN, so `duration/speed` = 0/0 or inf−inf clamps to 0.05 and the command completes. `speed==0` gives ±inf, unclamped: +inf never completes, −inf completes. `jbe` is unordered-true, so NaN `elapsed` is kept forever and — per the start test's `jne+jp` — never applies the start edit.\n\n**Equivalence.** `elapsed += dt*speed` matches only arithmetically (rounding differs) and diverges on NaN speed: native clamps to 0.05 and finishes; accumulation leaves NaN elapsed, which never removes. A `started` flag differs from the `elapsed==0` sentinel: NaN counts as \"not start\" natively, and a 0-dt frame re-fires the edit.\n\nRust: `let eff = (duration/speed).max(0.05); remove = elapsed > eff;` — `f32::max` ignores NaN in that operand order, matching maxss.",
+  "is_error": false,
+  "subtype": "success",
+  "elapsed_seconds": 28.091
+}

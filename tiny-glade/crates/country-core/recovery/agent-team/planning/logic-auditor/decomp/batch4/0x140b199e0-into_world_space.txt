@@ -1,0 +1,119 @@
+
+void __cdecl country_core::resources::ivy::wall_coord::WallCoord::into_world_space(void)
+
+{
+  undefined8 uVar1;
+  ulonglong uVar2;
+  longlong lVar3;
+  uint extraout_EAX;
+  uint extraout_EAX_00;
+  ulonglong uVar4;
+  undefined8 *in_RCX;
+  float *in_RDX;
+  longlong in_R8;
+  char in_R9B;
+  float extraout_XMM0_Da;
+  float fVar5;
+  float fVar7;
+  undefined8 uVar6;
+  float fVar8;
+  float fVar9;
+  undefined8 local_c8;
+  float local_bc;
+  undefined8 *local_b8;
+  code *local_b0;
+  float *local_a8;
+  code *local_a0;
+  undefined8 local_98;
+  undefined8 local_90;
+  undefined8 **local_88;
+  undefined8 local_80;
+  undefined8 local_78;
+  
+  local_bc = *(float *)(in_R8 + 0x30);
+  if (local_bc < *in_RDX) {
+    local_b0 = core::fmt::float::impl$5::fmt;
+    local_a8 = &local_bc;
+    local_a0 = core::fmt::float::impl$5::fmt;
+    local_98 = &anon_de362371e148dc229cb5b98a4b409393_21_llvm_14815698863116884270;
+    local_90 = 2;
+    local_78 = 0;
+    local_88 = &local_b8;
+    local_80 = 2;
+                    // WARNING: Subroutine does not return
+    core::panicking::panic_fmt();
+  }
+  if ((local_bc == 0.0) && (!NAN(local_bc))) {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic();
+  }
+  fVar8 = *in_RDX / local_bc;
+  local_c8 = CONCAT44(local_c8._4_4_,fVar8);
+  if ((fVar8 < 0.0) || (1.0 < fVar8)) {
+    local_b8 = &local_c8;
+    local_b0 = core::fmt::float::impl$5::fmt;
+    local_98 = &anon_12ce4fde5425384d5f438f5122902e1a_13_llvm_3277990281340110158;
+    local_90 = 1;
+    local_78 = 0;
+    local_88 = &local_b8;
+    local_80 = 1;
+                    // WARNING: Subroutine does not return
+    core::panicking::panic_fmt();
+  }
+  if (NAN(fVar8)) {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic();
+  }
+  ::utils::curve::Curve::
+  get_coord_at_u<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic2D>_>
+            ();
+  uVar4 = (ulonglong)extraout_EAX;
+  uVar2 = *(ulonglong *)(in_R8 + 0x10);
+  if (uVar4 < uVar2) {
+    if (uVar2 <= uVar4 + 1) {
+                    // WARNING: Subroutine does not return
+      core::panicking::panic_bounds_check();
+    }
+    lVar3 = *(longlong *)(in_R8 + 8);
+    uVar6 = *(undefined8 *)(lVar3 + uVar4 * 8);
+    uVar1 = *(undefined8 *)(lVar3 + 8 + uVar4 * 8);
+    local_98._0_4_ = extraout_XMM0_Da * (float)uVar1 + (1.0 - extraout_XMM0_Da) * (float)uVar6;
+    local_98._4_4_ =
+         extraout_XMM0_Da * (float)((ulonglong)uVar1 >> 0x20) +
+         (1.0 - extraout_XMM0_Da) * (float)((ulonglong)uVar6 >> 0x20);
+    ::utils::swizzlers::impl$0::x0y();
+    fVar8 = in_RDX[1];
+    ::utils::curve::Curve::
+    get_coord_at_u<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic2D>_>
+              ();
+    uVar4 = (ulonglong)extraout_EAX_00;
+    if (uVar4 + 1 < uVar2) {
+      uVar6 = *(undefined8 *)(lVar3 + uVar4 * 8);
+      uVar1 = *(undefined8 *)(lVar3 + 8 + uVar4 * 8);
+      fVar5 = (float)uVar1 - (float)uVar6;
+      fVar7 = (float)((ulonglong)uVar1 >> 0x20) - (float)((ulonglong)uVar6 >> 0x20);
+      fVar9 = 1.0 / SQRT(fVar7 * fVar7 + fVar5 * fVar5);
+      local_c8 = CONCAT44(fVar5 * fVar9,-fVar7 * fVar9);
+      ::utils::swizzlers::impl$0::x0y();
+      fVar7 = (float)local_98 * 0.63 * 0.5;
+      fVar9 = local_98._4_4_ * 0.63 * 0.5;
+      fVar5 = (float)local_90 * 0.63 * 0.5;
+      if (in_R9B == '\0') {
+        uVar6 = CONCAT44(fVar9 + fVar8,fVar7 + local_b8._0_4_);
+        local_b0._0_4_ = fVar5 + local_b0._0_4_;
+      }
+      else {
+        local_b0._0_4_ = local_b0._0_4_ - fVar5;
+        uVar6 = CONCAT44(fVar8 - fVar9,local_b8._0_4_ - fVar7);
+      }
+      *(float *)(in_RCX + 1) = local_b0._0_4_;
+      *in_RCX = uVar6;
+      return;
+    }
+                    // WARNING: Subroutine does not return
+    core::panicking::panic_bounds_check();
+  }
+                    // WARNING: Subroutine does not return
+  core::panicking::panic_bounds_check();
+}
+

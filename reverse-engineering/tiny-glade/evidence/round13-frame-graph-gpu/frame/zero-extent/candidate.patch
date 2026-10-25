@@ -1,0 +1,82 @@
+--- a/tiny-glade/crates/tiny-glade/src/game_loop.rs
++++ b/tiny-glade/crates/tiny-glade/src/game_loop.rs
+@@ -68,6 +68,14 @@
+ pub fn frame_egui_input_enabled(world: &World) -> bool {
+     world.get_resource::<country_core::resources::gui::DebugGui>()
+         .is_some_and(|debug| debug.enabled || debug.experimental_window)
++}
++
++/// B 1404dc8d2..dc971 checks the current display extent before App::update.
++/// Resize publishes this exact owner at 1404dad4f/51. A zero component sleeps
++/// for one millisecond and takes the common loop tail without simulating.
++pub fn frame_waits_for_window_extent(world: &World) -> bool {
++    world.resource::<country_core::render::render_config::FrameRenderConfig>()
++        .extent_0.contains(&0)
+ }
+ 
+ fn apply_menu_fps_limit(fps: f32, menu_limits: bool, profiling: bool) -> f32 {
+@@ -702,6 +710,15 @@
+         {
+             return Ok(false);
+         }
++        if frame_waits_for_window_extent(self.driver.app.world()) {
++            // Native 1404dc965: Duration { secs: 0, nanos: 1_000_000 }.
++            // Do not consume egui/input, update the App/MEI, advance either
++            // frame counter, render, or run the FPS limiter on this branch.
++            std::thread::sleep(std::time::Duration::from_millis(1));
++            // Native rejoins at de84d: OS/show/settings tail remains alive.
++            self.apply_pending_video_settings()?;
++            return Ok(true);
++        }
+         // B 1404ddf28..3c: real OS egui input is consumed only while the
+         // debug or experimental window is active. Other frames still begin
+         // and end egui with RawInput::default (1404ddf49 -> 140c2c770).
+@@ -935,6 +952,24 @@
+     }
+ 
+     #[test]
++    fn zero_extent_gate_reads_the_actual_frame_config_owner() {
++        use country_core::render::render_config::{FrameRenderConfig, VideoSettings};
++        use country_core::resources::window::WindowSize;
++        let mut world = World::new();
++        // WindowSize deliberately differs: B reads FrameRenderConfig.extent_0.
++        world.insert_resource(WindowSize::new(0, 0));
++        world.insert_resource(FrameRenderConfig::at_startup(
++            WindowSize::new(1280, 720), &VideoSettings::default()));
++        assert!(!frame_waits_for_window_extent(&world));
++        for extent in [[0, 720], [1280, 0], [0, 0]] {
++            world.resource_mut::<FrameRenderConfig>().extent_0 = extent;
++            assert!(frame_waits_for_window_extent(&world));
++        }
++        world.resource_mut::<FrameRenderConfig>().extent_0 = [1280, 720];
++        assert!(!frame_waits_for_window_extent(&world));
++    }
++
++    #[test]
+     fn debug_window_flags_choose_actual_os_egui_input() {
+         use country_core::resources::gui::DebugGui;
+         let mut world = World::new();
+--- a/tiny-glade/crates/tiny-glade/src/event_loop.rs
++++ b/tiny-glade/crates/tiny-glade/src/event_loop.rs
+@@ -278,6 +278,11 @@
+                     .world_mut()
+                     .resource_mut::<WindowSize>()
+                     .set(width, height);
++                // B 1404dad4f/51, immediately after WindowSize::set: publish
++                // the same physical size to the pre-update frame gate owner.
++                self.app_mut().world_mut()
++                    .resource_mut::<country_core::render::render_config::FrameRenderConfig>()
++                    .extent_0 = [width, height];
+                 self.app_mut()
+                     .world_mut()
+                     .resource_mut::<GameConfig>()
+@@ -324,7 +329,8 @@
+                     .world_mut()
+                     .send_event(country_core::resources::events::ShutdownGameCmd);
+                 // A close command reaches the app before the loop quit marker is
+-                // checked. Even a minimized window must run this last update.
++                // checked. A zero-size frame follows B's pre-update wait;
++                // the event queue and OS loop remain live until restoration.
+                 self.window.request_redraw();
+             }
+             OsWindowEvent::ToggleFullscreen => {

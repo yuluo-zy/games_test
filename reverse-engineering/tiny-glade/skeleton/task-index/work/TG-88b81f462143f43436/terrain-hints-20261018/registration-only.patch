@@ -1,0 +1,18 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/mod.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/mod.rs
+@@ -73,6 +73,7 @@
+     world.init_resource::<Events<RecalculateHeightMapCmd>>();
+     world.init_resource::<Events<PlayTerrainSound>>();
+     world.init_resource::<Events<crate::resources::onboarding::NotifyHintSystemTerrain>>();
++    world.init_resource::<Events<crate::systems::mode_manager::RequestAppModeChange>>();
+     world.init_resource::<Events<crate::resources::onboarding::NotifyHintSystemTerrainSteepness>>();
+     world.init_resource::<Events<crate::resources::onboarding::NotifyHintSystemToolWasJustUsed>>();
+     world.init_resource::<Events<crate::resources::glade_border::DisplayOutOfBorder>>();
+@@ -137,6 +138,7 @@
+     schedule.add_systems(
+         (
+             terrain_hover_idx::terrain_hover_idx,
++            crate::systems::ui_edit_focus::ui_edit_focus_terrain,
+             ui_terrain_focus_mode::ui_terrain_focus_mode,
+             ui_draw_terrain::ui_draw_terrain,
+             ui_edit_terrain::ui_edit_terrain,

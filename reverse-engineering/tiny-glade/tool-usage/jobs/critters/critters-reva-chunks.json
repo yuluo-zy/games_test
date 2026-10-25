@@ -1,0 +1,110 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x14230ff00\")\nend = prog.getAddressFactory().getAddress(\"0x142310700\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"plan_duck_trajectories\"\nout[\"win\"] = 0\nout[\"range\"] = [\"0x14230ff00\", \"0x142310700\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x142310700\")\nend = prog.getAddressFactory().getAddress(\"0x142310f00\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"plan_duck_trajectories\"\nout[\"win\"] = 1\nout[\"range\"] = [\"0x142310700\", \"0x142310f00\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x142310f00\")\nend = prog.getAddressFactory().getAddress(\"0x142311700\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"plan_duck_trajectories\"\nout[\"win\"] = 2\nout[\"range\"] = [\"0x142310f00\", \"0x142311700\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x142311700\")\nend = prog.getAddressFactory().getAddress(\"0x142311f00\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"plan_duck_trajectories\"\nout[\"win\"] = 3\nout[\"range\"] = [\"0x142311700\", \"0x142311f00\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x142311f00\")\nend = prog.getAddressFactory().getAddress(\"0x1423121fe\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"plan_duck_trajectories\"\nout[\"win\"] = 4\nout[\"range\"] = [\"0x142311f00\", \"0x1423121fe\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x142312200\")\nend = prog.getAddressFactory().getAddress(\"0x142312a00\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"move_ducks_along_trajectories\"\nout[\"win\"] = 0\nout[\"range\"] = [\"0x142312200\", \"0x142312a00\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x142312a00\")\nend = prog.getAddressFactory().getAddress(\"0x142313200\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"move_ducks_along_trajectories\"\nout[\"win\"] = 1\nout[\"range\"] = [\"0x142312a00\", \"0x142313200\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x142313200\")\nend = prog.getAddressFactory().getAddress(\"0x142313a00\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"move_ducks_along_trajectories\"\nout[\"win\"] = 2\nout[\"range\"] = [\"0x142313200\", \"0x142313a00\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x142313a00\")\nend = prog.getAddressFactory().getAddress(\"0x142313b2f\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"move_ducks_along_trajectories\"\nout[\"win\"] = 3\nout[\"range\"] = [\"0x142313a00\", \"0x142313b2f\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x142318fa0\")\nend = prog.getAddressFactory().getAddress(\"0x1423197a0\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"move_critters\"\nout[\"win\"] = 0\nout[\"range\"] = [\"0x142318fa0\", \"0x1423197a0\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x1423197a0\")\nend = prog.getAddressFactory().getAddress(\"0x142319fa0\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"move_critters\"\nout[\"win\"] = 1\nout[\"range\"] = [\"0x1423197a0\", \"0x142319fa0\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\nstart = prog.getAddressFactory().getAddress(\"0x142319fa0\")\nend = prog.getAddressFactory().getAddress(\"0x14231a62e\")\nlisting = prog.getListing()\nit = listing.getInstructions(start, True)\nrefmgr = prog.getReferenceManager()\nfm = prog.getFunctionManager()\ninsns = []\ncall_targets = {}\ncount = 0\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    if a >= end:\n        break\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    count += 1\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                call_targets.setdefault(nm, str(to))\nout[\"name\"] = \"move_critters\"\nout[\"win\"] = 2\nout[\"range\"] = [\"0x142319fa0\", \"0x14231a62e\"]\nout[\"insn_count\"] = count\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 240
+  }
+]

@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\naddr = currentProgram.getAddressFactory().getAddress(\"1408d0490\")\nf = currentProgram.getFunctionManager().getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"Expected B function is absent\")\nd = DecompInterface()\nresult = {}\ntry:\n    d.openProgram(currentProgram)\n    res = d.decompileFunction(f, 120, monitor)\n    result[\"decompiled\"] = res.decompileCompleted()\n    if not res.decompileCompleted():\n        result[\"error\"] = str(res.getErrorMessage())\n    hi = res.getHighFunction()\n    raw_pcode_count = 0\n    pcode_sample = []\n    try:\n        ops = res.getPcodeOps()\n        while ops.hasNext():\n            raw_pcode_count += 1\n            if len(pcode_sample) < 40:\n                pcode_sample.append(str(ops.next()))\n    except Exception as e:\n        result[\"raw_pcode_error\"] = str(e)\n    result[\"raw_pcode_count\"] = raw_pcode_count\n    result[\"raw_pcode_sample\"] = pcode_sample\n    if hi is not None:\n        result[\"signature\"] = str(f.getSignature())\n        try:\n            ops = hi.getPcodeOps()\n            n = 0\n            sample = []\n            while ops.hasNext():\n                n += 1\n                if len(sample) < 40:\n                    sample.append(str(ops.next()))\n            result[\"high_pcode_count\"] = n\n            result[\"high_pcode_sample\"] = sample\n        except Exception as e:\n            result[\"high_pcode_error\"] = str(e)\n    print(json.dumps(result))\nfinally:\n    d.dispose()\n",
+      "timeoutSeconds": 300
+    },
+    "timeout_seconds": 360
+  }
+]

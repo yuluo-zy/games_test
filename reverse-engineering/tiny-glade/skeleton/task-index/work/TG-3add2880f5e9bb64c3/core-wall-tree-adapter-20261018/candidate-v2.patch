@@ -1,0 +1,207 @@
+--- a/games_test/tiny-glade/crates/systems/tree-tool/src/process_tree_cmds.rs
++++ b/games_test/tiny-glade/crates/systems/tree-tool/src/process_tree_cmds.rs
+@@ -28,6 +28,7 @@
+ 
+ use country_core::components::{TreeAnimation, TreeComponent, TreeMarkedForDeletion, TreeMoveBend};
+ use country_core::resources::history::tree_edit::{DeleteTreeCmd, InsertTreeCmd};
++use country_core::resources::prefab::PrefabInstance;
+ use country_core::resources::session::ActiveSession;
+ use country_core::resources::time_of_day::inverse_lerp;
+ use country_core::resources::tree_storage::{
+@@ -38,7 +39,6 @@
+ use country_core::systems::audio::tree_audio::TreeAmbience;
+ use country_core::systems::prefab::{DespawnPrefabCmd, SpawnPrefabCmd};
+ use country_core::systems::save::load_completion_checker::LoadingCompletionState;
+-use country_core::utils::components::transform::Transform;
+ 
+ use crate::ui_place_tree::random_tree_prefab;
+ 
+@@ -73,7 +73,7 @@
+ #[allow(clippy::too_many_arguments)]
+ pub fn process_tree_cmds<S: Send + Sync + 'static>(
+     mut storage: ResMut<TreeStorage>,
+-    mut transforms: Query<&mut Transform>,
++    mut instances: Query<&mut PrefabInstance>,
+     mut moves: EventReader<MoveTreeCmd>,
+     mut deletes: EventReader<DeleteTreeCmd>,
+     mut inserts: EventReader<InsertTreeCmd>,
+@@ -89,18 +89,13 @@
+     // ---- Move 分支（O：槽 stride 0x20；decomp 行 187-325）。wave3 落库。
+     for cmd in moves.read() {
+         if let Some(entry) = storage.get(TreeStorageIndex(cmd.index)) {
+-            // O：实体定位实例变换（decomp 行 272-299 经 decorator/wall 表寻
+-            // 0x30 B 变换记录；语义等价 = 按 entry.entity 查 `Transform`）→ 写新
+-            // 位置。原 `unwrap_failed` panic 路径（实体失效/未注册）以 get_mut
+-            // Ok 兜底登记（分歧：graceful vs panic）。
+-            let mut size_ratio = 0.0;
+-            if let Ok(mut data) = transforms.get_mut(entry.entity) {
+-                // O：写 `位置@+0..0xc`（asm 14226785e/142267863）。
+-                data.translation = cmd.position;
+-                // O：`inverse_lerp(0.5, 0.9, 变换记录 scale@+0xc)`
+-                // （asm 14226786a-142267877；常量 0x142925870/0x142a7c88c）。
+-                size_ratio = inverse_lerp(0.5, 0.9, data.scale.x);
+-            }
++            // Original query is the actual 48-byte PrefabInstance placement.
++            // Entity/component errors reach unwrap_failed @142268583.
++            let mut instance = instances
++                .get_mut(entry.entity)
++                .expect("MoveTreeCmd entity has no PrefabInstance placement");
++            instance.0.position = cmd.position;
++            let size_ratio = inverse_lerp(0.5, 0.9, instance.0.scale);
+             // O：水面采样（decomp 行 300-303）。结果 `0.0 < level` 是
+             // PlayTreeSoundCmd selector@+9；value@+0xc = inverse_lerp 结果。
+             let pos = cmd.position;
+@@ -134,15 +129,16 @@
+                 // O：kind=2 + 树变换记录位置/scale（decomp 行 877-896：
+                 // inverse_lerp(0.5,0.9,scale) → kind@+8=2、value@+0xc、
+                 // position@+0x10/+0x18）。
+-                if let Ok(data) = transforms.get(entry.entity) {
+-                    sounds.write(PlayTreeSoundCmd {
+-                        kind: 2,
+-                        selector: 0,
+-                        extra: 0,
+-                        value: inverse_lerp(0.5, 0.9, data.scale.x),
+-                        position: data.translation,
+-                    });
+-                }
++                let instance = instances
++                    .get(entry.entity)
++                    .expect("DeleteTreeCmd live entity has no PrefabInstance placement");
++                sounds.write(PlayTreeSoundCmd {
++                    kind: 2,
++                    selector: 0,
++                    extra: 0,
++                    value: inverse_lerp(0.5, 0.9, instance.0.scale),
++                    position: instance.0.position,
++                });
+             }
+         }
+     }
+@@ -193,10 +189,10 @@
+         // 命令队列，顺序 TreeComponent → TreeAnimation → TreeMoveBend →
+         // TreeAmbience）。
+         let entity = commands.spawn_empty().id();
+-        // 当前 InsertTreeCmd 尚无原版 is_preplaced 字段；这条手放入口写 false。
++        // Original Insert payload bool is retained for replay and preplaced trees.
+         commands.entity(entity).insert(TreeComponent {
+             id: cmd.id,
+-            is_preplaced: false,
++            is_preplaced: cmd.is_preplaced,
+         });
+         commands.entity(entity).insert(TreeAnimation::new(alpha));
+         // B：初始缓动位置等于树的世界 XZ 位置。
+@@ -231,7 +227,7 @@
+         // decomp 行 683-719 / asm 142267e55-142267ec8 逐字段）：
+         // prefab@+0、entity@+0x10、position@+0x18、scale@+0x24、rotation@+0x28、
+         // variant@+0x2c、常量 1.0@+0x30、flags[16]@+0x34、mode@+0x44。
+-        // T2：rotation/variant 原生取事件 +0x20/+0x24，共享槽缺 → 0 登记。
++        // Preserve original rotation/placement variant from the actual command.
+         // mode（iVar22）：naked&&deny → 3；否则非拖动路径 = 1；拖动/flags 门
+         // （ActiveWidget::is_dragging + 事件 flags 字节）未接线 → 登记。
+         let mode = if naked && deny_load { 3 } else { 1 };
+@@ -242,8 +238,8 @@
+             entity: Some(entity),
+             position: pos,
+             scale,
+-            rotation: 0.0,
+-            variant: 0,
++            rotation: cmd.rotation_degrees,
++            variant: cmd.variant as u32,
+             one: 1.0,
+             flags: [0; 0x10],
+             mode,
+@@ -320,3 +316,94 @@
+         }
+     }
+ }
++
++#[cfg(test)]
++mod placement_consumer_tests {
++    use super::*;
++    use country_core::resources::{
++        placement_data::PlacementDataSsbo,
++        session::{SessionId, SessionMeta},
++        world_raster::DirtyTilePublisher,
++    };
++    fn world() -> World {
++        let mut world = World::new();
++        world.init_resource::<TreeStorage>();
++        world.init_resource::<Events<MoveTreeCmd>>();
++        world.init_resource::<Events<DeleteTreeCmd>>();
++        world.init_resource::<Events<InsertTreeCmd>>();
++        world.init_resource::<Events<SpawnPrefabCmd>>();
++        world.init_resource::<Events<DespawnPrefabCmd>>();
++        world.init_resource::<Events<PlayTreeSoundCmd>>();
++        world.insert_resource(ActiveSession::new(SessionId::new(), SessionMeta::default()));
++        world.insert_resource(WaterRaster::new(DirtyTilePublisher::unique()));
++        world
++    }
++    #[test]
++    fn move_and_delete_use_the_real_prefab_placement_without_a_transform() {
++        let mut world = world();
++        let mut placement = PlacementDataSsbo::default();
++        placement.position = glam::Vec3::new(1.0, 2.0, 3.0);
++        placement.scale = 0.75;
++        let entity = world.spawn(PrefabInstance(placement)).id();
++        world.resource_mut::<TreeStorage>().insert(
++            TreeStorageIndex(73),
++            TreeStorageEntry {
++                entity,
++                position: placement.position,
++            },
++        );
++        let target = glam::Vec3::new(8.0, 9.0, 10.0);
++        world.send_event(MoveTreeCmd {
++            index: 73,
++            position: target,
++        });
++        let mut schedule = Schedule::default();
++        schedule.add_systems(process_tree_cmds::<()>);
++        schedule.run(&mut world);
++        assert_eq!(
++            world.get::<PrefabInstance>(entity).unwrap().0.position,
++            target
++        );
++        let events = world.resource::<Events<PlayTreeSoundCmd>>();
++        let mut cursor = events.get_cursor();
++        let sound = cursor.read(events).next().unwrap();
++        assert_eq!(sound.kind, 1);
++        assert_eq!(sound.position, target);
++        assert_eq!(sound.value, inverse_lerp(0.5, 0.9, 0.75));
++        world.send_event(DeleteTreeCmd { id: 73 });
++        schedule.run(&mut world);
++        assert!(
++            world
++                .resource::<TreeStorage>()
++                .get(TreeStorageIndex(73))
++                .is_none()
++        );
++        assert!(world.get::<TreeMarkedForDeletion>(entity).is_some());
++        let events = world.resource::<Events<PlayTreeSoundCmd>>();
++        let mut cursor = events.get_cursor();
++        let sound = cursor.read(events).last().unwrap();
++        assert_eq!(sound.kind, 2);
++        assert_eq!(sound.position, target);
++        assert_eq!(sound.value, inverse_lerp(0.5, 0.9, 0.75));
++    }
++    #[test]
++    #[should_panic(expected = "MoveTreeCmd entity has no PrefabInstance placement")]
++    fn live_move_entity_without_placement_preserves_original_unwrap_failure() {
++        let mut world = world();
++        let entity = world.spawn_empty().id();
++        world.resource_mut::<TreeStorage>().insert(
++            TreeStorageIndex(73),
++            TreeStorageEntry {
++                entity,
++                position: glam::Vec3::ZERO,
++            },
++        );
++        world.send_event(MoveTreeCmd {
++            index: 73,
++            position: glam::Vec3::ONE,
++        });
++        let mut schedule = Schedule::default();
++        schedule.add_systems(process_tree_cmds::<()>);
++        schedule.run(&mut world);
++    }
++}

@@ -1,0 +1,79 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/save/snapshot.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/save/snapshot.rs
+@@ -26,6 +26,7 @@
+     terrain_editing::TerrainEditingData,
+     walls::{
+         WallId,
++        decorator::DecoratorIdGen,
+         decorator_storage::{
+             DecoratorAddrSnapshot, DecoratorStorage, DecoratorStorageAddr, DecoratorStorageSnapshot,
+         },
+@@ -1180,11 +1181,14 @@
+ /// 走既有写回入口；描述符中的原生内存指针无法在 Rust 侧解引用，按域登记（不伪造）：
+ /// Walls→`apply_loaded_snapshot`、Decorators→`restore_snapshot`、Terrain→TerrainEditingData、
+ /// Raster→`write_named`、Stairs→`restore_snapshot`（宿主提供捕获侧 StairsSnapshot）。
++/// `decorator_ids` is the same runtime resource used by live decorator creation;
++/// the native restore call reserves every loaded id in that owner.
+ pub fn init_game_state_from_snapshot(
+     raw_snapshot: &[u8],
+     resources: &mut SnapshotLoadResources,
+     walls: &mut crate::resources::walls::inner_walls::InnerWalls,
+     decorators: &mut crate::resources::walls::decorator_storage::DecoratorStorage,
++    decorator_ids: &mut DecoratorIdGen,
+     terrain: &mut TerrainEditingData,
+     mut rasters: Option<&mut AllWorldRasterWrite<'_>>,
+     stairs: Option<&mut StairsState>,
+@@ -1193,7 +1197,7 @@
+     // 1. 0xc0 头 + 14 域描述符（O：首段，逐字段偏移已核对）。
+     let prefix = SnapshotPrefix::from_bytes(raw_snapshot)?;
+     // 2. 域写回序（Walls → Decorators → … → Raster → Stairs）。
+-    apply_loaded_snapshot(resources, walls, decorators, terrain, rasters.take());
++    apply_loaded_snapshot(resources, walls, decorators, decorator_ids, terrain, rasters.take());
+     if let (Some(stairs), Some(snapshot)) = (stairs, stairs_snapshot) {
+         apply_stairs_writeback(stairs, snapshot);
+     }
+@@ -1225,10 +1229,13 @@
+ /// `SnapshotSaveData` 域描述符），init 写回经 [`apply_stairs_writeback`] 由宿主把
+ /// 捕获侧 stairs 接入。
+ #[allow(clippy::too_many_arguments)]
++/// Pass the authoritative runtime generator through to decorator restoration.
++/// No temporary generator is allocated by this helper.
+ pub fn apply_loaded_snapshot(
+     resources: &mut SnapshotLoadResources,
+     walls: &mut crate::resources::walls::inner_walls::InnerWalls,
+     decorators: &mut crate::resources::walls::decorator_storage::DecoratorStorage,
++    decorator_ids: &mut DecoratorIdGen,
+     terrain: &mut TerrainEditingData,
+     mut rasters: Option<&mut AllWorldRasterWrite<'_>>,
+ ) {
+@@ -1270,7 +1277,7 @@
+                 if let Ok(section) = serde_json::from_value::<DecoratorsSectionJson>(value.clone())
+                 {
+                     match section.into_storage_snapshot() {
+-                        Ok(snapshot) => decorators.restore_snapshot(&snapshot),
++                        Ok(snapshot) => decorators.restore_snapshot_with_id_gen(&snapshot, decorator_ids),
+                         Err(error) => log::error!("apply Decorators: {error}"),
+                     }
+                 } else {
+@@ -2035,15 +2042,19 @@
+         };
+         let mut walls = InnerWalls::default();
+         let mut decorators = DecoratorStorage::default();
++        let mut decorator_ids = DecoratorIdGen::default();
++        decorator_ids.reserve(crate::resources::walls::decorator::DecoratorId(42));
+         let mut terrain = TerrainEditingData(tg_terrain::stroke::TerrainEditingData::default());
+         apply_loaded_snapshot(
+             &mut resources,
+             &mut walls,
+             &mut decorators,
++            &mut decorator_ids,
+             &mut terrain,
+             None,
+         );
+         assert_eq!(terrain.0.strokes.len(), 1);
+         assert_eq!(terrain.0.next_index, 3);
+-    }
+-}
++        assert_eq!(decorator_ids.generate().0, 43, "apply retains the caller-owned generator");
++    }
++}

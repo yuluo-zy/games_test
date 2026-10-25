@@ -1,0 +1,446 @@
+--- a/tiny-glade/crates/country-core/src/resources/session.rs
++++ b/tiny-glade/crates/country-core/src/resources/session.rs
+@@ -313,6 +313,8 @@
+     LoadSavedGame = 0x8000_0000_0000_0001,
+     /// decoded 2：on_load 命令回放 + 内存快照（`NextSession::load` 默认）。
+     LoadOnLoad = 0x8000_0000_0000_0002,
++    /// Load UI already parsed this save; the request owns the complete result.
++    LoadParsedGame = 0x8000_0000_0000_0003,
+ }
+ impl NextSessionKind {
+     pub const fn decoded(self) -> u64 {
+@@ -370,6 +372,9 @@
+     /// +0x78..+0x98：`create` 的 32B 尾部载荷（4 qword，字段语义 U，原样复制）。
+     pub tail_payload: [u64; 4],
+     pub ignore_snapshot: bool,
++    /// Safe owner replacing the native Box+metadata wrapper at +0x30.
++    /// Never put an allocation address in template_payload.
++    parsed_data: Option<Box<crate::systems::save::load_game::ParsedGameData>>,
+ }
+ 
+ /// `NextSession::create` 的 96B 模板（O 0x140b46960 rdx 12 qword：`[0]`=kind、
+@@ -412,6 +417,7 @@
+             template_payload: [0; 9],
+             tail_payload: [0; 4],
+             ignore_snapshot: false,
++            parsed_data: None,
+         }
+     }
+     /// `NextSession::create` 0x140b46960：从 96B 模板（kind/id/载荷）与 32B 尾部构造；
+@@ -424,8 +430,32 @@
+             template_payload: template.payload,
+             tail_payload: tail.words,
+             ignore_snapshot: false,
+-        }
+-    }
++            parsed_data: None,
++        }
++    }
++    /// Ordinary load, backup restore and theme switch transfer the actual parsed
++    /// result (@141e20d5c..e1a / @140fc4cc3..4d6f), without reopening history.json.
++    pub fn from_parsed(
++        id: SessionId,
++        data: crate::systems::save::load_game::ParsedGameData,
++    ) -> Self {
++        let mut request = Self::load(id);
++        request.kind = NextSessionKind::LoadParsedGame;
++        request.parsed_data = Some(Box::new(data));
++        request
++    }
++
++    /// Move only after startup has prepared the destination metadata/settings.
++    /// A malformed public template must fail before publishing partial state.
++    pub(crate) fn take_parsed_data(
++        &mut self,
++    ) -> anyhow::Result<Box<crate::systems::save::load_game::ParsedGameData>> {
++        anyhow::ensure!(self.kind == NextSessionKind::LoadParsedGame,
++            "NextSession does not own parsed game data");
++        self.parsed_data.take().ok_or_else(|| anyhow::anyhow!(
++            "NextSession parsed variant has no owned ParsedGameData"))
++    }
++
+     /// `NextSession::ignore_snapshot` 0x140b46a20：写 +0x98 bool（builder）。
+     pub fn ignore_snapshot(mut self, ignore: bool) -> Self {
+         self.ignore_snapshot = ignore;
+--- a/tiny-glade/crates/country-core/src/startup/startup_session.rs
++++ b/tiny-glade/crates/country-core/src/startup/startup_session.rs
+@@ -131,11 +131,17 @@
+     // 先完成文件和配置准备；出错时 request.on_load 仍由原请求持有。
+     let requested_id = match request.kind {
+         NextSessionKind::LoadSavedGame => saved_sessions.sessions.first().map(|session| session.id),
+-        NextSessionKind::LoadOnLoad => Some(request.id),
++        NextSessionKind::LoadOnLoad | NextSessionKind::LoadParsedGame => Some(request.id),
+         NextSessionKind::None => unreachable!(),
+     };
+-    let valid_session =
+-        requested_id.filter(|id| is_session_ok_to_load(*id, &auto_save.unsaved_files).is_ok());
++    // Native case3 does not run readiness again or fall back to a starting build.
++    // In particular, backup restore must use the owned backup result even when
++    // the selected session's current history.json is broken or absent.
++    let valid_session = if request.kind == NextSessionKind::LoadParsedGame {
++        Some(request.id)
++    } else {
++        requested_id.filter(|id| is_session_ok_to_load(*id, &auto_save.unsaved_files).is_ok())
++    };
+     let demo = config.as_deref().map_or_else(
+         || STARTUP_DEMO_MODE.load(std::sync::atomic::Ordering::Relaxed),
+         |config| config.dev.demo,
+@@ -149,7 +155,7 @@
+     } else {
+         let build = select_starting_build(demo, profile.new_glade_count)?;
+         let history_path = build.join("history.json");
+-        if !history_path.is_file() {
++        if request.kind != NextSessionKind::LoadParsedGame && !history_path.is_file() {
+             return Err(format!("起始场景缺少历史文件：{}", history_path.display()).into());
+         }
+         let previous_theme = saved_sessions
+@@ -193,9 +199,20 @@
+         settings.default_roof_color_id = 0;
+         settings.leaf_particle_count = 0;
+     }
++    let source = if request.kind == NextSessionKind::LoadParsedGame {
++        // This is the last fallible request operation: retain the owner and all
++        // post-load actions until the complete destination has been prepared.
++        let data = request.take_parsed_data()?;
++        LoadGameSource::Parsed {
++            data,
++            snapshot_root: session_id.save_folder_path().join("snapshots"),
++        }
++    } else {
++        LoadGameSource::Path(history_path)
++    };
+     let pending_actions = make_post_load_commands(std::mem::take(&mut request.on_load));
+     load_manager.begin(
+-        LoadGameSource::Path(history_path),
++        source,
+         ActiveLoadOptions {
+             ignore_snapshot: request.ignore_snapshot,
+             request_reveal: is_new,
+--- a/tiny-glade/crates/country-core/src/systems/save/load_game.rs
++++ b/tiny-glade/crates/country-core/src/systems/save/load_game.rs
+@@ -174,6 +174,35 @@
+ /// fresh 反编译 0x141470d00 的节解析面（2026-10-17；键串经 `read_memory`
+ /// @0x142c644a0..0x142c64a10 核对）：`Version`（typed i32；解析失败默认 0x19）→
+ /// `Camera`（`CameraRigParametersCache`，失败 context **"parsing camera"** 致命）→
++/// The native successful return owns a 240B body plus these four flags.
++/// Its other four-byte field is the target chain_index, already stored above.
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub struct ParsedLoadMetadata {
++    /// Native wrapper+c: parsed source version!=27 OR an actual migration ran.
++    pub requires_upgrade_backup: bool,
++    /// Native wrapper+d: WINDOW snapshot colors, then invalidate snapshot refs.
++    pub upgrade_window_colors: bool,
++    /// Native wrapper+e: ARROW SLIT snapshot colors. Not the previous swapped bit.
++    pub upgrade_arrow_slit_colors: bool,
++    /// Native wrapper+f: source version<19; Err uses the separate niche value2.
++    pub legacy_version_notice: bool,
++}
++impl ParsedLoadMetadata {
++    /// Proven native v27 branch @141471bfe..1c23 / @141472e76..eb3.
++    pub const VERSION_27: Self = Self {
++        requires_upgrade_backup: false,
++        upgrade_window_colors: false,
++        upgrade_arrow_slit_colors: false,
++        legacy_version_notice: false,
++    };
++
++    pub fn snapshot_color_upgrade_flags(self) -> crate::resources::save_file::LoadUpgradeFlags {
++        crate::resources::save_file::LoadUpgradeFlags(
++            ((self.upgrade_window_colors as u64) << 40)
++                | ((self.upgrade_arrow_slit_colors as u64) << 48))
++    }
++}
++
+ /// `Time of day`（typed 3×f32；失败回退 legacy f32；再失败告警
+ /// **"This save file had no `Time of day` data"** 并用默认）→ `Sheep`
+ /// （`SheepControlSnapshot`；失败日志 **"Error parrsing sheep snapshot: {}"** [原文拼写]）
+@@ -185,6 +214,10 @@
+ /// → `BackwardCompatibility`。
+ #[derive(Clone, Debug, Default)]
+ pub struct ParsedGameData {
++    /// All four original wrapper flags, carried through the owning request.
++    /// None denotes the explicitly unclosed original old-version migration;
++    /// it must never be treated as a wrapper full of false flags.
++    pub migration_metadata: Option<ParsedLoadMetadata>,
+     pub version: i32,
+     pub backward_compatibility: Option<Value>,
+     pub camera: Option<crate::systems::camera_rig::CameraRigParametersCache>,
+@@ -349,7 +382,10 @@
+ /// **upgrade 备份不在本函数**（fresh 反编译 0x141470d00 无 copy_file_to_backup 调用；
+ /// 备份在调用方 load_game 0x14146d030 行 681，见 [`make_upgrade_backup`]）。
+ /// 失败返回 "Couldn't load save file from " 语义错误。
+-pub fn parse_saved_game_data(path: &Path) -> anyhow::Result<ParsedGameData> {
++pub fn parse_saved_game_data(
++    path: &Path,
++    settings: &crate::resources::glade_settings::GladeSettings,
++) -> anyhow::Result<ParsedGameData> {
+     use crate::resources::critters::sheep::control::SheepControlSnapshot;
+     use crate::resources::glade_color_customization::GladeColorCustomization;
+     use crate::resources::history::HistoryIdentity;
+@@ -421,6 +457,15 @@
+             .ok()
+     });
+ 
++    let initial_colors = || GladeColorCustomization {
++        freeform_wall: crate::resources::color_id::ColorId(settings.default_freeform_wall_color_id),
++        building: crate::resources::color_id::ColorId(settings.default_building_color_id),
++        roof: crate::resources::color_id::ColorId(settings.default_roof_color_id),
++        stairs: crate::resources::color_id::ColorId(100003),
++        lantern_brightness: 1.0,
++        building_wall_style: 1,
++        ..GladeColorCustomization::default()
++    };
+     // Colors：失败 → default + "Initializing new color customization."。
+     let colors: GladeColorCustomization = match object.get("Colors") {
+         Some(value) => match serde_json::from_value(value.clone()) {
+@@ -430,12 +475,12 @@
+             }
+             Err(error) => {
+                 log::warn!("Initializing new color customization.: {error}");
+-                GladeColorCustomization::default()
++                initial_colors()
+             }
+         },
+         None => {
+             log::warn!("Initializing new color customization.");
+-            GladeColorCustomization::default()
++            initial_colors()
+         }
+     };
+ 
+@@ -472,6 +517,8 @@
+     let backward_compatibility = object.get("BackwardCompatibility").cloned();
+ 
+     Ok(ParsedGameData {
++        migration_metadata: (version == LATEST_SAVE_VERSION)
++            .then_some(ParsedLoadMetadata::VERSION_27),
+         version,
+         backward_compatibility,
+         camera: Some(camera),
+@@ -721,8 +768,9 @@
+ ///   （MetaCommand → PostGameLoadCommand，fence 终止）。
+ pub fn advance_load_game(
+     manager: &mut LoadGameManager,
+-    next: &NextSession,
++    next: &mut NextSession,
+     save_path: Option<&Path>,
++    settings: &crate::resources::glade_settings::GladeSettings,
+ ) -> Result<(Option<ParsedGameData>, Vec<ReplayedOnLoadCommand>), LoadGameError> {
+     match manager.state {
+         LoadGameState::Loading => {
+@@ -738,6 +786,11 @@
+             Err(anyhow::anyhow!("B load_game request failed; state is terminal (no retry)").into())
+         }
+         LoadGameState::Loaded => {
++            if next.kind == crate::resources::session::NextSessionKind::LoadParsedGame {
++                let parsed = *next.take_parsed_data()?;
++                manager.progress_counter = manager.progress_counter.wrapping_add(1);
++                return Ok((Some(parsed), Vec::new()));
++            }
+             let selected = clamp_next_session_kind(next.kind.decoded());
+             match selected {
+                 0 => {
+@@ -747,7 +800,7 @@
+                 1 => {
+                     let path = save_path
+                         .ok_or_else(|| anyhow::anyhow!("parse_saved_game_data needs a path"))?;
+-                    let parsed = parse_saved_game_data(path)?;
++                    let parsed = parse_saved_game_data(path, settings)?;
+                     manager.progress_counter = manager.progress_counter.wrapping_add(1);
+                     Ok((Some(parsed), Vec::new()))
+                 }
+@@ -781,10 +834,11 @@
+ #[allow(clippy::too_many_arguments)]
+ pub fn load_game_session(
+     manager: &mut LoadGameManager,
+-    next: &NextSession,
++    next: &mut NextSession,
+     save_path: Option<&Path>,
+     edits: &[WallCompoundHistoryEdit],
+     upgrade_flags: crate::resources::save_file::LoadUpgradeFlags,
++    settings: &crate::resources::glade_settings::GladeSettings,
+ ) -> Result<
+     (
+         Option<ParsedGameData>,
+@@ -795,7 +849,7 @@
+     LoadGameError,
+ > {
+     // 1. 状态推进 + kind 解码 + 两遍回放。
+-    let (parsed, commands) = advance_load_game(manager, next, save_path)?;
++    let (parsed, commands) = advance_load_game(manager, next, save_path, settings)?;
+     // 1b. upgrade 备份（O：load_game 0x14146d030 行 681 在 parse 成功后调用
+     //     copy_file_to_backup；备份只出现在 kind==1 解析路径 = parsed.is_some()）。
+     if parsed.is_some() {
+@@ -944,7 +998,18 @@
+         .collect::<Result<Vec<_>, _>>()?;
+     let backups = super::save_backup_list::SaveBackupList::new_from_session(session);
+     if let Some(path) = source_file {
+-        let _ = make_upgrade_backup(path);
++        match parsed.migration_metadata {
++            Some(metadata) if metadata.requires_upgrade_backup && !options.new_session => {
++                make_upgrade_backup(path).context("backing up save before upgrade")?;
++            }
++            Some(_) => {}
++            None => {
++                // Existing old-version implementation remains explicitly
++                // incomplete; do not present it as recovered compatibility.
++                log::warn!("Original migration metadata remains unclosed for source version {}", parsed.version);
++                let _ = make_upgrade_backup(path);
++            }
++        }
+     }
+     gates.apply_centered_path(&crate::utils::float_grid::CENTERED_PATH);
+     // The second version global is likewise the original shared owner.
+@@ -1018,9 +1083,11 @@
+                 let options = manager
+                     .options
+                     .context("B active load has no startup options")?;
+-                let (mut parsed, snapshot_root, source_file) = match &manager.source {
++                let source = std::mem::take(&mut world.resource_mut::<LoadGameManager>().source);
++                let (mut parsed, snapshot_root, source_file) = match source {
+                     LoadGameSource::Path(path) => (
+-                        parse_saved_game_data(path)
++                        parse_saved_game_data(&path,
++                            world.resource::<crate::resources::glade_settings::GladeSettings>())
+                             .with_context(|| format!("B load_game source {}", path.display()))?,
+                         path.parent()
+                             .context("B source history path has no parent")?
+@@ -1030,11 +1097,14 @@
+                     LoadGameSource::Parsed {
+                         data,
+                         snapshot_root,
+-                    } => ((**data).clone(), snapshot_root.clone(), None),
++                    } => (*data, snapshot_root, None),
+                     LoadGameSource::None => {
+                         anyhow::bail!("B LoadGameState::LoadGameData has no source")
+                     }
+                 };
++                if source_file.is_none() && parsed.migration_metadata.is_none() {
++                    anyhow::bail!("Original saved-game migration metadata for version {} is not yet restored; the failed load does not report compatibility", parsed.version);
++                }
+                 // 1. 选择快照：最近的可打开记录；打开成功即权威数据源（解析失败=fatal）。
+                 let snapshot = load_closest_valid_snapshot(
+                     &mut parsed,
+--- a/tiny-glade/crates/country-core/src/resources/save_file.rs
++++ b/tiny-glade/crates/country-core/src/resources/save_file.rs
+@@ -186,14 +186,14 @@
+ pub struct LoadUpgradeFlags(pub u64);
+ 
+ impl LoadUpgradeFlags {
+-    /// 位 40："Detected old version of arrow slits color IDs. Upgrading..."
++    /// 位 48："Detected old version of arrow slits color IDs. Upgrading..."
+     pub fn upgrade_arrow_slit_color_ids(self) -> bool {
++        self.0 >> 48 & 1 != 0
++    }
++
++    /// 位 40："Detected old version of window color IDs. Upgrading..."
++    pub fn upgrade_window_color_ids(self) -> bool {
+         self.0 >> 40 & 1 != 0
+-    }
+-
+-    /// 位 48："Detected old version of window color IDs. Upgrading..."
+-    pub fn upgrade_window_color_ids(self) -> bool {
+-        self.0 >> 48 & 1 != 0
+     }
+ }
+ 
+--- a/tiny-glade/crates/country-core/src/systems/save/tests.rs
++++ b/tiny-glade/crates/country-core/src/systems/save/tests.rs
+@@ -62,7 +62,7 @@
+         "Identity": 123456789
+     });
+     std::fs::write(&path, serde_json::to_vec(&body).unwrap()).unwrap();
+-    let parsed = parse_saved_game_data(&path).unwrap();
++    let parsed = parse_saved_game_data(&path, &crate::resources::glade_settings::GladeSettings::default()).unwrap();
+     assert_eq!(parsed.version, 27);
+     assert_eq!(parsed.camera.unwrap().yaw, 1.0);
+     assert_eq!(parsed.time_of_day.time_of_day, 0.25);
+@@ -79,11 +79,11 @@
+     let mut low = body.clone();
+     low["Version"] = json!(2);
+     std::fs::write(&path, serde_json::to_vec(&low).unwrap()).unwrap();
+-    assert!(parse_saved_game_data(&path).is_err());
++    assert!(parse_saved_game_data(&path, &crate::resources::glade_settings::GladeSettings::default()).is_err());
+     let mut high = body.clone();
+     high["Version"] = json!(0x1c);
+     std::fs::write(&path, serde_json::to_vec(&high).unwrap()).unwrap();
+-    assert!(parse_saved_game_data(&path).is_err());
++    assert!(parse_saved_game_data(&path, &crate::resources::glade_settings::GladeSettings::default()).is_err());
+ }
+ 
+ #[test]
+@@ -442,7 +442,7 @@
+     session.append_replay_terminator();
+     let mut manager = super::load_game::LoadGameManager::default();
+     manager.state = super::load_game::LoadGameState::Loaded;
+-    let (parsed, commands) = advance_load_game(&mut manager, &session, None).unwrap();
++    let (parsed, commands) = advance_load_game(&mut manager, &mut session, None, &crate::resources::glade_settings::GladeSettings::default()).unwrap();
+     assert!(parsed.is_none());
+     // 第一遍：批量展开为两条 MetaCommand + fence 变体 0 写 manager 状态；
+     // 第二遍：两条 Apply + fence 变体 0 SwitchAppMode（忽略）；终止哨兵后不再回放。
+@@ -477,8 +477,42 @@
+     session.append_replay_terminator();
+     let mut manager = LoadGameManager::default();
+     manager.state = LoadGameState::Loaded;
+-    let (parsed, _commands) = advance_load_game(&mut manager, &session, None).unwrap();
++    let (parsed, _commands) = advance_load_game(&mut manager, &mut session, None, &crate::resources::glade_settings::GladeSettings::default()).unwrap();
+     assert!(parsed.is_none());
+     // 变体2 内联释放（O 0x14146d030 首遍 uVar23==2）：fence 已被 unblock（+0x10 清 0）。
+     assert!(!check.is_blocked());
+ }
++
++
++#[test]
++fn parsed_request_moves_owned_edits_and_all_native_metadata_without_disk_reparse() {
++    use super::load_game::{advance_load_game, LoadGameManager, ParsedGameData, ParsedLoadMetadata};
++    use crate::resources::{glade_settings::GladeSettings, session::{NextSession, SessionId}};
++    let metadata = ParsedLoadMetadata {
++        requires_upgrade_backup: true,
++        upgrade_window_colors: true,
++        upgrade_arrow_slit_colors: false,
++        legacy_version_notice: true,
++    };
++    let mut data = ParsedGameData {
++        version: 27,
++        chain_index: 8,
++        migration_metadata: Some(metadata),
++        ..Default::default()
++    };
++    data.edits.reserve_exact(4);
++    let original_allocation = data.edits.as_ptr();
++    let mut request = NextSession::from_parsed(SessionId::new(), data);
++    let mut manager = LoadGameManager::new();
++    let (loaded, _) = advance_load_game(&mut manager, &mut request,
++        Some(std::path::Path::new("this-file-must-not-be-opened.json")),
++        &GladeSettings::default()).unwrap();
++    let loaded = loaded.unwrap();
++    assert_eq!(loaded.edits.as_ptr(), original_allocation);
++    assert_eq!(loaded.chain_index, 8);
++    assert_eq!(loaded.migration_metadata, Some(metadata));
++    assert!(metadata.snapshot_color_upgrade_flags().upgrade_window_color_ids());
++    assert!(!metadata.snapshot_color_upgrade_flags().upgrade_arrow_slit_color_ids());
++    assert!(advance_load_game(&mut manager, &mut request, None,
++        &GladeSettings::default()).is_err(), "the same owner cannot be taken twice");
++}
+--- a/tiny-glade/crates/country-core/src/startup/tests.rs
++++ b/tiny-glade/crates/country-core/src/startup/tests.rs
+@@ -402,7 +402,7 @@
+     });
+     let mut manager = LoadGameManager::default();
+     assert!(
+-        crate::systems::save::load_game::advance_load_game(&mut manager, &request, None).is_err()
++        crate::systems::save::load_game::advance_load_game(&mut manager, &mut request, None, &crate::resources::glade_settings::GladeSettings::default()).is_err()
+     );
+ }
+ 
+--- a/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ b/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@ -1132,7 +1132,7 @@
+     fn shipped_intro_reaches_the_same_live_wall_authority() {
+         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+             .join("../country-core/tests/fixtures/original-intro-history-b.json");
+-        let parsed = country_core::systems::save::load_game::parse_saved_game_data(&path)
++        let parsed = country_core::systems::save::load_game::parse_saved_game_data(&path, &country_core::resources::glade_settings::GladeSettings::default())
+             .expect("original intro sections decode");
+         assert_eq!(parsed.chain_index, 12);
+         assert_eq!(parsed.edits.len(), 13);

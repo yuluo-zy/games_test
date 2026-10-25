@@ -1,0 +1,91 @@
+--- games_test/tiny-glade/crates/tiny-glade/src/loading_graph.rs
++++ games_test/tiny-glade/crates/tiny-glade/src/loading_graph.rs
+@@ -4,7 +4,7 @@
+ //! list (0x14016536e), and sampled export 0x22 (0x1401653b7).
+ //! Native absolute installation paths are adapted to an explicit source-build
+ //! asset root. No screen or primitive stream is fabricated here.
+-use std::{path::Path, sync::Arc};
++use std::{path::{Path, PathBuf}, sync::Arc};
+ 
+ use anyhow::{Context, Result};
+ use bevy_ecs::prelude::*;
+@@ -39,14 +39,56 @@
+     background: Option<Texture>,
+ }
+ 
+-/// GPU-side producers corresponding to the original rendering resources and
+-/// toolbar text startup. The path walk is the source host's asset enumeration;
+-/// the original should_load predicate and compiled-image parser are reused.
++/// Register the original loading Startup subset on this App's real owners.
++/// MinimalStartupPlugin's five entries are an unchained tuple. Asset loading
++/// stays independent here; only canonical SSBO producer -> host attachment has
++/// an explicit data dependency. No Update/flush path creates missing buffers.
++pub fn install_loading_startup(
++    app: &mut bevy_app::App, device: Arc<rhapsody::device::Device>, hosts: HostTables,
++    installed: PathBuf, demo: bool,
++) -> Result<()> {
++    use bevy_ecs::schedule::IntoScheduleConfigs;
++    use country_core::startup::init_populate_minimal_startup_ssbo_library::minimal_startup_ssbo_system;
++    let library = app.world().get_resource::<AssetSsboLibrary>()
++        .context("loading Startup: actual AssetSsboLibrary is not installed")?;
++    anyhow::ensure!(
++        !library.contains::<ui_2d_pass::TextPrimSsbo>() && !library.contains::<ui_2d_pass::ShapeStreamSsbo>(),
++        "loading minimal Startup must not replace already registered canonical text buffers");
++    anyhow::ensure!(app.world().contains_resource::<country_core::render::device::GraphicsDeviceResource>(),
++        "loading Startup: actual GraphicsDeviceResource is not installed");
++    anyhow::ensure!(Arc::ptr_eq(&device, hosts.buffers.graphics_device()),
++        "loading Startup belongs to another BufferHost device");
++    let asset_hosts = hosts.clone();
++    app.add_systems(bevy_app::Startup, move |world: &mut World| {
++        initialize_loading_assets(world, &asset_hosts, &installed, demo)
++            .expect("original loading asset Startup");
++    });
++    app.add_systems(bevy_app::Startup, (
++        minimal_startup_ssbo_system,
++        (move |world: &mut World| {
++            attach_loading_mei(world, device.clone(), &hosts)
++                .expect("original loading canonical MEI Startup attachment");
++        }).after(minimal_startup_ssbo_system),
++    ));
++    Ok(())
++}
++
++/// Direct helper for explicit loading Worlds/tests. The caller must already
++/// run the same canonical minimal producer (gameplay uses its full producer).
++/// This helper never fills a missing library entry with a private allocation.
+ pub fn initialize_loading_resources(
+     world: &mut World, device: Arc<rhapsody::device::Device>, hosts: &HostTables,
+     installed: &Path, demo: bool,
+ ) -> Result<()> {
+-    anyhow::ensure!(!world.contains_resource::<LoadingGpuResources>(), "loading GPU resources already initialized");
++    initialize_loading_assets(world, hosts, installed, demo)?;
++    attach_loading_mei(world, device, hosts)
++}
++
++/// The unchanged asset/font producer body. These independent Startup values do
++/// not depend on canonical text SSBO creation or on the MEI host attachment.
++fn initialize_loading_assets(
++    world: &mut World, hosts: &HostTables, installed: &Path, demo: bool,
++) -> Result<()> {
+     anyhow::ensure!(!world.contains_resource::<country_core::asset_libraries::color_library::ColorLibrarySsbo>(),
+         "loading ColorLibrary startup producer already ran");
+     anyhow::ensure!(world.contains_resource::<country_core::asset_libraries::configwatch::ConfigWatch>(),
+@@ -75,8 +117,17 @@
+     }
+     let mut text = tg_text::TextRenderer::new();
+     load_text_fonts(&mut text, installed)?;
+-    let mei = MeiHost::new(device, hosts.buffers.clone(), hosts.textures.clone())?;
+     world.insert_resource(text);
++    Ok(())
++}
++
++fn attach_loading_mei(
++    world: &mut World, device: Arc<rhapsody::device::Device>, hosts: &HostTables,
++) -> Result<()> {
++    anyhow::ensure!(!world.contains_resource::<LoadingGpuResources>(), "loading GPU resources already initialized");
++    let library = world.get_resource::<AssetSsboLibrary>()
++        .context("loading App AssetSsboLibrary producer has not run")?;
++    let mei = MeiHost::from_library(device, hosts.buffers.clone(), hosts.textures.clone(), library)?;
+     world.insert_resource(LoadingGpuResources { mei,
+         background_attempted: false, background: None });
+     Ok(())

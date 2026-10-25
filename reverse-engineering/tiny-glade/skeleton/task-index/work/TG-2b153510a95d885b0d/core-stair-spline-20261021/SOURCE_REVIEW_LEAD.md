@@ -1,0 +1,7 @@
+# 二维原入口与dense源码独审
+
+通过，implemented_unverified。独立全patch检查：knot数学norm/累计仅一次，原四项guard按原顺序移入泛型闭包；native2D Infallible回调单态去除拒绝，不引入动态策略或另一数学实现。原二维两个infallible入口先min2/min3 assert，再同文件真实系数求解/from_data；Vec结构/所有segments保留，zero/NaN不清零。现代try入口、完整Spline3D、四个scalar/coeff内核和查询已独立提取比较逐字节不变；共享build校验顺序与原predicate一致。
+
+Dense移除原无的span finite/>0和2^24业务门，原usize饱和转换/max2/step/points收集先于导数保持；索引required不变。独立源码核7新test：真实Curve2失败消费，strict try与native差异、周期退化、非有限tangent、原min断言、zero/negative/NaNspan、Inf真实capacityoverflow，无超大实际分配。未执行测试，143既存nativefixtures和3D/try回归待root。
+
+当前production before012d18f1→candidate811b088c，独立临时F0/hash成功。源/patch/合同绑定见SOURCE_REVIEW_LEAD_FREEZE。此修复不证明原Bump allocation身份、NaNpayload bit或C完整等价；它保完整请求所需原badSpline→CurveTry→manual失败域。无新增依赖，不改stairs唯一writer或生产/Cargo。

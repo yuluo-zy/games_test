@@ -1,0 +1,51 @@
+{
+  "reviewer": "/root/render_reviewer",
+  "date": "2026-10-21",
+  "status": "static_native_review_accepted_implemented_unverified",
+  "scope": "现有Rectangle2d的必要角边方向原语；不是角窗producer/全场景完成。",
+  "inputs": {
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6e76d82e8a953a9a45/boot-leaf-20261018/corner-edge-dirs-root-candidate-v1/MANIFEST.json": "55d40baa7f573bb4df39b474b546de34d98e286ce9386c9fdce43bec0a240b58",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6e76d82e8a953a9a45/boot-leaf-20261018/corner-edge-dirs-root-candidate-v1/SOURCE.patch": "69441528e1c7a4e80b57a774e1eaf1540b58ea9044f179e4d14ecae556a57e0c",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6e76d82e8a953a9a45/boot-leaf-20261018/corner-edge-dirs-root-candidate-v1/before/rectangle.rs": "5c40d40cb0806c9b88eb1803df544afb2a8d0268735c5b7df799693955b8b4d2",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6e76d82e8a953a9a45/boot-leaf-20261018/corner-edge-dirs-root-candidate-v1/candidate/rectangle.rs": "f865c8e219af3ba94733bb4ed462dff1cbd9cf59c98619ecf74bae4cb4d41d3d",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6e76d82e8a953a9a45/boot-leaf-20261018/corner-edge-dirs-root-candidate-v1/NATIVE_RANGE_PROOF.json": "e5f4aacde29f581fa6c233f41b877ee4b4244e8764ed6d030d57fc81751f9ebf",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6e76d82e8a953a9a45/boot-leaf-20261018/corner-edge-dirs-root-candidate-v1/rectangle-corner-edge-dirs.asm.txt": "57b538edfdbf2e68c8a88d9ae2f2491eb912f6ba2070ca0840a68d9aad4ac857"
+  },
+  "current_production_sha256": "5c40d40cb0806c9b88eb1803df544afb2a8d0268735c5b7df799693955b8b4d2",
+  "native": {
+    "binary": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne",
+    "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "pdb_procedure": "768:21952",
+    "pdb_name": "utils::geometry::rectangle::Rectangle2d::get_edge_dirs_from_corner_id",
+    "range": "0x140c9a210..0x140c9a466",
+    "pdb_size": 598,
+    "independent_review": "直接读取实际RNE PE，对150指令全部598B逐行核字节与连续性；独立读取procedure-index code_size598/source，原跳表四项及四处literal全匹配。"
+  },
+  "conclusions": [
+    {
+      "pc": "0x140c9a224..245",
+      "source": "candidate/rectangle.rs:166..174",
+      "finding": "area>0先于下标0..3；保双负size正面积与NaN面积panic，不添加正size限制。as_points2在index检查前多做纯浮点运算，但不发布资源/多一处panic；观察失败优先级相同。"
+    },
+    {
+      "pc": "0x140c9a2f8/3be/339/37d",
+      "finding": "独立读原跳表142b2eae0，index0..3分别到四分支；返回前一角减当前、后一角减当前，顺序为[3,1],[0,2],[1,3],[2,0]。现复用相同as_points2世界角，未以轴查表替代。"
+    },
+    {
+      "pc": "0x140c9a2fe..320与0x140c9a3fd..414",
+      "finding": "逐分量平方、y²+x²、sqrt、1除及原delta乘倒数；无zero/finite回退。大坐标世界点消减产生NaN保留。"
+    }
+  ],
+  "limits": [
+    "当前Rust [Vec2;2]为工程安全接口，不声称原名义返回类型已证。",
+    "复用既有as_points2；任意NaN payload跨x86/Rust/LLVM目标逐bit不声明。",
+    "新增6项测试未运行；作者rustfmt解析成功不等于编译或行为通过。root需运行实际utils测试。"
+  ],
+  "blockers": [],
+  "reviewer_execution": {
+    "production_write": false,
+    "cargo_or_tests": false,
+    "gpu": false,
+    "original_target_execution": false
+  }
+}

@@ -1,0 +1,518 @@
+{
+  "targets": [
+    {
+      "name": "country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::clamp_wall_height",
+      "va": "0x140ac7f30",
+      "code_size": 422,
+      "end_exclusive": "0x140ac80d6",
+      "module": 565,
+      "evidence": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\scope-priorities\\module565.txt",
+      "line": 11949,
+      "priority": "P0",
+      "reason": "Already recovered the numeric wall-height policy; next resolve the producing special flag and caller-facing Option/preconditions",
+      "source_candidate": {
+        "original_path": "/home/h3/code/pouncelight/country-slice-private/crates/country-core/src/systems/wall/adjust_wall_height/ui_adjust_wall_height_mode.rs",
+        "source_sha256": "e0d642ca3c48e2a00f4e87edda8ad6719dfa07cad8a98f866e910043b4634a87"
+      },
+      "source_binding": "namespace and same-module source metadata; not source body or exact line attribution",
+      "direct_game_calls": [
+        {
+          "caller": "country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::clamp_wall_height",
+          "callsite": "0x140ac7f62",
+          "target": "0x1405b0d70",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::clamp_wall_height",
+          "callsite": "0x140ac803b",
+          "target": "0x140a923a0",
+          "game_names": [
+            "country_core::resources::walls::public_walls::PublicWalls::roof_component"
+          ],
+          "outside_selected_game_index": false
+        },
+        {
+          "caller": "country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::clamp_wall_height",
+          "callsite": "0x140ac80d0",
+          "target": "0x1428d9430",
+          "game_names": [],
+          "outside_selected_game_index": true
+        }
+      ],
+      "dependency_scope": "Do not recover std/Bevy/serde/glam/fastrand/half internals. Use existing APIs; glam/fastrand/half use exact published versions. Bevy fork source/commit binding remains unknown."
+    },
+    {
+      "name": "system_roof::edit_roof::edit_roof",
+      "va": "0x1421ab7c0",
+      "code_size": 3175,
+      "end_exclusive": "0x1421ac427",
+      "module": 3468,
+      "evidence": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\scope-priorities\\module3468.txt",
+      "line": 79,
+      "priority": "P0",
+      "reason": "High-value central command consumer: recover Set/Add/None cases, five parameter fields, gable/type-change and recalculation/audio triggers",
+      "source_candidate": {
+        "original_path": "/home/h3/code/pouncelight/country-slice-private/crates/systems/roof/src/edit_roof.rs",
+        "source_sha256": "85d50f72e7226eefc3e1d7de595aafe2630b361aab262a9b03bdf91c02d7c8ac"
+      },
+      "source_binding": "namespace and same-module source metadata; not source body or exact line attribution",
+      "direct_game_calls": [
+        {
+          "caller": "system_roof::edit_roof::edit_roof",
+          "callsite": "0x1421aba5b",
+          "target": "0x140a922b0",
+          "game_names": [
+            "country_core::resources::walls::public_walls::PublicWalls::roof_entity"
+          ],
+          "outside_selected_game_index": false
+        },
+        {
+          "caller": "system_roof::edit_roof::edit_roof",
+          "callsite": "0x1421abd97",
+          "target": "0x1408e33b0",
+          "game_names": [
+            "country_core::resources::roofs::roof_shape::Roof::is_gable"
+          ],
+          "outside_selected_game_index": false
+        },
+        {
+          "caller": "system_roof::edit_roof::edit_roof",
+          "callsite": "0x1421abddb",
+          "target": "0x1408e33b0",
+          "game_names": [
+            "country_core::resources::roofs::roof_shape::Roof::is_gable"
+          ],
+          "outside_selected_game_index": false
+        },
+        {
+          "caller": "system_roof::edit_roof::edit_roof",
+          "callsite": "0x1421abe30",
+          "target": "0x1408e33b0",
+          "game_names": [
+            "country_core::resources::roofs::roof_shape::Roof::is_gable"
+          ],
+          "outside_selected_game_index": false
+        },
+        {
+          "caller": "system_roof::edit_roof::edit_roof",
+          "callsite": "0x1421abe95",
+          "target": "0x1408e3220",
+          "game_names": [
+            "country_core::resources::roofs::roof_shape::Roof::pivot_3d"
+          ],
+          "outside_selected_game_index": false
+        },
+        {
+          "caller": "system_roof::edit_roof::edit_roof",
+          "callsite": "0x1421abee9",
+          "target": "0x140562630",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::edit_roof::edit_roof",
+          "callsite": "0x1421abf3e",
+          "target": "0x1408e3220",
+          "game_names": [
+            "country_core::resources::roofs::roof_shape::Roof::pivot_3d"
+          ],
+          "outside_selected_game_index": false
+        },
+        {
+          "caller": "system_roof::edit_roof::edit_roof",
+          "callsite": "0x1421abf72",
+          "target": "0x140562ab0",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::edit_roof::edit_roof",
+          "callsite": "0x1421ac005",
+          "target": "0x142923e60",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::edit_roof::edit_roof",
+          "callsite": "0x1421ac015",
+          "target": "0x142923e60",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::edit_roof::edit_roof",
+          "callsite": "0x1421ac026",
+          "target": "0x142923e60",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::edit_roof::edit_roof",
+          "callsite": "0x1421ac03c",
+          "target": "0x142923e60",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::edit_roof::edit_roof",
+          "callsite": "0x1421ac06f",
+          "target": "0x1408e3220",
+          "game_names": [
+            "country_core::resources::roofs::roof_shape::Roof::pivot_3d"
+          ],
+          "outside_selected_game_index": false
+        },
+        {
+          "caller": "system_roof::edit_roof::edit_roof",
+          "callsite": "0x1421ac0bc",
+          "target": "0x140562ab0",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::edit_roof::edit_roof",
+          "callsite": "0x1421ac14c",
+          "target": "0x1408e3220",
+          "game_names": [
+            "country_core::resources::roofs::roof_shape::Roof::pivot_3d"
+          ],
+          "outside_selected_game_index": false
+        },
+        {
+          "caller": "system_roof::edit_roof::edit_roof",
+          "callsite": "0x1421ac18d",
+          "target": "0x140562ab0",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::edit_roof::edit_roof",
+          "callsite": "0x1421ac203",
+          "target": "0x140562c30",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::edit_roof::edit_roof",
+          "callsite": "0x1421ac2f4",
+          "target": "0x140562c30",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::edit_roof::edit_roof",
+          "callsite": "0x1421ac3c5",
+          "target": "0x1428d9760",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::edit_roof::edit_roof",
+          "callsite": "0x1421ac421",
+          "target": "0x1428d9390",
+          "game_names": [],
+          "outside_selected_game_index": true
+        }
+      ],
+      "dependency_scope": "Do not recover std/Bevy/serde/glam/fastrand/half internals. Use existing APIs; glam/fastrand/half use exact published versions. Bevy fork source/commit binding remains unknown."
+    },
+    {
+      "name": "country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::history_record_adjust_wall_height",
+      "va": "0x140ac79e0",
+      "code_size": 1349,
+      "end_exclusive": "0x140ac7f25",
+      "module": 565,
+      "evidence": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\scope-priorities\\module565.txt",
+      "line": 10644,
+      "priority": "P1",
+      "reason": "Connect actual wall height edits to original History::add command creation; preserve before/after and mutation grouping",
+      "source_candidate": {
+        "original_path": "/home/h3/code/pouncelight/country-slice-private/crates/country-core/src/systems/wall/adjust_wall_height/ui_adjust_wall_height_mode.rs",
+        "source_sha256": "e0d642ca3c48e2a00f4e87edda8ad6719dfa07cad8a98f866e910043b4634a87"
+      },
+      "source_binding": "namespace and same-module source metadata; not source body or exact line attribution",
+      "direct_game_calls": [
+        {
+          "caller": "country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::history_record_adjust_wall_height",
+          "callsite": "0x140ac7abc",
+          "target": "0x1405b0d70",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::history_record_adjust_wall_height",
+          "callsite": "0x140ac7b8d",
+          "target": "0x140a923a0",
+          "game_names": [
+            "country_core::resources::walls::public_walls::PublicWalls::roof_component"
+          ],
+          "outside_selected_game_index": false
+        },
+        {
+          "caller": "country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::history_record_adjust_wall_height",
+          "callsite": "0x140ac7c0e",
+          "target": "0x1405b0d70",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::history_record_adjust_wall_height",
+          "callsite": "0x140ac7cdf",
+          "target": "0x140a923a0",
+          "game_names": [
+            "country_core::resources::walls::public_walls::PublicWalls::roof_component"
+          ],
+          "outside_selected_game_index": false
+        },
+        {
+          "caller": "country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::history_record_adjust_wall_height",
+          "callsite": "0x140ac7d6d",
+          "target": "0x140a83fb0",
+          "game_names": [
+            "country_core::resources::history::wall_history::_$LT$impl$u20$country_core..resources..history..EditType$GT$::new_height_changed"
+          ],
+          "outside_selected_game_index": false
+        },
+        {
+          "caller": "country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::history_record_adjust_wall_height",
+          "callsite": "0x140ac7d7f",
+          "target": "0x140a84ec0",
+          "game_names": [
+            "country_core::resources::history::History::add"
+          ],
+          "outside_selected_game_index": false
+        },
+        {
+          "caller": "country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::history_record_adjust_wall_height",
+          "callsite": "0x140ac7da5",
+          "target": "0x1405b0d70",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::history_record_adjust_wall_height",
+          "callsite": "0x140ac7e8e",
+          "target": "0x140562870",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::history_record_adjust_wall_height",
+          "callsite": "0x140ac7f07",
+          "target": "0x1428d9430",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::history_record_adjust_wall_height",
+          "callsite": "0x140ac7f1f",
+          "target": "0x1428d9430",
+          "game_names": [],
+          "outside_selected_game_index": true
+        }
+      ],
+      "dependency_scope": "Do not recover std/Bevy/serde/glam/fastrand/half internals. Use existing APIs; glam/fastrand/half use exact published versions. Bevy fork source/commit binding remains unknown."
+    },
+    {
+      "name": "system_roof::replay_roof::replay_roof",
+      "va": "0x141a37ad0",
+      "code_size": 1277,
+      "end_exclusive": "0x141a37fcd",
+      "module": 2277,
+      "evidence": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\scope-priorities\\module2277.txt",
+      "line": 34,
+      "priority": "P1",
+      "reason": "Connect recorded Roof EditType to typed game commands; inspect own matching/field copying while using Bevy EventWriter API",
+      "source_candidate": {
+        "original_path": "/home/h3/code/pouncelight/country-slice-private/crates/systems/roof/src/replay_roof.rs",
+        "source_sha256": "a172b4a4a243b785fb4267400f172089fc07d8aa18fc7846c5707fdb63e225ef"
+      },
+      "source_binding": "namespace and same-module source metadata; not source body or exact line attribution",
+      "direct_game_calls": [
+        {
+          "caller": "system_roof::replay_roof::replay_roof",
+          "callsite": "0x141a37b0a",
+          "target": "0x140949170",
+          "game_names": [
+            "country_core::render::mesh::VertexAttributeValues::array_length",
+            "country_core::input::input_stream::InputStream::sync_point_count",
+            "country_core::resources::history::replay_cmd_buffer::ReplayBuffer::len"
+          ],
+          "outside_selected_game_index": false
+        },
+        {
+          "caller": "system_roof::replay_roof::replay_roof",
+          "callsite": "0x141a37b21",
+          "target": "0x1409f1a80",
+          "game_names": [
+            "country_core::resources::history::replay_cmd_buffer::ReplayBuffer::front_mut_bucket"
+          ],
+          "outside_selected_game_index": false
+        },
+        {
+          "caller": "system_roof::replay_roof::replay_roof",
+          "callsite": "0x141a37bd5",
+          "target": "0x1421b48e0",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::replay_roof::replay_roof",
+          "callsite": "0x141a37bf9",
+          "target": "0x140b81df0",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::replay_roof::replay_roof",
+          "callsite": "0x141a37d2a",
+          "target": "0x140891eb0",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::replay_roof::replay_roof",
+          "callsite": "0x141a37d97",
+          "target": "0x142923c10",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::replay_roof::replay_roof",
+          "callsite": "0x141a37dcb",
+          "target": "0x140b5cfc0",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::replay_roof::replay_roof",
+          "callsite": "0x141a37de6",
+          "target": "0x1402e5d80",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::replay_roof::replay_roof",
+          "callsite": "0x141a37e01",
+          "target": "0x140b5cfc0",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::replay_roof::replay_roof",
+          "callsite": "0x141a37e1c",
+          "target": "0x140b5c2a0",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::replay_roof::replay_roof",
+          "callsite": "0x141a37e37",
+          "target": "0x140b5d010",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::replay_roof::replay_roof",
+          "callsite": "0x141a37e52",
+          "target": "0x140b5cfc0",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::replay_roof::replay_roof",
+          "callsite": "0x141a37e6d",
+          "target": "0x140b5cd40",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::replay_roof::replay_roof",
+          "callsite": "0x141a37e88",
+          "target": "0x140b5d010",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::replay_roof::replay_roof",
+          "callsite": "0x141a37ea3",
+          "target": "0x1406978e0",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::replay_roof::replay_roof",
+          "callsite": "0x141a37ebe",
+          "target": "0x140b5c040",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::replay_roof::replay_roof",
+          "callsite": "0x141a37edf",
+          "target": "0x140613c20",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::replay_roof::replay_roof",
+          "callsite": "0x141a37f06",
+          "target": "0x1428d90e9",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::replay_roof::replay_roof",
+          "callsite": "0x141a37f48",
+          "target": "0x140613c20",
+          "game_names": [],
+          "outside_selected_game_index": true
+        },
+        {
+          "caller": "system_roof::replay_roof::replay_roof",
+          "callsite": "0x141a37fb2",
+          "target": "0x140613c20",
+          "game_names": [],
+          "outside_selected_game_index": true
+        }
+      ],
+      "dependency_scope": "Do not recover std/Bevy/serde/glam/fastrand/half internals. Use existing APIs; glam/fastrand/half use exact published versions. Bevy fork source/commit binding remains unknown."
+    },
+    {
+      "name": "country_core::resources::walls::public_wall_state::PublicWallState::flat_roof_y",
+      "va": "0x140b2a6e0",
+      "code_size": 90,
+      "end_exclusive": "0x140b2a73a",
+      "module": 583,
+      "evidence": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\scope-priorities\\module583.txt",
+      "line": 12863,
+      "priority": "P1",
+      "reason": "Complete leaf recovered; locate publisher of cached max_y and gable_max_y fields to bridge Wall and Roof heights",
+      "source_candidate": {
+        "original_path": "/home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/public_wall_state.rs",
+        "source_sha256": "d7fe5e903d8bea9329457bf533459d645fc5bcb84fc078f16b15fb75ab49546b"
+      },
+      "source_binding": "namespace and same-module source metadata; not source body or exact line attribution",
+      "direct_game_calls": [
+        {
+          "caller": "country_core::resources::walls::public_wall_state::PublicWallState::flat_roof_y",
+          "callsite": "0x140b2a734",
+          "target": "0x1428d9390",
+          "game_names": [],
+          "outside_selected_game_index": true
+        }
+      ],
+      "dependency_scope": "Do not recover std/Bevy/serde/glam/fastrand/half internals. Use existing APIs; glam/fastrand/half use exact published versions. Bevy fork source/commit binding remains unknown."
+    }
+  ],
+  "original_cargo_lock_sha256": "9e0cb4a0fa173122fa7cd552aa639f5ee977abc22c74aec92398808c707184bd",
+  "mcp_evidence": "mcp-read.json",
+  "new_rust_rules": "reconstruction/wall/height_rules.rs",
+  "source_correctness": "wall-rules-verification.json",
+  "bevy_fork": {
+    "fact": "User says original game uses a Bevy fork",
+    "fork_commit": "unknown",
+    "note": "Cargo/PDB bevy_ecs-0.16.0 path does not determine the fork commit or patch set"
+  }
+}

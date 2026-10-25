@@ -1,0 +1,38 @@
+
+undefined8 FUN_1408ca9a0(longlong *param_1)
+
+{
+  byte *pbVar1;
+  longlong lVar2;
+  ulonglong uVar3;
+  code *pcVar4;
+  ulonglong *puVar5;
+  undefined8 uVar6;
+  ulonglong uVar7;
+  uint uVar8;
+  
+  lVar2 = *param_1;
+  puVar5 = (ulonglong *)func_0x000140b93940(param_1[1]);
+  if (puVar5 != (ulonglong *)0x0) {
+    uVar3 = *puVar5;
+    uVar7 = uVar3 & 0xffffffff;
+    if (((uVar7 < *(ulonglong *)(lVar2 + 0x10)) && (lVar2 = *(longlong *)(lVar2 + 8), lVar2 != 0))
+       && (*(uint *)(lVar2 + 0x20 + uVar7 * 0x28) == ((uint)(uVar3 >> 0x20) | 1))) {
+      pbVar1 = (byte *)(lVar2 + uVar7 * 0x28);
+      uVar6 = CONCAT71((uint7)(uint3)(uVar3 >> 0x28),1);
+      uVar8 = (uint)*pbVar1;
+      if (((uVar8 < 9) && ((0x107U >> (uVar8 & 0x1f) & 1) != 0)) && (*(int *)param_1[2] == 1)) {
+        lVar2 = *(longlong *)(pbVar1 + 8);
+        uVar6 = CONCAT71((int7)((ulonglong)lVar2 >> 8),*(longlong *)((int *)param_1[2] + 2) != lVar2
+                        );
+      }
+      return uVar6;
+    }
+    FUN_1428d8725(&UNK_142c6d8e0,0x18,&UNK_142aa3d08);
+  }
+  FUN_1428d9310(&UNK_142aa3cf0);
+  pcVar4 = (code *)swi(3);
+  uVar6 = (*pcVar4)();
+  return uVar6;
+}
+

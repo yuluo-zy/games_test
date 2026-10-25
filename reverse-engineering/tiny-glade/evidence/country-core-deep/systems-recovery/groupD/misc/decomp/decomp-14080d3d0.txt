@@ -1,0 +1,89 @@
+
+void FUN_14080d3d0(undefined8 *param_1,longlong *param_2,longlong *param_3,undefined8 *param_4)
+
+{
+  undefined4 uVar1;
+  ulonglong *puVar2;
+  longlong lVar3;
+  ulonglong uVar4;
+  undefined4 *puVar5;
+  longlong lVar6;
+  char cVar7;
+  longlong lVar8;
+  longlong lVar9;
+  longlong lVar10;
+  ulonglong uVar11;
+  ulonglong uVar12;
+  ulonglong uVar13;
+  longlong lVar14;
+  longlong lVar15;
+  undefined1 auStack_a0 [16];
+  undefined *puStack_90;
+  undefined8 uStack_60;
+  longlong lStack_58;
+  undefined8 uStack_50;
+  
+  cVar7 = func_0x000140a86970(*param_1);
+  if (cVar7 == '\0') {
+    return;
+  }
+  puVar2 = (ulonglong *)*param_4;
+  lVar3 = param_4[1];
+  uVar4 = *puVar2;
+  uVar11 = 0;
+  uVar13 = uVar4 - *(ulonglong *)(lVar3 + 0x18);
+  if (uVar4 < *(ulonglong *)(lVar3 + 0x18)) {
+    uVar13 = uVar11;
+  }
+  uVar12 = uVar4 - *(ulonglong *)(lVar3 + 0x38);
+  if (uVar4 < *(ulonglong *)(lVar3 + 0x38)) {
+    uVar12 = uVar11;
+  }
+  lVar8 = uVar13 * 0x30 + *(longlong *)(lVar3 + 8);
+  uVar4 = *(ulonglong *)(lVar3 + 0x10) - uVar13;
+  if (*(ulonglong *)(lVar3 + 0x10) < uVar13) {
+    lVar8 = 8;
+    uVar4 = uVar11;
+  }
+  lVar14 = uVar12 * 0x30 + *(longlong *)(lVar3 + 0x28);
+  uVar13 = *(ulonglong *)(lVar3 + 0x30) - uVar12;
+  if (*(ulonglong *)(lVar3 + 0x30) < uVar12) {
+    lVar14 = 8;
+    uVar13 = uVar11;
+  }
+  *puVar2 = (*(longlong *)(lVar3 + 0x40) - uVar13) - uVar4;
+  lVar10 = uVar13 * 0x30 + lVar14;
+  uVar1 = *(undefined4 *)((longlong)param_3 + 0x1c);
+  lVar3 = *param_3;
+  puVar5 = (undefined4 *)param_3[2];
+  lVar6 = *param_2;
+  lVar9 = lVar8;
+  do {
+    if ((lVar9 == 0) || (lVar9 == uVar4 * 0x30 + lVar8)) {
+      if ((lVar14 == 0) || (lVar14 == lVar10)) {
+        *puVar5 = uVar1;
+        lStack_58 = lVar6 + 0x120;
+        if (*(longlong *)(lVar6 + 0x120) == 0) {
+          lStack_58 = 0;
+        }
+        uStack_60 = 1;
+        uStack_50 = 0;
+        puStack_90 = &UNK_140b2bd7d;
+        FUN_141293280(&uStack_60,lVar3 + 0x30);
+        return;
+      }
+      lVar15 = 0;
+      lVar9 = lVar14;
+      lVar14 = lVar14 + 0x30;
+    }
+    else {
+      lVar15 = lVar9 + 0x30;
+    }
+    *puVar2 = *puVar2 + 1;
+    *puVar5 = uVar1;
+    FUN_140a1e300(auStack_a0,lVar6,*(undefined8 *)(lVar9 + 0x18));
+    func_0x000141265530(lVar3 + 0x30,auStack_a0);
+    lVar9 = lVar15;
+  } while( true );
+}
+

@@ -1,0 +1,1 @@
+2026-10-21 /root/core_business_lead 明确转发root窄委派：延续TG-4b6d939d045d508224原owner clutter-startup-20261020，claim保持不变；本tree_commands child仅在原合法work下before-frozen-20261021-real-loader26冻结当前before并恢复原完整26case loader。root唯一生产/Cargo/App/GPU/Git；合同先独立复核、保原业务/失败/订阅/keys，不交空实现。

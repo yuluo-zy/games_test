@@ -1,0 +1,14 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/history.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/history.rs
+@@ -312,6 +312,11 @@
+     world.init_resource::<Events<replay_mode::ReplayFocusEvent>>();
+     world.init_resource::<Events<history_process::DebugHistoryMsg>>();
+     world.init_resource::<replay_mode::ReplayFastHoldInput>();
++    world.init_resource::<crate::input::action_set::MainActionSet>();
++    world.init_resource::<replay_mode::HoldToFastReplay>();
++    world.init_resource::<replay_mode::ReplayModeElapsedTime>();
++    world.init_resource::<Events<crate::systems::mode_manager::AppModeChanged>>();
++    world.init_resource::<Events<finish_replay::CmdUnfreezeSheep>>();
+     recording::register_recording_events(world);
+     replay_wall::register_wall_replay_events(world);
+     crate::resources::roofs::register_roof_events(world);

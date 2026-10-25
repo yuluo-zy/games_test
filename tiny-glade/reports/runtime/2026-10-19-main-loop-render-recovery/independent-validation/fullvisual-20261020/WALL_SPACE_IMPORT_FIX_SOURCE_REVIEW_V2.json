@@ -1,0 +1,28 @@
+{
+  "verdict": "passed_scoped_one_line_import_fix_source",
+  "manifest_sha256": "45beebbec36a176bf5a5617346c0f50dd11f0496336f5648aca08121809828a8",
+  "before_sha256": "579296321b301b17c018f5ec23a387e1420fae47596d79b24786ed745f17635c",
+  "candidate_sha256": "c144df9480f2b15ba5a76bfe71208c3475166f8afe1968a32cbe4f231b4a4e1b",
+  "whole_patch_and_only_string_delta_match": true,
+  "actual_module_API_hashes": {
+    "curve_mod": "044c9623a9dde794211790fdafa4fd19c842369192e874879cb1bbe87d9fe987",
+    "curve_u": "b3a2a79e44c413987cf5d209593d2e1585bb8a16ed0bf69d6046276866fc2512"
+  },
+  "direct_symbol_check": "curve::curve_u is public and CurveUBoundless is public there; only CurveU is reexported from curve root. Corrected use resolves exact existing definition without newglobalreexport.",
+  "actual_V4_failure": {
+    "receipt_sha256": "4d6c5badcfe363595670d06055bb1cfcc931ab00a302a76418a8b4f107803f1f",
+    "log_sha256": "80e69ca8a8491c338c3f945dc3f48ef64207e9244e54ff3e92214f22d5255e38",
+    "exit": 101,
+    "compiler_error": "E0432 actual candidate import crate::curve::CurveUBoundless nonexistent",
+    "artifacts": [],
+    "tests_executed": 0
+  },
+  "prior_review_correction": "07 missed actual curve-root export while accepting V1source0d1335d3. That compile-admission aspect is superseded by this realred and corrected V2. V4 pre-run artifact identity admissionb108 was static only, not test pass. Frozen V1/V4/red artifacts stay unchanged.",
+  "unchanged_scope": [
+    "One use path only; body/algorithms/testinputs/expected/range semantics/3lineoverride unchanged. No driver/reexport/mockedtype/fallback correction.",
+    "Original793B math/192case expectation review retained, but compile/runtime validation remains actual rootexecution."
+  ],
+  "root_execution": "Refresh into a new immutable harness/runtime snapshot with exactlivec144 wall source and existingtwo reviewedcompanions; retainV4errorlog/lock/noartifacts; runfullselectedlib+bothintegrationtargets afterlockpublicidentity/featureschecks. No failurecount/binary from old53reused.",
+  "reviewer_Cargo_rustc_tests_GPU": false,
+  "production_modified": false
+}

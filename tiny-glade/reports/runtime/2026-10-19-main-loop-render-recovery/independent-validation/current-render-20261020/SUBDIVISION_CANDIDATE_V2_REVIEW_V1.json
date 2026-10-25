@@ -1,0 +1,76 @@
+{
+  "status": "candidate_v2_bounded_source_review_pass_pending_root_compile_tests",
+  "baseline_sha": "fa53d49a61dd7496cddc9af054c6fb1899fa1676",
+  "reviewer": "root/render_reviewer",
+  "scope": "TG652 existing utils/mod.rs尾部subdivision工程接口；不接管原claim，不推进无证完整window generator",
+  "candidate": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-652d8e2c9cc79a01e3/scene-clutter-producer-20261020/subdivision-root-candidate-v2",
+  "manifest_sha256": "c6e80dc9b33c60e3bd14a0501d1d8966e46c19f29bbab03e077ab01f919170e0",
+  "candidate_sha256": "e7420c563dfbf5060c27f696093ee9b3000b819b6935e4ecec406fa83690f7dc",
+  "patch_sha256": "e4c217041bab3dba60d42ef8455dc6b59ff3829327eeef247c09dcbff34a313e",
+  "before_sha256": "586d2433cd6c34550e1c451f458a2e6e3ad9de995eda085b2c8387ce9fa790fc",
+  "native_check": {
+    "original_rne_identity": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "pdb": "原B skeleton utils/mod.rs只保存inline schema、非作者源；原PDB1503:30556明确Range<usize>→subdivide closure→真实curve closure→TupleWindows→transform closure。工程API不可宣称原版精确Rust函数签名。",
+    "bytes": "三份retained asm逐指令按VA直接对原B RNE读取比较，全部相等。业务closure恢复，std Range/Vec/itertools依赖复用，不计这些依赖字节为新业务。",
+    "artifacts": [
+      {
+        "path": "window-primitives-v1/14129d450-inline-business-leaf-full-B.asm",
+        "sha256": "4f2833fb54da021589cc5101cca480e8cba81db69b70df591d138bf77163a5a1",
+        "instructions_checked": 106,
+        "bytes_checked": 417
+      },
+      {
+        "path": "window-primitives-v1/141260ca0-inline-business-context-full-B.asm",
+        "sha256": "80d3c87d5acbd5276865245a6b533d88259c34521a1cb2a6a23da845f287839c",
+        "instructions_checked": 274,
+        "bytes_checked": 1227
+      },
+      {
+        "path": "window-primitives-v2/subdivide-input-and-lintel-call-B.asm",
+        "sha256": "2edb6b52c6543766922cc232b7e2403de437652578a12e5cced1a2b869dd0744",
+        "instructions_checked": 77,
+        "bytes_checked": 462
+      }
+    ]
+  },
+  "review": [
+    {
+      "classification": "native事实+工程投影",
+      "pc": "1407ed6c7..7be;14129d477..4ee",
+      "result": "width来自真实caller，half_offset=-0.5*width，先project start U、保留half_offset*0+Y；distance=index*step，保留0*distance再加startY；每次真实WallSpace project和同一CurveSampling.to_world_space。未自造直线/端点lerp/第二几何owner或无效输入默认。"
+    },
+    {
+      "classification": "native事实+工程投影",
+      "pc": "141260d20..d9c,141260f3c..f97",
+      "result": "TupleWindows按相邻真实点，delta=second-first；v2按addendum修为dy²+dx²再dz²/sqrt/reciprocal；normal=(-dz*reciprocal,dx*reciprocal)交既有utils::xz_rotation_bad；midpoint sum后乘0.5，unit scale。未复制/替换共享旋转算法。"
+    },
+    {
+      "classification": "借用与性能",
+      "source": "candidate utils/mod.rs:174-217",
+      "result": "space/coord为值，curve由调用方借用到返回iterator寿命；迭代器持有闭包与tuple_windows常量状态，无额外点Vec。产物由实际caller收集，helper无World/Command/resource side owner。删除旧假pair-copy/closure在全crates未发现业务caller。"
+    },
+    {
+      "classification": "当前测试源码（未执行）",
+      "result": "5项测试使用真实Curve2，覆盖折线逐段pose、负U原quirk、闭环缝、0宽degenerate共享rotation和非有限/0数量真实curve失败；这不证明原window caller生成业务已可达。"
+    }
+  ],
+  "resolved_review_findings": [
+    {
+      "candidate": "subdivision-root-candidate-v1",
+      "source": "utils/mod.rs:199-201",
+      "problem": "manifest绑定NUMERIC_ORDER_ADDENDUM_V1要求dy²+dx²，但v1写dx²+dy²；原141260d72 movshdup取dy²、d76 addss加dx²，候选违背已绑定numeric contract。",
+      "fix": "新v2仅表达式和中文注释改dy²+dx²；已独立diff v1/v2确认无其他源码语义改动。",
+      "proof_limit": "此为具体表达式/原证顺序偏差，未声称用有效有限业务输入已动态观测到输出差异；任意NaN payload逐bit一致仍未验证。"
+    }
+  ],
+  "findings": [],
+  "remaining_limits": [
+    "原首条和recurring代码生成的最终ADDSS操作数顺序不同，Rust/LLVM跨目标任意NaN payload逐bit等价不据此通过。",
+    "pieces实际native caller由rank/分支选择；该接口不是所有usize输入均已验证的公开通用算法，完整caller域仍待证。",
+    "完整窗producer/Info window_extra/collision四表/WindowLight setter/UIwriter/fullunload及GPU/存档恢复仍未由本helper闭合。",
+    "root必须实际typecheck并执行subdivision_native_tests::，不能据rustfmt parse通过记为测试通过。"
+  ],
+  "production_modified_by_reviewer": false,
+  "cargo_executed_by_reviewer": false,
+  "gpu_executed_by_reviewer": false
+}

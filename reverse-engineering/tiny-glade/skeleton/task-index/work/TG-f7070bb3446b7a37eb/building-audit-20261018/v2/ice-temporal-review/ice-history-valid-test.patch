@@ -1,0 +1,24 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/transparency_pass/surface_tests.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/transparency_pass/surface_tests.rs
+@@ -867,17 +867,18 @@
+     // refr resolve 写 water refr temporal 当前帧（RecordingRg 的 pair 占连续两个资源号）。
+     let refr = acc(&r.compute[2]);
+     assert!(refr.iter().any(|a| a.1 == 0x32), "{refr:?}");
+-    // history_valid：march / trace = 输入 u8；refl resolve = (flag1 & flag2) & 1（RecordingRg 首次创建标志 = 1）。
++    // history_valid：march / trace = 输入 u8；refl resolve = 两张 temporal history 有效标志相与。
++    // 每次 run 都新建 RecordingRg；首次 pair 没有可复用 history，因此 resolve 为 0。
+     assert_eq!(uniform(&r.compute[0], HISTORY_VALID_OFFSET), 1);
+     assert_eq!(uniform(&r.compute[1], HISTORY_VALID_OFFSET), 1);
+-    assert_eq!(uniform(&r.compute[3], HISTORY_VALID_OFFSET), 1);
++    assert_eq!(uniform(&r.compute[3], HISTORY_VALID_OFFSET), 0);
+     // refr resolve 没有 history_valid。
+     assert_eq!(uniform(&r.compute[2], HISTORY_VALID_OFFSET), 0);
+     // 输入 u8 = 0 → march / trace 为 0，resolve 仍由 temporal 标志决定。
+     let z = run(false, &s, 0);
+     assert_eq!(uniform(&z.compute[0], HISTORY_VALID_OFFSET), 0);
+     assert_eq!(uniform(&z.compute[1], HISTORY_VALID_OFFSET), 0);
+-    assert_eq!(uniform(&z.compute[3], HISTORY_VALID_OFFSET), 1);
++    assert_eq!(uniform(&z.compute[3], HISTORY_VALID_OFFSET), 0);
+ }
+ 
+ #[test]

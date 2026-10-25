@@ -1,0 +1,21 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/audio/mod.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/audio/mod.rs
+@@ -195,13 +195,15 @@
+ pub struct SuppressPathSound;
+ 
+ /// `RequestWallMaterialAudio` (wall_audio_orchestrator): request a material-parameter
+-/// update for the wall identified by `id` (GlobalId hash key).
++/// update for the wall identified by `id`. B draw_wall @140a7ed56..ed9c
++/// publishes the actual position, kind byte2 and flag byte0; no scalar value
++/// is present in that payload.
+ #[derive(Event, Clone, Copy, Debug, PartialEq)]
+ pub struct RequestWallMaterialAudio {
+     pub id: u64,
+     pub position: Vec3,
+-    pub value: f32,
+-    pub kind: u8,
++    pub kind: u8,
++    pub flag: u8,
+ }
+ 
+ /// `WallBendAudioParamReset` (wall audio): reset a bend-related loop parameter.

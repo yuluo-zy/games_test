@@ -1,0 +1,23 @@
+--- v1/decorator_clutter.rs
++++ v2/decorator_clutter.rs
+@@ -2,6 +2,8 @@
+ //! Identity-bound evidence is retained in scene-clutter-producer-20261020.
+ //! Generation writes blueprints; actual entity and collider instantiation is a
+ //! separate original consumer. No RNG, transient spawn or subtype fallback.
++
++use std::sync::Arc;
+ 
+ use bevy_ecs::prelude::*;
+ use country_core::resources::{
+@@ -143,7 +145,10 @@
+                 ),
+                 center,
+             );
+-            // Original Arc/argument order: collision=shrunken, interaction=full.
++            // Native first constructs both values, then allocates shrink Arc
++            // before full Arc (1407e3ea1..3ec2 and 1407e3f4a..3f75).
++            let shrunken = Arc::new(shrunken);
++            let full = Arc::new(full);
+             blueprint.set_positioned_colliders(
+                 shrunken,
+                 full,

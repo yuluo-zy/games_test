@@ -1,0 +1,514 @@
+M  AGENTS.md
+ M reverse-engineering/tiny-glade/AI_REVERSE_TOOLS.md
+ M reverse-engineering/tiny-glade/PROJECT_MEMORY.md
+ M reverse-engineering/tiny-glade/TASK_BACKLOG.md
+ M reverse-engineering/tiny-glade/evidence/mcp/re_mcp_ghidra-stderr.log
+ M reverse-engineering/tiny-glade/skeleton/workflow-design/tiny-glade-recovery/references/original-driven-integration.md
+ M reverse-engineering/tiny-glade/tracking/project.json
+ M tiny-glade/.gitignore
+ M tiny-glade/Cargo.lock
+ M tiny-glade/crates/country-core/Cargo.toml
+ M tiny-glade/crates/country-core/src/asset_libraries/placement_data_library.rs
+ M tiny-glade/crates/country-core/src/asset_libraries/runtime.rs
+ M tiny-glade/crates/country-core/src/asset_libraries/shader_library.rs
+ M tiny-glade/crates/country-core/src/components/drawable.rs
+ M tiny-glade/crates/country-core/src/components/mod.rs
+ M tiny-glade/crates/country-core/src/components/rendering.rs
+ M tiny-glade/crates/country-core/src/components/ui.rs
+ M tiny-glade/crates/country-core/src/geometry/instanced_wall.rs
+ M tiny-glade/crates/country-core/src/input/recording.rs
+ M tiny-glade/crates/country-core/src/lib.rs
+ M tiny-glade/crates/country-core/src/render/execution_host.rs
+ M tiny-glade/crates/country-core/src/render/pass_builder/draw_builder.rs
+ M tiny-glade/crates/country-core/src/render/pass_builder/draw_stream.rs
+ M tiny-glade/crates/country-core/src/render/pass_builder/framebuffer_binding.rs
+ M tiny-glade/crates/country-core/src/render/sparse_instance_buffer.rs
+ M tiny-glade/crates/country-core/src/resources/audio_instance.rs
+ M tiny-glade/crates/country-core/src/resources/audio_resources.rs
+ M tiny-glade/crates/country-core/src/resources/audio_settings.rs
+ M tiny-glade/crates/country-core/src/resources/color_icon.rs
+ M tiny-glade/crates/country-core/src/resources/critters/mod.rs
+ M tiny-glade/crates/country-core/src/resources/critters/sheep.rs
+ M tiny-glade/crates/country-core/src/resources/critters/sheep/control.rs
+ M tiny-glade/crates/country-core/src/resources/glade_color_customization.rs
+ M tiny-glade/crates/country-core/src/resources/grading_lut.rs
+ M tiny-glade/crates/country-core/src/resources/gui.rs
+ M tiny-glade/crates/country-core/src/resources/history/building_transactions.rs
+ M tiny-glade/crates/country-core/src/resources/history/color_edit.rs
+ M tiny-glade/crates/country-core/src/resources/history/decorator_edit.rs
+ M tiny-glade/crates/country-core/src/resources/history/mod.rs
+ M tiny-glade/crates/country-core/src/resources/history/replay_cmd_buffer.rs
+ M tiny-glade/crates/country-core/src/resources/history/serialized.rs
+ M tiny-glade/crates/country-core/src/resources/history/stairs_history_edit.rs
+ M tiny-glade/crates/country-core/src/resources/history/transactions.rs
+ M tiny-glade/crates/country-core/src/resources/history/tree_edit.rs
+ M tiny-glade/crates/country-core/src/resources/history/wall_edit.rs
+ M tiny-glade/crates/country-core/src/resources/image_formation.rs
+ M tiny-glade/crates/country-core/src/resources/mod.rs
+ M tiny-glade/crates/country-core/src/resources/mouse_terrain_raycast.rs
+ M tiny-glade/crates/country-core/src/resources/photo_mode.rs
+ M tiny-glade/crates/country-core/src/resources/prefab.rs
+ M tiny-glade/crates/country-core/src/resources/raster_stroke.rs
+ M tiny-glade/crates/country-core/src/resources/rocky_terrain.rs
+ M tiny-glade/crates/country-core/src/resources/roofs/commands.rs
+ M tiny-glade/crates/country-core/src/resources/roofs/roof_shape.rs
+ M tiny-glade/crates/country-core/src/resources/save_file.rs
+ M tiny-glade/crates/country-core/src/resources/session.rs
+ M tiny-glade/crates/country-core/src/resources/stairs/stairs_state.rs
+ M tiny-glade/crates/country-core/src/resources/terrain_rock_mask.rs
+ M tiny-glade/crates/country-core/src/resources/texture_presets.rs
+ M tiny-glade/crates/country-core/src/resources/time_of_day.rs
+ M tiny-glade/crates/country-core/src/resources/tree_storage.rs
+ M tiny-glade/crates/country-core/src/resources/walls/arches.rs
+ M tiny-glade/crates/country-core/src/resources/walls/color_selection.rs
+ M tiny-glade/crates/country-core/src/resources/walls/curved_halftimber.rs
+ M tiny-glade/crates/country-core/src/resources/walls/decorator.rs
+ M tiny-glade/crates/country-core/src/resources/walls/inner_wall_state.rs
+ M tiny-glade/crates/country-core/src/resources/walls/material_stats.rs
+ M tiny-glade/crates/country-core/src/resources/walls/plaster.rs
+ M tiny-glade/crates/country-core/src/resources/walls/public_wall_state.rs
+ M tiny-glade/crates/country-core/src/resources/walls/public_walls.rs
+ M tiny-glade/crates/country-core/src/resources/walls/publication_fields.rs
+ M tiny-glade/crates/country-core/src/resources/window.rs
+ M tiny-glade/crates/country-core/src/startup/init_photomode_state.rs
+ M tiny-glade/crates/country-core/src/startup/load_glade_audio.rs
+ M tiny-glade/crates/country-core/src/startup/load_prefabs.rs
+ M tiny-glade/crates/country-core/src/startup/mod.rs
+ M tiny-glade/crates/country-core/src/startup/run_game.rs
+ M tiny-glade/crates/country-core/src/startup/startup_session.rs
+ M tiny-glade/crates/country-core/src/startup/startup_terrain.rs
+ M tiny-glade/crates/country-core/src/startup/startup_water.rs
+ M tiny-glade/crates/country-core/src/startup/tests.rs
+ M tiny-glade/crates/country-core/src/systems/audio/audio_update.rs
+ M tiny-glade/crates/country-core/src/systems/audio/building_audio.rs
+ M tiny-glade/crates/country-core/src/systems/audio/decorator_audio.rs
+ M tiny-glade/crates/country-core/src/systems/audio/firstperson_steps.rs
+ M tiny-glade/crates/country-core/src/systems/audio/forest_audio.rs
+ M tiny-glade/crates/country-core/src/systems/audio/game_loading_audio.rs
+ M tiny-glade/crates/country-core/src/systems/audio/menu_audio.rs
+ M tiny-glade/crates/country-core/src/systems/audio/music/glade_audio.rs
+ M tiny-glade/crates/country-core/src/systems/audio/music/load_glade_audio.rs
+ M tiny-glade/crates/country-core/src/systems/audio/music/music_player.rs
+ M tiny-glade/crates/country-core/src/systems/audio/path_audio.rs
+ M tiny-glade/crates/country-core/src/systems/audio/playermade_stairs_audio.rs
+ M tiny-glade/crates/country-core/src/systems/audio/roof_audio.rs
+ M tiny-glade/crates/country-core/src/systems/audio/sheep_audio.rs
+ M tiny-glade/crates/country-core/src/systems/audio/terrain_audio.rs
+ M tiny-glade/crates/country-core/src/systems/audio/terrain_stairs_audio.rs
+ M tiny-glade/crates/country-core/src/systems/audio/timberframe_audio.rs
+ M tiny-glade/crates/country-core/src/systems/audio/trigger_audio.rs
+ M tiny-glade/crates/country-core/src/systems/audio/wall_audio_fmod.rs
+ M tiny-glade/crates/country-core/src/systems/audio/wall_audio_utils.rs
+ M tiny-glade/crates/country-core/src/systems/audio/water_ambience_audio.rs
+ M tiny-glade/crates/country-core/src/systems/audio/weather_audio.rs
+ M tiny-glade/crates/country-core/src/systems/backend/input/input_record_replay.rs
+ M tiny-glade/crates/country-core/src/systems/backend/input/mod.rs
+ M tiny-glade/crates/country-core/src/systems/backend/photomode.rs
+ M tiny-glade/crates/country-core/src/systems/brush_preview.rs
+ M tiny-glade/crates/country-core/src/systems/camera_rig/free_camera.rs
+ M tiny-glade/crates/country-core/src/systems/camera_rig/main_camera.rs
+ M tiny-glade/crates/country-core/src/systems/camera_rig/mod.rs
+ M tiny-glade/crates/country-core/src/systems/camera_rig/normal_body.rs
+ M tiny-glade/crates/country-core/src/systems/debug/mod.rs
+ M tiny-glade/crates/country-core/src/systems/debug/sheep_controls.rs
+ M tiny-glade/crates/country-core/src/systems/history.rs
+ M tiny-glade/crates/country-core/src/systems/history/replay_auto_clutter.rs
+ M tiny-glade/crates/country-core/src/systems/history/replay_color.rs
+ M tiny-glade/crates/country-core/src/systems/history/replay_decorator.rs
+ M tiny-glade/crates/country-core/src/systems/history/replay_mode.rs
+ M tiny-glade/crates/country-core/src/systems/history/replay_raster.rs
+ M tiny-glade/crates/country-core/src/systems/history/replay_stairs.rs
+ M tiny-glade/crates/country-core/src/systems/history/replay_wall.rs
+ M tiny-glade/crates/country-core/src/systems/history/tests.rs
+ M tiny-glade/crates/country-core/src/systems/history/wall_replay_interpreter.rs
+ M tiny-glade/crates/country-core/src/systems/main_camera.rs
+ M tiny-glade/crates/country-core/src/systems/paths.rs
+ M tiny-glade/crates/country-core/src/systems/prefab.rs
+ M tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/d_main_tests.rs
+ M tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a.rs
+ M tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a_tests.rs
+ M tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a_views.rs
+ M tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_b.rs
+ M tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/feedback_report_bg.rs
+ M tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/ui_2d_pass.rs
+ M tiny-glade/crates/country-core/src/systems/render_loop/lut_gallery.rs
+ M tiny-glade/crates/country-core/src/systems/render_loop/menu_background.rs
+ M tiny-glade/crates/country-core/src/systems/render_loop/mod.rs
+ M tiny-glade/crates/country-core/src/systems/render_loop/resources/critters.rs
+ M tiny-glade/crates/country-core/src/systems/render_loop/session_selection/mod.rs
+ M tiny-glade/crates/country-core/src/systems/render_loop/vermeer.rs
+ M tiny-glade/crates/country-core/src/systems/save/load_completion_checker.rs
+ M tiny-glade/crates/country-core/src/systems/save/load_game.rs
+ M tiny-glade/crates/country-core/src/systems/save/save_file_identity.rs
+ M tiny-glade/crates/country-core/src/systems/save/save_game.rs
+ M tiny-glade/crates/country-core/src/systems/save/save_thread.rs
+ M tiny-glade/crates/country-core/src/systems/save/snapshot.rs
+ M tiny-glade/crates/country-core/src/systems/save/tests.rs
+ M tiny-glade/crates/country-core/src/systems/steam/mod.rs
+ M tiny-glade/crates/country-core/src/systems/terrain/replay_terrain.rs
+ M tiny-glade/crates/country-core/src/systems/terrain/ui_draw_terrain.rs
+ M tiny-glade/crates/country-core/src/systems/time_update.rs
+ M tiny-glade/crates/country-core/src/systems/timelapse_replay.rs
+ M tiny-glade/crates/country-core/src/systems/wall/construct_wall_bricks.rs
+ M tiny-glade/crates/country-core/src/systems/wall/construction/arches.rs
+ M tiny-glade/crates/country-core/src/systems/wall/construction/freehand_arches.rs
+ M tiny-glade/crates/country-core/src/systems/wall/construction/mod.rs
+ M tiny-glade/crates/country-core/src/systems/wall/draw_wall.rs
+ M tiny-glade/crates/country-core/src/systems/wall/mod.rs
+ M tiny-glade/crates/country-core/src/systems/wall/shapes/circle/create_circle.rs
+ M tiny-glade/crates/country-core/src/systems/wall/shapes/rectangle/create_rectangle.rs
+ M tiny-glade/crates/country-core/src/systems/wall/ui_continue_wall.rs
+ M tiny-glade/crates/country-core/src/systems/wall/wall_state/wall_spatial_hash.rs
+ M tiny-glade/crates/country-core/src/utils/audio_utils.rs
+ M tiny-glade/crates/country-core/tests/input_pipeline.rs
+ M tiny-glade/crates/country-core/tests/sheep_snapshot_native.rs
+ M tiny-glade/crates/rhapsody/src/raw/swapchain.rs
+ M tiny-glade/crates/rhapsody/src/rg/access_ledger.rs
+ M tiny-glade/crates/rhapsody/src/rg/vulkan.rs
+ M tiny-glade/crates/systems/clutter/src/inter_roof_merlons/detect_inter_roof_merlons.rs
+ M tiny-glade/crates/systems/color/src/autoclose_color_menu.rs
+ M tiny-glade/crates/systems/color/src/color_menu.rs
+ M tiny-glade/crates/systems/color/src/lib.rs
+ M tiny-glade/crates/systems/color/src/radial_menu/mod.rs
+ M tiny-glade/crates/systems/color/src/replay_color.rs
+ M tiny-glade/crates/systems/color/src/set_flag_connection_n_chimney_smoke.rs
+ M tiny-glade/crates/systems/color/src/set_roof_customization.rs
+ M tiny-glade/crates/systems/color/src/show_color_menu.rs
+ M tiny-glade/crates/systems/color/src/ui_color_wall_and_roof.rs
+ M tiny-glade/crates/systems/color/src/write_roof_color_id_to_gpu.rs
+ M tiny-glade/crates/systems/critters/src/bird_spots.rs
+ M tiny-glade/crates/systems/critters/src/butterfly.rs
+ M tiny-glade/crates/systems/critters/src/components.rs
+ M tiny-glade/crates/systems/critters/src/duck.rs
+ M tiny-glade/crates/systems/critters/src/firefly.rs
+ M tiny-glade/crates/systems/critters/src/lib.rs
+ M tiny-glade/crates/systems/critters/src/shared.rs
+ M tiny-glade/crates/systems/critters/src/sheep/sheep_behavior.rs
+ M tiny-glade/crates/systems/critters/src/sheep/sheep_walk_animation.rs
+ M tiny-glade/crates/systems/critters/src/wren.rs
+ M tiny-glade/crates/systems/critters/src/wren_boids.rs
+ M tiny-glade/crates/systems/decorator/src/apply_decorator_op.rs
+ M tiny-glade/crates/systems/decorator/src/audio/mod.rs
+ M tiny-glade/crates/systems/decorator/src/audio/op_confirm_audio.rs
+ M tiny-glade/crates/systems/decorator/src/audio/op_preview_audio.rs
+ M tiny-glade/crates/systems/decorator/src/audio/op_stairs_audio.rs
+ M tiny-glade/crates/systems/decorator/src/backup.rs
+ M tiny-glade/crates/systems/decorator/src/blueprint.rs
+ M tiny-glade/crates/systems/decorator/src/cache_decorator_transforms.rs
+ M tiny-glade/crates/systems/decorator/src/chimney_smoke_anim_thickness.rs
+ M tiny-glade/crates/systems/decorator/src/collision_detection.rs
+ M tiny-glade/crates/systems/decorator/src/cull_oob_decorators.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_on_freehand_wall_edited.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_on_move_shape.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_on_rectangle_edited.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_on_wall_height_changed.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_resources.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual/arrow_slit.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual/chimney_assemble_bricks.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual/chimney_roof.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual/chimney_wall.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual/cottage_balcony_door.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual/cottage_dormers/assemble_dormer_roof_tiles.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual/cottage_dormers/collision_geo.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual/cottage_dormers/cottage_dormer.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual/cottage_dormers/util_assemble_gothic_dormer.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual/cottage_wall_window.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual/deco_differential_state.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual/decorator_clutter.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual/door_stairs_assemble_bricks.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual/flag.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual/flag_connections.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual/generate_clothline.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual/gothic_balcony_door.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual/gothic_dormer.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual/gothic_wall_window.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual/lantern.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual/stairs.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual/stairs_assemble.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual/trap_doors.rs
+ M tiny-glade/crates/systems/decorator/src/decorator_visual_state.rs
+ M tiny-glade/crates/systems/decorator/src/deferred_decorator_history.rs
+ M tiny-glade/crates/systems/decorator/src/derive_decorator_subtype.rs
+ M tiny-glade/crates/systems/decorator/src/dormer_holes.rs
+ M tiny-glade/crates/systems/decorator/src/lib.rs
+ M tiny-glade/crates/systems/decorator/src/load_decorators.rs
+ M tiny-glade/crates/systems/decorator/src/merge_proposal_roof_decorators.rs
+ M tiny-glade/crates/systems/decorator/src/merge_proposal_wall_decorators.rs
+ M tiny-glade/crates/systems/decorator/src/move_decorators_following_anchors.rs
+ M tiny-glade/crates/systems/decorator/src/remove_ivy_under_windows.rs
+ M tiny-glade/crates/systems/decorator/src/replay_decorator.rs
+ M tiny-glade/crates/systems/decorator/src/restore_archived_decorators.rs
+ M tiny-glade/crates/systems/decorator/src/ui_systems/mod.rs
+ M tiny-glade/crates/systems/decorator/src/ui_systems/ui_change_chimney_height.rs
+ M tiny-glade/crates/systems/decorator/src/ui_systems/ui_change_stair_height.rs
+ M tiny-glade/crates/systems/decorator/src/ui_systems/ui_place_decorator.rs
+ M tiny-glade/crates/systems/decorator/src/ui_systems/ui_rotate_lantern.rs
+ M tiny-glade/crates/systems/decorator/src/utils/mod.rs
+ M tiny-glade/crates/systems/decorator/src/window_lights.rs
+ M tiny-glade/crates/systems/forest/src/manage_tree_prefabs.rs
+ M tiny-glade/crates/systems/forest/src/tree_animation.rs
+ M tiny-glade/crates/systems/roof/src/create_roof.rs
+ M tiny-glade/crates/systems/roof/src/replay_roof.rs
+ M tiny-glade/crates/systems/roof/src/roof_trigger_volume.rs
+ M tiny-glade/crates/systems/roof/src/visual/assemble_roof_tiles.rs
+ M tiny-glade/crates/systems/roof/src/visual/generate_roof_stone_floor_and_roof_bottom.rs
+ M tiny-glade/crates/systems/terrain/src/stroke.rs
+ M tiny-glade/crates/systems/toolbar/Cargo.toml
+ M tiny-glade/crates/systems/toolbar/src/lib.rs
+ M tiny-glade/crates/systems/toolbar/src/mei/config.rs
+ M tiny-glade/crates/systems/toolbar/src/mei/core.rs
+ M tiny-glade/crates/systems/toolbar/src/mei/layout.rs
+ M tiny-glade/crates/systems/toolbar/src/mei/systems.rs
+ M tiny-glade/crates/systems/toolbar/src/mei/widgets.rs
+ M tiny-glade/crates/systems/toolbar/src/menu/mod.rs
+ M tiny-glade/crates/systems/toolbar/src/photomode.rs
+ M tiny-glade/crates/systems/toolbar/src/resouces_and_components/mod.rs
+ M tiny-glade/crates/systems/toolbar/src/resouces_and_components/taffy_layout.rs
+ M tiny-glade/crates/systems/toolbar/src/resouces_and_components/toolbar_layout.rs
+ M tiny-glade/crates/systems/toolbar/src/taffy_update.rs
+ M tiny-glade/crates/systems/toolbar/src/toolbar_button.rs
+ M tiny-glade/crates/systems/toolbar/src/toolbar_systems.rs
+ M tiny-glade/crates/systems/toolbar/src/toolbar_update.rs
+ M tiny-glade/crates/systems/toolbar/src/ui_interaction.rs
+ M tiny-glade/crates/systems/tree-tool/src/convert_preplaced_trees.rs
+ M tiny-glade/crates/systems/tree-tool/src/hide_trees.rs
+ M tiny-glade/crates/systems/tree-tool/src/process_tree_cmds.rs
+ M tiny-glade/crates/systems/tree-tool/src/recalc_tree_position_on_terrain_height_change.rs
+ M tiny-glade/crates/systems/tree-tool/src/replay_tree.rs
+ M tiny-glade/crates/systems/tree-tool/src/tree_move_bend.rs
+ M tiny-glade/crates/systems/tree-tool/src/ui_delete_tree.rs
+ M tiny-glade/crates/systems/tree-tool/src/ui_move_tree.rs
+ M tiny-glade/crates/systems/wall-constructor/Cargo.toml
+ M tiny-glade/crates/systems/wall-constructor/src/arch_walker.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_arches/mod.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_arches/profile.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_elevation_supports/circle_bottom_layer.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_elevation_supports/circle_categorize.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_elevation_supports/circle_pillars.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_elevation_supports/circle_turret.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_elevation_supports/find_overlap_segments.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_elevation_supports/maintain_stone_column_colliders.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_elevation_supports/mod.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_elevation_supports/rectangle_bottom_layer.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_elevation_supports/rectangle_large_brackets.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_elevation_supports/rectangle_pillars.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_elevation_supports/rectangle_small_brackets.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_elevation_supports/util_pillar_construction.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_fences/mod.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_fences/process_segment.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_floors.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_gates/systems.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_lintels/mod.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_lintels/place_support_beams.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_platform_stairs/mod.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_playermade_stairs/brackets.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_playermade_stairs/magic_support.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_playermade_stairs/mod.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_playermade_stairs/pillars_process_proposals.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_playermade_stairs/pillars_visual.rs
+ M tiny-glade/crates/systems/wall-constructor/src/construct_walls.rs
+ M tiny-glade/crates/systems/wall-constructor/src/curved_halftimber/mod.rs
+ M tiny-glade/crates/systems/wall-constructor/src/curved_halftimber/wooden_floor_borders.rs
+ M tiny-glade/crates/systems/wall-constructor/src/init_wall_height_and_arch_segment_height.rs
+ M tiny-glade/crates/systems/wall-constructor/src/lib.rs
+ M tiny-glade/crates/systems/wall-constructor/src/place_pillars.rs
+ M tiny-glade/crates/systems/wall-constructor/src/plaster_systems.rs
+ M tiny-glade/crates/systems/wall-constructor/src/segmentation/calculate_wall_path_segmentation.rs
+ M tiny-glade/crates/systems/wall-constructor/src/segmentation/sample_wall_path_intersections.rs
+ M tiny-glade/crates/systems/wall-constructor/src/segmentation/split_wall_path_segment_into_platform_stairs.rs
+ M tiny-glade/crates/systems/wall-constructor/src/ui_arch_controls.rs
+ M tiny-glade/crates/systems/wall-constructor/src/ui_lintel_controls.rs
+ M tiny-glade/crates/systems/wall-constructor/src/utils/half_timber.rs
+ M tiny-glade/crates/systems/wall-constructor/src/utils/mod.rs
+ M tiny-glade/crates/systems/wall-constructor/src/utils/wall_corners.rs
+ M tiny-glade/crates/systems/wall-constructor/src/wall_constructor.rs
+ M tiny-glade/crates/systems/water/src/water_audio_grid.rs
+ M tiny-glade/crates/tg-building-runtime/src/history.rs
+ M tiny-glade/crates/tg-building-runtime/tests/wall_authoring_chain.rs
+ M tiny-glade/crates/tiny-glade/Cargo.toml
+ M tiny-glade/crates/tiny-glade/src/decorator_plugin.rs
+ M tiny-glade/crates/tiny-glade/src/effects_host.rs
+ M tiny-glade/crates/tiny-glade/src/frame_setup.rs
+ M tiny-glade/crates/tiny-glade/src/game_loop.rs
+ M tiny-glade/crates/tiny-glade/src/gameplay_startup.rs
+ M tiny-glade/crates/tiny-glade/src/gui/gui_debug.rs
+ M tiny-glade/crates/tiny-glade/src/gui/gui_escape_menu.rs
+ M tiny-glade/crates/tiny-glade/src/lib.rs
+ M tiny-glade/crates/tiny-glade/src/loading_graph.rs
+ M tiny-glade/crates/tiny-glade/src/mei_host.rs
+ M tiny-glade/crates/tiny-glade/src/production_renderer.rs
+ M tiny-glade/crates/tiny-glade/src/raster_host.rs
+ M tiny-glade/crates/tiny-glade/src/render_bridge.rs
+ M tiny-glade/crates/tiny-glade/src/render_host.rs
+ M tiny-glade/crates/tiny-glade/src/run_game.rs
+ M tiny-glade/crates/tiny-glade/src/screenshot.rs
+ M tiny-glade/crates/tiny-glade/src/world_graph.rs
+ M tiny-glade/crates/tiny-glade/src/world_postprocess.rs
+ M tiny-glade/crates/tiny-glade/tests/core_render_bridge.rs
+ M tiny-glade/crates/tiny-glade/tests/original_egui_gpu.rs
+ M tiny-glade/crates/tiny-glade/tests/original_loading_present.rs
+ M tiny-glade/crates/tiny-glade/tests/original_raster_gpu.rs
+ M tiny-glade/crates/tiny-glade/tests/original_scene_compute_gpu.rs
+ M tiny-glade/crates/tiny-glade/tests/original_startup_gpu.rs
+ M tiny-glade/crates/utils/src/curve/mod.rs
+ M tiny-glade/crates/utils/src/lib.rs
+?? reverse-engineering/tiny-glade/evidence/audit-2026-10-19/
+?? reverse-engineering/tiny-glade/evidence/llm-worker-2026-10-19/
+?? reverse-engineering/tiny-glade/evidence/round10/
+?? reverse-engineering/tiny-glade/evidence/round11-final-gpu-tests-v2.log
+?? reverse-engineering/tiny-glade/evidence/round11-final-gpu-tests-v4.log
+?? reverse-engineering/tiny-glade/evidence/round11-final-gpu-tests.log
+?? reverse-engineering/tiny-glade/evidence/round11-final-host-tests-v2.log
+?? reverse-engineering/tiny-glade/evidence/round11-final-lib-tests.log
+?? reverse-engineering/tiny-glade/evidence/round11-host-tests-v2.log
+?? reverse-engineering/tiny-glade/evidence/round11-input-tests-v2.log
+?? reverse-engineering/tiny-glade/evidence/round11-input-tests-v3.log
+?? reverse-engineering/tiny-glade/evidence/round11-input-tests.log
+?? reverse-engineering/tiny-glade/evidence/round11-integrated-check-v1.log
+?? reverse-engineering/tiny-glade/evidence/round11-integrated-check-v2.log
+?? reverse-engineering/tiny-glade/evidence/round11-integrated-tests-v1.log
+?? reverse-engineering/tiny-glade/evidence/round11-loading-gpu-v3.log
+?? reverse-engineering/tiny-glade/evidence/round11-render-check.log
+?? reverse-engineering/tiny-glade/evidence/round11-render-first-check.log
+?? reverse-engineering/tiny-glade/evidence/round11-render-gallery-check.log
+?? reverse-engineering/tiny-glade/evidence/round11-render-tests.log
+?? reverse-engineering/tiny-glade/evidence/round11-rfd-check.log
+?? reverse-engineering/tiny-glade/evidence/round11-rfd-lock-align.log
+?? reverse-engineering/tiny-glade/evidence/round11-rfd-offline.log
+?? reverse-engineering/tiny-glade/evidence/round11-root-check.log
+?? reverse-engineering/tiny-glade/evidence/round11-root-host-tests.log
+?? reverse-engineering/tiny-glade/evidence/round11-startup-gpu-v2.log
+?? reverse-engineering/tiny-glade/evidence/round11-startup-gpu.log
+?? reverse-engineering/tiny-glade/evidence/round11/
+?? reverse-engineering/tiny-glade/evidence/round12-check-v1.log
+?? reverse-engineering/tiny-glade/evidence/round12-gameplay-chain-v1.log
+?? reverse-engineering/tiny-glade/evidence/round12-gameplay-chain-v10.log
+?? reverse-engineering/tiny-glade/evidence/round12-gameplay-chain-v11.log
+?? reverse-engineering/tiny-glade/evidence/round12-gameplay-chain-v2.log
+?? reverse-engineering/tiny-glade/evidence/round12-gameplay-chain-v3.log
+?? reverse-engineering/tiny-glade/evidence/round12-gameplay-chain-v4.log
+?? reverse-engineering/tiny-glade/evidence/round12-gameplay-chain-v5.log
+?? reverse-engineering/tiny-glade/evidence/round12-gameplay-chain-v6.log
+?? reverse-engineering/tiny-glade/evidence/round12-gameplay-chain-v7.log
+?? reverse-engineering/tiny-glade/evidence/round12-gameplay-chain-v8.log
+?? reverse-engineering/tiny-glade/evidence/round12-gameplay-chain-v9.log
+?? reverse-engineering/tiny-glade/evidence/round12-metadata.json
+?? reverse-engineering/tiny-glade/evidence/round12/
+?? reverse-engineering/tiny-glade/evidence/round13-frame-graph-gpu/
+?? reverse-engineering/tiny-glade/evidence/round9/
+?? reverse-engineering/tiny-glade/evidence/sync-20261019-local-backup/
+?? reverse-engineering/tiny-glade/reconstruction/AUDIT-2026-10-19.md
+?? reverse-engineering/tiny-glade/reconstruction/PROJECT-ARCHITECTURE.html
+?? reverse-engineering/tiny-glade/scripts/llm-worker/
+?? reverse-engineering/tiny-glade/tmp-wc-r11/
+?? tiny-glade/crates/country-core/build.rs
+?? tiny-glade/crates/country-core/src/components/brush_previews.rs
+?? tiny-glade/crates/country-core/src/resources/critters/wren.rs
+?? tiny-glade/crates/country-core/src/resources/glade_color_customization_native_oracle.rs
+?? tiny-glade/crates/country-core/src/resources/native_audio.rs
+?? tiny-glade/crates/country-core/src/resources/preplaced_autoclutter.rs
+?? tiny-glade/crates/country-core/src/resources/read_mouse_depth_value.rs
+?? tiny-glade/crates/country-core/src/startup/clearing.rs
+?? tiny-glade/crates/country-core/src/startup/glade_themes.rs
+?? tiny-glade/crates/country-core/src/startup/load_audio.rs
+?? tiny-glade/crates/country-core/src/startup/load_glade_audio_regression.rs
+?? tiny-glade/crates/country-core/src/startup/load_glade_grading.rs
+?? tiny-glade/crates/country-core/src/startup/native_placement_policy.rs
+?? tiny-glade/crates/country-core/src/startup/sheep_assets.rs
+?? tiny-glade/crates/country-core/src/startup/spawn_brush_previews.rs
+?? tiny-glade/crates/country-core/src/startup/spawn_human_ref.rs
+?? tiny-glade/crates/country-core/src/startup/spawn_preplaced_trees.rs
+?? tiny-glade/crates/country-core/src/startup/startup_critters.rs
+?? tiny-glade/crates/country-core/src/startup/startup_meadow.rs
+?? tiny-glade/crates/country-core/src/startup/startup_roof.rs
+?? tiny-glade/crates/country-core/src/startup/startup_sheep.rs
+?? tiny-glade/crates/country-core/src/startup/startup_sky_and_sun.rs
+?? tiny-glade/crates/country-core/src/startup/startup_time_of_day.rs
+?? tiny-glade/crates/country-core/src/startup/startup_walls.rs
+?? tiny-glade/crates/country-core/src/systems/camera_rig/butterfly.rs
+?? tiny-glade/crates/country-core/src/systems/camera_rig/walk.rs
+?? tiny-glade/crates/country-core/src/systems/clear_canvas.rs
+?? tiny-glade/crates/country-core/src/systems/debug/human_scale_ref.rs
+?? tiny-glade/crates/country-core/src/systems/history/signifier_replay_active.rs
+?? tiny-glade/crates/country-core/src/systems/look_at_camera.rs
+?? tiny-glade/crates/country-core/src/systems/mesh_follow_terrain.rs
+?? tiny-glade/crates/country-core/src/systems/prefab/
+?? tiny-glade/crates/country-core/src/systems/render_loop/world_frame.rs
+?? tiny-glade/crates/country-core/src/systems/save/load_game_migration.rs
+?? tiny-glade/crates/country-core/src/systems/ui_2d_follow_mouse.rs
+?? tiny-glade/crates/country-core/src/systems/wall/construction/arch_stats.rs
+?? tiny-glade/crates/country-core/src/systems/wall/set_wall_style.rs
+?? tiny-glade/crates/country-core/tests/fixtures/original-mixed-history-b.json
+?? tiny-glade/crates/country-core/tests/fixtures/original-sheep-controls-picking-b.json
+?? tiny-glade/crates/country-core/tests/fixtures/original-sheep-controls-runtime-b.json
+?? tiny-glade/crates/country-core/tests/fixtures/original-tod-sequence-b.json
+?? tiny-glade/crates/country-core/tests/fixtures/original-wall-variants-b.json
+?? tiny-glade/crates/country-core/tests/original_tod_sequence.rs
+?? tiny-glade/crates/country-core/tests/original_wall_point_query.rs
+?? tiny-glade/crates/rhapsody/tests/preserving_dedup.rs
+?? tiny-glade/crates/systems/critters/src/control_critters.rs
+?? tiny-glade/crates/systems/critters/src/startup_critters.rs
+?? tiny-glade/crates/systems/critters/src/startup_sheep.rs
+?? tiny-glade/crates/systems/critters/src/tests/
+?? tiny-glade/crates/systems/critters/src/upload_tests.rs
+?? tiny-glade/crates/systems/critters/src/wren/
+?? tiny-glade/crates/systems/critters/tests/fixtures/
+?? tiny-glade/crates/systems/critters/tests/original_shared_avoidance.rs
+?? tiny-glade/crates/systems/critters/tests/original_shared_movement.rs
+?? tiny-glade/crates/systems/decorator/tests/
+?? tiny-glade/crates/systems/forest/src/native_forest_fixtures.rs
+?? tiny-glade/crates/systems/toolbar/src/mei/widgets/
+?? tiny-glade/crates/systems/toolbar/src/menu/credits.rs
+?? tiny-glade/crates/systems/toolbar/src/menu/load.rs
+?? tiny-glade/crates/systems/toolbar/src/menu/load_ui.rs
+?? tiny-glade/crates/systems/toolbar/src/menu/report_bug.rs
+?? tiny-glade/crates/systems/toolbar/src/photomode/
+?? tiny-glade/crates/systems/toolbar/tests/
+?? tiny-glade/crates/systems/wall-constructor/src/gpu_output.rs
+?? tiny-glade/crates/systems/wall-constructor/tests/
+?? tiny-glade/crates/tiny-glade/src/audio_host.rs
+?? tiny-glade/crates/tiny-glade/src/history_runtime.rs
+?? tiny-glade/crates/tiny-glade/src/menu_background_host.rs
+?? tiny-glade/crates/tiny-glade/src/screenshot_capture.rs
+?? tiny-glade/crates/tiny-glade/src/session_preview_host.rs
+?? tiny-glade/crates/tiny-glade/src/startup_construction_runtime.rs
+?? tiny-glade/crates/tiny-glade/src/startup_event_runtime.rs
+?? tiny-glade/crates/tiny-glade/src/toolbar_plugin.rs
+?? tiny-glade/crates/tiny-glade/src/wall_constructor_plugin.rs
+?? tiny-glade/crates/tiny-glade/tests/fixtures/
+?? tiny-glade/crates/tiny-glade/tests/original_birdspot_recycle.rs
+?? tiny-glade/crates/tiny-glade/tests/original_capture_gpu.rs
+?? tiny-glade/crates/tiny-glade/tests/original_escape_menu.rs
+?? tiny-glade/crates/tiny-glade/tests/original_gameplay_chain.rs
+?? tiny-glade/crates/tiny-glade/tests/original_history_wire.rs
+?? tiny-glade/crates/tiny-glade/tests/original_load_completion.rs
+?? tiny-glade/crates/tiny-glade/tests/original_load_menu.rs
+?? tiny-glade/crates/tiny-glade/tests/original_preplaced_startup.rs
+?? tiny-glade/crates/tiny-glade/tests/original_roof_birdspots.rs
+?? tiny-glade/crates/tiny-glade/tests/original_session_control.rs
+?? tiny-glade/crates/tiny-glade/tests/original_sheep_animation.rs
+?? tiny-glade/crates/tiny-glade/tests/original_sheep_birth.rs
+?? tiny-glade/crates/tiny-glade/tests/original_tod_startup.rs
+?? tiny-glade/crates/utils/src/sampling.rs
+?? tiny-glade/target-agent-dec-final/
+?? tiny-glade/target-agent-dec-review/
+?? tiny-glade/target-agent-dec/
+?? tiny-glade/target-agent-decb/
+?? tiny-glade/target-agent-decc/
+?? tiny-glade/target-agent-decd/
+?? tiny-glade/target-agent-dece/
+?? tiny-glade/target-agent-tb-review/
+?? tiny-glade/target-agent-tb/
+?? tiny-glade/target-agent-tbc/
+?? tiny-glade/target-agent-tbc2/
+?? tiny-glade/target-agent-tbd/
+?? tiny-glade/target-agent-tbe/
+?? tiny-glade/target-agent-wc-review/
+?? tiny-glade/target-agent-wc/
+?? tiny-glade/target-agent-wcb/
+?? tiny-glade/target-agent-wcc/
+?? tiny-glade/target-dec11/
+?? tiny-glade/target-review/
+?? tiny-glade/target-tb-review/
+?? tiny-glade/target-tb11/
+?? tiny-glade/target-wc11/

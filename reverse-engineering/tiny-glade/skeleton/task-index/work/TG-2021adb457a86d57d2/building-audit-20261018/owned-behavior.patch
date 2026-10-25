@@ -1,0 +1,915 @@
+--- a/games_test/tiny-glade/crates/systems/critters/src/sheep/sheep_behavior.rs
++++ b/games_test/tiny-glade/crates/systems/critters/src/sheep/sheep_behavior.rs
+@@ -21,25 +21,17 @@
+ use country_core::resources::time::GameTime;
+ use country_core::resources::world_raster::WorldRaster;
+ use country_core::systems::camera_rig::main_camera::MainCamera;
+-use glam::{Vec2, Vec3};
++use glam::{Quat, Vec2, Vec3};
+ 
+ use crate::audio::AudioHandle;
+-use crate::components::{CritterVelocityTarget, Sheep, Transform};
++use crate::components::{CritterVelocityTarget, Sheep, SheepMoveState, Transform};
+ use crate::duck::CritterRng;
+ use crate::sample::x0y;
+-use crate::sheep::sheep_terrain::{SheepTerrainState, STATE_GROUNDED};
+-
+-/// 羊目标组件（二进制 CritterGoal 布局：active u32@+0、pos Vec3@+4；stride 0x10）。
+-/// 注：country_core::resources::critters::CritterGoal 已被并发 agent 改为
+-/// `{position@+0, goal_tag@+0xc}`（与 fresh 反编译 `*goal=active; +4=pos` 不符）；
+-/// 本重建以本地组件保持二进制布局（集成 owner 裁决是否对齐共享类型）。
+-#[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
+-pub struct SheepGoal {
+-    /// +0：active（bit0）。
+-    pub active: u32,
+-    /// +4：目标位置。
+-    pub pos: Vec3,
+-}
++use crate::sheep::sheep_terrain::{STATE_GROUNDED, SheepTerrainState};
++
++/// Existing public path retained as an alias to the shared goal Component.
++/// Rust field order does not reproduce native Option<Vec3> layout.
++pub use country_core::resources::critters::CritterGoal as SheepGoal;
+ 
+ /// `utils::uniform_sample_disk`（0x140c90700）的二进制签名：RCX 打包两 f32
+ /// `(u, angle)`，内部不调 RNG。`r=sqrt(u)`、`a=angle*TAU` → `(r*cos a, r*sin a)`。
+@@ -55,23 +47,69 @@
+     false
+ }
+ 
+-/// update_sheep_goals（0x142315050，源码 26–221）。
+-///
+-/// 逐羊（O，控制流与常量均自 fresh 反编译）：
+-/// - `behavior_state==1`（跟随）：mode==3 → `eye+fwd*2`；否则 `CursorTerrainRaycast::position`；
+-///   写 CritterGoal={active=1,pos}；`timer@+0xc -= dt`；**再次**取光标位，`dist(cur,pos)<0.2`
+-///   → `timer -= 3*dt`；`timer>=0` → 2×uniform_f32 → `t0=u1*12+4、t1=u2*3+1`、sub=1；
+-///   `timer<0` → `behavior_state=0`、1×uniform_f32 → `t0=u*7+1`、sub=0。
+-/// - 共享目标刷新（`flag_30!=0`）：两半 `-=dt`；`两半>0 && goal.active && dist2>=0.16` → 保留；
+-///   否则换目标：`scale=active?0.8:0.5`、`shared_timers[1]=u*3+1`、disk 采样 → `rot=quat*sample`、
+-///   `v=(sample.x+scale*rot.x, 0, sample.y+scale*rot.z)`（demo 门 >35 时 `v=x0y(disk2)*25-pos`）、
+-///   `new_pos = pos + normalize(v)*shared_timers[1]`；`r_new<65||r_new<r_old` 且（loc!=2 或水面<=0）
+-///   → 写 goal；否则 goal=inactive。
+-/// - 结尾写（`behavior_state` 低字节 !=0）：`flag_30=sub、flag_31=0、shared_timers=(t0,t1)`。
+-///
+-/// 已知分歧：`flag_31@+0x31` 本函数恒写 0（读分支死路径），未落 Sheep 字段；XMM7/XMM8 寄存器残留
+-/// 按"沿用本羊当前 shared_timers"近似（非跟随非刷新羊的结尾写值无法从反编译确定性还原）。
+-/// 2×4B 查询环境列写（bevy QueryIter 胶水）不建模。
++/// Original movement phase: timer updates happen before deciding whether to
++/// retain the existing goal, start a state transition, or choose a new goal.
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++enum GoalAction {
++    Keep,
++    Refresh,
++    StartIdle,
++    StartWalking,
++}
++
++fn advance_move_state(
++    state: &mut SheepMoveState,
++    dt: f32,
++    goal: &SheepGoal,
++    position: Vec3,
++) -> GoalAction {
++    match state {
++        SheepMoveState::Idle { timeout_s } => {
++            *timeout_s -= dt;
++            if *timeout_s <= 0.0 {
++                GoalAction::StartWalking
++            } else {
++                GoalAction::Keep
++            }
++        }
++        SheepMoveState::Walking {
++            timeout_s,
++            goal_change_timeout,
++            force_reach_goal,
++        } => {
++            *timeout_s -= dt;
++            *goal_change_timeout -= dt;
++            if *timeout_s <= 0.0 && !*force_reach_goal {
++                return GoalAction::StartIdle;
++            }
++            let dx = goal.position.x - position.x;
++            let dz = goal.position.z - position.z;
++            let distance_squared = dx * dx + dz * dz;
++            // Ordered comparisons preserve the original UCOMISS NaN branches.
++            #[allow(clippy::neg_cmp_op_on_partial_ord)]
++            let retain = (!(*goal_change_timeout <= 0.0) || *force_reach_goal)
++                && goal.goal_tag & 1 != 0
++                && !(distance_squared < f32::from_bits(0x3e23_d70b));
++            if retain {
++                GoalAction::Keep
++            } else {
++                GoalAction::Refresh
++            }
++        }
++    }
++}
++
++/// B 14231596a..142315acd: rotate fixed -Z by the existing quaternion,
++/// halve/project it to XZ, add the resolved disk sample, then normalize.
++/// This reuses current glam instead of reproducing its dependency internals.
++fn sheep_goal_direction(rotation: Quat, disk: Vec2, active_goal: bool) -> Vec3 {
++    let forward = (rotation * Vec3::NEG_Z) * 0.5;
++    let scale = if active_goal { 0.8 } else { 0.5 };
++    Vec3::new(disk.x + scale * forward.x, 0.0, disk.y + scale * forward.z).normalize_or_zero()
++}
++
++/// B update_sheep_goals 0x142315050. Retain the existing current-system
++/// architecture/RNG; typed movement is shared with snapshot capture/restore.
+ #[allow(clippy::too_many_arguments)]
+ pub fn update_sheep_goals(
+     time: Res<GameTime>,
+@@ -79,119 +117,108 @@
+     cursor: Res<CursorTerrainRaycast>,
+     water: Res<WorldRaster<512>>,
+     rng: Res<CritterRng>,
+-    mut query: Query<(
+-        &Transform,
+-        &mut Sheep,
+-        &SheepTerrainState,
+-        &mut SheepGoal,
+-    )>,
++    mut query: Query<(&Transform, &mut Sheep, &SheepTerrainState, &mut SheepGoal)>,
+ ) {
+     let dt = time.delta;
+     let mut rng_ctx = rng.0.lock().unwrap();
+     let w = (*water).as_ref();
+     for (transform, mut sheep, terrain_state, mut goal) in &mut query {
+         let pos = transform.translation;
+-        let behavior = sheep.behavior_state;
+-
+-        // uVar15 默认 2；t0/t1 为 XMM7/XMM8 结尾写值（残留近似）。
+-        let mut sub_state: u8 = 2;
+-        let mut t0 = sheep.shared_timers[0];
+-        let mut t1 = sheep.shared_timers[1];
+-
+-        if behavior == 1 {
+-            // 跟随分支（O L187–229）。
++        // The original keeps a pending state transition while processing the
++        // previous movement state. Idle's inactive timer/force bytes are not data.
++        let follow_transition = if sheep.behavior_state == 1 {
+             let target = if camera.mode_byte() == 3 {
+                 camera.eye_position() + camera.eye_forward() * 2.0
+             } else {
+                 cursor.position()
+             };
+-            goal.active = 1;
+-            goal.pos = target;
++            goal.goal_tag = 1;
++            goal.position = target;
+             sheep.goal_timer -= dt;
+-            // O：目标写入后再取一次光标位，到达判定用当前光标（非存下目标）。
+-            let cur = cursor.position();
+-            if (cur - pos).length() < 0.2 {
++            if (cursor.position() - pos).length() < 0.2 {
+                 sheep.goal_timer -= 3.0 * dt;
+             }
+-            let timer = sheep.goal_timer;
+-            if timer >= 0.0 {
+-                let u1 = rng_ctx.uniform_f32();
+-                let u2 = rng_ctx.uniform_f32();
+-                t0 = u1 * 12.0 + 4.0;
+-                t1 = u2 * 3.0 + 1.0;
+-                sub_state = 1;
++            // Original UCOMISS/JBE takes this branch on unordered input too.
++            if sheep.goal_timer.is_nan() || sheep.goal_timer >= 0.0 {
++                let timeout_s = rng_ctx.uniform_f32() * 12.0 + 4.0;
++                let goal_change_timeout = rng_ctx.uniform_f32() * 3.0 + 1.0;
++                Some(SheepMoveState::Walking {
++                    timeout_s,
++                    goal_change_timeout,
++                    force_reach_goal: false,
++                })
+             } else {
+                 sheep.behavior_state = 0;
+-                let u = rng_ctx.uniform_f32();
+-                t0 = u * 7.0 + 1.0;
+-                // t1 = XMM8 残留（此处未写，沿用近似值）。
+-                sub_state = 0;
+-            }
+-        }
+-
+-        // 共享目标刷新（O L234–357）。
+-        if sheep.flag_30 != 0 {
+-            sheep.shared_timers[0] -= dt;
+-            sheep.shared_timers[1] -= dt;
+-            let keep = sheep.shared_timers[0] > 0.0
+-                && sheep.shared_timers[1] > 0.0
+-                && goal.active != 0
+-                && (goal.pos - pos).length_squared() >= 0.16;
+-            if !keep {
+-                // flag_31 恒 0 → 其"保留检查"分支为死路径（O L249/L251）。
+-                let scale = if goal.active != 0 { 0.8 } else { 0.5 };
+-                let u = rng_ctx.uniform_f32();
+-                sheep.shared_timers[1] = u * 3.0 + 1.0;
++                Some(SheepMoveState::Idle {
++                    timeout_s: rng_ctx.uniform_f32() * 7.0 + 1.0,
++                })
++            }
++        } else {
++            None
++        };
++
++        match advance_move_state(&mut sheep.move_state, dt, &goal, pos) {
++            GoalAction::StartWalking => {
++                let timeout_s = rng_ctx.uniform_f32() * 12.0 + 4.0;
++                let goal_change_timeout = rng_ctx.uniform_f32() * 3.0 + 1.0;
++                sheep.move_state = SheepMoveState::Walking {
++                    timeout_s,
++                    goal_change_timeout,
++                    force_reach_goal: false,
++                };
++                continue;
++            }
++            GoalAction::StartIdle => {
++                sheep.move_state = SheepMoveState::Idle {
++                    timeout_s: rng_ctx.uniform_f32() * 7.0 + 1.0,
++                };
++                continue;
++            }
++            GoalAction::Keep => {}
++            GoalAction::Refresh => {
++                let step = rng_ctx.uniform_f32() * 3.0 + 1.0;
++                if let SheepMoveState::Walking {
++                    goal_change_timeout,
++                    ..
++                } = &mut sheep.move_state
++                {
++                    *goal_change_timeout = step;
++                }
+                 let disk = disk_sample(rng_ctx.uniform_f32(), rng_ctx.uniform_f32());
+-                let sample = x0y(disk);
+-                let rot = transform.rotation * sample;
+-                let mut v = Vec3::new(
+-                    sample.x + scale * rot.x,
+-                    0.0,
+-                    sample.y + scale * rot.z,
+-                );
++                let mut direction =
++                    sheep_goal_direction(transform.rotation, disk, goal.goal_tag != 0);
+                 if demo_mode() && pos.length() > 35.0 {
+                     let disk2 = disk_sample(rng_ctx.uniform_f32(), rng_ctx.uniform_f32());
+-                    v = x0y(disk2) * 25.0 - pos;
++                    direction = (x0y(disk2) * 25.0 - pos).normalize();
+                 }
+-                let dir = v.normalize_or_zero();
+-                let new_pos = pos + dir * sheep.shared_timers[1];
++                let new_pos = pos + direction * step;
+                 let r_new = (new_pos.x * new_pos.x + new_pos.z * new_pos.z).sqrt();
+                 let r_old = (pos.x * pos.x + pos.z * pos.z).sqrt();
+-                if r_new < 65.0 || r_new < r_old {
+-                    // O：loc==2 时水面判定（三次 bilinear：new_pos / pos / new_pos，阈值 0.0）。
+-                    let s1 = w.bilinear_sample_at_world_xz(new_pos.x, new_pos.z, 130.0, 130.0);
+-                    let s2 = w.bilinear_sample_at_world_xz(pos.x, pos.z, 130.0, 130.0);
+-                    let s3 = w.bilinear_sample_at_world_xz(new_pos.x, new_pos.z, 130.0, 130.0);
+-                    if terrain_state.state != STATE_GROUNDED || (s1 <= 0.0 && (s2 > 0.0 || s3 <= 0.0))
+-                    {
+-                        goal.active = 1;
+-                        goal.pos = new_pos;
+-                    } else {
+-                        goal.active = 0;
+-                    }
+-                } else {
+-                    goal.active = 0;
++                let allowed = (r_new < 65.0 || r_new < r_old)
++                    && (terrain_state.state != STATE_GROUNDED || {
++                        let s1 = w.bilinear_sample_at_world_xz(new_pos.x, new_pos.z, 130.0, 130.0);
++                        s1 <= 0.0 && {
++                            let s2 = w.bilinear_sample_at_world_xz(pos.x, pos.z, 130.0, 130.0);
++                            s2 > 0.0
++                                || w.bilinear_sample_at_world_xz(new_pos.x, new_pos.z, 130.0, 130.0)
++                                    <= 0.0
++                        }
++                    });
++                goal.goal_tag = u32::from(allowed);
++                if allowed {
++                    goal.position = new_pos;
+                 }
+-            }
+-        } else {
+-            // 单计时路径（O L358–367）：仅低半 -= dt；<=0 → t0/u12+4、t1/u3+1、sub=1。
+-            sheep.shared_timers[0] -= dt;
+-            if sheep.shared_timers[0] <= 0.0 {
+-                let u1 = rng_ctx.uniform_f32();
+-                let u2 = rng_ctx.uniform_f32();
+-                t0 = u1 * 12.0 + 4.0;
+-                t1 = u2 * 3.0 + 1.0;
+-                sub_state = 1;
+-            }
+-        }
+-
+-        // 结尾写（O L368–376）：behavior_state 低字节 !=0。
+-        // 原码同时写 `flag_31@+0x31 = 0`（恒 0，未落 Sheep 字段——见模块头分歧注释）。
+-        if (behavior & 0xff) != 0 {
+-            sheep.flag_30 = sub_state;
+-            sheep.shared_timers[0] = t0;
+-            sheep.shared_timers[1] = t1;
++                // Both accepted and rejected replacement clear the original +31.
++                if let SheepMoveState::Walking {
++                    force_reach_goal, ..
++                } = &mut sheep.move_state
++                {
++                    *force_reach_goal = false;
++                }
++            }
++        }
++        if let Some(state) = follow_transition {
++            sheep.move_state = state;
+         }
+     }
+ }
+@@ -228,8 +255,11 @@
+ ) {
+     for (transform, sheep, goal, mut target, mut multiplier) in &mut query {
+         let pos = transform.translation;
+-        let d = if goal.active != 0 && sheep.flag_30 == 1 && !sheep.being_petted() {
+-            goal.pos - pos
++        let d = if goal.goal_tag != 0
++            && matches!(sheep.move_state, SheepMoveState::Walking { .. })
++            && !sheep.being_petted()
++        {
++            goal.position - pos
+         } else {
+             Vec3::ZERO
+         };
+@@ -251,3 +281,579 @@
+ pub struct SheepAudio {
+     pub handle: AudioHandle,
+ }
++
++#[cfg(test)]
++mod original_movement_phase_tests {
++    use super::*;
++    fn f(bits: u32) -> f32 {
++        f32::from_bits(bits)
++    }
++    #[test]
++    fn movement_phase_matches_original_b_instruction_fixtures() {
++        // Original resolved phase case0.
++        let mut state = SheepMoveState::Idle {
++            timeout_s: f(1073741824),
++        };
++        let goal = SheepGoal {
++            position: Vec3::new(f(1073741824), f(0), f(0)),
++            goal_tag: 1,
++        };
++        assert_eq!(
++            advance_move_state(
++                &mut state,
++                f(1048576000),
++                &goal,
++                Vec3::new(f(0), f(0), f(0))
++            ),
++            GoalAction::Keep
++        );
++        assert!(
++            matches!(state, SheepMoveState::Idle { timeout_s } if timeout_s.to_bits() == 1071644672)
++        );
++        // Original resolved phase case1.
++        let mut state = SheepMoveState::Idle {
++            timeout_s: f(1036831949),
++        };
++        let goal = SheepGoal {
++            position: Vec3::new(f(1073741824), f(0), f(0)),
++            goal_tag: 1,
++        };
++        assert_eq!(
++            advance_move_state(
++                &mut state,
++                f(1048576000),
++                &goal,
++                Vec3::new(f(0), f(0), f(0))
++            ),
++            GoalAction::StartWalking
++        );
++        assert!(
++            matches!(state, SheepMoveState::Idle { timeout_s } if timeout_s.to_bits() == 3189348762)
++        );
++        // Original resolved phase case2.
++        let mut state = SheepMoveState::Walking {
++            timeout_s: f(1073741824),
++            goal_change_timeout: f(1073741824),
++            force_reach_goal: false,
++        };
++        let goal = SheepGoal {
++            position: Vec3::new(f(1073741824), f(0), f(0)),
++            goal_tag: 1,
++        };
++        assert_eq!(
++            advance_move_state(
++                &mut state,
++                f(1048576000),
++                &goal,
++                Vec3::new(f(0), f(0), f(0))
++            ),
++            GoalAction::Keep
++        );
++        match state {
++            SheepMoveState::Walking {
++                timeout_s,
++                goal_change_timeout,
++                force_reach_goal,
++            } => {
++                assert_eq!(timeout_s.to_bits(), 1071644672);
++                assert_eq!(goal_change_timeout.to_bits(), 1071644672);
++                assert_eq!(force_reach_goal, false);
++            }
++            _ => panic!("phase changed the movement discriminant before its transition"),
++        }
++        // Original resolved phase case3.
++        let mut state = SheepMoveState::Walking {
++            timeout_s: f(1073741824),
++            goal_change_timeout: f(1073741824),
++            force_reach_goal: true,
++        };
++        let goal = SheepGoal {
++            position: Vec3::new(f(1073741824), f(0), f(0)),
++            goal_tag: 1,
++        };
++        assert_eq!(
++            advance_move_state(
++                &mut state,
++                f(1048576000),
++                &goal,
++                Vec3::new(f(0), f(0), f(0))
++            ),
++            GoalAction::Keep
++        );
++        match state {
++            SheepMoveState::Walking {
++                timeout_s,
++                goal_change_timeout,
++                force_reach_goal,
++            } => {
++                assert_eq!(timeout_s.to_bits(), 1071644672);
++                assert_eq!(goal_change_timeout.to_bits(), 1071644672);
++                assert_eq!(force_reach_goal, true);
++            }
++            _ => panic!("phase changed the movement discriminant before its transition"),
++        }
++        // Original resolved phase case4.
++        let mut state = SheepMoveState::Walking {
++            timeout_s: f(1073741824),
++            goal_change_timeout: f(1036831949),
++            force_reach_goal: false,
++        };
++        let goal = SheepGoal {
++            position: Vec3::new(f(1073741824), f(0), f(0)),
++            goal_tag: 1,
++        };
++        assert_eq!(
++            advance_move_state(
++                &mut state,
++                f(1048576000),
++                &goal,
++                Vec3::new(f(0), f(0), f(0))
++            ),
++            GoalAction::Refresh
++        );
++        match state {
++            SheepMoveState::Walking {
++                timeout_s,
++                goal_change_timeout,
++                force_reach_goal,
++            } => {
++                assert_eq!(timeout_s.to_bits(), 1071644672);
++                assert_eq!(goal_change_timeout.to_bits(), 3189348762);
++                assert_eq!(force_reach_goal, false);
++            }
++            _ => panic!("phase changed the movement discriminant before its transition"),
++        }
++        // Original resolved phase case5.
++        let mut state = SheepMoveState::Walking {
++            timeout_s: f(1073741824),
++            goal_change_timeout: f(1036831949),
++            force_reach_goal: true,
++        };
++        let goal = SheepGoal {
++            position: Vec3::new(f(1073741824), f(0), f(0)),
++            goal_tag: 1,
++        };
++        assert_eq!(
++            advance_move_state(
++                &mut state,
++                f(1048576000),
++                &goal,
++                Vec3::new(f(0), f(0), f(0))
++            ),
++            GoalAction::Keep
++        );
++        match state {
++            SheepMoveState::Walking {
++                timeout_s,
++                goal_change_timeout,
++                force_reach_goal,
++            } => {
++                assert_eq!(timeout_s.to_bits(), 1071644672);
++                assert_eq!(goal_change_timeout.to_bits(), 3189348762);
++                assert_eq!(force_reach_goal, true);
++            }
++            _ => panic!("phase changed the movement discriminant before its transition"),
++        }
++        // Original resolved phase case6.
++        let mut state = SheepMoveState::Walking {
++            timeout_s: f(1036831949),
++            goal_change_timeout: f(1073741824),
++            force_reach_goal: false,
++        };
++        let goal = SheepGoal {
++            position: Vec3::new(f(1073741824), f(0), f(0)),
++            goal_tag: 1,
++        };
++        assert_eq!(
++            advance_move_state(
++                &mut state,
++                f(1048576000),
++                &goal,
++                Vec3::new(f(0), f(0), f(0))
++            ),
++            GoalAction::StartIdle
++        );
++        match state {
++            SheepMoveState::Walking {
++                timeout_s,
++                goal_change_timeout,
++                force_reach_goal,
++            } => {
++                assert_eq!(timeout_s.to_bits(), 3189348762);
++                assert_eq!(goal_change_timeout.to_bits(), 1071644672);
++                assert_eq!(force_reach_goal, false);
++            }
++            _ => panic!("phase changed the movement discriminant before its transition"),
++        }
++        // Original resolved phase case7.
++        let mut state = SheepMoveState::Walking {
++            timeout_s: f(1036831949),
++            goal_change_timeout: f(1073741824),
++            force_reach_goal: true,
++        };
++        let goal = SheepGoal {
++            position: Vec3::new(f(1073741824), f(0), f(0)),
++            goal_tag: 1,
++        };
++        assert_eq!(
++            advance_move_state(
++                &mut state,
++                f(1048576000),
++                &goal,
++                Vec3::new(f(0), f(0), f(0))
++            ),
++            GoalAction::Keep
++        );
++        match state {
++            SheepMoveState::Walking {
++                timeout_s,
++                goal_change_timeout,
++                force_reach_goal,
++            } => {
++                assert_eq!(timeout_s.to_bits(), 3189348762);
++                assert_eq!(goal_change_timeout.to_bits(), 1071644672);
++                assert_eq!(force_reach_goal, true);
++            }
++            _ => panic!("phase changed the movement discriminant before its transition"),
++        }
++        // Original resolved phase case8.
++        let mut state = SheepMoveState::Walking {
++            timeout_s: f(1036831949),
++            goal_change_timeout: f(1036831949),
++            force_reach_goal: false,
++        };
++        let goal = SheepGoal {
++            position: Vec3::new(f(1073741824), f(0), f(0)),
++            goal_tag: 1,
++        };
++        assert_eq!(
++            advance_move_state(
++                &mut state,
++                f(1048576000),
++                &goal,
++                Vec3::new(f(0), f(0), f(0))
++            ),
++            GoalAction::StartIdle
++        );
++        match state {
++            SheepMoveState::Walking {
++                timeout_s,
++                goal_change_timeout,
++                force_reach_goal,
++            } => {
++                assert_eq!(timeout_s.to_bits(), 3189348762);
++                assert_eq!(goal_change_timeout.to_bits(), 3189348762);
++                assert_eq!(force_reach_goal, false);
++            }
++            _ => panic!("phase changed the movement discriminant before its transition"),
++        }
++        // Original resolved phase case9.
++        let mut state = SheepMoveState::Walking {
++            timeout_s: f(1036831949),
++            goal_change_timeout: f(1036831949),
++            force_reach_goal: true,
++        };
++        let goal = SheepGoal {
++            position: Vec3::new(f(1073741824), f(0), f(0)),
++            goal_tag: 1,
++        };
++        assert_eq!(
++            advance_move_state(
++                &mut state,
++                f(1048576000),
++                &goal,
++                Vec3::new(f(0), f(0), f(0))
++            ),
++            GoalAction::Keep
++        );
++        match state {
++            SheepMoveState::Walking {
++                timeout_s,
++                goal_change_timeout,
++                force_reach_goal,
++            } => {
++                assert_eq!(timeout_s.to_bits(), 3189348762);
++                assert_eq!(goal_change_timeout.to_bits(), 3189348762);
++                assert_eq!(force_reach_goal, true);
++            }
++            _ => panic!("phase changed the movement discriminant before its transition"),
++        }
++        // Original resolved phase case10.
++        let mut state = SheepMoveState::Walking {
++            timeout_s: f(1073741824),
++            goal_change_timeout: f(1036831949),
++            force_reach_goal: true,
++        };
++        let goal = SheepGoal {
++            position: Vec3::new(f(0), f(1120403456), f(0)),
++            goal_tag: 1,
++        };
++        assert_eq!(
++            advance_move_state(
++                &mut state,
++                f(1048576000),
++                &goal,
++                Vec3::new(f(0), f(0), f(0))
++            ),
++            GoalAction::Refresh
++        );
++        match state {
++            SheepMoveState::Walking {
++                timeout_s,
++                goal_change_timeout,
++                force_reach_goal,
++            } => {
++                assert_eq!(timeout_s.to_bits(), 1071644672);
++                assert_eq!(goal_change_timeout.to_bits(), 3189348762);
++                assert_eq!(force_reach_goal, true);
++            }
++            _ => panic!("phase changed the movement discriminant before its transition"),
++        }
++        // Original resolved phase case11.
++        let mut state = SheepMoveState::Walking {
++            timeout_s: f(1073741824),
++            goal_change_timeout: f(1073741824),
++            force_reach_goal: true,
++        };
++        let goal = SheepGoal {
++            position: Vec3::new(f(1073741824), f(0), f(0)),
++            goal_tag: 0,
++        };
++        assert_eq!(
++            advance_move_state(
++                &mut state,
++                f(1048576000),
++                &goal,
++                Vec3::new(f(0), f(0), f(0))
++            ),
++            GoalAction::Refresh
++        );
++        match state {
++            SheepMoveState::Walking {
++                timeout_s,
++                goal_change_timeout,
++                force_reach_goal,
++            } => {
++                assert_eq!(timeout_s.to_bits(), 1071644672);
++                assert_eq!(goal_change_timeout.to_bits(), 1071644672);
++                assert_eq!(force_reach_goal, true);
++            }
++            _ => panic!("phase changed the movement discriminant before its transition"),
++        }
++        // Original resolved phase case12.
++        let mut state = SheepMoveState::Walking {
++            timeout_s: f(1073741824),
++            goal_change_timeout: f(1073741824),
++            force_reach_goal: true,
++        };
++        let goal = SheepGoal {
++            position: Vec3::new(f(1036831949), f(0), f(0)),
++            goal_tag: 1,
++        };
++        assert_eq!(
++            advance_move_state(
++                &mut state,
++                f(1048576000),
++                &goal,
++                Vec3::new(f(0), f(0), f(0))
++            ),
++            GoalAction::Refresh
++        );
++        match state {
++            SheepMoveState::Walking {
++                timeout_s,
++                goal_change_timeout,
++                force_reach_goal,
++            } => {
++                assert_eq!(timeout_s.to_bits(), 1071644672);
++                assert_eq!(goal_change_timeout.to_bits(), 1071644672);
++                assert_eq!(force_reach_goal, true);
++            }
++            _ => panic!("phase changed the movement discriminant before its transition"),
++        }
++        // Original resolved phase case13.
++        let mut state = SheepMoveState::Walking {
++            timeout_s: f(1036831949),
++            goal_change_timeout: f(1073741824),
++            force_reach_goal: true,
++        };
++        let goal = SheepGoal {
++            position: Vec3::new(f(1036831949), f(0), f(0)),
++            goal_tag: 1,
++        };
++        assert_eq!(
++            advance_move_state(
++                &mut state,
++                f(1048576000),
++                &goal,
++                Vec3::new(f(0), f(0), f(0))
++            ),
++            GoalAction::Refresh
++        );
++        match state {
++            SheepMoveState::Walking {
++                timeout_s,
++                goal_change_timeout,
++                force_reach_goal,
++            } => {
++                assert_eq!(timeout_s.to_bits(), 3189348762);
++                assert_eq!(goal_change_timeout.to_bits(), 1071644672);
++                assert_eq!(force_reach_goal, true);
++            }
++            _ => panic!("phase changed the movement discriminant before its transition"),
++        }
++        // Original resolved phase case14.
++        let mut state = SheepMoveState::Walking {
++            timeout_s: f(1073741824),
++            goal_change_timeout: f(2143289344),
++            force_reach_goal: false,
++        };
++        let goal = SheepGoal {
++            position: Vec3::new(f(1073741824), f(0), f(0)),
++            goal_tag: 1,
++        };
++        assert_eq!(
++            advance_move_state(
++                &mut state,
++                f(1048576000),
++                &goal,
++                Vec3::new(f(0), f(0), f(0))
++            ),
++            GoalAction::Keep
++        );
++        match state {
++            SheepMoveState::Walking {
++                timeout_s,
++                goal_change_timeout,
++                force_reach_goal,
++            } => {
++                assert_eq!(timeout_s.to_bits(), 1071644672);
++                assert_eq!(goal_change_timeout.to_bits(), 2143289344);
++                assert_eq!(force_reach_goal, false);
++            }
++            _ => panic!("phase changed the movement discriminant before its transition"),
++        }
++        // Original resolved phase case15.
++        let mut state = SheepMoveState::Walking {
++            timeout_s: f(2143289344),
++            goal_change_timeout: f(1073741824),
++            force_reach_goal: false,
++        };
++        let goal = SheepGoal {
++            position: Vec3::new(f(1073741824), f(0), f(0)),
++            goal_tag: 1,
++        };
++        assert_eq!(
++            advance_move_state(
++                &mut state,
++                f(1048576000),
++                &goal,
++                Vec3::new(f(0), f(0), f(0))
++            ),
++            GoalAction::Keep
++        );
++        match state {
++            SheepMoveState::Walking {
++                timeout_s,
++                goal_change_timeout,
++                force_reach_goal,
++            } => {
++                assert_eq!(timeout_s.to_bits(), 2143289344);
++                assert_eq!(goal_change_timeout.to_bits(), 1071644672);
++                assert_eq!(force_reach_goal, false);
++            }
++            _ => panic!("phase changed the movement discriminant before its transition"),
++        }
++    }
++    #[test]
++    fn projected_goal_direction_matches_original_b_instruction_fixtures() {
++        // Existing glam implementation is reused; native fixture case0.
++        let actual = sheep_goal_direction(
++            Quat::from_xyzw(f(0), f(0), f(0), f(1065353216)),
++            Vec2::new(f(1045220557), f(1050253722)),
++            true,
++        );
++        let expected = Vec3::new(f(1063581999), f(0), f(3202677038));
++        assert!(
++            (actual - expected).abs().max_element() < 2.0e-6,
++            "case0: {actual:?} vs {expected:?}"
++        );
++        // Existing glam implementation is reused; native fixture case1.
++        let actual = sheep_goal_direction(
++            Quat::from_xyzw(f(0), f(0), f(0), f(1065353216)),
++            Vec2::new(f(3201092813), f(1060320051)),
++            false,
++        );
++        let expected = Vec3::new(f(3207205823), f(0), f(1061115447));
++        assert!(
++            (actual - expected).abs().max_element() < 2.0e-6,
++            "case1: {actual:?} vs {expected:?}"
++        );
++        // Existing glam implementation is reused; native fixture case2.
++        let actual = sheep_goal_direction(
++            Quat::from_xyzw(f(0), f(1060439283), f(0), f(1060439283)),
++            Vec2::new(f(1045220557), f(1050253722)),
++            true,
++        );
++        let expected = Vec3::new(f(3205365972), f(0), f(1062535489));
++        assert!(
++            (actual - expected).abs().max_element() < 2.0e-6,
++            "case2: {actual:?} vs {expected:?}"
++        );
++        // Existing glam implementation is reused; native fixture case3.
++        let actual = sheep_goal_direction(
++            Quat::from_xyzw(f(1060439283), f(0), f(0), f(1060439283)),
++            Vec2::new(f(1045220557), f(1050253722)),
++            true,
++        );
++        let expected = Vec3::new(f(1057882325), f(0), f(1062535488));
++        assert!(
++            (actual - expected).abs().max_element() < 2.0e-6,
++            "case3: {actual:?} vs {expected:?}"
++        );
++        // Existing glam implementation is reused; native fixture case4.
++        let actual = sheep_goal_direction(
++            Quat::from_xyzw(f(0), f(0), f(1060439283), f(1060439283)),
++            Vec2::new(f(3201092813), f(1060320051)),
++            false,
++        );
++        let expected = Vec3::new(f(3207205823), f(0), f(1061115447));
++        assert!(
++            (actual - expected).abs().max_element() < 2.0e-6,
++            "case4: {actual:?} vs {expected:?}"
++        );
++        // Existing glam implementation is reused; native fixture case5.
++        let actual = sheep_goal_direction(
++            Quat::from_xyzw(f(0), f(0), f(0), f(1065353216)),
++            Vec2::new(f(0), f(1053609165)),
++            true,
++        );
++        let expected = Vec3::new(f(0), f(0), f(0));
++        assert!(
++            (actual - expected).abs().max_element() < 2.0e-6,
++            "case5: {actual:?} vs {expected:?}"
++        );
++        // Existing glam implementation is reused; native fixture case6.
++        let actual = sheep_goal_direction(
++            Quat::from_xyzw(f(0), f(0), f(0), f(1065353216)),
++            Vec2::new(f(0), f(1048576000)),
++            false,
++        );
++        let expected = Vec3::new(f(0), f(0), f(0));
++        assert!(
++            (actual - expected).abs().max_element() < 2.0e-6,
++            "case6: {actual:?} vs {expected:?}"
++        );
++        // Existing glam implementation is reused; native fixture case7.
++        let actual = sheep_goal_direction(
++            Quat::from_xyzw(f(0), f(0), f(0), f(1065353216)),
++            Vec2::new(f(0), f(0)),
++            true,
++        );
++        let expected = Vec3::new(f(0), f(0), f(3212836864));
++        assert!(
++            (actual - expected).abs().max_element() < 2.0e-6,
++            "case7: {actual:?} vs {expected:?}"
++        );
++    }
++}

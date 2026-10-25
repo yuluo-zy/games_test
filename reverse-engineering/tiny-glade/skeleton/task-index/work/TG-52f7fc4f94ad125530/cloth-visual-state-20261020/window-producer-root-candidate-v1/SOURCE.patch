@@ -1,0 +1,874 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/cottage_wall_window.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/cottage_wall_window.rs
+@@ -1,316 +1,572 @@
+-//! B `decorator_visual/cottage_wall_window.rs` — 农舍墙窗装饰视觉生成（D1）。
+-//!
+-//! 证据：fresh RE-MCP 反编译 0x1407ebfd0（generate_cottage_wall_windows，70KB）/
+-//! 0x1407ef7b0（flowerbed_xforms，2.6KB，O 全文）/ 0x1407ef990（add_lintels，
+-//! 14KB，O 全文）+ 骨架 callees（O）：flowerbed_xforms ×2、add_lintels ×2、
+-//! subdivide_wall_decorator、has_cloth ×3、Rectangle3d::extent ×4、
+-//! xz_projective_rotation_bad（0x140c911d0）、Rectangle2d 几何、
+-//! WindowVisualEntityBuilder 链、blueprint 链。
+-//!
+-//! flowerbed_xforms（O，0x1407ef7b0 全文 + 常量 rne-read）：
+-//! 5 参面 {out, subtype u8, mode u8, ctx, mesh_lib}；跳表（0x142a8ae68 /
+-//! 0x142a8ae80，subtype-1<3 三键）按 mode 选网格名：
+-//! - mode 0/1：`decorators/window_cottage_{1x1,2x1,3x1}_flowerbed_locations`
+-//! - mode 3：`decorators/window_cottage_corner_{1x1,2x1,3x1}_flowerbed_locations`
+-//! AssetMeshLibrary::get_by_name → Mesh::positions_without_indices →
+-//! 元素数 = len÷3（Vec3）→ 逐花床变换输出。其余 mode/subtype fmt panic。
+-//!
+-//! add_lintels（O，0x1407ef990 全文 + 常量 rne-read，2026-10-19）：
+-//! - `fVar26 = (param_10 + 1.43) * 0.5`（0x3fb70a3f / 0x3f000000）；
+-//! - 网格条目高 `entry+0x30 + 0.36`（0x3eb851eb）；
+-//! - 0x14B 记录 `{u32 句柄, u32 墙, f32 高, f32 0.2, u8 0}`（0x3e4ccccd = 0.2）；
+-//! - 每件 0x160B 视觉记录：mesh `"decorators/setdressing_window_lintel"`
+-//!   （len 0x24）/ shader `"nani_solid_vertex_color_window"`（len 0x1e）；
+-//! - rank < 2：scale 取件 `[7]`；rank >= 2：位置按件四元数旋转并加
+-//!   `0.081`（0x3da5e353）常量偏移；scale 首件/末件 0.82（0x3f51eb85），
+-//!   中部 0.64（0x3f23d70a）；
+-//! - `param_11 & 1`（flag bit0）时上面 scale `*= param_12 / 0.9`
+-//!   （0x3f666666 = 0.9）。
+-//!
+-//! U 登记：① 花床变换装配（FUN_141260b40 内部）② add_lintels 12 参面
+-//! 其余语义（param_4 件数 / param_5 / param_6 / param_7 输出表）③ 参数排序。
++//! 原 B1407ebfd0 农舍墙窗：只向唯一蓝图 owner 发布完整视觉与业务输出。
++//! 设计与原证见本任务 window-producer-root-continuation-v1；不复制原生 ABI。
++use std::hash::{Hash, Hasher};
+ 
+ use bevy_ecs::prelude::*;
+-use country_core::asset_libraries::mesh_library::AssetMeshLibrary;
+-use country_core::resources::walls::decorator::DecoratorInfo;
+-use country_core::resources::walls::decorator_storage::DecoratorStorage;
+-use country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes;
+-use glam::{Quat, Vec3};
+-
+-use crate::blueprint::{DecoratorBlueprint, DecoratorBlueprints};
+-use crate::decorator_visual_state::DecoratorTransientVisualState;
+-use crate::utils::visual_entity_builder::WindowVisualEntityBuilder;
+-
+-/// 农舍窗花床网格名（O：0x142a8ae68 跳表，mode<2）。
+-const FLOWERBED_NAMES: [&str; 3] = [
+-    "decorators/window_cottage_1x1_flowerbed_locations",
+-    "decorators/window_cottage_2x1_flowerbed_locations",
+-    "decorators/window_cottage_3x1_flowerbed_locations",
+-];
+-/// 角窗花床网格名（O：0x142a8ae80 跳表，mode==3）。
+-const CORNER_FLOWERBED_NAMES: [&str; 3] = [
+-    "decorators/window_cottage_corner_1x1_flowerbed_locations",
+-    "decorators/window_cottage_corner_2x1_flowerbed_locations",
+-    "decorators/window_cottage_corner_3x1_flowerbed_locations",
+-];
+-
+-/// 窗楣相对墙高的偏移（O：0x142a89f40 = 1.43）。
+-pub const LINTEL_HEIGHT_OFFSET: f32 = 1.43;
+-/// 窗楣高度减半系数（O：0x142925870 = 0.5）。
++use country_core::{
++    asset_libraries::mesh_library::AssetMeshLibrary,
++    resources::{color_id::ColorId, walls::{
++        WallId,
++        cached_decorator_transforms::{CachedDecoratorTransform, CachedDecoratorTransforms},
++        decorator::{DecoratorId, DecoratorInfo},
++        decorator_storage::{DecoratorStorage, DecoratorStorageAddr},
++        decorator_subtype::{DecoratorLibKey, DerivedDecoratorInfoResources, DerivedDecoratorInfoView},
++        dormers::DormerHoleSsbo,
++        public_walls::{PublicWalls, PublicWallState},
++        wall_holes::RawWallHole,
++    }},
++    systems::{collision::{WindowAutoClutterCandidate, WindowAutoClutterKind},
++        ui::signifiers::signifier_create::UiSignifierStream},
++    utils::components::transform::Transform,
++};
++use glam::{Vec2, Vec3};
++use utils::{comparative_space::ComparativeSpace, wall_space::{WallSpace, WallSpaceCoord}};
++use crate::{blueprint::{DecoratorBlueprint, DecoratorBlueprints},
++    decorator_visual_state::ClothInfo,
++    utils::{subdivide_wall_decorator, visual_entity_builder::WindowVisualEntityBuilder}};
++
++const FRAME_NAMES: [&str; 3] = ["decorators/window_cottage_1x1",
++    "decorators/window_cottage_2x1", "decorators/window_cottage_3x1"];
++const GLASS_NAMES: [&str; 3] = ["decorators/window_cottage_1x1_glass",
++    "decorators/window_cottage_2x1_glass", "decorators/window_cottage_3x1_glass"];
++const HALF_DORMER_NAMES: [&str; 3] = ["decorators/window_cottage_1x1_halfdormer_frame",
++    "decorators/window_cottage_2x1_halfdormer_frame", "decorators/window_cottage_3x1_halfdormer_frame"];
++const BROKEN_GLASS_NAMES: [&str; 3] = ["decorators/window_cottage_1x1_glass_broken_0",
++    "decorators/window_cottage_1x1_glass_broken_1", "decorators/window_cottage_1x1_glass_broken_2"];
++const FLOWERBED_NAMES: [&str; 3] = ["decorators/window_cottage_1x1_flowerbed_locations",
++    "decorators/window_cottage_2x1_flowerbed_locations", "decorators/window_cottage_3x1_flowerbed_locations"];
++const CORNER_FLOWERBED_NAMES: [&str; 3] = ["decorators/window_cottage_corner_1x1_flowerbed_locations",
++    "decorators/window_cottage_corner_2x1_flowerbed_locations", "decorators/window_cottage_corner_3x1_flowerbed_locations"];
++
++pub const LINTEL_HEIGHT_OFFSET: f32 = f32::from_bits(0x3fb7_0a3f);
+ pub const LINTEL_HALF: f32 = 0.5;
+-/// 网格条目高附加（O：0x142a89f44 = 0.36）。
+-pub const LINTEL_MESH_HEIGHT_EXTRA: f32 = 0.36;
+-/// rank >= 2 的位置旋转常量（O：0x142a89f48/58/64 = 0.081）。
+-pub const LINTEL_ROTATION_OFFSET: f32 = 0.081;
+-/// 首/末件 scale（O：0x142a89f70 = 0.82）。
+-pub const LINTEL_SCALE_END: f32 = 0.82;
+-/// 中部件 scale（O：0x142a89f74 = 0.64）。
+-pub const LINTEL_SCALE_MIDDLE: f32 = 0.64;
+-/// flag bit0 高度分母（O：0x142a7c88c = 0.9）。
+-pub const LINTEL_HEIGHT_DIVISOR: f32 = 0.9;
+-/// 0x14B 记录的常量字段（O：0x3e4ccccd = 0.2）。
+-pub const LINTEL_RECORD_CONST: f32 = 0.2;
+-/// 窗楣网格名（O：0x142a8acc0，len 0x24）。
++pub const LINTEL_MESH_HEIGHT_EXTRA: f32 = f32::from_bits(0x3eb8_51eb);
++pub const LINTEL_ROTATION_OFFSET: f32 = f32::from_bits(0x3da5_e353);
++pub const LINTEL_SCALE_END: f32 = f32::from_bits(0x3f51_eb85);
++pub const LINTEL_SCALE_MIDDLE: f32 = f32::from_bits(0x3f23_d70a);
++pub const LINTEL_HEIGHT_DIVISOR: f32 = f32::from_bits(0x3f66_6666);
++pub const LINTEL_RECORD_CONST: f32 = f32::from_bits(0x3e4c_cccd);
+ pub const LINTEL_MESH: &str = "decorators/setdressing_window_lintel";
+-/// 窗楣着色器名（O：0x142a8a600，len 0x1e）。
+ pub const LINTEL_SHADER: &str = "nani_solid_vertex_color_window";
+ 
+-/// 0x14B 窗楣记录（O：`{u32, u32, f32, f32, u8}`）。
+-#[derive(Clone, Copy, Debug, PartialEq)]
+-pub struct LintelRecord {
+-    /// 句柄（`func_0x140c925d0` 产物）。
+-    pub handle: u32,
+-    /// 墙 id（`dst_as_wall` 的 `puVar10[1]`）。
+-    pub wall: u32,
+-    /// 高（网格条目 +0x30 + 0.36）。
+-    pub height: f32,
+-    /// 常量 0.2。
+-    pub constant: f32,
+-    /// 判别 0。
+-    pub kind: u8,
+-}
+-
+-/// 窗楣来源件（O：12×f32；`[0..4]` 四元数、`[4..7]` 位置、`[7]` rank<2 的 scale）。
+-#[derive(Clone, Copy, Debug, PartialEq)]
+-pub struct LintelSource {
+-    pub quat: Quat,
+-    pub position: Vec3,
+-    pub scale: f32,
+-}
+-
+-/// 窗楣视觉记录（0x160B 结构的关键可观察字段；其余槽位 U）。
+-#[derive(Clone, Copy, Debug, PartialEq)]
+-pub struct LintelVisual {
+-    pub mesh: &'static str,
+-    pub shader: &'static str,
+-    pub position: Vec3,
+-    pub rotation: Quat,
+-    pub scale: f32,
+-}
+-
+-/// 0x1407ef7b0（O，全文）：花床变换（网格位置 → 变换列表）。
+-/// mode <2 → 窗花床网格；mode ==3 → 角窗花床网格；subtype-1<3 三键；其余
+-/// fmt panic。元素数 = positions.len()/3（Vec3）。
+-pub fn flowerbed_xforms(
+-    out: &mut Vec<crate::utils::IsoTransform>,
+-    subtype: u8,
+-    mode: u8,
+-    _ctx: u64,
+-    mesh_lib: &AssetMeshLibrary,
+-) {
+-    let names: &[&str; 3] = match mode {
++fn rank_index(rank: u8) -> usize {
++    let index = usize::from(rank.wrapping_sub(1));
++    assert!(index < 3, "农舍窗 rank 必须为1至3");
++    index
++}
++
++/// 原473B及其实际map闭包：读同一资产中的位置/法线，不将父scale乘到位置。
++pub fn flowerbed_xforms(rank: u8, subtype: u8, parent: &Transform,
++    mesh_library: &AssetMeshLibrary) -> Vec<Transform> {
++    let names = match subtype {
+         0 | 1 => &FLOWERBED_NAMES,
+         3 => &CORNER_FLOWERBED_NAMES,
+-        _ => panic!("flowerbed_xforms: unexpected mode {}", mode),
++        value => panic!("flowerbed_xforms: unexpected subtype {value}"),
+     };
+-    let idx = subtype.wrapping_sub(1);
+-    if idx >= 3 {
+-        panic!("flowerbed_xforms: unexpected subtype {}", subtype);
+-    }
+-    let Some(mesh) = mesh_lib.get_by_name(names[idx as usize]) else {
+-        return;
+-    };
+-    // O：positions（Vec3 序列；原 ÷3 = Vec3 计数与 core Mesh 返回一致）。
+-    let positions = mesh.positions_without_indices();
+-    for p in positions {
+-        out.push(crate::utils::IsoTransform::new(*p, Quat::IDENTITY));
+-    }
+-}
+-
+-/// 0x1407ef990（O，全文）：窗楣装配。
+-///
+-/// - `wall_height` = param_10；`fVar26 = (wall_height + 1.43) * 0.5`；
+-/// - `mesh_height` = `entry_height + 0.36`（`None` → 原版 `FUN_14125cf90`
+-///   未命中即整段不产出；对应返回空）；
+-/// - 首件/末件 scale 0.82、中部 0.64；rank >= 2 时位置按件四元数旋转；
+-/// - `flag & 1` 时 scale *= param_12 / 0.9。
+-///
+-/// 返回 `(0x14B 记录, 逐件 0x160B 视觉记录)`；输入为空时仍返回记录（原版
+-/// 先 push 0x14B 记录再按 `param_4` 产出视觉件）。
+-pub fn add_lintels(
+-    handle: u32,
+-    wall: u32,
+-    rank: u8,
+-    sources: &[LintelSource],
+-    mesh_entry_height: Option<f32>,
+-    wall_height: f32,
+-    flag: u32,
+-    height_param: f32,
+-) -> (Option<LintelRecord>, Vec<LintelVisual>) {
+-    let Some(entry_height) = mesh_entry_height else {
+-        return (None, Vec::new());
+-    };
+-    let f26 = (wall_height + LINTEL_HEIGHT_OFFSET) * LINTEL_HALF;
+-    let height = entry_height + LINTEL_MESH_HEIGHT_EXTRA;
+-    let record = LintelRecord {
+-        handle,
+-        wall,
+-        height,
+-        constant: LINTEL_RECORD_CONST,
+-        kind: 0,
+-    };
+-    let mut visuals = Vec::with_capacity(sources.len());
+-    let n = sources.len();
+-    for (i, src) in sources.iter().enumerate() {
+-        let mut scale = if rank < 2 {
+-            src.scale
+-        } else {
+-            if i == 0 || i + 1 == n {
+-                LINTEL_SCALE_END
+-            } else {
+-                LINTEL_SCALE_MIDDLE
+-            }
+-        };
+-        // O：位置（rank>=2 旋转；常量偏移 U 的精确槽位）。
+-        let mut position = src.position;
+-        position.y += f26;
+-        if rank >= 2 {
+-            position += src.quat * Vec3::splat(LINTEL_ROTATION_OFFSET);
+-        }
+-        if flag & 1 != 0 {
+-            scale *= height_param / LINTEL_HEIGHT_DIVISOR;
+-        }
+-        visuals.push(LintelVisual {
+-            mesh: LINTEL_MESH,
+-            shader: LINTEL_SHADER,
+-            position,
+-            rotation: src.quat,
+-            scale,
+-        });
+-    }
+-    (Some(record), visuals)
+-}
+-
+-/// 0x1407ebfd0（O 结构）：生成农舍墙窗装饰视觉。
+-pub fn generate_cottage_wall_windows(
+-    decorator_storage: Res<DecoratorStorage>,
+-    _cached: Res<
+-        country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms,
+-    >,
+-    derived: Res<DerivedDecoratorSubtypes>,
+-    mesh_lib: Res<AssetMeshLibrary>,
+-    mut blueprints: ResMut<DecoratorBlueprints>,
+-    mut transient: ResMut<DecoratorTransientVisualState>,
+-) {
+-    for (_wall, decorators) in decorator_storage.iter_walls() {
+-        for (id, info) in decorators.iter_modified() {
+-            if !is_cottage_window(info) {
++    let mesh = mesh_library.get_by_name(names[rank_index(rank)])
++        .expect("called `Option::unwrap()` on a `None` value");
++    mesh.positions_without_indices().iter().zip(mesh.normals_without_indices()).map(|(p, n)| {
++        Transform { rotation: parent.rotation * utils::rotation_from_normal(*n),
++            translation: parent.rotation * *p + parent.translation, scale: parent.scale }
++    }).collect()
++}
++
++/// 原2637B：真实墙洞与视觉builder按原顺序追加到同蓝图。
++#[allow(clippy::too_many_arguments)]
++pub fn add_lintels(id: DecoratorId, info: &DecoratorInfo, sources: &[Transform],
++    semi_transparent: bool, color: ColorId, blueprint: &mut DecoratorBlueprint,
++    derived: DerivedDecoratorInfoView<'_>, y_parameter: f32, flags: u32, height_parameter: f32) {
++    let coord = info.dst_as_wall().wall_space_coord();
++    let shift = (y_parameter + LINTEL_HEIGHT_OFFSET) * LINTEL_HALF;
++    let center = coord.with_y_offset(shift);
++    let key = DecoratorLibKey::new(derived.subtype(id).0, info.rank());
++    let width = derived.mesh_library().collision_record(key).bounds.footprint.size.x;
++    blueprint.wall_holes.push(RawWallHole { center: [center.u, center.y],
++        dimensions: [width + LINTEL_MESH_HEIGHT_EXTRA, LINTEL_RECORD_CONST], kind: 0 });
++    for (index, source) in sources.iter().enumerate() {
++        let mut transform = *source;
++        transform.translation.y = source.translation.y + shift;
++        if info.rank() >= 2 {
++            if index == 0 {
++                transform.translation -= source.rotation * Vec3::new(LINTEL_ROTATION_OFFSET, 0.0, 0.0);
++                transform.scale.x = LINTEL_SCALE_END;
++            } else if index + 1 == sources.len() {
++                transform.translation += source.rotation * Vec3::new(LINTEL_ROTATION_OFFSET, 0.0, 0.0);
++                transform.scale.x = LINTEL_SCALE_END;
++            } else { transform.scale.x = LINTEL_SCALE_MIDDLE; }
++        }
++        let height_ratio = height_parameter / LINTEL_HEIGHT_DIVISOR;
++        if flags & 1 != 0 { transform.scale.x *= height_ratio; }
++        blueprint.visual_entities.push(window_builder(id, transform, LINTEL_MESH,
++            LINTEL_SHADER, Some(color), semi_transparent));
++    }
++}
++
++/// 复用已有原构造器的None状态，只写该真实业务分支证明的字段。
++pub(super) fn window_builder(id: DecoratorId, transform: Transform, mesh: &'static str,
++    nani: &'static str, color: Option<ColorId>, semi: bool) -> WindowVisualEntityBuilder {
++    let mut builder = WindowVisualEntityBuilder::new(transform.translation, transform.rotation, id.0);
++    builder.scale = transform.scale; builder.mesh_name = mesh; builder.nani_name = nani;
++    builder.color_id = color; builder.semi_transparent = semi; builder
++}
++
++pub(super) fn wall_space(wall: &PublicWallState) -> WallSpace {
++    WallSpace { is_loop: wall.shape().tag() != 2, length: wall.wall_space_length() }
++}
++
++/// 原calculate_hash的Sip13零key、Hash顺序交给同一标准库依赖。
++pub(super) fn candidate_hash(value: impl Hash) -> u64 {
++    let mut hasher = std::collections::hash_map::DefaultHasher::new();
++    value.hash(&mut hasher); hasher.finish()
++}
++
++fn wall_window_pose(info: &DecoratorInfo, width: f32, wall: &PublicWallState,
++    cached: &CachedDecoratorTransforms, id: DecoratorId) -> Transform {
++    if wall.shape().tag() == 1 {
++        let transform = cached.transform(id.0);
++        return Transform { rotation: transform.rotation, translation: transform.translation,
++            scale: transform.scale };
++    }
++    let coord = info.dst_as_wall().wall_space_coord();
++    let space = wall_space(wall);
++    let first = WallSpaceCoord::new_unchecked(space.project_clamp(coord.u + width * -0.5), coord.y)
++        .to_world_space(wall.simplified_curve_2d());
++    let second = WallSpaceCoord::new_unchecked(space.project_clamp(coord.u + width * 0.5), coord.y)
++        .to_world_space(wall.simplified_curve_2d());
++    let dx = second.x - first.x; let dz = second.z - first.z;
++    let reciprocal = 1.0 / (dx * dx + dz * dz).sqrt();
++    Transform { rotation: utils::xz_rotation_bad(Vec2::new(-dz * reciprocal, dx * reciprocal)),
++        translation: Vec3::new(second.x * 0.5 + first.x * 0.5, coord.y,
++            second.z * 0.5 + first.z * 0.5), scale: Vec3::ONE }
++}
++
++fn append_half_dormer(blueprint: &mut DecoratorBlueprint, id: DecoratorId,
++    wall: WallId, pose: Transform, bounds: utils::geometry::Rectangle3d, rank: usize,
++    shutters: bool, color: ColorId, semi: bool) {
++    let mut local_bounds = bounds;
++    local_bounds.footprint.size.y = f32::from_bits(0x3f21_47ae);
++    let extent = local_bounds.extent(); let forward = pose.rotation * Vec3::Z;
++    let first = pose.translation + forward * f32::from_bits(0x3f8a_3d71) * 0.5;
++    blueprint.dormer_holes.push(DormerHoleSsbo::cottage(wall.0 as u32, first,
++        Vec3::new(extent.x, (extent.y + 0.0) + 0.2, extent.z + 0.5), [forward.x, forward.z]));
++    if shutters {
++        let second = pose.translation + forward * (extent.z + 0.5) * 0.5;
++        blueprint.dormer_holes.push(DormerHoleSsbo::cottage(wall.0 as u32, second,
++            Vec3::new(extent.x + 0.7, extent.y + -0.2, 0.5), [forward.x, forward.z]));
++    }
++    blueprint.visual_entities.push(window_builder(id, pose, HALF_DORMER_NAMES[rank],
++        LINTEL_SHADER, Some(color), semi));
++}
++
++/// 原14303B主函数的七参面；真正实体由后续fullvisual与同World Nani发布。
++pub fn generate_cottage_wall_windows(derived: DerivedDecoratorInfoResources,
++    storage: Res<DecoratorStorage>, cached: Res<CachedDecoratorTransforms>, walls: Res<PublicWalls>,
++    mut blueprints: ResMut<DecoratorBlueprints>, meshes: Res<AssetMeshLibrary>,
++    _signifiers: Res<UiSignifierStream>) {
++    let view = derived.as_view();
++    for (wall_id, decorators) in storage.iter_walls() {
++        for (modified, info) in decorators.iter_modified() {
++            let id = DecoratorId(modified); let subtype = view.subtype(id).0;
++            if subtype > 1 { continue; }
++            let wall = walls.get(wall_id).expect("called `Option::unwrap()` on a `None` value");
++            let key = DecoratorLibKey::new(subtype, info.rank());
++            let bounds = view.mesh_library().collision_record(key).bounds;
++            let blueprint = blueprints.insert_for(modified, DecoratorStorageAddr::Wall(wall_id), info.state());
++            let index = rank_index(info.rank());
++            let mut pose = wall_window_pose(info, bounds.footprint.size.x, wall, &cached, id);
++            let premade = wall.shape().tag() < 2;
++            if premade { pose.translation += pose.rotation * Vec3::new(0.0, 0.0, f32::from_bits(0x3e0f_5c29)); }
++            let collision = view.mesh_library().collision_record(key).mesh.clone();
++            let interaction = view.mesh_library().interaction_record(key).mesh.clone();
++            let mut collision_position = pose.translation;
++            if premade {
++                let depth = bounds.extent().z;
++                collision_position += pose.rotation * (Vec3::new(depth * 0.0, depth * 0.0, depth) * 0.5);
++            }
++            blueprint.set_positioned_colliders(collision, interaction, &collision_position, &pose.rotation);
++            blueprint.set_cached_transform(CachedDecoratorTransform { rotation: pose.rotation,
++                translation: pose.translation, scale: pose.scale });
++            let color = ColorId(info.u28); let semi = info.state() != 0;
++            blueprint.visual_entities.push(window_builder(id, pose, FRAME_NAMES[index],
++                LINTEL_SHADER, Some(color), semi));
++            if premade {
++                let mut glass_pose = pose;
++                glass_pose.translation -= pose.rotation * Vec3::new(0.0, 0.0, f32::from_bits(0x3d8f_5c29));
++                let glass_color = ColorId(info.window_extra().0);
++                let mut builder = window_builder(id, glass_pose, GLASS_NAMES[index],
++                    "nani_solid_vertex_color_window_glass", Some(glass_color), semi);
++                builder.window_light = Some(1000 * u64::from(info.rank()) + u64::from(modified));
++                blueprint.visual_entities.push(builder);
++            }
++            let coord = info.dst_as_wall().wall_space_coord();
++            let width = bounds.footprint.size.x;
++            let hole_width = if wall.shape().tag() == 0 { width + f32::from_bits(
++                [0xbd4c_cccd, 0xbdcc_cccd, 0xbe19_999a][index]) } else { width };
++            let height = bounds.top - bounds.bottom;
++            blueprint.wall_holes.push(RawWallHole { center: [coord.u, coord.y],
++                dimensions: [hole_width, height], kind: 0 });
++            let mut rng = fastrand::Rng::with_seed(utils::rng::init_rng(info.decorator_id));
++            let shutters = info.rank() == 2 && rng.u32(..) >> 31 != 0;
++            if subtype == 0 && info.rank() < 3 {
++                let transforms: Vec<_> = subdivide_wall_decorator(wall_space(wall), coord, width,
++                    usize::from(info.rank()), wall.simplified_curve_2d()).collect();
++                // 此原调用的flags为0，height槽不参与任何输出；不拿它生成默认几何。
++                add_lintels(id, info, &transforms, semi, color, blueprint, view, 0.0, 0, 0.0);
++            } else if subtype == 1 && premade {
++                append_half_dormer(blueprint, id, wall_id, pose, bounds, index, shutters, color, semi);
++            }
++            if !premade {
++                for source in flowerbed_xforms(info.rank(), subtype, &pose, &meshes) {
++                    let mesh = BROKEN_GLASS_NAMES[rng.usize(0..3)];
++                    let mut broken = source; broken.translation.y += 0.8;
++                    broken.translation += source.rotation * Vec3::new(-0.0, -0.1, -0.0);
++                    blueprint.visual_entities.push(window_builder(id, broken, mesh,
++                        "nani_solid_vertex_color", None, semi));
++                }
+                 continue;
+             }
+-            let d = derived.get(id);
+-            // O：花床（flowerbed_xforms 消费，mode=0）。
+-            let mut beds = Vec::new();
+-            flowerbed_xforms(&mut beds, d.subtype().0, 0, 0, &mesh_lib);
+-            // O：蓝图 + 视觉实体。
+-            let mut blueprint = DecoratorBlueprint::new();
+-            blueprint.set_colliders(vec![d.collision_mesh()]);
+-            blueprint.set_outline((0.0, 0.0, 0.0));
+-            blueprints.insert(id, blueprint);
+-            let builder = WindowVisualEntityBuilder::new(Vec3::ZERO, Quat::IDENTITY, id);
+-            let _ = &mut transient;
+-            let _ = &builder;
+-            // O：add_lintels（窗楣；sources 来自窗框几何，当前 U → 空 slice，
+-            // 但记录条目仍按真实公式生成）。
+-            let (_record, _visuals) = add_lintels(
+-                id,
+-                0,
+-                d.subtype().0,
+-                &[],
+-                None,
+-                0.0,
+-                0,
+-                0.0,
+-            );
+-        }
+-    }
+-}
+-
+-/// 农舍窗判别（O：DecoratorType 0x38；`is_window` 含 0x39/0x3a，故按精确值）。
++            let mut rng = fastrand::Rng::with_seed(utils::rng::init_rng(info.decorator_id));
++            if info.decorator_id.wrapping_mul(0xaaaa_aab6).wrapping_add(0x5556_884b)
++                <= 0x5555_5555 && info.rank() < 3 {
++                blueprint.cloth_info = Some(Box::new(ClothInfo { transform: pose, wall: wall_id,
++                    dimensions: [hole_width, height], decorator_id: id }));
++            } else if rng.u32(..) >> 30 == 1 {
++                for (location, transform) in flowerbed_xforms(info.rank(), subtype, &pose, &meshes)
++                    .into_iter().enumerate() {
++                    let key = candidate_hash((id, "flower_bed", location));
++                    let mesh_index = rng.usize(0..6);
++                    blueprint.window_auto_clutter_candidates.push(WindowAutoClutterCandidate {
++                        kind: WindowAutoClutterKind::WindowFlowerbed { mesh_index },
++                        rotation: transform.rotation, translation: transform.translation,
++                        scale: transform.scale, key, wall: wall_id });
++                }
++            }
++            if shutters {
++                for (side, factor, name) in [(false, 0.45, "shutter_right"), (true, -0.45, "shutter_left")] {
++                    let key = candidate_hash((id, name));
++                    let translation = pose.translation + pose.rotation * Vec3::new(width * factor, 0.0, 0.2);
++                    blueprint.window_auto_clutter_candidates.push(WindowAutoClutterCandidate {
++                        kind: WindowAutoClutterKind::WindowShutter { side, native_u32_04: info.u28 },
++                        rotation: pose.rotation, translation, scale: pose.scale, key, wall: wall_id });
++                }
++            }
++        }
++    }
++}
++
+ pub fn is_cottage_window(info: &DecoratorInfo) -> bool {
+     info.decorator_type().0 == 0x38
+ }
+ 
+ #[cfg(test)]
+-mod tests {
++pub(super) mod original_window_helper_tests {
+     use super::*;
+-
+-    #[test]
+-    fn lintel_constants_match_machine_code() {
+-        assert_eq!(LINTEL_HEIGHT_OFFSET, 1.43);
+-        assert_eq!(LINTEL_HALF, 0.5);
+-        assert_eq!(LINTEL_MESH_HEIGHT_EXTRA, 0.36);
+-        assert_eq!(LINTEL_SCALE_END, 0.82);
+-        assert_eq!(LINTEL_SCALE_MIDDLE, 0.64);
+-        assert_eq!(LINTEL_HEIGHT_DIVISOR, 0.9);
+-        assert_eq!(LINTEL_RECORD_CONST, 0.2);
+-    }
+-
+-    fn src(x: f32) -> LintelSource {
+-        LintelSource {
+-            quat: Quat::IDENTITY,
+-            position: Vec3::new(x, 1.0, 0.0),
+-            scale: 1.0,
+-        }
+-    }
+-
+-    #[test]
+-    fn lintel_scales_first_last_and_middle() {
+-        let sources = [src(0.0), src(1.0), src(2.0)];
+-        let (record, visuals) =
+-            add_lintels(7, 3, 2, &sources, Some(1.0), 2.0, 0, 0.0).clone();
+-        let record = record.unwrap();
+-        assert_eq!(record.height, 1.36);
+-        assert_eq!(record.constant, 0.2);
+-        assert_eq!(visuals.len(), 3);
+-        assert_eq!(visuals[0].scale, 0.82);
+-        assert_eq!(visuals[1].scale, 0.64);
+-        assert_eq!(visuals[2].scale, 0.82);
+-        assert!(
+-            (visuals[0].position.y - (1.0 + (2.0 + 1.43) * 0.5 + 0.081)).abs() < 1e-5,
+-            "rank>=2 applies the 0.081 rotation offset"
+-        );
+-    }
+-
+-    #[test]
+-    fn lintel_flag_scales_by_height_ratio() {
+-        let sources = [src(0.0)];
+-        let (_, visuals) = add_lintels(1, 0, 0, &sources, Some(1.0), 0.0, 1, 0.45);
+-        assert!((visuals[0].scale - 1.0 * (0.45 / 0.9)).abs() < 1e-6);
+-    }
+-
+-    #[test]
+-    fn missing_mesh_entry_yields_nothing() {
+-        let (record, visuals) = add_lintels(1, 0, 0, &[src(0.0)], None, 0.0, 0, 0.0);
+-        assert!(record.is_none());
+-        assert!(visuals.is_empty());
+-    }
+-
+-    #[test]
+-    fn type_predicate_only_0x38() {
+-        let mut info = DecoratorInfo::default();
+-        info.ty = 0x38;
+-        assert!(is_cottage_window(&info));
+-        info.ty = 0x39;
+-        assert!(!is_cottage_window(&info));
+-    }
+-}
++    use country_core::{asset_libraries::mesh_library::MeshAsset,
++        render::mesh::{Mesh, VertexAttributeValues, ATTR_NORMAL, ATTR_POSITION}};
++
++    fn location_mesh(positions: Vec<Vec3>, normals: VertexAttributeValues) -> Mesh {
++        let mut mesh = Mesh::new("原窗花槽位置夹具");
++        mesh.set_attribute(ATTR_POSITION, VertexAttributeValues::Float3(positions));
++        mesh.set_attribute(ATTR_NORMAL, normals);
++        mesh
++    }
++
++    #[test]
++    fn actual_flowerbed_mesh_zip_and_parent_pose_preserve_rotation_and_unscaled_positions() {
++        let meshes = AssetMeshLibrary::new();
++        meshes.add(MeshAsset::new(location_mesh(vec![Vec3::X, Vec3::Z, Vec3::Y],
++            VertexAttributeValues::Float3(vec![Vec3::Y, Vec3::X])),
++            Some(FLOWERBED_NAMES[1].to_owned())));
++        let parent = Transform { rotation: glam::Quat::from_rotation_y(std::f32::consts::FRAC_PI_2),
++            translation: Vec3::new(10.0, 2.0, 3.0), scale: Vec3::new(2.0, 3.0, 4.0) };
++        let output = flowerbed_xforms(2, 1, &parent, &meshes);
++        assert_eq!(output.len(), 2);
++        for (pose, expected_position, expected_normal) in [
++            (&output[0], Vec3::new(10.0, 2.0, 2.0), Vec3::Y),
++            (&output[1], Vec3::new(11.0, 2.0, 3.0), -Vec3::Z),
++        ] {
++            assert!((pose.translation - expected_position).abs().max_element() < 0.000001);
++            assert!((pose.rotation * Vec3::Z - expected_normal).abs().max_element() < 0.000001);
++            assert_eq!(pose.scale, parent.scale);
++        }
++    }
++
++    #[test]
++    fn actual_corner_flowerbed_selects_ranked_corner_location_mesh() {
++        let meshes = AssetMeshLibrary::new();
++        meshes.add(MeshAsset::new(location_mesh(vec![Vec3::new(7.0, 2.0, -1.0)],
++            VertexAttributeValues::Float3(vec![Vec3::Z])),
++            Some(CORNER_FLOWERBED_NAMES[2].to_owned())));
++        let pose = Transform { translation: Vec3::ZERO, rotation: glam::Quat::IDENTITY,
++            scale: Vec3::ONE };
++        let output = flowerbed_xforms(3, 3, &pose, &meshes);
++        assert_eq!(output.len(), 1);
++        assert_eq!(output[0].translation, Vec3::new(7.0, 2.0, -1.0));
++    }
++
++    #[test]
++    #[should_panic(expected = "incorrect attribute type")]
++    fn actual_flowerbed_requires_float3_normal_attribute() {
++        let meshes = AssetMeshLibrary::new();
++        meshes.add(MeshAsset::new(location_mesh(vec![Vec3::X],
++            VertexAttributeValues::Float(vec![1.0])), Some(FLOWERBED_NAMES[0].to_owned())));
++        flowerbed_xforms(1, 0, &Transform { translation: Vec3::ZERO,
++            rotation: glam::Quat::IDENTITY, scale: Vec3::ONE }, &meshes);
++    }
++
++    #[test]
++    #[should_panic(expected = "does not exist in the library")]
++    fn actual_flowerbed_missing_required_mesh_is_a_failure() {
++        flowerbed_xforms(1, 0, &Transform { translation: Vec3::ZERO,
++            rotation: glam::Quat::IDENTITY, scale: Vec3::ONE }, &AssetMeshLibrary::new());
++    }
++    fn lintel_fixture(rank: u8) -> (DerivedDecoratorSubtypes, DecoratorMeshLibrary, DecoratorInfo) {
++        use std::sync::Arc;
++        use country_core::{resources::walls::decorator_subtype::{DecoratorCollision, DecoratorSubtype},
++            systems::collision::world::RaycastMeshData};
++        let mut subtypes = DerivedDecoratorSubtypes::default();
++        subtypes.insert(7, DecoratorSubtype(0));
++        let mut meshes = DecoratorMeshLibrary::default();
++        meshes.collision.insert(DecoratorLibKey::new(0, rank), DecoratorCollision {
++            triangles: Vec::new(), mesh: Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE, Vec3::ZERO)),
++            bounds: utils::geometry::Rectangle3d::new(Vec3::new(0.0, 1.0, 0.0),
++                Vec3::new(4.0, 2.0, 1.0), Vec2::X),
++        });
++        let info = DecoratorInfo { dst_wall: u64::from(4.0_f32.to_bits()), rank,
++            ..DecoratorInfo::default() };
++        (subtypes, meshes, info)
++    }
++
++    use country_core::resources::walls::decorator_subtype::{DecoratorMeshLibrary, DerivedDecoratorSubtypes};
++
++    #[test]
++    fn actual_lintels_publish_typed_hole_and_three_builders_with_exact_end_scaling() {
++        let (subtypes, meshes, info) = lintel_fixture(2);
++        let view = DerivedDecoratorInfoView::new(&subtypes, &meshes);
++        let source = |x| Transform { translation: Vec3::new(x, 0.0, 0.0),
++            rotation: glam::Quat::IDENTITY, scale: Vec3::new(9.0, 2.0, 3.0) };
++        let mut blueprint = DecoratorBlueprint::new();
++        add_lintels(DecoratorId(7), &info, &[source(0.0), source(1.0), source(2.0)],
++            true, ColorId(0x1234_abcd), &mut blueprint, view, 0.0, 1, 1.8);
++        assert_eq!(blueprint.wall_holes.len(), 1);
++        let hole = &blueprint.wall_holes[0];
++        assert_eq!(hole.center, [4.0, f32::from_bits(0x3f37_0a3f)]);
++        assert_eq!(hole.dimensions, [f32::from_bits(0x408b_851f), f32::from_bits(0x3e4c_cccd)]);
++        assert_eq!(hole.kind, 0);
++        assert_eq!(blueprint.visual_entities.len(), 3);
++        for (builder, x, scale_x) in [
++            (&blueprint.visual_entities[0], -f32::from_bits(0x3da5_e353), f32::from_bits(0x3fd1_eb85)),
++            (&blueprint.visual_entities[1], 1.0, f32::from_bits(0x3fa3_d70a)),
++            (&blueprint.visual_entities[2], 2.0 + f32::from_bits(0x3da5_e353), f32::from_bits(0x3fd1_eb85)),
++        ] {
++            assert_eq!(builder.translation, Vec3::new(x, f32::from_bits(0x3f37_0a3f), 0.0));
++            assert_eq!(builder.scale, Vec3::new(scale_x, 2.0, 3.0));
++            assert_eq!(builder.mesh_name, "decorators/setdressing_window_lintel");
++            assert_eq!(builder.nani_name, "nani_solid_vertex_color_window");
++            assert_eq!(builder.color_id, Some(ColorId(0x1234_abcd)));
++            assert!(builder.semi_transparent);
++            assert_eq!(builder.window_light, None);
++        }
++    }
++
++    #[test]
++    fn actual_lintel_singleton_is_first_only_and_empty_slice_still_publishes_hole() {
++        let (subtypes, meshes, info) = lintel_fixture(2);
++        let view = DerivedDecoratorInfoView::new(&subtypes, &meshes);
++        let mut blueprint = DecoratorBlueprint::new();
++        let source = Transform { translation: Vec3::ZERO, rotation: glam::Quat::IDENTITY,
++            scale: Vec3::new(9.0, 2.0, 3.0) };
++        add_lintels(DecoratorId(7), &info, &[source], false, ColorId(13), &mut blueprint,
++            view, 0.0, 0, f32::NAN);
++        assert_eq!(blueprint.visual_entities.len(), 1);
++        assert_eq!(blueprint.visual_entities[0].translation.x.to_bits(), 0xbda5_e353);
++        assert_eq!(blueprint.visual_entities[0].scale.x.to_bits(), 0x3f51_eb85);
++        add_lintels(DecoratorId(7), &info, &[], false, ColorId(13), &mut blueprint,
++            view, 0.0, 0, f32::NAN);
++        assert_eq!(blueprint.wall_holes.len(), 2);
++        assert_eq!(blueprint.visual_entities.len(), 1);
++    }
++
++    #[test]
++    fn actual_lintel_missing_collision_fails_before_any_hole_or_builder_write() {
++        let (subtypes, mut meshes, info) = lintel_fixture(2);
++        meshes.collision.clear();
++        let view = DerivedDecoratorInfoView::new(&subtypes, &meshes);
++        let mut blueprint = DecoratorBlueprint::new();
++        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++            add_lintels(DecoratorId(7), &info, &[], false, ColorId(13), &mut blueprint,
++                view, 0.0, 0, 0.0);
++        }));
++        assert!(result.is_err());
++        assert!(blueprint.wall_holes.is_empty() && blueprint.visual_entities.is_empty());
++    }
++
++    pub(super) fn producer_world(subtype: u8, rank: u8) -> World {
++        producer_world_with_shape(subtype, rank, 1)
++    }
++
++    pub(super) fn producer_world_with_shape(subtype: u8, rank: u8, shape: u32) -> World {
++        use std::sync::Arc;
++        use country_core::{resources::{roofs::geometry::surface::Curve2,
++            walls::{InnerWalls, WallState, decorator::{DecoratorDst, WallDecoratorDst},
++                decorator_subtype::{DecoratorCollision, DecoratorSubtype},
++                publication_fields::WallShapeSnapshot, publication_source::TerrainHeightGrid512}},
++            systems::collision::world::RaycastMeshData};
++        let rectangle = utils::geometry::Rectangle2d::new_centered_axis_aligned(Vec2::splat(8.0));
++        let points = rectangle.as_points2().map(|p| [p.x, p.y]);
++        let curve = Curve2::try_new(points.to_vec(), true).unwrap();
++        let mut snapshot = WallState::new(curve, 3.0, 0, 0, false).snapshot().clone();
++        let mut bytes = [0; 28]; bytes[..4].copy_from_slice(&shape.to_le_bytes());
++        for (index, value) in [1.0_f32, 0.0, 0.0, 0.0, 8.0, 8.0].into_iter().enumerate() {
++            bytes[4 + index * 4..8 + index * 4].copy_from_slice(&value.to_le_bytes());
++        }
++        snapshot.source.shape = WallShapeSnapshot::from_observed(bytes);
++        snapshot.source.curve_kind_tag = shape;
++        let mut inner = InnerWalls::new();
++        inner.new_wall_with_id(WallId(42), WallState::from_snapshot(snapshot, 0));
++        let mut walls = PublicWalls::default();
++        walls.consume(&mut inner, &TerrainHeightGrid512 { encoded: vec![0; 512 * 512].into(),
++            minimum_y: 0.0, maximum_y: 0.0, sampling_fix: false });
++        assert!(walls.get(WallId(42)).is_some());
++        let mut info = DecoratorInfo { rank, decorator_id: 1, state: 2,
++            u28: 0x5566_7788, u30: 0x1020_3040, u40: 6 << 8, ..DecoratorInfo::default() };
++        info.set_destination(DecoratorDst::Wall(WallDecoratorDst {
++            coord: WallSpaceCoord::new_unchecked(4.0, 2.0), platform: WallId(99),
++            relative_y: 0.0, position: Vec3::new(-4.0, 2.0, -4.0),
++            corner_attachment: 1, bottom_as_door: false }));
++        let mut storage = DecoratorStorage::default();
++        storage.get_or_insert_default(DecoratorStorageAddr::Wall(WallId(42)))
++            .insert(DecoratorId(7), info);
++        let mut subtypes = DerivedDecoratorSubtypes::default();
++        subtypes.insert(7, DecoratorSubtype(subtype));
++        let mut library = DecoratorMeshLibrary::default();
++        let bounds = utils::geometry::Rectangle3d::new(Vec3::new(0.0, 1.0, 0.0),
++            Vec3::new(4.0, 2.0, 1.0), Vec2::X);
++        let key = DecoratorLibKey::new(subtype, rank);
++        for (table, dimensions) in [(&mut library.collision, Vec3::ONE),
++            (&mut library.interaction, Vec3::splat(2.0))] {
++            table.insert(key, DecoratorCollision { triangles: Vec::new(),
++                mesh: Arc::new(RaycastMeshData::new_cuboid_at(dimensions, Vec3::ZERO)), bounds });
++        }
++        let mut cached = CachedDecoratorTransforms::default();
++        cached.insert(7, CachedDecoratorTransform { translation: Vec3::new(-4.0, 2.0, -4.0),
++            rotation: glam::Quat::IDENTITY, scale: Vec3::new(2.0, 3.0, 4.0) });
++        let meshes = AssetMeshLibrary::new();
++        for name in FLOWERBED_NAMES.into_iter().chain(CORNER_FLOWERBED_NAMES) {
++            meshes.add(MeshAsset::new(location_mesh(Vec::new(), VertexAttributeValues::Float3(Vec::new())),
++                Some(name.to_owned())));
++        }
++        let mut world = World::new();
++        world.insert_resource(walls); world.insert_resource(storage); world.insert_resource(subtypes);
++        world.insert_resource(library); world.insert_resource(cached); world.insert_resource(meshes);
++        world.insert_resource(DecoratorBlueprints::default());
++        world.insert_resource(UiSignifierStream::default());
++        world
++    }
++
++    #[test]
++    fn actual_wall_producer_connects_outer_wall_modified_id_colors_glass_key_and_real_mesh_arcs() {
++        use bevy_ecs::system::RunSystemOnce;
++        use crate::blueprint::BlueprintMeshSlot;
++        let mut world = producer_world(0, 1);
++        world.run_system_once(generate_cottage_wall_windows).unwrap();
++        let blueprints = world.resource::<DecoratorBlueprints>();
++        let blueprint = blueprints.get(7).unwrap();
++        assert_eq!(blueprint.storage_addr, Some(DecoratorStorageAddr::Wall(WallId(42))));
++        assert_eq!(blueprint.interaction_source_flags, 2);
++        assert_eq!(blueprint.visual_entities.len(), 3);
++        let frame = &blueprint.visual_entities[0]; let glass = &blueprint.visual_entities[1];
++        assert_eq!(frame.mesh_name, "decorators/window_cottage_1x1");
++        assert_eq!(frame.color_id, Some(ColorId(0x5566_7788)));
++        assert_eq!(glass.mesh_name, "decorators/window_cottage_1x1_glass");
++        assert_eq!(glass.color_id, Some(ColorId(0x1020_3040)));
++        assert_eq!(glass.window_light, Some(1007));
++        assert!(frame.semi_transparent && glass.semi_transparent);
++        assert_eq!(frame.scale, Vec3::new(2.0, 3.0, 4.0));
++        assert!((frame.translation.z - -3.86).abs() < 0.000001);
++        assert!((glass.translation.z - -3.93).abs() < 0.000001);
++        let BlueprintMeshSlot::Mesh(collision) = &blueprint.collision_mesh else { panic!("缺真实碰撞") };
++        let BlueprintMeshSlot::Mesh(interaction) = &blueprint.interaction_mesh else { panic!("缺真实交互") };
++        let library = world.resource::<DecoratorMeshLibrary>();
++        let key = DecoratorLibKey::new(0, 1);
++        assert!(std::sync::Arc::ptr_eq(&collision.mesh, &library.collision_record(key).mesh));
++        assert!(std::sync::Arc::ptr_eq(&interaction.mesh, &library.interaction_record(key).mesh));
++        assert!((collision.position.z - -3.36).abs() < 0.000001);
++        assert_eq!(blueprint.wall_holes.len(), 2);
++        let cloth = blueprint.cloth_info.as_ref().unwrap();
++        assert_eq!(cloth.wall, WallId(42));
++        assert_eq!(cloth.decorator_id, DecoratorId(7));
++        assert_eq!(cloth.dimensions, [4.0, 2.0]);
++    }
++
++    #[test]
++    fn actual_wall_missing_interaction_preserves_prior_insert_and_pre_frame_failure() {
++        use bevy_ecs::system::RunSystemOnce;
++        let mut world = producer_world(0, 1);
++        world.resource_mut::<DecoratorMeshLibrary>().interaction.clear();
++        let failure = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++            world.run_system_once(generate_cottage_wall_windows).unwrap();
++        }));
++        assert!(failure.is_err());
++        let blueprints = world.resource::<DecoratorBlueprints>();
++        let blueprint = blueprints.get(7).unwrap();
++        assert_eq!(blueprint.storage_addr, Some(DecoratorStorageAddr::Wall(WallId(42))));
++        assert!(blueprint.visual_entities.is_empty() && blueprint.transform.is_none());
++        assert!(blueprint.wall_holes.is_empty());
++    }
++
++    #[test]
++    fn actual_premade_wall_all_ranks_and_both_subtypes_publish_their_own_branches() {
++        use bevy_ecs::system::RunSystemOnce;
++        for subtype in 0..=1 {
++            for rank in 1..=3 {
++                let mut world = producer_world(subtype, rank);
++                world.run_system_once(generate_cottage_wall_windows).unwrap();
++                let blueprints = world.resource::<DecoratorBlueprints>();
++                let blueprint = blueprints.get(7).unwrap();
++                let count = if subtype == 1 { 3 } else if rank < 3 { 2 + usize::from(rank) } else { 2 };
++                assert_eq!(blueprint.visual_entities.len(), count, "subtype={subtype}, rank={rank}");
++                assert_eq!(blueprint.visual_entities[1].window_light, Some(1000 * u64::from(rank) + 7));
++                assert_eq!(blueprint.cloth_info.is_some(), rank < 3);
++                if subtype == 1 {
++                    assert_eq!(blueprint.visual_entities[2].mesh_name, HALF_DORMER_NAMES[usize::from(rank - 1)]);
++                    assert!((1..=2).contains(&blueprint.dormer_holes.len()));
++                    if rank != 2 { assert_eq!(blueprint.dormer_holes.len(), 1); }
++                } else { assert!(blueprint.dormer_holes.is_empty()); }
++            }
++        }
++    }
++
++    #[test]
++    fn actual_nonpremade_wall_publishes_real_broken_glass_without_premade_business() {
++        use bevy_ecs::system::RunSystemOnce;
++        let mut world = producer_world_with_shape(0, 1, 2);
++        world.resource::<AssetMeshLibrary>().add(MeshAsset::new(location_mesh(vec![Vec3::X],
++            VertexAttributeValues::Float3(vec![Vec3::Y])), Some(FLOWERBED_NAMES[0].to_owned())));
++        world.run_system_once(generate_cottage_wall_windows).unwrap();
++        let blueprints = world.resource::<DecoratorBlueprints>();
++        let blueprint = blueprints.get(7).unwrap();
++        assert_eq!(blueprint.visual_entities.len(), 3);
++        let broken = blueprint.visual_entities.last().unwrap();
++        assert!(BROKEN_GLASS_NAMES.contains(&broken.mesh_name));
++        assert_eq!(broken.nani_name, "nani_solid_vertex_color");
++        assert_eq!(broken.color_id, None); assert_eq!(broken.window_light, None);
++        assert!(blueprint.visual_entities.iter().all(|builder| builder.window_light.is_none()));
++        assert!(blueprint.cloth_info.is_none() && blueprint.window_auto_clutter_candidates.is_empty());
++        assert!(blueprint.dormer_holes.is_empty());
++    }
++
++    #[test]
++    fn actual_wall_invalid_rank_fails_after_insert_when_the_required_key_exists() {
++        use bevy_ecs::system::RunSystemOnce;
++        let mut world = producer_world(0, 0);
++        let failure = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++            world.run_system_once(generate_cottage_wall_windows).unwrap();
++        }));
++        assert!(failure.is_err());
++        let blueprints = world.resource::<DecoratorBlueprints>();
++        let blueprint = blueprints.get(7).unwrap();
++        assert!(blueprint.visual_entities.is_empty());
++    }
++
++}

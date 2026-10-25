@@ -1,0 +1,66 @@
+{
+  "reviewer": "/root/render_reviewer",
+  "date": "2026-10-21",
+  "status": "root_real_gpu_results_independently_audited",
+  "scope": "阶段1共享layout物理页及真实支持矩阵；不是游戏ShaderHost分页主链完成。",
+  "inputs": {
+    "/private/tmp/tg-batch3-validation-20261021/gpu-results.json": "573a7e38eef63c7986bf1f872f8a4e321beee2e23a9686eb2d67f9603f22704b",
+    "/private/tmp/tg-batch3-validation-20261021/bindless-gpu.log": "0fd9e358bbba6f8f4e2a2a0dda922bd611eb797a374d764ed2a71c6b3a9408e1",
+    "/private/tmp/tg-batch3-validation-20261021/layout-matrix-gpu.log": "d3db4dbf0a0ea0dd05e4e9edfb5c83350940bc3ef342990a02579bd8c3c14839",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/bindless-836066e7876ebc9c": "c15f1c551795a708d5a81a49ade53b3628880b30b367783ddf0735efa59719ee",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/bindless.rs": "4e65bf0b9607ce202aed09fbdb0a5df783e896875b8713234e4ae16845debffb",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/tests/bindless.rs": "4df0dd875afb0ecc243e8c9755f553a2d2cc6a9bab79bf700367a54bf30950fe"
+  },
+  "root_execution": [
+    {
+      "name": "bindless-gpu",
+      "args": [
+        "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/bindless-836066e7876ebc9c",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "seconds": 2.228,
+      "validation_errors_or_skips": [],
+      "binary_sha256": "c15f1c551795a708d5a81a49ade53b3628880b30b367783ddf0735efa59719ee"
+    },
+    {
+      "name": "layout-matrix-gpu",
+      "args": [
+        "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/bindless-836066e7876ebc9c",
+        "actual_bindless_layout_support_matrix",
+        "--ignored",
+        "--exact",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "seconds": 1.078,
+      "validation_errors_or_skips": [],
+      "binary_sha256": "c15f1c551795a708d5a81a49ade53b3628880b30b367783ddf0735efa59719ee"
+    }
+  ],
+  "identity_scope": {
+    "parent_attestation": "root明确在沙箱外Apple M3使用VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation执行；我未重跑GPU。",
+    "observed_directly": "读取两份完整实际stdout/stderr日志、结构结果及当前磁盘二进制SHA，二进制SHA与两项结果一致；日志不自带GPU/启用layer枚举，因此不能单凭安静日志独立证明layer已启。"
+  },
+  "source_changes_since_candidate": {
+    "new_page": "当前生产bindless.rs SHA4e65bf0b9607ce202aed09fbdb0a5df783e896875b8713234e4ae16845debffb与原冻结候选完全相同。",
+    "tests": "两处必要机械修订：InvalidUsage按现enum结构variant匹配；matrix显式required DescriptorBindingVariableDescriptorCount后才发送VAR flags，避免未启能力VUID。未放宽原布局拒绝和heap身份断言。"
+  },
+  "actual_results": {
+    "normal": "running7;6 passed/0 failed/1 ignored。ignored是matrix，不冒记7通过。",
+    "matrix": "显式--ignored --exact；running1;1 passed/0 failed/0 ignored，6 filtered。",
+    "logs": "未见SKIP、Validation Error或VUID。该观察与root环境声明分开。",
+    "fixed_query_and_create": "832、1184、1211为true且真实VulkanDescriptorSetLayout::new成功；1212、1213、16384、24896为false并真实返回Unsupported。",
+    "variable_query_only": "storage31 true/max_variable31；32、16384 false/max_variable0。没有创建variable layout或验证variable allocation。",
+    "lifetime": "实际pending shader写77、foreign同数字下标heap拒绝、实际gate完成后retire回收、unused释放与模板无强环均由常规测试执行。"
+  },
+  "native_consistency": "实测与已独立otool核过MoltenVK1.4.2 installed SHA05df2d...严格<1212 fixed及variable<=31一致；不是原版TinyGlade分页行为证明。",
+  "remaining": "phase2尚in_progress，完整生产snapshot/preparer/page cache/adapter需冻结源码独审与同场景GPU；30帧/WSI/编辑存档重启不在此批范围。",
+  "reviewer_execution": {
+    "cargo": false,
+    "gpu": false,
+    "production_write": false
+  }
+}

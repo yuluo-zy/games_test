@@ -1,0 +1,24 @@
+[package]
+name = "tg-integrity-report"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+tg-iced = { path = "../tg-iced", version = "=0.1.0", default-features = false }
+tg-package-integrity = { path = "../tg-package-integrity", version = "=0.1.0" }
+
+webbrowser = { version = "=0.8.10", optional = true }
+
+[package.metadata.reconstruction]
+baseline = "B"
+original_features_known = false
+original_abi_recovered = false
+
+[features]
+default = ["native-gui"]
+native-gui = ["tg-iced/native-gui", "dep:webbrowser"]
+
+[[example]]
+name = "tg_integrity_report_native_probe"
+required-features = ["native-gui"]

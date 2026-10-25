@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "baseline": "B Windows x86_64",
+  "updated_at": "2026-10-13T09:59:24.084Z",
+  "reviewers": [
+    "review_motomoto",
+    "review_integrity",
+    "review_tg_text"
+  ],
+  "status": "parallel_review_complete",
+  "finding_policy": "Original function lists are reference only; folded private logic, reused dependency implementations, aliases and monomorphizations are not separate functionality denominators.",
+  "confirmed_algorithm_defects": 0,
+  "confirmed_dependency_reimplementations": 0,
+  "confirmed_documentation_defects": [
+    {
+      "id": "T-DOC-1",
+      "severity": "low",
+      "status": "fixed_comment_and_current_errata",
+      "behavior_changed": false,
+      "evidence": "integration/ERRATA.md"
+    }
+  ],
+  "measured_performance_costs": [
+    {
+      "id": "INTEGRITY-PERF-01",
+      "status": "measured_cost_not_original_regression",
+      "thread_count_1792": 1764,
+      "live_spawn_ceiling": 63,
+      "empty_repeat_workload_ms": 109.601,
+      "buffered_repeat_128MiB_workload_ms": 37.89,
+      "measurement_scope": "dev-profile library plus optimized harness; cached repeated file synthetic single runs; no original timing/release-consumer comparison",
+      "memory_bound": "Sum of simultaneous live file reads, not independent of file sizes"
+    }
+  ],
+  "business_completeness": {
+    "motomoto": "Observed chunk core implemented; true save consumer/schema/compression and generic IO/flush original behavior incomplete or unverified",
+    "tg-package-integrity": "Normal manifest-check core implemented; true report/crash consumer and extreme schema/full verify runtime incomplete or unverified",
+    "tg-text": "FontTable/shape CPU subdomain implemented; full TextFragment/TextRenderer/shaping/cache/atlas/GPU/real image catalog incomplete"
+  },
+  "new_validation": {
+    "motomoto": "20 bounded native Cursor Writer/Drop fixtures plus pending error and 3 original Reader error-resume groups; four candidate Drop failure points and panic unwind",
+    "integrity": "4096 original x64 FNV/array Hash leaf cases and128 BLAKE3 dependency compositions; candidate schema/cross-batch/Unicode/junction probes",
+    "tg-text": "Independent request/serde/panic/allocator probes; unchanged72 original numeric groups not rerun"
+  },
+  "source_inputs_before": {
+    "reconstruction/shared-foundation/crates/motomoto/BUSINESS_RULES.md": "1fab3f8233bdd1fae23cfe0504952d38757a92cd5390588d7293afa8356b63fa",
+    "reconstruction/shared-foundation/crates/motomoto/Cargo.toml": "948a7d91474658bee2b54a5f3dcaf76379afbc031bd4cf5cf92a61a6017930f7",
+    "reconstruction/shared-foundation/crates/motomoto/src/lib.rs": "7289ac4504d65d0044c148eb420f52e925b8a3c891877508362367565e7d196c",
+    "reconstruction/shared-foundation/crates/motomoto/src/tests/reader_cases.rs": "e629bcf47862f195be6a414913998398e0a7d1fb1271d659b34d252fddcd8ff5",
+    "reconstruction/shared-foundation/crates/motomoto/src/tests.rs": "199f11467bab912f32aede168c69a3dd6dded8a17702ef6dfc9e3ce1a3b31e0d",
+    "reconstruction/shared-foundation/crates/tg-package-integrity/Cargo.toml": "a2a3c34baa93a07ee158a06ed9c39bd5d8f1fc7001c4001d37f1ac7891b60024",
+    "reconstruction/shared-foundation/crates/tg-package-integrity/examples/inspect_package.rs": "47f0996e8072a5bdf202a8737898219b28de269eb07112946070ded78c402481",
+    "reconstruction/shared-foundation/crates/tg-package-integrity/fixtures/B-manifest.json": "3425e76472672b9b7c3d18ed6f7cdc1f21d2c445782845a82528dd4f50bf0a11",
+    "reconstruction/shared-foundation/crates/tg-package-integrity/src/lib.rs": "094761f47e50eb4c479fab2ca745468e19d00392206f311a940e30eb286ced8a",
+    "reconstruction/shared-foundation/crates/tg-text/Cargo.toml": "d936546802eaa1f8ebde07616c5e0d07c06678c3f7a645604b9c6acce38066af",
+    "reconstruction/shared-foundation/crates/tg-text/README.md": "2104603c230889b712a775b31cbb34f5afdd15411ecdd0405b3f9bf0b06a9301",
+    "reconstruction/shared-foundation/crates/tg-text/src/font_table.rs": "1b3c199efb935642ed847e38492c445e177946d3007718c66e81974dc76068b8",
+    "reconstruction/shared-foundation/crates/tg-text/src/lib.rs": "12896eb8c1d754d218f9d578aa308d316ecbaa0c790dac4d88be3857324aa6c5",
+    "reconstruction/shared-foundation/crates/tg-text/src/shape_stream.rs": "f375d41ea85657f6db583bb66a77de438ab4146f60b8dddc1ed1a1567461e474",
+    "reconstruction/shared-foundation/crates/tg-text/tests/behavior.rs": "d309b67940aa4ab9c18b88f29e4c612d74e4e34e986d5933bcc4f9e9ee09eba2",
+    "reconstruction/shared-foundation/crates/tg-text/tests/fixtures/font-table.ron": "0b9b4cd55916b7c4af0dd1322ce5d5330f72cfcb5fa6be1582d60b93961d8834",
+    "reconstruction/shared-foundation/crates/tg-text/tests/fixtures/native-oracle.json": "c489f562387de50c00fe5152e83044d4df3b15b4385b2e1f37b10ce2a36ac503",
+    "reconstruction/shared-foundation/Cargo.toml": "013621f4ec70141a03f5f0b491368df49e0ee3ba17071cb36e4502e6e616ab8a",
+    "reconstruction/shared-foundation/Cargo.lock": "9673c8cc887ac441d3ba891f6ba3e6bab6401c39cb01a7b224851fb6344d0a8c",
+    "scripts/small-libs-batch-01/audit_dependencies.py": "528d88d79aad4c3d683305aa198305bba272b4d859f9583673a9ebd12aff2b1d",
+    "scripts/small-libs-batch-01/build_scoped.ps1": "3a32e0d9d390fe813f72a7d0e150d99fe1e7ca4e346eb506276c466b33fbbb77"
+  },
+  "source_inputs_after": {
+    "reconstruction/shared-foundation/crates/motomoto/BUSINESS_RULES.md": "1fab3f8233bdd1fae23cfe0504952d38757a92cd5390588d7293afa8356b63fa",
+    "reconstruction/shared-foundation/crates/motomoto/Cargo.toml": "948a7d91474658bee2b54a5f3dcaf76379afbc031bd4cf5cf92a61a6017930f7",
+    "reconstruction/shared-foundation/crates/motomoto/src/lib.rs": "7289ac4504d65d0044c148eb420f52e925b8a3c891877508362367565e7d196c",
+    "reconstruction/shared-foundation/crates/motomoto/src/tests/reader_cases.rs": "e629bcf47862f195be6a414913998398e0a7d1fb1271d659b34d252fddcd8ff5",
+    "reconstruction/shared-foundation/crates/motomoto/src/tests.rs": "199f11467bab912f32aede168c69a3dd6dded8a17702ef6dfc9e3ce1a3b31e0d",
+    "reconstruction/shared-foundation/crates/tg-package-integrity/Cargo.toml": "a2a3c34baa93a07ee158a06ed9c39bd5d8f1fc7001c4001d37f1ac7891b60024",
+    "reconstruction/shared-foundation/crates/tg-package-integrity/examples/inspect_package.rs": "47f0996e8072a5bdf202a8737898219b28de269eb07112946070ded78c402481",
+    "reconstruction/shared-foundation/crates/tg-package-integrity/fixtures/B-manifest.json": "3425e76472672b9b7c3d18ed6f7cdc1f21d2c445782845a82528dd4f50bf0a11",
+    "reconstruction/shared-foundation/crates/tg-package-integrity/src/lib.rs": "094761f47e50eb4c479fab2ca745468e19d00392206f311a940e30eb286ced8a",
+    "reconstruction/shared-foundation/crates/tg-text/Cargo.toml": "d936546802eaa1f8ebde07616c5e0d07c06678c3f7a645604b9c6acce38066af",
+    "reconstruction/shared-foundation/crates/tg-text/README.md": "ce71bcff14276d1b22f99b951171e827e6d2629578d4e5e56de20147970ccef5",
+    "reconstruction/shared-foundation/crates/tg-text/src/font_table.rs": "1b3c199efb935642ed847e38492c445e177946d3007718c66e81974dc76068b8",
+    "reconstruction/shared-foundation/crates/tg-text/src/lib.rs": "12896eb8c1d754d218f9d578aa308d316ecbaa0c790dac4d88be3857324aa6c5",
+    "reconstruction/shared-foundation/crates/tg-text/src/shape_stream.rs": "bad65b0e5e6bbfda8417cf0823b6e65a75eef135bb1e2d1484f59fbf26649e84",
+    "reconstruction/shared-foundation/crates/tg-text/tests/behavior.rs": "d309b67940aa4ab9c18b88f29e4c612d74e4e34e986d5933bcc4f9e9ee09eba2",
+    "reconstruction/shared-foundation/crates/tg-text/tests/fixtures/font-table.ron": "0b9b4cd55916b7c4af0dd1322ce5d5330f72cfcb5fa6be1582d60b93961d8834",
+    "reconstruction/shared-foundation/crates/tg-text/tests/fixtures/native-oracle.json": "c489f562387de50c00fe5152e83044d4df3b15b4385b2e1f37b10ce2a36ac503",
+    "reconstruction/shared-foundation/Cargo.toml": "013621f4ec70141a03f5f0b491368df49e0ee3ba17071cb36e4502e6e616ab8a",
+    "reconstruction/shared-foundation/Cargo.lock": "9673c8cc887ac441d3ba891f6ba3e6bab6401c39cb01a7b224851fb6344d0a8c",
+    "scripts/small-libs-batch-01/audit_dependencies.py": "528d88d79aad4c3d683305aa198305bba272b4d859f9583673a9ebd12aff2b1d",
+    "scripts/small-libs-batch-01/build_scoped.ps1": "3a32e0d9d390fe813f72a7d0e150d99fe1e7ca4e346eb506276c466b33fbbb77"
+  },
+  "implementation_body_changes": false,
+  "historical_batch_input_hashes_overwritten": false,
+  "unexpected_source_changes": [],
+  "independent_reports": [
+    {
+      "module": "motomoto",
+      "report": "motomoto/REVIEW.md",
+      "findings": "motomoto/findings.json"
+    },
+    {
+      "module": "tg-package-integrity",
+      "report": "tg-package-integrity/REVIEW.md",
+      "findings": "tg-package-integrity/findings.json"
+    },
+    {
+      "module": "tg-text",
+      "report": "tg-text/REVIEW.md",
+      "findings": "tg-text/findings.json"
+    }
+  ],
+  "worker_lifecycle": {
+    "new_ready_review_workers": 0,
+    "failed_integrity_initializer_cleanup": "Two matching initializer processes identified by command line and creation time; child stopped, wrapper exited automatically; remaining0",
+    "evidence": "integration/worker-cleanup.json",
+    "unrelated_workers_stopped": false
+  },
+  "full_module_acceptance": false,
+  "full_original_game_acceptance": false,
+  "A_C_accepted": false,
+  "validation": {
+    "source_hashes_checked": 21,
+    "unexpected_changes": 0,
+    "dependency_identity": "22 public packages original identities match,0 mismatches",
+    "comment_fix": "independent reverse-replacement SHA proves Rust body unchanged",
+    "formatting": "tg-text cargo fmt --check passed",
+    "progress_ledger": "refresh and --check passed",
+    "business_tests_for_comment_only_fix": "not rerun; independent reviewer probes and bounded native tests supply review evidence"
+  }
+}

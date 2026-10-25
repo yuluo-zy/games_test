@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nprog = currentProgram\nout = {}\naddr = prog.getAddressFactory().getAddress(\"0x142268a30\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionContaining(addr)\nout[\"containing\"] = (str(f.getName()), str(f.getEntryPoint()), str(f.getBody())) if f else None\naddr2 = prog.getAddressFactory().getAddress(\"0x1422686c6\")\nf2 = fm.getFunctionContaining(addr2)\nout[\"containing_2686c6\"] = (str(f2.getName()), str(f2.getEntryPoint()), str(f2.getBody())) if f2 else None\n# functions with despawn in name\nit = fm.getFunctions(True)\ncnt = 0\nfor fn in it:\n    nm = fn.getName()\n    if 'despawn' in nm.lower() and 'tree' in nm.lower():\n        out.setdefault('despawn_funcs', []).append((nm, str(fn.getEntryPoint()), str(fn.getBody())))\n        cnt += 1\nout[\"count\"] = cnt\nprint(json.dumps(out))\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 180
+  }
+]

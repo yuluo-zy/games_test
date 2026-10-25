@@ -1,0 +1,34 @@
+0x14261f0e3: and al, 0x40
+0x14261f0e6: movaps xmmword ptr [rsp + 0x30], xmm7
+0x14261f0eb: movaps xmmword ptr [rsp + 0x20], xmm6
+0x14261f0f0: movaps xmm7, xmm2
+0x14261f0f3: mov rax, qword ptr [rip + 0x100d20e]
+0x14261f0fa: unpcklps xmm7, xmm1
+0x14261f0fd: movss xmm0, dword ptr [rsp + 0xd0]
+0x14261f106: unpcklps xmm0, xmm3
+0x14261f109: divps xmm7, xmm0
+0x14261f10c: addps xmm7, xmmword ptr [rip + 0x3067cd]
+0x14261f113: cmp byte ptr [rax], 0
+0x14261f116: je 0x14261f22b
+0x14261f11c: movshdup xmm6, xmm7
+0x14261f120: movss xmm0, dword ptr [rip + 0x3067dc]
+0x14261f128: minss xmm6, xmm0
+0x14261f12c: minss xmm7, xmm0
+0x14261f130: movss xmm0, dword ptr [rip + 0x315470]
+0x14261f138: mulss xmm6, xmm0
+0x14261f13c: mulss xmm7, xmm0
+0x14261f140: movss xmm0, dword ptr [rip + 0x33afa0]
+0x14261f148: addss xmm6, xmm0
+0x14261f14c: addss xmm7, xmm0
+0x14261f150: xorps xmm0, xmm0
+0x14261f153: maxss xmm6, xmm0
+0x14261f157: cvttss2si r14, xmm6
+0x14261f15c: xor eax, eax
+0x14261f15e: ucomiss xmm6, xmm0
+0x14261f161: cmovb r14d, eax
+0x14261f165: maxss xmm7, xmm0
+0x14261f169: movss xmm1, dword ptr [rip + 0x38165f]
+0x14261f171: ucomiss xmm6, xmm1
+0x14261f174: mov edx, 0xffffffff
+0x14261f179: cmova r14d, edx
+0x14261f17d: cvttss2si r15, xmm7

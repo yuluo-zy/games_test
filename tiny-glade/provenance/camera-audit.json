@@ -1,0 +1,89 @@
+{
+  "date": "2026-10-14",
+  "mode": "read_only_audit_no_camera_source_migration",
+  "source_directory": "reverse-engineering/tiny-glade/reconstruction/camera",
+  "git_commits": [
+    "8107b4751190ff8d9504a099840cfcb916c4878c",
+    "531b7d32"
+  ],
+  "status_evidence": "reverse-engineering/tiny-glade/PARALLEL_MODULE_STOPPED_STATUS.md",
+  "native_evidence": "reverse-engineering/tiny-glade/evidence/parallel-camera/B-constructor-native.json",
+  "decompile_evidence": "reverse-engineering/tiny-glade/evidence/parallel-camera/B-decompile/report.json",
+  "query_evidence": "reverse-engineering/tiny-glade/evidence/parallel-camera/B-query/report.json",
+  "selection": [
+    {
+      "source": "schema.rs:default_vertical_fov_degrees",
+      "original_entry": "0x140911e30",
+      "original_body_bytes": 9,
+      "decision": "already_mapped_to_formal_country_core_schema",
+      "body": "45.0",
+      "limit": "This one constant does not validate MainCamera/lens construction. Avoid adding a standalone package for one existing schema constant.",
+      "formal_path": "crates/country-core/src/systems/camera_rig/mod.rs:default_vertical_fov_degrees"
+    },
+    {
+      "source": "schema.rs:CameraMatrices",
+      "decision": "reuse_existing_formal_utils_camera",
+      "formal_source": "crates/utils/src/camera.rs:CameraProjectionParams::calc_matrices/CameraBodyMatrices::from_position_rotation",
+      "reason": "Projection and body matrices already have a fuller B-backed utils implementation and native fixture tests. Do not duplicate the stopped camera matrix adapter."
+    },
+    {
+      "source": "schema.rs:CameraMode/CameraRigParametersCache/CameraLens/CameraFocus",
+      "decision": "partial_observed_schema_and_constructor_defaults",
+      "reason": "The schema and mode/lens defaults are useful observations, but the stopped report has no full Rust-constructor/native equivalence report; observed fields/flags retain unknown semantics. Data contract can be reviewed against country-core's later recovery."
+    },
+    {
+      "source": "normal.rs",
+      "original_entries": [
+        "0x140949cc0",
+        "0x140949dc0",
+        "0x140949e70",
+        "0x140949fe0"
+      ],
+      "decision": "do_not_import_whole_stopped_body_as_completed",
+      "reason": "Contains substantive orbit/backlog, terrain constraint, translation and update bodies; it is not a mere skeleton. Nevertheless this stopped snapshot explicitly retains untrusted jump-table/function boundaries and has no full function acceptance or current test report. No source migration was performed in this audit."
+    },
+    {
+      "source": "free.rs",
+      "original_entries": [
+        "0x140992f10",
+        "0x140993010",
+        "0x140993100",
+        "0x140993750",
+        "0x1409938b0",
+        "0x140993d30"
+      ],
+      "decision": "substantive_local_bodies_require_contract_review",
+      "reason": "FreeCamera's dolly driver selection, set/get/rotation/translation/update are implemented. They lack a closed original-input-to-candidate acceptance report; dolly uses glam 0.27.0 while game uses glam 0.29.3, so mint/API conversions must remain explicit."
+    },
+    {
+      "source": "walk.rs",
+      "original_entries": [
+        "0x140993e20",
+        "0x140994130",
+        "0x140994310",
+        "0x140994320",
+        "0x140994700"
+      ],
+      "decision": "substantive_local_bodies_require_producer_and_cfg_review",
+      "reason": "Teleport, eight-step spherecast/slide and height constraints exist, but true terrain/raster/collision producers and complete original-control-flow/native acceptance remain unclosed. Collision kinds/filter words retain observed representations."
+    },
+    {
+      "source": "butterfly.rs",
+      "original_entry": "0x140a0d090",
+      "decision": "partial_driver_and_selection_adapter",
+      "reason": "Driver construction/follow/advance/update are present; Query/selected butterfly producer and whole camera mode state are absent. The stopped snapshot provides no complete current acceptance."
+    },
+    {
+      "source": "camera_body.rs",
+      "decision": "partial_shared_adapter_contracts",
+      "reason": "Trait projections expose terrain and collision policies without reimplementing public engines. Their real producers and MainCamera caller sequence remain pending. bounds_xz/smoothing helpers must not be declared whole-camera recovery from local code presence."
+    }
+  ],
+  "missing_implementation_in_this_snapshot": [
+    "MainCamera orchestration and mode switching/interpolation",
+    "Real input/scheduling/terrain/collision producer wiring",
+    "Complete original camera body validation and C adaptation"
+  ],
+  "native_limit": "The original constructor returned in a bridged RNE oracle. This is not a Rust constructor comparison, compiler result, or module acceptance.",
+  "followup": "Compare these old bodies against country-core/wp19 recovery per original function and typed contract; retain independent implementations only when they add verified body evidence rather than introducing guessed runtime paths."
+}

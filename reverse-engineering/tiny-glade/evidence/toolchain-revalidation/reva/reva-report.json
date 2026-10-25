@@ -1,0 +1,116 @@
+{
+  "verdict": "retain: fixed installation; real Rust reconstruction and concurrent reading demonstrated",
+  "upstream": "https://github.com/cyberkaida/reverse-engineering-assistant",
+  "sourceCommit": "1f13d969d36dfee9766d4c23789c62cd255c613c",
+  "target": {
+    "project": "/Users/yuluo/Desktop/game/tools/ghidra-projects/reva-test/TinyGlade.gpr",
+    "programPath": "/tiny-glade.exe",
+    "executableSHA256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "sourceProject": "/Users/yuluo/Desktop/game/tools/ghidra-projects/TinyGlade.gpr",
+    "cloneMethod": "macOS cp -cR APFS clone; nonhidden independent project",
+    "functionManagerCount": 131517,
+    "mcpCountExcludesExternal": 131077
+  },
+  "installation": {
+    "ghidra": "12.1.4",
+    "java": "Amazon Corretto 21.0.5",
+    "gradle": "9.4.1 bundled cache",
+    "pythonVenv": "/Users/yuluo/Desktop/game/tools/mcp-servers/reverse-engineering-assistant/.venv",
+    "pyghidra": "3.1.0",
+    "mcp": "2.3.0",
+    "javaExtension": "/Users/yuluo/Desktop/game/tools/ghidra_12.1.4_PUBLIC/Ghidra/Extensions/reverse-engineering-assistant",
+    "result": "buildExtension SUCCESS; editable pip install SUCCESS",
+    "priorReason": "Missing Python requirements and unbuilt Java extension were installation/configuration issues, not unsupported Rust target"
+  },
+  "validatedTools": [
+    "get-function-count",
+    "get-functions",
+    "get-decompilation",
+    "find-cross-references",
+    "get-data-type-by-string",
+    "set-function-prototype",
+    "run-script",
+    "list-scripts",
+    "read-script",
+    "write-script",
+    "edit-script"
+  ],
+  "importantEvidence": {
+    "aspectBefore": "void aspect_ratio(void); decompilation loses observable return",
+    "aspectAfter": "float aspect_ratio(uint *window_size); return (float)*window_size/(float)window_size[1]",
+    "prototypePersistence": "saved, clean shutdown, reopened, persisted-signature.json and production-smoke.json",
+    "pcode": "run-script returned HighFunction ops for aspect_ratio and create_roof; after signature FLOAT_DIV and return recovered",
+    "parallel": {
+      "readWall": 13.661274500074796,
+      "scriptWall": 1.4905204579699785,
+      "readLabels": [
+        "parallel-read-0",
+        "parallel-read-1",
+        "parallel-read-2",
+        "parallel-read-3"
+      ],
+      "scriptLabels": [
+        "parallel-script-0",
+        "parallel-script-1",
+        "parallel-script-2"
+      ],
+      "stdoutChecks": [
+        {
+          "client": 0,
+          "success": true,
+          "ownMarkers": 8,
+          "foreignMarkers": false,
+          "durationMs": 1296
+        },
+        {
+          "client": 1,
+          "success": true,
+          "ownMarkers": 8,
+          "foreignMarkers": false,
+          "durationMs": 1296
+        },
+        {
+          "client": 2,
+          "success": true,
+          "ownMarkers": 8,
+          "foreignMarkers": false,
+          "durationMs": 1402
+        }
+      ]
+    },
+    "scriptLifecycle": "five dedicated tools succeeded; temporary script removed from /Users/yuluo/ghidra_scripts"
+  },
+  "bounds": {
+    "getFunctions": "maxCount3 still builds entire functionInfoCache first; measured107.697969s; source timeout300s. Exclude from default tools for this 131k target. No whole-program analysis was run.",
+    "getDecompilation": "includeIncomingReferences defaults true and may decompile calling functions even when includeReferenceContext=false to compute fromLine. Use false for primary direct analysis; use find-cross-references separately.",
+    "readConcurrency": "4 independent MCP sessions successfully read same process and program.3 run-script sessions each printed8 tagged markers during1.2s sleeping; total1.4905s, zero cross-session stdout contamination.",
+    "writeConcurrency": "Simultaneous mutation of shared program not certified; Ghidra transactions serialize DB edits but agent intents and decompiler cache can conflict. Use independent per-agent project clones. Inline scripts can mutate so route to dedicated clone even for apparent read tasks.",
+    "defaultCLI": "mcp-reva starts temporary project. Java RevaHeadlessLauncher supports persistent project, and tested custom launcher binds already opened persistent program.",
+    "scope": "86 tool schemas discovered, 11 tools exercised on existing real B database; no claim every86tool passed"
+  },
+  "production": {
+    "launcher": "/Users/yuluo/Desktop/game/tools/mcp-servers/reverse-engineering-assistant/launch-persistent.py",
+    "pid": 10571,
+    "endpoint": "http://127.0.0.1:8089/mcp/message",
+    "status": "left running for parent integration",
+    "sharedToolAllowlist": [
+      "get-function-count",
+      "get-decompilation",
+      "find-cross-references",
+      "get-data-type-by-string",
+      "list-scripts",
+      "read-script"
+    ],
+    "workerToolAllowlist": [
+      "set-function-prototype",
+      "run-script",
+      "write-script",
+      "edit-script"
+    ],
+    "schemaFile": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/reva/tested-selected-schema.json",
+    "note": "HTTP endpoint natively exposes all enabled tool groups; parent router must enforce selected per-access allowlists."
+  },
+  "noGameStarted": true,
+  "noProgramReanalysis": true,
+  "originalDatabaseEdited": false
+}

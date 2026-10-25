@@ -1,0 +1,38 @@
+--- a/tiny-glade/crates/utils/src/lib.rs
++++ b/tiny-glade/crates/utils/src/lib.rs
+@@ -193,6 +193,35 @@
+     (b - a) * (1.0 - (-delta * rate).exp()) + a
+ }
+ 
++/// 原140c90540/40B：先对 delta 翻转符号，再乘 rate，最后从1减 expf。
++/// 不钳制负时间步长，也不提前拒绝非有限值。
++pub fn time_continuous_lerp_factor(delta: f32, rate: f32) -> f32 {
++    1.0 - (-delta * rate).exp()
++}
++
++#[cfg(test)]
++mod continuous_lerp_factor_tests {
++    use super::time_continuous_lerp_factor;
++
++    #[test]
++    fn factor_keeps_decay_and_negative_time_without_clamping() {
++        assert!((time_continuous_lerp_factor(1.0 / 60.0, 9.0) - 0.139_292_0).abs() < 0.000_001);
++        assert!(time_continuous_lerp_factor(-1.0, 1.0) < 0.0);
++        assert!(time_continuous_lerp_factor(1.0, -1.0) < 0.0);
++        assert_eq!(time_continuous_lerp_factor(0.0, 9.0).to_bits(), 0);
++        assert_eq!(time_continuous_lerp_factor(-0.0, 9.0).to_bits(), 0);
++    }
++
++    #[test]
++    fn factor_keeps_overflow_and_unordered_domains() {
++        assert_eq!(time_continuous_lerp_factor(f32::MAX, 9.0), 1.0);
++        assert_eq!(time_continuous_lerp_factor(-f32::MAX, 9.0), f32::NEG_INFINITY);
++        assert!(time_continuous_lerp_factor(f32::INFINITY, 0.0).is_nan());
++        assert!(time_continuous_lerp_factor(f32::from_bits(0x7fc1_2345), 1.0).is_nan());
++        assert!(time_continuous_lerp_factor(1.0, f32::NAN).is_nan());
++    }
++}
++
+ #[cfg(test)]
+ mod continuous_lerp_tests {
+     use super::time_continuous_lerp;

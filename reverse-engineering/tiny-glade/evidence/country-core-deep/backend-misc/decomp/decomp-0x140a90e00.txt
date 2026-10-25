@@ -1,0 +1,12 @@
+systems::is_gameplay_active (0x140a90e00) — 机器码手解（Ghidra 未建函数，RE-MCP NotFound）
+Raw: 48 8b 01 | 80 78 30 01 | 75 0a | 48 8b 02 | 80 38 01 | 0f 94 c0 | c3 | 31 c0 | c3
+  0x140a90e00:  mov rax, [rcx]        ; Res<A> → 资源数据
+  0x140a90e03:  cmp byte [rax+0x30], 1 ; 状态字节 @+0x30 == 1？
+  0x140a90e07:  jne +0x0a             ; 不等 → 返回 0
+  0x140a90e09:  mov rax, [rdx]        ; Res<B> → 资源数据
+  0x140a90e0c:  cmp byte [rax], 1     ; 状态字节 @+0 == 1？
+  0x140a90e0f:  sete al               ; 相等 → 1
+  0x140a90e12:  ret
+  0x140a90e13:  xor eax, eax          ; 分支：返回 0
+  0x140a90e15:  ret
+= 双 Res 谓词：`[rcx]@+0x30==1 && [rdx]@0==1`。资源身份未定位（U）。

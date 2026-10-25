@@ -1,0 +1,11 @@
+# Positive original Bush CPU reader registration
+
+B static PE/PDB evidence only; no native execution, Cargo, production edits or inferred new stage. Entry is `system_clutter::impl$0::build`140652050, PDB308:1472. The recovered decompilation that showed only resource insertion was incomplete.
+
+The exact87-byte native FunctionSystem name `system_clutter::autoclutter::read_bush_positions_from_gpu::read_bush_positions_from_gpu` has a RIP LEA at140ee2723 and length literal57hex at140ee2731. It belongs to the first tuple entry constructed by `IntoScheduleConfigs::chain_ignore_deferred`140ee2560, PDB1075:21940, full2935B. Matching PDB type proves its first input is `ResMut<BushGrid>, Res<AssetSsboLibrary>, Res<UiSignifierStream>`; no independent BushCpuSsbo ECS resource exists in that original signature.
+
+The unique original direct CALL reference to this helper is14065226c within Plugin::build. The native chain has12 entries, not18. Entry1 immediately after reader is reset_autoclutter_for_new_frame. Further configured nested chains, populate_autoclutter_regions(slot4), tree/lantern vegetation, process candidates, entity management, animation, pin display and final configured work follow; `typed-chain.json` retains all12 exact signatures. This review does not reconstruct all those consumers or conditions.
+
+After construction,140652271 writes byte24hex=36;14065228a interns it and14065229f attaches it via in_set_inner. The native set vtable142b97c40 has `SystemSet::system_type<country_core::systems::GameSystemSet>` at its method4, proving the label identity.140652310 submits this config to SubApp::add_systems whose exact PDB generic uses `bevy_app::main_schedule::Update`. `specialized-config-targets.json`, the helper PDB/raw/ASM and set-vtable.json retain these links.
+
+Thus the reader is positive original Update/group36 work and precedes the native population chain. This proves neither global synchronization with GPU completion nor every current App resource producer. Current safe registration should use the existing canonical library/Grid owners and explicit dependency appropriate to the current configure API; it must not create a parallel mapped resource or claim an independently guessed stage. Full actual host integration remains its owner’s task.

@@ -1,0 +1,79 @@
+1403b5000 push rsi
+1403b5001 push rdi
+1403b5002 push rbx
+1403b5003 sub rsp, 0x40
+1403b5007 mov rsi, rcx
+1403b500a mov rdi, qword ptr [rdx]
+1403b500d inc qword ptr [rdx + 0x18]
+1403b5011 mov byte ptr [rdx + 0x20], 0
+1403b5015 mov rax, qword ptr [rdi + 0x10]
+1403b5019 cmp qword ptr [rdi], rax
+1403b501c je 0x1403b511d
+1403b5022 mov rcx, qword ptr [rdi + 8]
+1403b5026 mov byte ptr [rcx + rax], 0x7b
+1403b502a inc rax
+1403b502d mov qword ptr [rdi + 0x10], rax
+1403b5031 mov qword ptr [rsp + 0x30], rdx
+1403b5036 mov byte ptr [rsp + 0x38], 1
+1403b503b lea rdx, [rip + 0x26179be]
+1403b5042 lea rcx, [rsp + 0x30]
+1403b5047 mov r8d, 3
+1403b504d mov r9, rsi
+1403b5050 call 0x1404b9460
+1403b5055 test rax, rax
+1403b5058 jne 0x1403b5114
+1403b505e lea r9, [rsi + 4]
+1403b5062 lea rdx, [rip + 0x261799a]
+1403b5069 lea rcx, [rsp + 0x30]
+1403b506e mov r8d, 5
+1403b5074 call 0x1404b9460
+1403b5079 test rax, rax
+1403b507c jne 0x1403b5114
+1403b5082 lea r9, [rsi + 8]
+1403b5086 lea rdx, [rip + 0x261797b]
+1403b508d lea rcx, [rsp + 0x30]
+1403b5092 mov r8d, 8
+1403b5098 call 0x1404b7e40
+1403b509d test rax, rax
+1403b50a0 jne 0x1403b5114
+1403b50a2 lea r9, [rsi + 0x14]
+1403b50a6 lea rdx, [rip + 0x2617963]
+1403b50ad lea rcx, [rsp + 0x30]
+1403b50b2 mov r8d, 0x15
+1403b50b8 call 0x1404b9460
+1403b50bd test rax, rax
+1403b50c0 jne 0x1403b5114
+1403b50c2 lea r9, [rsi + 0x1c]
+1403b50c6 lea rdx, [rip + 0x2617958]
+1403b50cd lea rcx, [rsp + 0x30]
+1403b50d2 mov r8d, 0xc
+1403b50d8 call 0x1404b9460
+1403b50dd test rax, rax
+1403b50e0 jne 0x1403b5114
+1403b50e2 add rsi, 0x20
+1403b50e6 lea rdx, [rip + 0x2617944]
+1403b50ed lea rcx, [rsp + 0x30]
+1403b50f2 mov r8d, 0xa
+1403b50f8 mov r9, rsi
+1403b50fb call 0x1404b9460
+1403b5100 test rax, rax
+1403b5103 jne 0x1403b5114
+1403b5105 mov rcx, qword ptr [rsp + 0x30]
+1403b510a movzx edx, byte ptr [rsp + 0x38]
+1403b510f call 0x140081bc0
+1403b5114 nop 
+1403b5115 add rsp, 0x40
+1403b5119 pop rbx
+1403b511a pop rdi
+1403b511b pop rsi
+1403b511c ret 
+1403b511d mov qword ptr [rsp + 0x20], 1
+1403b5126 mov r8d, 1
+1403b512c mov r9d, 1
+1403b5132 mov rcx, rdi
+1403b5135 mov rbx, rdx
+1403b5138 mov rdx, rax
+1403b513b call 0x1428a29e0
+1403b5140 mov rdx, rbx
+1403b5143 mov rax, qword ptr [rdi + 0x10]
+1403b5147 jmp 0x1403b5022

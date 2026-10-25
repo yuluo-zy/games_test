@@ -1,0 +1,162 @@
+{
+  "baseline": "B",
+  "owner": "foundation_lang_small",
+  "integration_owner": "root",
+  "status": "candidate_partial",
+  "report_finalized_by_parent": "Agent service capacity error while composing final report; persisted source hashes, successful validation logs and real MCP evidence independently checked.",
+  "original_files": [
+    "crates/lang-lib/src/lib.rs",
+    "crates/lang-lib/src/language_library.rs"
+  ],
+  "restoration_files": [
+    "reconstruction/shared-foundation/crates/lang-lib/src/lib.rs",
+    "reconstruction/shared-foundation/crates/lang-lib/src/language_library.rs"
+  ],
+  "original_emitted_private_functions": [
+    {
+      "name": "lang_lib::lang_pack_path",
+      "section": 1,
+      "va": "0x140b9c200",
+      "size": 242,
+      "module": 636,
+      "bytes_sha256": "685cff06ce28d6a277d89d4ace9c60b9f46c220be664998c4e5829b3b38a80f5",
+      "original_file": "crates/lang-lib/src/lib.rs",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/paths-language/module-636.txt",
+        "evidence/shared-foundation-2026-10-13/paths-language/lang-root.asm.txt"
+      ]
+    },
+    {
+      "name": "lang_lib::load_locale",
+      "section": 1,
+      "va": "0x140b9c300",
+      "size": 401,
+      "module": 636,
+      "bytes_sha256": "ea3c31744bc7f912de58b29146cffbd15acd892308bada9c7d0b8de16d65f4a5",
+      "original_file": "crates/lang-lib/src/lib.rs",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/paths-language/module-636.txt",
+        "evidence/shared-foundation-2026-10-13/paths-language/lang-root.asm.txt"
+      ]
+    },
+    {
+      "name": "lang_lib::load_locale_impl",
+      "section": 1,
+      "va": "0x140b9c4a0",
+      "size": 3287,
+      "module": 636,
+      "bytes_sha256": "a04ace73f46134ed1e9dfdb521ba52f1bfe0fa69a8ec36d247128f3d34d65182",
+      "original_file": "crates/lang-lib/src/lib.rs",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/paths-language/module-636.txt",
+        "evidence/shared-foundation-2026-10-13/paths-language/lang-root.asm.txt"
+      ]
+    },
+    {
+      "name": "lang_lib::load_last_used_locale",
+      "section": 1,
+      "va": "0x140b9d180",
+      "size": 758,
+      "module": 636,
+      "bytes_sha256": "a04e0cd7ccc398e150d1b0e6c386e9eaac99472f07df9a17cc37db870ebaae64",
+      "original_file": "crates/lang-lib/src/lib.rs",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/paths-language/module-636.txt",
+        "evidence/shared-foundation-2026-10-13/paths-language/lang-root.asm.txt"
+      ]
+    },
+    {
+      "name": "lang_lib::lookup",
+      "section": 1,
+      "va": "0x140b9d480",
+      "size": 1321,
+      "module": 636,
+      "bytes_sha256": "9b5ebf72c8a7da389ad0c1567d40c47d71754f69353b8829d2831914f01728aa",
+      "original_file": "crates/lang-lib/src/lib.rs",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/paths-language/module-636.txt",
+        "evidence/shared-foundation-2026-10-13/paths-language/lang-root.asm.txt"
+      ]
+    },
+    {
+      "name": "lang_lib::game_locale",
+      "section": 1,
+      "va": "0x140b9d9b0",
+      "size": 384,
+      "module": 636,
+      "bytes_sha256": "8b60da0bff60ad4dee826c6e6c61bdaeb692b1a744e7c39ebf058f601b120cf5",
+      "original_file": "crates/lang-lib/src/lib.rs",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/paths-language/module-636.txt",
+        "evidence/shared-foundation-2026-10-13/paths-language/lang-root.asm.txt"
+      ]
+    },
+    {
+      "name": "lang_lib::language_library::LanguageLibrary::get",
+      "section": 1,
+      "va": "0x141848140",
+      "size": 1577,
+      "module": 1825,
+      "bytes_sha256": "583339ccbf2bd8a664e16ca93635cfcd13c029b3515d4f5f2f25ad0d2348c16f",
+      "original_file": "crates/lang-lib/src/language_library.rs",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/paths-language/module-1825.txt",
+        "evidence/shared-foundation-2026-10-13/paths-language/language-library.asm.txt"
+      ]
+    },
+    {
+      "name": "lang_lib::language_library::LanguageLibrary::try_from_yml",
+      "section": 1,
+      "va": "0x141848770",
+      "size": 984,
+      "module": 1825,
+      "bytes_sha256": "1eca5766ea11ba3974607e0d92b1007c06b14a0d67f46a5bb139642f5126c87e",
+      "original_file": "crates/lang-lib/src/language_library.rs",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/paths-language/module-1825.txt",
+        "evidence/shared-foundation-2026-10-13/paths-language/language-library.asm.txt"
+      ]
+    }
+  ],
+  "pdb_compiled_units_reviewed": 24,
+  "confirmed_consumer_boundaries": 15,
+  "validation": "validation.json",
+  "business_rules": [
+    "locale loading defaults to en-US when selected pack cannot load",
+    "primary lookup then retained en-US fallback; missing key cache/log once; fallback absent returns input key",
+    "requested locale persisted even when selected pack falls back",
+    "static returned translation survives hot replacement",
+    "first YAML document flat map; schema shape mismatch panics, parse error propagates",
+    "Unicode TG_DISABLE_LANG_FALLBACK value disables new fallback loading; missing/nonUnicode value enables; prior fallback is retained on later disabling"
+  ],
+  "differences_repaired": [
+    {
+      "trigger": "TG_DISABLE_LANG_FALLBACK contains nonUnicode value",
+      "old_candidate": "var_os considered present and skipped fallback",
+      "original_observed": "std::env::_var Result error branch loads fallback",
+      "repair": "std::env::var(...).is_err()",
+      "verification": "5 isolated candidate modes including nonUnicode and retained fallback; original binary runtime not executed",
+      "evidence": [
+        "../paths-language/lang-root.asm.txt",
+        "native-result.json",
+        "var_result_layout.s",
+        "locale-policy.log"
+      ]
+    }
+  ],
+  "verification_scope": {
+    "unit_tests": 2,
+    "isolated_policy_modes": 5,
+    "original_locale_asset_inputs": 15,
+    "strict_clippy_passed": true,
+    "original_runtime_executed": false,
+    "full_original_abi_required": false,
+    "full_original_abi_verified": false
+  },
+  "gaps": [
+    "Original game ECS/UI initialization not integrated, only consumer call boundaries checked",
+    "CSV/difference development feature behavior not established; lock dependencies alone do not justify recreating tool code",
+    "Full original runtime side by side comparison not executed",
+    "Other error wording/feature surfaces not source-text verified; business effects need further evidence where observable"
+  ]
+}

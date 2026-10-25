@@ -1,0 +1,61 @@
+[
+  {
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "country-core",
+      "--lib",
+      "--test",
+      "asset_libraries",
+      "--locked",
+      "--offline"
+    ],
+    "exit_code": 0,
+    "log": "regression-final.log",
+    "passed": {
+      "lib": 2087,
+      "asset_libraries": 6
+    },
+    "failed": 0,
+    "ignored": 0
+  },
+  {
+    "command": [
+      "cargo",
+      "check",
+      "-p",
+      "tiny-glade",
+      "--test",
+      "geometry_gpu",
+      "--locked",
+      "--offline"
+    ],
+    "exit_code": 0,
+    "log": "check-gpu-attempt3.log"
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "tiny-glade",
+      "--test",
+      "geometry_gpu",
+      "--locked",
+      "--offline",
+      "--",
+      "--nocapture"
+    ],
+    "environment": {
+      "RHAPSODY_REQUIRE_VULKAN": "1"
+    },
+    "execution": "host with GPU access",
+    "exit_code": 0,
+    "log": "gpu-host.log",
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "skipped": 0
+  }
+]

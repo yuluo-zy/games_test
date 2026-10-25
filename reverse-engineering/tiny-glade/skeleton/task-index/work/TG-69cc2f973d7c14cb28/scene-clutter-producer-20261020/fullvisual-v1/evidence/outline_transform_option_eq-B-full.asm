@@ -1,0 +1,42 @@
+0x1408251f0 0fb602 movzx eax, byte ptr [rdx]
+0x1408251f3 f60101 test byte ptr [rcx], 1
+0x1408251f6 7441 je 0x140825239
+0x1408251f8 a801 test al, 1
+0x1408251fa 7438 je 0x140825234
+0x1408251fc f30f104120 movss xmm0, dword ptr [rcx + 0x20]
+0x140825201 0f2e4220 ucomiss xmm0, dword ptr [rdx + 0x20]
+0x140825205 752d jne 0x140825234
+0x140825207 7a2b jp 0x140825234
+0x140825209 f30f104124 movss xmm0, dword ptr [rcx + 0x24]
+0x14082520e 0f2e4224 ucomiss xmm0, dword ptr [rdx + 0x24]
+0x140825212 7520 jne 0x140825234
+0x140825214 7a1e jp 0x140825234
+0x140825216 f30f104128 movss xmm0, dword ptr [rcx + 0x28]
+0x14082521b 0f2e4228 ucomiss xmm0, dword ptr [rdx + 0x28]
+0x14082521f 7513 jne 0x140825234
+0x140825221 7a11 jp 0x140825234
+0x140825223 0f284210 movaps xmm0, xmmword ptr [rdx + 0x10]
+0x140825227 0fc2411000 cmpeqps xmm0, xmmword ptr [rcx + 0x10]
+0x14082522c 0f50c0 movmskps eax, xmm0
+0x14082522f 83f80f cmp eax, 0xf
+0x140825232 740a je 0x14082523e
+0x140825234 31c0 xor eax, eax
+0x140825236 2401 and al, 1
+0x140825238 c3 ret 
+0x140825239 3401 xor al, 1
+0x14082523b 2401 and al, 1
+0x14082523d c3 ret 
+0x14082523e f30f10412c movss xmm0, dword ptr [rcx + 0x2c]
+0x140825243 0f2e422c ucomiss xmm0, dword ptr [rdx + 0x2c]
+0x140825247 75eb jne 0x140825234
+0x140825249 7ae9 jp 0x140825234
+0x14082524b f30f104130 movss xmm0, dword ptr [rcx + 0x30]
+0x140825250 0f2e4230 ucomiss xmm0, dword ptr [rdx + 0x30]
+0x140825254 75de jne 0x140825234
+0x140825256 7adc jp 0x140825234
+0x140825258 f30f104234 movss xmm0, dword ptr [rdx + 0x34]
+0x14082525d f30fc2413400 cmpeqss xmm0, dword ptr [rcx + 0x34]
+0x140825263 660f7ec0 movd eax, xmm0
+0x140825267 83e001 and eax, 1
+0x14082526a 2401 and al, 1
+0x14082526c c3 ret 

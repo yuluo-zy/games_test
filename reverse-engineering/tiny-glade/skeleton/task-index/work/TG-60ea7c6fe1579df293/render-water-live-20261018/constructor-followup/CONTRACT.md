@@ -1,0 +1,15 @@
+# Native buffer constructor follow-up
+
+Candidates only; no production edit, Cargo or runtime run. B original RNE/PDB identities and exact source snapshots are retained in manifest.json. Original complete constructors and descriptor strings/hashes come from the independent OS owner pack TG-81dc0cd75bc98816f4/os-populate-review-20261018/remaining-seven-constructors (14 full RNE ranges). The candidate touches only canonical local definitions, their real library factories and bounded CPU regressions. Existing blur/spawn business algorithms are byte-identical; generic TypedStorageBuffer/InstanceBuffer None policy is untouched.
+
+- `LilypadSsbo`: original `141615d80`, NAME `Lilypads`, hash `321bc3dfb10d5554`, element64B×50625, descriptor size0x317040/usage0x22/memory1/align16. Library storage is InstanceBuffer; None keeps count0 and forwards no payload. Some forwards exactly supplied bytes and publishes actual element count after whole-element/alignment/capacity validation.
+- `LilypadFlowerSsbo`: original `14161a1f0`, NAME `Lilypad Flowers`, hash `ae37cbcafbe88da4`, element64B×50625, descriptor size0x317040/usage0x22/memory1/align16. Library storage is InstanceBuffer; None keeps count0 and forwards no payload. Some forwards exactly supplied bytes and publishes actual element count after whole-element/alignment/capacity validation.
+- `ReedSsbo`: original `141617be0`, NAME `Reeds`, hash `d6d72e989e1b8586`, element48B×22500, descriptor size0x107ac0/usage0x22/memory1/align4. Library storage is InstanceBuffer; None keeps count0 and forwards no payload. Some forwards exactly supplied bytes and publishes actual element count after whole-element/alignment/capacity validation.
+
+The same canonical NAME reaches the library key, compute consumer and existing draw tags. No second alias identity or zero-sized registration is added. `TypedStorageBuffer::from_created_buffer` only wraps the real buffer returned by the same GraphicsDevice; no handle is fabricated. Existing HostTables retains the physical managed allocation.
+
+Native Lilypad rows are64B aligned16, whereas original GPU LilypadXform accesses dense48B affine transforms. Their unobserved CPU row words remain opaque `[u32;16]`, so this patch does not claim a fourth semantic column or shrink capacity to the shader stride. Reed uses the observed48B compact affine. Flower03 uses float4 with native allocation alignment4; GardenStone uses original GPU compact affine48B+color16B and native64B/align16.
+
+Tests reuse the existing ssbo::tests::MockDevice, assert actual create_buffer descriptor and absent payload, library storage/count and NAME/hash identity, and Some byte-forwarding/count. They are CPU construction contracts and do not establish GPU vegetation, scene geometry, native object ABI or full72 startup registration.
+
+Byte-interface admission uses the original common pointer4 requirement, independently of descriptor alignment16 for some64B allocations. No typed slice is constructed from bytes, so the existing byte interface can forward4-aligned payloads without a speculative16-aligned CPU dereference or a new admission restriction.

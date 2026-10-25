@@ -1,0 +1,543 @@
+{
+  "schema_version": 1,
+  "baseline": "B",
+  "scope": "asset + asset-pipe src/tests only",
+  "business_equivalence_complete": false,
+  "counts": {
+    "confirmed_fixed_defects": 1,
+    "new_confirmed_business_logic_divergences": 0,
+    "open_function_or_validation_findings": 3
+  },
+  "interface_baseline": {
+    "observed_original_private_interfaces": 61,
+    "analyzed": 42,
+    "untouched": 19,
+    "implemented": 42,
+    "native_compared": 2,
+    "consumer_integrated": 0,
+    "status_counts": {
+      "implemented_static": 40,
+      "native_compared": 2,
+      "untouched": 19
+    },
+    "closures_separate": 27,
+    "closures_analyzed": 4,
+    "schema_rule_groups_separate": 6,
+    "excluded_records": 159
+  },
+  "untouched_interfaces": [
+    "asset::inheritable::impl$2::concrete_default",
+    "asset::inheritable::impl$3::inherit_from",
+    "asset::inheritable::impl$6::concrete_default",
+    "asset::prefab::config::impl$10::inherit_from",
+    "asset::prefab::config::impl$11::concrete_default",
+    "asset::prefab::config::impl$13::default",
+    "asset::prefab::config::impl$1::inherit_from",
+    "asset::prefab::config::impl$2::concrete_default",
+    "asset::prefab::config::impl$3::inherit_from",
+    "asset::prefab::config::impl$4::concrete_default",
+    "asset::prefab::config::impl$8::inherit_from",
+    "asset::prefab::config::impl$9::concrete_default",
+    "asset::prefab::scan::PrefabScanResult::add_file_to_prefab_dependency",
+    "asset::prefab::scan::impl$2::default",
+    "asset::prefab::scan::impl$3::default",
+    "asset::prefab::scan::load_prefab_config::do_load",
+    "asset::texture::config::impl$2::default",
+    "asset_pipe::texture::BcMode::block_bytes",
+    "asset_pipe::texture::impl$1::default"
+  ],
+  "review_does_not_promote_interface_coverage": true,
+  "findings": [
+    {
+      "id": "AR-01",
+      "severity": "P2",
+      "category": "confirmed_performance_defect",
+      "status": "fixed",
+      "original_interface": "asset_pipe::texture::{process_regular_image,with_rgba8,resize_image}",
+      "source": "crates/asset-pipe/src/texture.rs:102,133,171",
+      "evidence_kind": "original bounded decompilation plus measured candidate allocations",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/bounded-report.artifacts/001.stdout.txt: 0x1420e3080 linear compressed branch directly calls 0x1417bcd60 on the existing image buffer",
+        "crates/asset-pipe/tests/allocation_review.rs"
+      ],
+      "reproduction": "512x512 owned RGBA8 image; Linear, Color/BC7, no resize or mips. Before patch two 1048576-byte Rust pixel-buffer allocations. After patch zero.",
+      "fix": "Consume an already owned decoded RGBA8 image; Cow borrows the linear compression view; consume resized RGBA8 instead of cloning it. sRGB continues to own the transfer workspace.",
+      "verification": "Counter probe failed before fix, passed after fix; BC7 bytes equal a direct call to the original Intel dependency; all 20 package tests and strict Clippy passed.",
+      "performance_limit": "Measured allocation count and cumulative bytes only. No original producer timing, wall-time speedup, or total peak RSS claim. Native ISPC allocations are outside the Rust allocator probe."
+    },
+    {
+      "id": "AR-02",
+      "severity": "P1",
+      "category": "functional_completeness_gap",
+      "status": "open_known_gap",
+      "original_interface": "B prefab Inherit/concrete_default and remaining 19 indexed interfaces",
+      "source": "crates/asset/src/prefab/config.rs:121 and original interface inventory",
+      "evidence_kind": "existing original PDB inventory; candidate source inspection",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/interface-coverage.json"
+      ],
+      "reproduction": "Partial RT/audio configs may still contain Inheritable::Inherit after currently restored outer defaults. No complete original default contract or original consumer execution has proved all required fields resolve.",
+      "fix": null,
+      "verification": "Published prefab parsing/merge regression passes, but does not turn untouched concrete_default methods or unresolved consumer leaves into complete functionality.",
+      "limit": "Not a newly proven behavioral divergence; original defaults must be recovered before choosing values. Do not invent unit scales/colors or map opaque impl owner numbers by guess."
+    },
+    {
+      "id": "AR-03",
+      "severity": "P1",
+      "category": "original_behavior_validation_gap",
+      "status": "open",
+      "original_interface": "asset_pipe::texture::{process_regular_image,process_image_array,process_dds_image,compile_texture_asset}",
+      "source": "crates/asset-pipe/src/texture.rs:150,267,321",
+      "evidence_kind": "original input inventory and current test scope",
+      "evidence": [
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md",
+        "crates/asset/tests/shipped_textures.rs",
+        "crates/asset-pipe/tests/pipeline_contract.rs"
+      ],
+      "reproduction": "Original source tree has RON options but no source PNG/JPG/DDS corpus. Archive decode/rearchive cannot establish original pixel filtering/compression producer equality.",
+      "fix": null,
+      "verification": "388 shipped archives roundtrip, 28 prefab input files parse, and synthetic contracts pass. Full producer and country-core consumer remain unaccepted."
+    },
+    {
+      "id": "AR-04",
+      "severity": "P2",
+      "category": "adapter_scope_limitation",
+      "status": "open",
+      "original_interface": "asset::inheritable::deserialize_inheritable_option",
+      "source": "crates/asset/src/inheritable.rs:80",
+      "evidence_kind": "source-confirmed limitation; original broader consumer scope unknown",
+      "evidence": [
+        "crates/asset/src/inheritable.rs",
+        "evidence/shared-foundation-2026-10-13/assets-small-first/DELIVERY.md"
+      ],
+      "reproduction": "Callback captures ron::RawValue then creates a fresh RON decoder; it requires DeserializeOwned. Generic non-RON deserializers, borrowed values and outer RON extension propagation are not supported/proved.",
+      "fix": null,
+      "verification": "Shipped RON and bare/Some/None/unit cases pass. Original generic signatures do not prove the game used another format. No private replacement parser has been introduced."
+    }
+  ],
+  "performance_risks": [
+    {
+      "id": "AP-01",
+      "severity": "P2",
+      "status": "original_policy_preserved_unbenchmarked",
+      "source": "crates/asset-pipe/src/texture.rs:369",
+      "rule": "Original easy-parallel each/run schedules one task per descriptor and joins every task before collecting errors.",
+      "risk": "Large image batches may have high simultaneous decode/compression memory and many threads. No reconstructed private pool; do not silently add a worker cap while claiming original scheduling equivalence.",
+      "evidence": "evidence/shared-foundation-2026-10-13/assets-small-first/parallel-policy.json"
+    },
+    {
+      "id": "AP-02",
+      "severity": "P2",
+      "status": "original_cache_policy_preserved",
+      "source": "crates/asset-pipe/src/texture.rs:328",
+      "rule": "Cache mtime is metadata(desc.path).modified(), including the array directory, not maximum recursive source_files() mtime; header-only hit is permitted.",
+      "risk": "Editing existing array-layer contents without changing the directory mtime can keep an old cache hit. Eight valid header bytes can also accept a missing payload. These are documented original rules, not candidate fixes authorized to change business behavior.",
+      "evidence": "bounded original compile_texture_asset 0x1417b8f50 metadata/caching sequence; current cache test"
+    },
+    {
+      "id": "AP-03",
+      "severity": "P3",
+      "status": "allocation_risk_not_benchmarked",
+      "source": "crates/asset/src/texture/blob.rs:27",
+      "rule": "Load creates an aligned archive copy and then an owned Vec payload through original rkyv.",
+      "risk": "Peak memory includes input, aligned archive and decoded payload. Alignment and ownership justify the safe adapter; no runtime memory-budget or original loader-equivalence proof yet."
+    }
+  ],
+  "dependency_reuse": {
+    "algorithm_reimplementations_found": [],
+    "original_lock_sha256": "9e0cb4a0fa173122fa7cd552aa639f5ee977abc22c74aec92398808c707184bd",
+    "current_lock_sha256": "9673c8cc887ac441d3ba891f6ba3e6bab6401c39cb01a7b224851fb6344d0a8c",
+    "reachable_external_packages": 49,
+    "all_exact_original_identity": true,
+    "external_packages": [
+      {
+        "name": "adler",
+        "version": "1.0.2",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "ahash",
+        "version": "0.7.6",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "fcb51a0695d8f838b1ee009b3fbf66bda078cd64590202a864a8f3e8c4315c47",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "anyhow",
+        "version": "1.0.86",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "b3d1d046238990b9cf5bcde22a3fb3584ee5cf65fb2765f454ed428c7a0063da",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "autocfg",
+        "version": "1.1.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "base64",
+        "version": "0.21.2",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "604178f6c5c21f02dc555784810edfb88d34ac2c73b2eae109655649ee73ce3d",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "bitflags",
+        "version": "1.3.2",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "bitflags",
+        "version": "2.9.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "5c8214115b7bf84099f1309324e63141d4c5d7cc26862f97a0a857dbefe165bd",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "bytecheck",
+        "version": "0.6.9",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "d11cac2c12b5adc6570dad2ee1b87eff4955dac476fe12d81e5fdd352e52406f",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "bytecheck_derive",
+        "version": "0.6.9",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "13e576ebe98e605500b3c8041bb888e966653577172df6dd97398714eb30b9bf",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "bytemuck",
+        "version": "1.16.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "78834c15cb5d5efe3452d58b1e8ba890dd62d21907f867f383358198e56ebca5",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "byteorder",
+        "version": "1.5.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "cfg-if",
+        "version": "1.0.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "crc32fast",
+        "version": "1.3.2",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "b540bd8bc810d3885c6ea91e2018302f68baba2129ab3e88f32389ee9370880d",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "ddsfile",
+        "version": "0.5.1",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "594ecd967c2f40db5dde8da4c356975fc1fe030e951c7c3962f6dc2e80042e87",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "easy-parallel",
+        "version": "3.2.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "6907e25393cdcc1f4f3f513d9aac1e840eb1cc341a0fccb01171f7d14d10b946",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "enum_primitive",
+        "version": "0.1.1",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "be4551092f4d519593039259a9ed8daedf0da12e5109c5280338073eaeb81180",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "flate2",
+        "version": "1.0.24",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "f82b0f4c27ad9f8bfd1f3208d882da2b09c301bc1c828fd3a00d0216d2fbbff6",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "getrandom",
+        "version": "0.2.7",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "4eb1a864a501629691edf6c15a593b7a51eebaa1e8468e9ddc623de7c9b58ec6",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "hashbrown",
+        "version": "0.12.3",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "hermit-abi",
+        "version": "0.2.6",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "ee512640fe35acbfb4bb779db6f0d80704c2cacfa2e39b601ef3e3f47d1ae4c7",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "image",
+        "version": "0.25.1",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "fd54d660e773627692c524beaad361aca785a4f9f5730ce91f42aabe5bce3d11",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "intel_tex_2",
+        "version": "0.4.0",
+        "source": "git+https://github.com/PounceLight/intel-tex-rs-2.git?rev=4fb0e0b70f868bccd529d45e1626de2f55a20b83#4fb0e0b70f868bccd529d45e1626de2f55a20b83",
+        "checksum": null,
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "ispc_rt",
+        "version": "2.0.1",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "c8d30e08ddfd6fe26c3ee2e856dff022420cd0514ed16f5ccf2dc3e1d5cae578",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "libc",
+        "version": "0.2.170",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "875b3680cb2f8f71bdcf9a30f38d48282f5d3c95cbf9b3fa57269bb5d5c06828",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "miniz_oxide",
+        "version": "0.5.4",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "96590ba8f175222643a85693f33d26e9c8a015f599c216509b1a6894af675d34",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "num-traits",
+        "version": "0.1.43",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "92e5113e9fd4cc14ded8e499429f396a20f98c772a47cc8622a736e1ec843c31",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "num-traits",
+        "version": "0.2.19",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "num_cpus",
+        "version": "1.15.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "0fac9e2da13b5eb447a6ce3d392f23a29d8694bff781bf03a16cd9ac8697593b",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "once_cell",
+        "version": "1.21.3",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "png",
+        "version": "0.17.6",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "8f0e7f4c94ec26ff209cee506314212639d6c91b80afb82984819fafce9df01c",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "proc-macro2",
+        "version": "1.0.93",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "60946a68e5f9d28b0dc1c21bb8a97ee7d018a8b322fa57838ba31cc878e22d99",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "ptr_meta",
+        "version": "0.1.4",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "0738ccf7ea06b608c10564b31debd4f5bc5e197fc8bfe088f68ae5ce81e7a4f1",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "ptr_meta_derive",
+        "version": "0.1.4",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "16b845dbfca988fa33db069c0e230574d15a3088f147a87b64c7589eb662c9ac",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "quote",
+        "version": "1.0.36",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "0fa76aaf39101c457836aec0ce2316dbdc3ab723cdda1c6bd4e6ad4208acaca7",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "relative-path",
+        "version": "1.9.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "c707298afce11da2efef2f600116fa93ffa7a032b5d7b628aa17711ec81383ca",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "rend",
+        "version": "0.3.6",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "79af64b4b6362ffba04eef3a4e10829718a4896dac19daa741851c86781edf95",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "rkyv",
+        "version": "0.7.39",
+        "source": "git+https://github.com/PounceLight/rkyv.git?rev=031d58108ccf8c0e125b06b017f72b4afd67e9a3#031d58108ccf8c0e125b06b017f72b4afd67e9a3",
+        "checksum": null,
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "rkyv_derive",
+        "version": "0.7.39",
+        "source": "git+https://github.com/PounceLight/rkyv.git?rev=031d58108ccf8c0e125b06b017f72b4afd67e9a3#031d58108ccf8c0e125b06b017f72b4afd67e9a3",
+        "checksum": null,
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "ron",
+        "version": "0.8.1",
+        "source": "git+https://github.com/PounceLight/ron?rev=2787d8c#2787d8c05250c4dd706dfb358a2e9f16969d2968",
+        "checksum": null,
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "seahash",
+        "version": "4.1.0",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "1c107b6f4780854c8b126e228ea8869f4d7b71260f962fefb57b996b8959ba6b",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "serde",
+        "version": "1.0.200",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "ddc6f9cc94d67c0e21aaf7eda3a010fd3af78ebf6e096aa6e2e13c79749cce4f",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "serde_derive",
+        "version": "1.0.200",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "856f046b9400cee3c8c94ed572ecdb752444c24528c035cd35882aad6f492bcb",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "syn",
+        "version": "1.0.107",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "1f4064b5b16e03ae50984a5a8ed5d4f8803e6bc1fd170a3cda91a1be4b18e3f5",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "syn",
+        "version": "2.0.101",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "8ce2b7fc941b3a24138a0a7cf8e858bfc6a992e7978a068a5c760deb0ed43caf",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "unicode-ident",
+        "version": "1.0.18",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "5a5f39404a5da50712a4c1eecf25e90dd62b613502b7e925fd4e4d19b5c96512",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "version_check",
+        "version": "0.9.4",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "wasi",
+        "version": "0.11.0+wasi-snapshot-preview1",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "zune-core",
+        "version": "0.4.12",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "3f423a2c17029964870cfaabb1f13dfab7d092a62a29a89264f4d36990ca414a",
+        "original_lock_exact_match": true
+      },
+      {
+        "name": "zune-jpeg",
+        "version": "0.4.11",
+        "source": "registry+https://github.com/rust-lang/crates.io-index",
+        "checksum": "ec866b44a2a1fd6133d363f073ca1b179f438f99e7e5bfb1e33f7181facfe448",
+        "original_lock_exact_match": true
+      }
+    ],
+    "delegates": [
+      "image codec/conversion/CatmullRom",
+      "Intel BC4/5/7 compressor and presets",
+      "ddsfile decoding",
+      "RON parsing/RawValue",
+      "serde typed schema",
+      "rkyv validation/archive",
+      "easy-parallel scheduling/join",
+      "std Arc/HashMap/filesystem/SystemTime",
+      "relative-path operations"
+    ],
+    "private_policy_retained": [
+      "inheritance/missing/default state transitions",
+      "RGB-only transfer constants/branches",
+      "compression eligibility and formats",
+      "mip sizing and repeated-edge padding",
+      "scan extension/array index policy",
+      "metadata/cache/compile error ordering",
+      "prefab dependency association"
+    ],
+    "limits": [
+      "Not an audit of older unrelated restoration directories",
+      "Cargo.lock does not establish original complete compile-time feature set"
+    ]
+  },
+  "current_source_sha256": {
+    "reconstruction/shared-foundation/crates/asset/src/inheritable.rs": "47461cdea243ef0fca1fb44fa4daebd85f1dd2c4673b9e7b406fbfaff92eded7",
+    "reconstruction/shared-foundation/crates/asset/src/lib.rs": "293e0615754a8491caece8a084c75fe110e4fea0e01e583190f6f5c661cf04e3",
+    "reconstruction/shared-foundation/crates/asset/src/prefab/config.rs": "3a9a3528466ab8b5568f89b930f3c0c565eeb750a53425bb2c0b56562d307690",
+    "reconstruction/shared-foundation/crates/asset/src/prefab/scan.rs": "ad310c2aaa55c750d80195c2ac6f9bb061bfad32e9c3f30b04ff0d9dde1cf062",
+    "reconstruction/shared-foundation/crates/asset/src/prefab.rs": "6692ce67bee015587c93db7c507160e85fe396718e14b55940fb1d2fb900bcfb",
+    "reconstruction/shared-foundation/crates/asset/src/texture/blob.rs": "3c167d325ab2942eae36a6d150a28ea536ee8d80b82ce085b6e084f41901df84",
+    "reconstruction/shared-foundation/crates/asset/src/texture/config.rs": "e2066688d980b3c446fafe598dcea9f3367ac1084a75f9b2a978a0973ba67088",
+    "reconstruction/shared-foundation/crates/asset/src/texture/desc.rs": "c87be9f80e1c2deb1d4df1a67a547582bd594a94eea9334dae2216aa42892843",
+    "reconstruction/shared-foundation/crates/asset/src/texture/scan.rs": "fa5c157bf0cfdc58949d4869683ee7a2d21a725a9b5133ae15059dfb5550f929",
+    "reconstruction/shared-foundation/crates/asset/src/texture.rs": "9d107c5aa5b10184e6bb26744e13f28ebd1a38a6d0c8b8351032ba35b2921851",
+    "reconstruction/shared-foundation/crates/asset/tests/inheritance_contract.rs": "79d2002aa675cf635f5eacffddd36aa382b02840b52ebf72091394c90dedf314",
+    "reconstruction/shared-foundation/crates/asset/tests/prefab_name_contract.rs": "74fe702a9d8be68e25322176568d3125c5d6ec51a66604b9614938446aa2163b",
+    "reconstruction/shared-foundation/crates/asset/tests/shipped_prefabs.rs": "e9d0f424308b7f10d6803ad201764dd205e8bf966d10a5da75a88cf850323e8c",
+    "reconstruction/shared-foundation/crates/asset/tests/shipped_textures.rs": "5230a50d2b1091187f475ea6df6078f4982a6841f4e9483230b53ff9abf46a68",
+    "reconstruction/shared-foundation/crates/asset-pipe/src/lib.rs": "9edc23d6191c33d74a6327671ce66036425614b9e9e190ac22c99340d92ed8b9",
+    "reconstruction/shared-foundation/crates/asset-pipe/src/texture.rs": "581d6ee69449a5a33426241589d81e23775c0a0e29de1f3bde2cc42cc234dfba",
+    "reconstruction/shared-foundation/crates/asset-pipe/tests/allocation_review.rs": "8124413b74429733a3f4fb632278948577ecdadb151a7812f9583d238e530052",
+    "reconstruction/shared-foundation/crates/asset-pipe/tests/pipeline_contract.rs": "3d39598da33cc493b3323f9488e1d0b764594ec9ac9f89f62f2e07e395ba4ca1"
+  },
+  "original_comparison_scope": "Reused bounded original instructions/PDB and prior differential artifacts; new allocation/BC7 checks run reconstructed code + original dependency, not original game runtime."
+}

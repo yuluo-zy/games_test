@@ -1,0 +1,12 @@
+{
+  "target": {"path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe", "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"},
+  "provider": {"id": "ghidra", "version": "12.1.4"},
+  "database": "tg_producer_closure",
+  "session_key": "re_mcp_ghidra:tg_producer_closure",
+  "steps": [
+    {"tool":"open_database","args":{"file_path":"D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe","database_id":"tg_producer_closure","run_auto_analysis":false}},
+    {"tool":"wait_for_analysis","args":{"database":"tg_producer_closure"}},
+    {"tool":"list_functions","args":{"database":"tg_producer_closure"}},
+    {"tool":"close_database","args":{"database":"tg_producer_closure","save":false}}
+  ]
+}

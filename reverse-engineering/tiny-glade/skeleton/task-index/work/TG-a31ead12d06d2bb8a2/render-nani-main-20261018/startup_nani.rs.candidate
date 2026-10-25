@@ -1,0 +1,179 @@
+//! Original Nani startup and atlas reload, adapted to the current resource owners.
+//! B startup@140a38610/4765B, reload@140a398b0/1458B. ShaderBackend is
+//! the current host compilation boundary used instead of reproducing native
+//! GraphicsDevice/ShaderWatch internal layout.
+use std::collections::HashSet;
+use bevy_ecs::system::Commands;
+use crate::{
+    asset_libraries::{shader_library::AssetShaderLibrary, ssbo_library::AssetSsboLibrary},
+    components::KeepOnLevelUnload,
+    render::{
+        nani::{GpuDrivenDrawable, buffers::{NaniPrevVisibilityBitmaskSsbo, NaniNextVisibilityBitmaskSsbo},
+            gpu_world::{GpuWorld, GpuWorldSubset, GpuWorldSubsetKind, ExternalGpuWorldSubset, OwnedGpuWorldSubset},
+            instance_data::*},
+        shader::boundary::ShaderBackend,
+        ssbo::rhapsody_boundary::GraphicsDevice,
+    },
+    resources::{placement_data::PlacementDataSsbo, render::mesh_atlas_library::{MeshAtlasLibrary, MeshAtlasesModifiedCmd}},
+    systems::render_loop::draw_passes::draw_lists::OcclusionCulled,
+    utils::components::transform::Transform,
+};
+
+/// Registration order differs from GpuWorldSubsetKind's discriminant order.
+/// Every pair comes from the original stack table passed to the real loader.
+pub const NANI_SHADERS: [(&str, &str); 27] = [
+    ("/clearing/instanced_background_tree.raster.hlsl", "instanced_background_tree_shader"),
+    ("/clearing/tree_trunk.raster.hlsl", "tree_trunk"),
+    ("/clearing/tree_canopy.raster.hlsl", "tree_canopy"),
+    ("/nani_solid_vertex_color.raster.hlsl", "nani_solid_vertex_color"),
+    ("/nani_solid_vertex_color_window.raster.hlsl", "nani_solid_vertex_color_window"),
+    ("/nani_solid_vertex_color_window_glass.raster.hlsl", "nani_solid_vertex_color_window_glass"),
+    ("/nani_solid_vertex_color_bricks.raster.hlsl", "nani_solid_vertex_color_bricks"),
+    ("/nani_gothic_window_bricks.raster.hlsl", "nani_gothic_window_bricks"),
+    ("/nani_instanced_roof.raster.hlsl", "nani_instanced_roof"),
+    ("/nani_roof_floor.raster.hlsl", "nani_roof_floor"),
+    ("/nani_curved_halftimber.raster.hlsl", "nani_curved_halftimber"),
+    ("/nani_plant.raster.hlsl", "nani_plant"),
+    ("/nani_flower.raster.hlsl", "nani_flower"),
+    ("/nani_bush.raster.hlsl", "nani_bush"),
+    ("/nani_wooden_plank.raster.hlsl", "nani_wooden_plank"),
+    ("/nani_preplaced_flower.raster.hlsl", "nani_preplaced_flower"),
+    ("/nani_solid_albedo_map.raster.hlsl", "nani_solid_albedo_map"),
+    ("/nani_solid_albedo_map_emissive.raster.hlsl", "nani_solid_albedo_map_emissive"),
+    ("/critters/nani_wren.raster.hlsl", "nani_wren"),
+    ("/nani_lantern_emissive.raster.hlsl", "nani_lantern_emissive"),
+    ("/nani_plaster.raster.hlsl", "nani_plaster"),
+    ("/nani_cloth.raster.hlsl", "nani_cloth"),
+    ("/nani_smoke.raster.hlsl", "nani_smoke"),
+    ("/nani_balcony_door.raster.hlsl", "nani_balcony_door"),
+    ("/nani_uber.raster.hlsl", "nani_uber"),
+    ("/nani_velocity_only.raster.hlsl", "nani_velocity_only"),
+    ("/nani_stairs_floor.raster.hlsl", "nani_stairs_floor"),
+];
+
+/// Shader lookup used by the 27-way native subset switch.
+pub const SHADER_BY_SUBSET: [&str; 27] = [
+    "tree_canopy",
+    "tree_trunk",
+    "instanced_background_tree_shader",
+    "nani_solid_vertex_color",
+    "nani_solid_vertex_color_window",
+    "nani_solid_vertex_color_window_glass",
+    "nani_solid_vertex_color_bricks",
+    "nani_gothic_window_bricks",
+    "nani_instanced_roof",
+    "nani_roof_floor",
+    "nani_plant",
+    "nani_flower",
+    "nani_bush",
+    "nani_wooden_plank",
+    "nani_preplaced_flower",
+    "nani_solid_albedo_map",
+    "nani_solid_albedo_map_emissive",
+    "nani_wren",
+    "nani_lantern_emissive",
+    "nani_plaster",
+    "nani_cloth",
+    "nani_smoke",
+    "nani_balcony_door",
+    "nani_uber",
+    "nani_curved_halftimber",
+    "nani_velocity_only",
+    "nani_stairs_floor",
+ ];
+
+/// Use each actual generic instance payload. Custom cull shader selection stays
+/// in the real gpu_generate_draw_lists consumer, keyed by these exact kinds.
+pub fn create_world_subset(
+    device: &dyn GraphicsDevice,
+    kind: GpuWorldSubsetKind,
+    mesh_part_count: usize,
+) -> GpuWorldSubset {
+    use GpuWorldSubsetKind::*;
+    macro_rules! owned { ($ty:ty) => {
+        GpuWorldSubset::Owned(OwnedGpuWorldSubset::new_with_mesh_parts::<$ty>(device, kind, mesh_part_count))
+    }; }
+    match kind {
+        Canopy | TreeTrunk | BackgroundTree => owned!(PlacementDataSsbo),
+        SolidVertexColor => owned!(SolidVertexColorInstanceData),
+        SolidVertexColorWindow => owned!(SolidVertexColorWindowInstanceData),
+        SolidVertexColorWindowGlass => owned!(SolidVertexColorWindowGlassInstanceData),
+        SolidVertexColorBricks => owned!(SolidVertexColorBricksInstanceData),
+        GothicWindowBricks => owned!(GothicWindowBricksInstanceData),
+        RoofTile | Flower | Bush | WoodenPlank => GpuWorldSubset::External(ExternalGpuWorldSubset { mesh_part_count }),
+        RoofFloor => owned!(StoneFloorInstanceData),
+        Plant => owned!(PlantInstanceData),
+        PreplacedFlower => owned!(PreplacedFlowerInstanceData),
+        SolidAlbedoMap => owned!(SolidAlbedoMapInstanceData),
+        SolidAlbedoMapEmissive => owned!(SolidAlbedoMapEmissiveInstanceData),
+        Wren => owned!(WrenInstanceData),
+        LanternEmissive => owned!(LanternEmissiveInstanceData),
+        Plaster => owned!(PlasterInstanceData),
+        Cloth => owned!(ClothInstanceData),
+        Smoke => owned!(SmokeInstanceData),
+        BalconyDoor => owned!(BalconyDoorInstanceData),
+        Uber => owned!(UberInstanceData),
+        CurvedHalfTimber => owned!(CurvedHalfTimberInstanceData),
+        VelocityOnly => owned!(VelocityOnlyInstanceData),
+        StairsFloor => owned!(StairsFloorInstanceData),
+    }
+}
+
+/// The caller supplies the actual registered atlases and this App's libraries.
+/// No mesh is fabricated for a missing atlas registration: the original slot
+/// becomes None. Visibility capacity derives from this same GpuWorld's params.
+pub fn startup_nani(
+    device: &dyn GraphicsDevice,
+    backend: &dyn ShaderBackend,
+    shaders: &AssetShaderLibrary,
+    ssbos: &AssetSsboLibrary,
+    atlases: &MeshAtlasLibrary,
+    gpu_world: &mut GpuWorld,
+    commands: &mut Commands<'_, '_>,
+) {
+    for (path, name) in NANI_SHADERS {
+        super::load_shaders::load_shader_into_library(shaders, backend, path, name);
+    }
+    for kind in GpuWorldSubsetKind::all() {
+        let atlas = atlases.get_by_world_subset(kind);
+        let name = SHADER_BY_SUBSET[kind as usize];
+        let shader = shaders.get_raster_handle_by_name(name).unwrap_or_else(|| {
+            panic!("Nani shader for world subset {kind:?} is not available")
+        });
+        let subset = if let Some(mesh) = atlas.registered.clone() {
+            commands.spawn((
+                GpuDrivenDrawable { mesh, shader, transform: Transform::default() },
+                KeepOnLevelUnload,
+                OcclusionCulled,
+            ));
+            Some(create_world_subset(device, kind, atlas.atlas.layouts.len()))
+        } else {
+            None
+        };
+        gpu_world.update_mesh_atlas_slices(device, kind, &atlas.atlas.layouts);
+        gpu_world.assign_optional_subset(kind, subset);
+    }
+    let word_count = (gpu_world.draw_list_params().total_cmd_offset >> 5) as usize;
+    // Native shares a zero Vec<u32> between two typed constructors. The two
+    // Rust carriers are distinct; both real uploads have identical bytes.
+    let previous = vec![NaniPrevVisibilityBitmaskSsbo([0]); word_count];
+    ssbos.add_new_with_data(device, &previous);
+    let next = vec![NaniNextVisibilityBitmaskSsbo([0]); word_count];
+    ssbos.add_new_with_data(device, &next);
+}
+
+/// Native reload unions the subsets from all pending modification events and
+/// uploads each existing layout. It neither rebuilds instance allocations nor
+/// changes their stored mesh-part count.
+pub fn reload_nani<'a>(
+    device: &dyn GraphicsDevice,
+    atlases: &MeshAtlasLibrary,
+    gpu_world: &GpuWorld,
+    modified: impl IntoIterator<Item = &'a MeshAtlasesModifiedCmd>,
+) {
+    let mut changed = HashSet::new();
+    for event in modified { changed.extend(event.subsets.iter().copied()); }
+    for kind in changed {
+        gpu_world.update_mesh_atlas_slices(device, kind, &atlases.get_by_world_subset(kind).atlas.layouts);
+    }
+}

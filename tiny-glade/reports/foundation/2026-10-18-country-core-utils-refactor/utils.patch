@@ -1,0 +1,2999 @@
+--- before/crates/country-core/src/utils/README.md
++++ after/crates/country-core/src/utils/README.md
+@@ -1,66 +1,41 @@
+-# country-core::utils
++# 游戏侧工具模块
+ 
+-这里提供游戏侧的编辑几何、脏区追踪、网格加载、调试绘制和音频循环工具。它与工作区的 [`utils` crate](../../../utils/README.md) 是两个不同的模块：本目录保留游戏调用策略，共享 crate 提供曲线、采样、索引等可复用实现。
++本目录服务编辑、世界栅格、资产加载、调试绘制和音频。通用数学与容器复用 glam、Serde、Bevy、标准库及 [共享 utils](../../../utils/README.md)，不再按反汇编逐条表达业务。
+ 
+-本文按 2026-10-18 实际源码与调用方整理。代码正确性问题、反例和证据见 [REVIEW.md](REVIEW.md)，检查记录见 [审查报告](../../../../reports/country-core-utils-review-2026-10-18/README.md)。本次没有修改业务实现，也没有完成原版行为等价验收。
++2026-10-18 重构以功能正确性为准，允许修正逆向解释。变更和验证见 [REVIEW.md](REVIEW.md) 与 [重构报告](../../../../reports/country-core-utils-refactor-2026-10-18/README.md)。旧原版差分报告不覆盖本次行为变更。
+ 
+-## 文件与功能
++## 文件职责
+ 
+-| 文件 | 业务逻辑 | 当前消费者或边界 |
++| 模块 | 职责 | 消费方 |
+ |---|---|---|
+-| [mod.rs](mod.rs) | Bevy Resource 访问、消费事件队列、世界坐标转屏幕坐标；再导出哈希函数 | Resource 访问用于绘制参数等；哈希复用 `render::utils`。事件 helper 和屏幕转换尚未检索到本目录外的直接调用 |
+-| [dirty_tiles.rs](dirty_tiles.rs) | 用 64 行 `u64` 记录 64×64 个脏瓦片；矩形/笔画置位、相交查询、筛选、快照清空、OR 合并 | `resources::world_raster`、碰撞世界、墙发布及历史栅格回放 |
+-| [conservative_line_raster.rs](conservative_line_raster.rs) | 把带半径线段保守栅格化，通过回调输出整数格坐标 | `DirtyTiles::rasterize_world_space_stroke`；自身不裁剪到 64×64 |
+-| [float_grid.rs](float_grid.rs) | 再导出共享 512×512 双线性采样、130 世界尺寸和兼容性开关 | `RasterBufferRef<512>`；算法在共享 crate，本文件主要是适配和测试 |
+-| [index_condenser.rs](index_condenser.rs) | 稳定 `u32` ID 映射到稠密索引，修复过期索引提示，交换删除 | `render::nani::gpu_world::OwnedGpuWorldSubset`；存储和映射策略复用共享 crate |
+-| [child_wall.rs](child_wall.rs) | 将子墙区间 `[a,b]` 再切分，生成新 ID 和两个插值端点 | `systems::wall::eraser::archivist`，支持擦除后的子墙追踪 |
+-| [geo.rs](geo.rs) | 点列生成/更新白色折线网格，二维点映射到 XZ 平面，调整闭合曲线起点 | 复用 `Mesh` 和共享 `Curve2`；本轮未检索到这些公开 helper 的本目录外直接调用 |
+-| [project_cursor_onto_ray.rs](project_cursor_onto_ray.rs) | 像素坐标转比例屏幕坐标，再作透视校正，将光标投影到世界射线 | `systems::ui::resources::slider3d` 的三维滑块 |
+-| [load_json.rs](load_json.rs) | 读 JSON 网格、解析属性、校验索引覆盖范围、记录源路径 | `AssetMeshLibrary` 初次加载/热重载，成功后替换资产 |
+-| [debug_viz.rs](debug_viz.rs) | 球/矩形/折线请求构造、颜色映射、折线延迟实体工厂 | 碰撞可视化等使用请求类型；折线工厂能唤醒，但完整可绘制实体尚未接通 |
+-| [audio_utils.rs](audio_utils.rs) | 环形事件实例播放器，支持延迟停止和 FMOD `loop` 参数控制 | `AudioCore::instantiate_loop` 及树、水、屋顶、地形等音频系统 |
+-| [components/transform.rs](components/transform.rs) | 游戏自有 TRS 组件、矩阵、朝向、look-at 和近似比较 | drawable、羊控制、路径、指示符动画；数学复用 glam/共享 Transform |
++| `mod.rs` | Resource/事件便捷入口、点投屏 | 绘制参数等 |
++| `dirty_tiles` | 64×64 脏瓦片、区域更新、OR 合并与快照 | 世界栅格、碰撞、墙发布、历史回放 |
++| `conservative_line_raster` | 带半径线段的保守覆盖及有界输出 | 脏笔画 |
++| `float_grid` | 共享采样与兼容性开关的再导出 | `RasterBufferRef<512>` |
++| `index_condenser` | 稳定 ID 到稠密索引的类型化适配 | GPU 实例数组 |
++| `child_wall` | 子墙参数区间切片 | 墙擦除归档 |
++| `geo` | 白色折线网格、XZ 映射、闭合曲线起点调整 | 编辑几何 |
++| `project_cursor_onto_ray` | 屏幕换算及透视校正 | 三维滑块 |
++| `load_json` | JSON 网格解析和发布前校验 | 资产加载/热重载 |
++| `debug_viz` | 调试图元请求与折线实体工厂 | 调试可视化 |
++| `audio_utils` | 环形音效实例、停止延时和轮换 | 场景音效 |
++| `components::transform` | 游戏 TRS 组件 | 实体、动画、实例上传 |
+ 
+-## 主要数据流
++## 栅格更新
+ 
+-### 编辑区域 → 脏瓦片 → 发布或上传
++世界 XZ 范围为 `[-65,65]`，映射到 64×64 瓦片；每瓦片对应 8×8 个栅格像素。位图每行一个 u64，总大小 512 字节。
+ 
+-`DirtyTiles` 是 512 字节位图；第 `y` 行的第 `x` 位对应一个瓦片，单瓦片边长为 8 个栅格像素。世界 XZ 平面使用约 130 的边长。
++- 矩形参数为 `[min_x,min_z,max_x,max_z]`，转换结果采用半开区间 `minimum..end`，上界允许为 64。完整世界矩形覆盖全部 4096 格。
++- 矩形置位和相交查询使用整行位掩码，最多处理 64 个机器字，无临时堆分配。
++- 非有限、逆序或完全落在世界外的矩形不标记边缘；单点查询对非法输入返回 None。
++- 连续笔画至少需要两个点，半径必须有限且非负。先限制输出范围，每段最多访问 4096 格，不枚举网格外格子。
++- 保守覆盖使用半径的轴对齐外扩，允许多标记少量边界格，保证圆头笔画不会漏标。负坐标用 floor。
++- 可能触及世界、且端点或半径超过 16 个世界宽度时，保守标记全图，避免浮点精度丢掉原点偏移；完全位于世界外的范围仍直接跳过。
++- `extend` 和发布增量按位 OR；`take_and_clear` 取出快照并清空当前位图；`retain` 按行、列递增筛选已置位格。
+ 
+-- 矩形以 `[min_x,min_z,max_x,max_z]` 传入。坐标经 `mul_add(scale,32)`，下界 floor、上界 ceil，再钳到 `0..63`；遍历采用半开区间。因上界也钳到 63，矩形路径不会置第 63 行/列；这是当前刻意保留的原规则，不能直接改成常见的 `0..64`。
+-- 笔画至少需要两个点；取各点 XZ，转换半径后逐段调用保守线栅格。`set_cell` 只接受 `0..=63`，因此笔画路径可以置第 63 行/列。
+-- 单点查询 `cell_from_world_space` 使用截断和边界判定，与矩形的 floor/ceil/clamp 不同；NaN 映射到格 0，轻微负的缩放结果也可能截断为 0。
+-- `extend` / `StateDelta::apply_to` 按位 OR，多个变更不会彼此覆盖。`take_and_clear` 先复制再清空；碰撞世界发布该快照。
+-- `retain` 按行、行内低位到高位访问已置位格，拒绝的格被清除。世界栅格上传用它保留尚不能处理的瓦片。
++通用 `conservative_plot_line` 的输出量仍取决于实际跨度。固定网格必须使用 `conservative_plot_line_in_bounds`，先裁剪整数输出范围，再生成格子。
+ 
+-保守线栅格选择绝对增量较大的轴作为主轴，排序端点，再逐列计算带宽并输出闭区间格子。交换 X/Y 支持另一主轴；退化线段仍可输出一个格。它会枚举网格外坐标，再由 `set_cell` 丢弃，因此输入跨度直接影响开销；极大坐标的回绕问题见审查 F1。
+-
+-### 存档版本 → 采样策略 → 世界栅格读取
+-
+-共享 `FloatGridCells` 使用行优先索引，`RasterBufferRef<512>` 返回 `u8 / 255.0`。默认世界范围为 X/Z 各 130。
+-
+-旧模式按格角采样，在正边界保留外推行为；新模式按格心采样并钳到边缘格。`CENTERED_PATH` 是同一份共享原子开关，初始为 false。`LoadVersionGates::from_version` 以 `version >= 0x1a` 选择新模式，`apply_centered_path` 提供写入接口；**当前生产加载路径尚未调用该写入接口**。不能把“开关已有定义”理解为读档兼容链已经闭合。
+-
+-### 稳定 ID → 稠密槽位 → 并行实例数组
+-
+-`IndexCondenser<T>` 的类型参数只作标记，内部委托 `SharedCondenser<u32>`。插入重复 ID 返回 `None`，`push` 则 panic；解析先验证缓存提示，再查映射并写回正确索引。
+-
+-删除返回被删除项的旧稠密索引，末项交换到该槽位，映射同步修复。消费方必须对位置/实例数据数组做同样的交换删除；已有句柄的提示允许过期，下次解析会修复。ID 删除后重用不包含 generation 防护，调用方负责生命周期。
+-
+-### 屏幕拖拽 → 世界编辑点
+-
+-`slider3d` 提供窗口尺寸、两个相机矩阵和 `Ray {origin,direction}`。先将光标换算到比例屏幕空间，再投影射线起点与 `origin + direction`，计算屏幕方向上的参数，限制到指定 range，最后按两个裁剪 w 作透视校正插值。
+-
+-关键约定：
+-
+-- `first` 先应用、`second` 后应用；第二次变换使用前次结果的 xyz 补 w=1。
+-- `transform_screen_space` 当前 y 公式为 `(1-b)/height*2+1`，不能擅自替换为常见的 `1-2*b/height`；源码保留的是原证据解释，本文未重新核验该机器码。
+-- range 限制的是屏幕插值参数；透视修正后世界参数不必相同。逆序或 NaN range 会 panic。
+-- 点投屏返回像素坐标并翻转 y；没有视锥剔除，也没有对零窗口、w=0、非有限矩阵提供有效性结果。
+-
+-### JSON 文件 → Mesh → 资产热重载
+-
+-JSON 需要 `indices.buffer`、属性名数组 `attributes`，以及每个同名属性的 `type` 和 `buffer`。支持 `int×1`、`float×1/2/3/4`；向量每项必须具有准确的分量数。每个属性非空，最大索引必须小于该属性长度；空索引允许。
++## 网格加载与热重载
+ 
+ ```json
+ {
+@@ -70,26 +45,35 @@
+ }
+ ```
+ 
+-`try_load_json_as_mesh` 对文件、语法和属性错误返回 `Err`；`load_json_as_mesh` 用 unwrap 将它们提升为 panic。成功的 Mesh 记录路径和 stamp=0。资产库在返回成功后才替换旧 Mesh，但目前缺少位置等保留属性的语义类型校验，可能把不兼容数据当作成功发布，见 F2。这里的“Result 单态仍 panic”旧注释不代表当前实现。
++向量直接反序列化为 glam 类型，不经过中间数组再转换。成功发布需要：
+ 
+-### 调试绘制与音频循环
++- 必须有非空 `Vertex_Position: float3`。
++- 法线为 float3，UV 为 float2，颜色为 float3/float4；其他自定义属性可用 int1 或 float1/2/3/4。
++- 类型描述必须恰好两项，属性名不重复，所有顶点属性长度相同。
++- 浮点数据有限，索引不越界；空索引允许。
+ 
+-`DebugLine::show` 克隆点/颜色，计算折线总长，将带名字的闭包放进 `UiSignifierStream`。唤醒时选择普通/虚线 shader，创建指示符实体，并插入线拓扑；虚线参数为总长×4。`SignifierEntityBuilder::build` 目前仅落部分实体组件，尚未解析 mesh/shader 或插入完整 drawable/pass 组件。球和三维矩形目前只有请求构造器；没有对应 `show`。因此已有测试能证明请求入流和组件写入，不能证明屏幕上能看见这些图元。
++`try_load_json_as_mesh` 对文件、语法和校验错误全部返回带上下文的 Err。资产库只在成功后替换旧网格及登记修改，坏文件不会污染正在使用的资产。启动时不可缺少的资产可用 `load_json_as_mesh` 将错误提升为 panic。
+ 
+-`AudioLoop` 对一组 `LoopEntry` 轮换：
++## 坐标与编辑几何
+ 
+-1. `start_if_not_playing` 先取消待停止时间；若已启动直接返回，否则按配置写 `loop=1`，只对 Active 实例调用 start，然后置 started。
+-2. 首次 `stop(now)` 只记时间；之后必须严格超过阈值才执行停止。持续收到播放请求会取消这段等待。
+-3. 使用 loop 参数时先写 `loop=0`，仅配置显式停止且实例 Active 才调用 stop；不用 loop 参数时对 Active 实例直接 stop。
+-4. 成功后轮换 cursor、清 started 和时间。start/stop 失败经 `Result` 传播；毫秒计时刻意采用 u32 回绕。
++像素原点在左上，比例屏幕空间原点在屏幕中心，上方为正 Y。窗口宽高最小按 1 像素处理。投影统一使用 glam 齐次矩阵乘法，保持第一个矩阵产生的 w。
+ 
+-实例集合需要非空，cursor 需要有效。实际实例创建已在 `resources::audio_resources::AudioCore::instantiate_loop` 实现；本文件“未做 instantiate_loop”的注释已过期。默认描述器创建 3 个实例，真实 FMOD 设备仍是独立验证范围。
++`try_world_space_to_screen_space` 和 `try_project_onto_ray` 返回 Option，显式处理不可投影点。兼容的点投屏入口返回 NaN 坐标；射线投影入口失败时保持起点。range 限制屏幕插值参数，随后按裁剪 w 转成世界参数；非法 range 在便捷入口报错，在 try 入口返回 None。
+ 
+-## 其他合同与使用限制
++子墙保留区间方向，切片校验插值结果属于 `[0,1]`。闭合曲线重接先检查分割与闭合前提，过短或无效结果返回 None，复用切片结果的 Vec。折线网格的空点集属于调用错误。
+ 
+-- `ChildWall::slice` 校验的是**插值结果**位于 `[0,1]`；不强制 `t1/t2` 自身在此范围，也不强制端点递增。传入的新 ID 写到结果中；`new` 不校验。
+-- `geo::rewire_enclosed_curve` 切出两半、按 0.1 阈值合并临近端点、后半接前半。split=0/1 或任一段过短返回 `None`；其余非法输入可能 panic。函数不先验证曲线闭合，调用方应提供有效闭合曲线。
+-- 点列网格写入 `Vertex_Position`、全白 `Vertex_Color` 和顺序索引；空点列会 panic。这些 helper 构造折线数据，绘制拓扑由消费方决定。
+-- Transform 默认为平移零、单位旋转、缩放一；forward 是旋转后的本地 -Z。字段序为 rotation / translation / scale，当前布局测试检查 0/0x10/0x1c 与大小 0x30；不能套用 Bevy Transform 的字段序。
+-- `get_res_mut` 返回 Bevy 的 `Mut<T>`，保留其变化检测语义。事件 helper 会消费全部双缓冲事件；`get_last_event` 取最后一个的同时也丢弃之前所有事件。它们不适合需要各自 reader 游标的订阅者。
+-- 公开依赖和共享算法直接复用，不把容器、Serde、glam、Bevy 的实现算作新增游戏业务。源码注释的 O/I/U 是既有证据分类，本文不据此升级恢复进度。
++## 调试折线
++
++`DebugLine::try_show` 校验点、线宽和逐点颜色后提交工厂；`show` 对无效输入告警并跳过。名字使用标准哈希，包含实际颜色、UI 通道和虚线模式，避免错误去重。
++
++唤醒时查找已注册 shader，将类型化 Mesh 放入现有资产库，创建带网格/shader/Transform、绘制拓扑及瞬态回收凭据的实体。虚线参数为总长×4，UI 请求带 UiPass；普通请求进入世界绘制路径。shader 缺失时不创建空壳实体，实体销毁后复用瞬态资产维护系统回收网格。
++
++球和三维矩形继续提供请求构造器，本轮没有添加它们的绘制 API；其他调用方使用的原生布局构建器仍有恢复边界。CPU 实体链通过不等于真实 GPU 画面验收。
++
++## 状态与依赖约定
++
++- 采样使用共享 CENTERED_PATH：旧模式保留旧存档边界外推，新模式按格心采样。`load_game_session` 取得有效存档后按 `version >= 0x1a` 应用开关；准备阶段/仅回放命令不改策略。完整 World 读档写回仍由加载模块负责。
++- 索引压缩委托共享实现。删除交换末项，消费方须同步交换并行数组；提示允许过期。ID 不含 generation，删除后重用的生命周期由调用方负责。
++- 音频首次 stop 记时，严格超过延时后停止；播放请求取消计时。Duration 比较不回绕，后端失败不推进 cursor，构造拒绝空队列。公开字段为兼容已有调用保留；建议使用 current/current_mut 并维持队列有效。
++- Transform 默认单位缩放，forward 为旋转后的本地 -Z；保留字段序，数学复用现有实现。
++- Resource 可变访问返回 Bevy Mut。事件 drain/last 清空整个流；独立订阅者应使用 EventReader。
+--- before/crates/country-core/src/utils/REVIEW.md
++++ after/crates/country-core/src/utils/REVIEW.md
+@@ -1,72 +1,18 @@
+-# utils 源码正确性审查（2026-10-18）
++# utils 修复与重构复核
+ 
+-审查者：当前 Codex 主会话。范围：本目录全部 12 个 Rust 文件，以及共享索引/采样/Transform、Mesh、资产库、指示符构建器、读档和部分实际消费者。业务说明见 [README.md](README.md)，可重复反例与源码指纹见 [报告](../../../../reports/country-core-utils-review-2026-10-18/README.md)。
++2026-10-18 按用户要求，以功能正确性、可维护性和有界性能优先。历史发现保存在 [前次审查](../../../../reports/country-core-utils-refactor-2026-10-18/previous-REVIEW.md)，本文件描述当前实现。
+ 
+-结论：**changes_required（当前源码健壮性范围）**。确认 2 个边界问题；另外记录 2 项业务接线缺口及过期注释。此次未修改业务实现，不是冻结候选的独立交付验收，也没有原二进制运行差分；原作等价性仍需补证（needs_evidence），不输出 passed 或 verified。
++| 项目 | 当前处理 | 回归检查 |
++|---|---|---|
++| F1 栅格计数回绕/漏格 | 删除 wrapping 循环，先裁剪再用标准闭区间迭代，范围计算使用 f64 | 极端端点、负坐标、超大半径、巨大跨世界笔画及有界/完整输出一致性 |
++| F2 热重载发布错误位置类型 | 发布前验证保留属性、位置存在性、等长顶点、有限数值、重复名字和索引 | 坏文件返回 Err，旧网格及修改列表保持原状 |
++| G1 采样策略未应用 | 有效存档辅助加载路径应用共享开关，准备阶段不改策略 | 完整 World 读档仍受加载域实现范围限制 |
++| G2 调试线仅生成空实体 | 使用类型化 Mesh、实际 shader、DrawableMeshBundle、拓扑和 TransientMesh | 工厂唤醒后检查真实网格、单位缩放、shader/回收凭据及虚线参数 |
+ 
+-## F1 · P2 / major：保守栅格遍历在整数上界回绕
++同时修复矩形末行/末列漏标、NaN 点查询、屏幕 Y 偏移、齐次 w 丢失和音频计时回绕，见 [README.md](README.md)。
+ 
+-位置：[conservative_line_raster.rs:68](conservative_line_raster.rs#L68) 的闭区间行遍历，以及 [第 79 行](conservative_line_raster.rs#L79) 的列推进。
++性能改善有明确范围：矩形改为逐行位掩码；笔画只枚举边界内格子；JSON 向量减少一次分配转换；调试名字改用标准哈希；曲线重接复用 Vec。不据此宣称完整帧率或所有输入都提速。
+ 
+-输入 `conservative_plot_line((0,3e9),(0,3e9),0,callback)` 是一个有限坐标的退化点。主轴坐标转换为 `i32::MAX`，首格发出后，`col.wrapping_add(1)` 回到 `i32::MIN`。因为仍小于终点，代码继续枚举约 2^32 个主轴坐标，最终才可能退出；它不是严格的无限循环，但对同步编辑路径已等同长时间卡死。
++变量名和注释改为业务合同，去除生产代码里的地址、偏移及逐指令叙述。共享采样/索引/Transform、标准库、Serde 和 glam 继续复用。旧差分和指纹不作为当前源码验收结果。
+ 
+-对偶反例 `((3e9,0),(3e9,0),0)` 的次轴上下界都是 `i32::MAX`；`hi.wrapping_add(1)` 变成负值，整个闭区间被跳过，没有任何回调。
+-
+-影响：`DirtyTiles` 通过回调丢弃网格外格子，但丢弃发生在枚举以后，不能避免超长遍历。其公开笔画入口没有在调用前验证坐标有限性/范围。正常约 ±65 世界范围没有触发此反例；目前未证明正常游戏操作能产生这种极端数据。
+-
+-证据：[raster-probe.rs](../../../../reports/country-core-utils-review-2026-10-18/raster-probe.rs) 直接包含本次源码，回调第 4 次主动中止并断言 `MAX → MIN → MIN+1 → MIN+2`，不会等待数十亿次遍历；另一测试证明次轴漏格。[日志](../../../../reports/country-core-utils-review-2026-10-18/raster-probe.log) 包括原有 8 测试与 2 个新增反例。
+-
+-建议：在首列处理后先检查是否已到终列；使用不会计算 `hi+1` 的闭区间迭代。对 DirtyTiles 的有界用途再验证输入，或采用经验证的有界裁剪入口，防止枚举海量网格外格。裁剪需要保留半径与边界覆盖语义。此为当前源码健壮性问题，本轮没有证明原版是否也保留同样行为；任何改变应登记相对原版的策略差异。
+-
+-## F2 · P2 / major：热重载成功发布不兼容的位置属性
+-
+-位置：[load_json.rs:63](load_json.rs#L63) 的属性校验与发布；消费路径为 `AssetMeshLibrary::try_reload_mesh_src` → `Mesh::positions_without_indices` / `positions`。
+-
+-下面的文件通过了当前所有检查：
+-
+-```json
+-{"indices":{"buffer":[0]},"attributes":["Vertex_Position"],
+- "Vertex_Position":{"type":["float",2],"buffer":[[1,2]]}}
+-```
+-
+-`float2` 是受支持的通用属性类型，长度也覆盖索引，因此加载返回 `Ok`。资产库随即覆盖原先有效的 Mesh；后续位置访问强制要求 `Float3`，触发 `incorrect attribute type` panic。热重载的“失败保留旧资产”机制不能保护这种语义错误，因为加载器将其视为成功。缺失位置属性也没有在加载层拒绝。
+-
+-证据：[probes.rs](../../../../reports/country-core-utils-review-2026-10-18/probes.rs) 的首个测试创建有效资产、写入上述文件、调用真实热重载入口，并捕获读取替换后位置的 panic。完整 crate 构建被目录外输入接口错误阻断；随后直接编译同一组当前实现文件，47 项测试通过（含 2 个探针），输入指纹在运行前后一致，详见报告与 source-probes.json。相关源码是 [Mesh 类型访问](../render/mesh.rs#L198) 和 [资产替换入口](../asset_libraries/mesh_library.rs#L162)。
+-
+-建议：为需要位置的网格消费者在资产发布前校验 `Vertex_Position: Float3`，并按其用途校验 UV/法线等保留语义；不应把所有自定义属性都限制成固定格式。应返回 `Err` 让热重载保留原资产。通用 Mesh 若允许无位置数据，应由具体消费方声明所需合同，而不是无条件禁止所有此类 Mesh。
+-
+-这是当前消费者合同的健壮性缺口，**不据此认定偏离原作**。历史原算法说明主要核对属性种类与最大索引，未提供原版按保留名字检查类型的正面证据。
+-
+-## 接线缺口（与上述两个问题分开）
+-
+-### G1：采样开关没有生产写入者
+-
+-[float_grid.rs](float_grid.rs) 再导出的 `CENTERED_PATH` 与共享 crate 是同一对象；委托本身没有重复状态问题。`LoadVersionGates` 也已实现版本阈值与写入方法。
+-
+-但本轮全工作区 Rust 源码检索仅找到该写入方法的测试调用，实际 `load_game_session` 只返回 gates，`load_game_system` 没有应用它。若宿主未另行设置，新版存档仍走初始 false 的旧采样路径，产生半格偏移/边界行为差别。应在加载世界数据前写入同一共享开关，并核验切换新旧会话的顺序；这属于加载链缺口，不能只改本目录转发文件。
+-
+-依据：[save_file.rs:246](../resources/save_file.rs#L246)、[load_game.rs:610](../systems/save/load_game.rs#L610)、[load_game_system](../systems/save/load_game.rs#L643)、共享 `utils/src/float_grid.rs`。本轮采用源码调用检索，未运行完整读档场景。
+-
+-### G2：调试请求尚未闭合到可绘制实体
+-
+-[DebugLine::show](debug_viz.rs#L298) 的闭包保留 mesh/shader 库参数但不使用；[SignifierEntityBuilder::build](../systems/ui/signifiers/signifier_factory.rs#L418) 仅生成实体及部分指示符组件，没有解析网格/shader、插入完整 drawable/pass。球和三维矩形也没有 `show` 实现。
+-
+-因此已有 `show_packs_the_record_and_wakes_the_dashed_line_closure` 测试只覆盖入流、唤醒和拓扑/虚线参数。不能用该测试通过作为绘制成功证据。这是代码已经明确登记的恢复边界，本轮没有将其算作新发现回归。
+-
+-## 当前读到的正确合同
+-
+-- DirtyTiles 的清空、OR 合并、快照清空、行优先遍历和 StateDelta 委托互相一致。矩形上界 63 且半开的规则虽然不直观，但代码和现有合同一致，本轮不判为 off-by-one 错误。
+-- IndexCondenser 对重复 ID 拒绝插入；解析与移除委托同一个共享实现，缓存提示会修复。必须由消费方同步交换并行数组。
+-- ChildWall 检查插值结果与 NaN；不要求分割参数或结果顺序属于当前接口合同，不能直接新增排序/clamp 改变语义。
+-- AudioLoop 首次 stop 记时、严格超过阈值才停止、播放请求取消计时、失败不推进 cursor 的控制流一致。空集合/任意修改公开 cursor 不受保护，应由构造和调用方维持前提。
+-- Resource 和事件 helper 直接使用 Bevy API，避免手写容器/事件计数逻辑。drain/last 都是破坏性消费；需要多 reader 的系统应使用 EventReader。
+-- Transform 默认单位缩放、forward=-Z、TRS 和共享 look-at/比较的调用一致。没有把这些依赖委托计作独立恢复算法。
+-
+-以上只表示静态审阅范围内未见其他确定错误，不替代完整原版验证。
+-
+-## 注释与验证限制
+-
+-- `load_json.rs:80` 仍写“读文件/解析失败仍 panic”，当前两个 `?` 实际返回 `Err`。这与现行热重载策略一致，旧注释和旧原版差分结论须分开使用。
+-- `audio_utils.rs` 顶部仍说未做 `instantiate_loop`；当前实现已在 `audio_resources.rs:497`，不能继续列为完全缺失。
+-- `geo.rs`、投影/浮点函数和 debug 构造器的大量 O 地址来自历史恢复注释，本轮没有重新查询对应原始字节。`compute_affine` 的 Rust 返回类型为 `Mat4`，本文不把它的名字或布局注释当作已验证的原 ABI。
+-- 没有本轮冻结 manifest、完整原生证据链和原版进程运行结果，因此不能给出正式 `passed_scoped`、全目录完成或 B 等价结论。
++实际命令、测试、源码快照及构建限制见 [验证报告](../../../../reports/country-core-utils-refactor-2026-10-18/README.md)。球/矩形新增绘制 API、其他调用方的原生构建器和实际 GPU/FMOD 设备运行不在本轮实现范围。
+--- before/crates/country-core/src/utils/audio_utils.rs
++++ after/crates/country-core/src/utils/audio_utils.rs
+@@ -1,59 +1,40 @@
+-//! `audio_utils.rs` — `AudioLoop`：一圈 FMOD 事件实例的循环播放器（B `utils::audio_utils`）。
++//! 环形音效播放器：持续播放请求取消停止计时，停止成功后再轮换实例。
+ //!
+-//! 证据（RNE 汇编逐条核对）：
+-//! - 布局：`entries: Vec<_>`（元素 **0x30 B**，`cap@0 ptr@8 len@0x10`）、`start: Instant`（`secs@0x18`、`nanos u32@0x20`，
+-//!   `nanos == 1_000_000_000`（0x3b9aca00）表示"未设置"）、`cursor@0x28`、`threshold_ms u32@0x30`、
+-//!   三个标志字节 `+0x34`（已启动）、`+0x35`（使用 `loop` 参数）、`+0x36`（停止时显式 `stop`）；
+-//! - `current` 0x140a593f0：`&entries[cursor]`，越界 panic；
+-//! - `start_if_not_playing` 0x140a596b0：先把 `start` 置为"未设置"；`+0x34` 已置位则返回；`+0x35` 为真时对当前实例
+-//!   `set_parameter("loop", 1.0)`；实例为 `Active`（判别 1）才 `start`（失败 panic）；最后 `+0x34 = 1`；
+-//! - `stop` 0x140a59430：`start` 未设置 → 记下 `now` 并返回；否则 `elapsed_ms = (secs as u32) * 1000 + nanos / 1_000_000`
+-//!   （全部 u32 回绕），`threshold_ms >= elapsed_ms` 返回；`+0x35` 为真：`set_parameter("loop", 0.0)`，仅当 `+0x36 == 1` 且实例
+-//!   `Active` 才 `stop(0)`；`+0x35` 为假：实例 `Active` 就 `stop(0)`；`stop` 失败 panic；之后
+-//!   `cursor = (cursor + 1) % len`、`+0x34 = 0`、`start` 置为未设置。
+-//!
+-//! `stop` 的模式参数是数字 0（`xor r8d, r8d`）。此前文档把 `stop(0)` 写成 `STOP_IMMEDIATE`，而 FMOD Studio 的
+-//! `FMOD_STUDIO_STOP_ALLOWFADEOUT` 是 0、`IMMEDIATE` 是 1，两者矛盾，这里保留数字 0（`StopMode::Zero`）不下结论。
+-//!
+-//! 未做：`AudioCore::instantiate_loop`（0x140a59220，由 `AudioLoopDesc` 构造 `entries`，依赖 FMOD 创建事件实例）。
++//! 通过 LoopEntry 适配实际音频后端；计时使用 Duration，不把真实时间压缩为 u32 毫秒。
+ use core::time::Duration;
+ 
+-/// `start` 的"未设置"哨兵（O：`nanos == 0x3b9aca00`）。
+-pub const UNSET_NANOS: u32 = 1_000_000_000;
+-/// 参数名（O：0x142ad2f20）。
++/// 循环事件使用的音频参数名。
+ pub const LOOP_PARAMETER: &str = "loop";
+ 
+-/// `stop` 的模式参数（O：数字 0）。
++/// 后端的停止策略。
+ #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+ pub enum StopMode {
+-    Zero,
+-}
+-
+-/// 循环里的一个事件实例（元素 0x30 B）。
++    /// 允许音效自然淡出。
++    AllowFadeOut,
++}
++
++/// 音频后端适配接口；实例创建由 AudioCore 负责。
+ pub trait LoopEntry {
+     type Error;
+-    /// 判别 == 1（`Active`）。
+     fn is_active(&self) -> bool;
+     fn set_parameter(&mut self, name: &str, value: f32);
+     fn start(&mut self) -> Result<(), Self::Error>;
+     fn stop(&mut self, mode: StopMode) -> Result<(), Self::Error>;
+ }
+ 
+-/// `start` 时间戳（原版 `Instant`，这里用相对某个起点的 `Duration`，`None` = 未设置）。
+-pub type Timestamp = Option<Duration>;
+-
+-/// 循环播放器。
++/// 已有系统按字段访问实例；保留字段名以兼容调用方。
+ #[derive(Clone, Debug)]
+ pub struct AudioLoop<E> {
++    /// 非空的循环实例队列。
+     pub entries: Vec<E>,
+-    pub start: Timestamp,
++    /// 首次停止请求的时间，None 表示尚未请求。
++    pub start: Option<Duration>,
++    /// 当前实例在队列中的索引。
+     pub cursor: usize,
++    /// 连续没有播放请求多久之后允许停止，单位毫秒。
+     pub threshold_ms: u32,
+-    /// `+0x34`。
+     pub started: bool,
+-    /// `+0x35`。
+     pub uses_loop_parameter: bool,
+-    /// `+0x36`。
+     pub stops_explicitly: bool,
+ }
+ 
+@@ -64,6 +45,7 @@
+         uses_loop_parameter: bool,
+         stops_explicitly: bool,
+     ) -> Self {
++        assert!(!entries.is_empty(), "音效循环至少需要一个实例");
+         Self {
+             entries,
+             start: None,
+@@ -75,21 +57,26 @@
+         }
+     }
+ 
+-    /// 0x140a593f0。
++    /// 调用方必须维持非空实例队列及有效 cursor。
+     pub fn current(&self) -> &E {
+         &self.entries[self.cursor]
+     }
+ 
+-    /// 0x140a596b0。
++    pub fn current_mut(&mut self) -> &mut E {
++        &mut self.entries[self.cursor]
++    }
++
++    /// 取消待停止请求；后端失败时不把实例标记为已启动，允许下次重试。
+     pub fn start_if_not_playing(&mut self) -> Result<(), E::Error> {
+         self.start = None;
+         if self.started {
+             return Ok(());
+         }
+-        if self.uses_loop_parameter {
+-            self.entries[self.cursor].set_parameter(LOOP_PARAMETER, 1.0);
+-        }
+-        let entry = &mut self.entries[self.cursor];
++        let uses_loop_parameter = self.uses_loop_parameter;
++        let entry = self.current_mut();
++        if uses_loop_parameter {
++            entry.set_parameter(LOOP_PARAMETER, 1.0);
++        }
+         if entry.is_active() {
+             entry.start()?;
+         }
+@@ -97,30 +84,26 @@
+         Ok(())
+     }
+ 
+-    /// 0x140a59430。`now` 是当前时间。
++    /// 首次调用记录时间，严格超过阈值后停止；时间倒退按零耗时处理。
+     pub fn stop(&mut self, now: Duration) -> Result<(), E::Error> {
+-        let Some(start) = self.start else {
+-            self.start = Some(now);
++        let requested_at = *self.start.get_or_insert(now);
++        if now.saturating_sub(requested_at) <= Duration::from_millis(u64::from(self.threshold_ms)) {
+             return Ok(());
++        }
++        let uses_loop_parameter = self.uses_loop_parameter;
++        let stop_backend = !uses_loop_parameter || self.stops_explicitly;
++        let entry = self.current_mut();
++        if uses_loop_parameter {
++            entry.set_parameter(LOOP_PARAMETER, 0.0);
++        }
++        if stop_backend && entry.is_active() {
++            entry.stop(StopMode::AllowFadeOut)?;
++        }
++        self.cursor = if self.cursor + 1 == self.entries.len() {
++            0
++        } else {
++            self.cursor + 1
+         };
+-        let elapsed = now.saturating_sub(start);
+-        let elapsed_ms = (elapsed.as_secs() as u32)
+-            .wrapping_mul(1000)
+-            .wrapping_add(elapsed.subsec_millis());
+-        if self.threshold_ms >= elapsed_ms {
+-            return Ok(());
+-        }
+-        let stops_explicitly = self.stops_explicitly;
+-        let entry = &mut self.entries[self.cursor];
+-        if self.uses_loop_parameter {
+-            entry.set_parameter(LOOP_PARAMETER, 0.0);
+-            if stops_explicitly && entry.is_active() {
+-                entry.stop(StopMode::Zero)?;
+-            }
+-        } else if entry.is_active() {
+-            entry.stop(StopMode::Zero)?;
+-        }
+-        self.cursor = (self.cursor + 1) % self.entries.len();
+         self.started = false;
+         self.start = None;
+         Ok(())
+@@ -263,24 +246,21 @@
+     }
+ 
+     #[test]
+-    fn elapsed_milliseconds_wrap_like_the_original_u32_arithmetic() {
+-        // 4_294_968 s * 1000 ms = 4_294_968_000, which wraps to 704 in u32 (a real elapsed time of ~49 days).
+-        let wrapped = (4_294_968u64 as u32).wrapping_mul(1000);
+-        assert_eq!(wrapped, 704);
+-        let mut below = AudioLoop::new(vec![entry(false), entry(false)], 1000, false, false);
+-        below.start = Some(Duration::ZERO);
+-        below.stop(Duration::new(4_294_968, 0)).unwrap();
+-        assert_eq!(
+-            below.cursor, 0,
+-            "wrapped 704 ms <= 1000 ms threshold: early return"
+-        );
+-        let mut above = AudioLoop::new(vec![entry(false), entry(false)], 500, false, false);
+-        above.start = Some(Duration::ZERO);
+-        above.stop(Duration::new(4_294_968, 0)).unwrap();
+-        assert_eq!(
+-            above.cursor, 1,
+-            "wrapped 704 ms > 500 ms threshold: the ring advances"
+-        );
++    fn long_running_audio_does_not_wrap_the_stop_delay() {
++        let mut player = AudioLoop::new(vec![entry(false), entry(false)], 1000, false, false);
++        player.start = Some(Duration::ZERO);
++        player.stop(Duration::new(4_294_968, 0)).unwrap();
++        assert_eq!(player.cursor, 1);
++        let mut player = AudioLoop::new(vec![entry(false)], 100, false, false);
++        player.start = Some(ms(0));
++        player.stop(Duration::from_micros(100_001)).unwrap();
++        assert_eq!(player.start, None);
++    }
++
++    #[test]
++    #[should_panic(expected = "音效循环至少需要一个实例")]
++    fn empty_audio_rings_are_rejected_at_construction() {
++        AudioLoop::<Fake>::new(Vec::new(), 0, false, false);
+     }
+ 
+     #[test]
+@@ -294,6 +274,5 @@
+     #[test]
+     fn parameter_name_is_loop() {
+         assert_eq!(LOOP_PARAMETER, "loop");
+-        assert_eq!(UNSET_NANOS, 0x3b9aca00);
+-    }
+-}
++    }
++}
+--- before/crates/country-core/src/utils/child_wall.rs
++++ after/crates/country-core/src/utils/child_wall.rs
+@@ -1,45 +1,44 @@
+-//! `country_core::utils::child_wall` — 子墙（父墙上的一段 `[a, b]` 参数区间）。
+-//!
+-//! O 0x140a24000 `ChildWall::slice`：入参 `(out, &self, id: u64, t1: f32, t2: f32)`。
+-//! 机器码：`lerp(self.a, self.b, t)` 是 0x140c904d0（`a + (b - a) * t`）；对 `t1`、`t2` 各算一次，
+-//! 每个结果都要落在 `[0, 1]`（`ucomiss` 先比 0 再比 1.0，NaN 也走同一个分支），否则
+-//! panic `Tried to init CurveU from an invalid u: {u}`（字符串在 0x142aa5398，格式化走 0x140d8c910）；
+-//! 返回 `{id, lerp(t1), lerp(t2)}`，布局 id@0（8 B）、a@8、b@0xc。
+-//!
+-//! 这里没有复用 `utils::curve::CurveU::new`：它的 panic 文本与 EXE 不同（`CurveU outside [0,1]`），
+-//! 而 `utils` 是独立的共享 crate，不在这里改。`ChildWall::new` 无独立符号（内联，I）。
++//! 擦除操作中的子墙区间。保留父曲线参数的方向，切片后替换为新的子墙 ID。
+ 
+ /// 子墙：父墙标识加一段参数区间。
+ #[derive(Clone, Copy, Debug, PartialEq)]
+ pub struct ChildWall {
+-    /// +0：被 `slice` 原样带到结果里的 8 字节（I：父墙 id）。
++    /// 当前子墙标识。
+     pub id: u64,
++    /// 起点在父曲线上的归一化参数。
+     pub a: f32,
++    /// 终点在父曲线上的归一化参数，允许反向区间。
+     pub b: f32,
+ }
+ 
+-fn lerp(a: f32, b: f32, t: f32) -> f32 {
+-    a + (b - a) * t
+-}
+-
+-/// 与 EXE 一致的 `[0, 1]` 检查：NaN 不在区间内，也落到同一个 panic 分支。
+-fn checked_u(u: f32) -> f32 {
+-    if !(0.0..=1.0).contains(&u) {
+-        panic!("Tried to init CurveU from an invalid u: {u}");
+-    }
+-    u
++/// 检查归一化曲线参数，拒绝 NaN 和区间外数值。
++fn checked_curve_parameter(parameter: f32) -> f32 {
++    assert!(
++        (0.0..=1.0).contains(&parameter),
++        "子墙参数必须位于 [0,1] 且为有限数值：{parameter}"
++    );
++    parameter
+ }
+ 
+ impl ChildWall {
+-    pub fn new(id: u64, a: f32, b: f32) -> Self {
+-        Self { id, a, b }
++    pub fn new(child_id: u64, start: f32, end: f32) -> Self {
++        Self {
++            id: child_id,
++            a: start,
++            b: end,
++        }
+     }
+ 
+-    /// O 0x140a24000。
+-    pub fn slice(&self, id: u64, t1: f32, t2: f32) -> ChildWall {
+-        let a = checked_u(lerp(self.a, self.b, t1));
+-        let b = checked_u(lerp(self.a, self.b, t2));
+-        ChildWall { id, a, b }
++    /// 在当前参数区间内插值；校验的是结果，允许合法的局部外推。
++    pub fn slice(&self, child_id: u64, start_fraction: f32, end_fraction: f32) -> ChildWall {
++        let start =
++            checked_curve_parameter(::utils::float_grid::lerp(self.a, self.b, start_fraction));
++        let end = checked_curve_parameter(::utils::float_grid::lerp(self.a, self.b, end_fraction));
++        ChildWall {
++            id: child_id,
++            a: start,
++            b: end,
++        }
+     }
+ }
+ 
+@@ -56,13 +55,13 @@
+     }
+ 
+     #[test]
+-    #[should_panic(expected = "Tried to init CurveU from an invalid u: 1.25")]
++    #[should_panic(expected = "子墙参数必须位于 [0,1] 且为有限数值：1.25")]
+     fn slice_panics_when_the_result_leaves_unit_range() {
+         ChildWall::new(1, 0.5, 1.0).slice(0, 0.0, 1.5);
+     }
+ 
+     #[test]
+-    #[should_panic(expected = "Tried to init CurveU from an invalid u: NaN")]
++    #[should_panic(expected = "子墙参数必须位于 [0,1] 且为有限数值：NaN")]
+     fn nan_takes_the_same_panic() {
+         ChildWall::new(1, 0.0, 1.0).slice(0, f32::NAN, 0.0);
+     }
+--- before/crates/country-core/src/utils/components/transform.rs
++++ after/crates/country-core/src/utils/components/transform.rs
+@@ -1,47 +1,31 @@
+-//! utils/components/transform.rs — 游戏自有 `Transform`（WP6 恢复）。
++//! 游戏实体的平移、旋转和缩放组件；数学实现复用 glam 与共享 Transform。
+ //!
+-//! 源 SHA256（B skeleton）`crates/utils/src/components/transform.rs`
+-//! （`7959b9d1...`；**utils crate，游戏自有 util**，非 bevy 依赖——按项目边界恢复外壳，
+-//! 数学复用 glam 0.29.3）。
+-//!
+-//! PDB 方法（O）：`from_translation` / `with_translation` / `from_scale` /
+-//! `from_translation_scale` / `identity` / `compute_matrix` / `compute_affine`
+-//! (0x1407a45b0) / `forward` (0x1407a4700) / `look_at` (0x140c9ce00) /
+-//! `abs_diff_eq` (0x140c9d0d0) / `Default` (0x140c9d180)。
+-//!
+-//! 布局（O，B 阶段 i_infra 按机器码修正；旧文档写成 `{translation @0, rotation @0xC, scale @0x1C}` 是错的）：
+-//! `{ rotation: Quat @0x0, translation: Vec3 @0x10, scale: Vec3 @0x1C }`，有效数据 0x28 B、因 `Quat` 16 字节对齐而占 0x30 B。
+-//! 证据：`compute_affine`（0x1407a45b0）`movaps xmm8,[rdx]`（四元数）、`movaps xmm2,[rdx+0x10]`（平移）、`movups xmm1,[rdx+0x1c]`
+-//! （缩放）；`Default`（0x140c9d180，50 B）写 `[rcx]=(0,0,0,1)`（旋转恒等）、`[rcx+0x10]=0`/`[rcx+0x18]=0`（平移零）、
+-//! `[rcx+0x1c]=(1,1)`/`[rcx+0x24]=1`（缩放一）。即 bevy 的 `{translation, rotation, scale}` 字段序并**不**适用于游戏自有 `Transform`
+-//! （按字段名访问的代码不受影响，只有按偏移的消费者——critters 的 `ButterflySsbo::from_components` 等——依赖它）。
+-
+-#![allow(dead_code, unused_imports)]
++//! 保留 rotation / translation / scale 的字段序，兼容已有实例上传消费方。
+ 
+ use bevy_ecs::component::Component;
+ use glam::{Mat4, Quat, Vec3};
+ 
+-/// 游戏自有 `Transform`（O 布局：旋转 @0、平移 @0x10、缩放 @0x1c；见模块文档）。
++/// 游戏实体的局部变换。
+ #[repr(C)]
+ #[derive(Component, Clone, Copy, Debug, PartialEq)]
+ pub struct Transform {
+-    /// 旋转四元数（+0x0，O）。
++    /// 单位旋转四元数。
+     pub rotation: Quat,
+-    /// 平移（+0x10，O）。
++    /// 世界或父节点空间的位置。
+     pub translation: Vec3,
+-    /// 缩放（+0x1C，O）。
++    /// 三轴缩放。
+     pub scale: Vec3,
+ }
+ 
+ impl Default for Transform {
+-    /// O 0x140c9d180：恒等变换（旋转 (0,0,0,1)、平移 0、缩放 1）——不是 `derive(Default)` 的全零缩放。
++    /// 默认缩放为一，保证新建实体可见。
+     fn default() -> Self {
+         Transform::identity()
+     }
+ }
+ 
+ impl Transform {
+-    /// `Transform::IDENTITY` / `impl$1::default`（0x140c9d180，O）。
++    /// 单位变换。
+     pub fn identity() -> Self {
+         Transform {
+             translation: Vec3::ZERO,
+@@ -50,7 +34,7 @@
+         }
+     }
+ 
+-    /// `from_translation`（O PDB LF_FUNC_ID）。
++    /// 仅设置平移。
+     pub fn from_translation(translation: Vec3) -> Self {
+         Transform {
+             translation,
+@@ -58,13 +42,13 @@
+         }
+     }
+ 
+-    /// `with_translation`（O PDB LF_FUNC_ID）。
++    /// 保持旋转和缩放，仅替换平移。
+     pub fn with_translation(mut self, translation: Vec3) -> Self {
+         self.translation = translation;
+         self
+     }
+ 
+-    /// `from_scale`（O PDB LF_FUNC_ID）。
++    /// 仅设置缩放。
+     pub fn from_scale(scale: Vec3) -> Self {
+         Transform {
+             scale,
+@@ -72,7 +56,7 @@
+         }
+     }
+ 
+-    /// `from_translation_scale`（O PDB LF_FUNC_ID）。
++    /// 设置平移和缩放，旋转保持单位四元数。
+     pub fn from_translation_scale(translation: Vec3, scale: Vec3) -> Self {
+         Transform {
+             translation,
+@@ -81,23 +65,22 @@
+         }
+     }
+ 
+-    /// `compute_affine`（0x1407a45b0，O）：TRS 仿射矩阵（glam 复用）。
+-    /// 反编译结构：旋转列 × scale + 平移进第 4 列。
++    /// 按缩放、旋转、平移顺序构造矩阵。
+     pub fn compute_affine(&self) -> Mat4 {
+         Mat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
+     }
+ 
+-    /// `compute_matrix`（O PDB LF_FUNC_ID；与 compute_affine 同族）。
++    /// compute_affine 的矩阵接口别名。
+     pub fn compute_matrix(&self) -> Mat4 {
+         self.compute_affine()
+     }
+ 
+-    /// `forward`（0x1407a4700，O）：本地 -Z 方向经旋转。
++    /// 旋转后的本地 -Z 方向，不受缩放影响。
+     pub fn forward(&self) -> Vec3 {
+         self.rotation * -Vec3::Z
+     }
+ 
+-    fn shared(&self) -> ::utils::components::transform::Transform {
++    fn as_shared_transform(&self) -> ::utils::components::transform::Transform {
+         ::utils::components::transform::Transform {
+             t: self.translation,
+             r: self.rotation,
+@@ -105,16 +88,17 @@
+         }
+     }
+ 
+-    /// B 0x140c9ce00; reuse the already recovered dependency composition.
++    /// 朝向目标；退化目标和 up 向量的处理委托共享实现。
+     pub fn look_at(&mut self, target: Vec3, up: Vec3) {
+-        let mut transform = self.shared();
++        let mut transform = self.as_shared_transform();
+         transform.look_at(target, up);
+         self.rotation = transform.r;
+     }
+ 
+-    /// B 0x140c9d0d0: ordered comparisons reject NaNs and negative tolerances.
++    /// 分量误差比较；NaN 和负容差均不相等。
+     pub fn abs_diff_eq(&self, other: &Self, max_abs_diff: f32) -> bool {
+-        self.shared().abs_diff_eq(&other.shared(), max_abs_diff)
++        self.as_shared_transform()
++            .abs_diff_eq(&other.as_shared_transform(), max_abs_diff)
+     }
+ }
+ 
+@@ -123,7 +107,6 @@
+     use super::*;
+     use core::mem::{align_of, offset_of, size_of};
+ 
+-    /// 布局（O：`compute_affine` 0x1407a45b0 的读偏移、`Default` 0x140c9d180 的写偏移）。
+     #[test]
+     fn layout_is_rotation_translation_scale_at_0_0x10_0x1c() {
+         assert_eq!(offset_of!(Transform, rotation), 0x0);
+@@ -134,7 +117,6 @@
+         assert_eq!(size_of::<Transform>(), 0x30);
+     }
+ 
+-    /// O 0x140c9d180：`Default` 是恒等变换（`derive(Default)` 会给出零缩放）。
+     #[test]
+     fn default_is_identity() {
+         let d = Transform::default();
+--- before/crates/country-core/src/utils/conservative_line_raster.rs
++++ after/crates/country-core/src/utils/conservative_line_raster.rs
+@@ -1,171 +1,111 @@
+-//! `conservative_line_raster::conservative_plot_line` — 带半径的保守线段栅格化。
++//! 带半径线段的保守栅格覆盖；支持在枚举前限制输出矩形。
+ //!
+-//! 原版是自有工作区 crate（`crates/conservative-line-raster/src/lib.rs`，PDB 的 `impl$0..$3`、
+-//! `conservative_plot_line_low`、两个 `quantize_range`、两个 `assert_delta`）；这里作为 `utils` 下的一个模块。
+-//! 核对对象：`DirtyTiles` 的实例 0x140b1e460（3501 B，回调内联为"置位图"）。另外两个实例
+-//! （0x1402582d0 / 0x142820fb0）回调不同，主体相同。
+-//!
+-//! 算法（O，逐段读自机器码）：
+-//! 1. `dx = x1 - x0`、`dy = y1 - y0`。`|dx| > |dy|`（严格；NaN 走另一支）为 **x 主轴**，否则 **y 主轴**
+-//!    （同一份代码把两轴互换）。下面以 x 主轴叙述，`major`=x、`minor`=y。
+-//! 2. `slope = dy / dx`，非有限则 0；`c = r * (1 - |slope|)`（斜率非有限时 `c = r`）；`h = hypotf(slope, 1) * r`
+-//!    （0x142923cf0 = `_hypotf`，导入表实读）。
+-//! 3. 按主轴排序端点，`xs = x_min - r`，`xe = x_max + r + 0`（`x_max + r`），`ys = y@x_min - slope * r`。
+-//! 4. 首列 `col = floor(xs)`：`y_end = (min(xe, col + 1) - xs) * slope + ys`；
+-//!    斜率为正（`minor_end > minor_start`，调用 `assert_delta` ≥ 0）：行 `[trunc(ys - c), trunc(y_end + h)]`；
+-//!    否则（`assert_delta` ≤ 0）：行 `[trunc(y_end - h), trunc(ys + c)]`。
+-//! 5. 之后每列（`col < last = floor(xe)`）：`y_new = y_prev + slope`，
+-//!    正：`[trunc(y_prev - h), trunc(y_new + h)]`；负：`[trunc(y_new - h), trunc(y_prev + h)]`。
+-//! 6. 最后一列（`col == last`）：`y_at = slope * (xe - last) + y_prev`，
+-//!    正：`[trunc(y_prev - h), trunc(y_at + c)]`；负：`[trunc(y_at - c), trunc(y_prev + h)]`。
+-//! 7. 每个 `trunc` 都是 `cvttss2si` + 饱和（> 2147483520 → `i32::MAX`，NaN → 0），即 Rust 的 `as i32`。
+-//!    行区间是闭区间，起点大于终点则该列为空；回调收到 `(x, y)`，x 主轴时 `(col, row)`，y 主轴时 `(row, col)`。
+-//!
+-//! `DirtyTiles` 实例的回调：`(x | y) as u32 <= 63` 才置 `rows[y] |= 1 << x`（见 [`DirtyTiles::set_cell`](super::dirty_tiles::DirtyTiles)）。
+-//! 其它实例有一个 `&mut bool` 提前停止标志（0x140ade620 的外层循环检查它），这个实例不碰它。
+-//!
+-//! 偏差/不确定：`assert_delta` 的 panic 文本在 0x142af6f30（Display 一个 f32，源码行 ≥ 93），只在斜率符号与分支
+-//! 矛盾时触发——上面的分支条件已经保证不会，所以这里不复刻（I）。
+-
+-fn trunc_i32(value: f32) -> i32 {
+-    value as i32
+-}
+-
+-/// `minss(a, b)` 再按 `cmpunord` 选择：`b` 是 NaN 时取 `a`。
+-fn min_or_a(a: f32, b: f32) -> f32 {
+-    let m = if a < b { a } else { b };
+-    if b.is_nan() { a } else { m }
+-}
+-
+-struct Axes {
+-    start_major: f32,
+-    start_minor: f32,
+-    end_major: f32,
+-    end_minor: f32,
+-}
+-
+-fn plot_major(axes: Axes, slope: f32, c: f32, h: f32, r: f32, mut cell: impl FnMut(i32, i32)) {
+-    let Axes {
+-        start_major,
+-        start_minor,
+-        end_major,
+-        end_minor,
+-    } = axes;
+-    let positive = end_minor > start_minor;
+-    let xs = start_major - r;
+-    let ys = start_minor - slope * r;
+-    let xe = end_major + r;
+-    let c = c * 1.0;
+-
+-    let mut col = trunc_i32(xs.floor());
+-    let first_end = min_or_a(xe, 1.0 + xs.floor());
+-    let y_end = (first_end - xs) * slope + ys;
+-    let (lo, hi) = if positive {
+-        (trunc_i32(ys - c), trunc_i32(y_end + h))
++//! 半径按轴对齐外扩计算，保证覆盖圆头笔画，允许少量多标记的边界格。
++//! 有界入口的开销只与输出矩形及线段数量有关，不枚举矩形外的格子。
++
++use std::ops::RangeInclusive;
++
++/// 枚举整个 i32 坐标域内的覆盖格。输出量取决于实际线段跨度。
++/// 绘制固定大小位图时应使用有界入口，避免无意义的大范围输出。
++pub fn conservative_plot_line(
++    start: (f32, f32),
++    end: (f32, f32),
++    radius: f32,
++    visit: impl FnMut(i32, i32),
++) {
++    conservative_plot_line_in_bounds(
++        start,
++        end,
++        radius,
++        [i32::MIN..=i32::MAX, i32::MIN..=i32::MAX],
++        visit,
++    );
++}
++
++/// 枚举指定 X/Y 闭区间中的覆盖格；非有限坐标、负半径或空边界不产生输出。
++///
++/// 用 f64 进行范围和直线计算，避免有限 f32 端点相减时溢出。
++/// 整数范围始终先相交后转换，既不饱和到错误位置，也不对整数上界加一。
++pub fn conservative_plot_line_in_bounds(
++    start: (f32, f32),
++    end: (f32, f32),
++    radius: f32,
++    bounds: [RangeInclusive<i32>; 2],
++    mut visit: impl FnMut(i32, i32),
++) {
++    if ![start.0, start.1, end.0, end.1, radius]
++        .iter()
++        .all(|value| value.is_finite())
++        || radius < 0.0
++        || bounds.iter().any(RangeInclusive::is_empty)
++    {
++        return;
++    }
++    let start = [f64::from(start.0), f64::from(start.1)];
++    let end = [f64::from(end.0), f64::from(end.1)];
++    let radius = f64::from(radius);
++    let major_axis = usize::from((end[1] - start[1]).abs() >= (end[0] - start[0]).abs());
++    let minor_axis = 1 - major_axis;
++    let (start, end) = if start[major_axis] <= end[major_axis] {
++        (start, end)
+     } else {
+-        (trunc_i32(y_end - h), trunc_i32(ys + c))
+-    };
+-    let mut emit = |col: i32, lo: i32, hi: i32| {
+-        let mut row = lo;
+-        while row < hi.wrapping_add(1) {
+-            cell(col, row);
+-            row += 1;
+-        }
+-    };
+-    emit(col, lo, hi);
+-
+-    let last = trunc_i32(xe.floor());
+-    let mut y_prev = y_end;
+-    loop {
+-        col = col.wrapping_add(1);
+-        if col > last {
+-            return;
+-        }
+-        if col == last {
+-            let y_at = slope * (xe - xe.floor()) + y_prev;
+-            let (lo, hi) = if positive {
+-                (trunc_i32(y_prev - h), trunc_i32(y_at + c))
++        (end, start)
++    };
++    let Some(columns) = intersect_cells(
++        start[major_axis] - radius,
++        end[major_axis] + radius,
++        &bounds[major_axis],
++    ) else {
++        return;
++    };
++    let major_length = end[major_axis] - start[major_axis];
++    let slope = if major_length == 0.0 {
++        0.0
++    } else {
++        (end[minor_axis] - start[minor_axis]) / major_length
++    };
++    // f32 端点乘积最多 48 位有效数，f64 能保留；先计算叉积再除长度，
++    // 避免用远端位置减 slope*position 时把穿过原点的直线偏移到极远处。
++    let intercept = if major_length == 0.0 {
++        start[minor_axis]
++    } else {
++        (start[minor_axis] * end[major_axis] - end[minor_axis] * start[major_axis]) / major_length
++    };
++    for column in columns {
++        let segment_start = (f64::from(column) - radius).max(start[major_axis]);
++        let segment_end = (f64::from(column) + 1.0 + radius).min(end[major_axis]);
++        let first_minor = slope.mul_add(segment_start, intercept);
++        let last_minor = slope.mul_add(segment_end, intercept);
++        let Some(rows) = intersect_cells(
++            first_minor.min(last_minor) - radius,
++            first_minor.max(last_minor) + radius,
++            &bounds[minor_axis],
++        ) else {
++            continue;
++        };
++        for row in rows {
++            if major_axis == 0 {
++                visit(column, row);
+             } else {
+-                (trunc_i32(y_at - c), trunc_i32(y_prev + h))
+-            };
+-            emit(col, lo, hi);
+-            return;
+-        }
+-        let y_new = slope + y_prev;
+-        let (lo, hi) = if positive {
+-            (trunc_i32(y_prev - h), trunc_i32(y_new + h))
+-        } else {
+-            (trunc_i32(y_new - h), trunc_i32(y_prev + h))
+-        };
+-        emit(col, lo, hi);
+-        y_prev = y_new;
+-    }
+-}
+-
+-/// 端点排序判定：原版 `ucomiss start, end; jbe`（0x140b1e4fd / 0x140b1e556），`start <= end` 与**无序（NaN）**
+-/// 都走"不交换"分支，只有 `start > end` 才交换。Rust 的 `start <= end` 对 NaN 为假，会错误地交换。
+-fn keeps_order(start: f32, end: f32) -> bool {
+-    start.is_nan() || end.is_nan() || start <= end
+-}
+-
+-/// O 0x140b1e460 系：把半径 `r` 的线段 `(x0, y0) → (x1, y1)` 覆盖到的格子逐个交给 `cell(x, y)`。
+-pub fn conservative_plot_line(
+-    (x0, y0): (f32, f32),
+-    (x1, y1): (f32, f32),
+-    r: f32,
+-    mut cell: impl FnMut(i32, i32),
+-) {
+-    let dx = x1 - x0;
+-    let dy = y1 - y0;
+-    let finite = |v: f32| v.abs().to_bits() < 0x7f80_0000;
+-    if dx.abs() > dy.abs() {
+-        let raw = dy / dx;
+-        let slope = if finite(raw) { raw } else { 0.0 };
+-        let c = r * if finite(raw) { 1.0 - raw.abs() } else { 1.0 };
+-        let (first, second) = if keeps_order(x0, x1) {
+-            ((x0, y0), (x1, y1))
+-        } else {
+-            ((x1, y1), (x0, y0))
+-        };
+-        let axes = Axes {
+-            start_major: first.0,
+-            start_minor: first.1,
+-            end_major: second.0,
+-            end_minor: second.1,
+-        };
+-        let h = slope.hypot(1.0) * r;
+-        plot_major(axes, slope, c, h, r, &mut cell);
+-    } else {
+-        let raw = dx / dy;
+-        let slope = if finite(raw) { raw } else { 0.0 };
+-        let c = r * if finite(raw) { 1.0 - raw.abs() } else { 1.0 };
+-        let (first, second) = if keeps_order(y0, y1) {
+-            ((x0, y0), (x1, y1))
+-        } else {
+-            ((x1, y1), (x0, y0))
+-        };
+-        let axes = Axes {
+-            start_major: first.1,
+-            start_minor: first.0,
+-            end_major: second.1,
+-            end_minor: second.0,
+-        };
+-        let h = slope.hypot(1.0) * r;
+-        plot_major(axes, slope, c, h, r, |major, minor| cell(minor, major));
+-    }
++                visit(row, column);
++            }
++        }
++    }
++}
++
++/// 连续坐标覆盖的整数格区间与输出边界求交。floor 保证负坐标也落在正确格中。
++fn intersect_cells(
++    minimum: f64,
++    maximum: f64,
++    bounds: &RangeInclusive<i32>,
++) -> Option<RangeInclusive<i32>> {
++    let minimum = minimum.floor().max(f64::from(*bounds.start()));
++    let maximum = maximum.floor().min(f64::from(*bounds.end()));
++    (minimum <= maximum).then_some(minimum as i32..=maximum as i32)
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+-    #[test]
+-    fn endpoint_order_follows_jbe_so_nan_never_swaps() {
+-        assert!(super::keeps_order(1.0, 2.0));
+-        assert!(super::keeps_order(2.0, 2.0));
+-        assert!(!super::keeps_order(3.0, 2.0));
+-        assert!(super::keeps_order(f32::NAN, 2.0));
+-        assert!(super::keeps_order(2.0, f32::NAN));
+-    }
+-
+     use super::*;
+     use std::collections::BTreeSet;
+ 
+@@ -235,4 +175,88 @@
+         conservative_plot_line((f32::NAN, 0.0), (1.0, 1.0), 0.5, |_, _| n += 1);
+         assert!(n < 1_000);
+     }
+-}
++
++    #[test]
++    fn extreme_points_do_not_wrap_into_the_grid() {
++        assert!(cells((0.0, 3e9), (0.0, 3e9), 0.0).is_empty());
++        assert!(cells((3e9, 0.0), (3e9, 0.0), 0.0).is_empty());
++        assert_eq!(
++            cells((0.0, i32::MIN as f32), (0.0, i32::MIN as f32), 0.0),
++            BTreeSet::from([(0, i32::MIN)])
++        );
++    }
++
++    #[test]
++    fn huge_crossing_strokes_are_bounded_and_still_cover_the_grid() {
++        let mut visited = BTreeSet::new();
++        conservative_plot_line_in_bounds(
++            (-f32::MAX, 32.5),
++            (f32::MAX, 32.5),
++            0.0,
++            [0..=63, 0..=63],
++            |x, y| {
++                visited.insert((x, y));
++            },
++        );
++        assert_eq!(visited, (0..64).map(|x| (x, 32)).collect::<BTreeSet<_>>());
++        let mut count = 0;
++        conservative_plot_line_in_bounds(
++            (0.0, 0.0),
++            (1.0, 1.0),
++            f32::MAX,
++            [0..=63, 0..=63],
++            |_, _| count += 1,
++        );
++        assert_eq!(count, 4096);
++        let mut diagonal = BTreeSet::new();
++        conservative_plot_line_in_bounds(
++            (-f32::MAX, -f32::MAX * 0.3),
++            (f32::MAX, f32::MAX * 0.3),
++            0.0,
++            [0..=63, 0..=63],
++            |column, row| {
++                diagonal.insert((column, row));
++            },
++        );
++        assert!(diagonal.contains(&(10, 3)) && diagonal.contains(&(50, 15)));
++    }
++
++    #[test]
++    fn negative_coordinates_use_floor_and_invalid_input_is_ignored() {
++        assert_eq!(
++            cells((-0.25, -0.25), (-0.25, -0.25), 0.0),
++            BTreeSet::from([(-1, -1)])
++        );
++        assert!(cells((0.0, 0.0), (1.0, 1.0), -1.0).is_empty());
++        assert!(cells((f32::INFINITY, 0.0), (1.0, 1.0), 0.0).is_empty());
++    }
++
++    #[test]
++    fn bounded_output_matches_filtering_for_each_axis_and_endpoint_order() {
++        for (start, end) in [
++            ((-10.2, 1.3), (100.5, 60.7)),
++            ((5.2, -15.4), (60.8, 90.3)),
++            ((6.3, 5.8), (-2.4, -8.1)),
++        ] {
++            for radius in [0.0, 0.2, 3.5] {
++                let expected: BTreeSet<_> = cells(start, end, radius)
++                    .into_iter()
++                    .filter(|&(column, row)| (0..64).contains(&column) && (0..64).contains(&row))
++                    .collect();
++                for (start, end) in [(start, end), (end, start)] {
++                    let mut actual = BTreeSet::new();
++                    conservative_plot_line_in_bounds(
++                        start,
++                        end,
++                        radius,
++                        [0..=63, 0..=63],
++                        |column, row| {
++                            actual.insert((column, row));
++                        },
++                    );
++                    assert_eq!(actual, expected);
++                }
++            }
++        }
++    }
++}
+--- before/crates/country-core/src/utils/debug_viz.rs
++++ after/crates/country-core/src/utils/debug_viz.rs
+@@ -1,85 +1,43 @@
+-//! `country_core::utils::debug_viz` — 调试绘制的构造器（builder）部分。
+-//!
+-//! 布局与默认值逐字节取自 EXE（B 构建）：
+-//!
+-//! | 类型 / 函数 | 地址 | 布局 |
+-//! |---|---|---|
+-//! | `DebugSphere::new` | 0x140b02490 | 0x28 B：color@0（16 B，仅首 dword 置 0）、radius@0x10 = 0.1（`0x3dcccccd`）、center@0x14（12 B）、alpha@0x20 = 1.0、solid@0x24 = false |
+-//! | `DebugSphere::{color,radius,solid}` | 0x140b024c0 / 0x140b024e0 / 0x140b02500 | 就地改写对应字段，按值返回 |
+-//! | `DebugRectangle3d::new` | 0x140b02e10 | 0x38 B：color@0、line_width@0x10 = 1.0、rect@0x14（32 B，来自入参指针）、dashed@0x34 = false |
+-//! | `DebugRectangle3d::{color,line_width,dashed_line}` | 0x140b02e40 / 0x140b02e70 / 0x140b02ea0 | 同上 |
+-//! | `DebugLine::new` | 0x140b04e70 | 0x48 B：points `Vec<Vec3>`@0（24 B）、colors `Option<Vec<Vec3>>`@0x18（None = `0x8000000000000000` 上界位）、color@0x30、line_width@0x40 = 1.0、ui_pass@0x44 = true、dashed@0x45 = false |
+-//! | `DebugLine::{color,set_ui_pass,dashed,line_width}` | 0x140b04eb0 / 0x140b04ee0 / 0x140b04f10 / 0x140b04f40 | 同上 |
+-//!
+-//! 颜色：`color` 不是 RGBA 向量，而是 16 B 的 6 变体枚举——`u32` 标签 @0，`Custom` 的 RGB 三个 f32 @4..16。
+-//! 构造器只写标签（`mov dword [rcx], 0` = `White`），其余 12 字节在 EXE 里未初始化。
+-//! 证据：`DebugSphere::show`（0x140b02520）用标签索引两张 6 项表（长度 0x142ae7200、串指针 0x142ae7230）选
+-//! `debug_sphere_{white,red,blue,green,grey,custom}`；`DebugLine::show`（0x140b04f70）在
+-//! `colors == None` 时按跳表 0x142ae731c 取逐点填充色：白 (1,1,1)、红 (1,0,0)、蓝 (0,0,1)、
+-//! 绿 (0,1,0)、灰 (0.1,0.1,0.1)、自定义取 `+0x34` 起的三个 f32（常量地址
+-//! 0x14292e6b0/0x142930d60/0x1429345b0/0x142925904 已逐一核对）。
+-//! `DebugRectangle3d` 的标签同位置同写法，按同一枚举处理（`show` 0x140b02ed0 只粗读过，I）。
+-//! `DebugRectangle2d` 没有独立构造器（`show` 直接取 4 个 f32）。
+-//!
+-//! `show` 系列（0x140b02520 / 0x140b02ed0 / 0x140b04640 / 0x140b04f70 及其闭包）把
+-//! `SignifierFactory` 记录（40 B：`{name String, inner Arc<dyn Fn(..) -> Vec<Entity>>}`）压入
+-//! `UiSignifierStream`，由 `signifier_create` 消费时唤醒闭包（闭包体读 `AssetMeshLibrary` /
+-//! `AssetShaderLibrary` 并写 `Commands`）。**本批落库 `DebugLine::show`**；`DebugSphere::show` /
+-//! `DebugRectangle3d::show` / `DebugRectangle2d::show` 仍待各自 fresh 重建。
+-//!
+-//! `DebugLine::show`（0x140b04f70，fresh 2026-10-17）：
+-//! - `name = format!("{:?}{}{:?}{}", points, colors.is_some(), color, line_width)`——4 个空
+-//!   字面片段（表 0x142ae6f68 全零长度）；`{:?}` 分别走 `Vec<Vec3>` Debug（0x1412f7540）、
+-//!   `bool` Display（0x140156710）、`DebugColor` Debug（0x140b05c70）。
+-//! - `colors` 为 `Option<Vec<Vec3>>`（+0x18，None 上界位 = `i64::MIN`）；`None` 时按颜色跳表
+-//!   0x142ae731c 生成 `vec![color.rgb(); points.len()]`（六分支常量逐一核对：
+-//!   White(1,1,1)/Red(1,0,0)/Blue(0,0,1)/Green(0,1,0)/Grey(0.1,0.1,0.1)/Custom(+0x34 RGB)）。
+-//! - 长度 = `points.tuple_windows().map(a.distance(b)).sum::<f32>()`（PDB：itertools tuple_impl::next、
+-//!   `Vec3::distance`、`f32::sqrt`；机器码为两段展开的 SIMD 距离累加）。
+-//! - 闭包捕获 `{points, colors, length, line_width, ui_pass, dashed}`（vtable 0x142ae70d0：
+-//!   drop 0x140b00080 / size 0x40 / align 8 / call_once 0x140affd20）；闭包体
+-//!   `SignifierEntityBuilder::new` → `set_ui_pass(ui_pass)` → `animation_duration(0.0)` →
+-//!   `custom_shader(dashed ? "dashed_line" : "vertex_color_shader")` → `build`，随后
+-//!   `insert DrawTopology::Alt(line_width)`，dashed 时 `insert DashedLineLength(length * 4.0)`。
+-//! - 记录经 `SignifierFactory::new` 等价的 40 B `{name_len, name_ptr, name_len, &inner, vtable}`
+-//!   写入 `UiSignifierStream`（`AppendOnlyVec::push<UiAppendSignifier>` 0x14146c880）。
+-
+-use std::sync::Arc;
+-
++//! 调试图元请求与折线实体工厂。使用类型化网格和现有资产库，不再打包裸指针。
++
++use crate::{
++    asset_libraries::{
++        mesh_library::{AssetMeshLibrary, MeshAsset},
++        shader_library::AssetShaderLibrary,
++        transient_mesh::TransientMesh,
++    },
++    components::{DashedLineLength, drawable::DrawableMeshBundle},
++    render::{mesh::ATTR_COLOR, pass_builder::draw_list::DrawTopology},
++    systems::{
++        render_loop::draw_passes::draw_lists::{DontCastShadow, UiPass},
++        ui::signifiers::{
++            animation::SignifierAnimation,
++            signifier_create::{SignifierId, UiSignifierStream},
++            signifier_factory::SignifierFactory,
++        },
++    },
++    utils::{components::transform::Transform, geo::mesh_from_pts},
++};
+ use bevy_ecs::prelude::Commands;
+ use glam::Vec3;
+-use itertools::Itertools;
+-
+-use crate::asset_libraries::mesh_library::AssetMeshLibrary;
+-use crate::asset_libraries::shader_library::AssetShaderLibrary;
+-use crate::components::DashedLineLength;
+-use crate::render::pass_builder::draw_list::DrawTopology;
+-use crate::systems::ui::signifiers::signifier_create::UiSignifierStream;
+-use crate::systems::ui::signifiers::signifier_factory::{
+-    SignifierEntityBuilder, SignifierFactory,
++use std::{
++    hash::{Hash, Hasher},
++    sync::Arc,
+ };
+ 
+-/// 调试图元的颜色（O：标签顺序与串表一致）。
+-#[derive(Clone, Copy, PartialEq)]
++/// 调试图元的颜色。
++#[derive(Clone, Copy, Debug, Default, PartialEq)]
+ pub enum DebugColor {
++    #[default]
+     White,
+     Red,
+     Blue,
+     Green,
+     Grey,
+-    /// 标签 5，RGB 在 `+4..+16`。
+     Custom(Vec3),
+ }
+ 
+-impl Default for DebugColor {
+-    /// 构造器写入的标签 0。
+-    fn default() -> Self {
+-        Self::White
+-    }
+-}
+-
+ impl DebugColor {
+-    /// 标签字节（O：`u32 @0`）。
+     pub fn tag(self) -> u32 {
+         match self {
+             Self::White => 0,
+@@ -91,7 +49,6 @@
+         }
+     }
+ 
+-    /// `DebugLine::show` 的映射（O：0x140b0507d..0x140b05119）。
+     pub fn rgb(self) -> Vec3 {
+         match self {
+             Self::White => Vec3::new(1.0, 1.0, 1.0),
+@@ -103,14 +60,11 @@
+         }
+     }
+ 
+-    /// `DebugColor::as_array`（O：debug_viz.rs L165 inline）。`Custom` 的 Debug 走
+-    /// `fmt<array<f32,3>>`（0x1408fbe60），因此返回 `[f32;3]`。
+     pub fn as_array(self) -> [f32; 3] {
+         let rgb = self.rgb();
+         [rgb.x, rgb.y, rgb.z]
+     }
+ 
+-    /// `DebugSphere::show` 选用的网格名（O：0x142ae7230 的 6 个串）。
+     pub fn sphere_mesh_name(self) -> &'static str {
+         match self {
+             Self::White => "debug_sphere_white",
+@@ -123,24 +77,7 @@
+     }
+ }
+ 
+-impl std::fmt::Debug for DebugColor {
+-    /// `impl$7::fmt`（0x140b05c70，跳表 0x142ae7334）。五个单元变体写原名；
+-    /// `Custom` 走 `debug_tuple("Custom").field(&as_array())`（0x140d872d0
+-    /// `debug_tuple_field1_finish`），输出形如 `Custom([1.0, 0.0, 0.0])`。
+-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+-        match self {
+-            Self::White => f.write_str("White"),
+-            Self::Red => f.write_str("Red"),
+-            Self::Blue => f.write_str("Blue"),
+-            Self::Green => f.write_str("Green"),
+-            Self::Grey => f.write_str("Grey"),
+-            Self::Custom(_) => f.debug_tuple("Custom").field(&self.as_array()).finish(),
+-        }
+-    }
+-}
+-
+-
+-/// 一次画一个球的请求（0x28 B）。
++/// 球体请求参数。
+ #[derive(Clone, Copy, Debug, PartialEq)]
+ pub struct DebugSphere {
+     pub color: DebugColor,
+@@ -151,7 +88,6 @@
+ }
+ 
+ impl DebugSphere {
+-    /// O 0x140b02490。
+     pub fn new(center: Vec3) -> Self {
+         Self {
+             color: DebugColor::White,
+@@ -162,27 +98,23 @@
+         }
+     }
+ 
+-    /// O 0x140b024c0。
+     pub fn color(mut self, color: DebugColor) -> Self {
+         self.color = color;
+         self
+     }
+ 
+-    /// O 0x140b024e0。
+     pub fn radius(mut self, radius: f32) -> Self {
+         self.radius = radius;
+         self
+     }
+ 
+-    /// O 0x140b02500。
+     pub fn solid(mut self) -> Self {
+         self.solid = true;
+         self
+     }
+ }
+ 
+-/// 一次画一个 3D 矩形的请求（0x38 B）。`rect` 是入参里的 32 字节，布局 U（`show` 里用
+-/// `FUN_140c99600` 展开为 4 个角点）。
++/// 三维矩形请求参数；rect 的解释由调用方约定。
+ #[derive(Clone, Copy, Debug, PartialEq)]
+ pub struct DebugRectangle3d {
+     pub color: DebugColor,
+@@ -192,7 +124,6 @@
+ }
+ 
+ impl DebugRectangle3d {
+-    /// O 0x140b02e10。
+     pub fn new(rect: [f32; 8]) -> Self {
+         Self {
+             color: DebugColor::White,
+@@ -202,35 +133,26 @@
+         }
+     }
+ 
+-    /// O 0x140b02e40。
+     pub fn color(mut self, color: DebugColor) -> Self {
+         self.color = color;
+         self
+     }
+ 
+-    /// O 0x140b02e70。
+     pub fn line_width(mut self, line_width: f32) -> Self {
+         self.line_width = line_width;
+         self
+     }
+ 
+-    /// O 0x140b02ea0。
+     pub fn dashed_line(mut self) -> Self {
+         self.dashed = true;
+         self
+     }
+ }
+ 
+-/// 一次画一条折线的请求（0x48 B）。
+-///
+-/// 布局（O，0x140b04e70 fresh）：`points: Vec<Vec3>@0`、`colors: Option<Vec<Vec3>>@0x18`
+-/// （None 上界位 `0x8000000000000000` 写在 cap 槽）、`color@0x30`、`line_width@0x40`、
+-/// `ui_pass@0x44`、`dashed@0x45`。`colors` 是逐点颜色；`show` 在 `None` 时以线颜色填充
+-/// `points.len()` 个元素（见模块头）。
++/// 折线请求；颜色可按点提供，也可使用统一颜色。
+ #[derive(Clone, Debug, PartialEq)]
+ pub struct DebugLine {
+     pub points: Vec<Vec3>,
+-    /// 逐点颜色（+0x18）。`None` = 用 [`DebugLine::color`] 的统一颜色。
+     pub colors: Option<Vec<Vec3>>,
+     pub color: DebugColor,
+     pub line_width: f32,
+@@ -238,27 +160,7 @@
+     pub dashed: bool,
+ }
+ 
+-/// `DebugLine::show` 闭包 body 的 6-qword mesh 载荷（O：0x140b055a0 的
+-/// `[RBP-0x50..-0x28]`，逐指令核对）。
+-///
+-/// 槽位语义（O，`SignifierEntityBuilder::build` 0x14089dd50 default 分支）：
+-/// `mesh_from_pts(ptr=payload[1], len=payload[0])` +
+-/// `set_attribute<Vec<[f32;3]>>(Vec { cap=payload[3], ptr=payload[4], len=payload[5] })`。
+-/// 因此 **payload[3] 是 colors Vec 的 cap 槽**（native 取自捕获的 colors；
+-/// `clone()`/`vec!` 生成的捕获 Vec cap == len，但槽位语义是 cap）。
+-fn mesh_payload(points: &[Vec3], colors: &[Vec3], colors_capacity: usize) -> [u64; 6] {
+-    [
+-        points.len() as u64,
+-        points.as_ptr() as u64,
+-        points.len() as u64,
+-        colors_capacity as u64,
+-        colors.as_ptr() as u64,
+-        colors.len() as u64,
+-    ]
+-}
+-
+ impl DebugLine {
+-    /// O 0x140b04e70。
+     pub fn new(points: Vec<Vec3>) -> Self {
+         Self {
+             points,
+@@ -269,104 +171,139 @@
+             dashed: false,
+         }
+     }
+-
+-    /// O 0x140b04eb0。
+     pub fn color(mut self, color: DebugColor) -> Self {
+         self.color = color;
+         self
+     }
+-
+-    /// O 0x140b04ee0：`r8b` 直接写入 +0x44。
+     pub fn set_ui_pass(mut self, ui_pass: bool) -> Self {
+         self.ui_pass = ui_pass;
+         self
+     }
+-
+-    /// O 0x140b04f10。
+     pub fn dashed(mut self) -> Self {
+         self.dashed = true;
+         self
+     }
+-
+-    /// O 0x140b04f40。
+     pub fn line_width(mut self, line_width: f32) -> Self {
+         self.line_width = line_width;
+         self
+     }
+ 
+-    /// `DebugLine::show`（0x140b04f70，O）：把折线打包为 `SignifierFactory` 记录写入
+-    /// append-only 指示符流。
+-    ///
+-    /// fresh 语义（2026-10-17）：
+-    /// 1. `name = format!("{:?}{}{:?}{}", points, colors.is_some(), color, line_width)`
+-    ///    （格式表 0x142ae6f68 的 4 个片段全为空）。
+-    /// 2. `colors = self.colors.clone().unwrap_or_else(|| vec![color.rgb(); points.len()])`
+-    ///    （None 分支按颜色跳表 0x142ae731c 生成填充值）。
+-    /// 3. `length = points.tuple_windows().map(|(a, b)| a.distance(b)).sum()`。
+-    /// 4. 闭包捕获 `{points, colors, length, line_width, ui_pass, dashed}`；唤醒时经
+-    ///    `SignifierEntityBuilder` 建实体（build 的 mesh/shader 解析面仍是既有 GAP），
+-    ///    随后插 `DrawTopology::Alt(line_width)`；dashed 时先插
+-    ///    `DashedLineLength(length * 4.0)`。
++    /// 无效调试输入只记录告警，不中断主编辑流程。
+     pub fn show(&self, stream: &mut UiSignifierStream) {
+-        let name = format!(
+-            "{:?}{}{:?}{}",
+-            self.points,
+-            self.colors.is_some(),
+-            self.color,
+-            self.line_width
+-        );
++        if let Err(error) = self.try_show(stream) {
++            log::warn!("调试折线未提交：{error}");
++        }
++    }
++
++    /// 校验成功才提交工厂。名字包含实际颜色、绘制通道和虚线模式，避免错误去重。
++    pub fn try_show(&self, stream: &mut UiSignifierStream) -> anyhow::Result<()> {
++        anyhow::ensure!(self.points.len() >= 2, "调试折线至少需要两个点");
++        anyhow::ensure!(
++            self.points.iter().all(|point| point.is_finite()),
++            "调试折线包含非有限位置"
++        );
++        anyhow::ensure!(
++            self.line_width.is_finite() && self.line_width > 0.0,
++            "调试线宽必须为有限正数"
++        );
++        anyhow::ensure!(self.color.rgb().is_finite(), "调试颜色必须有限");
++        if let Some(colors) = &self.colors {
++            anyhow::ensure!(
++                colors.len() == self.points.len() && colors.iter().all(|color| color.is_finite()),
++                "逐点颜色数量必须匹配位置且全部有限"
++            );
++        }
++        let length: f32 = self
++            .points
++            .windows(2)
++            .map(|segment| segment[0].distance(segment[1]))
++            .sum();
++        anyhow::ensure!((length * 4.0).is_finite(), "调试折线长度过大");
++        let name = format!("debug_line:{:016x}", self.identity_hash());
++        let points = self.points.clone();
+         let colors = self
+             .colors
+             .clone()
+-            .unwrap_or_else(|| vec![self.color.rgb(); self.points.len()]);
+-        let length: f32 = self
+-            .points
+-            .iter()
+-            .tuple_windows()
+-            .map(|(a, b)| a.distance(*b))
+-            .sum();
+-        let points = self.points.clone();
++            .unwrap_or_else(|| vec![self.color.rgb(); points.len()]);
+         let line_width = self.line_width;
+         let ui_pass = self.ui_pass;
+         let dashed = self.dashed;
+         let factory = SignifierFactory::from_closure(
+             &name,
+             Arc::new(
+-                move |mesh_library: &AssetMeshLibrary,
+-                      shader_library: &AssetShaderLibrary,
++                move |meshes: &AssetMeshLibrary,
++                      shaders: &AssetShaderLibrary,
+                       commands: &mut Commands| {
+-                    // O：闭包体把两个 Vec<Vec3> 打包为 `SignifierEntityBuilder::new`
+-                    // 的 6-qword 载荷（见 [`mesh_payload`]）。
+-                    let payload = mesh_payload(&points, &colors, colors.capacity());
+-                    let shader = if dashed {
++                    let shader_name = if dashed {
+                         "dashed_line"
+                     } else {
+                         "vertex_color_shader"
+                     };
+-                    let builder = SignifierEntityBuilder::new(&payload)
+-                        .set_ui_pass(u8::from(ui_pass))
+-                        // O：闭包体把构建器 +0x78 显式写 0.0。
+-                        .animation_duration(0.0)
+-                        .custom_shader(shader);
+-                    // GAP（既有，非本批引入）：build 的 AssetMeshLibrary::add /
+-                    // try_get_handle_by_name / AssetShaderLibrary::get_raster_handle_by_name /
+-                    // mesh_from_pts 写面未落库；两个库参数保留以维持原生闭包签名。
+-                    let _ = (mesh_library, shader_library);
+-                    let entity = builder.build(commands);
+-                    // O：先（dashed 时）插 DashedLineLength，再插 DrawTopology。
++                    let Some(shader) = shaders.get_raster_handle_by_name(shader_name) else {
++                        log::warn!("调试折线着色器未注册：{shader_name}");
++                        return Vec::new();
++                    };
++                    let mut mesh = mesh_from_pts("debug_line", &points);
++                    mesh.set_attribute(ATTR_COLOR, colors.clone());
++                    let mesh = meshes.add(MeshAsset::new(mesh, None));
++                    let entity = commands
++                        .spawn((
++                            DrawableMeshBundle {
++                                mesh,
++                                shader,
++                                transform: Transform::identity(),
++                            },
++                            TransientMesh::new_with_registry(mesh, meshes.transient_meshes()),
++                            DrawTopology::Alt(line_width),
++                            DontCastShadow,
++                            SignifierId(0),
++                            // 点已经位于世界空间；不让通用指示符动画把线缩放到零。
++                            SignifierAnimation {
++                                flag_8: 1,
++                                duration: 0.0,
++                                value: 1.0,
++                                t: 1.0,
++                                eased: 1.0,
++                                ..Default::default()
++                            },
++                        ))
++                        .id();
++                    if ui_pass {
++                        commands.entity(entity).insert(UiPass);
++                    }
+                     if dashed {
+                         commands
+                             .entity(entity)
+                             .insert(DashedLineLength(length * 4.0));
+                     }
+-                    commands
+-                        .entity(entity)
+-                        .insert(DrawTopology::Alt(line_width));
+                     vec![entity]
+                 },
+             ),
+         );
+         stream.write_factory(&factory);
++        Ok(())
++    }
++
++    /// 哈希浮点位模式，不创建整条点列的格式化字符串；分隔长度防止不同点列拼接混淆。
++    fn identity_hash(&self) -> u64 {
++        let mut hasher = std::collections::hash_map::DefaultHasher::new();
++        self.points.len().hash(&mut hasher);
++        for point in &self.points {
++            point.to_array().map(f32::to_bits).hash(&mut hasher);
++        }
++        self.colors.is_some().hash(&mut hasher);
++        if let Some(colors) = &self.colors {
++            colors.len().hash(&mut hasher);
++            for color in colors {
++                color.to_array().map(f32::to_bits).hash(&mut hasher);
++            }
++        } else {
++            self.color.as_array().map(f32::to_bits).hash(&mut hasher);
++        }
++        self.line_width.to_bits().hash(&mut hasher);
++        self.ui_pass.hash(&mut hasher);
++        self.dashed.hash(&mut hasher);
++        hasher.finish()
+     }
+ }
+ 
+@@ -439,10 +376,6 @@
+         );
+     }
+ 
+-    /// 解锁验证（glade-border `display_glade_border` / water closure$0 的所需 API）：
+-    /// `DebugLine::show` 把 4 段空字面格式串（points Debug + `is_some` bool + color
+-    /// Debug + width Display）与闭包写入原生 40 B 记录；闭包被唤醒后按
+-    /// `DrawTopology::Alt(line_width)` 与 `DashedLineLength(length * 4.0)` 落组件。
+     #[test]
+     fn show_packs_the_record_and_wakes_the_dashed_line_closure() {
+         use bevy_ecs::prelude::{Commands, Res, ResMut};
+@@ -451,8 +384,8 @@
+ 
+         use crate::components::DashedLineLength;
+         use crate::render::pass_builder::draw_list::DrawTopology;
++        use crate::systems::ui::signifiers::UiSignifierStream;
+         use crate::systems::ui::signifiers::signifier_create::UiSignifierEntry;
+-        use crate::systems::ui::signifiers::UiSignifierStream;
+ 
+         let mut stream = UiSignifierStream::default();
+         let line = DebugLine::new(vec![Vec3::ZERO, Vec3::new(3.0, 4.0, 0.0)])
+@@ -469,15 +402,22 @@
+         };
+         assert!(factory.has_closure());
+         let name = factory.name().expect("factory name is utf-8");
+-        // 颜色跳表 -> Debug 名 "Red"；is_some=false；width Display "2.5"。
+-        assert!(name.contains("Red"), "name={name}");
+-        assert!(name.contains("false"), "name={name}");
+-        assert!(name.contains("2.5"), "name={name}");
++        // 工厂使用紧凑哈希名，完整绘制参数参与去重。
++        assert!(name.starts_with("debug_line:"));
+ 
+         // 唤醒：等价于 signifier_create 的 vtable 调用槽。
+         let mut world = World::new();
+         world.init_resource::<AssetMeshLibrary>();
+-        world.init_resource::<AssetShaderLibrary>();
++        let shaders = AssetShaderLibrary::new();
++        shaders.add_raster(
++            crate::render::shader::RasterShaderProgram::new_draw(
++                "dashed_line",
++                crate::rhapsody_types::RasterPipelineDesc::default(),
++                &crate::render::test_device::TestDevice(1),
++            ),
++            false,
++        );
++        world.insert_resource(shaders);
+         world.init_resource::<UiSignifierStream>();
+         world
+             .resource_mut::<UiSignifierStream>()
+@@ -499,6 +439,35 @@
+         }
+         world.run_system_once(wake).unwrap();
+ 
++        let mut drawables = world.query::<(
++            bevy_ecs::entity::Entity,
++            &crate::asset_libraries::Handle<crate::render::mesh::Mesh>,
++            &crate::asset_libraries::Handle<crate::render::shader::RasterShaderProgram>,
++            &Transform,
++            &TransientMesh,
++        )>();
++        let (entity, mesh_handle, shader_handle, transform, transient) =
++            drawables.single(&world).unwrap();
++        assert_eq!(transform.scale, Vec3::ONE);
++        assert_eq!(transient.mesh_handle(), *mesh_handle);
++        assert_eq!(
++            world
++                .resource::<AssetShaderLibrary>()
++                .get_raster(*shader_handle)
++                .unwrap()
++                .name,
++            "dashed_line"
++        );
++        assert!(world.get::<UiPass>(entity).is_none());
++        let mesh_handle = *mesh_handle;
++        assert_eq!(
++            world
++                .resource::<AssetMeshLibrary>()
++                .get(mesh_handle)
++                .unwrap()
++                .positions_without_indices(),
++            &[Vec3::ZERO, Vec3::new(3.0, 4.0, 0.0)]
++        );
+         let mut dashed = world.query::<&DashedLineLength>();
+         let lengths: Vec<f32> = dashed.iter(&world).map(|d| d.0).collect();
+         assert_eq!(lengths, vec![20.0], "|(3,4,0)| = 5.0, x4.0");
+@@ -506,14 +475,15 @@
+         let mut topology = world.query::<&DrawTopology>();
+         let topologies: Vec<DrawTopology> = topology.iter(&world).copied().collect();
+         assert_eq!(topologies, vec![DrawTopology::Alt(2.5)]);
+-    }
+-
+-    /// water closure$0 的接线形状：外部代码用 `SignifierFactory::from_closure` +
+-    /// `UiSignifierStream::write_factory` 携带自定义名字与构建闭包。
++        let registry = Arc::clone(world.resource::<AssetMeshLibrary>().transient_meshes());
++        world.despawn(entity);
++        assert_eq!(*registry.lock().unwrap(), vec![mesh_handle]);
++    }
++
+     #[test]
+     fn external_factory_shape_matches_water_closure_zero() {
++        use crate::systems::ui::signifiers::UiSignifierStream;
+         use crate::systems::ui::signifiers::signifier_create::UiSignifierEntry;
+-        use crate::systems::ui::signifiers::UiSignifierStream;
+ 
+         let mut stream = UiSignifierStream::default();
+         let factory = SignifierFactory::from_closure(
+@@ -528,38 +498,20 @@
+         assert_eq!(slot.name(), Some("brush_circle_scribble"));
+     }
+ 
+-    /// FIX-A1 边界：payload q3 是 **colors Vec 的 cap 槽**（build 0x14089dd50 default
+-    /// 分支把 `{payload[3],payload[4],payload[5]}` 作为 `Vec<[f32;3]>` 传给
+-    /// `set_attribute`），不是 points 的 cap。colors/points 不同长时暴露。
+-    #[test]
+-    fn mesh_payload_q3_uses_the_colors_capacity_slot() {
+-        let points = vec![Vec3::ZERO; 2];
+-        let colors = vec![Vec3::ONE; 5];
+-        let payload = mesh_payload(&points, &colors, colors.capacity());
+-        assert_eq!(payload[0], 2);
+-        assert_eq!(payload[2], 2);
+-        assert_eq!(payload[3], colors.capacity() as u64);
+-        assert_ne!(payload[3], points.capacity() as u64);
+-        assert_eq!(payload[4], colors.as_ptr() as u64);
+-        assert_eq!(payload[5], 5);
+-    }
+-
+-    /// 端到端边界：`show` 接受与 points 不同长的 colors，闭包仍按 colors cap 打包。
+-    #[test]
+-    fn show_accepts_colors_with_a_different_length_than_points() {
+-        use crate::systems::ui::signifiers::signifier_create::UiSignifierEntry;
+-        use crate::systems::ui::signifiers::UiSignifierStream;
+-
+-        let mut line = DebugLine::new(vec![Vec3::ZERO, Vec3::new(3.0, 4.0, 0.0)]);
+-        line.colors = Some(vec![Vec3::ONE; 5]);
++    #[test]
++    fn invalid_colors_are_not_committed_and_render_modes_have_distinct_ids() {
++        let mut line = DebugLine::new(vec![Vec3::ZERO, Vec3::X]);
++        line.colors = Some(vec![Vec3::ONE]);
+         let mut stream = UiSignifierStream::default();
+-        line.show(&mut stream);
+-        let entries = stream.take_entries();
+-        assert!(matches!(entries.as_slice(), [UiSignifierEntry::Factory(_)]));
+-
+-        let colors = line.colors.as_ref().expect("Some(colors)");
+-        let payload = mesh_payload(&line.points, colors, colors.capacity());
+-        assert_eq!(payload[3], colors.capacity() as u64);
+-        assert_ne!(payload[3], line.points.capacity() as u64);
+-    }
+-}
++        assert!(line.try_show(&mut stream).is_err());
++        assert_eq!(stream.committed_len(), 0);
++        line.colors = None;
++        let identity = line.identity_hash();
++        assert_ne!(identity, line.clone().dashed().identity_hash());
++        assert_ne!(identity, line.clone().set_ui_pass(false).identity_hash());
++        line.colors = Some(vec![Vec3::X; 2]);
++        let red = line.identity_hash();
++        line.colors = Some(vec![Vec3::Y; 2]);
++        assert_ne!(red, line.identity_hash());
++    }
++}
+--- before/crates/country-core/src/utils/dirty_tiles.rs
++++ after/crates/country-core/src/utils/dirty_tiles.rs
+@@ -1,39 +1,20 @@
+-//! `country_core::utils::dirty_tiles` — 64×64 位的脏瓦片位图（0x200 B）。
++//! 世界编辑区域的脏瓦片位图：每行一个 u64，支持区域置位、查询和发布合并。
+ //!
+-//! 原版唯一的 `DirtyTiles`：建筑碰撞（`recovered_building`）与世界栅格
+-//! （`resources::world_raster`）共用同一类型。原版符号（B 构建，PDB 权威地址）：
+-//!
+-//! | 方法 | 地址 | 级别 |
+-//! |---|---|---|
+-//! | `new_clear` | 0x140960ac0 | O，显式清零 512 B |
+-//! | `rasterize_world_space_rect` | 0x140960ae0 | O，14 B 跳板进 `iter_world_space_rect_cells`（0x140ade8e0） |
+-//! | `intersects_world_space_rect` | 0x140960af0 | O，0x26 B 包装：清零栈上 bool、交换 rcx/rdx 后调 0x140adec50 并返回该 bool；内循环 `bt` 测位，命中后置标志但继续下一行（结果等价于 `any`） |
+-//! | `clear` | 0x140960c20 | O |
+-//! | `extend` / `impl StateDelta::apply_to` | 0x140960c30 / 0x140960ef0 | O，两者同大小（694 B），逐字 OR |
+-//! | `retain<copy_to_staging 闭包>` | 0x140adfcb0 | O，见 [`DirtyTiles::retain`] |
+-//!
+-//! 位图布局（O，0x140adfcb0 的 `tzcnt` 循环与 0x140ade8e0 的 `shl/or [rsi+r8*8]`）：
+-//! 第 `y` 个 u64 字是第 `y` 行瓦片，第 `x` 位是该行第 `x` 列瓦片，瓦片边长 8 px，
+-//! 世界边长 130。
+-//!
+-//! `rasterize_world_space_stroke`（0x140ade620）：`iter_world_space_stroke_cells` 的 `DirtyTiles` 实例，见
+-//! [`DirtyTiles::rasterize_world_space_stroke`] 与 `utils::conservative_line_raster`。
+-//!
+-//! `cell_from_world_space`（0x140960b20）返回 tag + 两个坐标；最后仅存低 64 位，
+-//! 旧“四通道输出”解释错误。第三次 fmaf 的结果不写入返回值。
+-
+-// Preserve the original instruction-level expression order/NaN policy, API call shapes, and evidence/test transcription. See README.md.
+-#![allow(clippy::manual_clamp)]
+-
++//! 64×64 瓦片覆盖 130×130 的世界范围，单瓦片对应 8×8 个栅格像素。
++//! 矩形使用半开区间，笔画在枚举前裁剪到位图边界。
++
++use ::utils::float_grid::DEFAULT_WORLD_EXTENT;
+ use glam::{Vec2, Vec3};
+ use tabloid::{State, StateDelta};
+ 
+-use crate::utils::conservative_line_raster::conservative_plot_line;
+-
+-/// 瓦片边长（像素）。O：`retain` 里 `shl 0xc`（8 行 × 512 B）与 `lea [rdi*8]`。
++use crate::utils::conservative_line_raster::conservative_plot_line_in_bounds;
++
++/// 单个瓦片包含的栅格像素边长。
+ pub const TILE_SIZE: usize = 8;
+-/// 位图边长（瓦片）。O：`cmp edx,0x3f`、0x200 B / 8 = 64 个 u64。
++/// 每个方向的瓦片数量；一行恰好放入一个 u64。
+ pub const GRID_SIZE: usize = 64;
++/// 超出多个世界宽度的坐标改用全图重建，避免 f32 转换精度不足导致漏标。
++const MAX_PRECISE_WORLD_COORDINATE: f32 = DEFAULT_WORLD_EXTENT * 16.0;
+ 
+ #[derive(Clone, Debug, PartialEq, Eq)]
+ pub struct DirtyTiles {
+@@ -43,7 +24,7 @@
+ #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+ pub struct DirtyTileRect {
+     pub minimum: [u32; 2],
+-    /// Original raster end coordinates are exclusive and clamp to 63.
++    /// 不包含的终点，范围为 0..=64。
+     pub end: [u32; 2],
+ }
+ 
+@@ -53,30 +34,35 @@
+     }
+ }
+ 
+-/// Native constants at B 142925874/14292587c and 142ae19d0.
+-/// scale is exactly 0x3efc0fc1, bias32, clamp63; fmaf occurs before rounding.
+-fn cell_coordinate(world: f32, upper: bool) -> u32 {
+-    let value = world.mul_add(f32::from_bits(0x3efc0fc1), 32.0);
+-    let value = if upper { value.ceil() } else { value.floor() };
+-    // Original CMPORD mask converts NaN to zero before the upper clamp.
+-    if value.is_nan() {
+-        0
+-    } else {
+-        value.max(0.0).min(63.0) as u32
+-    }
+-}
+-
++/// 世界坐标转连续瓦片坐标。f64 避免极大有限坐标在转换时溢出。
++fn world_to_tile(world: f32) -> f64 {
++    (f64::from(world) / f64::from(::utils::float_grid::DEFAULT_WORLD_EXTENT) + 0.5)
++        * GRID_SIZE as f64
++}
++
++/// 世界 XZ 矩形转位图范围；无效或逆序输入返回空区间。
+ pub fn world_rect_cells(rect: [f32; 4]) -> DirtyTileRect {
++    let [min_x, min_z, max_x, max_z] = rect;
++    if !rect.iter().all(|value| value.is_finite()) || min_x > max_x || min_z > max_z {
++        return DirtyTileRect {
++            minimum: [0; 2],
++            end: [0; 2],
++        };
++    }
++    let bound = |coordinate: f32, upper: bool| {
++        let tile = world_to_tile(coordinate);
++        let rounded = if upper { tile.ceil() } else { tile.floor() };
++        rounded.clamp(0.0, GRID_SIZE as f64) as u32
++    };
+     DirtyTileRect {
+-        minimum: [
+-            cell_coordinate(rect[0], false),
+-            cell_coordinate(rect[1], false),
+-        ],
+-        end: [
+-            cell_coordinate(rect[2], true),
+-            cell_coordinate(rect[3], true),
+-        ],
+-    }
++        minimum: [bound(min_x, false), bound(min_z, false)],
++        end: [bound(max_x, true), bound(max_z, true)],
++    }
++}
++
++/// 已验证的非空半开列区间转连续位掩码，不执行移位 64 位。
++fn column_mask(start: u32, end: u32) -> u64 {
++    (u64::MAX >> (GRID_SIZE as u32 - (end - start))) << start
+ }
+ 
+ impl Default for DirtyTiles {
+@@ -86,24 +72,22 @@
+ }
+ 
+ impl DirtyTiles {
+-    /// B 0x140960b20: fused scaling, saturating truncation, then unsigned bounds.
+-    /// NaN converts to cell 0; slightly negative scaled coordinates also truncate
+-    /// to 0. This differs from rectangle floor/clamp policy.
++    /// 查询世界点所在的瓦片；非有限或超出世界边界时返回 None。
+     pub fn cell_from_world_space(world: Vec2) -> Option<[u32; 2]> {
+-        let scale = f32::from_bits(0x3efc_0fc1);
+-        let x = world.x.mul_add(scale, 32.0) as i32 as u32;
+-        let y = world.y.mul_add(scale, 32.0) as i32 as u32;
+-        ((x | y) < GRID_SIZE as u32).then_some([x, y])
+-    }
+-
+-    /// B new_clear140960ac0 explicitly zeros all512 bytes.
++        let column = world_to_tile(world.x).floor();
++        let row = world_to_tile(world.y).floor();
++        let range = 0.0..GRID_SIZE as f64;
++        (range.contains(&column) && range.contains(&row)).then_some([column as u32, row as u32])
++    }
++
++    /// 创建空位图。
+     pub fn new_clear() -> Self {
+         Self {
+             rows: [0; GRID_SIZE],
+         }
+     }
+ 
+-    /// 全脏。O：`AllWorldRasterWrite::write` / `clear_all` 对 +0x98 做 `memset(0xff, 0x200)`。
++    /// 创建全部置脏的位图。
+     pub fn new_all_dirty() -> Self {
+         Self {
+             rows: [u64::MAX; GRID_SIZE],
+@@ -114,12 +98,12 @@
+         Self { rows }
+     }
+ 
+-    /// B clear140960c20; this resets mask contents, not owner availability.
++    /// 清空脏标记，不修改发布者或上传状态。
+     pub fn clear(&mut self) {
+         self.rows.fill(0);
+     }
+ 
+-    /// 全部置脏（`memset(0xff)`）。
++    /// 将全部瓦片置脏。
+     pub fn set_all(&mut self) {
+         self.rows.fill(u64::MAX);
+     }
+@@ -130,11 +114,9 @@
+         }
+     }
+ 
+-    /// B flush copies the bitmap then clears it before publishing the copy.
++    /// 取出待发布快照，并将当前位图恢复为空。
+     pub fn take_and_clear(&mut self) -> Self {
+-        let snapshot = self.clone();
+-        self.clear();
+-        snapshot
++        std::mem::take(self)
+     }
+ 
+     pub fn is_empty(&self) -> bool {
+@@ -158,7 +140,7 @@
+                     }
+                     let column = bits.trailing_zeros() as usize;
+                     bits &= bits - 1;
+-                    Some(row * 64 + column)
++                    Some(row * GRID_SIZE + column)
+                 })
+             })
+     }
+@@ -167,59 +149,82 @@
+         &self.rows
+     }
+ 
++    /// 按行一次 OR 整段列掩码，最多操作 64 个机器字。
+     pub fn rasterize_world_rect(&mut self, rect: [f32; 4]) -> DirtyTileRect {
+         let cells = world_rect_cells(rect);
+         if !cells.is_empty() {
+-            for z in cells.minimum[1]..cells.end[1] {
+-                for x in cells.minimum[0]..cells.end[0] {
+-                    self.rows[z as usize] |= 1u64 << x;
+-                }
++            let mask = column_mask(cells.minimum[0], cells.end[0]);
++            for row in &mut self.rows[cells.minimum[1] as usize..cells.end[1] as usize] {
++                *row |= mask;
+             }
+         }
+         cells
+     }
+ 
+-    /// 置一个瓦片；`(x | y) as u32 > 63`（含负数）时忽略。O：0x140b1e460 内联回调的 `cmp r9d,0x3f; ja`。
+-    pub fn set_cell(&mut self, x: i32, y: i32) {
+-        if ((x | y) as u32) <= 63 {
+-            self.rows[y as usize] |= 1u64 << x;
+-        }
+-    }
+-
+-    /// O：0x140ade620 `iter_world_space_stroke_cells<&[Vec3]>`（`DirtyTiles` 实例）。
+-    ///
+-    /// 少于 2 个点什么也不做。半径 `r_cells = radius * 0.4923 + 3.846e-4`（0x142925874 = `0x3efc0fc1`、
+-    /// 0x142925878 = `0x39c9a634`，普通 `mulss` + `addss`）；每个点取 `(x, z)`，各自 `fmaf(v, 0x3efc0fc1, 32.0)`
+-    /// 换成瓦片坐标；相邻两点交给 [`conservative_plot_line`]，回调为 [`Self::set_cell`]。
++    /// 置单格；负数或越界坐标忽略。
++    pub fn set_cell(&mut self, column: i32, row: i32) {
++        if (0..GRID_SIZE as i32).contains(&column) && (0..GRID_SIZE as i32).contains(&row) {
++            self.rows[row as usize] |= 1u64 << column;
++        }
++    }
++
++    /// 标记世界 XZ 平面中的连续笔画。每段至多访问 4096 格，不创建临时点数组。
+     pub fn rasterize_world_space_stroke(&mut self, points: &[Vec3], radius: f32) {
+-        if points.len() < 2 {
++        if points.len() < 2 || !radius.is_finite() || radius < 0.0 {
+             return;
+         }
+-        let scale = f32::from_bits(0x3efc0fc1);
+-        let radius_cells = radius * scale + f32::from_bits(0x39c9a634);
+-        let to_cell = |p: Vec3| (p.x.mul_add(scale, 32.0), p.z.mul_add(scale, 32.0));
+-        for pair in points.windows(2) {
+-            conservative_plot_line(to_cell(pair[0]), to_cell(pair[1]), radius_cells, |x, y| {
+-                self.set_cell(x, y)
+-            });
+-        }
+-    }
+-
+-    /// O：0x140adec50。同一个取整/钳制规则，内循环对每个格 `bt` 测位，命中置标志。
++        let tiles_per_world_unit = GRID_SIZE as f32 / ::utils::float_grid::DEFAULT_WORLD_EXTENT;
++        // 小幅外扩防止刚好落在格线上的笔画因舍入漏掉相邻瓦片。
++        let radius_tiles = radius * tiles_per_world_unit + 0.000_4;
++        let to_tile = |point: Vec3| (world_to_tile(point.x) as f32, world_to_tile(point.z) as f32);
++        for segment in points.windows(2) {
++            let [start, end] = [segment[0], segment[1]];
++            if ![start.x, start.z, end.x, end.z]
++                .iter()
++                .all(|value| value.is_finite())
++            {
++                continue;
++            }
++            let half_extent = ::utils::float_grid::DEFAULT_WORLD_EXTENT * 0.5;
++            if start.x.min(end.x) > half_extent + radius
++                || start.x.max(end.x) < -half_extent - radius
++                || start.z.min(end.z) > half_extent + radius
++                || start.z.max(end.z) < -half_extent - radius
++            {
++                continue;
++            }
++            // 超大世界坐标已无法表达瓦片大小的平移。范围可能触及世界时，
++            // 保守标记全图，避免转换丢掉世界原点偏移后漏掉真正变化的瓦片。
++            if [start.x, start.z, end.x, end.z, radius]
++                .iter()
++                .any(|value| value.abs() > MAX_PRECISE_WORLD_COORDINATE)
++            {
++                self.set_all();
++                return;
++            }
++            conservative_plot_line_in_bounds(
++                to_tile(segment[0]),
++                to_tile(segment[1]),
++                radius_tiles,
++                [0..=GRID_SIZE as i32 - 1, 0..=GRID_SIZE as i32 - 1],
++                |column, row| self.set_cell(column, row),
++            );
++        }
++    }
++
++    /// 使用与区域置位一致的范围，按行检测位掩码交集。
+     pub fn intersects_world_rect(&self, rect: [f32; 4]) -> bool {
+         let cells = world_rect_cells(rect);
+         if cells.is_empty() {
+             return false;
+         }
+-        (cells.minimum[1]..cells.end[1])
+-            .any(|z| (cells.minimum[0]..cells.end[0]).any(|x| self.rows[z as usize] >> x & 1 != 0))
+-    }
+-
+-    /// O：0x140adfcb0 `DirtyTiles::retain<copy_to_staging::closure_env$0<512>>`。
+-    ///
+-    /// 行（`y`）由小到大，行内由低位到高位（`tzcnt` + `blsr`）逐个置位瓦片调用
+-    /// `keep(x, y)`；返回 `false` 的瓦片被 `btr` 清位，并把该行字写回位图。
+-    /// 回调拿到的是当时的位图拷贝，所以回调内的清位不影响本次遍历。
++        let mask = column_mask(cells.minimum[0], cells.end[0]);
++        self.rows[cells.minimum[1] as usize..cells.end[1] as usize]
++            .iter()
++            .any(|row| row & mask != 0)
++    }
++
++    /// 按行、再按从低到高的列访问脏格；回调返回 false 则清位。
+     pub fn retain(&mut self, mut keep: impl FnMut(u32, u32) -> bool) {
+         for (y, row) in self.rows.iter_mut().enumerate() {
+             let mut remaining = *row;
+@@ -241,7 +246,7 @@
+     }
+ }
+ 
+-/// O：`impl$2::apply_to`（0x140960ef0）与 `extend` 同为 694 B，逐字 OR。
++/// 发布订阅增量按位合并，避免覆盖尚未消费的变更。
+ impl StateDelta<DirtyTiles> for DirtyTiles {
+     fn apply_to(&self, state: &mut DirtyTiles) {
+         state.extend(self);
+@@ -254,11 +259,11 @@
+     use tabloid::Publisher;
+ 
+     #[test]
+-    fn rect_cells_use_the_exe_constants() {
+-        // 世界 0 → 格 32；±65 为世界边界 → 0 / 64 → 钳到 63。
++    fn rect_cells_cover_the_complete_world() {
++        // 世界两端映射到半开范围 0..64，最后一行和一列也必须覆盖。
+         let cells = world_rect_cells([-65.0, -65.0, 65.0, 65.0]);
+         assert_eq!(cells.minimum, [0, 0]);
+-        assert_eq!(cells.end, [63, 63]);
++        assert_eq!(cells.end, [64, 64]);
+         let mid = world_rect_cells([0.0, 0.0, 0.0, 0.0]);
+         assert_eq!(mid.minimum, [32, 32]);
+         assert_eq!(mid.end, [32, 32]);
+@@ -367,4 +372,42 @@
+         let batch = subscriber.take().unwrap();
+         assert_eq!(batch.rows()[2], 0b11);
+     }
+-}
++
++    #[test]
++    fn complete_rect_marks_all_tiles_and_far_outside_does_not_mark_edges() {
++        let mut tiles = DirtyTiles::new_clear();
++        tiles.rasterize_world_rect([-65.0, -65.0, 65.0, 65.0]);
++        assert_eq!(tiles, DirtyTiles::new_all_dirty());
++        tiles.clear();
++        tiles.rasterize_world_rect([500.0, 500.0, 501.0, 501.0]);
++        assert!(tiles.is_empty());
++        assert_eq!(
++            DirtyTiles::cell_from_world_space(Vec2::splat(f32::NAN)),
++            None
++        );
++        assert_eq!(
++            DirtyTiles::cell_from_world_space(Vec2::new(-65.01, 0.0)),
++            None
++        );
++        assert_eq!(
++            DirtyTiles::cell_from_world_space(Vec2::splat(64.9)),
++            Some([63, 63])
++        );
++    }
++
++    #[test]
++    fn extreme_stroke_is_bounded_but_does_not_skip_a_world_crossing() {
++        let mut tiles = DirtyTiles::new_clear();
++        tiles.rasterize_world_space_stroke(
++            &[
++                Vec3::new(-f32::MAX, 0.0, 0.0),
++                Vec3::new(f32::MAX, 0.0, 0.0),
++            ],
++            0.0,
++        );
++        assert_eq!(tiles.rows()[32], u64::MAX);
++        tiles.clear();
++        tiles.rasterize_world_space_stroke(&[Vec3::splat(3e9); 2], 0.0);
++        assert!(tiles.is_empty());
++    }
++}
+--- before/crates/country-core/src/utils/float_grid.rs
++++ after/crates/country-core/src/utils/float_grid.rs
+@@ -1,11 +1,9 @@
+-//! RasterBufferRef<512> consumer of shared B bilinear sampling policy.
+-//! 0x140a14df0: byte values /255, original lerp order and edge extrapolation.
+-//! Branch byte 0x143638fac (pointer slot 0x14362c308) is caller state. Its producer is
+-//! `load_game` (`version >= 0x1a`, 0x14146dc82..0x14146dc95); see
+-//! `resources::save_file::LoadVersionGates::apply_centered_path`.
++//! 固定 512×512 栅格的共享采样接口。算法和兼容性开关都保留在 utils crate。
++//!
++//! 新代码可显式传入采样模式；读档入口负责按版本更新共享开关。
+ pub use ::utils::float_grid::{
+     CENTERED_PATH, DEFAULT_WORLD_EXTENT, FloatGridCells, GRID_SIDE, bilinear_sample_at_world_xz,
+-    bilinear_sample_at_world_xz_130, lerp,
++    bilinear_sample_at_world_xz_130, bilinear_sample_at_world_xz_with_mode, lerp,
+ };
+ 
+ #[cfg(test)]
+@@ -15,22 +13,25 @@
+         grid: &G,
+         x: f32,
+         z: f32,
+-        ex: f32,
+-        ez: f32,
++        extent_x: f32,
++        extent_z: f32,
+     ) -> f32 {
+-        ::utils::float_grid::bilinear_sample_at_world_xz_with_mode(grid, x, z, ex, ez, false)
++        ::utils::float_grid::bilinear_sample_at_world_xz_with_mode(
++            grid, x, z, extent_x, extent_z, false,
++        )
+     }
+     fn bilinear_centered_path<G: FloatGridCells + ?Sized>(
+         grid: &G,
+         x: f32,
+         z: f32,
+-        ex: f32,
+-        ez: f32,
++        extent_x: f32,
++        extent_z: f32,
+     ) -> f32 {
+-        ::utils::float_grid::bilinear_sample_at_world_xz_with_mode(grid, x, z, ex, ez, true)
++        ::utils::float_grid::bilinear_sample_at_world_xz_with_mode(
++            grid, x, z, extent_x, extent_z, true,
++        )
+     }
+ 
+-    /// 以 `u8/255` 为格点的 512×512 平面：值 = col（低 8 位）。
+     struct Ramp;
+     impl FloatGridCells for Ramp {
+         fn cell(&self, index: usize) -> f32 {
+@@ -80,11 +81,9 @@
+     fn vector_path_clamps_to_510_with_frac_two_at_the_edge() {
+         // 超界 → t=512，row/col 取 510，frac=2：lerp 外推
+         let v = bilinear_vector_path(&Ramp, 1e9, 0.0, 130.0, 130.0);
+-        let (a, b) = ((510u32 as u8) as f32 / 255.0, (511u32 as u8) as f32 / 255.0);
+         // col510→254, col511→255 ; row 256 → 同值，lerp(a,b,2)
+         let ca = (510u32 & 0x1ff) as u8 as f32 / 255.0;
+         let cb = (511u32 & 0x1ff) as u8 as f32 / 255.0;
+-        let _ = (a, b);
+         assert!((v - lerp(ca, cb, 2.0)).abs() < 1e-5);
+     }
+ 
+--- before/crates/country-core/src/utils/geo.rs
++++ after/crates/country-core/src/utils/geo.rs
+@@ -1,112 +1,83 @@
+-//! `country_core::utils::geo` — 曲线/点集到网格的几何辅助。
+-//!
+-//! | 函数 | 地址 | 级别 |
+-//! |---|---|---|
+-//! | `mesh_from_pts` | 0x140a6c120 | O |
+-//! | `update_curve_mesh`（4 个单态化，同一函数体） | 0x14157eac0 / 0x14157f130 / 0x14157eda0 / 0x14157ef70 | O |
+-//! | `rewire_enclosed_curve` | 0x140a6ba50 | O |
+-//!
+-//! 常量（EXE 字节）：白色 `0x14292e6b0` = `[1.0, 1.0]` 加上栈上 `0x3f800000`，即 `Vec3::ONE`；
+-//! `0x142925904` 低 4 字节 = 1.0；`0x142925984` 低 4 字节 = `0x3dcccccd` = 0.1（端点去重阈值）。
++//! 折线网格构建和闭合曲线起点调整。曲线采样/切片复用共享 Curve2。
+ 
++use crate::render::mesh::{ATTR_COLOR, ATTR_POSITION, Mesh};
+ use glam::{Vec2, Vec3};
+ use utils::curve::Curve2;
+ 
+-use crate::render::mesh::{ATTR_COLOR, ATTR_POSITION, Mesh};
+-
+-/// 端点去重阈值。O：`0x142925984` = `0x3dcccccd`。
++/// 合并临近端点的世界空间距离。
+ pub const ENDPOINT_EPSILON: f32 = 0.1;
+ 
+ fn fill_polyline_attributes(mesh: &mut Mesh, points: Vec<Vec3>) {
+-    let count = points.len();
++    let vertex_count = u32::try_from(points.len()).expect("折线顶点数量超过 u32 索引范围");
+     mesh.set_attribute(ATTR_POSITION, points);
+-    mesh.set_attribute(ATTR_COLOR, vec![Vec3::ONE; count]);
+-    mesh.set_indices((0..count as u32).collect());
++    mesh.set_attribute(ATTR_COLOR, vec![Vec3::ONE; vertex_count as usize]);
++    mesh.set_indices((0..vertex_count).collect());
+ }
+ 
+-/// O 0x140a6c120：`(label, pts)` → 带顺序索引的折线网格。
+-///
+-/// 先 `assert!(pts_len > 0)`；`Vertex_Position` = 点的拷贝，`Vertex_Color` = 全白，
+-/// 索引 `0..n`；`Mesh` 的 `label` 为入参。
+-pub fn mesh_from_pts(label: &'static str, pts: &[Vec3]) -> Mesh {
+-    assert!(!pts.is_empty(), "assertion failed: pts_len > 0");
++/// 创建白色折线网格；点集必须非空，绘制拓扑由消费方指定。
++pub fn mesh_from_pts(label: &'static str, points: &[Vec3]) -> Mesh {
++    assert!(!points.is_empty(), "折线网格至少需要一个顶点");
+     let mut mesh = Mesh::new(label);
+-    fill_polyline_attributes(&mut mesh, pts.to_vec());
++    fill_polyline_attributes(&mut mesh, points.to_vec());
+     mesh
+ }
+ 
+-/// O 0x14157f130 等四个单态：取到资产里的网格后整体改写位置/颜色/索引。四个单态的**输入迭代器不同**，改写体相同：
+-///
+-/// | 单态 | 输入 | 点的来源 |
+-/// |---|---|---|
+-/// | 0x14157eac0 | `vec::IntoIter<Vec3>` | 直接取（复用分配） |
+-/// | 0x14157f130 | `Vec3` 切片 `[start, end)` | 克隆（0x1412612d0） |
+-/// | 0x14157ef70 | `Vec2` 切片 | 经 [`x0y`] 映射（0x140c9cdc0） |
+-/// | 0x14157eda0 | `Vec2` 切片 + 捕获的高度 `h` | 经 [`x_h_y`] 映射（0x140c9cde0） |
+-///
+-/// `mesh` 是 `Assets<Mesh>` 按句柄查询的结果；查不到 → panic `MEOW####`（`0x142c77ab9`，8 字节）。
+-/// 点列先于属性写入收集；空点列由 `set_attribute` 的非空断言 panic。
++/// 替换位置、颜色和索引。其他自定义属性由消费方自行更新。
+ pub fn update_curve_mesh(mesh: Option<&mut Mesh>, points: impl IntoIterator<Item = Vec3>) {
+-    let Some(mesh) = mesh else {
+-        panic!("MEOW####");
+-    };
++    let mesh = mesh.expect("更新折线时目标网格不存在");
+     fill_polyline_attributes(mesh, points.into_iter().collect());
+ }
+ 
+-/// O 0x140c9cdc0：`Vec2 (x, y)` → `Vec3 (x, 0, y)`（`mov [rcx+4], 0`）。
+-pub fn x0y(p: Vec2) -> Vec3 {
+-    Vec3::new(p.x, 0.0, p.y)
++/// 二维 X/Y 作为世界 X/Z，世界高度为零。
++pub fn x0y(point: Vec2) -> Vec3 {
++    x_h_y(point, 0.0)
+ }
+ 
+-/// O 0x140c9cde0：`Vec2 (x, y)` 与高度 `h` → `Vec3 (x, h, y)`。
+-pub fn x_h_y(p: Vec2, h: f32) -> Vec3 {
+-    Vec3::new(p.x, h, p.y)
++/// 二维 X/Y 作为世界 X/Z，并指定世界高度。
++pub fn x_h_y(point: Vec2, height: f32) -> Vec3 {
++    Vec3::new(point.x, height, point.y)
+ }
+ 
+-/// O 0x140a6ba50：以 `u = split` 把曲线一分为二，调换两半的先后顺序后重新建曲线。
+-///
+-/// * `split == 0.0` 或 `split == 1.0` → `None`；
+-/// * 取 `[0, split]` 与 `[split, 1]` 两段，任一段长度 < 0.1 → `None`；
+-/// * 前段末两点距离 < 0.1 时丢弃末点（倒数第二点改写为末点）；
+-///   后段首两点距离 < 0.1 时丢弃首点（保留原首点位置）；
+-///   原曲线首尾点距离 < 0.1 时再丢弃后段的最后一个点；
+-/// * 结果点列 = 后段 + 前段，`try_new_from_points(.., false)`，失败直接 unwrap panic。
++/// 把闭合曲线的起点移到 split，返回“后半段 + 前半段”。
++/// 无效分割、非闭合曲线或过短分段返回 None，不对用户编辑数据 unwrap。
+ pub fn rewire_enclosed_curve(curve: &Curve2, split: f32) -> Option<Curve2> {
+-    if split == 0.0 || split == 1.0 {
++    if !split.is_finite() || split <= 0.0 || split >= 1.0 {
+         return None;
+     }
+-    let mut head = curve.crashy_slice(0.0, split);
+-    let mut tail = curve.crashy_slice(split, 1.0);
+-    if head.length < ENDPOINT_EPSILON || tail.length < ENDPOINT_EPSILON {
++    let first = *curve.points.first()?;
++    let last = *curve.points.last()?;
++    if first.distance(last) >= ENDPOINT_EPSILON {
+         return None;
+     }
+-
+-    let n = head.points.len();
+-    assert!(n >= 2, "index out of bounds");
+-    let last = head.points[n - 1];
+-    let mut head_len = n;
+-    if head.points[n - 1].distance(head.points[n - 2]) < ENDPOINT_EPSILON {
+-        head.points[n - 2] = last;
+-        head_len = n - 1;
++    let mut head = curve.try_slice(0.0, split).ok()?;
++    let mut tail = curve.try_slice(split, 1.0).ok()?;
++    if head.length < ENDPOINT_EPSILON
++        || tail.length < ENDPOINT_EPSILON
++        || head.points.len() < 2
++        || tail.points.len() < 2
++    {
++        return None;
+     }
+-
+-    assert!(tail.points.len() >= 2, "index out of bounds");
+-    let mut tail_len = tail.points.len();
+-    if tail.points[0].distance(tail.points[1]) < ENDPOINT_EPSILON {
++    let head_length = head.points.len();
++    if head.points[head_length - 1].distance(head.points[head_length - 2]) < ENDPOINT_EPSILON {
++        head.points[head_length - 2] = head.points[head_length - 1];
++        head.points.pop();
++    }
++    let tail_start = if tail.points[0].distance(tail.points[1]) < ENDPOINT_EPSILON {
+         tail.points[1] = tail.points[0];
+-        tail.points.remove(0);
+-        tail_len -= 1;
++        1
++    } else {
++        0
++    };
++    // 去掉原闭合接点的重复末点，复用后半段的 Vec 分配。
++    let tail_end = tail.points.len() - 1;
++    if tail_start > tail_end {
++        return None;
+     }
+-
+-    let first = *curve.points.first().expect("empty curve");
+-    let last_point = *curve.points.last().expect("empty curve");
+-    if first.distance(last_point) < ENDPOINT_EPSILON {
+-        tail_len -= 1;
+-    }
+-
+-    let mut points: Vec<Vec2> = tail.points[..tail_len].to_vec();
+-    points.extend_from_slice(&head.points[..head_len]);
+-    Some(Curve2::try_new_from_points(points, false).unwrap())
++    tail.points.copy_within(tail_start..tail_end, 0);
++    tail.points.truncate(tail_end - tail_start);
++    tail.points.extend_from_slice(&head.points);
++    Curve2::try_new_from_points(tail.points, false).ok()
+ }
+ 
+ #[cfg(test)]
+@@ -130,7 +101,7 @@
+     }
+ 
+     #[test]
+-    #[should_panic(expected = "assertion failed: pts_len > 0")]
++    #[should_panic(expected = "折线网格至少需要一个顶点")]
+     fn mesh_from_pts_rejects_empty_input() {
+         mesh_from_pts("x", &[]);
+     }
+@@ -144,7 +115,7 @@
+     }
+ 
+     #[test]
+-    #[should_panic(expected = "MEOW####")]
++    #[should_panic(expected = "更新折线时目标网格不存在")]
+     fn update_curve_mesh_panics_without_a_mesh() {
+         update_curve_mesh(None, [Vec3::X]);
+     }
+@@ -181,4 +152,13 @@
+         // 切出的前段只有 0.016 × 16 = 0.256 > 0.1 不算短，0.005 × 16 = 0.08 < 0.1 才算。
+         assert!(rewire_enclosed_curve(&curve, 0.005).is_none());
+     }
++
++    #[test]
++    fn rewire_rejects_invalid_splits_and_open_curves() {
++        assert!(rewire_enclosed_curve(&square(), f32::NAN).is_none());
++        assert!(rewire_enclosed_curve(&square(), -0.5).is_none());
++        let open =
++            Curve2::try_new_from_points(vec![Vec2::ZERO, Vec2::X, Vec2::ONE], false).unwrap();
++        assert!(rewire_enclosed_curve(&open, 0.5).is_none());
++    }
+ }
+--- before/crates/country-core/src/utils/index_condenser.rs
++++ after/crates/country-core/src/utils/index_condenser.rs
+@@ -1,6 +1,6 @@
+-//! Consumer adapter for the shared recovered index contract. B insert inline
+-//! IPI0x74ee rejects occupied IDs; get/removal repair stale hints. The original
+-//! typed marker remains local, while ID/state policy lives in the utils crate.
++//! 稳定 ID 到稠密索引的类型化适配；存储和过期提示修复复用共享 utils。
++//!
++//! 删除会将末项交换到空槽。调用方需同步交换其并行实例数组。
+ use ::utils::index_condenser::{Condex, IndexCondenser as SharedCondenser};
+ use core::{cell::Cell, marker::PhantomData};
+ 
+@@ -34,12 +34,12 @@
+             .insert(id)
+             .map(|key| key.last_known_index() as usize)
+     }
+-    /// Compatibility for callers that already established an unoccupied ID.
++    /// 调用方已确认 ID 未占用时的便捷入口；重复插入会报错。
+     pub fn push(&mut self, id: u32) -> usize {
+         self.insert(id).expect("ID already occupied")
+     }
+-    pub fn id_at(&self, dense: usize) -> Option<u32> {
+-        self.shared.keys().get(dense).copied()
++    pub fn id_at(&self, dense_index: usize) -> Option<u32> {
++        self.shared.keys().get(dense_index).copied()
+     }
+     pub fn resolve(&self, id: u32, hint: &mut u32) -> Option<usize> {
+         let key = Condex {
+@@ -48,7 +48,7 @@
+         };
+         let resolved = self.shared.get(&key);
+         *hint = key.last_known_index();
+-        resolved.map(|i| i as usize)
++        resolved.map(|index| index as usize)
+     }
+     pub fn remove(&mut self, id: u32, hint: &mut u32) -> Option<usize> {
+         let key = Condex {
+@@ -57,7 +57,7 @@
+         };
+         let removed = self.shared.remove_index(&key);
+         *hint = key.last_known_index();
+-        removed.map(|i| i as usize)
++        removed.map(|index| index as usize)
+     }
+ }
+ 
+--- before/crates/country-core/src/utils/load_json.rs
++++ after/crates/country-core/src/utils/load_json.rs
+@@ -1,94 +1,115 @@
+-//! JSON 网格解析。复用 serde 校验标量与向量类型，错误返回给热重载消费者。
+-//! 加载器保留来源路径；成功后才由资产库发布。启动入口可选择将错误提升为 panic。
+-
+-use glam::{Vec2, Vec3, Vec4};
++//! JSON 网格加载与发布前校验。解析复用 Serde，失败返回带路径和属性名的错误。
++
++use anyhow::{Context, ensure};
+ use serde::Deserialize;
+ use serde_json::Value;
+ 
+-use crate::render::mesh::{Mesh, SourceFile, VertexAttributeValues};
+-
+-/// 使用 serde 的现成数组转换校验元素类型和向量维度，避免手写下标解析。
++use crate::render::mesh::{
++    ATTR_COLOR, ATTR_NORMAL, ATTR_POSITION, ATTR_UV, Mesh, SourceFile, VertexAttributeValues,
++};
++
++/// 解析一个属性；向量直接反序列化为 glam 类型，避免中间数组和第二次分配。
+ pub fn read_attribute_from_json(json: &Value, name: &str) -> anyhow::Result<VertexAttributeValues> {
+     let attribute = &json[name];
+-    let attribute_type = &attribute["type"];
++    let descriptor = &attribute["type"];
++    let Some([scalar_type, components]) = descriptor.as_array().map(Vec::as_slice) else {
++        anyhow::bail!("属性 {name} 的 type 必须是 [标量类型, 分量数]");
++    };
+     let buffer = attribute
+         .get("buffer")
+-        .ok_or_else(|| anyhow::anyhow!("顶点属性 {name} 缺少 buffer"))?;
+-    let values = match (attribute_type[0].as_str(), attribute_type[1].as_u64()) {
++        .with_context(|| format!("顶点属性 {name} 缺少 buffer"))?;
++    let values = match (scalar_type.as_str(), components.as_u64()) {
+         (Some("int"), Some(1)) => VertexAttributeValues::Int(Vec::deserialize(buffer)?),
+         (Some("float"), Some(1)) => VertexAttributeValues::Float(Vec::deserialize(buffer)?),
+-        (Some("float"), Some(2)) => VertexAttributeValues::Float2(
+-            Vec::<[f32; 2]>::deserialize(buffer)?
+-                .into_iter()
+-                .map(Vec2::from)
+-                .collect(),
++        (Some("float"), Some(2)) => VertexAttributeValues::Float2(Vec::deserialize(buffer)?),
++        (Some("float"), Some(3)) => VertexAttributeValues::Float3(Vec::deserialize(buffer)?),
++        (Some("float"), Some(4)) => VertexAttributeValues::Float4(Vec::deserialize(buffer)?),
++        _ => anyhow::bail!(
++            "load_json_as_mesh: unrecognized attrib '{name}' with type '{descriptor}'"
+         ),
+-        (Some("float"), Some(3)) => VertexAttributeValues::Float3(
+-            Vec::<[f32; 3]>::deserialize(buffer)?
+-                .into_iter()
+-                .map(Vec3::from)
+-                .collect(),
++    };
++    ensure!(values.array_length() != 0, "顶点属性 {name} 不能为空");
++    let finite = match &values {
++        VertexAttributeValues::Int(_) => true,
++        VertexAttributeValues::Float(values) => values.iter().all(|value| value.is_finite()),
++        VertexAttributeValues::Float2(values) => values.iter().all(|value| value.is_finite()),
++        VertexAttributeValues::Float3(values) => values.iter().all(|value| value.is_finite()),
++        VertexAttributeValues::Float4(values) => values.iter().all(|value| value.is_finite()),
++    };
++    ensure!(finite, "顶点属性 {name} 含有非有限数值");
++    let valid_type = match name {
++        ATTR_POSITION | ATTR_NORMAL => matches!(&values, VertexAttributeValues::Float3(_)),
++        ATTR_UV => matches!(&values, VertexAttributeValues::Float2(_)),
++        ATTR_COLOR => matches!(
++            &values,
++            VertexAttributeValues::Float3(_) | VertexAttributeValues::Float4(_)
+         ),
+-        (Some("float"), Some(4)) => VertexAttributeValues::Float4(
+-            Vec::<[f32; 4]>::deserialize(buffer)?
+-                .into_iter()
+-                .map(Vec4::from)
+-                .collect(),
+-        ),
+-        _ => anyhow::bail!(
+-            "load_json_as_mesh: unrecognized attrib '{name}' with type '{attribute_type}'"
+-        ),
+-    };
+-    anyhow::ensure!(values.array_length() != 0, "顶点属性 {name} 不能为空");
++        _ => true,
++    };
++    ensure!(valid_type, "顶点属性 {name} 类型不符合网格约定");
+     Ok(values)
+ }
+ 
+-/// 把 JSON 文本构建成网格（读文件之外的部分，便于测试）。`path` 写入 `source_file`。
+-#[cfg(test)]
+-fn mesh_from_json(json: &Value, path: &str) -> Mesh {
+-    try_mesh_from_json(json, path).unwrap()
+-}
+-
+-/// 同上，但属性读取错误以 `Err` 传播（`reload_mesh_src` 所用的 Result 单态，0x140b0eeb0）。
++/// 构造完整的可绘制网格。所有检查通过后才返回，调用方可安全替换旧资产。
+ fn try_mesh_from_json(json: &Value, path: &str) -> anyhow::Result<Mesh> {
++    let indices: Vec<u32> = Vec::deserialize(&json["indices"]["buffer"])
++        .context("网格 indices.buffer 必须为 u32 数组")?;
++    let names = json["attributes"]
++        .as_array()
++        .context("网格 attributes 必须为属性名数组")?;
+     let mut mesh = Mesh::new("load_json_as_mesh");
++    for name in names {
++        let name = name.as_str().context("网格属性名必须为字符串")?;
++        ensure!(!mesh.has_attribute(name), "网格属性 {name} 重复声明");
++        let values = read_attribute_from_json(json, name)
++            .with_context(|| format!("解析网格属性 {name} 失败"))?;
++        mesh.set_attribute(name, values);
++    }
++    let vertex_count = mesh
++        .attributes
++        .get(ATTR_POSITION)
++        .context("网格缺少 Vertex_Position 属性")?
++        .array_length();
++    for (name, values) in &mesh.attributes {
++        ensure!(
++            values.array_length() == vertex_count,
++            "属性 {name} 的顶点数量与 Vertex_Position 不一致"
++        );
++    }
++    ensure!(
++        indices.iter().all(|&index| (index as usize) < vertex_count),
++        "顶点属性长度不足以覆盖网格索引"
++    );
++    mesh.set_indices(indices);
+     mesh.set_source_file(SourceFile {
+         path: path.to_owned(),
+         stamp: 0,
+     });
+-
+-    let indices: Vec<u32> = Vec::deserialize(&json["indices"]["buffer"])?;
+-    let max_index = indices.iter().copied().max();
+-    let names: Vec<String> = Vec::deserialize(&json["attributes"])?;
+-    for name in names {
+-        let values = read_attribute_from_json(json, &name)?;
+-        anyhow::ensure!(
+-            max_index.is_none_or(|index| (index as usize) < values.array_length()),
+-            "属性 {name} 的长度不足以覆盖网格索引"
+-        );
+-        mesh.set_attribute(&name, values);
+-    }
+-    mesh.set_indices(indices);
+     Ok(mesh)
+ }
+ 
+-/// 从磁盘加载 JSON 网格；任何失败都是 panic。
++/// 启动期必需资产的便捷入口；需要可恢复错误时使用 try_load_json_as_mesh。
+ pub fn load_json_as_mesh(path: &str) -> Mesh {
+     try_load_json_as_mesh(path).unwrap()
+ }
+ 
+-/// Result 单态：读文件/解析失败仍 panic，只有属性读取错误返回 `Err`（O：0x140b0fa1b 读文件失败直接 panic）。
++/// 读文件、解析和校验失败都返回 Err，不中断资产热重载。
+ pub fn try_load_json_as_mesh(path: &str) -> anyhow::Result<Mesh> {
+-    use anyhow::Context;
+     let text = std::fs::read_to_string(path).with_context(|| format!("读取网格失败：{path}"))?;
+     let json: Value =
+         serde_json::from_str(&text).with_context(|| format!("解析网格失败：{path}"))?;
+-    try_mesh_from_json(&json, path)
++    try_mesh_from_json(&json, path).with_context(|| format!("校验网格失败：{path}"))
++}
++
++#[cfg(test)]
++fn mesh_from_json(json: &Value, path: &str) -> Mesh {
++    try_mesh_from_json(json, path).unwrap()
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
++    use glam::{Vec2, Vec3};
+     use serde_json::json;
+ 
+     fn sample() -> Value {
+@@ -161,7 +182,7 @@
+     }
+ 
+     #[test]
+-    #[should_panic(expected = "顶点属性 Tag 不能为空")]
++    #[should_panic(expected = "不能为空")]
+     fn an_empty_attribute_buffer_panics_even_with_empty_indices() {
+         let mut json = sample();
+         json["indices"]["buffer"] = json!([]);
+@@ -199,7 +220,7 @@
+     }
+ 
+     #[test]
+-    fn empty_indices_use_minus_one_as_max() {
++    fn empty_indices_are_allowed() {
+         let mut json = sample();
+         json["indices"]["buffer"] = json!([]);
+         assert!(mesh_from_json(&json, "m.json").indices.is_empty());
+@@ -213,10 +234,58 @@
+ 
+     #[test]
+     fn loads_from_disk() {
+-        let path = std::env::temp_dir().join("country_core_load_json_test.json");
++        let directory = tempfile::tempdir().unwrap();
++        let path = directory.path().join("mesh.json");
+         std::fs::write(&path, sample().to_string()).unwrap();
+         let mesh = load_json_as_mesh(path.to_str().unwrap());
+         assert_eq!(mesh.indices.len(), 3);
+         let _ = std::fs::remove_file(path);
+     }
+-}
++
++    #[test]
++    fn invalid_semantic_attributes_are_rejected_before_publication() {
++        let mut json = sample();
++        json[ATTR_POSITION] = json!({"type": ["float", 2], "buffer": [[0,0],[1,0],[0,1]]});
++        assert!(try_mesh_from_json(&json, "invalid.json").is_err());
++        json["attributes"] = json!(["Tag"]);
++        assert!(try_mesh_from_json(&json, "missing.json").is_err());
++        json = sample();
++        json["attributes"] = json!(["Vertex_Position", "Vertex_Position"]);
++        assert!(try_mesh_from_json(&json, "duplicate.json").is_err());
++        json = sample();
++        json["Weight"]["buffer"] = json!([1.0, 2.0, 3.0, 4.0]);
++        assert!(try_mesh_from_json(&json, "length.json").is_err());
++    }
++
++    #[test]
++    fn malformed_type_descriptors_and_overflowing_floats_are_errors() {
++        let json = json!({"P": {"type": ["float", 3, "extra"], "buffer": [[1,2,3]]}});
++        assert!(read_attribute_from_json(&json, "P").is_err());
++        let json = json!({"P": {"type": ["float", 1], "buffer": [1e100]}});
++        assert!(read_attribute_from_json(&json, "P").is_err());
++    }
++
++    #[test]
++    fn failed_hot_reload_preserves_the_previous_mesh_and_dirty_list() {
++        use crate::asset_libraries::mesh_library::{AssetMeshLibrary, MeshAsset};
++
++        let directory = tempfile::tempdir().unwrap();
++        let path = directory.path().join("mesh.json");
++        let previous = mesh_from_json(&sample(), path.to_str().unwrap());
++        let mut library = AssetMeshLibrary::new();
++        let handle = library.add(MeshAsset::new(previous, None));
++        let mut invalid = sample();
++        invalid[ATTR_POSITION] = json!({"type":["float",2], "buffer":[[0,0],[1,0],[0,1]]});
++        std::fs::write(&path, invalid.to_string()).unwrap();
++        assert!(library.try_reload_mesh_src(&path).is_err());
++        assert_eq!(
++            library
++                .get(handle)
++                .unwrap()
++                .positions_without_indices()
++                .len(),
++            3
++        );
++        assert!(library.modified_meshes.is_empty());
++    }
++}
+--- before/crates/country-core/src/utils/mod.rs
++++ after/crates/country-core/src/utils/mod.rs
+@@ -1,3 +1,5 @@
++//! 游戏侧工具入口；共享数学、采样和索引算法委托工作区 utils crate。
++
+ pub mod child_wall;
+ pub mod conservative_line_raster;
+ pub mod debug_viz;
+@@ -11,9 +13,7 @@
+     pub mod transform;
+ }
+ 
+-/// `utils::calculate_hash<T: Hash>`（O：0x1405bdda0 单态 `Sip13Rounds` =
+-/// std `DefaultHasher`（SipHash-1-3，零密钥）；`render::utils::calculate_hash` 的同名实现）。
+-/// 原版 `WidgetId::from_name`/`shader_uri` 族消费。
++/// 复用渲染模块的标准哈希入口；用于进程内名字和资源身份。
+ pub use crate::render::utils::calculate_hash;
+ 
+ use bevy_ecs::{
+@@ -23,44 +23,60 @@
+ };
+ use glam::{Mat4, Vec2, Vec3};
+ 
+-/// Resource lookup delegates to the original Bevy API, preserving borrow ticks.
++/// 通过 Bevy 读取资源；缺失资源由 Bevy 报错。
+ pub fn get_res<T: Resource>(world: &World) -> &T {
+     world.resource::<T>()
+ }
+ 
++/// 返回 Bevy 的可变借用守卫，保留变化检测。
+ pub fn get_res_mut<T: Resource>(world: &mut World) -> Mut<'_, T> {
+     world.resource_mut::<T>()
+ }
+ 
+-/// B 0x1402b47f0 drains both Events buffers. Event IDs/counters stay with Bevy.
++/// 消费并清空事件双缓冲；多个订阅者应改用 EventReader。
+ pub fn drain_events<E: Event>(world: &mut World) -> Vec<E> {
+     world.resource_mut::<Events<E>>().drain().collect()
+ }
+ 
+-/// B 0x1402b4910 consumes the complete stream, including older unselected events.
++/// 清空整个事件流并返回最后一项，之前的事件也会被消费。
+ pub fn get_last_event<E: Event>(world: &mut World) -> Option<E> {
+     world.resource_mut::<Events<E>>().drain().last()
+ }
+ 
+-/// O：0x140ac8780 `utils::world_space_to_screen_space`。
+-///
+-/// 世界点先过 `first`（参数结构 +0x80 处的矩阵，`transform_point3` 形式），再过 `second`
+-/// （+0x00 处的矩阵，补 w = 1 的 4 分量乘法，**保留 w**），`xy / w` 后
+-/// `x * 0.5 + 0.5`、`y * 0.5 + 0.5`，返回 `(x * width, (1.0 - y) * height)`。
+-/// 两个矩阵各自是相机结构里的哪一个字段（I）：+0x80 / +0x00。
++/// 世界点转像素坐标。无效窗口、视点后方或奇异透视返回 NaN 坐标。
++/// 需要显式处理不可见点时，使用 try_world_space_to_screen_space。
+ pub fn world_space_to_screen_space(
+-    world: Vec3,
++    world_position: Vec3,
+     width: f32,
+     height: f32,
+-    first: &Mat4,
+-    second: &Mat4,
++    world_to_view: &Mat4,
++    view_to_clip: &Mat4,
+ ) -> Vec2 {
+-    let affine = |m: &Mat4, p: Vec3| m.y_axis * p.y + m.x_axis * p.x + m.z_axis * p.z + m.w_axis;
+-    let view = affine(first, world);
+-    let clip = affine(second, view.truncate());
+-    let x = clip.x / clip.w * 0.5 + 0.5;
+-    let y = clip.y / clip.w * 0.5 + 0.5;
+-    Vec2::new(x * width, (1.0 - y) * height)
++    try_world_space_to_screen_space(world_position, width, height, world_to_view, view_to_clip)
++        .unwrap_or(Vec2::splat(f32::NAN))
++}
++
++/// 世界点转屏幕像素；保留完整齐次变换，避免丢弃第一个矩阵产生的 w。
++pub fn try_world_space_to_screen_space(
++    world_position: Vec3,
++    width: f32,
++    height: f32,
++    world_to_view: &Mat4,
++    view_to_clip: &Mat4,
++) -> Option<Vec2> {
++    if !(width.is_finite() && height.is_finite() && width > 0.0 && height > 0.0) {
++        return None;
++    }
++    let clip_position = *view_to_clip * (*world_to_view * world_position.extend(1.0));
++    if !clip_position.is_finite() || clip_position.w <= 1e-10 {
++        return None;
++    }
++    let normalized = clip_position.truncate().truncate() / clip_position.w;
++    let screen_position = Vec2::new(
++        (normalized.x + 1.0) * 0.5 * width,
++        (1.0 - normalized.y) * 0.5 * height,
++    );
++    screen_position.is_finite().then_some(screen_position)
+ }
+ 
+ #[cfg(test)]
+--- before/crates/country-core/src/utils/project_cursor_onto_ray.rs
++++ after/crates/country-core/src/utils/project_cursor_onto_ray.rs
+@@ -1,22 +1,12 @@
+-//! project_cursor_onto_ray.rs — 屏幕比例空间与“把光标投回射线”。
+-//!
+-//! | 函数 | 地址 | 级别 |
+-//! |---|---|---|
+-//! | `ProportionalScreenSpace::from_window_size` | 0x140ac8420 | O |
+-//! | `ProportionalScreenSpace::transform_screen_space` | 0x140ac8450（helper 0x140c906d0） | O |
+-//! | `ProportionalScreenSpaceCoord::project_onto_ray` | 0x140ac84a0 | O |
+-//!
+-//! 与 DIGEST 不同：`transform_screen_space` 的 helper 0x140c906d0 这次读全了
+-//! （DIGEST 记为“语义未吃透”），见 [`ProportionalScreenSpace::transform_screen_space`]。
+-
+-use glam::{Mat4, Vec2, Vec3, Vec4};
++//! 三维编辑滑块的坐标转换与透视校正。矩阵运算复用 glam。
++
++use glam::{Mat4, Vec2, Vec3};
+ use utils::geometry::Ray;
+ 
+-/// `maxss` 的下限常量，按 EXE 位模式（0x142a7baa0 / 0x142abaa00）。
+-const DOT_FLOOR: f32 = f32::from_bits(0x1e3c_e508);
+-const WEIGHT_FLOOR: f32 = f32::from_bits(0x2edb_e6ff);
+-
+-/// 16 B：`{ size: Vec2 @0, aspect: f32 @8, 1.0 @0xc }`（O：0x140ac8420）。
++const MIN_PROJECTED_LENGTH_SQUARED: f32 = 1e-20;
++const MIN_CLIP_WEIGHT: f32 = 1e-10;
++
++/// 比例屏幕空间：X 乘宽高比，Y 保持单位尺度。
+ #[repr(C)]
+ #[derive(Clone, Copy, Debug, PartialEq)]
+ pub struct ProportionalScreenSpace {
+@@ -26,107 +16,97 @@
+ }
+ 
+ impl ProportionalScreenSpace {
+-    /// O：0x140ac8420。`u32 → f32` 经 64 位 `cvtsi2ss`（零扩展），`aspect = w / h`。
++    /// 最小化窗口的零尺寸按 1 像素处理，避免产生无穷宽高比。
+     pub fn from_window_size(size: [u32; 2]) -> Self {
+-        let width = size[0] as f32;
+-        let height = size[1] as f32;
++        let size = Vec2::new(size[0].max(1) as f32, size[1].max(1) as f32);
+         Self {
+-            size: Vec2::new(width, height),
+-            aspect: crate::resources::window::aspect_ratio_observed(size[0], size[1]),
++            size,
++            aspect: size.x / size.y,
+             unit: 1.0,
+         }
+     }
+ 
+-    /// O：0x140ac8450。helper 0x140c906d0 把 `(a, b)` 换成
+-    /// `x' = a / size.x * 2 + (-1.0)`、`y' = (1.0 - b) / size.y * 2 + 1.0`
+-    /// （乘 2 用的是自加；常量 -1.0 在 0x14295a0e4），随后 `x' * aspect`、`y' * 1.0`。
+-    /// `y'` 的形式照原样保留，没有按“看起来应该是”的公式改写。
+-    pub fn transform_screen_space(&self, a: f32, b: f32) -> Vec2 {
+-        let x = a / self.size.x;
+-        let x = x + x + -1.0;
+-        let y = (1.0 - b) / self.size.y;
+-        let y = y + y + 1.0;
+-        Vec2::new(x * self.aspect, y * self.unit)
+-    }
+-}
+-
+-/// `x' = col0*x + col1*y + col2*z + col3`，加法顺序与 0x140ac84a0 的 `mulps/addps` 序列一致：
+-/// `((y*col1 + x*col0) + z*col2) + col3`。
+-fn affine(m: &Mat4, p: Vec3) -> Vec4 {
+-    m.y_axis * p.y + m.x_axis * p.x + m.z_axis * p.z + m.w_axis
+-}
+-
+-fn lerp(a: f32, b: f32, t: f32) -> f32 {
+-    a + (b - a) * t
+-}
+-
+-/// 屏幕比例坐标（已经过 `transform_screen_space`）。
++    /// 像素原点在左上；屏幕中心映射到零点，上方为正 Y。
++    pub fn transform_screen_space(&self, screen_x: f32, screen_y: f32) -> Vec2 {
++        let normalized = Vec2::new(screen_x, screen_y) / self.size;
++        Vec2::new(
++            (normalized.x * 2.0 - 1.0) * self.aspect,
++            (1.0 - normalized.y * 2.0) * self.unit,
++        )
++    }
++}
++
++/// 已转换的比例屏幕坐标。
+ #[derive(Clone, Copy, Debug, PartialEq)]
+ pub struct ProportionalScreenSpaceCoord(pub Vec2);
+ 
+ impl ProportionalScreenSpaceCoord {
+-    /// O：0x140ac84a0。
+-    ///
+-    /// 射线的近点 = 起点、远点 = 起点 + 方向，各自先过 `first`（原版结构 +0x80 处的矩阵）
+-    /// 再过 `second`（+0x00 处的矩阵，第二次**不重新取 w**，直接用第一次的 xyz 补 w = 1），
+-    /// 取 `xy / w` 再乘 `(aspect, 1.0)`。`t = ((c - near)·d) / max(d·d, 1e-20)`，
+-    /// 限制在 `range`（`min > max` 或含 NaN 时 `f32::clamp` panic）。最后按透视校正插值回世界点：
+-    /// `num = lerp(0/w_near, 1/w_far, t)`、`den = max(lerp(1/w_near, 1/w_far, t), 1e-10)`、
+-    /// `s = num / den`，结果 `near * (1 - s) + far * s`。
++    /// 投影失败时保持射线起点，避免无效窗口或相机参数污染编辑状态。
++    /// 新调用方可使用 try_project_onto_ray 区分投影失败。
+     pub fn project_onto_ray(
+         self,
+-        pss: &ProportionalScreenSpace,
+-        first: &Mat4,
+-        second: &Mat4,
++        screen: &ProportionalScreenSpace,
++        world_to_view: &Mat4,
++        view_to_clip: &Mat4,
+         ray: Ray,
+         range: [f32; 2],
+     ) -> Vec3 {
+-        let [min, max] = range;
+-        // 原版先检查 `min <= max`，不成立走 `f32::clamp` 的 panic。
+-        assert!(
+-            min <= max,
+-            "min > max, or either was NaN. min = {min:?}, max = {max:?}"
+-        );
+-        let near = ray.origin;
+-        let far = Vec3::new(
+-            ray.direction.x + ray.origin.x,
+-            ray.direction.y + ray.origin.y,
+-            ray.direction.z + ray.origin.z,
+-        );
+-        let near_clip = affine(second, affine(first, near).truncate());
+-        let far_clip = affine(second, affine(first, far).truncate());
+-        let pair = Vec2::new(pss.aspect, pss.unit);
+-        let near_ndc = Vec2::new(near_clip.x / near_clip.w, near_clip.y / near_clip.w) * pair;
+-        let far_ndc = Vec2::new(far_clip.x / far_clip.w, far_clip.y / far_clip.w) * pair;
+-        let to_cursor = self.0 - near_ndc;
+-        let along = far_ndc - near_ndc;
+-        let product = to_cursor * along;
+-        let numerator = product.y + product.x;
+-        let squared = along * along;
+-        let denominator = squared.y + squared.x;
+-        // `maxss denominator, 1e-20`：NaN 取常量。
+-        let denominator = if denominator > DOT_FLOOR {
+-            denominator
+-        } else {
+-            DOT_FLOOR
+-        };
+-        let t = (numerator / denominator).clamp(min, max);
+-
+-        let inv_far = 1.0 / far_clip.w;
+-        let numerator = lerp(0.0 / near_clip.w, inv_far, t);
+-        let denominator = lerp(1.0 / near_clip.w, inv_far, t);
+-        let denominator = if denominator > WEIGHT_FLOOR {
+-            denominator
+-        } else {
+-            WEIGHT_FLOOR
+-        };
+-        let s = numerator / denominator;
+-        let one_minus_s = 1.0 - s;
+-        Vec3::new(
+-            s * far.x + one_minus_s * near.x,
+-            s * far.y + one_minus_s * near.y,
+-            s * far.z + one_minus_s * near.z,
+-        )
++        assert!(range[0] <= range[1], "投影范围逆序或包含 NaN：{range:?}");
++        self.try_project_onto_ray(screen, world_to_view, view_to_clip, ray, range)
++            .unwrap_or(ray.origin)
++    }
++
++    /// 将光标投影到射线的屏幕方向，再使用裁剪 w 校正为世界空间插值参数。
++    /// range 限制的是屏幕参数；零投影长度保持起点，视点后方或奇异透视返回 None。
++    pub fn try_project_onto_ray(
++        self,
++        screen: &ProportionalScreenSpace,
++        world_to_view: &Mat4,
++        view_to_clip: &Mat4,
++        ray: Ray,
++        range: [f32; 2],
++    ) -> Option<Vec3> {
++        let [minimum, maximum] = range;
++        if !(minimum.is_finite() && maximum.is_finite() && minimum <= maximum)
++            || !self.0.is_finite()
++            || !ray.origin.is_finite()
++            || !ray.direction.is_finite()
++            || !screen.aspect.is_finite()
++            || !screen.unit.is_finite()
++        {
++            return None;
++        }
++        let near_clip = *view_to_clip * (*world_to_view * ray.origin.extend(1.0));
++        let far_clip = *view_to_clip * (*world_to_view * (ray.origin + ray.direction).extend(1.0));
++        if !near_clip.is_finite()
++            || !far_clip.is_finite()
++            || near_clip.w <= MIN_CLIP_WEIGHT
++            || far_clip.w <= MIN_CLIP_WEIGHT
++        {
++            return None;
++        }
++        let screen_scale = Vec2::new(screen.aspect, screen.unit);
++        let near_screen = near_clip.truncate().truncate() / near_clip.w * screen_scale;
++        let far_screen = far_clip.truncate().truncate() / far_clip.w * screen_scale;
++        let projected_direction = far_screen - near_screen;
++        let length_squared = projected_direction.length_squared();
++        if !length_squared.is_finite() {
++            return None;
++        }
++        if length_squared <= MIN_PROJECTED_LENGTH_SQUARED {
++            return Some(ray.origin);
++        }
++        let screen_parameter = ((self.0 - near_screen).dot(projected_direction) / length_squared)
++            .clamp(minimum, maximum);
++        let near_weight = (1.0 - screen_parameter) / near_clip.w;
++        let far_weight = screen_parameter / far_clip.w;
++        let total_weight = near_weight + far_weight;
++        if !total_weight.is_finite() || total_weight.abs() <= MIN_CLIP_WEIGHT {
++            return None;
++        }
++        let world_parameter = far_weight / total_weight;
++        let position = ray.origin + ray.direction * world_parameter;
++        position.is_finite().then_some(position)
+     }
+ }
+ 
+@@ -144,15 +124,15 @@
+     }
+ 
+     #[test]
+-    fn transform_screen_space_follows_the_helper_exactly() {
++    fn screen_coordinates_have_a_centered_origin_and_upward_y() {
+         let pss = ProportionalScreenSpace::from_window_size([200, 100]);
+-        // x' = 100/200*2 - 1 = 0, y' = (1 - 25)/100*2 + 1 = 0.52。
++        // 屏幕四分之一高度映射到 y=0.5，屏幕顶部映射到 y=1。
+         let v = pss.transform_screen_space(100.0, 25.0);
+         assert_eq!(v.x, 0.0);
+-        assert!((v.y - 0.52).abs() < 1e-6, "{v:?}");
++        assert!((v.y - 0.5).abs() < 1e-6, "{v:?}");
+         let v = pss.transform_screen_space(0.0, 0.0);
+         assert_eq!(v.x, -2.0);
+-        assert!((v.y - 1.02).abs() < 1e-6);
++        assert!((v.y - 1.0).abs() < 1e-6);
+     }
+ 
+     fn ray(origin: Vec3, direction: Vec3) -> Ray {
+@@ -198,7 +178,7 @@
+     }
+ 
+     #[test]
+-    #[should_panic(expected = "min > max, or either was NaN")]
++    #[should_panic(expected = "投影范围逆序")]
+     fn reversed_range_panics_like_f32_clamp() {
+         let id = Mat4::IDENTITY;
+         ProportionalScreenSpaceCoord(Vec2::ZERO).project_onto_ray(
+@@ -243,4 +223,21 @@
+         );
+         assert!(p.is_finite());
+     }
+-}
++
++    #[test]
++    fn viewport_center_and_invalid_perspective_are_safe() {
++        let screen = ProportionalScreenSpace::from_window_size([0, 0]);
++        assert_eq!(screen.transform_screen_space(0.5, 0.5), Vec2::ZERO);
++        let ray = ray(Vec3::ONE, Vec3::X);
++        assert_eq!(
++            ProportionalScreenSpaceCoord(Vec2::ZERO).try_project_onto_ray(
++                &screen,
++                &Mat4::IDENTITY,
++                &Mat4::ZERO,
++                ray,
++                [0.0, 1.0]
++            ),
++            None
++        );
++    }
++}

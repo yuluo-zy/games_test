@@ -1,0 +1,14 @@
+{
+  "recovered_requirements":[
+    "Allocate one contiguous AtomicU64 per primary plus each auxiliary queue, initialized to 1.",
+    "Queue identity Auxiliary(n) selects slot n+1, not family_index+1.",
+    "Use fetch_add old value as CB sequence; numerical counter arithmetic wraps at machine width.",
+    "SequentialDisposal prefixes start 0; submission global counter starts1.",
+    "Preserve plain u64 bucket keys when reproducing target; do not invent globally unique packed sequences.",
+    "Keep multiqueue resource safety unresolved until caller invariants are recovered."
+  ],
+  "candidate":"reconstruction/render/work-packages/device-counters-r6",
+  "candidate_scope":["family selection projection","all-one counter initialization","atomic per-slot sequence producer","raw CPU oracle","bucket collision witness"],
+  "not_implemented":["Vulkan device/queue creation","complete SubmissionEngine","full bucket disposal","resource-sharing scheduler","private caller reachability"],
+  "candidate_choices":{"atomic_order":"Relaxed, source ordering unknown","invalid_queue":"Option::None for bounds rather than target panic","missing_graphics_family":"Option::None rather than target error wrapper"}
+}

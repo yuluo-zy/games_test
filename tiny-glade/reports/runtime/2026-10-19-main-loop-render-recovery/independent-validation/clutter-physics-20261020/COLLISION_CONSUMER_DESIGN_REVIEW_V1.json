@@ -1,0 +1,81 @@
+{
+  "status": "passed_scoped_design",
+  "design_sha256": "dd98620aa30f5a2cef88200af1744520f70113a6e74f949360d9acc1bec6cd7a",
+  "manifest_sha256": "b1351216950192aac6a094a5a01a2a1a03fe087a15fa93ca524b081d28d72547",
+  "manifest_checks": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-89621bad1106d1999d/collision-consumer-20261020/DESIGN.md",
+      "sha256": "dd98620aa30f5a2cef88200af1744520f70113a6e74f949360d9acc1bec6cd7a",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-89621bad1106d1999d/collision-consumer-20261020/before/intersect_meshes.rs",
+      "sha256": "7667b03450b076ceea52bc5bb85d904719b22dd75b0e6ba57b296be2dde9bc8c",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-89621bad1106d1999d/collision-consumer-20261020/evidence/native-manifest.json",
+      "sha256": "1b6404ba123965bea8a72bce93efb59cf5c04174e0f1f345b3610099957579ec",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-89621bad1106d1999d/collision-consumer-20261020/evidence/procedures-B.json",
+      "sha256": "7d73c2db85beb8b59d8a9c458c5c99bdb3900d01388bddb4d010ae3e9fb470bc",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/claims/TG-89621bad1106d1999d.json",
+      "sha256": "d28c6724493e0749840e5e66d81d117ba2662b8df59e53ca865b78ece621193a",
+      "matches": true
+    }
+  ],
+  "production_before_matches": true,
+  "native_range_checks": [
+    {
+      "name": "find_mesh_intersections",
+      "va": "0x140a97b70",
+      "size": 13359,
+      "sha256": "c62c4c4c420570c36bccff081d9ca95ddb375396db34711339331cf525045112",
+      "direct_pe_sha256": "c62c4c4c420570c36bccff081d9ca95ddb375396db34711339331cf525045112",
+      "direct_pe_matches": true,
+      "retained_bytes_equal_direct_pe": true
+    },
+    {
+      "name": "should_intersect",
+      "va": "0x140a9b3c0",
+      "size": 284,
+      "sha256": "2258cb3079bd9ed52020b6c9ed7e6ac1961580ae3695f35e428a13a3c240421e",
+      "direct_pe_sha256": "2258cb3079bd9ed52020b6c9ed7e6ac1961580ae3695f35e428a13a3c240421e",
+      "direct_pe_matches": true,
+      "retained_bytes_equal_direct_pe": true
+    },
+    {
+      "name": "newly_added_closure",
+      "va": "0x1417d1440",
+      "size": 1274,
+      "sha256": "19ab84fe8f7e4c4362a7d112f57c6448373df3ff45734bc7de60f80f79e3f134",
+      "length_source": "country-core-audit/data/procs.tsv monomorphcall_mut",
+      "direct_pe_sha256": "19ab84fe8f7e4c4362a7d112f57c6448373df3ff45734bc7de60f80f79e3f134",
+      "direct_pe_matches": true,
+      "retained_bytes_equal_direct_pe": true
+    }
+  ],
+  "independent_findings": [
+    "Added handle is 12B and byte+8 is actual physical subworld slot. Native 140a9839f..3a5 skips slot>=2 before physical lookup; 140a983f1/3fa/401..426 yields slot0->[1], slot1->[0,1]. This is not source.tag filtering.",
+    "Native predicate reads actual physical Collider first qword user_data, then resolves existing registry and validates generation, before source.tag/payload/byte1. Current local Rapier index-as-global-vector source is incompatible with canonical world receipt.",
+    "Native 0/2 and 2/0 require different payload+8 and tag2 byte1 bit0 clear. Native 2/2 additionally requires exact full byte1 equality, still bit0 clear. Legal tag combination alone does not imply true; other tag combinations panic.",
+    "Post-polyline artifact path independently reloads both actual user_data receipts, validates registry/tag&0xfd==0 and reads payload+8. Predicate-only fix would leave a second wrong consumer.",
+    "Whole current crates source search finds production function definitions/comments and tests only; no registered business caller. This is callable identity compatibility work, not demonstrated live App crash or full collision algorithm restoration."
+  ],
+  "implementation_requirements": [
+    "Depend on canonical world candidate helper, same existing SlotMap owner, strict key decoding including agreed exact packed-key roundtrip; no second registry or projection fallback.",
+    "Keep public physical SubworldColliderHandle function parameters and reconstruct actual Rapier handles in their indicated subworld; require physical collider presence for eligible slots.",
+    "Preserve graph removed-node pruning, callback API, triangle/BVH/segment/polyline/artifact algorithms; no new scheduler or blanket 17-slot traversal.",
+    "Root tests should prove slot2/8 skipped even if invalid physical handles, added0/1 observed candidate lists, actual same-local-index two-subworld colliders resolve distinct canonical receipts, equal payload and mismatched/higher byte1 flags follow exact predicate, stale generation rejected and artifact payload comes from same registry."
+  ],
+  "limits": [
+    "Read-only original bytes/source review; no Cargo/rustc/GPU/production mutation.",
+    "Design gate only, candidate source and new tests not reviewed or executed yet.",
+    "No original-process/C version parity, actual Edit/Reload schedule, complete collision closure, nonempty world frame or WSI acceptance."
+  ]
+}

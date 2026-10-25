@@ -1,0 +1,28 @@
+[package]
+name = "asset-pipe"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+description = "Texture processing, compression and persistent cache policies"
+readme = "README.md"
+
+[dependencies]
+asset = { path = "../asset", version = "=0.1.0" }
+anyhow.workspace = true
+serde.workspace = true
+relative-path = { version = "=1.9.0", features = ["serde"] }
+ron = { git = "https://github.com/PounceLight/ron", rev = "2787d8c" }
+image = { version = "=0.25.1", default-features = false, features = ["png", "jpeg"] }
+ddsfile = "=0.5.1"
+unicode-normalization = "=0.1.22"
+xxhash-rust = { version = "=0.8.10", features = ["xxh3"] }
+intel_tex_2 = { git = "https://github.com/PounceLight/intel-tex-rs-2.git", rev = "4fb0e0b70f868bccd529d45e1626de2f55a20b83" }
+
+[package.metadata.reconstruction]
+baseline = "B"
+original_feature_set_verified = false
+
+
+[lints]
+workspace = true

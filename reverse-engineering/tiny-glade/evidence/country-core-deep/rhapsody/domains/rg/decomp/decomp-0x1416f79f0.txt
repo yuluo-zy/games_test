@@ -1,0 +1,25 @@
+
+void FUN_1416f79f0(longlong *param_1,undefined8 param_2,undefined4 param_3)
+
+{
+  longlong lVar1;
+  longlong lVar2;
+  code *pcVar3;
+  longlong lVar4;
+  
+  lVar1 = *param_1;
+  lVar2 = param_1[1];
+  lVar4 = FUN_1418aed30(*(undefined8 *)(lVar2 + 0x648),param_2,lVar1);
+  if (lVar4 != 0) {
+                    /* WARNING: Could not recover jumptable at 0x0001416f7a31. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+    (**(code **)(lVar2 + 0x330))
+              (*(undefined8 *)(lVar1 + 0x48),*(undefined8 *)(lVar4 + 0x20),0,param_3);
+    return;
+  }
+  FUN_1428d9310(&UNK_142c91750);
+  pcVar3 = (code *)swi(3);
+  (*pcVar3)();
+  return;
+}
+

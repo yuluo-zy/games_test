@@ -1,0 +1,22 @@
+{
+  "scope": "v74 metadata assertions only; production builder and guards unchanged",
+  "cargo_run": false,
+  "files": [
+    {
+      "path": "games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/compute_garden.rs",
+      "before_sha256": "c656f0db21dc527d606192e43f690fc38c44d60685b5f8460a44c91edd9c1acb",
+      "candidate_sha256": "ccd130374601a5b5c5adde5c874819a6c13532aedecdf5b13c90800029fde256",
+      "patch": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-f66f0656cb72f29658/render-garden-live-20261018/boot-vegetation/metadata-test-dedup-v74/compute_garden.rs.patch",
+      "patch_sha256": "0541263436b1d3c9b3cd28f5c2e5f3d4fd0196adea0cbe5b1ae19cebe6367879"
+    },
+    {
+      "path": "games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/spawn_vegetation_around_buildings.rs",
+      "before_sha256": "a4b7fc670baf36fed481faa1e73642b73b92edebd3753afb3df596dc21d1b518",
+      "candidate_sha256": "fa2672532f028f8a7d8ce24db586eb5974bccc63a21d60941e1fdaaed1096ff8",
+      "patch": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-c15aa9d784e5b9fae6/boot-vegetation-20261018/metadata-test-dedup-v74/spawn_vegetation_around_buildings.rs.patch",
+      "patch_sha256": "29a990f41b3a1e9332021930a11b2fe49954d8df27ee60d45a20eaa77c58d02d"
+    }
+  ],
+  "finding": "ComputePass::preserve_storage_buffer_contents deduplicates graph resource IDs (compute_pass_builder.rs:769). TestDevice imports all SSBOs as resource 0; four expectations incorrectly retain duplicate IDs. This candidate changes only those expected vectors and comments. No GPU behavior or production guard changes.",
+  "scope_limit": "Aliased resource fixture cannot independently prove separate buffer identity; actual GPU consumer validation remains separate."
+}

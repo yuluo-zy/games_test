@@ -1,0 +1,22 @@
+{
+  "status": "candidate_only_not_applied",
+  "no_cargo": true,
+  "parser": "rustfmt edition2024 skip_children",
+  "patches": [
+    {
+      "path": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-06f4abbe570c5f0ee3/render-prelude-lut-20261018/conditional-history-read/inactive-contents-rg.patch",
+      "sha256": "de3c9aa0684a6f0d8827873423bbd238864021d36a3b358bbc0239490458948c"
+    },
+    {
+      "path": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-06f4abbe570c5f0ee3/render-prelude-lut-20261018/conditional-history-read/inactive-contents-host.patch",
+      "sha256": "c3239431c0f73cdcb9acfdd6bd0642f1d6fa23d961ecd6cfba4edd1de037fe6e"
+    }
+  ],
+  "source_owners": "see CURRENT-GRAPH-CAPABILITY.md; root owns mapped RG original families; systems consumer is external user Codex session",
+  "tests": "rhapsody --test inactive_contents; actual scene first-frame reprojection GPU remains failing until applied and verified",
+  "contracts": "strict ordinary uninitialized reads preserved; metadata only exact nonwrite shader binding; unchanged sync/lifetime/ranges/usage",
+  "review_fixes": [
+    "removed pub(crate) matches_declaration use from integration test; no API visibility change",
+    "removed unrelated subgraph formatting hunk"
+  ]
+}

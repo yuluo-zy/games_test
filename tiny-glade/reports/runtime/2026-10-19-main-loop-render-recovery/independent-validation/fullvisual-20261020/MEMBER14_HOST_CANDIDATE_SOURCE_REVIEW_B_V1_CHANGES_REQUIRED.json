@@ -1,0 +1,84 @@
+{
+  "reviewer": "07-independent-validation",
+  "at_utc": "2026-10-19T20:20:29.015812+00:00",
+  "verdict": "changes_required_test_boundary",
+  "manifest": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bd3d82a9ddc435cfb2/deco-trackers-20261020/host-candidate-b-v1/CANDIDATE_MANIFEST_B_V1.json",
+    "sha256": "044ba135ea5dce642909a2b4e536e480759c4a81ba1dc08794787ed930266330"
+  },
+  "frozen_source_sha256": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/geometry/instanced_wall.rs",
+      "before": "3d1c5820351e3ad3187e8f1b1810fba33d3818d701d9a69383eb8daddd8cd24c",
+      "candidate": "93baa337e8a4cb8ece7a0cbe6f0490e1b397bb69be3ee10d328b1d2e965d2d4b"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/geometry/runtime.rs",
+      "before": "d4869546556f501dc5de80de380a6f76c535ab1b8d45fc82cc56cade08d3a87c",
+      "candidate": "2b325d02dc4c1197f76c1e368076cb93cf40ccb81c688f5694e291a51e151316"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/wall/construct_wall_bricks.rs",
+      "before": "93ea46a86ffc283d662303a9528db9d2a5652a3e2b68c63dba7ad131ed733c2c",
+      "candidate": "4894446c3ea3a4d2663aec1e1e6fceb9a44c0b0608f78b9ab6877d8269accce7"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/run_game.rs",
+      "before": "87fe2e21b1d31dc73283fab31c488a19df2af71097af3cc8f2c9da2070db3813",
+      "candidate": "e1f25406a0fa0f776f80d41c5aae26dbd1532a05022b84cd22885c72b3a3af1b"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/decorator_visual/chimney_assemble_bricks.rs",
+      "before": "486ad0e2375a61b988a5e8e3726c750fc65f178bad0a536d4a9199f07b00195a",
+      "candidate": "d6e287b4080fdf25d22523bfba8f2cd2ebd4f94279ed689451bba27c4f86dd50"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/decorator_visual/door_stairs_assemble_bricks.rs",
+      "before": "a5d70ecdae87ffeaaeb94941fbadc91a44009e97533bf468df3df9a84fa245d6",
+      "candidate": "b16dec474a883138d75b02b5df1a4ce9d30c102c5156177268bdf2db42241fef"
+    }
+  ],
+  "verified": {
+    "frozen_and_current_hash_checks": 50,
+    "all_match": true,
+    "whole_individual_patches_independently_recomputed": 6,
+    "prior_geometry_and_A_helper_bodies_byte_exact_independent_recheck": 9,
+    "author_new_tests": 9,
+    "tests_executed": false
+  },
+  "finding": {
+    "priority": 1,
+    "title": "External crate tests import core cfg(test)-only TestDevice",
+    "proof": "Current country-core/src/render/mod.rs lines41..42 are #[cfg(test)] pub mod test_device. Core is compiled as a regular dependency when compiling system-decorator or tiny-glade tests, so that dependency module is absent. The new three external crate test modules import it unconditionally under only their own crate cfg(test), creating unresolved imports. This is a static cfg dependency proof, not a compiled diagnostic.",
+    "candidate_locations": [
+      {
+        "file": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-c459c7f73345e24709/main-chain-boot-20261018/member14-owner-b-20261020/candidate-v1/src/run_game.rs",
+        "line": 1883
+      },
+      {
+        "file": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-917d6130810801d337/deco-trackers-20261020/host-candidate-b-v1/src/decorator_visual/chimney_assemble_bricks.rs",
+        "line": 410
+      },
+      {
+        "file": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-e10831b95b26b67a3c/deco-trackers-20261020/host-candidate-b-v1/src/decorator_visual/door_stairs_assemble_bricks.rs",
+        "line": 246
+      }
+    ],
+    "not_affected": "InstancedWall own core unit tests correctly import crate::render::test_device while core itself is a test target.",
+    "required_fix": "Preserve V1; freeze test-only V2 with legitimate explicit CPU device boundary/available test API in external test crates, and bind whole source delta. Do not silently widen production module cfg visibility, add a test-support dependency feature/second production device, delete/ignore tests or claim fixture CPU upload is real GPU. Central may explicitly coordinate shared testing surface if needed."
+  },
+  "scoped_production_observations": [
+    "No new production owner/lifecycle blocker found in bounded six-source inspection; this statement is not typechecking and is not final package admission until the known test-boundary failure is repaired.",
+    "One InstancedWall owns three distinct same-library Sparse allocations. Explicit19-only legacy upgrade validates existing handles before mutation, preserves existing base Vec/state/allocation, pair initialized together; complete normal owner avoids DerefMut tick.",
+    "AwaitingProduction is distinct from pending/published and unallocated-empty finish cannot mark awaiting success. Existing28 id check/optionalTrigger allows only actual awaiting missingTrigger, computes realgeometry/Trigger before base/RT/events, preserves deco on failure.",
+    "Scoped for_batch performs actual typedentry once per dirty wall before PublicWalls, actualSome then full-generation WallEntities/id/lane/ownership checks. PublicNone explicit no-op removal and nodirty no entry probe retained. No clone/new buffer/resource.",
+    "Actual writer clear/per-item push retains partial allocation and capacity failures continue; writer dropped only after samewall removals/normalization. Current soundkind transitions/positions and actual7506 subtype removal lookup preserved.",
+    "Root App delta adds canonical trackers/event and19 producer after actual publication/delete; existing28/PostUpdate unchanged, no partial member14/wholeplugin mounting. RealGameSystemSet fixture uses same ordinary edges, awaiting noTrigger/noSuccess and Changed tick observation."
+  ],
+  "unverified_or_required_next": [
+    "Rust generic/lifetime/SystemParam compile remains unperformed. No App/wholecore actualsource accepted by prior tracker8/math7 or geometry5 tests.",
+    "New test corpus does not yet directly run every modified28 pending/Trigger failure and delete/recreate combination; actual complete source tests and sameowner flush/device/session acceptance remain central validation obligations.",
+    "Actual source-only TestDevice is CPU mapped-memory boundary, not Vulkan/M3/device/pixel acceptance.",
+    "Known missing sources and actual anchor9/fullmiddle/OnExit/audio/required actual assets/WSI/performance remain separate gates."
+  ]
+}

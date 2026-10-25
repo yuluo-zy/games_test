@@ -1,0 +1,146 @@
+Source: /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/resource/range_state.rs
+SHA256: e5a579fcb67b773fba4dd39d04bdb738dd652548d6bb8610bd0d7e1bf0bfc106
+
+879: }
+880: pub fn contains(outer: NativeRange, inner: NativeRange) -> bool {
+881:     intersection(outer, inner) == Some(inner)
+882: }
+883: pub fn intersection(a: NativeRange, b: NativeRange) -> Option<NativeRange> {
+884:     match (a, b) {
+885:         (
+886:             NativeRange::Buffer { offset: a, size: n },
+887:             NativeRange::Buffer { offset: b, size: m },
+888:         ) => {
+889:             let start = a.max(b);
+890:             let end = a.checked_add(n)?.min(b.checked_add(m)?);
+891:             (start < end).then(|| NativeRange::Buffer {
+892:                 offset: start,
+893:                 size: end - start,
+894:             })
+895:         }
+896:         (
+897:             NativeRange::Image {
+898:                 aspects: a,
+899:                 base_mip: am,
+900:                 mip_count: an,
+901:                 base_layer: al,
+902:                 layer_count: ac,
+903:             },
+904:             NativeRange::Image {
+905:                 aspects: b,
+906:                 base_mip: bm,
+907:                 mip_count: bn,
+908:                 base_layer: bl,
+909:                 layer_count: bc,
+910:             },
+911:         ) => {
+912:             let aspects = a & b;
+913:             let mip = am.max(bm);
+914:             let end_mip = am.checked_add(an)?.min(bm.checked_add(bn)?);
+915:             let layer = al.max(bl);
+916:             let end_layer = al.checked_add(ac)?.min(bl.checked_add(bc)?);
+917:             (aspects != 0 && mip < end_mip && layer < end_layer).then(|| NativeRange::Image {
+918:                 aspects,
+919:                 base_mip: mip,
+920:                 mip_count: end_mip - mip,
+921:                 base_layer: layer,
+922:                 layer_count: end_layer - layer,
+923:             })
+924:         }
+925:         _ => None,
+926:     }
+927: }
+928: /// Slab subtraction preserves exact union and never fills a hole.
+929: pub fn difference(whole: NativeRange, cut: NativeRange) -> SmallVec<[NativeRange; 5]> {
+930:     let mut pieces = SmallVec::new();
+931:     let Some(overlap) = intersection(whole, cut) else {
+932:         pieces.push(whole);
+933:         return pieces;
+934:     };
+935:     match (whole, overlap) {
+936:         (
+937:             NativeRange::Buffer { offset, size },
+938:             NativeRange::Buffer {
+939:                 offset: start,
+940:                 size: bytes,
+941:             },
+942:         ) => {
+943:             if offset < start {
+944:                 pieces.push(NativeRange::Buffer {
+945:                     offset,
+946:                     size: start - offset,
+947:                 });
+948:             }
+949:             if start + bytes < offset + size {
+950:                 pieces.push(NativeRange::Buffer {
+951:                     offset: start + bytes,
+952:                     size: offset + size - start - bytes,
+953:                 });
+954:             }
+955:         }
+956:         (
+957:             NativeRange::Image {
+958:                 aspects,
+959:                 base_mip,
+960:                 mip_count,
+961:                 base_layer,
+962:                 layer_count,
+963:             },
+964:             NativeRange::Image {
+965:                 aspects: mask,
+966:                 base_mip: mip,
+967:                 mip_count: mips,
+968:                 base_layer: layer,
+969:                 layer_count: layers,
+970:             },
+971:         ) => {
+972:             let image =
+973:                 |aspects, base_mip, mip_count, base_layer, layer_count| NativeRange::Image {
+974:                     aspects,
+975:                     base_mip,
+976:                     mip_count,
+977:                     base_layer,
+978:                     layer_count,
+979:                 };
+980:             if aspects & !mask != 0 {
+981:                 pieces.push(image(
+982:                     aspects & !mask,
+983:                     base_mip,
+984:                     mip_count,
+985:                     base_layer,
+986:                     layer_count,
+987:                 ));
+988:             }
+989:             if base_mip < mip {
+990:                 pieces.push(image(
+991:                     mask,
+992:                     base_mip,
+993:                     mip - base_mip,
+994:                     base_layer,
+995:                     layer_count,
+996:                 ));
+997:             }
+998:             if mip + mips < base_mip + mip_count {
+999:                 pieces.push(image(
+1000:                     mask,
+1001:                     mip + mips,
+1002:                     base_mip + mip_count - mip - mips,
+1003:                     base_layer,
+1004:                     layer_count,
+1005:                 ));
+1006:             }
+1007:             if base_layer < layer {
+1008:                 pieces.push(image(mask, mip, mips, base_layer, layer - base_layer));
+1009:             }
+1010:             if layer + layers < base_layer + layer_count {
+1011:                 pieces.push(image(
+1012:                     mask,
+1013:                     mip,
+1014:                     mips,
+1015:                     layer + layers,
+1016:                     base_layer + layer_count - layer - layers,
+1017:                 ));
+1018:             }
+1019:         }
+1020:         _ => unreachable!("intersection kind"),
+

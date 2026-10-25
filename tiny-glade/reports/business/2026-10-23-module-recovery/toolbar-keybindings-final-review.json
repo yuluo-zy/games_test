@@ -1,0 +1,81 @@
+{
+  "timestamp_local": "2026-10-24T17:51:02.144751+08:00",
+  "scope": "TB-R1键位页面与输入权威消费者修复；独立收口review，不代表整个toolbar或GPU验收",
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "sources": [
+    {
+      "path": "crates/country-core/src/game_key_bindings.rs",
+      "sha256": "70c1c5689449e763b474ba059e07504c1191aed3ca6ca6cc067798485a401f10"
+    },
+    {
+      "path": "crates/country-core/src/lib.rs",
+      "sha256": "fc217f388e8d4512c89533785aaccddc24c4a6364bad867b0f1ff5cb0b6bcdbe"
+    },
+    {
+      "path": "crates/country-core/src/systems/backend/input/button_input.rs",
+      "sha256": "76c046911b71fc0fe487268f0ea30daa0079fa0ea33a765916587409c06a005d"
+    },
+    {
+      "path": "crates/country-core/src/systems/backend/input/translate_input.rs",
+      "sha256": "f52f0f368414d89ba70d9c51b7c2203b86194800f9bafe84213f685be8d0d6ee"
+    },
+    {
+      "path": "crates/tiny-glade/src/gui/gui_controls.rs",
+      "sha256": "03da3a6d315a50ee067fabfa3306c009f3fce269bdefdef373af7d0f8dddec55"
+    },
+    {
+      "path": "crates/tiny-glade/src/event_loop.rs",
+      "sha256": "751e0fd8ef930846129bf1cc21d0e019f318352b62e224f921221c861da33d21"
+    }
+  ],
+  "logs": [
+    {
+      "path": "toolbar-keybindings-final-ui-tests.log",
+      "sha256": "8003475a46356545f19748d7a376c3c975d1394a3a0ac708c15396b3a8233be5"
+    },
+    {
+      "path": "toolbar-keybindings-final-core-tests.log",
+      "sha256": "e1b2dd0edf26a32d0ef16a161f85cfa2de882af2692093d1c7e95771cfb47987"
+    },
+    {
+      "path": "toolbar-keybindings-final-input-tests.log",
+      "sha256": "768c2daeed6b393e63a6e253d95ba0579967e0b3a37ad33c5edc19197ec67177"
+    }
+  ],
+  "test_results": {
+    "game_key_bindings": {
+      "passed": 4,
+      "failed": 0,
+      "native_named_assign_cases": 14430,
+      "native_payload_assign_cases": 1628,
+      "native_label_cases": 194
+    },
+    "input_backend": {
+      "passed": 20,
+      "failed": 0,
+      "menu_gate_original_cases": 1320,
+      "current_allowed_menu_cases_compared": 1080
+    },
+    "keybindings_ui": {
+      "passed": 4,
+      "failed": 0,
+      "real_template_cpu_cases": 2,
+      "real_os_input": false
+    }
+  },
+  "scope_exclusions": [
+    "用户排除真实Steam SDK接入",
+    "用户删除反馈入口，保留旧档slot兼容",
+    "用户暂不进行真实OS输入验收",
+    "CPU真实模板不代表GPU绘制/present验收"
+  ],
+  "integration_review": {
+    "settings_source": "crates/tiny-glade/src/gui/settings.rs",
+    "closed_reset": true,
+    "event_reader_conditional_by_modal": true,
+    "save_profile_event_on_confirm": true,
+    "back_to_controls": true,
+    "independent_parent_system_adapter_tests": "由中央owner另行执行，不混入本模块4个UI测试数量"
+  },
+  "performance": "绑定表使用Local缓存，仅档案键位变化后重编译；普通键数字快路，稀少原生载荷独立集合；未宣称FPS基准提升"
+}

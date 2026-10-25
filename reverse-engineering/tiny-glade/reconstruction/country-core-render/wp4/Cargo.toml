@@ -1,0 +1,31 @@
+[workspace]
+
+[package]
+name = "country-core-render-wp4"
+version = "0.1.0"
+edition = "2021"
+description = "WP4 recovery of Tiny Glade country-core render wiring (mesh/shader/config/asset libraries)"
+publish = false
+
+[dependencies]
+glam = { version = "0.29.3", features = ["serde"] }
+parking_lot = "0.12.1"
+serde = { version = "1.0.200", features = ["derive"] }
+ron = "0.8.1"
+log = "0.4.27"
+hashbrown = "0.14.5"
+
+# NOTE on dependencies:
+#   - Versions follow the original release Cargo.lock baseline where known
+#     (glam 0.29.3 per game-core, serde 1.0.200, ron 0.8.1 fork used by the
+#     original). `ron` in the original is the PounceLight fork; crates.io 0.8.1
+#     is used here for skeleton-check purposes.
+#   - `frozen`, `rhapsody`, `shader-pipeline`, `shader-variants`,
+#     `shader-compiler`, `puffin`, `ustr` are REUSED deps; the WP4 skeleton calls
+#     them through the typed contract module `src/lib.rs` (`rhapsody_contract`
+#     etc.) rather than depending on them directly.
+#   - `frozen`/`hashbrown` container semantics are observed in machine code but
+#     the container crates themselves are not reimplemented.
+
+[profile.dev]
+opt-level = 0

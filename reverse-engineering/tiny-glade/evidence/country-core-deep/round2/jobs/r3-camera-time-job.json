@@ -1,0 +1,77 @@
+[
+ {
+  "tool": "open_database",
+  "args": {
+   "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+   "run_auto_analysis": false,
+   "database_id": "tg_a6r4",
+   "keep_open": true
+  },
+  "timeout_ms": 600000
+ },
+ {
+  "tool": "wait_for_analysis",
+  "args": {
+   "database": "tg_a6r4"
+  },
+  "timeout_ms": 600000
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_a6r4",
+   "address": "0x140993100"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "FreeCamera::set"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_a6r4",
+   "address": "0x140993750"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "free/walk rotate_yaw_pitch"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_a6r4",
+   "address": "0x140993e20"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "WalkCamera::new"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_a6r4",
+   "address": "0x140949cc0"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "normal rotate_yaw_pitch"
+ },
+ {
+  "tool": "decompile_function",
+  "args": {
+   "database": "tg_a6r4",
+   "address": "0x1408bbbc0"
+  },
+  "timeout_ms": 240000,
+  "allow_error": true,
+  "_note": "GladeSettings::load"
+ },
+ {
+  "tool": "close_database",
+  "args": {
+   "database": "tg_a6r4",
+   "save": false
+  },
+  "timeout_ms": 180000
+ }
+]

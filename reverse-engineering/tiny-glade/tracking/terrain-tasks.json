@@ -1,0 +1,214 @@
+{
+  "schema_version": 1,
+  "updated_date": "2026-10-11",
+  "scope": "This conversation's terrain investigation only; shared AGENTS, priorities, database and building evidence unchanged",
+  "guidance": "TERRAIN_SYSTEM_RECOVERY_PLAN.md",
+  "dependency_exclusions": "tracking/dependency-exclusions.json",
+  "implementation_baseline": "B",
+  "planned_delivery_target": "C",
+  "target_execution": false,
+  "system_acceptance": "not_verified",
+  "stage_policy": [
+    "located",
+    "analyzed",
+    "implemented",
+    "verified_local",
+    "system_verified"
+  ],
+  "new_core_decompilation_obtained": true,
+  "batch_findings": "evidence/terrain-editing/findings.md",
+  "native_provenance": "evidence/terrain-editing/native-provenance.json",
+  "batch_verification_scope": "First batch: 15 decompilations/69 native range matches. Second batch: 6 decompilations/12 native range matches plus private helper export; 512 Edit replay cases and 512 resolved Delta cases pass. No full system acceptance.",
+  "second_batch_findings": "evidence/terrain-editing/second-batch-findings.md",
+  "second_batch_schema": "evidence/terrain-editing/B-history-schema.json",
+  "local_verifications": [
+    {"scope":"B EditTerrainStroke reapply/revert finite f32 branch only","cases":512,"failures":0,"report":"evidence/terrain-editing/B-edit-replay-verification.json"},
+    {"scope":"B resolved height/falloff Delta fragments only","cases":512,"failures":0,"report":"evidence/terrain-editing/B-delta-edit-verification.json"}
+  ],
+  "tasks": [
+    {
+      "id": "T00",
+      "title": "三版归属/依赖筛除与地址映射",
+      "status": "in_progress",
+      "stage": "analyzed",
+      "depends_on": [],
+      "acceptance": "PDB/定义crate/source/真实调用点核实；确认依赖标dependency_reuse；未知不实现",
+      "evidence": [
+        "evidence/terrain-editing/findings.md",
+        "evidence/terrain-editing/B-core/report.json",
+        "evidence/terrain-editing/native-provenance.json"
+      ],
+      "reused_evidence": [
+        "tracking/dependency-exclusions.json",
+        "tracking/baselines.json",
+        "evidence/multi-version/B-functions.json"
+      ]
+    },
+    {
+      "id": "T01",
+      "title": "权威模型/schema/布局与owner",
+      "status": "in_progress",
+      "stage": "analyzed",
+      "depends_on": [
+        "T00"
+      ],
+      "acceptance": "区分stroke权威态、GPU计算与u16 CPU读回，确认bounds/fix生产者",
+      "evidence": [
+        "evidence/terrain-editing/findings.md",
+        "evidence/terrain-editing/B-core/report.json",
+        "evidence/terrain-editing/native-provenance.json"
+      ]
+    },
+    {
+      "id": "T02",
+      "title": "输入/射线/选择/绘制/新建",
+      "status": "in_progress",
+      "stage": "analyzed",
+      "depends_on": [
+        "T00"
+      ],
+      "acceptance": "确认producer/consumer、坐标、插入/变形末点和边界",
+      "evidence": [
+        "evidence/terrain-editing/findings.md",
+        "evidence/terrain-editing/B-core/report.json",
+        "evidence/terrain-editing/native-provenance.json"
+      ]
+    },
+    {
+      "id": "T03",
+      "title": "编辑/移动/已确认删除与清理",
+      "status": "in_progress",
+      "stage": "analyzed",
+      "depends_on": [
+        "T00",
+        "T01",
+        "T02"
+      ],
+      "acceptance": "字段写/阈值/no-op/通知与生命周期；删除独立取证",
+      "evidence": [
+        "evidence/terrain-editing/findings.md",
+        "evidence/terrain-editing/B-core/report.json",
+        "evidence/terrain-editing/native-provenance.json"
+      ]
+    },
+    {
+      "id": "T04",
+      "title": "deferred history/replay/undo/redo",
+      "status": "in_progress",
+      "stage": "analyzed",
+      "depends_on": [
+        "T00",
+        "T01"
+      ],
+      "acceptance": "commit、reapply/revert、cursor与正反向行为；不能只确认serde字段",
+      "evidence": [
+        "evidence/terrain-editing/findings.md",
+        "evidence/terrain-editing/B-core/report.json",
+        "evidence/terrain-editing/native-provenance.json"
+      ]
+    },
+    {
+      "id": "T05",
+      "title": "业务求值/falloff/重叠/编码/栅格化",
+      "status": "in_progress",
+      "stage": "analyzed",
+      "depends_on": [
+        "T00",
+        "T01",
+        "T03"
+      ],
+      "acceptance": "确认CPU/GPU责任后恢复游戏公式，排除依赖算法",
+      "evidence": [
+        "evidence/terrain-editing/findings.md",
+        "evidence/terrain-editing/B-core/report.json",
+        "evidence/terrain-editing/native-provenance.json"
+      ]
+    },
+    {
+      "id": "T06",
+      "title": "读回/缓存/derivative/dirty通知时序",
+      "status": "in_progress",
+      "stage": "analyzed",
+      "depends_on": [
+        "T00",
+        "T01",
+        "T05"
+      ],
+      "acceptance": "实际资源读写与异步顺序、延迟/失败行为",
+      "evidence": [
+        "evidence/terrain-editing/findings.md",
+        "evidence/terrain-editing/B-core/report.json",
+        "evidence/terrain-editing/native-provenance.json"
+      ]
+    },
+    {
+      "id": "T07",
+      "title": "建筑/楼梯/碰撞/附着传播",
+      "status": "pending",
+      "stage": "located",
+      "depends_on": [
+        "T00",
+        "T06"
+      ],
+      "acceptance": "真实编辑源到dirty与consumer，清理旧membership/cache",
+      "evidence": [],
+      "reused_evidence": [
+        "evidence/building-collection/findings.md",
+        "evidence/building-collection/three-version-terrain-verification.json"
+      ]
+    },
+    {
+      "id": "T08",
+      "title": "其他直接地面消费者",
+      "status": "pending",
+      "stage": "located",
+      "depends_on": [
+        "T00",
+        "T06"
+      ],
+      "acceptance": "road/water/rock/vegetation实际依赖与传播；独立系统单列",
+      "evidence": []
+    },
+    {
+      "id": "T09",
+      "title": "保存/加载/snapshot/迁移",
+      "status": "pending",
+      "stage": "located",
+      "depends_on": [
+        "T00",
+        "T01",
+        "T04"
+      ],
+      "acceptance": "业务schema与保存重载对照，缺失引用明示",
+      "evidence": []
+    },
+    {
+      "id": "T10",
+      "title": "C迁移/A对照与完整地形验收",
+      "status": "pending",
+      "stage": "located",
+      "depends_on": [
+        "T01",
+        "T02",
+        "T03",
+        "T04",
+        "T05",
+        "T06",
+        "T07",
+        "T08",
+        "T09"
+      ],
+      "acceptance": "B闭环、C独立验证、A独立对照；CPU/GPU/场景关口不混淆",
+      "evidence": []
+    }
+  ],
+  "known_gaps": [
+    "New/Edit/Move native niche布局和Edit/Delta有限数值分支已确认；New/Move/删除完整行为未验收",
+    "UI伪代码有重叠/jumptable警告，pending producer仍需原PDB范围与指令复核",
+    "完整调度和非有限数边界尚未验收",
+    "已确认GPU来源复制至CPU网格，完整权威状态和同步契约仍待查",
+    "Terrain snapshot未解码",
+    "A/C数据库未绑定",
+    "原作场景/GPU最终验收未运行"
+  ]
+}

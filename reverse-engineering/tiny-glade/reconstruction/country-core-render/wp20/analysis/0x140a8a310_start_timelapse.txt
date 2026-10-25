@@ -1,0 +1,73 @@
+ADDR: 0x140a8a310
+SIG: void __cdecl start_timelapse(void)
+
+
+void __cdecl country_core::systems::timelapse_replay::start_timelapse(void)
+
+{
+  ulonglong *puVar1;
+  ulonglong uVar2;
+  ulonglong uVar3;
+  undefined8 *in_RCX;
+  ulonglong uVar4;
+  ulonglong uVar5;
+  ulonglong uVar6;
+  ulonglong uVar7;
+  longlong lVar8;
+  ulonglong uVar9;
+  longlong lVar10;
+  longlong local_80 [6];
+  longlong *local_50;
+  
+  puVar1 = (ulonglong *)*in_RCX;
+  lVar10 = in_RCX[1];
+  uVar2 = *puVar1;
+  uVar5 = 0;
+  uVar6 = uVar2 - *(ulonglong *)(lVar10 + 0x18);
+  if (uVar2 < *(ulonglong *)(lVar10 + 0x18)) {
+    uVar6 = uVar5;
+  }
+  uVar4 = uVar2 - *(ulonglong *)(lVar10 + 0x38);
+  if (uVar2 < *(ulonglong *)(lVar10 + 0x38)) {
+    uVar4 = uVar5;
+  }
+  uVar2 = *(ulonglong *)(lVar10 + 0x10);
+  uVar3 = *(ulonglong *)(lVar10 + 0x30);
+  uVar7 = uVar3 - uVar4;
+  if (uVar3 < uVar4) {
+    uVar7 = uVar5;
+  }
+  uVar9 = uVar2 - uVar6;
+  if (uVar2 < uVar6) {
+    uVar9 = uVar5;
+  }
+  uVar5 = *(ulonglong *)(lVar10 + 0x40);
+  lVar8 = *(longlong *)(lVar10 + 8);
+  lVar10 = *(longlong *)(lVar10 + 0x28);
+  *puVar1 = (uVar5 - uVar7) - uVar9;
+  if (uVar2 >= uVar6 && uVar2 - uVar6 != 0 || uVar3 >= uVar4 && uVar3 - uVar4 != 0) {
+    lVar10 = lVar10 + uVar4 * 0x10;
+    lVar8 = lVar8 + uVar6 * 0x10;
+    if (uVar2 < uVar6) {
+      lVar8 = 8;
+    }
+    lVar8 = lVar8 + -0x10 + uVar9 * 0x10;
+    if (uVar2 <= uVar6) {
+      lVar8 = 0;
+    }
+    if (uVar3 < uVar4) {
+      lVar10 = 8;
+    }
+    local_80[0] = lVar10 + -0x10 + uVar7 * 0x10;
+    if (uVar3 <= uVar4) {
+      local_80[0] = lVar8;
+    }
+    *puVar1 = uVar5;
+    local_80[0] = local_80[0] + 8;
+    local_50 = local_80;
+    mode_manager::
+    check_if_can_switch<country_core::systems::timelapse_replay::start_timelapse::closure_env_0>();
+  }
+  return;
+}
+

@@ -1,0 +1,180 @@
+{
+  "worker": "proof-a",
+  "access": "write",
+  "calls": [
+    {
+      "tool": "list_instances",
+      "args": {},
+      "start": 652367.903454,
+      "end": 652368.100641291,
+      "result": {
+        "instances": [
+          {
+            "socket": "/var/folders/nn/2ymzgfd16j96wv2_mj2bpsfm0000gn/T/ghidra-mcp-yuluo/ghidra-8864.sock",
+            "pid": 8864,
+            "server_kind": "headless",
+            "version": "7.0.0",
+            "endpoint_count": 190,
+            "project": "TinyGlade",
+            "project_path": "/Users/yuluo/Desktop/game/tools/ghidra-projects/workers/proof-a/TinyGlade",
+            "tcp_port": 65335,
+            "connected": true,
+            "program_count": 1,
+            "open_programs": [
+              "/tiny-glade.exe"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "tool": "set_function_prototype",
+      "args": {
+        "program": "tiny-glade.exe",
+        "function_address": "0x140949c20",
+        "prototype": "float __fastcall aspect_ratio(unsigned int *proof_a_size)"
+      },
+      "start": 652368.100834041,
+      "end": 652368.574811708,
+      "result": {
+        "program": "tiny-glade.exe",
+        "status": "success",
+        "message": "Successfully set prototype for function at 0x140949c20",
+        "address": "0x140949c20",
+        "prototype": "float __fastcall aspect_ratio(unsigned int *proof_a_size)"
+      }
+    },
+    {
+      "tool": "set_comment",
+      "args": {
+        "program": "tiny-glade.exe",
+        "address": "0x140949c20",
+        "comment": "Tool validation isolated writer proof-a",
+        "type": "plate"
+      },
+      "start": 652368.574849041,
+      "end": 652368.599917583,
+      "result": {
+        "program": "tiny-glade.exe",
+        "status": "success",
+        "message": "Set plate comment at 0x140949c20",
+        "warnings": [
+          "Plate comment missing Algorithm section",
+          "Plate comment missing Parameters section",
+          "Plate comment missing Returns section"
+        ]
+      }
+    },
+    {
+      "tool": "save_program",
+      "args": {
+        "program": "tiny-glade.exe"
+      },
+      "start": 652368.600154958,
+      "end": 652370.090954208,
+      "result": {
+        "success": true,
+        "program": "tiny-glade.exe",
+        "saved": true,
+        "message": "Program saved successfully"
+      }
+    },
+    {
+      "tool": "get_functions",
+      "args": {
+        "program": "tiny-glade.exe",
+        "function": "0x140949c20",
+        "fields": "signature,decompiled_code,parameters"
+      },
+      "start": 652370.127003458,
+      "end": 652370.704825708,
+      "result": {
+        "program": "tiny-glade.exe",
+        "name": "aspect_ratio",
+        "size": 20,
+        "address": "140949c20",
+        "signature": "float __fastcall aspect_ratio(uint * proof_a_size)",
+        "decompiled_code": "\n// Tool validation isolated writer proof-a\n\nfloat country_core::resources::window::WindowSize::aspect_ratio(uint *proof_a_size)\n\n{\n  return (float)*proof_a_size / (float)proof_a_size[1];\n}\n\n",
+        "parameters": [
+          {
+            "ordinal": 0,
+            "name": "proof_a_size",
+            "type": "uint *",
+            "storage": "RCX:8"
+          }
+        ],
+        "revision": {
+          "token": "1791720788172:cdbdb523:17",
+          "epoch": "cdbdb523",
+          "modification_number": 17,
+          "saved_time": 1791720788172,
+          "unsaved_changes": false,
+          "decompiled": true
+        }
+      }
+    },
+    {
+      "tool": "read_memory",
+      "args": {
+        "program": "tiny-glade.exe",
+        "address": "0x140949c20",
+        "length": 20
+      },
+      "start": 652370.704856833,
+      "end": 652370.713069083,
+      "result": {
+        "program": "tiny-glade.exe",
+        "address": "140949c20",
+        "length": 20,
+        "data": [
+          139,
+          1,
+          243,
+          72,
+          15,
+          42,
+          192,
+          139,
+          65,
+          4,
+          243,
+          72,
+          15,
+          42,
+          200,
+          243,
+          15,
+          94,
+          193,
+          195
+        ],
+        "hex": "8b01f3480f2ac08b4104f3480f2ac8f30f5ec1c3"
+      }
+    }
+  ],
+  "tools": [
+    "connect_instance",
+    "disassemble_function",
+    "find_data_types",
+    "find_functions",
+    "get_functions",
+    "get_metadata",
+    "get_struct_layout",
+    "get_xrefs_from",
+    "get_xrefs_to",
+    "list_instances",
+    "list_tool_groups",
+    "load_tool_group",
+    "read_memory",
+    "rename_variables",
+    "save_program",
+    "search_tools",
+    "set_comment",
+    "set_function_prototype",
+    "set_variable_type"
+  ],
+  "backend_pid": 8864,
+  "expected_parameter": "proof_a_size",
+  "instruction_hex": "8b01f3480f2ac08b4104f3480f2ac8f30f5ec1c3",
+  "ok": true
+}

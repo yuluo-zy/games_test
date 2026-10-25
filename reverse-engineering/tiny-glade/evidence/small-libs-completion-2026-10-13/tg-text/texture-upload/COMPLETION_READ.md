@@ -1,0 +1,9 @@
+# 最小通用接口修复
+
+新增 DeviceCapabilities.shader_sampled_image_array_non_uniform_indexing，记录create info中Vulkan12/DescriptorIndexing pNext实际enabled；DescriptorIndexing分支同时保留既有descriptor flags合同，不以硬件supported推断enabled。
+
+新增 unsafe Buffer::read_bytes_after_completion，仅复用transfer(sync=false)；保留非coherent invalidate，调用者必须wait覆盖该buffer全部访问的提交凭据、建立HOST可见性、无并发GPU/host访问。此方法不推进全局epoch。根GPUconstructor和offscreen调用负责接线。
+
+texture_regions真实GPU3/3通过，新增断言完成后读回不会增加idle_waits，也不推进completed_epoch。最初cargo编译超过180秒，wrapper误以无error.code的timeout映射code0，已明确纠正为incomplete；cargo随后自然退出。最终已链接二进制mtime稳定后直接执行获取真实3/3总结，binary/test/source哈希见completion-read-validation.json与completion-read-input-hashes.json。没有重开fullcompile；身份检查时owned cargo39292已退出，没有停止其他agent编译。
+
+本修复消除读回路径额外deviceidle，不声称整个帧/descriptor drop没有额外wait：现有rhapsody销毁与graveyard仍有保守整设备同步策略。未修改setup.rs。

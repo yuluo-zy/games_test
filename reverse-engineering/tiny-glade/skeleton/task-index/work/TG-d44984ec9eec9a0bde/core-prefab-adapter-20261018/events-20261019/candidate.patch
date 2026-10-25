@@ -1,0 +1,162 @@
+--- a/tiny-glade/crates/country-core/src/systems/prefab.rs
++++ b/tiny-glade/crates/country-core/src/systems/prefab.rs
+@@ -175,68 +175,40 @@
+     }
+ }
+ 
+-/// 生成预制体命令（O：`systems::prefab::SpawnPrefabCmd`；`PrefabPlugin::build`
+-/// 0x140840430 注册）。
+-///
+-/// 载荷 **0x48B**（事件槽 stride 0x50 = EventInstance 头 8B + 0x48；fresh
+-/// process_tree_cmds Insert 0x142267430 行 683-719 / asm 142267e55-142267ec8）：
+-///
+-/// | 偏移 | 字段 |
+-/// |---|---|
+-/// | +0x00/+0x08 | `PrefabName`（Arc<str> ptr/len，16B） |
+-/// | +0x10 | 目标实体（Entity 8B） |
+-/// | +0x18/+0x20 | position x/y/z |
+-/// | +0x24 | scale f32 |
+-/// | +0x28 | rotation f32 |
+-/// | +0x2c | variant u32 |
+-/// | +0x30 | 常量 1.0f（`0x3f800000`） |
+-/// | +0x34 | flags `[u8; 0x10]`（原生 XORPS 零值） |
+-/// | +0x44 | mode u32 |
++/// Spawn command carrying the same complete placement record as PrefabInstance.
++/// B spawn_prefabs reads PrefabName16 + Entity8 + PlacementData48 (72 bytes).
++/// The old one/flags/mode projection lost the meanings of the final 28 bytes.
++/// Options retain the existing owned Rust construction API; native producers
++/// always supply the actual prefab name and Commands-reserved entity.
++#[repr(C)]
+ #[derive(Event, Clone, Debug)]
+ pub struct SpawnPrefabCmd {
+-    /// +0x00：预制体名（`Option` 仅为 Rust 构造默认值，恒 `Some`）。
+     pub prefab_name: Option<PrefabName>,
+-    /// +0x10：由 `Commands::spawn_empty` 生成的实体。
+     pub entity: Option<Entity>,
+-    /// +0x18：位置。
+-    pub position: Vec3,
+-    /// +0x24：缩放。
+-    pub scale: f32,
+-    /// +0x28：旋转。
+-    pub rotation: f32,
+-    /// +0x2c：变体。
+-    pub variant: u32,
+-    /// +0x30：常量 1.0。
+-    pub one: f32,
+-    /// +0x34：16B 标志区（原生零初始化）。
+-    pub flags: [u8; 0x10],
+-    /// +0x44：模式（naked/deny/drag 合成）。
+-    pub mode: u32,
++    pub placement: PlacementDataSsbo,
+ }
+ 
+ impl Default for SpawnPrefabCmd {
++    /// Legacy empty owned request. This is not a native spawn producer.
+     fn default() -> Self {
+         Self {
+             prefab_name: None,
+             entity: None,
+-            position: Vec3::ZERO,
+-            scale: 0.0,
+-            rotation: 0.0,
+-            variant: 0,
+-            one: 1.0,
+-            flags: [0; 0x10],
+-            mode: 0,
+-        }
+-    }
+-}
+-
+-/// 回收预制体命令（O：`systems::prefab::DespawnPrefabCmd`；载荷 `+0x08` = 目标实体）。
++            placement: PlacementDataSsbo {
++                position: Vec3::ZERO,
++                custom0: 1.0_f32.to_bits(),
++                ..PlacementDataSsbo::default()
++            },
++        }
++    }
++}
++
++/// B DespawnPrefabCmd carries only Entity8. Its native EventInstance16 puts
++/// EventId at +0 and Entity at +8; those eight header bytes are not payload.
++#[repr(transparent)]
+ #[derive(Event, Clone, Debug, Default)]
+ pub struct DespawnPrefabCmd {
+-    /// 目标实体（O：`despawn_prefabs` 0x140842d60 读事件元素 `+0x08` 作 packed Entity）。
+     pub entity: Option<Entity>,
+-    /// typed gap。
+-    pub _gap: u64,
+ }
+ 
+ /// spawn 输入（O：由 `SpawnPrefabCmd` 事件/查询解析出的语义字段；载荷映射待 host）。
+@@ -846,9 +818,20 @@
+ 
+     #[test]
+     fn audio_trigger_kind_gate_requires_exact_tree_string() {
+-        let bounds = Aabb3 { min: Vec3::ZERO, max: Vec3::ONE };
+-        for (kind, accepted) in [("Tree", true), ("TreeX", false), ("Tre", false), ("Bush", false)] {
+-            let trigger = PrefabAudioTrigger { kind_name: kind.into(), bounds };
++        let bounds = Aabb3 {
++            min: Vec3::ZERO,
++            max: Vec3::ONE,
++        };
++        for (kind, accepted) in [
++            ("Tree", true),
++            ("TreeX", false),
++            ("Tre", false),
++            ("Bush", false),
++        ] {
++            let trigger = PrefabAudioTrigger {
++                kind_name: kind.into(),
++                bounds,
++            };
+             assert_eq!(trigger.is_tree(), accepted);
+         }
+     }
+@@ -1109,10 +1092,45 @@
+     }
+ 
+     #[test]
++    fn prefab_spawn_event_retains_every_placement_word_across_event_buffers() {
++        use bevy_ecs::event::Events;
++        use glam::Vec2;
++        assert_eq!(core::mem::size_of::<SpawnPrefabCmd>(), 72);
++        assert_eq!(core::mem::size_of::<DespawnPrefabCmd>(), 8);
++        let placement = PlacementDataSsbo {
++            position: Vec3::new(-0.0, 123.0, -45.0),
++            scale: f32::from_bits(0x7fc0_0123),
++            rotation_angle: -17.0,
++            id: -999,
++            custom0: 0x3f80_0000,
++            custom1: 0xdead_beef,
++            anim_t_packed: 0x1234_5678,
++            bend_vector: Vec2::new(f32::from_bits(0xffc0_0456), -0.0),
++            pad0: -321,
++        };
++        let entity = Entity::from_raw(41);
++        let mut events = Events::<SpawnPrefabCmd>::default();
++        let mut reader = events.get_cursor();
++        events.send(SpawnPrefabCmd {
++            prefab_name: Some(PrefabName::new("Oak")),
++            entity: Some(entity),
++            placement,
++        });
++        events.update();
++        let cmd = reader.read(&events).next().unwrap().clone();
++        assert_eq!(cmd.entity, Some(entity));
++        assert_eq!(cmd.prefab_name, Some(PrefabName::new("Oak")));
++        assert_eq!(
++            bytemuck::bytes_of(&cmd.placement),
++            bytemuck::bytes_of(&placement)
++        );
++        assert!(reader.read(&events).next().is_none());
++    }
++
++    #[test]
+     fn despawn_prefabs_command_payload_roundtrip() {
+         let cmd = DespawnPrefabCmd {
+             entity: Some(Entity::from_raw(9)),
+-            _gap: 0,
+         };
+         assert_eq!(cmd.entity, Some(Entity::from_raw(9)));
+     }

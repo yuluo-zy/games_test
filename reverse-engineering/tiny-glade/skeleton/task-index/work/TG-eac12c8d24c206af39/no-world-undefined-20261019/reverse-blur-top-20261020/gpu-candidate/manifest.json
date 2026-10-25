@@ -1,0 +1,31 @@
+{
+  "status": "frozen_original_shader_GPU_candidate_pending_independent_review_and_root_execution",
+  "requires_consumer_patch_sha256": "3dfc1131eb15d6bb707e8722694d8eba39d7e28c419a88d12183c50218c4e94f",
+  "requires_library_patch_sha256": "e85e2c548ab2bb0529691b776f5860fc87e3c95c5c4c8c8f8a368947fff5d7a5",
+  "source": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-eac12c8d24c206af39/no-world-undefined-20261019/reverse-blur-top-20261020/gpu-candidate/candidate/crates/rhapsody/tests/reverse_blur_original_vulkan.rs",
+  "source_sha256": "097c7417403e650ce13ff67633b6177223b80139657d13a081db87bc27c7c90d",
+  "text_patch_sha256": "bf633e403c5f2c224a3edeb433861da21082face6f6f2203f288d13695fcb494",
+  "binary_fixture": {
+    "candidate": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-eac12c8d24c206af39/no-world-undefined-20261019/reverse-blur-top-20261020/gpu-candidate/candidate/crates/rhapsody/tests/data/reverse_blur_original_B.bin",
+    "relative_path": "crates/rhapsody/tests/data/reverse_blur_original_B.bin",
+    "sha256": "cf8410f4fb3691bfc701cd30a04078893552e7a31df325f7d1c99b88b552f3df",
+    "bytes": 5657,
+    "required_integration": "copy these exact bytes in addition to the text-only patch; never regenerate or replace shader"
+  },
+  "original_module_sha256": "ff30af76281df60e184e76fb27799ae941f86eac34c8f8f08250723b1579eda9",
+  "validation_by_agent": "rustfmt --edition 2024 --config skip_children=true parse only. No compile or GPU. Initial recursive rustfmt lookup of existing gpu_test_support was corrected by skip_children.",
+  "root_command": "RHAPSODY_REQUIRE_VULKAN=1 cargo test -p rhapsody --locked --offline --test reverse_blur_original_vulkan -- --nocapture --test-threads=1",
+  "tests": [
+    "N=1 unchanged original false branch: real nine full samples still execute, selected value is initialized tail; full is fresh OriginCreate and never initialized/cleared.",
+    "N=3 unchanged original chain: 3 dispatches top-down, same first alias GENERAL; later strict inputs use real previous reverse writers and READ_ONLY. Every actual BindlessResource uses queried view layout and bind_pass checks it.",
+    "Read back all output mip pixels; original constant-gray input oracle gives tail on false and 0.7*previous+0.3*tail on true; tolerance 0.035 includes R11G11B10 quantization across levels.",
+    "Whole original container exact fixture identity and raw stage bytes [23..5023], entry/local-size/Globals layout asserted before existing public BindlessShaderPackage lowering. No generated shader replaces the original."
+  ],
+  "acceptance": [
+    "strict test initialization and both executions must finish; skip is not acceptance",
+    "zero Vulkan validation/descriptor layout errors in captured execution logs",
+    "no App/country-core dependencies, Cargo/dependency modifications or new shader algorithm",
+    "root records exact source/asset/binary/source-tree identity and result, independently of first CPU package"
+  ],
+  "production_modified": false
+}

@@ -1,0 +1,15 @@
+# Shader运行时消费链恢复
+
+本轮恢复在既有rhapsody工程内，目标是B版发行资产，不是demo。CompiledShaderPipeline全格式解码之后，运行时保留真实stored reflection，直接生产descriptor布局和push范围；SPIR-Q原fork只用于独立反射核对。
+
+生产链是发行容器→typed stage/Reflection→ShaderLibrary注册→stored set/binding/array/sampler→Vulkan layout→计算管线。GPU例执行原fill_buffer并读回64个word；同时创建原egui depth-only变体的实际layout并检查binding13、stage31、push8bytes。GPU执行结果由根agent统一落盘。
+
+原raster 0x1416a3720向layout生产者传0x1f并读取compiled+0x148作为push size；compute原指令0x1416a4b8e/0x1416a4c24对应0x20。可选uniform block是$Globals UBO，不是push。
+
+三个runtime测试和四个既有shader production回归通过。404原资产/638stage的stored布局与原版本公开反射独立比较通过；metadata mutation测试证明生产读取stored binding/push字段，没有偷换为重反射。序列化stage和入口名错配，在公开plan和真实注册阶段均拒绝。
+
+仍未恢复完整country-core AssetShaderLibrary名称/handle状态机、热更新与淘汰、全部uniform binder/pass消费者或整帧。GPU成功也不能记作完整原作渲染等价。早期opaque-tail/fallback版本已被完整schema替换，初始环境/合并失败日志保留，不计交付。
+
+真实GPU首轮失败定位：fill_buffer原stored名字为output，原SPIR-V debug资源名为__alias_output。旧例fixture按debug名绑定引发MissingResource；已按原stored owner名output接线，生产路径继续消费stored metadata。失败日志gpu-attempt-1.log保留。此区别不能从public catalog自动推算游戏资源键。
+
+最终复验：runtime3/3通过（cargo-test-current.log），严格all-target Clippy通过。真实Intel UHD Graphics630上执行原fill shader，64个word均为43981；同时创建原egui实际layout（stage31/push8）及验证错误raster注册不破坏旧cache。成功日志gpu-verified.log。此处GPU执行的是恢复Rust消费原发行SPIR-V，不是运行原游戏EXE，也没有raster draw或整帧验收。

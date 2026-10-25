@@ -1,0 +1,415 @@
+--- a/tiny-glade/crates/rhapsody/crates/shader-compiler/src/bindless.rs
++++ b/tiny-glade/crates/rhapsody/crates/shader-compiler/src/bindless.rs
+@@ -444,6 +444,155 @@
+     }
+ }
+ 
++/// 规范化 Cross 会误判为 Function 指针副本的物理地址来源。
++/// 仅处理 uint32x2 局部变量载入后转为 PhysicalStorageBuffer<uint32x2> 的精确形态。
++/// 同型整数加零逐位恒等；原物理 Load、访问掩码、对齐与全部业务计算保持原样。
++fn normalize_function_uvec2_physical_casts(module: &mut Module) -> Result<usize, LoweringError> {
++    let definitions: BTreeMap<_, _> = module
++        .all_inst_iter()
++        .filter(|inst| {
++            matches!(
++                inst.class.opcode,
++                Op::TypeInt | Op::TypeVector | Op::TypePointer | Op::Variable | Op::Load
++            )
++        })
++        .filter_map(|inst| Some((inst.result_id?, inst.clone())))
++        .collect();
++    let mut targets = BTreeMap::new();
++    for inst in module
++        .all_inst_iter()
++        .filter(|inst| inst.class.opcode == Op::Bitcast)
++    {
++        let Some((cast, pointer, source)) = inst
++            .result_id
++            .zip(inst.result_type)
++            .zip(inst.operands.first().and_then(id))
++            .map(|((cast, pointer), source)| (cast, pointer, source))
++        else {
++            continue;
++        };
++        let Some(pointer) = definitions.get(&pointer).filter(|ty| {
++            ty.class.opcode == Op::TypePointer
++                && ty.operands.first()
++                    == Some(&Operand::StorageClass(StorageClass::PhysicalStorageBuffer))
++        }) else {
++            continue;
++        };
++        let Some(value_type) = pointer.operands.get(1).and_then(id) else {
++            continue;
++        };
++        let Some(vector) = definitions.get(&value_type).filter(|ty| {
++            ty.class.opcode == Op::TypeVector
++                && ty.operands.get(1) == Some(&Operand::LiteralInt32(2))
++        }) else {
++            continue;
++        };
++        let Some(integer) = vector
++            .operands
++            .first()
++            .and_then(id)
++            .and_then(|ty| definitions.get(&ty))
++        else {
++            continue;
++        };
++        if integer.class.opcode != Op::TypeInt
++            || integer.operands != [Operand::LiteralInt32(32), Operand::LiteralInt32(0)]
++        {
++            continue;
++        }
++        let Some(load) = definitions
++            .get(&source)
++            .filter(|load| load.class.opcode == Op::Load && load.result_type == Some(value_type))
++        else {
++            continue;
++        };
++        let Some(variable) = load
++            .operands
++            .first()
++            .and_then(id)
++            .and_then(|value| definitions.get(&value))
++            .filter(|value| {
++                value.class.opcode == Op::Variable
++                    && value.operands.first()
++                        == Some(&Operand::StorageClass(StorageClass::Function))
++            })
++        else {
++            continue;
++        };
++        let Some(local_pointer) = variable.result_type.and_then(|ty| definitions.get(&ty)) else {
++            continue;
++        };
++        if local_pointer.class.opcode == Op::TypePointer
++            && local_pointer.operands
++                == [
++                    Operand::StorageClass(StorageClass::Function),
++                    Operand::IdRef(value_type),
++                ]
++        {
++            targets.insert(cast, (value_type, source));
++        }
++    }
++    if targets.is_empty() {
++        return Ok(0);
++    }
++    let mut zeros: BTreeMap<u32, u32> = targets.values().map(|(ty, _)| (*ty, 0)).collect();
++    let added = targets
++        .len()
++        .checked_add(zeros.len())
++        .and_then(|count| u32::try_from(count).ok())
++        .ok_or_else(|| error("physical pointer normalization id count overflows"))?;
++    let header = module
++        .header
++        .as_ref()
++        .ok_or_else(|| error("SPIR-V module has no header"))?;
++    let mut next = header.bound;
++    let bound = next
++        .checked_add(added)
++        .ok_or_else(|| error("physical pointer normalization exceeds SPIR-V id bound"))?;
++    // 先证明全部新 ID 可用，再改动调用方的模块。
++    for (value_type, zero) in &mut zeros {
++        *zero = next;
++        next += 1;
++        module.types_global_values.push(instruction(
++            Op::ConstantNull,
++            Some(*value_type),
++            Some(*zero),
++            vec![],
++        ));
++    }
++    for function in &mut module.functions {
++        for block in &mut function.blocks {
++            let mut output = Vec::with_capacity(block.instructions.len());
++            for mut inst in std::mem::take(&mut block.instructions) {
++                if let Some((value_type, source)) = inst
++                    .result_id
++                    .and_then(|result| targets.get(&result))
++                    .copied()
++                {
++                    let normalized = next;
++                    next += 1;
++                    output.push(instruction(
++                        Op::IAdd,
++                        Some(value_type),
++                        Some(normalized),
++                        vec![Operand::IdRef(source), Operand::IdRef(zeros[&value_type])],
++                    ));
++                    inst.operands[0] = Operand::IdRef(normalized);
++                }
++                output.push(inst);
++            }
++            block.instructions = output;
++        }
++    }
++    debug_assert_eq!(next, bound);
++    module
++        .header
++        .as_mut()
++        .expect("validated module header")
++        .bound = bound;
++    Ok(targets.len())
++}
++
+ /// Produces the only production shader ABI; the serialized input package remains
+ /// readable for asset migration. No source text or debug names are needed.
+ pub fn lower_stage(
+@@ -468,6 +617,7 @@
+         && matches!(inst.operands.first(), Some(Operand::StorageClass(StorageClass::PushConstant)))).count() > 1 {
+         return Err(error("multiple push variables require selecting a single shader entry before lowering"));
+     }
++    normalize_function_uvec2_physical_casts(&mut module)?;
+     let mut definitions = BTreeMap::new();
+     let mut decorations: BTreeMap<u32, (Option<u32>, Option<u32>)> = BTreeMap::new();
+     let mut non_uniform = Vec::new();
+@@ -881,3 +1031,248 @@
+         .collect::<Result<_, _>>()?;
+     Ok((abi, stages))
+ }
++
++#[cfg(test)]
++mod physical_pointer_tests {
++    use super::*;
++    use rspirv::{
++        dr::Builder,
++        spirv::{
++            AddressingModel, ExecutionMode, ExecutionModel, FunctionControl, MemoryAccess,
++            MemoryModel,
++        },
++    };
++
++    #[derive(Clone, Copy)]
++    enum Shape {
++        Matching,
++        FloatPointee,
++        PrivateSource,
++        ArithmeticSource,
++    }
++    struct Fixture {
++        module: Module,
++        cast: u32,
++        source: u32,
++        load: u32,
++        value_cast: u32,
++    }
++    fn fixture(shape: Shape) -> Fixture {
++        let mut b = Builder::new();
++        b.set_version(1, 3);
++        b.capability(Capability::Shader);
++        b.capability(Capability::PhysicalStorageBufferAddresses);
++        b.extension("SPV_KHR_physical_storage_buffer");
++        b.memory_model(
++            AddressingModel::PhysicalStorageBuffer64,
++            MemoryModel::GLSL450,
++        );
++        let void = b.type_void();
++        let function = b.type_function(void, []);
++        let uint = b.type_int(32, 0);
++        let float = b.type_float(32);
++        let uvec2 = b.type_vector(uint, 2);
++        let fvec2 = b.type_vector(float, 2);
++        let pointee = if matches!(shape, Shape::FloatPointee) {
++            fvec2
++        } else {
++            uvec2
++        };
++        let storage = if matches!(shape, Shape::PrivateSource) {
++            StorageClass::Private
++        } else {
++            StorageClass::Function
++        };
++        let local_pointer = b.type_pointer(None, storage, uvec2);
++        let physical_pointer = b.type_pointer(None, StorageClass::PhysicalStorageBuffer, pointee);
++        let zero = b.constant_null(uvec2);
++        let private = matches!(shape, Shape::PrivateSource)
++            .then(|| b.variable(local_pointer, None, storage, None));
++        let main = b
++            .begin_function(void, None, FunctionControl::NONE, function)
++            .unwrap();
++        b.begin_block(None).unwrap();
++        let variable = private.unwrap_or_else(|| b.variable(local_pointer, None, storage, None));
++        b.store(variable, zero, None, []).unwrap();
++        let mut source = b.load(uvec2, None, variable, None, []).unwrap();
++        if matches!(shape, Shape::ArithmeticSource) {
++            source = b.i_add(uvec2, None, source, zero).unwrap();
++        }
++        let cast = b.bitcast(physical_pointer, None, source).unwrap();
++        let load = b
++            .load(
++                pointee,
++                None,
++                cast,
++                Some(MemoryAccess::ALIGNED),
++                [Operand::LiteralInt32(16)],
++            )
++            .unwrap();
++        let value_cast = b.bitcast(fvec2, None, load).unwrap();
++        b.ret().unwrap();
++        b.end_function().unwrap();
++        b.entry_point(ExecutionModel::GLCompute, main, "main", []);
++        b.execution_mode(main, ExecutionMode::LocalSize, [1, 1, 1]);
++        Fixture {
++            module: b.module(),
++            cast,
++            source,
++            load,
++            value_cast,
++        }
++    }
++
++    #[test]
++    fn physical_load_normalization_preserves_all_original_words_except_cast_input() {
++        let Fixture {
++            mut module,
++            cast,
++            source,
++            load,
++            value_cast,
++        } = fixture(Shape::Matching);
++        let original = module.assemble();
++        let old_bound = module.header.as_ref().unwrap().bound;
++        let preserved: Vec<_> = module
++            .all_inst_iter()
++            .filter(|inst| inst.result_id == Some(load) || inst.result_id == Some(value_cast))
++            .map(Assemble::assemble)
++            .collect();
++        assert_eq!(
++            normalize_function_uvec2_physical_casts(&mut module).unwrap(),
++            1
++        );
++        assert_eq!(module.header.as_ref().unwrap().bound, old_bound + 2);
++        assert_eq!(
++            module
++                .all_inst_iter()
++                .filter(|inst| inst.result_id == Some(load) || inst.result_id == Some(value_cast))
++                .map(Assemble::assemble)
++                .collect::<Vec<_>>(),
++            preserved
++        );
++        let normalized = module
++            .all_inst_iter()
++            .find(|inst| inst.result_id == Some(cast))
++            .unwrap()
++            .operands[0]
++            .clone();
++        let add = module
++            .all_inst_iter()
++            .find(|inst| inst.result_id == id(&normalized))
++            .unwrap();
++        assert_eq!(add.class.opcode, Op::IAdd);
++        assert_eq!(add.operands[0], Operand::IdRef(source));
++        let zero = module
++            .all_inst_iter()
++            .find(|inst| inst.result_id == id(&add.operands[1]))
++            .unwrap();
++        assert_eq!(zero.class.opcode, Op::ConstantNull);
++        assert_eq!(add.result_type, zero.result_type);
++        let mut ids = std::collections::BTreeSet::new();
++        for result in module.all_inst_iter().filter_map(|inst| inst.result_id) {
++            assert!(result < old_bound + 2);
++            assert!(
++                ids.insert(result),
++                "normalization introduced a duplicate ID"
++            );
++        }
++        // 去掉两条新指令并还原唯一 cast 操作数后，模块必须逐字一致。
++        module
++            .types_global_values
++            .retain(|inst| inst.result_id.is_none_or(|result| result < old_bound));
++        for function in &mut module.functions {
++            for block in &mut function.blocks {
++                block
++                    .instructions
++                    .retain(|inst| inst.result_id.is_none_or(|result| result < old_bound));
++                for inst in &mut block.instructions {
++                    if inst.result_id == Some(cast) {
++                        inst.operands[0] = Operand::IdRef(source);
++                    }
++                }
++            }
++        }
++        module.header.as_mut().unwrap().bound = old_bound;
++        assert_eq!(module.assemble(), original);
++    }
++
++    #[test]
++    fn physical_load_normalization_is_idempotent_and_leaves_other_sources_untouched() {
++        let mut module = fixture(Shape::Matching).module;
++        assert_eq!(
++            normalize_function_uvec2_physical_casts(&mut module).unwrap(),
++            1
++        );
++        let once = module.assemble();
++        assert_eq!(
++            normalize_function_uvec2_physical_casts(&mut module).unwrap(),
++            0
++        );
++        assert_eq!(module.assemble(), once);
++        for shape in [
++            Shape::FloatPointee,
++            Shape::PrivateSource,
++            Shape::ArithmeticSource,
++        ] {
++            let mut module = fixture(shape).module;
++            let before = module.assemble();
++            assert_eq!(
++                normalize_function_uvec2_physical_casts(&mut module).unwrap(),
++                0
++            );
++            assert_eq!(module.assemble(), before);
++        }
++    }
++
++    #[test]
++    fn physical_load_id_bound_failure_does_not_mutate_the_module() {
++        let mut module = fixture(Shape::Matching).module;
++        module.header.as_mut().unwrap().bound = u32::MAX;
++        let before = module.assemble();
++        assert!(normalize_function_uvec2_physical_casts(&mut module).is_err());
++        assert_eq!(module.assemble(), before);
++    }
++
++    #[test]
++    fn production_heap_lowering_runs_the_physical_normalization_without_changing_abi() {
++        let Fixture {
++            module,
++            load,
++            value_cast,
++            ..
++        } = fixture(Shape::Matching);
++        let preserved: Vec<_> = module
++            .all_inst_iter()
++            .filter(|inst| inst.result_id == Some(load) || inst.result_id == Some(value_cast))
++            .map(Assemble::assemble)
++            .collect();
++        let stage = CompiledShaderStage {
++            stage: crate::shader_pipeline::compiled::ShaderStage::Compute,
++            entry_point: "main".to_owned(),
++            spirv: module.assemble(),
++        };
++        let abi = BindlessAbi {
++            original_push_bytes: 0,
++            parameter_bytes: 4,
++            bindings: vec![],
++        };
++        let expected_abi = abi.clone();
++        let lowered = lower_stage(&stage, &abi).unwrap();
++        let actual = rspirv::dr::load_words(&lowered.spirv).unwrap();
++        assert_eq!(
++            actual
++                .all_inst_iter()
++                .filter(|inst| inst.result_id == Some(load) || inst.result_id == Some(value_cast))
++                .map(Assemble::assemble)
++                .collect::<Vec<_>>(),
++            preserved
++        );
++        assert_eq!(
++            normalize_function_uvec2_physical_casts(&mut actual.clone()).unwrap(),
++            0
++        );
++        assert_eq!(abi, expected_abi);
++        assert_eq!(ABI_VERSION, 1);
++    }
++}

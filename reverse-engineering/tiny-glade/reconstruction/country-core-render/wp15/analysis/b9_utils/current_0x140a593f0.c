@@ -1,0 +1,17 @@
+// addr=0x140a593f0 name=current
+// signature=void __cdecl current(void)
+
+
+void __cdecl country_core::utils::audio_utils::AudioLoop::current(void)
+
+{
+  longlong in_RCX;
+  
+  if (*(ulonglong *)(in_RCX + 0x28) < *(ulonglong *)(in_RCX + 0x10)) {
+    return;
+  }
+                    // WARNING: Subroutine does not return
+  core::panicking::panic_bounds_check();
+}
+
+

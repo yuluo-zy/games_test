@@ -1,0 +1,60 @@
+*** Begin Patch
+*** Update File: D:/game/reverse-engineering/tiny-glade/evidence/round12/archival-owner/candidate/tiny-glade/crates/country-core/src/resources/walls/decorator_archivist.rs
+@@
+ impl<C: Send + Sync + 'static> DecoratorArchivist<C> {
++    /// B140b2cb30 uses each archived address as its before state and reads its
++    /// after state from live storage. The bool reaches extract_before_after_impl
++    /// as allow_preview (fold140b2ab29/35); strict missing-before is false.
++    /// This concrete API avoids the legacy no-storage approximation below.
++    pub fn extract_diff_against_storage(
++        &mut self,
++        storage: &LiveDecoratorStorage,
++        allow_preview: bool,
++    ) -> HashMap<DecoratorStorageAddr, DecoratorStorageHistoryDiff> {
++        self.collision_a.clear();
++        self.collision_b.clear();
++        let walls = std::mem::take(&mut self.walls);
++        let terrain = self.special1.take();
++        let stairs = self.special2.take();
++        let addresses = walls.into_iter()
++            .map(|(wall, bucket)| (DecoratorStorageAddr::Wall(WallId(wall.0)), bucket))
++            .chain(terrain.into_iter().map(|bucket| (DecoratorStorageAddr::Terrain, bucket)))
++            .chain(stairs.into_iter().map(|bucket| (DecoratorStorageAddr::Stair, bucket)));
++        let mut out = HashMap::new();
++        for (address, bucket) in addresses {
++            let mut before: HashMap<_, _> = bucket.items.iter().map(|(id, info)|
++                (DecoratorId(*id), DecoratorHistoryState::from(&observed_to_info(info)))).collect();
++            let mut after = HashMap::new();
++            if let Some(live) = storage.get(address) {
++                for (id, info) in &live.decorators {
++                    if !allow_preview && info.state != 0 {
++                        panic!("Found a preview decorator while trying to extract history diff. {:?}: {:?}",
++                            DecoratorId(*id), info);
++                    }
++                    after.insert(DecoratorId(*id), DecoratorHistoryState::from(info));
++                }
++            }
++            // Original1415237c0 removes matching IDs from both snapshots using
++            // the game's semantic state comparison (float ordered equality).
++            let equal: Vec<_> = before.iter().filter_map(|(id, b)| {
++                after.get(id).filter(|a| archived_history_equal(b, a)).map(|_| *id)
++            }).collect();
++            for id in equal { before.remove(&id); after.remove(&id); }
++            if !before.is_empty() || !after.is_empty() {
++                out.insert(address, DecoratorStorageHistoryDiff {
++                    // The original AddrHistoryState is one48B map. Legacy
++                    // projection removed-sets have no native producer here.
++                    before: DecoratorStorageAddrHistoryState { states: before, removed: HashSet::new() },
++                    after: DecoratorStorageAddrHistoryState { states: after, removed: HashSet::new() },
++                });
++            }
++        }
++        assert!(self.walls.is_empty());
++        assert!(self.special1.is_none());
++        assert!(self.special2.is_none());
++        self.culling.allowed_ids.clear();
++        self.culling.allow_any = false;
++        out
++    }
++
+*** End Patch

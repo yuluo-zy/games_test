@@ -1,0 +1,1171 @@
+// 0x1409febf0 replay_raster<country_core::resources::world_raster_defs::PathRasterStagingSsbo,country_core::resources::world_raster::WorldRaster<512>,country_core::systems::history::replay_path::replay_path::closure_env$1<country_core::systems::history::replay_path::DirtPathFilter>_>
+
+// WARNING: Removing unreachable block (ram,0x000140a006d9)
+// WARNING: Removing unreachable block (ram,0x000140a0071e)
+// WARNING: Removing unreachable block (ram,0x000140a00730)
+// WARNING: Removing unreachable block (ram,0x000140a0077d)
+// WARNING: Removing unreachable block (ram,0x000140a006e5)
+// WARNING: Removing unreachable block (ram,0x000140a00782)
+// WARNING: Removing unreachable block (ram,0x000140a007a0)
+// WARNING: Removing unreachable block (ram,0x000140a007ba)
+// WARNING: Removing unreachable block (ram,0x000140a008f1)
+// WARNING: Globals starting with '_' overlap smaller symbols at the same address
+
+void __cdecl
+country_core::systems::history::replay_raster::
+replay_raster<country_core::resources::world_raster_defs::PathRasterStagingSsbo,country_core::resources::world_raster::WorldRaster<512>,country_core::systems::history::replay_path::replay_path::closure_env_1<country_core::systems::history::replay_path::DirtPathFilter>_>
+          (void)
+
+{
+  undefined8 **ppuVar1;
+  longlong lVar2;
+  float fVar3;
+  undefined1 uVar4;
+  undefined4 uVar5;
+  ulonglong *puVar6;
+  ulonglong *puVar7;
+  ulonglong *_Dst;
+  undefined8 **ppuVar8;
+  undefined8 uVar9;
+  ulonglong uVar10;
+  ulonglong uVar11;
+  ulonglong uVar12;
+  undefined8 **ppuVar13;
+  undefined **ppuVar14;
+  int iVar15;
+  ulonglong uVar16;
+  longlong *plVar17;
+  longlong *plVar18;
+  undefined8 *extraout_RAX;
+  longlong extraout_RAX_00;
+  longlong extraout_RAX_01;
+  undefined8 *extraout_RAX_02;
+  undefined8 *in_RCX;
+  longlong lVar19;
+  undefined8 **ppuVar20;
+  ulonglong uVar21;
+  longlong in_RDX;
+  undefined8 *puVar22;
+  longlong lVar23;
+  code *in_R8;
+  code *in_R9;
+  undefined8 ***pppuVar24;
+  undefined8 ***pppuVar25;
+  float extraout_XMM0_Da;
+  float extraout_XMM0_Da_00;
+  float fVar26;
+  undefined4 uVar27;
+  longlong in_stack_00000028;
+  longlong local_1a8;
+  longlong local_160;
+  ulonglong *local_158;
+  longlong local_150;
+  undefined8 **local_148;
+  undefined8 uStack_140;
+  undefined8 local_138;
+  ulonglong *local_130;
+  undefined **local_128;
+  undefined8 uStack_120;
+  undefined8 ***local_118;
+  ulonglong uStack_110;
+  code *local_108;
+  undefined8 uStack_100;
+  undefined8 ***local_e8;
+  code *pcStack_e0;
+  undefined8 **local_d8;
+  undefined8 **local_c8;
+  code *local_c0;
+  undefined8 **local_b8;
+  undefined1 local_aa;
+  undefined1 local_a9;
+  longlong local_a8;
+  undefined8 **local_a0;
+  undefined1 local_91;
+  undefined8 local_90;
+  
+  local_90 = 0xfffffffffffffffe;
+  puVar6 = (ulonglong *)*in_RCX;
+  local_a0 = (undefined8 **)in_RCX[4];
+  puVar7 = (ulonglong *)in_RCX[0xc];
+  _Dst = (ulonglong *)in_RCX[0x10];
+  fVar3 = *(float *)(puVar7 + 5);
+  local_1a8 = 8;
+  *(undefined4 *)in_RCX[0xe] = *(undefined4 *)((longlong)in_RCX + 0x7c);
+  if (puVar7[3] == 0) goto LAB_140a008a6;
+  uVar21 = *puVar7;
+  if (puVar7[2] < *puVar7) {
+    uVar21 = 0;
+  }
+  uVar16 = puVar7[1];
+  lVar19 = (puVar7[2] - uVar21) * 0x40;
+  lVar2 = uVar16 + lVar19;
+  local_160 = 0;
+  local_158 = (ulonglong *)&DAT_00000008;
+  local_150 = 0;
+  lVar23 = *(longlong *)(uVar16 + 8 + lVar19);
+  lVar19 = *(longlong *)(uVar16 + 0x10 + lVar19) * 0x30 + lVar23;
+  uVar21 = 0;
+  local_130 = puVar6;
+  local_c0 = in_R9;
+  do {
+    uVar16 = uVar21;
+    if (lVar23 == lVar19) goto LAB_140a006fe;
+    local_91 = 1;
+    plVar17 = (longlong *)(*in_R8)();
+    lVar23 = lVar23 + 0x30;
+    uVar21 = uVar16 + 1;
+  } while (plVar17 == (longlong *)0x0);
+  if (*(char *)((longlong)plVar17 + 0x19) == '\0') {
+    if (*(longlong *)(plVar17[1] + 0x20) == 0) {
+      local_91 = 1;
+                    // WARNING: Subroutine does not return
+      core::panicking::panic();
+    }
+    *(undefined1 *)((longlong)plVar17 + 0x19) = 1;
+    memset(_Dst,0,0x400);
+    fVar26 = *(float *)((longlong)plVar17 + 0x14);
+    if ((char)plVar17[3] != '\0') {
+      local_91 = 1;
+      resources::world_raster::impl$2::clear_buffer<512>();
+      local_a8 = *plVar17;
+      ppuVar20 = (undefined8 **)local_a0[1];
+      ppuVar8 = (undefined8 **)local_a0[2];
+      ppuVar13 = ppuVar20;
+      while (ppuVar13 != ppuVar20 + (longlong)ppuVar8 * 5) {
+        ppuVar1 = ppuVar13 + 5;
+        pppuVar25 = (undefined8 ***)ppuVar13[1];
+        puVar22 = ppuVar13[2];
+        pppuVar24 = pppuVar25;
+        while (ppuVar13 = ppuVar1, pppuVar24 != pppuVar25 + (longlong)puVar22 * 3) {
+          local_c8 = pppuVar24 + 3;
+          local_b8 = (undefined8 ***)0x0;
+          local_a0 = (undefined8 ***)0x0;
+          while (local_b8 != local_a0) {
+            local_a0 = (undefined8 **)((longlong)local_a0 + 1);
+            core::ptr::
+            drop_in_place<enum2_<country_core::resources::history::replay_cmd_buffer::ReplayCmd>_>()
+            ;
+          }
+          local_91 = 1;
+          (*local_c0)(pppuVar24);
+          lVar23 = local_1a8;
+          while (pppuVar24 = (undefined8 ***)local_c8, lVar23 != 8) {
+            local_91 = 1;
+            plVar18 = (longlong *)(*in_R8)(lVar23);
+            lVar23 = lVar23 + 0x30;
+            if (plVar18 != (longlong *)0x0) {
+              if (*plVar18 == local_a8) goto LAB_1409feee0;
+              local_91 = 1;
+              resources::world_raster::impl$2::
+              rasterize_stroke<512,core::iter::adapters::map::Map<core::slice::iter::Iter<glam::f32::vec3::Vec3>,country_core::resources::raster_stroke::impl_2::iter_points_xz::closure_env_0>_>
+                        ();
+            }
+          }
+        }
+      }
+    }
+LAB_1409feee0:
+    if (0.01 <= fVar26) goto LAB_1409ff3bf;
+    if ((char)plVar17[3] == '\0') {
+      local_91 = 1;
+      resources::world_raster::impl$2::
+      rasterize_stroke<512,core::iter::adapters::map::Map<core::slice::iter::Iter<glam::f32::vec3::Vec3>,country_core::resources::raster_stroke::impl_2::iter_points_xz::closure_env_0>_>
+                ();
+      pppuVar25 = local_118;
+      if (*(char *)((longlong)plVar17 + 0x1a) == '\x01') {
+        lVar23 = plVar17[1];
+        if (*(longlong *)(lVar23 + 0x20) == 0) {
+          local_91 = 1;
+                    // WARNING: Subroutine does not return
+          core::panicking::panic_bounds_check();
+        }
+        local_128 = *(undefined ***)(*(longlong *)(lVar23 + 0x18) + 0x10);
+        uStack_120 = (undefined8 ***)
+                     CONCAT44(*(undefined4 *)(lVar23 + 0x28),
+                              *(undefined4 *)(*(longlong *)(lVar23 + 0x18) + 0x18));
+        local_118 = (undefined8 ***)CONCAT71(local_118._1_7_,1);
+        pppuVar24 = local_118;
+        local_118._5_3_ = SUB83(pppuVar25,5);
+        local_118._0_5_ = (uint5)(uint)pppuVar24;
+        local_91 = 1;
+        bevy_ecs::system::commands::Commands::
+        send_event<country_core::resources::path_stroke::PathDrawEvent>();
+      }
+    }
+    memset(_Dst + 0x40,0,0x200);
+    local_91 = 1;
+    country_core::utils::dirty_tiles::DirtyTiles::
+    rasterize_world_space_stroke<core::iter::adapters::map::Map<core::slice::iter::Iter<glam::f32::vec3::Vec3>,country_core::resources::raster_stroke::impl_3::iter_points_xz::closure_env_0>_>
+              ();
+    uVar21 = _Dst[0x41];
+    uVar10 = _Dst[0x42];
+    uVar11 = _Dst[0x43];
+    *(ulonglong *)(in_RDX + 0x98) = *(ulonglong *)(in_RDX + 0x98) | _Dst[0x40];
+    *(ulonglong *)(in_RDX + 0xa0) = *(ulonglong *)(in_RDX + 0xa0) | uVar21;
+    *(ulonglong *)(in_RDX + 0xa8) = *(ulonglong *)(in_RDX + 0xa8) | uVar10;
+    *(ulonglong *)(in_RDX + 0xb0) = *(ulonglong *)(in_RDX + 0xb0) | uVar11;
+    uVar21 = _Dst[0x45];
+    uVar10 = _Dst[0x46];
+    uVar11 = _Dst[0x47];
+    *(ulonglong *)(in_RDX + 0xb8) = _Dst[0x44] | *(ulonglong *)(in_RDX + 0xb8);
+    *(ulonglong *)(in_RDX + 0xc0) = uVar21 | *(ulonglong *)(in_RDX + 0xc0);
+    *(ulonglong *)(in_RDX + 200) = uVar10 | *(ulonglong *)(in_RDX + 200);
+    *(ulonglong *)(in_RDX + 0xd0) = uVar11 | *(ulonglong *)(in_RDX + 0xd0);
+    uVar21 = _Dst[0x49];
+    uVar10 = _Dst[0x4a];
+    uVar11 = _Dst[0x4b];
+    *(ulonglong *)(in_RDX + 0xd8) = *(ulonglong *)(in_RDX + 0xd8) | _Dst[0x48];
+    *(ulonglong *)(in_RDX + 0xe0) = *(ulonglong *)(in_RDX + 0xe0) | uVar21;
+    *(ulonglong *)(in_RDX + 0xe8) = *(ulonglong *)(in_RDX + 0xe8) | uVar10;
+    *(ulonglong *)(in_RDX + 0xf0) = *(ulonglong *)(in_RDX + 0xf0) | uVar11;
+    uVar21 = _Dst[0x4d];
+    uVar10 = _Dst[0x4e];
+    uVar11 = _Dst[0x4f];
+    *(ulonglong *)(in_RDX + 0xf8) = *(ulonglong *)(in_RDX + 0xf8) | _Dst[0x4c];
+    *(ulonglong *)(in_RDX + 0x100) = *(ulonglong *)(in_RDX + 0x100) | uVar21;
+    *(ulonglong *)(in_RDX + 0x108) = *(ulonglong *)(in_RDX + 0x108) | uVar10;
+    *(ulonglong *)(in_RDX + 0x110) = *(ulonglong *)(in_RDX + 0x110) | uVar11;
+    uVar21 = _Dst[0x51];
+    uVar10 = _Dst[0x52];
+    uVar11 = _Dst[0x53];
+    *(ulonglong *)(in_RDX + 0x118) = *(ulonglong *)(in_RDX + 0x118) | _Dst[0x50];
+    *(ulonglong *)(in_RDX + 0x120) = *(ulonglong *)(in_RDX + 0x120) | uVar21;
+    *(ulonglong *)(in_RDX + 0x128) = *(ulonglong *)(in_RDX + 0x128) | uVar10;
+    *(ulonglong *)(in_RDX + 0x130) = *(ulonglong *)(in_RDX + 0x130) | uVar11;
+    uVar21 = _Dst[0x55];
+    uVar10 = _Dst[0x56];
+    uVar11 = _Dst[0x57];
+    *(ulonglong *)(in_RDX + 0x138) = *(ulonglong *)(in_RDX + 0x138) | _Dst[0x54];
+    *(ulonglong *)(in_RDX + 0x140) = *(ulonglong *)(in_RDX + 0x140) | uVar21;
+    *(ulonglong *)(in_RDX + 0x148) = *(ulonglong *)(in_RDX + 0x148) | uVar10;
+    *(ulonglong *)(in_RDX + 0x150) = *(ulonglong *)(in_RDX + 0x150) | uVar11;
+    uVar21 = _Dst[0x59];
+    uVar10 = _Dst[0x5a];
+    uVar11 = _Dst[0x5b];
+    *(ulonglong *)(in_RDX + 0x158) = *(ulonglong *)(in_RDX + 0x158) | _Dst[0x58];
+    *(ulonglong *)(in_RDX + 0x160) = *(ulonglong *)(in_RDX + 0x160) | uVar21;
+    *(ulonglong *)(in_RDX + 0x168) = *(ulonglong *)(in_RDX + 0x168) | uVar10;
+    *(ulonglong *)(in_RDX + 0x170) = *(ulonglong *)(in_RDX + 0x170) | uVar11;
+    uVar21 = _Dst[0x5d];
+    uVar10 = _Dst[0x5e];
+    uVar11 = _Dst[0x5f];
+    *(ulonglong *)(in_RDX + 0x178) = *(ulonglong *)(in_RDX + 0x178) | _Dst[0x5c];
+    *(ulonglong *)(in_RDX + 0x180) = *(ulonglong *)(in_RDX + 0x180) | uVar21;
+    *(ulonglong *)(in_RDX + 0x188) = *(ulonglong *)(in_RDX + 0x188) | uVar10;
+    *(ulonglong *)(in_RDX + 400) = *(ulonglong *)(in_RDX + 400) | uVar11;
+    uVar21 = _Dst[0x61];
+    uVar10 = _Dst[0x62];
+    uVar11 = _Dst[99];
+    *(ulonglong *)(in_RDX + 0x198) = *(ulonglong *)(in_RDX + 0x198) | _Dst[0x60];
+    *(ulonglong *)(in_RDX + 0x1a0) = *(ulonglong *)(in_RDX + 0x1a0) | uVar21;
+    *(ulonglong *)(in_RDX + 0x1a8) = *(ulonglong *)(in_RDX + 0x1a8) | uVar10;
+    *(ulonglong *)(in_RDX + 0x1b0) = *(ulonglong *)(in_RDX + 0x1b0) | uVar11;
+    uVar21 = _Dst[0x65];
+    uVar10 = _Dst[0x66];
+    uVar11 = _Dst[0x67];
+    *(ulonglong *)(in_RDX + 0x1b8) = *(ulonglong *)(in_RDX + 0x1b8) | _Dst[100];
+    *(ulonglong *)(in_RDX + 0x1c0) = *(ulonglong *)(in_RDX + 0x1c0) | uVar21;
+    *(ulonglong *)(in_RDX + 0x1c8) = *(ulonglong *)(in_RDX + 0x1c8) | uVar10;
+    *(ulonglong *)(in_RDX + 0x1d0) = *(ulonglong *)(in_RDX + 0x1d0) | uVar11;
+    uVar21 = _Dst[0x69];
+    uVar10 = _Dst[0x6a];
+    uVar11 = _Dst[0x6b];
+    *(ulonglong *)(in_RDX + 0x1d8) = *(ulonglong *)(in_RDX + 0x1d8) | _Dst[0x68];
+    *(ulonglong *)(in_RDX + 0x1e0) = *(ulonglong *)(in_RDX + 0x1e0) | uVar21;
+    *(ulonglong *)(in_RDX + 0x1e8) = *(ulonglong *)(in_RDX + 0x1e8) | uVar10;
+    *(ulonglong *)(in_RDX + 0x1f0) = *(ulonglong *)(in_RDX + 0x1f0) | uVar11;
+    uVar21 = _Dst[0x6d];
+    uVar10 = _Dst[0x6e];
+    uVar11 = _Dst[0x6f];
+    *(ulonglong *)(in_RDX + 0x1f8) = *(ulonglong *)(in_RDX + 0x1f8) | _Dst[0x6c];
+    *(ulonglong *)(in_RDX + 0x200) = *(ulonglong *)(in_RDX + 0x200) | uVar21;
+    *(ulonglong *)(in_RDX + 0x208) = *(ulonglong *)(in_RDX + 0x208) | uVar10;
+    *(ulonglong *)(in_RDX + 0x210) = *(ulonglong *)(in_RDX + 0x210) | uVar11;
+    uVar21 = _Dst[0x71];
+    uVar10 = _Dst[0x72];
+    uVar11 = _Dst[0x73];
+    *(ulonglong *)(in_RDX + 0x218) = *(ulonglong *)(in_RDX + 0x218) | _Dst[0x70];
+    *(ulonglong *)(in_RDX + 0x220) = *(ulonglong *)(in_RDX + 0x220) | uVar21;
+    *(ulonglong *)(in_RDX + 0x228) = *(ulonglong *)(in_RDX + 0x228) | uVar10;
+    *(ulonglong *)(in_RDX + 0x230) = *(ulonglong *)(in_RDX + 0x230) | uVar11;
+    uVar21 = _Dst[0x75];
+    uVar10 = _Dst[0x76];
+    uVar11 = _Dst[0x77];
+    *(ulonglong *)(in_RDX + 0x238) = *(ulonglong *)(in_RDX + 0x238) | _Dst[0x74];
+    *(ulonglong *)(in_RDX + 0x240) = *(ulonglong *)(in_RDX + 0x240) | uVar21;
+    *(ulonglong *)(in_RDX + 0x248) = *(ulonglong *)(in_RDX + 0x248) | uVar10;
+    *(ulonglong *)(in_RDX + 0x250) = *(ulonglong *)(in_RDX + 0x250) | uVar11;
+    uVar21 = _Dst[0x79];
+    uVar10 = _Dst[0x7a];
+    uVar11 = _Dst[0x7b];
+    *(ulonglong *)(in_RDX + 600) = *(ulonglong *)(in_RDX + 600) | _Dst[0x78];
+    *(ulonglong *)(in_RDX + 0x260) = *(ulonglong *)(in_RDX + 0x260) | uVar21;
+    *(ulonglong *)(in_RDX + 0x268) = *(ulonglong *)(in_RDX + 0x268) | uVar10;
+    *(ulonglong *)(in_RDX + 0x270) = *(ulonglong *)(in_RDX + 0x270) | uVar11;
+    uVar21 = _Dst[0x7d];
+    uVar10 = _Dst[0x7e];
+    uVar11 = _Dst[0x7f];
+    *(ulonglong *)(in_RDX + 0x278) = *(ulonglong *)(in_RDX + 0x278) | _Dst[0x7c];
+    *(ulonglong *)(in_RDX + 0x280) = *(ulonglong *)(in_RDX + 0x280) | uVar21;
+    *(ulonglong *)(in_RDX + 0x288) = *(ulonglong *)(in_RDX + 0x288) | uVar10;
+    *(ulonglong *)(in_RDX + 0x290) = *(ulonglong *)(in_RDX + 0x290) | uVar11;
+    local_91 = 1;
+    frozen::FrozenMap::
+    get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>
+              ();
+    if (extraout_RAX == (undefined8 *)0x0) {
+LAB_140a00b6b:
+      local_91 = 1;
+                    // WARNING: Subroutine does not return
+      core::option::unwrap_failed();
+    }
+    if ((extraout_RAX[3] != 0x41) ||
+       (iVar15 = memcmp(&anon_107183261458dea85466985370debbb6_29_llvm_3641509820080252961,
+                        (void *)extraout_RAX[2],0x41), iVar15 != 0)) {
+      local_128 = (undefined **)0x0;
+      local_91 = 1;
+                    // WARNING: Subroutine does not return
+      core::panicking::assert_failed<ref_<str_>,ref_<str_>_>();
+    }
+    local_91 = 1;
+    lVar23 = (**(code **)(extraout_RAX[1] + 0x18))(*extraout_RAX);
+    if (lVar23 == 0) goto LAB_140a00b6b;
+    local_91 = 1;
+    resources::world_raster::impl$2::copy_to_staging<512>();
+LAB_140a0069b:
+    local_91 = 1;
+    alloc::raw_vec::RawVec::grow_one<usize,alloc::alloc::Global>();
+    local_150 = 1;
+    _DAT_00000008 = uVar16;
+  }
+  else {
+LAB_1409ff3bf:
+    fVar26 = fVar3 * *(float *)(local_130 + 5) + *(float *)(plVar17 + 2);
+    *(float *)(plVar17 + 2) = fVar26;
+    fVar26 = fVar26 / *(float *)((longlong)plVar17 + 0x14);
+    fVar3 = 0.0;
+    if (0.0 <= fVar26) {
+      fVar3 = fVar26;
+    }
+    fVar26 = 1.0;
+    if (fVar3 <= 1.0) {
+      fVar26 = fVar3;
+    }
+    puVar6 = _Dst + 0x40;
+    memset(puVar6,0,0x200);
+    local_b8 = (undefined8 **)plVar17[1];
+    if ((char)plVar17[3] == '\0') {
+      local_91 = 1;
+      ::utils::easing_functions::cubic_in_out();
+      uVar27 = *(undefined4 *)(local_b8 + 5);
+      if (extraout_XMM0_Da_00 < 0.01) {
+LAB_1409ff786:
+        local_a0 = (undefined8 ***)0x4;
+        pppuVar25 = (undefined8 ***)0x0;
+        local_a8 = 0;
+      }
+      else {
+        pppuVar25 = (undefined8 ***)local_b8[4];
+        if ((undefined8 ***)0xaaaaaaaaaaaaaaa < pppuVar25) {
+          local_a0 = (undefined8 ***)0x0;
+LAB_140a00b91:
+          local_91 = 1;
+                    // WARNING: Subroutine does not return
+          alloc::raw_vec::handle_error();
+        }
+        if (pppuVar25 == (undefined8 ***)0x0) {
+          pcStack_e0 = (code *)0x4;
+        }
+        else {
+          local_c0 = (code *)CONCAT71(local_c0._1_7_,*(undefined1 *)((longlong)local_b8 + 0x2c));
+          ppuVar20 = (undefined8 **)local_b8[3];
+          local_a0 = (undefined8 ***)0x4;
+          local_130 = puVar6;
+          std::alloc::__default_lib_allocator::__rust_alloc();
+          if (extraout_RAX_00 == 0) goto LAB_140a00b91;
+          if (pppuVar25 == (undefined8 ***)0x1) {
+            uVar21 = 0;
+          }
+          else {
+            lVar23 = 0;
+            uVar21 = 0;
+            do {
+              *(undefined4 *)(extraout_RAX_00 + 8 + lVar23) =
+                   *(undefined4 *)((longlong)ppuVar20 + lVar23 + 0x18);
+              *(undefined8 *)(extraout_RAX_00 + lVar23) =
+                   *(undefined8 *)((longlong)ppuVar20 + lVar23 + 0x10);
+              *(undefined8 *)(extraout_RAX_00 + 0xc + lVar23) =
+                   *(undefined8 *)((longlong)ppuVar20 + lVar23 + 0x1c);
+              *(undefined4 *)(extraout_RAX_00 + 0x14 + lVar23) =
+                   *(undefined4 *)((longlong)ppuVar20 + lVar23 + 0x24);
+              uVar21 = uVar21 + 2;
+              lVar23 = lVar23 + 0x18;
+            } while (((ulonglong)pppuVar25 & 0xffffffffffffffe) != uVar21);
+          }
+          pcStack_e0 = (code *)extraout_RAX_00;
+          if (((ulonglong)pppuVar25 & 1) != 0) {
+            lVar23 = uVar21 * 0xc;
+            *(undefined4 *)(extraout_RAX_00 + 8 + lVar23) =
+                 *(undefined4 *)((longlong)ppuVar20 + lVar23 + 0x18);
+            *(undefined8 *)(extraout_RAX_00 + lVar23) =
+                 *(undefined8 *)((longlong)ppuVar20 + lVar23 + 0x10);
+          }
+        }
+        local_91 = 1;
+        local_e8 = pppuVar25;
+        local_d8 = pppuVar25;
+        ::utils::curve::Curve::
+        try_new_from_points<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>();
+        uVar21 = uStack_110;
+        ppuVar14 = local_128;
+        if (SBORROW8(0,(longlong)local_128)) {
+          local_e8 = uStack_120;
+          pcStack_e0 = (code *)local_118;
+          local_91 = 1;
+                    // WARNING: Subroutine does not return
+          core::result::unwrap_failed();
+        }
+        local_148 = (undefined8 **)CONCAT44(local_148._4_4_,extraout_XMM0_Da_00);
+        if ((extraout_XMM0_Da_00 < 0.0) || (1.0 < extraout_XMM0_Da_00)) {
+          local_e8 = &local_148;
+          pcStack_e0 = core::fmt::float::impl$5::fmt;
+          local_128 = &anon_12ce4fde5425384d5f438f5122902e1a_13_llvm_3277990281340110158;
+          uStack_120 = (undefined8 ***)0x1;
+          local_108 = (code *)0x0;
+          uStack_110 = 1;
+          local_118 = &local_e8;
+                    // WARNING: Subroutine does not return
+          core::panicking::panic_fmt();
+        }
+        if (NAN(extraout_XMM0_Da_00)) {
+                    // WARNING: Subroutine does not return
+          core::panicking::panic();
+        }
+        local_148 = (undefined8 ***)0x0;
+        uStack_140 = 4;
+        local_138 = 0;
+        local_a9 = 1;
+        ::utils::curve::Curve::
+        slice_into<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D,alloc::vec::Vec<glam::f32::vec3::Vec3,alloc::alloc::Global>_>
+                  ();
+        local_d8 = (undefined8 **)local_138;
+        local_e8 = (undefined8 ***)local_148;
+        pcStack_e0 = (code *)uStack_140;
+        local_a9 = 0;
+        ::utils::curve::Curve::
+        try_new_from_points<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>();
+        pppuVar25 = local_118;
+        if (SBORROW8(0,(longlong)local_128)) {
+          if (ppuVar14 != (undefined **)0x0) {
+            std::alloc::__default_lib_allocator::__rust_dealloc();
+          }
+          if (uVar21 != 0) {
+            std::alloc::__default_lib_allocator::__rust_dealloc();
+          }
+          goto LAB_1409ff786;
+        }
+        local_a8 = (longlong)local_128;
+        local_a0 = uStack_120;
+        local_c0 = local_108;
+        ppuVar20 = (undefined8 **)0x0;
+        if (2 < local_118) {
+          ppuVar20 = (undefined8 **)((longlong)local_118 - 3);
+        }
+        if (local_b8[4] < ppuVar20) {
+          local_b8 = (undefined8 **)uStack_110;
+                    // WARNING: Subroutine does not return
+          core::slice::index::slice_start_index_len_fail();
+        }
+        uVar27 = *(undefined4 *)(local_b8 + 5);
+        if (uStack_110 != 0) {
+          std::alloc::__default_lib_allocator::__rust_dealloc();
+        }
+        if (ppuVar14 != (undefined **)0x0) {
+          std::alloc::__default_lib_allocator::__rust_dealloc();
+        }
+        if (uVar21 != 0) {
+          std::alloc::__default_lib_allocator::__rust_dealloc();
+        }
+      }
+      country_core::utils::dirty_tiles::DirtyTiles::
+      rasterize_world_space_stroke<core::iter::adapters::map::Map<core::slice::iter::Iter<glam::f32::vec3::Vec3>,country_core::resources::raster_stroke::impl_3::iter_points_xz::closure_env_0>_>
+                ();
+    }
+    else {
+      local_91 = 1;
+      ::utils::easing_functions::cubic_in_out();
+      uVar27 = *(undefined4 *)(local_b8 + 5);
+      ppuVar20 = (undefined8 **)local_b8[3];
+      pppuVar25 = (undefined8 ***)local_b8[4];
+      if (0.01 <= extraout_XMM0_Da) {
+        if ((undefined8 ***)0xaaaaaaaaaaaaaaa < pppuVar25) {
+          local_a0 = (undefined8 ***)0x0;
+          local_130 = puVar6;
+          local_a8 = (longlong)pppuVar25 * 0xc;
+LAB_140a00bc5:
+          local_91 = 1;
+                    // WARNING: Subroutine does not return
+          alloc::raw_vec::handle_error();
+        }
+        if (pppuVar25 == (undefined8 ***)0x0) {
+          pcStack_e0 = (code *)0x4;
+          local_130 = puVar6;
+        }
+        else {
+          local_c0 = (code *)CONCAT71(local_c0._1_7_,*(undefined1 *)((longlong)local_b8 + 0x2c));
+          local_a0 = (undefined8 ***)0x4;
+          local_130 = puVar6;
+          local_a8 = (longlong)pppuVar25 * 0xc;
+          std::alloc::__default_lib_allocator::__rust_alloc();
+          if (extraout_RAX_01 == 0) goto LAB_140a00bc5;
+          if (pppuVar25 == (undefined8 ***)0x1) {
+            uVar21 = 0;
+          }
+          else {
+            lVar23 = 0;
+            uVar21 = 0;
+            do {
+              *(undefined4 *)(extraout_RAX_01 + 8 + lVar23) =
+                   *(undefined4 *)((longlong)ppuVar20 + lVar23 + 0x18);
+              *(undefined8 *)(extraout_RAX_01 + lVar23) =
+                   *(undefined8 *)((longlong)ppuVar20 + lVar23 + 0x10);
+              *(undefined8 *)(extraout_RAX_01 + 0xc + lVar23) =
+                   *(undefined8 *)((longlong)ppuVar20 + lVar23 + 0x1c);
+              *(undefined4 *)(extraout_RAX_01 + 0x14 + lVar23) =
+                   *(undefined4 *)((longlong)ppuVar20 + lVar23 + 0x24);
+              uVar21 = uVar21 + 2;
+              lVar23 = lVar23 + 0x18;
+            } while (((ulonglong)pppuVar25 & 0xffffffffffffffe) != uVar21);
+          }
+          pcStack_e0 = (code *)extraout_RAX_01;
+          if (((ulonglong)pppuVar25 & 1) != 0) {
+            lVar23 = uVar21 * 0xc;
+            *(undefined4 *)(extraout_RAX_01 + 8 + lVar23) =
+                 *(undefined4 *)((longlong)ppuVar20 + lVar23 + 0x18);
+            *(undefined8 *)(extraout_RAX_01 + lVar23) =
+                 *(undefined8 *)((longlong)ppuVar20 + lVar23 + 0x10);
+          }
+        }
+        local_91 = 1;
+        local_e8 = pppuVar25;
+        local_d8 = pppuVar25;
+        local_c8 = pppuVar25;
+        ::utils::curve::Curve::
+        try_new_from_points<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>();
+        uVar21 = uStack_110;
+        ppuVar14 = local_128;
+        if (SBORROW8(0,(longlong)local_128)) {
+          local_e8 = uStack_120;
+          pcStack_e0 = (code *)local_118;
+          local_91 = 1;
+                    // WARNING: Subroutine does not return
+          core::result::unwrap_failed();
+        }
+        local_148 = (undefined8 **)CONCAT44(local_148._4_4_,extraout_XMM0_Da);
+        if ((extraout_XMM0_Da < 0.0) || (1.0 < extraout_XMM0_Da)) {
+          local_e8 = &local_148;
+          pcStack_e0 = core::fmt::float::impl$5::fmt;
+          local_128 = &anon_12ce4fde5425384d5f438f5122902e1a_13_llvm_3277990281340110158;
+          uStack_120 = (undefined8 ***)0x1;
+          local_108 = (code *)0x0;
+          local_118 = &local_e8;
+          uStack_110 = 1;
+                    // WARNING: Subroutine does not return
+          core::panicking::panic_fmt();
+        }
+        if (NAN(extraout_XMM0_Da)) {
+                    // WARNING: Subroutine does not return
+          core::panicking::panic();
+        }
+        local_148 = (undefined8 ***)0x0;
+        uStack_140 = 4;
+        local_138 = 0;
+        local_aa = 1;
+        ::utils::curve::Curve::
+        slice_into<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D,alloc::vec::Vec<glam::f32::vec3::Vec3,alloc::alloc::Global>_>
+                  ();
+        local_d8 = (undefined8 **)local_138;
+        local_e8 = (undefined8 ***)local_148;
+        pcStack_e0 = (code *)uStack_140;
+        local_aa = 0;
+        ::utils::curve::Curve::
+        try_new_from_points<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>();
+        pppuVar25 = local_118;
+        if (SBORROW8(0,(longlong)local_128)) {
+          if (ppuVar14 != (undefined **)0x0) {
+            std::alloc::__default_lib_allocator::__rust_dealloc();
+          }
+          if (uVar21 != 0) {
+            std::alloc::__default_lib_allocator::__rust_dealloc();
+          }
+          local_a0 = (undefined8 ***)0x4;
+          local_a8 = 0;
+          pppuVar25 = (undefined8 ***)0x0;
+        }
+        else {
+          local_a8 = (longlong)local_128;
+          local_a0 = uStack_120;
+          local_c0 = local_108;
+          ppuVar20 = (undefined8 **)0x0;
+          if (2 < local_118) {
+            ppuVar20 = (undefined8 **)((longlong)local_118 - 3);
+          }
+          pppuVar24 = (undefined8 ***)((longlong)local_b8[4] - (longlong)ppuVar20);
+          if (local_b8[4] < ppuVar20) {
+            local_b8 = (undefined8 **)uStack_110;
+                    // WARNING: Subroutine does not return
+            core::slice::index::slice_start_index_len_fail();
+          }
+          uVar4 = *(undefined1 *)((longlong)local_b8 + 0x2c);
+          uVar27 = *(undefined4 *)(local_b8 + 5);
+          local_b8 = (undefined8 **)local_b8[3];
+          local_c8 = pppuVar24;
+          if (uStack_110 != 0) {
+            std::alloc::__default_lib_allocator::__rust_dealloc();
+          }
+          local_c0 = (code *)CONCAT71(local_c0._1_7_,uVar4);
+          if (ppuVar14 != (undefined **)0x0) {
+            std::alloc::__default_lib_allocator::__rust_dealloc();
+          }
+          if (uVar21 != 0) {
+            std::alloc::__default_lib_allocator::__rust_dealloc();
+          }
+        }
+      }
+      else {
+        local_a0 = (undefined8 ***)0x4;
+        local_a8 = 0;
+        pppuVar25 = (undefined8 ***)0x0;
+        local_130 = puVar6;
+      }
+      country_core::utils::dirty_tiles::DirtyTiles::
+      rasterize_world_space_stroke<core::iter::adapters::map::Map<core::slice::iter::Iter<glam::f32::vec3::Vec3>,country_core::resources::raster_stroke::impl_3::iter_points_xz::closure_env_0>_>
+                ();
+    }
+    uVar21 = _Dst[0x41];
+    uVar10 = _Dst[0x42];
+    uVar11 = _Dst[0x43];
+    *(ulonglong *)(in_RDX + 0x98) = *(ulonglong *)(in_RDX + 0x98) | _Dst[0x40];
+    *(ulonglong *)(in_RDX + 0xa0) = *(ulonglong *)(in_RDX + 0xa0) | uVar21;
+    *(ulonglong *)(in_RDX + 0xa8) = *(ulonglong *)(in_RDX + 0xa8) | uVar10;
+    *(ulonglong *)(in_RDX + 0xb0) = *(ulonglong *)(in_RDX + 0xb0) | uVar11;
+    uVar21 = _Dst[0x45];
+    uVar10 = _Dst[0x46];
+    uVar11 = _Dst[0x47];
+    *(ulonglong *)(in_RDX + 0xb8) = _Dst[0x44] | *(ulonglong *)(in_RDX + 0xb8);
+    *(ulonglong *)(in_RDX + 0xc0) = uVar21 | *(ulonglong *)(in_RDX + 0xc0);
+    *(ulonglong *)(in_RDX + 200) = uVar10 | *(ulonglong *)(in_RDX + 200);
+    *(ulonglong *)(in_RDX + 0xd0) = uVar11 | *(ulonglong *)(in_RDX + 0xd0);
+    uVar21 = _Dst[0x49];
+    uVar10 = _Dst[0x4a];
+    uVar11 = _Dst[0x4b];
+    *(ulonglong *)(in_RDX + 0xd8) = *(ulonglong *)(in_RDX + 0xd8) | _Dst[0x48];
+    *(ulonglong *)(in_RDX + 0xe0) = *(ulonglong *)(in_RDX + 0xe0) | uVar21;
+    *(ulonglong *)(in_RDX + 0xe8) = *(ulonglong *)(in_RDX + 0xe8) | uVar10;
+    *(ulonglong *)(in_RDX + 0xf0) = *(ulonglong *)(in_RDX + 0xf0) | uVar11;
+    uVar21 = _Dst[0x4d];
+    uVar10 = _Dst[0x4e];
+    uVar11 = _Dst[0x4f];
+    *(ulonglong *)(in_RDX + 0xf8) = *(ulonglong *)(in_RDX + 0xf8) | _Dst[0x4c];
+    *(ulonglong *)(in_RDX + 0x100) = *(ulonglong *)(in_RDX + 0x100) | uVar21;
+    *(ulonglong *)(in_RDX + 0x108) = *(ulonglong *)(in_RDX + 0x108) | uVar10;
+    *(ulonglong *)(in_RDX + 0x110) = *(ulonglong *)(in_RDX + 0x110) | uVar11;
+    uVar21 = _Dst[0x51];
+    uVar10 = _Dst[0x52];
+    uVar11 = _Dst[0x53];
+    *(ulonglong *)(in_RDX + 0x118) = *(ulonglong *)(in_RDX + 0x118) | _Dst[0x50];
+    *(ulonglong *)(in_RDX + 0x120) = *(ulonglong *)(in_RDX + 0x120) | uVar21;
+    *(ulonglong *)(in_RDX + 0x128) = *(ulonglong *)(in_RDX + 0x128) | uVar10;
+    *(ulonglong *)(in_RDX + 0x130) = *(ulonglong *)(in_RDX + 0x130) | uVar11;
+    uVar21 = _Dst[0x55];
+    uVar10 = _Dst[0x56];
+    uVar11 = _Dst[0x57];
+    *(ulonglong *)(in_RDX + 0x138) = *(ulonglong *)(in_RDX + 0x138) | _Dst[0x54];
+    *(ulonglong *)(in_RDX + 0x140) = *(ulonglong *)(in_RDX + 0x140) | uVar21;
+    *(ulonglong *)(in_RDX + 0x148) = *(ulonglong *)(in_RDX + 0x148) | uVar10;
+    *(ulonglong *)(in_RDX + 0x150) = *(ulonglong *)(in_RDX + 0x150) | uVar11;
+    uVar21 = _Dst[0x59];
+    uVar10 = _Dst[0x5a];
+    uVar11 = _Dst[0x5b];
+    *(ulonglong *)(in_RDX + 0x158) = *(ulonglong *)(in_RDX + 0x158) | _Dst[0x58];
+    *(ulonglong *)(in_RDX + 0x160) = *(ulonglong *)(in_RDX + 0x160) | uVar21;
+    *(ulonglong *)(in_RDX + 0x168) = *(ulonglong *)(in_RDX + 0x168) | uVar10;
+    *(ulonglong *)(in_RDX + 0x170) = *(ulonglong *)(in_RDX + 0x170) | uVar11;
+    uVar21 = _Dst[0x5d];
+    uVar10 = _Dst[0x5e];
+    uVar11 = _Dst[0x5f];
+    *(ulonglong *)(in_RDX + 0x178) = *(ulonglong *)(in_RDX + 0x178) | _Dst[0x5c];
+    *(ulonglong *)(in_RDX + 0x180) = *(ulonglong *)(in_RDX + 0x180) | uVar21;
+    *(ulonglong *)(in_RDX + 0x188) = *(ulonglong *)(in_RDX + 0x188) | uVar10;
+    *(ulonglong *)(in_RDX + 400) = *(ulonglong *)(in_RDX + 400) | uVar11;
+    uVar21 = _Dst[0x61];
+    uVar10 = _Dst[0x62];
+    uVar11 = _Dst[99];
+    *(ulonglong *)(in_RDX + 0x198) = *(ulonglong *)(in_RDX + 0x198) | _Dst[0x60];
+    *(ulonglong *)(in_RDX + 0x1a0) = *(ulonglong *)(in_RDX + 0x1a0) | uVar21;
+    *(ulonglong *)(in_RDX + 0x1a8) = *(ulonglong *)(in_RDX + 0x1a8) | uVar10;
+    *(ulonglong *)(in_RDX + 0x1b0) = *(ulonglong *)(in_RDX + 0x1b0) | uVar11;
+    uVar21 = _Dst[0x65];
+    uVar10 = _Dst[0x66];
+    uVar11 = _Dst[0x67];
+    *(ulonglong *)(in_RDX + 0x1b8) = *(ulonglong *)(in_RDX + 0x1b8) | _Dst[100];
+    *(ulonglong *)(in_RDX + 0x1c0) = *(ulonglong *)(in_RDX + 0x1c0) | uVar21;
+    *(ulonglong *)(in_RDX + 0x1c8) = *(ulonglong *)(in_RDX + 0x1c8) | uVar10;
+    *(ulonglong *)(in_RDX + 0x1d0) = *(ulonglong *)(in_RDX + 0x1d0) | uVar11;
+    uVar21 = _Dst[0x69];
+    uVar10 = _Dst[0x6a];
+    uVar11 = _Dst[0x6b];
+    *(ulonglong *)(in_RDX + 0x1d8) = *(ulonglong *)(in_RDX + 0x1d8) | _Dst[0x68];
+    *(ulonglong *)(in_RDX + 0x1e0) = *(ulonglong *)(in_RDX + 0x1e0) | uVar21;
+    *(ulonglong *)(in_RDX + 0x1e8) = *(ulonglong *)(in_RDX + 0x1e8) | uVar10;
+    *(ulonglong *)(in_RDX + 0x1f0) = *(ulonglong *)(in_RDX + 0x1f0) | uVar11;
+    uVar21 = _Dst[0x6d];
+    uVar10 = _Dst[0x6e];
+    uVar11 = _Dst[0x6f];
+    *(ulonglong *)(in_RDX + 0x1f8) = *(ulonglong *)(in_RDX + 0x1f8) | _Dst[0x6c];
+    *(ulonglong *)(in_RDX + 0x200) = *(ulonglong *)(in_RDX + 0x200) | uVar21;
+    *(ulonglong *)(in_RDX + 0x208) = *(ulonglong *)(in_RDX + 0x208) | uVar10;
+    *(ulonglong *)(in_RDX + 0x210) = *(ulonglong *)(in_RDX + 0x210) | uVar11;
+    uVar21 = _Dst[0x71];
+    uVar10 = _Dst[0x72];
+    uVar11 = _Dst[0x73];
+    *(ulonglong *)(in_RDX + 0x218) = *(ulonglong *)(in_RDX + 0x218) | _Dst[0x70];
+    *(ulonglong *)(in_RDX + 0x220) = *(ulonglong *)(in_RDX + 0x220) | uVar21;
+    *(ulonglong *)(in_RDX + 0x228) = *(ulonglong *)(in_RDX + 0x228) | uVar10;
+    *(ulonglong *)(in_RDX + 0x230) = *(ulonglong *)(in_RDX + 0x230) | uVar11;
+    uVar21 = _Dst[0x75];
+    uVar10 = _Dst[0x76];
+    uVar11 = _Dst[0x77];
+    *(ulonglong *)(in_RDX + 0x238) = *(ulonglong *)(in_RDX + 0x238) | _Dst[0x74];
+    *(ulonglong *)(in_RDX + 0x240) = *(ulonglong *)(in_RDX + 0x240) | uVar21;
+    *(ulonglong *)(in_RDX + 0x248) = *(ulonglong *)(in_RDX + 0x248) | uVar10;
+    *(ulonglong *)(in_RDX + 0x250) = *(ulonglong *)(in_RDX + 0x250) | uVar11;
+    uVar21 = _Dst[0x79];
+    uVar10 = _Dst[0x7a];
+    uVar11 = _Dst[0x7b];
+    *(ulonglong *)(in_RDX + 600) = *(ulonglong *)(in_RDX + 600) | _Dst[0x78];
+    *(ulonglong *)(in_RDX + 0x260) = *(ulonglong *)(in_RDX + 0x260) | uVar21;
+    *(ulonglong *)(in_RDX + 0x268) = *(ulonglong *)(in_RDX + 0x268) | uVar10;
+    *(ulonglong *)(in_RDX + 0x270) = *(ulonglong *)(in_RDX + 0x270) | uVar11;
+    uVar21 = _Dst[0x7d];
+    uVar10 = _Dst[0x7e];
+    uVar11 = _Dst[0x7f];
+    *(ulonglong *)(in_RDX + 0x278) = *(ulonglong *)(in_RDX + 0x278) | _Dst[0x7c];
+    *(ulonglong *)(in_RDX + 0x280) = *(ulonglong *)(in_RDX + 0x280) | uVar21;
+    *(ulonglong *)(in_RDX + 0x288) = *(ulonglong *)(in_RDX + 0x288) | uVar10;
+    *(ulonglong *)(in_RDX + 0x290) = *(ulonglong *)(in_RDX + 0x290) | uVar11;
+    uVar21 = _Dst[1];
+    uVar10 = _Dst[2];
+    uVar11 = _Dst[3];
+    *(ulonglong *)(in_RDX + 0x98) = *(ulonglong *)(in_RDX + 0x98) | *_Dst;
+    *(ulonglong *)(in_RDX + 0xa0) = *(ulonglong *)(in_RDX + 0xa0) | uVar21;
+    *(ulonglong *)(in_RDX + 0xa8) = *(ulonglong *)(in_RDX + 0xa8) | uVar10;
+    *(ulonglong *)(in_RDX + 0xb0) = *(ulonglong *)(in_RDX + 0xb0) | uVar11;
+    uVar21 = _Dst[5];
+    uVar10 = _Dst[6];
+    uVar11 = _Dst[7];
+    *(ulonglong *)(in_RDX + 0xb8) = *(ulonglong *)(in_RDX + 0xb8) | _Dst[4];
+    *(ulonglong *)(in_RDX + 0xc0) = *(ulonglong *)(in_RDX + 0xc0) | uVar21;
+    *(ulonglong *)(in_RDX + 200) = *(ulonglong *)(in_RDX + 200) | uVar10;
+    *(ulonglong *)(in_RDX + 0xd0) = *(ulonglong *)(in_RDX + 0xd0) | uVar11;
+    uVar21 = _Dst[9];
+    uVar10 = _Dst[10];
+    uVar11 = _Dst[0xb];
+    *(ulonglong *)(in_RDX + 0xd8) = *(ulonglong *)(in_RDX + 0xd8) | _Dst[8];
+    *(ulonglong *)(in_RDX + 0xe0) = *(ulonglong *)(in_RDX + 0xe0) | uVar21;
+    *(ulonglong *)(in_RDX + 0xe8) = *(ulonglong *)(in_RDX + 0xe8) | uVar10;
+    *(ulonglong *)(in_RDX + 0xf0) = *(ulonglong *)(in_RDX + 0xf0) | uVar11;
+    uVar21 = _Dst[0xd];
+    uVar10 = _Dst[0xe];
+    uVar11 = _Dst[0xf];
+    *(ulonglong *)(in_RDX + 0xf8) = *(ulonglong *)(in_RDX + 0xf8) | _Dst[0xc];
+    *(ulonglong *)(in_RDX + 0x100) = *(ulonglong *)(in_RDX + 0x100) | uVar21;
+    *(ulonglong *)(in_RDX + 0x108) = *(ulonglong *)(in_RDX + 0x108) | uVar10;
+    *(ulonglong *)(in_RDX + 0x110) = *(ulonglong *)(in_RDX + 0x110) | uVar11;
+    uVar21 = _Dst[0x11];
+    uVar10 = _Dst[0x12];
+    uVar11 = _Dst[0x13];
+    *(ulonglong *)(in_RDX + 0x118) = *(ulonglong *)(in_RDX + 0x118) | _Dst[0x10];
+    *(ulonglong *)(in_RDX + 0x120) = *(ulonglong *)(in_RDX + 0x120) | uVar21;
+    *(ulonglong *)(in_RDX + 0x128) = *(ulonglong *)(in_RDX + 0x128) | uVar10;
+    *(ulonglong *)(in_RDX + 0x130) = *(ulonglong *)(in_RDX + 0x130) | uVar11;
+    uVar21 = _Dst[0x15];
+    uVar10 = _Dst[0x16];
+    uVar11 = _Dst[0x17];
+    *(ulonglong *)(in_RDX + 0x138) = *(ulonglong *)(in_RDX + 0x138) | _Dst[0x14];
+    *(ulonglong *)(in_RDX + 0x140) = *(ulonglong *)(in_RDX + 0x140) | uVar21;
+    *(ulonglong *)(in_RDX + 0x148) = *(ulonglong *)(in_RDX + 0x148) | uVar10;
+    *(ulonglong *)(in_RDX + 0x150) = *(ulonglong *)(in_RDX + 0x150) | uVar11;
+    uVar21 = _Dst[0x19];
+    uVar10 = _Dst[0x1a];
+    uVar11 = _Dst[0x1b];
+    *(ulonglong *)(in_RDX + 0x158) = *(ulonglong *)(in_RDX + 0x158) | _Dst[0x18];
+    *(ulonglong *)(in_RDX + 0x160) = *(ulonglong *)(in_RDX + 0x160) | uVar21;
+    *(ulonglong *)(in_RDX + 0x168) = *(ulonglong *)(in_RDX + 0x168) | uVar10;
+    *(ulonglong *)(in_RDX + 0x170) = *(ulonglong *)(in_RDX + 0x170) | uVar11;
+    uVar21 = _Dst[0x1d];
+    uVar10 = _Dst[0x1e];
+    uVar11 = _Dst[0x1f];
+    *(ulonglong *)(in_RDX + 0x178) = *(ulonglong *)(in_RDX + 0x178) | _Dst[0x1c];
+    *(ulonglong *)(in_RDX + 0x180) = *(ulonglong *)(in_RDX + 0x180) | uVar21;
+    *(ulonglong *)(in_RDX + 0x188) = *(ulonglong *)(in_RDX + 0x188) | uVar10;
+    *(ulonglong *)(in_RDX + 400) = *(ulonglong *)(in_RDX + 400) | uVar11;
+    uVar21 = _Dst[0x21];
+    uVar10 = _Dst[0x22];
+    uVar11 = _Dst[0x23];
+    *(ulonglong *)(in_RDX + 0x198) = *(ulonglong *)(in_RDX + 0x198) | _Dst[0x20];
+    *(ulonglong *)(in_RDX + 0x1a0) = *(ulonglong *)(in_RDX + 0x1a0) | uVar21;
+    *(ulonglong *)(in_RDX + 0x1a8) = *(ulonglong *)(in_RDX + 0x1a8) | uVar10;
+    *(ulonglong *)(in_RDX + 0x1b0) = *(ulonglong *)(in_RDX + 0x1b0) | uVar11;
+    uVar21 = _Dst[0x25];
+    uVar10 = _Dst[0x26];
+    uVar11 = _Dst[0x27];
+    *(ulonglong *)(in_RDX + 0x1b8) = *(ulonglong *)(in_RDX + 0x1b8) | _Dst[0x24];
+    *(ulonglong *)(in_RDX + 0x1c0) = *(ulonglong *)(in_RDX + 0x1c0) | uVar21;
+    *(ulonglong *)(in_RDX + 0x1c8) = *(ulonglong *)(in_RDX + 0x1c8) | uVar10;
+    *(ulonglong *)(in_RDX + 0x1d0) = *(ulonglong *)(in_RDX + 0x1d0) | uVar11;
+    uVar21 = _Dst[0x29];
+    uVar10 = _Dst[0x2a];
+    uVar11 = _Dst[0x2b];
+    *(ulonglong *)(in_RDX + 0x1d8) = *(ulonglong *)(in_RDX + 0x1d8) | _Dst[0x28];
+    *(ulonglong *)(in_RDX + 0x1e0) = *(ulonglong *)(in_RDX + 0x1e0) | uVar21;
+    *(ulonglong *)(in_RDX + 0x1e8) = *(ulonglong *)(in_RDX + 0x1e8) | uVar10;
+    *(ulonglong *)(in_RDX + 0x1f0) = *(ulonglong *)(in_RDX + 0x1f0) | uVar11;
+    uVar21 = _Dst[0x2d];
+    uVar10 = _Dst[0x2e];
+    uVar11 = _Dst[0x2f];
+    *(ulonglong *)(in_RDX + 0x1f8) = *(ulonglong *)(in_RDX + 0x1f8) | _Dst[0x2c];
+    *(ulonglong *)(in_RDX + 0x200) = *(ulonglong *)(in_RDX + 0x200) | uVar21;
+    *(ulonglong *)(in_RDX + 0x208) = *(ulonglong *)(in_RDX + 0x208) | uVar10;
+    *(ulonglong *)(in_RDX + 0x210) = *(ulonglong *)(in_RDX + 0x210) | uVar11;
+    uVar21 = _Dst[0x31];
+    uVar10 = _Dst[0x32];
+    uVar11 = _Dst[0x33];
+    *(ulonglong *)(in_RDX + 0x218) = *(ulonglong *)(in_RDX + 0x218) | _Dst[0x30];
+    *(ulonglong *)(in_RDX + 0x220) = *(ulonglong *)(in_RDX + 0x220) | uVar21;
+    *(ulonglong *)(in_RDX + 0x228) = *(ulonglong *)(in_RDX + 0x228) | uVar10;
+    *(ulonglong *)(in_RDX + 0x230) = *(ulonglong *)(in_RDX + 0x230) | uVar11;
+    uVar21 = _Dst[0x35];
+    uVar10 = _Dst[0x36];
+    uVar11 = _Dst[0x37];
+    *(ulonglong *)(in_RDX + 0x238) = *(ulonglong *)(in_RDX + 0x238) | _Dst[0x34];
+    *(ulonglong *)(in_RDX + 0x240) = *(ulonglong *)(in_RDX + 0x240) | uVar21;
+    *(ulonglong *)(in_RDX + 0x248) = *(ulonglong *)(in_RDX + 0x248) | uVar10;
+    *(ulonglong *)(in_RDX + 0x250) = *(ulonglong *)(in_RDX + 0x250) | uVar11;
+    uVar21 = _Dst[0x39];
+    uVar10 = _Dst[0x3a];
+    uVar11 = _Dst[0x3b];
+    *(ulonglong *)(in_RDX + 600) = *(ulonglong *)(in_RDX + 600) | _Dst[0x38];
+    *(ulonglong *)(in_RDX + 0x260) = *(ulonglong *)(in_RDX + 0x260) | uVar21;
+    *(ulonglong *)(in_RDX + 0x268) = *(ulonglong *)(in_RDX + 0x268) | uVar10;
+    *(ulonglong *)(in_RDX + 0x270) = *(ulonglong *)(in_RDX + 0x270) | uVar11;
+    uVar21 = _Dst[0x3d];
+    uVar10 = _Dst[0x3e];
+    uVar11 = _Dst[0x3f];
+    *(ulonglong *)(in_RDX + 0x278) = *(ulonglong *)(in_RDX + 0x278) | _Dst[0x3c];
+    *(ulonglong *)(in_RDX + 0x280) = *(ulonglong *)(in_RDX + 0x280) | uVar21;
+    *(ulonglong *)(in_RDX + 0x288) = *(ulonglong *)(in_RDX + 0x288) | uVar10;
+    *(ulonglong *)(in_RDX + 0x290) = *(ulonglong *)(in_RDX + 0x290) | uVar11;
+    uVar21 = _Dst[0x40];
+    uVar10 = _Dst[0x41];
+    uVar11 = _Dst[0x42];
+    uVar12 = _Dst[0x43];
+    _Dst[0x40] = *_Dst;
+    _Dst[0x41] = _Dst[1];
+    _Dst[0x42] = _Dst[2];
+    _Dst[0x43] = _Dst[3];
+    *_Dst = uVar21;
+    _Dst[1] = uVar10;
+    _Dst[2] = uVar11;
+    _Dst[3] = uVar12;
+    uVar21 = _Dst[0x44];
+    uVar10 = _Dst[0x45];
+    uVar11 = _Dst[0x46];
+    uVar12 = _Dst[0x47];
+    _Dst[0x44] = _Dst[4];
+    _Dst[0x45] = _Dst[5];
+    _Dst[0x46] = _Dst[6];
+    _Dst[0x47] = _Dst[7];
+    _Dst[4] = uVar21;
+    _Dst[5] = uVar10;
+    _Dst[6] = uVar11;
+    _Dst[7] = uVar12;
+    uVar21 = _Dst[0x48];
+    uVar10 = _Dst[0x49];
+    uVar11 = _Dst[0x4a];
+    uVar12 = _Dst[0x4b];
+    _Dst[0x48] = _Dst[8];
+    _Dst[0x49] = _Dst[9];
+    _Dst[0x4a] = _Dst[10];
+    _Dst[0x4b] = _Dst[0xb];
+    _Dst[8] = uVar21;
+    _Dst[9] = uVar10;
+    _Dst[10] = uVar11;
+    _Dst[0xb] = uVar12;
+    uVar21 = _Dst[0x4c];
+    uVar10 = _Dst[0x4d];
+    uVar11 = _Dst[0x4e];
+    uVar12 = _Dst[0x4f];
+    _Dst[0x4c] = _Dst[0xc];
+    _Dst[0x4d] = _Dst[0xd];
+    _Dst[0x4e] = _Dst[0xe];
+    _Dst[0x4f] = _Dst[0xf];
+    _Dst[0xc] = uVar21;
+    _Dst[0xd] = uVar10;
+    _Dst[0xe] = uVar11;
+    _Dst[0xf] = uVar12;
+    uVar21 = _Dst[0x50];
+    uVar10 = _Dst[0x51];
+    uVar11 = _Dst[0x52];
+    uVar12 = _Dst[0x53];
+    _Dst[0x50] = _Dst[0x10];
+    _Dst[0x51] = _Dst[0x11];
+    _Dst[0x52] = _Dst[0x12];
+    _Dst[0x53] = _Dst[0x13];
+    _Dst[0x10] = uVar21;
+    _Dst[0x11] = uVar10;
+    _Dst[0x12] = uVar11;
+    _Dst[0x13] = uVar12;
+    uVar21 = _Dst[0x54];
+    uVar10 = _Dst[0x55];
+    uVar11 = _Dst[0x56];
+    uVar12 = _Dst[0x57];
+    _Dst[0x54] = _Dst[0x14];
+    _Dst[0x55] = _Dst[0x15];
+    _Dst[0x56] = _Dst[0x16];
+    _Dst[0x57] = _Dst[0x17];
+    _Dst[0x14] = uVar21;
+    _Dst[0x15] = uVar10;
+    _Dst[0x16] = uVar11;
+    _Dst[0x17] = uVar12;
+    uVar21 = _Dst[0x58];
+    uVar10 = _Dst[0x59];
+    uVar11 = _Dst[0x5a];
+    uVar12 = _Dst[0x5b];
+    _Dst[0x58] = _Dst[0x18];
+    _Dst[0x59] = _Dst[0x19];
+    _Dst[0x5a] = _Dst[0x1a];
+    _Dst[0x5b] = _Dst[0x1b];
+    _Dst[0x18] = uVar21;
+    _Dst[0x19] = uVar10;
+    _Dst[0x1a] = uVar11;
+    _Dst[0x1b] = uVar12;
+    uVar21 = _Dst[0x5c];
+    uVar10 = _Dst[0x5d];
+    uVar11 = _Dst[0x5e];
+    uVar12 = _Dst[0x5f];
+    _Dst[0x5c] = _Dst[0x1c];
+    _Dst[0x5d] = _Dst[0x1d];
+    _Dst[0x5e] = _Dst[0x1e];
+    _Dst[0x5f] = _Dst[0x1f];
+    _Dst[0x1c] = uVar21;
+    _Dst[0x1d] = uVar10;
+    _Dst[0x1e] = uVar11;
+    _Dst[0x1f] = uVar12;
+    uVar21 = _Dst[0x60];
+    uVar10 = _Dst[0x61];
+    uVar11 = _Dst[0x62];
+    uVar12 = _Dst[99];
+    _Dst[0x60] = _Dst[0x20];
+    _Dst[0x61] = _Dst[0x21];
+    _Dst[0x62] = _Dst[0x22];
+    _Dst[99] = _Dst[0x23];
+    _Dst[0x20] = uVar21;
+    _Dst[0x21] = uVar10;
+    _Dst[0x22] = uVar11;
+    _Dst[0x23] = uVar12;
+    uVar21 = _Dst[100];
+    uVar10 = _Dst[0x65];
+    uVar11 = _Dst[0x66];
+    uVar12 = _Dst[0x67];
+    _Dst[100] = _Dst[0x24];
+    _Dst[0x65] = _Dst[0x25];
+    _Dst[0x66] = _Dst[0x26];
+    _Dst[0x67] = _Dst[0x27];
+    _Dst[0x24] = uVar21;
+    _Dst[0x25] = uVar10;
+    _Dst[0x26] = uVar11;
+    _Dst[0x27] = uVar12;
+    uVar21 = _Dst[0x68];
+    uVar10 = _Dst[0x69];
+    uVar11 = _Dst[0x6a];
+    uVar12 = _Dst[0x6b];
+    _Dst[0x68] = _Dst[0x28];
+    _Dst[0x69] = _Dst[0x29];
+    _Dst[0x6a] = _Dst[0x2a];
+    _Dst[0x6b] = _Dst[0x2b];
+    _Dst[0x28] = uVar21;
+    _Dst[0x29] = uVar10;
+    _Dst[0x2a] = uVar11;
+    _Dst[0x2b] = uVar12;
+    uVar21 = _Dst[0x6c];
+    uVar10 = _Dst[0x6d];
+    uVar11 = _Dst[0x6e];
+    uVar12 = _Dst[0x6f];
+    _Dst[0x6c] = _Dst[0x2c];
+    _Dst[0x6d] = _Dst[0x2d];
+    _Dst[0x6e] = _Dst[0x2e];
+    _Dst[0x6f] = _Dst[0x2f];
+    _Dst[0x2c] = uVar21;
+    _Dst[0x2d] = uVar10;
+    _Dst[0x2e] = uVar11;
+    _Dst[0x2f] = uVar12;
+    uVar21 = _Dst[0x70];
+    uVar10 = _Dst[0x71];
+    uVar11 = _Dst[0x72];
+    uVar12 = _Dst[0x73];
+    _Dst[0x70] = _Dst[0x30];
+    _Dst[0x71] = _Dst[0x31];
+    _Dst[0x72] = _Dst[0x32];
+    _Dst[0x73] = _Dst[0x33];
+    _Dst[0x30] = uVar21;
+    _Dst[0x31] = uVar10;
+    _Dst[0x32] = uVar11;
+    _Dst[0x33] = uVar12;
+    uVar21 = _Dst[0x74];
+    uVar10 = _Dst[0x75];
+    uVar11 = _Dst[0x76];
+    uVar12 = _Dst[0x77];
+    _Dst[0x74] = _Dst[0x34];
+    _Dst[0x75] = _Dst[0x35];
+    _Dst[0x76] = _Dst[0x36];
+    _Dst[0x77] = _Dst[0x37];
+    _Dst[0x34] = uVar21;
+    _Dst[0x35] = uVar10;
+    _Dst[0x36] = uVar11;
+    _Dst[0x37] = uVar12;
+    uVar21 = _Dst[0x78];
+    uVar10 = _Dst[0x79];
+    uVar11 = _Dst[0x7a];
+    uVar12 = _Dst[0x7b];
+    _Dst[0x78] = _Dst[0x38];
+    _Dst[0x79] = _Dst[0x39];
+    _Dst[0x7a] = _Dst[0x3a];
+    _Dst[0x7b] = _Dst[0x3b];
+    _Dst[0x38] = uVar21;
+    _Dst[0x39] = uVar10;
+    _Dst[0x3a] = uVar11;
+    _Dst[0x3b] = uVar12;
+    uVar21 = _Dst[0x7c];
+    uVar10 = _Dst[0x7d];
+    uVar11 = _Dst[0x7e];
+    uVar12 = _Dst[0x7f];
+    _Dst[0x7c] = _Dst[0x3c];
+    _Dst[0x7d] = _Dst[0x3d];
+    _Dst[0x7e] = _Dst[0x3e];
+    _Dst[0x7f] = _Dst[0x3f];
+    _Dst[0x3c] = uVar21;
+    _Dst[0x3d] = uVar10;
+    _Dst[0x3e] = uVar11;
+    _Dst[0x3f] = uVar12;
+    resources::world_raster::impl$2::copy_composite_to_scratch<512>();
+    ppuVar20 = local_a0;
+    resources::world_raster::impl$2::
+    rasterize_stroke<512,core::iter::adapters::map::Map<core::slice::iter::Iter<glam::f32::vec3::Vec3>,country_core::resources::raster_stroke::impl_2::iter_points_xz::closure_env_0>_>
+              ();
+    frozen::FrozenMap::
+    get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>
+              ();
+    if (extraout_RAX_02 == (undefined8 *)0x0) {
+LAB_140a00b45:
+                    // WARNING: Subroutine does not return
+      core::option::unwrap_failed();
+    }
+    if ((extraout_RAX_02[3] != 0x41) ||
+       (iVar15 = memcmp(&anon_107183261458dea85466985370debbb6_29_llvm_3641509820080252961,
+                        (void *)extraout_RAX_02[2],0x41), iVar15 != 0)) {
+      local_128 = (undefined **)0x0;
+                    // WARNING: Subroutine does not return
+      core::panicking::assert_failed<ref_<str_>,ref_<str_>_>();
+    }
+    lVar23 = (**(code **)(extraout_RAX_02[1] + 0x18))(*extraout_RAX_02);
+    if (lVar23 == 0) goto LAB_140a00b45;
+    resources::world_raster::impl$2::copy_to_staging<512>();
+    lVar23 = *(longlong *)(plVar17[1] + 0x20);
+    if ((pppuVar25 == (undefined8 ***)0x0) ||
+       (puVar22 = (undefined8 *)((longlong)ppuVar20 + (longlong)pppuVar25 * 0xc + -0xc),
+       puVar22 == (undefined8 *)0x0)) {
+      if (lVar23 == 0) goto LAB_140a00b56;
+      puVar22 = (undefined8 *)(*(longlong *)(plVar17[1] + 0x18) + 0x10);
+    }
+    else if (lVar23 == 0) {
+LAB_140a00b56:
+                    // WARNING: Subroutine does not return
+      core::panicking::panic_bounds_check();
+    }
+    uVar5 = *(undefined4 *)(puVar22 + 1);
+    uVar9 = *puVar22;
+    if (*(char *)((longlong)plVar17 + 0x1a) != '\0') {
+      plVar18 = *(longlong **)(in_stack_00000028 + 8);
+      if (plVar18 == (longlong *)0x0) {
+        plVar18 = *(longlong **)(in_stack_00000028 + 0x10);
+      }
+      lVar23 = plVar18[2];
+      if ((ulonglong)(*plVar18 - lVar23) < 0x20) {
+        alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+      }
+      lVar19 = plVar18[1];
+      *(code **)(lVar19 + lVar23) =
+           core::ops::function::FnOnce::
+           call_once<bevy_ecs::world::command_queue::impl_4::push::closure_env_0<bevy_ecs::system::commands::command::send_event::closure_env_0<country_core::resources::path_stroke::PathDrawEvent>_>,tuple_<bevy_ptr::OwningPtr<bevy_ptr::Unaligned>,enum2_<core::option::Option<core::ptr::non_null::NonNull<bevy_ecs::world::World>_>_>,ref_mut_<usize>_>_>
+      ;
+      *(undefined8 *)(lVar19 + 8 + lVar23) = uVar9;
+      *(undefined4 *)(lVar19 + 0x10 + lVar23) = uVar5;
+      *(undefined4 *)(lVar19 + 0x14 + lVar23) = uVar27;
+      *(undefined1 *)(lVar19 + 0x18 + lVar23) = 1;
+      *(undefined1 *)(lVar19 + 0x1c + lVar23) = 0;
+      plVar18[2] = lVar23 + 0x20;
+    }
+    if ((1.0 <= fVar26) && ((char)plVar17[3] == '\0')) {
+      resources::world_raster::impl$2::commit_scratch_to_composite<512>();
+    }
+    if (local_a8 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    if (1.0 <= fVar26) goto LAB_140a0069b;
+  }
+LAB_140a006fe:
+  local_a0 = (undefined8 **)&DAT_00000008;
+  local_b8 = (undefined8 **)0x0;
+  if (local_150 != 0) {
+    local_b8 = (undefined8 **)local_160;
+    local_a0 = (undefined8 **)local_158;
+    do {
+      uVar21 = *local_158;
+      uVar16 = *(ulonglong *)(lVar2 + 0x10);
+      if (uVar16 <= uVar21) {
+                    // WARNING: Subroutine does not return
+        alloc::vec::impl$1::remove::assert_failed();
+      }
+      lVar23 = *(longlong *)(lVar2 + 8);
+      lVar19 = uVar21 * 0x30;
+      local_128 = *(undefined ***)(lVar23 + lVar19);
+      uStack_120 = (undefined8 ***)((longlong *)(lVar23 + lVar19))[1];
+      puVar6 = (ulonglong *)(lVar23 + 0x10 + lVar19);
+      local_118 = (undefined8 ***)*puVar6;
+      uStack_110 = puVar6[1];
+      puVar22 = (undefined8 *)(lVar23 + 0x20 + lVar19);
+      local_108 = (code *)*puVar22;
+      uStack_100 = puVar22[1];
+      memmove((void *)(lVar23 + lVar19),(void *)(lVar23 + lVar19 + 0x30),(~uVar21 + uVar16) * 0x30);
+      *(ulonglong *)(lVar2 + 0x10) = uVar16 - 1;
+      core::ptr::
+      drop_in_place<enum2_<country_core::resources::history::replay_cmd_buffer::ReplayCmd>_>();
+      local_158 = local_158 + 1;
+    } while (local_158 != (ulonglong *)(local_150 * 8 + 8));
+  }
+  if (local_b8 != (undefined8 **)0x0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+LAB_140a008a6:
+  local_b8 = (undefined8 **)0x0;
+  local_a8 = 8;
+  local_a0 = (undefined8 **)0x0;
+  while (local_b8 != local_a0) {
+    local_a0 = (undefined8 **)((longlong)local_a0 + 1);
+    core::ptr::
+    drop_in_place<enum2_<country_core::resources::history::replay_cmd_buffer::ReplayCmd>_>();
+  }
+  return;
+}
+

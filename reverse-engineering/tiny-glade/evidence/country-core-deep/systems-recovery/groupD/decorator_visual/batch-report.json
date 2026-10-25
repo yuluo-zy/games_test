@@ -1,0 +1,195 @@
+{
+  "server": "re_mcp_ghidra",
+  "actual_mcp_connection": true,
+  "results": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade\\workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "database_id": "tg_d1e",
+        "keep_open": true
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"tg_d1e\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "tg_d1e",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "tg_d1e"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"tg_d1e\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "tg_d1e",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_d1e",
+        "address": "0x140c911d0"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_140c911d0\",\"address\":\"0x140C911D0\",\"decompiled_code\":\"\\r\\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\\r\\n\\r\\nvoid FUN_140c911d0(float *param_1,float *param_2)\\r\\n\\r\\n{\\r\\n  float fVar1;\\r\\n  float fVar2;\\r\\n  float fVar3;\\r\\n  undefined1 auVar4 [16];\\r\\n  float fVar5;\\r\\n  float fVar6;\\r\\n  float fVar7;\\r\\n  float fVar8;\\r\\n  float fVar10;\\r\\n  float fVar11;\\r\\n  undefined1 auVar9 [16];\\r\\n  \\r\\n  fVar3 = *param_2;\\r\\n  fVar2 = param_2[2];\\r\\n  fVar8 = _UNK_142925904 / SQRT(fVar2 * fVar2 + fVar3 * fVar3);\\r\\n  if ((int)fVar8 - 1U < 0x7fffff || (int)ABS(fVar8) - 0x800000U < 0x7f000000 && -1 < (int)fVar8) {\\r\\n    fVar3 = fVar3 * fVar8;\\r\\n    fVar2 = fVar2 * fVar8;\\r\\n  }\\r\\n  else {\\r\\n    fVar2 = 0.0;\\r\\n    fVar3 = _UNK_142925904;\\r\\n  }\\r\\n  fVar8 = fVar3 * _UNK_1429cd0c0 - fVar2 * 0.0;\\r\\n  fVar10 = _UNK_1429cd0c4 * 0.0 - _UNK_142925904 * fVar3;\\r\\n  fVar11 = fVar2 * _UNK_1429cd0c8 - 0.0;\\r\\n  auVar4._4_4_ = fVar8;\\r\\n  auVar4._0_4_ = fVar11;\\r\\n  auVar4._8_4_ = fVar10;\\r\\n  auVar4._12_4_ = fVar2 * _UNK_1429cd0cc - 0.0;\\r\\n  auVar9._0_4_ = fVar10 * fVar10 + fVar11 * fVar11 + fVar8 * fVar8;\\r\\n  auVar9._4_4_ = auVar9._0_4_;\\r\\n  auVar9._8_4_ = auVar9._0_4_;\\r\\n  auVar9._12_4_ = auVar9._0_4_;\\r\\n  auVar9 = sqrtps(auVar9,auVar9);\\r\\n  auVar4 = divps(auVar4,auVar9);\\r\\n  fVar8 = auVar4._4_4_;\\r\\n  fVar10 = auVar4._8_4_;\\r\\n  if (fVar2 <= 0.0) {\\r\\n    fVar11 = _UNK_142925904 - auVar4._0_4_;\\r\\n    if (0.0 < fVar11) {\\r\\n      fVar11 = (_UNK_142925904 - fVar2) + fVar11;\\r\\n      fVar6 = _UNK_142925870 / SQRT(fVar11);\\r\\n      fVar7 = (fVar8 + 0.0) * fVar6;\\r\\n      fVar11 = fVar11 * fVar6;\\r\\n      fVar2 = fVar6 * 0.0;\\r\\n      fVar6 = (fVar3 - fVar10) * fVar6;\\r\\n      goto code_r0x000140c913c5;\\r\\n    }\\r\\n    fVar7 = (_UNK_142925904 - fVar2) - fVar11;\\r\\n    fVar1 = _UNK_142925870 / SQRT(fVar7);\\r\\n    fVar11 = fVar8 + 0.0;\\r\\n    fVar2 = fVar10 + fVar3;\\r\\n    fVar6 = 0.0;\\r\\n    fVar3 = fVar1;\\r\\n    fVar5 = fVar1;\\r\\n    fVar8 = fVar1;\\r\\n  }\\r\\n  else {\\r\\n    fVar5 = auVar4._0_4_ + _UNK_142925904;\\r\\n    if (0.0 < fVar5) {\\r\\n      fVar5 = fVar2 + _UNK_142925904 + fVar5;\\r\\n      fVar6 = _UNK_142925870 / SQRT(fVar5);\\r\\n      fVar7 = fVar6 * 0.0;\\r\\n      fVar11 = fVar6 * (fVar3 - fVar10);\\r\\n      fVar2 = fVar6 * fVar8;\\r\\n      fVar6 = fVar6 * fVar5;\\r\\n      goto code_r0x000140c913c5;\\r\\n    }\\r\\n    fVar5 = (fVar2 + _UNK_142925904) - fVar5;\\r\\n    fVar7 = _UNK_142925870 / SQRT(fVar5);\\r\\n    fVar1 = fVar3 + fVar10;\\r\\n    fVar11 = fVar7;\\r\\n    fVar2 = fVar7;\\r\\n    fVar6 = fVar7;\\r\\n    fVar3 = 0.0;\\r\\n  }\\r\\n  fVar7 = fVar7 * fVar1;\\r\\n  fVar11 = fVar11 * fVar3;\\r\\n  fVar2 = fVar2 * fVar5;\\r\\n  fVar6 = fVar6 * fVar8;\\r\\ncode_r0x000140c913c5:\\r\\n  *param_1 = fVar7;\\r\\n  param_1[1] = fVar11;\\r\\n  param_1[2] = fVar2;\\r\\n  param_1[3] = fVar6;\\r\\n  return;\\r\\n}\\r\\n\\r\\n\",\"database\":\"tg_d1e\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_140c911d0",
+          "address": "0x140C911D0",
+          "decompiled_code": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_140c911d0(float *param_1,float *param_2)\r\n\r\n{\r\n  float fVar1;\r\n  float fVar2;\r\n  float fVar3;\r\n  undefined1 auVar4 [16];\r\n  float fVar5;\r\n  float fVar6;\r\n  float fVar7;\r\n  float fVar8;\r\n  float fVar10;\r\n  float fVar11;\r\n  undefined1 auVar9 [16];\r\n  \r\n  fVar3 = *param_2;\r\n  fVar2 = param_2[2];\r\n  fVar8 = _UNK_142925904 / SQRT(fVar2 * fVar2 + fVar3 * fVar3);\r\n  if ((int)fVar8 - 1U < 0x7fffff || (int)ABS(fVar8) - 0x800000U < 0x7f000000 && -1 < (int)fVar8) {\r\n    fVar3 = fVar3 * fVar8;\r\n    fVar2 = fVar2 * fVar8;\r\n  }\r\n  else {\r\n    fVar2 = 0.0;\r\n    fVar3 = _UNK_142925904;\r\n  }\r\n  fVar8 = fVar3 * _UNK_1429cd0c0 - fVar2 * 0.0;\r\n  fVar10 = _UNK_1429cd0c4 * 0.0 - _UNK_142925904 * fVar3;\r\n  fVar11 = fVar2 * _UNK_1429cd0c8 - 0.0;\r\n  auVar4._4_4_ = fVar8;\r\n  auVar4._0_4_ = fVar11;\r\n  auVar4._8_4_ = fVar10;\r\n  auVar4._12_4_ = fVar2 * _UNK_1429cd0cc - 0.0;\r\n  auVar9._0_4_ = fVar10 * fVar10 + fVar11 * fVar11 + fVar8 * fVar8;\r\n  auVar9._4_4_ = auVar9._0_4_;\r\n  auVar9._8_4_ = auVar9._0_4_;\r\n  auVar9._12_4_ = auVar9._0_4_;\r\n  auVar9 = sqrtps(auVar9,auVar9);\r\n  auVar4 = divps(auVar4,auVar9);\r\n  fVar8 = auVar4._4_4_;\r\n  fVar10 = auVar4._8_4_;\r\n  if (fVar2 <= 0.0) {\r\n    fVar11 = _UNK_142925904 - auVar4._0_4_;\r\n    if (0.0 < fVar11) {\r\n      fVar11 = (_UNK_142925904 - fVar2) + fVar11;\r\n      fVar6 = _UNK_142925870 / SQRT(fVar11);\r\n      fVar7 = (fVar8 + 0.0) * fVar6;\r\n      fVar11 = fVar11 * fVar6;\r\n      fVar2 = fVar6 * 0.0;\r\n      fVar6 = (fVar3 - fVar10) * fVar6;\r\n      goto code_r0x000140c913c5;\r\n    }\r\n    fVar7 = (_UNK_142925904 - fVar2) - fVar11;\r\n    fVar1 = _UNK_142925870 / SQRT(fVar7);\r\n    fVar11 = fVar8 + 0.0;\r\n    fVar2 = fVar10 + fVar3;\r\n    fVar6 = 0.0;\r\n    fVar3 = fVar1;\r\n    fVar5 = fVar1;\r\n    fVar8 = fVar1;\r\n  }\r\n  else {\r\n    fVar5 = auVar4._0_4_ + _UNK_142925904;\r\n    if (0.0 < fVar5) {\r\n      fVar5 = fVar2 + _UNK_142925904 + fVar5;\r\n      fVar6 = _UNK_142925870 / SQRT(fVar5);\r\n      fVar7 = fVar6 * 0.0;\r\n      fVar11 = fVar6 * (fVar3 - fVar10);\r\n      fVar2 = fVar6 * fVar8;\r\n      fVar6 = fVar6 * fVar5;\r\n      goto code_r0x000140c913c5;\r\n    }\r\n    fVar5 = (fVar2 + _UNK_142925904) - fVar5;\r\n    fVar7 = _UNK_142925870 / SQRT(fVar5);\r\n    fVar1 = fVar3 + fVar10;\r\n    fVar11 = fVar7;\r\n    fVar2 = fVar7;\r\n    fVar6 = fVar7;\r\n    fVar3 = 0.0;\r\n  }\r\n  fVar7 = fVar7 * fVar1;\r\n  fVar11 = fVar11 * fVar3;\r\n  fVar2 = fVar2 * fVar5;\r\n  fVar6 = fVar6 * fVar8;\r\ncode_r0x000140c913c5:\r\n  *param_1 = fVar7;\r\n  param_1[1] = fVar11;\r\n  param_1[2] = fVar2;\r\n  param_1[3] = fVar6;\r\n  return;\r\n}\r\n\r\n",
+          "database": "tg_d1e"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_d1e",
+        "address": "0x140c90fd0"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_140c90fd0\",\"address\":\"0x140C90FD0\",\"decompiled_code\":\"\\r\\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\\r\\n\\r\\nvoid FUN_140c90fd0(float *param_1,float param_2,float param_3)\\r\\n\\r\\n{\\r\\n  float fVar1;\\r\\n  undefined1 auVar2 [16];\\r\\n  float fVar3;\\r\\n  float fVar4;\\r\\n  float fVar5;\\r\\n  float fVar6;\\r\\n  float fVar7;\\r\\n  float fVar9;\\r\\n  float fVar10;\\r\\n  undefined1 auVar8 [16];\\r\\n  \\r\\n  fVar7 = _UNK_142925904 / SQRT(param_3 * param_3 + param_2 * param_2);\\r\\n  if ((int)fVar7 - 1U < 0x7fffff || (int)ABS(fVar7) - 0x800000U < 0x7f000000 && -1 < (int)fVar7) {\\r\\n    param_2 = param_2 * fVar7;\\r\\n    param_3 = param_3 * fVar7;\\r\\n  }\\r\\n  else {\\r\\n    param_3 = 0.0;\\r\\n    param_2 = _UNK_142925904;\\r\\n  }\\r\\n  fVar7 = param_2 * _UNK_1429cd0c0 - param_3 * 0.0;\\r\\n  fVar9 = _UNK_1429cd0c4 * 0.0 - _UNK_142925904 * param_2;\\r\\n  fVar10 = param_3 * _UNK_1429cd0c8 - 0.0;\\r\\n  auVar2._4_4_ = fVar7;\\r\\n  auVar2._0_4_ = fVar10;\\r\\n  auVar2._8_4_ = fVar9;\\r\\n  auVar2._12_4_ = param_3 * _UNK_1429cd0cc - 0.0;\\r\\n  auVar8._0_4_ = fVar9 * fVar9 + fVar10 * fVar10 + fVar7 * fVar7;\\r\\n  auVar8._4_4_ = auVar8._0_4_;\\r\\n  auVar8._8_4_ = auVar8._0_4_;\\r\\n  auVar8._12_4_ = auVar8._0_4_;\\r\\n  auVar8 = sqrtps(auVar8,auVar8);\\r\\n  auVar2 = divps(auVar2,auVar8);\\r\\n  fVar7 = auVar2._4_4_;\\r\\n  fVar9 = auVar2._8_4_;\\r\\n  if (param_3 <= 0.0) {\\r\\n    fVar10 = _UNK_142925904 - auVar2._0_4_;\\r\\n    if (0.0 < fVar10) {\\r\\n      fVar10 = (_UNK_142925904 - param_3) + fVar10;\\r\\n      fVar4 = _UNK_142925870 / SQRT(fVar10);\\r\\n      fVar5 = (fVar7 + 0.0) * fVar4;\\r\\n      fVar10 = fVar10 * fVar4;\\r\\n      fVar6 = fVar4 * 0.0;\\r\\n      fVar4 = (param_2 - fVar9) * fVar4;\\r\\n      goto code_r0x000140c911bc;\\r\\n    }\\r\\n    fVar5 = (_UNK_142925904 - param_3) - fVar10;\\r\\n    fVar1 = _UNK_142925870 / SQRT(fVar5);\\r\\n    fVar10 = fVar7 + 0.0;\\r\\n    fVar6 = fVar9 + param_2;\\r\\n    fVar4 = 0.0;\\r\\n    fVar9 = fVar1;\\r\\n    fVar3 = fVar1;\\r\\n    fVar7 = fVar1;\\r\\n  }\\r\\n  else {\\r\\n    fVar3 = auVar2._0_4_ + _UNK_142925904;\\r\\n    if (0.0 < fVar3) {\\r\\n      fVar3 = param_3 + _UNK_142925904 + fVar3;\\r\\n      fVar4 = _UNK_142925870 / SQRT(fVar3);\\r\\n      fVar5 = fVar4 * 0.0;\\r\\n      fVar10 = fVar4 * (param_2 - fVar9);\\r\\n      fVar6 = fVar4 * fVar7;\\r\\n      fVar4 = fVar4 * fVar3;\\r\\n      goto code_r0x000140c911bc;\\r\\n    }\\r\\n    fVar3 = (param_3 + _UNK_142925904) - fVar3;\\r\\n    fVar5 = _UNK_142925870 / SQRT(fVar3);\\r\\n    fVar1 = param_2 + fVar9;\\r\\n    fVar10 = fVar5;\\r\\n    fVar6 = fVar5;\\r\\n    fVar4 = fVar5;\\r\\n    fVar9 = 0.0;\\r\\n  }\\r\\n  fVar5 = fVar5 * fVar1;\\r\\n  fVar10 = fVar10 * fVar9;\\r\\n  fVar6 = fVar6 * fVar3;\\r\\n  fVar4 = fVar4 * fVar7;\\r\\ncode_r0x000140c911bc:\\r\\n  *param_1 = fVar5;\\r\\n  param_1[1] = fVar10;\\r\\n  param_1[2] = fVar6;\\r\\n  param_1[3] = fVar4;\\r\\n  return;\\r\\n}\\r\\n\\r\\n\",\"database\":\"tg_d1e\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_140c90fd0",
+          "address": "0x140C90FD0",
+          "decompiled_code": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_140c90fd0(float *param_1,float param_2,float param_3)\r\n\r\n{\r\n  float fVar1;\r\n  undefined1 auVar2 [16];\r\n  float fVar3;\r\n  float fVar4;\r\n  float fVar5;\r\n  float fVar6;\r\n  float fVar7;\r\n  float fVar9;\r\n  float fVar10;\r\n  undefined1 auVar8 [16];\r\n  \r\n  fVar7 = _UNK_142925904 / SQRT(param_3 * param_3 + param_2 * param_2);\r\n  if ((int)fVar7 - 1U < 0x7fffff || (int)ABS(fVar7) - 0x800000U < 0x7f000000 && -1 < (int)fVar7) {\r\n    param_2 = param_2 * fVar7;\r\n    param_3 = param_3 * fVar7;\r\n  }\r\n  else {\r\n    param_3 = 0.0;\r\n    param_2 = _UNK_142925904;\r\n  }\r\n  fVar7 = param_2 * _UNK_1429cd0c0 - param_3 * 0.0;\r\n  fVar9 = _UNK_1429cd0c4 * 0.0 - _UNK_142925904 * param_2;\r\n  fVar10 = param_3 * _UNK_1429cd0c8 - 0.0;\r\n  auVar2._4_4_ = fVar7;\r\n  auVar2._0_4_ = fVar10;\r\n  auVar2._8_4_ = fVar9;\r\n  auVar2._12_4_ = param_3 * _UNK_1429cd0cc - 0.0;\r\n  auVar8._0_4_ = fVar9 * fVar9 + fVar10 * fVar10 + fVar7 * fVar7;\r\n  auVar8._4_4_ = auVar8._0_4_;\r\n  auVar8._8_4_ = auVar8._0_4_;\r\n  auVar8._12_4_ = auVar8._0_4_;\r\n  auVar8 = sqrtps(auVar8,auVar8);\r\n  auVar2 = divps(auVar2,auVar8);\r\n  fVar7 = auVar2._4_4_;\r\n  fVar9 = auVar2._8_4_;\r\n  if (param_3 <= 0.0) {\r\n    fVar10 = _UNK_142925904 - auVar2._0_4_;\r\n    if (0.0 < fVar10) {\r\n      fVar10 = (_UNK_142925904 - param_3) + fVar10;\r\n      fVar4 = _UNK_142925870 / SQRT(fVar10);\r\n      fVar5 = (fVar7 + 0.0) * fVar4;\r\n      fVar10 = fVar10 * fVar4;\r\n      fVar6 = fVar4 * 0.0;\r\n      fVar4 = (param_2 - fVar9) * fVar4;\r\n      goto code_r0x000140c911bc;\r\n    }\r\n    fVar5 = (_UNK_142925904 - param_3) - fVar10;\r\n    fVar1 = _UNK_142925870 / SQRT(fVar5);\r\n    fVar10 = fVar7 + 0.0;\r\n    fVar6 = fVar9 + param_2;\r\n    fVar4 = 0.0;\r\n    fVar9 = fVar1;\r\n    fVar3 = fVar1;\r\n    fVar7 = fVar1;\r\n  }\r\n  else {\r\n    fVar3 = auVar2._0_4_ + _UNK_142925904;\r\n    if (0.0 < fVar3) {\r\n      fVar3 = param_3 + _UNK_142925904 + fVar3;\r\n      fVar4 = _UNK_142925870 / SQRT(fVar3);\r\n      fVar5 = fVar4 * 0.0;\r\n      fVar10 = fVar4 * (param_2 - fVar9);\r\n      fVar6 = fVar4 * fVar7;\r\n      fVar4 = fVar4 * fVar3;\r\n      goto code_r0x000140c911bc;\r\n    }\r\n    fVar3 = (param_3 + _UNK_142925904) - fVar3;\r\n    fVar5 = _UNK_142925870 / SQRT(fVar3);\r\n    fVar1 = param_2 + fVar9;\r\n    fVar10 = fVar5;\r\n    fVar6 = fVar5;\r\n    fVar4 = fVar5;\r\n    fVar9 = 0.0;\r\n  }\r\n  fVar5 = fVar5 * fVar1;\r\n  fVar10 = fVar10 * fVar9;\r\n  fVar6 = fVar6 * fVar3;\r\n  fVar4 = fVar4 * fVar7;\r\ncode_r0x000140c911bc:\r\n  *param_1 = fVar5;\r\n  param_1[1] = fVar10;\r\n  param_1[2] = fVar6;\r\n  param_1[3] = fVar4;\r\n  return;\r\n}\r\n\r\n",
+          "database": "tg_d1e"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_d1e",
+        "address": "0x1407d9660"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"No function at 0x1407D9660\",\"error_type\":\"NotFound\",\"database\":\"tg_d1e\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_d1e",
+        "address": "0x1407d9780"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"No function at 0x1407D9780\",\"error_type\":\"NotFound\",\"database\":\"tg_d1e\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_d1e",
+        "address": "0x140c8ffb0"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_140c8ffb0\",\"address\":\"0x140C8FFB0\",\"decompiled_code\":\"\\r\\nundefined8 FUN_140c8ffb0(undefined8 *param_1)\\r\\n\\r\\n{\\r\\n  undefined4 uStack_18;\\r\\n  undefined2 uStack_14;\\r\\n  undefined2 uStack_12;\\r\\n  undefined8 uStack_10;\\r\\n  undefined4 uStack_8;\\r\\n  \\r\\n  uStack_8 = *(undefined4 *)(param_1 + 1);\\r\\n  uStack_10 = *param_1;\\r\\n  uStack_14 = 0;\\r\\n  uStack_18 = 0;\\r\\n  FUN_14193fe70(&uStack_18,3,&uStack_10,3);\\r\\n  return CONCAT26(uStack_12,CONCAT24(uStack_14,uStack_18));\\r\\n}\\r\\n\\r\\n\",\"database\":\"tg_d1e\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_140c8ffb0",
+          "address": "0x140C8FFB0",
+          "decompiled_code": "\r\nundefined8 FUN_140c8ffb0(undefined8 *param_1)\r\n\r\n{\r\n  undefined4 uStack_18;\r\n  undefined2 uStack_14;\r\n  undefined2 uStack_12;\r\n  undefined8 uStack_10;\r\n  undefined4 uStack_8;\r\n  \r\n  uStack_8 = *(undefined4 *)(param_1 + 1);\r\n  uStack_10 = *param_1;\r\n  uStack_14 = 0;\r\n  uStack_18 = 0;\r\n  FUN_14193fe70(&uStack_18,3,&uStack_10,3);\r\n  return CONCAT26(uStack_12,CONCAT24(uStack_14,uStack_18));\r\n}\r\n\r\n",
+          "database": "tg_d1e"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_d1e",
+        "address": "0x140c90e40"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"No function at 0x140C90E40\",\"error_type\":\"NotFound\",\"database\":\"tg_d1e\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "tg_d1e",
+        "save": false
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"tg_d1e\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "tg_d1e"
+        },
+        "isError": false
+      }
+    }
+  ],
+  "target_execution": false,
+  "ok": true
+}

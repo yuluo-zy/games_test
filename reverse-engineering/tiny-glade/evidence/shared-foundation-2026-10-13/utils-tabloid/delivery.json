@@ -1,0 +1,435 @@
+{
+  "schema": "shared-foundation-delivery-v1",
+  "owner": "foundation_utils_tabloid",
+  "date": "2026-10-13",
+  "baseline": "B",
+  "status": "tabloid_implemented_contract_tested_original_partial;utils_handoff_unverified",
+  "source_original_claimed": false,
+  "modified_global_progress": false,
+  "original_module": "crates/tabloid/src/lib.rs",
+  "files": [
+    {
+      "path": "reconstruction/shared-foundation/crates/tabloid/Cargo.toml",
+      "sha256": "6c4ff7363a58eb99877e7cebef5a3b0d614809c8d8ab655e3253fa8c11b520dc"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/tabloid/src/lib.rs",
+      "sha256": "3e1896ae4b45a7d252f5f6702d7daf659f711675e1537dbeb8a232cd644db3d2"
+    }
+  ],
+  "original_functions": [
+    {
+      "name": "tabloid::Publisher<T>::publish",
+      "addresses": [
+        "0x141cf6500",
+        "0x1425db920",
+        "0x141453350",
+        "0x141453c00"
+      ],
+      "implementation": "Publisher::publish",
+      "verification": "original_instruction_policy_review;3_candidate_contract_tests"
+    },
+    {
+      "name": "tabloid::Publisher<T>::subscribe",
+      "addresses": [
+        "0x141247b10",
+        "0x141454290",
+        "0x141454410"
+      ],
+      "implementation": "Publisher::subscribe",
+      "verification": "original_instruction_policy_review;candidate_contract_tests"
+    },
+    {
+      "name": "tabloid::Subscriber<T>::take",
+      "addresses": [
+        "0x141247c90",
+        "0x1412929e0",
+        "0x141454590"
+      ],
+      "implementation": "Subscriber::take",
+      "verification": "original_instruction_policy_review;candidate_contract_tests"
+    },
+    {
+      "name": "private publication retain predicate",
+      "addresses": [
+        "0x141bb03f0"
+      ],
+      "implementation": "Publisher::publish retain closure",
+      "verification": "original_instruction_policy_review"
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "parking_lot",
+      "version": "0.12.1",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "3742b2c103b9f06bc9fff0a37ff4912935851bee6d36f3c02bcc755bcfec228f",
+      "matches_original": true
+    },
+    {
+      "name": "lock_api",
+      "version": "0.4.9",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "435011366fe56583b16cf956f9df0095b405b82d76425bc8981c0e22e60ec4df",
+      "matches_original": true
+    },
+    {
+      "name": "parking_lot_core",
+      "version": "0.9.3",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "09a279cbf25cb0757810394fbc1e359949b59e348145c643a939a525692e6929",
+      "matches_original": true
+    },
+    {
+      "name": "scopeguard",
+      "version": "1.1.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd",
+      "matches_original": true
+    },
+    {
+      "name": "smallvec",
+      "version": "1.13.2",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67",
+      "matches_original": true
+    },
+    {
+      "name": "cfg-if",
+      "version": "1.0.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd",
+      "matches_original": true
+    },
+    {
+      "name": "autocfg",
+      "version": "1.1.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa",
+      "matches_original": true
+    },
+    {
+      "name": "windows-sys",
+      "version": "0.36.1",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "ea04155a16a59f9eab786fe12a4a450e75cdb175f9e0d80da1e17db09f55b8d2",
+      "matches_original": true
+    },
+    {
+      "name": "windows-sys",
+      "version": "0.48.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "677d2418bec65e3338edb076e806bc1ec15693c5d0104683f2efe857f61056a9",
+      "matches_original": true
+    },
+    {
+      "name": "windows_x86_64_msvc",
+      "version": "0.36.1",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "c811ca4a8c853ef420abd8592ba53ddbbac90410fab6903b3e79972a631f7680",
+      "matches_original": true
+    },
+    {
+      "name": "windows_x86_64_msvc",
+      "version": "0.48.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "1a515f5799fe4961cb532f983ce2b23082366b898e52ffbce459c86f67c8378a",
+      "matches_original": true
+    }
+  ],
+  "verification": {
+    "test": "tabloid-test.log",
+    "test_count": 3,
+    "test_failed": 0,
+    "strict_clippy": "tabloid-clippy.log",
+    "native_full_crate_differential": false,
+    "actual_game_consumer_integration": false,
+    "full_workspace_validation": false
+  },
+  "gaps": [
+    "real DirtyTiles/ColliderDiff producers not wired",
+    "original Rust trait bounds/full API/ABI not established",
+    "candidate owning guard safety surface differs in representation; raw ABI intentionally not reconstructed",
+    "Default/new/Clone public surface not source-text verified",
+    "original full-runtime differential not executed"
+  ],
+  "utils_handoff": {
+    "path": "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\shared-foundation\\crates\\utils\\src",
+    "ownership_released": true,
+    "lib_owner": "parent",
+    "files": [
+      {
+        "path": "angle_range.rs",
+        "sha256": "d24bbecf97ee0b890445dac75c985695ebae074bfc87288f9fee9ff6639cf392",
+        "functions": [
+          "wrap",
+          "from_min_and_len",
+          "clamp",
+          "original_b_instructions"
+        ]
+      },
+      {
+        "path": "camera.rs",
+        "sha256": "7ea3dacdd4fc8179a29973845324b391e17521216e4186b18f3234f63baa8143",
+        "functions": [
+          "calc_matrices",
+          "from_position_rotation",
+          "eye_position",
+          "eye_direction",
+          "eye_right",
+          "aspect_ratio",
+          "xz_projective_rotation",
+          "new",
+          "immediately_set_vertical_fov_degrees"
+        ]
+      },
+      {
+        "path": "circular_f32.rs",
+        "sha256": "88e5a2e7901c24c8c2e4364073319abf43e78ef3cb8d9aff891e48d902c04184",
+        "functions": [
+          "wrap",
+          "new",
+          "set_value",
+          "as_f32",
+          "distance",
+          "lerp",
+          "original_b_instructions"
+        ]
+      },
+      {
+        "path": "comparative_space.rs",
+        "sha256": "1e963bba98f35a2f5252d5c69db94ea09c9c8cde6614b26a120d198ca863b0b7",
+        "functions": [
+          "distance",
+          "project",
+          "project_clamp",
+          "project_unbounded",
+          "subtract",
+          "distance",
+          "project",
+          "project_clamp",
+          "project_unbounded",
+          "subtract"
+        ]
+      },
+      {
+        "path": "easing_functions.rs",
+        "sha256": "51cba2d4cc69aae73d1cf8b7215a2f11dc5c9e45f5077a01490b04ba5fa26348",
+        "functions": [
+          "cubic_in_out",
+          "apply",
+          "original_b_instructions"
+        ]
+      },
+      {
+        "path": "file.rs",
+        "sha256": "1c53d1f379c7368dfbc50b89a9d9149c4d780a32c6fb163977dcfafa3fda44e5",
+        "functions": [
+          "date_time_string_for_filename_at",
+          "date_time_string_for_filename",
+          "generate_backup_file_path_at",
+          "generate_backup_file_path",
+          "copy_file_to_backup",
+          "backup_filename_retains_old_extension_and_parent"
+        ]
+      },
+      {
+        "path": "float_grid.rs",
+        "sha256": "91720a982c83b73902df57cf0368489ac246b32aec442844040feadfbf52dd3a",
+        "functions": [
+          "dimensions",
+          "load_index_unchecked",
+          "bilinear_sample_at_world_xz",
+          "dimensions",
+          "load_index_unchecked"
+        ]
+      },
+      {
+        "path": "halver.rs",
+        "sha256": "10f1569eb954dfece1d7af10a53b01ee896e2e7b11f67072832edbc77ec19e33",
+        "functions": [
+          "to_f16",
+          "to_f16",
+          "to_f16",
+          "to_f16",
+          "to_f16",
+          "to_f16",
+          "to_f16"
+        ]
+      },
+      {
+        "path": "index_condenser.rs",
+        "sha256": "c66d90a31ca14ad67d477e2453a13ae4f0a196958c9b6caf606059be7cdb3fd6",
+        "functions": [
+          "default",
+          "insert",
+          "keys",
+          "remove",
+          "resolve",
+          "stale_cached_index_is_repaired_before_swap_removal"
+        ]
+      },
+      {
+        "path": "local_time.rs",
+        "sha256": "4353de73ed5edd3879d0a300b9da132533d2498707ad57bf260047797970b6e2",
+        "functions": [
+          "init_local_time",
+          "system_time_to_local_time"
+        ]
+      },
+      {
+        "path": "loop_range.rs",
+        "sha256": "fdb528c2889f670cc4d28fb4c2321ba9a7c6dd83b082172143c557c6ef9c8891",
+        "functions": [
+          "raw_idx",
+          "index",
+          "sub",
+          "new_loop",
+          "new_line",
+          "start",
+          "end",
+          "len",
+          "is_empty",
+          "subslice",
+          "next",
+          "size_hint",
+          "next_back",
+          "original_b_instructions"
+        ]
+      },
+      {
+        "path": "name_hash.rs",
+        "sha256": "4bcb4d8fc8c3a5ef179b669f57d58865caf57394eefd00d880df2a69dfff30c4",
+        "functions": [
+          "compute",
+          "debug_name"
+        ]
+      },
+      {
+        "path": "natural_cubic.rs",
+        "sha256": "3435383029cf026fc64ca5b06e4f8f89828a24a0087795840b1be94999e9aa99",
+        "functions": [
+          "position_at_local_t",
+          "tangent_at_local_t",
+          "position_at_local_t",
+          "tangent_at_local_t",
+          "segment_at_t",
+          "position_at_t",
+          "tangent_at_t",
+          "to_owned"
+        ]
+      },
+      {
+        "path": "rdp.rs",
+        "sha256": "4f24eecb9ffa049f3fdf768066a686c0bd2fd6a8a1b7fff25af051d9b3806793",
+        "functions": [
+          "as_vec3",
+          "as_vec3",
+          "as_vec3",
+          "new_with_opts"
+        ]
+      },
+      {
+        "path": "rgb9e5.rs",
+        "sha256": "06063e7fbd43eaf38c5695ff85b1e9a4f87be273ebef060af3b7da8fcbc0b1af",
+        "functions": [
+          "sse_max",
+          "sse_min",
+          "pack_rgb9e5",
+          "original_b_instructions"
+        ]
+      },
+      {
+        "path": "rng.rs",
+        "sha256": "a06add0f5d965e9a240b1da9eead90614d889824f1fd005b031ca95a54aca030",
+        "functions": [
+          "init_rng_u64",
+          "init_rng",
+          "original_b_instructions"
+        ]
+      },
+      {
+        "path": "selective_deserialize.rs",
+        "sha256": "9adbe94e58f1396fc7490c0e2771bfdd5270889bb7209afdf147fbe2356c3744",
+        "functions": [
+          "into_inner",
+          "deserialize",
+          "expecting",
+          "visit_map"
+        ]
+      },
+      {
+        "path": "subtractive_1d_boolean.rs",
+        "sha256": "bdf157c4d739069da978bf586fbb5d4c16ab43824d02ec313d64ff0a9dd1c98f",
+        "functions": [
+          "new_range",
+          "result",
+          "subtract",
+          "endpoint_flag_distinguishes_full_coverage"
+        ]
+      },
+      {
+        "path": "swizzlers.rs",
+        "sha256": "9f1f2ab4ea305273ae0f8d7d329ea8477d4e08559fe396a3e4b38c425112b6c2",
+        "functions": [
+          "xvy"
+        ]
+      },
+      {
+        "path": "threshold_range.rs",
+        "sha256": "5ca1547b7eaf9487552958e30bd58e23cad75c419aadb0df4445b732410d0579",
+        "functions": [
+          "threshold_range"
+        ]
+      },
+      {
+        "path": "timer.rs",
+        "sha256": "e55bbc078ceab0728359953ac14d47c93e6f1b84f3c0bb4937387a9861a2c4bd",
+        "functions": [
+          "from_observed_state",
+          "samples",
+          "delta_secs"
+        ]
+      },
+      {
+        "path": "wall_space.rs",
+        "sha256": "b0264f415fdd8773c466c515e2858d0c25626789f4bfe832ef983edb6c64942e",
+        "functions": [
+          "space_length",
+          "distance",
+          "project",
+          "project_clamp",
+          "project_unbounded",
+          "subtract",
+          "length",
+          "point_u",
+          "position_at_u",
+          "tangent_at_u",
+          "approximate_u",
+          "new_unchecked",
+          "with_y_offset",
+          "with_y",
+          "from_curve_internal_coord",
+          "from_world_space",
+          "get_pos_xz",
+          "get_tangent",
+          "to_world_space"
+        ]
+      }
+    ],
+    "validation": "native fixtures generated and embedded for six families; actual Rust fixture tests not run by this agent",
+    "remaining": "CONTRACT.md"
+  },
+  "evidence": {
+    "raw_binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "raw_manifest": "native-manifest.json",
+    "PDB": "B-symbols.json",
+    "persistent_worker": "foundation-utils-tabloid",
+    "persistent_query": "selective-persistent.json",
+    "contract": "CONTRACT.md"
+  },
+  "cargo_lock_at_validation": {
+    "path": "reconstruction/shared-foundation/Cargo.lock",
+    "sha256": "9b04418748dcb41a7d2b4b0928d3a3272d9fb423304fb2d160314462adfabfb2"
+  }
+}

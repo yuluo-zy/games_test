@@ -1,0 +1,94 @@
+
+void FUN_140a86b60(undefined *param_1,undefined8 param_2,undefined8 param_3,longlong *param_4,
+                  undefined8 param_5,undefined8 param_6,undefined8 param_7)
+
+{
+  ulonglong *puVar1;
+  ulonglong uVar2;
+  ulonglong uVar3;
+  longlong lVar4;
+  ulonglong uVar5;
+  ulonglong uVar6;
+  longlong lVar7;
+  ulonglong uVar8;
+  ulonglong uVar9;
+  ulonglong uVar10;
+  undefined8 *in_stack_00000058;
+  longlong *in_stack_00000060;
+  longlong *in_stack_00000068;
+  undefined8 in_stack_00000070;
+  undefined *puStack_70;
+  undefined8 uStack_68;
+  longlong lStack_60;
+  undefined8 uStack_58;
+  undefined8 uStack_50;
+  undefined8 uStack_48;
+  
+  lVar7 = *param_4;
+  puStack_70 = &UNK_142ad8501;
+  uStack_68 = 0xf;
+  uStack_50 = param_3;
+  uStack_48 = param_2;
+  lVar4 = FUN_1405bdda0(&puStack_70);
+  if (((*(char *)(lVar7 + 0x18) != '\0') && (*(longlong *)(lVar7 + 0x38) == lVar4)) &&
+     (*(int *)(lVar7 + 0x28) != 2)) {
+    return;
+  }
+  puVar1 = (ulonglong *)*in_stack_00000058;
+  lVar7 = in_stack_00000058[1];
+  uVar2 = *puVar1;
+  uVar9 = 0;
+  uVar6 = uVar2 - *(ulonglong *)(lVar7 + 0x18);
+  if (uVar2 < *(ulonglong *)(lVar7 + 0x18)) {
+    uVar6 = uVar9;
+  }
+  uVar5 = uVar2 - *(ulonglong *)(lVar7 + 0x38);
+  if (uVar2 < *(ulonglong *)(lVar7 + 0x38)) {
+    uVar5 = uVar9;
+  }
+  uVar2 = *(ulonglong *)(lVar7 + 0x10);
+  uVar3 = *(ulonglong *)(lVar7 + 0x30);
+  uVar8 = uVar3 - uVar5;
+  if (uVar3 < uVar5) {
+    uVar8 = uVar9;
+  }
+  uVar10 = uVar2 - uVar6;
+  if (uVar2 < uVar6) {
+    uVar10 = uVar9;
+  }
+  uVar9 = *(ulonglong *)(lVar7 + 0x40);
+  lVar4 = *(longlong *)(lVar7 + 8);
+  lVar7 = *(longlong *)(lVar7 + 0x28);
+  *puVar1 = (uVar9 - uVar8) - uVar10;
+  if (uVar2 >= uVar6 && uVar2 - uVar6 != 0 || uVar3 >= uVar5 && uVar3 - uVar5 != 0) {
+    lVar7 = lVar7 + uVar5 * 0x10;
+    lVar4 = lVar4 + uVar6 * 0x10;
+    if (uVar2 < uVar6) {
+      lVar4 = 8;
+    }
+    lVar4 = lVar4 + -0x10 + uVar10 * 0x10;
+    if (uVar2 <= uVar6) {
+      lVar4 = 0;
+    }
+    if (uVar3 < uVar5) {
+      lVar7 = 8;
+    }
+    lStack_60 = lVar7 + -0x10 + uVar8 * 0x10;
+    if (uVar3 <= uVar5) {
+      lStack_60 = lVar4;
+    }
+    lStack_60 = lStack_60 + 8;
+    *puVar1 = uVar9;
+    uStack_68 = param_7;
+    uStack_58 = param_6;
+    puStack_70 = param_1;
+    FUN_140afa8a0(CONCAT71((int7)(uVar5 >> 8),!SBORROW8(0,*(longlong *)(*in_stack_00000068 + 0x30)))
+                  ,in_stack_00000070,&puStack_70);
+  }
+                    /* WARNING: Could not recover jumptable at 0x000140a86ce2. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)(&UNK_142ad890c +
+            *(int *)(&UNK_142ad890c + (ulonglong)*(uint *)(*in_stack_00000060 + 0x80) * 4)))();
+  return;
+}
+

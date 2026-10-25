@@ -1,0 +1,84 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+undefined8 * FUN_141449a70(undefined8 *param_1,undefined4 *param_2)
+
+{
+  byte *pbVar1;
+  undefined4 *puVar2;
+  undefined4 uStack_88;
+  undefined4 uStack_84;
+  undefined4 uStack_80;
+  undefined4 uStack_7c;
+  undefined4 uStack_78;
+  undefined4 uStack_74;
+  undefined4 uStack_70;
+  undefined4 uStack_6c;
+  undefined4 uStack_68;
+  undefined4 uStack_64;
+  undefined4 uStack_60;
+  undefined4 uStack_5c;
+  undefined8 uStack_58;
+  undefined8 uStack_50;
+  longlong lStack_48;
+  undefined4 *puStack_40;
+  undefined4 *puStack_38;
+  undefined1 uStack_2a;
+  undefined1 uStack_29;
+  undefined8 uStack_28;
+  
+  uStack_28 = 0xfffffffffffffffe;
+  puVar2 = param_2;
+  pbVar1 = (byte *)FUN_140d4d740();
+  puStack_38 = param_2;
+  if ((*pbVar1 & 1) == 0) {
+    uStack_29 = 1;
+    lStack_48 = FUN_140d64e00();
+    pbVar1[0] = 1;
+    pbVar1[1] = 0;
+    pbVar1[2] = 0;
+    pbVar1[3] = 0;
+    pbVar1[4] = 0;
+    pbVar1[5] = 0;
+    pbVar1[6] = 0;
+    pbVar1[7] = 0;
+    *(longlong *)(pbVar1 + 8) = lStack_48;
+    *(undefined4 **)(pbVar1 + 0x10) = puVar2;
+  }
+  else {
+    lStack_48 = *(longlong *)(pbVar1 + 8);
+    puVar2 = *(undefined4 **)(pbVar1 + 0x10);
+  }
+  *(longlong *)(pbVar1 + 8) = lStack_48 + 1;
+  uStack_58 = _UNK_142c5f840;
+  uStack_50 = _UNK_142c5f848;
+  uStack_68 = _UNK_142c5f830;
+  uStack_64 = _UNK_142c5f834;
+  uStack_60 = _UNK_142c5f838;
+  uStack_5c = _UNK_142c5f83c;
+  puStack_40 = puVar2;
+  if (*(longlong *)(puStack_38 + 6) - *(longlong *)(puStack_38 + 2) != 0) {
+    uStack_2a = 1;
+    FUN_1428afae0(&uStack_68,
+                  ((ulonglong)(*(longlong *)(puStack_38 + 6) - *(longlong *)(puStack_38 + 2)) >> 3)
+                  * -0x1111111111111111,&lStack_48,1);
+  }
+  uStack_88 = *puStack_38;
+  uStack_84 = puStack_38[1];
+  uStack_80 = puStack_38[2];
+  uStack_7c = puStack_38[3];
+  uStack_78 = puStack_38[4];
+  uStack_74 = puStack_38[5];
+  uStack_70 = puStack_38[6];
+  uStack_6c = puStack_38[7];
+  uStack_2a = 0;
+  FUN_14157e130(&uStack_88,&uStack_68);
+  param_1[4] = lStack_48;
+  param_1[5] = puStack_40;
+  param_1[2] = uStack_58;
+  param_1[3] = uStack_50;
+  *param_1 = CONCAT44(uStack_64,uStack_68);
+  param_1[1] = CONCAT44(uStack_5c,uStack_60);
+  return param_1;
+}
+

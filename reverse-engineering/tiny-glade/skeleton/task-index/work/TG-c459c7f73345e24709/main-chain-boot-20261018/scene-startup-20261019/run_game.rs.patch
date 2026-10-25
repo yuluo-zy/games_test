@@ -1,0 +1,253 @@
+--- a/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ b/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@ -1033,16 +1033,34 @@
+         country_core::resources::session::refresh_session_list_system,
+     );
+     app.add_event::<country_core::resources::events::ShutdownGameCmd>();
++    // Same canonical close consumer as gameplay. The current OS host must
++    // observe a loading-window close before it can stop the preparation worker.
++    // Original loading event registration is B1405a4901; this adapter's exact
++    // PostUpdate placement is not claimed as the unrecovered native tuple.
++    app.add_systems(bevy_app::PostUpdate,
++        country_core::resources::shutdown::initiate_game_shutdown);
+     Ok(app)
+ }
+ 
+ /// The original async loader transfers a SubApp, not an App (which contains a
+ /// process runner). A failed producer/warmup is returned to the OS owner; it
+ /// never becomes a synthetic "ready" application.
++#[derive(Debug)]
++struct GameplayPreparationCancelled;
++
++impl std::fmt::Display for GameplayPreparationCancelled {
++    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
++        formatter.write_str("gameplay preparation cancelled")
++    }
++}
++
++impl std::error::Error for GameplayPreparationCancelled {}
++
+ pub struct GameplayPreparation {
+     receiver: std::sync::mpsc::Receiver<anyhow::Result<bevy_app::SubApp>>,
+     pending: Option<bevy_app::SubApp>,
+     cancel: Arc<std::sync::atomic::AtomicBool>,
++    worker: Option<std::thread::JoinHandle<()>>,
+ }
+ 
+ impl GameplayPreparation {
+@@ -1054,7 +1072,7 @@
+         let (sender, receiver) = std::sync::mpsc::channel();
+         let cancel = Arc::new(AtomicBool::new(false));
+         let cancelled = cancel.clone();
+-        std::thread::Builder::new().name("async load".to_owned()).spawn(move || {
++        let worker = std::thread::Builder::new().name("async load".to_owned()).spawn(move || {
+             // Host diagnostic boundary only: preserve the original load/ready
+             // gates, but carry a worker panic back to the owning OS thread.
+             let mut phase = "validate gameplay resources";
+@@ -1068,7 +1086,7 @@
+                 anyhow::ensure!(gameplay.world().contains_resource::<country_core::systems::save::load_game::LoadGameManager>(),
+                     "B async load: original session/snapshot loading producer is not registered");
+                 loop {
+-                    if cancelled.load(Ordering::Acquire) { anyhow::bail!("gameplay preparation cancelled"); }
++                    if cancelled.load(Ordering::Acquire) { return Err(GameplayPreparationCancelled.into()); }
+                     // @1400d76e3 and Events<LoadingGameComplete> native TypeId
+                     // 4d00324fb817a8a1/5846f8d25a034525, confirmed register_event
+                     // @14151ffb0. It reads both live event buffers.
+@@ -1080,8 +1098,16 @@
+                         .ok_or_else(|| anyhow::anyhow!("B async load: LoadingGameComplete event resource missing"))?;
+                     if !events.is_empty() { break; }
+                 }
++                // A close request may arrive during the final update. Do not
++                // start another device submission after observing cancellation.
++                if cancelled.load(Ordering::Acquire) {
++                    return Err(GameplayPreparationCancelled.into());
++                }
+                 phase = "original gameplay graph warm-up";
+                 warm_up(gameplay.world_mut())?;
++                if cancelled.load(Ordering::Acquire) {
++                    return Err(GameplayPreparationCancelled.into());
++                }
+                 Ok(gameplay)
+             }))
+             .unwrap_or_else(|payload| {
+@@ -1102,7 +1128,47 @@
+             receiver,
+             pending: None,
+             cancel,
++            worker: Some(worker),
+         })
++    }
++
++    fn join_worker(&mut self) -> anyhow::Result<()> {
++        let Some(worker) = self.worker.take() else { return Ok(()); };
++        worker.join().map_err(|payload| {
++            let message = if let Some(message) = payload.downcast_ref::<String>() {
++                message.as_str()
++            } else if let Some(message) = payload.downcast_ref::<&'static str>() {
++                *message
++            } else {
++                "non-string panic payload"
++            };
++            anyhow::anyhow!("async gameplay worker panicked while completing: {message}")
++        })
++    }
++
++    /// Finish all preparation work before the renderer starts device shutdown.
++    /// Cancellation is an ordinary exit request; actual load/warmup failures
++    /// retain their original error and are still returned to the OS owner.
++    pub fn cancel_and_join(&mut self) -> anyhow::Result<()> {
++        self.cancel.store(true, std::sync::atomic::Ordering::Release);
++        let joined = self.join_worker();
++        // Both a received World and a queued successful World must release
++        // their scene/device resources before the renderer is dismantled.
++        self.pending.take();
++        let completion = match self.receiver.try_recv() {
++            Ok(Err(error)) if !error.is::<GameplayPreparationCancelled>() => Err(error),
++            Ok(Ok(_)) | Ok(Err(_)) | Err(_) => Ok(()),
++        };
++        // A producer failure happened before worker completion; preserve that
++        // error if a later teardown panic also occurred.
++        match (completion, joined) {
++            (Err(primary), Err(secondary)) => {
++                log::error!("Async gameplay worker also failed while stopping: {secondary:#}");
++                Err(primary)
++            }
++            (Err(error), Ok(())) | (Ok(()), Err(error)) => Err(error),
++            (Ok(()), Ok(())) => Ok(()),
++        }
+     }
+ 
+     /// Original main_loop polls only at the logo's waiting stage and switches
+@@ -1113,12 +1179,21 @@
+         use std::sync::mpsc::TryRecvError;
+         if self.pending.is_none() {
+             match self.receiver.try_recv() {
+-                Ok(Ok(app)) => self.pending = Some(app),
+-                Ok(Err(error)) => return Err(error),
++                Ok(Ok(app)) => {
++                    self.join_worker()?;
++                    self.pending = Some(app);
++                }
++                Ok(Err(error)) => {
++                    if let Err(secondary) = self.join_worker() {
++                        log::error!("Async gameplay worker also failed while stopping: {secondary:#}");
++                    }
++                    return Err(error);
++                }
+                 Err(TryRecvError::Empty) => {}
+-                Err(TryRecvError::Disconnected) => anyhow::bail!(
+-                    "original async gameplay loader stopped before returning its SubApp"
+-                ),
++                Err(TryRecvError::Disconnected) => {
++                    self.join_worker()?;
++                    anyhow::bail!("original async gameplay loader stopped before returning its SubApp");
++                }
+             }
+         }
+         let logo = loading.world_mut().get_resource_mut::<LogoAnimation>();
+@@ -1141,8 +1216,9 @@
+ 
+ impl Drop for GameplayPreparation {
+     fn drop(&mut self) {
+-        self.cancel
+-            .store(true, std::sync::atomic::Ordering::Release);
++        if let Err(error) = self.cancel_and_join() {
++            log::error!("Failed to stop async gameplay preparation: {error:#}");
++        }
+     }
+ }
+ 
+@@ -1374,7 +1450,7 @@
+         let (sender, receiver) = std::sync::mpsc::channel();
+         sender.send(Ok(std::mem::take(gameplay.main_mut()))).unwrap();
+         let mut preparation = GameplayPreparation { receiver, pending: None,
+-            cancel: Arc::new(std::sync::atomic::AtomicBool::new(false)) };
++            cancel: Arc::new(std::sync::atomic::AtomicBool::new(false)), worker: None };
+         assert!(!preparation.poll(&mut loading).unwrap());
+         assert_eq!(loading.world().resource::<LogoAnimation>().progress[3],1.0);
+         assert_eq!(loading.world().resource::<GameConfig>().video.fps_limit,117.5);
+@@ -1443,3 +1519,84 @@
+         assert!(!to.contains_resource::<EguiContextResource>());
+     }
+ }
++
++#[cfg(test)]
++mod gameplay_preparation_shutdown_tests {
++    use super::*;
++    use std::sync::{atomic::{AtomicBool, Ordering}, mpsc};
++
++    fn prepared_worker(result: anyhow::Result<bevy_app::SubApp>) -> GameplayPreparation {
++        let (sender, receiver) = mpsc::channel();
++        let worker = std::thread::spawn(move || { sender.send(result).unwrap(); });
++        GameplayPreparation { receiver, pending: None,
++            cancel: Arc::new(AtomicBool::new(false)), worker: Some(worker) }
++    }
++
++    #[test]
++    fn cancellation_joins_worker_and_discards_only_typed_cancel() {
++        let (sender, receiver) = mpsc::channel();
++        let cancel = Arc::new(AtomicBool::new(false));
++        let worker_cancel = cancel.clone();
++        let stopped = Arc::new(AtomicBool::new(false));
++        let worker_stopped = stopped.clone();
++        let worker = std::thread::spawn(move || {
++            while !worker_cancel.load(Ordering::Acquire) { std::thread::yield_now(); }
++            worker_stopped.store(true, Ordering::Release);
++            sender.send(Err(GameplayPreparationCancelled.into())).unwrap();
++        });
++        let mut preparation = GameplayPreparation { receiver, pending: None, cancel,
++            worker: Some(worker) };
++        preparation.cancel_and_join().unwrap();
++        assert!(stopped.load(Ordering::Acquire));
++        assert!(preparation.worker.is_none());
++        preparation.cancel_and_join().unwrap();
++    }
++
++    #[test]
++    fn cancellation_preserves_actual_producer_failure() {
++        let mut preparation = prepared_worker(Err(anyhow::anyhow!("warmup producer failed")));
++        let error = preparation.cancel_and_join().unwrap_err();
++        assert_eq!(error.to_string(), "warmup producer failed");
++        assert!(preparation.worker.is_none());
++    }
++
++    #[test]
++    fn explicit_stop_releases_received_world() {
++        let mut preparation = prepared_worker(Ok(bevy_app::SubApp::new()));
++        preparation.pending = Some(preparation.receiver.recv().unwrap().unwrap());
++        preparation.cancel_and_join().unwrap();
++        assert!(preparation.pending.is_none());
++        assert!(preparation.worker.is_none());
++    }
++
++    #[derive(bevy_ecs::resource::Resource)]
++    struct WorldDropFlag(Arc<AtomicBool>);
++    impl Drop for WorldDropFlag {
++        fn drop(&mut self) { self.0.store(true, Ordering::Release); }
++    }
++
++    #[test]
++    fn drop_waits_for_worker_and_releases_pending_or_queued_world() {
++        for receive_before_drop in [false, true] {
++            let released = Arc::new(AtomicBool::new(false));
++            let stopped = Arc::new(AtomicBool::new(false));
++            let worker_stopped = stopped.clone();
++            let mut world = bevy_app::SubApp::new();
++            world.world_mut().insert_resource(WorldDropFlag(released.clone()));
++            let (sender, receiver) = mpsc::channel();
++            let worker = std::thread::spawn(move || {
++                let _ = sender.send(Ok(world));
++                worker_stopped.store(true, Ordering::Release);
++            });
++            let mut preparation = GameplayPreparation { receiver, pending: None,
++                cancel: Arc::new(AtomicBool::new(false)), worker: Some(worker) };
++            if receive_before_drop {
++                preparation.pending = Some(preparation.receiver.recv().unwrap().unwrap());
++            }
++            drop(preparation);
++            assert!(stopped.load(Ordering::Acquire));
++            assert!(released.load(Ordering::Acquire));
++        }
++    }
++
++}

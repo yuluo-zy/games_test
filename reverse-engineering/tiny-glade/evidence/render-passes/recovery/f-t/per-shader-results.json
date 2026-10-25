@@ -1,0 +1,708 @@
+{
+  "tool": "recompile_check.py (structural fingerprint: entries/local_size/capabilities/bindings/opcode_histogram)",
+  "owner": "F-T",
+  "date": "2026-10-13",
+  "scope": "terrain/building/read shader family (flat + terrain_editing/ + buildings/)",
+  "note": "bindings+entry+LocalSize are mandatory and match on every compiled module. opcode-histogram retains debug-info ops (OpLine/OpSource/OpString/OpNoLine) that cannot fully converge because the reconstructed inc/ layer pulls extra transitive includes (smooth_max/math_const/bilinear/history_valid) absent from the original include closures; residual non-debug opcode diffs are dxc-version codegen differences (e.g. `||`/`!=` folding, ByteAddressBuffer offset folding, struct-copy access chains).",
+  "per_shader": {
+    "cache_stroke.cs.hlsl": {
+      "bin": "cache_stroke.cs.hlsl",
+      "modules": [
+        {
+          "verdict": "FAIL",
+          "entry": "cs_main",
+          "structural_match": false,
+          "normalized_hash_match": false,
+          "binding_match": true,
+          "entry_match": true,
+          "local_size_match": true,
+          "capability_match": true,
+          "code_opcode_converged": false,
+          "code_diff_target_only": {
+            "OpBitcast": 1,
+            "OpTypeVector": 4
+          },
+          "code_diff_candidate_only": {
+            "OpBitcast": 2,
+            "OpTypeVector": 5
+          }
+        }
+      ]
+    },
+    "calc_highlight_hill_mask.cs.hlsl": {
+      "bin": "calc_highlight_hill_mask.cs.hlsl",
+      "modules": [
+        {
+          "verdict": "FAIL",
+          "entry": "cs_main",
+          "structural_match": false,
+          "normalized_hash_match": false,
+          "binding_match": true,
+          "entry_match": true,
+          "local_size_match": true,
+          "capability_match": true,
+          "code_opcode_converged": false,
+          "code_diff_target_only": {
+            "OpBitcast": 6,
+            "OpCompositeConstruct": 1,
+            "OpCompositeExtract": 5,
+            "OpConstant": 10,
+            "OpTypeVector": 6,
+            "OpVectorShuffle": 2
+          },
+          "code_diff_candidate_only": {
+            "OpBitcast": 10,
+            "OpCompositeConstruct": 2,
+            "OpCompositeExtract": 7,
+            "OpConstant": 9,
+            "OpTypeVector": 7,
+            "OpVectorShuffle": 4
+          }
+        }
+      ]
+    },
+    "demo_terrain_overlay.raster.hlsl": {
+      "bin": "demo_terrain_overlay.raster.hlsl",
+      "modules": [
+        {
+          "verdict": "FAIL",
+          "entry": "vs_main",
+          "structural_match": false,
+          "normalized_hash_match": false,
+          "binding_match": true,
+          "entry_match": true,
+          "local_size_match": true,
+          "capability_match": true,
+          "code_opcode_converged": false,
+          "code_diff_target_only": {
+            "OpConvertFToS": 1,
+            "OpConvertSToF": 1,
+            "OpTypeVector": 5
+          },
+          "code_diff_candidate_only": {
+            "OpTypeVector": 4
+          }
+        },
+        {
+          "verdict": "PASS_STRUCTURAL",
+          "entry": "ps_main",
+          "structural_match": true,
+          "normalized_hash_match": false,
+          "binding_match": true,
+          "entry_match": true,
+          "local_size_match": true,
+          "capability_match": true,
+          "code_opcode_converged": true,
+          "code_diff_target_only": {},
+          "code_diff_candidate_only": {}
+        }
+      ]
+    },
+    "floor.raster.hlsl": {
+      "bin": "floor.raster.hlsl",
+      "modules": [
+        {
+          "verdict": "FAIL",
+          "entry": "vs_main",
+          "structural_match": false,
+          "normalized_hash_match": false,
+          "binding_match": true,
+          "entry_match": true,
+          "local_size_match": true,
+          "capability_match": true,
+          "code_opcode_converged": false,
+          "code_diff_target_only": {
+            "OpCompositeConstruct": 8,
+            "OpCompositeExtract": 26,
+            "OpConvertFToS": 1,
+            "OpConvertSToF": 1,
+            "OpFAdd": 13,
+            "OpFDiv": 3,
+            "OpFMul": 10,
+            "OpFOrdLessThan": 4,
+            "OpFSub": 7,
+            "OpImageGather": 2,
+            "OpLabel": 28,
+            "OpLoad": 11,
+            "OpLogicalNot": 5,
+            "OpSampledImage": 6,
+            "OpUnreachable": 2
+          },
+          "code_diff_candidate_only": {
+            "OpCompositeConstruct": 7,
+            "OpCompositeExtract": 22,
+            "OpFAdd": 9,
+            "OpFDiv": 2,
+            "OpFMul": 8,
+            "OpFOrdLessThan": 3,
+            "OpFSub": 5,
+            "OpFUnordGreaterThanEqual": 1,
+            "OpImageGather": 1,
+            "OpLabel": 26,
+            "OpLoad": 15,
+            "OpLogicalNot": 4,
+            "OpSampledImage": 5
+          }
+        },
+        {
+          "verdict": "FAIL",
+          "entry": "ps_main",
+          "structural_match": false,
+          "normalized_hash_match": false,
+          "binding_match": false,
+          "entry_match": true,
+          "local_size_match": true,
+          "capability_match": true,
+          "code_opcode_converged": false,
+          "code_diff_target_only": {
+            "OpAccessChain": 9,
+            "OpBitcast": 31,
+            "OpBitwiseAnd": 33,
+            "OpBitwiseOr": 18,
+            "OpBitwiseXor": 66,
+            "OpBranch": 37,
+            "OpBranchConditional": 23,
+            "OpCompositeConstruct": 50,
+            "OpCompositeExtract": 145,
+            "OpCompositeInsert": 3,
+            "OpConstant": 84,
+            "OpConstantComposite": 29,
+            "OpConstantFalse": 1,
+            "OpConstantNull": 2,
+            "OpConstantTrue": 1,
+            "OpConvertFToS": 5,
+            "OpConvertFToU": 8,
+            "OpConvertUToF": 4,
+            "OpDPdx": 2,
+            "OpDPdy": 2,
+            "OpDecorate": 71,
+            "OpDot": 9,
+            "OpExtInst": 123,
+            "OpFAdd": 65,
+            "OpFDiv": 12,
+            "OpFMul": 99,
+            "OpFNegate": 3,
+            "OpFOrdEqual": 2,
+            "OpFOrdGreaterThan": 11,
+            "OpFOrdLessThan": 6,
+            "OpFRem": 3,
+            "OpFSub": 80,
+            "OpIAdd": 71,
+            "OpIEqual": 2,
+            "OpIMul": 16,
+            "OpImageQueryLod": 1,
+            "OpImageSampleExplicitLod": 30,
+            "OpImageSampleImplicitLod": 20,
+            "OpLabel": 67,
+            "OpLoad": 42,
+            "OpLogicalNot": 3,
+            "OpLoopMerge": 2,
+            "OpMatrixTimesVector": 1,
+            "OpMemberDecorate": 134,
+            "OpMemberName": 110,
+            "OpName": 44,
+            "OpPhi": 53,
+            "OpSampledImage": 51,
+            "OpSelect": 68,
+            "OpSelectionMerge": 25,
+            "OpShiftLeftLogical": 63,
+            "OpShiftRightLogical": 44,
+            "OpSwitch": 4,
+            "OpTranspose": 1,
+            "OpTypeArray": 1,
+            "OpTypeBool": 1,
+            "OpTypeImage": 2,
+            "OpTypeMatrix": 2,
+            "OpTypePointer": 14,
+            "OpTypeSampledImage": 2,
+            "OpTypeSampler": 1,
+            "OpTypeStruct": 4,
+            "OpTypeVector": 7,
+            "OpULessThan": 2,
+            "OpUMod": 1,
+            "OpUndef": 2,
+            "OpUnreachable": 2,
+            "OpVariable": 36,
+            "OpVectorShuffle": 33,
+            "OpVectorTimesMatrix": 8,
+            "OpVectorTimesScalar": 60
+          },
+          "code_diff_candidate_only": {
+            "OpAccessChain": 2,
+            "OpCompositeConstruct": 1,
+            "OpCompositeExtract": 1,
+            "OpConstant": 7,
+            "OpConstantComposite": 2,
+            "OpConvertFToU": 1,
+            "OpDPdx": 1,
+            "OpDPdy": 1,
+            "OpDecorate": 6,
+            "OpDot": 1,
+            "OpExtInst": 3,
+            "OpFAdd": 1,
+            "OpFMul": 2,
+            "OpLabel": 1,
+            "OpLoad": 3,
+            "OpMemberDecorate": 38,
+            "OpMemberName": 38,
+            "OpName": 6,
+            "OpTypePointer": 5,
+            "OpTypeStruct": 2,
+            "OpTypeVector": 4,
+            "OpVariable": 4,
+            "OpVectorShuffle": 2
+          }
+        }
+      ]
+    },
+    "mouse_terrain_raycast.cs.hlsl": {
+      "bin": "mouse_terrain_raycast.cs.hlsl",
+      "modules": [
+        {
+          "verdict": "FAIL",
+          "entry": "cs_main",
+          "structural_match": false,
+          "normalized_hash_match": false,
+          "binding_match": true,
+          "entry_match": true,
+          "local_size_match": true,
+          "capability_match": true,
+          "code_opcode_converged": false,
+          "code_diff_target_only": {
+            "OpBitcast": 2,
+            "OpCompositeConstruct": 1,
+            "OpCompositeExtract": 9,
+            "OpTypeVector": 6,
+            "OpVectorShuffle": 2
+          },
+          "code_diff_candidate_only": {
+            "OpBitcast": 4,
+            "OpCompositeConstruct": 2,
+            "OpCompositeExtract": 11,
+            "OpTypeVector": 7,
+            "OpVectorShuffle": 3
+          }
+        }
+      ]
+    },
+    "rasterize_buildings.cs.hlsl": {
+      "bin": "rasterize_buildings.cs.hlsl",
+      "modules": [
+        {
+          "verdict": "FAIL",
+          "entry": "cs_main",
+          "structural_match": false,
+          "normalized_hash_match": false,
+          "binding_match": true,
+          "entry_match": true,
+          "local_size_match": true,
+          "capability_match": true,
+          "code_opcode_converged": false,
+          "code_diff_target_only": {
+            "OpAccessChain": 9,
+            "OpBitcast": 3,
+            "OpCompositeConstruct": 5,
+            "OpCompositeExtract": 7,
+            "OpLoad": 14,
+            "OpVectorShuffle": 2
+          },
+          "code_diff_candidate_only": {
+            "OpAccessChain": 10,
+            "OpBitcast": 4,
+            "OpCompositeConstruct": 4,
+            "OpCompositeExtract": 3,
+            "OpLoad": 17,
+            "OpVectorShuffle": 1
+          }
+        }
+      ]
+    },
+    "rasterize_buildings_animate.cs.hlsl": {
+      "bin": "rasterize_buildings_animate.cs.hlsl",
+      "modules": [
+        {
+          "verdict": "FAIL",
+          "entry": "cs_main",
+          "structural_match": false,
+          "normalized_hash_match": false,
+          "binding_match": true,
+          "entry_match": true,
+          "local_size_match": true,
+          "capability_match": true,
+          "code_opcode_converged": false,
+          "code_diff_target_only": {
+            "OpBitcast": 1,
+            "OpTypeVector": 6
+          },
+          "code_diff_candidate_only": {
+            "OpBitcast": 2,
+            "OpTypeVector": 7
+          }
+        }
+      ]
+    },
+    "rasterize_terrain_stroke.cs.hlsl": {
+      "bin": "rasterize_terrain_stroke.cs.hlsl",
+      "modules": [
+        {
+          "verdict": "FAIL",
+          "entry": "cs_main",
+          "structural_match": false,
+          "normalized_hash_match": false,
+          "binding_match": true,
+          "entry_match": true,
+          "local_size_match": true,
+          "capability_match": true,
+          "code_opcode_converged": false,
+          "code_diff_target_only": {
+            "OpAccessChain": 101,
+            "OpAtomicUMin": 1,
+            "OpBitcast": 120,
+            "OpBitwiseAnd": 102,
+            "OpBitwiseOr": 36,
+            "OpBitwiseXor": 202,
+            "OpBranch": 41,
+            "OpBranchConditional": 23,
+            "OpCompositeConstruct": 35,
+            "OpCompositeExtract": 23,
+            "OpConstant": 77,
+            "OpConstantComposite": 17,
+            "OpConstantFalse": 1,
+            "OpConstantTrue": 1,
+            "OpControlBarrier": 2,
+            "OpConvertFToS": 8,
+            "OpConvertSToF": 7,
+            "OpDecorate": 16,
+            "OpDot": 18,
+            "OpExtInst": 85,
+            "OpFAdd": 58,
+            "OpFDiv": 28,
+            "OpFMul": 159,
+            "OpFOrdEqual": 1,
+            "OpFOrdGreaterThan": 8,
+            "OpFOrdLessThan": 9,
+            "OpFSub": 138,
+            "OpIAdd": 228,
+            "OpIEqual": 2,
+            "OpIMul": 76,
+            "OpImageFetch": 3,
+            "OpLabel": 68,
+            "OpLoad": 230,
+            "OpLogicalNot": 1,
+            "OpLoopMerge": 11,
+            "OpMatrixTimesVector": 1,
+            "OpName": 15,
+            "OpPhi": 146,
+            "OpSLessThan": 6,
+            "OpSelect": 294,
+            "OpSelectionMerge": 15,
+            "OpShiftLeftLogical": 172,
+            "OpShiftRightLogical": 137,
+            "OpStore": 90,
+            "OpSwitch": 3,
+            "OpTypeBool": 1,
+            "OpTypeImage": 5,
+            "OpTypeMatrix": 1,
+            "OpTypePointer": 20,
+            "OpTypeVector": 9,
+            "OpUDiv": 1,
+            "OpUGreaterThan": 1,
+            "OpULessThan": 12,
+            "OpULessThanEqual": 3,
+            "OpUndef": 1,
+            "OpVariable": 66,
+            "OpVectorShuffle": 26,
+            "OpVectorTimesMatrix": 6,
+            "OpVectorTimesScalar": 33
+          },
+          "code_diff_candidate_only": {
+            "OpAccessChain": 9,
+            "OpBitcast": 2,
+            "OpBitwiseAnd": 2,
+            "OpCompositeConstruct": 2,
+            "OpCompositeExtract": 5,
+            "OpConstant": 14,
+            "OpConstantComposite": 4,
+            "OpConvertUToF": 4,
+            "OpDecorate": 14,
+            "OpDot": 2,
+            "OpExtInst": 9,
+            "OpFAdd": 3,
+            "OpFDiv": 1,
+            "OpFMul": 2,
+            "OpFSub": 4,
+            "OpImageFetch": 1,
+            "OpImageRead": 5,
+            "OpLabel": 1,
+            "OpLoad": 23,
+            "OpName": 11,
+            "OpStore": 8,
+            "OpTypeImage": 3,
+            "OpTypePointer": 11,
+            "OpTypeVector": 7,
+            "OpVariable": 12,
+            "OpVectorShuffle": 2,
+            "OpVectorTimesScalar": 2
+          }
+        }
+      ]
+    },
+    "read_terrain_height.cs.hlsl": {
+      "bin": "read_terrain_height.cs.hlsl",
+      "modules": [
+        {
+          "verdict": "FAIL",
+          "entry": "cs_main",
+          "structural_match": false,
+          "normalized_hash_match": false,
+          "binding_match": true,
+          "entry_match": true,
+          "local_size_match": true,
+          "capability_match": true,
+          "code_opcode_converged": false,
+          "code_diff_target_only": {
+            "OpCompositeConstruct": 1,
+            "OpCompositeExtract": 5,
+            "OpConstant": 10,
+            "OpIMul": 1,
+            "OpLoad": 3,
+            "OpTypeVector": 3
+          },
+          "code_diff_candidate_only": {
+            "OpBitcast": 4,
+            "OpCompositeConstruct": 3,
+            "OpCompositeExtract": 7,
+            "OpConstant": 11,
+            "OpIMul": 2,
+            "OpLoad": 5,
+            "OpShiftRightLogical": 1,
+            "OpTypeVector": 5,
+            "OpVectorShuffle": 2
+          }
+        }
+      ]
+    },
+    "read_terrain_rock_mask.cs.hlsl": {
+      "bin": "read_terrain_rock_mask.cs.hlsl",
+      "modules": [
+        {
+          "verdict": "FAIL",
+          "entry": "cs_main",
+          "structural_match": false,
+          "normalized_hash_match": false,
+          "binding_match": true,
+          "entry_match": true,
+          "local_size_match": true,
+          "capability_match": true,
+          "code_opcode_converged": false,
+          "code_diff_target_only": {
+            "OpCompositeConstruct": 2,
+            "OpCompositeExtract": 4,
+            "OpConstant": 9,
+            "OpIMul": 1,
+            "OpTypeVector": 3
+          },
+          "code_diff_candidate_only": {
+            "OpBitcast": 2,
+            "OpCompositeConstruct": 3,
+            "OpCompositeExtract": 6,
+            "OpConstant": 11,
+            "OpIMul": 2,
+            "OpShiftRightLogical": 1,
+            "OpTypeVector": 5,
+            "OpVectorShuffle": 1
+          }
+        }
+      ]
+    },
+    "read_terrain_stroke.cs.hlsl": {
+      "bin": "read_terrain_stroke.cs.hlsl",
+      "note": "manual validation (recompile_check crashes on push-constant bindings)",
+      "modules": [
+        {
+          "verdict": "FAIL (histogram only)",
+          "entry": "cs_main",
+          "binding_match": true,
+          "entry_match": true,
+          "local_size_match": true,
+          "capability_match": true,
+          "code_opcode_converged": false,
+          "code_diff_target_only": {
+            "OpAccessChain": 4,
+            "OpLoad": 4,
+            "OpBitcast": 2,
+            "OpFMul": 3,
+            "OpCompositeExtract": 5,
+            "OpConvertSToF": 2
+          },
+          "code_diff_candidate_only": {
+            "OpAccessChain": 5,
+            "OpLoad": 5,
+            "OpVectorTimesScalar": 1,
+            "OpCompositeExtract": 3,
+            "OpConvertUToF": 2,
+            "OpFMul": 2,
+            "OpVectorShuffle": 1
+          }
+        }
+      ]
+    },
+    "terrain_derivative.cs.hlsl": {
+      "bin": "terrain_derivative.cs.hlsl",
+      "modules": [
+        {
+          "verdict": "FAIL",
+          "entry": "cs_main",
+          "structural_match": false,
+          "normalized_hash_match": false,
+          "binding_match": true,
+          "entry_match": true,
+          "local_size_match": true,
+          "capability_match": true,
+          "code_opcode_converged": false,
+          "code_diff_target_only": {
+            "OpBitcast": 13,
+            "OpCompositeConstruct": 5,
+            "OpTypeVector": 6,
+            "OpVectorShuffle": 1
+          },
+          "code_diff_candidate_only": {
+            "OpBitcast": 10,
+            "OpCompositeConstruct": 9,
+            "OpTypeVector": 7,
+            "OpVectorShuffle": 5
+          }
+        }
+      ]
+    },
+    "terrain_lighting_texture.cs.hlsl": {
+      "bin": "terrain_lighting_texture.cs.hlsl",
+      "modules": [
+        {
+          "verdict": "FAIL",
+          "entry": "cs_main",
+          "structural_match": false,
+          "normalized_hash_match": false,
+          "binding_match": true,
+          "entry_match": true,
+          "local_size_match": true,
+          "capability_match": true,
+          "code_opcode_converged": false,
+          "code_diff_target_only": {
+            "OpBitcast": 5,
+            "OpBranch": 14,
+            "OpBranchConditional": 9,
+            "OpCompositeConstruct": 18,
+            "OpConstant": 57,
+            "OpConstantComposite": 19,
+            "OpConstantNull": 2,
+            "OpConvertFToU": 1,
+            "OpConvertUToF": 6,
+            "OpFMul": 37,
+            "OpFOrdGreaterThan": 5,
+            "OpIEqual": 3,
+            "OpINotEqual": 1,
+            "OpLabel": 26,
+            "OpLoad": 24,
+            "OpMemberDecorate": 109,
+            "OpMemberName": 85,
+            "OpName": 22,
+            "OpPhi": 13,
+            "OpSelect": 6,
+            "OpSelectionMerge": 9,
+            "OpSwitch": 2,
+            "OpTypePointer": 13,
+            "OpTypeStruct": 4,
+            "OpTypeVector": 8,
+            "OpVectorShuffle": 12,
+            "OpVectorTimesScalar": 22
+          },
+          "code_diff_candidate_only": {
+            "OpBitcast": 8,
+            "OpBranch": 21,
+            "OpBranchConditional": 12,
+            "OpCompositeConstruct": 19,
+            "OpConstant": 59,
+            "OpConstantComposite": 17,
+            "OpConvertUToF": 7,
+            "OpCopyObject": 6,
+            "OpFMul": 30,
+            "OpFOrdGreaterThan": 4,
+            "OpFOrdLessThanEqual": 1,
+            "OpIEqual": 2,
+            "OpINotEqual": 2,
+            "OpLabel": 35,
+            "OpLoad": 26,
+            "OpMemberDecorate": 110,
+            "OpMemberName": 86,
+            "OpName": 23,
+            "OpPhi": 15,
+            "OpSelect": 8,
+            "OpSelectionMerge": 11,
+            "OpSwitch": 1,
+            "OpTypePointer": 14,
+            "OpTypeStruct": 5,
+            "OpTypeVector": 9,
+            "OpVectorShuffle": 10,
+            "OpVectorTimesScalar": 23
+          }
+        }
+      ]
+    },
+    "timed_terrain_gizmo.raster.hlsl": {
+      "bin": "timed_terrain_gizmo.raster.hlsl",
+      "modules": [
+        {
+          "verdict": "FAIL",
+          "entry": "vs_main",
+          "structural_match": false,
+          "normalized_hash_match": false,
+          "binding_match": true,
+          "entry_match": true,
+          "local_size_match": true,
+          "capability_match": true,
+          "code_opcode_converged": false,
+          "code_diff_target_only": {
+            "OpIEqual": 2,
+            "OpLogicalNot": 1
+          },
+          "code_diff_candidate_only": {
+            "OpIEqual": 1,
+            "OpINotEqual": 1
+          }
+        },
+        {
+          "verdict": "PASS_STRUCTURAL",
+          "entry": "ps_main",
+          "structural_match": true,
+          "normalized_hash_match": false,
+          "binding_match": true,
+          "entry_match": true,
+          "local_size_match": true,
+          "capability_match": true,
+          "code_opcode_converged": true,
+          "code_diff_target_only": {},
+          "code_diff_candidate_only": {}
+        }
+      ]
+    },
+    "upload_cpu_raster.cs.hlsl": {
+      "bin": "upload_cpu_raster.cs.hlsl",
+      "modules": [
+        {
+          "verdict": "FAIL",
+          "entry": "r16f",
+          "structural_match": false,
+          "normalized_hash_match": false,
+          "binding_match": true,
+          "entry_match": true,
+          "local_size_match": true,
+          "capability_match": true,
+          "code_opcode_converged": true,
+          "code_diff_target_only": {},
+          "code_diff_candidate_only": {}
+        }
+      ]
+    }
+  }
+}

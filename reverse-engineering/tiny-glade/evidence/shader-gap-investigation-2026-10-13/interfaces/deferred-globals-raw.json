@@ -1,0 +1,2234 @@
+[
+  {
+    "file": "_deferred_canopy_light_sun_sky.raster.hlsl_b903e43ffb3da915.bin",
+    "source": "deferred/canopy_light_sun_sky.raster.hlsl",
+    "stages": [
+      {
+        "stage": "vertex",
+        "module": "ae05ddb7337176c913ecc17b2125878c2c147b1c9ba99c020912bf4f75bc7b77"
+      },
+      {
+        "stage": "fragment",
+        "module": "23bd3f109a3c015b1876205c669dfc30a581052e3b92146f49b7ff7440d8daf7",
+        "original_globals": {
+          "type": 228,
+          "id": 62,
+          "storage": 2,
+          "word": 7921,
+          "name": "$Globals",
+          "decorations": [
+            {
+              "decoration": 34,
+              "values": [
+                0
+              ],
+              "word": 6245
+            },
+            {
+              "decoration": 33,
+              "values": [
+                13
+              ],
+              "word": 6249
+            }
+          ],
+          "members": [
+            {
+              "index": 0,
+              "name": "gbuffer_tex_dims",
+              "decorations": [
+                {
+                  "word": 6679,
+                  "decoration": 35,
+                  "values": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 1,
+              "name": "depth_tex_dims",
+              "decorations": [
+                {
+                  "word": 6684,
+                  "decoration": 35,
+                  "values": [
+                    8
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "name": "half_depth_tex_dims",
+              "decorations": [
+                {
+                  "word": 6689,
+                  "decoration": 35,
+                  "values": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "name": "taa_history_tex_dims",
+              "decorations": [
+                {
+                  "word": 6694,
+                  "decoration": 35,
+                  "values": [
+                    24
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 4,
+              "name": "taa_history_valid",
+              "decorations": [
+                {
+                  "word": 6699,
+                  "decoration": 35,
+                  "values": [
+                    32
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 5,
+              "name": "blue_noise_texture_dims",
+              "decorations": [
+                {
+                  "word": 6704,
+                  "decoration": 35,
+                  "values": [
+                    36
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 6,
+              "name": "ssgi_tex_dims",
+              "decorations": [
+                {
+                  "word": 6709,
+                  "decoration": 35,
+                  "values": [
+                    48
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 7,
+              "name": "screen_shadows_tex_dims",
+              "decorations": [
+                {
+                  "word": 6714,
+                  "decoration": 35,
+                  "values": [
+                    56
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 8,
+              "name": "terrain_lighting_texture_dims",
+              "decorations": [
+                {
+                  "word": 6719,
+                  "decoration": 35,
+                  "values": [
+                    64
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 9,
+              "name": "highlight_active_hill_dims",
+              "decorations": [
+                {
+                  "word": 6724,
+                  "decoration": 35,
+                  "values": [
+                    72
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 10,
+              "name": "time",
+              "decorations": [
+                {
+                  "word": 6729,
+                  "decoration": 35,
+                  "values": [
+                    80
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 11,
+              "name": "lantern_count",
+              "decorations": [
+                {
+                  "word": 6734,
+                  "decoration": 35,
+                  "values": [
+                    84
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 12,
+              "name": "indirect_radiance_tex_dims",
+              "decorations": [
+                {
+                  "word": 6739,
+                  "decoration": 35,
+                  "values": [
+                    88
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 13,
+              "name": "rdi_reservoir_tex_dims",
+              "decorations": [
+                {
+                  "word": 6744,
+                  "decoration": 35,
+                  "values": [
+                    96
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 14,
+              "name": "terrain_heightmap_dims",
+              "decorations": [
+                {
+                  "word": 6749,
+                  "decoration": 35,
+                  "values": [
+                    104
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 15,
+              "name": "visual_terrain_heightmap_dims",
+              "decorations": [
+                {
+                  "word": 6754,
+                  "decoration": 35,
+                  "values": [
+                    112
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 16,
+              "name": "brdf_fg_lut_dims",
+              "decorations": [
+                {
+                  "word": 6759,
+                  "decoration": 35,
+                  "values": [
+                    120
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 17,
+              "name": "rt_bvh_node_count",
+              "decorations": [
+                {
+                  "word": 6764,
+                  "decoration": 35,
+                  "values": [
+                    128
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 18,
+              "name": "rt_triangle_count",
+              "decorations": [
+                {
+                  "word": 6769,
+                  "decoration": 35,
+                  "values": [
+                    132
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "fresh_globals": {
+          "type": 176,
+          "id": 64,
+          "storage": 2,
+          "word": 4011,
+          "name": "$Globals",
+          "decorations": [
+            {
+              "decoration": 34,
+              "values": [
+                0
+              ],
+              "word": 2612
+            },
+            {
+              "decoration": 33,
+              "values": [
+                13
+              ],
+              "word": 2616
+            }
+          ],
+          "members": [
+            {
+              "index": 0,
+              "name": "gbuffer_tex_dims",
+              "decorations": [
+                {
+                  "word": 3235,
+                  "decoration": 35,
+                  "values": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 1,
+              "name": "depth_tex_dims",
+              "decorations": [
+                {
+                  "word": 3240,
+                  "decoration": 35,
+                  "values": [
+                    8
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "name": "half_depth_tex_dims",
+              "decorations": [
+                {
+                  "word": 3245,
+                  "decoration": 35,
+                  "values": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "name": "taa_history_tex_dims",
+              "decorations": [
+                {
+                  "word": 3250,
+                  "decoration": 35,
+                  "values": [
+                    24
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 4,
+              "name": "taa_history_valid",
+              "decorations": [
+                {
+                  "word": 3255,
+                  "decoration": 35,
+                  "values": [
+                    32
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 5,
+              "name": "blue_noise_texture_dims",
+              "decorations": [
+                {
+                  "word": 3260,
+                  "decoration": 35,
+                  "values": [
+                    36
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 6,
+              "name": "ssgi_tex_dims",
+              "decorations": [
+                {
+                  "word": 3265,
+                  "decoration": 35,
+                  "values": [
+                    48
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 7,
+              "name": "screen_shadows_tex_dims",
+              "decorations": [
+                {
+                  "word": 3270,
+                  "decoration": 35,
+                  "values": [
+                    56
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 8,
+              "name": "terrain_lighting_texture_dims",
+              "decorations": [
+                {
+                  "word": 3275,
+                  "decoration": 35,
+                  "values": [
+                    64
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 9,
+              "name": "highlight_active_hill_dims",
+              "decorations": [
+                {
+                  "word": 3280,
+                  "decoration": 35,
+                  "values": [
+                    72
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 10,
+              "name": "time",
+              "decorations": [
+                {
+                  "word": 3285,
+                  "decoration": 35,
+                  "values": [
+                    80
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 11,
+              "name": "lantern_count",
+              "decorations": [
+                {
+                  "word": 3290,
+                  "decoration": 35,
+                  "values": [
+                    84
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 12,
+              "name": "indirect_radiance_tex_dims",
+              "decorations": [
+                {
+                  "word": 3295,
+                  "decoration": 35,
+                  "values": [
+                    88
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 13,
+              "name": "rdi_reservoir_tex_dims",
+              "decorations": [
+                {
+                  "word": 3300,
+                  "decoration": 35,
+                  "values": [
+                    96
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 14,
+              "name": "brdf_fg_lut_dims",
+              "decorations": [
+                {
+                  "word": 3305,
+                  "decoration": 35,
+                  "values": [
+                    104
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 15,
+              "name": "terrain_heightmap_dims",
+              "decorations": [
+                {
+                  "word": 3310,
+                  "decoration": 35,
+                  "values": [
+                    112
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 16,
+              "name": "visual_terrain_heightmap_dims",
+              "decorations": [
+                {
+                  "word": 3315,
+                  "decoration": 35,
+                  "values": [
+                    120
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 17,
+              "name": "rt_bvh_node_count",
+              "decorations": [
+                {
+                  "word": 3320,
+                  "decoration": 35,
+                  "values": [
+                    128
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 18,
+              "name": "rt_triangle_count",
+              "decorations": [
+                {
+                  "word": 3325,
+                  "decoration": 35,
+                  "values": [
+                    132
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "file": "_deferred_canopy_light_sun_sky.raster.hlsl_f0adff76827e73ff.bin",
+    "source": "deferred/canopy_light_sun_sky.raster.hlsl",
+    "stages": [
+      {
+        "stage": "vertex",
+        "module": "842e26cdd6efb8a81663d29d7507918f899ccb87ba1af8919427b6a993498ec7"
+      },
+      {
+        "stage": "fragment",
+        "module": "a3ece4b4edac9ec31ea711f3fee51528a03dbe280176aae0743e31e07f0fd7cd",
+        "original_globals": {
+          "type": 115,
+          "id": 57,
+          "storage": 2,
+          "word": 6656,
+          "name": "$Globals",
+          "decorations": [
+            {
+              "decoration": 34,
+              "values": [
+                0
+              ],
+              "word": 5794
+            },
+            {
+              "decoration": 33,
+              "values": [
+                13
+              ],
+              "word": 5798
+            }
+          ],
+          "members": [
+            {
+              "index": 0,
+              "name": "gbuffer_tex_dims",
+              "decorations": [
+                {
+                  "word": 6172,
+                  "decoration": 35,
+                  "values": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 1,
+              "name": "depth_tex_dims",
+              "decorations": [
+                {
+                  "word": 6177,
+                  "decoration": 35,
+                  "values": [
+                    8
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "name": "half_depth_tex_dims",
+              "decorations": [
+                {
+                  "word": 6182,
+                  "decoration": 35,
+                  "values": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "name": "taa_history_tex_dims",
+              "decorations": [
+                {
+                  "word": 6187,
+                  "decoration": 35,
+                  "values": [
+                    24
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 4,
+              "name": "taa_history_valid",
+              "decorations": [
+                {
+                  "word": 6192,
+                  "decoration": 35,
+                  "values": [
+                    32
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 5,
+              "name": "blue_noise_texture_dims",
+              "decorations": [
+                {
+                  "word": 6197,
+                  "decoration": 35,
+                  "values": [
+                    36
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 6,
+              "name": "ssgi_tex_dims",
+              "decorations": [
+                {
+                  "word": 6202,
+                  "decoration": 35,
+                  "values": [
+                    48
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 7,
+              "name": "screen_shadows_tex_dims",
+              "decorations": [
+                {
+                  "word": 6207,
+                  "decoration": 35,
+                  "values": [
+                    56
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 8,
+              "name": "terrain_lighting_texture_dims",
+              "decorations": [
+                {
+                  "word": 6212,
+                  "decoration": 35,
+                  "values": [
+                    64
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 9,
+              "name": "highlight_active_hill_dims",
+              "decorations": [
+                {
+                  "word": 6217,
+                  "decoration": 35,
+                  "values": [
+                    72
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 10,
+              "name": "time",
+              "decorations": [
+                {
+                  "word": 6222,
+                  "decoration": 35,
+                  "values": [
+                    80
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 11,
+              "name": "lantern_count",
+              "decorations": [
+                {
+                  "word": 6227,
+                  "decoration": 35,
+                  "values": [
+                    84
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 12,
+              "name": "indirect_radiance_tex_dims",
+              "decorations": [
+                {
+                  "word": 6232,
+                  "decoration": 35,
+                  "values": [
+                    88
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 13,
+              "name": "rdi_reservoir_tex_dims",
+              "decorations": [
+                {
+                  "word": 6237,
+                  "decoration": 35,
+                  "values": [
+                    96
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 14,
+              "name": "terrain_heightmap_dims",
+              "decorations": [
+                {
+                  "word": 6242,
+                  "decoration": 35,
+                  "values": [
+                    104
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 15,
+              "name": "visual_terrain_heightmap_dims",
+              "decorations": [
+                {
+                  "word": 6247,
+                  "decoration": 35,
+                  "values": [
+                    112
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 16,
+              "name": "brdf_fg_lut_dims",
+              "decorations": [
+                {
+                  "word": 6252,
+                  "decoration": 35,
+                  "values": [
+                    120
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 17,
+              "name": "rt_bvh_node_count",
+              "decorations": [
+                {
+                  "word": 6257,
+                  "decoration": 35,
+                  "values": [
+                    128
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 18,
+              "name": "rt_triangle_count",
+              "decorations": [
+                {
+                  "word": 6262,
+                  "decoration": 35,
+                  "values": [
+                    132
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "fresh_globals": {
+          "type": 176,
+          "id": 64,
+          "storage": 2,
+          "word": 4011,
+          "name": "$Globals",
+          "decorations": [
+            {
+              "decoration": 34,
+              "values": [
+                0
+              ],
+              "word": 2612
+            },
+            {
+              "decoration": 33,
+              "values": [
+                13
+              ],
+              "word": 2616
+            }
+          ],
+          "members": [
+            {
+              "index": 0,
+              "name": "gbuffer_tex_dims",
+              "decorations": [
+                {
+                  "word": 3235,
+                  "decoration": 35,
+                  "values": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 1,
+              "name": "depth_tex_dims",
+              "decorations": [
+                {
+                  "word": 3240,
+                  "decoration": 35,
+                  "values": [
+                    8
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "name": "half_depth_tex_dims",
+              "decorations": [
+                {
+                  "word": 3245,
+                  "decoration": 35,
+                  "values": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "name": "taa_history_tex_dims",
+              "decorations": [
+                {
+                  "word": 3250,
+                  "decoration": 35,
+                  "values": [
+                    24
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 4,
+              "name": "taa_history_valid",
+              "decorations": [
+                {
+                  "word": 3255,
+                  "decoration": 35,
+                  "values": [
+                    32
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 5,
+              "name": "blue_noise_texture_dims",
+              "decorations": [
+                {
+                  "word": 3260,
+                  "decoration": 35,
+                  "values": [
+                    36
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 6,
+              "name": "ssgi_tex_dims",
+              "decorations": [
+                {
+                  "word": 3265,
+                  "decoration": 35,
+                  "values": [
+                    48
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 7,
+              "name": "screen_shadows_tex_dims",
+              "decorations": [
+                {
+                  "word": 3270,
+                  "decoration": 35,
+                  "values": [
+                    56
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 8,
+              "name": "terrain_lighting_texture_dims",
+              "decorations": [
+                {
+                  "word": 3275,
+                  "decoration": 35,
+                  "values": [
+                    64
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 9,
+              "name": "highlight_active_hill_dims",
+              "decorations": [
+                {
+                  "word": 3280,
+                  "decoration": 35,
+                  "values": [
+                    72
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 10,
+              "name": "time",
+              "decorations": [
+                {
+                  "word": 3285,
+                  "decoration": 35,
+                  "values": [
+                    80
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 11,
+              "name": "lantern_count",
+              "decorations": [
+                {
+                  "word": 3290,
+                  "decoration": 35,
+                  "values": [
+                    84
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 12,
+              "name": "indirect_radiance_tex_dims",
+              "decorations": [
+                {
+                  "word": 3295,
+                  "decoration": 35,
+                  "values": [
+                    88
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 13,
+              "name": "rdi_reservoir_tex_dims",
+              "decorations": [
+                {
+                  "word": 3300,
+                  "decoration": 35,
+                  "values": [
+                    96
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 14,
+              "name": "brdf_fg_lut_dims",
+              "decorations": [
+                {
+                  "word": 3305,
+                  "decoration": 35,
+                  "values": [
+                    104
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 15,
+              "name": "terrain_heightmap_dims",
+              "decorations": [
+                {
+                  "word": 3310,
+                  "decoration": 35,
+                  "values": [
+                    112
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 16,
+              "name": "visual_terrain_heightmap_dims",
+              "decorations": [
+                {
+                  "word": 3315,
+                  "decoration": 35,
+                  "values": [
+                    120
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 17,
+              "name": "rt_bvh_node_count",
+              "decorations": [
+                {
+                  "word": 3320,
+                  "decoration": 35,
+                  "values": [
+                    128
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 18,
+              "name": "rt_triangle_count",
+              "decorations": [
+                {
+                  "word": 3325,
+                  "decoration": 35,
+                  "values": [
+                    132
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "file": "_deferred_plant_light_sun_sky.raster.hlsl_b903e43ffb3da915.bin",
+    "source": "deferred/plant_light_sun_sky.raster.hlsl",
+    "stages": [
+      {
+        "stage": "vertex",
+        "module": "dd928564b9ca07a0f5c921dbe4aa78a5df22d81cf20f3c4b01e7b487193f42df"
+      },
+      {
+        "stage": "fragment",
+        "module": "390a6f5d5bf1809ab976fccf6a351f95439a04c8cea2f4c2bf56d61ff0e4dff4",
+        "original_globals": {
+          "type": 216,
+          "id": 60,
+          "storage": 2,
+          "word": 7739,
+          "name": "$Globals",
+          "decorations": [
+            {
+              "decoration": 34,
+              "values": [
+                0
+              ],
+              "word": 6104
+            },
+            {
+              "decoration": 33,
+              "values": [
+                13
+              ],
+              "word": 6108
+            }
+          ],
+          "members": [
+            {
+              "index": 0,
+              "name": "gbuffer_tex_dims",
+              "decorations": [
+                {
+                  "word": 6546,
+                  "decoration": 35,
+                  "values": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 1,
+              "name": "depth_tex_dims",
+              "decorations": [
+                {
+                  "word": 6551,
+                  "decoration": 35,
+                  "values": [
+                    8
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "name": "half_depth_tex_dims",
+              "decorations": [
+                {
+                  "word": 6556,
+                  "decoration": 35,
+                  "values": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "name": "taa_history_tex_dims",
+              "decorations": [
+                {
+                  "word": 6561,
+                  "decoration": 35,
+                  "values": [
+                    24
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 4,
+              "name": "taa_history_valid",
+              "decorations": [
+                {
+                  "word": 6566,
+                  "decoration": 35,
+                  "values": [
+                    32
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 5,
+              "name": "blue_noise_texture_dims",
+              "decorations": [
+                {
+                  "word": 6571,
+                  "decoration": 35,
+                  "values": [
+                    36
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 6,
+              "name": "ssgi_tex_dims",
+              "decorations": [
+                {
+                  "word": 6576,
+                  "decoration": 35,
+                  "values": [
+                    48
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 7,
+              "name": "screen_shadows_tex_dims",
+              "decorations": [
+                {
+                  "word": 6581,
+                  "decoration": 35,
+                  "values": [
+                    56
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 8,
+              "name": "terrain_lighting_texture_dims",
+              "decorations": [
+                {
+                  "word": 6586,
+                  "decoration": 35,
+                  "values": [
+                    64
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 9,
+              "name": "highlight_active_hill_dims",
+              "decorations": [
+                {
+                  "word": 6591,
+                  "decoration": 35,
+                  "values": [
+                    72
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 10,
+              "name": "time",
+              "decorations": [
+                {
+                  "word": 6596,
+                  "decoration": 35,
+                  "values": [
+                    80
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 11,
+              "name": "lantern_count",
+              "decorations": [
+                {
+                  "word": 6601,
+                  "decoration": 35,
+                  "values": [
+                    84
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 12,
+              "name": "indirect_radiance_tex_dims",
+              "decorations": [
+                {
+                  "word": 6606,
+                  "decoration": 35,
+                  "values": [
+                    88
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 13,
+              "name": "rdi_reservoir_tex_dims",
+              "decorations": [
+                {
+                  "word": 6611,
+                  "decoration": 35,
+                  "values": [
+                    96
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 14,
+              "name": "terrain_heightmap_dims",
+              "decorations": [
+                {
+                  "word": 6616,
+                  "decoration": 35,
+                  "values": [
+                    104
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 15,
+              "name": "visual_terrain_heightmap_dims",
+              "decorations": [
+                {
+                  "word": 6621,
+                  "decoration": 35,
+                  "values": [
+                    112
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 16,
+              "name": "brdf_fg_lut_dims",
+              "decorations": [
+                {
+                  "word": 6626,
+                  "decoration": 35,
+                  "values": [
+                    120
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 17,
+              "name": "rt_bvh_node_count",
+              "decorations": [
+                {
+                  "word": 6631,
+                  "decoration": 35,
+                  "values": [
+                    128
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 18,
+              "name": "rt_triangle_count",
+              "decorations": [
+                {
+                  "word": 6636,
+                  "decoration": 35,
+                  "values": [
+                    132
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "fresh_globals": {
+          "type": 177,
+          "id": 63,
+          "storage": 2,
+          "word": 4035,
+          "name": "$Globals",
+          "decorations": [
+            {
+              "decoration": 34,
+              "values": [
+                0
+              ],
+              "word": 2628
+            },
+            {
+              "decoration": 33,
+              "values": [
+                13
+              ],
+              "word": 2632
+            }
+          ],
+          "members": [
+            {
+              "index": 0,
+              "name": "gbuffer_tex_dims",
+              "decorations": [
+                {
+                  "word": 3259,
+                  "decoration": 35,
+                  "values": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 1,
+              "name": "depth_tex_dims",
+              "decorations": [
+                {
+                  "word": 3264,
+                  "decoration": 35,
+                  "values": [
+                    8
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "name": "half_depth_tex_dims",
+              "decorations": [
+                {
+                  "word": 3269,
+                  "decoration": 35,
+                  "values": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "name": "taa_history_tex_dims",
+              "decorations": [
+                {
+                  "word": 3274,
+                  "decoration": 35,
+                  "values": [
+                    24
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 4,
+              "name": "taa_history_valid",
+              "decorations": [
+                {
+                  "word": 3279,
+                  "decoration": 35,
+                  "values": [
+                    32
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 5,
+              "name": "blue_noise_texture_dims",
+              "decorations": [
+                {
+                  "word": 3284,
+                  "decoration": 35,
+                  "values": [
+                    36
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 6,
+              "name": "ssgi_tex_dims",
+              "decorations": [
+                {
+                  "word": 3289,
+                  "decoration": 35,
+                  "values": [
+                    48
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 7,
+              "name": "screen_shadows_tex_dims",
+              "decorations": [
+                {
+                  "word": 3294,
+                  "decoration": 35,
+                  "values": [
+                    56
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 8,
+              "name": "terrain_lighting_texture_dims",
+              "decorations": [
+                {
+                  "word": 3299,
+                  "decoration": 35,
+                  "values": [
+                    64
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 9,
+              "name": "highlight_active_hill_dims",
+              "decorations": [
+                {
+                  "word": 3304,
+                  "decoration": 35,
+                  "values": [
+                    72
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 10,
+              "name": "time",
+              "decorations": [
+                {
+                  "word": 3309,
+                  "decoration": 35,
+                  "values": [
+                    80
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 11,
+              "name": "lantern_count",
+              "decorations": [
+                {
+                  "word": 3314,
+                  "decoration": 35,
+                  "values": [
+                    84
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 12,
+              "name": "indirect_radiance_tex_dims",
+              "decorations": [
+                {
+                  "word": 3319,
+                  "decoration": 35,
+                  "values": [
+                    88
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 13,
+              "name": "rdi_reservoir_tex_dims",
+              "decorations": [
+                {
+                  "word": 3324,
+                  "decoration": 35,
+                  "values": [
+                    96
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 14,
+              "name": "brdf_fg_lut_dims",
+              "decorations": [
+                {
+                  "word": 3329,
+                  "decoration": 35,
+                  "values": [
+                    104
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 15,
+              "name": "terrain_heightmap_dims",
+              "decorations": [
+                {
+                  "word": 3334,
+                  "decoration": 35,
+                  "values": [
+                    112
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 16,
+              "name": "visual_terrain_heightmap_dims",
+              "decorations": [
+                {
+                  "word": 3339,
+                  "decoration": 35,
+                  "values": [
+                    120
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 17,
+              "name": "rt_bvh_node_count",
+              "decorations": [
+                {
+                  "word": 3344,
+                  "decoration": 35,
+                  "values": [
+                    128
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 18,
+              "name": "rt_triangle_count",
+              "decorations": [
+                {
+                  "word": 3349,
+                  "decoration": 35,
+                  "values": [
+                    132
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "file": "_deferred_plant_light_sun_sky.raster.hlsl_f0adff76827e73ff.bin",
+    "source": "deferred/plant_light_sun_sky.raster.hlsl",
+    "stages": [
+      {
+        "stage": "vertex",
+        "module": "97761fb6111bbd0781267e81f9772705394ccccdb98eaeb6b6cb13c91afe818e"
+      },
+      {
+        "stage": "fragment",
+        "module": "90652570bbb37b9ad60906801d54db3d277d6cf962589b423fa54fc2dbd4df43",
+        "original_globals": {
+          "type": 111,
+          "id": 56,
+          "storage": 2,
+          "word": 6517,
+          "name": "$Globals",
+          "decorations": [
+            {
+              "decoration": 34,
+              "values": [
+                0
+              ],
+              "word": 5671
+            },
+            {
+              "decoration": 33,
+              "values": [
+                13
+              ],
+              "word": 5675
+            }
+          ],
+          "members": [
+            {
+              "index": 0,
+              "name": "gbuffer_tex_dims",
+              "decorations": [
+                {
+                  "word": 6041,
+                  "decoration": 35,
+                  "values": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 1,
+              "name": "depth_tex_dims",
+              "decorations": [
+                {
+                  "word": 6046,
+                  "decoration": 35,
+                  "values": [
+                    8
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "name": "half_depth_tex_dims",
+              "decorations": [
+                {
+                  "word": 6051,
+                  "decoration": 35,
+                  "values": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "name": "taa_history_tex_dims",
+              "decorations": [
+                {
+                  "word": 6056,
+                  "decoration": 35,
+                  "values": [
+                    24
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 4,
+              "name": "taa_history_valid",
+              "decorations": [
+                {
+                  "word": 6061,
+                  "decoration": 35,
+                  "values": [
+                    32
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 5,
+              "name": "blue_noise_texture_dims",
+              "decorations": [
+                {
+                  "word": 6066,
+                  "decoration": 35,
+                  "values": [
+                    36
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 6,
+              "name": "ssgi_tex_dims",
+              "decorations": [
+                {
+                  "word": 6071,
+                  "decoration": 35,
+                  "values": [
+                    48
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 7,
+              "name": "screen_shadows_tex_dims",
+              "decorations": [
+                {
+                  "word": 6076,
+                  "decoration": 35,
+                  "values": [
+                    56
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 8,
+              "name": "terrain_lighting_texture_dims",
+              "decorations": [
+                {
+                  "word": 6081,
+                  "decoration": 35,
+                  "values": [
+                    64
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 9,
+              "name": "highlight_active_hill_dims",
+              "decorations": [
+                {
+                  "word": 6086,
+                  "decoration": 35,
+                  "values": [
+                    72
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 10,
+              "name": "time",
+              "decorations": [
+                {
+                  "word": 6091,
+                  "decoration": 35,
+                  "values": [
+                    80
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 11,
+              "name": "lantern_count",
+              "decorations": [
+                {
+                  "word": 6096,
+                  "decoration": 35,
+                  "values": [
+                    84
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 12,
+              "name": "indirect_radiance_tex_dims",
+              "decorations": [
+                {
+                  "word": 6101,
+                  "decoration": 35,
+                  "values": [
+                    88
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 13,
+              "name": "rdi_reservoir_tex_dims",
+              "decorations": [
+                {
+                  "word": 6106,
+                  "decoration": 35,
+                  "values": [
+                    96
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 14,
+              "name": "terrain_heightmap_dims",
+              "decorations": [
+                {
+                  "word": 6111,
+                  "decoration": 35,
+                  "values": [
+                    104
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 15,
+              "name": "visual_terrain_heightmap_dims",
+              "decorations": [
+                {
+                  "word": 6116,
+                  "decoration": 35,
+                  "values": [
+                    112
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 16,
+              "name": "brdf_fg_lut_dims",
+              "decorations": [
+                {
+                  "word": 6121,
+                  "decoration": 35,
+                  "values": [
+                    120
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 17,
+              "name": "rt_bvh_node_count",
+              "decorations": [
+                {
+                  "word": 6126,
+                  "decoration": 35,
+                  "values": [
+                    128
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 18,
+              "name": "rt_triangle_count",
+              "decorations": [
+                {
+                  "word": 6131,
+                  "decoration": 35,
+                  "values": [
+                    132
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "fresh_globals": {
+          "type": 177,
+          "id": 63,
+          "storage": 2,
+          "word": 4035,
+          "name": "$Globals",
+          "decorations": [
+            {
+              "decoration": 34,
+              "values": [
+                0
+              ],
+              "word": 2628
+            },
+            {
+              "decoration": 33,
+              "values": [
+                13
+              ],
+              "word": 2632
+            }
+          ],
+          "members": [
+            {
+              "index": 0,
+              "name": "gbuffer_tex_dims",
+              "decorations": [
+                {
+                  "word": 3259,
+                  "decoration": 35,
+                  "values": [
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 1,
+              "name": "depth_tex_dims",
+              "decorations": [
+                {
+                  "word": 3264,
+                  "decoration": 35,
+                  "values": [
+                    8
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "name": "half_depth_tex_dims",
+              "decorations": [
+                {
+                  "word": 3269,
+                  "decoration": 35,
+                  "values": [
+                    16
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 3,
+              "name": "taa_history_tex_dims",
+              "decorations": [
+                {
+                  "word": 3274,
+                  "decoration": 35,
+                  "values": [
+                    24
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 4,
+              "name": "taa_history_valid",
+              "decorations": [
+                {
+                  "word": 3279,
+                  "decoration": 35,
+                  "values": [
+                    32
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 5,
+              "name": "blue_noise_texture_dims",
+              "decorations": [
+                {
+                  "word": 3284,
+                  "decoration": 35,
+                  "values": [
+                    36
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 6,
+              "name": "ssgi_tex_dims",
+              "decorations": [
+                {
+                  "word": 3289,
+                  "decoration": 35,
+                  "values": [
+                    48
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 7,
+              "name": "screen_shadows_tex_dims",
+              "decorations": [
+                {
+                  "word": 3294,
+                  "decoration": 35,
+                  "values": [
+                    56
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 8,
+              "name": "terrain_lighting_texture_dims",
+              "decorations": [
+                {
+                  "word": 3299,
+                  "decoration": 35,
+                  "values": [
+                    64
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 9,
+              "name": "highlight_active_hill_dims",
+              "decorations": [
+                {
+                  "word": 3304,
+                  "decoration": 35,
+                  "values": [
+                    72
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 10,
+              "name": "time",
+              "decorations": [
+                {
+                  "word": 3309,
+                  "decoration": 35,
+                  "values": [
+                    80
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 11,
+              "name": "lantern_count",
+              "decorations": [
+                {
+                  "word": 3314,
+                  "decoration": 35,
+                  "values": [
+                    84
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 12,
+              "name": "indirect_radiance_tex_dims",
+              "decorations": [
+                {
+                  "word": 3319,
+                  "decoration": 35,
+                  "values": [
+                    88
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 13,
+              "name": "rdi_reservoir_tex_dims",
+              "decorations": [
+                {
+                  "word": 3324,
+                  "decoration": 35,
+                  "values": [
+                    96
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 14,
+              "name": "brdf_fg_lut_dims",
+              "decorations": [
+                {
+                  "word": 3329,
+                  "decoration": 35,
+                  "values": [
+                    104
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 15,
+              "name": "terrain_heightmap_dims",
+              "decorations": [
+                {
+                  "word": 3334,
+                  "decoration": 35,
+                  "values": [
+                    112
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 16,
+              "name": "visual_terrain_heightmap_dims",
+              "decorations": [
+                {
+                  "word": 3339,
+                  "decoration": 35,
+                  "values": [
+                    120
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 17,
+              "name": "rt_bvh_node_count",
+              "decorations": [
+                {
+                  "word": 3344,
+                  "decoration": 35,
+                  "values": [
+                    128
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 18,
+              "name": "rt_triangle_count",
+              "decorations": [
+                {
+                  "word": 3349,
+                  "decoration": 35,
+                  "values": [
+                    132
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

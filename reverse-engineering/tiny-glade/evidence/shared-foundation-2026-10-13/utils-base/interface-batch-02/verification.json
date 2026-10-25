@@ -1,0 +1,144 @@
+{
+  "baseline": "B",
+  "candidate_source_text_claim": false,
+  "commands": [
+    {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "utils",
+        "--locked",
+        "--offline",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "log": "utils-test.log"
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "utils",
+        "--locked",
+        "--offline",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log": "utils-clippy.log"
+    },
+    {
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "utils",
+        "--locked",
+        "--offline",
+        "--all-targets",
+        "--message-format=json"
+      ],
+      "exit_code": 0,
+      "log": "selective-artifacts.log"
+    },
+    {
+      "command": "rustc direct-linked exact workspace serde_json/serde/utils rlibs then run validate_selective.exe",
+      "exit_code": 0,
+      "log": "selective-policy.log"
+    }
+  ],
+  "all_passed": true,
+  "whole_utils_test_count": 54,
+  "spline_actual_max_absolute_errors": {
+    "spline2d_max_coefficient_error": 3.5762787e-07,
+    "spline3d_max_coefficient_error": 4.7683716e-07,
+    "spline_max_position_error": 2.861023e-06,
+    "spline_max_tangent_error": 4.7683716e-07,
+    "periodic_max_coefficient_error": 4.7683716e-07
+  },
+  "source_sha256": {
+    "angle_range.rs": "d24bbecf97ee0b890445dac75c985695ebae074bfc87288f9fee9ff6639cf392",
+    "camera.rs": "d0997f45be9bfa01027e9d2282ef825d708715a8e6c3261645c0fad91489fcb9",
+    "circular_f32.rs": "88e5a2e7901c24c8c2e4364073319abf43e78ef3cb8d9aff891e48d902c04184",
+    "comparative_space.rs": "1e963bba98f35a2f5252d5c69db94ea09c9c8cde6614b26a120d198ca863b0b7",
+    "easing_functions.rs": "fb8011ab85c5e50ed82f2178d385cde3b042aac3550c173af77b96e72289298b",
+    "file.rs": "1c53d1f379c7368dfbc50b89a9d9149c4d780a32c6fb163977dcfafa3fda44e5",
+    "float_grid.rs": "b975bbff901ab153bd20549fe37eed4c9d64b0793987fcd53293c2f05dfbd650",
+    "halver.rs": "10f1569eb954dfece1d7af10a53b01ee896e2e7b11f67072832edbc77ec19e33",
+    "index_condenser.rs": "6f9a86ee03f79b7448a2337542526e6199fa88f78a792b2e6a5994c73168f858",
+    "local_time.rs": "e7987286ead98c76c8fbfad5f527f7c8d5e1ef6666a5e4cf0933c05541748f00",
+    "loop_range.rs": "fdb528c2889f670cc4d28fb4c2321ba9a7c6dd83b082172143c557c6ef9c8891",
+    "name_hash.rs": "4bcb4d8fc8c3a5ef179b669f57d58865caf57394eefd00d880df2a69dfff30c4",
+    "natural_cubic.rs": "8e5a7d62af2846ff5b875299fe89ae0a4f243a6f5743d48d1af542a48180c268",
+    "rdp.rs": "3734f2f03262624dece0620314d2e5aa8d3fb608d8fdd24e2eebb030418c51b1",
+    "rgb9e5.rs": "06063e7fbd43eaf38c5695ff85b1e9a4f87be273ebef060af3b7da8fcbc0b1af",
+    "rng.rs": "07ac85d69572d5257812dabc93db19a90232c08df12d4c5b8b489ac3171ca08e",
+    "selective_deserialize.rs": "f91c7e8beb8f02d01c02f6b24f18ae0c8ccb5a1bac718acce039bfba98beddbb",
+    "subtractive_1d_boolean.rs": "4565b4529dae9aadef75964b9d2b3fae5e18d7f62321362d757abd418664ac2e",
+    "swizzlers.rs": "04924394691bc65e08f23c77532176c99a2febec67a06121a4be2c9fef0f59cf",
+    "threshold_range.rs": "5ca1547b7eaf9487552958e30bd58e23cad75c419aadb0df4445b732410d0579",
+    "timer.rs": "6928585c8d83bb88fb5bae8f8b322d6a4cd4bc60a9fea34cc5f1ce54190d90cf",
+    "wall_space.rs": "3e034065f8b7f7f00a7c7cd9b76f6f0a86ed92be0e957a84725968c7a86a7218"
+  },
+  "scope": "utils top-level business helpers; separate geometry/curve owner tests included in crate test count; no full original game runtime",
+  "spline_metric_scope": "Coefficient maximum accumulates across single-thread fixture tests; final maximum 4.7683716e-7 is exact overall, intermediate test-name keys are cumulative upper bounds for that family. Position/tangent maxima are independently exact across 120 queries each.",
+  "interface_statistics_before": {
+    "observed_private_interfaces": 191,
+    "business_analyzed_partial": 91,
+    "untouched": 100,
+    "candidate_implementation_present": 98,
+    "static_business_compared": 88,
+    "direct_original_entry_differential": 15,
+    "consumer_wired": 1,
+    "excluded_boilerplate_or_unresolved_public_aliases": 7,
+    "private_closures_separate": 35,
+    "known_without_candidate_implementation": 93,
+    "candidate_present_but_original_business_untouched": 7
+  },
+  "interface_statistics_after": {
+    "observed_private_interfaces": 191,
+    "business_analyzed_partial": 99,
+    "untouched": 92,
+    "candidate_implementation_present": 103,
+    "static_business_compared": 96,
+    "direct_original_entry_differential": 20,
+    "consumer_wired": 2,
+    "excluded_boilerplate_or_unresolved_public_aliases": 7,
+    "private_closures_separate": 35,
+    "known_without_candidate_implementation": 88,
+    "candidate_present_but_original_business_untouched": 4,
+    "original_inline_differential": 1
+  },
+  "batch_interfaces_touched": [
+    "utils::index_condenser::Condex::last_known_index",
+    "utils::index_condenser::IndexCondenser::clear",
+    "utils::index_condenser::IndexCondenser::get",
+    "<[glam::f32::vec3::Vec3] as utils::swizzlers::Vec3SliceAs2>::as_vec2",
+    "<glam::f32::vec2::Vec2 as utils::swizzlers::SwizzlerX0Y>::x0y",
+    "<glam::f32::vec2::Vec2 as utils::swizzlers::SwizzlerXVY>::xvy",
+    "<glam::f32::vec3::Vec3 as utils::swizzlers::SwizzlerX0Z>::x0z",
+    "<glam::f32::vec3::Vec3 as utils::swizzlers::SwizzlerXVZ>::xvz"
+  ],
+  "new_original_cases": {
+    "swizzler_coordinate": 256,
+    "swizzler_borrowed_transport_only": 6,
+    "index_get_inline_prefix": 72
+  },
+  "new_candidate_contracts": [
+    "clear preserves capacity and invalidates old keys",
+    "safe borrowed adapter preserves source storage"
+  ],
+  "modified_source_files": {
+    "reconstruction\\shared-foundation\\crates\\utils\\src\\swizzlers.rs": "04924394691bc65e08f23c77532176c99a2febec67a06121a4be2c9fef0f59cf",
+    "reconstruction\\shared-foundation\\crates\\utils\\src\\index_condenser.rs": "6f9a86ee03f79b7448a2337542526e6199fa88f78a792b2e6a5994c73168f858"
+  },
+  "worker": "foundation-utils-base",
+  "database": "D:/game/tools/reverse-runtime/foundation-utils-base/project/TinyGlade.gpr",
+  "full_original_game_or_GPU_runtime": false
+}

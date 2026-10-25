@@ -1,0 +1,532 @@
+{
+  "backend": "reva",
+  "worker": "impl-terrain-deep",
+  "access": "write",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json\nfrom ghidra.program.model.address import AddressSet\n\ndef dump(base, nentries):\n    a = currentProgram.getAddressFactory().getAddress(base)\n    mem = currentProgram.getMemory()\n    out = []\n    for i in range(nentries):\n        b = a.add(i*4)\n        try:\n            v = mem.getInt(b)\n        except Exception:\n            break\n        target = (int(base,16) + v) & 0xffffffffffffffff\n        out.append({\"i\": i, \"rel\": v, \"target_hex\": \"%x\" % target})\n    return out\nprint(json.dumps({\"jt_404c\": dump(\"142ae404c\", 64), \"jt_405c\": dump(\"142ae405c\", 64)}))",
+        "timeoutSeconds": 60
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json\nfrom ghidra.program.model.address import AddressSet\n\ndef dump(base, nentries):\n    a = currentProgram.getAddressFactory().getAddress(base)\n    mem = currentProgram.getMemory()\n    out = []\n    for i in range(nentries):\n        b = a.add(i*4)\n        try:\n            v = mem.getInt(b)\n        except Exception:\n            break\n        target = (int(base,16) + v) & 0xffffffffffffffff\n        out.append({\"i\": i, \"rel\": v, \"target_hex\": \"%x\" % target})\n    return out\nprint(json.dumps({\"jt_404c\": dump(\"142ae404c\", 64), \"jt_405c\": dump(\"142ae405c\", 64)}))",
+        "timeoutSeconds": 60
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"jt_404c\\\": [{\\\"i\\\": 0, \\\"rel\\\": -33507634, \\\"target_hex\\\": \\\"140aef71a\\\"}, {\\\"i\\\": 1, \\\"rel\\\": -33506951, \\\"target_hex\\\": \\\"140aef9c5\\\"}, {\\\"i\\\": 2, \\\"rel\\\": -33506764, \\\"target_hex\\\": \\\"140aefa80\\\"}, {\\\"i\\\": 3, \\\"rel\\\": -33506444, \\\"target_hex\\\": \\\"140aefbc0\\\"}, {\\\"i\\\": 4, \\\"rel\\\": -33504618, \\\"target_hex\\\": \\\"140af02e2\\\"}, {\\\"i\\\": 5, \\\"rel\\\": -33504423, \\\"target_hex\\\": \\\"140af03a5\\\"}, {\\\"i\\\": 6, \\\"rel\\\": -33504536, \\\"target_hex\\\": \\\"140af0334\\\"}, {\\\"i\\\": 7, \\\"rel\\\": -33504423, \\\"target_hex\\\": \\\"140af03a5\\\"}, {\\\"i\\\": 8, \\\"rel\\\": -33504572, \\\"target_hex\\\": \\\"140af0310\\\"}, {\\\"i\\\": 9, \\\"rel\\\": -33504423, \\\"target_hex\\\": \\\"140af03a5\\\"}, {\\\"i\\\": 10, \\\"rel\\\": -33504423, \\\"target_hex\\\": \\\"140af03a5\\\"}, {\\\"i\\\": 11, \\\"rel\\\": -33504423, \\\"target_hex\\\": \\\"140af03a5\\\"}, {\\\"i\\\": 12, \\\"rel\\\": -33504496, \\\"target_hex\\\": \\\"140af035c\\\"}, {\\\"i\\\": 13, \\\"rel\\\": -33504423, \\\"target_hex\\\": \\\"140af03a5\\\"}, {\\\"i\\\": 14, \\\"rel\\\": -33504423, \\\"target_hex\\\": \\\"140af03a5\\\"}, {\\\"i\\\": 15, \\\"rel\\\": -33504464, \\\"target_hex\\\": \\\"140af037c\\\"}, {\\\"i\\\": 16, \\\"rel\\\": 1014763457, \\\"target_hex\\\": \\\"17f2a500d\\\"}, {\\\"i\\\": 17, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 18, \\\"rel\\\": 1014763457, \\\"target_hex\\\": \\\"17f2a500d\\\"}, {\\\"i\\\": 19, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 20, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 21, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 22, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 23, \\\"rel\\\": -1166016512, \\\"target_hex\\\": \\\"fd2e404c\\\"}, {\\\"i\\\": 24, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 25, \\\"rel\\\": -2147483648, \\\"target_hex\\\": \\\"c2ae404c\\\"}, {\\\"i\\\": 26, \\\"rel\\\": -2147483648, \\\"target_hex\\\": \\\"c2ae404c\\\"}, {\\\"i\\\": 27, \\\"rel\\\": 1056964608, \\\"target_hex\\\": \\\"181ae404c\\\"}, {\\\"i\\\": 28, \\\"rel\\\": 1065353216, \\\"target_hex\\\": \\\"1822e404c\\\"}, {\\\"i\\\": 29, \\\"rel\\\": 1006374849, \\\"target_hex\\\": \\\"17eaa500d\\\"}, {\\\"i\\\": 30, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 31, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 32, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 33, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 34, \\\"rel\\\": 1006374849, \\\"target_hex\\\": \\\"17eaa500d\\\"}, {\\\"i\\\": 35, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 36, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 37, \\\"rel\\\": 990906625, \\\"target_hex\\\": \\\"17dbe494d\\\"}, {\\\"i\\\": 38, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 39, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 40, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 41, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 42, \\\"rel\\\": 990906625, \\\"target_hex\\\": \\\"17dbe494d\\\"}, {\\\"i\\\": 43, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 44, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 45, \\\"rel\\\": 1076761723, \\\"target_hex\\\": \\\"182dc54c7\\\"}, {\\\"i\\\": 46, \\\"rel\\\": 1090686812, \\\"target_hex\\\": \\\"183b0cfa8\\\"}, {\\\"i\\\": 47, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 48, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 49, \\\"rel\\\": 1076761723, \\\"target_hex\\\": \\\"182dc54c7\\\"}, {\\\"i\\\": 50, \\\"rel\\\": 1076761723, \\\"target_hex\\\": \\\"182dc54c7\\\"}, {\\\"i\\\": 51, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 52, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 53, \\\"rel\\\": 1090686812, \\\"target_hex\\\": \\\"183b0cfa8\\\"}, {\\\"i\\\": 54, \\\"rel\\\": 1090686812, \\\"target_hex\\\": \\\"183b0cfa8\\\"}, {\\\"i\\\": 55, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 56, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae404c\\\"}, {\\\"i\\\": 57, \\\"rel\\\": 1869833554, \\\"target_hex\\\": \\\"1b221a59e\\\"}, {\\\"i\\\": 58, \\\"rel\\\": 1701016181, \\\"target_hex\\\": \\\"1a811b2c1\\\"}, {\\\"i\\\": 59, \\\"rel\\\": 1701798944, \\\"target_hex\\\": \\\"1a81da46c\\\"}, {\\\"i\\\": 60, \\\"rel\\\": 1869488243, \\\"target_hex\\\": \\\"1b21c60bf\\\"}, {\\\"i\\\": 61, \\\"rel\\\": 2019893364, \\\"target_hex\\\": \\\"1bb1360c0\\\"}, {\\\"i\\\": 62, \\\"rel\\\": 1651798889, \\\"target_hex\\\": \\\"1a522b3b5\\\"}, {\\\"i\\\": 63, \\\"rel\\\": 1601795685, \\\"target_hex\\\": \\\"1a227b6b1\\\"}], \\\"jt_405c\\\": [{\\\"i\\\": 0, \\\"rel\\\": -33504618, \\\"target_hex\\\": \\\"140af02f2\\\"}, {\\\"i\\\": 1, \\\"rel\\\": -33504423, \\\"target_hex\\\": \\\"140af03b5\\\"}, {\\\"i\\\": 2, \\\"rel\\\": -33504536, \\\"target_hex\\\": \\\"140af0344\\\"}, {\\\"i\\\": 3, \\\"rel\\\": -33504423, \\\"target_hex\\\": \\\"140af03b5\\\"}, {\\\"i\\\": 4, \\\"rel\\\": -33504572, \\\"target_hex\\\": \\\"140af0320\\\"}, {\\\"i\\\": 5, \\\"rel\\\": -33504423, \\\"target_hex\\\": \\\"140af03b5\\\"}, {\\\"i\\\": 6, \\\"rel\\\": -33504423, \\\"target_hex\\\": \\\"140af03b5\\\"}, {\\\"i\\\": 7, \\\"rel\\\": -33504423, \\\"target_hex\\\": \\\"140af03b5\\\"}, {\\\"i\\\": 8, \\\"rel\\\": -33504496, \\\"target_hex\\\": \\\"140af036c\\\"}, {\\\"i\\\": 9, \\\"rel\\\": -33504423, \\\"target_hex\\\": \\\"140af03b5\\\"}, {\\\"i\\\": 10, \\\"rel\\\": -33504423, \\\"target_hex\\\": \\\"140af03b5\\\"}, {\\\"i\\\": 11, \\\"rel\\\": -33504464, \\\"target_hex\\\": \\\"140af038c\\\"}, {\\\"i\\\": 12, \\\"rel\\\": 1014763457, \\\"target_hex\\\": \\\"17f2a501d\\\"}, {\\\"i\\\": 13, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 14, \\\"rel\\\": 1014763457, \\\"target_hex\\\": \\\"17f2a501d\\\"}, {\\\"i\\\": 15, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 16, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 17, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 18, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 19, \\\"rel\\\": -1166016512, \\\"target_hex\\\": \\\"fd2e405c\\\"}, {\\\"i\\\": 20, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 21, \\\"rel\\\": -2147483648, \\\"target_hex\\\": \\\"c2ae405c\\\"}, {\\\"i\\\": 22, \\\"rel\\\": -2147483648, \\\"target_hex\\\": \\\"c2ae405c\\\"}, {\\\"i\\\": 23, \\\"rel\\\": 1056964608, \\\"target_hex\\\": \\\"181ae405c\\\"}, {\\\"i\\\": 24, \\\"rel\\\": 1065353216, \\\"target_hex\\\": \\\"1822e405c\\\"}, {\\\"i\\\": 25, \\\"rel\\\": 1006374849, \\\"target_hex\\\": \\\"17eaa501d\\\"}, {\\\"i\\\": 26, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 27, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 28, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 29, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 30, \\\"rel\\\": 1006374849, \\\"target_hex\\\": \\\"17eaa501d\\\"}, {\\\"i\\\": 31, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 32, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 33, \\\"rel\\\": 990906625, \\\"target_hex\\\": \\\"17dbe495d\\\"}, {\\\"i\\\": 34, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 35, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 36, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 37, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 38, \\\"rel\\\": 990906625, \\\"target_hex\\\": \\\"17dbe495d\\\"}, {\\\"i\\\": 39, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 40, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 41, \\\"rel\\\": 1076761723, \\\"target_hex\\\": \\\"182dc54d7\\\"}, {\\\"i\\\": 42, \\\"rel\\\": 1090686812, \\\"target_hex\\\": \\\"183b0cfb8\\\"}, {\\\"i\\\": 43, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 44, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 45, \\\"rel\\\": 1076761723, \\\"target_hex\\\": \\\"182dc54d7\\\"}, {\\\"i\\\": 46, \\\"rel\\\": 1076761723, \\\"target_hex\\\": \\\"182dc54d7\\\"}, {\\\"i\\\": 47, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 48, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 49, \\\"rel\\\": 1090686812, \\\"target_hex\\\": \\\"183b0cfb8\\\"}, {\\\"i\\\": 50, \\\"rel\\\": 1090686812, \\\"target_hex\\\": \\\"183b0cfb8\\\"}, {\\\"i\\\": 51, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 52, \\\"rel\\\": 0, \\\"target_hex\\\": \\\"142ae405c\\\"}, {\\\"i\\\": 53, \\\"rel\\\": 1869833554, \\\"target_hex\\\": \\\"1b221a5ae\\\"}, {\\\"i\\\": 54, \\\"rel\\\": 1701016181, \\\"target_hex\\\": \\\"1a811b2d1\\\"}, {\\\"i\\\": 55, \\\"rel\\\": 1701798944, \\\"target_hex\\\": \\\"1a81da47c\\\"}, {\\\"i\\\": 56, \\\"rel\\\": 1869488243, \\\"target_hex\\\": \\\"1b21c60cf\\\"}, {\\\"i\\\": 57, \\\"rel\\\": 2019893364, \\\"target_hex\\\": \\\"1bb1360d0\\\"}, {\\\"i\\\": 58, \\\"rel\\\": 1651798889, \\\"target_hex\\\": \\\"1a522b3c5\\\"}, {\\\"i\\\": 59, \\\"rel\\\": 1601795685, \\\"target_hex\\\": \\\"1a227b6c1\\\"}, {\\\"i\\\": 60, \\\"rel\\\": 980640613, \\\"target_hex\\\": \\\"17d21a3c1\\\"}, {\\\"i\\\": 61, \\\"rel\\\": 1702257978, \\\"target_hex\\\": \\\"1a824a596\\\"}, {\\\"i\\\": 62, \\\"rel\\\": 976909422, \\\"target_hex\\\": \\\"17ce8b4ca\\\"}, {\\\"i\\\": 63, \\\"rel\\\": 1819045731, \\\"target_hex\\\": \\\"1af1aafbf\\\"}]}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":292}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "get-function-count",
+        "title": "Get Function Count",
+        "description": "Get the total count of functions in the program (use this before calling get-functions to plan pagination)",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "type": "string",
+              "description": "Path in the Ghidra Project to the program to get functions from"
+            },
+            "filterDefaultNames": {
+              "type": "boolean",
+              "default": true,
+              "description": "Whether to filter out default Ghidra generated names like FUN_, DAT_, etc."
+            }
+          },
+          "required": [
+            "programPath"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "set-function-prototype",
+        "title": "Set Function Prototype",
+        "description": "Set or update a function prototype using C-style function signatures. Can create new functions or update existing ones.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "type": "string",
+              "description": "Path in the Ghidra Project to the program"
+            },
+            "signature": {
+              "type": "string",
+              "description": "C-style function signature (e.g., 'int main(int argc, char** argv)')"
+            },
+            "location": {
+              "type": "string",
+              "description": "Address or symbol name where the function is located"
+            },
+            "createIfNotExists": {
+              "type": "boolean",
+              "default": true,
+              "description": "Create function if it doesn't exist at the location"
+            }
+          },
+          "required": [
+            "programPath",
+            "location",
+            "signature"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get-decompilation",
+        "title": "Get Function Decompilation",
+        "description": "Get decompiled code for a function with line range support. Defaults to 50 lines to conserve context - start with small chunks (10-20 lines) then expand as needed using offset/limit. Updating variable data types and names can significantly improve decompilation quality. Use includeCallers/includeCallees to get caller/callee lists in one call (avoids separate tool invocations).",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "functionNameOrAddress": {
+              "type": "string",
+              "description": "Function name, address, or symbol to decompile (e.g. 'main', '0x00401000', or 'start'). For addresses pointing inside a function, the containing function will be decompiled."
+            },
+            "includeCallers": {
+              "type": "boolean",
+              "default": false,
+              "description": "Include list of functions that call this one (name, address, signature). Use for understanding function usage without bulk decompilation."
+            },
+            "programPath": {
+              "type": "string",
+              "description": "Path in the Ghidra Project to the program containing the function"
+            },
+            "offset": {
+              "type": "integer",
+              "default": 1,
+              "description": "Line number to start reading from (1-based). Defaults to 1."
+            },
+            "includeDisassembly": {
+              "type": "boolean",
+              "default": false,
+              "description": "Whether to include assembly listing alongside decompilation for sync"
+            },
+            "includeIncomingReferences": {
+              "type": "boolean",
+              "default": false,
+              "description": "Whether to include incoming cross references to this function on the function declaration line"
+            },
+            "limit": {
+              "type": "integer",
+              "default": 50,
+              "description": "Number of lines to return. Defaults to 50 lines to conserve context. Use smaller chunks (10-20 lines) for initial exploration, then expand as needed."
+            },
+            "includeReferenceContext": {
+              "type": "boolean",
+              "default": false,
+              "description": "Whether to include code context snippets from calling functions (requires includeIncomingReferences)"
+            },
+            "includeComments": {
+              "type": "boolean",
+              "default": false,
+              "description": "Whether to include comments in the decompilation output"
+            },
+            "includeCallees": {
+              "type": "boolean",
+              "default": false,
+              "description": "Include list of functions this one calls (name, address, signature). Use for understanding function dependencies without bulk decompilation."
+            },
+            "signatureOnly": {
+              "type": "boolean",
+              "default": false,
+              "description": "Return only signature/metadata without decompiled code. Saves output tokens."
+            }
+          },
+          "required": [
+            "programPath",
+            "functionNameOrAddress"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find-cross-references",
+        "title": "Find Cross References",
+        "description": "Find all references to or from a memory location, symbol, or function. Returns incoming and/or outgoing references with optional decompilation context.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "includeContext": {
+              "type": "boolean",
+              "default": false,
+              "description": "Include decompilation context snippets for code references"
+            },
+            "contextLines": {
+              "type": "integer",
+              "default": 2,
+              "description": "Number of lines before and after to include in context snippets"
+            },
+            "programPath": {
+              "type": "string",
+              "description": "Path in the Ghidra Project to the program to get references from"
+            },
+            "offset": {
+              "type": "integer",
+              "default": 0,
+              "description": "Starting offset for pagination (0-based)"
+            },
+            "includeFlow": {
+              "type": "boolean",
+              "default": true,
+              "description": "Include flow references (calls, jumps, branches)"
+            },
+            "limit": {
+              "type": "integer",
+              "default": 100,
+              "description": "Maximum number of references to return per direction"
+            },
+            "location": {
+              "type": "string",
+              "description": "Address or symbol name to get references for (e.g., '0x00400123', 'main', 'FUN_00401000')"
+            },
+            "includeData": {
+              "type": "boolean",
+              "default": true,
+              "description": "Include data references (reads, writes)"
+            },
+            "direction": {
+              "description": "Direction of references to retrieve: 'to' (incoming), 'from' (outgoing), or 'both' (default)",
+              "default": "both",
+              "type": "string",
+              "enum": [
+                "to",
+                "from",
+                "both"
+              ]
+            }
+          },
+          "required": [
+            "programPath",
+            "location"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get-data-type-by-string",
+        "title": "Get Data Type by String",
+        "description": "Get a data type by its string representation",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "type": "string",
+              "description": "Path in the Ghidra Project to the program"
+            },
+            "dataTypeString": {
+              "type": "string",
+              "description": "String representation of the data type (e.g., 'char**', 'int[10]')"
+            },
+            "archiveName": {
+              "type": "string",
+              "default": "",
+              "description": "Optional name of the data type archive to search in. If not provided, all archives will be searched."
+            }
+          },
+          "required": [
+            "programPath",
+            "dataTypeString"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "run-script",
+        "title": "Run Python Script",
+        "description": "Execute a Python script in the Ghidra PyGhidra runtime against a specific program. Requires Ghidra to be launched via PyGhidra (mcp-reva or pyghidra-gui). Returns captured stdout/stderr, duration, and timeout flag. Script failures appear in stderr with success=false; tool failures (bad args, PyGhidra unavailable) are MCP errors. Cancellation is cooperative: long-running scripts should periodically check monitor.isCancelled() so the timeout can fire on tight loops.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "type": "string",
+              "description": "Absolute path to an existing .py script to run."
+            },
+            "programPath": {
+              "type": "string",
+              "description": "Path to the program in the Ghidra Project"
+            },
+            "code": {
+              "type": "string",
+              "description": "Inline Python source. The script runs as a Ghidra script with currentProgram, FlatProgramAPI helpers, and monitor available. Wrap state changes in currentProgram.startTransaction(...) / endTransaction(...) yourself \u2014 the tool does not open a transaction. Provide exactly one of: code, scriptPath, scriptName."
+            },
+            "scriptName": {
+              "type": "string",
+              "description": "Name of a script (e.g., 'MyAnalysis.py') resolved across registered Ghidra script directories."
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "default": 60,
+              "description": "Per-call timeout override in seconds. Defaults to the configured script timeout."
+            }
+          },
+          "required": [
+            "programPath"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list-scripts",
+        "title": "List Scripts",
+        "description": "List Python scripts visible to Ghidra across all registered script directories (user dir + system dirs + bundle dirs). Filterable by path or name; supports pagination.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "pathFilter": {
+              "type": "string",
+              "default": "",
+              "description": "Optional substring filter on script absolute path"
+            },
+            "startIndex": {
+              "type": "integer",
+              "default": 0,
+              "description": "Pagination start (0-indexed)"
+            },
+            "nameFilter": {
+              "type": "string",
+              "default": "",
+              "description": "Optional substring filter on script file name"
+            },
+            "maxCount": {
+              "type": "integer",
+              "default": 100,
+              "description": "Maximum entries to return"
+            }
+          },
+          "required": []
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read-script",
+        "title": "Read Script",
+        "description": "Read a script's source, returned with cat -n style line numbers so you can reference exact lines in edit-script. Supports chunked reads via offset/limit. Sets truncated=true if more lines remain.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "type": "string",
+              "description": "Absolute path to the script. Provide either scriptPath or scriptName."
+            },
+            "offset": {
+              "type": "integer",
+              "default": 1,
+              "description": "1-indexed starting line"
+            },
+            "limit": {
+              "type": "integer",
+              "default": 2000,
+              "description": "Maximum lines to return"
+            },
+            "scriptName": {
+              "type": "string",
+              "description": "Script file name resolved across registered script directories."
+            }
+          },
+          "required": []
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "write-script",
+        "title": "Write Script",
+        "description": "Create a new script or fully replace an existing one in a writeable script directory. System directories are read-only. Use edit-script for targeted changes instead of full rewrites.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "type": "string",
+              "description": "Absolute path; must resolve under a writeable script directory."
+            },
+            "code": {
+              "type": "string",
+              "description": "Script source to write."
+            },
+            "scriptName": {
+              "type": "string",
+              "description": "File name (e.g., 'MyAnalysis.py') \u2014 written to the default writeable scripts directory."
+            },
+            "overwrite": {
+              "type": "boolean",
+              "default": false,
+              "description": "Overwrite existing file. Default false: errors if file exists."
+            }
+          },
+          "required": [
+            "code"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "edit-script",
+        "title": "Edit Script",
+        "description": "Replace exact old_string with new_string in a script. Errors if old_string isn't found, or if it matches multiple locations and replace_all is false. Use this instead of write-script when iterating on an existing script.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "type": "string",
+              "description": "Absolute path to the script to edit (must be writeable)."
+            },
+            "old_string": {
+              "type": "string",
+              "description": "Exact text to find. Must occur exactly once unless replace_all is true; surround with enough context to make it unique."
+            },
+            "scriptName": {
+              "type": "string",
+              "description": "Script file name resolved under the default writeable scripts directory."
+            },
+            "replace_all": {
+              "type": "boolean",
+              "default": false,
+              "description": "Replace every occurrence. Default false: errors if old_string matches more than one location."
+            },
+            "new_string": {
+              "type": "string",
+              "description": "Replacement text. Must differ from old_string."
+            }
+          },
+          "required": [
+            "old_string",
+            "new_string"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

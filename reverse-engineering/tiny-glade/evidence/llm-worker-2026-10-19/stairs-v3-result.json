@@ -1,0 +1,378 @@
+{
+  "id": "B-replay-stairs-long-v3-template-disabled",
+  "input_sha256": "a8fbe46516924834799c4c98e50c2db4f677c0790a23cd7d4a50f9518fa09a8d",
+  "prompt_sha256": "540f7ee88ebd8b85f97fbbc08cb5ae883322f23aa4271a98b66a6cf282ff0a41",
+  "packet_sha256": "6ad2146b88b68b736c479aef9009d1396fd2086777c7617793b6e255dec76624",
+  "model": "deepseek-ai/DeepSeek-V4.1-Flash",
+  "endpoint_origin": "https://it-litellm.espressif.cn",
+  "request_options": {
+    "max_tokens": 7000,
+    "thinking": "template-disabled"
+  },
+  "elapsed_seconds": 27.139,
+  "finish_reason": "stop",
+  "usage": {
+    "completion_tokens": 3726,
+    "prompt_tokens": 15715,
+    "total_tokens": 19441,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    }
+  },
+  "accepted_transport": true,
+  "semantically_verified": false,
+  "validation_errors": [],
+  "analysis": {
+    "summary": "Observed entry guard on a container count, selection of a sorted/unsorted element slice, per-record key lookup in two hash-backed maps, float ratio comparison against constant 0.05, emission into param_4/param_5-backed collections, and drop/removal loop with per-variant decrement. Unresolved callee meanings and NaN handling.",
+    "observations": [
+      {
+        "id": "O1",
+        "claim": "observed: entry writes param_1[2] from param_1+0x1c, reads fVar3 from *(param_1[0][5]) and returns immediately when param_1[0][3]==0; constant fVar22 loaded from 0x142930d70 equals 0.05f per C1.",
+        "refs": [
+          "D1:L114-L120",
+          "C1:L1"
+        ]
+      },
+      {
+        "id": "O2",
+        "claim": "observed: two structurally identical record-processing blocks share the same layout (0x30-byte stride iteration, lookup at FUN_140a1c930(uVar6,key@+4), tag byte compare at +0x1c, hash-probe loop at FUN_1405b0ed0, joint join points) differing only in which param map is descended/updated first.",
+        "refs": [
+          "D1:L131-L354",
+          "D1:L357-L497"
+        ]
+      },
+      {
+        "id": "O3",
+        "claim": "observed: a '\\n'-tag branch and a float-branch share the emission epilogue (stores into lVar8+0x28 array at 0x38 stride and increments two counters at lVar8+0x30/+0x40).",
+        "refs": [
+          "D1:L183-L217",
+          "D1:L335-L351",
+          "D1:L499-L517"
+        ]
+      },
+      {
+        "id": "O4",
+        "claim": "inferred: FUN_1406319d0 called when lVar35 == *(lVar8+0x20) is a container growth/reserve; inferred: FUN_140b81df0 with UNK_142ae53c8/UNK_142ae53e0 is a Vec push (two const pool addresses → likely two distinct push helpers).",
+        "refs": [
+          "D1:L187-L188",
+          "D1:L331-L332",
+          "D1:L347-L349",
+          "D1:L494-L495"
+        ]
+      },
+      {
+        "id": "O5",
+        "claim": "observed: post-loop removal drains index list in reverse, calls func_0x000142923c10 (memmove-like) with (~idx+len)*0x30 and decrements (lVar25+0x10); then a switch on packet tag (uStack_118) performs variant-specific Arc/strong-count decrement and calls drop helpers; S1 identifies only 0x140891eb0 as WallReplayCmd drop_in_place.",
+        "refs": [
+          "D1:L520-L700",
+          "S1:L1-L6"
+        ]
+      },
+      {
+        "id": "O6",
+        "claim": "observed: iteration terminated at pcVar5 + lVar37*0x30 with break at D1:L180; lVar37 originally derived from (puVar33[2]-uVar28)*0x40 at L123-L132 — stride/index scaling unresolved.",
+        "refs": [
+          "D1:L123-L132",
+          "D1:L175-L181"
+        ]
+      }
+    ],
+    "branch_matrix": [
+      {
+        "condition": "puVar33[3] == 0",
+        "effect": "early return, no writes after L116",
+        "refs": [
+          "D1:L118-L120"
+        ]
+      },
+      {
+        "condition": "puVar33[2] < *puVar33",
+        "effect": "uVar28 = 0 else *puVar33",
+        "refs": [
+          "D1:L123-L125"
+        ]
+      },
+      {
+        "condition": "(char)*puStack_b8 == '\\n' AND (*(byte)(puStack_b8+8) & 1) == 0",
+        "effect": "record branch A; enters hash lookup at FUN_140a1c930(uVar6,*(u32)(lVar35+4))",
+        "refs": [
+          "D1:L183-L196",
+          "D1:L209-L213"
+        ]
+      },
+      {
+        "condition": "(*(byte)(*(longlong)(pcStack_a8+0x10)+0x10) & 1) == 0 (tag-branch variant)",
+        "effect": "goto code_r0x000140af77bd path; same lookup/emit routine",
+        "refs": [
+          "D1:L192-L193",
+          "D1:L353-L355"
+        ]
+      },
+      {
+        "condition": "lVar26 == 0 (lookup miss) OR 0xf9 < (*(byte)(lVar26+0x41) | 0xf8)",
+        "effect": "puVar31 = 0 → uVar67=uVar68=0 at join",
+        "refs": [
+          "D1:L196-L205",
+          "D1:L317-L324",
+          "D1:L357-L366",
+          "D1:L479-L486"
+        ]
+      },
+      {
+        "condition": "pcStack_a8[0x1c] == 0",
+        "effect": "calls FUN_1405b1be0+FUN_140b76ce0 (block1) OR FUN_1402c8640 (block2, reversed order) — same two helpers with swapped branch mapping",
+        "refs": [
+          "D1:L208-L213",
+          "D1:L369-L374"
+        ]
+      },
+      {
+        "condition": "plStack_b0[3] != 0",
+        "effect": "hash-probe loop via FUN_1405b0ed0; inner match *(int)(lVar35+ -0x40 + uVar38* -0x40)==iVar4 → join with stored slots/keys",
+        "refs": [
+          "D1:L218-L276",
+          "D1:L379-L437"
+        ]
+      },
+      {
+        "condition": "no probe match after all candidates; compares key against cVar55..cVar66 constructed from unaff_XMM8 registers (compiler artifact)",
+        "effect": "break out; uStack_a0/uStack_98 zeroed at L313-L315/L474-L476",
+        "refs": [
+          "D1:L281-L315",
+          "D1:L442-L476"
+        ]
+      },
+      {
+        "condition": "(char)puStack_b8 not '\\n': fVar17 = *(f32)(puStack_b8+0xc)/fVar3 ; fVar17 = (ratio <= fVar22)?fVar22:ratio",
+        "effect": "NaN if fVar3==0 or ratio NaN → comparison false → keeps ratio; explicit semantics preserved (not max)",
+        "refs": [
+          "D1:L336-L339"
+        ]
+      },
+      {
+        "condition": "*(f32)(puStack_b8+0x18) <= fVar17",
+        "effect": "accumulate: *(f32)(puStack_b8+0x18) += *(f32)(lVar34+0x28); goto code_r0x000140af7722",
+        "refs": [
+          "D1:L340-L343"
+        ]
+      },
+      {
+        "condition": "*(f32)(puStack_b8+0x18) > fVar17",
+        "effect": "apply increment then go through full emit path; if detail-bit set branch order flips",
+        "refs": [
+          "D1:L345-L354"
+        ]
+      },
+      {
+        "condition": "lVar35 == *(longlong)(lVar8+0x20)",
+        "effect": "FUN_1406319d0(lVar8+0x20) (container grow)",
+        "refs": [
+          "D1:L331-L333",
+          "D1:L494-L496"
+        ]
+      },
+      {
+        "condition": "emission: writes (lVar26+lVar30) record with tag, 0x30-byte payload, +0x30=1 marker; lVar8+0x30 += 1; lVar8+0x40 += 1",
+        "effect": "commits record and advances counters",
+        "refs": [
+          "D1:L499-L527"
+        ]
+      },
+      {
+        "condition": "uStack_c0 > 1 end-of-loop: reverse the accumulated index list (hand-unrolled half-swap when uStack_c0>=8)",
+        "effect": "prepares reverse-order removal",
+        "refs": [
+          "D1:L520-L565"
+        ]
+      },
+      {
+        "condition": "uVar41 index >= len (uVar28)",
+        "effect": "FUN_1428d90e9 panic-like; no return path (invalidInstructionException)",
+        "refs": [
+          "D1:L574-L580"
+        ]
+      },
+      {
+        "condition": "plStack_b0 != 0 (allocated index buffer)",
+        "effect": "func_0x000140613c20(puStack_b8,len<<3,8) — dealloc; return",
+        "refs": [
+          "D1:L699-L702"
+        ]
+      }
+    ],
+    "side_effects": [
+      {
+        "order": 1,
+        "effect": "observed: *(u32)param_1[2] = *(u32)((char*)param_1+0x1c) — early output write before guard",
+        "refs": [
+          "D1:L116"
+        ]
+      },
+      {
+        "order": 2,
+        "effect": "inferred: Vec pushes into stack-local index buffer via FUN_140b81df0 with pool tag UNK_142ae53c8 / UNK_142ae53e0",
+        "refs": [
+          "D1:L187-L190",
+          "D1:L347-L350"
+        ]
+      },
+      {
+        "order": 3,
+        "effect": "observed: *puVar7 = uStack_d8 (param_3 +0x1c spill) ; *puVar9 = uStack_d4 (param_4 +0x1c spill) at both blocks",
+        "refs": [
+          "D1:L207",
+          "D1:L327",
+          "D1:L368",
+          "D1:L489"
+        ]
+      },
+      {
+        "order": 4,
+        "effect": "observed: writes *(f32)(puStack_b8+0x18) in the fast/mid branch, i.e. mutates the candidate record in place",
+        "refs": [
+          "D1:L340-L343",
+          "D1:L351"
+        ]
+      },
+      {
+        "order": 5,
+        "effect": "observed: emits a 0x38-byte record into lVar8+0x28 array with tag byte at +8 and matches via lVar8+0x30/+0x40 counters",
+        "refs": [
+          "D1:L499-L517"
+        ]
+      },
+      {
+        "order": 6,
+        "effect": "observed: reverse-index removal; func_0x000142923c10 memmove of remaining tail; (lVar25+0x10) -= 1; per-tag atomic decrement + variant-specific drop call",
+        "refs": [
+          "D1:L600-L695"
+        ]
+      },
+      {
+        "order": 7,
+        "effect": "observed: frees index buffer if plStack_b0 != 0; returns",
+        "refs": [
+          "D1:L699-L702"
+        ]
+      }
+    ],
+    "dependency_reuse": [
+      {
+        "operation": "hashbrown SwissTable probe (FUN_1405b0ed0 hash + 16-lane byte compare + h2 match)",
+        "game_policy_to_preserve": "missing key ⇒ puVar31=0 ⇒ (uVar67,uVar68)=(0,0) is written into emitted record; do not hint default",
+        "refs": [
+          "D1:L218-L324",
+          "D1:L379-L486"
+        ]
+      },
+      {
+        "operation": "FUN_140a1c930 raw-map lookup returning (ptr+0x30, tag byte +0x41 masked with 0xf8 > 0xf9 ⇒ null)",
+        "game_policy_to_preserve": "variant tag discriminates payload ownership and drop path; null and out-of-range both map to zero-fill, not skip",
+        "refs": [
+          "D1:L196-L205",
+          "D1:L357-L366"
+        ]
+      },
+      {
+        "operation": "f32 ratio vs _UNK_142930d70 (0.05f) with <= comparison",
+        "game_policy_to_preserve": "preserve source-order compare (ratio <= const); if ratio is NaN the ≤ is false → ratio kept; treat ++ as in-place +0x28 delta, not a clamp",
+        "refs": [
+          "D1:L336-L342",
+          "C1:L1"
+        ]
+      },
+      {
+        "operation": "record removal via memmove + atomic refcount decrement + variant drop (S1: 0x140891eb0 = WallReplayCmd)",
+        "game_policy_to_preserve": "per-variant decrement is unconditional; only when *plVar24==0 does the drop call fire; ordered removal preserved by the reverse-index drain",
+        "refs": [
+          "S1:L1-L6",
+          "D1:L600-L695"
+        ]
+      }
+    ],
+    "unknowns": [
+      {
+        "question": "What type/role is param_2 (lVar34 = *param_2) whose +0x28 f32 is added to records — accumulator, delta, or config?",
+        "needed_evidence": "Cross-read callers of 0x140af75b0 and the type layout of fields param_2[0]+0x28; no such packet data supplied",
+        "refs": [
+          "D1:L133-L134",
+          "D1:L342",
+          "D1:L351"
+        ]
+      },
+      {
+        "question": "Are the unaff_XMM8_Ba..Bp compares (CONCAT'd equality at L142-L169) a genuine compiler artifact of a 16-byte key equality, and does the cVar55..cVar66 recompute preserve semantics?",
+        "needed_evidence": "Instruction bytes 0x140af76fa..0x140af771f from fresh original; not supplied",
+        "refs": [
+          "D1:L142-L169",
+          "D1:L281-L308"
+        ]
+      },
+      {
+        "question": "Which concrete container is lVar8 (array at +0x28, stride 0x38, counters at +0x30/+0x40, grow at +0x20)?",
+        "needed_evidence": "Builder-symbol or calling-site evidence for lVar8 in callers; not supplied",
+        "refs": [
+          "D1:L328-L333",
+          "D1:L499-L517"
+        ]
+      },
+      {
+        "question": "Meaning of func_0x000142923c10, func_0x000140613c20, FUN_140b81df0, FUN_1406319d0, FUN_1405b1be0, FUN_140b76ce0, FUN_1402c8640",
+        "needed_evidence": "PDB public labels in other retained symbol dumps; not supplied here (only S1 window)",
+        "refs": [
+          "D1:L188-L213",
+          "D1:L332",
+          "D1:L348",
+          "D1:L370-L374",
+          "D1:L495",
+          "D1:L600",
+          "D1:L700"
+        ]
+      },
+      {
+        "question": "Is the initial '\n'-bestruct tag byte (puStack_b8+8 & 1) a payload ownership discriminant vs a replay-op flag?",
+        "needed_evidence": "Type definition of the 0x30-byte record; not supplied",
+        "refs": [
+          "D1:L184",
+          "D1:L192"
+        ]
+      },
+      {
+        "question": "Iteration stride: is lVar37 re-used as count (L180) after being multiply-reassigned at L126-L132 — connect the pcVar5 slice length to the record count?",
+        "needed_evidence": "Raw machine trace or caller-fed lengths; only static text supplied",
+        "refs": [
+          "D1:L126-L132",
+          "D1:L180"
+        ]
+      }
+    ],
+    "integration_checks": [
+      "Confirm 0x140af75b0 is called with param_2[0]+0x28 present (delta f32); do not substitute a default if absent.",
+      "Confirm both param maps (param_3 and param_4) accept the uStack_d8/uStack_d4 spill writes; missing key semantics must match (zero-fill, not skip).",
+      "Verify that the emitted record's tag byte (case values 0..9, default) matches the WallReplayCmd variant enum order, since S1 only pins variant 0x140891eb0 at index 4 (case 4).",
+      "Check callers treat write of *(f32)(record+0x18) as a saturating/increase-only accumulator (float add), not a clamp — NaN/Inf deltas must propagate.",
+      "Check that the index buffer free at L699-L702 is unconditionally after all emissions (do not early-exit on panic at L576)."
+    ],
+    "independent_followups": [
+      {
+        "task": "Resolve semantic labels for the helper call sites by scanning other retained symbol dumps for these VAs: 0x1405b1be0, 0x140b76ce0, 0x1402c8640, 0x140a1c930, 0x1405b0ed0, 0x1406319d0, 0x140b81df0, 0x142923c10, 0x140613c20, 0x1428d90e9.",
+        "input_needed": "PDB public-symbol JSON covering the full program range (not just the S1 window).",
+        "output_contract": "{va, qualified_name, inference_confidence} list; no code changes.",
+        "depends_on": "S1"
+      },
+      {
+        "task": "Decode the CONCAT'd key-equality region 0x140af76fa..0x140af771f from fresh original bytes to separate real comparisons from decompiler artifacts.",
+        "input_needed": "Hex bytes for VA range 0x140af7630..0x140af7760 and disassembly; only C1:hash-note present.",
+        "output_contract": "{bytes, mnemonics, whether_redundant:bool, implied_key_width}.",
+        "depends_on": "C1"
+      },
+      {
+        "task": "Confirm f32 behavior of the ratio/const comparison region including NaN/Inf: 0x140af7722..0x140af7780, ensuring it is not compiler-optimized comparator.",
+        "input_needed": "Hex bytes and disassembly for that range (not just hash equality).",
+        "output_contract": "{cmp_instruction, operand_order, nan_result, reported vs D1:L337-L339}.",
+        "depends_on": "C1"
+      }
+    ]
+  },
+  "content": "{\"summary\":\"Observed entry guard on a container count, selection of a sorted/unsorted element slice, per-record key lookup in two hash-backed maps, float ratio comparison against constant 0.05, emission into param_4/param_5-backed collections, and drop/removal loop with per-variant decrement. Unresolved callee meanings and NaN handling.\",\"observations\":[{\"id\":\"O1\",\"claim\":\"observed: entry writes param_1[2] from param_1+0x1c, reads fVar3 from *(param_1[0][5]) and returns immediately when param_1[0][3]==0; constant fVar22 loaded from 0x142930d70 equals 0.05f per C1.\",\"refs\":[\"D1:L114-L120\",\"C1:L1\"]},{\"id\":\"O2\",\"claim\":\"observed: two structurally identical record-processing blocks share the same layout (0x30-byte stride iteration, lookup at FUN_140a1c930(uVar6,key@+4), tag byte compare at +0x1c, hash-probe loop at FUN_1405b0ed0, joint join points) differing only in which param map is descended/updated first.\",\"refs\":[\"D1:L131-L354\",\"D1:L357-L497\"]},{\"id\":\"O3\",\"claim\":\"observed: a '\\\\n'-tag branch and a float-branch share the emission epilogue (stores into lVar8+0x28 array at 0x38 stride and increments two counters at lVar8+0x30/+0x40).\",\"refs\":[\"D1:L183-L217\",\"D1:L335-L351\",\"D1:L499-L517\"]},{\"id\":\"O4\",\"claim\":\"inferred: FUN_1406319d0 called when lVar35 == *(lVar8+0x20) is a container growth/reserve; inferred: FUN_140b81df0 with UNK_142ae53c8/UNK_142ae53e0 is a Vec push (two const pool addresses → likely two distinct push helpers).\",\"refs\":[\"D1:L187-L188\",\"D1:L331-L332\",\"D1:L347-L349\",\"D1:L494-L495\"]},{\"id\":\"O5\",\"claim\":\"observed: post-loop removal drains index list in reverse, calls func_0x000142923c10 (memmove-like) with (~idx+len)*0x30 and decrements (lVar25+0x10); then a switch on packet tag (uStack_118) performs variant-specific Arc/strong-count decrement and calls drop helpers; S1 identifies only 0x140891eb0 as WallReplayCmd drop_in_place.\",\"refs\":[\"D1:L520-L700\",\"S1:L1-L6\"]},{\"id\":\"O6\",\"claim\":\"observed: iteration terminated at pcVar5 + lVar37*0x30 with break at D1:L180; lVar37 originally derived from (puVar33[2]-uVar28)*0x40 at L123-L132 — stride/index scaling unresolved.\",\"refs\":[\"D1:L123-L132\",\"D1:L175-L181\"]}],\"branch_matrix\":[{\"condition\":\"puVar33[3] == 0\",\"effect\":\"early return, no writes after L116\",\"refs\":[\"D1:L118-L120\"]},{\"condition\":\"puVar33[2] < *puVar33\",\"effect\":\"uVar28 = 0 else *puVar33\",\"refs\":[\"D1:L123-L125\"]},{\"condition\":\"(char)*puStack_b8 == '\\\\n' AND (*(byte)(puStack_b8+8) & 1) == 0\",\"effect\":\"record branch A; enters hash lookup at FUN_140a1c930(uVar6,*(u32)(lVar35+4))\",\"refs\":[\"D1:L183-L196\",\"D1:L209-L213\"]},{\"condition\":\"(*(byte)(*(longlong)(pcStack_a8+0x10)+0x10) & 1) == 0 (tag-branch variant)\",\"effect\":\"goto code_r0x000140af77bd path; same lookup/emit routine\",\"refs\":[\"D1:L192-L193\",\"D1:L353-L355\"]},{\"condition\":\"lVar26 == 0 (lookup miss) OR 0xf9 < (*(byte)(lVar26+0x41) | 0xf8)\",\"effect\":\"puVar31 = 0 → uVar67=uVar68=0 at join\",\"refs\":[\"D1:L196-L205\",\"D1:L317-L324\",\"D1:L357-L366\",\"D1:L479-L486\"]},{\"condition\":\"pcStack_a8[0x1c] == 0\",\"effect\":\"calls FUN_1405b1be0+FUN_140b76ce0 (block1) OR FUN_1402c8640 (block2, reversed order) — same two helpers with swapped branch mapping\",\"refs\":[\"D1:L208-L213\",\"D1:L369-L374\"]},{\"condition\":\"plStack_b0[3] != 0\",\"effect\":\"hash-probe loop via FUN_1405b0ed0; inner match *(int)(lVar35+ -0x40 + uVar38* -0x40)==iVar4 → join with stored slots/keys\",\"refs\":[\"D1:L218-L276\",\"D1:L379-L437\"]},{\"condition\":\"no probe match after all candidates; compares key against cVar55..cVar66 constructed from unaff_XMM8 registers (compiler artifact)\",\"effect\":\"break out; uStack_a0/uStack_98 zeroed at L313-L315/L474-L476\",\"refs\":[\"D1:L281-L315\",\"D1:L442-L476\"]},{\"condition\":\"(char)puStack_b8 not '\\\\n': fVar17 = *(f32)(puStack_b8+0xc)/fVar3 ; fVar17 = (ratio <= fVar22)?fVar22:ratio\",\"effect\":\"NaN if fVar3==0 or ratio NaN → comparison false → keeps ratio; explicit semantics preserved (not max)\",\"refs\":[\"D1:L336-L339\"]},{\"condition\":\"*(f32)(puStack_b8+0x18) <= fVar17\",\"effect\":\"accumulate: *(f32)(puStack_b8+0x18) += *(f32)(lVar34+0x28); goto code_r0x000140af7722\",\"refs\":[\"D1:L340-L343\"]},{\"condition\":\"*(f32)(puStack_b8+0x18) > fVar17\",\"effect\":\"apply increment then go through full emit path; if detail-bit set branch order flips\",\"refs\":[\"D1:L345-L354\"]},{\"condition\":\"lVar35 == *(longlong)(lVar8+0x20)\",\"effect\":\"FUN_1406319d0(lVar8+0x20) (container grow)\",\"refs\":[\"D1:L331-L333\",\"D1:L494-L496\"]},{\"condition\":\"emission: writes (lVar26+lVar30) record with tag, 0x30-byte payload, +0x30=1 marker; lVar8+0x30 += 1; lVar8+0x40 += 1\",\"effect\":\"commits record and advances counters\",\"refs\":[\"D1:L499-L527\"]},{\"condition\":\"uStack_c0 > 1 end-of-loop: reverse the accumulated index list (hand-unrolled half-swap when uStack_c0>=8)\",\"effect\":\"prepares reverse-order removal\",\"refs\":[\"D1:L520-L565\"]},{\"condition\":\"uVar41 index >= len (uVar28)\",\"effect\":\"FUN_1428d90e9 panic-like; no return path (invalidInstructionException)\",\"refs\":[\"D1:L574-L580\"]},{\"condition\":\"plStack_b0 != 0 (allocated index buffer)\",\"effect\":\"func_0x000140613c20(puStack_b8,len<<3,8) — dealloc; return\",\"refs\":[\"D1:L699-L702\"]}],\"side_effects\":[{\"order\":1,\"effect\":\"observed: *(u32)param_1[2] = *(u32)((char*)param_1+0x1c) — early output write before guard\",\"refs\":[\"D1:L116\"]},{\"order\":2,\"effect\":\"inferred: Vec pushes into stack-local index buffer via FUN_140b81df0 with pool tag UNK_142ae53c8 / UNK_142ae53e0\",\"refs\":[\"D1:L187-L190\",\"D1:L347-L350\"]},{\"order\":3,\"effect\":\"observed: *puVar7 = uStack_d8 (param_3 +0x1c spill) ; *puVar9 = uStack_d4 (param_4 +0x1c spill) at both blocks\",\"refs\":[\"D1:L207\",\"D1:L327\",\"D1:L368\",\"D1:L489\"]},{\"order\":4,\"effect\":\"observed: writes *(f32)(puStack_b8+0x18) in the fast/mid branch, i.e. mutates the candidate record in place\",\"refs\":[\"D1:L340-L343\",\"D1:L351\"]},{\"order\":5,\"effect\":\"observed: emits a 0x38-byte record into lVar8+0x28 array with tag byte at +8 and matches via lVar8+0x30/+0x40 counters\",\"refs\":[\"D1:L499-L517\"]},{\"order\":6,\"effect\":\"observed: reverse-index removal; func_0x000142923c10 memmove of remaining tail; (lVar25+0x10) -= 1; per-tag atomic decrement + variant-specific drop call\",\"refs\":[\"D1:L600-L695\"]},{\"order\":7,\"effect\":\"observed: frees index buffer if plStack_b0 != 0; returns\",\"refs\":[\"D1:L699-L702\"]}],\"dependency_reuse\":[{\"operation\":\"hashbrown SwissTable probe (FUN_1405b0ed0 hash + 16-lane byte compare + h2 match)\",\"game_policy_to_preserve\":\"missing key ⇒ puVar31=0 ⇒ (uVar67,uVar68)=(0,0) is written into emitted record; do not hint default\",\"refs\":[\"D1:L218-L324\",\"D1:L379-L486\"]},{\"operation\":\"FUN_140a1c930 raw-map lookup returning (ptr+0x30, tag byte +0x41 masked with 0xf8 > 0xf9 ⇒ null)\",\"game_policy_to_preserve\":\"variant tag discriminates payload ownership and drop path; null and out-of-range both map to zero-fill, not skip\",\"refs\":[\"D1:L196-L205\",\"D1:L357-L366\"]},{\"operation\":\"f32 ratio vs _UNK_142930d70 (0.05f) with <= comparison\",\"game_policy_to_preserve\":\"preserve source-order compare (ratio <= const); if ratio is NaN the ≤ is false → ratio kept; treat ++ as in-place +0x28 delta, not a clamp\",\"refs\":[\"D1:L336-L342\",\"C1:L1\"]},{\"operation\":\"record removal via memmove + atomic refcount decrement + variant drop (S1: 0x140891eb0 = WallReplayCmd)\",\"game_policy_to_preserve\":\"per-variant decrement is unconditional; only when *plVar24==0 does the drop call fire; ordered removal preserved by the reverse-index drain\",\"refs\":[\"S1:L1-L6\",\"D1:L600-L695\"]}],\"unknowns\":[{\"question\":\"What type/role is param_2 (lVar34 = *param_2) whose +0x28 f32 is added to records — accumulator, delta, or config?\",\"needed_evidence\":\"Cross-read callers of 0x140af75b0 and the type layout of fields param_2[0]+0x28; no such packet data supplied\",\"refs\":[\"D1:L133-L134\",\"D1:L342\",\"D1:L351\"]},{\"question\":\"Are the unaff_XMM8_Ba..Bp compares (CONCAT'd equality at L142-L169) a genuine compiler artifact of a 16-byte key equality, and does the cVar55..cVar66 recompute preserve semantics?\",\"needed_evidence\":\"Instruction bytes 0x140af76fa..0x140af771f from fresh original; not supplied\",\"refs\":[\"D1:L142-L169\",\"D1:L281-L308\"]},{\"question\":\"Which concrete container is lVar8 (array at +0x28, stride 0x38, counters at +0x30/+0x40, grow at +0x20)?\",\"needed_evidence\":\"Builder-symbol or calling-site evidence for lVar8 in callers; not supplied\",\"refs\":[\"D1:L328-L333\",\"D1:L499-L517\"]},{\"question\":\"Meaning of func_0x000142923c10, func_0x000140613c20, FUN_140b81df0, FUN_1406319d0, FUN_1405b1be0, FUN_140b76ce0, FUN_1402c8640\",\"needed_evidence\":\"PDB public labels in other retained symbol dumps; not supplied here (only S1 window)\",\"refs\":[\"D1:L188-L213\",\"D1:L332\",\"D1:L348\",\"D1:L370-L374\",\"D1:L495\",\"D1:L600\",\"D1:L700\"]},{\"question\":\"Is the initial '\\n'-bestruct tag byte (puStack_b8+8 & 1) a payload ownership discriminant vs a replay-op flag?\",\"needed_evidence\":\"Type definition of the 0x30-byte record; not supplied\",\"refs\":[\"D1:L184\",\"D1:L192\"]},{\"question\":\"Iteration stride: is lVar37 re-used as count (L180) after being multiply-reassigned at L126-L132 — connect the pcVar5 slice length to the record count?\",\"needed_evidence\":\"Raw machine trace or caller-fed lengths; only static text supplied\",\"refs\":[\"D1:L126-L132\",\"D1:L180\"]}],\"integration_checks\":[\"Confirm 0x140af75b0 is called with param_2[0]+0x28 present (delta f32); do not substitute a default if absent.\",\"Confirm both param maps (param_3 and param_4) accept the uStack_d8/uStack_d4 spill writes; missing key semantics must match (zero-fill, not skip).\",\"Verify that the emitted record's tag byte (case values 0..9, default) matches the WallReplayCmd variant enum order, since S1 only pins variant 0x140891eb0 at index 4 (case 4).\",\"Check callers treat write of *(f32)(record+0x18) as a saturating/increase-only accumulator (float add), not a clamp — NaN/Inf deltas must propagate.\",\"Check that the index buffer free at L699-L702 is unconditionally after all emissions (do not early-exit on panic at L576).\"],\"independent_followups\":[{\"task\":\"Resolve semantic labels for the helper call sites by scanning other retained symbol dumps for these VAs: 0x1405b1be0, 0x140b76ce0, 0x1402c8640, 0x140a1c930, 0x1405b0ed0, 0x1406319d0, 0x140b81df0, 0x142923c10, 0x140613c20, 0x1428d90e9.\",\"input_needed\":\"PDB public-symbol JSON covering the full program range (not just the S1 window).\",\"output_contract\":\"{va, qualified_name, inference_confidence} list; no code changes.\",\"depends_on\":\"S1\"},{\"task\":\"Decode the CONCAT'd key-equality region 0x140af76fa..0x140af771f from fresh original bytes to separate real comparisons from decompiler artifacts.\",\"input_needed\":\"Hex bytes for VA range 0x140af7630..0x140af7760 and disassembly; only C1:hash-note present.\",\"output_contract\":\"{bytes, mnemonics, whether_redundant:bool, implied_key_width}.\",\"depends_on\":\"C1\"},{\"task\":\"Confirm f32 behavior of the ratio/const comparison region including NaN/Inf: 0x140af7722..0x140af7780, ensuring it is not compiler-optimized comparator.\",\"input_needed\":\"Hex bytes and disassembly for that range (not just hash equality).\",\"output_contract\":\"{cmp_instruction, operand_order, nan_result, reported vs D1:L337-L339}.\",\"depends_on\":\"C1\"}]}"
+}

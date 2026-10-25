@@ -1,0 +1,20 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nprog = currentProgram\nfm = prog.getFunctionManager()\nfound = []\nit = fm.getFunctions(True)\nfor fn in it:\n    monitor.checkCancelled()\n    nm = fn.getName()\n    if \"convert_preplaced_trees\" in nm:\n        found.append([str(fn.getEntryPoint()), str(fn.getBody()), nm[:400]])\nwith open(\"/tmp/tree-rest-convert.json\", \"w\") as fh:\n    json.dump(found, fh)\nprint(json.dumps({\"count\": len(found),\n                  \"summaries\": [[f[0], f[1]] for f in found]}))\n",
+      "timeoutSeconds": 180
+    },
+    "timeout_seconds": 300
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "\nimport json\nfrom ghidra.app.decompiler import DecompInterface\nprog = currentProgram\naddr = prog.getAddressFactory().getAddress(\"0x14226be70\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nout = {\"name\": str(f.getName()), \"entry\": str(f.getEntryPoint()), \"body\": str(f.getBody()),\n       \"signature\": str(f.getSignature())}\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nwith open(\"/tmp/tree-rest-convert-decomp.json\", \"w\") as fh:\n    json.dump(out, fh)\nprint(json.dumps({\"name\": out[\"name\"], \"body\": out[\"body\"], \"decompiled_len\": len(out[\"decompiled\"])}))\n",
+      "timeoutSeconds": 180
+    },
+    "timeout_seconds": 300
+  }
+]

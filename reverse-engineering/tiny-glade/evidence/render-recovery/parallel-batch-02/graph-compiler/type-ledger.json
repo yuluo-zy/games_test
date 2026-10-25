@@ -1,0 +1,21 @@
+{
+  "schema_version": 2,
+  "status": "candidate_static",
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "signature_policy": "PDB void() is placeholder; candidate types do not claim original ABI",
+  "observed": [
+    {"type":"ResourceInfo","size":192,"fields":"six Vec headers + exported HashSet; use first-batch type ledger","source":"parallel/resource-info/type-ledger.json"},
+    {"type":"ResourceRegistry","size":264,"fields":"logical reuse Vec, initial-access Vec, physical payload Vec, ResourceInfo at +72","source":"parallel/registry-pool/type-ledger.json"},
+    {"type":"ResourceReuseInfo","size":4,"fields":{"physical_index":"u16 +0","reused":"bool +2"}},
+    {"type":"resource() aggregate","fields":{"payload_ref":"+0","initial_access":"u8 +8","reused":"u8 +9"},"evidence":"0x140be78b0"},
+    {"type":"CompiledRenderGraph","size":536,"resource_info_offset":240,"registry_offset":168,"pending_initial_offset":512,"source":"parallel/compiled-state/type-ledger.json"}
+  ],
+  "inferred_candidate": [
+    {"type":"GraphDeclaration","role":"owned resources/passes/exports; declaration order only"},
+    {"type":"Descriptor","role":"image/buffer exact offset-named keys; usage first image word or buffer +8 word"},
+    {"type":"PopulationFailure","role":"external backend error + partial registry/origin state; not original return enum"},
+    {"type":"Snapshot","role":"canonical semantic projection, no repr/ABI"},
+    {"type":"Transition","role":"logical and physical IDs with access from/to; excludes Vulkan scope/layout"}
+  ],
+  "unknown": ["original Rust enum names/ABI", "full managed handles/generation/device", "BackendError variant spelling", "temporal state", "Arc-backed other resource"]
+}

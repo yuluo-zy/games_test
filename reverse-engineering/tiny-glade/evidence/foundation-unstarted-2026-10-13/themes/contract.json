@@ -1,0 +1,146 @@
+{
+  "baseline": "B",
+  "program": "tiny-glade.exe",
+  "program_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+  "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+  "original_rust_source": false,
+  "observed": {
+    "schema": {
+      "ActiveEvent": {
+        "start": "i64",
+        "end": "i64",
+        "cid": "String"
+      },
+      "EventsResponse": {
+        "events": "Vec<ActiveEvent>"
+      },
+      "FolderChecksumInfo": {
+        "files": "Vec<(String,String)>",
+        "crc": "String"
+      }
+    },
+    "fetch_events": [
+      "GET original EVENTS_URL",
+      "If-None-Match from stored ETag",
+      "Date sets signed server-minus-local whole second skew",
+      "CacheControl::from_value max_age; absent/malformed defaults36000s",
+      "200 ETag stored before required Content-Length/body validation",
+      "304 retains existing event list",
+      "JSON fields are required; serde unknown-field behavior reused",
+      "invalid UTF8 Date orETag returns HeaderValue::to_str error; invalid Cache-Control falls back; ETag preserved when response body read fails",
+      "parsed server/local date before UNIX_EPOCH follows original unwrap failure"
+    ],
+    "download_blob": [
+      "path=cache_folder.join(cid); Path::is_dir (0x140d62e10) skips download only for directories",
+      "HTTP200 required; optional content_length if present must match",
+      "BLAKE3(response body).Display hex must equal cid",
+      "zip::ZipArchive reused; extract only after body hash success"
+    ],
+    "checked_zip": [
+      "ZipFile::enclosed_name rejects invalid entry before target join",
+      "archive order retained; trailing slash creates directory without checksum entry",
+      "read complete file, write target, then Path::to_str().unwrap",
+      "per-file BLAKE3 hex; recorded path is complete target path, not relative",
+      "aggregate BLAKE3 over each target path UTF8 followed by per-file hex, no delimiter",
+      "write .checksum only after all entries; preceding files survive failure",
+      "verify aggregate first; then open recorded paths, mmap first and read fallback; compare per-file BLAKE3",
+      "does not scan unlisted extra files"
+    ],
+    "cas": [
+      "non-directory entries removed as rogue files",
+      "modified age strictly greater than14days removes directory",
+      "future/unsupported modified timestamp continues verification",
+      "corrupt checksum directory removed; individual entry error isolated"
+    ],
+    "run": [
+      "monotonic fetch deadline; 1 second sleep",
+      "failed fetch retry1,2,4,...300 sec; retry multiplier not reset on success",
+      "new response constructs Pending results for every event, local interval timestamps max(0,wire-skew)",
+      "attempt all Pending blob results irrespective of current interval",
+      "download errors cached until new response rebuilds events",
+      "half-open start<=now<end; last matching event wins",
+      "publish only changed ActiveEvent/result; no active interval falls back to last fetch error",
+      "consumer disconnect stops on publication",
+      "304 does not replace the last fetch Result; prior error survives304; original constructor initial Result is Err(empty String)"
+    ],
+    "new": [
+      "create_dir_all(cache_folder) with IO error returned",
+      "reqwest Client::builder timeout60seconds pool_max_idle_per_host0 build().unwrap",
+      "retain supplied Sender<Result<theme_defs::ActiveEvent,EventDataError>>",
+      "initial empty ETag,zero skew,empty ArcSwap events"
+    ]
+  },
+  "inferred": [
+    "Public Rust signatures are reconstruction interfaces; neither Ghidra default nor PDB void is accepted as ABI",
+    "Semantically named EventDataError variants come from existing theme-defs recovery",
+    "Host-independent SystemTime arithmetic is used for original Windows timestamp policy"
+  ],
+  "unknown": [
+    "full original reqwest feature set, beyond observed blocking/Rustls and lock graph",
+    "real tiny-glade plugin/ECS hook and original full pipeline oracle",
+    "logging text/filter callbacks omitted from candidate producer"
+  ],
+  "exclude_from_business_count": [
+    "all serde derives",
+    "Arc/std/mpsc/drop/clone implementations",
+    "reqwest/zip/blake3/cache_control/httpdate/memmap2 library internals"
+  ],
+  "evidence": [
+    "prepared-functions.json",
+    "event-time-map.json",
+    "prior-run.c",
+    "theme-rdata-strings.json",
+    "../../shared-foundation-2026-10-13/paths-language/theme-consumer-258.txt",
+    "constructor.json"
+  ],
+  "mapping": [
+    {
+      "function": "ThemeFetcher::new",
+      "source": "lib.rs",
+      "original": "0x14054aa00",
+      "status": "candidate implementation; config confirmed by PDBinline and native fields"
+    },
+    {
+      "function": "ThemeFetcher::fetch_events",
+      "source": "lib.rs",
+      "original": "inlined in 0x140618310; original line59",
+      "status": "candidate implementation"
+    },
+    {
+      "function": "ThemeFetcher::download_blob",
+      "source": "lib.rs",
+      "original": "inlined in 0x140618310; original line164",
+      "status": "candidate implementation"
+    },
+    {
+      "function": "ThemeFetcher::trim_cas",
+      "source": "lib.rs",
+      "original": "inlined in 0x140618310; original line204",
+      "status": "candidate implementation"
+    },
+    {
+      "function": "ThemeFetcher::validate_cas_cache_entry",
+      "source": "lib.rs",
+      "original": "inlined in 0x140618310; original line226",
+      "status": "candidate implementation"
+    },
+    {
+      "function": "ThemeFetcher::run",
+      "source": "lib.rs",
+      "original": "0x140618310; PDBmodule25924789B",
+      "status": "candidate library producer; game plugin unknown"
+    },
+    {
+      "function": "checked_zip::extract_with_checksums",
+      "source": "checked_zip.rs",
+      "original": "0x140d921c0; PDBmodule8455120B",
+      "status": "candidate implementation"
+    },
+    {
+      "function": "checked_zip::verify_folder_checksums",
+      "source": "checked_zip.rs",
+      "original": "0x140d939a0; PDBmodule8474579B",
+      "status": "candidate implementation"
+    }
+  ]
+}

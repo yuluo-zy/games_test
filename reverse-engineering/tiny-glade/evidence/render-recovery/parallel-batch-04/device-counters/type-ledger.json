@@ -1,0 +1,11 @@
+{
+  "target_sha256":"f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "types":[
+    {"name":"DeviceCommandCounters","device_fields":{"pointer":"0x668","length":"0x670"},"element_size":8,"element_type":"atomic u64 candidate","initial_value":1,"length_rule":"auxiliary_queue_count + 1","layout_evidence":"0x140bf600e..6040,0x1418b7510,0x1418c9520,0x140bf6628..6636"},
+    {"name":"QueueFamilyRecord","size":28,"fields":{"flags":0,"queue_count":4,"family_index":24},"evidence":"0x140bf2c18..2e48"},
+    {"name":"Queue","size":176,"fields":{"sequential_disposal":64,"disposal_prefix":96,"identity_tag":104,"auxiliary_ordinal":108,"raw_queue":120,"completed_timeline":128,"timeline_semaphore":136,"family_properties":144,"family_index":168},"evidence":"0x1418b4a90..4b23"},
+    {"name":"QueueIdentity","variants":[{"tag":0,"name":"Primary","auxiliary_ordinal":"ignored"},{"tag":1,"name":"Auxiliary","auxiliary_ordinal":"zero-based queue ordinal"}],"counter_slot":"Primary=0; Auxiliary=n+1"},
+    {"name":"SubmissionEngine","device_base":"0x718","global_timeline_counter":"device+0x7f8","initial_timeline":1}
+  ],
+  "unknown":"Original Rust names and atomic memory ordering are not recovered by these field projections."
+}

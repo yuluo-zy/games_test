@@ -1,0 +1,48 @@
+{
+  "completed_at": "2026-10-18T00:02:30.358472+08:00",
+  "scope": [
+    "tg-building-runtime",
+    "tabloid",
+    "tg-package-integrity"
+  ],
+  "workflow": [
+    "source business investigation",
+    "first review and fixes",
+    "independent second review and fixes",
+    "completeness and performance review",
+    "formal module documentation",
+    "isolated validation"
+  ],
+  "reverse_engineering_used": false,
+  "commit_created": false,
+  "tests": {
+    "passed": 99,
+    "failed": 0,
+    "building": 77,
+    "tabloid": 11,
+    "integrity": 11
+  },
+  "readme_doctests": {
+    "passed": 4,
+    "failed": 0
+  },
+  "strict_clippy": "passed: --all-targets --no-deps -- -D warnings",
+  "fmt": "passed",
+  "scoped_diff_check": "passed",
+  "selected_package_files_byte_identical_to_snapshot": 82,
+  "post_test_changes": "rustfmt only, seven selected source/test files; final source byte comparison and fmt check passed",
+  "validation_environment": {
+    "platform": "macOS-26.3-arm64-arm-64bit",
+    "snapshot": "/private/tmp/tg-review-validation-yu5_jqft",
+    "metadata": "snapshot.json",
+    "commands": "snapshot-validation.json",
+    "scope_limit": "Production dependency closure snapshot; workspace membership and unselected dependency dev-dependencies trimmed. Not a full workspace build claim."
+  },
+  "performance": "current-pair-performance.json retains all raw samples including outlier; local small-file median 77.439ms -> 17.824ms, no cross-platform or full-game extrapolation",
+  "limitations": [
+    "Actual GPU/backend integration and complete original game scenarios not validated.",
+    "Linux-specific non-UTF8 regression and Windows/Linux real filesystem environments not run on this macOS host.",
+    "Filesystem verification requires a stable file tree; no atomic snapshot of concurrent replacement.",
+    "Explicit unsupported backend/algorithm capabilities remain documented in FEATURE_MATRIX.md."
+  ]
+}

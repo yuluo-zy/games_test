@@ -1,0 +1,1 @@
+Event owner v2 有界独审通过。5 个作者输入 hash/size 全部匹配，隔离 apply 产物逐字节等于 candidate；已有 Event derive、Kind、drain_events/unleash_to_events 和 counter 回归完整保留。唯一别名改为 pub use，使现 typed tuple 构造与同一 TypeId 共存。新增系统只以 ResMut 标记原可变访问 tick，再调用现 drain_events 和真实 EventWriter；tag5 清尾/跨帧 counter 仍由权威实现负责。5 个新增测试复用已审69语义。未运行 Cargo/native，未修改生产；不据此验收全局 schedule。未发现阻断项。

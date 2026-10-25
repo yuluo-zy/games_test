@@ -1,0 +1,258 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-10-12T10:31:42.106Z",
+  "completed_at": "2026-10-12T10:32:03.339Z",
+  "server": "re_mcp_ghidra",
+  "lane_count": 1,
+  "lanes": [
+    {
+      "database": "revgraph_l1",
+      "report": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\producer-closure\\r2-graph-barrier\\revgraph_l1.report.json",
+      "ok": false,
+      "cleanup_ok": true,
+      "error": "Error: batch operations failed: decompile_function, decompile_function, decompile_function",
+      "steps": 7
+    }
+  ],
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "identity": {
+    "target": {
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+      "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+    },
+    "provider": {
+      "id": "ghidra",
+      "version": "12.1.4"
+    },
+    "launch_sha256": "c82cc6dd6f528a9f07990202b685f0802e0833733774283e9a497bc4cef41aad",
+    "inputs": []
+  },
+  "cache_policy": {
+    "enabled": false,
+    "reason": "Database analysis cache disabled: both provider_manifest and database_snapshot files are required.",
+    "provider_version_provenance": "job-declared; actual server self-report is recorded separately upon connection"
+  },
+  "evidence_limits": [
+    "Static tool outputs do not prove runtime execution.",
+    "Xref completeness is unknown with auto-analysis disabled. Empty or DATA-only references cannot establish whole-program absence.",
+    "Successful cache reuse preserves the original evidence coverage; it does not expand it."
+  ],
+  "results": [
+    {
+      "index": 0,
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "keep_open": true,
+        "database_id": "revgraph_l1"
+      },
+      "cache_key": "61387e3d9a6541352bbedb0902b77a827b9b5c40ef4ec8e7258a252009fd3df8",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:31:42.265Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"revgraph_l1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "revgraph_l1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:31:51.747Z",
+      "ok": true,
+      "result_sha256": "2a438c20ed343ee25c8ab169969c5c2899c77d97ee736229741f7ca2087ca05b",
+      "lane": "revgraph_l1",
+      "database": "revgraph_l1"
+    },
+    {
+      "index": 1,
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "revgraph_l1"
+      },
+      "cache_key": "2e34abe7b6e1a77d94505238044eabe796200966655f93d52cf55b3ddbdee0da",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:31:51.749Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"revgraph_l1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "revgraph_l1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:32:02.117Z",
+      "ok": true,
+      "result_sha256": "c1126c71f96d25eba9fc462c69b7799efcfe6259f5d25bcae4fd7e8898c78dba",
+      "lane": "revgraph_l1",
+      "database": "revgraph_l1"
+    },
+    {
+      "index": 2,
+      "position": 0,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140c10e10"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:32:02.119Z",
+      "completed_at": "2026-10-12T10:32:02.670Z",
+      "source": "actual_mcp_call",
+      "cache_key": "8addb955c85a79170487140d46cde4433ed8c7b0583dbd8373f78c7c32d32ece",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140c10e10",
+        "address": "0x140C10E10",
+        "decompiled_code": "\r\nbool FUN_140c10e10(char param_1)\r\n\r\n{\r\n  return (byte)(param_1 - 0x28U) < 0x10;\r\n}\r\n\r\n",
+        "database": "revgraph_l1"
+      },
+      "result_sha256": "8b8001633edf129a6fcef6bc80db08daf499826c4d57df9c5d306b4864c05406",
+      "ok": true,
+      "lane": "revgraph_l1",
+      "database": "revgraph_l1"
+    },
+    {
+      "index": 2,
+      "position": 1,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140c10dd0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:32:02.119Z",
+      "completed_at": "2026-10-12T10:32:02.670Z",
+      "source": "actual_mcp_call",
+      "cache_key": "8addb955c85a79170487140d46cde4433ed8c7b0583dbd8373f78c7c32d32ece",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140C10DD0\",\"error_type\":\"NotFound\",\"database\":\"revgraph_l1\"}",
+      "ok": false,
+      "lane": "revgraph_l1",
+      "database": "revgraph_l1"
+    },
+    {
+      "index": 2,
+      "position": 2,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x14003bb80"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:32:02.119Z",
+      "completed_at": "2026-10-12T10:32:02.670Z",
+      "source": "actual_mcp_call",
+      "cache_key": "8addb955c85a79170487140d46cde4433ed8c7b0583dbd8373f78c7c32d32ece",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x14003BB80\",\"error_type\":\"NotFound\",\"database\":\"revgraph_l1\"}",
+      "ok": false,
+      "lane": "revgraph_l1",
+      "database": "revgraph_l1"
+    },
+    {
+      "index": 2,
+      "position": 3,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bece50"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:32:02.119Z",
+      "completed_at": "2026-10-12T10:32:02.670Z",
+      "source": "actual_mcp_call",
+      "cache_key": "8addb955c85a79170487140d46cde4433ed8c7b0583dbd8373f78c7c32d32ece",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BECE50\",\"error_type\":\"NotFound\",\"database\":\"revgraph_l1\"}",
+      "ok": false,
+      "lane": "revgraph_l1",
+      "database": "revgraph_l1"
+    },
+    {
+      "index": 2,
+      "position": 4,
+      "tool": "get_xrefs_to",
+      "args": {
+        "address": "0x140c10e10"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:32:02.119Z",
+      "completed_at": "2026-10-12T10:32:02.670Z",
+      "source": "actual_mcp_call",
+      "cache_key": "8addb955c85a79170487140d46cde4433ed8c7b0583dbd8373f78c7c32d32ece",
+      "cache_eligible": false,
+      "result": {
+        "items": [],
+        "total": 0,
+        "offset": 0,
+        "limit": 100,
+        "has_more": false,
+        "database": "revgraph_l1"
+      },
+      "result_sha256": "c913e92ef34be856e51ca83dc55dca38f4fd2e8f4189d4af45d9416eb052e987",
+      "ok": true,
+      "coverage": {
+        "completeness": "unknown",
+        "negative_result_scope": "returned records only; not whole-program absence"
+      },
+      "lane": "revgraph_l1",
+      "database": "revgraph_l1"
+    }
+  ],
+  "cleanup": [
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "revgraph_l1",
+        "save": false
+      },
+      "cleanup": true,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"revgraph_l1\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "revgraph_l1"
+        },
+        "isError": false
+      },
+      "ok": true,
+      "lane": "revgraph_l1"
+    }
+  ],
+  "lock_events": [
+    {
+      "event": "lock_removed",
+      "reason": "per-database workers own separate Ghidra projects; a shared session lock is no longer required",
+      "lane": "revgraph_l1"
+    }
+  ],
+  "ok": false,
+  "cleanup_ok": true
+}

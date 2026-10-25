@@ -1,0 +1,144 @@
+--- games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs
++++ games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs
+@@ -219,6 +219,7 @@
+         &"/nani/histogram_prefix_sum.cs.hlsl",
+     )
+     .write_rg_storage_buffer(H_INOUT_BUF, inout)
++    .preserve_storage_buffer_contents(H_INOUT_BUF)
+     .dispatch_1d(HISTOGRAM_PREFIX_THREADS)
+ }
+ 
+@@ -284,7 +285,10 @@
+             CULL_WRITE_GROUP,
+         )
+         .bind_external_storage_buffer(H_ATLAS_PART_INFO, res.atlas_part_info)
+-        .bind_external_storage_buffer(H_DRAW_LIST_INFO, res.draw_list_info);
++        .bind_external_storage_buffer(H_DRAW_LIST_INFO, res.draw_list_info)
++        // Original SPIR-V atomics consume these original clear producers.
++        .preserve_storage_buffer_contents(H_FILTERED_INSTANCE_ALLOCATOR)
++        .preserve_storage_buffer_contents(H_OUTPUT_HISTOGRAM);
+     if res.hzb.is_some() {
+         pass = pass
+             .read_storage_buffer::<S::NextVisibility>(H_PREV_VISIBILITY)
+@@ -300,6 +304,7 @@
+                 CULL_WRITE_GROUP,
+             );
+     }
++    pass = pass.preserve_storage_buffer_contents(H_NEXT_VISIBILITY);
+     if let Some(hzb) = res.hzb {
+         pass = pass
+             .bind_texture(H_HZB_TEX, &hzb, ACCESS_READ)
+@@ -772,6 +777,9 @@
+         .expect("Nani external sparse instance buffer is missing");
+     let ranges = sparse.to_draw_multi_instanced();
+     let pass = create_cull_and_bucket_pass::<_, GameNaniSsbos>(env, &source, res)
++        // Other cull passes already appended their subset's disjoint payload.
++        .preserve_storage_buffer_contents(H_FILTERED_INSTANCE_BUFFER)
++        .preserve_storage_buffer_contents(H_FILTERED_INSTANCE_META_BUFFER)
+         .read_storage_buffer::<T>(H_INSTANCE_BUFFER)
+         .dispatch_with(move |api| {
+             for (first, count) in ranges {
+@@ -804,6 +812,9 @@
+         .dispatch_1d(1);
+     env.record(pass);
+     let pass = create_cull_and_bucket_pass::<_, GameNaniSsbos>(env, &source, res)
++        // Other cull passes already appended their subset's disjoint payload.
++        .preserve_storage_buffer_contents(H_FILTERED_INSTANCE_BUFFER)
++        .preserve_storage_buffer_contents(H_FILTERED_INSTANCE_META_BUFFER)
+         .push_constants(&word_bytes(&[kind as u32, kind as u32 * 4]))
+         .read_rg_storage_buffer(binding_hash("dispatch_args_buffer"), &args)
+         .read_storage_buffer::<T>(H_INSTANCE_BUFFER)
+@@ -948,6 +959,8 @@
+                         .expect("Nani graph resource exceeds u32"),
+                 };
+                 let pass = create_cull_and_bucket_pass::<_, GameNaniSsbos>(env, &source, &res)
++                    .preserve_storage_buffer_contents(H_FILTERED_INSTANCE_BUFFER)
++                    .preserve_storage_buffer_contents(H_FILTERED_INSTANCE_META_BUFFER)
+                     .push_constants(&constants)
+                     .read_rg_storage_buffer(H_INSTANCE_BUFFER, &buffer)
+                     .dispatch_1d(count);
+@@ -1071,12 +1084,19 @@
+             )
+             .read_rg_storage_buffer(H_FILTERED_INSTANCE_META_BUFFER, filtered_meta)
+             .write_rg_storage_buffer_concurrent(H_HISTOGRAM, histogram, 1)
+-            .write_rg_storage_buffer_concurrent(H_SORTED_INSTANCES_BUFFER, &sorted, 1);
++            .write_rg_storage_buffer_concurrent(H_SORTED_INSTANCES_BUFFER, &sorted, 1)
++            .preserve_storage_buffer_contents(H_HISTOGRAM);
++        if is_fine {
++            // Same shared buffer, fine and non-fine list_instance_offset regions.
++            pass = pass.preserve_storage_buffer_contents(H_SORTED_INSTANCES_BUFFER);
++        }
+         if !is_fine {
+-            pass = pass.write_storage_buffer_concurrent::<nani_buffers::NaniDrawListSsbo>(
+-                H_DRAW_LIST_BUFFER,
+-                1,
+-            );
++            pass = pass
++                .write_storage_buffer_concurrent::<nani_buffers::NaniDrawListSsbo>(
++                    H_DRAW_LIST_BUFFER,
++                    1,
++                )
++                .preserve_storage_buffer_contents(H_DRAW_LIST_BUFFER);
+         }
+         let commands = lists
+             .iter()
+@@ -1108,6 +1128,7 @@
+         .read_storage_buffer::<nani_buffers::NaniDrawListOffsetDefaults>(H_INSTANCE_LIST_OFFSET)
+         .write_storage_buffer::<nani_buffers::NaniDrawListSsbo>(H_DRAW_LIST_BUFFER)
+         .write_rg_storage_buffer(H_UNSORTED_ATLAS_PREFIX, &prefix)
++        .preserve_storage_buffer_contents(H_DRAW_LIST_BUFFER)
+         .dispatch_with(move |api| {
+             for constants in constants {
+                 api.push_constants(&constants);
+@@ -1138,6 +1159,8 @@
+         .read_rg_storage_buffer(H_SORTED_INSTANCES_BUFFER, sorted)
+         .read_storage_buffer::<nani_buffers::NaniDrawListOffsetDefaults>(H_INSTANCE_LIST_OFFSET)
+         .write_rg_storage_buffer(H_THREAD_GROUP_DRAW_CMD_HISTOGRAM, histogram)
++        // Writes live groups only; following scan reads its fixed maximum range.
++        .preserve_storage_buffer_contents(H_THREAD_GROUP_DRAW_CMD_HISTOGRAM)
+         .read_rg_storage_buffer(H_THREAD_COUNT_BUFFER, thread_count);
+     let commands = fine
+         .iter()
+@@ -1157,7 +1180,10 @@
+         )
+         .write_storage_buffer::<nani_buffers::NaniDrawListLengthSsbo>(H_DRAW_LIST_LENGTH_BUFFER)
+         .write_rg_storage_buffer(H_INOUT_BUF, histogram)
+-        .write_rg_storage_buffer(H_SUBTOTALS_BUF, subtotals);
++        .write_rg_storage_buffer(H_SUBTOTALS_BUF, subtotals)
++        .preserve_storage_buffer_contents(H_DRAW_LIST_LENGTH_BUFFER)
++        .preserve_storage_buffer_contents(H_INOUT_BUF)
++        .preserve_storage_buffer_contents(H_SUBTOTALS_BUF);
+     let commands = fine
+         .iter()
+         .map(|s| {
+@@ -1180,7 +1206,8 @@
+             "Nani draw cmd subtotal prefix",
+             &"/nani/subtotal_prefix_sum.cs.hlsl",
+         )
+-        .write_rg_storage_buffer(H_INOUT_BUF, subtotals);
++        .write_rg_storage_buffer(H_INOUT_BUF, subtotals)
++        .preserve_storage_buffer_contents(H_INOUT_BUF);
+     let commands = fine
+         .iter()
+         .map(|s| {
+@@ -1206,6 +1233,8 @@
+             H_INSTANCE_INDIRECTION_ALLOCATOR,
+             1,
+         )
++        .preserve_storage_buffer_contents(H_DRAW_LIST_BUFFER)
++        .preserve_storage_buffer_contents(H_INSTANCE_INDIRECTION_ALLOCATOR)
+         .read_rg_storage_buffer(H_THREAD_GROUP_DRAW_CMD_HISTOGRAM, histogram)
+         .read_rg_storage_buffer(H_THREAD_GROUP_DRAW_CMD_SUBTOTALS, subtotals)
+         .read_rg_storage_buffer(H_THREAD_COUNT_BUFFER, thread_count);
+@@ -1238,7 +1267,10 @@
+         .write_storage_buffer_concurrent::<nani_buffers::NaniInstanceIndirectionSsbo>(
+             H_INSTANCE_INDIRECTION_BUFFER,
+             1,
+-        );
++        )
++        .preserve_storage_buffer_contents(H_UNSORTED_ATLAS_PREFIX)
++        // Non-fine output occupies a different original range from fine draws.
++        .preserve_storage_buffer_contents(H_INSTANCE_INDIRECTION_BUFFER);
+     let commands = unsorted
+         .iter()
+         .map(|s| {

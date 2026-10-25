@@ -1,0 +1,11 @@
+--- a/tiny-glade/crates/country-core/src/systems/history/tests.rs
++++ b/tiny-glade/crates/country-core/src/systems/history/tests.rs
+@@ -157,7 +157,7 @@
+     let delete = StairsHistoryEdit::SupportsDelete(StairGraphEdge::new(7, 8));
+     assert_eq!(
+         serde_json::to_string(&delete).unwrap(),
+-        r#"{"SupportsDelete":{"edge":{"a":7,"b":8}}}"#
++        r#"{"SupportsDelete":{"edge":[7,8]}}"#
+     );
+ }
+ 

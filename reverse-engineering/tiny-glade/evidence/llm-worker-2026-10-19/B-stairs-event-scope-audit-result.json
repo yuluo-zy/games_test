@@ -1,0 +1,210 @@
+{
+  "id": "B-stairs-event-scope-audit",
+  "input_sha256": "7203ef4cbd6a2e8c49b8cbd23bf9bde79f8526ffd51f6661b93a709bef257579",
+  "prompt_sha256": "b5f08b75a8ca2ffb6287795a06c793a3e5f6aa5ed6ffde476992ddfbb0283d0b",
+  "packet_sha256": "231eb3a365cec4093e6bfb85d9c9c6d983d7acb0ea792ebe30b80c3c2ff363d0",
+  "rendered_input_sha256": "880f7369ea21d2534227fde96b7b567d33243e15cb53fc2e88028f1f20226adb",
+  "render_format": "numbered-plain-text-v1",
+  "model": "deepseek-ai/DeepSeek-V4.1-Flash",
+  "endpoint_origin": "https://it-litellm.espressif.cn",
+  "request_options": {
+    "max_tokens": 4000,
+    "thinking": "template-disabled"
+  },
+  "elapsed_seconds": 13.716,
+  "finish_reason": "stop",
+  "usage": {
+    "completion_tokens": 1479,
+    "prompt_tokens": 3755,
+    "total_tokens": 5234,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    }
+  },
+  "accepted_transport": true,
+  "semantically_verified": false,
+  "validation_errors": [],
+  "analysis": {
+    "summary": "Hypothesis rejected: E1:L20-L41 and E2:L44-L65 are distinct case targets reached only by opposite nested-flag tests; the later shared epilogue (E3:L1-L25) adds 0x11 to the cVar40 value computed per path.",
+    "observations": [
+      {
+        "id": "O1",
+        "claim": "Scheduling test on record bias +8 enters the newline path only when bit0 is clear; the scheduling path selection itself is not the nested helper test.",
+        "refs": [
+          "E1:L9-L10",
+          "E2:L42-L44"
+        ]
+      },
+      {
+        "id": "O2",
+        "claim": "Nested payload test dereferences *(record+0x10)+0x10; bit0 clear goes to code_0x140af77bd, set goes to code_0x140af782f (E1 shows clear-goto to E2 case; E2 shows set-goto to E1 case).",
+        "refs": [
+          "E1:L17-L19",
+          "E2:L41-L44"
+        ]
+      },
+      {
+        "id": "O3",
+        "claim": "Case code_0x140af782f sets direction '\"\\x12\" - pcStack_a8[0x1c]' after its own flag==0 test ordering.",
+        "refs": [
+          "E1:L20-L41"
+        ]
+      },
+      {
+        "id": "O4",
+        "claim": "Case code_0x140af77bd sets cVar40 = pcStack_a8[0x1c], with opposite branch bodies for the flag, then falls through to joined E3 epilogue.",
+        "refs": [
+          "E2:L44-L65"
+        ]
+      },
+      {
+        "id": "O5",
+        "claim": "Shared epilogue adds literal '\\x11' to cVar40: cVar40 = cVar40 + '\\x11' at E3:L24 before storing at record stride 0x38 offset +8.",
+        "refs": [
+          "E3:L24-L29",
+          "E3:L46"
+        ]
+      },
+      {
+        "id": "O6",
+        "claim": "Hypothesis (0x12-direction)+0x11 for code_r0x000140af782f is confirmed only for that case target: cVar40='\\x12'-dir then +0x11 => stored 0x23-dir. The competing case stores dir+0x11.",
+        "refs": [
+          "E1:L41",
+          "E2:L65",
+          "E3:L24",
+          "E3:L29"
+        ]
+      }
+    ],
+    "branch_matrix": [
+      {
+        "condition": "*(record+8)&1 == 0 and newline record considered",
+        "effect": "enter newline-record handling branch (E1:L11-L19 / E2:L34-L43)",
+        "refs": [
+          "E1:L9-L13",
+          "E2:L34-L35"
+        ]
+      },
+      {
+        "condition": "*(record+8)&1 != 0",
+        "effect": "non-newline branch computes fVar17 and may update +0x18 then goto loop or shared setup; does not directly choose helper-dispatch case",
+        "refs": [
+          "E2:L24-L32"
+        ]
+      },
+      {
+        "condition": "(*(*(record+0x10)+0x10)&1)==0",
+        "effect": "case code_r0x000140af77bd: cVar40=record[0x1c]; stored char = direction+0x11",
+        "refs": [
+          "E1:L18-L19",
+          "E2:L44-L65",
+          "E3:L24",
+          "E3:L29"
+        ]
+      },
+      {
+        "condition": "(*(*(record+0x10)+0x10)&1)!=0",
+        "effect": "case code_r0x000140af782f: cVar40=0x12-direction; stored char = (0x12-direction)+0x11",
+        "refs": [
+          "E1:L17-L22",
+          "E1:L41",
+          "E2:L42-L43",
+          "E3:L24",
+          "E3:L29"
+        ]
+      },
+      {
+        "condition": "direction == 0",
+        "effect": "in 0x782f case cVar40=0x12 then stored 0x23; in 0x77bd case stored 0x11",
+        "refs": [
+          "E1:L34-L41",
+          "E2:L56-L65",
+          "E3:L24"
+        ]
+      },
+      {
+        "condition": "direction != 0",
+        "effect": "uses direction literal subtraction via above formulas; no derived zero branch supplied",
+        "refs": [
+          "E1:L34-L41",
+          "E2:L58-L65",
+          "E3:L24"
+        ]
+      }
+    ],
+    "side_effects": [
+      {
+        "order": "1",
+        "effect": "puStack_c8[uVar28]=uVar38 before dispatch; then helper call and flag-dependent FUN_1402c8640/FUN_1405b1be0/FUN_140b76ce0 call",
+        "refs": [
+          "E1:L16-L22",
+          "E1:L34-L40",
+          "E2:L39-L64"
+        ]
+      },
+      {
+        "order": "2",
+        "effect": "*puVar7=uStack_d8 and iVar4=*(int*)(lVar35+4); uStack_a0 CONCAT44 preserves high half",
+        "refs": [
+          "E1:L33-L43",
+          "E2:L57-L67"
+        ]
+      },
+      {
+        "order": "3",
+        "effect": "shared epilogue stores cVar40 at stride 0x38 +8; increments lVar8+0x30 and +0x40",
+        "refs": [
+          "E3:L27-L29",
+          "E3:L42-L43"
+        ]
+      }
+    ],
+    "dependency_reuse": [
+      {
+        "operation": "Two case labels have separate cVar40 computations; neither textually earlier assignment executes in the other path except through branches that fall to E3",
+        "game_policy_to_preserve": "Preserve goto targets and per-case formula: 0x782f stores (0x12-direction)+0x11; 0x77bd stores direction+0x11",
+        "refs": [
+          "E1:L19-L41",
+          "E2:L42-L65",
+          "E3:L24-L29"
+        ]
+      }
+    ],
+    "unknowns": [
+      {
+        "question": "Does any path after E1:L45 reach E3 with a different cVar40?",
+        "needed_evidence": "Continuation after E1:L45 and E2:L69, including loop/goto labels not supplied",
+        "refs": [
+          "E1:L44-L45",
+          "E2:L68-L69"
+        ]
+      },
+      {
+        "question": "Exact signedness of char and whether direction can exceed 0x12",
+        "needed_evidence": "Original type declarations for pcStack_a8[0x1c] and cVar40",
+        "refs": [
+          "E1:L32-L41",
+          "E2:L56-L65"
+        ]
+      }
+    ],
+    "integration_checks": [
+      "Do not execute E1's formula on the E2 path",
+      "Both cases only add 0x11 at E3:L24",
+      "Record +8 test is scheduling selection; payload +0x10 test is helper-dispatch selection",
+      "Stored output is record+0x38*i+8, not record+0x1c"
+    ],
+    "independent_followups": [
+      {
+        "task": "Map continuation after E1:L45/E2:L69",
+        "input_needed": "Next source slices",
+        "output_contract": "Control-flow edges and cVar40 values",
+        "depends_on": [
+          "O5",
+          "O6"
+        ]
+      }
+    ]
+  },
+  "content": "{\"summary\":\"Hypothesis rejected: E1:L20-L41 and E2:L44-L65 are distinct case targets reached only by opposite nested-flag tests; the later shared epilogue (E3:L1-L25) adds 0x11 to the cVar40 value computed per path.\",\"observations\":[{\"id\":\"O1\",\"claim\":\"Scheduling test on record bias +8 enters the newline path only when bit0 is clear; the scheduling path selection itself is not the nested helper test.\",\"refs\":[\"E1:L9-L10\",\"E2:L42-L44\"]},{\"id\":\"O2\",\"claim\":\"Nested payload test dereferences *(record+0x10)+0x10; bit0 clear goes to code_0x140af77bd, set goes to code_0x140af782f (E1 shows clear-goto to E2 case; E2 shows set-goto to E1 case).\",\"refs\":[\"E1:L17-L19\",\"E2:L41-L44\"]},{\"id\":\"O3\",\"claim\":\"Case code_0x140af782f sets direction '\\\"\\\\x12\\\" - pcStack_a8[0x1c]' after its own flag==0 test ordering.\",\"refs\":[\"E1:L20-L41\"]},{\"id\":\"O4\",\"claim\":\"Case code_0x140af77bd sets cVar40 = pcStack_a8[0x1c], with opposite branch bodies for the flag, then falls through to joined E3 epilogue.\",\"refs\":[\"E2:L44-L65\"]},{\"id\":\"O5\",\"claim\":\"Shared epilogue adds literal '\\\\x11' to cVar40: cVar40 = cVar40 + '\\\\x11' at E3:L24 before storing at record stride 0x38 offset +8.\",\"refs\":[\"E3:L24-L29\",\"E3:L46\"]},{\"id\":\"O6\",\"claim\":\"Hypothesis (0x12-direction)+0x11 for code_r0x000140af782f is confirmed only for that case target: cVar40='\\\\x12'-dir then +0x11 => stored 0x23-dir. The competing case stores dir+0x11.\",\"refs\":[\"E1:L41\",\"E2:L65\",\"E3:L24\",\"E3:L29\"]}],\"branch_matrix\":[{\"condition\":\"*(record+8)&1 == 0 and newline record considered\",\"effect\":\"enter newline-record handling branch (E1:L11-L19 / E2:L34-L43)\",\"refs\":[\"E1:L9-L13\",\"E2:L34-L35\"]},{\"condition\":\"*(record+8)&1 != 0\",\"effect\":\"non-newline branch computes fVar17 and may update +0x18 then goto loop or shared setup; does not directly choose helper-dispatch case\",\"refs\":[\"E2:L24-L32\"]},{\"condition\":\"(*(*(record+0x10)+0x10)&1)==0\",\"effect\":\"case code_r0x000140af77bd: cVar40=record[0x1c]; stored char = direction+0x11\",\"refs\":[\"E1:L18-L19\",\"E2:L44-L65\",\"E3:L24\",\"E3:L29\"]},{\"condition\":\"(*(*(record+0x10)+0x10)&1)!=0\",\"effect\":\"case code_r0x000140af782f: cVar40=0x12-direction; stored char = (0x12-direction)+0x11\",\"refs\":[\"E1:L17-L22\",\"E1:L41\",\"E2:L42-L43\",\"E3:L24\",\"E3:L29\"]},{\"condition\":\"direction == 0\",\"effect\":\"in 0x782f case cVar40=0x12 then stored 0x23; in 0x77bd case stored 0x11\",\"refs\":[\"E1:L34-L41\",\"E2:L56-L65\",\"E3:L24\"]},{\"condition\":\"direction != 0\",\"effect\":\"uses direction literal subtraction via above formulas; no derived zero branch supplied\",\"refs\":[\"E1:L34-L41\",\"E2:L58-L65\",\"E3:L24\"]}],\"side_effects\":[{\"order\":\"1\",\"effect\":\"puStack_c8[uVar28]=uVar38 before dispatch; then helper call and flag-dependent FUN_1402c8640/FUN_1405b1be0/FUN_140b76ce0 call\",\"refs\":[\"E1:L16-L22\",\"E1:L34-L40\",\"E2:L39-L64\"]},{\"order\":\"2\",\"effect\":\"*puVar7=uStack_d8 and iVar4=*(int*)(lVar35+4); uStack_a0 CONCAT44 preserves high half\",\"refs\":[\"E1:L33-L43\",\"E2:L57-L67\"]},{\"order\":\"3\",\"effect\":\"shared epilogue stores cVar40 at stride 0x38 +8; increments lVar8+0x30 and +0x40\",\"refs\":[\"E3:L27-L29\",\"E3:L42-L43\"]}],\"dependency_reuse\":[{\"operation\":\"Two case labels have separate cVar40 computations; neither textually earlier assignment executes in the other path except through branches that fall to E3\",\"game_policy_to_preserve\":\"Preserve goto targets and per-case formula: 0x782f stores (0x12-direction)+0x11; 0x77bd stores direction+0x11\",\"refs\":[\"E1:L19-L41\",\"E2:L42-L65\",\"E3:L24-L29\"]}],\"unknowns\":[{\"question\":\"Does any path after E1:L45 reach E3 with a different cVar40?\",\"needed_evidence\":\"Continuation after E1:L45 and E2:L69, including loop/goto labels not supplied\",\"refs\":[\"E1:L44-L45\",\"E2:L68-L69\"]},{\"question\":\"Exact signedness of char and whether direction can exceed 0x12\",\"needed_evidence\":\"Original type declarations for pcStack_a8[0x1c] and cVar40\",\"refs\":[\"E1:L32-L41\",\"E2:L56-L65\"]}],\"integration_checks\":[\"Do not execute E1's formula on the E2 path\",\"Both cases only add 0x11 at E3:L24\",\"Record +8 test is scheduling selection; payload +0x10 test is helper-dispatch selection\",\"Stored output is record+0x38*i+8, not record+0x1c\"],\"independent_followups\":[{\"task\":\"Map continuation after E1:L45/E2:L69\",\"input_needed\":\"Next source slices\",\"output_contract\":\"Control-flow edges and cVar40 values\",\"depends_on\":[\"O5\",\"O6\"]}]}"
+}

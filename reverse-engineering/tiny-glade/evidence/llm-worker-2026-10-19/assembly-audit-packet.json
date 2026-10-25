@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "task_id": "B-stairs-original-instruction-adjudication",
+  "target": {
+    "build": "B",
+    "function_va": "0x140af75b0",
+    "input": "original tiny-glade.rne; function-span identity already verified against patched EXE"
+  },
+  "task": "Resolve ONLY two contracts using the original x86-64 instructions (AT&T operand order, source then destination): (1) readiness in A1/A2, including NaN quotient, NaN elapsed, equality, zero speed and the exact effect of MAXSS then UCOMISS/JBE; distinguish numerator=0 from nonzero. xmm7 holds original 0.05f constant. (2) output event byte at [output+8] in A8: trace payload bit test at 0x140af77b7 and 0x140af7829, direction load at 0x140af78c5 versus subtraction at 0x140af7a82, and jumps to 0x140af76dc versus 0x140af76e0. r11/stack60 tracks the input record; its +8 scheduling bit selects immediate vs animated, its +0x10 pointer addresses payload whose +0x10 bit controls later dispatch. State which flag controls the final event formula, and whether the +0x11 instruction executes on each path. Do not conflate flags. Previous decompilation-based claims that unordered readiness applies and that every event path adds 0x11 are unverified hypotheses; reject or confirm each with instruction refs. This is static instruction analysis, not an execution claim.",
+  "limits": [
+    "Original instruction excerpts supersede decompiler expressions on conflicts.",
+    "Hash probes and irrelevant helper internals omitted because outside these two contracts.",
+    "No semantic callee names/types provided; do not infer them."
+  ],
+  "sources": [
+    {
+      "id": "A1",
+      "kind": "fresh_original_RNE_disassembly",
+      "line_count": 30,
+      "sha256": "69acb179b38aae9efc86565a2a46ddfe38fd9fc56e00dcd387c9bdb0abd54d33",
+      "text": "A1:L1 140af773d:     \tcmpb\t$0xa, (%r11)\nA1:L2 140af7741:     \tjne\t0x140af7722 <.text+0xaf6722>\nA1:L3 140af7743:     \ttestb\t$0x1, 0x8(%r11)\nA1:L4 140af7748:     \tje\t0x140af77f0 <.text+0xaf67f0>\nA1:L5 140af774e:     \tmovss\t0xc(%r11), %xmm1\nA1:L6 140af7754:     \tdivss\t%xmm6, %xmm1\nA1:L7 140af7758:     \tmovss\t0x18(%r11), %xmm0\nA1:L8 140af775e:     \tmaxss\t%xmm7, %xmm1\nA1:L9 140af7762:     \tucomiss\t%xmm1, %xmm0\nA1:L10 140af7765:     \tjbe\t0x140af7862 <.text+0xaf6862>\nA1:L11 140af776b:     \tmovq\t%r11, 0x60(%rbp)\nA1:L12 140af776f:     \tmovq\t0x48(%rbp), %r14\nA1:L13 140af7773:     \tcmpq\t0x38(%rbp), %r14\nA1:L14 140af7777:     \tjne\t0x140af7789 <.text+0xaf6789>\nA1:L15 140af7779:     \tleaq\t0x38(%rbp), %rcx\nA1:L16 140af777d:     \tleaq\t0x1fedc5c(%rip), %rdx   # 0x142ae53e0\nA1:L17 140af7784:     \tcallq\t0x140b81df0 <.text+0xb80df0>\nA1:L18 140af7789:     \tmovq\t0x40(%rbp), %rax\nA1:L19 140af778d:     \tmovq\t%rdi, (%rax,%r14,8)\nA1:L20 140af7791:     \tincq\t%r14\nA1:L21 140af7794:     \tmovq\t%r14, 0x48(%rbp)\nA1:L22 140af7798:     \tmovq\t-0x38(%rbp), %rax\nA1:L23 140af779c:     \tmovss\t0x28(%rax), %xmm0\nA1:L24 140af77a1:     \tmovq\t0x60(%rbp), %rax\nA1:L25 140af77a5:     \taddss\t0x18(%rax), %xmm0\nA1:L26 140af77aa:     \tmovss\t%xmm0, 0x18(%rax)\nA1:L27 140af77af:     \tmovq\t0x10(%rax), %rax\nA1:L28 140af77b3:     \tleaq\t0x10(%rax), %r14\nA1:L29 140af77b7:     \ttestb\t$0x1, 0x10(%rax)\nA1:L30 140af77bb:     \tjne\t0x140af782f <.text+0xaf682f>"
+    },
+    {
+      "id": "A2",
+      "kind": "fresh_original_RNE_disassembly",
+      "line_count": 4,
+      "sha256": "84af218221f30fc50b6adadb848bf86760abe0917373a017e7dcf1bf145f3b09",
+      "text": "A2:L1 140af7862:     \tmovq\t-0x38(%rbp), %rax\nA2:L2 140af7866:     \taddss\t0x28(%rax), %xmm0\nA2:L3 140af786b:     \tmovss\t%xmm0, 0x18(%r11)\nA2:L4 140af7871:     \tjmp\t0x140af7722 <.text+0xaf6722>"
+    },
+    {
+      "id": "A3",
+      "kind": "fresh_original_RNE_disassembly",
+      "line_count": 19,
+      "sha256": "2053861d8853b48d811c3cdbdc6a19b0d3319250b0b06b3a6c7383a593ccccbc",
+      "text": "A3:L1 140af77f0:     \tmovq\t%r11, 0x60(%rbp)\nA3:L2 140af77f4:     \tmovq\t0x48(%rbp), %r14\nA3:L3 140af77f8:     \tcmpq\t0x38(%rbp), %r14\nA3:L4 140af77fc:     \tjne\t0x140af780e <.text+0xaf680e>\nA3:L5 140af77fe:     \tleaq\t0x38(%rbp), %rcx\nA3:L6 140af7802:     \tleaq\t0x1fedbbf(%rip), %rdx   # 0x142ae53c8\nA3:L7 140af7809:     \tcallq\t0x140b81df0 <.text+0xb80df0>\nA3:L8 140af780e:     \tmovq\t0x40(%rbp), %rax\nA3:L9 140af7812:     \tmovq\t%rdi, (%rax,%r14,8)\nA3:L10 140af7816:     \tincq\t%r14\nA3:L11 140af7819:     \tmovq\t%r14, 0x48(%rbp)\nA3:L12 140af781d:     \tmovq\t0x60(%rbp), %rax\nA3:L13 140af7821:     \tmovq\t0x10(%rax), %rax\nA3:L14 140af7825:     \tleaq\t0x10(%rax), %r14\nA3:L15 140af7829:     \ttestb\t$0x1, 0x10(%rax)\nA3:L16 140af782d:     \tje\t0x140af77bd <.text+0xaf67bd>\nA3:L17 140af782f:     \tmovl\t0x4(%r14), %edx\nA3:L18 140af7833:     \tmovq\t-0x50(%rbp), %rcx\nA3:L19 140af7837:     \tcallq\t0x140a1c930 <.text+0xa1b930>"
+    },
+    {
+      "id": "A4",
+      "kind": "fresh_original_RNE_disassembly",
+      "line_count": 6,
+      "sha256": "06ea9438caab5a9588f3c3098100bc091da0ad0082681ebdebccf4acd767f89f",
+      "text": "A4:L1 140af78c1:     \tmovq\t0x60(%rbp), %rax\nA4:L2 140af78c5:     \tmovzbl\t0x1c(%rax), %r14d\nA4:L3 140af78ca:     \tmovl\t(%r12), %r12d\nA4:L4 140af78ce:     \tmovl\t%r12d, 0x68(%rbp)\nA4:L5 140af78d2:     \tmovq\t0x58(%rbp), %rax\nA4:L6 140af78d6:     \tcmpq\t$0x0, 0x18(%rax)"
+    },
+    {
+      "id": "A5",
+      "kind": "fresh_original_RNE_disassembly",
+      "line_count": 17,
+      "sha256": "87c6c39c5699772d6c538fcc42580c29f19e2a128684abee462a9f1d94c8cf2a",
+      "text": "A5:L1 140af79eb:     \tmovq\t0x28(%rbp), %r13\nA5:L2 140af79ef:     \tmovl\t0x70(%rbp), %eax\nA5:L3 140af79f2:     \tleaq\t0x3(%rbp), %rcx\nA5:L4 140af79f6:     \tmovl\t%eax, 0x8(%rcx)\nA5:L5 140af79f9:     \tmovq\t0x68(%rbp), %rax\nA5:L6 140af79fd:     \tmovq\t%rax, (%rcx)\nA5:L7 140af7a00:     \tmovl\t0x34(%rbp), %eax\nA5:L8 140af7a03:     \tmovq\t-0x40(%rbp), %rcx\nA5:L9 140af7a07:     \tmovl\t%eax, (%rcx)\nA5:L10 140af7a09:     \tmovq\t0x30(%rsi), %rdi\nA5:L11 140af7a0d:     \tmovq\t0x40(%rsi), %r12\nA5:L12 140af7a11:     \tcmpq\t0x20(%rsi), %rdi\nA5:L13 140af7a15:     \tjne\t0x140af76dc <.text+0xaf66dc>\nA5:L14 140af7a1b:     \tmovq\t-0x20(%rbp), %rcx\nA5:L15 140af7a1f:     \tleaq\t0x2142722(%rip), %rdx   # 0x142c3a148\nA5:L16 140af7a26:     \tcallq\t0x1406319d0 <.text+0x6309d0>\nA5:L17 140af7a2b:     \tjmp\t0x140af76dc <.text+0xaf66dc>"
+    },
+    {
+      "id": "A6",
+      "kind": "fresh_original_RNE_disassembly",
+      "line_count": 7,
+      "sha256": "0144b327628066942250cf65a3062f4d08b2faff3e9a7260c587e30a172930a4",
+      "text": "A6:L1 140af7a7b:     \tmovb\t$0x12, %r14b\nA6:L2 140af7a7e:     \tmovq\t0x60(%rbp), %rax\nA6:L3 140af7a82:     \tsubb\t0x1c(%rax), %r14b\nA6:L4 140af7a86:     \tmovl\t(%r12), %r12d\nA6:L5 140af7a8a:     \tmovl\t%r12d, 0x68(%rbp)\nA6:L6 140af7a8e:     \tmovq\t0x58(%rbp), %rax\nA6:L7 140af7a92:     \tcmpq\t$0x0, 0x18(%rax)"
+    },
+    {
+      "id": "A7",
+      "kind": "fresh_original_RNE_disassembly",
+      "line_count": 8,
+      "sha256": "0362718d8937c6553e98afd68237e0b544e7808421133d972f0ab464f76b4505",
+      "text": "A7:L1 140af7bad:     \tmovq\t0x30(%rsi), %rdi\nA7:L2 140af7bb1:     \tmovq\t0x40(%rsi), %r12\nA7:L3 140af7bb5:     \tcmpq\t0x20(%rsi), %rdi\nA7:L4 140af7bb9:     \tjne\t0x140af76e0 <.text+0xaf66e0>\nA7:L5 140af7bbf:     \tmovq\t-0x20(%rbp), %rcx\nA7:L6 140af7bc3:     \tleaq\t0x214257e(%rip), %rdx   # 0x142c3a148\nA7:L7 140af7bca:     \tcallq\t0x1406319d0 <.text+0x6309d0>\nA7:L8 140af7bcf:     \tjmp\t0x140af76e0 <.text+0xaf66e0>"
+    },
+    {
+      "id": "A8",
+      "kind": "fresh_original_RNE_disassembly",
+      "line_count": 17,
+      "sha256": "0a31d9666f294336ae858a8450f99fa373f68bdf163ca92d19f9aa75a19c0309",
+      "text": "A8:L1 140af76dc:     \taddb\t$0x11, %r14b\nA8:L2 140af76e0:     \tmovq\t0x28(%rsi), %rax\nA8:L3 140af76e4:     \timulq\t$0x38, %rdi, %rcx\nA8:L4 140af76e8:     \tmovq\t%r12, (%rax,%rcx)\nA8:L5 140af76ec:     \tmovb\t%r14b, 0x8(%rax,%rcx)\nA8:L6 140af76f1:     \tmovups\t-0x10(%rbp), %xmm0\nA8:L7 140af76f5:     \tmovups\t-0x1(%rbp), %xmm1\nA8:L8 140af76f9:     \tmovups\t%xmm0, 0x9(%rax,%rcx)\nA8:L9 140af76fe:     \tmovups\t%xmm1, 0x18(%rax,%rcx)\nA8:L10 140af7703:     \tshufps\t$0xe1, %xmm9, %xmm9     # xmm9 = xmm9[1,0,2,3]\nA8:L11 140af7708:     \tmovlps\t%xmm9, 0x28(%rax,%rcx)\nA8:L12 140af770e:     \tmovb\t$0x1, 0x30(%rax,%rcx)\nA8:L13 140af7713:     \tincq\t%rdi\nA8:L14 140af7716:     \tmovq\t%rdi, 0x30(%rsi)\nA8:L15 140af771a:     \tincq\t0x40(%rsi)\nA8:L16 140af771e:     \tmovq\t-0x18(%rbp), %r10\nA8:L17 140af7722:     \tmovq\t0x50(%rbp), %r11"
+    }
+  ]
+}

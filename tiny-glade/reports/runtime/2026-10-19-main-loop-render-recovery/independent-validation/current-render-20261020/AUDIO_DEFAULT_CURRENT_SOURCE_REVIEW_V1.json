@@ -1,0 +1,52 @@
+{
+  "status": "current_source_review_pass_pending_root_validation",
+  "baseline_sha": "fa53d49a61dd7496cddc9af054c6fb1899fa1676",
+  "reviewer": "root/render_reviewer",
+  "scope": "root音频默认构建修复与WSI fixture Result传播",
+  "source_sha256": {
+    "tiny-glade/crates/country-core/src/resources/audio_resources.rs": "a2dfd30fc01fdf92d81ff3f9eaf3cc46bda3ee0050273612889caea0ff849f10",
+    "tiny-glade/crates/tiny-glade/src/gameplay_startup.rs": "16621763b4f199b84bcb73c7d03235d0a9b3692acdb11a82737558fd170b6353",
+    "tiny-glade/crates/tiny-glade/src/run_game.rs": "f783e39f91503c228290d496e94333e377a1cd7a2eef1872474fce2103171c9a",
+    "tiny-glade/crates/tiny-glade/src/game_loop.rs": "c14da87abcff0883161d3947d25e45fb094b73289190e188835f0713e568777f",
+    "tiny-glade/crates/tiny-glade/tests/original_loading_present.rs": "c7851ed8a75a201c439dc352035e73695def2cb3e1055bc1545ed3c05d6b4814",
+    "tiny-glade/crates/country-core/src/systems/save/mod.rs": "7a2d67b35e404fcb3074352bbe89979bf9c1a126af58d332c3451e97faf6456c",
+    "tiny-glade/crates/country-core/src/systems/audio/game_loading_audio.rs": "9ae1dc63eea2de5338ea6ea63ca0a86540304a7763e9a80d08bcb78b4ad36216"
+  },
+  "native_fact_reference": "AUDIO_DEFAULT_BOUNDARY_DESIGN_REVIEW_V1.json SHA25638ff0d1477c56ced6d113fb3760c9cfb815db9c27a434d58c0f0662c579e56e2；实际B140a55f40空core→Disabled，B140a7a5b0卸载保留状态。该引用是bounded原证，不宣称全部音频/ABI恢复。",
+  "review": [
+    {
+      "source": "audio_resources.rs:415-464",
+      "classification": "工程适配",
+      "result": "DisabledStudio/Event/Vca均空枚举，trait实现经exhaustive match不可达；不会返回假后端成功，AudioCore只有None可安全构造。未改NativeStudio实现或真实错误策略。"
+    },
+    {
+      "source": "gameplay_startup.rs:20-35;run_game.rs:304-306",
+      "classification": "当前源码集成",
+      "result": "同一互斥cfg类型别名用于Critters、Sheep与uninit_clearing；install函数调用接收正确&mut App；没有cfg删除业务生产者。只在当前App构造过程中安装一次，未创建平行World/第二音频owner。"
+    },
+    {
+      "source": "gameplay_startup.rs:32-35;save/mod.rs:55-59;game_loading_audio.rs:60-92",
+      "classification": "当前源码生命周期",
+      "result": "真实EventRegistry先注册Started/Finished；empty_after_samples仅作为初始状态，随后复用实际Startup init与set38消费者；卸载arm_after_unload使用同typed状态，snapshot不会永远停在初始空值。没有伪造AudioSamplesLoadedPromise或加载完成事件。"
+    },
+    {
+      "source": "game_loop.rs:402-408,465-483",
+      "classification": "跨平台宿主适配",
+      "result": "native分支保留真实share_core+native animate/boot_update；默认无native分支仅安装已有disabled动画，两分支互斥，修复Mac native-audio原双动画更新问题。其他非Windows默认目标也选择disabled动画，但不据此主张它们整体宿主已验证。"
+    },
+    {
+      "source": "original_loading_present.rs:101",
+      "classification": "验证修复",
+      "result": "driver.frame实际Result经?传播到step错误分支，不再凭renderer.take_error掩盖App更新/图层失败。"
+    }
+  ],
+  "findings": [],
+  "limits": [
+    "本审查未运行Cargo、GPU、测试。默认/native feature实际typecheck与真实App更新由root执行。",
+    "disabled音频host适配不代表原版所有音频消费者已挂载/行为完全恢复。",
+    "真实物理GPU/WSI、编辑存档重启仍分别验收；见GPU_VALIDATION_BOUNDARIES_PLAN_V1.json。"
+  ],
+  "production_modified_by_reviewer": false,
+  "cargo_executed_by_reviewer": false,
+  "gpu_executed_by_reviewer": false
+}

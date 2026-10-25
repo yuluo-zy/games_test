@@ -1,0 +1,188 @@
+{
+  "evidence_id": "TG-RES-QUESTIONS-20261010",
+  "purpose": "原作资源→持久化schema→原作消费者函数→几何/渲染实现的待验证问题；用户范围已修订为只还原Tiny Glade",
+  "questions": [
+    {
+      "id": "R01",
+      "priority": "P0",
+      "topic": "历史命令、领域状态、撤销与存档",
+      "observed": "33份history.json包含2120个编辑链条条目、13类外层命令。decorators有diffs目标差异批次；stairs副记录为before/after边对数组及hash_before/hash_after。Version、chain_index、history_start、snapshot_id可读，54条快照引用中22条同目录文件缺失。",
+      "sources": [
+        "../../reconstruction/history/observed-history-schema.json",
+        "command-schemas.json",
+        "assets/starting-builds/full/02-gate/history.json",
+        "assets/starting-builds/full/03-halftimber-roof/history.json"
+      ],
+      "unknown": "新旧Wall命令与Version的迁移关系、before/after语义、快照序列化、恢复与撤销的处理顺序",
+      "analysis_chain": [
+        "列举命令/变体/字段与版本差异",
+        "定位原作反序列化/迁移/应用历史入口",
+        "验证before/after和cursor语义",
+        "核验原作对象标识、快照和撤销关系"
+      ],
+      "completion": "原作schema和消费者代码对应，限制明确"
+    },
+    {
+      "id": "R02",
+      "priority": "P0",
+      "topic": "建筑轮廓和墙体",
+      "observed": "CreateWall.after含curve、height、arch_height、arch_ty、elevation、is_enclosed、structure_ty。brick.json有600个位置顶点、900索引、is_bevel；坐标范围[-0.5,0.5]。",
+      "sources": [
+        "command-schemas.json#/command_examples/WallNewSystem",
+        "json-schemas.json",
+        "assets/meshes/brick.json",
+        "assets/nani_meshes.ron:157",
+        "D:/game/TinyGlade_逆向初查/initial-analysis.json#E04_public_symbols"
+      ],
+      "unknown": "curve具体表示、封闭/拱形转换、砖尺寸与变形/布置/删改规则、边角衔接",
+      "analysis_chain": [
+        "抽取curve和墙变化数据",
+        "定位原作轮廓/形状计算与构造器",
+        "追踪壁面到砖实例",
+        "核对shader属性与实例buffer"
+      ],
+      "completion": "墙编辑输入到生成结果的原作因果链"
+    },
+    {
+      "id": "R03",
+      "priority": "P0",
+      "topic": "屋顶构造与连续过渡",
+      "observed": "roof_tile.json与roof_tile_lod1.json可读；nani_meshes.ron有RoofTile subset。既有E07解析的roof_tiles_gravity首个SPIR-V模块保留RoofShingle与wall_height_delta、roof_pivot_y、animation_t等名字。",
+      "sources": [
+        "resources-summary.json#/shader_feature_samples_reused",
+        "assets/meshes/roof_tile.json",
+        "assets/nani_meshes.ron:198",
+        "compiled-shaders/_roof_tiles_gravity.cs.hlsl_cs_main_0.bin",
+        "prior E04 system_roof::create_roof"
+      ],
+      "unknown": "屋面求解、屋瓦实例布置、裁切/交汇、CPU/GPU责任分界、过渡起止与打断规则",
+      "analysis_chain": [
+        "还原Roof字段与wall_index关系",
+        "定位屋面形状求解和实例写入",
+        "验证SPIR-V全部阶段和布局",
+        "追踪连续编辑和动画状态"
+      ],
+      "completion": "屋面/屋瓦结构与过渡公式有实现证据"
+    },
+    {
+      "id": "R04",
+      "priority": "P0",
+      "topic": "门窗上下文适配和装饰附着",
+      "observed": "history的DecoratorV5与before/after数据可读；门窗mesh族含rank、corner、dormer、collision、interaction、outline样本。nani_meshes.ron明确窗口玻璃、砖、门等subset。首个gothic_window_bricks SPIR-V模块有wallspace_x_range_packed与bone_0/1/2字段名。",
+      "sources": [
+        "command-schemas.json#/command_examples/DecoratorV5",
+        "assets/meshes/decorators/window_cottage_1x1.json",
+        "assets/nani_meshes.ron:73",
+        "assets/nani_meshes.ron:123",
+        "assets/nani_meshes.ron:181",
+        "resources-summary.json#/shader_feature_samples_reused"
+      ],
+      "unknown": "rank选择、墙/屋顶/角/半阁楼转换条件、局部坐标与UV意义、骨字段的实际变形方程、冲突/连接策略",
+      "analysis_chain": [
+        "还原装饰target/dst/rank与差异",
+        "定位原作上下文转换",
+        "追踪附着数据到变形骨字段和shader",
+        "核验状态转换条件和连接冲突"
+      ],
+      "completion": "原作完整窗口族状态和转换条件有证据"
+    },
+    {
+      "id": "R05",
+      "priority": "P0",
+      "topic": "路径、地形、水与墙交叉",
+      "observed": "Path/Water有brush_size、blend_mode、is_additive、points；Terrain有NewTerrainStroke.height_ws/stroke_pts。rocky_terrain.json有148794个vertices和49598个triangles，含cell_id/neighbours。",
+      "sources": [
+        "command-schemas.json",
+        "assets/data/rocky_terrain.json",
+        "assets/meshes/path_pebble.json",
+        "compiled-shaders/_paths_combine_path_exclusions.cs.hlsl_cs_main_0.bin",
+        "compiled-shaders/_paths_path_mask_visual.cs.hlsl_cs_main_0.bin",
+        "compiled-shaders/_terrain_editing_rasterize_terrain_stroke.cs.hlsl_cs_main_0.bin"
+      ],
+      "unknown": "笔刷采样/平滑、路径排除与连接、地形逻辑/视觉高度关系、墙门/水边规则",
+      "analysis_chain": [
+        "还原原作笔刷命令",
+        "追踪CPU高度与GPU笔刷更新",
+        "核验mask/pass依赖",
+        "定位墙路水交叉规则"
+      ],
+      "completion": "原作笔刷到地形/路径结果的因果链"
+    },
+    {
+      "id": "R06",
+      "priority": "P1",
+      "topic": "渲染观感与性能预算",
+      "observed": "Cargo.lock列出Bevy ECS 0.16.0、rhapsody→ash 0.38、shader-compiler→rspirv/spirq。404个shader封装有首模块SPIR-V边界静态检查。TOD参数有entries、sun_sky、fog_tint和曝光/等级相关配置。",
+      "sources": [
+        "dependency-evidence.json",
+        "resources-summary.json#/shader_format_reused",
+        "assets/tod/default.json",
+        "assets/glade/summer/grading.json"
+      ],
+      "unknown": "实际render graph、GI/阴影/时域顺序、各pass开销；wgpu-types条目不能证明使用Bevy默认wgpu渲染器",
+      "analysis_chain": [
+        "定位原作render graph和pipeline",
+        "恢复shader输入输出和数据布局",
+        "匹配TOD/grading消费者",
+        "有必要时以后测量原作pass预算"
+      ],
+      "completion": "原作光照/后处理链有代码与资源证据"
+    },
+    {
+      "id": "R07",
+      "priority": "P1",
+      "topic": "生态、装饰和主题数据",
+      "observed": "summer trees.json把prefab连接到placements，plants.json把shader/mesh连接到placements；29个prefab RON中的树冠/树干processor、rt Aabb与audio trigger参数可读。",
+      "sources": [
+        "assets/glade/summer/trees.json",
+        "assets/glade/summer/plants.json",
+        "assets/prefabs/clearing/tree/default.ron",
+        "json-schemas.json"
+      ],
+      "unknown": "预置布局与程序生成的分界、种子稳定性、玩家编辑后抑制/重建、距离层/LOD实际选择",
+      "analysis_chain": [
+        "构建原作主题资源引用图",
+        "定位树冠/树干和生态消费者",
+        "区分预置位置与生成规则",
+        "核验编辑/种子/距离层策略"
+      ],
+      "completion": "原作配置与布局/生成逻辑对应"
+    },
+    {
+      "id": "R08",
+      "priority": "P2",
+      "topic": "资源容器和工具链",
+      "observed": "assets-src只有16个纹理构建RON；compiled-assets有388个.texture和list.ron，暂无格式解码；483个mesh JSON属性schema已解析。",
+      "sources": [
+        "resources-summary.json#/source_availability",
+        "json-schemas.json",
+        "assets-src/textures/roof/assets.ron",
+        "compiled-assets/textures/list.ron",
+        "dependency-evidence.json"
+      ],
+      "unknown": "texture头、压缩格式、mip/layout与snapshot容器版本；RON构建描述不是Rust或HLSL源代码",
+      "analysis_chain": [
+        "定位原作资源容器读取代码",
+        "仅在独立目录创建只读parser并验证边界",
+        "识别容器字段/版本/压缩并保留未知项"
+      ],
+      "completion": "阻塞研究的原作容器格式得到验证"
+    }
+  ],
+  "priority_order": [
+    "R01",
+    "R02",
+    "R03",
+    "R04",
+    "R05",
+    "R06",
+    "R07",
+    "R08"
+  ],
+  "shared_limits": [
+    "只研究原作，原始文件只读",
+    "资源名与字符串是定位线索，非行为结论",
+    "Cargo包版本不等于发行版或持久化Version",
+    "历史结构还原已在../../reconstruction/history/findings.md细化，组序和运行语义尚待验证"
+  ]
+}

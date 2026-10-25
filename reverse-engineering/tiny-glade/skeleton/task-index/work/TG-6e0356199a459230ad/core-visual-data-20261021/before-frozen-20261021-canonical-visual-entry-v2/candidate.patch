@@ -1,0 +1,61 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/chimney_roof.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/chimney_roof.rs
+@@ -71,7 +71,7 @@
+     mut blueprints: ResMut<DecoratorBlueprints>,
+ ) {
+     let derived = derived.as_view();
+-    for (_wall, decorators) in decorator_storage.iter() {
++    for (wall, decorators) in decorator_storage.iter() {
+         for (id, info) in decorators.iter_modified() {
+             // O 判别：refusing 非屋顶目的地 / 非 0x15 子类型。
+             if info.dst_tag() != 2 {
+@@ -84,9 +84,14 @@
+             {
+                 continue;
+             }
++            let transform = cached_transforms.transform(id);
++            let blueprint = blueprints.insert_for(
++                id,
++                country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Wall(wall),
++                info.state(),
++            );
+             let extra = info.extra().as_chimney();
+             let chimney = roof_chimney_geometry(extra.f, extra.smoke);
+-            let transform = cached_transforms.transform(id);
+             // 原局部cuboid中心为零，世界中心沿Y抬高半个实际烟囱高度。
+             let collider = std::sync::Arc::new(
+                 country_core::systems::collision::world::RaycastMeshData::new_cuboid_at(
+@@ -99,7 +104,7 @@
+                 transform.translation.y + chimney.height * 0.5,
+                 transform.translation.z,
+             );
+-            let mut blueprint = DecoratorBlueprint::new();
++
+             blueprint.set_positioned_colliders(
+                 std::sync::Arc::clone(&collider),
+                 collider,
+@@ -107,7 +112,6 @@
+                 &transform.rotation,
+             );
+             blueprint.add_chimney(chimney.height);
+-            blueprints.insert(id, blueprint);
+         }
+     }
+ }
+@@ -160,6 +164,7 @@
+             decorator_id: 9,
+             u20: 2 << 16,
+             rank: 1,
++            state: 1,
+             ..Default::default()
+         };
+         info.set_extra(DecoratorExtraInfo::Chimney(ChimneyExtra {
+@@ -189,6 +194,8 @@
+         world.run_system_once(generate_roof_chimneys).unwrap();
+         let blueprints = world.resource::<DecoratorBlueprints>();
+         let blueprint = &blueprints.map[&9];
++        assert_eq!(blueprint.storage_addr, Some(country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Wall(WallId(2))));
++        assert_eq!(blueprint.interaction_source_flags, 1);
+         let BlueprintMeshSlot::Mesh(collision) = &blueprint.collision_mesh else {
+             panic!("实际烟囱collision")
+         };

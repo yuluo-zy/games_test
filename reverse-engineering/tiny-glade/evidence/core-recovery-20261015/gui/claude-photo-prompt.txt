@@ -1,0 +1,22 @@
+Review this bounded original x64 control flow. Return <=180 words: exact initialization/visibility behavior and any ordering traps. Do not invent missing field meanings. Do not use tools.
+
+PhotomodeState default:
+scalar@0 = demo ? 1.0 : 3.0
+mov word ptr [rax+0xc],0x100
+mov ecx,0xffffffff
+mov qword ptr [rax+4],rcx
+on_enable sets scalar same; u32@4=MAX; bytes8,a,c=0. No other stores.
+
+Visibility prefix 0x14234b190:
+call EscMenuState::is_open
+if true: byte a=0; byte d=1
+AppMode native tag eax:
+if eax==13(Replay): goto event processing
+if eax!=19(Photomode): byte a=0; al=1; goto write_d
+call MainActionSet.digital[32].just_pressed
+if false: goto event processing
+eax=byte a; ecx=eax; cl ^=1; byte a=cl
+write_d: byte d=al
+event processing follows. That event processing may independently alter byte a later.
+
+Relevant original byte meanings from actual consumers: +9 photo camera mode, +a UI hide predicate; +b guards match_free_camera_to_normal; +c guards init_walk_camera; +d gates focus-marker drawing. Photos use native camera types0TiltShift,1Free,2Walk,3TopDown. on_enable preserves+9,+b,+d. Top-level CameraMode conversion is photo tag+1.

@@ -1,0 +1,27 @@
+
+void __cdecl
+country_core::resources::walls::public_wall_state::PublicWallState::corner_pos_and_normal_xz(void)
+
+{
+  undefined4 *in_RCX;
+  longlong in_RDX;
+  undefined4 extraout_XMM0_Da;
+  undefined4 extraout_XMM0_Da_00;
+  undefined4 in_XMM1_Da;
+  undefined4 uVar1;
+  
+  uVar1 = 0;
+  if ((*(uint *)(in_RDX + 600) < 2) && ((*(uint *)(in_RDX + 600) & 1) != 0)) {
+    ::utils::geometry::rectangle::Rectangle2d::get_point();
+    uVar1 = in_XMM1_Da;
+    ::utils::geometry::rectangle::Rectangle2d::get_corner_normal();
+    in_RCX[1] = extraout_XMM0_Da;
+    in_RCX[2] = in_XMM1_Da;
+    in_RCX[3] = extraout_XMM0_Da_00;
+    in_RCX[4] = uVar1;
+    uVar1 = 1;
+  }
+  *in_RCX = uVar1;
+  return;
+}
+

@@ -1,0 +1,123 @@
+--- a/crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs
++++ b/crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs
+@@ -498,12 +498,30 @@
+     type DrawCommands: LibrarySsbo;
+ }
+ 
++/// The two original Vec<(first,count)> captures are independent from Nani's
++/// 20-byte push constants. Highlighted ranges set the count's high bit only in
++/// the shader payload; dispatch still receives the original unflagged count.
++#[derive(Default, Clone, Debug)]
++pub struct WallDrawBatches {
++    pub normal: Vec<crate::render::sparse_instance_buffer::DrawRange>,
++    pub highlighted: Vec<crate::render::sparse_instance_buffer::DrawRange>,
++}
++
++pub fn wall_draw_dispatch(api: &mut dyn ComputeDispatchApi, batches: &WallDrawBatches) {
++    for (ranges, flag) in [(&batches.normal, 0), (&batches.highlighted, 0x8000_0000)] {
++        for &(first, count) in ranges {
++            api.push_constants(&word_bytes(&[first, count | flag]));
++            api.dispatch_3d(DispatchArgs { x: count, y: 1, z: 1, indirect_index: None });
++        }
++    }
++}
++
+ /// W21 — `"Generate wall draw lists"`（O 0x14098aaf0，`/wall/generate_draw_lists.cs.hlsl:cs_pass1`）。
+ /// 之前：RG 清 `BrickNextVisibilityBitmask`；`SparseInstanceBuffer::{hide,show}`（他人域）。
+ pub fn generate_wall_draw_lists<W: WallSsbos>(
+     env: &mut PassEnv<'_>,
+     draw_indirect_offset: i32,
+-    batches: Vec<(PushConstants, u32)>,
++    batches: WallDrawBatches,
+ ) -> RecordedComputePass {
+     env.new_pass(
+         "Generate wall draw lists",
+@@ -512,10 +530,12 @@
+     .read_storage_buffer::<W::BrickTransform>(H_BRICK_INSTANCE_DATA)
+     .read_storage_buffer::<W::BrickPrevVisibility>(H_PREV_VISIBILITY)
+     .write_storage_buffer::<W::BrickNextVisibility>(H_NEXT_VISIBILITY)
++    .preserve_storage_buffer_contents(H_NEXT_VISIBILITY)
+     .write_storage_buffer::<W::BrickDrawList>(H_BRICK_DRAW_LIST)
+     .write_storage_buffer_concurrent::<W::DrawCommands>(H_DRAW_COMMANDS, 1)
++    .preserve_storage_buffer_contents(H_DRAW_COMMANDS)
+     .uniform(H_DRAW_INDIRECT_BUFFER_OFFSET, draw_indirect_offset)
+-    .dispatch_with(move |api| cull_and_bucket_dispatch(api, &batches))
++    .dispatch_with(move |api| wall_draw_dispatch(api, &batches))
+ }
+ 
+ /// W27 — `"Wall pass2 reset inst counts"`（`/wall/reset_pass2_inst_counts.cs.hlsl`，`dispatch_1d`，`.rdata 0x142ab8400`）+
+@@ -526,17 +546,33 @@
+     hzb_dims: [u32; 2],
+     reset_offset: i32,
+     draw_indirect_offset: i32,
+-    batches: Vec<(PushConstants, u32)>,
++    batches: WallDrawBatches,
+ ) -> [RecordedComputePass; 2] {
+-    let reset = env
++    let reset = reset_wall_pass2_inst_counts::<W>(env, reset_offset);
++    let pass2 = wall_draw_lists_pass2::<W>(env, hzb, hzb_dims, draw_indirect_offset, batches);
++    [reset, pass2]
++}
++
++pub fn reset_wall_pass2_inst_counts<W: WallSsbos>(
++    env: &mut PassEnv<'_>, reset_offset: i32,
++) -> RecordedComputePass {
++    env
+         .new_pass(
+             "Wall pass2 reset inst counts",
+             &"/wall/reset_pass2_inst_counts.cs.hlsl",
+         )
+         .write_storage_buffer::<W::DrawCommands>(H_DRAW_COMMANDS)
++        .preserve_storage_buffer_contents(H_DRAW_COMMANDS)
+         .uniform(H_DRAW_INDIRECT_BUFFER_OFFSET, reset_offset)
+-        .dispatch_1d(1);
+-    let pass2 = env
++        .dispatch_1d(1)
++}
++
++/// Original second round reads the just-written Next and clears/writes Prev.
++pub fn wall_draw_lists_pass2<W: WallSsbos>(
++    env: &mut PassEnv<'_>, hzb: &RgTexture, hzb_dims: [u32; 2],
++    draw_indirect_offset: i32, batches: WallDrawBatches,
++) -> RecordedComputePass {
++    env
+         .new_pass(
+             "Generate wall draw lists OC/2",
+             &"/wall/generate_draw_lists.cs.hlsl:cs_pass2",
+@@ -544,13 +580,14 @@
+         .read_storage_buffer::<W::BrickTransform>(H_BRICK_INSTANCE_DATA)
+         .bind_texture(H_HZB_TEX, &hzb, ACCESS_READ)
+         .uniform(H_HZB_DIMS, hzb_dims)
+-        .read_storage_buffer::<W::BrickPrevVisibility>(H_PREV_VISIBILITY)
+-        .write_storage_buffer::<W::BrickNextVisibility>(H_NEXT_VISIBILITY)
++        .read_storage_buffer::<W::BrickNextVisibility>(H_PREV_VISIBILITY)
++        .write_storage_buffer::<W::BrickPrevVisibility>(H_NEXT_VISIBILITY)
++        .preserve_storage_buffer_contents(H_NEXT_VISIBILITY)
+         .write_storage_buffer::<W::BrickDrawList>(H_BRICK_DRAW_LIST)
+         .write_storage_buffer_concurrent::<W::DrawCommands>(H_DRAW_COMMANDS, 1)
++    .preserve_storage_buffer_contents(H_DRAW_COMMANDS)
+         .uniform(H_DRAW_INDIRECT_BUFFER_OFFSET, draw_indirect_offset)
+-        .dispatch_with(move |api| cull_and_bucket_dispatch(api, &batches));
+-    [reset, pass2]
++        .dispatch_with(move |api| wall_draw_dispatch(api, &batches))
+ }
+ 
+ // Original B gpu_generate_draw_lists@140987dd0 and its complete callback family.
+@@ -1649,7 +1686,7 @@
+     fn wall_passes_declare_the_original_names_and_entries() {
+         let mut e = make_env();
+         let p1 = e.run(|penv| {
+-            generate_wall_draw_lists::<W>(penv, 3, vec![(PushConstants::default(), 4)])
++            generate_wall_draw_lists::<W>(penv, 3, WallDrawBatches { normal: vec![(0, 4)], highlighted: vec![] })
+         });
+         assert_eq!(p1.name, "Generate wall draw lists");
+         assert!(matches!(p1.dispatch, DispatchMode::With(_)));
+@@ -1658,7 +1695,7 @@
+             desc: TextureDesc::new([4, 4, 1], 0, 0),
+         };
+         let [reset, p2] =
+-            e.run(|penv| generate_wall_draw_lists_pass2::<W>(penv, &hzb, [4, 4], 1, 2, vec![]));
++            e.run(|penv| generate_wall_draw_lists_pass2::<W>(penv, &hzb, [4, 4], 1, 2, WallDrawBatches::default()));
+         assert_eq!(
+             (reset.name, p2.name),
+             (

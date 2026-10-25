@@ -1,0 +1,74 @@
+--- a/games_test/tiny-glade/crates/systems/tree-tool/src/ui_place_tree.rs
++++ b/games_test/tiny-glade/crates/systems/tree-tool/src/ui_place_tree.rs
+@@ -44,15 +44,15 @@
+ use country_core::resources::history::{EditType, History};
+ use country_core::resources::session::ActiveSession;
+ use country_core::resources::tree_storage::TreeStorage;
+-use country_core::systems::collision::world::{RaycastWorld, RAYCAST_WORLD_RESULT_MISS};
++use country_core::systems::collision::world::{RAYCAST_WORLD_RESULT_MISS, RaycastWorld};
+ use country_core::systems::mode_manager::{AppMode, EditSubject};
+ use country_core::systems::ui::resources::ui_state::UiState;
+ use country_core::systems::ui::resources::widget_params::{
+     UiSounds, WidgetParams, WidgetVolumeShape,
+ };
++use country_core::systems::ui::signifiers::SignifierFactory;
+ use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
+-use country_core::systems::ui::signifiers::SignifierFactory;
+-use country_core::systems::ui_edit_focus::{geo_src_to_edit_subject, GeoSource};
++use country_core::systems::ui_edit_focus::{GeoSource, geo_src_to_edit_subject};
+ 
+ use crate::PlaceTreeCmd;
+ 
+@@ -92,7 +92,8 @@
+     "clearing/tree/autumn/branchy2",
+     "clearing/tree/autumn/branchy1",
+ ];
+-pub const TREE_PREFAB_NAKED: [&str; 2] = ["clearing/naked_tree/naked1", "clearing/naked_tree/naked2"];
++pub const TREE_PREFAB_NAKED: [&str; 2] =
++    ["clearing/naked_tree/naked1", "clearing/naked_tree/naked2"];
+ pub const TREE_PREFAB_NO_MUSHROOMS: &str = "clearing/naked_tree/naked1_no_mushrooms";
+ 
+ /// `random_tree_prefab` @0x14226a170（O，2026-10-17 fresh 反编译 + 反汇编）。
+@@ -263,12 +264,8 @@
+ /// r1 → splitmix 变体 → fastrand r2 → random_tree_prefab → scale/rotation →
+ /// InsertTreeCmd + History::add）。
+ ///
+-/// ## 未实现（core-type-gap）
+-/// InsertTreeCmd 原生槽 stride 0x48：
+-/// `{name@+0, position@+0x10, scale@+0x20, {variant,rotation}@+0x28,
+-/// flags@+0x30, id@+0x38, height@+0x40}`。core `InsertTreeCmd` 仅
+-/// `{id, position, scale, prefab_name}` → variant/rotation/flags/height 无承载位，
+-/// 记为未实现面（History 侧 scale/rotation 已按原生值写入）。
++/// The actual Insert payload retains rotation, placement variant and the
++/// preplaced flag. Native EventInstance+0x40 is EventId, not tree height.
+ pub fn place_tree<S: Send + Sync + 'static>(
+     mut storage: ResMut<TreeStorage>,
+     mut commands: EventReader<PlaceTreeCmd>,
+@@ -298,7 +295,10 @@
+         let edit = EditType::Tree(std::sync::Arc::new(
+             country_core::resources::history::tree_edit::TreeEdit::Place(
+                 country_core::resources::history::tree_edit::TreeEditData {
+-                    id: id as i32,
++                    storage_index: Some(country_core::resources::tree_storage::TreeStorageIndex(
++                        id,
++                    )),
++                    id: variant as i32,
+                     position: cmd.position,
+                     previous_position: glam::Vec3::ZERO,
+                     scale,
+@@ -309,11 +309,12 @@
+             ),
+         ));
+         let _ = history.add(edit);
+-        // O：0x48 槽 InsertTreeCmd。core 仅承载 name/position/scale/id；
+-        // variant/rotation/flags/height 未建模（见函数文档「未实现」）。
+-        let _ = variant;
++        // Actual Insert business payload, preserving its separate placement ID.
+         inserts.write(InsertTreeCmd {
+             id,
++            rotation_degrees: rotation,
++            variant: variant as i32,
++            is_preplaced: false,
+             position: cmd.position,
+             scale,
+             prefab_name: prefab.to_string(),

@@ -1,0 +1,23 @@
+{
+  "schema_version":1,
+  "status":"static_lifecycle_closed_with_verified_leaves",
+  "dimensions":{"handle":"identity/generation/references","command":"recording sequence and domain","submission":"queue and independent timeline","bucket":"command sequence, ready marker, disposed prefix"},
+  "transitions":[
+    {"event":"create","effect":"references=1; slot generation","evidence":"inferred constructor boundary"},
+    {"event":"track","guard":"generation matches and command tag=1","effect":"atomic max last command sequence","evidence":"observed; native verified"},
+    {"event":"track_stale","guard":"generation mismatch","effect":"silent no-op before command tag check","evidence":"observed; native verified"},
+    {"event":"clone","effect":"wrapping u32 add 1; copy 23 handle bytes","evidence":"observed; native verified"},
+    {"event":"cpu_drop","effect":"wrapping refs decrement; null moved pointer; last ref global waste","evidence":"observed; non-last/moved native; last static"},
+    {"event":"take_out_waste","effect":"detach waste; look up last command sequence; found bucket deferred, absent bucket immediate","evidence":"observed static"},
+    {"event":"cpu_pool_return","effect":"CPU ownership may retire before GPU completion","evidence":"observed by R4"},
+    {"event":"command_begin","guard":"state=0 or 3","effect":"external reset/begin; atomic sequence allocation; state=1; bucket insert","evidence":"observed static"},
+    {"event":"command_end","guard":"state=1","effect":"external end; state=2","evidence":"observed static"},
+    {"event":"submit","guard":"state=2 and queue matches","effect":"state=3; pending command distinct timeline threshold","evidence":"observed static"},
+    {"event":"complete","effect":"external semaphore counter; pop timeline and command prefixes","evidence":"observed static"},
+    {"event":"reclaim_command","effect":"ready command; dispose consecutive prefix; return command resources","evidence":"observed static"},
+    {"event":"dispose_slot","guard":"device/kind/generation match","effect":"backend dispose; assert refs=0; wrapping generation+1; raw slot free list","evidence":"observed static"}
+  ],
+  "failures":{"track_bad_tag":"panic only if generation matched","stale_track":"silent skip","moved_drop":"panic","stale_dispose":"panic","duplicate_bucket":"panic","missing_bucket_remove":"panic","sequence_at_or_below_prefix":"panic","duplicate_ready_sequence":"panic"},
+  "invariants":["CPU return/drop is not GPU completion","command sequence differs from timeline","ready later command cannot pass gap","generation changes at actual disposal","cross-domain mapping explicit unknown"],
+  "unproven":["counter initialization/global bucket key uniqueness","same-resource multi-domain use","empty timeline progression","GPU execution"]
+}

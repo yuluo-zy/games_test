@@ -1,0 +1,16 @@
+--- a/games_test/tiny-glade/crates/country-core/src/resources/rt.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/rt.rs
+@@ -263,6 +263,13 @@
+ }
+ 
+ impl RtWorld {
++    /// B uninit_clearing@140a7a65d..665 clears the actual mesh table and
++    /// marks topology dirty. Pending upload and prefab handle counter survive.
++    pub fn clear_meshes(&mut self) {
++        self.meshes.clear();
++        self.topology_dirty = true;
++    }
++
+     /// Native MetaCommander WaitAsync observes both structural changes and
+     /// dirty mesh COW rows, before asking the BVH worker whether it is idle.
+     /// Pending GPU upload is a later state and cannot replace this predicate.

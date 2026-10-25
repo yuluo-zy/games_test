@@ -1,0 +1,24 @@
+{
+  "status": "fixture_only_source_review_pass_pending_root_test",
+  "reviewer": "root/render_reviewer",
+  "candidate": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-652d8e2c9cc79a01e3/scene-clutter-producer-20261020/subdivision-root-candidate-v3",
+  "manifest_sha256": "16a90ab493f3383da1eba20355d50b8a19356ddd8906600ac89231d5969a7d39",
+  "patch_sha256": "735e582d59a085eaba80182e3aebb05344a437d1137c8538d3da72f94ae208da",
+  "candidate_sha256": "892bd2674932c2b5c49fb1ad1e5348207c510e4094deec299131325a060c6f0f",
+  "before_sha256": "09a6001c1a132e3752096ce096c458cdd148018af6bee15e21740f8a85ef0e4b",
+  "independent_review": [
+    "读取原B xz_rotation_bad PDB759:8908大小504，原完整asm131指令/504B逐条对本机RNE字节一致。",
+    "实际第二段delta=(0,0,2)，normal=(-1,+0)，basis right=(0,0,1)/up=(0,1,0)/forward=(-1,0,0)；原140c91105..14d Y-major得到Y正W负。",
+    "当前锁定glam0.29.3的from_rotation_axes同Y-major表达式；共享utils已有−X方向Y>0/W<0断言，fixture原来用Euler另一表征不符合原稳定分支。",
+    "patch只改两个expected符号，增加Z→−X/Y→Y断言；2e−7阈值和恢复算法未改，不把q/−q无条件当相同业务值。"
+  ],
+  "findings": [],
+  "native_asm_sha256": "2e0192257eb532ea9b63a8748d50a7b99496f809fb14aab14f7c83c354ecdc35",
+  "limits": [
+    "reviewer未Cargo/GPU/生产写；修后真实test需root执行。",
+    "此为测试oracle修正，不扩张为完整window场景或GPU恢复。"
+  ],
+  "production_modified_by_reviewer": false,
+  "cargo_executed_by_reviewer": false,
+  "gpu_executed_by_reviewer": false
+}

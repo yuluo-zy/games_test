@@ -1,0 +1,168 @@
+{
+  "original_pipeline_source_records": [
+    {
+      "path": "crates/rhapsody/crates/shader-pipeline/src/compiled.rs",
+      "sha256": [
+        "c8c20064026577d3ac2c2ada033638d7528c90998e047f91b5dfecd6c2bd9dd2"
+      ]
+    },
+    {
+      "path": "crates/rhapsody/crates/shader-pipeline/src/pipeline_desc.rs",
+      "sha256": [
+        "70d36740a680b8ee09a5a5672378dce969a7531578d9630ef3a6f0734bc00fe4"
+      ]
+    },
+    {
+      "path": "crates/rhapsody/crates/shader-pipeline/src/reflection.rs",
+      "sha256": [
+        "c365ecfa1d1f95792c934448aba50fcbdef73d0f1c1dbe0065f2a526b879bcd6"
+      ]
+    },
+    {
+      "path": "crates/rhapsody/crates/shader-pipeline/src/reflection_ty.rs",
+      "sha256": [
+        "5251f4e9315389468e34802d10803b0e29a7a669ca6b2f95e5935be2ea9e6857"
+      ]
+    },
+    {
+      "path": "crates/rhapsody/crates/shader-pipeline/src/shader_defines.rs",
+      "sha256": [
+        "556e58228ce5e0303817e9e97ae33760b4c39e580ca6e42a4228e58cf1bc9150"
+      ]
+    }
+  ],
+  "candidates": [
+    {
+      "file": "public-shader-code-0.json",
+      "url": "https://raw.githubusercontent.com/EmbarkStudios/kajiya/main/crates/lib/kajiya-backend/src/shader_compiler.rs",
+      "status": 200,
+      "body_bytes": 5841,
+      "hit_lines": [
+        {
+          "line": 44,
+          "text": "                let source = shader_prepper::process_file("
+        },
+        {
+          "line": 78,
+          "text": "        let source = shader_prepper::process_file("
+        },
+        {
+          "line": 114,
+          "text": "impl shader_prepper::IncludeProvider for ShaderIncludeProvider {"
+        },
+        {
+          "line": 123,
+          "text": "        shader_prepper::BoxedIncludeProviderError,"
+        },
+        {
+          "line": 135,
+          "text": "                .with_context(|| format!(\"Failed loading shader include {}\", path))?"
+        },
+        {
+          "line": 145,
+          "text": "    let mut loader = rspirv::dr::Loader::new();"
+        },
+        {
+          "line": 146,
+          "text": "    rspirv::binary::parse_words(spirv, &mut loader).unwrap();"
+        },
+        {
+          "line": 153,
+          "text": "            use rspirv::dr::Operand::LiteralInt32;"
+        },
+        {
+          "line": 168,
+          "text": "    source: &[shader_prepper::SourceChunk],"
+        }
+      ],
+      "raw_body_sha256": "ac4f35355ac912f93d0f7be31ffec788772db1879de7ce61e2070bfacf9e854f",
+      "crlf_variant_sha256": "0991b786e30c47d70842676a08d58f6821255827c3106a41c3c2a731d9ef9a1d",
+      "original_source_checksum_matches": []
+    },
+    {
+      "file": "public-shader-code-1.json",
+      "url": "https://raw.githubusercontent.com/h3r2tic/rendertoy/master/src/shader.rs",
+      "status": 200,
+      "body_bytes": 74972,
+      "hit_lines": [
+        {
+          "line": 9,
+          "text": "use shader_prepper;"
+        },
+        {
+          "line": 245,
+          "text": "impl<'a> shader_prepper::IncludeProvider for ShaderIncludeProvider {"
+        },
+        {
+          "line": 286,
+          "text": "fn get_shader_text(source: &[shader_prepper::SourceChunk]) -> String {"
+        },
+        {
+          "line": 302,
+          "text": "    source: &[shader_prepper::SourceChunk],"
+        },
+        {
+          "line": 591,
+          "text": "    let mut loader = rspirv::dr::Loader::new();"
+        },
+        {
+          "line": 592,
+          "text": "    rspirv::binary::parse_words(spirv, &mut loader).unwrap();"
+        },
+        {
+          "line": 598,
+          "text": "            use rspirv::dr::Operand::LiteralInt32;"
+        },
+        {
+          "line": 627,
+          "text": "fn load_cs_impl(name: String, source: &[shader_prepper::SourceChunk]) -> Result<ComputeShader> {"
+        },
+        {
+          "line": 663,
+          "text": "    let source = shader_prepper::process_file("
+        },
+        {
+          "line": 686,
+          "text": "    let source = [shader_prepper::SourceChunk {"
+        },
+        {
+          "line": 720,
+          "text": "    let source = shader_prepper::process_file("
+        },
+        {
+          "line": 740,
+          "text": "    let source = shader_prepper::process_file("
+        }
+      ],
+      "raw_body_sha256": "9539247e11614529d1bb79af49533717daad10c70e07791120af31366d76a833",
+      "crlf_variant_sha256": "ae2c5cf782b332bd2a85a0db180322674bd69594860cef6a42150589c49e7af1",
+      "original_source_checksum_matches": []
+    },
+    {
+      "file": "public-shader-code-2.json",
+      "url": "https://raw.githubusercontent.com/EmbarkStudios/kajiya/main/crates/lib/kajiya-backend/Cargo.toml",
+      "status": 200,
+      "body_bytes": 1297,
+      "hit_lines": [
+        {
+          "line": 31,
+          "text": "rspirv = \"0.7\"  # note: patched over for latest RT"
+        },
+        {
+          "line": 32,
+          "text": "rspirv-reflect = { git = \"https://github.com/h3r2tic/rspirv-reflect\", rev = \"77364f98cbfb5c7ee3aa1347158670a9b8ec5bf5\" }"
+        }
+      ],
+      "raw_body_sha256": "6da8ce5adb147a9fac9603c2b0e8b897af8e157d50134f25c367e9731608b0e2",
+      "crlf_variant_sha256": "b8b9f085b3e7f5acca2e3d7613f48fb40dce1cbc2354f2d8df6fef45434fd906",
+      "original_source_checksum_matches": []
+    }
+  ],
+  "limits": [
+    "Only these saved successful public source responses were checked; not a universal public-repository absence claim",
+    "Neither public code candidate has matching whole author source checksums, but fragment influence cannot be ruled out",
+    "The actual original public shader-prepper crate checksum/VCS identity is separately proven; its library include traversal is reused",
+    "Both providers here use older shader-prepper APIs and different resource/shader pipelines; current own provider is not thereby original",
+    "No __alias_/in.var. policy implementation located in selected candidate source; original policy remains constrained by638stage404metadata corpus outputs"
+  ]
+}

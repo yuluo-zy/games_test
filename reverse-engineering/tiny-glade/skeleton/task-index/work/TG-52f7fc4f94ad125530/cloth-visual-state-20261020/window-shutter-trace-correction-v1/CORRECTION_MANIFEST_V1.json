@@ -1,0 +1,72 @@
+{
+  "scope": "Correction/withdrawal of invalid cross-overwrite stack-slot inference. Immutable earlier evidence bytes retained; no source/type rename.",
+  "withdrawn": "Messages inferring final candidate+40=modifiedID and+48=hash were invalid. V2 short slices omit intervening stores; neither old slice nor earlier local initialization may be propagated across later writes.",
+  "earlier_artifact": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-52f7fc4f94ad125530/cloth-visual-state-20261020/window-primitives-v2/NUMERIC_LEAVES_PROVENANCE_V2.json",
+    "sha256": "891a0a6266dc77bf58db87bb19ffe8ec7de9e59b58207cecd3913f873d65f1e5",
+    "bytes": 17013
+  },
+  "full_original": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-dbc2e274271d5e5274/cloth-visual-state-20261020/cloth-contract-v1/1407ebfd0-full-B-rne.asm",
+    "sha256": "4b79caf60d957279af3c2e934bae5a6ef6ec65c2c7f689a89c66d38cb1fc4184",
+    "bytes": 135789
+  },
+  "corrected_first_append": {
+    "hash": "1407ee723 computes calculate_hash<(modifiedDecoratorId,shutter_right)>;ee728 storeslocal280.",
+    "wall": "ee739 reads actual outer wall local1f0;ee740 saveslocal1f8.",
+    "output": "ee863..876 copies currentlocal280\u2192candidate40 andlocal1f8\u2192candidate48; tag2/side0. Thus key40 is hash and wall48 is the actual outer owner."
+  },
+  "corrected_second_append": {
+    "hash": "ee897 reads still-live original modifiedID local278 for tuple;ee8c4 computes calculate_hash<(modifiedDecoratorId,shutter_left)>;ee8c9 OVERWRITESlocal278 with hash.",
+    "wall": "ee8da reads outerwalllocal1f0;ee8e1 OVERWRITESlocal280 with this wall.",
+    "output": "ee9c7..9da copies now-hashlocal278\u2192candidate40 andnow-walllocal280\u2192candidate48; tag2/side1. The old assignments to these reused stack slots no longer apply."
+  },
+  "outer_owner": "ec3cd reads the actual outer map entry key,ec3d5 writeslocal1f0 before ec3e3 calls Decorators::iter_modified. ec5c4 then uses its address for actual PublicWalls map lookup. It is distinct from modifiedID loaded at ec48e/ec4a6.",
+  "literals": [
+    {
+      "va": "0x142a8a900",
+      "raw_hex": "736875747465725f7269676874",
+      "utf8": "shutter_right"
+    },
+    {
+      "va": "0x142a8a928",
+      "raw_hex": "736875747465725f6c656674",
+      "utf8": "shutter_left"
+    }
+  ],
+  "slices": [
+    {
+      "start": "0x1407ee6f6",
+      "end_exclusive": "0x1407ee9ee",
+      "body_sha256": "6d10156aed3cc29c2c5e87fdefe56704f2f9aa51bf5978731a23254edb968d37",
+      "instructions": 149,
+      "direct_PE_continuous": true,
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-52f7fc4f94ad125530/cloth-visual-state-20261020/window-shutter-trace-correction-v1/both-shutter-appends-B.asm",
+      "sha256": "2f934bb9f80c1a5679226581a688b1c9023603bd1105230d5e5b678a21a3e4a0",
+      "bytes": 7900
+    },
+    {
+      "start": "0x1407ec3a1",
+      "end_exclusive": "0x1407ec3e8",
+      "body_sha256": "699b5fb78011e24e3fc45898394edd5bf99d58b6e27261afe282c1ba4f1b42ac",
+      "instructions": 15,
+      "direct_PE_continuous": true,
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-52f7fc4f94ad125530/cloth-visual-state-20261020/window-shutter-trace-correction-v1/outer-wall-source-B.asm",
+      "sha256": "fd809d90a43995053bc6ec20cabf5864aa550fc3682dc2437151f838cea7089d",
+      "bytes": 691
+    },
+    {
+      "start": "0x1407ec5b9",
+      "end_exclusive": "0x1407ec604",
+      "body_sha256": "3cb5b2966965f560008a627145107ad21a66172521f482464827e26a06a23a8b",
+      "instructions": 16,
+      "direct_PE_continuous": true,
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-52f7fc4f94ad125530/cloth-visual-state-20261020/window-shutter-trace-correction-v1/outer-wall-public-lookup-B.asm",
+      "sha256": "ef6ef0cb1f53f6b3d5a5b9228c450765883b59032e3d904a4b9e1e0480202a45",
+      "bytes": 911
+    }
+  ],
+  "action": "Preserve canonical key40/wall48 semantic mapping; no neutral rename or swap is justified. Reuse real wall and hash in future window writers.",
+  "implementation": false,
+  "Cargo_GPU": false
+}

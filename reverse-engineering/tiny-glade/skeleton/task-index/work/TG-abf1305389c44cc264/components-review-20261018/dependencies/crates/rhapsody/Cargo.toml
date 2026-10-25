@@ -1,0 +1,41 @@
+[package]
+name = "rhapsody"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+description = "Render graph, graphics resource rules and shader interfaces"
+readme = "README.md"
+
+[features]
+# 原版 gpu-allocator 是本地分叉（Cargo.lock 记 0.26.0，但 PDB 里 with_global_allocator 返回
+# AllocatorReport，该类型只在 0.27 的 generate_report 中出现），算法按公共 0.27 复用；原版就是子分配，故默认开启。
+default = ["suballocation"]
+suballocation = ["dep:gpu-allocator"]
+candidate-optimizations = []
+
+[dependencies]
+ash.workspace = true
+spirq.workspace = true
+rspirv.workspace = true
+shader-pipeline.workspace = true
+shader-compiler.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+ron.workspace = true
+parking_lot.workspace = true
+log.workspace = true
+thiserror.workspace = true
+arc-swap = { workspace = true, features = ["weak"] }
+bevy_tasks.workspace = true
+gpu-allocator = { version = "=0.27.0", default-features = false, features = ["vulkan"], optional = true }
+slotmap.workspace = true
+bumpalo = "=3.18.1"
+smallvec = "=1.13.2"
+
+[target.'cfg(target_os = "macos")'.dev-dependencies]
+winit = { git = "https://github.com/PounceLight/winit.git", rev = "d03de0a0a881be9422c360083151b0e7a8a2582e", default-features = false, features = ["rwh_06"] }
+objc = "=0.2.7"
+
+[lints]
+workspace = true

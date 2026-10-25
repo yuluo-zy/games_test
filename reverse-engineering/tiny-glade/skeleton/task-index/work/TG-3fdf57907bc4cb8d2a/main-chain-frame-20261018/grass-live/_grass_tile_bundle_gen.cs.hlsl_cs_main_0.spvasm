@@ -1,0 +1,2067 @@
+; SPIR-V
+; Version: 1.3
+; Generator: Google rspirv; 0
+; Bound: 105
+; Schema: 0
+               OpCapability Shader
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint GLCompute %cs_main "cs_main" %gl_GlobalInvocationID %gl_WorkGroupID
+               OpExecutionMode %cs_main LocalSize 64 1 1
+          %5 = OpString "/tmp/.tmpkqcxcN"
+          %6 = OpString "shaders/inc/common.hlsl"
+          %7 = OpString "shaders/inc/samplers.hlsl"
+          %8 = OpString "shaders/inc/debug_utils.hlsl"
+          %9 = OpString "shaders/inc/tracked_buffer.hlsl"
+         %10 = OpString "shaders/grass/tile_bundle_gen.cs.hlsl"
+         %11 = OpString "shaders/grass/grass_common.inc.hlsl"
+         %12 = OpString "shaders/inc/consts.hlsl"
+               OpSource HLSL 640 %5 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %6 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %7 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %8 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %9 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %10 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %11 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpSource HLSL 640 %12 "
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+               OpName %type_RWStructuredBuffer_GrassBundlePacked "type.RWStructuredBuffer.GrassBundlePacked"
+               OpName %GrassBundlePacked "GrassBundlePacked"
+               OpMemberName %GrassBundlePacked 0 "raw"
+               OpName %__alias_bundle_buffer "__alias_bundle_buffer"
+               OpName %type_RWStructuredBuffer_uint "type.RWStructuredBuffer.uint"
+               OpName %__alias_bundle_grasslet_index_buffer "__alias_bundle_grasslet_index_buffer"
+               OpName %type_StructuredBuffer_uint "type.StructuredBuffer.uint"
+               OpName %tile_bundle_prefix_buffer "tile_bundle_prefix_buffer"
+               OpName %tile_bundle_subtotal_buffer "tile_bundle_subtotal_buffer"
+               OpName %type_StructuredBuffer_GrassTilePacked "type.StructuredBuffer.GrassTilePacked"
+               OpName %GrassTilePacked "GrassTilePacked"
+               OpMemberName %GrassTilePacked 0 "raw"
+               OpName %tile_buffer "tile_buffer"
+               OpName %blade_prefix_buffer "blade_prefix_buffer"
+               OpName %blade_prefix_subtotal_buffer "blade_prefix_subtotal_buffer"
+               OpName %cs_main "cs_main"
+               OpModuleProcessed "dxc-commit-hash: 16ceb560"
+               OpModuleProcessed "dxc-cl-option: /tmp/.tmpkqcxcN -E cs_main -T cs_6_4 -spirv -WX -Ges -fspv-target-env=vulkan1.1 -HV 2021 -Zi -Fo /tmp/.tmp2w1Pvn -Qembed_debug"
+               OpDecorate %gl_GlobalInvocationID BuiltIn GlobalInvocationId
+               OpDecorate %gl_WorkGroupID BuiltIn WorkgroupId
+               OpDecorate %__alias_bundle_buffer DescriptorSet 0
+               OpDecorate %__alias_bundle_buffer Binding 13
+               OpDecorate %__alias_bundle_grasslet_index_buffer DescriptorSet 0
+               OpDecorate %__alias_bundle_grasslet_index_buffer Binding 14
+               OpDecorate %tile_bundle_prefix_buffer DescriptorSet 0
+               OpDecorate %tile_bundle_prefix_buffer Binding 15
+               OpDecorate %tile_bundle_subtotal_buffer DescriptorSet 0
+               OpDecorate %tile_bundle_subtotal_buffer Binding 16
+               OpDecorate %tile_buffer DescriptorSet 0
+               OpDecorate %tile_buffer Binding 17
+               OpDecorate %blade_prefix_buffer DescriptorSet 0
+               OpDecorate %blade_prefix_buffer Binding 18
+               OpDecorate %blade_prefix_subtotal_buffer DescriptorSet 0
+               OpDecorate %blade_prefix_subtotal_buffer Binding 19
+               OpMemberDecorate %GrassBundlePacked 0 Offset 0
+               OpDecorate %_runtimearr_GrassBundlePacked ArrayStride 4
+               OpMemberDecorate %type_RWStructuredBuffer_GrassBundlePacked 0 Offset 0
+               OpDecorate %type_RWStructuredBuffer_GrassBundlePacked BufferBlock
+               OpDecorate %_runtimearr_uint ArrayStride 4
+               OpMemberDecorate %type_RWStructuredBuffer_uint 0 Offset 0
+               OpDecorate %type_RWStructuredBuffer_uint BufferBlock
+               OpMemberDecorate %type_StructuredBuffer_uint 0 Offset 0
+               OpMemberDecorate %type_StructuredBuffer_uint 0 NonWritable
+               OpDecorate %type_StructuredBuffer_uint BufferBlock
+               OpMemberDecorate %GrassTilePacked 0 Offset 0
+               OpDecorate %_runtimearr_GrassTilePacked ArrayStride 4
+               OpMemberDecorate %type_StructuredBuffer_GrassTilePacked 0 Offset 0
+               OpMemberDecorate %type_StructuredBuffer_GrassTilePacked 0 NonWritable
+               OpDecorate %type_StructuredBuffer_GrassTilePacked BufferBlock
+        %int = OpTypeInt 32 1
+       %uint = OpTypeInt 32 0
+   %uint_512 = OpConstant %uint 512
+      %int_0 = OpConstant %int 0
+    %uint_64 = OpConstant %uint 64
+     %uint_0 = OpConstant %uint 0
+     %uint_1 = OpConstant %uint 1
+    %uint_24 = OpConstant %uint 24
+   %uint_255 = OpConstant %uint 255
+    %uint_16 = OpConstant %uint 16
+ %uint_65535 = OpConstant %uint 65535
+   %uint_128 = OpConstant %uint 128
+%GrassBundlePacked = OpTypeStruct %uint
+%_runtimearr_GrassBundlePacked = OpTypeRuntimeArray %GrassBundlePacked
+%type_RWStructuredBuffer_GrassBundlePacked = OpTypeStruct %_runtimearr_GrassBundlePacked
+%_ptr_Uniform_type_RWStructuredBuffer_GrassBundlePacked = OpTypePointer Uniform %type_RWStructuredBuffer_GrassBundlePacked
+%_runtimearr_uint = OpTypeRuntimeArray %uint
+%type_RWStructuredBuffer_uint = OpTypeStruct %_runtimearr_uint
+%_ptr_Uniform_type_RWStructuredBuffer_uint = OpTypePointer Uniform %type_RWStructuredBuffer_uint
+%type_StructuredBuffer_uint = OpTypeStruct %_runtimearr_uint
+%_ptr_Uniform_type_StructuredBuffer_uint = OpTypePointer Uniform %type_StructuredBuffer_uint
+%GrassTilePacked = OpTypeStruct %uint
+%_runtimearr_GrassTilePacked = OpTypeRuntimeArray %GrassTilePacked
+%type_StructuredBuffer_GrassTilePacked = OpTypeStruct %_runtimearr_GrassTilePacked
+%_ptr_Uniform_type_StructuredBuffer_GrassTilePacked = OpTypePointer Uniform %type_StructuredBuffer_GrassTilePacked
+     %v3uint = OpTypeVector %uint 3
+%_ptr_Input_v3uint = OpTypePointer Input %v3uint
+       %void = OpTypeVoid
+         %48 = OpTypeFunction %void
+%_ptr_Uniform_uint = OpTypePointer Uniform %uint
+%_ptr_Uniform_GrassTilePacked = OpTypePointer Uniform %GrassTilePacked
+       %bool = OpTypeBool
+%_ptr_Uniform_GrassBundlePacked = OpTypePointer Uniform %GrassBundlePacked
+%__alias_bundle_buffer = OpVariable %_ptr_Uniform_type_RWStructuredBuffer_GrassBundlePacked Uniform
+%__alias_bundle_grasslet_index_buffer = OpVariable %_ptr_Uniform_type_RWStructuredBuffer_uint Uniform
+%tile_bundle_prefix_buffer = OpVariable %_ptr_Uniform_type_StructuredBuffer_uint Uniform
+%tile_bundle_subtotal_buffer = OpVariable %_ptr_Uniform_type_StructuredBuffer_uint Uniform
+%tile_buffer = OpVariable %_ptr_Uniform_type_StructuredBuffer_GrassTilePacked Uniform
+%blade_prefix_buffer = OpVariable %_ptr_Uniform_type_StructuredBuffer_uint Uniform
+%blade_prefix_subtotal_buffer = OpVariable %_ptr_Uniform_type_StructuredBuffer_uint Uniform
+%gl_GlobalInvocationID = OpVariable %_ptr_Input_v3uint Input
+%gl_WorkGroupID = OpVariable %_ptr_Input_v3uint Input
+               OpLine %10 15 1
+               OpNoLine
+    %cs_main = OpFunction %void None %48
+         %53 = OpLabel
+               OpLine %10 15 1
+         %54 = OpLoad %v3uint %gl_GlobalInvocationID
+         %55 = OpCompositeExtract %uint %54 0
+         %56 = OpLoad %v3uint %gl_WorkGroupID
+         %57 = OpCompositeExtract %uint %56 0
+               OpLine %10 16 32
+         %58 = OpAccessChain %_ptr_Uniform_uint %tile_bundle_prefix_buffer %int_0 %55
+         %59 = OpLoad %uint %58
+               OpLine %10 16 70
+         %60 = OpAccessChain %_ptr_Uniform_uint %tile_bundle_subtotal_buffer %int_0 %57
+         %61 = OpLoad %uint %60
+               OpLine %10 16 68
+         %62 = OpIAdd %uint %59 %61
+               OpLine %10 18 46
+         %63 = OpAccessChain %_ptr_Uniform_GrassTilePacked %tile_buffer %int_0 %55
+         %64 = OpLoad %GrassTilePacked %63
+         %65 = OpCompositeExtract %uint %64 0
+               OpLine %11 56 40
+         %66 = OpShiftRightLogical %uint %65 %uint_24
+               OpLine %11 56 48
+         %67 = OpBitwiseAnd %uint %66 %uint_255
+               OpLine %11 57 40
+         %68 = OpShiftRightLogical %uint %65 %uint_16
+               OpLine %11 57 48
+         %69 = OpBitwiseAnd %uint %68 %uint_255
+               OpLine %11 59 39
+         %70 = OpBitwiseAnd %uint %65 %uint_65535
+               OpLine %11 59 50
+         %71 = OpUMod %uint %70 %uint_512
+               OpLine %10 19 30
+         %72 = OpAccessChain %_ptr_Uniform_uint %blade_prefix_buffer %int_0 %55
+         %73 = OpLoad %uint %72
+               OpLine %10 19 62
+         %74 = OpAccessChain %_ptr_Uniform_uint %blade_prefix_subtotal_buffer %int_0 %57
+         %75 = OpLoad %uint %74
+               OpLine %10 19 60
+         %76 = OpIAdd %uint %73 %75
+               OpLine %10 21 41
+         %77 = OpUMod %uint %76 %uint_64
+               OpLine %10 23 24
+         %78 = OpISub %uint %uint_64 %77
+               OpLine %10 27 5
+               OpBranch %79
+         %79 = OpLabel
+         %80 = OpPhi %uint %uint_0 %53 %81 %82
+         %83 = OpPhi %uint %78 %53 %84 %82
+         %85 = OpPhi %uint %71 %53 %86 %82
+               OpLine %10 27 26
+         %87 = OpUGreaterThan %bool %85 %uint_0
+               OpLine %10 27 5
+               OpLoopMerge %88 %82 None
+               OpBranchConditional %87 %82 %88
+         %82 = OpLabel
+               OpLine %10 28 34
+         %89 = OpExtInst %uint %1 UMin %85 %83
+               OpLine %10 29 41
+         %90 = OpIEqual %bool %uint_64 %83
+               OpLine %10 29 38
+         %91 = OpSelect %uint %90 %uint_1 %uint_0
+               OpLine %10 34 52
+         %92 = OpISub %uint %71 %85
+               OpLine %10 37 60
+         %93 = OpIAdd %uint %62 %80
+               OpLine %11 79 33
+         %94 = OpShiftLeftLogical %uint %67 %uint_24
+               OpLine %11 79 57
+         %95 = OpShiftLeftLogical %uint %69 %uint_16
+               OpLine %11 79 41
+         %96 = OpBitwiseOr %uint %94 %95
+               OpLine %11 79 81
+         %97 = OpIMul %uint %92 %uint_128
+               OpLine %11 79 90
+         %98 = OpIAdd %uint %97 %89
+               OpLine %11 79 65
+         %99 = OpBitwiseOr %uint %96 %98
+               OpLine %9 32 14
+        %100 = OpAccessChain %_ptr_Uniform_GrassBundlePacked %__alias_bundle_buffer %int_0 %93
+               OpLine %9 32 29
+        %101 = OpCompositeConstruct %GrassBundlePacked %99
+               OpLine %9 32 9
+               OpStore %100 %101
+               OpLine %9 32 14
+        %102 = OpAccessChain %_ptr_Uniform_uint %__alias_bundle_grasslet_index_buffer %int_0 %93
+               OpLine %9 32 9
+               OpStore %102 %91
+               OpLine %10 42 23
+         %86 = OpISub %uint %85 %89
+               OpLine %10 43 18
+        %103 = OpISub %uint %83 %89
+               OpLine %10 44 22
+         %81 = OpIAdd %uint %80 %uint_1
+               OpLine %10 46 15
+        %104 = OpIEqual %bool %uint_0 %103
+               OpNoLine
+         %84 = OpSelect %uint %104 %uint_64 %103
+               OpLine %10 49 5
+               OpBranch %79
+         %88 = OpLabel
+               OpLine %10 50 1
+               OpReturn
+               OpFunctionEnd

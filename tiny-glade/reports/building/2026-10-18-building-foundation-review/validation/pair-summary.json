@@ -1,0 +1,124 @@
+{
+  "snapshot": "/var/folders/nn/2ymzgfd16j96wv2_mj2bpsfm0000gn/T/tg-pair-rereview-rneviev6",
+  "checks": [
+    {
+      "name": "test",
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "-p",
+        "tabloid",
+        "-p",
+        "tg-package-integrity",
+        "--all-targets",
+        "--target-dir",
+        "/private/tmp/tg-foundation-refactor-target"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "docs",
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "-p",
+        "tabloid",
+        "-p",
+        "tg-package-integrity",
+        "--doc",
+        "--target-dir",
+        "/private/tmp/tg-foundation-refactor-target"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--offline",
+        "-p",
+        "tabloid",
+        "-p",
+        "tg-package-integrity",
+        "--all-targets",
+        "--no-deps",
+        "--target-dir",
+        "/private/tmp/tg-foundation-refactor-target",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "-p",
+        "tabloid",
+        "-p",
+        "tg-package-integrity",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "source_files": {
+    "crates/tabloid/Cargo.toml": {
+      "sha256": "8f5b205e1413aada3d60674cdf49110b79c76c9b6d5b435c6bd7d760e293659c",
+      "snapshot_equal": true
+    },
+    "crates/tabloid/README.md": {
+      "sha256": "edd8f1ee7ae2b3ba92ecf3f91d2093d7b18969e1a03df16d7afeb8dbf3018b94",
+      "snapshot_equal": true
+    },
+    "crates/tabloid/tests/dirty_tiles.rs": {
+      "sha256": "dfc8d947e2caa2e989bcf6d039f536e2e45ea748b3f6d258486d6936ec9c6fab",
+      "snapshot_equal": true
+    },
+    "crates/tabloid/examples/review_publication_cost.rs": {
+      "sha256": "9ce14edff5a23b6faf902455134d755eb0062a9bff981f35a5ce8a091e653122",
+      "snapshot_equal": true
+    },
+    "crates/tabloid/src/lib.rs": {
+      "sha256": "98ae465cb8c3468df3e67905a264a3ecf36d84ed66c6aa3c7b2f67c15a36e695",
+      "snapshot_equal": true
+    },
+    "crates/tg-package-integrity/Cargo.toml": {
+      "sha256": "19a6bbc10bf55cb8081bb19e2eaae1ac7c7a76396b7b197324a26737ebb9f017",
+      "snapshot_equal": true
+    },
+    "crates/tg-package-integrity/README.md": {
+      "sha256": "54cb6a8224061eb5b078aa90b9f918c600adad8e7b096664d4cd4438d649ab6e",
+      "snapshot_equal": true
+    },
+    "crates/tg-package-integrity/examples/inspect_package.rs": {
+      "sha256": "c8eda75b2d67b2ab49434c118cdc35b3f90bcd478a137374d4fc44f047e50fe8",
+      "snapshot_equal": true
+    },
+    "crates/tg-package-integrity/fixtures/manifest-contract.json": {
+      "sha256": "bd1f833559e88f242fc28aa75988abfa63a46667cf56cd54cec7757455fec5da",
+      "snapshot_equal": true
+    },
+    "crates/tg-package-integrity/fixtures/windows-boundaries.json": {
+      "sha256": "13f7efe1eaed5294c18f7f2b9c28d3494db750bd5fce7b66030a6a1babfcbc6a",
+      "snapshot_equal": true
+    },
+    "crates/tg-package-integrity/fixtures/B-manifest.json": {
+      "sha256": "3425e76472672b9b7c3d18ed6f7cdc1f21d2c445782845a82528dd4f50bf0a11",
+      "snapshot_equal": true
+    },
+    "crates/tg-package-integrity/src/lib.rs": {
+      "sha256": "d807fb14c7b895fd9d9407b1fe1302b63dd5bea2e0389dada44b55d6e793083f",
+      "snapshot_equal": true
+    }
+  },
+  "unit_integration_tests": 24,
+  "doctests": 3,
+  "scope": "Source-identical two-member workspace, original dependency versions; macOS host. Thread exhaustion was not induced; sequential and parallel issue order are compared."
+}

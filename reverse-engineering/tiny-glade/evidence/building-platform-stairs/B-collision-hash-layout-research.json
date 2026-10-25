@@ -1,0 +1,20 @@
+{
+  "ok": true,
+  "cases": 256,
+  "failures": [],
+  "scope": "Entire original new_indexed1408cee40 hash prefix to1408cef4e executes original std SipHash for float point bits and triangle UVec3 slice, then present optional triangle/line folds. None and Some(empty) are exercised. Hash output is observed RDI, never bridged. Raw float words intentionally include nonfinite/signedzero: this hash-only schema proof is not physics input reachability. Newindexed normals/trimesh/physics and RaycastWorld lifecycle remain outside.",
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "candidate_binary_sha256": "36a4f83ba09be60f1962fb2bfa376a6e5cc60b444de05b1cf5f7d8837045beaf",
+  "candidate_sources": {
+    "reconstruction/building/wall_platform_collision.rs": "0d4c68490f4cee85f46eaab5ed10d2a636f0d97986870a8d2652ca33373b9e79",
+    "reconstruction/src/bin/wall-platform-collider-probe.rs": "dc3e9ae7de70656af340991d7100bdbf6c1cdfacc1c0c8914712dd4aa7444c0f",
+    "reconstruction/Cargo.toml": "ae413599fefa52610542747df65562975afb43e9677adf638fd19318f77005d0",
+    "reconstruction/Cargo.lock": "2df647ccdbfef544cb7e8f9aa1cd499f411dbfca76cda7e86bcfe051a4095bcc"
+  },
+  "oracle_sources": {
+    "scripts/multi-version/verify_wall_platform_collision_hash.py": "e64be8dfd7c17d8eea4d85b7c41a3ba8d5ffc39aa8eebbf15d53bb442fd76e85",
+    "evidence/building-platform-stairs/native_platform_collision_hash.py": "c1460b0327a9585f59dd7bd7d3eca6153db25f9ec1828982b4c6f536267b086e",
+    "evidence/building-constructor/native_fixture.py": "3a1d9654cbb346ed458185543ea30778b147e2b658a0301cd59e5ea9b73eec1e"
+  },
+  "superseded_reason": "This first layout-only study placed point bits in the first array<[u32;3]> argument and indices in the second UVec3 argument. The original platform caller uses triangle indices first and point bits second. This is not accepted caller behavior; correct binding is separately reexecuted in B-collision-hash-verification.json."
+}

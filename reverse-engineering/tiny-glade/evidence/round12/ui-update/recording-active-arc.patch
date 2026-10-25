@@ -1,0 +1,16 @@
+--- a/tiny-glade/crates/country-core/src/systems/history/recording.rs
++++ b/tiny-glade/crates/country-core/src/systems/history/recording.rs
+@@ -133,6 +133,13 @@
+ /// already owned by UiState. Neither a missing widget nor an inactive UI can
+ /// create a recording group.
+ fn active_widget_records_history(ui: &crate::systems::ui::resources::ui_state::UiState) -> bool {
++    // Native reads the active strong Arc at UiState+0x20. ui_update clears
++    // the frame registry before set14, so registry lookup alone loses every
++    // real press. Keep the registry branch only for the existing explicit
++    // low-level UiState constructor API, which predates the input producer.
++    if let Some(params) = ui.active_params() {
++        return !params.flags.no_history_recording();
++    }
+     let id = ui.active_widget();
+     if let Some(params) = ui.widget(id) {
+         return !params.flags.no_history_recording();

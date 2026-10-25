@@ -1,0 +1,819 @@
+--- /dev/null
++++ b/tiny-glade/crates/country-core/src/resources/window_lights.rs
+@@ -0,0 +1,33 @@
++//! 窗灯共享组件和唯一状态资源。
++//! B 版真实消费者使用 usize 键与 u32 装饰物命令编号。
++//! 这里采用安全命名字段，不声明原 Rust 或 Bevy 的内存 ABI。
++use bevy_ecs::{component::Component, resource::Resource};
++use std::collections::HashMap;
++
++#[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
++pub struct WindowLight {
++    pub key: usize,
++    pub decorator_id: u32,
++}
++
++#[derive(Clone, Copy, Debug, Default, PartialEq)]
++pub struct LightInfo {
++    pub brightness: f32,
++    pub timer: f32,
++    pub actual_on: u8,
++    pub target_on: u8,
++}
++
++impl LightInfo {
++    /// 原插入分支明确写入四个字段，其中计时器初值为零。
++    pub fn new(lights_on: bool) -> Self {
++        Self { brightness: 0.0, timer: 0.0,
++            actual_on: lights_on as u8, target_on: lights_on as u8 }
++    }
++}
++
++#[derive(Resource, Clone, Debug, Default)]
++pub struct GlobalWindowLightsControl {
++    pub lights: HashMap<usize, LightInfo>,
++    pub lights_on: bool,
++}
+--- a/tiny-glade/crates/country-core/src/resources/mod.rs
++++ b/tiny-glade/crates/country-core/src/resources/mod.rs
+@@ -96,3 +96,6 @@
+     #[derive(Resource, Clone, Debug, Default)]
+     pub struct ShapeIntersections(pub HashMap<[WallId; 2], Vec<Vec2>, RandomState>);
+ }
++
++/// 窗灯共享状态与真实组件，供装饰生产者和玻璃渲染共同借用。
++pub mod window_lights;
+--- a/tiny-glade/crates/country-core/src/resources/events.rs
++++ b/tiny-glade/crates/country-core/src/resources/events.rs
+@@ -60,10 +60,10 @@
+ #[derive(Event, Clone, Copy, Debug, Default)]
+ pub struct LightLanternCmd;
+ 
+-/// 窗灯命令（O：`resources::events::LightWindowCmd`；color_menu 的 EventWriter 面。
+-/// 载荷语义 U）。
+-#[derive(Event, Clone, Copy, Debug, Default)]
+-pub struct LightWindowCmd;
++/// B1407b5980 消费最后一个未读点灯命令的装饰物编号。
++/// 原事件记录的 u32 载荷位于 +8，事件队列的头部与填充不属于业务字段。
++#[derive(Event, Clone, Copy, Debug)]
++pub struct LightWindowCmd(pub u32);
+ 
+ /// 输入记录收尾命令（O：`resources::history::FinishInputRecordingCmd` 族——原
+ /// 模块 `resources::history`；color_menu 的 EventWriter 面。载荷语义 U）。
+--- a/tiny-glade/crates/systems/decorator/src/window_lights.rs
++++ b/tiny-glade/crates/systems/decorator/src/window_lights.rs
+@@ -1,171 +1,89 @@
+-//! B `crates/systems/decorator/src/window_lights.rs` — 窗灯系统。
+-//!
+-//! 证据（2026-10-17 fresh Ghidra shared 反编译 0x1407b5980（32KB，
+-//! `reports/state/decorator/review-evidence/fresh-decomp/0x1407b5980_*.c`）+
+-//! read_memory 常量核验）：
+-//! - 参数面（O）：in_RCX = ResMut<GlobalWindowLightsControl>（tick 回写
+-//!   +0x1c→+0x10；控制 +0x30 写 lights_on）、in_RDX = ResMut<PublicWalls 复合>
+-//!   （+0xf8 墙 id 数组 / +0x100 数组末 / +0x108 模式字节 / +0x110 索引、
+-//!   +0x100/+0x1a8 双桶表）、in_R8 = Res<昼夜循环资源>（t 于 `*+8`）、in_R9 =
+-//!   Res<GameTime>（delta `*+0x28`）、栈 5 参 = ResMut<瓦缓冲复合>。
+-//! - 开灯判定（O）：`SessionLoadReadiness::deny_load()` 假→下界 0.51f
+-//!   （0x3f028f5c，read_memory 0x142a83cbc 核验；**旧 0.5097 是错 lane**）、
+-//!   真→0.44f（0x3ee147ae，0x142a83cb8）；上界 **0.72f**（0x3f3851ec，
+-//!   0x142a80d44 核验；**旧 0.7199 是错 lane**）。`lights_on = lower <= t &&
+-//!   t < 0.72`；写控制字节 +0x30。
+-//! - 灯表条目（O，0x18B）：`{key u64 @0, brightness f32 @8, timer f32 @0xc,
+-//!   actual u8 @0x10, target u8 @0x11}`（key 由 HashMap 承载）。
+-//! - 灯态变化（O，逐条目）：`entry.target != lights_on` →
+-//!   `timer = 2.0*fastrand::f32()` + `target = lights_on`（随机抖动）。
+-//! - 窗实体收集（O 结构）：墙（模式字节 +0x108==0）走 `+0xf8` id 数组 +
+-//!   0xa0 段桶，屋顶走 0x48 段桶；经 `+0x110` 索引反查实体记录（0x10 步长
+-//!   子记录），逐实体核对灯表：缺失 → 插 `{key, brightness=0,
+-//!   actual=lights_on, target=lights_on}`；命中 + 形状变化条件
+-//!   （`(A 新瓦||B 新瓦) && local_f4==plVar30[1]`）→ `brightness=1.0, target=1`。
+-//! - 帧末（O）：逐条目 `timer>0 → timer -= delta（钳 0），==0 且非 NaN →
+-//!   actual=target`；`brightness = utils::time_continuous_lerp(...)`（0x140c904e0）。
+-//! - 剔除（O）：`HashMap::retain<closure_env_1>` 裁剪失效条目（闭包 U）。
+-//!
+-//! U 登记：墙/屋顶遍历资源身份（PublicWalls 双模式密集表，core 未暴露——
+-//! `PublicWalls` 现为 HashMap 抽象，stride-0xa0/0x48 窗桶表内嵌
+-//! InnerWalls/RoofShape，walls 组在途域）+ t 资源（昼夜循环资源 `*+8` f32，
+-//! 本地以 [`GlobalWindowLightsControl::cycle_t`] 承载为近似）+ 收集资源
+-//! （ResMut tick@+0x1c）+ 栈 5 参瓦缓冲复合身份；形状变化条件
+-//! `local_f4 == plVar30[1]` 字段语义；retain 闭包谓词；
+-//! time_continuous_lerp 的 F thunk 身份与实参。
+-
++//! B1407b5980 的真实窗口查询、昼夜相位与最后一条点灯命令。
++//! 共享值归 core 所有，装饰物生产者与玻璃更新器使用相同 TypeId。
+ use bevy_ecs::prelude::*;
+-use bevy_ecs::resource::Resource;
+-
+-use country_core::resources::session::ActiveSession;
+-use country_core::resources::time::GameTime;
+-
+-/// 单窗灯条目（B 0x18B 记录余下 16B：`{brightness f32 @8, timer f32 @0xc,
+-/// actual u8 @0x10, target u8 @0x11}`）。
+-#[derive(Clone, Copy, Debug, PartialEq)]
+-pub struct WindowLightState {
+-    /// +0x08：亮度插值（time_continuous_lerp 输出）。
+-    pub brightness: f32,
+-    /// +0x0c：亮灯计时（灯态变化时 = 2*rng；帧末 -= delta，归零 → actual=target）。
+-    pub timer: f32,
+-    /// +0x10：实际开关字节（计时归零时拷入 target）。
+-    pub actual_on: u8,
+-    /// +0x11：目标开关字节（= lights_on）。
+-    pub target_on: u8,
+-}
+-
+-impl Default for WindowLightState {
+-    fn default() -> Self {
+-        Self {
+-            brightness: 0.0,
+-            timer: 1.0,
+-            actual_on: 0,
+-            target_on: 0,
+-        }
+-    }
+-}
+-
+-/// B `country_core::resources::window_lights::GlobalWindowLightsControl`
+-/// （core 未恢复类型 → 本地承载，登记 RESTORE.md）：窗灯全局控制。
+-#[derive(Resource, Clone, Debug, Default)]
+-pub struct GlobalWindowLightsControl {
+-    /// 昼夜循环值 t（B +8 区 f32；开灯判定区间；外部系统写入）。
+-    pub cycle_t: f32,
+-    /// 灯表（entity → 状态；B 0x18B 条目）。
+-    pub lights: hashbrown::HashMap<u64, WindowLightState>,
+-    /// +0x30：开灯标志（`t∈[lower, 0.72)` 时置 1）。
+-    pub lights_on: bool,
+-}
+-
+-/// 开灯区间下界：非 olden 0.51f（0x3f028f5c，read_memory 0x142a83cbc 核验；
+-/// **旧 0.5097 是错 lane**），olden 0.44f（0x3ee147ae，0x142a83cb8）。
+-/// O：`SessionLoadReadiness::deny_load()`（0x140a9fa70）与
+-/// `GladeType/ActiveSession::is_olden` 同址折叠 —— 以 `is_olden()` 承载等价。
+-const LOWER_BOUND_NORMAL: f32 = 0.51;
+-const LOWER_BOUND_OLDEN: f32 = 0.44;
+-/// 开灯区间上界（0x142a80d44 = 0.72f，read_memory 核验；**旧 0.7199 是错 lane**）。
+-const UPPER_BOUND: f32 = 0.72;
+-
+-/// B utils crate `time_continuous_lerp`（0x140c904e0，O 结构）：
+-/// `lerp(a, b, 1 - F((bits ^ 0x8000_0000) as f32 * rate))` —— 位模式驱动的
+-/// 连续动画插值（窗灯亮度共用 utils 缺口函数，登记 RESTORE.md；
+-/// F = 0x142923ec0 std 导入 thunk 身份 U）。
+-pub fn time_continuous_lerp(a: f32, b: f32, bits: u32, rate: f32) -> f32 {
+-    let v = ((bits ^ 0x8000_0000) as f32) * rate;
+-    // F = 0x142923ec0（std 导入 thunk，身份 U；以 sin 承载振荡语义并登记）。
+-    let f = v.sin();
+-    (b - a) * (1.0 - f) + a
+-}
+-
+-/// 开灯判定（O：`lower <= t && t < 0.72`；lower = olden ? 0.44 : 0.51）。
++use country_core::resources::{events::LightWindowCmd, session::ActiveSession,
++    time::GameTime, time_of_day::TimeOfDay,
++    window_lights::{LightInfo, WindowLight}};
++pub use country_core::resources::window_lights::GlobalWindowLightsControl;
++pub use country_core::resources::window_lights::LightInfo as WindowLightState;
++pub use utils::time_continuous_lerp;
++
+ pub fn lights_on(t: f32, olden: bool) -> bool {
+-    let lower = if olden {
+-        LOWER_BOUND_OLDEN
+-    } else {
+-        LOWER_BOUND_NORMAL
+-    };
+-    lower <= t && t < UPPER_BOUND
+-}
+-
+-/// `window_lights`（0x1407b5980，O 结构 + 部分判等）。
+-///
+-/// 1. 开灯判定（deny_load 门控下界 0.51/0.44，上界 0.72）——判等；
+-/// 2. 灯态变化随机重计时（逐条目 target != lights_on → timer=2*rng）——判等；
+-/// 3. 窗实体收集核对（墙/屋顶双模式桶）——**未实现**（收集资源身份 U，见
+-///    文件头；当前以条目全量维护承载）；
+-/// 4. 帧末推进计时/开关 + 亮度插值——判等（time_continuous_lerp 实参 U）；
+-/// 5. 剔除失效（retain 谓词 U）。
++    let lower = if olden { 0.44 } else { 0.51 };
++    lower <= t && t < 0.72
++}
++
+ pub fn window_lights(
+     mut control: ResMut<GlobalWindowLightsControl>,
++    windows: Query<&WindowLight>,
++    time_of_day: Res<TimeOfDay>,
++    time: Res<GameTime>,
+     session: Res<ActiveSession>,
+-    time: Res<GameTime>,
++    mut light_commands: EventReader<LightWindowCmd>,
+ ) {
+-    let olden = session.is_olden();
+-    // 开灯判定（O：`lower <= t && t < 0.72`；写控制字节 +0x30）。
+-    let t = control.cycle_t;
+-    let lights_on = lights_on(t, olden);
+-    control.lights_on = lights_on;
+-
+-    // 灯态变化（O，逐条目）：target != lights_on → 随机重计时 + 更新 target。
+-    // 原版直接调用全局 `fastrand::Rng::f32()`（decomp 行 287），**没有**
+-    // `init_rng`/`rng_seed` 函数；旧实现以固定 seed 0 构造本地 Rng 与二进制
+-    // 不符（CONTRACT §2.4 #62）。
+-    for state in control.lights.values_mut() {
+-        if state.target_on != lights_on as u8 {
+-            state.timer = 2.0 * fastrand::f32();
+-            state.target_on = lights_on as u8;
+-        }
+-    }
+-
+-    let delta = time.delta;
+-    // 剔除失效条目（O 结构，fresh LAB_1407b62ed：`HashMap::retain<closure_env_1>`
+-    // 在**帧末推进之前**执行——B 顺序 = 灯态变化 → 收集 → retain → 帧末；原
+-    // Rust 把 retain 放帧末后，与二进制次序分歧，2026-10-17 已调整。谓词 U，
+-    // 以 timer>0 或已亮保留承载，登记 RESTORE.md）。
+-    control
+-        .lights
+-        .retain(|_entity, state| state.timer > 0.0 || state.actual_on != 0);
+-    // 帧末推进（O：timer -= delta，`<=0` 钳 0，归零且非 NaN 时 `actual ← target`；
+-    // brightness = time_continuous_lerp，位来源 = timer 位模式，登记）。
++    // 原版读尽两个未读事件缓冲，仅保留最后一个载荷。
++    let latest = light_commands.read().last().map(|command| command.0);
++    let on = lights_on(time_of_day.time_of_day, session.is_olden());
++    control.lights_on = on;
++    // 先枚举既有表项再插入或删除；目标未变的表项也占用原序号。
++    // 复用锁定的 fastrand1.8，本地 Rng 只保存此表项的种子。
++    for (ordinal, state) in control.lights.values_mut().enumerate() {
++        if state.target_on != on as u8 {
++            let seed = u64::from(time.frame_count).wrapping_add(ordinal as u64);
++            state.timer = 2.0 * fastrand::Rng::with_seed(seed).f32();
++            state.target_on = on as u8;
++        }
++    }
++    let mut live = Vec::new();
++    for window in &windows {
++        live.push(window.key);
++        let state = control.lights.entry(window.key).or_insert_with(|| LightInfo::new(on));
++        if latest == Some(window.decorator_id) {
++            // 原命令只闪亮当前亮度并设置目标，不改实际开关与计时器。
++            state.brightness = 1.0;
++            state.target_on = 1;
++        }
++    }
++    control.lights.retain(|key, _| live.contains(key));
+     for state in control.lights.values_mut() {
+         if state.timer > 0.0 {
+-            state.timer = (state.timer - delta).max(0.0);
++            let remaining = state.timer - time.delta;
++            // 原 MAXSS(value,0) 在 NaN 或相等时同样返回第二操作数。
++            state.timer = if remaining > 0.0 { remaining } else { 0.0 };
+             if state.timer == 0.0 {
+                 state.actual_on = state.target_on;
+             }
+         }
+-        let bits = state.timer.to_bits();
+-        state.brightness = time_continuous_lerp(0.0, 1.0, bits, 0.05);
+-    }
++        state.brightness = time_continuous_lerp(state.brightness,
++            if state.actual_on != 0 { 1.0 } else { 0.0 }, time.delta, 3.0);
++    }
++}
++
++/// 仅对应原 decorators_on_glade_unload 中的窗灯资源片段。
++/// 原版释放旧表并重建 RandomState，然后清除全局开灯标志。
++pub fn window_lights_on_glade_unload(mut control: ResMut<GlobalWindowLightsControl>) {
++    *control = GlobalWindowLightsControl::default();
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
++    use country_core::resources::session::{SessionId, SessionMeta};
++
++    fn light_world(phase: f32, delta: f32) -> (World, Schedule) {
++        let mut world = World::new();
++        world.init_resource::<GlobalWindowLightsControl>();
++        world.init_resource::<Events<LightWindowCmd>>();
++        world.insert_resource(TimeOfDay { time_of_day: phase, ..Default::default() });
++        world.insert_resource(GameTime { delta, frame_count: 17, ..Default::default() });
++        world.insert_resource(ActiveSession::new(SessionId::new(), SessionMeta::default()));
++        let mut schedule = Schedule::default();
++        schedule.add_systems(window_lights);
++        (world, schedule)
++    }
+ 
+     #[test]
+     fn lights_on_uses_normal_and_olden_lower_bounds() {
+-        // O：normal 下界 0.51、olden 下界 0.44、上界 0.72（strict）。
+         assert!(!lights_on(0.5099, false));
+         assert!(lights_on(0.51, false));
+         assert!(lights_on(0.7199, true));
+@@ -173,6 +91,7 @@
+         assert!(lights_on(0.44, true));
+         assert!(!lights_on(0.4399, true));
+         assert!(!lights_on(0.44, false), "0.44 olden-only lower bound");
++        assert!(!lights_on(f32::NAN, false));
+     }
+ 
+     #[test]
+@@ -181,5 +100,125 @@
+         assert_eq!(s.actual_on, 0);
+         assert_eq!(s.target_on, 0);
+         assert_eq!(s.brightness, 0.0);
+-    }
+-}
++        assert_eq!(s.timer.to_bits(), 0);
++    }
++
++    #[test]
++    fn actual_time_resource_query_creation_and_live_removal_drive_the_owner() {
++        let (mut world, mut schedule) = light_world(0.6, 0.25);
++        world.clear_trackers();
++        schedule.run(&mut world);
++        assert!(world.get_resource_ref::<GlobalWindowLightsControl>().unwrap().is_changed());
++        assert!(world.resource::<GlobalWindowLightsControl>().lights_on);
++        let entity = world.spawn(WindowLight { key: 0x1_0000_0061, decorator_id: 61 }).id();
++        schedule.run(&mut world);
++        let state = world.resource::<GlobalWindowLightsControl>().lights[&0x1_0000_0061];
++        assert_eq!((state.actual_on, state.target_on), (1, 1));
++        assert_eq!(state.timer, 0.0);
++        assert!((state.brightness - 0.527_633_4).abs() < 2.0e-7);
++        world.resource_mut::<TimeOfDay>().time_of_day = 0.0;
++        schedule.run(&mut world);
++        assert!(!world.resource::<GlobalWindowLightsControl>().lights_on);
++        world.despawn(entity);
++        schedule.run(&mut world);
++        assert!(world.resource::<GlobalWindowLightsControl>().lights.is_empty());
++    }
++
++    #[test]
++    fn frame_plus_actual_map_ordinal_rng_does_not_consume_global_rng() {
++        let (mut world, mut schedule) = light_world(0.6, 0.125);
++        for key in [9, 21, 53, 87] {
++            world.spawn(WindowLight { key, decorator_id: key as u32 });
++            world.resource_mut::<GlobalWindowLightsControl>().lights.insert(key, LightInfo::default());
++        }
++        // 已处于目标状态的表项仍参与序号计数。
++        world.resource_mut::<GlobalWindowLightsControl>().lights.get_mut(&53).unwrap().target_on = 1;
++        let expected: Vec<_> = world.resource::<GlobalWindowLightsControl>().lights.iter()
++            .enumerate().map(|(ordinal, (key, value))| {
++                let timer = if value.target_on == 0 {
++                    let next = 2.0 * fastrand::Rng::with_seed(17 + ordinal as u64).f32() - 0.125;
++                    if next > 0.0 { next } else { 0.0 }
++                } else { 0.0 };
++                (*key, timer.to_bits())
++            }).collect();
++        fastrand::seed(0x1234);
++        let expected_global = fastrand::Rng::with_seed(0x1234).u64(..);
++        schedule.run(&mut world);
++        assert_eq!(fastrand::u64(..), expected_global);
++        for (key, bits) in expected {
++            let state = world.resource::<GlobalWindowLightsControl>().lights[&key];
++            assert_eq!(state.target_on, 1);
++            assert_eq!(state.timer.to_bits(), bits);
++        }
++    }
++
++    #[test]
++    fn latest_unread_command_flashes_only_its_decorator_then_fades_from_actual() {
++        let (mut world, mut schedule) = light_world(0.0, 0.1);
++        world.spawn(WindowLight { key: 11, decorator_id: 1 });
++        world.spawn(WindowLight { key: 22, decorator_id: 2 });
++        world.resource_mut::<Events<LightWindowCmd>>().send(LightWindowCmd(1));
++        world.resource_mut::<Events<LightWindowCmd>>().update();
++        world.resource_mut::<Events<LightWindowCmd>>().send(LightWindowCmd(2));
++        schedule.run(&mut world);
++        let a = world.resource::<GlobalWindowLightsControl>().lights[&11];
++        let b = world.resource::<GlobalWindowLightsControl>().lights[&22];
++        assert_eq!(a.brightness, 0.0);
++        assert_eq!((b.actual_on, b.target_on, b.timer), (0, 1, 0.0));
++        assert!((b.brightness - 0.740_818_2).abs() < 2.0e-7);
++        schedule.run(&mut world);
++        let second = world.resource::<GlobalWindowLightsControl>().lights[&22];
++        assert_eq!(second.target_on, 0, "read command must not replay");
++        assert!(second.brightness < b.brightness);
++    }
++
++    #[test]
++    fn timer_initial_gate_zero_nan_and_second_operand_nan_behavior_are_preserved() {
++        for (timer, delta, expected_timer, expected_actual) in [
++            (0.0, 0.1, 0.0, 1), (-0.25, 0.1, -0.25, 1),
++            (f32::NAN, 0.1, f32::NAN, 1),
++            (0.25, 0.1, 0.15, 1), (0.1, 0.25, 0.0, 0),
++            (0.1, f32::NAN, 0.0, 0),
++        ] {
++            let (mut world, mut schedule) = light_world(0.0, delta);
++            world.spawn(WindowLight { key: 9, decorator_id: 9 });
++            world.resource_mut::<GlobalWindowLightsControl>().lights.insert(9,
++                LightInfo { brightness: 0.5, timer, actual_on: 1, target_on: 0 });
++            schedule.run(&mut world);
++            let state = world.resource::<GlobalWindowLightsControl>().lights[&9];
++            assert_eq!(state.actual_on, expected_actual);
++            if expected_timer.is_nan() { assert!(state.timer.is_nan()); }
++            else { assert!((state.timer - expected_timer).abs() < 2.0e-8); }
++            if expected_timer == 0.0 { assert_eq!(state.timer.to_bits(), 0); }
++        }
++    }
++
++    #[test]
++    fn duplicate_entity_keys_share_one_state_and_remove_only_after_last_window() {
++        let (mut world, mut schedule) = light_world(0.0, 0.0);
++        let a = world.spawn(WindowLight { key: 81, decorator_id: 1 }).id();
++        let b = world.spawn(WindowLight { key: 81, decorator_id: 2 }).id();
++        schedule.run(&mut world);
++        assert_eq!(world.resource::<GlobalWindowLightsControl>().lights.len(), 1);
++        assert_eq!(world.resource::<GlobalWindowLightsControl>().lights[&81].brightness, 0.0);
++        world.despawn(a); schedule.run(&mut world);
++        assert_eq!(world.resource::<GlobalWindowLightsControl>().lights.len(), 1);
++        world.despawn(b); schedule.run(&mut world);
++        assert!(world.resource::<GlobalWindowLightsControl>().lights.is_empty());
++    }
++
++    #[test]
++    fn actual_owner_unload_fragment_resets_before_a_reused_key() {
++        let (mut world, mut schedule) = light_world(0.6, 0.25);
++        world.spawn(WindowLight { key: 71, decorator_id: 71 });
++        schedule.run(&mut world);
++        assert!(world.resource::<GlobalWindowLightsControl>().lights[&71].brightness > 0.0);
++        let mut unload = Schedule::default(); unload.add_systems(window_lights_on_glade_unload);
++        unload.run(&mut world);
++        let control = world.resource::<GlobalWindowLightsControl>();
++        assert!(control.lights.is_empty() && !control.lights_on);
++        world.resource_mut::<TimeOfDay>().time_of_day = 0.0;
++        schedule.run(&mut world);
++        assert_eq!(world.resource::<GlobalWindowLightsControl>().lights[&71], LightInfo::new(false));
++    }
++}
+--- a/tiny-glade/crates/systems/decorator/src/utils/visual_entity_builder.rs
++++ b/tiny-glade/crates/systems/decorator/src/utils/visual_entity_builder.rs
+@@ -177,11 +177,8 @@
+     );
+     // One canonical12-byte value, also read by the actual Nani ECS query.
+     pub use country_core::components::drawable::ClothlineCloth;
+-    raw_component!(
+-        /// B `components::WindowLight`（u64 + u32(id)，12 B，U）。
+-        WindowLight,
+-        12
+-    );
++    // 与窗灯系统和 Nani 玻璃查询共享同一个键值组件。
++    pub use country_core::resources::window_lights::WindowLight;
+     // Same six-value component read by the actual auto-clutter balcony gate.
+     pub use country_core::components::drawable::BalconyDoor;
+     raw_component!(
+@@ -609,10 +606,10 @@
+         }
+         // 6 WindowLight（u64 @+0x18 + id）
+         if let Some(a) = self.window_light {
+-            let mut payload = [0u8; 12];
+-            payload[0..8].copy_from_slice(&a.to_le_bytes());
+-            payload[8..12].copy_from_slice(&id.to_le_bytes());
+-            commands.entity(entity).insert(WindowLight(payload));
++            commands.entity(entity).insert(WindowLight {
++                key: usize::try_from(a).expect("native window light key requires a64-bit host"),
++                decorator_id: id,
++            });
+         }
+         // 7 BalconyDoor: preserve all actual values and the original +0x14f gate.
+         if self.balcony_door {
+@@ -1117,3 +1114,46 @@
+         }
+     }
+ }
++
++#[cfg(test)]
++mod canonical_window_light_tests {
++    use super::*;
++    use bevy_ecs::{prelude::*, world::CommandQueue};
++    use country_core::resources::{events::LightWindowCmd,
++        session::{ActiveSession, SessionId, SessionMeta}, time::GameTime,
++        time_of_day::TimeOfDay,
++        window_lights::{GlobalWindowLightsControl, WindowLight as CanonicalWindowLight}};
++
++    #[test]
++    fn actual_builder_emits_the_component_consumed_by_the_real_light_system() {
++        assert_eq!(core::any::TypeId::of::<pending_core::WindowLight>(),
++            core::any::TypeId::of::<CanonicalWindowLight>());
++        let mut world = World::new(); let mut queue = CommandQueue::default();
++        let mut state = DecoratorTransientVisualState::default();
++        let mut builder = WindowVisualEntityBuilder::new(Vec3::new(2.0, 3.0, 4.0),
++            Quat::from_rotation_y(0.37), 71);
++        builder.mesh_name = "actual glass component CPU fixture";
++        builder.nani_name = "nani_solid_vertex_color_window_glass";
++        builder.window_light = Some(0x1_0000_0061);
++        let entity = builder.build(&mut Commands::new(&mut queue, &world), 71,
++            &AssetMeshLibrary::new(), &AssetShaderLibrary::new(), &mut state);
++        queue.apply(&mut world);
++        assert_eq!(*world.get::<CanonicalWindowLight>(entity).unwrap(),
++            CanonicalWindowLight { key: 0x1_0000_0061, decorator_id: 71 });
++        assert_eq!(world.get::<NaniInstanceDesc>(entity).unwrap().subset_kind,
++            GpuWorldSubsetKind::SolidVertexColorWindowGlass);
++        assert!(world.get::<InstanceDataMarker<SolidVertexColorWindowGlassInstanceData>>(entity).is_some());
++        world.init_resource::<GlobalWindowLightsControl>();
++        world.init_resource::<Events<LightWindowCmd>>();
++        world.insert_resource(TimeOfDay { time_of_day: 0.6, ..Default::default() });
++        world.insert_resource(GameTime { delta: 0.25, ..Default::default() });
++        world.insert_resource(ActiveSession::new(SessionId::new(), SessionMeta::default()));
++        let mut schedule = Schedule::default(); schedule.add_systems(crate::window_lights::window_lights);
++        schedule.run(&mut world);
++        let light = world.resource::<GlobalWindowLightsControl>().lights[&0x1_0000_0061];
++        assert_eq!((light.actual_on, light.target_on), (1, 1));
++        assert!(light.brightness > 0.0 && light.brightness < 1.0);
++        world.despawn(entity); schedule.run(&mut world);
++        assert!(world.resource::<GlobalWindowLightsControl>().lights.is_empty());
++    }
++}
+--- a/tiny-glade/crates/country-core/src/render/nani/systems.rs
++++ b/tiny-glade/crates/country-core/src/render/nani/systems.rs
+@@ -646,7 +646,8 @@
+         drawable::{AlbedoMap, ClothlineCloth, PrevTransform, NaniSolidTexture}},
+     render::{device::GraphicsDeviceResource, nani::gpu_world::{InstanceDataMarker, OwnedGpuWorldSubset}},
+     resources::{color_id::ColorId, roofs::{Roof, RoofAnimation},
+-        terrain_rock_mask::TerrainRockMaskSsbo, world_raster_defs::WaterRaster},
++        terrain_rock_mask::TerrainRockMaskSsbo, world_raster_defs::WaterRaster,
++        window_lights::{GlobalWindowLightsControl, WindowLight}},
+     systems::paths::PathRastersResources,
+ };
+ 
+@@ -662,15 +663,16 @@
+     Has<InstanceDataMarker<SolidAlbedoMapEmissiveInstanceData>>,
+     Has<InstanceDataMarker<StoneFloorInstanceData>>,
+     Has<InstanceDataMarker<ClothInstanceData>>,
++    Has<InstanceDataMarker<SolidVertexColorWindowGlassInstanceData>>,
+ );
+ 
+-type MappedNaniMarkerPresence = (bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool);
++type MappedNaniMarkerPresence = (bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool);
+ type MappedNaniInputs = (MappedNaniMarkers, Has<ColorId>, Has<PrevTransform>, Has<Transform>,
+-    Has<NaniSolidTexture>, Has<Roof>, Has<ClothlineCloth>, Has<NormalMap>);
++    Has<NaniSolidTexture>, Has<Roof>, Has<ClothlineCloth>, Has<NormalMap>, Has<WindowLight>);
+ fn require_mapped_nani_payload(
+     kind: GpuWorldSubsetKind,
+-    (markers, has_color, has_previous, has_transform, has_selector, has_roof, has_cloth, has_normal):
+-        (MappedNaniMarkerPresence, bool, bool, bool, bool, bool, bool, bool),
++    (markers, has_color, has_previous, has_transform, has_selector, has_roof, has_cloth, has_normal, has_light):
++        (MappedNaniMarkerPresence, bool, bool, bool, bool, bool, bool, bool, bool),
+ ) {
+     let mapped = match kind {
+         GpuWorldSubsetKind::SolidVertexColor => markers.0,
+@@ -686,10 +688,11 @@
+         // remain unsupported; do not publish a key without a real Roof.
+         GpuWorldSubsetKind::RoofFloor => markers.9 && has_roof,
+         GpuWorldSubsetKind::Cloth => markers.10 && has_cloth && has_normal,
++        GpuWorldSubsetKind::SolidVertexColorWindowGlass => markers.11 && has_color && has_light,
+         _ => false,
+     };
+     let marker_count = [markers.0, markers.1, markers.2, markers.3,
+-        markers.4, markers.5, markers.6, markers.7, markers.8, markers.9, markers.10]
++        markers.4, markers.5, markers.6, markers.7, markers.8, markers.9, markers.10, markers.11]
+         .into_iter().filter(|present| *present).count();
+     assert!(mapped && has_transform && marker_count == 1,
+         "Nani ECS payload mapping is unavailable or canonical inputs are incomplete: {kind:?}");
+@@ -899,6 +902,30 @@
+     }
+ }
+ 
++/// B142075070：借用真实窗灯状态与可选磁盘贴图。
++/// 未找到灯键时原版亮度为零；指定了不存在的贴图则保留原失败边界。
++pub fn nani_update_solid_vertex_color_window_glass_ecs(
++    mut rows: Query<(&mut InstanceKey, &Transform, &WindowLight, &ColorId,
++        Option<&SemiTransparent>, Option<&AlbedoMap>),
++        With<InstanceDataMarker<SolidVertexColorWindowGlassInstanceData>>>,
++    control: Res<GlobalWindowLightsControl>, textures: Res<AssetTextureLibrary>,
++    gpu: Res<GpuWorld>,
++) {
++    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::SolidVertexColorWindowGlass);
++    for (mut key, transform, light, color, semi, albedo) in &mut rows {
++        let brightness = control.lights.get(&light.key).map_or(0.0, |value| value.brightness);
++        let albedo_index = albedo.map(|albedo| {
++            let asset = textures.get_handle_and_texture_by_name(NameHash(albedo.0))
++                .expect("called `Option::unwrap()` on a `None` value").0;
++            textures.handle_to_bindless_index(asset).0
++        });
++        let (p, r, s) = trs(transform);
++        write_mapped_update(&mut subset, key.bypass_change_detection(),
++            build_window_glass(p, r, s, color.0, semi.is_some(), brightness, albedo_index),
++            |raw| SolidVertexColorWindowGlassInstanceData { raw });
++    }
++}
++
+ pub fn nani_update_uber_ecs(
+     mut rows: Query<(&mut InstanceKey, &Transform, Option<&SemiTransparent>, Option<&AlbedoMap>),
+         With<InstanceDataMarker<UberInstanceData>>>,
+@@ -940,10 +967,8 @@
+ 
+ /// Original backend44 fragment: maintain -> explicit ApplyDeferred ->
+ /// unordered20-update tuple -> flush, outer chain_ignore_deferred.
+-/// The previously integrated nine mappings, canonical Cloth binding and
+-/// restricted Roof-bearing kind9 branch are installed. Floor-only and other
+-/// unavailable contracts fail explicitly. A binding does not establish the
+-/// separate garment producer or whole-scene reachability.
++/// 当前保留九类既有映射、Cloth 与限定 Roof-bearing kind9 分支，新增共享窗灯玻璃。
++/// Floor-only 及其他未闭合输入继续明确失败；绑定不代表独立场景生产者已可达。
+ pub fn add_mapped_nani_instance_systems<S: SystemSet>(schedule: &mut Schedule, set: S) {
+     schedule.add_systems((
+         nani_maintain_instances_ecs,
+@@ -957,6 +982,7 @@
+          nani_update_solid_albedo_map_emissive_ecs,
+          nani_update_balcony_door_ecs,
+          nani_update_cloth_ecs,
++         nani_update_solid_vertex_color_window_glass_ecs,
+          nani_update_uber_ecs,
+          nani_update_velocity_only_ecs),
+         nani_flush_instance_updates_ecs,
+@@ -971,6 +997,141 @@
+     use crate::render::ssbo::tests::MockDevice;
+     use bevy_ecs::world::World;
+     use glam::Vec3;
++
++    fn glass_world(dev: &MockDevice) -> World {
++        use crate::render::test_device::TestDevice;
++        use crate::rhapsody_types::Texture;
++        let mut gpu = GpuWorld::new(dev);
++        gpu.assign_subset(GpuWorldSubsetKind::SolidVertexColorWindowGlass, GpuWorldSubset::Owned(
++            OwnedGpuWorldSubset::new::<SolidVertexColorWindowGlassInstanceData>(
++                dev, GpuWorldSubsetKind::SolidVertexColorWindowGlass)));
++        let mut atlas = MeshAtlasLibrary::default();
++        let mut mesh = Mesh::new("窗玻璃 CPU 集成测试三角形");
++        mesh.set_attribute(crate::render::mesh::ATTR_POSITION,
++            vec![Vec3::new(1.0, 0.0, 0.0), Vec3::new(0.0, 2.0, 0.0), Vec3::new(0.0, 0.0, 3.0)]);
++        mesh.set_indices(vec![0, 1, 2]);
++        atlas.add(GpuWorldSubsetKind::SolidVertexColorWindowGlass, "window_glass_cpu", &mesh);
++        let mut textures = AssetTextureLibrary::new(&TestDevice(91));
++        let tex = |id| Texture { id, width: 4, height: 4, format: 0x25 };
++        let first = textures.add(Some("glass_cpu_first".into()), tex(91));
++        textures.add(Some("glass_cpu_unused".into()), tex(92));
++        let actual = textures.add(Some("glass_cpu_albedo".into()), tex(93));
++        assert_eq!(textures.handle_to_bindless_index(first).0, 0);
++        // 真实资产句柄为2；它的描述符索引为1，两者不能混用。
++        assert_eq!(actual.0, 2);
++        let mut world = World::new();
++        world.insert_resource(gpu); world.insert_resource(atlas); world.insert_resource(textures);
++        world.init_resource::<GlobalWindowLightsControl>();
++        world
++    }
++
++    fn spawn_cpu_glass(world: &mut World) -> Entity {
++        world.spawn((crate::components::drawable::NaniBundle::<SolidVertexColorWindowGlassInstanceData> {
++            desc: NaniInstanceDesc { mesh: NaniMeshSelector::Named(NameHash::compute("window_glass_cpu")),
++                subset_kind: GpuWorldSubsetKind::SolidVertexColorWindowGlass },
++            transform: Transform { rotation: Quat::from_rotation_y(0.37),
++                translation: Vec3::new(2.0, 3.0, 4.0), scale: Vec3::new(1.2, 0.8, 2.5) },
++            marker: InstanceDataMarker::default(),
++        }, WindowLight { key: 0x1_0000_0061, decorator_id: 71 }, ColorId(3))).id()
++    }
++
++    fn actual_glass_payload(world: &World, entity: Entity) -> [u32; 16] {
++        let key = world.get::<InstanceKey>(entity).unwrap();
++        world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::SolidVertexColorWindowGlass)
++            .data().as_any().downcast_ref::<
++                crate::render::nani::gpu_world::InstanceDataBuffer<SolidVertexColorWindowGlassInstanceData>>()
++            .unwrap().shadow.data[key.index as usize].raw
++    }
++
++    #[test]
++    fn glass_uses_shared_light_actual_albedo_barrier_upload_and_removal() {
++        let dev = MockDevice::default();
++        let mut world = glass_world(&dev); let entity = spawn_cpu_glass(&mut world);
++        world.entity_mut(entity).insert((SemiTransparent,
++            AlbedoMap(NameHash::compute("glass_cpu_albedo").0)));
++        world.resource_mut::<GlobalWindowLightsControl>().lights.insert(0x1_0000_0061,
++            crate::resources::window_lights::LightInfo { brightness: 0.625, ..Default::default() });
++        let mut schedule = Schedule::default();
++        schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred,
++            nani_update_solid_vertex_color_window_glass_ecs).chain_ignore_deferred());
++        schedule.run(&mut world);
++        let key = *world.get::<InstanceKey>(entity).unwrap();
++        assert_eq!(key.kind, GpuWorldSubsetKind::SolidVertexColorWindowGlass);
++        assert_eq!(&actual_glass_payload(&world, entity)[12..],
++            &[0x8000_0003, 0.625f32.to_bits(), 1, 1]);
++        let textures = world.resource::<AssetTextureLibrary>();
++        let asset = textures.get_handle_and_texture_by_name(NameHash::compute("glass_cpu_albedo")).unwrap().0;
++        assert_eq!(asset.0, 2); assert_eq!(textures.handle_to_bindless_index(asset).0, 1);
++        assert_eq!(textures.pending_bindless().len(), 2);
++        nani_flush_instance_updates(&mut world.resource_mut::<GpuWorld>(), &dev);
++        assert!(dev.writes.borrow().iter().any(|(ranges, offset, bytes)|
++            ranges == &[0..64] && *offset == 0 && *bytes == 64));
++        assert_eq!(world.resource::<GpuWorld>().previous_instance_count(), 1);
++        world.clear_trackers();
++        world.resource_mut::<GlobalWindowLightsControl>().lights.get_mut(&0x1_0000_0061)
++            .unwrap().brightness = -0.0;
++        schedule.run(&mut world);
++        assert_eq!(actual_glass_payload(&world, entity)[13], 0x8000_0000);
++        assert_eq!(world.get::<InstanceKey>(entity).unwrap().id, key.id);
++        world.clear_trackers();
++        world.resource_mut::<GlobalWindowLightsControl>().lights.clear();
++        world.entity_mut(entity).remove::<SemiTransparent>();
++        world.entity_mut(entity).remove::<AlbedoMap>();
++        schedule.run(&mut world);
++        assert_eq!(&actual_glass_payload(&world, entity)[12..], &[3, 0, 0, 0]);
++        world.clear_trackers(); world.despawn(entity); schedule.run(&mut world);
++        assert_eq!(world.resource::<GpuWorld>().owned_subset_mut(
++            GpuWorldSubsetKind::SolidVertexColorWindowGlass).instance_count(), 0);
++    }
++
++    #[test]
++    fn glass_missing_shared_inputs_fail_before_instance_publication() {
++        for missing in ["light", "color", "transform", "marker", "ambiguous"] {
++            let dev = MockDevice::default();
++            let mut world = glass_world(&dev); let entity = spawn_cpu_glass(&mut world);
++            match missing {
++                "light" => { world.entity_mut(entity).remove::<WindowLight>(); }
++                "color" => { world.entity_mut(entity).remove::<ColorId>(); }
++                "transform" => { world.entity_mut(entity).remove::<Transform>(); }
++                "marker" => { world.entity_mut(entity).remove::<InstanceDataMarker<SolidVertexColorWindowGlassInstanceData>>(); }
++                _ => { world.entity_mut(entity).insert(InstanceDataMarker::<PlantInstanceData>::default()); }
++            }
++            let mut schedule = Schedule::default(); schedule.add_systems(nani_maintain_instances_ecs);
++            assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
++                schedule.run(&mut world))).is_err(), "缺少{missing}却发布了实例");
++            assert!(world.get::<InstanceKey>(entity).is_none());
++            let gpu = world.resource::<GpuWorld>(); assert_eq!(gpu.total_instance_count, 0);
++            assert_eq!(gpu.owned_subset_mut(GpuWorldSubsetKind::SolidVertexColorWindowGlass).instance_count(), 0);
++        }
++    }
++
++    #[test]
++    fn glass_present_unknown_albedo_fails_in_actual_update() {
++        let dev = MockDevice::default();
++        let mut world = glass_world(&dev); let entity = spawn_cpu_glass(&mut world);
++        world.entity_mut(entity).insert(AlbedoMap(NameHash::compute("missing_glass_albedo").0));
++        let mut allocation = Schedule::default();
++        allocation.add_systems((nani_maintain_instances_ecs, ApplyDeferred).chain_ignore_deferred());
++        allocation.run(&mut world);
++        let before_writes = dev.writes.borrow().len();
++        let mut update = Schedule::default(); update.add_systems(nani_update_solid_vertex_color_window_glass_ecs);
++        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| update.run(&mut world))).is_err());
++        assert_eq!(dev.writes.borrow().len(), before_writes);
++        assert_eq!(world.resource::<AssetTextureLibrary>().pending_bindless().len(), 1);
++    }
++
++    #[test]
++    fn empty_glass_query_still_requires_its_actual_owned_subset() {
++        let dev = MockDevice::default(); let mut world = glass_world(&dev);
++        let before_writes = dev.writes.borrow().len();
++        let mut update = Schedule::default(); update.add_systems(nani_update_solid_vertex_color_window_glass_ecs);
++        update.run(&mut world);
++        assert_eq!(world.resource::<GpuWorld>().owned_subset_mut(
++            GpuWorldSubsetKind::SolidVertexColorWindowGlass).instance_count(), 0);
++        assert_eq!(dev.writes.borrow().len(), before_writes);
++        world.insert_resource(GpuWorld::new(&dev));
++        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| update.run(&mut world))).is_err());
++    }
+ 
+     fn cloth_world(dev: &MockDevice) -> World {
+         use crate::render::test_device::TestDevice;
+--- a/tiny-glade/crates/utils/src/lib.rs
++++ b/tiny-glade/crates/utils/src/lib.rs
+@@ -186,3 +186,40 @@
+         assert!((expected * Vec3::Z).abs_diff_eq(Vec3::X, 1e-6));
+     }
+ }
++
++/// B140c904e0/81B 调用 UCRT expf，按真实时间步长平滑当前值。
++/// 保留原 f32 运算顺序，不额外钳制或使用融合乘加。
++pub fn time_continuous_lerp(a: f32, b: f32, delta: f32, rate: f32) -> f32 {
++    (b - a) * (1.0 - (-delta * rate).exp()) + a
++}
++
++#[cfg(test)]
++mod continuous_lerp_tests {
++    use super::time_continuous_lerp;
++
++    #[test]
++    fn actual_delta_exponential_preserves_current_value_and_zero_step() {
++        assert_eq!(time_continuous_lerp(0.375, 1.0, 0.0, 3.0), 0.375);
++        assert_eq!(time_continuous_lerp(0.375, 1.0, 0.2, 0.0), 0.375);
++        let actual = time_continuous_lerp(0.25, 1.0, 0.5, 3.0);
++        assert!((actual - 0.832_652_4).abs() < 2.0e-7, "{actual}");
++        assert!((time_continuous_lerp(1.0, 0.0, 0.5, 3.0) - 0.223_130_17).abs() < 2.0e-7);
++    }
++
++    #[test]
++    fn subdivision_and_target_direction_use_the_same_current_state() {
++        let whole = time_continuous_lerp(-0.2, 0.9, 0.5, 3.0);
++        let first = time_continuous_lerp(-0.2, 0.9, 0.125, 3.0);
++        let split = time_continuous_lerp(first, 0.9, 0.375, 3.0);
++        assert!((whole - split).abs() < 2.0e-7);
++        assert!(time_continuous_lerp(0.5, 1.0, -0.25, 3.0) < 0.5);
++    }
++
++    #[test]
++    fn invalid_scalar_inputs_are_not_silently_replaced() {
++        assert!(time_continuous_lerp(0.0, 1.0, f32::NAN, 3.0).is_nan());
++        assert!(time_continuous_lerp(f32::NAN, 1.0, 0.1, 3.0).is_nan());
++        assert!(time_continuous_lerp(0.0, 1.0, 0.1, f32::NAN).is_nan());
++        assert_eq!(time_continuous_lerp(0.25, 1.0, f32::INFINITY, 3.0), 1.0);
++    }
++}
+--- a/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ b/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@ -890,6 +890,17 @@
+         system_decorator::decorator_visual::deco_differential_state::ChimneyAssemblyParams>>();
+     app.init_resource::<system_decorator::decorator_visual::deco_differential_state::WallAttachedDecoTracker<
+         system_decorator::decorator_visual::deco_differential_state::DoorStairsAssemblyParams>>();
++    // B DecoratorPlugin 的八成员组第六项属于原 set0x24（36），不推导组内顺序。
++    // 窗灯控制与组件由装饰物生产者、逐帧系统和 Nani 玻璃共同使用。
++    app.init_resource::<country_core::resources::window_lights::GlobalWindowLightsControl>();
++    app.add_event::<country_core::resources::events::LightWindowCmd>();
++    app.add_systems(bevy_app::Update,
++        system_decorator::window_lights::window_lights.in_set(GameSystemSet(36)));
++    // 仅安装原卸载函数中窗灯资源的重建片段，不代替其余 owner 的完整清理。
++    app.add_systems(
++        bevy_state::state::OnExit(country_core::app_loading_state::AppLoadingState::Game),
++        system_decorator::window_lights::window_lights_on_glade_unload,
++    );
+     // Original native assembly uses this canonical event; it is not PlayClutterSoundCmd.
+     app.add_event::<country_core::systems::audio::PlayDecoratorSoundCmd>();
+     app.init_resource::<LiveDecoratorArchivist>();

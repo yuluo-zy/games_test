@@ -1,0 +1,532 @@
+{
+  "original_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "set19_structure": "(18-member chain_ignore_deferred,16-member chain_ignore_deferred).chain_ignore_deferred()",
+  "set19_main": [
+    [
+      "wall_splitter",
+      5374005904
+    ],
+    [
+      "ui_bulldozer.run_if(wall_eraser_bulldoze_condition)",
+      5374273888
+    ],
+    [
+      "wall_eraser",
+      5374174528
+    ],
+    [
+      "animate_wall_bulldoze",
+      5371954800
+    ],
+    [
+      "ui_draw_wall",
+      5371884288
+    ],
+    [
+      "suppress_continue_wall",
+      5374690352
+    ],
+    [
+      "ui_continue_wall",
+      5374690800
+    ],
+    [
+      "snapping_init",
+      5371656352
+    ],
+    [
+      "snapping_to_ends",
+      5372006944
+    ],
+    [
+      "snapping_to_segments",
+      5372006480
+    ],
+    [
+      "check_for_disable_snapping",
+      5369679808
+    ],
+    [
+      "snapping_audio",
+      5374737184
+    ],
+    [
+      "snapping_signifiers",
+      5369678928
+    ],
+    [
+      "snapping_maintain",
+      5369679360
+    ],
+    [
+      "draw_wall",
+      5371938544
+    ],
+    [
+      "finish_wall",
+      5373839984
+    ],
+    [
+      "merge_walls",
+      5372690016
+    ],
+    [
+      "telegraph_walls_are_merged",
+      5374308128
+    ]
+  ],
+  "set19_publication": [
+    [
+      "ui_adjust_wall_height_signifier_animation",
+      5372074800
+    ],
+    [
+      "ui_adjust_wall_height_mode",
+      5369543504
+    ],
+    [
+      "adjust_wall_height_impl",
+      5370137776
+    ],
+    [
+      "do_ui_arch_controls",
+      5369834256
+    ],
+    [
+      "ui_lintel_controls",
+      5374675824
+    ],
+    [
+      "wall_highlight",
+      5371198416
+    ],
+    [
+      "publish_public_wall_state",
+      5374156560
+    ],
+    [
+      "delete_wall",
+      5371416624
+    ],
+    [
+      "spatial_hash_update",
+      5371723280
+    ],
+    [
+      "spatial_hash_debug",
+      5371143312
+    ],
+    [
+      "calc_wall_bend",
+      5374767024
+    ],
+    [
+      "debug_force_update_arches",
+      5372285008
+    ],
+    [
+      "gpu_clear_wall_gate_pieces",
+      5372284560
+    ],
+    [
+      "sample_wall_path_intersections",
+      5373849232
+    ],
+    [
+      "calculate_path_wall_segmentation",
+      5370236336
+    ],
+    [
+      "init_wall_height_and_arch_segment_height",
+      5374181392
+    ]
+  ],
+  "entries": [
+    {
+      "stage": 19,
+      "index": 0,
+      "name": "wall_splitter",
+      "helper": "0x14050d290",
+      "helper_sha256": "be89220958866cb7a9cd7518484899494a1c2a080cca957a093b09804fa66582",
+      "native_generic_system_params": "tuple$<void (*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,country_core::resources::walls::decorator_archivist::DecoratorArchivalResources,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::eraser::archivist::WallEraserArchivist>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_storage::DecoratorStorage>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_archivist::DecoratorArchivist>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::color_id::WallColorIds>,bevy_ecs::change_detection::Res<country_core::resources::color_id::HalftimberColorIds>,bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo> >,tuple$<bevy_ecs::event::writer::EventWriter<country_core::resources::color_id::SetWallColorIdCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::color_id::SetHalftimberColorIdCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::mode_manager::RequestAppModeChange>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_fmod::PlayWallAudio> >),enum2$<bevy_ecs::schedule::config::ScheduleConfigs<alloc::boxed::Box<dyn$<bevy_ecs::system::system::System<assoc$<In,tuple$<> >,assoc$<Out,enum2$<core::result::Result<tuple$<>,bevy_ecs::error::bevy_error::BevyError> > > > >,alloc::alloc::Global> > >,void (*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::systems::wall::eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,country_core::resources::walls::decorator_archivist::DecoratorArchivalResources,bevy_ecs::change_detection::Res<country_core::resources::color_id::WallColorIds>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::ResMut<country_core::resources::editing_highlight::EditingHighlight>,bevy_ecs::change_detection::Res<country_core::systems::wall::eraser::EraserSizeMultiplier>,tuple$<bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo> >,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::system::query::Query<ref$<country_core::resources::roofs::roof_shape::Roof>,tuple$<> > >,tuple$<bevy_ecs::change_detection::ResMut<country_core::systems::wall::eraser::archivist::WallEraserArchivist>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_storage::DecoratorStorage>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_archivist::DecoratorArchivist> >,bevy_ecs::change_detection::Res<country_core::resources::color_id::HalftimberColorIds>,tuple$<bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_orchestrator::RequestWallMaterialAudio>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_fmod::PlayWallAudio>,bevy_ecs::event::writer::EventWriter<country_core::resources::color_id::SetWallColorIdCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::color_id::SetHalftimberColorIdCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::onboarding::NotifyHintSystemToolWasJustUsed>,bevy_ecs::event::writer::EventWriter<country_core::resources::onboarding::NotifyHintSystemSomethingWasErased>,bevy_ecs::event::writer::EventWriter<country_core::resources::events::ReanchorDecorators>,bevy_ecs::event::writer::EventWriter<country_core::systems::ivy::ivy_pruner::RemoveIvyCmd> >),void (*)(bevy_ecs::change_detection::ResMut<country_core::systems::wall::eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_orchestrator::RequestWallMaterialAudio>,bevy_ecs::change_detection::Res<bevy_time::time::Time<tuple$<> > >),void (*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::ResMut<country_core::systems::wall::ui_draw_wall::WallDrawState>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::draw_wall::CurveNursery>,bevy_ecs::event::writer::EventWriter<country_core::resources::events::RecordMouseInputIntoWall>,bevy_ecs::event::writer::EventWriter<country_core::resources::events::FinishWall>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::event::writer::EventWriter<country_core::systems::history::history_process::DebugHistoryMsg>,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::ui_continue_wall::SuppressContinueWall>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::WallBendAudioParamReset>,tuple$<bevy_ecs::change_detection::Res<country_core::resources::glade_border::GladeBorder>,bevy_ecs::event::writer::EventWriter<country_core::resources::glade_border::DisplayOutOfBorder>,bevy_ecs::event::writer::EventWriter<country_core::resources::glade_border::FeedbackInputOutOfBorder> >,bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo> >,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::event::writer::EventWriter<country_core::resources::tree_storage::HideTreesNextToWallCmd>,bevy_ecs::change_detection::Res<country_core::resources::walls::in_progress_wall::InProgressWallResource>,tuple$<bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_archivist::DecoratorArchivist>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_storage::DecoratorStorage>,country_core::resources::walls::decorator_archivist::DecoratorArchivalResources>),void (*)(bevy_ecs::change_detection::Res<country_core::systems::mod_key::Modifiers>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::ui_continue_wall::SuppressContinueWall>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::event::reader::EventReader<country_core::resources::window::CursorMovedScreenSpace>),void (*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,tuple$<bevy_ecs::change_detection::Res<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls> >,bevy_ecs::change_detection::ResMut<country_core::resources::walls::in_progress_wall::InProgressWallResource>,tuple$<bevy_ecs::change_detection::ResMut<country_core::systems::wall::finish_wall::ContinueWallOriginalState>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::ui_continue_wall::WallContinueState> >,bevy_ecs::event::writer::EventWriter<country_core::resources::events::RecordMouseInputIntoWall>,bevy_ecs::event::writer::EventWriter<country_core::resources::events::FinishWall>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::change_detection::Res<country_core::systems::wall::ui_continue_wall::SuppressContinueWall>,bevy_ecs::change_detection::Res<country_core::resources::color_id::WallColorIds>,bevy_ecs::change_detection::Res<country_core::resources::color_id::HalftimberColorIds>,bevy_ecs::event::reader::EventReader<country_core::systems::main_camera::MainCameraMoved>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::event::writer::EventWriter<country_core::systems::mode_manager::RequestAppModeChange>,tuple$<bevy_ecs::change_detection::Res<country_core::resources::glade_border::GladeBorder>,bevy_ecs::event::writer::EventWriter<country_core::resources::glade_border::DisplayOutOfBorder>,bevy_ecs::event::writer::EventWriter<country_core::resources::glade_border::FeedbackInputOutOfBorder> >,tuple$<bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_archivist::DecoratorArchivist>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_storage::DecoratorStorage>,country_core::resources::walls::decorator_archivist::DecoratorArchivalResources>),void (*)(bevy_ecs::change_detection::ResMut<country_core::systems::wall::snapping::SnappingMode>,bevy_ecs::change_detection::Res<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::Res<country_core::resources::walls::in_progress_wall::InProgressWallResource>,bevy_ecs::change_detection::Res<country_core::resources::gui::DebugGui>),void (*)(bevy_ecs::change_detection::ResMut<country_core::systems::wall::snapping::SnappingMode>,bevy_ecs::change_detection::Res<country_core::resources::walls::in_progress_wall::InProgressWallResource>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>),void (*)(bevy_ecs::change_detection::ResMut<country_core::systems::wall::snapping::SnappingMode>,bevy_ecs::change_detection::Res<country_core::resources::walls::in_progress_wall::InProgressWallResource>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::Res<country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash>,bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo> >),void (*)(bevy_ecs::change_detection::ResMut<country_core::systems::wall::snapping::SnappingMode>,bevy_ecs::change_detection::Res<country_core::systems::mod_key::Modifiers>,bevy_ecs::event::writer::EventWriter<country_core::resources::onboarding::NotifyHintSystemSnapping>),void (*)(bevy_ecs::change_detection::Res<country_core::systems::wall::snapping::SnappingMode>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_ui::PlayWallUiSound>),void (*)(bevy_ecs::change_detection::Res<country_core::systems::wall::snapping::SnappingMode>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::components::SnappingToSegmentPreview>,ref_mut$<utils::components::transform::Transform> >,bevy_ecs::query::filter::Without<country_core::components::SnappingToEndPreview> >,bevy_ecs::system::query::Query<tuple$<ref$<country_core::components::SnappingToEndPreview>,ref_mut$<utils::components::transform::Transform> >,bevy_ecs::query::filter::Without<country_core::components::SnappingToSegmentPreview> >,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo> >,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>),void (*)(bevy_ecs::change_detection::ResMut<country_core::systems::wall::snapping::SnappingMode>),void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::in_progress_wall::InProgressWallResource>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::draw_wall::CurveNursery>,tuple$<bevy_ecs::change_detection::Res<country_core::systems::wall::snapping::SnappingMode>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::change_detection::Res<country_core::systems::wall::finish_wall::ContinueWallOriginalState>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::Res<country_core::resources::window::WindowSize> >,bevy_ecs::event::reader::EventReader<country_core::resources::events::RecordMouseInputIntoWall>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_orchestrator::RequestWallMaterialAudio>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::adjust_wall_height::adjust_wall_height_impl::AdjustWallHeightCmd>,tuple$<bevy_ecs::event::writer::EventWriter<country_core::resources::color_id::SetWallColorIdCmd>,bevy_ecs::change_detection::Res<country_core::resources::color_id::WallColorIds> >,tuple$<bevy_ecs::event::writer::EventWriter<country_core::resources::color_id::SetHalftimberColorIdCmd>,bevy_ecs::change_detection::Res<country_core::resources::color_id::HalftimberColorIds> >,bevy_ecs::change_detection::Res<country_core::resources::glade_color_customization::GladeColorCustomization>,bevy_ecs::event::writer::EventWriter<enum2$<country_core::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter> >),void (*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::event::reader::EventReader<country_core::resources::events::FinishWall>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::in_progress_wall::InProgressWallResource>,bevy_ecs::change_detection::Res<country_core::systems::wall::snapping::SnappingMode>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::finish_wall::ContinueWallOriginalState>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::merge_walls::MergeWallsCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::snapping::telegraph_walls_are_merged::PlayLineAcrossWall>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::deferred_wall_history::PendingWallHistory>,bevy_ecs::event::writer::EventWriter<country_core::resources::onboarding::NotifyHintSystemToolWasJustUsed>,bevy_ecs::change_detection::Res<country_core::resources::color_id::WallColorIds>,bevy_ecs::change_detection::Res<country_core::resources::color_id::HalftimberColorIds>),void (*)(bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo> >,country_core::resources::walls::decorator_archivist::DecoratorArchivalResources,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_archivist::DecoratorArchivist>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_storage::DecoratorStorage>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::deferred_wall_history::PendingWallHistory>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::event::reader::EventReader<country_core::systems::wall::merge_walls::MergeWallsCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_ui::PlayWallUiSound>,bevy_ecs::event::writer::EventWriter<country_core::resources::color_id::SetWallColorIdCmd>,bevy_ecs::change_detection::Res<country_core::resources::color_id::WallColorIds>,bevy_ecs::event::writer::EventWriter<country_core::resources::color_id::SetHalftimberColorIdCmd>,bevy_ecs::change_detection::Res<country_core::resources::color_id::HalftimberColorIds>),void (*)(bevy_ecs::event::reader::EventReader<country_core::systems::wall::snapping::telegraph_walls_are_merged::PlayLineAcrossWall>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref_mut$<country_core::systems::wall::snapping::telegraph_walls_are_merged::LineAcrossWallSignifier>,ref$<country_core::asset_libraries::Handle<country_core::render::mesh::Mesh> >,ref_mut$<country_core::components::DashedLineLength> >,tuple$<> >,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::system::commands::Commands,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_ui::PlayWallUiSound>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>)>"
+    },
+    {
+      "stage": 19,
+      "index": 1,
+      "name": "ui_bulldozer.run_if(wall_eraser_bulldoze_condition)",
+      "helper": "0x14054e960",
+      "helper_sha256": "97b802282a2bc3c6bd6a3a033fc116e55f6917238b14bdfb3a81f51475b3bf60",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::Res<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::resources::roofs::roof_shape::Roof>,ref$<country_core::resources::roofs::roof_trigger_volume::RoofTriggerVolume> >,tuple$<> >,tuple$<country_core::resources::walls::decorator_archivist::DecoratorArchivalResources,bevy_ecs::change_detection::Res<country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary>,bevy_ecs::change_detection::Res<country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes> >,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,tuple$<bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream> >,tuple$<bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_storage::DecoratorStorage>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_archivist::DecoratorArchivist>,bevy_ecs::change_detection::Res<country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms>,bevy_ecs::change_detection::ResMut<country_core::resources::stairs::stairs_removed_supports::StairsRemovedSupports> >,tuple$<bevy_ecs::change_detection::Res<country_core::resources::mouse_terrain_raycast::CursorPositionSS>,bevy_ecs::change_detection::Res<country_core::resources::mouse_terrain_raycast::CameraCursorRay> >,tuple$<bevy_ecs::event::writer::EventWriter<country_core::resources::onboarding::NotifyHintSystemToolWasJustUsed>,bevy_ecs::event::writer::EventWriter<country_core::resources::onboarding::NotifyHintSystemSomethingWasErased>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_ui::PlayWallUiSound>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::commands::DeleteRoofCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::roofs::commands::HighlightRoofCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::wall_highlight::HighlightWallCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::eraser::ui_bulldozer::DeleteDecoratorCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::structure_outline::OutlineStairsCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::eraser::ui_bulldozer::HandleStairAttachedDecoratorsOnStairPointDeletion> >,bevy_ecs::change_detection::Res<country_core::resources::color_id::WallColorIds>,bevy_ecs::change_detection::Res<country_core::resources::color_id::HalftimberColorIds>,tuple$<bevy_ecs::change_detection::Res<country_core::resources::tree_storage::TreeStorage>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::systems::prefab::PrefabInstanceData>,ref$<country_core::resources::prefab::PrefabInstance>,ref$<country_core::components::TreeComponent> >,tuple$<> >,bevy_ecs::event::writer::EventWriter<country_core::resources::history::tree_edit::DeleteTreeCmd> >,bevy_ecs::change_detection::ResMut<country_core::resources::stairs::stairs_state::StairsState>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::playermade_stairs_audio::PlayStairsAudioCmd>)"
+    },
+    {
+      "stage": 19,
+      "index": 2,
+      "name": "wall_eraser",
+      "helper": "0x140536540",
+      "helper_sha256": "d4cf2f06ef2e9d6d422ccb51d263430398c3a396e55c37248d101baedbab81cd",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::systems::wall::eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,country_core::resources::walls::decorator_archivist::DecoratorArchivalResources,bevy_ecs::change_detection::Res<country_core::resources::color_id::WallColorIds>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::ResMut<country_core::resources::editing_highlight::EditingHighlight>,bevy_ecs::change_detection::Res<country_core::systems::wall::eraser::EraserSizeMultiplier>,tuple$<bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo> >,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::system::query::Query<ref$<country_core::resources::roofs::roof_shape::Roof>,tuple$<> > >,tuple$<bevy_ecs::change_detection::ResMut<country_core::systems::wall::eraser::archivist::WallEraserArchivist>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_storage::DecoratorStorage>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_archivist::DecoratorArchivist> >,bevy_ecs::change_detection::Res<country_core::resources::color_id::HalftimberColorIds>,tuple$<bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_orchestrator::RequestWallMaterialAudio>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_fmod::PlayWallAudio>,bevy_ecs::event::writer::EventWriter<country_core::resources::color_id::SetWallColorIdCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::color_id::SetHalftimberColorIdCmd>,bevy_ecs::event::writer::EventWriter<country_core::resources::onboarding::NotifyHintSystemToolWasJustUsed>,bevy_ecs::event::writer::EventWriter<country_core::resources::onboarding::NotifyHintSystemSomethingWasErased>,bevy_ecs::event::writer::EventWriter<country_core::resources::events::ReanchorDecorators>,bevy_ecs::event::writer::EventWriter<country_core::systems::ivy::ivy_pruner::RemoveIvyCmd> >)"
+    },
+    {
+      "stage": 19,
+      "index": 3,
+      "name": "animate_wall_bulldoze",
+      "helper": "0x140318670",
+      "helper_sha256": "03515c90e7199d6f5eb03078dcf7f0840d2d0873d797e87963569e7b8deb8809",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::ResMut<country_core::systems::wall::eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_orchestrator::RequestWallMaterialAudio>,bevy_ecs::change_detection::Res<bevy_time::time::Time<tuple$<> > >)"
+    },
+    {
+      "stage": 19,
+      "index": 4,
+      "name": "ui_draw_wall",
+      "helper": "0x140307300",
+      "helper_sha256": "3fb0b1ddc0f5ccf841df8420817ead79d16a6811604161f0cc350979e1857ea4",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::ResMut<country_core::systems::wall::ui_draw_wall::WallDrawState>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::draw_wall::CurveNursery>,bevy_ecs::event::writer::EventWriter<country_core::resources::events::RecordMouseInputIntoWall>,bevy_ecs::event::writer::EventWriter<country_core::resources::events::FinishWall>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::event::writer::EventWriter<country_core::systems::history::history_process::DebugHistoryMsg>,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::ui_continue_wall::SuppressContinueWall>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::WallBendAudioParamReset>,tuple$<bevy_ecs::change_detection::Res<country_core::resources::glade_border::GladeBorder>,bevy_ecs::event::writer::EventWriter<country_core::resources::glade_border::DisplayOutOfBorder>,bevy_ecs::event::writer::EventWriter<country_core::resources::glade_border::FeedbackInputOutOfBorder> >,bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo> >,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::event::writer::EventWriter<country_core::resources::tree_storage::HideTreesNextToWallCmd>,bevy_ecs::change_detection::Res<country_core::resources::walls::in_progress_wall::InProgressWallResource>,tuple$<bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_archivist::DecoratorArchivist>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_storage::DecoratorStorage>,country_core::resources::walls::decorator_archivist::DecoratorArchivalResources>)"
+    },
+    {
+      "stage": 19,
+      "index": 5,
+      "name": "suppress_continue_wall",
+      "helper": "0x1405b4430",
+      "helper_sha256": "873d8e65f31d43f928f7254e0662c935147a0d73ce8b22dcd25d53c44d2b0b0c",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::Res<country_core::systems::mod_key::Modifiers>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::ui_continue_wall::SuppressContinueWall>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::event::reader::EventReader<country_core::resources::window::CursorMovedScreenSpace>)"
+    },
+    {
+      "stage": 19,
+      "index": 6,
+      "name": "ui_continue_wall",
+      "helper": "0x1405b45f0",
+      "helper_sha256": "e28fd81522d138129ef2f30035a20cd5bdc24dda6717535af75ff0de5939d389",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,tuple$<bevy_ecs::change_detection::Res<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls> >,bevy_ecs::change_detection::ResMut<country_core::resources::walls::in_progress_wall::InProgressWallResource>,tuple$<bevy_ecs::change_detection::ResMut<country_core::systems::wall::finish_wall::ContinueWallOriginalState>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::ui_continue_wall::WallContinueState> >,bevy_ecs::event::writer::EventWriter<country_core::resources::events::RecordMouseInputIntoWall>,bevy_ecs::event::writer::EventWriter<country_core::resources::events::FinishWall>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::change_detection::Res<country_core::systems::wall::ui_continue_wall::SuppressContinueWall>,bevy_ecs::change_detection::Res<country_core::resources::color_id::WallColorIds>,bevy_ecs::change_detection::Res<country_core::resources::color_id::HalftimberColorIds>,bevy_ecs::event::reader::EventReader<country_core::systems::main_camera::MainCameraMoved>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::event::writer::EventWriter<country_core::systems::mode_manager::RequestAppModeChange>,tuple$<bevy_ecs::change_detection::Res<country_core::resources::glade_border::GladeBorder>,bevy_ecs::event::writer::EventWriter<country_core::resources::glade_border::DisplayOutOfBorder>,bevy_ecs::event::writer::EventWriter<country_core::resources::glade_border::FeedbackInputOutOfBorder> >,tuple$<bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_archivist::DecoratorArchivist>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_storage::DecoratorStorage>,country_core::resources::walls::decorator_archivist::DecoratorArchivalResources>)"
+    },
+    {
+      "stage": 19,
+      "index": 7,
+      "name": "snapping_init",
+      "helper": "0x1402cf8a0",
+      "helper_sha256": "6a7d3114352001f7c3f57f05eeb9d35fde4b55bfc10e4254bc439f7b9792fc06",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::ResMut<country_core::systems::wall::snapping::SnappingMode>,bevy_ecs::change_detection::Res<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::Res<country_core::resources::walls::in_progress_wall::InProgressWallResource>,bevy_ecs::change_detection::Res<country_core::resources::gui::DebugGui>)"
+    },
+    {
+      "stage": 19,
+      "index": 8,
+      "name": "snapping_to_ends",
+      "helper": "0x140325220",
+      "helper_sha256": "c92cd969b6dfb93227808ea6ebdf6eac51e336fa052dd4d1c5731648ba798244",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::ResMut<country_core::systems::wall::snapping::SnappingMode>,bevy_ecs::change_detection::Res<country_core::resources::walls::in_progress_wall::InProgressWallResource>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>)"
+    },
+    {
+      "stage": 19,
+      "index": 9,
+      "name": "snapping_to_segments",
+      "helper": "0x140325050",
+      "helper_sha256": "339a7c60a7ddf2e0137bf0ea85f114f9c519a871c7951088d9075df16a331a10",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::ResMut<country_core::systems::wall::snapping::SnappingMode>,bevy_ecs::change_detection::Res<country_core::resources::walls::in_progress_wall::InProgressWallResource>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::Res<country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash>,bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo> >)"
+    },
+    {
+      "stage": 19,
+      "index": 10,
+      "name": "check_for_disable_snapping",
+      "helper": "0x1400ecfc0",
+      "helper_sha256": "6bdbe48295d0399eaac24e4035fcb922ea41a9c31608d0b5002448a57f41f0dc",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::ResMut<country_core::systems::wall::snapping::SnappingMode>,bevy_ecs::change_detection::Res<country_core::systems::mod_key::Modifiers>,bevy_ecs::event::writer::EventWriter<country_core::resources::onboarding::NotifyHintSystemSnapping>)"
+    },
+    {
+      "stage": 19,
+      "index": 11,
+      "name": "snapping_audio",
+      "helper": "0x1405bfb20",
+      "helper_sha256": "895f6484344c13d9691e386ab0b1cee19889e0536df89a137e65423fa4fe8439",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::Res<country_core::systems::wall::snapping::SnappingMode>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_ui::PlayWallUiSound>)"
+    },
+    {
+      "stage": 19,
+      "index": 12,
+      "name": "snapping_signifiers",
+      "helper": "0x1400ecc50",
+      "helper_sha256": "08be486f7a685a8e51691e5828fed3bb31316fae38482b94c6b8de3d4f799b74",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::Res<country_core::systems::wall::snapping::SnappingMode>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::components::SnappingToSegmentPreview>,ref_mut$<utils::components::transform::Transform> >,bevy_ecs::query::filter::Without<country_core::components::SnappingToEndPreview> >,bevy_ecs::system::query::Query<tuple$<ref$<country_core::components::SnappingToEndPreview>,ref_mut$<utils::components::transform::Transform> >,bevy_ecs::query::filter::Without<country_core::components::SnappingToSegmentPreview> >,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo> >,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>)"
+    },
+    {
+      "stage": 19,
+      "index": 13,
+      "name": "snapping_maintain",
+      "helper": "0x1400ece00",
+      "helper_sha256": "9166cfa9f7a96c077d6c9d4fa02f122527a6730b7ff16f559014ac6cc12d1945",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::ResMut<country_core::systems::wall::snapping::SnappingMode>)"
+    },
+    {
+      "stage": 19,
+      "index": 14,
+      "name": "draw_wall",
+      "helper": "0x1403146f0",
+      "helper_sha256": "38ec97c64b6fbe660bb19b40270b9401d9b5f9a15a3a1c42677d6afeaff5f76d",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::in_progress_wall::InProgressWallResource>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::draw_wall::CurveNursery>,tuple$<bevy_ecs::change_detection::Res<country_core::systems::wall::snapping::SnappingMode>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::change_detection::Res<country_core::systems::wall::finish_wall::ContinueWallOriginalState>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::Res<country_core::resources::window::WindowSize> >,bevy_ecs::event::reader::EventReader<country_core::resources::events::RecordMouseInputIntoWall>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_orchestrator::RequestWallMaterialAudio>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::adjust_wall_height::adjust_wall_height_impl::AdjustWallHeightCmd>,tuple$<bevy_ecs::event::writer::EventWriter<country_core::resources::color_id::SetWallColorIdCmd>,bevy_ecs::change_detection::Res<country_core::resources::color_id::WallColorIds> >,tuple$<bevy_ecs::event::writer::EventWriter<country_core::resources::color_id::SetHalftimberColorIdCmd>,bevy_ecs::change_detection::Res<country_core::resources::color_id::HalftimberColorIds> >,bevy_ecs::change_detection::Res<country_core::resources::glade_color_customization::GladeColorCustomization>,bevy_ecs::event::writer::EventWriter<enum2$<country_core::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter> >)"
+    },
+    {
+      "stage": 19,
+      "index": 15,
+      "name": "finish_wall",
+      "helper": "0x1404e4a70",
+      "helper_sha256": "435f3997985ba22d2cb17198d87fa57f42853d905025c29db3e59a802d7e278b",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::event::reader::EventReader<country_core::resources::events::FinishWall>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::in_progress_wall::InProgressWallResource>,bevy_ecs::change_detection::Res<country_core::systems::wall::snapping::SnappingMode>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::finish_wall::ContinueWallOriginalState>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::merge_walls::MergeWallsCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::snapping::telegraph_walls_are_merged::PlayLineAcrossWall>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::deferred_wall_history::PendingWallHistory>,bevy_ecs::event::writer::EventWriter<country_core::resources::onboarding::NotifyHintSystemToolWasJustUsed>,bevy_ecs::change_detection::Res<country_core::resources::color_id::WallColorIds>,bevy_ecs::change_detection::Res<country_core::resources::color_id::HalftimberColorIds>)"
+    },
+    {
+      "stage": 19,
+      "index": 16,
+      "name": "merge_walls",
+      "helper": "0x1403cbe60",
+      "helper_sha256": "26685ee0de033b1e9f0200efdf09a0f950f7c76dfa641ac9224054b4e7ce0474",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo> >,country_core::resources::walls::decorator_archivist::DecoratorArchivalResources,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_archivist::DecoratorArchivist>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_storage::DecoratorStorage>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::deferred_wall_history::PendingWallHistory>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::event::reader::EventReader<country_core::systems::wall::merge_walls::MergeWallsCmd>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_ui::PlayWallUiSound>,bevy_ecs::event::writer::EventWriter<country_core::resources::color_id::SetWallColorIdCmd>,bevy_ecs::change_detection::Res<country_core::resources::color_id::WallColorIds>,bevy_ecs::event::writer::EventWriter<country_core::resources::color_id::SetHalftimberColorIdCmd>,bevy_ecs::change_detection::Res<country_core::resources::color_id::HalftimberColorIds>)"
+    },
+    {
+      "stage": 19,
+      "index": 17,
+      "name": "telegraph_walls_are_merged",
+      "helper": "0x140556f20",
+      "helper_sha256": "87c1a5bd3392169f65880f08732effdd796d25a29ebe460929d0d4b2613024b3",
+      "native_generic_system_params": "void (*)(bevy_ecs::event::reader::EventReader<country_core::systems::wall::snapping::telegraph_walls_are_merged::PlayLineAcrossWall>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::system::query::Query<tuple$<bevy_ecs::entity::Entity,ref_mut$<country_core::systems::wall::snapping::telegraph_walls_are_merged::LineAcrossWallSignifier>,ref$<country_core::asset_libraries::Handle<country_core::render::mesh::Mesh> >,ref_mut$<country_core::components::DashedLineLength> >,tuple$<> >,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::change_detection::Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,bevy_ecs::system::commands::Commands,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_ui::PlayWallUiSound>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>)"
+    },
+    {
+      "stage": 19,
+      "index": 0,
+      "name": "ui_adjust_wall_height_signifier_animation",
+      "helper": "0x140335b30",
+      "helper_sha256": "a06c298f6d03c1ada6932ffe06e359b8e9e9d6067ad359f70dd4a9781c6091f2",
+      "native_generic_system_params": "tuple$<void (*)(bevy_ecs::system::query::Query<tuple$<ref_mut$<country_core::systems::wall::adjust_wall_height::signifier_animation::WallHeightSignifier>,ref$<country_core::systems::ui::signifiers::SignifierAnimation>,ref$<country_core::asset_libraries::Handle<country_core::render::mesh::Mesh> >,enum2$<core::option::Option<ref$<country_core::systems::ui::signifiers::SignifierMarkedForDeletion> > > >,tuple$<> >,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::system::query::Query<ref$<country_core::resources::roofs::roof_shape::Roof>,tuple$<> >,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>),void (*)(bevy_ecs::change_detection::Res<country_core::resources::mouse_terrain_raycast::CursorPositionSS>,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::Res<country_core::resources::window::WindowSize>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,country_core::resources::walls::decorator_archivist::DecoratorArchivalResources,bevy_ecs::change_detection::ResMut<country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::AdjWallHeightModeCache>,bevy_ecs::event::reader::EventReader<country_core::resources::window::AudioCursorMoved>,bevy_ecs::event::reader::EventReader<country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::AdjustWallHeightUi>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::adjust_wall_height::adjust_wall_height_impl::AdjustWallHeightCmd>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::components::TestCube>,ref_mut$<utils::components::transform::Transform> >,tuple$<> >,bevy_ecs::change_detection::Res<country_core::resources::walls::decorator_storage::DecoratorStorage>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_archivist::DecoratorArchivist>),void (*)(bevy_ecs::event::reader::EventReader<country_core::systems::wall::adjust_wall_height::adjust_wall_height_impl::AdjustWallHeightCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_orchestrator::RequestWallMaterialAudio>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::building_audio::PlayBuildingAudio>,bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo> >,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::system::query::Query<ref$<country_core::resources::roofs::roof_shape::Roof>,tuple$<> >,bevy_ecs::change_detection::Res<bevy_time::time::Time<tuple$<> > >),void (*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::Res<country_core::resources::walls::arches::ArchSegments>,country_core::resources::walls::decorator_archivist::DecoratorArchivalResources,bevy_ecs::system::system_param::Local<system_wall_constructor::ui_arch_controls::ArchHeightControl>,bevy_ecs::change_detection::Res<country_core::resources::mouse_terrain_raycast::CursorPositionSS>,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::Res<country_core::resources::window::WindowSize>,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::Res<country_core::resources::walls::decorator_storage::DecoratorStorage>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_archivist::DecoratorArchivist>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_fmod::PlayWallAudio>,bevy_ecs::event::reader::EventReader<system_wall_constructor::ui_arch_controls::DoUiArchControls>),void (*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::system::system_param::Local<system_wall_constructor::ui_arch_controls::ArchHeightControl>,bevy_ecs::change_detection::Res<country_core::resources::mouse_terrain_raycast::CursorPositionSS>,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::Res<country_core::resources::window::WindowSize>,bevy_ecs::change_detection::Res<country_core::resources::walls::arches::LintelSegments>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_fmod::PlayWallAudio>),void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::walls::WallHighlight>,bevy_ecs::change_detection::ResMut<country_core::resources::editing_highlight::EditingHighlight>,bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_highlight::HighlightWallCmd>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::WallEntities>),void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::Res<country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash>,bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo> >,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallDeleted>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallChanged>,bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::wall_roof_hashmap::RecalculateGableRoofWallHeights>,bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::wall_roof_hashmap::RecalculateWallHoles>,bevy_ecs::event::reader::EventReader<country_core::resources::events::RecalculateHalftimberBuildings>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::wall_state::publish_public_wall_state::WallLazySubscriber>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::Res<country_core::resources::gui::DebugGui>,bevy_ecs::change_detection::Res<country_core::systems::wall::eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer>),void (*)(bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallDeleted>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::public_walls::WallPlasters>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::public_walls::WallEntities>,bevy_ecs::system::commands::Commands),void (*)(bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallChanged>,bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallDeleted>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash>),void (*)(bevy_ecs::change_detection::Res<country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash>,bevy_ecs::change_detection::Res<country_core::resources::read_mouse_depth_value::MouseDepthValue>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::Res<country_core::resources::gui::DebugGui>),void (*)(bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallChanged>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::calc_wall_bend::WallBendChangedEvent>),void (*)(bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallChanged>),void (*)(bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallChanged>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>),void (*)(country_core::systems::paths::draw_path::PathRastersResources,bevy_ecs::change_detection::ResMut<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallChanged>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>),void (*)(bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallChanged>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::ResMut<system_wall_constructor::WallPathSegmentationMasks>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>),void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallChanged>,bevy_ecs::system::query::Query<ref$<country_core::resources::roofs::roof_shape::Roof>,tuple$<> >)>"
+    },
+    {
+      "stage": 19,
+      "index": 1,
+      "name": "ui_adjust_wall_height_mode",
+      "helper": "0x1400cbb50",
+      "helper_sha256": "e80778da7ad8e1d3d6ba6e1ebb939642fb0a617e3f614af229c597046154f95a",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::Res<country_core::resources::mouse_terrain_raycast::CursorPositionSS>,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::Res<country_core::resources::window::WindowSize>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,country_core::resources::walls::decorator_archivist::DecoratorArchivalResources,bevy_ecs::change_detection::ResMut<country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::AdjWallHeightModeCache>,bevy_ecs::event::reader::EventReader<country_core::resources::window::AudioCursorMoved>,bevy_ecs::event::reader::EventReader<country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::AdjustWallHeightUi>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::adjust_wall_height::adjust_wall_height_impl::AdjustWallHeightCmd>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::components::TestCube>,ref_mut$<utils::components::transform::Transform> >,tuple$<> >,bevy_ecs::change_detection::Res<country_core::resources::walls::decorator_storage::DecoratorStorage>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_archivist::DecoratorArchivist>)"
+    },
+    {
+      "stage": 19,
+      "index": 2,
+      "name": "adjust_wall_height_impl",
+      "helper": "0x14015ccb0",
+      "helper_sha256": "8aeee41544dbac1fb3d53099c1437e1884c6441c67b990479a218d48e4309356",
+      "native_generic_system_params": "void (*)(bevy_ecs::event::reader::EventReader<country_core::systems::wall::adjust_wall_height::adjust_wall_height_impl::AdjustWallHeightCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_orchestrator::RequestWallMaterialAudio>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::building_audio::PlayBuildingAudio>,bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo> >,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::system::query::Query<ref$<country_core::resources::roofs::roof_shape::Roof>,tuple$<> >,bevy_ecs::change_detection::Res<bevy_time::time::Time<tuple$<> > >)"
+    },
+    {
+      "stage": 19,
+      "index": 3,
+      "name": "do_ui_arch_controls",
+      "helper": "0x140112b10",
+      "helper_sha256": "da99ea240ebbf65610929df221daae7b87fca698301a26c8cf5750a8579ac9c7",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::Res<country_core::resources::walls::arches::ArchSegments>,country_core::resources::walls::decorator_archivist::DecoratorArchivalResources,bevy_ecs::system::system_param::Local<system_wall_constructor::ui_arch_controls::ArchHeightControl>,bevy_ecs::change_detection::Res<country_core::resources::mouse_terrain_raycast::CursorPositionSS>,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::Res<country_core::resources::window::WindowSize>,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::Res<country_core::resources::walls::decorator_storage::DecoratorStorage>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_archivist::DecoratorArchivist>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_fmod::PlayWallAudio>,bevy_ecs::event::reader::EventReader<system_wall_constructor::ui_arch_controls::DoUiArchControls>)"
+    },
+    {
+      "stage": 19,
+      "index": 4,
+      "name": "ui_lintel_controls",
+      "helper": "0x1405b0b70",
+      "helper_sha256": "fbd5a1da20c11dd2ca22f58012ada096160d66c269f88b6b75dc0247ca6aabce",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::system::system_param::Local<system_wall_constructor::ui_arch_controls::ArchHeightControl>,bevy_ecs::change_detection::Res<country_core::resources::mouse_terrain_raycast::CursorPositionSS>,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::Res<country_core::resources::window::WindowSize>,bevy_ecs::change_detection::Res<country_core::resources::walls::arches::LintelSegments>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::wall_audio_fmod::PlayWallAudio>)"
+    },
+    {
+      "stage": 19,
+      "index": 5,
+      "name": "wall_highlight",
+      "helper": "0x14025fbd0",
+      "helper_sha256": "af85469e6d010f97f45c35a45439cddafff9a878e92764bdf793975f1987dcb9",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::walls::WallHighlight>,bevy_ecs::change_detection::ResMut<country_core::resources::editing_highlight::EditingHighlight>,bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_highlight::HighlightWallCmd>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::WallEntities>)"
+    },
+    {
+      "stage": 19,
+      "index": 6,
+      "name": "publish_public_wall_state",
+      "helper": "0x140531f10",
+      "helper_sha256": "fcdc28bf109f102cb51212a1c5ca79c803302d505f6eef6cff1a78284d7e2f71",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::Res<country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash>,bevy_ecs::change_detection::Res<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo> >,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallDeleted>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallChanged>,bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::wall_roof_hashmap::RecalculateGableRoofWallHeights>,bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::wall_roof_hashmap::RecalculateWallHoles>,bevy_ecs::event::reader::EventReader<country_core::resources::events::RecalculateHalftimberBuildings>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::wall_state::publish_public_wall_state::WallLazySubscriber>,bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::Res<country_core::resources::gui::DebugGui>,bevy_ecs::change_detection::Res<country_core::systems::wall::eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer>)"
+    },
+    {
+      "stage": 19,
+      "index": 7,
+      "name": "delete_wall",
+      "helper": "0x140295030",
+      "helper_sha256": "fa61fb614545fa9d6ac640bafad359c813ce54257df210bdd3e38381cbe2f4c8",
+      "native_generic_system_params": "void (*)(bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallDeleted>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::public_walls::WallPlasters>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::public_walls::WallEntities>,bevy_ecs::system::commands::Commands)"
+    },
+    {
+      "stage": 19,
+      "index": 8,
+      "name": "spatial_hash_update",
+      "helper": "0x1402dfe10",
+      "helper_sha256": "8b041d84a467e60871857cbbae93add7045ac0101c2bd1c075092a3c98cd21f2",
+      "native_generic_system_params": "void (*)(bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallChanged>,bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallDeleted>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash>)"
+    },
+    {
+      "stage": 19,
+      "index": 9,
+      "name": "spatial_hash_debug",
+      "helper": "0x140252490",
+      "helper_sha256": "3973035591bf2724169a018f54ccb72773b5a2199c90062b0d71efc818645a9b",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::Res<country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash>,bevy_ecs::change_detection::Res<country_core::resources::read_mouse_depth_value::MouseDepthValue>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,bevy_ecs::change_detection::Res<country_core::resources::gui::DebugGui>)"
+    },
+    {
+      "stage": 19,
+      "index": 10,
+      "name": "calc_wall_bend",
+      "helper": "0x1405c6fb0",
+      "helper_sha256": "30c46876d206ebbb00eb2117d52359d3e5ccf1136a54b29ea7d9c8f9643deb9e",
+      "native_generic_system_params": "void (*)(bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallChanged>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::calc_wall_bend::WallBendChangedEvent>)"
+    },
+    {
+      "stage": 19,
+      "index": 11,
+      "name": "debug_force_update_arches",
+      "helper": "0x140369050",
+      "helper_sha256": "bc6cb3d5239d91b487e7631da8a4356e35ab3a355c4e31023ffc2ce5ba1a0113",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::event::writer::EventWriter<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallChanged>)"
+    },
+    {
+      "stage": 19,
+      "index": 12,
+      "name": "gpu_clear_wall_gate_pieces",
+      "helper": "0x140368e90",
+      "helper_sha256": "92f07ba0b483752bb57c050c1636ea8def7c4b29d27d3960d2b0880865ce8418",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallChanged>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>)"
+    },
+    {
+      "stage": 19,
+      "index": 13,
+      "name": "sample_wall_path_intersections",
+      "helper": "0x1404e6e90",
+      "helper_sha256": "5f6e174cc5a49693c83318638b5c1e6d5934691715ab54d058af07a1b0c2b9d4",
+      "native_generic_system_params": "void (*)(country_core::systems::paths::draw_path::PathRastersResources,bevy_ecs::change_detection::ResMut<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallChanged>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>)"
+    },
+    {
+      "stage": 19,
+      "index": 14,
+      "name": "calculate_path_wall_segmentation",
+      "helper": "0x140174db0",
+      "helper_sha256": "acd86cabe86274820bb87f6c2d22b2982f34c8e15b14938a3cf81799f0b3b8c7",
+      "native_generic_system_params": "void (*)(bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallChanged>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::ResMut<system_wall_constructor::WallPathSegmentationMasks>,bevy_ecs::change_detection::Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>)"
+    },
+    {
+      "stage": 19,
+      "index": 15,
+      "name": "init_wall_height_and_arch_segment_height",
+      "helper": "0x140538010",
+      "helper_sha256": "5ce7037706ff23af488043bbf3d801e4936e18991324159f14a9324d5d628eea",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::event::reader::EventReader<country_core::systems::wall::wall_state::publish_public_wall_state::OnWallChanged>,bevy_ecs::system::query::Query<ref$<country_core::resources::roofs::roof_shape::Roof>,tuple$<> >)"
+    },
+    {
+      "stage": 34,
+      "index": 0,
+      "name": "history_record_adjust_wall_height",
+      "helper": "0x1400cbd40",
+      "helper_sha256": "33397cdf60877595bf9a7a5a060c71d53917b0bfd882efd37c387eff1b4eb888",
+      "native_generic_system_params": "tuple$<void (*)(bevy_ecs::change_detection::ResMut<country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::AdjWallHeightModeCache>,bevy_ecs::event::reader::EventReader<country_core::resources::events::FinishAdjWallHeightMode>,bevy_ecs::system::query::Query<tuple$<ref$<country_core::components::TestCube>,ref_mut$<utils::components::transform::Transform> >,tuple$<> >,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::system::query::Query<ref$<country_core::resources::roofs::roof_shape::Roof>,tuple$<> >,bevy_ecs::event::writer::EventWriter<country_core::resources::onboarding::NotifyHintSystemShapeEditWasPerformed>),void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::deferred_wall_history::PendingWallHistory>),void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::deferred_wall_history::PendingWallHistory>,bevy_ecs::change_detection::Res<country_core::resources::walls::inner_walls::InnerWalls>),void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::event::reader::EventReader<country_core::systems::ui_clutter::defered_autoclutter_history::RecordAutoClutterHistory>)>"
+    },
+    {
+      "stage": 34,
+      "index": 1,
+      "name": "history_record_wall_changed",
+      "helper": "0x140048c50",
+      "helper_sha256": "758ef5fd7f288c66d0ffa4c649d1eb806f32586103566a4f7003ae0c03eb03ae",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::deferred_wall_history::PendingWallHistory>)"
+    },
+    {
+      "stage": 34,
+      "index": 2,
+      "name": "history_record_merge_walls",
+      "helper": "0x140048fe0",
+      "helper_sha256": "4c7f54f86ad064d07fa7695f0a80814cdfa2d1848263aca8f2865c1d9ce3e020",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::ResMut<country_core::systems::wall::deferred_wall_history::PendingWallHistory>,bevy_ecs::change_detection::Res<country_core::resources::walls::inner_walls::InnerWalls>)"
+    },
+    {
+      "stage": 34,
+      "index": 3,
+      "name": "history_record_auto_clutter",
+      "helper": "0x1402d4610",
+      "helper_sha256": "a8edb7f090979772651166c60176b7e29c382d539cd039583bcf436fc1eead82",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::event::reader::EventReader<country_core::systems::ui_clutter::defered_autoclutter_history::RecordAutoClutterHistory>)"
+    },
+    {
+      "stage": 35,
+      "index": 0,
+      "name": "history_finish_recording",
+      "helper": "0x141737fb0",
+      "helper_sha256": "db3fb21f07d9832506db80f79421f512a3c3f41de211bc4d22a9e498f8982f7b",
+      "native_generic_system_params": "tuple$<void (*)(bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_storage::DecoratorStorage>,bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_archivist::DecoratorArchivist>,bevy_ecs::change_detection::ResMut<country_core::resources::stairs::stairs_state::StairsState>,bevy_ecs::event::writer::EventWriter<enum2$<country_core::systems::backend::input::input_record_replay::InputReplayCommand> >,bevy_ecs::event::reader::EventReader<country_core::systems::ui_clutter::ui_autoclutter::InstaCreateDeco>,bevy_ecs::event::reader::EventReader<country_core::systems::ui_clutter::ui_autoclutter::InstaCreateStairPoint>,bevy_ecs::event::reader::EventReader<country_core::resources::history::FinishInputRecordingCmd>,bevy_ecs::change_detection::ResMut<country_core::systems::audio::music::music_system::MusicAudioState>,bevy_ecs::change_detection::ResMut<country_core::resources::stairs::stairs_removed_supports::StairsRemovedSupports>),void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::ResMut<country_core::systems::history::history_process::PendingHistoryCommands>,bevy_ecs::change_detection::ResMut<country_core::resources::history::replay_cmd_buffer::ReplayBuffer>,bevy_ecs::event::reader::EventReader<country_core::systems::history::history_process::HistoryCmd>,bevy_ecs::event::reader::EventReader<country_core::systems::history::history_process::DebugHistoryMsg>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::replay_audio::PlayReplayAudio>,bevy_ecs::event::writer::EventWriter<country_core::systems::history::history_process::NewReplayCommandEvent>,bevy_ecs::event::writer::EventWriter<country_core::systems::timelapse_replay::InterruptTimelapse>,bevy_ecs::change_detection::Res<country_core::systems::wall::eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer>),void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_archivist::DecoratorArchivist>,bevy_ecs::event::reader::EventReader<country_core::systems::history::history_process::NewReplayCommandEvent>),void (*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::systems::history::history_process::PendingHistoryCommands>,bevy_ecs::change_detection::ResMut<country_core::resources::history::replay_cmd_buffer::ReplayBuffer>,bevy_ecs::event::reader::EventReader<country_core::resources::events::ModeJustChanged>,bevy_ecs::change_detection::ResMut<enum2$<country_core::systems::history::replay_mode::HoldToFastReplay> >,bevy_ecs::change_detection::ResMut<country_core::systems::history::replay_mode::RestoreAppTo>,bevy_ecs::change_detection::ResMut<country_core::systems::history::signifier_replay_active::ReplayModeElapsedTime>,bevy_ecs::event::writer::EventWriter<country_core::systems::history::history_process::HistoryCmd>,bevy_ecs::change_detection::Res<country_core::input::action_set::ActionSetStates>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::change_detection::Res<country_core::systems::timelapse_replay::ReplaySpeedMultiplierOverride>),void (*)(bevy_ecs::change_detection::ResMut<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::event::reader::EventReader<country_core::systems::history::history_process::HistoryCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::toolbar::Toolbar>,bevy_ecs::change_detection::ResMut<country_core::meta_commander::MetaCommander>,bevy_ecs::change_detection::Res<country_core::systems::history::history_process::PendingHistoryCommands>,bevy_ecs::change_detection::Res<country_core::resources::history::replay_cmd_buffer::ReplayBuffer>,bevy_ecs::change_detection::Res<country_core::input::action_set::ActionSetStates>,bevy_ecs::change_detection::Res<country_core::systems::history::replay_mode::RestoreAppTo>,bevy_ecs::event::writer::EventWriter<country_core::resources::critters::sheep::CmdUnfreezeSheep>),void (*)(bevy_ecs::change_detection::Res<country_core::resources::history::replay_cmd_buffer::ReplayBuffer>,bevy_ecs::change_detection::ResMut<country_core::systems::history::signifier_replay_active::ReplayModeElapsedTime>,bevy_ecs::system::query::Query<tuple$<ref_mut$<utils::components::transform::Transform>,ref$<country_core::systems::history::signifier_replay_active::SignifierReplayIndex> >,tuple$<> >,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::change_detection::Res<country_core::resources::history::replay_cmd_buffer::ReplayBuffer>)>"
+    },
+    {
+      "stage": 35,
+      "index": 1,
+      "name": "history_process",
+      "helper": "0x14143b610",
+      "helper_sha256": "ef567ccbb9e58f1aa6007b55fb9bd3c51ecfdbbd298fa63e0ae6e722d3317732",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::ResMut<country_core::systems::history::history_process::PendingHistoryCommands>,bevy_ecs::change_detection::ResMut<country_core::resources::history::replay_cmd_buffer::ReplayBuffer>,bevy_ecs::event::reader::EventReader<country_core::systems::history::history_process::HistoryCmd>,bevy_ecs::event::reader::EventReader<country_core::systems::history::history_process::DebugHistoryMsg>,bevy_ecs::event::writer::EventWriter<country_core::systems::audio::replay_audio::PlayReplayAudio>,bevy_ecs::event::writer::EventWriter<country_core::systems::history::history_process::NewReplayCommandEvent>,bevy_ecs::event::writer::EventWriter<country_core::systems::timelapse_replay::InterruptTimelapse>,bevy_ecs::change_detection::Res<country_core::systems::wall::eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer>)"
+    },
+    {
+      "stage": 35,
+      "index": 2,
+      "name": "history_clear_previous_state",
+      "helper": "0x14143b290",
+      "helper_sha256": "2d43e0ff0af5f3ce4af5e0dbbdee0dc6c955059cd4c473382229ab20caf76a4e",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_archivist::DecoratorArchivist>,bevy_ecs::event::reader::EventReader<country_core::systems::history::history_process::NewReplayCommandEvent>)"
+    },
+    {
+      "stage": 35,
+      "index": 3,
+      "name": "replay_mode",
+      "helper": "0x140a9f240",
+      "helper_sha256": "3fe6043bc29d563dcf2aedc5087e17e29117220dd227126bfae2d862cf1753ef",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::systems::history::history_process::PendingHistoryCommands>,bevy_ecs::change_detection::ResMut<country_core::resources::history::replay_cmd_buffer::ReplayBuffer>,bevy_ecs::event::reader::EventReader<country_core::resources::events::ModeJustChanged>,bevy_ecs::change_detection::ResMut<enum2$<country_core::systems::history::replay_mode::HoldToFastReplay> >,bevy_ecs::change_detection::ResMut<country_core::systems::history::replay_mode::RestoreAppTo>,bevy_ecs::change_detection::ResMut<country_core::systems::history::signifier_replay_active::ReplayModeElapsedTime>,bevy_ecs::event::writer::EventWriter<country_core::systems::history::history_process::HistoryCmd>,bevy_ecs::change_detection::Res<country_core::input::action_set::ActionSetStates>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::change_detection::Res<country_core::systems::timelapse_replay::ReplaySpeedMultiplierOverride>)"
+    },
+    {
+      "stage": 35,
+      "index": 4,
+      "name": "finish_replay",
+      "helper": "0x141740460",
+      "helper_sha256": "1e7f4f35dec27e02fe2012551e7f04fed3a6e8720e13f40235b4858f426c1176",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::ResMut<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::event::reader::EventReader<country_core::systems::history::history_process::HistoryCmd>,bevy_ecs::change_detection::ResMut<country_core::resources::toolbar::Toolbar>,bevy_ecs::change_detection::ResMut<country_core::meta_commander::MetaCommander>,bevy_ecs::change_detection::Res<country_core::systems::history::history_process::PendingHistoryCommands>,bevy_ecs::change_detection::Res<country_core::resources::history::replay_cmd_buffer::ReplayBuffer>,bevy_ecs::change_detection::Res<country_core::input::action_set::ActionSetStates>,bevy_ecs::change_detection::Res<country_core::systems::history::replay_mode::RestoreAppTo>,bevy_ecs::event::writer::EventWriter<country_core::resources::critters::sheep::CmdUnfreezeSheep>)"
+    },
+    {
+      "stage": 35,
+      "index": 5,
+      "name": "signifier_replay_active",
+      "helper": "0x140a26240",
+      "helper_sha256": "939ccce1ee44086daf480a4fde35c97c4e16641ff21c893033066e0e9ceef8fa",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::Res<country_core::resources::history::replay_cmd_buffer::ReplayBuffer>,bevy_ecs::change_detection::ResMut<country_core::systems::history::signifier_replay_active::ReplayModeElapsedTime>,bevy_ecs::system::query::Query<tuple$<ref_mut$<utils::components::transform::Transform>,ref$<country_core::systems::history::signifier_replay_active::SignifierReplayIndex> >,tuple$<> >,bevy_ecs::change_detection::Res<country_core::systems::camera_rig::MainCamera>,bevy_ecs::change_detection::Res<country_core::resources::time::GameTime>,bevy_ecs::change_detection::Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,bevy_ecs::change_detection::Res<country_core::resources::history::replay_cmd_buffer::ReplayBuffer>)"
+    },
+    {
+      "stage": 14,
+      "index": 0,
+      "name": "history_start_recording",
+      "helper": "0x141738630",
+      "helper_sha256": "096ba1bc15f539df77f1e1049e99c83f6c24937dfe614535981d3437a6d1ccca",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >)"
+    },
+    {
+      "stage": 17,
+      "index": 0,
+      "name": "ui_arch_controls",
+      "helper": "0x140112d30",
+      "helper_sha256": "bbdb9de780dff65bb66c28c45e2576758a73c31d6bf2170081eb140ffd85b8f5",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::resources::walls::public_walls::PublicWalls>,bevy_ecs::change_detection::Res<country_core::resources::walls::arches::ArchSegments>,bevy_ecs::change_detection::Res<country_core::systems::ui::resources::ui_state::UiState>,bevy_ecs::event::writer::EventWriter<system_wall_constructor::ui_arch_controls::DoUiArchControls>)"
+    },
+    {
+      "stage": 42,
+      "index": 0,
+      "name": "restore_archived_decorators",
+      "helper": "0x140322d40",
+      "helper_sha256": "c218fd98dc0e2f7931420d89113f2638d60355b3963f2163b375029e03592136",
+      "native_generic_system_params": "void (*)(bevy_ecs::change_detection::Res<enum2$<country_core::systems::mode_manager::AppMode> >,bevy_ecs::change_detection::Res<country_core::resources::walls::inner_walls::InnerWalls>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_archivist::DecoratorArchivist>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_storage::DecoratorStorage>,bevy_ecs::change_detection::ResMut<country_core::resources::walls::decorator_collision::DecoratorPhysicsColliders>,bevy_ecs::change_detection::ResMut<country_core::systems::collision::world::RaycastWorld>,bevy_ecs::change_detection::ResMut<country_core::resources::stairs::stairs_state::StairsState>,bevy_ecs::event::reader::EventReader<country_core::resources::events::ModeJustChanged>)"
+    }
+  ],
+  "native_full_symbols": "native-registration.json + native-helpers.json + native-history-extra.json",
+  "findings": [
+    "start14 precedes original wall drawing19; local adapter ui_draw.before(start) is not native schedule",
+    "deferred wall record34 must drain before finish35; Rust event representation additionally requires record_wall_history consumer34",
+    "original set42 restore_archived_decorators is the only direct caller of DecoratorStorage::mark_mutable; do not add a substitute frame-prefix clear",
+    "native finish11 params includes MusicAudioState but 699B leaf does not access that stack argument",
+    "main wall splitter and merge have no current production module; bulldozer source is partial and unsafe to declare complete",
+    "current finish_wall rejects snapped topology and premade continuation explicitly",
+    "set35 signifier_replay_active has no production module and must remain an honest gap"
+  ]
+}

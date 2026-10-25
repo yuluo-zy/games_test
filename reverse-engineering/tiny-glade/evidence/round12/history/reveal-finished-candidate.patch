@@ -1,0 +1,164 @@
+--- a/tiny-glade/crates/country-core/src/systems/render_loop/vermeer.rs
++++ b/tiny-glade/crates/country-core/src/systems/render_loop/vermeer.rs
+@@ -51,8 +51,8 @@
+ pub const TYPE_ID_DEBUG_CONTROL: (u64, u64) = (neg(0x41d183f500a337ed), neg(0x70b9a6b1dd0fe28a));
+ /// `VermeerState` 资源 TypeId（O）。
+ pub const TYPE_ID_VERMEER_STATE: (u64, u64) = (neg(0x5d7beaa1974014c1), neg(0x7b5d4cbbe439b5c6));
+-/// `Events<WriteSettingsFileCmd>` TypeId（O）。
+-pub const TYPE_ID_WRITE_SETTINGS_EVENTS: (u64, u64) = (neg(0x2706c2f9b15629e4), 0x6447617066d9832f);
++/// `Events<StartupRevealFinished>` TypeId（O）。
++pub const TYPE_ID_REVEAL_FINISHED_EVENTS: (u64, u64) = (neg(0x2706c2f9b15629e4), 0x6447617066d9832f);
+ /// `AssetTextureLibrary` TypeId（O）。
+ pub const TYPE_ID_TEXTURE_LIBRARY: (u64, u64) = (neg(0x597a9e4c6987b156), neg(0x0a028b19050b12ec));
+ 
+@@ -305,12 +305,12 @@
+     fn library_texture(&mut self, name_hash: u64) -> TexRef;
+     /// `compute_passes::blur_pyramid::blur_pyramid(world, graph, input)`（O 0x1409ee1e0）。
+     fn blur_pyramid(&mut self, input: TexRef) -> TexRef;
+-    /// `Events<WriteSettingsFileCmd>::send`（O：`EventInstance` 追加 + 计数 +1；资源缺失 → `None` → unwrap panic）。
+-    fn send_write_settings_file(&mut self) -> Option<()>;
++    /// `Events<StartupRevealFinished>::send`（O：`EventInstance` 追加 + 计数 +1；资源缺失 → `None` → unwrap panic）。
++    fn send_startup_reveal_finished(&mut self) -> Option<()>;
+ }
+ 
+ /// 静态 `0x143634c9c`（O：`vermeer_pass` 里读后置 1；禁用且无 restart 时置 0）。
+-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
++#[derive(bevy_ecs::prelude::Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+ pub struct VermeerPassLocals {
+     pub prev_active: bool,
+ }
+@@ -535,7 +535,7 @@
+ ///   阶段 = Ready，`target_extent = extent(vermeer_target)`。
+ /// - dt = min(delta_f32, 1/30)；冻结 → progress = 控制.progress；否则 `(frame < 2 || hold)` 不动，否则 `+= dt/3`。
+ /// - `frame += 1; timer += dt`；`vermeer_render_from_target`。
+-/// - `progress >= 1.0 && !控制.freeze && !hold` → 释放 background、phase = Disabled、发 `WriteSettingsFileCmd`、
++/// - `progress >= 1.0 && !控制.freeze && !hold` → 释放 background、phase = Disabled、发 `StartupRevealFinished`、
+ ///   Info 日志 "Game reveal complete."。
+ pub fn vermeer_pass<H: VermeerHost>(
+     host: &mut H,
+@@ -628,7 +628,7 @@
+             state.background = None; // ManagedHandle::drop
+         }
+         state.phase = VermeerPhase::Disabled;
+-        host.send_write_settings_file().unwrap();
++        host.send_startup_reveal_finished().unwrap();
+         host.log(LogLevel::Info, LOG_TARGET, SOURCE_FILE, LOG_REVEAL_COMPLETE);
+     }
+     orig_phase != VermeerPhase::Disabled
+@@ -739,12 +739,12 @@
+             self.calls.push(format!("blur_pyramid {}", input.0));
+             TexRef(33)
+         }
+-        fn send_write_settings_file(&mut self) -> Option<()> {
++        fn send_startup_reveal_finished(&mut self) -> Option<()> {
+             if self.no_events {
+                 return None;
+             }
+             self.events += 1;
+-            self.calls.push("event WriteSettingsFileCmd".into());
++            self.calls.push("event StartupRevealFinished".into());
+             Some(())
+         }
+     }
+@@ -1087,13 +1087,14 @@
+         assert!(s.background.is_none());
+         assert_eq!(h.events, 1);
+         let n = h.calls.len();
+-        assert_eq!(h.calls[n - 2], "event WriteSettingsFileCmd");
++        assert_eq!(h.calls[n - 2], "event StartupRevealFinished");
+         assert_eq!(
+             h.calls[n - 1],
+             "log Info country_core::systems::render_loop::vermeer Game reveal complete."
+         );
+-        // 下一帧：Disabled -> 返回 false
++        // 下一帧：Disabled -> 返回 false，不重复发布 Finished。
+         assert!(!vermeer_pass(&mut h, &mut l, &mut s, params(false)));
++        assert_eq!(h.events, 1);
+     }
+ 
+     #[test]
+@@ -1112,7 +1113,7 @@
+ 
+     #[test]
+     #[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
+-    fn missing_settings_event_resource_panics() {
++    fn missing_reveal_finished_event_resource_panics() {
+         let mut h = host();
+         h.no_events = true;
+         let mut l = VermeerPassLocals::default();
+--- a/tiny-glade/crates/tiny-glade/src/effects_host.rs
++++ b/tiny-glade/crates/tiny-glade/src/effects_host.rs
+@@ -42,7 +42,7 @@
+     time: Option<p::TimeView>,
+     debug: Option<VermeerDebugControl>,
+     alt_background: bool,
+-    settings_events: Option<&'a mut bevy_ecs::event::Events<country_core::resources::events::WriteSettingsFileCmd>>,
++    reveal_finished_events: Option<&'a mut bevy_ecs::event::Events<country_core::systems::save::load_game::StartupRevealFinished>>,
+     error: Option<rhapsody::Error>,
+ }
+ 
+@@ -55,11 +55,11 @@
+     ) -> Self {
+         Self { frame, access, backend, shaders, textures: HashMap::new(),
+             named_textures: HashMap::new(), app_mode, time, debug, alt_background,
+-            settings_events: None, error: None }
+-    }
+-
+-    pub fn with_settings_events(mut self, events: &'a mut bevy_ecs::event::Events<country_core::resources::events::WriteSettingsFileCmd>) -> Self {
+-        self.settings_events = Some(events);
++            reveal_finished_events: None, error: None }
++    }
++
++    pub fn with_startup_reveal_finished_events(mut self, events: &'a mut bevy_ecs::event::Events<country_core::systems::save::load_game::StartupRevealFinished>) -> Self {
++        self.reveal_finished_events = Some(events);
+         self
+     }
+ 
+@@ -239,8 +239,8 @@
+             .expect("Vermeer blur pyramid failed");
+         self.register_texture(output)
+     }
+-    fn send_write_settings_file(&mut self) -> Option<()> {
+-        self.settings_events.as_deref_mut()?.send(country_core::resources::events::WriteSettingsFileCmd);
++    fn send_startup_reveal_finished(&mut self) -> Option<()> {
++        self.reveal_finished_events.as_deref_mut()?.send(country_core::systems::save::load_game::StartupRevealFinished);
+         Some(())
+     }
+ }
+--- a/tiny-glade/crates/tiny-glade/src/world_postprocess.rs
++++ b/tiny-glade/crates/tiny-glade/src/world_postprocess.rs
+@@ -557,8 +557,14 @@
+         .get_resource::<bevy_time::Time>()
+         .map(|time| time.delta_secs())
+         .unwrap_or(0.0);
++    // Original process static143634c9c survives each frame; never recreate
++    // prev_active=false before the native temporal-reuse conjunction.
++    world.init_resource::<vermeer::VermeerPassLocals>();
+     world.resource_scope(
+         |world, mut state: bevy_ecs::change_detection::Mut<vermeer::VermeerState>| {
++        world.resource_scope(|world, mut locals: bevy_ecs::change_detection::Mut<vermeer::VermeerPassLocals>| {
++        world.resource_scope(|world, mut finished: bevy_ecs::change_detection::Mut<
++            bevy_ecs::event::Events<country_core::systems::save::load_game::StartupRevealFinished>>| {
+             let raster = frame.raster_resources();
+             let access = FrameWorldAccess::new(
+                 FrameLibraries {
+@@ -596,9 +602,8 @@
+                 Some(debug),
+                 // Static 0x143634d90 selects the alternate background name (U).
+                 false,
+-            );
++            ).with_startup_reveal_finished_events(&mut finished);
+             let target = effects.register_texture(target);
+-            let mut locals = vermeer::VermeerPassLocals::default();
+             let active = vermeer::vermeer_pass(
+                 &mut effects,
+                 &mut locals,
+@@ -612,6 +617,8 @@
+             );
+             effects.finish()?;
+             Ok(active)
++        })
++        })
+         },
+     )
+ }

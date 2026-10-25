@@ -1,0 +1,354 @@
+
+void __cdecl country_core::resources::history::terrain_edit::TerrainEdit::update_terrain_curve(void)
+
+{
+  char *pcVar1;
+  longlong lVar2;
+  void *_Src;
+  undefined1 auVar3 [16];
+  uint uVar4;
+  uint uVar5;
+  int iVar6;
+  int iVar7;
+  int iVar8;
+  int iVar9;
+  ulonglong extraout_RAX;
+  undefined8 *extraout_RAX_00;
+  undefined8 *extraout_RAX_01;
+  undefined8 *extraout_RAX_02;
+  int in_ECX;
+  void *in_RDX;
+  undefined **ppuVar10;
+  undefined1 **ppuVar11;
+  undefined1 *in_R8;
+  ulonglong uVar12;
+  longlong lVar13;
+  uint uVar14;
+  ushort uVar15;
+  longlong lVar16;
+  undefined1 *puVar17;
+  undefined8 *puVar18;
+  byte bVar19;
+  char cVar20;
+  char cVar24;
+  float extraout_XMM0_Da;
+  char cVar22;
+  char cVar23;
+  undefined1 auVar21 [16];
+  undefined1 in_XMM1_Ba;
+  undefined1 in_XMM1_Bb;
+  undefined1 in_XMM1_Bc;
+  undefined1 in_XMM1_Bd;
+  undefined1 in_XMM1_Be;
+  undefined1 in_XMM1_Bf;
+  undefined1 in_XMM1_Bg;
+  undefined1 in_XMM1_Bh;
+  undefined1 in_XMM1_Bi;
+  undefined1 in_XMM1_Bj;
+  undefined1 in_XMM1_Bk;
+  undefined1 in_XMM1_Bl;
+  undefined1 in_XMM1_Bm;
+  undefined1 in_XMM1_Bn;
+  undefined1 in_XMM1_Bo;
+  undefined1 in_XMM1_Bp;
+  undefined1 auVar25 [16];
+  float fVar26;
+  undefined1 auVar27 [16];
+  float fVar28;
+  longlong in_stack_00000028;
+  undefined1 *local_170;
+  undefined8 *puStack_168;
+  longlong lStack_158;
+  float local_140;
+  undefined8 local_138;
+  code *pcStack_130;
+  undefined8 local_128;
+  undefined1 *local_118;
+  code *pcStack_110;
+  undefined1 *local_108;
+  longlong lStack_100;
+  longlong local_e0;
+  undefined8 uStack_d8;
+  undefined8 local_d0;
+  undefined **local_c8;
+  undefined8 *puStack_c0;
+  undefined1 **local_b8;
+  longlong local_b0;
+  undefined8 local_a8;
+  undefined1 local_8c [4];
+  undefined1 *local_88;
+  undefined8 *local_80;
+  undefined1 local_72;
+  undefined1 local_71;
+  undefined8 local_70;
+  
+  local_70 = 0xfffffffffffffffe;
+  local_c8 = (undefined **)CONCAT44(local_c8._4_4_,in_ECX);
+  if (*(longlong *)(in_stack_00000028 + 0x20) != 0) {
+    core::hash::BuildHasher::
+    hash_one<std::hash::random::RandomState,ref_<shader_pipeline::reflection::BindingIndex>_>();
+    lVar2 = *(longlong *)(in_stack_00000028 + 8);
+    bVar19 = (byte)(extraout_RAX >> 0x39);
+    auVar21 = ZEXT216(CONCAT11(bVar19,bVar19));
+    auVar21 = pshuflw(auVar21,auVar21,0);
+    lVar13 = 0;
+    iVar6 = -(uint)(CONCAT13(in_XMM1_Bd,CONCAT12(in_XMM1_Bc,CONCAT11(in_XMM1_Bb,in_XMM1_Ba))) ==
+                   CONCAT13(in_XMM1_Bd,CONCAT12(in_XMM1_Bc,CONCAT11(in_XMM1_Bb,in_XMM1_Ba))));
+    iVar7 = -(uint)(CONCAT13(in_XMM1_Bh,CONCAT12(in_XMM1_Bg,CONCAT11(in_XMM1_Bf,in_XMM1_Be))) ==
+                   CONCAT13(in_XMM1_Bh,CONCAT12(in_XMM1_Bg,CONCAT11(in_XMM1_Bf,in_XMM1_Be))));
+    iVar8 = -(uint)(CONCAT13(in_XMM1_Bl,CONCAT12(in_XMM1_Bk,CONCAT11(in_XMM1_Bj,in_XMM1_Bi))) ==
+                   CONCAT13(in_XMM1_Bl,CONCAT12(in_XMM1_Bk,CONCAT11(in_XMM1_Bj,in_XMM1_Bi))));
+    iVar9 = -(uint)(CONCAT13(in_XMM1_Bp,CONCAT12(in_XMM1_Bo,CONCAT11(in_XMM1_Bn,in_XMM1_Bm))) ==
+                   CONCAT13(in_XMM1_Bp,CONCAT12(in_XMM1_Bo,CONCAT11(in_XMM1_Bn,in_XMM1_Bm))));
+    uVar12 = extraout_RAX;
+    do {
+      uVar12 = *(ulonglong *)(in_stack_00000028 + 0x10) & uVar12;
+      pcVar1 = (char *)(lVar2 + uVar12);
+      cVar20 = auVar21[0];
+      auVar27[0] = -(*pcVar1 == cVar20);
+      cVar22 = auVar21[1];
+      auVar27[1] = -(pcVar1[1] == cVar22);
+      cVar23 = auVar21[2];
+      auVar27[2] = -(pcVar1[2] == cVar23);
+      cVar24 = auVar21[3];
+      auVar27[3] = -(pcVar1[3] == cVar24);
+      auVar27[4] = -(pcVar1[4] == cVar20);
+      auVar27[5] = -(pcVar1[5] == cVar22);
+      auVar27[6] = -(pcVar1[6] == cVar23);
+      auVar27[7] = -(pcVar1[7] == cVar24);
+      auVar27[8] = -(pcVar1[8] == cVar20);
+      auVar27[9] = -(pcVar1[9] == cVar22);
+      auVar27[10] = -(pcVar1[10] == cVar23);
+      auVar27[0xb] = -(pcVar1[0xb] == cVar24);
+      auVar27[0xc] = -(pcVar1[0xc] == cVar20);
+      auVar27[0xd] = -(pcVar1[0xd] == cVar22);
+      auVar27[0xe] = -(pcVar1[0xe] == cVar23);
+      auVar27[0xf] = -(pcVar1[0xf] == cVar24);
+      uVar15 = (ushort)(SUB161(auVar27 >> 7,0) & 1) | (ushort)(SUB161(auVar27 >> 0xf,0) & 1) << 1 |
+               (ushort)(SUB161(auVar27 >> 0x17,0) & 1) << 2 |
+               (ushort)(SUB161(auVar27 >> 0x1f,0) & 1) << 3 |
+               (ushort)(SUB161(auVar27 >> 0x27,0) & 1) << 4 |
+               (ushort)(SUB161(auVar27 >> 0x2f,0) & 1) << 5 |
+               (ushort)(SUB161(auVar27 >> 0x37,0) & 1) << 6 |
+               (ushort)(SUB161(auVar27 >> 0x3f,0) & 1) << 7 |
+               (ushort)(SUB161(auVar27 >> 0x47,0) & 1) << 8 |
+               (ushort)(SUB161(auVar27 >> 0x4f,0) & 1) << 9 |
+               (ushort)(SUB161(auVar27 >> 0x57,0) & 1) << 10 |
+               (ushort)(SUB161(auVar27 >> 0x5f,0) & 1) << 0xb |
+               (ushort)(SUB161(auVar27 >> 0x67,0) & 1) << 0xc |
+               (ushort)(SUB161(auVar27 >> 0x6f,0) & 1) << 0xd |
+               (ushort)(SUB161(auVar27 >> 0x77,0) & 1) << 0xe | (ushort)(auVar27[0xf] >> 7) << 0xf;
+      uVar14 = (uint)uVar15;
+      while (uVar15 != 0) {
+        uVar4 = 0;
+        for (uVar5 = uVar14; (uVar5 & 1) == 0; uVar5 = uVar5 >> 1 | 0x80000000) {
+          uVar4 = uVar4 + 1;
+        }
+        lVar16 = (uVar4 + uVar12 & *(ulonglong *)(in_stack_00000028 + 0x10)) * -0x30;
+        if (*(int *)(lVar2 + -0x30 + lVar16) == in_ECX) {
+          lVar13 = lVar2 + lVar16;
+          uVar12 = *(ulonglong *)(lVar2 + -0x18 + lVar16);
+          if (uVar12 < 2) {
+            if (uVar12 != 1) {
+                    /* WARNING: Subroutine does not return */
+              core::panicking::panic();
+            }
+            puVar18 = *(undefined8 **)(lVar13 + -0x20);
+            std::alloc::__default_lib_allocator::__rust_alloc();
+            if (extraout_RAX_01 == (undefined8 *)0x0) {
+                    /* WARNING: Subroutine does not return */
+              alloc::raw_vec::handle_error();
+            }
+            *(undefined4 *)(extraout_RAX_01 + 1) = *(undefined4 *)(puVar18 + 1);
+            *extraout_RAX_01 = *puVar18;
+            local_80 = extraout_RAX_01;
+            ::utils::easing_functions::EasingFunction::apply();
+            ppuVar10 = (undefined **)0x1;
+            ppuVar11 = (undefined1 **)0x1;
+            puVar18 = local_80;
+          }
+          else {
+            auVar21._8_8_ = 0;
+            auVar21._0_8_ = in_R8;
+            uVar12 = SUB168(auVar21 * ZEXT816(0xc),0);
+            if ((SUB168(auVar21 * ZEXT816(0xc),8) != 0) || (0x7ffffffffffffffc < uVar12)) {
+LAB_140859d1c:
+                    /* WARNING: Subroutine does not return */
+              alloc::raw_vec::handle_error();
+            }
+            if (uVar12 == 0) {
+              puVar18 = (undefined8 *)&DAT_00000004;
+              puVar17 = (undefined1 *)0x0;
+            }
+            else {
+              std::alloc::__default_lib_allocator::__rust_alloc();
+              puVar17 = in_R8;
+              puVar18 = extraout_RAX_00;
+              if (extraout_RAX_00 == (undefined8 *)0x0) goto LAB_140859d1c;
+            }
+            memcpy(puVar18,in_RDX,uVar12);
+            local_138 = (longlong *)((ulonglong)local_138._4_4_ << 0x20);
+            local_72 = 1;
+            local_118 = puVar17;
+            pcStack_110 = (code *)puVar18;
+            local_108 = in_R8;
+            alloc::vec::Vec::
+            retain<glam::f32::vec3::Vec3,alloc::alloc::Global,utils::curve::impl_4::try_new_from_points_remove_duplicates::closure_env_0<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>_>
+                      ();
+            local_b8 = (undefined1 **)local_108;
+            local_c8 = (undefined **)local_118;
+            puStack_c0 = (undefined8 *)pcStack_110;
+            local_72 = 0;
+            ::utils::curve::Curve::
+            try_new_from_points<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>();
+            if (SBORROW8(0,(longlong)local_170)) {
+              ppuVar11 = *(undefined1 ***)(lVar13 + -0x18);
+              auVar3._8_8_ = 0;
+              auVar3._0_8_ = ppuVar11;
+              uVar12 = SUB168(auVar3 * ZEXT816(0xc),0);
+              if ((SUB168(auVar3 * ZEXT816(0xc),8) != 0) || (0x7ffffffffffffffc < uVar12)) {
+LAB_140859d44:
+                    /* WARNING: Subroutine does not return */
+                alloc::raw_vec::handle_error();
+              }
+              _Src = *(void **)(lVar13 + -0x20);
+              if (uVar12 == 0) {
+                local_80 = (undefined8 *)&DAT_00000004;
+                local_88 = (undefined1 *)0x0;
+              }
+              else {
+                std::alloc::__default_lib_allocator::__rust_alloc();
+                local_80 = extraout_RAX_02;
+                local_88 = (undefined1 *)ppuVar11;
+                if (extraout_RAX_02 == (undefined8 *)0x0) goto LAB_140859d44;
+              }
+              memcpy(local_80,_Src,uVar12);
+              ::utils::easing_functions::EasingFunction::apply();
+              ppuVar10 = (undefined **)local_88;
+              puVar18 = local_80;
+            }
+            else {
+              lStack_100 = lStack_158;
+              local_118 = local_170;
+              pcStack_110 = (code *)puStack_168;
+              fVar28 = __real_3dcccccd / local_140;
+              if (NAN(fVar28)) {
+                    /* WARNING: Subroutine does not return */
+                core::panicking::panic();
+              }
+              if (ABS(fVar28) == INFINITY) {
+                    /* WARNING: Subroutine does not return */
+                core::panicking::panic();
+              }
+              ::utils::easing_functions::EasingFunction::apply();
+              fVar26 = 0.0;
+              if (0.0 <= fVar28) {
+                fVar26 = fVar28;
+              }
+              fVar28 = __real_3f800000;
+              if (fVar26 <= __real_3f800000) {
+                fVar28 = fVar26;
+              }
+              fVar28 = (__real_3f800000 - extraout_XMM0_Da) * fVar28 + extraout_XMM0_Da;
+              local_e0 = CONCAT44(local_e0._4_4_,fVar28);
+              if ((fVar28 < 0.0) || (__real_3f800000 < fVar28)) {
+                local_138 = &local_e0;
+                pcStack_130 = core::fmt::float::impl$5::fmt;
+                local_c8 = &anon_12ce4fde5425384d5f438f5122902e1a_13_llvm_3277990281340110158;
+                puStack_c0 = (undefined8 *)0x1;
+                local_a8 = 0;
+                local_b0 = 1;
+                local_b8 = (undefined1 **)&local_138;
+                    /* WARNING: Subroutine does not return */
+                core::panicking::panic_fmt();
+              }
+              if (NAN(fVar28)) {
+                    /* WARNING: Subroutine does not return */
+                core::panicking::panic();
+              }
+              ::utils::easing_functions::EasingFunction::apply();
+              local_e0 = 0;
+              uStack_d8 = 4;
+              local_d0 = 0;
+              local_71 = 1;
+              ::utils::curve::Curve::
+              slice_into<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D,alloc::vec::Vec<glam::f32::vec3::Vec3,alloc::alloc::Global>_>
+                        ();
+              local_128 = local_d0;
+              local_138 = (longlong *)local_e0;
+              pcStack_130 = (code *)uStack_d8;
+              local_71 = 0;
+              ::utils::curve::Curve::
+              try_new_from_points<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>();
+              ppuVar11 = local_b8;
+              puVar18 = puStack_c0;
+              ppuVar10 = local_c8;
+              if (SBORROW8(0,(longlong)local_c8)) {
+                local_138 = puStack_c0;
+                pcStack_130 = (code *)local_b8;
+                local_71 = 0;
+                    /* WARNING: Subroutine does not return */
+                core::result::unwrap_failed();
+              }
+              if (local_b0 != 0) {
+                std::alloc::__default_lib_allocator::__rust_dealloc();
+              }
+              if (local_118 != (undefined1 *)0x0) {
+                std::alloc::__default_lib_allocator::__rust_dealloc();
+              }
+              if (lStack_100 != 0) {
+                std::alloc::__default_lib_allocator::__rust_dealloc();
+              }
+            }
+          }
+          if (*(longlong *)(lVar13 + -0x28) != 0) {
+            std::alloc::__default_lib_allocator::__rust_dealloc();
+          }
+          *(undefined ***)(lVar13 + -0x28) = ppuVar10;
+          *(undefined8 **)(lVar13 + -0x20) = puVar18;
+          *(undefined1 ***)(lVar13 + -0x18) = ppuVar11;
+          return;
+        }
+        uVar15 = (ushort)(uVar14 - 1) & (ushort)uVar14;
+        uVar14 = CONCAT22((short)(uVar14 - 1 >> 0x10),uVar15);
+      }
+      auVar25[0] = -(*pcVar1 == (char)iVar6);
+      auVar25[1] = -(pcVar1[1] == (char)((uint)iVar6 >> 8));
+      auVar25[2] = -(pcVar1[2] == (char)((uint)iVar6 >> 0x10));
+      auVar25[3] = -(pcVar1[3] == (char)((uint)iVar6 >> 0x18));
+      auVar25[4] = -(pcVar1[4] == (char)iVar7);
+      auVar25[5] = -(pcVar1[5] == (char)((uint)iVar7 >> 8));
+      auVar25[6] = -(pcVar1[6] == (char)((uint)iVar7 >> 0x10));
+      auVar25[7] = -(pcVar1[7] == (char)((uint)iVar7 >> 0x18));
+      auVar25[8] = -(pcVar1[8] == (char)iVar8);
+      auVar25[9] = -(pcVar1[9] == (char)((uint)iVar8 >> 8));
+      auVar25[10] = -(pcVar1[10] == (char)((uint)iVar8 >> 0x10));
+      auVar25[0xb] = -(pcVar1[0xb] == (char)((uint)iVar8 >> 0x18));
+      auVar25[0xc] = -(pcVar1[0xc] == (char)iVar9);
+      auVar25[0xd] = -(pcVar1[0xd] == (char)((uint)iVar9 >> 8));
+      auVar25[0xe] = -(pcVar1[0xe] == (char)((uint)iVar9 >> 0x10));
+      auVar25[0xf] = -(pcVar1[0xf] == (char)((uint)iVar9 >> 0x18));
+      if ((((((((((((((((SUB161(auVar25 >> 7,0) & 1) != 0 || (SUB161(auVar25 >> 0xf,0) & 1) != 0) ||
+                      (SUB161(auVar25 >> 0x17,0) & 1) != 0) || (SUB161(auVar25 >> 0x1f,0) & 1) != 0)
+                    || (SUB161(auVar25 >> 0x27,0) & 1) != 0) || (SUB161(auVar25 >> 0x2f,0) & 1) != 0
+                   ) || (SUB161(auVar25 >> 0x37,0) & 1) != 0) ||
+                 (SUB161(auVar25 >> 0x3f,0) & 1) != 0) || (SUB161(auVar25 >> 0x47,0) & 1) != 0) ||
+               (SUB161(auVar25 >> 0x4f,0) & 1) != 0) || (SUB161(auVar25 >> 0x57,0) & 1) != 0) ||
+             (SUB161(auVar25 >> 0x5f,0) & 1) != 0) || (SUB161(auVar25 >> 0x67,0) & 1) != 0) ||
+           (SUB161(auVar25 >> 0x6f,0) & 1) != 0) || (SUB161(auVar25 >> 0x77,0) & 1) != 0) ||
+          auVar25[0xf] < '\0') break;
+      uVar12 = uVar12 + lVar13 + 0x10;
+      lVar13 = lVar13 + 0x10;
+    } while( true );
+  }
+  local_118 = local_8c;
+  pcStack_110 = terrain_editing::impl$11::fmt;
+  local_c8 = &PTR_s_Requested_terrain_stroke_doesn_t_142a94cf8;
+  puStack_c0 = (undefined8 *)0x2;
+  local_a8 = 0;
+  local_b0 = 1;
+  local_b8 = &local_118;
+                    /* WARNING: Subroutine does not return */
+  core::panicking::panic_fmt();
+}
+

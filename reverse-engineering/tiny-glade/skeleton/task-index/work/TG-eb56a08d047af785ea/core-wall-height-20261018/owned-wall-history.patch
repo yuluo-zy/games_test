@@ -1,0 +1,106 @@
+--- a/games_test/tiny-glade/crates/country-core/src/resources/history/wall_edit.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/history/wall_edit.rs
+@@ -126,6 +126,10 @@
+         wall: WallId,
+         source: WallAuthoritySnapshot,
+         color_id: u32,
++        /// Native T+0x80, distinct from the captured source height. Delete's
++        /// Some-source undo preserves that source; only native None fallback
++        /// uses this height to construct an empty source (140ac1322).
++        restored_height: f32,
+     },
+     /// 原生变体 3 `AdjustHeight`，disc = `0x8000000000000002`。
+     AdjustHeight { wall: WallId, from: f32, to: f32 },
+@@ -392,11 +396,23 @@
+     source: &WallAuthoritySnapshot,
+     color_id: u32,
+ ) -> WallCompoundHistoryEdit {
++    record_deleted_wall_with_height(wall, source, color_id, source.source.extra)
++}
++
++/// B finish_wall(false) retains both the previous snapshot and the independent
++/// target height (T+0x80). Do not overwrite the captured snapshot to store it.
++pub fn record_deleted_wall_with_height(
++    wall: WallId,
++    source: &WallAuthoritySnapshot,
++    color_id: u32,
++    restored_height: f32,
++) -> WallCompoundHistoryEdit {
+     WallCompoundHistoryEdit {
+         groups: vec![vec![WallHistoryEdit::Delete {
+             wall,
+             source: source.clone(),
+             color_id,
++            restored_height,
+         }]],
+     }
+ }
+@@ -429,6 +445,7 @@
+             wall,
+             source,
+             color_id,
++            ..
+         } => (*wall, undo, source, *color_id),
+         // Enclosure writes emit two updated notifications. Use the command
+         // consumer, whose Vec preserves that original multiplicity.
+@@ -480,6 +497,9 @@
+             return Err(WallReplaySourceError::DuplicateSource);
+         }
+         let mut restored = source.clone();
++        // Delete Some-source restores the original height (140ac12be/14c0).
++        // Its distinct restored_height is retained for native None fallback,
++        // which the current mandatory-source model does not represent.
+         if let WallHistoryEdit::Create {
+             restored_height,
+             restored_elevation,
+@@ -774,4 +794,49 @@
+             Some(WallId(9))
+         );
+     }
+-}
++    #[test]
++    fn delete_retains_independent_height_but_some_source_undo_restores_snapshot() {
++        let curve = Curve2::try_new(vec![[0.0, 0.0], [4.0, 0.0]], false).unwrap();
++        let state = crate::resources::walls::WallState::new(curve, 3.9, 3, 0, false);
++        let source = state.snapshot();
++        let terrain = crate::resources::walls::publication_source::TerrainHeightGrid512 {
++            encoded: vec![0; 512 * 512].into(),
++            minimum_y: 0.0,
++            maximum_y: 4.0,
++            sampling_fix: true,
++        };
++        for height in [7.0, -0.0, f32::from_bits(0x7fc12345)] {
++            let compound = record_deleted_wall_with_height(WallId(9), source, 17, height);
++            let edit = &compound.groups[0][0];
++            let WallHistoryEdit::Delete {
++                source: captured,
++                restored_height,
++                color_id,
++                ..
++            } = edit
++            else {
++                panic!("delete record");
++            };
++            assert_eq!(restored_height.to_bits(), height.to_bits());
++            assert_eq!(captured.source.extra.to_bits(), 3.9_f32.to_bits());
++            assert_eq!(*color_id, 17);
++            let mut sources = std::collections::HashMap::new();
++            let out = apply_instant_wall_edit(&mut sources, edit, true, &terrain).unwrap();
++            assert_eq!(out.new_source_notification, Some(WallId(9)));
++            assert_eq!(
++                sources[&WallId(9)].source.extra.to_bits(),
++                3.9_f32.to_bits()
++            );
++            apply_instant_wall_edit(&mut sources, edit, false, &terrain).unwrap();
++            assert!(sources.is_empty());
++        }
++        let compound = record_deleted_wall(WallId(9), source, 17);
++        let WallHistoryEdit::Delete {
++            restored_height, ..
++        } = &compound.groups[0][0]
++        else {
++            panic!("delete record");
++        };
++        assert_eq!(restored_height.to_bits(), source.source.extra.to_bits());
++    }
++}

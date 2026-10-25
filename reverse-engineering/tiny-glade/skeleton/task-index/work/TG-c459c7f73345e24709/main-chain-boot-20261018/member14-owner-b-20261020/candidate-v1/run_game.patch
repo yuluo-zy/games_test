@@ -1,0 +1,93 @@
+--- a/crates/tiny-glade/src/run_game.rs
++++ b/crates/tiny-glade/src/run_game.rs
+@@ -809,6 +809,12 @@
+     app.init_resource::<country_core::systems::wall::eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer>();
+     // DecoratorPlugin @140343120/313d/3377/3a3c; world plugin @140b685e0.
+     app.init_resource::<DecoratorStorage>();
++    app.init_resource::<system_decorator::decorator_visual::deco_differential_state::WallAttachedDecoTracker<
++        system_decorator::decorator_visual::deco_differential_state::ChimneyAssemblyParams>>();
++    app.init_resource::<system_decorator::decorator_visual::deco_differential_state::WallAttachedDecoTracker<
++        system_decorator::decorator_visual::deco_differential_state::DoorStairsAssemblyParams>>();
++    // Original native assembly uses this canonical event; it is not PlayClutterSoundCmd.
++    app.add_event::<country_core::systems::audio::PlayDecoratorSoundCmd>();
+     app.init_resource::<LiveDecoratorArchivist>();
+     app.init_resource::<DecoratorIdGen>();
+     app.init_resource::<DeferredDecoratorOpEvents>();
+@@ -874,6 +880,9 @@
+             collect_wall_publication_dirty,
+             publish_public_wall_state,
+             country_core::systems::wall::delete_wall::delete_wall,
++            // Current owner mapping of the original publisher allocations,
++            // before actual25 consumers; the full member14 group is mounted separately.
++            country_core::geometry::runtime::prepare_wall_brick_assembly_owners,
+             system_wall_constructor::gpu_output::delete_constructor_output,
+             spatial_hash_update,
+             country_core::systems::wall::calc_wall_bend::calc_wall_bend,
+@@ -1862,3 +1871,67 @@
+         preparation.cancel_and_join().unwrap();
+     }
+ }
++
++#[cfg(test)]
++mod member14_owner_stage_tests {
++    use super::GameSystemSet;
++    use bevy_ecs::prelude::*;
++    use bevy_ecs::schedule::IntoScheduleConfigs;
++    use country_core::{
++        asset_libraries::{runtime::AssetLibraryRuntime, ssbo_library::AssetSsboLibrary},
++        geometry::{instanced_wall::{BrickTransformSsbo, InstancedWall}, runtime::{prepare_wall_brick_assembly_owners, sync_wall_bricks, WallBrickUploadStatus}},
++        render::{sparse_instance_buffer::SparseInstanceBuffer, test_device::TestDevice},
++        resources::{walls::{InnerWalls, WallId, WallState, public_walls::{PublicWalls, WallEntities}, publication_source::TerrainHeightGrid512, wall_trigger_volume::WallTriggerVolume}, rt::UpdateRtWorldEvent},
++        systems::wall::construct_wall_bricks::WallBricksChanged,
++    };
++    use std::sync::Arc;
++
++    #[derive(Resource, Default)]
++    struct Observed { changed_counts: Vec<usize> }
++
++    fn inspect_at25(
++        public: Res<PublicWalls>, library: Res<AssetSsboLibrary>, entities: Res<WallEntities>,
++        owners: Query<(&InstancedWall<BrickTransformSsbo>, Option<&WallTriggerVolume>)>,
++        changed: Query<Entity, Changed<InstancedWall<BrickTransformSsbo>>>,
++        successes: Res<Events<WallBricksChanged>>, rt: Res<Events<UpdateRtWorldEvent>>,
++        mut observed: ResMut<Observed>,
++    ) {
++        let wall = WallId(0x700000031);
++        assert!(public.get(wall).is_some());
++        let (owner, trigger) = owners.get(entities.wall_entity(wall).unwrap()).unwrap();
++        assert_eq!(owner.id, wall.0);
++        assert!(owner.is_awaiting_production()); assert!(!owner.is_upload_pending());
++        assert!(trigger.is_none()); assert!(successes.is_empty()); assert!(rt.is_empty());
++        let storage = library.get::<BrickTransformSsbo>().unwrap();
++        let lanes = [owner.allocation().unwrap(), owner.chimney_allocation().unwrap(), owner.door_stairs_allocation().unwrap()];
++        for lane in lanes { assert!(storage.owns_allocation(lane)); }
++        for i in 0..3 { for j in i+1..3 { assert!(!core::ptr::eq(lanes[i].handle.0.as_deref().unwrap(), lanes[j].handle.0.as_deref().unwrap())); } }
++        observed.changed_counts.push(changed.iter().count());
++    }
++
++    #[test]
++    fn actual_set_type_and_ordinary_edges_expose_preassembly_commands_without_false_base_success() {
++        let mut app = bevy_app::App::new();
++        // Same actual GameSystemSet and exact pairwise configuration as run_game_thread.
++        for stage in 0..44 { app.configure_sets(bevy_app::Update, GameSystemSet(stage).before(GameSystemSet(stage+1))); }
++        let mut inner = InnerWalls::new();
++        let curve = country_core::resources::roofs::geometry::surface::Curve2::try_new(vec![[0.,0.],[4.,0.]], false).unwrap();
++        inner.new_wall_with_id(WallId(0x700000031), WallState::new(curve, 2., 0, 0, false));
++        let mut public = PublicWalls::default();
++        public.consume(&mut inner, &TerrainHeightGrid512 { encoded: vec![0u16;512*512].into(), minimum_y: 0., maximum_y: 4., sampling_fix: true });
++        let storage = SparseInstanceBuffer::<BrickTransformSsbo>::try_new(&TestDevice(1)).unwrap();
++        let mut library = AssetSsboLibrary::new(); library.register::<BrickTransformSsbo>(storage);
++        app.insert_resource(public); app.insert_resource(library); app.init_resource::<WallEntities>();
++        app.insert_resource(AssetLibraryRuntime::new(Arc::new(TestDevice(1)), Arc::new(TestDevice(2))));
++        app.init_resource::<WallBrickUploadStatus>(); app.init_resource::<Observed>();
++        app.add_event::<WallBricksChanged>(); app.add_event::<UpdateRtWorldEvent>();
++        app.add_systems(bevy_app::Update, prepare_wall_brick_assembly_owners.in_set(GameSystemSet(19)));
++        app.add_systems(bevy_app::Update, inspect_at25.in_set(GameSystemSet(25)));
++        app.add_systems(bevy_app::PostUpdate, sync_wall_bricks);
++        app.update(); app.update();
++        assert_eq!(app.world().resource::<Observed>().changed_counts, [1,0]);
++        assert!(app.world().resource::<WallBrickUploadStatus>().gpu_ready);
++        let entity = app.world().resource::<WallEntities>().wall_entity(WallId(0x700000031)).unwrap();
++        assert!(app.world().get::<InstancedWall<BrickTransformSsbo>>(entity).unwrap().is_awaiting_production());
++    }
++}

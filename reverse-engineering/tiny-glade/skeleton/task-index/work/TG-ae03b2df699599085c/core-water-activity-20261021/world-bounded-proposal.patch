@@ -1,0 +1,68 @@
+--- a/tiny-glade/crates/country-core/src/systems/collision/world.rs
++++ b/tiny-glade/crates/country-core/src/systems/collision/world.rs
+@@ -1583,6 +1583,29 @@
+         mask: u32,
+     ) -> bool {
+         Rapier::intersects_any(self, origin, dir, max_toi, mask)
++    }
++
++    /// 原 `Raycasting::intersects_any`（B 0x1408cc320）的借用接口。
++    /// 地形和已有Rapier owner共用调用方上限；方向不归一化。
++    #[cfg(feature = "native-physics")]
++    pub fn intersects_any_w_terrain(
++        &self,
++        terrain: &TerrainHeightsData<TerrainHeightSsbo>,
++        origin: glam::Vec3,
++        dir: glam::Vec3,
++        max_toi: f32,
++        mask: u32,
++    ) -> bool {
++        if mask & 0x20 != 0 {
++            let ray = TerrainRay {
++                origin,
++                direction: dir,
++            };
++            if terrain.intersect_ray(ray, max_toi).is_some() {
++                return true;
++            }
++        }
++        self.intersects_any_with_max_toi(origin, dir, max_toi, mask)
+     }
+ 
+     /// `RaycastWorld::intersects_any`（非 native-physics 壳）。
+@@ -3983,6 +4006,35 @@
+         world.flush_colliders();
+         assert!(world.intersects_any_with_max_toi(Vec3::ZERO, Vec3::Z, 0.0, 1));
+     }
++
++    #[test]
++    fn terrain_aware_ray_uses_the_same_finite_bound_and_mask() {
++        let world = RaycastWorld::new();
++        let mut terrain = TerrainHeightsData::<TerrainHeightSsbo>::new();
++        terrain.set_height_range(-2.5, -2.5);
++        let origin = Vec3::Y * 10.0;
++        let direction = -Vec3::Y * 10.0;
++        // 地面在t=1.25；有限线段到t=1时不应把后面的地形算作遮挡。
++        assert!(!world.intersects_any_w_terrain(&terrain, origin, direction, 1.0, 0x20));
++        assert!(world.intersects_any_w_terrain(&terrain, origin, direction, 2.0, 0x20));
++        assert!(!world.intersects_any_w_terrain(&terrain, origin, direction, 2.0, 0));
++    }
++
++    #[test]
++    fn terrain_aware_ray_keeps_the_live_collider_owner_and_bound() {
++        let mut world = RaycastWorld::new();
++        let mut instances = HashMap::new();
++        insert_box(&mut world, &mut instances, 1, RaycastGeoSource::Slot0, Vec3::Y * 15.0);
++        world.flush_colliders();
++        let mut terrain = TerrainHeightsData::<TerrainHeightSsbo>::new();
++        terrain.set_height_range(-2.5, -2.5);
++        let origin = Vec3::ZERO;
++        let direction = Vec3::Y * 10.0;
++        assert!(world.intersects_any(origin, direction, 1));
++        assert!(!world.intersects_any_w_terrain(&terrain, origin, direction, 1.0, 0x21));
++        assert!(world.intersects_any_w_terrain(&terrain, origin, direction, 2.0, 0x21));
++        assert!(!world.intersects_any_w_terrain(&terrain, origin, direction, 2.0, 0x20));
++    }
+ }
+ 
+ 

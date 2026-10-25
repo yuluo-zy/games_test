@@ -1,0 +1,2868 @@
+*** Begin Patch
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/billboard_plant.raster.hlsl
+@@
+-struct VS_IN
+-{
+-    float3 vertex_position : TEXCOORD0;
+-    float3 vertex_normal : TEXCOORD1;
+-    float2 vertex_uv : TEXCOORD2;
+-    float3 uv2 : TEXCOORD3;
+-    float bby : TEXCOORD4;
+-    int plant_id : TEXCOORD5;
+-    int prim_id : TEXCOORD6;
+-};
++struct VS_IN
++{
++    [[vk::location(0)]] float3 vertex_position: Vertex_Position;
++    [[vk::location(1)]] float3 vertex_normal: Vertex_Normal;
++    [[vk::location(2)]] float2 vertex_uv: Vertex_UV;
++    [[vk::location(3)]] float3 uv2: uv2;
++    [[vk::location(4)]] float bby: bby;
++    [[vk::location(5)]] int plant_id: plant_id;
++    [[vk::location(6)]] int prim_id: prim_id;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/clearing/distant_billboard.raster.hlsl
+@@
+-struct VS_IN
+-{
+-    float3 vertex_position : TEXCOORD0;
+-    float2 vertex_uv : TEXCOORD1;
+-};
++struct VS_IN
++{
++    [[vk::location(0)]] float3 vertex_position: Vertex_Position;
++    [[vk::location(1)]] float2 vertex_uv: Vertex_UV;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/clearing/instanced_background_tree.raster.hlsl
+@@
+-struct VS_IN
+-{
+-    float3 vertex_position : TEXCOORD0;
+-    float3 vertex_normal : TEXCOORD1;
+-};
++struct VS_IN
++{
++    [[vk::location(0)]] float3 vertex_position: Vertex_Position;
++    [[vk::location(1)]] float3 vertex_normal: Vertex_Normal;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/clearing/meadow_flower.raster.hlsl
+@@
+-struct VS_IN
+-{
+-    float3 vertex_position : TEXCOORD0;
+-    float3 vertex_normal : TEXCOORD1;
+-    float2 vertex_uv : TEXCOORD2;
+-    float3 flower_pivot : TEXCOORD3;
+-    int stem : TEXCOORD4;
+-    float wind_bend : TEXCOORD5;
+-};
++struct VS_IN
++{
++    [[vk::location(0)]] float3 vertex_position: Vertex_Position;
++    [[vk::location(1)]] float3 vertex_normal: Vertex_Normal;
++    [[vk::location(2)]] float2 vertex_uv: Vertex_UV;
++    [[vk::location(3)]] float3 flower_pivot: flower_pivot;
++    [[vk::location(4)]] int stem: stem;
++    [[vk::location(5)]] float wind_bend: wind_bend;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+-    [[vk::location(2)]] float2 in_var_Vertex_UV : TEXCOORD2;
+-    [[vk::location(3)]] float3 in_var_flower_pivot : TEXCOORD3;
+-    [[vk::location(4)]] int in_var_stem : TEXCOORD4;
+-    [[vk::location(5)]] float in_var_wind_bend : TEXCOORD5;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(2)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(3)]] float3 in_var_flower_pivot: flower_pivot;
++    [[vk::location(4)]] int in_var_stem: stem;
++    [[vk::location(5)]] float in_var_wind_bend: wind_bend;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(1)]] float2 in_var_C1 : TEXCOORD1;
+-    [[vk::location(3)]] float3 in_var_C3 : TEXCOORD3;
+-    [[vk::location(5)]] nointerpolation int in_var_C5 : TEXCOORD5;
+-    [[vk::location(6)]] float2 in_var_C6 : TEXCOORD6;
+-    [[vk::location(7)]] float3x3 in_var_C7 : TEXCOORD7;
+-    float4 gl_FragCoord : SV_Position;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(1)]] float2 in_var_C1: Vertex_Normal;
++    [[vk::location(3)]] float3 in_var_C3: flower_pivot;
++    [[vk::location(5)]] nointerpolation int in_var_C5: wind_bend;
++    [[vk::location(6)]] float2 in_var_C6 : TEXCOORD6;
++    [[vk::location(7)]] float3x3 in_var_C7 : TEXCOORD7;
++    float4 gl_FragCoord : SV_Position;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+-    [[vk::location(2)]] float2 in_var_Vertex_UV : TEXCOORD2;
+-    [[vk::location(3)]] float3 in_var_flower_pivot : TEXCOORD3;
+-    [[vk::location(4)]] int in_var_stem : TEXCOORD4;
+-    [[vk::location(5)]] float in_var_wind_bend : TEXCOORD5;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(2)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(3)]] float3 in_var_flower_pivot: flower_pivot;
++    [[vk::location(4)]] int in_var_stem: stem;
++    [[vk::location(5)]] float in_var_wind_bend: wind_bend;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/clearing/meadow_plant.raster.hlsl
+@@
+-struct VS_IN
+-{
+-    float3 vertex_position : TEXCOORD0;
+-    float3 vertex_color : TEXCOORD1;
+-    float3 vertex_normal : TEXCOORD2;
+-    float2 vertex_uv : TEXCOORD3;
+-    int plant_part_id : TEXCOORD4;
+-};
++struct VS_IN
++{
++    [[vk::location(0)]] float3 vertex_position: Vertex_Position;
++    [[vk::location(1)]] float3 vertex_color: Vertex_Color;
++    [[vk::location(2)]] float3 vertex_normal: Vertex_Normal;
++    [[vk::location(3)]] float2 vertex_uv: Vertex_UV;
++    [[vk::location(4)]] int plant_part_id: plant_part_id;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/clearing/tree_canopy.raster.hlsl
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float3 in_var_prim_center : TEXCOORD3;
+-    [[vk::location(4)]] float3 in_var_prim_normals : TEXCOORD4;
+-    [[vk::location(5)]] float3 in_var_appear_pos : TEXCOORD5;
+-    [[vk::location(6)]] float in_var_age : TEXCOORD6;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float3 in_var_prim_center: prim_center;
++    [[vk::location(4)]] float3 in_var_prim_normals: prim_normals;
++    [[vk::location(5)]] float3 in_var_appear_pos: appear_pos;
++    [[vk::location(6)]] float in_var_age: age;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+-    [[vk::location(3)]] float3 in_var_C3 : TEXCOORD3;
+-    [[vk::location(4)]] nointerpolation int in_var_C4 : TEXCOORD4;
+-    [[vk::location(5)]] nointerpolation int in_var_C5 : TEXCOORD5;
+-    [[vk::location(6)]] nointerpolation float in_var_C6 : TEXCOORD6;
+-    [[vk::location(7)]] float3 in_var_C7 : TEXCOORD7;
+-    [[vk::location(8)]] nointerpolation uint in_var_C8 : TEXCOORD8;
+-    [[vk::location(9)]] nointerpolation uint in_var_C9 : TEXCOORD9;
+-    [[vk::location(10)]] nointerpolation float in_var_C10 : TEXCOORD10;
+-    [[vk::location(12)]] float in_var_C12 : TEXCOORD12;
+-    float4 gl_FragCoord : SV_Position;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(1)]] float3 in_var_C1: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_C2: Vertex_Normal;
++    [[vk::location(3)]] float3 in_var_C3: prim_center;
++    [[vk::location(4)]] nointerpolation int in_var_C4: prim_normals;
++    [[vk::location(5)]] nointerpolation int in_var_C5: appear_pos;
++    [[vk::location(6)]] nointerpolation float in_var_C6: age;
++    [[vk::location(7)]] float3 in_var_C7 : TEXCOORD7;
++    [[vk::location(8)]] nointerpolation uint in_var_C8 : TEXCOORD8;
++    [[vk::location(9)]] nointerpolation uint in_var_C9 : TEXCOORD9;
++    [[vk::location(10)]] nointerpolation float in_var_C10 : TEXCOORD10;
++    [[vk::location(12)]] float in_var_C12 : TEXCOORD12;
++    float4 gl_FragCoord : SV_Position;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float3 in_var_prim_center : TEXCOORD3;
+-    [[vk::location(4)]] float3 in_var_prim_normals : TEXCOORD4;
+-    [[vk::location(5)]] float3 in_var_appear_pos : TEXCOORD5;
+-    [[vk::location(6)]] float in_var_age : TEXCOORD6;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float3 in_var_prim_center: prim_center;
++    [[vk::location(4)]] float3 in_var_prim_normals: prim_normals;
++    [[vk::location(5)]] float3 in_var_appear_pos: appear_pos;
++    [[vk::location(6)]] float in_var_age: age;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/clearing/tree_trunk.raster.hlsl
+@@
+-struct VS_IN
+-{
+-    float3 vertex_position : TEXCOORD0;
+-    float3 vertex_color : TEXCOORD1;
+-    float3 vertex_normal : TEXCOORD2;
+-    float3 appear_pos : TEXCOORD3;
+-    float age : TEXCOORD4;
+-};
++struct VS_IN
++{
++    [[vk::location(0)]] float3 vertex_position: Vertex_Position;
++    [[vk::location(1)]] float3 vertex_color: Vertex_Color;
++    [[vk::location(2)]] float3 vertex_normal: Vertex_Normal;
++    [[vk::location(3)]] float3 appear_pos: appear_pos;
++    [[vk::location(4)]] float age: age;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float3 in_var_appear_pos : TEXCOORD3;
+-    [[vk::location(4)]] float in_var_age : TEXCOORD4;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float3 in_var_appear_pos: appear_pos;
++    [[vk::location(4)]] float in_var_age: age;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+-    [[vk::location(3)]] float3 in_var_C3 : TEXCOORD3;
+-    [[vk::location(4)]] float in_var_C4 : TEXCOORD4;
+-    [[vk::location(5)]] float in_var_C5 : TEXCOORD5;
+-    [[vk::location(7)]] nointerpolation uint in_var_C7 : TEXCOORD7;
+-    [[vk::location(8)]] float in_var_C8 : TEXCOORD8;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(1)]] float3 in_var_C1: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_C2: Vertex_Normal;
++    [[vk::location(3)]] float3 in_var_C3: appear_pos;
++    [[vk::location(4)]] float in_var_C4: age;
++    [[vk::location(5)]] float in_var_C5 : TEXCOORD5;
++    [[vk::location(7)]] nointerpolation uint in_var_C7 : TEXCOORD7;
++    [[vk::location(8)]] float in_var_C8 : TEXCOORD8;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float3 in_var_appear_pos : TEXCOORD3;
+-    [[vk::location(4)]] float in_var_age : TEXCOORD4;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float3 in_var_appear_pos: appear_pos;
++    [[vk::location(4)]] float in_var_age: age;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(4)]] float in_var_C4 : TEXCOORD4;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(4)]] float in_var_C4: age;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/critters/butterfly.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float2 Vertex_UV : TEXCOORD1;
+-    float is_wing : TEXCOORD2;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float2 Vertex_UV: Vertex_UV;
++    [[vk::location(2)]] float is_wing: is_wing;
++    uint instance_id : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float2 in_var_Vertex_UV : TEXCOORD1;
+-    [[vk::location(2)]] float in_var_is_wing : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(2)]] float in_var_is_wing: is_wing;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float2 in_var_Vertex_UV : TEXCOORD1;
+-    [[vk::location(2)]] float in_var_is_wing : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(2)]] float in_var_is_wing: is_wing;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/critters/duck_animated.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Color : TEXCOORD1;
+-    float3 Vertex_Normal : TEXCOORD2;
+-    float3 rest_pos : TEXCOORD3;
+-    float3 rest_n : TEXCOORD4;
+-    int is_wing : TEXCOORD5;
+-    float wing_t : TEXCOORD6;
+-    int is_mouth_bottom : TEXCOORD7;
+-    float3 pet_pos : TEXCOORD8;
+-    float3 pet_n : TEXCOORD9;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float3 rest_pos: rest_pos;
++    [[vk::location(4)]] float3 rest_n: rest_n;
++    [[vk::location(5)]] int is_wing: is_wing;
++    [[vk::location(6)]] float wing_t: wing_t;
++    [[vk::location(7)]] int is_mouth_bottom: is_mouth_bottom;
++    [[vk::location(8)]] float3 pet_pos: pet_pos;
++    [[vk::location(9)]] float3 pet_n: pet_n;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/critters/firefly.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    uint instance_id : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/critters/firefly_glow.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    uint instance_id : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/critters/nani_wren.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Color : TEXCOORD1;
+-    float3 Vertex_Normal : TEXCOORD2;
+-    float2 Vertex_UV : TEXCOORD3;
+-    float3 rest_pos : TEXCOORD4;
+-    float3 rest_n : TEXCOORD5;
+-    float wing_t : TEXCOORD7;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 Vertex_UV: Vertex_UV;
++    [[vk::location(4)]] float3 rest_pos: rest_pos;
++    [[vk::location(5)]] float3 rest_n: rest_n;
++    [[vk::location(7)]] float wing_t: wing_t;
++    uint instance_id : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
+-    [[vk::location(4)]] float3 in_var_rest_pos : TEXCOORD4;
+-    [[vk::location(5)]] float3 in_var_rest_n : TEXCOORD5;
+-    [[vk::location(7)]] float in_var_wing_t : TEXCOORD7;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(4)]] float3 in_var_rest_pos: rest_pos;
++    [[vk::location(5)]] float3 in_var_rest_n: rest_n;
++    [[vk::location(7)]] float in_var_wing_t: wing_t;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_C3 : TEXCOORD3;
+-    [[vk::location(4)]] float3 in_var_C4 : TEXCOORD4;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(1)]] float3 in_var_C1: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_C2: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_C3: Vertex_UV;
++    [[vk::location(4)]] float3 in_var_C4: rest_pos;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
+-    [[vk::location(4)]] float3 in_var_rest_pos : TEXCOORD4;
+-    [[vk::location(5)]] float3 in_var_rest_n : TEXCOORD5;
+-    [[vk::location(7)]] float in_var_wing_t : TEXCOORD7;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(4)]] float3 in_var_rest_pos: rest_pos;
++    [[vk::location(5)]] float3 in_var_rest_n: rest_n;
++    [[vk::location(7)]] float in_var_wing_t: wing_t;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/dashed_line.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Color : TEXCOORD1;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/flag_roof_cloth.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Color : TEXCOORD1;
+-    float3 Vertex_Normal : TEXCOORD2;
+-    float2 Vertex_UV : TEXCOORD3;
+-    float3 rest_pos : TEXCOORD4;
+-    float3 rest_normal : TEXCOORD5;
+-    float3 uv2 : TEXCOORD6;
+-    uint vertex_id : SV_VertexID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 Vertex_UV: Vertex_UV;
++    [[vk::location(4)]] float3 rest_pos: rest_pos;
++    [[vk::location(5)]] float3 rest_normal: rest_normal;
++    [[vk::location(6)]] float3 uv2: uv2;
++    uint vertex_id : SV_VertexID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
+-    [[vk::location(4)]] float3 in_var_rest_pos : TEXCOORD4;
+-    [[vk::location(5)]] float3 in_var_rest_normal : TEXCOORD5;
+-    [[vk::location(6)]] float3 in_var_uv2 : TEXCOORD6;
+-    uint gl_VertexIndex : SV_VertexID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(4)]] float3 in_var_rest_pos: rest_pos;
++    [[vk::location(5)]] float3 in_var_rest_normal: rest_normal;
++    [[vk::location(6)]] float3 in_var_uv2: uv2;
++    uint gl_VertexIndex : SV_VertexID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_C3 : TEXCOORD3;
+-    [[vk::location(4)]] float2 in_var_C4 : TEXCOORD4;
+-    [[vk::location(5)]] float2 in_var_C5 : TEXCOORD5;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(1)]] float3 in_var_C1: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_C2: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_C3: Vertex_UV;
++    [[vk::location(4)]] float2 in_var_C4: rest_pos;
++    [[vk::location(5)]] float2 in_var_C5: rest_normal;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
+-    [[vk::location(4)]] float3 in_var_rest_pos : TEXCOORD4;
+-    [[vk::location(5)]] float3 in_var_rest_normal : TEXCOORD5;
+-    [[vk::location(6)]] float3 in_var_uv2 : TEXCOORD6;
+-    uint gl_VertexIndex : SV_VertexID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(4)]] float3 in_var_rest_pos: rest_pos;
++    [[vk::location(5)]] float3 in_var_rest_normal: rest_normal;
++    [[vk::location(6)]] float3 in_var_uv2: uv2;
++    uint gl_VertexIndex : SV_VertexID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/flag_small.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Color : TEXCOORD1;
+-    float3 Vertex_Normal : TEXCOORD2;
+-    float2 Vertex_UV : TEXCOORD3;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 Vertex_UV: Vertex_UV;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_C3 : TEXCOORD3;
+-    [[vk::location(4)]] float2 in_var_C4 : TEXCOORD4;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(1)]] float3 in_var_C1: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_C2: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_C3: Vertex_UV;
++    [[vk::location(4)]] float2 in_var_C4 : TEXCOORD4;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/flag_wall_cloth.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Color : TEXCOORD1;
+-    float3 Vertex_Normal : TEXCOORD2;
+-    float2 Vertex_UV : TEXCOORD3;
+-    int is_tip : TEXCOORD4;
+-    float bby : TEXCOORD5;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 Vertex_UV: Vertex_UV;
++    [[vk::location(4)]] int is_tip: is_tip;
++    [[vk::location(5)]] float bby: bby;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
+-    [[vk::location(4)]] int in_var_is_tip : TEXCOORD4;
+-    [[vk::location(5)]] float in_var_bby : TEXCOORD5;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(4)]] int in_var_is_tip: is_tip;
++    [[vk::location(5)]] float in_var_bby: bby;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_C3 : TEXCOORD3;
+-    [[vk::location(4)]] float2 in_var_C4 : TEXCOORD4;
+-    [[vk::location(5)]] float2 in_var_C5 : TEXCOORD5;
+-    [[vk::location(6)]] float2 in_var_C6 : TEXCOORD6;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(1)]] float3 in_var_C1: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_C2: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_C3: Vertex_UV;
++    [[vk::location(4)]] float2 in_var_C4: is_tip;
++    [[vk::location(5)]] float2 in_var_C5: bby;
++    [[vk::location(6)]] float2 in_var_C6 : TEXCOORD6;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
+-    [[vk::location(4)]] int in_var_is_tip : TEXCOORD4;
+-    [[vk::location(5)]] float in_var_bby : TEXCOORD5;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(4)]] int in_var_is_tip: is_tip;
++    [[vk::location(5)]] float in_var_bby: bby;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/garden_lowpoly_flower.raster.hlsl
+@@
+-struct VSInput
+-{
+-    float3 position : TEXCOORD0;
+-    float3 normal : TEXCOORD2;
+-    float wind_bend : TEXCOORD3;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VSInput
++{
++    [[vk::location(0)]] float3 position: Vertex_Position;
++    [[vk::location(2)]] float3 normal: Vertex_Normal;
++    [[vk::location(3)]] float wind_bend: wind_bend;
++    uint instance_id : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float in_var_wind_bend : TEXCOORD3;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float in_var_wind_bend: wind_bend;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(3)]] float2 in_var_C3 : TEXCOORD3;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(3)]] float2 in_var_C3: wind_bend;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float in_var_wind_bend : TEXCOORD3;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float in_var_wind_bend: wind_bend;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/ice_plane.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/instanced_roof_beams.raster.hlsl
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_C0 : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_C0: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_C1: Vertex_Normal;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/instanced_roof_spire.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Normal : TEXCOORD1;
+-    float roof_profile_mult : TEXCOORD2;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(2)]] float roof_profile_mult: roof_profile_mult;
++    uint instance_id : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+-    [[vk::location(2)]] float in_var_roof_profile_mult : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(2)]] float in_var_roof_profile_mult: roof_profile_mult;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+-    [[vk::location(2)]] float in_var_roof_profile_mult : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(2)]] float in_var_roof_profile_mult: roof_profile_mult;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/ivy/instanced_ivy_branch.raster.hlsl
+@@
+-struct VSInput
+-{
+-    float3 position : TEXCOORD0;
+-    uint instance : SV_InstanceID;
+-};
++struct VSInput
++{
++    [[vk::location(0)]] float3 position: Vertex_Position;
++    uint instance : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/ivy/instanced_ivy_leaf.raster.hlsl
+@@
+-struct VSInput
+-{
+-    float3 position : TEXCOORD0;
+-    float3 normal : TEXCOORD1;
+-    float2 uv : TEXCOORD2;
+-    uint instance : SV_InstanceID;
+-};
++struct VSInput
++{
++    [[vk::location(0)]] float3 position: Vertex_Position;
++    [[vk::location(1)]] float3 normal: Vertex_Normal;
++    [[vk::location(2)]] float2 uv: Vertex_UV;
++    uint instance : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+-    [[vk::location(2)]] float2 in_var_Vertex_UV : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(2)]] float2 in_var_Vertex_UV: Vertex_UV;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+-    [[vk::location(4)]] float2 in_var_C4 : TEXCOORD4;
+-    float4 gl_FragCoord : SV_Position;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(2)]] float3 in_var_C2: Vertex_UV;
++    [[vk::location(4)]] float2 in_var_C4 : TEXCOORD4;
++    float4 gl_FragCoord : SV_Position;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+-    [[vk::location(2)]] float2 in_var_Vertex_UV : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(2)]] float2 in_var_Vertex_UV: Vertex_UV;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/leaf_particle.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float2 Vertex_UV : TEXCOORD1;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float2 Vertex_UV: Vertex_UV;
++    uint instance_id : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float2 in_var_Vertex_UV : TEXCOORD1;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float2 in_var_Vertex_UV: Vertex_UV;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_C3 : TEXCOORD3;
+-    [[vk::location(4)]] float2 in_var_C4 : TEXCOORD4;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(1)]] float3 in_var_C1: Vertex_UV;
++    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
++    [[vk::location(3)]] float2 in_var_C3 : TEXCOORD3;
++    [[vk::location(4)]] float2 in_var_C4 : TEXCOORD4;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float2 in_var_Vertex_UV : TEXCOORD1;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float2 in_var_Vertex_UV: Vertex_UV;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/lilypad.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Color : TEXCOORD2;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(2)]] float3 Vertex_Color: Vertex_Color;
++    uint instance_id : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(2)]] float3 in_var_Vertex_Color : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(2)]] float3 in_var_Vertex_Color: Vertex_Color;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+-    [[vk::location(3)]] float3 in_var_C3 : TEXCOORD3;
+-    [[vk::location(4)]] float2 in_var_C4 : TEXCOORD4;
+-    [[vk::location(5)]] float in_var_C5 : TEXCOORD5;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
++    [[vk::location(2)]] float3 in_var_C2: Vertex_Color;
++    [[vk::location(3)]] float3 in_var_C3 : TEXCOORD3;
++    [[vk::location(4)]] float2 in_var_C4 : TEXCOORD4;
++    [[vk::location(5)]] float in_var_C5 : TEXCOORD5;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(2)]] float3 in_var_Vertex_Color : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(2)]] float3 in_var_Vertex_Color: Vertex_Color;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(2)]] float3 in_var_Vertex_Color : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(2)]] float3 in_var_Vertex_Color: Vertex_Color;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+-    [[vk::location(3)]] float3 in_var_C3 : TEXCOORD3;
+-    [[vk::location(4)]] float2 in_var_C4 : TEXCOORD4;
+-    [[vk::location(5)]] float in_var_C5 : TEXCOORD5;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
++    [[vk::location(2)]] float3 in_var_C2: Vertex_Color;
++    [[vk::location(3)]] float3 in_var_C3 : TEXCOORD3;
++    [[vk::location(4)]] float2 in_var_C4 : TEXCOORD4;
++    [[vk::location(5)]] float in_var_C5 : TEXCOORD5;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(2)]] float3 in_var_Vertex_Color : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(2)]] float3 in_var_Vertex_Color: Vertex_Color;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/lilypad_flower.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Normal : TEXCOORD1;
+-    float3 Vertex_Color : TEXCOORD2;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(2)]] float3 Vertex_Color: Vertex_Color;
++    uint instance_id : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Color : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(2)]] float3 in_var_Vertex_Color: Vertex_Color;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_C3 : TEXCOORD3;
+-    [[vk::location(4)]] float3 in_var_C4 : TEXCOORD4;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(1)]] float3 in_var_C1: Vertex_Normal;
++    [[vk::location(2)]] float3 in_var_C2: Vertex_Color;
++    [[vk::location(3)]] float2 in_var_C3 : TEXCOORD3;
++    [[vk::location(4)]] float3 in_var_C4 : TEXCOORD4;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Color : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(2)]] float3 in_var_Vertex_Color: Vertex_Color;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/logo_animation.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float2 Vertex_UV : TEXCOORD1;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float2 Vertex_UV: Vertex_UV;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/logo_branches_animation.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 start_pos : TEXCOORD1;
+-    float2 Vertex_UV : TEXCOORD2;
+-    int branch_idx : TEXCOORD3;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 start_pos: start_pos;
++    [[vk::location(2)]] float2 Vertex_UV: Vertex_UV;
++    [[vk::location(3)]] int branch_idx: branch_idx;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_start_pos : TEXCOORD1;
+-    [[vk::location(2)]] float2 in_var_Vertex_UV : TEXCOORD2;
+-    [[vk::location(3)]] int in_var_branch_idx : TEXCOORD3;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_start_pos: start_pos;
++    [[vk::location(2)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(3)]] int in_var_branch_idx: branch_idx;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_start_pos : TEXCOORD1;
+-    [[vk::location(2)]] float2 in_var_Vertex_UV : TEXCOORD2;
+-    [[vk::location(3)]] int in_var_branch_idx : TEXCOORD3;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_start_pos: start_pos;
++    [[vk::location(2)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(3)]] int in_var_branch_idx: branch_idx;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/nani_balcony_door.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Color : TEXCOORD1;
+-    float3 Vertex_Normal : TEXCOORD2;
+-    float2 Vertex_UV : TEXCOORD3;
+-    int is_metal_part : TEXCOORD4;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 Vertex_UV: Vertex_UV;
++    [[vk::location(4)]] int is_metal_part: is_metal_part;
++    uint instance_id : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
+-    [[vk::location(4)]] int in_var_is_metal_part : TEXCOORD4;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(4)]] int in_var_is_metal_part: is_metal_part;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
+-    [[vk::location(4)]] int in_var_is_metal_part : TEXCOORD4;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(4)]] int in_var_is_metal_part: is_metal_part;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/nani_bush.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float2 Vertex_UV : TEXCOORD1;
+-    float3 Vertex_Normal : TEXCOORD2;
+-    int bush_part_id : TEXCOORD3;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float2 Vertex_UV: Vertex_UV;
++    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] int bush_part_id: bush_part_id;
++    uint instance_id : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float2 in_var_Vertex_UV : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] int in_var_bush_part_id : TEXCOORD3;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] int in_var_bush_part_id: bush_part_id;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float2 in_var_Vertex_UV : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] int in_var_bush_part_id : TEXCOORD3;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] int in_var_bush_part_id: bush_part_id;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_C3 : TEXCOORD3;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(1)]] float3 in_var_C1: Vertex_UV;
++    [[vk::location(2)]] float3 in_var_C2: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_C3: bush_part_id;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/nani_cloth.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Color : TEXCOORD1;
+-    float3 Vertex_Normal : TEXCOORD2;
+-    float2 Vertex_UV : TEXCOORD3;
+-    float3 tangent : TEXCOORD4;
+-    float3 bitangent : TEXCOORD5;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 Vertex_UV: Vertex_UV;
++    [[vk::location(4)]] float3 tangent: tangent;
++    [[vk::location(5)]] float3 bitangent: bitangent;
++    uint instance_id : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/nani_curved_halftimber.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    uint vertex_id : SV_VertexID;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    uint vertex_id : SV_VertexID;
++    uint instance_id : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    uint gl_VertexIndex : SV_VertexID;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    uint gl_VertexIndex : SV_VertexID;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    uint gl_VertexIndex : SV_VertexID;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    uint gl_VertexIndex : SV_VertexID;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/nani_flower.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Color : TEXCOORD1;
+-    float3 Vertex_Normal : TEXCOORD2;
+-    float wind_bend : TEXCOORD3;
+-    float3 autumn_color : TEXCOORD4;
+-    float3 flowery_color : TEXCOORD5;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float wind_bend: wind_bend;
++    [[vk::location(4)]] float3 autumn_color: autumn_color;
++    [[vk::location(5)]] float3 flowery_color: flowery_color;
++    uint instance_id : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float in_var_wind_bend : TEXCOORD3;
+-    [[vk::location(4)]] float3 in_var_autumn_color : TEXCOORD4;
+-    [[vk::location(5)]] float3 in_var_flowery_color : TEXCOORD5;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float in_var_wind_bend: wind_bend;
++    [[vk::location(4)]] float3 in_var_autumn_color: autumn_color;
++    [[vk::location(5)]] float3 in_var_flowery_color: flowery_color;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float in_var_wind_bend : TEXCOORD3;
+-    [[vk::location(4)]] float3 in_var_autumn_color : TEXCOORD4;
+-    [[vk::location(5)]] float3 in_var_flowery_color : TEXCOORD5;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float in_var_wind_bend: wind_bend;
++    [[vk::location(4)]] float3 in_var_autumn_color: autumn_color;
++    [[vk::location(5)]] float3 in_var_flowery_color: flowery_color;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/nani_gothic_window_bricks.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Normal : TEXCOORD2;
+-    float2 Vertex_UV : TEXCOORD3;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 Vertex_UV: Vertex_UV;
++    uint instance_id : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
+-    [[vk::location(4)]] int in_var_is_bevel : TEXCOORD4;
+-    [[vk::location(5)]] int in_var_brick_id : TEXCOORD5;
+-    [[vk::location(6)]] float in_var_bbx_x : TEXCOORD6;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(4)]] int in_var_is_bevel : TEXCOORD4;
++    [[vk::location(5)]] int in_var_brick_id : TEXCOORD5;
++    [[vk::location(6)]] float in_var_bbx_x : TEXCOORD6;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] nointerpolation uint in_var_C0 : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+-    [[vk::location(7)]] float in_var_C7 : TEXCOORD7;
+-    [[vk::location(10)]] float2 in_var_C10 : TEXCOORD10;
+-    [[vk::location(11)]] nointerpolation int in_var_C11 : TEXCOORD11;
+-    [[vk::location(12)]] nointerpolation float2 in_var_C12 : TEXCOORD12;
+-    [[vk::location(13)]] nointerpolation int in_var_C13 : TEXCOORD13;
+-    [[vk::location(14)]] nointerpolation uint in_var_C14 : TEXCOORD14;
+-    float4 gl_FragCoord : SV_Position;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] nointerpolation uint in_var_C0: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
++    [[vk::location(2)]] float3 in_var_C2: Vertex_Normal;
++    [[vk::location(7)]] float in_var_C7 : TEXCOORD7;
++    [[vk::location(10)]] float2 in_var_C10 : TEXCOORD10;
++    [[vk::location(11)]] nointerpolation int in_var_C11 : TEXCOORD11;
++    [[vk::location(12)]] nointerpolation float2 in_var_C12 : TEXCOORD12;
++    [[vk::location(13)]] nointerpolation int in_var_C13 : TEXCOORD13;
++    [[vk::location(14)]] nointerpolation uint in_var_C14 : TEXCOORD14;
++    float4 gl_FragCoord : SV_Position;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
+-    [[vk::location(4)]] int in_var_is_bevel : TEXCOORD4;
+-    [[vk::location(5)]] int in_var_brick_id : TEXCOORD5;
+-    [[vk::location(6)]] float in_var_bbx_x : TEXCOORD6;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(4)]] int in_var_is_bevel : TEXCOORD4;
++    [[vk::location(5)]] int in_var_brick_id : TEXCOORD5;
++    [[vk::location(6)]] float in_var_bbx_x : TEXCOORD6;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+-    [[vk::location(7)]] float in_var_C7 : TEXCOORD7;
+-    [[vk::location(13)]] nointerpolation int in_var_C13 : TEXCOORD13;
+-    float4 gl_FragCoord : SV_Position;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(2)]] float3 in_var_C2: Vertex_Normal;
++    [[vk::location(7)]] float in_var_C7 : TEXCOORD7;
++    [[vk::location(13)]] nointerpolation int in_var_C13 : TEXCOORD13;
++    float4 gl_FragCoord : SV_Position;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/nani_instanced_roof.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    uint instance_id : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/nani_lantern_emissive.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Color : TEXCOORD1;
+-    float3 Vertex_Normal : TEXCOORD2;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
++    uint instance_id : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/nani_plant.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Normal : TEXCOORD1;
+-    float3 Vertex_Color : TEXCOORD2;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(2)]] float3 Vertex_Color: Vertex_Color;
++    uint instance_id : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Color : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(2)]] float3 in_var_Vertex_Color: Vertex_Color;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+-    [[vk::location(3)]] float3 in_var_C3 : TEXCOORD3;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(1)]] float3 in_var_C1: Vertex_Normal;
++    [[vk::location(3)]] float3 in_var_C3 : TEXCOORD3;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Color : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(2)]] float3 in_var_Vertex_Color: Vertex_Color;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/nani_preplaced_flower.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Color : TEXCOORD1;
+-    float3 Vertex_Normal : TEXCOORD2;
+-    float wind_bend : TEXCOORD3;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float wind_bend: wind_bend;
++    uint instance_id : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float in_var_wind_bend : TEXCOORD3;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float in_var_wind_bend: wind_bend;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float in_var_wind_bend : TEXCOORD3;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float in_var_wind_bend: wind_bend;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/nani_roof_floor.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    uint instance_id : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/nani_solid_albedo_map.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Color : TEXCOORD1;
+-    float3 Vertex_Normal : TEXCOORD2;
+-    float2 Vertex_UV : TEXCOORD3;
+-    int flags : TEXCOORD4;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 Vertex_UV: Vertex_UV;
++    [[vk::location(4)]] int flags: flags;
++    uint instance_id : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
+-    [[vk::location(4)]] int in_var_flags : TEXCOORD4;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(4)]] int in_var_flags: flags;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
+-    [[vk::location(4)]] int in_var_flags : TEXCOORD4;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(4)]] int in_var_flags: flags;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/nani_solid_vertex_color.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Color : TEXCOORD1;
+-    float3 Vertex_Normal : TEXCOORD2;
+-    int flags : TEXCOORD3;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] int flags: flags;
++    uint instance_id : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] int in_var_flags : TEXCOORD3;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] int in_var_flags: flags;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] int in_var_flags : TEXCOORD3;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] int in_var_flags: flags;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(3)]] nointerpolation uint in_var_C3 : TEXCOORD3;
+-    float4 gl_FragCoord : SV_Position;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(3)]] nointerpolation uint in_var_C3: flags;
++    float4 gl_FragCoord : SV_Position;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/nani_solid_vertex_color_bricks.raster.hlsl
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] nointerpolation uint in_var_C0 : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+-    [[vk::location(7)]] float in_var_C7 : TEXCOORD7;
+-    [[vk::location(10)]] float2 in_var_C10 : TEXCOORD10;
+-    [[vk::location(11)]] nointerpolation int in_var_C11 : TEXCOORD11;
+-    [[vk::location(12)]] nointerpolation float2 in_var_C12 : TEXCOORD12;
+-    [[vk::location(13)]] nointerpolation int in_var_C13 : TEXCOORD13;
+-    [[vk::location(14)]] nointerpolation uint in_var_C14 : TEXCOORD14;
+-    float4 gl_FragCoord : SV_Position;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] nointerpolation uint in_var_C0: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
++    [[vk::location(2)]] float3 in_var_C2: Vertex_Normal;
++    [[vk::location(7)]] float in_var_C7 : TEXCOORD7;
++    [[vk::location(10)]] float2 in_var_C10 : TEXCOORD10;
++    [[vk::location(11)]] nointerpolation int in_var_C11 : TEXCOORD11;
++    [[vk::location(12)]] nointerpolation float2 in_var_C12 : TEXCOORD12;
++    [[vk::location(13)]] nointerpolation int in_var_C13 : TEXCOORD13;
++    [[vk::location(14)]] nointerpolation uint in_var_C14 : TEXCOORD14;
++    float4 gl_FragCoord : SV_Position;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+-    [[vk::location(7)]] float in_var_C7 : TEXCOORD7;
+-    [[vk::location(13)]] nointerpolation int in_var_C13 : TEXCOORD13;
+-    float4 gl_FragCoord : SV_Position;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(2)]] float3 in_var_C2: Vertex_Normal;
++    [[vk::location(7)]] float in_var_C7 : TEXCOORD7;
++    [[vk::location(13)]] nointerpolation int in_var_C13 : TEXCOORD13;
++    float4 gl_FragCoord : SV_Position;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/nani_solid_vertex_color_window.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Color : TEXCOORD1;
+-    float3 Vertex_Normal : TEXCOORD2;
+-    float2 Vertex_UV : TEXCOORD3;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 Vertex_UV: Vertex_UV;
++    uint instance_id : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/nani_solid_vertex_color_window_glass.raster.hlsl
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
+-    [[vk::location(4)]] int in_var_is_glass : TEXCOORD4;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(4)]] int in_var_is_glass: is_glass;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_C0 : TEXCOORD0;
+-    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_C3 : TEXCOORD3;
+-    [[vk::location(4)]] nointerpolation uint in_var_C4 : TEXCOORD4;
+-    [[vk::location(5)]] nointerpolation uint in_var_C5 : TEXCOORD5;
+-    [[vk::location(6)]] nointerpolation float3 in_var_C6 : TEXCOORD6;
+-    [[vk::location(7)]] nointerpolation uint in_var_C7 : TEXCOORD7;
+-    float4 gl_FragCoord : SV_Position;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_C0: Vertex_Position;
++    [[vk::location(2)]] float3 in_var_C2: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_C3: Vertex_UV;
++    [[vk::location(4)]] nointerpolation uint in_var_C4: is_glass;
++    [[vk::location(5)]] nointerpolation uint in_var_C5 : TEXCOORD5;
++    [[vk::location(6)]] nointerpolation float3 in_var_C6 : TEXCOORD6;
++    [[vk::location(7)]] nointerpolation uint in_var_C7 : TEXCOORD7;
++    float4 gl_FragCoord : SV_Position;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
+-    [[vk::location(4)]] int in_var_is_glass : TEXCOORD4;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(4)]] int in_var_is_glass: is_glass;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(4)]] nointerpolation uint in_var_C4 : TEXCOORD4;
+-    float4 gl_FragCoord : SV_Position;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(4)]] nointerpolation uint in_var_C4: is_glass;
++    float4 gl_FragCoord : SV_Position;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/nani_uber.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Normal : TEXCOORD1;
+-    float2 Vertex_UV : TEXCOORD2;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(2)]] float2 Vertex_UV: Vertex_UV;
++    uint instance_id : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+-    [[vk::location(2)]] float2 in_var_Vertex_UV : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(2)]] float2 in_var_Vertex_UV: Vertex_UV;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+-    [[vk::location(2)]] float2 in_var_Vertex_UV : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(2)]] float2 in_var_Vertex_UV: Vertex_UV;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/nani_velocity_only.raster.hlsl
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_C0 : TEXCOORD0;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_C0: Vertex_Position;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/nani_wooden_plank.raster.hlsl
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
+-    [[vk::location(4)]] int in_var_is_bevel : TEXCOORD4;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(4)]] int in_var_is_bevel: is_bevel;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_C0 : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+-    [[vk::location(4)]] nointerpolation int in_var_C4 : TEXCOORD4;
+-    [[vk::location(5)]] nointerpolation uint in_var_C5 : TEXCOORD5;
+-    [[vk::location(6)]] float2 in_var_C6 : TEXCOORD6;
+-    [[vk::location(7)]] nointerpolation int in_var_C7 : TEXCOORD7;
+-    [[vk::location(8)]] nointerpolation int in_var_C8 : TEXCOORD8;
+-    [[vk::location(9)]] nointerpolation int in_var_C9 : TEXCOORD9;
+-    [[vk::location(10)]] nointerpolation int in_var_C10 : TEXCOORD10;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_C0: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
++    [[vk::location(4)]] nointerpolation int in_var_C4: is_bevel;
++    [[vk::location(5)]] nointerpolation uint in_var_C5 : TEXCOORD5;
++    [[vk::location(6)]] float2 in_var_C6 : TEXCOORD6;
++    [[vk::location(7)]] nointerpolation int in_var_C7 : TEXCOORD7;
++    [[vk::location(8)]] nointerpolation int in_var_C8 : TEXCOORD8;
++    [[vk::location(9)]] nointerpolation int in_var_C9 : TEXCOORD9;
++    [[vk::location(10)]] nointerpolation int in_var_C10 : TEXCOORD10;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float2 in_var_Vertex_UV : TEXCOORD3;
+-    [[vk::location(4)]] int in_var_is_bevel : TEXCOORD4;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 in_var_Vertex_UV: Vertex_UV;
++    [[vk::location(4)]] int in_var_is_bevel: is_bevel;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/path_pebble.raster.hlsl
+@@
+-struct vs_main_input
+-{
+-    float3 position : TEXCOORD0;
+-    float3 normal : TEXCOORD1;
+-    uint instance_id : SV_InstanceID;
+-};
++struct vs_main_input
++{
++    [[vk::location(0)]] float3 position: Vertex_Position;
++    [[vk::location(1)]] float3 normal: Vertex_Normal;
++    uint instance_id : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(1)]] float3 in_var_C1: Vertex_Normal;
++    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/rain_particles.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    int id : TEXCOORD1;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] int id: id;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] int in_var_id : TEXCOORD1;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] int in_var_id: id;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] int in_var_id : TEXCOORD1;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] int in_var_id: id;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/reed.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Normal : TEXCOORD1;
+-    float3 Vertex_Color : TEXCOORD2;
+-    uint instance_id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(2)]] float3 Vertex_Color: Vertex_Color;
++    uint instance_id : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Color : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(2)]] float3 in_var_Vertex_Color: Vertex_Color;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+-    [[vk::location(3)]] float3 in_var_C3 : TEXCOORD3;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(1)]] float3 in_var_C1: Vertex_Normal;
++    [[vk::location(2)]] float3 in_var_C2: Vertex_Color;
++    [[vk::location(3)]] float3 in_var_C3 : TEXCOORD3;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Color : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(2)]] float3 in_var_Vertex_Color: Vertex_Color;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Color : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(2)]] float3 in_var_Vertex_Color: Vertex_Color;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+-    [[vk::location(3)]] float3 in_var_C3 : TEXCOORD3;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(1)]] float3 in_var_C1: Vertex_Normal;
++    [[vk::location(2)]] float3 in_var_C2: Vertex_Color;
++    [[vk::location(3)]] float3 in_var_C3 : TEXCOORD3;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Normal : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Color : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(2)]] float3 in_var_Vertex_Color: Vertex_Color;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/rocky_terrain/stairs/stairs_indirect.raster.hlsl
+@@
+-struct VS_INPUT
+-{
+-    float3 position : TEXCOORD0;
+-    float3 normal : TEXCOORD1;
+-    float3 bevel_offset : TEXCOORD2;
+-    uint instance_index : SV_InstanceID;
+-};
++struct VS_INPUT
++{
++    [[vk::location(0)]] float3 position: Vertex_Position;
++    [[vk::location(1)]] float3 normal: Vertex_Normal;
++    [[vk::location(2)]] float3 bevel_offset: bevel_offset;
++    uint instance_index : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/roof_snow.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float2 Vertex_UV : TEXCOORD1;
+-    float3 Vertex_Normal : TEXCOORD2;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float2 Vertex_UV: Vertex_UV;
++    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/sheep.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Color : TEXCOORD2;
+-    uint vertex_id : SV_VertexID;
+-};
++struct VsIn
++{
++    [[vk::location(2)]] float3 Vertex_Color: Vertex_Color;
++    uint vertex_id : SV_VertexID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(2)]] float3 in_var_Vertex_Color : TEXCOORD2;
+-    uint gl_VertexIndex : SV_VertexID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(2)]] float3 in_var_Vertex_Color: Vertex_Color;
++    uint gl_VertexIndex : SV_VertexID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(2)]] float3 in_var_Vertex_Color : TEXCOORD2;
+-    uint gl_VertexIndex : SV_VertexID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(2)]] float3 in_var_Vertex_Color: Vertex_Color;
++    uint gl_VertexIndex : SV_VertexID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/skydome.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Normal : TEXCOORD2;
+-    float bbx_y : TEXCOORD3;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float bbx_y: bbx_y;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float in_var_bbx_y : TEXCOORD3;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float in_var_bbx_y: bbx_y;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(2)]] float3 in_var_C2 : TEXCOORD2;
+-    float4 gl_FragCoord : SV_Position;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(2)]] float3 in_var_C2: Vertex_Normal;
++    float4 gl_FragCoord : SV_Position;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float in_var_bbx_y : TEXCOORD3;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float in_var_bbx_y: bbx_y;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/solid_vertex_color.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Color : TEXCOORD1;
+-    float3 Vertex_Normal : TEXCOORD2;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/solid_vertex_color_albedo_map.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Normal : TEXCOORD1;
+-    float2 Vertex_UV : TEXCOORD2;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(2)]] float2 Vertex_UV: Vertex_UV;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/solid_vertex_color_boat.raster.hlsl
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_C0 : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_C0: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_C1: Vertex_Color;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/solid_vertex_color_garden_stone.raster.hlsl
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float3 in_var_color2 : TEXCOORD3;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float3 in_var_color2: color2;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_C0 : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_C0: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_C1: Vertex_Color;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    [[vk::location(3)]] float3 in_var_color2 : TEXCOORD3;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float3 in_var_color2: color2;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/solid_vertex_color_waterwheel.raster.hlsl
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_C0 : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_C1 : TEXCOORD1;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_C0: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_C1: Vertex_Color;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] float3 in_var_Vertex_Color : TEXCOORD1;
+-    [[vk::location(2)]] float3 in_var_Vertex_Normal : TEXCOORD2;
+-    uint gl_InstanceIndex : SV_InstanceID;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 in_var_Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 in_var_Vertex_Normal: Vertex_Normal;
++    uint gl_InstanceIndex : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/solid_vertex_color_wooden_gate.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Color : TEXCOORD1;
+-    float3 Vertex_Normal : TEXCOORD2;
+-    float2 Vertex_UV : TEXCOORD3;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 Vertex_UV: Vertex_UV;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/sparkles.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Color : TEXCOORD1;
+-    float3 alt_pos : TEXCOORD2;
+-    uint id : SV_InstanceID;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 alt_pos: alt_pos;
++    uint id : SV_InstanceID;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/splash_particle.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Color : TEXCOORD1;
+-    float3 Vertex_Normal : TEXCOORD2;
+-    float2 Vertex_UV : TEXCOORD3;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(3)]] float2 Vertex_UV: Vertex_UV;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/texture_test.raster.hlsl
+@@
+-struct VSIn
+-{
+-    float3 position : TEXCOORD0;
+-    float3 color : TEXCOORD1;
+-};
++struct VSIn
++{
++    [[vk::location(0)]] float3 position: Vertex_Position;
++    [[vk::location(1)]] float3 color: Vertex_Color;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/timed_terrain_gizmo.raster.hlsl
+@@
+-struct VS_INPUT
+-{
+-    float3 position : TEXCOORD0;
+-    int arrow_index : TEXCOORD1;
+-};
++struct VS_INPUT
++{
++    [[vk::location(0)]] float3 position: Vertex_Position;
++    [[vk::location(1)]] int arrow_index: arrow_index;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] int in_var_arrow_index : TEXCOORD1;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] int in_var_arrow_index: arrow_index;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(1)]] float in_var_C1 : TEXCOORD1;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(1)]] float in_var_C1: arrow_index;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-    [[vk::location(1)]] int in_var_arrow_index : TEXCOORD1;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] int in_var_arrow_index: arrow_index;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/vertex_color.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Color : TEXCOORD1;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/water/ice_cracks.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Color : TEXCOORD1;
+-    float3 Vertex_Normal : TEXCOORD2;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Color: Vertex_Color;
++    [[vk::location(2)]] float3 Vertex_Normal: Vertex_Normal;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/water_plane.raster.hlsl
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/water_plane_refraction_copy.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/water_snow_plane.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++};
+@@
+-struct SPIRV_Cross_Input
+-{
+-    [[vk::location(0)]] float3 in_var_Vertex_Position : TEXCOORD0;
+-};
++struct SPIRV_Cross_Input
++{
++    [[vk::location(0)]] float3 in_var_Vertex_Position: Vertex_Position;
++};
+*** Update File: tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/reconstruction/shader-source/shaders/water_x_paths.raster.hlsl
+@@
+-struct VsIn
+-{
+-    float3 Vertex_Position : TEXCOORD0;
+-    float3 Vertex_Normal : TEXCOORD1;
+-    float3 prim_center : TEXCOORD2;
+-};
++struct VsIn
++{
++    [[vk::location(0)]] float3 Vertex_Position: Vertex_Position;
++    [[vk::location(1)]] float3 Vertex_Normal: Vertex_Normal;
++    [[vk::location(2)]] float3 prim_center: prim_center;
++};
+*** End Patch

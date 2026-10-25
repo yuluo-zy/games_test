@@ -1,0 +1,22 @@
+--- a/crates/country-core/src/systems/save/tests.rs
++++ b/crates/country-core/src/systems/save/tests.rs
+@@ -342,7 +342,9 @@
+         },
+         &unsaved,
+     );
+-    execute_save_cmd(&mut current, AsyncSaveCmd::Flush, &unsaved);
++    let (reply, completed) = crossbeam_channel::bounded(1);
++    execute_save_cmd(&mut current, AsyncSaveCmd::Flush { reply }, &unsaved);
++    completed.recv().unwrap().unwrap();
+     let bytes = std::fs::read(root.path().join("history.json")).unwrap();
+     let parsed: Value = serde_json::from_slice(&bytes).unwrap();
+     let written = parsed["Camera"]["x"].as_str().unwrap();
+@@ -405,7 +407,7 @@
+         .unwrap();
+     // 线程仍在循环：还能接收并处理命令。
+     cmd_sender
+-        .send(super::save_game::AsyncSaveCmd::Flush)
++        .send(super::save_game::AsyncSaveCmd::Shutdown { flush: false })
+         .unwrap();
+     std::thread::sleep(std::time::Duration::from_millis(50));
+     // 收尾：用 flush=true 结束线程。

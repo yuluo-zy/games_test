@@ -1,0 +1,309 @@
+--- a/tiny-glade/crates/systems/roof/src/visual/assemble_roof_tiles.rs
++++ b/tiny-glade/crates/systems/roof/src/visual/assemble_roof_tiles.rs
+@@ -1,56 +1,89 @@
+-//! 屋顶瓦片装配（visual/assemble_roof_tiles.rs）。
+-//!
+-//! `assemble_roof_tiles`（0x141a36700）。候选参数面（skeleton 富化）：
+-//! `(EventReader<RecalculateRoofCmd>, Query<(&mut RoofTiles, &Roof)>,
+-//!  Res<AssetSsboLibrary>, Res<…>)`。
+-//!
+-//! CPU 链已恢复（country-core `resources::roofs::geometry::pipeline`：
+-//! `assemble_roof_tiles_observed`，圆形/矩形/边缘/盖/面全部原码验证）。
+-//! 本系统：消费 RecalculateRoofCmd → 取 Roof → 装配 64B RoofTileRecord →
+-//! 写 RoofTiles 组件；SSBO/稀疏实例缓冲上传（FUN_141209c40 注册表 +
+-//! 虚调取缓冲 + Arc/condvar 握手）为渲染边界后置登记。
+-use country_core::resources::{
+-    roofs::{Roof, RoofTiles, commands::RecalculateRoofCmd},
+-    walls::public_walls::PublicWalls,
++//! B 141a36700: canonical event entity -> allocation clear -> original generator
++//! -> SparseInstanceBufferWriter. Geometry algorithms remain in the existing core.
++use bevy_ecs::prelude::*;
++use country_core::{
++    asset_libraries::ssbo_library::AssetSsboLibrary,
++    resources::{
++        roof_tile_ssbo::RoofTileSsbo,
++        roofs::{Roof, RoofTiles, commands::RecalculateRoofCmd},
++        walls::arches::ArchSegments,
++    },
+ };
+-use bevy_ecs::prelude::*;
+ 
+-/// B 0x141a36700。
+ pub fn assemble_roof_tiles(
+     mut recalc: EventReader<RecalculateRoofCmd>,
+-    walls: Res<PublicWalls>,
+     mut tiles: Query<(&mut RoofTiles, &Roof)>,
++    mut library: ResMut<AssetSsboLibrary>,
++    arches: Res<ArchSegments>,
+ ) {
+     for event in recalc.read() {
+-        let Some(entity) = walls.roof_entity(event.0) else {
+-            continue;
+-        };
+-        let Ok((mut tiles, roof)) = tiles.get_mut(entity) else {
+-            continue;
+-        };
+-        // 平顶/非矩形没有瓦片装配路径（机器码 is_flat 门控）。
++        // Original looks up this storage before dereferencing the event entity.
++        let buffer = library.get_mut::<RoofTileSsbo>().unwrap();
++        let (mut tiles, roof) = tiles.get_mut(event.entity).unwrap();
++        let tiles = &mut *tiles;
++        let allocation = tiles
++            .allocation
++            .get_or_insert_with(|| buffer.new_allocation());
++        let mut writer = buffer.writer(allocation);
++        writer.clear();
++        tiles.records.clear();
+         if roof.is_flat() {
+-            tiles.records.clear();
+             continue;
+         }
+-        let batch = country_core::resources::roofs::geometry::pipeline::assemble_roof_tiles_observed(
+-            roof.observed(),
+-            None,
+-            false,
+-        );
+-        match batch {
+-            Ok(batch) => {
+-                tiles.records = batch
+-                    .records
+-                    .iter()
+-                    .map(|record| record.0)
+-                    .collect::<Vec<[u8; 64]>>();
+-            }
+-            Err(_error) => {
+-                // MissingRectangle / Curve error: 原调用方的矩形参数缺失时
+-                // 保留既有记录（机器码 panic 之外的分支登记）。
+-                let _ = event;
++        let special_mode = arches.0.get(&roof.wall_id()).is_some_and(|v| !v.is_empty());
++        let rectangle: &[u8; 24] = roof.observed()[0x0c..0x24].try_into().unwrap();
++        let batch =
++            country_core::resources::roofs::geometry::pipeline::assemble_roof_tiles_observed(
++                roof.observed(),
++                (roof.observed()[8] & 1 != 0).then_some(rectangle),
++                special_mode,
++            )
++            .expect("original roof tile generator failed");
++        for record in batch.records {
++            let value = decode_record(&record.0);
++            // Native closure logs once on each failure and returns to generation;
++            // previously written records survive exhaustion. No batch rollback.
++            if writer.push(&value).is_err() {
++                warn_capacity(roof.observed()[8] & 1 != 0);
++            } else {
++                // Auxiliary CPU observation, not the owner used for rendering.
++                tiles.records.push(record.0);
+             }
+         }
+     }
+ }
++
++fn decode_record(b: &[u8; 64]) -> RoofTileSsbo {
++    let u = |o| u32::from_le_bytes(b[o..o + 4].try_into().unwrap());
++    let f = |o| f32::from_bits(u(o));
++    RoofTileSsbo {
++        base_position: glam::Vec3::new(f(0), f(4), f(8)),
++        current_height: f(12),
++        clipping_plane: [u(16), u(20)],
++        scale_t: [u(24), u(28)],
++        rotation_quat: [u(32), u(36)],
++        roof_id: u(40),
++        velocity_rotation: u(44),
++        animation_t: f(48),
++        seed: u(52) as i32,
++        is_circle: u(56) as i32,
++        is_main_roof_body: u(60) as i32,
++    }
++}
++
++fn warn_capacity(rectangular: bool) {
++    use std::{collections::BTreeMap, sync::Mutex};
++    // Original two monomorphized closures have independent macro expansion tables.
++    static RECT: Mutex<BTreeMap<String, ()>> = Mutex::new(BTreeMap::new());
++    static CIRCLE: Mutex<BTreeMap<String, ()>> = Mutex::new(BTreeMap::new());
++    let message = "Out of roof tile instances";
++    let table = if rectangular { &RECT } else { &CIRCLE };
++    let fresh = table
++        .lock()
++        .expect("Mutex was poisonned")
++        .insert(country_core::render::nani::warn_once_key(message), ())
++        .is_none();
++    if fresh {
++        log::warn!(target: "system_roof::visual::assemble_roof_tiles", "{message}");
++    }
++}
+--- a/tiny-glade/crates/systems/roof/src/visual/generate_roof_stone_floor_and_roof_bottom.rs
++++ b/tiny-glade/crates/systems/roof/src/visual/generate_roof_stone_floor_and_roof_bottom.rs
+@@ -1,70 +1,31 @@
+-//! 石地板与屋顶底面生成（visual/generate_roof_stone_floor_and_roof_bottom.rs）。
+-//!
+-//! `generate_roof_stone_floor_and_roof_bottom`（0x1421a6d40，839B/204）。参数面
+-//! （mangled 名 O）：`void(EventReader<RecalculateRoofCmd>, Res<PublicWalls>,
+-//!  Commands)`；Roof 组件经 wall→roof 哈希表直接读 archetype（stride 0x58）。
+-//!
+-//! 机器码（fresh decomp-0x1421a6d40）：
+-//! - 逐 `RecalculateRoofCmd` 事件（stride 0x20）：wall 哈希表（keyed WallId）→
+-//!   实体位图校验 → wall→roof 哈希表 → Roof 组件；
+-//! - `(roof[8]&1)==0`（圆形）时调 `log2f(roof[0x14]·3.0)`（半径×3 的细分级别）；
+-//! - `DecoratorRank::new()` + `drawable::from()` 构造实例描述，向 Commands 延迟队列
+-//!   压 `entity_command::insert::<NaniInstanceDesc>`（0x38B：{insert fn, 16B 数据,
+-//!   tag 9, 0, entity, panic handler}）。
+-//!
+-//! 命令执行体（NaniInstanceDesc kind 9 / 白底实例的精确字段）依赖渲染侧
+-//! `NaniBundle<StoneFloorInstanceData>` 接线 —— **本批未实现（渲染边界）**；
+-//! CPU 侧控制流（事件→roof→log2f→入队）按机器码重建。
+-use country_core::resources::{
+-    roofs::{Roof, commands::RecalculateRoofCmd},
+-    walls::{WallId, public_walls::PublicWalls},
++//! B 1421a6d40, 839 bytes. Original descriptor mutation on the real roof entity.
++use bevy_ecs::prelude::*;
++use country_core::{
++    components::drawable::NaniInstanceDesc,
++    render::nani::{gpu_world::GpuWorldSubsetKind, systems::NaniMeshSelector},
++    resources::roofs::{Roof, commands::RecalculateRoofCmd},
+ };
+-use bevy_ecs::prelude::*;
+ 
+-/// B 0x1421a6d40。
+ pub fn generate_roof_stone_floor_and_roof_bottom(
+     mut recalc: EventReader<RecalculateRoofCmd>,
+-    walls: Res<PublicWalls>,
+     roofs: Query<(Entity, &Roof)>,
+     mut commands: Commands,
+ ) {
+     for event in recalc.read() {
+-        let Some(entity) = walls.roof_entity(event.0) else {
+-            continue;
++        let (entity, roof) = roofs.get(event.entity).unwrap();
++        let part = if roof.observed()[8] & 1 != 0 {
++            0
++        } else {
++            let radius = f32::from_le_bytes(roof.observed()[0x14..0x18].try_into().unwrap());
++            let value = (radius * 3.0).log2();
++            // MAXSS(1,value), then MINSS(5,result): second operand wins on NaN.
++            let low = if 1.0 > value { 1.0 } else { value };
++            let high = if 5.0 < low { 5.0 } else { low };
++            high as u32
+         };
+-        let Ok((entity, roof)) = roofs.get(entity) else {
+-            continue;
+-        };
+-        // 圆形（roof[8]&1==0）：log2f(radius·3.0) —— 细分级别（机器码 O）。
+-        let mut level = 0.0f32;
+-        if (roof.observed()[8] & 1) == 0 {
+-            let radius = f32::from_le_bytes(roof.observed()[0x14..0x18].try_into().unwrap());
+-            level = (radius * 3.0).log2();
+-        }
+-        // 原命令 = Commands::entity(roof_entity).insert(NaniInstanceDesc)。
+-        // 渲染侧执行体（kind 9、白底 1,1,1）未接线 → 记录观测载荷。
+-        commands.queue(ObservedStoneFloorCommand {
+-            entity,
+-            wall: event.0,
+-            level,
++        commands.entity(entity).insert(NaniInstanceDesc {
++            mesh: NaniMeshSelector::AtlasPart(part),
++            subset_kind: GpuWorldSubsetKind::RoofFloor,
+         });
+     }
+ }
+-
+-/// 观测延迟命令载荷（decomp：`{insert::<NaniInstanceDesc> fn, 16B 数据, tag 9,
+-/// 0, entity, panic}`）。CPU 侧完成事件→roof→log2f→入队（机器码证据）；执行体
+-/// 属渲染/网格侧后置接线。
+-#[derive(Debug)]
+-struct ObservedStoneFloorCommand {
+-    entity: Entity,
+-    wall: WallId,
+-    /// `log2f(radius·3.0)`（仅圆形；矩形走 0）。
+-    level: f32,
+-}
+-impl bevy_ecs::system::Command for ObservedStoneFloorCommand {
+-    fn apply(self, world: &mut bevy_ecs::world::World) {
+-        // 原命令 fn（insert::<NaniInstanceDesc> + 16B 实例数据）属渲染侧；
+-        // CPU 侧完成入队与载荷采集，执行体待 NaniBundle 接线。
+-        let _ = (world, self.entity, self.wall, self.level);
+-    }
+-}
+--- a/tiny-glade/crates/country-core/src/resources/roofs/commands.rs
++++ b/tiny-glade/crates/country-core/src/resources/roofs/commands.rs
+@@ -37,8 +37,7 @@
+ }
+ /// Original name for `RoofGeometryChanged` in the system faces:
+ /// `country_core::resources::roofs::commands::RecalculateRoofCmd`.
+-#[derive(Event, Clone, Copy, Debug)]
+-pub struct RecalculateRoofCmd(pub WallId);
++pub use RoofGeometryChanged as RecalculateRoofCmd;
+ #[derive(Event, Clone, Copy, Debug)]
+ pub struct RecalculateWallHoles(pub WallId);
+ /// B `country_core::resources::roofs::commands::SwitchRoofTypeCmd`: emitted by
+--- a/tiny-glade/crates/systems/roof/src/create_roof.rs
++++ b/tiny-glade/crates/systems/roof/src/create_roof.rs
+@@ -19,6 +19,14 @@
+     walls::{WallId, public_walls::PublicWalls},
+ };
+ use country_core::utils::components::transform::Transform;
++use country_core::components::drawable::NaniBundle;
++use country_core::render::nani::{
++    gpu_world::{GpuWorldSubsetKind, InstanceDataMarker},
++    instance_data::StoneFloorInstanceData,
++    systems::{NaniInstanceDesc, NaniMeshSelector},
++};
++use country_core::resources::roofs::RoofTiles;
++use crate::utils::components::{RoofSpire, RoofSupportBeams};
+ use bevy_ecs::prelude::*;
+ use hashbrown::HashMap;
+ 
+@@ -53,8 +61,18 @@
+                 RoofAnimation::from_inner(prepared.animation),
+                 RoofTileSimulation::from_inner(prepared.tile_simulation),
+                 RoofTriggerVolume::default(),
+-                // 1421ab2bf..2f2: zero translation, identity rotation, unit scale.
+-                Transform::identity(),
++                RoofTiles::default(),
++                RoofSpire,
++                RoofSupportBeams,
++                NaniBundle::<StoneFloorInstanceData> {
++                    desc: NaniInstanceDesc {
++                        mesh: NaniMeshSelector::AtlasPart(0),
++                        subset_kind: GpuWorldSubsetKind::RoofFloor,
++                    },
++                    // Original bundle stores the identity transform here.
++                    transform: Transform::identity(),
++                    marker: InstanceDataMarker::default(),
++                },
+             ))
+             .id();
+         sounds.write(RoofSound {
+--- a/tiny-glade/crates/systems/clutter/src/inter_roof_merlons/detect_inter_roof_merlons.rs
++++ b/tiny-glade/crates/systems/clutter/src/inter_roof_merlons/detect_inter_roof_merlons.rs
+@@ -48,7 +48,7 @@
+     let mut set: HashSet<WallId> = HashSet::new();
+     set.extend(ev_deleted.read().map(|e| e.0));
+     set.extend(ev_changed.read().map(|e| e.0));
+-    set.extend(ev_roof_cmd.read().map(|e| e.0));
++    set.extend(ev_roof_cmd.read().map(|e| e.wall));
+     changes.dirty_walls = set;
+ }
+ 
+--- a/tiny-glade/crates/systems/critters/src/wren.rs
++++ b/tiny-glade/crates/systems/critters/src/wren.rs
+@@ -156,7 +156,7 @@
+     // 收集需重算的墙（事件载荷 = WallId）。
+     let mut dirty: Vec<country_core::resources::walls::WallId> = Vec::new();
+     for event in roof_changed.read() {
+-        dirty.push(event.0);
++        dirty.push(event.wall);
+     }
+     for event in wall_changed.read() {
+         dirty.push(event.0);
+--- a/tiny-glade/crates/systems/roof/src/roof_trigger_volume.rs
++++ b/tiny-glade/crates/systems/roof/src/roof_trigger_volume.rs
+@@ -48,7 +48,7 @@
+     walls: Res<PublicWalls>,
+ ) {
+     for event in recalc.read() {
+-        let Some(entity) = walls.roof_entity(event.0) else {
++        let Some(entity) = walls.roof_entity(event.wall) else {
+             // O：墙→屋顶表查缺失 → `panic!("Couldn't recalcualte roof volume")`（0x142ff6ae8，
+             //   decomp `LAB_1421a6136` panic_fmt，noreturn）。
+             panic!("Couldn't recalcualte roof volume");

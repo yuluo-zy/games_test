@@ -1,0 +1,238 @@
+// 0x140a1e720 clear_modification_tracking size=751 sig=void __cdecl clear_modification_tracking(void)
+
+void __cdecl
+country_core::resources::walls::decorator_storage::DecoratorStorage::clear_modification_tracking
+          (void)
+
+{
+  undefined1 auVar1 [16];
+  ulonglong uVar2;
+  longlong lVar3;
+  ushort uVar4;
+  uint uVar5;
+  int iVar6;
+  undefined8 *puVar7;
+  ulonglong uVar8;
+  undefined8 *puVar9;
+  undefined8 *in_RCX;
+  uint uVar10;
+  ulonglong uVar11;
+  longlong lVar12;
+  undefined1 (*pauVar13) [16];
+  longlong lVar14;
+  undefined8 *puVar15;
+  undefined8 *puVar16;
+  ulonglong uVar17;
+  undefined8 *puVar18;
+  uint uVar19;
+  undefined1 (*pauVar20) [16];
+  undefined1 (*pauVar21) [16];
+  longlong local_50;
+  
+  if (*(char *)(in_RCX + 0x36) != '\0') {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic();
+  }
+  pauVar20 = (undefined1 (*) [16])*in_RCX;
+  local_50 = in_RCX[3];
+  auVar1 = *pauVar20;
+  uVar19 = ~(uint)(ushort)((ushort)(SUB161(auVar1 >> 7,0) & 1) |
+                           (ushort)(SUB161(auVar1 >> 0xf,0) & 1) << 1 |
+                           (ushort)(SUB161(auVar1 >> 0x17,0) & 1) << 2 |
+                           (ushort)(SUB161(auVar1 >> 0x1f,0) & 1) << 3 |
+                           (ushort)(SUB161(auVar1 >> 0x27,0) & 1) << 4 |
+                           (ushort)(SUB161(auVar1 >> 0x2f,0) & 1) << 5 |
+                           (ushort)(SUB161(auVar1 >> 0x37,0) & 1) << 6 |
+                           (ushort)(SUB161(auVar1 >> 0x3f,0) & 1) << 7 |
+                           (ushort)(SUB161(auVar1 >> 0x47,0) & 1) << 8 |
+                           (ushort)(SUB161(auVar1 >> 0x4f,0) & 1) << 9 |
+                           (ushort)(SUB161(auVar1 >> 0x57,0) & 1) << 10 |
+                           (ushort)(SUB161(auVar1 >> 0x5f,0) & 1) << 0xb |
+                           (ushort)(SUB161(auVar1 >> 0x67,0) & 1) << 0xc |
+                           (ushort)(SUB161(auVar1 >> 0x6f,0) & 1) << 0xd |
+                           (ushort)(SUB161(auVar1 >> 0x77,0) & 1) << 0xe |
+                          (ushort)(byte)(auVar1[0xf] >> 7) << 0xf);
+  pauVar13 = pauVar20 + 1;
+  puVar16 = in_RCX + 0x12;
+  if (in_RCX[0x12] == 0) {
+    puVar16 = (undefined8 *)0x0;
+  }
+  puVar9 = in_RCX + 0x24;
+  uVar11 = in_RCX[0x24];
+  if (uVar11 == 0) {
+    puVar9 = (undefined8 *)0x0;
+  }
+  uVar17 = 1;
+  do {
+    puVar18 = puVar16;
+    if (uVar17 == 2) {
+LAB_140a1e88d:
+      if (puVar9 == (undefined8 *)0x0) {
+        lVar14 = in_RCX[9];
+        if (lVar14 != 0) {
+          pauVar20 = (undefined1 (*) [16])in_RCX[6];
+          auVar1 = *pauVar20;
+          uVar19 = ~(uint)(ushort)((ushort)(SUB161(auVar1 >> 7,0) & 1) |
+                                   (ushort)(SUB161(auVar1 >> 0xf,0) & 1) << 1 |
+                                   (ushort)(SUB161(auVar1 >> 0x17,0) & 1) << 2 |
+                                   (ushort)(SUB161(auVar1 >> 0x1f,0) & 1) << 3 |
+                                   (ushort)(SUB161(auVar1 >> 0x27,0) & 1) << 4 |
+                                   (ushort)(SUB161(auVar1 >> 0x2f,0) & 1) << 5 |
+                                   (ushort)(SUB161(auVar1 >> 0x37,0) & 1) << 6 |
+                                   (ushort)(SUB161(auVar1 >> 0x3f,0) & 1) << 7 |
+                                   (ushort)(SUB161(auVar1 >> 0x47,0) & 1) << 8 |
+                                   (ushort)(SUB161(auVar1 >> 0x4f,0) & 1) << 9 |
+                                   (ushort)(SUB161(auVar1 >> 0x57,0) & 1) << 10 |
+                                   (ushort)(SUB161(auVar1 >> 0x5f,0) & 1) << 0xb |
+                                   (ushort)(SUB161(auVar1 >> 0x67,0) & 1) << 0xc |
+                                   (ushort)(SUB161(auVar1 >> 0x6f,0) & 1) << 0xd |
+                                   (ushort)(SUB161(auVar1 >> 0x77,0) & 1) << 0xe |
+                                  (ushort)(byte)(auVar1[0xf] >> 7) << 0xf);
+          pauVar13 = pauVar20 + 1;
+          pauVar21 = pauVar20;
+          do {
+            if ((short)uVar19 == 0) {
+              do {
+                auVar1 = *pauVar13;
+                pauVar21 = pauVar21 + -0x40;
+                pauVar13 = pauVar13 + 1;
+                uVar19 = (uint)(ushort)((ushort)(SUB161(auVar1 >> 7,0) & 1) |
+                                        (ushort)(SUB161(auVar1 >> 0xf,0) & 1) << 1 |
+                                        (ushort)(SUB161(auVar1 >> 0x17,0) & 1) << 2 |
+                                        (ushort)(SUB161(auVar1 >> 0x1f,0) & 1) << 3 |
+                                        (ushort)(SUB161(auVar1 >> 0x27,0) & 1) << 4 |
+                                        (ushort)(SUB161(auVar1 >> 0x2f,0) & 1) << 5 |
+                                        (ushort)(SUB161(auVar1 >> 0x37,0) & 1) << 6 |
+                                        (ushort)(SUB161(auVar1 >> 0x3f,0) & 1) << 7 |
+                                        (ushort)(SUB161(auVar1 >> 0x47,0) & 1) << 8 |
+                                        (ushort)(SUB161(auVar1 >> 0x4f,0) & 1) << 9 |
+                                        (ushort)(SUB161(auVar1 >> 0x57,0) & 1) << 10 |
+                                        (ushort)(SUB161(auVar1 >> 0x5f,0) & 1) << 0xb |
+                                        (ushort)(SUB161(auVar1 >> 0x67,0) & 1) << 0xc |
+                                        (ushort)(SUB161(auVar1 >> 0x6f,0) & 1) << 0xd |
+                                        (ushort)(SUB161(auVar1 >> 0x77,0) & 1) << 0xe |
+                                       (ushort)(byte)(auVar1[0xf] >> 7) << 0xf);
+              } while (uVar19 == 0xffff);
+              uVar19 = ~uVar19;
+            }
+            iVar6 = 0;
+            for (uVar10 = uVar19; (uVar10 & 1) == 0; uVar10 = uVar10 >> 1 | 0x80000000) {
+              iVar6 = iVar6 + 1;
+            }
+            lVar3 = *(longlong *)((longlong)pauVar21 + (-0x28 - (ulonglong)(uint)(iVar6 << 6)));
+            lVar12 = 0;
+            if ((lVar3 != 0) &&
+               (lVar12 = lVar3 + (lVar3 * 4 + 0x13U & 0xfffffffffffffff0) + 0x11, lVar12 != 0)) {
+              std::alloc::__default_lib_allocator::__rust_dealloc();
+            }
+            uVar19 = uVar19 - 1 & uVar19;
+            lVar14 = lVar14 + -1;
+          } while (lVar14 != 0);
+          uVar11 = in_RCX[7];
+          if (uVar11 != 0) {
+            memset(pauVar20,(int)CONCAT71((int7)((ulonglong)lVar12 >> 8),0xff),uVar11 + 0x11);
+          }
+          in_RCX[9] = 0;
+          uVar17 = (uVar11 + 1 & 0xfffffffffffffff8) - (uVar11 + 1 >> 3);
+          if (uVar11 < 8) {
+            uVar17 = uVar11;
+          }
+          in_RCX[8] = uVar17;
+        }
+        return;
+      }
+      uVar17 = 2;
+      puVar7 = (undefined8 *)0x0;
+      puVar15 = puVar9;
+      puVar16 = puVar18;
+    }
+    else {
+      puVar7 = puVar9;
+      if (pauVar20 == (undefined1 (*) [16])0x0) {
+LAB_140a1e862:
+        if ((uVar17 & 1) == 0) {
+          pauVar20 = (undefined1 (*) [16])0x0;
+        }
+        else {
+          pauVar20 = (undefined1 (*) [16])0x0;
+          puVar18 = (undefined8 *)0x0;
+          if (puVar16 != (undefined8 *)0x0) {
+            pauVar20 = (undefined1 (*) [16])0x0;
+            puVar15 = puVar16;
+            puVar16 = (undefined8 *)0x0;
+            goto LAB_140a1e8a1;
+          }
+        }
+        goto LAB_140a1e88d;
+      }
+      if (local_50 == 0) {
+        local_50 = 0;
+        goto LAB_140a1e862;
+      }
+      if ((short)uVar19 == 0) {
+        do {
+          auVar1 = *pauVar13;
+          uVar4 = (ushort)(SUB161(auVar1 >> 7,0) & 1) | (ushort)(SUB161(auVar1 >> 0xf,0) & 1) << 1 |
+                  (ushort)(SUB161(auVar1 >> 0x17,0) & 1) << 2 |
+                  (ushort)(SUB161(auVar1 >> 0x1f,0) & 1) << 3 |
+                  (ushort)(SUB161(auVar1 >> 0x27,0) & 1) << 4 |
+                  (ushort)(SUB161(auVar1 >> 0x2f,0) & 1) << 5 |
+                  (ushort)(SUB161(auVar1 >> 0x37,0) & 1) << 6 |
+                  (ushort)(SUB161(auVar1 >> 0x3f,0) & 1) << 7 |
+                  (ushort)(SUB161(auVar1 >> 0x47,0) & 1) << 8 |
+                  (ushort)(SUB161(auVar1 >> 0x4f,0) & 1) << 9 |
+                  (ushort)(SUB161(auVar1 >> 0x57,0) & 1) << 10 |
+                  (ushort)(SUB161(auVar1 >> 0x5f,0) & 1) << 0xb |
+                  (ushort)(SUB161(auVar1 >> 0x67,0) & 1) << 0xc |
+                  (ushort)(SUB161(auVar1 >> 0x6f,0) & 1) << 0xd |
+                  (ushort)(SUB161(auVar1 >> 0x77,0) & 1) << 0xe |
+                  (ushort)(byte)(auVar1[0xf] >> 7) << 0xf;
+          pauVar20 = pauVar20 + -0x98;
+          pauVar13 = pauVar13 + 1;
+        } while (uVar4 == 0xffff);
+        uVar19 = ~(uint)uVar4;
+        uVar10 = uVar19 & -(uint)uVar4 - 2;
+      }
+      else {
+        uVar10 = uVar19 - 1 & uVar19;
+      }
+      uVar11 = (ulonglong)uVar10;
+      local_50 = local_50 + -1;
+      uVar5 = 0;
+      for (; (uVar19 & 1) == 0; uVar19 = uVar19 >> 1 | 0x80000000) {
+        uVar5 = uVar5 + 1;
+      }
+      puVar15 = (undefined8 *)((longlong)pauVar20 + (ulonglong)uVar5 * -0x98 + -0x90);
+      uVar19 = uVar10;
+    }
+LAB_140a1e8a1:
+    puVar9 = puVar7;
+    if (puVar15[0xf] != 0) {
+      uVar2 = puVar15[0xd];
+      if (uVar2 != 0) {
+        uVar11 = CONCAT71((int7)(uVar11 >> 8),0xff);
+        memset((void *)puVar15[0xc],(int)uVar11,uVar2 + 0x11);
+      }
+      puVar15[0xf] = 0;
+      uVar8 = (uVar2 + 1 & 0xfffffffffffffff8) - (uVar2 + 1 >> 3);
+      if (uVar2 < 8) {
+        uVar8 = uVar2;
+      }
+      puVar15[0xe] = uVar8;
+    }
+    if (puVar15[3] != 0) {
+      uVar2 = puVar15[1];
+      if (uVar2 != 0) {
+        uVar11 = CONCAT71((int7)(uVar11 >> 8),0xff);
+        memset((void *)*puVar15,(int)uVar11,uVar2 + 0x11);
+      }
+      uVar8 = (uVar2 + 1 & 0xfffffffffffffff8) - (uVar2 + 1 >> 3);
+      if (uVar2 < 8) {
+        uVar8 = uVar2;
+      }
+      puVar15[3] = 0;
+      puVar15[2] = uVar8;
+    }
+  } while( true );
+}
+

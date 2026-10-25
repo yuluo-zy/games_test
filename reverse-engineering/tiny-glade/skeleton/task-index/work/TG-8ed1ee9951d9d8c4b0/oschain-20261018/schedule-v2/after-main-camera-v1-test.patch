@@ -1,0 +1,17 @@
+--- games_test/tiny-glade/crates/country-core/src/systems/main_camera.rs
++++ games_test/tiny-glade/crates/country-core/src/systems/main_camera.rs
+@@ -560,7 +560,13 @@
+         app.insert_resource(PathRaster::new(DirtyTilePublisher::unique()));
+         app.insert_resource(crate::game_config::GameConfig::default());
+         app.insert_resource(DebugGui::default());
+-        app.insert_resource(VermeerState::default());
++        // Production gameplay constructor uses disabled Vermeer; Default
++        // represents enabled revelation and would intentionally freeze dt.
++        app.insert_resource(VermeerState {
++            phase: crate::systems::render_loop::vermeer::VermeerPhase::Disabled,
++            freeze_camera: false,
++            ..Default::default()
++        });
+         app.insert_resource(CameraSnapshot::default());
+         app.insert_resource(Modifiers::default());
+         app.insert_resource(CursorCapturedPosition::default());

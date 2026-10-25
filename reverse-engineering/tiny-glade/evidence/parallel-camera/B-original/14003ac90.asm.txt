@@ -1,0 +1,92 @@
+14003ac90 push rsi
+14003ac91 push rdi
+14003ac92 sub rsp, 0x68
+14003ac96 mov rdi, r8
+14003ac99 mov rsi, rcx
+14003ac9c movzx eax, byte ptr [rdx]
+14003ac9f lea rcx, [rip + 0x28f13a6]
+14003aca6 movsxd rax, dword ptr [rcx + rax*4]
+14003acaa add rax, rcx
+14003acad jmp rax
+14003acaf lea rdx, [rip + 0x28f0ec6]
+14003acb6 lea rcx, [rsp + 0x20]
+14003acbb mov r8d, 0x13
+14003acc1 call 0x14034a130
+14003acc6 cmp byte ptr [rsp + 0x20], 0x32
+14003accb jne 0x14003ae04
+14003acd1 lea r8, [rip + 0x28f0eb7]
+14003acd8 jmp 0x14003ad31
+14003acda lea rdx, [rip + 0x28f0e9b]
+14003ace1 lea rcx, [rsp + 0x20]
+14003ace6 mov r8d, 0x13
+14003acec call 0x14034a130
+14003acf1 cmp byte ptr [rsp + 0x20], 0x32
+14003acf6 jne 0x14003ae04
+14003acfc lea r8, [rip + 0x28f0ec8]
+14003ad03 jmp 0x14003ade5
+14003ad08 lea rdx, [rip + 0x28f0e6d]
+14003ad0f lea rcx, [rsp + 0x20]
+14003ad14 mov r8d, 0x13
+14003ad1a call 0x14034a130
+14003ad1f cmp byte ptr [rsp + 0x20], 0x32
+14003ad24 jne 0x14003ae04
+14003ad2a lea r8, [rip + 0x28f0e7c]
+14003ad31 lea rcx, [rsp + 0x20]
+14003ad36 mov r9d, 0xb
+14003ad3c mov rdx, rdi
+14003ad3f call 0x140349e00
+14003ad44 cmp byte ptr [rsp + 0x20], 0x32
+14003ad49 jne 0x14003ae04
+14003ad4f jmp 0x14003adff
+14003ad54 lea rdx, [rip + 0x28f0e21]
+14003ad5b lea rcx, [rsp + 0x20]
+14003ad60 mov r8d, 0x13
+14003ad66 call 0x14034a130
+14003ad6b cmp byte ptr [rsp + 0x20], 0x32
+14003ad70 jne 0x14003ae04
+14003ad76 lea r8, [rip + 0x28f0e3b]
+14003ad7d jmp 0x14003ada4
+14003ad7f lea rdx, [rip + 0x28f0df6]
+14003ad86 lea rcx, [rsp + 0x20]
+14003ad8b mov r8d, 0x13
+14003ad91 call 0x14034a130
+14003ad96 cmp byte ptr [rsp + 0x20], 0x32
+14003ad9b jne 0x14003ae04
+14003ad9d lea r8, [rip + 0x28f0df6]
+14003ada4 lea rcx, [rsp + 0x20]
+14003ada9 mov r9d, 0x13
+14003adaf mov rdx, rdi
+14003adb2 call 0x140349e00
+14003adb7 cmp byte ptr [rsp + 0x20], 0x32
+14003adbc je 0x14003adff
+14003adbe jmp 0x14003ae04
+14003adc0 lea rdx, [rip + 0x28f0db5]
+14003adc7 lea rcx, [rsp + 0x20]
+14003adcc mov r8d, 0x13
+14003add2 call 0x14034a130
+14003add7 cmp byte ptr [rsp + 0x20], 0x32
+14003addc jne 0x14003ae04
+14003adde lea r8, [rip + 0x28f0df3]
+14003ade5 lea rcx, [rsp + 0x20]
+14003adea mov r9d, 0xd
+14003adf0 mov rdx, rdi
+14003adf3 call 0x140349e00
+14003adf8 cmp byte ptr [rsp + 0x20], 0x32
+14003adfd jne 0x14003ae04
+14003adff mov byte ptr [rsi], 0x32
+14003ae02 jmp 0x14003ae30
+14003ae04 mov rax, qword ptr [rsp + 0x60]
+14003ae09 mov qword ptr [rsi + 0x40], rax
+14003ae0d movups xmm0, xmmword ptr [rsp + 0x20]
+14003ae12 movups xmm1, xmmword ptr [rsp + 0x30]
+14003ae17 movups xmm2, xmmword ptr [rsp + 0x40]
+14003ae1c movups xmm3, xmmword ptr [rsp + 0x50]
+14003ae21 movups xmmword ptr [rsi + 0x30], xmm3
+14003ae25 movups xmmword ptr [rsi + 0x20], xmm2
+14003ae29 movups xmmword ptr [rsi + 0x10], xmm1
+14003ae2d movups xmmword ptr [rsi], xmm0
+14003ae30 mov rax, rsi
+14003ae33 add rsp, 0x68
+14003ae37 pop rdi
+14003ae38 pop rsi
+14003ae39 ret 

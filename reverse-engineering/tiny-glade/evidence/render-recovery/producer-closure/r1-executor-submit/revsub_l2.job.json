@@ -1,0 +1,287 @@
+{
+  "target": {
+    "path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+    "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+  },
+  "provider": {
+    "id": "ghidra",
+    "version": "12.1.4"
+  },
+  "database": "revsub_l2",
+  "steps": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "keep_open": true,
+        "database_id": "revsub_l2"
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "revsub_l2"
+      }
+    },
+    {
+      "tool": "batch",
+      "args": {
+        "database": "revsub_l2",
+        "stop_on_error": false,
+        "operations": [
+          {
+            "tool": "get_xrefs_to",
+            "params": {
+              "address": "0x140c04e20"
+            }
+          },
+          {
+            "tool": "get_xrefs_to",
+            "params": {
+              "address": "0x1418c8710"
+            }
+          },
+          {
+            "tool": "get_xrefs_to",
+            "params": {
+              "address": "0x140bfc780"
+            }
+          },
+          {
+            "tool": "get_xrefs_to",
+            "params": {
+              "address": "0x140bfcf80"
+            }
+          },
+          {
+            "tool": "get_xrefs_to",
+            "params": {
+              "address": "0x140beabd0"
+            }
+          },
+          {
+            "tool": "get_xrefs_to",
+            "params": {
+              "address": "0x140bec400"
+            }
+          },
+          {
+            "tool": "get_xrefs_to",
+            "params": {
+              "address": "0x1400fa190"
+            }
+          },
+          {
+            "tool": "get_xrefs_to",
+            "params": {
+              "address": "0x140bebdf0"
+            }
+          },
+          {
+            "tool": "get_xrefs_to",
+            "params": {
+              "address": "0x140bebc90"
+            }
+          },
+          {
+            "tool": "get_xrefs_to",
+            "params": {
+              "address": "0x140bfc750"
+            }
+          },
+          {
+            "tool": "get_xrefs_to",
+            "params": {
+              "address": "0x140bea680"
+            }
+          },
+          {
+            "tool": "get_xrefs_to",
+            "params": {
+              "address": "0x1418c3300"
+            }
+          },
+          {
+            "tool": "get_xrefs_to",
+            "params": {
+              "address": "0x140bf0b90"
+            }
+          },
+          {
+            "tool": "get_xrefs_to",
+            "params": {
+              "address": "0x140bf84e0"
+            }
+          },
+          {
+            "tool": "get_xrefs_to",
+            "params": {
+              "address": "0x140be9d00"
+            }
+          },
+          {
+            "tool": "get_xrefs_to",
+            "params": {
+              "address": "0x140bf2560"
+            }
+          },
+          {
+            "tool": "get_xrefs_to",
+            "params": {
+              "address": "0x140bea2d0"
+            }
+          },
+          {
+            "tool": "get_xrefs_from",
+            "params": {
+              "address": "0x140c04e20"
+            }
+          },
+          {
+            "tool": "get_xrefs_from",
+            "params": {
+              "address": "0x140beabd0"
+            }
+          },
+          {
+            "tool": "get_xrefs_from",
+            "params": {
+              "address": "0x140bec400"
+            }
+          }
+        ]
+      },
+      "expands": [
+        {
+          "tool": "get_xrefs_to",
+          "args": {
+            "address": "0x140c04e20"
+          }
+        },
+        {
+          "tool": "get_xrefs_to",
+          "args": {
+            "address": "0x1418c8710"
+          }
+        },
+        {
+          "tool": "get_xrefs_to",
+          "args": {
+            "address": "0x140bfc780"
+          }
+        },
+        {
+          "tool": "get_xrefs_to",
+          "args": {
+            "address": "0x140bfcf80"
+          }
+        },
+        {
+          "tool": "get_xrefs_to",
+          "args": {
+            "address": "0x140beabd0"
+          }
+        },
+        {
+          "tool": "get_xrefs_to",
+          "args": {
+            "address": "0x140bec400"
+          }
+        },
+        {
+          "tool": "get_xrefs_to",
+          "args": {
+            "address": "0x1400fa190"
+          }
+        },
+        {
+          "tool": "get_xrefs_to",
+          "args": {
+            "address": "0x140bebdf0"
+          }
+        },
+        {
+          "tool": "get_xrefs_to",
+          "args": {
+            "address": "0x140bebc90"
+          }
+        },
+        {
+          "tool": "get_xrefs_to",
+          "args": {
+            "address": "0x140bfc750"
+          }
+        },
+        {
+          "tool": "get_xrefs_to",
+          "args": {
+            "address": "0x140bea680"
+          }
+        },
+        {
+          "tool": "get_xrefs_to",
+          "args": {
+            "address": "0x1418c3300"
+          }
+        },
+        {
+          "tool": "get_xrefs_to",
+          "args": {
+            "address": "0x140bf0b90"
+          }
+        },
+        {
+          "tool": "get_xrefs_to",
+          "args": {
+            "address": "0x140bf84e0"
+          }
+        },
+        {
+          "tool": "get_xrefs_to",
+          "args": {
+            "address": "0x140be9d00"
+          }
+        },
+        {
+          "tool": "get_xrefs_to",
+          "args": {
+            "address": "0x140bf2560"
+          }
+        },
+        {
+          "tool": "get_xrefs_to",
+          "args": {
+            "address": "0x140bea2d0"
+          }
+        },
+        {
+          "tool": "get_xrefs_from",
+          "args": {
+            "address": "0x140c04e20"
+          }
+        },
+        {
+          "tool": "get_xrefs_from",
+          "args": {
+            "address": "0x140beabd0"
+          }
+        },
+        {
+          "tool": "get_xrefs_from",
+          "args": {
+            "address": "0x140bec400"
+          }
+        }
+      ],
+      "timeout_ms": 600000
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "revsub_l2",
+        "save": false
+      }
+    }
+  ]
+}

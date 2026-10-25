@@ -1,0 +1,29 @@
+{
+  "analysis": "A 版 PDB 是否因 debug=true 包含更多函数签名/参数表信息",
+  "date": "2026-10-12",
+  "identity": {
+    "pdb": "/Users/yuluo/Desktop/game/Tiny Glade/tiny_glade.pdb",
+    "size": 213172224,
+    "blocks": 52044,
+    "streams": 4707,
+    "guid": "{98388131-DB1D-D6B0-4C4C-44205044422E}",
+    "age": 1,
+    "summary_flags": "Has Debug Info / Has Types / Has IDs / Has Globals / Has Publics / Is stripped=false",
+    "rustc": "1.78.0 (9b00956e5), clang LLVM backend 18012"
+  },
+  "debug_true_effect": {
+    "line_tables": "A 的 4560 个 Rust 编译单元 75298 个函数全部有 DEBUG_S_LINES，行号覆盖 100%",
+    "inline_trees": "S_INLINESITE A=4711160 / B=6449972；DEBUG_S_INLINEELINES A=9053 / B=9364",
+    "source_files": "DEBUG_S_FILECHKSMS A=9362 / B=9719，含源文件 SHA-256",
+    "public_symbols": "A=87693 / B=101405（S_PUB32）"
+  },
+  "signature_and_params": {
+    "rust_function_signature": "统一引用 TPI 0x1001 = LF_PROCEDURE void()，#args=0（serialize/visit_str/get_caller_by_frame_pointer 等全部如此）",
+    "rust_param_locals": "A 的 4560 个 Rust rcgu 模块 S_LOCAL=0、S_REGREL32=0、S_DEFRANGE=0；B 同（4739 模块同样全 0）",
+    "c_build_locals": "A 的 54 个 C 构建产物模块 S_LOCAL=45890（zstd-sys clang18、intel-tex ISPC、linker 等）；B=44090",
+    "param_table_example": "zstd ZSTD_compressBlock_lazy2：signature=unsigned __int64(ZSTD_matchStat...)；5 个 S_LOCAL flags=param（ms/seqStore/rep/src/srcSize）带真实 TPI 类型与 DEFRANGE 寄存器",
+    "tpi_scale": "A TPI 共 6133 类型（LF_PROCEDURE 1716、LF_ARGLIST 1468、LF_STRUCTURE 753、LF_FIELDLIST 486）；B 几乎相同",
+    "conclusion": "debug=true 为 Rust 代码带来行号/内联/源文件/符号名，但不产生函数参数签名或参数表；Rust 签名一律 void() 占位，参数/局部变量记录为零。参数表形态只存在于 C 依赖模块。A 与 B 模式完全一致，无版本差异。"
+  },
+  "method": "llvm-pdbutil 22.1.2 dump -summary/-sym-stats/-type-stats/-symbols/-type-index；解析脚本暂存 /tmp/tg_a_pdb/"
+}

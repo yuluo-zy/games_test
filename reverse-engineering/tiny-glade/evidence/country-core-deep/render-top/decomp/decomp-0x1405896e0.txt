@@ -1,0 +1,137 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_1405896e0(undefined8 param_1,longlong param_2)
+
+{
+  undefined1 auVar1 [16];
+  undefined4 uVar2;
+  longlong lVar3;
+  ulonglong uVar4;
+  code *pcVar5;
+  uint uVar6;
+  uint uVar7;
+  undefined1 uVar8;
+  ushort uVar9;
+  ulonglong uVar10;
+  ulonglong uVar11;
+  longlong lVar12;
+  longlong lVar13;
+  uint uVar14;
+  undefined1 auVar15 [16];
+  undefined1 auVar16 [16];
+  undefined8 auStack_80 [6];
+  int iStack_4c;
+  longlong lStack_48;
+  undefined8 uStack_40;
+  
+  uStack_40 = 0xfffffffffffffffe;
+  lStack_48 = param_2;
+  uVar8 = FUN_1402b00e0(param_2 + 0x148,*(undefined8 *)(param_2 + 0x140),param_2 + 0x60,param_2,0x1a
+                       );
+  lVar13 = *(longlong *)(lStack_48 + 0x138);
+  if (*(longlong *)(lVar13 + 0xb0) != 0) {
+    lVar3 = *(longlong *)(lVar13 + 0x98);
+    uVar4 = *(ulonglong *)(lVar13 + 0xa0);
+    uVar11 = uVar4 & 0x52ec6a17beb8fef0;
+    lVar13 = 0;
+    while( true ) {
+      auVar1 = *(undefined1 (*) [16])(lVar3 + uVar11);
+      auVar16[0] = -(auVar1[0] == UNK_142950600);
+      auVar16[1] = -(auVar1[1] == UNK_142950600._1_1_);
+      auVar16[2] = -(auVar1[2] == UNK_142950600._2_1_);
+      auVar16[3] = -(auVar1[3] == UNK_142950600._3_1_);
+      auVar16[4] = -(auVar1[4] == UNK_142950600._4_1_);
+      auVar16[5] = -(auVar1[5] == UNK_142950600._5_1_);
+      auVar16[6] = -(auVar1[6] == UNK_142950600._6_1_);
+      auVar16[7] = -(auVar1[7] == UNK_142950600._7_1_);
+      auVar16[8] = -(auVar1[8] == UNK_142950600._8_1_);
+      auVar16[9] = -(auVar1[9] == UNK_142950600._9_1_);
+      auVar16[10] = -(auVar1[10] == UNK_142950600._10_1_);
+      auVar16[0xb] = -(auVar1[0xb] == UNK_142950600._11_1_);
+      auVar16[0xc] = -(auVar1[0xc] == UNK_142950600._12_1_);
+      auVar16[0xd] = -(auVar1[0xd] == UNK_142950600._13_1_);
+      auVar16[0xe] = -(auVar1[0xe] == UNK_142950600._14_1_);
+      auVar16[0xf] = -(auVar1[0xf] == UNK_142950600._15_1_);
+      uVar9 = (ushort)(SUB161(auVar16 >> 7,0) & 1) | (ushort)(SUB161(auVar16 >> 0xf,0) & 1) << 1 |
+              (ushort)(SUB161(auVar16 >> 0x17,0) & 1) << 2 |
+              (ushort)(SUB161(auVar16 >> 0x1f,0) & 1) << 3 |
+              (ushort)(SUB161(auVar16 >> 0x27,0) & 1) << 4 |
+              (ushort)(SUB161(auVar16 >> 0x2f,0) & 1) << 5 |
+              (ushort)(SUB161(auVar16 >> 0x37,0) & 1) << 6 |
+              (ushort)(SUB161(auVar16 >> 0x3f,0) & 1) << 7 |
+              (ushort)(SUB161(auVar16 >> 0x47,0) & 1) << 8 |
+              (ushort)(SUB161(auVar16 >> 0x4f,0) & 1) << 9 |
+              (ushort)(SUB161(auVar16 >> 0x57,0) & 1) << 10 |
+              (ushort)(SUB161(auVar16 >> 0x5f,0) & 1) << 0xb |
+              (ushort)(SUB161(auVar16 >> 0x67,0) & 1) << 0xc |
+              (ushort)(SUB161(auVar16 >> 0x6f,0) & 1) << 0xd |
+              (ushort)(SUB161(auVar16 >> 0x77,0) & 1) << 0xe | (ushort)(auVar16[0xf] >> 7) << 0xf;
+      uVar14 = (uint)uVar9;
+      while (uVar9 != 0) {
+        uVar6 = 0;
+        for (uVar7 = uVar14; (uVar7 & 1) == 0; uVar7 = uVar7 >> 1 | 0x80000000) {
+          uVar6 = uVar6 + 1;
+        }
+        uVar10 = uVar6 + uVar11 & uVar4;
+        if (*(longlong *)(lVar3 + -0x10 + uVar10 * -0x10) == 0x52ec6a17beb8fef0) {
+          lVar13 = uVar10 * -0x10;
+          iStack_4c = *(int *)(lVar3 + -8 + lVar13);
+          uVar2 = *(undefined4 *)(lVar3 + -4 + lVar13);
+          if (iStack_4c != 0) {
+            auStack_80[0] = 0;
+            FUN_1428a994f(0,&iStack_4c,&UNK_1429fcab8,auStack_80,&UNK_1429fcac0);
+                    /* WARNING: Does not return */
+            pcVar5 = (code *)invalidInstructionException();
+            (*pcVar5)();
+          }
+          lVar13 = *(longlong *)(lStack_48 + 0x28);
+          if (lVar13 == *(longlong *)(lStack_48 + 0x18)) {
+            FUN_140562e70(lStack_48 + 0x18,&UNK_1429fcad8);
+          }
+          lVar3 = *(longlong *)(lStack_48 + 0x20);
+          *(undefined4 *)(lVar3 + lVar13 * 8) = uVar2;
+          *(undefined1 *)(lVar3 + 4 + lVar13 * 8) = uVar8;
+          *(longlong *)(lStack_48 + 0x28) = lVar13 + 1;
+          goto code_r0x00014058981a;
+        }
+        uVar9 = (ushort)(uVar14 - 1) & (ushort)uVar14;
+        uVar14 = CONCAT22((short)(uVar14 - 1 >> 0x10),uVar9);
+      }
+      auVar15[0] = -(auVar1[0] == -1);
+      auVar15[1] = -(auVar1[1] == -1);
+      auVar15[2] = -(auVar1[2] == -1);
+      auVar15[3] = -(auVar1[3] == -1);
+      auVar15[4] = -(auVar1[4] == -1);
+      auVar15[5] = -(auVar1[5] == -1);
+      auVar15[6] = -(auVar1[6] == -1);
+      auVar15[7] = -(auVar1[7] == -1);
+      auVar15[8] = -(auVar1[8] == -1);
+      auVar15[9] = -(auVar1[9] == -1);
+      auVar15[10] = -(auVar1[10] == -1);
+      auVar15[0xb] = -(auVar1[0xb] == -1);
+      auVar15[0xc] = -(auVar1[0xc] == -1);
+      auVar15[0xd] = -(auVar1[0xd] == -1);
+      auVar15[0xe] = -(auVar1[0xe] == -1);
+      auVar15[0xf] = -(auVar1[0xf] == -1);
+      if ((((((((((((((((SUB161(auVar15 >> 7,0) & 1) != 0 || (SUB161(auVar15 >> 0xf,0) & 1) != 0) ||
+                      (SUB161(auVar15 >> 0x17,0) & 1) != 0) || (SUB161(auVar15 >> 0x1f,0) & 1) != 0)
+                    || (SUB161(auVar15 >> 0x27,0) & 1) != 0) || (SUB161(auVar15 >> 0x2f,0) & 1) != 0
+                   ) || (SUB161(auVar15 >> 0x37,0) & 1) != 0) ||
+                 (SUB161(auVar15 >> 0x3f,0) & 1) != 0) || (SUB161(auVar15 >> 0x47,0) & 1) != 0) ||
+               (SUB161(auVar15 >> 0x4f,0) & 1) != 0) || (SUB161(auVar15 >> 0x57,0) & 1) != 0) ||
+             (SUB161(auVar15 >> 0x5f,0) & 1) != 0) || (SUB161(auVar15 >> 0x67,0) & 1) != 0) ||
+           (SUB161(auVar15 >> 0x6f,0) & 1) != 0) || (SUB161(auVar15 >> 0x77,0) & 1) != 0) ||
+          auVar15[0xf] < '\0') break;
+      lVar12 = uVar11 + lVar13;
+      lVar13 = lVar13 + 0x10;
+      uVar11 = lVar12 + 0x10U & uVar4;
+    }
+  }
+code_r0x00014058981a:
+                    /* WARNING: Could not recover jumptable at 0x000142923c00. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  memcpy(param_1,lStack_48,400);
+  return;
+}
+

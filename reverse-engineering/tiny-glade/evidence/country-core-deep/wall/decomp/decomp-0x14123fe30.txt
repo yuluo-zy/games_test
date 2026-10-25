@@ -1,0 +1,56 @@
+country_core::resources::walls::wall_holes::InProgressHoleStorage::extend::h982c3a18422b9102
+
+/* WARNING: Removing unreachable block (ram,0x000140d65824) */
+
+void FUN_14123fe30(longlong *param_1,longlong *param_2)
+
+{
+  undefined4 *puVar1;
+  ulonglong uVar2;
+  undefined8 uVar3;
+  longlong lVar4;
+  longlong lVar5;
+  undefined4 uStack_68;
+  undefined4 uStack_64;
+  undefined4 uStack_60;
+  undefined4 uStack_5c;
+  longlong lStack_50;
+  longlong lStack_48;
+  undefined *puStack_40;
+  undefined8 uStack_38;
+  
+  uStack_38 = 0xfffffffffffffffe;
+  lStack_50 = *param_2;
+  lVar5 = param_2[1];
+  uVar2 = param_2[2];
+  lStack_48 = lVar5;
+  if ((ulonglong)(*param_1 - param_1[2]) < uVar2) {
+    puStack_40 = (undefined *)((ulonglong)puStack_40 & 0xffffffffffffff);
+    FUN_1428a7de0(param_1,param_1[2],uVar2,4,0x14);
+  }
+  else if (uVar2 == 0) goto code_r0x00014123febf;
+  lVar4 = 0;
+  do {
+    if (*(char *)(lVar5 + 0x10 + lVar4) == '\x05') break;
+    puVar1 = (undefined4 *)(lVar5 + lVar4);
+    uStack_68 = *puVar1;
+    uStack_64 = puVar1[1];
+    uStack_60 = puVar1[2];
+    uStack_5c = puVar1[3];
+    FUN_140f87860(param_1,&uStack_68);
+    lVar4 = lVar4 + 0x14;
+    lVar5 = lStack_48;
+  } while (uVar2 * 0x14 != lVar4);
+code_r0x00014123febf:
+  lVar5 = lStack_48;
+  if (lStack_50 == 0) {
+    return;
+  }
+  puStack_40 = &UNK_140d6582e;
+  uVar3 = GetProcessHeap(lStack_48,lStack_50 * 0x14);
+                    /* WARNING: Could not recover jumptable at 0x000140d6583c. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  HeapFree(uVar3,0,lVar5);
+  return;
+}
+

@@ -1,0 +1,117 @@
+{
+  "test": "ghidra",
+  "started": "2026-10-11T12:13:58.947Z",
+  "calls": [
+    {
+      "name": "open_file",
+      "args": {
+        "file_path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/rea-radare/B-aspect-call-fixture.exe"
+      },
+      "elapsed_ms": 95,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "File opened successfully."
+          }
+        ]
+      }
+    },
+    {
+      "name": "analyze",
+      "args": {
+        "level": 2
+      },
+      "elapsed_ms": 19,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Analysis completed with level 2.\nFound 3 functions.\n\n<log>\n[INFO] Analyze all flags starting with sym. and entry0 (aa)\n[INFO] Analyze imports (af@@@i)\n[INFO] Name local plt stubs from their got relocs (anal.plt)\n[INFO] Analyze entrypoint (af@ entry0)\n[INFO] Analyze symbols (af@@@s)\n[INFO] Running plugin pre-analysis hooks\n[INFO] Analyze all functions arguments/locals (afva@@F)\n[INFO] Analyze function calls (aac)\n[INFO] Analyze len bytes of instructions for references (aar)\n[INFO] Finding and parsing C++ vtables (avrr)\n[INFO] Analyzing methods (af @@ method.*)\n[INFO] Recovering local variables (afva@@@F)\n[INFO] Type matching analysis for all functions (aaft)\n[INFO] Propagate noreturn information (aanr)\n[INFO] Use -AA or aaaa to perform additional experimental analysis\n\n</log>\n"
+          }
+        ]
+      }
+    },
+    {
+      "name": "xrefs_to",
+      "args": {
+        "address": "0x140001000"
+      },
+      "elapsed_ms": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "entry0 0x140001020 [CALL:--x] call fcn.140001000\n"
+          }
+        ]
+      }
+    },
+    {
+      "name": "list_decompilers",
+      "args": {},
+      "elapsed_ms": 0,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "pdc\nCLd\npdg\n"
+          }
+        ]
+      }
+    },
+    {
+      "name": "use_decompiler",
+      "args": {
+        "name": "ghidra"
+      },
+      "elapsed_ms": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "ok"
+          }
+        ]
+      }
+    },
+    {
+      "name": "decompile_function",
+      "args": {
+        "address": "0x140001000"
+      },
+      "elapsed_ms": 406,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "float fcn.140001000(int64_t arg1)\n\n{\n//[00] -r-x section size 4096 named .text\nreturn *arg1 / *(arg1 + 4);\n}\n\n"
+          }
+        ],
+        "structuredContent": {
+          "content": "float fcn.140001000(int64_t arg1)\n\n{\n//[00] -r-x section size 4096 named .text\nreturn *arg1 / *(arg1 + 4);\n}\n\n"
+        }
+      }
+    },
+    {
+      "name": "close_file",
+      "args": {},
+      "elapsed_ms": 5,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "File closed successfully."
+          }
+        ]
+      }
+    }
+  ],
+  "stderr": "INFO: [R2MCP] r2mcp starting\nINFO: [R2MCP] sandbox grain: exec,socket\nINFO: Radare2 core initialized\n[INFO] Analyze all flags starting with sym. and entry0 (aa)\n[INFO] Analyze imports (af@@@i)\n[INFO] Name local plt stubs from their got relocs (anal.plt)\n[INFO] Analyze entrypoint (af@ entry0)\n\u001b[2K\r\u001b[2K\r\u001b[2K\r[INFO] Analyze symbols (af@@@s)\n[INFO] Running plugin pre-analysis hooks\n[INFO] Analyze all functions arguments/locals (afva@@F)\n[INFO] Analyze function calls (aac)\n[INFO] Analyze len bytes of instructions for references (aar)\n[INFO] Finding and parsing C++ vtables (avrr)\n[INFO] Analyzing methods (af @@ method.*)\n[INFO] Recovering local variables (afva@@@F)\n[INFO] Type matching analysis for all functions (aaft)\n[INFO] Propagate noreturn information (aanr)\n[INFO] Use -AA or aaaa to perform additional experimental analysis\n",
+  "server": {
+    "name": "Radare2 MCP Connector",
+    "version": "1.8.8"
+  },
+  "ok": true,
+  "finished": "2026-10-11T12:13:59.745Z"
+}

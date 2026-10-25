@@ -1,0 +1,7 @@
+# SharedShape/Clone 合同独立复核
+
+批准最窄同owner候选；读完整合同与retained trap clone汇编，独立核原bf000..21a四owned缓冲alloc/memcpy、None/empty门、bf227 Arc strong递增和两个独立outer分配；独立读92B SharedShape::ball原强弱计数1/1构造以及86B into_transformed_shape原Arc递增。不是Box深克隆，也不是所有mesh缓冲共享。原native函数用16B对齐值与当前Rust0x78布局不声明直接ABI互换。
+
+Option<SharedShape>复用pin parry0.17.0原有Arc包装与Deref，六构造只改ownership表示，不重算hash/geometry/pose；两direct adapter改为同innerArc clone属于父级必要调用范围。四缓冲临时Box持有至全部复制成功，再转raw，异常路径不能先leak后组装；ptr0与ptr4不能因同为空slice抹平。当前system-decorator Cargo明确启用country-core native-physics，非native壳无真实allocator不新造Clone。
+
+批准开始source，要求独立owned非空缓冲、Someempty/None、primitive/compound/Drop/Arc身份及原layout/source tests；不得改root当前bounded查询/统计。production before38593f8e当前冻结，root唯一整合/Cargo/GPU。合同通过不代替新source独审或整个world验收。

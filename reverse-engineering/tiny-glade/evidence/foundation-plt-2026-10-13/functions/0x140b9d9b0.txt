@@ -1,0 +1,57 @@
+// game_locale
+// 0x140b9d9b0 void __cdecl game_locale(void)
+// params: []
+
+// WARNING: Removing unreachable block (ram,0x000140b9da57)
+// WARNING: Removing unreachable block (ram,0x000140b9da5d)
+
+void __cdecl lang_lib::game_locale(void)
+
+{
+  longlong *plVar1;
+  longlong *extraout_RAX;
+  longlong *in_RDX;
+  
+  arc_swap::debt::list::LocalNode::
+  with<arc_swap::strategy::hybrid::HybridProtection<enum2_<core::option::Option<alloc::sync::Arc<lang_lib::language_library::LanguageLibrary,alloc::alloc::Global>_>_>_>,arc_swap::strategy::hybrid::impl_5::load::closure_env_0<enum2_<core::option::Option<alloc::sync::Arc<lang_lib::language_library::LanguageLibrary,alloc::alloc::Global>_>_>,arc_swap::strategy::hybrid::DefaultConfig>_>
+            ();
+  if (in_RDX == (longlong *)0x0) {
+    if (extraout_RAX != (longlong *)0x0) {
+      LOCK();
+      if (*extraout_RAX == 0) {
+        *extraout_RAX = 3;
+      }
+      UNLOCK();
+    }
+    if (*(longlong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E != 0) {
+      toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();
+      ::log::__private_api::impl$2::log();
+    }
+  }
+  else {
+    if (extraout_RAX != (longlong *)0x0) {
+      LOCK();
+      plVar1 = (longlong *)*extraout_RAX;
+      if (in_RDX + 2 == plVar1) {
+        *extraout_RAX = 3;
+      }
+      UNLOCK();
+      if (in_RDX + 2 == plVar1) {
+        return;
+      }
+      if (in_RDX == (longlong *)0x0) {
+        return;
+      }
+    }
+    LOCK();
+    *in_RDX = *in_RDX + -1;
+    UNLOCK();
+    if (*in_RDX == 0) {
+      alloc::sync::Arc::drop_slow<lang_lib::language_library::LanguageLibrary,alloc::alloc::Global>
+                ();
+    }
+  }
+  return;
+}
+
+

@@ -1,0 +1,110 @@
+{
+  "scope": "startup 工程修复；共享工作区持续变化，保留各次验证范围",
+  "checks": [
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo test -p country-core --lib --offline --locked",
+      "log": "core-tests-final.log",
+      "exit_code": 0,
+      "result": "2121 passed; startup 34; earlier successful snapshot"
+    },
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo check -p tiny-glade --all-targets --offline --locked",
+      "log": "host-check-final.log",
+      "exit_code": 0,
+      "result": "passed; existing warnings retained"
+    },
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo test -p country-core --lib --offline --locked",
+      "log": "core-tests-current.log",
+      "exit_code": 101,
+      "passed": 2142,
+      "failed": 4,
+      "startup_passed": 35,
+      "failures": [
+        "render::nani::buffers::tests::native_nani_startup_publishes_real_lengths_offsets_and_constructor_policies",
+        "render::nani::draw_ext::tests::nani_draw_count_path_packs_max_draw_count_and_count_offset",
+        "render::nani::draw_ext::tests::nani_draw_raw_path_uses_draw_count_stride_and_rg_handle",
+        "systems::render_loop::draw_passes::transparency_pass::surface_tests::ice_compute_passes_names_uris_dispatches_and_resources"
+      ]
+    },
+    {
+      "command": "rustfmt --check --edition 2024 crates/country-core/src/startup/*.rs",
+      "log": "format-current.log",
+      "exit_code": 0
+    },
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo clippy -p country-core --lib --offline --locked",
+      "log": "clippy.log",
+      "exit_code": 101,
+      "result": "concurrent save change referenced missing stairs flag; flag subsequently added outside this task"
+    },
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo clippy -p country-core --lib --offline --locked",
+      "log": "clippy-current.log",
+      "exit_code": 143,
+      "result": "not completed; stayed queued on shared Cargo build lock; cancelled only this task retry"
+    }
+  ],
+  "source_changed_during_latest_validation": [
+    "crates/country-core/src/startup/run_game.rs",
+    "crates/tiny-glade/Cargo.toml",
+    "crates/country-core/src/resources/stairs/stairs_state.rs"
+  ],
+  "latest_observed_source_sha256": {
+    "crates/country-core/src/startup/init_color_library.rs": "8f479f84a3f16bd3e8ac790af830b419808e6915baf3c8fc1de71dbd680afeea",
+    "crates/country-core/src/startup/load_glade_audio.rs": "65317a7fbec863878d30d4c6e4d5b50d2a2e7846ad072890f0130bc9c9b8ec0f",
+    "crates/country-core/src/startup/load_textures.rs": "a76cdba2423ff65cedd36b1d76b879f498314e54dd15563a7935c997f7ba44d6",
+    "crates/country-core/src/startup/load_prefabs.rs": "b800a7c1025c60f50036a90d53665a7d2493ccd43093df7d0b2be0fb05657062",
+    "crates/country-core/src/startup/startup_garden_brush.rs": "06980220fc598eaff4aa3fe60234c99b10f3687b9ed387109b300f118e47e85e",
+    "crates/country-core/src/startup/init_photomode_state.rs": "9ce58aa0560a4810ffc81f8a7437c4f1972f8bef05271b957fe9bf25272195e0",
+    "crates/country-core/src/startup/startup_ivy.rs": "50547d4ac945293cf93f848b45d2d3393a43b8ea2624d78bf0651755a7b17dda",
+    "crates/country-core/src/startup/startup_blit.rs": "f33f775052744dbfd1e4a2af1d556616e57bb6c30e577de1003592fe2212b8f4",
+    "crates/country-core/src/startup/mod.rs": "6163c4e8fd08b4bd2607dd03ebf4b04efa3a8ab7dc19b8316c003b7db6cf032c",
+    "crates/country-core/src/startup/tests.rs": "2bf5d8a1d91f3a76bea38df5576b0af92c76df9249baf37043e537e553df427a",
+    "crates/country-core/src/startup/startup_terrain.rs": "a68c13e626afdf6cf883ace411350492c6df57b43ab9802b4ef57eb4c3fff45c",
+    "crates/country-core/src/startup/run_game.rs": "48e60c9ae2587a6ef6bd62d769843513d0b3064ea9422fe10c3803909ee81044",
+    "crates/country-core/src/startup/startup_session.rs": "494a4e12c85634e329403b0c038e53936a2a5ef4587912e32212a7311e4a3aa9",
+    "crates/country-core/src/startup/load_shaders.rs": "6fa6b8668eca154ddb493a4bdfb6e9045d65d3e92082fe133e4381f3c679f992",
+    "crates/country-core/src/startup/load_glade_tod_and_weather.rs": "6d458366c2ae7d5fa2ff65a751163ea9bb34315a598456199f0f18923c48d9af",
+    "crates/country-core/src/meta_commander.rs": "5ecda2e1925dd8b634c57e91856141b6da7bb19307ec429692b475f10c8889af",
+    "crates/country-core/src/resources/session.rs": "b2bcef4b26957ffec0224e2ec9b01a4f22e9f484d5555174135f40400384c5ea",
+    "crates/country-core/src/systems/save/load_game.rs": "f417b5ca85a384d00342dd0164a750c499155260fce7d2484990a40a3b3ffbdf",
+    "crates/country-core/src/systems/audio/music/load_glade_audio.rs": "0b2ec7416749b4e7d6ddca209f4df3e980d8809a6256e88caa372d6ef48267f3",
+    "crates/country-core/src/systems/audio/music/music_player.rs": "091bc36005e3792405274ebe2ee6444e64dc7f92899d200b17a89e76a32934a1",
+    "crates/country-core/src/systems/audio/music/glade_audio.rs": "68141ffa879833f847ab78e6c53b5c388e062146768e0d228d642a51bc3abf05",
+    "crates/country-core/src/systems/prefab.rs": "b79f363125cbff65ffe2c2a31f6de9ae0d24b57110ffdb6e3167cdf497101abc",
+    "crates/country-core/src/systems/render_loop/draw_passes/deferred_raster.rs": "82978d842cf67bcecc82213f1a501c2eb73ca11d6b7443a1ecec27c3b8b20042",
+    "crates/country-core/src/systems/render_loop/draw_passes/draw_shaders/test_support.rs": "50363763d18ca70e5f734589f04f7c4fa1a8826a8456af8e6a70710dc2469fc0",
+    "Cargo.toml": "cd1a2ee278e61607731f9318e587b59e303e2debed2e233388e8fc4c118a5de9",
+    "Cargo.lock": "c10fecee704ddf9bec867506933a3ed5f6adececc11bfada7d58f3c32b3e40e5",
+    "crates/country-core/Cargo.toml": "aaaf7131989ebbc8a682bc3b5f769535d3f3fb59413836b882339954e2f3ce0d",
+    "crates/tiny-glade/Cargo.toml": "07d28f4a5081c58be9aafd7d6f18856239941a8885a5233595556d2278d6df5e",
+    "crates/country-core/src/resources/stairs/stairs_state.rs": "cdabc2dd52068e7b8c125a35444025b4d29b27b88e8f94c8b676922953d8b3a2"
+  },
+  "artifacts_sha256": {
+    "host-check-retry.log": "fcde110e148120803a44a0acb1ed7e33fdee6578e88ded62299006771fb371e4",
+    "before-sha256.json": "b3dbb67fea3b9fd0ad6e98bf20670057bad2e6f7d50d1df5a2a5cc52dca7a85f",
+    "clippy-queue-cancelled.json": "ee9f14f8c87bee8b907cd27ee0ca65489e774b83d27b15be55a92d1e2ed417d1",
+    "cache-cleanup.json": "9cc3bbbe57567585af53ab1de2b484ad7160cbfc8da6e42f6a792b5df2fe9c6e",
+    "core-tests-current.log": "97e1eee837597736d917a92f162f4083ef61260d9d3f9f647424d96b79a381f6",
+    "format-check.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "host-check-final.log": "923f8177728c5d5b88b390a2491f0c6981da468a572f1095f98c8e9ff9b94cd8",
+    "current-validation-source-sha256.json": "6e35f9306ac2ead8d7aff2e032c57e85487c0b1215d6e02b70384a81ce2ad693",
+    "clippy.log": "fa9dc31f3051f36606cb12847831839b967a228ce37c39750595937839f3faba",
+    "startup-tests.log": "d7a3dc1777bf4c5abfda3e5f511233f2d1eb8097b5519845ee0cbe1bd5bb64c3",
+    "format-current.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "old-core-artifacts-cleanup.json": "04d5ba5bc82fa756288cb3ed5d0ca960a83de55917da04c674580fe14ea41223",
+    "core-tests-retry.log": "576beb12ec2a7f3cea627eca4cac235907ef06da3a19516f1683172234da9d40",
+    "baseline.log": "2c0990d2c9b691ee8356d281779bbb208ba2c989d0b781404c4e04a08890c9ff",
+    "validation-source-sha256.json": "d952e1eac59b0fe6999d234928139bb924e99400e65ac188ec0e5e2250974245",
+    "isolated-target.json": "eb38f341e3ab3a58aa22049e9b13115c516d1e811cb4b852caa2117709544ac4",
+    "core-tests-final.log": "10f625ae8d21c661de7e832fa6a338a1d203aae69caab42bc992b3fe7a445fc5",
+    "clippy-current.log": "256920d31a6e3c8c7b7c6e25b6976dd361363b398cfdd33869c4affe88178eb2",
+    "host-check.log": "a13a5a110307296308bbfa8fff57a194e5a3ae27615387bcf4fd60e601cfc305",
+    "toolchain.json": "1dd726b55c88bc6fcab81c8cc1386d83a216c940eb53b0866d649f259dcfbb65",
+    "core-tests.log": "a46db9bd10343172642efc1481a650c15d54e3f3ed9dcc5ee3191f70444746ea"
+  },
+  "native_equivalence_verified": false,
+  "gpu_or_fmod_runtime_verified": false,
+  "temporary_cache_preparation": "cancelled; unique task temporary directory cleaned; all reported Cargo checks used original target"
+}

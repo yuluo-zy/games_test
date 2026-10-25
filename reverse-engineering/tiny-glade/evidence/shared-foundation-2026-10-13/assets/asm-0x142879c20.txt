@@ -1,0 +1,117 @@
+
+D:\game\ljxsj_92385\Tiny Glade\tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+142879c20:     	pushq	%r15
+142879c22:     	pushq	%r14
+142879c24:     	pushq	%rsi
+142879c25:     	pushq	%rdi
+142879c26:     	pushq	%rbx
+142879c27:     	subq	$0x50, %rsp
+142879c2b:     	xorl	%eax, %eax
+142879c2d:     	cmpq	(%rcx), %rax
+142879c30:     	movabsq	$-0x7fffffffffffffff, %rdi # imm = 0x8000000000000001
+142879c3a:     	jno	0x142879c7d <.text+0x2878c7d>
+142879c3c:     	movabsq	$-0x8000000000000000, %rax # imm = 0x8000000000000000
+142879c46:     	movq	(%rdx), %r9
+142879c49:     	xorq	%rax, %r9
+142879c4c:     	cmpq	$0x2, %r9
+142879c50:     	movl	$0x2, %r8d
+142879c56:     	cmovbq	%r9, %r8
+142879c5a:     	testq	%r8, %r8
+142879c5d:     	je	0x142879c73 <.text+0x2878c73>
+142879c5f:     	cmpq	$0x1, %r8
+142879c63:     	jne	0x142879d02 <.text+0x2878d02>
+142879c69:     	movabsq	$-0x7fffffffffffffff, %rax # imm = 0x8000000000000001
+142879c73:     	movq	%rax, 0x28(%rsp)
+142879c78:     	jmp	0x142879d1b <.text+0x2878d1b>
+142879c7d:     	leaq	0x18(%rcx), %rsi
+142879c81:     	movabsq	$-0x8000000000000000, %rbx # imm = 0x8000000000000000
+142879c8b:     	cmpq	%rdi, 0x30(%rcx)
+142879c8f:     	jne	0x142879d4d <.text+0x2878d4d>
+142879c95:     	leaq	0x30(%rdx), %rax
+142879c99:     	movq	(%rax), %r8
+142879c9c:     	movabsq	$0x7fffffffffffffff, %r9 # imm = 0x7FFFFFFFFFFFFFFF
+142879ca6:     	addq	%r8, %r9
+142879ca9:     	cmpq	$0x2, %r9
+142879cad:     	movl	$0x2, %r10d
+142879cb3:     	cmovbq	%r9, %r10
+142879cb7:     	movq	%rdi, %r9
+142879cba:     	testq	%r10, %r10
+142879cbd:     	je	0x142879d60 <.text+0x2878d60>
+142879cc3:     	cmpq	$0x2, %r10
+142879cc7:     	jne	0x142879d56 <.text+0x2878d56>
+142879ccd:     	negq	%r8
+142879cd0:     	movq	%rbx, %r9
+142879cd3:     	jo	0x142879cf6 <.text+0x2878cf6>
+142879cd5:     	leaq	0x28(%rsp), %r8
+142879cda:     	movq	%rcx, %r14
+142879cdd:     	movq	%r8, %rcx
+142879ce0:     	movq	%rdx, %r15
+142879ce3:     	movq	%rax, %rdx
+142879ce6:     	callq	0x140d7bd90 <.text+0xd7ad90>
+142879ceb:     	movq	%r14, %rcx
+142879cee:     	movq	%r15, %rdx
+142879cf1:     	movq	0x28(%rsp), %r9
+142879cf6:     	movups	0x30(%rsp), %xmm0
+142879cfb:     	movaps	%xmm0, 0x40(%rsp)
+142879d00:     	jmp	0x142879d60 <.text+0x2878d60>
+142879d02:     	leaq	0x28(%rsp), %rax
+142879d07:     	movq	%rcx, %rbx
+142879d0a:     	movq	%rax, %rcx
+142879d0d:     	movq	%rdx, %rsi
+142879d10:     	callq	0x140d7bd90 <.text+0xd7ad90>
+142879d15:     	movq	%rbx, %rcx
+142879d18:     	movq	%rsi, %rdx
+142879d1b:     	movq	0x38(%rsp), %rax
+142879d20:     	movq	%rax, 0x10(%rcx)
+142879d24:     	movq	0x28(%rsp), %rax
+142879d29:     	movq	%rax, (%rcx)
+142879d2c:     	movq	0x30(%rsp), %rax
+142879d31:     	movq	%rax, 0x8(%rcx)
+142879d35:     	leaq	0x18(%rcx), %rsi
+142879d39:     	movabsq	$-0x8000000000000000, %rbx # imm = 0x8000000000000000
+142879d43:     	cmpq	%rdi, 0x30(%rcx)
+142879d47:     	je	0x142879c95 <.text+0x2878c95>
+142879d4d:     	xorl	%eax, %eax
+142879d4f:     	cmpq	(%rsi), %rax
+142879d52:     	jo	0x142879d74 <.text+0x2878d74>
+142879d54:     	jmp	0x142879dc9 <.text+0x2878dc9>
+142879d56:     	movabsq	$-0x7ffffffffffffffe, %r9 # imm = 0x8000000000000002
+142879d60:     	movq	%r9, 0x30(%rcx)
+142879d64:     	movaps	0x40(%rsp), %xmm0
+142879d69:     	movups	%xmm0, 0x38(%rcx)
+142879d6d:     	xorl	%eax, %eax
+142879d6f:     	cmpq	(%rsi), %rax
+142879d72:     	jno	0x142879dc9 <.text+0x2878dc9>
+142879d74:     	addq	$0x18, %rdx
+142879d78:     	movq	(%rdx), %rcx
+142879d7b:     	xorq	%rbx, %rcx
+142879d7e:     	cmpq	$0x2, %rcx
+142879d82:     	movl	$0x2, %eax
+142879d87:     	cmovbq	%rcx, %rax
+142879d8b:     	cmpq	$0x2, %rax
+142879d8f:     	je	0x142879d9e <.text+0x2878d9e>
+142879d91:     	cmpq	$0x1, %rax
+142879d95:     	jne	0x142879daa <.text+0x2878daa>
+142879d97:     	movq	%rdi, 0x28(%rsp)
+142879d9c:     	jmp	0x142879daf <.text+0x2878daf>
+142879d9e:     	leaq	0x28(%rsp), %rcx
+142879da3:     	callq	0x140d7bd90 <.text+0xd7ad90>
+142879da8:     	jmp	0x142879daf <.text+0x2878daf>
+142879daa:     	movq	%rbx, 0x28(%rsp)
+142879daf:     	movq	0x38(%rsp), %rax
+142879db4:     	movq	%rax, 0x10(%rsi)
+142879db8:     	movq	0x28(%rsp), %rax
+142879dbd:     	movq	%rax, (%rsi)
+142879dc0:     	movq	0x30(%rsp), %rax
+142879dc5:     	movq	%rax, 0x8(%rsi)
+142879dc9:     	addq	$0x50, %rsp
+142879dcd:     	popq	%rbx
+142879dce:     	popq	%rdi
+142879dcf:     	popq	%rsi
+142879dd0:     	popq	%r14
+142879dd2:     	popq	%r15
+142879dd4:     	retq

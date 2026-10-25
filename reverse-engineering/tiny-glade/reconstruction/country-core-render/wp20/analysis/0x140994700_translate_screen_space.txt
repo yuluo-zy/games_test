@@ -1,0 +1,303 @@
+ADDR: 0x140994700
+SIG: void __cdecl translate_screen_space(void)
+
+
+// WARNING: Globals starting with '_' overlap smaller symbols at the same address
+
+void __cdecl country_core::systems::camera_rig::walk::impl$2::translate_screen_space(void)
+
+{
+  undefined8 *puVar1;
+  undefined8 uVar2;
+  undefined1 auVar3 [16];
+  uint uVar4;
+  float *pfVar5;
+  longlong lVar6;
+  undefined8 *puVar7;
+  longlong lVar8;
+  longlong in_RCX;
+  bool bVar9;
+  float *in_RDX;
+  undefined **ppuVar11;
+  undefined8 *puVar12;
+  int iVar13;
+  longlong lVar14;
+  float fVar15;
+  float fVar16;
+  undefined1 auVar17 [16];
+  undefined1 auVar18 [16];
+  float fVar21;
+  float fVar22;
+  undefined1 auVar19 [16];
+  undefined1 auVar20 [16];
+  float in_XMM2_Da;
+  float fVar23;
+  float fVar24;
+  float fVar25;
+  undefined1 auVar26 [12];
+  float fVar27;
+  float fVar28;
+  float unaff_XMM9_Dc;
+  undefined1 auVar29 [16];
+  undefined1 auVar30 [16];
+  float fVar31;
+  float fVar32;
+  float fVar33;
+  float fVar34;
+  float fVar35;
+  float fVar36;
+  float fVar37;
+  float fVar38;
+  float fVar39;
+  float fVar40;
+  char **local_168;
+  code *local_160;
+  char *local_158;
+  float local_150;
+  float fStack_14c;
+  float fStack_148;
+  float local_144;
+  float local_13c;
+  undefined *local_138;
+  undefined8 local_130;
+  char ***local_128;
+  undefined8 local_120;
+  undefined8 local_118;
+  undefined8 local_110;
+  float local_108;
+  int local_104;
+  undefined8 local_f8;
+  float local_f0;
+  ulonglong uVar10;
+  
+  *(float *)(in_RCX + 0x50) = in_XMM2_Da;
+  fVar37 = *in_RDX;
+  fVar33 = (float)*(undefined8 *)(in_RDX + 1);
+  fVar24 = (float)((ulonglong)*(undefined8 *)(in_RDX + 1) >> 0x20);
+  fVar15 = fVar24 * fVar24 + fVar37 * fVar37 + fVar33 * fVar33;
+  if (1e-10 <= fVar15) {
+    fVar36 = *(float *)(in_RCX + 0x18);
+    fVar35 = *(float *)(in_RCX + 0x1c);
+    fVar16 = *(float *)(in_RCX + 0x20);
+    fVar34 = *(float *)(in_RCX + 0x24);
+    fVar22 = fVar34 * fVar34;
+    fVar28 = fVar16 * fVar16 + fVar35 * fVar35 + fVar36 * fVar36;
+    fVar23 = fVar24 * fVar16 + fVar33 * fVar35 + fVar37 * fVar36;
+    fVar23 = fVar23 + fVar23;
+    fVar34 = fVar34 + fVar34;
+    fVar31 = fVar34 * (fVar35 * fVar24 - fVar33 * fVar16) +
+             fVar23 * fVar36 + (fVar22 - fVar28) * fVar37;
+    fVar32 = fVar34 * (fVar16 * fVar37 - fVar24 * fVar36) +
+             fVar23 * fVar35 + (fVar22 - fVar28) * fVar33;
+    fVar33 = fVar34 * (fVar36 * fVar33 - fVar37 * fVar35) +
+             fVar23 * fVar16 + (fVar22 - fVar28) * fVar24;
+    fVar37 = fVar32;
+    if (*(char *)(in_RCX + 0x54) == '\0') {
+      fVar37 = 0.0;
+    }
+    fVar24 = 1.0 / SQRT(fVar33 * fVar33 + fVar37 * fVar37 + fVar31 * fVar31);
+    bVar9 = (int)ABS(fVar24) - 0x800000U < 0x7f000000 && -1 < (int)fVar24;
+    uVar10 = (ulonglong)CONCAT31((int3)((int)ABS(fVar24) - 0x800000U >> 8),bVar9);
+    bVar9 = (int)fVar24 - 1U < 0x7fffff || bVar9;
+    if (bVar9) {
+      fVar36 = fVar31 * fVar24;
+    }
+    else {
+      fVar36 = 0.0;
+    }
+    fVar15 = SQRT(fVar15);
+    uVar4 = (uint)bVar9;
+    fVar37 = (float)((int)(uVar4 << 0x1f) >> 0x1f & (uint)(fVar37 * fVar24));
+    auVar29._0_4_ = fVar15 * fVar37 * 8.0;
+    auVar29._4_4_ = fVar15 * fVar37 * 8.0;
+    auVar29._8_4_ = fVar15 * (float)((int)(uVar4 << 0x1f) >> 0x1f & (uint)(fVar33 * fVar24)) * 8.0;
+    auVar29._12_4_ = unaff_XMM9_Dc * 0.0 * 0.0;
+    auVar29 = divps(auVar29,___xmm_00000000427000004270000042700000);
+    auVar30._4_12_ = auVar29._4_12_;
+    auVar30._0_4_ = (fVar36 * fVar15 * 8.0) / 60.0;
+    lVar14 = *(longlong *)(in_RCX + 0x10) << 4;
+    puVar12 = *(undefined8 **)(in_RCX + 8);
+    do {
+      if (lVar14 == 0) goto LAB_140994e67;
+      puVar1 = puVar12 + 2;
+      pfVar5 = (float *)(**(code **)(puVar12[1] + 0x38))(*puVar12);
+      lVar6 = (**(code **)(uVar10 + 0x18))(pfVar5);
+      lVar14 = lVar14 + -0x10;
+      puVar12 = puVar1;
+    } while (((pfVar5 == (float *)0x0) || (lVar6 != 0x6b8463577afc1a66)) ||
+            (uVar10 != 0xe4b9f294168d7e3));
+    fVar24 = pfVar5[1] + -0.5;
+    fVar37 = pfVar5[2];
+    fVar15 = *pfVar5;
+    fVar35 = 0.0;
+    fVar36 = 0.0;
+    iVar13 = 8;
+    local_13c = in_XMM2_Da;
+    while( true ) {
+      local_158 = (char *)CONCAT44(fVar24,fVar15);
+      fStack_14c = auVar30._0_4_;
+      fVar16 = fStack_14c;
+      fStack_148 = auVar30._4_4_;
+      fVar34 = fStack_148;
+      fVar22 = auVar30._8_4_;
+      local_168 = (char **)0x3f800000;
+      local_160 = (code *)((ulonglong)local_160 & 0xffffffffffff0000);
+      local_150 = fVar37;
+      local_144 = fVar22;
+      collision::world::Raycasting::spherecast();
+      fVar23 = auVar30._12_4_;
+      if (local_104 == 2) break;
+      fVar28 = 0.0;
+      if (0.0 <= local_108) {
+        fVar28 = local_108;
+      }
+      auVar26 = ZEXT812(0x3f800000);
+      if (fVar28 <= 1.0) {
+        auVar26._4_8_ = 0;
+        auVar26._0_4_ = fVar28;
+      }
+      fVar25 = auVar26._0_4_;
+      fVar21 = auVar26._8_4_ * fVar22;
+      fVar15 = fVar15 + fVar25 * fVar16 * (float)0x3f666666;
+      fVar24 = fVar24 + fVar25 * fVar34 * (float)0x3f666666;
+      fVar35 = fVar35 + fVar21 * 0.0;
+      fVar36 = fVar36 + auVar26._8_4_ * fVar23 * 0.0;
+      fVar37 = fVar37 + fVar22 * fVar25 * 0.9;
+      fVar27 = 1.0 - fVar25;
+      fVar38 = (float)local_110;
+      fVar28 = (float)((ulonglong)local_110 >> 0x20);
+      fVar39 = 1.0 / SQRT(fVar28 * fVar28 + local_118._4_4_ * local_118._4_4_ + fVar38 * fVar38);
+      fVar40 = fVar39 * local_118._4_4_ * fVar27 * fVar16 + fVar38 * fVar39 * fVar34 * fVar27 +
+               fVar39 * fVar28 * fVar27 * fVar22;
+      fVar22 = fVar22 * fVar25 * 0.100000024 + (fVar27 * fVar22 - fVar40 * fVar39 * fVar28);
+      fVar28 = fVar25 * fVar16 * 0.100000024 + (fVar27 * fVar16 - fVar40 * fVar39 * local_118._4_4_)
+      ;
+      fVar16 = (fVar34 * fVar27 - fVar38 * fVar39 * fVar40) + fVar25 * fVar34 * 0.100000024;
+      if ((fVar31 * fVar28 + fVar32 * fVar16 + fVar33 * fVar22 <= 0.0) ||
+         (fVar28 * fVar28 + fVar16 * fVar16 + fVar22 * fVar22 < 1e-10)) goto LAB_140994bb6;
+      auVar30._4_4_ = fVar16;
+      auVar30._0_4_ = fVar28;
+      auVar30._8_4_ = fVar22;
+      auVar30._12_4_ = fVar21 * 0.0 + (fVar23 * 0.0 - fVar23 * 0.0 * 0.0 * 0.0);
+      iVar13 = iVar13 + -1;
+      if (iVar13 == 0) goto LAB_140994bb6;
+    }
+    fVar15 = fVar15 + fVar16;
+    fVar24 = fVar24 + fVar34;
+    fVar35 = fVar35 + fVar22;
+    fVar36 = fVar36 + fVar23;
+    fVar37 = fVar37 + fVar22;
+LAB_140994bb6:
+    fVar15 = fVar15 + 0.0;
+    fVar35 = fVar35 + 0.0;
+    fVar36 = fVar36 + 0.0;
+    fVar37 = fVar37 + 0.0;
+    fVar33 = expf(local_13c * -8.0);
+    fVar33 = 1.0 - fVar33;
+    if (_DEV_OVERRIDE_IS_DEMO_MODE == '\0') {
+      auVar18._0_8_ = (undefined *)CONCAT44(fVar37,fVar15);
+      auVar18._8_4_ = fVar35;
+      auVar18._12_4_ = fVar36;
+      auVar29 = maxps(___xmm_0000000000000000c2080000c2080000,auVar18);
+      auVar20._0_4_ = ~-(uint)NAN(fVar15) & auVar29._0_4_;
+      auVar20._4_4_ = ~-(uint)NAN(fVar37) & auVar29._4_4_;
+      auVar20._8_4_ = ~-(uint)NAN(fVar35) & auVar29._8_4_;
+      auVar20._12_4_ = ~-(uint)NAN(fVar36) & auVar29._12_4_;
+      auVar3._4_4_ = __xmm_0000000000000000c2080000c2080000._4_4_ & -(uint)NAN(fVar37);
+      auVar3._0_4_ = (uint)__xmm_0000000000000000c2080000c2080000 & -(uint)NAN(fVar15);
+      auVar3._8_4_ = __xmm_0000000000000000c2080000c2080000._8_4_ & -(uint)NAN(fVar35);
+      auVar3._12_4_ = __xmm_0000000000000000c2080000c2080000._12_4_ & -(uint)NAN(fVar36);
+      auVar20 = auVar20 | auVar3;
+      auVar29 = minps(___xmm_00000000000000004208000042080000,auVar20);
+      fVar36 = (float)(~-(uint)NAN(auVar20._0_4_) & auVar29._0_4_ |
+                      (uint)__xmm_00000000000000004208000042080000 & -(uint)NAN(auVar20._0_4_));
+      fVar35 = (float)(~-(uint)NAN(auVar20._4_4_) & auVar29._4_4_ |
+                      __xmm_00000000000000004208000042080000._4_4_ & -(uint)NAN(auVar20._4_4_));
+      fVar16 = fVar15 - fVar36;
+      fVar34 = fVar37 - fVar35;
+      fVar22 = fVar34 * fVar34 + fVar16 * fVar16;
+      auVar17._0_8_ = auVar18._0_8_;
+      if (1156.0 < fVar22) {
+        fVar22 = 34.0 / SQRT(fVar22);
+        auVar17._0_8_ = (undefined *)CONCAT44(fVar35 + fVar34 * fVar22,fVar36 + fVar16 * fVar22);
+      }
+    }
+    else {
+      fVar16 = fVar37 * fVar37 + fVar15 * fVar15;
+      auVar17._0_8_ = (undefined *)CONCAT44(fVar37,fVar15);
+      auVar17._8_4_ = fVar35;
+      auVar17._12_4_ = fVar36;
+      if (4624.0 < fVar16) {
+        auVar19._0_4_ = SQRT(fVar16);
+        auVar19._4_4_ = auVar19._0_4_;
+        auVar19._8_8_ = 0;
+        auVar29 = divps(auVar17,auVar19);
+        auVar17._0_8_ = (undefined *)CONCAT44(auVar29._4_4_ * 68.0,auVar29._0_4_ * 68.0);
+      }
+    }
+    ppuVar11 = &local_138;
+    local_138 = auVar17._0_8_;
+    ::utils::swizzlers::impl$1::xvy();
+    lVar14 = *(longlong *)(in_RCX + 0x10) << 4;
+    puVar12 = *(undefined8 **)(in_RCX + 8);
+    do {
+      if (lVar14 == 0) {
+LAB_140994e67:
+        local_168 = &local_158;
+        fStack_14c = 0.0;
+        local_150 = 4.76441e-44;
+        local_158 = "dolly::drivers::position::PositionNo  driver found in the CameraRig";
+        local_160 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;
+        local_138 = &anon_f854cc98b5e1efe54f6ab98d53b9f85b_10_llvm_5637972437638668905;
+        local_130 = 2;
+        local_118 = 0;
+        local_128 = &local_168;
+        local_120 = 1;
+                    // WARNING: Subroutine does not return
+        core::panicking::panic_fmt();
+      }
+      puVar1 = puVar12 + 2;
+      puVar7 = (undefined8 *)(**(code **)(puVar12[1] + 0x38))(*puVar12);
+      lVar6 = (*(code *)ppuVar11[3])(puVar7);
+      lVar14 = lVar14 + -0x10;
+      puVar12 = puVar1;
+    } while (((puVar7 == (undefined8 *)0x0) || (lVar6 != 0x6b8463577afc1a66)) ||
+            (ppuVar11 != (undefined **)0xe4b9f294168d7e3));
+    uVar2 = *puVar7;
+    fVar36 = *(float *)(puVar7 + 1);
+    lVar6 = *(longlong *)(in_RCX + 0x10) << 4;
+    lVar14 = 0xe4b9f294168d7e3;
+    puVar12 = *(undefined8 **)(in_RCX + 8);
+    do {
+      if (lVar6 == 0) {
+        local_158 = "dolly::drivers::position::PositionNo  driver found in the CameraRig";
+        local_150 = 4.76441e-44;
+        fStack_14c = 0.0;
+        local_160 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;
+        local_138 = &anon_f854cc98b5e1efe54f6ab98d53b9f85b_10_llvm_5637972437638668905;
+        local_130 = 2;
+        local_118 = 0;
+        local_128 = &local_168;
+        local_120 = 1;
+        local_168 = &local_158;
+                    // WARNING: Subroutine does not return
+        core::panicking::panic_fmt();
+      }
+      puVar1 = puVar12 + 2;
+      puVar7 = (undefined8 *)(**(code **)(puVar12[1] + 0x40))(*puVar12);
+      lVar8 = (**(code **)(lVar14 + 0x18))(puVar7);
+      lVar6 = lVar6 + -0x10;
+      puVar12 = puVar1;
+    } while (((puVar7 == (undefined8 *)0x0) || (lVar8 != 0x6b8463577afc1a66)) ||
+            (lVar14 != 0xe4b9f294168d7e3));
+    *puVar7 = CONCAT44(((fVar33 * ((float)((ulonglong)local_f8 >> 0x20) - (fVar24 + 0.5)) +
+                        fVar24 + 0.5) - (float)((ulonglong)uVar2 >> 0x20)) +
+                       (float)((ulonglong)*puVar7 >> 0x20),
+                       ((fVar33 * ((float)local_f8 - fVar15) + fVar15) - (float)uVar2) +
+                       (float)*puVar7);
+    *(float *)(puVar7 + 1) =
+         (((local_f0 - fVar37) * fVar33 + fVar37) - fVar36) + *(float *)(puVar7 + 1);
+  }
+  return;
+}
+

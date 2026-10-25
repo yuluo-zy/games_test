@@ -1,0 +1,154 @@
+{
+  "path": "D:/game/tools/shader-build-publish-20261013/reverse-engineering/tiny-glade/tools/render-passes/batch_lift.py",
+  "sha256": "49dcff4d13b3d236cb022e4f109e0e47fa494040742da9df7e19429e49c4dc92",
+  "lines": [
+    {
+      "line": 181,
+      "text": ""
+    },
+    {
+      "line": 182,
+      "text": "def _logical(payload):"
+    },
+    {
+      "line": 183,
+      "text": "    \"\"\"PhysicalStorageBuffer64 -> Logical so spirv-cross' HLSL backend accepts the module.\"\"\""
+    },
+    {
+      "line": 184,
+      "text": "    import struct"
+    },
+    {
+      "line": 185,
+      "text": "    w = list(struct.unpack('<%dI' % (len(payload) // 4), payload))"
+    },
+    {
+      "line": 186,
+      "text": "    i, phys = 5, False"
+    },
+    {
+      "line": 187,
+      "text": "    while i < len(w):"
+    },
+    {
+      "line": 188,
+      "text": "        wc, op = w[i] >> 16, w[i] & 0xffff"
+    },
+    {
+      "line": 189,
+      "text": "        if op == 14 and w[i + 1] == 5348:"
+    },
+    {
+      "line": 190,
+      "text": "            w[i + 1], phys = 0, True"
+    },
+    {
+      "line": 191,
+      "text": "        i += wc"
+    },
+    {
+      "line": 192,
+      "text": "    return struct.pack('<%dI' % len(w), *w), phys"
+    },
+    {
+      "line": 193,
+      "text": ""
+    },
+    {
+      "line": 194,
+      "text": ""
+    },
+    {
+      "line": 195,
+      "text": "def fix_physical_loads(text):"
+    },
+    {
+      "line": 196,
+      "text": "    \"\"\"spirv-cross prints a PhysicalStorageBuffer deref as `(ptr).value` / `asfloat(ptr).value`, where"
+    },
+    {
+      "line": 197,
+      "text": "    ptr is a uint2 address. Rewrite to vk::RawBufferLoad<T>; T comes from the declaration of the target.\"\"\""
+    },
+    {
+      "line": 198,
+      "text": "    def load(t, ptr):"
+    },
+    {
+      "line": 199,
+      "text": "        n = 1 if t in ('uint', 'int', 'float') else int(t[-1])"
+    },
+    {
+      "line": 200,
+      "text": "        return 'vk::RawBufferLoad<%s>(((uint64_t)%s.y << 32) | %s.x, %d)' % (t, ptr, ptr, 4 if n == 3 else 4 * min(n, 4))"
+    },
+    {
+      "line": 201,
+      "text": ""
+    },
+    {
+      "line": 202,
+      "text": "    deref = r'(?:asfloat\\((\\w+)\\)|\\((\\w+)\\))\\.value'"
+    },
+    {
+      "line": 203,
+      "text": "    # declaration: `T v = (ptr).value;`"
+    },
+    {
+      "line": 204,
+      "text": "    text = re.sub(r'(\\w+) (\\w+) = %s;' % deref,"
+    },
+    {
+      "line": 205,
+      "text": "                  lambda m: '%s %s = %s;' % (m.group(1), m.group(2), load(m.group(1), m.group(3) or m.group(4))), text)"
+    },
+    {
+      "line": 206,
+      "text": ""
+    },
+    {
+      "line": 207,
+      "text": "    # assignment to a variable declared earlier: look the type up"
+    },
+    {
+      "line": 208,
+      "text": "    def assign(m):"
+    },
+    {
+      "line": 209,
+      "text": "        d = re.search(r'\\b(u?int[234]?|float[234]?) %s\\b' % re.escape(m.group(1)), text[:m.start()])"
+    },
+    {
+      "line": 210,
+      "text": "        return m.group(0) if not d else '%s = %s;' % (m.group(1), load(d.group(1), m.group(2) or m.group(3)))"
+    },
+    {
+      "line": 211,
+      "text": "    return re.sub(r'(\\w+) = %s;' % deref, assign, text)"
+    },
+    {
+      "line": 212,
+      "text": ""
+    },
+    {
+      "line": 213,
+      "text": ""
+    },
+    {
+      "line": 214,
+      "text": "def lift_module(payload):"
+    },
+    {
+      "line": 215,
+      "text": "    payload, phys = _logical(payload)"
+    },
+    {
+      "line": 216,
+      "text": "    with tempfile.NamedTemporaryFile(suffix='.spv') as f:"
+    },
+    {
+      "line": 217,
+      "text": "        f.write(payload); f.flush()"
+    }
+  ]
+}

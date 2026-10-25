@@ -1,0 +1,393 @@
+{
+  "tool": "recompile_check.py",
+  "hlsl": "reconstruction/shader-source/shaders/gi/eval_screen_radiance.cs.hlsl",
+  "bin": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/compiled-shaders/_gi_eval_screen_radiance.cs.hlsl_cs_main_0.bin",
+  "include_root": "reconstruction/shader-source/shaders",
+  "dxc": "/opt/homebrew/bin/dxc",
+  "modules": [
+    {
+      "module_index": 23,
+      "entry": "cs_main",
+      "profile": "cs_6_4",
+      "command": "dxc-cl-option: /tmp/.tmpOfnlSf -E cs_main -T cs_6_4 -spirv -WX -Ges -fspv-target-env=vulkan1.1 -HV 2021 -Zi -Fo /tmp/.tmpNwDpbh -Qembed_debug",
+      "replay_command": "dxc -E cs_main -T cs_6_4 -spirv -WX -Ges -fspv-target-env=vulkan1.1 -HV 2021 -Zi -Qembed_debug -Fo <out> -I reconstruction/shader-source/shaders <source>",
+      "target": {
+        "raw_sha256": "6d86a9b21a84c19b5737a058b46334692f74f5e681050d851eed167271007626",
+        "normalized_sha256": "bb9b5ed6f7ee699dd320722cff111e4e46a2eed313c02f10310deb5eb77e7fb3",
+        "fingerprint": {
+          "entries": [
+            [
+              "GLCompute",
+              "cs_main"
+            ]
+          ],
+          "local_size": [
+            8,
+            8,
+            1
+          ],
+          "capabilities": [
+            "RuntimeDescriptorArray",
+            "Shader"
+          ],
+          "bindings": [
+            [
+              0,
+              13,
+              "Uniform",
+              "$Globals",
+              "UniformBuffer(UBO)"
+            ],
+            [
+              0,
+              14,
+              "UniformConstant",
+              "blue_noise_texture",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              15,
+              "UniformConstant",
+              "half_depth_tex",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              16,
+              "UniformConstant",
+              "half_view_normal_tex",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              17,
+              "UniformConstant",
+              "ssgi_tex",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              18,
+              "UniformConstant",
+              "restir_radiance_tex",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              19,
+              "UniformConstant",
+              "restir_ray_dir_tex",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              20,
+              "UniformConstant",
+              "restir_reservoir_tex",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              21,
+              "UniformConstant",
+              "output_tex",
+              "StorageImage(2D)"
+            ],
+            [
+              1,
+              0,
+              "Uniform",
+              "frame_constants",
+              "UniformBuffer(UBO)"
+            ]
+          ],
+          "opcode_histogram": {
+            "OpAccessChain": 11,
+            "OpBitwiseAnd": 2,
+            "OpBranch": 4,
+            "OpBranchConditional": 2,
+            "OpCapability": 2,
+            "OpCompositeConstruct": 5,
+            "OpCompositeExtract": 19,
+            "OpConstant": 38,
+            "OpConstantComposite": 15,
+            "OpConstantNull": 1,
+            "OpConvertFToU": 2,
+            "OpConvertSToF": 1,
+            "OpConvertUToF": 3,
+            "OpDecorate": 24,
+            "OpDot": 1,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpExtInst": 13,
+            "OpExtInstImport": 1,
+            "OpExtension": 1,
+            "OpFAdd": 10,
+            "OpFDiv": 2,
+            "OpFMul": 9,
+            "OpFNegate": 1,
+            "OpFOrdGreaterThan": 1,
+            "OpFSub": 2,
+            "OpFunction": 1,
+            "OpFunctionEnd": 1,
+            "OpIAdd": 8,
+            "OpIMul": 3,
+            "OpISub": 1,
+            "OpImageFetch": 11,
+            "OpImageWrite": 1,
+            "OpLabel": 7,
+            "OpLine": 135,
+            "OpLoad": 21,
+            "OpLoopMerge": 2,
+            "OpMemberDecorate": 75,
+            "OpMemberName": 51,
+            "OpMemoryModel": 1,
+            "OpModuleProcessed": 2,
+            "OpName": 18,
+            "OpNoLine": 2,
+            "OpPhi": 3,
+            "OpReturn": 1,
+            "OpSelect": 1,
+            "OpShiftRightLogical": 1,
+            "OpSource": 22,
+            "OpSourceContinued": 1,
+            "OpStore": 8,
+            "OpString": 22,
+            "OpTypeArray": 3,
+            "OpTypeBool": 1,
+            "OpTypeFloat": 1,
+            "OpTypeFunction": 1,
+            "OpTypeImage": 3,
+            "OpTypeInt": 2,
+            "OpTypeMatrix": 1,
+            "OpTypePointer": 12,
+            "OpTypeStruct": 3,
+            "OpTypeVector": 6,
+            "OpTypeVoid": 1,
+            "OpULessThan": 2,
+            "OpUMod": 2,
+            "OpUndef": 1,
+            "OpVariable": 13,
+            "OpVectorShuffle": 5,
+            "OpVectorTimesMatrix": 1,
+            "OpVectorTimesScalar": 16
+          }
+        }
+      },
+      "candidate": {
+        "raw_sha256": "79353819d096db5162c424365e6f4836ba129a96574f62da01531d14566aad90",
+        "normalized_sha256": "6d314c2d1831ddd4bf13f2e74989235ff9c83400eb6d6e98d5061318de03e989",
+        "fingerprint": {
+          "entries": [
+            [
+              "GLCompute",
+              "cs_main"
+            ]
+          ],
+          "local_size": [
+            8,
+            8,
+            1
+          ],
+          "capabilities": [
+            "RuntimeDescriptorArray",
+            "Shader"
+          ],
+          "bindings": [
+            [
+              0,
+              13,
+              "Uniform",
+              "$Globals",
+              "UniformBuffer(UBO)"
+            ],
+            [
+              0,
+              14,
+              "UniformConstant",
+              "blue_noise_texture",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              15,
+              "UniformConstant",
+              "half_depth_tex",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              16,
+              "UniformConstant",
+              "half_view_normal_tex",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              17,
+              "UniformConstant",
+              "ssgi_tex",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              18,
+              "UniformConstant",
+              "restir_radiance_tex",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              19,
+              "UniformConstant",
+              "restir_ray_dir_tex",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              20,
+              "UniformConstant",
+              "restir_reservoir_tex",
+              "SampledImage(2D)"
+            ],
+            [
+              0,
+              21,
+              "UniformConstant",
+              "output_tex",
+              "StorageImage(2D)"
+            ],
+            [
+              1,
+              0,
+              "Uniform",
+              "frame_constants",
+              "UniformBuffer(UBO)"
+            ]
+          ],
+          "opcode_histogram": {
+            "OpAccessChain": 8,
+            "OpBitcast": 10,
+            "OpBitwiseAnd": 2,
+            "OpBranch": 4,
+            "OpBranchConditional": 2,
+            "OpCapability": 2,
+            "OpCompositeConstruct": 9,
+            "OpCompositeExtract": 28,
+            "OpConstant": 39,
+            "OpConstantComposite": 12,
+            "OpConvertFToU": 2,
+            "OpConvertSToF": 1,
+            "OpConvertUToF": 3,
+            "OpDecorate": 24,
+            "OpDot": 1,
+            "OpEntryPoint": 1,
+            "OpExecutionMode": 1,
+            "OpExtInst": 13,
+            "OpExtInstImport": 1,
+            "OpExtension": 1,
+            "OpFAdd": 10,
+            "OpFDiv": 2,
+            "OpFMul": 6,
+            "OpFNegate": 1,
+            "OpFOrdGreaterThan": 1,
+            "OpFSub": 2,
+            "OpFunction": 1,
+            "OpFunctionEnd": 1,
+            "OpIAdd": 8,
+            "OpIMul": 3,
+            "OpISub": 1,
+            "OpImageFetch": 11,
+            "OpImageWrite": 1,
+            "OpLabel": 7,
+            "OpLine": 145,
+            "OpLoad": 25,
+            "OpLoopMerge": 2,
+            "OpMemberDecorate": 75,
+            "OpMemberName": 51,
+            "OpMemoryModel": 1,
+            "OpModuleProcessed": 2,
+            "OpName": 18,
+            "OpNoLine": 1,
+            "OpPhi": 3,
+            "OpReturn": 1,
+            "OpSelect": 1,
+            "OpShiftRightLogical": 1,
+            "OpSource": 21,
+            "OpStore": 10,
+            "OpString": 21,
+            "OpTypeArray": 3,
+            "OpTypeBool": 1,
+            "OpTypeFloat": 1,
+            "OpTypeFunction": 1,
+            "OpTypeImage": 3,
+            "OpTypeInt": 2,
+            "OpTypeMatrix": 1,
+            "OpTypePointer": 12,
+            "OpTypeStruct": 3,
+            "OpTypeVector": 8,
+            "OpTypeVoid": 1,
+            "OpULessThan": 2,
+            "OpUMod": 2,
+            "OpVariable": 13,
+            "OpVectorShuffle": 10,
+            "OpVectorTimesMatrix": 1,
+            "OpVectorTimesScalar": 18
+          }
+        }
+      },
+      "structural_match": false,
+      "normalized_hash_match": false,
+      "differences": {
+        "opcode_histogram": {
+          "target_only": {
+            "OpAccessChain": 11,
+            "OpCompositeConstruct": 5,
+            "OpCompositeExtract": 19,
+            "OpConstant": 38,
+            "OpConstantComposite": 15,
+            "OpConstantNull": 1,
+            "OpFMul": 9,
+            "OpLine": 135,
+            "OpLoad": 21,
+            "OpNoLine": 2,
+            "OpSource": 22,
+            "OpSourceContinued": 1,
+            "OpStore": 8,
+            "OpString": 22,
+            "OpTypeVector": 6,
+            "OpUndef": 1,
+            "OpVectorShuffle": 5,
+            "OpVectorTimesScalar": 16
+          },
+          "candidate_only": {
+            "OpAccessChain": 8,
+            "OpBitcast": 10,
+            "OpCompositeConstruct": 9,
+            "OpCompositeExtract": 28,
+            "OpConstant": 39,
+            "OpConstantComposite": 12,
+            "OpFMul": 6,
+            "OpLine": 145,
+            "OpLoad": 25,
+            "OpNoLine": 1,
+            "OpSource": 21,
+            "OpStore": 10,
+            "OpString": 21,
+            "OpTypeVector": 8,
+            "OpVectorShuffle": 10,
+            "OpVectorTimesScalar": 18
+          }
+        }
+      },
+      "verdict": "FAIL"
+    }
+  ],
+  "summary": {
+    "checked": 1,
+    "pass_normalized": 0,
+    "pass_structural": 0,
+    "fail": 1
+  }
+}

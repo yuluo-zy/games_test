@@ -1,0 +1,141 @@
+NAME: open_browser_to_webpage<ref$<str$>_>
+VA: 0x14026d080
+SIZE: 687
+SIGNATURE: void __cdecl open_browser_to_webpage<ref$<str$>_>(void)
+CALLEES:
+  {'name': '__rust_dealloc', 'address': '140613c20'}
+  {'name': 'as_inner_mut', 'address': '14067dd80'}
+  {'name': 'grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>', 'address': '140562870'}
+  {'name': 'log', 'address': '140d4a330'}
+  {'name': 'open', 'address': '140b7f2d0'}
+DECOMP:
+
+void __cdecl
+country_core::systems::steam::SteamOverlayOpenResources::open_browser_to_webpage<ref_<str_>_>(void)
+
+{
+  longlong lVar1;
+  longlong lVar2;
+  undefined8 uVar3;
+  undefined *puVar4;
+  undefined8 *extraout_RAX;
+  longlong extraout_RAX_00;
+  undefined8 *extraout_RAX_01;
+  longlong *in_RCX;
+  undefined8 *local_128;
+  code *local_120;
+  undefined8 local_118;
+  undefined8 local_108;
+  undefined8 local_100;
+  undefined1 local_f8;
+  longlong *local_f0;
+  code *local_e8;
+  undefined8 local_e0;
+  char *local_d8;
+  undefined8 local_d0;
+  undefined8 local_c8;
+  undefined8 local_c0;
+  undefined8 uStack_b8;
+  undefined8 local_b0;
+  char *local_a8;
+  undefined8 local_a0;
+  undefined4 local_98;
+  undefined4 local_94;
+  undefined **local_90;
+  undefined8 local_88;
+  undefined8 **local_80;
+  undefined8 local_78;
+  undefined1 **local_70;
+  undefined8 local_68;
+  undefined8 local_60 [2];
+  longlong local_50;
+  longlong local_48;
+  undefined8 local_40;
+  undefined8 *local_38;
+  undefined8 local_28;
+  
+  puVar4 = __imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E;
+  local_28 = 0xfffffffffffffffe;
+  if (2 < *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E) {
+    local_128 = local_60;
+    local_120 = core::fmt::impl$74::fmt<str_>;
+    toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();
+    local_c0 = *extraout_RAX;
+    uStack_b8 = extraout_RAX[1];
+    local_94 = *(undefined4 *)(extraout_RAX + 2);
+    local_b0 = 3;
+    local_a8 = "country_core::systems::steamFailed opening browser window: ";
+    local_a0 = 0x1c;
+    local_90 = &PTR_anon_f9e01155cc7496a9b2c19d670aea4d75_0_llvm_15509636686585673137_1429a7670;
+    local_88 = 2;
+    local_80 = &local_128;
+    local_78 = 1;
+    local_70 = (undefined1 **)0x0;
+    local_e0 = 0;
+    local_d8 = "country_core::systems::steamFailed opening browser window: ";
+    local_d0 = 0x1c;
+    local_c8 = 0;
+    local_98 = 1;
+    ::log::__private_api::impl$2::log();
+  }
+  webbrowser::open();
+  if (extraout_RAX_00 == 0) {
+    *(undefined4 *)in_RCX[2] = *(undefined4 *)((longlong)in_RCX + 0x1c);
+    lVar1 = *in_RCX;
+    lVar2 = *(longlong *)(lVar1 + 0x30);
+    uVar3 = *(undefined8 *)(lVar1 + 0x40);
+    if (lVar2 == *(longlong *)(lVar1 + 0x20)) {
+      alloc::raw_vec::RawVec::
+      grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>
+                ();
+    }
+    *(undefined8 *)(*(longlong *)(lVar1 + 0x28) + lVar2 * 8) = uVar3;
+    *(longlong *)(lVar1 + 0x30) = lVar2 + 1;
+    *(longlong *)(lVar1 + 0x40) = *(longlong *)(lVar1 + 0x40) + 1;
+  }
+  else {
+    local_48 = extraout_RAX_00;
+    if (1 < *(ulonglong *)puVar4) {
+      local_f0 = &local_48;
+      local_e8 = std::io::error::impl$0::fmt;
+      local_128 = (longlong *)0x2;
+      local_118 = 2;
+      local_108 = 0;
+      local_100 = 0x400000020;
+      local_f8 = 3;
+      toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();
+      local_c0 = *extraout_RAX_01;
+      uStack_b8 = extraout_RAX_01[1];
+      local_94 = *(undefined4 *)(extraout_RAX_01 + 2);
+      local_b0 = 2;
+      local_a8 = "country_core::systems::steamFailed opening browser window: ";
+      local_a0 = 0x1c;
+      local_90 = (undefined **)&DAT_1429a7748;
+      local_88 = 1;
+      local_80 = &local_f0;
+      local_78 = 1;
+      local_70 = (undefined1 **)&local_128;
+      local_68 = 1;
+      local_e0 = 0;
+      local_d8 = "country_core::systems::steamFailed opening browser window: ";
+      local_d0 = 0x1c;
+      local_c8 = 0;
+      local_98 = 1;
+      ::log::__private_api::impl$2::log();
+    }
+    if (((uint)local_48 & 3) == 1) {
+      local_50 = local_48 + -1;
+      local_40 = *(undefined8 *)(local_48 + -1);
+      local_38 = *(undefined8 **)(local_48 + 7);
+      if ((code *)*local_38 != (code *)0x0) {
+        (*(code *)*local_38)(local_40);
+      }
+      if (local_38[1] != 0) {
+        std::alloc::__default_lib_allocator::__rust_dealloc();
+      }
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+  }
+  return;
+}
+

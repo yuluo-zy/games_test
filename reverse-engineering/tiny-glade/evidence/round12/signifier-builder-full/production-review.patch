@@ -1,0 +1,2187 @@
+--- a/tiny-glade/crates/country-core/src/systems/ui/signifiers/signifier_factory.rs
++++ b/tiny-glade/crates/country-core/src/systems/ui/signifiers/signifier_factory.rs
+@@ -15,9 +15,9 @@
+ //!   0x14089dc90（写 `+0x78`）、`custom_shader` 0x14089db00（替换 shader 名
+ //!   `{len@+0x60, ptr@+0x68, cap@+0x70}`）、`build` 0x14089dd50（spawn + 组件入队）。
+ //!
+-//! `build` 完整入队需要 `DrawableMeshBundle`/`UiPass`/`WireframePass`/`DontCastShadow`/
+-//! `SignifierMinimumLifespan`/`SignifierParentToVolumeOrigin`/`TransientMesh`（render 边界，
+-//! 未落库）——本实现 spawn 实体并插入已落库的 `SignifierAnimation`，其余登记 GAP（不冒充）。
++//! Complete typed builder below resolves all five mesh branches and preserves
++//! Drawable/animation/pass/lifespan/transient-mesh lifecycle. Native evidence
++//! and independent verification are retained in round12/signifier-builder-full.
+ 
+ use std::sync::Arc;
+ 
+@@ -28,7 +28,6 @@
+ use crate::asset_libraries::shader_library::AssetShaderLibrary;
+ 
+ use super::animation::SignifierAnimation;
+-use super::signifier_create::SignifierId;
+ 
+ /// 原生唤醒签名（O：vtable 0x142ae70d0 / 0x142efa150 的 call 槽）。
+ ///
+@@ -37,11 +36,7 @@
+ /// （0x140b2cfa0）在去重后调用 vtable 槽唤醒它。对应 `Arc::drop_slow` 单态
+ /// 0x14064f9d0（`dyn Fn(tuple<ref AssetMeshLibrary, ref AssetShaderLibrary,
+ /// ref_mut Commands>, Output = Vec<Entity>) + Send + Sync`）。
+-pub type SignifierClosure = dyn Fn(
+-        &AssetMeshLibrary,
+-        &AssetShaderLibrary,
+-        &mut Commands<'_, '_>,
+-    ) -> Vec<Entity>
++pub type SignifierClosure = dyn Fn(&AssetMeshLibrary, &AssetShaderLibrary, &mut Commands<'_, '_>) -> Vec<Entity>
+     + Send
+     + Sync;
+ 
+@@ -74,6 +69,16 @@
+     /// 深拷贝载荷（避免派生 `Clone` 对裸指针 + `Drop` 的双重释放），并共享闭包
+     /// （原生记录经 `Arc` 克隆，引用计数 +1）。
+     fn clone(&self) -> Self {
++        if self.name_ptr.is_null() {
++            return Self {
++                name_len: self.name_len,
++                name_ptr: std::ptr::null_mut(),
++                name_len_dup: self.name_len_dup,
++                inner: self.inner,
++                marker: self.marker,
++                closure: self.closure.clone(),
++            };
++        }
+         let payload = self.payload();
+         let mut cloned = Self::new(payload, self.inner, self.marker);
+         cloned.closure = self.closure.clone();
+@@ -137,7 +142,11 @@
+ 
+     /// 名字载荷（`from_closure`/`new` 均存字节串；非 UTF-8 返回 None）。
+     pub fn name(&self) -> Option<&str> {
+-        std::str::from_utf8(self.payload()).ok()
++        if self.name_ptr.is_null() {
++            None
++        } else {
++            Some(std::str::from_utf8(self.payload()).expect("valid original name string"))
++        }
+     }
+ 
+     /// 唤醒闭包（O：`signifier_create` 0x140b2cfa0 的 vtable 调用槽；
+@@ -191,255 +200,387 @@
+     }
+ }
+ 
+-/// `SignifierEntityBuilder` — 指示符实体构建器（O：0x90 B，`new` 0x14089d9b0）。
+-///
+-/// 布局（O，fresh `new`/`set_ui_pass`/`animation_duration`/`custom_shader`/`build`）：
+-/// ```text
+-/// +0x00  u64 tag                      +0x40  u16 = 0x100
+-/// +0x08  u8  color_flag, f32 1.0@+0xc +0x48  u32 extra_a
+-/// +0x10  u64 mesh_kind (build switch) +0x4c  u32 extra_b
+-/// +0x18  [u64;5] mesh_payload (40B)   +0x50  u32 flag50（byte@+0x50）
+-///                                       +0x54  f32 f54
+-///                                       +0x58  u32 flag58（byte@+0x58 bit0）
+-///                                       +0x5c  f32 f5c
+-/// +0x60  u64 shader_len               +0x78  f32 duration
+-/// +0x68  u64 shader_ptr               +0x7c  u64 u7c
+-/// +0x70  u64 shader_cap               +0x84  u32 u84
+-///                                       +0x88  u8 flag88
+-///                                       +0x89  u8 flag89
+-///                                       +0x8a  u8 ui_pass（= pass ^ 1）
+-/// ```
+-/// 未取证的中间字段保持 O 位模式默认，不发明语义。
++/// Owned projection of original SignifierMesh's five native branches.
++/// The original uses Vec/String niches; no raw application pointer is retained.
++pub enum SignifierMesh {
++    Named(String),
++    Empty,
++    Points(Vec<glam::Vec3>),
++    PointsWithColors {
++        points: Vec<glam::Vec3>,
++        colors: Vec<glam::Vec3>,
++    },
++    Generated(Box<dyn Fn() -> Vec<glam::Vec3> + Send + Sync>),
++}
++impl std::fmt::Debug for SignifierMesh {
++    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
++        match self {
++            Self::Named(name) => f.debug_tuple("Named").field(name).finish(),
++            Self::Empty => f.write_str("Empty"),
++            Self::Points(points) => f.debug_tuple("Points").field(points).finish(),
++            Self::PointsWithColors { points, colors } => f
++                .debug_struct("PointsWithColors")
++                .field("points", points)
++                .field("colors", colors)
++                .finish(),
++            Self::Generated(_) => f.write_str("Generated(..)"),
++        }
++    }
++}
++
++/// B14089d9b0/14089dd50: mesh resolution and complete drawable lifecycle.
++/// Fields are owned typed values rather than a counterfeit native0x90B ABI.
+ #[derive(Debug)]
+ pub struct SignifierEntityBuilder {
+-    /// @+0x00。
+-    pub tag: u64,
+-    /// @+0x08（O：默认 0；`build` 以之为 shader 是否有色的标志）。
+-    pub color_flag: u8,
+-    /// @+0x09..+0x0b。
+-    pub pad_09: [u8; 3],
+-    /// @+0x0c（O：位模式 `0x3f800000` = 1.0）。
+-    pub one: f32,
+-    /// @+0x10（O：`build` 的 switch 键 0/1/2/3/4——`new` 载荷首 qword）。
+-    pub mesh_kind: u64,
+-    /// @+0x18..+0x3f（O：`new` 从输入载荷 `[1..6]` 拷入 5 qword）。
+-    pub mesh_payload: [u64; 5],
+-    /// @+0x40（O：默认 0x100）。
+-    pub flags16: u16,
+-    /// @+0x42..+0x47。
+-    pub pad_42: [u8; 6],
+-    /// @+0x48（O：`build` 读面）。
+-    pub extra_a: u32,
+-    /// @+0x4c（O：`build` 读面）。
+-    pub extra_b: u32,
+-    /// @+0x50（O：整 u32；`build` 读 byte@+0x50）。
+-    pub flag50: u32,
+-    /// @+0x54（O：`flag50` 置位时 `build` 读面）。
+-    pub f54: f32,
+-    /// @+0x58（O：整 u32；`build` 读 byte@+0x58 bit0）。
+-    pub flag58: u32,
+-    /// @+0x5c（O：`flag58` 置位时 `build` 读面）。
+-    pub f5c: f32,
+-    /// @+0x60（shader 名 `{len,ptr,len}` 首部）。
+-    pub shader_len: u64,
+-    /// @+0x68。
+-    pub shader_ptr: *mut u8,
+-    /// @+0x70。
+-    pub shader_cap: u64,
+-    /// @+0x78（O：`animation_duration` 写面；`build` 落到 `SignifierAnimation.duration`）。
+-    pub duration: f32,
+-    /// @+0x7c（O：`build` 读面）。
+-    pub u7c: u64,
+-    /// @+0x84（O：`build` 读面）。
+-    pub u84: u32,
+-    /// @+0x88（O：`build` 读面——SignifierParentToVolumeOrigin 门控）。
+-    pub flag88: u8,
+-    /// @+0x89（O：`build` 读面）。
+-    pub flag89: u8,
+-    /// @+0x8a（O：`set_ui_pass` 写 `pass ^ 1`；`build` 决定 UiPass 槽）。
+-    pub ui_pass: u8,
+-}
+-
+-// SAFETY: 布局与 `SignifierFactory` 相同理由——`shader_ptr` 指向 `Box<[u8]>` 持有的字节；
+-// 仅作布局对齐，deref 由 `shader_name()` 安全封装。
+-unsafe impl Send for SignifierEntityBuilder {}
+-
+-impl Clone for SignifierEntityBuilder {
+-    /// 深拷贝（避免派生 `Clone` 对裸指针 + `Drop` 的双重释放）。
+-    fn clone(&self) -> Self {
+-        let shader = self.shader_name().map(str::to_owned);
+-        let mut b = Self {
+-            tag: self.tag,
+-            color_flag: self.color_flag,
+-            pad_09: self.pad_09,
+-            one: self.one,
+-            mesh_kind: self.mesh_kind,
+-            mesh_payload: self.mesh_payload,
+-            flags16: self.flags16,
+-            pad_42: self.pad_42,
+-            extra_a: self.extra_a,
+-            extra_b: self.extra_b,
+-            flag50: self.flag50,
+-            f54: self.f54,
+-            flag58: self.flag58,
+-            f5c: self.f5c,
+-            shader_len: 0,
+-            shader_ptr: std::ptr::null_mut(),
+-            shader_cap: 0,
+-            duration: self.duration,
+-            u7c: self.u7c,
+-            u84: self.u84,
+-            flag88: self.flag88,
+-            flag89: self.flag89,
+-            ui_pass: self.ui_pass,
++    mesh: SignifierMesh,
++    rotation: glam::Quat,
++    position: glam::Vec3,
++    shader: String,
++    animation: SignifierAnimation,
++    explicit_scale: Option<f32>,
++    minimum_lifespan: Option<f32>,
++    parent_to_volume_origin: bool,
++    wireframe: bool,
++    ui_pass: bool,
++}
++
++impl SignifierEntityBuilder {
++    pub fn new(mesh: SignifierMesh) -> Self {
++        Self {
++            mesh,
++            rotation: glam::Quat::IDENTITY,
++            position: glam::Vec3::ZERO,
++            shader: "vertex_color_shader".to_owned(),
++            animation: SignifierAnimation {
++                head: 1u64.to_le_bytes(), // Native default EasingFunction::CubicInOut.
++                flag_8: 0,
++                flag_9: 1,
++                value: 1.0,
++                duration: 0.2,
++                t: 0.0,
++                eased: 0.0,
++                ..Default::default()
++            },
++            explicit_scale: None,
++            minimum_lifespan: None,
++            parent_to_volume_origin: false,
++            wireframe: false,
++            ui_pass: true,
++        }
++    }
++    pub fn from_mesh_name(name: impl Into<String>) -> Self {
++        Self::new(SignifierMesh::Named(name.into()))
++    }
++    pub fn from_points(points: Vec<glam::Vec3>) -> Self {
++        Self::new(SignifierMesh::Points(points))
++    }
++    pub fn position(mut self, position: glam::Vec3) -> Self {
++        self.position = position;
++        self
++    }
++    pub fn rotation(mut self, rotation: glam::Quat) -> Self {
++        self.rotation = rotation;
++        self
++    }
++    pub fn scale(mut self, scale: f32) -> Self {
++        self.explicit_scale = Some(scale);
++        self
++    }
++    pub fn animation_duration(mut self, duration: f32) -> Self {
++        self.animation.duration = duration;
++        self
++    }
++    pub fn custom_shader(mut self, name: &str) -> Self {
++        self.shader = name.to_owned();
++        self
++    }
++    pub fn shader_name(&self) -> &str {
++        &self.shader
++    }
++    /// Native set_ui_pass writes pass^1 and build inserts UiPass only at zero.
++    pub fn set_ui_pass(mut self, pass: u8) -> Self {
++        self.ui_pass = (pass ^ 1) == 0;
++        self
++    }
++    pub fn mark_as_debug(mut self) -> Self {
++        self.wireframe = true;
++        self
++    }
++    pub fn disable_default_animation(mut self) -> Self {
++        self.animation.flag_8 = 1;
++        self
++    }
++    pub fn minimum_lifespan(mut self, lifespan: f32) -> Self {
++        self.minimum_lifespan = Some(lifespan);
++        self
++    }
++    pub fn parent_to_widget(mut self) -> Self {
++        self.parent_to_volume_origin = true;
++        self
++    }
++    pub fn animation_easing(mut self, easing: ::utils::easing_functions::EasingFunction) -> Self {
++        use ::utils::easing_functions::EasingFunction as E;
++        let (tag, value): (u32, f32) = match easing {
++            E::CircularInOut => (0, 0.0),
++            E::CubicInOut => (1, 0.0),
++            E::SineInOut => (2, 0.0),
++            E::Bias(v) => (3, v),
++            E::ElasticInOut => (4, 0.0),
++            E::BackOut => (5, 0.0),
++            E::CubicOut => (6, 0.0),
+         };
+-        if let Some(name) = shader {
+-            b.shader_name_replace(&name);
+-        }
+-        b
+-    }
+-}
+-
+-impl Default for SignifierEntityBuilder {
+-    /// `new` 的默认面（O：0x14089d9b0 置默认值序列 + 装默认 shader
+-    /// `"vertex_color_shader"`（len 0x13 = 19））。
+-    fn default() -> Self {
+-        let mut b = Self {
+-            tag: 0,
+-            color_flag: 0,
+-            pad_09: [0; 3],
+-            one: 1.0,
+-            mesh_kind: 0,
+-            mesh_payload: [0; 5],
+-            flags16: 0x100,
+-            pad_42: [0; 6],
+-            extra_a: 0,
+-            extra_b: 0,
+-            flag50: 0,
+-            f54: 0.0,
+-            flag58: 0,
+-            f5c: 0.0,
+-            shader_len: 0,
+-            shader_ptr: std::ptr::null_mut(),
+-            shader_cap: 0,
+-            duration: 0.2,
+-            u7c: 0,
+-            u84: 0,
+-            flag88: 0,
+-            flag89: 0,
+-            ui_pass: 0,
++        self.animation.head[..4].copy_from_slice(&tag.to_le_bytes());
++        self.animation.head[4..].copy_from_slice(&value.to_le_bytes());
++        self
++    }
++
++    pub fn build(
++        mut self,
++        meshes: &AssetMeshLibrary,
++        shaders: &AssetShaderLibrary,
++        commands: &mut Commands,
++    ) -> Entity {
++        use super::{
++            animation::SignifierParentToVolumeOrigin,
++            signifier_mark_for_delete::SignifierMinimumLifespan,
+         };
+-        b.shader_name_replace("vertex_color_shader");
+-        b
+-    }
+-}
+-
+-impl SignifierEntityBuilder {
+-    /// `SignifierEntityBuilder::new`（0x14089d9b0，O）：拷贝 48B 网格载荷 + 置默认。
+-    /// `payload` 以 `[u64;6]` 承接（O：`new` 拷 6 qword）——**首 qword = `mesh_kind`
+-    /// （`build` switch 键）**，余 5 qword 入 `mesh_payload`（+0x18..+0x3f）。
+-    ///
+-    /// 注意：不能写成 `Self { .., ..Self::default() }`——本类型实现 `Drop`，
+-    /// 结构体更新语法会让默认临时值的 `Drop` 释放掉 `shader_name_replace` 分配的
+-    /// 默认 shader 串，留下悬垂 `shader_ptr`（后续 `custom_shader` 释放时 trap）。
+-    pub fn new(payload: &[u64; 6]) -> Self {
+-        let mut builder = Self::default();
+-        builder.mesh_kind = payload[0];
+-        builder.mesh_payload = [
+-            payload[1],
+-            payload[2],
+-            payload[3],
+-            payload[4],
+-            payload[5],
++        use crate::{
++            asset_libraries::{mesh_library::MeshAsset, transient_mesh::TransientMesh},
++            components::drawable::DrawableMeshBundle,
++            render::mesh::{ATTR_COLOR, Mesh},
++            systems::render_loop::draw_passes::draw_lists::{
++                DontCastShadow, UiPass, WireframePass,
++            },
++            utils::{components::transform::Transform, geo::mesh_from_pts},
++        };
++
++        // Only named meshes are library-owned. Every generated/empty variant
++        // registers its actual CPU mesh and attaches the same deletion receipt.
++        let (mesh, transient) = match self.mesh {
++            SignifierMesh::Named(name) => (meshes.get_handle_by_name(&name), false),
++            SignifierMesh::Empty => (
++                meshes.add(MeshAsset::new(Mesh::new("signifier empty"), None)),
++                true,
++            ),
++            SignifierMesh::Points(points) => (
++                meshes.add(MeshAsset::new(
++                    mesh_from_pts("signifier custom", &points),
++                    None,
++                )),
++                true,
++            ),
++            SignifierMesh::PointsWithColors { points, colors } => {
++                let mut mesh = mesh_from_pts("signifier custom w colors", &points);
++                mesh.set_attribute(ATTR_COLOR, colors);
++                (meshes.add(MeshAsset::new(mesh, None)), true)
++            }
++            SignifierMesh::Generated(make_points) => {
++                let points = make_points();
++                (
++                    meshes.add(MeshAsset::new(
++                        mesh_from_pts("signifier custom fn", &points),
++                        None,
++                    )),
++                    true,
++                )
++            }
++        };
++        // Original reserves its Entity before shader lookup; missing shader
++        // remains a failure, never a default shader or invisible success.
++        let entity = commands.spawn_empty().id();
++        let scale = self.explicit_scale.unwrap_or(1.0);
++        let initial_scale = if self.animation.flag_8 == 0 {
++            self.animation.value = scale;
++            0.0
++        } else {
++            scale
++        };
++        let shader = shaders.get_raster_handle_by_name(&self.shader).unwrap();
++        commands.entity(entity).insert((
++            DrawableMeshBundle {
++                mesh,
++                shader,
++                transform: Transform {
++                    rotation: self.rotation,
++                    translation: self.position,
++                    scale: glam::Vec3::splat(initial_scale),
++                },
++            },
++            self.animation,
++        ));
++        if self.wireframe {
++            commands.entity(entity).insert(WireframePass);
++        } else if self.ui_pass {
++            commands.entity(entity).insert(UiPass);
++        }
++        commands.entity(entity).insert(DontCastShadow);
++        if let Some(min_lifespan) = self.minimum_lifespan {
++            commands.entity(entity).insert(SignifierMinimumLifespan {
++                t: 0.0,
++                min_lifespan,
++            });
++        }
++        if self.parent_to_volume_origin {
++            commands
++                .entity(entity)
++                .insert(SignifierParentToVolumeOrigin);
++        }
++        if transient {
++            commands
++                .entity(entity)
++                .insert(TransientMesh::new_with_registry(
++                    mesh,
++                    meshes.transient_meshes(),
++                ));
++        }
++        // SignifierId belongs to signifier_create's name-hash assignment.
++        // Builder does not fabricate an id0 that can alias another request.
++        entity
++    }
++}
++
++#[cfg(test)]
++mod complete_builder_tests {
++    use super::*;
++    use crate::{
++        asset_libraries::{mesh_library::MeshAsset, transient_mesh::TransientMesh},
++        render::{mesh::Mesh, shader::RasterShaderProgram, test_device::TestDevice},
++        systems::render_loop::draw_passes::draw_lists::{DontCastShadow, UiPass, WireframePass},
++        utils::components::transform::Transform,
++    };
++    use bevy_ecs::world::CommandQueue;
++    use glam::{Quat, Vec3};
++    fn libraries() -> (AssetMeshLibrary, AssetShaderLibrary) {
++        let meshes = AssetMeshLibrary::new();
++        meshes.add(MeshAsset::new(Mesh::new("named"), Some("brush".to_owned())));
++        let shaders = AssetShaderLibrary::new();
++        shaders.add_raster(
++            RasterShaderProgram::new_draw(
++                "vertex_color_shader",
++                Default::default(),
++                &TestDevice(1),
++            ),
++            false,
++        );
++        (meshes, shaders)
++    }
++    fn build(
++        b: SignifierEntityBuilder,
++        m: &AssetMeshLibrary,
++        s: &AssetShaderLibrary,
++        w: &mut World,
++    ) -> Entity {
++        let mut queue = CommandQueue::default();
++        let entity = b.build(m, s, &mut Commands::new(&mut queue, w));
++        queue.apply(w);
++        entity
++    }
++    #[test]
++    fn named_mesh_resolves_real_handles_and_duration_zero_becomes_visible() {
++        let (meshes, shaders) = libraries();
++        let mut world = World::new();
++        let rotation = Quat::from_rotation_y(0.7);
++        let position = Vec3::new(1., 2., 3.);
++        let entity = build(
++            SignifierEntityBuilder::from_mesh_name("brush")
++                .animation_duration(0.0)
++                .rotation(rotation)
++                .position(position)
++                .scale(1.8),
++            &meshes,
++            &shaders,
++            &mut world,
++        );
++        let transform = world.get::<Transform>(entity).unwrap();
++        assert_eq!(
++            (transform.rotation, transform.translation, transform.scale),
++            (rotation, position, Vec3::ZERO)
++        );
++        assert_eq!(
++            *world
++                .get::<crate::asset_libraries::Handle<Mesh>>(entity)
++                .unwrap(),
++            meshes.get_handle_by_name("brush")
++        );
++        assert!(world.get::<UiPass>(entity).is_some());
++        assert!(world.get::<DontCastShadow>(entity).is_some());
++        assert!(world.get::<TransientMesh>(entity).is_none());
++        assert!(
++            world
++                .get::<super::super::signifier_create::SignifierId>(entity)
++                .is_none()
++        );
++        let mut anim = world.get_mut::<SignifierAnimation>(entity).unwrap();
++        anim.advance(0., false);
++        assert_eq!((anim.t, anim.eased, anim.value), (1., 1., 1.8));
++    }
++    #[test]
++    fn every_owned_mesh_branch_keeps_its_actual_transient_receipt() {
++        let (meshes, shaders) = libraries();
++        let mut world = World::new();
++        let points = vec![Vec3::ZERO, Vec3::X];
++        let sources = [
++            SignifierMesh::Empty,
++            SignifierMesh::Points(points.clone()),
++            SignifierMesh::PointsWithColors {
++                points: points.clone(),
++                colors: vec![Vec3::Y, Vec3::Z],
++            },
++            SignifierMesh::Generated(Box::new(move || points.clone())),
+         ];
+-        builder
+-    }
+-
+-    /// `set_ui_pass`（0x14089dad0，O）：写 `+0x8a = pass ^ 1` 后整块返回 0x90B 构建器。
+-    pub fn set_ui_pass(mut self, pass: u8) -> Self {
+-        self.ui_pass = pass ^ 1;
+-        self
+-    }
+-
+-    /// `animation_duration`（0x14089dc90，O）：写 `+0x78`。
+-    pub fn animation_duration(mut self, duration: f32) -> Self {
+-        self.duration = duration;
+-        self
+-    }
+-
+-    /// `custom_shader`（0x14089db00，O）：把 `{len@+0x60, ptr@+0x68, cap@+0x70}` 换成
+-    /// `name` 的新拷贝（旧串先 dealloc）。
+-    pub fn custom_shader(mut self, name: &str) -> Self {
+-        self.shader_name_replace(name);
+-        self
+-    }
+-
+-    /// 替换 shader 名（O：0x14089db00 **先释放旧串**（`+0x60 != 0` → `rust_dealloc`），
+-    /// 再分配拷贝 + 写 `{len@+0x60, ptr@+0x68, cap@+0x70}`）。
+-    fn shader_name_replace(&mut self, name: &str) {
+-        if !self.shader_ptr.is_null() {
+-            // SAFETY: 指针来自此前 `shader_name_replace` 的 `Box<[u8]>`，长度记录在 `shader_len`。
+-            unsafe {
+-                drop(Box::from_raw(std::slice::from_raw_parts_mut(
+-                    self.shader_ptr,
+-                    self.shader_len as usize,
+-                )));
+-            }
+-        }
+-        let bytes: Box<[u8]> = name.as_bytes().into();
+-        let ptr = Box::into_raw(bytes) as *mut u8;
+-        self.shader_len = name.len() as u64;
+-        self.shader_ptr = ptr;
+-        self.shader_cap = name.len() as u64;
+-    }
+-
+-    /// shader 名字面（I：`{len,ptr,len}` 记录的安全读面）。
+-    pub fn shader_name(&self) -> Option<&str> {
+-        if self.shader_ptr.is_null() {
+-            return None;
+-        }
+-        // SAFETY: 指针来自 `shader_name_replace` 的 `Box<[u8]>`，长度记录在 `shader_len`。
+-        unsafe {
+-            let bytes = std::slice::from_raw_parts(self.shader_ptr, self.shader_len as usize);
+-            Some(std::str::from_utf8(bytes).unwrap_or(""))
+-        }
+-    }
+-
+-    /// `build`（0x14089dd50，O 消费面）：spawn 指示符实体 + 插入已落库组件。
+-    ///
+-    /// **已实现**：`Commands::spawn_empty` + 插入 `SignifierAnimation`（`duration` 取自
+-    /// `+0x78`）。
+-    /// **GAP（登记）**：原版随后把 `DrawableMeshBundle`/`SignifierAnimation`、
+-    /// `UiPass`/`WireframePass`（按 +0x89/+0x8a）、`DontCastShadow`、
+-    /// `SignifierMinimumLifespan`（按 +0x58 bit0）、`SignifierParentToVolumeOrigin`
+-    /// （按 +0x88）、`TransientMesh`（按 mesh_kind 载荷）压入 Commands——这些组件在
+-    /// country-core render 边界未落库，不冒充。shader 网格经 `AssetMeshLibrary`/
+-    /// `AssetShaderLibrary` 的解析面同样未接。
+-    pub fn build(self, commands: &mut Commands) -> Entity {
+-        let entity = commands.spawn_empty().id();
+-        commands.entity(entity).insert(SignifierAnimation {
+-            duration: self.duration,
+-            ..SignifierAnimation::default()
+-        });
+-        commands.entity(entity).insert(SignifierId(0));
+-        // GAP：DrawableMeshBundle / UiPass / WireframePass / DontCastShadow /
+-        // SignifierMinimumLifespan / SignifierParentToVolumeOrigin / TransientMesh 未落库。
+-        entity
+-    }
+-}
+-
+-impl Drop for SignifierEntityBuilder {
+-    fn drop(&mut self) {
+-        if !self.shader_ptr.is_null() {
+-            // SAFETY: 指针来自 `shader_name_replace` 的 `Box::into_raw`。
+-            unsafe {
+-                drop(Box::from_raw(std::slice::from_raw_parts_mut(
+-                    self.shader_ptr,
+-                    self.shader_len as usize,
+-                )));
+-            }
+-            self.shader_ptr = std::ptr::null_mut();
+-        }
+-    }
+-}
+-
++        for (source, label) in sources.into_iter().zip([
++            "signifier empty",
++            "signifier custom",
++            "signifier custom w colors",
++            "signifier custom fn",
++        ]) {
++            let entity = build(
++                SignifierEntityBuilder::new(source)
++                    .disable_default_animation()
++                    .scale(2.)
++                    .set_ui_pass(0),
++                &meshes,
++                &shaders,
++                &mut world,
++            );
++            let transient = world.get::<TransientMesh>(entity).unwrap();
++            let handle = transient.mesh_handle();
++            assert_eq!(meshes.get(handle).unwrap().label, label);
++            assert_eq!(
++                world.get::<Transform>(entity).unwrap().scale,
++                Vec3::splat(2.)
++            );
++            assert!(world.get::<UiPass>(entity).is_none());
++            world.despawn(entity);
++            assert_eq!(
++                meshes.transient_meshes().lock().unwrap().last(),
++                Some(&handle)
++            );
++        }
++    }
++    #[test]
++    fn wireframe_precedes_ui_and_lifespan_parent_components_are_real() {
++        let (meshes, shaders) = libraries();
++        let mut world = World::new();
++        let entity = build(
++            SignifierEntityBuilder::from_mesh_name("brush")
++                .mark_as_debug()
++                .minimum_lifespan(0.7)
++                .parent_to_widget(),
++            &meshes,
++            &shaders,
++            &mut world,
++        );
++        assert!(world.get::<WireframePass>(entity).is_some());
++        assert!(world.get::<UiPass>(entity).is_none());
++        assert!(
++            world
++                .get::<super::super::animation::SignifierParentToVolumeOrigin>(entity)
++                .is_some()
++        );
++        let life = world
++            .get::<super::super::signifier_mark_for_delete::SignifierMinimumLifespan>(entity)
++            .unwrap();
++        assert_eq!((life.t, life.min_lifespan), (0., 0.7));
++    }
++}
+--- a/tiny-glade/crates/country-core/src/systems/ui/signifiers/animation.rs
++++ b/tiny-glade/crates/country-core/src/systems/ui/signifiers/animation.rs
+@@ -28,7 +28,7 @@
+ #[repr(C)]
+ #[derive(Component, Clone, Copy, Debug, PartialEq)]
+ pub struct SignifierAnimation {
+-    /// +0x00..+0x08：未取证（保持 0）。
++    /// +0x00..+0x08：EasingFunction tag/payload, read through the existing utils enum.
+     pub head: [u8; 8],
+     /// +0x08：写入门（==0 时 `signifier_animation` 更新 scale）。
+     pub flag_8: u8,
+@@ -44,9 +44,6 @@
+     pub t: f32,
+     /// +0x18：缓动派生值（`EasingFunction::apply(t)`）。
+     pub eased: f32,
+-    /// crate 附加：原版把 tick 累加到查询上的另一个可选组件；保留字段承载 t-tick
+-    /// 判等实现（`signifier_animation_t`），不参与本组件 0x1c 布局。
+-    pub tick_acc: f32,
+ }
+ 
+ impl Default for SignifierAnimation {
+@@ -60,7 +57,6 @@
+             duration: 1.0,
+             t: 0.0,
+             eased: 0.0,
+-            tick_acc: 0.0,
+         }
+     }
+ }
+@@ -76,16 +72,51 @@
+ /// `t' = clamp(t + (1/duration)·tick, 0, 1)`；否则 `t' = 反向?0:1`，
+ /// 再 `eased = EasingFunction::apply(t')`，tick 累加到可选组件。
+ /// （该函数此前已判等[结构]；本轮只按 fresh 修正组件布局，不改其控制流。）
++impl SignifierAnimation {
++    pub fn easing(&self) -> ::utils::easing_functions::EasingFunction {
++        use ::utils::easing_functions::EasingFunction as E;
++        let tag = u32::from_le_bytes(self.head[..4].try_into().unwrap());
++        let value = f32::from_le_bytes(self.head[4..].try_into().unwrap());
++        match tag {
++            0 => E::CircularInOut,
++            1 => E::CubicInOut,
++            2 => E::SineInOut,
++            3 => E::Bias(value),
++            4 => E::ElasticInOut,
++            5 => E::BackOut,
++            6 => E::CubicOut,
++            _ => panic!("invalid SignifierAnimation easing tag {tag}"),
++        }
++    }
++    /// Original140a69998..140a69a1a, independently checked against RNE.
++    pub fn advance(&mut self, delta: f32, marked: bool) {
++        self.t = if self.duration != 0.0 {
++            let signed_delta = if marked { -delta } else { delta };
++            let raw = (1.0 / self.duration) * signed_delta + self.t;
++            let lower = if 0.0 > raw { 0.0 } else { raw };
++            if 1.0 < lower { 1.0 } else { lower }
++        } else if marked {
++            0.0
++        } else {
++            1.0
++        };
++        self.eased = self.easing().apply(self.t);
++    }
++}
++
+ pub fn signifier_animation_t(
+     time: Res<crate::resources::time::GameTime>,
+-    mut query: Query<&mut SignifierAnimation>,
++    mut query: Query<(
++        &mut SignifierAnimation,
++        Option<&super::signifier_mark_for_delete::SignifierMarkedForDeletion>,
++        Option<&mut super::signifier_mark_for_delete::SignifierMinimumLifespan>,
++    )>,
+ ) {
+-    let tick = time.delta;
+-    for mut anim in &mut query {
+-        if anim.duration != 0.0 && !anim.duration.is_nan() {
+-            anim.t = (anim.t + tick / anim.duration).clamp(0.0, 1.0);
++    for (mut anim, marked, lifespan) in &mut query {
++        anim.advance(time.delta, marked.is_some());
++        if let Some(mut lifespan) = lifespan {
++            lifespan.t += time.delta;
+         }
+-        anim.tick_acc += tick;
+     }
+ }
+ 
+@@ -125,7 +156,7 @@
+ 
+     #[test]
+     fn component_layout_matches_native_offsets() {
+-        assert_eq!(std::mem::size_of::<SignifierAnimation>() - std::mem::size_of::<f32>(), 0x1c);
++        assert_eq!(std::mem::size_of::<SignifierAnimation>(), 0x1c);
+         let a = SignifierAnimation {
+             flag_8: 1,
+             flag_9: 2,
+@@ -156,3 +187,1035 @@
+         assert_eq!(t.scale, Vec3::new(2.0, 0.5, 2.0));
+     }
+ }
++
++#[cfg(test)]
++mod original_t_oracle {
++    use super::*;
++    #[test]
++    fn all_1008_independent_original_sse_vectors() {
++        // Original140a69998..9fe, SHA256 2391c16c1b8187bec5f45f64428ca59844355a3a54dc18cd966368daf497aefa
++        let cases: &[(u32, u32, u32, bool, u32)] = &[
++            (0x00000000, 0x00000000, 0x00000000, false, 0x3f800000),
++            (0x00000000, 0x00000000, 0x00000000, true, 0x00000000),
++            (0x00000000, 0x00000000, 0x80000000, false, 0x3f800000),
++            (0x00000000, 0x00000000, 0x80000000, true, 0x00000000),
++            (0x00000000, 0x00000000, 0x3c83126f, false, 0x3f800000),
++            (0x00000000, 0x00000000, 0x3c83126f, true, 0x00000000),
++            (0x00000000, 0x00000000, 0x3e4ccccd, false, 0x3f800000),
++            (0x00000000, 0x00000000, 0x3e4ccccd, true, 0x00000000),
++            (0x00000000, 0x00000000, 0xbe800000, false, 0x3f800000),
++            (0x00000000, 0x00000000, 0xbe800000, true, 0x00000000),
++            (0x00000000, 0x00000000, 0x7f800000, false, 0x3f800000),
++            (0x00000000, 0x00000000, 0x7f800000, true, 0x00000000),
++            (0x00000000, 0x00000000, 0x7fc34567, false, 0x3f800000),
++            (0x00000000, 0x00000000, 0x7fc34567, true, 0x00000000),
++            (0x00000000, 0x80000000, 0x00000000, false, 0x3f800000),
++            (0x00000000, 0x80000000, 0x00000000, true, 0x00000000),
++            (0x00000000, 0x80000000, 0x80000000, false, 0x3f800000),
++            (0x00000000, 0x80000000, 0x80000000, true, 0x00000000),
++            (0x00000000, 0x80000000, 0x3c83126f, false, 0x3f800000),
++            (0x00000000, 0x80000000, 0x3c83126f, true, 0x00000000),
++            (0x00000000, 0x80000000, 0x3e4ccccd, false, 0x3f800000),
++            (0x00000000, 0x80000000, 0x3e4ccccd, true, 0x00000000),
++            (0x00000000, 0x80000000, 0xbe800000, false, 0x3f800000),
++            (0x00000000, 0x80000000, 0xbe800000, true, 0x00000000),
++            (0x00000000, 0x80000000, 0x7f800000, false, 0x3f800000),
++            (0x00000000, 0x80000000, 0x7f800000, true, 0x00000000),
++            (0x00000000, 0x80000000, 0x7fc34567, false, 0x3f800000),
++            (0x00000000, 0x80000000, 0x7fc34567, true, 0x00000000),
++            (0x00000000, 0x3f000000, 0x00000000, false, 0x3f800000),
++            (0x00000000, 0x3f000000, 0x00000000, true, 0x00000000),
++            (0x00000000, 0x3f000000, 0x80000000, false, 0x3f800000),
++            (0x00000000, 0x3f000000, 0x80000000, true, 0x00000000),
++            (0x00000000, 0x3f000000, 0x3c83126f, false, 0x3f800000),
++            (0x00000000, 0x3f000000, 0x3c83126f, true, 0x00000000),
++            (0x00000000, 0x3f000000, 0x3e4ccccd, false, 0x3f800000),
++            (0x00000000, 0x3f000000, 0x3e4ccccd, true, 0x00000000),
++            (0x00000000, 0x3f000000, 0xbe800000, false, 0x3f800000),
++            (0x00000000, 0x3f000000, 0xbe800000, true, 0x00000000),
++            (0x00000000, 0x3f000000, 0x7f800000, false, 0x3f800000),
++            (0x00000000, 0x3f000000, 0x7f800000, true, 0x00000000),
++            (0x00000000, 0x3f000000, 0x7fc34567, false, 0x3f800000),
++            (0x00000000, 0x3f000000, 0x7fc34567, true, 0x00000000),
++            (0x00000000, 0x3f800000, 0x00000000, false, 0x3f800000),
++            (0x00000000, 0x3f800000, 0x00000000, true, 0x00000000),
++            (0x00000000, 0x3f800000, 0x80000000, false, 0x3f800000),
++            (0x00000000, 0x3f800000, 0x80000000, true, 0x00000000),
++            (0x00000000, 0x3f800000, 0x3c83126f, false, 0x3f800000),
++            (0x00000000, 0x3f800000, 0x3c83126f, true, 0x00000000),
++            (0x00000000, 0x3f800000, 0x3e4ccccd, false, 0x3f800000),
++            (0x00000000, 0x3f800000, 0x3e4ccccd, true, 0x00000000),
++            (0x00000000, 0x3f800000, 0xbe800000, false, 0x3f800000),
++            (0x00000000, 0x3f800000, 0xbe800000, true, 0x00000000),
++            (0x00000000, 0x3f800000, 0x7f800000, false, 0x3f800000),
++            (0x00000000, 0x3f800000, 0x7f800000, true, 0x00000000),
++            (0x00000000, 0x3f800000, 0x7fc34567, false, 0x3f800000),
++            (0x00000000, 0x3f800000, 0x7fc34567, true, 0x00000000),
++            (0x00000000, 0x7fc12345, 0x00000000, false, 0x3f800000),
++            (0x00000000, 0x7fc12345, 0x00000000, true, 0x00000000),
++            (0x00000000, 0x7fc12345, 0x80000000, false, 0x3f800000),
++            (0x00000000, 0x7fc12345, 0x80000000, true, 0x00000000),
++            (0x00000000, 0x7fc12345, 0x3c83126f, false, 0x3f800000),
++            (0x00000000, 0x7fc12345, 0x3c83126f, true, 0x00000000),
++            (0x00000000, 0x7fc12345, 0x3e4ccccd, false, 0x3f800000),
++            (0x00000000, 0x7fc12345, 0x3e4ccccd, true, 0x00000000),
++            (0x00000000, 0x7fc12345, 0xbe800000, false, 0x3f800000),
++            (0x00000000, 0x7fc12345, 0xbe800000, true, 0x00000000),
++            (0x00000000, 0x7fc12345, 0x7f800000, false, 0x3f800000),
++            (0x00000000, 0x7fc12345, 0x7f800000, true, 0x00000000),
++            (0x00000000, 0x7fc12345, 0x7fc34567, false, 0x3f800000),
++            (0x00000000, 0x7fc12345, 0x7fc34567, true, 0x00000000),
++            (0x00000000, 0x7f800000, 0x00000000, false, 0x3f800000),
++            (0x00000000, 0x7f800000, 0x00000000, true, 0x00000000),
++            (0x00000000, 0x7f800000, 0x80000000, false, 0x3f800000),
++            (0x00000000, 0x7f800000, 0x80000000, true, 0x00000000),
++            (0x00000000, 0x7f800000, 0x3c83126f, false, 0x3f800000),
++            (0x00000000, 0x7f800000, 0x3c83126f, true, 0x00000000),
++            (0x00000000, 0x7f800000, 0x3e4ccccd, false, 0x3f800000),
++            (0x00000000, 0x7f800000, 0x3e4ccccd, true, 0x00000000),
++            (0x00000000, 0x7f800000, 0xbe800000, false, 0x3f800000),
++            (0x00000000, 0x7f800000, 0xbe800000, true, 0x00000000),
++            (0x00000000, 0x7f800000, 0x7f800000, false, 0x3f800000),
++            (0x00000000, 0x7f800000, 0x7f800000, true, 0x00000000),
++            (0x00000000, 0x7f800000, 0x7fc34567, false, 0x3f800000),
++            (0x00000000, 0x7f800000, 0x7fc34567, true, 0x00000000),
++            (0x80000000, 0x00000000, 0x00000000, false, 0x3f800000),
++            (0x80000000, 0x00000000, 0x00000000, true, 0x00000000),
++            (0x80000000, 0x00000000, 0x80000000, false, 0x3f800000),
++            (0x80000000, 0x00000000, 0x80000000, true, 0x00000000),
++            (0x80000000, 0x00000000, 0x3c83126f, false, 0x3f800000),
++            (0x80000000, 0x00000000, 0x3c83126f, true, 0x00000000),
++            (0x80000000, 0x00000000, 0x3e4ccccd, false, 0x3f800000),
++            (0x80000000, 0x00000000, 0x3e4ccccd, true, 0x00000000),
++            (0x80000000, 0x00000000, 0xbe800000, false, 0x3f800000),
++            (0x80000000, 0x00000000, 0xbe800000, true, 0x00000000),
++            (0x80000000, 0x00000000, 0x7f800000, false, 0x3f800000),
++            (0x80000000, 0x00000000, 0x7f800000, true, 0x00000000),
++            (0x80000000, 0x00000000, 0x7fc34567, false, 0x3f800000),
++            (0x80000000, 0x00000000, 0x7fc34567, true, 0x00000000),
++            (0x80000000, 0x80000000, 0x00000000, false, 0x3f800000),
++            (0x80000000, 0x80000000, 0x00000000, true, 0x00000000),
++            (0x80000000, 0x80000000, 0x80000000, false, 0x3f800000),
++            (0x80000000, 0x80000000, 0x80000000, true, 0x00000000),
++            (0x80000000, 0x80000000, 0x3c83126f, false, 0x3f800000),
++            (0x80000000, 0x80000000, 0x3c83126f, true, 0x00000000),
++            (0x80000000, 0x80000000, 0x3e4ccccd, false, 0x3f800000),
++            (0x80000000, 0x80000000, 0x3e4ccccd, true, 0x00000000),
++            (0x80000000, 0x80000000, 0xbe800000, false, 0x3f800000),
++            (0x80000000, 0x80000000, 0xbe800000, true, 0x00000000),
++            (0x80000000, 0x80000000, 0x7f800000, false, 0x3f800000),
++            (0x80000000, 0x80000000, 0x7f800000, true, 0x00000000),
++            (0x80000000, 0x80000000, 0x7fc34567, false, 0x3f800000),
++            (0x80000000, 0x80000000, 0x7fc34567, true, 0x00000000),
++            (0x80000000, 0x3f000000, 0x00000000, false, 0x3f800000),
++            (0x80000000, 0x3f000000, 0x00000000, true, 0x00000000),
++            (0x80000000, 0x3f000000, 0x80000000, false, 0x3f800000),
++            (0x80000000, 0x3f000000, 0x80000000, true, 0x00000000),
++            (0x80000000, 0x3f000000, 0x3c83126f, false, 0x3f800000),
++            (0x80000000, 0x3f000000, 0x3c83126f, true, 0x00000000),
++            (0x80000000, 0x3f000000, 0x3e4ccccd, false, 0x3f800000),
++            (0x80000000, 0x3f000000, 0x3e4ccccd, true, 0x00000000),
++            (0x80000000, 0x3f000000, 0xbe800000, false, 0x3f800000),
++            (0x80000000, 0x3f000000, 0xbe800000, true, 0x00000000),
++            (0x80000000, 0x3f000000, 0x7f800000, false, 0x3f800000),
++            (0x80000000, 0x3f000000, 0x7f800000, true, 0x00000000),
++            (0x80000000, 0x3f000000, 0x7fc34567, false, 0x3f800000),
++            (0x80000000, 0x3f000000, 0x7fc34567, true, 0x00000000),
++            (0x80000000, 0x3f800000, 0x00000000, false, 0x3f800000),
++            (0x80000000, 0x3f800000, 0x00000000, true, 0x00000000),
++            (0x80000000, 0x3f800000, 0x80000000, false, 0x3f800000),
++            (0x80000000, 0x3f800000, 0x80000000, true, 0x00000000),
++            (0x80000000, 0x3f800000, 0x3c83126f, false, 0x3f800000),
++            (0x80000000, 0x3f800000, 0x3c83126f, true, 0x00000000),
++            (0x80000000, 0x3f800000, 0x3e4ccccd, false, 0x3f800000),
++            (0x80000000, 0x3f800000, 0x3e4ccccd, true, 0x00000000),
++            (0x80000000, 0x3f800000, 0xbe800000, false, 0x3f800000),
++            (0x80000000, 0x3f800000, 0xbe800000, true, 0x00000000),
++            (0x80000000, 0x3f800000, 0x7f800000, false, 0x3f800000),
++            (0x80000000, 0x3f800000, 0x7f800000, true, 0x00000000),
++            (0x80000000, 0x3f800000, 0x7fc34567, false, 0x3f800000),
++            (0x80000000, 0x3f800000, 0x7fc34567, true, 0x00000000),
++            (0x80000000, 0x7fc12345, 0x00000000, false, 0x3f800000),
++            (0x80000000, 0x7fc12345, 0x00000000, true, 0x00000000),
++            (0x80000000, 0x7fc12345, 0x80000000, false, 0x3f800000),
++            (0x80000000, 0x7fc12345, 0x80000000, true, 0x00000000),
++            (0x80000000, 0x7fc12345, 0x3c83126f, false, 0x3f800000),
++            (0x80000000, 0x7fc12345, 0x3c83126f, true, 0x00000000),
++            (0x80000000, 0x7fc12345, 0x3e4ccccd, false, 0x3f800000),
++            (0x80000000, 0x7fc12345, 0x3e4ccccd, true, 0x00000000),
++            (0x80000000, 0x7fc12345, 0xbe800000, false, 0x3f800000),
++            (0x80000000, 0x7fc12345, 0xbe800000, true, 0x00000000),
++            (0x80000000, 0x7fc12345, 0x7f800000, false, 0x3f800000),
++            (0x80000000, 0x7fc12345, 0x7f800000, true, 0x00000000),
++            (0x80000000, 0x7fc12345, 0x7fc34567, false, 0x3f800000),
++            (0x80000000, 0x7fc12345, 0x7fc34567, true, 0x00000000),
++            (0x80000000, 0x7f800000, 0x00000000, false, 0x3f800000),
++            (0x80000000, 0x7f800000, 0x00000000, true, 0x00000000),
++            (0x80000000, 0x7f800000, 0x80000000, false, 0x3f800000),
++            (0x80000000, 0x7f800000, 0x80000000, true, 0x00000000),
++            (0x80000000, 0x7f800000, 0x3c83126f, false, 0x3f800000),
++            (0x80000000, 0x7f800000, 0x3c83126f, true, 0x00000000),
++            (0x80000000, 0x7f800000, 0x3e4ccccd, false, 0x3f800000),
++            (0x80000000, 0x7f800000, 0x3e4ccccd, true, 0x00000000),
++            (0x80000000, 0x7f800000, 0xbe800000, false, 0x3f800000),
++            (0x80000000, 0x7f800000, 0xbe800000, true, 0x00000000),
++            (0x80000000, 0x7f800000, 0x7f800000, false, 0x3f800000),
++            (0x80000000, 0x7f800000, 0x7f800000, true, 0x00000000),
++            (0x80000000, 0x7f800000, 0x7fc34567, false, 0x3f800000),
++            (0x80000000, 0x7f800000, 0x7fc34567, true, 0x00000000),
++            (0x3f800000, 0x00000000, 0x00000000, false, 0x00000000),
++            (0x3f800000, 0x00000000, 0x00000000, true, 0x00000000),
++            (0x3f800000, 0x00000000, 0x80000000, false, 0x00000000),
++            (0x3f800000, 0x00000000, 0x80000000, true, 0x00000000),
++            (0x3f800000, 0x00000000, 0x3c83126f, false, 0x3c83126f),
++            (0x3f800000, 0x00000000, 0x3c83126f, true, 0x00000000),
++            (0x3f800000, 0x00000000, 0x3e4ccccd, false, 0x3e4ccccd),
++            (0x3f800000, 0x00000000, 0x3e4ccccd, true, 0x00000000),
++            (0x3f800000, 0x00000000, 0xbe800000, false, 0x00000000),
++            (0x3f800000, 0x00000000, 0xbe800000, true, 0x3e800000),
++            (0x3f800000, 0x00000000, 0x7f800000, false, 0x3f800000),
++            (0x3f800000, 0x00000000, 0x7f800000, true, 0x00000000),
++            (0x3f800000, 0x00000000, 0x7fc34567, false, 0x7fc34567),
++            (0x3f800000, 0x00000000, 0x7fc34567, true, 0xffc34567),
++            (0x3f800000, 0x80000000, 0x00000000, false, 0x00000000),
++            (0x3f800000, 0x80000000, 0x00000000, true, 0x80000000),
++            (0x3f800000, 0x80000000, 0x80000000, false, 0x80000000),
++            (0x3f800000, 0x80000000, 0x80000000, true, 0x00000000),
++            (0x3f800000, 0x80000000, 0x3c83126f, false, 0x3c83126f),
++            (0x3f800000, 0x80000000, 0x3c83126f, true, 0x00000000),
++            (0x3f800000, 0x80000000, 0x3e4ccccd, false, 0x3e4ccccd),
++            (0x3f800000, 0x80000000, 0x3e4ccccd, true, 0x00000000),
++            (0x3f800000, 0x80000000, 0xbe800000, false, 0x00000000),
++            (0x3f800000, 0x80000000, 0xbe800000, true, 0x3e800000),
++            (0x3f800000, 0x80000000, 0x7f800000, false, 0x3f800000),
++            (0x3f800000, 0x80000000, 0x7f800000, true, 0x00000000),
++            (0x3f800000, 0x80000000, 0x7fc34567, false, 0x7fc34567),
++            (0x3f800000, 0x80000000, 0x7fc34567, true, 0xffc34567),
++            (0x3f800000, 0x3f000000, 0x00000000, false, 0x3f000000),
++            (0x3f800000, 0x3f000000, 0x00000000, true, 0x3f000000),
++            (0x3f800000, 0x3f000000, 0x80000000, false, 0x3f000000),
++            (0x3f800000, 0x3f000000, 0x80000000, true, 0x3f000000),
++            (0x3f800000, 0x3f000000, 0x3c83126f, false, 0x3f041893),
++            (0x3f800000, 0x3f000000, 0x3c83126f, true, 0x3ef7ced9),
++            (0x3f800000, 0x3f000000, 0x3e4ccccd, false, 0x3f333333),
++            (0x3f800000, 0x3f000000, 0x3e4ccccd, true, 0x3e99999a),
++            (0x3f800000, 0x3f000000, 0xbe800000, false, 0x3e800000),
++            (0x3f800000, 0x3f000000, 0xbe800000, true, 0x3f400000),
++            (0x3f800000, 0x3f000000, 0x7f800000, false, 0x3f800000),
++            (0x3f800000, 0x3f000000, 0x7f800000, true, 0x00000000),
++            (0x3f800000, 0x3f000000, 0x7fc34567, false, 0x7fc34567),
++            (0x3f800000, 0x3f000000, 0x7fc34567, true, 0xffc34567),
++            (0x3f800000, 0x3f800000, 0x00000000, false, 0x3f800000),
++            (0x3f800000, 0x3f800000, 0x00000000, true, 0x3f800000),
++            (0x3f800000, 0x3f800000, 0x80000000, false, 0x3f800000),
++            (0x3f800000, 0x3f800000, 0x80000000, true, 0x3f800000),
++            (0x3f800000, 0x3f800000, 0x3c83126f, false, 0x3f800000),
++            (0x3f800000, 0x3f800000, 0x3c83126f, true, 0x3f7be76d),
++            (0x3f800000, 0x3f800000, 0x3e4ccccd, false, 0x3f800000),
++            (0x3f800000, 0x3f800000, 0x3e4ccccd, true, 0x3f4ccccd),
++            (0x3f800000, 0x3f800000, 0xbe800000, false, 0x3f400000),
++            (0x3f800000, 0x3f800000, 0xbe800000, true, 0x3f800000),
++            (0x3f800000, 0x3f800000, 0x7f800000, false, 0x3f800000),
++            (0x3f800000, 0x3f800000, 0x7f800000, true, 0x00000000),
++            (0x3f800000, 0x3f800000, 0x7fc34567, false, 0x7fc34567),
++            (0x3f800000, 0x3f800000, 0x7fc34567, true, 0xffc34567),
++            (0x3f800000, 0x7fc12345, 0x00000000, false, 0x7fc12345),
++            (0x3f800000, 0x7fc12345, 0x00000000, true, 0x7fc12345),
++            (0x3f800000, 0x7fc12345, 0x80000000, false, 0x7fc12345),
++            (0x3f800000, 0x7fc12345, 0x80000000, true, 0x7fc12345),
++            (0x3f800000, 0x7fc12345, 0x3c83126f, false, 0x7fc12345),
++            (0x3f800000, 0x7fc12345, 0x3c83126f, true, 0x7fc12345),
++            (0x3f800000, 0x7fc12345, 0x3e4ccccd, false, 0x7fc12345),
++            (0x3f800000, 0x7fc12345, 0x3e4ccccd, true, 0x7fc12345),
++            (0x3f800000, 0x7fc12345, 0xbe800000, false, 0x7fc12345),
++            (0x3f800000, 0x7fc12345, 0xbe800000, true, 0x7fc12345),
++            (0x3f800000, 0x7fc12345, 0x7f800000, false, 0x7fc12345),
++            (0x3f800000, 0x7fc12345, 0x7f800000, true, 0x7fc12345),
++            (0x3f800000, 0x7fc12345, 0x7fc34567, false, 0x7fc34567),
++            (0x3f800000, 0x7fc12345, 0x7fc34567, true, 0xffc34567),
++            (0x3f800000, 0x7f800000, 0x00000000, false, 0x3f800000),
++            (0x3f800000, 0x7f800000, 0x00000000, true, 0x3f800000),
++            (0x3f800000, 0x7f800000, 0x80000000, false, 0x3f800000),
++            (0x3f800000, 0x7f800000, 0x80000000, true, 0x3f800000),
++            (0x3f800000, 0x7f800000, 0x3c83126f, false, 0x3f800000),
++            (0x3f800000, 0x7f800000, 0x3c83126f, true, 0x3f800000),
++            (0x3f800000, 0x7f800000, 0x3e4ccccd, false, 0x3f800000),
++            (0x3f800000, 0x7f800000, 0x3e4ccccd, true, 0x3f800000),
++            (0x3f800000, 0x7f800000, 0xbe800000, false, 0x3f800000),
++            (0x3f800000, 0x7f800000, 0xbe800000, true, 0x3f800000),
++            (0x3f800000, 0x7f800000, 0x7f800000, false, 0x3f800000),
++            (0x3f800000, 0x7f800000, 0x7f800000, true, 0xffc00000),
++            (0x3f800000, 0x7f800000, 0x7fc34567, false, 0x7fc34567),
++            (0x3f800000, 0x7f800000, 0x7fc34567, true, 0xffc34567),
++            (0xbf800000, 0x00000000, 0x00000000, false, 0x00000000),
++            (0xbf800000, 0x00000000, 0x00000000, true, 0x00000000),
++            (0xbf800000, 0x00000000, 0x80000000, false, 0x00000000),
++            (0xbf800000, 0x00000000, 0x80000000, true, 0x00000000),
++            (0xbf800000, 0x00000000, 0x3c83126f, false, 0x00000000),
++            (0xbf800000, 0x00000000, 0x3c83126f, true, 0x3c83126f),
++            (0xbf800000, 0x00000000, 0x3e4ccccd, false, 0x00000000),
++            (0xbf800000, 0x00000000, 0x3e4ccccd, true, 0x3e4ccccd),
++            (0xbf800000, 0x00000000, 0xbe800000, false, 0x3e800000),
++            (0xbf800000, 0x00000000, 0xbe800000, true, 0x00000000),
++            (0xbf800000, 0x00000000, 0x7f800000, false, 0x00000000),
++            (0xbf800000, 0x00000000, 0x7f800000, true, 0x3f800000),
++            (0xbf800000, 0x00000000, 0x7fc34567, false, 0x7fc34567),
++            (0xbf800000, 0x00000000, 0x7fc34567, true, 0xffc34567),
++            (0xbf800000, 0x80000000, 0x00000000, false, 0x80000000),
++            (0xbf800000, 0x80000000, 0x00000000, true, 0x00000000),
++            (0xbf800000, 0x80000000, 0x80000000, false, 0x00000000),
++            (0xbf800000, 0x80000000, 0x80000000, true, 0x80000000),
++            (0xbf800000, 0x80000000, 0x3c83126f, false, 0x00000000),
++            (0xbf800000, 0x80000000, 0x3c83126f, true, 0x3c83126f),
++            (0xbf800000, 0x80000000, 0x3e4ccccd, false, 0x00000000),
++            (0xbf800000, 0x80000000, 0x3e4ccccd, true, 0x3e4ccccd),
++            (0xbf800000, 0x80000000, 0xbe800000, false, 0x3e800000),
++            (0xbf800000, 0x80000000, 0xbe800000, true, 0x00000000),
++            (0xbf800000, 0x80000000, 0x7f800000, false, 0x00000000),
++            (0xbf800000, 0x80000000, 0x7f800000, true, 0x3f800000),
++            (0xbf800000, 0x80000000, 0x7fc34567, false, 0x7fc34567),
++            (0xbf800000, 0x80000000, 0x7fc34567, true, 0xffc34567),
++            (0xbf800000, 0x3f000000, 0x00000000, false, 0x3f000000),
++            (0xbf800000, 0x3f000000, 0x00000000, true, 0x3f000000),
++            (0xbf800000, 0x3f000000, 0x80000000, false, 0x3f000000),
++            (0xbf800000, 0x3f000000, 0x80000000, true, 0x3f000000),
++            (0xbf800000, 0x3f000000, 0x3c83126f, false, 0x3ef7ced9),
++            (0xbf800000, 0x3f000000, 0x3c83126f, true, 0x3f041893),
++            (0xbf800000, 0x3f000000, 0x3e4ccccd, false, 0x3e99999a),
++            (0xbf800000, 0x3f000000, 0x3e4ccccd, true, 0x3f333333),
++            (0xbf800000, 0x3f000000, 0xbe800000, false, 0x3f400000),
++            (0xbf800000, 0x3f000000, 0xbe800000, true, 0x3e800000),
++            (0xbf800000, 0x3f000000, 0x7f800000, false, 0x00000000),
++            (0xbf800000, 0x3f000000, 0x7f800000, true, 0x3f800000),
++            (0xbf800000, 0x3f000000, 0x7fc34567, false, 0x7fc34567),
++            (0xbf800000, 0x3f000000, 0x7fc34567, true, 0xffc34567),
++            (0xbf800000, 0x3f800000, 0x00000000, false, 0x3f800000),
++            (0xbf800000, 0x3f800000, 0x00000000, true, 0x3f800000),
++            (0xbf800000, 0x3f800000, 0x80000000, false, 0x3f800000),
++            (0xbf800000, 0x3f800000, 0x80000000, true, 0x3f800000),
++            (0xbf800000, 0x3f800000, 0x3c83126f, false, 0x3f7be76d),
++            (0xbf800000, 0x3f800000, 0x3c83126f, true, 0x3f800000),
++            (0xbf800000, 0x3f800000, 0x3e4ccccd, false, 0x3f4ccccd),
++            (0xbf800000, 0x3f800000, 0x3e4ccccd, true, 0x3f800000),
++            (0xbf800000, 0x3f800000, 0xbe800000, false, 0x3f800000),
++            (0xbf800000, 0x3f800000, 0xbe800000, true, 0x3f400000),
++            (0xbf800000, 0x3f800000, 0x7f800000, false, 0x00000000),
++            (0xbf800000, 0x3f800000, 0x7f800000, true, 0x3f800000),
++            (0xbf800000, 0x3f800000, 0x7fc34567, false, 0x7fc34567),
++            (0xbf800000, 0x3f800000, 0x7fc34567, true, 0xffc34567),
++            (0xbf800000, 0x7fc12345, 0x00000000, false, 0x7fc12345),
++            (0xbf800000, 0x7fc12345, 0x00000000, true, 0x7fc12345),
++            (0xbf800000, 0x7fc12345, 0x80000000, false, 0x7fc12345),
++            (0xbf800000, 0x7fc12345, 0x80000000, true, 0x7fc12345),
++            (0xbf800000, 0x7fc12345, 0x3c83126f, false, 0x7fc12345),
++            (0xbf800000, 0x7fc12345, 0x3c83126f, true, 0x7fc12345),
++            (0xbf800000, 0x7fc12345, 0x3e4ccccd, false, 0x7fc12345),
++            (0xbf800000, 0x7fc12345, 0x3e4ccccd, true, 0x7fc12345),
++            (0xbf800000, 0x7fc12345, 0xbe800000, false, 0x7fc12345),
++            (0xbf800000, 0x7fc12345, 0xbe800000, true, 0x7fc12345),
++            (0xbf800000, 0x7fc12345, 0x7f800000, false, 0x7fc12345),
++            (0xbf800000, 0x7fc12345, 0x7f800000, true, 0x7fc12345),
++            (0xbf800000, 0x7fc12345, 0x7fc34567, false, 0x7fc34567),
++            (0xbf800000, 0x7fc12345, 0x7fc34567, true, 0xffc34567),
++            (0xbf800000, 0x7f800000, 0x00000000, false, 0x3f800000),
++            (0xbf800000, 0x7f800000, 0x00000000, true, 0x3f800000),
++            (0xbf800000, 0x7f800000, 0x80000000, false, 0x3f800000),
++            (0xbf800000, 0x7f800000, 0x80000000, true, 0x3f800000),
++            (0xbf800000, 0x7f800000, 0x3c83126f, false, 0x3f800000),
++            (0xbf800000, 0x7f800000, 0x3c83126f, true, 0x3f800000),
++            (0xbf800000, 0x7f800000, 0x3e4ccccd, false, 0x3f800000),
++            (0xbf800000, 0x7f800000, 0x3e4ccccd, true, 0x3f800000),
++            (0xbf800000, 0x7f800000, 0xbe800000, false, 0x3f800000),
++            (0xbf800000, 0x7f800000, 0xbe800000, true, 0x3f800000),
++            (0xbf800000, 0x7f800000, 0x7f800000, false, 0xffc00000),
++            (0xbf800000, 0x7f800000, 0x7f800000, true, 0x3f800000),
++            (0xbf800000, 0x7f800000, 0x7fc34567, false, 0x7fc34567),
++            (0xbf800000, 0x7f800000, 0x7fc34567, true, 0xffc34567),
++            (0x40000000, 0x00000000, 0x00000000, false, 0x00000000),
++            (0x40000000, 0x00000000, 0x00000000, true, 0x00000000),
++            (0x40000000, 0x00000000, 0x80000000, false, 0x00000000),
++            (0x40000000, 0x00000000, 0x80000000, true, 0x00000000),
++            (0x40000000, 0x00000000, 0x3c83126f, false, 0x3c03126f),
++            (0x40000000, 0x00000000, 0x3c83126f, true, 0x00000000),
++            (0x40000000, 0x00000000, 0x3e4ccccd, false, 0x3dcccccd),
++            (0x40000000, 0x00000000, 0x3e4ccccd, true, 0x00000000),
++            (0x40000000, 0x00000000, 0xbe800000, false, 0x00000000),
++            (0x40000000, 0x00000000, 0xbe800000, true, 0x3e000000),
++            (0x40000000, 0x00000000, 0x7f800000, false, 0x3f800000),
++            (0x40000000, 0x00000000, 0x7f800000, true, 0x00000000),
++            (0x40000000, 0x00000000, 0x7fc34567, false, 0x7fc34567),
++            (0x40000000, 0x00000000, 0x7fc34567, true, 0xffc34567),
++            (0x40000000, 0x80000000, 0x00000000, false, 0x00000000),
++            (0x40000000, 0x80000000, 0x00000000, true, 0x80000000),
++            (0x40000000, 0x80000000, 0x80000000, false, 0x80000000),
++            (0x40000000, 0x80000000, 0x80000000, true, 0x00000000),
++            (0x40000000, 0x80000000, 0x3c83126f, false, 0x3c03126f),
++            (0x40000000, 0x80000000, 0x3c83126f, true, 0x00000000),
++            (0x40000000, 0x80000000, 0x3e4ccccd, false, 0x3dcccccd),
++            (0x40000000, 0x80000000, 0x3e4ccccd, true, 0x00000000),
++            (0x40000000, 0x80000000, 0xbe800000, false, 0x00000000),
++            (0x40000000, 0x80000000, 0xbe800000, true, 0x3e000000),
++            (0x40000000, 0x80000000, 0x7f800000, false, 0x3f800000),
++            (0x40000000, 0x80000000, 0x7f800000, true, 0x00000000),
++            (0x40000000, 0x80000000, 0x7fc34567, false, 0x7fc34567),
++            (0x40000000, 0x80000000, 0x7fc34567, true, 0xffc34567),
++            (0x40000000, 0x3f000000, 0x00000000, false, 0x3f000000),
++            (0x40000000, 0x3f000000, 0x00000000, true, 0x3f000000),
++            (0x40000000, 0x3f000000, 0x80000000, false, 0x3f000000),
++            (0x40000000, 0x3f000000, 0x80000000, true, 0x3f000000),
++            (0x40000000, 0x3f000000, 0x3c83126f, false, 0x3f020c4a),
++            (0x40000000, 0x3f000000, 0x3c83126f, true, 0x3efbe76d),
++            (0x40000000, 0x3f000000, 0x3e4ccccd, false, 0x3f19999a),
++            (0x40000000, 0x3f000000, 0x3e4ccccd, true, 0x3ecccccd),
++            (0x40000000, 0x3f000000, 0xbe800000, false, 0x3ec00000),
++            (0x40000000, 0x3f000000, 0xbe800000, true, 0x3f200000),
++            (0x40000000, 0x3f000000, 0x7f800000, false, 0x3f800000),
++            (0x40000000, 0x3f000000, 0x7f800000, true, 0x00000000),
++            (0x40000000, 0x3f000000, 0x7fc34567, false, 0x7fc34567),
++            (0x40000000, 0x3f000000, 0x7fc34567, true, 0xffc34567),
++            (0x40000000, 0x3f800000, 0x00000000, false, 0x3f800000),
++            (0x40000000, 0x3f800000, 0x00000000, true, 0x3f800000),
++            (0x40000000, 0x3f800000, 0x80000000, false, 0x3f800000),
++            (0x40000000, 0x3f800000, 0x80000000, true, 0x3f800000),
++            (0x40000000, 0x3f800000, 0x3c83126f, false, 0x3f800000),
++            (0x40000000, 0x3f800000, 0x3c83126f, true, 0x3f7df3b6),
++            (0x40000000, 0x3f800000, 0x3e4ccccd, false, 0x3f800000),
++            (0x40000000, 0x3f800000, 0x3e4ccccd, true, 0x3f666666),
++            (0x40000000, 0x3f800000, 0xbe800000, false, 0x3f600000),
++            (0x40000000, 0x3f800000, 0xbe800000, true, 0x3f800000),
++            (0x40000000, 0x3f800000, 0x7f800000, false, 0x3f800000),
++            (0x40000000, 0x3f800000, 0x7f800000, true, 0x00000000),
++            (0x40000000, 0x3f800000, 0x7fc34567, false, 0x7fc34567),
++            (0x40000000, 0x3f800000, 0x7fc34567, true, 0xffc34567),
++            (0x40000000, 0x7fc12345, 0x00000000, false, 0x7fc12345),
++            (0x40000000, 0x7fc12345, 0x00000000, true, 0x7fc12345),
++            (0x40000000, 0x7fc12345, 0x80000000, false, 0x7fc12345),
++            (0x40000000, 0x7fc12345, 0x80000000, true, 0x7fc12345),
++            (0x40000000, 0x7fc12345, 0x3c83126f, false, 0x7fc12345),
++            (0x40000000, 0x7fc12345, 0x3c83126f, true, 0x7fc12345),
++            (0x40000000, 0x7fc12345, 0x3e4ccccd, false, 0x7fc12345),
++            (0x40000000, 0x7fc12345, 0x3e4ccccd, true, 0x7fc12345),
++            (0x40000000, 0x7fc12345, 0xbe800000, false, 0x7fc12345),
++            (0x40000000, 0x7fc12345, 0xbe800000, true, 0x7fc12345),
++            (0x40000000, 0x7fc12345, 0x7f800000, false, 0x7fc12345),
++            (0x40000000, 0x7fc12345, 0x7f800000, true, 0x7fc12345),
++            (0x40000000, 0x7fc12345, 0x7fc34567, false, 0x7fc34567),
++            (0x40000000, 0x7fc12345, 0x7fc34567, true, 0xffc34567),
++            (0x40000000, 0x7f800000, 0x00000000, false, 0x3f800000),
++            (0x40000000, 0x7f800000, 0x00000000, true, 0x3f800000),
++            (0x40000000, 0x7f800000, 0x80000000, false, 0x3f800000),
++            (0x40000000, 0x7f800000, 0x80000000, true, 0x3f800000),
++            (0x40000000, 0x7f800000, 0x3c83126f, false, 0x3f800000),
++            (0x40000000, 0x7f800000, 0x3c83126f, true, 0x3f800000),
++            (0x40000000, 0x7f800000, 0x3e4ccccd, false, 0x3f800000),
++            (0x40000000, 0x7f800000, 0x3e4ccccd, true, 0x3f800000),
++            (0x40000000, 0x7f800000, 0xbe800000, false, 0x3f800000),
++            (0x40000000, 0x7f800000, 0xbe800000, true, 0x3f800000),
++            (0x40000000, 0x7f800000, 0x7f800000, false, 0x3f800000),
++            (0x40000000, 0x7f800000, 0x7f800000, true, 0xffc00000),
++            (0x40000000, 0x7f800000, 0x7fc34567, false, 0x7fc34567),
++            (0x40000000, 0x7f800000, 0x7fc34567, true, 0xffc34567),
++            (0x3e4ccccd, 0x00000000, 0x00000000, false, 0x00000000),
++            (0x3e4ccccd, 0x00000000, 0x00000000, true, 0x00000000),
++            (0x3e4ccccd, 0x00000000, 0x80000000, false, 0x00000000),
++            (0x3e4ccccd, 0x00000000, 0x80000000, true, 0x00000000),
++            (0x3e4ccccd, 0x00000000, 0x3c83126f, false, 0x3da3d70b),
++            (0x3e4ccccd, 0x00000000, 0x3c83126f, true, 0x00000000),
++            (0x3e4ccccd, 0x00000000, 0x3e4ccccd, false, 0x3f800000),
++            (0x3e4ccccd, 0x00000000, 0x3e4ccccd, true, 0x00000000),
++            (0x3e4ccccd, 0x00000000, 0xbe800000, false, 0x00000000),
++            (0x3e4ccccd, 0x00000000, 0xbe800000, true, 0x3f800000),
++            (0x3e4ccccd, 0x00000000, 0x7f800000, false, 0x3f800000),
++            (0x3e4ccccd, 0x00000000, 0x7f800000, true, 0x00000000),
++            (0x3e4ccccd, 0x00000000, 0x7fc34567, false, 0x7fc34567),
++            (0x3e4ccccd, 0x00000000, 0x7fc34567, true, 0xffc34567),
++            (0x3e4ccccd, 0x80000000, 0x00000000, false, 0x00000000),
++            (0x3e4ccccd, 0x80000000, 0x00000000, true, 0x80000000),
++            (0x3e4ccccd, 0x80000000, 0x80000000, false, 0x80000000),
++            (0x3e4ccccd, 0x80000000, 0x80000000, true, 0x00000000),
++            (0x3e4ccccd, 0x80000000, 0x3c83126f, false, 0x3da3d70b),
++            (0x3e4ccccd, 0x80000000, 0x3c83126f, true, 0x00000000),
++            (0x3e4ccccd, 0x80000000, 0x3e4ccccd, false, 0x3f800000),
++            (0x3e4ccccd, 0x80000000, 0x3e4ccccd, true, 0x00000000),
++            (0x3e4ccccd, 0x80000000, 0xbe800000, false, 0x00000000),
++            (0x3e4ccccd, 0x80000000, 0xbe800000, true, 0x3f800000),
++            (0x3e4ccccd, 0x80000000, 0x7f800000, false, 0x3f800000),
++            (0x3e4ccccd, 0x80000000, 0x7f800000, true, 0x00000000),
++            (0x3e4ccccd, 0x80000000, 0x7fc34567, false, 0x7fc34567),
++            (0x3e4ccccd, 0x80000000, 0x7fc34567, true, 0xffc34567),
++            (0x3e4ccccd, 0x3f000000, 0x00000000, false, 0x3f000000),
++            (0x3e4ccccd, 0x3f000000, 0x00000000, true, 0x3f000000),
++            (0x3e4ccccd, 0x3f000000, 0x80000000, false, 0x3f000000),
++            (0x3e4ccccd, 0x3f000000, 0x80000000, true, 0x3f000000),
++            (0x3e4ccccd, 0x3f000000, 0x3c83126f, false, 0x3f147ae1),
++            (0x3e4ccccd, 0x3f000000, 0x3c83126f, true, 0x3ed70a3d),
++            (0x3e4ccccd, 0x3f000000, 0x3e4ccccd, false, 0x3f800000),
++            (0x3e4ccccd, 0x3f000000, 0x3e4ccccd, true, 0x00000000),
++            (0x3e4ccccd, 0x3f000000, 0xbe800000, false, 0x00000000),
++            (0x3e4ccccd, 0x3f000000, 0xbe800000, true, 0x3f800000),
++            (0x3e4ccccd, 0x3f000000, 0x7f800000, false, 0x3f800000),
++            (0x3e4ccccd, 0x3f000000, 0x7f800000, true, 0x00000000),
++            (0x3e4ccccd, 0x3f000000, 0x7fc34567, false, 0x7fc34567),
++            (0x3e4ccccd, 0x3f000000, 0x7fc34567, true, 0xffc34567),
++            (0x3e4ccccd, 0x3f800000, 0x00000000, false, 0x3f800000),
++            (0x3e4ccccd, 0x3f800000, 0x00000000, true, 0x3f800000),
++            (0x3e4ccccd, 0x3f800000, 0x80000000, false, 0x3f800000),
++            (0x3e4ccccd, 0x3f800000, 0x80000000, true, 0x3f800000),
++            (0x3e4ccccd, 0x3f800000, 0x3c83126f, false, 0x3f800000),
++            (0x3e4ccccd, 0x3f800000, 0x3c83126f, true, 0x3f6b851f),
++            (0x3e4ccccd, 0x3f800000, 0x3e4ccccd, false, 0x3f800000),
++            (0x3e4ccccd, 0x3f800000, 0x3e4ccccd, true, 0x00000000),
++            (0x3e4ccccd, 0x3f800000, 0xbe800000, false, 0x00000000),
++            (0x3e4ccccd, 0x3f800000, 0xbe800000, true, 0x3f800000),
++            (0x3e4ccccd, 0x3f800000, 0x7f800000, false, 0x3f800000),
++            (0x3e4ccccd, 0x3f800000, 0x7f800000, true, 0x00000000),
++            (0x3e4ccccd, 0x3f800000, 0x7fc34567, false, 0x7fc34567),
++            (0x3e4ccccd, 0x3f800000, 0x7fc34567, true, 0xffc34567),
++            (0x3e4ccccd, 0x7fc12345, 0x00000000, false, 0x7fc12345),
++            (0x3e4ccccd, 0x7fc12345, 0x00000000, true, 0x7fc12345),
++            (0x3e4ccccd, 0x7fc12345, 0x80000000, false, 0x7fc12345),
++            (0x3e4ccccd, 0x7fc12345, 0x80000000, true, 0x7fc12345),
++            (0x3e4ccccd, 0x7fc12345, 0x3c83126f, false, 0x7fc12345),
++            (0x3e4ccccd, 0x7fc12345, 0x3c83126f, true, 0x7fc12345),
++            (0x3e4ccccd, 0x7fc12345, 0x3e4ccccd, false, 0x7fc12345),
++            (0x3e4ccccd, 0x7fc12345, 0x3e4ccccd, true, 0x7fc12345),
++            (0x3e4ccccd, 0x7fc12345, 0xbe800000, false, 0x7fc12345),
++            (0x3e4ccccd, 0x7fc12345, 0xbe800000, true, 0x7fc12345),
++            (0x3e4ccccd, 0x7fc12345, 0x7f800000, false, 0x7fc12345),
++            (0x3e4ccccd, 0x7fc12345, 0x7f800000, true, 0x7fc12345),
++            (0x3e4ccccd, 0x7fc12345, 0x7fc34567, false, 0x7fc34567),
++            (0x3e4ccccd, 0x7fc12345, 0x7fc34567, true, 0xffc34567),
++            (0x3e4ccccd, 0x7f800000, 0x00000000, false, 0x3f800000),
++            (0x3e4ccccd, 0x7f800000, 0x00000000, true, 0x3f800000),
++            (0x3e4ccccd, 0x7f800000, 0x80000000, false, 0x3f800000),
++            (0x3e4ccccd, 0x7f800000, 0x80000000, true, 0x3f800000),
++            (0x3e4ccccd, 0x7f800000, 0x3c83126f, false, 0x3f800000),
++            (0x3e4ccccd, 0x7f800000, 0x3c83126f, true, 0x3f800000),
++            (0x3e4ccccd, 0x7f800000, 0x3e4ccccd, false, 0x3f800000),
++            (0x3e4ccccd, 0x7f800000, 0x3e4ccccd, true, 0x3f800000),
++            (0x3e4ccccd, 0x7f800000, 0xbe800000, false, 0x3f800000),
++            (0x3e4ccccd, 0x7f800000, 0xbe800000, true, 0x3f800000),
++            (0x3e4ccccd, 0x7f800000, 0x7f800000, false, 0x3f800000),
++            (0x3e4ccccd, 0x7f800000, 0x7f800000, true, 0xffc00000),
++            (0x3e4ccccd, 0x7f800000, 0x7fc34567, false, 0x7fc34567),
++            (0x3e4ccccd, 0x7f800000, 0x7fc34567, true, 0xffc34567),
++            (0x7f800000, 0x00000000, 0x00000000, false, 0x00000000),
++            (0x7f800000, 0x00000000, 0x00000000, true, 0x00000000),
++            (0x7f800000, 0x00000000, 0x80000000, false, 0x00000000),
++            (0x7f800000, 0x00000000, 0x80000000, true, 0x00000000),
++            (0x7f800000, 0x00000000, 0x3c83126f, false, 0x00000000),
++            (0x7f800000, 0x00000000, 0x3c83126f, true, 0x00000000),
++            (0x7f800000, 0x00000000, 0x3e4ccccd, false, 0x00000000),
++            (0x7f800000, 0x00000000, 0x3e4ccccd, true, 0x00000000),
++            (0x7f800000, 0x00000000, 0xbe800000, false, 0x00000000),
++            (0x7f800000, 0x00000000, 0xbe800000, true, 0x00000000),
++            (0x7f800000, 0x00000000, 0x7f800000, false, 0xffc00000),
++            (0x7f800000, 0x00000000, 0x7f800000, true, 0xffc00000),
++            (0x7f800000, 0x00000000, 0x7fc34567, false, 0x7fc34567),
++            (0x7f800000, 0x00000000, 0x7fc34567, true, 0xffc34567),
++            (0x7f800000, 0x80000000, 0x00000000, false, 0x00000000),
++            (0x7f800000, 0x80000000, 0x00000000, true, 0x80000000),
++            (0x7f800000, 0x80000000, 0x80000000, false, 0x80000000),
++            (0x7f800000, 0x80000000, 0x80000000, true, 0x00000000),
++            (0x7f800000, 0x80000000, 0x3c83126f, false, 0x00000000),
++            (0x7f800000, 0x80000000, 0x3c83126f, true, 0x80000000),
++            (0x7f800000, 0x80000000, 0x3e4ccccd, false, 0x00000000),
++            (0x7f800000, 0x80000000, 0x3e4ccccd, true, 0x80000000),
++            (0x7f800000, 0x80000000, 0xbe800000, false, 0x80000000),
++            (0x7f800000, 0x80000000, 0xbe800000, true, 0x00000000),
++            (0x7f800000, 0x80000000, 0x7f800000, false, 0xffc00000),
++            (0x7f800000, 0x80000000, 0x7f800000, true, 0xffc00000),
++            (0x7f800000, 0x80000000, 0x7fc34567, false, 0x7fc34567),
++            (0x7f800000, 0x80000000, 0x7fc34567, true, 0xffc34567),
++            (0x7f800000, 0x3f000000, 0x00000000, false, 0x3f000000),
++            (0x7f800000, 0x3f000000, 0x00000000, true, 0x3f000000),
++            (0x7f800000, 0x3f000000, 0x80000000, false, 0x3f000000),
++            (0x7f800000, 0x3f000000, 0x80000000, true, 0x3f000000),
++            (0x7f800000, 0x3f000000, 0x3c83126f, false, 0x3f000000),
++            (0x7f800000, 0x3f000000, 0x3c83126f, true, 0x3f000000),
++            (0x7f800000, 0x3f000000, 0x3e4ccccd, false, 0x3f000000),
++            (0x7f800000, 0x3f000000, 0x3e4ccccd, true, 0x3f000000),
++            (0x7f800000, 0x3f000000, 0xbe800000, false, 0x3f000000),
++            (0x7f800000, 0x3f000000, 0xbe800000, true, 0x3f000000),
++            (0x7f800000, 0x3f000000, 0x7f800000, false, 0xffc00000),
++            (0x7f800000, 0x3f000000, 0x7f800000, true, 0xffc00000),
++            (0x7f800000, 0x3f000000, 0x7fc34567, false, 0x7fc34567),
++            (0x7f800000, 0x3f000000, 0x7fc34567, true, 0xffc34567),
++            (0x7f800000, 0x3f800000, 0x00000000, false, 0x3f800000),
++            (0x7f800000, 0x3f800000, 0x00000000, true, 0x3f800000),
++            (0x7f800000, 0x3f800000, 0x80000000, false, 0x3f800000),
++            (0x7f800000, 0x3f800000, 0x80000000, true, 0x3f800000),
++            (0x7f800000, 0x3f800000, 0x3c83126f, false, 0x3f800000),
++            (0x7f800000, 0x3f800000, 0x3c83126f, true, 0x3f800000),
++            (0x7f800000, 0x3f800000, 0x3e4ccccd, false, 0x3f800000),
++            (0x7f800000, 0x3f800000, 0x3e4ccccd, true, 0x3f800000),
++            (0x7f800000, 0x3f800000, 0xbe800000, false, 0x3f800000),
++            (0x7f800000, 0x3f800000, 0xbe800000, true, 0x3f800000),
++            (0x7f800000, 0x3f800000, 0x7f800000, false, 0xffc00000),
++            (0x7f800000, 0x3f800000, 0x7f800000, true, 0xffc00000),
++            (0x7f800000, 0x3f800000, 0x7fc34567, false, 0x7fc34567),
++            (0x7f800000, 0x3f800000, 0x7fc34567, true, 0xffc34567),
++            (0x7f800000, 0x7fc12345, 0x00000000, false, 0x7fc12345),
++            (0x7f800000, 0x7fc12345, 0x00000000, true, 0x7fc12345),
++            (0x7f800000, 0x7fc12345, 0x80000000, false, 0x7fc12345),
++            (0x7f800000, 0x7fc12345, 0x80000000, true, 0x7fc12345),
++            (0x7f800000, 0x7fc12345, 0x3c83126f, false, 0x7fc12345),
++            (0x7f800000, 0x7fc12345, 0x3c83126f, true, 0x7fc12345),
++            (0x7f800000, 0x7fc12345, 0x3e4ccccd, false, 0x7fc12345),
++            (0x7f800000, 0x7fc12345, 0x3e4ccccd, true, 0x7fc12345),
++            (0x7f800000, 0x7fc12345, 0xbe800000, false, 0x7fc12345),
++            (0x7f800000, 0x7fc12345, 0xbe800000, true, 0x7fc12345),
++            (0x7f800000, 0x7fc12345, 0x7f800000, false, 0x7fc12345),
++            (0x7f800000, 0x7fc12345, 0x7f800000, true, 0x7fc12345),
++            (0x7f800000, 0x7fc12345, 0x7fc34567, false, 0x7fc34567),
++            (0x7f800000, 0x7fc12345, 0x7fc34567, true, 0xffc34567),
++            (0x7f800000, 0x7f800000, 0x00000000, false, 0x3f800000),
++            (0x7f800000, 0x7f800000, 0x00000000, true, 0x3f800000),
++            (0x7f800000, 0x7f800000, 0x80000000, false, 0x3f800000),
++            (0x7f800000, 0x7f800000, 0x80000000, true, 0x3f800000),
++            (0x7f800000, 0x7f800000, 0x3c83126f, false, 0x3f800000),
++            (0x7f800000, 0x7f800000, 0x3c83126f, true, 0x3f800000),
++            (0x7f800000, 0x7f800000, 0x3e4ccccd, false, 0x3f800000),
++            (0x7f800000, 0x7f800000, 0x3e4ccccd, true, 0x3f800000),
++            (0x7f800000, 0x7f800000, 0xbe800000, false, 0x3f800000),
++            (0x7f800000, 0x7f800000, 0xbe800000, true, 0x3f800000),
++            (0x7f800000, 0x7f800000, 0x7f800000, false, 0xffc00000),
++            (0x7f800000, 0x7f800000, 0x7f800000, true, 0xffc00000),
++            (0x7f800000, 0x7f800000, 0x7fc34567, false, 0x7fc34567),
++            (0x7f800000, 0x7f800000, 0x7fc34567, true, 0xffc34567),
++            (0xff800000, 0x00000000, 0x00000000, false, 0x00000000),
++            (0xff800000, 0x00000000, 0x00000000, true, 0x00000000),
++            (0xff800000, 0x00000000, 0x80000000, false, 0x00000000),
++            (0xff800000, 0x00000000, 0x80000000, true, 0x00000000),
++            (0xff800000, 0x00000000, 0x3c83126f, false, 0x00000000),
++            (0xff800000, 0x00000000, 0x3c83126f, true, 0x00000000),
++            (0xff800000, 0x00000000, 0x3e4ccccd, false, 0x00000000),
++            (0xff800000, 0x00000000, 0x3e4ccccd, true, 0x00000000),
++            (0xff800000, 0x00000000, 0xbe800000, false, 0x00000000),
++            (0xff800000, 0x00000000, 0xbe800000, true, 0x00000000),
++            (0xff800000, 0x00000000, 0x7f800000, false, 0xffc00000),
++            (0xff800000, 0x00000000, 0x7f800000, true, 0xffc00000),
++            (0xff800000, 0x00000000, 0x7fc34567, false, 0x7fc34567),
++            (0xff800000, 0x00000000, 0x7fc34567, true, 0xffc34567),
++            (0xff800000, 0x80000000, 0x00000000, false, 0x80000000),
++            (0xff800000, 0x80000000, 0x00000000, true, 0x00000000),
++            (0xff800000, 0x80000000, 0x80000000, false, 0x00000000),
++            (0xff800000, 0x80000000, 0x80000000, true, 0x80000000),
++            (0xff800000, 0x80000000, 0x3c83126f, false, 0x80000000),
++            (0xff800000, 0x80000000, 0x3c83126f, true, 0x00000000),
++            (0xff800000, 0x80000000, 0x3e4ccccd, false, 0x80000000),
++            (0xff800000, 0x80000000, 0x3e4ccccd, true, 0x00000000),
++            (0xff800000, 0x80000000, 0xbe800000, false, 0x00000000),
++            (0xff800000, 0x80000000, 0xbe800000, true, 0x80000000),
++            (0xff800000, 0x80000000, 0x7f800000, false, 0xffc00000),
++            (0xff800000, 0x80000000, 0x7f800000, true, 0xffc00000),
++            (0xff800000, 0x80000000, 0x7fc34567, false, 0x7fc34567),
++            (0xff800000, 0x80000000, 0x7fc34567, true, 0xffc34567),
++            (0xff800000, 0x3f000000, 0x00000000, false, 0x3f000000),
++            (0xff800000, 0x3f000000, 0x00000000, true, 0x3f000000),
++            (0xff800000, 0x3f000000, 0x80000000, false, 0x3f000000),
++            (0xff800000, 0x3f000000, 0x80000000, true, 0x3f000000),
++            (0xff800000, 0x3f000000, 0x3c83126f, false, 0x3f000000),
++            (0xff800000, 0x3f000000, 0x3c83126f, true, 0x3f000000),
++            (0xff800000, 0x3f000000, 0x3e4ccccd, false, 0x3f000000),
++            (0xff800000, 0x3f000000, 0x3e4ccccd, true, 0x3f000000),
++            (0xff800000, 0x3f000000, 0xbe800000, false, 0x3f000000),
++            (0xff800000, 0x3f000000, 0xbe800000, true, 0x3f000000),
++            (0xff800000, 0x3f000000, 0x7f800000, false, 0xffc00000),
++            (0xff800000, 0x3f000000, 0x7f800000, true, 0xffc00000),
++            (0xff800000, 0x3f000000, 0x7fc34567, false, 0x7fc34567),
++            (0xff800000, 0x3f000000, 0x7fc34567, true, 0xffc34567),
++            (0xff800000, 0x3f800000, 0x00000000, false, 0x3f800000),
++            (0xff800000, 0x3f800000, 0x00000000, true, 0x3f800000),
++            (0xff800000, 0x3f800000, 0x80000000, false, 0x3f800000),
++            (0xff800000, 0x3f800000, 0x80000000, true, 0x3f800000),
++            (0xff800000, 0x3f800000, 0x3c83126f, false, 0x3f800000),
++            (0xff800000, 0x3f800000, 0x3c83126f, true, 0x3f800000),
++            (0xff800000, 0x3f800000, 0x3e4ccccd, false, 0x3f800000),
++            (0xff800000, 0x3f800000, 0x3e4ccccd, true, 0x3f800000),
++            (0xff800000, 0x3f800000, 0xbe800000, false, 0x3f800000),
++            (0xff800000, 0x3f800000, 0xbe800000, true, 0x3f800000),
++            (0xff800000, 0x3f800000, 0x7f800000, false, 0xffc00000),
++            (0xff800000, 0x3f800000, 0x7f800000, true, 0xffc00000),
++            (0xff800000, 0x3f800000, 0x7fc34567, false, 0x7fc34567),
++            (0xff800000, 0x3f800000, 0x7fc34567, true, 0xffc34567),
++            (0xff800000, 0x7fc12345, 0x00000000, false, 0x7fc12345),
++            (0xff800000, 0x7fc12345, 0x00000000, true, 0x7fc12345),
++            (0xff800000, 0x7fc12345, 0x80000000, false, 0x7fc12345),
++            (0xff800000, 0x7fc12345, 0x80000000, true, 0x7fc12345),
++            (0xff800000, 0x7fc12345, 0x3c83126f, false, 0x7fc12345),
++            (0xff800000, 0x7fc12345, 0x3c83126f, true, 0x7fc12345),
++            (0xff800000, 0x7fc12345, 0x3e4ccccd, false, 0x7fc12345),
++            (0xff800000, 0x7fc12345, 0x3e4ccccd, true, 0x7fc12345),
++            (0xff800000, 0x7fc12345, 0xbe800000, false, 0x7fc12345),
++            (0xff800000, 0x7fc12345, 0xbe800000, true, 0x7fc12345),
++            (0xff800000, 0x7fc12345, 0x7f800000, false, 0x7fc12345),
++            (0xff800000, 0x7fc12345, 0x7f800000, true, 0x7fc12345),
++            (0xff800000, 0x7fc12345, 0x7fc34567, false, 0x7fc34567),
++            (0xff800000, 0x7fc12345, 0x7fc34567, true, 0xffc34567),
++            (0xff800000, 0x7f800000, 0x00000000, false, 0x3f800000),
++            (0xff800000, 0x7f800000, 0x00000000, true, 0x3f800000),
++            (0xff800000, 0x7f800000, 0x80000000, false, 0x3f800000),
++            (0xff800000, 0x7f800000, 0x80000000, true, 0x3f800000),
++            (0xff800000, 0x7f800000, 0x3c83126f, false, 0x3f800000),
++            (0xff800000, 0x7f800000, 0x3c83126f, true, 0x3f800000),
++            (0xff800000, 0x7f800000, 0x3e4ccccd, false, 0x3f800000),
++            (0xff800000, 0x7f800000, 0x3e4ccccd, true, 0x3f800000),
++            (0xff800000, 0x7f800000, 0xbe800000, false, 0x3f800000),
++            (0xff800000, 0x7f800000, 0xbe800000, true, 0x3f800000),
++            (0xff800000, 0x7f800000, 0x7f800000, false, 0xffc00000),
++            (0xff800000, 0x7f800000, 0x7f800000, true, 0xffc00000),
++            (0xff800000, 0x7f800000, 0x7fc34567, false, 0x7fc34567),
++            (0xff800000, 0x7f800000, 0x7fc34567, true, 0xffc34567),
++            (0x7fc01234, 0x00000000, 0x00000000, false, 0x7fc01234),
++            (0x7fc01234, 0x00000000, 0x00000000, true, 0x7fc01234),
++            (0x7fc01234, 0x00000000, 0x80000000, false, 0x7fc01234),
++            (0x7fc01234, 0x00000000, 0x80000000, true, 0x7fc01234),
++            (0x7fc01234, 0x00000000, 0x3c83126f, false, 0x7fc01234),
++            (0x7fc01234, 0x00000000, 0x3c83126f, true, 0x7fc01234),
++            (0x7fc01234, 0x00000000, 0x3e4ccccd, false, 0x7fc01234),
++            (0x7fc01234, 0x00000000, 0x3e4ccccd, true, 0x7fc01234),
++            (0x7fc01234, 0x00000000, 0xbe800000, false, 0x7fc01234),
++            (0x7fc01234, 0x00000000, 0xbe800000, true, 0x7fc01234),
++            (0x7fc01234, 0x00000000, 0x7f800000, false, 0x7fc01234),
++            (0x7fc01234, 0x00000000, 0x7f800000, true, 0x7fc01234),
++            (0x7fc01234, 0x00000000, 0x7fc34567, false, 0x7fc34567),
++            (0x7fc01234, 0x00000000, 0x7fc34567, true, 0xffc34567),
++            (0x7fc01234, 0x80000000, 0x00000000, false, 0x7fc01234),
++            (0x7fc01234, 0x80000000, 0x00000000, true, 0x7fc01234),
++            (0x7fc01234, 0x80000000, 0x80000000, false, 0x7fc01234),
++            (0x7fc01234, 0x80000000, 0x80000000, true, 0x7fc01234),
++            (0x7fc01234, 0x80000000, 0x3c83126f, false, 0x7fc01234),
++            (0x7fc01234, 0x80000000, 0x3c83126f, true, 0x7fc01234),
++            (0x7fc01234, 0x80000000, 0x3e4ccccd, false, 0x7fc01234),
++            (0x7fc01234, 0x80000000, 0x3e4ccccd, true, 0x7fc01234),
++            (0x7fc01234, 0x80000000, 0xbe800000, false, 0x7fc01234),
++            (0x7fc01234, 0x80000000, 0xbe800000, true, 0x7fc01234),
++            (0x7fc01234, 0x80000000, 0x7f800000, false, 0x7fc01234),
++            (0x7fc01234, 0x80000000, 0x7f800000, true, 0x7fc01234),
++            (0x7fc01234, 0x80000000, 0x7fc34567, false, 0x7fc34567),
++            (0x7fc01234, 0x80000000, 0x7fc34567, true, 0xffc34567),
++            (0x7fc01234, 0x3f000000, 0x00000000, false, 0x7fc01234),
++            (0x7fc01234, 0x3f000000, 0x00000000, true, 0x7fc01234),
++            (0x7fc01234, 0x3f000000, 0x80000000, false, 0x7fc01234),
++            (0x7fc01234, 0x3f000000, 0x80000000, true, 0x7fc01234),
++            (0x7fc01234, 0x3f000000, 0x3c83126f, false, 0x7fc01234),
++            (0x7fc01234, 0x3f000000, 0x3c83126f, true, 0x7fc01234),
++            (0x7fc01234, 0x3f000000, 0x3e4ccccd, false, 0x7fc01234),
++            (0x7fc01234, 0x3f000000, 0x3e4ccccd, true, 0x7fc01234),
++            (0x7fc01234, 0x3f000000, 0xbe800000, false, 0x7fc01234),
++            (0x7fc01234, 0x3f000000, 0xbe800000, true, 0x7fc01234),
++            (0x7fc01234, 0x3f000000, 0x7f800000, false, 0x7fc01234),
++            (0x7fc01234, 0x3f000000, 0x7f800000, true, 0x7fc01234),
++            (0x7fc01234, 0x3f000000, 0x7fc34567, false, 0x7fc34567),
++            (0x7fc01234, 0x3f000000, 0x7fc34567, true, 0xffc34567),
++            (0x7fc01234, 0x3f800000, 0x00000000, false, 0x7fc01234),
++            (0x7fc01234, 0x3f800000, 0x00000000, true, 0x7fc01234),
++            (0x7fc01234, 0x3f800000, 0x80000000, false, 0x7fc01234),
++            (0x7fc01234, 0x3f800000, 0x80000000, true, 0x7fc01234),
++            (0x7fc01234, 0x3f800000, 0x3c83126f, false, 0x7fc01234),
++            (0x7fc01234, 0x3f800000, 0x3c83126f, true, 0x7fc01234),
++            (0x7fc01234, 0x3f800000, 0x3e4ccccd, false, 0x7fc01234),
++            (0x7fc01234, 0x3f800000, 0x3e4ccccd, true, 0x7fc01234),
++            (0x7fc01234, 0x3f800000, 0xbe800000, false, 0x7fc01234),
++            (0x7fc01234, 0x3f800000, 0xbe800000, true, 0x7fc01234),
++            (0x7fc01234, 0x3f800000, 0x7f800000, false, 0x7fc01234),
++            (0x7fc01234, 0x3f800000, 0x7f800000, true, 0x7fc01234),
++            (0x7fc01234, 0x3f800000, 0x7fc34567, false, 0x7fc34567),
++            (0x7fc01234, 0x3f800000, 0x7fc34567, true, 0xffc34567),
++            (0x7fc01234, 0x7fc12345, 0x00000000, false, 0x7fc12345),
++            (0x7fc01234, 0x7fc12345, 0x00000000, true, 0x7fc12345),
++            (0x7fc01234, 0x7fc12345, 0x80000000, false, 0x7fc12345),
++            (0x7fc01234, 0x7fc12345, 0x80000000, true, 0x7fc12345),
++            (0x7fc01234, 0x7fc12345, 0x3c83126f, false, 0x7fc12345),
++            (0x7fc01234, 0x7fc12345, 0x3c83126f, true, 0x7fc12345),
++            (0x7fc01234, 0x7fc12345, 0x3e4ccccd, false, 0x7fc12345),
++            (0x7fc01234, 0x7fc12345, 0x3e4ccccd, true, 0x7fc12345),
++            (0x7fc01234, 0x7fc12345, 0xbe800000, false, 0x7fc12345),
++            (0x7fc01234, 0x7fc12345, 0xbe800000, true, 0x7fc12345),
++            (0x7fc01234, 0x7fc12345, 0x7f800000, false, 0x7fc12345),
++            (0x7fc01234, 0x7fc12345, 0x7f800000, true, 0x7fc12345),
++            (0x7fc01234, 0x7fc12345, 0x7fc34567, false, 0x7fc34567),
++            (0x7fc01234, 0x7fc12345, 0x7fc34567, true, 0xffc34567),
++            (0x7fc01234, 0x7f800000, 0x00000000, false, 0x7fc01234),
++            (0x7fc01234, 0x7f800000, 0x00000000, true, 0x7fc01234),
++            (0x7fc01234, 0x7f800000, 0x80000000, false, 0x7fc01234),
++            (0x7fc01234, 0x7f800000, 0x80000000, true, 0x7fc01234),
++            (0x7fc01234, 0x7f800000, 0x3c83126f, false, 0x7fc01234),
++            (0x7fc01234, 0x7f800000, 0x3c83126f, true, 0x7fc01234),
++            (0x7fc01234, 0x7f800000, 0x3e4ccccd, false, 0x7fc01234),
++            (0x7fc01234, 0x7f800000, 0x3e4ccccd, true, 0x7fc01234),
++            (0x7fc01234, 0x7f800000, 0xbe800000, false, 0x7fc01234),
++            (0x7fc01234, 0x7f800000, 0xbe800000, true, 0x7fc01234),
++            (0x7fc01234, 0x7f800000, 0x7f800000, false, 0x7fc01234),
++            (0x7fc01234, 0x7f800000, 0x7f800000, true, 0x7fc01234),
++            (0x7fc01234, 0x7f800000, 0x7fc34567, false, 0x7fc34567),
++            (0x7fc01234, 0x7f800000, 0x7fc34567, true, 0xffc34567),
++            (0x7f801234, 0x00000000, 0x00000000, false, 0x7fc01234),
++            (0x7f801234, 0x00000000, 0x00000000, true, 0x7fc01234),
++            (0x7f801234, 0x00000000, 0x80000000, false, 0x7fc01234),
++            (0x7f801234, 0x00000000, 0x80000000, true, 0x7fc01234),
++            (0x7f801234, 0x00000000, 0x3c83126f, false, 0x7fc01234),
++            (0x7f801234, 0x00000000, 0x3c83126f, true, 0x7fc01234),
++            (0x7f801234, 0x00000000, 0x3e4ccccd, false, 0x7fc01234),
++            (0x7f801234, 0x00000000, 0x3e4ccccd, true, 0x7fc01234),
++            (0x7f801234, 0x00000000, 0xbe800000, false, 0x7fc01234),
++            (0x7f801234, 0x00000000, 0xbe800000, true, 0x7fc01234),
++            (0x7f801234, 0x00000000, 0x7f800000, false, 0x7fc01234),
++            (0x7f801234, 0x00000000, 0x7f800000, true, 0x7fc01234),
++            (0x7f801234, 0x00000000, 0x7fc34567, false, 0x7fc34567),
++            (0x7f801234, 0x00000000, 0x7fc34567, true, 0xffc34567),
++            (0x7f801234, 0x80000000, 0x00000000, false, 0x7fc01234),
++            (0x7f801234, 0x80000000, 0x00000000, true, 0x7fc01234),
++            (0x7f801234, 0x80000000, 0x80000000, false, 0x7fc01234),
++            (0x7f801234, 0x80000000, 0x80000000, true, 0x7fc01234),
++            (0x7f801234, 0x80000000, 0x3c83126f, false, 0x7fc01234),
++            (0x7f801234, 0x80000000, 0x3c83126f, true, 0x7fc01234),
++            (0x7f801234, 0x80000000, 0x3e4ccccd, false, 0x7fc01234),
++            (0x7f801234, 0x80000000, 0x3e4ccccd, true, 0x7fc01234),
++            (0x7f801234, 0x80000000, 0xbe800000, false, 0x7fc01234),
++            (0x7f801234, 0x80000000, 0xbe800000, true, 0x7fc01234),
++            (0x7f801234, 0x80000000, 0x7f800000, false, 0x7fc01234),
++            (0x7f801234, 0x80000000, 0x7f800000, true, 0x7fc01234),
++            (0x7f801234, 0x80000000, 0x7fc34567, false, 0x7fc34567),
++            (0x7f801234, 0x80000000, 0x7fc34567, true, 0xffc34567),
++            (0x7f801234, 0x3f000000, 0x00000000, false, 0x7fc01234),
++            (0x7f801234, 0x3f000000, 0x00000000, true, 0x7fc01234),
++            (0x7f801234, 0x3f000000, 0x80000000, false, 0x7fc01234),
++            (0x7f801234, 0x3f000000, 0x80000000, true, 0x7fc01234),
++            (0x7f801234, 0x3f000000, 0x3c83126f, false, 0x7fc01234),
++            (0x7f801234, 0x3f000000, 0x3c83126f, true, 0x7fc01234),
++            (0x7f801234, 0x3f000000, 0x3e4ccccd, false, 0x7fc01234),
++            (0x7f801234, 0x3f000000, 0x3e4ccccd, true, 0x7fc01234),
++            (0x7f801234, 0x3f000000, 0xbe800000, false, 0x7fc01234),
++            (0x7f801234, 0x3f000000, 0xbe800000, true, 0x7fc01234),
++            (0x7f801234, 0x3f000000, 0x7f800000, false, 0x7fc01234),
++            (0x7f801234, 0x3f000000, 0x7f800000, true, 0x7fc01234),
++            (0x7f801234, 0x3f000000, 0x7fc34567, false, 0x7fc34567),
++            (0x7f801234, 0x3f000000, 0x7fc34567, true, 0xffc34567),
++            (0x7f801234, 0x3f800000, 0x00000000, false, 0x7fc01234),
++            (0x7f801234, 0x3f800000, 0x00000000, true, 0x7fc01234),
++            (0x7f801234, 0x3f800000, 0x80000000, false, 0x7fc01234),
++            (0x7f801234, 0x3f800000, 0x80000000, true, 0x7fc01234),
++            (0x7f801234, 0x3f800000, 0x3c83126f, false, 0x7fc01234),
++            (0x7f801234, 0x3f800000, 0x3c83126f, true, 0x7fc01234),
++            (0x7f801234, 0x3f800000, 0x3e4ccccd, false, 0x7fc01234),
++            (0x7f801234, 0x3f800000, 0x3e4ccccd, true, 0x7fc01234),
++            (0x7f801234, 0x3f800000, 0xbe800000, false, 0x7fc01234),
++            (0x7f801234, 0x3f800000, 0xbe800000, true, 0x7fc01234),
++            (0x7f801234, 0x3f800000, 0x7f800000, false, 0x7fc01234),
++            (0x7f801234, 0x3f800000, 0x7f800000, true, 0x7fc01234),
++            (0x7f801234, 0x3f800000, 0x7fc34567, false, 0x7fc34567),
++            (0x7f801234, 0x3f800000, 0x7fc34567, true, 0xffc34567),
++            (0x7f801234, 0x7fc12345, 0x00000000, false, 0x7fc12345),
++            (0x7f801234, 0x7fc12345, 0x00000000, true, 0x7fc12345),
++            (0x7f801234, 0x7fc12345, 0x80000000, false, 0x7fc12345),
++            (0x7f801234, 0x7fc12345, 0x80000000, true, 0x7fc12345),
++            (0x7f801234, 0x7fc12345, 0x3c83126f, false, 0x7fc12345),
++            (0x7f801234, 0x7fc12345, 0x3c83126f, true, 0x7fc12345),
++            (0x7f801234, 0x7fc12345, 0x3e4ccccd, false, 0x7fc12345),
++            (0x7f801234, 0x7fc12345, 0x3e4ccccd, true, 0x7fc12345),
++            (0x7f801234, 0x7fc12345, 0xbe800000, false, 0x7fc12345),
++            (0x7f801234, 0x7fc12345, 0xbe800000, true, 0x7fc12345),
++            (0x7f801234, 0x7fc12345, 0x7f800000, false, 0x7fc12345),
++            (0x7f801234, 0x7fc12345, 0x7f800000, true, 0x7fc12345),
++            (0x7f801234, 0x7fc12345, 0x7fc34567, false, 0x7fc34567),
++            (0x7f801234, 0x7fc12345, 0x7fc34567, true, 0xffc34567),
++            (0x7f801234, 0x7f800000, 0x00000000, false, 0x7fc01234),
++            (0x7f801234, 0x7f800000, 0x00000000, true, 0x7fc01234),
++            (0x7f801234, 0x7f800000, 0x80000000, false, 0x7fc01234),
++            (0x7f801234, 0x7f800000, 0x80000000, true, 0x7fc01234),
++            (0x7f801234, 0x7f800000, 0x3c83126f, false, 0x7fc01234),
++            (0x7f801234, 0x7f800000, 0x3c83126f, true, 0x7fc01234),
++            (0x7f801234, 0x7f800000, 0x3e4ccccd, false, 0x7fc01234),
++            (0x7f801234, 0x7f800000, 0x3e4ccccd, true, 0x7fc01234),
++            (0x7f801234, 0x7f800000, 0xbe800000, false, 0x7fc01234),
++            (0x7f801234, 0x7f800000, 0xbe800000, true, 0x7fc01234),
++            (0x7f801234, 0x7f800000, 0x7f800000, false, 0x7fc01234),
++            (0x7f801234, 0x7f800000, 0x7f800000, true, 0x7fc01234),
++            (0x7f801234, 0x7f800000, 0x7fc34567, false, 0x7fc34567),
++            (0x7f801234, 0x7f800000, 0x7fc34567, true, 0xffc34567),
++            (0x00800000, 0x00000000, 0x00000000, false, 0x00000000),
++            (0x00800000, 0x00000000, 0x00000000, true, 0x00000000),
++            (0x00800000, 0x00000000, 0x80000000, false, 0x00000000),
++            (0x00800000, 0x00000000, 0x80000000, true, 0x00000000),
++            (0x00800000, 0x00000000, 0x3c83126f, false, 0x3f800000),
++            (0x00800000, 0x00000000, 0x3c83126f, true, 0x00000000),
++            (0x00800000, 0x00000000, 0x3e4ccccd, false, 0x3f800000),
++            (0x00800000, 0x00000000, 0x3e4ccccd, true, 0x00000000),
++            (0x00800000, 0x00000000, 0xbe800000, false, 0x00000000),
++            (0x00800000, 0x00000000, 0xbe800000, true, 0x3f800000),
++            (0x00800000, 0x00000000, 0x7f800000, false, 0x3f800000),
++            (0x00800000, 0x00000000, 0x7f800000, true, 0x00000000),
++            (0x00800000, 0x00000000, 0x7fc34567, false, 0x7fc34567),
++            (0x00800000, 0x00000000, 0x7fc34567, true, 0xffc34567),
++            (0x00800000, 0x80000000, 0x00000000, false, 0x00000000),
++            (0x00800000, 0x80000000, 0x00000000, true, 0x80000000),
++            (0x00800000, 0x80000000, 0x80000000, false, 0x80000000),
++            (0x00800000, 0x80000000, 0x80000000, true, 0x00000000),
++            (0x00800000, 0x80000000, 0x3c83126f, false, 0x3f800000),
++            (0x00800000, 0x80000000, 0x3c83126f, true, 0x00000000),
++            (0x00800000, 0x80000000, 0x3e4ccccd, false, 0x3f800000),
++            (0x00800000, 0x80000000, 0x3e4ccccd, true, 0x00000000),
++            (0x00800000, 0x80000000, 0xbe800000, false, 0x00000000),
++            (0x00800000, 0x80000000, 0xbe800000, true, 0x3f800000),
++            (0x00800000, 0x80000000, 0x7f800000, false, 0x3f800000),
++            (0x00800000, 0x80000000, 0x7f800000, true, 0x00000000),
++            (0x00800000, 0x80000000, 0x7fc34567, false, 0x7fc34567),
++            (0x00800000, 0x80000000, 0x7fc34567, true, 0xffc34567),
++            (0x00800000, 0x3f000000, 0x00000000, false, 0x3f000000),
++            (0x00800000, 0x3f000000, 0x00000000, true, 0x3f000000),
++            (0x00800000, 0x3f000000, 0x80000000, false, 0x3f000000),
++            (0x00800000, 0x3f000000, 0x80000000, true, 0x3f000000),
++            (0x00800000, 0x3f000000, 0x3c83126f, false, 0x3f800000),
++            (0x00800000, 0x3f000000, 0x3c83126f, true, 0x00000000),
++            (0x00800000, 0x3f000000, 0x3e4ccccd, false, 0x3f800000),
++            (0x00800000, 0x3f000000, 0x3e4ccccd, true, 0x00000000),
++            (0x00800000, 0x3f000000, 0xbe800000, false, 0x00000000),
++            (0x00800000, 0x3f000000, 0xbe800000, true, 0x3f800000),
++            (0x00800000, 0x3f000000, 0x7f800000, false, 0x3f800000),
++            (0x00800000, 0x3f000000, 0x7f800000, true, 0x00000000),
++            (0x00800000, 0x3f000000, 0x7fc34567, false, 0x7fc34567),
++            (0x00800000, 0x3f000000, 0x7fc34567, true, 0xffc34567),
++            (0x00800000, 0x3f800000, 0x00000000, false, 0x3f800000),
++            (0x00800000, 0x3f800000, 0x00000000, true, 0x3f800000),
++            (0x00800000, 0x3f800000, 0x80000000, false, 0x3f800000),
++            (0x00800000, 0x3f800000, 0x80000000, true, 0x3f800000),
++            (0x00800000, 0x3f800000, 0x3c83126f, false, 0x3f800000),
++            (0x00800000, 0x3f800000, 0x3c83126f, true, 0x00000000),
++            (0x00800000, 0x3f800000, 0x3e4ccccd, false, 0x3f800000),
++            (0x00800000, 0x3f800000, 0x3e4ccccd, true, 0x00000000),
++            (0x00800000, 0x3f800000, 0xbe800000, false, 0x00000000),
++            (0x00800000, 0x3f800000, 0xbe800000, true, 0x3f800000),
++            (0x00800000, 0x3f800000, 0x7f800000, false, 0x3f800000),
++            (0x00800000, 0x3f800000, 0x7f800000, true, 0x00000000),
++            (0x00800000, 0x3f800000, 0x7fc34567, false, 0x7fc34567),
++            (0x00800000, 0x3f800000, 0x7fc34567, true, 0xffc34567),
++            (0x00800000, 0x7fc12345, 0x00000000, false, 0x7fc12345),
++            (0x00800000, 0x7fc12345, 0x00000000, true, 0x7fc12345),
++            (0x00800000, 0x7fc12345, 0x80000000, false, 0x7fc12345),
++            (0x00800000, 0x7fc12345, 0x80000000, true, 0x7fc12345),
++            (0x00800000, 0x7fc12345, 0x3c83126f, false, 0x7fc12345),
++            (0x00800000, 0x7fc12345, 0x3c83126f, true, 0x7fc12345),
++            (0x00800000, 0x7fc12345, 0x3e4ccccd, false, 0x7fc12345),
++            (0x00800000, 0x7fc12345, 0x3e4ccccd, true, 0x7fc12345),
++            (0x00800000, 0x7fc12345, 0xbe800000, false, 0x7fc12345),
++            (0x00800000, 0x7fc12345, 0xbe800000, true, 0x7fc12345),
++            (0x00800000, 0x7fc12345, 0x7f800000, false, 0x7fc12345),
++            (0x00800000, 0x7fc12345, 0x7f800000, true, 0x7fc12345),
++            (0x00800000, 0x7fc12345, 0x7fc34567, false, 0x7fc34567),
++            (0x00800000, 0x7fc12345, 0x7fc34567, true, 0xffc34567),
++            (0x00800000, 0x7f800000, 0x00000000, false, 0x3f800000),
++            (0x00800000, 0x7f800000, 0x00000000, true, 0x3f800000),
++            (0x00800000, 0x7f800000, 0x80000000, false, 0x3f800000),
++            (0x00800000, 0x7f800000, 0x80000000, true, 0x3f800000),
++            (0x00800000, 0x7f800000, 0x3c83126f, false, 0x3f800000),
++            (0x00800000, 0x7f800000, 0x3c83126f, true, 0x3f800000),
++            (0x00800000, 0x7f800000, 0x3e4ccccd, false, 0x3f800000),
++            (0x00800000, 0x7f800000, 0x3e4ccccd, true, 0x3f800000),
++            (0x00800000, 0x7f800000, 0xbe800000, false, 0x3f800000),
++            (0x00800000, 0x7f800000, 0xbe800000, true, 0x3f800000),
++            (0x00800000, 0x7f800000, 0x7f800000, false, 0x3f800000),
++            (0x00800000, 0x7f800000, 0x7f800000, true, 0xffc00000),
++            (0x00800000, 0x7f800000, 0x7fc34567, false, 0x7fc34567),
++            (0x00800000, 0x7f800000, 0x7fc34567, true, 0xffc34567),
++            (0x00000001, 0x00000000, 0x00000000, false, 0xffc00000),
++            (0x00000001, 0x00000000, 0x00000000, true, 0xffc00000),
++            (0x00000001, 0x00000000, 0x80000000, false, 0xffc00000),
++            (0x00000001, 0x00000000, 0x80000000, true, 0xffc00000),
++            (0x00000001, 0x00000000, 0x3c83126f, false, 0x3f800000),
++            (0x00000001, 0x00000000, 0x3c83126f, true, 0x00000000),
++            (0x00000001, 0x00000000, 0x3e4ccccd, false, 0x3f800000),
++            (0x00000001, 0x00000000, 0x3e4ccccd, true, 0x00000000),
++            (0x00000001, 0x00000000, 0xbe800000, false, 0x00000000),
++            (0x00000001, 0x00000000, 0xbe800000, true, 0x3f800000),
++            (0x00000001, 0x00000000, 0x7f800000, false, 0x3f800000),
++            (0x00000001, 0x00000000, 0x7f800000, true, 0x00000000),
++            (0x00000001, 0x00000000, 0x7fc34567, false, 0x7fc34567),
++            (0x00000001, 0x00000000, 0x7fc34567, true, 0xffc34567),
++            (0x00000001, 0x80000000, 0x00000000, false, 0xffc00000),
++            (0x00000001, 0x80000000, 0x00000000, true, 0xffc00000),
++            (0x00000001, 0x80000000, 0x80000000, false, 0xffc00000),
++            (0x00000001, 0x80000000, 0x80000000, true, 0xffc00000),
++            (0x00000001, 0x80000000, 0x3c83126f, false, 0x3f800000),
++            (0x00000001, 0x80000000, 0x3c83126f, true, 0x00000000),
++            (0x00000001, 0x80000000, 0x3e4ccccd, false, 0x3f800000),
++            (0x00000001, 0x80000000, 0x3e4ccccd, true, 0x00000000),
++            (0x00000001, 0x80000000, 0xbe800000, false, 0x00000000),
++            (0x00000001, 0x80000000, 0xbe800000, true, 0x3f800000),
++            (0x00000001, 0x80000000, 0x7f800000, false, 0x3f800000),
++            (0x00000001, 0x80000000, 0x7f800000, true, 0x00000000),
++            (0x00000001, 0x80000000, 0x7fc34567, false, 0x7fc34567),
++            (0x00000001, 0x80000000, 0x7fc34567, true, 0xffc34567),
++            (0x00000001, 0x3f000000, 0x00000000, false, 0xffc00000),
++            (0x00000001, 0x3f000000, 0x00000000, true, 0xffc00000),
++            (0x00000001, 0x3f000000, 0x80000000, false, 0xffc00000),
++            (0x00000001, 0x3f000000, 0x80000000, true, 0xffc00000),
++            (0x00000001, 0x3f000000, 0x3c83126f, false, 0x3f800000),
++            (0x00000001, 0x3f000000, 0x3c83126f, true, 0x00000000),
++            (0x00000001, 0x3f000000, 0x3e4ccccd, false, 0x3f800000),
++            (0x00000001, 0x3f000000, 0x3e4ccccd, true, 0x00000000),
++            (0x00000001, 0x3f000000, 0xbe800000, false, 0x00000000),
++            (0x00000001, 0x3f000000, 0xbe800000, true, 0x3f800000),
++            (0x00000001, 0x3f000000, 0x7f800000, false, 0x3f800000),
++            (0x00000001, 0x3f000000, 0x7f800000, true, 0x00000000),
++            (0x00000001, 0x3f000000, 0x7fc34567, false, 0x7fc34567),
++            (0x00000001, 0x3f000000, 0x7fc34567, true, 0xffc34567),
++            (0x00000001, 0x3f800000, 0x00000000, false, 0xffc00000),
++            (0x00000001, 0x3f800000, 0x00000000, true, 0xffc00000),
++            (0x00000001, 0x3f800000, 0x80000000, false, 0xffc00000),
++            (0x00000001, 0x3f800000, 0x80000000, true, 0xffc00000),
++            (0x00000001, 0x3f800000, 0x3c83126f, false, 0x3f800000),
++            (0x00000001, 0x3f800000, 0x3c83126f, true, 0x00000000),
++            (0x00000001, 0x3f800000, 0x3e4ccccd, false, 0x3f800000),
++            (0x00000001, 0x3f800000, 0x3e4ccccd, true, 0x00000000),
++            (0x00000001, 0x3f800000, 0xbe800000, false, 0x00000000),
++            (0x00000001, 0x3f800000, 0xbe800000, true, 0x3f800000),
++            (0x00000001, 0x3f800000, 0x7f800000, false, 0x3f800000),
++            (0x00000001, 0x3f800000, 0x7f800000, true, 0x00000000),
++            (0x00000001, 0x3f800000, 0x7fc34567, false, 0x7fc34567),
++            (0x00000001, 0x3f800000, 0x7fc34567, true, 0xffc34567),
++            (0x00000001, 0x7fc12345, 0x00000000, false, 0x7fc12345),
++            (0x00000001, 0x7fc12345, 0x00000000, true, 0x7fc12345),
++            (0x00000001, 0x7fc12345, 0x80000000, false, 0x7fc12345),
++            (0x00000001, 0x7fc12345, 0x80000000, true, 0x7fc12345),
++            (0x00000001, 0x7fc12345, 0x3c83126f, false, 0x7fc12345),
++            (0x00000001, 0x7fc12345, 0x3c83126f, true, 0x7fc12345),
++            (0x00000001, 0x7fc12345, 0x3e4ccccd, false, 0x7fc12345),
++            (0x00000001, 0x7fc12345, 0x3e4ccccd, true, 0x7fc12345),
++            (0x00000001, 0x7fc12345, 0xbe800000, false, 0x7fc12345),
++            (0x00000001, 0x7fc12345, 0xbe800000, true, 0x7fc12345),
++            (0x00000001, 0x7fc12345, 0x7f800000, false, 0x7fc12345),
++            (0x00000001, 0x7fc12345, 0x7f800000, true, 0x7fc12345),
++            (0x00000001, 0x7fc12345, 0x7fc34567, false, 0x7fc34567),
++            (0x00000001, 0x7fc12345, 0x7fc34567, true, 0xffc34567),
++            (0x00000001, 0x7f800000, 0x00000000, false, 0xffc00000),
++            (0x00000001, 0x7f800000, 0x00000000, true, 0xffc00000),
++            (0x00000001, 0x7f800000, 0x80000000, false, 0xffc00000),
++            (0x00000001, 0x7f800000, 0x80000000, true, 0xffc00000),
++            (0x00000001, 0x7f800000, 0x3c83126f, false, 0x3f800000),
++            (0x00000001, 0x7f800000, 0x3c83126f, true, 0xffc00000),
++            (0x00000001, 0x7f800000, 0x3e4ccccd, false, 0x3f800000),
++            (0x00000001, 0x7f800000, 0x3e4ccccd, true, 0xffc00000),
++            (0x00000001, 0x7f800000, 0xbe800000, false, 0xffc00000),
++            (0x00000001, 0x7f800000, 0xbe800000, true, 0x3f800000),
++            (0x00000001, 0x7f800000, 0x7f800000, false, 0x3f800000),
++            (0x00000001, 0x7f800000, 0x7f800000, true, 0xffc00000),
++            (0x00000001, 0x7f800000, 0x7fc34567, false, 0x7fc34567),
++            (0x00000001, 0x7f800000, 0x7fc34567, true, 0xffc34567),
++        ];
++        for &(duration, t, delta, marked, result) in cases {
++            let mut anim = SignifierAnimation {
++                duration: f32::from_bits(duration),
++                t: f32::from_bits(t),
++                ..Default::default()
++            };
++            anim.advance(f32::from_bits(delta), marked);
++            assert_eq!(
++                anim.t.to_bits(),
++                result,
++                "duration={duration:08x}, t={t:08x}, delta={delta:08x}, marked={marked}"
++            );
++        }
++    }
++}
+--- a/tiny-glade/crates/systems/water/src/draw_water.rs
++++ b/tiny-glade/crates/systems/water/src/draw_water.rs
+@@ -43,7 +43,9 @@
+ };
+ use country_core::resources::mouse_terrain_raycast::CameraCursorRay;
+ use country_core::resources::onboarding::NotifyHintSystemToolWasJustUsed;
+-use country_core::resources::walls::{decorator_archivist::DecoratorArchivist, EraserSizeMultiplier};
++use country_core::resources::walls::{
++    EraserSizeMultiplier, decorator_archivist::DecoratorArchivist,
++};
+ use country_core::resources::water::{WaterDrawEvent, WaterEraseEvent};
+ use country_core::resources::world_raster_defs::{WaterRaster, WaterRasterStagingSsbo};
+ use country_core::systems::history::history_process::DebugHistoryMsg;
+@@ -54,7 +56,7 @@
+ use country_core::systems::ui::resources::ui_state::UiState;
+ use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
+ use country_core::systems::ui::signifiers::{SignifierEntityBuilder, SignifierFactory};
+-use country_core::systems::world_raster::{draw_raster, RasterDrawResources, RasterStrokeCmd};
++use country_core::systems::world_raster::{RasterDrawResources, RasterStrokeCmd, draw_raster};
+ 
+ use crate::{record_water_history::RecordWaterEditToHistoryCmd, water_systems_enabled};
+ 
+@@ -139,7 +141,7 @@
+             //     再 `t*4 + (1-t)`。随后 `assert!(brush_size.is_finite())`
+             //     （0x141ba967c：panic 串 0x142eebba0）。
+             let brush_size = {
+-                let t = (brush.0 .0 - ERASER_LERP_MIN) / (ERASER_LERP_MAX - ERASER_LERP_MIN);
++                let t = (brush.0.0 - ERASER_LERP_MIN) / (ERASER_LERP_MAX - ERASER_LERP_MIN);
+                 t * ERASER_RADIUS_SCALE + (1.0 - t)
+             };
+             assert!(brush_size.is_finite());
+@@ -163,9 +165,11 @@
+             let factory = SignifierFactory::from_closure(
+                 ERASER_SIGNIFIER_NAME,
+                 Arc::new(
+-                    move |_mesh_library: &AssetMeshLibrary,
+-                          _shader_library: &AssetShaderLibrary,
+-                          commands: &mut Commands| closure_0(point, scale, commands),
++                    move |mesh_library: &AssetMeshLibrary,
++                          shader_library: &AssetShaderLibrary,
++                          commands: &mut Commands| {
++                        closure_0(point, scale, mesh_library, shader_library, commands)
++                    },
+                 ),
+             );
+             signifiers.write_factory(&factory);
+@@ -188,12 +192,10 @@
+             // O：界内圈 = `Circle2d::new(center, 0.8*brush_size)`（0x140c97540，
+             //     XMM3 = 0x142a16cb8*brush_size），`GladeBorder::is_shape_inside`
+             //     （0x140ad2970）。
+-            let inside = border
+-                .0
+-                .is_shape_inside(BorderShape::Circle(Circle2d::new(
+-                    center,
+-                    WATER_BORDER_CIRCLE_SCALE * brush_size,
+-                )));
++            let inside = border.0.is_shape_inside(BorderShape::Circle(Circle2d::new(
++                center,
++                WATER_BORDER_CIRCLE_SCALE * brush_size,
++            )));
+             // O：界外 → `DisplayOutOfBorder`（0x141ba9432 事件 push）；随后
+             //     `into_drag_state().is_some()`（0x14092df10→0x14092e6b0，= `dragged()!=2`）
+             //     拖拽中 → `FeedbackInputOutOfBorder`（0x141ba9480 push）。
+@@ -301,29 +303,20 @@
+ /// 6. `set_ui_pass(0)`（0x14089dad0，R8D=0）→ `build`（0x14089dd50）；
+ /// 7. sret 写 `{cap=1, ptr=heap(Entity), len=1}`。
+ ///
+-/// GAP（既有，core 侧登记）：`build` 的 mesh/shader 解析面（`AssetMeshLibrary::
+-/// try_get_handle_by_name` / `AssetShaderLibrary::get_raster_handle_by_name`）未落库；
+-/// 两个库参数保留以维持原生闭包实参形状。
+-pub fn closure_0(position: Vec3, scale: f32, commands: &mut Commands) -> Vec<Entity> {
+-    let name = BRUSH_CIRCLE_SCRIBBLE;
+-    // O：new 的 6-qword 载荷（0x141ba9771-0x141ba9795）：
+-    //    {mesh_kind=0x8000000000000000, len, ptr, len, 未初始化, 未初始化}。
+-    let payload: [u64; 6] = [
+-        0x8000_0000_0000_0000,
+-        name.len() as u64,
+-        name.as_ptr() as u64,
+-        name.len() as u64,
+-        0,
+-        0,
+-    ];
+-    let mut builder = SignifierEntityBuilder::new(&payload).animation_duration(0.0);
+-    // O：position（0x14089dc00）——[RDX+0x7c] = qword [R8]（x,y）、[RDX+0x84] = dword [R8+8]。
+-    builder.u7c =
+-        (position.x.to_bits() as u64) | (((position.y.to_bits() as u64) & 0xffff_ffff) << 32);
+-    builder.u84 = position.z.to_bits();
+-    // O：scale（0x14089dc60）——[RDX+0x50] = 1、[RDX+0x54] = XMM2。
+-    builder.flag50 = 1;
+-    builder.f54 = scale;
+-    let entity = builder.set_ui_pass(0).build(commands);
+-    vec![entity]
++/// Both actual libraries are passed through the original factory invocation.
++pub fn closure_0(
++    position: Vec3,
++    scale: f32,
++    meshes: &AssetMeshLibrary,
++    shaders: &AssetShaderLibrary,
++    commands: &mut Commands,
++) -> Vec<Entity> {
++    vec![
++        SignifierEntityBuilder::from_mesh_name(BRUSH_CIRCLE_SCRIBBLE)
++            .animation_duration(0.0)
++            .position(position)
++            .scale(scale)
++            .set_ui_pass(0)
++            .build(meshes, shaders, commands),
++    ]
+ }
+--- a/tiny-glade/crates/systems/glade-border/src/display_glade_border.rs
++++ b/tiny-glade/crates/systems/glade-border/src/display_glade_border.rs
+@@ -45,18 +45,18 @@
+ 
+ use country_core::asset_libraries::mesh_library::AssetMeshLibrary;
+ use country_core::asset_libraries::shader_library::AssetShaderLibrary;
++use country_core::components::DashedLineLength;
+ use country_core::game_config::GameConfig;
+ use country_core::render::pass_builder::draw_list::DrawTopology;
+ use country_core::resources::glade_border::{
+     BorderShape, DisplayOutOfBorder, GladeBorder, ShowDemoBorderOverlay,
+ };
+-use country_core::resources::terrain_height::{TerrainHeightsData, TerrainHeightSsbo};
++use country_core::resources::terrain_height::{TerrainHeightSsbo, TerrainHeightsData};
+ use country_core::resources::time::GameTime;
+ use country_core::systems::mode_manager::AppMode;
+-use country_core::components::DashedLineLength;
+-use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
+ use country_core::systems::ui::signifiers::SignifierEntityBuilder;
+ use country_core::systems::ui::signifiers::SignifierFactory;
++use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
+ use country_core::utils::debug_viz::{DebugColor, DebugLine};
+ 
+ /// 边界曲线采样步长（O：`ShapeParameters::as_curve2` 0x1411ff2b0 圆路径 = 0.2，
+@@ -140,8 +140,8 @@
+         let factory = SignifierFactory::from_closure(
+             &label,
+             Arc::new(
+-                move |_mesh_library: &AssetMeshLibrary,
+-                      _shader_library: &AssetShaderLibrary,
++                move |mesh_library: &AssetMeshLibrary,
++                      shader_library: &AssetShaderLibrary,
+                       commands: &mut Commands| {
+                     // O：closure$1 的 env = ArcInner data：`{cap@0, ptr@+8, len@+0x10,
+                     // length@+0x18}`。折线 Vec 由闭包捕获持有，指针在调用期间有效。
+@@ -151,7 +151,7 @@
+                         points_len: points.len(),
+                         length: perimeter,
+                     };
+-                    closure_1(&env, commands)
++                    closure_1(&env, mesh_library, shader_library, commands)
+                 },
+             ),
+         );
+@@ -191,7 +191,12 @@
+ ///    - `insert(DrawTopology)`：值 `0x4000000000000001`（tag 1 = `Alt`，f32 2.0）；
+ ///    - `insert(DashedLineLength)`：值 = env.length × 0.7（0x1429cd030）；
+ /// 4. 返回 1 元素 `Vec<Entity>`（sret 写 `{cap=1, ptr=heap(Entity), len=1}`）。
+-pub fn closure_1(env: &GladeBorderSignifierEnv, commands: &mut Commands) -> Vec<Entity> {
++pub fn closure_1(
++    env: &GladeBorderSignifierEnv,
++    meshes: &AssetMeshLibrary,
++    shaders: &AssetShaderLibrary,
++    commands: &mut Commands,
++) -> Vec<Entity> {
+     // 1. O：复制折线（disasm 0x141be10ed-0x141be115e：alloc 12*len + memcpy）。
+     let points: Vec<Vec3> = if env.points_ptr.is_null() || env.points_len == 0 {
+         Vec::new()
+@@ -199,22 +204,11 @@
+         // SAFETY：env.points_ptr/points_len 由调用方构造，指向 len 个 Vec3。
+         unsafe { std::slice::from_raw_parts(env.points_ptr, env.points_len) }.to_vec()
+     };
+-    // 2. O：SignifierEntityBuilder 链（disasm 0x141be116f-0x141be11e6）。
+-    // 载荷 = 6 qword：mesh_kind = 0x8000000000000002、折线 {len,ptr,len}、
+-    // 尾 2×0（原 [RBP+0x60]/[RBP+0x68] 栈未初始化——取确定 0，非游戏逻辑；I）。
+-    let payload: [u64; 6] = [
+-        0x8000_0000_0000_0002,
+-        points.len() as u64,
+-        points.as_ptr() as u64,
+-        points.len() as u64,
+-        0,
+-        0,
+-    ];
+-    let entity = SignifierEntityBuilder::new(&payload)
++    let entity = SignifierEntityBuilder::from_points(points)
+         .set_ui_pass(0)
+         .animation_duration(0.0)
+         .custom_shader("dashed_line")
+-        .build(commands);
++        .build(meshes, shaders, commands);
+     // 3. O：2× Commands insert（disasm 0x141be1214-0x141be1295）。
+     //    DrawTopology = `0x4000000000000001` = {tag u32=1 → Alt, f32 2.0}。
+     commands.entity(entity).insert(DrawTopology::Alt(2.0));
+@@ -236,12 +230,61 @@
+     use bevy_ecs::system::RunSystemOnce;
+     use bevy_ecs::world::World;
+ 
++    // The dependency crate's cfg(test) TestDevice is deliberately unavailable
++    // here. This local fixture only admits CPU shader artifacts, never a GPU.
++    struct CpuShaders;
++    use country_core::render::shader::boundary::{
++        CompiledShaderPipeline, ComputePipeline, ComputePipelineDesc, Error, RasterPipeline,
++        RasterPipelineDesc, RasterPipelineKey, ShaderBackend,
++    };
++    impl ShaderBackend for CpuShaders {
++        fn load_compiled_compute(
++            &self,
++            _: &ComputePipelineDesc,
++        ) -> Result<CompiledShaderPipeline, Error> {
++            unreachable!()
++        }
++        fn load_compiled_raster(
++            &self,
++            _: &RasterPipelineDesc,
++        ) -> Result<CompiledShaderPipeline, Error> {
++            Ok(CompiledShaderPipeline::default())
++        }
++        fn raster_shader_variants(&self, d: &RasterPipelineDesc) -> [RasterPipelineDesc; 2] {
++            [d.clone(), d.clone()]
++        }
++        fn create_compute_pipeline(
++            &self,
++            _: &str,
++            _: std::sync::Arc<CompiledShaderPipeline>,
++        ) -> Result<ComputePipeline, country_core::rhapsody_types::BackendError> {
++            unreachable!()
++        }
++        fn create_raster_pipeline(
++            &self,
++            _: std::sync::Arc<CompiledShaderPipeline>,
++            _: &RasterPipelineKey,
++        ) -> Result<RasterPipeline, Error> {
++            unreachable!()
++        }
++    }
++
+     /// 接线验证：perimeter 记录携带的闭包（= vtable 0x142efa150 唤醒面）调用
+     /// [`closure_1`] 后，按原顺序落 `DrawTopology::Alt(2.0)` 与
+     /// `DashedLineLength(perimeter × 0.7)`，并返回 1 元素 `Vec<Entity>`。
+     #[test]
+     fn closure_1_wakes_and_inserts_dashed_border_components() {
+         let mut world = World::new();
++        let meshes = AssetMeshLibrary::new();
++        let shaders = AssetShaderLibrary::new();
++        shaders.add_raster(
++            country_core::render::shader::RasterShaderProgram::new_draw(
++                "dashed_line",
++                Default::default(),
++                &CpuShaders,
++            ),
++            false,
++        );
+         let points = vec![Vec3::ZERO, Vec3::new(3.0, 4.0, 0.0)];
+         world
+             .run_system_once(move |mut commands: Commands| {
+@@ -251,7 +294,7 @@
+                     points_len: points.len(),
+                     length: 4.0,
+                 };
+-                let spawned = closure_1(&env, &mut commands);
++                let spawned = closure_1(&env, &meshes, &shaders, &mut commands);
+                 assert_eq!(spawned.len(), 1);
+             })
+             .unwrap();
+--- a/tiny-glade/crates/country-core/src/systems/ui/signifiers/mod.rs
++++ b/tiny-glade/crates/country-core/src/systems/ui/signifiers/mod.rs
+@@ -18,7 +18,9 @@
+ 
+ pub use animation::{SignifierAnimation, SignifierParentToVolumeOrigin};
+ pub use signifier_create::{SignifierId, UiAppendSignifier, UiSignifierEntry, UiSignifierStream};
+-pub use signifier_factory::{SignifierClosure, SignifierEntityBuilder, SignifierFactory};
++pub use signifier_factory::{
++    SignifierClosure, SignifierEntityBuilder, SignifierFactory, SignifierMesh,
++};
+ pub use signifier_mark_for_delete::{
+     SignifierMarkedForDeletion, SignifierMinimumLifespan, signfier_mark_for_delete,
+ };
+--- a/tiny-glade/crates/country-core/src/systems/ui/signifiers/signifier_mark_for_delete.rs
++++ b/tiny-glade/crates/country-core/src/systems/ui/signifiers/signifier_mark_for_delete.rs
+@@ -32,17 +32,26 @@
+ ) {
+     for (entity, id, lifespan) in &query {
+         let is_live = stream.is_active(*id);
+-        // O：`RDI == None`（无最短寿命组件）→ 命中；否则 `min_lifespan <= t` 才命中。
+-        let expired = lifespan.is_none_or(|lifespan| lifespan.min_lifespan <= lifespan.t);
++        // Original UCOMISS/JA: a positive ordered lifespan comparison skips; unordered is expired.
++        let expired = lifespan.is_none_or(|lifespan| !(lifespan.min_lifespan > lifespan.t));
+         if !is_live && expired {
+             commands.entity(entity).insert(SignifierMarkedForDeletion);
+         }
+     }
+ }
+ 
+-/// `despawn_marked` @0x140929a90（O）：销毁所有带删除标记的指示符实体。
+-pub fn despawn_marked(query: Query<(Entity, &SignifierMarkedForDeletion)>, mut commands: Commands) {
+-    for (entity, _) in &query {
+-        commands.entity(entity).despawn();
++/// Original140929a90: no animation, or ordered t==±0 after reverse, permits deletion.
++pub fn despawn_marked(
++    query: Query<(
++        Entity,
++        &SignifierMarkedForDeletion,
++        Option<&super::animation::SignifierAnimation>,
++    )>,
++    mut commands: Commands,
++) {
++    for (entity, _, animation) in &query {
++        if animation.is_none_or(|animation| animation.t == 0.0) {
++            commands.entity(entity).despawn();
++        }
+     }
+ }
+--- a/tiny-glade/crates/country-core/src/systems/ui/signifiers/tests.rs
++++ b/tiny-glade/crates/country-core/src/systems/ui/signifiers/tests.rs
+@@ -76,10 +76,24 @@
+ 
+     submit(&mut world, &second);
+     schedule.run(&mut world);
++    assert!(
++        world
++            .get::<SignifierMarkedForDeletion>(first_entity)
++            .is_some()
++    );
++    assert!(registry.lock().unwrap().is_empty());
++    submit(&mut world, &second);
++    schedule.run(&mut world);
+     assert!(world.get_entity(first_entity).is_err());
+     assert_eq!(entities(&mut world), vec![second_entity]);
+     assert_eq!(*registry.lock().unwrap(), vec![first_mesh]);
+ 
++    schedule.run(&mut world);
++    assert!(
++        world
++            .get::<SignifierMarkedForDeletion>(second_entity)
++            .is_some()
++    );
+     schedule.run(&mut world);
+     assert!(entities(&mut world).is_empty());
+     assert_eq!(*registry.lock().unwrap(), vec![first_mesh, second_mesh]);
+@@ -99,6 +113,7 @@
+         .resource_mut::<UiState>()
+         .replace_interaction(interaction);
+     submit(&mut world, &line);
++    schedule.run(&mut world);
+     schedule.run(&mut world);
+     assert!(entities(&mut world).is_empty());
+     assert_eq!(world.resource::<UiSignifierStream>().committed_len(), 0);
+@@ -132,5 +147,7 @@
+     schedule.run(&mut world);
+     assert_eq!(entities(&mut world), vec![entity]);
+     schedule.run(&mut world);
++    assert!(world.get::<SignifierMarkedForDeletion>(entity).is_some());
++    schedule.run(&mut world);
+     assert!(world.get_entity(entity).is_err());
+ }

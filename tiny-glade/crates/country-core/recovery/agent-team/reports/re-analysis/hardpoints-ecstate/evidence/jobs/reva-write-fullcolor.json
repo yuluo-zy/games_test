@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json, os\nfrom ghidra.app.decompiler import DecompInterface\nprog = currentProgram\noutdir = \"/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/recovery/agent-team/reports/re-analysis/hardpoints-ecstate/evidence/decomp\"\naddrs = {\"0x14229a7f0\": \"show_color_options_14229a7f0\", \"0x142291230\": \"color_menu_142291230\"}\nresults = {}\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    for a, name in addrs.items():\n        monitor.checkCancelled()\n        addr = prog.getAddressFactory().getAddress(a)\n        f = prog.getFunctionManager().getFunctionAt(addr)\n        if f is None:\n            results[a] = \"absent\"\n            continue\n        res = d.decompileFunction(f, 600, monitor)\n        if res.decompileCompleted():\n            code = res.getDecompiledFunction().getC()\n            path = os.path.join(outdir, name + \"_full.c\")\n            open(path, \"w\").write(code)\n            results[a] = {\"ok\": True, \"path\": path, \"len\": len(code)}\n        else:\n            results[a] = {\"ok\": False, \"err\": str(res.getErrorMessage())}\nfinally:\n    d.dispose()\nprint(json.dumps(results))",
+      "timeoutSeconds": 800
+    },
+    "timeout_seconds": 900
+  }
+]

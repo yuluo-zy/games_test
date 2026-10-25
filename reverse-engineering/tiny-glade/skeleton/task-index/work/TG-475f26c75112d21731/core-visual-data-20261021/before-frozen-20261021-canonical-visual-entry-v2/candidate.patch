@@ -1,0 +1,23 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/arrow_slit.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/arrow_slit.rs
+@@ -111,7 +111,11 @@
+                 [ARROW_SLIT_HOLE.0, ARROW_SLIT_HOLE.1, 0.0, 0.0],
+             );
+             // O：蓝图（bbx_ls → collision/interaction mesh + outline）。
+-            let mut blueprint = crate::blueprint::DecoratorBlueprint::new();
++            let blueprint = blueprints.insert_for(
++                id,
++                country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Wall(wall),
++                info.state(),
++            );
+             let key = DecoratorLibKey::new(subtype, info.rank());
+             blueprint.set_positioned_colliders(
+                 std::sync::Arc::clone(&mesh_lib.collision_record(key).mesh),
+@@ -120,7 +124,6 @@
+                 &transform.rotation,
+             );
+             blueprint.set_outline((ARROW_SLIT_ROT_SCALE.0, ARROW_SLIT_ROT_SCALE.1, 0.0));
+-            blueprints.insert(id, blueprint);
+             // O：视觉实体（window glass + preview + color_id）。
+             let pos = transform.translation;
+             let mut builder = WindowVisualEntityBuilder::new(pos, Quat::IDENTITY, id);

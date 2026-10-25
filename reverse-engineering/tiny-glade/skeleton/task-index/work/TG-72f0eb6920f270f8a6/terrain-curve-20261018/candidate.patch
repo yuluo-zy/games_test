@@ -1,0 +1,86 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_edit_terrain.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_edit_terrain.rs
+@@ -50,7 +50,7 @@
+ };
+ 
+ use super::{
+-    deferred_terrain_history::DEFERRED_TERRAIN_SENTINEL, terrain_hover_idx::HoveredTerrainStrokeId,
++    terrain_hover_idx::HoveredTerrainStrokeId,
+ };
+ 
+ /// crate 本地 WindowFocusEvent 承载（I：原生 `country_core::resources::window::
+@@ -95,16 +95,9 @@
+     pub entries: Vec<StairsPlacementEntry>,
+ }
+ 
+-/// 地形编辑历史 pending（O：ui_edit_terrain case 3 写 `*local_118 = 0x8000000000000001`
+-/// 后依次写 `+0x8/+0xc/+0x10/+0x14/+0x18` 五个 u32；校验上一记录首 qword
+-/// `0x8000000000000002` 否则 panic）。
+-#[derive(Resource, Clone, Copy, Debug, Default)]
+-pub struct TerrainEditHistoryPending {
+-    /// 状态（哨兵 = 脏/待记录）。
+-    pub state: u64,
+-    /// `+0x8..+0x18` 的 5 个 u32 载荷（语义 U，布局 O）。
+-    pub payload: [u32; 5],
+-}
++/// The native drawing and editing systems share this one owning pending edit.
++/// Keep the previous public name as an alias for existing host code.
++pub type TerrainEditHistoryPending = super::deferred_terrain_history::PendingTerrainHistory;
+ 
+ /// 地形编辑历史哨兵（O：case 3 `0x8000000000000001`；区别于 deferred 的 `…0002`）。
+ pub const TERRAIN_EDIT_SENTINEL: u64 = 0x8000_0000_0000_0001;
+@@ -121,6 +114,9 @@
+     pub active: u8,
+     /// 拖动累加器（O：`*pfVar22`；case 1 清 0、case 2 累加 `|dx*0.002|`）。
+     pub accum: f32,
++    /// Original drag capture: height then falloff are saved before editing.
++    pub previous_height_ws: f32,
++    pub previous_falloff: f32,
+ }
+ 
+ /// 响应表（O：`&UNK_142ae404d` 4 槽字节 + `*pcVar39` 响应字节；case 6/8/0xc/0xf 写）。
+@@ -241,6 +237,10 @@
+                     (Vec3::ZERO, 0.0)
+                 };
+                 ui.hover = pos;
++                if let Some(stroke) = terrain.strokes.get(&id) {
++                    ui.previous_height_ws = stroke.height_ws;
++                    ui.previous_falloff = stroke.falloff;
++                }
+                 ui.slot_10 = slot_10;
+                 ui.active = 1;
+                 ui.accum = 0.0;
+@@ -293,23 +293,16 @@
+                 }
+             }
+             5 => {
+-                // case 3：TerrainEdit 哨兵（O decomp 行 676-731）。
+-                let previous = pending.state;
+-                pending.state = TERRAIN_EDIT_SENTINEL;
+-                let stroke = terrain.strokes.get(&id);
+-                pending.payload = [
+-                    stroke.map(|s| s.points.first().map(|p| p[0].to_bits()).unwrap_or(0)).unwrap_or(0),
+-                    ui.hover.x.to_bits(),
+-                    stroke.map(|s| s.falloff.to_bits()).unwrap_or(0),
+-                    ui.hover.y.to_bits(),
+-                    stroke.map(|s| s.height_ws.to_bits()).unwrap_or(0),
+-                ];
+-                // O：写新状态后校验旧首 qword 必须为 deferred 哨兵。
+-                assert!(
+-                    previous == DEFERRED_TERRAIN_SENTINEL,
+-                    "terrain edit history pending previous sentinel {previous:#x} != {:#x}",
+-                    DEFERRED_TERRAIN_SENTINEL
+-                );
++                window_focus.write(TerrainWindowFocus(0));
++                let stroke = terrain.strokes.get(&id)
++                    .expect("original terrain editing widget stroke assertion");
++                pending.stage(tg_terrain::schema::TerrainEdit::EditTerrainStroke {
++                    index: id,
++                    prev_height_ws: ui.previous_height_ws,
++                    new_height_ws: stroke.height_ws,
++                    prev_falloff: ui.previous_falloff,
++                    new_falloff: stroke.falloff,
++                });
+             }
+             6 => {
+                 // case 4：`&DAT_142ae405c` 子跳表（fresh UNRECOVERED_JUMPTABLE）。

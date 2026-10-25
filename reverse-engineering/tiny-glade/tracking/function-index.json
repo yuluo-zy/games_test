@@ -1,0 +1,3186 @@
+{
+  "source_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "unique_entries_with_pdb_range": 184,
+  "entries_with_verified_local_scope": 18,
+  "whole_game_function_denominator": null,
+  "functions": [
+    {
+      "va": "0x140002370",
+      "names": [
+        "core::error::Error::cause<enum2$<utils::curve::CurveError> >"
+      ],
+      "ranges": [
+        {
+          "code_size": 3,
+          "end_exclusive": "0x140002373"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1400885d0",
+      "names": [
+        "country_core::resources::window::WindowSize::as_dims",
+        "country_core::resources::roofs::roof_ridge::RoofRidgeDims::get_inner"
+      ],
+      "ranges": [
+        {
+          "code_size": 4,
+          "end_exclusive": "0x1400885d4"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json",
+        "evidence/roof-ridge/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x14014a160",
+      "names": [
+        "core::ptr::drop_in_place<enum2$<core::option::Option<country_core::input::input_stream::InputFrame> > >"
+      ],
+      "ranges": [
+        {
+          "code_size": 90,
+          "end_exclusive": "0x14014a1ba"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1401528a0",
+      "names": [
+        "core::error::Error::type_id<enum2$<utils::curve::CurveError> >"
+      ],
+      "ranges": [
+        {
+          "code_size": 21,
+          "end_exclusive": "0x1401528b5"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140833230",
+      "names": [
+        "country_core::resources::roofs::roof_shape::GableRoofStyle::is_stepped"
+      ],
+      "ranges": [
+        {
+          "code_size": 7,
+          "end_exclusive": "0x140833237"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x14085db60",
+      "names": [
+        "core::ptr::drop_in_place<enum2$<serde_json::value::ser::SerializeMap> >"
+      ],
+      "ranges": [
+        {
+          "code_size": 139,
+          "end_exclusive": "0x14085dbeb"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1408c5680",
+      "names": [
+        "country_core::resources::roofs::roof_shape::GableRoofStyle::is_overhang"
+      ],
+      "ranges": [
+        {
+          "code_size": 4,
+          "end_exclusive": "0x1408c5684"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1408e2690",
+      "names": [
+        "country_core::resources::roofs::roof_ridge::RoofRidgeDims::from"
+      ],
+      "ranges": [
+        {
+          "code_size": 101,
+          "end_exclusive": "0x1408e26f5"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-ridge/procedures.json"
+      ],
+      "verification": [
+        {
+          "report": "evidence/roof-ridge/verification.json",
+          "scope": "from_numeric",
+          "cases": 2944,
+          "limitations": [
+            "Shape transforms/dimensions synthesized; original params from history do not include linked Wall shape",
+            "Only valid shape tags 0/1; original panic entry detected before logging/unwind",
+            "Full mesh/tile orchestration and SIMD exception flags are not validated",
+            "Geometry tests include 88 boundary injections; dimensions/inverse include infinities, subnormals, signed zero"
+          ]
+        }
+      ]
+    },
+    {
+      "va": "0x1408e2700",
+      "names": [
+        "country_core::resources::roofs::roof_ridge::RoofRidgeDims::calc"
+      ],
+      "ranges": [
+        {
+          "code_size": 75,
+          "end_exclusive": "0x1408e274b"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-ridge/procedures.json"
+      ],
+      "verification": [
+        {
+          "report": "evidence/roof-ridge/verification.json",
+          "scope": "calc_numeric",
+          "cases": 1500,
+          "limitations": [
+            "Shape transforms/dimensions synthesized; original params from history do not include linked Wall shape",
+            "Only valid shape tags 0/1; original panic entry detected before logging/unwind",
+            "Full mesh/tile orchestration and SIMD exception flags are not validated",
+            "Geometry tests include 88 boundary injections; dimensions/inverse include infinities, subnormals, signed zero"
+          ]
+        }
+      ]
+    },
+    {
+      "va": "0x1408e2750",
+      "names": [
+        "country_core::resources::roofs::roof_ridge::RoofRidgeDims::to_world_space"
+      ],
+      "ranges": [
+        {
+          "code_size": 1883,
+          "end_exclusive": "0x1408e2eab"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-ridge/procedures.json"
+      ],
+      "verification": [
+        {
+          "report": "evidence/roof-ridge/verification.json",
+          "scope": "world_point_and_segment",
+          "cases": 2944,
+          "limitations": [
+            "Shape transforms/dimensions synthesized; original params from history do not include linked Wall shape",
+            "Only valid shape tags 0/1; original panic entry detected before logging/unwind",
+            "Full mesh/tile orchestration and SIMD exception flags are not validated",
+            "Geometry tests include 88 boundary injections; dimensions/inverse include infinities, subnormals, signed zero"
+          ]
+        }
+      ]
+    },
+    {
+      "va": "0x1408e2eb0",
+      "names": [
+        "ridge_point_closure"
+      ],
+      "ranges": [
+        {
+          "code_size": 497,
+          "end_exclusive": "0x1408e30a1"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-ridge/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1408e30b0",
+      "names": [
+        "country_core::resources::roofs::roof_ridge::calc_roof_tip_center_ls"
+      ],
+      "ranges": [
+        {
+          "code_size": 52,
+          "end_exclusive": "0x1408e30e4"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-ridge/procedures.json"
+      ],
+      "verification": [
+        {
+          "report": "evidence/roof-ridge/verification.json",
+          "scope": "tip_center_numeric",
+          "cases": 2944,
+          "limitations": [
+            "Shape transforms/dimensions synthesized; original params from history do not include linked Wall shape",
+            "Only valid shape tags 0/1; original panic entry detected before logging/unwind",
+            "Full mesh/tile orchestration and SIMD exception flags are not validated",
+            "Geometry tests include 88 boundary injections; dimensions/inverse include infinities, subnormals, signed zero"
+          ]
+        }
+      ]
+    },
+    {
+      "va": "0x1408e30f0",
+      "names": [
+        "country_core::resources::roofs::roof_ridge::inverse_ridge_01_param"
+      ],
+      "ranges": [
+        {
+          "code_size": 176,
+          "end_exclusive": "0x1408e31a0"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-ridge/procedures.json"
+      ],
+      "verification": [
+        {
+          "report": "evidence/roof-ridge/verification.json",
+          "scope": "non_panic_inverse",
+          "cases": 1500,
+          "limitations": [
+            "Shape transforms/dimensions synthesized; original params from history do not include linked Wall shape",
+            "Only valid shape tags 0/1; original panic entry detected before logging/unwind",
+            "Full mesh/tile orchestration and SIMD exception flags are not validated",
+            "Geometry tests include 88 boundary injections; dimensions/inverse include infinities, subnormals, signed zero"
+          ]
+        }
+      ]
+    },
+    {
+      "va": "0x1408e31a0",
+      "names": [
+        "country_core::resources::roofs::roof_shape::FlatRoofStyle::is_wooden"
+      ],
+      "ranges": [
+        {
+          "code_size": 24,
+          "end_exclusive": "0x1408e31b8"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1408e31c0",
+      "names": [
+        "country_core::resources::roofs::roof_shape::Roof::new"
+      ],
+      "ranges": [
+        {
+          "code_size": 89,
+          "end_exclusive": "0x1408e3219"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json",
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": [
+        {
+          "report": "evidence/native/roof-state-verification.json",
+          "scope": "state_writes",
+          "cases": 256,
+          "limitations": [
+            "字段原名和完整 Rust 类型未知",
+            "仅验证局部状态函数的返回布尔值和写入字节，不验证浮点异常状态位",
+            "构造器输入使用互不别名的有效内存",
+            "仅测试 MXCSR 0x1f80",
+            "候选实现采用显式字节接口，不宣称还原完整 Rust ABI"
+          ]
+        }
+      ]
+    },
+    {
+      "va": "0x1408e3220",
+      "names": [
+        "country_core::resources::roofs::roof_shape::Roof::pivot_3d"
+      ],
+      "ranges": [
+        {
+          "code_size": 38,
+          "end_exclusive": "0x1408e3246"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1408e3250",
+      "names": [
+        "country_core::resources::roofs::roof_shape::Roof::ty"
+      ],
+      "ranges": [
+        {
+          "code_size": 16,
+          "end_exclusive": "0x1408e3260"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json",
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": [
+        {
+          "report": "evidence/native/roof-state-verification.json",
+          "scope": "boolean_return",
+          "cases": 1348,
+          "limitations": [
+            "字段原名和完整 Rust 类型未知",
+            "仅验证局部状态函数的返回布尔值和写入字节，不验证浮点异常状态位",
+            "构造器输入使用互不别名的有效内存",
+            "仅测试 MXCSR 0x1f80",
+            "候选实现采用显式字节接口，不宣称还原完整 Rust ABI"
+          ]
+        }
+      ]
+    },
+    {
+      "va": "0x1408e3260",
+      "names": [
+        "country_core::resources::roofs::roof_shape::Roof::height"
+      ],
+      "ranges": [
+        {
+          "code_size": 278,
+          "end_exclusive": "0x1408e3376"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": [
+        {
+          "report": "evidence/roof-surface/verification.json",
+          "scope": "non_panic_height",
+          "cases": 2500,
+          "limitations": [
+            "Current host CRT dependency is recorded; original game process dependency version was not observed",
+            "Curve2 ownership pointer values and allocation failures not reconstructed",
+            "height panic path, coordinate panic formatting and MXCSR flags not covered",
+            "no runtime game execution, rendering or shader validation"
+          ]
+        }
+      ]
+    },
+    {
+      "va": "0x1408e3380",
+      "names": [
+        "country_core::resources::roofs::roof_shape::Roof::is_flat"
+      ],
+      "ranges": [
+        {
+          "code_size": 16,
+          "end_exclusive": "0x1408e3390"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1408e3390",
+      "names": [
+        "country_core::resources::roofs::roof_shape::Roof::is_flat_w_no_rim"
+      ],
+      "ranges": [
+        {
+          "code_size": 25,
+          "end_exclusive": "0x1408e33a9"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1408e33b0",
+      "names": [
+        "country_core::resources::roofs::roof_shape::Roof::is_gable"
+      ],
+      "ranges": [
+        {
+          "code_size": 44,
+          "end_exclusive": "0x1408e33dc"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json",
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": [
+        {
+          "report": "evidence/native/roof-state-verification.json",
+          "scope": "boolean_return",
+          "cases": 1348,
+          "limitations": [
+            "字段原名和完整 Rust 类型未知",
+            "仅验证局部状态函数的返回布尔值和写入字节，不验证浮点异常状态位",
+            "构造器输入使用互不别名的有效内存",
+            "仅测试 MXCSR 0x1f80",
+            "候选实现采用显式字节接口，不宣称还原完整 Rust ABI"
+          ]
+        }
+      ]
+    },
+    {
+      "va": "0x1408e33e0",
+      "names": [
+        "country_core::resources::roofs::roof_shape::Roof::gable_sides"
+      ],
+      "ranges": [
+        {
+          "code_size": 60,
+          "end_exclusive": "0x1408e341c"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json",
+        "evidence/roof-tiles/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1408e3420",
+      "names": [
+        "country_core::resources::roofs::roof_shape::Roof::profile_curve_normalized"
+      ],
+      "ranges": [
+        {
+          "code_size": 851,
+          "end_exclusive": "0x1408e3773"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1408e3780",
+      "names": [
+        "country_core::resources::roofs::roof_shape::Roof::roof_tip_offset_xz"
+      ],
+      "ranges": [
+        {
+          "code_size": 128,
+          "end_exclusive": "0x1408e3800"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-ridge/procedures.json",
+        "evidence/roof-surface/procedures.json",
+        "evidence/roof-tiles/procedures.json"
+      ],
+      "verification": [
+        {
+          "report": "evidence/roof-ridge/verification.json",
+          "scope": "tip_offset_numeric",
+          "cases": 2944,
+          "limitations": [
+            "Shape transforms/dimensions synthesized; original params from history do not include linked Wall shape",
+            "Only valid shape tags 0/1; original panic entry detected before logging/unwind",
+            "Full mesh/tile orchestration and SIMD exception flags are not validated",
+            "Geometry tests include 88 boundary injections; dimensions/inverse include infinities, subnormals, signed zero"
+          ]
+        }
+      ]
+    },
+    {
+      "va": "0x1408e3800",
+      "names": [
+        "country_core::resources::roofs::roof_shape::Roof::shape_dims"
+      ],
+      "ranges": [
+        {
+          "code_size": 30,
+          "end_exclusive": "0x1408e381e"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1408e3820",
+      "names": [
+        "country_core::resources::roofs::roof_shape::Roof::roof_shape_at_intersection_y"
+      ],
+      "ranges": [
+        {
+          "code_size": 752,
+          "end_exclusive": "0x1408e3b10"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1408e3b10",
+      "names": [
+        "country_core::resources::roofs::roof_shape::Roof::rotation_yaw_radians"
+      ],
+      "ranges": [
+        {
+          "code_size": 75,
+          "end_exclusive": "0x1408e3b5b"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1408e3b60",
+      "names": [
+        "country_core::resources::roofs::roof_shape::ridge_length_01_from_rectangle_ratio"
+      ],
+      "ranges": [
+        {
+          "code_size": 205,
+          "end_exclusive": "0x1408e3c2d"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1408e3c30",
+      "names": [
+        "country_core::resources::roofs::roof_shape::RoofShapeParams::eave_length_ws"
+      ],
+      "ranges": [
+        {
+          "code_size": 62,
+          "end_exclusive": "0x1408e3c6e"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": [
+        {
+          "report": "evidence/roof-surface/verification.json",
+          "scope": "eave_scalar",
+          "cases": 2500,
+          "limitations": [
+            "Current host CRT dependency is recorded; original game process dependency version was not observed",
+            "Curve2 ownership pointer values and allocation failures not reconstructed",
+            "height panic path, coordinate panic formatting and MXCSR flags not covered",
+            "no runtime game execution, rendering or shader validation"
+          ]
+        }
+      ]
+    },
+    {
+      "va": "0x1408e3c70",
+      "names": [
+        "country_core::resources::roofs::roof_shape::roof_height_ws_from_wall_shape"
+      ],
+      "ranges": [
+        {
+          "code_size": 208,
+          "end_exclusive": "0x1408e3d40"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1408e3d40",
+      "names": [
+        "country_core::resources::roofs::roof_shape::profile_curve_ws"
+      ],
+      "ranges": [
+        {
+          "code_size": 758,
+          "end_exclusive": "0x1408e4036"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1408e4040",
+      "names": [
+        "country_core::resources::roofs::roof_shape::roof_uv_at_ws_pos"
+      ],
+      "ranges": [
+        {
+          "code_size": 74,
+          "end_exclusive": "0x1408e408a"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1408e4090",
+      "names": [
+        "country_core::resources::roofs::roof_shape::roof_uv_and_point_at_ws_pos"
+      ],
+      "ranges": [
+        {
+          "code_size": 1153,
+          "end_exclusive": "0x1408e4511"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1408e4750",
+      "names": [
+        "country_core::resources::roofs::roof_shape::Roof::get_roof_shape_from_pos_ws_clamped"
+      ],
+      "ranges": [
+        {
+          "code_size": 63,
+          "end_exclusive": "0x1408e478f"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1408e4920",
+      "names": [
+        "country_core::resources::roofs::roof_shape::Roof::get_roof_shape"
+      ],
+      "ranges": [
+        {
+          "code_size": 477,
+          "end_exclusive": "0x1408e4afd"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": [
+        {
+          "report": "evidence/roof-surface/verification.json",
+          "scope": "section_output_current_host_crt",
+          "cases": 3004,
+          "limitations": [
+            "Current host CRT dependency is recorded; original game process dependency version was not observed",
+            "Curve2 ownership pointer values and allocation failures not reconstructed",
+            "height panic path, coordinate panic formatting and MXCSR flags not covered",
+            "no runtime game execution, rendering or shader validation"
+          ]
+        }
+      ]
+    },
+    {
+      "va": "0x140949170",
+      "names": [
+        "country_core::input::input_stream::InputStream::sync_point_count"
+      ],
+      "ranges": [
+        {
+          "code_size": 5,
+          "end_exclusive": "0x140949175"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140949180",
+      "names": [
+        "country_core::input::input_stream::InputStream::frame_count"
+      ],
+      "ranges": [
+        {
+          "code_size": 5,
+          "end_exclusive": "0x140949185"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140949190",
+      "names": [
+        "country_core::input::input_stream::InputStream::add_frame"
+      ],
+      "ranges": [
+        {
+          "code_size": 740,
+          "end_exclusive": "0x140949474"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140949480",
+      "names": [
+        "country_core::input::input_stream::InputStream::last_frame_mut"
+      ],
+      "ranges": [
+        {
+          "code_size": 51,
+          "end_exclusive": "0x1409494b3"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1409494c0",
+      "names": [
+        "country_core::input::input_stream::InputStream::on_history_sync"
+      ],
+      "ranges": [
+        {
+          "code_size": 410,
+          "end_exclusive": "0x14094965a"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140949660",
+      "names": [
+        "country_core::input::input_stream::InputStream::drop_oldest_sync_point"
+      ],
+      "ranges": [
+        {
+          "code_size": 771,
+          "end_exclusive": "0x140949963"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140949970",
+      "names": [
+        "country_core::input::input_stream::impl$2::index"
+      ],
+      "ranges": [
+        {
+          "code_size": 65,
+          "end_exclusive": "0x1409499b1"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1409499c0",
+      "names": [
+        "country_core::input::input_stream::InputRecordReplayState::try_load"
+      ],
+      "ranges": [
+        {
+          "code_size": 555,
+          "end_exclusive": "0x140949beb"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140949bf0",
+      "names": [
+        "country_core::resources::window::WindowSize::new"
+      ],
+      "ranges": [
+        {
+          "code_size": 11,
+          "end_exclusive": "0x140949bfb"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140949c00",
+      "names": [
+        "country_core::resources::window::WindowSize::set"
+      ],
+      "ranges": [
+        {
+          "code_size": 7,
+          "end_exclusive": "0x140949c07"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140949c10",
+      "names": [
+        "country_core::resources::window::WindowSize::as_vec2"
+      ],
+      "ranges": [
+        {
+          "code_size": 16,
+          "end_exclusive": "0x140949c20"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140949c20",
+      "names": [
+        "country_core::resources::window::WindowSize::aspect_ratio"
+      ],
+      "ranges": [
+        {
+          "code_size": 20,
+          "end_exclusive": "0x140949c34"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": [
+        {
+          "report": "evidence/native/window-aspect-verification.json",
+          "scope": "full_local_function",
+          "cases": 1280,
+          "limitations": [
+            "仅验证该20字节函数的数值行为",
+            "字段语义名及完整结构布局未还原",
+            "不同MXCSR模式尚未测试"
+          ]
+        }
+      ]
+    },
+    {
+      "va": "0x140949c40",
+      "names": [
+        "country_core::resources::window::AvailableMonitors::clear"
+      ],
+      "ranges": [
+        {
+          "code_size": 122,
+          "end_exclusive": "0x140949cba"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140949cc0",
+      "names": [
+        "country_core::systems::camera_rig::normal::impl$1::rotate_yaw_pitch"
+      ],
+      "ranges": [
+        {
+          "code_size": 244,
+          "end_exclusive": "0x140949db4"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140949dc0",
+      "names": [
+        "country_core::systems::camera_rig::normal::impl$1::constrain_to_be_above_terrain"
+      ],
+      "ranges": [
+        {
+          "code_size": 166,
+          "end_exclusive": "0x140949e66"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140949e70",
+      "names": [
+        "country_core::systems::camera_rig::normal::impl$1::translate_screen_space"
+      ],
+      "ranges": [
+        {
+          "code_size": 365,
+          "end_exclusive": "0x140949fdd"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140949fe0",
+      "names": [
+        "country_core::systems::camera_rig::normal::impl$1::update"
+      ],
+      "ranges": [
+        {
+          "code_size": 2339,
+          "end_exclusive": "0x14094a903"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x14094a910",
+      "names": [
+        "country_core::systems::ivy::ivy_grower::ivy_grower"
+      ],
+      "ranges": [
+        {
+          "code_size": 7915,
+          "end_exclusive": "0x14094c7fb"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x14094c800",
+      "names": [
+        "country_core::systems::ivy::ivy_grower::closest_segment_index"
+      ],
+      "ranges": [
+        {
+          "code_size": 666,
+          "end_exclusive": "0x14094ca9a"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x14094caa0",
+      "names": [
+        "country_core::systems::ivy::ivy_grower::get_wall_double_sided_normal"
+      ],
+      "ranges": [
+        {
+          "code_size": 448,
+          "end_exclusive": "0x14094cc60"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x14094cc60",
+      "names": [
+        "country_core::systems::ivy::ivy_grower::intersect_ivy_growth_w_wall_segment"
+      ],
+      "ranges": [
+        {
+          "code_size": 806,
+          "end_exclusive": "0x14094cf86"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x14094cf90",
+      "names": [
+        "country_core::systems::ivy::ivy_spawner::ivy_spawner"
+      ],
+      "ranges": [
+        {
+          "code_size": 4195,
+          "end_exclusive": "0x14094dff3"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x14094e000",
+      "names": [
+        "country_core::systems::terrain::edit_terrain_stroke::edit_terrain_stroke"
+      ],
+      "ranges": [
+        {
+          "code_size": 4814,
+          "end_exclusive": "0x14094f2ce"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x14094f2d0",
+      "names": [
+        "country_core::input::input_stream::impl$8::fmt"
+      ],
+      "ranges": [
+        {
+          "code_size": 243,
+          "end_exclusive": "0x14094f3c3"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x14094f3d0",
+      "names": [
+        "country_core::resources::terrain_editing::impl$11::fmt"
+      ],
+      "ranges": [
+        {
+          "code_size": 56,
+          "end_exclusive": "0x14094f408"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a825e0",
+      "names": [
+        "core::cmp::PartialEq::ne<enum2$<country_core::systems::mode_manager::AppMode>,enum2$<country_core::systems::mode_manager::AppMode> >"
+      ],
+      "ranges": [
+        {
+          "code_size": 216,
+          "end_exclusive": "0x140a826b8"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a826c0",
+      "names": [
+        "core::ptr::drop_in_place<alloc::sync::Arc<enum2$<country_core::resources::history::color_edit::ColorEdit>,alloc::alloc::Global> >",
+        "core::ptr::drop_in_place<alloc::sync::Arc<enum2$<country_core::resources::history::decorator_edit::DecoratorHistoryEdit>,alloc::alloc::Global> >"
+      ],
+      "ranges": [
+        {
+          "code_size": 15,
+          "end_exclusive": "0x140a826cf"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a826d0",
+      "names": [
+        "core::ptr::drop_in_place<alloc::sync::Arc<country_core::resources::history::path_edit::RasterEdit,alloc::alloc::Global> >"
+      ],
+      "ranges": [
+        {
+          "code_size": 15,
+          "end_exclusive": "0x140a826df"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a826e0",
+      "names": [
+        "core::ptr::drop_in_place<alloc::sync::Arc<enum2$<country_core::resources::history::terrain_edit::TerrainEdit>,alloc::alloc::Global> >"
+      ],
+      "ranges": [
+        {
+          "code_size": 15,
+          "end_exclusive": "0x140a826ef"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a826f0",
+      "names": [
+        "core::ptr::drop_in_place<alloc::sync::Arc<enum2$<country_core::resources::history::auto_clutter_edit::AutoClutterEdit>,alloc::alloc::Global> >"
+      ],
+      "ranges": [
+        {
+          "code_size": 15,
+          "end_exclusive": "0x140a826ff"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a82700",
+      "names": [
+        "core::ptr::drop_in_place<alloc::sync::Arc<enum2$<country_core::resources::history::stairs_history_edit::StairsHistoryEdit>,alloc::alloc::Global> >"
+      ],
+      "ranges": [
+        {
+          "code_size": 15,
+          "end_exclusive": "0x140a8270f"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a82710",
+      "names": [
+        "core::ptr::drop_in_place<enum2$<country_core::resources::history::EditType> >"
+      ],
+      "ranges": [
+        {
+          "code_size": 546,
+          "end_exclusive": "0x140a82932"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a82940",
+      "names": [
+        "core::ptr::drop_in_place<enum2$<country_core::resources::history::wall_compound_edit::WallHistoryEdit> >"
+      ],
+      "ranges": [
+        {
+          "code_size": 342,
+          "end_exclusive": "0x140a82a96"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a82aa0",
+      "names": [
+        "core::ptr::drop_in_place<alloc::sync::Arc<enum2$<country_core::resources::history::roof_edit::RoofEdit>,alloc::alloc::Global> >"
+      ],
+      "ranges": [
+        {
+          "code_size": 15,
+          "end_exclusive": "0x140a82aaf"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a82ab0",
+      "names": [
+        "core::ptr::drop_in_place<alloc::sync::Arc<enum2$<country_core::resources::history::tree_edit::TreeEdit>,alloc::alloc::Global> >"
+      ],
+      "ranges": [
+        {
+          "code_size": 15,
+          "end_exclusive": "0x140a82abf"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a82b20",
+      "names": [
+        "country_core::resources::history::wall_compound_edit::CompoundEditBuilder::new_edit_sequence"
+      ],
+      "ranges": [
+        {
+          "code_size": 27,
+          "end_exclusive": "0x140a82b3b"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a82b40",
+      "names": [
+        "country_core::resources::history::wall_compound_edit::CompoundEditBuilder::next"
+      ],
+      "ranges": [
+        {
+          "code_size": 519,
+          "end_exclusive": "0x140a82d47"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a82d50",
+      "names": [
+        "country_core::resources::history::wall_compound_edit::CompoundEditBuilder::build"
+      ],
+      "ranges": [
+        {
+          "code_size": 194,
+          "end_exclusive": "0x140a82e12"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a82e20",
+      "names": [
+        "country_core::resources::history::wall_compound_edit::panic_deprecated_operation"
+      ],
+      "ranges": [
+        {
+          "code_size": 137,
+          "end_exclusive": "0x140a82ea9"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a82eb0",
+      "names": [
+        "country_core::resources::history::wall_compound_edit::impl$4::fmt"
+      ],
+      "ranges": [
+        {
+          "code_size": 1104,
+          "end_exclusive": "0x140a83300"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a83300",
+      "names": [
+        "country_core::resources::history::wall_history::impl$0::ev_new_wall"
+      ],
+      "ranges": [
+        {
+          "code_size": 3192,
+          "end_exclusive": "0x140a83f78"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a83f80",
+      "names": [
+        "country_core::resources::history::wall_history::impl$0::ev_height_changed"
+      ],
+      "ranges": [
+        {
+          "code_size": 48,
+          "end_exclusive": "0x140a83fb0"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a83fb0",
+      "names": [
+        "country_core::resources::history::EditType::new_height_changed"
+      ],
+      "ranges": [
+        {
+          "code_size": 620,
+          "end_exclusive": "0x140a8421c"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a84220",
+      "names": [
+        "country_core::resources::history::HistoryIdentity::generate"
+      ],
+      "ranges": [
+        {
+          "code_size": 50,
+          "end_exclusive": "0x140a84252"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a84260",
+      "names": [
+        "country_core::resources::history::impl$9::try_from"
+      ],
+      "ranges": [
+        {
+          "code_size": 37,
+          "end_exclusive": "0x140a84285"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a84290",
+      "names": [
+        "country_core::resources::history::is_decorator_history_diff_empty"
+      ],
+      "ranges": [
+        {
+          "code_size": 9,
+          "end_exclusive": "0x140a84299"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a842a0",
+      "names": [
+        "country_core::resources::history::is_stairs_history_diff_empty"
+      ],
+      "ranges": [
+        {
+          "code_size": 19,
+          "end_exclusive": "0x140a842b3"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a842c0",
+      "names": [
+        "country_core::resources::history::impl$14::fmt"
+      ],
+      "ranges": [
+        {
+          "code_size": 551,
+          "end_exclusive": "0x140a844e7"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a844f0",
+      "names": [
+        "country_core::resources::history::History::insert_starting_edit"
+      ],
+      "ranges": [
+        {
+          "code_size": 340,
+          "end_exclusive": "0x140a84644"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a84650",
+      "names": [
+        "country_core::resources::history::History::current_snapshot"
+      ],
+      "ranges": [
+        {
+          "code_size": 258,
+          "end_exclusive": "0x140a84752"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a84760",
+      "names": [
+        "country_core::resources::history::History::set_current_snapshot"
+      ],
+      "ranges": [
+        {
+          "code_size": 732,
+          "end_exclusive": "0x140a84a3c"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a84a40",
+      "names": [
+        "country_core::resources::history::History::iter_resolved_snapshots"
+      ],
+      "ranges": [
+        {
+          "code_size": 16,
+          "end_exclusive": "0x140a84a50"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a84a50",
+      "names": [
+        "country_core::resources::history::History::closest_resolved_snapshot"
+      ],
+      "ranges": [
+        {
+          "code_size": 331,
+          "end_exclusive": "0x140a84b9b"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a84ba0",
+      "names": [
+        "country_core::resources::history::History::debug_display"
+      ],
+      "ranges": [
+        {
+          "code_size": 154,
+          "end_exclusive": "0x140a84c3a"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a84c40",
+      "names": [
+        "country_core::resources::history::History::debug_set_history_start"
+      ],
+      "ranges": [
+        {
+          "code_size": 4,
+          "end_exclusive": "0x140a84c44"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a84c50",
+      "names": [
+        "country_core::resources::history::History::nuke_future_states"
+      ],
+      "ranges": [
+        {
+          "code_size": 611,
+          "end_exclusive": "0x140a84eb3"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a84ec0",
+      "names": [
+        "country_core::resources::history::History::add"
+      ],
+      "ranges": [
+        {
+          "code_size": 1496,
+          "end_exclusive": "0x140a85498"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a854a0",
+      "names": [
+        "country_core::resources::history::History::add_decorator_diff"
+      ],
+      "ranges": [
+        {
+          "code_size": 3533,
+          "end_exclusive": "0x140a8626d"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a86270",
+      "names": [
+        "country_core::resources::history::History::start_input_recording"
+      ],
+      "ranges": [
+        {
+          "code_size": 672,
+          "end_exclusive": "0x140a86510"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a86510",
+      "names": [
+        "country_core::resources::history::History::try_start_input_recording"
+      ],
+      "ranges": [
+        {
+          "code_size": 540,
+          "end_exclusive": "0x140a8672c"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a86730",
+      "names": [
+        "country_core::resources::history::History::finish_input_recording"
+      ],
+      "ranges": [
+        {
+          "code_size": 571,
+          "end_exclusive": "0x140a8696b"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a86970",
+      "names": [
+        "country_core::resources::history::History::is_recording"
+      ],
+      "ranges": [
+        {
+          "code_size": 10,
+          "end_exclusive": "0x140a8697a"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a86980",
+      "names": [
+        "country_core::resources::history::History::finish_potential_mutation"
+      ],
+      "ranges": [
+        {
+          "code_size": 420,
+          "end_exclusive": "0x140a86b24"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a86b30",
+      "names": [
+        "country_core::systems::mode_manager::impl$0::default"
+      ],
+      "ranges": [
+        {
+          "code_size": 10,
+          "end_exclusive": "0x140a86b3a"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a86b40",
+      "names": [
+        "country_core::systems::mode_manager::AppMode::is_tool_selected"
+      ],
+      "ranges": [
+        {
+          "code_size": 24,
+          "end_exclusive": "0x140a86b58"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a86b60",
+      "names": [
+        "country_core::systems::mode_manager::mode_manager"
+      ],
+      "ranges": [
+        {
+          "code_size": 2680,
+          "end_exclusive": "0x140a875d8"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a875e0",
+      "names": [
+        "country_core::systems::mode_manager::send_mode_just_changed_event"
+      ],
+      "ranges": [
+        {
+          "code_size": 181,
+          "end_exclusive": "0x140a87695"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a876a0",
+      "names": [
+        "country_core::resources::history::wall_compound_edit::CompoundEditBuilder::wall_deleted"
+      ],
+      "ranges": [
+        {
+          "code_size": 718,
+          "end_exclusive": "0x140a8796e"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a87970",
+      "names": [
+        "country_core::resources::history::wall_compound_edit::impl$5::fmt"
+      ],
+      "ranges": [
+        {
+          "code_size": 56,
+          "end_exclusive": "0x140a879a8"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a879b0",
+      "names": [
+        "country_core::resources::stairs::stairs_state::impl$33::fmt"
+      ],
+      "ranges": [
+        {
+          "code_size": 217,
+          "end_exclusive": "0x140a87a89"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a87a90",
+      "names": [
+        "country_core::resources::walls::inner_wall_state::impl$14::fmt"
+      ],
+      "ranges": [
+        {
+          "code_size": 42,
+          "end_exclusive": "0x140a87aba"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a87ac0",
+      "names": [
+        "country_core::resources::walls::inner_wall_state::impl$21::fmt"
+      ],
+      "ranges": [
+        {
+          "code_size": 39,
+          "end_exclusive": "0x140a87ae7"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a87af0",
+      "names": [
+        "country_core::resources::walls::inner_wall_state::impl$29::fmt"
+      ],
+      "ranges": [
+        {
+          "code_size": 56,
+          "end_exclusive": "0x140a87b28"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a87b30",
+      "names": [
+        "country_core::resources::walls::impl$7::fmt"
+      ],
+      "ranges": [
+        {
+          "code_size": 56,
+          "end_exclusive": "0x140a87b68"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a87b70",
+      "names": [
+        "country_core::systems::wall::valid_enclosure::impl$4::fmt"
+      ],
+      "ranges": [
+        {
+          "code_size": 156,
+          "end_exclusive": "0x140a87c0c"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a87c10",
+      "names": [
+        "country_core::systems::wall::valid_enclosure::impl$6::fmt"
+      ],
+      "ranges": [
+        {
+          "code_size": 102,
+          "end_exclusive": "0x140a87c76"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a880c0",
+      "names": [
+        "country_core::resources::roofs::roof_visual_shape::get_roof_expanded_top_and_bottom"
+      ],
+      "ranges": [
+        {
+          "code_size": 312,
+          "end_exclusive": "0x140a881f8"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-tiles/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140a88200",
+      "names": [
+        "country_core::resources::roofs::roof_visual_shape::RoofBoundsDims::as_circle"
+      ],
+      "ranges": [
+        {
+          "code_size": 49,
+          "end_exclusive": "0x140a88231"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-tiles/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140ac79e0",
+      "names": [
+        "country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::history_record_adjust_wall_height"
+      ],
+      "ranges": [
+        {
+          "code_size": 1349,
+          "end_exclusive": "0x140ac7f25"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/scope-priorities/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140ac7f30",
+      "names": [
+        "country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::clamp_wall_height"
+      ],
+      "ranges": [
+        {
+          "code_size": 422,
+          "end_exclusive": "0x140ac80d6"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/scope-priorities/procedures.json"
+      ],
+      "verification": [
+        {
+          "report": "evidence/scope-priorities/wall-rules-verification.json",
+          "scope": "resolved_numeric_suffix_only",
+          "cases": 4680,
+          "limitations": [
+            "Clamp hash lookup, wall existence/validity checks and Bevy query lookup are outside tested numeric policy",
+            "Special flag producer semantic is unknown",
+            "MXCSR=0x1f80; floating exception flags and panic message/unwind not compared",
+            "No std/Bevy/glam/hash implementation was reconstructed"
+          ]
+        }
+      ]
+    },
+    {
+      "va": "0x140b2a620",
+      "names": [
+        "country_core::resources::walls::public_wall_state::PublicWallState::max_y"
+      ],
+      "ranges": [
+        {
+          "code_size": 82,
+          "end_exclusive": "0x140b2a672"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/scope-priorities/procedures.json"
+      ],
+      "verification": [
+        {
+          "report": "evidence/scope-priorities/wall-rules-verification.json",
+          "scope": "cached_max_value_and_missing_panic",
+          "cases": 648,
+          "limitations": [
+            "Clamp hash lookup, wall existence/validity checks and Bevy query lookup are outside tested numeric policy",
+            "Special flag producer semantic is unknown",
+            "MXCSR=0x1f80; floating exception flags and panic message/unwind not compared",
+            "No std/Bevy/glam/hash implementation was reconstructed"
+          ]
+        }
+      ]
+    },
+    {
+      "va": "0x140b2a680",
+      "names": [
+        "country_core::resources::walls::public_wall_state::PublicWallState::max_y_gable"
+      ],
+      "ranges": [
+        {
+          "code_size": 82,
+          "end_exclusive": "0x140b2a6d2"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/scope-priorities/procedures.json"
+      ],
+      "verification": [
+        {
+          "report": "evidence/scope-priorities/wall-rules-verification.json",
+          "scope": "cached_gable_max_and_missing_panic",
+          "cases": 648,
+          "limitations": [
+            "Clamp hash lookup, wall existence/validity checks and Bevy query lookup are outside tested numeric policy",
+            "Special flag producer semantic is unknown",
+            "MXCSR=0x1f80; floating exception flags and panic message/unwind not compared",
+            "No std/Bevy/glam/hash implementation was reconstructed"
+          ]
+        }
+      ]
+    },
+    {
+      "va": "0x140b2a6e0",
+      "names": [
+        "country_core::resources::walls::public_wall_state::PublicWallState::flat_roof_y"
+      ],
+      "ranges": [
+        {
+          "code_size": 90,
+          "end_exclusive": "0x140b2a73a"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/scope-priorities/procedures.json"
+      ],
+      "verification": [
+        {
+          "report": "evidence/scope-priorities/wall-rules-verification.json",
+          "scope": "flat_roof_cached_height_and_missing_panic",
+          "cases": 648,
+          "limitations": [
+            "Clamp hash lookup, wall existence/validity checks and Bevy query lookup are outside tested numeric policy",
+            "Special flag producer semantic is unknown",
+            "MXCSR=0x1f80; floating exception flags and panic message/unwind not compared",
+            "No std/Bevy/glam/hash implementation was reconstructed"
+          ]
+        }
+      ]
+    },
+    {
+      "va": "0x140c90050",
+      "names": [
+        "utils::random_splits_into"
+      ],
+      "ranges": [
+        {
+          "code_size": 760,
+          "end_exclusive": "0x140c90348"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-tiles/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140c90350",
+      "names": [
+        "utils::random_splits"
+      ],
+      "ranges": [
+        {
+          "code_size": 332,
+          "end_exclusive": "0x140c9049c"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-tiles/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140c904a0",
+      "names": [
+        "utils::inverse_lerp"
+      ],
+      "ranges": [
+        {
+          "code_size": 16,
+          "end_exclusive": "0x140c904b0"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140c97560",
+      "names": [
+        "utils::geometry::circle::Circle2d::new_rotated"
+      ],
+      "ranges": [
+        {
+          "code_size": 29,
+          "end_exclusive": "0x140c9757d"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-tiles/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140c975a0",
+      "names": [
+        "utils::geometry::circle::Circle2d::get_pos_at_u"
+      ],
+      "ranges": [
+        {
+          "code_size": 181,
+          "end_exclusive": "0x140c97655"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-tiles/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140c978e0",
+      "names": [
+        "utils::geometry::circle::Circle2d::get_normal_at_u"
+      ],
+      "ranges": [
+        {
+          "code_size": 135,
+          "end_exclusive": "0x140c97967"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-tiles/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140c97970",
+      "names": [
+        "utils::geometry::circle::Circle2d::perimeter"
+      ],
+      "ranges": [
+        {
+          "code_size": 14,
+          "end_exclusive": "0x140c9797e"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-tiles/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140c98890",
+      "names": [
+        "utils::geometry::rectangle::Rectangle2d::new_centered_axis_aligned"
+      ],
+      "ranges": [
+        {
+          "code_size": 106,
+          "end_exclusive": "0x140c988fa"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-tiles/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140c98900",
+      "names": [
+        "utils::geometry::rectangle::Rectangle2d::new_axis_aligned"
+      ],
+      "ranges": [
+        {
+          "code_size": 121,
+          "end_exclusive": "0x140c98979"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-tiles/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140c98ab0",
+      "names": [
+        "utils::geometry::rectangle::Rectangle2d::as_points2"
+      ],
+      "ranges": [
+        {
+          "code_size": 224,
+          "end_exclusive": "0x140c98b90"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-tiles/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140c99540",
+      "names": [
+        "orientation_mat2",
+        "utils::geometry::rectangle::Rectangle2d::orientation_mat2"
+      ],
+      "ranges": [
+        {
+          "code_size": 34,
+          "end_exclusive": "0x140c99562"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-ridge/procedures.json",
+        "evidence/roof-tiles/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140c9cdc0",
+      "names": [
+        "x0y"
+      ],
+      "ranges": [
+        {
+          "code_size": 29,
+          "end_exclusive": "0x140c9cddd"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-ridge/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140caf380",
+      "names": [
+        "fastrand::Rng::f32"
+      ],
+      "ranges": [
+        {
+          "code_size": 56,
+          "end_exclusive": "0x140caf3b8"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-tiles/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x140dce930",
+      "names": [
+        "rectangular_rows_from_iter"
+      ],
+      "ranges": [
+        {
+          "code_size": 366,
+          "end_exclusive": "0x140dcea9e"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-ridge/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141465240",
+      "names": [
+        "serde::de::impl$1::fmt<utils::curve::_::impl$0::deserialize::__Visitor<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D> >"
+      ],
+      "ranges": [
+        {
+          "code_size": 21,
+          "end_exclusive": "0x141465255"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141465260",
+      "names": [
+        "utils::curve::smooth_in_place<glam::f32::vec3::Vec3,utils::curve::UniformCurveSmoother>"
+      ],
+      "ranges": [
+        {
+          "code_size": 1906,
+          "end_exclusive": "0x1414659d2"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1414659e0",
+      "names": [
+        "utils::curve::_::impl$0::serialize<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic2D,serde_json::value::ser::Serializer>"
+      ],
+      "ranges": [
+        {
+          "code_size": 380,
+          "end_exclusive": "0x141465b5c"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141465b60",
+      "names": [
+        "utils::curve::_::impl$0::serialize<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic2D,ref_mut$<serde_json::ser::Serializer<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global> >,serde_json::ser::CompactFormatter> > >"
+      ],
+      "ranges": [
+        {
+          "code_size": 280,
+          "end_exclusive": "0x141465c78"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141465c80",
+      "names": [
+        "utils::curve::_::impl$0::serialize<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,ref_mut$<serde_json::ser::Serializer<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global> >,serde_json::ser::CompactFormatter> > >"
+      ],
+      "ranges": [
+        {
+          "code_size": 280,
+          "end_exclusive": "0x141465d98"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141466300",
+      "names": [
+        "utils::curve::Curve::slice_into<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D,alloc::vec::Vec<glam::f32::vec3::Vec3,alloc::alloc::Global> >"
+      ],
+      "ranges": [
+        {
+          "code_size": 1372,
+          "end_exclusive": "0x14146685c"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141466860",
+      "names": [
+        "utils::curve::Curve::try_extend<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 471,
+          "end_exclusive": "0x141466a37"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141466a40",
+      "names": [
+        "utils::curve::Curve::crashy_lerp<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 366,
+          "end_exclusive": "0x141466bae"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141466bb0",
+      "names": [
+        "utils::curve::Curve::crashy_slice<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 1555,
+          "end_exclusive": "0x1414671c3"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1414671d0",
+      "names": [
+        "utils::curve::Curve::get_pos_at_u<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 160,
+          "end_exclusive": "0x141467270"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141467270",
+      "names": [
+        "utils::curve::Curve::get_pos_at_u<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 129,
+          "end_exclusive": "0x1414672f1"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141467300",
+      "names": [
+        "utils::curve::Curve::circular_slice<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 1261,
+          "end_exclusive": "0x1414677ed"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1414677f0",
+      "names": [
+        "utils::curve::Curve::circular_slice<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic2D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 1261,
+          "end_exclusive": "0x141467cdd"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141467ce0",
+      "names": [
+        "utils::curve::Curve::get_coord_at_u<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic2D> >",
+        "utils::curve::Curve::get_coord_at_u<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemanticThresholded3D,utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemanticThresholded3D> >",
+        "utils::curve::Curve::get_coord_at_u<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D,utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic3D> >"
+      ],
+      "ranges": [
+        {
+          "code_size": 694,
+          "end_exclusive": "0x141467f96"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141467fa0",
+      "names": [
+        "utils::curve::Curve::crashy_resample<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 2261,
+          "end_exclusive": "0x141468875"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141468880",
+      "names": [
+        "utils::curve::Curve::smooth_weighted<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 1624,
+          "end_exclusive": "0x141468ed8"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141468ee0",
+      "names": [
+        "utils::curve::Curve::get_tangent_at_u<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 161,
+          "end_exclusive": "0x141468f81"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141468f90",
+      "names": [
+        "utils::curve::Curve::get_tangent_at_u<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 110,
+          "end_exclusive": "0x141468ffe"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141469000",
+      "names": [
+        "utils::curve::Curve::is_on_right_side<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 545,
+          "end_exclusive": "0x141469221"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141469230",
+      "names": [
+        "utils::curve::Curve::try_new_from_points<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 506,
+          "end_exclusive": "0x14146942a"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141469430",
+      "names": [
+        "utils::curve::Curve::try_new_from_points<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 698,
+          "end_exclusive": "0x1414696ea"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141469950",
+      "names": [
+        "utils::curve::Curve::get_approx_u_from_pos<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 195,
+          "end_exclusive": "0x141469a13"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141469a20",
+      "names": [
+        "utils::curve::Curve::get_approx_u_from_pos<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 195,
+          "end_exclusive": "0x141469ae3"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141469af0",
+      "names": [
+        "utils::curve::Curve::get_approx_u_from_pos<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic2D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 770,
+          "end_exclusive": "0x141469df2"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141469e00",
+      "names": [
+        "utils::curve::Curve::get_approx_coord_from_pos<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemanticThresholded3D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 595,
+          "end_exclusive": "0x14146a053"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x14146a060",
+      "names": [
+        "utils::curve::Curve::get_approx_coord_from_pos<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 572,
+          "end_exclusive": "0x14146a29c"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x14146a2a0",
+      "names": [
+        "utils::curve::Curve::crashy_resample_per_segment<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic2D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 1413,
+          "end_exclusive": "0x14146a825"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x14146a830",
+      "names": [
+        "utils::curve::Curve::crashy_resample_approx_pt_count<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 1956,
+          "end_exclusive": "0x14146afd4"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x14146afe0",
+      "names": [
+        "utils::curve::Curve::crashy_resample_remap_per_segment<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D,country_core::systems::wall::shapes::calc_shape_height::calc_shape_height::closure_env$0>"
+      ],
+      "ranges": [
+        {
+          "code_size": 1541,
+          "end_exclusive": "0x14146b5e5"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x14146b5f0",
+      "names": [
+        "utils::curve::Curve::crashy_resample_remap_per_segment<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D,country_core::systems::wall::shapes::rectangle::ui_create_rectangle::rectangle_signifier::closure$0::closure$0::closure_env$0>"
+      ],
+      "ranges": [
+        {
+          "code_size": 1393,
+          "end_exclusive": "0x14146bb61"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x14146bb70",
+      "names": [
+        "utils::curve::Curve::crashy_resample_remap_per_segment_2<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D,country_core::systems::wall::wall_state::publish_public_wall_state::process::closure_env$0>"
+      ],
+      "ranges": [
+        {
+          "code_size": 1555,
+          "end_exclusive": "0x14146c183"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x14146c190",
+      "names": [
+        "utils::curve::Curve::reverse<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 554,
+          "end_exclusive": "0x14146c3ba"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x14146c3c0",
+      "names": [
+        "utils::curve::Curve::project_point<utils::curve::CurveCoordSemantic2D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 168,
+          "end_exclusive": "0x14146c468"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x14146c470",
+      "names": [
+        "utils::curve::Curve::to_curve3<utils::curve::CurveCoordSemantic2D>"
+      ],
+      "ranges": [
+        {
+          "code_size": 598,
+          "end_exclusive": "0x14146c6c6"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x14146c6d0",
+      "names": [
+        "utils::curve::impl$46::fmt"
+      ],
+      "ranges": [
+        {
+          "code_size": 173,
+          "end_exclusive": "0x14146c77d"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-surface/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1419f0790",
+      "names": [
+        "rectangular_row_builder_loop"
+      ],
+      "ranges": [
+        {
+          "code_size": 968,
+          "end_exclusive": "0x1419f0b58"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-ridge/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141a36700",
+      "names": [
+        "system_roof::visual::assemble_roof_tiles::assemble_roof_tiles"
+      ],
+      "ranges": [
+        {
+          "code_size": 2965,
+          "end_exclusive": "0x141a37295"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-tiles/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141a37ad0",
+      "names": [
+        "system_roof::replay_roof::replay_roof"
+      ],
+      "ranges": [
+        {
+          "code_size": 1277,
+          "end_exclusive": "0x141a37fcd"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/scope-priorities/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141a3c070",
+      "names": [
+        "country_core::render::sparse_instance_buffer::SparseInstanceBufferWriter::push<country_core::resources::roof_tile_ssbo::RoofTileSsbo>"
+      ],
+      "ranges": [
+        {
+          "code_size": 736,
+          "end_exclusive": "0x141a3c350"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-tiles/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141fe2150",
+      "names": [
+        "system_wall_constructor::construct_elevation_supports::util_pillar_construction::construct_wooden_pillar_w_stone_base"
+      ],
+      "ranges": [
+        {
+          "code_size": 4327,
+          "end_exclusive": "0x141fe3237"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x141fe3240",
+      "names": [
+        "system_wall_constructor::construct_elevation_supports::util_pillar_construction::construct_brick_columns"
+      ],
+      "ranges": [
+        {
+          "code_size": 848,
+          "end_exclusive": "0x141fe3590"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x14200c7f0",
+      "names": [
+        "system_decorator::decorator_visual::door_stairs_assemble_bricks::construct_door_stairs<ref_mut$<system_decorator::decorator_visual::door_stairs_assemble_bricks::door_stairs_assemble_bricks::closure$0::closure$0::closure_env$0> >"
+      ],
+      "ranges": [
+        {
+          "code_size": 4668,
+          "end_exclusive": "0x14200da2c"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x142197610",
+      "names": [
+        "utils::curve::Curve::get_coord_at_u<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic2D> >"
+      ],
+      "ranges": [
+        {
+          "code_size": 694,
+          "end_exclusive": "0x1421978c6"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-tiles/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1421a6d40",
+      "names": [
+        "system_roof::visual::generate_roof_stone_floor_and_roof_bottom::generate_roof_stone_floor_and_roof_bottom"
+      ],
+      "ranges": [
+        {
+          "code_size": 840,
+          "end_exclusive": "0x1421a7088"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1421a7710",
+      "names": [
+        "system_roof::update_roof_spatial::update_roof_spatial"
+      ],
+      "ranges": [
+        {
+          "code_size": 1459,
+          "end_exclusive": "0x1421a7cc3"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1421aae00",
+      "names": [
+        "country_core::systems::wall::valid_enclosure::impl$4::fmt"
+      ],
+      "ranges": [
+        {
+          "code_size": 156,
+          "end_exclusive": "0x1421aae9c"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1421aaea0",
+      "names": [
+        "system_roof::create_roof::create_roof"
+      ],
+      "ranges": [
+        {
+          "code_size": 2075,
+          "end_exclusive": "0x1421ab6bb"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/pdb-structure/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1421ab7c0",
+      "names": [
+        "system_roof::edit_roof::edit_roof"
+      ],
+      "ranges": [
+        {
+          "code_size": 3175,
+          "end_exclusive": "0x1421ac427"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/scope-priorities/procedures.json"
+      ],
+      "verification": [
+        {
+          "report": "evidence/source-edits/verification.json",
+          "scope": "resolved_roof_event_suffix_and_numeric_notifications",
+          "cases": 4514,
+          "limitations": [
+            "ECS entity resolution, original event reader scheduling and failed query branches excluded",
+            "Prepared resolved Roof/Event/change tick and valid preallocated message queues; no allocation failure validation",
+            "Not the full Bevy system implementation; no rendering or scene replay",
+            "SSE exception flags, uninitialized event padding and source ABI ownership excluded"
+          ]
+        }
+      ]
+    },
+    {
+      "va": "0x1421aeef0",
+      "names": [
+        "assemble_rectangular_roof",
+        "system_roof::utils::assemble_rectangular_roof::assemble_rectangular_roof<system_roof::visual::assemble_roof_tiles::assemble_roof_tiles::closure_env$0>"
+      ],
+      "ranges": [
+        {
+          "code_size": 15785,
+          "end_exclusive": "0x1421b2c99"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-ridge/procedures.json",
+        "evidence/roof-tiles/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1421b2ca0",
+      "names": [
+        "system_roof::visual::assemble_roof_tiles::assemble_roof_tiles::closure$0"
+      ],
+      "ranges": [
+        {
+          "code_size": 963,
+          "end_exclusive": "0x1421b3063"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-tiles/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1421b3120",
+      "names": [
+        "system_roof::utils::assemble_circular_roof::assemble_circular_roof<system_roof::visual::assemble_roof_tiles::assemble_roof_tiles::closure_env$0>"
+      ],
+      "ranges": [
+        {
+          "code_size": 5096,
+          "end_exclusive": "0x1421b4508"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-tiles/procedures.json"
+      ],
+      "verification": []
+    },
+    {
+      "va": "0x1421b4510",
+      "names": [
+        "system_roof::visual::assemble_roof_tiles::assemble_roof_tiles::closure$0"
+      ],
+      "ranges": [
+        {
+          "code_size": 963,
+          "end_exclusive": "0x1421b48d3"
+        }
+      ],
+      "pdb_sources": [
+        "evidence/roof-tiles/procedures.json"
+      ],
+      "verification": []
+    }
+  ],
+  "policy": "每个入口只计一次，别名保留。局部已验证的限定范围不等于该系统或完整游戏完成；尚无全游戏函数分母。"
+}

@@ -1,0 +1,22 @@
+{
+  "core_passed": 2454,
+  "editing_graph_passed": 1,
+  "failed": 0,
+  "ignored": 0,
+  "filtered": 0,
+  "run_drift": [
+    {
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/gpu_generate_draw_lists.rs",
+      "before": "cf945269a30f6220fe8e26b9faf6f8f7ab5bcf3151cccc8c904d7d9346048d9f",
+      "after": "065609a1261f7bac0f8bf8dcef9b8b0a5e61130b6b72dd5e62c6da51bca83ead"
+    }
+  ],
+  "accepted_scope": "bounded canonical snapshot encoding/storage/roof/alias behavior and real local editing graph; no latest GPU or full save/load acceptance",
+  "followup_source_change": "snapshot.rs actual caller DecoratorIdGen dependency adapter after run, separately pending targeted test",
+  "not_accepted": [
+    "full latest render source",
+    "real resource capture -> save worker -> disk -> History ID roundtrip",
+    "Motomoto complete decoder and world apply",
+    "whole game playable loop"
+  ]
+}

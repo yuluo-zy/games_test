@@ -1,0 +1,143 @@
+
+void FUN_1409ddbb0(longlong param_1,undefined8 param_2,longlong param_3)
+
+{
+  undefined8 *puVar1;
+  undefined4 uVar2;
+  longlong lVar3;
+  longlong lVar4;
+  code *pcVar5;
+  undefined8 uVar6;
+  longlong lVar7;
+  longlong lVar8;
+  longlong lVar9;
+  undefined4 uVar10;
+  undefined4 uVar11;
+  undefined4 uVar12;
+  undefined4 uVar13;
+  undefined4 uVar14;
+  undefined4 uVar15;
+  undefined *puVar16;
+  undefined4 *puVar17;
+  longlong lVar18;
+  longlong lStack_d8;
+  longlong lStack_d0;
+  undefined8 uStack_c8;
+  undefined8 uStack_c0;
+  undefined8 uStack_b8;
+  undefined4 *puStack_b0;
+  undefined4 uStack_a8;
+  undefined4 uStack_a4;
+  undefined4 uStack_a0;
+  undefined4 uStack_9c;
+  undefined8 uStack_98;
+  undefined4 uStack_90;
+  undefined4 uStack_8c;
+  longlong lStack_88;
+  longlong lStack_80;
+  undefined4 uStack_78;
+  undefined4 uStack_74;
+  undefined4 uStack_70;
+  undefined4 uStack_6c;
+  undefined4 uStack_68;
+  undefined4 uStack_64;
+  undefined4 *puStack_60;
+  undefined8 uStack_58;
+  undefined4 uStack_50;
+  undefined4 uStack_4c;
+  undefined4 uStack_48;
+  undefined4 uStack_44;
+  undefined4 uStack_40;
+  undefined4 uStack_3c;
+  undefined4 *puStack_38;
+  undefined *puStack_30;
+  undefined1 uStack_21;
+  undefined8 uStack_20;
+  
+  uStack_20 = 0xfffffffffffffffe;
+  uStack_a0 = FUN_140bd4b40(*(undefined8 *)(param_1 + 0xa0));
+  lStack_d8 = 0;
+  lStack_d0 = 4;
+  uStack_c8 = 0;
+  uStack_c0 = &UNK_142ac3b88;
+  uStack_b8 = 0xc;
+  puStack_b0 = (undefined4 *)0x0;
+  uStack_21 = 1;
+  uStack_98 = param_1;
+  uStack_90 = uStack_a0;
+  func_0x00014003bb80(&UNK_142ac3b34);
+  uVar2 = *(undefined4 *)(param_3 + 0x10);
+  uStack_21 = 1;
+  FUN_1409dca90(&lStack_d8,uVar2,0x34,0);
+  lVar8 = lStack_d8;
+  lStack_88 = lStack_d8;
+  lStack_80 = lStack_d0;
+  uStack_48 = (undefined4)uStack_98;
+  uStack_44 = uStack_98._4_4_;
+  uStack_40 = uStack_90;
+  uStack_3c = uStack_8c;
+  uStack_58 = (undefined *)CONCAT44(uStack_a4,uStack_a8);
+  uStack_50 = uStack_a0;
+  uStack_4c = uStack_9c;
+  uStack_68 = (undefined4)uStack_b8;
+  uStack_64 = uStack_b8._4_4_;
+  puStack_60 = puStack_b0;
+  uStack_78 = (undefined4)uStack_c8;
+  uStack_74 = uStack_c8._4_4_;
+  uStack_70 = (undefined4)uStack_c0;
+  uStack_6c = uStack_c0._4_4_;
+  if (SBORROW8(0,lStack_d8)) {
+    FUN_1428d9310(&UNK_142ac3a78);
+  }
+  else {
+    puVar17 = (undefined4 *)func_0x000140613c10(4,4);
+    puVar16 = uStack_58;
+    uVar15 = uStack_64;
+    uVar14 = uStack_68;
+    uVar13 = uStack_6c;
+    uVar12 = uStack_70;
+    uVar11 = uStack_74;
+    uVar10 = uStack_78;
+    lVar9 = lStack_80;
+    if (puVar17 == (undefined4 *)0x0) {
+      FUN_1428d9000(4,4);
+    }
+    else {
+      *puVar17 = uVar2;
+      uStack_58 = &UNK_142ac3b28;
+      if (puStack_60 == (undefined4 *)0x0) {
+        lVar7 = CONCAT44(uStack_44,uStack_48);
+        lStack_88 = 0x8000000000000000;
+        uVar6 = CONCAT44(uStack_4c,uStack_50);
+        lVar3 = *(longlong *)(lVar7 + 0xa0);
+        if (lVar3 == *(longlong *)(lVar7 + 0x90)) {
+          puStack_60 = puVar17;
+          FUN_1405627b0(lVar7 + 0x90,&UNK_142abc8c0);
+        }
+        lVar4 = *(longlong *)(lVar7 + 0x98);
+        lVar18 = lVar3 * 0x40;
+        puVar1 = (undefined8 *)(lVar4 + 0x30 + lVar18);
+        *puVar1 = &UNK_142ac3b28;
+        puVar1[1] = uVar6;
+        puVar1 = (undefined8 *)(lVar4 + 0x20 + lVar18);
+        *puVar1 = CONCAT44(uVar15,uVar14);
+        puVar1[1] = puVar17;
+        puVar1 = (undefined8 *)(lVar4 + 0x10 + lVar18);
+        *puVar1 = CONCAT44(uVar11,uVar10);
+        puVar1[1] = CONCAT44(uVar13,uVar12);
+        *(longlong *)(lVar4 + lVar18) = lVar8;
+        ((longlong *)(lVar4 + lVar18))[1] = lVar9;
+        *(longlong *)(lVar7 + 0xa0) = lVar3 + 1;
+        return;
+      }
+      puStack_30 = puVar16;
+      puStack_38 = puStack_60;
+      puStack_60 = puVar17;
+      FUN_1428d9430(&UNK_142ac3ab0,0x20,&UNK_142ac3ad0);
+    }
+  }
+                    /* WARNING: Does not return */
+  pcVar5 = (code *)invalidInstructionException();
+  (*pcVar5)();
+}
+

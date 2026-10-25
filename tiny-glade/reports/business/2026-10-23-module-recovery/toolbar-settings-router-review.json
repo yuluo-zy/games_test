@@ -1,0 +1,81 @@
+{
+  "review_scope": "中央新Settings router与Apply快照消费者，只读审查；未改被审生产代码",
+  "original_binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "current_router_source_sha256": "1765106bad3febb4634e27382b26728b11869b191831e43877e36f1f55f498b7",
+  "findings": [
+    {
+      "id": "TB-R1-REVIEW-1",
+      "priority": 2,
+      "issue": "背景根必须是FullWindow并强制交互",
+      "evidence": "245e8d/246103 FrameEvent tag0，245e5e/2460d4 node+b7=1；settings前景2461fa tag1",
+      "resolved_in_source": "begin_settings_frame使用mei.fullscreen"
+    },
+    {
+      "id": "TB-R1-REVIEW-2",
+      "priority": 2,
+      "issue": "静态背景原tint alpha200而非255",
+      "evidence": "245f89→67eab0 ImageView::tint，arg=ffffffc8",
+      "resolved_in_source": "ImageContent.color=0xffffffc8"
+    },
+    {
+      "id": "TB-R1-REVIEW-3",
+      "priority": 2,
+      "issue": "语言分类原文/A及原专用语言模板归属",
+      "evidence": "1429ee1b8 len5=UTF8文/A；50767f..6f0 child language options/template menu/language；rows@1429ee23d",
+      "resolved_in_source": "categories文/A；Language使用language options/menu/language/rows"
+    },
+    {
+      "id": "TB-R1-REVIEW-4",
+      "priority": 2,
+      "issue": "原Tab消费结束delta清零",
+      "evidence": "507118/507165每步写回直到0；新代码保留副本时未消费原owner",
+      "resolved_in_source": "settings_page调用categories后清frame.view.context TabSwitcherContent.delta",
+      "scope_note": "prepare_layout本身也清零；审查不宣称原正常单次帧一定重复，差别在同帧重入/后续消费者"
+    },
+    {
+      "id": "TB-R1-REVIEW-5",
+      "priority": 2,
+      "issue": "非语言页即使无hover也创建空info容器，Language禁止",
+      "evidence": "246410 allow_info=true；Language原case置false；24659f按allow_info建menu/settings-info，24662b才按hint非空建frame",
+      "resolved_in_source": "state!=Language建外层，再hint非空建frame"
+    },
+    {
+      "id": "TB-R1-REVIEW-6",
+      "priority": 2,
+      "issue": "TutorialUiState重置范围不能扩散到Main/Closed/KeyBindings",
+      "evidence": "507418仅generic closure当前非Game重置2；2458fd关闭只复位GuiControlsState",
+      "resolved_in_source": "KeyBindings提前return后，普通settings路由内state!=Game重置"
+    },
+    {
+      "id": "TB-R1-REVIEW-7",
+      "priority": 1,
+      "issue": "成功Apply后未更新LastApplied会令Apply持续出现",
+      "evidence": "4dec71 cloneVideoSettings@4d7d50；4deca2 TypeId获取OptionOwner，4ded27 drop旧VideoSettings；4d97b0 memcpy0xc8替换为新Some",
+      "resolved_in_source": "game_loop::apply_pending_video_settings在操作成功并发Write后last.0=Some(current.clone())"
+    }
+  ],
+  "independent_checks": {
+    "background_original_cases": 205,
+    "background_candidate": "原settings_background函数体原样抽取编译，有限GladeType合同(0..4)，205/205通过",
+    "background_native": "toolbar-settings-background-native.json",
+    "confirmed_correct": [
+      "背景时段有序阈值及NaN分支",
+      "header Uppercase/90/800",
+      "category Uppercase/max280/Center2/sound4/Video归一",
+      "Apply flags完整u8与按used发送；Back sound9/hotkey18/Video子页回VideoMenu",
+      "hint当前Frame色808080e0/圆角10/文字32/max640",
+      "changed后原确实发WriteSettingsFileCmd：5075ef..636；Ghidra错误标unreachable不构成原无该业务"
+    ]
+  },
+  "remaining_boundary": [
+    "中央完整router消费者测试及真实GPU快照另行验收",
+    "用户暂停OS真实输入验收",
+    "源码修复已重读，但不以静态审查/205纯函数差分宣称整toolbar验收"
+  ],
+  "lessons": [
+    "PGO函数非连续；Ghidra size不能视为start+size连续长度",
+    "间接跳表导致Ghidra错误dead/unreachable，检查原汇编和typed Writer布局确认保存副作用",
+    "同名容器/宽度看似空白也决定布局及生命周期，不能省略原空info外层",
+    "Apply快照更新原在main_loop成功尾部而非点击按钮处或App重建"
+  ]
+}

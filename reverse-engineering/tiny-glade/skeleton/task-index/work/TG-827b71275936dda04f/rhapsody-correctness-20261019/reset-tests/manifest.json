@@ -1,0 +1,23 @@
+{
+  "claim": "TG-827b71275936dda04f",
+  "owner": "rhapsody-correctness-20261019",
+  "scope": "tests only; no production source",
+  "sources": [
+    {
+      "path": "crates/rhapsody/tests/temporal_reset_retirement.rs",
+      "before_sha256": null,
+      "candidate_sha256": "bd6c696cb3c7a50135387a261ba412b9b131e7c4cbce83a5a70896f6f3bf2a2c"
+    }
+  ],
+  "patch_sha256": "2f2631ccbb2e80b8def77ec4a7895252b4d5b7af8641db285191869fe3375024",
+  "requires": "existing tests/gpu_test_support module and test-support dev feature; current reset-only production patch",
+  "command": "RHAPSODY_REQUIRE_VULKAN=1 cargo test -p rhapsody --locked --offline --test temporal_reset_retirement -- --nocapture",
+  "validation": "not run; root sole Cargo/GPU owner",
+  "guarantees": [
+    "actual timeline gate keeps submitted GPU work incomplete",
+    "clear count and idempotence",
+    "active_prepared gate",
+    "weak actual Buffer survives pending and drops after wait+begin before new named allocation",
+    "same session four frames has no retained old backend owners"
+  ]
+}

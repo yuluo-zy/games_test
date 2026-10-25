@@ -1,0 +1,24 @@
+14088f8b0 sub rsp, 0x58
+14088f8b4 cmp byte ptr [rcx], 1
+14088f8b7 je 0x14088f8be
+14088f8b9 add rsp, 0x58
+14088f8bd ret 
+14088f8be mov rax, qword ptr [rip + 0x2d9cb5b]
+14088f8c5 mov rax, qword ptr [rax]
+14088f8c8 shl rax, 1
+14088f8cb test rax, rax
+14088f8ce jne 0x14088f907
+14088f8d0 lea rax, [rip + 0x2209201]
+14088f8d7 mov qword ptr [rsp + 0x28], rax
+14088f8dc mov qword ptr [rsp + 0x30], 1
+14088f8e5 mov qword ptr [rsp + 0x38], 8
+14088f8ee xorps xmm0, xmm0
+14088f8f1 movups xmmword ptr [rsp + 0x40], xmm0
+14088f8f6 lea rdx, [rip + 0x220921b]
+14088f8fd lea rcx, [rsp + 0x28]
+14088f902 call 0x1428d9390
+14088f907 call 0x1428d86b0
+14088f90c test al, al
+14088f90e je 0x14088f8b9
+14088f910 jmp 0x14088f8d0
+14088f912 int3 

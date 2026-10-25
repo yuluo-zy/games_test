@@ -1,0 +1,9 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.program.model.address import AddressSet\np=currentProgram\naf=p.getAddressFactory()\nfor x,n in [('140b92340',584),('140b92090',32)]:\n a=af.getAddress(x)\n rows=[{'address':str(i.getAddress()),'instruction':str(i)} for i in p.getListing().getInstructions(AddressSet(a,a.add(n-1)),True)]\n print(json.dumps({'address':x,'instructions':rows}))\n"
+    }
+  }
+]

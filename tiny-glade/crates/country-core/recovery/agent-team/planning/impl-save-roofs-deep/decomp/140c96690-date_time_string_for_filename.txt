@@ -1,0 +1,39 @@
+
+void __cdecl utils::file::date_time_string_for_filename(void)
+
+{
+  longlong *in_RCX;
+  int local_88;
+  longlong lStack_80;
+  longlong local_78;
+  longlong lStack_70;
+  int local_58;
+  longlong lStack_50;
+  
+  time::offset_date_time::OffsetDateTime::now_utc();
+  if ((local_time::LOCAL_OFFSET & 1) != 0) {
+    lStack_80 = lStack_50;
+    time::offset_date_time::OffsetDateTime::to_offset();
+    local_88 = local_58;
+  }
+  time::format_description::parse::parse();
+  if (local_58 != 7) {
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+  time::formatting::formattable::sealed::Sealed::
+  format<alloc::vec::Vec<enum2_<time::format_description::borrowed_format_item::BorrowedFormatItem>,alloc::alloc::Global>_>
+            ();
+  if (local_88 == 1) {
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+  in_RCX[2] = lStack_70;
+  *in_RCX = lStack_80;
+  in_RCX[1] = local_78;
+  if (lStack_50 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  return;
+}
+

@@ -1,0 +1,777 @@
+{
+  "backend": "ghidra",
+  "worker": "shared",
+  "access": "read",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "get_metadata",
+      "requested_args": {
+        "program": "tiny-glade.exe"
+      },
+      "args": {
+        "program": "tiny-glade.exe"
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program_name\":\"tiny-glade.exe\",\"executable_path\":\"/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.exe\",\"architecture\":\"x86\",\"compiler\":\"clangwindows\",\"language\":\"x86:LE:64:default\",\"endian\":\"little\",\"address_size_bits\":64,\"base_address\":\"140000000\",\"memory_blocks\":8,\"total_memory_size\":58486568,\"function_count\":131517,\"symbol_count\":991681}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "get_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x1402de8c0,0x1402ddd20,0x140a478f0,0x140a47da0",
+        "fields": "signature,decompiled_code,callees",
+        "include_call_context": false
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x1402de8c0,0x1402ddd20,0x140a478f0,0x140a47da0",
+        "fields": "signature,decompiled_code,callees",
+        "include_call_context": false
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"functions\":{\"0x1402de8c0\":{\"name\":\"serialize<serde_json::value::ser::Serializer>\",\"size\":35,\"address\":\"1402de8c0\",\"signature\":\"void __cdecl serialize<serde_json::value::ser::Serializer>(void)\",\"decompile_failed\":true,\"decompile_error\":\"Exception while decompiling 1402de8c0: process: timeout\",\"callee_count\":0,\"callees\":[],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":false}},\"0x1402ddd20\":{\"name\":\"serialize<ref_mut$<serde_json::ser::Serializer<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::CompactFormatter>_>_>\",\"size\":335,\"address\":\"1402ddd20\",\"signature\":\"void __cdecl serialize<ref_mut$<serde_json::ser::Serializer<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::CompactFormatter>_>_>(void)\",\"decompiled_code\":\"\\n// WARNING: Type propagation algorithm not settling\\n\\nvoid __cdecl\\ncountry_core::resources::walls::decorator::_::impl$0::\\nserialize<ref_mut_<serde_json::ser::Serializer<ref_mut_<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::CompactFormatter>_>_>\\n          (void)\\n\\n{\\n  longlong *plVar1;\\n  uint uVar2;\\n  uint *in_RCX;\\n  ulonglong uVar3;\\n  longlong *in_RDX;\\n  longlong lVar4;\\n  uint uVar5;\\n  ulonglong uVar6;\\n  longlong lVar7;\\n  undefined2 uStack_4c;\\n  byte abStack_49 [41];\\n  \\n  uVar5 = *in_RCX;\\n  lVar7 = 10;\\n  if (uVar5 < 10000) {\\n    uVar6 = (ulonglong)uVar5;\\n  }\\n  else {\\n    lVar4 = 10;\\n    do {\\n      uVar2 = uVar5;\\n      uVar6 = (ulonglong)uVar2 / 10000;\\n      lVar7 = lVar4 + -4;\\n      *(undefined2 *)((longlong)&uStack_4c + lVar4) =\\n           *(undefined2 *)\\n            (\\n            \\\"00010203040506070809101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\\\\\\\\library\\\\\\\\alloc\\\\\\\\src\\\\\\\\slice.rs\\\"\\n            + (ulonglong)((uVar2 % 10000) / 100) * 2);\\n      *(undefined2 *)(&stack0xffffffffffffffb6 + lVar4) =\\n           *(undefined2 *)\\n            (\\n            \\\"00010203040506070809101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\\\\\\\\library\\\\\\\\alloc\\\\\\\\src\\\\\\\\slice.rs\\\"\\n            + (ulonglong)((uVar2 % 10000) % 100) * 2);\\n      lVar4 = lVar7;\\n      uVar5 = uVar2 / 10000;\\n    } while (99999999 < uVar2);\\n    uVar5 = uVar2 / 10000;\\n  }\\n  uVar3 = uVar6;\\n  if (99 < uVar5) {\\n    uVar5 = (uint)((uVar6 & 0xffff) >> 2) / 0x19;\\n    uVar3 = (ulonglong)uVar5;\\n    *(undefined2 *)(&stack0xffffffffffffffb6 + lVar7) =\\n         *(undefined2 *)\\n          (\\n          \\\"00010203040506070809101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\\\\\\\\library\\\\\\\\alloc\\\\\\\\src\\\\\\\\slice.rs\\\"\\n          + (ulonglong)((int)uVar6 + uVar5 * -100 & 0xffff) * 2);\\n    lVar7 = lVar7 + -2;\\n  }\\n  plVar1 = (longlong *)*in_RDX;\\n  if ((uint)uVar3 < 10) {\\n    abStack_49[lVar7] = (byte)uVar3 | 0x30;\\n    lVar7 = lVar7 + -1;\\n  }\\n  else {\\n    *(undefined2 *)(&stack0xffffffffffffffb6 + lVar7) =\\n         *(undefined2 *)\\n          (\\n          \\\"00010203040506070809101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899/rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\\\\\\\\library\\\\\\\\alloc\\\\\\\\src\\\\\\\\slice.rs\\\"\\n          + uVar3 * 2);\\n    lVar7 = lVar7 + -2;\\n  }\\n  uVar6 = 10 - lVar7;\\n  lVar4 = plVar1[2];\\n  if ((ulonglong)(*plVar1 - lVar4) < uVar6) {\\n    alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n    lVar4 = plVar1[2];\\n  }\\n  memcpy((void *)(plVar1[1] + lVar4),abStack_49 + lVar7 + 1,uVar6);\\n  plVar1[2] = lVar4 + uVar6;\\n  return;\\n}\\n\\n\",\"callee_count\":2,\"callees\":[{\"name\":\"do_reserve_and_handle<alloc::alloc::Global>\",\"address\":\"1428a29e0\"},{\"name\":\"memcpy\",\"address\":\"142923c00\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140a478f0\":{\"name\":\"serialize<ref_mut$<serde_json::ser::Serializer<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::PrettyFormatter>_>_>\",\"size\":56,\"address\":\"140a478f0\",\"signature\":\"void __cdecl serialize<ref_mut$<serde_json::ser::Serializer<ref_mut$<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::PrettyFormatter>_>_>(void)\",\"decompiled_code\":\"\\n// WARNING: Instruction at (ram,0x000140a4ab70) overlaps instruction at (ram,0x000140a4ab6f)\\n// \\n// WARNING: Control flow encountered bad instruction data\\n// WARNING: Removing unreachable block (ram,0x000140a489a0)\\n// WARNING: Switch with 1 destination removed at 0x000140a4aae9\\n// WARNING: Exceeded maximum restarts with more pending\\n\\nvoid __cdecl\\ncountry_core::resources::walls::decorator::_::impl$0::\\nserialize<ref_mut_<serde_json::ser::Serializer<ref_mut_<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::PrettyFormatter>_>_>\\n          (void)\\n\\n{\\n  uint *puVar1;\\n  uint uVar2;\\n  float fVar3;\\n  void *pvVar4;\\n  longlong *plVar5;\\n  code *pcVar6;\\n  longlong lVar7;\\n  longlong lVar8;\\n  byte bVar9;\\n  undefined1 uVar10;\\n  uint uVar11;\\n  ulonglong uVar12;\\n  byte *pbVar13;\\n  undefined7 uVar16;\\n  longlong extraout_RAX;\\n  longlong extraout_RAX_00;\\n  longlong extraout_RAX_01;\\n  longlong extraout_RAX_02;\\n  byte *extraout_RAX_03;\\n  byte *extraout_RAX_04;\\n  longlong extraout_RAX_05;\\n  ulonglong extraout_RAX_06;\\n  longlong extraout_RAX_07;\\n  undefined8 extraout_RAX_08;\\n  longlong extraout_RAX_09;\\n  char *pcVar15;\\n  longlong extraout_RAX_10;\\n  longlong extraout_RAX_11;\\n  longlong extraout_RAX_12;\\n  longlong extraout_RAX_13;\\n  longlong extraout_RAX_14;\\n  longlong extraout_RAX_15;\\n  undefined8 *extraout_RAX_16;\\n  byte bVar17;\\n  char cVar18;\\n  int iVar19;\\n  byte *in_RCX;\\n  byte bVar21;\\n  longlong *in_RDX;\\n  byte *pbVar22;\\n  longlong lVar23;\\n  longlong unaff_RBX;\\n  undefined1 *puVar24;\\n  undefined1 *puVar25;\\n  longlong *unaff_RBP;\\n  longlong lVar26;\\n  undefined8 unaff_RSI;\\n  byte *unaff_RDI;\\n  longlong in_R8;\\n  uint uVar27;\\n  longlong in_R9;\\n  byte *in_R10;\\n  longlong unaff_R12;\\n  ulonglong unaff_R14;\\n  longlong unaff_R15;\\n  bool bVar28;\\n  undefined4 in_XMM0_Da;\\n  undefined4 in_XMM0_Db;\\n  undefined4 in_XMM0_Dc;\\n  undefined4 in_XMM0_Dd;\\n  float in_XMM3_Da;\\n  undefined1 auStack_78 [24];\\n  undefined *puStack_60;\\n  byte *pbStack_58;\\n  longlong *plStack_50;\\n  int *piVar14;\\n  byte *pbVar20;\\n  \\n  puVar25 = auStack_78;\\n  puVar24 = auStack_78;\\n  bVar21 = 6;\\n  if ((byte)(*in_RCX - 0x38) < 8) {\\n    bVar21 = *in_RCX - 0x38;\\n  }\\n  pbVar22 = &DAT_142acf748;\\n  uVar12 = (ulonglong)*(int *)(&DAT_142acf748 + (ulonglong)bVar21 * 4);\\n  pbVar13 = &DAT_142acf748 + uVar12;\\n  bVar28 = pbVar13 == (byte *)0x0;\\n  bVar9 = (byte)pbVar13;\\n  uVar16 = (undefined7)((ulonglong)pbVar13 >> 8);\\n  bVar17 = (byte)in_RCX;\\n  uVar27 = (uint)in_RCX;\\n                    // WARNING (jumptable): Sanity check requires truncation of jumptable\\n                    // WARNING: Could not find normalized switch variable to match jumptable\\n  switch(bVar21) {\\n  case 0:\\n    break;\\n  case 1:\\n    break;\\n  case 2:\\n    break;\\n  case 3:\\n    break;\\n  case 4:\\n    break;\\n  case 5:\\n    break;\\n  case 6:\\n    plVar5 = (longlong *)*in_RDX;\\n    lVar26 = in_RDX[3] + 1;\\n    in_RDX[3] = lVar26;\\n    *(undefined1 *)(in_RDX + 4) = 0;\\n    lVar23 = plVar5[2];\\n    if (*plVar5 == lVar23) {\\n      pbStack_58 = (byte *)0x1;\\n      alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n      lVar23 = plVar5[2];\\n    }\\n    *(undefined1 *)(plVar5[1] + lVar23) = 0x7b;\\n    lVar23 = lVar23 + 1;\\n    plVar5[2] = lVar23;\\n    if (*plVar5 == lVar23) {\\n      pbStack_58 = (byte *)0x1;\\n      alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n      lVar23 = plVar5[2];\\n    }\\n    *(undefined1 *)(plVar5[1] + lVar23) = 10;\\n    plVar5[2] = lVar23 + 1;\\n    if (lVar26 != 0) {\\n      pvVar4 = (void *)in_RDX[1];\\n      uVar12 = in_RDX[2];\\n      plVar5 = (longlong *)*in_RDX;\\n      lVar23 = plVar5[2];\\n      do {\\n        if ((ulonglong)(*plVar5 - lVar23) < uVar12) {\\n          pbStack_58 = (byte *)0x1;\\n          alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n          lVar23 = plVar5[2];\\n        }\\n        memcpy((void *)(plVar5[1] + lVar23),pvVar4,uVar12);\\n        lVar23 = lVar23 + uVar12;\\n        plVar5[2] = lVar23;\\n        lVar26 = lVar26 + -1;\\n      } while (lVar26 != 0);\\n    }\\n    serde_json::ser::\\n    format_escaped_str<ref_mut_<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::PrettyFormatter>\\n              ();\\n    if (extraout_RAX_00 == 0) {\\n      plVar5 = (longlong *)*in_RDX;\\n      lVar23 = plVar5[2];\\n      if ((ulonglong)(*plVar5 - lVar23) < 2) {\\n        pbStack_58 = (byte *)0x1;\\n        alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n        lVar23 = plVar5[2];\\n      }\\n      *(undefined2 *)(plVar5[1] + lVar23) = 0x203a;\\n      plVar5[2] = lVar23 + 2;\\n      plVar5 = (longlong *)*in_RDX;\\n      in_RDX[3] = in_RDX[3] + 1;\\n      *(undefined1 *)(in_RDX + 4) = 0;\\n      lVar23 = plVar5[2];\\n      if (*plVar5 == lVar23) {\\n        pbStack_58 = (byte *)0x1;\\n        alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n        lVar23 = plVar5[2];\\n      }\\n      *(undefined1 *)(plVar5[1] + lVar23) = 0x7b;\\n      plVar5[2] = lVar23 + 1;\\n      plStack_50 = in_RDX;\\n      serde::ser::SerializeMap::\\n      serialize_entry<enum2_<serde_json::ser::Compound<ref_mut_<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::PrettyFormatter>_>,str_,country_core::resources::clutter_meshes::ClutterMeshTy>\\n                ();\\n      if (extraout_RAX_01 != 0) {\\n        return;\\n      }\\n      plStack_50[3] = plStack_50[3] + -1;\\n      if ((char)plStack_50[4] != '\\\\0') {\\n        alloc::vec::Vec::extend_from_slice<u8,alloc::alloc::Global>();\\n        serde_json::ser::indent<ref_mut_<alloc::vec::Vec<u8,alloc::alloc::Global>_>_>();\\n        if (extraout_RAX_02 != 0) goto LAB_140a47c7a;\\n      }\\n      plVar5 = (longlong *)*plStack_50;\\n      lVar23 = plVar5[2];\\n      if (*plVar5 == lVar23) {\\n        pbStack_58 = (byte *)0x1;\\n        alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n        lVar23 = plVar5[2];\\n      }\\n      *(undefined1 *)(plVar5[1] + lVar23) = 0x7d;\\n      plVar5[2] = lVar23 + 1;\\n                    // WARNING: Read-only address (ram,0x000142acf748) is written\\n      *(undefined1 *)(plStack_50 + 4) = 1;\\n      plVar5 = (longlong *)*plStack_50;\\n      lVar26 = plStack_50[3] + -1;\\n      plStack_50[3] = lVar26;\\n      lVar23 = plVar5[2];\\n      if (*plVar5 == lVar23) {\\n        pbStack_58 = (byte *)0x1;\\n        alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n        lVar23 = plVar5[2];\\n      }\\n      *(undefined1 *)(plVar5[1] + lVar23) = 10;\\n      plVar5[2] = lVar23 + 1;\\n      if (lVar26 != 0) {\\n        pvVar4 = (void *)plStack_50[1];\\n        uVar12 = plStack_50[2];\\n        plVar5 = (longlong *)*plStack_50;\\n        lVar23 = plVar5[2];\\n        do {\\n          if ((ulonglong)(*plVar5 - lVar23) < uVar12) {\\n            pbStack_58 = (byte *)0x1;\\n            alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n            lVar23 = plVar5[2];\\n          }\\n          memcpy((void *)(plVar5[1] + lVar23),pvVar4,uVar12);\\n          lVar23 = lVar23 + uVar12;\\n          plVar5[2] = lVar23;\\n          lVar26 = lVar26 + -1;\\n        } while (lVar26 != 0);\\n      }\\n      plVar5 = (longlong *)*plStack_50;\\n      lVar23 = plVar5[2];\\n      if (*plVar5 == lVar23) {\\n        pbStack_58 = (byte *)0x1;\\n        alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n        lVar23 = plVar5[2];\\n      }\\n      *(undefined1 *)(plVar5[1] + lVar23) = 0x7d;\\n      plVar5[2] = lVar23 + 1;\\n      return;\\n    }\\nLAB_140a47c7a:\\n    serde_json::error::Error::io();\\n    return;\\n  case 7:\\n    break;\\n  case 8:\\n    fVar3 = *(float *)(pbVar13 + uVar12 + 0x16ad173c8);\\n    *(int *)(unaff_RDI + (longlong)pbVar13 * 2 + 0xf) =\\n         *(int *)(unaff_RDI + (longlong)pbVar13 * 2 + 0xf) + (int)in_RDX;\\n                    // WARNING: Could not emulate address calculation at 0x000140a47e34\\n                    // WARNING: Treating indirect jump as call\\n    (*(code *)(&DAT_142acf768 +\\n              *(int *)(&DAT_142acf768 + ((ulonglong)pbVar13 & 0xffffffffffffff29) * 4)))\\n              (&DAT_142acf768,&UNK_142ac4448,in_R8,in_XMM3_Da + fVar3);\\n    return;\\n  case 9:\\n    DAT_142acf748 = 0xe0;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n    halt_baddata();\\n  case 10:\\n    DAT_142acf748 = 0xe0;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n    halt_baddata();\\n  case 0xb:\\n    *pbVar13 = *pbVar13 + bVar9;\\n    *(undefined2 *)in_RDX = 0x3f00;\\n    return;\\n  case 0xc:\\n    pbVar20 = in_RCX + -1;\\n    cVar18 = (char)pbVar20;\\n    if (pbVar20 == (byte *)0x0 || bVar28) {\\n      pbVar13 = (byte *)((ulonglong)pbVar13 & 0xffffffff);\\n      pcVar15 = (char *)(((ulonglong)unaff_RDI & 0xffffffff) - 0x7b);\\n      *pcVar15 = *pcVar15 + cVar18;\\n      *pbVar13 = *pbVar13 >> 5 | *pbVar13 << 3;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n    }\\n    (&UNK_142acf6d1)[uVar12] = (&UNK_142acf6d1)[uVar12] + cVar18;\\n    *(char *)(in_R9 + 0x158d48d0) = *(char *)(in_R9 + 0x158d48d0) - cVar18;\\n    in_RCX = (byte *)CONCAT71((int7)((ulonglong)pbVar20 >> 8),cVar18 + (&UNK_142acf7ab)[uVar12]);\\n    pbVar13 = (byte *)CONCAT71(uVar16,bVar9 + 0x82);\\n    goto code_r0x000140a47eee;\\n  case 0xd:\\n    DAT_142acf748 = 0xe0;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n    halt_baddata();\\n  case 0xe:\\n    in(1);\\n    goto code_r0x000140a48051;\\n  case 0xf:\\n                    // WARNING (jumptable): Read-only address (ram,0x000142acf748) is written\\n                    // WARNING: Read-only address (ram,0x000142acf748) is written\\n    DAT_142acf748 = bVar9 | 0xe0;\\ncode_r0x000140a47eee:\\n    *(byte **)(in_RCX + 0x28) = pbVar13;\\n                    // WARNING: Could not recover jumptable at 0x000140a47f02. Too many branches\\n                    // WARNING: Treating indirect jump as call\\n    (*(code *)(&DAT_142acf788 + *(int *)(&DAT_142acf788 + ((ulonglong)pbVar22 & 0xffffffff) * 4)))()\\n    ;\\n    return;\\n  case 0x10:\\n    pbVar22 = (byte *)0x42acf749;\\n    while (pbVar13 = pbVar13 + 1, in_R10 != (byte *)0x1) {\\n      uVar12 = (ulonglong)pbVar13[in_R9 + -1];\\n      if (0x3a < uVar12) {\\nLAB_140a480a9:\\n        plStack_50 = (longlong *)0x6;\\n        goto LAB_140a47ed8;\\n      }\\n      if (((ulonglong)unaff_RDI >> (uVar12 & 0x3f) & 1) == 0) {\\n        if (uVar12 != 0x3a) goto LAB_140a480a9;\\n        goto code_r0x000140a47eee;\\n      }\\n      *(byte **)(in_RCX + 0x28) = pbVar13;\\n      in_R10 = pbVar13 + in_R8 + 1;\\n    }\\n    plStack_50 = (longlong *)0x3;\\nLAB_140a47ed8:\\n    serde_json::de::Deserializer::peek_error<serde_json::read::StrRead>();\\n    pbVar13 = extraout_RAX_04;\\n    goto LAB_140a47e74;\\n  case 0x11:\\n    DAT_142acf748 = 0xe0;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n    halt_baddata();\\n  case 0x12:\\n    *(undefined4 *)in_RDX = 0x3ae93b00;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n    halt_baddata();\\n  case 0x13:\\n                    // WARNING: Could not recover jumptable at 0x000140a47f4a. Too many branches\\n                    // WARNING: Treating indirect jump as call\\n    (**(code **)((longlong)in_RDX + -0x39))();\\n    return;\\n  case 0x14:\\n    *(undefined2 *)in_RDX = 0x3c00;\\n    return;\\n  case 0x15:\\n    if (!bVar28) goto LAB_140a47e74;\\n    uVar10 = 0x3a;\\n    goto code_r0x000140a48005;\\n  case 0x16:\\n    if (!bVar28) goto LAB_140a47e74;\\n    uVar10 = 0x3b;\\ncode_r0x000140a48005:\\n    *(char *)(unaff_RBX + 0x30) = *(char *)(unaff_RBX + 0x30) + '\\\\x01';\\n    uVar12 = *(ulonglong *)(unaff_RBX + 0x28);\\n    if (uVar12 < *(ulonglong *)(unaff_RBX + 0x20)) {\\n      do {\\n        uVar12 = uVar12 + 1;\\n        bVar21 = *(byte *)(*(longlong *)(unaff_RBX + 0x18) + -1 + uVar12);\\n        if ((0x20 < (ulonglong)bVar21) ||\\n           (((ulonglong)unaff_RDI >> ((ulonglong)bVar21 & 0x3f) & 1) == 0)) {\\n          if (bVar21 != 0x7d) {\\n            plStack_50 = (longlong *)0xa;\\n            goto code_r0x000140a48051;\\n          }\\n          *(ulonglong *)(unaff_RBX + 0x28) = uVar12;\\n          *(undefined1 *)((longlong)in_RDX + 1) = uVar10;\\n          uVar10 = 0;\\n          goto code_r0x000140a48072;\\n        }\\n        *(ulonglong *)(unaff_RBX + 0x28) = uVar12;\\n      } while (uVar12 != *(ulonglong *)(unaff_RBX + 0x20));\\n    }\\n    plStack_50 = (longlong *)0x3;\\ncode_r0x000140a48051:\\n    serde_json::de::Deserializer::error<serde_json::read::SliceRead>();\\n    in_RDX[1] = extraout_RAX_05;\\n    uVar10 = 1;\\ncode_r0x000140a48072:\\n    *(undefined1 *)in_RDX = uVar10;\\n    return;\\n  case 0x17:\\n    *pbVar13 = *pbVar13 + bVar9;\\n    serde_json::de::Deserializer::peek_error<serde_json::read::StrRead>();\\n    pbVar13 = extraout_RAX_03;\\nLAB_140a47e74:\\n    in_RDX[1] = (longlong)pbVar13;\\n    *(undefined1 *)in_RDX = 1;\\n                    // WARNING: Read-only address (ram,0x000142acf748) is written\\n    return;\\n  case 0x18:\\n    *(int *)(&UNK_142acf6d3 + uVar12) = *(int *)(&UNK_142acf6d3 + uVar12) + -1;\\n    puVar24 = &stack0xffffffffffffff70;\\n    (&UNK_142acf6cd)[uVar12] = (&UNK_142acf6cd)[uVar12] - bVar17;\\n    *unaff_RDI = *unaff_RDI >> (bVar17 & 7) | *unaff_RDI << 8 - (bVar17 & 7);\\n    *pbVar13 = *pbVar13 + bVar9;\\n    goto LAB_140a48459;\\n  case 0x19:\\n    uVar27 = *(int *)(&DAT_142acf748 + (ulonglong)bVar21 * 4) + 0x2aacf748;\\n    uVar12 = (ulonglong)(uVar27 + *(int *)(ulonglong)uVar27);\\n    if (uVar12 == 0) {\\n      *(undefined1 *)((longlong)in_RDX + 1) = 0x3a;\\n      goto code_r0x000140a48590;\\n    }\\ncode_r0x000140a48257:\\n    in_RDX[1] = uVar12;\\n    uVar10 = 1;\\n    goto code_r0x000140a4825d;\\n  case 0x1a:\\n    if (0xfffffffebd5308b7 < uVar12) {\\n      std::alloc::__default_lib_allocator::__rust_dealloc();\\n    }\\n    bVar21 = *(byte *)(unaff_RBP + -1);\\n    pbVar13 = (byte *)(ulonglong)bVar21;\\n    if (bVar21 < 3) goto LAB_140a485de;\\n    if (bVar21 == 3) {\\n      if (*unaff_RBP != 0) {\\n        std::alloc::__default_lib_allocator::__rust_dealloc();\\n      }\\n      goto LAB_140a485de;\\n    }\\n    goto code_r0x000140a484ad;\\n  case 0x1b:\\ncode_r0x000140a484ad:\\n    if ((int)pbVar13 == 4) {\\n      core::ptr::drop_in_place<serde_json::value::ser::SerializeVec>();\\n    }\\n    else {\\n      core::ptr::\\n      drop_in_place<serde_json::map::Map<alloc::string::String,enum2_<serde_json::value::Value>_>_>\\n                ();\\n    }\\nLAB_140a485de:\\n    *(undefined1 *)(unaff_RBP + -4) = 0xb;\\n    serde::de::Error::invalid_value<serde_json::error::Error>();\\n    in_RDX[1] = extraout_RAX_07;\\n    *(undefined1 *)in_RDX = 1;\\n    bVar21 = *(byte *)(unaff_RBP + 0x10);\\n    if (2 < bVar21) {\\n      if (bVar21 == 3) {\\n        if (unaff_RBP[0x11] != 0) {\\n          std::alloc::__default_lib_allocator::__rust_dealloc();\\n        }\\n      }\\n      else if (bVar21 == 4) {\\n        core::ptr::drop_in_place<serde_json::value::ser::SerializeVec>();\\n      }\\n      else {\\n        core::ptr::\\n        drop_in_place<serde_json::map::Map<alloc::string::String,enum2_<serde_json::value::Value>_>_>\\n                  ();\\n      }\\n    }\\n    if (unaff_RBP[0x15] != 0) {\\n      std::alloc::__default_lib_allocator::__rust_dealloc();\\n    }\\n    *(undefined1 *)((longlong)unaff_RBP + 0xb7) = 1;\\n    core::ptr::drop_in_place<serde_json::map::IntoIter>();\\n    return;\\n  case 0x1c:\\n    *(undefined1 *)((longlong)unaff_RBP + 0xb7) = 0;\\n    core::ptr::\\n    drop_in_place<serde_json::map::Map<alloc::string::String,enum2_<serde_json::value::Value>_>_>();\\n    return;\\n  case 0x1d:\\n    while( true ) {\\n      puVar1 = (uint *)(pbVar13 + -0x73);\\n      uVar2 = *puVar1;\\n      *puVar1 = *puVar1 + uVar27;\\n      uVar11 = (int)pbVar13 + 0xe8000000;\\n      piVar14 = (int *)(ulonglong)uVar11;\\n      if (in_RCX != (byte *)0x0) break;\\n      *(char *)piVar14 = (char)*piVar14 + (char)uVar11;\\n      pbVar13 = (byte *)(ulonglong)uVar11;\\n    }\\n    uVar12 = (ulonglong)(uVar11 + *piVar14 + (uint)CARRY4(uVar2,uVar27));\\n    if (uVar12 != 0) goto code_r0x000140a48257;\\n    *(undefined1 *)((longlong)in_RDX + 1) = 0x3b;\\n    goto code_r0x000140a48590;\\n  case 0x1e:\\n    *pbVar13 = *pbVar13 + bVar9;\\n    pcVar15 = (char *)(CONCAT71(uVar16,bVar9 + (char)((ulonglong)in_RCX >> 8)) + -0x7b);\\n    *pcVar15 = *pcVar15 + bVar17;\\n    *unaff_RDI = *unaff_RDI >> 5 | *unaff_RDI << 3;\\n    in_RDX = (longlong *)(ulonglong)((int)in_RDX + 1);\\n    *(int *)unaff_RDI = *(int *)unaff_RDI + (int)unaff_R15;\\n    goto code_r0x000140a48590;\\n  case 0x1f:\\n    *pbVar13 = *pbVar13 + bVar9;\\n    serde_json::value::de::impl$5::unit_variant();\\n    uVar12 = extraout_RAX_06;\\n    if (extraout_RAX_06 != 0) goto code_r0x000140a48257;\\n    *(undefined1 *)((longlong)in_RDX + 1) = 0x3c;\\ncode_r0x000140a48590:\\n    uVar10 = 0;\\ncode_r0x000140a4825d:\\n    *(undefined1 *)in_RDX = uVar10;\\n    if (((int)unaff_RBP[0x14] != 3) && ((int)unaff_RBP[0x14] != 5)) {\\n      unaff_RBP[0x14] = unaff_R15;\\n      unaff_RBP[0xf] = unaff_R12;\\n      core::ptr::drop_in_place<slice2_<enum2_<serde_json::value::Value>_>_>();\\n      if (unaff_RBP[0x14] != 0) {\\nLAB_140a48459:\\n        *(undefined8 *)(puVar24 + -8) = 0x140a4845e;\\n        std::alloc::__default_lib_allocator::__rust_dealloc();\\n      }\\n    }\\n                    // WARNING: Read-only address (ram,0x000142acf748) is written\\n    return;\\n  case 0x20:\\n    DAT_142acf748 = 0xe0;\\n    return;\\n  default:\\ncode_r0x000140a48930:\\n    if (uVar27 != 0) {\\n      serde::de::Error::unknown_variant<serde_json::error::Error>();\\n      *(undefined8 *)(&UNK_142acf750 + uVar12) = extraout_RAX_08;\\n      bVar21 = 1;\\n      goto LAB_140a489a6;\\n    }\\n    (&UNK_142acf749)[uVar12] = 6;\\n    goto code_r0x000140a489a4;\\n  case 0x22:\\n    if (!bVar28) {\\n      uVar27 = 0x8de7efab;\\n      goto code_r0x000140a48930;\\n    }\\n    (&UNK_142acf749)[uVar12] = 3;\\ncode_r0x000140a489a4:\\n    bVar21 = 0;\\nLAB_140a489a6:\\n    *pbVar13 = bVar21;\\n    return;\\n  case 0x23:\\n    puVar25 = (undefined1 *)(ulonglong)((int)auStack_78 + 0x20);\\n  case 0x29:\\n    *pbVar13 = *pbVar13 + bVar9;\\n    *pbVar13 = *pbVar13 + bVar9;\\n    (&UNK_142acf6d1)[uVar12] = (&UNK_142acf6d1)[uVar12] + bVar17;\\n    *(undefined1 **)(puVar25 + -8) = puVar25;\\n    *(longlong **)(puVar25 + -0x10) = unaff_RBP;\\n    *(longlong *)(puVar25 + -0x18) = unaff_R15;\\n    *(ulonglong *)(puVar25 + -0x20) = unaff_R14;\\n    *(longlong *)(puVar25 + -0x28) = unaff_R12;\\n    *(longlong **)(puVar25 + -0x30) = in_RDX;\\n    *(byte **)(puVar25 + -0x38) = unaff_RDI;\\n    *(longlong *)(puVar25 + -0x40) = unaff_RBX;\\n    *(undefined8 *)(puVar25 + -0x68) = 0x140a48866;\\n    core::ptr::drop_in_place<enum2_<serde_json::value::Value>_>();\\n    return;\\n  case 0x25:\\n    DAT_142acf748 = 0xe0;\\n    return;\\n  case 0x28:\\n    *pbVar13 = *pbVar13 + bVar9;\\n    pcVar15 = (char *)((longlong)&DAT_142acf700 + uVar12 + 1);\\n    *pcVar15 = *pcVar15 + bVar17;\\n    out((int)*in_RDX,0xf748);\\n    if (*pcVar15 == '\\\\0') {\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n    }\\n                    // WARNING: Bad instruction - Truncating control flow here\\n    halt_baddata();\\n  case 0x2a:\\n    in_RCX[-0x47] = in_RCX[-0x47] + bVar9;\\n    *(int *)pbVar13 = *(int *)pbVar13 + (int)pbVar13;\\n    *pbVar13 = *pbVar13 + bVar9;\\n    alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n    lVar23 = *(longlong *)(unaff_RDI + 0x10);\\n    *(undefined1 *)(*(longlong *)(unaff_RDI + 8) + lVar23) = 0x7b;\\n    *(longlong *)(unaff_RDI + 0x10) = lVar23 + 1;\\n    serde::ser::SerializeMap::\\n    serialize_entry<enum2_<serde_json::ser::Compound<ref_mut_<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::CompactFormatter>_>,str_,u8>\\n              ();\\n    if (extraout_RAX_09 != 0) {\\n      return;\\n    }\\n    in_RDX = &lRamfdf7823ffdf781e0;\\n    lVar23 = lRamfdf7823ffdf781f0;\\n    if (lRamfdf7823ffdf781e0 != lRamfdf7823ffdf781f0) goto LAB_140a48f16;\\n    pbStack_58 = (byte *)0x1;\\n    goto code_r0x000140a48f6b;\\n  case 0x2b:\\n                    // WARNING (jumptable): Read-only address (ram,0x000142acf748) is written\\n                    // WARNING: Read-only address (ram,0x000142acf748) is written\\n    DAT_142acf748 = bVar9 | 0xe0;\\n    core::fmt::Formatter::write_str();\\n    return;\\n  case 0x2c:\\n    *in_RCX = *in_RCX & bVar9;\\n    *pbVar13 = *pbVar13 + bVar9;\\n    in_RCX[-0x48] = in_RCX[-0x48] + bVar9;\\n    *(int *)pbVar13 = *(int *)pbVar13 + (int)pbVar13;\\n    *pbVar13 = *pbVar13 + bVar9;\\ncode_r0x000140a48f6b:\\n    alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n    lVar23 = in_RDX[2];\\nLAB_140a48f16:\\n    *(undefined1 *)(in_RDX[1] + lVar23) = 0x7d;\\n    in_RDX[2] = lVar23 + 1;\\n                    // WARNING: Read-only address (ram,0x000142acf748) is written\\n    return;\\n  case 0x2d:\\n    pcVar6 = (code *)swi(3);\\n    (*pcVar6)((ulonglong)pbVar13 & 0xffffffff);\\n    return;\\n  case 0x2e:\\n    if (*(char *)((longlong)unaff_RBP + 0xb7) == '\\\\0') {\\n      DAT_142acf748 = 0xe0;\\n      return;\\n    }\\n    if ((char)unaff_RBP[0x14] == '\\\\x03') {\\n      DAT_142acf748 = 0xe0;\\n      return;\\n    }\\n    pbVar13 = (byte *)(ulonglong)*(byte *)(unaff_RBP + 0x14);\\n  case 0x32:\\n    if ((int)pbVar13 != 5) {\\n      core::ptr::drop_in_place<enum2_<serde_json::value::Value>_>();\\n    }\\n                    // WARNING: Read-only address (ram,0x000142acf748) is written\\n    return;\\n  case 0x2f:\\n    pcVar6 = (code *)swi(3);\\n    (*pcVar6)();\\n    return;\\n  case 0x30:\\n    *pbVar13 = *pbVar13 + bVar9;\\n    *pbVar13 = *pbVar13 + bVar9;\\n    (&UNK_142acf6d1)[uVar12] = (&UNK_142acf6d1)[uVar12] + bVar17;\\n    core::ptr::drop_in_place<enum2_<serde_json::value::Value>_>();\\n    return;\\n  case 0x31:\\n    *unaff_RDI = bVar9;\\n    *pbVar13 = *pbVar13;\\n    (&UNK_142acf6d5)[uVar12] = (&UNK_142acf6d5)[uVar12] + bVar17;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n    halt_baddata();\\n  case 0x33:\\n    DAT_142acf748 = 0xe0;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n    halt_baddata();\\n  case 0x34:\\n    pcVar15 = (char *)CONCAT71(uVar16,bVar9 + in_RCX[-0x48]);\\n    *pcVar15 = *pcVar15 + bVar9 + in_RCX[-0x48];\\n                    // WARNING: Could not recover jumptable at 0x000140d86ba4. Too many branches\\n                    // WARNING: Treating indirect jump as call\\n    (**(code **)(*(longlong *)(pcVar15 + 0x38) + 0x18))\\n              (*(undefined8 *)(pcVar15 + 0x30),&DAT_142acf748,in_R8,\\n               *(code **)(*(longlong *)(pcVar15 + 0x38) + 0x18));\\n    return;\\n  case 0x35:\\n    pbStack_58 = &UNK_142acf290;\\n    goto code_r0x000140a49fd3;\\n  case 0x36:\\n    goto code_r0x000140a49fd3;\\n  case 0x37:\\n    goto code_r0x000140a49fd3;\\n  case 0x38:\\n                    // WARNING (jumptable): Read-only address (ram,0x000142acf748) is written\\n                    // WARNING: Read-only address (ram,0x000142acf748) is written\\n    DAT_142acf748 = bVar9 | 0xe0;\\n    pbStack_58 = in_RCX;\\ncode_r0x000140a49fd3:\\n    core::fmt::Formatter::debug_tuple_field1_finish();\\n    return;\\n  case 0x39:\\n    lVar23 = CONCAT71((int7)((ulonglong)in_RCX >> 8),in_RCX[1]);\\n    pbVar13 = (byte *)(lVar23 + -1);\\n    *pbVar13 = *pbVar13 << 1 | (char)*pbVar13 < '\\\\0';\\n    if (lVar23 != 1 && !bVar28) {\\n      pbStack_58 = &UNK_142acf398;\\n      core::fmt::Formatter::debug_tuple_field1_finish();\\n      return;\\n    }\\n    pbStack_58 = &DAT_142acf320;\\n    core::fmt::Formatter::debug_tuple_field1_finish();\\n  case 0x3a:\\n    return;\\n  case 0x3b:\\n                    // WARNING (jumptable): Read-only address (ram,0x000142acf748) is written\\n                    // WARNING: Read-only address (ram,0x000142acf748) is written\\n    DAT_142acf748 = bVar9 | 0xe0;\\n    core::fmt::Formatter::debug_tuple_field1_finish();\\n    return;\\n  case 0x3c:\\n    DAT_142acf748 = 0xe0;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n    halt_baddata();\\n  case 0x3d:\\n    (&UNK_142acf6d1)[uVar12] = (&UNK_142acf6d1)[uVar12] + bVar17;\\n    puStack_60 = &anon_5fd24bb9fdee57a40e0c69a79c341349_174_llvm_6116688399939600601;\\n    pbStack_58 = (byte *)0x7;\\n    serde_json::value::ser::impl$1::\\n    serialize_newtype_variant<country_core::resources::walls::decorator::TerrainAttachment>();\\n    return;\\n  case 0x3e:\\n    serde_json::ser::\\n    format_escaped_str<ref_mut_<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::CompactFormatter>\\n              ();\\n    if (extraout_RAX_10 != 0) {\\n      serde_json::error::Error::io();\\n      return;\\n    }\\n    plVar5 = (longlong *)*in_RDX;\\n    lVar23 = plVar5[2];\\n    if (*plVar5 == lVar23) {\\n      pbStack_58 = (byte *)0x1;\\n      alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n      lVar23 = plVar5[2];\\n    }\\n    *(undefined1 *)(plVar5[1] + lVar23) = 0x3a;\\n    plVar5[2] = lVar23 + 1;\\n    fVar3 = *(float *)(unaff_RDI + 0x10);\\n    plVar5 = (longlong *)*in_RDX;\\n    lVar23 = plVar5[2];\\n    if (*plVar5 == lVar23) {\\n      pbStack_58 = (byte *)0x1;\\n      alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n      lVar23 = plVar5[2];\\n    }\\n    *(undefined1 *)(plVar5[1] + lVar23) = 0x7b;\\n    plVar5[2] = lVar23 + 1;\\n    serde::ser::SerializeMap::\\n    serialize_entry<enum2_<serde_json::ser::Compound<ref_mut_<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::CompactFormatter>_>,str_,country_core::resources::stairs::stairs_state::StairGraphEdge>\\n              ();\\n    if (((extraout_RAX_11 == 0) &&\\n        (serde::ser::SerializeMap::\\n         serialize_entry<enum2_<serde_json::ser::Compound<ref_mut_<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::CompactFormatter>_>,str_,glam::f32::vec2::Vec2>\\n                   (), extraout_RAX_12 == 0)) &&\\n       (((fVar3 == 0.0 && (!NAN(fVar3))) ||\\n        (serde::ser::SerializeMap::\\n         serialize_entry<enum2_<serde_json::ser::Compound<ref_mut_<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::CompactFormatter>_>,str_,f32>\\n                   (), extraout_RAX_13 == 0)))) {\\n      alloc::vec::Vec::extend_from_slice<u8,alloc::alloc::Global>();\\n                    // WARNING: Read-only address (ram,0x000142acf748) is written\\n      plVar5 = (longlong *)*in_RDX;\\n      lVar23 = plVar5[2];\\n      if (*plVar5 == lVar23) {\\n        pbStack_58 = (byte *)0x1;\\n        alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();\\n        lVar23 = plVar5[2];\\n      }\\n      *(undefined1 *)(plVar5[1] + lVar23) = 0x7d;\\n      plVar5[2] = lVar23 + 1;\\n    }\\n    return;\\n  case 0x3f:\\n    if (bVar17 < 3) {\\n      in_R8 = 0;\\n    }\\n                    // WARNING: Could not recover jumptable at 0x000140a4a226. Too many branches\\n                    // WARNING: Treating indirect jump as call\\n    (*(code *)((longlong)&DAT_142acf83c + (longlong)(int)(&DAT_142acf83c)[in_R8]))\\n              ((code *)((longlong)&DAT_142acf83c + (longlong)(int)(&DAT_142acf83c)[in_R8]));\\n    return;\\n  case 0x40:\\n    DAT_142acf748 = 0xe0;\\n                    // WARNING: Bad instruction - Truncating control flow here\\n    halt_baddata();\\n  case 0x41:\\n    *(uint *)(unaff_RBP + -9) = uVar27;\\n    goto LAB_140a4a9e2;\\n  case 0x42:\\n    *(char *)(uVar12 + 0xb5814b2f0) =\\n         *(char *)(uVar12 + 0xb5814b2f0) + bVar9 + (0xfffffffebd5308b7 < uVar12);\\ncode_r0x000140a4ab5b:\\n    lVar23 = unaff_RBP[2];\\n    unaff_RBP[6] = *(longlong *)(pbVar13 + (lVar23 * 6 + 0x5e) * 4);\\n    lVar26 = *(longlong *)(pbVar13 + (lVar23 * 6 + 0x5a) * 4 + 8);\\n    unaff_RBP[4] = *(longlong *)(pbVar13 + (lVar23 * 6 + 0x5a) * 4);\\n    unaff_RBP[5] = lVar26;\\n    lVar26 = *(longlong *)(pbVar13 + lVar23 * 0x20 + 8);\\n    lVar7 = *(longlong *)(pbVar13 + (lVar23 * 8 + 4) * 4);\\n    lVar8 = *(longlong *)(pbVar13 + (lVar23 * 8 + 4) * 4 + 8);\\n    unaff_RBP[7] = *(longlong *)(pbVar13 + lVar23 * 0x20);\\n    unaff_RBP[8] = lVar26;\\n    unaff_RBP[9] = lVar7;\\n    unaff_RBP[10] = lVar8;\\n    if (!SBORROW8(0,unaff_RBP[4])) {\\n      if (unaff_RBP[4] != 0) {\\n        std::alloc::__default_lib_allocator::__rust_dealloc();\\n      }\\n      bVar21 = *(byte *)(unaff_RBP + 7);\\n      if (2 < bVar21) {\\n        if (bVar21 == 3) {\\n          if (unaff_RBP[8] != 0) {\\n            std::alloc::__default_lib_allocator::__rust_dealloc();\\n          }\\n        }\\n        else if (bVar21 == 4) {\\n          core::ptr::drop_in_place<serde_json::value::ser::SerializeVec>();\\n        }\\n        else {\\n          core::ptr::\\n          drop_in_place<serde_json::map::Map<alloc::string::String,enum2_<serde_json::value::Value>_>_>\\n                    ();\\n        }\\n      }\\n      *(undefined1 *)(unaff_RBP + 4) = 0xb;\\n      serde::de::Error::invalid_value<serde_json::error::Error>();\\n      *in_RDX = extraout_RAX_15;\\n      *(undefined1 *)((longlong)in_RDX + 0x22) = 5;\\n      bVar21 = *(byte *)(unaff_RBP + 0x10);\\n      if (2 < bVar21) {\\n        if (bVar21 == 3) {\\n          if (unaff_RBP[0x11] != 0) {\\n            std::alloc::__default_lib_allocator::__rust_dealloc();\\n          }\\n        }\\n        else if (bVar21 == 4) {\\n          core::ptr::drop_in_place<serde_json::value::ser::SerializeVec>();\\n        }\\n        else {\\n          core::ptr::\\n          drop_in_place<serde_json::map::Map<alloc::string::String,enum2_<serde_json::value::Value>_>_>\\n                    ();\\n        }\\n      }\\n      if (unaff_RBP[0x14] != 0) {\\n        std::alloc::__default_lib_allocator::__rust_dealloc();\\n      }\\n      *(undefined1 *)((longlong)unaff_RBP + 0xb7) = 1;\\n      core::ptr::drop_in_place<serde_json::map::IntoIter>();\\n      return;\\n    }\\n    goto LAB_140a4aba0;\\n  case 0x43:\\n    serde_json::error::impl$8::invalid_type();\\n    unaff_RBP[4] = extraout_RAX_14;\\n    iVar19 = (int)unaff_RBP[0x15];\\n    *in_RDX = unaff_RBP[4];\\n    *(undefined1 *)((longlong)in_RDX + 0x22) = 5;\\n    goto LAB_140a4aed4;\\n  case 0x44:\\n    *pbVar13 = *pbVar13 + bVar9;\\n    *(undefined4 *)(unaff_RBP + 0x10) = in_XMM0_Da;\\n    *(undefined4 *)((longlong)unaff_RBP + 0x84) = in_XMM0_Db;\\n    *(undefined4 *)(unaff_RBP + 0x11) = in_XMM0_Dc;\\n    *(undefined4 *)((longlong)unaff_RBP + 0x8c) = in_XMM0_Dd;\\n    alloc::collections::btree::map::IntoIter::\\n    dying_next<alloc::string::String,enum2_<serde_json::value::Value>,alloc::alloc::Global>();\\n    pbVar13 = (byte *)*unaff_RBP;\\n    if (pbVar13 != (byte *)0x0) goto code_r0x000140a4ab5b;\\nLAB_140a4aba0:\\n    unaff_R14 = (ulonglong)*(byte *)(unaff_RBP + 0x10);\\n    unaff_RBP[0xc] = *(longlong *)((longlong)unaff_RBP + 0x81);\\n    unaff_RBP[0xd] = *(longlong *)((longlong)unaff_RBP + 0x89);\\n    *(longlong *)((longlong)unaff_RBP + 0x6f) = unaff_RBP[0x12];\\n    *(longlong *)((longlong)unaff_RBP + 0x77) = unaff_RBP[0x13];\\n    *(undefined1 *)((longlong)unaff_RBP + 0xb7) = 1;\\n    core::ptr::drop_in_place<serde_json::map::IntoIter>();\\n    pbVar13 = (byte *)unaff_RBP[0x14];\\n    in_RCX = (byte *)unaff_RBP[-1];\\nLAB_140a4a9e2:\\n    unaff_RBP[-10] = (longlong)pbVar13;\\n    unaff_RBP[-9] = (longlong)in_RCX;\\n    unaff_RBP[-8] = unaff_RBX;\\n    *(longlong *)((longlong)unaff_RBP + -0x37) = unaff_RBP[0xc];\\n    *(longlong *)((longlong)unaff_RBP + -0x2f) = unaff_RBP[0xd];\\n    unaff_RBP[-5] = *(longlong *)((longlong)unaff_RBP + 0x6f);\\n    unaff_RBP[-4] = *(longlong *)((longlong)unaff_RBP + 0x77);\\n    *(char *)(unaff_RBP + -7) = (char)unaff_R14;\\n    *(undefined1 *)((longlong)unaff_RBP + 0xb7) = 1;\\n    serde_json::value::de::impl$3::\\n    variant_seed<core::marker::PhantomData<country_core::resources::walls::decorator::_::impl_0::deserialize::__Field>_>\\n              ();\\n    if ((char)unaff_RBP[4] != '\\\\x04') {\\n      unaff_RBP[2] = unaff_RBP[8];\\n      *unaff_RBP = unaff_RBP[6];\\n      unaff_RBP[1] = unaff_RBP[7];\\n                    // WARNING: Bad instruction - Truncating control flow here\\n      halt_baddata();\\n                    // WARNING (jumptable): Sanity check requires truncation of jumptable\\n    }\\n    *in_RDX = unaff_RBP[5];\\n    *(undefined1 *)((longlong)in_RDX + 0x22) = 5;\\n    iVar19 = (int)unaff_RBP[0x15];\\nLAB_140a4aed4:\\n    if ((iVar19 != 3) && (iVar19 != 5)) {\\n      unaff_RBP[0x15] = unaff_R15;\\n      unaff_RBP[3] = unaff_R12;\\n      core::ptr::drop_in_place<slice2_<enum2_<serde_json::value::Value>_>_>();\\n      if (unaff_RBP[0x15] != 0) {\\n        std::alloc::__default_lib_allocator::__rust_dealloc();\\n      }\\n    }\\n                    // WARNING: Read-only address (ram,0x000142acf748) is written\\n    return;\\n  }\\n  serde_json::ser::\\n  format_escaped_str<ref_mut_<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::PrettyFormatter>\\n            ();\\n  if (extraout_RAX == 0) {\\n                    // WARNING: Read-only address (ram,0x000142acf748) is written\\n    return;\\n  }\\n  puStack_60 = (undefined *)0x1428c98db;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_16 == (undefined8 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    puStack_60 = &UNK_1428c990c;\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  extraout_RAX_16[4] = 0;\\n  extraout_RAX_16[2] = unaff_RSI;\\n  extraout_RAX_16[3] = 0;\\n  *extraout_RAX_16 = 1;\\n  extraout_RAX_16[1] = extraout_RAX;\\n  return;\\n}\\n\\n\",\"callee_count\":0,\"callees\":[],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140a47da0\":{\"name\":\"deserialize<ref_mut$<serde_json::de::Deserializer<serde_json::read::StrRead>_>_>\",\"size\":391,\"address\":\"140a47da0\",\"signature\":\"void __cdecl deserialize<ref_mut$<serde_json::de::Deserializer<serde_json::read::StrRead>_>_>(void)\",\"decompile_failed\":true,\"decompile_error\":\"Exception while decompiling 140a47da0: process: timeout\",\"callee_count\":2,\"callees\":[{\"name\":\"deserialize<country_core::resources::walls::decorator::_::impl$0::deserialize::__Field,ref_mut$<serde_json::de::Deserializer<serde_json::read::StrRead>_>_>\",\"address\":\"14140d630\"},{\"name\":\"peek_error<serde_json::read::StrRead>\",\"address\":\"1428a0920\"}],\"revision\":{\"token\":\"1791719479858:b17d372d:3\",\"epoch\":\"b17d372d\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":false}}},\"count\":4,\"requested\":4}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "list_instances",
+        "title": null,
+        "description": "\nList known Ghidra instances from UDS discovery and the active TCP fallback.\n\nReturns JSON with each instance's project name, PID, open programs, and\nsocket path or TCP URL. Also shows which instance is currently connected.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "_list_instances_toolArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "connect_instance",
+        "title": null,
+        "description": "\nSwitch the MCP bridge to a different Ghidra instance by project name.\n\nIMPORTANT: Before calling this function only the static bridge tools are\nexposed (list_instances, connect_instance, tool-group management,\ndebugger proxy). After a successful connect the bridge fetches the\ninstance's /mcp/schema and registers Ghidra analysis tools dynamically.\nBy default all tool groups are loaded on connect. When started with\n--lazy, only the default groups are loaded initially and clients may need\nto call load_tool_group() for additional categories. Clients that cache\nthe initial tools/list and don't honor tools/list_changed must re-list\ntools after this call.\n\nUse list_instances() first to see available instances.\n\nArgs:\n    project: Project name (or substring) to connect to\n",
+        "inputSchema": {
+          "properties": {
+            "project": {
+              "description": "Project name (or substring) to connect to",
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          "required": [
+            "project"
+          ],
+          "title": "connect_instanceArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_tool_groups",
+        "title": null,
+        "description": "\nList all available tool groups with their tool counts and loaded status.\n\nReturns each category with: tool count, loaded status, and tool names.\nUse load_tool_group(group) to load a group's tools.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "list_tool_groupsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "load_tool_group",
+        "title": null,
+        "description": "\nLoad all tools in a category. Accepts a category name or \"all\" to load everything.\n\nUse list_tool_groups() to see available categories.\n\nArgs:\n    group: Category name (e.g. \"function\", \"datatype\") or \"all\"\n",
+        "inputSchema": {
+          "properties": {
+            "group": {
+              "description": "Category name (e.g. \"function\", \"datatype\") or \"all\"",
+              "title": "Group",
+              "type": "string"
+            }
+          },
+          "required": [
+            "group"
+          ],
+          "title": "load_tool_groupArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "search_tools",
+        "title": null,
+        "description": "\nSearch the full Ghidra tool catalog by keyword \u2014 including tools whose group\nis not currently loaded. Use this to discover the right tool without paying\nthe context cost of loading all groups (run the bridge with --lazy and search\non demand). Matches against tool name, description, and category.\n\nEach result reports whether the tool is callable right now; if not, it\nincludes the exact load_tool_group(...) call needed to make it callable.\n\nArgs:\n    query: Space-separated keywords, e.g. \"rename function\" or \"xref struct\".\n    limit: Maximum number of results to return (default 15).\n",
+        "inputSchema": {
+          "properties": {
+            "query": {
+              "description": "Space-separated keywords, e.g. \"rename function\" or \"xref struct\".",
+              "title": "Query",
+              "type": "string"
+            },
+            "limit": {
+              "default": 15,
+              "description": "Maximum number of results to return (default 15).",
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "title": "search_toolsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble_function",
+        "title": null,
+        "description": "Get assembly listing of function. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution. When Ghidra's stored function body is degenerate (body_end == body_start, which would truncate the listing to a single instruction), the listing is instead bounded by the next function or the containing memory block and the response adds body_degenerate=true, bounded_by (next_function | memory_block | function_body) and a warning; do not trust this function's stored extent in that case.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "disassemble_functionArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_data_types",
+        "title": null,
+        "description": "Find data types by name or path pattern, category and kind, one record per type (name, kind, category, size, path). With categories=true, list the category paths instead. With no filter it lists every type.",
+        "inputSchema": {
+          "properties": {
+            "pattern": {
+              "default": "",
+              "description": "Case-insensitive substring of the type's name or full path; omit for no name filter.",
+              "title": "Pattern",
+              "type": "string"
+            },
+            "category": {
+              "default": "",
+              "description": "Case-insensitive substring of the category path (e.g. Windows, /MyTypes); omit for any category.",
+              "title": "Category",
+              "type": "string"
+            },
+            "kind": {
+              "default": "",
+              "description": "Only this kind: struct, union, enum, typedef, pointer, array, function or primitive. Omit for all kinds.",
+              "title": "Kind",
+              "type": "string"
+            },
+            "categories": {
+              "default": "false",
+              "description": "True lists the category paths (filtered by pattern) instead of types; category and kind do not apply.",
+              "title": "Categories",
+              "type": "boolean"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "find_data_typesArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_functions",
+        "title": null,
+        "description": "Find functions: every filter is optional, so with none it lists the whole program a page at a time. Filter by name (substring or regex=true), xref count, calling convention, whether the name is user-given, thunk or external, or by tag (tag=a,b keeps functions carrying ANY of them); each result lists its tags; sort by address, name or xref_count. Replaces list_functions, list_functions_enhanced, search_functions and search_functions_enhanced, which returned four different shapes for the same question.",
+        "inputSchema": {
+          "properties": {
+            "name_pattern": {
+              "default": "",
+              "description": "Substring to match, or a regex when regex=true. Omit to match every function.",
+              "title": "Name Pattern",
+              "type": "string"
+            },
+            "regex": {
+              "default": "false",
+              "description": "Treat name_pattern as a regular expression.",
+              "title": "Regex",
+              "type": "boolean"
+            },
+            "min_xrefs": {
+              "default": "",
+              "description": "Only functions with at least this many references to them.",
+              "title": "Min Xrefs",
+              "type": "integer"
+            },
+            "max_xrefs": {
+              "default": "",
+              "description": "Only functions with at most this many references to them.",
+              "title": "Max Xrefs",
+              "type": "integer"
+            },
+            "calling_convention": {
+              "default": "",
+              "description": "Only functions with this calling convention (e.g. __stdcall).",
+              "title": "Calling Convention",
+              "type": "string"
+            },
+            "has_custom_name": {
+              "default": "",
+              "description": "true = only functions somebody has named; false = only auto-generated names (FUN_*, thunk_*).",
+              "title": "Has Custom Name",
+              "type": "boolean"
+            },
+            "is_thunk": {
+              "default": "",
+              "description": "true = only thunks, false = exclude them, omit for both.",
+              "title": "Is Thunk",
+              "type": "boolean"
+            },
+            "is_external": {
+              "default": "",
+              "description": "true = only external functions, false = exclude them.",
+              "title": "Is External",
+              "type": "boolean"
+            },
+            "tag": {
+              "default": "",
+              "description": "Only functions carrying any of these tags: one name or a comma-separated list. A name that is not a defined tag is an error (list_function_tags shows the definitions).",
+              "title": "Tag",
+              "type": "string"
+            },
+            "sort_by": {
+              "default": "address",
+              "description": "address | name | xref_count.",
+              "title": "Sort By",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Page size. 0 means no limit, which on a large binary is a megabytes-long response \u2014 the old list_functions had no pagination at all and returned 1.7MB on a stripped `ls`.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "pattern": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Pattern"
+            },
+            "query": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Query"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            }
+          },
+          "title": "find_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_functions",
+        "title": null,
+        "description": "Everything about one or many functions in a single call. Pass functions= as a comma-separated list of names or addresses for bulk mode (up to 20); omit it and pass function=/name=/address= for one. Pass fields= as a comma-separated subset to skip work you do not need \u2014 omitted or empty returns everything. When the requested fields need no decompiled text (e.g. fields=callers,callees,signature,labels,entry_point), the target function is NOT decompiled (238 ms cold / 5\u201310 ms warm per function); only decompiled_code (and call_context when enabled) pays that cost. Decompiled text renders EOL comments (// style), so comments written with set_comment are visible in the code. Replaces get_function_by_address, get_function_variables, get_function_xrefs, decompile_function, and the former get_function_callers/callees/labels/signature tools. Completeness scoring is NOT included \u2014 call analyze_function_completeness for that.",
+        "inputSchema": {
+          "properties": {
+            "function": {
+              "default": "",
+              "description": "Single mode: function name or address (0x<hex> or <space>:<hex>). Ignored when functions= is set.",
+              "title": "Function",
+              "type": "string"
+            },
+            "functions": {
+              "default": "",
+              "description": "Bulk mode: comma-separated function references (names or addresses). When set, function= is ignored. Returns a map keyed by the reference asked for.",
+              "title": "Functions",
+              "type": "string"
+            },
+            "fields": {
+              "default": "",
+              "description": "Comma-separated subset: signature, classification, return_type, entry_point, body_start, body_end, decompiled_code, plate_comment, comments, labels, tags, parameters, locals, callers, call_context, callees, xrefs, disassembly, jump_targets, refs (the absolute addresses the function uses: data references, the values of literal-pool words, and the memory the decompiled code reads and writes, so a register reached as base + offset is listed by its own address; a pool value is written value<word; asking for refs decompiles). Omit or leave empty for the full bundle.",
+              "title": "Fields",
+              "type": "string"
+            },
+            "include_call_context": {
+              "default": "true",
+              "description": "Include each caller's decompiled call-site line. Costs one decompilation per unique caller (~43ms); set false for the cheapest possible bundle. Ignored unless call_context is requested (explicitly or via an empty fields=).",
+              "title": "Include Call Context",
+              "type": "boolean"
+            },
+            "call_context_limit": {
+              "default": "6",
+              "description": "Maximum number of UNIQUE callers to decompile for call context.",
+              "title": "Call Context Limit",
+              "type": "integer"
+            },
+            "call_context_lines": {
+              "default": "3",
+              "description": "Lines of the caller's decompilation to return per call site, centred on the call. 1 is the call line alone; the default 3 adds the line above and below, which is usually where the guard and the use of the result live. Clamped to 1-21; costs no extra decompilation.",
+              "title": "Call Context Lines",
+              "type": "integer"
+            },
+            "include_disasm": {
+              "default": "false",
+              "description": "Include the raw instruction listing. Off by default: it roughly doubles the payload and agents rarely read it.",
+              "title": "Include Disasm",
+              "type": "boolean"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Address"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "function_address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Address"
+            },
+            "function_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Name"
+            },
+            "call_context_window": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Call Context Window"
+            }
+          },
+          "title": "get_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_metadata",
+        "title": null,
+        "description": "Get program metadata",
+        "inputSchema": {
+          "properties": {
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_metadataArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_struct_layout",
+        "title": null,
+        "description": "Get structure field layout",
+        "inputSchema": {
+          "properties": {
+            "struct_name": {
+              "description": "Structure name",
+              "title": "Struct Name",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "struct_name"
+          ],
+          "title": "get_struct_layoutArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_from",
+        "title": null,
+        "description": "Get cross-references from an address. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "get_xrefs_fromArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_to",
+        "title": null,
+        "description": "Get cross-references to ONE address, or to MANY at once (addresses=comma-separated), which returns a map keyed by the address you asked for. Replaces the former get_bulk_xrefs. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "default": "",
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "addresses": {
+              "default": "",
+              "description": "Comma-separated addresses for the many-at-once form. The result is a map of address to its reference list, and an address that does not resolve gets an empty list rather than failing the whole call.",
+              "title": "Addresses",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_xrefs_toArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read_memory",
+        "title": null,
+        "description": "Read raw memory bytes. Always pass the 'program' argument to target the correct binary \u2014 especially when multiple programs are open. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "length": {
+              "default": "16",
+              "description": "Number of bytes",
+              "title": "Length",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "read_memoryArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

@@ -1,0 +1,36 @@
+Analyze only this supplied B Tiny Glade decompiler excerpt. No tools, repository search, invented types, or implementation. The old report labels FUN_140b772b0 as AnimateWallBulldozeBuffer::contains; determine if the local data flow supports that label and identify source/public presence logic. Reply under 500 words, separate observations from hypotheses.
+
+Known owners: InnerWalls contains HashMap<WallId,WallState>, value 0x70, entry stride 0x78, followed by created/updated/removed ID sets. PublicWalls contains HashMap<WallId,PublicWallState>, value 0x2a0, entry stride 0x2a8. The examined publisher is 0x140a8b530.
+
+Deletion loop walks InnerWalls+0x90 removed set:
+  wall = next_removed;
+  hash = FUN_1405b0d70(public_hash_state,&wall);
+  FUN_140b772b0(&result,public,hash,&wall);
+  if (!SBORROW8(0,result.value_head) &&
+      (memcpy(&temporary,&result.value_head,0x2a0),!SBORROW8(0,temporary.head))) {
+    FUN_140895600(&temporary); // drops PublicWallState allocations
+    push_event(deleted,wall);
+  }
+
+Created/updated loop walks InnerWalls+0x30 then +0x60 sets:
+  is_adding = current_set_is_created;
+  row = lookup_inner_0x78_stride(wall);
+  if (row.count < 2 || row.length <= 0.0) continue;
+  push_event(changed,wall);
+  hash = hash_wall_id(public_hash_state,wall);
+  FUN_140b772b0(&result,public,hash,&wall);
+  if (SBORROW8(0,result.value_head)) {
+    old_public.head = i64::MIN;
+    new_row = 1;
+  } else {
+    memcpy(&old_public,&result.value_head,0x2a0);
+    if (SBORROW8(0,old_public.head)) new_row = 1;
+    else {
+      memcpy(&old_record,&old_public,0x2a0);
+      if (is_adding) panic("assertion failed: !is_adding");
+      // preserve some buffers and free/rebuild owned geometry arrays
+    }
+  }
+  // build 0x2a0 public record then insert into map
+
+Question: Can FUN_140b772b0 plausibly be a boolean contains, or is it removing/returning a full public record? What does the snippet actually say about degenerate source curves, missing public deletion, and repeated creation? Do not assert behavior for concurrent created+updated+removed until whole ordering is proven.

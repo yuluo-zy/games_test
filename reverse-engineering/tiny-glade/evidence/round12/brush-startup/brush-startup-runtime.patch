@@ -1,0 +1,973 @@
+--- a/tiny-glade/crates/country-core/src/components/brush_previews.rs
++++ b/tiny-glade/crates/country-core/src/components/brush_previews.rs
+@@ -0,0 +1,5 @@
++/// Original marker descriptors at140848d90/140849480; no owned fields.
++#[derive(bevy_ecs::component::Component, Debug, Default)]
++pub struct SnappingToEndPreview;
++#[derive(bevy_ecs::component::Component, Debug, Default)]
++pub struct SnappingToSegmentPreview;
+--- a/tiny-glade/crates/country-core/src/components/mod.rs
++++ b/tiny-glade/crates/country-core/src/components/mod.rs
+@@ -34,3 +34,6 @@
+ 
+ /// Canonical material normal map used by startup and draw consumers.
+ pub use rendering::NormalMap;
++
++pub mod brush_previews;
++pub use brush_previews::{SnappingToEndPreview, SnappingToSegmentPreview};
+--- a/tiny-glade/crates/country-core/src/lib.rs
++++ b/tiny-glade/crates/country-core/src/lib.rs
+@@ -39,6 +39,7 @@
+     pub mod arrow_gizmo_animation;
+     pub mod backend;
+     pub mod brush_preview;
++    pub mod look_at_camera;
+     pub mod debug;
+     pub mod camera_rig;
+     pub mod collision;
+--- a/tiny-glade/crates/country-core/src/startup/spawn_brush_previews.rs
++++ b/tiny-glade/crates/country-core/src/startup/spawn_brush_previews.rs
+@@ -1,75 +1,497 @@
+-//! 画笔预览网格（B `spawn_brush_previews` @0x140924b40，51 KB）。
+-//!
+-//! 证据（R10 契约 §2.4，O）：batch4；输入 shader/mesh 库、路径根、Commands、
+-//! ShaderBackend、watch。资源按出现序：
+-//! * shader `/timed_terrain_gizmo.raster.hlsl` → `timed_terrain_gizmo_shader`；
+-//! * 文件/注册名：`brush_arrow`、`brush_circle`、`brush_circle_cross`、
+-//!   `brush_circle_scribble`、`brush_arrow_flat`、`brush_4_arrows`(name
+-//!   `brush_terrain_edit`)、`brush_2_arrows`(name `brush_flat_roof_edit`)、
+-//!   `brush_5_replay`(name `brush_replay`)、`hand`(name `temp_sphere`)、
+-//!   `dashed_circle`、`dashed_lines`(name `snapping_line`)。
+-//! * spawn bundle 统计：10×0x38、4×0x40、2×0x78、1×0x88。
+-//!
+-//! U：bundle 与网格的逐项映射、Transform 初值。本模块只做真实网格注册。
+-use crate::asset_libraries::mesh_library::{AssetMeshLibrary, MeshAsset};
+-use super::register_mesh_file;
+-use bevy_ecs::prelude::Res;
+-
+-/// O：文件 stem 与注册名（`name` 缺省时同名）。
+-pub const PREVIEW_MESHES: [(&str, Option<&str>); 11] = [
+-    ("brush_arrow", None),
+-    ("brush_circle", None),
+-    ("brush_circle_cross", None),
+-    ("brush_circle_scribble", None),
+-    ("brush_arrow_flat", None),
+-    ("brush_4_arrows", Some("brush_terrain_edit")),
+-    ("brush_2_arrows", Some("brush_flat_roof_edit")),
+-    ("brush_5_replay", Some("brush_replay")),
+-    ("hand", Some("temp_sphere")),
+-    ("dashed_circle", None),
+-    ("dashed_lines", Some("snapping_line")),
++//! B spawn_brush_previews140924b40/8361B: original22 mesh registrations,
++//!18 explicit color overwrites,17 typed entities and three shader lookups.
++//! Asset failures propagate to the startup owner; no missing-file continuation.
++use crate::{
++    asset_libraries::{
++        Handle,
++        mesh_library::{AssetMeshLibrary, MeshAsset},
++        meshwatch::MeshWatch,
++        shader_library::AssetShaderLibrary,
++    },
++    components::drawable::DrawableMeshBundle,
++    components::{FollowMouse, KeepOnLevelUnload, SnappingToEndPreview, SnappingToSegmentPreview},
++    geometry::sphere::Sphere,
++    render::{
++        mesh::Mesh,
++        shader::{RasterShaderProgram, boundary::ShaderBackend},
++    },
++    startup::load_shaders::load_shader_into_library,
++    systems::{
++        brush_preview::BrushPreview,
++        history::signifier_replay_active::SignifierReplayIndex,
++        look_at_camera::LookAtCamera,
++        paths::SetSizeBasedOnAppModePath,
++        render_loop::draw_passes::{
++            draw_callbacks_a::ArrowGizmoView,
++            draw_lists::{DontCastShadow, UiPass},
++        },
++    },
++    utils::{components::transform::Transform, load_json::try_load_json_as_mesh},
++};
++use anyhow::Context;
++use bevy_ecs::system::Commands;
++use glam::{Quat, Vec3};
++use std::path::Path;
++pub const PREVIEW_SHADER: (&str, &str) = (
++    "/timed_terrain_gizmo.raster.hlsl",
++    "timed_terrain_gizmo_shader",
++);
++/// Native dynamically formats these exact stems, including original `foward`.
++pub const EXTRA_PREVIEW_MESHES: [&str; 10] = [
++    "brush_arrow_flat_single_up",
++    "brush_arrow_flat_single_foward",
++    "brush_arrow_flat_outline",
++    "flat_arrow",
++    "flat_arrow_outline",
++    "corner_arrow",
++    "corner_arrow_outline",
++    "corner_arrow_switch_ridge_dir",
++    "move_shape",
++    "move_shape_outline",
+ ];
+-
+-/// O：唯一显式注册的 shader。
+-pub const PREVIEW_SHADER: (&str, &str) =
+-    ("/timed_terrain_gizmo.raster.hlsl", "timed_terrain_gizmo_shader");
+-
+-/// O：spawn 记录按 bundle 尺寸分组。
+-pub const PREVIEW_SPAWN_BUNDLES: [(usize, usize); 4] = [(0x38, 10), (0x40, 4), (0x78, 2), (0x88, 1)];
+-
+-pub fn spawn_brush_previews_meshes(meshes: Res<AssetMeshLibrary>) {
+-    for (stem, name) in PREVIEW_MESHES {
+-        let path = format!("assets/meshes/{stem}.json");
+-        if !std::path::Path::new(&path).is_file() {
+-            log::error!(
+-                target: "country_core::startup::spawn_brush_previews",
+-                "mesh file {path} is absent; skipping"
+-            );
+-            continue;
+-        }
+-        let mesh = crate::utils::load_json::load_json_as_mesh(&path);
+-        meshes.add(MeshAsset::new(
+-            mesh,
+-            Some(name.unwrap_or(stem).to_string()),
++fn mesh(
++    root: &Path,
++    stem: &str,
++    name: &str,
++    color: Option<Vec3>,
++    meshes: &AssetMeshLibrary,
++    watch: &MeshWatch,
++) -> anyhow::Result<Handle<Mesh>> {
++    let path = root.join(format!("assets/meshes/{stem}.json"));
++    let mut value = try_load_json_as_mesh(&path)
++        .with_context(|| format!("loading brush preview {}", path.display()))?;
++    if let Some(color) = color {
++        value.add_color(color);
++    }
++    watch.watch(&value);
++    Ok(meshes.add(MeshAsset::new(value, Some(name.to_owned()))))
++}
++fn color_shader(shaders: &AssetShaderLibrary) -> anyhow::Result<Handle<RasterShaderProgram>> {
++    shaders
++        .get_raster_handle_by_name("vertex_color_shader")
++        .context("original vertex_color_shader is required for brush startup")
++}
++fn snapping_transform() -> Transform {
++    Transform {
++        rotation: Quat::IDENTITY,
++        translation: Vec3::new(-0.0, -0.5, -0.0),
++        scale: Vec3::ZERO,
++    }
++}
++/// Source adapter takes the actual asset root/backend owners directly. Native
++/// six ECS params are device,meshes,meshwatch,shaders,shaderwatch,Commands; the
++/// host owns compiler/watch wiring. This function preserves original admission
++/// and all partial-side-effect boundaries if a later asset fails.
++#[allow(clippy::too_many_arguments)]
++pub fn spawn_brush_previews(
++    root: &Path,
++    backend: &dyn ShaderBackend,
++    meshes: &AssetMeshLibrary,
++    watch: &MeshWatch,
++    shaders: &AssetShaderLibrary,
++    commands: &mut Commands,
++) -> anyhow::Result<()> {
++    let timed = load_shader_into_library(shaders, backend, PREVIEW_SHADER.0, PREVIEW_SHADER.1);
++    let arrow = mesh(
++        root,
++        "brush_arrow",
++        "brush_arrow",
++        Some(Vec3::ONE),
++        meshes,
++        watch,
++    )?;
++    let circle = mesh(
++        root,
++        "brush_circle",
++        "brush_circle",
++        Some(Vec3::ONE),
++        meshes,
++        watch,
++    )?;
++    let cross = mesh(
++        root,
++        "brush_circle_cross",
++        "brush_circle_cross",
++        None,
++        meshes,
++        watch,
++    )?;
++    let scribble = mesh(
++        root,
++        "brush_circle_scribble",
++        "brush_circle_scribble",
++        Some(Vec3::new(0.5, 0., 0.)),
++        meshes,
++        watch,
++    )?;
++    let flat = mesh(
++        root,
++        "brush_arrow_flat",
++        "brush_arrow_flat",
++        Some(Vec3::ONE),
++        meshes,
++        watch,
++    )?;
++    let terrain = mesh(
++        root,
++        "brush_4_arrows",
++        "brush_terrain_edit",
++        Some(Vec3::ONE),
++        meshes,
++        watch,
++    )?;
++    let roof = mesh(
++        root,
++        "brush_2_arrows",
++        "brush_flat_roof_edit",
++        Some(Vec3::ONE),
++        meshes,
++        watch,
++    )?;
++    let replay = mesh(
++        root,
++        "brush_5_replay",
++        "brush_replay",
++        Some(Vec3::ONE),
++        meshes,
++        watch,
++    )?;
++    for stem in EXTRA_PREVIEW_MESHES {
++        mesh(root, stem, stem, Some(Vec3::ONE), meshes, watch)?;
++    }
++    let color = color_shader(shaders)?;
++    commands.spawn((
++        KeepOnLevelUnload,
++        DrawableMeshBundle {
++            mesh: arrow,
++            shader: color,
++            transform: Transform::identity(),
++        },
++        BrushPreview(1),
++        FollowMouse(false),
++    ));
++    commands.spawn((
++        KeepOnLevelUnload,
++        circle,
++        color,
++        BrushPreview(3),
++        FollowMouse(false),
++        SetSizeBasedOnAppModePath,
++    ));
++    commands.spawn((
++        KeepOnLevelUnload,
++        circle,
++        color,
++        BrushPreview(4),
++        FollowMouse(false),
++    ));
++    commands.spawn((
++        KeepOnLevelUnload,
++        circle,
++        color,
++        BrushPreview(5),
++        FollowMouse(false),
++    ));
++    commands.spawn((
++        KeepOnLevelUnload,
++        cross,
++        color,
++        BrushPreview(6),
++        DontCastShadow,
++        FollowMouse(false),
++    ));
++    for kind in 7..=10 {
++        commands.spawn((
++            KeepOnLevelUnload,
++            scribble,
++            color,
++            BrushPreview(kind),
++            DontCastShadow,
++            FollowMouse(false),
+         ));
+     }
+-    // U: 17 条 spawn 的网格/Transform/pass 逐项映射未恢复。
++    commands.spawn((
++        KeepOnLevelUnload,
++        flat,
++        color,
++        BrushPreview(2),
++        LookAtCamera,
++        UiPass,
++    ));
++    for index in [1, 2] {
++        commands.spawn((
++            KeepOnLevelUnload,
++            replay,
++            color,
++            BrushPreview(13),
++            SignifierReplayIndex(index),
++            UiPass,
++        ));
++    }
++    commands.spawn((
++        KeepOnLevelUnload,
++        terrain,
++        timed,
++        BrushPreview(11),
++        ArrowGizmoView { f0: 0., f4: 0. },
++        LookAtCamera,
++        FollowMouse(true),
++        UiPass,
++    ));
++    commands.spawn((
++        KeepOnLevelUnload,
++        roof,
++        timed,
++        BrushPreview(12),
++        ArrowGizmoView { f0: 0., f4: 0. },
++        LookAtCamera,
++        FollowMouse(true),
++        UiPass,
++    ));
++    // Native constructs this named sphere even though this startup does not
++    // attach its handle to an entity. Other real consumers resolve the name.
++    let sphere = Mesh::try_from(Sphere::new(0, 1.0))
++        .context("creating temp_sphere brush mesh")?
++        .add_color_self(Vec3::ONE);
++    watch.watch(&sphere);
++    meshes.add(MeshAsset::new(sphere, Some("temp_sphere".to_owned())));
++    let hand = mesh(root, "hand", "pet_hand", None, meshes, watch)?;
++    commands.spawn((
++        KeepOnLevelUnload,
++        hand,
++        color,
++        LookAtCamera,
++        FollowMouse(false),
++        UiPass,
++        BrushPreview(14),
++    ));
++    let dashed_circle = mesh(root, "dashed_circle", "circle", None, meshes, watch)?;
++    let color = color_shader(shaders)?;
++    commands.spawn((
++        KeepOnLevelUnload,
++        DrawableMeshBundle {
++            mesh: dashed_circle,
++            shader: color,
++            transform: snapping_transform(),
++        },
++        DontCastShadow,
++        SnappingToEndPreview,
++        UiPass,
++    ));
++    let dashed_line = mesh(root, "dashed_lines", "snapping_line", None, meshes, watch)?;
++    let color = color_shader(shaders)?;
++    commands.spawn((
++        KeepOnLevelUnload,
++        DrawableMeshBundle {
++            mesh: dashed_line,
++            shader: color,
++            transform: snapping_transform(),
++        },
++        DontCastShadow,
++        SnappingToSegmentPreview,
++        UiPass,
++    ));
++    Ok(())
+ }
+ 
+ #[cfg(test)]
+-mod tests {
++mod original_startup_tests {
+     use super::*;
+-
++    use crate::render::{
++        mesh::{ATTR_COLOR, VertexAttributeValues},
++        test_device::TestDevice,
++    };
++    use bevy_ecs::world::{CommandQueue, World};
++    fn evidence(name: &str) -> serde_json::Value {
++        let p = Path::new(env!("CARGO_MANIFEST_DIR"))
++            .join("../../../reverse-engineering/tiny-glade/evidence/round12/brush-startup")
++            .join(name);
++        serde_json::from_slice(&std::fs::read(p).unwrap()).unwrap()
++    }
++    fn assets() -> std::path::PathBuf {
++        std::env::var_os("TG_INSTALL_ROOT")
++            .map(std::path::PathBuf::from)
++            .unwrap_or_else(|| {
++                Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../ljxsj_92385/Tiny Glade")
++            })
++    }
++    fn common_shader(shaders: &AssetShaderLibrary, device: &TestDevice) {
++        load_shader_into_library(
++            shaders,
++            device,
++            "/vertex_color.raster.hlsl",
++            "vertex_color_shader",
++        );
++    }
+     #[test]
+-    fn preview_table_matches_the_contract_and_bundle_counts() {
+-        assert_eq!(PREVIEW_MESHES.len(), 11);
+-        assert_eq!(PREVIEW_SHADER.1, "timed_terrain_gizmo_shader");
+-        let spawns: usize = PREVIEW_SPAWN_BUNDLES.iter().map(|(_, count)| count).sum();
+-        assert_eq!(spawns, 17);
+-        assert_eq!(PREVIEW_SPAWN_BUNDLES[2], (0x78, 2));
++    fn actual_original_assets_match_all22_native_registrations_and17_typed_spawn_payloads() {
++        let native = evidence("native-startup-receipt.json");
++        let expected = evidence("native-semantic-spawn-receipts.json");
++        let meshes = AssetMeshLibrary::new();
++        let watch = MeshWatch::new(false);
++        let shaders = AssetShaderLibrary::new();
++        let device = TestDevice::default();
++        common_shader(&shaders, &device);
++        let mut world = World::new();
++        let mut queue = CommandQueue::default();
++        spawn_brush_previews(
++            &assets(),
++            &device,
++            &meshes,
++            &watch,
++            &shaders,
++            &mut Commands::new(&mut queue, &world),
++        )
++        .unwrap();
++        assert_eq!(world.entities().len(), 0);
++        queue.apply(&mut world);
++        assert_eq!(meshes.mesh_entries.len(), 22);
++        for r in native["registrations"].as_array().unwrap() {
++            let name = r["name"].as_str().unwrap();
++            let mesh = meshes.get(meshes.get_handle_by_name(name)).unwrap();
++            assert!(!mesh.indices.is_empty(), "{name}");
++            let ordinal = r["mesh_ordinal"].as_u64().unwrap();
++            if let Some(call) = native["color_calls"]
++                .as_array()
++                .unwrap()
++                .iter()
++                .find(|c| c["mesh_ordinal"].as_u64() == Some(ordinal))
++            {
++                let expected_bits: Vec<u32> = call["color_bits"]
++                    .as_array()
++                    .unwrap()
++                    .iter()
++                    .map(|v| v.as_u64().unwrap() as u32)
++                    .collect();
++                let VertexAttributeValues::Float3(colors) = mesh.attr(ATTR_COLOR) else {
++                    panic!("native color overwrite must be Float3")
++                };
++                assert_eq!(colors.len(), mesh.positions().len());
++                for color in colors {
++                    assert_eq!(color.to_array().map(f32::to_bits).as_slice(), expected_bits);
++                }
++            }
++        }
+         assert_eq!(
+-            PREVIEW_MESHES[5],
+-            ("brush_4_arrows", Some("brush_terrain_edit"))
++            meshes
++                .get(meshes.get_handle_by_name("temp_sphere"))
++                .unwrap()
++                .positions()
++                .len(),
++            12
+         );
++        let mut entities: Vec<_> = world
++            .query_filtered::<bevy_ecs::entity::Entity, bevy_ecs::query::With<KeepOnLevelUnload>>()
++            .iter(&world)
++            .collect();
++        entities.sort_by_key(|e| e.index());
++        assert_eq!(entities.len(), 17);
++        for (entity, expected) in entities.iter().zip(expected.as_array().unwrap()) {
++            let row = world.entity(*entity);
++            let mesh = *row.get::<Handle<Mesh>>().unwrap();
++            let shader = *row.get::<Handle<RasterShaderProgram>>().unwrap();
++            let name = native["registrations"]
++                .as_array()
++                .unwrap()
++                .iter()
++                .find(|r| meshes.get_handle_by_name(r["name"].as_str().unwrap()) == mesh)
++                .unwrap()["name"]
++                .as_str()
++                .unwrap();
++            let transform = row.get::<Transform>().map(|t| {
++                t.rotation
++                    .to_array()
++                    .into_iter()
++                    .chain(t.translation.to_array())
++                    .chain(t.scale.to_array())
++                    .map(f32::to_bits)
++                    .collect::<Vec<_>>()
++            });
++            let actual = serde_json::json!({
++                "mesh":name,"shader":shaders.get_raster(shader).unwrap().name,"transform_bits":transform,
++                "brush":row.get::<BrushPreview>().map(|p|p.0),"follow_mouse":row.get::<FollowMouse>().map(|p|p.0),
++                "ui":row.contains::<UiPass>(),"no_shadow":row.contains::<DontCastShadow>(),"look_at":row.contains::<LookAtCamera>(),
++                "path_size":row.contains::<SetSizeBasedOnAppModePath>(),"replay_index":row.get::<SignifierReplayIndex>().map(|p|p.0),
++                "arrow_bits":row.get::<ArrowGizmoView>().map(|p|[p.f0.to_bits(),p.f4.to_bits()]),
++                "snap_end":row.contains::<SnappingToEndPreview>(),"snap_segment":row.contains::<SnappingToSegmentPreview>(),
++            });
++            assert_eq!(&actual, expected, "native deferred entity {entity:?}");
++        }
++    }
++    #[test]
++    fn every_original_file_failure_preserves_its_native_partial_side_effect_boundary() {
++        let native = evidence("native-startup-receipt.json");
++        let temp = tempfile::tempdir().unwrap();
++        std::fs::create_dir_all(temp.path().join("assets/meshes")).unwrap();
++        for file in native["meshes"]
++            .as_array()
++            .unwrap()
++            .iter()
++            .filter_map(|p| p.as_str())
++            .filter(|p| !p.starts_with('<'))
++        {
++            std::fs::copy(assets().join(file), temp.path().join(file)).unwrap();
++        }
++        for case in native["failure_cases"].as_array().unwrap() {
++            let ordinal = case["mesh_ordinal"].as_u64().unwrap() as usize;
++            let relative = native["meshes"][ordinal - 1].as_str().unwrap();
++            if relative.starts_with('<') {
++                continue;
++            }
++            let file = temp.path().join(relative);
++            let removed = file.with_extension("json.held");
++            std::fs::rename(&file, &removed).unwrap();
++            let meshes = AssetMeshLibrary::new();
++            let watch = MeshWatch::new(false);
++            let shaders = AssetShaderLibrary::new();
++            let device = TestDevice::default();
++            common_shader(&shaders, &device);
++            let mut world = World::new();
++            let mut queue = CommandQueue::default();
++            assert!(
++                spawn_brush_previews(
++                    temp.path(),
++                    &device,
++                    &meshes,
++                    &watch,
++                    &shaders,
++                    &mut Commands::new(&mut queue, &world)
++                )
++                .is_err(),
++                "missing {relative} must fail"
++            );
++            queue.apply(&mut world);
++            assert_eq!(
++                world.entities().len() as u64,
++                case["spawns"].as_u64().unwrap()
++            );
++            assert_eq!(
++                meshes.mesh_entries.len() as u64,
++                case["registered"].as_u64().unwrap()
++            );
++            std::fs::rename(removed, file).unwrap();
++        }
++    }
++    #[test]
++    fn missing_shared_vertex_shader_fails_before_any_entity_is_queued() {
++        let meshes = AssetMeshLibrary::new();
++        let watch = MeshWatch::new(false);
++        let shaders = AssetShaderLibrary::new();
++        let mut world = World::new();
++        let mut queue = CommandQueue::default();
++        assert!(
++            spawn_brush_previews(
++                &assets(),
++                &TestDevice::default(),
++                &meshes,
++                &watch,
++                &shaders,
++                &mut Commands::new(&mut queue, &world)
++            )
++            .is_err()
++        );
++        queue.apply(&mut world);
++        assert_eq!(world.entities().len(), 0);
++        assert_eq!(meshes.mesh_entries.len(), 18);
+     }
+ }
+--- a/tiny-glade/crates/country-core/src/systems/brush_preview.rs
++++ b/tiny-glade/crates/country-core/src/systems/brush_preview.rs
+@@ -6,7 +6,7 @@
+ //!   `Res<DebugGui>`, `Res<EraserSizeMultiplier>`, `Res<BrushSizes>`；
+ //! - `DebugGui.hide_brush_previews`（+0xfa）置位 → 对全部 BrushPreview 实体
+ //!   `Commands::remove::<Transform>` 后返回；
+-//! - 每条 `OverwriteBrushPreview`（0x20 B：`flag@+8` bit0、世界位置 Vec3@+0xc、
++//! - 最后一条 `OverwriteBrushPreview`（0x20 B：`flag@+8` bit0、世界位置 Vec3@+0xc、
+ //!   `kind@+0x18`）：kind 不匹配的实体移除 Transform；匹配时按 flag 位
+ //!   写/插入 Transform.translation（flag bit0=0 且无 Transform 时用光标位置）；
+ //! - 逐实体按 `BrushPreview` 的 kind 字节（4..=10）算 preview scale：
+@@ -17,16 +17,15 @@
+ //!   `m = EraserSizeMultiplier.0`；写 `Transform.scale`（+0x1c/+0x20/+0x24）。
+ //! - `clone_behavior` @0x140867080：判别 2（已判等）。
+ //!
+-//! GAP（登记）：原生插入的是 0x68 B bundle（Transform + 其它组件），crate 只落库
+-//! Transform；`AssetMeshLibrary`/`AssetShaderLibrary` 的预览网格解析面未接。
++//! Native32B EventInstance includes the8B Bevy EventId. Business payload is
++//! flag/Vec3/kind; the104B deferred record is insert<Transform> plus Bevy
++//! command ownership/error-handler metadata, not an additional game component.
+ use bevy_ecs::prelude::*;
+ use glam::Vec3;
+ 
+ use crate::{
+     resources::{
+-        brush_sizes::BrushSizes,
+-        cursor_terrain_raycast::CursorTerrainRaycast,
+-        gui::DebugGui,
++        brush_sizes::BrushSizes, cursor_terrain_raycast::CursorTerrainRaycast, gui::DebugGui,
+         walls::EraserSizeMultiplier,
+     },
+     utils::components::transform::Transform,
+@@ -39,23 +38,15 @@
+ #[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+ pub struct BrushPreview(pub u8);
+ 
+-/// 覆盖笔刷预览事件（O：0x20 B 记录；`flag@+8` bit0、`position: Vec3@+0xc`、
+-/// `kind@+0x18`；`+0x00` 8 B 载荷未取证）。
++/// Original EventInstance: EventId@0, payload@8. Keep EventId in Bevy.
+ #[repr(C)]
+ #[derive(Event, Clone, Copy, Debug, Default, PartialEq)]
+ pub struct OverwriteBrushPreview {
+-    /// +0x00：未取证（U）。
+-    pub head: u64,
+-    /// +0x08：flag（bit0 决定直接覆盖 vs 仅缺省插入）。
+     pub flag: u8,
+-    /// +0x09..+0x0c：填充。
+     pub pad: [u8; 3],
+-    /// +0x0c：世界位置。
+     pub position: Vec3,
+-    /// +0x18：笔刷种类（匹配 `BrushPreview.0`）。
+     pub kind: u8,
+-    /// +0x19..+0x20：填充。
+-    pub pad2: [u8; 7],
++    pub pad2: [u8; 3],
+ }
+ 
+ /// 克隆行为判别（O：0x140867080 `mov eax,2`）。
+@@ -63,20 +54,12 @@
+ 
+ /// `maxss`：任一操作数 NaN 时返回 src（与 EXE 位语义一致）。
+ fn maxss(dst: f32, src: f32) -> f32 {
+-    if dst > src {
+-        dst
+-    } else {
+-        src
+-    }
++    if dst > src { dst } else { src }
+ }
+ 
+ /// `minss`：任一操作数 NaN 时返回 src。
+ fn minss(dst: f32, src: f32) -> f32 {
+-    if dst < src {
+-        dst
+-    } else {
+-        src
+-    }
++    if dst < src { dst } else { src }
+ }
+ 
+ /// kind 6 的乘数（O 位型 0x3fd70a3d，读自 0x142a95dd0）。
+@@ -134,7 +117,7 @@
+     }
+ 
+     // O：OverwriteBrushPreview → 逐事件按 kind 写/插入 translation。
+-    for event in overwrite.read() {
++    if let Some(event) = overwrite.read().last() {
+         for (entity, preview, transform) in &mut query {
+             if preview.0 != event.kind {
+                 commands.entity(entity).remove::<Transform>();
+@@ -169,9 +152,6 @@
+     }
+ }
+ 
+-/// `register_required_components` @0x140866800（O：Bevy 派生注册胶水）。
+-pub fn register_required_components(_world: &mut World) {}
+-
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+@@ -215,9 +195,155 @@
+     fn event_layout_matches_native_offsets() {
+         let e = OverwriteBrushPreview::default();
+         let base = &e as *const _ as usize;
+-        assert_eq!(&e.flag as *const _ as usize - base, 0x08);
+-        assert_eq!(&e.position as *const _ as usize - base, 0x0c);
+-        assert_eq!(&e.kind as *const _ as usize - base, 0x18);
+-        assert_eq!(std::mem::size_of::<OverwriteBrushPreview>(), 0x20);
+-    }
+-}
++        assert_eq!(&e.flag as *const _ as usize - base, 0x00);
++        assert_eq!(&e.position as *const _ as usize - base, 0x04);
++        assert_eq!(&e.kind as *const _ as usize - base, 0x10);
++        assert_eq!(std::mem::size_of::<OverwriteBrushPreview>(), 0x14);
++    }
++}
++
++#[cfg(test)]
++mod native_runtime_tests {
++    use super::*;
++    fn vec3(v: &serde_json::Value) -> Vec3 {
++        Vec3::new(
++            v[0].as_f64().unwrap() as f32,
++            v[1].as_f64().unwrap() as f32,
++            v[2].as_f64().unwrap() as f32,
++        )
++    }
++    fn bits(t: &Transform) -> Vec<u32> {
++        t.rotation
++            .to_array()
++            .into_iter()
++            .chain(t.translation.to_array())
++            .chain(t.scale.to_array())
++            .map(f32::to_bits)
++            .collect()
++    }
++    #[test]
++    fn actual_schedule_matches80_full_original_native_cases_including_deferred_identity_insertion()
++    {
++        let fixtures:serde_json::Value=serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"),"/../../../reverse-engineering/tiny-glade/evidence/round12/brush-startup/native-brush-runtime-fixtures.json"))).unwrap();
++        for case in fixtures.as_array().unwrap() {
++            let input = &case["input"];
++            let native = &case["native"];
++            let mut world = World::new();
++            world.init_resource::<Events<OverwriteBrushPreview>>();
++            let mut cursor = CursorTerrainRaycast::new();
++            if !input["cursor"].is_null() {
++                cursor.update(Some(vec3(&input["cursor"])));
++            }
++            world.insert_resource(cursor);
++            let mut debug = DebugGui::default();
++            debug.hide_brush_previews = input["hide"].as_bool().unwrap();
++            world.insert_resource(debug);
++            world.insert_resource(EraserSizeMultiplier(1.));
++            world.insert_resource(BrushSizes {
++                path: 0.8,
++                water: 2.,
++                garden: 3.,
++            });
++            let mut entities = Vec::new();
++            for row in input["rows"].as_array().unwrap() {
++                let mut e = world.spawn(BrushPreview(row[0].as_u64().unwrap() as u8));
++                if !row[1].is_null() {
++                    e.insert(Transform {
++                        translation: vec3(&row[1]),
++                        scale: Vec3::splat(2.),
++                        ..Transform::identity()
++                    });
++                }
++                entities.push(e.id());
++            }
++            for event in input["events"].as_array().unwrap() {
++                world.send_event(OverwriteBrushPreview {
++                    kind: event[0].as_u64().unwrap() as u8,
++                    flag: event[1].as_u64().unwrap() as u8,
++                    position: vec3(&event[2]),
++                    ..Default::default()
++                });
++            }
++            let mut expected: Vec<Option<Vec<u32>>> = native["transforms"]
++                .as_array()
++                .unwrap()
++                .iter()
++                .map(|v| {
++                    if v.is_null() {
++                        None
++                    } else {
++                        Some(
++                            v.as_array()
++                                .unwrap()
++                                .iter()
++                                .map(|x| x.as_u64().unwrap() as u32)
++                                .collect(),
++                        )
++                    }
++                })
++                .collect();
++            for command in native["commands"].as_array().unwrap() {
++                if let Some(id) = command["remove"].as_u64() {
++                    expected[(id - 0x100000000) as usize] = None;
++                }
++                if let Some(id) = command["insert"].as_u64() {
++                    expected[(id - 0x100000000) as usize] = Some(
++                        command["transform_bits"]
++                            .as_array()
++                            .unwrap()
++                            .iter()
++                            .map(|x| x.as_u64().unwrap() as u32)
++                            .collect(),
++                    );
++                }
++            }
++            let mut schedule = Schedule::default();
++            schedule.add_systems(brush_preview);
++            schedule.run(&mut world);
++            let actual: Vec<_> = entities
++                .into_iter()
++                .map(|id| world.get::<Transform>(id).map(bits))
++                .collect();
++            assert_eq!(actual, expected, "input={input}");
++        }
++    }
++    #[test]
++    fn hidden_preview_retains_reader_then_unhide_consumes_last_event() {
++        let mut world = World::new();
++        world.init_resource::<Events<OverwriteBrushPreview>>();
++        world.init_resource::<CursorTerrainRaycast>();
++        let mut debug = DebugGui::default();
++        debug.hide_brush_previews = true;
++        world.insert_resource(debug);
++        world.insert_resource(EraserSizeMultiplier(1.));
++        world.insert_resource(BrushSizes {
++            path: 0.8,
++            water: 2.,
++            garden: 3.,
++        });
++        let e = world.spawn((BrushPreview(4), Transform::identity())).id();
++        world.send_event(OverwriteBrushPreview {
++            kind: 5,
++            ..Default::default()
++        });
++        world.send_event(OverwriteBrushPreview {
++            kind: 4,
++            flag: 1,
++            position: Vec3::new(6., 7., 8.),
++            ..Default::default()
++        });
++        let mut schedule = Schedule::default();
++        schedule.add_systems(brush_preview);
++        schedule.run(&mut world);
++        assert!(world.get::<Transform>(e).is_none());
++        world.resource_mut::<DebugGui>().hide_brush_previews = false;
++        schedule.run(&mut world);
++        assert_eq!(
++            world.get::<Transform>(e).unwrap().translation,
++            Vec3::new(6., 7., 8.)
++        );
++        assert_eq!(world.get::<Transform>(e).unwrap().scale, Vec3::ONE);
++        schedule.run(&mut world);
++        assert_eq!(world.get::<Transform>(e).unwrap().scale, Vec3::ONE);
++    }
++}
+--- a/tiny-glade/crates/country-core/src/systems/history/signifier_replay_active.rs
++++ b/tiny-glade/crates/country-core/src/systems/history/signifier_replay_active.rs
+@@ -0,0 +1,4 @@
++//! Original component descriptor140b1d90e: size8,alignment8.
++//! Startup emits index1/2; no replacement empty replay consumer is registered.
++#[derive(bevy_ecs::component::Component, Debug, PartialEq, Eq)]
++pub struct SignifierReplayIndex(pub usize);
+--- a/tiny-glade/crates/country-core/src/systems/history.rs
++++ b/tiny-glade/crates/country-core/src/systems/history.rs
+@@ -765,3 +765,5 @@
+ pub mod wall_replay_interpreter;
+ 
+ pub mod wall_replay_transition;
++
++pub mod signifier_replay_active;
+--- a/tiny-glade/crates/country-core/src/systems/look_at_camera.rs
++++ b/tiny-glade/crates/country-core/src/systems/look_at_camera.rs
+@@ -0,0 +1,13 @@
++//! B look_at_camera140873de0/1476B. Ignore profiling/library iterator glue;
++//! each matching transform faces the maintained camera eye with world +Y up.
++use crate::{
++    systems::camera_rig::main_camera::MainCamera, utils::components::transform::Transform,
++};
++use bevy_ecs::prelude::*;
++#[derive(Component, Debug, Default)]
++pub struct LookAtCamera;
++pub fn look_at_camera(mut query: Query<(&mut Transform, &LookAtCamera)>, camera: Res<MainCamera>) {
++    for (mut transform, _) in &mut query {
++        transform.look_at(camera.eye_position(), glam::Vec3::Y);
++    }
++}
+--- a/tiny-glade/crates/country-core/src/systems/paths.rs
++++ b/tiny-glade/crates/country-core/src/systems/paths.rs
+@@ -149,7 +149,7 @@
+ /// Fresh 反编译（2026-10-17）逐分支：
+ /// - 门：`AppMode` native tag ∈ {7, 8}（Path / Cobblestone(_)）；其它直接返回；
+ /// - `brush_size = BrushSizes.path * 1.25`（无 is_finite 断言）；
+-/// - 取 Query 的**第一个**匹配实体（原生只找到一个并写回，无迭代副作用）：
++/// - Query 必须恰好一个匹配实体；空或多个均不写（原608B查询第二项判错）：
+ ///   `scale.x = scale.z = brush_size`，`scale.y = max(brush_size, 1.0)`；
+ ///   Transform 偏移 +0x1c/+0x20/+0x24。
+ pub mod path_brush_preview_size {
+@@ -170,7 +170,7 @@
+         }
+         // O：`MULSS [0x142a8d600]` = 1.25。
+         let size = brush.path * 1.25;
+-        if let Some(mut transform) = query.iter_mut().next() {
++        if let Ok(mut transform) = query.single_mut() {
+             transform.scale.x = size;
+             transform.scale.z = size;
+             // O：`MAXSS XMM0, [0x142925904]`（=1.0）：NaN 时返回 1.0（SSE maxss 语义）。
+@@ -932,3 +932,69 @@
+         let _ = std::any::type_name::<RecordCobblestone1EditToHistoryCmd>();
+     }
+ }
++
++#[cfg(test)]
++mod native_preview_cardinality_tests {
++    use super::*;
++    use crate::{
++        resources::brush_sizes::BrushSizes, systems::mode_manager::AppMode,
++        utils::components::transform::Transform,
++    };
++    use bevy_ecs::prelude::*;
++    #[test]
++    fn complete_original64_cardinality_mode_and_float_cases() {
++        let fixtures:serde_json::Value=serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"),"/../../../reverse-engineering/tiny-glade/evidence/round12/brush-startup/native-path-preview-fixtures.json"))).unwrap();
++        for case in fixtures.as_array().unwrap() {
++            let mut world = World::new();
++            let mode = match case["mode"].as_u64().unwrap() {
++                7 => AppMode::Path,
++                8 => AppMode::Cobblestone(Default::default()),
++                _ => AppMode::default(),
++            };
++            world.insert_resource(mode);
++            world.insert_resource(BrushSizes {
++                path: f32::from_bits(case["size_bits"].as_u64().unwrap() as u32),
++                water: 2.,
++                garden: 3.,
++            });
++            let ids: Vec<_> = (0..case["count"].as_u64().unwrap())
++                .map(|_| {
++                    world
++                        .spawn((
++                            SetSizeBasedOnAppModePath,
++                            Transform {
++                                translation: glam::Vec3::new(1., 2., 3.),
++                                scale: glam::Vec3::splat(2.),
++                                ..Transform::identity()
++                            },
++                        ))
++                        .id()
++                })
++                .collect();
++            let mut schedule = Schedule::default();
++            schedule.add_systems(path_brush_preview_size::path_brush_preview_size);
++            schedule.run(&mut world);
++            for (id, expected) in ids
++                .into_iter()
++                .zip(case["native"]["transforms"].as_array().unwrap())
++            {
++                let t = world.get::<Transform>(id).unwrap();
++                let bits: Vec<_> = t
++                    .rotation
++                    .to_array()
++                    .into_iter()
++                    .chain(t.translation.to_array())
++                    .chain(t.scale.to_array())
++                    .map(f32::to_bits)
++                    .collect();
++                let expected: Vec<_> = expected
++                    .as_array()
++                    .unwrap()
++                    .iter()
++                    .map(|x| x.as_u64().unwrap() as u32)
++                    .collect();
++                assert_eq!(bits, expected, "case={case}");
++            }
++        }
++    }
++}

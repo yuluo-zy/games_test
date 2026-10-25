@@ -1,0 +1,1090 @@
+{
+  "timestamp_utc": "2026-10-12T11:25:32.466450+00:00",
+  "status": "failed_or_inputs_changed",
+  "original_complete_equivalence": false,
+  "dependency_check": {
+    "external_packages": 53,
+    "matched_original_lock": true,
+    "unexpected": []
+  },
+  "checks": [
+    {
+      "label": "format",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "started_utc": "2026-10-12T11:23:22.812528+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/format.log"
+    },
+    {
+      "label": "tests",
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "--all-targets"
+      ],
+      "started_utc": "2026-10-12T11:23:23.442873+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/tests.log"
+    },
+    {
+      "label": "clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--offline",
+        "--locked",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "started_utc": "2026-10-12T11:24:09.155994+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/clippy.log"
+    },
+    {
+      "label": "build",
+      "command": [
+        "cargo",
+        "build",
+        "--offline",
+        "--locked",
+        "--examples"
+      ],
+      "started_utc": "2026-10-12T11:24:19.557167+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/build.log"
+    },
+    {
+      "label": "gpu-raw_resource_smoke",
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\target\\debug\\examples\\raw_resource_smoke.exe"
+      ],
+      "started_utc": "2026-10-12T11:24:56.414333+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/gpu-raw_resource_smoke.log",
+      "actual_output": {
+        "created_and_destroyed": [
+          "buffer",
+          "image",
+          "image_view",
+          "render_pass",
+          "framebuffer",
+          "sampler"
+        ],
+        "device": "Intel(R) UHD Graphics 630",
+        "gpu_rendering_tested": false,
+        "host_readback_bytes": 128,
+        "invalid_ranges_rejected": true,
+        "status": "passed",
+        "swapchain_tested": false
+      }
+    },
+    {
+      "label": "gpu-vulkan_smoke",
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\target\\debug\\examples\\vulkan_smoke.exe"
+      ],
+      "started_utc": "2026-10-12T11:24:56.554373+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/gpu-vulkan_smoke.log",
+      "actual_output": {
+        "accesses": 3,
+        "automatic_resource_creation": true,
+        "bytes": 256,
+        "device": "Intel(R) UHD Graphics 630",
+        "passes": 2,
+        "pattern": "11223344",
+        "real_gpu": true,
+        "receipts": 1,
+        "status": "passed",
+        "timeline": 2,
+        "unused_resource_culled": true
+      }
+    },
+    {
+      "label": "gpu-device_features_gpu",
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\target\\debug\\examples\\device_features_gpu.exe"
+      ],
+      "started_utc": "2026-10-12T11:24:56.678372+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/gpu-device_features_gpu.log",
+      "actual_output": {
+        "additional_queues": 0,
+        "addresses": [
+          18446603356690186240,
+          18446603356690186304
+        ],
+        "buffer_device_address_enabled": true,
+        "completed_value": 2,
+        "device": "Intel(R) UHD Graphics 630",
+        "distinct_queue_tested": false,
+        "readback_bytes": 256,
+        "reset_completed": true,
+        "status": "passed",
+        "timeline_wait_signal": true
+      }
+    },
+    {
+      "label": "gpu-device_policy_gpu",
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\target\\debug\\examples\\device_policy_gpu.exe"
+      ],
+      "started_utc": "2026-10-12T11:24:56.806101+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/gpu-device_policy_gpu.log",
+      "actual_output": {
+        "allowlist": [
+          {
+            "Vendor": "VALVE"
+          },
+          {
+            "Vendor": "OBS"
+          },
+          {
+            "Layer": "VK_LAYER_reshade"
+          }
+        ],
+        "allowlist_version": 2,
+        "auxiliary_count": 0,
+        "bda_enabled": true,
+        "blocked_layer_rejected": true,
+        "budget_refresh": {
+          "available": [
+            0
+          ],
+          "devices": [
+            {
+              "compatible": "Yes",
+              "driver": "Intel 101.2141",
+              "driver_encoding_known": true,
+              "driver_tag": 5,
+              "graphics": [
+                0
+              ],
+              "index": 0,
+              "memory": {
+                "host_budget": 0,
+                "host_size": 0,
+                "local_budget": 16274456576,
+                "local_size": 17079762944,
+                "unified": true
+              },
+              "name": "Intel(R) UHD Graphics 630",
+              "old_intel": true,
+              "present": null,
+              "supported": "No(\"原支持规则排除旧Intel（兼容性另行保留）\")"
+            }
+          ],
+          "missing": []
+        },
+        "bytes": 64,
+        "gpu_readback": true,
+        "headless": {
+          "available": [
+            0
+          ],
+          "devices": [
+            {
+              "compatible": "Yes",
+              "driver": "Intel 101.2141",
+              "driver_encoding_known": true,
+              "driver_tag": 5,
+              "graphics": [
+                0
+              ],
+              "index": 0,
+              "memory": {
+                "host_budget": 0,
+                "host_size": 0,
+                "local_budget": 16274456576,
+                "local_size": 17079762944,
+                "unified": true
+              },
+              "name": "Intel(R) UHD Graphics 630",
+              "old_intel": true,
+              "present": null,
+              "supported": "No(\"原支持规则排除旧Intel（兼容性另行保留）\")"
+            }
+          ],
+          "missing": []
+        },
+        "limits": [
+          "原sort comparator及implicit层来源/控制策略未知",
+          "无budget或驱动编码未确认时保持Unknown，候选fallback不宣称原支持",
+          "vendor专有性能/NVAPI不重写"
+        ],
+        "loader": {
+          "attempts": [
+            {
+              "candidate": "D:/game/nonexistent-rhapsody-loader.dll",
+              "error": "LoadLibraryExW failed"
+            },
+            {
+              "candidate": "system Vulkan loader",
+              "error": null
+            }
+          ],
+          "implicit_layer_origins_known": false,
+          "layers": [],
+          "version": 4206796
+        },
+        "missing_extension_rejected": true,
+        "missing_layer_rejected": true,
+        "original_ron_fork_used": true,
+        "pattern": "12345678",
+        "runtime_array_enabled": true,
+        "status": "passed",
+        "surface": {
+          "format_count": 4,
+          "min_image_count": 2,
+          "present_mode_count": 2,
+          "real_surface": true,
+          "selected_family": 0
+        },
+        "surface_candidates": {
+          "available": [
+            0
+          ],
+          "devices": [
+            {
+              "compatible": "Yes",
+              "driver": "Intel 101.2141",
+              "driver_encoding_known": true,
+              "driver_tag": 5,
+              "graphics": [
+                0
+              ],
+              "index": 0,
+              "memory": {
+                "host_budget": 0,
+                "host_size": 0,
+                "local_budget": 16274456576,
+                "local_size": 17079762944,
+                "unified": true
+              },
+              "name": "Intel(R) UHD Graphics 630",
+              "old_intel": true,
+              "present": [
+                0
+              ],
+              "supported": "No(\"原支持规则排除旧Intel（兼容性另行保留）\")"
+            }
+          ],
+          "missing": []
+        }
+      }
+    },
+    {
+      "label": "gpu-shader_production_gpu",
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\target\\debug\\examples\\shader_production_gpu.exe"
+      ],
+      "started_utc": "2026-10-12T11:24:56.968607+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/gpu-shader_production_gpu.log",
+      "actual_output": {
+        "arithmetic_input": 25,
+        "arithmetic_result": 42,
+        "descriptor_cache_reused": false,
+        "descriptor_invalidation_validated": true,
+        "descriptor_pool_reused": true,
+        "device": "Intel(R) UHD Graphics 630",
+        "original_fill_value": 43981,
+        "original_fill_words": 64,
+        "original_full_rhapsody_comparison": false,
+        "original_shader": "_fill_buffer.cs.hlsl_cs_main_0.bin",
+        "original_sparse_binding": 13,
+        "pipeline_cache_reused": true,
+        "sparse_bindings": [
+          3,
+          9
+        ],
+        "sparse_set": 2,
+        "status": "candidate_shader_production_gpu_passed"
+      }
+    },
+    {
+      "label": "gpu-raster_gpu",
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\target\\debug\\examples\\raster_gpu.exe"
+      ],
+      "started_utc": "2026-10-12T11:24:57.523843+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/gpu-raster_gpu.log",
+      "actual_output": {
+        "command_owns_after_cache_invalidation": true,
+        "draw_calls": 1,
+        "original_game_shader_comparison": false,
+        "pixel": [
+          64,
+          128,
+          191,
+          255
+        ],
+        "pixels_verified": 64,
+        "raster_cache_reused": true,
+        "raster_state_change_separates_key": true,
+        "status": "candidate_raster_gpu_passed",
+        "vertices": 3
+      }
+    },
+    {
+      "label": "gpu-attachment_gpu",
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\target\\debug\\examples\\attachment_gpu.exe"
+      ],
+      "started_utc": "2026-10-12T11:24:57.648863+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/gpu-attachment_gpu.log",
+      "actual_output": {
+        "begin_projections": [
+          {
+            "clear_count": 1,
+            "clear_words": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "contents": 0,
+            "extent": [
+              8,
+              8
+            ]
+          },
+          {
+            "clear_count": 1,
+            "clear_words": [
+              1065353216,
+              0,
+              1056964608,
+              1065353216
+            ],
+            "contents": 0,
+            "extent": [
+              8,
+              8
+            ]
+          }
+        ],
+        "cache_counts_before_clear": [
+          3,
+          2,
+          5
+        ],
+        "clear_value_reused": true,
+        "command_owns_after_invalidate": true,
+        "device": "Intel(R) UHD Graphics 630",
+        "extent_changed": true,
+        "failure_no_cache_mutation": true,
+        "generation_changed": true,
+        "image_resize_changed": true,
+        "original_full_begin_equivalence": false,
+        "pixel": [
+          255,
+          0,
+          128,
+          255
+        ],
+        "pixels_verified": 64,
+        "readback_bytes": 256,
+        "same_attachment_reused": true,
+        "status": "passed"
+      }
+    },
+    {
+      "label": "gpu-temporal_gpu",
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\target\\debug\\examples\\temporal_gpu.exe"
+      ],
+      "started_utc": "2026-10-12T11:24:57.776970+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/gpu-temporal_gpu.log",
+      "actual_output": {
+        "backend_arc_preserves_pending_resources": true,
+        "cache_clear_before_completion_wait": true,
+        "cache_resources_after_clear": 0,
+        "device": "Intel(R) UHD Graphics 630",
+        "frames": [
+          {
+            "both_reused": false,
+            "current": 1,
+            "export_count": 4,
+            "frame": 0,
+            "parity": 0,
+            "previous": 77,
+            "readback_passed": true,
+            "tokens": [
+              1,
+              2
+            ],
+            "width": 4
+          },
+          {
+            "both_reused": true,
+            "current": 2,
+            "export_count": 4,
+            "frame": 1,
+            "parity": 1,
+            "previous": 1,
+            "readback_passed": true,
+            "tokens": [
+              2,
+              1
+            ],
+            "width": 4
+          },
+          {
+            "both_reused": true,
+            "current": 3,
+            "export_count": 4,
+            "frame": 2,
+            "parity": 0,
+            "previous": 2,
+            "readback_passed": true,
+            "tokens": [
+              1,
+              2
+            ],
+            "width": 4
+          },
+          {
+            "both_reused": false,
+            "current": 4,
+            "export_count": 4,
+            "frame": 3,
+            "parity": 1,
+            "previous": 77,
+            "readback_passed": true,
+            "tokens": [
+              4,
+              3
+            ],
+            "width": 8
+          },
+          {
+            "both_reused": true,
+            "current": 5,
+            "export_count": 4,
+            "frame": 4,
+            "parity": 0,
+            "previous": 4,
+            "readback_passed": true,
+            "tokens": [
+              3,
+              4
+            ],
+            "width": 8
+          },
+          {
+            "both_reused": true,
+            "current": 6,
+            "export_count": 4,
+            "frame": 5,
+            "parity": 1,
+            "previous": 5,
+            "readback_passed": true,
+            "tokens": [
+              4,
+              3
+            ],
+            "width": 8
+          }
+        ],
+        "limits": [
+          "显式候选Vulkan访问映射",
+          "每帧后端重建",
+          "不证明原作完整游戏调度或画面一致"
+        ],
+        "physical_creations": 4,
+        "real_gpu": true,
+        "reclaimed_after_completion": 4,
+        "status": "passed"
+      }
+    },
+    {
+      "label": "gpu-queue_graph_gpu",
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\target\\debug\\examples\\queue_graph_gpu.exe"
+      ],
+      "started_utc": "2026-10-12T11:24:57.918624+00:00",
+      "exit_code": 101,
+      "log": "evidence/functional-run-logs/gpu-queue_graph_gpu.log"
+    },
+    {
+      "label": "gpu-swapchain_gpu",
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\target\\debug\\examples\\swapchain_gpu.exe"
+      ],
+      "started_utc": "2026-10-12T11:24:58.058421+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/gpu-swapchain_gpu.log",
+      "actual_output": {
+        "abandoned_lease_stale": true,
+        "device": "Intel(R) UHD Graphics 630",
+        "frames": [
+          {
+            "acquire_semaphore": 2115590666264,
+            "acquire_timeout_ns": 3000000000,
+            "binary_acquire_render_present": true,
+            "extent": [
+              320,
+              240
+            ],
+            "image_index": 0,
+            "pixel": [
+              0,
+              255,
+              0,
+              255
+            ],
+            "render_semaphore": 2115590667832,
+            "submission_fence": 2115590666936,
+            "suboptimal": false,
+            "sync_slot": 0
+          },
+          {
+            "acquire_semaphore": 2115592232120,
+            "acquire_timeout_ns": 3000000000,
+            "binary_acquire_render_present": true,
+            "extent": [
+              384,
+              256
+            ],
+            "image_index": 0,
+            "pixel": [
+              0,
+              255,
+              0,
+              255
+            ],
+            "render_semaphore": 2115592235032,
+            "submission_fence": 2115592231448,
+            "suboptimal": false,
+            "sync_slot": 0
+          },
+          {
+            "acquire_semaphore": 2115592233464,
+            "acquire_timeout_ns": 3000000000,
+            "binary_acquire_render_present": true,
+            "extent": [
+              384,
+              256
+            ],
+            "image_index": 0,
+            "pixel": [
+              0,
+              255,
+              0,
+              255
+            ],
+            "render_semaphore": 2115592236600,
+            "submission_fence": 2115592234808,
+            "suboptimal": false,
+            "sync_slot": 0
+          },
+          {
+            "acquire_semaphore": 2115592232792,
+            "acquire_timeout_ns": 3000000000,
+            "binary_acquire_render_present": true,
+            "extent": [
+              384,
+              256
+            ],
+            "image_index": 0,
+            "pixel": [
+              0,
+              255,
+              0,
+              255
+            ],
+            "render_semaphore": 2115592237944,
+            "submission_fence": 2115592233912,
+            "suboptimal": false,
+            "sync_slot": 0
+          },
+          {
+            "acquire_semaphore": 2115592238616,
+            "acquire_timeout_ns": 3000000000,
+            "binary_acquire_render_present": true,
+            "extent": [
+              384,
+              256
+            ],
+            "image_index": 1,
+            "pixel": [
+              0,
+              255,
+              0,
+              255
+            ],
+            "render_semaphore": 2115592231448,
+            "submission_fence": 2115592233016,
+            "suboptimal": false,
+            "sync_slot": 1
+          },
+          {
+            "acquire_semaphore": 2115592238840,
+            "acquire_timeout_ns": 3000000000,
+            "binary_acquire_render_present": true,
+            "extent": [
+              384,
+              256
+            ],
+            "image_index": 0,
+            "pixel": [
+              0,
+              255,
+              0,
+              255
+            ],
+            "render_semaphore": 2115592234808,
+            "submission_fence": 2115592238168,
+            "suboptimal": false,
+            "sync_slot": 0
+          }
+        ],
+        "managed_rebuild": true,
+        "original_slot_abi_equivalence": false,
+        "original_winit_flow_equivalence": false,
+        "present_completion_boundary": "queue_wait_idle only on slot reuse/disposal; conservative candidate",
+        "resize_registration_without_recreate": true,
+        "semaphore_and_fence_per_slot": true,
+        "slot_reuse_frames": [
+          {
+            "acquire_semaphore": 2115590666264,
+            "acquire_timeout_ns": 3000000000,
+            "binary_acquire_render_present": true,
+            "extent": [
+              320,
+              240
+            ],
+            "image_index": 0,
+            "pixel": [
+              0,
+              255,
+              0,
+              255
+            ],
+            "render_semaphore": 2115590667832,
+            "submission_fence": 2115590666936,
+            "suboptimal": false,
+            "sync_slot": 0
+          },
+          {
+            "acquire_semaphore": 2115590664472,
+            "acquire_timeout_ns": 3000000000,
+            "binary_acquire_render_present": true,
+            "extent": [
+              320,
+              240
+            ],
+            "image_index": 1,
+            "pixel": [
+              0,
+              255,
+              0,
+              255
+            ],
+            "render_semaphore": 2115590668056,
+            "submission_fence": 2115590666712,
+            "suboptimal": false,
+            "sync_slot": 1
+          },
+          {
+            "acquire_semaphore": 2115590667160,
+            "acquire_timeout_ns": 3000000000,
+            "binary_acquire_render_present": true,
+            "extent": [
+              320,
+              240
+            ],
+            "image_index": 2,
+            "pixel": [
+              0,
+              255,
+              0,
+              255
+            ],
+            "render_semaphore": 2115590664920,
+            "submission_fence": 2115590667384,
+            "suboptimal": false,
+            "sync_slot": 2
+          },
+          {
+            "acquire_semaphore": 2115590666264,
+            "acquire_timeout_ns": 3000000000,
+            "binary_acquire_render_present": true,
+            "extent": [
+              320,
+              240
+            ],
+            "image_index": 0,
+            "pixel": [
+              0,
+              255,
+              0,
+              255
+            ],
+            "render_semaphore": 2115590667832,
+            "submission_fence": 2115590666936,
+            "suboptimal": false,
+            "sync_slot": 0
+          }
+        ],
+        "status": "passed",
+        "validate_out_of_date_rebuild": true,
+        "vsync_registration": true,
+        "window_destroyed": true,
+        "window_hidden": true
+      }
+    },
+    {
+      "label": "gpu-crash_gpu",
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\target\\debug\\examples\\crash_gpu.exe"
+      ],
+      "started_utc": "2026-10-12T11:24:58.617475+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/gpu-crash_gpu.log",
+      "actual_output": {
+        "after": {
+          "assertions_failed": true,
+          "debug": {
+            "header": [
+              0,
+              1,
+              0,
+              0
+            ],
+            "records": [
+              {
+                "kind": 3,
+                "message": "assertion failed (7 > 8)",
+                "operands": [
+                  7,
+                  8
+                ],
+                "source_id": 4660,
+                "source_line": 77,
+                "source_name": "验证shader.hlsl"
+              }
+            ],
+            "truncated": false
+          },
+          "initial_sentinel_observed": false,
+          "marker_label": {
+            "id": 1,
+            "label": "调试shader之后",
+            "slot": 1
+          },
+          "observed_marker": 1
+        },
+        "before": {
+          "assertions_failed": false,
+          "debug": {
+            "header": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "records": [],
+            "truncated": false
+          },
+          "initial_sentinel_observed": true,
+          "marker_label": null,
+          "observed_marker": 4294967295
+        },
+        "device": "Intel(R) UHD Graphics 630",
+        "device_lost_triggered": false,
+        "gpu_after_unsubmitted": 1,
+        "host_recorded_unsubmitted": 2,
+        "original_full_equivalence": false,
+        "status": "passed",
+        "synthetic_debug_payload": true,
+        "vendor_dump_supported": false
+      }
+    },
+    {
+      "label": "gpu-allocator_gpu",
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\target\\debug\\examples\\allocator_gpu.exe"
+      ],
+      "started_utc": "2026-10-12T11:24:58.751020+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/gpu-allocator_gpu.log",
+      "actual_output": {
+        "budget_failure_no_pollution": true,
+        "device": "Intel(R) UHD Graphics 630",
+        "device_peak_bytes": 12288,
+        "live_final": 0,
+        "original_gpu_allocator_pool_equivalence": false,
+        "peak_snapshot_immutable": true,
+        "resource_allocations": 3,
+        "status": "candidate_allocator_gpu_passed",
+        "wrapper_allocations": 1,
+        "wrapper_peak_bytes": 8704
+      }
+    },
+    {
+      "label": "gpu-pass_bindings_gpu",
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\target\\debug\\examples\\pass_bindings_gpu.exe"
+      ],
+      "started_utc": "2026-10-12T11:24:58.870985+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/gpu-pass_bindings_gpu.log",
+      "actual_output": {
+        "actual_execution_command_state": true,
+        "descriptor_content_cache_reused": false,
+        "descriptor_pool_reused": true,
+        "device": "Intel(R) UHD Graphics 630",
+        "main_execution_registry_source": true,
+        "managed_command_sequence": 2,
+        "original_full_ref_abi": false,
+        "sampled_image_input": 17,
+        "status": "passed",
+        "storage_output": 42,
+        "two_phase_callback_bridge": false,
+        "uniform_input": 25
+      }
+    },
+    {
+      "label": "gpu-frame_queue_gpu",
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\target\\debug\\examples\\frame_queue_gpu.exe"
+      ],
+      "started_utc": "2026-10-12T11:24:58.995452+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/gpu-frame_queue_gpu.log",
+      "actual_output": {
+        "begin_frame_trims_to_one": true,
+        "device": "Intel(R) UHD Graphics 630",
+        "final_word": 18,
+        "frames": [
+          1,
+          2,
+          3
+        ],
+        "original_full_frame_equivalence": false,
+        "status": "passed",
+        "trim_peeks_without_pop": true
+      }
+    },
+    {
+      "label": "native-compare_resource",
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\python\\Scripts\\python.exe",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\scripts\\compare_resource.py"
+      ],
+      "started_utc": "2026-10-12T11:24:59.117942+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/native-compare_resource.log"
+    },
+    {
+      "label": "native-compare_pass_api",
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\python\\Scripts\\python.exe",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\scripts\\compare_pass_api.py"
+      ],
+      "started_utc": "2026-10-12T11:25:17.987170+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/native-compare_pass_api.log"
+    },
+    {
+      "label": "native-compare_chain",
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\python\\Scripts\\python.exe",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\scripts\\compare_chain.py"
+      ],
+      "started_utc": "2026-10-12T11:25:18.721901+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/native-compare_chain.log"
+    },
+    {
+      "label": "native-compare_queue_graph",
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\python\\Scripts\\python.exe",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\scripts\\compare_queue_graph.py"
+      ],
+      "started_utc": "2026-10-12T11:25:21.434959+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/native-compare_queue_graph.log"
+    },
+    {
+      "label": "native-generate_formats",
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\python\\Scripts\\python.exe",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\scripts\\generate_formats.py",
+        "--validate"
+      ],
+      "started_utc": "2026-10-12T11:25:22.039426+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/native-generate_formats.log"
+    },
+    {
+      "label": "native-validate_shader_allocator",
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\python\\Scripts\\python.exe",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\scripts\\validate_shader_allocator.py",
+        "--no-build"
+      ],
+      "started_utc": "2026-10-12T11:25:25.276078+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/native-validate_shader_allocator.log"
+    },
+    {
+      "label": "native-verify_graph_gpu",
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\python\\Scripts\\python.exe",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\scripts\\verify_graph_gpu.py"
+      ],
+      "started_utc": "2026-10-12T11:25:29.622001+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/native-verify_graph_gpu.log"
+    },
+    {
+      "label": "native-verify_raw_resources",
+      "command": [
+        "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\python\\Scripts\\python.exe",
+        "D:\\game\\reverse-engineering\\tiny-glade\\reconstruction\\rhapsody-rebuild\\scripts\\verify_raw_resources.py"
+      ],
+      "started_utc": "2026-10-12T11:25:31.127131+00:00",
+      "exit_code": 0,
+      "log": "evidence/functional-run-logs/native-verify_raw_resources.log"
+    }
+  ],
+  "input_hashes": {
+    "Cargo.lock": "b9ada79f3f94baf816641849f97d2c3d247e49ae3110b889036dc1be95a09290",
+    "Cargo.toml": "dcaa199e2fb344521a8c4a638bfbdcc87b95e5c23dbf2c0534765989d2d1f641",
+    "examples/allocator_gpu.rs": "dcf99c30d47c92a6bac870274aa510c41d9f9ea388d59d844d8bb0ba49f61ed8",
+    "examples/attachment_gpu.rs": "4db418ff92846a3dfdc295e36540ebd067eadd32c1a9616ec1b50c79fad9e117",
+    "examples/crash_gpu.rs": "23f3a74e9f7026d7209689eb1b8b9cd4b5425e422b44b00ec006ce526c76dc46",
+    "examples/device_features_gpu.rs": "d87677b1e38dd17e9e4abeaacd399516ff0b270126654d646229c9f52089e096",
+    "examples/device_inventory.rs": "c7862e68a4b570b035beab660f8aeeb3863133925df74d799cb7bae09234e285",
+    "examples/device_policy_gpu.rs": "cbec063cebc84c2631959356e64f86be65b4be3f99e8f6417e12d6debfca2c72",
+    "examples/frame_queue_gpu.rs": "9896af31d74740d30f67872da7ba0bcf7c2676490a593627f6ce113276d672c1",
+    "examples/pass_bindings_gpu.rs": "937173fd86a18c14890957c19bdc855b8417860f5a5979e6da33cc754bc8c6bf",
+    "examples/pipeline_probe.rs": "d5608afc40df81d14f203effa5c45f4f9d2a405dbee90c72b2ca12814d802246",
+    "examples/queue_graph_gpu.rs": "2b38a2c8f41bbdd71c0a2ee06890c841adfe800584a8a2df9aebdb75b20b4b88",
+    "examples/raster_gpu.rs": "1955365929e1c82f3177e04b1844aff875d98a6cd487707a60be4c87d4dd48ba",
+    "examples/raw_resource_smoke.rs": "3b2edad6efcc64ec56276b3d939ba9322aa03493ac49ed9a5b5c9fd17958834c",
+    "examples/resource_probe.rs": "12d48066c31fd0a45cecf1105b6876d374f795001d81fe7598461dd829d9392f",
+    "examples/shader_production_gpu.rs": "ef562cedbebe77334e1f0297eb2ba16c5c85425c38af34e0ab811d62eabbd1b6",
+    "examples/swapchain_gpu.rs": "45051fb3ab533adf258baf88ea74677d752c09cbd4671aca7d9a8e468eae46b2",
+    "examples/temporal_gpu.rs": "8a955c126cb544166e836cdf546f9b3e2c7c596c7e2c241d22be56e96310ea73",
+    "examples/two-pass.json": "f9bdd160cdbbea9521c78c7af57eedb8e77ea0180074de05958685a03f0714fb",
+    "examples/vulkan_smoke.rs": "fcda57a8e4a6732f1042df7c96aa7d92d18a6422c9722801309f66f49046c61e",
+    "scripts/audit_progress.py": "e5ab2711336d33730335467fe2282db7d0ea46e6f0cc643c8b011c269276ca0c",
+    "scripts/compare_chain.py": "bc8afdcf5babae8513100c2836954078ed394f6d8b32c8fab37b368994b23e1d",
+    "scripts/compare_pass_api.py": "39e6c0dd598bb150c75210dc02492bc3f8511de223070a309d36750513e6dcf2",
+    "scripts/compare_pipeline_probe.py": "b647c1a937ab7bb71ce43d3ec8b582f3643b7af6cd5056cd9da2544530a499d7",
+    "scripts/compare_queue_graph.py": "5a5e6b6a2518691a2b396800a56092cb6dc1968c7025df6e984405da9fac7424",
+    "scripts/compare_resource.py": "bf8930cba0d3a26d9540bd6926b3d35472581ae3e8cd276c10d5622851bd03a7",
+    "scripts/generate_formats.py": "1a545dd66c4f2f0b0ae7f2e6441bf86f9bf75e0d196e032631142de4c5601812",
+    "scripts/native_support/pe_fixture.py": "c22e16837e20e2ae4621da4538d5b9e97c1d0c07a5dbeef8e5fc0184a4631e37",
+    "scripts/native_support/queue_entry.py": "60bd2ca4907260f0f5860ba519021f4000af3e07a84769e0cee8c0b93fcdff38",
+    "scripts/validate_functional_project.py": "b5b895abb13f459c7dde219b8c4142feb0c6e54a840f45681b40d53b280522e4",
+    "scripts/validate_shader_allocator.py": "78de0389dc3c03c1730fca31fea15a3f4b136084b6f247a72b4a7ca2f4822412",
+    "scripts/verify_graph_gpu.py": "3816c7954bf86114466188e9a3e8fc16c4fef239c60d269711fc3df04393c553",
+    "scripts/verify_raw_resources.py": "c7e8a9a0443361338034133c499c60f966f736167bb8a6e56cd9d67d7c6ce7e6",
+    "src/app.rs": "fa8d6987e5b9e8cce0c388fee2a401ab354acd543ff308e193f0b0541877051c",
+    "src/leek.rs": "fc640dc6b53126051a90a4543be236994a78bf33e9d96b8398a1483b1ed59bf8",
+    "src/lib.rs": "e8b7a6f0ce2980b2b61462af980df1a7144e7834130856241a00bc2d1340e18a",
+    "src/main.rs": "766a3249c8838dd8101363c891e144c63f6b1d26c3b56c207fffe7e1cbb7a93e",
+    "src/raw/allocator.rs": "c56e2cc8f2a7ae9b186539720cc5feb9cde5634a995624e868bfce9a334375da",
+    "src/raw/barrier.rs": "9cf1ce7e30112c987a31dd3c6517c0e16aaab3ec71492f7d4d7fa02d41d45303",
+    "src/raw/binding.rs": "0ef0984cf5318f6589507299a7600a1c9db303af30f9f0e445fb28efaf4e80b3",
+    "src/raw/buffer.rs": "0f429edec28333161f143662ca9ad2b5da2c6895a911b8aa06d9e60060f47138",
+    "src/raw/bytes.rs": "653565d3c3449d4464007e192653af9787c6882287fa5688d85ad2683eb76129",
+    "src/raw/command_buffer.rs": "a3e0352f4e8754261de5ea2d36cadc676f952cf89e02330c99a8e7759d715bae",
+    "src/raw/crash.rs": "833e5d452572f82fd9f417be068a694b892434946a572b4a8fd0fec78a996572",
+    "src/raw/debug.rs": "e8a7d92a5006492c1293385c27a3fc90fea3b3d4d68da856fe40c59d7e9b64d1",
+    "src/raw/descriptor_set.rs": "38cbb1421a098db323b41acea3dad3d1d85413e5c96ae58f72b30b085cfa2c7e",
+    "src/raw/device.rs": "e6c9cce3318e6678b45188420340b5206c360db5f4a95f0b02a6d18d0f25fa16",
+    "src/raw/disposal.rs": "f010e1c283476b6b7b342f42b56f371ad91ad3aea4fe921664b646720e5c03e2",
+    "src/raw/dynamic_constants.rs": "841baf9b82b8ad5326e8098a11699ecc69daac8b7a2c305c56a435013070856f",
+    "src/raw/error.rs": "b7758b85d16d2fdd84acec02067957199e0ae786e2695b4e610bd202fe73c9e8",
+    "src/raw/format.rs": "0ec62399b051d9919c7fd87cfd59369dc10a2b5da420999921fcdc6ace4633e3",
+    "src/raw/format_table.rs": "131ed1d3ff646c6d15e11e72c0f439adad8287430150bab53d580ce0296e0779",
+    "src/raw/framebuffer.rs": "db5d5954320a150967280d991114e04b2298927b9097178557eb1bf76c156895",
+    "src/raw/init.rs": "4427517136fe7327bc59dfb619d9d727555575222f5394c477cf7436542a9c7c",
+    "src/raw/instance.rs": "56a624578af383ee8e0fe5bcec887f87640de181ea5927f336c385d07bb90be6",
+    "src/raw/managed/buffer.rs": "75cea5ba65e89c43ed17f337aace597f7b6c0f7f59b1db5da0478f02235b0b1e",
+    "src/raw/managed/descriptor_set.rs": "555864e424c784e1117053b92f5312df25b2974e436fd709bc4722d66bfd5509",
+    "src/raw/managed/framebuffer.rs": "01697d386c5c8f36e8967856a2bfec31e912cfb59b09630daaf603b082465c1b",
+    "src/raw/managed/handle.rs": "684c60928ae533b62e4231c641509c30763fac24e70ddd3cc950bdc344397133",
+    "src/raw/managed/lifecycle.rs": "7a880ad4c5d22d304dac2a4fd76d2195a5d08681ad89499d5b4ebb664a631db9",
+    "src/raw/managed/mod.rs": "3e5d4597b786df72f8027c9de2b02d377d72535ce97cda3bcd6e07c60f3bd92f",
+    "src/raw/managed/render_pass.rs": "173cec85ff85964745fa7c2d1daad307a2aa9f05a6d125005b49aff19959d7cf",
+    "src/raw/managed/resources.rs": "4ebc37698a366e29c1ca1c95046d09585fb2a49bc2e6f8cbb90b6a8f7e568e10",
+    "src/raw/managed/sampler.rs": "81e76be4d96a8a97ee54441623a793af5f2d3e46c8b2424e433003ab0d95f2a6",
+    "src/raw/managed/swapchain.rs": "1c77b94834ecc58d72d893674728146f5d83007f97fd48878623c3bf83bd8c23",
+    "src/raw/managed/texture.rs": "2b37f39446661281e8963fb32fbf2b9c0f1f0d2facc06543b7af967655204878",
+    "src/raw/managed/tracking.rs": "01e2edef41e95f2819ff28899867839d03965b6fce0f54f9347985a113e24419",
+    "src/raw/mod.rs": "3765aa101148d82ca2e20fadec3817588dbb5a8e3ea2d75e5832e7711a148cc7",
+    "src/raw/physical_device.rs": "3a80502e9967acffc38e687747f29c2e3853924eef380ef05e1b334eaade24a0",
+    "src/raw/profiler.rs": "85aede577778243d1837e105f0c762ab41f3629b865e5955bc498d2953fb0894",
+    "src/raw/ray_tracing.rs": "eb20133c141986a77e83fb619f9381d39bbb1d496c91d309ffe499a3cf13b988",
+    "src/raw/render_pass.rs": "93c9e5c4fdcb39a481d1e1bc6f5c1a839e55eb6b0bc20486b28fa70c0206c667",
+    "src/raw/resource_usage.rs": "30800df36a9f8447085625b6c1b950365bb1e8ec253b7d0ad53ef9041e76541a",
+    "src/raw/sampler.rs": "6f5e0476dafa6aa3545ddcd8d142240938e64a4c3c164d84ba99410c9b8ed26b",
+    "src/raw/semaphore.rs": "ed144b37c07e920653bc7f94b82ae830de65c9eda608b1e38174006506a1721e",
+    "src/raw/shader.rs": "dcd9ee8eface4d5fcfa197e9460308966ab07fd0166e954605f4aa33af4ff797",
+    "src/raw/stats.rs": "1e5095d5f37fe1c971eadd081ab64577f315cf2af9464d23669b5efe40fe2c64",
+    "src/raw/submit.rs": "7d1cd10fbdb4d8277c32df49eba77c2870f2a8e69cce256557b342476f67edaa",
+    "src/raw/swapchain.rs": "23da184cc4f637104900fe6fccb5536972c83da32b1c1475aeea4f99850db3a6",
+    "src/raw/temp_list.rs": "73814940330422b27461d1b793d779c4de7daf6edd04e11b93a22c2efd7aaf34",
+    "src/raw/texture.rs": "3e9157bea3d689f7bb6cec46fe29585fbfbb3e471301ab0845533d4e2bf0b03f",
+    "src/rg/access_ledger.rs": "4e19383ce2e74665847dd6cdd122ebb7e819f265b4437e6f035238ce82869a3d",
+    "src/rg/attachments.rs": "62a11966ddb34e2a166d481126f1031c958982c302b9497c99cc0921b57e02b5",
+    "src/rg/binding.rs": "22ec3ec636ffc9c43d2c9f721a598e0191c13c91696a218655b2452100659fdc",
+    "src/rg/compiled.rs": "d61000d43212a33d0ff651d9a76c288663cbc2d49b38f8ccf22115a5bf508a32",
+    "src/rg/executor.rs": "521a830d9c3a2dbac60254dd396fde6daf0943b28632fdd38a04bc1eb073f5a1",
+    "src/rg/graph.rs": "e6854586f2151f19fab0827668001c0cdfeb30758d5d41443033869f7024a179",
+    "src/rg/import_export.rs": "9de6136fefd1fc1e8c5cf56f09b49bacb9372689eabd4a926f9e40e0a28eec0c",
+    "src/rg/mod.rs": "ddeb557aeef52d34a10880640014f083c517dd13a5d1102352434d6b1bbcc655",
+    "src/rg/pass_api.rs": "18f95ea99874e9a4de0bc737efeb23946e438c0d568ff1c87b7da93c009b58fb",
+    "src/rg/pass_bindings.rs": "ce839b0b2645b7e1973ccfbb74a5a77086833f275177dcd5faa6b911de4d9edf",
+    "src/rg/pass_builder.rs": "28b667a245b0e1561de5fcb233cae119599a4e90b52f8b1495c8b92da1b4b106",
+    "src/rg/recorder.rs": "4aa55943acad5cb7a74231d376e19cafb41ad208c99e0900209e582a85391784",
+    "src/rg/resource.rs": "bdd71e6e48b2c15b447cf3124a847adddec58bf558cb58ebf5e48749d7654e12",
+    "src/rg/resource_info.rs": "1479899f3864ecbd52ed4c3b93d89cf3049c63c98194dce449099386fa915d6a",
+    "src/rg/resource_pool.rs": "71c1ff24d642aa1af02db5de861e80593226d3565efc6cfc2875727dc35408db",
+    "src/rg/resource_registry.rs": "6363b4c3b7176968b30c442e72e7cc2a527e6c7abf9ad2ad28c45b15356ae6cc",
+    "src/rg/resource_rules.rs": "b4578f35b97621c6f1dcf18da504fbc74e33021043f51a6766ec45a9a45976b3",
+    "src/rg/state.rs": "200ffff34077be2726be26848afd8f2ac001ac036373f432d20a7d9eee103f89",
+    "src/rg/temporal.rs": "066b2e9577f8c29f2079d98f07cd3a63ea42ade579f2183f3592bdc472da62da",
+    "src/rg/util.rs": "f28f2f6aedbaa7606a253e3a711c2c79e50f224fe6dac9755a515b045949e534",
+    "src/rg/vulkan.rs": "fda67f5c694b2913516494cb6915a662aeecb9d8eba059d0abb95164786883dc",
+    "tests/allocator.rs": "944d6ab4f537c89df82dac852a5aab99354447272b96f976ce29e10f6de450da",
+    "tests/attachments.rs": "bab4d8c0b473902840fd24e2b38d19c85045b1c2627b999783d20d7aee2883f7",
+    "tests/chain.rs": "822e9890e4b7ac6edaa4c6dc719fb8cf5c7456f96ffcca0fe0ef8c76accfe03d",
+    "tests/crash.rs": "ddfa3a9e8a2704be73da428dca1b4391b354c72f5d16991280a0d3682fbd27a0",
+    "tests/device_policy.rs": "8642030bd6fb50d2165f1a4f46e6909e2a3d6d9faf457332374d5fa3658a753f",
+    "tests/formats.rs": "43b3e8da642eb2981dabed08e0fec15a8d821d7dda57b2a71cb21940335a932f",
+    "tests/managed.rs": "6817210c24c778432d7f2baa6201273cd179f59346971ff1f314568763c65381",
+    "tests/pass_api.rs": "1a7ed5ceb4a7f0100eb81d9c02c8ab1b03da89b5f2113ed04909eba329b2e6ec",
+    "tests/pass_bindings.rs": "b256735329b2b6bcd995752e55ffde9a0deac90a7fd47daa95d8d06057139e8c",
+    "tests/shader_production.rs": "f48580345e28f9b0ab68050d691c62da4cc7b56e943e3b6ce3b5ab40c6520991",
+    "tests/state.rs": "e68e25553ec68374cf9fcd2bae70697d8fbf5dabb5902c678c30fbb1e8914fe7",
+    "tests/temporal.rs": "7c142d37551aa008f938b673f201d226ef4774134e3ea54aa3cdf9414407e9ac"
+  },
+  "changed_during_run": [],
+  "limits": [
+    "验收只证明这些候选场景；不证明原全帧、所有GPU或原公共分叉行为。",
+    "原入口fixture/hook边界见各子系统报告；未执行完整原游戏对照。",
+    "真实GPU测试串行运行，辅助队列无本机硬件覆盖；硬件ray tracing不计入该原作构建的功能验收。"
+  ]
+}

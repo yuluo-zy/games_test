@@ -1,0 +1,79 @@
+{
+  "scope": "independent synthetic fixtures only; no MCP/pet/vendor edits",
+  "runner_sha_before": "1e1ccbd0dfed987a131754d621b737e9cd9e9ee0ee18f32a170da1741183995a",
+  "runner_sha_after": "1e1ccbd0dfed987a131754d621b737e9cd9e9ee0ee18f32a170da1741183995a",
+  "ledger_auditor_sha": "0bd23f0749abe4957699d738beda4f7cec7d9d9f6475ed39b59c8de755d236b6",
+  "cases": [
+    {
+      "case": "nestederror",
+      "exit_code": 1,
+      "ok": false,
+      "errors": [
+        "Step 0: /0/functions/0x150/success: False",
+        "Step 0: /0/functions/0x150/error: fixture failure",
+        "Step 0: no decompilation for 0x150"
+      ],
+      "functions": 2,
+      "operator_processes": 1,
+      "semantic_acceptance": false,
+      "identity_scope": "local file hash only; selected database identity unverified"
+    },
+    {
+      "case": "placeholder",
+      "exit_code": 1,
+      "ok": false,
+      "errors": [
+        "Unresolved placeholder-only decompilation for 0x140",
+        "Unresolved placeholder-only decompilation for 0x150"
+      ],
+      "functions": 2,
+      "operator_processes": 1,
+      "semantic_acceptance": false,
+      "identity_scope": "local file hash only; selected database identity unverified"
+    },
+    {
+      "case": "valid",
+      "exit_code": 0,
+      "ok": true,
+      "errors": [],
+      "functions": 2,
+      "operator_processes": 1,
+      "semantic_acceptance": false,
+      "identity_scope": "local file hash only; selected database identity unverified"
+    },
+    {
+      "case": "unbounded-xrefs",
+      "exit_code": 1,
+      "ok": false,
+      "errors": [
+        "Explicit program selector is required"
+      ],
+      "functions": 0,
+      "operator_processes": 0,
+      "semantic_acceptance": false,
+      "identity_scope": "not checked"
+    }
+  ],
+  "ledger_case": {
+    "exit_code": 1,
+    "ok": false,
+    "semantic_acceptance": false,
+    "identity_scope": "artifact hashes are ledger declarations with format checks, not binary-file rehashes",
+    "module": "fixture",
+    "target_version": "B",
+    "errors": [
+      "Verified link still declares gaps: full_consumer"
+    ],
+    "warnings": [],
+    "ledger_sha256": "752c5bcd863d71886d9c342bb1c0cad5f9995afd300e8277626861786ff93d1e",
+    "auditor_sha256": "0bd23f0749abe4957699d738beda4f7cec7d9d9f6475ed39b59c8de755d236b6",
+    "fact_count": 2,
+    "link_count": 1,
+    "unresolved_links": [],
+    "rust_sha256": {
+      "source.rs": "d7a5a17fffd32fb02b57fd3f9047743e24d7e20750d0ee0a3c9465d4a559be98"
+    },
+    "dependencies": []
+  },
+  "expected_behaviors_confirmed": true
+}

@@ -1,0 +1,50 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_140949e70(longlong param_1,float *param_2,undefined8 param_3,undefined8 param_4,
+                  undefined8 param_5)
+
+{
+  float fVar1;
+  float fVar2;
+  float fVar3;
+  float fVar4;
+  float fVar5;
+  float fVar6;
+  float fVar7;
+  float fVar8;
+  undefined1 auStack_60 [4];
+  float fStack_5c;
+  undefined1 auStack_54 [4];
+  uint uStack_50;
+  
+  func_0x000140c96d40(auStack_60,param_5);
+  func_0x000140c96d80(auStack_54,param_5);
+  fStack_5c = fStack_5c / (float)(uStack_50 ^ _UNK_1429258f0);
+  if (fStack_5c <= _UNK_142925904) {
+    fStack_5c = _UNK_142925904;
+  }
+  fVar2 = (float)func_0x000142923fd0();
+  fVar3 = (float)func_0x000142923e80();
+  fStack_5c = fStack_5c / _UNK_1429cd070;
+  fVar1 = *param_2;
+  fVar6 = (float)*(undefined8 *)(param_2 + 1);
+  fVar7 = (float)((ulonglong)*(undefined8 *)(param_2 + 1) >> 0x20);
+  fVar5 = fVar3 * fVar3;
+  fVar8 = fVar2 * fVar2 + 0.0 + 0.0;
+  fVar4 = fVar7 * 0.0 + fVar6 * fVar2 + fVar1 * 0.0;
+  fVar4 = fVar4 + fVar4;
+  fVar3 = fVar3 + fVar3;
+  *(ulonglong *)(param_1 + 0x44) =
+       CONCAT44((float)((ulonglong)*(undefined8 *)(param_1 + 0x44) >> 0x20) +
+                fStack_5c *
+                (fVar3 * (fVar1 * 0.0 - fVar7 * 0.0) + fVar4 * fVar2 + (fVar5 - fVar8) * fVar6),
+                (float)*(undefined8 *)(param_1 + 0x44) +
+                fStack_5c *
+                (fVar3 * (fVar2 * fVar7 - fVar6 * 0.0) + fVar4 * 0.0 + (fVar5 - fVar8) * fVar1));
+  *(float *)(param_1 + 0x4c) =
+       (fVar3 * (fVar6 * 0.0 - fVar1 * fVar2) + fVar4 * 0.0 + (fVar5 - fVar8) * fVar7) * fStack_5c +
+       *(float *)(param_1 + 0x4c);
+  return;
+}
+

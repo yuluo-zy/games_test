@@ -1,0 +1,125 @@
+{
+  "server": "re_mcp_ghidra",
+  "actual_mcp_connection": true,
+  "results": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "database_id": "tg_m5",
+        "keep_open": true
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"tg_m5\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "tg_m5",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "tg_m5"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"tg_m5\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "tg_m5",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_m5",
+        "address": "0x1413fe6f0"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_1413fe6f0\",\"address\":\"0x1413FE6F0\",\"decompiled_code\":\"\\r\\nlonglong FUN_1413fe6f0(longlong param_1,longlong *param_2)\\r\\n\\r\\n{\\r\\n  longlong lVar1;\\r\\n  ulonglong uVar2;\\r\\n  longlong *plVar3;\\r\\n  longlong lVar4;\\r\\n  longlong lVar5;\\r\\n  longlong *plStack_28;\\r\\n  char cStack_20;\\r\\n  undefined7 uStack_1f;\\r\\n  \\r\\n  plVar3 = (longlong *)*param_2;\\r\\n  param_2[3] = param_2[3] + 1;\\r\\n  *(undefined1 *)(param_2 + 4) = 0;\\r\\n  lVar4 = plVar3[2];\\r\\n  if (*plVar3 == lVar4) {\\r\\n    FUN_1428a9a60(plVar3,lVar4,1,1,1);\\r\\n    lVar4 = plVar3[2];\\r\\n  }\\r\\n  *(undefined1 *)(plVar3[1] + lVar4) = 0x7b;\\r\\n  plVar3[2] = lVar4 + 1;\\r\\n  _cStack_20 = CONCAT71(uStack_1f,1);\\r\\n  plStack_28 = param_2;\\r\\n  lVar4 = FUN_141583750(&plStack_28,&UNK_142c5b3d0,0x11,param_1);\\r\\n  if ((((lVar4 == 0) &&\\r\\n       (lVar4 = FUN_1415891d0(&plStack_28,&UNK_142c5b3e1,0x1a,param_1 + 0xc0), lVar4 == 0)) &&\\r\\n      (lVar4 = FUN_141583370(&plStack_28,&UNK_142c5b3fb,0x12,param_1 + 200), lVar4 == 0)) &&\\r\\n     (lVar4 = FUN_14158b390(&plStack_28,&UNK_142c5b40d,0x15,param_1 + 0x68), lVar4 == 0)) {\\r\\n    if (cStack_20 != '\\\\0') {\\r\\n      plVar3 = (longlong *)*plStack_28;\\r\\n      lVar4 = plStack_28[3] + -1;\\r\\n      plStack_28[3] = lVar4;\\r\\n      if ((char)plStack_28[4] == '\\\\0') {\\r\\n        lVar5 = plVar3[2];\\r\\n      }\\r\\n      else {\\r\\n        lVar5 = plVar3[2];\\r\\n        if (*plVar3 == lVar5) {\\r\\n          FUN_1428a9a60(plVar3,lVar5,1,1,1);\\r\\n          lVar5 = plVar3[2];\\r\\n        }\\r\\n        *(undefined1 *)(plVar3[1] + lVar5) = 10;\\r\\n        lVar5 = lVar5 + 1;\\r\\n        plVar3[2] = lVar5;\\r\\n        if (lVar4 != 0) {\\r\\n          lVar1 = plStack_28[1];\\r\\n          uVar2 = plStack_28[2];\\r\\n          do {\\r\\n            if ((ulonglong)(*plVar3 - lVar5) < uVar2) {\\r\\n              FUN_1428a9a60(plVar3,lVar5,uVar2,1,1);\\r\\n              lVar5 = plVar3[2];\\r\\n            }\\r\\n            func_0x000142923c00(plVar3[1] + lVar5,lVar1,uVar2);\\r\\n            lVar5 = lVar5 + uVar2;\\r\\n            plVar3[2] = lVar5;\\r\\n            lVar4 = lVar4 + -1;\\r\\n          } while (lVar4 != 0);\\r\\n        }\\r\\n      }\\r\\n      if (*plVar3 == lVar5) {\\r\\n        FUN_1428a9a60(plVar3,lVar5,1,1,1);\\r\\n        lVar5 = plVar3[2];\\r\\n      }\\r\\n      *(undefined1 *)(plVar3[1] + lVar5) = 0x7d;\\r\\n      plVar3[2] = lVar5 + 1;\\r\\n    }\\r\\n    return 0;\\r\\n  }\\r\\n  return lVar4;\\r\\n}\\r\\n\\r\\n\",\"database\":\"tg_m5\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_1413fe6f0",
+          "address": "0x1413FE6F0",
+          "decompiled_code": "\r\nlonglong FUN_1413fe6f0(longlong param_1,longlong *param_2)\r\n\r\n{\r\n  longlong lVar1;\r\n  ulonglong uVar2;\r\n  longlong *plVar3;\r\n  longlong lVar4;\r\n  longlong lVar5;\r\n  longlong *plStack_28;\r\n  char cStack_20;\r\n  undefined7 uStack_1f;\r\n  \r\n  plVar3 = (longlong *)*param_2;\r\n  param_2[3] = param_2[3] + 1;\r\n  *(undefined1 *)(param_2 + 4) = 0;\r\n  lVar4 = plVar3[2];\r\n  if (*plVar3 == lVar4) {\r\n    FUN_1428a9a60(plVar3,lVar4,1,1,1);\r\n    lVar4 = plVar3[2];\r\n  }\r\n  *(undefined1 *)(plVar3[1] + lVar4) = 0x7b;\r\n  plVar3[2] = lVar4 + 1;\r\n  _cStack_20 = CONCAT71(uStack_1f,1);\r\n  plStack_28 = param_2;\r\n  lVar4 = FUN_141583750(&plStack_28,&UNK_142c5b3d0,0x11,param_1);\r\n  if ((((lVar4 == 0) &&\r\n       (lVar4 = FUN_1415891d0(&plStack_28,&UNK_142c5b3e1,0x1a,param_1 + 0xc0), lVar4 == 0)) &&\r\n      (lVar4 = FUN_141583370(&plStack_28,&UNK_142c5b3fb,0x12,param_1 + 200), lVar4 == 0)) &&\r\n     (lVar4 = FUN_14158b390(&plStack_28,&UNK_142c5b40d,0x15,param_1 + 0x68), lVar4 == 0)) {\r\n    if (cStack_20 != '\\0') {\r\n      plVar3 = (longlong *)*plStack_28;\r\n      lVar4 = plStack_28[3] + -1;\r\n      plStack_28[3] = lVar4;\r\n      if ((char)plStack_28[4] == '\\0') {\r\n        lVar5 = plVar3[2];\r\n      }\r\n      else {\r\n        lVar5 = plVar3[2];\r\n        if (*plVar3 == lVar5) {\r\n          FUN_1428a9a60(plVar3,lVar5,1,1,1);\r\n          lVar5 = plVar3[2];\r\n        }\r\n        *(undefined1 *)(plVar3[1] + lVar5) = 10;\r\n        lVar5 = lVar5 + 1;\r\n        plVar3[2] = lVar5;\r\n        if (lVar4 != 0) {\r\n          lVar1 = plStack_28[1];\r\n          uVar2 = plStack_28[2];\r\n          do {\r\n            if ((ulonglong)(*plVar3 - lVar5) < uVar2) {\r\n              FUN_1428a9a60(plVar3,lVar5,uVar2,1,1);\r\n              lVar5 = plVar3[2];\r\n            }\r\n            func_0x000142923c00(plVar3[1] + lVar5,lVar1,uVar2);\r\n            lVar5 = lVar5 + uVar2;\r\n            plVar3[2] = lVar5;\r\n            lVar4 = lVar4 + -1;\r\n          } while (lVar4 != 0);\r\n        }\r\n      }\r\n      if (*plVar3 == lVar5) {\r\n        FUN_1428a9a60(plVar3,lVar5,1,1,1);\r\n        lVar5 = plVar3[2];\r\n      }\r\n      *(undefined1 *)(plVar3[1] + lVar5) = 0x7d;\r\n      plVar3[2] = lVar5 + 1;\r\n    }\r\n    return 0;\r\n  }\r\n  return lVar4;\r\n}\r\n\r\n",
+          "database": "tg_m5"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_m5",
+        "address": "0x1402e0060"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_1402e0060\",\"address\":\"0x1402E0060\",\"decompiled_code\":\"\\r\\nlonglong FUN_1402e0060(longlong param_1,longlong *param_2)\\r\\n\\r\\n{\\r\\n  longlong *plVar1;\\r\\n  longlong lVar2;\\r\\n  longlong *plStack_28;\\r\\n  char cStack_20;\\r\\n  \\r\\n  plVar1 = (longlong *)*param_2;\\r\\n  lVar2 = plVar1[2];\\r\\n  if (*plVar1 == lVar2) {\\r\\n    FUN_1428a29e0(plVar1,lVar2,1,1,1);\\r\\n    lVar2 = plVar1[2];\\r\\n  }\\r\\n  *(undefined1 *)(plVar1[1] + lVar2) = 0x7b;\\r\\n  plVar1[2] = lVar2 + 1;\\r\\n  cStack_20 = '\\\\x01';\\r\\n  plStack_28 = param_2;\\r\\n  lVar2 = FUN_1404c0900(&plStack_28,&UNK_1429b3d4e,0x14,param_1);\\r\\n  if (lVar2 == 0) {\\r\\n    lVar2 = FUN_1404bac70(&plStack_28,&UNK_1429b3d62,0xb,param_1 + 0x58);\\r\\n    if (lVar2 == 0) {\\r\\n      if (cStack_20 != '\\\\0') {\\r\\n        plVar1 = (longlong *)*plStack_28;\\r\\n        lVar2 = plVar1[2];\\r\\n        if (*plVar1 == lVar2) {\\r\\n          FUN_1428a29e0(plVar1,lVar2,1,1,1);\\r\\n          lVar2 = plVar1[2];\\r\\n        }\\r\\n        *(undefined1 *)(plVar1[1] + lVar2) = 0x7d;\\r\\n        plVar1[2] = lVar2 + 1;\\r\\n      }\\r\\n      lVar2 = 0;\\r\\n    }\\r\\n  }\\r\\n  return lVar2;\\r\\n}\\r\\n\\r\\n\",\"database\":\"tg_m5\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_1402e0060",
+          "address": "0x1402E0060",
+          "decompiled_code": "\r\nlonglong FUN_1402e0060(longlong param_1,longlong *param_2)\r\n\r\n{\r\n  longlong *plVar1;\r\n  longlong lVar2;\r\n  longlong *plStack_28;\r\n  char cStack_20;\r\n  \r\n  plVar1 = (longlong *)*param_2;\r\n  lVar2 = plVar1[2];\r\n  if (*plVar1 == lVar2) {\r\n    FUN_1428a29e0(plVar1,lVar2,1,1,1);\r\n    lVar2 = plVar1[2];\r\n  }\r\n  *(undefined1 *)(plVar1[1] + lVar2) = 0x7b;\r\n  plVar1[2] = lVar2 + 1;\r\n  cStack_20 = '\\x01';\r\n  plStack_28 = param_2;\r\n  lVar2 = FUN_1404c0900(&plStack_28,&UNK_1429b3d4e,0x14,param_1);\r\n  if (lVar2 == 0) {\r\n    lVar2 = FUN_1404bac70(&plStack_28,&UNK_1429b3d62,0xb,param_1 + 0x58);\r\n    if (lVar2 == 0) {\r\n      if (cStack_20 != '\\0') {\r\n        plVar1 = (longlong *)*plStack_28;\r\n        lVar2 = plVar1[2];\r\n        if (*plVar1 == lVar2) {\r\n          FUN_1428a29e0(plVar1,lVar2,1,1,1);\r\n          lVar2 = plVar1[2];\r\n        }\r\n        *(undefined1 *)(plVar1[1] + lVar2) = 0x7d;\r\n        plVar1[2] = lVar2 + 1;\r\n      }\r\n      lVar2 = 0;\r\n    }\r\n  }\r\n  return lVar2;\r\n}\r\n\r\n",
+          "database": "tg_m5"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "tg_m5",
+        "save": false
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"tg_m5\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "tg_m5"
+        },
+        "isError": false
+      }
+    }
+  ],
+  "target_execution": false,
+  "ok": true
+}

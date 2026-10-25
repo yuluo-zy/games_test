@@ -1,0 +1,13 @@
+{
+  "schema_version":1,
+  "status":"candidate_cpu_backend_events",
+  "interfaces":{
+    "R2_to_R4":"CompiledRenderGraph snapshot, batch ranges, transition plans, exports",
+    "R4_to_R3":"recorded CB handles, SubmitInfo waits/signals, tracked managed handles",
+    "R3_to_R4":"completion token, reclaimable CB/resource state",
+    "R4_to_R2":"immediately retired CPU resources, ExportedRenderGraphResources, temporal parity/export state"
+  },
+  "retire_contract":"Immediate CPU cleanup/pool return; no completion wait. GPU destruction is R3 tracked-handle responsibility.",
+  "events":["BeginFrame","RecordBatch","EndCommandBuffer","QueueSubmit","WaitSubmit","Export","Retire","TemporalFlip","EndFrame"],
+  "limits":["no Vulkan calls in candidate","parallel CB recording abstracted","PDB void ABI unresolved","country-core closures excluded"]
+}

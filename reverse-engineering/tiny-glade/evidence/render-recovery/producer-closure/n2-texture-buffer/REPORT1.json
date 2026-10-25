@@ -1,0 +1,1571 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-10-12T10:27:31.536Z",
+  "completed_at": "2026-10-12T10:28:04.422Z",
+  "server": "re_mcp_ghidra",
+  "lane_count": 2,
+  "lanes": [
+    {
+      "database": "newtexbuf_l1",
+      "report": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\producer-closure\\n2-texture-buffer\\newtexbuf_l1.report.json",
+      "ok": false,
+      "cleanup_ok": true,
+      "error": "Error: batch operations failed: decompile_function, decompile_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function",
+      "steps": 36
+    },
+    {
+      "database": "newtexbuf_l2",
+      "report": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\render-recovery\\producer-closure\\n2-texture-buffer\\newtexbuf_l2.report.json",
+      "ok": false,
+      "cleanup_ok": true,
+      "error": "Error: batch operations failed: decompile_function, decompile_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function, disassemble_function",
+      "steps": 36
+    }
+  ],
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "identity": {
+    "target": {
+      "path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+      "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+    },
+    "provider": {
+      "id": "ghidra",
+      "version": "12.1.4"
+    },
+    "launch_sha256": "c82cc6dd6f528a9f07990202b685f0802e0833733774283e9a497bc4cef41aad",
+    "inputs": []
+  },
+  "cache_policy": {
+    "enabled": false,
+    "reason": "Database analysis cache disabled: both provider_manifest and database_snapshot files are required.",
+    "provider_version_provenance": "job-declared; actual server self-report is recorded separately upon connection"
+  },
+  "evidence_limits": [
+    "Static tool outputs do not prove runtime execution.",
+    "Xref completeness is unknown with auto-analysis disabled. Empty or DATA-only references cannot establish whole-program absence.",
+    "Successful cache reuse preserves the original evidence coverage; it does not expand it."
+  ],
+  "results": [
+    {
+      "index": 0,
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "keep_open": true,
+        "database_id": "newtexbuf_l1"
+      },
+      "cache_key": "88014b8ca297a28c489b52b09e046c47ee33dcfc036f9fb897f1bafd0a7844b4",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:27:31.677Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"newtexbuf_l1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "newtexbuf_l1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:27:46.575Z",
+      "ok": true,
+      "result_sha256": "d5847ef9e92ec2255e6e99b90dc18dc2fa0fc740b8192ee590678c06f7f378cb",
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 1,
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "newtexbuf_l1"
+      },
+      "cache_key": "125e6f6c36c948290416149f3e8673a0e93a79bbee236ea50cd60da09752dab4",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:27:46.577Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"newtexbuf_l1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "newtexbuf_l1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:27:59.760Z",
+      "ok": true,
+      "result_sha256": "7c9d0da4424383191683a65ba8f0e580f5e8cb55a676036f1458986858ca88c7",
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 0,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd54a0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD54A0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 1,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd5540"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd5540",
+        "address": "0x140BD5540",
+        "decompiled_code": "\r\nundefined8 * FUN_140bd5540(undefined8 *param_1,undefined8 *param_2,int param_3)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined8 uVar2;\r\n  undefined8 *puVar3;\r\n  \r\n  if ((param_3 != 1) &&\r\n     ((6 < *(byte *)((longlong)param_2 + 0x1e) ||\r\n      ((0x4aU >> (*(byte *)((longlong)param_2 + 0x1e) & 0x1f) & 1) == 0)))) {\r\n    FUN_1428d9430(&UNK_142b0fa21,0x73,&UNK_142b0fa98);\r\n    pcVar1 = (code *)swi(3);\r\n    puVar3 = (undefined8 *)(*pcVar1)();\r\n    return puVar3;\r\n  }\r\n  *(int *)(param_2 + 3) = param_3;\r\n  uVar2 = param_2[1];\r\n  *param_1 = *param_2;\r\n  param_1[1] = uVar2;\r\n  param_1[2] = param_2[2];\r\n  *(undefined4 *)(param_1 + 3) = *(undefined4 *)(param_2 + 3);\r\n  *(undefined4 *)((longlong)param_1 + 0x1c) = *(undefined4 *)((longlong)param_2 + 0x1c);\r\n  return param_1;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "8b8edc94220b1eba639ae09fc31d6459a1770cfe5fa45ca588e01ffd8d36013d",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 2,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd55e0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd55e0",
+        "address": "0x140BD55E0",
+        "decompiled_code": "\r\nundefined8 * FUN_140bd55e0(undefined8 *param_1,undefined8 *param_2,uint *param_3)\r\n\r\n{\r\n  uint uVar1;\r\n  code *pcVar2;\r\n  uint uVar3;\r\n  undefined8 uVar4;\r\n  undefined8 *puVar5;\r\n  bool bVar6;\r\n  \r\n  uVar1 = *param_3;\r\n  if (uVar1 != 0) {\r\n    uVar3 = *(uint *)((longlong)param_2 + 0xc) / uVar1;\r\n    uVar1 = (uint)(*(uint *)((longlong)param_2 + 0xc) % uVar1 != 0);\r\n    *(uint *)((longlong)param_2 + 0xc) = uVar3 + uVar1 + (uint)(uVar3 + uVar1 == 0);\r\n    uVar1 = param_3[1];\r\n    if (uVar1 != 0) {\r\n      uVar3 = *(uint *)(param_2 + 2) / uVar1;\r\n      uVar1 = (uint)(*(uint *)(param_2 + 2) % uVar1 != 0);\r\n      *(uint *)(param_2 + 2) = uVar3 + uVar1 + (uint)(uVar3 + uVar1 == 0);\r\n      uVar1 = param_3[2];\r\n      if (uVar1 != 0) {\r\n        uVar3 = *(uint *)((longlong)param_2 + 0x14) / uVar1;\r\n        bVar6 = *(uint *)((longlong)param_2 + 0x14) % uVar1 != 0;\r\n        *(uint *)((longlong)param_2 + 0x14) = uVar3 + bVar6 + (uint)(uVar3 + bVar6 == 0);\r\n        uVar4 = param_2[1];\r\n        *param_1 = *param_2;\r\n        param_1[1] = uVar4;\r\n        *(undefined4 *)(param_1 + 2) = *(undefined4 *)(param_2 + 2);\r\n        *(undefined4 *)((longlong)param_1 + 0x14) = *(undefined4 *)((longlong)param_2 + 0x14);\r\n        param_1[3] = param_2[3];\r\n        return param_1;\r\n      }\r\n    }\r\n  }\r\n  FUN_1428d99e0(&UNK_142b0fab0);\r\n  pcVar2 = (code *)swi(3);\r\n  puVar5 = (undefined8 *)(*pcVar2)();\r\n  return puVar5;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "2940dc7c35cc53df70ab19fa1f732828c28ba3fd481695e03586b97ac6d0838a",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 3,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd56a0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd56a0",
+        "address": "0x140BD56A0",
+        "decompiled_code": "\r\nundefined8 * FUN_140bd56a0(undefined8 *param_1,undefined8 *param_2,uint *param_3)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined8 uVar2;\r\n  uint uVar3;\r\n  undefined8 *puVar4;\r\n  \r\n  if (*param_3 != 0) {\r\n    uVar3 = *(uint *)((longlong)param_2 + 0xc) / *param_3;\r\n    *(uint *)((longlong)param_2 + 0xc) = uVar3 + (uVar3 == 0);\r\n    if (param_3[1] != 0) {\r\n      uVar3 = *(uint *)(param_2 + 2) / param_3[1];\r\n      *(uint *)(param_2 + 2) = uVar3 + (uVar3 == 0);\r\n      if (param_3[2] != 0) {\r\n        uVar3 = *(uint *)((longlong)param_2 + 0x14) / param_3[2];\r\n        *(uint *)((longlong)param_2 + 0x14) = uVar3 + (uVar3 == 0);\r\n        uVar2 = param_2[1];\r\n        *param_1 = *param_2;\r\n        param_1[1] = uVar2;\r\n        *(undefined4 *)(param_1 + 2) = *(undefined4 *)(param_2 + 2);\r\n        *(undefined4 *)((longlong)param_1 + 0x14) = *(undefined4 *)((longlong)param_2 + 0x14);\r\n        param_1[3] = param_2[3];\r\n        return param_1;\r\n      }\r\n    }\r\n  }\r\n  FUN_1428d99e0(&UNK_142b0fac8);\r\n  pcVar1 = (code *)swi(3);\r\n  puVar4 = (undefined8 *)(*pcVar1)();\r\n  return puVar4;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "b4532f9585d3d9add3c0eca98fe5675fc532b39fdfd722b03463be9c7ea82dc5",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 4,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd5730"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5730\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 5,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5270"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5270\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 6,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd52a0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD52A0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 7,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd52e0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD52E0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 8,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5310"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5310\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 9,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5340"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5340\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 10,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5370"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5370\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 11,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5390"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5390\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 12,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd53b0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD53B0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 13,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd53d0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD53D0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 14,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd53f0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD53F0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 15,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5410"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5410\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 16,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5430"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5430\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 17,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5460"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5460\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 18,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd55a0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD55A0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 19,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5790"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5790\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 20,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd57a0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD57A0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 21,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd57e0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD57E0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 22,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5820"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5820\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 23,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5860"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5860\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 24,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd58a0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD58A0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 25,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd58e0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD58E0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 26,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5920"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5920\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 27,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5960"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5960\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 28,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd59a0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD59A0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 29,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd59f0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD59F0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l1\"}",
+      "ok": false,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 30,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5a40"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd5a40",
+        "start": "0x140BD5A40",
+        "end": "0x140BD5A41",
+        "instruction_count": 0,
+        "instructions": [],
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "592ffd1592bff4333c11e14b81cdb37dff0c9d4f39a4010ea59674be05b4fee5",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 31,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x141738fe0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_141738fe0",
+        "address": "0x141738FE0",
+        "decompiled_code": "\r\nulonglong FUN_141738fe0(int param_1)\r\n\r\n{\r\n  code *pcVar1;\r\n  ulonglong uVar2;\r\n  int iStack_44;\r\n  int *piStack_40;\r\n  undefined *puStack_38;\r\n  undefined *puStack_30;\r\n  undefined8 uStack_28;\r\n  undefined4 **ppuStack_20;\r\n  undefined8 uStack_18;\r\n  undefined8 uStack_10;\r\n  \r\n  if (param_1 - 1U < 0xb8) {\r\n    return (ulonglong)*(uint *)(&UNK_142ccd890 + (ulonglong)(param_1 - 1U) * 4);\r\n  }\r\n  piStack_40 = &iStack_44;\r\n  puStack_38 = &UNK_140c87d80;\r\n  puStack_30 = &UNK_142ccd7b8;\r\n  uStack_28 = 1;\r\n  uStack_10 = 0;\r\n  ppuStack_20 = &piStack_40;\r\n  uStack_18 = 1;\r\n  iStack_44 = param_1;\r\n  FUN_1428d9390(&puStack_30,&UNK_142ccd7f0);\r\n  pcVar1 = (code *)swi(3);\r\n  uVar2 = (*pcVar1)();\r\n  return uVar2;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "5d96783c9e7f58a016f28ef917a69dc3f848958db316d8188aa8c3f973aaeb67",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 32,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x141739060"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_141739060",
+        "address": "0x141739060",
+        "decompiled_code": "\r\nundefined4 * FUN_141739060(undefined4 *param_1,uint param_2)\r\n\r\n{\r\n  undefined1 uVar1;\r\n  undefined4 uVar2;\r\n  code *pcVar3;\r\n  ulonglong uVar4;\r\n  undefined4 *puVar5;\r\n  undefined1 auStack_38 [8];\r\n  undefined *puStack_30;\r\n  undefined8 uStack_28;\r\n  undefined1 *puStack_20;\r\n  undefined8 uStack_18;\r\n  undefined8 uStack_10;\r\n  \r\n  if (param_2 < 0x93) {\r\n    uVar4 = (ulonglong)param_2;\r\n    uVar2 = *(undefined4 *)(&UNK_142ccddbc + uVar4 * 4);\r\n    uVar1 = (&UNK_142cce008)[uVar4];\r\n    *param_1 = *(undefined4 *)(&UNK_142ccdb70 + uVar4 * 4);\r\n    param_1[1] = uVar2;\r\n    *(undefined1 *)(param_1 + 2) = uVar1;\r\n    *(undefined1 *)((longlong)param_1 + 9) = uVar1;\r\n    return param_1;\r\n  }\r\n  puStack_30 = &UNK_142ccd828;\r\n  uStack_28 = 1;\r\n  puStack_20 = auStack_38;\r\n  uStack_18 = 0;\r\n  uStack_10 = 0;\r\n  FUN_1428d9390(&puStack_30,&UNK_142ccd838);\r\n  pcVar3 = (code *)swi(3);\r\n  puVar5 = (undefined4 *)(*pcVar3)();\r\n  return puVar5;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "f9e9798c66a1e75067a1ab543074c742821afafa74a7ecfbb774bf05d6fa32f7",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 2,
+      "position": 33,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x1417390e0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:27:59.761Z",
+      "completed_at": "2026-10-12T10:28:02.010Z",
+      "source": "actual_mcp_call",
+      "cache_key": "097c3b26f1d9a886154bc6aa8da4f64084ffbc5176b4f6646e257c028692c5aa",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_1417390e0",
+        "address": "0x1417390E0",
+        "decompiled_code": "\r\nundefined8 FUN_1417390e0(int param_1)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined8 uVar2;\r\n  uint uVar3;\r\n  int iStack_44;\r\n  int *piStack_40;\r\n  undefined *puStack_38;\r\n  undefined *puStack_30;\r\n  undefined8 uStack_28;\r\n  undefined4 **ppuStack_20;\r\n  undefined8 uStack_18;\r\n  undefined8 uStack_10;\r\n  \r\n  if (param_1 - 1U < 0x82) {\r\n    return 1;\r\n  }\r\n  uVar3 = param_1 - 0x83;\r\n  if (uVar3 < 0x10) {\r\n    if ((0xccc0U >> (uVar3 & 0x1f) & 1) != 0) {\r\n      return 0x10;\r\n    }\r\n    if (((3U >> (uVar3 & 0x1f) & 1) != 0) || (uVar3 == 8)) {\r\n      return 8;\r\n    }\r\n  }\r\n  piStack_40 = &iStack_44;\r\n  puStack_38 = &UNK_140c87d80;\r\n  puStack_30 = &UNK_142ccd868;\r\n  uStack_28 = 1;\r\n  uStack_10 = 0;\r\n  ppuStack_20 = &piStack_40;\r\n  uStack_18 = 1;\r\n  iStack_44 = param_1;\r\n  FUN_1428d9390(&puStack_30,&UNK_142ccd878);\r\n  pcVar1 = (code *)swi(3);\r\n  uVar2 = (*pcVar1)();\r\n  return uVar2;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l1"
+      },
+      "result_sha256": "3dbd6a74562a3fcd0491226ce3e954223a748c0c4884de0ec3fd1a8a13325310",
+      "ok": true,
+      "lane": "newtexbuf_l1",
+      "database": "newtexbuf_l1"
+    },
+    {
+      "index": 0,
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "keep_open": true,
+        "database_id": "newtexbuf_l2"
+      },
+      "cache_key": "d3061ba43fb6ec21dcd0bf6b4f326ca53bd0c42a1ce456dd36fb07e37606fa43",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:27:31.851Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"newtexbuf_l2\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "newtexbuf_l2",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:27:48.517Z",
+      "ok": true,
+      "result_sha256": "5b39e3dcfb7440caadc90bcecb6cb18e1d8606ca54fecc806409cf473e0fbe87",
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 1,
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "newtexbuf_l2"
+      },
+      "cache_key": "2ec60bbe274c32144c1e3ab780e1b82621ffd6ceb9016b0abf76177dda66704f",
+      "cache_eligible": false,
+      "started_at": "2026-10-12T10:27:48.519Z",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"newtexbuf_l2\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "newtexbuf_l2",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      },
+      "source": "actual_mcp_call",
+      "completed_at": "2026-10-12T10:28:01.696Z",
+      "ok": true,
+      "result_sha256": "69bd453a833c8948e7604b686b0634083ed8d4facf5ab258dd0bfef364f89923",
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 0,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd54a0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD54A0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 1,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd5540"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd5540",
+        "address": "0x140BD5540",
+        "decompiled_code": "\r\nundefined8 * FUN_140bd5540(undefined8 *param_1,undefined8 *param_2,int param_3)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined8 uVar2;\r\n  undefined8 *puVar3;\r\n  \r\n  if ((param_3 != 1) &&\r\n     ((6 < *(byte *)((longlong)param_2 + 0x1e) ||\r\n      ((0x4aU >> (*(byte *)((longlong)param_2 + 0x1e) & 0x1f) & 1) == 0)))) {\r\n    FUN_1428d9430(&UNK_142b0fa21,0x73,&UNK_142b0fa98);\r\n    pcVar1 = (code *)swi(3);\r\n    puVar3 = (undefined8 *)(*pcVar1)();\r\n    return puVar3;\r\n  }\r\n  *(int *)(param_2 + 3) = param_3;\r\n  uVar2 = param_2[1];\r\n  *param_1 = *param_2;\r\n  param_1[1] = uVar2;\r\n  param_1[2] = param_2[2];\r\n  *(undefined4 *)(param_1 + 3) = *(undefined4 *)(param_2 + 3);\r\n  *(undefined4 *)((longlong)param_1 + 0x1c) = *(undefined4 *)((longlong)param_2 + 0x1c);\r\n  return param_1;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "296431cb0a5c1a0c98e8bd2c8f9813ba616cc8da7041e93deb036553a1b77fc3",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 2,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd55e0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd55e0",
+        "address": "0x140BD55E0",
+        "decompiled_code": "\r\nundefined8 * FUN_140bd55e0(undefined8 *param_1,undefined8 *param_2,uint *param_3)\r\n\r\n{\r\n  uint uVar1;\r\n  code *pcVar2;\r\n  uint uVar3;\r\n  undefined8 uVar4;\r\n  undefined8 *puVar5;\r\n  bool bVar6;\r\n  \r\n  uVar1 = *param_3;\r\n  if (uVar1 != 0) {\r\n    uVar3 = *(uint *)((longlong)param_2 + 0xc) / uVar1;\r\n    uVar1 = (uint)(*(uint *)((longlong)param_2 + 0xc) % uVar1 != 0);\r\n    *(uint *)((longlong)param_2 + 0xc) = uVar3 + uVar1 + (uint)(uVar3 + uVar1 == 0);\r\n    uVar1 = param_3[1];\r\n    if (uVar1 != 0) {\r\n      uVar3 = *(uint *)(param_2 + 2) / uVar1;\r\n      uVar1 = (uint)(*(uint *)(param_2 + 2) % uVar1 != 0);\r\n      *(uint *)(param_2 + 2) = uVar3 + uVar1 + (uint)(uVar3 + uVar1 == 0);\r\n      uVar1 = param_3[2];\r\n      if (uVar1 != 0) {\r\n        uVar3 = *(uint *)((longlong)param_2 + 0x14) / uVar1;\r\n        bVar6 = *(uint *)((longlong)param_2 + 0x14) % uVar1 != 0;\r\n        *(uint *)((longlong)param_2 + 0x14) = uVar3 + bVar6 + (uint)(uVar3 + bVar6 == 0);\r\n        uVar4 = param_2[1];\r\n        *param_1 = *param_2;\r\n        param_1[1] = uVar4;\r\n        *(undefined4 *)(param_1 + 2) = *(undefined4 *)(param_2 + 2);\r\n        *(undefined4 *)((longlong)param_1 + 0x14) = *(undefined4 *)((longlong)param_2 + 0x14);\r\n        param_1[3] = param_2[3];\r\n        return param_1;\r\n      }\r\n    }\r\n  }\r\n  FUN_1428d99e0(&UNK_142b0fab0);\r\n  pcVar2 = (code *)swi(3);\r\n  puVar5 = (undefined8 *)(*pcVar2)();\r\n  return puVar5;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "7376ca9f82d50c7cae6847e648bcf84880a1095a6e8cb931e51f25db75197df1",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 3,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd56a0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd56a0",
+        "address": "0x140BD56A0",
+        "decompiled_code": "\r\nundefined8 * FUN_140bd56a0(undefined8 *param_1,undefined8 *param_2,uint *param_3)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined8 uVar2;\r\n  uint uVar3;\r\n  undefined8 *puVar4;\r\n  \r\n  if (*param_3 != 0) {\r\n    uVar3 = *(uint *)((longlong)param_2 + 0xc) / *param_3;\r\n    *(uint *)((longlong)param_2 + 0xc) = uVar3 + (uVar3 == 0);\r\n    if (param_3[1] != 0) {\r\n      uVar3 = *(uint *)(param_2 + 2) / param_3[1];\r\n      *(uint *)(param_2 + 2) = uVar3 + (uVar3 == 0);\r\n      if (param_3[2] != 0) {\r\n        uVar3 = *(uint *)((longlong)param_2 + 0x14) / param_3[2];\r\n        *(uint *)((longlong)param_2 + 0x14) = uVar3 + (uVar3 == 0);\r\n        uVar2 = param_2[1];\r\n        *param_1 = *param_2;\r\n        param_1[1] = uVar2;\r\n        *(undefined4 *)(param_1 + 2) = *(undefined4 *)(param_2 + 2);\r\n        *(undefined4 *)((longlong)param_1 + 0x14) = *(undefined4 *)((longlong)param_2 + 0x14);\r\n        param_1[3] = param_2[3];\r\n        return param_1;\r\n      }\r\n    }\r\n  }\r\n  FUN_1428d99e0(&UNK_142b0fac8);\r\n  pcVar1 = (code *)swi(3);\r\n  puVar4 = (undefined8 *)(*pcVar1)();\r\n  return puVar4;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "589aa92fd958944dfbdd717dfdb091422ddefe8aa4f45dd6514b7570a0dd5143",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 4,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x140bd5730"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5730\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 5,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5270"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5270\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 6,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd52a0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD52A0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 7,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd52e0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD52E0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 8,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5310"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5310\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 9,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5340"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5340\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 10,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5370"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5370\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 11,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5390"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5390\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 12,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd53b0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD53B0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 13,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd53d0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD53D0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 14,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd53f0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD53F0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 15,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5410"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5410\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 16,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5430"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5430\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 17,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5460"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5460\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 18,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd55a0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD55A0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 19,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5790"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5790\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 20,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd57a0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD57A0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 21,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd57e0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD57E0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 22,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5820"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5820\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 23,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5860"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5860\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 24,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd58a0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD58A0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 25,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd58e0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD58E0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 26,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5920"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5920\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 27,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5960"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD5960\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 28,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd59a0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD59A0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 29,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd59f0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "error": "{\"error\":\"No function at 0x140BD59F0\",\"error_type\":\"NotFound\",\"database\":\"newtexbuf_l2\"}",
+      "ok": false,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 30,
+      "tool": "disassemble_function",
+      "args": {
+        "address": "0x140bd5a40"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_140bd5a40",
+        "start": "0x140BD5A40",
+        "end": "0x140BD5A41",
+        "instruction_count": 0,
+        "instructions": [],
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "d6c61c49927c1eee69a82a1fcaa847bdeb31b2b05fd334688d87c4bbd4f88f33",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 31,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x141738fe0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_141738fe0",
+        "address": "0x141738FE0",
+        "decompiled_code": "\r\nulonglong FUN_141738fe0(int param_1)\r\n\r\n{\r\n  code *pcVar1;\r\n  ulonglong uVar2;\r\n  int iStack_44;\r\n  int *piStack_40;\r\n  undefined *puStack_38;\r\n  undefined *puStack_30;\r\n  undefined8 uStack_28;\r\n  undefined4 **ppuStack_20;\r\n  undefined8 uStack_18;\r\n  undefined8 uStack_10;\r\n  \r\n  if (param_1 - 1U < 0xb8) {\r\n    return (ulonglong)*(uint *)(&UNK_142ccd890 + (ulonglong)(param_1 - 1U) * 4);\r\n  }\r\n  piStack_40 = &iStack_44;\r\n  puStack_38 = &UNK_140c87d80;\r\n  puStack_30 = &UNK_142ccd7b8;\r\n  uStack_28 = 1;\r\n  uStack_10 = 0;\r\n  ppuStack_20 = &piStack_40;\r\n  uStack_18 = 1;\r\n  iStack_44 = param_1;\r\n  FUN_1428d9390(&puStack_30,&UNK_142ccd7f0);\r\n  pcVar1 = (code *)swi(3);\r\n  uVar2 = (*pcVar1)();\r\n  return uVar2;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "187f2cd1099c816641c3f5bfc97fd7646f86af5b58b4366e5b01778e61e56240",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 32,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x141739060"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_141739060",
+        "address": "0x141739060",
+        "decompiled_code": "\r\nundefined4 * FUN_141739060(undefined4 *param_1,uint param_2)\r\n\r\n{\r\n  undefined1 uVar1;\r\n  undefined4 uVar2;\r\n  code *pcVar3;\r\n  ulonglong uVar4;\r\n  undefined4 *puVar5;\r\n  undefined1 auStack_38 [8];\r\n  undefined *puStack_30;\r\n  undefined8 uStack_28;\r\n  undefined1 *puStack_20;\r\n  undefined8 uStack_18;\r\n  undefined8 uStack_10;\r\n  \r\n  if (param_2 < 0x93) {\r\n    uVar4 = (ulonglong)param_2;\r\n    uVar2 = *(undefined4 *)(&UNK_142ccddbc + uVar4 * 4);\r\n    uVar1 = (&UNK_142cce008)[uVar4];\r\n    *param_1 = *(undefined4 *)(&UNK_142ccdb70 + uVar4 * 4);\r\n    param_1[1] = uVar2;\r\n    *(undefined1 *)(param_1 + 2) = uVar1;\r\n    *(undefined1 *)((longlong)param_1 + 9) = uVar1;\r\n    return param_1;\r\n  }\r\n  puStack_30 = &UNK_142ccd828;\r\n  uStack_28 = 1;\r\n  puStack_20 = auStack_38;\r\n  uStack_18 = 0;\r\n  uStack_10 = 0;\r\n  FUN_1428d9390(&puStack_30,&UNK_142ccd838);\r\n  pcVar3 = (code *)swi(3);\r\n  puVar5 = (undefined4 *)(*pcVar3)();\r\n  return puVar5;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "ab19ce0fd259199d1c29157c5754984e26c7acbc3febbdd09406118ecd09a461",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    },
+    {
+      "index": 2,
+      "position": 33,
+      "tool": "decompile_function",
+      "args": {
+        "address": "0x1417390e0"
+      },
+      "via_batch": true,
+      "started_at": "2026-10-12T10:28:01.698Z",
+      "completed_at": "2026-10-12T10:28:03.821Z",
+      "source": "actual_mcp_call",
+      "cache_key": "63337732e1c3fdafb085c0af47488e60183080b013f810fc08f2083843d73871",
+      "cache_eligible": false,
+      "result": {
+        "function_name": "FUN_1417390e0",
+        "address": "0x1417390E0",
+        "decompiled_code": "\r\nundefined8 FUN_1417390e0(int param_1)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined8 uVar2;\r\n  uint uVar3;\r\n  int iStack_44;\r\n  int *piStack_40;\r\n  undefined *puStack_38;\r\n  undefined *puStack_30;\r\n  undefined8 uStack_28;\r\n  undefined4 **ppuStack_20;\r\n  undefined8 uStack_18;\r\n  undefined8 uStack_10;\r\n  \r\n  if (param_1 - 1U < 0x82) {\r\n    return 1;\r\n  }\r\n  uVar3 = param_1 - 0x83;\r\n  if (uVar3 < 0x10) {\r\n    if ((0xccc0U >> (uVar3 & 0x1f) & 1) != 0) {\r\n      return 0x10;\r\n    }\r\n    if (((3U >> (uVar3 & 0x1f) & 1) != 0) || (uVar3 == 8)) {\r\n      return 8;\r\n    }\r\n  }\r\n  piStack_40 = &iStack_44;\r\n  puStack_38 = &UNK_140c87d80;\r\n  puStack_30 = &UNK_142ccd868;\r\n  uStack_28 = 1;\r\n  uStack_10 = 0;\r\n  ppuStack_20 = &piStack_40;\r\n  uStack_18 = 1;\r\n  iStack_44 = param_1;\r\n  FUN_1428d9390(&puStack_30,&UNK_142ccd878);\r\n  pcVar1 = (code *)swi(3);\r\n  uVar2 = (*pcVar1)();\r\n  return uVar2;\r\n}\r\n\r\n",
+        "database": "newtexbuf_l2"
+      },
+      "result_sha256": "e094ce8a98f09cd1dddc00b9c21edf1d7f1c659486d8e43543b44e0bad6ecfce",
+      "ok": true,
+      "lane": "newtexbuf_l2",
+      "database": "newtexbuf_l2"
+    }
+  ],
+  "cleanup": [
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "newtexbuf_l1",
+        "save": false
+      },
+      "cleanup": true,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"newtexbuf_l1\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "newtexbuf_l1"
+        },
+        "isError": false
+      },
+      "ok": true,
+      "lane": "newtexbuf_l1"
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "newtexbuf_l2",
+        "save": false
+      },
+      "cleanup": true,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"newtexbuf_l2\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "newtexbuf_l2"
+        },
+        "isError": false
+      },
+      "ok": true,
+      "lane": "newtexbuf_l2"
+    }
+  ],
+  "lock_events": [
+    {
+      "event": "lock_removed",
+      "reason": "per-database workers own separate Ghidra projects; a shared session lock is no longer required",
+      "lane": "newtexbuf_l1"
+    },
+    {
+      "event": "lock_removed",
+      "reason": "per-database workers own separate Ghidra projects; a shared session lock is no longer required",
+      "lane": "newtexbuf_l2"
+    }
+  ],
+  "ok": false,
+  "cleanup_ok": true
+}

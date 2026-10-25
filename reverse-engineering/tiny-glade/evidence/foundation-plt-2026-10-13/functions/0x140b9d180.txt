@@ -1,0 +1,66 @@
+// load_last_used_locale
+// 0x140b9d180 void __cdecl load_last_used_locale(void)
+// params: []
+
+void __cdecl lang_lib::load_last_used_locale(void)
+
+{
+  undefined8 *puVar1;
+  code *pcVar2;
+  undefined4 *extraout_RAX;
+  longlong local_90;
+  longlong local_88;
+  longlong local_78;
+  longlong local_28;
+  
+  paths::find_standard_app_root_path();
+  if (SBORROW8(0,local_78)) {
+    anyhow::error::impl$6::drop();
+  }
+  else {
+    std::sys::os_str::wtf8::Buf::as_mut_slice();
+    std::path::Path::_join();
+    std::sys::os_str::wtf8::Buf::as_mut_slice();
+    std::fs::read_to_string::inner();
+    if (local_78 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    local_28 = local_90;
+    if (!SBORROW8(0,local_90)) {
+      if (local_78 != 0) {
+        std::alloc::__default_lib_allocator::__rust_dealloc();
+      }
+      goto LAB_140b9d2ec;
+    }
+    if (((uint)local_88 & 3) == 1) {
+      puVar1 = *(undefined8 **)(local_88 + 7);
+      pcVar2 = (code *)*puVar1;
+      if (pcVar2 != (code *)0x0) {
+        (*pcVar2)(*(undefined8 *)(local_88 + -1));
+      }
+      if (puVar1[1] != 0) {
+        std::alloc::__default_lib_allocator::__rust_dealloc();
+      }
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    if (local_78 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+  }
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX == (undefined4 *)0x0) {
+                    // WARNING: Subroutine does not return
+    alloc::raw_vec::handle_error();
+  }
+  local_28 = 5;
+  *(undefined1 *)(extraout_RAX + 1) = 0x53;
+  *extraout_RAX = 0x552d6e65;
+LAB_140b9d2ec:
+  load_locale_impl();
+  if (local_28 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  return;
+}
+
+

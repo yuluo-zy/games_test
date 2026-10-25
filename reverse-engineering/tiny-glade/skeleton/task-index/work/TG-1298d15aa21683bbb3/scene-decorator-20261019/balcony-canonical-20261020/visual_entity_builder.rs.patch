@@ -1,0 +1,85 @@
+--- a/tiny-glade/crates/systems/decorator/src/utils/visual_entity_builder.rs
++++ b/tiny-glade/crates/systems/decorator/src/utils/visual_entity_builder.rs
+@@ -182,11 +182,8 @@
+         WindowLight,
+         12
+     );
+-    raw_component!(
+-        /// B `components::BalconyDoor`（translation + `rotation*Z`，0x18 B，O）。
+-        BalconyDoor,
+-        0x18
+-    );
++    // Same six-value component read by the actual auto-clutter balcony gate.
++    pub use country_core::components::drawable::BalconyDoor;
+     raw_component!(
+         /// B `components::Smoke`（u64(id) + u32 0 + u8 + u8，14 B，U）。
+         Smoke,
+@@ -617,17 +614,12 @@
+             payload[8..12].copy_from_slice(&id.to_le_bytes());
+             commands.entity(entity).insert(WindowLight(payload));
+         }
+-        // 7 BalconyDoor（translation + rotation*Vec3::Z）
++        // 7 BalconyDoor: preserve all actual values and the original +0x14f gate.
+         if self.balcony_door {
+-            let mut payload = [0u8; 0x18];
+-            payload[0..4].copy_from_slice(&transform.translation.x.to_le_bytes());
+-            payload[4..8].copy_from_slice(&transform.translation.y.to_le_bytes());
+-            payload[8..12].copy_from_slice(&transform.translation.z.to_le_bytes());
+-            let forward = transform.rotation * Vec3::Z;
+-            payload[12..16].copy_from_slice(&forward.x.to_le_bytes());
+-            payload[16..20].copy_from_slice(&forward.y.to_le_bytes());
+-            payload[20..24].copy_from_slice(&forward.z.to_le_bytes());
+-            commands.entity(entity).insert(BalconyDoor(payload));
++            commands.entity(entity).insert(BalconyDoor {
++                translation: transform.translation,
++                forward: transform.rotation * Vec3::Z,
++            });
+         }
+         // 8 Smoke（u64(id) + u32 0 + u8 + u8）
+         if let Some((tag, sub)) = self.smoke.filter(|value| value.0 != 2) {
+@@ -743,6 +735,45 @@
+ #[cfg(test)]
+ mod tests {
+     use super::*;
++
++    #[test]
++    fn actual_builder_balcony_flag_uses_canonical_six_values_with_nonidentity_transform() {
++        use bevy_ecs::world::{CommandQueue, World};
++        use country_core::components::drawable::BalconyDoor as CanonicalBalconyDoor;
++        assert_eq!(core::any::TypeId::of::<pending_core::BalconyDoor>(),
++            core::any::TypeId::of::<CanonicalBalconyDoor>());
++        for active in [false, true] {
++            let mut world = World::new();
++            let mut queue = CommandQueue::default();
++            let mut state = DecoratorTransientVisualState::default();
++            let rotation = Quat::from_rotation_y(0.73) * Quat::from_rotation_x(-0.41);
++            let position = Vec3::new(3.25, -2.5, 7.75);
++            let normal_offset = Vec3::new(0.125, -0.375, 0.625);
++            let mut builder = WindowVisualEntityBuilder::new(position, rotation, 83);
++            builder.mesh_name = "CPU balcony value fixture";
++            builder.nani_name = "nani_balcony_door";
++            builder.normal_offset = normal_offset;
++            builder.scale_override = Some(Vec3::new(2.0, 3.0, 4.0));
++            builder.balcony_door = active;
++            let entity = builder.build(&mut Commands::new(&mut queue, &world), 83,
++                &AssetMeshLibrary::new(), &AssetShaderLibrary::new(), &mut state);
++            queue.apply(&mut world);
++            if active {
++                let component = world.get::<CanonicalBalconyDoor>(entity).unwrap();
++                let translation = position + rotation * normal_offset;
++                let forward = rotation * Vec3::Z;
++                assert_eq!(component.translation.to_array().map(f32::to_bits),
++                    translation.to_array().map(f32::to_bits));
++                assert_eq!(component.forward.to_array().map(f32::to_bits),
++                    forward.to_array().map(f32::to_bits));
++                assert_ne!(component.translation, Vec3::ZERO);
++                assert_ne!(component.forward, Vec3::Z);
++            } else {
++                assert!(world.get::<CanonicalBalconyDoor>(entity).is_none());
++            }
++            assert_eq!(state.entities_of(83), Some([entity].as_slice()));
++        }
++    }
+ 
+     // Cross-consumer contract: native tag2 is None even when the host outer
+     // Option carries its raw bytes. Exercise actual Commands/build insertion.

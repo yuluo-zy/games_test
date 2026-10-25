@@ -1,0 +1,183 @@
+--- a/tiny-glade/crates/systems/glade-border/src/display_glade_border.rs
++++ b/tiny-glade/crates/systems/glade-border/src/display_glade_border.rs
+@@ -140,18 +140,10 @@
+         let factory = SignifierFactory::from_closure(
+             &label,
+             Arc::new(
+-                move |_mesh_library: &AssetMeshLibrary,
+-                      _shader_library: &AssetShaderLibrary,
++                move |mesh_library: &AssetMeshLibrary,
++                      shader_library: &AssetShaderLibrary,
+                       commands: &mut Commands| {
+-                    // O：closure$1 的 env = ArcInner data：`{cap@0, ptr@+8, len@+0x10,
+-                    // length@+0x18}`。折线 Vec 由闭包捕获持有，指针在调用期间有效。
+-                    let env = GladeBorderSignifierEnv {
+-                        points_cap: points.capacity(),
+-                        points_ptr: points.as_ptr(),
+-                        points_len: points.len(),
+-                        length: perimeter,
+-                    };
+-                    closure_1(&env, commands)
++                    closure_1(&points, perimeter, mesh_library, shader_library, commands)
+                 },
+             ),
+         );
+@@ -159,74 +151,25 @@
+     }
+ }
+ 
+-/// perimeter signifier 的 ArcInner 数据面（O：closure$1 的 env，0x20 B）：
+-/// `{points.cap@0, points.ptr@+8, points.len@+0x10, length(perimeter)@+0x18}`。
+-///
+-/// 原生 ArcInner<closure_env$1> = `{strong=1@0, weak=1@8, 本结构@+0x10}`（alloc 0x30），
+-/// vtable 0x142efa150（drop 0x14014b880 / size 0x20 / align 8 / call_once 0x141be0a30）。
+-/// `cap` 只被 drop 使用（closure$1 不读）；此处显式保留以记录布局。
+-pub struct GladeBorderSignifierEnv {
+-    /// @+0：折线 Vec 容量（原生 drop 释放用）。
+-    pub points_cap: usize,
+-    /// @+8：折线数据指针。
+-    pub points_ptr: *const Vec3,
+-    /// @+0x10：折线点数。
+-    pub points_len: usize,
+-    /// @+0x18：折线总长 f32（→ DashedLineLength ×0.7）。
+-    pub length: f32,
+-}
+-
+-/// `display_glade_border::closure$1` @0x141be1080（O，fresh 逐指令复核）。
+-///
+-/// env（in_RDX，见 [`GladeBorderSignifierEnv`]）读取：`+8=ptr`、`+0x10=len`、
+-/// `+0x18=length`。fresh disasm 0x141be1080 逐段：
+-/// 1. `alloc 12*len` + `memcpy` 复制折线（长度 0 时用 dangling，与 Rust `Vec` 同）；
+-/// 2. `SignifierEntityBuilder::new`（0x14089d9b0，载荷 = 6 qword：首 =
+-///    `0x8000000000000002`，余 = 折线 {cap(或len),ptr,len} + 2×栈未初始化 0）→
+-///    `set_ui_pass(0)`（0x14089dad0）→ `animation_duration(0.0)`（0x14089dc90）→
+-///    `custom_shader("dashed_line"@0x142efa180，len 0xb)`（0x14089db00）→
+-///    `build`（0x14089dd50，实参含 `&AssetMeshLibrary`/`&AssetShaderLibrary`/
+-///    `&mut Commands`）；
+-/// 3. `Commands` 队列 2 条 `insert`（按原顺序）：
+-///    - `insert(DrawTopology)`：值 `0x4000000000000001`（tag 1 = `Alt`，f32 2.0）；
+-///    - `insert(DashedLineLength)`：值 = env.length × 0.7（0x1429cd030）；
+-/// 4. 返回 1 元素 `Vec<Entity>`（sret 写 `{cap=1, ptr=heap(Entity), len=1}`）。
+-pub fn closure_1(env: &GladeBorderSignifierEnv, commands: &mut Commands) -> Vec<Entity> {
+-    // 1. O：复制折线（disasm 0x141be10ed-0x141be115e：alloc 12*len + memcpy）。
+-    let points: Vec<Vec3> = if env.points_ptr.is_null() || env.points_len == 0 {
+-        Vec::new()
+-    } else {
+-        // SAFETY：env.points_ptr/points_len 由调用方构造，指向 len 个 Vec3。
+-        unsafe { std::slice::from_raw_parts(env.points_ptr, env.points_len) }.to_vec()
+-    };
+-    // 2. O：SignifierEntityBuilder 链（disasm 0x141be116f-0x141be11e6）。
+-    // 载荷 = 6 qword：mesh_kind = 0x8000000000000002、折线 {len,ptr,len}、
+-    // 尾 2×0（原 [RBP+0x60]/[RBP+0x68] 栈未初始化——取确定 0，非游戏逻辑；I）。
+-    let payload: [u64; 6] = [
+-        0x8000_0000_0000_0002,
+-        points.len() as u64,
+-        points.as_ptr() as u64,
+-        points.len() as u64,
+-        0,
+-        0,
+-    ];
+-    let entity = SignifierEntityBuilder::new(&payload)
++/// B 141be1080：复制真实边界折线，经共享构建器创建虚线绘制实体。
++pub fn closure_1(
++    points: &[Vec3],
++    length: f32,
++    meshes: &AssetMeshLibrary,
++    shaders: &AssetShaderLibrary,
++    commands: &mut Commands,
++) -> Vec<Entity> {
++    // 原闭包复制捕获的折线；借切片表达其有效生命周期。
++    let points = points.to_vec();
++    let entity = SignifierEntityBuilder::from_points(points)
+         .set_ui_pass(0)
+         .animation_duration(0.0)
+         .custom_shader("dashed_line")
+-        .build(commands);
+-    // 3. O：2× Commands insert（disasm 0x141be1214-0x141be1295）。
+-    //    DrawTopology = `0x4000000000000001` = {tag u32=1 → Alt, f32 2.0}。
++        .build(meshes, shaders, commands);
+     commands.entity(entity).insert(DrawTopology::Alt(2.0));
+-    //    DashedLineLength = env.length × 0.7（0x1429cd030）；插入真实组件
+-    //    `country_core::components::DashedLineLength`（TypeId 0x4782fcee8a8c578b，
+-    //    `f32 @+0`，与 `DebugLine::show` 同型）。渲染读取面
+-    //    `draw_callbacks_a::DashedLineLengthView` 仍是同 TypeId 的镜像类型，跨模块
+-    //    登记（本 crate 不再插 View，避免两个不同 ECS 类型）。
+     commands
+         .entity(entity)
+-        .insert(DashedLineLength(env.length * 0.7));
+-    // 4. O：返回 1 元素 Vec<Entity>（sret 写 {1, ptr, 1}）。
++        .insert(DashedLineLength(length * 0.7));
+     vec![entity]
+ }
+ 
+@@ -242,16 +185,20 @@
+     #[test]
+     fn closure_1_wakes_and_inserts_dashed_border_components() {
+         let mut world = World::new();
++        let meshes = AssetMeshLibrary::new();
++        let shaders = AssetShaderLibrary::new();
++        shaders.add_raster(
++            country_core::render::shader::RasterShaderProgram::new_draw(
++                "dashed_line",
++                Default::default(),
++                &CpuShaders,
++            ),
++            false,
++        );
+         let points = vec![Vec3::ZERO, Vec3::new(3.0, 4.0, 0.0)];
+         world
+             .run_system_once(move |mut commands: Commands| {
+-                let env = GladeBorderSignifierEnv {
+-                    points_cap: points.capacity(),
+-                    points_ptr: points.as_ptr(),
+-                    points_len: points.len(),
+-                    length: 4.0,
+-                };
+-                let spawned = closure_1(&env, &mut commands);
++                let spawned = closure_1(&points, 4.0, &meshes, &shaders, &mut commands);
+                 assert_eq!(spawned.len(), 1);
+             })
+             .unwrap();
+@@ -264,4 +211,41 @@
+         let lens: Vec<f32> = dashed.iter(&world).map(|d| d.0).collect();
+         assert_eq!(lens, vec![2.8], "4.0 * 0.7");
+     }
+-}
++    // 该测试只接收 CPU shader 工件；GPU 创建面不应在本测试触发。
++    struct CpuShaders;
++    use country_core::render::shader::boundary::{
++        CompiledShaderPipeline, ComputePipeline, ComputePipelineDesc, Error, RasterPipeline,
++        RasterPipelineDesc, RasterPipelineKey, ShaderBackend,
++    };
++    impl ShaderBackend for CpuShaders {
++        fn load_compiled_compute(
++            &self,
++            _: &ComputePipelineDesc,
++        ) -> Result<CompiledShaderPipeline, Error> {
++            unreachable!()
++        }
++        fn load_compiled_raster(
++            &self,
++            _: &RasterPipelineDesc,
++        ) -> Result<CompiledShaderPipeline, Error> {
++            Ok(CompiledShaderPipeline::default())
++        }
++        fn raster_shader_variants(&self, d: &RasterPipelineDesc) -> [RasterPipelineDesc; 2] {
++            [d.clone(), d.clone()]
++        }
++        fn create_compute_pipeline(
++            &self,
++            _: &str,
++            _: std::sync::Arc<CompiledShaderPipeline>,
++        ) -> Result<ComputePipeline, country_core::rhapsody_types::BackendError> {
++            unreachable!()
++        }
++        fn create_raster_pipeline(
++            &self,
++            _: std::sync::Arc<CompiledShaderPipeline>,
++            _: &RasterPipelineKey,
++        ) -> Result<RasterPipeline, Error> {
++            unreachable!()
++        }
++    }
++}

@@ -1,0 +1,265 @@
+--- a/games_test/tiny-glade/crates/country-core/src/resources/walls/decorator_storage.rs
++++ b/games_test/tiny-glade/crates/country-core/src/resources/walls/decorator_storage.rs
+@@ -361,68 +361,34 @@
+     }
+ }
+ 
+-/// B DecoratorAddrSnapshot：快照单条记录（地址 + 编码 DecoratorId + 状态字节 +
+-/// 待恢复 DecoratorInfo）。take_snapshot/restore_snapshot 0x140a20d70 以 16B XOR
+-/// 掩码编码 id；fresh（2026-10-17）证实原生 **逐 0x28B 记录恢复 DecoratorInfo 入
+-/// 内嵌 map**（非 16B 近似、非仅标 removed）。0x28B/0x16B 节格式逐字段名待①取证；
+-/// 本 crate 以携带完整 DecoratorInfo 的捕获模型承载，restore 真写回。
+-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++/// One storage bucket in a save snapshot. B capture maps every existing bucket,
++/// including an empty bucket, to its actual ids and normalized history states.
++/// Native mapper 0x141559890 sorts ids; 0x1412ff7b0 emits 0x58-byte items.
++#[derive(Clone, Debug, Default, PartialEq)]
+ pub struct DecoratorAddrSnapshot {
+-    /// 编码 DecoratorId（64 位半字旋转 XOR 掩码）。
+-    pub encoded_id: u64,
+-    /// 所在存储地址。
+-    pub addr: DecoratorStorageAddr,
+-    /// 状态字节（判别跳表 0x142ac9bdc/0x142ac9bfc，U：状态语义待取证）。
+-    pub state: u8,
+-    /// 待恢复的 DecoratorInfo（fresh restore_snapshot 回填内嵌 map）。
+-    pub info: DecoratorInfo,
+-}
+-
+-/// B DecoratorStorageSnapshot：装饰存储快照（`sort` 行 1240 内联）。
+-/// **① c-apply-api-formats 契约 §2 格式标注**：原生 restore_snapshot（0x140a20d70）
+-/// 载荷 = `&[0x28B 记录]`（{状态 16B + 子计数 8B} + 0x16B 子记录）；本 crate
+-/// `DecoratorAddrSnapshot` 为携带完整 DecoratorInfo 的捕获模型（非 16B 近似）。
+-/// 0x28B/0x16B 逐槽字段名待①（中优先）。`restore_snapshot` 签名 + 空桶前置 +
+-/// 逐装饰恢复序（get_or_insert_default → removed_ids.remove + modified_ids.insert +
+-/// 内嵌 map insert + d2s insert）可直接用（0x140a20d70），节格式对齐待①。
+-#[derive(Clone, Debug, Default)]
++    pub states: Vec<(DecoratorId, DecoratorHistoryState)>,
++}
++
++/// B save snapshot: 0x28-byte native outer rows are (storage address, bucket Vec).
++/// The representation preserves absent versus present-but-empty terrain/stairs.
++#[derive(Clone, Debug, Default, PartialEq)]
+ pub struct DecoratorStorageSnapshot {
+-    /// 快照条目。
+-    pub states: Vec<DecoratorAddrSnapshot>,
++    pub states: Vec<(DecoratorStorageAddr, DecoratorAddrSnapshot)>,
+ }
+ 
+ impl DecoratorStorageSnapshot {
+-    /// 行 1240（内联）：排序（U：原排序键待取证；按（地址，编码 id）稳定序）。
++    /// Explicit canonical ordering for callers that request it. Capture itself
++    /// retains the wall iterator order followed by terrain and stairs.
+     pub fn sort(&mut self) {
+-        self.states.sort_by_key(|s| {
+-            (
+-                match s.addr {
+-                    DecoratorStorageAddr::Wall(w) => w.0,
+-                    DecoratorStorageAddr::Terrain => u64::MAX - 1,
+-                    DecoratorStorageAddr::Stair => u64::MAX,
+-                },
+-                s.encoded_id,
+-            )
++        self.states.sort_by_key(|(addr, _)| match addr {
++            DecoratorStorageAddr::Wall(wall) => (0, wall.0),
++            DecoratorStorageAddr::Terrain => (1, 0),
++            DecoratorStorageAddr::Stair => (2, 0),
+         });
+-    }
+-}
+-
+-/// 快照 id 编码掩码（_UNK_1429cd080/_UNK_1429cd090，U：数值待取证，暂 0）。
+-const SNAPSHOT_ID_MASK: u64 = 0;
+-
+-/// 编码：`rotate_right32(id) XOR mask`（原 `(uVar18<<0x20|uVar18>>0x20) ^ mask`）。
+-/// take_snapshot 捕获面使用（当前快照记录为空存储前置断言下无内容，保留供
+-/// capture 路径接线）。
+-#[allow(dead_code)]
+-#[inline]
+-fn encode_snapshot_id(id: u32) -> u64 {
+-    (u64::from(id)).rotate_right(32) ^ SNAPSHOT_ID_MASK
+-}
+-
+-/// 解码：`(encoded ^ mask).rotate_left(32)`。
+-#[inline]
+-fn decode_snapshot_id(encoded: u64) -> u32 {
+-    (encoded ^ SNAPSHOT_ID_MASK).rotate_left(32) as u32
++        for (_, bucket) in &mut self.states {
++            bucket.states.sort_by_key(|(id, _)| *id);
++        }
++    }
+ }
+ 
+ /// 子侧状态字节公式（E2 取证定案，2026-10-16；fresh 0x140a1f590）：
+@@ -1057,11 +1023,44 @@
+         }
+     }
+ 
+-    /// 0x140a20d70（O，26KB）：快照（take_snapshot 内联于同址）。前置 6 断言：
+-    /// per_wall/removed/d2s 空 + terrain/stairs None + !immutable。**前置断言已保证
+-    /// 各桶为空**，故捕获面为空；原生同址逐 0x28B 记录重建由 restore_snapshot 消费，
+-    /// capture 路径未接线（快照条目由 take 侧填充待①）。
++    /// B take_snapshot, inlined into capture_save_data 0x1417a0430. The actual
++    /// collector 0x1412fbcd0 visits walls, then optional terrain and stair buckets;
++    /// 0x141559890/0x1412ff7b0 collect and sort real (DecoratorId, HistoryState).
++    /// Mutability and mutation-tracking sets do not restrict a read-only capture.
+     pub fn take_snapshot(&self) -> DecoratorStorageSnapshot {
++        let capture = |bucket: &Decorators| {
++            let mut states: Vec<_> = bucket.decorators.iter().map(|(&id, info)| {
++                (DecoratorId(id), DecoratorHistoryState::from_info(info))
++            }).collect();
++            states.sort_by_key(|(id, _)| *id);
++            DecoratorAddrSnapshot { states }
++        };
++        let mut states: Vec<_> = self.iter_walls().map(|(wall, bucket)| {
++            (DecoratorStorageAddr::Wall(wall), capture(bucket))
++        }).collect();
++        if let Some(bucket) = &self.terrain {
++            states.push((DecoratorStorageAddr::Terrain, capture(bucket)));
++        }
++        if let Some(bucket) = &self.stairs {
++            states.push((DecoratorStorageAddr::Stair, capture(bucket)));
++        }
++        DecoratorStorageSnapshot { states }
++    }
++
++    /// Compatibility entry point. A runtime loader must use
++    /// `restore_snapshot_with_id_gen` with its authoritative generator.
++    pub fn restore_snapshot(&mut self, snapshot: &DecoratorStorageSnapshot) {
++        self.restore_snapshot_with_id_gen(snapshot, &mut DecoratorIdGen::default());
++    }
++
++    /// B restore_snapshot 0x140a20d70: empty mutable destination, create each
++    /// captured bucket even when empty, reserve ids, restore live state and d2s.
++    pub fn restore_snapshot_with_id_gen(
++        &mut self,
++        snapshot: &DecoratorStorageSnapshot,
++        id_gen: &mut DecoratorIdGen,
++    ) {
++        assert!(!self.immutable, "assertion failed: !self.immutable");
+         assert!(self.per_wall.is_empty(), "assertion failed: per_wall.is_empty()");
+         assert!(self.terrain.is_none(), "assertion failed: terrain.is_none()");
+         assert!(self.stairs.is_none(), "assertion failed: stairs.is_none()");
+@@ -1070,32 +1069,22 @@
+             self.decorator_to_storage.is_empty(),
+             "assertion failed: decorator_to_storage.map.is_empty()"
+         );
+-        assert!(!self.immutable, "assertion failed: !self.immutable");
+-        DecoratorStorageSnapshot::default()
+-    }
+-
+-    /// 0x140a20d70（O，26KB）：恢复快照。前置断言同 take_snapshot；逐条解码
+-    /// 编码 id（旋转还原）→ `get_or_insert_default` 目标桶 → **removed_ids.remove +
+-    /// modified_ids.insert + 内嵌 map insert(info) + d2s insert（冲突 panic）**。
+-    /// fresh（2026-10-17）证实原生确实回填内嵌 map 并逐状态还原；Rust 此前仅
+-    /// removed_ids.insert + d2s.update，**不恢复 DecoratorInfo**。
+-    pub fn restore_snapshot(&mut self, snapshot: &DecoratorStorageSnapshot) {
+-        assert!(self.per_wall.is_empty(), "assertion failed: per_wall.is_empty()");
+-        assert!(self.terrain.is_none(), "assertion failed: terrain.is_none()");
+-        assert!(self.stairs.is_none(), "assertion failed: stairs.is_none()");
+-        assert!(self.removed.is_empty(), "assertion failed: removed.is_empty()");
+-        assert!(
+-            self.decorator_to_storage.is_empty(),
+-            "assertion failed: decorator_to_storage.map.is_empty()"
+-        );
+-        assert!(!self.immutable, "assertion failed: !self.immutable");
+-        for s in &snapshot.states {
+-            let id = decode_snapshot_id(s.encoded_id);
+-            let decorators = self.get_or_insert_default(s.addr);
+-            decorators.removed_ids.remove(&id);
+-            decorators.modified_ids.insert(id);
+-            decorators.decorators.insert(id, s.info);
+-            self.decorator_to_storage.insert(DecoratorId(id), s.addr);
++        for (addr, snapshot) in &snapshot.states {
++            // Original get_or_insert_default precedes the bucket's len check.
++            self.get_or_insert_default(*addr);
++            for (id, state) in &snapshot.states {
++                id_gen.reserve(*id);
++                let decorators = self.get_mut(*addr).expect("created bucket");
++                decorators.removed_ids.remove(&id.0);
++                decorators.modified_ids.insert(id.0);
++                let old = decorators.decorators.insert(id.0, state.to_info());
++                if old.is_none() {
++                    self.decorator_to_storage.insert(*id, *addr);
++                } else {
++                    self.decorator_to_storage.update(*id, *addr)
++                        .expect("d2s update: no such decorator");
++                }
++            }
+         }
+     }
+ 
+@@ -1517,10 +1506,70 @@
+     }
+ 
+     #[test]
+-    fn snapshot_id_encode_decode_roundtrip() {
+-        for id in [0u32, 1, 0x1234_5678, u32::MAX] {
+-            assert_eq!(decode_snapshot_id(encode_snapshot_id(id)), id);
+-        }
++    fn snapshot_collects_nonempty_buckets_and_retains_empty_owners() {
++        let mut storage = DecoratorStorage::default();
++        for (id, ty, style) in [(u32::MAX, 0x38, 6), (7, 0x3d, 5)] {
++            let mut value = info(id);
++            value.ty = ty;
++            value.u40 = style << 8;
++            storage.apply_decorator_place(
++                DecoratorStorageAddr::Wall(WallId(4)), DecoratorId(id), &value,
++            );
++        }
++        storage.get_or_insert_default(DecoratorStorageAddr::Wall(WallId(8)));
++        storage.get_or_insert_default(DecoratorStorageAddr::Terrain);
++        storage.get_or_insert_default(DecoratorStorageAddr::Stair);
++        storage.removed.insert(DecoratorStorageAddr::Wall(WallId(99)), HashSet::from([42]));
++        storage.mark_immutable();
++        let mut snapshot = storage.take_snapshot();
++        snapshot.sort();
++        assert_eq!(snapshot.states.len(), 4);
++        assert_eq!(snapshot.states[0].0, DecoratorStorageAddr::Wall(WallId(4)));
++        assert_eq!(snapshot.states[0].1.states.iter().map(|(id, _)| id.0).collect::<Vec<_>>(), vec![7, u32::MAX]);
++        for (_, bucket) in &snapshot.states[1..] { assert!(bucket.states.is_empty()); }
++        let source = storage.lookup_decorator_info(DecoratorId(7)).unwrap();
++        assert_eq!(snapshot.states[0].1.states[0].1, DecoratorHistoryState::from_info(source));
++        assert!(storage.immutable);
++        assert!(storage.removed.contains_key(&DecoratorStorageAddr::Wall(WallId(99))));
++    }
++
++    #[test]
++    fn snapshot_distinguishes_absent_and_empty_and_rejects_preview() {
++        let storage = DecoratorStorage::default();
++        assert!(storage.take_snapshot().states.is_empty());
++        let mut preview = DecoratorStorage::default();
++        let mut value = info(9);
++        value.state = 1;
++        preview.get_or_insert_default(DecoratorStorageAddr::Terrain).insert(DecoratorId(9), value);
++        assert!(std::panic::catch_unwind(|| preview.take_snapshot()).is_err());
++    }
++
++    #[test]
++    fn snapshot_restores_real_ids_buckets_and_generator_for_next_edit() {
++        let mut source = DecoratorStorage::default();
++        let mut value = info(90);
++        value.ty = 0x38;
++        value.u40 = 6 << 8;
++        value.u30 = 0; // default window style must survive without inference.
++        source.apply_decorator_place(DecoratorStorageAddr::Wall(WallId(2)), DecoratorId(90), &value);
++        source.get_or_insert_default(DecoratorStorageAddr::Terrain);
++        source.get_or_insert_default(DecoratorStorageAddr::Stair);
++        let snapshot = source.take_snapshot();
++        let mut restored = DecoratorStorage::default();
++        let mut generator = DecoratorIdGen::default();
++        restored.restore_snapshot_with_id_gen(&snapshot, &mut generator);
++        assert_eq!(generator.generate(), DecoratorId(91));
++        assert_eq!(restored.lookup_storage(DecoratorId(90)), Some(DecoratorStorageAddr::Wall(WallId(2))));
++        let actual = restored.lookup_decorator_info(DecoratorId(90)).unwrap();
++        assert_eq!(actual.extra_style(), 6);
++        assert_eq!(actual.state, 0);
++        assert!(restored.terrain.as_ref().unwrap().decorators.is_empty());
++        assert!(restored.stairs.as_ref().unwrap().decorators.is_empty());
++        assert!(restored.get(DecoratorStorageAddr::Wall(WallId(2))).unwrap().modified_ids.contains(&90));
++        let mut captured_again = restored.take_snapshot();
++        let mut expected = snapshot;
++        captured_again.sort(); expected.sort();
++        assert_eq!(captured_again, expected);
+     }
+ 
+     #[test]

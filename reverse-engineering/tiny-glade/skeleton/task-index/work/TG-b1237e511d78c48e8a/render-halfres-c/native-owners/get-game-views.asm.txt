@@ -1,0 +1,70 @@
+
+/Users/yuluo/Desktop/game/tiny.glade/XJ07036/Tiny Glade v1.16.0/tiny-glade.exe:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140647a00: 56                          	pushq	%rsi
+140647a01: 57                          	pushq	%rdi
+140647a02: 48 83 ec 28                 	subq	$0x28, %rsp
+140647a06: 48 83 b9 88 00 00 00 00     	cmpq	$0x0, 0x88(%rcx)
+140647a0e: 0f 84 dc 00 00 00           	je	0x140647af0 <.text+0x646af0>
+140647a14: 48 8b 41 70                 	movq	0x70(%rcx), %rax
+140647a18: 4c 8b 41 78                 	movq	0x78(%rcx), %r8
+140647a1c: 49 b9 61 39 c3 50 e0 93 d1 22       	movabsq	$0x22d193e050c33961, %r9 # imm = 0x22D193E050C33961
+140647a26: 45 31 d2                    	xorl	%r10d, %r10d
+140647a29: 66 0f 6f 05 0f 52 7d 02     	movdqa	0x27d520f(%rip), %xmm0  # 0x142e1cc40
+140647a31: 66 0f 76 c9                 	pcmpeqd	%xmm1, %xmm1
+140647a35: 66 0f 6f 15 c3 58 7d 02     	movdqa	0x27d58c3(%rip), %xmm2  # 0x142e1d300
+140647a3d: 4d 21 c1                    	andq	%r8, %r9
+140647a40: f3 42 0f 6f 1c 08           	movdqu	(%rax,%r9), %xmm3
+140647a46: 66 0f 6f e3                 	movdqa	%xmm3, %xmm4
+140647a4a: 66 0f 74 e0                 	pcmpeqb	%xmm0, %xmm4
+140647a4e: 66 44 0f d7 dc              	pmovmskb	%xmm4, %r11d
+140647a53: 45 85 db                    	testl	%r11d, %r11d
+140647a56: 74 38                       	je	0x140647a90 <.text+0x646a90>
+140647a58: f3 41 0f bc f3              	tzcntl	%r11d, %esi
+140647a5d: 4c 01 ce                    	addq	%r9, %rsi
+140647a60: 4c 21 c6                    	andq	%r8, %rsi
+140647a63: 48 f7 de                    	negq	%rsi
+140647a66: 48 8d 34 76                 	leaq	(%rsi,%rsi,2), %rsi
+140647a6a: f3 0f 6f 64 f0 e8           	movdqu	-0x18(%rax,%rsi,8), %xmm4
+140647a70: 66 0f 74 e2                 	pcmpeqb	%xmm2, %xmm4
+140647a74: 66 0f d7 fc                 	pmovmskb	%xmm4, %edi
+140647a78: 81 ff ff ff 00 00           	cmpl	$0xffff, %edi           # imm = 0xFFFF
+140647a7e: 74 2b                       	je	0x140647aab <.text+0x646aab>
+140647a80: 41 8d 73 ff                 	leal	-0x1(%r11), %esi
+140647a84: 66 44 21 de                 	andw	%r11w, %si
+140647a88: 41 89 f3                    	movl	%esi, %r11d
+140647a8b: 75 cb                       	jne	0x140647a58 <.text+0x646a58>
+140647a8d: 0f 1f 00                    	nopl	(%rax)
+140647a90: 66 0f 74 d9                 	pcmpeqb	%xmm1, %xmm3
+140647a94: 66 44 0f d7 db              	pmovmskb	%xmm3, %r11d
+140647a99: 45 85 db                    	testl	%r11d, %r11d
+140647a9c: 75 52                       	jne	0x140647af0 <.text+0x646af0>
+140647a9e: 4d 01 d1                    	addq	%r10, %r9
+140647aa1: 49 83 c1 10                 	addq	$0x10, %r9
+140647aa5: 49 83 c2 10                 	addq	$0x10, %r10
+140647aa9: eb 92                       	jmp	0x140647a3d <.text+0x646a3d>
+140647aab: 48 8d 04 f0                 	leaq	(%rax,%rsi,8), %rax
+140647aaf: 48 8b 40 f8                 	movq	-0x8(%rax), %rax
+140647ab3: 48 3b 81 10 02 00 00        	cmpq	0x210(%rcx), %rax
+140647aba: 73 34                       	jae	0x140647af0 <.text+0x646af0>
+140647abc: 4c 8b 81 08 02 00 00        	movq	0x208(%rcx), %r8
+140647ac3: 49 8b 04 c0                 	movq	(%r8,%rax,8), %rax
+140647ac7: 48 85 c0                    	testq	%rax, %rax
+140647aca: 74 24                       	je	0x140647af0 <.text+0x646af0>
+140647acc: 48 8b 89 d8 01 00 00        	movq	0x1d8(%rcx), %rcx
+140647ad3: 48 f7 d0                    	notq	%rax
+140647ad6: 48 c1 e0 06                 	shlq	$0x6, %rax
+140647ada: 48 83 7c 01 20 00           	cmpq	$0x0, 0x20(%rcx,%rax)
+140647ae0: 74 0e                       	je	0x140647af0 <.text+0x646af0>
+140647ae2: 48 01 c1                    	addq	%rax, %rcx
+140647ae5: 48 8b 41 10                 	movq	0x10(%rcx), %rax
+140647ae9: 48 83 c4 28                 	addq	$0x28, %rsp
+140647aed: 5f                          	popq	%rdi
+140647aee: 5e                          	popq	%rsi
+140647aef: c3                          	retq
+140647af0: 48 89 d1                    	movq	%rdx, %rcx
+140647af3: e8 28 9b 76 02              	callq	0x142db1620 <.text+0x2db0620>
+140647af8: cc                          	int3

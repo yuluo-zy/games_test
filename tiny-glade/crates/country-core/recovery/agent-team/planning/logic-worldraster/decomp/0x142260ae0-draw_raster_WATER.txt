@@ -1,0 +1,372 @@
+NAME: draw_raster<country_core::resources::world_raster_defs::WaterRasterStagingSsbo,country_core::resources::world_raster::WorldRaster<512>,system_water::draw_water::draw_water::closure_env$1,system_water::draw_water::draw_water::closure_env$2,system_water::draw_water::draw_water::closure_env$3>
+SIGNATURE: void __cdecl draw_raster<country_core::resources::world_raster_defs::WaterRasterStagingSsbo,country_core::resources::world_raster::WorldRaster<512>,system_water::draw_water::draw_water::closure_env$1,system_water::draw_water::draw_water::closure_env$2,system_water::draw_water::draw_water::closure_env$3>(void)
+SIZE: 2214
+CALLEES: add_point,assert_failed<ref$<str$>,ref$<str$>_>,clear,commit_scratch_to_composite<512>,copy_composite_to_scratch<512>,copy_to_staging<512>,decorator_cull_allow_any,extend,get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>,grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>,grow_one<tuple$<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<system_decorator::decorator_visual::stairs::PreferredNodeAlignment,alloc::alloc::Global>_>,alloc::alloc::Global>,index_mut,iter_points_xz,last,memcmp,position,rasterize_stroke<512,core::iter::adapters::map::Map<core::slice::iter::Iter<glam::f32::vec3::Vec3>,country_core::resources::raster_stroke::impl$2::iter_points_xz::closure_env$0>_>,rasterize_world_space_stroke<core::iter::adapters::map::Map<core::slice::iter::Iter<glam::f32::vec3::Vec3>,country_core::resources::raster_stroke::impl$2::iter_points_xz::closure_env$0>_>,resample_and_smooth,start_new,unwrap_failed
+----DECOMP----
+
+void __cdecl
+country_core::systems::world_raster::
+draw_raster<country_core::resources::world_raster_defs::WaterRasterStagingSsbo,country_core::resources::world_raster::WorldRaster<512>,system_water::draw_water::draw_water::closure_env_1,system_water::draw_water::draw_water::closure_env_2,system_water::draw_water::draw_water::closure_env_3>
+          (void)
+
+{
+  undefined4 uVar1;
+  longlong lVar2;
+  undefined8 uVar3;
+  undefined8 uVar4;
+  undefined8 uVar5;
+  int iVar6;
+  longlong extraout_RAX;
+  float *extraout_RAX_00;
+  undefined8 *extraout_RAX_01;
+  longlong lVar7;
+  undefined8 *extraout_RAX_02;
+  uint *in_RCX;
+  longlong lVar8;
+  float *in_RDX;
+  longlong lVar9;
+  longlong in_R8;
+  undefined8 uVar10;
+  longlong *in_stack_00000028;
+  longlong *in_stack_00000030;
+  longlong *in_stack_00000038;
+  
+  **(undefined4 **)(in_R8 + 0x10) = *(undefined4 *)(in_R8 + 0x1c);
+  resources::active_raster_stroke::impl$1::index_mut();
+  lVar7 = 0;
+  if (1 < (ulonglong)*in_RCX) {
+    lVar7 = (ulonglong)*in_RCX - 1;
+  }
+  if (lVar7 == 0) {
+    **(undefined4 **)(in_R8 + 0x30) = *(undefined4 *)(in_R8 + 0x3c);
+    resources::walls::decorator_archivist::DecoratorArchivist::decorator_cull_allow_any();
+    resources::cursor_terrain_raycast::CursorTerrainRaycast::position();
+    resources::active_raster_stroke::ActiveRasterStroke::start_new();
+  }
+  else if (lVar7 == 1) {
+    resources::active_raster_stroke::InProgressRasterStroke::last();
+    if (0.001 < SQRT((in_RDX[2] - extraout_RAX_00[2]) * (in_RDX[2] - extraout_RAX_00[2]) +
+                     (in_RDX[1] - extraout_RAX_00[1]) * (in_RDX[1] - extraout_RAX_00[1]) +
+                     (*in_RDX - *extraout_RAX_00) * (*in_RDX - *extraout_RAX_00))) {
+      resources::active_raster_stroke::InProgressRasterStroke::add_point();
+      resources::active_raster_stroke::ActiveRasterStroke::resample_and_smooth();
+      country_core::utils::dirty_tiles::DirtyTiles::clear();
+      resources::raster_stroke::RasterStroke::iter_points_xz();
+      country_core::utils::dirty_tiles::DirtyTiles::
+      rasterize_world_space_stroke<core::iter::adapters::map::Map<core::slice::iter::Iter<glam::f32::vec3::Vec3>,country_core::resources::raster_stroke::impl_2::iter_points_xz::closure_env_0>_>
+                ();
+      country_core::utils::dirty_tiles::DirtyTiles::extend();
+      country_core::utils::dirty_tiles::DirtyTiles::extend();
+      uVar10 = *(undefined8 *)(extraout_RAX + 0x270);
+      uVar3 = *(undefined8 *)(extraout_RAX + 0x278);
+      uVar4 = *(undefined8 *)(extraout_RAX + 0x280);
+      uVar5 = *(undefined8 *)(extraout_RAX + 0x288);
+      *(undefined8 *)(extraout_RAX + 0x270) = *(undefined8 *)(extraout_RAX + 0x70);
+      *(undefined8 *)(extraout_RAX + 0x278) = *(undefined8 *)(extraout_RAX + 0x78);
+      *(undefined8 *)(extraout_RAX + 0x280) = *(undefined8 *)(extraout_RAX + 0x80);
+      *(undefined8 *)(extraout_RAX + 0x288) = *(undefined8 *)(extraout_RAX + 0x88);
+      *(undefined8 *)(extraout_RAX + 0x70) = uVar10;
+      *(undefined8 *)(extraout_RAX + 0x78) = uVar3;
+      *(undefined8 *)(extraout_RAX + 0x80) = uVar4;
+      *(undefined8 *)(extraout_RAX + 0x88) = uVar5;
+      uVar10 = *(undefined8 *)(extraout_RAX + 0x290);
+      uVar3 = *(undefined8 *)(extraout_RAX + 0x298);
+      uVar4 = *(undefined8 *)(extraout_RAX + 0x2a0);
+      uVar5 = *(undefined8 *)(extraout_RAX + 0x2a8);
+      *(undefined8 *)(extraout_RAX + 0x290) = *(undefined8 *)(extraout_RAX + 0x90);
+      *(undefined8 *)(extraout_RAX + 0x298) = *(undefined8 *)(extraout_RAX + 0x98);
+      *(undefined8 *)(extraout_RAX + 0x2a0) = *(undefined8 *)(extraout_RAX + 0xa0);
+      *(undefined8 *)(extraout_RAX + 0x2a8) = *(undefined8 *)(extraout_RAX + 0xa8);
+      *(undefined8 *)(extraout_RAX + 0x90) = uVar10;
+      *(undefined8 *)(extraout_RAX + 0x98) = uVar3;
+      *(undefined8 *)(extraout_RAX + 0xa0) = uVar4;
+      *(undefined8 *)(extraout_RAX + 0xa8) = uVar5;
+      uVar10 = *(undefined8 *)(extraout_RAX + 0x2b0);
+      uVar3 = *(undefined8 *)(extraout_RAX + 0x2b8);
+      uVar4 = *(undefined8 *)(extraout_RAX + 0x2c0);
+      uVar5 = *(undefined8 *)(extraout_RAX + 0x2c8);
+      *(undefined8 *)(extraout_RAX + 0x2b0) = *(undefined8 *)(extraout_RAX + 0xb0);
+      *(undefined8 *)(extraout_RAX + 0x2b8) = *(undefined8 *)(extraout_RAX + 0xb8);
+      *(undefined8 *)(extraout_RAX + 0x2c0) = *(undefined8 *)(extraout_RAX + 0xc0);
+      *(undefined8 *)(extraout_RAX + 0x2c8) = *(undefined8 *)(extraout_RAX + 200);
+      *(undefined8 *)(extraout_RAX + 0xb0) = uVar10;
+      *(undefined8 *)(extraout_RAX + 0xb8) = uVar3;
+      *(undefined8 *)(extraout_RAX + 0xc0) = uVar4;
+      *(undefined8 *)(extraout_RAX + 200) = uVar5;
+      uVar10 = *(undefined8 *)(extraout_RAX + 0x2d0);
+      uVar3 = *(undefined8 *)(extraout_RAX + 0x2d8);
+      uVar4 = *(undefined8 *)(extraout_RAX + 0x2e0);
+      uVar5 = *(undefined8 *)(extraout_RAX + 0x2e8);
+      *(undefined8 *)(extraout_RAX + 0x2d0) = *(undefined8 *)(extraout_RAX + 0xd0);
+      *(undefined8 *)(extraout_RAX + 0x2d8) = *(undefined8 *)(extraout_RAX + 0xd8);
+      *(undefined8 *)(extraout_RAX + 0x2e0) = *(undefined8 *)(extraout_RAX + 0xe0);
+      *(undefined8 *)(extraout_RAX + 0x2e8) = *(undefined8 *)(extraout_RAX + 0xe8);
+      *(undefined8 *)(extraout_RAX + 0xd0) = uVar10;
+      *(undefined8 *)(extraout_RAX + 0xd8) = uVar3;
+      *(undefined8 *)(extraout_RAX + 0xe0) = uVar4;
+      *(undefined8 *)(extraout_RAX + 0xe8) = uVar5;
+      uVar10 = *(undefined8 *)(extraout_RAX + 0x2f0);
+      uVar3 = *(undefined8 *)(extraout_RAX + 0x2f8);
+      uVar4 = *(undefined8 *)(extraout_RAX + 0x300);
+      uVar5 = *(undefined8 *)(extraout_RAX + 0x308);
+      *(undefined8 *)(extraout_RAX + 0x2f0) = *(undefined8 *)(extraout_RAX + 0xf0);
+      *(undefined8 *)(extraout_RAX + 0x2f8) = *(undefined8 *)(extraout_RAX + 0xf8);
+      *(undefined8 *)(extraout_RAX + 0x300) = *(undefined8 *)(extraout_RAX + 0x100);
+      *(undefined8 *)(extraout_RAX + 0x308) = *(undefined8 *)(extraout_RAX + 0x108);
+      *(undefined8 *)(extraout_RAX + 0xf0) = uVar10;
+      *(undefined8 *)(extraout_RAX + 0xf8) = uVar3;
+      *(undefined8 *)(extraout_RAX + 0x100) = uVar4;
+      *(undefined8 *)(extraout_RAX + 0x108) = uVar5;
+      uVar10 = *(undefined8 *)(extraout_RAX + 0x310);
+      uVar3 = *(undefined8 *)(extraout_RAX + 0x318);
+      uVar4 = *(undefined8 *)(extraout_RAX + 800);
+      uVar5 = *(undefined8 *)(extraout_RAX + 0x328);
+      *(undefined8 *)(extraout_RAX + 0x310) = *(undefined8 *)(extraout_RAX + 0x110);
+      *(undefined8 *)(extraout_RAX + 0x318) = *(undefined8 *)(extraout_RAX + 0x118);
+      *(undefined8 *)(extraout_RAX + 800) = *(undefined8 *)(extraout_RAX + 0x120);
+      *(undefined8 *)(extraout_RAX + 0x328) = *(undefined8 *)(extraout_RAX + 0x128);
+      *(undefined8 *)(extraout_RAX + 0x110) = uVar10;
+      *(undefined8 *)(extraout_RAX + 0x118) = uVar3;
+      *(undefined8 *)(extraout_RAX + 0x120) = uVar4;
+      *(undefined8 *)(extraout_RAX + 0x128) = uVar5;
+      uVar10 = *(undefined8 *)(extraout_RAX + 0x330);
+      uVar3 = *(undefined8 *)(extraout_RAX + 0x338);
+      uVar4 = *(undefined8 *)(extraout_RAX + 0x340);
+      uVar5 = *(undefined8 *)(extraout_RAX + 0x348);
+      *(undefined8 *)(extraout_RAX + 0x330) = *(undefined8 *)(extraout_RAX + 0x130);
+      *(undefined8 *)(extraout_RAX + 0x338) = *(undefined8 *)(extraout_RAX + 0x138);
+      *(undefined8 *)(extraout_RAX + 0x340) = *(undefined8 *)(extraout_RAX + 0x140);
+      *(undefined8 *)(extraout_RAX + 0x348) = *(undefined8 *)(extraout_RAX + 0x148);
+      *(undefined8 *)(extraout_RAX + 0x130) = uVar10;
+      *(undefined8 *)(extraout_RAX + 0x138) = uVar3;
+      *(undefined8 *)(extraout_RAX + 0x140) = uVar4;
+      *(undefined8 *)(extraout_RAX + 0x148) = uVar5;
+      uVar10 = *(undefined8 *)(extraout_RAX + 0x350);
+      uVar3 = *(undefined8 *)(extraout_RAX + 0x358);
+      uVar4 = *(undefined8 *)(extraout_RAX + 0x360);
+      uVar5 = *(undefined8 *)(extraout_RAX + 0x368);
+      *(undefined8 *)(extraout_RAX + 0x350) = *(undefined8 *)(extraout_RAX + 0x150);
+      *(undefined8 *)(extraout_RAX + 0x358) = *(undefined8 *)(extraout_RAX + 0x158);
+      *(undefined8 *)(extraout_RAX + 0x360) = *(undefined8 *)(extraout_RAX + 0x160);
+      *(undefined8 *)(extraout_RAX + 0x368) = *(undefined8 *)(extraout_RAX + 0x168);
+      *(undefined8 *)(extraout_RAX + 0x150) = uVar10;
+      *(undefined8 *)(extraout_RAX + 0x158) = uVar3;
+      *(undefined8 *)(extraout_RAX + 0x160) = uVar4;
+      *(undefined8 *)(extraout_RAX + 0x168) = uVar5;
+      uVar10 = *(undefined8 *)(extraout_RAX + 0x370);
+      uVar3 = *(undefined8 *)(extraout_RAX + 0x378);
+      uVar4 = *(undefined8 *)(extraout_RAX + 0x380);
+      uVar5 = *(undefined8 *)(extraout_RAX + 0x388);
+      *(undefined8 *)(extraout_RAX + 0x370) = *(undefined8 *)(extraout_RAX + 0x170);
+      *(undefined8 *)(extraout_RAX + 0x378) = *(undefined8 *)(extraout_RAX + 0x178);
+      *(undefined8 *)(extraout_RAX + 0x380) = *(undefined8 *)(extraout_RAX + 0x180);
+      *(undefined8 *)(extraout_RAX + 0x388) = *(undefined8 *)(extraout_RAX + 0x188);
+      *(undefined8 *)(extraout_RAX + 0x170) = uVar10;
+      *(undefined8 *)(extraout_RAX + 0x178) = uVar3;
+      *(undefined8 *)(extraout_RAX + 0x180) = uVar4;
+      *(undefined8 *)(extraout_RAX + 0x188) = uVar5;
+      uVar10 = *(undefined8 *)(extraout_RAX + 0x390);
+      uVar3 = *(undefined8 *)(extraout_RAX + 0x398);
+      uVar4 = *(undefined8 *)(extraout_RAX + 0x3a0);
+      uVar5 = *(undefined8 *)(extraout_RAX + 0x3a8);
+      *(undefined8 *)(extraout_RAX + 0x390) = *(undefined8 *)(extraout_RAX + 400);
+      *(undefined8 *)(extraout_RAX + 0x398) = *(undefined8 *)(extraout_RAX + 0x198);
+      *(undefined8 *)(extraout_RAX + 0x3a0) = *(undefined8 *)(extraout_RAX + 0x1a0);
+      *(undefined8 *)(extraout_RAX + 0x3a8) = *(undefined8 *)(extraout_RAX + 0x1a8);
+      *(undefined8 *)(extraout_RAX + 400) = uVar10;
+      *(undefined8 *)(extraout_RAX + 0x198) = uVar3;
+      *(undefined8 *)(extraout_RAX + 0x1a0) = uVar4;
+      *(undefined8 *)(extraout_RAX + 0x1a8) = uVar5;
+      uVar10 = *(undefined8 *)(extraout_RAX + 0x3b0);
+      uVar3 = *(undefined8 *)(extraout_RAX + 0x3b8);
+      uVar4 = *(undefined8 *)(extraout_RAX + 0x3c0);
+      uVar5 = *(undefined8 *)(extraout_RAX + 0x3c8);
+      *(undefined8 *)(extraout_RAX + 0x3b0) = *(undefined8 *)(extraout_RAX + 0x1b0);
+      *(undefined8 *)(extraout_RAX + 0x3b8) = *(undefined8 *)(extraout_RAX + 0x1b8);
+      *(undefined8 *)(extraout_RAX + 0x3c0) = *(undefined8 *)(extraout_RAX + 0x1c0);
+      *(undefined8 *)(extraout_RAX + 0x3c8) = *(undefined8 *)(extraout_RAX + 0x1c8);
+      *(undefined8 *)(extraout_RAX + 0x1b0) = uVar10;
+      *(undefined8 *)(extraout_RAX + 0x1b8) = uVar3;
+      *(undefined8 *)(extraout_RAX + 0x1c0) = uVar4;
+      *(undefined8 *)(extraout_RAX + 0x1c8) = uVar5;
+      uVar10 = *(undefined8 *)(extraout_RAX + 0x3d0);
+      uVar3 = *(undefined8 *)(extraout_RAX + 0x3d8);
+      uVar4 = *(undefined8 *)(extraout_RAX + 0x3e0);
+      uVar5 = *(undefined8 *)(extraout_RAX + 1000);
+      *(undefined8 *)(extraout_RAX + 0x3d0) = *(undefined8 *)(extraout_RAX + 0x1d0);
+      *(undefined8 *)(extraout_RAX + 0x3d8) = *(undefined8 *)(extraout_RAX + 0x1d8);
+      *(undefined8 *)(extraout_RAX + 0x3e0) = *(undefined8 *)(extraout_RAX + 0x1e0);
+      *(undefined8 *)(extraout_RAX + 1000) = *(undefined8 *)(extraout_RAX + 0x1e8);
+      *(undefined8 *)(extraout_RAX + 0x1d0) = uVar10;
+      *(undefined8 *)(extraout_RAX + 0x1d8) = uVar3;
+      *(undefined8 *)(extraout_RAX + 0x1e0) = uVar4;
+      *(undefined8 *)(extraout_RAX + 0x1e8) = uVar5;
+      uVar10 = *(undefined8 *)(extraout_RAX + 0x3f0);
+      uVar3 = *(undefined8 *)(extraout_RAX + 0x3f8);
+      uVar4 = *(undefined8 *)(extraout_RAX + 0x400);
+      uVar5 = *(undefined8 *)(extraout_RAX + 0x408);
+      *(undefined8 *)(extraout_RAX + 0x3f0) = *(undefined8 *)(extraout_RAX + 0x1f0);
+      *(undefined8 *)(extraout_RAX + 0x3f8) = *(undefined8 *)(extraout_RAX + 0x1f8);
+      *(undefined8 *)(extraout_RAX + 0x400) = *(undefined8 *)(extraout_RAX + 0x200);
+      *(undefined8 *)(extraout_RAX + 0x408) = *(undefined8 *)(extraout_RAX + 0x208);
+      *(undefined8 *)(extraout_RAX + 0x1f0) = uVar10;
+      *(undefined8 *)(extraout_RAX + 0x1f8) = uVar3;
+      *(undefined8 *)(extraout_RAX + 0x200) = uVar4;
+      *(undefined8 *)(extraout_RAX + 0x208) = uVar5;
+      uVar10 = *(undefined8 *)(extraout_RAX + 0x410);
+      uVar3 = *(undefined8 *)(extraout_RAX + 0x418);
+      uVar4 = *(undefined8 *)(extraout_RAX + 0x420);
+      uVar5 = *(undefined8 *)(extraout_RAX + 0x428);
+      *(undefined8 *)(extraout_RAX + 0x410) = *(undefined8 *)(extraout_RAX + 0x210);
+      *(undefined8 *)(extraout_RAX + 0x418) = *(undefined8 *)(extraout_RAX + 0x218);
+      *(undefined8 *)(extraout_RAX + 0x420) = *(undefined8 *)(extraout_RAX + 0x220);
+      *(undefined8 *)(extraout_RAX + 0x428) = *(undefined8 *)(extraout_RAX + 0x228);
+      *(undefined8 *)(extraout_RAX + 0x210) = uVar10;
+      *(undefined8 *)(extraout_RAX + 0x218) = uVar3;
+      *(undefined8 *)(extraout_RAX + 0x220) = uVar4;
+      *(undefined8 *)(extraout_RAX + 0x228) = uVar5;
+      uVar10 = *(undefined8 *)(extraout_RAX + 0x430);
+      uVar3 = *(undefined8 *)(extraout_RAX + 0x438);
+      uVar4 = *(undefined8 *)(extraout_RAX + 0x440);
+      uVar5 = *(undefined8 *)(extraout_RAX + 0x448);
+      *(undefined8 *)(extraout_RAX + 0x430) = *(undefined8 *)(extraout_RAX + 0x230);
+      *(undefined8 *)(extraout_RAX + 0x438) = *(undefined8 *)(extraout_RAX + 0x238);
+      *(undefined8 *)(extraout_RAX + 0x440) = *(undefined8 *)(extraout_RAX + 0x240);
+      *(undefined8 *)(extraout_RAX + 0x448) = *(undefined8 *)(extraout_RAX + 0x248);
+      *(undefined8 *)(extraout_RAX + 0x230) = uVar10;
+      *(undefined8 *)(extraout_RAX + 0x238) = uVar3;
+      *(undefined8 *)(extraout_RAX + 0x240) = uVar4;
+      *(undefined8 *)(extraout_RAX + 0x248) = uVar5;
+      uVar10 = *(undefined8 *)(extraout_RAX + 0x450);
+      uVar3 = *(undefined8 *)(extraout_RAX + 0x458);
+      uVar4 = *(undefined8 *)(extraout_RAX + 0x460);
+      uVar5 = *(undefined8 *)(extraout_RAX + 0x468);
+      *(undefined8 *)(extraout_RAX + 0x450) = *(undefined8 *)(extraout_RAX + 0x250);
+      *(undefined8 *)(extraout_RAX + 0x458) = *(undefined8 *)(extraout_RAX + 600);
+      *(undefined8 *)(extraout_RAX + 0x460) = *(undefined8 *)(extraout_RAX + 0x260);
+      *(undefined8 *)(extraout_RAX + 0x468) = *(undefined8 *)(extraout_RAX + 0x268);
+      *(undefined8 *)(extraout_RAX + 0x250) = uVar10;
+      *(undefined8 *)(extraout_RAX + 600) = uVar3;
+      *(undefined8 *)(extraout_RAX + 0x260) = uVar4;
+      *(undefined8 *)(extraout_RAX + 0x268) = uVar5;
+      resources::world_raster::impl$2::copy_composite_to_scratch<512>();
+      resources::raster_stroke::RasterStroke::iter_points_xz();
+      resources::world_raster::impl$2::
+      rasterize_stroke<512,core::iter::adapters::map::Map<core::slice::iter::Iter<glam::f32::vec3::Vec3>,country_core::resources::raster_stroke::impl_2::iter_points_xz::closure_env_0>_>
+                ();
+      frozen::FrozenMap::
+      get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>
+                ();
+      if (extraout_RAX_01 != (undefined8 *)0x0) {
+        if ((extraout_RAX_01[3] != 0x42) ||
+           (iVar6 = memcmp("country_core::resources::world_raster_defs::WaterRasterStagingSsbo/home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/indexmap-2.7.1/src/map/core.rs"
+                           ,(void *)extraout_RAX_01[2],0x42), iVar6 != 0)) {
+                    // WARNING: Subroutine does not return
+          core::panicking::assert_failed<ref_<str_>,ref_<str_>_>();
+        }
+        lVar7 = (**(code **)(extraout_RAX_01[1] + 0x18))(*extraout_RAX_01);
+        if (lVar7 != 0) {
+          resources::world_raster::impl$2::copy_to_staging<512>();
+          uVar1 = *(undefined4 *)(extraout_RAX + 0x60);
+          if (*(char *)(extraout_RAX + 100) == '\0') {
+            *(undefined4 *)in_stack_00000030[2] =
+                 *(undefined4 *)((longlong)in_stack_00000030 + 0x1c);
+            lVar7 = *in_stack_00000030;
+            lVar9 = *(longlong *)(lVar7 + 0x30);
+            uVar10 = *(undefined8 *)(lVar7 + 0x40);
+            if (lVar9 == *(longlong *)(lVar7 + 0x20)) {
+              alloc::raw_vec::RawVec::
+              grow_one<tuple_<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<system_decorator::decorator_visual::stairs::PreferredNodeAlignment,alloc::alloc::Global>_>,alloc::alloc::Global>
+                        ();
+            }
+          }
+          else {
+            *(undefined4 *)in_stack_00000028[2] =
+                 *(undefined4 *)((longlong)in_stack_00000028 + 0x1c);
+            lVar7 = *in_stack_00000028;
+            lVar9 = *(longlong *)(lVar7 + 0x30);
+            uVar10 = *(undefined8 *)(lVar7 + 0x40);
+            if (lVar9 == *(longlong *)(lVar7 + 0x20)) {
+              alloc::raw_vec::RawVec::
+              grow_one<tuple_<country_core::resources::walls::decorator::DecoratorId,alloc::vec::Vec<system_decorator::decorator_visual::stairs::PreferredNodeAlignment,alloc::alloc::Global>_>,alloc::alloc::Global>
+                        ();
+            }
+          }
+          lVar2 = *(longlong *)(lVar7 + 0x28);
+          lVar8 = lVar9 * 0x20;
+          *(undefined8 *)(lVar2 + lVar8) = uVar10;
+          *(undefined8 *)(lVar2 + 8 + lVar8) = *(undefined8 *)in_RDX;
+          *(float *)(lVar2 + 0x10 + lVar8) = in_RDX[2];
+          *(undefined4 *)(lVar2 + 0x14 + lVar8) = uVar1;
+          *(undefined1 *)(lVar2 + 0x18 + lVar8) = 0;
+          *(longlong *)(lVar7 + 0x30) = lVar9 + 1;
+          *(longlong *)(lVar7 + 0x40) = *(longlong *)(lVar7 + 0x40) + 1;
+          return;
+        }
+      }
+                    // WARNING: Subroutine does not return
+      core::option::unwrap_failed();
+    }
+  }
+  else if (1 < *(ulonglong *)(extraout_RAX + 0x58)) {
+    **(undefined4 **)(in_R8 + 0xb0) = *(undefined4 *)(in_R8 + 0xbc);
+    lVar7 = *(longlong *)(in_R8 + 0xa0);
+    lVar9 = *(longlong *)(lVar7 + 0x30);
+    uVar10 = *(undefined8 *)(lVar7 + 0x40);
+    if (lVar9 == *(longlong *)(lVar7 + 0x20)) {
+      alloc::raw_vec::RawVec::
+      grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>
+                ();
+    }
+    *(undefined8 *)(*(longlong *)(lVar7 + 0x28) + lVar9 * 8) = uVar10;
+    *(longlong *)(lVar7 + 0x30) = lVar9 + 1;
+    *(longlong *)(lVar7 + 0x40) = *(longlong *)(lVar7 + 0x40) + 1;
+    *(undefined4 *)in_stack_00000038[2] = *(undefined4 *)((longlong)in_stack_00000038 + 0x1c);
+    lVar7 = *in_stack_00000038;
+    lVar9 = *(longlong *)(lVar7 + 0x30);
+    uVar10 = *(undefined8 *)(lVar7 + 0x40);
+    if (lVar9 == *(longlong *)(lVar7 + 0x20)) {
+      alloc::raw_vec::RawVec::
+      grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>
+                ();
+    }
+    *(undefined8 *)(*(longlong *)(lVar7 + 0x28) + lVar9 * 8) = uVar10;
+    *(longlong *)(lVar7 + 0x30) = lVar9 + 1;
+    *(longlong *)(lVar7 + 0x40) = *(longlong *)(lVar7 + 0x40) + 1;
+    **(undefined4 **)(in_R8 + 0x90) = *(undefined4 *)(in_R8 + 0x9c);
+    lVar7 = *(longlong *)(in_R8 + 0x80);
+    lVar9 = *(longlong *)(lVar7 + 0x30);
+    uVar10 = *(undefined8 *)(lVar7 + 0x40);
+    if (lVar9 == *(longlong *)(lVar7 + 0x20)) {
+      alloc::raw_vec::RawVec::
+      grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>
+                ();
+    }
+    *(undefined8 *)(*(longlong *)(lVar7 + 0x28) + lVar9 * 8) = uVar10;
+    *(longlong *)(lVar7 + 0x30) = lVar9 + 1;
+    *(longlong *)(lVar7 + 0x40) = *(longlong *)(lVar7 + 0x40) + 1;
+    country_core::utils::dirty_tiles::DirtyTiles::extend();
+    country_core::utils::dirty_tiles::DirtyTiles::clear();
+    resources::world_raster::impl$2::commit_scratch_to_composite<512>();
+    frozen::FrozenMap::
+    get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>
+              ();
+    if (extraout_RAX_02 != (undefined8 *)0x0) {
+      if ((extraout_RAX_02[3] != 0x42) ||
+         (iVar6 = memcmp("country_core::resources::world_raster_defs::WaterRasterStagingSsbo/home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/indexmap-2.7.1/src/map/core.rs"
+                         ,(void *)extraout_RAX_02[2],0x42), iVar6 != 0)) {
+                    // WARNING: Subroutine does not return
+        core::panicking::assert_failed<ref_<str_>,ref_<str_>_>();
+      }
+      lVar7 = (**(code **)(extraout_RAX_02[1] + 0x18))(*extraout_RAX_02);
+      if (lVar7 != 0) {
+        resources::world_raster::impl$2::copy_to_staging<512>();
+        return;
+      }
+    }
+                    // WARNING: Subroutine does not return
+    core::option::unwrap_failed();
+  }
+  return;
+}
+

@@ -1,0 +1,22 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140a1b100: 48 89 c8                    	movq	%rcx, %rax
+140a1b103: 48 8b 0a                    	movq	(%rdx), %rcx
+140a1b106: 4c 8b 42 08                 	movq	0x8(%rdx), %r8
+140a1b10a: 49 01 c8                    	addq	%rcx, %r8
+140a1b10d: 49 ff c0                    	incq	%r8
+140a1b110: 66 0f 6f 01                 	movdqa	(%rcx), %xmm0
+140a1b114: 66 44 0f d7 c8              	pmovmskb	%xmm0, %r9d
+140a1b119: 41 f7 d1                    	notl	%r9d
+140a1b11c: 66 44 89 48 18              	movw	%r9w, 0x18(%rax)
+140a1b121: 48 89 08                    	movq	%rcx, (%rax)
+140a1b124: 48 83 c1 10                 	addq	$0x10, %rcx
+140a1b128: 48 89 48 08                 	movq	%rcx, 0x8(%rax)
+140a1b12c: 4c 89 40 10                 	movq	%r8, 0x10(%rax)
+140a1b130: 48 8b 4a 18                 	movq	0x18(%rdx), %rcx
+140a1b134: 48 89 48 20                 	movq	%rcx, 0x20(%rax)
+140a1b138: c3                          	retq

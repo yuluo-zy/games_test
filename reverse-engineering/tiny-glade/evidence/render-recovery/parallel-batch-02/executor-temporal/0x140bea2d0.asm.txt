@@ -1,0 +1,234 @@
+
+D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140bea2d0: 55                          	push	rbp
+140bea2d1: 41 56                       	push	r14
+140bea2d3: 56                          	push	rsi
+140bea2d4: 57                          	push	rdi
+140bea2d5: 53                          	push	rbx
+140bea2d6: 48 81 ec 50 01 00 00        	sub	rsp, 0x150
+140bea2dd: 48 8d ac 24 80 00 00 00     	lea	rbp, [rsp + 0x80]
+140bea2e5: 0f 29 bd c0 00 00 00        	movaps	xmmword ptr [rbp + 0xc0], xmm7
+140bea2ec: 0f 29 b5 b0 00 00 00        	movaps	xmmword ptr [rbp + 0xb0], xmm6
+140bea2f3: 48 c7 85 a8 00 00 00 fe ff ff ff    	mov	qword ptr [rbp + 0xa8], -0x2
+140bea2fe: 48 89 d7                    	mov	rdi, rdx
+140bea301: 48 89 ce                    	mov	rsi, rcx
+140bea304: c7 45 4c 00 00 00 00        	mov	dword ptr [rbp + 0x4c], 0x0
+140bea30b: 48 c7 45 44 00 00 00 00     	mov	qword ptr [rbp + 0x44], 0x0
+140bea313: c7 45 50 0b 00 00 00        	mov	dword ptr [rbp + 0x50], 0xb
+140bea31a: 8b 45 40                    	mov	eax, dword ptr [rbp + 0x40]
+140bea31d: 89 45 54                    	mov	dword ptr [rbp + 0x54], eax
+140bea320: 48 8b 45 44                 	mov	rax, qword ptr [rbp + 0x44]
+140bea324: 48 89 45 58                 	mov	qword ptr [rbp + 0x58], rax
+140bea328: 8b 45 4c                    	mov	eax, dword ptr [rbp + 0x4c]
+140bea32b: 89 45 60                    	mov	dword ptr [rbp + 0x60], eax
+140bea32e: 48 b8 02 00 00 00 02 00 00 00       	movabs	rax, 0x200000002
+140bea338: 48 89 45 64                 	mov	qword ptr [rbp + 0x64], rax
+140bea33c: c7 45 6c 00 00 00 00        	mov	dword ptr [rbp + 0x6c], 0x0
+140bea343: 48 8b 8a 40 06 00 00        	mov	rcx, qword ptr [rdx + 0x640]
+140bea34a: 48 8d 5d 50                 	lea	rbx, [rbp + 0x50]
+140bea34e: 4c 8d 4d f0                 	lea	r9, [rbp - 0x10]
+140bea352: 48 89 da                    	mov	rdx, rbx
+140bea355: 45 31 c0                    	xor	r8d, r8d
+140bea358: ff 97 68 01 00 00           	call	qword ptr [rdi + 0x168]
+140bea35e: 85 c0                       	test	eax, eax
+140bea360: 0f 85 c7 01 00 00           	jne	0x140bea52d <.text+0xbe952d>
+140bea366: 4c 8b 75 f0                 	mov	r14, qword ptr [rbp - 0x10]
+140bea36a: 48 c7 45 50 10 00 00 00     	mov	qword ptr [rbp + 0x50], 0x10
+140bea372: c7 45 58 02 00 00 00        	mov	dword ptr [rbp + 0x58], 0x2
+140bea379: c6 45 5e 04                 	mov	byte ptr [rbp + 0x5e], 0x4
+140bea37d: 66 c7 45 5c 00 00           	mov	word ptr [rbp + 0x5c], 0x0
+140bea383: 48 8d 05 de a2 f2 01        	lea	rax, [rip + 0x1f2a2de]  # 0x142b14668
+140bea38a: 48 89 44 24 28              	mov	qword ptr [rsp + 0x28], rax
+140bea38f: 48 89 5c 24 20              	mov	qword ptr [rsp + 0x20], rbx
+140bea394: 48 c7 44 24 30 10 00 00 00  	mov	qword ptr [rsp + 0x30], 0x10
+140bea39d: 4c 8d 05 d4 a2 f2 01        	lea	r8, [rip + 0x1f2a2d4]   # 0x142b14678
+140bea3a4: 48 8d 4d f0                 	lea	rcx, [rbp - 0x10]
+140bea3a8: 41 b9 1d 00 00 00           	mov	r9d, 0x1d
+140bea3ae: 48 89 fa                    	mov	rdx, rdi
+140bea3b1: e8 aa 90 01 00              	call	0x140c03460 <.text+0xc02460>
+140bea3b6: 83 7d f0 0b                 	cmp	dword ptr [rbp - 0x10], 0xb
+140bea3ba: 0f 85 98 01 00 00           	jne	0x140bea558 <.text+0xbe9558>
+140bea3c0: 48 8b 45 18                 	mov	rax, qword ptr [rbp + 0x18]
+140bea3c4: 48 89 45 e0                 	mov	qword ptr [rbp - 0x20], rax
+140bea3c8: 0f 10 45 f8                 	movups	xmm0, xmmword ptr [rbp - 0x8]
+140bea3cc: 0f 10 4d 08                 	movups	xmm1, xmmword ptr [rbp + 0x8]
+140bea3d0: 0f 29 4d d0                 	movaps	xmmword ptr [rbp - 0x30], xmm1
+140bea3d4: 0f 29 45 c0                 	movaps	xmmword ptr [rbp - 0x40], xmm0
+140bea3d8: 48 c7 45 f0 00 00 00 00     	mov	qword ptr [rbp - 0x10], 0x0
+140bea3e0: 0f 57 c0                    	xorps	xmm0, xmm0
+140bea3e3: 0f 11 45 00                 	movups	xmmword ptr [rbp], xmm0
+140bea3e7: 48 c7 45 f8 08 00 00 00     	mov	qword ptr [rbp - 0x8], 0x8
+140bea3ef: e8 4c 33 16 00              	call	0x140d4d740 <.text+0xd4c740>
+140bea3f4: 48 89 c7                    	mov	rdi, rax
+140bea3f7: f6 00 01                    	test	byte ptr [rax], 0x1
+140bea3fa: 74 11                       	je	0x140bea40d <.text+0xbe940d>
+140bea3fc: 48 89 f9                    	mov	rcx, rdi
+140bea3ff: 48 83 c1 08                 	add	rcx, 0x8
+140bea403: 48 8b 47 08                 	mov	rax, qword ptr [rdi + 0x8]
+140bea407: 48 8b 57 10                 	mov	rdx, qword ptr [rdi + 0x10]
+140bea40b: eb 1b                       	jmp	0x140bea428 <.text+0xbe9428>
+140bea40d: e8 ee a9 17 00              	call	0x140d64e00 <.text+0xd63e00>
+140bea412: 48 89 f9                    	mov	rcx, rdi
+140bea415: 48 83 c1 08                 	add	rcx, 0x8
+140bea419: 48 c7 07 01 00 00 00        	mov	qword ptr [rdi], 0x1
+140bea420: 48 89 47 08                 	mov	qword ptr [rdi + 0x8], rax
+140bea424: 48 89 57 10                 	mov	qword ptr [rdi + 0x10], rdx
+140bea428: 4c 8d 40 01                 	lea	r8, [rax + 0x1]
+140bea42c: 4c 89 01                    	mov	qword ptr [rcx], r8
+140bea42f: 0f 10 35 aa a1 f2 01        	movups	xmm6, xmmword ptr [rip + 0x1f2a1aa] # 0x142b145e0
+140bea436: 0f 29 75 60                 	movaps	xmmword ptr [rbp + 0x60], xmm6
+140bea43a: 0f 10 3d 8f a1 f2 01        	movups	xmm7, xmmword ptr [rip + 0x1f2a18f] # 0x142b145d0
+140bea441: 0f 29 7d 50                 	movaps	xmmword ptr [rbp + 0x50], xmm7
+140bea445: 48 89 45 70                 	mov	qword ptr [rbp + 0x70], rax
+140bea449: 48 89 55 78                 	mov	qword ptr [rbp + 0x78], rdx
+140bea44d: 0f 57 c0                    	xorps	xmm0, xmm0
+140bea450: 0f 29 85 80 00 00 00        	movaps	xmmword ptr [rbp + 0x80], xmm0
+140bea457: e8 e4 32 16 00              	call	0x140d4d740 <.text+0xd4c740>
+140bea45c: 48 89 c7                    	mov	rdi, rax
+140bea45f: f6 00 01                    	test	byte ptr [rax], 0x1
+140bea462: 74 11                       	je	0x140bea475 <.text+0xbe9475>
+140bea464: 48 89 f9                    	mov	rcx, rdi
+140bea467: 48 83 c1 08                 	add	rcx, 0x8
+140bea46b: 48 8b 47 08                 	mov	rax, qword ptr [rdi + 0x8]
+140bea46f: 48 8b 57 10                 	mov	rdx, qword ptr [rdi + 0x10]
+140bea473: eb 1b                       	jmp	0x140bea490 <.text+0xbe9490>
+140bea475: e8 86 a9 17 00              	call	0x140d64e00 <.text+0xd63e00>
+140bea47a: 48 89 f9                    	mov	rcx, rdi
+140bea47d: 48 83 c1 08                 	add	rcx, 0x8
+140bea481: 48 c7 07 01 00 00 00        	mov	qword ptr [rdi], 0x1
+140bea488: 48 89 47 08                 	mov	qword ptr [rdi + 0x8], rax
+140bea48c: 48 89 57 10                 	mov	qword ptr [rdi + 0x10], rdx
+140bea490: 4c 8d 40 01                 	lea	r8, [rax + 0x1]
+140bea494: 4c 89 01                    	mov	qword ptr [rcx], r8
+140bea497: 0f 57 c0                    	xorps	xmm0, xmm0
+140bea49a: 0f 11 86 b8 00 00 00        	movups	xmmword ptr [rsi + 0xb8], xmm0
+140bea4a1: 0f 10 45 f0                 	movups	xmm0, xmmword ptr [rbp - 0x10]
+140bea4a5: 0f 10 4d 00                 	movups	xmm1, xmmword ptr [rbp]
+140bea4a9: 0f 11 06                    	movups	xmmword ptr [rsi], xmm0
+140bea4ac: 0f 11 4e 10                 	movups	xmmword ptr [rsi + 0x10], xmm1
+140bea4b0: 4c 89 b6 c8 00 00 00        	mov	qword ptr [rsi + 0xc8], r14
+140bea4b7: 48 8b 4d e0                 	mov	rcx, qword ptr [rbp - 0x20]
+140bea4bb: 48 89 4e 40                 	mov	qword ptr [rsi + 0x40], rcx
+140bea4bf: 0f 28 45 c0                 	movaps	xmm0, xmmword ptr [rbp - 0x40]
+140bea4c3: 0f 28 4d d0                 	movaps	xmm1, xmmword ptr [rbp - 0x30]
+140bea4c7: 0f 11 4e 30                 	movups	xmmword ptr [rsi + 0x30], xmm1
+140bea4cb: 0f 11 46 20                 	movups	xmmword ptr [rsi + 0x20], xmm0
+140bea4cf: 0f 28 45 50                 	movaps	xmm0, xmmword ptr [rbp + 0x50]
+140bea4d3: 0f 28 4d 60                 	movaps	xmm1, xmmword ptr [rbp + 0x60]
+140bea4d7: 0f 28 55 70                 	movaps	xmm2, xmmword ptr [rbp + 0x70]
+140bea4db: 0f 28 9d 80 00 00 00        	movaps	xmm3, xmmword ptr [rbp + 0x80]
+140bea4e2: 0f 11 46 48                 	movups	xmmword ptr [rsi + 0x48], xmm0
+140bea4e6: 0f 11 4e 58                 	movups	xmmword ptr [rsi + 0x58], xmm1
+140bea4ea: 0f 11 56 68                 	movups	xmmword ptr [rsi + 0x68], xmm2
+140bea4ee: 0f 11 5e 78                 	movups	xmmword ptr [rsi + 0x78], xmm3
+140bea4f2: 0f 11 b6 98 00 00 00        	movups	xmmword ptr [rsi + 0x98], xmm6
+140bea4f9: 0f 11 be 88 00 00 00        	movups	xmmword ptr [rsi + 0x88], xmm7
+140bea500: 48 89 86 a8 00 00 00        	mov	qword ptr [rsi + 0xa8], rax
+140bea507: 48 89 96 b0 00 00 00        	mov	qword ptr [rsi + 0xb0], rdx
+140bea50e: 48 89 f0                    	mov	rax, rsi
+140bea511: 0f 28 b5 b0 00 00 00        	movaps	xmm6, xmmword ptr [rbp + 0xb0]
+140bea518: 0f 28 bd c0 00 00 00        	movaps	xmm7, xmmword ptr [rbp + 0xc0]
+140bea51f: 48 81 c4 50 01 00 00        	add	rsp, 0x150
+140bea526: 5b                          	pop	rbx
+140bea527: 5f                          	pop	rdi
+140bea528: 5e                          	pop	rsi
+140bea529: 41 5e                       	pop	r14
+140bea52b: 5d                          	pop	rbp
+140bea52c: c3                          	ret
+140bea52d: 89 45 f0                    	mov	dword ptr [rbp - 0x10], eax
+140bea530: 48 8d 05 19 a1 f2 01        	lea	rax, [rip + 0x1f2a119]  # 0x142b14650
+140bea537: 48 89 44 24 20              	mov	qword ptr [rsp + 0x20], rax
+140bea53c: 48 8d 0d ed a0 f2 01        	lea	rcx, [rip + 0x1f2a0ed]  # 0x142b14630
+140bea543: 4c 8d 0d f6 9d f2 01        	lea	r9, [rip + 0x1f29df6]   # 0x142b14340
+140bea54a: 4c 8d 45 f0                 	lea	r8, [rbp - 0x10]
+140bea54e: ba 1b 00 00 00              	mov	edx, 0x1b
+140bea553: e8 08 f2 ce 01              	call	0x1428d9760 <.text+0x28d8760>
+140bea558: 0f 10 45 30                 	movups	xmm0, xmmword ptr [rbp + 0x30]
+140bea55c: 0f 29 85 90 00 00 00        	movaps	xmmword ptr [rbp + 0x90], xmm0
+140bea563: 0f 10 45 f0                 	movups	xmm0, xmmword ptr [rbp - 0x10]
+140bea567: 0f 10 4d 00                 	movups	xmm1, xmmword ptr [rbp]
+140bea56b: 0f 10 55 10                 	movups	xmm2, xmmword ptr [rbp + 0x10]
+140bea56f: 0f 10 5d 20                 	movups	xmm3, xmmword ptr [rbp + 0x20]
+140bea573: 0f 29 9d 80 00 00 00        	movaps	xmmword ptr [rbp + 0x80], xmm3
+140bea57a: 0f 29 55 70                 	movaps	xmmword ptr [rbp + 0x70], xmm2
+140bea57e: 0f 29 4d 60                 	movaps	xmmword ptr [rbp + 0x60], xmm1
+140bea582: 0f 29 45 50                 	movaps	xmmword ptr [rbp + 0x50], xmm0
+140bea586: 48 8d 05 0b a1 f2 01        	lea	rax, [rip + 0x1f2a10b]  # 0x142b14698
+140bea58d: 48 89 44 24 20              	mov	qword ptr [rsp + 0x20], rax
+140bea592: 48 8d 0d df a0 f2 01        	lea	rcx, [rip + 0x1f2a0df]  # 0x142b14678
+140bea599: 4c 8d 0d c0 9d f2 01        	lea	r9, [rip + 0x1f29dc0]   # 0x142b14360
+140bea5a0: 4c 8d 45 50                 	lea	r8, [rbp + 0x50]
+140bea5a4: ba 1d 00 00 00              	mov	edx, 0x1d
+140bea5a9: e8 b2 f1 ce 01              	call	0x1428d9760 <.text+0x28d8760>
+140bea5ae: 0f 0b                       	ud2
+140bea5b0: 48 89 54 24 10              	mov	qword ptr [rsp + 0x10], rdx
+140bea5b5: 55                          	push	rbp
+140bea5b6: 41 56                       	push	r14
+140bea5b8: 56                          	push	rsi
+140bea5b9: 57                          	push	rdi
+140bea5ba: 53                          	push	rbx
+140bea5bb: 48 83 ec 60                 	sub	rsp, 0x60
+140bea5bf: 48 8d aa 80 00 00 00        	lea	rbp, [rdx + 0x80]
+140bea5c6: 0f 29 7c 24 30              	movaps	xmmword ptr [rsp + 0x30], xmm7
+140bea5cb: 0f 29 74 24 40              	movaps	xmmword ptr [rsp + 0x40], xmm6
+140bea5d0: 48 8d 4d c0                 	lea	rcx, [rbp - 0x40]
+140bea5d4: e8 d7 7e ff ff              	call	0x140be24b0 <.text+0xbe14b0>
+140bea5d9: 48 8d 4d f0                 	lea	rcx, [rbp - 0x10]
+140bea5dd: e8 de 32 ff ff              	call	0x140bdd8c0 <.text+0xbdc8c0>
+140bea5e2: 0f 28 74 24 40              	movaps	xmm6, xmmword ptr [rsp + 0x40]
+140bea5e7: 0f 28 7c 24 30              	movaps	xmm7, xmmword ptr [rsp + 0x30]
+140bea5ec: 48 83 c4 60                 	add	rsp, 0x60
+140bea5f0: 5b                          	pop	rbx
+140bea5f1: 5f                          	pop	rdi
+140bea5f2: 5e                          	pop	rsi
+140bea5f3: 41 5e                       	pop	r14
+140bea5f5: 5d                          	pop	rbp
+140bea5f6: c3                          	ret
+140bea5f7: 66 0f 1f 84 00 00 00 00 00  	nop	word ptr [rax + rax]
+140bea600: 48 89 54 24 10              	mov	qword ptr [rsp + 0x10], rdx
+140bea605: 55                          	push	rbp
+140bea606: 41 56                       	push	r14
+140bea608: 56                          	push	rsi
+140bea609: 57                          	push	rdi
+140bea60a: 53                          	push	rbx
+140bea60b: 48 83 ec 60                 	sub	rsp, 0x60
+140bea60f: 48 8d aa 80 00 00 00        	lea	rbp, [rdx + 0x80]
+140bea616: 0f 29 7c 24 30              	movaps	xmmword ptr [rsp + 0x30], xmm7
+140bea61b: 0f 29 74 24 40              	movaps	xmmword ptr [rsp + 0x40], xmm6
+140bea620: 48 8d 4d 50                 	lea	rcx, [rbp + 0x50]
+140bea624: e8 47 f6 55 ff              	call	0x140149c70 <.text+0x148c70>
+140bea629: 0f 28 74 24 40              	movaps	xmm6, xmmword ptr [rsp + 0x40]
+140bea62e: 0f 28 7c 24 30              	movaps	xmm7, xmmword ptr [rsp + 0x30]
+140bea633: 48 83 c4 60                 	add	rsp, 0x60
+140bea637: 5b                          	pop	rbx
+140bea638: 5f                          	pop	rdi
+140bea639: 5e                          	pop	rsi
+140bea63a: 41 5e                       	pop	r14
+140bea63c: 5d                          	pop	rbp
+140bea63d: c3                          	ret
+140bea63e: 66 90                       	nop
+140bea640: 48 89 54 24 10              	mov	qword ptr [rsp + 0x10], rdx
+140bea645: 55                          	push	rbp
+140bea646: 41 56                       	push	r14
+140bea648: 56                          	push	rsi
+140bea649: 57                          	push	rdi
+140bea64a: 53                          	push	rbx
+140bea64b: 48 83 ec 60                 	sub	rsp, 0x60
+140bea64f: 48 8d aa 80 00 00 00        	lea	rbp, [rdx + 0x80]
+140bea656: 0f 29 7c 24 30              	movaps	xmmword ptr [rsp + 0x30], xmm7
+140bea65b: 0f 29 74 24 40              	movaps	xmmword ptr [rsp + 0x40], xmm6
+140bea660: 48 8d 4d 50                 	lea	rcx, [rbp + 0x50]
+140bea664: e8 07 44 be ff              	call	0x1407cea70 <.text+0x7cda70>
+140bea669: 0f 28 74 24 40              	movaps	xmm6, xmmword ptr [rsp + 0x40]
+140bea66e: 0f 28 7c 24 30              	movaps	xmm7, xmmword ptr [rsp + 0x30]
+140bea673: 48 83 c4 60                 	add	rsp, 0x60
+140bea677: 5b                          	pop	rbx
+140bea678: 5f                          	pop	rdi
+140bea679: 5e                          	pop	rsi
+140bea67a: 41 5e                       	pop	r14
+140bea67c: 5d                          	pop	rbp
+140bea67d: c3                          	ret

@@ -1,0 +1,70 @@
+{
+  "status": "implemented_unverified",
+  "version": "B original facts + explicitly marked current host disposal/zero-close adapter, no C equivalence",
+  "native_oracle_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "files": [
+    {
+      "source": "tiny-glade/crates/country-core/src/systems/save/save_thread.rs",
+      "before_sha256": "843300daa2da5013baf5d03d3c575b73085fbc2bbd979b99c49ac5558a1792f3",
+      "current_source_sha256": "843300daa2da5013baf5d03d3c575b73085fbc2bbd979b99c49ac5558a1792f3",
+      "candidate": "candidate/crates/country-core/src/systems/save/save_thread.rs",
+      "candidate_sha256": "1194141fe7713e5056e670bcc38320188e14c41b916a4f3de25ce5c3028598d0"
+    },
+    {
+      "source": "tiny-glade/crates/tiny-glade/src/game_loop.rs",
+      "before_sha256": "cb10929a53efe31129bb31b75928c53912aa5900723879cc02676665b45a293c",
+      "current_source_sha256": "cb10929a53efe31129bb31b75928c53912aa5900723879cc02676665b45a293c",
+      "candidate": "candidate/crates/tiny-glade/src/game_loop.rs",
+      "candidate_sha256": "b85e4da52697de8e21499644bd20b9d9601a47b592f2d7082484fdee5aea8a70"
+    },
+    {
+      "source": "tiny-glade/crates/tiny-glade/src/run_game.rs",
+      "before_sha256": "5ce22c7f1d0878113f3e1cdf9e4cce879eba50008b571f435ec4fba0d2091d7c",
+      "current_source_sha256": "5ce22c7f1d0878113f3e1cdf9e4cce879eba50008b571f435ec4fba0d2091d7c",
+      "candidate": "candidate/crates/tiny-glade/src/run_game.rs",
+      "candidate_sha256": "0afab67ae79c3b75019574fdb8a2e87e215ce108eeb54295e356a3ea715a0c91"
+    },
+    {
+      "source": "tiny-glade/crates/country-core/src/systems/save/save_game.rs",
+      "before_sha256": "a25ce9f29f56e54015b44acc9a1c54abaf5bf895524414ebf072cd9910ccca78",
+      "current_source_sha256": "a25ce9f29f56e54015b44acc9a1c54abaf5bf895524414ebf072cd9910ccca78",
+      "candidate": "review-inputs/candidate-save_game.rs",
+      "authorized_accessor_candidate": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-941c23b174ac2b4408/oschain-20261018/shutdown-save-host-20261019/candidate-save_game.rs",
+      "candidate_sha256": "75b18cc9e3ac6c5e5b6af70f144b9f17c247099f22be0e22cc23892e6b87833b"
+    }
+  ],
+  "patch": "shutdown-save-host.patch",
+  "patch_sha256": "e149978434dd46ffc13cb96e9f3464b66f8387390cfdfef1031559b021ab737f",
+  "original_evidence": [
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-cefc5b92bca0aef69a/oschain-20261018/141720680.asm",
+      "sha256": "91f2251d54902abe105ac6aaae4bd913b7139daec7d0055fc84edf2a871855a8"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-cefc5b92bca0aef69a/oschain-20261018/worker-deferred-native-manifest.json",
+      "sha256": "b7d278820a45ece5e30fa846f6d6ad796b55adbec486abae3730839c67710ae9"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-aff540cfd24b989ccb/mainchain-20261018/evidence/main_loop.asm",
+      "sha256": "b3953be68700a63acd7f4b7dde0ae2af6ba4d5d12f5ec58df909f3c679750c91"
+    }
+  ],
+  "contract": "CONTRACT.md",
+  "design_review": "07 passed_scoped_design, added unsaved-list failure and no I/O deadline promise",
+  "tests_added": {
+    "country_core::shutdown_save_host_tests": 5,
+    "tiny_glade::save_shutdown_preparation_tests": 5
+  },
+  "validation": {
+    "syntax": "rustfmt parse-only --emit stdout passed; see syntax-check.json",
+    "cargo": "not run, root exclusive",
+    "tests": "not run, root exclusive",
+    "gpu": "not run, root exclusive"
+  },
+  "unresolved": [
+    "original final disconnected flush failure only logs warning; joined is not durable",
+    "zero-size actual-close is host adaptation; native zero-close CFG equivalence not asserted",
+    "current App construction errors before GameLoop/GameplayPreparation ownership remain outside this batch",
+    "no external command-sender clone may outlive canonical stopped World; current production search found only AutoState+Handle senders"
+  ]
+}

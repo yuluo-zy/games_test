@@ -1,0 +1,99 @@
+Source: /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-eac12c8d24c206af39/no-world-undefined-20261019/reverse-blur-top-20261020/consumer-candidate/candidate/crates/tiny-glade/src/render_host.rs
+SHA256: 03184a90100cd0584fc890af601a8111f5b70bf8a502b3db6624f9153562a329
+
+2729:         for (resource, range) in device_address_accesses {
+2730:             declared.add_resource_access_range(resource, 0x1a, 1, range)?;
+2731:         }
+2732:         if external_writes {
+2733:             declared.side_effect();
+2734:         }
+2735:         declared.render_with_result_context(move |ctx| {
+2736:             let managed = ctx.managed.ok_or_else(|| {
+2737:                 rhapsody::Error::invalid_usage("compute callback without managed resources")
+2738:             })?;
+2739:             let diagnose = |stage: &str, error: &rhapsody::Error| {
+2740:                 log::error!("compute {name}: {stage}: {error:?}; heap {:?}", entry.bindings.heap.stats());
+2741:             };
+2742:             let pipeline = entry.pipeline.try_get().inspect_err(|error| diagnose("pipeline.try_get", error))?;
+2743:             let command = <vk::CommandBuffer as ash::vk::Handle>::from_raw(ctx.command.handle());
+2744:             let mut resources = Vec::new();
+2745:             let mut image_arrays: Vec<(u32, Vec<BindlessResource>)> = Vec::new();
+2746:             for range in &access_ranges {
+2747:                 let resource = match bindings[range.access_index as usize] {
+2748:                     CorePassBinding::Buffer { resource }
+2749:                     | CorePassBinding::BufferRead { resource } => {
+2750:                         let buffer = managed.buffer_for(resource).map_err(|error| {
+2751:                             rhapsody::Error::invalid_usage_with("compute buffer binding", error)
+2752:                         })?;
+2753:                         BindlessResource::Buffer {
+2754:                             buffer: buffer.shared(),
+2755:                             offset: 0,
+2756:                             size: buffer.size,
+2757:                         }
+2758:                     }
+2759:                     CorePassBinding::ImageView { resource, view, .. } => {
+2760:                         let texture = managed.texture_for(resource).map_err(|error| {
+2761:                             rhapsody::Error::invalid_usage_with("compute image binding", error)
+2762:                         })?;
+2763:                         let desc = rh_view_desc(&texture, &view)?;
+2764:                         if view.bind_individual_mips {
+2765:                             let location = BindingLocation { set: 0, binding: range.resource_index };
+2766:                             let count = entry.bindings.abi.slot(location)
+2767:                                 .ok_or_else(|| rhapsody::Error::invalid_usage("individual mip binding is absent from the shader ABI"))?
+2768:                                 .parameter_count;
+2769:                             if image_arrays.iter().any(|(binding, _)| *binding == range.resource_index)
+2770:                                 || resources.iter().any(|(binding, _)| *binding == range.resource_index) {
+2771:                                 return Err(rhapsody::Error::invalid_usage("individual mip binding has conflicting values"));
+2772:                             }
+2773:                             let mut elements = Vec::new();
+2774:                             for selected in individual_mip_views(desc, count)? {
+2775:                                 let selected = texture.image_view(&selected)?;
+2776:                                 elements.push(entry.bindings.image_for_pass(&ctx, resource, range.resource_index, selected.view.clone())?);
+2777:                             }
+2778:                             image_arrays.push((range.resource_index, elements));
+2779:                             continue;
+2780:                         }
+2781:                         let view = texture.image_view(&desc)?;
+2782:                         entry
+2783:                             .bindings
+2784:                             .image_for_pass(&ctx, resource, range.resource_index, view.view.clone())?
+2785:                     }
+2786:                 };
+2787:                 upsert_shader_resource(&mut resources, range.resource_index, resource)?;
+2788:             }
+2789:             for (binding, resource) in external_resources {
+2790:                 upsert_shader_resource(&mut resources, binding, resource)?;
+2791:             }
+2792:             if let (Some(uniform), Some(binding)) = (uniform_binder, entry.uniform_binding) {
+2793:                 let chunk = dynamic.lock().allocate_with_data(uniform.data())?;
+2794:                 upsert_shader_resource(
+2795:                     &mut resources,
+2796:                     binding,
+2797:                     BindlessResource::Buffer {
+2798:                         buffer: chunk.buffer.clone(),
+2799:                         offset: chunk.offset,
+2800:                         size: chunk.size,
+2801:                     },
+2802:                 )?;
+2803:             }
+2804:             // SAFETY: pipeline and command belong to this device; graph declares the accessed resources.
+
+2876:                 device: &device.raw_device(),
+2877:                 command,
+2878:                 local_size: entry.local_size,
+2879:                 managed,
+2880:                 bind_parameters: &mut bind_parameters,
+2881:                 parameters: parameter_state,
+2882:             };
+2883:             // An explicit initial payload is already bound. Otherwise the first
+2884:             // callback push must bind a valid payload before either dispatch kind.
+2885:             ComputeExecution {
+2886:                 push_constants: Vec::new(),
+2887:                 dispatch,
+2888:             }
+2889:             .execute(&mut exec);
+2890:             exec.parameters.error.map_or(Ok(()), Err)
+2891:         });
+2892:         Ok(())
+2893:     }
+

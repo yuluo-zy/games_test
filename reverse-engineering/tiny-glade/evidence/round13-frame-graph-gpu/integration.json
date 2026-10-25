@@ -1,0 +1,71 @@
+{
+  "entries": [
+    {
+      "file": "crates/tiny-glade/src/production_renderer.rs",
+      "source": "gpu/production-renderer-win32.patch",
+      "before": "07b91be8138feb2fd2b253eb5f99c02db02adc63f7ba2986d8791512141d97de",
+      "after": "d787b64ccce3bd52624c00621bde833fc7a1d5097e087006bcfbabdb0d0b93df"
+    },
+    {
+      "file": "crates/tiny-glade/tests/original_loading_present.rs",
+      "source": "gpu/frame-driver-loading-wsi.patch",
+      "after": "fe0b5dcd25b1f02b5f064113aeeb435707a8c9dc5e44be9a3fc3649188083730"
+    },
+    {
+      "patch": "gpu/win32-surface-owner.patch",
+      "applied": true,
+      "validation": "pending centralized check/runtime"
+    },
+    {
+      "patch": "frame/candidate.patch",
+      "applied": true,
+      "validation": "pending centralized check/runtime"
+    },
+    {
+      "patch": "acceptance/nonempty-uploads.patch",
+      "applied": true,
+      "validation": "pending centralized check/runtime"
+    },
+    {
+      "patch": "bindings/candidate.patch",
+      "applied": true
+    },
+    {
+      "patch": "gpu/surface-native-lifetime.patch",
+      "applied": true
+    },
+    {
+      "scope": "production_renderer minimal fallback",
+      "change": "demo mode no longer permits an empty world; explicit diagnostic env only",
+      "applied": true
+    },
+    {
+      "patch": "temporal/candidate.patch",
+      "independent_review": "gpu/TEMPORAL_INDEPENDENT_REVIEW.md",
+      "applied": true,
+      "followup": "deferred reentrant cancellation is pending"
+    },
+    {
+      "patch": "graph/graph-stage2.patch",
+      "independent_review": "review/STAGE2_REVIEW.md",
+      "applied": true,
+      "followup": "ICC, undefined reads, profiling and screenshot interfaces pending"
+    },
+    {
+      "patch": "screenshot/candidate.patch",
+      "review": "screenshot-review/REVIEW.md",
+      "applied": true
+    },
+    {
+      "patch": "screenshot/host-without-shutdown.patch",
+      "review": "screenshot-review/REVIEW.md",
+      "applied": true,
+      "excluded": "game_loop shutdown, owned by frame_loop"
+    },
+    {
+      "patch": "bindings/attachments-v2/candidate.patch",
+      "applied": true,
+      "verification": "central static review; compile/GPU pending"
+    }
+  ]
+}

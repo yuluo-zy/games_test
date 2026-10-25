@@ -1,0 +1,755 @@
+{
+  "backend": "ghidra",
+  "worker": "shared",
+  "access": "read",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "get_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x140b0e080,0x140506d00,0x1405073a0,0x140507960,0x140507a30,0x140507d40,0x140508400,0x140508600,0x140508720,0x140508b80,0x140507f00,0x1400854a0,0x140088240,0x14032e0b0,0x14032e210",
+        "fields": "signature,decompiled_code",
+        "include_call_context": false
+      },
+      "args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x140b0e080,0x140506d00,0x1405073a0,0x140507960,0x140507a30,0x140507d40,0x140508400,0x140508600,0x140508720,0x140508b80,0x140507f00,0x1400854a0,0x140088240,0x14032e0b0,0x14032e210",
+        "fields": "signature,decompiled_code",
+        "include_call_context": false
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"functions\":{\"0x140b0e080\":{\"name\":\"fmt\",\"size\":27,\"address\":\"140b0e080\",\"signature\":\"void __cdecl fmt(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::resources::ui_settings::impl$1::fmt(void)\\n\\n{\\n  code *UNRECOVERED_JUMPTABLE;\\n  undefined8 extraout_RAX;\\n  undefined1 *in_RCX;\\n  longlong in_RDX;\\n  undefined8 uVar1;\\n  \\n                    // WARNING (jumptable): Sanity check requires truncation of jumptable\\n                    // WARNING: Could not find normalized switch variable to match jumptable\\n  switch(*in_RCX) {\\n  case 0:\\n    uVar1 = 0x28;\\n    break;\\n  case 1:\\n    uVar1 = 0x26;\\n    break;\\n  case 2:\\n    uVar1 = 0x27;\\n    break;\\n  case 3:\\n    uVar1 = 0x25;\\n  }\\n  lang_lib::lookup();\\n  UNRECOVERED_JUMPTABLE = *(code **)(*(longlong *)(in_RDX + 0x38) + 0x18);\\n                    // WARNING: Could not recover jumptable at 0x000140d86ba4. Too many branches\\n                    // WARNING: Treating indirect jump as call\\n  (*UNRECOVERED_JUMPTABLE)(*(undefined8 *)(in_RDX + 0x30),extraout_RAX,uVar1,UNRECOVERED_JUMPTABLE);\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:445f58e8:3\",\"epoch\":\"445f58e8\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140506d00\":{\"name\":\"closure$2\",\"size\":1239,\"address\":\"140506d00\",\"signature\":\"void __cdecl closure$2(void)\",\"decompiled_code\":\"\\n// WARNING: Instruction at (ram,0x00014050760e) overlaps instruction at (ram,0x00014050760d)\\n// \\n// WARNING: Control flow encountered bad instruction data\\n\\nvoid __cdecl tiny_glade::gui::settings::do_gui_escape_menu_settings::closure_2(void)\\n\\n{\\n  char *pcVar1;\\n  int *piVar2;\\n  uint *****pppppuVar3;\\n  uint ****ppppuVar4;\\n  uint ****ppppuVar5;\\n  uint ****ppppuVar6;\\n  longlong lVar7;\\n  uint *******pppppppuVar8;\\n  char ******ppppppcVar9;\\n  char extraout_AL;\\n  undefined1 uVar10;\\n  char extraout_AL_00;\\n  char extraout_AL_01;\\n  char extraout_AL_02;\\n  uint *******extraout_RAX;\\n  uint ******extraout_RAX_00;\\n  uint ******extraout_RAX_01;\\n  uint ******extraout_RAX_02;\\n  uint ******extraout_RAX_03;\\n  uint ******extraout_RAX_04;\\n  byte *pbVar11;\\n  char *****extraout_RAX_05;\\n  char *extraout_RAX_06;\\n  ulonglong extraout_RAX_07;\\n  undefined1 *puVar12;\\n  byte bVar13;\\n  longlong *in_RCX;\\n  undefined8 in_RDX;\\n  uint ******ppppppuVar14;\\n  uint ******ppppppuVar15;\\n  uint ******ppppppuVar16;\\n  uint ******ppppppuVar17;\\n  undefined *puVar18;\\n  code *pcVar19;\\n  byte *pbVar20;\\n  char *******pppppppcVar21;\\n  char *******pppppppcVar22;\\n  char *******pppppppcVar23;\\n  char *******pppppppcVar24;\\n  char *******pppppppcVar25;\\n  char *******pppppppcVar26;\\n  undefined8 *******pppppppuVar27;\\n  longlong lVar28;\\n  uint *******pppppppuVar29;\\n  uint uVar30;\\n  int iVar31;\\n  byte bVar32;\\n  uint *******pppppppuVar33;\\n  uint *******pppppppuVar34;\\n  bool bVar35;\\n  undefined4 unaff_XMM6_Da;\\n  undefined4 unaff_XMM6_Db;\\n  undefined4 unaff_XMM6_Dc;\\n  undefined4 unaff_XMM6_Dd;\\n  char ******ppppppcStack_168;\\n  undefined1 auStack_160 [24];\\n  longlong local_148;\\n  uint *****pppppuStack_140;\\n  char ******ppppppcStack_138;\\n  uint ******local_130;\\n  char **ppcStack_128;\\n  uint *****pppppuStack_120;\\n  undefined8 local_118;\\n  undefined1 uStack_109;\\n  char *****pppppcStack_108;\\n  ulonglong local_100;\\n  char ******ppppppcStack_f8;\\n  undefined8 uStack_f0;\\n  undefined8 ******local_e8;\\n  undefined1 auStack_e0 [8];\\n  char *pcStack_d8;\\n  undefined8 uStack_d0;\\n  char *pcStack_c8;\\n  undefined8 uStack_c0;\\n  char *****pppppcStack_a8;\\n  undefined8 local_a0;\\n  longlong local_98;\\n  longlong *local_90;\\n  uint ******local_88;\\n  code *local_80;\\n  char ******local_78;\\n  undefined8 local_70;\\n  char ******local_68;\\n  undefined8 local_60;\\n  undefined8 local_58;\\n  undefined8 uStack_50;\\n  \\n  pppppppcVar23 = &ppppppcStack_168;\\n  pppppppcVar26 = &ppppppcStack_168;\\n  pppppppcVar25 = &ppppppcStack_168;\\n  pppppppcVar21 = &ppppppcStack_168;\\n  pppppppcVar24 = &ppppppcStack_168;\\n  pppppppuVar27 = &local_e8;\\n  local_58 = CONCAT44(unaff_XMM6_Db,unaff_XMM6_Da);\\n  uStack_50 = CONCAT44(unaff_XMM6_Dd,unaff_XMM6_Dc);\\n  local_60 = 0xfffffffffffffffe;\\n  local_a0 = in_RDX;\\n  local_90 = in_RCX;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX == (uint *******)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  ppppppuVar14 = (uint ******)0x13;\\n  local_68 = (char ******)extraout_RAX;\\n  lang_lib::lookup();\\n  ppppppuVar15 = (uint ******)0x13;\\n  local_88 = ppppppuVar14;\\n  lang_lib::lookup();\\n  ppppppuVar14 = (uint ******)0x12;\\n  lang_lib::lookup();\\n  ppppppuVar16 = (uint ******)0x10;\\n  lang_lib::lookup();\\n  ppppppuVar17 = (uint ******)0x16;\\n  lang_lib::lookup();\\n  *local_68 = (char *****)extraout_RAX_00;\\n  local_68[1] = (char *****)local_88;\\n  *(byte *)(local_68 + 2) = 3;\\n  local_68[3] = (char *****)extraout_RAX_01;\\n  local_68[4] = (char *****)ppppppuVar15;\\n  *(byte *)(local_68 + 5) = 0;\\n  local_68[6] = (char *****)extraout_RAX_02;\\n  local_68[7] = (char *****)ppppppuVar14;\\n  *(byte *)(local_68 + 8) = 5;\\n  local_68[9] = (char *****)extraout_RAX_03;\\n  local_68[10] = (char *****)ppppppuVar16;\\n  *(byte *)(local_68 + 0xb) = 6;\\n  local_68[0xc] = (char *****)extraout_RAX_04;\\n  local_68[0xd] = (char *****)ppppppuVar17;\\n  *(byte *)(local_68 + 0xe) = 9;\\n  local_80 = (code *)0x5;\\n  local_78 = local_68;\\n  local_70 = (code *)0x5;\\n  lVar28 = 5;\\n  if (SHOW_DEVELOPER_SETTINGS != '\\\\0') {\\n    alloc::raw_vec::RawVec::\\n    grow_one<tuple_<ref_<str_>,enum2_<country_core::resources::gui::SettingsMenuState>_>,alloc::alloc::Global>\\n              ();\\n    local_78[0xf] = (char *****)&DAT_1429ee178;\\n    local_78[0x10] = (char *****)0x3;\\n    *(byte *)(local_78 + 0x11) = 8;\\n    local_70 = (code *)0x6;\\n    lVar28 = 6;\\n    if (local_80 != (code *)0x6) goto LAB_140506e8a;\\n  }\\n  alloc::raw_vec::RawVec::\\n  grow_one<tuple_<ref_<str_>,enum2_<country_core::resources::gui::SettingsMenuState>_>,alloc::alloc::Global>\\n            ();\\nLAB_140506e8a:\\n  ppppppcVar9 = local_78;\\n  lVar7 = (ulonglong)(uint)((int)lVar28 * 8) * 3;\\n  *(undefined **)((longlong)local_78 + lVar7) = &DAT_1429ee1b8;\\n  pbVar20 = (byte *)((longlong)local_78 + lVar7 + 8);\\n  pbVar20[0] = 5;\\n  pbVar20[1] = 0;\\n  pbVar20[2] = 0;\\n  pbVar20[3] = 0;\\n  pbVar20[4] = 0;\\n  pbVar20[5] = 0;\\n  pbVar20[6] = 0;\\n  pbVar20[7] = 0;\\n  *(byte *)((longlong)local_78 + lVar7 + 0x10) = 7;\\n  local_70 = (code *)(lVar28 + 1);\\n  pppppppuVar29 = (uint *******)((longlong)local_78 + lVar7 + 0x18);\\n  local_88 = (uint ******)*local_90;\\n  local_98 = local_90[1];\\n  pppppppuVar33 = &local_130;\\n  lVar28 = 1;\\n  pppppppuVar8 = (uint *******)local_78;\\n  while (pppppppuVar34 = pppppppuVar8, pppppppuVar8 != pppppppuVar29) {\\n    while( true ) {\\n      alloc::str::impl$5::to_uppercase();\\n      local_68 = ppppppcStack_f8;\\n      toolbar::mei::widgets::impl$26::menu_button();\\n      toolbar::mei::widgets::MenuButtonView::max_width();\\n      toolbar::mei::widgets::MenuButtonView::align();\\n      toolbar::mei::widgets::MenuButtonView::on_click();\\n      toolbar::mei::widgets::MenuButtonView::force_highlight();\\n      toolbar::mei::widgets::impl$37::deref();\\n      toolbar::mei::core::Node::used();\\n      pppppppuVar8 = pppppppuVar34 + 3;\\n      if (extraout_AL != '\\\\0') break;\\n      if (local_100 != 0) {\\n        std::alloc::__default_lib_allocator::__rust_dealloc();\\n      }\\n      pppppppuVar34 = pppppppuVar8;\\n      if (pppppppuVar8 == pppppppuVar29) goto LAB_140507084;\\n    }\\n    if (local_100 == 0) {\\n      bVar13 = *(byte *)(pppppppuVar34 + 2);\\n      pbVar20 = (byte *)(ulonglong)bVar13;\\n      uVar30 = (uint)bVar13;\\n      bVar32 = (byte)(bVar13 - 3);\\n      if (7 < bVar32) {\\n        bVar32 = 1;\\n      }\\n      pbVar11 = (byte *)CONCAT71((uint7)(uint3)(bVar13 - 3 >> 8),3);\\n      bVar35 = 0xfffffffebd611be7 <\\n               (ulonglong)(longlong)*(int *)(&DAT_1429ee418 + (ulonglong)bVar32 * 4);\\n      puVar18 = &DAT_1429ee418 + *(int *)(&DAT_1429ee418 + (ulonglong)bVar32 * 4);\\n      pppppppcVar22 = &ppppppcStack_168;\\n                    // WARNING (jumptable): Sanity check requires truncation of jumptable\\n                    // WARNING: Could not find normalized switch variable to match jumptable\\n      switch(bVar32) {\\n      case 0:\\n        goto LAB_140507060;\\n      case 1:\\n        goto LAB_140507039;\\n      case 2:\\n        goto code_r0x000140507041;\\n      case 3:\\n        goto code_r0x000140507045;\\n      case 4:\\n        goto code_r0x00014050703d;\\n      case 5:\\n        goto code_r0x00014050704d;\\n      case 6:\\n        goto code_r0x000140507051;\\n      case 7:\\n        goto code_r0x000140507049;\\n      case 8:\\n        goto code_r0x0001405071b6;\\n      case 9:\\n        goto code_r0x0001405071d0;\\n      case 10:\\n        goto code_r0x0001405071be;\\n      case 0xb:\\n        goto code_r0x0001405071c2;\\n      case 0xc:\\n        goto code_r0x0001405071ba;\\n      case 0xd:\\n        goto code_r0x0001405071ca;\\n      case 0xe:\\n        goto code_r0x0001405071ce;\\n      case 0x10:\\n        goto code_r0x000140507401;\\n      case 0x11:\\n        goto code_r0x00014050741e;\\n      case 0x12:\\n        goto code_r0x00014050739d;\\n      case 0x13:\\n        goto code_r0x000140507767;\\n      case 0x14:\\n        goto code_r0x00014050760e;\\n      case 0x15:\\n        goto code_r0x000140507790;\\n      case 0x16:\\n        goto code_r0x0001405077ad;\\n      case 0x17:\\n        goto code_r0x0001405078fc;\\n      }\\n      goto code_r0x0001405071c6;\\n    }\\n    std::alloc::__default_lib_allocator::__rust_dealloc();\\n    bVar13 = *(byte *)(pppppppuVar34 + 2);\\n    pbVar20 = (byte *)(ulonglong)bVar13;\\n    uVar30 = (uint)bVar13;\\n    bVar32 = (byte)(bVar13 - 3);\\n    if (7 < bVar32) {\\n      bVar32 = 1;\\n    }\\n    pbVar11 = (byte *)CONCAT71((uint7)(uint3)(bVar13 - 3 >> 8),3);\\n    bVar35 = 0xfffffffebd611be7 <\\n             (ulonglong)(longlong)*(int *)(&DAT_1429ee418 + (ulonglong)bVar32 * 4);\\n    puVar18 = &DAT_1429ee418 + *(int *)(&DAT_1429ee418 + (ulonglong)bVar32 * 4);\\n    pppppppcVar22 = &ppppppcStack_168;\\n                    // WARNING (jumptable): Sanity check requires truncation of jumptable\\n                    // WARNING: Could not find normalized switch variable to match jumptable\\n    switch(bVar32) {\\n    case 1:\\nLAB_140507039:\\n      pbVar11 = pbVar20;\\n      break;\\n    case 2:\\ncode_r0x000140507041:\\n      pbVar11 = &DAT_00000005;\\n      break;\\n    case 3:\\ncode_r0x000140507045:\\n      pbVar11 = &DAT_00000006;\\n      break;\\n    case 4:\\ncode_r0x00014050703d:\\n      pbVar11 = &DAT_00000007;\\n      break;\\n    case 5:\\ncode_r0x00014050704d:\\n      pbVar11 = &DAT_00000008;\\n      break;\\n    case 6:\\ncode_r0x000140507051:\\n      pbVar11 = &DAT_00000009;\\n      break;\\n    case 7:\\ncode_r0x000140507049:\\n      pbVar11 = &DAT_0000000a;\\n      break;\\n    case 8:\\ncode_r0x0001405071b6:\\n      bVar35 = false;\\n      *(byte *)pppppppuVar8 = *(byte *)pppppppuVar8 | (byte)uVar30;\\n      goto code_r0x0001405071bb;\\n    case 9:\\ncode_r0x0001405071d0:\\n      if (pbVar11[1] == 1 || (int)pppppppuVar8 >> 1 != 0) {\\n                    // WARNING: Bad instruction - Truncating control flow here\\n        halt_baddata();\\n      }\\n      return;\\n    case 10:\\ncode_r0x0001405071be:\\n      uVar30 = (uint)bVar13;\\n      bVar35 = CARRY1(*pbVar11,(byte)pbVar11);\\n      *pbVar11 = *pbVar11 + (byte)pbVar11;\\n      pppppppcVar21 = &ppppppcStack_168;\\n      goto code_r0x0001405071bb;\\n    case 0xb:\\ncode_r0x0001405071c2:\\n      *(uint *)pppppppuVar8 =\\n           *(uint *)pppppppuVar8 >> 1 | (uint)(((ulonglong)*pppppppuVar8 & 1) != 0) << 0x1f;\\n      pppppppcVar22 = &ppppppcStack_168;\\n      goto code_r0x0001405071c6;\\n    case 0xc:\\ncode_r0x0001405071ba:\\n      pppppppcVar21 = (char *******)auStack_e0;\\n      pppppppuVar27 = (undefined8 *******)local_e8;\\n      goto code_r0x0001405071bb;\\n    case 0xd:\\ncode_r0x0001405071ca:\\n      if (bVar35) goto code_r0x000140507211;\\n      pbVar20 = (byte *)(ulonglong)(byte)(bVar13 + pbVar11[99]);\\n      pbVar11 = (byte *)(ulonglong)(byte)((byte)pbVar11 | 0x8a);\\n      pppppppcVar22 = &ppppppcStack_168;\\n      goto code_r0x0001405071c6;\\n    case 0xe:\\ncode_r0x0001405071ce:\\n      pbVar20 = (byte *)(ulonglong)*(uint *)(puVar18 + (longlong)pbVar20 * 4);\\n      pppppppcVar22 = &ppppppcStack_168;\\n    case 0xf:\\n      goto code_r0x0001405071c6;\\n    case 0x10:\\ncode_r0x000140507401:\\n      local_148 = lVar28;\\n      ui_settings_game();\\n      pppppppcVar24 = &ppppppcStack_168;\\n      goto LAB_140507549;\\n    case 0x11:\\ncode_r0x00014050741e:\\n      switch(*puVar18) {\\n      case 3:\\n        ui_settings_audio();\\n        break;\\n      default:\\n        pppppcStack_a8 = *(char ******)((longlong)ppppppcVar9 + lVar7 + 0x58);\\n        local_a0 = *(undefined8 *)((longlong)ppppppcVar9 + lVar7 + 0x60);\\n        local_98 = *(longlong *)((longlong)ppppppcVar9 + lVar7 + 0x68);\\n        local_90 = *(longlong **)((longlong)ppppppcVar9 + lVar7 + 0x70);\\n        local_148 = *(longlong *)((longlong)ppppppcVar9 + lVar7 + 0x28);\\n        local_88 = *(uint *******)((longlong)ppppppcVar9 + lVar7 + 0x78);\\n        local_80 = *(code **)((longlong)ppppppcVar9 + lVar7 + 0x80);\\n        local_78 = *(char *******)((longlong)ppppppcVar9 + lVar7 + 0x88);\\n        local_70 = *(code **)((longlong)ppppppcVar9 + lVar7 + 0x90);\\n        local_68 = *(char *******)((longlong)ppppppcVar9 + lVar7 + 0x98);\\n        local_60 = *(undefined8 *)((longlong)ppppppcVar9 + lVar7 + 0xa0);\\n        local_58 = *(undefined8 *)((longlong)ppppppcVar9 + lVar7 + 0xa8);\\n        uStack_50 = *(undefined8 *)((longlong)ppppppcVar9 + lVar7 + 0xb0);\\n        pcStack_d8 = *(char **)((longlong)ppppppcVar9 + lVar7 + 0xb8);\\n        uStack_d0 = *(undefined8 *)((longlong)ppppppcVar9 + lVar7 + 0xc0);\\n        pcStack_c8 = *(char **)((longlong)ppppppcVar9 + lVar7 + 200);\\n        uStack_c0 = *(undefined8 *)((longlong)ppppppcVar9 + lVar7 + 0xd0);\\n        pppppcStack_108 = *(char ******)((longlong)ppppppcVar9 + lVar7 + 0xd8);\\n        local_100 = *(ulonglong *)((longlong)ppppppcVar9 + lVar7 + 0xe0);\\n        ppppppcStack_f8 = *(char *******)((longlong)ppppppcVar9 + lVar7 + 0xe8);\\n        uStack_f0 = *(undefined8 *)((longlong)ppppppcVar9 + lVar7 + 0xf0);\\n        local_118 = *(undefined8 *)((longlong)ppppppcVar9 + lVar7 + 0xf8);\\n        pppppuStack_120 = (uint *****)&pppppcStack_108;\\n        ppcStack_128 = &pcStack_d8;\\n        local_130 = (uint ******)&local_68;\\n        ppppppcStack_138 = (char ******)&local_88;\\n        pppppuStack_140 = (uint *****)&uStack_109;\\n        ui_settings_video();\\n        pppppppcVar24 = &ppppppcStack_168;\\n        break;\\n      case 5:\\n        lVar28 = *(longlong *)((longlong)ppppppcVar9 + lVar7 + 0x30);\\n        pppppcStack_108 = *(char ******)((longlong)ppppppcVar9 + lVar7 + 0x38);\\n        local_100 = *(ulonglong *)((longlong)ppppppcVar9 + lVar7 + 0x40);\\n        ppppppcStack_f8 = *(char *******)((longlong)ppppppcVar9 + lVar7 + 0x48);\\n        uStack_f0 = *(undefined8 *)((longlong)ppppppcVar9 + lVar7 + 0x50);\\n        pppppuStack_140 = (uint *****)&pppppcStack_108;\\n        goto code_r0x000140507401;\\n      case 6:\\n        local_148 = *(longlong *)((longlong)ppppppcVar9 + lVar7 + 0x100);\\n        goto code_r0x0001405077bb;\\n      case 7:\\n        **(undefined1 **)((longlong)ppppppcVar9 + lVar7 + 0x108) = 0;\\n        ppppppuVar14 = pppppppuVar34[4];\\n        pcStack_d8 = \\n        \\\"language optionsmenu/languagerowsMenu.Settings.Video.Applyinternal error: entered unreachable code\\\"\\n        ;\\n        uStack_d0 = 0x10;\\n        toolbar::mei::core::impl$0::as_id();\\n        local_100 = 0x41223169ff28813b;\\n        ppppppcStack_f8 = (char ******)0xa79b7268a2a968d9;\\n        ::utils::calculate_hash<tuple_<u64,core::any::TypeId>_>();\\n        pppppcStack_108 = (char *****)ppppppuVar14;\\n        ::utils::calculate_hash<tuple_<u64,u64>_>();\\n        toolbar::mei::core::NodeContext::child_with_global_id();\\n        toolbar::mei::config::impl$18::template();\\n        lVar28 = *(longlong *)((longlong)ppppppcVar9 + lVar7 + 0x30);\\n        pppppcStack_a8 = (char *****)&UNK_1429ee23d;\\n        local_a0 = 4;\\n        toolbar::mei::core::NodeContext::id();\\n        pppppppuVar33 = (uint *******)&pppppcStack_a8;\\n        toolbar::mei::core::impl$0::as_id();\\n        pcStack_d8 = extraout_RAX_06;\\n        minidump_unwind::instruction_seems_valid_by_symbols::async_fn$0::impl$0::get_instruction();\\n        local_100 = 0x41223169ff28813b;\\n        ppppppcStack_f8 = (char ******)0xa79b7268a2a968d9;\\n        ::utils::calculate_hash<tuple_<u64,core::any::TypeId>_>();\\n        local_100 = extraout_RAX_07;\\n        pppppcStack_108 = extraout_RAX_05;\\n        goto code_r0x00014050776a;\\n      case 8:\\n        ui_settings_developer();\\n        pppppppcVar24 = &ppppppcStack_168;\\n        break;\\n      case 9:\\n        local_148 = *(longlong *)((longlong)ppppppcVar9 + lVar7 + 0x30);\\n        pppppuStack_140 = (uint *****)((longlong)ppppppcVar9 + lVar7 + 0x128);\\n        ppppppcStack_138 = (char ******)((longlong)ppppppcVar9 + lVar7 + 0x148);\\n        ui_settings_controls();\\n        pppppppcVar24 = &ppppppcStack_168;\\n        break;\\n      case 10:\\n                    // WARNING: Subroutine does not return\\n        core::panicking::panic();\\n      }\\n      goto LAB_140507549;\\n    case 0x12:\\ncode_r0x00014050739d:\\n      return;\\n    case 0x13:\\ncode_r0x000140507767:\\n      bVar13 = in((short)puVar18);\\n      *(byte *)pppppppuVar8 = bVar13;\\n      local_100 = (ulonglong)pbVar11 & 0xffffffffffffff00;\\ncode_r0x00014050776a:\\n      ::utils::calculate_hash<tuple_<u64,u64>_>();\\n      toolbar::mei::core::NodeContext::has_global_id();\\n      if (extraout_AL_02 == '\\\\0') {\\n        if (*(longlong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E != 0) {\\n          local_88 = (uint ******)&local_68;\\n          local_80 = core::fmt::impl$74::fmt<str_>;\\n          local_70 = core::fmt::impl$74::fmt<str_>;\\n          pppppcStack_108 =\\n               (char *****)&anon_5b758b46761ef39294929c3d11ba302d_4_llvm_14359997359250620829;\\n          local_100 = 2;\\n          local_e8 = (undefined8 *******)0x0;\\n          ppppppcStack_f8 = (char ******)&local_88;\\n          uStack_f0 = 2;\\n          local_78 = (char ******)pppppppuVar33;\\n          toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n          pcStack_d8 = \\\"toolbar::mei::config\\\";\\n          uStack_d0 = 0x14;\\n          pcStack_c8 = \\\"toolbar::mei::config\\\";\\n          uStack_c0 = 0x14;\\n          ::log::__private_api::log<tuple_<>,log::__private_api::GlobalLogger>();\\n        }\\n        goto code_r0x000140507913;\\n      }\\n      goto code_r0x000140507794;\\n    case 0x14:\\ncode_r0x00014050760e:\\n      goto code_r0x0001405075f6;\\n    case 0x15:\\ncode_r0x000140507790:\\ncode_r0x000140507794:\\n      toolbar::mei::core::NodeContext::expect_child_with_global_id();\\ncode_r0x00014050791e:\\n      **(undefined4 **)(lVar28 + 0x10) = *(undefined4 *)(lVar28 + 0x1c);\\n      language_menu::do_gui_language_menu();\\n      pppppppcVar24 = &ppppppcStack_168;\\n      goto LAB_140507549;\\n    case 0x16:\\ncode_r0x0001405077ad:\\n      pppppppcVar26 = (char *******)auStack_160;\\n      pbVar11[-0x75] = (pbVar11[-0x75] - bVar13) - bVar35;\\n      puVar12 = (undefined1 *)((ulonglong)pbVar11 & 0xffffffffffffff00);\\n      *puVar12 = *puVar12;\\n      puVar12[-0x77] = puVar12[-0x77] + bVar13;\\n      pppppppuVar29 = (uint *******)ppppppcStack_168;\\ncode_r0x0001405077bb:\\n      *(undefined **)((longlong)pppppppcVar26 + -8) = &UNK_1405077cb;\\n      ui_settings_ui();\\n      pppppppcVar24 = pppppppcVar26;\\nLAB_140507549:\\n      *(undefined8 *)((longlong)pppppppcVar24 + -8) = 0x14050755b;\\n      LastAppliedVideoSettings::needs_apply();\\n      if (extraout_AL_00 != '\\\\0') {\\n        *(undefined8 *)((longlong)pppppppcVar24 + -8) = 0x140507576;\\n        lang_lib::lookup();\\n        *(undefined8 *)((longlong)pppppppcVar24 + -8) = 0x14050758c;\\n        toolbar::mei::widgets::impl$26::menu_button();\\n        *(undefined8 *)((longlong)pppppppcVar24 + -8) = 0x140507594;\\n        toolbar::mei::widgets::impl$37::deref();\\n        *(undefined8 *)((longlong)pppppppcVar24 + -8) = 0x14050759c;\\n        toolbar::mei::core::Node::used();\\n        if (extraout_AL_01 != '\\\\0') {\\n          ppppppuVar14 = pppppppuVar29[0x20];\\n          *(undefined4 *)ppppppuVar14[2] = *(undefined4 *)((longlong)ppppppuVar14 + 0x1c);\\n          pppppuVar3 = *ppppppuVar14;\\n          ppppuVar4 = pppppuVar3[6];\\n          ppppuVar5 = pppppuVar3[8];\\n          if (ppppuVar4 == pppppuVar3[4]) {\\n            *(undefined8 *)((longlong)pppppppcVar24 + -8) = 0x1405075d1;\\n            alloc::raw_vec::RawVec::\\n            grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>\\n                      ();\\n          }\\n          ppppuVar6 = pppppuVar3[5];\\n          ppppuVar6[(longlong)ppppuVar4 * 2] = (uint ***)ppppuVar5;\\n          *(char *)(ppppuVar6 + (longlong)ppppuVar4 * 2 + 1) = extraout_AL_00;\\n          pppppuVar3[6] = (uint ****)((longlong)ppppuVar4 + 1);\\n          pppppuVar3[8] = (uint ****)((longlong)pppppuVar3[8] + 1);\\n        }\\n      }\\n      pppppppcVar25 = pppppppcVar24;\\n      if (*(char *)((longlong)pppppppcVar24 + 0x5f) != '\\\\0') {\\ncode_r0x0001405075f6:\\n        ppppppuVar14 = pppppppuVar29[0x21];\\n        *(undefined4 *)ppppppuVar14[2] = *(undefined4 *)((longlong)ppppppuVar14 + 0x1c);\\n        pppppuVar3 = *ppppppuVar14;\\n        ppppuVar4 = pppppuVar3[6];\\n        ppppuVar5 = pppppuVar3[8];\\n        if (ppppuVar4 == pppppuVar3[4]) {\\n          *(undefined8 *)((longlong)pppppppcVar25 + -8) = 0x140507627;\\n          alloc::raw_vec::RawVec::\\n          grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>\\n                    ();\\n        }\\n        pppppuVar3[5][(longlong)ppppuVar4] = (uint ***)ppppuVar5;\\n        pppppuVar3[6] = (uint ****)((longlong)ppppuVar4 + 1);\\n        pppppuVar3[8] = (uint ****)((longlong)pppppuVar3[8] + 1);\\n      }\\n      return;\\n    case 0x17:\\ncode_r0x0001405078fc:\\n      piVar2 = (int *)((longlong)pbVar20 * 4 + -0x7b);\\n      *piVar2 = *piVar2 + -1;\\n      puVar12 = (undefined1 *)(((ulonglong)pbVar11 >> 8) << 8);\\n      *puVar12 = *puVar12;\\n      pcVar1 = (char *)((longlong)pbVar20 * 4 + -0x73);\\n      *pcVar1 = *pcVar1 + (char)pbVar20;\\n      puVar12 = (undefined1 *)(((ulonglong)pbVar11 >> 8) << 8);\\n      *puVar12 = *puVar12;\\n      pcVar1 = (char *)((longlong)&local_70 + (longlong)pbVar20 * 4 + 4);\\n      *pcVar1 = *pcVar1 + (char)pbVar20;\\ncode_r0x000140507913:\\n      toolbar::mei::core::NodeContext::child<ref_<str_>_>();\\n      goto code_r0x00014050791e;\\n    }\\nLAB_140507060:\\n    ppppppcStack_f8 = (char ******)CONCAT71(ppppppcStack_f8._1_7_,(char)pbVar11);\\n    local_100 = 7;\\n    country_core::resources::gui::NextEscMenuState::set();\\n  }\\nLAB_140507084:\\n  if (local_70 != (code *)0x0) {\\n    bVar13 = *(char *)local_88 - 3;\\n    if (7 < bVar13) {\\n      bVar13 = 1;\\n    }\\n    lVar28 = 0;\\n    pcVar19 = (code *)0x0;\\n    do {\\n      bVar32 = *(byte *)((longlong)local_78 + lVar28 + 0x10) - 3;\\n      if (7 < bVar32) {\\n        bVar32 = 1;\\n      }\\n      if (bVar32 == bVar13) goto LAB_1405070e9;\\n      pcVar19 = pcVar19 + 1;\\n      lVar28 = lVar28 + 0x18;\\n    } while ((longlong)local_70 * 0x18 != lVar28);\\n  }\\n  pcVar19 = (code *)0x0;\\nLAB_1405070e9:\\n  piVar2 = (int *)local_90[2];\\n  iVar31 = *piVar2;\\n  pppppppcVar23 = &ppppppcStack_168;\\n  if (iVar31 != 0) {\\n    if (iVar31 < 1) {\\n      iVar31 = iVar31 + 1;\\n      do {\\n        if (local_70 == (code *)0x0) {\\n                    // WARNING: Subroutine does not return\\n          core::panicking::panic_const::panic_const_rem_by_zero();\\n        }\\n        pcVar19 = pcVar19 + (longlong)local_70 + -1;\\n        if (((ulonglong)pcVar19 | (ulonglong)local_70) >> 0x20 == 0) {\\n          pcVar19 = (code *)(((ulonglong)pcVar19 & 0xffffffff) % ((ulonglong)local_70 & 0xffffffff))\\n          ;\\n        }\\n        else {\\n          pcVar19 = (code *)((ulonglong)pcVar19 % (ulonglong)local_70);\\n        }\\n        *piVar2 = iVar31;\\n        iVar31 = iVar31 + 1;\\n      } while (iVar31 != 1);\\n    }\\n    else {\\n      uVar30 = iVar31 + 1;\\n      do {\\n        if (local_70 == (code *)0x0) {\\n                    // WARNING: Subroutine does not return\\n          core::panicking::panic_const::panic_const_rem_by_zero();\\n        }\\n        pcVar19 = pcVar19 + 1;\\n        if (((ulonglong)pcVar19 | (ulonglong)local_70) >> 0x20 == 0) {\\n          pcVar19 = (code *)(((ulonglong)pcVar19 & 0xffffffff) % ((ulonglong)local_70 & 0xffffffff))\\n          ;\\n        }\\n        else {\\n          pcVar19 = (code *)((ulonglong)pcVar19 % (ulonglong)local_70);\\n        }\\n        *piVar2 = uVar30 - 2;\\n        uVar30 = uVar30 - 1;\\n      } while (1 < uVar30);\\n    }\\n    if (local_70 <= pcVar19) {\\n                    // WARNING: Subroutine does not return\\n      core::panicking::panic_bounds_check();\\n    }\\n    pbVar11 = (byte *)(ulonglong)*(byte *)(local_78 + (longlong)pcVar19 * 3 + 2);\\n    bVar13 = *(byte *)(local_78 + (longlong)pcVar19 * 3 + 2) - 3;\\n    bVar35 = bVar13 < 8;\\n    uVar30 = (uint)bVar13;\\n    pppppppcVar21 = &ppppppcStack_168;\\ncode_r0x0001405071bb:\\n    pbVar20 = (byte *)0x1;\\n    pppppppcVar22 = pppppppcVar21;\\n    if (bVar35) {\\n      pbVar20 = (byte *)(ulonglong)uVar30;\\n    }\\ncode_r0x0001405071c6:\\n    uVar10 = SUB81(pbVar11,0);\\n    switch(&DAT_1429ee438 + *(int *)(&DAT_1429ee438 + (longlong)pbVar20 * 4)) {\\n    case (undefined *)0x1405071d6:\\n      uVar10 = 3;\\n      break;\\n    case (undefined *)0x1405071da:\\n      uVar10 = 7;\\n      break;\\n    case (undefined *)0x1405071de:\\n      uVar10 = 5;\\n      break;\\n    case (undefined *)0x1405071e2:\\n      uVar10 = 6;\\n      break;\\n    case (undefined *)0x1405071e6:\\n      uVar10 = 10;\\n      break;\\n    case (undefined *)0x1405071ea:\\n      uVar10 = 8;\\n      break;\\n    case (undefined *)0x1405071ee:\\n      uVar10 = 9;\\n    }\\n    *(undefined1 *)(pppppppuVar27 + -2) = uVar10;\\n    pppppppuVar27[-3] = (undefined8 ******)0x7;\\n    *(undefined8 *)((longlong)pppppppcVar22 + -8) = 0x140507208;\\n    country_core::resources::gui::NextEscMenuState::set();\\n    pppppppcVar23 = pppppppcVar22;\\n  }\\n  if (pppppppuVar27[0xd] != (undefined8 ******)0x0) {\\ncode_r0x000140507211:\\n    *(undefined8 *)((longlong)pppppppcVar23 + -8) = 0x140507228;\\n    std::alloc::__default_lib_allocator::__rust_dealloc();\\n  }\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:445f58e8:3\",\"epoch\":\"445f58e8\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1405073a0\":{\"name\":\"closure$3\",\"size\":657,\"address\":\"1405073a0\",\"signature\":\"void __cdecl closure$3(void)\",\"decompiled_code\":\"\\n// WARNING: Removing unreachable block (ram,0x0001405075f6)\\n// WARNING: Removing unreachable block (ram,0x000140507617)\\n// WARNING: Removing unreachable block (ram,0x000140507627)\\n\\nvoid __cdecl tiny_glade::gui::settings::do_gui_escape_menu_settings::closure_3(void)\\n\\n{\\n  undefined8 *puVar1;\\n  longlong *plVar2;\\n  longlong lVar3;\\n  longlong lVar4;\\n  undefined8 uVar5;\\n  longlong lVar6;\\n  char extraout_AL;\\n  char extraout_AL_00;\\n  char extraout_AL_01;\\n  undefined8 *in_RCX;\\n  undefined *local_a8;\\n  undefined8 uStack_a0;\\n  undefined8 local_98;\\n  undefined8 uStack_90;\\n  undefined8 *local_88;\\n  code *pcStack_80;\\n  undefined **local_78;\\n  code *pcStack_70;\\n  undefined8 local_68;\\n  undefined8 uStack_60;\\n  undefined8 local_58;\\n  undefined8 uStack_50;\\n  \\n  toolbar::mei::widgets::impl$38::deref_mut();\\n  toolbar::mei::core::Node::default_focus();\\n  puVar1 = (undefined8 *)*in_RCX;\\n  if (*(char *)*puVar1 == '\\\\x05') {\\ncode_r0x0001405073dd:\\n    ui_settings_game();\\n  }\\n  else {\\n    *(undefined1 *)in_RCX[1] = 2;\\n    switch(*(undefined1 *)*puVar1) {\\n    case 3:\\n      ui_settings_audio();\\n      break;\\n    default:\\n      local_a8 = (undefined *)in_RCX[8];\\n      uStack_a0 = in_RCX[9];\\n      local_98 = in_RCX[10];\\n      uStack_90 = in_RCX[0xb];\\n      local_88 = (undefined8 *)in_RCX[0xc];\\n      pcStack_80 = (code *)in_RCX[0xd];\\n      local_78 = (undefined **)in_RCX[0xe];\\n      pcStack_70 = (code *)in_RCX[0xf];\\n      local_68 = in_RCX[0x10];\\n      uStack_60 = in_RCX[0x11];\\n      local_58 = in_RCX[0x12];\\n      uStack_50 = in_RCX[0x13];\\n      ui_settings_video();\\n      break;\\n    case 5:\\n      goto code_r0x0001405073dd;\\n    case 6:\\n      ui_settings_ui();\\n      break;\\n    case 7:\\n      *(undefined1 *)in_RCX[0x1e] = 0;\\n      toolbar::mei::core::impl$0::as_id();\\n      ::utils::calculate_hash<tuple_<u64,core::any::TypeId>_>();\\n      ::utils::calculate_hash<tuple_<u64,u64>_>();\\n      toolbar::mei::core::NodeContext::child_with_global_id();\\n      toolbar::mei::config::impl$18::template();\\n      lVar3 = in_RCX[3];\\n      local_a8 = &UNK_1429ee23d;\\n      uStack_a0 = 4;\\n      toolbar::mei::core::NodeContext::id();\\n      toolbar::mei::core::impl$0::as_id();\\n      minidump_unwind::instruction_seems_valid_by_symbols::async_fn$0::impl$0::get_instruction();\\n      ::utils::calculate_hash<tuple_<u64,core::any::TypeId>_>();\\n      ::utils::calculate_hash<tuple_<u64,u64>_>();\\n      toolbar::mei::core::NodeContext::has_global_id();\\n      if (extraout_AL_01 == '\\\\0') {\\n        if (*(longlong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E != 0) {\\n          local_88 = &local_68;\\n          pcStack_80 = core::fmt::impl$74::fmt<str_>;\\n          pcStack_70 = core::fmt::impl$74::fmt<str_>;\\n          local_78 = &local_a8;\\n          toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n          ::log::__private_api::log<tuple_<>,log::__private_api::GlobalLogger>();\\n        }\\n        toolbar::mei::core::NodeContext::child<ref_<str_>_>();\\n      }\\n      else {\\n        toolbar::mei::core::NodeContext::expect_child_with_global_id();\\n      }\\n      **(undefined4 **)(lVar3 + 0x10) = *(undefined4 *)(lVar3 + 0x1c);\\n      language_menu::do_gui_language_menu();\\n      break;\\n    case 8:\\n      ui_settings_developer();\\n      break;\\n    case 9:\\n      ui_settings_controls();\\n      break;\\n    case 10:\\n                    // WARNING: Subroutine does not return\\n      core::panicking::panic();\\n    }\\n  }\\n  LastAppliedVideoSettings::needs_apply();\\n  if (extraout_AL != '\\\\0') {\\n    lang_lib::lookup();\\n    toolbar::mei::widgets::impl$26::menu_button();\\n    toolbar::mei::widgets::impl$37::deref();\\n    toolbar::mei::core::Node::used();\\n    if (extraout_AL_00 != '\\\\0') {\\n      plVar2 = (longlong *)in_RCX[0x20];\\n      *(undefined4 *)plVar2[2] = *(undefined4 *)((longlong)plVar2 + 0x1c);\\n      lVar3 = *plVar2;\\n      lVar4 = *(longlong *)(lVar3 + 0x30);\\n      uVar5 = *(undefined8 *)(lVar3 + 0x40);\\n      if (lVar4 == *(longlong *)(lVar3 + 0x20)) {\\n        alloc::raw_vec::RawVec::\\n        grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>\\n                  ();\\n      }\\n      lVar6 = *(longlong *)(lVar3 + 0x28);\\n      *(undefined8 *)(lVar6 + lVar4 * 0x10) = uVar5;\\n      *(char *)(lVar6 + 8 + lVar4 * 0x10) = extraout_AL;\\n      *(longlong *)(lVar3 + 0x30) = lVar4 + 1;\\n      *(longlong *)(lVar3 + 0x40) = *(longlong *)(lVar3 + 0x40) + 1;\\n    }\\n  }\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:445f58e8:3\",\"epoch\":\"445f58e8\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140507960\":{\"name\":\"closure$4\",\"size\":201,\"address\":\"140507960\",\"signature\":\"void __cdecl closure$4(void)\",\"decompiled_code\":\"\\nvoid __cdecl tiny_glade::gui::settings::do_gui_escape_menu_settings::closure_4(void)\\n\\n{\\n  char extraout_AL;\\n  char *in_RCX;\\n  \\n  lang_lib::lookup();\\n  toolbar::mei::widgets::impl$26::menu_button();\\n  toolbar::mei::widgets::MenuButtonView::on_click();\\n  toolbar::mei::widgets::MenuButtonView::hotkey();\\n  toolbar::mei::widgets::impl$37::deref();\\n  toolbar::mei::core::Node::used();\\n  if (extraout_AL != '\\\\0') {\\n    if ((byte)(*in_RCX - 3U) == 1 || 7 < (byte)(*in_RCX - 3U)) {\\n      country_core::resources::gui::VideoSettingsSubMenu::is_in_submenu();\\n    }\\n    country_core::resources::gui::NextEscMenuState::set();\\n  }\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:445f58e8:3\",\"epoch\":\"445f58e8\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140507a30\":{\"name\":\"closure$5\",\"size\":771,\"address\":\"140507a30\",\"signature\":\"void __cdecl closure$5(void)\",\"decompiled_code\":\"\\nvoid __cdecl tiny_glade::gui::settings::do_gui_escape_menu_settings::closure_5(void)\\n\\n{\\n  char extraout_AL;\\n  undefined *extraout_RAX;\\n  undefined *local_98;\\n  undefined8 uStack_90;\\n  undefined **local_88;\\n  code *pcStack_80;\\n  undefined **local_78;\\n  code *local_70;\\n  undefined *local_68;\\n  undefined8 local_60;\\n  \\n  local_68 = &DAT_1429ee2a0;\\n  local_60 = 5;\\n  toolbar::mei::core::impl$0::as_id();\\n  ::utils::calculate_hash<tuple_<u64,core::any::TypeId>_>();\\n  ::utils::calculate_hash<tuple_<u64,u64>_>();\\n  toolbar::mei::core::NodeContext::child_with_global_id();\\n  toolbar::mei::config::impl$18::template();\\n  local_98 = &DAT_1429ee2bd;\\n  uStack_90 = 4;\\n  toolbar::mei::core::NodeContext::id();\\n  toolbar::mei::core::impl$0::as_id();\\n  local_88 = (undefined **)extraout_RAX;\\n  minidump_unwind::instruction_seems_valid_by_symbols::async_fn$0::impl$0::get_instruction();\\n  ::utils::calculate_hash<tuple_<u64,core::any::TypeId>_>();\\n  ::utils::calculate_hash<tuple_<u64,u64>_>();\\n  toolbar::mei::core::NodeContext::has_global_id();\\n  if (extraout_AL == '\\\\0') {\\n    if (*(longlong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E != 0) {\\n      pcStack_80 = core::fmt::impl$74::fmt<str_>;\\n      local_70 = core::fmt::impl$74::fmt<str_>;\\n      local_88 = &local_68;\\n      local_78 = &local_98;\\n      toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();\\n      ::log::__private_api::impl$2::log();\\n    }\\n    local_88 = (undefined **)local_98;\\n    pcStack_80 = (code *)uStack_90;\\n    toolbar::mei::core::impl$0::as_id();\\n    ::utils::calculate_hash<tuple_<u64,core::any::TypeId>_>();\\n    ::utils::calculate_hash<tuple_<u64,u64>_>();\\n    toolbar::mei::core::NodeContext::child_with_global_id();\\n  }\\n  else {\\n    toolbar::mei::core::NodeContext::expect_child_with_global_id();\\n  }\\n  closure$5::closure_0();\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:445f58e8:3\",\"epoch\":\"445f58e8\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140507d40\":{\"name\":\"closure$0\",\"size\":368,\"address\":\"140507d40\",\"signature\":\"void __cdecl closure$0(void)\",\"decompiled_code\":\"\\nvoid __cdecl tiny_glade::gui::settings::do_gui_escape_menu_settings::closure$5::closure_0(void)\\n\\n{\\n  longlong lVar1;\\n  longlong *extraout_RAX;\\n  ulonglong in_RCX;\\n  longlong lVar2;\\n  longlong lVar3;\\n  longlong local_68;\\n  longlong lStack_60;\\n  longlong local_58;\\n  \\n  if ((in_RCX & 1) != 0) {\\n    country_core::resources::history::wall_compound_edit::CompoundEditBuilder::new_edit_sequence();\\n    tg_text::shape_stream::ShapeStream::fill_color();\\n    tg_text::shape_stream::ShapeStream::corner_radius();\\n    toolbar::mei::core::NodeContext::content_mut<toolbar::mei::widgets::FrameContent>();\\n    lVar2 = extraout_RAX[2];\\n    if (lVar2 != 0) {\\n      lVar3 = extraout_RAX[1] + 8;\\n      do {\\n        lVar1 = *(longlong *)(lVar3 + -8);\\n        if (((-0x7fffffffffffffff < lVar1) &&\\n            (2 < lVar1 + 0x7ffffffffffffffeU || lVar1 + 0x7ffffffffffffffeU == 1)) && (lVar1 != 0))\\n        {\\n          std::alloc::__default_lib_allocator::__rust_dealloc();\\n        }\\n        lVar3 = lVar3 + 0x20;\\n        lVar2 = lVar2 + -1;\\n      } while (lVar2 != 0);\\n    }\\n    if (*extraout_RAX != 0) {\\n      std::alloc::__default_lib_allocator::__rust_dealloc();\\n    }\\n    extraout_RAX[2] = local_58;\\n    *extraout_RAX = local_68;\\n    extraout_RAX[1] = lStack_60;\\n  }\\n  toolbar::mei::widgets::impl$26::label();\\n  toolbar::mei::widgets::LabelView::content_mut();\\n  tg_text::TextFragment::set_metrics<f32>();\\n  toolbar::mei::widgets::LabelView::max_width();\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:445f58e8:3\",\"epoch\":\"445f58e8\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140508400\":{\"name\":\"closure$2\",\"size\":498,\"address\":\"140508400\",\"signature\":\"void __cdecl closure$2(void)\",\"decompiled_code\":\"\\nvoid __cdecl tiny_glade::gui::settings::ui_settings_keybindings::closure_2(void)\\n\\n{\\n  longlong *plVar1;\\n  longlong lVar2;\\n  longlong lVar3;\\n  undefined8 uVar4;\\n  char extraout_AL;\\n  char extraout_AL_00;\\n  undefined8 *in_RCX;\\n  \\n  if (**(int **)*in_RCX == 0xc3) {\\n    minidump_unwind::instruction_seems_valid_by_symbols::async_fn$0::impl$0::get_instruction();\\n    ::utils::calculate_hash<tuple_<u64,core::any::TypeId>_>();\\n    ::utils::calculate_hash<tuple_<u64,u64>_>();\\n    toolbar::mei::core::NodeContext::child_with_global_id();\\n    lang_lib::lookup();\\n    toolbar::mei::widgets::impl$26::menu_button();\\n    toolbar::mei::widgets::MenuButtonView::hotkey();\\n  }\\n  else {\\n    lang_lib::lookup();\\n    toolbar::mei::widgets::impl$26::menu_button();\\n    toolbar::mei::widgets::impl$38::deref_mut();\\n    toolbar::mei::core::Node::default_focus();\\n    toolbar::mei::core::Node::used();\\n    if (extraout_AL != '\\\\0') {\\n      *(undefined1 *)in_RCX[1] = 1;\\n      plVar1 = (longlong *)in_RCX[2];\\n      *(undefined4 *)plVar1[2] = *(undefined4 *)((longlong)plVar1 + 0x1c);\\n      lVar2 = *plVar1;\\n      lVar3 = *(longlong *)(lVar2 + 0x30);\\n      uVar4 = *(undefined8 *)(lVar2 + 0x40);\\n      if (lVar3 == *(longlong *)(lVar2 + 0x20)) {\\n        alloc::raw_vec::RawVec::\\n        grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>\\n                  ();\\n      }\\n      *(undefined8 *)(*(longlong *)(lVar2 + 0x28) + lVar3 * 8) = uVar4;\\n      *(longlong *)(lVar2 + 0x30) = lVar3 + 1;\\n      *(longlong *)(lVar2 + 0x40) = *(longlong *)(lVar2 + 0x40) + 1;\\n      **(undefined4 **)(in_RCX[3] + 0x10) = *(undefined4 *)(in_RCX[3] + 0x1c);\\n      country_core::game_key_bindings::KeyBindings::assign_key();\\n    }\\n    lang_lib::lookup();\\n    toolbar::mei::widgets::impl$26::menu_button();\\n    toolbar::mei::widgets::MenuButtonView::hotkey();\\n  }\\n  toolbar::mei::widgets::impl$37::deref();\\n  toolbar::mei::core::Node::used();\\n  if (extraout_AL_00 != '\\\\0') {\\n    *(undefined1 *)in_RCX[1] = 1;\\n  }\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:445f58e8:3\",\"epoch\":\"445f58e8\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140508600\":{\"name\":\"closure$4\",\"size\":284,\"address\":\"140508600\",\"signature\":\"void __cdecl closure$4(void)\",\"decompiled_code\":\"\\nvoid __cdecl tiny_glade::gui::settings::ui_settings_keybindings::closure_4(void)\\n\\n{\\n  longlong *plVar1;\\n  longlong lVar2;\\n  longlong lVar3;\\n  undefined8 uVar4;\\n  undefined8 *puVar5;\\n  char extraout_AL;\\n  char extraout_AL_00;\\n  undefined8 *in_RCX;\\n  undefined1 local_1f0 [456];\\n  \\n  lang_lib::lookup();\\n  toolbar::mei::widgets::impl$26::menu_button();\\n  toolbar::mei::widgets::impl$37::deref();\\n  toolbar::mei::core::Node::used();\\n  if (extraout_AL != '\\\\0') {\\n    *(undefined1 *)*in_RCX = 3;\\n    plVar1 = (longlong *)in_RCX[1];\\n    *(undefined4 *)plVar1[2] = *(undefined4 *)((longlong)plVar1 + 0x1c);\\n    lVar2 = *plVar1;\\n    lVar3 = *(longlong *)(lVar2 + 0x30);\\n    uVar4 = *(undefined8 *)(lVar2 + 0x40);\\n    if (lVar3 == *(longlong *)(lVar2 + 0x20)) {\\n      alloc::raw_vec::RawVec::\\n      grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>\\n                ();\\n    }\\n    *(undefined8 *)(*(longlong *)(lVar2 + 0x28) + lVar3 * 8) = uVar4;\\n    *(longlong *)(lVar2 + 0x30) = lVar3 + 1;\\n    *(longlong *)(lVar2 + 0x40) = *(longlong *)(lVar2 + 0x40) + 1;\\n    country_core::game_key_bindings::impl$0::default();\\n    puVar5 = (undefined8 *)in_RCX[2];\\n    *(undefined4 *)puVar5[2] = *(undefined4 *)((longlong)puVar5 + 0x1c);\\n    memcpy((void *)*puVar5,local_1f0,0x1c8);\\n    *(undefined8 *)in_RCX[3] = 0;\\n  }\\n  lang_lib::lookup();\\n  toolbar::mei::widgets::impl$26::menu_button();\\n  toolbar::mei::widgets::impl$37::deref();\\n  toolbar::mei::core::Node::used();\\n  if (extraout_AL_00 != '\\\\0') {\\n    *(undefined1 *)*in_RCX = 3;\\n  }\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:445f58e8:3\",\"epoch\":\"445f58e8\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140508720\":{\"name\":\"closure$5\",\"size\":714,\"address\":\"140508720\",\"signature\":\"void __cdecl closure$5(void)\",\"decompiled_code\":\"\\nvoid __cdecl tiny_glade::gui::settings::ui_settings_keybindings::closure_5(void)\\n\\n{\\n  short sVar1;\\n  longlong in_RCX;\\n  undefined8 uVar2;\\n  longlong local_128;\\n  undefined8 **local_110;\\n  code *pcStack_108;\\n  longlong local_f8 [3];\\n  longlong *local_e0;\\n  code *local_d8;\\n  undefined8 **local_d0;\\n  code *local_c8;\\n  longlong local_c0;\\n  longlong local_a8;\\n  undefined *local_98;\\n  undefined8 local_90;\\n  undefined8 **local_88;\\n  undefined8 local_80;\\n  undefined8 local_78;\\n  undefined8 **local_68;\\n  code *pcStack_60;\\n  undefined8 **local_48;\\n  undefined8 local_40;\\n  \\n  local_40 = 0xfffffffffffffffe;\\n  country_core::game_key_bindings::MouseBinding::action_desc();\\n  if (local_a8 == 0) {\\n    if (SBORROW8(0,local_c0)) {\\n                    // WARNING: Subroutine does not return\\n      core::option::unwrap_failed();\\n    }\\n    toolbar::mei::widgets::impl$26::label();\\n    toolbar::mei::widgets::LabelView::content_mut();\\n    tg_text::TextFragment::set_metrics<f32>();\\n  }\\n  else {\\n    toolbar::mei::widgets::impl$26::image<ref_<str_>_>();\\n  }\\n  toolbar::mei::widgets::impl$26::label();\\n  country_core::game_key_bindings::MouseBinding::get_mouse_button();\\n  country_core::game_key_bindings::mouse_button_to_string();\\n  sVar1 = **(short **)(in_RCX + 0x10);\\n  uVar2 = 0x20;\\n  lang_lib::lookup();\\n  pcStack_60 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;\\n  local_98 = &DAT_1429ee3e0;\\n  local_90 = 2;\\n  local_80 = 1;\\n  local_78 = 0;\\n  local_d8 = (code *)uVar2;\\n  local_88 = &local_68;\\n  local_68 = &local_e0;\\n  alloc::fmt::format::format_inner();\\n  if (sVar1 == 6) {\\n    local_68 = local_110;\\n    pcStack_60 = pcStack_108;\\n  }\\n  else {\\n    local_48 = local_110;\\n    country_core::game_key_bindings::mouse_button_to_string();\\n    if (local_48 != (longlong **)0x0) {\\n      std::alloc::__default_lib_allocator::__rust_dealloc();\\n    }\\n  }\\n  local_d8 = alloc::string::impl$23::fmt;\\n  local_c8 = alloc::string::impl$23::fmt;\\n  local_98 = &DAT_1429ee350;\\n  local_90 = 2;\\n  local_80 = 2;\\n  local_78 = 0;\\n  local_e0 = local_f8;\\n  local_d0 = &local_68;\\n  local_88 = &local_e0;\\n  alloc::fmt::format::format_inner();\\n  local_48 = (undefined8 **)local_128;\\n  toolbar::mei::widgets::impl$26::label();\\n  toolbar::mei::widgets::LabelView::content_mut();\\n  tg_text::TextFragment::set_metrics<f32>();\\n  if (local_48 != (undefined8 **)0x0) {\\n    std::alloc::__default_lib_allocator::__rust_dealloc();\\n  }\\n  if (local_68 != (longlong **)0x0) {\\n    std::alloc::__default_lib_allocator::__rust_dealloc();\\n  }\\n  if (local_f8[0] != 0) {\\n    std::alloc::__default_lib_allocator::__rust_dealloc();\\n  }\\n  if ((!SBORROW8(0,local_c0)) && (local_c0 != 0)) {\\n    std::alloc::__default_lib_allocator::__rust_dealloc();\\n  }\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:445f58e8:3\",\"epoch\":\"445f58e8\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140508b80\":{\"name\":\"closure$6\",\"size\":284,\"address\":\"140508b80\",\"signature\":\"void __cdecl closure$6(void)\",\"decompiled_code\":\"\\nvoid __cdecl tiny_glade::gui::settings::ui_settings_keybindings::closure_6(void)\\n\\n{\\n  longlong *plVar1;\\n  longlong lVar2;\\n  longlong lVar3;\\n  undefined8 uVar4;\\n  char extraout_AL;\\n  char extraout_AL_00;\\n  undefined8 *in_RCX;\\n  \\n  if (**(short **)*in_RCX != 6) {\\n    lang_lib::lookup();\\n    toolbar::mei::widgets::impl$26::menu_button();\\n    toolbar::mei::widgets::impl$37::deref();\\n    toolbar::mei::core::Node::used();\\n    if (extraout_AL != '\\\\0') {\\n      *(undefined1 *)in_RCX[1] = 1;\\n      plVar1 = (longlong *)in_RCX[2];\\n      *(undefined4 *)plVar1[2] = *(undefined4 *)((longlong)plVar1 + 0x1c);\\n      lVar2 = *plVar1;\\n      lVar3 = *(longlong *)(lVar2 + 0x30);\\n      uVar4 = *(undefined8 *)(lVar2 + 0x40);\\n      if (lVar3 == *(longlong *)(lVar2 + 0x20)) {\\n        alloc::raw_vec::RawVec::\\n        grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>\\n                  ();\\n      }\\n      *(undefined8 *)(*(longlong *)(lVar2 + 0x28) + lVar3 * 8) = uVar4;\\n      *(longlong *)(lVar2 + 0x30) = lVar3 + 1;\\n      *(longlong *)(lVar2 + 0x40) = *(longlong *)(lVar2 + 0x40) + 1;\\n      **(undefined4 **)(in_RCX[3] + 0x10) = *(undefined4 *)(in_RCX[3] + 0x1c);\\n      country_core::game_key_bindings::KeyBindings::assign_mouse_button();\\n    }\\n  }\\n  lang_lib::lookup();\\n  toolbar::mei::widgets::impl$26::menu_button();\\n  toolbar::mei::widgets::impl$37::deref();\\n  toolbar::mei::core::Node::used();\\n  if (extraout_AL_00 != '\\\\0') {\\n    *(undefined1 *)in_RCX[1] = 1;\\n  }\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:445f58e8:3\",\"epoch\":\"445f58e8\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140507f00\":{\"name\":\"closure$1\",\"size\":913,\"address\":\"140507f00\",\"signature\":\"void __cdecl closure$1(void)\",\"decompiled_code\":\"\\nvoid __cdecl tiny_glade::gui::settings::ui_settings_keybindings::closure_1(void)\\n\\n{\\n  int iVar1;\\n  undefined8 uVar2;\\n  undefined *extraout_RAX;\\n  undefined *extraout_RAX_00;\\n  void *extraout_RAX_01;\\n  undefined8 *in_RCX;\\n  undefined8 uVar3;\\n  undefined8 uVar4;\\n  undefined *_Src;\\n  longlong **_Size;\\n  void *_Dst;\\n  longlong local_138;\\n  undefined *local_120;\\n  undefined8 local_118;\\n  undefined8 **local_110;\\n  void *pvStack_108;\\n  undefined8 **local_100;\\n  longlong local_f8;\\n  longlong local_e0;\\n  undefined **local_d0;\\n  code *local_c8;\\n  undefined8 ***local_c0;\\n  code *local_b8;\\n  undefined8 local_b0;\\n  int local_a8;\\n  undefined4 uStack_a4;\\n  undefined4 local_a0;\\n  undefined4 uStack_9c;\\n  undefined8 ***local_98;\\n  undefined8 local_90;\\n  undefined8 local_88;\\n  longlong **local_78;\\n  code *pcStack_70;\\n  undefined8 **local_68;\\n  void *local_58;\\n  undefined8 **local_50;\\n  undefined8 local_48;\\n  \\n  local_48 = 0xfffffffffffffffe;\\n  uVar3 = *in_RCX;\\n  country_core::game_key_bindings::KeyBinding::action_desc();\\n  if (local_e0 == 0) {\\n    if (SBORROW8(0,local_f8)) {\\n                    // WARNING: Subroutine does not return\\n      core::option::unwrap_failed();\\n    }\\n    toolbar::mei::widgets::impl$26::label();\\n    toolbar::mei::widgets::LabelView::content_mut();\\n    tg_text::TextFragment::set_metrics<f32>();\\n  }\\n  else {\\n    toolbar::mei::widgets::impl$26::image<ref_<str_>_>();\\n  }\\n  toolbar::mei::widgets::impl$26::label();\\n  country_core::game_key_bindings::KeyBinding::get_keycode();\\n  if ((int)local_d0 == 0xc3) {\\n    uVar3 = 1;\\n    local_120 = &DAT_1429eddb8;\\n  }\\n  else {\\n    local_a0 = local_c8._0_4_;\\n    uStack_a4 = (undefined4)((ulonglong)local_d0 >> 0x20);\\n    local_a8 = (int)local_d0;\\n    country_core::game_key_bindings::keycode_to_str();\\n    local_120 = extraout_RAX;\\n    if (extraout_RAX == (undefined *)0x0) {\\n      uVar3 = 3;\\n      local_120 = &DAT_1429ee370;\\n    }\\n  }\\n  iVar1 = *(int *)in_RCX[2];\\n  uVar2 = *(undefined8 *)((int *)in_RCX[2] + 1);\\n  uVar4 = 0x20;\\n  local_118 = uVar3;\\n  lang_lib::lookup();\\n  pcStack_70 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;\\n  local_a8 = 0x429ee328;\\n  uStack_a4 = 1;\\n  local_a0 = 2;\\n  uStack_9c = 0;\\n  local_90 = 1;\\n  local_88 = 0;\\n  _Size = (longlong **)&local_a8;\\n  local_c8 = (code *)uVar4;\\n  local_98 = &local_78;\\n  local_78 = (longlong **)&local_d0;\\n  alloc::fmt::format::format_inner();\\n  if (iVar1 == 0xc3) {\\n    local_68 = local_100;\\n    local_78 = local_110;\\n    pcStack_70 = pvStack_108;\\n  }\\n  else {\\n    local_50 = local_110;\\n    local_58 = pvStack_108;\\n    uStack_a4 = (undefined4)uVar2;\\n    local_a0 = (undefined4)((ulonglong)uVar2 >> 0x20);\\n    local_a8 = iVar1;\\n    country_core::game_key_bindings::keycode_to_str();\\n    if (extraout_RAX_00 == (undefined *)0x0) {\\n      _Size = (longlong **)0x3;\\n    }\\n    if ((longlong)_Size < 0) {\\n      local_b0 = 0;\\nLAB_140508272:\\n                    // WARNING: Subroutine does not return\\n      alloc::raw_vec::handle_error();\\n    }\\n    if (_Size == (longlong **)0x0) {\\n      _Dst = (void *)0x1;\\n    }\\n    else {\\n      local_b0 = 1;\\n      std::alloc::__default_lib_allocator::__rust_alloc();\\n      _Dst = extraout_RAX_01;\\n      if (extraout_RAX_01 == (void *)0x0) goto LAB_140508272;\\n    }\\n    _Src = &DAT_1429ee370;\\n    if (extraout_RAX_00 != (undefined *)0x0) {\\n      _Src = extraout_RAX_00;\\n    }\\n    memcpy(_Dst,_Src,(size_t)_Size);\\n    local_78 = _Size;\\n    pcStack_70 = _Dst;\\n    local_68 = _Size;\\n    if (local_50 != (longlong **)0x0) {\\n      std::alloc::__default_lib_allocator::__rust_dealloc();\\n    }\\n  }\\n  local_d0 = &local_120;\\n  local_c8 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;\\n  local_b8 = alloc::string::impl$23::fmt;\\n  local_a8 = 0x429ee350;\\n  uStack_a4 = 1;\\n  local_a0 = 2;\\n  uStack_9c = 0;\\n  local_90 = 2;\\n  local_88 = 0;\\n  local_c0 = &local_78;\\n  local_98 = (undefined8 ***)&local_d0;\\n  alloc::fmt::format::format_inner();\\n  local_50 = (undefined8 **)local_138;\\n  toolbar::mei::widgets::impl$26::label();\\n  toolbar::mei::widgets::LabelView::content_mut();\\n  tg_text::TextFragment::set_metrics<f32>();\\n  if (local_50 != (undefined8 **)0x0) {\\n    std::alloc::__default_lib_allocator::__rust_dealloc();\\n  }\\n  if (local_78 != (longlong **)0x0) {\\n    std::alloc::__default_lib_allocator::__rust_dealloc();\\n  }\\n  if ((!SBORROW8(0,local_f8)) && (local_f8 != 0)) {\\n    std::alloc::__default_lib_allocator::__rust_dealloc();\\n  }\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:445f58e8:3\",\"epoch\":\"445f58e8\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x1400854a0\":{\"name\":\"key_bindings_sub_menu\",\"size\":5898,\"address\":\"1400854a0\",\"signature\":\"void __cdecl key_bindings_sub_menu(void)\",\"decompiled_code\":\"\\nvoid __cdecl tiny_glade::gui::gui_controls::key_bindings_sub_menu(void)\\n\\n{\\n  undefined8 *puVar1;\\n  ulonglong uVar2;\\n  undefined8 *extraout_RAX;\\n  undefined4 *extraout_RAX_00;\\n  undefined8 extraout_RAX_01;\\n  undefined2 *extraout_RAX_02;\\n  undefined2 *extraout_RAX_03;\\n  undefined8 extraout_RAX_04;\\n  undefined2 *extraout_RAX_05;\\n  undefined8 *extraout_RAX_06;\\n  undefined1 *extraout_RAX_07;\\n  undefined1 *extraout_RAX_08;\\n  undefined1 *extraout_RAX_09;\\n  undefined1 *extraout_RAX_10;\\n  undefined1 *extraout_RAX_11;\\n  undefined8 *extraout_RAX_12;\\n  undefined1 *extraout_RAX_13;\\n  undefined1 *extraout_RAX_14;\\n  undefined1 *extraout_RAX_15;\\n  undefined1 *extraout_RAX_16;\\n  undefined8 *extraout_RAX_17;\\n  undefined8 extraout_RAX_18;\\n  undefined1 *extraout_RAX_19;\\n  undefined8 extraout_RAX_20;\\n  undefined1 *extraout_RAX_21;\\n  undefined8 extraout_RAX_22;\\n  undefined1 *extraout_RAX_23;\\n  undefined8 extraout_RAX_24;\\n  undefined1 *extraout_RAX_25;\\n  undefined8 extraout_RAX_26;\\n  undefined1 *extraout_RAX_27;\\n  undefined8 extraout_RAX_28;\\n  undefined1 *extraout_RAX_29;\\n  undefined8 extraout_RAX_30;\\n  undefined1 *extraout_RAX_31;\\n  undefined8 extraout_RAX_32;\\n  undefined1 *extraout_RAX_33;\\n  undefined1 *extraout_RAX_34;\\n  undefined1 *extraout_RAX_35;\\n  undefined8 *extraout_RAX_36;\\n  undefined8 extraout_RAX_37;\\n  undefined2 *extraout_RAX_38;\\n  undefined8 extraout_RAX_39;\\n  undefined1 *extraout_RAX_40;\\n  undefined8 extraout_RAX_41;\\n  undefined1 *extraout_RAX_42;\\n  undefined8 extraout_RAX_43;\\n  undefined1 *extraout_RAX_44;\\n  undefined8 extraout_RAX_45;\\n  undefined1 *extraout_RAX_46;\\n  undefined8 *extraout_RAX_47;\\n  undefined1 *extraout_RAX_48;\\n  undefined8 uVar3;\\n  undefined8 uVar4;\\n  undefined8 uVar5;\\n  undefined8 uVar6;\\n  undefined8 uVar7;\\n  longlong *in_R8;\\n  undefined8 local_290;\\n  undefined8 local_288;\\n  undefined1 local_260 [8];\\n  undefined8 local_258;\\n  undefined8 local_238;\\n  undefined8 local_230;\\n  undefined8 local_228;\\n  undefined8 local_220;\\n  undefined8 local_218;\\n  undefined8 local_210;\\n  undefined8 local_200;\\n  undefined8 local_1f8;\\n  undefined8 *local_1f0;\\n  undefined8 local_1e8;\\n  undefined8 local_1d8;\\n  undefined8 local_1d0;\\n  undefined1 *local_1c8;\\n  code *local_1c0;\\n  longlong *local_1a8;\\n  undefined8 local_198;\\n  undefined8 *local_190;\\n  undefined8 local_188;\\n  undefined8 local_180;\\n  undefined8 local_170;\\n  undefined8 local_168;\\n  undefined8 *local_160;\\n  undefined8 local_158;\\n  undefined *local_150;\\n  undefined8 local_148;\\n  undefined1 **local_140;\\n  undefined8 local_138;\\n  undefined8 local_130;\\n  undefined8 local_100;\\n  undefined1 *local_f8;\\n  ulonglong local_f0;\\n  undefined8 *local_e8;\\n  ulonglong local_e0;\\n  undefined1 *local_d8;\\n  undefined8 *local_d0;\\n  undefined2 *local_c8;\\n  undefined8 local_c0;\\n  undefined4 local_b8;\\n  undefined4 uStack_b4;\\n  undefined4 uStack_b0;\\n  undefined4 uStack_ac;\\n  undefined8 local_a8;\\n  undefined8 local_a0;\\n  undefined8 local_98;\\n  undefined8 local_88;\\n  undefined1 *local_80;\\n  undefined2 *local_78;\\n  undefined4 *local_70;\\n  undefined8 *local_68;\\n  undefined1 local_5f;\\n  undefined1 local_5e;\\n  undefined1 local_5d;\\n  undefined1 local_5c;\\n  undefined1 local_5b;\\n  undefined1 local_5a;\\n  undefined1 local_59;\\n  undefined1 local_58;\\n  undefined1 local_57;\\n  undefined1 local_56;\\n  undefined1 local_55;\\n  undefined4 local_54;\\n  undefined3 uStack_50;\\n  undefined1 local_4c;\\n  undefined1 local_4b;\\n  undefined1 local_4a;\\n  undefined1 local_49;\\n  undefined8 local_48;\\n  \\n  local_48 = 0xfffffffffffffffe;\\n  uVar3 = 0x10;\\n  lang_lib::lookup();\\n  local_1c0 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;\\n  local_150 = &DAT_142930ff0;\\n  local_148 = 2;\\n  local_138 = 1;\\n  local_130 = 0;\\n  local_258 = uVar3;\\n  local_1c8 = local_260;\\n  local_140 = &local_1c8;\\n  alloc::fmt::format::format_inner();\\n  uVar3 = 0x12;\\n  lang_lib::lookup();\\n  local_1c0 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;\\n  local_150 = &DAT_142931038;\\n  local_148 = 2;\\n  local_138 = 1;\\n  local_130 = 0;\\n  local_258 = uVar3;\\n  local_1c8 = local_260;\\n  local_140 = &local_1c8;\\n  alloc::fmt::format::format_inner();\\n  local_100 = local_290;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX == (undefined8 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  local_68 = extraout_RAX;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_00 == (undefined4 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_00 = 0x3050204;\\n  uVar3 = 0x16;\\n  local_70 = extraout_RAX_00;\\n  lang_lib::lookup();\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_02 == (undefined2 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_02 = 1;\\n  local_1a8 = in_R8;\\n  local_78 = extraout_RAX_02;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_03 == (undefined2 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_03 = 0x706;\\n  uVar4 = 0x15;\\n  local_c8 = extraout_RAX_03;\\n  lang_lib::lookup();\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_05 == (undefined2 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_05 = 0x908;\\n  local_68[0x18] = 2;\\n  local_68[0x19] = extraout_RAX_05;\\n  local_68[0x1a] = 2;\\n  *local_68 = 4;\\n  local_68[1] = local_70;\\n  local_68[2] = 4;\\n  local_68[3] = local_1d8;\\n  local_68[4] = local_1d0;\\n  local_68[5] = &DAT_142931058;\\n  local_68[6] = 7;\\n  *(undefined1 *)(local_68 + 7) = 1;\\n  local_68[8] = 2;\\n  local_68[9] = local_78;\\n  local_68[10] = 2;\\n  local_68[0xb] = extraout_RAX_01;\\n  local_68[0xc] = uVar3;\\n  *(undefined1 *)(local_68 + 0xf) = 4;\\n  local_68[0x10] = 2;\\n  local_68[0x11] = local_c8;\\n  local_68[0x12] = 2;\\n  local_68[0x13] = local_100;\\n  local_68[0x14] = local_288;\\n  local_68[0x15] = &DAT_142931058;\\n  local_68[0x16] = 7;\\n  *(undefined1 *)(local_68 + 0x17) = 0;\\n  local_68[0x1b] = extraout_RAX_04;\\n  local_68[0x1c] = uVar4;\\n  local_68[0x1d] = &DAT_14293108a;\\n  local_68[0x1e] = 0xd;\\n  *(undefined1 *)(local_68 + 0x1f) = 3;\\n  local_168 = 4;\\n  local_160 = local_68;\\n  local_158 = 4;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_06 == (undefined8 *)0x0) {\\n    local_55 = 1;\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_07 == (undefined1 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_07 = 10;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_08 == (undefined1 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_08 = 0xb;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_09 == (undefined1 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_09 = 0xc;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_10 == (undefined1 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_10 = 0xd;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_11 == (undefined1 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_11 = 0xe;\\n  extraout_RAX_06[0x20] = 1;\\n  extraout_RAX_06[0x21] = extraout_RAX_11;\\n  extraout_RAX_06[0x22] = 1;\\n  extraout_RAX_06[0x25] = CONCAT44(uStack_b4,local_b8);\\n  extraout_RAX_06[0x26] = CONCAT44(uStack_ac,uStack_b0);\\n  *(undefined4 *)((longlong)extraout_RAX_06 + 0x139) = local_54;\\n  *(uint *)((longlong)extraout_RAX_06 + 0x13c) = CONCAT31(uStack_50,local_54._3_1_);\\n  *extraout_RAX_06 = 1;\\n  extraout_RAX_06[1] = extraout_RAX_07;\\n  extraout_RAX_06[2] = 1;\\n  extraout_RAX_06[3] = &DAT_142931097;\\n  extraout_RAX_06[4] = 8;\\n  extraout_RAX_06[5] = CONCAT44(uStack_b4,local_b8);\\n  extraout_RAX_06[6] = CONCAT44(uStack_ac,uStack_b0);\\n  *(undefined1 *)(extraout_RAX_06 + 7) = 4;\\n  *(undefined4 *)((longlong)extraout_RAX_06 + 0x39) = local_54;\\n  *(uint *)((longlong)extraout_RAX_06 + 0x3c) = CONCAT31(uStack_50,local_54._3_1_);\\n  extraout_RAX_06[8] = 1;\\n  extraout_RAX_06[9] = extraout_RAX_08;\\n  extraout_RAX_06[10] = 1;\\n  extraout_RAX_06[0xb] = &DAT_14293109f;\\n  extraout_RAX_06[0xc] = 4;\\n  extraout_RAX_06[0xd] = CONCAT44(uStack_b4,local_b8);\\n  extraout_RAX_06[0xe] = CONCAT44(uStack_ac,uStack_b0);\\n  *(undefined1 *)(extraout_RAX_06 + 0xf) = 4;\\n  *(uint *)((longlong)extraout_RAX_06 + 0x7c) = CONCAT31(uStack_50,local_54._3_1_);\\n  *(undefined4 *)((longlong)extraout_RAX_06 + 0x79) = local_54;\\n  extraout_RAX_06[0x10] = 1;\\n  extraout_RAX_06[0x11] = extraout_RAX_09;\\n  extraout_RAX_06[0x12] = 1;\\n  extraout_RAX_06[0x13] = &DAT_1429310a3;\\n  extraout_RAX_06[0x14] = 10;\\n  extraout_RAX_06[0x15] = CONCAT44(uStack_b4,local_b8);\\n  extraout_RAX_06[0x16] = CONCAT44(uStack_ac,uStack_b0);\\n  *(undefined1 *)(extraout_RAX_06 + 0x17) = 4;\\n  *(uint *)((longlong)extraout_RAX_06 + 0xbc) = CONCAT31(uStack_50,local_54._3_1_);\\n  *(undefined4 *)((longlong)extraout_RAX_06 + 0xb9) = local_54;\\n  extraout_RAX_06[0x18] = 1;\\n  extraout_RAX_06[0x19] = extraout_RAX_10;\\n  extraout_RAX_06[0x1a] = 1;\\n  extraout_RAX_06[0x1b] = &DAT_1429310ad;\\n  extraout_RAX_06[0x1c] = 9;\\n  extraout_RAX_06[0x1d] = CONCAT44(uStack_b4,local_b8);\\n  extraout_RAX_06[0x1e] = CONCAT44(uStack_ac,uStack_b0);\\n  *(undefined1 *)(extraout_RAX_06 + 0x1f) = 4;\\n  *(uint *)((longlong)extraout_RAX_06 + 0xfc) = CONCAT31(uStack_50,local_54._3_1_);\\n  *(undefined4 *)((longlong)extraout_RAX_06 + 0xf9) = local_54;\\n  extraout_RAX_06[0x23] = &DAT_1429310b6;\\n  extraout_RAX_06[0x24] = 6;\\n  *(undefined1 *)(extraout_RAX_06 + 0x27) = 4;\\n  local_180 = 5;\\n  local_170 = 5;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_12 == (undefined8 *)0x0) {\\n    local_56 = 1;\\n    local_57 = 1;\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_13 == (undefined1 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_13 = 0xf;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_14 == (undefined1 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_14 = 0x10;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_15 == (undefined1 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_15 = 0x13;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_16 == (undefined1 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_16 = 0x14;\\n  extraout_RAX_12[0x18] = 1;\\n  extraout_RAX_12[0x19] = extraout_RAX_16;\\n  extraout_RAX_12[0x1a] = 1;\\n  extraout_RAX_12[0x1d] = CONCAT44(uStack_b4,local_b8);\\n  extraout_RAX_12[0x1e] = CONCAT44(uStack_ac,uStack_b0);\\n  *(undefined4 *)((longlong)extraout_RAX_12 + 0xf9) = local_54;\\n  *(uint *)((longlong)extraout_RAX_12 + 0xfc) = CONCAT31(uStack_50,local_54._3_1_);\\n  *extraout_RAX_12 = 1;\\n  extraout_RAX_12[1] = extraout_RAX_13;\\n  extraout_RAX_12[2] = 1;\\n  extraout_RAX_12[3] = &DAT_1429310bc;\\n  extraout_RAX_12[4] = 7;\\n  extraout_RAX_12[5] = CONCAT44(uStack_b4,local_b8);\\n  extraout_RAX_12[6] = CONCAT44(uStack_ac,uStack_b0);\\n  *(undefined1 *)(extraout_RAX_12 + 7) = 4;\\n  *(undefined4 *)((longlong)extraout_RAX_12 + 0x39) = local_54;\\n  *(uint *)((longlong)extraout_RAX_12 + 0x3c) = CONCAT31(uStack_50,local_54._3_1_);\\n  extraout_RAX_12[8] = 1;\\n  extraout_RAX_12[9] = extraout_RAX_14;\\n  extraout_RAX_12[10] = 1;\\n  extraout_RAX_12[0xb] = &DAT_1429310c3;\\n  extraout_RAX_12[0xc] = 6;\\n  extraout_RAX_12[0xd] = CONCAT44(uStack_b4,local_b8);\\n  extraout_RAX_12[0xe] = CONCAT44(uStack_ac,uStack_b0);\\n  *(undefined1 *)(extraout_RAX_12 + 0xf) = 4;\\n  *(uint *)((longlong)extraout_RAX_12 + 0x7c) = CONCAT31(uStack_50,local_54._3_1_);\\n  *(undefined4 *)((longlong)extraout_RAX_12 + 0x79) = local_54;\\n  extraout_RAX_12[0x10] = 1;\\n  extraout_RAX_12[0x11] = extraout_RAX_15;\\n  extraout_RAX_12[0x12] = 1;\\n  extraout_RAX_12[0x13] = &DAT_1429310c9;\\n  extraout_RAX_12[0x14] = 9;\\n  extraout_RAX_12[0x15] = CONCAT44(uStack_b4,local_b8);\\n  extraout_RAX_12[0x16] = CONCAT44(uStack_ac,uStack_b0);\\n  *(undefined1 *)(extraout_RAX_12 + 0x17) = 4;\\n  *(uint *)((longlong)extraout_RAX_12 + 0xbc) = CONCAT31(uStack_50,local_54._3_1_);\\n  *(undefined4 *)((longlong)extraout_RAX_12 + 0xb9) = local_54;\\n  extraout_RAX_12[0x1b] = &DAT_1429310d2;\\n  extraout_RAX_12[0x1c] = 0xb;\\n  *(undefined1 *)(extraout_RAX_12 + 0x1f) = 4;\\n  local_f0 = 4;\\n  local_e0 = 4;\\n  local_e8 = extraout_RAX_12;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_17 == (undefined8 *)0x0) {\\n    local_58 = 1;\\n    local_59 = 1;\\n    local_5a = 1;\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  uVar3 = 6;\\n  local_68 = extraout_RAX_17;\\n  lang_lib::lookup();\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_19 == (undefined1 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_19 = 0x1c;\\n  uVar4 = 0x1e;\\n  local_70 = (undefined4 *)extraout_RAX_19;\\n  lang_lib::lookup();\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_21 == (undefined1 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_21 = 0x1d;\\n  uVar5 = 0x1b;\\n  local_78 = (undefined2 *)extraout_RAX_21;\\n  lang_lib::lookup();\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_23 == (undefined1 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_23 = 0x1e;\\n  uVar6 = 0x1c;\\n  local_c8 = (undefined2 *)extraout_RAX_23;\\n  lang_lib::lookup();\\n  local_88 = uVar6;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_25 == (undefined1 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_25 = 0x1f;\\n  uVar6 = 0x1b;\\n  local_d8 = extraout_RAX_25;\\n  lang_lib::lookup();\\n  local_a8 = extraout_RAX_26;\\n  local_a0 = uVar6;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_27 == (undefined1 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_27 = 0x20;\\n  uVar6 = 0x19;\\n  local_d0 = (undefined8 *)extraout_RAX_27;\\n  lang_lib::lookup();\\n  local_c0 = uVar6;\\n  local_98 = extraout_RAX_28;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_29 == (undefined1 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_29 = 0x21;\\n  uVar6 = 0x22;\\n  local_80 = extraout_RAX_29;\\n  lang_lib::lookup();\\n  local_230 = extraout_RAX_30;\\n  local_228 = uVar6;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_31 == (undefined1 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_31 = 0x22;\\n  uVar6 = 0x1e;\\n  local_f8 = extraout_RAX_31;\\n  lang_lib::lookup();\\n  local_220 = extraout_RAX_32;\\n  local_218 = uVar6;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_33 == (undefined1 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_33 = 0x23;\\n  local_68[0x38] = 1;\\n  local_68[0x39] = extraout_RAX_33;\\n  local_68[0x3a] = 1;\\n  local_68[0x3d] = CONCAT44(uStack_b4,local_b8);\\n  local_68[0x3e] = CONCAT44(uStack_ac,uStack_b0);\\n  *(undefined4 *)((longlong)local_68 + 0x1f9) = local_54;\\n  *(uint *)((longlong)local_68 + 0x1fc) = CONCAT31(uStack_50,local_54._3_1_);\\n  *local_68 = 1;\\n  local_68[1] = local_70;\\n  local_68[2] = 1;\\n  local_68[3] = extraout_RAX_18;\\n  local_68[4] = uVar3;\\n  local_68[5] = CONCAT44(uStack_b4,local_b8);\\n  local_68[6] = CONCAT44(uStack_ac,uStack_b0);\\n  *(undefined1 *)(local_68 + 7) = 4;\\n  *(undefined4 *)((longlong)local_68 + 0x39) = local_54;\\n  *(uint *)((longlong)local_68 + 0x3c) = CONCAT31(uStack_50,local_54._3_1_);\\n  local_68[8] = 1;\\n  local_68[9] = local_78;\\n  local_68[10] = 1;\\n  local_68[0xb] = extraout_RAX_20;\\n  local_68[0xc] = uVar4;\\n  local_68[0xd] = CONCAT44(uStack_b4,local_b8);\\n  local_68[0xe] = CONCAT44(uStack_ac,uStack_b0);\\n  *(undefined1 *)(local_68 + 0xf) = 4;\\n  *(uint *)((longlong)local_68 + 0x7c) = CONCAT31(uStack_50,local_54._3_1_);\\n  *(undefined4 *)((longlong)local_68 + 0x79) = local_54;\\n  local_68[0x10] = 1;\\n  local_68[0x11] = local_c8;\\n  local_68[0x12] = 1;\\n  local_68[0x13] = extraout_RAX_22;\\n  local_68[0x14] = uVar5;\\n  local_68[0x15] = CONCAT44(uStack_b4,local_b8);\\n  local_68[0x16] = CONCAT44(uStack_ac,uStack_b0);\\n  *(undefined1 *)(local_68 + 0x17) = 4;\\n  *(uint *)((longlong)local_68 + 0xbc) = CONCAT31(uStack_50,local_54._3_1_);\\n  *(undefined4 *)((longlong)local_68 + 0xb9) = local_54;\\n  local_68[0x18] = 1;\\n  local_68[0x19] = local_d8;\\n  local_68[0x1a] = 1;\\n  local_68[0x1b] = extraout_RAX_24;\\n  local_68[0x1c] = local_88;\\n  local_68[0x1d] = CONCAT44(uStack_b4,local_b8);\\n  local_68[0x1e] = CONCAT44(uStack_ac,uStack_b0);\\n  *(undefined1 *)(local_68 + 0x1f) = 4;\\n  *(uint *)((longlong)local_68 + 0xfc) = CONCAT31(uStack_50,local_54._3_1_);\\n  *(undefined4 *)((longlong)local_68 + 0xf9) = local_54;\\n  local_68[0x20] = 1;\\n  local_68[0x21] = local_d0;\\n  local_68[0x22] = 1;\\n  local_68[0x23] = local_a8;\\n  local_68[0x24] = local_a0;\\n  local_68[0x25] = CONCAT44(uStack_b4,local_b8);\\n  local_68[0x26] = CONCAT44(uStack_ac,uStack_b0);\\n  *(undefined1 *)(local_68 + 0x27) = 4;\\n  *(uint *)((longlong)local_68 + 0x13c) = CONCAT31(uStack_50,local_54._3_1_);\\n  *(undefined4 *)((longlong)local_68 + 0x139) = local_54;\\n  local_68[0x28] = 1;\\n  local_68[0x29] = local_80;\\n  local_68[0x2a] = 1;\\n  local_68[0x2b] = local_98;\\n  local_68[0x2c] = local_c0;\\n  local_68[0x2d] = CONCAT44(uStack_b4,local_b8);\\n  local_68[0x2e] = CONCAT44(uStack_ac,uStack_b0);\\n  *(undefined1 *)(local_68 + 0x2f) = 4;\\n  *(uint *)((longlong)local_68 + 0x17c) = CONCAT31(uStack_50,local_54._3_1_);\\n  *(undefined4 *)((longlong)local_68 + 0x179) = local_54;\\n  local_68[0x30] = 1;\\n  local_68[0x31] = local_f8;\\n  local_68[0x32] = 1;\\n  local_68[0x33] = local_230;\\n  local_68[0x34] = local_228;\\n  local_68[0x35] = CONCAT44(uStack_b4,local_b8);\\n  local_68[0x36] = CONCAT44(uStack_ac,uStack_b0);\\n  *(undefined1 *)(local_68 + 0x37) = 4;\\n  *(uint *)((longlong)local_68 + 0x1bc) = CONCAT31(uStack_50,local_54._3_1_);\\n  *(undefined4 *)((longlong)local_68 + 0x1b9) = local_54;\\n  local_68[0x3b] = local_220;\\n  local_68[0x3c] = local_218;\\n  *(undefined1 *)(local_68 + 0x3f) = 4;\\n  local_198 = 8;\\n  local_190 = local_68;\\n  local_188 = 8;\\n  if (*__imp__ZN12country_core26_DEV_OVERRIDE_IS_DEMO_MODE17h6f2a49c135369f5aE == '\\\\0') {\\n    std::alloc::__default_lib_allocator::__rust_alloc();\\n    uVar2 = local_e0;\\n    if (extraout_RAX_34 == (undefined1 *)0x0) {\\n      local_49 = 1;\\n      local_4a = 1;\\n      local_4b = 1;\\n      local_4c = 1;\\n                    // WARNING: Subroutine does not return\\n      alloc::alloc::handle_alloc_error();\\n    }\\n    *extraout_RAX_34 = 0x11;\\n    if (local_e0 < 2) {\\n                    // WARNING: Subroutine does not return\\n      alloc::vec::impl$1::insert::assert_failed();\\n    }\\n    local_68 = (undefined8 *)extraout_RAX_34;\\n    if (local_e0 == local_f0) {\\n      alloc::raw_vec::RawVec::\\n      grow_one<country_core::resources::window::AvailableMonitor,alloc::alloc::Global>();\\n    }\\n    puVar1 = local_e8;\\n    if (uVar2 != 2) {\\n      memmove(local_e8 + 0x18,local_e8 + 0x10,uVar2 * 0x40 - 0x80);\\n    }\\n    puVar1[0x10] = 1;\\n    puVar1[0x11] = local_68;\\n    puVar1[0x12] = 1;\\n    puVar1[0x13] = &DAT_1429311ac;\\n    puVar1[0x14] = 4;\\n    puVar1[0x15] = CONCAT44(uStack_b4,local_b8);\\n    puVar1[0x16] = CONCAT44(uStack_ac,uStack_b0);\\n    *(undefined1 *)(puVar1 + 0x17) = 4;\\n    *(undefined4 *)((longlong)puVar1 + 0xb9) = local_54;\\n    *(uint *)((longlong)puVar1 + 0xbc) = CONCAT31(uStack_50,local_54._3_1_);\\n    local_e0 = uVar2 + 1;\\n    std::alloc::__default_lib_allocator::__rust_alloc();\\n    uVar2 = local_e0;\\n    if (extraout_RAX_35 == (undefined1 *)0x0) {\\n      local_49 = 1;\\n      local_4a = 1;\\n      local_4b = 1;\\n      local_4c = 1;\\n                    // WARNING: Subroutine does not return\\n      alloc::alloc::handle_alloc_error();\\n    }\\n    *extraout_RAX_35 = 0x12;\\n    if (local_e0 < 3) {\\n                    // WARNING: Subroutine does not return\\n      alloc::vec::impl$1::insert::assert_failed();\\n    }\\n    local_68 = (undefined8 *)extraout_RAX_35;\\n    if (local_e0 == local_f0) {\\n      alloc::raw_vec::RawVec::\\n      grow_one<country_core::resources::window::AvailableMonitor,alloc::alloc::Global>();\\n    }\\n    if (uVar2 != 3) {\\n      memmove(local_e8 + 0x20,local_e8 + 0x18,uVar2 * 0x40 - 0xc0);\\n    }\\n    local_e8[0x18] = 1;\\n    local_e8[0x19] = local_68;\\n    local_e8[0x1a] = 1;\\n    local_e8[0x1b] = \\\"water\\\";\\n    local_e8[0x1c] = 5;\\n    local_e8[0x1d] = CONCAT44(uStack_b4,local_b8);\\n    local_e8[0x1e] = CONCAT44(uStack_ac,uStack_b0);\\n    *(undefined1 *)(local_e8 + 0x1f) = 4;\\n    *(undefined4 *)((longlong)local_e8 + 0xf9) = local_54;\\n    *(uint *)((longlong)local_e8 + 0xfc) = CONCAT31(uStack_50,local_54._3_1_);\\n    local_e0 = uVar2 + 1;\\n  }\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_36 == (undefined8 *)0x0) {\\n    local_49 = 1;\\n    local_4a = 1;\\n    local_4b = 1;\\n    local_4c = 1;\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  uVar3 = 0x14;\\n  local_d0 = extraout_RAX_36;\\n  lang_lib::lookup();\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_38 == (undefined2 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_38 = 0x1615;\\n  uVar4 = 0x1b;\\n  local_68 = (undefined8 *)extraout_RAX_38;\\n  lang_lib::lookup();\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_40 == (undefined1 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_40 = 0x17;\\n  uVar5 = 0x1b;\\n  local_70 = (undefined4 *)extraout_RAX_40;\\n  lang_lib::lookup();\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_42 == (undefined1 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_42 = 0x18;\\n  uVar6 = 0x18;\\n  local_78 = (undefined2 *)extraout_RAX_42;\\n  lang_lib::lookup();\\n  local_d8 = (undefined1 *)extraout_RAX_43;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_44 == (undefined1 *)0x0) {\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n  *extraout_RAX_44 = 0x1a;\\n  uVar7 = 0x1d;\\n  local_c8 = (undefined2 *)extraout_RAX_44;\\n  lang_lib::lookup();\\n  local_88 = extraout_RAX_45;\\n  local_80 = (undefined1 *)uVar7;\\n  std::alloc::__default_lib_allocator::__rust_alloc();\\n  if (extraout_RAX_46 != (undefined1 *)0x0) {\\n    *extraout_RAX_46 = 0x1b;\\n    local_d0[0x20] = 1;\\n    local_d0[0x21] = extraout_RAX_46;\\n    local_d0[0x22] = 1;\\n    local_d0[0x25] = CONCAT44(uStack_b4,local_b8);\\n    local_d0[0x26] = CONCAT44(uStack_ac,uStack_b0);\\n    *(undefined4 *)((longlong)local_d0 + 0x139) = local_54;\\n    *(uint *)((longlong)local_d0 + 0x13c) = CONCAT31(uStack_50,local_54._3_1_);\\n    *local_d0 = 2;\\n    local_d0[1] = local_68;\\n    local_d0[2] = 2;\\n    local_d0[3] = extraout_RAX_37;\\n    local_d0[4] = uVar3;\\n    local_d0[5] = CONCAT44(uStack_b4,local_b8);\\n    local_d0[6] = CONCAT44(uStack_ac,uStack_b0);\\n    *(undefined1 *)(local_d0 + 7) = 4;\\n    *(undefined4 *)((longlong)local_d0 + 0x39) = local_54;\\n    *(uint *)((longlong)local_d0 + 0x3c) = CONCAT31(uStack_50,local_54._3_1_);\\n    local_d0[8] = 1;\\n    local_d0[9] = local_70;\\n    local_d0[10] = 1;\\n    local_d0[0xb] = extraout_RAX_39;\\n    local_d0[0xc] = uVar4;\\n    local_d0[0xd] = &DAT_142931247;\\n    local_d0[0xe] = 8;\\n    *(undefined1 *)(local_d0 + 0xf) = 2;\\n    local_d0[0x10] = 1;\\n    local_d0[0x11] = local_78;\\n    local_d0[0x12] = 1;\\n    local_d0[0x13] = extraout_RAX_41;\\n    local_d0[0x14] = uVar5;\\n    local_d0[0x15] = CONCAT44(uStack_b4,local_b8);\\n    local_d0[0x16] = CONCAT44(uStack_ac,uStack_b0);\\n    *(undefined1 *)(local_d0 + 0x17) = 4;\\n    *(uint *)((longlong)local_d0 + 0xbc) = CONCAT31(uStack_50,local_54._3_1_);\\n    *(undefined4 *)((longlong)local_d0 + 0xb9) = local_54;\\n    local_d0[0x18] = 1;\\n    local_d0[0x19] = local_c8;\\n    local_d0[0x1a] = 1;\\n    local_d0[0x1b] = local_d8;\\n    local_d0[0x1c] = uVar6;\\n    local_d0[0x1d] = CONCAT44(uStack_b4,local_b8);\\n    local_d0[0x1e] = CONCAT44(uStack_ac,uStack_b0);\\n    *(undefined1 *)(local_d0 + 0x1f) = 4;\\n    *(uint *)((longlong)local_d0 + 0xfc) = CONCAT31(uStack_50,local_54._3_1_);\\n    *(undefined4 *)((longlong)local_d0 + 0xf9) = local_54;\\n    local_d0[0x23] = local_88;\\n    local_d0[0x24] = local_80;\\n    *(undefined1 *)(local_d0 + 0x27) = 4;\\n    local_1f8 = 5;\\n    local_1f0 = local_d0;\\n    local_1e8 = 5;\\n    std::alloc::__default_lib_allocator::__rust_alloc();\\n    if (extraout_RAX_47 == (undefined8 *)0x0) {\\n      local_5b = 1;\\n      local_5c = 1;\\n      local_5d = 1;\\n      local_5e = 1;\\n      local_5f = 1;\\n                    // WARNING: Subroutine does not return\\n      alloc::alloc::handle_alloc_error();\\n    }\\n    std::alloc::__default_lib_allocator::__rust_alloc();\\n    if (extraout_RAX_48 != (undefined1 *)0x0) {\\n      *extraout_RAX_48 = 0x24;\\n      *extraout_RAX_47 = 1;\\n      extraout_RAX_47[1] = extraout_RAX_48;\\n      extraout_RAX_47[2] = 1;\\n      *(undefined4 *)(extraout_RAX_47 + 5) = local_b8;\\n      *(undefined4 *)((longlong)extraout_RAX_47 + 0x2c) = uStack_b4;\\n      *(undefined4 *)(extraout_RAX_47 + 6) = uStack_b0;\\n      *(undefined4 *)((longlong)extraout_RAX_47 + 0x34) = uStack_ac;\\n      *(undefined4 *)((longlong)extraout_RAX_47 + 0x39) = local_54;\\n      *(uint *)((longlong)extraout_RAX_47 + 0x3c) = CONCAT31(uStack_50,local_54._3_1_);\\n      extraout_RAX_47[3] = &DAT_14293129f;\\n      extraout_RAX_47[4] = 0x12;\\n      *(undefined1 *)(extraout_RAX_47 + 7) = 4;\\n      local_210 = 1;\\n      local_200 = 1;\\n      local_238 = 0;\\n                    // WARNING: Could not recover jumptable at 0x00014008681c. Too many branches\\n                    // WARNING: Treating indirect jump as call\\n      (*(code *)(&DAT_1429314f4 + *(int *)(&DAT_1429314f4 + *local_1a8 * 4)))();\\n      return;\\n    }\\n                    // WARNING: Subroutine does not return\\n    alloc::alloc::handle_alloc_error();\\n  }\\n                    // WARNING: Subroutine does not return\\n  alloc::alloc::handle_alloc_error();\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:445f58e8:3\",\"epoch\":\"445f58e8\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x140088240\":{\"name\":\"show_control_tweakers\",\"size\":883,\"address\":\"140088240\",\"signature\":\"void __cdecl show_control_tweakers(void)\",\"decompiled_code\":\"\\nvoid __cdecl tiny_glade::gui::gui_controls::show_control_tweakers(void)\\n\\n{\\n  byte extraout_AL;\\n  byte extraout_AL_00;\\n  byte extraout_AL_01;\\n  byte extraout_AL_02;\\n  byte extraout_AL_03;\\n  byte extraout_AL_04;\\n  byte extraout_AL_05;\\n  byte *in_RCX;\\n  longlong in_R9;\\n  byte bVar1;\\n  \\n  lang_lib::lookup();\\n  toolbar::mei::widgets::tweaker::HintTracker::text();\\n  toolbar::mei::widgets::tweaker::impl$11::default();\\n  toolbar::mei::widgets::tweaker::impl$13::\\n  tweaker<toolbar::mei::widgets::tweaker::TweakableFloatWithStep>();\\n  bVar1 = *in_RCX;\\n  *in_RCX = extraout_AL | bVar1;\\n  lang_lib::lookup();\\n  toolbar::mei::widgets::tweaker::HintTracker::text();\\n  toolbar::mei::widgets::tweaker::impl$11::default();\\n  toolbar::mei::widgets::tweaker::impl$13::\\n  tweaker<toolbar::mei::widgets::tweaker::TweakableFloatWithStep>();\\n  bVar1 = extraout_AL_00 | extraout_AL | bVar1;\\n  *in_RCX = bVar1;\\n  lang_lib::lookup();\\n  toolbar::mei::widgets::tweaker::HintTracker::text();\\n  toolbar::mei::widgets::tweaker::impl$11::default();\\n  toolbar::mei::widgets::tweaker::impl$13::tweaker<toolbar::mei::widgets::tweaker::TweakableBool>();\\n  bVar1 = extraout_AL_01 | bVar1;\\n  *in_RCX = bVar1;\\n  lang_lib::lookup();\\n  toolbar::mei::widgets::tweaker::HintTracker::text();\\n  toolbar::mei::widgets::tweaker::impl$11::default();\\n  toolbar::mei::widgets::tweaker::impl$13::tweaker<toolbar::mei::widgets::tweaker::TweakableBool>();\\n  bVar1 = extraout_AL_02 | bVar1;\\n  *in_RCX = bVar1;\\n  lang_lib::lookup();\\n  toolbar::mei::widgets::tweaker::HintTracker::text();\\n  toolbar::mei::widgets::tweaker::impl$11::default();\\n  if (*(char *)(in_R9 + 0x11c) == '\\\\x06') {\\n    *(byte *)(in_R9 + 0x11c) = 0;\\n  }\\n  toolbar::mei::widgets::tweaker::impl$13::\\n  tweaker<toolbar::mei::widgets::tweaker::TweakableEnum<country_core::systems::main_camera::CameraRotationPivot>_>\\n            ();\\n  bVar1 = bVar1 | extraout_AL_03;\\n  *in_RCX = bVar1;\\n  lang_lib::lookup();\\n  toolbar::mei::widgets::tweaker::HintTracker::text();\\n  toolbar::mei::widgets::tweaker::impl$11::default();\\n  if (*(char *)(in_R9 + 0x11d) == '\\\\x06') {\\n    *(undefined1 *)(in_R9 + 0x11d) = 0;\\n  }\\n  toolbar::mei::widgets::tweaker::impl$13::\\n  tweaker<toolbar::mei::widgets::tweaker::TweakableEnum<country_core::systems::main_camera::CameraRotationPivot>_>\\n            ();\\n  bVar1 = bVar1 | extraout_AL_04;\\n  *in_RCX = bVar1;\\n  if ((*(byte *)(in_R9 + 0x11c) | 2) == 3) {\\n    lang_lib::lookup();\\n    toolbar::mei::widgets::tweaker::HintTracker::text();\\n    toolbar::mei::widgets::tweaker::impl$11::default();\\n    toolbar::mei::widgets::tweaker::impl$13::\\n    tweaker<toolbar::mei::widgets::tweaker::TweakableFloatWithStep>();\\n    *in_RCX = bVar1 | extraout_AL_05;\\n  }\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:445f58e8:3\",\"epoch\":\"445f58e8\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x14032e0b0\":{\"name\":\"image<ref$<str$>_>\",\"size\":346,\"address\":\"14032e0b0\",\"signature\":\"void __cdecl image<ref$<str$>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl toolbar::mei::widgets::impl$26::image<ref_<str_>_>(void)\\n\\n{\\n  undefined8 uVar1;\\n  undefined8 extraout_RAX;\\n  size_t *extraout_RAX_00;\\n  void *extraout_RAX_01;\\n  undefined8 *in_RCX;\\n  longlong in_RDX;\\n  void *_Dst;\\n  void *in_stack_00000028;\\n  size_t in_stack_00000030;\\n  undefined4 in_stack_00000038;\\n  \\n  core::impl$0::as_id();\\n  minidump_unwind::instruction_seems_valid_by_symbols::async_fn$0::impl$0::get_instruction();\\n  ::utils::calculate_hash<tuple_<u64,core::any::TypeId>_>();\\n  uVar1 = *(undefined8 *)(in_RDX + 8);\\n  ::utils::calculate_hash<tuple_<u64,u64>_>();\\n  core::NodeContext::child_with_global_id();\\n  core::NodeContext::get_content_mut_impl<toolbar::mei::widgets::ImageContent>();\\n  if ((longlong)in_stack_00000030 < 0) {\\nLAB_14032e1f8:\\n                    // WARNING: Subroutine does not return\\n    alloc::raw_vec::handle_error();\\n  }\\n  if (in_stack_00000030 == 0) {\\n    _Dst = (void *)0x1;\\n  }\\n  else {\\n    std::alloc::__default_lib_allocator::__rust_alloc();\\n    _Dst = extraout_RAX_01;\\n    if (extraout_RAX_01 == (void *)0x0) goto LAB_14032e1f8;\\n  }\\n  memcpy(_Dst,in_stack_00000028,in_stack_00000030);\\n  if (*extraout_RAX_00 != 0) {\\n    std::alloc::__default_lib_allocator::__rust_dealloc();\\n  }\\n  *extraout_RAX_00 = in_stack_00000030;\\n  extraout_RAX_00[1] = (size_t)_Dst;\\n  extraout_RAX_00[2] = in_stack_00000030;\\n  *(undefined4 *)(extraout_RAX_00 + 3) = in_stack_00000038;\\n  *(undefined1 *)((longlong)extraout_RAX_00 + 0x1c) = 0;\\n  in_RCX[2] = 0x1f6d60c8858b8ff;\\n  *in_RCX = uVar1;\\n  in_RCX[1] = extraout_RAX;\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:445f58e8:3\",\"epoch\":\"445f58e8\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}},\"0x14032e210\":{\"name\":\"template_with_id<ref$<str$>_>\",\"size\":722,\"address\":\"14032e210\",\"signature\":\"void __cdecl template_with_id<ref$<str$>_>(void)\",\"decompiled_code\":\"\\nvoid __cdecl toolbar::mei::config::impl$18::template_with_id<ref_<str_>_>(void)\\n\\n{\\n  char *pcVar1;\\n  longlong lVar2;\\n  code *pcVar3;\\n  uint uVar4;\\n  uint uVar5;\\n  int iVar6;\\n  int iVar7;\\n  int iVar8;\\n  int iVar9;\\n  char cVar10;\\n  char cVar11;\\n  char cVar12;\\n  char cVar13;\\n  char cVar14;\\n  char cVar15;\\n  char cVar16;\\n  char cVar17;\\n  char cVar18;\\n  char cVar19;\\n  char cVar20;\\n  char cVar21;\\n  char cVar22;\\n  char cVar23;\\n  char cVar24;\\n  char cVar25;\\n  ushort uVar26;\\n  int iVar27;\\n  ulonglong extraout_RAX;\\n  undefined8 *in_RCX;\\n  longlong lVar28;\\n  longlong *in_RDX;\\n  undefined1 (*pauVar29) [16];\\n  ulonglong uVar30;\\n  uint uVar31;\\n  void *in_R8;\\n  size_t in_R9;\\n  ulonglong uVar32;\\n  ulonglong uVar33;\\n  byte bVar34;\\n  undefined1 auVar35 [16];\\n  char cVar36;\\n  char cVar37;\\n  char cVar38;\\n  char cVar39;\\n  undefined1 unaff_XMM7_Ba;\\n  undefined1 unaff_XMM7_Bb;\\n  undefined1 unaff_XMM7_Bc;\\n  undefined1 unaff_XMM7_Bd;\\n  undefined1 unaff_XMM7_Be;\\n  undefined1 unaff_XMM7_Bf;\\n  undefined1 unaff_XMM7_Bg;\\n  undefined1 unaff_XMM7_Bh;\\n  undefined1 unaff_XMM7_Bi;\\n  undefined1 unaff_XMM7_Bj;\\n  undefined1 unaff_XMM7_Bk;\\n  undefined1 unaff_XMM7_Bl;\\n  undefined1 unaff_XMM7_Bm;\\n  undefined1 unaff_XMM7_Bn;\\n  undefined1 unaff_XMM7_Bo;\\n  undefined1 unaff_XMM7_Bp;\\n  undefined1 auVar40 [16];\\n  undefined1 local_120 [16];\\n  undefined1 *local_110;\\n  code *local_108;\\n  longlong **local_100;\\n  code *local_f8;\\n  longlong local_f0;\\n  undefined1 (*local_e8) [16];\\n  longlong local_e0;\\n  longlong *local_d8 [3];\\n  void *local_c0;\\n  undefined8 *local_b8;\\n  undefined1 (*local_b0) [16];\\n  undefined1 (*local_a8) [16];\\n  undefined1 **local_a0;\\n  undefined8 local_98;\\n  longlong local_90;\\n  undefined8 local_80;\\n  \\n  local_80 = 0xfffffffffffffffe;\\n  lVar2 = *in_RDX;\\n  local_f0 = *(longlong *)(lVar2 + 0x248);\\n  if (local_f0 == 0) {\\n    local_b0 = *(undefined1 (**) [16])(lVar2 + 0x230);\\n    uVar33 = *(ulonglong *)(lVar2 + 0x238);\\n    lVar2 = local_e0;\\n  }\\n  else {\\n    local_c0 = in_R8;\\n    ::core::hash::BuildHasher::hash_one<std::hash::random::RandomState,ref_<str_>_>();\\n    local_b0 = *(undefined1 (**) [16])(lVar2 + 0x230);\\n    uVar33 = *(ulonglong *)(lVar2 + 0x238);\\n    bVar34 = (byte)(extraout_RAX >> 0x39);\\n    auVar35 = ZEXT216(CONCAT11(bVar34,bVar34));\\n    auVar35 = pshuflw(auVar35,auVar35,0);\\n    cVar36 = auVar35[0];\\n    cVar37 = auVar35[1];\\n    cVar38 = auVar35[2];\\n    cVar39 = auVar35[3];\\n    pauVar29 = local_b0 + -2;\\n    lVar28 = 0;\\n    iVar6 = -(uint)(CONCAT13(unaff_XMM7_Bd,\\n                             CONCAT12(unaff_XMM7_Bc,CONCAT11(unaff_XMM7_Bb,unaff_XMM7_Ba))) ==\\n                   CONCAT13(unaff_XMM7_Bd,\\n                            CONCAT12(unaff_XMM7_Bc,CONCAT11(unaff_XMM7_Bb,unaff_XMM7_Ba))));\\n    iVar7 = -(uint)(CONCAT13(unaff_XMM7_Bh,\\n                             CONCAT12(unaff_XMM7_Bg,CONCAT11(unaff_XMM7_Bf,unaff_XMM7_Be))) ==\\n                   CONCAT13(unaff_XMM7_Bh,\\n                            CONCAT12(unaff_XMM7_Bg,CONCAT11(unaff_XMM7_Bf,unaff_XMM7_Be))));\\n    iVar8 = -(uint)(CONCAT13(unaff_XMM7_Bl,\\n                             CONCAT12(unaff_XMM7_Bk,CONCAT11(unaff_XMM7_Bj,unaff_XMM7_Bi))) ==\\n                   CONCAT13(unaff_XMM7_Bl,\\n                            CONCAT12(unaff_XMM7_Bk,CONCAT11(unaff_XMM7_Bj,unaff_XMM7_Bi))));\\n    iVar9 = -(uint)(CONCAT13(unaff_XMM7_Bp,\\n                             CONCAT12(unaff_XMM7_Bo,CONCAT11(unaff_XMM7_Bn,unaff_XMM7_Bm))) ==\\n                   CONCAT13(unaff_XMM7_Bp,\\n                            CONCAT12(unaff_XMM7_Bo,CONCAT11(unaff_XMM7_Bn,unaff_XMM7_Bm))));\\n    uVar32 = extraout_RAX;\\n    while( true ) {\\n      uVar32 = uVar33 & uVar32;\\n      pcVar1 = *local_b0 + uVar32;\\n      cVar10 = *pcVar1;\\n      cVar11 = pcVar1[1];\\n      cVar12 = pcVar1[2];\\n      cVar13 = pcVar1[3];\\n      cVar14 = pcVar1[4];\\n      cVar15 = pcVar1[5];\\n      cVar16 = pcVar1[6];\\n      cVar17 = pcVar1[7];\\n      cVar18 = pcVar1[8];\\n      cVar19 = pcVar1[9];\\n      cVar20 = pcVar1[10];\\n      cVar21 = pcVar1[0xb];\\n      cVar22 = pcVar1[0xc];\\n      cVar23 = pcVar1[0xd];\\n      cVar24 = pcVar1[0xe];\\n      cVar25 = pcVar1[0xf];\\n      auVar35[0] = -(cVar10 == cVar36);\\n      auVar35[1] = -(cVar11 == cVar37);\\n      auVar35[2] = -(cVar12 == cVar38);\\n      auVar35[3] = -(cVar13 == cVar39);\\n      auVar35[4] = -(cVar14 == cVar36);\\n      auVar35[5] = -(cVar15 == cVar37);\\n      auVar35[6] = -(cVar16 == cVar38);\\n      auVar35[7] = -(cVar17 == cVar39);\\n      auVar35[8] = -(cVar18 == cVar36);\\n      auVar35[9] = -(cVar19 == cVar37);\\n      auVar35[10] = -(cVar20 == cVar38);\\n      auVar35[0xb] = -(cVar21 == cVar39);\\n      auVar35[0xc] = -(cVar22 == cVar36);\\n      auVar35[0xd] = -(cVar23 == cVar37);\\n      auVar35[0xe] = -(cVar24 == cVar38);\\n      auVar35[0xf] = -(cVar25 == cVar39);\\n      uVar26 = (ushort)(SUB161(auVar35 >> 7,0) & 1) | (ushort)(SUB161(auVar35 >> 0xf,0) & 1) << 1 |\\n               (ushort)(SUB161(auVar35 >> 0x17,0) & 1) << 2 |\\n               (ushort)(SUB161(auVar35 >> 0x1f,0) & 1) << 3 |\\n               (ushort)(SUB161(auVar35 >> 0x27,0) & 1) << 4 |\\n               (ushort)(SUB161(auVar35 >> 0x2f,0) & 1) << 5 |\\n               (ushort)(SUB161(auVar35 >> 0x37,0) & 1) << 6 |\\n               (ushort)(SUB161(auVar35 >> 0x3f,0) & 1) << 7 |\\n               (ushort)(SUB161(auVar35 >> 0x47,0) & 1) << 8 |\\n               (ushort)(SUB161(auVar35 >> 0x4f,0) & 1) << 9 |\\n               (ushort)(SUB161(auVar35 >> 0x57,0) & 1) << 10 |\\n               (ushort)(SUB161(auVar35 >> 0x5f,0) & 1) << 0xb |\\n               (ushort)(SUB161(auVar35 >> 0x67,0) & 1) << 0xc |\\n               (ushort)(SUB161(auVar35 >> 0x6f,0) & 1) << 0xd |\\n               (ushort)(SUB161(auVar35 >> 0x77,0) & 1) << 0xe | (ushort)(auVar35[0xf] >> 7) << 0xf;\\n      uVar31 = (uint)uVar26;\\n      lVar2 = local_e0;\\n      while (local_e0 = lVar28, uVar26 != 0) {\\n        uVar4 = 0;\\n        for (uVar5 = uVar31; (uVar5 & 1) == 0; uVar5 = uVar5 >> 1 | 0x80000000) {\\n          uVar4 = uVar4 + 1;\\n        }\\n        uVar30 = uVar4 + uVar32 & uVar33;\\n        local_e8 = pauVar29;\\n        local_b8 = in_RCX;\\n        if ((*(size_t *)pauVar29[uVar30 * -2 + 1] == in_R9) &&\\n           (iVar27 = memcmp(local_c0,*(void **)(pauVar29[uVar30 * -2] + 8),in_R9), iVar27 == 0)) {\\n          local_d8[0] = *(longlong **)(local_b0[uVar30 * -2 + -1] + 8);\\n          LOCK();\\n          lVar2 = *local_d8[0];\\n          *local_d8[0] = *local_d8[0] + 1;\\n          UNLOCK();\\n          if (*local_d8[0] != 0 && SCARRY8(lVar2,1) == *local_d8[0] < 0) {\\n            core::NodeContext::id();\\n            core::impl$0::as_id();\\n            local_a8 = (undefined1 (*) [16])0x41223169ff28813b;\\n            local_a0 = (undefined1 **)0xa79b7268a2a968d9;\\n            ::utils::calculate_hash<tuple_<u64,core::any::TypeId>_>();\\n            ::utils::calculate_hash<tuple_<u64,u64>_>();\\n            instantiate_ui_template_impl();\\n            local_b8[4] = in_RDX[2];\\n            lVar2 = in_RDX[1];\\n            local_b8[2] = *in_RDX;\\n            local_b8[3] = lVar2;\\n            *local_b8 = local_c0;\\n            local_b8[1] = in_R9;\\n            LOCK();\\n            *local_d8[0] = *local_d8[0] + -1;\\n            UNLOCK();\\n            if (*local_d8[0] == 0) {\\n              alloc::sync::Arc::drop_slow<toolbar::mei::config::NodeConfig,alloc::alloc::Global>();\\n            }\\n            return;\\n          }\\n                    // WARNING: Does not return\\n          pcVar3 = (code *)invalidInstructionException();\\n          (*pcVar3)();\\n        }\\n        uVar26 = (ushort)(uVar31 - 1) & (ushort)uVar31;\\n        uVar31 = CONCAT22((short)(uVar31 - 1 >> 0x10),uVar26);\\n        lVar28 = local_e0;\\n        pauVar29 = local_e8;\\n        in_RCX = local_b8;\\n        lVar2 = local_e0;\\n      }\\n      auVar40[0] = -(cVar10 == (char)iVar6);\\n      auVar40[1] = -(cVar11 == (char)((uint)iVar6 >> 8));\\n      auVar40[2] = -(cVar12 == (char)((uint)iVar6 >> 0x10));\\n      auVar40[3] = -(cVar13 == (char)((uint)iVar6 >> 0x18));\\n      auVar40[4] = -(cVar14 == (char)iVar7);\\n      auVar40[5] = -(cVar15 == (char)((uint)iVar7 >> 8));\\n      auVar40[6] = -(cVar16 == (char)((uint)iVar7 >> 0x10));\\n      auVar40[7] = -(cVar17 == (char)((uint)iVar7 >> 0x18));\\n      auVar40[8] = -(cVar18 == (char)iVar8);\\n      auVar40[9] = -(cVar19 == (char)((uint)iVar8 >> 8));\\n      auVar40[10] = -(cVar20 == (char)((uint)iVar8 >> 0x10));\\n      auVar40[0xb] = -(cVar21 == (char)((uint)iVar8 >> 0x18));\\n      auVar40[0xc] = -(cVar22 == (char)iVar9);\\n      auVar40[0xd] = -(cVar23 == (char)((uint)iVar9 >> 8));\\n      auVar40[0xe] = -(cVar24 == (char)((uint)iVar9 >> 0x10));\\n      auVar40[0xf] = -(cVar25 == (char)((uint)iVar9 >> 0x18));\\n      if ((((((((((((((((SUB161(auVar40 >> 7,0) & 1) != 0 || (SUB161(auVar40 >> 0xf,0) & 1) != 0) ||\\n                      (SUB161(auVar40 >> 0x17,0) & 1) != 0) || (SUB161(auVar40 >> 0x1f,0) & 1) != 0)\\n                    || (SUB161(auVar40 >> 0x27,0) & 1) != 0) || (SUB161(auVar40 >> 0x2f,0) & 1) != 0\\n                   ) || (SUB161(auVar40 >> 0x37,0) & 1) != 0) ||\\n                 (SUB161(auVar40 >> 0x3f,0) & 1) != 0) || (SUB161(auVar40 >> 0x47,0) & 1) != 0) ||\\n               (SUB161(auVar40 >> 0x4f,0) & 1) != 0) || (SUB161(auVar40 >> 0x57,0) & 1) != 0) ||\\n             (SUB161(auVar40 >> 0x5f,0) & 1) != 0) || (SUB161(auVar40 >> 0x67,0) & 1) != 0) ||\\n           (SUB161(auVar40 >> 0x6f,0) & 1) != 0) || (SUB161(auVar40 >> 0x77,0) & 1) != 0) ||\\n          auVar40[0xf] < '\\\\0') break;\\n      uVar32 = uVar32 + local_e0 + 0x10;\\n      lVar28 = local_e0 + 0x10;\\n      local_e0 = lVar2;\\n    }\\n  }\\n  local_e0 = lVar2;\\n  local_a0 = (undefined1 **)(*local_b0 + uVar33 + 1);\\n  auVar35 = *local_b0;\\n  local_98 = CONCAT62(local_98._2_6_,\\n                      ~((ushort)(SUB161(auVar35 >> 7,0) & 1) |\\n                        (ushort)(SUB161(auVar35 >> 0xf,0) & 1) << 1 |\\n                        (ushort)(SUB161(auVar35 >> 0x17,0) & 1) << 2 |\\n                        (ushort)(SUB161(auVar35 >> 0x1f,0) & 1) << 3 |\\n                        (ushort)(SUB161(auVar35 >> 0x27,0) & 1) << 4 |\\n                        (ushort)(SUB161(auVar35 >> 0x2f,0) & 1) << 5 |\\n                        (ushort)(SUB161(auVar35 >> 0x37,0) & 1) << 6 |\\n                        (ushort)(SUB161(auVar35 >> 0x3f,0) & 1) << 7 |\\n                        (ushort)(SUB161(auVar35 >> 0x47,0) & 1) << 8 |\\n                        (ushort)(SUB161(auVar35 >> 0x4f,0) & 1) << 9 |\\n                        (ushort)(SUB161(auVar35 >> 0x57,0) & 1) << 10 |\\n                        (ushort)(SUB161(auVar35 >> 0x5f,0) & 1) << 0xb |\\n                        (ushort)(SUB161(auVar35 >> 0x67,0) & 1) << 0xc |\\n                        (ushort)(SUB161(auVar35 >> 0x6f,0) & 1) << 0xd |\\n                        (ushort)(SUB161(auVar35 >> 0x77,0) & 1) << 0xe |\\n                       (ushort)(byte)(auVar35[0xf] >> 7) << 0xf));\\n  local_a8 = local_b0 + 1;\\n  local_90 = local_f0;\\n  alloc::vec::spec_from_iter::impl$0::\\n  from_iter<ref_<alloc::string::String>,std::collections::hash::map::Keys<alloc::string::String,alloc::sync::Arc<toolbar::mei::config::NodeConfig,alloc::alloc::Global>_>_>\\n            ();\\n  local_110 = local_120;\\n  local_108 = ::core::fmt::impl$74::fmt<str_>;\\n  local_f8 = alloc::vec::impl$27::fmt<ref_<alloc::string::String>,alloc::alloc::Global>;\\n  local_b0 = (undefined1 (*) [16])&PTR_s_No_UI_template_named___Available_1429bf718;\\n  local_a8 = (undefined1 (*) [16])0x2;\\n  local_90 = 0;\\n  local_a0 = &local_110;\\n  local_98 = 2;\\n  local_100 = local_d8;\\n                    // WARNING: Subroutine does not return\\n  ::core::panicking::panic_fmt();\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:445f58e8:3\",\"epoch\":\"445f58e8\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}}},\"count\":15,\"requested\":15}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "list_instances",
+        "title": null,
+        "description": "\nList known Ghidra instances from UDS discovery and the active TCP fallback.\n\nReturns JSON with each instance's project name, PID, open programs, and\nsocket path or TCP URL. Also shows which instance is currently connected.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "_list_instances_toolArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "connect_instance",
+        "title": null,
+        "description": "\nSwitch the MCP bridge to a different Ghidra instance by project name.\n\nIMPORTANT: Before calling this function only the static bridge tools are\nexposed (list_instances, connect_instance, tool-group management,\ndebugger proxy). After a successful connect the bridge fetches the\ninstance's /mcp/schema and registers Ghidra analysis tools dynamically.\nBy default all tool groups are loaded on connect. When started with\n--lazy, only the default groups are loaded initially and clients may need\nto call load_tool_group() for additional categories. Clients that cache\nthe initial tools/list and don't honor tools/list_changed must re-list\ntools after this call.\n\nUse list_instances() first to see available instances.\n\nArgs:\n    project: Project name (or substring) to connect to\n",
+        "inputSchema": {
+          "properties": {
+            "project": {
+              "description": "Project name (or substring) to connect to",
+              "title": "Project",
+              "type": "string"
+            }
+          },
+          "required": [
+            "project"
+          ],
+          "title": "connect_instanceArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list_tool_groups",
+        "title": null,
+        "description": "\nList all available tool groups with their tool counts and loaded status.\n\nReturns each category with: tool count, loaded status, and tool names.\nUse load_tool_group(group) to load a group's tools.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "list_tool_groupsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "load_tool_group",
+        "title": null,
+        "description": "\nLoad all tools in a category. Accepts a category name or \"all\" to load everything.\n\nUse list_tool_groups() to see available categories.\n\nArgs:\n    group: Category name (e.g. \"function\", \"datatype\") or \"all\"\n",
+        "inputSchema": {
+          "properties": {
+            "group": {
+              "description": "Category name (e.g. \"function\", \"datatype\") or \"all\"",
+              "title": "Group",
+              "type": "string"
+            }
+          },
+          "required": [
+            "group"
+          ],
+          "title": "load_tool_groupArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "search_tools",
+        "title": null,
+        "description": "\nSearch the full Ghidra tool catalog by keyword \u2014 including tools whose group\nis not currently loaded. Use this to discover the right tool without paying\nthe context cost of loading all groups (run the bridge with --lazy and search\non demand). Matches against tool name, description, and category.\n\nEach result reports whether the tool is callable right now; if not, it\nincludes the exact load_tool_group(...) call needed to make it callable.\n\nArgs:\n    query: Space-separated keywords, e.g. \"rename function\" or \"xref struct\".\n    limit: Maximum number of results to return (default 15).\n",
+        "inputSchema": {
+          "properties": {
+            "query": {
+              "description": "Space-separated keywords, e.g. \"rename function\" or \"xref struct\".",
+              "title": "Query",
+              "type": "string"
+            },
+            "limit": {
+              "default": 15,
+              "description": "Maximum number of results to return (default 15).",
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "title": "search_toolsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "disassemble_function",
+        "title": null,
+        "description": "Get assembly listing of function. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution. When Ghidra's stored function body is degenerate (body_end == body_start, which would truncate the listing to a single instruction), the listing is instead bounded by the next function or the containing memory block and the response adds body_degenerate=true, bounded_by (next_function | memory_block | function_body) and a warning; do not trust this function's stored extent in that case.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "disassemble_functionArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_data_types",
+        "title": null,
+        "description": "Find data types by name or path pattern, category and kind, one record per type (name, kind, category, size, path). With categories=true, list the category paths instead. With no filter it lists every type.",
+        "inputSchema": {
+          "properties": {
+            "pattern": {
+              "default": "",
+              "description": "Case-insensitive substring of the type's name or full path; omit for no name filter.",
+              "title": "Pattern",
+              "type": "string"
+            },
+            "category": {
+              "default": "",
+              "description": "Case-insensitive substring of the category path (e.g. Windows, /MyTypes); omit for any category.",
+              "title": "Category",
+              "type": "string"
+            },
+            "kind": {
+              "default": "",
+              "description": "Only this kind: struct, union, enum, typedef, pointer, array, function or primitive. Omit for all kinds.",
+              "title": "Kind",
+              "type": "string"
+            },
+            "categories": {
+              "default": "false",
+              "description": "True lists the category paths (filtered by pattern) instead of types; category and kind do not apply.",
+              "title": "Categories",
+              "type": "boolean"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "find_data_typesArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find_functions",
+        "title": null,
+        "description": "Find functions: every filter is optional, so with none it lists the whole program a page at a time. Filter by name (substring or regex=true), xref count, calling convention, whether the name is user-given, thunk or external, or by tag (tag=a,b keeps functions carrying ANY of them); each result lists its tags; sort by address, name or xref_count. Replaces list_functions, list_functions_enhanced, search_functions and search_functions_enhanced, which returned four different shapes for the same question.",
+        "inputSchema": {
+          "properties": {
+            "name_pattern": {
+              "default": "",
+              "description": "Substring to match, or a regex when regex=true. Omit to match every function.",
+              "title": "Name Pattern",
+              "type": "string"
+            },
+            "regex": {
+              "default": "false",
+              "description": "Treat name_pattern as a regular expression.",
+              "title": "Regex",
+              "type": "boolean"
+            },
+            "min_xrefs": {
+              "default": "",
+              "description": "Only functions with at least this many references to them.",
+              "title": "Min Xrefs",
+              "type": "integer"
+            },
+            "max_xrefs": {
+              "default": "",
+              "description": "Only functions with at most this many references to them.",
+              "title": "Max Xrefs",
+              "type": "integer"
+            },
+            "calling_convention": {
+              "default": "",
+              "description": "Only functions with this calling convention (e.g. __stdcall).",
+              "title": "Calling Convention",
+              "type": "string"
+            },
+            "has_custom_name": {
+              "default": "",
+              "description": "true = only functions somebody has named; false = only auto-generated names (FUN_*, thunk_*).",
+              "title": "Has Custom Name",
+              "type": "boolean"
+            },
+            "is_thunk": {
+              "default": "",
+              "description": "true = only thunks, false = exclude them, omit for both.",
+              "title": "Is Thunk",
+              "type": "boolean"
+            },
+            "is_external": {
+              "default": "",
+              "description": "true = only external functions, false = exclude them.",
+              "title": "Is External",
+              "type": "boolean"
+            },
+            "tag": {
+              "default": "",
+              "description": "Only functions carrying any of these tags: one name or a comma-separated list. A name that is not a defined tag is an error (list_function_tags shows the definitions).",
+              "title": "Tag",
+              "type": "string"
+            },
+            "sort_by": {
+              "default": "address",
+              "description": "address | name | xref_count.",
+              "title": "Sort By",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Page size. 0 means no limit, which on a large binary is a megabytes-long response \u2014 the old list_functions had no pagination at all and returned 1.7MB on a stripped `ls`.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "pattern": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Pattern"
+            },
+            "query": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Query"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            }
+          },
+          "title": "find_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_functions",
+        "title": null,
+        "description": "Everything about one or many functions in a single call. Pass functions= as a comma-separated list of names or addresses for bulk mode (up to 20); omit it and pass function=/name=/address= for one. Pass fields= as a comma-separated subset to skip work you do not need \u2014 omitted or empty returns everything. When the requested fields need no decompiled text (e.g. fields=callers,callees,signature,labels,entry_point), the target function is NOT decompiled (238 ms cold / 5\u201310 ms warm per function); only decompiled_code (and call_context when enabled) pays that cost. Decompiled text renders EOL comments (// style), so comments written with set_comment are visible in the code. Replaces get_function_by_address, get_function_variables, get_function_xrefs, decompile_function, and the former get_function_callers/callees/labels/signature tools. Completeness scoring is NOT included \u2014 call analyze_function_completeness for that.",
+        "inputSchema": {
+          "properties": {
+            "function": {
+              "default": "",
+              "description": "Single mode: function name or address (0x<hex> or <space>:<hex>). Ignored when functions= is set.",
+              "title": "Function",
+              "type": "string"
+            },
+            "functions": {
+              "default": "",
+              "description": "Bulk mode: comma-separated function references (names or addresses). When set, function= is ignored. Returns a map keyed by the reference asked for.",
+              "title": "Functions",
+              "type": "string"
+            },
+            "fields": {
+              "default": "",
+              "description": "Comma-separated subset: signature, classification, return_type, entry_point, body_start, body_end, decompiled_code, plate_comment, comments, labels, tags, parameters, locals, callers, call_context, callees, xrefs, disassembly, jump_targets, refs (the absolute addresses the function uses: data references, the values of literal-pool words, and the memory the decompiled code reads and writes, so a register reached as base + offset is listed by its own address; a pool value is written value<word; asking for refs decompiles). Omit or leave empty for the full bundle.",
+              "title": "Fields",
+              "type": "string"
+            },
+            "include_call_context": {
+              "default": "true",
+              "description": "Include each caller's decompiled call-site line. Costs one decompilation per unique caller (~43ms); set false for the cheapest possible bundle. Ignored unless call_context is requested (explicitly or via an empty fields=).",
+              "title": "Include Call Context",
+              "type": "boolean"
+            },
+            "call_context_limit": {
+              "default": "6",
+              "description": "Maximum number of UNIQUE callers to decompile for call context.",
+              "title": "Call Context Limit",
+              "type": "integer"
+            },
+            "call_context_lines": {
+              "default": "3",
+              "description": "Lines of the caller's decompilation to return per call site, centred on the call. 1 is the call line alone; the default 3 adds the line above and below, which is usually where the guard and the use of the result live. Clamped to 1-21; costs no extra decompilation.",
+              "title": "Call Context Lines",
+              "type": "integer"
+            },
+            "include_disasm": {
+              "default": "false",
+              "description": "Include the raw instruction listing. Off by default: it roughly doubles the payload and agents rarely read it.",
+              "title": "Include Disasm",
+              "type": "boolean"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            },
+            "address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Address"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "function_address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Address"
+            },
+            "function_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Function Name"
+            },
+            "call_context_window": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Call Context Window"
+            }
+          },
+          "title": "get_functionsArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_metadata",
+        "title": null,
+        "description": "Get program metadata",
+        "inputSchema": {
+          "properties": {
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_metadataArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_struct_layout",
+        "title": null,
+        "description": "Get structure field layout",
+        "inputSchema": {
+          "properties": {
+            "struct_name": {
+              "description": "Structure name",
+              "title": "Struct Name",
+              "type": "string"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "struct_name"
+          ],
+          "title": "get_struct_layoutArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_from",
+        "title": null,
+        "description": "Get cross-references from an address. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "get_xrefs_fromArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get_xrefs_to",
+        "title": null,
+        "description": "Get cross-references to ONE address, or to MANY at once (addresses=comma-separated), which returns a map keyed by the address you asked for. Replaces the former get_bulk_xrefs. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "default": "",
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "addresses": {
+              "default": "",
+              "description": "Comma-separated addresses for the many-at-once form. The result is a map of address to its reference list, and an address that does not resolve gets an empty list rather than failing the whole call.",
+              "title": "Addresses",
+              "type": "string"
+            },
+            "offset": {
+              "default": "0",
+              "description": "Number of entries to skip before this page starts; 0 begins at the first entry. Page by adding `limit` each call until offset reaches the `total` the response reports.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "limit": {
+              "default": "100",
+              "description": "Maximum entries returned in this page (default 100). Pass 0 or a negative value for no limit; `total` in the response always reports the full unpaged count.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "title": "get_xrefs_toArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read_memory",
+        "title": null,
+        "description": "Read raw memory bytes. Always pass the 'program' argument to target the correct binary \u2014 especially when multiple programs are open. On programs with multiple address spaces (e.g., embedded targets), prefix addresses with the space name (mem:1000) to avoid ambiguous resolution.",
+        "inputSchema": {
+          "properties": {
+            "address": {
+              "description": "Address in the program. Accepts 0x<hex> (default space) or <space>:<hex> (e.g., mem:1000, code:ff00). Note: some programs \u2014 particularly embedded/microcontroller targets \u2014 are not address-space-agnostic; use get_address_spaces to discover spaces before assuming a plain hex address is unambiguous.",
+              "title": "Address",
+              "type": "string"
+            },
+            "length": {
+              "default": "16",
+              "description": "Number of bytes",
+              "title": "Length",
+              "type": "integer"
+            },
+            "program": {
+              "default": "",
+              "description": "Target program name (omit to use the active program \u2014 always specify when multiple programs are open)",
+              "title": "Program",
+              "type": "string"
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "title": "read_memoryArguments",
+          "type": "object"
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

@@ -1,0 +1,49 @@
+{
+  "work_package": "wp20",
+  "target": {
+    "version": "B",
+    "exe_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+    "db": "ghidra shared (read-only, TinyGlade.gpr / mcp)"
+  },
+  "method": "business-logic -> contracts -> skeleton-aligned Rust; decompile evidence only for logic/boundary (never the implementation method).",
+  "scope": {
+    "units": 44,
+    "skeleton": "skeleton/B/crates/country-core/src/systems/{backend/input(7), camera_rig(5), main_camera, look_at_camera, ui_2d_follow_mouse, ui_camera_mode_gizmos, ui_clutter(7), ui_edit_focus, ui_edit_freehand_walls, ui_focus_mode_shape_height, ui_move_freehand_walls, ui_move_shapes, ui_raise_shape, time_of_day, time_update, weather_system, world_raster, timelapse_replay, mode_manager, prefab, arrow_gizmo_animation, brush_preview, clear_canvas, despawn, mesh_follow_terrain, mod_key, utils, utils_intersect}",
+    "collision": "wp16-owned (world.rs/intersect_meshes.rs/visualize_colliders.rs); referenced only, not re-declared"
+  },
+  "evidence_artifacts": {
+    "manifest": "manifest.json (44 units, 163 procedures from B PDB bundles)",
+    "ghidra_jobs": ["jobs_b1_input.json","jobs_b2_camera.json","jobs_b3_camera.json","jobs_b4_time.json","jobs_b4b_timelapse.json","jobs_b5_ui.json","jobs_b6_clutter.json","jobs_b7_misc.json","jobs_b8_prefab.json","jobs_b8b_serde.json","jobs_modkey.json"],
+    "decompiles": "analysis/*.txt (86 per-function decompiles)",
+    "contracts": ["contracts/camera.md","contracts/input-backend.md","contracts/time-weather.md","contracts/ui-misc.md"],
+    "src": "src/systems/** (58 .rs incl. integration facades)"
+  },
+  "decompiled_functions": {
+    "backend_input": ["calculate_input_delta 0x1416feeb0","translate_input 0x1417cd0a0","translate_input_to_cursor_moved 0x140b17a80","reset_input_state 0x140942b00","input_record_replay 0x1409423d0","advance_input_replay_frame 0x140942280","control_input_replay 0x140941a30","record_and_replay_input_for_trailers 0x14083c620","do_input_replay_ui 0x14083cdd0"],
+    "camera": ["butterfly::update 0x140a0d090","free get_position/get_yaw_pitch/set/translate_screen_space/update 0x140992f10..0x140993d30","normal rotate_yaw_pitch/constrain/translate_screen_space/update 0x140949cc0..0x140949fe0","walk new/teleport/constrain/translate_screen_space 0x140993e20..0x140994700","main_camera camera_snapshot/build/reset_camera/main_camera_update/paused_main_camera_update 0x140911e40..0x1409145a0","look_at_camera 0x140873de0"],
+    "time_weather": ["time_of_day 0x140a73460","remap_hour_to_fmod_hour 0x140a74790","time_update 0x140922c30","weather_system 0x1408e5b00","timelapse start/finish/cleanup 0x140a8a310/0x140a8a460/0x140a8a5d0","mode_manager 0x140a86b60","send_mode_just_changed_event 0x140a875e0","world_raster record_raster_history/upload 0x140957990/0x140957bf0","world_raster draw_raster<Water> 0x142260ae0","prefab build/spawn/update/despawn/despawn_contents/hot_reload 0x140840430..0x140843740"],
+    "ui_misc": ["ui_2d_follow_mouse 0x14092a100","ui_camera_mode_gizmos 0x1409527a0","ui_edit_focus + geo_src* 0x1409771f0/0x140977f50/0x140978000","ui_edit_freehand_walls 0x140ac98e0","ui_focus_mode_shape_height 0x140a623e0","ui_move_freehand_walls 0x1409781d0","ui_move_shapes + move_gizmo_and_trigger_vol 0x14097a060/0x14097d280","ui_raise_shape + impl_raise_shape 0x140952e70/0x140955650","ui_clutter: debug_spawn_all_clutter 0x1409a1f50, decoclutter_show_pins 0x1412357c0, history_record_auto_clutter 0x1409aa3e0, handle_rmb_autoclutter 0x140976ca0, ui_convert_autoclutter_to_decoclutter 0x14099ca60, ui_focus_decoclutter 0x1409a92c0","arrow_gizmo_animation 0x140a92f80","brush_preview 0x140865050","clear_canvas 0x140a7abd0","despawn_glade_entities 0x1408b3510","mesh_follow_terrain 0x140a68430","add_stages 0x140945ed0","line_x_shape_overlap 0x14175ada0"]
+  },
+  "key_observed_findings": {
+    "main_camera": "MainCamera = 0x4e0 B resource; mode byte @+0x4d0, aspect @+0x4d8; embedded bodies at +0x100/+0x1b8/+0x270/+0x2f0/+0x390/+0x448 (paused_main_camera_update jumptable).",
+    "camera_bodies": "dolly 0.6.0 rigs (Free=Position+YawPitch+Smooth; Walk=Position+YawPitch + sphere-cast; Butterfly=Position+Rotation+Smooth+Arm+LookAt, index-change snap dt=1000); motion math reconciles the machine-code-verified reconstruction/camera crate.",
+    "input_replay_modes": "InputRecordReplayState.mode tags Idle=0x8000000000000000 / Replaying=0x8000000000000002 / Recording=0x8000000000000003 / Finished=0x8000000000000004; InputFrame stride 0xd0; frames/sync deques head@+0x10/+0x30, counts@+0x18/+0x38, total@+0x40.",
+    "input_delta": "calculate_input_delta per-action {tag,value} pairs; kind 0/1/2 released/moving/deadzone(0.1/0.05).",
+    "game_clock": "time_update advances a 56 B clock {Duration, total_f32, total_60ths, frac, flag, frame_count}; 1/60 clamp for first 2 frames; replay frames supply dt from frame @+0xc8.",
+    "time_of_day": "hour=fmod(progress*24+8,24) (day starts 08:00); sun angle + hour exponential smoothing exp(-3dt); suncalc::get_position + colatitude pi/2-(azimuth+pi); remap_hour keyframes {0,3.5,9,17,20,24}.",
+    "weather": "winter (glade_type@+0x58==4) snow intensity sine period 600 s, step 0.1.",
+    "mode_manager": "AppMode 2-qword enum; 15 check_if_can_switch monomorphs; dispatcher jumptable on mode u32 @+0x80.",
+    "clear_canvas": "InnerWalls::remove_all + 7x clear_preset_texture + world rasters clear_all.",
+    "mod_key": "update_mod_key_state PDB rva 0x140AF9000 sits inside Toolbar::new (ICF/folding) -> actual address U; accessors fold with ActiveInputMode::is_controller."
+  },
+  "gaps": {
+    "typed": "InputFrame 0xd0 fields; InputTranslationState 11-qword permutation; ActionSet deconstruct packing; MainCamera 0x4e0 inner fields; CameraSnapshot* layouts; AppMode variant set; Modifiers layout; MoveShape/MoveWall/EditFreehandWall/LerpedGizmo/TerrainFocus caches; Toolbar 11-category set; suncalc input encoding; TimelapseState layout; PrefabInstance(Data) layout; Modifiers key codes (game_key_bindings).",
+    "deferred_to_owner": "collision (wp16), Toolbar resource (wp16), egui panel, enum_iterator/bevy_state/bevy_input/bevy_time real-crate wiring (reused facades in src/reused.rs + src/{input,resources,utils,asset_libraries,systems/ui,systems/backend}.rs integration markers)."
+  },
+  "gate": {
+    "crate": "reconstruction/country-core-render/wp20",
+    "cargo_check": "offline `cargo check` 0 errors / 0 warnings",
+    "status": "implemented_unverified (no runtime / original-equivalence claim)"
+  }
+}

@@ -1,0 +1,271 @@
+{
+  "schema": "tiny-glade-independent-results-review/v1",
+  "reviewer": "render_reviewer",
+  "date": "2026-10-21",
+  "formal_result": "FAIL at original line812 live3042..6022; all30rendered; subsequent original gates not executed",
+  "log": "/private/tmp/tg-highwater-world-thirty-20261021.log",
+  "log_sha256": "00b48f4c1b6a975d0046fac899a2d55dbb237c2e859850a0587e6cd99a9a6298",
+  "actual_preserved_binary": "/private/tmp/tg-preserved-run-binaries-20261021/original-gameplay-highwater-v1",
+  "binary_sha256": "c88e2eaaed1b9185b29ed72a7e4c4a909ea1153cb114f6e160c641fce9bdaece",
+  "pool_source_after": "9fe4e3f97bd92b6925892839cde8aec818e7d7cf5811b2ab8a3ac43895ef9016",
+  "independent_observations": [
+    "真实全pool peak在index2达到6022后不再增长；旧sum-of-peaks虚增问题与新current两批owner问题不同。",
+    "index2live6022/ret0，分项sampled1381+storageImage136+storageBuffer4433+sampler72=6022，constants4pages/2inflight，显示两批记录owner同时存活；非简单总字段算术错。",
+    "index3live3044/ret780，后期3043..3047；所有正式稳态rows[2..]包括index2，禁止挪起点或调阈值绕过。",
+    "end pending0→0/destroyed0/nativeallocated1000880744不变/submitted=completed1696/idle2→2，不支持本轮剩余内存系GC积压。"
+  ],
+  "source_chain": {
+    "sample": "original_gameplay_chain.rs rows.push(shader stats)在当前HeadlessGameplayFrame仍活时；随后drop(frame)再collect_completed_frames，未改此采样。",
+    "owner": "实际command retain_opaque/recorded持BindlessLease，真实完成后的finish_frame→recycle_completed_commands→release_completed_owners才释放CPUowner。",
+    "current_session": "VulkanGraphSession.begin_frame只在pending达到framesInFlight时wait/finish，未达到上限的已完成pending不会自动在这里清除；之前帧尾poll未达可延迟。",
+    "scope": "这是带具体源路径的owner假设，不仅据cached last timeline证明整个completion；需真实complete SyncSet/allreceipts检查。"
+  },
+  "follow_up": "补齐原窗口compile→begin/drain→execute相同的headless执行前非阻塞维护；V1置helper最前顺序错误已独审阻断/未应用，作者V2准备。即使修补后真正两帧GPU在途时仍可两批live，不承诺原30必过。",
+  "limits": [
+    "不改变阈值/steady起点/采样/资源寿命；不加idle/主动等待来使样本过门。",
+    "本结果不是world长稳通过；gameplayWSI、编辑落盘、重启恢复分别验。",
+    "两轮uses/barriers等真实图规模不同，不把耗时变化单独归因counter开销。"
+  ],
+  "rows": [
+    {
+      "index": 0,
+      "live": 2995,
+      "retiring": 0,
+      "peak": 3019,
+      "constants": "2/2/2/2",
+      "MiB_rounded": "890.4"
+    },
+    {
+      "index": 1,
+      "live": 3032,
+      "retiring": 0,
+      "peak": 3032,
+      "constants": "2/2/2/4",
+      "MiB_rounded": "918.8"
+    },
+    {
+      "index": 2,
+      "live": 6022,
+      "retiring": 0,
+      "peak": 6022,
+      "constants": "4/2/4/4",
+      "MiB_rounded": "957.7"
+    },
+    {
+      "index": 3,
+      "live": 3044,
+      "retiring": 780,
+      "peak": 6022,
+      "constants": "4/2/4/6",
+      "MiB_rounded": "960.3"
+    },
+    {
+      "index": 4,
+      "live": 3045,
+      "retiring": 1417,
+      "peak": 6022,
+      "constants": "4/2/4/8",
+      "MiB_rounded": "958.7"
+    },
+    {
+      "index": 5,
+      "live": 3042,
+      "retiring": 1991,
+      "peak": 6022,
+      "constants": "4/2/4/10",
+      "MiB_rounded": "958.2"
+    },
+    {
+      "index": 6,
+      "live": 3043,
+      "retiring": 1509,
+      "peak": 6022,
+      "constants": "4/2/4/12",
+      "MiB_rounded": "957.7"
+    },
+    {
+      "index": 7,
+      "live": 3044,
+      "retiring": 965,
+      "peak": 6022,
+      "constants": "4/2/4/14",
+      "MiB_rounded": "957.2"
+    },
+    {
+      "index": 8,
+      "live": 3043,
+      "retiring": 1823,
+      "peak": 6022,
+      "constants": "4/2/4/16",
+      "MiB_rounded": "956.7"
+    },
+    {
+      "index": 9,
+      "live": 3047,
+      "retiring": 801,
+      "peak": 6022,
+      "constants": "4/2/4/18",
+      "MiB_rounded": "957.2"
+    },
+    {
+      "index": 10,
+      "live": 3043,
+      "retiring": 1319,
+      "peak": 6022,
+      "constants": "4/2/4/20",
+      "MiB_rounded": "957.2"
+    },
+    {
+      "index": 11,
+      "live": 3044,
+      "retiring": 961,
+      "peak": 6022,
+      "constants": "4/2/4/22",
+      "MiB_rounded": "957.2"
+    },
+    {
+      "index": 12,
+      "live": 3043,
+      "retiring": 1739,
+      "peak": 6022,
+      "constants": "4/2/4/24",
+      "MiB_rounded": "957.2"
+    },
+    {
+      "index": 13,
+      "live": 3043,
+      "retiring": 1573,
+      "peak": 6022,
+      "constants": "4/2/4/26",
+      "MiB_rounded": "956.7"
+    },
+    {
+      "index": 14,
+      "live": 3043,
+      "retiring": 1007,
+      "peak": 6022,
+      "constants": "4/2/4/28",
+      "MiB_rounded": "956.7"
+    },
+    {
+      "index": 15,
+      "live": 3043,
+      "retiring": 817,
+      "peak": 6022,
+      "constants": "4/2/4/30",
+      "MiB_rounded": "956.7"
+    },
+    {
+      "index": 16,
+      "live": 3043,
+      "retiring": 2324,
+      "peak": 6022,
+      "constants": "4/2/4/32",
+      "MiB_rounded": "956.7"
+    },
+    {
+      "index": 17,
+      "live": 3043,
+      "retiring": 333,
+      "peak": 6022,
+      "constants": "4/2/4/34",
+      "MiB_rounded": "956.7"
+    },
+    {
+      "index": 18,
+      "live": 3043,
+      "retiring": 1249,
+      "peak": 6022,
+      "constants": "4/2/4/36",
+      "MiB_rounded": "956.7"
+    },
+    {
+      "index": 19,
+      "live": 3047,
+      "retiring": 1692,
+      "peak": 6022,
+      "constants": "4/2/4/38",
+      "MiB_rounded": "957.2"
+    },
+    {
+      "index": 20,
+      "live": 3043,
+      "retiring": 1051,
+      "peak": 6022,
+      "constants": "4/2/4/40",
+      "MiB_rounded": "957.2"
+    },
+    {
+      "index": 21,
+      "live": 3043,
+      "retiring": 1181,
+      "peak": 6022,
+      "constants": "4/2/4/42",
+      "MiB_rounded": "957.2"
+    },
+    {
+      "index": 22,
+      "live": 3043,
+      "retiring": 1486,
+      "peak": 6022,
+      "constants": "4/2/4/44",
+      "MiB_rounded": "957.2"
+    },
+    {
+      "index": 23,
+      "live": 3044,
+      "retiring": 1255,
+      "peak": 6022,
+      "constants": "4/2/4/46",
+      "MiB_rounded": "956.7"
+    },
+    {
+      "index": 24,
+      "live": 3044,
+      "retiring": 1270,
+      "peak": 6022,
+      "constants": "4/2/4/48",
+      "MiB_rounded": "956.7"
+    },
+    {
+      "index": 25,
+      "live": 3044,
+      "retiring": 1604,
+      "peak": 6022,
+      "constants": "4/2/4/50",
+      "MiB_rounded": "956.7"
+    },
+    {
+      "index": 26,
+      "live": 3044,
+      "retiring": 904,
+      "peak": 6022,
+      "constants": "4/2/4/52",
+      "MiB_rounded": "956.7"
+    },
+    {
+      "index": 27,
+      "live": 3044,
+      "retiring": 1437,
+      "peak": 6022,
+      "constants": "4/2/4/54",
+      "MiB_rounded": "956.7"
+    },
+    {
+      "index": 28,
+      "live": 3044,
+      "retiring": 1641,
+      "peak": 6022,
+      "constants": "4/2/4/56",
+      "MiB_rounded": "956.7"
+    },
+    {
+      "index": 29,
+      "live": 3047,
+      "retiring": 1518,
+      "peak": 6022,
+      "constants": "4/2/4/58",
+      "MiB_rounded": "957.2"
+    }
+  ]
+}

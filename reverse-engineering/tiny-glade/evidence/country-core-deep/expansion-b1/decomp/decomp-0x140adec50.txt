@@ -1,0 +1,141 @@
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_140adec50(undefined8 param_1,longlong param_2,undefined1 *param_3)
+
+{
+  ulonglong uVar1;
+  ulonglong uVar2;
+  code *pcVar3;
+  undefined1 auVar4 [16];
+  uint uVar5;
+  ulonglong uVar6;
+  ulonglong uVar7;
+  ulonglong uVar8;
+  ulonglong uVar9;
+  ulonglong uVar10;
+  uint uVar11;
+  uint uVar12;
+  uint uVar13;
+  float fVar14;
+  undefined8 uVar15;
+  float fVar19;
+  undefined8 uVar16;
+  float fVar20;
+  undefined1 auVar17 [16];
+  undefined8 extraout_XMM0_Qb;
+  undefined1 auVar18 [16];
+  undefined1 auVar21 [16];
+  undefined1 auVar22 [16];
+  
+  func_0x000142923ef0(param_1,_UNK_142925874);
+  uVar15 = func_0x000142923ee0();
+  fVar19 = (float)((ulonglong)uVar15 >> 0x20);
+  func_0x000142923ef0();
+  func_0x000142923ef0();
+  fVar14 = (float)func_0x000142923e60();
+  uVar16 = func_0x000142923e60();
+  if (fVar14 <= 0.0) {
+    fVar14 = 0.0;
+  }
+  if (_UNK_142ae19e0 <= fVar14) {
+    fVar14 = _UNK_142ae19e0;
+  }
+  uVar13 = (uint)(longlong)fVar14;
+  if (fVar14 < 0.0) {
+    uVar13 = 0;
+  }
+  if (_UNK_1429a07d0 < fVar14) {
+    uVar13 = 0xffffffff;
+  }
+  auVar17._8_4_ = fVar19;
+  auVar17._0_8_ = uVar15;
+  fVar20 = (float)((ulonglong)uVar16 >> 0x20);
+  auVar17._12_4_ = fVar20;
+  fVar14 = (float)uVar16;
+  auVar21._8_8_ = auVar17._8_8_;
+  auVar21._0_4_ = (float)uVar15;
+  auVar21._4_4_ = fVar14;
+  auVar17 = maxps(ZEXT816(0),auVar21);
+  auVar22._0_4_ = (float)(-(uint)(!NAN(auVar21._0_4_) && !NAN(auVar21._0_4_)) & auVar17._0_4_);
+  auVar22._4_4_ = (float)(-(uint)(!NAN(fVar14) && !NAN(fVar14)) & auVar17._4_4_);
+  auVar22._8_4_ = -(uint)(!NAN(fVar19) && !NAN(fVar19)) & auVar17._8_4_;
+  auVar22._12_4_ = -(uint)(!NAN(fVar20) && !NAN(fVar20)) & auVar17._12_4_;
+  auVar17 = minps(_UNK_142ae19d0,auVar22);
+  fVar14 = (float)(~-(uint)NAN(auVar22._0_4_) & auVar17._0_4_ |
+                  (uint)UNK_142ae19d0 & -(uint)NAN(auVar22._0_4_));
+  fVar19 = (float)(~-(uint)NAN(auVar22._4_4_) & auVar17._4_4_ |
+                  UNK_142ae19d0._4_4_ & -(uint)NAN(auVar22._4_4_));
+  uVar11 = (uint)(longlong)fVar14;
+  if (fVar14 < 0.0) {
+    uVar11 = 0;
+  }
+  if (_UNK_1429a07d0 < fVar14) {
+    uVar11 = 0xffffffff;
+  }
+  uVar12 = (uint)(longlong)fVar19;
+  if (fVar19 < 0.0) {
+    uVar12 = 0;
+  }
+  if (_UNK_1429a07d0 < fVar19) {
+    uVar12 = 0xffffffff;
+  }
+  if (uVar11 < uVar12) {
+    func_0x000142923ef0();
+    auVar18._0_8_ = func_0x000142923ee0();
+    auVar18._8_8_ = extraout_XMM0_Qb;
+    if ((float)auVar18._0_8_ <= 0.0) {
+      auVar4._12_4_ = 0;
+      auVar4._0_12_ = auVar18._4_12_;
+      auVar18 = auVar4 << 0x20;
+    }
+    fVar14 = auVar18._0_4_;
+    if (_UNK_142ae19e0 <= auVar18._0_4_) {
+      fVar14 = _UNK_142ae19e0;
+    }
+    uVar8 = (longlong)fVar14 & 0xffffffff;
+    if (fVar14 < 0.0) {
+      uVar8 = 0;
+    }
+    if (_UNK_1429a07d0 < fVar14) {
+      uVar8 = 0xffffffff;
+    }
+    if ((uint)uVar8 < uVar13) {
+      uVar7 = uVar8;
+      if ((uint)uVar8 < 0x41) {
+        uVar7 = 0x40;
+      }
+      uVar5 = 0x40;
+      if (0x40 < uVar11) {
+        uVar5 = uVar11;
+      }
+      uVar6 = (ulonglong)uVar5;
+      uVar10 = (ulonglong)uVar11;
+      do {
+        if (uVar10 == uVar6) {
+code_r0x000140adee7e:
+          FUN_1428d9518(uVar6,0x40,&UNK_142ae2078);
+          pcVar3 = (code *)swi(3);
+          (*pcVar3)();
+          return;
+        }
+        uVar1 = uVar10 + 1;
+        uVar9 = uVar8;
+        do {
+          if (uVar13 == uVar9) goto code_r0x000140adee00;
+          if (uVar7 == uVar9) {
+            uVar6 = FUN_1428d9518(uVar7 >> 6,1,&UNK_142ae2078);
+            goto code_r0x000140adee7e;
+          }
+          uVar2 = uVar9 & 0x3f;
+          uVar9 = uVar9 + 1;
+        } while ((*(ulonglong *)(param_2 + uVar10 * 8) >> uVar2 & 1) == 0);
+        *param_3 = 1;
+code_r0x000140adee00:
+        uVar10 = uVar1;
+      } while (uVar1 != uVar12);
+    }
+  }
+  return;
+}
+

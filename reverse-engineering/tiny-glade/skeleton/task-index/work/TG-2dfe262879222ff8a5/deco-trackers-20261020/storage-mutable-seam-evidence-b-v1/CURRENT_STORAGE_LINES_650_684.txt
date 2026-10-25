@@ -1,0 +1,35 @@
+    pub fn wall_decorator_ids(&self, wall: WallId) -> impl Iterator<Item = u32> + '_ {
+        self.per_wall
+            .get(&wall)
+            .into_iter()
+            .flat_map(|d| d.decorators.keys().copied())
+    }
+
+    /// 0x140a1e420（O）：墙装饰集合可变访问。
+    pub fn wall_decorators_mut(&mut self, wall: WallId) -> Option<&mut Decorators> {
+        self.per_wall.get_mut(&wall)
+    }
+
+    /// 0x140a1e280（O）：地形装饰迭代（{tag=1, ptr=self+0x90}）。
+    pub fn iter_terrain_decorators(&self) -> impl Iterator<Item = &Decorators> + '_ {
+        self.terrain.iter()
+    }
+
+    /// 0x140a1e2c0（O）：楼梯装饰迭代（{tag=1, ptr=self+0x120}）。
+    pub fn iter_stair_decorators(&self) -> impl Iterator<Item = &Decorators> + '_ {
+        self.stairs.iter()
+    }
+
+    /// 0x140a1b100（O，与 Decorators::iter_removed_ids 同址）：墙迭代。
+    pub fn iter_walls(&self) -> impl Iterator<Item = (WallId, &Decorators)> + '_ {
+        self.per_wall.iter().map(|(w, d)| (*w, d))
+    }
+
+    /// 0x140a1e540（O）：墙可变迭代。
+    pub fn iter_walls_mut(&mut self) -> impl Iterator<Item = (WallId, &mut Decorators)> + '_ {
+        self.per_wall.iter_mut().map(|(w, d)| (*w, d))
+    }
+
+    /// 0x140a1e5b0（O）：全存储迭代（per_wall 集合@+0x0）。
+    pub fn iter(&self) -> impl Iterator<Item = (WallId, &Decorators)> + '_ {
+        self.iter_walls()

@@ -1,0 +1,44 @@
+// subscribe<country_core::utils::dirty_tiles::DirtyTiles>
+// 0x141247b10 void __cdecl subscribe<country_core::utils::dirty_tiles::DirtyTiles>(void)
+// params: []
+
+void __cdecl tabloid::Publisher::subscribe<country_core::utils::dirty_tiles::DirtyTiles>(void)
+
+{
+  longlong lVar1;
+  code *pcVar2;
+  longlong *extraout_RAX;
+  longlong in_RCX;
+  uint7 uStack_6f;
+  
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX == (longlong *)0x0) {
+                    // WARNING: Subroutine does not return
+    alloc::alloc::handle_alloc_error();
+  }
+  extraout_RAX[4] = 0;
+  extraout_RAX[2] = (ulonglong)uStack_6f << 8;
+  extraout_RAX[3] = 0;
+  *extraout_RAX = 1;
+  extraout_RAX[1] = 1;
+  LOCK();
+  lVar1 = *extraout_RAX;
+  *extraout_RAX = *extraout_RAX + 1;
+  UNLOCK();
+  if (*extraout_RAX != 0 && SCARRY8(lVar1,1) == *extraout_RAX < 0) {
+    lVar1 = *(longlong *)(in_RCX + 0x28);
+    if (lVar1 == *(longlong *)(in_RCX + 0x18)) {
+      alloc::raw_vec::RawVec::
+      grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>
+                ();
+    }
+    *(longlong **)(*(longlong *)(in_RCX + 0x20) + lVar1 * 8) = extraout_RAX;
+    *(longlong *)(in_RCX + 0x28) = lVar1 + 1;
+    return;
+  }
+                    // WARNING: Does not return
+  pcVar2 = (code *)invalidInstructionException();
+  (*pcVar2)();
+}
+
+

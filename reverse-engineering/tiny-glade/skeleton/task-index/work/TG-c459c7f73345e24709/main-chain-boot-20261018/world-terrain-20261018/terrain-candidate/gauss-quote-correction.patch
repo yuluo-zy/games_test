@@ -1,0 +1,59 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/rasterize_terrain_stroke.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/rasterize_terrain_stroke.rs
+@@ -63,7 +63,7 @@
+     /// 经 `ComputePass::new` 进入 `ComputePipelineDesc.defines`。
+     fn pipeline_defines(&self) -> Vec<ShaderDefine> {
+         vec![
+-            perm_define("PERM_fmt", self.fmt),
++            perm_define("PERM_fmt", format!("\"{}\"", self.fmt)),
+             perm_define("PERM_ty", if self.vec4 { "float4" } else { "float" }),
+         ]
+     }
+@@ -325,7 +325,7 @@
+         assert_eq!(
+             vector.pipeline_defines(),
+             vec![
+-                perm_define("PERM_fmt", "rgba32f"),
++                perm_define("PERM_fmt", "\"rgba32f\""),
+                 perm_define("PERM_ty", "float4")
+             ]
+         );
+@@ -334,6 +334,38 @@
+             perm_define("PERM_ty", "float")
+         );
+         assert_ne!(vector.source_hash(), scalar.source_hash());
++    }
++    #[test]
++    fn original_gauss_quoted_formats_resolve_both_shipped_artifact_keys() {
++        use rhapsody::shader_pipeline::{
++            pipeline_desc::ComputePipelineDesc, shader_defines::ShaderDefines,
++        };
++        for (source, expected) in [
++            (
++                GaussBlur {
++                    fmt: "rgba32f",
++                    vec4: true,
++                },
++                "compiled-shaders/_gauss_blur.cs.hlsl_cs_main_b9dd0465835cd591.bin",
++            ),
++            (
++                GaussBlur {
++                    fmt: "r16",
++                    vec4: false,
++                },
++                "compiled-shaders/_gauss_blur.cs.hlsl_cs_main_dc5fd7e4b9bf9935.bin",
++            ),
++        ] {
++            let desc = ComputePipelineDesc {
++                source_path: "/gauss_blur.cs.hlsl".into(),
++                entry_point: "cs_main".into(),
++                defines: ShaderDefines(source.pipeline_defines()),
++            };
++            assert_eq!(
++                desc.compiled_file_path(),
++                std::path::PathBuf::from(expected)
++            );
++        }
+     }
+     #[test]
+     fn point_upload_uses_xz_and_retains_original_even_allocation() {

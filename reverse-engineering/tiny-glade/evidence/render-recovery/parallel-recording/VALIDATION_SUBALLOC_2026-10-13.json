@@ -1,0 +1,309 @@
+{
+  "date": "2026-10-13",
+  "scope": "显存子分配(gpu-allocator 公开 crate 接 AllocationBackend) + 屏障计数器",
+  "toolchain": "rustc 1.96.0 / clippy 0.1.96",
+  "dependency": {
+    "added": "gpu-allocator =0.27.0 (default-features=false, features=[vulkan])",
+    "why_not_0.26.0": "原作锁的 0.26.0 是本地分叉(改到 ash 0.38，另依赖 arc-swap/egui/puffin)；公开 0.26.0 依赖 ash <=0.37，与本工程 ash 0.38 类型不兼容；0.27.0 是最接近且兼容的公开版本",
+    "cargo_lock": "仅新增条目；传递依赖 log/thiserror 钉回原锁版本；与原锁版本不同的只有 gpu-allocator 0.27.0"
+  },
+  "verification": {
+    "cargo_test_locked": {
+      "dedicated_default": "127 passed, 0 failed",
+      "suballocated(RHAPSODY_ALLOCATION=sub)": "127 passed, 0 failed",
+      "without_vulkan": "127 passed, 0 failed"
+    },
+    "clippy": "passed",
+    "gpu_examples_on_lavapipe": {
+      "dedicated": "12/12 passed",
+      "suballocated": "12/12 passed"
+    },
+    "repeat_runs": "子分配模式下 suballoc/parallel_gpu/pipeline_cache/graveyard 各 30 轮，0 失败",
+    "mutation_check": "缓冲绑定忽略偏移(一律绑定到 0)：初版只被 1 个测试抓到(宿主读写不经绑定偏移，测不到)；补充 GPU 拷贝测试后被 2 个测试抓到",
+    "perf_gate": "cargo bench --bench perf -- --check 连续通过"
+  },
+  "measured": {
+    "512_buffers": {
+      "dedicated": {
+        "memory_blocks": 512,
+        "ns_per_buffer": 4433
+      },
+      "suballocated": {
+        "memory_blocks": 1,
+        "ns_per_buffer": 751
+      }
+    },
+    "frame_loop_barriers_per_frame": {
+      "commands": 1,
+      "transitions": 1,
+      "note": "1 个或 8 个 pass 相同：8 个 pass 访问同一缓冲同一类型，没有可合并的屏障"
+    },
+    "build_size": "target/debug 9.4G -> 1.2G (profile.dev: line-tables-only, 依赖无调试信息)"
+  },
+  "caveats": [
+    "默认仍为专用模式：尚无真显卡验证",
+    "非一致性内存的刷新/失效路径从未被执行(lavapipe 只有一种一致性内存类型 0xf)；只验证了范围的对齐前提",
+    "登记表的内存类型/堆序号由属性反查，是近似(gpu-allocator 不暴露)",
+    "公开 0.27.0 不是原作分叉，块大小策略与统计口径可能不同",
+    "lavapipe 为软件 Vulkan，耗时不可外推到真显卡",
+    "全局默认分配模式是进程级开关，测试用互斥锁串行化"
+  ],
+  "files": {
+    "reverse-engineering/tiny-glade/MECHANISM_DIFF.md": {
+      "status": "M",
+      "sha256": "4e9990e5e4b81ecbee506539bfe277bd34fb4d17b38ade6530f117e1d663fae9"
+    },
+    "reverse-engineering/tiny-glade/evidence/render-recovery/producer-closure/SYNTHESIS.md": {
+      "status": "M",
+      "sha256": "6b26e3fd4884a02841f6d5c79f14241f571d786b32f0af426a3488a62a876b6e"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/.gitignore": {
+      "status": "M",
+      "sha256": "5e1f8d4f89e22828c22ff923a0e368eadfa3076fb708026e5be1a8306fa683f8"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/Cargo.lock": {
+      "status": "M",
+      "sha256": "8a6644332e77ac19bc49b7dd71c9548df1e8f4382139ad9af005f6660c1d647f"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/Cargo.toml": {
+      "status": "M",
+      "sha256": "367a53ae5b158b8dfe18782c6ce5c5db61b47c9729f0b8b6b402d32e4f876c35"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/MODULE_STATUS.md": {
+      "status": "M",
+      "sha256": "22fb682315a13b5f806d7a364ea1effd98ea2b0acb58b5d756c6575ecec444ac"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/README.md": {
+      "status": "M",
+      "sha256": "c29715121897d340eec6a02a37d38892658f2cb98b7ce8ea64ddb50439a541c9"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/examples/pass_bindings_gpu.rs": {
+      "status": "M",
+      "sha256": "69fd39ec10d46a391fc2ca189269dbdde824721fa71dcf3344ed4ec5552ab522"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/examples/pipeline_probe.rs": {
+      "status": "M",
+      "sha256": "c58f32a7314ea74b3546c5efbeb08fedb9892f5fed2607ace8a94907a5b700b4"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/examples/shader_production_gpu.rs": {
+      "status": "M",
+      "sha256": "b337e6e609b32ccf77d22fa6cd6e9c49b47bf711900f8b435fbd9a9879b4b93e"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/allocator.rs": {
+      "status": "M",
+      "sha256": "df11c0ed6f7690b9efc2969bbfb6a22c49b611e190b0787852ef8d011cc39bea"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/barrier.rs": {
+      "status": "M",
+      "sha256": "4f05994e5721430af6909c444e1f62271ed882d2be6492694ff7fadff19858cd"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/buffer.rs": {
+      "status": "M",
+      "sha256": "29d5f0d31485224766183741d6b6e2dc8419f73f6b8c148ae1fe9da04f408f8e"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/command_buffer.rs": {
+      "status": "M",
+      "sha256": "0f81be380f5d85908c432dee94086c2cd931de92c3bb75fc39c6aa1dfcca10ae"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/descriptor_set.rs": {
+      "status": "M",
+      "sha256": "ace2af125945ad6856a67be7ab65feded70bb4daf3aea246ea5a8876c7351b88"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/device.rs": {
+      "status": "M",
+      "sha256": "c3a5d67fe79c12ea634d42a4e21fe0f473d3bb8a217b84acddcae3cc48876ef0"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/framebuffer.rs": {
+      "status": "M",
+      "sha256": "50fe8c1bdddde859c2fec5353ce8acadac2b1c98f9d83c90dbc908be95019a47"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/init.rs": {
+      "status": "M",
+      "sha256": "beee709be1eb7f223b9f4c2293a66df5b382e29ee67420c40345dab8e42ed4ee"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/managed/handle.rs": {
+      "status": "M",
+      "sha256": "6a86ec63c61934abf372d4c32888a4fb39b24219439cf47f54f2808498ed542e"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/managed/lifecycle.rs": {
+      "status": "M",
+      "sha256": "e0d256c825ab96e9e687eee8b7c2ef2c5f933d52d6bd76f1175db5e8d5822438"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/managed/resources.rs": {
+      "status": "M",
+      "sha256": "0b33c13cfd793fc00a0a23059432c9bd08674fa5b6168395cc9450eb9933823a"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/managed/tracking.rs": {
+      "status": "M",
+      "sha256": "b63099bbe70fb31d2ab5c80e673e677ad8f5485b814fd06cd3a8a5f541ca1bec"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/mod.rs": {
+      "status": "M",
+      "sha256": "ff9e581406a70187192836f03876897f858f6b74622bea55bac7fd17861bc137"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/profiler.rs": {
+      "status": "M",
+      "sha256": "24cc45d0b5512127641769f01f81aa0082862b424721182454a262873fd4c6d1"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/ray_tracing.rs": {
+      "status": "D",
+      "sha256": null
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/render_pass.rs": {
+      "status": "M",
+      "sha256": "19e6ebbb228ba43b0614afa39c907afb959e39f67415be055292d24671fde518"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/sampler.rs": {
+      "status": "M",
+      "sha256": "bfe873eda191b66fdb8c86806888f0b11854139a3b5412e82511c698321ddb77"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/semaphore.rs": {
+      "status": "M",
+      "sha256": "f9fbd09b5586f2bccf6102191a569b2131c3f83de791f73ea5ced2dd3628f81a"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/shader.rs": {
+      "status": "M",
+      "sha256": "3e40bd7b0cfcd4b2dd9a5aab83ca15b6a1302fdbaabc86a14ccb39959c9a25b1"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/swapchain.rs": {
+      "status": "M",
+      "sha256": "e935d7d2b73b03bd4136d0f18cc948e2a9512df4bd2465bc598857c09916a663"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/texture.rs": {
+      "status": "M",
+      "sha256": "060e4baf93b86cb385942c4d48a5ab6b69f5d66bafd06bd124e2caceae4a4aca"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/rg/executor.rs": {
+      "status": "M",
+      "sha256": "81a1bf89bcc1ab9661e387e94258fc207676bd84580deb92bab24a62d0765c8f"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/rg/graph.rs": {
+      "status": "M",
+      "sha256": "86fd1869e2aee1057d39f51d078723ff166353a27cc8881e1328a9351856f74a"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/rg/mod.rs": {
+      "status": "M",
+      "sha256": "d2bd59fe5eb4848c60fa180703bf6972024a9421d3badf395600b48de6ae1451"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/rg/pass_builder.rs": {
+      "status": "M",
+      "sha256": "586d6d00c375e9526651aba0bbe035113dc526a544a5abcc556aebb92b33d709"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/rg/recorder.rs": {
+      "status": "M",
+      "sha256": "3325be3a63aae6a5c6bb55e4afb433c200d01053708a82498f8c3eccf637ec35"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/rg/vulkan.rs": {
+      "status": "M",
+      "sha256": "5f0c4f1e25cf36a27d12b1067f4824dda8c14fd8f0fbad36bb2819c97126e559"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/tests/allocator.rs": {
+      "status": "M",
+      "sha256": "1bb02db001a7384c481cebc3071eccf4beee691bd4a3447758598362119a4abd"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/tests/device_policy.rs": {
+      "status": "M",
+      "sha256": "197677b221635d581561f03845d4526190ffd7970758129ae0139e5625205f42"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/tests/managed.rs": {
+      "status": "M",
+      "sha256": "e2822adf9b95f14e73b3d907ba87f85e54d2fc63641706bedae740693e36e7d2"
+    },
+    "reverse-engineering/tiny-glade/evidence/render-recovery/p4-sync-setup-cb/FINDINGS.md": {
+      "status": "??",
+      "sha256": "493806783fb6cb9b2a9d8c954c3a5e2158d0ca54ee623863ad63436873c939d9"
+    },
+    "reverse-engineering/tiny-glade/evidence/render-recovery/p4-sync-setup-cb/VALIDATION_2026-10-13.json": {
+      "status": "??",
+      "sha256": "ef2dcb51dc1fea7b50880a08e79917c5ea10d65aadb78e04c412c04dc02b643d"
+    },
+    "reverse-engineering/tiny-glade/evidence/render-recovery/parallel-recording/FINDINGS.md": {
+      "status": "??",
+      "sha256": "13f7dd959f80a59949268677fc95436542ba6b74fabac9c18bda2a1ae38ada94"
+    },
+    "reverse-engineering/tiny-glade/evidence/render-recovery/parallel-recording/VALIDATION_2026-10-13.json": {
+      "status": "??",
+      "sha256": "60e044776bfbde6b4fedee30be7a0a93b933d92b7c6aad7649841e6e9fd661fc"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/ARCHITECTURE.md": {
+      "status": "??",
+      "sha256": "2ff13a35b1894e4a7980f907277210416112224ed419c2acb380c8e2c13ba834"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/PERFORMANCE_ANALYSIS.md": {
+      "status": "??",
+      "sha256": "ad247f00f5e4afe4cb0d4e6ad8096184da8aefc5c75c475d61bf1226ad9ce193"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/benches/perf.rs": {
+      "status": "??",
+      "sha256": "ded881690ab2340556bd9f394410375ade4143a27719f27eef1fbef31fa464fa"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/perf/README.md": {
+      "status": "??",
+      "sha256": "7eba6134789b20c80a79940612c3d663afd4222ed144004584572fc592409df0"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/perf/baseline.json": {
+      "status": "??",
+      "sha256": "f00d1b8f030ba63ce59190b986970510eb6e5c691764743e7c4cae2ccf397229"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/perf/baseline_before_optimization.json": {
+      "status": "??",
+      "sha256": "7703313055b591668855b653b552e36337cba950127ea378f5cd80d83206bc5f"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/graveyard.rs": {
+      "status": "??",
+      "sha256": "f9aba8a9768748feac00cd4bf983c8c6ae25aedd08e967c979da58d7a66b7a83"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/setup.rs": {
+      "status": "??",
+      "sha256": "6042551a8002b8a42eb6ca02b09cb03710e47580da7ddd3cda2ef1fbb73a75e0"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/raw/suballoc.rs": {
+      "status": "??",
+      "sha256": "925986c4a3f53ea5df8b1192e934f3195226135dc9498d105b5f2454d8ff0f33"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/rg/parallel.rs": {
+      "status": "??",
+      "sha256": "924632134c56f59f43c9919978964e732dc340236c63d8561f849174ae7f9838"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/tests/buffer_desc.rs": {
+      "status": "??",
+      "sha256": "b0ad1a67fdc27b16c7b1be92f19bc7bc3ebf02c9436ec6cd42666cf05466431a"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/tests/graveyard.rs": {
+      "status": "??",
+      "sha256": "4a5cc31da2b7fa22c6e7ed2cf564e1d37b1732bbc94d22b3aba69973dcde2737"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/tests/parallel_chunks.rs": {
+      "status": "??",
+      "sha256": "8a15bd55a8035ba69f26425285463c616602474342f9c98ad4d157b4b4423e08"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/tests/parallel_equivalence.rs": {
+      "status": "??",
+      "sha256": "88c158e8ef5a322e52d8b5781699d55d1e1c3bbc1cbee6939237b459f115cdd1"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/tests/parallel_gpu.rs": {
+      "status": "??",
+      "sha256": "0a38f7f5ada928f23897b459fdd715ef5786ff91ca179aeffe39dd7893577d89"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/tests/perf_guards.rs": {
+      "status": "??",
+      "sha256": "17b3d548d98274981ce331ee004520a5bd0b4db3f635f0e15dc05d3a856dc01c"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/tests/pipeline_cache.rs": {
+      "status": "??",
+      "sha256": "c4d04b084b01cd21d6c2d6d8e10a06e939c9616b4b36386d4e979c77d293413a"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/tests/setup_upload.rs": {
+      "status": "??",
+      "sha256": "a7aec796bafc025369f42136bd38191c46c496d66fdd498337e868e32f4092ca"
+    },
+    "reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/tests/suballoc.rs": {
+      "status": "??",
+      "sha256": "8e3c14c9beea7f1ea7d8bb91b8d31f9a93409bbd414a62cfe3ee167dfc9cd556"
+    },
+    "reverse-engineering/tiny-glade/scripts/render-recovery/pe_readonly.py": {
+      "status": "??",
+      "sha256": "914f3d509995e4a229d0999521b8efd0c9529b6aa1e3e920f9479f07234adba8"
+    }
+  }
+}

@@ -1,0 +1,51 @@
+// recv @ 0x140a57100
+
+void __cdecl country_core::resources::audio_resources::AudioSamplesLoadedPromise::recv(void)
+
+{
+  longlong lVar1;
+  char extraout_AL;
+  char extraout_AL_00;
+  char extraout_AL_01;
+  char cVar2;
+  longlong *in_RCX;
+  
+  lVar1 = *in_RCX;
+  *in_RCX = 0;
+  if (lVar1 != 1) {
+    if (lVar1 != 0) {
+      core::ptr::
+      drop_in_place<std::sync::poison::mutex::Mutex<std::sync::mpsc::Receiver<country_core::resources::audio_resources::AudioSamplesLoaded>_>_>
+                ();
+    }
+    return;
+  }
+  if (*(char *)((longlong)in_RCX + 9) == '\0') {
+    if (in_RCX[2] == 0) {
+      std::sync::mpmc::array::Channel::
+      recv<country_core::resources::audio_resources::AudioSamplesLoaded>();
+      cVar2 = extraout_AL_00;
+    }
+    else if (in_RCX[2] == 1) {
+      std::sync::mpmc::list::Channel::
+      recv<country_core::resources::audio_resources::AudioSamplesLoaded>();
+      cVar2 = extraout_AL;
+    }
+    else {
+      std::sync::mpmc::zero::Channel::
+      recv<country_core::resources::audio_resources::AudioSamplesLoaded>();
+      cVar2 = extraout_AL_01;
+    }
+    if (cVar2 == '\x02') {
+      core::ptr::
+      drop_in_place<std::sync::mpsc::Receiver<country_core::resources::audio_resources::AudioSamplesLoaded>_>
+                ();
+      return;
+    }
+                    // WARNING: Subroutine does not return
+    core::result::unwrap_failed();
+  }
+                    // WARNING: Subroutine does not return
+  core::result::unwrap_failed();
+}
+

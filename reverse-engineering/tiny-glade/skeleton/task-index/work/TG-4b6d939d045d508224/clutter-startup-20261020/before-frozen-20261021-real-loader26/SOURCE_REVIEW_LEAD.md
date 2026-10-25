@@ -1,0 +1,11 @@
+# loader26 + canonical box入口最终源码独审
+
+core_business_lead，2026-10-21：有界源码实现通过，可交root与已审typed四表/真实ID producer/真实caller成组整合；当前implemented_unverified，不是已编译/原运行/GPU或C等价验收。
+
+已读两最终源码diff、26分支合同、52逐key矩阵、rank/format绑定、真实现代Mesh/AssetMeshLibrary/MeshWatch/RaycastMeshData/Transform接口。作者以外的duck reviewer独立核原数值/失败顺序/rank21目标，REVIEW_DUCK_LEADCHECK.md两目录已落；water reviewer另独立核罕见12/15/17/19..21/24/25。候选两SHA实算与paired-loader-box.json一致：box452094d4d7ccf7bf5a0969d3ed5a73fe13eaebaeb97251b58850fd73668451cd，loader7eacff3ac5c9839abaa99017bb504eee6011be3e0accb406477633ea19b302d8。
+
+业务闭包包含逐JSON解析→原outline白色→watch先于真实asset发布→原26分支/rank52keys（demo34keys）真实indexed/convex/bbox/Sphere/empty四表。没有通用bbox降级、默认成功或第二registry。特殊flag_corner交互复用、terrain collision本体Lines、rank3arrow convex、chimney25 roof outline、重复读取首点闭线全部保留。bbox保required asset→box真实12三角→cuboid→再次required lookup；原box入口恢复width/height/depth/Transform，canonical mapper保算序、24/36原拓扑和短尾/越界失败，未在loader复制算法。new_indexed现代切片接口把原owned复制放在canonical依赖内层，避免外层再复制一次；合同显式此适配边界。
+
+六项loader源码测试使用真实JSON、实际CPU资产/shape、独立原矩阵及每path独有中心，覆盖full/demo、missing outline、convex失败部分发布、未索引闭线、UTF8边界与JSON门、真实normals/UV；box原测试保留并迁移mapper，新增拓扑/SRT/负零非有限等覆盖。没有Cargo；watch锁失败注入未执行，不以其证明订阅失败验收。原228JSON只读预检通过/110required路径存在只是输入可用证据，不能替代Rust启动。
+
+root安装唯一PreStartup三资源closure，捕获已有resource root与config.dev.demo，调用load_decorators(root,library,assets,watch,demo)；不是新增资源镜像。root按真实同组caller闭包编译，不单独打破production旧四表消费者。

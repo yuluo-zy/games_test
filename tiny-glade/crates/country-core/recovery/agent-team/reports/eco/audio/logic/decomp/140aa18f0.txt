@@ -1,0 +1,130 @@
+// forest_audio_init_system @ 0x140aa18f0
+
+void __cdecl country_core::systems::audio::forest_audio::forest_audio_init_system(void)
+
+{
+  undefined8 *puVar1;
+  longlong extraout_RAX;
+  byte *extraout_RAX_00;
+  longlong extraout_RAX_01;
+  undefined8 *extraout_RAX_02;
+  longlong lVar2;
+  undefined8 uVar3;
+  ulonglong uVar4;
+  longlong local_138;
+  longlong lStack_130;
+  undefined8 local_128;
+  undefined8 uStack_120;
+  undefined8 local_118;
+  undefined8 uStack_110;
+  undefined8 local_108;
+  longlong local_50;
+  
+  uVar3 = 8;
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX == 0) {
+                    // WARNING: Subroutine does not return
+    alloc::raw_vec::handle_error();
+  }
+  local_50 = 0;
+  for (uVar4 = 0; uVar4 < 0x32; uVar4 = uVar4 + 1) {
+    resources::audio_resources::AudioCore::instantiate_loop();
+    if (SBORROW8(0,local_138)) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    if (local_50 == 0x32) {
+      alloc::raw_vec::RawVec::grow_one<enum2_<iced_core::event::Event>,alloc::alloc::Global>();
+    }
+    lVar2 = local_50 * 0x38;
+    *(undefined8 *)(extraout_RAX + 0x30 + lVar2) = local_108;
+    puVar1 = (undefined8 *)(extraout_RAX + 0x20 + lVar2);
+    *puVar1 = local_118;
+    puVar1[1] = uStack_110;
+    puVar1 = (undefined8 *)(extraout_RAX + 0x10 + lVar2);
+    *puVar1 = local_128;
+    puVar1[1] = uStack_120;
+    *(longlong *)(extraout_RAX + lVar2) = local_138;
+    ((longlong *)(extraout_RAX + lVar2))[1] = lStack_130;
+    local_50 = local_50 + 1;
+    uVar3 = local_108;
+  }
+  std::hash::random::impl$0::new::KEYS::constant$0::closure$1::VAL();
+  if ((*extraout_RAX_00 & 1) == 0) {
+    std::sys::random::hashmap_random_keys();
+    extraout_RAX_00[0] = 1;
+    extraout_RAX_00[1] = 0;
+    extraout_RAX_00[2] = 0;
+    extraout_RAX_00[3] = 0;
+    extraout_RAX_00[4] = 0;
+    extraout_RAX_00[5] = 0;
+    extraout_RAX_00[6] = 0;
+    extraout_RAX_00[7] = 0;
+    *(longlong *)(extraout_RAX_00 + 8) = extraout_RAX_01;
+    *(undefined8 *)(extraout_RAX_00 + 0x10) = uVar3;
+    lVar2 = extraout_RAX_01;
+  }
+  else {
+    lVar2 = *(longlong *)(extraout_RAX_00 + 8);
+  }
+  *(longlong *)(extraout_RAX_00 + 8) = lVar2 + 1;
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX_02 != (undefined8 *)0x0) {
+    *extraout_RAX_02 = 0;
+    extraout_RAX_02[1] = 1;
+    extraout_RAX_02[2] = 2;
+    extraout_RAX_02[3] = 3;
+    extraout_RAX_02[4] = 4;
+    extraout_RAX_02[5] = 5;
+    extraout_RAX_02[6] = 6;
+    extraout_RAX_02[7] = 7;
+    extraout_RAX_02[8] = 8;
+    extraout_RAX_02[9] = 9;
+    extraout_RAX_02[10] = 10;
+    extraout_RAX_02[0xb] = 0xb;
+    extraout_RAX_02[0xc] = 0xc;
+    extraout_RAX_02[0xd] = 0xd;
+    extraout_RAX_02[0xe] = 0xe;
+    extraout_RAX_02[0xf] = 0xf;
+    extraout_RAX_02[0x10] = 0x10;
+    extraout_RAX_02[0x11] = 0x11;
+    extraout_RAX_02[0x12] = 0x12;
+    extraout_RAX_02[0x13] = 0x13;
+    extraout_RAX_02[0x14] = 0x14;
+    extraout_RAX_02[0x15] = 0x15;
+    extraout_RAX_02[0x16] = 0x16;
+    extraout_RAX_02[0x17] = 0x17;
+    extraout_RAX_02[0x18] = 0x18;
+    extraout_RAX_02[0x19] = 0x19;
+    extraout_RAX_02[0x1a] = 0x1a;
+    extraout_RAX_02[0x1b] = 0x1b;
+    extraout_RAX_02[0x1c] = 0x1c;
+    extraout_RAX_02[0x1d] = 0x1d;
+    extraout_RAX_02[0x1e] = 0x1e;
+    extraout_RAX_02[0x1f] = 0x1f;
+    extraout_RAX_02[0x20] = 0x20;
+    extraout_RAX_02[0x21] = 0x21;
+    extraout_RAX_02[0x22] = 0x22;
+    extraout_RAX_02[0x23] = 0x23;
+    extraout_RAX_02[0x24] = 0x24;
+    extraout_RAX_02[0x25] = 0x25;
+    extraout_RAX_02[0x26] = 0x26;
+    extraout_RAX_02[0x27] = 0x27;
+    extraout_RAX_02[0x28] = 0x28;
+    extraout_RAX_02[0x29] = 0x29;
+    extraout_RAX_02[0x2a] = 0x2a;
+    extraout_RAX_02[0x2b] = 0x2b;
+    extraout_RAX_02[0x2c] = 0x2c;
+    extraout_RAX_02[0x2d] = 0x2d;
+    extraout_RAX_02[0x2e] = 0x2e;
+    extraout_RAX_02[0x2f] = 0x2f;
+    extraout_RAX_02[0x30] = 0x30;
+    extraout_RAX_02[0x31] = 0x31;
+    bevy_ecs::system::commands::Commands::
+    insert_resource<country_core::systems::audio::forest_audio::ForestAudioState>();
+    return;
+  }
+                    // WARNING: Subroutine does not return
+  alloc::raw_vec::handle_error();
+}
+

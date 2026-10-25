@@ -1,0 +1,34 @@
+{
+  "reviewer": "07-independent-validation",
+  "created_utc": "2026-10-19T19:17:03.584844+00:00",
+  "verdict": "changes_required_for_lib_test_dependency_closure;integration_targets_may_be_separate_scope",
+  "manifest": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-73ca4b7e51fae48995/clutter-startup-20261020/right-f32-20261020/curve-source-harness-v1/MANIFEST.json",
+    "sha256": "a5b5e746446fbf174ece8c4b3e30b0105a269603146e46217e226d1dd82c9e1a"
+  },
+  "verification": {
+    "canonical_template_pairs_exact": 29,
+    "four_driver_artifact_hashes_match": true,
+    "actual_workspace_seed_lock_sha256": "cc65502024d35d91859a4b01dfa229cc24aac0068041f0bf6317f39b734a07d0",
+    "no_execution": "No compiler/Cargo/tests by reviewer. The template matches current admitted Curve source and has no replacements, mocks or old rlib."
+  },
+  "blocker": {
+    "kind": "actual_include_requires_omitted_real_module",
+    "chain": [
+      "template/src/curve/mod.rs:562..567 declares cfg(test) native_oracle and include!(CARGO_MANIFEST_DIR/tests/oracle/shared-foundation-2026-10-13/geometry-curves/native_tests.rs).",
+      "That unmodified full include at877..978 defines normal #[test] original_b_transform_look_at and directly constructs crate::components::transform::Transform {t,r,s}, invoking look_at. There is no cfg disabling it.",
+      "Synthetic lib6026a4ed exports exactly seven module families, omitting components. Adding full include source to manifest does not satisfy its required Rust item."
+    ],
+    "implication": "--lib compilation has an identified unresolved crate::components item; the proposed seven-module cfg(test) closure cannot be called complete or admitted as runnable unchanged. Even filtering test names does not remove typechecking of this included test."
+  },
+  "allowed_next_steps": [
+    "Preserve frozenV1 and any actual diagnostics. Locate the genuine current source definition/owner needed by that original include and include its complete dependency closure in a separately frozen driver version if available; no hand-written Transform compatibility facade or copied look_at body.",
+    "Alternatively keep --lib as explicitly blocked and run only separately compiled integration test targets if their non-test library closure is complete. Those targets do not compile library cfg(test) and do not prove source-module four regressions or260 include passed. Freeze that scope honestly.",
+    "Do not delete/ignore/truncate the original combined oracle or silently replace its component type to make this driver green. If canonical source itself has stale test-only item paths, repair it only as separately authorized and reviewed production/test source work, not harness-local imitation.",
+    "Fresh runtime copy only; actual offline metadata/final lock subset identities/features must be compared before locked test. Preserve build errors, source hashes and each binary immediately. No template mutation."
+  ],
+  "limits": [
+    "This is a test-driver closure finding, not a defect verdict on admitted right production algorithm b0884dc8.",
+    "No whole utils/core/App/native execution/GPU/WSI/performance acceptance. Root alone compiles/runs."
+  ]
+}

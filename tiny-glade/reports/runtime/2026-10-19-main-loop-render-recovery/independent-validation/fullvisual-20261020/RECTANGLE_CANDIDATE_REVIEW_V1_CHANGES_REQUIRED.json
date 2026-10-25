@@ -1,0 +1,20 @@
+{
+  "reviewer": "07",
+  "verdict": "changes_required",
+  "manifest": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6e76d82e8a953a9a45/boot-leaf-20261018/location-rectangle-20261020/candidate-v1.json",
+    "sha256": "b20d456088a4acabf8cc3eca5eb7c0b5c8f2de3ad3237de2c2e1b1a40ff7a37f"
+  },
+  "candidate_sha256": "cde08250a87fb758e6c63e7b75b87c0702f63a4c52e34af5b59cb9663d2f12a6",
+  "patch_sha256": "10c8dfd32b7f44c54656d1edf55437d2adf007520961673e3daa517cb06e1d95",
+  "frozen_files_verified": 7,
+  "finding": {
+    "priority": "P1",
+    "file": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6e76d82e8a953a9a45/boot-leaf-20261018/location-rectangle-20261020/candidate/rectangle.rs",
+    "detail": "Four #[test] functions inserted as associated functions inside impl Rectangle2d, before existing signed_distance_to_closest_edge. Rust test harness rejects associated #[test] functions. rustfmt parser-only success does not typecheck this attribute placement.",
+    "required_change": "Keep v1 immutable; move four tests into a real cfg(test) module, preserve originalmethoddoc attachment, freeze independent v2. Root must not integrate v1."
+  },
+  "other_source_scope": "Production pair/projection/newU/perimeter method source inspected against scoped design eca484. Finite1000/defaultpair/strict tie/closingU1/SSE secondoperand policies and repeat area guard through as_points2 retained; existing closest_edge_id untouched. No generalclosestpoint NaN guard. Final source verdict waits v2 structure delta.",
+  "verification": "Static finding only, no Cargo/rustc execution by reviewer. Author acknowledged splice error and is preparing separate corrected v2.",
+  "process_requirement": "Check test module context/attribute placement and actual candidate crate typecheck separately from syntax parsing; parse success cannot be a source-test compilation claim."
+}

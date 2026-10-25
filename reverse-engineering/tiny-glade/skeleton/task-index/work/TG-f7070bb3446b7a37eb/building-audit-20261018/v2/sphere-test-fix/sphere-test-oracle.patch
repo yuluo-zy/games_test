@@ -1,0 +1,54 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/collision/world.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/collision/world.rs
+@@ -3042,9 +3042,33 @@
+             stop_at_penetration: false,
+             compute_impact_geometry_on_penetration: false,
+         };
++        // Cuboid/ball casts use the pinned dependency's iterative GJK solver.
++        // Compare forwarding/slot selection to its actual result, not an assumed
++        // analytic TOI tolerance that this adapter does not guarantee.
++        let dependency_toi = |slot_index: usize, options: ShapeCastOptions| {
++            let slot = &world.slots[slot_index];
++            slot.pipeline
++                .cast_shape(
++                    &slot.bodies,
++                    &slot.colliders,
++                    &Isometry::identity(),
++                    &Vector::x(),
++                    &Ball::new(0.5),
++                    options,
++                    QueryFilter::default(),
++                )
++                .expect("isolated dependency cast should hit")
++                .1
++                .time_of_impact
++        };
++        let near_toi = dependency_toi(0, options);
++        assert!(dependency_toi(1, options) > near_toi);
+         let hit = world.spherecast_with_options(glam::Vec3::ZERO, glam::Vec3::X, 0.5, options, 3);
+         assert!(hit.is_hit());
+-        assert!((hit.toi - 1.0).abs() < 1e-4);
++        assert_eq!(
++            hit.toi, near_toi,
++            "nearest dependency TOI was not preserved"
++        );
+         options.max_time_of_impact = 0.25;
+         let miss = world.spherecast_with_options(glam::Vec3::ZERO, glam::Vec3::X, 0.5, options, 3);
+         assert!(miss.is_miss());
+@@ -3054,7 +3078,15 @@
+         let expanded =
+             world.spherecast_with_options(glam::Vec3::ZERO, glam::Vec3::X, 0.5, options, 3);
+         assert!(expanded.is_hit());
+-        assert!((expanded.toi - 0.5).abs() < 1e-4);
++        let expanded_toi = dependency_toi(0, options);
++        assert!(
++            expanded_toi < near_toi,
++            "target distance should advance contact"
++        );
++        assert_eq!(
++            expanded.toi, expanded_toi,
++            "target_distance was not forwarded"
++        );
+     }
+ 
+     #[test]

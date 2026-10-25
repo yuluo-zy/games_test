@@ -1,0 +1,298 @@
+{
+  "module": "system-water (S14 水域 CPU 状态)",
+  "date": "2026-10-12",
+  "method": "llvm-pdbutil 22.1.2 dump -files/-modules/-symbols 解析；B=主基线，A=首发对照",
+  "source_files": [
+    {
+      "path": "crates/systems/water/src/lib.rs",
+      "b_sha8": "E91C6DAD",
+      "a_sha8": "7D1CE992"
+    },
+    {
+      "path": "crates/systems/water/src/draw_water.rs",
+      "b_sha8": "0707386A",
+      "a_sha8": "FB1740F8"
+    },
+    {
+      "path": "crates/systems/water/src/record_water_history.rs",
+      "b_sha8": "EEDBFABA",
+      "a_sha8": "BF23BBFB"
+    },
+    {
+      "path": "crates/systems/water/src/water_audio_grid.rs",
+      "b_sha8": "7910790C",
+      "a_sha8": "34230518"
+    },
+    {
+      "path": "crates/country-core/src/startup/startup_water.rs",
+      "b_sha8": "F1C77ECC",
+      "a_sha8": "CABB6D78"
+    },
+    {
+      "path": "crates/country-core/src/systems/history/replay_water.rs",
+      "b_sha8": "ECFF0C43",
+      "a_sha8": "A5F85813"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/water_audio.rs",
+      "b_sha8": "195802C3",
+      "a_sha8": "C4D008EB"
+    },
+    {
+      "path": "crates/country-core/src/systems/audio/water_ambience_audio.rs",
+      "b_sha8": "24F86DBD",
+      "a_sha8": "3D012C15"
+    },
+    {
+      "path": "crates/country-core/src/systems/render_loop/compute_passes/compute_water.rs",
+      "b_sha8": "86078D53",
+      "a_sha8": "EDE30FEF"
+    },
+    {
+      "path": "crates/country-core/src/systems/render_loop/draw_passes/draw_shaders/water_planes_draw.rs",
+      "b_sha8": "C1171340",
+      "a_sha8": "22B6A620"
+    },
+    {
+      "path": "crates/country-core/src/resources/water_mask.rs",
+      "b_sha8": "CD3F71BF",
+      "a_sha8": "34908CE6"
+    },
+    {
+      "path": "crates/country-core/src/resources/water_exclude_clutter_mask.rs",
+      "b_sha8": "EFCF1C90",
+      "a_sha8": "7EF5B67A"
+    },
+    {
+      "path": "crates/systems/clutter/src/autoclutter/add_lantern_water_setdresssing.rs",
+      "b_sha8": "29C89882",
+      "a_sha8": "231AA48A"
+    }
+  ],
+  "modules": {
+    "b_system_water_rcgu": [
+      302,
+      1010,
+      1011,
+      2428,
+      2432,
+      2433,
+      2434,
+      2436,
+      2440,
+      3638,
+      3641,
+      3644,
+      3648,
+      3650,
+      4679,
+      4681
+    ],
+    "b_country_core_water_modules": [
+      476,
+      484,
+      500,
+      532,
+      535,
+      536,
+      538,
+      569,
+      1596,
+      1602,
+      1611
+    ],
+    "a_system_water_rcgu": [
+      289,
+      2085,
+      3369,
+      846,
+      2088,
+      2089,
+      848,
+      2091
+    ],
+    "a_country_core_water_modules": [
+      405,
+      418,
+      421,
+      424,
+      448,
+      462,
+      496,
+      1325,
+      1339,
+      1431
+    ]
+  },
+  "functions_b": {
+    "cpu_state": [
+      {
+        "name": "system_water::impl$0::build",
+        "va": "0x1406501d0",
+        "size": 839
+      },
+      {
+        "name": "country_core::startup::startup_water::startup_water",
+        "va": "0x1408f1a20",
+        "size": 3632
+      },
+      {
+        "name": "country_core::systems::render_loop::compute_passes::compute_water::water_rasterize_from_cpu",
+        "va": "0x140a12680",
+        "size": 4840
+      },
+      {
+        "name": "country_core::resources::world_raster::impl$2::rasterize_stroke<512>",
+        "va": "0x142261d10",
+        "size": 2407
+      },
+      {
+        "name": "country_core::resources::world_raster::impl$2::copy_to_staging<512>",
+        "va": "0x142261760",
+        "size": 1450
+      },
+      {
+        "name": "country_core::resources::world_raster::impl$2::copy_composite_to_scratch<512>",
+        "va": "0x142262680",
+        "size": 989
+      },
+      {
+        "name": "country_core::resources::world_raster::impl$2::commit_scratch_to_composite<512>",
+        "va": "0x142262a60",
+        "size": 989
+      },
+      {
+        "name": "country_core::systems::world_raster::draw_raster<WaterRasterStagingSsbo>",
+        "va": "0x142260ae0",
+        "size": 2215
+      },
+      {
+        "name": "country_core::resources::brush_sizes::BrushSizes::set_water",
+        "va": "0x1409f18a0",
+        "size": 30
+      },
+      {
+        "name": "country_core::resources::brush_sizes::BrushSizes::reset_water",
+        "va": "0x1409f1890",
+        "size": 8
+      },
+      {
+        "name": "country_core::resources::history::EditType::Water::constructor$0",
+        "va": "0x1416bb7f0",
+        "size": 15
+      },
+      {
+        "name": "utils::float_grid::impl$0::bilinear_sample_at_world_xz<RasterBufferRef>",
+        "va": "0x140a14df0",
+        "size": 835
+      }
+    ],
+    "history_replay": [
+      {
+        "name": "country_core::systems::history::history_process::generate_replay_cmds_from_edit<replay_water>",
+        "va": "0x141444c70",
+        "size": 10371
+      },
+      {
+        "name": "country_core::systems::history::replay_raster::replay_raster<WaterRasterStaging>",
+        "va": "0x1409f4650",
+        "size": 10654
+      },
+      {
+        "name": "country_core::systems::history::replay_water::replay_water::closure$2",
+        "va": "0x140a01560",
+        "size": 191
+      }
+    ],
+    "gpu_draw": [
+      {
+        "name": "system_water::draw_water::draw_water",
+        "va": "0x141ba9130",
+        "size": 1487
+      },
+      {
+        "name": "country_core::systems::render_loop::draw_passes::draw_shaders::water_planes_draw::water_planes_draw",
+        "va": "0x1409d9bc0",
+        "size": 2487
+      },
+      {
+        "name": "country_core::systems::render_loop::draw_passes::draw_shaders::water_planes_draw::lilypad_draw",
+        "va": "0x1409da580",
+        "size": 474
+      },
+      {
+        "name": "country_core::systems::render_loop::draw_passes::draw_shaders::water_planes_draw::reed_draw",
+        "va": "0x1409da940",
+        "size": 344
+      }
+    ],
+    "audio": [
+      {
+        "name": "system_water::water_audio_grid::update_water_audio_grid",
+        "va": "0x141baefe0",
+        "size": 2477
+      },
+      {
+        "name": "country_core::systems::audio::water_audio::water_audio_system",
+        "va": "0x140873630",
+        "size": 1966
+      },
+      {
+        "name": "country_core::systems::audio::water_ambience_audio::water_ambience_audio_system",
+        "va": "0x1409ecea0",
+        "size": 2494
+      }
+    ],
+    "compute_gpu": [
+      {
+        "name": "country_core::systems::render_loop::compute_passes::compute_water::water_spawn_vegetation",
+        "va": "0x140a13970",
+        "size": 3246
+      }
+    ]
+  },
+  "functions_a": {
+    "system_water_build": {
+      "name": "system_water::impl$0::build",
+      "va": "0x14040e080",
+      "size": 1275
+    },
+    "draw_water": {
+      "name": "system_water::draw_water::draw_water",
+      "va": "0x141409ac0",
+      "size": 1311
+    },
+    "update_water_audio_grid": {
+      "name": "system_water::water_audio_grid::update_water_audio_grid",
+      "va": "0x14140ea20",
+      "size": 1336
+    },
+    "startup_water": {
+      "name": "country_core::startup::startup_water::startup_water",
+      "va": "0x140604b80",
+      "size": 4371
+    },
+    "water_rasterize_from_cpu": {
+      "name": "country_core::systems::render_loop::compute_passes::compute_water::water_rasterize_from_cpu",
+      "va": "0x140605ca0",
+      "size": 3704
+    },
+    "water_spawn_vegetation": {
+      "name": "country_core::systems::render_loop::compute_passes::compute_water::water_spawn_vegetation",
+      "va": "0x140606b20",
+      "size": 3042
+    },
+    "water_planes_draw": {
+      "name": "country_core::systems::render_loop::draw_passes::draw_shaders::water_planes_draw::water_planes_draw",
+      "va": "0x14063bd60",
+      "size": 1775
+    }
+  },
+  "notes": [
+    "record_water_history 与 replay_water 主逻辑被内联进 bevy FunctionSystem/RasterHistoryRecorder 包装，无独立顶层 S_GPROC32；类型 RecordWaterEditEvent/WaterEraseEvent 由 RawVec::grow_one 泛型实例证实",
+    "world_raster::impl$2::*<512> 为 WaterRasterStaging 专用实例，是水栅格 CPU 链（rasterize_stroke→copy_to_staging→composite）",
+    "B/A 同源文件 SHA 不同（版本演进），地址不通用；函数角色对照有效，机器码差分需按版本重取",
+    "CPU 状态优先入口：startup_water、water_rasterize_from_cpu、world_raster<Water> 链、replay_raster<Water>；GPU(draw/planes/vegetation)与音频后置"
+  ],
+  "address_note": "VA 按 dump_pdb_functions.py 修正(off 十进制+0x140001000)。B 侧 5 个缩写名函数(rasterize_stroke/draw_raster/bilinear_sample_at_world_xz/generate_replay_cmds_from_edit/replay_raster)按唯一 code_size 匹配到完整泛型符号修正"
+}

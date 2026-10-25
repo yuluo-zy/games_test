@@ -1,0 +1,62 @@
+Source: /Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/schedule/executor/multi_threaded.rs
+SHA256: b5291173b047f4b997b986add2dd96991d77b92168c88dc927b12488c59128c8
+
+469:     fn can_run(
+470:         &mut self,
+471:         system_index: usize,
+472:         system: &mut ScheduleSystem,
+473:         conditions: &mut Conditions,
+474:         world: UnsafeWorldCell,
+475:     ) -> bool {
+476:         let system_meta = &self.system_task_metadata[system_index];
+477:         if system_meta.is_exclusive && self.num_running_systems > 0 {
+478:             return false;
+479:         }
+480: 
+481:         if !system_meta.is_send && self.local_thread_running {
+482:             return false;
+483:         }
+484: 
+485:         // TODO: an earlier out if world's archetypes did not change
+486:         for set_idx in conditions.sets_with_conditions_of_systems[system_index]
+487:             .difference(&self.evaluated_sets)
+488:         {
+489:             for condition in &mut conditions.set_conditions[set_idx] {
+490:                 condition.update_archetype_component_access(world);
+491:                 if !condition
+492:                     .archetype_component_access()
+493:                     .is_compatible(&self.active_access)
+494:                 {
+495:                     return false;
+496:                 }
+497:             }
+498:         }
+499: 
+500:         for condition in &mut conditions.system_conditions[system_index] {
+501:             condition.update_archetype_component_access(world);
+502:             if !condition
+503:                 .archetype_component_access()
+504:                 .is_compatible(&self.active_access)
+505:             {
+506:                 return false;
+507:             }
+508:         }
+509: 
+510:         if !self.skipped_systems.contains(system_index) {
+511:             system.update_archetype_component_access(world);
+512:             if !system
+513:                 .archetype_component_access()
+514:                 .is_compatible(&self.active_access)
+515:             {
+516:                 return false;
+517:             }
+518: 
+519:             self.system_task_metadata[system_index]
+520:                 .archetype_component_access
+521:                 .clone_from(system.archetype_component_access());
+522:         }
+523: 
+524:         true
+525:     }
+526: 
+

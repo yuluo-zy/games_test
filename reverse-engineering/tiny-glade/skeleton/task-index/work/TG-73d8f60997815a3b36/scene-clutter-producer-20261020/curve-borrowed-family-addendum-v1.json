@@ -1,0 +1,84 @@
+{
+  "status": "design_addendum_no_source_change",
+  "parent_manifest": "fc474fc0b9ca4d3de12918716eb7b08118d5e98516490000902f895ec0ed8d2b",
+  "evidence": [
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-73d8f60997815a3b36/scene-clutter-producer-20261020/curve-borrowed-family-pack-v1/curve-nearest-coordinate-vec3.json",
+      "sha256": "8dfc512380424c595f30d5c37b127b505972c4c9a5a93d7b13ebdc4bc7ed0f35",
+      "length": 595,
+      "full_span_sha256": "d8b46dd37f7100f13e8979f4fc9370ddb4f5f72f1d4127de514de71a943b7270",
+      "all_instruction_bytes_match_direct_pe": true
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-73d8f60997815a3b36/scene-clutter-producer-20261020/curve-borrowed-family-pack-v1/curve-nearest-u-caller-vec3.json",
+      "sha256": "9ccdbd3efa6e900504e2556ef9d356ceb92aef38a134a0553ee50136c986b4ce",
+      "length": 195,
+      "full_span_sha256": "29c7ec39077667ddf564be6f7cf6df6c978db927f66498bdd2f4f3062208132e",
+      "all_instruction_bytes_match_direct_pe": true
+    }
+  ],
+  "procedures": [
+    {
+      "class": "procedure",
+      "code_size": 195,
+      "debug_end": 0,
+      "debug_start": 0,
+      "end": 18412,
+      "event": "symbol",
+      "flags": 128,
+      "kind": 4368,
+      "module": 1506,
+      "name": "utils::curve::Curve::get_approx_u_from_pos<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>",
+      "next": 0,
+      "parent": 0,
+      "record_offset": 17732,
+      "section": 1,
+      "section_offset": 19304720,
+      "type_index": 4097,
+      "type_namespace": "TPI",
+      "rva": 19308816,
+      "procedure_id": "1506:17732",
+      "source_files": [
+        "crates/utils/src/curve/mod.rs"
+      ]
+    },
+    {
+      "class": "procedure",
+      "code_size": 595,
+      "debug_end": 0,
+      "debug_start": 0,
+      "end": 22116,
+      "event": "symbol",
+      "flags": 128,
+      "kind": 4368,
+      "module": 1506,
+      "name": "utils::curve::Curve::get_approx_coord_from_pos<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemanticThresholded3D>",
+      "next": 0,
+      "parent": 0,
+      "record_offset": 20496,
+      "section": 1,
+      "section_offset": 19305552,
+      "type_index": 4097,
+      "type_namespace": "TPI",
+      "rva": 19309648,
+      "procedure_id": "1506:20496",
+      "source_files": [
+        "crates/utils/src/curve/mod.rs"
+      ]
+    }
+  ],
+  "observed_native": {
+    "vec3_point_stride": 12,
+    "point_projection": "native14126a535 loads+0 and14126a539 loads+8; XZ, not XY or full3D",
+    "nearest_math": "14126a5bc..5e3 projects with EPS floor;5ea/5f2 preserve NaN clamp;624..628 unordered distance skips;62e..638 range assertion",
+    "u_direct_call": "14126a123 directly calls14126a450",
+    "common_constants": [
+      "142925980=f32MAX",
+      "14295a0d8=1e-8",
+      "142925904=1"
+    ]
+  },
+  "contract": "The only current CurvePoint implementations are Vec2 and Vec3; existing owned methods project Vec2 XY / Vec3 XZ. These bounded native instances support the same shared projected kernel for those current callers. No equality claim for unknown future point types or arbitrary C caller bodies. All inherited cached-U/finite/point-count contracts remain as the195B Vec2 wrapper.",
+  "original_target_executed": false,
+  "tests_executed": false
+}

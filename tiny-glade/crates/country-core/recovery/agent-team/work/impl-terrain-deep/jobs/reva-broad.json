@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nlisting = currentProgram.getListing()\nmem = currentProgram.getMemory()\nstart = currentProgram.getAddressFactory().getAddress(\"140af0280\")\nend = currentProgram.getAddressFactory().getAddress(\"140af03c0\")\nout = []\naddr = start\nwhile addr.compareTo(end) < 0:\n    inst = listing.getInstructionAt(addr)\n    if inst is not None:\n        out.append(\"%s  %s\" % (inst.getAddress(), inst))\n        addr = inst.getMinAddress().add(inst.getLength())\n        continue\n    b = mem.getByte(addr)\n    out.append(\"%s  db %02x\" % (addr, b & 0xff))\n    addr = addr.add(1)\nprint(json.dumps(out))",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 180
+  }
+]

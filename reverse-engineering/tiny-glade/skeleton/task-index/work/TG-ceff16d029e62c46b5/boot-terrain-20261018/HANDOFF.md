@@ -1,0 +1,13 @@
+# Original B W5 direct typed integration candidate
+
+Scope: original read_terrain_data @14098c680 (5917B), actual RNE/PDB identity; work only. No production, Cargo or GPU run by this agent.
+
+Apply `read_terrain_data-direct.patch` to the current core module, `raster_host-direct.patch` to the current host, then append `typed-host-fragment.rs` to world_terrain.rs. The raster host patch only extracts the existing real VAO/buffer ownership logic into refresh_vao_handles; it does not manufacture a draw list. W9 scene_raster::with_draw_context is a prerequisite. Canonical TerrainEntities { floor, rocky } is now present in current rocky_terrain.rs; the startup producer candidate will supply the actual spawn results.
+
+Original resources: TerrainEntities TypeId d3bda3878f7a9d01/5dda49fe35d11774 (16B). startup_terrain @1409271b6 queues typed command1412d8b00; payload0=floor entity, payload8=rocky entity. W5 fetches each actual entity's typed Handle<Vao>, Handle<RasterShaderProgram>, Transform and optional DrawTopology, not shader-name queries. `resource-id-producer-mapping.json` records the original type mappings. The shader_name field in the host item is diagnostic; the actual shader handle is read from its entity.
+
+Native order: depth-only `Visual terrain height`, preset10, layer0, clear Some(0) (@14098c74b..75d), floor draw then rocky draw; both DrawBuilder variant1. Both native bind_common use static142ab9238 (8 zero bytes), so time=0 and flag=Off, independent of elapsed scene time. Then mapped height/visual-height, rock, water unless demo, garden compute copies; native tail consumes the actual pending atomic and ORs copy_issued, setting the actual World change tick.
+
+Host admission adaptation: the existing core plan returned passes before its caller admitted them, so consuming pending in that plan could commit despite a later real graph error. This candidate commits on_gpu_copy_issued only after the real raster path and with_env.finish both succeed. If any builder/admission fails the whole enclosing graph/frame must be cancelled, never submitted as a partial W5 result. It does not rollback or overwrite a concurrently posted atomic request. No fake fence or CPU readback completion is generated; the existing two-frame CPU readback consumer remains separate.
+
+The direct core body removes the old VisualHeightRaster no-op-capable trait and uses the existing actual draw callbacks. The metadata interfaces use canonical readback SSBOs already registered by the original72 producer. All changed tests are source candidates and unrun. Actual W5 raster/compute GPU validation remains for root.

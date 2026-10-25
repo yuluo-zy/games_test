@@ -1,0 +1,89 @@
+--- a/tiny-glade/crates/country-core/src/systems/audio/water_ambience_audio.rs
++++ b/tiny-glade/crates/country-core/src/systems/audio/water_ambience_audio.rs
+@@ -149,7 +149,12 @@
+ pub fn water_ambience_audio_init_system<S: Studio + Send + Sync + 'static>(
+     core: Res<AudioCore<S>>,
+     mut commands: Commands,
++    demo: Option<Res<DemoModeEnabled>>,
+ ) {
++    // 原1409ebf74在分配与资源插入前读取_DEV_OVERRIDE_IS_DEMO_MODE；演示模式直接返回。
++    if demo.is_some_and(|demo| demo.0) {
++        return;
++    }
+     let cells = WATER_GRID_EXTENT * WATER_GRID_EXTENT;
+     let ambience = WaterAmbienceAudio::<S::Event>::new(&core, cells);
+     let grid = WaterAudioGrid::new();
+@@ -326,3 +331,73 @@
+         ).is_err());
+     }
+ }
++
++
++#[cfg(test)]
++mod water_ambience_init_demo_regressions {
++    use super::*;
++    use crate::resources::audio_resources::{DisabledEvent, DisabledStudio};
++    use bevy_ecs::schedule::Schedule;
++
++    fn world(demo: Option<bool>) -> World {
++        let mut world = World::new();
++        world.insert_resource(AudioCore::<DisabledStudio> {
++            studio: None,
++            banks: Default::default(),
++        });
++        if let Some(enabled) = demo {
++            world.insert_resource(DemoModeEnabled(enabled));
++        }
++        world
++    }
++
++    fn run_init(world: &mut World) {
++        let mut schedule = Schedule::default();
++        schedule.add_systems(water_ambience_audio_init_system::<DisabledStudio>);
++        schedule.run(world);
++    }
++
++    #[test]
++    fn demo_startup_inserts_neither_audio_grid_nor_loop_owner() {
++        let mut world = world(Some(true));
++        run_init(&mut world);
++        assert!(!world.contains_resource::<WaterAudioGrid>());
++        assert!(!world.contains_resource::<WaterAmbienceAudio<DisabledEvent>>());
++    }
++
++    #[test]
++    fn full_startup_keeps_the_canonical_hundred_cells_and_loops() {
++        // 兼容未显式注入开关的现宿主，同时验证显式false分支。
++        for demo in [None, Some(false)] {
++            let mut world = world(demo);
++            run_init(&mut world);
++            let grid = world.resource::<WaterAudioGrid>();
++            let ambience = world.resource::<WaterAmbienceAudio<DisabledEvent>>();
++            assert_eq!(grid.cells.len(), 100);
++            assert_eq!(ambience.loops.len(), grid.cells.len());
++            assert_eq!(grid.cells[0].position, [-58.5, -58.5]);
++            assert_eq!(grid.cells[99].position, [58.5, 58.5]);
++        }
++    }
++
++    #[test]
++    fn demo_gate_does_not_replace_existing_grid_or_audio_owner() {
++        let mut world = world(Some(false));
++        run_init(&mut world);
++        let (grid_address, loops_address) = {
++            let mut grid = world.resource_mut::<WaterAudioGrid>();
++            grid.cells[7].bits = 1 << 11;
++            grid.cells[7].sums = [-3, 5];
++            let address = grid.cells.as_ptr();
++            drop(grid);
++            (address, world.resource::<WaterAmbienceAudio<DisabledEvent>>().loops.as_ptr())
++        };
++        world.resource_mut::<DemoModeEnabled>().0 = true;
++        run_init(&mut world);
++        let grid = world.resource::<WaterAudioGrid>();
++        assert_eq!(grid.cells.as_ptr(), grid_address);
++        assert_eq!(grid.cells[7].bits, 1 << 11);
++        assert_eq!(grid.cells[7].sums, [-3, 5]);
++        assert_eq!(world.resource::<WaterAmbienceAudio<DisabledEvent>>().loops.as_ptr(), loops_address);
++    }
++}

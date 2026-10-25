@@ -1,0 +1,35 @@
+{
+  "ok": true,
+  "source_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "total_cases": 221016,
+  "original_private_functions": 5,
+  "full_renderer_complete": false,
+  "candidate_sources": {
+    "reconstruction/render/resource_info.rs": "d951a9916d093c902eee52831e8844ce2b3add245eb710da2b37dc97650a7953",
+    "scripts/render-recovery/runner.rs": "315bb1a4bd0620271fc5f9a2fe3fda6298df666bb63943eb3a031955de1fa511",
+    "reconstruction/render/resource_usage.rs": "0cbe51104545c9b40b7c977ed3c38919f794299824e7b5642293fccc04f82897"
+  },
+  "renderer_cargo_lock_sha256": "1c6e3c618db02be29d8877ce9d612666108c5b176b7ed177f25ad66ef05e3aa2",
+  "original_dependency_packages_verified": 12,
+  "pdb_source_paths": 93,
+  "pdb_full_rust_signatures_restored": false,
+  "subreports": [
+    "evidence/render-recovery/resource-info-verification.json",
+    "evidence/render-leaves/verification.json",
+    "evidence/render-recovery/dependency-verification.json",
+    "evidence/render-skeleton/report.json"
+  ],
+  "validation": {
+    "locked_release_build": true,
+    "clippy_all_targets_deny_warnings": true,
+    "main_project_cli_checks": 6
+  },
+  "scope": "Five private CPU renderer leaf rules; typed/numeric API reconstruction, standard dependencies reused",
+  "limitations": [
+    "No Vulkan device, command submission, shader algorithm, full resource graph or image validation",
+    "Raw observed records are not a complete original Rust ABI",
+    "Concurrency access classifier is an externally supplied original dependency boundary; local vk-sync-fork source revision remains unknown",
+    "Panic occurrence/partial state covered; original panic messages/unwind and allocator behavior excluded",
+    "Skeleton file/metadata counts do not count as implemented source"
+  ]
+}

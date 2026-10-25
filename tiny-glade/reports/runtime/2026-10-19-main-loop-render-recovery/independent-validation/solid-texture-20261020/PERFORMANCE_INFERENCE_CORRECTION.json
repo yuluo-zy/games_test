@@ -1,0 +1,51 @@
+{
+  "at_utc": "2026-10-19T16:43:35.135294+00:00",
+  "verdict": "corrected_unsupported_performance_inference_static_acceptance_unchanged",
+  "supersedes_only": "CANDIDATE_REVIEW.json performance_scope sentence that nine mutable-key queries conservatively serialize, and equivalent old7/design prose. Those immutable reviews retain their original inputs; no measured performance claim existed.",
+  "correction": "Static component-TypeId access conflict alone does not prove actual Bevy0.16 MultiThreadedExecutor serialization: can_run checks archetype_component_access. Distinct single-marker matched archetypes may execute concurrently when that executor is active.",
+  "evidence": [
+    {
+      "path": "/Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/schedule/executor/multi_threaded.rs",
+      "sha256": "b5291173b047f4b997b986add2dd96991d77b92168c88dc927b12488c59128c8"
+    },
+    {
+      "path": "/Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/query/state.rs",
+      "sha256": "2f3189f1ec1d184e349b42ed68f710a17cc38da771e2d17976854dc534e684a8"
+    },
+    {
+      "path": "/Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/schedule/schedule.rs",
+      "sha256": "46024cf13725b027d1756a85452f42d26bb8fd67452195cc7bd82f146cd1d59e"
+    },
+    {
+      "path": "/Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/schedule/executor/mod.rs",
+      "sha256": "11358febe1c9d83c7158965e46e0b3cb83250435babc5184822379d90884d23d"
+    },
+    {
+      "path": "/Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/Cargo.toml",
+      "sha256": "0aaf75f69015095b27713f32855bafbfcdd55cd27abb02b306b9053edfa76e52"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/Cargo.toml",
+      "sha256": "8e8f6a289d5c6d08774d8348ae3cb743813763206090e0e120b60f492f4538d7"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/Cargo.toml",
+      "sha256": "a24382d23a501224d5022885f000d4fbb8f1a41ba89d331263121a3b5067eeb7"
+    }
+  ],
+  "facts": [
+    "multi_threaded.rs509..517 calls update_archetype_component_access then checks actual archetype access against active_access.",
+    "query/state.rs611..620 adds access only when new_archetype_internal matches D/F/filter.633..660 restricts matched archetypes.",
+    "schedule.rs1373 uses component_access for ambiguity/conflict reporting, not runtime can_run.",
+    "ExecutorKind default is SingleThreaded without bevy_ecs multi_threaded; std makes MultiThreaded available but does not select it by default. Current workspace enables bevy_ecs std; bevy_tasks multi_threaded is not reverse feature propagation into bevy_ecs.",
+    "Existing41 cached bevy_ecs lib fingerprints contain no multi_threaded feature, but cache inventory is not proof of a future coherent full-App feature configuration. No source set_executor_kind override found in bounded current game source search."
+  ],
+  "still_true": [
+    "Nine systems mutate InstanceKey to repair dense hints and use With marker filters; no static mutual-exclusion Without filters added.",
+    "A multi-marker matching archetype, even if later empty, can change archetype access compatibility. Runtime preflight proves actual descriptor validity, not schedule static disjointness.",
+    "Descriptor preflight adds a pass, and each updater obtains its actual subset lock even on empty query; actual costs need measurement.",
+    "Changing filters needs preserve explicit multiple-marker failure and dense-hint correctness; no source change approved by this correction."
+  ],
+  "no_runtime_or_timing": true,
+  "reviewer_ran_cargo_rustc_gpu": false
+}

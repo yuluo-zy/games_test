@@ -1,0 +1,35 @@
+--- a/games_test/tiny-glade/crates/systems/tree-tool/src/process_tree_cmds.rs
++++ b/games_test/tiny-glade/crates/systems/tree-tool/src/process_tree_cmds.rs
+@@ -193,10 +193,10 @@
+         // 命令队列，顺序 TreeComponent → TreeAnimation → TreeMoveBend →
+         // TreeAmbience）。
+         let entity = commands.spawn_empty().id();
+-        // 当前 InsertTreeCmd 尚无原版 is_preplaced 字段；这条手放入口写 false。
++        // Original Insert payload bool is retained for replay and preplaced trees.
+         commands.entity(entity).insert(TreeComponent {
+             id: cmd.id,
+-            is_preplaced: false,
++            is_preplaced: cmd.is_preplaced,
+         });
+         commands.entity(entity).insert(TreeAnimation::new(alpha));
+         // B：初始缓动位置等于树的世界 XZ 位置。
+@@ -231,7 +231,7 @@
+         // decomp 行 683-719 / asm 142267e55-142267ec8 逐字段）：
+         // prefab@+0、entity@+0x10、position@+0x18、scale@+0x24、rotation@+0x28、
+         // variant@+0x2c、常量 1.0@+0x30、flags[16]@+0x34、mode@+0x44。
+-        // T2：rotation/variant 原生取事件 +0x20/+0x24，共享槽缺 → 0 登记。
++        // Preserve original rotation/placement variant from the actual command.
+         // mode（iVar22）：naked&&deny → 3；否则非拖动路径 = 1；拖动/flags 门
+         // （ActiveWidget::is_dragging + 事件 flags 字节）未接线 → 登记。
+         let mode = if naked && deny_load { 3 } else { 1 };
+@@ -242,8 +242,8 @@
+             entity: Some(entity),
+             position: pos,
+             scale,
+-            rotation: 0.0,
+-            variant: 0,
++            rotation: cmd.rotation_degrees,
++            variant: cmd.variant,
+             one: 1.0,
+             flags: [0; 0x10],
+             mode,

@@ -1,0 +1,197 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/cottage_balcony_door.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/cottage_balcony_door.rs
+@@ -148,7 +148,7 @@
+ ) {
+     let derived = derived.as_view();
+     let mesh_lib = derived.mesh_library();
+-    for (_wall, decorators) in decorator_storage.iter_walls() {
++    for (wall, decorators) in decorator_storage.iter_walls() {
+         for (id, info) in decorators.iter_modified() {
+             // O：门子类型 = 4（0x1407f3da0 行 396）。
+             if derived
+@@ -158,9 +158,13 @@
+             {
+                 continue;
+             }
++            // 蓝图（O callee）。
++            let blueprint = blueprints.insert_for(
++                id,
++                country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Wall(wall),
++                info.state(),
++            );
+             let transform = cached.transform(id);
+-            // 蓝图（O callee）。
+-            let mut blueprint = crate::blueprint::DecoratorBlueprint::new();
+             let key = DecoratorLibKey::new(COTTAGE_DOOR_SUBTYPE, info.rank());
+             blueprint.set_positioned_colliders(
+                 std::sync::Arc::clone(&mesh_lib.collision_record(key).mesh),
+@@ -169,7 +173,6 @@
+                 &transform.rotation,
+             );
+             blueprint.set_outline((0.0, 0.0, 0.0));
+-            blueprints.insert(id, blueprint);
+             // 视觉实体（O callee：WindowVisualEntityBuilder 链）。
+             let builder =
+                 WindowVisualEntityBuilder::new(transform.translation, transform.rotation, id);
+@@ -331,6 +334,7 @@
+                 decorator_id: 41,
+                 rank: 2,
+                 ty: 0x38,
++                state: 1,
+                 ..Default::default()
+             },
+         );
+@@ -377,6 +381,15 @@
+             .unwrap();
+         let blueprints = world.resource::<DecoratorBlueprints>();
+         let blueprint = &blueprints.map[&41];
++        assert_eq!(
++            blueprint.storage_addr,
++            Some(
++                country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Wall(
++                    WallId(7)
++                )
++            )
++        );
++        assert_eq!(blueprint.interaction_source_flags, 1);
+         assert!(blueprint.colliders.is_empty());
+         let BlueprintMeshSlot::Mesh(actual_collision) = &blueprint.collision_mesh else {
+             panic!("必须输出实际collision槽")
+@@ -417,12 +430,28 @@
+                 .unwrap()))
+             .is_err()
+         );
+-        assert!(
+-            missing_mesh
+-                .resource::<DecoratorBlueprints>()
+-                .map
+-                .is_empty()
+-        );
++        // 原entry早于required库查询，失败后保留已重置entry与实际source。
++        let entry = missing_mesh
++            .resource::<DecoratorBlueprints>()
++            .get(41)
++            .unwrap();
++        assert_eq!(
++            entry.storage_addr,
++            Some(
++                country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Wall(
++                    WallId(7)
++                )
++            )
++        );
++        assert_eq!(entry.interaction_source_flags, 1);
++        assert!(matches!(
++            entry.collision_mesh,
++            BlueprintMeshSlot::Unspecified
++        ));
++        assert!(matches!(
++            entry.interaction_mesh,
++            BlueprintMeshSlot::Unspecified
++        ));
+         let (mut missing_id, _, _, _) = fixture();
+         missing_id.insert_resource(DerivedDecoratorSubtypes::default());
+         assert!(
+@@ -433,4 +462,101 @@
+         );
+         assert!(missing_id.resource::<DecoratorBlueprints>().map.is_empty());
+     }
+-}
++
++    #[test]
++    fn canonical_entry_reaches_both_live_physics_maps_with_real_source_and_pose() {
++        use crate::blueprint::{PrevDecoratorBlueprints, instantiate_decorator_colliders};
++        use country_core::resources::walls::{
++            decorator_collision::DecoratorPhysicsColliders, decorator_storage::DecoratorStorageAddr,
++        };
++        use country_core::systems::collision::world::{RaycastGeoSource, RaycastWorld};
++        let (mut world, collision, interaction, transform) = fixture();
++        world
++            .run_system_once(generate_cottage_balcony_doors)
++            .unwrap();
++        let current = world.resource::<DecoratorBlueprints>();
++        let mut physics = RaycastWorld::new();
++        let mut maps = DecoratorPhysicsColliders::default();
++        instantiate_decorator_colliders(
++            &mut maps,
++            current,
++            &PrevDecoratorBlueprints::default(),
++            &mut physics,
++        );
++        let id = DecoratorId(41);
++        let storage = DecoratorStorageAddr::Wall(WallId(7));
++        for (instance, mesh, source) in [
++            (
++                &maps.first[&id],
++                &collision,
++                RaycastGeoSource::decorator(id, storage),
++            ),
++            (
++                &maps.second[&id],
++                &interaction,
++                RaycastGeoSource::decorator_interaction(id, storage, 1),
++            ),
++        ] {
++            let registered =
++                physics.get_collider_mesh(instance.registry_index, instance.generation);
++            assert!(Arc::ptr_eq(&registered.data, mesh));
++            assert_eq!(registered.source, source);
++            let actual = physics.get_collider(instance.handle());
++            assert_eq!(actual.position, transform.translation);
++            assert_eq!(actual.rotation, transform.rotation);
++        }
++    }
++
++    #[test]
++    fn actual_generator_reuses_unique_entry_and_preserves_a_shared_previous_snapshot() {
++        use country_core::resources::walls::decorator_storage::DecoratorStorageAddr;
++        let (mut world, _, _, transform) = fixture();
++        world
++            .run_system_once(generate_cottage_balcony_doors)
++            .unwrap();
++        let unique = Arc::as_ptr(&world.resource::<DecoratorBlueprints>().map[&41]);
++        world
++            .run_system_once(generate_cottage_balcony_doors)
++            .unwrap();
++        assert_eq!(
++            unique,
++            Arc::as_ptr(&world.resource::<DecoratorBlueprints>().map[&41])
++        );
++        let previous = Arc::clone(&world.resource::<DecoratorBlueprints>().map[&41]);
++        world
++            .resource_mut::<DecoratorStorage>()
++            .per_wall
++            .get_mut(&WallId(7))
++            .unwrap()
++            .get_mut(DecoratorId(41))
++            .unwrap()
++            .state = 0;
++        let shifted = CachedDecoratorTransform {
++            translation: transform.translation + Vec3::X,
++            ..transform
++        };
++        world
++            .resource_mut::<CachedDecoratorTransforms>()
++            .insert(41, shifted);
++        world
++            .run_system_once(generate_cottage_balcony_doors)
++            .unwrap();
++        let current = &world.resource::<DecoratorBlueprints>().map[&41];
++        assert!(!Arc::ptr_eq(&previous, current));
++        assert_eq!(previous.interaction_source_flags, 1);
++        assert_eq!(current.interaction_source_flags, 0);
++        assert_eq!(
++            current.storage_addr,
++            Some(DecoratorStorageAddr::Wall(WallId(7)))
++        );
++        let BlueprintMeshSlot::Mesh(old) = &previous.collision_mesh else {
++            panic!("旧快照实际网格")
++        };
++        let BlueprintMeshSlot::Mesh(new) = &current.collision_mesh else {
++            panic!("新快照实际网格")
++        };
++        assert_eq!(old.position, transform.translation);
++        assert_eq!(new.position, shifted.translation);
++        assert!(Arc::ptr_eq(&old.mesh, &new.mesh));
++    }
++}

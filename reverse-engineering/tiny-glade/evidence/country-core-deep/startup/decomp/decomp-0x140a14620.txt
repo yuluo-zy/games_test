@@ -1,0 +1,52 @@
+# decomp-0x140a14620 — clearing::…::deserialize::visit_str<serde_json::Error>
+# 机器码手解（Ghidra tg_b2 反编译 = NotFound，本文件为 rne-read --hex + capstone 手解替代，2026-10-15）
+# 函数：serde 枚举字符串反序列化（长度分派跳表 + 常量比较），输出 {byte@0=0(Ok), byte@1=判别}
+
+# 签名（Win64）：(rcx=&out 2B, rdx=&str.ptr, r8=str.len) -> void（写 out）
+# 0x140a14620  mov rax, rcx                ; rax = &out
+# 0x140a14623  add r8, -6                  ; r8 = len - 6
+# 0x140a14627  cmp r8, 0x13                ; (len-6) <= 0x13 → len ∈ [6,25]，否则 default
+# 0x140a1462b  ja  0x140a146d0             ; default → disc 4
+# 0x140a14631  lea rcx, [rip+0x20b3784]    ; 跳表基址 0x142ac7dbc
+# 0x140a14638  movsxd r8, dword [rcx+r8*4] ; 表项 = (len-6) 索引
+# 0x140a1463c  add r8, rcx ; 0x140a1463f jmp r8
+
+# 跳表（20 项，基址 0x142ac7dbc）：
+#   entry0  (len 6)  → 0x140a14642  "prefab"            → disc 0
+#   entry4  (len 10) → 0x140a14681  "placements"        → disc 1
+#   entry10 (len 16) → 0x140a14660  "particle_emitter"  → disc 2
+#   entry18 (len 24) → 0x140a146a7  billboard 窗口比较   → disc 3
+#   entry19 (len 25) → 0x0（死条目，跳表基址 = 数据区 → UB）
+#   其余 → 0x140a146d0（default → disc 4）
+
+# case "prefab"（0x140a14642，len 6 → disc 0）：
+#   mov ecx,0x66657270("pref"); xor ecx,[rdx]           ; 前 4 字节
+#   movzx edx,word[rdx+4]; xor edx,0x6261("ab")          ; 次 2 字节
+#   or ecx,edx; jne default
+#   → [rax+1]=0; [rax]=0; ret
+# case "particle_emitter"（0x140a14660，len 16 → disc 2）：
+#   movdqu xmm0,[rdx]; pcmpeqb xmm0,[0x142ac70d0]（= "particle_emitter" 16B）
+#   pmovmskb ecx,xmm0; cmp ecx,0xffff; jne default
+#   → [rax+1]=2; [rax]=0; ret
+# case "placements"（0x140a14681，len 10 → disc 1）：
+#   movabs rcx,0x6e656d6563616c70("placemen"); xor rcx,[rdx]  ; 前 8 字节
+#   movzx edx,word[rdx+8]; xor edx,0x7374("ts")               ; 次 2 字节
+#   or rcx,rdx; jne default
+#   → [rax+1]=1; [rax]=0; ret
+# case billboard 族（0x140a146a7，len 24 → disc 3；双窗 SIMD 比较）：
+#   movdqu xmm0,[rdx]        ; 窗0 = name[0..15] vs [0x142ac70c0] = "billboard_expans"
+#   movdqu xmm1,[rdx+9]      ; 窗1 = name[9..24] vs [0x142ac70b0] = "_expansion_scale"
+#   pcmpeqb xmm1,..; pcmpeqb xmm0,..; pand xmm0,xmm1; pmovmskb ecx,xmm0
+#   cmp ecx,0xffff; je → [rax+1]=3 else → [rax+1]=4
+#   → 名字 = "billboard_expansion_scale"（25 字符；二进制串 @0x142c5d3f8）
+#      quirk：跳表按 len-6=18（len 24）分派，但真实名 25 字符 →
+#      len-25 输入落 entry19=0（死条目 UB）；len-24 输入窗1末字节越界读
+#      （编译器 SIMD 常数窗读 16B，实际需 name[24]='e'）——该变体经此
+#      visit_str 实际不可达/不命中（编译器死条目 + 越界窗，同 round3 跳表死条目族）
+# case default（0x140a146d0）：[rax+1]=4（未知变体）；[rax]=0；ret
+
+# 输出结构：out = {u8@0: 0(成功标志/判别基数), u8@1: 变体判别 0..4}
+# 枚举变体（判别序）：0="prefab" 1="placements" 2="particle_emitter"
+#   3="billboard_expansion_scale"（编译死路）4=未知
+# 证据：rne-read --hex 0x140a14620 + capstone 反汇编 + 常量 0x142ac70d0/b0/c0
+#       + 串 0x142c5d3f8；原始 NotFound 见 expansion-b2/decomp/decomp-0x140a14620.txt

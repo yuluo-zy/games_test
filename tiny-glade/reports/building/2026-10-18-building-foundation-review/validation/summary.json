@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-18",
+  "scope": [
+    "tg-building-runtime",
+    "tabloid",
+    "tg-package-integrity"
+  ],
+  "reverse_engineering_used": false,
+  "commit_created": false,
+  "review": "Three parallel source reviews, independent cross-review and lead review; functional fixes and engineering improvements recorded separately.",
+  "validation": {
+    "tests_passed": 110,
+    "tests_failed": 0,
+    "readme_doctests_passed": 4,
+    "strict_clippy": "passed: all-targets / no-deps / -D warnings",
+    "fmt": "passed",
+    "commands": "final-commands.json",
+    "CARGO_INCREMENTAL": "0",
+    "scoped_diff_check_exit": 0
+  },
+  "source_consistency": {
+    "selected_package_files": 88,
+    "recovered_building_dependency_files": 55,
+    "byte_identical": true,
+    "evidence": "source-check.json"
+  },
+  "cli_equivalence": {
+    "build_exit": 0,
+    "scenario_exit": 0,
+    "snapshots": 4,
+    "baseline_and_refactor_outputs_equal_after_key_order_normalization": true,
+    "normalization": "Only arrays of objects with wall_id/id/decorator_id are sorted. All fields, values, array counts and other ordering remain compared.",
+    "scenario": "cli-lifecycle-scenario.json"
+  },
+  "pre_fix_reproduction": "Five building cases actually failed before production changes; foundation two cases and gate recovery captured output retained. Other boundaries have source-trigger evidence and final regressions, not individual before-runs.",
+  "performance": "Gate retries borrow retained commands; wall replay checkpoints scalars; brick fingerprints reuse scratch; hex encoding avoids per-byte formatting. No fresh throughput/fps benchmark claim.",
+  "limitations": [
+    "Full workspace build blocked by concurrent lock changes and unrelated utils geometry compilation errors.",
+    "Production dependency closure snapshot used; selected packages unchanged and recovered-building dependency code matches current workspace.",
+    "No Windows/Linux real-machine, Linux-only non-UTF8 filename, actual thread exhaustion or GPU/full-game validation.",
+    "Filesystem verification requires a stable tree."
+  ]
+}

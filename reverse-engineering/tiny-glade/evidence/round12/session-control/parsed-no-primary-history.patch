@@ -1,0 +1,11 @@
+--- a/tiny-glade/crates/country-core/src/startup/startup_session.rs
++++ b/tiny-glade/crates/country-core/src/startup/startup_session.rs
+@@ -180,7 +180,7 @@
+         )?;
+         (session_id, history_path)
+     };
+-    if !history_path.is_file() {
++    if request.kind != NextSessionKind::LoadParsedGame && !history_path.is_file() {
+         return Err(format!("会话历史文件不存在：{}", history_path.display()).into());
+     }
+     let mut metadata =

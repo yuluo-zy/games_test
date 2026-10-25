@@ -1,0 +1,14 @@
+--- a/games_test/tiny-glade/crates/country-core/src/components/rendering.rs
++++ b/games_test/tiny-glade/crates/country-core/src/components/rendering.rs
+@@ -31,3 +31,11 @@
+ /// Default 的零值仅用于显式构造，不等于缺少组件时的回退值。
+ #[derive(Component, Debug, Default, PartialEq)]
+ pub struct OverwriteRoughness(pub f32);
++
++/// Original B components::StairsStep. startup_terrain writes flags0 for step
++/// geometry (@14092732a) and flags1 for stairs pebbles (@1409275e2).
++/// Default Bevy clone behavior is retained by not deriving Clone/Copy.
++#[derive(Component, Debug, PartialEq, Eq)]
++pub struct StairsStep {
++    pub flags: u8,
++}

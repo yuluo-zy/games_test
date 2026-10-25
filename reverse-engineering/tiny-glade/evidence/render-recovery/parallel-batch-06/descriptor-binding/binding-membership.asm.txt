@@ -1,0 +1,74 @@
+
+D:/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140b05f50: 56                          	pushq	%rsi
+140b05f51: 57                          	pushq	%rdi
+140b05f52: 48 83 ec 28                 	subq	$0x28, %rsp
+140b05f56: 48 8b 01                    	movq	(%rcx), %rax
+140b05f59: 48 8b 00                    	movq	(%rax), %rax
+140b05f5c: 48 8b 38                    	movq	(%rax), %rdi
+140b05f5f: 48 83 7f 30 00              	cmpq	$0x0, 0x30(%rdi)
+140b05f64: 0f 84 a2 00 00 00           	je	0x140b0600c <.text+0xb0500c>
+140b05f6a: 48 8d 4f 38                 	leaq	0x38(%rdi), %rcx
+140b05f6e: 48 89 d6                    	movq	%rdx, %rsi
+140b05f71: e8 5a af aa ff              	callq	0x1405b0ed0 <.text+0x5afed0>
+140b05f76: 48 8b 4f 18                 	movq	0x18(%rdi), %rcx
+140b05f7a: 48 8b 57 20                 	movq	0x20(%rdi), %rdx
+140b05f7e: 49 89 d0                    	movq	%rdx, %r8
+140b05f81: 49 21 c0                    	andq	%rax, %r8
+140b05f84: 48 c1 e8 39                 	shrq	$0x39, %rax
+140b05f88: 66 0f 6e c0                 	movd	%eax, %xmm0
+140b05f8c: 66 0f 60 c0                 	punpcklbw	%xmm0, %xmm0    # xmm0 = xmm0[0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7]
+140b05f90: f2 0f 70 c0 00              	pshuflw	$0x0, %xmm0, %xmm0      # xmm0 = xmm0[0,0,0,0,4,5,6,7]
+140b05f95: 66 0f 70 c0 00              	pshufd	$0x0, %xmm0, %xmm0      # xmm0 = xmm0[0,0,0,0]
+140b05f9a: 4c 8d 49 e8                 	leaq	-0x18(%rcx), %r9
+140b05f9e: 44 8b 16                    	movl	(%rsi), %r10d
+140b05fa1: 45 31 db                    	xorl	%r11d, %r11d
+140b05fa4: 66 0f 76 c9                 	pcmpeqd	%xmm1, %xmm1
+140b05fa8: f3 42 0f 6f 14 01           	movdqu	(%rcx,%r8), %xmm2
+140b05fae: 66 0f 6f da                 	movdqa	%xmm2, %xmm3
+140b05fb2: 66 0f 74 d8                 	pcmpeqb	%xmm0, %xmm3
+140b05fb6: 66 0f d7 f3                 	pmovmskb	%xmm3, %esi
+140b05fba: 85 f6                       	testl	%esi, %esi
+140b05fbc: 74 32                       	je	0x140b05ff0 <.text+0xb04ff0>
+140b05fbe: f3 0f bc c6                 	tzcntl	%esi, %eax
+140b05fc2: 4c 01 c0                    	addq	%r8, %rax
+140b05fc5: 48 21 d0                    	andq	%rdx, %rax
+140b05fc8: 48 f7 d8                    	negq	%rax
+140b05fcb: 48 8d 3c 40                 	leaq	(%rax,%rax,2), %rdi
+140b05fcf: b0 01                       	movb	$0x1, %al
+140b05fd1: 45 3b 14 f9                 	cmpl	(%r9,%rdi,8), %r10d
+140b05fd5: 74 37                       	je	0x140b0600e <.text+0xb0500e>
+140b05fd7: 8d 46 ff                    	leal	-0x1(%rsi), %eax
+140b05fda: 66 21 f0                    	andw	%si, %ax
+140b05fdd: 89 c6                       	movl	%eax, %esi
+140b05fdf: 75 dd                       	jne	0x140b05fbe <.text+0xb04fbe>
+140b05fe1: 66 66 66 66 66 66 2e 0f 1f 84 00 00 00 00 00	nopw	%cs:(%rax,%rax)
+140b05ff0: 66 0f 74 d1                 	pcmpeqb	%xmm1, %xmm2
+140b05ff4: 66 0f d7 c2                 	pmovmskb	%xmm2, %eax
+140b05ff8: 85 c0                       	testl	%eax, %eax
+140b05ffa: 75 10                       	jne	0x140b0600c <.text+0xb0500c>
+140b05ffc: 4d 01 d8                    	addq	%r11, %r8
+140b05fff: 49 83 c0 10                 	addq	$0x10, %r8
+140b06003: 49 83 c3 10                 	addq	$0x10, %r11
+140b06007: 49 21 d0                    	andq	%rdx, %r8
+140b0600a: eb 9c                       	jmp	0x140b05fa8 <.text+0xb04fa8>
+140b0600c: 31 c0                       	xorl	%eax, %eax
+140b0600e: 48 83 c4 28                 	addq	$0x28, %rsp
+140b06012: 5f                          	popq	%rdi
+140b06013: 5e                          	popq	%rsi
+140b06014: c3                          	retq
+140b06015: cc                          	int3
+140b06016: cc                          	int3
+140b06017: cc                          	int3
+140b06018: cc                          	int3
+140b06019: cc                          	int3
+140b0601a: cc                          	int3
+140b0601b: cc                          	int3
+140b0601c: cc                          	int3
+140b0601d: cc                          	int3
+140b0601e: cc                          	int3
+140b0601f: cc                          	int3

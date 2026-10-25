@@ -1,0 +1,29 @@
+{
+  "scope": "read-only instruction-operand comparison, not runtime behavior proof or source implementation approval",
+  "old": "140c90fd0/504B",
+  "projective": "140c911d0/513B",
+  "prologue": "identical first3; projective adds movss xmm2,[rdx] + movss xmm1,[rdx+8]",
+  "normalization": "new xmm1/xmm2 input register permutation, RIP literals resolved to real absolute data and branches to instruction labels adjusted for two loads",
+  "old_instruction_count": 131,
+  "projective_instruction_count": 133,
+  "remaining_equal_lengths": true,
+  "mismatches": [
+    {
+      "index": 95,
+      "old": "xorps xmm1, xmm1",
+      "projective_with_input_register_permutation": "xorps xmm2, xmm2"
+    },
+    {
+      "index": 96,
+      "old": "movss xmm1, xmm0",
+      "projective_with_input_register_permutation": "movss xmm2, xmm0"
+    },
+    {
+      "index": 97,
+      "old": "shufps xmm3, xmm1, 0x14",
+      "projective_with_input_register_permutation": "shufps xmm3, xmm2, 0x14"
+    }
+  ],
+  "proposed_host_adapter": "xz_projective_rotation_bad(Vec3) -> xz_rotation_bad(Vec2::new(x,z)); ignores actual y, no Vec3 normalization/local fallback",
+  "source_written": false
+}

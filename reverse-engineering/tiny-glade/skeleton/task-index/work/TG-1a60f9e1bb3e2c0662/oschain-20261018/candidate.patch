@@ -1,0 +1,251 @@
+--- games_test/tiny-glade/crates/country-core/src/systems/backend/input/translate_input.rs
++++ games_test/tiny-glade/crates/country-core/src/systems/backend/input/translate_input.rs
+@@ -4,8 +4,8 @@
+ 
+ use crate::{
+     input::{
++        action_set::{ActionSetValues, ANALOG_SLOTS, DIGITAL_SLOTS},
+         ActiveInputModeTracker,
+-        action_set::{ANALOG_SLOTS, ActionSetValues, DIGITAL_SLOTS},
+     },
+     resources::{gui::EscMenuState, time::GameTime},
+ };
+@@ -39,55 +39,57 @@
+ #[derive(Resource, Clone, Copy, Debug, Default)]
+ pub struct DemoModeEnabled(pub bool);
+ 
+-/// 绑定表槽数（O：40 槽 × 12 B）。
++/// The retained table is a numeric projection of the loaded profile, not an
++/// independently configured resource. Slots 0..36 are keys, 37..39 are mouse.
+ pub const BINDING_SLOTS: usize = 40;
+-
+-/// 一个动作的键/鼠绑定（O：`KeyBinding {key u32@0, value u64@4}`；`0xc3` = 未绑定；
+-/// 鼠标绑定为 u16 对 @0x1bc..0x1c8）。
+ #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+ pub struct ActionBinding {
+     pub key: u16,
+-    pub mouse: u16,
+-}
+-
++    pub mouse: Option<u16>,
++}
+ impl ActionBinding {
+     pub const UNBOUND: Self = Self {
+         key: UNBOUND_KEY,
+-        mouse: 0,
++        mouse: None,
+     };
+-
+     pub fn bound_key(&self) -> bool {
+         self.key != UNBOUND_KEY
+     }
+ }
+-
+-/// 绑定表（槽号 = `game_key_bindings` 动作槽，0..39）。
+ #[derive(Resource, Clone, Debug)]
+ pub struct BindingsTable {
+     pub slots: [ActionBinding; BINDING_SLOTS],
+ }
+-
++impl TryFrom<&crate::game_profile::GameKeyBindings> for BindingsTable {
++    type Error = anyhow::Error;
++    fn try_from(bindings: &crate::game_profile::GameKeyBindings) -> Result<Self, Self::Error> {
++        use bevy_input::mouse::MouseButton;
++        let mut slots = [ActionBinding::UNBOUND; BINDING_SLOTS];
++        for (slot, key) in bindings.bindings.iter().copied().enumerate() {
++            if let Some(key) = key {
++                slots[slot].key = crate::game_profile::desktop_keycode_index(key)?;
++            }
++        }
++        for (slot, mouse) in bindings.mouse.iter().copied().enumerate() {
++            slots[37 + slot].mouse = match mouse {
++                None => None,
++                Some(MouseButton::Left) => Some(0),
++                Some(MouseButton::Right) => Some(1),
++                Some(MouseButton::Middle) => Some(2),
++                Some(MouseButton::Back) => Some(3),
++                Some(MouseButton::Forward) => Some(4),
++                Some(MouseButton::Other(button)) if button > 4 => Some(button),
++                Some(MouseButton::Other(button)) => anyhow::bail!(
++                    "mouse Other({button}) collides with a standard button in the desktop u16 facade"),
++            };
++        }
++        Ok(Self { slots })
++    }
++}
+ impl Default for BindingsTable {
+     fn default() -> Self {
+-        // O（default @0x14089b110 为内联代码，逐槽 `mov dword [rcx+off], imm32` 写键码，
+-        // 2026-10-16 rne-read 逐字节核对）：槽 0..35 键码 + [0x1b0]=0xc3 + u16 鼠标
+-        // `{1,2,1}` @0x1bc..0x1c4。键码为 bevy 风格 KeyCode u16。
+-        const KEYS: [u16; 36] = [
+-            0x2a, 0x26, 0x14, 0x17, 0x18, 0x24, 0xc3, 0xc3, 0xc3, 0xc3, // 0..9 模拟
+-            0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x23, // 10..19
+-            0x27, 0x2d, 0x2b, 0xc3, 0x38, 0xab, 0xa5, 0x1b, 0x49, 0x3a, // 20..29
+-            0x51, 0x52, 0x50, 0x53, 0x4f, 0x4e, // 30..35
+-        ];
+-        const MOUSE: [u16; 3] = [1, 2, 1];
+-        let mut slots = [ActionBinding::UNBOUND; BINDING_SLOTS];
+-        for (i, code) in KEYS.iter().enumerate() {
+-            slots[i].key = *code;
+-        }
+-        // 槽 36（cinematic_camera_ctrls）默认 0xc3；槽 37/38/39 = 鼠标绑定。
+-        for (i, button) in MOUSE.iter().enumerate() {
+-            slots[37 + i].mouse = *button;
+-        }
+-        Self { slots }
++        Self::try_from(&crate::game_profile::GameKeyBindings::default())
++            .expect("original default bindings use supported desktop inputs")
+     }
+ }
+ 
+@@ -187,7 +189,7 @@
+ 
+ /// 绑定槽 → 数字动作槽（O：0x1417cd0a0 行 476..636 逐槽写）。
+ /// 前两个为 None 表示该槽映射到鼠标手势/修饰键，单独处理。
+-const DIGITAL_TARGETS: [(usize, u16); 29] = [
++const DIGITAL_TARGETS: [(usize, u16); 28] = [
+     (10, 4),  // building → tool_building
+     (11, 5),  // path → tool_path
+     (12, 6),  // decorators → tool_decorator
+@@ -203,7 +205,6 @@
+     (22, 17), // redo
+     (23, 1),  // focus_edit → right_click
+     (24, 15), // disable_snapping → snapping_disable
+-    (25, 29), // screenshot（+ !0x3d 修饰）
+     (26, 31), // feedback → screenshot_feedback
+     (27, 32), // hide_ui_photomode
+     (28, 18), // ui_cancel
+@@ -262,7 +263,7 @@
+         let binding = &bindings.slots[binding_slot];
+         let pressed = if binding_slot >= 37 {
+             // 鼠标绑定槽（37=Rotate、38=Move）。
+-            binding.mouse != 0 && mouse.pressed(binding.mouse)
++            binding.mouse.is_some_and(|button| mouse.pressed(button))
+         } else {
+             binding.bound_key() && key_pressed(keyboard, binding.key)
+         };
+@@ -281,7 +282,7 @@
+ ///
+ /// 相对 PDB 签名缺 `Option<Res<SteamClientResource>>`、`EventReader<MouseWheel>`、
+ /// `Res<GameProfile>`：前两者用 [`SteamInputActive`] / 滚轮读取代替（Steam 全链库外登记），
+-/// GameProfile 的键绑定用 [`BindingsTable`] 传入（默认序列来自 O 原字节）。
++/// GameProfile 的真实键位投影到当前数字输入适配器，不保留独立默认绑定权威。
+ ///
+ /// A1：原生**无提前 return**——Steam 只参与 mode-tracker 更新门控（Deck 时仅键盘计数）与
+ /// screenshot 修饰跳过；主体恒运行。
+@@ -290,7 +291,7 @@
+     time: Res<GameTime>,
+     elapsed: Res<bevy_time::Time>,
+     keyboard: Res<KeyButtonInput>,
+-    bindings: Res<BindingsTable>,
++    profile: Res<crate::game_profile::GameProfile>,
+     mouse: Res<MouseButtonInput>,
+     menu: Res<EscMenuState>,
+     mut values: ResMut<ActionSetValues>,
+@@ -302,6 +303,8 @@
+     mut cursor_delta: EventReader<InputCursorDelta>,
+     mut history_buttons: EventReader<UiHistoryButtonPressed>,
+ ) {
++    let bindings = BindingsTable::try_from(&profile.key_bindings)
++        .expect("loaded profile bindings must be representable by the desktop input facade");
+     // A2（O：LAB_1417cd126）mode-tracker 更新在函数**开头**，按输入事件条件：
+     // 无 Steam / 非 Deck → mouse.just_pressed || keyboard.just_pressed（+0x38 计数）；
+     // Steam + Deck → 仅 keyboard.just_pressed（0x1417cd082）。只更新
+@@ -344,18 +347,22 @@
+             values.current.analog[4].x += weight * event.y;
+         }
+ 
+-        // 光标翻译每帧发出一个合成增量。按下时复位距离，按住和释放帧均计入位移；
+-        // 只有总距离小于 3 像素的释放才属于点击。
+-        let last_len = cursor_delta.read().last().map_or(0.0, |d| d.0.length());
+-        if mouse.just_pressed(1) {
+-            mouse_moved.0 = 0.0;
+-        }
+-        // 松开所在帧仍可能有最后一段位移，同样计入拖动阈值。
+-        if mouse.pressed(1) || mouse.just_released(1) {
+-            mouse_moved.0 += last_len;
+-        }
+-        if mouse.just_released(1) && mouse_moved.0 < 3.0 {
+-            values.current.digital[1] = true;
++        // B @1417cd959 uses the configured mouse_focus_edit binding, including
++        // Some(Left). Just-press resets distance; held frames alone accumulate.
++        // The release frame compares the already accumulated distance (< 3).
++        let last_len = cursor_delta
++            .read()
++            .last()
++            .map_or(0.0, |delta| delta.0.length());
++        if let Some(button) = bindings.slots[39].mouse {
++            if mouse.just_pressed(button) {
++                mouse_moved.0 = 0.0;
++            } else if mouse.pressed(button) {
++                mouse_moved.0 += last_len;
++            }
++            if mouse.just_released(button) && mouse_moved.0 < 3.0 {
++                values.current.digital[1] = true;
++            }
+         }
+         if bindings.slots[23].bound_key() && key_pressed(&keyboard, bindings.slots[23].key) {
+             values.current.digital[1] = true;
+@@ -426,6 +433,48 @@
+ #[cfg(test)]
+ mod tests {
+     use super::*;
++
++    #[test]
++    fn profile_remapping_reaches_the_live_table_and_left_mouse_is_bound() {
++        use bevy_input::{keyboard::KeyCode, mouse::MouseButton};
++        let mut profile = crate::game_profile::GameKeyBindings::default();
++        profile.bindings[21] = Some(KeyCode::KeyU);
++        profile.mouse[0] = Some(MouseButton::Left);
++        profile.mouse[2] = None;
++        let table = BindingsTable::try_from(&profile).unwrap();
++        let mut keyboard = KeyButtonInput::default();
++        keyboard.press(crate::game_profile::desktop_keycode_index(KeyCode::KeyU).unwrap());
++        let mut mouse = MouseButtonInput::default();
++        mouse.press(0);
++        let mut output = [false; DIGITAL_SLOTS];
++        translate_digital(&keyboard, &mouse, &table, &mut output);
++        assert!(
++            output[16],
++            "the user's remapped undo key must reach the action set"
++        );
++        assert!(
++            output[2],
++            "a configured left button is not an unbound mouse slot"
++        );
++        assert_eq!(table.slots[39].mouse, None);
++    }
++
++    #[test]
++    fn screenshot_is_not_written_by_the_unconditional_digital_mapping() {
++        let mut keyboard = KeyButtonInput::default();
++        keyboard.press(0xab);
++        let mut output = [false; DIGITAL_SLOTS];
++        translate_digital(
++            &keyboard,
++            &MouseButtonInput::default(),
++            &BindingsTable::default(),
++            &mut output,
++        );
++        assert!(
++            !output[29],
++            "Steam/modifier gate owns the screenshot action"
++        );
++    }
+ 
+     #[test]
+     fn default_bindings_match_the_original_sequence() {
+@@ -438,9 +487,9 @@
+         assert_eq!(b.slots[15].key, 0x0c); // terrain
+         assert_eq!(b.slots[28].key, 0x49); // ui_cancel
+         assert_eq!(b.slots[36].key, UNBOUND_KEY); // cinematic_camera_ctrls
+-        assert_eq!(b.slots[37].mouse, 1); // camera_rotate_mode
+-        assert_eq!(b.slots[38].mouse, 2); // camera_pan_mode
+-        assert_eq!(b.slots[39].mouse, 1); // focus_edit
++        assert_eq!(b.slots[37].mouse, Some(1)); // camera_rotate_mode
++        assert_eq!(b.slots[38].mouse, Some(2)); // camera_pan_mode
++        assert_eq!(b.slots[39].mouse, Some(1)); // focus_edit
+     }
+ 
+     #[test]

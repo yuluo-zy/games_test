@@ -1,0 +1,16 @@
+{
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "cases": 216,
+  "entry": "0x1403b9edb",
+  "exit": "0x1403ba53f",
+  "fixture_sha256": "b5b1a6d5a287f149857d35e814b77024fd961c023fd45e264bf70d4b8c6aec43",
+  "columns": [
+    "input(Ax_bits1,position_bits3,speed_bits,cross,bottom,wheel_timer_bits,lantern_playing_mask)",
+    "output(peak_bits,wheel_timer_bits,wheel_index,calls(kind,id,name,value_bits_vec))"
+  ],
+  "bridges": [
+    "Spline.position_at_t resolves supplied position",
+    "AudioInstance device wrappers record volume/parameter/start/stop/position/is_playing; controlled lantern playback mask"
+  ],
+  "scope": "单车全部4实例/3池可用，原位置更新/速度参数/过零选择池/水面分支/触底轮声/计时索引/Ax音量完整指令。无FMOD设备执行，不覆盖None/Err，单帧输入是明确边界"
+}

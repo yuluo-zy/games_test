@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-14",
+  "platform": "Windows x86_64",
+  "baseline": "B",
+  "scope": "Source organization of completed recovery units; no new game algorithm recovery or whole-game acceptance.",
+  "workspace_packages": 13,
+  "hlsl_files": 393,
+  "shader_entry_files": 258,
+  "shader_modules": 633,
+  "checks": [
+    {
+      "command": "cargo check --offline --locked --workspace --all-targets",
+      "exit_code": 0
+    },
+    {
+      "command": "cargo test --workspace --all-targets --locked",
+      "exit_code": 0,
+      "passed": 110,
+      "failed": 0,
+      "ignored": 0,
+      "log": "tests.log"
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "exit_code": 0,
+      "note": "Targeted allowances preserve observed numerical and argument contracts; no algorithm changes."
+    },
+    {
+      "command": "cargo fmt --all --check",
+      "exit_code": 0
+    },
+    {
+      "command": "py -3 tools/verify_inventory.py",
+      "passed": true,
+      "files_checked": 525,
+      "workspace_packages": 13,
+      "external_dependencies": 105,
+      "shader_entry_files": 258,
+      "shader_modules": 633,
+      "errors": [],
+      "exit_code": 0
+    }
+  ],
+  "source_selection": {
+    "snapshot": "a205bd8a",
+    "native_foundation_snapshot": "326cb236",
+    "readable_hlsl_snapshot": "81aa0042",
+    "window_aspect": "Git index; separately hashed"
+  },
+  "dependency_baseline_sha256": "9e0cb4a0fa173122fa7cd552aa639f5ee977abc22c74aec92398808c707184bd",
+  "dependency_repairs": [
+    "ordered-float 3.9.2 -> B 3.2.0",
+    "libc 0.2.190 -> B 0.2.170"
+  ],
+  "hlsl_validation": {
+    "new_dxc_execution_this_turn": false,
+    "inherited": "Readable full_ok and original gate/SAME or original-empty status; unchanged recovered HLSL logic.",
+    "exclusions": [
+      "final_post.raster.hlsl: unresolved variant",
+      "water/ice_refl_resolve.cs.hlsl: default EDGE"
+    ],
+    "include_support": "Only include closure used by accepted entry files; not independent helper acceptance."
+  },
+  "limitations": [
+    "Only recovered units of rhapsody/country-core/roof/tg-text are packaged; no complete game executable.",
+    "Original algorithms with resolved inputs or dependency classifiers retain those API boundaries.",
+    "Whole original module behavior, rendering frames, GPU/runtime/consumer integration and A/C adaptation are not accepted here."
+  ]
+}

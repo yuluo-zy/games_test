@@ -1,0 +1,17 @@
+Review a bounded original Tiny Glade x86 excerpt. Return <=180 words, only timing semantics and NaN implications. Do not invent structures or inspect tools.
+Known: rax is command. +8 bit0 timed; +c duration; +18 elapsed; speed=xmm6; min=xmm8=0.05. dt GameTime+28. At start, elapsed==0 (ucomiss+jne+jp) applies an edit.
+0x140aa4c4d test byte ptr [rax+8],1
+0x140aa4c51 je 0x140aa4ca0
+0x140aa4c53 movss xmm1,[rax+0xc]
+0x140aa4c58 divss xmm1,xmm6
+0x140aa4c5c movss xmm0,[rax+0x18]
+0x140aa4c61 maxss xmm1,xmm8
+0x140aa4c66 ucomiss xmm0,xmm1
+0x140aa4c69 jbe 0x140aa4b45
+fallthrough: append index to remove list then 0x140aa4b40 reloads elapsed
+0x140aa4b45 loads game time pointer
+0x140aa4b49 addss xmm0,[rcx+0x28]
+0x140aa4b4e store elapsed
+0x140aa4ca0 appends index then jumps next command WITHOUT add dt.
+Expansion writes duration bits 0x3dcccccd, elapsed0, timed=!instant.
+Question: Is a separate started flag or elapsed += dt*speed equivalent? What exact predicate/duration clamp preserves native maxss NaN behavior?

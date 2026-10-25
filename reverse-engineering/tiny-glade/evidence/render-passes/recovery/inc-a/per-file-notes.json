@@ -1,0 +1,244 @@
+{
+  "owner": "INC-A",
+  "scope": "reconstruction/shader-source/shaders/inc/* (shared inc layer subset)",
+  "generated": "2026-10-13",
+  "method": "behavior-equivalent reconstruction from compiled SPIR-V evidence (raw-per-bin.jsonl member_names/debug_names, OpLine code attribution, spirv-cross decompile of consumer bins, catalog.json bindings). Status per item: O=Observation (evidence-backed verbatim), I=Inference (behavior from inlined use-site, name chosen), U=Unknown (not recoverable / not observable).",
+  "files": {
+    "inc/frame_constants.hlsl": {
+      "status": "O (ViewConstants + FrameConstants member names/types/offsets verbatim from _apply_screen_shadows UBO struct 32/33; view_constants[5] ArrayStride=800 len=5); O/I (cbuffer declared `cbuffer frame_constants` — binding name O; struct-type name `type.ConstantBuffer.FrameConstants` is original-dxc naming, current dxc emits `type.frame_constants` — cosmetic)",
+      "consumers": "~307 bins; bare-global member access (`view_constants[2]`, `sun_color`) confirmed by dxc semantics and INC-C cascades.hlsl usage",
+      "cross_agent_deps": "includes inc/uv.hlsl (own). INC-C files (cascades.hlsl, unjitter_taa.hlsl) use view_constants directly — compatible.",
+      "unknowns": "none for the cbuffer/struct. `debug_tweakers` semantics (float4) not pinned.",
+      "compile_self_test": "PASS (entry A); layout re-extracted from compiled SPIR-V matches game offsets 0..240 exactly"
+    },
+    "inc/current_view.hlsl": {
+      "status": "O (`uint current_view_index` global — $Globals m0 in all 178 consumer bins); O/I (GetCurrentViewConstants accessor inferred from inlined view_constants[current_view_index] access chains)",
+      "consumers": "178 bins ($Globals.current_view_index)",
+      "cross_agent_deps": "includes inc/frame_constants.hlsl (own)",
+      "unknowns": "whether additional accessors exist (unrecoverable)",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/samplers.hlsl": {
+      "status": "O (9 sampler names + set0 bindings verbatim from binding evidence across all bins); I (filter/wrap state — sampler state is CPU-side, not in SPIR-V; encoded from L/N/C/R/B name convention)",
+      "consumers": "402 bins (via common.hlsl); unused samplers are dropped by dxc (verified)",
+      "cross_agent_deps": "includes inc/debug_utils.hlsl (own chain). _blur_pyramid_rev_blur declares sampler_lnc at s3 (outlier — does not use shared samplers.hlsl s0)",
+      "unknowns": "exact VkSampler states (CPU-side); sampler_mipmap purpose",
+      "compile_self_test": "PASS (entries A and B)"
+    },
+    "inc/common.hlsl": {
+      "status": "O (includes inc/samplers.hlsl per direct include edge, 252 mains); U (possible shared color helper hinted by OpFMul at ps use-sites — not pinned, left out)",
+      "consumers": "402 bins (umbrella)",
+      "cross_agent_deps": "none (only own inc)",
+      "unknowns": "any additional helpers common.hlsl may have",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/math_const.hlsl": {
+      "status": "I (names Inference — constants fold to literals); O (values match observed literals: TWO_PI=6.283185482, GOLDEN_RATIO=1.618034)",
+      "consumers": "335 bins",
+      "cross_agent_deps": "none",
+      "unknowns": "exact constant names",
+      "compile_self_test": "PASS (entries A and B)"
+    },
+    "inc/consts.hlsl": {
+      "status": "U (no named constants recoverable; only TEXTURE_SIZE_WS exists as named define, in water family not here); minimal RENDER_SCALE kept provisional",
+      "consumers": "250 bins",
+      "cross_agent_deps": "none",
+      "unknowns": "all actual constant names/values",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/hash.hlsl": {
+      "status": "O (uint hash 5-step avalanche, rand01 bitcast, hash_angle golden-ratio*2PI — from _billboard_forest vs inlined use); I (function names)",
+      "consumers": "250 bins",
+      "cross_agent_deps": "includes inc/math_const.hlsl (own)",
+      "unknowns": "function names; whether a sin-based hash01 exists (added provisionally)",
+      "compile_self_test": "PASS (entries A and B)"
+    },
+    "inc/pack_unpack.hlsl": {
+      "status": "O (RGBA8 pack clamp*255+0.5 + shifts; RGB8 unpack /255; normal decode /255*2-1 — from _apply_screen_shadows and _billboard_forest inlined use); I (function names)",
+      "consumers": "235 bins",
+      "cross_agent_deps": "includes inc/bilinear.hlsl (own chain -> history_valid.hlsl INC-C). NOTE: FrexpStructType collision — see bilinear.",
+      "unknowns": "octahedral/half packing variants if any",
+      "compile_self_test": "PASS (entry B)"
+    },
+    "inc/uv.hlsl": {
+      "status": "O (pixel->uv (int2+0.5)/dims, uv->sample -0.5, sample->clip *(2,-2), sample->view mul matrix — from _apply_screen_shadows inlined use); I (function names/signatures; matrix-parameterized since uv.hlsl is included before frame_constants declares the cbuffer)",
+      "consumers": "339 bins",
+      "cross_agent_deps": "none",
+      "unknowns": "exact accessor signatures the original had",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/math.hlsl": {
+      "status": "I (math helper set consistent with heavy ExtInst/FMul/Dot/FDiv use at RT/GI consumers); O/I (includes bicubic/quad_mesh/unjitter_taa per include-graph edges)",
+      "consumers": "253 bins; top: _gi_trace_gi_candidates, _water_ice_deferred_rt, _water_deferred_rt",
+      "cross_agent_deps": "includes inc/bicubic.hlsl (own), inc/quad_mesh.hlsl (own -> image.hlsl -> curve.hlsl INC-B), inc/unjitter_taa.hlsl (INC-C). NOTE: pulls curve.hlsl whose FrexpStructType collides with history_valid.hlsl (INC-C) when bilinear chain also included — see bilinear.",
+      "unknowns": "specific function set/names",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/utils.hlsl": {
+      "status": "O (Affine3Packed{float data[12]} + column-major 12-float pack order + affine_basis/translation/scale construction — verbatim from _rocky_terrain_stairs_stairs decompile); I (function names)",
+      "consumers": "223 bins; top spawner shaders (stairs, marching_squares, spawn_flowers/bushes, water_spawn_*)",
+      "cross_agent_deps": "includes inc/math_const.hlsl (own)",
+      "unknowns": "whether Affine3Packed lives here vs a shared header (only 85 bins show it; consistent with utils)",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/bicubic.hlsl": {
+      "status": "O (Catmull-Rom weights w0/w1/w2/w3 polynomials verbatim from _final_post ps inlined); I (sample function names)",
+      "consumers": "3 bins (_final_post raster x2, _lut_water_noise)",
+      "cross_agent_deps": "none",
+      "unknowns": "bicubic_sample body (standard 4x4 assumed)",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/bilinear.hlsl": {
+      "status": "O (2x2 texel neighborhood + valid-bitmask (1,2,4,8)*1/15 from _calculate_reprojection_map inlined); I (names/signature)",
+      "consumers": "1 bin (_calculate_reprojection_map)",
+      "cross_agent_deps": "includes inc/history_valid.hlsl (INC-C). CONFLICT: history_valid.hlsl (INC-C) and curve.hlsl (INC-B) both define `FrexpStructType` with different shapes; a shader including both the bilinear chain AND math.hlsl chain will not compile until one agent renames/merges. Documented; self-test splits the chains.",
+      "unknowns": "exact helper signature",
+      "compile_self_test": "PASS (entry B, isolated from curve chain)"
+    },
+    "inc/image.hlsl": {
+      "status": "I/U (image/mask sampling helpers; no direct evidence beyond include edge image.hlsl -> curve.hlsl and 11 consumer bins)",
+      "consumers": "11 bins",
+      "cross_agent_deps": "includes inc/curve.hlsl (INC-B)",
+      "unknowns": "specific functions",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/quad_mesh.hlsl": {
+      "status": "O (quad corner from vertex id mapping from _billboard_forest vs inlined); I (function names/extra helpers)",
+      "consumers": "28 bins (billboards)",
+      "cross_agent_deps": "includes inc/image.hlsl (own)",
+      "unknowns": "exact fullscreen-quad helper set",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/tracked_buffer.hlsl": {
+      "status": "I/U (AccessChain+CompositeInsert+Store+Load+ShiftRight opcode mix at stairs/marching_squares/dof consumers; reserve-with-atomic + element-store helper surface chosen); I (includes inc/smooth_max.hlsl per include edge)",
+      "consumers": "402 bins embedded; code in stairs/marching_squares/dof/nani_group_draw_cmd_prefix_sum",
+      "cross_agent_deps": "includes inc/smooth_max.hlsl (INC-B, reconstructed)",
+      "unknowns": "actual record-write API (per-consumer record layouts not pinned)",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/debug_utils.hlsl": {
+      "status": "I/U (~12 ops total across all bins — file is almost always empty at codegen; minimal debug surface chosen)",
+      "consumers": "402 bins (via samplers.hlsl); code only in _nani_generate_dispatch_args",
+      "cross_agent_deps": "includes inc/tracked_buffer.hlsl (own)",
+      "unknowns": "actual debug functions (nearly all no-op)",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/projection.hlsl": {
+      "status": "I/U (standard projection-matrix helpers; no named functions recoverable; frustum.hlsl (INC-C) uses it as an include but defines its own plane extraction)",
+      "consumers": "21 bins",
+      "cross_agent_deps": "none",
+      "unknowns": "specific helper set",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/halfres.hlsl": {
+      "status": "I/U (half-res coordinate helpers; 18 bins)",
+      "consumers": "18 bins",
+      "cross_agent_deps": "none",
+      "unknowns": "specific functions",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/texture_utils.hlsl": {
+      "status": "I/U (sample/lod helpers; 37 bins; included by INC-C path_mask_sampler.inc.hlsl)",
+      "consumers": "37 bins",
+      "cross_agent_deps": "none",
+      "unknowns": "specific functions",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/atomics.hlsl": {
+      "status": "I/U (atomic append helpers; 5 bins, grass family)",
+      "consumers": "5 bins",
+      "cross_agent_deps": "none",
+      "unknowns": "specific functions",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/texture_blend.hlsl": {
+      "status": "I/U (layer blend helpers; 8 bins)",
+      "consumers": "8 bins",
+      "cross_agent_deps": "none",
+      "unknowns": "specific functions",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/parallax_mapping.hlsl": {
+      "status": "I/U (steep parallax mapping; 10 bins; included by INC-C dormer_hole.inc.hlsl)",
+      "consumers": "10 bins",
+      "cross_agent_deps": "none",
+      "unknowns": "specific POM variant/params",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/stochastic_tiling.hlsl": {
+      "status": "I/U (stochastic tiling sample; 2 bins; includes inc/pack_unpack.hlsl per include edge)",
+      "consumers": "2 bins",
+      "cross_agent_deps": "includes inc/pack_unpack.hlsl (own), inc/hash.hlsl (own)",
+      "unknowns": "specific tiling algorithm",
+      "compile_self_test": "PASS (entry B)"
+    },
+    "inc/color/srgb.hlsl": {
+      "status": "O (decode polynomial + constants 0.04045/0.055/1.055/2.4/12.92 verbatim from _blit_stretch_decode_srgb); I (encode + function names)",
+      "consumers": "232 bins",
+      "cross_agent_deps": "none",
+      "unknowns": "encode exact form (standard inverse assumed)",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/color/ycbcr.hlsl": {
+      "status": "O (Rec.709 RGB->YCbCr matrix verbatim from _taa inlined: rows (0.2126,0.7152,0.0722)/(-0.1146,-0.3854,0.5)/(0.5,-0.4542,-0.0458)); I (function names; inverse matrix = exact inverse)",
+      "consumers": "6 bins (taa, tgsr, final_post, capture_panic_screenshot)",
+      "cross_agent_deps": "includes inc/color/math.hlsl (own)",
+      "unknowns": "function names",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/color/xyz.hlsl": {
+      "status": "U (standard D65 sRGB<->XYZ matrices; not directly observable in sampled final_post decompile)",
+      "consumers": "1 bin (final_post)",
+      "cross_agent_deps": "none",
+      "unknowns": "exact matrices/whitepoint used",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/color/luv.hlsl": {
+      "status": "U (standard CIELUV D65; not directly observable)",
+      "consumers": "1 bin (final_post)",
+      "cross_agent_deps": "includes inc/color/xyz.hlsl (own)",
+      "unknowns": "exact constants",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/color/helmholtz_kohlrausch.hlsl": {
+      "status": "U (HK lightness boost; ICC-path `0.42/max(r,g,b)` hint in final_post is HK-like but exact formula not pinned)",
+      "consumers": "1 bin (final_post)",
+      "cross_agent_deps": "includes inc/color/luv.hlsl (own)",
+      "unknowns": "exact HK formula",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/color/math.hlsl": {
+      "status": "I (luma helper; luminance weights 0.2126/0.7152/0.0722 observed throughout final_post grading chain)",
+      "consumers": "1 bin (final_post)",
+      "cross_agent_deps": "none",
+      "unknowns": "additional color-math helpers",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/upsample/easu.hlsl": {
+      "status": "O (FSR1.0 EASU structure verbatim from _final_post ps: 12 taps, luma y+0.5(x+z), gradient clamps); I (function name; compact port of standard FSR1 EASU)",
+      "consumers": "2 bins (final_post raster)",
+      "cross_agent_deps": "none",
+      "unknowns": "exact weight combination (two-phase pass simplified)",
+      "compile_self_test": "PASS (entry A)"
+    },
+    "inc/upsample/lanczos2.hlsl": {
+      "status": "U (standard 2-lobe Lanczos kernel; upsampling_mode branch in final_post but Lanczos2 body not pinned)",
+      "consumers": "2 bins (final_post raster)",
+      "cross_agent_deps": "none",
+      "unknowns": "exact kernel/implementation",
+      "compile_self_test": "PASS (entry A)"
+    }
+  },
+  "cross_agent_conflicts": [
+    {
+      "files": ["inc/bilinear.hlsl (INC-A, includes)", "inc/history_valid.hlsl (INC-C)", "inc/curve.hlsl (INC-B)"],
+      "issue": "history_valid.hlsl (INC-C) and curve.hlsl (INC-B) both define `struct FrexpStructType` with different layouts (INC-C: float mantissa+exponent; INC-B: float3 mantissa + int3 exponent). Any shader including both the bilinear chain (bilinear->history_valid) and the math chain (math->quad_mesh->image->curve) fails to compile. INC-A keeps evidence-based includes; INC-B/INC-C must reconcile the type (rename or merge) for full integration.",
+      "impact": "INC-A compile self-test splits into entry A (curve chain) and entry B (history_valid chain); both PASS individually."
+    }
+  ],
+  "dependency_protocol_notes": [
+    "INC-A wrote only its owned files under reconstruction/shader-source/shaders/inc/.",
+    "Cross-agent includes used at compile time: inc/smooth_max.hlsl (INC-B, reconstructed), inc/history_valid.hlsl (INC-C, reconstructed), inc/unjitter_taa.hlsl (INC-C, reconstructed), inc/curve.hlsl (INC-B, reconstructed). No temp dep copies needed — all deps exist in the tree.",
+    "INC-C cascades.hlsl / unjitter_taa.hlsl use bare-global `view_constants[i]` access, matching INC-A's cbuffer member style (verified compilable)."
+  ]
+}

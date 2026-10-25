@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "source_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "split_cases": 800,
+  "row_cases": 523,
+  "failures": [],
+  "oracle": "Original RNE instructions; full random_splits_into and original fastrand f32; row block only ceilf host hook",
+  "full_game_executed": false,
+  "limitations": [
+    "random_splits Vec preallocated to avoid allocator paths; comparison covers float output, RNG state, and result length",
+    "ceilf external call handled with IEEE integral rounding preserving nonfinite values",
+    "MXCSR 0x1f80 only",
+    "This validates partition/row layout kernels, not the full tile transform pipeline"
+  ]
+}

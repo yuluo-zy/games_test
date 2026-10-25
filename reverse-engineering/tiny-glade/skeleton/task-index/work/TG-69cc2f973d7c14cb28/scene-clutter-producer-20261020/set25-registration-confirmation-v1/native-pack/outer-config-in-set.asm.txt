@@ -1,0 +1,51 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+1400d68c0: 41 56                       	pushq	%r14
+1400d68c2: 56                          	pushq	%rsi
+1400d68c3: 57                          	pushq	%rdi
+1400d68c4: 53                          	pushq	%rbx
+1400d68c5: 48 83 ec 28                 	subq	$0x28, %rsp
+1400d68c9: 4c 89 c6                    	movq	%r8, %rsi
+1400d68cc: 48 89 d7                    	movq	%rdx, %rdi
+1400d68cf: 48 8b 01                    	movq	(%rcx), %rax
+1400d68d2: 48 89 c2                    	movq	%rax, %rdx
+1400d68d5: 48 f7 da                    	negq	%rdx
+1400d68d8: 71 30                       	jno	0x1400d690a <.text+0xd590a>
+1400d68da: 48 8b 41 18                 	movq	0x18(%rcx), %rax
+1400d68de: 48 85 c0                    	testq	%rax, %rax
+1400d68e1: 74 5d                       	je	0x1400d6940 <.text+0xd5940>
+1400d68e3: 48 8b 49 10                 	movq	0x10(%rcx), %rcx
+1400d68e7: 48 6b d8 70                 	imulq	$0x70, %rax, %rbx
+1400d68eb: 0f 1f 44 00 00              	nopl	(%rax,%rax)
+1400d68f0: 4c 8d 71 70                 	leaq	0x70(%rcx), %r14
+1400d68f4: 48 89 fa                    	movq	%rdi, %rdx
+1400d68f7: 49 89 f0                    	movq	%rsi, %r8
+1400d68fa: e8 c1 ff ff ff              	callq	0x1400d68c0 <.text+0xd58c0>
+1400d68ff: 4c 89 f1                    	movq	%r14, %rcx
+1400d6902: 48 83 c3 90                 	addq	$-0x70, %rbx
+1400d6906: 75 e8                       	jne	0x1400d68f0 <.text+0xd58f0>
+1400d6908: eb 36                       	jmp	0x1400d6940 <.text+0xd5940>
+1400d690a: 4c 8b 71 10                 	movq	0x10(%rcx), %r14
+1400d690e: 49 39 c6                    	cmpq	%rax, %r14
+1400d6911: 75 12                       	jne	0x1400d6925 <.text+0xd5925>
+1400d6913: 48 8d 15 4e 38 86 02        	leaq	0x286384e(%rip), %rdx   # 0x14293a168
+1400d691a: 48 89 cb                    	movq	%rcx, %rbx
+1400d691d: e8 2e 7c 5d 00              	callq	0x1406ae550 <.text+0x6ad550>
+1400d6922: 48 89 d9                    	movq	%rbx, %rcx
+1400d6925: 48 8b 41 08                 	movq	0x8(%rcx), %rax
+1400d6929: 4c 89 f2                    	movq	%r14, %rdx
+1400d692c: 48 c1 e2 04                 	shlq	$0x4, %rdx
+1400d6930: 48 89 3c 10                 	movq	%rdi, (%rax,%rdx)
+1400d6934: 48 89 74 10 08              	movq	%rsi, 0x8(%rax,%rdx)
+1400d6939: 49 ff c6                    	incq	%r14
+1400d693c: 4c 89 71 10                 	movq	%r14, 0x10(%rcx)
+1400d6940: 48 83 c4 28                 	addq	$0x28, %rsp
+1400d6944: 5b                          	popq	%rbx
+1400d6945: 5f                          	popq	%rdi
+1400d6946: 5e                          	popq	%rsi
+1400d6947: 41 5e                       	popq	%r14
+1400d6949: c3                          	retq

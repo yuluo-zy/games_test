@@ -1,0 +1,120 @@
+{
+  "id": "TG-5dedb2f556019d9c41",
+  "source_path": "crates/systems/decorator/src/backup.rs",
+  "category": "core",
+  "target_version": "C",
+  "versions": [
+    "A",
+    "B",
+    "C"
+  ],
+  "priority_score": 75,
+  "family": "building",
+  "claim_mode": "candidate_reconstruction",
+  "cross_version_pairs": [
+    {
+      "versions": [
+        "A",
+        "B"
+      ],
+      "same_file_source_checksum_set": false,
+      "shared_source_checksums": [],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    },
+    {
+      "versions": [
+        "A",
+        "C"
+      ],
+      "same_file_source_checksum_set": false,
+      "shared_source_checksums": [],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    },
+    {
+      "versions": [
+        "B",
+        "C"
+      ],
+      "same_file_source_checksum_set": true,
+      "shared_source_checksums": [
+        "8edcb7217cf30a487eb31b0da3c866746761778ebc05af25a93930c245f41774"
+      ],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    }
+  ],
+  "function_ids": [
+    "1f9bc6fa0880c7559f",
+    "40ee6abe6a872d4909",
+    "7635bd553ef9539a92",
+    "b86971d64308f3821f",
+    "d0ea20e7ed7a4e383c",
+    "d885d19c1545447984",
+    "3575afb6b39370848e",
+    "59d5b12056e7bc4430",
+    "b5f341130d9c35250b",
+    "c44c7632c8b947caf4",
+    "f75bd715669fd60e21",
+    "0b6af9b37ae0d55e0c",
+    "39bba7ef3f2d8e7bd8",
+    "7d86c916f65b4d0363",
+    "894a83f9d0ed16cae0",
+    "e45f036e1386720630"
+  ],
+  "related_callee_tasks": [
+    "TG-7064edfc2ddd8aed1b",
+    "TG-385bea2d89b2924780",
+    "TG-43142338addb95ca2d",
+    "TG-774ee58bc153366d1d",
+    "TG-889aa76ca030a2e3cd",
+    "TG-60901c6c8508b1af76",
+    "TG-69cc2f973d7c14cb28",
+    "TG-112002d8490cdb2558"
+  ],
+  "related_caller_tasks": [
+    "TG-69cc2f973d7c14cb28",
+    "TG-3f1713b27c7e76b81f",
+    "TG-3e761034b42adbb90f",
+    "TG-9073c40e5ed5e52282",
+    "TG-3ab1be37613b300ae5",
+    "TG-615509cf42b75630ea",
+    "TG-10dd22b74858bd4c2e"
+  ],
+  "source_inputs": {
+    "A": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/A/crates/systems/decorator/src/backup.rs",
+      "sha256": "fb34c83c7b2c8793b8e5d4d07642f0cd8acaefaa9f356f421151dff334ffe5ef",
+      "binary_sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708",
+      "pdb_sha256": "d5d4001583e31abf20b1563bbfdd9e4853629065aa2e461fe5809b205db908a5"
+    },
+    "B": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/B/crates/systems/decorator/src/backup.rs",
+      "sha256": "b23c00771ebe401bc7522bc973d60bb369654021062a069d2689e94aa62d042e",
+      "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+      "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911"
+    },
+    "C": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/C/crates/systems/decorator/src/backup.rs",
+      "sha256": "99d97565cb088ff043f192eae59fb885f3a565d6e878c0ab530b340a677714ac",
+      "binary_sha256": "d8f9261b1a4cb677fe91b8f5017bcff63b1312228b3f3264a2071ca7d3ad80a9",
+      "pdb_sha256": "df472d8e6ae642baed96127151b18685291468518ea8dc71557bce4508c78902"
+    }
+  },
+  "assignment_unit": "one source-file family across A/B/C; one owner to prevent overlapping file edits",
+  "deliverable": "independent candidate Rust + ABI/field/dependency contracts + producer/consumer and removal/history boundaries + evidence handoff",
+  "implementation_status": "not_assessed; existing Rust must be checked before duplicate work",
+  "semantic_acceptance": false,
+  "existing_reconstruction_candidates": [
+    "reconstruction/building/dirty_tiles.rs"
+  ],
+  "known_B_evidence_function_ids": [],
+  "data_structure_metadata": {
+    "A": "skeleton/A/crates/systems/decorator/src/backup.rs.structures.json.gz",
+    "B": "skeleton/B/crates/systems/decorator/src/backup.rs.structures.json.gz",
+    "C": "skeleton/C/crates/systems/decorator/src/backup.rs.structures.json.gz"
+  },
+  "handoff": "task-index/handoffs/TG-5dedb2f556019d9c41.json",
+  "handoff_audit": "task-index/handoffs/TG-5dedb2f556019d9c41.audit.json"
+}

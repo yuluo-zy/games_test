@@ -1,0 +1,180 @@
+--- games_test/tiny-glade/crates/country-core/src/systems/save/save_game.rs
++++ games_test/tiny-glade/crates/country-core/src/systems/save/save_game.rs
+@@ -1105,3 +1105,177 @@
+         assert!(!image_settings_equal(&b, &b));
+     }
+ }
++
++#[cfg(test)]
++mod original_world_worker_integration {
++    use super::super::save_thread::{execute_save_cmd, CurrentSaveFile, UnsavedFileList};
++    use super::*;
++    use crate::resources::{
++        color_id::{GateColorIds, HalftimberColorIds, WallColorIds},
++        history::{History, MaybePendingSnapshotId},
++        stairs::{stairs_removed_supports::StairsRemovedSupports, stairs_state::StairsState},
++        terrain_editing::TerrainEditingData,
++        terrain_height::{TerrainHeightSsbo, TerrainHeightsData},
++        walls::{decorator_storage::DecoratorStorage, InnerWalls, WallState},
++        world_raster::DirtyTilePublisher,
++        world_raster_defs::{
++            Cobblestone1Raster, Cobblestone2Raster, Cobblestone3Raster, GardenRaster, PathRaster,
++            WaterRaster,
++        },
++    };
++    use bevy_ecs::{prelude::World, system::RunSystemOnce};
++    #[test]
++    fn real_nonempty_world_capture_resolves_the_same_history_owner_on_worker_flush() {
++        // Original intro wall data; all other below values are explicit edits
++        // to actual CPU owners, not replacement JSON snapshot sections.
++        let original: serde_json::Value = serde_json::from_str(include_str!(
++            "../../../tests/fixtures/original-intro-wall-states-b.json"
++        ))
++        .unwrap();
++        let state: WallState = serde_json::from_value(original[0]["state"].clone()).unwrap();
++        let mut walls = InnerWalls::new();
++        let wall_id = walls.new_wall(state);
++        let mut terrain = TerrainEditingData(tg_terrain::stroke::TerrainEditingData::default());
++        terrain.new_stroke([1.0, 2.0, 3.0]).unwrap().unwrap();
++        let mut heights = TerrainHeightsData::<TerrainHeightSsbo>::new();
++        heights.heights_mut()[1] = 0x1234;
++        heights.heights_mut()[512] = 0xabcd;
++        let expected_heights = bytemuck::cast_slice::<u16, u8>(heights.heights()).to_vec();
++        let mut path = PathRaster::new(DirtyTilePublisher::unique());
++        path.composite_mut()[17] = 255;
++        let expected_path = path.current_buffer().to_vec();
++        let mut stairs = StairsState::new();
++        stairs.make_backup();
++        let mut world = World::new();
++        world.insert_resource(walls);
++        world.insert_resource(terrain);
++        world.insert_resource(heights);
++        world.insert_resource(path);
++        world.insert_resource(Cobblestone1Raster::new(DirtyTilePublisher::unique()));
++        world.insert_resource(Cobblestone2Raster::new(DirtyTilePublisher::unique()));
++        world.insert_resource(Cobblestone3Raster::new(DirtyTilePublisher::unique()));
++        world.insert_resource(WaterRaster::new(DirtyTilePublisher::unique()));
++        world.insert_resource(GardenRaster::new(DirtyTilePublisher::unique()));
++        world.insert_resource(stairs);
++        world.insert_resource(StairsRemovedSupports::default());
++        world.insert_resource(DecoratorStorage::default());
++        world.insert_resource(WallColorIds::new());
++        world.insert_resource(GateColorIds::new());
++        world.insert_resource(HalftimberColorIds::new());
++        world.init_resource::<crate::systems::ui_clutter::DeletedAutoClutter>();
++        let domain = world
++            .run_system_once(|snapshot: SaveSnapshotWorld| snapshot.capture())
++            .unwrap();
++        assert_eq!(domain.walls.len(), 1);
++        assert_eq!(domain.walls[0].0, wall_id);
++        assert_eq!(domain.terrain.strokes.len(), 1);
++        assert_eq!(
++            domain.terrain_data.as_deref(),
++            Some(expected_heights.as_slice())
++        );
++        assert_eq!(domain.raster[0], ("PathRaster", expected_path.clone()));
++
++        let mut history: History = History::empty_glade();
++        let pending = MaybePendingSnapshotId::new();
++        set_current_snapshot(
++            &mut history.ledger_mut().resolved_snapshots,
++            -1,
++            pending.clone(),
++        );
++        assert_eq!(pending.state(), 0);
++        // Clone the actual same atomic owners before the worker assigns a hash.
++        let references = SnapshotReferencesToJson(history.ledger().resolved_snapshots.clone());
++        let snapshot = capture_game_snapshot_save_data(SessionId::new(), 0, -1, domain);
++        let original_save: serde_json::Value = serde_json::from_str(include_str!(
++            "../../../tests/fixtures/original-intro-history-b.json"
++        ))
++        .unwrap();
++        let sections = GameSaveSections {
++            values: SaveFileSection::ALL.map(|section| {
++                let owner = if section as u8 >= SaveFileSection::ChainIndex as u8 {
++                    &original_save["History"]
++                } else {
++                    &original_save
++                };
++                SerializedJson::new(&owner[section.json_key()]).unwrap()
++            }),
++        };
++        let directory = tempfile::tempdir().unwrap();
++        let current = CurrentSaveFile::create(directory.path(), sections, &[]);
++        let (commands, receiver) = crossbeam_channel::unbounded();
++        let (start, begin) = crossbeam_channel::bounded::<()>(1);
++        // Execute the actual production worker dispatcher on its own thread.
++        // The fixture supplies only its initial real temp-directory file; it
++        // does not redirect global save paths or replace any worker command.
++        let worker = std::thread::spawn(move || {
++            begin.recv().unwrap();
++            let mut current = Some(current);
++            let unsaved = UnsavedFileList::default();
++            while let Ok(command) = receiver.recv() {
++                execute_save_cmd(&mut current, command, &unsaved);
++            }
++            assert_eq!(unsaved.len(), 0);
++        });
++        commands
++            .send(AsyncSaveCmd::CaptureSnapshot {
++                snapshot,
++                pending: pending.clone(),
++            })
++            .unwrap();
++        commands
++            .send(AsyncSaveCmd::ChangeSection {
++                section: SaveFileSection::Snapshots,
++                value: defer_json(references),
++            })
++            .unwrap();
++        assert_eq!(pending.state(), 0, "queued capture has not executed");
++        let mut auto = AutoSaveState::default();
++        auto.attach_command_sender(commands);
++        start.send(()).unwrap();
++        // Real tag10 reply follows snapshot assignment, late reference serde,
++        // section writes and actual ShadowFile.sync_all.
++        auto.flush_synchronously().unwrap();
++        let id = pending
++            .snapshot_id()
++            .expect("actual snapshot hash assigned");
++        let shared = current_snapshot(&history.ledger().resolved_snapshots, -1).unwrap();
++        assert_eq!(shared.snapshot_id(), Some(id));
++        let saved: serde_json::Value =
++            serde_json::from_slice(&std::fs::read(directory.path().join("history.json")).unwrap())
++                .unwrap();
++        assert_eq!(saved["History"]["snapshots"][0]["snapshot_id"], id.0);
++        let bytes = std::fs::read(
++            directory
++                .path()
++                .join("snapshots")
++                .join(format!("{}.snapshot", id.0)),
++        )
++        .unwrap();
++        let chunks = motomoto::Reader::new(&bytes)
++            .iter()
++            .collect::<std::io::Result<Vec<_>>>()
++            .unwrap();
++        let metadata: serde_json::Value = serde_json::from_slice(chunks[0].data).unwrap();
++        assert_eq!(metadata.as_object().unwrap().len(), 14);
++        assert_eq!(metadata["Walls"][0][0], wall_id.0);
++        assert_eq!(metadata["Terrain"]["strokes"].as_object().unwrap().len(), 1);
++        let path_chunk = chunks
++            .iter()
++            .find(|chunk| chunk.tag == motomoto::tag_from_str_trunc("PathRaster"))
++            .unwrap();
++        assert_eq!(
++            super::super::snapshot::inflate_terrain(&path_chunk.data[8..]).unwrap(),
++            expected_path
++        );
++        let terrain_chunk = chunks
++            .iter()
++            .find(|chunk| chunk.tag == motomoto::tag_from_str("Terrain"))
++            .unwrap();
++        assert_eq!(
++            super::super::snapshot::inflate_terrain(terrain_chunk.data).unwrap(),
++            expected_heights
++        );
++        drop(auto);
++        worker.join().unwrap();
++    }
++}

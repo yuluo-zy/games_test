@@ -1,0 +1,61 @@
+{
+  "production_source_sha256": "3a131612378334e9ce8ceb5a08b187da87d74f07ae9f71736a9d77b7b47e2bac",
+  "native_serialize": {
+    "address": "0x14085ee90",
+    "windows_key_address": "0x142a95773",
+    "windows_key_length": 7,
+    "windows_input_offset": 0,
+    "callsite": "0x14085f085",
+    "callee": "0x14158b780",
+    "retained_pdb_named_specialization": "serde::ser::SerializeMap::serialize_entry<serde_json Compound CompactFormatter,str,Option<country_core::resources::color_id::ColorId>>"
+  },
+  "native_visitor": {
+    "address": "0x14085f550",
+    "windows_result": {
+      "field": "windows",
+      "native_result_tag": 0,
+      "native_field_index": 10
+    }
+  },
+  "native_json_fixtures": [
+    {
+      "native_windows_tag": 0,
+      "native_windows_payload": null,
+      "json": "{\"freeform_wall\":0,\"building\":0,\"roof\":0,\"building_wall_style\":\"Stone\",\"freehand_ty\":\"FollowTerrain\",\"halftimber\":0,\"lantern_light\":0,\"fences\":0,\"window_light\":0,\"flag\":0,\"windows\":null,\"gates\":0,\"flat_rim_style\":\"Rim\",\"lantern_brightness\":0.0,\"stairs\":{\"stairs_color\":0,\"ladder_color\":0,\"railing_ty\":\"None\",\"magic_color\":0}}",
+      "windows_wire": null
+    },
+    {
+      "native_windows_tag": 1,
+      "native_windows_payload": 0,
+      "json": "{\"freeform_wall\":0,\"building\":0,\"roof\":0,\"building_wall_style\":\"Stone\",\"freehand_ty\":\"FollowTerrain\",\"halftimber\":0,\"lantern_light\":0,\"fences\":0,\"window_light\":0,\"flag\":0,\"windows\":0,\"gates\":0,\"flat_rim_style\":\"Rim\",\"lantern_brightness\":0.0,\"stairs\":{\"stairs_color\":0,\"ladder_color\":0,\"railing_ty\":\"None\",\"magic_color\":0}}",
+      "windows_wire": 0
+    },
+    {
+      "native_windows_tag": 1,
+      "native_windows_payload": 8,
+      "json": "{\"freeform_wall\":0,\"building\":0,\"roof\":0,\"building_wall_style\":\"Stone\",\"freehand_ty\":\"FollowTerrain\",\"halftimber\":0,\"lantern_light\":0,\"fences\":0,\"window_light\":0,\"flag\":0,\"windows\":8,\"gates\":0,\"flat_rim_style\":\"Rim\",\"lantern_brightness\":0.0,\"stairs\":{\"stairs_color\":0,\"ladder_color\":0,\"railing_ty\":\"None\",\"magic_color\":0}}",
+      "windows_wire": 8
+    },
+    {
+      "native_windows_tag": 1,
+      "native_windows_payload": 4294967295,
+      "json": "{\"freeform_wall\":0,\"building\":0,\"roof\":0,\"building_wall_style\":\"Stone\",\"freehand_ty\":\"FollowTerrain\",\"halftimber\":0,\"lantern_light\":0,\"fences\":0,\"window_light\":0,\"flag\":0,\"windows\":4294967295,\"gates\":0,\"flat_rim_style\":\"Rim\",\"lantern_brightness\":0.0,\"stairs\":{\"stairs_color\":0,\"ladder_color\":0,\"railing_ty\":\"None\",\"magic_color\":0}}",
+      "windows_wire": 4294967295
+    }
+  ],
+  "migration_audit": [
+    {
+      "path": "tiny-glade/crates/country-core/src/resources/glade_color_customization.rs",
+      "change": "field ColorId -> Option<ColorId>; explicit roundtrip fixture ColorId(8) -> Some(ColorId(8))"
+    },
+    {
+      "path": "tiny-glade/crates/country-core/src/systems/save/load_game.rs:466",
+      "change": "none; existing struct update uses Default windows None; no unwrap or 0 fallback"
+    },
+    {
+      "path": "tiny-glade/crates/country-core/src/resources/walls/color_selection.rs:355",
+      "change": "none; existing struct update uses Default; does not read windows"
+    }
+  ],
+  "scope": "Only windows field and its own serialization fixture; no other GCC field, UI default, show/main branch, or production file changed."
+}

@@ -1,0 +1,17 @@
+{
+  "schema_version":1,
+  "evidence_mode":"static",
+  "events":[
+    {"step":1,"name":"begin_frame","owner":"GraphExecutor","effects":["rotate old frame records","wait old submit when trim requires"]},
+    {"step":2,"name":"batch_record","owner":"GraphExecutionRecorder/CompiledRenderGraph","effects":["ensure active CB","record initial/pre-pass barriers","final batch exports"]},
+    {"step":3,"name":"submit_pending_cbs","owner":"GraphExecutionRecorder","effects":["queue_submit pending CBs","store completion token at recorder+0x108"]},
+    {"step":4,"name":"end_frame","owner":"GraphExecutionRecorder","effects":["close active CB","append FrameRecord","end frame"]},
+    {"step":5,"name":"exports","owner":"ResourceRegistry/ExecutedRenderGraph","effects":["into_exports moves logical resources","take_resource removes one export"]},
+    {"step":6,"name":"immediate_retire","owner":"ExecutedRenderGraph","effects":["CPU cleanup and pool return","no GPU wait"]},
+    {"step":7,"name":"temporal_flip","owner":"TemporalRenderGraphState","effects":["keyed parity old->1-old; missing->0","temporal resource exchange"]},
+    {"step":8,"name":"submit_completion","owner":"R3 GraphicsDevice","effects":["wait signal/timeline","release tracked CBs/resources"]}
+  ],
+  "decoupled_paths":["execute_compiled -> immediate_retire","queue_submit -> submit_completion -> tracked_disposal"],
+  "frame_number":"executor-owned; exact offset unresolved",
+  "queue_sequence":"R3 token crosses boundary; exact ABI unresolved"
+}

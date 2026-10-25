@@ -1,0 +1,328 @@
+--- a/tiny-glade/crates/systems/tree-tool/src/ui_place_tree.rs
++++ b/tiny-glade/crates/systems/tree-tool/src/ui_place_tree.rs
+@@ -3,7 +3,7 @@
+ //! B 原字节 142269970：以存储索引初始化本地 fastrand1.8.0，依次采样
+ //! 缩放、变体、旋转，提交 Insert 后录入历史。14226a170 的三个 ICF
+ //! 同址函数由 ActiveSession 的 PDB inline 确认为 olden/winter/autumn。
+-//! UI seed_cursor_icon 的原闭包仍待恢复，不能把 raw 工厂视图视为已渲染。
++//! 光标图标使用原 Empty 分支的真实可回收网格与现有 UI 工厂生命周期。
+ 
+ use bevy_ecs::prelude::*;
+ use glam::Vec2;
+@@ -22,8 +22,9 @@
+ use country_core::systems::ui::resources::widget_params::{
+     UiSounds, WidgetParams, WidgetVolumeShape,
+ };
+-use country_core::systems::ui::signifiers::SignifierFactory;
+ use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
++use country_core::systems::ui::signifiers::signifier_factory::SignifierMesh;
++use country_core::systems::ui::signifiers::{SignifierEntityBuilder, SignifierFactory};
+ use country_core::systems::ui_edit_focus::{GeoSource, geo_src_to_edit_subject};
+ 
+ use crate::PlaceTreeCmd;
+@@ -173,24 +174,12 @@
+         return;
+     }
+     // O：界内且 is_active → 指示符。
+-    // label = format!("decorator_{}", CursorPositionSS)；记录 20 B
+-    // {1,1,cursor_ss 位型, window.as_vec2().y, config.ui.icon_size_mult}；
+-    // SignifierFactory::new(label, record, 0x143035160) + write（逐 5 qword）。
+     if ctx.is_active() {
+-        let ss = cursor_ss.0;
+-        let label = format!("decorator_{ss}");
+-        let mut record = [0u8; 0x20];
+-        record[0..8].copy_from_slice(&1u64.to_le_bytes());
+-        record[8..16].copy_from_slice(&1u64.to_le_bytes());
+-        record[16..20].copy_from_slice(&ss.x.to_le_bytes());
+-        record[20..24].copy_from_slice(&ss.y.to_le_bytes());
+-        record[24..28].copy_from_slice(&window.as_vec2().y.to_le_bytes());
+-        record[28..32].copy_from_slice(&config.ui.icon_size_mult.to_le_bytes());
+-        // 原生把 20 B 记录的所有权交给 signifier 记录（`inner`）；core 记录只存
+-        // 裸指针，故以 leak 保持载荷存活（所有权/唤醒登记 U）。
+-        let inner = Box::leak(Box::new(record)) as *const u8;
+-        let factory = SignifierFactory::new(label.as_bytes(), inner, 0x1430_3516_0);
+-        signifiers.write_factory(&factory);
++        signifiers.write_factory(&seed_cursor_icon(
++            **cursor_ss,
++            window.as_vec2().y,
++            config.ui.icon_size_mult,
++        ));
+     }
+     if !ctx.clicked() {
+         return;
+@@ -253,9 +242,39 @@
+     }
+ }
+ 
+-/// `seed_cursor_icon`（行 115，内联；O 名——光标图标种子逻辑并入调用点，
+-/// 本 crate 无独立业务面）。
+-pub fn seed_cursor_icon() {}
++/// B 142269819..87f：按原单精度计算顺序缩放，并对 NaN 使用最小图标尺寸。
++fn seed_cursor_extent(
++    cursor: Vec2,
++    height: f32,
++    icon_size_mult: f32,
++) -> country_core::components::Ui2dExtent {
++    let scaled = (Vec2::new(28.4, 26.4) * (height / 1000.0)) * icon_size_mult;
++    let size = Vec2::new(scaled.x.max(35.5), scaled.y.max(33.0));
++    // 保留原 zero*height lane；size.y 为 Inf 时此处应产生 NaN。
++    let offset = Vec2::new(size.x, 0.0 * size.y) * -0.5;
++    country_core::components::Ui2dExtent {
++        pos: cursor + offset,
++        size,
++    }
++}
++
++/// B 142269720：工厂拥有捕获数据，交给原五分支构建器和现有 UI 生命周期。
++fn seed_cursor_icon(cursor: Vec2, height: f32, icon_size_mult: f32) -> SignifierFactory {
++    let label = format!("decorator_{cursor}");
++    SignifierFactory::from_closure(
++        &label,
++        std::sync::Arc::new(move |meshes, shaders, commands| {
++            let entity = SignifierEntityBuilder::new(SignifierMesh::Empty)
++                .animation_duration(0.0)
++                .build(meshes, shaders, commands);
++            commands.entity(entity).insert((
++                seed_cursor_extent(cursor, height, icon_size_mult),
++                country_core::components::Ui2dImage::new("seed_cursor_icon"),
++            ));
++            vec![entity]
++        }),
++    )
++}
+ 
+ #[cfg(test)]
+ mod placement_producer_tests {
+@@ -265,7 +284,11 @@
+         session::{GladeType, SessionId, SessionMeta, SessionMutator},
+     };
+ 
+-    fn run(glade: GladeType, mutators: Vec<SessionMutator>, global_seed: u64) -> (InsertTreeCmd, World) {
++    fn run(
++        glade: GladeType,
++        mutators: Vec<SessionMutator>,
++        global_seed: u64,
++    ) -> (InsertTreeCmd, World) {
+         fastrand::seed(global_seed);
+         let mut world = World::new();
+         world.init_resource::<TreeStorage>();
+@@ -276,9 +299,15 @@
+         world.insert_resource(history);
+         world.insert_resource(ActiveSession::new(
+             SessionId::new(),
+-            SessionMeta { glade, mutators, image: None },
++            SessionMeta {
++                glade,
++                mutators,
++                image: None,
++            },
+         ));
+-        world.send_event(PlaceTreeCmd { position: glam::Vec3::new(1.0, -1.2, 3.0) });
++        world.send_event(PlaceTreeCmd {
++            position: glam::Vec3::new(1.0, -1.2, 3.0),
++        });
+         let mut schedule = Schedule::default();
+         schedule.add_systems(place_tree::<()>);
+         schedule.run(&mut world);
+@@ -317,20 +346,31 @@
+             (GladeType::Flowery, vec![], TREE_PREFAB_BRANCHY[0]),
+             (GladeType::Autumn, vec![], TREE_PREFAB_AUTUMN[0]),
+             (GladeType::Winter, vec![], TREE_PREFAB_NO_MUSHROOMS),
+-            (GladeType::Summer, vec![SessionMutator::Halloween2024], TREE_PREFAB_NAKED[0]),
++            (
++                GladeType::Summer,
++                vec![SessionMutator::Halloween2024],
++                TREE_PREFAB_NAKED[0],
++            ),
+         ] {
+             let (insert, world) = run(glade, mutators, 1);
+             assert_eq!(insert.id, 0);
+             assert_eq!(insert.prefab_name, expected);
+             assert!(insert.is_preplaced);
+             let pending = world.resource::<History<()>>().pending().unwrap();
+-            let EditType::Tree(edit) = &pending.edits[0] else { panic!("expected tree edit") };
+-            let TreeEdit::Place(data) = edit.as_ref() else { panic!("expected place edit") };
++            let EditType::Tree(edit) = &pending.edits[0] else {
++                panic!("expected tree edit")
++            };
++            let TreeEdit::Place(data) = edit.as_ref() else {
++                panic!("expected place edit")
++            };
+             assert_eq!(data.storage_index.unwrap().0, insert.id);
+             assert_eq!(data.id, insert.variant);
+             assert_eq!(data.position, insert.position);
+             assert_eq!(data.scale.to_bits(), insert.scale.to_bits());
+-            assert_eq!(data.rotation_degrees.to_bits(), insert.rotation_degrees.to_bits());
++            assert_eq!(
++                data.rotation_degrees.to_bits(),
++                insert.rotation_degrees.to_bits()
++            );
+             assert_eq!(data.prefab_name, insert.prefab_name);
+             assert_eq!(data.is_preplaced, insert.is_preplaced);
+         }
+@@ -354,15 +394,161 @@
+         world.init_resource::<Events<InsertTreeCmd>>();
+         world.insert_resource(History::<()>::empty_glade());
+         world.insert_resource(ActiveSession::new(SessionId::new(), SessionMeta::default()));
+-        world.send_event(PlaceTreeCmd { position: glam::Vec3::ONE });
++        world.send_event(PlaceTreeCmd {
++            position: glam::Vec3::ONE,
++        });
+         let mut schedule = Schedule::default();
+         schedule.add_systems(place_tree::<()>);
+-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| schedule.run(&mut world)));
++        let result =
++            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| schedule.run(&mut world)));
+         assert!(result.is_err());
+         let events = world.resource::<Events<InsertTreeCmd>>();
+         let mut cursor = events.get_cursor();
+         assert_eq!(cursor.read(events).count(), 1);
+         assert!(world.resource::<History<()>>().pending().is_none());
+     }
+-
+-}
++}
++
++#[cfg(test)]
++mod seed_cursor_icon_tests {
++    use super::*;
++    use country_core::{
++        asset_libraries::{
++            mesh_library::AssetMeshLibrary, shader_library::AssetShaderLibrary,
++            transient_mesh::TransientMesh,
++        },
++        components::{Ui2dExtent, Ui2dImage},
++        render::shader::RasterShaderProgram,
++        resources::time::GameTime,
++        systems::ui::{
++            resources::ui_state::{UiInteraction, WidgetId},
++            signifiers::{SignifierId, add_signifier_systems},
++        },
++    };
++
++    #[test]
++    fn cursor_extent_keeps_original_size_minimum_rounding_and_nan_lanes() {
++        let cursor = Vec2::new(100.0, 200.0);
++        let minimum = seed_cursor_extent(cursor, 1000.0, 1.0);
++        assert_eq!(minimum.size, Vec2::new(35.5, 33.0));
++        assert_eq!(minimum.pos, Vec2::new(82.25, 200.0));
++        let double = seed_cursor_extent(cursor, 2000.0, 1.0);
++        assert_eq!(double.size, Vec2::new(56.8, 52.8));
++        assert_eq!(double.pos.x.to_bits(), (100.0f32 - 28.4).to_bits());
++        assert_eq!(seed_cursor_extent(cursor, 1000.0, f32::NAN), minimum);
++        let infinite = seed_cursor_extent(cursor, f32::INFINITY, 1.0);
++        assert_eq!(infinite.pos.x, f32::NEG_INFINITY);
++        assert!(infinite.pos.y.is_nan());
++    }
++
++    fn entities(world: &mut World) -> Vec<Entity> {
++        world
++            .query_filtered::<Entity, With<SignifierId>>()
++            .iter(world)
++            .collect()
++    }
++
++    #[test]
++    fn owned_factory_wakes_deduplicates_and_reclaims_the_actual_cursor_mesh() {
++        let mut world = World::new();
++        world.insert_resource(AssetMeshLibrary::new());
++        world.insert_resource(GameTime::default());
++        world.init_resource::<UiSignifierStream>();
++        let shaders = AssetShaderLibrary::new();
++        shaders.add_raster(
++            RasterShaderProgram::new_draw("vertex_color_shader", Default::default(), &CpuShaders),
++            false,
++        );
++        world.insert_resource(shaders);
++        world.insert_resource(UiState::new(UiInteraction {
++            native_tag: 1,
++            native_phase: 0,
++            widget: WidgetId::from_name("tree_canvas"),
++        }));
++        let mut schedule = Schedule::default();
++        add_signifier_systems(&mut schedule);
++
++        let factory = seed_cursor_icon(Vec2::new(100.0, 200.0), 1000.0, 1.0);
++        assert!(factory.has_closure());
++        let closure = factory.closure.as_ref().unwrap();
++        let weak = std::sync::Arc::downgrade(closure);
++        world
++            .resource_mut::<UiSignifierStream>()
++            .write_factory(&factory);
++        world
++            .resource_mut::<UiSignifierStream>()
++            .write_factory(&factory);
++        schedule.run(&mut world);
++        assert_eq!(std::sync::Arc::strong_count(closure), 1);
++        drop(factory);
++        assert!(weak.upgrade().is_none());
++        let first = entities(&mut world);
++        assert_eq!(first.len(), 1);
++        let first_entity = first[0];
++        assert_eq!(
++            world.get::<Ui2dExtent>(first_entity).unwrap().pos,
++            Vec2::new(82.25, 200.0)
++        );
++        let image = world.get::<Ui2dImage>(first_entity).unwrap();
++        assert_eq!(image.name, "seed_cursor_icon");
++        assert_eq!(image.layer, 0);
++        let first_mesh = world
++            .get::<TransientMesh>(first_entity)
++            .unwrap()
++            .mesh_handle();
++        let registry = world
++            .resource::<AssetMeshLibrary>()
++            .transient_meshes()
++            .clone();
++        assert!(registry.lock().unwrap().is_empty());
++
++        world
++            .resource_mut::<UiSignifierStream>()
++            .write_factory(&seed_cursor_icon(Vec2::new(101.0, 200.0), 1000.0, 1.0));
++        schedule.run(&mut world);
++        assert!(world.get_entity(first_entity).is_err());
++        assert_eq!(entities(&mut world).len(), 1);
++        assert_eq!(*registry.lock().unwrap(), vec![first_mesh]);
++        schedule.run(&mut world);
++        assert!(entities(&mut world).is_empty());
++        assert_eq!(registry.lock().unwrap().len(), 2);
++    }
++
++    // 仅提供 CPU shader 工件，未实际调用的 GPU 创建面保持不可达。
++    struct CpuShaders;
++    use country_core::render::shader::boundary::{
++        CompiledShaderPipeline, ComputePipeline, ComputePipelineDesc, Error, RasterPipeline,
++        RasterPipelineDesc, RasterPipelineKey, ShaderBackend,
++    };
++    impl ShaderBackend for CpuShaders {
++        fn load_compiled_compute(
++            &self,
++            _: &ComputePipelineDesc,
++        ) -> Result<CompiledShaderPipeline, Error> {
++            unreachable!()
++        }
++        fn load_compiled_raster(
++            &self,
++            _: &RasterPipelineDesc,
++        ) -> Result<CompiledShaderPipeline, Error> {
++            Ok(CompiledShaderPipeline::default())
++        }
++        fn raster_shader_variants(&self, d: &RasterPipelineDesc) -> [RasterPipelineDesc; 2] {
++            [d.clone(), d.clone()]
++        }
++        fn create_compute_pipeline(
++            &self,
++            _: &str,
++            _: std::sync::Arc<CompiledShaderPipeline>,
++        ) -> Result<ComputePipeline, country_core::rhapsody_types::BackendError> {
++            unreachable!()
++        }
++        fn create_raster_pipeline(
++            &self,
++            _: std::sync::Arc<CompiledShaderPipeline>,
++            _: &RasterPipelineKey,
++        ) -> Result<RasterPipeline, Error> {
++            unreachable!()
++        }
++    }
++}

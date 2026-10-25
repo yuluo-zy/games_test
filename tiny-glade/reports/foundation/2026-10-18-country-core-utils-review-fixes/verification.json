@@ -1,0 +1,81 @@
+{
+  "scope": "Source correctness fixes for country-core utils rereview R1/R2/R3, including real draw consumer and signifier lifecycle",
+  "native_equivalence_verified": false,
+  "gpu_verified": false,
+  "findings_closed": [
+    "R1",
+    "R2",
+    "R3"
+  ],
+  "tests": {
+    "command": "cargo test -p country-core --lib --locked --offline --target-dir /tmp/tg-country-core-utils-review-20261018-target",
+    "exit_code": 0,
+    "passed": 2106,
+    "failed": 0,
+    "ignored": 0,
+    "log": "tests.log"
+  },
+  "clippy": {
+    "command": "cargo clippy -p country-core --lib --tests --locked --offline --target-dir /tmp/tg-country-core-utils-review-20261018-target --message-format=json",
+    "exit_code": 0,
+    "warning_diagnostics_all_including_repeated_targets": 555,
+    "warning_diagnostics_modified_files": 0,
+    "errors": 0,
+    "scoped_diagnostics": []
+  },
+  "format": {
+    "exit_code": 0,
+    "rust_files": 7,
+    "log": "fmt.log"
+  },
+  "source_files": {
+    "crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a_views.rs": {
+      "before_sha256": "c0a3b47c535ce24d298ec04366ac31cc2d27227baf48a1e91368c131fa120a64",
+      "after_sha256": "d9342c6b66538228d680a95380d4e697e80343cf3c6570c32023a5f219cd6dde"
+    },
+    "crates/country-core/src/systems/ui/signifiers/mod.rs": {
+      "before_sha256": "290e583ee69e12fc32e452d5b718fb44865c8b03bc6a7f33477578751ce0e961",
+      "after_sha256": "bacca8f355ffaf1cb22038af5cb0de9c9e18501ed0921e44c87bbd0704a9da22"
+    },
+    "crates/country-core/src/systems/ui/signifiers/signifier_create.rs": {
+      "before_sha256": "65248ca0a639a41d3afa4a16ce36ff62b9761843a67be3ebb598dea98a35dc83",
+      "after_sha256": "2e2f3299e9616a714f1e18fe4bf49e5df2bb964912c8c6a88067303dcc830225"
+    },
+    "crates/country-core/src/systems/ui/signifiers/signifier_mark_for_delete.rs": {
+      "before_sha256": "e4433394bba506ff362a43c0c155f4a3e63d04dcc14b5075698e8607df9118bf",
+      "after_sha256": "0121d09e1c0a03e2a9f3d13e40c3d3528874f1946cef29037faf46f797e28a75"
+    },
+    "crates/country-core/src/utils/README.md": {
+      "before_sha256": "61e0373dc9ba57a9c221786a3ee7525bc48c8926650043f77d5fcca32da9995f",
+      "after_sha256": "dd624fa279a39210f6bbeb170f6ae1b712af016255917dcb473b6e2889b2afae"
+    },
+    "crates/country-core/src/utils/REVIEW.md": {
+      "before_sha256": "0cd70871bce375ab07e632b3217b63ac41ac4c5543328f7acedf75c48aac77e8",
+      "after_sha256": "28f7bcbd32c2e1a0c82f859ff41234bb2621cce7b8ebe02160f7bee17324388f"
+    },
+    "crates/country-core/src/utils/debug_viz.rs": {
+      "before_sha256": "bc9a78228b2ad6291863be82b9992649c01bc3942bc7441acf9bf505a9599963",
+      "after_sha256": "cf22cc77825e03b10ecc82ef8623ece44e83b8276c4a5c0d8da6319a7067f77c"
+    },
+    "crates/country-core/src/utils/project_cursor_onto_ray.rs": {
+      "before_sha256": "8ee25f7c5252e17fdd7e220c9413cfc4ed2a549fa44fca9135d4ce794ae9f7aa",
+      "after_sha256": "46797a118b84c7a02ba4b43f13bde39bdbf0718d5f1c42ca3b995cb3a34a9abe"
+    },
+    "crates/country-core/src/systems/ui/signifiers/tests.rs": {
+      "before_sha256": null,
+      "after_sha256": "e9bab663eaabf218436a3dfe4e2d1df5e80067acce47c5b5933a2f7a4cc48dd6"
+    }
+  },
+  "dependencies": {
+    "Cargo.lock": "8b1db145bba362c966f02627258743ee12d1a43c94288e9c3ae88d6712dc3e16",
+    "crates/country-core/Cargo.toml": "8b60fcc928ccf0ebecdb9597600b1b03511acfd26c7f1dde0284d8f49dd204e3"
+  },
+  "artifacts": {
+    "tests.log": "92289902b30ace43ff009d863448693df9c95cbf8a2bc0847f2e19b549666952",
+    "clippy.jsonl": "81fef500b29e78764ef7504ddcd2874e1f1cf6ae29d076acfc80e0d7c4406150",
+    "clippy.log": "b17da6fa873041eee7d5ae6d8680df184f0b3f2de2848178f4cdc20feacc6df6",
+    "clippy-summary.json": "cddbf0310060bbc0b079e468a78fb75615fee4befe381507796626f10f4008ac",
+    "fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "changes.patch": "550236c28ac7907d86c214a27736d0a6d2ae2d92e1537d3ab6a31c413a47a539"
+  }
+}

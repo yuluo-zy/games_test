@@ -1,0 +1,125 @@
+{
+  "server": "re_mcp_ghidra",
+  "actual_mcp_connection": true,
+  "results": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "database_id": "tg_us1",
+        "keep_open": true
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"tg_us1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "tg_us1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "tg_us1"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"tg_us1\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "tg_us1",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_us1",
+        "address": "0x14005e900"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_14005e900\",\"address\":\"0x14005E900\",\"decompiled_code\":\"\\r\\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\\r\\n\\r\\nvoid FUN_14005e900(undefined1 *param_1,longlong param_2)\\r\\n\\r\\n{\\r\\n  undefined1 uVar1;\\r\\n  ulonglong uVar2;\\r\\n  undefined8 uVar3;\\r\\n  ulonglong uVar4;\\r\\n  undefined8 uStack_28;\\r\\n  longlong *plStack_20;\\r\\n  longlong lStack_18;\\r\\n  \\r\\n  uVar2 = *(ulonglong *)(param_2 + 0x28);\\r\\n  if (uVar2 < *(ulonglong *)(param_2 + 0x20)) {\\r\\n    do {\\r\\n      uVar2 = uVar2 + 1;\\r\\n      uVar4 = (ulonglong)*(byte *)(*(longlong *)(param_2 + 0x18) + -1 + uVar2);\\r\\n      if (0x22 < uVar4) {\\r\\ncode_r0x00014005ea29:\\r\\n        uVar3 = FUN_1428a0ca0(param_2,&uStack_28,&UNK_14292f3c0);\\r\\ncode_r0x00014005ea3d:\\r\\n        uVar3 = FUN_1428a2200(uVar3,param_2);\\r\\n        goto code_r0x00014005e971;\\r\\n      }\\r\\n      if ((0x100002600U >> (uVar4 & 0x3f) & 1) == 0) {\\r\\n        if (uVar4 != 0x22) goto code_r0x00014005ea29;\\r\\n        *(ulonglong *)(param_2 + 0x28) = uVar2;\\r\\n        *(undefined8 *)(param_2 + 0x10) = 0;\\r\\n        FUN_140b89af0(&uStack_28,param_2 + 0x18,param_2);\\r\\n        if ((int)uStack_28 != 2) {\\r\\n          if (lStack_18 == 0xd) {\\r\\n            if (*(longlong *)((longlong)plStack_20 + 5) == CONCAT53(_UNK_1429ccace,_UNK_1429ccacb)\\r\\n                && *plStack_20 == CONCAT35(_UNK_1429ccacb,_UNK_1429ccac6)) {\\r\\n              uVar1 = 0;\\r\\ncode_r0x00014005ea1c:\\r\\n              param_1[1] = uVar1;\\r\\n              *param_1 = 0;\\r\\n              return;\\r\\n            }\\r\\n            uVar1 = 1;\\r\\n            if (*(longlong *)((longlong)plStack_20 + 5) == CONCAT53(_UNK_1429ccadb,_UNK_1429ccad8)\\r\\n                && *plStack_20 == CONCAT35(_UNK_1429ccad8,_UNK_1429ccad3))\\r\\n            goto code_r0x00014005ea1c;\\r\\n          }\\r\\n          else if ((lStack_18 == 8) && (uVar1 = 2, *plStack_20 == _UNK_1429ccae0))\\r\\n          goto code_r0x00014005ea1c;\\r\\n          uVar3 = FUN_1428a2480(plStack_20,lStack_18,&UNK_1429ccae8,3);\\r\\n          goto code_r0x00014005ea3d;\\r\\n        }\\r\\n        *(longlong **)(param_1 + 8) = plStack_20;\\r\\n        goto code_r0x00014005e9aa;\\r\\n      }\\r\\n      *(ulonglong *)(param_2 + 0x28) = uVar2;\\r\\n    } while (uVar2 != *(ulonglong *)(param_2 + 0x20));\\r\\n  }\\r\\n  uStack_28 = 5;\\r\\n  uVar3 = FUN_1428a0920(param_2,&uStack_28);\\r\\ncode_r0x00014005e971:\\r\\n  *(undefined8 *)(param_1 + 8) = uVar3;\\r\\ncode_r0x00014005e9aa:\\r\\n  *param_1 = 1;\\r\\n  return;\\r\\n}\\r\\n\\r\\n\",\"database\":\"tg_us1\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_14005e900",
+          "address": "0x14005E900",
+          "decompiled_code": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_14005e900(undefined1 *param_1,longlong param_2)\r\n\r\n{\r\n  undefined1 uVar1;\r\n  ulonglong uVar2;\r\n  undefined8 uVar3;\r\n  ulonglong uVar4;\r\n  undefined8 uStack_28;\r\n  longlong *plStack_20;\r\n  longlong lStack_18;\r\n  \r\n  uVar2 = *(ulonglong *)(param_2 + 0x28);\r\n  if (uVar2 < *(ulonglong *)(param_2 + 0x20)) {\r\n    do {\r\n      uVar2 = uVar2 + 1;\r\n      uVar4 = (ulonglong)*(byte *)(*(longlong *)(param_2 + 0x18) + -1 + uVar2);\r\n      if (0x22 < uVar4) {\r\ncode_r0x00014005ea29:\r\n        uVar3 = FUN_1428a0ca0(param_2,&uStack_28,&UNK_14292f3c0);\r\ncode_r0x00014005ea3d:\r\n        uVar3 = FUN_1428a2200(uVar3,param_2);\r\n        goto code_r0x00014005e971;\r\n      }\r\n      if ((0x100002600U >> (uVar4 & 0x3f) & 1) == 0) {\r\n        if (uVar4 != 0x22) goto code_r0x00014005ea29;\r\n        *(ulonglong *)(param_2 + 0x28) = uVar2;\r\n        *(undefined8 *)(param_2 + 0x10) = 0;\r\n        FUN_140b89af0(&uStack_28,param_2 + 0x18,param_2);\r\n        if ((int)uStack_28 != 2) {\r\n          if (lStack_18 == 0xd) {\r\n            if (*(longlong *)((longlong)plStack_20 + 5) == CONCAT53(_UNK_1429ccace,_UNK_1429ccacb)\r\n                && *plStack_20 == CONCAT35(_UNK_1429ccacb,_UNK_1429ccac6)) {\r\n              uVar1 = 0;\r\ncode_r0x00014005ea1c:\r\n              param_1[1] = uVar1;\r\n              *param_1 = 0;\r\n              return;\r\n            }\r\n            uVar1 = 1;\r\n            if (*(longlong *)((longlong)plStack_20 + 5) == CONCAT53(_UNK_1429ccadb,_UNK_1429ccad8)\r\n                && *plStack_20 == CONCAT35(_UNK_1429ccad8,_UNK_1429ccad3))\r\n            goto code_r0x00014005ea1c;\r\n          }\r\n          else if ((lStack_18 == 8) && (uVar1 = 2, *plStack_20 == _UNK_1429ccae0))\r\n          goto code_r0x00014005ea1c;\r\n          uVar3 = FUN_1428a2480(plStack_20,lStack_18,&UNK_1429ccae8,3);\r\n          goto code_r0x00014005ea3d;\r\n        }\r\n        *(longlong **)(param_1 + 8) = plStack_20;\r\n        goto code_r0x00014005e9aa;\r\n      }\r\n      *(ulonglong *)(param_2 + 0x28) = uVar2;\r\n    } while (uVar2 != *(ulonglong *)(param_2 + 0x20));\r\n  }\r\n  uStack_28 = 5;\r\n  uVar3 = FUN_1428a0920(param_2,&uStack_28);\r\ncode_r0x00014005e971:\r\n  *(undefined8 *)(param_1 + 8) = uVar3;\r\ncode_r0x00014005e9aa:\r\n  *param_1 = 1;\r\n  return;\r\n}\r\n\r\n",
+          "database": "tg_us1"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_us1",
+        "address": "0x14005f940"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_14005f940\",\"address\":\"0x14005F940\",\"decompiled_code\":\"\\r\\nundefined8 FUN_14005f940(longlong param_1)\\r\\n\\r\\n{\\r\\n  longlong lVar1;\\r\\n  byte bVar2;\\r\\n  char cVar3;\\r\\n  ulonglong uVar4;\\r\\n  longlong lVar5;\\r\\n  longlong lVar6;\\r\\n  undefined8 uVar7;\\r\\n  undefined8 auStack_20 [3];\\r\\n  \\r\\n  uVar4 = *(ulonglong *)(param_1 + 0x20);\\r\\n  if (*(ulonglong *)(param_1 + 0x28) < uVar4) {\\r\\n    lVar5 = *(longlong *)(param_1 + 0x18);\\r\\n    lVar6 = *(ulonglong *)(param_1 + 0x28) + 4;\\r\\n    do {\\r\\n      bVar2 = *(byte *)(lVar5 + -4 + lVar6);\\r\\n      if ((0x20 < (ulonglong)bVar2) || ((0x100002600U >> ((ulonglong)bVar2 & 0x3f) & 1) == 0)) {\\r\\n        if (bVar2 != 0x6e) {\\r\\n          uVar7 = FUN_1428a0ca0(param_1,auStack_20,&UNK_14292f440);\\r\\n          uVar7 = FUN_1428a2200(uVar7,param_1);\\r\\n          return uVar7;\\r\\n        }\\r\\n        *(ulonglong *)(param_1 + 0x28) = lVar6 - 3U;\\r\\n        if (lVar6 - 3U < uVar4) {\\r\\n          cVar3 = *(char *)(lVar5 + -3 + lVar6);\\r\\n          *(ulonglong *)(param_1 + 0x28) = lVar6 - 2U;\\r\\n          if (cVar3 == 'u') {\\r\\n            if (uVar4 <= lVar6 - 2U) goto code_r0x00014005fa0a;\\r\\n            cVar3 = *(char *)(lVar5 + -2 + lVar6);\\r\\n            *(ulonglong *)(param_1 + 0x28) = lVar6 - 1U;\\r\\n            if (cVar3 == 'l') {\\r\\n              if (uVar4 <= lVar6 - 1U) goto code_r0x00014005fa0a;\\r\\n              cVar3 = *(char *)(lVar5 + -1 + lVar6);\\r\\n              *(longlong *)(param_1 + 0x28) = lVar6;\\r\\n              if (cVar3 == 'l') {\\r\\n                return 0;\\r\\n              }\\r\\n            }\\r\\n          }\\r\\n          auStack_20[0] = 9;\\r\\n        }\\r\\n        else {\\r\\ncode_r0x00014005fa0a:\\r\\n          auStack_20[0] = 5;\\r\\n        }\\r\\n        uVar7 = FUN_1428a0fa0(param_1,auStack_20);\\r\\n        return uVar7;\\r\\n      }\\r\\n      *(longlong *)(param_1 + 0x28) = lVar6 + -3;\\r\\n      lVar1 = lVar6 - uVar4;\\r\\n      lVar6 = lVar6 + 1;\\r\\n    } while (lVar1 != 3);\\r\\n  }\\r\\n  auStack_20[0] = 5;\\r\\n  uVar7 = FUN_1428a0920(param_1,auStack_20);\\r\\n  return uVar7;\\r\\n}\\r\\n\\r\\n\",\"database\":\"tg_us1\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_14005f940",
+          "address": "0x14005F940",
+          "decompiled_code": "\r\nundefined8 FUN_14005f940(longlong param_1)\r\n\r\n{\r\n  longlong lVar1;\r\n  byte bVar2;\r\n  char cVar3;\r\n  ulonglong uVar4;\r\n  longlong lVar5;\r\n  longlong lVar6;\r\n  undefined8 uVar7;\r\n  undefined8 auStack_20 [3];\r\n  \r\n  uVar4 = *(ulonglong *)(param_1 + 0x20);\r\n  if (*(ulonglong *)(param_1 + 0x28) < uVar4) {\r\n    lVar5 = *(longlong *)(param_1 + 0x18);\r\n    lVar6 = *(ulonglong *)(param_1 + 0x28) + 4;\r\n    do {\r\n      bVar2 = *(byte *)(lVar5 + -4 + lVar6);\r\n      if ((0x20 < (ulonglong)bVar2) || ((0x100002600U >> ((ulonglong)bVar2 & 0x3f) & 1) == 0)) {\r\n        if (bVar2 != 0x6e) {\r\n          uVar7 = FUN_1428a0ca0(param_1,auStack_20,&UNK_14292f440);\r\n          uVar7 = FUN_1428a2200(uVar7,param_1);\r\n          return uVar7;\r\n        }\r\n        *(ulonglong *)(param_1 + 0x28) = lVar6 - 3U;\r\n        if (lVar6 - 3U < uVar4) {\r\n          cVar3 = *(char *)(lVar5 + -3 + lVar6);\r\n          *(ulonglong *)(param_1 + 0x28) = lVar6 - 2U;\r\n          if (cVar3 == 'u') {\r\n            if (uVar4 <= lVar6 - 2U) goto code_r0x00014005fa0a;\r\n            cVar3 = *(char *)(lVar5 + -2 + lVar6);\r\n            *(ulonglong *)(param_1 + 0x28) = lVar6 - 1U;\r\n            if (cVar3 == 'l') {\r\n              if (uVar4 <= lVar6 - 1U) goto code_r0x00014005fa0a;\r\n              cVar3 = *(char *)(lVar5 + -1 + lVar6);\r\n              *(longlong *)(param_1 + 0x28) = lVar6;\r\n              if (cVar3 == 'l') {\r\n                return 0;\r\n              }\r\n            }\r\n          }\r\n          auStack_20[0] = 9;\r\n        }\r\n        else {\r\ncode_r0x00014005fa0a:\r\n          auStack_20[0] = 5;\r\n        }\r\n        uVar7 = FUN_1428a0fa0(param_1,auStack_20);\r\n        return uVar7;\r\n      }\r\n      *(longlong *)(param_1 + 0x28) = lVar6 + -3;\r\n      lVar1 = lVar6 - uVar4;\r\n      lVar6 = lVar6 + 1;\r\n    } while (lVar1 != 3);\r\n  }\r\n  auStack_20[0] = 5;\r\n  uVar7 = FUN_1428a0920(param_1,auStack_20);\r\n  return uVar7;\r\n}\r\n\r\n",
+          "database": "tg_us1"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "tg_us1",
+        "save": false
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"tg_us1\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "tg_us1"
+        },
+        "isError": false
+      }
+    }
+  ],
+  "target_execution": false,
+  "ok": true
+}

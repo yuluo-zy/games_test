@@ -1,0 +1,18 @@
+STORAGE-FORM EVIDENCE (all read from tiny_glade.pdb bytes; read-only)
+
+(A) Pretty name WITH generics stored verbatim (null-terminated) inside the PDB:
+  offset 31700481 : rhapsody::raw::device::GraphicsDevice::queue_submit<alloc::vec::Vec<rhapsody::raw::submit::SubmitInfo,alloc::alloc::Global>,rhapsody::rg::executor::impl$7::submit_pending_cbs::closure_env$0>
+  offset 20854096 : rhapsody::rg::recorder::impl$1::render<tiny_glade::screenshot::handle_screenshot_opportunity::closure_en...
+  offset 25840428 : rhapsody::rg::temporal::impl$11::get_or_create_temporal<country_core::render::pass_builder::pass_resources::Pass...
+
+(B) Same function's RAW legacy-mangled symbol (public stream), NO generics in path of queue_submit:
+  _ZN8rhapsody3raw6submit55_$LT$impl$u20$rhapsody..raw..device..GraphicsDevice$GT$12queue_submit17h8a0ca96aebdf4411E
+
+(C) llvm-cxxfilt (Itanium) on (B) -> lossy, keeps $escapes, DROPS generics:
+  rhapsody::raw::submit::_$LT$impl$u20$rhapsody..raw..device..GraphicsDevice$GT$::queue_submit::h8a0ca96aebdf4411
+
+(D) 0 of 389 cached module symbol dumps contain a raw `_ZN` name; 352 contain impl$/closure_env$ -> module S_GPROC32/S_LPROC32 names are the pretty form.
+
+(E) llvm-pdbutil --publics keeps raw `_ZN` (proves the tool does not demangle) -> the --symbols pretty names are the stored bytes.
+
+(F) public-symbols.json[demangled] = project-side llvm-cxxfilt of `_ZN`; 0/101405 entries contain a real generic <...>.

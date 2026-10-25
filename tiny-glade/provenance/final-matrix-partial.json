@@ -1,0 +1,20 @@
+[
+  {
+    "command": "cargo check --workspace --all-targets --locked",
+    "exit_code": 0,
+    "log": "check-current.log"
+  },
+  {
+    "command": "cargo test --workspace --all-targets --locked --no-fail-fast",
+    "exit_code": 0,
+    "log": "tests-current.log",
+    "passed": 1480,
+    "failed": 0,
+    "ignored": 1
+  },
+  {
+    "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+    "exit_code": 101,
+    "log": "clippy-current.log"
+  }
+]

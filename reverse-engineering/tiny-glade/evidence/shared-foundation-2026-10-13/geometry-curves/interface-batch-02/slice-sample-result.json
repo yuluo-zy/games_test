@@ -1,0 +1,99 @@
+{
+  "backend": "ghidra",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "foundation-geometry-curves",
+  "pid": 11628,
+  "project": "D:\\game\\tools\\reverse-runtime\\foundation-geometry-curves\\project\\TinyGlade.gpr",
+  "backend_reused": true,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": true,
+  "results": [
+    {
+      "tool": "prepare_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "targets": [
+          {
+            "address": "0x141237a70",
+            "size": 423,
+            "range_basis": "original PE .pdata contiguous range",
+            "bytes_sha256": "41d77b313eff5fef9474a6ab69acf545b0c3d3c2961f795a707f2e83de375324"
+          }
+        ]
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\shared-foundation-2026-10-13\\geometry-curves\\interface-batch-02\\slice-sample-result.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\shared-foundation-2026-10-13\\\\\\\\geometry-curves\\\\\\\\interface-batch-02\\\\\\\\slice-sample-result.artifacts\\\\\\\\000.stdout.txt\\\", \\\"bytes\\\": 203, \\\"sha256\\\": \\\"652944c2407afc476b8f5d2ac480b63c17e780c5176d2035d9bfce55f2b1274c\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":25}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.032,
+      "stdout": "{\"prepared\": [{\"address\": \"0x141237a70\", \"requested_bytes\": 423, \"body_bytes\": 423, \"range_basis\": \"original PE .pdata contiguous range\", \"prototype_changed\": false}], \"no_whole_program_analysis\": true}\n",
+      "passed": true
+    },
+    {
+      "tool": "get_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x141237a70",
+        "fields": "decompiled_code,callees"
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\shared-foundation-2026-10-13\\geometry-curves\\interface-batch-02\\slice-sample-result.artifacts\\001.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\shared-foundation-2026-10-13\\\\\\\\geometry-curves\\\\\\\\interface-batch-02\\\\\\\\slice-sample-result.artifacts\\\\\\\\001.stdout.txt\\\", \\\"bytes\\\": 3548, \\\"sha256\\\": \\\"fbea9062e6d87549471025dc1129ebbe8c33db70e890fd42fc0729d1b2aba471\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":340}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.359,
+      "stdout": "{\"functions\": [{\"address\": \"0x141237a70\", \"name\": \"FUN_141237a70\", \"signature\": \"undefined FUN_141237a70(void)\", \"signature_source\": \"DEFAULT\", \"body_bytes\": 423, \"prototype_is_not_verified_Rust_ABI\": true, \"callees\": [{\"address\": \"141206aa0\", \"name\": \"FUN_141206aa0\"}, {\"address\": \"14123aa60\", \"name\": \"FUN_14123aa60\"}], \"decompiler_completed\": true, \"decompiled_code\": \"\\r\\nundefined4 * FUN_141237a70(undefined4 *param_1,ulonglong *param_2)\\r\\n\\r\\n{\\r\\n  uint uVar1;\\r\\n  ulonglong uVar2;\\r\\n  ulonglong uVar3;\\r\\n  undefined4 uVar4;\\r\\n  ulonglong uStack_78;\\r\\n  undefined4 uStack_70;\\r\\n  undefined4 uStack_6c;\\r\\n  undefined4 uStack_68;\\r\\n  undefined4 uStack_64;\\r\\n  undefined4 uStack_60;\\r\\n  undefined4 uStack_48;\\r\\n  ulonglong uStack_44;\\r\\n  undefined4 uStack_3c;\\r\\n  ulonglong *puStack_38;\\r\\n  ulonglong uStack_2c;\\r\\n  undefined4 uStack_24;\\r\\n  \\r\\n  if (*param_2 == 2) {\\r\\nLAB_141237ad2:\\r\\n    uVar1 = (uint)param_2[5];\\r\\n    if (uVar1 != 2) {\\r\\n      uStack_78 = CONCAT44(uStack_78._4_4_,uVar1);\\r\\n      uVar3 = (ulonglong)*(uint *)((longlong)param_2 + 0x2c);\\r\\n      uVar4 = (undefined4)param_2[6];\\r\\n      *(undefined4 *)(param_2 + 5) = 0;\\r\\n      if ((uVar1 & 1) != 0) goto LAB_141237b13;\\r\\n    }\\r\\nLAB_141237c04:\\r\\n    *param_1 = 0;\\r\\n  }\\r\\n  else {\\r\\n    uVar1 = (uint)param_2[3];\\r\\n    if (uVar1 == 2) {\\r\\nLAB_141237ab0:\\r\\n      if (((*param_2 & 1) == 0) || (uVar3 = param_2[1], (longlong)param_2[2] <= (longlong)uVar3)) {\\r\\nLAB_141237acb:\\r\\n        *param_2 = 2;\\r\\n        goto LAB_141237ad2;\\r\\n      }\\r\\n      param_2[1] = uVar3 + 1;\\r\\n      uVar4 = 0;\\r\\n    }\\r\\n    else {\\r\\n      uVar3 = (ulonglong)*(uint *)((longlong)param_2 + 0x1c);\\r\\n      uVar4 = (undefined4)param_2[4];\\r\\n      *(uint *)(param_2 + 3) = (uint)(uVar1 == 0) * 2;\\r\\n      if ((uVar1 & 1) == 0) goto LAB_141237ab0;\\r\\n      if (uVar1 == 0) goto LAB_141237acb;\\r\\n    }\\r\\nLAB_141237b13:\\r\\n    FUN_141206aa0(&uStack_2c,param_2 + 7,uVar3,uVar4);\\r\\n    if ((param_2[8] & 1) == 0) {\\r\\n      uStack_3c = uStack_24;\\r\\n      uStack_44 = uStack_2c;\\r\\n      uStack_48 = 1;\\r\\n      puStack_38 = param_2;\\r\\n      FUN_14123aa60(&uStack_78,&uStack_48);\\r\\n      *(ulonglong *)((longlong)param_2 + 0x4c) = CONCAT44(uStack_68,uStack_6c);\\r\\n      *(ulonglong *)((longlong)param_2 + 0x54) = CONCAT44(uStack_60,uStack_64);\\r\\n      param_2[8] = uStack_78;\\r\\n      param_2[9] = CONCAT44(uStack_6c,uStack_70);\\r\\n      if ((param_2[8] & 1) == 0) goto LAB_141237c04;\\r\\n      uStack_70 = *(undefined4 *)((longlong)param_2 + 0x4c);\\r\\n      uStack_78 = *(ulonglong *)((longlong)param_2 + 0x44);\\r\\n      uStack_6c = (undefined4)param_2[10];\\r\\n      uStack_68 = (undefined4)(param_2[10] >> 0x20);\\r\\n      uStack_24 = (undefined4)param_2[0xb];\\r\\n    }\\r\\n    else {\\r\\n      uVar2 = param_2[0xb];\\r\\n      uVar3 = param_2[10];\\r\\n      param_2[10] = uStack_2c;\\r\\n      *(undefined4 *)(param_2 + 0xb) = uStack_24;\\r\\n      *(ulonglong *)((longlong)param_2 + 0x44) = uVar3;\\r\\n      *(int *)((longlong)param_2 + 0x4c) = (int)uVar2;\\r\\n      uStack_70 = *(undefined4 *)((longlong)param_2 + 0x4c);\\r\\n      uStack_78 = *(ulonglong *)((longlong)param_2 + 0x44);\\r\\n      uStack_6c = (undefined4)uStack_2c;\\r\\n      uStack_68 = (undefined4)(uStack_2c >> 0x20);\\r\\n    }\\r\\n    *(ulonglong *)(param_1 + 1) = uStack_78;\\r\\n    param_1[3] = uStack_70;\\r\\n    param_1[4] = uStack_6c;\\r\\n    *(ulonglong *)(param_1 + 5) = CONCAT44(uStack_24,uStack_68);\\r\\n    *param_1 = 1;\\r\\n  }\\r\\n  return param_1;\\r\\n}\\r\\n\\r\\n\", \"decompiler_error\": \"\"}]}\n",
+      "passed": true
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 1.171,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116279}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":8}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116279
+  },
+  "save_result": {
+    "nonce": "8c8ae494f06c3d6697f3108e0d5ac187",
+    "success": true,
+    "was_changed": true,
+    "changed_after_save": false,
+    "path": "/tiny-glade.exe",
+    "saved_locally": true
+  }
+}

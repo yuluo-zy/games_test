@@ -1,0 +1,123 @@
+--- /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/utils/visual_entity_builder.rs
++++ /Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/utils/visual_entity_builder.rs
+@@ -175,11 +175,8 @@
+         BrickColor,
+         0x18
+     );
+-    raw_component!(
+-        /// B `components::ClothlineCloth`（u64 + u32，12 B，U）。
+-        ClothlineCloth,
+-        12
+-    );
++    // One canonical12-byte value, also read by the actual Nani ECS query.
++    pub use country_core::components::drawable::ClothlineCloth;
+     raw_component!(
+         /// B `components::WindowLight`（u64 + u32(id)，12 B，U）。
+         WindowLight,
+@@ -198,11 +195,8 @@
+     // The core u64 owner already exists. Preserve this public import path
+     // while inserting the exact component read by Nani Uber.
+     pub use country_core::components::drawable::AlbedoMap;
+-    raw_component!(
+-        /// B `components::drawable::NormalMap`（8 B 句柄，U）。
+-        NormalMap,
+-        8
+-    );
++    // Existing disk-texture NameHash owner, not a local raw component.
++    pub use country_core::components::NormalMap;
+     raw_component!(
+         /// B `components::RoofFlagCloth`（u32，U）。
+         RoofFlagCloth,
+@@ -394,9 +388,11 @@
+         self.albedo_map = Some(albedo);
+     }
+ 
+-    /// `clothline`（行 147）：打开 `ClothlineCloth`（+0x80==1）；载荷 U（0,0）。
+-    pub fn clothline(&mut self) {
+-        self.clothline_cloth = Some((0, 0));
++    /// Supply all original value words explicitly; no zero/default producer.
++    /// This host API spelling does not claim the original Rust declaration.
++    pub fn clothline(&mut self, cloth: ClothlineCloth) {
++        let [a, b, tail] = cloth.words();
++        self.clothline_cloth = Some((u64::from(a) | (u64::from(b) << 32), tail));
+     }
+ 
+     /// `flag_roof_cloth`：打开 `RoofFlagCloth`（+0xf8==1）；载荷 U（0）。
+@@ -604,10 +600,9 @@
+         }
+         // 4 ClothlineCloth
+         if let Some((a, b)) = self.clothline_cloth {
+-            let mut payload = [0u8; 12];
+-            payload[0..8].copy_from_slice(&a.to_le_bytes());
+-            payload[8..12].copy_from_slice(&b.to_le_bytes());
+-            commands.entity(entity).insert(ClothlineCloth(payload));
++            commands.entity(entity).insert(ClothlineCloth::from_words([
++                a as u32, (a >> 32) as u32, b,
++            ]));
+         }
+         // 5 SemiTransparent（ZST）
+         if self.semi_transparent {
+@@ -653,7 +648,7 @@
+         if let Some(handle) = self.normal_map {
+             commands
+                 .entity(entity)
+-                .insert(NormalMap(handle.to_le_bytes()));
++                .insert(NormalMap(handle));
+         }
+         // 11 RoofFlagCloth
+         if let Some(value) = self.roof_flag_cloth {
+@@ -751,6 +746,54 @@
+ 
+     // Cross-consumer contract: native tag2 is None even when the host outer
+     // Option carries its raw bytes. Exercise actual Commands/build insertion.
++    #[test]
++    fn real_cloth_build_preserves_explicit_words_and_canonical_normal_identity() {
++        use bevy_ecs::world::{CommandQueue, World};
++        use country_core::components::drawable::ClothlineCloth as CanonicalCloth;
++        use country_core::components::NormalMap as CanonicalNormal;
++        assert_eq!(core::any::TypeId::of::<pending_core::ClothlineCloth>(),
++            core::any::TypeId::of::<CanonicalCloth>());
++        assert_eq!(core::any::TypeId::of::<pending_core::NormalMap>(),
++            core::any::TypeId::of::<CanonicalNormal>());
++        for words in [[0x3e80_0000, 0xbe00_0000, 37], [0x7fc0_0123, 0x8000_0000, u32::MAX]] {
++            let mut world = World::new();
++            let mut queue = CommandQueue::default();
++            let mut state = DecoratorTransientVisualState::default();
++            let mut builder = WindowVisualEntityBuilder::new(
++                Vec3::new(2.0, 3.0, 4.0), Quat::from_rotation_y(0.37), 61);
++            builder.mesh_name = "decorators/setdressing_clothline_cloth";
++            builder.nani_name = "nani_cloth";
++            let cloth = CanonicalCloth::from_words(words);
++            assert_eq!(cloth.clone().words(), words);
++            builder.clothline(cloth);
++            builder.normal_map = Some(0xb9fb_cd49_9788_b2f1);
++            let entity = builder.build(&mut Commands::new(&mut queue, &world), 61,
++                &AssetMeshLibrary::new(), &AssetShaderLibrary::new(), &mut state);
++            queue.apply(&mut world);
++            assert_eq!(world.get::<CanonicalCloth>(entity).unwrap().words(), words);
++            assert_eq!(world.get::<CanonicalNormal>(entity).unwrap().0, 0xb9fb_cd49_9788_b2f1);
++            assert_eq!(world.get::<NaniInstanceDesc>(entity).unwrap().subset_kind, GpuWorldSubsetKind::Cloth);
++            assert!(world.get::<InstanceDataMarker<ClothInstanceData>>(entity).is_some());
++            assert_eq!(state.entities_of(61), Some([entity].as_slice()));
++        }
++    }
++
++    #[test]
++    fn absent_cloth_payload_is_not_fabricated_by_real_build() {
++        use bevy_ecs::world::{CommandQueue, World};
++        let mut world = World::new();
++        let mut queue = CommandQueue::default();
++        let mut state = DecoratorTransientVisualState::default();
++        let mut builder = WindowVisualEntityBuilder::new(Vec3::X, Quat::IDENTITY, 63);
++        builder.nani_name = "nani_cloth";
++        builder.mesh_name = "decorators/setdressing_clothline_cloth";
++        let entity = builder.build(&mut Commands::new(&mut queue, &world), 63,
++            &AssetMeshLibrary::new(), &AssetShaderLibrary::new(), &mut state);
++        queue.apply(&mut world);
++        assert!(world.get::<ClothlineCloth>(entity).is_none());
++        assert!(world.get::<NormalMap>(entity).is_none());
++    }
++
+     #[test]
+     fn real_build_skips_three_native_none_tags_in_some_payloads() {
+         use bevy_ecs::world::{CommandQueue, World};

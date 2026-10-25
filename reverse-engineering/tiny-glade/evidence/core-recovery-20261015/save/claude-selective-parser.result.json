@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "status": "success",
+  "exit_code": 0,
+  "timeout_seconds": 180.0,
+  "prompt_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\save\\claude-selective-parser.prompt.txt",
+  "stdout_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\save\\claude-selective-parser.stdout.json",
+  "stderr_file": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\core-recovery-20261015\\save\\claude-selective-parser.stderr.txt",
+  "command": [
+    "C:\\Users\\liyu\\AppData\\Roaming\\npm\\node_modules\\@anthropic-ai\\claude-code\\bin\\claude.exe",
+    "-p",
+    "--tools",
+    "",
+    "--output-format",
+    "json",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "{\"mcpServers\":{}}"
+  ],
+  "result": "**Error handling — yes, errors are collapsed.** Both wrappers free the returned 0x28-byte error object (`func_0x000140613c20(plStack_20,0x28,8)`) and then write a fixed default `{0,8,0}` into `param_1`; nothing else is returned. A caller cannot distinguish \"key absent\" from \"malformed\". The error's own discriminator (e.g. the `$0x5` built at `14142d15f`) never escapes the callee. The test `SBORROW8(0,lStack_38)` is the `negq/jo` idiom seen at `14142d10e–111`, i.e. `lStack_38 == INT64_MIN` (sentinel), not a sign/borrow test.\n\n**Visitor — not answerable from this evidence.** The supplied ranges (`14142d0ea–170`, `1414189c1–ad2`) contain no key comparison or iteration; only the tail: the 24-byte result triple is moved to the out pointer (`141418a14–a1b`) and the error path is built. Evidence against \"stop at first match\": `FUN_1414186d0` continues after that move with `incb 0x68(%rsi)` and a *second* parse call `0x1414049f0` (`141418a55`), then merges both results via `cmoveq` (`141418a5a–a6e`). Whether the visitor retains a captured vector across trailing fields needs the bodies of `0x1414048f0`/`0x1414049f0` and the string constants.",
+  "is_error": false,
+  "subtype": "success",
+  "elapsed_seconds": 52.491
+}

@@ -1,0 +1,55 @@
+1403dce81 JZ 0x1403dced9
+1403dce83 MOV RAX,qword ptr [RBP + 0x920]
+1403dce8a DEC.LOCK qword ptr [RAX]
+1403dce8e JNZ 0x1403dceb8
+1403dce90 MOV byte ptr [RBP + 0xbcc],0x1
+1403dce97 MOV byte ptr [RBP + 0xbcb],0x1
+1403dce9e MOV byte ptr [RBP + 0xbca],0x1
+1403dcea5 MOV byte ptr [RBP + 0xbc9],0x1
+1403dceac LEA RCX,[RBP + 0x920]
+1403dceb3 CALL 0x140b85350
+1403dceb8 CMP byte ptr [RBP + 0x3ac],0x6
+1403dcebf JZ 0x1403dcf10
+1403dcec1 CMP byte ptr [RBP + 0x3ad],0x6
+1403dcec8 JZ 0x1403dcf20
+1403dceca CMP dword ptr [RBP + 0x324],0x0
+1403dced1 JNZ 0x1403dcf60
+1403dced7 JMP 0x1403dcf30
+1403dced9 MOV RAX,qword ptr [RBP + 0x920]
+1403dcee0 DEC.LOCK qword ptr [RAX]
+1403dcee4 JNZ 0x1403dcf60
+1403dcee6 MOV byte ptr [RBP + 0xbcc],0x1
+1403dceed MOV byte ptr [RBP + 0xbcb],0x1
+1403dcef4 MOV byte ptr [RBP + 0xbca],0x1
+1403dcefb MOV byte ptr [RBP + 0xbc9],0x1
+1403dcf02 LEA RCX,[RBP + 0x920]
+1403dcf09 CALL 0x140b85350
+1403dcf0e JMP 0x1403dcf60
+1403dcf10 MOV byte ptr [RBP + 0x3ac],0x3
+1403dcf17 CMP byte ptr [RBP + 0x3ad],0x6
+1403dcf1e JNZ 0x1403dceca
+1403dcf20 MOV byte ptr [RBP + 0x3ad],0x3
+1403dcf27 CMP dword ptr [RBP + 0x324],0x0
+1403dcf2e JNZ 0x1403dcf60
+1403dcf30 MOV byte ptr [RBP + 0x33b],0x1
+1403dcf37 MOV byte ptr [RBP + 0x353],0x3
+1403dcf3e MOV dword ptr [RBP + 0x318],0x0
+1403dcf48 MOV word ptr [RBP + 0x339],0x100
+1403dcf51 MOVSS XMM0,dword ptr [0x1429cd034]
+1403dcf59 MOVLPS qword ptr [RBP + 0x328],XMM0
+1403dcf60 MOV dword ptr [RBP + 0x324],0x1
+1403dcf6a MOVZX EAX,byte ptr [RBP + 0x376]
+1403dcf71 MOV RCX,qword ptr [0x14362c098]
+1403dcf78 MOV byte ptr [RCX],AL
+1403dcf7a CMP byte ptr [RBP + 0x370],0x0
+1403dcf81 JZ 0x1403dd034
+1403dcf87 MOV RAX,qword ptr [RBP + 0xb88]
+1403dcf8e MOV qword ptr [RBP + 0x920],RAX
+1403dcf95 MOV RAX,qword ptr [RBP + 0xb58]
+1403dcf9c MOV qword ptr [RBP + 0x928],RAX
+1403dcfa3 MOVAPS XMM0,xmmword ptr [RBP + 0x280]
+1403dcfaa MOVUPS xmmword ptr [RBP + 0x930],XMM0
+1403dcfb1 MOV qword ptr [RBP + 0x940],0x1388
+1403dcfbc MOV qword ptr [RBP + 0x948],0xbb8
+1403dcfc7 MOVZX R8D,byte ptr [RBP + 0x371]
+1403dcfcf MOV byte ptr [RBP + 0xbcc],0x1

@@ -1,0 +1,47 @@
+{
+  "reviewed_at_utc": "2026-10-19T15:57:32.931897+00:00",
+  "verdict": "passed_scoped_static",
+  "delivery": {
+    "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-cefc5b92bca0aef69a/oschain-20261018/shutdown-save-host-20261019/delivery-v1.json",
+    "sha256": "5a029aab3279dd81b154ceb9424ba93bae735de352a212d060a91d26e9e1b32e"
+  },
+  "patch": {
+    "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-cefc5b92bca0aef69a/oschain-20261018/shutdown-save-host-20261019/shutdown-save-host.patch",
+    "sha256": "e149978434dd46ffc13cb96e9f3464b66f8387390cfdfef1031559b021ab737f"
+  },
+  "source_inputs": [
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-cefc5b92bca0aef69a/oschain-20261018/shutdown-save-host-20261019/candidate/crates/country-core/src/systems/save/save_thread.rs",
+      "sha256": "1194141fe7713e5056e670bcc38320188e14c41b916a4f3de25ce5c3028598d0"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-cefc5b92bca0aef69a/oschain-20261018/shutdown-save-host-20261019/candidate/crates/tiny-glade/src/game_loop.rs",
+      "sha256": "b85e4da52697de8e21499644bd20b9d9601a47b592f2d7082484fdee5aea8a70"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-cefc5b92bca0aef69a/oschain-20261018/shutdown-save-host-20261019/candidate/crates/tiny-glade/src/run_game.rs",
+      "sha256": "0afab67ae79c3b75019574fdb8a2e87e215ce108eeb54295e356a3ea715a0c91"
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-cefc5b92bca0aef69a/oschain-20261018/shutdown-save-host-20261019/review-inputs/candidate-save_game.rs",
+      "sha256": "75b18cc9e3ac6c5e5b6af70f144b9f17c247099f22be0e22cc23892e6b87833b"
+    }
+  ],
+  "checks": [
+    "Final exclusive World shutdown detaches only actual AutoSaveState private sender and moves its previous error; keeps AutoSaveState, original UnsavedFileList Arc, session and sections.",
+    "Drop handle command sender before join; drain actual worker error channel, inspect original unsaved list, and reject attached Auto state lacking an observable handle/join. Legitimate loading with neither state nor handle is no-op.",
+    "Preexisting autosave error remains primary; later cleanup errors are logged. No synthetic tag10 flush/close is sent on the original no-active-file panic path.",
+    "Same SubApp stays outside borrowing catch_unwind in GameplayAppOwner. Spawn closure drop, worker update/warmup error, cancel, failed publish, pending/queued disposal, poll join and transfer failures run save cleanup before losing the World.",
+    "Typed cancellation is benign only if cleanup succeeds; cleanup failure replaces benign cancellation. Root shutdown evaluates preparation join, current-world save and GPU cleanup while retaining first error.",
+    "Actual captured CloseRequested with final zero size exits through real shutdown without App.update/render, fake dimensions or completion marker. Nonzero close retains original update/save43 path.",
+    "Private real save worker loop receives optional initial file only for authored temporary-file tests; production passes None. This is not a replacement worker algorithm."
+  ],
+  "unverified_or_limited": [
+    "Ten authored CPU tests and full module typecheck not run by reviewer. Immediate-cancel test does not deterministically prove cancellation during warmup.",
+    "Temporary file injection tests do not establish actual OpenFile/session-load path.",
+    "Original Disconnected final deferred flush/sync failure remains warn-only, outside worker error channel. Helper success proves join and no observable errors, not durable disk success.",
+    "Actual I/O and worker warmup are not cancellable midway; no finite shutdown deadline or full OS/WSI teardown is proved."
+  ],
+  "reviewer_ran_cargo_gpu": false,
+  "runtime_accepted": false
+}

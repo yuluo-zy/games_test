@@ -1,0 +1,41 @@
+{
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "fields": {
+    "current_frame": {
+      "offset": "0x4c8",
+      "bits": 32,
+      "initial": 1,
+      "advance": "wrapping_add(1) after upload success"
+    },
+    "invalidation_stamp": {
+      "offset": "0x4cc",
+      "bits": 32,
+      "initial": 1,
+      "write": "copy current frame only on scale change or successful overflow upload"
+    },
+    "primitive_stamp": {
+      "offset": "0x24c",
+      "bits": 32,
+      "initial": 0
+    },
+    "validated_at": {
+      "offset": "0x250",
+      "bits": 32,
+      "initial": 0
+    }
+  },
+  "comparisons": "unsigned u32 <, not !=",
+  "usage": "Vec slots: last_used u32, generation u16, pad2; AllocId low16 index/high16 generation",
+  "validation": "sequential immediate usage writes; prefix effects survive later mismatch; bounds panic",
+  "expiry": "last_used != 0 and wrapping32(last_used+1) < current_frame",
+  "cache_hit_refreshes_usage": false,
+  "retain": "only allocation ids in this eviction pass removed HashSet are erased",
+  "generation_clear_redraw": false,
+  "native_cases": 791,
+  "mismatches": 0,
+  "production_rust_modified": false,
+  "limitations": [
+    "bounded slices use continuation markers",
+    "no GPU/application process or full font generation execution"
+  ]
+}

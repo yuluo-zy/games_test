@@ -1,0 +1,269 @@
+--- a/tiny-glade/crates/country-core/src/render/adaptive_render_state.rs
++++ b/tiny-glade/crates/country-core/src/render/adaptive_render_state.rs
+@@ -1,31 +1,250 @@
+-//! B startup branch of AdaptiveRenderState, native size 0x30 (resource
+-//! insertion @0x14013d5f0). Startup writes tag 0 and enabled byte +0x28;
+-//! the inactive payload is uninitialized and must not be interpreted as data.
+-//! This models only the proven startup variant, not the later adaptive GPU
+-//! budget controller. The handoff clones this owned value unchanged.
++//! 原 B 主循环内联的显存预算、自适应等待与分辨率生成。
++//!
++//! 0x1404dccca..dd6ac；四态跳表 0x1429ea488/498。
++//! 非活动变体不解释原未初始化载荷；当前 Rust 类型不复刻原物理布局。
++
++use std::time::{Duration, Instant};
++
++use super::render_config::{FrameRenderConfig, UpscalingMode, VideoSettings};
+ 
+ #[derive(bevy_ecs::resource::Resource, Clone, Copy, Debug, PartialEq, Eq)]
+ pub struct AdaptiveRenderState {
+     pub enabled: bool,
+-    phase: InitialAdaptivePhase,
++    phase: AdaptivePhase,
+ }
+ 
+ #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+-enum InitialAdaptivePhase {
++enum AdaptivePhase {
+     Initial,
++    Waiting { interval: Duration, deadline: Instant },
++    OutOfMemory,
++    Probing { interval: Duration, deadline: Instant },
+ }
+ 
+ impl AdaptiveRenderState {
+-    /// B @0x1405a272e..2795: +0x28 = !CliArgs.ignore_vram_budget,
+-    /// +0x00 = 0. No values are invented for the inactive enum payload.
++    /// B 0x1405a272e..2795：enabled = !ignore_vram_budget，tag = 0。
+     pub fn at_startup(ignore_vram_budget: bool) -> Self {
+-        Self {
+-            enabled: !ignore_vram_budget,
+-            phase: InitialAdaptivePhase::Initial,
++        Self { enabled: !ignore_vram_budget, phase: AdaptivePhase::Initial }
++    }
++
++    pub fn native_tag(&self) -> u64 {
++        match self.phase {
++            AdaptivePhase::Initial => 0,
++            AdaptivePhase::Waiting { .. } => 1,
++            AdaptivePhase::OutOfMemory => 2,
++            AdaptivePhase::Probing { .. } => 3,
+         }
+     }
+ 
+-    pub fn native_tag(&self) -> u64 {
+-        0
+-    }
+-}
++    /// 原 render 的 OOM 重编译只写 tag=2，后续主循环不自动提升这个变体。
++    pub fn mark_out_of_memory(&mut self) {
++        self.phase = AdaptivePhase::OutOfMemory;
++    }
++
++    /// 原零尺寸门之后调用；预算刷新和交换链/资源失效由同一真实宿主负责。
++    pub fn update_frame_resolution(
++        &mut self,
++        frame: &mut FrameRenderConfig,
++        video: &VideoSettings,
++        maximum_scale: f32,
++    ) {
++        self.update_with_clock(frame, video, maximum_scale, Instant::now);
++    }
++
++    fn update_with_clock(
++        &mut self,
++        frame: &mut FrameRenderConfig,
++        video: &VideoSettings,
++        maximum_scale: f32,
++        mut now: impl FnMut() -> Instant,
++    ) {
++        let phase = if frame.world_resolution_scale > maximum_scale {
++            // 原 dce72 先写缩放；后续 Duration/Instant 溢出不能回滚此已完成写入。
++            log::info!("Driver VRAM budget low: reducing resolution scale from {} to {}",
++                frame.world_resolution_scale, maximum_scale);
++            frame.world_resolution_scale = maximum_scale;
++            match self.phase {
++                AdaptivePhase::Initial => {
++                    let interval = Duration::from_millis(250);
++                    AdaptivePhase::Waiting { interval, deadline: now() + interval }
++                }
++                AdaptivePhase::Waiting { interval, .. } => {
++                    AdaptivePhase::Waiting { interval, deadline: now() + interval }
++                }
++                AdaptivePhase::OutOfMemory => AdaptivePhase::OutOfMemory,
++                AdaptivePhase::Probing { interval, .. } => {
++                    let interval = interval * 2;
++                    AdaptivePhase::Waiting { interval, deadline: now() + interval }
++                }
++            }
++        } else {
++            // 原 dcec0 在四态跳表前读取时钟，即使 Initial/OutOfMemory 不用该值。
++            let now = now();
++            match self.phase {
++                AdaptivePhase::Waiting { interval, deadline }
++                    if now >= deadline && maximum_scale >= video.world_resolution_scale.unwrap_or(1.0) =>
++                {
++                    let requested = video.world_resolution_scale.unwrap_or(1.0);
++                    log::info!("Restoring resolution scale from {} to {}",
++                        frame.world_resolution_scale, requested);
++                    // 原 dd17d 先写回请求值，再做 interval 翻倍和 Instant::add。
++                    frame.world_resolution_scale = requested;
++                    let interval = interval * 2;
++                    AdaptivePhase::Probing {
++                        interval,
++                        deadline: now + interval.max(Duration::from_secs(2)),
++                    }
++                }
++                AdaptivePhase::Probing { deadline, .. } if now >= deadline => AdaptivePhase::Initial,
++                phase => phase,
++            }
++        };
++        frame.tgsr_resolution_scale = if video.upscaling_mode == UpscalingMode::Tgsr {
++            video.upscaling_preset.tgsr_resolution_scale()
++        } else { 1.0 };
++        let scaled = frame.extent_0.map(|axis| axis as f32 * frame.world_resolution_scale);
++        // 原 dd32b 在提交下一自适应状态前，已发布第一份 extent_8。
++        frame.extent_8 = scaled.map(|axis| (axis as u32).clamp(32, 10_912));
++        self.phase = phase;
++        // 原 1429e9600=31.0，1429e9610=~31：向上对齐32，不是对齐2。
++        // 饱和 as u32 保留 NaN/负值/无穷的原转换语义；乘法、加法不得合并为 FMA。
++        frame.extent_10 = scaled.map(|axis| {
++            let scaled = axis * frame.tgsr_resolution_scale;
++            (((scaled + 31.0) as u32) & !31).clamp(32, 10_912)
++        });
++        // 原 dd6a3/6ac 的最终提交顺序为 extent_10、extent_8。
++        frame.extent_8 = scaled.map(|axis| (axis as u32).clamp(32, 10_912));
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use crate::render::render_config::UpscalingPreset;
++    use crate::resources::window::WindowSize;
++
++    fn frame(scale: f32) -> FrameRenderConfig {
++        let mut video = VideoSettings::default();
++        video.world_resolution_scale = Some(scale);
++        FrameRenderConfig::at_startup(WindowSize::new(514, 354), &video)
++    }
++
++    #[test]
++    fn native_quality_uses_unrounded_scaled_axes_then_aligns_inner_to_32() {
++        let mut state = AdaptiveRenderState::at_startup(true);
++        let mut frame = frame(0.75);
++        let mut video = VideoSettings::default();
++        video.world_resolution_scale = Some(0.75);
++        video.upscaling_mode = UpscalingMode::Tgsr;
++        video.upscaling_preset = UpscalingPreset::Quality;
++        state.update_frame_resolution(&mut frame, &video, f32::MAX);
++        assert_eq!(frame.extent_8, [385, 265]);
++        assert_eq!(frame.extent_10, [288, 192]);
++        assert_eq!(state.native_tag(), 0);
++    }
++
++    #[test]
++    fn four_native_phases_preserve_delay_reset_probe_backoff_and_expiry() {
++        let base = Instant::now();
++        let video = VideoSettings::default();
++        let mut frame = frame(1.0);
++        let mut state = AdaptiveRenderState::at_startup(false);
++        state.update_with_clock(&mut frame, &video, 0.8, || base);
++        assert_eq!(state.phase, AdaptivePhase::Waiting {
++            interval: Duration::from_millis(250), deadline: base + Duration::from_millis(250) });
++        let later = base + Duration::from_millis(100);
++        state.update_with_clock(&mut frame, &video, 0.7, || later);
++        assert_eq!(state.phase, AdaptivePhase::Waiting {
++            interval: Duration::from_millis(250), deadline: later + Duration::from_millis(250) });
++        let deadline = later + Duration::from_millis(250);
++        state.update_with_clock(&mut frame, &video, 1.0, || deadline);
++        assert_eq!(frame.world_resolution_scale, 1.0);
++        assert_eq!(state.phase, AdaptivePhase::Probing {
++            interval: Duration::from_millis(500), deadline: deadline + Duration::from_secs(2) });
++        state.update_with_clock(&mut frame, &video, 0.9, || deadline);
++        assert_eq!(state.phase, AdaptivePhase::Waiting {
++            interval: Duration::from_secs(1), deadline: deadline + Duration::from_secs(1) });
++        let restored = deadline + Duration::from_secs(1);
++        state.update_with_clock(&mut frame, &video, 1.0, || restored);
++        assert_eq!(state.phase, AdaptivePhase::Probing {
++            interval: Duration::from_secs(2), deadline: restored + Duration::from_secs(2) });
++        state.update_with_clock(&mut frame, &video, 1.0, || restored + Duration::from_secs(2));
++        assert_eq!(state.native_tag(), 0);
++    }
++
++    #[test]
++    fn waiting_requires_deadline_and_full_requested_budget_before_recovery() {
++        let base = Instant::now();
++        let video = VideoSettings::default();
++        let mut frame = frame(0.5);
++        let mut state = AdaptiveRenderState::at_startup(false);
++        state.phase = AdaptivePhase::Waiting { interval: Duration::from_secs(1), deadline: base };
++        state.update_with_clock(&mut frame, &video, 0.9, || base);
++        assert_eq!(frame.world_resolution_scale, 0.5);
++        assert_eq!(state.native_tag(), 1);
++        state.update_with_clock(&mut frame, &video, 1.0, || base - Duration::from_nanos(1));
++        assert_eq!(state.native_tag(), 1);
++        state.update_with_clock(&mut frame, &video, 1.0, || base);
++        assert_eq!(state.native_tag(), 3);
++    }
++
++    #[test]
++    fn out_of_memory_is_sticky_and_forced_decrease_does_not_read_clock() {
++        let mut frame = frame(1.0);
++        let mut state = AdaptiveRenderState::at_startup(false);
++        state.mark_out_of_memory();
++        state.update_with_clock(&mut frame, &VideoSettings::default(), 0.5, || panic!("tag2不读时钟"));
++        assert_eq!(frame.world_resolution_scale, 0.5);
++        assert_eq!(state.native_tag(), 2);
++        let mut reads = 0;
++        state.update_with_clock(&mut frame, &VideoSettings::default(), f32::MAX, || {
++            reads += 1; Instant::now()
++        });
++        assert_eq!(reads, 1);
++        assert_eq!(frame.world_resolution_scale, 0.5);
++        assert_eq!(state.native_tag(), 2);
++    }
++
++    #[test]
++    fn native_initial_does_not_synthesize_a_runtime_video_scale_setter() {
++        let mut frame = frame(1.0);
++        let mut video = VideoSettings::default();
++        video.world_resolution_scale = Some(0.5);
++        let mut state = AdaptiveRenderState::at_startup(true);
++        state.update_frame_resolution(&mut frame, &video, f32::MAX);
++        assert_eq!(frame.world_resolution_scale, 1.0);
++        assert_eq!(frame.extent_8, [514, 354]);
++        assert_eq!(frame.extent_10, [544, 384]);
++    }
++
++    #[test]
++    fn native_saturating_float_casts_and_clamps_preserve_nonfinite_inputs() {
++        for (scale, expected) in [(f32::NAN, [32, 32]), (-1.0, [32, 32]),
++            (0.0, [32, 32]), (f32::INFINITY, [10_912, 10_912])]
++        {
++            let mut frame = frame(scale);
++            let mut state = AdaptiveRenderState::at_startup(true);
++            state.mark_out_of_memory();
++            state.update_frame_resolution(&mut frame, &VideoSettings::default(), f32::NAN);
++            assert_eq!(frame.extent_8, expected);
++            assert_eq!(frame.extent_10, expected);
++        }
++    }
++
++    #[test]
++    fn duration_overflow_keeps_earlier_scale_write_and_old_uncommitted_phase() {
++        let now = Instant::now();
++        let phase = AdaptivePhase::Probing { interval: Duration::MAX, deadline: now };
++        let mut state = AdaptiveRenderState { enabled: true, phase };
++        let mut frame = frame(1.0);
++        let old = frame;
++        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++            state.update_with_clock(&mut frame, &VideoSettings::default(), 0.5, || now);
++        }));
++        assert!(result.is_err());
++        assert_eq!(frame.world_resolution_scale, 0.5);
++        assert_eq!(frame.extent_8, old.extent_8);
++        assert_eq!(frame.extent_10, old.extent_10);
++        assert_eq!(state.phase, phase);
++    }
++}

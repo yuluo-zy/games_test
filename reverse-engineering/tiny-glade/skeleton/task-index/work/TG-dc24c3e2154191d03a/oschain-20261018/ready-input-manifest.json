@@ -1,0 +1,53 @@
+{
+  "candidate_only": true,
+  "production_modified": false,
+  "cargo": false,
+  "files": [
+    {
+      "source": "games_test/tiny-glade/crates/country-core/src/systems/backend/input/input_record_replay.rs",
+      "base_sha256": "c80d8fc11a48714b535329195550f08d204726434f62b8302eca1cb46d558fc4",
+      "candidate": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-dc24c3e2154191d03a/oschain-20261018/candidate-input_record_replay.rs",
+      "candidate_sha256": "af35a8c6cddb5cff5cce9ed47de9f9d54328741357d94bd6b664b70f8b4fb403",
+      "patch": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-dc24c3e2154191d03a/oschain-20261018/candidate-input_record_replay.patch"
+    },
+    {
+      "source": "games_test/tiny-glade/crates/country-core/src/systems/backend/input/mod.rs",
+      "base_sha256": "cde1993bcb43318e18e2bfd419cd22545bcd55cccdfa5053850ecd2d5b31bd0d",
+      "candidate": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-dc24c3e2154191d03a/oschain-20261018/candidate-integration-input-mod.rs",
+      "candidate_sha256": "494a1692c325292298c90d4fc4b1cb441c5b91373ad156aee4ccb656beee1c0d",
+      "patch": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-dc24c3e2154191d03a/oschain-20261018/candidate-integration-input-mod.patch"
+    },
+    {
+      "source": "games_test/tiny-glade/crates/country-core/src/systems/backend/input/mod_key.rs",
+      "base_sha256": "fcfd9229d339dc4979d10225b47d5431688b017ede8a6840e02392334120d902",
+      "candidate": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-d38cf1f5d0c9224c56/oschain-20261018/candidate-mod_key.rs",
+      "candidate_sha256": "fe1bfa04060c6595ca51e1918040d2142bcc99a992acf20c100c13f490edd17f",
+      "patch": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-d38cf1f5d0c9224c56/oschain-20261018/candidate-mod_key.patch"
+    },
+    {
+      "source": "games_test/tiny-glade/crates/country-core/src/systems/backend/input/translate_input.rs",
+      "base_sha256": "06fa079578b856016943e76c0fb364e3c10a71813660363681df4c3f0a79b9ab",
+      "candidate": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-1a60f9e1bb3e2c0662/oschain-20261018/candidate-translate_input.rs",
+      "candidate_sha256": "13f94bb3141bcafe3e823499359c510965daa9b831aadf7a7c87c2dc57686a55",
+      "patch": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-1a60f9e1bb3e2c0662/oschain-20261018/candidate-translate_input.patch"
+    },
+    {
+      "source": "games_test/tiny-glade/crates/country-core/src/game_profile.rs",
+      "base_sha256": "1ada2af2e747a634e530a789b98f4e1c9ed8e045e1768daf19c132bef6a78119",
+      "candidate": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-d8c2f2c59e98716b0b/main-chain-boot-20261018/oschain-bindings-candidate/candidate-game_profile.rs",
+      "candidate_sha256": "5eaa711f23f8fb437aeadf380a45ca2ced1b5c6999f90aee0c3c353add6858dc",
+      "patch": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-d8c2f2c59e98716b0b/main-chain-boot-20261018/oschain-bindings-candidate/candidate-game_profile.patch"
+    }
+  ],
+  "dependencies": [
+    "canonical DecoratorOpEvent from its actual owner",
+    "bevy_input serialize feature"
+  ],
+  "host_registration": "INPUT-HOST-CONTRACT.md",
+  "required_integration_patch": {
+    "source": "games_test/tiny-glade/crates/country-core/src/systems/save/mod.rs",
+    "base_sha256": "ff0909f6f041df3e1e5648407d4b158761186fbeaa0d858c7a8399eaf16d3ef4",
+    "patch": "games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-dc24c3e2154191d03a/oschain-20261018/candidate-input-event-maintenance-save-mod.patch",
+    "reason": "NewSessionStartedCmd/SessionLoadedCmd are initialized here before input registrar; register them here so the standard presence guard does not skip EventRegistry."
+  }
+}

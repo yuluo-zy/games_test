@@ -1,0 +1,91 @@
+{
+  "server": "re_mcp_ghidra",
+  "actual_mcp_connection": true,
+  "results": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "database_id": "tg_source"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"tg_source\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "tg_source",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "tg_source"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"tg_source\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116270,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "tg_source",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116270,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "batch",
+      "args": {
+        "database": "tg_source",
+        "stop_on_error": false,
+        "operations": [
+          {
+            "tool": "create_function",
+            "params": {
+              "address": "0x140b2a620"
+            }
+          },
+          {
+            "tool": "create_function",
+            "params": {
+              "address": "0x140b2a6e0"
+            }
+          }
+        ]
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"{\\\"results\\\":[{\\\"index\\\":0,\\\"tool\\\":\\\"create_function\\\",\\\"result\\\":null,\\\"error\\\":\\\"{\\\\\\\"error\\\\\\\":\\\\\\\"Failed to create function at 0x140B2A620\\\\\\\",\\\\\\\"error_type\\\\\\\":\\\\\\\"CreateFailed\\\\\\\",\\\\\\\"database\\\\\\\":\\\\\\\"tg_source\\\\\\\"}\\\"},{\\\"index\\\":1,\\\"tool\\\":\\\"create_function\\\",\\\"result\\\":null,\\\"error\\\":\\\"{\\\\\\\"error\\\\\\\":\\\\\\\"Failed to create function at 0x140B2A6E0\\\\\\\",\\\\\\\"error_type\\\\\\\":\\\\\\\"CreateFailed\\\\\\\",\\\\\\\"database\\\\\\\":\\\\\\\"tg_source\\\\\\\"}\\\"}],\\\"succeeded\\\":0,\\\"failed\\\":2,\\\"cancelled\\\":false}\",\"error_type\":\"BatchFailed\"}"
+          }
+        ],
+        "isError": true
+      }
+    }
+  ],
+  "target_execution": false,
+  "ok": false,
+  "error": "Error: batch returned error"
+}

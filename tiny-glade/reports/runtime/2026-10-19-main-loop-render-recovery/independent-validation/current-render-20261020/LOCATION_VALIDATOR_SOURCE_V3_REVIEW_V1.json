@@ -1,0 +1,124 @@
+{
+  "reviewer": "/root/render_reviewer",
+  "date": "2026-10-21",
+  "decision": "V3必要位置数值API未发现剩余静态阻断；CPU类型/真实测试待root，禁止据此挂完整cull/blueprint/宿主链",
+  "candidate_directory": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-719dcf28a173a4b9b1/clutter-startup-20261020/location-validator-root-candidate-v3",
+  "identities": {
+    "SOURCE_CANDIDATE_MANIFEST_V3.json": "05def27e5845a170431c605c9f5733066867b068a6e58dda8f9594c0e7e42bac",
+    "SOURCE.patch": "cafde4ab65a74351a8c9dffc9c983ead33539f557903f45f34bfabcea00f27fd",
+    "V2_TO_V3.patch": "7569e42c1a0883f6713b52fb0c498a48077cc05953240babc676c6677ae2bd7b",
+    "before/tiny-glade/crates/systems/decorator/src/cull_oob_decorators.rs": "af3fcad2e1631a26105ae3a379f2bb3afea4d1a8c19a07baf79b743ad0a4d71b",
+    "candidate/tiny-glade/crates/systems/decorator/src/cull_oob_decorators.rs": "c8f4762cb01100b6412d678fcbbd7cb5f0e66b97590feb9470271fcb96de1d6b"
+  },
+  "native_fact": {
+    "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "independent_verification": "用原RNE的PE RVA映射逐条核对以下四范围asm的PC连续性、全指令字节和范围SHA；另读原RNE核四有限跳表和19个f32字面量，并逐段对照主函数/两helper实际分支",
+    "ranges": [
+      {
+        "va": "0x14080f470",
+        "size": 8143,
+        "instructions": 1655,
+        "sha256": "ca8b7af22712a8d5fbcdd9100e7254e1e77e4b9fd89466e5134fc1cf73579933"
+      },
+      {
+        "va": "0x140811440",
+        "size": 1203,
+        "instructions": 286,
+        "sha256": "0ab8502eb42c5ef046dbb567c8c14ab59133cfc2175cea5aa066ea21dc9f838c"
+      },
+      {
+        "va": "0x140811900",
+        "size": 200,
+        "instructions": 44,
+        "sha256": "d7f9d3048cd1625eac65599f19e42926e1f5f09c58e104578bbc99e11fe203eb"
+      },
+      {
+        "va": "0x140c97b40",
+        "size": 84,
+        "instructions": 22,
+        "sha256": "8272a9ea95811e98ca3c179e7fdf94973d177fe76573cf37aa82b7c9ffc71499"
+      }
+    ]
+  },
+  "corrected_review_findings": [
+    {
+      "severity": "阻断，已V3解决",
+      "v2": "首行带绝对文件名和冒号，不能当Rust源码；原parse声称未证明冻结文件可解析",
+      "v3": "仅删除该标题；作者声明重新解析最终V3，独审未运行rustfmt/rustc"
+    },
+    {
+      "severity": "阻断，已V3解决",
+      "v2": "cull_oob_decorators的walls:Res<PublicWalls>被let walls:Vec<...>遮蔽；给cull_one传错类型",
+      "v3_line": 551,
+      "v3": "归档桶改名archived_wall_buckets，真实同世界walls仍借入；V2_TO_V3仅这两项"
+    }
+  ],
+  "schema": "Valid映射native11，Invalid保全部0..10具体载荷；Rust枚举只表达业务，不声称复刻原ABI。实际WallId取存储地址，实际modified DecoratorId取显式id，不能从info首qword或stored_id推断。",
+  "ordered_native_source_checks": [
+    {
+      "pc": "14080f510..f545",
+      "source_line": 122,
+      "finding": "dst3/4在任何required lookup之前返回Valid；dst2屋顶，其余含超出已知tag仍墙分支"
+    },
+    {
+      "pc": "14080f555/f56c/f571",
+      "source_line": 226,
+      "finding": "墙当前subtype→required缓存→subtype1门；缓存缺失不改成MissingRoof或默认transform"
+    },
+    {
+      "pc": "14080f6c8..f740",
+      "finding": "墙subtype再次查找、collision先于required wall/path；宽度实际footprint.x，高度top-bottom"
+    },
+    {
+      "pc": "14080f781..f932",
+      "source_line": 274,
+      "finding": "同真实prepared XYZ切片，无临时Vec；center/left/right各原WallSpace.project_clamp，曲线max第二操作数+0的unordered/-0选择保留"
+    },
+    {
+      "pc": "14080fa20/fa40..faaf/faee",
+      "finding": "subtype7位置来自真实源Curve的WallSpaceCoord.to_world_space，非clamped prepared点；方向先XYZ normalize再(-Z,X) normalize，先于端点错误"
+    },
+    {
+      "pc": "14080fb2b/fb56/1408102b2",
+      "finding": "右后左unclamped project均执行，输出left/right两个真实bool"
+    },
+    {
+      "pc": "14080fc3d/1408103b8/14081050a/14081066b",
+      "source_line": 309,
+      "finding": "独立cut数组左→中→右；center baseY与每cut相加；全subtype阈值和cut正值载荷0/非正10分离保留"
+    },
+    {
+      "pc": "14081070d..810/14129d600",
+      "finding": "仅subtype!=3且shape>=2，三实际采样点→相邻两XZ方向→dot<.6；不扫后续任意曲线顶点"
+    },
+    {
+      "pc": "140810842..919",
+      "source_line": 355,
+      "finding": "subtype4/9实际preparedXYZ tangent后直接normalize XZ，两bool true，实际sampledXZ+infoY，只有Snap tag4拒绝"
+    },
+    {
+      "pc": "140810935..cd5/140811900",
+      "source_line": 766,
+      "finding": "actual subtype.can_be_on_corner门，原rectangle四角顺序；墙空间环形差abs<width*.5+(.2或.46)严格比较，不使用欧式距离"
+    },
+    {
+      "pc": "140810d25..811119",
+      "source_line": 447,
+      "finding": "premade可选roof缺失返回Valid；subtype3专用margin；gable匹配两edge才转arch；type59/63/window与flat分支数值吻合；arch只左后右且真实独立数组"
+    },
+    {
+      "pc": "140811440..730",
+      "source_line": 788,
+      "finding": "ridge subtype7/8；缺roof返回9，circle enclosure直接11；profile首y、零乘保留；真实section与perimeter；height+floor-.1；.993>dot才拒绝，unordered接受"
+    }
+  ],
+  "borrow_and_performance": "DerivedDecoratorInfoView当前derive Copy并只含两条共享借用，Required subtype/mesh/cache均借同owners；prepared path与两高度数组只借用，三点固定数组不分配；无World/整个库clone。旧归档桶Vec和本地default事件仍是既有partial实现，不在本数值恢复验收内。",
+  "dependency_gates": [
+    "core lead canonical subtype/实际四表及collision record API真实配对，不能用测试catalog当启动资源",
+    "已恢复CurveSlice严格距离/WallSpace、Rectangle perimeter与closest edge、Bounds1561B和Snap bounded真实RaycastWorld合同必须同批",
+    "Circle required84B c6370f38叶子；独审报告CIRCLE_CLOSEST_REQUIRED_LEAF_V1_REVIEW_V1.json",
+    "foreign blueprint validator539B+8161B feedback与UI473B、cache readiness/真实producer未在本包闭合，原partial cull不得提前mount"
+  ],
+  "current_runtime": "十新增tests只由作者做最终V3 parse，独审未运行Rust/Cargo/GPU。测试覆盖tag载荷/early return/cache failure/endpoints/cut/turn/corner/flat+gable/unordered，但没有证明完整ridge、所有top与真实资源catalog/长稳/编辑恢复。当前生产before SHA独立匹配af3fcad2...，未写生产。",
+  "limits": "保原f32运算结构与ordered/unordered条件；不声称所有NaN payload逐bit跨Rust/LLVM目标一致；未把指令数/测试数当项目完成率"
+}

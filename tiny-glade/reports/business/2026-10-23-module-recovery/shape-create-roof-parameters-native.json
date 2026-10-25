@@ -1,0 +1,61 @@
+{
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+  "fixtures": {
+    "shape-create-circle-roof-parameters.ron": {
+      "cases": 22,
+      "sha256": "2f1a05c9b3e1e63f02c3916fce44e3e47d208a721084037665ad3f48b9faf0df"
+    },
+    "shape-create-rectangle-roof-parameters.ron": {
+      "cases": 484,
+      "sha256": "8ee4f8622e04a15f4d651bd92a8c106097094db9e43c300e1793bed8bb8c8106"
+    }
+  },
+  "ranges": [
+    [
+      "0x14097ebf7",
+      "0x14097ec3d"
+    ],
+    [
+      "0x140a93df7",
+      "0x140a93ec7"
+    ],
+    [
+      "0x140a940d1",
+      "0x140a94106"
+    ]
+  ],
+  "executed_helper": "0x140c95ef0 EasingFunction.apply，原静态tag2与相对跳表",
+  "bridges": [
+    {
+      "address": "0x142923e80",
+      "kind": "import cosf",
+      "replacement": "Darwin libm cosf(c_float)",
+      "calls": 506,
+      "scope": "数学库跨平台边界，非UCRT逐位实机证明"
+    }
+  ],
+  "columns": {
+    "circle": [
+      "radius_bits",
+      "height_bits"
+    ],
+    "rectangle": [
+      "x_bits",
+      "y_bits",
+      "height_bits",
+      "ridge_bits",
+      "direction_u8"
+    ]
+  },
+  "supplied_boundaries": [
+    "ABI私有寄存器和shape payload；原调用者载入常量单独明确设置",
+    "无previous roof继承，继承分支由真实World集成测试验证"
+  ],
+  "corrections": [
+    "circle ridge固定0.4、eave0.2：原142ab6600字节cdcccc3ecdcc4c3e",
+    "rectangle height easing使用未clamp的(max_dim-2.25)/12.75；ridge独立5.25",
+    "ridge保留smoothstep乘加分组与NaN传播，不擅自重排"
+  ],
+  "scope": "仅原roof参数数学，不宣称墙创建/历史/消费者链整体通过"
+}

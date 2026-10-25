@@ -1,0 +1,399 @@
+{
+  "original_pe_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "native_ranges": {
+    "ImageFormationConfigs_default": {
+      "va": "0x1408ae7f0",
+      "size": 607,
+      "sha256": "d6e1cf2fede1fc093e970ce4ade1fa90e6bc4d25db21d69e61c991ba5237b5a8"
+    },
+    "load_glade_grading": {
+      "va": "0x1408bf9c0",
+      "size": 2346,
+      "sha256": "2e66d6843d0b2e8baa1512df898e0359fb0ba619e8211fd3de24ad898331b7d3"
+    },
+    "GCC_default": {
+      "va": "0x1408c5600",
+      "size": 82,
+      "sha256": "c6c5e56e4f5de89e8891d6582126c5cda96b6344b90da5b1bfbf8bd52a37d99b"
+    },
+    "GradingLuts_load": {
+      "va": "0x140b01df0",
+      "size": 1690,
+      "sha256": "c3d912e1fc2f8cfa400f32f7ecff893b1f1cac75ed4520386918163f18b030d8"
+    }
+  },
+  "rel32_call_candidates": [
+    {
+      "target": "GCC_default",
+      "call_va": "0x1403ad8f3",
+      "bytes": "e8087d5100",
+      "pdb_owners": [
+        {
+          "va": "0x1403ad640",
+          "size": 2561,
+          "name": "tiny_glade::panic_reporter::panic_dump::dump_save"
+        }
+      ],
+      "confirmed_llvm_instruction": "1403ad8f3: e8 08 7d 51 00              \tcallq\t0x1408c5600 <.text+0x8c4600>",
+      "owner_disassembly": "reverse-engineering/tiny-glade/evidence/round12/color-startup/owner-0x1403ad640-original.asm"
+    },
+    {
+      "target": "ImageFormationConfigs_default",
+      "call_va": "0x14059f2a6",
+      "bytes": "e845f53000",
+      "pdb_owners": [
+        {
+          "va": "0x14059d450",
+          "size": 68544,
+          "name": "tiny_glade::run_game::run_game_thread"
+        }
+      ],
+      "confirmed_llvm_instruction": "14059f2a6: e8 45 f5 30 00              \tcall\t0x1408ae7f0 <.text+0x8ad7f0>",
+      "owner_disassembly": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-c459c7f73345e24709/main-chain-boot-20261018/run-game-thread-rne.asm"
+    },
+    {
+      "target": "ImageFormationConfigs_default",
+      "call_va": "0x1405a5235",
+      "bytes": "e8b6953000",
+      "pdb_owners": [
+        {
+          "va": "0x14059d450",
+          "size": 68544,
+          "name": "tiny_glade::run_game::run_game_thread"
+        }
+      ],
+      "confirmed_llvm_instruction": "1405a5235: e8 b6 95 30 00              \tcall\t0x1408ae7f0 <.text+0x8ad7f0>",
+      "owner_disassembly": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-c459c7f73345e24709/main-chain-boot-20261018/run-game-thread-rne.asm"
+    },
+    {
+      "target": "GradingLuts_load",
+      "call_va": "0x140a2cf5f",
+      "bytes": "e88c4e0d00",
+      "pdb_owners": [
+        {
+          "va": "0x140a2ce90",
+          "size": 4589,
+          "name": "core::ops::function::impls::impl$3::call_mut<tuple$<bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::game_config::GameConfig>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_library::AssetTextureLibrary>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_watch::TextureWatch>,bevy_ecs::system::commands::Commands>,void (*)(bevy_ecs::change_detection::Res<country_core::render::GraphicsDeviceResource>,bevy_ecs::change_detection::Res<country_core::game_config::GameConfig>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_library::AssetTextureLibrary>,bevy_ecs::change_detection::ResMut<country_core::asset_libraries::texture_watch::TextureWatch>,bevy_ecs::system::commands::Commands)>"
+        }
+      ],
+      "confirmed_llvm_instruction": "140a2cf5f: e8 8c 4e 0d 00              \tcallq\t0x140b01df0 <.text+0xb00df0>",
+      "owner_disassembly": "reverse-engineering/tiny-glade/evidence/round12/color-startup/owner-0x140a2ce90-original.asm"
+    },
+    {
+      "target": "load_glade_grading",
+      "call_va": "0x1414d0260",
+      "bytes": "e85bf73eff",
+      "pdb_owners": [
+        {
+          "va": "0x1414d0120",
+          "size": 747,
+          "name": "bevy_ecs::system::system::System::run_without_applying_deferred<bevy_ecs::system::schedule_system::InfallibleSystemWrapper<bevy_ecs::system::function_system::FunctionSystem<void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::image_formation::ImageFormationConfigs>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::image_formation::ImageFormationConfigs>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)> > >"
+        }
+      ],
+      "confirmed_llvm_instruction": "1414d0260: e8 5b f7 3e ff              \tcallq\t0x1408bf9c0 <.text+0x8be9c0>",
+      "owner_disassembly": "reverse-engineering/tiny-glade/evidence/round12/color-startup/owner-0x1414d0120-original.asm"
+    },
+    {
+      "target": "load_glade_grading",
+      "call_va": "0x1417cbaee",
+      "bytes": "e8cd3e0fff",
+      "pdb_owners": [
+        {
+          "va": "0x1417cb9e0",
+          "size": 602,
+          "name": "bevy_ecs::system::schedule_system::impl$1::run_unsafe<bevy_ecs::system::function_system::FunctionSystem<void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::image_formation::ImageFormationConfigs>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>),void (*)(bevy_ecs::change_detection::ResMut<country_core::resources::image_formation::ImageFormationConfigs>,bevy_ecs::change_detection::Res<country_core::resources::session::ActiveSession>)> >"
+        }
+      ],
+      "confirmed_llvm_instruction": "1417cbaee: e8 cd 3e 0f ff              \tcallq\t0x1408bf9c0 <.text+0x8be9c0>",
+      "owner_disassembly": "reverse-engineering/tiny-glade/evidence/round12/color-startup/owner-0x1417cb9e0-original.asm"
+    }
+  ],
+  "call_scope": "Every rel32 candidate confirmed as an actual call instruction in complete PDB-owned LLVM disassembly.",
+  "packaged_luts": [
+    {
+      "name": "---_M.Fahri_-_AnalogFilmPack_-_400h",
+      "file": "---_M.Fahri_-_AnalogFilmPack_-_400h.cube",
+      "size": 422028,
+      "sha256": "2a0c1496c13b625ac22cdf4cfba807b0a71cbedec8d256b5aff2c77c2bf87d02"
+    },
+    {
+      "name": "---_M.Fahri_-_AnalogFilmPack_-_Portrait_400_Nc",
+      "file": "---_M.Fahri_-_AnalogFilmPack_-_Portrait_400_Nc.cube",
+      "size": 422039,
+      "sha256": "19edf170d006825d54b760ee8e157cf6c47096c79e8699d1cbb635a8e85954be"
+    },
+    {
+      "name": "AlexanderBarrelsFilmicSoft",
+      "file": "AlexanderBarrelsFilmicSoft.cube",
+      "size": 884988,
+      "sha256": "5bcf3972a807bb880f311ac70d029ac527b84b22fb45d73c65c11436cf593206"
+    },
+    {
+      "name": "bleach",
+      "file": "bleach.png",
+      "size": 11701,
+      "sha256": "2b643b36fe496b0cd0d5dedf68b83f8ce7583e46d05210c5a6c7ccf195cdb542",
+      "png_extent": [
+        256,
+        16
+      ],
+      "rgba8_texel_bytes": 16384,
+      "expected_native_16_cubed_texel_bytes": 16384
+    },
+    {
+      "name": "BLUE_HORROR_REC709_V1",
+      "file": "BLUE_HORROR_REC709_V1.cube",
+      "size": 896032,
+      "sha256": "eb9f4e1b65d640886b9b05186ab2506cfa136298a7c4f4ff963b0b3c1bc24c20"
+    },
+    {
+      "name": "Bluecine_75",
+      "file": "Bluecine_75.cube",
+      "size": 944129,
+      "sha256": "3a646f75df8b5b8ba7f00638743ac55734eeba75dceb6e51a01878ac7c0cf5bb"
+    },
+    {
+      "name": "candy-2",
+      "file": "candy-2.png",
+      "size": 6054,
+      "sha256": "8b2851c174d2727d2740164e3ddc8deb16771dbcce14482f99a736ecc0d05115",
+      "png_extent": [
+        256,
+        16
+      ],
+      "rgba8_texel_bytes": 16384,
+      "expected_native_16_cubed_texel_bytes": 16384
+    },
+    {
+      "name": "cannon_cool_corr_look_224.9R8A3608",
+      "file": "cannon_cool_corr_look_224.9R8A3608.cube",
+      "size": 960935,
+      "sha256": "42a88d9ee691d75a72343fdb2f5260c5dc0ced10a31acfe8bd2034826152e6b1"
+    },
+    {
+      "name": "Choi_Hung_Estate_02",
+      "file": "Choi_Hung_Estate_02.cube",
+      "size": 884810,
+      "sha256": "7deb16c12b14c67d2c8627aefdcd71b6c2b14e26aecbff817f2fdcbdc7608cb1"
+    },
+    {
+      "name": "CINEMA_2",
+      "file": "CINEMA_2.cube",
+      "size": 110607,
+      "sha256": "1567f44ba7f55455cf89c810d96960a8c92f5d99dffca2a2b56b29d41b7627df"
+    },
+    {
+      "name": "cold",
+      "file": "cold.png",
+      "size": 6248,
+      "sha256": "270ddd0eb5f2b37c80e47b2c49bb84846131733a08297a2b11f5e43b7f8faa5a",
+      "png_extent": [
+        256,
+        16
+      ],
+      "rgba8_texel_bytes": 16384,
+      "expected_native_16_cubed_texel_bytes": 16384
+    },
+    {
+      "name": "Cold_Ice",
+      "file": "Cold_Ice.cube",
+      "size": 112143,
+      "sha256": "e9f1ab32fc872dc015a714e7b06038d005c5eec3cc1087dfa91c30a74eaa6b44"
+    },
+    {
+      "name": "Cool_Natural_Breeze",
+      "file": "Cool_Natural_Breeze.cube",
+      "size": 884916,
+      "sha256": "ec821aaec99f68aceeefc1429d1258cc6c029b2b63cfe85bc3a9e63a09998cfd"
+    },
+    {
+      "name": "Crizo_Mzeyah",
+      "file": "Crizo_Mzeyah.cube",
+      "size": 884788,
+      "sha256": "5212a396c3297ed2a0db23b4ab564fd6aaefa5729d0e44a3b08d7480dce95691"
+    },
+    {
+      "name": "dammsugare",
+      "file": "dammsugare.png",
+      "size": 11673,
+      "sha256": "43a4e086b6a8479d7e5bd4e5709fa48a7fe3108b9f911c4a0eceb50945859e71",
+      "png_extent": [
+        256,
+        16
+      ],
+      "rgba8_texel_bytes": 16384,
+      "expected_native_16_cubed_texel_bytes": 16384
+    },
+    {
+      "name": "default",
+      "file": "default.png",
+      "size": 151,
+      "sha256": "39a24d9fa7df7daed4a36e04d14c170b9054bb98c2118a3f55fdd19ffce1b9b7",
+      "png_extent": [
+        256,
+        16
+      ],
+      "rgba8_texel_bytes": 16384,
+      "expected_native_16_cubed_texel_bytes": 16384
+    },
+    {
+      "name": "DRONE_CINEMA",
+      "file": "DRONE_CINEMA.cube",
+      "size": 973224,
+      "sha256": "10a908280bf0115049662df196e9cdd8c69bbfc31057e4fc137da2c5f3445a90"
+    },
+    {
+      "name": "Era",
+      "file": "Era.cube",
+      "size": 970991,
+      "sha256": "5b6663cbb50f8e3a61664b44315501e7cf44eaf29d7e55311fe12bff9a9b09fe"
+    },
+    {
+      "name": "home_39.A007_02270911_C017",
+      "file": "home_39.A007_02270911_C017.cube",
+      "size": 853883,
+      "sha256": "873bb48a82a2c003d042c4af4acf72a48b8f77fd284c4b56c6c1336d9a30ffa6"
+    },
+    {
+      "name": "luck",
+      "file": "luck.cube",
+      "size": 110607,
+      "sha256": "838f8114562083359213166d00022fe2893f43d5a4a3357d2d1fb5ffaf628477"
+    },
+    {
+      "name": "LUNA_COLOR",
+      "file": "LUNA_COLOR.cube",
+      "size": 1185974,
+      "sha256": "6b914da07c8b3e2ea9329038f9a3df5554ca119f585ea483cda8d8e5f910cc38"
+    },
+    {
+      "name": "lush",
+      "file": "lush.png",
+      "size": 11839,
+      "sha256": "8527a0f9fb6281fdc87a27decf0060b6d23aa797d33ff3916a228b9e51cb7dab",
+      "png_extent": [
+        256,
+        16
+      ],
+      "rgba8_texel_bytes": 16384,
+      "expected_native_16_cubed_texel_bytes": 16384
+    },
+    {
+      "name": "purple-haze",
+      "file": "purple-haze.png",
+      "size": 11114,
+      "sha256": "477d596b204d921d2b73f4438ad77fca464537e80d98a504c65267ca8e016079",
+      "png_extent": [
+        256,
+        16
+      ],
+      "rgba8_texel_bytes": 16384,
+      "expected_native_16_cubed_texel_bytes": 16384
+    },
+    {
+      "name": "RoastMeat_Cinema_709_1",
+      "file": "RoastMeat_Cinema_709_1.cube",
+      "size": 949765,
+      "sha256": "2e68c773dd51a300090ca011516e31dfd534bbdf67bcb5cb669a8f611d303dcd"
+    },
+    {
+      "name": "Sam_Kolder",
+      "file": "Sam_Kolder.cube",
+      "size": 754867,
+      "sha256": "c711e5fd0b5f62b6c96dbbe5d211d7681a91c9ae728500fb64716e469afb0aad"
+    },
+    {
+      "name": "sample_lut_1.rizal_final",
+      "file": "sample_lut_1.rizal_final.cube",
+      "size": 876486,
+      "sha256": "39ada29cc5888c0a59ddcf9627254e819a28e216ee2a5503dad05c0da45783ef"
+    },
+    {
+      "name": "TL_R709_V2",
+      "file": "TL_R709_V2.cube",
+      "size": 860326,
+      "sha256": "b1323d428e161b558e7e2f57b6d33b02ef8806f178b521107ccaa4c543fcb498"
+    },
+    {
+      "name": "WW_LOOK",
+      "file": "WW_LOOK.cube",
+      "size": 904285,
+      "sha256": "39ca331d79a579384668f765efe81eb16fcd446a30fababe29017e5ed5d26200"
+    }
+  ],
+  "theme_grades": [
+    {
+      "theme": "autumn",
+      "grading": {
+        "bypass_color": false,
+        "contrast": 1.05,
+        "current_grading_lut": "lush",
+        "ev_shift": 0.3,
+        "grading_strength": 0.4,
+        "saturation": 1.05
+      },
+      "sha256": "6924907859ff6d8db12be05a833e96f40166b2068236cf308b583c5213913b70"
+    },
+    {
+      "theme": "flowery",
+      "grading": {
+        "bypass_color": false,
+        "contrast": 1.05,
+        "current_grading_lut": "candy-2",
+        "ev_shift": 0.15,
+        "grading_strength": 0.8,
+        "saturation": 1.08
+      },
+      "sha256": "ab65b203c8beff48be989dbb7a9b8a563797184f95a9d58c786f7976a0216c42"
+    },
+    {
+      "theme": "olden",
+      "grading": {
+        "bypass_color": false,
+        "contrast": 1.05,
+        "current_grading_lut": "cold",
+        "ev_shift": 0.45,
+        "grading_strength": 0.0,
+        "saturation": 1.1
+      },
+      "sha256": "0375b33bc19c02f7c8a1364d5cbaf49ce19fbc0c4fc6c8e9eec2f1436dc496a2"
+    },
+    {
+      "theme": "summer",
+      "grading": {
+        "bypass_color": false,
+        "contrast": 1.05,
+        "current_grading_lut": "lush",
+        "ev_shift": 0.3,
+        "grading_strength": 0.4,
+        "saturation": 1.02
+      },
+      "sha256": "08664940e1a339949596678657611fe288fd39ce17d03607e245c6e94d4c8acf"
+    },
+    {
+      "theme": "winter",
+      "grading": {
+        "bypass_color": false,
+        "contrast": 1.0,
+        "current_grading_lut": "lush",
+        "ev_shift": 0.1,
+        "grading_strength": 0.4,
+        "saturation": 1.02
+      },
+      "sha256": "44f83ba06ff3149e15bbc3506c79cf3809b9ab6f7ac7c17886b39b85e776e7b0"
+    }
+  ],
+  "source_snapshot_sha256": {
+    "tiny-glade/crates/tiny-glade/src/gameplay_startup.rs": "fd2509305f1c3bca02237ce94347f88a41cd47ca985db6bf00c6c49ffd046e77",
+    "tiny-glade/crates/tiny-glade/src/loading_graph.rs": "acb1d47d0bb61078121d92cf9d104daf54366e4f1187b06e9820d1941ec96067",
+    "tiny-glade/crates/tiny-glade/src/run_game.rs": "803a2f747e9f40f7a6edbc3c141b264b71c5401536e7c38b0acfc85db0a931d3",
+    "tiny-glade/crates/tiny-glade/src/world_postprocess.rs": "ed97cc7302d4e5de3f2e220c07f21f4116aba88f28b1aea5a1945a673a7b61c6",
+    "tiny-glade/crates/tiny-glade/src/app_systems.rs": "96aa29a2ad3acec0995824af7dcc13de91123a53da4b7429421c47928c70b3b0",
+    "tiny-glade/crates/country-core/src/startup/load_glade_grading.rs": "95d8689f33a7dcc13de17b357b0954f899d0cd42c0e2e87ffd72498a6d293a40",
+    "tiny-glade/crates/country-core/src/resources/grading_lut.rs": "f1aaa1e89eaa8e2663e2c91ec5c5245f48a72e652a1f7d6034189022e7f0fe6c",
+    "tiny-glade/crates/country-core/src/resources/image_formation.rs": "87fe02144a14d75a10959a2dc1cce23f0e53f66b2e35d9e871bf3e54ec17d0f2",
+    "tiny-glade/crates/country-core/src/resources/glade_color_customization.rs": "60d264f038edaf556dbc650377ecc9399241b413a6ddc5c925774a17e1534ee2",
+    "tiny-glade/crates/country-core/src/systems/save/load_game.rs": "7d700d3b7ae5deac8ea0ca01b66fe3b2c5aee2a192e9e0ec73730d3e75834f13"
+  },
+  "execution_scope": "No game/GPU/Rust execution. Existing original execution GCC fixtures and prior grading byte verification are separate evidence."
+}

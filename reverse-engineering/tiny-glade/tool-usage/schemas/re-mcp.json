@@ -1,0 +1,400 @@
+{
+  "backend": "re-mcp",
+  "source_report": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/re-mcp-read.json",
+  "snapshot_profile_access": "read",
+  "tools": [
+    {
+      "name": "close_database",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "save": {
+            "default": true,
+            "type": "boolean"
+          },
+          "force": {
+            "default": false,
+            "type": "boolean"
+          },
+          "database": {
+            "default": "",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "name": "save_database",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "outfile": {
+            "default": "",
+            "type": "string"
+          },
+          "flags": {
+            "default": -1,
+            "type": "integer"
+          },
+          "force": {
+            "default": false,
+            "type": "boolean"
+          },
+          "database": {
+            "default": "",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "name": "list_databases",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      }
+    },
+    {
+      "name": "wait_for_analysis",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "database": {
+            "default": "",
+            "type": "string",
+            "description": "Single database ID to wait for."
+          },
+          "databases": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "List of database IDs (returns when first is ready)."
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "name": "open_database",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "Path to the binary file."
+          },
+          "run_auto_analysis": {
+            "default": false,
+            "type": "boolean",
+            "description": "Run Ghidra auto-analysis after opening."
+          },
+          "keep_open": {
+            "default": true,
+            "type": "boolean",
+            "description": "Keep other open databases (default True)."
+          },
+          "database_id": {
+            "default": "",
+            "type": "string",
+            "description": "Custom ID (must match [a-z][a-z0-9_]{0,31})."
+          },
+          "force_new": {
+            "default": false,
+            "type": "boolean",
+            "description": "Delete existing project and start fresh."
+          },
+          "language": {
+            "default": "",
+            "type": "string",
+            "description": "Ghidra language ID (e.g. ``x86:LE:64:default``,\n      ``ARM:LE:32:v8``). Auto-detected when omitted.\n      Use list_targets to see options."
+          },
+          "compiler_spec": {
+            "default": "",
+            "type": "string",
+            "description": "Ghidra compiler spec (e.g. ``gcc``,\n           ``windows``). Auto-detected when omitted."
+          }
+        },
+        "required": [
+          "file_path"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "set_comment",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "description": "Address (hex string, decimal, or symbol name).",
+            "type": "string"
+          },
+          "comment": {
+            "type": "string",
+            "description": "Comment text (empty string to clear)."
+          },
+          "comment_type": {
+            "default": "eol",
+            "type": "string",
+            "description": "One of \"eol\", \"pre\", \"post\", \"plate\", \"repeatable\"."
+          },
+          "database": {
+            "type": "string",
+            "description": "Database to target (stem ID from open_database / list_databases)."
+          }
+        },
+        "required": [
+          "address",
+          "comment",
+          "database"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "get_database_info",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "database": {
+            "type": "string",
+            "description": "Database to target (stem ID from open_database / list_databases)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "database"
+        ]
+      }
+    },
+    {
+      "name": "list_functions",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "offset": {
+            "default": 0,
+            "description": "Pagination offset.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "limit": {
+            "default": 100,
+            "description": "Maximum number of results.",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "filter_pattern": {
+            "default": "",
+            "description": "Optional regex to filter results.",
+            "type": "string"
+          },
+          "database": {
+            "type": "string",
+            "description": "Database to target (stem ID from open_database / list_databases)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "database"
+        ]
+      }
+    },
+    {
+      "name": "decompile_function",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "description": "Address (hex string, decimal, or symbol name).",
+            "type": "string"
+          },
+          "database": {
+            "type": "string",
+            "description": "Database to target (stem ID from open_database / list_databases)."
+          }
+        },
+        "required": [
+          "address",
+          "database"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "disassemble_function",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "description": "Address (hex string, decimal, or symbol name).",
+            "type": "string"
+          },
+          "database": {
+            "type": "string",
+            "description": "Database to target (stem ID from open_database / list_databases)."
+          }
+        },
+        "required": [
+          "address",
+          "database"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "get_type_info",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "description": "Address (hex string, decimal, or symbol name).",
+            "type": "string"
+          },
+          "database": {
+            "type": "string",
+            "description": "Database to target (stem ID from open_database / list_databases)."
+          }
+        },
+        "required": [
+          "address",
+          "database"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "get_xrefs_to",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "description": "Address (hex string, decimal, or symbol name).",
+            "type": "string"
+          },
+          "offset": {
+            "default": 0,
+            "description": "Pagination offset.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "limit": {
+            "default": 100,
+            "description": "Maximum number of results.",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "database": {
+            "type": "string",
+            "description": "Database to target (stem ID from open_database / list_databases)."
+          }
+        },
+        "required": [
+          "address",
+          "database"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "get_xrefs_from",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "description": "Address (hex string, decimal, or symbol name).",
+            "type": "string"
+          },
+          "offset": {
+            "default": 0,
+            "description": "Pagination offset.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "limit": {
+            "default": 100,
+            "description": "Maximum number of results.",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "database": {
+            "type": "string",
+            "description": "Database to target (stem ID from open_database / list_databases)."
+          }
+        },
+        "required": [
+          "address",
+          "database"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "search_tools",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "pattern": {
+            "description": "Regex pattern to match against tool names, descriptions, and tags",
+            "type": "string"
+          },
+          "detail": {
+            "default": "brief",
+            "description": "'brief' (default) for a one-line signature + summary per tool, 'detailed' for parameter schemas as markdown, 'full' for complete JSON schemas",
+            "enum": [
+              "brief",
+              "detailed",
+              "full"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "pattern"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "get_schema",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "tools": {
+            "description": "Tool names to get schemas for.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "detail": {
+            "default": "detailed",
+            "description": "'brief' for a one-line signature + summary per tool, 'detailed' for parameter schemas as markdown (default), 'full' for complete JSON schemas",
+            "enum": [
+              "brief",
+              "detailed",
+              "full"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "tools"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

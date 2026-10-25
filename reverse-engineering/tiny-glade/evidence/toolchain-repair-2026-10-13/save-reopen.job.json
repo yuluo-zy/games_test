@@ -1,0 +1,9 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.program.model.listing import CodeUnit\na=currentProgram.getAddressFactory().getAddress('1408e1630')\nf=currentProgram.getFunctionManager().getFunctionAt(a)\nprint(json.dumps({\"comment\":currentProgram.getListing().getComment(CodeUnit.EOL_COMMENT,a),\"body_bytes\":f.getBody().getNumAddresses()}))\n"
+    }
+  }
+]

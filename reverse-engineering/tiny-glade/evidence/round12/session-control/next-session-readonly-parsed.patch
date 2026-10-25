@@ -1,0 +1,15 @@
+--- a/tiny-glade/crates/country-core/src/resources/session.rs
++++ b/tiny-glade/crates/country-core/src/resources/session.rs
+@@ -443,6 +443,12 @@
+         request.kind = NextSessionKind::LoadParsedGame;
+         request.parsed_data = Some(Box::new(data));
+         request
++    }
++
++    /// Borrow the actual owned parse result without cloning or exposing mutation.
++    /// Startup retains the sole consuming operation through take_parsed_data.
++    pub fn parsed_data(&self) -> Option<&crate::systems::save::load_game::ParsedGameData> {
++        self.parsed_data.as_deref()
+     }
+ 
+     /// Move only after startup has prepared the destination metadata/settings.

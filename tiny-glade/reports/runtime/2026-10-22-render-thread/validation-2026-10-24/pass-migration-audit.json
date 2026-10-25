@@ -1,0 +1,37 @@
+{
+  "scope": "source inventory plus no-compat real gameplay GPU run; not a new implementation of recovered passes",
+  "single_production_world_graph": "world_graph::build_world W1..W54",
+  "parallel_collect_consumers": [
+    "shadow_pass",
+    "main_pass",
+    "main_pass_oc2",
+    "late_forward_and_deferred_pass"
+  ],
+  "headless_publisher": "render_headless_gameplay_frame -> CoreRenderBridge::publish_headless_readbacks -> ReadbackPublisher::finish_frame",
+  "missing_world_pass_migrations_found": [],
+  "source_sha256": {
+    "crates/tiny-glade/src/world_graph.rs": "2e8ffbf2c23ece291f99bc6f208f36726fffb19f38c20c8903e41b318d8c7db9",
+    "crates/tiny-glade/src/scene_raster.rs": "7c77339e1b23951efb1680c59244dcdc4ec95d7d9be8f06888f8a8a59a1c38c8",
+    "crates/tiny-glade/src/world_lighting.rs": "81d45092afa34cb1d873efba2132700344661b4c0d17a5015cea1b9ad20c4658",
+    "crates/tiny-glade/src/world_surface.rs": "3d5ccf695d8907e43d3baa7dba7677f834219ac47ed923bb00333b3081d05dce",
+    "crates/tiny-glade/src/world_postprocess.rs": "00e5f04135c25e046b5575092901f9a06abde30def7fc4ad8611343040d1e08d",
+    "crates/tiny-glade/src/render_bridge.rs": "2ffb1ed950740bf32fc4d4424c2a65a0df7dde62802f004aa8112fd7f113dbcf",
+    "crates/tiny-glade/src/render_extract.rs": "fdfc60ff4da6fd09d1325d25f84365c779f0d55f8793eedc796f1943027609f2",
+    "crates/country-core/src/systems/render_loop/draw_passes/d_main_support.rs": "699becee4d94fdcac57821f661cda93def4b5df67db1fc983d7a612fb1b8986f"
+  },
+  "performance_followup": {
+    "recorded_utc": "2026-10-24T10:48:02.786170+00:00",
+    "scope": "Rechecked single W1..W54 production world graph; shadow_pass plus main_pass/main_pass_oc2/late_forward_and_deferred_pass (the latter three in main_pass.rs) use existing Collect/Commit. No additional pass migration identified. V4 real-window GPU diagnostic observed cross-pass task counters; final V6 counters pending.",
+    "current_source_sha256": {
+      "crates/tiny-glade/src/world_graph.rs": "2e8ffbf2c23ece291f99bc6f208f36726fffb19f38c20c8903e41b318d8c7db9",
+      "crates/tiny-glade/src/scene_raster.rs": "7c77339e1b23951efb1680c59244dcdc4ec95d7d9be8f06888f8a8a59a1c38c8",
+      "crates/tiny-glade/src/world_lighting.rs": "81d45092afa34cb1d873efba2132700344661b4c0d17a5015cea1b9ad20c4658",
+      "crates/tiny-glade/src/world_surface.rs": "3d5ccf695d8907e43d3baa7dba7677f834219ac47ed923bb00333b3081d05dce",
+      "crates/tiny-glade/src/world_postprocess.rs": "00e5f04135c25e046b5575092901f9a06abde30def7fc4ad8611343040d1e08d",
+      "crates/tiny-glade/src/render_bridge.rs": "92c8d1aec25ca1f6c6ddfd4ceb93ba191fa0150c70d60a0bac66a59d95256765",
+      "crates/tiny-glade/src/render_extract.rs": "fdfc60ff4da6fd09d1325d25f84365c779f0d55f8793eedc796f1943027609f2",
+      "crates/country-core/src/systems/render_loop/draw_passes/d_main_support.rs": "699becee4d94fdcac57821f661cda93def4b5df67db1fc983d7a612fb1b8986f"
+    },
+    "compatibility_search": "No TimeOfDayState, append_fence_release, check_load_completion call, STARTUP_DEMO_MODE, set_startup_demo_mode, WorldAssetHost, or startup_sky_and_sun_meshes remains in current Rust crates."
+  }
+}

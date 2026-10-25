@@ -1,0 +1,78 @@
+{
+  "id": "PAGED_BINDING_INTEGRATION_V1",
+  "status": "frozen_for_review_and_root_validation",
+  "claim": "TG-a5ebc4dcd98e733791",
+  "owner": "render-lifetime-20261020",
+  "scope": "preserve one physical set per BindlessHeap and shader ABI; page complete groups in existing paths",
+  "files": [
+    {
+      "source": "tiny-glade/crates/rhapsody/src/bindless.rs",
+      "baseline_sha256": "4e65bf0b9607ce202aed09fbdb0a5df783e896875b8713234e4ae16845debffb",
+      "candidate_sha256": "2b1870821028a3a4a9fae16187e61023473476dcef1556a3f29e3dfc8b65f375",
+      "ownership": "existing refactored rhapsody engineering adapter",
+      "delegation": "root explicit cross-file candidate authorization; original claims unchanged"
+    },
+    {
+      "source": "tiny-glade/crates/rhapsody/src/bindless_parameters.rs",
+      "baseline_sha256": "8041feb68d419e866ec856c66cdf919bd3d0720366ae5d3c9523dbf1c2c28a13",
+      "candidate_sha256": "f6799ac7615329869cd8c571895525dda9aee6cc283e4919c0b3089be1edf024",
+      "ownership": "existing refactored rhapsody engineering adapter",
+      "delegation": "root explicit cross-file candidate authorization; original claims unchanged"
+    },
+    {
+      "source": "tiny-glade/crates/rhapsody/src/rg/indirect_count.rs",
+      "baseline_sha256": "75336616213c00c1ff55dab878f3c9024682a04fae3d76275b4adec223fc9181",
+      "candidate_sha256": "d910be84aa37e3edcdf715f2115831ed60fde1a6263995f21582c559cff15f77",
+      "ownership": "existing refactored rhapsody engineering adapter",
+      "delegation": "root explicit cross-file candidate authorization; original claims unchanged"
+    },
+    {
+      "source": "tiny-glade/crates/tiny-glade/src/render_host.rs",
+      "baseline_sha256": "b40a50e357ddefc2ef5c0832d0e4319243ba6d35711cab40af5c3bd6f0322aba",
+      "candidate_sha256": "cd300c0597770a7d63653a88d925cc683f2937e2153b9b7bda779b2117914637",
+      "ownership": "root-owned production host engineering adapter",
+      "delegation": "root explicit cross-file candidate authorization; original claims unchanged"
+    },
+    {
+      "source": "tiny-glade/crates/tiny-glade/src/frame_setup.rs",
+      "baseline_sha256": "19e87b04543868ef46b02b58aec83a37a881f66b95ab4b7894fb26a4a840437a",
+      "candidate_sha256": "1acb144c80237932ccc344ccf8b0ecd3d74f6099ae591981e430675994a38a2f",
+      "ownership": "root-owned production host engineering adapter",
+      "delegation": "root explicit cross-file candidate authorization; original claims unchanged"
+    },
+    {
+      "source": "tiny-glade/crates/tiny-glade/src/raster_host.rs",
+      "baseline_sha256": "11d1469b4dc1002e8ec4d6fa932510777f33d4ab38ef14e4234a0f52652d2ea9",
+      "candidate_sha256": "5a675f5bbbd11aadb47447590db1720bf185cfe228270dc06c7569c4ffb622fb",
+      "ownership": "root-owned production host engineering adapter",
+      "delegation": "root explicit cross-file candidate authorization; original claims unchanged"
+    },
+    {
+      "source": "tiny-glade/crates/rhapsody/tests/bindless_shader_abi.rs",
+      "baseline_sha256": "e385e98ae12558a95456516c2405d22b7550cab15412e633b79c2e61fcff7865",
+      "candidate_sha256": "5656b3463516bed8a52d294c652477bf57ccb33e306005801a6694e278c78933",
+      "ownership": "existing refactored rhapsody engineering adapter",
+      "delegation": "root explicit cross-file candidate authorization; original claims unchanged"
+    }
+  ],
+  "patch_sha256": "28918fa723d74e4afe646e42c1f39eb61d3ffb5e7e42dc630122469dbc2a1ca5",
+  "validation": {
+    "candidate_rustfmt_parse": "passed",
+    "cargo": "not run; root sole validation owner",
+    "gpu": "not run; root sole validation owner",
+    "upstream_primitive": "root reports 6/6 bindless plus 1/1 strict native layout matrix pass on M3+Khronos"
+  },
+  "native_evidence": "../layout-contract-20261021/DRIVER_EVIDENCE_IDENTITY.json and CONTRACT_ADDENDUM_A.md; paging is engineering adaptation, not an original B algorithm recovery claim",
+  "prohibited_shortcuts_absent": [
+    "bypass unsupported native layout",
+    "clip resource arrays",
+    "drop draws",
+    "per-frame wait_idle",
+    "periodic global cache clear"
+  ],
+  "limitations": [
+    "Page records and sampler caches retain measured high-water pages until host drop; slots are reclaimed using actual completion and reused. No idle-page trimming is claimed.",
+    "Pool peak counters sum per-page historical peaks and are conservative upper bounds, not simultaneous global peaks.",
+    "Full host M3 draw/dispatch and indirect-count acceptance remains pending root validation."
+  ]
+}

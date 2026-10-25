@@ -1,0 +1,20 @@
+[
+  {
+    "version": "1.0.6",
+    "path": "C:\\Users\\liyu\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\slotmap-1.0.6\\src\\lib.rs",
+    "sha256": "4f98222d82cd6351e9faa8c3fcc33ccde45d65d4b97bd18e5f44e92db49c26da",
+    "excerpts": [
+      "pub fn as_ffi(self) -> u64 {\n        (u64::from(self.version.get()) << 32) | u64::from(self.idx)\n    }\n\n    /// Iff `value` is a value received from `k.as_ffi()`, returns a key equal\n    /// to `k`. Otherwise the behavior is safe but unspecified.\n    pub fn from_ffi(value: u64) -> Self {\n        let idx = value & 0xffff_ffff;\n        let version = (value >> 32) | 1; // Ensure version is odd.\n        Self::new(idx as u32, version as u32)\n    }\n}\n\nimpl Debug for KeyData {\n    fn fmt(&self, f: &mut Formatter) -> fmt::",
+      "pub fn from_ffi(value: u64) -> Self {\n        let idx = value & 0xffff_ffff;\n        let version = (value >> 32) | 1; // Ensure version is odd.\n        Self::new(idx as u32, version as u32)\n    }\n}\n\nimpl Debug for KeyData {\n    fn fmt(&self, f: &mut Formatter) -> fmt::Result {\n        write!(f, \"{}v{}\", self.idx, self.version.get())\n    }\n}\n\nimpl Default for KeyData {\n    fn default() -> Self {\n        Self::null()\n    }\n}\n\n/// Key used to access stored values in a slot map.\n///\n/// Do not use a key from one slot m"
+    ]
+  },
+  {
+    "version": "1.1.1",
+    "path": "C:\\Users\\liyu\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\slotmap-1.1.1\\src\\lib.rs",
+    "sha256": "7ccea0d6d7aef7249e823fa6a6b0644f31ef46eefa93d0116ebcae12ff25d22a",
+    "excerpts": [
+      "pub fn as_ffi(self) -> u64 {\n        (u64::from(self.version.get()) << 32) | u64::from(self.idx)\n    }\n\n    /// Iff `value` is a value received from `k.as_ffi()`, returns a key equal\n    /// to `k`. Otherwise the behavior is safe but unspecified.\n    pub const fn from_ffi(value: u64) -> Self {\n        let idx = value & 0xffff_ffff;\n        let version = (value >> 32) | 1; // Ensure version is odd.\n        Self::new(idx as u32, version as u32)\n    }\n}\n\nimpl Debug for KeyData {\n    fn fmt(&self, f: &mut Formatter) ->",
+      ""
+    ]
+  }
+]

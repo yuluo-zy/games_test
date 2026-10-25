@@ -1,0 +1,24 @@
+140c92000: sub rsp, 0x28
+140c92004: mov ecx, ecx
+140c92006: mov rdx, qword ptr [r9 + 0x28]
+140c9200a: cmp rdx, rcx
+140c9200d: jbe 0x140c9206e
+140c9200f: lea rax, [rcx + 1]
+140c92013: cmp rax, rdx
+140c92016: jae 0x140c9207a
+140c92018: xorps xmm0, xmm0
+140c9201b: ucomiss xmm1, xmm0
+140c9201e: jb 0x140c92056
+140c92020: movss xmm0, dword ptr [rip + 0x1c938dc]
+140c92028: ucomiss xmm0, xmm1
+140c9202b: jb 0x140c92056
+140c9202d: mov rax, qword ptr [r9 + 0x20]
+140c92031: movss xmm3, dword ptr [rax + rcx*4]
+140c92036: movss xmm0, dword ptr [rax + rcx*4 + 4]
+140c9203c: subss xmm0, xmm3
+140c92040: mulss xmm0, xmm1
+140c92044: addss xmm0, xmm3
+140c92048: mulss xmm0, dword ptr [r9 + 0x30]
+140c9204e: movaps xmm1, xmm2
+140c92051: add rsp, 0x28
+140c92055: ret 

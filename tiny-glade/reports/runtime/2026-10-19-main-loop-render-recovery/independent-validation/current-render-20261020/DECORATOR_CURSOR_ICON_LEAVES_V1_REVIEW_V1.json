@@ -1,0 +1,55 @@
+{
+  "schema": "tiny-glade-independent-review/v1",
+  "reviewer": "render_reviewer",
+  "date": "2026-10-21",
+  "decision": "accept bounded actual icon factory leaves for root validation; full placement callback remains unready",
+  "manifest": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-3ab1be37613b300ae5/clutter-startup-20261020/validator-icon-root-candidate-v1/SOURCE_CANDIDATE_MANIFEST_V1.json",
+  "manifest_sha256": "56eb93b782b13e7f840d6f16f3c94446587bc4097f34d46ab7dfb224952a6983",
+  "source_before_sha256": "c967d2747e5184319c2450e32b7863dc855a9973207c8a7ef212336f7edca228",
+  "source_after_sha256": "53d0b0665617a4384bed26917a25c2e6459d474faae201702c078537dd6565c9",
+  "patch_sha256": "aff82ea95f76fe62f217a4c0fb800be1b8cdd6aea339ef42e6aa92704b466bab",
+  "native_fact": {
+    "rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "independent_full_byte_checks": [
+      {
+        "va": "0x1407adb20",
+        "bytes": 387,
+        "instructions": 99,
+        "sha256": "422fbe9ee4a3e4d8857afaaed6a59aed2e18e1569e65e2a49a543dff61aba99f"
+      },
+      {
+        "va": "0x1407a96a0",
+        "bytes": 211,
+        "instructions": 64,
+        "sha256": "f2e5fecfdd4ccb6449c39fb0a85b35710a3c27ae7f5b542391c8177002ac0f75"
+      },
+      {
+        "va": "0x1407adcb0",
+        "bytes": 492,
+        "instructions": 109,
+        "sha256": "ce545ae06cad8a70b0a829da75ae59b9e1093ae3a4ea37911a643364edf87046"
+      },
+      {
+        "va": "0x141281be0",
+        "bytes": 92,
+        "instructions": 28,
+        "sha256": "df964fcbe018ea60ba7db890e51a9baef8d5c938f9a091f4f7fd48184d436373"
+      }
+    ],
+    "method": "各asm每条byte独立对RNE并检查连续范围/总长度；非只相信作者proof。",
+    "table": "独读142a830b0 [0,0,0,3,1,2,4,5]；142a830f0相对offset与142a83108长度6项名称匹配；slot6/7原都clutter，范围外fallback slot6。",
+    "literals": "142a82c20 (34.5,58.0)；142a82f98片段decorator_；142c24d30 Vec2；原fmt两f32字段tuple序。"
+  },
+  "independent_source_checks": [
+    "manifest所列全部文件SHA一致。show真实无decorator_id，name只pos Debug；factory捕获pos/icon，wake创建单真实entity。",
+    "复用共享SignifierEntityBuilder Empty→duration0→build，保原初始动画flag8=0/scaleZERO；之后typed Ui2dExtent、Ui2dImage(layer0)、UiInactive，再Ui2DFollowMouse，顺序对应原typed插入。",
+    "全部byte-tag映射对原表等价，不将slot6/7误映射其它图标；不额外过滤NaN/Inf位置。",
+    "3个新增测试实际World/Commands apply、factory identity、transient mesh销毁owner和256 tag映射；尚未运行。",
+    "全仓当前实际生产没有show/icon旧签名caller，改canonical leaf不暗中留下原调用签名。未来TG69消费者须用同一shared factory。"
+  ],
+  "limits": [
+    "本次复用此前已审共享builder，不重新恢复平行UI库；leaf不是完整放置validator/feedback接线。",
+    "依旧不mount半成品ui_place大系统；root实际编译/3tests/后续真实callback和App可达仍待完成。",
+    "reviewer未Cargo/GPU。"
+  ]
+}

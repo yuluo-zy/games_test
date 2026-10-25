@@ -1,0 +1,32 @@
+// water_audio_init_system @ 0x140873140
+
+// WARNING: Removing unreachable block (ram,0x00014087349f)
+
+void __cdecl country_core::systems::audio::water_audio::water_audio_init_system(void)
+
+{
+  undefined8 local_138;
+  
+  if (_DEV_OVERRIDE_IS_DEMO_MODE == '\0') {
+    resources::audio_resources::AudioCore::instantiate_loop();
+    if (SBORROW8(0,local_138)) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    resources::audio_resources::AudioCore::instantiate_loop();
+    if (SBORROW8(0,local_138)) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    resources::audio_resources::AudioCore::instantiate_loop();
+    if (SBORROW8(0,local_138)) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    resources::audio_resources::AudioCore::instantiate_loop();
+    bevy_ecs::system::commands::Commands::
+    insert_resource<country_core::systems::audio::water_audio::WaterAudioState>();
+  }
+  return;
+}
+

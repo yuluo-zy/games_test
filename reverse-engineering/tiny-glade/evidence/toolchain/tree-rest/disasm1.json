@@ -1,0 +1,662 @@
+{
+  "backend": "reva",
+  "worker": "tree-rest-owner",
+  "access": "write",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x1422686d0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x1422686d0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nbody = f.getBody()\nlisting = prog.getListing()\nit = listing.getInstructions(body, True)\ninsns = []\nrefmgr = prog.getReferenceManager()\ncall_targets = {}\ndata_refs = []\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                if nm not in call_targets:\n                    call_targets[nm] = str(to)\n    # data reads\n    if mnem in (\"MOV\",\"LEA\",\"MOVSD\",\"MOVSS\",\"MOVUPS\",\"MOVDQU\",\"CMP\",\"TEST\",\"MOVZX\",\"MOVSX\",\"CMPSS\",\"COMISS\",\"ADD\",\"SUB\",\"IMUL\",\"MUL\",\"XOR\",\"VEXTRACTF128\",\"MOVQ\",\"CVTSS2SD\",\"CVTSD2SS\",\"UCOMISS\"):\n        for r in refmgr.getReferencesFrom(a):\n            rt = r.getReferenceType()\n            if rt.isData():\n                to = r.getToAddress()\n                data_refs.append((str(a), mnem, str(to), str(r.getReferenceType())))\nout[\"insn_count\"] = len(insns)\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nout[\"data_refs\"] = data_refs\nprint(json.dumps(out))\n",
+        "timeoutSeconds": 120
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x1422686d0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x1422686d0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nbody = f.getBody()\nlisting = prog.getListing()\nit = listing.getInstructions(body, True)\ninsns = []\nrefmgr = prog.getReferenceManager()\ncall_targets = {}\ndata_refs = []\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                if nm not in call_targets:\n                    call_targets[nm] = str(to)\n    # data reads\n    if mnem in (\"MOV\",\"LEA\",\"MOVSD\",\"MOVSS\",\"MOVUPS\",\"MOVDQU\",\"CMP\",\"TEST\",\"MOVZX\",\"MOVSX\",\"CMPSS\",\"COMISS\",\"ADD\",\"SUB\",\"IMUL\",\"MUL\",\"XOR\",\"VEXTRACTF128\",\"MOVQ\",\"CVTSS2SD\",\"CVTSD2SS\",\"UCOMISS\"):\n        for r in refmgr.getReferencesFrom(a):\n            rt = r.getReferenceType()\n            if rt.isData():\n                to = r.getToAddress()\n                data_refs.append((str(a), mnem, str(to), str(r.getReferenceType())))\nout[\"insn_count\"] = len(insns)\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nout[\"data_refs\"] = data_refs\nprint(json.dumps(out))\n",
+        "timeoutSeconds": 120
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"name\\\": \\\"despawn_trees\\\", \\\"entry\\\": \\\"1422686d0\\\", \\\"body\\\": \\\"[[1422686d0, 14226873c] [142268740, 1422687c8] [1422687d0, 14226886a] [142268870, 1422689be]]\\\", \\\"signature\\\": \\\"void __cdecl despawn_trees(void)\\\", \\\"insn_count\\\": 187, \\\"insns\\\": [[\\\"1422686d0\\\", \\\"PUSH\\\", [\\\"R15\\\"], \\\"4157\\\"], [\\\"1422686d2\\\", \\\"PUSH\\\", [\\\"R14\\\"], \\\"4156\\\"], [\\\"1422686d4\\\", \\\"PUSH\\\", [\\\"R13\\\"], \\\"4155\\\"], [\\\"1422686d6\\\", \\\"PUSH\\\", [\\\"R12\\\"], \\\"4154\\\"], [\\\"1422686d8\\\", \\\"PUSH\\\", [\\\"RSI\\\"], \\\"56\\\"], [\\\"1422686d9\\\", \\\"PUSH\\\", [\\\"RDI\\\"], \\\"57\\\"], [\\\"1422686da\\\", \\\"PUSH\\\", [\\\"RBP\\\"], \\\"55\\\"], [\\\"1422686db\\\", \\\"PUSH\\\", [\\\"RBX\\\"], \\\"53\\\"], [\\\"1422686dc\\\", \\\"SUB\\\", [\\\"RSP\\\", \\\"0x78\\\"], \\\"4883ec78\\\"], [\\\"1422686e0\\\", \\\"MOVAPS\\\", [\\\"xmmword ptr [RSP + 0x60]\\\", \\\"XMM6\\\"], \\\"0f29742460\\\"], [\\\"1422686e5\\\", \\\"MOV\\\", [\\\"R10\\\", \\\"qword ptr [RCX]\\\"], \\\"4c8b11\\\"], [\\\"1422686e8\\\", \\\"MOV\\\", [\\\"R14\\\", \\\"qword ptr [RCX + 0x8]\\\"], \\\"4c8b7108\\\"], [\\\"1422686ec\\\", \\\"MOV\\\", [\\\"R15\\\", \\\"qword ptr [R10 + 0xf8]\\\"], \\\"4d8bbaf8000000\\\"], [\\\"1422686f3\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [R10 + 0x100]\\\"], \\\"498b8200010000\\\"], [\\\"1422686fa\\\", \\\"LEA\\\", [\\\"R12\\\", \\\"[R15 + RAX*0x4]\\\"], \\\"4d8d2487\\\"], [\\\"1422686fe\\\", \\\"MOV\\\", [\\\"R11D\\\", \\\"dword ptr [RDX + 0x1c]\\\"], \\\"448b5a1c\\\"], [\\\"142268702\\\", \\\"MOV\\\", [\\\"R13\\\", \\\"qword ptr [RDX]\\\"], \\\"4c8b2a\\\"], [\\\"142268705\\\", \\\"MOV\\\", [\\\"R9\\\", \\\"qword ptr [RDX + 0x10]\\\"], \\\"4c8b4a10\\\"], [\\\"142268709\\\", \\\"LEA\\\", [\\\"RAX\\\", \\\"[R13 + 0x20]\\\"], \\\"498d4520\\\"], [\\\"14226870d\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x58]\\\", \\\"RAX\\\"], \\\"4889442458\\\"], [\\\"142268712\\\", \\\"CMP\\\", [\\\"byte ptr [R10 + 0x108]\\\", \\\"0x0\\\"], \\\"4180ba0801000000\\\"], [\\\"14226871a\\\", \\\"JZ\\\", [\\\"0x142268855\\\"], \\\"0f8435010000\\\"], [\\\"142268720\\\", \\\"MOV\\\", [\\\"EDI\\\", \\\"0x8\\\"], \\\"bf08000000\\\"], [\\\"142268725\\\", \\\"XOR\\\", [\\\"R8D\\\", \\\"R8D\\\"], \\\"4531c0\\\"], [\\\"142268728\\\", \\\"MOVSS\\\", [\\\"XMM6\\\", \\\"dword ptr [0x142960674]\\\"], \\\"f30f1035447f6f00\\\"], [\\\"142268730\\\", \\\"LEA\\\", [\\\"RDX\\\", \\\"[0x143034d10]\\\"], \\\"488d15d9c5dc00\\\"], [\\\"142268737\\\", \\\"XOR\\\", [\\\"ESI\\\", \\\"ESI\\\"], \\\"31f6\\\"], [\\\"142268739\\\", \\\"XOR\\\", [\\\"EBX\\\", \\\"EBX\\\"], \\\"31db\\\"], [\\\"14226873b\\\", \\\"JMP\\\", [\\\"0x142268769\\\"], \\\"eb2c\\\"], [\\\"142268740\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [R13 + 0x28]\\\"], \\\"498b4528\\\"], [\\\"142268744\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"RDI\\\"], \\\"4889f9\\\"], [\\\"142268747\\\", \\\"SHL\\\", [\\\"RCX\\\", \\\"0x4\\\"], \\\"48c1e104\\\"], [\\\"14226874b\\\", \\\"MOV\\\", [\\\"qword ptr [RAX + RCX*0x1]\\\", \\\"RBP\\\"], \\\"48892c08\\\"], [\\\"14226874f\\\", \\\"MOV\\\", [\\\"RBP\\\", \\\"qword ptr [RSP + 0x38]\\\"], \\\"488b6c2438\\\"], [\\\"142268754\\\", \\\"MOV\\\", [\\\"qword ptr [RAX + RCX*0x1 + 0x8]\\\", \\\"RBP\\\"], \\\"48896c0808\\\"], [\\\"142268759\\\", \\\"INC\\\", [\\\"RDI\\\"], \\\"48ffc7\\\"], [\\\"14226875c\\\", \\\"MOV\\\", [\\\"qword ptr [R13 + 0x30]\\\", \\\"RDI\\\"], \\\"49897d30\\\"], [\\\"142268760\\\", \\\"INC\\\", [\\\"qword ptr [R13 + 0x40]\\\"], \\\"49ff4540\\\"], [\\\"142268764\\\", \\\"MOV\\\", [\\\"RDI\\\", \\\"qword ptr [RSP + 0x40]\\\"], \\\"488b7c2440\\\"], [\\\"142268769\\\", \\\"CMP\\\", [\\\"RBX\\\", \\\"RSI\\\"], \\\"4839f3\\\"], [\\\"14226876c\\\", \\\"JNZ\\\", [\\\"0x1422687d0\\\"], \\\"7562\\\"], [\\\"14226876e\\\", \\\"NOP\\\", [], \\\"6690\\\"], [\\\"142268770\\\", \\\"CMP\\\", [\\\"R15\\\", \\\"R12\\\"], \\\"4d39e7\\\"], [\\\"142268773\\\", \\\"JZ\\\", [\\\"0x1422689a9\\\"], \\\"0f8430020000\\\"], [\\\"142268779\\\", \\\"MOV\\\", [\\\"ECX\\\", \\\"dword ptr [R15]\\\"], \\\"418b0f\\\"], [\\\"14226877c\\\", \\\"ADD\\\", [\\\"R15\\\", \\\"0x4\\\"], \\\"4983c704\\\"], [\\\"142268780\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [R14 + 0x1a8]\\\"], \\\"498b86a8010000\\\"], [\\\"142268787\\\", \\\"LEA\\\", [\\\"RCX\\\", \\\"[RCX + RCX*0x8]\\\"], \\\"488d0cc9\\\"], [\\\"14226878b\\\", \\\"MOV\\\", [\\\"RSI\\\", \\\"qword ptr [RAX + RCX*0x8 + 0x10]\\\"], \\\"488b74c810\\\"], [\\\"142268790\\\", \\\"TEST\\\", [\\\"RSI\\\", \\\"RSI\\\"], \\\"4885f6\\\"], [\\\"142268793\\\", \\\"JZ\\\", [\\\"0x142268770\\\"], \\\"74db\\\"], [\\\"142268795\\\", \\\"LEA\\\", [\\\"RAX\\\", \\\"[RAX + RCX*0x8]\\\"], \\\"488d04c8\\\"], [\\\"142268799\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [R10 + 0x110]\\\"], \\\"498b8a10010000\\\"], [\\\"1422687a0\\\", \\\"CMP\\\", [\\\"qword ptr [RAX + 0x40]\\\", \\\"RCX\\\"], \\\"48394840\\\"], [\\\"1422687a4\\\", \\\"JBE\\\", [\\\"0x1422687d5\\\"], \\\"762f\\\"], [\\\"1422687a6\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [RAX + 0x38]\\\"], \\\"4c8b4038\\\"], [\\\"1422687aa\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [R8 + RCX*0x8]\\\"], \\\"498b0cc8\\\"], [\\\"1422687ae\\\", \\\"TEST\\\", [\\\"RCX\\\", \\\"RCX\\\"], \\\"4885c9\\\"], [\\\"1422687b1\\\", \\\"JZ\\\", [\\\"0x1422687d5\\\"], \\\"7422\\\"], [\\\"1422687b3\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [RAX + 0x18]\\\"], \\\"4c8b4018\\\"], [\\\"1422687b7\\\", \\\"NOT\\\", [\\\"RCX\\\"], \\\"48f7d1\\\"], [\\\"1422687ba\\\", \\\"LEA\\\", [\\\"RCX\\\", \\\"[RCX + RCX*0x2]\\\"], \\\"488d0c49\\\"], [\\\"1422687be\\\", \\\"SHL\\\", [\\\"RCX\\\", \\\"0x4\\\"], \\\"48c1e104\\\"], [\\\"1422687c2\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [R8 + RCX*0x1 + 0x10]\\\"], \\\"4d8b440810\\\"], [\\\"1422687c7\\\", \\\"JMP\\\", [\\\"0x1422687d8\\\"], \\\"eb0f\\\"], [\\\"1422687d0\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"RBX\\\"], \\\"4889d8\\\"], [\\\"1422687d3\\\", \\\"JMP\\\", [\\\"0x1422687de\\\"], \\\"eb09\\\"], [\\\"1422687d5\\\", \\\"XOR\\\", [\\\"R8D\\\", \\\"R8D\\\"], \\\"4531c0\\\"], [\\\"1422687d8\\\", \\\"MOV\\\", [\\\"RDI\\\", \\\"qword ptr [RAX + 0x8]\\\"], \\\"488b7808\\\"], [\\\"1422687dc\\\", \\\"XOR\\\", [\\\"EAX\\\", \\\"EAX\\\"], \\\"31c0\\\"], [\\\"1422687de\\\", \\\"MOV\\\", [\\\"ECX\\\", \\\"EAX\\\"], \\\"89c1\\\"], [\\\"1422687e0\\\", \\\"LEA\\\", [\\\"RBX\\\", \\\"[RAX + 0x1]\\\"], \\\"488d5801\\\"], [\\\"1422687e4\\\", \\\"SHL\\\", [\\\"RCX\\\", \\\"0x4\\\"], \\\"48c1e104\\\"], [\\\"1422687e8\\\", \\\"UCOMISS\\\", [\\\"XMM6\\\", \\\"dword ptr [R8 + RCX*0x1 + 0x4]\\\"], \\\"410f2e740804\\\"], [\\\"1422687ee\\\", \\\"JBE\\\", [\\\"0x142268769\\\"], \\\"0f8675ffffff\\\"], [\\\"1422687f4\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x40]\\\", \\\"RDI\\\"], \\\"48897c2440\\\"], [\\\"1422687f9\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [RDI + RAX*0x8]\\\"], \\\"488b04c7\\\"], [\\\"1422687fd\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x38]\\\", \\\"RAX\\\"], \\\"4889442438\\\"], [\\\"142268802\\\", \\\"MOV\\\", [\\\"dword ptr [R9]\\\", \\\"R11D\\\"], \\\"458919\\\"], [\\\"142268805\\\", \\\"MOV\\\", [\\\"RDI\\\", \\\"qword ptr [R13 + 0x30]\\\"], \\\"498b7d30\\\"], [\\\"142268809\\\", \\\"MOV\\\", [\\\"RBP\\\", \\\"qword ptr [R13 + 0x40]\\\"], \\\"498b6d40\\\"], [\\\"14226880d\\\", \\\"CMP\\\", [\\\"RDI\\\", \\\"qword ptr [R13 + 0x20]\\\"], \\\"493b7d20\\\"], [\\\"142268811\\\", \\\"JNZ\\\", [\\\"0x142268740\\\"], \\\"0f8529ffffff\\\"], [\\\"142268817\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RSP + 0x58]\\\"], \\\"488b4c2458\\\"], [\\\"14226881c\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x50]\\\", \\\"R10\\\"], \\\"4c89542450\\\"], [\\\"142268821\\\", \\\"MOV\\\", [\\\"dword ptr [RSP + 0x2c]\\\", \\\"R11D\\\"], \\\"44895c242c\\\"], [\\\"142268826\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x48]\\\", \\\"R9\\\"], \\\"4c894c2448\\\"], [\\\"14226882b\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x30]\\\", \\\"R8\\\"], \\\"4c89442430\\\"], [\\\"142268830\\\", \\\"CALL\\\", [\\\"0x140562630\\\"], \\\"e8fb9d2ffe\\\"], [\\\"142268835\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [RSP + 0x30]\\\"], \\\"4c8b442430\\\"], [\\\"14226883a\\\", \\\"LEA\\\", [\\\"RDX\\\", \\\"[0x143034d10]\\\"], \\\"488d15cfc4dc00\\\"], [\\\"142268841\\\", \\\"MOV\\\", [\\\"R9\\\", \\\"qword ptr [RSP + 0x48]\\\"], \\\"4c8b4c2448\\\"], [\\\"142268846\\\", \\\"MOV\\\", [\\\"R11D\\\", \\\"dword ptr [RSP + 0x2c]\\\"], \\\"448b5c242c\\\"], [\\\"14226884b\\\", \\\"MOV\\\", [\\\"R10\\\", \\\"qword ptr [RSP + 0x50]\\\"], \\\"4c8b542450\\\"], [\\\"142268850\\\", \\\"JMP\\\", [\\\"0x142268740\\\"], \\\"e9ebfeffff\\\"], [\\\"142268855\\\", \\\"MOV\\\", [\\\"R8D\\\", \\\"0x8\\\"], \\\"41b808000000\\\"], [\\\"14226885b\\\", \\\"XOR\\\", [\\\"EDX\\\", \\\"EDX\\\"], \\\"31d2\\\"], [\\\"14226885d\\\", \\\"MOVSS\\\", [\\\"XMM6\\\", \\\"dword ptr [0x142960674]\\\"], \\\"f30f10350f7e6f00\\\"], [\\\"142268865\\\", \\\"XOR\\\", [\\\"ESI\\\", \\\"ESI\\\"], \\\"31f6\\\"], [\\\"142268867\\\", \\\"XOR\\\", [\\\"EBX\\\", \\\"EBX\\\"], \\\"31db\\\"], [\\\"142268869\\\", \\\"JMP\\\", [\\\"0x142268894\\\"], \\\"eb29\\\"], [\\\"142268870\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [R13 + 0x28]\\\"], \\\"498b4528\\\"], [\\\"142268874\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"RBP\\\"], \\\"4889e9\\\"], [\\\"142268877\\\", \\\"SHL\\\", [\\\"RCX\\\", \\\"0x4\\\"], \\\"48c1e104\\\"], [\\\"14226887b\\\", \\\"MOV\\\", [\\\"qword ptr [RAX + RCX*0x1]\\\", \\\"RDI\\\"], \\\"48893c08\\\"], [\\\"14226887f\\\", \\\"MOV\\\", [\\\"RDI\\\", \\\"qword ptr [RSP + 0x40]\\\"], \\\"488b7c2440\\\"], [\\\"142268884\\\", \\\"MOV\\\", [\\\"qword ptr [RAX + RCX*0x1 + 0x8]\\\", \\\"RDI\\\"], \\\"48897c0808\\\"], [\\\"142268889\\\", \\\"INC\\\", [\\\"RBP\\\"], \\\"48ffc5\\\"], [\\\"14226888c\\\", \\\"MOV\\\", [\\\"qword ptr [R13 + 0x30]\\\", \\\"RBP\\\"], \\\"49896d30\\\"], [\\\"142268890\\\", \\\"INC\\\", [\\\"qword ptr [R13 + 0x40]\\\"], \\\"49ff4540\\\"], [\\\"142268894\\\", \\\"CMP\\\", [\\\"RBX\\\", \\\"RSI\\\"], \\\"4839f3\\\"], [\\\"142268897\\\", \\\"JNZ\\\", [\\\"0x142268925\\\"], \\\"0f8588000000\\\"], [\\\"14226889d\\\", \\\"NOP\\\", [\\\"dword ptr [RAX]\\\"], \\\"0f1f00\\\"], [\\\"1422688a0\\\", \\\"CMP\\\", [\\\"R15\\\", \\\"R12\\\"], \\\"4d39e7\\\"], [\\\"1422688a3\\\", \\\"JZ\\\", [\\\"0x1422689a9\\\"], \\\"0f8400010000\\\"], [\\\"1422688a9\\\", \\\"MOV\\\", [\\\"ECX\\\", \\\"dword ptr [R15]\\\"], \\\"418b0f\\\"], [\\\"1422688ac\\\", \\\"ADD\\\", [\\\"R15\\\", \\\"0x4\\\"], \\\"4983c704\\\"], [\\\"1422688b0\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [R14 + 0x100]\\\"], \\\"498b8600010000\\\"], [\\\"1422688b7\\\", \\\"LEA\\\", [\\\"RCX\\\", \\\"[RCX + RCX*0x4]\\\"], \\\"488d0c89\\\"], [\\\"1422688bb\\\", \\\"SHL\\\", [\\\"RCX\\\", \\\"0x5\\\"], \\\"48c1e105\\\"], [\\\"1422688bf\\\", \\\"MOV\\\", [\\\"RSI\\\", \\\"qword ptr [RAX + RCX*0x1 + 0x58]\\\"], \\\"488b740858\\\"], [\\\"1422688c4\\\", \\\"TEST\\\", [\\\"RSI\\\", \\\"RSI\\\"], \\\"4885f6\\\"], [\\\"1422688c7\\\", \\\"JZ\\\", [\\\"0x1422688a0\\\"], \\\"74d7\\\"], [\\\"1422688c9\\\", \\\"ADD\\\", [\\\"RAX\\\", \\\"RCX\\\"], \\\"4801c8\\\"], [\\\"1422688cc\\\", \\\"MOV\\\", [\\\"EDX\\\", \\\"dword ptr [RAX + 0x94]\\\"], \\\"8b9094000000\\\"], [\\\"1422688d2\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [R14 + 0x1a8]\\\"], \\\"498b8ea8010000\\\"], [\\\"1422688d9\\\", \\\"LEA\\\", [\\\"RDX\\\", \\\"[RDX + RDX*0x8]\\\"], \\\"488d14d2\\\"], [\\\"1422688dd\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [R10 + 0x110]\\\"], \\\"4d8b8210010000\\\"], [\\\"1422688e4\\\", \\\"CMP\\\", [\\\"qword ptr [RCX + RDX*0x8 + 0x40]\\\", \\\"R8\\\"], \\\"4c3944d140\\\"], [\\\"1422688e9\\\", \\\"JBE\\\", [\\\"0x142268916\\\"], \\\"762b\\\"], [\\\"1422688eb\\\", \\\"MOV\\\", [\\\"RDI\\\", \\\"R9\\\"], \\\"4c89cf\\\"], [\\\"1422688ee\\\", \\\"MOV\\\", [\\\"R9\\\", \\\"qword ptr [RCX + RDX*0x8 + 0x38]\\\"], \\\"4c8b4cd138\\\"], [\\\"1422688f3\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [R9 + R8*0x8]\\\"], \\\"4f8b04c1\\\"], [\\\"1422688f7\\\", \\\"TEST\\\", [\\\"R8\\\", \\\"R8\\\"], \\\"4d85c0\\\"], [\\\"1422688fa\\\", \\\"JZ\\\", [\\\"0x14226891a\\\"], \\\"741e\\\"], [\\\"1422688fc\\\", \\\"LEA\\\", [\\\"RCX\\\", \\\"[RCX + RDX*0x8]\\\"], \\\"488d0cd1\\\"], [\\\"142268900\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RCX + 0x18]\\\"], \\\"488b4918\\\"], [\\\"142268904\\\", \\\"NOT\\\", [\\\"R8\\\"], \\\"49f7d0\\\"], [\\\"142268907\\\", \\\"LEA\\\", [\\\"RDX\\\", \\\"[R8 + R8*0x2]\\\"], \\\"4b8d1440\\\"], [\\\"14226890b\\\", \\\"SHL\\\", [\\\"RDX\\\", \\\"0x4\\\"], \\\"48c1e204\\\"], [\\\"14226890f\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [RCX + RDX*0x1 + 0x10]\\\"], \\\"488b541110\\\"], [\\\"142268914\\\", \\\"JMP\\\", [\\\"0x14226891c\\\"], \\\"eb06\\\"], [\\\"142268916\\\", \\\"XOR\\\", [\\\"EDX\\\", \\\"EDX\\\"], \\\"31d2\\\"], [\\\"142268918\\\", \\\"JMP\\\", [\\\"0x14226891f\\\"], \\\"eb05\\\"], [\\\"14226891a\\\", \\\"XOR\\\", [\\\"EDX\\\", \\\"EDX\\\"], \\\"31d2\\\"], [\\\"14226891c\\\", \\\"MOV\\\", [\\\"R9\\\", \\\"RDI\\\"], \\\"4989f9\\\"], [\\\"14226891f\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [RAX + 0x50]\\\"], \\\"4c8b4050\\\"], [\\\"142268923\\\", \\\"XOR\\\", [\\\"EBX\\\", \\\"EBX\\\"], \\\"31db\\\"], [\\\"142268925\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"RBX\\\"], \\\"4889d8\\\"], [\\\"142268928\\\", \\\"SHL\\\", [\\\"RAX\\\", \\\"0x4\\\"], \\\"48c1e004\\\"], [\\\"14226892c\\\", \\\"MOV\\\", [\\\"ECX\\\", \\\"dword ptr [R8 + RAX*0x1 + 0x8]\\\"], \\\"418b4c0008\\\"], [\\\"142268931\\\", \\\"INC\\\", [\\\"RBX\\\"], \\\"48ffc3\\\"], [\\\"142268934\\\", \\\"SHL\\\", [\\\"RCX\\\", \\\"0x4\\\"], \\\"48c1e104\\\"], [\\\"142268938\\\", \\\"UCOMISS\\\", [\\\"XMM6\\\", \\\"dword ptr [RDX + RCX*0x1 + 0x4]\\\"], \\\"0f2e740a04\\\"], [\\\"14226893d\\\", \\\"JBE\\\", [\\\"0x142268894\\\"], \\\"0f8651ffffff\\\"], [\\\"142268943\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [R8 + RAX*0x1]\\\"], \\\"498b0400\\\"], [\\\"142268947\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x40]\\\", \\\"RAX\\\"], \\\"4889442440\\\"], [\\\"14226894c\\\", \\\"MOV\\\", [\\\"dword ptr [R9]\\\", \\\"R11D\\\"], \\\"458919\\\"], [\\\"14226894f\\\", \\\"MOV\\\", [\\\"RBP\\\", \\\"qword ptr [R13 + 0x30]\\\"], \\\"498b6d30\\\"], [\\\"142268953\\\", \\\"MOV\\\", [\\\"RDI\\\", \\\"qword ptr [R13 + 0x40]\\\"], \\\"498b7d40\\\"], [\\\"142268957\\\", \\\"CMP\\\", [\\\"RBP\\\", \\\"qword ptr [R13 + 0x20]\\\"], \\\"493b6d20\\\"], [\\\"14226895b\\\", \\\"JNZ\\\", [\\\"0x142268870\\\"], \\\"0f850fffffff\\\"], [\\\"142268961\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RSP + 0x58]\\\"], \\\"488b4c2458\\\"], [\\\"142268966\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x38]\\\", \\\"RDX\\\"], \\\"4889542438\\\"], [\\\"14226896b\\\", \\\"LEA\\\", [\\\"RDX\\\", \\\"[0x143034d10]\\\"], \\\"488d159ec3dc00\\\"], [\\\"142268972\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x50]\\\", \\\"R10\\\"], \\\"4c89542450\\\"], [\\\"142268977\\\", \\\"MOV\\\", [\\\"dword ptr [RSP + 0x2c]\\\", \\\"R11D\\\"], \\\"44895c242c\\\"], [\\\"14226897c\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x48]\\\", \\\"R9\\\"], \\\"4c894c2448\\\"], [\\\"142268981\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x30]\\\", \\\"R8\\\"], \\\"4c89442430\\\"], [\\\"142268986\\\", \\\"CALL\\\", [\\\"0x140562630\\\"], \\\"e8a59c2ffe\\\"], [\\\"14226898b\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [RSP + 0x30]\\\"], \\\"4c8b442430\\\"], [\\\"142268990\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [RSP + 0x38]\\\"], \\\"488b542438\\\"], [\\\"142268995\\\", \\\"MOV\\\", [\\\"R9\\\", \\\"qword ptr [RSP + 0x48]\\\"], \\\"4c8b4c2448\\\"], [\\\"14226899a\\\", \\\"MOV\\\", [\\\"R11D\\\", \\\"dword ptr [RSP + 0x2c]\\\"], \\\"448b5c242c\\\"], [\\\"14226899f\\\", \\\"MOV\\\", [\\\"R10\\\", \\\"qword ptr [RSP + 0x50]\\\"], \\\"4c8b542450\\\"], [\\\"1422689a4\\\", \\\"JMP\\\", [\\\"0x142268870\\\"], \\\"e9c7feffff\\\"], [\\\"1422689a9\\\", \\\"MOVAPS\\\", [\\\"XMM6\\\", \\\"xmmword ptr [RSP + 0x60]\\\"], \\\"0f28742460\\\"], [\\\"1422689ae\\\", \\\"ADD\\\", [\\\"RSP\\\", \\\"0x78\\\"], \\\"4883c478\\\"], [\\\"1422689b2\\\", \\\"POP\\\", [\\\"RBX\\\"], \\\"5b\\\"], [\\\"1422689b3\\\", \\\"POP\\\", [\\\"RBP\\\"], \\\"5d\\\"], [\\\"1422689b4\\\", \\\"POP\\\", [\\\"RDI\\\"], \\\"5f\\\"], [\\\"1422689b5\\\", \\\"POP\\\", [\\\"RSI\\\"], \\\"5e\\\"], [\\\"1422689b6\\\", \\\"POP\\\", [\\\"R12\\\"], \\\"415c\\\"], [\\\"1422689b8\\\", \\\"POP\\\", [\\\"R13\\\"], \\\"415d\\\"], [\\\"1422689ba\\\", \\\"POP\\\", [\\\"R14\\\"], \\\"415e\\\"], [\\\"1422689bc\\\", \\\"POP\\\", [\\\"R15\\\"], \\\"415f\\\"], [\\\"1422689be\\\", \\\"RET\\\", [], \\\"c3\\\"]], \\\"call_targets\\\": {\\\"grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>\\\": \\\"140562630\\\"}, \\\"data_refs\\\": [[\\\"14226870d\\\", \\\"MOV\\\", \\\"Stack[-0x60]\\\", \\\"WRITE\\\"], [\\\"142268728\\\", \\\"MOVSS\\\", \\\"142960674\\\", \\\"READ\\\"], [\\\"142268730\\\", \\\"LEA\\\", \\\"143034d10\\\", \\\"DATA\\\"], [\\\"14226874f\\\", \\\"MOV\\\", \\\"Stack[-0x80]\\\", \\\"READ\\\"], [\\\"142268764\\\", \\\"MOV\\\", \\\"Stack[-0x78]\\\", \\\"READ\\\"], [\\\"1422687f4\\\", \\\"MOV\\\", \\\"Stack[-0x78]\\\", \\\"WRITE\\\"], [\\\"1422687fd\\\", \\\"MOV\\\", \\\"Stack[-0x80]\\\", \\\"WRITE\\\"], [\\\"142268817\\\", \\\"MOV\\\", \\\"Stack[-0x60]\\\", \\\"READ\\\"], [\\\"14226881c\\\", \\\"MOV\\\", \\\"Stack[-0x68]\\\", \\\"WRITE\\\"], [\\\"142268821\\\", \\\"MOV\\\", \\\"Stack[-0x8c]\\\", \\\"WRITE\\\"], [\\\"142268826\\\", \\\"MOV\\\", \\\"Stack[-0x70]\\\", \\\"WRITE\\\"], [\\\"14226882b\\\", \\\"MOV\\\", \\\"Stack[-0x88]\\\", \\\"WRITE\\\"], [\\\"142268835\\\", \\\"MOV\\\", \\\"Stack[-0x88]\\\", \\\"READ\\\"], [\\\"14226883a\\\", \\\"LEA\\\", \\\"143034d10\\\", \\\"DATA\\\"], [\\\"142268841\\\", \\\"MOV\\\", \\\"Stack[-0x70]\\\", \\\"READ\\\"], [\\\"142268846\\\", \\\"MOV\\\", \\\"Stack[-0x8c]\\\", \\\"READ\\\"], [\\\"14226884b\\\", \\\"MOV\\\", \\\"Stack[-0x68]\\\", \\\"READ\\\"], [\\\"14226885d\\\", \\\"MOVSS\\\", \\\"142960674\\\", \\\"READ\\\"], [\\\"14226887f\\\", \\\"MOV\\\", \\\"Stack[-0x78]\\\", \\\"READ\\\"], [\\\"142268947\\\", \\\"MOV\\\", \\\"Stack[-0x78]\\\", \\\"WRITE\\\"], [\\\"142268961\\\", \\\"MOV\\\", \\\"Stack[-0x60]\\\", \\\"READ\\\"], [\\\"142268966\\\", \\\"MOV\\\", \\\"Stack[-0x80]\\\", \\\"WRITE\\\"], [\\\"14226896b\\\", \\\"LEA\\\", \\\"143034d10\\\", \\\"DATA\\\"], [\\\"142268972\\\", \\\"MOV\\\", \\\"Stack[-0x68]\\\", \\\"WRITE\\\"], [\\\"142268977\\\", \\\"MOV\\\", \\\"Stack[-0x8c]\\\", \\\"WRITE\\\"], [\\\"14226897c\\\", \\\"MOV\\\", \\\"Stack[-0x70]\\\", \\\"WRITE\\\"], [\\\"142268981\\\", \\\"MOV\\\", \\\"Stack[-0x88]\\\", \\\"WRITE\\\"], [\\\"14226898b\\\", \\\"MOV\\\", \\\"Stack[-0x88]\\\", \\\"READ\\\"], [\\\"142268990\\\", \\\"MOV\\\", \\\"Stack[-0x80]\\\", \\\"READ\\\"], [\\\"142268995\\\", \\\"MOV\\\", \\\"Stack[-0x70]\\\", \\\"READ\\\"], [\\\"14226899a\\\", \\\"MOV\\\", \\\"Stack[-0x8c]\\\", \\\"READ\\\"], [\\\"14226899f\\\", \\\"MOV\\\", \\\"Stack[-0x68]\\\", \\\"READ\\\"]]}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":316}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "\nimport json\nfrom ghidra.app.decompiler import DecompInterface\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x1422686d0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x1422686d0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"signature\"] = str(f.getSignature())\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+        "timeoutSeconds": 120
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "\nimport json\nfrom ghidra.app.decompiler import DecompInterface\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x1422686d0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x1422686d0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"signature\"] = str(f.getSignature())\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+        "timeoutSeconds": 120
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"name\\\": \\\"despawn_trees\\\", \\\"entry\\\": \\\"1422686d0\\\", \\\"signature\\\": \\\"void __cdecl despawn_trees(void)\\\", \\\"decompiled\\\": \\\"\\\\nvoid __cdecl system_tree::process_tree_cmds::despawn_trees(void)\\\\n\\\\n{\\\\n  uint *puVar1;\\\\n  float *pfVar2;\\\\n  undefined4 uVar3;\\\\n  uint uVar4;\\\\n  longlong lVar5;\\\\n  longlong lVar6;\\\\n  longlong lVar7;\\\\n  undefined4 *puVar8;\\\\n  ulonglong uVar9;\\\\n  undefined8 uVar10;\\\\n  undefined8 uVar11;\\\\n  longlong lVar12;\\\\n  float fVar13;\\\\n  ulonglong uVar14;\\\\n  longlong lVar15;\\\\n  longlong *in_RCX;\\\\n  longlong *in_RDX;\\\\n  ulonglong uVar16;\\\\n  longlong lVar17;\\\\n  longlong lVar18;\\\\n  longlong lVar19;\\\\n  longlong lVar20;\\\\n  uint *puVar21;\\\\n  \\\\n  fVar13 = __real_3c23d70a;\\\\n  lVar5 = *in_RCX;\\\\n  lVar6 = in_RCX[1];\\\\n  puVar21 = *(uint **)(lVar5 + 0xf8);\\\\n  puVar1 = puVar21 + *(longlong *)(lVar5 + 0x100);\\\\n  uVar3 = *(undefined4 *)((longlong)in_RDX + 0x1c);\\\\n  lVar7 = *in_RDX;\\\\n  puVar8 = (undefined4 *)in_RDX[2];\\\\n  if (*(char *)(lVar5 + 0x108) == '\\\\\\\\0') {\\\\n    lVar20 = 8;\\\\n    lVar19 = 0;\\\\n    lVar18 = 0;\\\\n    lVar17 = 0;\\\\n    do {\\\\n      if (lVar17 == lVar18) {\\\\n        do {\\\\n          if (puVar21 == puVar1) {\\\\n            return;\\\\n          }\\\\n          uVar4 = *puVar21;\\\\n          puVar21 = puVar21 + 1;\\\\n          lVar18 = *(longlong *)(*(longlong *)(lVar6 + 0x100) + 0x58 + (ulonglong)uVar4 * 0xa0);\\\\n        } while (lVar18 == 0);\\\\n        lVar20 = *(longlong *)(lVar6 + 0x100) + (ulonglong)uVar4 * 0xa0;\\\\n        uVar16 = (ulonglong)*(uint *)(lVar20 + 0x94);\\\\n        lVar19 = *(longlong *)(lVar6 + 0x1a8);\\\\n        if (*(ulonglong *)(lVar5 + 0x110) < *(ulonglong *)(lVar19 + 0x40 + uVar16 * 0x48)) {\\\\n          uVar9 = *(ulonglong *)\\\\n                   (*(longlong *)(lVar19 + 0x38 + uVar16 * 0x48) + *(ulonglong *)(lVar5 + 0x110) * 8\\\\n                   );\\\\n          if (uVar9 == 0) {\\\\n            lVar19 = 0;\\\\n          }\\\\n          else {\\\\n            lVar19 = *(longlong *)\\\\n                      (*(longlong *)(lVar19 + uVar16 * 0x48 + 0x18) + 0x10 + ~uVar9 * 0x30);\\\\n          }\\\\n        }\\\\n        else {\\\\n          lVar19 = 0;\\\\n        }\\\\n        lVar20 = *(longlong *)(lVar20 + 0x50);\\\\n        lVar17 = 0;\\\\n      }\\\\n      lVar15 = lVar17 * 0x10;\\\\n      lVar17 = lVar17 + 1;\\\\n      pfVar2 = (float *)(lVar19 + 4 + (ulonglong)*(uint *)(lVar20 + 8 + lVar15) * 0x10);\\\\n      if (*pfVar2 <= fVar13 && fVar13 != *pfVar2) {\\\\n        uVar10 = *(undefined8 *)(lVar20 + lVar15);\\\\n        *puVar8 = uVar3;\\\\n        lVar15 = *(longlong *)(lVar7 + 0x30);\\\\n        uVar11 = *(undefined8 *)(lVar7 + 0x40);\\\\n        if (lVar15 == *(longlong *)(lVar7 + 0x20)) {\\\\n          alloc::raw_vec::RawVec::\\\\n          grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>\\\\n                    ();\\\\n        }\\\\n        lVar12 = *(longlong *)(lVar7 + 0x28);\\\\n        *(undefined8 *)(lVar12 + lVar15 * 0x10) = uVar11;\\\\n        *(undefined8 *)(lVar12 + 8 + lVar15 * 0x10) = uVar10;\\\\n        *(longlong *)(lVar7 + 0x30) = lVar15 + 1;\\\\n        *(longlong *)(lVar7 + 0x40) = *(longlong *)(lVar7 + 0x40) + 1;\\\\n      }\\\\n    } while( true );\\\\n  }\\\\n  lVar19 = 8;\\\\n  lVar18 = 0;\\\\n  uVar16 = 0;\\\\n  uVar9 = 0;\\\\n  do {\\\\n    uVar14 = uVar9;\\\\n    if (uVar14 == uVar16) {\\\\n      do {\\\\n        if (puVar21 == puVar1) {\\\\n          return;\\\\n        }\\\\n        uVar4 = *puVar21;\\\\n        puVar21 = puVar21 + 1;\\\\n        uVar16 = *(ulonglong *)(*(longlong *)(lVar6 + 0x1a8) + 0x10 + (ulonglong)uVar4 * 0x48);\\\\n      } while (uVar16 == 0);\\\\n      lVar19 = *(longlong *)(lVar6 + 0x1a8) + (ulonglong)uVar4 * 0x48;\\\\n      if ((*(ulonglong *)(lVar5 + 0x110) < *(ulonglong *)(lVar19 + 0x40)) &&\\\\n         (uVar9 = *(ulonglong *)(*(longlong *)(lVar19 + 0x38) + *(ulonglong *)(lVar5 + 0x110) * 8),\\\\n         uVar9 != 0)) {\\\\n        lVar18 = *(longlong *)(*(longlong *)(lVar19 + 0x18) + 0x10 + ~uVar9 * 0x30);\\\\n      }\\\\n      else {\\\\n        lVar18 = 0;\\\\n      }\\\\n      lVar19 = *(longlong *)(lVar19 + 8);\\\\n      uVar14 = 0;\\\\n    }\\\\n    pfVar2 = (float *)(lVar18 + 4 + (uVar14 & 0xffffffff) * 0x10);\\\\n    uVar9 = uVar14 + 1;\\\\n    if (*pfVar2 <= fVar13 && fVar13 != *pfVar2) {\\\\n      uVar10 = *(undefined8 *)(lVar19 + uVar14 * 8);\\\\n      *puVar8 = uVar3;\\\\n      lVar20 = *(longlong *)(lVar7 + 0x30);\\\\n      uVar11 = *(undefined8 *)(lVar7 + 0x40);\\\\n      if (lVar20 == *(longlong *)(lVar7 + 0x20)) {\\\\n        alloc::raw_vec::RawVec::\\\\n        grow_one<bevy_ecs::event::base::EventInstance<country_core::resources::window::WindowFocusEvent>,alloc::alloc::Global>\\\\n                  ();\\\\n      }\\\\n      lVar17 = *(longlong *)(lVar7 + 0x28);\\\\n      *(undefined8 *)(lVar17 + lVar20 * 0x10) = uVar11;\\\\n      *(undefined8 *)(lVar17 + 8 + lVar20 * 0x10) = uVar10;\\\\n      *(longlong *)(lVar7 + 0x30) = lVar20 + 1;\\\\n      *(longlong *)(lVar7 + 0x40) = *(longlong *)(lVar7 + 0x40) + 1;\\\\n    }\\\\n  } while( true );\\\\n}\\\\n\\\\n\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":802}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x1422689c0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x1422689c0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nbody = f.getBody()\nlisting = prog.getListing()\nit = listing.getInstructions(body, True)\ninsns = []\nrefmgr = prog.getReferenceManager()\ncall_targets = {}\ndata_refs = []\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                if nm not in call_targets:\n                    call_targets[nm] = str(to)\n    # data reads\n    if mnem in (\"MOV\",\"LEA\",\"MOVSD\",\"MOVSS\",\"MOVUPS\",\"MOVDQU\",\"CMP\",\"TEST\",\"MOVZX\",\"MOVSX\",\"CMPSS\",\"COMISS\",\"ADD\",\"SUB\",\"IMUL\",\"MUL\",\"XOR\",\"VEXTRACTF128\",\"MOVQ\",\"CVTSS2SD\",\"CVTSD2SS\",\"UCOMISS\"):\n        for r in refmgr.getReferencesFrom(a):\n            rt = r.getReferenceType()\n            if rt.isData():\n                to = r.getToAddress()\n                data_refs.append((str(a), mnem, str(to), str(r.getReferenceType())))\nout[\"insn_count\"] = len(insns)\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nout[\"data_refs\"] = data_refs\nprint(json.dumps(out))\n",
+        "timeoutSeconds": 120
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x1422689c0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x1422689c0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nbody = f.getBody()\nlisting = prog.getListing()\nit = listing.getInstructions(body, True)\ninsns = []\nrefmgr = prog.getReferenceManager()\ncall_targets = {}\ndata_refs = []\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                if nm not in call_targets:\n                    call_targets[nm] = str(to)\n    # data reads\n    if mnem in (\"MOV\",\"LEA\",\"MOVSD\",\"MOVSS\",\"MOVUPS\",\"MOVDQU\",\"CMP\",\"TEST\",\"MOVZX\",\"MOVSX\",\"CMPSS\",\"COMISS\",\"ADD\",\"SUB\",\"IMUL\",\"MUL\",\"XOR\",\"VEXTRACTF128\",\"MOVQ\",\"CVTSS2SD\",\"CVTSD2SS\",\"UCOMISS\"):\n        for r in refmgr.getReferencesFrom(a):\n            rt = r.getReferenceType()\n            if rt.isData():\n                to = r.getToAddress()\n                data_refs.append((str(a), mnem, str(to), str(r.getReferenceType())))\nout[\"insn_count\"] = len(insns)\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nout[\"data_refs\"] = data_refs\nprint(json.dumps(out))\n",
+        "timeoutSeconds": 120
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"name\\\": \\\"tree_move_bend\\\", \\\"entry\\\": \\\"1422689c0\\\", \\\"body\\\": \\\"[[1422689c0, 142268a81] [142268a90, 142268aee] [142268af0, 142268dba]]\\\", \\\"signature\\\": \\\"void __cdecl tree_move_bend(void)\\\", \\\"insn_count\\\": 229, \\\"insns\\\": [[\\\"1422689c0\\\", \\\"PUSH\\\", [\\\"R15\\\"], \\\"4157\\\"], [\\\"1422689c2\\\", \\\"PUSH\\\", [\\\"R14\\\"], \\\"4156\\\"], [\\\"1422689c4\\\", \\\"PUSH\\\", [\\\"R13\\\"], \\\"4155\\\"], [\\\"1422689c6\\\", \\\"PUSH\\\", [\\\"R12\\\"], \\\"4154\\\"], [\\\"1422689c8\\\", \\\"PUSH\\\", [\\\"RSI\\\"], \\\"56\\\"], [\\\"1422689c9\\\", \\\"PUSH\\\", [\\\"RDI\\\"], \\\"57\\\"], [\\\"1422689ca\\\", \\\"PUSH\\\", [\\\"RBP\\\"], \\\"55\\\"], [\\\"1422689cb\\\", \\\"PUSH\\\", [\\\"RBX\\\"], \\\"53\\\"], [\\\"1422689cc\\\", \\\"SUB\\\", [\\\"RSP\\\", \\\"0xe8\\\"], \\\"4881ece8000000\\\"], [\\\"1422689d3\\\", \\\"MOVAPS\\\", [\\\"xmmword ptr [RSP + 0xd0]\\\", \\\"XMM10\\\"], \\\"440f299424d0000000\\\"], [\\\"1422689dc\\\", \\\"MOVAPS\\\", [\\\"xmmword ptr [RSP + 0xc0]\\\", \\\"XMM9\\\"], \\\"440f298c24c0000000\\\"], [\\\"1422689e5\\\", \\\"MOVAPS\\\", [\\\"xmmword ptr [RSP + 0xb0]\\\", \\\"XMM8\\\"], \\\"440f298424b0000000\\\"], [\\\"1422689ee\\\", \\\"MOVAPS\\\", [\\\"xmmword ptr [RSP + 0xa0]\\\", \\\"XMM7\\\"], \\\"0f29bc24a0000000\\\"], [\\\"1422689f6\\\", \\\"MOVAPS\\\", [\\\"xmmword ptr [RSP + 0x90]\\\", \\\"XMM6\\\"], \\\"0f29b42490000000\\\"], [\\\"1422689fe\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [RCX]\\\"], \\\"4c8b01\\\"], [\\\"142268a01\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [RCX + 0x8]\\\"], \\\"488b4108\\\"], [\\\"142268a05\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x40]\\\", \\\"RAX\\\"], \\\"4889442440\\\"], [\\\"142268a0a\\\", \\\"MOV\\\", [\\\"EAX\\\", \\\"dword ptr [RCX + 0x14]\\\"], \\\"8b4114\\\"], [\\\"142268a0d\\\", \\\"MOV\\\", [\\\"dword ptr [RSP + 0x2c]\\\", \\\"EAX\\\"], \\\"8944242c\\\"], [\\\"142268a11\\\", \\\"MOV\\\", [\\\"R15\\\", \\\"qword ptr [R8 + 0xf8]\\\"], \\\"4d8bb8f8000000\\\"], [\\\"142268a18\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [R8 + 0x100]\\\"], \\\"498b8000010000\\\"], [\\\"142268a1f\\\", \\\"LEA\\\", [\\\"R12\\\", \\\"[R15 + RAX*0x4]\\\"], \\\"4d8d2487\\\"], [\\\"142268a23\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x58]\\\", \\\"R8\\\"], \\\"4c89442458\\\"], [\\\"142268a28\\\", \\\"MOVZX\\\", [\\\"EAX\\\", \\\"byte ptr [R8 + 0x108]\\\"], \\\"410fb68008010000\\\"], [\\\"142268a30\\\", \\\"MOV\\\", [\\\"byte ptr [RSP + 0x2b]\\\", \\\"AL\\\"], \\\"8844242b\\\"], [\\\"142268a34\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [RDX]\\\"], \\\"488b02\\\"], [\\\"142268a37\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x78]\\\", \\\"RAX\\\"], \\\"4889442478\\\"], [\\\"142268a3c\\\", \\\"MOV\\\", [\\\"EAX\\\", \\\"0x8\\\"], \\\"b808000000\\\"], [\\\"142268a41\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x60]\\\", \\\"RAX\\\"], \\\"4889442460\\\"], [\\\"142268a46\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x30]\\\", \\\"0x0\\\"], \\\"48c744243000000000\\\"], [\\\"142268a4f\\\", \\\"MOVSS\\\", [\\\"XMM6\\\", \\\"dword ptr [0x142925988]\\\"], \\\"f30f103531cf6b00\\\"], [\\\"142268a57\\\", \\\"MOVSS\\\", [\\\"XMM9\\\", \\\"dword ptr [0x142925984]\\\"], \\\"f3440f100d24cf6b00\\\"], [\\\"142268a60\\\", \\\"MOVSS\\\", [\\\"XMM10\\\", \\\"dword ptr [0x142925904]\\\"], \\\"f3440f10159bce6b00\\\"], [\\\"142268a69\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x38]\\\", \\\"0x0\\\"], \\\"48c744243800000000\\\"], [\\\"142268a72\\\", \\\"XOR\\\", [\\\"R14D\\\", \\\"R14D\\\"], \\\"4531f6\\\"], [\\\"142268a75\\\", \\\"XOR\\\", [\\\"EDX\\\", \\\"EDX\\\"], \\\"31d2\\\"], [\\\"142268a77\\\", \\\"MOV\\\", [\\\"R13\\\", \\\"qword ptr [RSP + 0x78]\\\"], \\\"4c8b6c2478\\\"], [\\\"142268a7c\\\", \\\"MOV\\\", [\\\"EBX\\\", \\\"dword ptr [RSP + 0x2c]\\\"], \\\"8b5c242c\\\"], [\\\"142268a80\\\", \\\"JMP\\\", [\\\"0x142268aa9\\\"], \\\"eb27\\\"], [\\\"142268a90\\\", \\\"SHL\\\", [\\\"RCX\\\", \\\"0x20\\\"], \\\"48c1e120\\\"], [\\\"142268a94\\\", \\\"MOV\\\", [\\\"EAX\\\", \\\"EAX\\\"], \\\"89c0\\\"], [\\\"142268a96\\\", \\\"OR\\\", [\\\"RAX\\\", \\\"RCX\\\"], \\\"4809c8\\\"], [\\\"142268a99\\\", \\\"MOV\\\", [\\\"ECX\\\", \\\"dword ptr [RSP + 0x2c]\\\"], \\\"8b4c242c\\\"], [\\\"142268a9d\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [RSP + 0x68]\\\"], \\\"4c8b442468\\\"], [\\\"142268aa2\\\", \\\"MOV\\\", [\\\"dword ptr [R8]\\\", \\\"ECX\\\"], \\\"418908\\\"], [\\\"142268aa5\\\", \\\"MOV\\\", [\\\"qword ptr [RDI + 0x24]\\\", \\\"RAX\\\"], \\\"48894724\\\"], [\\\"142268aa9\\\", \\\"CMP\\\", [\\\"byte ptr [RSP + 0x2b]\\\", \\\"0x0\\\"], \\\"807c242b00\\\"], [\\\"142268aae\\\", \\\"JZ\\\", [\\\"0x142268af0\\\"], \\\"7440\\\"], [\\\"142268ab0\\\", \\\"CMP\\\", [\\\"RDX\\\", \\\"R14\\\"], \\\"4c39f2\\\"], [\\\"142268ab3\\\", \\\"JNZ\\\", [\\\"0x142268ba2\\\"], \\\"0f85e9000000\\\"], [\\\"142268ab9\\\", \\\"CMP\\\", [\\\"R15\\\", \\\"R12\\\"], \\\"4d39e7\\\"], [\\\"142268abc\\\", \\\"JZ\\\", [\\\"0x142268d7c\\\"], \\\"0f84ba020000\\\"], [\\\"142268ac2\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [RSP + 0x40]\\\"], \\\"488b442440\\\"], [\\\"142268ac7\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [RAX + 0x1a8]\\\"], \\\"488b80a8010000\\\"], [\\\"142268ace\\\", \\\"NOP\\\", [], \\\"6690\\\"], [\\\"142268ad0\\\", \\\"MOV\\\", [\\\"ECX\\\", \\\"dword ptr [R15]\\\"], \\\"418b0f\\\"], [\\\"142268ad3\\\", \\\"LEA\\\", [\\\"RCX\\\", \\\"[RCX + RCX*0x8]\\\"], \\\"488d0cc9\\\"], [\\\"142268ad7\\\", \\\"MOV\\\", [\\\"R14\\\", \\\"qword ptr [RAX + RCX*0x8 + 0x10]\\\"], \\\"4c8b74c810\\\"], [\\\"142268adc\\\", \\\"TEST\\\", [\\\"R14\\\", \\\"R14\\\"], \\\"4d85f6\\\"], [\\\"142268adf\\\", \\\"JNZ\\\", [\\\"0x142268b37\\\"], \\\"7556\\\"], [\\\"142268ae1\\\", \\\"ADD\\\", [\\\"R15\\\", \\\"0x4\\\"], \\\"4983c704\\\"], [\\\"142268ae5\\\", \\\"CMP\\\", [\\\"R15\\\", \\\"R12\\\"], \\\"4d39e7\\\"], [\\\"142268ae8\\\", \\\"JNZ\\\", [\\\"0x142268ad0\\\"], \\\"75e6\\\"], [\\\"142268aea\\\", \\\"JMP\\\", [\\\"0x142268d7c\\\"], \\\"e98d020000\\\"], [\\\"142268af0\\\", \\\"CMP\\\", [\\\"RDX\\\", \\\"R14\\\"], \\\"4c39f2\\\"], [\\\"142268af3\\\", \\\"JNZ\\\", [\\\"0x142268c39\\\"], \\\"0f8540010000\\\"], [\\\"142268af9\\\", \\\"CMP\\\", [\\\"R15\\\", \\\"R12\\\"], \\\"4d39e7\\\"], [\\\"142268afc\\\", \\\"JZ\\\", [\\\"0x142268d7c\\\"], \\\"0f847a020000\\\"], [\\\"142268b02\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [RSP + 0x40]\\\"], \\\"488b442440\\\"], [\\\"142268b07\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [RAX + 0x100]\\\"], \\\"488b8000010000\\\"], [\\\"142268b0e\\\", \\\"NOP\\\", [], \\\"6690\\\"], [\\\"142268b10\\\", \\\"MOV\\\", [\\\"ECX\\\", \\\"dword ptr [R15]\\\"], \\\"418b0f\\\"], [\\\"142268b13\\\", \\\"LEA\\\", [\\\"RCX\\\", \\\"[RCX + RCX*0x4]\\\"], \\\"488d0c89\\\"], [\\\"142268b17\\\", \\\"SHL\\\", [\\\"RCX\\\", \\\"0x5\\\"], \\\"48c1e105\\\"], [\\\"142268b1b\\\", \\\"MOV\\\", [\\\"R14\\\", \\\"qword ptr [RAX + RCX*0x1 + 0x58]\\\"], \\\"4c8b740858\\\"], [\\\"142268b20\\\", \\\"TEST\\\", [\\\"R14\\\", \\\"R14\\\"], \\\"4d85f6\\\"], [\\\"142268b23\\\", \\\"JNZ\\\", [\\\"0x142268bae\\\"], \\\"0f8585000000\\\"], [\\\"142268b29\\\", \\\"ADD\\\", [\\\"R15\\\", \\\"0x4\\\"], \\\"4983c704\\\"], [\\\"142268b2d\\\", \\\"CMP\\\", [\\\"R15\\\", \\\"R12\\\"], \\\"4d39e7\\\"], [\\\"142268b30\\\", \\\"JNZ\\\", [\\\"0x142268b10\\\"], \\\"75de\\\"], [\\\"142268b32\\\", \\\"JMP\\\", [\\\"0x142268d7c\\\"], \\\"e945020000\\\"], [\\\"142268b37\\\", \\\"LEA\\\", [\\\"RAX\\\", \\\"[RAX + RCX*0x8]\\\"], \\\"488d04c8\\\"], [\\\"142268b3b\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [RSP + 0x58]\\\"], \\\"488b542458\\\"], [\\\"142268b40\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RDX + 0x110]\\\"], \\\"488b8a10010000\\\"], [\\\"142268b47\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [RDX + 0x118]\\\"], \\\"488b9218010000\\\"], [\\\"142268b4e\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [RAX + 0x18]\\\"], \\\"4c8b4018\\\"], [\\\"142268b52\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [RAX + 0x38]\\\"], \\\"488b4038\\\"], [\\\"142268b56\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RAX + RCX*0x8]\\\"], \\\"488b0cc8\\\"], [\\\"142268b5a\\\", \\\"NOT\\\", [\\\"RCX\\\"], \\\"48f7d1\\\"], [\\\"142268b5d\\\", \\\"LEA\\\", [\\\"RCX\\\", \\\"[RCX + RCX*0x2]\\\"], \\\"488d0c49\\\"], [\\\"142268b61\\\", \\\"SHL\\\", [\\\"RCX\\\", \\\"0x4\\\"], \\\"48c1e104\\\"], [\\\"142268b65\\\", \\\"MOV\\\", [\\\"R9\\\", \\\"qword ptr [R8 + RCX*0x1 + 0x10]\\\"], \\\"4d8b4c0810\\\"], [\\\"142268b6a\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x38]\\\", \\\"R9\\\"], \\\"4c894c2438\\\"], [\\\"142268b6f\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [R8 + RCX*0x1 + 0x28]\\\"], \\\"498b4c0828\\\"], [\\\"142268b74\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x50]\\\", \\\"RCX\\\"], \\\"48894c2450\\\"], [\\\"142268b79\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [RAX + RDX*0x8]\\\"], \\\"488b04d0\\\"], [\\\"142268b7d\\\", \\\"NOT\\\", [\\\"RAX\\\"], \\\"48f7d0\\\"], [\\\"142268b80\\\", \\\"LEA\\\", [\\\"RAX\\\", \\\"[RAX + RAX*0x2]\\\"], \\\"488d0440\\\"], [\\\"142268b84\\\", \\\"SHL\\\", [\\\"RAX\\\", \\\"0x4\\\"], \\\"48c1e004\\\"], [\\\"142268b88\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [R8 + RAX*0x1 + 0x10]\\\"], \\\"498b4c0010\\\"], [\\\"142268b8d\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x30]\\\", \\\"RCX\\\"], \\\"48894c2430\\\"], [\\\"142268b92\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [R8 + RAX*0x1 + 0x28]\\\"], \\\"498b440028\\\"], [\\\"142268b97\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x48]\\\", \\\"RAX\\\"], \\\"4889442448\\\"], [\\\"142268b9c\\\", \\\"ADD\\\", [\\\"R15\\\", \\\"0x4\\\"], \\\"4983c704\\\"], [\\\"142268ba0\\\", \\\"XOR\\\", [\\\"EDX\\\", \\\"EDX\\\"], \\\"31d2\\\"], [\\\"142268ba2\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x70]\\\", \\\"RDX\\\"], \\\"4889542470\\\"], [\\\"142268ba7\\\", \\\"MOV\\\", [\\\"EAX\\\", \\\"EDX\\\"], \\\"89d0\\\"], [\\\"142268ba9\\\", \\\"JMP\\\", [\\\"0x142268c4e\\\"], \\\"e9a0000000\\\"], [\\\"142268bae\\\", \\\"ADD\\\", [\\\"RAX\\\", \\\"RCX\\\"], \\\"4801c8\\\"], [\\\"142268bb1\\\", \\\"MOV\\\", [\\\"ECX\\\", \\\"dword ptr [RAX + 0x94]\\\"], \\\"8b8894000000\\\"], [\\\"142268bb7\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [RSP + 0x40]\\\"], \\\"488b542440\\\"], [\\\"142268bbc\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [RDX + 0x1a8]\\\"], \\\"488b92a8010000\\\"], [\\\"142268bc3\\\", \\\"LEA\\\", [\\\"RCX\\\", \\\"[RCX + RCX*0x8]\\\"], \\\"488d0cc9\\\"], [\\\"142268bc7\\\", \\\"MOV\\\", [\\\"R9\\\", \\\"qword ptr [RSP + 0x58]\\\"], \\\"4c8b4c2458\\\"], [\\\"142268bcc\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [R9 + 0x110]\\\"], \\\"4d8b8110010000\\\"], [\\\"142268bd3\\\", \\\"MOV\\\", [\\\"R9\\\", \\\"qword ptr [R9 + 0x118]\\\"], \\\"4d8b8918010000\\\"], [\\\"142268bda\\\", \\\"MOV\\\", [\\\"R10\\\", \\\"qword ptr [RDX + RCX*0x8 + 0x18]\\\"], \\\"4c8b54ca18\\\"], [\\\"142268bdf\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RDX + RCX*0x8 + 0x38]\\\"], \\\"488b4cca38\\\"], [\\\"142268be4\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [RCX + R8*0x8]\\\"], \\\"4a8b14c1\\\"], [\\\"142268be8\\\", \\\"NOT\\\", [\\\"RDX\\\"], \\\"48f7d2\\\"], [\\\"142268beb\\\", \\\"LEA\\\", [\\\"RDX\\\", \\\"[RDX + RDX*0x2]\\\"], \\\"488d1452\\\"], [\\\"142268bef\\\", \\\"SHL\\\", [\\\"RDX\\\", \\\"0x4\\\"], \\\"48c1e204\\\"], [\\\"142268bf3\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [R10 + RDX*0x1 + 0x10]\\\"], \\\"4d8b441210\\\"], [\\\"142268bf8\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x38]\\\", \\\"R8\\\"], \\\"4c89442438\\\"], [\\\"142268bfd\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [R10 + RDX*0x1 + 0x28]\\\"], \\\"498b541228\\\"], [\\\"142268c02\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x50]\\\", \\\"RDX\\\"], \\\"4889542450\\\"], [\\\"142268c07\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RCX + R9*0x8]\\\"], \\\"4a8b0cc9\\\"], [\\\"142268c0b\\\", \\\"NOT\\\", [\\\"RCX\\\"], \\\"48f7d1\\\"], [\\\"142268c0e\\\", \\\"LEA\\\", [\\\"RCX\\\", \\\"[RCX + RCX*0x2]\\\"], \\\"488d0c49\\\"], [\\\"142268c12\\\", \\\"SHL\\\", [\\\"RCX\\\", \\\"0x4\\\"], \\\"48c1e104\\\"], [\\\"142268c16\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [R10 + RCX*0x1 + 0x10]\\\"], \\\"498b540a10\\\"], [\\\"142268c1b\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x30]\\\", \\\"RDX\\\"], \\\"4889542430\\\"], [\\\"142268c20\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [R10 + RCX*0x1 + 0x28]\\\"], \\\"498b4c0a28\\\"], [\\\"142268c25\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x48]\\\", \\\"RCX\\\"], \\\"48894c2448\\\"], [\\\"142268c2a\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [RAX + 0x50]\\\"], \\\"488b4050\\\"], [\\\"142268c2e\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x60]\\\", \\\"RAX\\\"], \\\"4889442460\\\"], [\\\"142268c33\\\", \\\"ADD\\\", [\\\"R15\\\", \\\"0x4\\\"], \\\"4983c704\\\"], [\\\"142268c37\\\", \\\"XOR\\\", [\\\"EDX\\\", \\\"EDX\\\"], \\\"31d2\\\"], [\\\"142268c39\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x70]\\\", \\\"RDX\\\"], \\\"4889542470\\\"], [\\\"142268c3e\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"RDX\\\"], \\\"4889d0\\\"], [\\\"142268c41\\\", \\\"SHL\\\", [\\\"RAX\\\", \\\"0x4\\\"], \\\"48c1e004\\\"], [\\\"142268c45\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RSP + 0x60]\\\"], \\\"488b4c2460\\\"], [\\\"142268c4a\\\", \\\"MOV\\\", [\\\"EAX\\\", \\\"dword ptr [RCX + RAX*0x1 + 0x8]\\\"], \\\"8b440108\\\"], [\\\"142268c4e\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RSP + 0x38]\\\"], \\\"488b4c2438\\\"], [\\\"142268c53\\\", \\\"LEA\\\", [\\\"RSI\\\", \\\"[RCX + RAX*0x8]\\\"], \\\"488d34c1\\\"], [\\\"142268c57\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RSP + 0x50]\\\"], \\\"488b4c2450\\\"], [\\\"142268c5c\\\", \\\"LEA\\\", [\\\"RBP\\\", \\\"[RCX + RAX*0x4]\\\"], \\\"488d2c81\\\"], [\\\"142268c60\\\", \\\"LEA\\\", [\\\"RDI\\\", \\\"[RAX + RAX*0x2]\\\"], \\\"488d3c40\\\"], [\\\"142268c64\\\", \\\"SHL\\\", [\\\"RDI\\\", \\\"0x4\\\"], \\\"48c1e704\\\"], [\\\"142268c68\\\", \\\"ADD\\\", [\\\"RDI\\\", \\\"qword ptr [RSP + 0x30]\\\"], \\\"48037c2430\\\"], [\\\"142268c6d\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RSP + 0x48]\\\"], \\\"488b4c2448\\\"], [\\\"142268c72\\\", \\\"LEA\\\", [\\\"RAX\\\", \\\"[RCX + RAX*0x4]\\\"], \\\"488d0481\\\"], [\\\"142268c76\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x68]\\\", \\\"RAX\\\"], \\\"4889442468\\\"], [\\\"142268c7b\\\", \\\"LEA\\\", [\\\"RCX\\\", \\\"[RSP + 0x84]\\\"], \\\"488d8c2484000000\\\"], [\\\"142268c83\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"RDI\\\"], \\\"4889fa\\\"], [\\\"142268c86\\\", \\\"CALL\\\", [\\\"0x140ad51a0\\\"], \\\"e815c586fe\\\"], [\\\"142268c8b\\\", \\\"MOVSS\\\", [\\\"XMM7\\\", \\\"dword ptr [RSP + 0x84]\\\"], \\\"f30f10bc2484000000\\\"], [\\\"142268c94\\\", \\\"MOVSS\\\", [\\\"XMM8\\\", \\\"dword ptr [RSP + 0x8c]\\\"], \\\"f3440f1084248c000000\\\"], [\\\"142268c9e\\\", \\\"MOVSS\\\", [\\\"XMM0\\\", \\\"dword ptr [RSI]\\\"], \\\"f30f1006\\\"], [\\\"142268ca2\\\", \\\"MOVSS\\\", [\\\"XMM2\\\", \\\"dword ptr [R13 + 0x28]\\\"], \\\"f3410f105528\\\"], [\\\"142268ca8\\\", \\\"MOVAPS\\\", [\\\"XMM1\\\", \\\"XMM7\\\"], \\\"0f28cf\\\"], [\\\"142268cab\\\", \\\"MOVAPS\\\", [\\\"XMM3\\\", \\\"XMM6\\\"], \\\"0f28de\\\"], [\\\"142268cae\\\", \\\"CALL\\\", [\\\"0x140c904e0\\\"], \\\"e82d78a2fe\\\"], [\\\"142268cb3\\\", \\\"MOV\\\", [\\\"dword ptr [RBP]\\\", \\\"EBX\\\"], \\\"895d00\\\"], [\\\"142268cb6\\\", \\\"MOVSS\\\", [\\\"dword ptr [RSI]\\\", \\\"XMM0\\\"], \\\"f30f1106\\\"], [\\\"142268cba\\\", \\\"MOVSS\\\", [\\\"XMM0\\\", \\\"dword ptr [RSI + 0x4]\\\"], \\\"f30f104604\\\"], [\\\"142268cbf\\\", \\\"MOVSS\\\", [\\\"XMM2\\\", \\\"dword ptr [R13 + 0x28]\\\"], \\\"f3410f105528\\\"], [\\\"142268cc5\\\", \\\"MOVAPS\\\", [\\\"XMM1\\\", \\\"XMM8\\\"], \\\"410f28c8\\\"], [\\\"142268cc9\\\", \\\"MOVAPS\\\", [\\\"XMM3\\\", \\\"XMM6\\\"], \\\"0f28de\\\"], [\\\"142268ccc\\\", \\\"CALL\\\", [\\\"0x140c904e0\\\"], \\\"e80f78a2fe\\\"], [\\\"142268cd1\\\", \\\"MOV\\\", [\\\"dword ptr [RBP]\\\", \\\"EBX\\\"], \\\"895d00\\\"], [\\\"142268cd4\\\", \\\"MOVSS\\\", [\\\"dword ptr [RSI + 0x4]\\\", \\\"XMM0\\\"], \\\"f30f114604\\\"], [\\\"142268cd9\\\", \\\"MOVSS\\\", [\\\"XMM1\\\", \\\"dword ptr [RSI]\\\"], \\\"f30f100e\\\"], [\\\"142268cdd\\\", \\\"UNPCKLPS\\\", [\\\"XMM1\\\", \\\"XMM0\\\"], \\\"0f14c8\\\"], [\\\"142268ce0\\\", \\\"UNPCKLPS\\\", [\\\"XMM7\\\", \\\"XMM8\\\"], \\\"410f14f8\\\"], [\\\"142268ce4\\\", \\\"SUBPS\\\", [\\\"XMM1\\\", \\\"XMM7\\\"], \\\"0f5ccf\\\"], [\\\"142268ce7\\\", \\\"MOVAPS\\\", [\\\"XMM0\\\", \\\"XMM1\\\"], \\\"0f28c1\\\"], [\\\"142268cea\\\", \\\"MULPS\\\", [\\\"XMM0\\\", \\\"XMM1\\\"], \\\"0f59c1\\\"], [\\\"142268ced\\\", \\\"MOVSHDUP\\\", [\\\"XMM2\\\", \\\"XMM0\\\"], \\\"f30f16d0\\\"], [\\\"142268cf1\\\", \\\"ADDSS\\\", [\\\"XMM2\\\", \\\"XMM0\\\"], \\\"f30f58d0\\\"], [\\\"142268cf5\\\", \\\"XORPS\\\", [\\\"XMM0\\\", \\\"XMM0\\\"], \\\"0f57c0\\\"], [\\\"142268cf8\\\", \\\"SQRTSS\\\", [\\\"XMM0\\\", \\\"XMM2\\\"], \\\"f30f51c2\\\"], [\\\"142268cfc\\\", \\\"XOR\\\", [\\\"EAX\\\", \\\"EAX\\\"], \\\"31c0\\\"], [\\\"142268cfe\\\", \\\"UCOMISS\\\", [\\\"XMM9\\\", \\\"XMM0\\\"], \\\"440f2ec8\\\"], [\\\"142268d02\\\", \\\"MOV\\\", [\\\"ECX\\\", \\\"0x0\\\"], \\\"b900000000\\\"], [\\\"142268d07\\\", \\\"JA\\\", [\\\"0x142268d3f\\\"], \\\"7736\\\"], [\\\"142268d09\\\", \\\"MOVAPS\\\", [\\\"XMM2\\\", \\\"XMM10\\\"], \\\"410f28d2\\\"], [\\\"142268d0d\\\", \\\"DIVSS\\\", [\\\"XMM2\\\", \\\"XMM0\\\"], \\\"f30f5ed0\\\"], [\\\"142268d11\\\", \\\"MOVAPS\\\", [\\\"XMM3\\\", \\\"XMM6\\\"], \\\"0f28de\\\"], [\\\"142268d14\\\", \\\"MINSS\\\", [\\\"XMM3\\\", \\\"XMM0\\\"], \\\"f30f5dd8\\\"], [\\\"142268d18\\\", \\\"MOV\\\", [\\\"EAX\\\", \\\"dword ptr [RSP + 0x2c]\\\"], \\\"8b44242c\\\"], [\\\"142268d1c\\\", \\\"MOV\\\", [\\\"dword ptr [RBP]\\\", \\\"EAX\\\"], \\\"894500\\\"], [\\\"142268d1f\\\", \\\"MOVSLDUP\\\", [\\\"XMM0\\\", \\\"XMM2\\\"], \\\"f30f12c2\\\"], [\\\"142268d23\\\", \\\"MULPS\\\", [\\\"XMM1\\\", \\\"XMM0\\\"], \\\"0f59c8\\\"], [\\\"142268d26\\\", \\\"MOVSLDUP\\\", [\\\"XMM0\\\", \\\"XMM3\\\"], \\\"f30f12c3\\\"], [\\\"142268d2a\\\", \\\"MULPS\\\", [\\\"XMM0\\\", \\\"XMM1\\\"], \\\"0f59c1\\\"], [\\\"142268d2d\\\", \\\"MOVD\\\", [\\\"EAX\\\", \\\"XMM0\\\"], \\\"660f7ec0\\\"], [\\\"142268d31\\\", \\\"MOVSHDUP\\\", [\\\"XMM1\\\", \\\"XMM0\\\"], \\\"f30f16c8\\\"], [\\\"142268d35\\\", \\\"MOVD\\\", [\\\"ECX\\\", \\\"XMM1\\\"], \\\"660f7ec9\\\"], [\\\"142268d39\\\", \\\"ADDPS\\\", [\\\"XMM7\\\", \\\"XMM0\\\"], \\\"0f58f8\\\"], [\\\"142268d3c\\\", \\\"MOVLPS\\\", [\\\"qword ptr [RSI]\\\", \\\"XMM7\\\"], \\\"0f133e\\\"], [\\\"142268d3f\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [RSP + 0x70]\\\"], \\\"488b542470\\\"], [\\\"142268d44\\\", \\\"INC\\\", [\\\"RDX\\\"], \\\"48ffc2\\\"], [\\\"142268d47\\\", \\\"MOVD\\\", [\\\"XMM0\\\", \\\"EAX\\\"], \\\"660f6ec0\\\"], [\\\"142268d4b\\\", \\\"MOVSS\\\", [\\\"XMM1\\\", \\\"dword ptr [RDI + 0x24]\\\"], \\\"f30f104f24\\\"], [\\\"142268d50\\\", \\\"UCOMISS\\\", [\\\"XMM1\\\", \\\"XMM0\\\"], \\\"0f2ec8\\\"], [\\\"142268d53\\\", \\\"JNZ\\\", [\\\"0x142268a90\\\"], \\\"0f8537fdffff\\\"], [\\\"142268d59\\\", \\\"JP\\\", [\\\"0x142268a90\\\"], \\\"0f8a31fdffff\\\"], [\\\"142268d5f\\\", \\\"MOVD\\\", [\\\"XMM0\\\", \\\"ECX\\\"], \\\"660f6ec1\\\"], [\\\"142268d63\\\", \\\"MOVSS\\\", [\\\"XMM1\\\", \\\"dword ptr [RDI + 0x28]\\\"], \\\"f30f104f28\\\"], [\\\"142268d68\\\", \\\"UCOMISS\\\", [\\\"XMM1\\\", \\\"XMM0\\\"], \\\"0f2ec8\\\"], [\\\"142268d6b\\\", \\\"JNZ\\\", [\\\"0x142268a90\\\"], \\\"0f851ffdffff\\\"], [\\\"142268d71\\\", \\\"JP\\\", [\\\"0x142268a90\\\"], \\\"0f8a19fdffff\\\"], [\\\"142268d77\\\", \\\"JMP\\\", [\\\"0x142268aa9\\\"], \\\"e92dfdffff\\\"], [\\\"142268d7c\\\", \\\"MOVAPS\\\", [\\\"XMM6\\\", \\\"xmmword ptr [RSP + 0x90]\\\"], \\\"0f28b42490000000\\\"], [\\\"142268d84\\\", \\\"MOVAPS\\\", [\\\"XMM7\\\", \\\"xmmword ptr [RSP + 0xa0]\\\"], \\\"0f28bc24a0000000\\\"], [\\\"142268d8c\\\", \\\"MOVAPS\\\", [\\\"XMM8\\\", \\\"xmmword ptr [RSP + 0xb0]\\\"], \\\"440f288424b0000000\\\"], [\\\"142268d95\\\", \\\"MOVAPS\\\", [\\\"XMM9\\\", \\\"xmmword ptr [RSP + 0xc0]\\\"], \\\"440f288c24c0000000\\\"], [\\\"142268d9e\\\", \\\"MOVAPS\\\", [\\\"XMM10\\\", \\\"xmmword ptr [RSP + 0xd0]\\\"], \\\"440f289424d0000000\\\"], [\\\"142268da7\\\", \\\"ADD\\\", [\\\"RSP\\\", \\\"0xe8\\\"], \\\"4881c4e8000000\\\"], [\\\"142268dae\\\", \\\"POP\\\", [\\\"RBX\\\"], \\\"5b\\\"], [\\\"142268daf\\\", \\\"POP\\\", [\\\"RBP\\\"], \\\"5d\\\"], [\\\"142268db0\\\", \\\"POP\\\", [\\\"RDI\\\"], \\\"5f\\\"], [\\\"142268db1\\\", \\\"POP\\\", [\\\"RSI\\\"], \\\"5e\\\"], [\\\"142268db2\\\", \\\"POP\\\", [\\\"R12\\\"], \\\"415c\\\"], [\\\"142268db4\\\", \\\"POP\\\", [\\\"R13\\\"], \\\"415d\\\"], [\\\"142268db6\\\", \\\"POP\\\", [\\\"R14\\\"], \\\"415e\\\"], [\\\"142268db8\\\", \\\"POP\\\", [\\\"R15\\\"], \\\"415f\\\"], [\\\"142268dba\\\", \\\"RET\\\", [], \\\"c3\\\"]], \\\"call_targets\\\": {\\\"position\\\": \\\"140ad51a0\\\", \\\"time_continuous_lerp\\\": \\\"140c904e0\\\"}, \\\"data_refs\\\": [[\\\"142268a05\\\", \\\"MOV\\\", \\\"Stack[-0xe8]\\\", \\\"WRITE\\\"], [\\\"142268a0d\\\", \\\"MOV\\\", \\\"Stack[-0xfc]\\\", \\\"WRITE\\\"], [\\\"142268a23\\\", \\\"MOV\\\", \\\"Stack[-0xd0]\\\", \\\"WRITE\\\"], [\\\"142268a30\\\", \\\"MOV\\\", \\\"Stack[-0xfd]\\\", \\\"WRITE\\\"], [\\\"142268a37\\\", \\\"MOV\\\", \\\"Stack[-0xb0]\\\", \\\"WRITE\\\"], [\\\"142268a41\\\", \\\"MOV\\\", \\\"Stack[-0xc8]\\\", \\\"WRITE\\\"], [\\\"142268a46\\\", \\\"MOV\\\", \\\"Stack[-0xf8]\\\", \\\"WRITE\\\"], [\\\"142268a4f\\\", \\\"MOVSS\\\", \\\"142925988\\\", \\\"READ\\\"], [\\\"142268a57\\\", \\\"MOVSS\\\", \\\"142925984\\\", \\\"READ\\\"], [\\\"142268a60\\\", \\\"MOVSS\\\", \\\"142925904\\\", \\\"READ\\\"], [\\\"142268a69\\\", \\\"MOV\\\", \\\"Stack[-0xf0]\\\", \\\"WRITE\\\"], [\\\"142268a77\\\", \\\"MOV\\\", \\\"Stack[-0xb0]\\\", \\\"READ\\\"], [\\\"142268a7c\\\", \\\"MOV\\\", \\\"Stack[-0xfc]\\\", \\\"READ\\\"], [\\\"142268a99\\\", \\\"MOV\\\", \\\"Stack[-0xfc]\\\", \\\"READ\\\"], [\\\"142268a9d\\\", \\\"MOV\\\", \\\"Stack[-0xc0]\\\", \\\"READ\\\"], [\\\"142268aa9\\\", \\\"CMP\\\", \\\"Stack[-0xfd]\\\", \\\"READ\\\"], [\\\"142268ac2\\\", \\\"MOV\\\", \\\"Stack[-0xe8]\\\", \\\"READ\\\"], [\\\"142268b02\\\", \\\"MOV\\\", \\\"Stack[-0xe8]\\\", \\\"READ\\\"], [\\\"142268b3b\\\", \\\"MOV\\\", \\\"Stack[-0xd0]\\\", \\\"READ\\\"], [\\\"142268b6a\\\", \\\"MOV\\\", \\\"Stack[-0xf0]\\\", \\\"WRITE\\\"], [\\\"142268b74\\\", \\\"MOV\\\", \\\"Stack[-0xd8]\\\", \\\"WRITE\\\"], [\\\"142268b8d\\\", \\\"MOV\\\", \\\"Stack[-0xf8]\\\", \\\"WRITE\\\"], [\\\"142268b97\\\", \\\"MOV\\\", \\\"Stack[-0xe0]\\\", \\\"WRITE\\\"], [\\\"142268ba2\\\", \\\"MOV\\\", \\\"Stack[-0xb8]\\\", \\\"WRITE\\\"], [\\\"142268bb7\\\", \\\"MOV\\\", \\\"Stack[-0xe8]\\\", \\\"READ\\\"], [\\\"142268bc7\\\", \\\"MOV\\\", \\\"Stack[-0xd0]\\\", \\\"READ\\\"], [\\\"142268bf8\\\", \\\"MOV\\\", \\\"Stack[-0xf0]\\\", \\\"WRITE\\\"], [\\\"142268c02\\\", \\\"MOV\\\", \\\"Stack[-0xd8]\\\", \\\"WRITE\\\"], [\\\"142268c1b\\\", \\\"MOV\\\", \\\"Stack[-0xf8]\\\", \\\"WRITE\\\"], [\\\"142268c25\\\", \\\"MOV\\\", \\\"Stack[-0xe0]\\\", \\\"WRITE\\\"], [\\\"142268c2e\\\", \\\"MOV\\\", \\\"Stack[-0xc8]\\\", \\\"WRITE\\\"], [\\\"142268c39\\\", \\\"MOV\\\", \\\"Stack[-0xb8]\\\", \\\"WRITE\\\"], [\\\"142268c45\\\", \\\"MOV\\\", \\\"Stack[-0xc8]\\\", \\\"READ\\\"], [\\\"142268c4e\\\", \\\"MOV\\\", \\\"Stack[-0xf0]\\\", \\\"READ\\\"], [\\\"142268c57\\\", \\\"MOV\\\", \\\"Stack[-0xd8]\\\", \\\"READ\\\"], [\\\"142268c68\\\", \\\"ADD\\\", \\\"Stack[-0xf8]\\\", \\\"READ\\\"], [\\\"142268c6d\\\", \\\"MOV\\\", \\\"Stack[-0xe0]\\\", \\\"READ\\\"], [\\\"142268c76\\\", \\\"MOV\\\", \\\"Stack[-0xc0]\\\", \\\"WRITE\\\"], [\\\"142268c7b\\\", \\\"LEA\\\", \\\"Stack[-0xa4]\\\", \\\"DATA\\\"], [\\\"142268c8b\\\", \\\"MOVSS\\\", \\\"Stack[-0xa4]\\\", \\\"READ\\\"], [\\\"142268c94\\\", \\\"MOVSS\\\", \\\"Stack[-0x9c]\\\", \\\"READ\\\"], [\\\"142268d18\\\", \\\"MOV\\\", \\\"Stack[-0xfc]\\\", \\\"READ\\\"], [\\\"142268d3f\\\", \\\"MOV\\\", \\\"Stack[-0xb8]\\\", \\\"READ\\\"]]}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":344}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "\nimport json\nfrom ghidra.app.decompiler import DecompInterface\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x1422689c0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x1422689c0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"signature\"] = str(f.getSignature())\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+        "timeoutSeconds": 120
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "\nimport json\nfrom ghidra.app.decompiler import DecompInterface\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x1422689c0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x1422689c0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"signature\"] = str(f.getSignature())\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+        "timeoutSeconds": 120
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"name\\\": \\\"tree_move_bend\\\", \\\"entry\\\": \\\"1422689c0\\\", \\\"signature\\\": \\\"void __cdecl tree_move_bend(void)\\\", \\\"decompiled\\\": \\\"\\\\nvoid __cdecl system_tree::tree_move_bend::tree_move_bend(void)\\\\n\\\\n{\\\\n  uint *puVar1;\\\\n  float *pfVar2;\\\\n  undefined4 *puVar3;\\\\n  char cVar4;\\\\n  undefined4 uVar5;\\\\n  longlong lVar6;\\\\n  longlong lVar7;\\\\n  float fVar8;\\\\n  float fVar9;\\\\n  float fVar10;\\\\n  longlong lVar11;\\\\n  ulonglong uVar12;\\\\n  ulonglong uVar13;\\\\n  longlong *in_RCX;\\\\n  longlong lVar14;\\\\n  longlong lVar15;\\\\n  longlong lVar16;\\\\n  ulonglong uVar17;\\\\n  uint *puVar18;\\\\n  float extraout_XMM0_Da;\\\\n  float extraout_XMM0_Da_00;\\\\n  float fVar19;\\\\n  float fVar20;\\\\n  float fVar21;\\\\n  float fVar22;\\\\n  longlong local_f8;\\\\n  longlong local_f0;\\\\n  longlong local_e0;\\\\n  longlong local_d8;\\\\n  longlong local_c8;\\\\n  ulonglong local_b8;\\\\n  float local_a4;\\\\n  float local_9c;\\\\n  \\\\n  fVar10 = __real_40a00000;\\\\n  fVar9 = __real_3dcccccd;\\\\n  fVar8 = __real_3f800000;\\\\n  lVar6 = *in_RCX;\\\\n  lVar7 = in_RCX[1];\\\\n  uVar5 = *(undefined4 *)((longlong)in_RCX + 0x14);\\\\n  puVar18 = *(uint **)(lVar6 + 0xf8);\\\\n  puVar1 = puVar18 + *(longlong *)(lVar6 + 0x100);\\\\n  cVar4 = *(char *)(lVar6 + 0x108);\\\\n  local_c8 = 8;\\\\n  local_f8 = 0;\\\\n  local_f0 = 0;\\\\n  uVar17 = 0;\\\\n  local_b8 = 0;\\\\n  do {\\\\n    if (cVar4 == '\\\\\\\\0') {\\\\n      if (local_b8 == uVar17) {\\\\n        if (puVar18 == puVar1) {\\\\n          return;\\\\n        }\\\\n        while( true ) {\\\\n          uVar17 = *(ulonglong *)(*(longlong *)(lVar7 + 0x100) + 0x58 + (ulonglong)*puVar18 * 0xa0);\\\\n          if (uVar17 != 0) break;\\\\n          puVar18 = puVar18 + 1;\\\\n          if (puVar18 == puVar1) {\\\\n            return;\\\\n          }\\\\n        }\\\\n        lVar14 = *(longlong *)(lVar7 + 0x100) + (ulonglong)*puVar18 * 0xa0;\\\\n        uVar12 = (ulonglong)*(uint *)(lVar14 + 0x94);\\\\n        lVar11 = *(longlong *)(*(longlong *)(lVar7 + 0x1a8) + 0x18 + uVar12 * 0x48);\\\\n        lVar15 = *(longlong *)(*(longlong *)(lVar7 + 0x1a8) + 0x38 + uVar12 * 0x48);\\\\n        lVar16 = ~*(ulonglong *)(lVar15 + *(longlong *)(lVar6 + 0x110) * 8) * 0x30;\\\\n        local_f0 = *(longlong *)(lVar11 + 0x10 + lVar16);\\\\n        local_d8 = *(longlong *)(lVar11 + 0x28 + lVar16);\\\\n        lVar15 = ~*(ulonglong *)(lVar15 + *(longlong *)(lVar6 + 0x118) * 8) * 0x30;\\\\n        local_f8 = *(longlong *)(lVar11 + 0x10 + lVar15);\\\\n        local_e0 = *(longlong *)(lVar11 + 0x28 + lVar15);\\\\n        local_c8 = *(longlong *)(lVar14 + 0x50);\\\\n        puVar18 = puVar18 + 1;\\\\n        local_b8 = 0;\\\\n      }\\\\n      uVar12 = (ulonglong)*(uint *)(local_c8 + 8 + local_b8 * 0x10);\\\\n    }\\\\n    else {\\\\n      if (local_b8 == uVar17) {\\\\n        if (puVar18 == puVar1) {\\\\n          return;\\\\n        }\\\\n        while( true ) {\\\\n          uVar17 = *(ulonglong *)(*(longlong *)(lVar7 + 0x1a8) + 0x10 + (ulonglong)*puVar18 * 0x48);\\\\n          if (uVar17 != 0) break;\\\\n          puVar18 = puVar18 + 1;\\\\n          if (puVar18 == puVar1) {\\\\n            return;\\\\n          }\\\\n        }\\\\n        lVar11 = *(longlong *)(lVar7 + 0x1a8) + (ulonglong)*puVar18 * 0x48;\\\\n        lVar15 = *(longlong *)(lVar11 + 0x18);\\\\n        lVar11 = *(longlong *)(lVar11 + 0x38);\\\\n        lVar14 = ~*(ulonglong *)(lVar11 + *(longlong *)(lVar6 + 0x110) * 8) * 0x30;\\\\n        local_f0 = *(longlong *)(lVar15 + 0x10 + lVar14);\\\\n        local_d8 = *(longlong *)(lVar15 + 0x28 + lVar14);\\\\n        lVar11 = ~*(ulonglong *)(lVar11 + *(longlong *)(lVar6 + 0x118) * 8) * 0x30;\\\\n        local_f8 = *(longlong *)(lVar15 + 0x10 + lVar11);\\\\n        local_e0 = *(longlong *)(lVar15 + 0x28 + lVar11);\\\\n        puVar18 = puVar18 + 1;\\\\n        local_b8 = 0;\\\\n      }\\\\n      uVar12 = local_b8 & 0xffffffff;\\\\n    }\\\\n    pfVar2 = (float *)(local_f0 + uVar12 * 8);\\\\n    puVar3 = (undefined4 *)(local_d8 + uVar12 * 4);\\\\n    lVar11 = uVar12 * 0x30 + local_f8;\\\\n    country_core::resources::placement_data::PlacementDataSsbo::position();\\\\n    ::utils::time_continuous_lerp();\\\\n    *puVar3 = uVar5;\\\\n    *pfVar2 = extraout_XMM0_Da;\\\\n    ::utils::time_continuous_lerp();\\\\n    *puVar3 = uVar5;\\\\n    pfVar2[1] = extraout_XMM0_Da_00;\\\\n    fVar21 = *pfVar2 - local_a4;\\\\n    fVar22 = extraout_XMM0_Da_00 - local_9c;\\\\n    fVar19 = SQRT(fVar22 * fVar22 + fVar21 * fVar21);\\\\n    uVar13 = 0;\\\\n    fVar20 = 0.0;\\\\n    if (fVar9 <= fVar19) {\\\\n      fVar20 = fVar10;\\\\n      if (fVar19 <= fVar10) {\\\\n        fVar20 = fVar19;\\\\n      }\\\\n      *puVar3 = uVar5;\\\\n      fVar21 = fVar20 * fVar21 * (fVar8 / fVar19);\\\\n      fVar20 = fVar20 * fVar22 * (fVar8 / fVar19);\\\\n      uVar13 = (ulonglong)(uint)fVar21;\\\\n      *(ulonglong *)pfVar2 = CONCAT44(local_9c + fVar20,local_a4 + fVar21);\\\\n    }\\\\n    local_b8 = local_b8 + 1;\\\\n    if ((((*(float *)(lVar11 + 0x24) != (float)uVar13) ||\\\\n         (NAN(*(float *)(lVar11 + 0x24)) || NAN((float)uVar13))) ||\\\\n        (*(float *)(lVar11 + 0x28) != fVar20)) || (NAN(*(float *)(lVar11 + 0x28)) || NAN(fVar20))) {\\\\n      *(undefined4 *)(local_e0 + uVar12 * 4) = uVar5;\\\\n      *(ulonglong *)(lVar11 + 0x24) = uVar13 | (ulonglong)(uint)fVar20 << 0x20;\\\\n    }\\\\n  } while( true );\\\\n}\\\\n\\\\n\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":464}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x142268dc0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x142268dc0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nbody = f.getBody()\nlisting = prog.getListing()\nit = listing.getInstructions(body, True)\ninsns = []\nrefmgr = prog.getReferenceManager()\ncall_targets = {}\ndata_refs = []\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                if nm not in call_targets:\n                    call_targets[nm] = str(to)\n    # data reads\n    if mnem in (\"MOV\",\"LEA\",\"MOVSD\",\"MOVSS\",\"MOVUPS\",\"MOVDQU\",\"CMP\",\"TEST\",\"MOVZX\",\"MOVSX\",\"CMPSS\",\"COMISS\",\"ADD\",\"SUB\",\"IMUL\",\"MUL\",\"XOR\",\"VEXTRACTF128\",\"MOVQ\",\"CVTSS2SD\",\"CVTSD2SS\",\"UCOMISS\"):\n        for r in refmgr.getReferencesFrom(a):\n            rt = r.getReferenceType()\n            if rt.isData():\n                to = r.getToAddress()\n                data_refs.append((str(a), mnem, str(to), str(r.getReferenceType())))\nout[\"insn_count\"] = len(insns)\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nout[\"data_refs\"] = data_refs\nprint(json.dumps(out))\n",
+        "timeoutSeconds": 120
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "\nimport json\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x142268dc0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x142268dc0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"body\"] = str(f.getBody())\nout[\"signature\"] = str(f.getSignature())\nbody = f.getBody()\nlisting = prog.getListing()\nit = listing.getInstructions(body, True)\ninsns = []\nrefmgr = prog.getReferenceManager()\ncall_targets = {}\ndata_refs = []\nwhile it.hasNext():\n    monitor.checkCancelled()\n    ins = it.next()\n    a = ins.getAddress()\n    mnem = ins.getMnemonicString()\n    ops = []\n    for i in range(ins.getNumOperands()):\n        r = ins.getDefaultOperandRepresentation(i)\n        ops.append(r if r is not None else \"\")\n    raw = ins.getBytes()\n    hexb = \"\".join(\"%02x\" % (b & 0xFF) for b in raw)\n    insns.append([str(a), mnem, ops, hexb])\n    if mnem == \"CALL\":\n        for r in refmgr.getReferencesFrom(a):\n            if r.getReferenceType().isCall():\n                to = r.getToAddress()\n                tgt = fm.getFunctionAt(to)\n                nm = str(tgt.getName()) if tgt else str(to)\n                if nm not in call_targets:\n                    call_targets[nm] = str(to)\n    # data reads\n    if mnem in (\"MOV\",\"LEA\",\"MOVSD\",\"MOVSS\",\"MOVUPS\",\"MOVDQU\",\"CMP\",\"TEST\",\"MOVZX\",\"MOVSX\",\"CMPSS\",\"COMISS\",\"ADD\",\"SUB\",\"IMUL\",\"MUL\",\"XOR\",\"VEXTRACTF128\",\"MOVQ\",\"CVTSS2SD\",\"CVTSD2SS\",\"UCOMISS\"):\n        for r in refmgr.getReferencesFrom(a):\n            rt = r.getReferenceType()\n            if rt.isData():\n                to = r.getToAddress()\n                data_refs.append((str(a), mnem, str(to), str(r.getReferenceType())))\nout[\"insn_count\"] = len(insns)\nout[\"insns\"] = insns\nout[\"call_targets\"] = call_targets\nout[\"data_refs\"] = data_refs\nprint(json.dumps(out))\n",
+        "timeoutSeconds": 120
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"name\\\": \\\"recalc_tree_position_on_terrain_height_change\\\", \\\"entry\\\": \\\"142268dc0\\\", \\\"body\\\": \\\"[[142268dc0, 142268f0a] [142268f10, 142269023] [142269030, 142269053] [142269060, 142269145]]\\\", \\\"signature\\\": \\\"void __cdecl recalc_tree_position_on_terrain_height_change(void)\\\", \\\"insn_count\\\": 218, \\\"insns\\\": [[\\\"142268dc0\\\", \\\"PUSH\\\", [\\\"R15\\\"], \\\"4157\\\"], [\\\"142268dc2\\\", \\\"PUSH\\\", [\\\"R14\\\"], \\\"4156\\\"], [\\\"142268dc4\\\", \\\"PUSH\\\", [\\\"R13\\\"], \\\"4155\\\"], [\\\"142268dc6\\\", \\\"PUSH\\\", [\\\"R12\\\"], \\\"4154\\\"], [\\\"142268dc8\\\", \\\"PUSH\\\", [\\\"RSI\\\"], \\\"56\\\"], [\\\"142268dc9\\\", \\\"PUSH\\\", [\\\"RDI\\\"], \\\"57\\\"], [\\\"142268dca\\\", \\\"PUSH\\\", [\\\"RBP\\\"], \\\"55\\\"], [\\\"142268dcb\\\", \\\"PUSH\\\", [\\\"RBX\\\"], \\\"53\\\"], [\\\"142268dcc\\\", \\\"SUB\\\", [\\\"RSP\\\", \\\"0x88\\\"], \\\"4881ec88000000\\\"], [\\\"142268dd3\\\", \\\"MOVAPS\\\", [\\\"xmmword ptr [RSP + 0x70]\\\", \\\"XMM8\\\"], \\\"440f29442470\\\"], [\\\"142268dd9\\\", \\\"MOVAPS\\\", [\\\"xmmword ptr [RSP + 0x60]\\\", \\\"XMM7\\\"], \\\"0f297c2460\\\"], [\\\"142268dde\\\", \\\"MOVAPS\\\", [\\\"xmmword ptr [RSP + 0x50]\\\", \\\"XMM6\\\"], \\\"0f29742450\\\"], [\\\"142268de3\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [R8]\\\"], \\\"498b00\\\"], [\\\"142268de6\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [R8 + 0x8]\\\"], \\\"4d8b4008\\\"], [\\\"142268dea\\\", \\\"MOV\\\", [\\\"R9\\\", \\\"qword ptr [RAX]\\\"], \\\"4c8b08\\\"], [\\\"142268ded\\\", \\\"XOR\\\", [\\\"R10D\\\", \\\"R10D\\\"], \\\"4531d2\\\"], [\\\"142268df0\\\", \\\"MOV\\\", [\\\"R11\\\", \\\"R9\\\"], \\\"4d89cb\\\"], [\\\"142268df3\\\", \\\"SUB\\\", [\\\"R11\\\", \\\"qword ptr [R8 + 0x18]\\\"], \\\"4d2b5818\\\"], [\\\"142268df7\\\", \\\"CMOVC\\\", [\\\"R11\\\", \\\"R10\\\"], \\\"4d0f42da\\\"], [\\\"142268dfb\\\", \\\"SUB\\\", [\\\"R9\\\", \\\"qword ptr [R8 + 0x38]\\\"], \\\"4d2b4838\\\"], [\\\"142268dff\\\", \\\"CMOVC\\\", [\\\"R9\\\", \\\"R10\\\"], \\\"4d0f42ca\\\"], [\\\"142268e03\\\", \\\"MOV\\\", [\\\"RSI\\\", \\\"qword ptr [R8 + 0x30]\\\"], \\\"498b7030\\\"], [\\\"142268e07\\\", \\\"SUB\\\", [\\\"RSI\\\", \\\"R9\\\"], \\\"4c29ce\\\"], [\\\"142268e0a\\\", \\\"CMOVC\\\", [\\\"RSI\\\", \\\"R10\\\"], \\\"490f42f2\\\"], [\\\"142268e0e\\\", \\\"SETBE\\\", [\\\"R9B\\\"], \\\"410f96c1\\\"], [\\\"142268e12\\\", \\\"MOV\\\", [\\\"RDI\\\", \\\"qword ptr [R8 + 0x10]\\\"], \\\"498b7810\\\"], [\\\"142268e16\\\", \\\"SUB\\\", [\\\"RDI\\\", \\\"R11\\\"], \\\"4c29df\\\"], [\\\"142268e19\\\", \\\"CMOVC\\\", [\\\"RDI\\\", \\\"R10\\\"], \\\"490f42fa\\\"], [\\\"142268e1d\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [R8 + 0x40]\\\"], \\\"4d8b4040\\\"], [\\\"142268e21\\\", \\\"SETBE\\\", [\\\"R10B\\\"], \\\"410f96c2\\\"], [\\\"142268e25\\\", \\\"ADD\\\", [\\\"RDI\\\", \\\"RSI\\\"], \\\"4801f7\\\"], [\\\"142268e28\\\", \\\"MOV\\\", [\\\"R11\\\", \\\"R8\\\"], \\\"4d89c3\\\"], [\\\"142268e2b\\\", \\\"SUB\\\", [\\\"R11\\\", \\\"RDI\\\"], \\\"4929fb\\\"], [\\\"142268e2e\\\", \\\"MOV\\\", [\\\"qword ptr [RAX]\\\", \\\"R11\\\"], \\\"4c8918\\\"], [\\\"142268e31\\\", \\\"TEST\\\", [\\\"R10B\\\", \\\"R9B\\\"], \\\"4584ca\\\"], [\\\"142268e34\\\", \\\"JZ\\\", [\\\"0x142268e5a\\\"], \\\"7424\\\"], [\\\"142268e36\\\", \\\"MOVAPS\\\", [\\\"XMM6\\\", \\\"xmmword ptr [RSP + 0x50]\\\"], \\\"0f28742450\\\"], [\\\"142268e3b\\\", \\\"MOVAPS\\\", [\\\"XMM7\\\", \\\"xmmword ptr [RSP + 0x60]\\\"], \\\"0f287c2460\\\"], [\\\"142268e40\\\", \\\"MOVAPS\\\", [\\\"XMM8\\\", \\\"xmmword ptr [RSP + 0x70]\\\"], \\\"440f28442470\\\"], [\\\"142268e46\\\", \\\"ADD\\\", [\\\"RSP\\\", \\\"0x88\\\"], \\\"4881c488000000\\\"], [\\\"142268e4d\\\", \\\"POP\\\", [\\\"RBX\\\"], \\\"5b\\\"], [\\\"142268e4e\\\", \\\"POP\\\", [\\\"RBP\\\"], \\\"5d\\\"], [\\\"142268e4f\\\", \\\"POP\\\", [\\\"RDI\\\"], \\\"5f\\\"], [\\\"142268e50\\\", \\\"POP\\\", [\\\"RSI\\\"], \\\"5e\\\"], [\\\"142268e51\\\", \\\"POP\\\", [\\\"R12\\\"], \\\"415c\\\"], [\\\"142268e53\\\", \\\"POP\\\", [\\\"R13\\\"], \\\"415d\\\"], [\\\"142268e55\\\", \\\"POP\\\", [\\\"R14\\\"], \\\"415e\\\"], [\\\"142268e57\\\", \\\"POP\\\", [\\\"R15\\\"], \\\"415f\\\"], [\\\"142268e59\\\", \\\"RET\\\", [], \\\"c3\\\"], [\\\"142268e5a\\\", \\\"MOV\\\", [\\\"qword ptr [RAX]\\\", \\\"R8\\\"], \\\"4c8900\\\"], [\\\"142268e5d\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [RCX]\\\"], \\\"4c8b01\\\"], [\\\"142268e60\\\", \\\"MOV\\\", [\\\"R10\\\", \\\"qword ptr [RCX + 0x8]\\\"], \\\"4c8b5108\\\"], [\\\"142268e64\\\", \\\"MOV\\\", [\\\"R14D\\\", \\\"dword ptr [RCX + 0x14]\\\"], \\\"448b7114\\\"], [\\\"142268e68\\\", \\\"MOV\\\", [\\\"R12\\\", \\\"qword ptr [R8 + 0xf8]\\\"], \\\"4d8ba0f8000000\\\"], [\\\"142268e6f\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [R8 + 0x100]\\\"], \\\"498b8000010000\\\"], [\\\"142268e76\\\", \\\"LEA\\\", [\\\"R13\\\", \\\"[R12 + RAX*0x4]\\\"], \\\"4d8d2c84\\\"], [\\\"142268e7a\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [RDX]\\\"], \\\"488b02\\\"], [\\\"142268e7d\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x40]\\\", \\\"RAX\\\"], \\\"4889442440\\\"], [\\\"142268e82\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x48]\\\", \\\"R8\\\"], \\\"4c89442448\\\"], [\\\"142268e87\\\", \\\"CMP\\\", [\\\"byte ptr [R8 + 0x108]\\\", \\\"0x0\\\"], \\\"4180b80801000000\\\"], [\\\"142268e8f\\\", \\\"JZ\\\", [\\\"0x142268fc8\\\"], \\\"0f8433010000\\\"], [\\\"142268e95\\\", \\\"XOR\\\", [\\\"EBP\\\", \\\"EBP\\\"], \\\"31ed\\\"], [\\\"142268e97\\\", \\\"MOVAPS\\\", [\\\"XMM6\\\", \\\"xmmword ptr [0x14292e980]\\\"], \\\"0f2835e25a6c00\\\"], [\\\"142268e9e\\\", \\\"MOVSS\\\", [\\\"XMM7\\\", \\\"dword ptr [0x142a83814]\\\"], \\\"f30f103d6ea98100\\\"], [\\\"142268ea6\\\", \\\"LEA\\\", [\\\"R15\\\", \\\"[RSP + 0x24]\\\"], \\\"4c8d7c2424\\\"], [\\\"142268eab\\\", \\\"XORPS\\\", [\\\"XMM8\\\", \\\"XMM8\\\"], \\\"450f57c0\\\"], [\\\"142268eaf\\\", \\\"XOR\\\", [\\\"ESI\\\", \\\"ESI\\\"], \\\"31f6\\\"], [\\\"142268eb1\\\", \\\"XOR\\\", [\\\"EDI\\\", \\\"EDI\\\"], \\\"31ff\\\"], [\\\"142268eb3\\\", \\\"CMP\\\", [\\\"RDI\\\", \\\"RSI\\\"], \\\"4839f7\\\"], [\\\"142268eb6\\\", \\\"JNZ\\\", [\\\"0x142268ef0\\\"], \\\"7538\\\"], [\\\"142268eb8\\\", \\\"CMP\\\", [\\\"R12\\\", \\\"R13\\\"], \\\"4d39ec\\\"], [\\\"142268ebb\\\", \\\"JZ\\\", [\\\"0x142268e36\\\"], \\\"0f8475ffffff\\\"], [\\\"142268ec1\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [R10 + 0x1a8]\\\"], \\\"498b82a8010000\\\"], [\\\"142268ec8\\\", \\\"NOP\\\", [\\\"dword ptr [RAX + RAX*0x1]\\\"], \\\"0f1f840000000000\\\"], [\\\"142268ed0\\\", \\\"MOV\\\", [\\\"ECX\\\", \\\"dword ptr [R12]\\\"], \\\"418b0c24\\\"], [\\\"142268ed4\\\", \\\"LEA\\\", [\\\"RCX\\\", \\\"[RCX + RCX*0x8]\\\"], \\\"488d0cc9\\\"], [\\\"142268ed8\\\", \\\"MOV\\\", [\\\"RSI\\\", \\\"qword ptr [RAX + RCX*0x8 + 0x10]\\\"], \\\"488b74c810\\\"], [\\\"142268edd\\\", \\\"TEST\\\", [\\\"RSI\\\", \\\"RSI\\\"], \\\"4885f6\\\"], [\\\"142268ee0\\\", \\\"JNZ\\\", [\\\"0x142268f10\\\"], \\\"752e\\\"], [\\\"142268ee2\\\", \\\"ADD\\\", [\\\"R12\\\", \\\"0x4\\\"], \\\"4983c404\\\"], [\\\"142268ee6\\\", \\\"CMP\\\", [\\\"R12\\\", \\\"R13\\\"], \\\"4d39ec\\\"], [\\\"142268ee9\\\", \\\"JNZ\\\", [\\\"0x142268ed0\\\"], \\\"75e5\\\"], [\\\"142268eeb\\\", \\\"JMP\\\", [\\\"0x142268e36\\\"], \\\"e946ffffff\\\"], [\\\"142268ef0\\\", \\\"TEST\\\", [\\\"RBP\\\", \\\"RBP\\\"], \\\"4885ed\\\"], [\\\"142268ef3\\\", \\\"JZ\\\", [\\\"0x142268e36\\\"], \\\"0f843dffffff\\\"], [\\\"142268ef9\\\", \\\"MOV\\\", [\\\"EAX\\\", \\\"EDI\\\"], \\\"89f8\\\"], [\\\"142268efb\\\", \\\"LEA\\\", [\\\"RBX\\\", \\\"[RAX + RAX*0x2]\\\"], \\\"488d1c40\\\"], [\\\"142268eff\\\", \\\"SHL\\\", [\\\"RBX\\\", \\\"0x4\\\"], \\\"48c1e304\\\"], [\\\"142268f03\\\", \\\"ADD\\\", [\\\"RBX\\\", \\\"RBP\\\"], \\\"4801eb\\\"], [\\\"142268f06\\\", \\\"INC\\\", [\\\"RDI\\\"], \\\"48ffc7\\\"], [\\\"142268f09\\\", \\\"JMP\\\", [\\\"0x142268f4f\\\"], \\\"eb44\\\"], [\\\"142268f10\\\", \\\"LEA\\\", [\\\"RAX\\\", \\\"[RAX + RCX*0x8]\\\"], \\\"488d04c8\\\"], [\\\"142268f14\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RSP + 0x48]\\\"], \\\"488b4c2448\\\"], [\\\"142268f19\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RCX + 0x110]\\\"], \\\"488b8910010000\\\"], [\\\"142268f20\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [RAX + 0x18]\\\"], \\\"488b5018\\\"], [\\\"142268f24\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [RAX + 0x38]\\\"], \\\"488b4038\\\"], [\\\"142268f28\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [RAX + RCX*0x8]\\\"], \\\"488b04c8\\\"], [\\\"142268f2c\\\", \\\"NOT\\\", [\\\"RAX\\\"], \\\"48f7d0\\\"], [\\\"142268f2f\\\", \\\"LEA\\\", [\\\"RAX\\\", \\\"[RAX + RAX*0x2]\\\"], \\\"488d0440\\\"], [\\\"142268f33\\\", \\\"SHL\\\", [\\\"RAX\\\", \\\"0x4\\\"], \\\"48c1e004\\\"], [\\\"142268f37\\\", \\\"MOV\\\", [\\\"RBX\\\", \\\"qword ptr [RDX + RAX*0x1 + 0x10]\\\"], \\\"488b5c0210\\\"], [\\\"142268f3c\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RDX + RAX*0x1 + 0x28]\\\"], \\\"488b4c0228\\\"], [\\\"142268f41\\\", \\\"ADD\\\", [\\\"R12\\\", \\\"0x4\\\"], \\\"4983c404\\\"], [\\\"142268f45\\\", \\\"MOV\\\", [\\\"EDI\\\", \\\"0x1\\\"], \\\"bf01000000\\\"], [\\\"142268f4a\\\", \\\"XOR\\\", [\\\"EAX\\\", \\\"EAX\\\"], \\\"31c0\\\"], [\\\"142268f4c\\\", \\\"MOV\\\", [\\\"RBP\\\", \\\"RBX\\\"], \\\"4889dd\\\"], [\\\"142268f4f\\\", \\\"MOV\\\", [\\\"dword ptr [RCX + RAX*0x4]\\\", \\\"R14D\\\"], \\\"44893481\\\"], [\\\"142268f53\\\", \\\"MOVSS\\\", [\\\"XMM0\\\", \\\"dword ptr [RBX]\\\"], \\\"f30f1003\\\"], [\\\"142268f57\\\", \\\"ANDPS\\\", [\\\"XMM0\\\", \\\"XMM6\\\"], \\\"0f54c6\\\"], [\\\"142268f5a\\\", \\\"UCOMISS\\\", [\\\"XMM0\\\", \\\"XMM7\\\"], \\\"0f2ec7\\\"], [\\\"142268f5d\\\", \\\"JA\\\", [\\\"0x142268eb3\\\"], \\\"0f8750ffffff\\\"], [\\\"142268f63\\\", \\\"MOVSS\\\", [\\\"XMM0\\\", \\\"dword ptr [RBX + 0x8]\\\"], \\\"f30f104308\\\"], [\\\"142268f68\\\", \\\"ANDPS\\\", [\\\"XMM0\\\", \\\"XMM6\\\"], \\\"0f54c6\\\"], [\\\"142268f6b\\\", \\\"UCOMISS\\\", [\\\"XMM0\\\", \\\"XMM7\\\"], \\\"0f2ec7\\\"], [\\\"142268f6e\\\", \\\"JA\\\", [\\\"0x142268eb3\\\"], \\\"0f873fffffff\\\"], [\\\"142268f74\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x30]\\\", \\\"RCX\\\"], \\\"48894c2430\\\"], [\\\"142268f79\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"R15\\\"], \\\"4c89f9\\\"], [\\\"142268f7c\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"RBX\\\"], \\\"4889da\\\"], [\\\"142268f7f\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x38]\\\", \\\"R10\\\"], \\\"4c89542438\\\"], [\\\"142268f84\\\", \\\"CALL\\\", [\\\"0x140ad51a0\\\"], \\\"e817c286fe\\\"], [\\\"142268f89\\\", \\\"MOVSS\\\", [\\\"XMM1\\\", \\\"dword ptr [RSP + 0x24]\\\"], \\\"f30f104c2424\\\"], [\\\"142268f8f\\\", \\\"MOVSS\\\", [\\\"XMM2\\\", \\\"dword ptr [RSP + 0x2c]\\\"], \\\"f30f1054242c\\\"], [\\\"142268f95\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RSP + 0x40]\\\"], \\\"488b4c2440\\\"], [\\\"142268f9a\\\", \\\"CALL\\\", [\\\"0x141246fb0\\\"], \\\"e811e0fdfe\\\"], [\\\"142268f9f\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RSP + 0x30]\\\"], \\\"488b4c2430\\\"], [\\\"142268fa4\\\", \\\"MOV\\\", [\\\"R10\\\", \\\"qword ptr [RSP + 0x38]\\\"], \\\"4c8b542438\\\"], [\\\"142268fa9\\\", \\\"MOVSS\\\", [\\\"XMM1\\\", \\\"dword ptr [RBX + 0x4]\\\"], \\\"f30f104b04\\\"], [\\\"142268fae\\\", \\\"UCOMISS\\\", [\\\"XMM1\\\", \\\"XMM0\\\"], \\\"0f2ec8\\\"], [\\\"142268fb1\\\", \\\"JNZ\\\", [\\\"0x142268fb9\\\"], \\\"7506\\\"], [\\\"142268fb3\\\", \\\"JNP\\\", [\\\"0x142268eb3\\\"], \\\"0f8bfafeffff\\\"], [\\\"142268fb9\\\", \\\"MAXSS\\\", [\\\"XMM0\\\", \\\"XMM8\\\"], \\\"f3410f5fc0\\\"], [\\\"142268fbe\\\", \\\"MOVSS\\\", [\\\"dword ptr [RBX + 0x4]\\\", \\\"XMM0\\\"], \\\"f30f114304\\\"], [\\\"142268fc3\\\", \\\"JMP\\\", [\\\"0x142268eb3\\\"], \\\"e9ebfeffff\\\"], [\\\"142268fc8\\\", \\\"MOV\\\", [\\\"EDX\\\", \\\"0x8\\\"], \\\"ba08000000\\\"], [\\\"142268fcd\\\", \\\"XOR\\\", [\\\"ESI\\\", \\\"ESI\\\"], \\\"31f6\\\"], [\\\"142268fcf\\\", \\\"MOVAPS\\\", [\\\"XMM6\\\", \\\"xmmword ptr [0x14292e980]\\\"], \\\"0f2835aa596c00\\\"], [\\\"142268fd6\\\", \\\"MOVSS\\\", [\\\"XMM7\\\", \\\"dword ptr [0x142a83814]\\\"], \\\"f30f103d36a88100\\\"], [\\\"142268fde\\\", \\\"LEA\\\", [\\\"RCX\\\", \\\"[RSP + 0x24]\\\"], \\\"488d4c2424\\\"], [\\\"142268fe3\\\", \\\"XORPS\\\", [\\\"XMM8\\\", \\\"XMM8\\\"], \\\"450f57c0\\\"], [\\\"142268fe7\\\", \\\"XOR\\\", [\\\"EDI\\\", \\\"EDI\\\"], \\\"31ff\\\"], [\\\"142268fe9\\\", \\\"XOR\\\", [\\\"EBP\\\", \\\"EBP\\\"], \\\"31ed\\\"], [\\\"142268feb\\\", \\\"CMP\\\", [\\\"RBP\\\", \\\"RDI\\\"], \\\"4839fd\\\"], [\\\"142268fee\\\", \\\"JNZ\\\", [\\\"0x142269030\\\"], \\\"7540\\\"], [\\\"142268ff0\\\", \\\"CMP\\\", [\\\"R12\\\", \\\"R13\\\"], \\\"4d39ec\\\"], [\\\"142268ff3\\\", \\\"JZ\\\", [\\\"0x142268e36\\\"], \\\"0f843dfeffff\\\"], [\\\"142268ff9\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"qword ptr [R10 + 0x100]\\\"], \\\"498b8200010000\\\"], [\\\"142269000\\\", \\\"MOV\\\", [\\\"EDX\\\", \\\"dword ptr [R12]\\\"], \\\"418b1424\\\"], [\\\"142269004\\\", \\\"LEA\\\", [\\\"RDX\\\", \\\"[RDX + RDX*0x4]\\\"], \\\"488d1492\\\"], [\\\"142269008\\\", \\\"SHL\\\", [\\\"RDX\\\", \\\"0x5\\\"], \\\"48c1e205\\\"], [\\\"14226900c\\\", \\\"MOV\\\", [\\\"RDI\\\", \\\"qword ptr [RAX + RDX*0x1 + 0x58]\\\"], \\\"488b7c1058\\\"], [\\\"142269011\\\", \\\"TEST\\\", [\\\"RDI\\\", \\\"RDI\\\"], \\\"4885ff\\\"], [\\\"142269014\\\", \\\"JNZ\\\", [\\\"0x142269060\\\"], \\\"754a\\\"], [\\\"142269016\\\", \\\"ADD\\\", [\\\"R12\\\", \\\"0x4\\\"], \\\"4983c404\\\"], [\\\"14226901a\\\", \\\"CMP\\\", [\\\"R12\\\", \\\"R13\\\"], \\\"4d39ec\\\"], [\\\"14226901d\\\", \\\"JNZ\\\", [\\\"0x142269000\\\"], \\\"75e1\\\"], [\\\"14226901f\\\", \\\"JMP\\\", [\\\"0x142268e36\\\"], \\\"e912feffff\\\"], [\\\"142269030\\\", \\\"TEST\\\", [\\\"RSI\\\", \\\"RSI\\\"], \\\"4885f6\\\"], [\\\"142269033\\\", \\\"JZ\\\", [\\\"0x142268e36\\\"], \\\"0f84fdfdffff\\\"], [\\\"142269039\\\", \\\"MOV\\\", [\\\"RAX\\\", \\\"RBP\\\"], \\\"4889e8\\\"], [\\\"14226903c\\\", \\\"SHL\\\", [\\\"RAX\\\", \\\"0x4\\\"], \\\"48c1e004\\\"], [\\\"142269040\\\", \\\"MOV\\\", [\\\"EAX\\\", \\\"dword ptr [RDX + RAX*0x1 + 0x8]\\\"], \\\"8b440208\\\"], [\\\"142269044\\\", \\\"LEA\\\", [\\\"RBX\\\", \\\"[RAX + RAX*0x2]\\\"], \\\"488d1c40\\\"], [\\\"142269048\\\", \\\"SHL\\\", [\\\"RBX\\\", \\\"0x4\\\"], \\\"48c1e304\\\"], [\\\"14226904c\\\", \\\"ADD\\\", [\\\"RBX\\\", \\\"RSI\\\"], \\\"4801f3\\\"], [\\\"14226904f\\\", \\\"INC\\\", [\\\"RBP\\\"], \\\"48ffc5\\\"], [\\\"142269052\\\", \\\"JMP\\\", [\\\"0x1422690bf\\\"], \\\"eb6b\\\"], [\\\"142269060\\\", \\\"ADD\\\", [\\\"RAX\\\", \\\"RDX\\\"], \\\"4801d0\\\"], [\\\"142269063\\\", \\\"MOV\\\", [\\\"R8D\\\", \\\"dword ptr [RAX + 0x94]\\\"], \\\"448b8094000000\\\"], [\\\"14226906a\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [R10 + 0x1a8]\\\"], \\\"498b92a8010000\\\"], [\\\"142269071\\\", \\\"LEA\\\", [\\\"RSI\\\", \\\"[R8 + R8*0x8]\\\"], \\\"4b8d34c0\\\"], [\\\"142269075\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [RSP + 0x48]\\\"], \\\"4c8b442448\\\"], [\\\"14226907a\\\", \\\"MOV\\\", [\\\"R8\\\", \\\"qword ptr [R8 + 0x110]\\\"], \\\"4d8b8010010000\\\"], [\\\"142269081\\\", \\\"MOV\\\", [\\\"R9\\\", \\\"qword ptr [RDX + RSI*0x8 + 0x18]\\\"], \\\"4c8b4cf218\\\"], [\\\"142269086\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [RDX + RSI*0x8 + 0x38]\\\"], \\\"488b54f238\\\"], [\\\"14226908b\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [RDX + R8*0x8]\\\"], \\\"4a8b14c2\\\"], [\\\"14226908f\\\", \\\"NOT\\\", [\\\"RDX\\\"], \\\"48f7d2\\\"], [\\\"142269092\\\", \\\"LEA\\\", [\\\"RDX\\\", \\\"[RDX + RDX*0x2]\\\"], \\\"488d1452\\\"], [\\\"142269096\\\", \\\"SHL\\\", [\\\"RDX\\\", \\\"0x4\\\"], \\\"48c1e204\\\"], [\\\"14226909a\\\", \\\"MOV\\\", [\\\"RSI\\\", \\\"qword ptr [R9 + RDX*0x1 + 0x10]\\\"], \\\"498b741110\\\"], [\\\"14226909f\\\", \\\"MOV\\\", [\\\"R9\\\", \\\"qword ptr [R9 + RDX*0x1 + 0x28]\\\"], \\\"4d8b4c1128\\\"], [\\\"1422690a4\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [RAX + 0x50]\\\"], \\\"488b5050\\\"], [\\\"1422690a8\\\", \\\"MOV\\\", [\\\"EAX\\\", \\\"dword ptr [RDX + 0x8]\\\"], \\\"8b4208\\\"], [\\\"1422690ab\\\", \\\"LEA\\\", [\\\"RBX\\\", \\\"[RAX + RAX*0x2]\\\"], \\\"488d1c40\\\"], [\\\"1422690af\\\", \\\"SHL\\\", [\\\"RBX\\\", \\\"0x4\\\"], \\\"48c1e304\\\"], [\\\"1422690b3\\\", \\\"ADD\\\", [\\\"RBX\\\", \\\"RSI\\\"], \\\"4801f3\\\"], [\\\"1422690b6\\\", \\\"ADD\\\", [\\\"R12\\\", \\\"0x4\\\"], \\\"4983c404\\\"], [\\\"1422690ba\\\", \\\"MOV\\\", [\\\"EBP\\\", \\\"0x1\\\"], \\\"bd01000000\\\"], [\\\"1422690bf\\\", \\\"MOV\\\", [\\\"dword ptr [R9 + RAX*0x4]\\\", \\\"R14D\\\"], \\\"45893481\\\"], [\\\"1422690c3\\\", \\\"MOVSS\\\", [\\\"XMM0\\\", \\\"dword ptr [RBX]\\\"], \\\"f30f1003\\\"], [\\\"1422690c7\\\", \\\"ANDPS\\\", [\\\"XMM0\\\", \\\"XMM6\\\"], \\\"0f54c6\\\"], [\\\"1422690ca\\\", \\\"UCOMISS\\\", [\\\"XMM0\\\", \\\"XMM7\\\"], \\\"0f2ec7\\\"], [\\\"1422690cd\\\", \\\"JA\\\", [\\\"0x142268feb\\\"], \\\"0f8718ffffff\\\"], [\\\"1422690d3\\\", \\\"MOVSS\\\", [\\\"XMM0\\\", \\\"dword ptr [RBX + 0x8]\\\"], \\\"f30f104308\\\"], [\\\"1422690d8\\\", \\\"ANDPS\\\", [\\\"XMM0\\\", \\\"XMM6\\\"], \\\"0f54c6\\\"], [\\\"1422690db\\\", \\\"UCOMISS\\\", [\\\"XMM0\\\", \\\"XMM7\\\"], \\\"0f2ec7\\\"], [\\\"1422690de\\\", \\\"JA\\\", [\\\"0x142268feb\\\"], \\\"0f8707ffffff\\\"], [\\\"1422690e4\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x30]\\\", \\\"RDX\\\"], \\\"4889542430\\\"], [\\\"1422690e9\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"RBX\\\"], \\\"4889da\\\"], [\\\"1422690ec\\\", \\\"MOV\\\", [\\\"qword ptr [RSP + 0x38]\\\", \\\"R10\\\"], \\\"4c89542438\\\"], [\\\"1422690f1\\\", \\\"MOV\\\", [\\\"R15D\\\", \\\"R14D\\\"], \\\"4589f7\\\"], [\\\"1422690f4\\\", \\\"MOV\\\", [\\\"R14\\\", \\\"R9\\\"], \\\"4d89ce\\\"], [\\\"1422690f7\\\", \\\"CALL\\\", [\\\"0x140ad51a0\\\"], \\\"e8a4c086fe\\\"], [\\\"1422690fc\\\", \\\"MOVSS\\\", [\\\"XMM1\\\", \\\"dword ptr [RSP + 0x24]\\\"], \\\"f30f104c2424\\\"], [\\\"142269102\\\", \\\"MOVSS\\\", [\\\"XMM2\\\", \\\"dword ptr [RSP + 0x2c]\\\"], \\\"f30f1054242c\\\"], [\\\"142269108\\\", \\\"MOV\\\", [\\\"RCX\\\", \\\"qword ptr [RSP + 0x40]\\\"], \\\"488b4c2440\\\"], [\\\"14226910d\\\", \\\"CALL\\\", [\\\"0x141246fb0\\\"], \\\"e89edefdfe\\\"], [\\\"142269112\\\", \\\"MOV\\\", [\\\"R9\\\", \\\"R14\\\"], \\\"4d89f1\\\"], [\\\"142269115\\\", \\\"MOV\\\", [\\\"RDX\\\", \\\"qword ptr [RSP + 0x30]\\\"], \\\"488b542430\\\"], [\\\"14226911a\\\", \\\"MOV\\\", [\\\"R14D\\\", \\\"R15D\\\"], \\\"4589fe\\\"], [\\\"14226911d\\\", \\\"MOV\\\", [\\\"R10\\\", \\\"qword ptr [RSP + 0x38]\\\"], \\\"4c8b542438\\\"], [\\\"142269122\\\", \\\"LEA\\\", [\\\"RCX\\\", \\\"[RSP + 0x24]\\\"], \\\"488d4c2424\\\"], [\\\"142269127\\\", \\\"MOVSS\\\", [\\\"XMM1\\\", \\\"dword ptr [RBX + 0x4]\\\"], \\\"f30f104b04\\\"], [\\\"14226912c\\\", \\\"UCOMISS\\\", [\\\"XMM1\\\", \\\"XMM0\\\"], \\\"0f2ec8\\\"], [\\\"14226912f\\\", \\\"JNZ\\\", [\\\"0x142269137\\\"], \\\"7506\\\"], [\\\"142269131\\\", \\\"JNP\\\", [\\\"0x142268feb\\\"], \\\"0f8bb4feffff\\\"], [\\\"142269137\\\", \\\"MAXSS\\\", [\\\"XMM0\\\", \\\"XMM8\\\"], \\\"f3410f5fc0\\\"], [\\\"14226913c\\\", \\\"MOVSS\\\", [\\\"dword ptr [RBX + 0x4]\\\", \\\"XMM0\\\"], \\\"f30f114304\\\"], [\\\"142269141\\\", \\\"JMP\\\", [\\\"0x142268feb\\\"], \\\"e9a5feffff\\\"]], \\\"call_targets\\\": {\\\"position\\\": \\\"140ad51a0\\\", \\\"sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>\\\": \\\"141246fb0\\\"}, \\\"data_refs\\\": [[\\\"142268e7d\\\", \\\"MOV\\\", \\\"Stack[-0x88]\\\", \\\"WRITE\\\"], [\\\"142268e82\\\", \\\"MOV\\\", \\\"Stack[-0x80]\\\", \\\"WRITE\\\"], [\\\"142268e9e\\\", \\\"MOVSS\\\", \\\"142a83814\\\", \\\"READ\\\"], [\\\"142268ea6\\\", \\\"LEA\\\", \\\"Stack[-0xa4]\\\", \\\"DATA\\\"], [\\\"142268f14\\\", \\\"MOV\\\", \\\"Stack[-0x80]\\\", \\\"READ\\\"], [\\\"142268f74\\\", \\\"MOV\\\", \\\"Stack[-0x98]\\\", \\\"WRITE\\\"], [\\\"142268f7f\\\", \\\"MOV\\\", \\\"Stack[-0x90]\\\", \\\"WRITE\\\"], [\\\"142268f89\\\", \\\"MOVSS\\\", \\\"Stack[-0xa4]\\\", \\\"READ\\\"], [\\\"142268f8f\\\", \\\"MOVSS\\\", \\\"Stack[-0x9c]\\\", \\\"READ\\\"], [\\\"142268f95\\\", \\\"MOV\\\", \\\"Stack[-0x88]\\\", \\\"READ\\\"], [\\\"142268f9f\\\", \\\"MOV\\\", \\\"Stack[-0x98]\\\", \\\"READ\\\"], [\\\"142268fa4\\\", \\\"MOV\\\", \\\"Stack[-0x90]\\\", \\\"READ\\\"], [\\\"142268fd6\\\", \\\"MOVSS\\\", \\\"142a83814\\\", \\\"READ\\\"], [\\\"142268fde\\\", \\\"LEA\\\", \\\"Stack[-0xa4]\\\", \\\"DATA\\\"], [\\\"142269075\\\", \\\"MOV\\\", \\\"Stack[-0x80]\\\", \\\"READ\\\"], [\\\"1422690e4\\\", \\\"MOV\\\", \\\"Stack[-0x98]\\\", \\\"WRITE\\\"], [\\\"1422690ec\\\", \\\"MOV\\\", \\\"Stack[-0x90]\\\", \\\"WRITE\\\"], [\\\"1422690fc\\\", \\\"MOVSS\\\", \\\"Stack[-0xa4]\\\", \\\"READ\\\"], [\\\"142269102\\\", \\\"MOVSS\\\", \\\"Stack[-0x9c]\\\", \\\"READ\\\"], [\\\"142269108\\\", \\\"MOV\\\", \\\"Stack[-0x88]\\\", \\\"READ\\\"], [\\\"142269115\\\", \\\"MOV\\\", \\\"Stack[-0x98]\\\", \\\"READ\\\"], [\\\"14226911d\\\", \\\"MOV\\\", \\\"Stack[-0x90]\\\", \\\"READ\\\"], [\\\"142269122\\\", \\\"LEA\\\", \\\"Stack[-0xa4]\\\", \\\"DATA\\\"]]}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":155}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "\nimport json\nfrom ghidra.app.decompiler import DecompInterface\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x142268dc0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x142268dc0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"signature\"] = str(f.getSignature())\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+        "timeoutSeconds": 120
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "\nimport json\nfrom ghidra.app.decompiler import DecompInterface\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x142268dc0\")\nfm = prog.getFunctionManager()\nf = fm.getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent at \" + \"0x142268dc0\")\nout[\"name\"] = str(f.getName())\nout[\"entry\"] = str(f.getEntryPoint())\nout[\"signature\"] = str(f.getSignature())\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 120, monitor)\n    if not res.decompileCompleted():\n        raise RuntimeError(str(res.getErrorMessage()))\n    out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))\n",
+        "timeoutSeconds": 120
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"name\\\": \\\"recalc_tree_position_on_terrain_height_change\\\", \\\"entry\\\": \\\"142268dc0\\\", \\\"signature\\\": \\\"void __cdecl recalc_tree_position_on_terrain_height_change(void)\\\", \\\"decompiled\\\": \\\"\\\\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\\\\n\\\\nvoid __cdecl\\\\nsystem_tree::recalc_tree_position_on_terrain_height_change::\\\\nrecalc_tree_position_on_terrain_height_change(void)\\\\n\\\\n{\\\\n  uint *puVar1;\\\\n  undefined4 uVar2;\\\\n  ulonglong *puVar3;\\\\n  longlong lVar4;\\\\n  longlong lVar5;\\\\n  uint uVar6;\\\\n  float fVar7;\\\\n  ulonglong uVar8;\\\\n  longlong lVar9;\\\\n  ulonglong uVar10;\\\\n  longlong *in_RCX;\\\\n  longlong lVar11;\\\\n  longlong lVar12;\\\\n  uint *puVar13;\\\\n  uint *puVar14;\\\\n  ulonglong uVar15;\\\\n  longlong lVar16;\\\\n  ulonglong uVar17;\\\\n  ulonglong uVar18;\\\\n  longlong lVar19;\\\\n  undefined8 *in_R8;\\\\n  ulonglong uVar20;\\\\n  uint *puVar21;\\\\n  bool bVar22;\\\\n  float extraout_XMM0_Da;\\\\n  float fVar23;\\\\n  float extraout_XMM0_Da_00;\\\\n  \\\\n  puVar3 = (ulonglong *)*in_R8;\\\\n  lVar4 = in_R8[1];\\\\n  uVar10 = *puVar3;\\\\n  uVar8 = 0;\\\\n  uVar18 = uVar10 - *(ulonglong *)(lVar4 + 0x18);\\\\n  if (uVar10 < *(ulonglong *)(lVar4 + 0x18)) {\\\\n    uVar18 = uVar8;\\\\n  }\\\\n  uVar20 = uVar10 - *(ulonglong *)(lVar4 + 0x38);\\\\n  if (uVar10 < *(ulonglong *)(lVar4 + 0x38)) {\\\\n    uVar20 = uVar8;\\\\n  }\\\\n  bVar22 = *(ulonglong *)(lVar4 + 0x30) < uVar20;\\\\n  uVar15 = *(ulonglong *)(lVar4 + 0x30) - uVar20;\\\\n  uVar10 = uVar15;\\\\n  if (bVar22) {\\\\n    uVar10 = uVar8;\\\\n  }\\\\n  lVar9 = CONCAT71((int7)(uVar20 >> 8),bVar22 || uVar15 == 0);\\\\n  uVar20 = *(ulonglong *)(lVar4 + 0x10);\\\\n  uVar17 = uVar20 - uVar18;\\\\n  if (uVar20 < uVar18) {\\\\n    uVar17 = uVar8;\\\\n  }\\\\n  uVar8 = *(ulonglong *)(lVar4 + 0x40);\\\\n  *puVar3 = uVar8 - (uVar17 + uVar10);\\\\n  if ((uVar20 < uVar18 || uVar20 - uVar18 == 0) && (bVar22 || uVar15 == 0)) {\\\\n    return;\\\\n  }\\\\n  *puVar3 = uVar8;\\\\n  fVar7 = __real_42820000;\\\\n  uVar6 = ___xmm_7fffffff7fffffff7fffffff7fffffff;\\\\n  lVar4 = *in_RCX;\\\\n  lVar5 = in_RCX[1];\\\\n  uVar2 = *(undefined4 *)((longlong)in_RCX + 0x14);\\\\n  puVar21 = *(uint **)(lVar4 + 0xf8);\\\\n  puVar1 = puVar21 + *(longlong *)(lVar4 + 0x100);\\\\n  if (*(char *)(lVar4 + 0x108) == '\\\\\\\\0') {\\\\n    lVar11 = 8;\\\\n    lVar16 = 0;\\\\n    lVar19 = 0;\\\\n    lVar12 = 0;\\\\n    do {\\\\n      if (lVar12 == lVar19) {\\\\n        if (puVar21 == puVar1) {\\\\n          return;\\\\n        }\\\\n        while( true ) {\\\\n          lVar19 = *(longlong *)(*(longlong *)(lVar5 + 0x100) + 0x58 + (ulonglong)*puVar21 * 0xa0);\\\\n          if (lVar19 != 0) break;\\\\n          puVar21 = puVar21 + 1;\\\\n          if (puVar21 == puVar1) {\\\\n            return;\\\\n          }\\\\n        }\\\\n        lVar11 = *(longlong *)(lVar5 + 0x100) + (ulonglong)*puVar21 * 0xa0;\\\\n        uVar10 = (ulonglong)*(uint *)(lVar11 + 0x94);\\\\n        lVar9 = *(longlong *)(*(longlong *)(lVar5 + 0x1a8) + 0x18 + uVar10 * 0x48);\\\\n        lVar12 = ~*(ulonglong *)\\\\n                   (*(longlong *)(*(longlong *)(lVar5 + 0x1a8) + 0x38 + uVar10 * 0x48) +\\\\n                   *(longlong *)(lVar4 + 0x110) * 8) * 0x30;\\\\n        lVar16 = *(longlong *)(lVar9 + 0x10 + lVar12);\\\\n        lVar9 = *(longlong *)(lVar9 + 0x28 + lVar12);\\\\n        lVar11 = *(longlong *)(lVar11 + 0x50);\\\\n        uVar10 = (ulonglong)*(uint *)(lVar11 + 8);\\\\n        puVar14 = (uint *)(uVar10 * 0x30 + lVar16);\\\\n        puVar21 = puVar21 + 1;\\\\n        lVar12 = 1;\\\\n      }\\\\n      else {\\\\n        if (lVar16 == 0) {\\\\n          return;\\\\n        }\\\\n        uVar10 = (ulonglong)*(uint *)(lVar11 + 8 + lVar12 * 0x10);\\\\n        puVar14 = (uint *)(uVar10 * 0x30 + lVar16);\\\\n        lVar12 = lVar12 + 1;\\\\n      }\\\\n      *(undefined4 *)(lVar9 + uVar10 * 4) = uVar2;\\\\n      if (((float)(*puVar14 & uVar6) <= fVar7) && ((float)(puVar14[2] & uVar6) <= fVar7)) {\\\\n        country_core::resources::placement_data::PlacementDataSsbo::position();\\\\n        country_core::resources::terrain_height::TerrainHeightsData::\\\\n        sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>();\\\\n        if (((float)puVar14[1] != extraout_XMM0_Da_00) ||\\\\n           (NAN((float)puVar14[1]) || NAN(extraout_XMM0_Da_00))) {\\\\n          fVar23 = extraout_XMM0_Da_00;\\\\n          if (extraout_XMM0_Da_00 <= 0.0) {\\\\n            fVar23 = 0.0;\\\\n          }\\\\n          puVar14[1] = (uint)fVar23;\\\\n        }\\\\n      }\\\\n    } while( true );\\\\n  }\\\\n  puVar14 = (uint *)0x0;\\\\n  uVar10 = 0;\\\\n  uVar18 = 0;\\\\n  do {\\\\n    if (uVar18 == uVar10) {\\\\n      if (puVar21 == puVar1) {\\\\n        return;\\\\n      }\\\\n      while( true ) {\\\\n        uVar10 = *(ulonglong *)(*(longlong *)(lVar5 + 0x1a8) + 0x10 + (ulonglong)*puVar21 * 0x48);\\\\n        if (uVar10 != 0) break;\\\\n        puVar21 = puVar21 + 1;\\\\n        if (puVar21 == puVar1) {\\\\n          return;\\\\n        }\\\\n      }\\\\n      lVar9 = *(longlong *)(lVar5 + 0x1a8) + (ulonglong)*puVar21 * 0x48;\\\\n      lVar19 = *(longlong *)(lVar9 + 0x18);\\\\n      lVar9 = ~*(ulonglong *)(*(longlong *)(lVar9 + 0x38) + *(longlong *)(lVar4 + 0x110) * 8) * 0x30\\\\n      ;\\\\n      puVar13 = *(uint **)(lVar19 + 0x10 + lVar9);\\\\n      in_RCX = *(longlong **)(lVar19 + 0x28 + lVar9);\\\\n      puVar21 = puVar21 + 1;\\\\n      uVar18 = 1;\\\\n      uVar8 = 0;\\\\n      puVar14 = puVar13;\\\\n    }\\\\n    else {\\\\n      if (puVar14 == (uint *)0x0) {\\\\n        return;\\\\n      }\\\\n      uVar8 = uVar18 & 0xffffffff;\\\\n      puVar13 = puVar14 + uVar8 * 0xc;\\\\n      uVar18 = uVar18 + 1;\\\\n    }\\\\n    *(undefined4 *)((longlong)in_RCX + uVar8 * 4) = uVar2;\\\\n    if (((float)(*puVar13 & uVar6) <= fVar7) && ((float)(puVar13[2] & uVar6) <= fVar7)) {\\\\n      country_core::resources::placement_data::PlacementDataSsbo::position();\\\\n      country_core::resources::terrain_height::TerrainHeightsData::\\\\n      sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>();\\\\n      if (((float)puVar13[1] != extraout_XMM0_Da) ||\\\\n         (NAN((float)puVar13[1]) || NAN(extraout_XMM0_Da))) {\\\\n        fVar23 = extraout_XMM0_Da;\\\\n        if (extraout_XMM0_Da <= 0.0) {\\\\n          fVar23 = 0.0;\\\\n        }\\\\n        puVar13[1] = (uint)fVar23;\\\\n      }\\\\n    }\\\\n  } while( true );\\\\n}\\\\n\\\\n\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":450}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "get-function-count",
+        "title": "Get Function Count",
+        "description": "Get the total count of functions in the program (use this before calling get-functions to plan pagination)",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "type": "string",
+              "description": "Path in the Ghidra Project to the program to get functions from"
+            },
+            "filterDefaultNames": {
+              "default": true,
+              "type": "boolean",
+              "description": "Whether to filter out default Ghidra generated names like FUN_, DAT_, etc."
+            }
+          },
+          "required": [
+            "programPath"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "set-function-prototype",
+        "title": "Set Function Prototype",
+        "description": "Set or update a function prototype using C-style function signatures. Can create new functions or update existing ones.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "type": "string",
+              "description": "Path in the Ghidra Project to the program"
+            },
+            "signature": {
+              "type": "string",
+              "description": "C-style function signature (e.g., 'int main(int argc, char** argv)')"
+            },
+            "location": {
+              "type": "string",
+              "description": "Address or symbol name where the function is located"
+            },
+            "createIfNotExists": {
+              "default": true,
+              "type": "boolean",
+              "description": "Create function if it doesn't exist at the location"
+            }
+          },
+          "required": [
+            "programPath",
+            "location",
+            "signature"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get-decompilation",
+        "title": "Get Function Decompilation",
+        "description": "Get decompiled code for a function with line range support. Defaults to 50 lines to conserve context - start with small chunks (10-20 lines) then expand as needed using offset/limit. Updating variable data types and names can significantly improve decompilation quality. Use includeCallers/includeCallees to get caller/callee lists in one call (avoids separate tool invocations).",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "functionNameOrAddress": {
+              "type": "string",
+              "description": "Function name, address, or symbol to decompile (e.g. 'main', '0x00401000', or 'start'). For addresses pointing inside a function, the containing function will be decompiled."
+            },
+            "includeCallers": {
+              "default": false,
+              "type": "boolean",
+              "description": "Include list of functions that call this one (name, address, signature). Use for understanding function usage without bulk decompilation."
+            },
+            "programPath": {
+              "type": "string",
+              "description": "Path in the Ghidra Project to the program containing the function"
+            },
+            "offset": {
+              "default": 1,
+              "type": "integer",
+              "description": "Line number to start reading from (1-based). Defaults to 1."
+            },
+            "includeDisassembly": {
+              "default": false,
+              "type": "boolean",
+              "description": "Whether to include assembly listing alongside decompilation for sync"
+            },
+            "includeIncomingReferences": {
+              "default": false,
+              "type": "boolean",
+              "description": "Whether to include incoming cross references to this function on the function declaration line"
+            },
+            "limit": {
+              "default": 50,
+              "type": "integer",
+              "description": "Number of lines to return. Defaults to 50 lines to conserve context. Use smaller chunks (10-20 lines) for initial exploration, then expand as needed."
+            },
+            "includeReferenceContext": {
+              "default": false,
+              "type": "boolean",
+              "description": "Whether to include code context snippets from calling functions (requires includeIncomingReferences)"
+            },
+            "includeComments": {
+              "default": false,
+              "type": "boolean",
+              "description": "Whether to include comments in the decompilation output"
+            },
+            "includeCallees": {
+              "default": false,
+              "type": "boolean",
+              "description": "Include list of functions this one calls (name, address, signature). Use for understanding function dependencies without bulk decompilation."
+            },
+            "signatureOnly": {
+              "default": false,
+              "type": "boolean",
+              "description": "Return only signature/metadata without decompiled code. Saves output tokens."
+            }
+          },
+          "required": [
+            "programPath",
+            "functionNameOrAddress"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find-cross-references",
+        "title": "Find Cross References",
+        "description": "Find all references to or from a memory location, symbol, or function. Returns incoming and/or outgoing references with optional decompilation context.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "includeContext": {
+              "default": false,
+              "type": "boolean",
+              "description": "Include decompilation context snippets for code references"
+            },
+            "contextLines": {
+              "default": 2,
+              "type": "integer",
+              "description": "Number of lines before and after to include in context snippets"
+            },
+            "programPath": {
+              "type": "string",
+              "description": "Path in the Ghidra Project to the program to get references from"
+            },
+            "offset": {
+              "default": 0,
+              "type": "integer",
+              "description": "Starting offset for pagination (0-based)"
+            },
+            "includeFlow": {
+              "default": true,
+              "type": "boolean",
+              "description": "Include flow references (calls, jumps, branches)"
+            },
+            "limit": {
+              "default": 100,
+              "type": "integer",
+              "description": "Maximum number of references to return per direction"
+            },
+            "location": {
+              "type": "string",
+              "description": "Address or symbol name to get references for (e.g., '0x00400123', 'main', 'FUN_00401000')"
+            },
+            "includeData": {
+              "default": true,
+              "type": "boolean",
+              "description": "Include data references (reads, writes)"
+            },
+            "direction": {
+              "type": "string",
+              "default": "both",
+              "description": "Direction of references to retrieve: 'to' (incoming), 'from' (outgoing), or 'both' (default)",
+              "enum": [
+                "to",
+                "from",
+                "both"
+              ]
+            }
+          },
+          "required": [
+            "programPath",
+            "location"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get-data-type-by-string",
+        "title": "Get Data Type by String",
+        "description": "Get a data type by its string representation",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "type": "string",
+              "description": "Path in the Ghidra Project to the program"
+            },
+            "dataTypeString": {
+              "type": "string",
+              "description": "String representation of the data type (e.g., 'char**', 'int[10]')"
+            },
+            "archiveName": {
+              "default": "",
+              "type": "string",
+              "description": "Optional name of the data type archive to search in. If not provided, all archives will be searched."
+            }
+          },
+          "required": [
+            "programPath",
+            "dataTypeString"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "run-script",
+        "title": "Run Python Script",
+        "description": "Execute a Python script in the Ghidra PyGhidra runtime against a specific program. Requires Ghidra to be launched via PyGhidra (mcp-reva or pyghidra-gui). Returns captured stdout/stderr, duration, and timeout flag. Script failures appear in stderr with success=false; tool failures (bad args, PyGhidra unavailable) are MCP errors. Cancellation is cooperative: long-running scripts should periodically check monitor.isCancelled() so the timeout can fire on tight loops.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "type": "string",
+              "description": "Absolute path to an existing .py script to run."
+            },
+            "programPath": {
+              "type": "string",
+              "description": "Path to the program in the Ghidra Project"
+            },
+            "code": {
+              "type": "string",
+              "description": "Inline Python source. The script runs as a Ghidra script with currentProgram, FlatProgramAPI helpers, and monitor available. Wrap state changes in currentProgram.startTransaction(...) / endTransaction(...) yourself \u2014 the tool does not open a transaction. Provide exactly one of: code, scriptPath, scriptName."
+            },
+            "scriptName": {
+              "type": "string",
+              "description": "Name of a script (e.g., 'MyAnalysis.py') resolved across registered Ghidra script directories."
+            },
+            "timeoutSeconds": {
+              "default": 60,
+              "type": "integer",
+              "description": "Per-call timeout override in seconds. Defaults to the configured script timeout."
+            }
+          },
+          "required": [
+            "programPath"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list-scripts",
+        "title": "List Scripts",
+        "description": "List Python scripts visible to Ghidra across all registered script directories (user dir + system dirs + bundle dirs). Filterable by path or name; supports pagination.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "pathFilter": {
+              "default": "",
+              "type": "string",
+              "description": "Optional substring filter on script absolute path"
+            },
+            "startIndex": {
+              "default": 0,
+              "type": "integer",
+              "description": "Pagination start (0-indexed)"
+            },
+            "nameFilter": {
+              "default": "",
+              "type": "string",
+              "description": "Optional substring filter on script file name"
+            },
+            "maxCount": {
+              "default": 100,
+              "type": "integer",
+              "description": "Maximum entries to return"
+            }
+          },
+          "required": []
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read-script",
+        "title": "Read Script",
+        "description": "Read a script's source, returned with cat -n style line numbers so you can reference exact lines in edit-script. Supports chunked reads via offset/limit. Sets truncated=true if more lines remain.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "type": "string",
+              "description": "Absolute path to the script. Provide either scriptPath or scriptName."
+            },
+            "offset": {
+              "default": 1,
+              "type": "integer",
+              "description": "1-indexed starting line"
+            },
+            "limit": {
+              "default": 2000,
+              "type": "integer",
+              "description": "Maximum lines to return"
+            },
+            "scriptName": {
+              "type": "string",
+              "description": "Script file name resolved across registered script directories."
+            }
+          },
+          "required": []
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "write-script",
+        "title": "Write Script",
+        "description": "Create a new script or fully replace an existing one in a writeable script directory. System directories are read-only. Use edit-script for targeted changes instead of full rewrites.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "type": "string",
+              "description": "Absolute path; must resolve under a writeable script directory."
+            },
+            "code": {
+              "type": "string",
+              "description": "Script source to write."
+            },
+            "scriptName": {
+              "type": "string",
+              "description": "File name (e.g., 'MyAnalysis.py') \u2014 written to the default writeable scripts directory."
+            },
+            "overwrite": {
+              "default": false,
+              "type": "boolean",
+              "description": "Overwrite existing file. Default false: errors if file exists."
+            }
+          },
+          "required": [
+            "code"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "edit-script",
+        "title": "Edit Script",
+        "description": "Replace exact old_string with new_string in a script. Errors if old_string isn't found, or if it matches multiple locations and replace_all is false. Use this instead of write-script when iterating on an existing script.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "type": "string",
+              "description": "Absolute path to the script to edit (must be writeable)."
+            },
+            "old_string": {
+              "type": "string",
+              "description": "Exact text to find. Must occur exactly once unless replace_all is true; surround with enough context to make it unique."
+            },
+            "scriptName": {
+              "type": "string",
+              "description": "Script file name resolved under the default writeable scripts directory."
+            },
+            "replace_all": {
+              "default": false,
+              "type": "boolean",
+              "description": "Replace every occurrence. Default false: errors if old_string matches more than one location."
+            },
+            "new_string": {
+              "type": "string",
+              "description": "Replacement text. Must differ from old_string."
+            }
+          },
+          "required": [
+            "old_string",
+            "new_string"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

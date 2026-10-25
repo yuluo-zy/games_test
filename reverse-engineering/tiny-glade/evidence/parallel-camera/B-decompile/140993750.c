@@ -1,0 +1,64 @@
+
+void __cdecl country_core::systems::camera_rig::free::impl$1::rotate_yaw_pitch(void)
+
+{
+  undefined8 *puVar1;
+  float *pfVar2;
+  longlong lVar3;
+  longlong in_RCX;
+  longlong in_RDX;
+  longlong lVar4;
+  undefined8 *puVar5;
+  float fVar6;
+  float in_XMM1_Da;
+  float in_XMM2_Da;
+  float fVar7;
+  undefined **local_98;
+  code *local_90;
+  undefined *local_88;
+  undefined8 local_80;
+  undefined *local_78;
+  undefined8 local_70;
+  undefined8 **local_68;
+  undefined8 local_60;
+  undefined8 local_58;
+  
+  lVar4 = *(longlong *)(in_RCX + 0x10) << 4;
+  puVar5 = *(undefined8 **)(in_RCX + 8);
+  do {
+    if (lVar4 == 0) {
+      local_88 = &anon_f854cc98b5e1efe54f6ab98d53b9f85b_13_llvm_5637972437638668905;
+      local_80 = 0x23;
+      local_98 = &local_88;
+      local_90 = anyhow::context::impl$3::fmt<ref_<str_>,alloc::ffi::c_str::FromVecWithNulError>;
+      local_78 = &anon_f854cc98b5e1efe54f6ab98d53b9f85b_10_llvm_5637972437638668905;
+      local_70 = 2;
+      local_58 = 0;
+      local_68 = &local_98;
+      local_60 = 1;
+                    /* WARNING: Subroutine does not return */
+      core::panicking::panic_fmt();
+    }
+    puVar1 = puVar5 + 2;
+    pfVar2 = (float *)(**(code **)(puVar5[1] + 0x40))(*puVar5);
+    lVar3 = (**(code **)(in_RDX + 0x18))(pfVar2);
+    lVar4 = lVar4 + -0x10;
+    puVar5 = puVar1;
+  } while (((pfVar2 == (float *)0x0) || (lVar3 != 0x718e4fd258330fe5)) ||
+          (in_RDX != 0x7f9f9b0da2744bb));
+  fVar7 = in_XMM2_Da * __real_3f000000;
+  fVar6 = fmodf(in_XMM1_Da * __real_3f000000 + *pfVar2,__real_44340000);
+  *pfVar2 = fVar6;
+  fVar7 = fVar7 + pfVar2[1];
+  fVar6 = __real_c2b40000;
+  if (__real_c2b40000 <= fVar7) {
+    fVar6 = fVar7;
+  }
+  fVar7 = __real_42b40000;
+  if (fVar6 <= __real_42b40000) {
+    fVar7 = fVar6;
+  }
+  pfVar2[1] = fVar7;
+  return;
+}
+

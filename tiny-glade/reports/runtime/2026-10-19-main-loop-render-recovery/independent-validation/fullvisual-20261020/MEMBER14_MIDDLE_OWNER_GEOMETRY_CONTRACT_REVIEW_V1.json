@@ -1,0 +1,114 @@
+{
+  "reviewer": "07-independent-validation",
+  "created_utc": "2026-10-19T18:56:09.260856+00:00",
+  "verdict": "passed_scoped_owner_and_constructor_design_with_host_integration_gates",
+  "inputs": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bd3d82a9ddc435cfb2/deco-trackers-20261020/MEMBER14_MIDDLE_CHAIN_MANIFEST_B_V1.json",
+      "sha256": "826443f2ddb57e39803850b520b9470ae8f765e8778172250e9029f780e4da87"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bd3d82a9ddc435cfb2/deco-trackers-20261020/MEMBER14_MIDDLE_CHAIN_CONTRACT_B_V1.md",
+      "sha256": "1250e7950ca77dc32aa0bff3ec8129bbff315899bed3a1290285ff0055737d9b"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bd3d82a9ddc435cfb2/deco-trackers-20261020/MEMBER14_GEOMETRY_ADDENDUM_MANIFEST_B_V1.json",
+      "sha256": "b77d3ffc5f1722b3081dfeb733e21843292e84972515cd48d2fe4cc4d46e602e"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-bd3d82a9ddc435cfb2/deco-trackers-20261020/MEMBER14_GEOMETRY_ADDENDUM_B_V1.md",
+      "sha256": "af9b7624c66946c6a3d5782462c23fb511c6867b43dce0b0e2c3c843dfe8c5c8"
+    }
+  ],
+  "frozen_checks": {
+    "base_artifact_hashes_matched": 8,
+    "current_source_hashes_matched": 13,
+    "addendum_artifact_hashes_matched": 10,
+    "publisher_original": "18515 continuous bytes /3749 instructions; source pack ceb7b7d0415bc62ea583a0a5f196f4eb8ea4664186fdc147601eabde2287ae11",
+    "draw_originals": [
+      {
+        "va": "0x14098aaf0",
+        "bytes": 1961,
+        "instructions": 373
+      },
+      {
+        "va": "0x14098b2a0",
+        "bytes": 3257,
+        "instructions": 629
+      }
+    ],
+    "additional_complete_native_PE_comparisons": [
+      {
+        "va": "0x14089d560",
+        "bytes": 63
+      },
+      {
+        "va": "0x1408587c0",
+        "bytes": 53
+      },
+      {
+        "va": "0x140858750",
+        "bytes": 36
+      },
+      {
+        "va": "0x140858790",
+        "bytes": 37
+      },
+      {
+        "va": "0x1412ae660",
+        "bytes": 3377
+      },
+      {
+        "va": "0x1412af3a0",
+        "bytes": 2035
+      },
+      {
+        "va": "0x1412681c0",
+        "bytes": 860
+      }
+    ],
+    "constructor_full_ranges_reused_from_prior_review": "14200bcd0/2836 +14200c7f0/4668 previously whole-instruction PE checked in 9a33d8bb; this review additionally reads parameter/loop/transform/payload PCs against those actual packs",
+    "constant_windows_direct_PE": 59,
+    "identity": "B RNE f507a6ce /matching PDB2d9686b8; no C parity claim"
+  },
+  "mandatory_corrections_to_old_contract": [
+    "Tag1 Chimney end delta is -0.4000000059604645 (142a7fcb0 cdccccbe), applied at1412aecc2 to Params+10; the V1 +1.6 statement is rejected and superseded by af9b7624. Do not preserve it in source.",
+    "Door words[6] is extra_vertical; caller constant0.56 is depth. Horizontal n_x has max3, n_y min2, depth steps native clamp2..5; two push PCs are first/rest pair loop unrolling, not two fabricated geometry classes.",
+    "Original failed byte is accumulated and forwarded but no consumer read/output has been established. Remove any inference that capacity partial automatically emits UI, preserves old data or schedules retry. Native with_removed normalizes after per-brick partial writes."
+  ],
+  "accepted_owner_and_lifecycle": [
+    "Original publisher creates four Brick allocations using same storage waste before assembly. Only third and fourth are proven Chimney/Door: original value weak+158/handle+160 and weak+168/handle+170; bucket key shifts handles+168/+178. First two remain unnamed and the three Nani allocations remain separate.",
+    "Current safe adaptation may keep base/chimney/door independently owned handles in the unique WallEntities->Entity InstancedWall, all belonging to same AssetSsboLibrary BrickTransformSsbo storage/waste. This is bounded current architecture, not a claim that original whole allocation layout had only three lanes.",
+    "Same-writer clear then push preserves successful partial prefix on NoFreeChunks, keeps failure accumulation and RNG/iteration order, then explicitly consumes/normalizes tracker removals. Base atomic replace_all behavior must remain separate. Device upload dirty retry is distinct from capacity failure.",
+    "PostUpdate actual geometry sync takes real waste and flushes same dirty sparse storage even without new base pending. Current W21/W27 read same canonical SSBO and true active ranges/count/cull; source CPU dirty/active state alone is not a GPU receipt.",
+    "Both original draw functions only exclude/extract the single highlighted InstancedWall +20 allocation via to_ranges/hide/global/show. Independent decoration lanes stay normal; no evidence supports adding them to base highlight.",
+    "Actual wall entity despawn/drop releases all owned lane handles to same waste; true take_out_waste/flush publishes deletion. Tracker logs are not a second allocation registry."
+  ],
+  "accepted_constructor_boundary": [
+    "Canonical BrickTransformSsbo96B, actual Affine3Packed and actual source encoding table are reused. No second raw96 payload/typedbuffer or GPU owner. No global cap, fake terrain zero, per-frame full registry clone or new RNG stream.",
+    "Door y-split mapping follows t*(end3-extra)+(1-t)*end2; row steps min(row+1,k); each step consumes a fresh real random_splits stream, x mapping t*half-(1-t)*half, XZ offset/axis-perpendicular placement, original abs scales, row-only seed outer low32+2*row, directed wall_distance[a,b] and source material/default flags. Preserve f32 operator grouping, NaN behavior and allocation failure order when translating to source.",
+    "Chimney terrain endpoints use actual center +/- (axis*1.3)*0.5 +perp*0.5 in original order and canonical terrain sampler, bottom starts end-height then native min/NaN handling; tag1 -0.4 and other-tag ordered >.1 guards stay exact. Same wall/source IDs remain distinct.",
+    "Actual Chimney Added/newtag0 and Changed transitions generate native19/20; real Removed uses actual DerivedDecoratorInfo subtype tag0x14 for21. Changed must not run Removed callback; Door removal has no audio. A real missing PublicWall may explicitly use no-current/no-op branch; a present wall missing owner/handle may not."
+  ],
+  "required_before_full_host_source_or_registration": [
+    "This review approves an evidence-bound design, not source claims or production mutation. Root must explicitly delegate existing owned source families or acquire normal free claims. Do not modify foreign Storage/PublicWalls or existing locks based on work-directory names.",
+    "Freeze concrete initialization/API companion: current InstancedWall::new starts pending base data with allocation=None; Commands insertion and allocation currently complete later in PostUpdate. Update member14 needs real successful wall publication/Commands visibility/actual typed storage and all required lane owners before consuming logs. No lazy empty wall/handle creation in consumer, no conflating missing entity/component/handle with PublicWalls miss, and no losing dirty logs on an adapter failure.",
+    "Complete actual seven/four-parameter host through real PublicWalls, WallEntities/Query, terrain, canonical DerivedInfo/subtype, actual sound resources and true Sparse writer closures. Source numeric constructors can be a bounded next candidate once authorized; they do not make protocol adapter callbacks a complete registered original system.",
+    "Coordinate retained base updates, same-frame wall creation/deletion, reload/storage replacement, drop/waste/flush and actual phase dependencies. No inferred full schedule registration from member label alone.",
+    "Current raster callback checks WallBrickUploadStatus.gpu_ready; W21/W27 compute currently do not. Freeze root policy or explicit remaining limitation for device upload failure; do not claim whole-frame fail-stop or safe GPU consistency from raster status alone."
+  ],
+  "shared_math_execution_observed": {
+    "actor": "root, not reviewer",
+    "scope": "exact canonical three math-helper source slice only",
+    "receipt_sha256": "a486f4b18a85f2adec72b149e9f972dfdb85a174d6c3083b8fec68a7c08e7079",
+    "log_sha256": "01e31f6c8946602b448cc9355507c212848e304b12c3136a4742fcf6e20241f9",
+    "binary": "/private/tmp/tg-cloth-utils-source-v1-tests",
+    "binary_sha256": "ff31a28ff9bdb9fd715c95595ab6fa1c0084006266d3895edfc4d2b01864b178",
+    "outcome": "exit0;7 passed/0 failed/0 ignored; actual log and retained binary hashes independently re-read",
+    "not_proven": "whole utils/core, assembly hosts, app, native runtime/GPU"
+  },
+  "limits": [
+    "No geometry/owner source candidate is approved by this report because none was supplied; constructor implementation, actual host initialization/API and registration must be reviewed at exact future source hashes.",
+    "Reviewer ran no compiler/test/GPU, changed no production/claims/Git, and makes no performance or full-game/WSI/pixel claim."
+  ]
+}

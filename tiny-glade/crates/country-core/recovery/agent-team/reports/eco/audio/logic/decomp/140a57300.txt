@@ -1,0 +1,24 @@
+// start_if_not_playing @ 0x140a57300
+
+// WARNING: Removing unreachable block (ram,0x000140a573b7)
+
+void __cdecl country_core::resources::audio_resources::AudioInstance::start_if_not_playing(void)
+
+{
+  byte *in_RCX;
+  undefined8 local_58;
+  undefined1 uStack_50;
+  
+  if ((*in_RCX & 1) != 0) {
+    libfmod::EventInstance::get_playback_state();
+    if (local_58 != -0x7ffffffffffffffc) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    if ((0xbU >> (uStack_50 & 0x1f) & 1) == 0) {
+      libfmod::EventInstance::start();
+    }
+  }
+  return;
+}
+

@@ -1,0 +1,15 @@
+{
+  "purpose": "Root-only required dependency when integrating the recovered clutter producer/helper. No production/Cargo mutation performed by this agent.",
+  "production_path": "tiny-glade/crates/systems/decorator/Cargo.toml",
+  "before_sha256": "085aa16b7f530a597cb250e961be0dd02ef5dc1d85933816f70f394e5163b9e2",
+  "required_one_line_change": {
+    "before": "country-core.workspace = true",
+    "after": "country-core = { workspace = true, features = [\"native-physics\"] }"
+  },
+  "patch": "required-root-cargo-dependency.patch",
+  "patch_sha256": "ef34e66613d3445bf67d2ee57e6ebf79eb293c421de701938766df7336c794ec",
+  "reason": "The actual producer uses canonical RaycastMeshData::new_cuboid_at, which exists only with country-core/native-physics. Its local business dependency must not rely on final-App incidental feature unification.",
+  "dependency_identity": "Reuse existing locked Rapier/Parry dependency and feature; no new crate/version or alternate geometry.",
+  "acceptance": "After root applies this dependency and companion source, standalone system-decorator requires actual native physics; no None/default-success no-feature adapter. Missing-source/source typecheck and runtime remain unrun.",
+  "superseded_document_boundary": "DESIGN_V1 standalone-default-no-native noncompile caveat applies before this root delta only; it is obsolete after this explicit feature change. Frozen producer v2 and its source hashes are unchanged."
+}

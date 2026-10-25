@@ -1,0 +1,74 @@
+
+void __cdecl
+country_core::systems::save::save_game::impl$2::
+to_json_string<country_core::resources::time_of_day::TimeOfDay>(void)
+
+{
+  longlong *plVar1;
+  undefined1 *extraout_RAX;
+  undefined1 *extraout_RAX_00;
+  undefined1 *extraout_RAX_01;
+  undefined1 *extraout_RAX_02;
+  longlong *in_RCX;
+  longlong lVar2;
+  undefined1 *puVar3;
+  longlong *local_58;
+  undefined8 **local_50;
+  char local_48;
+  longlong local_40;
+  undefined1 *local_38;
+  longlong local_30;
+  undefined8 local_28;
+  
+  local_28 = 0xfffffffffffffffe;
+  std::alloc::__default_lib_allocator::__rust_alloc();
+  if (extraout_RAX == (undefined1 *)0x0) {
+                    // WARNING: Subroutine does not return
+    alloc::raw_vec::handle_error();
+  }
+  local_40 = 0x80;
+  local_58 = &local_40;
+  *extraout_RAX = 0x7b;
+  local_30 = 1;
+  local_50 = &local_58;
+  local_48 = '\x01';
+  local_38 = extraout_RAX;
+  serde::ser::SerializeMap::
+  serialize_entry<enum2_<serde_json::ser::Compound<ref_mut_<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::CompactFormatter>_>,str_,f32>
+            ();
+  puVar3 = extraout_RAX_00;
+  if (((extraout_RAX_00 == (undefined1 *)0x0) &&
+      (serde::ser::SerializeMap::
+       serialize_entry<enum2_<serde_json::ser::Compound<ref_mut_<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::CompactFormatter>_>,str_,f32>
+                 (), puVar3 = extraout_RAX_01, extraout_RAX_01 == (undefined1 *)0x0)) &&
+     (serde::ser::SerializeMap::
+      serialize_entry<enum2_<serde_json::ser::Compound<ref_mut_<alloc::vec::Vec<u8,alloc::alloc::Global>_>,serde_json::ser::CompactFormatter>_>,str_,f32>
+                (), puVar3 = extraout_RAX_02, extraout_RAX_02 == (undefined1 *)0x0)) {
+    if (local_48 != '\0') {
+      plVar1 = *local_50;
+      lVar2 = plVar1[2];
+      if (*plVar1 == lVar2) {
+        alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+        lVar2 = plVar1[2];
+      }
+      *(undefined1 *)(plVar1[1] + lVar2) = 0x7d;
+      plVar1[2] = lVar2 + 1;
+    }
+    if (!SBORROW8(0,local_40)) {
+      *in_RCX = local_40;
+      in_RCX[1] = (longlong)local_38;
+      in_RCX[2] = local_30;
+      return;
+    }
+  }
+  else {
+    local_38 = puVar3;
+    if (local_40 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+  }
+  in_RCX[1] = (longlong)local_38;
+  *in_RCX = -0x8000000000000000;
+  return;
+}
+

@@ -1,0 +1,145 @@
+--- /tmp/h_d_gap2/src/lib.rs	2026-10-13 19:37:55.208000000 +0800
++++ /tmp/h_d_cb_a/src/lib.rs	2026-10-13 20:08:22.859000000 +0800
+@@ -86,6 +86,7 @@
+     #[path = "@SRC@/asset_libraries/configwatch.rs"]
+     pub mod configwatch;
+ }
++#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+ pub struct Gap;
+ pub mod reused {
+     include!("reused_watch.rs");
+@@ -108,7 +109,24 @@
+         pub mod transform;
+     }
+ }
++pub mod components {
++    #[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
++    pub struct SemiTransparent;
++}
+ pub mod resources {
++    #[path = "@SRC@/resources/color_id.rs"]
++    pub mod color_id;
++    #[path = "@SRC@/resources/cursor_terrain_raycast.rs"]
++    pub mod cursor_terrain_raycast;
++    pub mod ivy { pub mod ivy_storage {
++        use std::collections::{HashMap, VecDeque};
++        #[derive(Default)] pub struct Ivy { pub points: VecDeque<u8> }
++        #[derive(bevy_ecs::resource::Resource, Default)] pub struct IvyStorage { pub ivies: HashMap<u64, Ivy> }
++    } }
++    pub mod walls {
++        #[derive(bevy_ecs::resource::Resource, Clone, Copy, Debug, Default)]
++        pub struct WallHighlight { pub ty: u8 }
++    }
+     pub mod session { #[derive(Clone, Copy)] pub struct GladeType(pub bool); impl GladeType { pub fn is_winter(&self) -> bool { self.0 } } }
+     #[path = "@SRC@/resources/texture_presets.rs"]
+     pub mod texture_presets;
+@@ -130,6 +148,8 @@
+ 
+ pub mod systems {
+     pub mod render_loop {
++        #[path = "@SRC@/systems/render_loop/indirect_params.rs"]
++        pub mod indirect_params;
+         pub mod resources {
+             #[path = "@SRC@/systems/render_loop/resources/critters.rs"]
+             pub mod critters;
+@@ -169,6 +189,47 @@
+             pub mod d_main_support;
+             #[path = "@SRC@/systems/render_loop/draw_passes/draw_lists.rs"]
+             pub mod draw_lists;
++            #[path = "@SRC@/systems/render_loop/draw_passes/draw_callbacks_a.rs"]
++            pub mod draw_callbacks_a;
++            pub mod draw_callbacks_b {
++                use crate::render::pass_builder::draw_builder::DrawBuilder;
++                use crate::render::pass_builder::draw_list::EntityDrawParams;
++                use bevy_ecs::world::World;
++                pub fn duck_cb(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn env1(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn env12(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn env13(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn env15(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn env18(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn env21(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn env24(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn env25(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn env26(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn env29(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn env31(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn env34(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn env36(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn env38(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn env43(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn env44(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn env49(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn env5(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn env51(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn env54(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn env60(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn env7(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn env9(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn firefly_cb(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn firefly_glow_cb(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn leaf_particle_cb(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn roof_nani_cb(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn roof_spire_cb(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn roof_support_beam_cb(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn tree_canopy_cb(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn tree_trunk_cb(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn water_planes_cb(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++                pub fn wren_cb(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
++            }
+             #[cfg(test)]
+             #[path = "@SRC@/systems/render_loop/draw_passes/d_main_tests.rs"]
+             mod d_main_tests;
+@@ -180,8 +241,7 @@
+                 pub mod ssbo_tags;
+                 #[path = "@SRC@/systems/render_loop/draw_passes/draw_shaders/common_includes.rs"]
+                 pub mod common_includes;
+-                #[path = "@SRC@/systems/render_loop/draw_passes/draw_shaders/common_includes_compute.rs"]
+-                pub mod common_includes_compute;
++
+                 #[path = "@SRC@/systems/render_loop/draw_passes/draw_shaders/grass_shader.rs"]
+                 pub mod grass_shader;
+                 #[path = "@SRC@/systems/render_loop/draw_passes/draw_shaders/floor_shader.rs"]
+@@ -196,7 +256,7 @@
+                 pub mod water_planes_draw;
+                 #[path = "@SRC@/systems/render_loop/draw_passes/draw_shaders/stairs_draw.rs"]
+                 pub mod stairs_draw;
+-                #[path = "@SRC@/systems/render_loop/draw_passes/draw_shaders/draw_bricks.rs"]
++                #[path = "/tmp/h_d_cb_a/src/draw_bricks_patched.rs"]
+                 pub mod draw_bricks;
+                 #[path = "@SRC@/systems/render_loop/draw_passes/draw_shaders/instanced_ivy.rs"]
+                 pub mod instanced_ivy;
+--- /tmp/h_d_gap2/src/render/mod.rs	2026-10-13 19:39:14.704000000 +0800
++++ /tmp/h_d_cb_a/src/render/mod.rs	2026-10-13 20:04:22.951000000 +0800
+@@ -65,6 +65,22 @@
+                 (0u8..27).map(|i| unsafe { core::mem::transmute::<u8, GpuWorldSubsetKind>(i) })
+             }
+         }
++        #[derive(bevy_ecs::resource::Resource, Default)]
++        pub struct GpuWorld;
++    }
++    pub mod draw_ext {
++        use super::gpu_world::*;
++        use crate::asset_libraries::ssbo_library::AssetSsboLibrary;
++        use crate::render::pass_builder::draw_builder::DrawBuilder;
++        use crate::rhapsody_types::RenderGraph;
++        thread_local! { pub static NANI_CALLS: std::cell::RefCell<Vec<GpuWorldSubsetKind>> = std::cell::RefCell::new(Vec::new()); }
++        pub trait NaniDrawExt { fn nani_draw(self, kind: GpuWorldSubsetKind, gw: &GpuWorld, lib: &AssetSsboLibrary, rg: &mut RenderGraph); }
++        impl NaniDrawExt for DrawBuilder<'_> {
++            fn nani_draw(self, kind: GpuWorldSubsetKind, _gw: &GpuWorld, _lib: &AssetSsboLibrary, _rg: &mut RenderGraph) {
++                NANI_CALLS.with(|c| c.borrow_mut().push(kind));
++                self.draw();
++            }
++        }
+     }
+     #[path = "@SRC@/render/nani/mesh_atlas.rs"]
+     pub mod mesh_atlas;
+#!/bin/bash
+# 复制并修补 draw_bricks.rs（其 tests 缺 DrawIndexedIndirectBuffer 导入；非本范围文件），然后跑测试台
+set -e
+R=/home/ubuntu/test/games_test/reverse-engineering/tiny-glade/reconstruction/country-core/src
+cp $R/systems/render_loop/draw_passes/draw_shaders/draw_bricks.rs /tmp/h_d_cb_a/src/draw_bricks_patched.rs
+grep -q "indirect_params::DrawIndexedIndirectBuffer;" /tmp/h_d_cb_a/src/draw_bricks_patched.rs || sed -i '0,/^mod tests {/s//mod tests {\n    use crate::systems::render_loop::indirect_params::DrawIndexedIndirectBuffer;/' /tmp/h_d_cb_a/src/draw_bricks_patched.rs
+cd /tmp/h_d_cb_a
+export PATH=$HOME/.cargo/bin:$PATH CARGO_PROFILE_DEV_DEBUG=0 CARGO_INCREMENTAL=0
+L0H_REAL=$R L0H_WORK=/tmp/w_d_cb_a CARGO_TARGET_DIR=/tmp/l0h-target ./run.sh "$@"

@@ -1,0 +1,16 @@
+141724025: 488d8b00070000  lea rcx, [rbx + 0x700]
+14172402c: 488b9380000000  mov rdx, qword ptr [rbx + 0x80]
+141724033: e8c8dc0700  call 0x1417a1d00
+141724038: 488b9300070000  mov rdx, qword ptr [rbx + 0x700]
+14172403f: 488b8b08070000  mov rcx, qword ptr [rbx + 0x708]
+141724046: 4889d0  mov rax, rdx
+141724049: 48f7d8  neg rax
+14172404c: 0f80181a0000  jo 0x141725a6a
+141724052: 488993b8000000  mov qword ptr [rbx + 0xb8], rdx
+141724059: 4c8bb310070000  mov r14, qword ptr [rbx + 0x710]
+141724060: 48898bd0000000  mov qword ptr [rbx + 0xd0], rcx
+141724067: 48898b00070000  mov qword ptr [rbx + 0x700], rcx
+14172406e: 4c89b308070000  mov qword ptr [rbx + 0x708], r14
+141724075: 488d8b00070000  lea rcx, [rbx + 0x700]
+14172407c: e81f71d3ff  call 0x14145b1a0
+141724081: 4889c6  mov rsi, rax

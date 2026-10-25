@@ -1,0 +1,263 @@
+--- a/crates/country-core/src/render/pass_builder/compute_pass_builder.rs
++++ b/crates/country-core/src/render/pass_builder/compute_pass_builder.rs
+@@ -203,6 +203,8 @@
+     pub inactive_texture_bindings: Vec<u8>,
+     /// Host content intent; native access codes and synchronization stay intact.
+     pub preserving_buffers: Vec<u32>,
++    /// Image binding indices whose writes retain previously produced texels.
++    pub preserving_texture_bindings: Vec<u8>,
+     pub external_bindings: Vec<ExternalBinding>,
+     pub uniform_binder: Option<UniformBinder>,
+     pub push_constants: Vec<u8>,
+@@ -389,6 +391,7 @@
+     pub(crate) access_ranges: Vec<AccessRange>,
+     pub(crate) inactive_texture_bindings: Vec<u8>,
+     pub(crate) preserving_buffers: Vec<u32>,
++    pub(crate) preserving_texture_bindings: Vec<u8>,
+     /// `+0x30`：外部绑定表（0x48 B/项）。
+     pub(crate) external_bindings: Vec<ExternalBinding>,
+     /// `+0x60`：`PassBuilder`。
+@@ -472,6 +475,7 @@
+             access_ranges: Vec::new(),
+             inactive_texture_bindings: Vec::new(),
+             preserving_buffers: Vec::new(),
++            preserving_texture_bindings: Vec::new(),
+             external_bindings: Vec::new(),
+             builder: RecordingPassBuilder {
+                 name,
+@@ -704,6 +708,22 @@
+             "preserving contents requires a declared buffer write");
+         if !self.preserving_buffers.contains(&resource) {
+             self.preserving_buffers.push(resource);
++        }
++        self
++    }
++
++    /// Preserve the actual previous texture contents for a confirmed partial
++    /// image write. Uses the exact bound view, never every alias of its owner.
++    pub fn preserve_storage_texture_contents(mut self, hash: u64) -> Self {
++        let Some(binding) = self.resolve(hash) else { return self; };
++        let range = self.access_ranges.iter().rev()
++            .find(|range| range.resource_index == binding)
++            .expect("preserving texture contents requires a declared binding");
++        assert!(matches!(self.bindings.get(range.access_index as usize),
++            Some(PassBinding::ImageView { write: true, .. })),
++            "preserving texture contents requires a writing image binding");
++        if !self.preserving_texture_bindings.contains(&range.access_index) {
++            self.preserving_texture_bindings.push(range.access_index);
+         }
+         self
+     }
+@@ -809,6 +829,7 @@
+             access_ranges: self.access_ranges,
+             inactive_texture_bindings: self.inactive_texture_bindings,
+             preserving_buffers: self.preserving_buffers,
++            preserving_texture_bindings: self.preserving_texture_bindings,
+             external_bindings: self.external_bindings,
+             uniform_binder: self.uniform_binder,
+             push_constants: self.push_constants,
+--- a/crates/tiny-glade/src/render_host.rs
++++ b/crates/tiny-glade/src/render_host.rs
+@@ -2199,6 +2199,7 @@
+             access_ranges,
+             inactive_texture_bindings,
+             preserving_buffers,
++            preserving_texture_bindings,
+             external_bindings,
+             uniform_binder,
+             push_constants,
+@@ -2382,9 +2383,11 @@
+                 }
+             });
+             let mut contents_unused = false;
++            let mut preserves_texture = false;
+             let range = if let Some((index, view)) = view {
+                 used_image_views[index] = true;
+                 contents_unused = inactive_texture_bindings.contains(&(index as u8));
++                preserves_texture = preserving_texture_bindings.contains(&(index as u8));
+                 let resource = graph.resource_handle(access.resource)?;
+                 compute_view_range(
+                     graph.declaration().resources[resource.raw() as usize].descriptor,
+@@ -2393,7 +2396,7 @@
+             } else {
+                 rhapsody::rg::resource::AccessRange::Whole
+             };
+-            declared_accesses.push((*access, range, contents_unused));
++            declared_accesses.push((*access, range, contents_unused, preserves_texture));
+         }
+         if bindings.iter().enumerate().any(|(index, binding)| {
+             matches!(binding, CorePassBinding::ImageView { .. }) && !used_image_views[index]
+@@ -2404,11 +2407,11 @@
+         }
+         let mut declared = graph.add_pass(name);
+         declared.on_queue(rhapsody::device::QueueClass::Compute);
+-        for (a, range, contents_unused) in &declared_accesses {
++        for (a, range, contents_unused, preserves_texture) in &declared_accesses {
+             let resource = declared.resource_handle(a.resource)?;
+             if *contents_unused && !rhapsody::raw::access_table::is_write(a.access) {
+                 declared.add_inactive_resource_read_range(resource, a.access, a.group, *range)?;
+-            } else if preserving_buffers.contains(&a.resource)
++            } else if (*preserves_texture || preserving_buffers.contains(&a.resource))
+                 && rhapsody::raw::access_table::is_write(a.access)
+             {
+                 declared.add_preserving_resource_access_range(resource, a.access, a.group, *range)?;
+--- a/crates/tiny-glade/src/compute_frame.rs
++++ b/crates/tiny-glade/src/compute_frame.rs
+@@ -201,6 +201,7 @@
+             access_ranges: Vec::new(),
+             inactive_texture_bindings: Vec::new(),
+             preserving_buffers: Vec::new(),
++            preserving_texture_bindings: Vec::new(),
+             external_bindings: Vec::new(),
+             uniform_binder: None,
+             push_constants: Vec::new(),
+--- a/crates/tiny-glade/tests/render_host.rs
++++ b/crates/tiny-glade/tests/render_host.rs
+@@ -563,6 +563,7 @@
+                 },
+                 inactive_texture_bindings: Vec::new(),
+                 preserving_buffers: Vec::new(),
++                preserving_texture_bindings: Vec::new(),
+                 external_bindings: if external {
+                     vec![ExternalBinding {
+                         binding: 0,
+@@ -1341,6 +1342,7 @@
+                 access_ranges: vec![],
+                 inactive_texture_bindings: Vec::new(),
+                 preserving_buffers: Vec::new(),
++                preserving_texture_bindings: Vec::new(),
+                 external_bindings: vec![
+                     ExternalBinding {
+                         binding: 0,
+@@ -1691,6 +1693,7 @@
+                         ],
+                         inactive_texture_bindings: vec![if inactive_first { 0 } else { 2 }],
+                         preserving_buffers: vec![],
++                        preserving_texture_bindings: Vec::new(),
+                         external_bindings: vec![],
+                         uniform_binder: None,
+                         push_constants: vec![],
+--- a/crates/country-core/src/systems/render_loop/compute_passes/compute_water.rs
++++ b/crates/country-core/src/systems/render_loop/compute_passes/compute_water.rs
+@@ -191,7 +191,26 @@
+     staging.changed_tick = world_tick;
+     staging.dirty = false;
+     staging.staging.fill(0);
+-
++    declare_water_blur(env)
++}
++
++/// Native mask consumer on the actual source-build ECS owner. Pending reads do
++/// not mark it changed; B140a1272e..47 changes the row then consumes +29b/bitmap
++/// before creating any texture or shader pass.
++pub fn water_rasterize_live(
++    env: &mut PassEnv<'_>,
++    raster: &mut bevy_ecs::change_detection::Mut<'_, crate::resources::world_raster_defs::WaterRaster>,
++    world_tick: u32,
++) -> Option<u32> {
++    use bevy_ecs::change_detection::DetectChangesMut;
++    if !raster.bypass_change_detection().reupload_pending() { return None; }
++    raster.set_changed();
++    raster.bypass_change_detection().consume_reupload();
++    for pass in declare_water_blur(env) { env.record(pass); }
++    Some(world_tick)
++}
++
++fn declare_water_blur(env: &mut PassEnv<'_>) -> Vec<RecordedComputePass> {
+     let temp = env.create_texture(
+         "water blur temp",
+         TextureDesc::new_2d(
+@@ -216,6 +235,12 @@
+         pass.bind_texture(H_WATER_MASK, &PRESET_WATER_MASK, ACCESS_READ)
+             .bind_texture(H_OUT_WATER_MASK, &temp, ACCESS_WRITE)
+     };
++    // Original SPV: vertical always samples source.g. Step3 writes temp.b
++    // while retaining step1's temp.g for step4; preset writes also retain red.
++    // The first temp write has no live old channels and is not preserving.
++    let pass = if step.from_temp || step.output_channel == 2 {
++        pass.preserve_storage_texture_contents(H_OUT_WATER_MASK)
++    } else { pass };
+     pass.uniform(H_SIGMA, step.sigma)
+         .uniform(H_OUTPUT_CHANNEL, step.output_channel)
+         .dispatch_2d(WATER_MASK_GRID as u32, WATER_MASK_GRID as u32)
+--- a/crates/country-core/src/systems/render_loop/compute_passes/compute_garden.rs
++++ b/crates/country-core/src/systems/render_loop/compute_passes/compute_garden.rs
+@@ -134,6 +134,11 @@
+         pass.bind_texture(HASH_SRC, &temp, TEX_READ)
+             .bind_texture(HASH_DST, &mask, TEX_WRITE)
+     };
++    // Original image RMW keeps the uploaded red and other preset channels.
++    // The temporary's first write has no live old channels.
++    let pass = if temp_is_dst { pass } else {
++        pass.preserve_storage_texture_contents(HASH_DST)
++    };
+     let recorded = pass
+         .uniform(KEY_SIGMA, BLUR_SIGMA)
+         .uniform(KEY_OUTPUT_CHANNEL, 1i32)
+@@ -148,11 +153,30 @@
+         return None;
+     }
+     raster.0.consume_mask_dirty();
++    declare_garden_blur(env);
++    Some(world_change_tick)
++}
++
++/// Real ECS mask and tick adapter; no cast to a different compiler's layout.
++/// B140a22201..22d marks the row and consumes +29b/bitmap before pass creation.
++pub fn garden_rasterize_live(
++    env: &mut PassEnv<'_>,
++    raster: &mut bevy_ecs::change_detection::Mut<'_, crate::resources::world_raster_defs::GardenRaster>,
++    world_change_tick: u32,
++) -> Option<u32> {
++    use bevy_ecs::change_detection::DetectChangesMut;
++    if !raster.bypass_change_detection().reupload_pending() { return None; }
++    raster.set_changed();
++    raster.bypass_change_detection().consume_reupload();
++    declare_garden_blur(env);
++    Some(world_change_tick)
++}
++
++fn declare_garden_blur(env: &mut PassEnv<'_>) {
+     let desc = TextureDesc::new_2d([MASK_GRID, MASK_GRID], TEMP_FORMAT).mip_levels(1);
+     let temp_tex = env.create_texture(TEMP_NAME, desc);
+     blur_pass(env, true, true, &temp_tex);
+     blur_pass(env, false, false, &temp_tex);
+-    Some(world_change_tick)
+ }
+ 
+ // ------------------------------------------------------------------ spawn
+--- a/crates/tiny-glade/src/scene_compute.rs
++++ b/crates/tiny-glade/src/scene_compute.rs
+@@ -148,6 +148,32 @@
+     Ok(result)
+ }
+ 
++/// W2, on the actual WaterRaster mutated by W1 in this same frame.
++pub fn water_rasterize_from_cpu(
++    frame: &mut CoreGraphFrame<'_>, world: &mut World,
++) -> rhapsody::Result<Option<u32>> {
++    if !world.contains_resource::<world_raster_defs::WaterRaster>() {
++        return Err(missing("WaterRaster"));
++    }
++    let tick = world.read_change_tick().get();
++    world.resource_scope(|world, mut raster: bevy_ecs::change_detection::Mut<world_raster_defs::WaterRaster>| {
++        with_env(frame, world, |env| Ok(country_core::systems::render_loop::compute_passes::compute_water::water_rasterize_live(env, &mut raster, tick)))
++    })
++}
++
++/// W12, called at its original point after buildings, using the same GardenRaster.
++pub fn garden_rasterize_from_cpu(
++    frame: &mut CoreGraphFrame<'_>, world: &mut World,
++) -> rhapsody::Result<Option<u32>> {
++    if !world.contains_resource::<world_raster_defs::GardenRaster>() {
++        return Err(missing("GardenRaster"));
++    }
++    let tick = world.read_change_tick().get();
++    world.resource_scope(|world, mut raster: bevy_ecs::change_detection::Mut<world_raster_defs::GardenRaster>| {
++        with_env(frame, world, |env| Ok(country_core::systems::render_loop::compute_passes::compute_garden::garden_rasterize_live(env, &mut raster, tick)))
++    })
++}
++
+ /// Original W22 / W28 over the actual current GpuWorld and the same frame's
+ /// SSBO graph cache. The enclosing original main prelude must already have
+ /// imported owned instance data. This does not run or replace the other scene

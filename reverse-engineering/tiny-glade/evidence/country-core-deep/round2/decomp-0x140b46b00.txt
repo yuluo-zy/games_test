@@ -1,0 +1,131 @@
+
+/* WARNING: Possible PIC construction at 0x000140b46bc3: Changing call to branch */
+
+void FUN_140b46b00(longlong *param_1,undefined8 *param_2)
+
+{
+  undefined1 *puVar1;
+  undefined4 uVar2;
+  undefined8 uVar3;
+  undefined8 uVar4;
+  undefined8 uVar5;
+  undefined4 *puVar6;
+  longlong lVar7;
+  ulonglong uVar8;
+  longlong lVar9;
+  undefined4 *puVar10;
+  undefined1 *unaff_RBP;
+  longlong unaff_RSI;
+  longlong lVar11;
+  ulonglong uVar12;
+  undefined *apuStack_560 [5];
+  undefined8 **ppuStack_538;
+  longlong lStack_530;
+  undefined1 auStack_528 [80];
+  undefined1 auStack_4d8 [528];
+  longlong **pplStack_2c8;
+  longlong lStack_2c0;
+  undefined1 auStack_2b8 [608];
+  undefined8 *puStack_58;
+  undefined8 uStack_50;
+  longlong lStack_48;
+  longlong lStack_40;
+  undefined8 *puStack_38;
+  undefined8 uStack_30;
+  
+  puVar1 = auStack_4d8;
+  uStack_30 = 0xfffffffffffffffe;
+  *(undefined4 *)param_1[2] = *(undefined4 *)((longlong)param_1 + 0x1c);
+  lVar11 = *param_1;
+  uStack_50 = *param_2;
+  *(undefined8 *)(lVar11 + 0x10) = 0;
+  apuStack_560[0] = &UNK_140b46b44;
+  uVar5 = FUN_140b9db60();
+  apuStack_560[0] = &UNK_140b46b56;
+  FUN_140d68f80(&ppuStack_538,uVar5,param_2);
+  if (ppuStack_538 == (longlong **)0x2) {
+    if (((uint)lStack_530 & 3) == 1) {
+      lStack_48 = lStack_530 + -1;
+      lStack_40 = *(longlong *)(lStack_530 + -1);
+      puStack_38 = *(undefined8 **)(lStack_530 + 7);
+      if ((code *)*puStack_38 != (code *)0x0) {
+        apuStack_560[0] = &UNK_140b46ba8;
+        (*(code *)*puStack_38)(lStack_40);
+      }
+      lVar9 = puStack_38[1];
+      if (lVar9 == 0) {
+        lVar9 = 0x18;
+        uVar12 = 8;
+        lVar7 = lStack_48;
+      }
+      else {
+        uVar12 = puStack_38[2];
+        register0x00000020 = (BADSPACEBASE *)apuStack_560;
+        apuStack_560[0] = &UNK_140b46bc8;
+        lVar7 = lStack_40;
+        unaff_RBP = puVar1;
+        unaff_RSI = lVar11;
+      }
+      *(undefined1 **)((longlong)register0x00000020 + -8) = unaff_RBP;
+      *(longlong *)((longlong)register0x00000020 + -0x10) = unaff_RSI;
+      lVar11 = lVar7;
+      if (0x10 < uVar12) {
+        lVar11 = *(longlong *)(lVar7 + -8);
+      }
+      *(undefined **)((longlong)register0x00000020 + -0x40) = &UNK_140d6582e;
+      uVar5 = GetProcessHeap(lVar7,lVar9);
+                    /* WARNING: Could not recover jumptable at 0x000140d6583c. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+      HeapFree(uVar5,0,lVar11);
+      return;
+    }
+  }
+  else {
+    apuStack_560[0] = &UNK_140b46c02;
+    func_0x000142923c00(auStack_2b8,auStack_528,0x260);
+    pplStack_2c8 = ppuStack_538;
+    lStack_2c0 = lStack_530;
+    puStack_58 = &uStack_50;
+    apuStack_560[0] = &UNK_140b46c34;
+    FUN_1412f9a80(lVar11,&pplStack_2c8,&UNK_142aef570);
+    uVar12 = *(ulonglong *)(lVar11 + 0x10);
+    if (1 < uVar12) {
+      pplStack_2c8 = (longlong **)&ppuStack_538;
+      if (uVar12 < 0x15) {
+        apuStack_560[0] = &UNK_140b46c6f;
+        FUN_141339540(*(undefined8 *)(lVar11 + 8),uVar12,1,&pplStack_2c8);
+        uVar12 = *(ulonglong *)(lVar11 + 0x10);
+      }
+      else {
+        apuStack_560[0] = &UNK_140b46ce4;
+        FUN_140b4c1c0(*(undefined8 *)(lVar11 + 8),uVar12,&pplStack_2c8);
+        uVar12 = *(ulonglong *)(lVar11 + 0x10);
+      }
+      if (1 < uVar12) {
+        uVar8 = uVar12 >> 1;
+        puVar10 = (undefined4 *)(*(longlong *)(lVar11 + 8) + uVar12 * 0x1c + -4);
+        puVar6 = (undefined4 *)(*(longlong *)(lVar11 + 8) + 0x18);
+        do {
+          uVar5 = *(undefined8 *)(puVar6 + -6);
+          uVar3 = *(undefined8 *)(puVar6 + -4);
+          uVar4 = *(undefined8 *)(puVar10 + -4);
+          *(undefined8 *)(puVar6 + -6) = *(undefined8 *)(puVar10 + -6);
+          *(undefined8 *)(puVar6 + -4) = uVar4;
+          *(undefined8 *)(puVar10 + -6) = uVar5;
+          *(undefined8 *)(puVar10 + -4) = uVar3;
+          uVar5 = *(undefined8 *)(puVar6 + -2);
+          *(undefined8 *)(puVar6 + -2) = *(undefined8 *)(puVar10 + -2);
+          *(undefined8 *)(puVar10 + -2) = uVar5;
+          uVar2 = *puVar6;
+          *puVar6 = *puVar10;
+          *puVar10 = uVar2;
+          puVar6 = puVar6 + 7;
+          puVar10 = puVar10 + -7;
+          uVar8 = uVar8 - 1;
+        } while (uVar8 != 0);
+      }
+    }
+  }
+  return;
+}
+

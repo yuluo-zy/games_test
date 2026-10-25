@@ -1,0 +1,92 @@
+
+ulonglong * FUN_140968960(ulonglong *param_1,ulonglong param_2,ulonglong param_3)
+
+{
+  code *pcVar1;
+  longlong lVar2;
+  ulonglong *puVar3;
+  ulonglong uVar4;
+  ulonglong uVar5;
+  ulonglong uVar6;
+  ulonglong uVar7;
+  ulonglong uVar8;
+  ulonglong uVar9;
+  ulonglong uVar10;
+  bool bVar11;
+  
+  uVar8 = 0;
+  uVar6 = param_3;
+  do {
+    uVar4 = param_2;
+    lVar2 = FUN_140d88b30(0x3a,param_2,uVar6);
+    uVar5 = param_3;
+    uVar7 = param_3;
+    if (lVar2 != 1) break;
+    if ((uVar4 < param_3) && (*(char *)(param_2 + uVar4) == ':')) {
+      uVar8 = uVar4 + 1;
+      bVar11 = uVar8 != param_3;
+      if (uVar8 < param_3) {
+        if (*(char *)(param_2 + uVar8) < -0x40) goto code_r0x000140968a9a;
+      }
+      else {
+        uVar8 = param_3;
+        if (bVar11) goto code_r0x000140968a9a;
+      }
+      param_3 = param_3 - uVar8;
+      uVar8 = uVar8 + param_2;
+      uVar5 = uVar4;
+      uVar7 = uVar4;
+      break;
+    }
+    uVar6 = uVar4;
+  } while (uVar4 <= param_3);
+  do {
+    uVar4 = uVar7;
+    uVar6 = param_2;
+    lVar2 = FUN_140d88b30(0x2f,param_2,uVar5);
+    uVar7 = uVar4;
+    uVar10 = param_2;
+    uVar9 = uVar4;
+    if (lVar2 != 1) break;
+    if ((uVar6 < uVar4) && (*(char *)(param_2 + uVar6) == '/')) {
+      uVar6 = uVar6 + 1;
+      bVar11 = uVar6 != uVar4;
+      if (uVar6 < uVar4) {
+        if (*(char *)(param_2 + uVar6) < -0x40) goto code_r0x000140968ab4;
+      }
+      else {
+        uVar6 = uVar4;
+        if (bVar11) goto code_r0x000140968ab4;
+      }
+      uVar7 = uVar4 - uVar6;
+      uVar10 = uVar6 + param_2;
+      uVar9 = uVar4 - uVar6;
+      break;
+    }
+    uVar5 = uVar6;
+  } while (uVar6 <= uVar4);
+  do {
+    uVar6 = uVar10;
+    lVar2 = FUN_140d88b30(0x2e,uVar10,uVar7);
+    if (lVar2 != 1) break;
+    if ((uVar6 < uVar9) && (*(char *)(uVar10 + uVar6) == '.')) {
+      *param_1 = param_2;
+      param_1[1] = uVar4;
+      param_1[2] = uVar10;
+      param_1[3] = uVar6;
+      param_1[4] = uVar8;
+      param_1[5] = param_3;
+      return param_1;
+    }
+    uVar7 = uVar6;
+  } while (uVar6 <= uVar9);
+  FUN_1428d9310(&UNK_142ab5670);
+code_r0x000140968a9a:
+  FUN_1428d9940(param_2,param_3);
+code_r0x000140968ab4:
+  FUN_1428d9940(param_2,uVar4);
+  pcVar1 = (code *)swi(3);
+  puVar3 = (ulonglong *)(*pcVar1)();
+  return puVar3;
+}
+

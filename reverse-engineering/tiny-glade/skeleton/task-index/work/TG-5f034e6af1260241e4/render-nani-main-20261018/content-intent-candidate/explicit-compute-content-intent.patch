@@ -1,0 +1,169 @@
+--- games_test/tiny-glade/crates/country-core/src/render/pass_builder/compute_pass_builder.rs
++++ games_test/tiny-glade/crates/country-core/src/render/pass_builder/compute_pass_builder.rs
+@@ -199,6 +199,8 @@
+     pub builder: RecordingPassBuilder,
+     pub bindings: Vec<PassBinding>,
+     pub access_ranges: Vec<AccessRange>,
++    /// Host content intent; it does not change original resource access codes.
++    pub preserving_buffers: Vec<u32>,
+     pub external_bindings: Vec<ExternalBinding>,
+     pub uniform_binder: Option<UniformBinder>,
+     pub push_constants: Vec<u8>,
+@@ -383,6 +385,7 @@
+     pub(crate) bindings: Vec<PassBinding>,
+     /// `+0x18`：访问范围表（8 B/项）。
+     pub(crate) access_ranges: Vec<AccessRange>,
++    pub(crate) preserving_buffers: Vec<u32>,
+     /// `+0x30`：外部绑定表（0x48 B/项）。
+     pub(crate) external_bindings: Vec<ExternalBinding>,
+     /// `+0x60`：`PassBuilder`。
+@@ -464,6 +467,7 @@
+         let pass = ComputePass {
+             bindings: Vec::new(),
+             access_ranges: Vec::new(),
++            preserving_buffers: Vec::new(),
+             external_bindings: Vec::new(),
+             builder: RecordingPassBuilder {
+                 name,
+@@ -539,6 +543,40 @@
+             pass_resource_access::ACCESS_WRITE_CONCURRENT,
+             group,
+         );
++        self
++    }
++
++    /// Explicit current-host content intent, separate from native access/sync.
++    /// Use only for original shader read/modify or a confirmed partial write
++    /// whose other bytes must survive. The write must already be declared.
++    pub fn preserve_storage_buffer_contents(mut self, hash: u64) -> ComputePass {
++        let Some(binding) = self.resolve(hash) else {
++            return self;
++        };
++        let range = self
++            .access_ranges
++            .iter()
++            .rev()
++            .find(|range| range.resource_index == binding)
++            .expect("preserving buffer contents requires a declared binding");
++        let resource = match self.bindings.get(range.access_index as usize) {
++            Some(PassBinding::Buffer { resource }) => *resource,
++            _ => panic!("preserving contents requires a graph buffer binding"),
++        };
++        assert!(
++            self.builder
++                .accesses
++                .iter()
++                .any(|access| access.resource == resource
++                    && matches!(
++                        access.access,
++                        ACCESS_CPU_MAPPED_WRITE | ACCESS_WRITE_CONCURRENT
++                    )),
++            "preserving contents requires a declared buffer write"
++        );
++        if !self.preserving_buffers.contains(&resource) {
++            self.preserving_buffers.push(resource);
++        }
+         self
+     }
+ 
+@@ -753,6 +791,7 @@
+             builder: self.builder,
+             bindings: self.bindings,
+             access_ranges: self.access_ranges,
++            preserving_buffers: self.preserving_buffers,
+             external_bindings: self.external_bindings,
+             uniform_binder: self.uniform_binder,
+             push_constants: self.push_constants,
+@@ -1355,6 +1394,38 @@
+             pass.bindings()[1..].iter().all(|b| b.tag() == 4),
+             "all three use tag 4"
+         );
++    }
++
++    #[test]
++    fn explicit_buffer_content_intent_preserves_only_the_named_write() {
++        let env = env();
++        let recorded = new_pass(&env)
++            .write_rg_storage_buffer(H_BUF_A, &rgb(100))
++            .write_rg_storage_buffer(H_BUF_B, &rgb(101))
++            .preserve_storage_buffer_contents(H_BUF_A)
++            .preserve_storage_buffer_contents(H_BUF_A)
++            .preserve_storage_buffer_contents(0xDEAD)
++            .dispatch_1d(1);
++        assert_eq!(recorded.preserving_buffers, [100]);
++        assert_eq!(
++            recorded
++                .builder
++                .accesses
++                .iter()
++                .filter(|a| a.resource == 100 || a.resource == 101)
++                .map(|a| (a.resource, a.access))
++                .collect::<Vec<_>>(),
++            [(100, 0x37), (101, 0x37)]
++        );
++    }
++
++    #[test]
++    #[should_panic(expected = "declared buffer write")]
++    fn content_intent_does_not_turn_a_read_into_a_write() {
++        let env = env();
++        new_pass(&env)
++            .read_rg_storage_buffer(H_BUF_A, &rgb(100))
++            .preserve_storage_buffer_contents(H_BUF_A);
+     }
+ 
+     #[test]
+--- games_test/tiny-glade/crates/tiny-glade/src/render_host.rs
++++ games_test/tiny-glade/crates/tiny-glade/src/render_host.rs
+@@ -2175,6 +2175,7 @@
+             builder,
+             bindings,
+             access_ranges,
++            preserving_buffers,
+             external_bindings,
+             uniform_binder,
+             push_constants,
+@@ -2380,7 +2381,14 @@
+         declared.on_queue(rhapsody::device::QueueClass::Compute);
+         for (a, range) in &declared_accesses {
+             let resource = declared.resource_handle(a.resource)?;
+-            declared.add_resource_access_range(resource, a.access, a.group, *range)?;
++            if preserving_buffers.contains(&a.resource)
++                && rhapsody::raw::access_table::is_write(a.access)
++            {
++                declared
++                    .add_preserving_resource_access_range(resource, a.access, a.group, *range)?;
++            } else {
++                declared.add_resource_access_range(resource, a.access, a.group, *range)?;
++            }
+         }
+         for (resource, range, code) in external_accesses {
+             declared.add_resource_access_range(resource, code, 0, range)?;
+--- games_test/tiny-glade/crates/tiny-glade/src/compute_frame.rs
++++ games_test/tiny-glade/crates/tiny-glade/src/compute_frame.rs
+@@ -199,6 +199,7 @@
+             builder: Default::default(),
+             bindings: Vec::new(),
+             access_ranges: Vec::new(),
++            preserving_buffers: Vec::new(),
+             external_bindings: Vec::new(),
+             uniform_binder: None,
+             push_constants: Vec::new(),
+--- games_test/tiny-glade/crates/tiny-glade/tests/render_host.rs
++++ games_test/tiny-glade/crates/tiny-glade/tests/render_host.rs
+@@ -561,6 +561,7 @@
+                         access_index: 0,
+                     }]
+                 },
++                preserving_buffers: Vec::new(),
+                 external_bindings: if external {
+                     vec![ExternalBinding {
+                         binding: 0,
+@@ -1337,6 +1338,7 @@
+                 builder: Default::default(),
+                 bindings: vec![],
+                 access_ranges: vec![],
++                preserving_buffers: Vec::new(),
+                 external_bindings: vec![
+                     ExternalBinding {
+                         binding: 0,

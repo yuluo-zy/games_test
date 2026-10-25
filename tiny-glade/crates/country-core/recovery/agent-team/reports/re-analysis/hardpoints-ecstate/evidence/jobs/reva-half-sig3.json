@@ -1,0 +1,21 @@
+[
+  {
+    "tool": "set-function-prototype",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "location": "0x141218e30",
+      "signature": "void half_timbering(long long *rcx, long long *rdx, long long *r8, long long *r9)",
+      "createIfNotExists": true
+    },
+    "timeout_seconds": 120
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json\nfrom ghidra.app.decompiler import DecompInterface\nprog = currentProgram\nout = {\"sha256\": str(prog.getExecutableSHA256())}\naddr = prog.getAddressFactory().getAddress(\"0x141218e30\")\nf = prog.getFunctionManager().getFunctionAt(addr)\nif f is None:\n    raise RuntimeError(\"function absent\")\nout[\"signature\"] = str(f.getSignature())\nd = DecompInterface()\ntry:\n    d.openProgram(prog)\n    res = d.decompileFunction(f, 300, monitor)\n    if not res.decompileCompleted():\n        out[\"error\"] = str(res.getErrorMessage())\n    else:\n        out[\"decompiled\"] = res.getDecompiledFunction().getC()\nfinally:\n    d.dispose()\nprint(json.dumps(out))",
+      "timeoutSeconds": 400
+    },
+    "timeout_seconds": 500
+  }
+]

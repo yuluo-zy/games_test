@@ -1,0 +1,162 @@
+{
+  "module": "tg-text",
+  "baseline": "B",
+  "task_policy": "Recover actual business rules; use original dependencies; no 1:1 source/ABI recreation",
+  "status": "bounded_CPU_protocol_delivered",
+  "full_crate_complete": false,
+  "complete_original_serde_validation": false,
+  "original_target": {
+    "native": "tiny-glade.rne",
+    "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+  },
+  "mcp_target": {
+    "program": "/tiny-glade.exe",
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "worker": "small-text-20261013",
+    "project": "D:/game/tools/reverse-runtime/small-text-20261013/project/TinyGlade.gpr",
+    "original_database_synchronized": false,
+    "prototype_recovered": false,
+    "initial_seed_placeholder_bodies": true
+  },
+  "business_scope": [
+    "FontTable key lookup and default scale",
+    "two-component metric scaling preserving family",
+    "ordered shape builders and named/numeric sources",
+    "raw append word protocol and clear reuse",
+    "primary RON schema fields via original serde/RON"
+  ],
+  "dependencies": [
+    {
+      "name": "serde",
+      "version": "1.0.200",
+      "source": "registry",
+      "use": "derive and String deserialize"
+    },
+    {
+      "name": "ron",
+      "version": "0.8.1",
+      "source": "PounceLight fork",
+      "commit": "2787d8c05250c4dd706dfb358a2e9f16969d2968",
+      "use": "original format parsing"
+    },
+    {
+      "name": "std",
+      "use": "Vec/HashMap/String; no reconstructed containers"
+    },
+    {
+      "name": "serde_json",
+      "version": "1.0.85",
+      "dev_only": true
+    }
+  ],
+  "tests": {
+    "candidate_rust_tests": 6,
+    "cargo_test": "passed --offline --locked -p tg-text",
+    "clippy": "passed --offline --locked -p tg-text --all-targets -- -D warnings",
+    "rustfmt": "passed explicit own4 files",
+    "direct_original_append_cases": 51,
+    "direct_original_metric_cases": 21,
+    "direct_original_scalar_state_calls": 5,
+    "original_comparison_mismatches": 0,
+    "evidence": "native-oracle.json",
+    "candidate_only": [
+      "RON field failure tests",
+      "FontTable map lookups",
+      "encode_no_images panic",
+      "Vec reuse"
+    ],
+    "not_executed": [
+      "game startup",
+      "GPU",
+      "original serde",
+      "original panic",
+      "original allocator growth",
+      "renderer",
+      "A/C"
+    ]
+  },
+  "schema_static": {
+    "hosts": [
+      "0x141e3b460 Image fields",
+      "0x141e44f60 FontTable fonts",
+      "0x141e4a6b0 FontTableEntry family/scale"
+    ],
+    "required": [
+      "fonts",
+      "family",
+      "Image.source",
+      "Image.scaling"
+    ],
+    "default": {
+      "scale": 1
+    },
+    "duplicate_primary_fields": "error branches observed",
+    "unknown_fields": "not fully audited",
+    "error_payload_and_offsets": "not original-runtime verified"
+  },
+  "interface_map": "interface-map.json",
+  "business_rules": "BUSINESS_RULES.md",
+  "dependency_audit": "DEPENDENCY_AUDIT.md",
+  "differences_and_repairs": "DIFFERENCES_AND_REPAIRS.md",
+  "preserved_tool_failure": {
+    "report": "assembly-result.json",
+    "job_ok": false,
+    "query_passed": true,
+    "reason": "checkpoint atomic replace WinError5",
+    "later_checkpoint": "schema-result.json ok=true"
+  },
+  "persistence": {
+    "first20_functions_checkpointed_and_reopened": true,
+    "additional3_schema_hosts_checkpointed": true,
+    "stop_report": "worker-stop.json"
+  },
+  "gaps": [
+    "original serde entry execution",
+    "full unknown-field/error payload paths",
+    "original serde execution",
+    "original panic execution",
+    "actual name catalog producer",
+    "real toolbar/SSBO consumer integration",
+    "TextRenderer",
+    "TextFragment",
+    "AtlasAllocUsage",
+    "glyph cache generation and eviction",
+    "FontSystem initialization",
+    "upload/consume/render",
+    "CPU primitives and GPU resources"
+  ],
+  "source_artifacts": [
+    {
+      "path": "reconstruction/shared-foundation/crates/tg-text/Cargo.toml",
+      "sha256": "d936546802eaa1f8ebde07616c5e0d07c06678c3f7a645604b9c6acce38066af"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/tg-text/src/lib.rs",
+      "sha256": "12896eb8c1d754d218f9d578aa308d316ecbaa0c790dac4d88be3857324aa6c5"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/tg-text/src/font_table.rs",
+      "sha256": "1b3c199efb935642ed847e38492c445e177946d3007718c66e81974dc76068b8"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/tg-text/src/shape_stream.rs",
+      "sha256": "f375d41ea85657f6db583bb66a77de438ab4146f60b8dddc1ed1a1567461e474"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/tg-text/tests/behavior.rs",
+      "sha256": "d309b67940aa4ab9c18b88f29e4c612d74e4e34e986d5933bcc4f9e9ee09eba2"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/tg-text/tests/fixtures/native-oracle.json",
+      "sha256": "c489f562387de50c00fe5152e83044d4df3b15b4385b2e1f37b10ce2a36ac503"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/tg-text/tests/fixtures/font-table.ron",
+      "sha256": "0b9b4cd55916b7c4af0dd1322ce5d5330f72cfcb5fa6be1582d60b93961d8834"
+    },
+    {
+      "path": "reconstruction/shared-foundation/crates/tg-text/README.md",
+      "sha256": "2104603c230889b712a775b31cbb34f5afdd15411ecdd0405b3f9bf0b06a9301"
+    }
+  ]
+}

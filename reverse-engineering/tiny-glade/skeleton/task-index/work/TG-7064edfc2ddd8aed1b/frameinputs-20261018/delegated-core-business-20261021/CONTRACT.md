@@ -1,0 +1,11 @@
+# 唯一全局USE_STAIRS_LAZINESS canonical owner
+
+范围仅当前stairs_state同原owner新增缺失业务开关，不能第二global/消费者私有副本。Root明确必要编译授权，claim保持frameinputs-20261018。当前before89ac108ee643249dfd5ae7fedbeeed4e4d5ac5f9c8975d0193bd854d051b0fd4。
+
+原证：duck TG0ae36/.../interpolation-global-identity.json，PDB public record3489372 Segment3 Offset4112符号确为country_core::resources::stairs::stairs_state::USE_STAIRS_LAZINESS。相同B RNE f507a6ce SHA直接PE原字节已独核 global-direct-proof.json：slot14362c018为指针14362c010，target初始byte01；前者是重定位后的引用slot，不是另一个业务bool。原interpolate完整函数1407cf500中1407d0162读slot→d0169 CMP byte1→d016c JNE到重建路径0270；因此true允许后续laziness分支，false不会错误快跳。
+
+现代API仅 `pub static USE_STAIRS_LAZINESS: AtomicBool = AtomicBool::new(true);`，与同source已有VERIFY_STAIR_CHECKSUMS唯一AtomicBool安全模型一致；duck原interpolate将同canonicalstatic.load(Ordering::Relaxed)。静态字段本身提供真实统一load/store入口，允许有授权host将开关变false/true，不创建镜像Resource/私有setterstatic，不造UI producer。
+
+原机器码字节不单独证明Rust原类型或Atomic ordering；Relaxed为现代数据竞争安全表达，无跨线程发布业务依赖，不能声称原排序已证。原运行期写方目前未锁，初始01不能伪作写producer证据；保为明确未决，禁止新增无原证UI写入。当前全repo无同名static/reader，后续同链interpolate引用唯一slot。
+
+验证复用原interpolate实际业务测试与原initialized PE byte证明，不新增只断言AtomicBool::new(true)的镜像测试；也不在并行单元测试中临时storefalse影响其它真实consumer。若root执行整个true/false分支集，统一串行恢复此同一global，不能为测试造第二业务static。运行由root统一。

@@ -1,0 +1,126 @@
+//! Original B world stages W13..W17 through current typed libraries/graph.
+//! No resource-layout cast, copied World, CPU mirror or fabricated draw count.
+//! The enclosing caller supplies original stage order and the real counter
+//! reset/texture upload producers. This module does not initialize resources.
+use crate::{render_bridge::CoreGraphFrame, scene_compute::with_env};
+use bevy_ecs::world::World;
+use country_core::systems::render_loop::compute_passes::{
+    compute_garden as garden, compute_water as water, path_pebbles,
+    read_bush_positions_for_cpu as bushes, spawn_vegetation_around_buildings as buildings,
+};
+
+fn missing(name: &str) -> rhapsody::Error {
+    rhapsody::Error::invalid_usage(format!("original W13..W17: missing {name} producer"))
+}
+
+// A compile-time binding of the existing canonical resource types. This marker
+// is not an ECS Resource or GPU owner and creates no alternate SSBO identity.
+struct WaterBuffers;
+impl water::WaterVegetationSsbos for WaterBuffers {
+    type Lilypad = water::LilypadSsbo;
+    type LilypadFlower = water::LilypadFlowerSsbo;
+    type Reed = water::ReedSsbo;
+    type DrawCommands =
+        country_core::systems::render_loop::indirect_params::DrawIndexedIndirectBuffer;
+}
+
+/// W13@140a13970: original demo gate occurs before any ActiveSession access.
+/// The actual Autumn identity is ActiveSession.meta.glade native tag3, not
+/// the unrelated AppMode/old invented GladeTheme resource view.
+pub fn water_spawn_vegetation(
+    frame: &mut CoreGraphFrame<'_>,
+    world: &World,
+) -> rhapsody::Result<()> {
+    let demo = world
+        .get_resource::<country_core::game_config::GameConfig>()
+        .ok_or_else(|| missing("GameConfig"))?
+        .dev
+        .demo;
+    if demo {
+        return Ok(());
+    }
+    let session = world
+        .get_resource::<country_core::resources::session::ActiveSession>()
+        .ok_or_else(|| missing("ActiveSession"))?;
+    let season = water::SeasonByte(session.meta.glade.native_tag());
+    with_env(frame, world, |env| {
+        for pass in water::water_spawn_vegetation::<WaterBuffers>(env, season, false) {
+            env.record(pass);
+        }
+        Ok(())
+    })
+}
+
+/// W14@1408e4cc0: original TypeId3dce36237fb50dff/93a27cf4512d885c
+/// is the actual GladeSettings, native byte20 vegetation_around_buildings.
+/// A false gate does not fetch GPU libraries or construct the two passes.
+pub fn spawn_vegetation_around_buildings(
+    frame: &mut CoreGraphFrame<'_>,
+    world: &World,
+) -> rhapsody::Result<()> {
+    let enabled = world
+        .get_resource::<country_core::resources::glade_settings::GladeSettings>()
+        .ok_or_else(|| missing("GladeSettings"))?
+        .vegetation_around_buildings;
+    if !enabled {
+        return Ok(());
+    }
+    with_env(frame, world, |env| {
+        for pass in buildings::spawn_vegetation_around_buildings::<
+            garden::BushSsbo,
+            garden::FlowerSsbo,
+        >(env, 1)
+        {
+            env.record(pass);
+        }
+        Ok(())
+    })
+}
+
+/// W15@140866540: real BushCpu mapped storage, canonical BushSsbo and same
+/// DrawIndexedIndirectBuffer/slot10. This declares the original GPU write;
+/// it never fabricates a CPU result or announces readback completion.
+pub fn read_bush_positions_for_cpu(
+    frame: &mut CoreGraphFrame<'_>,
+    world: &World,
+) -> rhapsody::Result<()> {
+    let has_building_prefix = world
+        .get_resource::<country_core::resources::glade_settings::GladeSettings>()
+        .ok_or_else(|| missing("GladeSettings"))?
+        .vegetation_around_buildings;
+    with_env(frame, world, |env| {
+        let pass = bushes::read_bush_positions_for_cpu_with_building_prefix::<garden::BushSsbo>(
+            env, has_building_prefix,
+        );
+        env.record(pass);
+        Ok(())
+    })
+}
+
+/// W16@140a22b80: four actual original declarations. Live Bush/Flower prefix
+/// preservation and indirect-counter RMW metadata belong to the shared core
+/// body, so all callers use one business implementation.
+pub fn garden_spawn_vegetation(
+    frame: &mut CoreGraphFrame<'_>,
+    world: &World,
+) -> rhapsody::Result<()> {
+    let has_building_prefix = world
+        .get_resource::<country_core::resources::glade_settings::GladeSettings>()
+        .ok_or_else(|| missing("GladeSettings"))?
+        .vegetation_around_buildings;
+    with_env(frame, world, |env| {
+        garden::garden_spawn_vegetation_with_building_prefix(env, has_building_prefix);
+        Ok(())
+    })
+}
+
+/// W17@140958f70. This requires the foreign family's one-line original
+/// atomic-counter preserving metadata request to be integrated; the host
+/// does not bypass that canonical function or rewrite its recorded metadata.
+pub fn path_pebbles_compute(frame: &mut CoreGraphFrame<'_>, world: &World) -> rhapsody::Result<()> {
+    with_env(frame, world, |env| {
+        let pass = path_pebbles::path_pebbles_compute(env);
+        env.record(pass);
+        Ok(())
+    })
+}

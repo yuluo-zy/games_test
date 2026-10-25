@@ -1,0 +1,85 @@
+
+// WARNING: Removing unreachable block (ram,0x000140242ccc)
+// WARNING: Removing unreachable block (ram,0x000140242db7)
+// WARNING: Removing unreachable block (ram,0x000140242e25)
+
+void __cdecl country_core::systems::save::save_game::write_json_sections<std::fs::File>(void)
+
+{
+  longlong lVar1;
+  char extraout_AL;
+  longlong extraout_RAX;
+  ulonglong extraout_RAX_00;
+  longlong extraout_RAX_01;
+  longlong extraout_RAX_02;
+  ulonglong extraout_RAX_03;
+  longlong in_RCX;
+  longlong in_RDX;
+  longlong local_f8;
+  longlong local_e0;
+  longlong local_50;
+  
+  lVar1 = in_RCX + in_RDX * 0x28;
+  do {
+    if (in_RCX == lVar1) {
+      return;
+    }
+    SaveFileSection::json_key();
+    alloc::fmt::format::format_inner();
+    local_50 = local_e0;
+    std::io::Write::write_all<std::fs::File>();
+    if (extraout_RAX != 0) {
+      anyhow::error::impl$1::from<std::io::error::Error>();
+LAB_140242de1:
+      if (local_50 == 0) {
+        return;
+      }
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+      return;
+    }
+    if (local_e0 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    std::fs::impl$10::seek();
+    if ((extraout_RAX_00 & 1) != 0) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    serde_json::value::impl$1::fmt();
+    if (extraout_AL != '\0') {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    local_50 = 0;
+    std::io::Write::write_all<std::fs::File>();
+    if (extraout_RAX_01 != 0) {
+      anyhow::error::impl$1::from<std::io::error::Error>();
+      goto LAB_140242de1;
+    }
+    SaveFileSection::padding_bytes();
+    alloc::slice::impl$0::repeat<u8>();
+    alloc::fmt::format::format_inner();
+    std::io::Write::write_all<std::fs::File>();
+    if (extraout_RAX_02 != 0) {
+      anyhow::error::impl$1::from<std::io::error::Error>();
+      if (local_f8 == 0) {
+        return;
+      }
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+      return;
+    }
+    if (local_f8 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    std::fs::impl$10::seek();
+    if ((extraout_RAX_03 & 1) != 0) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    hashbrown::map::HashMap::
+    insert<country_core::systems::save::save_game::SaveFileSection,core::ops::range::Range<u64>,std::hash::random::RandomState,alloc::alloc::Global>
+              ();
+    in_RCX = in_RCX + 0x28;
+  } while( true );
+}
+

@@ -1,0 +1,18 @@
+// set_volume @ 0x140a575a0
+
+void __cdecl country_core::resources::audio_resources::impl$10::set_volume(void)
+
+{
+  int *in_RCX;
+  undefined8 local_80;
+  
+  if (*in_RCX == 1) {
+    libfmod::EventInstance::set_volume();
+    if (local_80 != -0x7ffffffffffffffc) {
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+  }
+  return;
+}
+

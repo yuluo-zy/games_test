@@ -1,0 +1,150 @@
+--- a/tiny-glade/crates/systems/decorator/src/utils/visual_entity_builder.rs
++++ b/tiny-glade/crates/systems/decorator/src/utils/visual_entity_builder.rs
+@@ -4,8 +4,8 @@
+ //! `DrawableMeshBundle` 落库（`country_core::components::drawable`）后，
+ //! fresh 复核并重建两个 `build` 实例：
+ //!
+-//! * `build<DecoratorTransientVisualState>` 0x1412ab270（3281 B）
+-//! * `build<DecoratorPersistentVisualState>` 0x1412a9b30（3281 B）
++//! * `build<DecoratorTransientVisualState>` 0x1412ab270（5949 B）
++//! * `build<DecoratorPersistentVisualState>` 0x1412a9b30（5949 B）
+ //!
+ //! 两实例函数体逐字节同构（仅尾部 impl$4/impl$5 与标签地址不同；`diff` 证据）。
+ //! 证据：`reports/unlock/nani/job1-0x1412ab270.c` /
+@@ -15,8 +15,8 @@
+ //!
+ //! ## 构建器字段（O 偏移；字段名 U）
+ //!
+-//! 构建器总大小 **0x158**（`instantiate_blueprints` 0x1408289e2 `memcpy 0x158`
+-//! + `clone<WindowVisualEntityBuilder>` 0x14125f250）。build 读取：
++//! 原 builder 完整槽为 **0x160 B**（`instantiate_blueprints` 0x1408289d0..0x140828a30：
++//! 先复制首 8 B，再复制尾区 0x158 B，传首字地址为 self；旧文档误把尾区当总大小）。build 读取：
+ //!
+ //! | 偏移 | 内容 | 用途 |
+ //! |---|---|---|
+@@ -116,9 +116,9 @@
+ //!
+ //! ## typed-gap（不编造）
+ //!
+-//! * `NaniSolidTexture`：1 B enum，`Option` 以 9 为 None ⇒ 变体值域 0..=8；
+-//!   **变体名无证据**。这里以 `pending_core::NaniSolidTexture(pub u8)` 承载
+-//!   原始判别字节，不命名变体。
++//! * `NaniSolidTexture`：原组件观测为 1 B selector，`Option` 以 9 为 None；
++//!   原 Rust 声明与变体名未知。使用 core 的 checked opaque 编码类型；
++//!   两个真实分支保留输入代码，仅接受已恢复映射的 0..=8，不提供默认值。
+ //! * 其余未落库条件组件继续保留原证缺口；AlbedoMap 已重导出 core 的真实 u64 类型。
+ //!   本文件 `pending_core` 子模块按 **原 PDB 名 + 机器码载荷字节数** 建 stand-in
+ //!   （core 落库后应删除并改用 core 类型；届时组件 TypeId 才与原版一致）。
+@@ -224,14 +224,9 @@
+         0x10
+     );
+ 
+-    /// B `components::drawable::NaniSolidTexture`：1 B enum。
+-    ///
+-    /// typed-gap：变体名无证据；`Option` 以判别 9 表示 None（build 的
+-    /// `cmp r12b,9; je unwrap_failed`），即变体值域 0..=8。以裸字节承载，
+-    /// 不发明变体名。
+-    #[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+-    #[repr(transparent)]
+-    pub struct NaniSolidTexture(pub u8);
++    // Preserve the import path while using the same checked canonical
++    // component as the actual Nani ECS update. No local raw/default type.
++    pub use country_core::components::drawable::NaniSolidTexture;
+ }
+ 
+ use pending_core::{
+@@ -262,7 +257,7 @@
+     }
+ }
+ 
+-/// B `WindowVisualEntityBuilder`（0x158 B）。
++/// B `WindowVisualEntityBuilder`（完整 native 槽 0x160 B；本机语义字段不复刻 ABI）。
+ ///
+ /// 字段与偏移的对应见模块头表；`Option` 字段取 `Some` 即机器码中的插入分支
+ /// （原始 tag 比较值记在字段文档里）。字段名 U、条件/载荷 O。
+@@ -533,7 +528,8 @@
+             ),
+             "nani_clutter_SolidAlbedoMap" => {
+                 // O：`+0x150` Option::unwrap（None=9 → unwrap_failed，行 243）。
+-                let tex = NaniSolidTexture(self.solid_texture.unwrap());
++                let tex = NaniSolidTexture::try_from(self.solid_texture.unwrap())
++                    .unwrap_or_else(|code| panic!("Unsupported native NaniSolidTexture encoding {code}"));
+                 self.spawn_nani_tuple::<SolidAlbedoMapInstanceData>(
+                     commands,
+                     transform,
+@@ -556,7 +552,8 @@
+                     true,
+                 ),
+             "nani_clutter_SolidAlbedoMapEmissive" => {
+-                let tex = NaniSolidTexture(self.solid_texture.unwrap());
++                let tex = NaniSolidTexture::try_from(self.solid_texture.unwrap())
++                    .unwrap_or_else(|code| panic!("Unsupported native NaniSolidTexture encoding {code}"));
+                 self.spawn_nani_tuple::<SolidAlbedoMapEmissiveInstanceData>(
+                     commands,
+                     transform,
+@@ -752,6 +749,65 @@
+ mod tests {
+     use super::*;
+ 
++    #[test]
++    fn real_solid_builds_emit_the_same_canonical_nonzero_selector() {
++        use bevy_ecs::world::{CommandQueue, World};
++        use country_core::components::drawable::NaniSolidTexture as CanonicalSelector;
++        assert_eq!(core::any::TypeId::of::<pending_core::NaniSolidTexture>(),
++            core::any::TypeId::of::<CanonicalSelector>());
++        let meshes = AssetMeshLibrary::new();
++        let shaders = AssetShaderLibrary::new();
++        for (name, kind, code) in [
++            ("nani_clutter_SolidAlbedoMap", GpuWorldSubsetKind::SolidAlbedoMap, 2),
++            ("nani_clutter_SolidAlbedoMapEmissive", GpuWorldSubsetKind::SolidAlbedoMapEmissive, 8),
++        ] {
++            let mut world = World::new();
++            let mut queue = CommandQueue::default();
++            let mut state = DecoratorTransientVisualState::default();
++            let mut builder = WindowVisualEntityBuilder::new(Vec3::new(1.0, 2.0, 3.0),
++                Quat::IDENTITY, 37);
++            builder.nani_name = name;
++            builder.mesh_name = "selector_test_mesh"; // CPU producer boundary, no asset/GPU claim
++            builder.solid_texture = Some(code);
++            let entity = builder.build(&mut Commands::new(&mut queue, &world), 37,
++                &meshes, &shaders, &mut state);
++            queue.apply(&mut world);
++            assert_eq!(world.get::<CanonicalSelector>(entity).unwrap().encoded(), code);
++            assert_eq!(world.get::<NaniInstanceDesc>(entity).unwrap().subset_kind, kind);
++            assert_eq!(world.get::<Transform>(entity).unwrap().translation, Vec3::new(1.0, 2.0, 3.0));
++            assert_eq!(state.entities_of(37), Some([entity].as_slice()));
++            if kind == GpuWorldSubsetKind::SolidAlbedoMap {
++                assert!(world.get::<InstanceDataMarker<SolidAlbedoMapInstanceData>>(entity).is_some());
++            } else {
++                assert!(world.get::<InstanceDataMarker<SolidAlbedoMapEmissiveInstanceData>>(entity).is_some());
++            }
++        }
++    }
++
++    #[test]
++    fn real_solid_builds_reject_none_and_invalid_codes_before_spawn() {
++        use bevy_ecs::world::{CommandQueue, World};
++        let meshes = AssetMeshLibrary::new();
++        let shaders = AssetShaderLibrary::new();
++        for name in ["nani_clutter_SolidAlbedoMap", "nani_clutter_SolidAlbedoMapEmissive"] {
++            for code in [None, Some(9), Some(255)] {
++                let mut world = World::new();
++                let mut queue = CommandQueue::default();
++                let mut state = DecoratorTransientVisualState::default();
++                let mut builder = WindowVisualEntityBuilder::new(Vec3::ZERO, Quat::IDENTITY, 37);
++                builder.nani_name = name;
++                builder.solid_texture = code;
++                assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++                    builder.build(&mut Commands::new(&mut queue, &world), 37,
++                        &meshes, &shaders, &mut state);
++                })).is_err());
++                queue.apply(&mut world);
++                assert_eq!(world.entities().len(), 0);
++                assert!(state.entities.is_empty());
++            }
++        }
++    }
++
+     /// O：无 normal_offset / 无 scale 覆盖时 transform 原样。
+     #[test]
+     fn transform_passthrough() {

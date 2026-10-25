@@ -1,0 +1,48 @@
+[package]
+name = "tg-text"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde.workspace = true
+ron = { git = "https://github.com/PounceLight/ron", rev = "2787d8c" }
+
+cosmic-text = { version = "=0.11.2", git = "https://github.com/PounceLight/cosmic-text.git", rev = "3da2a14ea3d063875fdc55695431e74405302b0f", default-features = false, features = ["std", "swash"] }
+etagere = "=0.2.10"
+bytemuck = { version = "=1.16.0", features = ["derive"] }
+sys-locale = "=0.3.1"
+unicode-segmentation = "=1.10.1"
+bevy_ecs = { version = "=0.16.0", default-features = false, features = ["std"] }
+
+ash = { version = "=0.38.0", optional = true }
+rhapsody = { path = "D:/game/reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild", optional = true }
+
+[features]
+gpu = ["dep:ash", "dep:rhapsody"]
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[package.metadata.reconstruction]
+baseline = "B"
+recovered_scope = "font configuration, shape protocol, text editing/layout, glyph atlas/cache and optional independent GPU adapter"
+renderer_recovered = true
+full_original_behavior_accepted = false
+original_source_claimed = false
+
+[lib]
+path="D:/game/reverse-engineering/tiny-glade/reconstruction/shared-foundation/crates/tg-text/src/lib.rs"
+
+[[test]]
+name="behavior"
+path="D:/game/reverse-engineering/tiny-glade/reconstruction/shared-foundation/crates/tg-text/tests/behavior.rs"
+
+[[test]]
+name="text_pipeline"
+path="D:/game/reverse-engineering/tiny-glade/reconstruction/shared-foundation/crates/tg-text/tests/text_pipeline.rs"
+
+[[example]]
+name="text_gpu"
+path="D:/game/reverse-engineering/tiny-glade/reconstruction/shared-foundation/crates/tg-text/examples/text_gpu.rs"
+required-features=["gpu"]

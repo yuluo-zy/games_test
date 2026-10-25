@@ -1,0 +1,350 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/collision/world.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/collision/world.rs
+@@ -5,7 +5,7 @@
+ //!   ColliderSet@+0x30 / QueryPipeline / 脏标志@+0x388），`Publisher<ColliderDiff>`@+0x3cb0
+ //!   （`mesh_intersect_collider_diff_publisher` 0x1408cc670 机器码 `lea rax,[rcx+0x3cb0]; ret`）；
+ //! - `RaycastWorld::raycast`（0x1408cc870）→ `Rapier::raycast`（0x1408cdc60）：17 槽 **u32** mask
+-//!   遍历，每槽 `QueryPipeline::cast_ray_and_get_normal`，**最后一次命中槽覆盖（跨槽不做 toi 比较）**，
++//!   遍历，每槽 `QueryPipeline::cast_ray_and_get_normal`，**逐槽收紧 max_toi，保留最近命中；等距后槽覆盖**，
+ //!   返回 `RaycastWorldResult`（~0x40B：handle/地形标记@+0x00、position@+0x18、normal@+0x24、
+ //!   toi@+0x30、判别@+0x34【0=命中/2=未命中】、额外@+0x38；地形命中首字节 0xb）；
+ //! - `Raycasting::raycast`（0x1408cc2e0）→ `RaycastWorld::raycast_w_terrain`（0x1408cd430，含
+@@ -1368,7 +1368,8 @@
+     }
+ 
+     /// `RaycastWorld::raycast_w_terrain`（0x1408cd430）：先 `Rapier::raycast`；mask 含地形
+-    /// 0x20 位时 `TerrainHeightsData::intersect_ray`，**地形命中无条件覆盖 rapier**（无 toi 比较）。
++    /// 0x20 位时 `TerrainHeightsData::intersect_ray`，以已有 Rapier 命中的 TOI 为上限；
++    /// 因此只有更近或等距的地形命中能够覆盖。
+     #[cfg(feature = "native-physics")]
+     pub fn raycast_w_terrain(
+         &self,
+@@ -1383,7 +1384,9 @@
+                 origin,
+                 direction: dir,
+             };
+-            if let Some(terrain_hit) = terrain.intersect_ray(ray, f32::MAX) {
++            // B 0x1408cd508..0x1408cd51f passes the Rapier hit's TOI to terrain.
++            let maximum_toi = if result.is_hit() { result.toi } else { f32::MAX };
++            if let Some(terrain_hit) = terrain.intersect_ray(ray, maximum_toi) {
+                 result = terrain_result(terrain_hit.t, origin, dir);
+             }
+         }
+@@ -1422,7 +1425,7 @@
+     }
+ 
+     /// `RaycastWorld::raycast_simple`（0x1408ccc20）：转发 `Rapier::raycast_simple`
+-    /// （17 槽 `QueryPipeline::cast_ray`，最后一次命中槽覆盖）。
++    /// （17 槽 `QueryPipeline::cast_ray`，逐槽收紧 TOI 上限）。
+     #[cfg(feature = "native-physics")]
+     pub fn raycast_simple(
+         &self,
+@@ -1481,7 +1484,7 @@
+     ) -> RaycastWorldResult {
+         let mut result = Rapier::raycast(self, origin, dir, mask);
+         if result.is_miss() {
+-            result.toi = RAYCAST_WORLD_RESULT_MISS as f32;
++            result.toi = f32::from_bits(RAYCAST_WORLD_RESULT_MISS);
+         }
+         result
+     }
+@@ -1875,7 +1878,8 @@
+ #[cfg(feature = "native-physics")]
+ impl Rapier {
+     /// O：0x1408cdc60。17 槽 **u32** mask 遍历；每槽 `QueryPipeline::cast_ray_and_get_normal`
+-    /// （solid=1，`QueryFilter::default()`），**最后一次命中槽覆盖**（跨槽不做 toi 比较）。
++    /// （solid=1，`QueryFilter::default()`）；命中后把 TOI 作为后续槽上限。
++    /// 最近命中保留，等距命中由后槽替换。
+     /// 未命中写判别 2@+0x34（O：iVar11==4 → +0x34=2）。
+     fn raycast(
+         world: &RaycastWorld,
+@@ -1888,6 +1892,7 @@
+             Vector::new(dir.x, dir.y, dir.z),
+         );
+         let mut result = RaycastWorldResult::miss();
++        let mut maximum_toi = f32::MAX;
+         for (slot_index, slot) in world.slots.iter().enumerate() {
+             if (mask >> slot_index) & 1 == 0 {
+                 continue;
+@@ -1896,11 +1901,12 @@
+                 &slot.bodies,
+                 &slot.colliders,
+                 &ray,
+-                f32::MAX,
++                maximum_toi,
+                 true,
+                 QueryFilter::default(),
+             ) {
+-                // 最后一次命中覆盖：不做 toi 比较。
++                // B 0x1408cde07: the next slot receives this hit's TOI.
++                maximum_toi = intersection.time_of_impact;
+                 // O：命中后校验注册表并拷贝条目前 24 B（0x1408cdc60 → 0x1408ce4a0）。
+                 result = RaycastWorldResult {
+                     handle: registry_handle_region(world, handle)
+@@ -2010,7 +2016,7 @@
+     }
+ 
+     /// O：0x1408ce180。17 槽 **u32** mask 遍历；每槽 `QueryPipeline::cast_ray`
+-    /// （solid=1，`QueryFilter::default()`；fresh 无排除参数），**最后一次命中槽覆盖**。
++    /// （solid=1，`QueryFilter::default()`）；命中后收紧下一槽 TOI 上限，等距后槽覆盖。
+     /// 输出 `RaycastSimpleResult`：命中拷贝注册表条目前 24 B + position + toi；
+     /// 全未中只写 +0x00 首字节 0x11。
+     fn raycast_simple(
+@@ -2024,6 +2030,7 @@
+             Vector::new(dir.x, dir.y, dir.z),
+         );
+         let mut result = RaycastSimpleResult::miss();
++        let mut maximum_toi = f32::MAX;
+         for (slot_index, slot) in world.slots.iter().enumerate() {
+             if (mask >> slot_index) & 1 == 0 {
+                 continue;
+@@ -2032,11 +2039,12 @@
+                 &slot.bodies,
+                 &slot.colliders,
+                 &ray,
+-                f32::MAX,
++                maximum_toi,
+                 true,
+                 QueryFilter::default(),
+             ) {
+-                // O：最后一次命中覆盖；命中后校验注册表并拷贝条目 +0x00..+0x18。
++                // B 0x1408ce180: a hit shortens the next slot's maximum TOI.
++                maximum_toi = toi;
+                 result = RaycastSimpleResult {
+                     handle: registry_handle_region(world, handle)
+                         .unwrap_or_else(|| handle_region(handle, slot_index as u32)),
+@@ -2255,6 +2263,18 @@
+     pub shape: Arc<dyn Shape>,
+ }
+ 
++/// B transformed-shape adapters copy the unit quaternion directly into the
++/// dependency Isometry; do not renormalize its components at this boundary.
++#[cfg(feature = "native-physics")]
++fn collider_isometry(position: glam::Vec3, rotation: glam::Quat) -> Isometry<f32> {
++    Isometry::from_parts(
++        nalgebra::Translation3::new(position.x, position.y, position.z),
++        nalgebra::UnitQuaternion::new_unchecked(nalgebra::Quaternion::new(
++            rotation.w, rotation.x, rotation.y, rotation.z,
++        )),
++    )
++}
++
+ #[cfg(feature = "native-physics")]
+ impl OffsetColliderTransform {
+     /// `impl$47::as_collider_shape`（0x1408d9990，O）：取形状 Arc（克隆引用计数）。
+@@ -2383,21 +2403,22 @@
+ }
+ 
+ /// `into_transformed_shape`（impl$41 0x14155d340，O）：`Rectangle3d` → 变换后形状参数
+-/// `{旋转, 半边长}`。`shape_overlaps_with<Rectangle3d>` 消费。
++/// `{旋转, 平移, 半边长}`。此兼容 helper 返回旋转与半边长；调用方取矩形中心。
+ ///
+-/// fresh 反编译：`extent()` → 半边长（×0.5）；`xvy`/`x0y` swizzler +
+-/// `Quat::from_rotation_arc` 取向。输出 `{rotation@+0x00, half_extents@+0x10,
+-/// half_extents@+0x1c}`（+0x1c/+0x24 区为原版额外写，Rust 以单 half_extents 表示，登记）。
++/// B 0x14155d340: extent*0.5 @+0x1c、center.x/(bottom+top)*0.5/center.y @+0x10、
++/// Quat::from_rotation_arc(Vec3::X, axis.x0y()) @+0x00。
+ #[cfg(feature = "native-physics")]
+ pub fn rectangle_to_transformed(
+     rect: utils::geometry::rectangle::Rectangle3d,
+ ) -> (glam::Quat, glam::Vec3) {
+     let extent = rect.extent();
+     let half_extents = extent * 0.5;
+-    // O：swizzler xvy/x0y 取向 → from_rotation_arc（登记：精确向两与结果）。
+-    let rotation = glam::Quat::IDENTITY;
+-    let _ = rotation;
+-    (glam::Quat::IDENTITY, half_extents)
++    let axis = rect.footprint.axis;
++    let rotation = glam::Quat::from_rotation_arc(
++        glam::Vec3::X,
++        glam::Vec3::new(axis.x, 0.0, axis.y),
++    );
++    (rotation, half_extents)
+ }
+ 
+ /// `to_offset_collider_builder`（impl$23 0x1408d0390 / impl$21 0x140b26a80 /
+@@ -2411,12 +2432,7 @@
+ #[cfg(feature = "native-physics")]
+ pub fn to_offset_collider_builder(t: &OffsetColliderTransform) -> rapier3d::geometry::ColliderBuilder {
+     let shape = t.shape.clone();
+-    let iso = Isometry::from_parts(
+-        nalgebra::Translation3::new(t.position.x, t.position.y, t.position.z),
+-        nalgebra::UnitQuaternion::from_quaternion(nalgebra::Quaternion::new(
+-            t.rotation.w, t.rotation.x, t.rotation.y, t.rotation.z,
+-        )),
+-    );
++    let iso = collider_isometry(t.position, t.rotation);
+     rapier3d::geometry::ColliderBuilder::new(SharedShape(shape))
+         .position(iso)
+         .sensor(true)
+@@ -2435,6 +2451,17 @@
+     pub fn iter_shape_overlaps<F: FnMut(SubworldColliderHandle, &RaycastGeoSource) -> bool>(
+         &self,
+         shape: &dyn Shape,
++        mask: u32,
++        callback: F,
++    ) {
++        self.iter_shape_overlaps_at(shape, &Isometry::identity(), mask, callback);
++    }
++
++    #[cfg(feature = "native-physics")]
++    fn iter_shape_overlaps_at<F: FnMut(SubworldColliderHandle, &RaycastGeoSource) -> bool>(
++        &self,
++        shape: &dyn Shape,
++        shape_position: &Isometry<f32>,
+         mask: u32,
+         mut callback: F,
+     ) {
+@@ -2446,7 +2473,7 @@
+             slot.pipeline.intersections_with_shape(
+                 &slot.bodies,
+                 &slot.colliders,
+-                &Isometry::identity(),
++                shape_position,
+                 shape,
+                 QueryFilter::default(),
+                 |handle| {
+@@ -2461,7 +2488,8 @@
+                         &source,
+                     );
+                     stop = result;
+-                    result
++                    // Rapier returns true to continue; this API returns true to stop.
++                    !result
+                 },
+             );
+             if stop {
+@@ -2480,7 +2508,8 @@
+     ) {
+         let t = self.into_transformed_shape(handle);
+         let shape = t.as_collider_shape();
+-        self.iter_shape_overlaps(shape.as_ref(), mask, callback);
++        let position = collider_isometry(t.position, t.rotation);
++        self.iter_shape_overlaps_at(shape.as_ref(), &position, mask, callback);
+     }
+ 
+     /// `iter_shape_overlaps<(IsoTransform, &RaycastMeshData)>`（O：impl$45 变换）。
+@@ -2497,7 +2526,8 @@
+     ) {
+         let t = into_transformed_shape_iso(transform, mesh, parent);
+         let shape = t.as_collider_shape();
+-        self.iter_shape_overlaps(shape.as_ref(), mask, callback);
++        let position = collider_isometry(t.position, t.rotation);
++        self.iter_shape_overlaps_at(shape.as_ref(), &position, mask, callback);
+     }
+ 
+     /// `shape_overlaps_with<Rectangle3d>`（0x142612d10，O）：矩形 → 变换形状，
+@@ -2507,9 +2537,13 @@
+     /// `(mask>>slot&1)==0` 跳过、`intersection_with_shape` 命中置标志，命中停。
+     #[cfg(feature = "native-physics")]
+     pub fn shape_overlaps_with(&self, rect: utils::geometry::rectangle::Rectangle3d, mask: u32) -> bool {
+-        // O：矩形 → cuboid 形状（impl$41 输出为旋转+半边长；Rust 以直 cuboid 表示，
+-        // from_rotation_arc 取向登记）。
+-        let (_rotation, half) = rectangle_to_transformed(rect);
++        let (rotation, half) = rectangle_to_transformed(rect);
++        let center = glam::Vec3::new(
++            rect.footprint.center.x,
++            (rect.bottom + rect.top) * 0.5,
++            rect.footprint.center.y,
++        );
++        let position = collider_isometry(center, rotation);
+         let shape = SharedShape::cuboid(half.x, half.y, half.z);
+         for (slot_index, slot) in self.slots.iter().enumerate() {
+             if (mask >> slot_index) & 1 == 0 {
+@@ -2518,7 +2552,7 @@
+             let hit = slot.pipeline.intersection_with_shape(
+                 &slot.bodies,
+                 &slot.colliders,
+-                &Isometry::identity(),
++                &position,
+                 shape.as_ref(),
+                 QueryFilter::default(),
+             );
+@@ -2543,6 +2577,7 @@
+         mask: u32,
+     ) -> bool {
+         let shape = decorator.as_collider_shape();
++        let position = collider_isometry(decorator.position, decorator.rotation);
+         // O：单装饰 collider 落其来源槽；Rust 以全 mask 槽扫掠（来源槽映射登记）。
+         for (slot_index, slot) in self.slots.iter().enumerate() {
+             if (mask >> slot_index) & 1 == 0 {
+@@ -2551,7 +2586,7 @@
+             let hit = slot.pipeline.intersection_with_shape(
+                 &slot.bodies,
+                 &slot.colliders,
+-                &Isometry::identity(),
++                &position,
+                 shape.as_ref(),
+                 QueryFilter::default(),
+             );
+@@ -2815,3 +2850,70 @@
+         assert_eq!(calls, 0);
+     }
+ }
++
++
++#[cfg(all(test, feature = "native-physics"))]
++mod collision_query_regressions {
++    use super::*;
++
++    fn insert_cuboid(
++        world: &mut RaycastWorld,
++        slot_index: usize,
++        center: glam::Vec3,
++        half: glam::Vec3,
++    ) -> SubworldColliderHandle {
++        let slot = &mut world.slots[slot_index];
++        let handle = slot.colliders.insert(
++            ColliderBuilder::cuboid(half.x, half.y, half.z)
++                .translation(Vector::new(center.x, center.y, center.z))
++                .build(),
++        );
++        slot.pipeline.update(&slot.colliders);
++        let (index, generation) = handle.into_raw_parts();
++        SubworldColliderHandle { index, generation, slot: slot_index as u8 }
++    }
++
++    #[test]
++    fn ray_queries_keep_nearest_subworld_hit() {
++        let mut world = RaycastWorld::new();
++        insert_cuboid(&mut world, 0, glam::Vec3::new(2.0, 0.0, 0.0), glam::Vec3::splat(0.5));
++        insert_cuboid(&mut world, 1, glam::Vec3::new(6.0, 0.0, 0.0), glam::Vec3::splat(0.5));
++        let hit = world.raycast(glam::Vec3::ZERO, glam::Vec3::X, 3);
++        assert!(hit.is_hit());
++        assert_eq!(hit.toi, 1.5);
++        assert_eq!(world.raycast_simple(glam::Vec3::ZERO, glam::Vec3::X, 3).toi, 1.5);
++    }
++
++    #[test]
++    fn legacy_parameterized_miss_preserves_integer_tag_bits() {
++        let hit = RaycastWorld::new().legacy_raycast_w_params(glam::Vec3::ZERO, glam::Vec3::X, 1);
++        assert!(hit.is_miss());
++        assert_eq!(hit.toi.to_bits(), 2);
++    }
++
++    #[test]
++    fn rectangle_overlap_keeps_center_and_orientation() {
++        let mut world = RaycastWorld::new();
++        insert_cuboid(&mut world, 0, glam::Vec3::new(10.0, 2.0, 22.0), glam::Vec3::splat(0.1));
++        let center = glam::Vec3::new(10.0, 2.0, 20.0);
++        let size = glam::Vec3::new(6.0, 2.0, 0.5);
++        let rotated = utils::geometry::rectangle::Rectangle3d::new(center, size, glam::Vec2::Y);
++        let unrotated = utils::geometry::rectangle::Rectangle3d::new(center, size, glam::Vec2::X);
++        assert!(world.shape_overlaps_with(rotated, 1));
++        assert!(!world.shape_overlaps_with(unrotated, 1));
++    }
++
++    #[test]
++    fn overlap_handle_keeps_pose_and_callback_stop_rule() {
++        let mut world = RaycastWorld::new();
++        let center = glam::Vec3::new(10.0, 3.0, 20.0);
++        let query = insert_cuboid(&mut world, 0, center, glam::Vec3::ONE);
++        insert_cuboid(&mut world, 0, center, glam::Vec3::splat(0.2));
++        let mut hits = 0;
++        world.iter_shape_overlaps_handle(query, 1, |_, _| { hits += 1; false });
++        assert_eq!(hits, 2, "false continues through all overlaps");
++        hits = 0;
++        world.iter_shape_overlaps_handle(query, 1, |_, _| { hits += 1; true });
++        assert_eq!(hits, 1, "true stops at the first overlap");
++    }
++}

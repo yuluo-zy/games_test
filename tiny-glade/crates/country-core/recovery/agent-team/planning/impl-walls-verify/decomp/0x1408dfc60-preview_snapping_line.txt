@@ -1,0 +1,262 @@
+// 0x1408dfc60 preview_snapping_line size=2076
+
+void __cdecl
+country_core::systems::wall::shapes::shape_placement_signifiers::preview_snapping_line(void)
+
+{
+  ulonglong uVar1;
+  undefined8 uVar2;
+  undefined8 uVar3;
+  undefined4 uVar4;
+  uint extraout_EAX;
+  ulonglong extraout_RAX;
+  ulonglong extraout_RAX_00;
+  undefined8 *in_RCX;
+  longlong in_RDX;
+  float fVar5;
+  uint uVar6;
+  float extraout_XMM0_Da;
+  float extraout_XMM0_Da_00;
+  float extraout_XMM0_Da_01;
+  uint uVar8;
+  ulonglong uVar7;
+  float fVar9;
+  float fVar10;
+  float in_stack_00000028;
+  longlong local_1a0;
+  longlong local_188;
+  float local_170;
+  ulonglong local_168;
+  longlong lStack_160;
+  undefined *local_140;
+  ulonglong uStack_138;
+  ulonglong uStack_130;
+  longlong lStack_128;
+  undefined4 local_108;
+  undefined4 uStack_104;
+  float fStack_100;
+  undefined4 uStack_fc;
+  undefined4 uStack_f8;
+  undefined4 uStack_f4;
+  undefined *local_c8;
+  ulonglong uStack_c0;
+  ulonglong local_b8;
+  longlong lStack_b0;
+  
+  uVar8 = *(uint *)(in_RDX + 600);
+  if (1 < uVar8) {
+    ::utils::curve::Curve::
+    get_approx_u_from_pos<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>();
+    fVar10 = in_stack_00000028 / *(float *)(in_RDX + 0x68);
+    fVar5 = 0.0;
+    if (0.0 <= fVar10) {
+      fVar5 = fVar10;
+    }
+    fVar10 = 1.0;
+    if (fVar5 <= 1.0) {
+      fVar10 = fVar5;
+    }
+    fVar5 = extraout_XMM0_Da - fVar10 * 0.5;
+    fVar10 = fVar10 * 0.5 + extraout_XMM0_Da;
+    if (*(int *)(in_RDX + 600) == 2) {
+      if (NAN(fVar5)) {
+                    // WARNING: Subroutine does not return
+        core::panicking::panic();
+      }
+      if (ABS(fVar5) == INFINITY) {
+                    // WARNING: Subroutine does not return
+        core::panicking::panic();
+      }
+      if (NAN(fVar10)) {
+                    // WARNING: Subroutine does not return
+        core::panicking::panic();
+      }
+      if (ABS(fVar10) == INFINITY) {
+                    // WARNING: Subroutine does not return
+        core::panicking::panic();
+      }
+      local_140 = (undefined *)0x0;
+      uStack_138 = 4;
+      uStack_130 = 0;
+      ::utils::curve::Curve::
+      slice_into<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D,alloc::vec::Vec<glam::f32::vec3::Vec3,alloc::alloc::Global>_>
+                ();
+      ::utils::curve::Curve::
+      try_new_from_points<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>();
+      if (!SBORROW8(0,(longlong)local_c8)) goto joined_r0x0001408e00b2;
+      std::backtrace::Backtrace::capture();
+      local_140 = &DAT_142aa4f68;
+      uStack_138 = 0x1a;
+    }
+    else {
+      if ((NAN(fVar5)) || (NAN(fVar10))) {
+                    // WARNING: Subroutine does not return
+        core::panicking::panic();
+      }
+      fmodf(fVar5,1.0);
+      fmodf(fVar10,1.0);
+      ::utils::curve::Curve::
+      circular_slice<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>();
+      if (!SBORROW8(0,(longlong)local_c8)) goto joined_r0x0001408e00b2;
+      std::backtrace::Backtrace::capture();
+      local_140 = &DAT_142aa4f82;
+      uStack_138 = 0x23;
+    }
+    anyhow::Error::
+    construct<anyhow::error::ContextError<ref_<str_>,enum2_<utils::curve::CurveError>_>_>();
+    local_b8 = local_168;
+    lStack_b0 = lStack_160;
+    uStack_130 = uStack_c0;
+    uStack_c0 = extraout_RAX_00;
+    goto joined_r0x0001408e00b2;
+  }
+  fVar5 = *(float *)(in_RDX + 0x264);
+  if (uVar8 == 0) {
+    fVar5 = fVar5 + 0.315;
+  }
+  uVar4 = *(undefined4 *)(in_RDX + 0x268);
+  if ((uVar8 & 1) == 0) {
+    ::utils::geometry::circle::Circle2d::as_curve3();
+  }
+  else {
+    fVar10 = (float)*(undefined8 *)(in_RDX + 0x26c);
+    fVar9 = (float)((ulonglong)*(undefined8 *)(in_RDX + 0x26c) >> 0x20);
+    local_108 = (undefined4)*(undefined8 *)(in_RDX + 0x25c);
+    uStack_104 = (undefined4)((ulonglong)*(undefined8 *)(in_RDX + 0x25c) >> 0x20);
+    uVar6 = (int)((uint)(uVar8 == 0) << 0x1f) >> 0x1f;
+    uVar8 = (int)((uint)(uVar8 == 0) << 0x1f) >> 0x1f;
+    uVar7 = CONCAT44(~uVar8 & (uint)(fVar9 + 0.63),~uVar6 & (uint)(fVar10 + 0.63)) |
+            CONCAT44((uint)fVar9 & uVar8,(uint)fVar10 & uVar6);
+    uStack_f8 = (undefined4)uVar7;
+    uStack_f4 = (undefined4)(uVar7 >> 0x20);
+    ::utils::geometry::rectangle::Rectangle2d::as_curve3();
+    ::utils::curve::Curve::
+    crashy_resample_per_segment<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic2D>();
+    if (local_c8 != (undefined *)0x0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    fStack_100 = fVar5;
+    uStack_fc = uVar4;
+    if (lStack_b0 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+  }
+  ::utils::curve::Curve::
+  get_approx_u_from_pos<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic2D>();
+  fVar5 = 0.0;
+  if (0.0 <= in_stack_00000028 / local_170) {
+    fVar5 = in_stack_00000028 / local_170;
+  }
+  fVar10 = 1.0;
+  if (fVar5 <= 1.0) {
+    fVar10 = fVar5;
+  }
+  fVar5 = extraout_XMM0_Da_00 - fVar10 * 0.5;
+  if (NAN(fVar5)) {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic();
+  }
+  fVar10 = extraout_XMM0_Da_00 + fVar10 * 0.5;
+  if (NAN(fVar10)) {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic();
+  }
+  fmodf(fVar5,1.0);
+  fmodf(fVar10,1.0);
+  ::utils::curve::Curve::circular_slice<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic2D>();
+  if (SBORROW8(0,CONCAT44(uStack_104,local_108))) {
+    uStack_138 = CONCAT44(uStack_fc,fStack_100);
+    uStack_130 = CONCAT44(uStack_f4,uStack_f8);
+LAB_1408e0109:
+    std::backtrace::Backtrace::capture();
+    anyhow::Error::
+    construct<anyhow::error::ContextError<ref_<str_>,enum2_<utils::curve::CurveError>_>_>();
+    local_c8 = (undefined *)0x8000000000000000;
+    local_b8 = local_168;
+    lStack_b0 = lStack_160;
+    uStack_c0 = extraout_RAX;
+  }
+  else {
+    ::utils::curve::Curve::into_curve3();
+    local_b8 = uStack_130;
+    lStack_b0 = lStack_128;
+    local_c8 = local_140;
+    uStack_c0 = uStack_138;
+    if (SBORROW8(0,(longlong)local_140)) goto LAB_1408e0109;
+  }
+  if (local_1a0 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+  if (local_188 != 0) {
+    std::alloc::__default_lib_allocator::__rust_dealloc();
+  }
+joined_r0x0001408e00b2:
+  if (SBORROW8(0,(longlong)local_c8)) {
+    in_RCX[2] = 0x8000000000000000;
+    anyhow::error::impl$6::drop();
+  }
+  else {
+    local_108 = (undefined4)uStack_c0;
+    alloc::vec::spec_from_iter::impl$0::
+    from_iter<glam::f32::vec3::Vec3,core::iter::adapters::map::Map<core::slice::iter::Iter<glam::f32::vec3::Vec3>,country_core::systems::wall::shapes::shape_placement_signifiers::preview_snapping_line::closure_env_1>_>
+              ();
+    ::utils::curve::Curve::
+    get_coord_at_u<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic2D>_>
+              ();
+    uVar7 = (ulonglong)extraout_EAX;
+    if (local_b8 <= uVar7) {
+                    // WARNING: Subroutine does not return
+      core::panicking::panic_bounds_check();
+    }
+    uVar1 = uVar7 + 1;
+    if (local_b8 <= uVar1) {
+                    // WARNING: Subroutine does not return
+      core::panicking::panic_bounds_check();
+    }
+    fVar9 = 1.0 - extraout_XMM0_Da_01;
+    fVar5 = *(float *)(uStack_c0 + 8 + uVar7 * 0xc);
+    fVar10 = *(float *)(uStack_c0 + 8 + uVar1 * 0xc);
+    uVar2 = *(undefined8 *)(uStack_c0 + uVar7 * 0xc);
+    uVar3 = *(undefined8 *)(uStack_c0 + uVar1 * 0xc);
+    uStack_104 = SUB84(local_140,0);
+    fStack_100 = (float)((ulonglong)local_140 >> 0x20);
+    uStack_fc = (undefined4)uStack_138;
+    *in_RCX = CONCAT44((float)((ulonglong)uVar3 >> 0x20) * extraout_XMM0_Da_01 +
+                       (float)((ulonglong)uVar2 >> 0x20) * fVar9,
+                       (float)uVar3 * extraout_XMM0_Da_01 + (float)uVar2 * fVar9);
+    *(float *)(in_RCX + 1) = fVar10 * extraout_XMM0_Da_01 + fVar9 * fVar5;
+    *(ulonglong *)((longlong)in_RCX + 0xc) = CONCAT44(uStack_104,local_108);
+    *(ulonglong *)((longlong)in_RCX + 0x14) = CONCAT44(uStack_fc,fStack_100);
+    in_RCX[3] = uStack_138;
+    in_RCX[4] = uStack_130;
+    if (local_c8 != (undefined *)0x0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+    if (lStack_b0 != 0) {
+      std::alloc::__default_lib_allocator::__rust_dealloc();
+    }
+  }
+  return;
+}
+
+
+// CALLEES:
+{'name': '__rust_dealloc', 'address': '140613c20'}
+{'name': 'as_curve3', 'address': '140c991f0'}
+{'name': 'as_curve3', 'address': '140c97e10'}
+{'name': 'capture', 'address': '140d56700'}
+{'name': 'circular_slice<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic2D>', 'address': '1414677f0'}
+{'name': 'circular_slice<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>', 'address': '141467300'}
+{'name': 'construct<anyhow::error::ContextError<ref$<str$>,enum2$<utils::curve::CurveError>_>_>', 'address': '1428a8940'}
+{'name': 'crashy_resample_per_segment<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic2D>', 'address': '14146a2a0'}
+{'name': 'drop', 'address': '140d4cc30'}
+{'name': 'fmodf', 'address': '142923f10'}
+{'name': 'from_iter<glam::f32::vec3::Vec3,core::iter::adapters::map::Map<core::slice::iter::Iter<glam::f32::vec3::Vec3>,country_core::systems::wall::shapes::shape_placement_signifiers::preview_snapping_line::closure_env$1>_>', 'address': '14130e700'}
+{'name': 'get_approx_u_from_pos<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic2D>', 'address': '141469af0'}
+{'name': 'get_approx_u_from_pos<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>', 'address': '141469950'}
+{'name': 'get_coord_at_u<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic2D>_>', 'address': '141467ce0'}
+{'name': 'into_curve3', 'address': '140c9cc60'}
+{'name': 'panic', 'address': '1428d9430'}
+{'name': 'panic_bounds_check', 'address': '1428d9518'}
+{'name': 'slice_into<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D,alloc::vec::Vec<glam::f32::vec3::Vec3,alloc::alloc::Global>_>', 'address': '141466300'}
+{'name': 'try_new_from_points<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D>', 'address': '141469230'}

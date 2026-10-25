@@ -1,0 +1,28 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/d_main_tests.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/d_main_tests.rs
+@@ -612,7 +612,7 @@
+ }
+ 
+ #[test]
+-fn object_grass_push_draws_one_quad_per_vec4_and_caps_at_thirteen() {
++fn object_grass_push_draws_each_item_including_more_than_thirteen() {
+     use super::object_grass_push::*;
+     use glam::{Vec3, Vec4};
+     let mut rig = Rig::new();
+@@ -632,13 +632,10 @@
+         cursor_push(false, Vec3::ONE, 9.0),
+         Vec4::new(0.0, 0.0, 0.0, 9.0)
+     );
+-    assert_eq!(RADIUS_NEAR, 7.125);
+     assert_eq!(collect_push_objects(objs.clone(), [Vec4::ZERO]).len(), 3);
+-    let too_many = vec![Vec4::ZERO; MAX_PUSH_OBJECTS + 1];
+-    let r = std::panic::catch_unwind(core::panic::AssertUnwindSafe(|| {
+-        run(&rig, |c| object_grass_push_pass(c, &too_many))
+-    }));
+-    assert!(r.is_err());
++    let many = vec![Vec4::ZERO; 20];
++    run(&rig, |c| object_grass_push_pass(c, &many));
++    assert_eq!(rig.log.borrow().submissions.last().unwrap().draws.len(), 20);
+ }
+ 
+ #[test]

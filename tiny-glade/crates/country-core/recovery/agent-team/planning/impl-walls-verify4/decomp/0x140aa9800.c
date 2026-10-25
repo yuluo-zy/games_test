@@ -1,0 +1,166 @@
+
+void __cdecl
+country_core::resources::walls::inner_walls::InnerWalls::
+_try_update_state<country_core::resources::walls::inner_walls::impl_1::update_supports::closure_env_0>
+          (void)
+
+{
+  char *pcVar1;
+  longlong lVar2;
+  uint uVar3;
+  uint uVar4;
+  ulonglong extraout_RAX;
+  undefined8 *extraout_RAX_00;
+  longlong *in_RCX;
+  longlong in_RDX;
+  ulonglong uVar5;
+  undefined1 *in_R8;
+  longlong lVar6;
+  uint uVar7;
+  ushort uVar8;
+  longlong lVar9;
+  byte bVar10;
+  char cVar11;
+  char cVar13;
+  char cVar14;
+  char cVar15;
+  undefined1 auVar12 [16];
+  undefined1 auVar16 [16];
+  undefined1 auVar17 [16];
+  undefined1 local_c0 [8];
+  undefined1 *local_b8;
+  code *local_b0;
+  undefined8 local_a8;
+  undefined *local_a0;
+  undefined8 local_98;
+  undefined8 local_90;
+  undefined8 local_88;
+  undefined8 uStack_80;
+  undefined8 local_78;
+  undefined *local_70;
+  undefined8 local_68;
+  undefined4 local_60;
+  undefined4 local_5c;
+  undefined **local_58;
+  undefined8 local_50;
+  undefined1 **local_48;
+  undefined8 local_40;
+  undefined8 local_38;
+  
+  if (in_RCX[3] != 0) {
+    core::hash::BuildHasher::
+    hash_one<std::hash::random::RandomState,ref_<country_core::systems::ui::GlobalId>_>();
+    lVar2 = *in_RCX;
+    bVar10 = (byte)(extraout_RAX >> 0x39);
+    auVar12 = ZEXT216(CONCAT11(bVar10,bVar10));
+    auVar12 = pshuflw(auVar12,auVar12,0);
+    lVar6 = 0;
+    uVar5 = extraout_RAX;
+    while( true ) {
+      uVar5 = in_RCX[1] & uVar5;
+      pcVar1 = (char *)(lVar2 + uVar5);
+      cVar11 = auVar12[0];
+      auVar17[0] = -(*pcVar1 == cVar11);
+      cVar13 = auVar12[1];
+      auVar17[1] = -(pcVar1[1] == cVar13);
+      cVar14 = auVar12[2];
+      auVar17[2] = -(pcVar1[2] == cVar14);
+      cVar15 = auVar12[3];
+      auVar17[3] = -(pcVar1[3] == cVar15);
+      auVar17[4] = -(pcVar1[4] == cVar11);
+      auVar17[5] = -(pcVar1[5] == cVar13);
+      auVar17[6] = -(pcVar1[6] == cVar14);
+      auVar17[7] = -(pcVar1[7] == cVar15);
+      auVar17[8] = -(pcVar1[8] == cVar11);
+      auVar17[9] = -(pcVar1[9] == cVar13);
+      auVar17[10] = -(pcVar1[10] == cVar14);
+      auVar17[0xb] = -(pcVar1[0xb] == cVar15);
+      auVar17[0xc] = -(pcVar1[0xc] == cVar11);
+      auVar17[0xd] = -(pcVar1[0xd] == cVar13);
+      auVar17[0xe] = -(pcVar1[0xe] == cVar14);
+      auVar17[0xf] = -(pcVar1[0xf] == cVar15);
+      uVar8 = (ushort)(SUB161(auVar17 >> 7,0) & 1) | (ushort)(SUB161(auVar17 >> 0xf,0) & 1) << 1 |
+              (ushort)(SUB161(auVar17 >> 0x17,0) & 1) << 2 |
+              (ushort)(SUB161(auVar17 >> 0x1f,0) & 1) << 3 |
+              (ushort)(SUB161(auVar17 >> 0x27,0) & 1) << 4 |
+              (ushort)(SUB161(auVar17 >> 0x2f,0) & 1) << 5 |
+              (ushort)(SUB161(auVar17 >> 0x37,0) & 1) << 6 |
+              (ushort)(SUB161(auVar17 >> 0x3f,0) & 1) << 7 |
+              (ushort)(SUB161(auVar17 >> 0x47,0) & 1) << 8 |
+              (ushort)(SUB161(auVar17 >> 0x4f,0) & 1) << 9 |
+              (ushort)(SUB161(auVar17 >> 0x57,0) & 1) << 10 |
+              (ushort)(SUB161(auVar17 >> 0x5f,0) & 1) << 0xb |
+              (ushort)(SUB161(auVar17 >> 0x67,0) & 1) << 0xc |
+              (ushort)(SUB161(auVar17 >> 0x6f,0) & 1) << 0xd |
+              (ushort)(SUB161(auVar17 >> 0x77,0) & 1) << 0xe | (ushort)(auVar17[0xf] >> 7) << 0xf;
+      uVar7 = (uint)uVar8;
+      while (uVar8 != 0) {
+        uVar3 = 0;
+        for (uVar4 = uVar7; (uVar4 & 1) == 0; uVar4 = uVar4 >> 1 | 0x80000000) {
+          uVar3 = uVar3 + 1;
+        }
+        lVar9 = (uVar3 + uVar5 & in_RCX[1]) * -0x78;
+        if (*(longlong *)(lVar2 + -0x78 + lVar9) == in_RDX) {
+          hashbrown::map::HashMap::
+          insert<country_core::resources::walls::WallId,tuple_<>,std::hash::random::RandomState,alloc::alloc::Global>
+                    ();
+          *(undefined1 *)(lVar2 + -9 + lVar9) = *in_R8;
+          return;
+        }
+        uVar8 = (ushort)(uVar7 - 1) & (ushort)uVar7;
+        uVar7 = CONCAT22((short)(uVar7 - 1 >> 0x10),uVar8);
+      }
+      auVar16[0] = -(*pcVar1 == -1);
+      auVar16[1] = -(pcVar1[1] == -1);
+      auVar16[2] = -(pcVar1[2] == -1);
+      auVar16[3] = -(pcVar1[3] == -1);
+      auVar16[4] = -(pcVar1[4] == -1);
+      auVar16[5] = -(pcVar1[5] == -1);
+      auVar16[6] = -(pcVar1[6] == -1);
+      auVar16[7] = -(pcVar1[7] == -1);
+      auVar16[8] = -(pcVar1[8] == -1);
+      auVar16[9] = -(pcVar1[9] == -1);
+      auVar16[10] = -(pcVar1[10] == -1);
+      auVar16[0xb] = -(pcVar1[0xb] == -1);
+      auVar16[0xc] = -(pcVar1[0xc] == -1);
+      auVar16[0xd] = -(pcVar1[0xd] == -1);
+      auVar16[0xe] = -(pcVar1[0xe] == -1);
+      auVar16[0xf] = -(pcVar1[0xf] == -1);
+      if ((((((((((((((((SUB161(auVar16 >> 7,0) & 1) != 0 || (SUB161(auVar16 >> 0xf,0) & 1) != 0) ||
+                      (SUB161(auVar16 >> 0x17,0) & 1) != 0) || (SUB161(auVar16 >> 0x1f,0) & 1) != 0)
+                    || (SUB161(auVar16 >> 0x27,0) & 1) != 0) || (SUB161(auVar16 >> 0x2f,0) & 1) != 0
+                   ) || (SUB161(auVar16 >> 0x37,0) & 1) != 0) ||
+                 (SUB161(auVar16 >> 0x3f,0) & 1) != 0) || (SUB161(auVar16 >> 0x47,0) & 1) != 0) ||
+               (SUB161(auVar16 >> 0x4f,0) & 1) != 0) || (SUB161(auVar16 >> 0x57,0) & 1) != 0) ||
+             (SUB161(auVar16 >> 0x5f,0) & 1) != 0) || (SUB161(auVar16 >> 0x67,0) & 1) != 0) ||
+           (SUB161(auVar16 >> 0x6f,0) & 1) != 0) || (SUB161(auVar16 >> 0x77,0) & 1) != 0) ||
+          auVar16[0xf] < '\0') break;
+      uVar5 = uVar5 + lVar6 + 0x10;
+      lVar6 = lVar6 + 0x10;
+    }
+  }
+  if (1 < *(ulonglong *)__imp__ZN3log20MAX_LOG_LEVEL_FILTER17h0a1e497ddb29da86E) {
+    local_b8 = local_c0;
+    local_b0 = walls::impl$0::fmt;
+    ::toolbar::mei::widgets::tweaker::TweakerView::as_inner_mut();
+    local_88 = *extraout_RAX_00;
+    uStack_80 = extraout_RAX_00[1];
+    local_5c = *(undefined4 *)(extraout_RAX_00 + 2);
+    local_78 = 2;
+    local_70 = &anon_def53d6eac1e3e984af7597425af9da9_34_llvm_10772482918030821368;
+    local_68 = 0x2b;
+    local_58 = &anon_def53d6eac1e3e984af7597425af9da9_31_llvm_10772482918030821368;
+    local_50 = 2;
+    local_48 = &local_b8;
+    local_40 = 1;
+    local_38 = 0;
+    local_a8 = 0;
+    local_a0 = &anon_def53d6eac1e3e984af7597425af9da9_34_llvm_10772482918030821368;
+    local_98 = 0x2b;
+    local_90 = 0;
+    local_60 = 1;
+    ::log::__private_api::impl$2::log();
+  }
+  return;
+}
+

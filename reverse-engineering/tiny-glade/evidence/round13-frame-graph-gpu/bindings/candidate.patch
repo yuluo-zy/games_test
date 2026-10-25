@@ -1,0 +1,367 @@
+--- a/tiny-glade/crates/tiny-glade/src/raster_host.rs
++++ b/tiny-glade/crates/tiny-glade/src/raster_host.rs
+@@ -14,7 +14,8 @@
+ //!
+ //! 已核对（O）与未证实（U）的取舍都在对应函数注释里；未恢复的 draw 种类进入正式帧错误通道。
+ use crate::render_host::{
+-    BufferHost, RasterEntry, ShaderHost, TextureHost, rh_view_desc, upsert_shader_resource,
++    BufferHost, RasterEntry, ShaderHost, TextureHost, compute_view_range, rh_view_desc,
++    upsert_shader_resource,
+ };
+ use ash::vk;
+ use country_core::{
+@@ -1174,6 +1175,26 @@
+                 return;
+             }
+         };
++        // A native shader binding carries its view independently from the
++        // owner's graph identity. Project the very same view before graph build;
++        // a descriptor selecting one layer must not read every layer/mip.
++        let access_ranges = match raster_binding_ranges(
++            &accesses,
++            &bindings,
++            colors.len() + usize::from(depth.is_some()),
++            |resource| {
++                let handle = graph.resource_handle(resource)?;
++                Ok(graph.declaration().resources[handle.raw() as usize].descriptor)
++            },
++        ) {
++            Ok(ranges) => ranges,
++            Err(error) => {
++                let mut declared = graph.add_pass(name);
++                declared.side_effect();
++                declared.render_with_result_context(move |_| Err(error));
++                return;
++            }
++        };
+         // Native attachment LOAD preserves an existing producer. A newly
+         // created/imported-undefined target may still use native LOAD (the
+         // original fullscreen combine/resolve does so); that does not invent
+@@ -1277,7 +1298,7 @@
+                     .expect("validated vertex buffer range");
+             }
+         }
+-        for a in &accesses {
++        for (a, (range, binding_slot)) in accesses.iter().zip(&access_ranges) {
+             let resource = declared
+                 .resource_handle(a.resource)
+                 .expect("add_resource_access: resource does not belong to this graph");
+@@ -1286,27 +1307,17 @@
+                 || preserving_buffers.contains(&a.resource))
+                 && writes
+             {
+-                declared.add_preserving_resource_access_range(
+-                    resource,
+-                    a.access,
+-                    a.group,
+-                    rhapsody::rg::AccessRange::Whole,
+-                )
++                declared.add_preserving_resource_access_range(resource, a.access, a.group, *range)
+             } else if !writes
+-                && inactive_reads.get(&a.resource) == Some(&true)
++                && (*binding_slot).and_then(|slot| inactive_reads.get(&slot)) == Some(&true)
+                 && !colors.iter().any(|color| color.id == a.resource)
+                 && depth
+                     .as_ref()
+                     .is_none_or(|depth| depth.texture_id != a.resource)
+             {
+-                declared.add_inactive_resource_read_range(
+-                    resource,
+-                    a.access,
+-                    a.group,
+-                    rhapsody::rg::AccessRange::Whole,
+-                )
++                declared.add_inactive_resource_read_range(resource, a.access, a.group, *range)
+             } else {
+-                declared.add_resource_access(resource, a.access, a.group)
++                declared.add_resource_access_range(resource, a.access, a.group, *range)
+             };
+             result.expect("add_resource_access: resource does not belong to this graph");
+         }
+@@ -1971,13 +1982,78 @@
+     }
+ }
+ 
++/// Pair each native pass binding with the access appended by the same
++/// DrawBuilder operation. Attachment and indirect accesses need no shader slot;
++/// they retain their own declaration. Repeated views of one image are consumed
++/// once in original order, instead of replacing them with an owner-wide access.
++fn raster_binding_ranges(
++    accesses: &[country_core::render::pass_builder::draw_stream::PassAccess],
++    bindings: &[RenderPassBinding],
++    attachment_accesses: usize,
++    mut descriptor: impl FnMut(u32) -> rhapsody::Result<rhapsody::rg::Descriptor>,
++) -> rhapsody::Result<Vec<(rhapsody::rg::AccessRange, Option<u8>)>> {
++    use rhapsody::rg::{AccessRange, Descriptor};
++    if attachment_accesses > accesses.len() {
++        return Err(rhapsody::Error::invalid_usage(
++            "raster attachment accesses are absent",
++        ));
++    }
++    let mut used = vec![false; bindings.len()];
++    let mut ranges = Vec::new();
++    ranges
++        .try_reserve_exact(accesses.len())
++        .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
++    for (access_index, access) in accesses.iter().enumerate() {
++        // RasterPass::new writes attachments before any DrawBuilder bindings.
++        // A shader alias must never steal that independent attachment access.
++        if access_index < attachment_accesses {
++            ranges.push((AccessRange::Whole, None));
++            continue;
++        }
++        let matching = bindings.iter().enumerate().find(|(slot, binding)| {
++            !used[*slot]
++                && binding.resource_index == access.resource
++                && binding.access_type == access.access
++        });
++        let (range, slot) = if let Some((slot, binding)) = matching {
++            let slot_id = u8::try_from(slot).map_err(|_| {
++                rhapsody::Error::invalid_usage("raster pass binding index exceeds u8")
++            })?;
++            used[slot] = true;
++            let desc = descriptor(binding.resource_index)?;
++            let range = match desc {
++                Descriptor::Image(_) => {
++                    compute_view_range(desc, &binding.view.unwrap_or_default())?
++                }
++                Descriptor::Buffer(_) if binding.view.is_none() => AccessRange::Whole,
++                Descriptor::Buffer(_) => {
++                    return Err(rhapsody::Error::invalid_usage(
++                        "raster texture view refers to a buffer",
++                    ));
++                }
++            };
++            (range, Some(slot_id))
++        } else {
++            (AccessRange::Whole, None)
++        };
++        ranges.push((range, slot));
++    }
++    if used.iter().any(|used| !used) {
++        return Err(rhapsody::Error::invalid_usage(
++            "raster pass binding has no matching native resource access",
++        ));
++    }
++    Ok(ranges)
++}
++
+ /// Resolve packet-local evidence onto the real graph resource. Any active
+-/// alias in any draw tightens an inactive binding back into a content read.
++/// alias of that same pass slot tightens it back into a content read. Different
++/// views of one image remain distinct until the graph evaluates their ranges.
+ fn raster_content_intents<'a>(
+     packets: impl IntoIterator<Item = &'a DrawPacket>,
+     bindings: &[RenderPassBinding],
+     mut is_texture: impl FnMut(u32) -> rhapsody::Result<bool>,
+-) -> rhapsody::Result<(Vec<u32>, std::collections::BTreeMap<u32, bool>)> {
++) -> rhapsody::Result<(Vec<u32>, std::collections::BTreeMap<u8, bool>)> {
+     use country_core::render::pass_builder::draw_stream::access_is_write;
+     let mut preserving = Vec::new();
+     let mut inactive = std::collections::BTreeMap::new();
+@@ -2025,7 +2101,7 @@
+             }
+             if !access_is_write(actual.access_type) {
+                 inactive
+-                    .entry(actual.resource_index)
++                    .entry(access.slot)
+                     .and_modify(|all| *all &= unused)
+                     .or_insert(unused);
+             }
+@@ -2078,7 +2154,7 @@
+         let (preserving, inactive) =
+             raster_content_intents([&first], &bindings, |id| Ok(id == 42)).unwrap();
+         assert_eq!(preserving, [43]);
+-        assert_eq!(inactive[&42], true);
++        assert_eq!(inactive[&0], true);
+         let mut active = packet();
+         active.accesses.push(ResourceAccess {
+             binding_index: 0,
+@@ -2086,8 +2162,175 @@
+         });
+         let (_, inactive) =
+             raster_content_intents([&first, &active], &bindings, |id| Ok(id == 42)).unwrap();
+-        assert_eq!(inactive[&42], false);
++        assert_eq!(inactive[&0], false);
+         first.inactive_texture_bindings.push(1);
+         assert!(raster_content_intents([&first], &bindings, |id| Ok(id == 42)).is_err());
+     }
+ }
++
++#[cfg(test)]
++mod raster_binding_range_tests {
++    use super::*;
++    use country_core::render::pass_builder::draw_stream::{PassAccess, ResourceAccess};
++    use country_core::rhapsody_types::TextureViewDesc;
++    use rhapsody::rg::{AccessRange, Descriptor, ResourceSpec};
++
++    fn image() -> Descriptor {
++        ResourceSpec::Image(
++            rhapsody::resource::TextureDesc::new_2d_array(64, 64, 3, vk::Format::R32_SFLOAT)
++                .mip_levels(4)
++                .usage(vk::ImageUsageFlags::SAMPLED | vk::ImageUsageFlags::STORAGE),
++        )
++        .descriptor()
++    }
++    fn binding(mip: u32, layer: u32, access: u8) -> RenderPassBinding {
++        RenderPassBinding {
++            resource_index: 0,
++            access_type: access,
++            view: Some(
++                TextureViewDesc::new()
++                    .base_mip_level(mip)
++                    .level_count(Some(1))
++                    .base_layer(layer)
++                    .layer_count(Some(1)),
++            ),
++        }
++    }
++    fn access(code: u8) -> PassAccess {
++        PassAccess {
++            resource: 0,
++            access: code,
++            group: 1,
++        }
++    }
++    fn packet() -> DrawPacket {
++        DrawPacket::new(
++            country_core::rhapsody_contract::Handle(ManagedHandle(1), std::marker::PhantomData),
++            [0, 0],
++            RasterState::default(),
++        )
++    }
++
++    #[test]
++    fn repeated_owner_views_keep_ranges_slots_and_attachment_order() {
++        let bindings = [binding(2, 1, 0x1d), binding(3, 2, 0x1d)];
++        // The first access has an identical owner/code but belongs to the
++        // framebuffer, before the two native shader binding operations.
++        let ranges = raster_binding_ranges(
++            &[access(0x1d), access(0x1d), access(0x1d)],
++            &bindings,
++            1,
++            |_| Ok(image()),
++        )
++        .unwrap();
++        assert_eq!(ranges[0], (AccessRange::Whole, None));
++        assert_eq!(ranges[1].1, Some(0));
++        assert_eq!(ranges[2].1, Some(1));
++        assert_eq!(
++            ranges[1].0,
++            AccessRange::Texture {
++                aspect_mask: 1,
++                base_mip_level: 2,
++                level_count: 1,
++                base_array_layer: 1,
++                layer_count: 1,
++            }
++        );
++        assert!(!ranges[1].0.overlaps(ranges[2].0));
++        let mut first = packet();
++        first.accesses = vec![
++            ResourceAccess {
++                binding_index: 4,
++                slot: 0,
++            },
++            ResourceAccess {
++                binding_index: 5,
++                slot: 1,
++            },
++        ];
++        first.inactive_texture_bindings.push(5);
++        let (_, inactive) = raster_content_intents([&first], &bindings, |_| Ok(true)).unwrap();
++        assert_eq!(inactive[&0], false);
++        assert_eq!(inactive[&1], true);
++        // A second packet's active alias of slot 1 must still tighten that slot.
++        let mut second = packet();
++        second.accesses.push(ResourceAccess {
++            binding_index: 8,
++            slot: 1,
++        });
++        let (_, inactive) =
++            raster_content_intents([&first, &second], &bindings, |_| Ok(true)).unwrap();
++        assert_eq!(inactive[&1], false);
++    }
++
++    #[test]
++    fn selected_shader_view_reads_only_its_real_producer_and_keeps_other_layers_undefined() {
++        use rhapsody::rg::{AccessTable, GraphDefinition, PlanContext};
++        let selected =
++            raster_binding_ranges(&[access(0x1d)], &[binding(2, 1, 0x1d)], 0, |_| Ok(image()))
++                .unwrap()[0]
++                .0;
++        let definition = |read_range: AccessRange| {
++            let mut graph = RhGraph::new();
++            let texture = graph
++                .import_unowned("partial array", image(), 1, 0)
++                .unwrap();
++            let mut writer = graph.add_pass("real selected producer");
++            writer
++                .add_resource_access_range(texture, 0x34, 0, selected)
++                .unwrap();
++            writer.render(|_| true);
++            let mut reader = graph.add_pass("raster selected view");
++            reader
++                .add_resource_access_range(texture, 0x1d, 1, read_range)
++                .unwrap();
++            reader.side_effect();
++            reader.render(|_| true);
++            GraphDefinition::from_declaration(
++                &graph.build().declaration,
++                &mut AccessTable::original(),
++                PlanContext::default(),
++            )
++        };
++        assert!(definition(selected).is_ok());
++        assert!(
++            definition(AccessRange::Whole).is_err(),
++            "owner-wide projection must retain its real uninitialized-content failure"
++        );
++        let wrong_layer = AccessRange::Texture {
++            aspect_mask: 1,
++            base_mip_level: 2,
++            level_count: 1,
++            base_array_layer: 2,
++            layer_count: 1,
++        };
++        assert!(definition(wrong_layer).is_err());
++    }
++
++    #[test]
++    fn bad_view_missing_access_and_invalid_slot_fail_without_widening() {
++        assert!(
++            raster_binding_ranges(&[access(0x1d)], &[binding(4, 0, 0x1d)], 0, |_| Ok(image()))
++                .is_err()
++        );
++        assert!(
++            raster_binding_ranges(&[access(0x1d)], &[binding(0, 3, 0x1d)], 0, |_| Ok(image()))
++                .is_err()
++        );
++        assert!(raster_binding_ranges(&[], &[binding(0, 0, 0x1d)], 0, |_| Ok(image())).is_err());
++        assert!(
++            raster_binding_ranges(&[access(0x1d)], &[binding(0, 0, 0x1d)], 2, |_| Ok(image()))
++                .is_err()
++        );
++        let buffer = ResourceSpec::Buffer(rhapsody::resource::BufferDesc::new(
++            64,
++            vk::BufferUsageFlags::STORAGE_BUFFER,
++            rhapsody::resource::MemoryLocation::GpuOnly,
++        ))
++        .descriptor();
++        assert!(
++            raster_binding_ranges(&[access(0x1d)], &[binding(0, 0, 0x1d)], 0, |_| Ok(buffer))
++                .is_err()
++        );
++    }
++}
+--- a/tiny-glade/crates/tiny-glade/src/render_host.rs
++++ b/tiny-glade/crates/tiny-glade/src/render_host.rs
+@@ -2132,7 +2132,7 @@
+ /// Declaration-time projection of the same view used by rh_view_desc during
+ /// recording. The logical descriptor is available before GPU allocation; no
+ /// physical image or substitute owner is created to calculate this range.
+-fn compute_view_range(
++pub(crate) fn compute_view_range(
+     descriptor: rhapsody::rg::Descriptor,
+     view: &country_core::rhapsody_types::TextureViewDesc,
+ ) -> rhapsody::Result<rhapsody::rg::AccessRange> {

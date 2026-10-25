@@ -1,0 +1,35 @@
+# 本App已安装采样器目录与每页注册合同 V1
+
+## 范围与证据
+
+仅在现 render_host.rs 私有 SamplerPages 闭包优化，root明确委派原work。不重造rhapsody，不改shader算法/ABI/descriptor容量/绘制数量/统计/原30断言。作者不生产编辑、Cargo、GPU或Git。待独审后由root整合真实验证。
+
+真实postpush30：frame2各kind live=[690,68,2211,52]，frame29=[691,68,2213,70]；8页容量自frame2固定，sampler retiring始终0，sampler52→70发生于frame2..11后稳定。SamplerPages全App共享，但每物理page强持已遇见的(name,ArcSampler)lease，callback按空闲页重选，使相同实际sampler目录在不同页逐步冷填。没有生产with_sampler调用，9反射内建名×8页=72与70吻合，但尚无逐page runtime名字转储，不伪称已锁每次新增具体位置。
+
+原B新机器码包 sampler-page-owner-evidence-20261021/native-pack：0x140bf583b写count13、0x140bf5826末端+0x4e0=13×0x60、0x140bf5870 extend；0x14213604d真实create_sampler且匹配PDB inline。仅证明原版启动固定13个native samplers，不证明原版存在本工程的分页预填。下面属于现分页适配的静态资源注册优化。
+
+## 目录归属与发布
+
+每个ShaderHost原有独立Arc<SamplerPages>，目录放同owner内，不放Device、不跨loading/gameplay App。不按Device全部13个条目猜App目录。目录只含该Host已成功安装pipeline bindings的实际反射sampler，按(name字符串, Arc::ptr_eq真实Sampler owner)去重；数组多element共用同owner只计一次。旧名字的新native Sampler是不同版本，旧已安装pipeline的binding仍引用旧Arc，因此两版本可合法共存。不同名字即使native owner相同仍保现name合同，不擅合并。
+
+register放compute/raster entry的所有原fallible准备以及table.try_reserve成功之后、table.push之前。entry先为普通局部值；注册成功后只写登记状态/Arc::new/已reserve的push，无新的Result失败点。register构造新目录Vec时先try_reserve并复制旧目录与实际新增，所有fallible完成才换Arc目录；失败保持旧目录和原table不变。目录只增加已安装真实资源；现Host表无pipeline卸载API且保留所有entry至App owner结束，目录寿命对应此现合同。Host销毁后外部binding/snapshot仍持同App注册owner，最后SamplerPages Arc Drop才清目录/页，与现cache寿命一致，不创建Device→Host循环。
+
+## 热路径及容量兼容
+
+复用原SamplerPages.pages Mutex为私有state（pages与不可变Arc目录快照），保持单次页查找，无新增每draw全局锁/原子。页cache保存成功登记的目录Arc stamp；同目录命中只处理当前shader所需binding，不每draw遍历全目录。目录改变或该页name invalidate后首次prepare才考虑本目录初始化。
+
+若去重完整目录（并合入当前真实请求，防私有单测/兼容consumer未登记）能够容纳此页真实sampler表capacity，则本次完整组所需sampler包括目录中尚缺全部条目。capacity取不可变heap.layout.plan()真实binding3 descriptor_count；GroupReservation仍是实际槽准入权威，不凭layout跳过require_slots。无法放入完整目录时，退回原按当前组所需sampler路径：容量1且每组仅1个sampler依然合法，目录大小不成为额外Unsupported/OOM理由。实际组本身超容量仍保原错误。
+
+complete group required将本次缺失sampler数加入原FG/local/参数需求，只在同per-page group guard内准入。缺失项真实调用heap.sampler，真正写descriptor并受原CPU/descriptor预算，不把统计改成预热值。未被本shader参数使用但属于成功初始化目录的lease只由真实page cache持有，保持静态sampler热路径复用；不靠每帧清池或周期失效过门。
+
+## 原子性、并发替换与取消
+
+prepare只创建PendingSampler和预留cache metadata，不提前发布descriptor lease/cache stamp。依旧在全部parameter.finish成功之后commit；若sampler创建、slot admission、dynamic constants或finish失败，Pending新lease随错误Drop，没提交的native descriptor槽按原generation规则归还；旧cached lease及旧stamp不改。FG/sampler cache的原发布顺序保留。commit没有新的fallible分配，所需Vec容量在prepare预留。
+
+cached key从原commit按name替换修正为与lookup一致的(name,ArcSampler)版本key，不能让旧snapshot覆盖新版本owner。with_sampler(name,new)保已有invalidate行为；其每页删除同name所有版本，old lease Drop在cache Mutex外。旧GPU command/PreparedParameters依然持自身Arc和真实last_use，不会因缓存失效提前释放slot。旧反射snapshot再使用仍按其旧Sampler Arc重新准备，不能读当前mutable名字表。
+
+PageCache增加纯epoch：invalidate先增加epoch并清目录stamp；Pending记录prepare epoch。成功commit仅当epoch仍相等才发布stamp，防setter与准备并发时旧prepare覆盖新失效。epoch达到u64::MAX后保持MAX且不再发布stamp（仅禁用此快路径），不wrap误命中。目录Arc身份本身区分注册revision，旧Arc stamp不能伪命中新目录。缓存值与stamp替换后的最后owner均在cache/state锁外Drop；无反向manager/Slots锁序、无GPU wait。
+
+## 验证
+
+作者仅语法解析与源码/原证审核。新增私有实际GPU sampler测试至少覆盖：两已装目录name在两个真实heap页首组一次登记、后续交换shader请求不增加实际sampler live或缓存写；完整目录放不进capacity1时每组1仍保原路径；同name不同Sampler Arc旧新snapshot版本正确；未commit取消不发布lease或stamp，旧cache保留。测试只用现helper抽出的materialize阶段发真实descriptor写，不冒称shader采样执行验证；原8bridge/ABI/raster/30世界与WSI由root继续验证。原30所有阈值/样本保留，目标是减少真实稳态新descriptor写和锁工作，不保证任意新业务动态装载也无合理增长。

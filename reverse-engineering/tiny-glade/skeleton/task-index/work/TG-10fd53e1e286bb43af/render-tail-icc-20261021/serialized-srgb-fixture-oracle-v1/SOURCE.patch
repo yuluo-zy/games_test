@@ -1,0 +1,62 @@
+--- a/tiny-glade/crates/country-core/src/systems/backend/icc.rs
++++ b/tiny-glade/crates/country-core/src/systems/backend/icc.rs
+@@ -185,18 +185,46 @@
+         }
+     }
+ 
+-    #[test]
+-    fn icc_reuses_exact_lcms_215_and_srgb_profile_is_identity() {
++    fn grid_fingerprint_le(values: &[[u16; 4]]) -> u64 {
++        values.iter().flatten().flat_map(|value| value.to_le_bytes()).fold(
++            0xcbf2_9ce4_8422_2325,
++            |hash, byte| (hash ^ u64::from(byte)).wrapping_mul(0x100_0000_01b3),
++        )
++    }
++
++    #[test]
++    fn icc_reuses_exact_lcms_215_and_serialized_srgb_quantization_oracle() {
+         assert_eq!(lcms2::version(), 2150);
++        let expected = input_grid();
++        let memory = lcms2::Profile::new_srgb();
++        let transform = lcms2::Transform::<[u16; 4], [u16; 4]>::new(
++            &memory, lcms2::PixelFormat::RGBA_16,
++            &memory, lcms2::PixelFormat::RGBA_16,
++            lcms2::Intent::Perceptual,
++        ).unwrap();
++        let mut identity = expected.clone();
++        transform.transform_in_place(&mut identity);
++        assert_eq!(identity, expected);
++        assert_eq!(grid_fingerprint_le(&identity), 0x7129_9975_8885_5b45);
++
+         let file = profile_file();
+         let actual = generate_icc_lut(file.path()).unwrap();
+-        let expected = input_grid();
++        // 独立 LCMS 2.15 C API 全网格基准：写盘把 XYZ/TRC 量化为 s15Fixed16。
++        // 因而内存 sRGB → 重读文件并非恒等，不能按恒等预期放宽误差。
++        assert_eq!(grid_fingerprint_le(&actual), 0xa436_8867_549a_25f2);
++        let mut per_channel_max = [0_u16; 3];
++        let mut changed_channels = 0;
+         for (actual, expected) in actual.iter().zip(&expected) {
+             for channel in 0..3 {
+-                assert!(actual[channel].abs_diff(expected[channel]) <= 1);
++                let difference = actual[channel].abs_diff(expected[channel]);
++                per_channel_max[channel] = per_channel_max[channel].max(difference);
++                changed_channels += usize::from(difference != 0);
+             }
+             assert_eq!(actual[3], 255);
+         }
++        assert_eq!(per_channel_max, [31, 11, 13]);
++        assert_eq!(changed_channels, 34819);
++        assert_eq!(actual[31], [65535, 0, 6, 255]);
+     }
+ 
+     #[test]
+@@ -233,7 +261,7 @@
+         assert_eq!(desc.format, 0x5b);
+         assert!(desc.sampled);
+         assert_eq!(pixels.len(), 32768);
+-        assert_eq!(pixels[31], [65535, 0, 0, 255]);
++        assert_eq!(pixels[31], [65535, 0, 6, 255]);
+         assert_eq!(app.world().resource::<ActiveIccProfile>().name(), file.path().file_name().unwrap().to_str());
+         drop(calls);
+         app.update();

@@ -1,0 +1,39 @@
+# Independent source audit: M3 indexed-count adaptation candidate
+
+Reviewer boot_chain, original B/current refactored Rhapsody. Read-only source audit; no production edit, Cargo or GPU execution. Reviewed exact candidate hashes in manifest.json. This is a platform adapter review, not recovered original shader business or a game-ready claim.
+
+## Finding P1: one scratch name is reused for every counted packet
+
+`raster_host-count-adapter.patch` declares every nonzero unsupported IndexedIndirectCount packet using the same name `platform indexed indirect count commands`. Existing `rhapsody/src/rg/vulkan.rs::VulkanGraphBackend::declare` (line1015 onward at review time) rejects an already present specifications name with BuildError::DuplicateResourceName. This map is cleared once in begin_frame, not between packets. The second adapted packet in one graph therefore fails, even when its source/count differ or the packets belong to separate raster submissions. Original Nani permits many counted packets per scene.
+
+Use a genuinely fresh frame-local name for each declaration through the current declarer, without reusing one output buffer that later compute passes would overwrite before an earlier raster consumer. Add a regression with at least two counted packets in one actual graph (preferably one raster submission as well). The supplied multi-frame fixture changes the count of only one counted packet per graph, so it cannot catch this failure. No other definite blocking bug was found in this bounded source review; GPU execution remains required after the fix.
+
+## Original business and shader checks
+
+Fresh raw B read of nani_draw140904ae0/1428B independently hashes9d0caad61fff3aadea5943b38ea5785fdae52fea53717ca374ae974a9b2f7263, matching the supplied manifest. Native forceFine or kind<=1&&!forceNoFine selects counted draw; it reads the actual 27-entry maximum table and commandSlot*20/countList*4 offsets. The raw branch remains different and uses actual mesh-part count, so replacing the counted branch by raw original-buffer max draws would be incorrect.
+
+The current adapter leaves original command/count owners and Nani shaders untouched. Source GLSL and its actual SPIR-V use unsigned min(counter,max), copy exactly five u32 words for every active command (preserving vertexOffset's signed bits and firstInstance), and write all five zero words for every inactive tail command. There is no source command load in the inactive branch. This preserves active DrawIndex prefix values; inactive zero-instance/index commands have no original Nani vertex/fragment invocations. This bounded equivalence assumes the actual original Nani readonly command/count raster contract; it is not a general replacement for arbitrary draw-query/side-effect semantics.
+
+Independently parsed generated Rust words:751 words, byte-identical to indexed_indirect_count.spv, SHA740e3aa4ee4d1da91f39c59d27f4e53979c1b2344730a4ce9e3937942265b8dd. `spirv-dis` confirms LocalSize64x1x1; set0 bindings0/1 StorageBuffer NonWritable, binding2 NonReadable; four push uints at0/4/8/12; uint runtime array stride4. Only offline disassembly/hash checks were performed here. The supplied offline spirv-val assertion is not reclassified as a runtime pass.
+
+## Current architecture and ownership checks
+
+The adapter uses the current ShaderHost heap/compiler, BindlessShaderPackage lowering, DynamicConstants pool and graph ResourceSpec::Buffer. It does not create a second renderer, allocator or descriptor backend. BindlessShaderPackage validates the original16B push size; BindlessParameters writes all three fixed resource slots, adds one immutable parameter-upload lease, and checks the same pipeline ABI at bind_pass.
+
+Actual source/count/scratch graph generation and Buffer kind are checked. Command/count offsets are aligned to4; input span and buffer bounds use checked math; descriptor bases are rounded down to actual minStorageBufferOffsetAlignment(max4); conservative prefix bytes are declared and push offsets are relative to these exact descriptor ranges. Descriptor range, maximum indirect draw count, MultiDrawIndirect enablement and actual dispatch-count limit are checked. The bounded original Nani stride is20; high packet payload words are deliberately truncated to u32 as the existing native host already does. Zero maximum skips scratch/dispatch and yields an ordinary zero-count packet.
+
+Actual graph declaration accesses are compute reads0x1a(group1) for source/count and full scratch write0x37(group0). Raster final invariants add actual scratch indirect read2(group1); the current access table maps these to compute shader read / all-command memory write / draw-indirect read, so the graph sees the required producer-to-adapter-to-raster edges. Scratch cannot logically alias an input; the current session imports physical Buffer owners canonically, avoiding duplicate logical histories for identical Arc owners.
+
+BindlessParameters::bind_pass delegates range coverage to BindlessHeap::validate_pass_lease against this pass's actual managed owner projection, then uses retain_recorded and retain_upload_read. This retains real Buffer/MemoryBlock/descriptor leases, parameter page, heap and pipeline through the existing ResourceOwner/queue completion protocol. There is no retain_object-only escape for memory. The same-raster write guard examines original submission accesses before moving a count snapshot; original Nani count/commands are readonly here. Incorrect undeclared shader writes outside that contract would remain a caller contract error, not a supported adapter feature.
+
+The descriptor budget is unchanged (current host600 storage slots). This utility requires three resource leases plus one parameter lease per adapted packet, before existing draws/compute leases. No slot-count feasibility for a complete original scene can be inferred from a one-packet fixture; actual full-chain budget exhaustion must remain an error and be measured, not hidden by increasing limits. Ticket creation is lazy during graph declaration; both supplied fixture and current production renderer call prewarm after graph construction, and callbacks use try_get without blocking.
+
+## Required next validation
+
+After unique scratch declarations, run actual M3 strict GPU with multiple counted packets in the same graph plus persistent source/count trajectory2->1->0->2->3 (max2). Retain the nonzero source tail across frames and nonzero command/count offsets and source stride. Check validation output, graph adapter count, completed owner retirement and output pixels. The existing fixture strongly rejects stale-tail raw-max substitution but does not by itself validate full original Nani scene, negative vertexOffset, all five nontrivial command words, cancellation, or full-scene descriptor capacity.
+
+## P1 follow-up source review
+
+Reviewed updated candidate-manifest SHA74dbb2c44db9ca3192c485678b2fb3cf1db5be4f713a3da8594f0dc3b0732e64. New scratch names combine raster scope/current graph resource index and explicitly check existing declaration names, with checked overflow on retry. Every successful declaration advances graph resources and uses a fresh ResourceHandle; output ownership is not reused. This resolves the reported duplicate-name P1 at source level.
+
+Updated fixture now uses two packets in the same raster submission. The first original GPU counter at offset8 follows2->1->0->2->3; the second at offset12 is GPU-filled0 in the same declared write range8..16. The graph asserts two different scratch indices/names and two adaptation passes on unsupported hardware; mistakenly sharing scratch would allow the second zeroing pass to erase first packet commands and fail nonzero-frame pixels. Root must still compile/run it before treating the P1 as runtime validated. No production/Cargo/GPU work by this reviewer.

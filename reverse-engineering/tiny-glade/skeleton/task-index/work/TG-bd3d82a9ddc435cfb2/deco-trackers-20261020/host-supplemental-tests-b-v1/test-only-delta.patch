@@ -1,0 +1,190 @@
+--- /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-1a3550f643b9278be7/main-chain-frame-20261018/member14-owner-b-20261020/candidate-v2/src/systems/wall/construct_wall_bricks.rs
++++ /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-1a3550f643b9278be7/main-chain-frame-20261018/member14-owner-b-20261020/supplemental-tests-v1/src/systems/wall/construct_wall_bricks.rs
+@@ -291,3 +291,150 @@
+         output.write(WallBricksChanged { wall: id, entity });
+     }
+ }
++
++
++#[cfg(test)]
++mod preassembly_base_transition_tests {
++    use super::*;
++    use crate::asset_libraries::ssbo_library::AssetSsboLibrary;
++    use crate::geometry::instanced_wall::BrickTransformSsbo;
++    use crate::render::sparse_instance_buffer::SparseInstanceBuffer;
++    use crate::render::test_device::TestDevice;
++    use crate::resources::roofs::geometry::surface::Curve2;
++    use crate::resources::walls::{InnerWalls, WallState};
++    use crate::resources::walls::publication_source::TerrainHeightGrid512;
++    use crate::systems::wall::wall_state::path_preparation::PathRasters512;
++    use std::sync::Arc;
++
++    fn fixture(source_flag_65: u8) -> (World, Schedule, WallId, Entity) {
++        let wall = WallId(0x700000031);
++        let mut inner = InnerWalls::new();
++        inner.new_wall_with_id(wall, WallState::new(
++            Curve2::try_new(vec![[0.,0.],[4.,0.]], false).unwrap(),
++            2., 0, source_flag_65, false,
++        ));
++        let mut public = PublicWalls::default();
++        public.consume(&mut inner, &TerrainHeightGrid512 {
++            encoded: vec![0u16;512*512].into(), minimum_y: 0., maximum_y: 4., sampling_fix: true,
++        });
++        // Actual published wall, before its actual path/height preparation.
++        assert!(public.get(wall).unwrap().prepared_path.is_none());
++        let mut storage = SparseInstanceBuffer::<BrickTransformSsbo>::try_new(&TestDevice(1)).unwrap();
++        let owner = InstancedWall::new_awaiting_production(wall.0, &storage);
++        storage.writer(owner.chimney_allocation().unwrap()).push(&BrickTransformSsbo { seed: 41, ..Default::default() }).unwrap();
++        storage.writer(owner.door_stairs_allocation().unwrap()).push(&BrickTransformSsbo { seed: 42, ..Default::default() }).unwrap();
++        let library = AssetSsboLibrary::new(); library.register::<BrickTransformSsbo>(storage);
++        let mut world = World::new(); world.insert_resource(public); world.insert_resource(library);
++        world.init_resource::<WallEntities>(); world.init_resource::<WallHoles>();
++        world.init_resource::<WallBrickBuildState>(); world.init_resource::<RtWorld>();
++        world.init_resource::<Events<OnWallChanged>>(); world.init_resource::<Events<OnWallDeleted>>();
++        world.init_resource::<Events<RecalculateWallBricks>>(); world.init_resource::<Events<WallGableChanged>>();
++        world.init_resource::<Events<WallRoofPresenceChanged>>(); world.init_resource::<Events<RoofGeometryChanged>>();
++        world.init_resource::<Events<WallBricksChanged>>(); world.init_resource::<Events<UpdateRtWorldEvent>>();
++        let entity = world.spawn(owner).id(); world.resource_mut::<WallEntities>().0.insert(wall, entity);
++        let mut schedule = Schedule::default(); schedule.add_systems(construct_wall_bricks);
++        (world, schedule, wall, entity)
++    }
++
++    fn prepare_actual_path(world: &mut World, wall: WallId) {
++        // Explicit four physical input buffers, passed through the real path
++        // and height algorithms. No fabricated prepared path/Trigger/brick Vec.
++        let paths = PathRasters512::from_encoded(
++            std::array::from_fn(|_| Arc::<[u8]>::from(vec![0u8;512*512])), true,
++        ).unwrap();
++        world.resource_mut::<PublicWalls>().get_mut(wall).unwrap().prepare_paths(&paths).unwrap();
++    }
++    fn lane_headers(world: &World, entity: Entity) -> [usize;3] {
++        let owner = world.get::<InstancedWall<BrickTransformSsbo>>(entity).unwrap();
++        [owner.allocation().unwrap(), owner.chimney_allocation().unwrap(), owner.door_stairs_allocation().unwrap()]
++            .map(|lane| lane.handle.0.as_deref().unwrap() as *const _ as usize)
++    }
++    fn assert_deco_payloads(world: &World, entity: Entity) {
++        let owner = world.get::<InstancedWall<BrickTransformSsbo>>(entity).unwrap();
++        let storage = world.resource::<AssetSsboLibrary>().get::<BrickTransformSsbo>().unwrap();
++        for (lane, seed) in [(owner.chimney_allocation().unwrap(),41), (owner.door_stairs_allocation().unwrap(),42)] {
++            assert!(storage.owns_allocation(lane));
++            let ranges = storage.allocation_to_draw_multi_instanced(lane);
++            assert_eq!(ranges.len(),1); assert_eq!(ranges[0].1,1);
++            assert_eq!(storage.data[ranges[0].0 as usize].seed,seed);
++        }
++    }
++    fn request(world: &mut World, wall: WallId) {
++        world.resource_mut::<Events<RecalculateWallBricks>>().write(RecalculateWallBricks(wall));
++    }
++
++    #[test]
++    fn awaiting_real_failure_then_geometry_success_preserves_lanes_and_rejects_later_missing_trigger() {
++        let (mut world, mut schedule, wall, entity) = fixture(0);
++        let headers = lane_headers(&world,entity);
++        request(&mut world,wall); schedule.run(&mut world);
++        assert!(matches!(world.resource::<WallBrickBuildState>().failures.get(&wall),Some(WallBrickBuildError::MissingPreparedPath)));
++        assert!(world.get::<InstancedWall<BrickTransformSsbo>>(entity).unwrap().is_awaiting_production());
++        assert!(world.get::<WallTriggerVolume>(entity).is_none());
++        assert!(world.resource::<Events<WallBricksChanged>>().is_empty());
++        assert!(world.resource::<Events<UpdateRtWorldEvent>>().is_empty());
++        assert!(world.resource::<RtWorld>().meshes.is_empty());
++        assert_eq!(lane_headers(&world,entity),headers); assert_deco_payloads(&world,entity);
++
++        prepare_actual_path(&mut world,wall);
++        request(&mut world,wall); schedule.run(&mut world);
++        assert!(!world.resource::<WallBrickBuildState>().failures.contains_key(&wall));
++        let owner = world.get::<InstancedWall<BrickTransformSsbo>>(entity).unwrap();
++        assert!(!owner.is_awaiting_production()); assert!(owner.is_upload_pending());
++        assert!(!owner.pending_instances().is_empty());
++        let trigger = world.get::<WallTriggerVolume>(entity).unwrap();
++        assert!(trigger.is_valid()); assert!(!trigger.default_tris().is_empty());
++        let positions: Vec<_> = trigger.default_tris().iter().flat_map(|t|t.points).collect();
++        assert_eq!(world.resource::<RtWorld>().get(RtMeshHandle::from_wall_id(wall)).unwrap().positions,positions);
++        let output: Vec<_> = world.resource_mut::<Events<WallBricksChanged>>().drain().collect();
++        assert_eq!(output.len(),1); assert_eq!(output[0].wall,wall); assert_eq!(output[0].entity,entity);
++        assert_eq!(world.resource_mut::<Events<UpdateRtWorldEvent>>().drain().count(),1);
++        assert_eq!(lane_headers(&world,entity),headers); assert_deco_payloads(&world,entity);
++
++        // Exercise the same actual CPU shadow writer after real construction.
++        world.resource_scope(|world, mut library: Mut<AssetSsboLibrary>| {
++            let mut owner = world.get_mut::<InstancedWall<BrickTransformSsbo>>(entity).unwrap();
++            assert!(owner.upload_to_storage_buffer(library.get_mut::<BrickTransformSsbo>().unwrap()).unwrap());
++        });
++        assert!(!world.get::<InstancedWall<BrickTransformSsbo>>(entity).unwrap().is_upload_pending());
++        assert_eq!(lane_headers(&world,entity),headers); assert_deco_payloads(&world,entity);
++
++        // Only AwaitingProduction may lack the real Trigger. A later component
++        // loss must fail without manufacturing a default or consuming success.
++        world.entity_mut(entity).remove::<WallTriggerVolume>();
++        request(&mut world,wall); schedule.run(&mut world);
++        assert!(matches!(world.resource::<WallBrickBuildState>().failures.get(&wall),Some(WallBrickBuildError::StaleWallEntity(e)) if *e==entity));
++        assert!(world.get::<WallTriggerVolume>(entity).is_none());
++        assert!(!world.get::<InstancedWall<BrickTransformSsbo>>(entity).unwrap().is_upload_pending());
++        assert!(world.resource::<Events<WallBricksChanged>>().is_empty());
++        assert!(world.resource::<Events<UpdateRtWorldEvent>>().is_empty());
++        assert_eq!(lane_headers(&world,entity),headers); assert_deco_payloads(&world,entity);
++    }
++
++    #[test]
++    fn native_empty_brick_branch_still_requires_actual_trigger_before_awaiting_success() {
++        let (mut world, mut schedule, wall, entity) = fixture(1);
++        let headers=lane_headers(&world,entity);
++        // Original source+65 special branch really returns an empty brick Vec;
++        // this does not authorize bypassing Trigger construction.
++        assert!(build_wall_bricks(wall,world.resource::<PublicWalls>().get(wall).unwrap(),None,world.resource::<WallHoles>()).unwrap().is_empty());
++        request(&mut world,wall); schedule.run(&mut world);
++        assert!(matches!(world.resource::<WallBrickBuildState>().failures.get(&wall),Some(WallBrickBuildError::Trigger(WallTriggerError::MissingPreparedPath))));
++        assert!(world.get::<InstancedWall<BrickTransformSsbo>>(entity).unwrap().is_awaiting_production());
++        assert!(world.get::<WallTriggerVolume>(entity).is_none());
++        assert!(world.resource::<Events<WallBricksChanged>>().is_empty());
++        assert!(world.resource::<Events<UpdateRtWorldEvent>>().is_empty());
++        assert_eq!(lane_headers(&world,entity),headers); assert_deco_payloads(&world,entity);
++
++        prepare_actual_path(&mut world,wall);
++        request(&mut world,wall); schedule.run(&mut world);
++        assert!(!world.resource::<WallBrickBuildState>().failures.contains_key(&wall));
++        let owner = world.get::<InstancedWall<BrickTransformSsbo>>(entity).unwrap();
++        assert!(!owner.is_awaiting_production()); assert!(owner.is_upload_pending());
++        assert!(owner.pending_instances().is_empty());
++        assert!(world.get::<WallTriggerVolume>(entity).unwrap().is_valid());
++        assert_eq!(world.resource::<Events<WallBricksChanged>>().len(),1);
++        assert_eq!(world.resource::<Events<UpdateRtWorldEvent>>().len(),1);
++        assert_eq!(lane_headers(&world,entity),headers); assert_deco_payloads(&world,entity);
++    }
++}
+--- /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-c459c7f73345e24709/main-chain-boot-20261018/member14-owner-b-20261020/candidate-v2/src/run_game.rs
++++ /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-c459c7f73345e24709/main-chain-boot-20261018/member14-owner-b-20261020/supplemental-tests-v1/src/run_game.rs
+@@ -2010,7 +2010,9 @@
+         app.insert_resource(AssetLibraryRuntime::new(Arc::new(CpuBufferDevice(1)), Arc::new(CpuBufferDevice(2))));
+         app.init_resource::<WallBrickUploadStatus>(); app.init_resource::<Observed>();
+         app.add_event::<WallBricksChanged>(); app.add_event::<UpdateRtWorldEvent>();
+-        app.add_systems(bevy_app::Update, prepare_wall_brick_assembly_owners.in_set(GameSystemSet(19)));
++        app.init_resource::<country_core::resources::walls::public_walls::WallPlasters>();
++        app.add_event::<country_core::resources::walls::public_walls::OnWallDeleted>();
++        app.add_systems(bevy_app::Update, (country_core::systems::wall::delete_wall::delete_wall, prepare_wall_brick_assembly_owners).chain_ignore_deferred().in_set(GameSystemSet(19)));
+         app.add_systems(bevy_app::Update, inspect_at25.in_set(GameSystemSet(25)));
+         app.add_systems(bevy_app::PostUpdate, sync_wall_bricks);
+         app.update(); app.update();
+@@ -2018,5 +2020,21 @@
+         assert!(app.world().resource::<WallBrickUploadStatus>().gpu_ready);
+         let entity = app.world().resource::<WallEntities>().wall_entity(WallId(0x700000031)).unwrap();
+         assert!(app.world().get::<InstancedWall<BrickTransformSsbo>>(entity).unwrap().is_awaiting_production());
+-    }
+-}
++
++        // A real authority remove/recreate of the same complete WallId publishes
++        // Deleted and Changed together. Match actual19 deletion then producer;
++        // ordinary19->25 edges must apply both Commands before inspection.
++        inner.remove(WallId(0x700000031));
++        let curve = country_core::resources::roofs::geometry::surface::Curve2::try_new(vec![[0.,0.],[4.,0.]], false).unwrap();
++        inner.new_wall_with_id(WallId(0x700000031), WallState::new(curve, 3., 0, 0, false));
++        app.world_mut().resource_mut::<PublicWalls>().consume(&mut inner, &TerrainHeightGrid512 { encoded: vec![0u16;512*512].into(), minimum_y: 0., maximum_y: 4., sampling_fix: true });
++        app.world_mut().resource_mut::<Events<country_core::resources::walls::public_walls::OnWallDeleted>>().write(country_core::resources::walls::public_walls::OnWallDeleted(WallId(0x700000031)));
++        app.update();
++        let replacement = app.world().resource::<WallEntities>().wall_entity(WallId(0x700000031)).unwrap();
++        assert_ne!(replacement,entity);
++        assert!(app.world().get_entity(entity).is_err());
++        assert!(app.world().get::<InstancedWall<BrickTransformSsbo>>(replacement).unwrap().is_awaiting_production());
++        app.update();
++        assert_eq!(app.world().resource::<Observed>().changed_counts,[1,0,1,0]);
++    }
++}

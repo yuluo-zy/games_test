@@ -1,0 +1,143 @@
+--- a/tiny-glade/crates/tiny-glade/src/production_renderer.rs
++++ b/tiny-glade/crates/tiny-glade/src/production_renderer.rs
+@@ -347,8 +347,10 @@
+         }
+         return Err(error);
+     }
++    let capture_graph_id = built.graph_id();
+     let graph = renderer.bridge.compile_built(built)?;
+     Ok(CompiledGameGraph {
++        capture_graph_id,
+         graph,
+         output,
+         expected: ExportExpectation {
+@@ -438,8 +440,10 @@
+         }
+         return Err(error);
+     }
++    let capture_graph_id = built.graph_id();
+     let graph = renderer.bridge.compile_built(built)?;
+     Ok(CompiledGameGraph {
++        capture_graph_id,
+         graph,
+         output: output.id,
+         expected: ExportExpectation {
+@@ -803,6 +807,7 @@
+ }
+ 
+ pub struct CompiledGameGraph {
++    capture_graph_id: rhapsody::rg::GraphId,
+     graph: CompiledCoreGraph,
+     output: u32,
+     expected: ExportExpectation,
+@@ -952,8 +957,10 @@
+             }
+             return Err(error);
+         }
++        let capture_graph_id = built.graph_id();
+         let graph = self.renderer.bridge.compile_built(built)?;
+         Ok(CompiledGameGraph {
++            capture_graph_id,
+             graph,
+             output: output.id,
+             // loading_graph builds its "loading screen" target as 0x2b with a
+@@ -1057,8 +1064,15 @@
+     }
+     fn execute_main_graph(&mut self, compiled: Self::Compiled) {
+         let expected = compiled.expected;
++        let capture_graph_id = compiled.capture_graph_id;
+         match self.renderer.bridge.execute_compiled(compiled.graph) {
+-            Ok(receipt) => match self
++            Ok(receipt) => {
++                if crate::screenshot::shared_texture_capture::installed(self.world) {
++                    if let Err(error) = crate::screenshot::shared_texture_capture::submitted(
++                        self.world, &mut self.renderer.bridge, capture_graph_id, &receipt,
++                    ) { self.renderer.record_error(error); return; }
++                }
++                match self
+                 .renderer
+                 .bridge
+                 .take_exported_texture(&receipt, compiled.output)
+@@ -1083,8 +1097,12 @@
+                     self.renderer.main = Some((compiled.output, receipt));
+                 }
+                 Err(error) => self.renderer.record_error(error),
+-            },
+-            Err(error) => self.renderer.record_error(error),
++                }
++            }
++            Err(error) => {
++                crate::screenshot::shared_texture_capture::cancel_unsubmitted(self.world, capture_graph_id);
++                self.renderer.record_error(error);
++            }
+         }
+     }
+     fn acquire_swapchain_image(&mut self) -> Acquire {
+@@ -1156,12 +1174,10 @@
+         }
+     }
+     fn finish_screenshot_capture(&mut self) {
+-        // The reconstructed screenshot coordinator still lacks the original
+-        // per-request GPU texture association. Do not advance requests to a
+-        // fictional completed state from this production owner.
+-        if crate::screenshot::has_active_screenshot_requests() {
+-            self.renderer.record_error(rhapsody::Error::unsupported(
+-                "original screenshot 0x14031ea20: request-to-GPU-texture association is not recovered"));
++        if crate::screenshot::shared_texture_capture::installed(self.world) {
++            if let Err(error) = crate::screenshot::finish_screenshot_capture(self.world) {
++                self.renderer.record_error(error);
++            }
+         }
+     }
+     fn snapshot_render_stats(&mut self) {
+--- a/tiny-glade/crates/tiny-glade/src/render_bridge.rs
++++ b/tiny-glade/crates/tiny-glade/src/render_bridge.rs
+@@ -1098,8 +1098,18 @@
+         }
+         return Err(error);
+     }
++    let capture_graph_id = built.graph_id();
+     let compiled = bridge.compile_built(built)?;
+-    let receipt = bridge.execute_compiled(compiled)?;
++    let receipt = match bridge.execute_compiled(compiled) {
++        Ok(receipt) => receipt,
++        Err(error) => {
++            crate::screenshot::shared_texture_capture::cancel_unsubmitted(world, capture_graph_id);
++            return Err(error);
++        }
++    };
++    if crate::screenshot::shared_texture_capture::installed(world) {
++        crate::screenshot::shared_texture_capture::submitted(world, &mut bridge, capture_graph_id, &receipt)?;
++    }
+     // Real final export, physical allocation and retained native owner are
+     // required; neither a logical texture number nor a ready flag suffices.
+     let actual_output = bridge.exported_texture(&receipt, output.resource)?;
+--- a/tiny-glade/crates/tiny-glade/src/game_loop.rs
++++ b/tiny-glade/crates/tiny-glade/src/game_loop.rs
+@@ -799,7 +799,12 @@
+             .set_cursor_grab(winit::window::CursorGrabMode::None)
+             .ok();
+         self.window.set_cursor_visible(true);
+-        self.renderer.shutdown()
++        let capture = if crate::screenshot::shared_texture_capture::installed(self.driver.app.world()) {
++            crate::screenshot::hurry_active_screenshots_on_shutdown(self.driver.app.world_mut())
++                .map_err(anyhow::Error::from)
++        } else { Ok(()) };
++        let renderer = self.renderer.shutdown();
++        capture.and(renderer)
+     }
+ 
+     /// B 0x1404e2470: enumerate current monitors and sorted public video modes.
+--- a/tiny-glade/crates/tiny-glade/tests/original_capture_gpu.rs
++++ b/tiny-glade/crates/tiny-glade/tests/original_capture_gpu.rs
+@@ -204,8 +204,10 @@
+         Ok((gallery_id, menu_id))
+     })?;
+     bridge.shader_backend().prewarm(Duration::from_secs(10))?;
++    let capture_graph_id = built.graph_id();
+     let compiled = bridge.compile_built(built)?;
+     let receipt = bridge.execute_compiled(compiled)?;
++    tiny_glade::screenshot::shared_texture_capture::submitted(app.world_mut(), &mut bridge, capture_graph_id, &receipt)?;
+     assert!(!receipt.receipts.is_empty());
+     bridge.wait_submits_done(10_000_000_000)?;
+     let mut pixels = vec![0u8; 128 * 128 * 4];

@@ -1,0 +1,278 @@
+//! Bounded production constant pages: CPU leases and actual submitted GPU use.
+mod gpu_test_support;
+use ash::vk;
+use rhapsody::{
+    device::{Device, DeviceConfig},
+    raw::{
+        buffer::{Buffer, BufferDesc},
+        command_buffer::VulkanCommandPool,
+        dynamic_constants::{
+            DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES, DynamicConstants, DynamicConstantsConfig,
+        },
+        semaphore::TimelineSemaphore,
+    },
+};
+use std::sync::Arc;
+
+fn config() -> DynamicConstantsConfig {
+    DynamicConstantsConfig {
+        max_pages: 1,
+        max_backing_bytes: DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES,
+        max_idle_pages: 1,
+    }
+}
+struct Unblock(Arc<TimelineSemaphore>, bool);
+
+#[test]
+fn idle_constant_writes_obey_the_same_buffer_host_gate() {
+    let Some(device) = gpu_test_support::initialize(
+        "constant host gate", Device::new_headless(&DeviceConfig::headless()),
+    ) else { return; };
+    let mut constants = DynamicConstants::with_config(device, config()).unwrap();
+    let chunk = constants.allocate(16).unwrap();
+    let buffer = chunk.buffer.clone();
+    let (locked_tx, locked_rx) = std::sync::mpsc::channel();
+    let (release_tx, release_rx) = std::sync::mpsc::channel();
+    let (started_tx, started_rx) = std::sync::mpsc::channel();
+    let (done_tx, done_rx) = std::sync::mpsc::channel();
+    std::thread::scope(|scope| {
+        let holder = scope.spawn(move || buffer.with_host_write(0, 16, || {
+            locked_tx.send(()).unwrap();
+            release_rx.recv().unwrap();
+        }));
+        locked_rx.recv().unwrap();
+        let writer = scope.spawn(move || {
+            started_tx.send(()).unwrap();
+            let result = chunk.write_bytes(&[7; 16]);
+            done_tx.send(()).unwrap();
+            result
+        });
+        started_rx.recv().unwrap();
+        let blocked = done_rx.recv_timeout(std::time::Duration::from_millis(50)).is_err();
+        // Always release the holder before an assertion can unwind the scope.
+        release_tx.send(()).unwrap();
+        holder.join().unwrap().unwrap();
+        writer.join().unwrap().unwrap();
+        assert!(blocked, "idle writes bypassed the active host transaction");
+    });
+}
+impl Unblock {
+    fn signal(&mut self) {
+        if !self.1 {
+            // SAFETY: this test is the sole host signaler and submits value 1 only once.
+            unsafe {
+                self.0.device().raw_device().signal_semaphore(
+                    &vk::SemaphoreSignalInfo::default()
+                        .semaphore(self.0.raw_handle())
+                        .value(1),
+                )
+            }
+            .unwrap();
+            self.1 = true;
+        }
+    }
+}
+impl Drop for Unblock {
+    fn drop(&mut self) {
+        self.signal();
+    }
+}
+#[test]
+fn unsubmitted_constant_leases_bound_capacity_and_reuse_one_real_page() {
+    let Some(device) = gpu_test_support::initialize(
+        "dynamic constant CPU lease",
+        Device::new_headless(&DeviceConfig {
+            validation: true,
+            ..DeviceConfig::headless()
+        }),
+    ) else {
+        return;
+    };
+    let mut constants = DynamicConstants::with_config(device, config()).unwrap();
+    let chunk = constants
+        .allocate(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES)
+        .unwrap();
+    let page = chunk.buffer.raw_handle();
+    let held = chunk.buffer.clone();
+    drop(chunk);
+    assert!(matches!(
+        constants.allocate(1),
+        Err(rhapsody::Error::Timeout)
+    ));
+    assert_eq!(constants.trim_idle(0).unwrap(), 0);
+    drop(held);
+    for index in 0_u32..1000 {
+        let chunk = constants
+            .allocate(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES)
+            .unwrap();
+        assert_eq!(chunk.buffer.raw_handle(), page);
+        assert_eq!(chunk.offset, 0);
+        chunk.write_bytes(&index.to_ne_bytes()).unwrap();
+    }
+    assert_eq!(constants.stats().page_creations, 1);
+    assert_eq!(constants.stats().page_reuses, 1000);
+    assert_eq!(constants.trim_idle(0).unwrap(), 1);
+    assert_eq!(constants.stats().backing_bytes, 0);
+}
+#[test]
+fn dropped_cpu_owners_cannot_reset_a_page_until_actual_gpu_copy_completes() {
+    let Some(device) = gpu_test_support::initialize(
+        "dynamic constant real GPU completion",
+        Device::new_headless(&DeviceConfig {
+            validation: true,
+            ..DeviceConfig::headless()
+        }),
+    ) else {
+        return;
+    };
+    let mut constants = DynamicConstants::with_config(device.clone(), config()).unwrap();
+    let pool = VulkanCommandPool::new(device.clone()).unwrap();
+    let blocker = TimelineSemaphore::new(device.clone(), 0).unwrap();
+    let mut unblock = Unblock(blocker.clone(), false);
+    let chunk = constants
+        .allocate(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES)
+        .unwrap();
+    let source_handle = chunk.buffer.raw_handle();
+    let payload: Vec<u8> = (0..64).map(|index| index ^ 0x5a).collect();
+    chunk.write_bytes(&payload).unwrap();
+    let output = Arc::new(
+        Buffer::new(
+            device.clone(),
+            &BufferDesc::new_gpu_to_cpu(64, vk::BufferUsageFlags::TRANSFER_DST),
+        )
+        .unwrap(),
+    );
+    let mut command = pool.allocate().unwrap();
+    command.retain_opaque(chunk.buffer.clone()).unwrap();
+    command.retain_opaque(output.clone()).unwrap();
+    command.begin().unwrap();
+    // SAFETY: both owned buffers are alive, same-device, correctly sized and recorded.
+    unsafe {
+        device.raw_device().cmd_copy_buffer(
+            command.raw_handle(),
+            source_handle,
+            output.raw_handle(),
+            &[vk::BufferCopy {
+                src_offset: 0,
+                dst_offset: 0,
+                size: 64,
+            }],
+        );
+        device.raw_device().cmd_pipeline_barrier(
+            command.raw_handle(),
+            vk::PipelineStageFlags::TRANSFER,
+            vk::PipelineStageFlags::HOST,
+            vk::DependencyFlags::empty(),
+            &[],
+            &[vk::BufferMemoryBarrier::default()
+                .buffer(output.raw_handle())
+                .offset(0)
+                .size(64)
+                .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+                .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+                .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
+                .dst_access_mask(vk::AccessFlags::HOST_READ)],
+            &[],
+        );
+    }
+    command.end().unwrap();
+    let pending = command
+        .submit_to(
+            rhapsody::raw::device::DeviceQueue {
+                handle: device.primary_queue(),
+                family: device.queue_family_index(),
+                index: 0,
+            },
+            &[(blocker, 1, vk::PipelineStageFlags::ALL_COMMANDS)],
+            &[],
+        )
+        .unwrap();
+    let point = pending.point;
+    drop(pending);
+    drop(chunk);
+    assert!(matches!(
+        constants.allocate(1),
+        Err(rhapsody::Error::Timeout)
+    ));
+    assert_eq!(constants.stats().referenced_pages, 0);
+    assert_eq!(constants.stats().in_flight_pages, 1);
+    assert_eq!(constants.trim_idle(0).unwrap(), 0);
+    unblock.signal();
+    device
+        .timelines()
+        .wait(&point.into(), 10_000_000_000)
+        .unwrap();
+    let mut actual = [0; 64];
+    output.read_bytes(0, &mut actual).unwrap();
+    assert_eq!(actual.as_slice(), payload);
+    let coherent = held_properties(&device);
+    if coherent {
+        assert_eq!(
+            device.deferred_host_flush_count(),
+            0,
+            "coherent constants pages are never flushed"
+        );
+    } else {
+        assert_eq!(device.deferred_host_flush_count(), 1);
+    }
+    let reused = constants
+        .allocate(DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES)
+        .unwrap();
+    assert_eq!(reused.buffer.raw_handle(), source_handle);
+    assert_eq!(reused.offset, 0);
+    reused.write_bytes(&[0xff; 64]).unwrap();
+    drop(reused);
+    assert_eq!(constants.stats().page_creations, 1);
+    assert_eq!(constants.stats().page_reuses, 1);
+    assert_eq!(constants.trim_idle(0).unwrap(), 1);
+    device.try_collect_all_completed().unwrap();
+}
+
+/// Whether the memory backing constants pages is host coherent on this device.
+fn held_properties(device: &Arc<Device>) -> bool {
+    let page = Buffer::new(
+        device.clone(),
+        &BufferDesc::new_cpu_to_gpu(64, vk::BufferUsageFlags::UNIFORM_BUFFER),
+    )
+    .unwrap();
+    page.memory_properties()
+        .contains(vk::MemoryPropertyFlags::HOST_COHERENT)
+}
+
+/// A page of many small chunks is written without per-write range-table work;
+/// every chunk must still read back exactly what was written.
+#[test]
+fn many_chunk_writes_on_one_idle_page_are_exact_and_cheap() {
+    let Some(device) = gpu_test_support::initialize(
+        "dynamic constants many writes",
+        Device::new_headless(&DeviceConfig {
+            validation: true,
+            ..DeviceConfig::headless()
+        }),
+    ) else {
+        return;
+    };
+    let mut constants = DynamicConstants::with_config(device, config()).unwrap();
+    let mut chunks = Vec::new();
+    for index in 0_u32..900 {
+        chunks.push((index, constants.allocate(256).unwrap()));
+    }
+    let page = chunks[0].1.buffer.raw_handle();
+    assert!(chunks.iter().all(|(_, c)| c.buffer.raw_handle() == page));
+    let start = std::time::Instant::now();
+    for (index, chunk) in &chunks {
+        let bytes: Vec<u8> = (0..256)
+            .map(|b| (*index as u8).wrapping_add(b as u8))
+            .collect();
+        chunk.write_bytes(&bytes).unwrap();
+    }
+    eprintln!("900 constant writes: {:?}", start.elapsed());
+    for (index, chunk) in &chunks {
+        let mut out = vec![0u8; 256];
+        chunk.buffer.read_bytes(chunk.offset, &mut out).unwrap();
+        let expected: Vec<u8> = (0..256)
+            .map(|b| (*index as u8).wrapping_add(b as u8))
+            .collect();
+        assert_eq!(out, expected, "chunk {index}");
+    }
+}

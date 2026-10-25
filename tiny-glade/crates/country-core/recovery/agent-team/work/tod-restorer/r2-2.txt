@@ -1,0 +1,124 @@
+0x140a73c90      addps xmm0, xmmword [rsi + 8]
+; [0x142925904:4]=0x3f800000
+0x140a73c94      movss xmm6, dword [0x142925904]
+0x140a73c9c      addss xmm0, xmm6
+0x140a73ca0      movaps xmm1, xmm6
+   ; 0x142923f10(0x0, 0x0, 0x0, 0x0)
+0x140a73ca3      call 0x142923f10
+0x140a73ca8      movaps xmm1, xmm0
+0x140a73cab      addss xmm6, xmm0
+0x140a73caf      xorps xmm2, xmm2
+0x140a73cb2      cmpltss xmm0, xmm2
+0x140a73cb7      andps xmm6, xmm0
+0x140a73cba      andnps xmm0, xmm1
+0x140a73cbd      orps xmm0, xmm6
+0x140a73cc0      mov dword [rbx], r15d
+0x140a73cc3      movss dword [r14 + 8], xmm0
+; [0x142934600:4]=0x41c00000
+0x140a73cc9      movss xmm1, dword [0x142934600]
+0x140a73cd1      mulss xmm0, xmm1
+0x140a73cd5      addss xmm0, dword [0x142934604]
+   ; 0x142923f10(0x0, 0x0, 0x0, 0x0)
+0x140a73cdd      call 0x142923f10
+0x140a73ce2      movaps xmm6, xmm0
+0x140a73ce5      mov rax, qword [r13]
+   ; reloc.WS2_32.dll_accept
+0x140a73ce9      cmp byte [rax + 0x58], 4
+0x140a73ced      sete dl
+   ; 0x140a74790(0x0, 0x0, 0x0, 0x0)
+0x140a73cf0      call 0x140a74790
+0x140a73cf5      mov rcx, qword [r12]
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a73cf9      test rcx, rcx
+   ; unlikely
+0x140a73cfc      je 0x140a73d17
+; reloc.WS2_32.dll_recv
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a73cfe      add rcx, 0x10
+; "DayNight"
+0x140a73d02      lea rdx, [0x142ad6404]
+0x140a73d09      mov r8d, 8
+0x140a73d0f      movaps xmm3, xmm0
+   ; 0x140a53db0(0x0, 0x0, 0x142ad6404, 0xf)
+0x140a73d12      call 0x140a53db0
+0x140a73d17      mov ecx, dword [r14 + 0x28]
+0x140a73d1b      movzx eax, cx
+   ; reloc.WS2_32.dll_accept
+0x140a73d1e      dec ecx
+0x140a73d20      movzx ecx, cx
+; 365
+0x140a73d23      cmp ecx, 0x16d
+   ; likely
+0x140a73d29      jae 0x140a74496
+   ; reloc.WS2_32.dll_accept
+0x140a73d2f      or eax, 0xfce00
+0x140a73d34      mov dword [rbp + 0x50], eax
+0x140a73d37      mov qword [rbp + 0x54], 0
+0x140a73d3f      mov dword [rbp + 0x5b], 0
+0x140a73d46      lea rcx, [rbp + 0x50]
+   ; 0x140caff50(0x0, 0x0, 0x142ad6404, 0x50)
+0x140a73d4a      call 0x140caff50
+; 1000
+0x140a73d4f      imul rax, rax, 0x3e8
+0x140a73d56      mulss xmm6, dword [0x142ad58f0]
+0x140a73d5e      cvttss2si rcx, xmm6
+0x140a73d63      ucomiss xmm6, dword [0x142ad58f4]
+; 9223372036854775807
+0x140a73d6a      movabs r8, 0x7fffffffffffffff
+0x140a73d74      cmovbe r8, rcx
+   ; reloc.WS2_32.dll_accept
+   ; reloc.WS2_32.dll_accept
+0x140a73d78      xor edx, edx
+0x140a73d7a      ucomiss xmm6, xmm6
+0x140a73d7d      cmovnp rdx, r8
+   ; reloc.WS2_32.dll_accept
+0x140a73d81      add rdx, rax
+0x140a73d84      movss xmm0, dword [r14 + 0x10]
+0x140a73d8a      xorps xmm2, xmm2
+0x140a73d8d      cvtss2sd xmm2, xmm0
+0x140a73d91      lea rcx, [rbp + 0x50]
+0x140a73d95      xorps xmm3, xmm3
+   ; 0x1417ab4b0(0x0, 0x0, 0x3e7ffc18, 0x50)
+0x140a73d98      call 0x1417ab4b0
+0x140a73d9d      movsd xmm0, qword [rbp + 0x70]
+0x140a73da2      movsd xmm6, qword [rbp + 0x78]
+0x140a73da7      addsd xmm0, qword [0x142ad58f8]
+; [0x142ad5900:8]=0x3ff921fb54442d18
+0x140a73daf      movsd xmm7, qword [0x142ad5900]
+0x140a73db7      subsd xmm7, xmm0
+0x140a73dbb      movapd xmm0, xmm7
+   ; 0x142923e70(0x0, 0x0, 0x3e7ffc18, 0x50)
+0x140a73dbf      call 0x142923e70
+0x140a73dc4      movapd xmm10, xmm0
+0x140a73dc9      movapd xmm0, xmm6
+   ; 0x142923e70(0x0, 0x0, 0x3e7ffc18, 0x50)
+0x140a73dcd      call 0x142923e70
+0x140a73dd2      movapd xmm11, xmm0
+0x140a73dd7      movapd xmm0, xmm6
+   ; 0x142923fc0(0x0, 0x0, 0x3e7ffc18, 0x50)
+0x140a73ddb      call 0x142923fc0
+0x140a73de0      movapd xmm12, xmm0
+0x140a73de5      movapd xmm0, xmm7
+   ; 0x142923fc0(0x0, 0x0, 0x3e7ffc18, 0x50)
+0x140a73de9      call 0x142923fc0
+0x140a73dee      movapd xmm14, xmm0
+0x140a73df3      movss xmm6, dword [r14 + 8]
+0x140a73df9      movss xmm8, dword [r14 + 0xc]
+; [0x142934674:4]=0x40c90fdb
+0x140a73dff      movss xmm7, dword [0x142934674]
+0x140a73e07      mulss xmm7, xmm6
+0x140a73e0b      addss xmm7, dword [0x142ad5908]
+0x140a73e13      movaps xmm0, xmm7
+   ; 0x142923fd0(0x0, 0x0, 0x3e7ffc18, 0x50)
+0x140a73e16      call 0x142923fd0
+0x140a73e1b      movaps xmm13, xmm0
+0x140a73e1f      movaps xmm0, xmm7
+   ; 0x142923e80(0x0, 0x0, 0x3e7ffc18, 0x50)
+0x140a73e22      call 0x142923e80
+0x140a73e27      movaps xmm9, xmm0
+0x140a73e2b      mulss xmm8, dword [0x142925870]
+0x140a73e34      movaps xmm0, xmm8
+   ; 0x142923fd0(0x0, 0x0, 0x3e7ffc18, 0x50)
+0x140a73e38      call 0x142923fd0

@@ -1,0 +1,193 @@
+# Linear Capstone research range, no function-boundary acceptance.
+1408dc9f0 push rbp
+1408dc9f1 push r15
+1408dc9f3 push r14
+1408dc9f5 push rsi
+1408dc9f6 push rdi
+1408dc9f7 push rbx
+1408dc9f8 sub rsp, 0x148
+1408dc9ff lea rbp, [rsp + 0x80]
+1408dca07 movaps xmmword ptr [rbp + 0xb0], xmm7
+1408dca0e movaps xmmword ptr [rbp + 0xa0], xmm6
+1408dca15 mov qword ptr [rbp + 0x98], 0xfffffffffffffffe
+1408dca20 mov rax, qword ptr [r8 + 0x10]
+1408dca24 test rax, rax
+1408dca27 mov qword ptr [rbp + 0x88], r8
+1408dca2e mov qword ptr [rbp + 0x90], r9
+1408dca35 je 0x1408dcc49
+1408dca3b mov r10, r9
+1408dca3e cmp qword ptr [r9 + 0x10], 0
+1408dca43 je 0x1408dcc63
+1408dca49 mov rbx, rdx
+1408dca4c mov rsi, rcx
+1408dca4f mov rdi, qword ptr [r8 + 8]
+1408dca53 cmp byte ptr [rbp + 0x120], 0
+1408dca5a je 0x1408dca8c
+1408dca5c movss xmm1, dword ptr [rdi]
+1408dca60 movss xmm2, dword ptr [rdi + 4]
+1408dca65 lea r9, [rip + 0x21c810c]
+1408dca6c mov rcx, r10
+1408dca6f call 0x141469a20
+1408dca74 xorps xmm1, xmm1
+1408dca77 maxss xmm1, xmm0
+1408dca7b movss xmm7, dword ptr [rip + 0x2048e81]
+1408dca83 movaps xmm6, xmm7
+1408dca86 minss xmm6, xmm1
+1408dca8a jmp 0x1408dcac9
+1408dca8c lea rax, [rdi + rax*8]
+1408dca90 cmp rax, 8
+1408dca94 je 0x1408dcc7d
+1408dca9a movss xmm1, dword ptr [rax - 8]
+1408dca9f movss xmm2, dword ptr [rax - 4]
+1408dcaa4 lea r9, [rip + 0x21c80b5]
+1408dcaab mov rcx, r10
+1408dcaae call 0x141469a20
+1408dcab3 xorps xmm6, xmm6
+1408dcab6 xorps xmm1, xmm1
+1408dcab9 maxss xmm1, xmm0
+1408dcabd movss xmm7, dword ptr [rip + 0x2048e3f]
+1408dcac5 minss xmm7, xmm1
+1408dcac9 ucomiss xmm6, xmm7
+1408dcacc setb al
+1408dcacf lea ecx, [rax + rax]
+1408dcad2 neg al
+1408dcad4 ucomiss xmm7, xmm6
+1408dcad7 movzx ecx, cl
+1408dcada movzx eax, al
+1408dcadd cmovb eax, ecx
+1408dcae0 cmp al, 1
+1408dcae2 mov r14, qword ptr [rbp + 0x88]
+1408dcae9 mov r15, qword ptr [rbp + 0x90]
+1408dcaf0 ja 0x1408dcb79
+1408dcaf6 movabs rax, 0x8000000000000000
+1408dcb00 mov qword ptr [rsi], rax
+1408dcb03 mov rdx, qword ptr [r15]
+1408dcb06 test rdx, rdx
+1408dcb09 je 0x1408dcb1e
+1408dcb0b mov rcx, qword ptr [r15 + 8]
+1408dcb0f shl rdx, 3
+1408dcb13 mov r8d, 4
+1408dcb19 call 0x140613c20
+1408dcb1e mov rdx, qword ptr [r15 + 0x18]
+1408dcb22 test rdx, rdx
+1408dcb25 je 0x1408dcb3a
+1408dcb27 mov rcx, qword ptr [r15 + 0x20]
+1408dcb2b shl rdx, 2
+1408dcb2f mov r8d, 4
+1408dcb35 call 0x140613c20
+1408dcb3a mov rdx, qword ptr [r14]
+1408dcb3d test rdx, rdx
+1408dcb40 je 0x1408dcb54
+1408dcb42 shl rdx, 3
+1408dcb46 mov r8d, 4
+1408dcb4c mov rcx, rdi
+1408dcb4f call 0x140613c20
+1408dcb54 mov rdx, qword ptr [r14 + 0x18]
+1408dcb58 test rdx, rdx
+1408dcb5b je 0x1408dcc28
+1408dcb61 mov rcx, qword ptr [r14 + 0x20]
+1408dcb65 shl rdx, 2
+1408dcb69 mov r8d, 4
+1408dcb6f call 0x140613c20
+1408dcb74 jmp 0x1408dcc28
+1408dcb79 movups xmm0, xmmword ptr [r14 + 0x60]
+1408dcb7e movaps xmmword ptr [rbp], xmm0
+1408dcb82 movups xmm0, xmmword ptr [r14 + 0x50]
+1408dcb87 movaps xmmword ptr [rbp - 0x10], xmm0
+1408dcb8b movups xmm0, xmmword ptr [r14 + 0x40]
+1408dcb90 movaps xmmword ptr [rbp - 0x20], xmm0
+1408dcb94 movups xmm0, xmmword ptr [r14]
+1408dcb98 movups xmm1, xmmword ptr [r14 + 0x10]
+1408dcb9d movups xmm2, xmmword ptr [r14 + 0x20]
+1408dcba2 movups xmm3, xmmword ptr [r14 + 0x30]
+1408dcba7 movaps xmmword ptr [rbp - 0x30], xmm3
+1408dcbab movaps xmmword ptr [rbp - 0x40], xmm2
+1408dcbaf movaps xmmword ptr [rbp - 0x50], xmm1
+1408dcbb3 movaps xmmword ptr [rbp - 0x60], xmm0
+1408dcbb7 movups xmm0, xmmword ptr [r15]
+1408dcbbb movups xmm1, xmmword ptr [r15 + 0x10]
+1408dcbc0 movups xmm2, xmmword ptr [r15 + 0x20]
+1408dcbc5 movups xmm3, xmmword ptr [r15 + 0x30]
+1408dcbca movaps xmmword ptr [rbp + 0x10], xmm0
+1408dcbce movaps xmmword ptr [rbp + 0x20], xmm1
+1408dcbd2 movaps xmmword ptr [rbp + 0x30], xmm2
+1408dcbd6 movaps xmmword ptr [rbp + 0x40], xmm3
+1408dcbda movups xmm0, xmmword ptr [r15 + 0x40]
+1408dcbdf movaps xmmword ptr [rbp + 0x50], xmm0
+1408dcbe3 movups xmm0, xmmword ptr [r15 + 0x50]
+1408dcbe8 movaps xmmword ptr [rbp + 0x60], xmm0
+1408dcbec movups xmm0, xmmword ptr [r15 + 0x60]
+1408dcbf1 movaps xmmword ptr [rbp + 0x70], xmm0
+1408dcbf5 lea rdx, [rbp - 0x60]
+1408dcbf9 mov r8d, 0xe0
+1408dcbff mov rcx, rsi
+1408dcc02 call 0x142923c00
+1408dcc07 mov qword ptr [rsi + 0xe0], rbx
+1408dcc0e mov dword ptr [rsi + 0xe8], 0
+1408dcc18 movss dword ptr [rsi + 0xec], xmm6
+1408dcc20 movss dword ptr [rsi + 0xf0], xmm7
+1408dcc28 mov rax, rsi
+1408dcc2b movaps xmm6, xmmword ptr [rbp + 0xa0]
+1408dcc32 movaps xmm7, xmmword ptr [rbp + 0xb0]
+1408dcc39 add rsp, 0x148
+1408dcc40 pop rbx
+1408dcc41 pop rdi
+1408dcc42 pop rsi
+1408dcc43 pop r14
+1408dcc45 pop r15
+1408dcc47 pop rbp
+1408dcc48 ret 
+1408dcc49 lea rcx, [rip + 0x21c7f88]
+1408dcc50 lea r8, [rip + 0x21c7fb1]
+1408dcc57 mov edx, 0x2a
+1408dcc5c call 0x1428d9430
+1408dcc61 jmp 0x1408dcc89
+1408dcc63 lea rcx, [rip + 0x21c7f26]
+1408dcc6a lea r8, [rip + 0x21c7f4f]
+1408dcc71 mov edx, 0x29
+1408dcc76 call 0x1428d9430
+1408dcc7b jmp 0x1408dcc89
+1408dcc7d lea rcx, [rip + 0x21c7ec4]
+1408dcc84 call 0x1428d9310
+1408dcc89 ud2 
+1408dcc8b nop dword ptr [rax + rax]
+1408dcc90 mov qword ptr [rsp + 0x10], rdx
+1408dcc95 push rbp
+1408dcc96 push r15
+1408dcc98 push r14
+1408dcc9a push rsi
+1408dcc9b push rdi
+1408dcc9c push rbx
+1408dcc9d sub rsp, 0x48
+1408dcca1 lea rbp, [rdx + 0x80]
+1408dcca8 movaps xmmword ptr [rsp + 0x20], xmm7
+1408dccad movaps xmmword ptr [rsp + 0x30], xmm6
+1408dccb2 mov rcx, qword ptr [rbp + 0x90]
+1408dccb9 call 0x1405d24f0
+1408dccbe mov rcx, qword ptr [rbp + 0x88]
+1408dccc5 call 0x1405d24f0
+1408dccca movaps xmm6, xmmword ptr [rsp + 0x30]
+1408dcccf movaps xmm7, xmmword ptr [rsp + 0x20]
+1408dccd4 add rsp, 0x48
+1408dccd8 pop rbx
+1408dccd9 pop rdi
+1408dccda pop rsi
+1408dccdb pop r14
+1408dccdd pop r15
+1408dccdf pop rbp
+1408dcce0 ret 
+1408dcce1 int3 
+1408dcce2 int3 
+1408dcce3 int3 
+1408dcce4 int3 
+1408dcce5 int3 
+1408dcce6 int3 
+1408dcce7 int3 
+1408dcce8 int3 
+1408dcce9 int3 
+1408dccea int3 
+1408dcceb int3 
+1408dccec int3 
+1408dcced int3 
+1408dccee int3 
+1408dccef int3 

@@ -1,0 +1,5 @@
+/* 手解（rne-read --hex），ShapeParameters::perimeter 变体（位 0 判别双路分发） */
+/* 4889c8 4883c104 f60001 0f85e09ea9ff e91b83a9ff */
+/* = mov rax,rcx; add rcx,4; test byte [rax],1; jne <0x140bb6e29 域>; jmp <0x14118f84e 域> */
+/* 载荷区自 +4 起（对齐 tag 位 0）；两目标为圆/矩形的共享单态化实现（跨函数去重），各自读载荷几何 */
+/* 0x1411ff600/620/660/680/6f0 同为该分发模式（role-map O-h）*/

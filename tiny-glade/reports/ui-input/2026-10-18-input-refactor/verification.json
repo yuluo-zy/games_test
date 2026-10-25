@@ -1,0 +1,105 @@
+{
+  "generated_at": "2026-10-18T11:03:47.458479+08:00",
+  "scope": "Input module functional redesign and actual CPU producer/consumer pipeline; selected callers; not full-game/native equivalence",
+  "user_authorization": "Prioritize functionality and correctness; native reverse design may change",
+  "fixes": [
+    "F1 owned typed snapshots",
+    "F2 complete validated transactional file replacement",
+    "F3 exact action frames applied to shared consumers",
+    "F4 ordered input phases and advance after consumption"
+  ],
+  "checks": [
+    {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "country-core",
+        "--lib",
+        "--test",
+        "input_pipeline",
+        "--offline",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "lib_passed": 2098,
+      "integration_passed": 4,
+      "failed": 0,
+      "log": "tests.log"
+    },
+    {
+      "name": "toolbar-tests",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "toolbar",
+        "--lib",
+        "--offline",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 188.122,
+      "test_results": [
+        "test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+      ],
+      "log": "toolbar-tests.log"
+    },
+    {
+      "name": "clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "country-core",
+        "--lib",
+        "--test",
+        "input_pipeline",
+        "--offline",
+        "--locked",
+        "--no-deps"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 96.606,
+      "test_results": [],
+      "log": "clippy.log"
+    }
+  ],
+  "format_check": {
+    "scope": "src/input/*.rs, systems/backend/input/*.rs, tests/input_pipeline.rs",
+    "rustfmt_exit": 0,
+    "diff_whitespace_exit": 0
+  },
+  "input_clippy_diagnostics": [],
+  "other_clippy_warnings": "Existing warnings remain outside the input implementation; not a strict -D warnings pass",
+  "input_and_pipeline_test_source_drift": [],
+  "surrounding_source_drift": [
+    "crates/country-core/src/utils/conservative_line_raster.rs"
+  ],
+  "before_source_snapshot": "source-snapshot-before-final.json",
+  "after_source_snapshot": "source-snapshot-after-final.json",
+  "toolchain": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: aarch64-apple-darwin\nrelease: 1.98.1\nLLVM version: 22.1.8\n",
+  "native_runtime_oracle": false,
+  "gpu_gameplay_validation": false,
+  "new_dependencies_added_by_input_refactor": false,
+  "compatibility": "New format_version=1 complete stream; incomplete legacy first_frame files rejected; typed phase/timer fields replace disc/val",
+  "native_equivalence_claimed": false,
+  "artifacts": {
+    "README.md": "300ec4ebca00ab4dd6ba475576b71167e2e1fe31fe7a4f34cf77c51196460f15",
+    "blocked-clippy.log": "64cd9bdc96975468ae79480efaf13806bb55057d3eabc90a1ad654cc677f452e",
+    "blocked-core-tests.log": "6710ed1caf045e9f06c5392e57aa5d342a91d49576a90c502b7a31ce0d4019a6",
+    "blocked-final-checks.json": "a4444bf61da6c2742118bdf795e899d4d883ea4b8bc757a3397434272c1bd17f",
+    "blocked-toolbar-tests.log": "3f620cb1ad01704635ee9798dfa8224fd654e437ba686e9770673bfebd403c5b",
+    "clippy.log": "7ce5f2cfe463d935e16708ff9ffabeb76c271a6b6b5d644a84ae0cef4c0f8964",
+    "final-checks.json": "dfdc79ee5e155afe1dc450e8add309cff687c802a64d866874b6daf3ce70e5fd",
+    "initial-check.log": "b2a17781b09b0aae2bcd8674265713f2800dc419bfd8481c962d90e727e23750",
+    "initial-clippy.log": "f7e6d74b8d9c0e62c385e0488ac4703723ff50206ab483b39319f19d23593a03",
+    "source-snapshot-after-final.json": "60ce04603c45835b094840e6e7b49d466a96f5524dff246644df03a9bfc4976a",
+    "source-snapshot-before-final.json": "2f5d06f65ef3a5c9440a054ffaafcefef2c13d389c605a6d1f448ca78e1eba12",
+    "source-snapshot.json": "1a714549aa5fa6542b03655d13ace4bf52f53dee1fb242c4169497f3ca9c015d",
+    "tests.log": "05da1f3c0a3a9fbdac34e893594f6e250b32a40d3c1fa1bad06ea04dcf778ebf",
+    "toolbar-tests.log": "85c0fb76c0f36f57dd16c0b6aa07f6f535080c9c1576ed9fca5a053183761c5a",
+    "crates/country-core/src/input/README.md": "3801b513292160b4335a15ca81dbc613e183dfa8c513b414f600656c4595cdaa",
+    "crates/country-core/src/input/REVIEW.md": "c2a637d9a81a0d3fb78390fb2d2fc84d52aa65de49709434467df7f98242e2d6"
+  }
+}

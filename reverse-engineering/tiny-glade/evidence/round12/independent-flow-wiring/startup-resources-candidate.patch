@@ -1,0 +1,59 @@
+--- a/crates/systems/decorator/src/ui_systems/mod.rs
++++ b/crates/systems/decorator/src/ui_systems/mod.rs
+@@ -88,7 +88,7 @@
+ ///
+ /// `C` 为 `DecoratorArchivist<C>` 的碰撞载荷类型（与原 cull 族同模式）：
+ /// `ui_change_stair_height` 的释放相位必须写归档/历史，故为泛型系统。
+-pub fn register_ui_systems<C: Send + Sync + 'static>(app: &mut bevy_app::App) {
++pub fn register_ui_resources(app: &mut bevy_app::App) {
+     app.init_resource::<DecoratorAffordanceDispatcher>();
+     app.init_resource::<MoveDecorationInteractionState>();
+     app.init_resource::<crate::backup::DecoratorBackup>();
+@@ -103,6 +103,11 @@
+     app.init_resource::<ui_place_decorator::PlaceDecoratorInteractionState>();
+     app.init_resource::<ui_place_decorator::TransientDecoratorIdBase>();
+     app.add_event::<ui_place_decorator::EvInitPlaceDecoratorInteractionState>();
++}
++
++/// Historical UI registration; startup calls only register_ui_resources.
++pub fn register_ui_systems<C: Send + Sync + 'static>(app: &mut bevy_app::App) {
++    register_ui_resources(app);
+     app.add_systems(
+         bevy_app::Update,
+         (
+--- a/crates/tiny-glade/src/decorator_plugin.rs
++++ b/crates/tiny-glade/src/decorator_plugin.rs
+@@ -49,3 +49,12 @@
+ pub fn decorators_on_glade_unload() {
+     todo!("未实现: decorators_on_glade_unload 0x140347090 —— 40KB 卸载清理业务，未逐语句重建")
+ }
++
++/// Genuine startup owners, independent of incomplete edit/UI system adapters.
++/// No updater, replay, or UI leaf is mounted by this resource constructor.
++pub fn build_startup_resources(app: &mut bevy_app::App) {
++    system_decorator::add_decorator_events_and_resources(app.world_mut());
++    system_decorator::ui_systems::register_ui_resources(app);
++    app.init_resource::<country_core::resources::walls::decorator_archivist::LiveDecoratorArchivist>();
++    app.add_event::<system_decorator::handle_external_decorator_cmds::ExternalDecoratorCmd>();
++}
+--- a/crates/tiny-glade/src/run_game.rs
++++ b/crates/tiny-glade/src/run_game.rs
+@@ -325,6 +325,18 @@
+     app.insert_resource(rt_worker);
+     app.add_event::<country_core::resources::rt::UpdateRtWorldEvent>();
+     install_history_and_wall_runtime(&mut app, config.dev.demo);
++    // Preserve actual domain owner constructors without mounting incomplete
++    // edit/UI helpers merely to initialize their resources.
++    toolbar::configure_app(&mut app);
++    crate::decorator_plugin::build_startup_resources(&mut app);
++    crate::wall_constructor_plugin::build(&mut app);
++    app.add_event::<toolbar::ui_interaction::UiDragEvent>();
++    app.add_event::<toolbar::ui_interaction::UiJustBecameInFocusEvent>();
++    app.add_event::<toolbar::toolbar_button::UiToolbarButtonResetAllCooldowns>();
++    app.add_event::<country_core::resources::events::ModeJustChanged>();
++    app.add_event::<country_core::systems::ui::resources::widget_params::PlayUiSound>();
++    app.add_event::<country_core::systems::backend::input::calculate_input_delta::UiHistoryButtonPressed>();
++
+     app.insert_resource(window);
+     // Original insert_resources @140940e35/e4a: both native tag 0.
+     app.init_resource::<country_core::systems::mode_manager::AppMode>();

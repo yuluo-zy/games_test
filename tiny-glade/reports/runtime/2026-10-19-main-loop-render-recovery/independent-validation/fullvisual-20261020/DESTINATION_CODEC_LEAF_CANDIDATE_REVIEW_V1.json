@@ -1,0 +1,42 @@
+{
+  "reviewer": "07-independent-validation",
+  "at_utc": "2026-10-19T20:13:53.122665+00:00",
+  "verdict": "passed_scoped_source",
+  "manifest": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-43142338addb95ca2d/main-chain-boot-20261018/calculate-destination-20261020/destination-codec-leaf-candidate-manifest-v1.json",
+    "sha256": "36d929219ce96e624de48cf92be8898f2c0305c12ad8338e15bf358ddb2eaf0e"
+  },
+  "source": {
+    "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/walls/decorator.rs",
+    "before_sha256": "ea8407fdad82fb8caf8cb16213d2def019b410cda6e17d865ebeb4164946db38",
+    "candidate": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-43142338addb95ca2d/main-chain-boot-20261018/calculate-destination-20261020/candidate/decorator.rs",
+    "candidate_sha256": "7da61633c1ec7be6662533fa7cd61ab9229942fa2e03e5f3221641425aeb8976"
+  },
+  "patch_sha256": "2a11d06c3b07b900037ba1b1c4022c4e880d299741671035a57bdf17b996d373",
+  "design_review": "b2194269a935e82683c9be159d9ee763766a7c64f9301ad6e4f198010ae96232",
+  "verified": [
+    "Actual current beforeea8407 and candidate7da61633/patch/inventory/three reference hashes match; fullpatch independently recomputed byte-for-byte.",
+    "Five payload variants use existing canonical coord/WallId/rotation/vector types. Unused fake destination.wall_id removed; no second destination, default payload, native Rust ABI or float Eq/Hash. Existing typed enum consumers found only in this owner and migrated actual test.",
+    "Wall writes exactly00..22 except23, keeps fullplatform and separate worldpos/relativeY/corner/bool. Roof/Terrain writes00..0b and22 only; Stair writes00..13 and22 only. All nonvariant padding/unrelated Info fields retained by explicit masks.",
+    "Decode uses rawfrom_bits, fullu32 stairpair and strict selected5tag/valid0or1bool checks, no clamp/normalization or owner lookup. Prefix rawgetter remains tag-independent new_unchecked, so Location raw5+ wall-default branch can read coordinates without strict decoder.",
+    "New getter/yaw wrappers refer to actual existing exports; all new tests remain in actual existing test module. No foreign or whole512 conversion/intent body changed."
+  ],
+  "tests": {
+    "new_count": 5,
+    "migrated_existing": 1,
+    "executed": false,
+    "cases": [
+      "Independently literal byte expectations across bothWalltags and all72rawInfo bytes, including fullplatform and preserved inactivebyte23.",
+      "Roof/Terrain NaN/-0 exact bitwords and inactive highwords retained.",
+      "Stair distinct fullu32IDs/coordinates/yaw and padding.",
+      "Unknown5/255tags and malformed2/255wallbool reject.",
+      "Raw255firstqword coordinate getter preserves NaN/-0 without tag check."
+    ]
+  },
+  "limits": [
+    "Source/static admission only. Central typechecking/tests still required; no Cargo/tests/native/GPU run by reviewer/author.",
+    "Current typed PartialEq is host convenience, not new business native comparison; no global equality/schema/history-extra changes admitted.",
+    "Actual512 conversion remains blocked on stronger current6ce9 WorldSpace helper vs native guard/NaNY domain or a legal shared native adapter.",
+    "Accepted intent/value/merge/currentrank, singular proposedderive and actual move/place caller sideeffects still separate design/source gates. No wholeLocation/App acceptance."
+  ]
+}

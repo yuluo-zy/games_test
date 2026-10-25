@@ -1,0 +1,985 @@
+{
+  "status": "passed_scoped_static_and_independently_audited_root_execution",
+  "scope": "rhapsody unchanged-original-B reverse SPV fixture N1/N3; no core/ProductionRenderHost/App/WSI acceptance",
+  "candidate": {
+    "manifest_sha256": "5f90e34fc1eb6c4125e273efdcfaa466cfcf0420dbaeb6e0a73508e5df8c1c22",
+    "source_sha256": "6d185b0c19f7954f88d8566f9d56315b86b01d23ce9073ce904de27e346e9742",
+    "delta_patch_sha256": "4fb09b3549c49d8c6dedcf87772e43ab4824192539030cd80e9a5b9ddacc4d7e"
+  },
+  "v1_preservation": {
+    "root_record": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/validation/reverse-blur-original-build-v1.json",
+    "status": "compile_failed_E0308_no_GPU_execution",
+    "review_correction": "Independent v1 static review missed Texture vs Arc<Texture> import signature; v1 review body and failed compile artifacts retained unchanged."
+  },
+  "delta_review": [
+    "Arc::new(partial) transfers the same actual Texture after its real upload; no substitute resource, clear, shader, graph declaration, or pixel-oracle change.",
+    "InstanceBuilder.enable_validation checks layer availability and requests debug_utils; absence fails strict RHAPSODY_REQUIRE_VULKAN=1 initialization. ValidationMessenger is installed before logical Device creation.",
+    "ValidationMessenger holds Instance Arc and collector through resource and Device teardown. Callback locks collector; messenger destructor destroys callback before collector/Instance fields drop.",
+    "Explicit session/dynamic/pipeline/compiler/sampler/heap/readback/abi drops release actual device-child owners. package.layout was moved by value into request_compute_spirv earlier; remaining package stages/ABI reservations contain allocator stats, not Device Arc. Completed retirements collected before final Device Arc is dropped.",
+    "Collector.errors assertion occurs after actual Device drop; ERROR severities fail, WARNING severities are collected but not failure criteria. Instance creation/destruction diagnostics are outside this collector window.",
+    "Original module/container bytes, complete per-mip dispatches, true/false sample_self values, actual returned descriptor layouts, fresh uninitialized full image and numerical gray oracle unchanged."
+  ],
+  "root_execution_record": {
+    "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/validation/reverse-blur-original-v2-gpu.json",
+    "sha256": "7053d13ecde0dbb88d8f6d76751479800fd0b5231ec117415c230bab9de4b69b",
+    "reported_build_exit_code": 0,
+    "reported_counts": [
+      2,
+      0,
+      0
+    ],
+    "reported_run_exit_code": 0,
+    "reported_skip": false,
+    "compiler_test_artifact": [
+      {
+        "target": {
+          "kind": [
+            "test"
+          ],
+          "crate_types": [
+            "bin"
+          ],
+          "name": "reverse_blur_original_vulkan",
+          "src_path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/tests/reverse_blur_original_vulkan.rs",
+          "edition": "2024",
+          "doc": false,
+          "doctest": false,
+          "test": true
+        },
+        "profile": {
+          "opt_level": "0",
+          "debuginfo": "line-tables-only",
+          "debug_assertions": true,
+          "overflow_checks": true,
+          "test": true
+        },
+        "features": [
+          "default",
+          "suballocation",
+          "test-support"
+        ],
+        "executable": "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/reverse_blur_original_vulkan-ce976d35a44de81d",
+        "fresh": false
+      }
+    ]
+  },
+  "independent_read_only_provenance_checks": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/bindless.rs",
+      "expected": "ee09af6aa3fad2300f94433d1b0ff3d24506ae2947d71fbe453cbf6efebad4e5",
+      "actual": "ee09af6aa3fad2300f94433d1b0ff3d24506ae2947d71fbe453cbf6efebad4e5",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/bindless_parameters.rs",
+      "expected": "8041feb68d419e866ec856c66cdf919bd3d0720366ae5d3c9523dbf1c2c28a13",
+      "actual": "8041feb68d419e866ec856c66cdf919bd3d0720366ae5d3c9523dbf1c2c28a13",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/command/cpu_arena.rs",
+      "expected": "a053b13f4f4d389420dd61d12fff2639c09b269f76ee9ffdaf7cdee529ddc1a9",
+      "actual": "a053b13f4f4d389420dd61d12fff2639c09b269f76ee9ffdaf7cdee529ddc1a9",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/command/mod.rs",
+      "expected": "fb37093a3c748202e84f314fa11b0182736c1bfbde5278d4f9e81d0060a4bae5",
+      "actual": "fb37093a3c748202e84f314fa11b0182736c1bfbde5278d4f9e81d0060a4bae5",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/command/recording.rs",
+      "expected": "85b3db77bbfaad432a95a23dc4b580f4d592cdbdf81b41c47ba129d545f0a6a5",
+      "actual": "85b3db77bbfaad432a95a23dc4b580f4d592cdbdf81b41c47ba129d545f0a6a5",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/device/budget.rs",
+      "expected": "d53e88790c8231d3e998d462057f76f0b394a2b0d12432fd38454c1d539f26ae",
+      "actual": "d53e88790c8231d3e998d462057f76f0b394a2b0d12432fd38454c1d539f26ae",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/device/caches.rs",
+      "expected": "3ae1c67fc5ef25379a8ffb59b1ba361c3e1864ef3b6f24d2827be75d462d2c2e",
+      "actual": "3ae1c67fc5ef25379a8ffb59b1ba361c3e1864ef3b6f24d2827be75d462d2c2e",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/device/caps.rs",
+      "expected": "903afae2bf720acc3a63b14da3f9fe48eceb2a3a55f2b136f2dfa54daff43788",
+      "actual": "903afae2bf720acc3a63b14da3f9fe48eceb2a3a55f2b136f2dfa54daff43788",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/device/generation.rs",
+      "expected": "55179746923739190eb55f63aa7744cab78feeddd435a07b289a452ba36e8ffa",
+      "actual": "55179746923739190eb55f63aa7744cab78feeddd435a07b289a452ba36e8ffa",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/device/init.rs",
+      "expected": "f347b59925232116247fb92531109bc621c20c658ee9fee356e138ae518bed6e",
+      "actual": "f347b59925232116247fb92531109bc621c20c658ee9fee356e138ae518bed6e",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/device/lifetime.rs",
+      "expected": "cbcd83591096a86732e956ec2bbace899c90c5cb2233ad657e1c744f972f5c5f",
+      "actual": "cbcd83591096a86732e956ec2bbace899c90c5cb2233ad657e1c744f972f5c5f",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/device/logical.rs",
+      "expected": "1e4639e95f7950448b735907951073200712d7833424e80bdf3953b0b3edbd88",
+      "actual": "1e4639e95f7950448b735907951073200712d7833424e80bdf3953b0b3edbd88",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/device/memory.rs",
+      "expected": "564aca1a2fd6856598afd001c4e7a75b5c4a669ec0340ae1a4d05d46715dafa5",
+      "actual": "564aca1a2fd6856598afd001c4e7a75b5c4a669ec0340ae1a4d05d46715dafa5",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/device/mod.rs",
+      "expected": "729ef7a3c16f7adfde2af6e050bf2e1e309950f886664fa09dd939eb65cbd485",
+      "actual": "729ef7a3c16f7adfde2af6e050bf2e1e309950f886664fa09dd939eb65cbd485",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/device/native.rs",
+      "expected": "efc24315fa1a4fafed1dd484d6526ade2b8f479a72a029754a4d126f31257e46",
+      "actual": "efc24315fa1a4fafed1dd484d6526ade2b8f479a72a029754a4d126f31257e46",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/device/pending_acquire.rs",
+      "expected": "c085f44233999910ba18d3b3009a8ac6f6008adbd545c00aa54d0c522da9a866",
+      "actual": "c085f44233999910ba18d3b3009a8ac6f6008adbd545c00aa54d0c522da9a866",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/device/policy.rs",
+      "expected": "4323d96e33aacc763113b8585eeb04db38f93e83e52c7dcf6fc112dad07b5bb7",
+      "actual": "4323d96e33aacc763113b8585eeb04db38f93e83e52c7dcf6fc112dad07b5bb7",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/device/queue_config.rs",
+      "expected": "9db167519f742e0b0cad2fc37ac1b28790cc5b03b3611df773449b77cac27d40",
+      "actual": "9db167519f742e0b0cad2fc37ac1b28790cc5b03b3611df773449b77cac27d40",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/device/queues.rs",
+      "expected": "e76b05a3e1051ea3f52c6dfc2e769d027508bc38861e8e36b22445381e5c89f6",
+      "actual": "e76b05a3e1051ea3f52c6dfc2e769d027508bc38861e8e36b22445381e5c89f6",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/device/reclamation.rs",
+      "expected": "85313b7f32eada1db7fe2e73599e24bc941c9787384e16b2c849ec97566b05f4",
+      "actual": "85313b7f32eada1db7fe2e73599e24bc941c9787384e16b2c849ec97566b05f4",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/device/submission.rs",
+      "expected": "b6f86d0e75603ed78437ae9a25c7b7f5b420faeeb7b1c4af4ab3e8e0847df40d",
+      "actual": "b6f86d0e75603ed78437ae9a25c7b7f5b420faeeb7b1c4af4ab3e8e0847df40d",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/error.rs",
+      "expected": "5929882c6d8a678a5df3c7e6c6d543825e13a4ef28750835e655724a1a49b7da",
+      "actual": "5929882c6d8a678a5df3c7e6c6d543825e13a4ef28750835e655724a1a49b7da",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/interop.rs",
+      "expected": "fcf0d4528fc8d6eb0dab4e3a8e402b85f372b56cbef076a401b12497745bdced",
+      "actual": "fcf0d4528fc8d6eb0dab4e3a8e402b85f372b56cbef076a401b12497745bdced",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/lib.rs",
+      "expected": "d4c0165a56e0507c110dcbb4bf7f8291942c877cf9455530527680fca5bc0f21",
+      "actual": "d4c0165a56e0507c110dcbb4bf7f8291942c877cf9455530527680fca5bc0f21",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/log_ring.rs",
+      "expected": "78db2eff60fd0b986ed52315effe2456c40781245082baf663c1a6444fd5d55a",
+      "actual": "78db2eff60fd0b986ed52315effe2456c40781245082baf663c1a6444fd5d55a",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/pipeline.rs",
+      "expected": "5154e04cde5e85b29c2a7ab90278506b11cfdeb3b5cf946afb570cc386fc27a9",
+      "actual": "5154e04cde5e85b29c2a7ab90278506b11cfdeb3b5cf946afb570cc386fc27a9",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/present.rs",
+      "expected": "e463767cc9d70d007585f672a1d662ca3d3c2838a19fe4f4e1b3b02ec92972a5",
+      "actual": "e463767cc9d70d007585f672a1d662ca3d3c2838a19fe4f4e1b3b02ec92972a5",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/access_table.rs",
+      "expected": "e517f0991cca886c90a321e91fbf30919fb574624ccb08017dcca9317877aa21",
+      "actual": "e517f0991cca886c90a321e91fbf30919fb574624ccb08017dcca9317877aa21",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/aftermath.rs",
+      "expected": "f9e7239a01073893a8d6bbc20785f0b070645f262a4d4ab81adc323af05acc55",
+      "actual": "f9e7239a01073893a8d6bbc20785f0b070645f262a4d4ab81adc323af05acc55",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/allocator.rs",
+      "expected": "65e1e1949cb80871211f0deecf25062479576e990330486ba094ded39a066d82",
+      "actual": "65e1e1949cb80871211f0deecf25062479576e990330486ba094ded39a066d82",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/barrier.rs",
+      "expected": "42fc58f28c78d3c5cddcacdf2d91f05ee23949715d6be630c3e3fb34dd097bf1",
+      "actual": "42fc58f28c78d3c5cddcacdf2d91f05ee23949715d6be630c3e3fb34dd097bf1",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/binding.rs",
+      "expected": "37233cee4360c17a600553d5e3a2eb332f03fb560ef459c3becdd499440ee8a0",
+      "actual": "37233cee4360c17a600553d5e3a2eb332f03fb560ef459c3becdd499440ee8a0",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/buffer.rs",
+      "expected": "c65431ef57a83d5ae639428c9f005f80741b83743426366fc766f8d5eb067831",
+      "actual": "c65431ef57a83d5ae639428c9f005f80741b83743426366fc766f8d5eb067831",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/bytes.rs",
+      "expected": "235758074dbdc00e5dd55a4d7c84193cff510c1d585eebf457681577435efc3f",
+      "actual": "235758074dbdc00e5dd55a4d7c84193cff510c1d585eebf457681577435efc3f",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/command_buffer.rs",
+      "expected": "673b3a531ebbc80000a068eae600ef36b0d70514ff48122d0c2279022b794f1a",
+      "actual": "673b3a531ebbc80000a068eae600ef36b0d70514ff48122d0c2279022b794f1a",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/crash.rs",
+      "expected": "a206be9f53e8d2618811ad26a3095aa69582f4e34f79972dc677ca96d9f164b2",
+      "actual": "a206be9f53e8d2618811ad26a3095aa69582f4e34f79972dc677ca96d9f164b2",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/debug.rs",
+      "expected": "b83b5948c3d594898b54618a4f9c584bd6c75d5fc6da9f380bcf66eb3ad4c0cb",
+      "actual": "b83b5948c3d594898b54618a4f9c584bd6c75d5fc6da9f380bcf66eb3ad4c0cb",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/descriptor_pool_ring.rs",
+      "expected": "187dec0d9a5a5fddbe860f3058ff02e2d87bae87117e6f606b84ab03cb621af3",
+      "actual": "187dec0d9a5a5fddbe860f3058ff02e2d87bae87117e6f606b84ab03cb621af3",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/descriptor_set.rs",
+      "expected": "7ee6aef9aca7daf5b9bd8a83c8fd4dfe80f38e680d294810086f51a73a43c566",
+      "actual": "7ee6aef9aca7daf5b9bd8a83c8fd4dfe80f38e680d294810086f51a73a43c566",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/device.rs",
+      "expected": "ab9d2cb11174e990d5a46f72a2086162d4a2f58d0791002f4f36ad31c7b7ee5a",
+      "actual": "ab9d2cb11174e990d5a46f72a2086162d4a2f58d0791002f4f36ad31c7b7ee5a",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/device_api.rs",
+      "expected": "db68f514bc6350603967f3e600a624538461148d2e3eb4ef33f1e57618b04a3f",
+      "actual": "db68f514bc6350603967f3e600a624538461148d2e3eb4ef33f1e57618b04a3f",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/dxgi.rs",
+      "expected": "c146078bad98da3b5a9d84a6edde5a7e72614bedc5dfa08a1523617644704e76",
+      "actual": "c146078bad98da3b5a9d84a6edde5a7e72614bedc5dfa08a1523617644704e76",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/dynamic_constants.rs",
+      "expected": "8104deb10fa81dbf128f586e26c4eec88c1ed974d7b93223b9dd25df6881f186",
+      "actual": "8104deb10fa81dbf128f586e26c4eec88c1ed974d7b93223b9dd25df6881f186",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/error.rs",
+      "expected": "3d50ce2a8485acf4506b29966ef330061e8d9e740f28edc83e398a417a963aa7",
+      "actual": "3d50ce2a8485acf4506b29966ef330061e8d9e740f28edc83e398a417a963aa7",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/format.rs",
+      "expected": "67d74a446dd3441a12cd94b82691b961eb0eb390e323ae9ded16c15e212f1efe",
+      "actual": "67d74a446dd3441a12cd94b82691b961eb0eb390e323ae9ded16c15e212f1efe",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/format_table.rs",
+      "expected": "131ed1d3ff646c6d15e11e72c0f439adad8287430150bab53d580ce0296e0779",
+      "actual": "131ed1d3ff646c6d15e11e72c0f439adad8287430150bab53d580ce0296e0779",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/graveyard.rs",
+      "expected": "8a052ece6e82d4c9d581a27d8f8111999382db01ce3cc66ea4087ca01f7eb736",
+      "actual": "8a052ece6e82d4c9d581a27d8f8111999382db01ce3cc66ea4087ca01f7eb736",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/init.rs",
+      "expected": "bb439a7a79eeebe83d0e0ffa3d91105d71c7e92c485abddfd1504918a424834b",
+      "actual": "bb439a7a79eeebe83d0e0ffa3d91105d71c7e92c485abddfd1504918a424834b",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/instance.rs",
+      "expected": "73c0b69cc64c1f00416b2bcdb87d0c5514fa69f2e2f4aeca5fff1400803a3132",
+      "actual": "73c0b69cc64c1f00416b2bcdb87d0c5514fa69f2e2f4aeca5fff1400803a3132",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/managed/buffer.rs",
+      "expected": "ea0907248982afa6a04e5d8397533c92261326a1de7822254550e4251283d5fe",
+      "actual": "ea0907248982afa6a04e5d8397533c92261326a1de7822254550e4251283d5fe",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/managed/handle.rs",
+      "expected": "d8ce130d599a4f5984a48f6907c3989824ab689a9903be0f558ac2904717b086",
+      "actual": "d8ce130d599a4f5984a48f6907c3989824ab689a9903be0f558ac2904717b086",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/managed/mod.rs",
+      "expected": "c9a3c5321e42a565c59709c37aa7e4ae2cc59e04c2c449c01dd869a04ec3dbb2",
+      "actual": "c9a3c5321e42a565c59709c37aa7e4ae2cc59e04c2c449c01dd869a04ec3dbb2",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/managed/resources.rs",
+      "expected": "478a89ce355f761aa6d29316f808ae090eed9a0c61d6143961c15cf4737265f2",
+      "actual": "478a89ce355f761aa6d29316f808ae090eed9a0c61d6143961c15cf4737265f2",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/managed/texture.rs",
+      "expected": "71d1a1404c953a723869ec69230981c3dff792c292faebab9f5ce0c907939af6",
+      "actual": "71d1a1404c953a723869ec69230981c3dff792c292faebab9f5ce0c907939af6",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/mod.rs",
+      "expected": "3d1fee0b6f2e6bd73c83a84c09db556ee3323d29d3d6a5d7fe526f2cd790472f",
+      "actual": "3d1fee0b6f2e6bd73c83a84c09db556ee3323d29d3d6a5d7fe526f2cd790472f",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/physical_device.rs",
+      "expected": "c70ac299aa2c009d059bc5382371031d23de24e3eb15ba45cd7e488e2ea3ed75",
+      "actual": "c70ac299aa2c009d059bc5382371031d23de24e3eb15ba45cd7e488e2ea3ed75",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/profiler.rs",
+      "expected": "4ffc701a7fc77f85399b37931a30266ae8d10e04a7400938f7daa5bc424d2689",
+      "actual": "4ffc701a7fc77f85399b37931a30266ae8d10e04a7400938f7daa5bc424d2689",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/resource_access.rs",
+      "expected": "a5618eef8fec18ef7a1cc467032617e7176e8f0fd84837fa3ae29ee7a12f971e",
+      "actual": "a5618eef8fec18ef7a1cc467032617e7176e8f0fd84837fa3ae29ee7a12f971e",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/resource_usage.rs",
+      "expected": "93076a01f381812c84f0d0b33d846b730890b79c5622ddf6fe950526355813da",
+      "actual": "93076a01f381812c84f0d0b33d846b730890b79c5622ddf6fe950526355813da",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/sampler.rs",
+      "expected": "69e0ef3a45bbcd5871f0cf9cc1d3eb45f7cc3ebfe3e6c06d3c2fa23bf94b4397",
+      "actual": "69e0ef3a45bbcd5871f0cf9cc1d3eb45f7cc3ebfe3e6c06d3c2fa23bf94b4397",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/semaphore.rs",
+      "expected": "04ad37b0d937d5bce598770ef16302eb0f857b08ccea4ace8f64a9c331d8b627",
+      "actual": "04ad37b0d937d5bce598770ef16302eb0f857b08ccea4ace8f64a9c331d8b627",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/setup.rs",
+      "expected": "f7fd90ae6a0c5fbe66c0ed5f19f43d1825d019382ad209947244d1b5f118143d",
+      "actual": "f7fd90ae6a0c5fbe66c0ed5f19f43d1825d019382ad209947244d1b5f118143d",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/shader/pipeline_cache.rs",
+      "expected": "1daaa84ce8cd2879ba2fabb524b04adf39fd4f9eda04b1a0995291aa245b8275",
+      "actual": "1daaa84ce8cd2879ba2fabb524b04adf39fd4f9eda04b1a0995291aa245b8275",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/shader/pipeline_key.rs",
+      "expected": "e88411553b84b789404c5c2356e50758ab02930df4dde1c2f5c0b24b9be86289",
+      "actual": "e88411553b84b789404c5c2356e50758ab02930df4dde1c2f5c0b24b9be86289",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/shader/reflection.rs",
+      "expected": "30bdbdd22d786829324cf06f309d1e2e66018665f049caba2dd72a5c6973e468",
+      "actual": "30bdbdd22d786829324cf06f309d1e2e66018665f049caba2dd72a5c6973e468",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/shader.rs",
+      "expected": "872fad12eb6e12a592e4bd596c8c03a713322f551d452bf77e8da5acb7c62812",
+      "actual": "872fad12eb6e12a592e4bd596c8c03a713322f551d452bf77e8da5acb7c62812",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/shader_interface.rs",
+      "expected": "cc33448a45a2a37d3766d54c40388a4c4d984dac668e596c009ff0a99e25d888",
+      "actual": "cc33448a45a2a37d3766d54c40388a4c4d984dac668e596c009ff0a99e25d888",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/stats.rs",
+      "expected": "3a79cee88be55dfdfd923b937c02b3ae5d767adc8ec99f904181b1ba276c8093",
+      "actual": "3a79cee88be55dfdfd923b937c02b3ae5d767adc8ec99f904181b1ba276c8093",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/suballoc.rs",
+      "expected": "50ec46d19314e35812dbf28a18b6d2fc9d8897cba57c8d5d02b4f57145421647",
+      "actual": "50ec46d19314e35812dbf28a18b6d2fc9d8897cba57c8d5d02b4f57145421647",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/submit.rs",
+      "expected": "0661d02743a2585506e7df68313eb377073fbf909e387cdb807918b3c200f213",
+      "actual": "0661d02743a2585506e7df68313eb377073fbf909e387cdb807918b3c200f213",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/swapchain/fullscreen.rs",
+      "expected": "62547216d995eac01fdd62534b0329ec7d496154376feabdd78751f330c34ccd",
+      "actual": "62547216d995eac01fdd62534b0329ec7d496154376feabdd78751f330c34ccd",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/swapchain/graph_presentation.rs",
+      "expected": "2a7ad7d77510e2fe9925fdd1c6517ffb9607eed46ee52bf1a356cd5e22b7d3fc",
+      "actual": "2a7ad7d77510e2fe9925fdd1c6517ffb9607eed46ee52bf1a356cd5e22b7d3fc",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/swapchain.rs",
+      "expected": "e2d54206f18e884aea48e34dfbb192b5eecf93128251174e56cac4c709d306e6",
+      "actual": "e2d54206f18e884aea48e34dfbb192b5eecf93128251174e56cac4c709d306e6",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/temp_list.rs",
+      "expected": "f70b7b905981ae009041fef945fa8af2249932c02a2c5648728ebee3d2d2e7bb",
+      "actual": "f70b7b905981ae009041fef945fa8af2249932c02a2c5648728ebee3d2d2e7bb",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/temp_list_pool.rs",
+      "expected": "8418a951db62684b47b4a5f6ec0d5fd8f98385cc7d87d8bd3b848fcabeab335c",
+      "actual": "8418a951db62684b47b4a5f6ec0d5fd8f98385cc7d87d8bd3b848fcabeab335c",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/texture.rs",
+      "expected": "38b50b256e676bab11d98162cb6f6eeeee12838956e5dd571a70b35bc87c23e4",
+      "actual": "38b50b256e676bab11d98162cb6f6eeeee12838956e5dd571a70b35bc87c23e4",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/texture_upload.rs",
+      "expected": "73965abed886e466314dc3fef09da3f3756ab305a206064d7921e7a5a57ba234",
+      "actual": "73965abed886e466314dc3fef09da3f3756ab305a206064d7921e7a5a57ba234",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/transient_backing.rs",
+      "expected": "9e2c5ad4dca66890a039a2fd8ed1727a0ec86b9837f8109e48a8c7cb4e52f232",
+      "actual": "9e2c5ad4dca66890a039a2fd8ed1727a0ec86b9837f8109e48a8c7cb4e52f232",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/resource/handle.rs",
+      "expected": "173f004167e1697a3d35550f9e180b757997b52bb5e2b16e68e37718591117b7",
+      "actual": "173f004167e1697a3d35550f9e180b757997b52bb5e2b16e68e37718591117b7",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/resource/mod.rs",
+      "expected": "cbb78f159fe85bb73943e6205b2a302259b84dee155ebd90f9092c24f79d07b0",
+      "actual": "cbb78f159fe85bb73943e6205b2a302259b84dee155ebd90f9092c24f79d07b0",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/resource/range_state.rs",
+      "expected": "e5a579fcb67b773fba4dd39d04bdb738dd652548d6bb8610bd0d7e1bf0bfc106",
+      "actual": "e5a579fcb67b773fba4dd39d04bdb738dd652548d6bb8610bd0d7e1bf0bfc106",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/resource/sharing.rs",
+      "expected": "cb8cd9dacdc322f617416818779bcee59c391366d4cc013453225b1fa782fc3a",
+      "actual": "cb8cd9dacdc322f617416818779bcee59c391366d4cc013453225b1fa782fc3a",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/resource/tracked.rs",
+      "expected": "aa75cfe89d63094b233f4ea58b05e280c1ccc25eeba9bec696ce04243b9b2ccb",
+      "actual": "aa75cfe89d63094b233f4ea58b05e280c1ccc25eeba9bec696ce04243b9b2ccb",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/access_ledger.rs",
+      "expected": "bb03d8cf909aefb3b454168d7a33c913cf5ebdf48d66dbf5893ad50028a0ca8a",
+      "actual": "bb03d8cf909aefb3b454168d7a33c913cf5ebdf48d66dbf5893ad50028a0ca8a",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/attachment_contract.rs",
+      "expected": "f83643fa7d4290b38f34ef0cb7f100974f8c01645c19cfef3b03c994f444bee8",
+      "actual": "f83643fa7d4290b38f34ef0cb7f100974f8c01645c19cfef3b03c994f444bee8",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/attachments.rs",
+      "expected": "3240b1a5e568ba6d028a7beca3ea7566bc905d1c7d9097cd56fe80773b46bfbe",
+      "actual": "3240b1a5e568ba6d028a7beca3ea7566bc905d1c7d9097cd56fe80773b46bfbe",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/binding.rs",
+      "expected": "d6568c5162de351bb6cbb7f33090e646020ab7deef09dc4ae720e9a5b03b0800",
+      "actual": "d6568c5162de351bb6cbb7f33090e646020ab7deef09dc4ae720e9a5b03b0800",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/cache.rs",
+      "expected": "d0653dc8b57bbbc62140550725100ad2d044c7c61a735a359caa29bd10a97f33",
+      "actual": "d0653dc8b57bbbc62140550725100ad2d044c7c61a735a359caa29bd10a97f33",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/compiled.rs",
+      "expected": "b4200ec053cbfb62f150d9b378ecb793cfa8a894916ce0965dfd0a1e27df674d",
+      "actual": "b4200ec053cbfb62f150d9b378ecb793cfa8a894916ce0965dfd0a1e27df674d",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/executor.rs",
+      "expected": "89a6bbef78677121b7475eec1893e3a3de177fbd84109fb2abf9f64749c162c0",
+      "actual": "89a6bbef78677121b7475eec1893e3a3de177fbd84109fb2abf9f64749c162c0",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/frame.rs",
+      "expected": "2155706d28d702f86180adabbcfce8e6135f6d066fcbdc7cf5555afff29919f1",
+      "actual": "2155706d28d702f86180adabbcfce8e6135f6d066fcbdc7cf5555afff29919f1",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/frame_imports.rs",
+      "expected": "996aa6f05184b1aa6676fee028753037964616adc88f23c6c36cad49f963ffb3",
+      "actual": "996aa6f05184b1aa6676fee028753037964616adc88f23c6c36cad49f963ffb3",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/frame_loop.rs",
+      "expected": "0306581e582a570be8687b0c12746b1d017d63f89f3aeb7b9e68650680397c32",
+      "actual": "0306581e582a570be8687b0c12746b1d017d63f89f3aeb7b9e68650680397c32",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/frame_storage.rs",
+      "expected": "1f3910fc8ddcd33181357c409f60dc77cb14c6873caa27a7fd8f6a55d33fc994",
+      "actual": "1f3910fc8ddcd33181357c409f60dc77cb14c6873caa27a7fd8f6a55d33fc994",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/frame_throttle.rs",
+      "expected": "40f8464314eaaae88e9fd5d2e214eeb84e137079c6a67c9a78eadafe9fbc1451",
+      "actual": "40f8464314eaaae88e9fd5d2e214eeb84e137079c6a67c9a78eadafe9fbc1451",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/graph.rs",
+      "expected": "61271626e7430aa34740df6cc81b30b3a46bb95d465c36aa8094ce26772a6c9d",
+      "actual": "61271626e7430aa34740df6cc81b30b3a46bb95d465c36aa8094ce26772a6c9d",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/graph_caches.rs",
+      "expected": "23aef5839dc8149cfa38fd6da402cc987606fcf2d0eec3e32c9ab73df54c8c80",
+      "actual": "23aef5839dc8149cfa38fd6da402cc987606fcf2d0eec3e32c9ab73df54c8c80",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/import_export.rs",
+      "expected": "75a693c3b8f7f026bf33d020019fb143066705465163b8847525e5f369b964f8",
+      "actual": "75a693c3b8f7f026bf33d020019fb143066705465163b8847525e5f369b964f8",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/indirect_count.rs",
+      "expected": "75336616213c00c1ff55dab878f3c9024682a04fae3d76275b4adec223fc9181",
+      "actual": "75336616213c00c1ff55dab878f3c9024682a04fae3d76275b4adec223fc9181",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/indirect_count_spirv.rs",
+      "expected": "e8df77db0b9528f5a8731b86876eb4bf332ab2fda61de5780a848baa97ae7d31",
+      "actual": "e8df77db0b9528f5a8731b86876eb4bf332ab2fda61de5780a848baa97ae7d31",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/mod.rs",
+      "expected": "1ce6c8b688b2446b019a8c33eaf7bd14dee0b4e08ae6ddf8721fdaec4f5cfc54",
+      "actual": "1ce6c8b688b2446b019a8c33eaf7bd14dee0b4e08ae6ddf8721fdaec4f5cfc54",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/owner_storage.rs",
+      "expected": "52d573701fc051b1ccdfb2aac5ee304a2704a5c8e349c4d63c8042488d9d25a0",
+      "actual": "52d573701fc051b1ccdfb2aac5ee304a2704a5c8e349c4d63c8042488d9d25a0",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/parallel.rs",
+      "expected": "d025d3d410ef00bf774f2334e74971934a86a36ac787c7e8cf33c5b08345efd8",
+      "actual": "d025d3d410ef00bf774f2334e74971934a86a36ac787c7e8cf33c5b08345efd8",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/pass_api.rs",
+      "expected": "81f46bd9a856221f3a34643faa6d1d1ee0902179de4143b84f8d6d70ce089b93",
+      "actual": "81f46bd9a856221f3a34643faa6d1d1ee0902179de4143b84f8d6d70ce089b93",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/pass_bindings/projection.rs",
+      "expected": "7caace98dccef7e0e488243199defdd4d445f88a260355325f9bb184381a86cb",
+      "actual": "7caace98dccef7e0e488243199defdd4d445f88a260355325f9bb184381a86cb",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/pass_bindings.rs",
+      "expected": "bc1e94de603c0937c481783f4fc8218423e9712535c07c31dc8b5a1a01fa944c",
+      "actual": "bc1e94de603c0937c481783f4fc8218423e9712535c07c31dc8b5a1a01fa944c",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/pass_builder.rs",
+      "expected": "65c58e38e38b0f02e13205a78054526c84174894d3f0dddd284748ef82384895",
+      "actual": "65c58e38e38b0f02e13205a78054526c84174894d3f0dddd284748ef82384895",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/plan.rs",
+      "expected": "e697ec36b7e079f04198ecf49cb31f1184a5556ccbf1922da8e2640c20392cbf",
+      "actual": "e697ec36b7e079f04198ecf49cb31f1184a5556ccbf1922da8e2640c20392cbf",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/plan_check/bound.rs",
+      "expected": "34be646068a8c28de0c220bf20fb99e4847c69982476501a0bee05874b273a69",
+      "actual": "34be646068a8c28de0c220bf20fb99e4847c69982476501a0bee05874b273a69",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/plan_check/native_state.rs",
+      "expected": "b31d6dea1b744f69b8c98da22f41d1f535b4e39d95f9215382ced30329b7ad48",
+      "actual": "b31d6dea1b744f69b8c98da22f41d1f535b4e39d95f9215382ced30329b7ad48",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/plan_check/range_oracle.rs",
+      "expected": "0b0583aa0bf8db1ac42acde74274e8fe6a2fed1a843c8bd0803163eb1106ef90",
+      "actual": "0b0583aa0bf8db1ac42acde74274e8fe6a2fed1a843c8bd0803163eb1106ef90",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/plan_check/range_program.rs",
+      "expected": "f517924d5441f02946036edf34e502e30c0267e5f4fabdc8b7ac54c5e9e17f30",
+      "actual": "f517924d5441f02946036edf34e502e30c0267e5f4fabdc8b7ac54c5e9e17f30",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/plan_check.rs",
+      "expected": "1ea424afc64f5ef97e93234eb1b1a587c4c78905a2cc71b2bdeb6ff1dbe0acb5",
+      "actual": "1ea424afc64f5ef97e93234eb1b1a587c4c78905a2cc71b2bdeb6ff1dbe0acb5",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/profiling.rs",
+      "expected": "5fa06cd32c29f4d9c04714feebe95e9775a5d8584d3ac0e4fca952a4447d4452",
+      "actual": "5fa06cd32c29f4d9c04714feebe95e9775a5d8584d3ac0e4fca952a4447d4452",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/queue_schedule.rs",
+      "expected": "2207fc5e977450c661b4fba8452f58e6d24d6ec821e0e1b2484124d44c687732",
+      "actual": "2207fc5e977450c661b4fba8452f58e6d24d6ec821e0e1b2484124d44c687732",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/receipt_storage.rs",
+      "expected": "410254823eef90fa33b5cb7d46f5c8ad6a00655d9be4a847724c25dd71f94dca",
+      "actual": "410254823eef90fa33b5cb7d46f5c8ad6a00655d9be4a847724c25dd71f94dca",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/recorder.rs",
+      "expected": "ead39c83f2d866a4625c45bfd6df51192a0740cdcd062d4c06fc958b49edda1b",
+      "actual": "ead39c83f2d866a4625c45bfd6df51192a0740cdcd062d4c06fc958b49edda1b",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/resource.rs",
+      "expected": "657d62cd977b2c1aacd4fed7d5ef07d29f248693980e1d7888cffc20420e5149",
+      "actual": "657d62cd977b2c1aacd4fed7d5ef07d29f248693980e1d7888cffc20420e5149",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/resource_contracts.rs",
+      "expected": "4761daf491113fef1c0141370c0f43aaccc5fa742f488a4c6901c68d465eeb6b",
+      "actual": "4761daf491113fef1c0141370c0f43aaccc5fa742f488a4c6901c68d465eeb6b",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/resource_info.rs",
+      "expected": "9903ce87bbe20b085f2222cd42ec7098978999eb94ab5b195776afd0bd8c961f",
+      "actual": "9903ce87bbe20b085f2222cd42ec7098978999eb94ab5b195776afd0bd8c961f",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/resource_pool.rs",
+      "expected": "3a3b6b5302a9e9ff0af11f02f2d4da3711efa32cf7d5307847054dd323244d7b",
+      "actual": "3a3b6b5302a9e9ff0af11f02f2d4da3711efa32cf7d5307847054dd323244d7b",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/resource_registry.rs",
+      "expected": "c5dc3fcfccf0f88f4e9b8d5ab1456aa646bcdd54250c25b85bcec1ecf2a8554c",
+      "actual": "c5dc3fcfccf0f88f4e9b8d5ab1456aa646bcdd54250c25b85bcec1ecf2a8554c",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/result_cache.rs",
+      "expected": "b1c02430f80ad259184611d46cea36aeb4d091ca5f40fd907e263135927ab6f6",
+      "actual": "b1c02430f80ad259184611d46cea36aeb4d091ca5f40fd907e263135927ab6f6",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/subgraph.rs",
+      "expected": "80333aba7f15ef0696a5ff6332ee018b6759ad602247b8def54b124636fd7671",
+      "actual": "80333aba7f15ef0696a5ff6332ee018b6759ad602247b8def54b124636fd7671",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/sync_plan/bind.rs",
+      "expected": "2bbc4bba458caefeec3e779948778a11f618ac520866f5280b7874c6535a5a94",
+      "actual": "2bbc4bba458caefeec3e779948778a11f618ac520866f5280b7874c6535a5a94",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/sync_plan.rs",
+      "expected": "8269d2de469f4ac80069a5d8ab6075c428135d0ee97a1672e4c3ae0802ecea05",
+      "actual": "8269d2de469f4ac80069a5d8ab6075c428135d0ee97a1672e4c3ae0802ecea05",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/temporal.rs",
+      "expected": "5a479f13eb1c91b43a17f476c575119d14dd8865fcedf70b5c057bfca8c19641",
+      "actual": "5a479f13eb1c91b43a17f476c575119d14dd8865fcedf70b5c057bfca8c19641",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/transaction.rs",
+      "expected": "0a3a42a5aeeae3bfba1cb15df36e4a2a688adb9f5f8d97e6ccda4565b7b7afb6",
+      "actual": "0a3a42a5aeeae3bfba1cb15df36e4a2a688adb9f5f8d97e6ccda4565b7b7afb6",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/transient_memory.rs",
+      "expected": "f3a4d8312fd21fef78654e0f4a7c1b387fe52ad6ef69bf8586a5a1d29a1e77b0",
+      "actual": "f3a4d8312fd21fef78654e0f4a7c1b387fe52ad6ef69bf8586a5a1d29a1e77b0",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/transient_memory_check.rs",
+      "expected": "c1e1af0a859f9dd65ee9ca79e6caaff8bf8fe86397e9db2de5de3481a2f2edfb",
+      "actual": "c1e1af0a859f9dd65ee9ca79e6caaff8bf8fe86397e9db2de5de3481a2f2edfb",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/transient_resources.rs",
+      "expected": "13f98c5d85242d71a14fd204f84f63f9fcc3d87b5d54c6007f197e5fdf17e7db",
+      "actual": "13f98c5d85242d71a14fd204f84f63f9fcc3d87b5d54c6007f197e5fdf17e7db",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/util.rs",
+      "expected": "db722cc53f9540089885f48dd08c89441ee410918c1c1a595e696dc39f2953b6",
+      "actual": "db722cc53f9540089885f48dd08c89441ee410918c1c1a595e696dc39f2953b6",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/vulkan.rs",
+      "expected": "01cb0a81e191a87d250cd5404de2e12a09ebca4e52410beb128dd494d0c10964",
+      "actual": "01cb0a81e191a87d250cd5404de2e12a09ebca4e52410beb128dd494d0c10964",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/vulkan_presentation.rs",
+      "expected": "df49d130d7b3d662552cf1ef760f477bc1c7e89367ccbe210cd4a9264bd85a58",
+      "actual": "df49d130d7b3d662552cf1ef760f477bc1c7e89367ccbe210cd4a9264bd85a58",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/rg/vulkan_queue.rs",
+      "expected": "0c0b1b32fcd9798eacfdab7984253eca2028d38834c117e412ee9f8ced4a35c8",
+      "actual": "0c0b1b32fcd9798eacfdab7984253eca2028d38834c117e412ee9f8ced4a35c8",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/sync/mod.rs",
+      "expected": "f16553fb2ee083cd4abac29aa09c0d00760b6255cf33d1bf089ffcd0e20aafb2",
+      "actual": "f16553fb2ee083cd4abac29aa09c0d00760b6255cf33d1bf089ffcd0e20aafb2",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/sync/retire.rs",
+      "expected": "b3d163ef0f9c7f0d0d2d3a6c10e60431a1033b61b3b66e2d8ff42767175cfbb7",
+      "actual": "b3d163ef0f9c7f0d0d2d3a6c10e60431a1033b61b3b66e2d8ff42767175cfbb7",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/sync/timeline.rs",
+      "expected": "504e0b5e0d3353ddfcb94ce1226e3e62c9e4028c2948c301afb31a16c1987a6a",
+      "actual": "504e0b5e0d3353ddfcb94ce1226e3e62c9e4028c2948c301afb31a16c1987a6a",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/transfer/queue.rs",
+      "expected": "0c7e8472a4959b35739149d43bb02f32d8606e1b1dc61fd97d97ef9c7974b4a2",
+      "actual": "0c7e8472a4959b35739149d43bb02f32d8606e1b1dc61fd97d97ef9c7974b4a2",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/transfer/record.rs",
+      "expected": "7ecf57bd721efb02c55fcb7eae4cf01875c1c5a680d531e35f78197d8e71a53c",
+      "actual": "7ecf57bd721efb02c55fcb7eae4cf01875c1c5a680d531e35f78197d8e71a53c",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/transfer/staging.rs",
+      "expected": "35ffade6769a81c5ab3b8553c3f19634348cbb7bc6b18aa50c4100be2bc1f90d",
+      "actual": "35ffade6769a81c5ab3b8553c3f19634348cbb7bc6b18aa50c4100be2bc1f90d",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/transfer/texture.rs",
+      "expected": "22c405292aa18a728ae5648d99e3dccc106bb71a1088baf7908270fdf5279679",
+      "actual": "22c405292aa18a728ae5648d99e3dccc106bb71a1088baf7908270fdf5279679",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/transfer.rs",
+      "expected": "524df65617b4c6a573d65747696e41536c44e69c79e199cb43c8c973c9061497",
+      "actual": "524df65617b4c6a573d65747696e41536c44e69c79e199cb43c8c973c9061497",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/tests/reverse_blur_original_vulkan.rs",
+      "expected": "6d185b0c19f7954f88d8566f9d56315b86b01d23ce9073ce904de27e346e9742",
+      "actual": "6d185b0c19f7954f88d8566f9d56315b86b01d23ce9073ce904de27e346e9742",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/tests/gpu_test_support/mod.rs",
+      "expected": "6aa08b1e59743284fba79e77843ccafef16bc11a15a5dcc836bf0d0ac5cfede4",
+      "actual": "6aa08b1e59743284fba79e77843ccafef16bc11a15a5dcc836bf0d0ac5cfede4",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/tests/data/reverse_blur_original_B.bin",
+      "expected": "cf8410f4fb3691bfc701cd30a04078893552e7a31df325f7d1c99b88b552f3df",
+      "actual": "cf8410f4fb3691bfc701cd30a04078893552e7a31df325f7d1c99b88b552f3df",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/tg-reverse-blur-original-v2-tests",
+      "expected": "79499abd9a6af5ba92ee5b5856edda4d09bd6f3ecd051a0d32ef5aa9c1c5b3dc",
+      "actual": "79499abd9a6af5ba92ee5b5856edda4d09bd6f3ecd051a0d32ef5aa9c1c5b3dc",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/logs/reverse-blur-original-build-v2.jsonl",
+      "expected": "ee1897a6a9e5bb118837be7d5194f074b871dcf8992651cccbcbb25c5f1999e0",
+      "actual": "ee1897a6a9e5bb118837be7d5194f074b871dcf8992651cccbcbb25c5f1999e0",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/logs/reverse-blur-original-build-v2.stderr",
+      "expected": "8d0b6d7869f2abaae13a173c269d7a7144e43da4857e4124e9c9e1b8ba404895",
+      "actual": "8d0b6d7869f2abaae13a173c269d7a7144e43da4857e4124e9c9e1b8ba404895",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/logs/reverse-blur-original-v2-gpu.log",
+      "expected": "9b9c831bcd48934782bc893d245d7ca1e4bc2be36cec7358634808b99059965c",
+      "actual": "9b9c831bcd48934782bc893d245d7ca1e4bc2be36cec7358634808b99059965c",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/logs/reverse-blur-original-build-v1.jsonl",
+      "expected": "f490bb80d90e3ba9874a03d31dd36818266095b78c28cbbd66013f1d7ded9e97",
+      "actual": "f490bb80d90e3ba9874a03d31dd36818266095b78c28cbbd66013f1d7ded9e97",
+      "matches": true
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/logs/reverse-blur-original-build-v1.stderr",
+      "expected": "3b36822d0f68721e929da742b4888d65baa126bddf165ac106bafa8ebb4f5903",
+      "actual": "3b36822d0f68721e929da742b4888d65baa126bddf165ac106bafa8ebb4f5903",
+      "matches": true
+    }
+  ],
+  "execution_limits": [
+    "No review-side Cargo/rustc/GPU execution or production mutation.",
+    "Constant-gray output proves this original shader graph/oracle under these inputs; it does not independently measure the spatial nine-tap kernel.",
+    "No fullgame frame, warmup, country-core reverse caller, production render host descriptor path, or WSI acceptance."
+  ]
+}

@@ -1,0 +1,5 @@
+/* 手解（rne-read --hex），WallPathSegment::length_ws（3D 逐段长度累加） */
+/* 488b4128 0f57c0 4883f802 0f8238010000 4c8b4120 ... */
+/* = mov rax,[rcx+0x28](点计数); xorps xmm0; cmp rax,2; jb +0x138（<2 点 → 返回 0）; mov r8,[rcx+0x20](点数组) */
+/* 循环体：movss 逐分量取点 i/i+1 → subss → sqrtss（f30f51c3）→ 累加；尾部 movshdup/addss 归并 → f32 返回 */
+/* 段长 = Σ|P[i+1]-P[i]|（3D，含 Y） */

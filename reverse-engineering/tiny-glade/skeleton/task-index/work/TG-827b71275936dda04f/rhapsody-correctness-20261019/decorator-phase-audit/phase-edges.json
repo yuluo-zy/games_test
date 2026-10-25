@@ -1,0 +1,119 @@
+{
+  "version": "B original RNE",
+  "statuses": {
+    "source_changes": false,
+    "target_executed": false,
+    "runtime_acceptance": false
+  },
+  "original_plugin": "DecoratorPlugin::build; not a distinct DecoratorVisualPlugin",
+  "schedule": "Update",
+  "set": 25,
+  "outer_chain": "chain (not chain_ignore_deferred)",
+  "selected_members_zero_based": [
+    {
+      "index": 5,
+      "kind": "tuple2",
+      "members": [
+        "clear_blueprints(Storage ResMut, Blueprints ResMut)",
+        "clear transient visual state(VisualState ResMut,Commands)"
+      ],
+      "internal_order": "no explicit chain between tuple siblings"
+    },
+    {
+      "index": 6,
+      "kind": "tuple15 blueprint generators",
+      "internal_order": "tuple siblings, not a serial generator chain"
+    },
+    {
+      "index": 7,
+      "kind": "instantiate_blueprint_colliders",
+      "native_entry": "0x140827510",
+      "resources": [
+        "RaycastWorld mutable",
+        "DecoratorPhysicsColliders mutable",
+        "current Blueprints immutable",
+        "PrevBlueprints immutable"
+      ]
+    },
+    {
+      "index": 8,
+      "kind": "RaycastWorld flush"
+    },
+    {
+      "index": 9,
+      "kind": "validate_blueprints",
+      "native_entry": "0x140827130",
+      "entry_side_effect": "unconditional mutable Storage tick update then clear_modification_tracking at call 0x14082715c",
+      "remaining_business": "deferred surviving decorators validation and conditional backup/UI/audio/event effects; not recovered merely by cleanup"
+    },
+    {
+      "index": "10..13",
+      "kind": "archive/cull/restore/edit intermediate systems; preserve original chain members; no collapse here"
+    },
+    {
+      "index": 14,
+      "kind": "tuple2 ScheduleConfigs",
+      "members": [
+        {
+          "index": 0,
+          "kind": "stairs18 chain_ignore_deferred",
+          "constructor": "0x140286610"
+        },
+        {
+          "index": 1,
+          "kind": "fullvisual3 chain_ignore_deferred",
+          "constructor": "0x1403d6ce0",
+          "members": [
+            {
+              "index": 0,
+              "kind": "instantiate_blueprints full14",
+              "native_entry": "0x140827910",
+              "vtable": "0x1429d2ce8",
+              "run_unsafe": "0x1403d43f0",
+              "body_callsite": "0x1403d4c21"
+            },
+            {
+              "index": 1,
+              "kind": "tuple4",
+              "members": [
+                "dormer-roof group ScheduleConfigs",
+                "chimney bricks",
+                "door/stairs bricks",
+                "cloth upload"
+              ],
+              "internal_order": "siblings, no new ordering asserted"
+            },
+            {
+              "index": 2,
+              "kind": "copy_blueprints_to_prev",
+              "native_entry": "0x140826d70",
+              "vtable": "0x1429d2b78",
+              "run_unsafe": "0x1403d33e0",
+              "body_callsite": "0x1403d34df"
+            }
+          ]
+        }
+      ],
+      "internal_order": "two configurations are siblings; do not invent order between stair and fullvisual branches"
+    },
+    {
+      "index": 15,
+      "kind": "unleash_decorator_op_events"
+    },
+    {
+      "index": 16,
+      "kind": "RaycastWorld flush"
+    },
+    {
+      "index": "17..18",
+      "kind": "lantern light and stair viz"
+    }
+  ],
+  "conditional_contract": {
+    "selected_nodes": "No per-node on_event/Changed/run_if wrapper on the selected collider-only, validate, fullvisual or copy in this exact original registration; event readers are ordinary system inputs",
+    "outer_registration": "Constructed chain immediately receives GameSystemSet(25) and is added to Update. No extra run_if in the examined plugin callsite",
+    "global_gate": "Not resolved from a separate global schedule proof in this audit; do not claim an unconditional whole-game execution frequency",
+    "deferred": "Outer chain uses normal chain, while fullvisual\u2192middle group\u2192copy ignores automatic deferred applications. Use locked Bevy schedule APIs, do not clone scheduler internals."
+  },
+  "owner_contract": "Every selected system accesses the canonical resources of the same Update App/SubApp World. No second storage/blueprint cache or event owner is permitted."
+}

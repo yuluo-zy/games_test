@@ -1,0 +1,690 @@
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_draw_terrain.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/ui_draw_terrain.rs
+@@ -19,18 +19,20 @@
+ //!   `uVar10-1 < 2` → `(prev-1) > 1 ? inside : 2`；否则 `uVar10 != 0 ? ((prev-1)<2)*3 : 0`；
+ //! - 若 subtype == 3：把 `tag&1 ? pos.y : 0` 写入 drag 距离槽（本实现
+ //!   [`TerrainDrawState::drag_distance`]）；
+-//! - 末尾 `&DAT_142adc498` 跳表按 state 分派（UNRECOVERED_JUMPTABLE；目标函数未恢复，
+-//!   state 语义按既有登记：1=起始笔、2=续笔 morph、3=释放读笔、0=无动作）。
++//! - Original jump table at0x142adc498 is resolved:0=noop,1=new stroke with live mapped height policy,
++//!   2=inside-only continuation plus changed event,3=owned typed history completion.
+ use bevy_ecs::prelude::*;
+ use glam::Vec2;
+ use utils::geometry::Circle2d;
+ 
+ use crate::{
++    asset_libraries::ssbo_library::AssetSsboLibrary,
+     resources::{
+         cursor_terrain_raycast::CursorTerrainRaycast,
+         glade_border::{BorderShape, GladeBorder},
+         terrain_editing::{StrokeId, TerrainEditingData},
+         terrain_height::{TerrainHeightSsbo, TerrainHeightsData},
++        terrain_rock_mask::{TerrainRockMaskSsbo, sample_at_world_xz},
+     },
+     systems::{
+         mode_manager::AppMode,
+@@ -38,7 +40,7 @@
+             RecalculateHeightMapCmd,
+             deferred_terrain_history::{PendingTerrainHistory, TerrainEdit},
+             draw_terrain_stroke::EvTerrainStrokeChanged,
+-            ui_edit_terrain::{StairsPlacementBucket, StairsPlacementEntry},
++            ui_edit_terrain::{StairsPlacementBucket, StairsPlacementEntry, TerrainEditUiState},
+         },
+         ui::resources::ui_state::UiState,
+     },
+@@ -99,6 +101,8 @@
+     mut draw_state: ResMut<TerrainDrawState>,
+     mut pending: ResMut<PendingTerrainHistory>,
+     mut stairs: ResMut<StairsPlacementBucket>,
++    assets: Option<Res<AssetSsboLibrary>>,
++    mut terrain_ui: ResMut<TerrainEditUiState>,
+ ) {
+     // 门：AppMode::Terrain（O：0x140a9fdf9 `CMP dword [RAX],0xa`）。
+     if mode.native_tag() != 10 {
+@@ -163,15 +167,37 @@
+         draw_state.drag_distance = if hovered { distance } else { 0.0 };
+     }
+ 
+-    // 末尾跳表 `&DAT_142adc498`（UNRECOVERED_JUMPTABLE；目标函数未恢复）。
+-    // 已恢复语义：1 = 起始笔 → new_stroke + EvTerrainStrokeChanged；
+-    // 2 = 续笔 → get_last_mut_stroke + insert_or_morph_last_point；
+-    // 3 = 释放/读笔（crate 输入模型无 release 事件，登记）；0 = 无动作。
++    // B0x142adc498: resolved original new/continue/release/noop branches.
+     match state {
+         1 => {
+             if let Ok(Some(id)) = editing.new_stroke(position.to_array()) {
++                let library = assets
++                    .as_deref()
++                    .expect("terrain drawing requires the SSBO library");
++                let mouse_index = crate::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::read_terrain_stroke_index(library);
++                let mask = library
++                    .get::<TerrainRockMaskSsbo>()
++                    .expect("terrain drawing requires TerrainRockMaskSsbo");
++                let existing = mouse_index.is_some_and(|index| index != -1);
++                let on_rock = existing
++                    && sample_at_world_xz(
++                        bytemuck::cast_slice(&mask.mapped[..]),
++                        cursor.x,
++                        cursor.y,
++                    ) != 0;
++                let height = initial_stroke_height(mouse_index, on_rock, draw_state.drag_distance);
++                editing.strokes.get_mut(&id).unwrap().height_ws = height;
+                 draw_state.active = true;
++                terrain_ui.active = 1;
+                 changed.write(EvTerrainStrokeChanged(StrokeId(id.0)));
++                stairs.entries.push(StairsPlacementEntry {
++                    tag: 5,
++                    decorator_a: position.x.to_bits(),
++                    decorator_b: position.y.to_bits(),
++                    sub: position.z.to_bits(),
++                    value_a: height.to_bits(),
++                    ..Default::default()
++                });
+             }
+         }
+         2 if inside => {
+@@ -348,3 +374,379 @@
+         );
+     }
+ }
++
++/// B0x140aa0138..0x140aa0534 initial height policy. Equal signed-zero values
++/// choose the drag value, and NaN chooses the finite minimum as in MAXSS.
++pub fn initial_stroke_height(mouse_index: Option<i32>, on_rock: bool, drag_height: f32) -> f32 {
++    let existing = mouse_index.is_some_and(|index| index != -1);
++    let minimum = if existing { 0.0 } else { 2.5 };
++    let desired = if existing && !on_rock {
++        drag_height + 1.5
++    } else {
++        drag_height
++    };
++    let height = if desired.is_nan() || desired < minimum {
++        minimum
++    } else {
++        desired
++    };
++    if height > 20.0 { 20.0 } else { height }
++}
++
++#[cfg(test)]
++pub(super) fn register_test_buffers(world: &mut World) {
++    let library = AssetSsboLibrary::new();
++    let device = crate::render::test_device::TestDevice(0);
++    library.add_new::<crate::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::MouseTerrainRaycastSsbo>(&device);
++    library.add_new::<TerrainRockMaskSsbo>(&device);
++    world.insert_resource(library);
++}
++
++#[cfg(test)]
++mod original_initial_height_tests {
++    use super::*;
++    #[test]
++    fn original_b_initial_height_0() {
++        assert_eq!(
++            initial_stroke_height(None, false, f32::from_bits(3212836864)).to_bits(),
++            1075838976
++        );
++    }
++    #[test]
++    fn original_b_initial_height_1() {
++        assert_eq!(
++            initial_stroke_height(None, false, f32::from_bits(0)).to_bits(),
++            1075838976
++        );
++    }
++    #[test]
++    fn original_b_initial_height_2() {
++        assert_eq!(
++            initial_stroke_height(None, false, f32::from_bits(1065353216)).to_bits(),
++            1075838976
++        );
++    }
++    #[test]
++    fn original_b_initial_height_3() {
++        assert_eq!(
++            initial_stroke_height(None, false, f32::from_bits(1092616192)).to_bits(),
++            1092616192
++        );
++    }
++    #[test]
++    fn original_b_initial_height_4() {
++        assert_eq!(
++            initial_stroke_height(None, false, f32::from_bits(1103626240)).to_bits(),
++            1101004800
++        );
++    }
++    #[test]
++    fn original_b_initial_height_5() {
++        assert_eq!(
++            initial_stroke_height(None, false, f32::from_bits(2143289344)).to_bits(),
++            1075838976
++        );
++    }
++    #[test]
++    fn original_b_initial_height_6() {
++        assert_eq!(
++            initial_stroke_height(None, true, f32::from_bits(3212836864)).to_bits(),
++            1075838976
++        );
++    }
++    #[test]
++    fn original_b_initial_height_7() {
++        assert_eq!(
++            initial_stroke_height(None, true, f32::from_bits(0)).to_bits(),
++            1075838976
++        );
++    }
++    #[test]
++    fn original_b_initial_height_8() {
++        assert_eq!(
++            initial_stroke_height(None, true, f32::from_bits(1065353216)).to_bits(),
++            1075838976
++        );
++    }
++    #[test]
++    fn original_b_initial_height_9() {
++        assert_eq!(
++            initial_stroke_height(None, true, f32::from_bits(1092616192)).to_bits(),
++            1092616192
++        );
++    }
++    #[test]
++    fn original_b_initial_height_10() {
++        assert_eq!(
++            initial_stroke_height(None, true, f32::from_bits(1103626240)).to_bits(),
++            1101004800
++        );
++    }
++    #[test]
++    fn original_b_initial_height_11() {
++        assert_eq!(
++            initial_stroke_height(None, true, f32::from_bits(2143289344)).to_bits(),
++            1075838976
++        );
++    }
++    #[test]
++    fn original_b_initial_height_12() {
++        assert_eq!(
++            initial_stroke_height(Some(-1), false, f32::from_bits(3212836864)).to_bits(),
++            1075838976
++        );
++    }
++    #[test]
++    fn original_b_initial_height_13() {
++        assert_eq!(
++            initial_stroke_height(Some(-1), false, f32::from_bits(0)).to_bits(),
++            1075838976
++        );
++    }
++    #[test]
++    fn original_b_initial_height_14() {
++        assert_eq!(
++            initial_stroke_height(Some(-1), false, f32::from_bits(1065353216)).to_bits(),
++            1075838976
++        );
++    }
++    #[test]
++    fn original_b_initial_height_15() {
++        assert_eq!(
++            initial_stroke_height(Some(-1), false, f32::from_bits(1092616192)).to_bits(),
++            1092616192
++        );
++    }
++    #[test]
++    fn original_b_initial_height_16() {
++        assert_eq!(
++            initial_stroke_height(Some(-1), false, f32::from_bits(1103626240)).to_bits(),
++            1101004800
++        );
++    }
++    #[test]
++    fn original_b_initial_height_17() {
++        assert_eq!(
++            initial_stroke_height(Some(-1), false, f32::from_bits(2143289344)).to_bits(),
++            1075838976
++        );
++    }
++    #[test]
++    fn original_b_initial_height_18() {
++        assert_eq!(
++            initial_stroke_height(Some(-1), true, f32::from_bits(3212836864)).to_bits(),
++            1075838976
++        );
++    }
++    #[test]
++    fn original_b_initial_height_19() {
++        assert_eq!(
++            initial_stroke_height(Some(-1), true, f32::from_bits(0)).to_bits(),
++            1075838976
++        );
++    }
++    #[test]
++    fn original_b_initial_height_20() {
++        assert_eq!(
++            initial_stroke_height(Some(-1), true, f32::from_bits(1065353216)).to_bits(),
++            1075838976
++        );
++    }
++    #[test]
++    fn original_b_initial_height_21() {
++        assert_eq!(
++            initial_stroke_height(Some(-1), true, f32::from_bits(1092616192)).to_bits(),
++            1092616192
++        );
++    }
++    #[test]
++    fn original_b_initial_height_22() {
++        assert_eq!(
++            initial_stroke_height(Some(-1), true, f32::from_bits(1103626240)).to_bits(),
++            1101004800
++        );
++    }
++    #[test]
++    fn original_b_initial_height_23() {
++        assert_eq!(
++            initial_stroke_height(Some(-1), true, f32::from_bits(2143289344)).to_bits(),
++            1075838976
++        );
++    }
++    #[test]
++    fn original_b_initial_height_24() {
++        assert_eq!(
++            initial_stroke_height(Some(7), false, f32::from_bits(3212836864)).to_bits(),
++            1056964608
++        );
++    }
++    #[test]
++    fn original_b_initial_height_25() {
++        assert_eq!(
++            initial_stroke_height(Some(7), false, f32::from_bits(0)).to_bits(),
++            1069547520
++        );
++    }
++    #[test]
++    fn original_b_initial_height_26() {
++        assert_eq!(
++            initial_stroke_height(Some(7), false, f32::from_bits(1065353216)).to_bits(),
++            1075838976
++        );
++    }
++    #[test]
++    fn original_b_initial_height_27() {
++        assert_eq!(
++            initial_stroke_height(Some(7), false, f32::from_bits(1092616192)).to_bits(),
++            1094189056
++        );
++    }
++    #[test]
++    fn original_b_initial_height_28() {
++        assert_eq!(
++            initial_stroke_height(Some(7), false, f32::from_bits(1103626240)).to_bits(),
++            1101004800
++        );
++    }
++    #[test]
++    fn original_b_initial_height_29() {
++        assert_eq!(
++            initial_stroke_height(Some(7), false, f32::from_bits(2143289344)).to_bits(),
++            0
++        );
++    }
++    #[test]
++    fn original_b_initial_height_30() {
++        assert_eq!(
++            initial_stroke_height(Some(7), true, f32::from_bits(3212836864)).to_bits(),
++            0
++        );
++    }
++    #[test]
++    fn original_b_initial_height_31() {
++        assert_eq!(
++            initial_stroke_height(Some(7), true, f32::from_bits(0)).to_bits(),
++            0
++        );
++    }
++    #[test]
++    fn original_b_initial_height_32() {
++        assert_eq!(
++            initial_stroke_height(Some(7), true, f32::from_bits(1065353216)).to_bits(),
++            1065353216
++        );
++    }
++    #[test]
++    fn original_b_initial_height_33() {
++        assert_eq!(
++            initial_stroke_height(Some(7), true, f32::from_bits(1092616192)).to_bits(),
++            1092616192
++        );
++    }
++    #[test]
++    fn original_b_initial_height_34() {
++        assert_eq!(
++            initial_stroke_height(Some(7), true, f32::from_bits(1103626240)).to_bits(),
++            1101004800
++        );
++    }
++    #[test]
++    fn original_b_initial_height_35() {
++        assert_eq!(
++            initial_stroke_height(Some(7), true, f32::from_bits(2143289344)).to_bits(),
++            0
++        );
++    }
++
++    #[test]
++    fn live_mapped_start_continuation_and_typed_release_preserve_height() {
++        use crate::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::MouseTerrainRaycastSsbo;
++        use crate::systems::{
++            terrain::register_terrain_events,
++            ui::resources::ui_state::{UiInteraction, WidgetId},
++        };
++        let mut world = World::new();
++        register_terrain_events(&mut world);
++        register_test_buffers(&mut world);
++        world
++            .resource_mut::<AssetSsboLibrary>()
++            .get_mut::<MouseTerrainRaycastSsbo>()
++            .unwrap()
++            .mapped[0]
++            .terrain_stroke_index = 7;
++        world.insert_resource(AppMode::Terrain);
++        world.insert_resource(CursorTerrainRaycast {
++            tag: 1,
++            pos: glam::Vec3::new(3.0, -1.0, 4.0),
++            ..Default::default()
++        });
++        world.insert_resource(TerrainHeightsData::<TerrainHeightSsbo>::new());
++        world.insert_resource(TerrainEditingData(
++            tg_terrain::stroke::TerrainEditingData::default(),
++        ));
++        world.insert_resource(GladeBorder(BorderShape::Circle(Circle2d::new(
++            Vec2::ZERO,
++            100.0,
++        ))));
++        world.insert_resource(UiState::new(UiInteraction {
++            native_tag: 2,
++            native_phase: 3,
++            widget: WidgetId::clearing_canvas(DRAW_CANVAS_NAME),
++        }));
++        let mut schedule = Schedule::default();
++        schedule.add_systems(ui_draw_terrain);
++        schedule.run(&mut world);
++        assert_eq!(
++            world.resource::<TerrainEditingData>().strokes[&StrokeId(0)].height_ws,
++            0.5
++        );
++        assert_eq!(world.resource::<Events<EvTerrainStrokeChanged>>().len(), 1);
++        let placements = &world.resource::<StairsPlacementBucket>().entries;
++        assert_eq!(placements.len(), 1);
++        assert_eq!(placements[0].tag, 5);
++        assert_eq!(placements[0].value_a, 0.5f32.to_bits());
++        assert_eq!(world.resource::<TerrainEditUiState>().active, 1);
++        assert!(world.resource::<TerrainDrawState>().active);
++
++        let widget = WidgetId::clearing_canvas(DRAW_CANVAS_NAME);
++        world
++            .resource_mut::<UiState>()
++            .replace_interaction(UiInteraction {
++                native_tag: 2,
++                native_phase: 4,
++                widget,
++            });
++        world.resource_mut::<CursorTerrainRaycast>().pos.x = 4.0;
++        schedule.run(&mut world);
++        assert_eq!(world.resource::<Events<EvTerrainStrokeChanged>>().len(), 2);
++        assert_eq!(world.resource::<TerrainDrawState>().state, 2);
++        assert_eq!(
++            world.resource::<TerrainEditingData>().strokes[&StrokeId(0)].points,
++            [[3.0, -1.0, 4.0], [4.0, -1.0, 4.0]]
++        );
++
++        world
++            .resource_mut::<UiState>()
++            .replace_interaction(UiInteraction {
++                native_tag: 2,
++                native_phase: 5,
++                widget,
++            });
++        schedule.run(&mut world);
++        assert!(!world.resource::<TerrainDrawState>().active);
++        assert!(
++            matches!(world.resource::<PendingTerrainHistory>().edit.as_ref(),
++            Some(TerrainEdit::NewTerrainStroke { index: StrokeId(0), height_ws, stroke_pts })
++            if *height_ws == 0.5 && *stroke_pts == [[3.0, -1.0, 4.0], [4.0, -1.0, 4.0]])
++        );
++        assert_eq!(
++            world
++                .resource::<StairsPlacementBucket>()
++                .entries
++                .last()
++                .unwrap()
++                .tag,
++            0
++        );
++    }
++}
+--- a/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/mouse_read_terrain_stroke_index.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/render_loop/compute_passes/mouse_read_terrain_stroke_index.rs
+@@ -9,17 +9,16 @@
+ //!    （闭包状态 `{1,1,1,1}`，0x142958fe0）。
+ //!
+ //! `MouseTerrainRaycastSsbo`：`new_storage_buffer`（0x14161cd80）是 `MappedStorageBuffer`；`SsboId` 立即数
+-//! 0x50787cf1536c7500 = xxh3_64("MouseTerrainRaycast")（已复算）；元素布局 U。存储用 `TypedStorageBuffer`（理由同 bush_cpu）。
++//! 0x50787cf1536c7500 = xxh3_64("MouseTerrainRaycast")；32-byte mapped element, index@16, native miss=-1.
+ 
+-use crate::asset_libraries::ssbo_library::SsboType;
++use crate::asset_libraries::ssbo_library::{AssetSsboLibrary, SsboType};
+ use crate::render::pass_builder::compute_pass_builder::RecordedComputePass;
+ use crate::render::pass_builder::pass_resources::TypeId128;
+ use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
+-use crate::render::ssbo::{StorageElement, TypedStorageBuffer};
++use crate::render::ssbo::{MAPPED_MEMORY_UPLOAD, MappedStorageBuffer, StorageElement};
+ use crate::resources::cursor_terrain_raycast::CursorTerrainRaycast;
+ use crate::resources::texture_presets::TexturePreset;
+ use crate::systems::render_loop::compute_passes::pass_kit::{PassEnv, binding, binding_hash};
+-use crate::typed_gap::Gap;
+ 
+ pub const NAME: &str = "Read terrain stroke";
+ pub const URI: &str = "/read_terrain_stroke.cs.hlsl";
+@@ -31,29 +30,53 @@
+ };
+ pub const STROKE_INDICES_PRESET: u8 = 0xb;
+ 
+-/// 鼠标地形射线回读缓冲（O 名；布局 U）。
+-#[derive(Clone, Copy, Debug, Default)]
+-pub struct MouseTerrainRaycastSsbo(pub Gap);
+-
++/// B 0x14161cd80: one 32-byte, 16-aligned mapped element. The producer
++/// initializes the first16 bytes to zero and index@16 to-1; trailing bytes are
++/// padding, explicitly represented here so typed uploads never read Rust padding.
++#[repr(C, align(16))]
++#[derive(Clone, Copy, Debug, PartialEq)]
++pub struct MouseTerrainRaycastSsbo {
++    pub leading_words: [u32; 4],
++    pub terrain_stroke_index: i32,
++    pub reserved_words: [u32; 3],
++}
++unsafe impl bytemuck::Zeroable for MouseTerrainRaycastSsbo {}
++unsafe impl bytemuck::Pod for MouseTerrainRaycastSsbo {}
++impl Default for MouseTerrainRaycastSsbo {
++    fn default() -> Self {
++        Self {
++            leading_words: [0; 4],
++            terrain_stroke_index: -1,
++            reserved_words: [0; 3],
++        }
++    }
++}
+ impl StorageElement for MouseTerrainRaycastSsbo {
+     const NAME: &'static str = "MouseTerrainRaycast";
+-    /// I：原版是固定 0x40000 B 的映射缓冲（`BUFFER_LEN` 概念不适用）；这里用 1 个元素让存储可建（偏差，U）。
+     const BUFFER_LEN: usize = 1;
++    const MAPPED_MEMORY: u8 = MAPPED_MEMORY_UPLOAD;
+     fn default_value() -> Option<Self> {
+         Some(Self::default())
+     }
+ }
++impl SsboType for MouseTerrainRaycastSsbo {
++    type Storage = MappedStorageBuffer<'static, Self>;
++    fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
++        MappedStorageBuffer::new_storage_buffer(device, initial)
++    }
++}
+ 
+-impl SsboType for MouseTerrainRaycastSsbo {
+-    type Storage = TypedStorageBuffer<MouseTerrainRaycastSsbo>;
+-    fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+-        match initial {
+-            None => TypedStorageBuffer::<MouseTerrainRaycastSsbo>::new(device, None),
+-            Some(b) => {
+-                TypedStorageBuffer::<MouseTerrainRaycastSsbo>::new_storage_buffer(device, Some(b))
+-            }
+-        }
+-    }
++/// The original optional lookup tolerates an unregistered mouse buffer, but a
++/// registered empty mapped slice is an invariant failure. AssetSsboLibrary owns
++/// type/name checks and the real mapped storage; no separate success flag exists.
++pub fn read_terrain_stroke_index(library: &AssetSsboLibrary) -> Option<i32> {
++    library.get::<MouseTerrainRaycastSsbo>().map(|buffer| {
++        buffer
++            .mapped
++            .first()
++            .expect("original mouse terrain mapped slice is empty")
++            .terrain_stroke_index
++    })
+ }
+ 
+ /// push constants：`[x, z]` 的 f32 位模式（O：tag 位 0 为 0 → 两个 0）。
+@@ -142,3 +165,23 @@
+         assert_eq!(codes, [0x32, 0x19]);
+     }
+ }
++
++#[cfg(test)]
++mod mapped_readback_tests {
++    use super::*;
++    #[test]
++    fn mapped_provider_preserves_native_default_and_reads_live_index() {
++        assert_eq!(core::mem::size_of::<MouseTerrainRaycastSsbo>(), 32);
++        assert_eq!(core::mem::align_of::<MouseTerrainRaycastSsbo>(), 16);
++        assert_eq!(
++            core::mem::offset_of!(MouseTerrainRaycastSsbo, terrain_stroke_index),
++            16
++        );
++        let mut library = AssetSsboLibrary::new();
++        assert_eq!(read_terrain_stroke_index(&library), None);
++        library.add_new::<MouseTerrainRaycastSsbo>(&crate::render::test_device::TestDevice(0));
++        assert_eq!(read_terrain_stroke_index(&library), Some(-1));
++        library.get_mut::<MouseTerrainRaycastSsbo>().unwrap().mapped[0].terrain_stroke_index = 17;
++        assert_eq!(read_terrain_stroke_index(&library), Some(17));
++    }
++}
+--- a/games_test/tiny-glade/crates/country-core/src/systems/terrain/terrain_hover_idx.rs
++++ b/games_test/tiny-glade/crates/country-core/src/systems/terrain/terrain_hover_idx.rs
+@@ -11,12 +11,18 @@
+ //!     `_UNK_142925870`），任一不满足 → return；
+ //! - 命中 → `*param_3 = 1; param_3[1] = iVar11`（写 `HoveredTerrainStrokeId { tag=1, id }`）。
+ //!
+-//! `MouseTerrainRaycastSsbo` 布局未恢复（`render_ssbo` 为 `Gap`），这里用
++//! MouseTerrainRaycastSsbo is now an actual32-byte mapped provider. Without a graphics owner,
+ //! [`MouseTerrainHoverReadback`] 适配资源承载宿主从 SSBO 拷贝的 id/悬停位/距离
+-//! （待取证：SSBO 字段）；高度采样用 [`TerrainWaterSample`] 适配（I：WaterMaskSsbo Gap）。
++//! retains the existing explicit host input; height sampling uses [`TerrainWaterSample`] 适配（I：WaterMaskSsbo Gap）。
+ use bevy_ecs::prelude::*;
+ 
+-use crate::{resources::mouse_terrain_raycast::CursorPositionSS, systems::mode_manager::AppMode};
++use crate::{
++    asset_libraries::ssbo_library::AssetSsboLibrary,
++    resources::{
++        cursor_terrain_raycast::CursorTerrainRaycast, mouse_terrain_raycast::CursorPositionSS,
++    },
++    systems::mode_manager::AppMode,
++};
+ 
+ /// 悬停地形笔画 id 资源（O：`HoveredTerrainStrokeId { tag=1, id }`，0x140aff720 写）。
+ ///
+@@ -31,8 +37,8 @@
+     pub id: i64,
+ }
+ 
+-/// 鼠标地形射线回读适配（I：`MouseTerrainRaycastSsbo` 布局 Gap，宿主从 SSBO 拷贝）。
+-#[derive(Resource, Clone, Copy, Debug, Default)]
++/// Existing explicit host readback input, used when no SSBO library is supplied.
++#[derive(Resource, Clone, Copy, Debug)]
+ pub struct MouseTerrainHoverReadback {
+     /// 命中笔画 id（-1 哨兵 = 未命中）。
+     pub id: i32,
+@@ -40,6 +46,16 @@
+     pub hovered: bool,
+     /// 射线距离（O：decomp `*(float*)(pbVar4 + 8)`；仅高度>0 分支的 0.5 界外阈值）。
+     pub distance: f32,
++}
++
++impl Default for MouseTerrainHoverReadback {
++    fn default() -> Self {
++        Self {
++            id: -1,
++            hovered: false,
++            distance: 0.0,
++        }
++    }
+ }
+ 
+ /// 光标高度采样适配（I：`WaterMaskSsbo` 布局 Gap；对应 decomp `FUN_140a14df0` 输出）。
+@@ -58,6 +74,8 @@
+     water: Res<TerrainWaterSample>,
+     _cursor: Res<CursorPositionSS>,
+     mut hovered: ResMut<HoveredTerrainStrokeId>,
++    library: Option<Res<AssetSsboLibrary>>,
++    cursor: Option<Res<CursorTerrainRaycast>>,
+ ) {
+     // **函数开头无条件复位输出 tag=0**（O：fresh 反编译 `*puVar4 = 0` 在 mode 门之前；
+     // miss/门失败帧输出被清）。早期 Rust 不清 → 门失败帧残留上帧命中。
+@@ -68,28 +86,41 @@
+     if disc >= 0xb || ((0x421u32 >> (disc & 0x1f)) & 1) == 0 {
+         return;
+     }
++    let id = if let Some(library) = library {
++        let Some(id) = crate::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::read_terrain_stroke_index(&library) else { return; };
++        id
++    } else {
++        // Existing host/readback adapter remains usable without a graphics owner.
++        hover.id
++    };
++    let cursor_hovered = cursor
++        .as_ref()
++        .map_or(hover.hovered, |cursor| cursor.tag & 1 != 0);
++    let distance = cursor
++        .as_ref()
++        .map_or(hover.distance, |cursor| cursor.pos.y);
+     // -1 哨兵 → 未命中，不更新。
+-    if hover.id == -1 {
++    if id == -1 {
+         return;
+     }
+     // 光标高度采样两分支（O：decomp 行 75-90）：
+     //   `fVar12 <= 0.0` → 仅当 id == -1 才 return（**高度≤0 且 id 有效要写**）；
+     //   否则 → 悬停位门 + dist ≤ 0.5 → return（dist 门**仅**在高度>0 分支）。
+     if water.level <= 0.0 {
+-        if hover.id == -1 {
++        if id == -1 {
+             return;
+         }
+     } else {
+-        if !hover.hovered {
++        if !cursor_hovered {
+             return;
+         }
+-        if hover.id == -1 {
++        if id == -1 {
+             return;
+         }
+-        if hover.distance <= HOVER_DISTANCE_GATE {
++        if distance <= HOVER_DISTANCE_GATE {
+             return;
+         }
+     }
+     hovered.tag = 1;
+-    hovered.id = hover.id as i64;
++    hovered.id = id as i64;
+ }

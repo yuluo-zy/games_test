@@ -1,0 +1,135 @@
+{
+  "server": "re_mcp_ghidra",
+  "actual_mcp_connection": true,
+  "results": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "database_id": "tg_comp_drop",
+        "keep_open": true
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"tg_comp_drop\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "tg_comp_drop",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "tg_comp_drop"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"tg_comp_drop\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "tg_comp_drop",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_comp_drop",
+        "address": "0x140899f90"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"function_name\":\"FUN_140899f90\",\"address\":\"0x140899F90\",\"decompiled_code\":\"\\r\\nvoid FUN_140899f90(longlong *param_1)\\r\\n\\r\\n{\\r\\n  char *pcVar1;\\r\\n  longlong lVar2;\\r\\n  longlong lVar3;\\r\\n  longlong lVar4;\\r\\n  code *pcVar5;\\r\\n  ulonglong *puVar6;\\r\\n  char cVar7;\\r\\n  bool bVar8;\\r\\n  char *pcStack_50;\\r\\n  undefined1 uStack_48;\\r\\n  char *pcStack_40;\\r\\n  uint uStack_34;\\r\\n  undefined8 uStack_30;\\r\\n  \\r\\n  uStack_30 = 0xfffffffffffffffe;\\r\\n  lVar2 = *param_1;\\r\\n  pcVar1 = (char *)(lVar2 + 0x10);\\r\\n  LOCK();\\r\\n  bVar8 = *(char *)(lVar2 + 0x10) == '\\\\0';\\r\\n  if (bVar8) {\\r\\n    *(char *)(lVar2 + 0x10) = '\\\\x01';\\r\\n  }\\r\\n  UNLOCK();\\r\\n  if (!bVar8) {\\r\\n    FUN_1428d8750(pcVar1);\\r\\n  }\\r\\n  puVar6 = puRam000000014362c420;\\r\\n  if ((*puRam000000014362c420 & 0x7fffffffffffffff) == 0) {\\r\\n    uStack_34 = 0;\\r\\n    cVar7 = *(char *)(lVar2 + 0x11);\\r\\n  }\\r\\n  else {\\r\\n    uStack_34 = FUN_1428d86b0();\\r\\n    uStack_34 = uStack_34 ^ 1;\\r\\n    cVar7 = *(char *)(lVar2 + 0x11);\\r\\n  }\\r\\n  pcStack_40 = pcVar1;\\r\\n  if (cVar7 != '\\\\0') {\\r\\n    uStack_48 = (undefined1)uStack_34;\\r\\n    pcStack_50 = pcVar1;\\r\\n    FUN_1428d9760(&UNK_142a98440,0x2b,&pcStack_50,&UNK_142a98490,&UNK_142a988a8);\\r\\n                    /* WARNING: Does not return */\\r\\n    pcVar5 = (code *)invalidInstructionException();\\r\\n    (*pcVar5)();\\r\\n  }\\r\\n  lVar3 = param_1[1];\\r\\n  lVar4 = *(longlong *)(lVar2 + 0x28);\\r\\n  if (lVar4 == *(longlong *)(lVar2 + 0x18)) {\\r\\n    FUN_140562870(lVar2 + 0x18,&UNK_142a988c0);\\r\\n  }\\r\\n  *(longlong *)(*(longlong *)(lVar2 + 0x20) + lVar4 * 8) = lVar3;\\r\\n  *(longlong *)(lVar2 + 0x28) = lVar4 + 1;\\r\\n  if ((((char)uStack_34 == '\\\\0') && ((*puVar6 & 0x7fffffffffffffff) != 0)) &&\\r\\n     (cVar7 = FUN_1428d86b0(), cVar7 == '\\\\0')) {\\r\\n    *(undefined1 *)(lVar2 + 0x11) = 1;\\r\\n  }\\r\\n  LOCK();\\r\\n  cVar7 = *pcStack_40;\\r\\n  *pcStack_40 = '\\\\0';\\r\\n  UNLOCK();\\r\\n  if (cVar7 != '\\\\x02') {\\r\\n    return;\\r\\n  }\\r\\n                    /* WARNING: Could not recover jumptable at 0x0001428d8815. Too many branches */\\r\\n                    /* WARNING: Treating indirect jump as call */\\r\\n  WakeByAddressSingle();\\r\\n  return;\\r\\n}\\r\\n\\r\\n\",\"database\":\"tg_comp_drop\"}"
+          }
+        ],
+        "structuredContent": {
+          "function_name": "FUN_140899f90",
+          "address": "0x140899F90",
+          "decompiled_code": "\r\nvoid FUN_140899f90(longlong *param_1)\r\n\r\n{\r\n  char *pcVar1;\r\n  longlong lVar2;\r\n  longlong lVar3;\r\n  longlong lVar4;\r\n  code *pcVar5;\r\n  ulonglong *puVar6;\r\n  char cVar7;\r\n  bool bVar8;\r\n  char *pcStack_50;\r\n  undefined1 uStack_48;\r\n  char *pcStack_40;\r\n  uint uStack_34;\r\n  undefined8 uStack_30;\r\n  \r\n  uStack_30 = 0xfffffffffffffffe;\r\n  lVar2 = *param_1;\r\n  pcVar1 = (char *)(lVar2 + 0x10);\r\n  LOCK();\r\n  bVar8 = *(char *)(lVar2 + 0x10) == '\\0';\r\n  if (bVar8) {\r\n    *(char *)(lVar2 + 0x10) = '\\x01';\r\n  }\r\n  UNLOCK();\r\n  if (!bVar8) {\r\n    FUN_1428d8750(pcVar1);\r\n  }\r\n  puVar6 = puRam000000014362c420;\r\n  if ((*puRam000000014362c420 & 0x7fffffffffffffff) == 0) {\r\n    uStack_34 = 0;\r\n    cVar7 = *(char *)(lVar2 + 0x11);\r\n  }\r\n  else {\r\n    uStack_34 = FUN_1428d86b0();\r\n    uStack_34 = uStack_34 ^ 1;\r\n    cVar7 = *(char *)(lVar2 + 0x11);\r\n  }\r\n  pcStack_40 = pcVar1;\r\n  if (cVar7 != '\\0') {\r\n    uStack_48 = (undefined1)uStack_34;\r\n    pcStack_50 = pcVar1;\r\n    FUN_1428d9760(&UNK_142a98440,0x2b,&pcStack_50,&UNK_142a98490,&UNK_142a988a8);\r\n                    /* WARNING: Does not return */\r\n    pcVar5 = (code *)invalidInstructionException();\r\n    (*pcVar5)();\r\n  }\r\n  lVar3 = param_1[1];\r\n  lVar4 = *(longlong *)(lVar2 + 0x28);\r\n  if (lVar4 == *(longlong *)(lVar2 + 0x18)) {\r\n    FUN_140562870(lVar2 + 0x18,&UNK_142a988c0);\r\n  }\r\n  *(longlong *)(*(longlong *)(lVar2 + 0x20) + lVar4 * 8) = lVar3;\r\n  *(longlong *)(lVar2 + 0x28) = lVar4 + 1;\r\n  if ((((char)uStack_34 == '\\0') && ((*puVar6 & 0x7fffffffffffffff) != 0)) &&\r\n     (cVar7 = FUN_1428d86b0(), cVar7 == '\\0')) {\r\n    *(undefined1 *)(lVar2 + 0x11) = 1;\r\n  }\r\n  LOCK();\r\n  cVar7 = *pcStack_40;\r\n  *pcStack_40 = '\\0';\r\n  UNLOCK();\r\n  if (cVar7 != '\\x02') {\r\n    return;\r\n  }\r\n                    /* WARNING: Could not recover jumptable at 0x0001428d8815. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n  WakeByAddressSingle();\r\n  return;\r\n}\r\n\r\n",
+          "database": "tg_comp_drop"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_comp_drop",
+        "address": "0x140858800"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"No function at 0x140858800\",\"error_type\":\"NotFound\",\"database\":\"tg_comp_drop\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "decompile_function",
+      "args": {
+        "database": "tg_comp_drop",
+        "address": "0x140858790"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"error\":\"No function at 0x140858790\",\"error_type\":\"NotFound\",\"database\":\"tg_comp_drop\"}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "tg_comp_drop",
+        "save": false
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"tg_comp_drop\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "tg_comp_drop"
+        },
+        "isError": false
+      }
+    }
+  ],
+  "target_execution": false,
+  "ok": true
+}

@@ -1,0 +1,9 @@
+# ambience init演示门窄候选
+
+原1409ebf20完整3955B，1409ebf74读取实际全局_DEV_OVERRIDE_IS_DEMO_MODE字节143634d90，1409ebf7b非零直接跳1409ec3ae，未分配loop/grid或插入任何资源。实际地址与14362c098导入指针同符号/hash并已原bytes验证。现water_audio_init与ambience consumer已使用宿主现有DemoModeEnabled；本候选将漏门的ambience init接同一owner，不新增状态。
+
+仅给现函数增加Option<Res<DemoModeEnabled>>，开头演示返回。缺省资源按现项目惯例视false；初始化其余语义与已接采样桥保持不变。三个真实ECS schedule场景检查演示无插入、非演示及缺省100cell/100loop、演示重跑保留已有owner及activity。使用实际DisabledStudio禁用分支，没有假Studio或默认成功替代。
+
+父agent已独审合同批准；root负责独审后应用与CPU/GPU执行。本worker没有执行Cargo/rustc或生产写入。验收命令：cargo test -p country-core water_ambience_init_demo_regressions。
+
+完整原证及Startup/Update注册合同：../registration-evidence-20261021/REGISTRATION-CONTRACT.md。

@@ -1,0 +1,73 @@
+
+undefined1 *
+FUN_14127c990(undefined1 *param_1,undefined8 param_2,longlong param_3,undefined1 *param_4)
+
+{
+  undefined8 uVar1;
+  undefined1 uVar2;
+  code *pcVar3;
+  char cVar4;
+  undefined1 *puVar5;
+  undefined1 auStack_60 [8];
+  undefined *puStack_58;
+  undefined8 uStack_50;
+  undefined1 *puStack_48;
+  undefined8 uStack_40;
+  undefined8 uStack_38;
+  
+                    /* WARNING (jumptable): Sanity check requires truncation of jumptable */
+                    /* WARNING: Could not find normalized switch variable to match jumptable */
+  switch(*param_4) {
+  case 0:
+    uVar1 = *(undefined8 *)(param_4 + 8);
+    *param_1 = 0;
+    *(undefined8 *)(param_1 + 8) = uVar1;
+    return param_1;
+  case 2:
+    uVar1 = *(undefined8 *)(param_4 + 8);
+    uVar2 = param_4[2];
+    if ((param_4[1] == '\0') || (cVar4 = func_0x000140833180(param_3 + 0x46), cVar4 != '\0')) {
+      *param_1 = 1;
+      param_1[1] = uVar2;
+      *(undefined8 *)(param_1 + 8) = uVar1;
+      return param_1;
+    }
+  default:
+    *param_1 = 4;
+    return param_1;
+  case 5:
+  case 9:
+  case 0xc:
+  case 0xf:
+  case 0x10:
+    FUN_1428d9430(&UNK_142c240d8,0x28,&UNK_142c24100);
+  case 3:
+    puStack_58 = &UNK_142c24068;
+    uStack_50 = 1;
+    puStack_48 = auStack_60;
+    uStack_40 = 0;
+    uStack_38 = 0;
+    FUN_1428d9390(&puStack_58,&UNK_142c240c0);
+    pcVar3 = (code *)swi(3);
+    puVar5 = (undefined1 *)(*pcVar3)();
+    return puVar5;
+  case 0xb:
+    cVar4 = func_0x0001408331b0(param_3 + 0x46);
+    if (cVar4 != '\0') {
+      *param_1 = 2;
+      return param_1;
+    }
+    break;
+  case 0xd:
+    uVar1 = *(undefined8 *)(param_4 + 4);
+    cVar4 = func_0x000140833190(param_3 + 0x46);
+    if (cVar4 != '\0') {
+      *param_1 = 3;
+      *(undefined8 *)(param_1 + 4) = uVar1;
+      return param_1;
+    }
+  }
+  *param_1 = 4;
+  return param_1;
+}
+

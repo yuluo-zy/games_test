@@ -1,0 +1,18 @@
+{
+  "binary_sha256": "182a67cc998e4b4208b3846df3d572f0909271022bc570bee6909cfb97418219",
+  "sources": {
+    "crates/country-core/src/systems/wall/shapes/shape_placement.rs": "75f1176d8196387a7300e3b6db70ad6ebd54313cd707a7322dfc2528e0822c55",
+    "crates/country-core/src/systems/wall/wall_state/wall_spatial_hash.rs": "bf9da5a76308962049f9d3cbe18957249e5fa0285a1572620fa4815365d8ff77",
+    "crates/country-core/src/resources/walls/public_wall_state.rs": "91296e12a21ba2d50f0880daccc02396d2c88245874fa476bc3237ad24bced66"
+  },
+  "native_fixture_sha256": "95ac822de4f7e012894d1d7c50a8aa5805eb1a1d2876d1310212794b56f65f46",
+  "cases": 190,
+  "native_query_cases": 50,
+  "commands": [
+    "cargo check --offline -p country-core",
+    "cargo test --offline -p country-core --lib shape_placement::tests -- --nocapture",
+    "cargo test --offline -p country-core --lib wall_spatial_hash::tests -- --nocapture",
+    "tiny-glade/target/debug/deps/country_core-d26da56c989ea968 shape_placement::tests --nocapture"
+  ],
+  "scope": "当前 source 共用业务步骤、真实 ECS gate/freeze/重复帧/关闭/删除墙体/重建资源；非host GPU验收"
+}

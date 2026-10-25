@@ -1,0 +1,31 @@
+Source: /Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/query/access.rs
+SHA256: 6f69a1558c6f53078c40a33e636f6947ed7358e77ad652295c5214e846b00a3a
+
+1090:     /// Returns `true` if this and `other` can be active at the same time.
+1091:     pub fn is_compatible(&self, other: &FilteredAccess<T>) -> bool {
+1092:         // Resources are read from the world rather than the filtered archetypes,
+1093:         // so they must be compatible even if the filters are disjoint.
+1094:         if !self.access.is_resources_compatible(&other.access) {
+1095:             return false;
+1096:         }
+1097: 
+1098:         if self.access.is_components_compatible(&other.access) {
+1099:             return true;
+1100:         }
+1101: 
+1102:         // If the access instances are incompatible, we want to check that whether filters can
+1103:         // guarantee that queries are disjoint.
+1104:         // Since the `filter_sets` array represents a Disjunctive Normal Form formula ("ORs of ANDs"),
+1105:         // we need to make sure that each filter set (ANDs) rule out every filter set from the `other` instance.
+1106:         //
+1107:         // For example, `Query<&mut C, Or<(With<A>, Without<B>)>>` is compatible `Query<&mut C, (With<B>, Without<A>)>`,
+1108:         // but `Query<&mut C, Or<(Without<A>, Without<B>)>>` isn't compatible with `Query<&mut C, Or<(With<A>, With<B>)>>`.
+1109:         self.filter_sets.iter().all(|filter| {
+1110:             other
+1111:                 .filter_sets
+1112:                 .iter()
+1113:                 .all(|other_filter| filter.is_ruled_out_by(other_filter))
+1114:         })
+1115:     }
+1116: 
+

@@ -1,0 +1,108 @@
+{
+  "date": "2026-10-19",
+  "head": "1253c0ab7cc9706c58c4e57c3a61a0b17c7212f2",
+  "original_B_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "source_manifest_sha256": "a935e17266b4a9e3a7b4c456b9172490c30ae31d65d8d4576730e2b8ee09ef39",
+  "checks": [
+    {
+      "label": "core-lib",
+      "log": "reverse-engineering/tiny-glade/evidence/round11-final-lib-tests.log",
+      "sha256": "b6bba1d0d4aa917c7101482181d2de431f597455d840474b0f9b0664656e59d8",
+      "passed_groups": [
+        2546,
+        44
+      ],
+      "failed": 0,
+      "ignored": 0,
+      "skip": 0,
+      "exit_code": 0
+    },
+    {
+      "label": "final-host-lib",
+      "log": "reverse-engineering/tiny-glade/evidence/round11-final-host-tests-v2.log",
+      "sha256": "db455139efcc5c26f8cba0d9828396ff2a4f72af3e13d82dc5e0c99db7d269e6",
+      "passed_groups": [
+        44
+      ],
+      "failed": 0,
+      "ignored": 0,
+      "skip": 0,
+      "exit_code": 0
+    },
+    {
+      "label": "input-pipeline",
+      "log": "reverse-engineering/tiny-glade/evidence/round11-input-tests-v3.log",
+      "sha256": "f985ead7223fe9ec6f888010cfecbbf90cf81945758f8a25bcd5270c8533f0a2",
+      "passed_groups": [
+        17
+      ],
+      "failed": 0,
+      "ignored": 0,
+      "skip": 0,
+      "exit_code": 0
+    },
+    {
+      "label": "strict-gpu",
+      "log": "reverse-engineering/tiny-glade/evidence/round11-final-gpu-tests-v4.log",
+      "sha256": "1891f9ddd2f250b1e55911d41ee70cda0c49c0bdf4abc87e35da2f27f0482dda",
+      "passed_groups": [
+        1,
+        1,
+        2
+      ],
+      "failed": 0,
+      "ignored": 0,
+      "skip": 0,
+      "exit_code": 0
+    }
+  ],
+  "executables": {
+    "tiny-glade/target/debug/deps/country_core-432db1ca676d26d4.exe": {
+      "bytes": 44602880,
+      "sha256": "d1327ed8176455718f9d2bfa1887d34367bf897bc3b7bcf57c671d7f4a732e4f"
+    },
+    "tiny-glade/target/debug/deps/tiny_glade-8108135fbf3ec1cf.exe": {
+      "bytes": 23523840,
+      "sha256": "e19cdb2f90adb661840225fd539cf1c96498465ec2ab7dde6834b971dc9d78bf"
+    },
+    "tiny-glade/target/debug/deps/input_pipeline-57ddf815844d92c2.exe": {
+      "bytes": 5469696,
+      "sha256": "e008253ea893539cc7bfd1da4b0d7773043e84a105fb2dea2b1a587bfe7e6a1a"
+    },
+    "tiny-glade/target/debug/deps/original_egui_gpu-1a567bde4401dab4.exe": {
+      "bytes": 15278080,
+      "sha256": "73bac5f30e17253d683cfc91ede2398f7315ea2d0d60afaf427a1229e2de45b8"
+    },
+    "tiny-glade/target/debug/deps/original_loading_gpu-ddf248bfe58ca2b1.exe": {
+      "bytes": 23902208,
+      "sha256": "e8ef2012ba8c704ee205dcee421bb1377e7ac95171e446134e834f37bfeb2aa2"
+    },
+    "tiny-glade/target/debug/deps/original_startup_gpu-1854f36a2e14af0e.exe": {
+      "bytes": 23235072,
+      "sha256": "d79406b63e9f1e38007ed996bfc8827f21c2282dc4db3ef7c2e3708139a63da4"
+    }
+  },
+  "rhapsody_diff_against_pulled_HEAD": false,
+  "dependency_delta": "dependency-delta.json",
+  "gpu_environment": {
+    "RHAPSODY_REQUIRE_VULKAN": "1",
+    "RHAPSODY_VULKAN_LIBRARY": "vulkan-1.dll",
+    "TG_INSTALL_ROOT": "D:/game/ljxsj_92385/Tiny Glade",
+    "TG_COMPILED_SHADERS": "D:/game/ljxsj_92385/Tiny Glade/compiled-shaders"
+  },
+  "all_three_main_flows_complete": false,
+  "validation_limits": [
+    "CPU/host integration tests and bounded actual GPU startup/loading/egui pixels only",
+    "T21 native 4x MSAA owner/order source wired; standalone Egui pixel fixture is single-sample",
+    "no complete compile_main, OS gameplay scene, full interaction/save or original-process behavioral equivalence claim"
+  ],
+  "remaining": [
+    "T11 thumbnail host and original flag writer",
+    "T12 preview capture and GUI metrics producer",
+    "T13 capture/state producer",
+    "T16 remaining icon animation producer",
+    "painterly/menu/LUT-control/screenshot connections",
+    "Walk mode entry teleport and remaining startup/full input-domain registration",
+    "saved MultiEdit aux wire decoding and remaining color GPU/all-domain history consumers"
+  ]
+}

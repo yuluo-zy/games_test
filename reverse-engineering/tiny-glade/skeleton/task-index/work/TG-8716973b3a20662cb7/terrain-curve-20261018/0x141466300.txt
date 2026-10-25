@@ -1,0 +1,232 @@
+
+void __cdecl
+utils::curve::Curve::
+slice_into<glam::f32::vec3::Vec3,utils::curve::CurveCoordSemantic3D,alloc::vec::Vec<glam::f32::vec3::Vec3,alloc::alloc::Global>_>
+          (void)
+
+{
+  undefined8 uVar1;
+  undefined8 uVar2;
+  ulonglong uVar3;
+  longlong lVar4;
+  char cVar5;
+  uint extraout_EAX;
+  uint extraout_EAX_00;
+  longlong in_RCX;
+  ulonglong uVar6;
+  undefined1 *puVar7;
+  ulonglong uVar8;
+  ulonglong uVar9;
+  longlong *in_R9;
+  undefined1 *puVar10;
+  ulonglong uVar11;
+  longlong lVar12;
+  longlong lVar13;
+  float extraout_XMM0_Da;
+  float extraout_XMM0_Da_00;
+  float fVar14;
+  float fVar15;
+  float in_XMM1_Da;
+  float fVar16;
+  float in_XMM2_Da;
+  float fVar17;
+  float fVar18;
+  float fVar19;
+  float fVar20;
+  float fVar21;
+  float fVar22;
+  float fVar23;
+  float fVar24;
+  float fVar25;
+  undefined1 local_f8 [4];
+  undefined1 local_f4 [4];
+  undefined1 *local_f0;
+  code *local_e8;
+  undefined1 *local_e0;
+  code *local_d8;
+  undefined1 *local_d0;
+  undefined **local_c8;
+  undefined8 local_c0;
+  undefined1 **local_b8;
+  undefined8 local_b0;
+  undefined8 local_a8;
+  
+  if (in_XMM2_Da <= in_XMM1_Da) {
+    local_f0 = local_f8;
+    local_e8 = curve_u::impl$8::fmt<utils::curve::CurveCoordSemantic3D>;
+    local_e0 = local_f4;
+    local_d8 = curve_u::impl$8::fmt<utils::curve::CurveCoordSemantic3D>;
+    local_c8 = &PTR_s_u_start_must_be_smaller_than_u_e_142c63418;
+    local_c0 = 2;
+    local_a8 = 0;
+    local_b8 = &local_f0;
+    local_b0 = 2;
+                    // WARNING: Subroutine does not return
+    core::panicking::panic_fmt();
+  }
+  get_coord_at_u<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic2D>_>
+            ();
+  get_coord_at_u<glam::f32::vec2::Vec2,utils::curve::CurveCoordSemantic2D,utils::curve::curve_u::CurveU<utils::curve::CurveCoordSemantic2D>_>
+            ();
+  uVar9 = (ulonglong)extraout_EAX;
+  uVar3 = *(ulonglong *)(in_RCX + 0x10);
+  if (uVar3 <= uVar9) {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic_bounds_check();
+  }
+  uVar8 = uVar9 + 1;
+  if (uVar3 <= uVar8) {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic_bounds_check();
+  }
+  uVar6 = (ulonglong)extraout_EAX_00;
+  if (uVar3 <= uVar6) {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic_bounds_check();
+  }
+  uVar11 = uVar6 + 1;
+  if (uVar3 <= uVar11) {
+                    // WARNING: Subroutine does not return
+    core::panicking::panic_bounds_check();
+  }
+  lVar4 = *(longlong *)(in_RCX + 8);
+  fVar21 = *(float *)(lVar4 + 8 + uVar8 * 0xc);
+  fVar17 = 1.0 - extraout_XMM0_Da;
+  uVar1 = *(undefined8 *)(lVar4 + uVar9 * 0xc);
+  uVar2 = *(undefined8 *)(lVar4 + uVar8 * 0xc);
+  fVar18 = (float)uVar2;
+  fVar19 = (float)((ulonglong)uVar2 >> 0x20);
+  fVar24 = extraout_XMM0_Da * fVar18 + (float)uVar1 * fVar17;
+  fVar25 = extraout_XMM0_Da * fVar19 + (float)((ulonglong)uVar1 >> 0x20) * fVar17;
+  fVar20 = extraout_XMM0_Da * fVar21 + fVar17 * *(float *)(lVar4 + 8 + uVar9 * 0xc);
+  fVar17 = *(float *)(lVar4 + 8 + uVar6 * 0xc);
+  fVar16 = 1.0 - extraout_XMM0_Da_00;
+  uVar1 = *(undefined8 *)(lVar4 + uVar11 * 0xc);
+  uVar2 = *(undefined8 *)(lVar4 + uVar6 * 0xc);
+  fVar14 = (float)uVar2;
+  fVar15 = (float)((ulonglong)uVar2 >> 0x20);
+  uVar9 = uVar9 + 2;
+  if (fVar20 != fVar21) {
+    uVar9 = uVar8;
+  }
+  fVar22 = (float)uVar1 * extraout_XMM0_Da_00 + fVar16 * fVar14;
+  fVar23 = (float)((ulonglong)uVar1 >> 0x20) * extraout_XMM0_Da_00 + fVar16 * fVar15;
+  if (NAN(fVar20) || NAN(fVar21)) {
+    uVar9 = uVar8;
+  }
+  if (fVar25 != fVar19) {
+    uVar9 = uVar8;
+  }
+  if (fVar24 != fVar18) {
+    uVar9 = uVar8;
+  }
+  if (NAN(fVar24) || NAN(fVar18)) {
+    uVar9 = uVar8;
+  }
+  fVar21 = *(float *)(lVar4 + 8 + uVar11 * 0xc) * extraout_XMM0_Da_00 + fVar16 * fVar17;
+  uVar8 = uVar6 - 1;
+  if (uVar6 == 0) {
+    uVar8 = 0;
+  }
+  if (fVar21 != fVar17) {
+    uVar8 = uVar6;
+  }
+  if (NAN(fVar21) || NAN(fVar17)) {
+    uVar8 = uVar6;
+  }
+  if (fVar23 != fVar15) {
+    uVar8 = uVar6;
+  }
+  if (fVar22 != fVar14) {
+    uVar8 = uVar6;
+  }
+  if (NAN(fVar22) || NAN(fVar14)) {
+    uVar8 = uVar6;
+  }
+  uVar6 = uVar8 + 1;
+  uVar11 = uVar6 - uVar9;
+  if (uVar6 < uVar9) {
+    uVar11 = 0;
+  }
+  puVar7 = (undefined1 *)(uVar11 + 2);
+  local_f0 = (undefined1 *)0x0;
+  lVar13 = in_R9[2];
+  local_d0 = puVar7;
+  if ((undefined1 *)(*in_R9 - lVar13) < puVar7) {
+    alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+    lVar13 = in_R9[2];
+    if (*in_R9 == lVar13) goto LAB_1414666f1;
+  }
+  else if (*in_R9 == lVar13) {
+LAB_1414666f1:
+    alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+    lVar13 = in_R9[2];
+  }
+  lVar12 = in_R9[1];
+  *(ulonglong *)(lVar12 + lVar13 * 0xc) = CONCAT44(fVar25,fVar24);
+  *(float *)(lVar12 + 8 + lVar13 * 0xc) = fVar20;
+  lVar13 = lVar13 + 1;
+  in_R9[2] = lVar13;
+  cVar5 = -1;
+  if (uVar8 <= uVar9) {
+    cVar5 = uVar9 != uVar8;
+  }
+  if (cVar5 == '\0') {
+    if (uVar3 <= uVar9) {
+                    // WARNING: Subroutine does not return
+      core::panicking::panic_bounds_check();
+    }
+    local_c0 = CONCAT44(local_c0._4_4_,*(undefined4 *)(lVar4 + 8 + uVar9 * 0xc));
+    local_c8 = *(undefined ***)(lVar4 + uVar9 * 0xc);
+    if (*in_R9 == lVar13) {
+      alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+      lVar12 = in_R9[1];
+      lVar13 = in_R9[2];
+    }
+    *(undefined4 *)(lVar12 + 8 + lVar13 * 0xc) = (undefined4)local_c0;
+    *(undefined ***)(lVar12 + lVar13 * 0xc) = local_c8;
+    lVar13 = lVar13 + 1;
+    in_R9[2] = lVar13;
+    puVar10 = (undefined1 *)0x3;
+    goto LAB_1414665e1;
+  }
+  puVar10 = (undefined1 *)0x2;
+  if (cVar5 == '\x01') goto LAB_1414665e1;
+  uVar11 = uVar6 - uVar9;
+  if (uVar6 < uVar9) {
+                    // WARNING: Subroutine does not return
+    core::slice::index::slice_index_order_fail();
+  }
+  if (uVar3 <= uVar8) {
+                    // WARNING: Subroutine does not return
+    core::slice::index::slice_end_index_len_fail();
+  }
+  if ((ulonglong)(*in_R9 - lVar13) < uVar11) {
+    alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+    lVar12 = in_R9[1];
+    lVar13 = in_R9[2];
+LAB_141466554:
+    memcpy((void *)(lVar13 * 0xc + lVar12),(void *)(uVar9 * 0xc + lVar4),uVar11 * 0xc);
+    lVar13 = lVar13 + uVar11;
+  }
+  else if (uVar6 != uVar9) goto LAB_141466554;
+  in_R9[2] = lVar13;
+  puVar10 = (undefined1 *)(uVar11 + 2);
+LAB_1414665e1:
+  local_f0 = puVar10;
+  if (*in_R9 == lVar13) {
+    alloc::raw_vec::impl$4::reserve::do_reserve_and_handle<alloc::alloc::Global>();
+    lVar12 = in_R9[1];
+    lVar13 = in_R9[2];
+  }
+  *(ulonglong *)(lVar12 + lVar13 * 0xc) = CONCAT44(fVar23,fVar22);
+  *(float *)(lVar12 + 8 + lVar13 * 0xc) = fVar21;
+  in_R9[2] = lVar13 + 1;
+  if (puVar10 == puVar7) {
+    return;
+  }
+  local_c8 = (undefined **)0x0;
+                    // WARNING: Subroutine does not return
+  core::panicking::assert_failed<usize,usize>();
+}
+

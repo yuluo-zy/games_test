@@ -1,0 +1,78 @@
+{
+ "scope": "Wall space and full heightmap region protocol; seven libraries, B",
+ "features": [
+  {
+   "feature_id": "utils:27",
+   "current_status": "partial_missing_logic",
+   "implemented_scope": [
+    "WallSpaceCoord::new uses original project_clamp",
+    "with_offset/clamped/unbounded, offset_x_clamped and subtract reuse WallSpace policies",
+    "WallSpaceRegion strict two-axis intersection with horizontal loop topology"
+   ],
+   "source_mapping": [
+    {
+     "file": "reconstruction/shared-foundation/crates/utils/src/wall_space.rs",
+     "function": "WallSpaceCoord::{new,with_offset,with_offset_clamped,with_offset_unbounded,offset_x_clamped,subtract};WallSpaceRegion::intersects"
+    }
+   ],
+   "missing_library_logic": [],
+   "unresolved_contracts": [
+    "bound/is_bounded/to_affine3 在 B 二进制中未编译：仅 PDB inlinee 声明（to_affine3 IPI 44791, is_bounded 44797, bound 44798），无独立过程、无内联点、无消费方（2026-10-13 复核 MCP find_functions/6 消费者反编译/inline-bindings 均无记录）。语义不可恢复，保持不猜测实现。",
+    "既有 wall 系统消费方仅用 with_y/project_clamp/project_unbounded/distance/subtract/offset 变体（均已实现），无 to_affine3/bound 调用。"
+   ],
+   "validation_gaps": [
+    "Region representation and vertical/horizontal caller boundary have static original inline evidence and meaningful topology/touching regressions, not complete original struct/ABI acceptance.",
+    "with_offset and construction were observed at horizontal caller specializations; full vertical offset generic combinations not original-entry compared."
+   ],
+   "evidence": [
+    "evidence/foundation-completion-2026-10-13/wall-heightmap/wall-fixtures.json",
+    "evidence/foundation-completion-2026-10-13/base-assets/B-module-432.txt",
+    "evidence/foundation-completion-2026-10-13/wall-heightmap/B-module-453.txt"
+   ]
+  },
+  {
+   "feature_id": "utils:56",
+   "current_status": "implemented_scoped",
+   "implemented_scope": [
+    "SplitReceiver supports above sample advancement and ordered enter/leave callbacks",
+    "RegionReceiver maintains first above region and updates consecutive above endpoints",
+    "Existing crossing-only API delegates to the same core; original receiver rejects invalid/NaN crossing fractions"
+   ],
+   "source_mapping": [
+    {
+     "file": "reconstruction/shared-foundation/crates/utils/src/geometry/split_heightmap.rs",
+     "function": "SplitReceiver;split_heightmap_into;RegionReceiver;split_heightmap_regions;split_heightmap_by_threshold"
+    }
+   ],
+   "missing_library_logic": [],
+   "unresolved_contracts": [],
+   "validation_gaps": [
+    "Generic reconstructed receiver protocol is a semantic API, not recovered Rust ABI. RowTrimmerSink row quantization and game wiring belong to the external wall-constructor package."
+   ],
+   "evidence": [
+    "evidence/foundation-completion-2026-10-13/wall-heightmap/heightmap-fixtures.json",
+    "evidence/foundation-completion-2026-10-13/wall-heightmap/lerp.asm.txt"
+   ]
+  }
+ ],
+ "source_sha256": {
+  "reconstruction/shared-foundation/crates/utils/src/wall_space.rs": "f12760634a7163c022f5efbf36c90834d9447ab3f5b321308023a3dc675cc619",
+  "reconstruction/shared-foundation/crates/utils/src/geometry/split_heightmap.rs": "4f6b6a57d00ac1b533e2ec573d4b9bbe123c36cdb64a77dce3ca7e7f0b798593"
+ },
+ "original_comparison": {
+  "heightmap": {
+   "cases": 174,
+   "original_callbacks_executed": true,
+   "native_panics": 9,
+   "accepted_projection": "ordered callbacks and region start/end float bits"
+  },
+  "wall": {
+   "cases": 72,
+   "accepted_projection": "observed inline wrapper to original projection helpers",
+   "bridge": "CRT fmodf via host math.fmod; NaN payload excluded"
+  }
+ },
+ "behavior_fix": "First full heightmap comparison found endpoint ULP differences; corrected weighted lerp to original a+(b-a)*t then passed.",
+ "verification": "Current final integration report supplies validation and current source hashes; local root regression seven tests passed before other owners completed.",
+ "full_original_feature_accepted": false
+}

@@ -1,0 +1,14 @@
+--- a/tiny-glade/crates/country-core/src/resources/stairs/stairs_state.rs
++++ b/tiny-glade/crates/country-core/src/resources/stairs/stairs_state.rs
+@@ -17,6 +17,11 @@
+ /// raw size9c00; byte offset1011). load_game applies the actual save-version
+ /// gate later. Keep one canonical static for its producer and consumers.
+ pub static VERIFY_STAIR_CHECKSUMS: AtomicBool = AtomicBool::new(true);
++
++/// B唯一USE_STAIRS_LAZINESS@14362c010，引用slot14362c018，release初始01。
++/// 原interpolate读取该同一开关；AtomicBool是现代安全表达，不推定原同步排序。
++/// 运行期原写方尚待锁定，不能另造UI开关或第二状态副本。
++pub static USE_STAIRS_LAZINESS: AtomicBool = AtomicBool::new(true);
+ 
+ #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+ pub struct StairGraphEdge {
