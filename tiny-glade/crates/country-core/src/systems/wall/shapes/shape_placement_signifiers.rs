@@ -394,7 +394,7 @@ mod tests {
             sampling_fix: false,
         };
         let mut public = PublicWalls::default();
-        public.consume(&mut inner, &terrain);
+        public.consume_with_paths(&mut inner, &terrain, None, &crate::resources::walls::public_walls::WallPublicationDirty::default(), &crate::resources::walls::public_walls::WallSpatialHash::default());
         *public.get_mut(WallId(42)).unwrap() = state;
         (inner, public)
     }
@@ -699,7 +699,7 @@ mod tests {
         inner.remove(WallId(42));
         world
             .resource_mut::<PublicWalls>()
-            .consume(&mut inner, &terrain_grid);
+            .consume_with_paths(&mut inner, &terrain_grid, None, &crate::resources::walls::public_walls::WallPublicationDirty::default(), &crate::resources::walls::public_walls::WallSpatialHash::default());
         world
             .resource_mut::<WallSpatialHash>()
             .remove_wall_id(WallId(42));

@@ -496,14 +496,12 @@ pub(crate) enum RecordPhase {
     Retain,
     NativeBind,
     NativePush,
-    CounterLockWait,
-    CounterUpdate,
     Finish,
     WithPush,
     FinishConstants,
     FinishLease,
 }
-const RECORD_PHASES: usize = 17;
+const RECORD_PHASES: usize = 15;
 const RECORD_PHASE_NAMES: [&str; RECORD_PHASES] = [
     "Requirements",
     "CompleteGroup",
@@ -516,8 +514,6 @@ const RECORD_PHASE_NAMES: [&str; RECORD_PHASES] = [
     "Retain",
     "NativeBind",
     "NativePush",
-    "CounterLockWait",
-    "CounterUpdate",
     "Finish",
     "WithPush",
     "FinishConstants",

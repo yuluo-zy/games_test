@@ -1,0 +1,133 @@
+{
+  "updated_utc": "2026-10-25T14:13:17.458487+00:00",
+  "status": "V24 fine Count live upper bound shows single-pair CPU gain; CPU16ms remains unmet",
+  "pairs": [
+    {
+      "scene": "static",
+      "baseline": {
+        "version": 23,
+        "scene": "static",
+        "round": 1,
+        "stage_timing": false,
+        "path": "reports/runtime/2026-10-22-render-thread/performance-2026-10-24/cpu-nani-bound-clean-v23/static-parallel-round1/run.json",
+        "run_sha256": "a7c5c8079bae22f50c6cb0e8926fb52bd2402d669a3cdf69577dd1f2f5cfed66",
+        "binary_sha256": "775337ef5575ef29c34110040502193fbd50499fbec70fadc796fa13c9783814",
+        "render_cpu_ms": 35.235894630192504,
+        "main_cpu_ms": 3.635302938196555,
+        "all_threads_cpu_ms": 59.43262411347517,
+        "observed_frame_range": [
+          609,
+          1596
+        ],
+        "exit_code": 0
+      },
+      "candidate": {
+        "version": 24,
+        "scene": "static",
+        "round": 1,
+        "stage_timing": false,
+        "path": "reports/runtime/2026-10-22-render-thread/performance-2026-10-24/cpu-nani-bound-clean-v24/static-parallel-round1/run.json",
+        "run_sha256": "d44f144bcb243c6ded2029e404019768de024fac3c668b1d5bc8682e1251e0b6",
+        "binary_sha256": "b56cfefa08eb80e5be0299b55e8e2c8ff3d4950d21f12d0d9fa9dca232a7b694",
+        "render_cpu_ms": 20.796175925925926,
+        "main_cpu_ms": 2.891829218106996,
+        "all_threads_cpu_ms": 42.695473251028815,
+        "observed_frame_range": [
+          618,
+          1590
+        ],
+        "exit_code": 0
+      },
+      "render_cpu_delta_ms": -14.439718704266578,
+      "render_cpu_reduction_percent": 40.98013930344101
+    },
+    {
+      "scene": "many_draws",
+      "baseline": {
+        "version": 23,
+        "scene": "many_draws",
+        "round": 2,
+        "stage_timing": false,
+        "path": "reports/runtime/2026-10-22-render-thread/performance-2026-10-24/cpu-nani-bound-clean-v23/many_draws-parallel-round2/run.json",
+        "run_sha256": "74f048adcd414926d01ced434918ce2d6313dd3b2f37a3d3f50dec4f910186e6",
+        "binary_sha256": "775337ef5575ef29c34110040502193fbd50499fbec70fadc796fa13c9783814",
+        "render_cpu_ms": 40.55827254305978,
+        "main_cpu_ms": 3.067068895643364,
+        "all_threads_cpu_ms": 74.29584599797367,
+        "observed_frame_range": [
+          610,
+          1597
+        ],
+        "exit_code": 0
+      },
+      "candidate": {
+        "version": 24,
+        "scene": "many_draws",
+        "round": 2,
+        "stage_timing": false,
+        "path": "reports/runtime/2026-10-22-render-thread/performance-2026-10-24/cpu-nani-bound-clean-v24/many_draws-parallel-round2/run.json",
+        "run_sha256": "91123869dafef8749dc631a8c78238b655e798d72efeda24f443bb9b30b52a67",
+        "binary_sha256": "b56cfefa08eb80e5be0299b55e8e2c8ff3d4950d21f12d0d9fa9dca232a7b694",
+        "render_cpu_ms": 33.225595116988806,
+        "main_cpu_ms": 3.3316439471007118,
+        "all_threads_cpu_ms": 71.02746693794506,
+        "observed_frame_range": [
+          615,
+          1598
+        ],
+        "exit_code": 0
+      },
+      "render_cpu_delta_ms": -7.332677426070973,
+      "render_cpu_reduction_percent": 18.079363262540426
+    }
+  ],
+  "scope": "Actual user+kernel tg-render CPU time excludes GPU execution and sleeping; no logs/stacks/GPU timestamps in clean pairs;600warmup+1000frames. One valid pair per scene only; replacement many round2 is not two valid rounds.",
+  "rejected": [
+    {
+      "version": 23,
+      "scene": "many_draws",
+      "round": 1,
+      "stage_timing": false,
+      "path": "reports/runtime/2026-10-22-render-thread/performance-2026-10-24/cpu-nani-bound-clean-v23/many_draws-parallel-round1/run.json",
+      "run_sha256": "24246c5b203a250ca6b150e0698b364a54517616ae082ed7bf780c133a5fd7da",
+      "binary_sha256": "775337ef5575ef29c34110040502193fbd50499fbec70fadc796fa13c9783814",
+      "render_cpu_ms": 53.06199188640974,
+      "main_cpu_ms": 3.2575588235294117,
+      "all_threads_cpu_ms": 91.88640973630832,
+      "observed_frame_range": [
+        611,
+        1597
+      ],
+      "exit_code": 0,
+      "measurement_rejected": true,
+      "reason": "Own slow directory query overlapped; repeated as round2; original raw/log retained"
+    },
+    {
+      "version": 24,
+      "scene": "many_draws",
+      "round": 1,
+      "stage_timing": false,
+      "path": "reports/runtime/2026-10-22-render-thread/performance-2026-10-24/cpu-nani-bound-clean-v24/many_draws-parallel-round1/run.json",
+      "run_sha256": "1fee607b28d3255b6a26c8a64bdd6d82bcf6003d44a551f141dbfb231abe9d8f",
+      "binary_sha256": "b56cfefa08eb80e5be0299b55e8e2c8ff3d4950d21f12d0d9fa9dca232a7b694",
+      "render_cpu_ms": 31.68161127895267,
+      "main_cpu_ms": 3.3409979859013093,
+      "all_threads_cpu_ms": 68.47935548841893,
+      "observed_frame_range": [
+        606,
+        1599
+      ],
+      "exit_code": 0,
+      "measurement_rejected": true,
+      "reason": "Own slow directory query overlapped; repeated as round2; original raw/log retained"
+    }
+  ],
+  "limitations": [
+    "First many baseline and candidate both overlap an own slow directory query and are excluded; raw original evidence retained, both repeated",
+    "Intermittent CoreAnimation nextDrawable sleeps are confirmed in separate diagnostic stack, not a Rust lock deadlock; upstream cause still open",
+    "Background system load and long presentation sleeps differ between periods; no formal three-round/four-scenario claim",
+    "Fixture takes32ECS source candidates and clones480 entities; packet/count scale matches, no stable content signature exists"
+  ],
+  "next": "Descriptor native rebind dedup implemented, GPU ABI5+retention8 passed; remainder all-target and pixels ongoing, no performance claim until frozenV25 measured",
+  "presentation_stall": "cpu-nani-presentation-stall-capture-20261025.json"
+}

@@ -312,21 +312,14 @@ impl VulkanCommandPool {
         let range_uses = super::temp_list::TempList::new(self.max_resources, stats.clone())?;
         let state_patches = super::temp_list::TempList::new(self.max_resources, stats.clone())?;
         let owners = super::temp_list::TempList::new(self.max_resources, stats.clone())?;
-        let mut uses = super::temp_list::TempList::new(self.max_resources, stats.clone())?;
-        uses.add(self.last_use.clone())?;
+        let uses = crate::resource::tracked::SubmissionUseCells::new(self.max_resources, stats.clone(), &self.last_use)?;
         self.live_commands.fetch_add(1, Ordering::Relaxed);
         Ok(VulkanCommandBuffer {
             handle,
             pool: self.clone(),
             recording: false,
-            executable: false,
             detached: false,
             owners,
-            use_set: {
-                let mut set = crate::collections::token_map::TokenMap::default();
-                set.insert(Arc::as_ptr(&self.last_use) as usize as u64, ());
-                set
-            },
             owner_set: Default::default(),
             uses,
             range_uses,
@@ -442,15 +435,12 @@ pub struct VulkanCommandBuffer {
     pub(crate) handle: vk::CommandBuffer,
     pub pool: Arc<VulkanCommandPool>,
     recording: bool,
-    executable: bool,
     /// The native buffer was handed to a cache ([`Self::detach`]); dropping
     /// this wrapper must not retire or free it.
     detached: bool,
     owners: super::temp_list::TempList<crate::raw::binding::ResourceOwner>,
-    uses: super::temp_list::TempList<Arc<crate::resource::SyncCell>>,
-    /// Pointer sets mirroring `uses` / the objects in `owners`: membership was a
-    /// linear scan over every use for each retained resource (O(draws x uses)).
-    use_set: crate::collections::token_map::TokenMap<()>,
+    uses: crate::resource::tracked::SubmissionUseCells,
+    /// Pointer membership for the objects retained in `owners`.
     owner_set: crate::collections::token_map::TokenMap<()>,
     range_uses: super::temp_list::TempList<RecordedOpaqueUse>,
     state_patches: super::temp_list::TempList<RecordedStatePatch>,
@@ -463,6 +453,7 @@ impl VulkanCommandBuffer {
     pub fn raw_handle(&self) -> vk::CommandBuffer {
         self.handle
     }
+
 }
 #[derive(Clone, Copy)]
 enum RetainMode {
@@ -596,6 +587,12 @@ impl Drop for PreparedResourceStates {
         }
     }
 }
+/// Recover the recording order inside each physical cell without stable
+/// sort's temporary allocation. The full key is unique for recorded entries.
+fn order_recorded_patches(recorded: &mut [(usize, u8, usize, usize)]) {
+    recorded.sort_unstable_by_key(|&(slot, kind, command, entry)| (slot, command, kind, entry));
+}
+
 /// # Safety
 /// The submission gates for all `uses` must remain held until this guard is
 /// published or dropped. `commands` are in actual native execution order.
@@ -677,7 +674,7 @@ pub(crate) unsafe fn prepare_submission_states(
                 }
             }
         }
-        recorded.sort_by_key(|item| item.0);
+        order_recorded_patches(recorded);
         for index in 0..prepared.cells.len() {
             let cell = prepared.cells[index].clone();
             let domain = cell.ownership_range().expect("filtered native domain");
@@ -727,7 +724,7 @@ pub(crate) fn validate_submission_commands(commands: &[&VulkanCommandBuffer]) ->
         if let Some(error) = command.range_failure {
             return Err(error.error());
         }
-        if !command.executable {
+        if !command.uses.is_sealed() {
             return Err(crate::Error::invalid_usage("提交命令尚未结束录制"));
         }
         if first.pool.family != command.pool.family
@@ -753,19 +750,12 @@ fn record_command_uses(uses: &[Arc<crate::resource::SyncCell>], point: crate::sy
 impl VulkanCommandBuffer {
     fn clear_after_reset(&mut self) {
         self.recording = false;
-        self.executable = false;
         self.owners.clear();
-        self.uses.clear();
         self.owner_set.clear();
-        self.use_set.clear();
         self.range_uses.clear();
         self.state_patches.clear();
         self.range_failure = None;
-        self.uses
-            .add(self.pool.last_use.clone())
-            .expect("pool cell capacity was admitted at allocation");
-        self.use_set
-            .insert(Arc::as_ptr(&self.pool.last_use) as usize as u64, ());
+        self.uses.reset(&self.pool.last_use);
         self.last_use = crate::sync::SyncSet::EMPTY;
     }
     pub fn is_recording(&self) -> bool {
@@ -833,13 +823,13 @@ impl VulkanCommandBuffer {
         Ok(())
     }
     pub fn is_executable(&self) -> bool {
-        self.executable
+        self.uses.is_sealed()
     }
     pub fn begin(&mut self) -> crate::Result<()> {
         if self.pool.device.is_device_lost() {
             return Err(crate::Error::DeviceLost);
         }
-        if self.recording || self.executable {
+        if self.recording || self.uses.is_sealed() {
             return Err(crate::Error::invalid_usage("命令状态或队列族无效"));
         }
         let info = vk::CommandBufferBeginInfo::default()
@@ -879,9 +869,8 @@ impl VulkanCommandBuffer {
                 return Err(error);
             }
         }
-        self.normalize_uses();
+        self.uses.seal();
         self.recording = false;
-        self.executable = true;
         Ok(())
     }
     /// # Safety
@@ -996,19 +985,9 @@ impl VulkanCommandBuffer {
         Ok(())
     }
     fn add_use_cell(&mut self, cell: &Arc<crate::resource::SyncCell>) -> crate::Result<()> {
-        let key = Arc::as_ptr(cell) as usize as u64;
-        if self.use_set.contains_key(&key) {
-            return Ok(());
-        }
-        self.uses.add(cell.clone())?;
-        self.use_set.insert(key, ());
-        if self.executable {
-            // `end` sorted the uses and `use_set` excludes duplicates, so placing
-            // the new cell keeps them sorted (a full sort per patch was quadratic).
-            self.uses.sift_last_by_key(|cell| Arc::as_ptr(cell) as usize);
-        }
-        Ok(())
+        self.uses.insert(cell)
     }
+
     pub(crate) fn remember_metadata_error(&mut self, result: &crate::Result<()>) {
         if let Err(error) = result {
             if error.is_device_lost() {
@@ -1272,32 +1251,22 @@ impl VulkanCommandBuffer {
         }
         Ok(())
     }
-    pub(crate) fn normalize_uses(&mut self) {
-        self.uses
-            .sort_dedup_by_key(|cell| Arc::as_ptr(cell) as usize);
-    }
     /// # Safety
     /// 调用者必须已等待覆盖此 CB 的提交凭据，不能仅依据 CPU 录制结束。
     pub unsafe fn release_completed_owners(&mut self) {
         self.owners.clear();
-        self.uses.clear();
         self.owner_set.clear();
-        self.use_set.clear();
         self.range_uses.clear();
         self.state_patches.clear();
         self.range_failure = None;
-        self.uses
-            .add(self.pool.last_use.clone())
-            .expect("pool cell capacity was admitted at allocation");
-        self.use_set
-            .insert(Arc::as_ptr(&self.pool.last_use) as usize as u64, ());
+        self.uses.release_completed(&self.pool.last_use);
         self.last_use = crate::sync::SyncSet::EMPTY;
     }
     pub(crate) fn validate_submission(&self) -> crate::Result<()> {
         validate_submission_commands(&[self])
     }
-    pub(crate) fn use_cells(&self) -> &[Arc<crate::resource::SyncCell>] {
-        self.uses.as_slice()
+    pub(crate) fn submission_uses(&self) -> crate::Result<crate::resource::tracked::OrderedSubmissionUses<'_>> {
+        self.uses.ordered()
     }
     pub(crate) fn record_submission(&mut self, point: crate::sync::SyncPoint) {
         self.last_use.insert(point);
@@ -1324,7 +1293,7 @@ impl VulkanCommandBuffer {
         )],
         signals: &[(Arc<super::semaphore::TimelineSemaphore>, u64)],
     ) -> crate::Result<PendingCommand> {
-        if !self.executable {
+        if !self.uses.is_sealed() {
             return Err(crate::Error::invalid_usage("提交命令、队列或同步对象无效"));
         }
         self.validate_submission()?;
@@ -1408,13 +1377,8 @@ impl VulkanCommandBuffer {
         if let Some(memory) = &mut nested_memory {
             memory.resize(prepared[0].heap_capacity_bytes() as u64)?;
         }
-        let uses =
-            super::submit::SubmitScratch::<[Arc<crate::resource::SyncCell>; 32]>::try_collect(
-                self.uses.as_slice().len(),
-                &device.memory.stats,
-                self.uses.as_slice().iter().cloned().map(Ok),
-            )?;
-        let _reservations = crate::resource::tracked::lock_submission_uses(&uses)?;
+        let uses = crate::resource::tracked::collect_submission_uses(&[self.submission_uses()?], &device.memory.stats)?;
+        let _reservations = crate::resource::tracked::lock_submission_uses(uses.ordered(), &device.memory.stats)?;
         self.validate_submission()?;
         let native_states = unsafe {
             prepare_submission_states(
@@ -1581,6 +1545,20 @@ mod native_state_submission_tests {
             published: false,
         }
     }
+    #[test]
+    fn cell_bucketing_preserves_command_explicit_and_opaque_patch_order() {
+        let mut actual = Vec::new();
+        for command in 0..16 {
+            for kind in 0..2_u8 {
+                for entry in 0..37 { actual.push(((entry * 3 + command) % 5, kind, command, entry)); }
+            }
+        }
+        let mut expected = actual.clone();
+        expected.sort_by_key(|item| item.0);
+        order_recorded_patches(&mut actual);
+        assert_eq!(actual, expected);
+    }
+
     #[test]
     fn failed_native_submission_cancels_staged_state_and_retry_publishes_once() {
         let stats = Arc::new(super::super::allocator::AllocatorStats::default());

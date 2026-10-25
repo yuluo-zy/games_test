@@ -711,7 +711,7 @@ mod canonical_subtype_producer_tests {
             encoded: vec![0; 512 * 512].into(), minimum_y: 0.0, maximum_y: 0.0, sampling_fix: false,
         };
         let mut walls = PublicWalls::default();
-        walls.consume(&mut inner, &terrain);
+        walls.consume_with_paths(&mut inner, &terrain, None, &country_core::resources::walls::public_walls::WallPublicationDirty::default(), &country_core::resources::walls::public_walls::WallSpatialHash::default());
         assert!(walls.get(id).is_some());
         (walls, id)
     }

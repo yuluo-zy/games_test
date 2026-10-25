@@ -157,7 +157,7 @@ mod tests {
         let mut gpu = GpuWorld::new(&device);
         gpu.assign_subset(
             kind,
-            GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<PlacementDataSsbo>(&device, kind)),
+            GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<PlacementDataSsbo>(&device, kind, 1)),
         );
         world.insert_resource(gpu);
         let name = PrefabName::new("tree/runtime-test");

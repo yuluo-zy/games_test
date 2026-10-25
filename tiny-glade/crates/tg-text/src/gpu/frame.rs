@@ -137,9 +137,12 @@ impl GpuTextRenderer {
             )
             .into());
         }
-        let mut parameters = BindlessParameters::new(self.heap.clone(), self.abi.clone(), &[])?;
-        for (location, lease) in &self.sampler_leases {
-            parameters.write_lease(*location, 0, lease.clone())?;
+        let mut cursor = self.pages.cursor();
+        let shader_parameters = cursor.prepare(|group| {
+        group.require_slots([images.len() + 2, 0, 4, 2])?;
+        let mut parameters = group.parameters(self.abi.clone(), &[])?;
+        for (location, sampler) in &self.samplers {
+            parameters.write(*location, 0, BindlessResource::Sampler(sampler.clone()))?;
         }
         for (location, buffer, size) in [
             (self.bindings.globals, &uniform, globals.len() as u64),
@@ -189,7 +192,8 @@ impl GpuTextRenderer {
                 },
             )?;
         }
-        let shader_parameters = parameters.finish(|size| self.parameters.allocate(size))?;
+        parameters.finish(|size| self.parameters.allocate(size)).map_err(Into::into)
+        })?;
         let readback = self.transfer_buffer(length, true)?;
 
         Ok(PreparedFrame {

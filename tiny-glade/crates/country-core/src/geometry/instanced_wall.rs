@@ -209,7 +209,7 @@ impl<T: SparseSsbo> InstancedWall<T> {
     }
 
     /// 返回是否写入了新版本。容量失败不清空 CPU 数据、不破坏旧分配；无更新直接返回。
-    /// GPU 提交由共享缓冲的 try_gpu_flush 统一完成。
+    /// GPU 提交由共享缓冲的 gpu_flush 统一完成。
     pub fn upload_to_storage_buffer(
         &mut self,
         storage: &mut SparseInstanceBuffer<T>,

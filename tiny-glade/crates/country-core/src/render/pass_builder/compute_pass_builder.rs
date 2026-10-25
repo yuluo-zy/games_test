@@ -37,9 +37,7 @@ use std::sync::Arc;
 use crate::asset_libraries::Handle;
 use crate::asset_libraries::shader_library::ComputeShaderSourceHash;
 use crate::asset_libraries::ssbo_library::SsboType as LibrarySsbo;
-use crate::render::pass_builder::bind_resources::{
-    self, BindGameResources, PassResourceSlot as SlotMarker,
-};
+use crate::render::pass_builder::bind_resources;
 use crate::render::pass_builder::pass_resource_access::{
     self, ACCESS_CPU_MAPPED_WRITE, ACCESS_INDIRECT_READ, ACCESS_READ, ACCESS_WRITE_CONCURRENT,
     PassBinding, RecordingPassBuilder, ResourceAccess, RgTexture, SYNC_GROUP_DEFAULT,
@@ -57,8 +55,8 @@ use crate::render::shader::boundary::ShaderBackend;
 use crate::resources::texture_presets::TextureFromDisk;
 use crate::resources::texture_presets::TexturePreset;
 use crate::rhapsody_contract::{
-    self, Extent2D, Handle as RgHandle, ManagedHandle, PassBuilder, ReadOnlyHandle,
-    RenderPassBinding, Texture,
+    self, Extent2D, Handle as RgHandle, ManagedHandle, ReadOnlyHandle,
+    Texture,
 };
 use crate::rhapsody_types::TextureViewDesc;
 
@@ -67,7 +65,7 @@ use crate::rhapsody_types::TextureViewDesc;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct AccessRange {
     pub resource_index: u32,
-    pub access_index: u8,
+    pub access_index: u32,
 }
 
 /// 着色器反射（`ComputePass+0x138` 指向的 `CompiledShaderPipeline` 反射部分）。
@@ -205,13 +203,13 @@ pub struct RecordedComputePass {
     pub bindings: Vec<PassBinding>,
     pub access_ranges: Vec<AccessRange>,
     /// Binding-table indices with a proven uniformly disabled texel read.
-    pub inactive_texture_bindings: Vec<u8>,
+    pub inactive_texture_bindings: Vec<u32>,
     /// Real reads whose original caller allows undefined initial contents.
-    pub undefined_texture_bindings: Vec<u8>,
+    pub undefined_texture_bindings: Vec<u32>,
     /// Host content intent; native access codes and synchronization stay intact.
     pub preserving_buffers: Vec<u32>,
     /// Image binding indices whose writes retain previously produced texels.
-    pub preserving_texture_bindings: Vec<u8>,
+    pub preserving_texture_bindings: Vec<u32>,
     pub external_bindings: Vec<ExternalBinding>,
     /// Immutable physical ranges read through shader device addresses.
     pub device_address_reads: Vec<rhapsody::resource::DynamicConstantsChunk>,
@@ -413,10 +411,10 @@ pub struct ComputePass {
     pub(crate) bindings: Vec<PassBinding>,
     /// `+0x18`：访问范围表（8 B/项）。
     pub(crate) access_ranges: Vec<AccessRange>,
-    pub(crate) inactive_texture_bindings: Vec<u8>,
-    pub(crate) undefined_texture_bindings: Vec<u8>,
+    pub(crate) inactive_texture_bindings: Vec<u32>,
+    pub(crate) undefined_texture_bindings: Vec<u32>,
     pub(crate) preserving_buffers: Vec<u32>,
-    pub(crate) preserving_texture_bindings: Vec<u8>,
+    pub(crate) preserving_texture_bindings: Vec<u32>,
     /// `+0x30`：外部绑定表（0x48 B/项）。
     pub(crate) external_bindings: Vec<ExternalBinding>,
     /// `+0x60`：`PassBuilder`。
@@ -433,8 +431,6 @@ pub struct ComputePass {
     pub(crate) program: Option<Handle<ComputeShaderProgram>>,
     /// push constants 字节（I：回调里 `RenderPassApi::push_constants` 的数据）。
     pub(crate) push_constants: Vec<u8>,
-    /// `BindGameResources` 的槽载体（ComputePass 机器码没有槽表，仅为满足 trait）。
-    pub(crate) _slot: Option<SlotMarker>,
 }
 
 /// dispatch 之前的全部访问（测试/调用方观察用）。
@@ -514,10 +510,9 @@ impl ComputePass {
             resources,
             program: Some(handle),
             push_constants: Vec::new(),
-            _slot: None,
         };
         let mut pass = pass;
-        BindGameResources::bind_color_library(&mut pass);
+        pass.bind_color_library();
         Ok(pass)
     }
 
@@ -616,7 +611,7 @@ impl ComputePass {
 
     /// 以 SSBO 类型登记的访问（`read_storage_buffer<T>` / `write_storage_buffer<T>` 共同后半）：
     /// 先 `*_access_buffer<T>`（无条件，返回绑定下标），再查注册表命中才追加 `AccessRange`。
-    fn push_ssbo_range(&mut self, hash: u64, index: u8) {
+    fn push_ssbo_range(&mut self, hash: u64, index: u32) {
         if let Some(binding) = self.resolve(hash) {
             self.access_ranges.push(AccessRange {
                 resource_index: binding,
@@ -1138,38 +1133,6 @@ impl ComputeTexture for &ReadOnlyHandle<Texture> {
     }
 }
 
-/// `BindGameResources`：ComputePass 的实现。`bind_color_library` / `bind_ray_tracing` 在 ComputePass 上
-/// 没有槽表（O：DrawBuilder 版才有 `rustc_entry`），这里覆盖默认实现。
-impl BindGameResources for ComputePass {
-    fn resource_slot(&mut self, _name: &'static str) -> &mut Option<SlotMarker> {
-        &mut self._slot
-    }
-    fn push_access_range(&mut self, range: AccessRange) {
-        self.access_ranges.push(range);
-    }
-    fn read_wall_color_ids(&mut self) {}
-    fn as_pass_builder(&mut self) -> PassBuilder<'_, PassResources> {
-        PassBuilder::detached()
-    }
-    fn bindings_placeholder(&mut self) -> Vec<RenderPassBinding> {
-        self.bindings.iter().map(PassBinding::to_contract).collect()
-    }
-    fn resolve_binding(&mut self, hash: u64) -> Option<u32> {
-        self.resolve(hash)
-    }
-    fn bind_color_library(&mut self) {
-        bind_resources::bind_color_library_compute(self)
-    }
-    fn bind_ray_tracing(&mut self) {
-        bind_resources::bind_ray_tracing_compute::<
-            bind_resources::RtTrianglesSsbo,
-            bind_resources::RtTriangleMetaSsbo,
-            bind_resources::RtBvhSsbo,
-            bind_resources::WallColorIdSsbo,
-        >(self)
-    }
-}
-
 impl ComputePass {
     /// `read_access_buffer<T>`（access 0x1a）+ 注册表命中追加访问范围（`bind_resources` 与 `read_storage_buffer` 共用）。
     pub(crate) fn read_ssbo_in_place<T: LibrarySsbo>(&mut self, hash: u64) {
@@ -1618,12 +1581,14 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "TryFromIntError")]
-    fn rg_binding_table_overflow_unwraps_after_access_registration() {
+    fn rg_binding_alias_above_255_registers_without_truncation() {
         let env = env();
         let mut pass = new_pass(&env);
         pass.bindings = vec![PassBinding::Buffer { resource: 0 }; 0x100];
-        let _ = pass.read_rg_storage_buffer(H_BUF_A, &rgb(1));
+        let pass = pass.read_rg_storage_buffer(H_BUF_A, &rgb(1));
+        assert_eq!(pass.bindings().len(), 257);
+        assert_eq!(pass.access_ranges().last().unwrap().access_index, 256);
+        assert_eq!(pass.accesses().last().unwrap().resource, 1);
     }
 
     // ---------------------------------------------------------------- external
@@ -1763,7 +1728,7 @@ mod tests {
     fn ray_tracing_reads_four_ssbos_in_order_and_writes_two_uniforms() {
         let env = env();
         let mut pass = new_pass(&env);
-        BindGameResources::bind_ray_tracing(&mut pass);
+        pass.bind_ray_tracing();
         // color + 4 个 RT/墙色读访问。
         let accesses: Vec<_> = pass
             .accesses()
@@ -1809,6 +1774,30 @@ mod tests {
             resource,
             desc: TextureDesc::new([w, h, 1], 0, 0),
         }
+    }
+
+    #[test]
+    fn texture_content_intents_keep_aliases_above_255_distinct() {
+        let env = env();
+        let texture = rg_tex(55, 8, 8);
+        let mut pass = new_pass(&env);
+        for slot in 1..=257 {
+            pass = pass.bind_texture(H_TEX, &&texture, 0x1a);
+            if slot == 256 {
+                pass = pass.inactive_texture_contents(H_TEX);
+            } else if slot == 257 {
+                pass = pass.allow_undefined_texture_contents(H_TEX);
+            }
+        }
+        pass = pass.bind_texture(H_TEX, &WriteTextureUnchecked(texture), 0x37)
+            .preserve_storage_texture_contents(H_TEX);
+        let recorded = pass.dispatch_groups(1, 1, 1);
+        assert_eq!(recorded.inactive_texture_bindings, [256]);
+        assert_eq!(recorded.undefined_texture_bindings, [257]);
+        assert_eq!(recorded.preserving_texture_bindings, [258]);
+        assert_eq!(recorded.access_ranges[256].access_index, 256);
+        assert_eq!(recorded.access_ranges[258].access_index, 258);
+        assert_eq!(core::mem::size_of::<AccessRange>(), 8);
     }
 
     #[test]

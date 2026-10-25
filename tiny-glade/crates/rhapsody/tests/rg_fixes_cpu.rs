@@ -66,9 +66,7 @@ struct Mock {
     next_submit: u64,
     submit_attempts: usize,
     fail_submit_at: Option<usize>,
-    waits: std::cell::RefCell<Vec<rhapsody::sync::SyncPoint>>,
     queue: Option<recording::Queue>,
-    fail_wait: bool,
     ranges: cpu_graph_support::CpuRanges,
     /// One stand-in command pool per parallel worker.
     chunk_pools: Vec<u8>,
@@ -145,14 +143,6 @@ impl ExecutionBackend for Mock {
     }
     fn graph_queue(&self) -> (recording::Queue, u32) {
         (self.queue.unwrap_or(recording::Queue::Primary), 0)
-    }
-    fn wait_submission(&self, point: rhapsody::sync::SyncPoint) -> rhapsody::Result<()> {
-        self.waits.borrow_mut().push(point);
-        if self.fail_wait {
-            Err(rhapsody::Error::Timeout)
-        } else {
-            Ok(())
-        }
     }
     fn command_handle(&mut self) -> rhapsody::Result<u64> {
         self.next_command += 1;
@@ -867,7 +857,6 @@ fn failed_submit_does_not_publish_a_point_or_pending_commands() {
     assert_eq!(chain.pending_command_count(), 0);
     assert_eq!(chain.recording_command_count(), 0);
     assert_eq!(backend.next_submit, 0);
-    assert!(backend.waits.borrow().is_empty());
     assert_eq!(backend.abandoned, [1001]);
     let execution = run(
         &mut chain,
@@ -919,10 +908,6 @@ fn partial_submit_failure_defers_published_points_and_abandons_the_rest() {
         *original,
         Error::Validation(rhapsody::Error::OutOfDeviceMemory)
     ));
-    assert!(
-        backend.waits.borrow().is_empty(),
-        "error cleanup must not block"
-    );
     assert_eq!(execution.transaction.receipts().len(), 1);
     assert_eq!(chain.pending_command_count(), 1);
     assert_eq!(chain.completed_command_count(), 0);
@@ -982,14 +967,12 @@ fn queue_domains_do_not_share_command_completion() {
     );
     assert_eq!(chain.pending_command_count(), 3);
     assert_eq!(chain.completed_command_count(), 0);
-    assert!(backend.waits.borrow().is_empty());
 }
 
 #[test]
-fn partial_submit_never_attempts_a_failing_cleanup_wait() {
+fn partial_submit_retains_in_flight_resources_and_original_failure() {
     let mut backend = Mock {
         fail_submit_at: Some(2),
-        fail_wait: true,
         ..Default::default()
     };
     let mut chain = chain();
@@ -1017,7 +1000,7 @@ fn partial_submit_never_attempts_a_failing_cleanup_wait() {
         execution,
     } = error
     else {
-        panic!("partial execution must survive cleanup failure")
+        panic!("partial execution must preserve the submitted prefix")
     };
     assert!(matches!(
         *original,
@@ -1029,7 +1012,7 @@ fn partial_submit_never_attempts_a_failing_cleanup_wait() {
     assert_eq!(backend.abandoned, [1002]);
     assert!(
         backend.released.is_empty(),
-        "GPU resources cannot be reclaimed on a failed wait"
+        "GPU resources cannot be reclaimed before submitted work completes"
     );
     assert_eq!(
         execution

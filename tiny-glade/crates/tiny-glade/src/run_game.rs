@@ -10,7 +10,6 @@
 //!   `finish<country_core::systems::main_camera::MainCameraPlugin>`：ICF 合并的
 //!   单字节 RET 空体（1,581 处引用），build 为空注册。
 //! - `impl$2::build` `0x1405aeea0`（578 B）—— bevy_input 注册面。
-//! - `compute_on_dedicated_thread` `0x14032d170`（111 行反编译）—— 通用线程助手。
 //!
 //! ## 已恢复
 //!
@@ -23,13 +22,6 @@
 //! 检查。本实现转发上游 `bevy_input::InputPlugin`。
 //! **差异**：上游 0.16.0 `InputPlugin` 还注册手势/gamepad 事件；按 AGENTS
 //! 「直接复用依赖」保留，额外注册项不影响原消费面。
-//!
-//! ### `compute_on_dedicated_thread`（判等，std 转发）
-//! fresh 0x14032d170：`sync_channel(1)` → 复制 name → `Builder::name(name)`
-//! → `spawn(move || tx.send(f()))`；spawn 失败
-//! `panic!("Thread failed to spawn: {name}: {err}")`（文案 pieces
-//! `"Thread failed to spawn: "` + name + `": "` + io::Error，0x1429beeb1）；
-//! 成功后 drop JoinHandle（CloseHandle）→ `rx.recv().unwrap()`。
 //!
 //! ## Integration boundary (2026-10-18)
 //! `run_game` now calls the actual public winit window/event-loop adapter and
@@ -120,26 +112,6 @@ fn add_original_plugins(app: &mut App) {
     app.add_roof_events_and_resources().add_roof_systems();
     app.add_timberframe(); // @140630a20
     app.add_onboarding(); // @140650d50
-}
-
-/// `tiny_glade::run_game::compute_on_dedicated_thread` `0x14032d170` —— 判等。
-///
-/// `sync_channel(1)` + `Builder::name(name)` + spawn + recv；spawn 失败 panic
-/// 文案 `"Thread failed to spawn: {name}: {err}"`，recv 失败 `unwrap` panic。
-pub fn compute_on_dedicated_thread<T, F>(name: String, f: F) -> T
-where
-    T: Send + 'static,
-    F: FnOnce() -> T + Send + 'static,
-{
-    let (tx, rx) = std::sync::mpsc::sync_channel(1);
-    std::thread::Builder::new()
-        .name(name.clone())
-        .spawn(move || {
-            let _ = tx.send(f());
-        })
-        .unwrap_or_else(|err| panic!("Thread failed to spawn: {name}: {err}"));
-    // JoinHandle 在此 drop（原版 CloseHandle，线程分离）；结果经 channel 回传。
-    rx.recv().unwrap()
 }
 
 /// Resolve the packaged installation for the explicit local host. The original
@@ -816,7 +788,7 @@ pub fn run_game_thread(
             .in_set(GameSystemSet(44)),
     );
     debug_assert!(app.world().contains_resource::<SavedSessionList>());
-    apply_ecs_executor_policy(&mut app);
+    apply_ecs_executor_policy(&mut app)?;
     Ok(app)
 }
 
@@ -841,29 +813,18 @@ fn init_ecs_task_pool() {
     });
 }
 
-/// Executor policy. The `ecs-multithreaded` feature (on by default) runs every
-/// schedule on bevy's multi-threaded executor with the conflicting, unordered
-/// system pairs pinned to their single-threaded order (`ecs_order`).
-/// `TG_ECS_EXECUTOR=single` forces the single-threaded executor on every schedule
-/// of a feature-enabled build, and `TG_SCHEDULE_AMBIGUITY=1` logs every pair of
-/// conflicting systems with no declared order (the audit that decides whether the
-/// feature is safe: a real run reports 525 such pairs in `Update`).
-fn apply_ecs_executor_policy(app: &mut App) {
+/// Install deterministic dependency order and the single parallel executor.
+/// Ambiguity diagnostics are a startup audit setting.
+fn apply_ecs_executor_policy(app: &mut App) -> anyhow::Result<()> {
     {
         let mut schedules = app.world_mut().resource_mut::<bevy_ecs::schedule::Schedules>();
         for (_, schedule) in schedules.iter_mut() {
             apply_ecs_executor_policy_to(schedule);
         }
     }
-    #[cfg(feature = "ecs-multithreaded")]
-    if !ecs_single_threaded() {
-        crate::ecs_order::pin_and_parallelize(app.world_mut());
-    }
+    crate::ecs_order::pin_and_parallelize(app.world_mut())
 }
 
-fn ecs_single_threaded() -> bool {
-    std::env::var("TG_ECS_EXECUTOR").is_ok_and(|value| value == "single")
-}
 fn ecs_ambiguity_detection() -> bool {
     std::env::var_os("TG_SCHEDULE_AMBIGUITY").is_some_and(|value| value == "1")
 }
@@ -871,9 +832,7 @@ fn ecs_ambiguity_detection() -> bool {
 /// Applies the policy to one schedule (also used for schedules the App does not own).
 fn apply_ecs_executor_policy_to(schedule: &mut Schedule) {
     use bevy_ecs::schedule::{ExecutorKind, LogLevel, ScheduleBuildSettings};
-    if ecs_single_threaded() {
-        schedule.set_executor_kind(ExecutorKind::SingleThreaded);
-    }
+    schedule.set_executor_kind(ExecutorKind::MultiThreaded);
     if ecs_ambiguity_detection() {
         schedule.set_build_settings(ScheduleBuildSettings {
             ambiguity_detection: LogLevel::Warn,
@@ -1845,7 +1804,10 @@ mod intro_history_integration {
             .expect("original intro sections decode");
         assert_eq!(parsed.chain_index, 12);
         assert_eq!(parsed.edits.len(), 13);
+        use bevy_state::app::AppExtStates;
         let mut app = App::new();
+        app.add_plugins(bevy_state::app::StatesPlugin);
+        app.insert_state(country_core::app_loading_state::AppLoadingState::Game);
         for stage in 0..44 {
             app.configure_sets(
                 bevy_app::Update,
@@ -1867,6 +1829,7 @@ mod intro_history_integration {
         app.insert_resource(country_core::resources::mouse_terrain_raycast::CursorPositionSS(glam::Vec2::ZERO));
         app.init_resource::<country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::AdjWallHeightModeCache>();
         app.add_event::<country_core::resources::window::AudioCursorMoved>();
+        app.add_event::<country_core::resources::onboarding::NotifyHintSystemSnapping>();
         app.init_resource::<country_core::resources::editing_highlight::EditingHighlight>();
         app.add_systems(bevy_app::Startup, country_core::resources::glade_border::setup_glade_border);
         app.insert_resource(country_core::resources::session::ActiveSession::new(
@@ -2654,7 +2617,7 @@ mod member14_owner_stage_tests {
         let curve = country_core::resources::roofs::geometry::surface::Curve2::try_new(vec![[0.,0.],[4.,0.]], false).unwrap();
         inner.new_wall_with_id(WallId(0x700000031), WallState::new(curve, 2., 0, 0, false));
         let mut public = PublicWalls::default();
-        public.consume(&mut inner, &TerrainHeightGrid512 { encoded: vec![0u16;512*512].into(), minimum_y: 0., maximum_y: 4., sampling_fix: true });
+        public.consume_with_paths(&mut inner, &TerrainHeightGrid512 { encoded: vec![0u16;512*512].into(), minimum_y: 0., maximum_y: 4., sampling_fix: true }, None, &country_core::resources::walls::public_walls::WallPublicationDirty::default(), &country_core::resources::walls::public_walls::WallSpatialHash::default());
         let storage = SparseInstanceBuffer::<BrickTransformSsbo>::try_new(&CpuBufferDevice(1)).unwrap();
         let mut library = AssetSsboLibrary::new(); library.register::<BrickTransformSsbo>(storage);
         app.insert_resource(public); app.insert_resource(library); app.init_resource::<WallEntities>();

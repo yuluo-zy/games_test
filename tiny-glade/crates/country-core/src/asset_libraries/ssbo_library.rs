@@ -69,7 +69,7 @@ impl<T: StorageElement + bytemuck::NoUninit + Send + Sync + 'static> Ssbo
     for crate::render::shadowed_buffer::ShadowedBuffer<T>
 {
     fn flush_pending(&mut self, device: &dyn GraphicsDevice) -> Result<(), crate::render::ssbo::rhapsody_boundary::BackendError> {
-        self.try_gpu_flush(device)
+        self.gpu_flush(device)
     }
     fn as_any(&self) -> &dyn Any {
         self

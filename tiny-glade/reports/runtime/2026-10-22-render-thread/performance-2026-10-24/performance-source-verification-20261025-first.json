@@ -1,0 +1,85 @@
+[
+  {
+    "name": "124-chunks",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "rhapsody",
+      "--lib",
+      "chunk_results_tests",
+      "--locked",
+      "--offline"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 38.872202083002776,
+    "log": "/tmp/tg-perf124-chunks.log",
+    "log_sha256": "d0103368160cd014d1dba99ae5bec394e760ac80088be074a4d647dca0fbb14d"
+  },
+  {
+    "name": "125-gpu-allocations",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "rhapsody",
+      "--test",
+      "gpu_frame_allocations",
+      "--locked",
+      "--offline",
+      "--",
+      "--ignored",
+      "--nocapture"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 52.24377100006677,
+    "log": "/tmp/tg-perf125-gpu-allocations.log",
+    "log_sha256": "90d364f20dae276caad7c7a8f5e26c9a610bf48bca117c897a0938e8dd175763"
+  },
+  {
+    "name": "126-binding-abi",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "rhapsody",
+      "--test",
+      "bindless_shader_abi",
+      "--locked",
+      "--offline",
+      "--",
+      "--nocapture"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 50.45670841704123,
+    "log": "/tmp/tg-perf126-binding-abi.log",
+    "log_sha256": "9e31e02778a66de8e1ce4186bd411d73746f88d3a5e2e31cfe32beb09c9595aa"
+  },
+  {
+    "name": "127-app-check",
+    "command": [
+      "cargo",
+      "check",
+      "-j",
+      "2",
+      "-p",
+      "tiny-glade",
+      "--lib",
+      "--bins",
+      "--features",
+      "profile",
+      "--locked",
+      "--offline"
+    ],
+    "exit_code": 101,
+    "elapsed_s": 236.21658733300865,
+    "log": "/tmp/tg-perf127-app-check.log",
+    "log_sha256": "88052ceb579f1b4f618df152ab68b7aff6001d91d6289ac3035f7ba4d4613514"
+  }
+]

@@ -19,6 +19,8 @@ use shader_pipeline::{
 };
 use smallvec::SmallVec;
 use std::sync::Arc;
+#[path = "bindless_parameter_cpu.rs"]
+pub(super) mod cpu;
 
 /// A lowered package uses the renderer's shared layout. Input serialization is
 /// an asset format, rather than a second runtime descriptor implementation.
@@ -30,6 +32,8 @@ pub struct BindlessShaderPackage {
 }
 pub struct BindlessShaderAbi {
     definition: BindlessAbi,
+    parameter_count: usize,
+    pub(super) parameter_cpu_bytes: usize,
     _memory: crate::raw::allocator::CpuMemoryReservation,
 }
 impl std::ops::Deref for BindlessShaderAbi {
@@ -106,7 +110,19 @@ impl BindlessShaderPackage {
             .memory
             .stats
             .reserve_cpu_bytes(abi_bytes, crate::device::BudgetCategory::Live)?;
+        let parameter_count = abi.bindings.iter().try_fold(0usize, |count, slot|
+            count.checked_add(slot.parameter_count as usize).ok_or(Error::OutOfHostMemory))?;
+        let entry_bytes = std::mem::size_of::<bool>() + std::mem::size_of::<Arc<BindlessLease>>()
+            + std::mem::size_of::<(ResourceKey, Arc<BindlessLease>)>();
+        let parameter_bytes = (abi.parameter_bytes as usize).checked_mul(2).ok_or(Error::OutOfHostMemory)?;
+        let parameter_cpu_bytes = parameter_count.checked_add(1)
+            .and_then(|n| n.checked_mul(2 * entry_bytes))
+            .and_then(|n| n.checked_add(parameter_bytes))
+            .and_then(|n| n.checked_add(std::mem::size_of::<BindlessParameters>()))
+            .ok_or(Error::OutOfHostMemory)?;
         let abi = Arc::new(BindlessShaderAbi {
+            parameter_count,
+            parameter_cpu_bytes,
             definition: abi,
             _memory: memory,
         });
@@ -227,16 +243,17 @@ pub struct BindlessParameters {
     written: SmallVec<[bool; 128]>,
     leases: SmallVec<[Arc<BindlessLease>; 16]>,
     cache: SmallVec<[(ResourceKey, Arc<BindlessLease>); 16]>,
-    _memory: crate::raw::allocator::CpuMemoryReservation,
+    _memory: cpu::ParameterCpuCredit,
 }
 impl BindlessParameters {
-    pub fn new(
+    pub(super) fn from_credit(
         heap: Arc<BindlessHeap>,
         abi: Arc<BindlessShaderAbi>,
         original_push: &[u8],
+        credit: impl FnOnce(usize) -> Result<cpu::ParameterCpuCredit>,
     ) -> Result<Self> {
-        abi.validate()
-            .map_err(|error| Error::invalid_usage_with("bindless parameter ABI", error))?;
+        // The package lowerer admitted this immutable ABI before publishing its
+        // private owner. Only this draw's push bytes need checking here.
         if heap.device.is_device_lost() {
             return Err(Error::DeviceLost);
         }
@@ -245,26 +262,8 @@ impl BindlessParameters {
                 "shader push parameter size does not match its ABI",
             ));
         }
-        let count = abi
-            .bindings
-            .iter()
-            .map(|slot| slot.parameter_count as usize)
-            .sum::<usize>();
-        let maximum_bytes = (std::mem::size_of::<Self>() as u64)
-            .saturating_add(u64::from(abi.parameter_bytes) * 2)
-            .saturating_add(
-                (count + 1) as u64
-                    * 2
-                    * (std::mem::size_of::<bool>()
-                        + std::mem::size_of::<Arc<BindlessLease>>()
-                        + std::mem::size_of::<(ResourceKey, Arc<BindlessLease>)>())
-                        as u64,
-            );
-        let memory = heap
-            .device
-            .memory
-            .stats
-            .reserve_cpu_bytes(maximum_bytes, crate::device::BudgetCategory::Live)?;
+        let count = abi.parameter_count;
+        let memory = credit(abi.parameter_cpu_bytes)?;
         let mut bytes = SmallVec::new();
         bytes
             .try_reserve(abi.parameter_bytes as usize)
@@ -326,7 +325,7 @@ impl BindlessParameters {
         }
         Ok(counts)
     }
-    fn location(&self, location: BindingLocation, element: u32) -> Result<(usize, DescriptorKind)> {
+    fn location(&self, location: BindingLocation, element: u32) -> Result<(usize, usize, DescriptorKind, bool)> {
         let slot = self
             .abi
             .slot(location)
@@ -336,10 +335,13 @@ impl BindlessParameters {
                 "binding array element exceeds the shader heap ABI",
             ));
         }
-        Ok((
-            (slot.parameter_offset + element * 4) as usize,
-            expected(slot)?,
-        ))
+        let offset = (slot.parameter_offset + element * 4) as usize;
+        let base = self.abi.original_push_bytes.div_ceil(4) as usize * 4;
+        let written = (offset - base) / 4;
+        if self.written[written] {
+            return Err(Error::invalid_usage("shader resource element was bound twice"));
+        }
+        Ok((offset, written, expected(slot)?, slot.kind == BindingKind::UniformBuffer))
     }
     pub fn write(
         &mut self,
@@ -347,42 +349,30 @@ impl BindlessParameters {
         element: u32,
         resource: BindlessResource,
     ) -> Result<()> {
-        let (_, kind) = self.location(location, element)?;
+        let (offset, written, kind, uniform_slot) = self.location(location, element)?;
         if resource.kind() != kind {
             return Err(Error::invalid_usage(
                 "resource type does not match the shader heap ABI",
             ));
         }
-        let uniform_upload = self
-            .abi
-            .slot(location)
-            .is_some_and(|slot| slot.kind == BindingKind::UniformBuffer)
+        let uniform_upload = uniform_slot
             && matches!(&resource, BindlessResource::Buffer {buffer, ..} if buffer.is_dynamic_constants_page());
         let key = resource.key(uniform_upload);
-        let lease = match self.cache.iter().find(|(old, _)| *old == key) {
-            Some((_, lease)) => {
-                record_count(RecordCount::LocalCacheHits, 1);
-                lease.clone()
-            }
-            None => {
-                record_count(RecordCount::LocalCacheMisses, 1);
-                self.cache
-                    .try_reserve(1)
-                    .map_err(|_| Error::OutOfHostMemory)?;
-                // Per-draw constant uploads change every draw; every other
-                // descriptor stays resident in its page across draws and frames.
-                let lease = if uniform_upload {
-                    resource.allocate(&self.heap, true)?
-                } else {
-                    let heap = self.heap.clone();
-                    self.heap
-                        .resident_lease(key, || resource.allocate(&heap, false))?
-                };
-                self.cache.push((key, lease.clone()));
-                lease
-            }
+        if let Some((_, lease)) = self.cache.iter().find(|(old, _)| *old == key) {
+            record_count(RecordCount::LocalCacheHits, 1);
+            return self.commit_lease(offset, written, lease.clone());
+        }
+        record_count(RecordCount::LocalCacheMisses, 1);
+        self.cache.try_reserve(1).map_err(|_| Error::OutOfHostMemory)?;
+        let lease = if uniform_upload {
+            resource.allocate(&self.heap, true)?
+        } else {
+            let heap = self.heap.clone();
+            self.heap.resident_lease(key, || resource.allocate(&heap, false))?
         };
-        self.write_lease(location, element, lease)
+        self.commit_lease(offset, written, lease.clone())?;
+        self.cache.push((key, lease));
+        Ok(())
     }
     pub fn write_lease(
         &mut self,
@@ -390,26 +380,22 @@ impl BindlessParameters {
         element: u32,
         lease: Arc<BindlessLease>,
     ) -> Result<()> {
-        let (offset, kind) = self.location(location, element)?;
-        if !Arc::ptr_eq(&lease.heap, &self.heap) || lease.index.kind != kind {
+        let (offset, written, kind, _) = self.location(location, element)?;
+        if !Arc::ptr_eq(&lease.slot.heap, &self.heap) || lease.slot.index.kind != kind {
             return Err(Error::invalid_usage(
                 "binding lease belongs to another heap or type",
             ));
         }
-        let base = self.abi.original_push_bytes.div_ceil(4) as usize * 4;
-        let written = (offset - base) / 4;
-        if self.written[written] {
-            return Err(Error::invalid_usage(
-                "shader resource element was bound twice",
-            ));
-        }
+        self.commit_lease(offset, written, lease)
+    }
+    fn commit_lease(&mut self, offset: usize, written: usize, lease: Arc<BindlessLease>) -> Result<()> {
         if !self.leases.iter().any(|old| Arc::ptr_eq(old, &lease)) {
             self.leases
                 .try_reserve(1)
                 .map_err(|_| Error::OutOfHostMemory)?;
             self.leases.push(lease.clone());
         }
-        self.bytes[offset..offset + 4].copy_from_slice(&lease.index.index.to_le_bytes());
+        self.bytes[offset..offset + 4].copy_from_slice(&lease.slot.index.index.to_le_bytes());
         self.written[written] = true;
         Ok(())
     }
@@ -446,7 +432,7 @@ impl BindlessParameters {
         drop(span);
         let _span = RecordSpan::new(RecordPhase::FinishLease);
         let lease = self.heap.parameter_buffer(&chunk)?;
-        let parameter_index = lease.index.index;
+        let parameter_index = lease.slot.index.index;
         let resource_lease_count = self.leases.len();
         self.leases.push(lease);
         Ok(PreparedBindlessParameters {
@@ -470,24 +456,31 @@ pub struct PreparedBindlessParameters {
     resource_lease_count: usize,
     leases: SmallVec<[Arc<BindlessLease>; 16]>,
     _chunk: DynamicConstantsChunk,
-    _memory: crate::raw::allocator::CpuMemoryReservation,
+    _memory: cpu::ParameterCpuCredit,
 }
 impl PreparedBindlessParameters {
+    /// Exact original payload; reuse is valid while this callback's pipeline
+    /// and resource group remain unchanged.
+    pub fn matches_original_push(&self, push: &[u8]) -> bool {
+        self.bytes[..self.abi.original_push_bytes as usize] == *push
+    }
+
     /// 只用于游标判断原参数是否仍属于当前真实页；数值下标本身不能证明同页。
     pub fn belongs_to(&self, heap: &Arc<BindlessHeap>) -> bool {
         Arc::ptr_eq(&self.heap, heap)
     }
     /// Reuse the same resource leases while allocating a fresh parameter slice.
     /// Earlier dispatches retain their immutable parameter block until completion.
-    pub fn with_push(
+    pub(super) fn with_push_credit(
         &self,
         original_push: &[u8],
         allocate: impl FnOnce(u64) -> Result<DynamicConstantsChunk>,
+        credit: impl FnOnce(usize) -> Result<cpu::ParameterCpuCredit>,
     ) -> Result<Self> {
         let _trace = RecordSpan::new(RecordPhase::WithPush);
         record_count(RecordCount::WithPushCalls, 1);
 
-        let mut next = BindlessParameters::new(self.heap.clone(), self.abi.clone(), original_push)?;
+        let mut next = BindlessParameters::from_credit(self.heap.clone(), self.abi.clone(), original_push, credit)?;
         let base = self.abi.original_push_bytes.div_ceil(4) as usize * 4;
         next.bytes[base..].copy_from_slice(&self.bytes[base..]);
         for (index, flag) in next.written.iter_mut().enumerate() {
@@ -542,7 +535,7 @@ impl PreparedBindlessParameters {
             || pipeline
                 .layout
                 .bindless_abi()
-                .is_none_or(|abi| **abi != *self.abi)
+                .is_none_or(|abi| !Arc::ptr_eq(abi, &self.abi) && **abi != *self.abi)
         {
             return Err(Error::invalid_usage(
                 "pipeline does not use the bindless parameter ABI",

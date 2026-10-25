@@ -420,7 +420,7 @@ mod canonical_collision_chain_tests {
         )
         .unwrap();
         let mut walls = PublicWalls::default();
-        walls.consume(&mut inner, &terrain);
+        walls.consume_with_paths(&mut inner, &terrain, None, &country_core::resources::walls::public_walls::WallPublicationDirty::default(), &country_core::resources::walls::public_walls::WallSpatialHash::default());
         walls
             .get_mut(WallId(7))
             .unwrap()

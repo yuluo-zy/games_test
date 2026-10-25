@@ -93,10 +93,10 @@ fn owner_capacity_is_bounded_and_failed_recording_recovers_only_by_reset() {
     let submitted = device.timelines().submitted(queue).unwrap();
     assert!(matches!(
         command.retain_object(Arc::new(Owner(dropped.clone()))),
-        Err(Error::Timeout)
+        Err(Error::Exhausted(_))
     ));
-    assert!(matches!(command.end(), Err(Error::Timeout)));
-    assert!(matches!(command.end(), Err(Error::Timeout)));
+    assert!(matches!(command.end(), Err(Error::Exhausted(_))));
+    assert!(matches!(command.end(), Err(Error::Exhausted(_))));
     assert_eq!(device.timelines().submitted(queue).unwrap(), submitted);
     assert_eq!(dropped.load(Ordering::Relaxed), 1);
     command.reset().unwrap();
@@ -189,9 +189,9 @@ fn nested_resource_cells_have_their_own_capacity_gate() {
     // One owner fits, but its two distinct cells plus the pool exceed the limit.
     assert!(matches!(
         command.retain_object(pair.clone()),
-        Err(Error::Timeout)
+        Err(Error::Exhausted(_))
     ));
-    assert!(matches!(command.end(), Err(Error::Timeout)));
+    assert!(matches!(command.end(), Err(Error::Exhausted(_))));
     assert_eq!(
         device
             .timelines()

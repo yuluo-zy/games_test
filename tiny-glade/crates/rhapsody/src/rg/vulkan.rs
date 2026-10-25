@@ -1569,6 +1569,7 @@ impl ExecutionBackend for VulkanGraphBackend {
             &self.device,
             &compiled.registry,
             &self.stores,
+            Arc::as_ptr(&compiled.plan) as usize,
             |token| self.resources.get(&token).cloned(),
         )?);
         Ok(())
@@ -1672,9 +1673,6 @@ impl ExecutionBackend for VulkanGraphBackend {
         if !command.has_submissions() && !self.recycled_commands.contains(&handle) {
             self.recycled_commands.push(handle);
         }
-    }
-    fn wait_submission(&self, receipt: crate::sync::SyncPoint) -> crate::Result<()> {
-        self.device.queues.timelines.wait(&receipt.into(), u64::MAX)
     }
     fn chunk_recording(
         &mut self,
@@ -1893,10 +1891,10 @@ impl ExecutionBackend for VulkanGraphBackend {
         )?;
         trace.mark("semaphore_refs");
         let use_sources =
-            submit::SubmitScratch::<[&[Arc<crate::resource::SyncCell>]; 8]>::try_collect(
+            submit::SubmitScratch::<[crate::resource::tracked::OrderedSubmissionUses<'_>; 8]>::try_collect(
                 command_refs.len(),
                 &self.device.memory.stats,
-                command_refs.iter().map(|command| Ok(command.use_cells())),
+                command_refs.iter().map(|command| command.submission_uses()),
             )?;
         let uses = crate::resource::tracked::collect_submission_uses(
             &use_sources,
@@ -1907,10 +1905,8 @@ impl ExecutionBackend for VulkanGraphBackend {
         trace.count("commands", command_refs.len());
         trace.count("unique_uses", uses.len());
         let _reservations =
-            crate::resource::tracked::lock_submission_uses_in(&uses, &self.device.memory.stats)?;
+            crate::resource::tracked::lock_submission_uses(uses.ordered(), &self.device.memory.stats)?;
         trace.mark("state_locks");
-        crate::raw::command_buffer::validate_submission_commands(&command_refs)?;
-        trace.mark("validate2");
         let family = self.recording_family;
         let prepared_states = unsafe {
             crate::raw::command_buffer::prepare_submission_states(
@@ -2457,7 +2453,11 @@ impl VulkanGraphSession {
             backend.history_validity.remove(&token);
         });
         if removed_any {
-            backend.clear_pass_resources();
+            // Declaration tokens expired; the bounded idle CPU projections
+            // retain only physical owners and cannot revive old graph handles.
+            let mut projection = backend.caches.projection();
+            projection.snapshot.take();
+            projection.pool.park_idle();
         }
     }
     pub fn receipt_storage_statistics(&mut self) -> super::receipt_storage::ReceiptStorageStats {

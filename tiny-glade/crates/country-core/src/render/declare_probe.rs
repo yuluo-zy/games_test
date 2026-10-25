@@ -31,7 +31,7 @@ static COLLECT_TASKS: AtomicU64 = AtomicU64::new(0);
 pub struct DeclareProbe {
     pub cross_pass_tasks: u64,
     pub collect_passes: u64,
-    /// Number of shared-pool jobs; inline Collect contributes zero.
+    /// Number of shared-pool jobs recorded while diagnostics are enabled.
     pub collect_tasks: u64,
     /// Wall time for Prepare, Collect (including task wait), and Commit.
     pub collect_ns: [u64; 3],
@@ -81,15 +81,17 @@ fn add(counter: &AtomicU64, started: Option<Instant>) {
 }
 
 pub fn list_loop(started: Option<Instant>, draws: usize) {
-    LIST_PASSES.fetch_add(1, Relaxed);
-    LIST_DRAWS.fetch_add(draws as u64, Relaxed);
+    if enabled() {
+        LIST_PASSES.fetch_add(1, Relaxed);
+        LIST_DRAWS.fetch_add(draws as u64, Relaxed);
+    }
     add(&LIST_LOOP_NS, started);
 }
 pub fn render(started: Option<Instant>) {
     add(&RENDER_NS, started);
 }
 pub fn table(started: Option<Instant>, reads: usize) {
-    TABLE_READS.fetch_add(reads as u64, Relaxed);
+    if enabled() { TABLE_READS.fetch_add(reads as u64, Relaxed); }
     add(&TABLE_NS, started);
 }
 pub fn draw_access(started: Option<Instant>) {
@@ -97,7 +99,7 @@ pub fn draw_access(started: Option<Instant>) {
 }
 
 pub fn rec_draw() {
-    REC_DRAWS.fetch_add(1, Relaxed);
+    if enabled() { REC_DRAWS.fetch_add(1, Relaxed); }
 }
 pub fn rec_pipeline(started: Option<Instant>) {
     add(&REC_PIPELINE_NS, started);
@@ -119,13 +121,17 @@ pub fn sub(index: usize, started: Option<Instant>) {
     add(&SUB_NS[index], started);
 }
 pub fn stage_count(index: usize) {
-    STAGE_NS[index].fetch_add(1, Relaxed);
+    if enabled() { STAGE_NS[index].fetch_add(1, Relaxed); }
 }
 pub fn collect_stage(index: usize, started: Option<Instant>) { add(&COLLECT_NS[index], started); }
-pub fn cross_pass_collected(tasks: usize) { CROSS_PASS_TASKS.fetch_add(tasks as u64, Relaxed); }
+pub fn cross_pass_collected(tasks: usize) {
+    if enabled() { CROSS_PASS_TASKS.fetch_add(tasks as u64, Relaxed); }
+}
 pub fn collected(tasks: usize) {
-    COLLECT_PASSES.fetch_add(1, Relaxed);
-    COLLECT_TASKS.fetch_add(tasks as u64, Relaxed);
+    if enabled() {
+        COLLECT_PASSES.fetch_add(1, Relaxed);
+        COLLECT_TASKS.fetch_add(tasks as u64, Relaxed);
+    }
 }
 pub fn stage(index: usize, started: Option<Instant>) {
     add(&STAGE_NS[index], started);

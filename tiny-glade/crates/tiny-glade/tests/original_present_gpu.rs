@@ -14,23 +14,6 @@ use tiny_glade::{egui_backend::EguiBackend, egui_gpu::EguiGpu, render_bridge::Co
 
 #[test]
 fn resized_present_covers_larger_and_smaller_targets_without_black_borders() {
-    for samples in [1, 4] {
-        for extent in [[97, 83], [31, 23], [64, 64]] {
-            for flip in [0, 1] {
-                verify_present(samples, extent, flip);
-            }
-        }
-    }
-}
-
-fn verify_present(sample_count: u8, extent: [u32; 2], flip: u8) {
-    let format = if sample_count == 4 {
-        vk::Format::from_raw(
-            country_core::systems::render_loop::draw_passes::final_post::MSAA_COLOR_FORMAT as i32,
-        )
-    } else {
-        vk::Format::R8G8B8A8_UNORM
-    };
     let shader_root = std::env::var_os("TG_COMPILED_SHADERS")
         .map(PathBuf::from)
         .unwrap_or_else(|| {
@@ -64,6 +47,24 @@ fn verify_present(sample_count: u8, extent: [u32; 2], flip: u8) {
         "/egui.raster.hlsl",
         "egui",
     );
+    country_core::startup::startup_blit::startup_blit(&shaders, bridge.shader_backend());
+    for samples in [1, 4] {
+        for extent in [[64, 64], [97, 83], [31, 23], [194, 166], [64, 64]] {
+            for flip in [0, 1] {
+                verify_present(&device, &shaders, &mut bridge, samples, extent, flip);
+            }
+        }
+    }
+}
+
+fn verify_present(device: &Arc<rhapsody::device::Device>, shaders: &Arc<AssetShaderLibrary>, bridge: &mut CoreRenderBridge, sample_count: u8, extent: [u32; 2], flip: u8) {
+    let format = if sample_count == 4 {
+        vk::Format::from_raw(
+            country_core::systems::render_loop::draw_passes::final_post::MSAA_COLOR_FORMAT as i32,
+        )
+    } else {
+        vk::Format::R8G8B8A8_UNORM
+    };
     let mut renderer = EguiGpu::new(bridge.hosts().clone());
     let context = egui::Context::default();
     context.tessellation_options_mut(|options| options.feathering = false);
@@ -111,7 +112,6 @@ fn verify_present(sample_count: u8, extent: [u32; 2], flip: u8) {
         )
         .unwrap(),
     );
-    country_core::startup::startup_blit::startup_blit(&shaders, bridge.shader_backend());
     let resolved = Arc::new(
         rhapsody::resource::Texture::new(
             device.clone(),

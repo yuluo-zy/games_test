@@ -625,8 +625,13 @@ pub fn nani_update_stairs_floor(gpu_world: &GpuWorld, rows: &mut [StairsFloorRow
 
 /// `nani_flush_instance_updates`（O 0x142080640）：27 槽里 Owned 的做 GPU 冲刷，然后滚动实例计数。
 pub fn nani_flush_instance_updates(gpu_world: &mut GpuWorld, device: &dyn GraphicsDevice) {
-    gpu_world.flush_instance_buffers(device);
-    gpu_world.roll_instance_counts();
+    if let Err(error) = gpu_world.flush_instance_buffers(device) {
+        if !matches!(error, crate::render::ssbo::rhapsody_boundary::BackendError::Exhausted(_)) {
+            panic!("Nani instance upload: {error}");
+        }
+        // Capacity rejection is carried by GpuWorld into the existing frame
+        // admission loop. No new App::update occurs until it is accepted.
+    }
 }
 
 // Actual ECS adapter for the component contracts that currently exist in this
@@ -1007,7 +1012,7 @@ mod tests {
         let mut gpu = GpuWorld::new(dev);
         gpu.assign_subset(GpuWorldSubsetKind::SolidVertexColorWindowGlass, GpuWorldSubset::Owned(
             OwnedGpuWorldSubset::new::<SolidVertexColorWindowGlassInstanceData>(
-                dev, GpuWorldSubsetKind::SolidVertexColorWindowGlass)));
+                dev, GpuWorldSubsetKind::SolidVertexColorWindowGlass, 1)));
         let mut atlas = MeshAtlasLibrary::default();
         let mut mesh = Mesh::new("窗玻璃 CPU 集成测试三角形");
         mesh.set_attribute(crate::render::mesh::ATTR_POSITION,
@@ -1141,7 +1146,7 @@ mod tests {
         use crate::rhapsody_types::Texture;
         let mut gpu = GpuWorld::new(dev);
         gpu.assign_subset(GpuWorldSubsetKind::Cloth, GpuWorldSubset::Owned(
-            OwnedGpuWorldSubset::new::<ClothInstanceData>(dev, GpuWorldSubsetKind::Cloth)));
+            OwnedGpuWorldSubset::new::<ClothInstanceData>(dev, GpuWorldSubsetKind::Cloth, 1)));
         let mut atlas = MeshAtlasLibrary::default();
         let mut mesh = Mesh::new("cloth CPU boundary triangle");
         mesh.set_attribute(crate::render::mesh::ATTR_POSITION,
@@ -1280,9 +1285,9 @@ mod tests {
     fn world_with(kind: GpuWorldSubsetKind, dev: &MockDevice) -> GpuWorld {
         let mut w = GpuWorld::new(dev);
         let subset = match kind {
-            GpuWorldSubsetKind::Plant => OwnedGpuWorldSubset::new::<PlantInstanceData>(dev, kind),
+            GpuWorldSubsetKind::Plant => OwnedGpuWorldSubset::new::<PlantInstanceData>(dev, kind, 0),
             GpuWorldSubsetKind::SolidVertexColor => {
-                OwnedGpuWorldSubset::new::<SolidVertexColorInstanceData>(dev, kind)
+                OwnedGpuWorldSubset::new::<SolidVertexColorInstanceData>(dev, kind, 0)
             }
             _ => unreachable!(),
         };
@@ -1336,7 +1341,7 @@ mod tests {
     fn roof_world(dev: &MockDevice) -> World {
         let mut gpu = GpuWorld::new(dev);
         gpu.assign_subset(GpuWorldSubsetKind::RoofFloor, GpuWorldSubset::Owned(
-            OwnedGpuWorldSubset::new::<StoneFloorInstanceData>(dev, GpuWorldSubsetKind::RoofFloor)));
+            OwnedGpuWorldSubset::new::<StoneFloorInstanceData>(dev, GpuWorldSubsetKind::RoofFloor, 0)));
         let mut world = World::new();
         world.insert_resource(gpu);
         world.insert_resource(MeshAtlasLibrary::default());
@@ -1503,10 +1508,10 @@ mod tests {
         let mut gpu = GpuWorld::new(dev);
         gpu.assign_subset(GpuWorldSubsetKind::SolidAlbedoMap, GpuWorldSubset::Owned(
             OwnedGpuWorldSubset::new::<SolidAlbedoMapInstanceData>(dev,
-                GpuWorldSubsetKind::SolidAlbedoMap)));
+                GpuWorldSubsetKind::SolidAlbedoMap, 0)));
         gpu.assign_subset(GpuWorldSubsetKind::SolidAlbedoMapEmissive, GpuWorldSubset::Owned(
             OwnedGpuWorldSubset::new::<SolidAlbedoMapEmissiveInstanceData>(dev,
-                GpuWorldSubsetKind::SolidAlbedoMapEmissive)));
+                GpuWorldSubsetKind::SolidAlbedoMapEmissive, 0)));
         gpu
     }
 
@@ -1689,7 +1694,7 @@ mod tests {
         let dev = MockDevice::default();
         let mut gpu = world_with(GpuWorldSubsetKind::Plant, &dev);
         gpu.assign_subset(GpuWorldSubsetKind::Wren, GpuWorldSubset::Owned(
-            OwnedGpuWorldSubset::new::<WrenInstanceData>(&dev, GpuWorldSubsetKind::Wren)));
+            OwnedGpuWorldSubset::new::<WrenInstanceData>(&dev, GpuWorldSubsetKind::Wren, 0)));
         let mut world = World::new();
         world.insert_resource(gpu);
         world.insert_resource(MeshAtlasLibrary::default());
@@ -1795,13 +1800,15 @@ mod tests {
     #[test]
     fn named_mesh_resolves_through_the_atlas_for_that_shader() {
         let dev = MockDevice::default();
-        let mut gpu = world_with(GpuWorldSubsetKind::Plant, &dev);
+        let mut gpu = GpuWorld::new(&dev);
         let mut atlas = MeshAtlasLibrary::default();
         let mut mesh = Mesh::new("m");
         mesh.set_attribute("Vertex_Position", vec![Vec3::ZERO, Vec3::X, Vec3::Y]);
         mesh.set_indices(vec![0, 1, 2]);
         let name = NameHash::compute("bush");
         atlas.add(GpuWorldSubsetKind::Plant, name, &mesh);
+        gpu.assign_subset(GpuWorldSubsetKind::Plant, GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<PlantInstanceData>(
+            &dev, GpuWorldSubsetKind::Plant, atlas.get_by_world_subset(GpuWorldSubsetKind::Plant).atlas.layouts.len())));
         let e = entities(1)[0];
         let d = NaniInstanceDesc {
             mesh: NaniMeshSelector::Named(name),
@@ -1900,8 +1907,7 @@ mod tests {
             GpuWorldSubsetKind::Plant,
             GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<SolidVertexColorInstanceData>(
                 &dev,
-                GpuWorldSubsetKind::Plant,
-            )),
+                GpuWorldSubsetKind::Plant, 0)),
         );
         let mut local = NaniActiveInstanceCollection::default();
         let e = entities(1)[0];

@@ -1043,7 +1043,7 @@ mod tests {
             minimum_y: 0.0, maximum_y: 0.0, sampling_fix: false,
         };
         let mut public = PublicWalls::default();
-        public.consume(&mut inner, &terrain);
+        public.consume_with_paths(&mut inner, &terrain, None, &country_core::resources::walls::public_walls::WallPublicationDirty::default(), &country_core::resources::walls::public_walls::WallSpatialHash::default());
         assert!(public.get(wall).is_some());
         (public, wall)
     }
@@ -1457,7 +1457,7 @@ mod tests {
         let terrain = TerrainHeightGrid512 { encoded: vec![0; 512 * 512].into(),
             minimum_y: 0.0, maximum_y: 0.0, sampling_fix: false };
         let mut walls = PublicWalls::default();
-        walls.consume(&mut inner, &terrain);
+        walls.consume_with_paths(&mut inner, &terrain, None, &country_core::resources::walls::public_walls::WallPublicationDirty::default(), &country_core::resources::walls::public_walls::WallSpatialHash::default());
         (walls, id)
     }
 
@@ -1555,7 +1555,7 @@ mod tests {
         let id = inner.new_wall(WallState::new(curve, 4.0, 0, 0, false));
         let terrain = TerrainHeightGrid512 { encoded: vec![0; 512 * 512].into(),
             minimum_y: 0.0, maximum_y: 0.0, sampling_fix: false };
-        let mut walls = PublicWalls::default(); walls.consume(&mut inner, &terrain);
+        let mut walls = PublicWalls::default(); walls.consume_with_paths(&mut inner, &terrain, None, &country_core::resources::walls::public_walls::WallPublicationDirty::default(), &country_core::resources::walls::public_walls::WallSpatialHash::default());
         let wall = walls.get(id).unwrap();
         for side in [0, 1] {
             let result = walk_shape(wall, [AlignKind { byte_2: side, ..turn_alignment() }; 2],

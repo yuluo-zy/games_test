@@ -4,17 +4,86 @@ import argparse, contextlib, datetime, fcntl, hashlib, json, math, os, pathlib, 
 
 ROOT=pathlib.Path(__file__).resolve().parents[4]
 
+class ThreadCpuSampler:
+    """Read Darwin's cumulative user/system CPU counters outside the game.
+
+    Darwin proc_threadinfo: PROC_PIDLISTTHREADIDS=28 returns kernel unique
+    IDs for PROC_PIDTHREADID64INFO=15. The older address IDs can be reused.
+    Counters are nanoseconds actually scheduled on CPU;
+    sleeping on a GPU fence or a mutex does not advance them.
+    """
+    def __init__(self):
+        import ctypes
+        self.c=ctypes
+        class ThreadInfo(ctypes.Structure):
+            _fields_=[('user_ns',ctypes.c_uint64),('system_ns',ctypes.c_uint64),
+                      ('scheduling',ctypes.c_int32*8),('name',ctypes.c_char*64)]
+        self.info=ThreadInfo
+        self.lib=ctypes.CDLL('/usr/lib/libproc.dylib',use_errno=True)
+        self.lib.proc_pidinfo.argtypes=[ctypes.c_int,ctypes.c_int,ctypes.c_uint64,ctypes.c_void_p,ctypes.c_int]
+        self.lib.proc_pidinfo.restype=ctypes.c_int
+    def snapshot(self,pid):
+        c=self.c
+        ids=(c.c_uint64*4096)()
+        size=self.lib.proc_pidinfo(pid,28,0,ids,c.sizeof(ids))
+        if size<=0:return {'error':f'listthreads errno={c.get_errno()}'}
+        if size>=c.sizeof(ids) or size%8:return {'error':'thread inventory truncated or malformed'}
+        threads={}
+        for ident in ids[:size//8]:
+            info=self.info()
+            if self.lib.proc_pidinfo(pid,15,ident,c.byref(info),c.sizeof(info))!=c.sizeof(info):
+                continue # A thread can exit between inventory and its counter read.
+            threads[str(ident)]={'name':info.name.decode(errors='replace'),
+                                 'user_ns':info.user_ns,'system_ns':info.system_ns,
+                                 'scheduling':dict(zip(('cpu_usage','policy','run_state','flags',
+                                    'sleep_time','curpri','priority','maxpriority'),info.scheduling))}
+        return {'threads':threads,'thread_id_kind':'kernel_unique_id'}
+
+def thread_cpu_summary(snapshots,warmup,frames):
+    measured=[s for s in snapshots if warmup<s['last_observed_world_frame']<warmup+frames
+              and s.get('thread_cpu',{}).get('threads')]
+    if len(measured)<2:return None
+    first,last=measured[0],measured[-1]
+    frame_delta=last['last_observed_world_frame']-first['last_observed_world_frame']
+    if frame_delta<=0:return None
+    a,b=first['thread_cpu']['threads'],last['thread_cpu']['threads'];rows=[]
+    for name in ['main','tg-render']:
+        start_ids={ident for ident,row in a.items() if row['name']==name}
+        end_ids={ident for ident,row in b.items() if row['name']==name}
+        if len(start_ids)!=1 or start_ids!=end_ids:
+            raise RuntimeError(f'Required CPU thread changed or exited inside measurement: {name}')
+        if any(t.get('scheduling',{}).get('maxpriority',0)<=4
+               for sample in measured for t in sample['thread_cpu']['threads'].values() if t['name']==name):
+            raise RuntimeError(f'Required CPU thread was background-throttled inside measurement: {name}')
+    for ident in a.keys()&b.keys():
+        user=b[ident]['user_ns']-a[ident]['user_ns'];system=b[ident]['system_ns']-a[ident]['system_ns']
+        if min(user,system)<0:raise RuntimeError('Per-thread CPU counter regressed')
+        rows.append({'thread_id':ident,'name':b[ident]['name'],
+                     'cpu_ms_per_observed_frame':(user+system)/1e6/frame_delta,
+                     'user_ms_per_observed_frame':user/1e6/frame_delta,
+                     'system_ms_per_observed_frame':system/1e6/frame_delta})
+    return {'threads':sorted(rows,key=lambda row:row['cpu_ms_per_observed_frame'],reverse=True),
+            'observed_frame_range':[first['last_observed_world_frame'],last['last_observed_world_frame']],
+            'persistent_threads_cpu_ms_per_observed_frame':sum(r['cpu_ms_per_observed_frame'] for r in rows),
+            'threads_exited':sorted(a.keys()-b.keys()),'threads_started':sorted(b.keys()-a.keys()),
+            'scope':'Actual user+kernel CPU time; GPU execution and sleeping waits excluded. Means over observed frame range, not per-frame p95 or a parallel critical-path measurement. Exited/new threads excluded from the persistent-thread sum.'}
+
 def percentile(values, q):
     if not values: return None
     ordered=sorted(values)
     return ordered[max(0, math.ceil(len(ordered)*q)-1)]
 
 def summarize(log, warmup, frames):
-    text=log.read_text(errors='replace'); observations=[]; stages={}; extras={}; frame_counters={}; receipt_frames={}
+    text=log.read_text(errors='replace'); observations=[]; stages={}; extras={}; frame_counters={}; receipt_frames={}; cpu_frames={}
     for line in text.splitlines():
         fields=dict(re.findall(r'([a-z_]+)=([^\s]+)',line))
         if line.startswith('PERF_FRAME '):
             observations.append({k:int(v) for k,v in fields.items()})
+        elif ' render_cpu ' in line:
+            if int(fields['interval_frames'])!=1:raise RuntimeError('CPU interval did not cover exactly one completed gameplay frame')
+            frame=int(fields['gameplay_n'])
+            if frame in cpu_frames:raise RuntimeError('Duplicate per-frame CPU observation')
+            cpu_frames[frame]=float(fields['scheduled_ms'])
         elif ' render_stages ' in line:
             receipt=re.search(r'receipt=Some\((\d+)\)',line)
             if receipt:
@@ -37,7 +106,7 @@ def summarize(log, warmup, frames):
                        if (n:=receipt_frames.get(r['receipt'])) in frame_counters]
     measured_collect=[extras[n] for r in selected if (n:=receipt_frames.get(r['receipt'])) in extras]
     allocator=re.search(r'^WSI_ALLOCATOR (\S+)$',text,re.MULTILINE)
-    return {'frames':len(selected),'warmup':warmup,'observed_fps':1000*len(intervals)/sum(intervals),
+    summary = {'frames':len(selected),'warmup':warmup,'observed_fps':1000*len(intervals)/sum(intervals),
             'allocator':allocator[1] if allocator else None,
             'measured_upload_pending_yields':{'rows':len(measured_counters),'total':sum(measured_counters),'maximum':max(measured_counters,default=0)} if measured_counters else None,
             'metrics':metrics,'render_stage_rows':sum(r['receipt'] in stages for r in selected),
@@ -46,6 +115,28 @@ def summarize(log, warmup, frames):
             'collect_totals_all_gameplay':{key:sum(row.get(key,0) for row in extras.values()) for key in ['tasks','cross_pass_tasks']} if extras else None,
             'startup_line':next((line for line in text.splitlines() if line.startswith('PERF_WORLD_FIRST ')),None),
             'scope':'Real desktop loop and native WSI; render-feedback intervals measure throughput, not GPU completion or photon latency. Stage wall times overlap CPU/GPU work and must not be summed. Missing timing rows/counters mean instrumentation was disabled.'}
+
+    cpu_selected=[cpu_frames[frame] for frame in range(warmup+1,warmup+frames+1) if frame in cpu_frames]
+    if cpu_selected:
+        if len(cpu_selected)!=frames:raise RuntimeError('Per-frame CPU observations do not cover every measured gameplay frame')
+        summary['metrics']['render_thread_cpu_ms']={**distribution(cpu_selected),'mean':sum(cpu_selected)/len(cpu_selected)}
+        summary['render_cpu_scope']='Timing-enabled capture: actual thread user+kernel CPU between consecutive gameplay completions, includes prior diagnostic/idle CPU work; GPU execution and sleeping excluded. Other threads measured separately.'
+    return summary
+
+def input_manifest(log, scenario):
+    """Reject unbound benchmark inputs; preserve full semantic evidence once."""
+    text=log.read_text(errors='replace')
+    result={}
+    for name in ('CLOCK','SCENE') + (('SOURCES',) if scenario == 'many_draws' else ()):
+        rows=[json.loads(line.split(' ',1)[1]) for line in text.splitlines()
+              if line.startswith(f'PERF_INPUT_{name} ')]
+        if len(rows)!=1 or rows[0].get('schema')!=2:
+            raise RuntimeError(f'Expected one schema 2 PERF_INPUT_{name} manifest')
+        result[name.lower()]=rows[0]
+    canonical=lambda value:json.dumps(value,sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()
+    return {'schema':2,'manifests':result,
+            'sha256':{key:hashlib.sha256(canonical(value)).hexdigest() for key,value in result.items()},
+            'scope':'Test-only semantic CPU mesh, source selection, fixed clock, draw-list and Nani cull inputs. Does not claim complete GPU scene equivalence.'}
 
 def require_parallel_evidence(metadata, binary_sha256):
     if metadata.get('exit_code') != 0 or metadata.get('analysis_error'):
@@ -60,7 +151,7 @@ def require_parallel_evidence(metadata, binary_sha256):
 def cpu_summary(snapshots,warmup,frames):
     # macOS ps can report a just-exited child as 0:00.00 / RSS 0 before
     # waitpid reaps it. That is not a cumulative CPU counter sample.
-    measured=[s for s in snapshots if warmup < s['last_observed_world_frame'] <= warmup+frames
+    measured=[s for s in snapshots if warmup < s['last_observed_world_frame'] < warmup+frames
               and len(s['cpu_time_and_rss_kib'].split()) == 2
               and int(s['cpu_time_and_rss_kib'].split()[1]) > 0]
     if len(measured)<2:return None
@@ -120,18 +211,35 @@ def run_exclusive(args,index):
     if args.gpu:env['TG_GPU_TIMING']='1'
     else:env.pop('TG_GPU_TIMING',None)
     cpu_profile=getattr(args,'cpu_profile',False)
-    if cpu_profile:env.update(TG_PROFILE_OUT=str(directory/'cpu-stacks.folded'),TG_PROFILE_DELAY='20',TG_PROFILE_SECS='10')
+    if cpu_profile:env.update(TG_PROFILE_OUT=str(directory/'cpu-stacks.folded'),
+                             TG_PROFILE_DELAY=str(args.cpu_profile_delay),TG_PROFILE_SECS='10')
     binary_sha256=hashlib.sha256(args.binary.read_bytes()).hexdigest()
     build_path,build_metadata=frozen_build(binary_sha256)
+    symbols=build_metadata.get('debug_symbols')
+    if cpu_profile:
+        if not symbols:
+            raise RuntimeError('CPU source profiling requires frozen UUID-bound dSYM; external debug-map objects can be overwritten by later builds')
+        dwarf=pathlib.Path(symbols['path'])/'Contents/Resources/DWARF'/args.binary.name
+        if hashlib.sha256(dwarf.read_bytes()).hexdigest()!=symbols['dwarf_sha256']:
+            raise RuntimeError('Frozen CPU debug symbols changed')
     evidence=getattr(args,'parallel_evidence',None)
     if not args.timing:
         if evidence is None:raise RuntimeError('Run --timing first, then provide its run.json with --parallel-evidence for uninstrumented measurements')
         require_parallel_evidence(json.loads(evidence.read_text()),binary_sha256)
+    reference=json.loads(args.input_reference.read_text())
+    if reference.get('schema')!=2 or not reference.get('sha256'):
+        raise RuntimeError('Input reference must be a complete schema 2 short-run manifest')
     log=directory/'runtime.log';start=time.monotonic();cpu=[];system=[];sample=None
+    input_checked=False
+    thread_sampler=ThreadCpuSampler()
     with log.open('w') as output:
-        process=subprocess.Popen([str(args.binary)],cwd=ROOT,env=env,stdout=output,stderr=subprocess.STDOUT)
-        metadata={'pid':process.pid,'binary':str(args.binary),'binary_sha256':binary_sha256,
+        command=[str(args.binary),'-NSAppSleepDisabled','YES']
+        process=subprocess.Popen(command,cwd=ROOT,env=env,stdout=output,stderr=subprocess.STDOUT)
+        metadata={'pid':process.pid,'command':command,'binary':str(args.binary),'binary_sha256':binary_sha256,
+            'debug_symbols_uuid':symbols.get('uuid') if symbols else None,
+            'cpu_profile_source_identity':{'valid':True,'dwarf_sha256':symbols['dwarf_sha256']} if cpu_profile else None,
             'parallel_evidence':str(evidence) if evidence else None,
+            'input_reference':str(args.input_reference),'reference_input_sha256':reference['sha256'],
             'frozen_build_manifest':str(build_path),
             'audited_source_archive_sha256':build_metadata['audited_source_archive_sha256'],
             'scenario':args.scenario,'mode':args.mode,'warmup':args.warmup,'frames':args.frames,'stack_sampling':args.sample,
@@ -152,7 +260,17 @@ def run_exclusive(args,index):
             result=subprocess.run(['/bin/ps','-p',str(process.pid),'-o','time=,rss='],capture_output=True,text=True)
             if result.returncode==0:
                 observed_frames=re.findall(r'PERF_FRAME frame=(\d+)',log.read_text(errors='replace'))
-                cpu.append({'elapsed_s':elapsed,'last_observed_world_frame':int(observed_frames[-1]) if observed_frames else 0,'cpu_time_and_rss_kib':result.stdout.strip()})
+                cpu.append({'elapsed_s':elapsed,'last_observed_world_frame':int(observed_frames[-1]) if observed_frames else 0,'cpu_time_and_rss_kib':result.stdout.strip(),
+                            'thread_cpu':thread_sampler.snapshot(process.pid)})
+                if observed_frames and int(observed_frames[-1])>=200 and not input_checked:
+                    inputs=input_manifest(log,args.scenario)
+                    metadata['inputs']=inputs;input_checked=True
+                    if inputs['sha256']!=reference['sha256']:
+                        metadata['analysis_error']='Semantic input mismatch before measurement; run cancelled'
+                        process.terminate()
+                        try:process.wait(timeout=15)
+                        except subprocess.TimeoutExpired:process.kill();process.wait()
+                        break
             if elapsed>=system_at:
                 snapshot=subprocess.run(['/bin/ps','-axo','pid=,pcpu=,comm='],capture_output=True,text=True)
                 system.append({'elapsed_s':elapsed,'process_cpu':snapshot.stdout,'exit_code':snapshot.returncode})
@@ -165,18 +283,27 @@ def run_exclusive(args,index):
     if sample is not None:
         metadata['sample_exit_code']=sample.wait(timeout=15)
         if (directory/'stacks.txt').exists():metadata['stack_sha256']=hashlib.sha256((directory/'stacks.txt').read_bytes()).hexdigest()
-    metadata.update(exit_code=process.returncode,elapsed_s=time.monotonic()-start,log_sha256=hashlib.sha256(log.read_bytes()).hexdigest(),cpu=cpu_summary(cpu,args.warmup,args.frames))
+    # Preserve raw counters even if a later identity/monotonicity check fails.
     (directory/'cpu-snapshots.json').write_text(json.dumps(cpu,indent=2))
     (directory/'system-snapshots.json').write_text(json.dumps(system,indent=2))
+    metadata.update(exit_code=process.returncode,elapsed_s=time.monotonic()-start,log_sha256=hashlib.sha256(log.read_bytes()).hexdigest(),
+                    measurement_runner_sha256=hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest())
+    try:
+        metadata.update(cpu=cpu_summary(cpu,args.warmup,args.frames),thread_cpu=thread_cpu_summary(cpu,args.warmup,args.frames))
+    except Exception as error:
+        metadata.setdefault('analysis_error',str(error))
     if process.returncode==0:
         try:
+            if not input_checked:metadata['inputs']=input_manifest(log,args.scenario)
+            if metadata['inputs']['sha256']!=reference['sha256']:raise RuntimeError('Semantic input mismatch')
+            (directory/'input-manifests.json').write_text(json.dumps(metadata['inputs'],indent=2)+'\n')
             metadata['measurement']=summarize(log,args.warmup,args.frames)
             if args.gpu and not metadata['measurement']['gpu_windows_with_samples']:raise RuntimeError('No completed GPU timestamp samples; empty capture is not zero GPU time')
             if args.timing:
                 if metadata['measurement']['render_stage_rows']!=args.frames:raise RuntimeError('Stage timings did not cover every measured render receipt')
                 require_parallel_evidence(metadata,binary_sha256)
                 metadata['parallel_acceptance']=True
-        except Exception as error:metadata['analysis_error']=str(error)
+        except Exception as error:metadata.setdefault('analysis_error',str(error))
     if args.sample and (sample is None or sample.returncode!=0 or not (directory/'stacks.txt').exists()):metadata['analysis_error']='Requested process stack sampling did not complete successfully'
     if cpu_profile:
         folded=directory/'cpu-stacks.folded'
@@ -194,6 +321,9 @@ if __name__=='__main__':
     parser.add_argument('--warmup',type=int,default=300);parser.add_argument('--frames',type=int,default=3000)
     parser.add_argument('--timeout',type=int,default=900);parser.add_argument('--sample',action='store_true');parser.add_argument('--gpu',action='store_true');parser.add_argument('--timing',action='store_true')
     parser.add_argument('--cpu-profile',action='store_true')
+    parser.add_argument('--cpu-profile-delay',type=int,default=60,
+                        help='Begin CPU stack capture after warmup; keep it inside the measured run')
+    parser.add_argument('--input-reference',type=pathlib.Path,required=True,help='schema 2 input manifest from a successful short admission run')
     parser.add_argument('--parallel-evidence',type=pathlib.Path,help='Successful --timing run.json for the same frozen binary; required when timing is disabled')
     arguments=parser.parse_args();arguments.binary=arguments.binary.resolve();arguments.out=arguments.out.resolve();arguments.out.mkdir(parents=True,exist_ok=True)
     for iteration in range(1,arguments.rounds+1):

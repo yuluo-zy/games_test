@@ -763,7 +763,7 @@ struct FrameRow {
     declare: Duration,
     compile: Duration,
     execute: Duration,
-    shader_heap: rhapsody::bindless::BindlessStats,
+    shader_heap: rhapsody::bindless::BindlessOccupancy,
     texture_heap: rhapsody::bindless::BindlessStats,
     constants: rhapsody::resource::DynamicConstantsStats,
     allocated_bytes: u64,
@@ -796,6 +796,9 @@ fn shipped_session_steady_state_multi_frame() -> Result<()> {
 }
 
 fn run_shipped_session_steady_state_multi_frame() -> Result<()> {
+    let collect_probe_enabled = std::env::var("TG_FRAME_TIMING").is_ok_and(|value| value == "1");
+    let require_cross_pass = std::env::var_os("TG_REQUIRE_CROSS_PASS").is_some();
+    anyhow::ensure!(!require_cross_pass || collect_probe_enabled, "Collect task acceptance requires TG_FRAME_TIMING=1");
     let frames: usize = std::env::var("TG_MULTIFRAME_FRAMES").ok()
         .map(|value| value.parse()).transpose()?.unwrap_or(30);
     anyhow::ensure!((30..=100_000).contains(&frames), "TG_MULTIFRAME_FRAMES must be 30..=100000");
@@ -867,7 +870,7 @@ fn run_shipped_session_steady_state_multi_frame() -> Result<()> {
                 format!(
                     "steady-state frame {index}: constants {:?}, shader heap {:?}, pending {}",
                     { let stats = bridge.raster_resources().dynamic_constants().lock().stats(); stats },
-                    bridge.shader_backend().bindless_stats(),
+                    bridge.shader_backend().bindless_occupancy(),
                     bridge.with_session(|session| session.pending_frame_count()),
                 )
             })?;
@@ -884,7 +887,7 @@ fn run_shipped_session_steady_state_multi_frame() -> Result<()> {
         let stats = frame.receipt.stats;
         eprintln!(
             "MULTIFRAME progress frame {index}: shader heap {:?}, record {:.0} ms, retirement {:?}",
-            bridge.shader_backend().bindless_stats(),
+            bridge.shader_backend().bindless_occupancy(),
             stats.record_ns as f64 / 1e6,
             device.retirement_stats(),
         );
@@ -920,7 +923,7 @@ fn run_shipped_session_steady_state_multi_frame() -> Result<()> {
             declare: frame.declare,
             compile: frame.compile,
             execute: frame.execute,
-            shader_heap: bridge.shader_backend().bindless_stats(),
+            shader_heap: bridge.shader_backend().bindless_occupancy(),
             texture_heap,
             constants,
             allocated_bytes: device.allocator_stats().totals().total_allocated_bytes,
@@ -969,17 +972,18 @@ fn run_shipped_session_steady_state_multi_frame() -> Result<()> {
     // every surviving descriptor through its intended frame-global/sampler
     // owner. A strong residency index or leaked past frame fails exactly here.
     let collection = country_core::render::declare_probe::take();
-    {
-        assert!(collection.collect_tasks > 0, "parallel acceptance ran only inline fallback");
+    assert!(rows.iter().all(|row| row.stats.chunks > 0), "native recording must execute shared-pool chunks");
+    if collect_probe_enabled {
+        assert!(collection.collect_tasks > 0, "enabled Collect probe recorded no shared-pool tasks");
         eprintln!("MULTIFRAME actual shared-pool Collect jobs: {}, cross-pass jobs: {}", collection.collect_tasks, collection.cross_pass_tasks);
-        if std::env::var_os("TG_REQUIRE_CROSS_PASS").is_some() {
+        if require_cross_pass {
             assert!(collection.cross_pass_tasks > 0, "cross-pass acceptance ran only single-pass Collect");
         }
     }
-    let drained = bridge.shader_backend().bindless_stats();
+    let drained = bridge.shader_backend().bindless_occupancy();
     let expected = bridge.shader_backend().retained_bindless_counts();
     let actual = drained.tables.map(|table| table.live);
-    eprintln!("MULTIFRAME drained descriptor owners: actual={actual:?}, expected={expected:?}, peak={}", drained.peak_live);
+    eprintln!("MULTIFRAME drained descriptor owners: actual={actual:?}, expected={expected:?}");
     assert_eq!(actual, expected, "descriptors outlive their intended owners after actual GPU completion");
     assert_eq!(drained.live, expected.iter().sum::<usize>());
     // Grass blades survive the steady state. The ground carries a fine blade texture only while
@@ -1024,17 +1028,17 @@ fn run_shipped_session_steady_state_multi_frame() -> Result<()> {
     }
 
     // ---- report -------------------------------------------------------------------------------
-    eprintln!("MULTIFRAME idx counter hist hit compile_ms record_ms submit_ms barriers/trans cmds batches par chunks | update declare compile exec (ms) | shaderheap live/ret/peak  texheap live | constants pages/inflight/creat/reuse | alloc_MiB blocks parked");
+    eprintln!("MULTIFRAME idx counter hist hit compile_ms record_ms submit_ms barriers/trans cmds batches par chunks | update declare compile exec (ms) | shaderpool sampled_live  texheap live | constants pages/inflight/creat/reuse | alloc_MiB blocks parked");
     for r in &rows {
         eprintln!(
-            "MULTIFRAME {:>2} {:>2} {} {} {:>8.1} {:>8.1} {:>8.1} {}/{} {} {} {} {} | {:>7.1} {:>7.1} {:>7.1} {:>7.1} | {}/{} {} | {}/{}/{}/{} | {:.1} {} {}",
+            "MULTIFRAME {:>2} {:>2} {} {} {:>8.1} {:>8.1} {:>8.1} {}/{} {} {} {} {} | {:>7.1} {:>7.1} {:>7.1} {:>7.1} | {} {} | {}/{}/{}/{} | {:.1} {} {}",
             r.index, r.frame_counter, u8::from(r.history_valid), u8::from(r.stats.plan_cache_hit),
             r.stats.compile_ns as f64 / 1e6, r.stats.record_ns as f64 / 1e6, r.stats.submit_ns as f64 / 1e6,
             r.stats.barrier_commands, r.stats.barrier_transitions, r.stats.commands_recorded,
             r.stats.batches, r.stats.parallel_batches, r.stats.chunks,
             r.update.as_secs_f64() * 1e3, r.declare.as_secs_f64() * 1e3,
             r.compile.as_secs_f64() * 1e3, r.execute.as_secs_f64() * 1e3,
-            r.shader_heap.live, r.shader_heap.peak_live, r.texture_heap.live,
+            r.shader_heap.live, r.texture_heap.live,
             r.constants.pages, r.constants.in_flight_pages, r.constants.page_creations, r.constants.page_reuses,
             r.allocated_bytes as f64 / (1024.0 * 1024.0), r.native_blocks, r.parked_resources,
         );

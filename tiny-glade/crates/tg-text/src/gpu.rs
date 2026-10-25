@@ -6,8 +6,8 @@ use crate::validation::{RenderLimits, validate_batch};
 use ash::vk;
 use input::{Globals, PackedGlyphUploads};
 use rhapsody::{
-    bindless::BindlessConfig, bindless::BindlessHeap, bindless::BindlessLease,
-    bindless::BindlessParameters, bindless::BindlessResource, bindless::BindlessShaderAbi,
+    bindless::BindlessConfig, bindless::BindlessHeap, bindless::BindlessPagePool,
+    bindless::BindlessResource, bindless::BindlessShaderAbi,
     bindless::BindlessShaderPackage, command::VulkanCommandPool, command::buffer_access,
     command::image_access, command::record_texture_regions, command::record_texture_zero_fill,
     device::Device, pipeline::AsyncPipelineCompiler, pipeline::CompilerConfig,
@@ -129,9 +129,9 @@ impl Default for GpuTextConfig {
 /// immutability contract. A timed-out submission retains its resources until completion.
 pub struct GpuTextRenderer {
     device: Arc<Device>,
-    heap: Arc<BindlessHeap>,
+    pages: Arc<BindlessPagePool>,
     abi: Arc<BindlessShaderAbi>,
-    sampler_leases: Vec<(BindingLocation, Arc<BindlessLease>)>,
+    samplers: Vec<(BindingLocation, Arc<Sampler>)>,
     parameters: DynamicConstants,
     bindings: TextBindings,
     compiler: AsyncPipelineCompiler,
@@ -182,19 +182,19 @@ impl GpuTextRenderer {
         config: GpuTextConfig,
     ) -> GpuResult<Self> {
         let heap = BindlessHeap::new(device.clone(), BindlessConfig::default())?;
-        Self::new_with_heap(device, compiled_bytes, blue_noise, heap, config)
+        Self::new_with_pages(device, compiled_bytes, blue_noise, BindlessPagePool::new(heap)?, config)
     }
-    /// Share an existing bindless heap across text and scene pipelines.
-    /// The heap and blue-noise texture must belong to `device`; the shader ABI
+    /// Share the canonical bindless page pool across text and scene pipelines.
+    /// The pages and blue-noise texture must belong to `device`; the shader ABI
     /// and configuration are validated before pipeline creation. The pipeline ticket
     /// wait has a five-second timeout; dropping its compiler may still wait for an
     /// in-progress driver compilation. Errors include device/ABI mismatch, invalid
     /// budgets, allocation, compilation and disk-cache I/O failures.
-    pub fn new_with_heap(
+    pub fn new_with_pages(
         device: Arc<Device>,
         compiled_bytes: &[u8],
         blue_noise: Arc<Texture>,
-        heap: Arc<BindlessHeap>,
+        pages: Arc<BindlessPagePool>,
         config: GpuTextConfig,
     ) -> GpuResult<Self> {
         if config.max_resolver_images == 0
@@ -211,6 +211,7 @@ impl GpuTextRenderer {
         {
             return Err("invalid text GPU budgets, resolver capacity or completion timeout".into());
         }
+        let heap = pages.template();
         if !Arc::ptr_eq(&device, &heap.layout.device()) {
             return Err(
                 rhapsody::Error::invalid_usage("text heap belongs to another device").into(),
@@ -223,7 +224,7 @@ impl GpuTextRenderer {
         let bindings = TextBindings::resolve(&compiled.reflection)?;
         Globals::validate_layout(&compiled.reflection, bindings.globals)?;
         let package = BindlessShaderPackage::new(&heap, &compiled, config.max_resolver_images)?;
-        let mut sampler_leases = Vec::with_capacity(2);
+        let mut samplers = Vec::with_capacity(2);
         for (location, name) in bindings
             .samplers
             .into_iter()
@@ -243,7 +244,7 @@ impl GpuTextRenderer {
                     .address_mode_v(vk::SamplerAddressMode::CLAMP_TO_EDGE)
                     .address_mode_w(vk::SamplerAddressMode::CLAMP_TO_EDGE),
             )?);
-            sampler_leases.push((location, heap.sampler(sampler)?));
+            samplers.push((location, sampler));
         }
         let vertex = package
             .stages
@@ -271,6 +272,7 @@ impl GpuTextRenderer {
             CompilerConfig {
                 workers: 1,
                 max_pending: 8,
+                max_deferred_pending: 8,
                 max_request_bytes: 1 << 20,
                 max_cached_requests: 32,
             },
@@ -300,9 +302,9 @@ impl GpuTextRenderer {
         Ok(Self {
             attachments: AttachmentCache::new(device.clone())?,
             device,
-            heap,
+            pages,
             abi: package.abi,
-            sampler_leases,
+            samplers,
             parameters,
             bindings,
             compiler,
@@ -403,7 +405,7 @@ impl GpuTextRenderer {
         // Completion is a gate before any mapped write, including after a timeout.
         self.device.try_collect_garbage()?;
         self.command_pool.reset_completed(&mut [])?;
-        self.heap.collect()?;
+        self.pages.template().collect()?;
         let packed_uploads = PackedGlyphUploads::new(input.uploads)?;
         let frame = self.prepare_frame(&input, pipeline)?;
         let mut command = self.command_pool.allocate()?;
@@ -434,7 +436,7 @@ impl GpuTextRenderer {
                 command_pool_resets: self.command_pool.reset_count(),
                 compiled_pipeline_requests: self.compiler.stats().compiled,
                 dynamic_rendering: frame.pipeline.dynamic_rendering_formats().is_some(),
-                bindless_live_slots: self.heap.stats().live,
+                bindless_live_slots: self.pages.sampled_occupancy().live,
                 dynamic_constant_page_creations: self.parameters.stats().page_creations,
                 transfer_buffer_creations: self.transfer_buffer_creations,
             },

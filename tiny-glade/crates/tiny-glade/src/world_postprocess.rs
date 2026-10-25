@@ -471,9 +471,7 @@ fn prepare_mei(
             .get_handle_and_texture_by_name(NameHash(0x579f_39ab_91a0_1865))
             .map(|(_, texture)| texture)
             .ok_or_else(|| tail_missing("MEI blue_noise texture 0x579f39ab91a01865"))?;
-        raster
-            .assets
-            .lock()
+        std::sync::Arc::make_mut(&mut raster.assets.lock().collect)
             .textures_by_name
             .entry(0x579f_39ab_91a0_1865)
             .or_insert((ManagedHandle(source.id), AttachmentTexture::from(source)));

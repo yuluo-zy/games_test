@@ -607,6 +607,8 @@ pub struct ProductionRenderer {
     other_applications: BTreeMap<usize, ApplicationGpu>,
     timing: Option<RenderStageTiming>,
     timing_gameplay_count: u64,
+    #[cfg(all(feature = "profile", target_os = "macos"))]
+    cpu_interval: Option<(u64, u64)>,
     gpu_span_window: crate::frame_counters::GpuSpanWindow,
     compiled_shader_root: PathBuf,
     pending: VecDeque<PresentTicket>,
@@ -766,6 +768,8 @@ impl ProductionRenderer {
             other_applications: BTreeMap::new(),
             timing: None,
             timing_gameplay_count: 0,
+            #[cfg(all(feature = "profile", target_os = "macos"))]
+            cpu_interval: None,
             gpu_span_window: Default::default(),
             compiled_shader_root,
             pending: VecDeque::new(),
@@ -1315,10 +1319,13 @@ impl ProductionRenderThread {
         side.world.insert_resource(QueuedFrame { buffers, mode, egui, activation_error,
             activation, write_back });
     }
-    pub(crate) fn managed_buffer(&mut self, buffer: country_core::render::ssbo::rhapsody_boundary::Buffer)
-        -> Option<rhapsody::resource::ManagedBuffer>
+    pub(crate) fn mapped_buffer_writer(&self, buffer: country_core::render::ssbo::rhapsody_boundary::Buffer)
+        -> Option<(rhapsody::resource::ManagedBuffer,
+            Arc<dyn country_core::render::ssbo::rhapsody_boundary::MappedUploadWriter>)>
     {
-        self.hosts.buffers.managed_buffer(&buffer)
+        use country_core::render::ssbo::rhapsody_boundary::GraphicsDevice;
+        Some((self.hosts.buffers.managed_buffer(&buffer)?,
+            self.hosts.buffers.mapped_upload_writer(&buffer)?))
     }
 }
 
@@ -1406,6 +1413,8 @@ impl ProductionRenderer {
             other_applications,
             timing: None,
             timing_gameplay_count: 0,
+            #[cfg(all(feature = "profile", target_os = "macos"))]
+            cpu_interval: None,
             gpu_span_window: Default::default(),
             compiled_shader_root,
             pending: VecDeque::new(),
@@ -1717,6 +1726,29 @@ impl ProductionRenderer {
         host_result
     }
 
+    /// Consecutive completion samples cover all render-thread CPU work,
+    /// including prior diagnostics and idle polling. Sleeping/GPU time does
+    /// not advance this clock. Only the existing opt-in timing path calls it.
+    #[cfg(all(feature = "profile", target_os = "macos"))]
+    fn record_cpu_interval(&mut self, frame: u64, emit: bool) {
+        let mut stamp = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+        if unsafe { libc::clock_gettime(libc::CLOCK_THREAD_CPUTIME_ID, &mut stamp) } != 0 {
+            log::warn!(target: "tiny_glade::frame_timing", "render_cpu_error gameplay_n={} error={}", frame, std::io::Error::last_os_error());
+            self.cpu_interval = None;
+            return;
+        }
+        let now = stamp.tv_sec as u64 * 1_000_000_000 + stamp.tv_nsec as u64;
+        if let Some((previous_frame, previous_cpu)) = self.cpu_interval.replace((frame, now)) {
+            if let Some(cpu_ns) = now.checked_sub(previous_cpu) {
+                if emit {
+                    log::info!(target: "tiny_glade::frame_timing", "render_cpu gameplay_n={} interval_frames={} scheduled_ms={:.6}", frame, frame - previous_frame, cpu_ns as f64 / 1_000_000.0);
+                }
+            } else {
+                log::warn!(target: "tiny_glade::frame_timing", "render_cpu_error gameplay_n={} error=thread_cpu_clock_regressed", frame);
+            }
+        }
+    }
+
     fn finish_render(&mut self) -> anyhow::Result<()> {
         // Graph/receipt leases retain submitted owners; discard only this
         // packet's CPU resolver after cancellation or the completed back half.
@@ -1731,7 +1763,11 @@ impl ProductionRenderer {
         let declaration = self.timing.is_some().then(country_core::render::declare_probe::take);
         self.report_gpu_spans();
         let every = crate::game_loop::frame_timing_every();
-        if let Some(t) = self.timing.take().filter(|t| t.frame <= 3 || t.frame % every == 0) {
+        if let Some(t) = self.timing.take() {
+            let emit = t.frame <= 3 || t.frame % every == 0;
+            #[cfg(all(feature = "profile", target_os = "macos"))]
+            self.record_cpu_interval(t.frame, emit);
+            if !emit { return self.take_error().map_or(Ok(()), Err); }
             let ms = |d: Duration| d.as_secs_f64() * 1000.0;
             let c = counters.unwrap_or_default();
             log::info!(target: "tiny_glade::frame_timing",
@@ -1757,12 +1793,12 @@ impl ProductionRenderer {
             let (polls, queries) = self.device.timeline_poll_stats();
             let memory = self.device.memory_usage_snapshot();
             let host = self.device.allocator_stats().cpu_memory_usage();
-            let heap = self.bridge.shader_backend().bindless_stats();
+            let heap = self.bridge.shader_backend().bindless_occupancy();
             let constants = self.bridge.raster_resources().dynamic_constants().lock().stats();
             log::info!(target: "tiny_glade::frame_timing",
-                "frame_memory gameplay_n={} device_bytes={} native_blocks={} host_live={} host_cache={} descriptors_live={} descriptors_peak={} descriptors_capacity={} constants_pages={} constants_bytes={} constants_peak={}",
+                "frame_memory gameplay_n={} device_bytes={} native_blocks={} host_live={} host_cache={} descriptors_live={} descriptors_capacity={} constants_pages={} constants_bytes={} constants_peak={}",
                 t.frame, memory.application_vk_memory_bytes, memory.native_memory_blocks,
-                host.live, host.cache, heap.live, heap.peak_live, heap.capacity,
+                host.live, host.cache, heap.live, heap.capacity,
                 constants.pages, constants.backing_bytes, constants.peak_backing_bytes);
             log::info!(target: "tiny_glade::frame_timing",
                 "timeline_polls gameplay_n={} poll_calls_total={} driver_queries_total={}",
@@ -2558,6 +2594,7 @@ mod macos {
     pub struct PlatformSurface {
         layer: StrongPtr,
         view: *mut Object,
+        transaction: &'static Class,
     }
     impl PlatformSurface {
         pub fn new(window: &winit::window::Window) -> Result<Self> {
@@ -2579,7 +2616,8 @@ mod macos {
                 }
                 Ok(layer)
             })?;
-            let surface = Self { layer, view };
+            let transaction = Class::get("CATransaction").context("QuartzCore CATransaction is unavailable")?;
+            let surface = Self { layer, view, transaction };
             surface.update(window)?;
             Ok(surface)
         }
@@ -2619,10 +2657,16 @@ mod macos {
         }
         pub fn update(&self, window: &winit::window::Window) -> Result<()> {
             let size = window.inner_size();
-            unsafe {
+            let transaction = self.transaction;
+            unsafe { let (): () = transaction.send_message(Sel::register("begin"), ())?; }
+            let update = (|| -> Result<()> { unsafe {
+                // Surface geometry is an immediate OS control. Animating the
+                // backing layer leaves an old-size drawable visible while the
+                // model layer and swapchain already advertise the new extent.
+                let (): () = transaction.send_message(Sel::register("setDisableActions:"), (YES,))?;
                 let bounds: Rect = (&*self.view).send_message(Sel::register("bounds"), ())?;
                 let (): () =
-                    (&**self.layer).send_message(Sel::register("setBounds:"), (bounds,))?;
+                    (&**self.layer).send_message(Sel::register("setFrame:"), (bounds,))?;
                 let (): () = (&**self.layer)
                     .send_message(Sel::register("setContentsScale:"), (window.scale_factor(),))?;
                 let (): () = (&**self.layer).send_message(
@@ -2633,6 +2677,10 @@ mod macos {
                     },),
                 )?;
             }
+            Ok(()) })();
+            let commit: std::result::Result<(), _> = unsafe { transaction.send_message(Sel::register("commit"), ()) };
+            update?;
+            commit?;
             Ok(())
         }
         pub fn create_surface(

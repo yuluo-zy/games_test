@@ -652,17 +652,14 @@ impl HostFlushQueue {
         &self,
         flush: impl FnOnce(&[vk::MappedMemoryRange<'_>]) -> Result<()>,
     ) -> Result<()> {
-        if !self.dirty.swap(false, std::sync::atomic::Ordering::AcqRel) {
+        if !self.dirty.load(std::sync::atomic::Ordering::Acquire) {
             return Ok(());
         }
         let mut pages = self.pages.lock();
         let count = pages.iter().map(|page| page.ranges.len()).sum();
         let mut ranges: smallvec::SmallVec<[vk::MappedMemoryRange<'_>; 8]> =
             smallvec::SmallVec::new();
-        ranges.try_reserve(count).map_err(|_| {
-            self.dirty.store(true, std::sync::atomic::Ordering::Release);
-            Error::OutOfHostMemory
-        })?;
+        ranges.try_reserve(count).map_err(|_| Error::OutOfHostMemory)?;
         for page in pages.iter() {
             for &(start, end) in &page.ranges {
                 ranges.push(
@@ -678,6 +675,7 @@ impl HostFlushQueue {
             }
         }
         if ranges.is_empty() {
+            self.dirty.store(false, std::sync::atomic::Ordering::Release);
             return Ok(());
         }
         self.flush_calls
@@ -685,12 +683,12 @@ impl HostFlushQueue {
         match flush(&ranges) {
             Ok(()) => {
                 pages.clear();
+                // Pending and in-progress ranges both remain dirty until the
+                // native flush finishes while holding the same page lock.
+                self.dirty.store(false, std::sync::atomic::Ordering::Release);
                 Ok(())
             }
-            Err(error) => {
-                self.dirty.store(true, std::sync::atomic::Ordering::Release);
-                Err(error)
-            }
+            Err(error) => Err(error),
         }
     }
     /// Number of `vkFlushMappedMemoryRanges` calls issued (statistics).
@@ -1080,6 +1078,47 @@ mod tests {
             })
             .unwrap();
         assert_eq!(seen, [(0, 256)]);
+    }
+
+    #[test]
+    fn in_progress_flush_blocks_forget_and_other_submissions_until_native_completion() {
+        use ash::vk::Handle;
+        use std::{sync::mpsc, time::Duration};
+        for forget in [true, false] {
+            let queue = HostFlushQueue::default();
+            queue.record(7, vk::DeviceMemory::from_raw(0x30), 0, 256).unwrap();
+            let (entered_tx, entered_rx) = mpsc::channel();
+            let (release_tx, release_rx) = mpsc::channel();
+            let (attempt_tx, attempt_rx) = mpsc::channel();
+            let (done_tx, done_rx) = mpsc::channel();
+            let returned_early = std::thread::scope(|scope| {
+                let queued = &queue;
+                let flushing = scope.spawn(move || queued.flush_with(|ranges| {
+                    assert_eq!(ranges.len(), 1);
+                    entered_tx.send(()).unwrap();
+                    release_rx.recv().unwrap();
+                    Ok(())
+                }));
+                entered_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+                let queued = &queue;
+                let waiting = scope.spawn(move || {
+                    attempt_tx.send(()).unwrap();
+                    if forget { queued.forget(7); }
+                    else { queued.flush_with(|_| panic!("completed ranges must not flush twice")).unwrap(); }
+                    done_tx.send(()).unwrap();
+                });
+                attempt_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+                let early = done_rx.recv_timeout(Duration::from_millis(50)).is_ok();
+                // Release the controlled native call before asserting, so a
+                // failing regression still joins both threads and terminates.
+                release_tx.send(()).unwrap();
+                flushing.join().unwrap().unwrap();
+                waiting.join().unwrap();
+                early
+            });
+            assert!(!returned_early, "forget={forget}: native flush is still using the memory");
+            assert_eq!(queue.flush_calls(), 1);
+        }
     }
 
     #[test]

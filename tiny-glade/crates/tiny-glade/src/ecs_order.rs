@@ -1,19 +1,10 @@
-//! Multi-threaded ECS executor with the single-threaded order pinned
-//! (reports/render-thread-2026-10-22/ARCHITECTURE.md, step 6).
+//! Deterministic conflict dependencies for the parallel ECS executor.
 //!
-//! The schedules declare far fewer orderings than the systems' data access
-//! needs (a real run reports 525 conflicting, unordered pairs in `Update`).
-//! The single-threaded executor resolves each of them by its topological
-//! order. Before switching to the multi-threaded executor, every schedule is
-//! built once single-threaded, and each conflicting pair receives an explicit
-//! edge in exactly that order, so systems that touch the same data keep their
-//! present relative order while the rest run in parallel.
-//!
-//! On every rebuild, explicit dependencies are topologically sorted again,
-//! preferring the recorded order where possible. Conflicts are recomputed
-//! from current accesses, including newly added systems. Deferred producers
-//! are ordered with each other, but visibility still requires explicit sync
-//! dependencies in the business schedule.
+//! Each schedule is built once from its declared dependencies. Conflicting
+//! accesses receive explicit edges in that topological order; independent
+//! systems remain parallel. Rebuilds honor new explicit dependencies before
+//! preferring the recorded order. Deferred visibility continues to require
+//! explicit business dependencies and sync points.
 use bevy_ecs::{
     schedule::{
         graph::DiGraph, ExecutorKind, NodeId, ScheduleBuildError, ScheduleBuildPass,
@@ -94,22 +85,17 @@ impl ScheduleBuildPass for PinnedOrder {
 struct Repin;
 
 /// Pin every schedule of `world` and switch it to the multi-threaded executor.
-pub fn pin_and_parallelize(world: &mut World) {
+pub fn pin_and_parallelize(world: &mut World) -> anyhow::Result<()> {
     // Keep Schedules in the world: Schedule::initialize reads its ignored
     // ambiguity registry and will recreate it if resource_scope removed it.
     let labels: Vec<_> = world.resource::<Schedules>().iter().map(|(_, schedule)| schedule.label()).collect();
     for label in labels {
-        world.schedule_scope(label, |world, schedule| {
+        world.schedule_scope(label, |world, schedule| -> anyhow::Result<()> {
             schedule.remove_build_pass::<PinnedOrder>();
             schedule.configure_sets(Repin);
-            schedule.set_executor_kind(ExecutorKind::SingleThreaded);
-            if let Err(error) = schedule.initialize(world) {
-                log::warn!(target: "tiny_glade::ecs", "{label:?}: kept single-threaded, build failed: {error}");
-                return;
-            }
-            let Ok(systems) = schedule.systems() else {
-                return;
-            };
+            schedule.set_executor_kind(ExecutorKind::MultiThreaded);
+            schedule.initialize(world).map_err(|error| anyhow::anyhow!("{label:?}: parallel schedule build failed: {error}"))?;
+            let systems = schedule.systems().map_err(|error| anyhow::anyhow!("{label:?}: initialized schedule is unavailable: {error}"))?;
             let order: HashMap<NodeId, usize> =
                 systems.enumerate().map(|(index, (id, _))| (id, index)).collect();
             log::info!(target: "tiny_glade::ecs",
@@ -117,9 +103,10 @@ pub fn pin_and_parallelize(world: &mut World) {
                 order.len(), schedule.graph().conflicting_systems().len());
             schedule.add_build_pass(PinnedOrder { order });
             schedule.configure_sets(Repin);
-            schedule.set_executor_kind(ExecutorKind::MultiThreaded);
-        });
+            Ok(())
+        })?;
     }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -148,9 +135,17 @@ mod tests {
     }
 
     #[test]
+    fn invalid_schedule_returns_its_build_error_without_an_executor_fallback() {
+        let mut world = world();
+        world.resource_mut::<Schedules>().get_mut(TestSchedule).unwrap().configure_sets((TestSet::First.before(TestSet::Second), TestSet::Second.before(TestSet::First)));
+        assert!(pin_and_parallelize(&mut world).is_err());
+        assert_eq!(world.resource::<Schedules>().get(TestSchedule).unwrap().get_executor_kind(), ExecutorKind::MultiThreaded);
+    }
+
+    #[test]
     fn conflicts_added_after_initial_pinning_are_ordered_on_rebuild() {
         let mut world = world();
-        pin_and_parallelize(&mut world);
+        pin_and_parallelize(&mut world).unwrap();
         world.run_schedule(TestSchedule);
         world.resource_mut::<Trace>().0.clear();
         world.resource_mut::<Schedules>().get_mut(TestSchedule).unwrap()
@@ -164,7 +159,7 @@ mod tests {
     #[test]
     fn new_explicit_order_overrides_old_generated_order_without_a_cycle() {
         let mut world = world();
-        pin_and_parallelize(&mut world);
+        pin_and_parallelize(&mut world).unwrap();
         world.run_schedule(TestSchedule);
         let previous = world.resource::<Trace>().0.clone();
         world.resource_mut::<Trace>().0.clear();
@@ -194,8 +189,8 @@ mod tests {
         let mut schedule = Schedule::new(TestSchedule);
         schedule.add_systems((create, observe).chain());
         world.resource_mut::<Schedules>().insert(schedule);
-        pin_and_parallelize(&mut world);
-        pin_and_parallelize(&mut world);
+        pin_and_parallelize(&mut world).unwrap();
+        pin_and_parallelize(&mut world).unwrap();
         world.run_schedule(TestSchedule);
         assert_eq!(world.resource::<Trace>().0, [1]);
     }

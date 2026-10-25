@@ -424,8 +424,8 @@ pub(super) mod original_window_helper_tests {
         let mut inner = InnerWalls::new();
         inner.new_wall_with_id(WallId(42), WallState::from_snapshot(snapshot, 0));
         let mut walls = PublicWalls::default();
-        walls.consume(&mut inner, &TerrainHeightGrid512 { encoded: vec![0; 512 * 512].into(),
-            minimum_y: 0.0, maximum_y: 0.0, sampling_fix: false });
+        walls.consume_with_paths(&mut inner, &TerrainHeightGrid512 { encoded: vec![0; 512 * 512].into(),
+            minimum_y: 0.0, maximum_y: 0.0, sampling_fix: false }, None, &country_core::resources::walls::public_walls::WallPublicationDirty::default(), &country_core::resources::walls::public_walls::WallSpatialHash::default());
         assert!(walls.get(WallId(42)).is_some());
         let mut info = DecoratorInfo { rank, decorator_id: 1, state: 2,
             u28: 0x5566_7788, u30: 0x1020_3040, u40: 6 << 8, ..DecoratorInfo::default() };

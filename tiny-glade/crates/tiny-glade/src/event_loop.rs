@@ -696,7 +696,7 @@ impl crate::game_loop::GameLoop {
                 self.app_mut().world_mut().send_event(keyboard_event);
             }
             OsWindowEvent::CursorAbsolute(position) => {
-                // The OS producer already wrote the mapped SSBO before this
+                // The OS producer already published the owned SSBO write before this
                 // batch was captured. Only the game event is confirmation-gated.
                 if self.cursor_requests.is_fully_confirmed() {
                     self.app_mut().world_mut().send_event(

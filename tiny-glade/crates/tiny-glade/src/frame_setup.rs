@@ -375,6 +375,7 @@ fn begin(frame: &mut CoreGraphFrame<'_>, world: &mut World) -> rhapsody::Result<
     library.import_texture_presets_to_rg(&mut Textures(frame));
     {
         let mut tables = raster.assets.lock();
+        let tables = Arc::make_mut(&mut tables.collect);
         tables.presets.clear();
         tables.textures_by_name.clear();
         tables.rg_buffers.clear();
@@ -410,6 +411,7 @@ fn begin(frame: &mut CoreGraphFrame<'_>, world: &mut World) -> rhapsody::Result<
         // as compute bind. Publishing counts neither imports GPU resources
         // nor manufactures absent entries; actual draw accesses remain lazy.
         let mut tables = raster.assets.lock();
+        let tables = Arc::make_mut(&mut tables.collect);
         tables.ssbo_leases = Some(
             ssbos
                 .snapshot_graph_leases()
@@ -434,6 +436,7 @@ fn begin(frame: &mut CoreGraphFrame<'_>, world: &mut World) -> rhapsody::Result<
     // owner at every frame, rather than leaving RasterAssets::placement empty.
     {
         let mut tables = raster.assets.lock();
+        let tables = Arc::make_mut(&mut tables.collect);
         tables.placement.clear();
         if let Some(placements) = world.get_resource::<
             country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary,

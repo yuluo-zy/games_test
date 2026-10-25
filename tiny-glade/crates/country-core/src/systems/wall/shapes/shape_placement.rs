@@ -766,7 +766,7 @@ mod tests {
                 sampling_fix: false,
             };
             let mut public = PublicWalls::default();
-            public.consume(&mut inner, &terrain);
+            public.consume_with_paths(&mut inner, &terrain, None, &crate::resources::walls::public_walls::WallPublicationDirty::default(), &crate::resources::walls::public_walls::WallSpatialHash::default());
             let state = public.get_mut(WallId(42)).unwrap();
             state.geometry.outline = Arc::new(vec![[0., 0., 0.], [4., 1., 0.], [8., 0., 0.]]);
             state.geometry.outline_u = vec![0., 0.5, 1.];
@@ -978,7 +978,7 @@ mod tests {
             sampling_fix: false,
         };
         let mut public = PublicWalls::default();
-        public.consume(&mut inner, &terrain);
+        public.consume_with_paths(&mut inner, &terrain, None, &crate::resources::walls::public_walls::WallPublicationDirty::default(), &crate::resources::walls::public_walls::WallSpatialHash::default());
         let mut spatial = WallSpatialHash::default();
         spatial.add_segment(WallSpatialSegment {
             endpoints: [[0., 0.], [8., 0.]],
@@ -1058,7 +1058,7 @@ mod tests {
         inner.remove(WallId(42));
         world
             .resource_mut::<PublicWalls>()
-            .consume(&mut inner, &terrain);
+            .consume_with_paths(&mut inner, &terrain, None, &crate::resources::walls::public_walls::WallPublicationDirty::default(), &crate::resources::walls::public_walls::WallSpatialHash::default());
         world
             .resource_mut::<WallSpatialHash>()
             .remove_wall_id(WallId(42));

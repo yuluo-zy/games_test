@@ -719,14 +719,12 @@ mod tests {
         gpu.assign_subset(
             solid,
             GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<SolidVertexColorInstanceData>(
-                &device, solid,
-            )),
+                &device, solid, atlas.get_by_world_subset(solid).atlas.layouts.len())),
         );
         gpu.assign_subset(
             cloth,
             GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<ClothInstanceData>(
-                &device, cloth,
-            )),
+                &device, cloth, atlas.get_by_world_subset(cloth).atlas.layouts.len())),
         );
         world.insert_resource(atlas);
         world.insert_resource(gpu);
@@ -782,14 +780,12 @@ mod tests {
         gpu.assign_subset(
             solid,
             GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<SolidVertexColorInstanceData>(
-                &device, solid,
-            )),
+                &device, solid, atlas.get_by_world_subset(solid).atlas.layouts.len())),
         );
         gpu.assign_subset(
             cloth,
             GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<ClothInstanceData>(
-                &device, cloth,
-            )),
+                &device, cloth, atlas.get_by_world_subset(cloth).atlas.layouts.len())),
         );
         world.insert_resource(atlas);
         world.insert_resource(gpu);

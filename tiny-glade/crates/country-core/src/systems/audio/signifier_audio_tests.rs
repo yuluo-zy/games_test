@@ -505,7 +505,7 @@ fn complete_original_executions_match_rust_dispatcher_boundary_effects() {
                 };
                 world
                     .resource_mut::<PublicWalls>()
-                    .consume(&mut inner, &terrain);
+                    .consume_with_paths(&mut inner, &terrain, None, &crate::resources::walls::public_walls::WallPublicationDirty::default(), &crate::resources::walls::public_walls::WallSpatialHash::default());
                 assert!(world.resource::<PublicWalls>().get(WallId(99)).is_some());
                 world.send_event(AppModeChanged {
                     current: AppMode::Editing(EditSubject::Wall(99)),

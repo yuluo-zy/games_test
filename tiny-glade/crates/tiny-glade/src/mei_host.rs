@@ -470,7 +470,8 @@ impl MeiHost {
     ) -> rhapsody::Result<()> {
         let primitives = frame.import_buffer(&self.primitives, 0x37)?;
         let shapes = frame.import_buffer(&self.shapes, 0x37)?;
-        let mut assets = raster.assets.lock();
+        let mut tables = raster.assets.lock();
+        let assets = Arc::make_mut(&mut tables.collect);
         assets
             .rg_buffers
             .insert(TextPrimSsbo::rg_buffer_hash(), primitives.raw());

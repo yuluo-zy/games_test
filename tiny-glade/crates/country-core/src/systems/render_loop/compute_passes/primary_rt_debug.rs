@@ -7,7 +7,6 @@
 //! （`mov r9b,1`）→ `shadow_map`（预设 0x11）→ `bind_ray_tracing::<ComputePass>` → uniform i32 `current_view_index = 0`（`xor r9d,r9d`）→
 //! `dispatch_2d(extent)`（闭包状态 `{1, w, h, 1}`）。无 world 资源读取、无分支。
 
-use crate::render::pass_builder::bind_resources::BindGameResources;
 use crate::render::pass_builder::compute_pass_builder::RecordedComputePass;
 use crate::render::pass_builder::pass_resource_access::{RgTexture, WriteTextureUnchecked};
 use crate::resources::texture_presets::TexturePreset;
@@ -29,7 +28,7 @@ pub fn primary_rt_debug(env: &mut PassEnv<'_>, target: &RgTexture) -> RecordedCo
         .bind_texture(binding::BLUE_NOISE_TEXTURE, &BLUE_NOISE, 0x19)
         .uniform(binding::BOOL_RENDER_SHADOWS, true)
         .bind_texture(binding::SHADOW_MAP, &TexturePreset(0x11), 0x19);
-    BindGameResources::bind_ray_tracing(&mut pass);
+    pass.bind_ray_tracing();
     let pass = pass.uniform(binding::CURRENT_VIEW_INDEX, 0i32);
     dispatch_extent(pass, target)
 }

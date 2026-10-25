@@ -95,101 +95,6 @@ struct Slot {
     generation: u64,
     state: SlotState,
 }
-// 只保存统计，不反向持有任何 heap/page/pool；多个池可独立订阅同一物理页。
-struct PoolCounters {
-    state: Mutex<BindlessStats>,
-    _memory: crate::raw::allocator::CpuMemoryReservation,
-}
-#[derive(Clone, Copy)]
-enum PoolSlotEvent {
-    Allocated(DescriptorKind),
-    Exhausted(DescriptorKind),
-    Released(DescriptorKind),
-}
-impl PoolCounters {
-    fn new(budget: &Arc<crate::raw::allocator::AllocatorStats>) -> Result<Arc<Self>> {
-        let memory = crate::raw::allocator::reserve_shared_cpu_metadata::<Self>(budget, 0)?;
-        Ok(Arc::new(Self {
-            state: Mutex::new(BindlessStats::default()),
-            _memory: memory,
-        }))
-    }
-    fn peaks(stats: &mut BindlessStats) {
-        stats.peak_live = stats.peak_live.max(stats.live);
-        for table in &mut stats.tables {
-            table.peak_live = table.peak_live.max(table.live);
-        }
-    }
-    fn add_page(&self, page: BindlessStats) -> Result<()> {
-        let counter_wait = RecordSpan::new(RecordPhase::CounterLockWait);
-        let mut state = self.state.lock();
-        drop(counter_wait);
-        let _counter_update = RecordSpan::new(RecordPhase::CounterUpdate);
-        let mut next = *state;
-        let add = |a: usize, b: usize| a.checked_add(b).ok_or(Error::OutOfHostMemory);
-        next.capacity = add(next.capacity, page.capacity)?;
-        next.live = add(next.live, page.live)?;
-        next.free = add(next.free, page.free)?;
-        for (sum, value) in next.tables.iter_mut().zip(page.tables) {
-            sum.capacity = add(sum.capacity, value.capacity)?;
-            sum.live = add(sum.live, value.live)?;
-            sum.free = add(sum.free, value.free)?;
-            sum.exhausted = add(sum.exhausted, value.exhausted)?;
-        }
-        // 池的寿命从登记时开始，不把该页更早的独立历史峰当作同时峰。
-        Self::peaks(&mut next);
-        *state = next;
-        Ok(())
-    }
-    fn remove_page(&self, page: BindlessStats) {
-        let counter_wait = RecordSpan::new(RecordPhase::CounterLockWait);
-        let mut state = self.state.lock();
-        drop(counter_wait);
-        let _counter_update = RecordSpan::new(RecordPhase::CounterUpdate);
-        state.capacity -= page.capacity;
-        state.live -= page.live;
-        state.free -= page.free;
-        for (sum, value) in state.tables.iter_mut().zip(page.tables) {
-            sum.capacity -= value.capacity;
-            sum.live -= value.live;
-            sum.free -= value.free;
-            sum.exhausted -= value.exhausted;
-        }
-        // 注销只撤销当前占用，已经实际发生的高水位不能回退。
-    }
-    fn record(&self, event: PoolSlotEvent) {
-        let counter_wait = RecordSpan::new(RecordPhase::CounterLockWait);
-        let mut state = self.state.lock();
-        drop(counter_wait);
-        let _counter_update = RecordSpan::new(RecordPhase::CounterUpdate);
-        match event {
-            PoolSlotEvent::Allocated(kind) => {
-                state.live += 1;
-                state.free -= 1;
-                let table = &mut state.tables[kind as usize];
-                table.live += 1;
-                table.free -= 1;
-            }
-            PoolSlotEvent::Exhausted(kind) => {
-                state.free -= 1;
-                let table = &mut state.tables[kind as usize];
-                table.free -= 1;
-                table.exhausted += 1;
-            }
-            PoolSlotEvent::Released(kind) => {
-                state.live -= 1;
-                state.free += 1;
-                let table = &mut state.tables[kind as usize];
-                table.live -= 1;
-                table.free += 1;
-            }
-        }
-        Self::peaks(&mut state);
-    }
-    fn snapshot(&self) -> BindlessStats {
-        *self.state.lock()
-    }
-}
 /// A slot stays live while any CPU or submitted-command Arc holds its lease.
 /// The last lease drop releases it; completion belongs to the command owner.
 struct Slots {
@@ -200,7 +105,6 @@ struct Slots {
     table_peak_live: [usize; 4],
     entries: [Vec<Slot>; 4],
     free: [VecDeque<u32>; 4],
-    pool_counters: Option<crate::raw::temp_list::TempList<Arc<PoolCounters>>>,
 }
 impl Slots {
     fn new(counts: [u32; 4]) -> Result<Self> {
@@ -228,7 +132,6 @@ impl Slots {
             table_peak_live: [0; 4],
             entries,
             free,
-            pool_counters: None,
         })
     }
     fn statistics(&self) -> BindlessStats {
@@ -240,64 +143,10 @@ impl Slots {
             tables: DescriptorKind::ALL.map(|kind| self.table_stats(kind)),
         }
     }
-    fn watch_pool(
-        &mut self,
-        counters: &Arc<PoolCounters>,
-        budget: &Arc<crate::raw::allocator::AllocatorStats>,
-    ) -> Result<()> {
-        let current = self.statistics();
-        if self.pool_counters.is_none() {
-            self.pool_counters = Some(crate::raw::temp_list::TempList::new(
-                usize::MAX,
-                budget.clone(),
-            )?);
-        }
-        let watchers = self
-            .pool_counters
-            .as_mut()
-            .expect("initialized pool counters");
-        if watchers
-            .as_slice()
-            .iter()
-            .any(|old| Arc::ptr_eq(old, counters))
-        {
-            return Ok(());
-        }
-        watchers.reserve(
-            watchers
-                .as_slice()
-                .len()
-                .checked_add(1)
-                .ok_or(Error::OutOfHostMemory)?,
-        )?;
-        counters.add_page(current)?;
-        // 元数据和计数已全部准入，登记之后没有可能丢失事件的 fallible 步骤。
-        watchers.add_reserved(counters.clone());
-        Ok(())
-    }
-    fn unwatch_pool(&mut self, counters: &Arc<PoolCounters>) {
-        let current = self.statistics();
-        if let Some(watchers) = &mut self.pool_counters {
-            if watchers
-                .as_slice()
-                .iter()
-                .any(|old| Arc::ptr_eq(old, counters))
-            {
-                counters.remove_page(current);
-                watchers.retain(|old| !Arc::ptr_eq(old, counters));
-            }
-        }
-    }
-    fn record_pool_event(&self, event: PoolSlotEvent) {
-        if let Some(watchers) = &self.pool_counters {
-            for counters in watchers.as_slice() {
-                // 每个 counter 在方法返回前释放锁；不会同时持有多个统计锁。
-                counters.record(event);
-            }
-        }
-    }
     fn host_bytes(&self) -> Result<u64> {
         Ok(crate::raw::allocator::shared_cpu_bytes::<BindlessHeap>()?
+            + self.entries.iter().map(Vec::len).sum::<usize>() as u64
+                * crate::raw::allocator::shared_cpu_bytes::<BindlessLease>()?
             + (self
                 .entries
                 .iter()
@@ -310,9 +159,6 @@ impl Slots {
                     .sum::<usize>()
 ) as u64)
     }
-    fn has_free(&self, kind: DescriptorKind) -> bool {
-        !self.free[kind as usize].is_empty()
-    }
     fn allocate(&mut self, kind: DescriptorKind) -> Result<BindlessIndex> {
         let table = kind as usize;
         while let Some(index) = self.free[table].pop_front() {
@@ -320,7 +166,6 @@ impl Slots {
             let Some(generation) = slot.generation.checked_add(1) else {
                 slot.state = SlotState::Exhausted;
                 self.table_exhausted[table] += 1;
-                self.record_pool_event(PoolSlotEvent::Exhausted(kind));
                 continue;
             };
             slot.generation = generation;
@@ -329,7 +174,6 @@ impl Slots {
             self.peak_live = self.peak_live.max(self.live);
             self.table_live[table] += 1;
             self.table_peak_live[table] = self.table_peak_live[table].max(self.table_live[table]);
-            self.record_pool_event(PoolSlotEvent::Allocated(kind));
             return Ok(BindlessIndex {
                 kind,
                 index,
@@ -356,7 +200,6 @@ impl Slots {
         self.table_live[table] -= 1;
         self.entries[table][index.index as usize].state = SlotState::Free;
         self.free[table].push_back(index.index);
-        self.record_pool_event(PoolSlotEvent::Released(index.kind));
     }
     fn table_stats(&self, kind: DescriptorKind) -> BindlessTableStats {
         let table = kind as usize;
@@ -370,18 +213,6 @@ impl Slots {
     }
 
 }
-impl Drop for Slots {
-    fn drop(&mut self) {
-        let current = self.statistics();
-        if let Some(watchers) = &self.pool_counters {
-            // 未发布的新页失败清理也走此处；Pool Drop 已注销的页不会重复扣减。
-            for counters in watchers.as_slice() {
-                counters.remove_page(current);
-            }
-        }
-    }
-}
-
 pub struct BindlessHeap {
     pub layout: Arc<VulkanDescriptorSetLayout>,
     set: Arc<VulkanDescriptorSet>,
@@ -390,6 +221,8 @@ pub struct BindlessHeap {
     /// Reuse descriptors while a prepared group or submitted command owns the
     /// lease. The index cache must not keep its own descriptors/resources alive.
     resident: Mutex<Option<ResidentLeases>>,
+    // Covers slot storage and one live lease payload per slot. Leases retain
+    // this page, so the capacity charge survives every CPU/GPU lease owner.
     // Declared after slots: release credit only after the actual CPU buffers.
     _slot_memory: crate::raw::allocator::CpuMemoryReservation,
 }
@@ -434,20 +267,23 @@ impl GpuUse for Owner {
 /// Keep this Arc in every command that can dynamically access its index.
 /// Copying the numeric shader index does not extend the lease lifetime.
 pub struct BindlessLease {
+    // Drop the resource before returning its descriptor slot to the page.
+    owner: Owner,
+    slot: LeaseSlot,
+}
+struct LeaseSlot {
     heap: Arc<BindlessHeap>,
     index: BindlessIndex,
-    owner: Owner,
-    _memory: crate::raw::allocator::CpuMemoryReservation,
 }
 impl BindlessLease {
     pub fn index(&self) -> BindlessIndex {
-        self.index
+        self.slot.index
     }
 }
 impl GpuUse for BindlessLease {
     fn visit_uses(&self, visit: &mut crate::resource::UseVisitor<'_>) -> Result<()> {
         self.owner.visit_uses(visit)?;
-        self.heap.visit_uses(visit)
+        self.slot.heap.visit_uses(visit)
     }
     fn held_until_completion(&self) -> bool {
         true
@@ -455,7 +291,7 @@ impl GpuUse for BindlessLease {
 }
 /// Every command that uses a lease retains its Arc until the command completes
 /// (`Doomed::Owners`), so the last drop proves the GPU no longer reads the slot.
-impl Drop for BindlessLease {
+impl Drop for LeaseSlot {
     fn drop(&mut self) {
         self.heap.slots.lock().release(self.index);
     }
@@ -487,6 +323,36 @@ pub struct BindlessStats {
 impl BindlessStats {
     pub fn table(&self, kind: DescriptorKind) -> BindlessTableStats {
         self.tables[kind as usize]
+    }
+}
+/// Current occupancy sampled independently from the pool's physical heaps.
+/// No global historical peak or simultaneous cross-heap snapshot is maintained.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct BindlessOccupancy {
+    pub capacity: usize,
+    pub live: usize,
+    pub free: usize,
+    pub tables: [BindlessTableOccupancy; 4],
+}
+#[derive(Clone, Copy, Debug, Default)]
+pub struct BindlessTableOccupancy {
+    pub capacity: usize,
+    pub live: usize,
+    pub free: usize,
+    pub exhausted: usize,
+}
+impl BindlessOccupancy {
+    pub fn table(&self, kind: DescriptorKind) -> BindlessTableOccupancy { self.tables[kind as usize] }
+    fn include(&mut self, page: BindlessStats) {
+        self.capacity += page.capacity;
+        self.live += page.live;
+        self.free += page.free;
+        for (sum, value) in self.tables.iter_mut().zip(page.tables) {
+            sum.capacity += value.capacity;
+            sum.live += value.live;
+            sum.free += value.free;
+            sum.exhausted += value.exhausted;
+        }
     }
 }
 impl BindlessHeap {
@@ -547,7 +413,8 @@ impl BindlessHeap {
             ));
         }
         let host_bytes = crate::raw::allocator::shared_cpu_bytes::<Self>()?
-            + u64::from(total) * (std::mem::size_of::<Slot>() + std::mem::size_of::<u32>()) as u64;
+            + u64::from(total) * ((std::mem::size_of::<Slot>() + std::mem::size_of::<u32>()) as u64
+                + crate::raw::allocator::shared_cpu_bytes::<BindlessLease>()?);
         let mut slot_memory = device
             .memory
             .stats
@@ -626,7 +493,8 @@ impl BindlessHeap {
         let total: u32 = counts.iter().sum();
         // 与 new 相同，先准入并分配实际槽存储，再进入不可回滚的 native 创建。
         let host_bytes = crate::raw::allocator::shared_cpu_bytes::<Self>()?
-            + u64::from(total) * (std::mem::size_of::<Slot>() + std::mem::size_of::<u32>()) as u64;
+            + u64::from(total) * ((std::mem::size_of::<Slot>() + std::mem::size_of::<u32>()) as u64
+                + crate::raw::allocator::shared_cpu_bytes::<BindlessLease>()?);
         let mut slot_memory = self
             .device
             .memory
@@ -732,20 +600,19 @@ impl BindlessHeap {
         let _trace = RecordSpan::new(RecordPhase::DescriptorReserve);
         record_count(RecordCount::DescriptorReserveCalls, 1);
 
-        if !self.slots.lock().has_free(kind) {
-            self.trim_resident();
-            self.collect()?;
-        }
-        let memory = self.device.memory.stats.reserve_cpu_bytes(
-            crate::raw::allocator::shared_cpu_bytes::<BindlessLease>()?,
-            crate::device::BudgetCategory::Live,
-        )?;
-        let index = self.slots.lock().allocate(kind)?;
+        let allocation = self.slots.lock().allocate(kind);
+        let index = match allocation {
+            Ok(index) => index,
+            Err(Error::Exhausted(_)) => {
+                self.trim_resident();
+                self.collect()?;
+                self.slots.lock().allocate(kind)?
+            }
+            Err(error) => return Err(error),
+        };
         Ok(Arc::new(BindlessLease {
-            heap: self.clone(),
-            index,
             owner,
-            _memory: memory,
+            slot: LeaseSlot { heap: self.clone(), index },
         }))
     }
     pub fn storage_buffer(
@@ -825,7 +692,7 @@ impl BindlessHeap {
         let write = [vk::WriteDescriptorSet::default()
             .dst_set(self.set.handle)
             .dst_binding(2)
-            .dst_array_element(lease.index.index)
+            .dst_array_element(lease.slot.index.index)
             .descriptor_type(vk::DescriptorType::STORAGE_BUFFER)
             .buffer_info(&info)];
         {
@@ -885,7 +752,7 @@ impl BindlessHeap {
         let write = [vk::WriteDescriptorSet::default()
             .dst_set(self.set.handle)
             .dst_binding(kind as u32)
-            .dst_array_element(lease.index.index)
+            .dst_array_element(lease.slot.index.index)
             .descriptor_type(kind.ty())
             .image_info(&info)];
         {
@@ -918,7 +785,7 @@ impl BindlessHeap {
         let write = [vk::WriteDescriptorSet::default()
             .dst_set(self.set.handle)
             .dst_binding(3)
-            .dst_array_element(lease.index.index)
+            .dst_array_element(lease.slot.index.index)
             .descriptor_type(vk::DescriptorType::SAMPLER)
             .image_info(&info)];
         {
@@ -949,7 +816,7 @@ impl BindlessHeap {
                 .sets
                 .get(set as usize)
                 .is_none_or(|layout| layout.handle != self.layout.handle)
-            || leases.iter().any(|lease| !std::ptr::eq(self, &*lease.heap))
+            || leases.iter().any(|lease| !std::ptr::eq(self, &*lease.slot.heap))
         {
             return Err(Error::invalid_usage(
                 "bindless table/lease/pipeline mismatch",
@@ -1040,16 +907,8 @@ impl BindlessHeap {
         }
         drop(retain_trace);
         let _native_bind = RecordSpan::new(RecordPhase::NativeBind);
-        unsafe {
-            self.device.core.device.cmd_bind_descriptor_sets(
-                command.handle,
-                pipeline.point,
-                pipeline.layout.handle,
-                set,
-                &[self.set.handle],
-                &[],
-            );
-        }
+        unsafe { self.device.core.device.cmd_bind_descriptor_sets(command.handle,
+            pipeline.point, pipeline.layout.handle, set, &[self.set.handle], &[]); }
         record_count(RecordCount::NativeBindCalls, 1);
         Ok(())
     }
@@ -1098,16 +957,9 @@ impl BindlessHeap {
         }
         drop(retain_trace);
         let _native_bind = RecordSpan::new(RecordPhase::NativeBind);
-        unsafe {
-            self.device.core.device.cmd_bind_descriptor_sets(
-                vk::CommandBuffer::from_raw(context.command.handle()),
-                pipeline.point,
-                pipeline.layout.handle,
-                set,
-                &[self.set.handle],
-                &[],
-            );
-        }
+        unsafe { self.device.core.device.cmd_bind_descriptor_sets(
+            vk::CommandBuffer::from_raw(context.command.handle()), pipeline.point,
+            pipeline.layout.handle, set, &[self.set.handle], &[]); }
         record_count(RecordCount::NativeBindCalls, 1);
         Ok(())
     }
@@ -1248,7 +1100,7 @@ pub struct BindlessPagePool {
     pages: Mutex<crate::raw::temp_list::TempList<Arc<BindlessPage>>>,
     growth: Mutex<()>,
     frame_bank: std::sync::atomic::AtomicUsize,
-    counters: Arc<PoolCounters>,
+    parameter_cpu: parameters::cpu::ParameterCpuPool,
     _memory: crate::raw::allocator::CpuMemoryReservation,
 }
 struct BindlessPage {
@@ -1260,6 +1112,8 @@ struct BindlessPage {
 /// 只在完整组准备期间借用；实际 leases 返回后仍由命令完成点保护。
 pub struct GroupReservation<'a> {
     heap: &'a Arc<BindlessHeap>,
+    cpu_pool: &'a parameters::cpu::ParameterCpuPool,
+    cpu: &'a mut parameters::cpu::ParameterCpuCursor,
 }
 #[derive(Debug)]
 pub enum GroupPreparationError {
@@ -1275,6 +1129,19 @@ pub type GroupPreparationResult<T> = std::result::Result<T, GroupPreparationErro
 impl GroupReservation<'_> {
     pub fn heap(&self) -> &Arc<BindlessHeap> {
         self.heap
+    }
+    pub fn parameters(&mut self, abi: Arc<BindlessShaderAbi>, push: &[u8]) -> Result<BindlessParameters> {
+        BindlessParameters::from_credit(self.heap.clone(), abi, push,
+            |bytes| self.cpu.claim(self.cpu_pool, bytes))
+    }
+    /// A previous block can only be reused inside its actual physical page.
+    pub fn with_push(&mut self, previous: &PreparedBindlessParameters, push: &[u8],
+        allocate: impl FnOnce(u64) -> Result<crate::resource::DynamicConstantsChunk>,
+    ) -> GroupPreparationResult<Option<PreparedBindlessParameters>> {
+        if !previous.belongs_to(self.heap) { return Ok(None); }
+        self.require_slots([0, 0, 1, 0])?;
+        previous.with_push_credit(push, allocate, |bytes| self.cpu.claim(self.cpu_pool, bytes))
+            .map(Some).map_err(Into::into)
     }
     /// 所有页 writer 都在同一互斥事务内；准入后其他 writer 不能抢占空槽。
     /// 需求必须包含本次缺失缓存、实际新增资源和不可变参数块。
@@ -1314,15 +1181,13 @@ impl BindlessPagePool {
         // 页数另受 CPU/native descriptor 全池预算约束；此限只约束元数据地址空间。
         let mut pages = crate::raw::temp_list::TempList::new(65536, budget.clone())?;
         pages.add(page)?;
-        let counters = PoolCounters::new(budget)?;
-        // 所有 fallible 元数据准入先完成；登记成功后只构造当前 owner。
-        template.slots.lock().watch_pool(&counters, budget)?;
+        let parameter_cpu = parameters::cpu::ParameterCpuPool::new(budget.clone())?;
         Ok(Arc::new(Self {
             template,
             pages: Mutex::new(pages),
             growth: Mutex::new(()),
             frame_bank: std::sync::atomic::AtomicUsize::new(0),
-            counters,
+            parameter_cpu,
             _memory: memory,
         }))
     }
@@ -1347,6 +1212,7 @@ impl BindlessPagePool {
             pool: self.clone(),
             current: None,
             bank: self.frame_bank.load(std::sync::atomic::Ordering::Relaxed),
+            cpu: parameters::cpu::ParameterCpuCursor::default(),
         }
     }
     /// Rotate descriptor arenas with the host's display-frame boundary. Each
@@ -1354,6 +1220,7 @@ impl BindlessPagePool {
     /// finish cold frames immediately. Leases still govern actual reuse; this
     /// never resets live slots or guesses GPU completion from a frame index.
     pub fn advance_frame(&self) {
+        self.parameter_cpu.trim();
         let count = self.template.device.frames_in_flight() as usize;
         self.frame_bank
             .fetch_update(
@@ -1363,9 +1230,20 @@ impl BindlessPagePool {
             )
             .unwrap();
     }
-    /// 同一时刻的整池占用与本池存续期间的真实高水位；不累加各页历史峰。
-    pub fn stats(&self) -> BindlessStats {
-        self.counters.snapshot()
+    /// Sample the pages present at request start. Each heap is read once,
+    /// outside the manager lock. Pages only append while this pool is alive;
+    /// newly appended pages are included by the next request.
+    pub fn sampled_occupancy(&self) -> BindlessOccupancy {
+        let count = self.page_count();
+        let mut sampled = BindlessOccupancy::default();
+        for index in 0..count {
+            let heap = {
+                let pages = self.pages.lock();
+                pages.as_slice()[index].heap.clone()
+            };
+            sampled.include(heap.stats());
+        }
+        sampled
     }
     pub fn page_count(&self) -> usize {
         self.pages.lock().as_slice().len()
@@ -1396,10 +1274,6 @@ impl BindlessPagePool {
         }
         // 原生创建和潜在失败清理都在 manager 锁外。
         let page = Self::page(self.template.new_page()?, bank)?;
-        page.heap
-            .slots
-            .lock()
-            .watch_pool(&self.counters, &self.template.device.memory.stats)?;
         let admitted = {
             let mut pages = self.pages.lock();
             pages.add(page.clone()).map(|_| ())
@@ -1415,7 +1289,6 @@ impl Drop for BindlessPagePool {
         for page in self.pages.get_mut().as_slice() {
             // Resident leases hold their heap: break the cycle with the pool.
             page.heap.set_residency(false);
-            page.heap.slots.lock().unwatch_pool(&self.counters);
         }
     }
 }
@@ -1424,12 +1297,13 @@ pub struct BindlessPageCursor {
     pool: Arc<BindlessPagePool>,
     current: Option<Arc<BindlessPage>>,
     bank: usize,
+    cpu: parameters::cpu::ParameterCpuCursor,
 }
 impl BindlessPageCursor {
     pub fn prepare(
         &mut self,
         mut build: impl FnMut(
-            &GroupReservation<'_>,
+            &mut GroupReservation<'_>,
         ) -> GroupPreparationResult<PreparedBindlessParameters>,
     ) -> Result<PreparedBindlessParameters> {
         let _trace = RecordSpan::new(RecordPhase::CompleteGroup);
@@ -1463,7 +1337,8 @@ impl BindlessPageCursor {
                 let group_wait = RecordSpan::new(RecordPhase::GroupLockWait);
                 let _guard = page.group.lock();
                 drop(group_wait);
-                build(&GroupReservation { heap: &page.heap })
+                build(&mut GroupReservation { heap: &page.heap,
+                    cpu_pool: &self.pool.parameter_cpu, cpu: &mut self.cpu })
             };
             match result {
                 Ok(prepared) => {
@@ -1581,204 +1456,23 @@ mod tests {
         assert_eq!(slots.table_stats(DescriptorKind::StorageBuffer).free, 2);
     }
 
-    fn assert_pool_current_matches_pages(pool: &PoolCounters, pages: &[&Slots]) {
-        let actual = pool.snapshot();
-        let snapshots: Vec<_> = pages.iter().map(|page| page.statistics()).collect();
-        assert_eq!(
-            actual.capacity,
-            snapshots.iter().map(|page| page.capacity).sum::<usize>()
-        );
-        assert_eq!(
-            actual.live,
-            snapshots.iter().map(|page| page.live).sum::<usize>()
-        );
-        assert_eq!(
-            actual.free,
-            snapshots.iter().map(|page| page.free).sum::<usize>()
-        );
-        for kind in DescriptorKind::ALL {
-            let actual = actual.table(kind);
-            let field_sum = |field: fn(BindlessTableStats) -> usize| {
-                snapshots
-                    .iter()
-                    .map(|page| field(page.table(kind)))
-                    .sum::<usize>()
-            };
-            assert_eq!(actual.capacity, field_sum(|table| table.capacity));
-            assert_eq!(actual.live, field_sum(|table| table.live));
-            assert_eq!(actual.free, field_sum(|table| table.free));
-            assert_eq!(actual.exhausted, field_sum(|table| table.exhausted));
-            assert_eq!(
-                actual.capacity,
-                actual.live + actual.free + actual.exhausted
-            );
-        }
-    }
     #[test]
-    fn pool_peaks_record_simultaneous_live_instead_of_summing_disjoint_page_peaks() {
-        let budget = Arc::new(crate::raw::allocator::AllocatorStats::default());
-        let pool = PoolCounters::new(&budget).unwrap();
-        let mut a = Slots::new([8; 4]).unwrap();
-        let mut b = Slots::new([8; 4]).unwrap();
-        a.watch_pool(&pool, &budget).unwrap();
-        b.watch_pool(&pool, &budget).unwrap();
-        let ids: Vec<_> = (0..8)
-            .map(|_| a.allocate(DescriptorKind::StorageBuffer).unwrap())
-            .collect();
-        assert_pool_current_matches_pages(&pool, &[&a, &b]);
-        for id in ids {
-            a.release(id);
-        }
-        let other: Vec<_> = (0..8)
-            .map(|_| b.allocate(DescriptorKind::StorageBuffer).unwrap())
-            .collect();
-        assert_pool_current_matches_pages(&pool, &[&a, &b]);
-        assert_eq!(
-            a.peak_live + b.peak_live,
-            16,
-            "old sum counts disjoint times twice"
-        );
-        assert_eq!(pool.snapshot().peak_live, 8);
-        assert_eq!(
-            pool.snapshot()
-                .table(DescriptorKind::StorageBuffer)
-                .peak_live,
-            8
-        );
-        // 不采样的短暂重叠也必须增加历史高水位，后续释放不能清峰。
-        let more: Vec<_> = (0..4)
-            .map(|_| a.allocate(DescriptorKind::StorageBuffer).unwrap())
-            .collect();
-        for id in more {
-            a.release(id);
-        }
-        for id in other {
-            b.release(id);
-        }
-        assert_eq!(pool.snapshot().live, 0);
-        assert_eq!(pool.snapshot().peak_live, 12);
-        assert_pool_current_matches_pages(&pool, &[&a, &b]);
-    }
-    #[test]
-    fn pool_total_peak_is_not_the_sum_of_per_kind_peaks() {
-        let budget = Arc::new(crate::raw::allocator::AllocatorStats::default());
-        let pool = PoolCounters::new(&budget).unwrap();
-        let mut slots = Slots::new([4; 4]).unwrap();
-        slots.watch_pool(&pool, &budget).unwrap();
-        for kind in [DescriptorKind::SampledImage, DescriptorKind::StorageBuffer] {
-            let ids: Vec<_> = (0..4).map(|_| slots.allocate(kind).unwrap()).collect();
-            for id in ids {
-                slots.release(id);
-            }
-        }
-        let stats = pool.snapshot();
-        assert_eq!(stats.peak_live, 4);
-        assert_eq!(stats.table(DescriptorKind::SampledImage).peak_live, 4);
-        assert_eq!(stats.table(DescriptorKind::StorageBuffer).peak_live, 4);
-        assert_pool_current_matches_pages(&pool, &[&slots]);
-    }
-    #[test]
-    fn pool_seed_and_multiple_subscriptions_keep_owner_lifetimes_independent() {
-        let budget = Arc::new(crate::raw::allocator::AllocatorStats::default());
-        let first = PoolCounters::new(&budget).unwrap();
-        let second = PoolCounters::new(&budget).unwrap();
-        let mut shared = Slots::new([8; 4]).unwrap();
-        let ids: Vec<_> = (0..8)
-            .map(|_| shared.allocate(DescriptorKind::StorageBuffer).unwrap())
-            .collect();
-        for id in &ids[..7] {
-            shared.release(*id);
-        }
-        shared.watch_pool(&first, &budget).unwrap();
-        shared.watch_pool(&first, &budget).unwrap();
-        shared.watch_pool(&second, &budget).unwrap();
-        assert_eq!(shared.peak_live, 8);
-        assert_eq!(
-            first.snapshot().peak_live,
-            1,
-            "pool lifetime starts at current seed"
-        );
-        let mut extra = Slots::new([2; 4]).unwrap();
-        extra.watch_pool(&first, &budget).unwrap();
-        let _a = extra.allocate(DescriptorKind::StorageBuffer).unwrap();
-        let _b = extra.allocate(DescriptorKind::StorageBuffer).unwrap();
-        assert_pool_current_matches_pages(&first, &[&shared, &extra]);
-        assert_pool_current_matches_pages(&second, &[&shared]);
-        shared.unwatch_pool(&first);
-        shared.unwatch_pool(&first);
-        assert_pool_current_matches_pages(&first, &[&extra]);
-        assert_eq!(first.snapshot().peak_live, 3);
-        drop(shared);
-        assert_pool_current_matches_pages(&second, &[]);
-        assert_eq!(second.snapshot().peak_live, 1);
-        drop(extra);
-        drop(first);
-        drop(second);
-        assert_eq!(budget.cpu_memory_usage().total(), 0);
-    }
-    #[test]
-    fn pool_registration_oom_keeps_counter_unsubscribed_and_budget_owned() {
-        let budget = Arc::new(crate::raw::allocator::AllocatorStats::default());
-        let pool = PoolCounters::new(&budget).unwrap();
-        let baseline = budget.cpu_memory_usage().total();
-        budget.set_host_budget(baseline).unwrap();
-        let mut slots = Slots::new([2; 4]).unwrap();
-        assert!(matches!(
-            slots.watch_pool(&pool, &budget),
-            Err(Error::OutOfHostMemory)
-        ));
-        let _ = slots.allocate(DescriptorKind::StorageBuffer).unwrap();
-        assert_eq!(pool.snapshot().capacity, 0);
-        assert_eq!(pool.snapshot().live, 0);
-        assert_eq!(budget.cpu_memory_usage().total(), baseline);
-        drop(slots);
-        drop(pool);
-        assert_eq!(budget.cpu_memory_usage().total(), 0);
-    }
-    #[test]
-    fn pool_page_drop_reverts_current_and_exhaustion_never_reverts_history() {
-        let budget = Arc::new(crate::raw::allocator::AllocatorStats::default());
-        let pool = PoolCounters::new(&budget).unwrap();
-        {
-            let mut slots = Slots::new([1; 4]).unwrap();
-            slots.watch_pool(&pool, &budget).unwrap();
-            slots.entries[DescriptorKind::Sampler as usize][0].generation = u64::MAX;
-            assert!(slots.allocate(DescriptorKind::Sampler).is_err());
-            let id = slots.allocate(DescriptorKind::StorageBuffer).unwrap();
-            slots.release(id);
-            assert_pool_current_matches_pages(&pool, &[&slots]);
-            assert_eq!(pool.snapshot().table(DescriptorKind::Sampler).exhausted, 1);
-        }
-        assert_pool_current_matches_pages(&pool, &[]);
-        assert_eq!(pool.snapshot().peak_live, 1);
-    }
-    #[test]
-    fn pool_peak_is_coherent_for_parallel_page_events_without_sampling() {
-        let budget = Arc::new(crate::raw::allocator::AllocatorStats::default());
-        let pool = PoolCounters::new(&budget).unwrap();
-        let barrier = Arc::new(std::sync::Barrier::new(2));
-        std::thread::scope(|scope| {
-            for _ in 0..2 {
-                let (pool, budget, barrier) = (pool.clone(), budget.clone(), barrier.clone());
-                scope.spawn(move || {
-                    let mut slots = Slots::new([1; 4]).unwrap();
-                    slots.watch_pool(&pool, &budget).unwrap();
-                    for _ in 0..128 {
-                        let id = slots.allocate(DescriptorKind::StorageBuffer).unwrap();
-                        barrier.wait();
-                        slots.release(id);
-                        barrier.wait();
-                    }
-                });
-            }
-        });
-        assert_pool_current_matches_pages(&pool, &[]);
-        assert_eq!(pool.snapshot().peak_live, 2);
-        assert_eq!(
-            pool.snapshot()
-                .table(DescriptorKind::StorageBuffer)
-                .peak_live,
-            2
-        );
+    fn sampled_occupancy_uses_current_slots_and_preserves_exhausted_capacity() {
+        let mut a = Slots::new([2, 1, 4, 2]).unwrap();
+        let historical: Vec<_> = (0..4).map(|_| a.allocate(DescriptorKind::StorageBuffer).unwrap()).collect();
+        for index in historical { a.release(index); }
+        let _image = a.allocate(DescriptorKind::SampledImage).unwrap();
+        let mut b = Slots::new([1; 4]).unwrap();
+        b.entries[DescriptorKind::Sampler as usize][0].generation = u64::MAX;
+        assert!(b.allocate(DescriptorKind::Sampler).is_err());
+        let _buffer = b.allocate(DescriptorKind::StorageBuffer).unwrap();
+        let mut sampled = BindlessOccupancy::default();
+        sampled.include(a.statistics()); sampled.include(b.statistics());
+        assert_eq!(a.statistics().peak_live, 4);
+        assert_eq!(sampled.live, 2);
+        assert_eq!(sampled.capacity, 13);
+        assert_eq!(sampled.free, 10);
+        for table in sampled.tables { assert_eq!(table.capacity, table.live + table.free + table.exhausted); }
+        assert_eq!(sampled.table(DescriptorKind::Sampler).exhausted, 1);
     }
 }

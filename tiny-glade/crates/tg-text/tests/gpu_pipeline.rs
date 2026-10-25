@@ -79,7 +79,9 @@ fn production_text_bindless_matches_original_pixels_and_reuses_bounded_resources
         glyph_uploads: Vec::new(),
     };
     let reference_path = std::env::var_os("TG_TEXT_REFERENCE_PATH").map(PathBuf::from);
-    let heap = BindlessHeap::new(device.clone(), BindlessConfig::default()).unwrap();
+    let heap = BindlessHeap::new(device.clone(), BindlessConfig {samplers: 2, ..Default::default()}).unwrap();
+    let _occupied_sampler = heap.sampler(Arc::new(rhapsody::resource::Sampler::new(device.clone(),
+        &vk::SamplerCreateInfo::default()).unwrap())).unwrap();
     let mut prior = reference_path
         .as_ref()
         .filter(|path| path.exists())
@@ -89,11 +91,12 @@ fn production_text_bindless_matches_original_pixels_and_reuses_bounded_resources
             "tg-text-pipeline-{}-{index}.cache",
             std::process::id()
         ));
-        let mut renderer = match GpuTextRenderer::new_with_heap(
+        let pages = rhapsody::bindless::BindlessPagePool::new(heap.clone()).unwrap();
+        let mut renderer = match GpuTextRenderer::new_with_pages(
             device.clone(),
             &shader,
             blue.clone(),
-            heap.clone(),
+            pages.clone(),
             GpuTextConfig {
                 pipeline_cache_path: Some(path.clone()),
                 ..Default::default()
@@ -153,6 +156,7 @@ fn production_text_bindless_matches_original_pixels_and_reuses_bounded_resources
             assert!(pixel(23, 8)[3] > 0);
             assert_eq!(pixel(31, 31), [0; 4]);
             assert!(result.stats.dynamic_rendering);
+            assert!(pages.page_count() > 1, "required samplers must bind on the selected new page");
             assert_eq!(result.stats.compiled_pipeline_requests, 1);
             assert_eq!(result.stats.command_pool_resets, frame + 1);
             assert!(result.stats.bindless_live_slots > 0);

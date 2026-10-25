@@ -91,8 +91,16 @@ pub fn gpu_flush_plank_buffers(
 ) {
     use country_core::resources::roofs::roof_buffers::WoodenPlankSsbo;
     use country_core::resources::sparkle::SparkleSsbo;
-    library.get_mut::<WoodenPlankSsbo>().unwrap().gpu_flush(device.device());
-    library.get_mut::<SparkleSsbo>().unwrap().gpu_flush(device.device());
+    for result in [
+        library.get_mut::<WoodenPlankSsbo>().unwrap().gpu_flush(device.device()),
+        library.get_mut::<SparkleSsbo>().unwrap().gpu_flush(device.device()),
+    ] {
+        if let Err(error) = result {
+            if !matches!(error, country_core::render::ssbo::rhapsody_boundary::BackendError::Exhausted(_)) {
+                panic!("plank/sparkle upload: {error}");
+            }
+        }
+    }
 }
 
 /// 原 `system_wall_constructor::gpu_clear_wall_gate_pieces`（0x140773c00，956B）。

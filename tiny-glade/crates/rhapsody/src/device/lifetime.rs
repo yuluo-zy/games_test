@@ -87,15 +87,15 @@ impl Device {
     /// require all completed storage to have been returned before continuing.
     pub fn try_collect_all_completed(&self) -> crate::Result<usize> {
         let completed = self.reclamation_completed()?;
-        let count = self
-            .lifetime
-            .retirement
-            .collect_limited(&completed, usize::MAX, usize::MAX, |doomed| {
-                self.destroy_now(doomed)
-            })
-            .destroyed;
+        let count = self.collect_completed_snapshot(&completed);
         self.trim_unused_allocations();
         Ok(count)
+    }
+    pub(crate) fn collect_completed_snapshot(&self, completed: &CompletedValues) -> usize {
+        let count = self.lifetime.retirement
+            .collect_limited(completed, usize::MAX, usize::MAX, |doomed| self.destroy_now(doomed))
+            .destroyed;
+        count
     }
     fn reclamation_completed(&self) -> crate::Result<CompletedValues> {
         match self.poll() {

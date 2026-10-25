@@ -114,7 +114,7 @@ mod tests {
             sampling_fix: false,
         };
         let mut public = PublicWalls::default();
-        public.consume(&mut inner, &terrain);
+        public.consume_with_paths(&mut inner, &terrain, None, &country_core::resources::walls::public_walls::WallPublicationDirty::default(), &country_core::resources::walls::public_walls::WallSpatialHash::default());
         assert!(public.get(wall).is_some());
         let mut world = World::new();
         world.insert_resource(inner);

@@ -864,7 +864,7 @@ mod tests {
         let device = RecordingDevice::default();
         let mut gpu = GpuWorld::new(&device);
         gpu.assign_subset(GpuWorldSubsetKind::Cloth, GpuWorldSubset::Owned(
-            OwnedGpuWorldSubset::new::<ClothInstanceData>(&device, GpuWorldSubsetKind::Cloth)));
+            OwnedGpuWorldSubset::new::<ClothInstanceData>(&device, GpuWorldSubsetKind::Cloth, 1)));
         let mut atlas = MeshAtlasLibrary::default();
         let mut mesh = Mesh::new("same-World cloth CPU triangle");
         mesh.set_attribute(country_core::render::mesh::ATTR_POSITION,

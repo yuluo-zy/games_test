@@ -1,0 +1,93 @@
+{
+  "updated_utc": "2026-10-25T10:16:22.050712+00:00",
+  "scope": "CPU-only diagnostic means, not clean production acceptance, per-frame p95 or parallel critical path. GPU execution and sleeping waits excluded from thread counters.",
+  "clock_validation": "cpu-clock-validation-20261025.json",
+  "measurements": {
+    "v19_static": {
+      "path": "reports/runtime/2026-10-22-render-thread/performance-2026-10-24/cpu-diagnostics-production-v19/static-parallel-round1/run.json",
+      "process_cpu_ms_per_frame": 73.75126390293225,
+      "render_cpu_ms_per_frame": 42.944675429727,
+      "stage_timing": true,
+      "gpu_timestamps": false,
+      "cpu_profile_source_identity": null
+    },
+    "v19_many_draws": {
+      "path": "reports/runtime/2026-10-22-render-thread/performance-2026-10-24/cpu-diagnostics-production-v19/many_draws-parallel-round1/run.json",
+      "process_cpu_ms_per_frame": 94.52109845947756,
+      "render_cpu_ms_per_frame": 45.90975284661755,
+      "stage_timing": true,
+      "gpu_timestamps": false,
+      "cpu_profile_source_identity": {
+        "valid": false,
+        "reason": "V19 folded includes V20-only bindless::LeaseSlot (9 samples), and line numbers follow overwritten V20 object debug-map. Frozen binary CPU clocks remain valid; Rust source/inline hotspot comparison is rejected.",
+        "evidence": "cpu-stacks.folded: drop_glue<rhapsody::bindless::LeaseSlot>; V19 source archive has no LeaseSlot."
+      }
+    },
+    "v20_static": {
+      "path": "reports/runtime/2026-10-22-render-thread/performance-2026-10-24/cpu-diagnostics-production-v20/static-parallel-round1/run.json",
+      "process_cpu_ms_per_frame": 80.75910931174087,
+      "render_cpu_ms_per_frame": 48.48882388663967,
+      "stage_timing": true,
+      "gpu_timestamps": false,
+      "cpu_profile_source_identity": null
+    },
+    "v20_many_draws": {
+      "path": "reports/runtime/2026-10-22-render-thread/performance-2026-10-24/cpu-diagnostics-production-v20/many_draws-parallel-round1/run.json",
+      "process_cpu_ms_per_frame": 94.27321668909823,
+      "render_cpu_ms_per_frame": 48.48914064602961,
+      "stage_timing": true,
+      "gpu_timestamps": false,
+      "cpu_profile_source_identity": null
+    }
+  },
+  "symbol_identity": {
+    "new_v19_profile_valid_for_rust_source": false,
+    "reason": "Frozen binary retained an external object debug map. A later build replaced its Rust DWARF: V19 capture resolved V20-only bindless::LeaseSlot and shifted allocator source lines. CPU clocks/native driver stacks remain usable; Rust source A/B rejected.",
+    "v20_frozen_dsym": "production-v20-performance-build.json",
+    "future_policy": "Freeze UUID-bound dSYM with each binary before rebuilding shared release objects; verify SHA at profiling admission."
+  },
+  "hotspots": {
+    "v20_samples": 6608,
+    "native_submit_inclusive": 1717,
+    "native_submit_percent": 25.984,
+    "render_zero_vertex_branch_samples": 184,
+    "render_total_samples": 3420,
+    "render_zero_vertex_branch_percent": 5.3801,
+    "render_zero_vertex_native_submit_subset": 168,
+    "owner_transfer_samples": 175,
+    "command_end_including_normalize_samples": 5,
+    "notes": "Different inclusive scopes must not be summed. Old GPU-timestamp profile included timestamp encoding; do not use its submit share as clean CPU attribution."
+  },
+  "implemented_v20": [
+    "Page admission charges fixed BindlessLease metadata once; slot lifetime follows last owner",
+    "Zero-byte and equal-size host reservations avoid redundant locks"
+  ],
+  "implemented_v21": [
+    "Immutable Collect query snapshot with all loading/MEI/world-postprocess writers migrated",
+    "Managed projection reuses existing strong resource owners",
+    "Submission immutable validation once before resource gate; dynamic range state remains checked",
+    "ABI owner identity fast path and exact compute push reuse",
+    "Callback-local pipeline/vertex/index binding dedup with retention and push unchanged",
+    "One immutable zero vertex source per App, grows only on demand, imports into every graph",
+    "Affected GPU fixtures use TG_INSTALL_ROOT and current presentation mapping; no legacy path fallback"
+  ],
+  "verification": "cpu-chain-verification-20261025.json",
+  "status": "V21 optimized binary/dSYM frozen; CPU-only diagnostics and one clean pair each static/many_draws complete. Overall performance benefit inconclusive;60FPS target not achieved.",
+  "remaining": [
+    "Verify V21 CPU cost using uninstrumented interleaved runs; 60FPS CPU target not achieved",
+    "Remaining measured driver draw-state encoding; reassess descriptor binding after current batch",
+    "Consider worker owner transfer plus command end only if new profile justifies API migration",
+    "F-032 pressure reclamation quota, F-201 projection eviction, F-192 current_version scanning remain open",
+    "Formal four-scenario repeated measurements and 30min window/effect/resize runs remain incomplete"
+  ],
+  "verification_passed_current_batch": 39,
+  "clean_comparison": "cpu-clean-comparison-20261025.json",
+  "latest_source_feedback": "WriteBack now receives Mut without eager mutable dereference; same consumption/bool does not mark changed.44tests plus application check passed. Not measured in V21.",
+  "latest_source_counters": "PoolCounters keeps exact mutex transaction; only allocation updates global/current-kind peaks. Return/exhaustion skip all-table scan. 9 CPU/host metadata regression tests passed; not measured in V21.",
+  "verified_later_source_hashes": {
+    "crates/country-core/src/render/extract.rs": "580d29cce38e7fdd8ed5f1aeb278a470087625d70a3a08bbe256d1cc7d30a8b2",
+    "crates/tiny-glade/src/render_extract.rs": "55fd2d3b76f4901dc896e0acf5baf15861c5d1a48385cd08bfefea39031c7a44",
+    "crates/tiny-glade/src/render_thread.rs": "5497bb739b93977946de6bd7797c02cd5f27bd03400e4c8574150f995e8d8808",
+    "crates/rhapsody/src/bindless.rs": "23daa081540166e8ca99716c5be24b785ecd9eb343d0900bc0d9094ba32dbff9"
+  }
+}

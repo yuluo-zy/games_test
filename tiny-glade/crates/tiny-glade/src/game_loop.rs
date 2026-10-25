@@ -280,6 +280,21 @@ fn update_application(app: &mut App) -> anyhow::Result<()> {
     Ok(())
 }
 
+// Called only after the old frame settles and before this World is extracted.
+// A rejected producer range is retried in place; no new App update is needed.
+fn admit_producer_uploads(
+    world: &mut bevy_ecs::world::World,
+    device: &dyn country_core::render::ssbo::rhapsody_boundary::GraphicsDevice,
+) -> rhapsody::Result<()> {
+    if let Some(mut library) = world.get_resource_mut::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>() {
+        library.flush_pending_uploads(device)?;
+    }
+    if let Some(mut gpu) = world.get_resource_mut::<country_core::render::nani::gpu_world::GpuWorld>() {
+        if gpu.instance_uploads_pending() { gpu.flush_instance_buffers(device)?; }
+    }
+    Ok(())
+}
+
 impl GameFrameDriver {
     pub fn new(mut app: App, context: egui::Context) -> Self {
         // GUI consumers and the backend must see the same Context identity.
@@ -530,13 +545,16 @@ impl GameFrameDriver {
         }
         let pending_uploads = {
             let device = self.app.world().get_resource::<country_core::render::device::GraphicsDeviceResource>().cloned();
-            if let (Some(device), Some(mut library)) = (device,
-                self.app.world_mut().get_resource_mut::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>()) {
-                library.flush_pending_uploads(device.device())
+            if let Some(device) = device {
+                admit_producer_uploads(self.app.world_mut(), device.device())
             } else { Ok(()) }
         };
         match pending_uploads {
-            Err(rhapsody::Error::Exhausted(_)) => { self.awaiting_render = true; return Ok(()); }
+            Err(rhapsody::Error::Exhausted(_)) => {
+                crate::frame_counters::record_upload_pending_yield();
+                self.awaiting_render = true;
+                return Ok(());
+            }
             result => result?,
         }
         if self.extract.is_none() {
@@ -640,7 +658,7 @@ pub struct GameLoop {
     pub(crate) custom_cursor_mode: bool,
     pub(crate) custom_cursor_size_px: f32,
     // Strong actual-device lease; the Created event alone owns no memory.
-    custom_cursor_buffer: Option<rhapsody::resource::ManagedBuffer>,
+    custom_cursor_buffer: Option<CustomCursorUpload>,
     pub(crate) frame_count: u64,
     pub(crate) suspended: bool,
     pub(crate) window_shown: bool,
@@ -659,6 +677,36 @@ pub struct GameLoop {
     window_events: bevy_ecs::event::EventCursor<country_core::resources::window::OsWindowCmd>,
     settings_events: bevy_ecs::event::EventCursor<crate::app_config::WriteSettingsFileCmd>,
     pending_windowed_resolution: Option<[u32; 2]>,
+}
+
+/// The pending CPU words belong to one admitted cursor owner. Unwritten words
+/// remain undefined until their actual producer supplies them.
+struct CustomCursorUpload {
+    buffer: rhapsody::resource::ManagedBuffer,
+    writer: std::sync::Arc<dyn country_core::render::ssbo::rhapsody_boundary::MappedUploadWriter>,
+    pending: [u8; 16],
+    dirty: u8,
+}
+impl CustomCursorUpload {
+    fn write(&mut self, offset: usize, bytes: &[u8]) -> anyhow::Result<()> {
+        self.pending[offset..offset + bytes.len()].copy_from_slice(bytes);
+        self.dirty |= (((1u16 << (bytes.len() / 4)) - 1) << (offset / 4)) as u8;
+        self.flush()
+    }
+    fn flush(&mut self) -> anyhow::Result<()> {
+        while self.dirty != 0 {
+            let first = self.dirty.trailing_zeros();
+            let count = (self.dirty >> first).trailing_ones();
+            let mask = (((1u16 << count) - 1) << first) as u8;
+            let range = first as usize * 4..(first + count) as usize * 4;
+            match self.writer.write(range.start, &self.pending[range]) {
+                Ok(()) => self.dirty &= !mask,
+                Err(rhapsody::Error::Exhausted(_) | rhapsody::Error::Timeout) => break,
+                Err(error) => return Err(error.into()),
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Event owners installed by the OS host before either App can run startup.
@@ -987,7 +1035,7 @@ impl GameLoop {
         self.custom_cursor_buffer = None;
         let lease = self.resolve_custom_cursor_buffer()?;
         anyhow::ensure!(
-            lease.persistent_host_ptr() == Some(created.0.as_ptr().cast::<u8>()),
+            lease.buffer.persistent_host_ptr() == Some(created.0.as_ptr().cast::<u8>()),
             "CustomCursor Created pointer does not match its canonical managed buffer"
         );
         self.custom_cursor_buffer = Some(lease);
@@ -996,7 +1044,7 @@ impl GameLoop {
 
     /// The startup event carries only a pointer; the actual long-lived owner is
     /// the canonical App library plus this same BufferHost's managed lease.
-    fn resolve_custom_cursor_buffer(&mut self) -> anyhow::Result<rhapsody::resource::ManagedBuffer> {
+    fn resolve_custom_cursor_buffer(&mut self) -> anyhow::Result<CustomCursorUpload> {
         use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
         use country_core::systems::render_loop::draw_passes::custom_cursor_pass::CustomCursorSsbo;
         let core_buffer = self
@@ -1006,9 +1054,9 @@ impl GameLoop {
             .resource::<AssetSsboLibrary>()
             .get_buffer::<CustomCursorSsbo>()
             .ok_or_else(|| anyhow::anyhow!("CustomCursor has no canonical buffer in its World"))?;
-        let lease = self
+        let (lease, writer) = self
             .render
-            .managed_buffer(*core_buffer)
+            .mapped_buffer_writer(*core_buffer)
             .ok_or_else(|| {
                 anyhow::anyhow!("CustomCursor buffer does not belong to the active BufferHost")
             })?;
@@ -1020,7 +1068,7 @@ impl GameLoop {
             lease.persistent_host_ptr().is_some(),
             "CustomCursor buffer is not persistently mapped"
         );
-        Ok(lease)
+        Ok(CustomCursorUpload { buffer: lease, writer, pending: [0; 16], dirty: 0 })
     }
 
     /// B callback @140557e57..eb4 writes before the GameLoop confirmation
@@ -1032,15 +1080,13 @@ impl GameLoop {
         if self.capture_anchor.is_some() {
             return Ok(());
         }
-        if let Some(buffer) = &self.custom_cursor_buffer {
+        if let Some(buffer) = &mut self.custom_cursor_buffer {
             let data = country_core::systems::render_loop::draw_passes::custom_cursor_pass::CustomCursorSsbo {
                 pos: [position[0] as f32, position[1] as f32],
                 enabled: u32::from(self.visibility_suppressions == 0),
                 size_px: self.custom_cursor_size_px,
             };
-            // Current Rhapsody API waits only for this buffer's actual in-flight
-            // uses, retaining its non-coherent flush and host-access tracking.
-            buffer.write_bytes(0, bytemuck::bytes_of(&data))?;
+            buffer.write(0, bytemuck::bytes_of(&data))?;
         }
         Ok(())
     }
@@ -1114,8 +1160,8 @@ impl GameLoop {
                 }
                 self.custom_cursor_mode = true;
                 self.custom_cursor_size_px = size_px;
-                if let Some(buffer) = &self.custom_cursor_buffer {
-                    buffer.write_bytes(12, &size_px.to_ne_bytes())?;
+                if let Some(buffer) = &mut self.custom_cursor_buffer {
+                    buffer.write(12, &size_px.to_ne_bytes())?;
                 }
             }
             OsCursorVisibilityCmd::Suppress(origin) => {
@@ -1124,8 +1170,8 @@ impl GameLoop {
                 self.visibility_suppressions |= origin.0;
                 if previous == 0 {
                     if self.custom_cursor_mode {
-                        if let Some(buffer) = &self.custom_cursor_buffer {
-                            buffer.write_bytes(8, &0u32.to_ne_bytes())?;
+                        if let Some(buffer) = &mut self.custom_cursor_buffer {
+                            buffer.write(8, &0u32.to_ne_bytes())?;
                         }
                     } else {
                         self.window.set_cursor_visible(false);
@@ -1138,8 +1184,8 @@ impl GameLoop {
                 self.visibility_suppressions &= !origin.0;
                 if previous != 0 && self.visibility_suppressions == 0 {
                     if self.custom_cursor_mode {
-                        if let Some(buffer) = &self.custom_cursor_buffer {
-                            buffer.write_bytes(8, &1u32.to_ne_bytes())?;
+                        if let Some(buffer) = &mut self.custom_cursor_buffer {
+                            buffer.write(8, &1u32.to_ne_bytes())?;
                         }
                     } else {
                         self.window.set_cursor_visible(true);
@@ -1155,6 +1201,7 @@ impl GameLoop {
         if !self.lifecycle.is_running() {
             return Ok(false);
         }
+        if let Some(buffer) = &mut self.custom_cursor_buffer { buffer.flush()?; }
         if self.close_requested { self.render.cancel_preparation()?; }
         if self.driver.waiting_for_preparation {
             // Surface terminal failure before the admission gate can hide it
@@ -1585,6 +1632,160 @@ fn gather_video_setting_events(
 mod frame_tests {
     use super::*;
     use country_core::{game_config::GameConfig, resources::gui::EscMenuState};
+
+    #[test]
+    fn rejected_nani_payload_retries_before_handover_without_new_writes_or_double_roll() {
+        use country_core::render::{nani::gpu_world::{GpuWorld, GpuWorldSubset,
+            GpuWorldSubsetKind, OwnedGpuWorldSubset, InstanceCullData, InstanceKey},
+            ssbo::{StorageElement, rhapsody_boundary::{GraphicsDevice, Buffer, BufferDesc}}};
+        use std::cell::{Cell, RefCell};
+        #[derive(Clone, Copy, Default, bytemuck::NoUninit)]
+        #[repr(C)]
+        struct Payload([u32; 8]);
+        impl StorageElement for Payload { const NAME: &'static str = "NaniAdmissionFixture"; }
+        #[derive(Default)]
+        struct Quota {
+            next: Cell<u64>, attempts: Cell<usize>,
+            calls: RefCell<Vec<u64>>, accepted: RefCell<Vec<(u64, Vec<u8>)>>,
+        }
+        impl GraphicsDevice for Quota {
+            fn create_buffer(&self, desc: &BufferDesc, _: &str, _: Option<&[u8]>) -> rhapsody::Result<Buffer> {
+                let id = self.next.get() + 1; self.next.set(id);
+                Ok(Buffer { id, byte_size: desc.size as u64, ..Default::default() })
+            }
+            fn update_buffer_bytes(&self, buffer: &Buffer, data: &[u8], ranges: &[std::ops::Range<usize>], _: usize)
+                -> rhapsody::Result<()> {
+                let attempt = self.attempts.get() + 1; self.attempts.set(attempt);
+                self.calls.borrow_mut().push(buffer.id);
+                if [2, 3, 5].contains(&attempt) { return Err(rhapsody::Error::exhausted("fixture admission full")); }
+                for range in ranges { self.accepted.borrow_mut().push((buffer.id, data[range.clone()].to_vec())); }
+                Ok(())
+            }
+        }
+        let device = Quota::default();
+        let kind = GpuWorldSubsetKind::Canopy;
+        let mut gpu = GpuWorld::new(&device);
+        gpu.assign_subset(kind, GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<Payload>(&device, kind, 8)));
+        let cull = [InstanceCullData::new(glam::Vec3::ZERO, 1.0, 0),
+            InstanceCullData::new(glam::Vec3::ZERO, 1.0, 1)];
+        let data = [Payload([17; 8]), Payload([29; 8])];
+        let mut keys = Vec::new();
+        gpu.create_instances(kind, &cull, &data, &mut keys);
+        country_core::render::nani::systems::nani_flush_instance_updates(&mut gpu, &device);
+        assert!(gpu.instance_uploads_pending());
+        assert_eq!((gpu.previous_instance_count(), gpu.total_instance_count), (0, 2));
+        let first = device.calls.borrow().clone();
+        assert_eq!(first.len(), 2);
+        assert_ne!(first[0], first[1], "positions and typed data have independent real identities");
+        let mut world = bevy_ecs::world::World::new(); world.insert_resource(gpu);
+        assert!(matches!(admit_producer_uploads(&mut world, &device), Err(rhapsody::Error::Exhausted(_))));
+        assert!(world.resource::<GpuWorld>().instance_uploads_pending());
+        assert_eq!(world.resource::<GpuWorld>().previous_instance_count(), 0);
+        admit_producer_uploads(&mut world, &device).unwrap();
+        let ready = world.resource::<GpuWorld>();
+        assert!(!ready.instance_uploads_pending());
+        assert_eq!((ready.previous_instance_count(), ready.total_instance_count), (2, 0));
+        assert_eq!(*device.calls.borrow(), [first[0], first[1], first[1], first[1]]);
+        let accepted = device.accepted.borrow();
+        assert_eq!(accepted.len(), 2);
+        assert_eq!(accepted[0].1, country_core::render::ssbo::rhapsody_boundary::slice_as_bytes(&cull));
+        assert_eq!(accepted[1].1, bytemuck::cast_slice::<_, u8>(&data));
+        drop(accepted);
+        admit_producer_uploads(&mut world, &device).unwrap();
+        assert_eq!(device.attempts.get(), 4);
+        assert_eq!(world.resource::<GpuWorld>().previous_instance_count(), 2);
+        let old = world.resource::<GpuWorld>().clone();
+        assert_eq!(old.owned_subset_mut(kind).main_cull_command_bound(), 2);
+        {
+            let mut gpu = world.resource_mut::<GpuWorld>();
+            for &(id, index, _) in &keys {
+                gpu.update_instance_mesh(&mut InstanceKey { id, index, kind }, 7);
+            }
+            country_core::render::nani::systems::nani_flush_instance_updates(&mut gpu, &device);
+            assert!(gpu.instance_uploads_pending());
+            assert_eq!(gpu.previous_instance_count(), 2);
+        }
+        assert_eq!(device.attempts.get(), 5);
+        assert_eq!(device.accepted.borrow().len(), 2);
+        admit_producer_uploads(&mut world, &device).unwrap();
+        assert!(!world.resource::<GpuWorld>().instance_uploads_pending());
+        assert_eq!(world.resource::<GpuWorld>().previous_instance_count(), 0);
+        let new = world.resource::<GpuWorld>().clone();
+        assert_eq!(old.owned_subset_mut(kind).main_cull_command_bound(), 2);
+        assert_eq!(new.owned_subset_mut(kind).main_cull_command_bound(), 1);
+        assert_eq!(*device.calls.borrow(), [first[0], first[1], first[1], first[1], first[0], first[0]]);
+        let changed = [InstanceCullData::new(glam::Vec3::ZERO, 1.0, 7); 2];
+        let accepted = device.accepted.borrow();
+        assert_eq!(accepted.len(), 3);
+        assert_eq!(accepted[2].0, first[0]);
+        assert_eq!(accepted[2].1, country_core::render::ssbo::rhapsody_boundary::slice_as_bytes(&changed));
+        drop(accepted);
+        admit_producer_uploads(&mut world, &device).unwrap();
+        assert_eq!(device.attempts.get(), 6);
+        assert_eq!(world.resource::<GpuWorld>().previous_instance_count(), 0);
+    }
+
+    #[test]
+    fn cursor_upload_preserves_partial_fields_and_retries_without_new_input() {
+        use country_core::render::ssbo::rhapsody_boundary::{BufferDesc, GraphicsDevice, MappedUploadWriter};
+        use std::{collections::VecDeque, sync::Arc};
+        #[derive(Default)]
+        struct Writer {
+            results: Mutex<VecDeque<rhapsody::Result<()>>>,
+            accepted: Mutex<Vec<(usize, Vec<u8>)>>,
+        }
+        impl MappedUploadWriter for Writer {
+            fn write(&self, offset: usize, bytes: &[u8]) -> rhapsody::Result<()> {
+                self.results.lock().unwrap().pop_front().unwrap_or(Ok(()))?;
+                self.accepted.lock().unwrap().push((offset, bytes.to_vec()));
+                Ok(())
+            }
+            fn try_read(&self, _: usize, _: usize, _: &mut dyn FnMut()) -> rhapsody::Result<bool> {
+                panic!("cursor producer must not read or wait for GPU memory")
+            }
+        }
+        let device = match rhapsody::device::Device::new_headless(&rhapsody::device::DeviceConfig::headless()) {
+            Ok(device) => device,
+            Err(error) => {
+                assert!(!std::env::var("RHAPSODY_REQUIRE_VULKAN").is_ok_and(|v| v == "1"), "{error}");
+                return;
+            }
+        };
+        let host = crate::render_host::BufferHost::new(device);
+        let handle = host.create_buffer(&BufferDesc::new(16,
+            (ash::vk::BufferUsageFlags::STORAGE_BUFFER | ash::vk::BufferUsageFlags::TRANSFER_DST).as_raw(), 1),
+            "cursor retry fixture", None).unwrap();
+        let writer = Arc::new(Writer::default());
+        let mut upload = CustomCursorUpload {
+            buffer: host.managed_buffer(&handle).unwrap(), writer: writer.clone(), pending: [0; 16], dirty: 0,
+        };
+        // Creation itself must not initialize unknown position or visibility.
+        upload.flush().unwrap();
+        assert!(writer.accepted.lock().unwrap().is_empty());
+        writer.results.lock().unwrap().extend([Err(rhapsody::Error::Timeout), Err(rhapsody::Error::Timeout)]);
+        upload.write(12, &24f32.to_le_bytes()).unwrap();
+        upload.write(8, &1u32.to_le_bytes()).unwrap();
+        upload.flush().unwrap();
+        assert_eq!(*writer.accepted.lock().unwrap(), [(8, [1u32.to_le_bytes(), 24f32.to_le_bytes()].concat())]);
+        writer.accepted.lock().unwrap().clear();
+        // Disjoint words retain only the rejected suffix after partial admission.
+        writer.results.lock().unwrap().extend([Err(rhapsody::Error::Timeout), Ok(()), Err(rhapsody::Error::Timeout)]);
+        upload.write(0, &7f32.to_le_bytes()).unwrap();
+        upload.write(12, &32f32.to_le_bytes()).unwrap();
+        assert_eq!(upload.dirty, 8);
+        upload.flush().unwrap();
+        assert_eq!(*writer.accepted.lock().unwrap(), [(0, 7f32.to_le_bytes().to_vec()), (12, 32f32.to_le_bytes().to_vec())]);
+        writer.accepted.lock().unwrap().clear();
+        writer.results.lock().unwrap().push_back(Err(rhapsody::Error::Exhausted("cursor fixture".into())));
+        upload.write(0, &[9; 16]).unwrap();
+        upload.flush().unwrap();
+        assert_eq!(*writer.accepted.lock().unwrap(), [(0, vec![9; 16])]);
+        writer.results.lock().unwrap().push_back(Err(rhapsody::Error::invalid_usage("fatal cursor fixture")));
+        assert!(upload.write(8, &0u32.to_le_bytes()).is_err());
+        assert_eq!(upload.dirty, 4);
+        drop(upload); // An owner replacement cancels unaccepted bytes.
+        assert_eq!(writer.accepted.lock().unwrap().len(), 1);
+    }
 
     #[test]
     fn failed_callback_blocks_every_already_queued_renderer_and_input_callback() {

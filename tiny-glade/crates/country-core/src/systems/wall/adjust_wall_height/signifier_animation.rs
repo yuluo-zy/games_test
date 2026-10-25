@@ -198,7 +198,7 @@ mod tests {
         let curve = Curve2::try_new(vec![[0.0, 0.0], [10.0, 0.0]], false).unwrap();
         let wall = inner.new_wall(WallState::new(curve, 4.0, 0, 0, false));
         let mut public = PublicWalls::default();
-        public.consume(&mut inner, &terrain());
+        public.consume_with_paths(&mut inner, &terrain(), None, &crate::resources::walls::public_walls::WallPublicationDirty::default(), &crate::resources::walls::public_walls::WallSpatialHash::default());
         let mut meshes = AssetMeshLibrary::new();
         let handle = meshes.add(MeshAsset::new(
             crate::utils::geo::mesh_from_pts("t", &[Vec3::ZERO]),

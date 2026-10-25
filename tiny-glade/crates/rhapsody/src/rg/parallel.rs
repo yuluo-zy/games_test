@@ -88,22 +88,45 @@ pub fn plan_chunks<N: AsRef<str>>(
 }
 
 /// Record chunks on the ECS compute pool and return results in chunk order.
-pub(crate) fn map_chunks<T, R>(
+pub fn map_chunks<T, R>(
     items: &mut [T], f: impl Fn(usize, &mut T) -> R + Send + Sync,
-) -> Vec<R>
+) -> smallvec::SmallVec<[R; 8]>
 where T: Send, R: Send + 'static {
     use bevy_tasks::{ComputeTaskPool, TaskPool};
     let pool = ComputeTaskPool::get_or_init(TaskPool::default);
+    let mut results = smallvec::SmallVec::<[Option<R>; 8]>::new();
+    results.resize_with(items.len(), || None);
+    // Each worker owns its disjoint output slot. Scope completion joins every
+    // worker, preserving input order without a result Vec or an index sort.
     // Tick only this recording scope: unrelated ECS producers must not run
     // under the render owner's thread identity while it owns a frame boundary.
-    let mut indexed = pool.scope_with_executor(false, None, |scope| {
-        for (index, item) in items.iter_mut().enumerate() {
+    let _ = pool.scope_with_executor(false, None, |scope| {
+        for ((index, item), result) in items.iter_mut().enumerate().zip(&mut results) {
             let f = &f;
-            scope.spawn(async move { (index, f(index, item)) });
+            scope.spawn(async move { *result = Some(f(index, item)); });
         }
     });
-    indexed.sort_unstable_by_key(|(index, _)| *index);
-    indexed.into_iter().map(|(_, value)| value).collect()
+    results.into_iter().map(|result| result.expect("joined chunk worker returned no result")).collect()
+}
+
+#[cfg(test)]
+mod chunk_results_tests {
+    #[test]
+    fn scoped_mutations_and_non_copy_results_preserve_chunk_order() {
+        for len in [0, 1, 7, 8, 9, 17] {
+            let mut items = (0..len).map(|index| vec![index]).collect::<Vec<_>>();
+            let results = super::map_chunks(&mut items, |index, item| {
+                if index % 2 == 0 { std::thread::yield_now(); }
+                item.push(index + 1);
+                format!("chunk-{index}")
+            });
+            assert_eq!(results.len(), len);
+            for (index, (item, result)) in items.iter().zip(results).enumerate() {
+                assert_eq!(item, &[index, index + 1]);
+                assert_eq!(result, format!("chunk-{index}"));
+            }
+        }
+    }
 }
 
 /// 执行器的并行录制配置。

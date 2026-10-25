@@ -58,8 +58,6 @@ impl From<&Texture> for AttachmentTexture {
 /// from_iter @14157b1d0 copies it to RasterPassColorAttachment +0x40;
 /// begin_render_pass @1416f719b..71db places it in pClearValues.
 pub type ColorClearWords = [u32; 4];
-/// Source compatibility for the historical misnomer; these are clear bits.
-pub type ColorViewWords = ColorClearWords;
 
 /// 颜色附件（0x20 B，tag @0）。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -69,7 +67,7 @@ pub enum ColorAttachment {
     /// tag1：16 B VkClearColorValue 位模式（@+4），纹理引用 @+0x18。
     /// `View`/`view` 是保留的历史源码名，不是图像子资源视图。
     View {
-        view: ColorViewWords,
+        view: ColorClearWords,
         texture: AttachmentTexture,
     },
     /// tag2（B 阶段补，i_api；O：`main_pass` 的 "G-buffer"、`ui_2d_pass` 的 "mei"、`feedback_report_bg` 用 `mov dword [..], 2`）：
@@ -118,10 +116,6 @@ impl ColorAttachment {
             ColorAttachment::Texture(_) | ColorAttachment::Tag2(_) => [0; 4],
             ColorAttachment::View { view, .. } => *view,
         }
-    }
-    /// Source-compatible legacy accessor for the same clear-value bits.
-    pub fn view_words(&self) -> ColorViewWords {
-        self.clear_color_bits()
     }
 }
 
@@ -204,7 +198,7 @@ mod tests {
             .access_type(),
             0x2e
         );
-        assert_eq!(ColorAttachment::Texture(tex(1)).view_words(), [0; 4]);
+        assert_eq!(ColorAttachment::Texture(tex(1)).clear_color_bits(), [0; 4]);
     }
 
     #[test]
@@ -213,7 +207,7 @@ mod tests {
         let c = ColorAttachment::Tag2(tex(12));
         assert_eq!(c.tag(), 2);
         assert_eq!(c.access_type(), 0x2e);
-        assert_eq!(c.view_words(), [0; 4]);
+        assert_eq!(c.clear_color_bits(), [0; 4]);
         assert_eq!(c.desc().id, 12);
         let mut c = c;
         *c.handle_mut() = 3;

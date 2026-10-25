@@ -9,6 +9,9 @@ use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::Arc, time::Duration};
 #[global_allocator]
 static GLOBAL_ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
+#[path = "support/performance_input.rs"]
+mod performance_input;
+
 use anyhow::{Context, Result};
 use country_core::{
     asset_libraries::{
@@ -252,6 +255,11 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
     };
 
     let mut performance = PerformanceWorkload::from_environment()?;
+    let fullscreen_capture_path = std::env::var_os("TG_VALIDATE_FULLSCREEN_CAPTURE").map(PathBuf::from);
+    let fullscreen_capture_result = Arc::new(std::sync::Mutex::new(None::<std::result::Result<[u32; 2], String>>));
+    let mut fullscreen_capture_queued = false;
+    let mut fullscreen_capture_requested = false;
+    let mut fullscreen_capture_native_since = None;
     let benchmark_extent = performance.as_ref().map_or([480, 270], |_| [1280, 720]);
     let required_world_frames = std::env::var("TG_VALIDATE_WORLD_FRAMES")
         .ok().map(|value| value.parse::<u64>()).transpose()?.unwrap_or(12).max(12);
@@ -271,6 +279,12 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
     tiny_glade::load_language_library::load_language_library(None, None);
     let cli = CliArgs::parse_from(["original-gameplay-wsi"]);
     let mut config = get_app_config(&cli)?;
+    if fullscreen_capture_path.is_some() {
+        anyhow::ensure!(mode == WindowValidationMode::Gameplay && performance.is_none(),
+            "fullscreen capture requires the gameplay fixture without performance stimuli");
+        config.video.display.fullscreen = false;
+        config.video.display.allow_exclusive_fullscreen = false;
+    }
     if performance.is_some() {
         config.video.display.fullscreen = false;
         config.video.display.allow_exclusive_fullscreen = false;
@@ -328,7 +342,7 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
     let event_loop = EventLoop::new()?;
     let window = Arc::new(WindowBuilder::new()
         .with_title("Tiny Glade — original gameplay WSI validation")
-        .with_visible(performance.is_some() || matches!(mode, WindowValidationMode::WindowCycle | WindowValidationMode::LateCamera))
+        .with_visible(fullscreen_capture_path.is_some() || performance.is_some() || matches!(mode, WindowValidationMode::WindowCycle | WindowValidationMode::LateCamera))
         .with_inner_size(winit::dpi::PhysicalSize::new(benchmark_extent[0], benchmark_extent[1]))
         .build(&event_loop)?);
     let mut game = GameLoop::new(app, window.clone(), GameLoopOptions {
@@ -406,7 +420,7 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
                                         frame.native_present_successes > cycle.previous_native_successes
                                     } else { frame.native_present_successes > 0 }
                                 });
-                            if mode == WindowValidationMode::WindowCycle && !cycle_native_ready {
+                            if (mode == WindowValidationMode::WindowCycle || fullscreen_capture_path.is_some()) && !cycle_native_ready {
                                 // 原生acquire允许暂时无图像/旧generation背压；保World/draw门，
                                 // 此帧不推进生命周期、receipt或native成功计数。
                             } else {
@@ -466,11 +480,48 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
                 if mode == WindowValidationMode::LateCamera {
                     late_camera.after_redraw(&mut game, &window, target, world_frames, observation.as_ref())?;
                 }
+                if let Some(path) = &fullscreen_capture_path {
+                    if !fullscreen_capture_requested && world_frames >= 3 {
+                        game.app_mut().world_mut().resource_mut::<GameConfig>().video.display.fullscreen = true;
+                        game.app_mut().world_mut().send_event(tiny_glade::app_config::ApplyVideoSettingsCmd(1));
+                        fullscreen_capture_requested = true;
+                    }
+                    if let Some(Err(error)) = &*fullscreen_capture_result.lock().unwrap() {
+                        anyhow::bail!("fullscreen main-image capture failed: {error}");
+                    }
+                    #[cfg(target_os = "macos")]
+                    let native_fullscreen = owned_window_is_native_fullscreen(&window)?;
+                    #[cfg(not(target_os = "macos"))]
+                    let native_fullscreen = window.fullscreen().is_some();
+                    let full_width = window.current_monitor().is_some_and(|monitor| window.inner_size().width == monitor.size().width);
+                    if native_fullscreen && full_width {
+                        fullscreen_capture_native_since.get_or_insert_with(std::time::Instant::now);
+                    } else { fullscreen_capture_native_since = None; }
+                    if !fullscreen_capture_queued && world_frames >= 8 && fullscreen_capture_native_since.is_some_and(|since| since.elapsed() >= Duration::from_millis(500))
+                        && observation.as_ref().is_some_and(|frame| frame.present_point.is_some()
+                            && frame.output_extent == [window.inner_size().width, window.inner_size().height]) {
+                        use tiny_glade::screenshot::{ScreenshotRequest, ScreenshotPurpose, ScreenshotSink};
+                        #[cfg(target_os = "macos")]
+                        verify_metal_layer_geometry(&window)?;
+                        #[cfg(target_os = "macos")]
+                        save_owned_window_image(&window, &path.with_extension("window.png"))?;
+                        let result = fullscreen_capture_result.clone();
+                        tiny_glade::screenshot::gather_screenshot_requests(game.app_mut().world_mut(), [ScreenshotRequest {
+                            purpose: ScreenshotPurpose::FinalFrame,
+                            dimensions: None,
+                            sink: ScreenshotSink::File { path: path.clone(), jpeg_quality: 95 },
+                            completion: Some(Arc::new(move |value| { *result.lock().unwrap() = Some(value); })),
+                        }])?;
+                        fullscreen_capture_queued = true;
+                        eprintln!("FULLSCREEN_CAPTURE main_image={path:?} physical={:?}", window.inner_size());
+                    }
+                }
                 if !mode.is_loading_close() && world_frames >= required_world_frames
                     && world_started.is_some_and(|start| start.elapsed() >= minimum_world_duration)
                     && (mode != WindowValidationMode::WindowCycle || cycle.complete())
                     && (mode != WindowValidationMode::LateCamera || late_camera.complete())
                     && stress.pending.is_none()
+                    && (fullscreen_capture_path.is_none() || fullscreen_capture_result.lock().unwrap().is_some())
                     && replayed.load(std::sync::atomic::Ordering::Relaxed) >= replay_expected && !close_requested {
                     // 发送关闭窗口事件，由现有 OS→游戏→保存→GPU 关闭链处理。
                     if mode == WindowValidationMode::WindowCycle {
@@ -505,6 +556,12 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
                         stress.verify()?;
                         for verify in &cycle.asset_proofs { verify(world)?; }
                         cycle.native_presented_frames
+                    } else if fullscreen_capture_path.is_some() {
+                        anyhow::ensure!(fullscreen_capture_result.lock().unwrap().as_ref().is_some_and(|value| value.is_ok()),
+                            "full-screen capture did not complete");
+                        // Frames above are counted only after a real native
+                        // present in their own generation, across this resize.
+                        world_frames
                     } else {
                         native.checked_sub(native_before_world.context("没有游戏 present 起点")?)
                             .context("swapchain generation changed during bounded validation")?
@@ -1003,6 +1060,55 @@ impl WindowStress {
 }
 
 #[cfg(target_os = "macos")]
+fn owned_window_is_native_fullscreen(window: &winit::window::Window) -> Result<bool> {
+    use objc::{Message, runtime::{Object, Sel}};
+    use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    let RawWindowHandle::AppKit(handle) = window.window_handle()?.as_raw() else { return Ok(false); };
+    let view = handle.ns_view.as_ptr().cast::<Object>();
+    let native: *mut Object = unsafe { (&*view).send_message(Sel::register("window"), ()) }?;
+    let style: usize = unsafe { (&*native).send_message(Sel::register("styleMask"), ()) }?;
+    // NSWindow.h: NSWindowStyleMaskFullScreen. Read only by this fixture.
+    Ok(style & (1 << 14) != 0)
+}
+
+#[cfg(target_os = "macos")]
+fn save_owned_window_image(window: &winit::window::Window, path: &std::path::Path) -> Result<()> {
+    use core_graphics::{color_space::CGColorSpace, context::CGContext,
+        geometry::{CGRect, CGPoint, CGSize}, image::CGImageAlphaInfo, window as cg_window};
+    use objc::{Message, runtime::{Object, Sel}};
+    use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    let RawWindowHandle::AppKit(handle) = window.window_handle()?.as_raw() else {
+        anyhow::bail!("not an AppKit window");
+    };
+    let view = handle.ns_view.as_ptr().cast::<Object>();
+    let native: *mut Object = unsafe { (&*view).send_message(Sel::register("window"), ()) }?;
+    let number: isize = unsafe { (&*native).send_message(Sel::register("windowNumber"), ()) }?;
+    anyhow::ensure!(number > 0, "owned window has no native window number");
+    // Only this fixture's own window. A denied OS capture remains unavailable;
+    // the independent main-image GPU capture still identifies the render stage.
+    unsafe extern "C" { static CGRectNull: CGRect; }
+    // core-graphics 0.23.1 shifts every list flag by one bit. The actual SDK
+    // CGWindow.h defines IncludingWindow=1<<3; its crate constant selects all
+    // windows except desktop elements instead of selecting this owner.
+    const INCLUDING_THIS_WINDOW: u32 = 1 << 3;
+    let image = cg_window::create_image(unsafe { CGRectNull }, INCLUDING_THIS_WINDOW,
+        number as u32, cg_window::kCGWindowImageBoundsIgnoreFraming | cg_window::kCGWindowImageBestResolution)
+        .context("CoreGraphics did not supply this owned window image")?;
+    let (width, height) = (image.width(), image.height());
+    let mut context = CGContext::create_bitmap_context(None, width, height, 8, width * 4,
+        &CGColorSpace::create_device_rgb(), CGImageAlphaInfo::CGImageAlphaPremultipliedLast as u32);
+    context.draw_image(CGRect::new(&CGPoint::new(0.0, 0.0), &CGSize::new(width as f64, height as f64)), &image);
+    image::save_buffer(path, context.data(), width as u32, height as u32, image::ColorType::Rgba8)?;
+    let invalid = context.data().chunks_exact(4).filter(|p|
+        (p[0] == 255 && p[1] == 0 && p[2] == 255) || (p[0] == 0 && p[1] == 0 && p[2] == 0 && p[3] > 0)).count();
+    eprintln!("FULLSCREEN_CAPTURE invalid_pixels={invalid} total_pixels={}", width * height);
+    anyhow::ensure!(invalid * 100 < width * height, "native full-screen image still contains an old-size region / unpainted pixels: {invalid}/{}", width * height);
+    eprintln!("FULLSCREEN_CAPTURE native_window={path:?} id={number} extent={width}x{height} inner={:?} outer={:?} fullscreen={:?} monitor={:?}",
+        window.inner_size(), window.outer_size(), window.fullscreen(), window.current_monitor().map(|m| m.size()));
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
 fn verify_metal_layer_geometry(window: &winit::window::Window) -> Result<()> {
     use objc::{Encode, Encoding, Message, runtime::{Object, Sel}};
     use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
@@ -1032,7 +1138,19 @@ fn verify_metal_layer_geometry(window: &winit::window::Window) -> Result<()> {
         let frame: Rect = (&*layer).send_message(Sel::register("frame"), ())?;
         let drawable: Size = (&*layer).send_message(Sel::register("drawableSize"), ())?;
         let physical = window.inner_size();
-        eprintln!("WINDOW_LAYER view={bounds:?} layer={frame:?} drawable={drawable:?} physical={physical:?}");
+        let view_frame: Rect = (&*view).send_message(Sel::register("frame"), ())?;
+        let parent: *mut Object = (&*view).send_message(Sel::register("superview"), ())?;
+        let parent_bounds: Option<Rect> = if parent.is_null() { None } else {
+            Some((&*parent).send_message(Sel::register("bounds"), ())?)
+        };
+        let gravity: *mut Object = (&*layer).send_message(Sel::register("contentsGravity"), ())?;
+        let gravity_bytes: *const std::ffi::c_char = (&*gravity).send_message(Sel::register("UTF8String"), ())?;
+        let gravity = std::ffi::CStr::from_ptr(gravity_bytes).to_string_lossy();
+        let presentation: *mut Object = (&*layer).send_message(Sel::register("presentationLayer"), ())?;
+        let presentation_frame: Option<Rect> = if presentation.is_null() { None } else {
+            Some((&*presentation).send_message(Sel::register("frame"), ())?)
+        };
+        eprintln!("WINDOW_LAYER view={bounds:?} view_frame={view_frame:?} parent_bounds={parent_bounds:?} layer={frame:?} presentation_frame={presentation_frame:?} gravity={gravity} drawable={drawable:?} physical={physical:?}");
         anyhow::ensure!((frame.origin.x - bounds.origin.x).abs() < 0.5
             && (frame.origin.y - bounds.origin.y).abs() < 0.5
             && (frame.size.width - bounds.size.width).abs() < 0.5
@@ -1097,13 +1215,22 @@ impl PerformanceWorkload {
             let config = world.resource::<country_core::render::render_config::FrameRenderConfig>();
             anyhow::ensure!(observation.context("missing actual performance frame")?.output_extent == [1280, 720]
                 && config.world_resolution_scale.to_bits() == 1.0_f32.to_bits(), "benchmark did not start at its requested window/scale");
+            let expected = Duration::from_secs_f64(1.0 / 60.0);
+            anyhow::ensure!(matches!(world.get_resource::<bevy_time::TimeUpdateStrategy>(),
+                Some(bevy_time::TimeUpdateStrategy::ManualDuration(duration)) if *duration == expected),
+                "actual gameplay lost its fixed time strategy");
+            let time = world.resource::<bevy_time::Time>();
+            let clock = world.resource::<country_core::resources::game_clock::GameClock>();
+            eprintln!("PERF_INPUT_CLOCK {}", serde_json::json!({
+                "schema":2,"fixed_delta_ns":expected.as_nanos().to_string(),
+                "elapsed_ns":time.elapsed().as_nanos().to_string(),"delta_ns":time.delta().as_nanos().to_string(),
+                "game_frame":clock.frame_count,"game_total_bits":clock.total_secs.to_bits(),
+                "game_delta_bits":clock.delta.to_bits(),"paused":clock.paused,"ran":clock.ran,
+            }));
             eprintln!("PERF_WORLD_FIRST scenario={} wall_ms={:.3} world={:?}", self.scenario, elapsed.as_secs_f64()*1000., world.id());
         }
         if self.scenario == "many_draws" && frame == 10 {
-            use country_core::{asset_libraries::Handle, render::{vao::Vao, shader::RasterShaderProgram}, utils::components::transform::Transform};
-            let sources = world.query::<(bevy_ecs::entity::Entity, &Handle<Vao>, &Handle<RasterShaderProgram>, &Transform)>()
-                .iter(world).map(|(entity, _, _, _)| entity).take(32).collect::<Vec<_>>();
-            anyhow::ensure!(!sources.is_empty(), "many_draws has no actual drawable sources");
+            let sources = performance_input::select_sources(world)?;
             // Clone complete current ECS tuples, retaining real asset/buffer owners.
             // This is an entity/renderer stress workload, not a saved native scene.
             for source in sources {
@@ -1115,10 +1242,15 @@ impl PerformanceWorkload {
             }
             eprintln!("PERF_WORKLOAD cloned_actual_entities={}", self.clones_created);
         }
-        if self.scenario == "many_draws" && frame == 199 {
-            let draws = observation.context("missing actual stress observation")?.draw_list_lengths.iter().sum::<usize>();
-            anyhow::ensure!(draws >= 1000, "stress entities failed to reach actual draw lists: {draws}");
-            eprintln!("PERF_WORKLOAD actual_draw_list_entries={draws}");
+        if frame == 199 {
+            let observation = observation.context("missing actual input observation")?;
+            let input = performance_input::scene_manifest(world, &observation.draw_list_lengths)?;
+            eprintln!("PERF_INPUT_SCENE {}", serde_json::to_string(&input)?);
+            if self.scenario == "many_draws" {
+                let draws = observation.draw_list_lengths.iter().sum::<usize>();
+                anyhow::ensure!(draws >= 1000, "stress sources failed actual draw lists: {draws}");
+                eprintln!("PERF_WORKLOAD actual_draw_list_entries={draws}");
+            }
         }
         if frame >= 200 && (self.scenario == "continuous_edit" || (self.scenario == "local_edit" && frame % 30 == 0)) {
             use country_core::{resources::world_raster_defs::{PathRaster, PathRasterStagingSsbo}, asset_libraries::ssbo_library::AssetSsboLibrary};

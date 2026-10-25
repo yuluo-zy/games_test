@@ -97,12 +97,27 @@ mod tests {
             app.world().get::<PrevTransform>(entity).unwrap().translation,
             glam::Vec3::ZERO
         );
+        use crate::render::extract::ComponentJournal;
+        let cursor = app.world().resource::<ComponentJournal<PrevTransform>>().cursor();
+        app.update();
+        let (cursor, changes) = app.world().resource::<ComponentJournal<PrevTransform>>()
+            .since(Some(cursor)).unwrap();
+        assert!(changes.is_empty(), "stationary previous transforms must not publish");
         *app.world_mut().component_mut::<Transform>(entity).unwrap() = moved;
         app.update();
         assert_eq!(
             app.world().get::<PrevTransform>(entity).unwrap().translation,
             moved.translation
         );
+        let (cursor, changes) = app.world().resource::<ComponentJournal<PrevTransform>>()
+            .since(Some(cursor)).unwrap();
+        assert_eq!(changes, [entity]);
+        for _ in 0..2 {
+            app.update();
+            assert!(app.world().resource::<ComponentJournal<PrevTransform>>()
+                .since(Some(cursor)).unwrap().1.is_empty(), "stopped motion must stay converged");
+            assert_eq!(*app.world().get::<PrevTransform>(entity).unwrap(), PrevTransform::from(moved));
+        }
     }
 
     #[test]
@@ -196,7 +211,8 @@ pub fn cache_prev_object_transforms(
     mut transforms: bevy_ecs::system::Query<(&Transform, ComponentWrite<PrevTransform>)>,
 ) {
     for (current, mut previous) in &mut transforms {
-        *previous = PrevTransform::from(*current);
+        let next = PrevTransform::from(*current);
+        if *previous != next { *previous = next; }
     }
 }
 

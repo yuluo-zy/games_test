@@ -32,6 +32,20 @@ use std::{
     thread::JoinHandle,
 };
 
+/// This thread owns visible drawing and animation. Configure its scheduler
+/// role once, before creating the renderer, rather than on every frame.
+fn configure_render_thread() -> anyhow::Result<()> {
+    #[cfg(target_os = "macos")]
+    {
+        let code = unsafe { libc::pthread_set_qos_class_self_np(libc::qos_class_t::QOS_CLASS_USER_INTERACTIVE, 0) };
+        if code != 0 {
+            return Err(anyhow::anyhow!("render thread QoS: {}", std::io::Error::from_raw_os_error(code)));
+        }
+        log::info!(target: "tiny_glade::render_thread", "render_thread requested_qos=user_interactive relative_priority=0");
+    }
+    Ok(())
+}
+
 /// Only Send data crosses the frame boundary. The renderer, including its Rc
 /// graph session, is constructed, used and destroyed on its resident thread.
 #[derive(Default)]
@@ -154,6 +168,7 @@ impl<R: 'static> RenderThread<R> {
         let update_ready = idle.update_ready.clone();
         let worker_update_ready = update_ready.clone();
         let handle = std::thread::Builder::new().name("tg-render".into()).spawn(move || {
+            if let Err(error) = configure_render_thread() { let _ = ready.send(Err(error)); return; }
             let mut renderer = match factory() {
                 Ok(renderer) => { if ready.send(Ok(())).is_err() { return; } renderer }
                 Err(error) => { let _ = ready.send(Err(error)); return; }
@@ -869,9 +884,9 @@ impl country_core::render::extract::RenderExtract for RenderExchange {
                 if current.world != source.world || (guarded && current != source) {
                     return;
                 }
-                if let Some(mut current) = game.get_resource_mut::<R>()
+                if let Some(current) = game.get_resource_mut::<R>()
                 {
-                    apply(&mut current);
+                    apply(current);
                 }
             }));
         }));

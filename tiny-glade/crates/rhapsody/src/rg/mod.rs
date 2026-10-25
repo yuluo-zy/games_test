@@ -57,7 +57,7 @@ pub use graph::{
     PassDeclaration, Pool, RenderGraph, ResourceBackend, ResourceDeclaration, Snapshot,
 };
 pub use indirect_count::{IndexedCountAdapter, IndexedCountRequest};
-pub use parallel::{ChunkStrategy, ParallelRecording};
+pub use parallel::{ChunkStrategy, ParallelRecording, map_chunks};
 pub use pass_api::{AshCommandBackend, CommandBackend, RenderPassApi};
 pub use pass_bindings::ManagedPassResources;
 pub use pass_builder::PassBuilder;

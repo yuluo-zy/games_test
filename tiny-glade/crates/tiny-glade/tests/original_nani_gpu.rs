@@ -20,7 +20,7 @@ use country_core::{
             MeshAtlas,
             buffers::{
                 self, NaniDrawListSsbo, NaniInstanceIndirectionSsbo, NaniNextVisibilityBitmaskSsbo,
-                NaniPrevVisibilityBitmaskSsbo,
+                NaniPrevVisibilityBitmaskSsbo, NaniDrawListLengthSsbo,
             },
             cull_shaders::NaniCullAndBucketFamily,
             gpu_world::{GpuWorld, GpuWorldSubsetKind, InstanceCullData},
@@ -153,6 +153,19 @@ impl log::Log for DiagnosticLogger {
 static DIAGNOSTIC_LOGGER: DiagnosticLogger = DiagnosticLogger;
 #[test]
 fn original_nani_master_one_real_instance_builds_indexed_command_and_indirection() {
+    verify_original_nani(GpuWorldSubsetKind::SolidVertexColor, 1, 1, false);
+}
+
+#[test]
+fn original_nani_fine_lists_keep_all_instances_with_a_live_input_command_bound() {
+    for kind in [GpuWorldSubsetKind::Canopy, GpuWorldSubsetKind::TreeTrunk] {
+        verify_original_nani(kind, 65, 1, false);
+        verify_original_nani(kind, 65, 3, false);
+        verify_original_nani(kind, 65, 3, true);
+    }
+}
+
+fn verify_original_nani(kind: GpuWorldSubsetKind, instance_count: usize, part_count: usize, rare_tail: bool) {
     if log::set_logger(&DIAGNOSTIC_LOGGER).is_ok() {
         log::set_max_level(log::LevelFilter::Error);
     }
@@ -199,19 +212,18 @@ fn original_nani_master_one_real_instance_builds_indexed_command_and_indirection
     buffers::populate_nani_ssbo_library(ssbos, &diagnostic);
 
     let mut gpu = GpuWorld::new(&diagnostic);
-    for kind in GpuWorldSubsetKind::all() {
-        if NaniCullAndBucketFamily::for_kind(kind) == NaniCullAndBucketFamily::Main {
+    for subset_kind in GpuWorldSubsetKind::all() {
+        if NaniCullAndBucketFamily::for_kind(subset_kind) == NaniCullAndBucketFamily::Main {
             gpu.assign_subset(
-                kind,
+                subset_kind,
                 country_core::startup::startup_nani::create_world_subset(
                     &diagnostic,
-                    kind,
-                    usize::from(kind == GpuWorldSubsetKind::SolidVertexColor),
+                    subset_kind,
+                    if subset_kind == kind { part_count } else { 0 },
                 ),
             );
         }
     }
-    let kind = GpuWorldSubsetKind::SolidVertexColor;
     let mut mesh = Mesh::new("bounded Nani triangle fixture");
     mesh.set_attribute(
         ATTR_POSITION,
@@ -223,19 +235,14 @@ fn original_nani_master_one_real_instance_builds_indexed_command_and_indirection
     );
     mesh.set_indices(vec![0, 1, 2]);
     let mut atlas = MeshAtlas::default();
-    assert_eq!(
-        atlas
-            .add(
-                NameHash::compute("bounded Nani triangle fixture").into(),
-                &mesh
-            )
-            .unwrap(),
-        0
-    );
+    for part in 0..part_count {
+        assert_eq!(atlas.add(NameHash::compute(&format!("bounded Nani triangle {part}")).into(), &mesh).unwrap(), part as u32);
+    }
     assert_eq!(atlas.layouts[0].count, 3);
     assert_eq!(atlas.layouts[0].radius, 1.0);
     gpu.update_mesh_atlas_slices(&diagnostic, kind, &atlas.layouts);
-    let cull = InstanceCullData::new(glam::Vec3::new(0.0, 0.0, -1.0), 0.01, 0);
+    let fine = country_core::render::nani::draw_ext::uses_indirect_count(kind, false, false);
+    let cull = InstanceCullData::new(glam::Vec3::new(0.0, 0.0, -1.0), if fine { 0.1 } else { 0.01 }, 0);
     let mut record = SolidVertexColorInstanceData::default();
     // Native affine3 packed payload: 3x3 diagonal scale and real translation.
     for i in [0, 4, 8] {
@@ -243,9 +250,20 @@ fn original_nani_master_one_real_instance_builds_indexed_command_and_indirection
     }
     record.raw[11] = (-1.0f32).to_bits();
     let mut pending = Vec::new();
-    gpu.create_instances(kind, &[cull], &[record], &mut pending);
-    assert_eq!(pending.len(), 1);
-    gpu.flush_instance_buffers(&diagnostic);
+    let cull: Vec<_> = (0..instance_count).map(|index| InstanceCullData { mesh_index: if rare_tail { index.saturating_sub(instance_count - 3) as u16 } else { (index % part_count) as u16 }, ..cull }).collect();
+    if kind == GpuWorldSubsetKind::SolidVertexColor {
+        gpu.create_instances(kind, &cull, &vec![record; instance_count], &mut pending);
+    } else {
+        use country_core::resources::placement_data::PlacementDataSsbo;
+        let records = vec![PlacementDataSsbo {
+            position: glam::Vec3::new(0.0, 0.0, -1.0), scale: 0.1,
+            anim_t_packed: country_core::resources::placement_data::default_anim_t(),
+            ..Default::default()
+        }; instance_count];
+        gpu.create_instances(kind, &cull, &records, &mut pending);
+    }
+    assert_eq!(pending.len(), instance_count);
+    gpu.flush_instance_buffers(&diagnostic).unwrap();
     let cull_handle = gpu.owned_subset_mut(kind).cull_buffer().buffer;
     let params = gpu.draw_list_params();
     let list_index = kind as usize * 4;
@@ -256,7 +274,9 @@ fn original_nani_master_one_real_instance_builds_indexed_command_and_indirection
     // An explicitly seeded previous-frame visibility bit makes the first
     // native no-HZB round retain this one instance. New visibility starts zero.
     let mut previous = vec![NaniPrevVisibilityBitmaskSsbo([0]); word_count];
-    previous[global_instance / 32].0[0] |= 1 << (global_instance % 32);
+    for index in global_instance..global_instance + instance_count {
+        previous[index / 32].0[0] |= 1 << (index % 32);
+    }
     ssbos.add_new_with_data(&diagnostic, &previous);
     ssbos.add_new_with_data(
         &diagnostic,
@@ -274,7 +294,9 @@ fn original_nani_master_one_real_instance_builds_indexed_command_and_indirection
                     // Resolve this exact full-generation handle through the same
                     // session's physical-Arc dedup. Import adds no pass access:
                     // without the real Nani metadata the assertion still fails.
-                    let cull_input = frame.import_buffer(&cull_handle, 0x1a)?;
+                    // Match the actual imported owner's initial upload state;
+                    // the cull pass below independently declares shader read.
+                    let cull_input = frame.import_buffer(&cull_handle, 0x35)?;
                     frame.with_graph(|graph| {
                         let declaration = graph.declaration();
                         let cull = declaration.passes.iter()
@@ -292,7 +314,7 @@ fn original_nani_master_one_real_instance_builds_indexed_command_and_indirection
                                 && access.synchronization_group == 1),
                             "original descriptor SSBO reads, including previous visibility, remain separate");
                         assert_eq!(reads[0].range, rhapsody::rg::AccessRange::Buffer {
-                            offset: 0, size: 16,
+                            offset: 0, size: (16 * instance_count) as u64,
                         }, "only the live GpuInstance prefix, not full capacity");
                         let input = &declaration.resources[reads[0].resource_index as usize];
                         let rhapsody::rg::Descriptor::Buffer(desc) = input.descriptor else {
@@ -336,34 +358,45 @@ fn original_nani_master_one_real_instance_builds_indexed_command_and_indirection
     assert!(!receipt.receipts.is_empty());
     bridge.wait_submits_done(10_000_000_000).unwrap();
     let ssbos = world.resource::<AssetSsboLibrary>();
-    let command = read_range(
-        &device,
-        &buffers,
-        ssbos.get_buffer::<NaniDrawListSsbo>().unwrap(),
-        command_index * 20,
-        20,
-    );
-    let words: Vec<_> = command
-        .chunks_exact(4)
-        .map(|b| u32::from_le_bytes(b.try_into().unwrap()))
-        .collect();
-    assert_eq!(
-        words,
-        [3, 1, 0, 0, indirection_index as u32],
-        "the original atlas+instance must generate one actual indexed indirect command"
-    );
-    let indirection = read_range(
-        &device,
-        &buffers,
+    let fine = country_core::render::nani::draw_ext::uses_indirect_count(kind, false, false);
+    let command_count = if fine {
+        let bytes = read_range(&device, &buffers,
+            ssbos.get_buffer::<NaniDrawListLengthSsbo>().unwrap(), list_index * 4, 4);
+        let count = u32::from_le_bytes(bytes.try_into().unwrap()) as usize;
+        let bound = world.resource::<GpuWorld>().owned_subset_mut(kind).main_cull_command_bound() as usize;
+        if rare_tail { assert_eq!(bound, 5); }
+        if part_count == 1 { assert_eq!(count, instance_count.div_ceil(32)); }
+        assert!(count <= bound, "main cull groups cannot exceed live mesh-bin bound");
+        assert!(count > 1, "one mesh part can produce several fine commands");
+        count
+    } else { 1 };
+    let command = read_range(&device, &buffers,
+        ssbos.get_buffer::<NaniDrawListSsbo>().unwrap(), command_index * 20, command_count * 20);
+    let mut spans = Vec::new();
+    for bytes in command.chunks_exact(20) {
+        let words: Vec<_> = bytes.chunks_exact(4)
+            .map(|b| u32::from_le_bytes(b.try_into().unwrap())).collect();
+        assert_eq!([words[0], words[3]], [3, 0]);
+        assert_eq!(words[2] % 3, 0);
+        assert!(words[2] < part_count as u32 * 3);
+        assert!(words[1] > 0);
+        spans.push((words[4], words[1]));
+    }
+    spans.sort_unstable();
+    let mut at = indirection_index as u32;
+    for (first, count) in spans {
+        assert_eq!(first, at, "fine commands cover disjoint contiguous indirection ranges");
+        at += count;
+    }
+    assert_eq!(at, (indirection_index + instance_count) as u32);
+    let indirection = read_range(&device, &buffers,
         ssbos.get_buffer::<NaniInstanceIndirectionSsbo>().unwrap(),
-        indirection_index * 4,
-        4,
-    );
-    assert_eq!(
-        u32::from_le_bytes(indirection.try_into().unwrap()),
-        0,
-        "the first live instance must survive sorting into the actual indirection table"
-    );
+        indirection_index * 4, instance_count * 4);
+    let mut actual: Vec<_> = indirection.chunks_exact(4)
+        .map(|b| u32::from_le_bytes(b.try_into().unwrap())).collect();
+    actual.sort_unstable();
+    assert_eq!(actual, (0..instance_count as u32).collect::<Vec<_>>(),
+        "no input instance is truncated by the live command bound");
     let next = read_range(
         &device,
         &buffers,

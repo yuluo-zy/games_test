@@ -1,12 +1,24 @@
 # rhapsody 重构进度（2026-10-19）
 
+- 2026-10-26当前状态：V31干净CPU单组静态8.24ms、大量绘制22.66ms；同轮V30为14.66/19.84ms，不能证明稳定收益，CPU16ms仍开放。433库、23图CPU、14投影/驱逐/子分配、14Raster及29上传定向回归通过；最终all-target见提交前验证。当前源码额外完成两idle投影形状复用与零报告字节压力回收、一次分配重试，删除无消费者阻塞接口/串行空开关/VRAM别名/不可达同步上传；这部分晚于V31冻结，尚未测量收益。F127封存完成；scratch复用、CPU-only有界逐帧记录、Collect统一与可变owner循环、retire HostOOM等待和F032配额仍开放。详见 [CPU状态与后续任务](../../reports/runtime/2026-10-22-render-thread/CPU_STATUS_2026-10-26.md)。
+
+- 历史V24单组CPU观测（输入/调度不等价，不作收益归因）：static35.236→20.796ms、many40.558→33.226ms（CPU线程时钟），仍未16ms；V25原生descriptor去重18项+全target检查通过，release与实测进行中。投影零报告退役/恢复门、两形状缓存、typed提交scratch仍未实施，禁止记为已修。
+
+- V23：有界callback CPU credit与唯一group参数入口已实现，所有裸heap/Option pages/Prepared旧入口消费者已迁移；64项受影响回归+全target检查通过。V23 release冻结/实测中，未报收益；F127热路径顺序复核与projection交替缓存继续核查。详见runtime cpu-credit-followup-20261025.json。
+
+- V22续修：native flush dirty发布并发缺陷、应用slots/local锁序及TextureHost引用环已修，光标owned重试与Raster常量批量领取已接。68项回归和应用lib/bins/tests检查通过；优化构建/CPU-only对照进行中，尚无V22收益结论。参数builder credit及剩余兼容入口仍开放，详见runtime cpu-concurrency-followup-20261025.json。
+
+- 最新CPU干净对照：V21静态36.281ms/帧、多绘制43.126ms/帧（实际tg-render user+kernel均值），V20对应39.067/42.616；各一组600+1000，整体收益未定且未达16ms。V21构建与匹配dSYM已冻结。后续Raster同值反馈44项/应用检查、计数峰值临界区缩短9项已过，尚未进入V21测量；参数预算credit/常量分配争用仍未完成。
+
+- 2026-10-25 CPU专项：当前只保留共享池并行路径；两个agent只读审查，中央实现/测试。V20将BindlessLease固定元数据计入页准入、删除零字节与相同容量记账锁；严格GPU12项/1 ignored、预算CPU11项通过，0项错误filter不计验收。V21已接Collect不可变快照、投影强owner复用、不可变提交检查一次、ABI身份快路、相同compute push复用、同回调pipeline/vertex/index绑定去重，以及单owner不可变零顶点源复用（有效栈中该逐draw新建/上传占tg-render样本5.38%）。投影/ABI/提交12项、加载/Raster/呈现/host22项、零源owner1项通过；检查与CPU复测继续登记。约54–56ms是总线程CPU工作量，不能与旧9.491/10.235ms wall字段比较；新V19 Rust profile因外部DWARF被覆盖作废，CPU计数仍有效。后续二进制必须冻结UUID匹配dSYM。V20阶段诊断tg-render约48.49ms含日志，不是新生产验收；60帧目标尚未达到。详见runtime三报告当前节及cpu-chain-followup-20261025.json。
+
 本文件是当前实现与验收状态的唯一登记入口。范围/门槛见 [DELIVERY_PLAN.md](DELIVERY_PLAN.md)，下一步工作见 [REFACTOR_PLAN.md](REFACTOR_PLAN.md)。用户提供 Vulkan/MoltenVK 环境后，已恢复本机 Apple M3 的 GPU 与 macOS 窗口验证；Windows 运行验收仍后置。硬件验证不阻止其余源码重构。
 
 
 ## 2026-10-25 续修（进行中）
 
 - canonical-admission收口：全局同步flush已从图执行删除，测试等待位于tiny-glade/tests/support；空上传队列不再查询GPU时间线。mandatory窗口邮箱与唯一Pending管线准备替代同步预热分支；无窗口帧prepare/execute分开。旧create_mapped_buffer/MappedBufferParts删除，保留唯一managed buffer API。check77全工作区全目标通过；native76四组32通过、native78四组29通过、host-unit79的27项通过（组内含CPU/ABI断言，不能按总数说成独立GPU场景数）。原生回归证明执行不消费下一帧上传、空队列poll计数不增加、多段压力/OOM/事务失败重试与三类映射字节正确。
-- V14三轮确定性DeviceEvent晚相机各180帧通过；MEI/egui已统一区域上传边界，容量拒收批次由producer持有，native90两项GPU回归及native91的24项混合回归通过；check92全目标通过。V14窗口1552帧暴露截图initial access 0x11/0x22冲突，已改为初始化实际状态0x22，待新窗口验收。用户报告resize黑边，red96实际GPU证明旧等尺寸resolve从第64列读黑（64×64→97×83）；当前应用已捆绑唯一尺寸映射shader，green98八组像素检查通过，green102十二组彩色全像素GPU检查及capture99截图用例通过。NSView/layer几何实测一致。V16调试版全屏resize耗时2.632秒，严格2秒门槛失败；图编译1.961秒。V17正式优化版构建/时延复验中，正式性能继续暂停，不能用V12历史通过登记本轮已完成。
+- MEI/egui统一区域上传且拒收批次保留，native90两项GPU、native91的24项混合回归、V14三轮晚相机通过。截图initial access改为0x22；V17的2000帧循环/700帧resize通过，check103全目标通过。用户指出全屏仍有黑边后，red111实际原生2940×1846窗口证实只覆盖旧480×270区域，GPU主图却完整；旧几何/present计数测试漏报。macOS现在以禁用隐式动作的事务设置完整layer frame，事务类创建时解析一次。green114/115两次真实全屏均0/5427240错误像素，最新受影响库/启动程序check117通过；同设备bridge连续resize的113共20组全像素通过。当前功能证据为调试构建，V17优化版早于layer修复；最新正式构建、性能矩阵和30分钟长跑尚未完成。修复前后窗口与数据见runtime性能目录fullscreen-pixel-acceptance.json。
 
 - V11 仅增强既有修订号失败分支的区间诊断；release 源指纹稳定，连续5轮真实窗口周期通过（合计900世界帧）。V10 修订号失败与V12新复现一起保持开放，不能因V11复跑通过登记修复。V11 连续编辑/大量绘制各完成200预热+1000测量帧，实际Collect/cross-pass任务齐全；均为带阶段计时的压力诊断，不是正式性能结论。many_draws 的10秒997Hz CPU采样得到8511样本；外部sample在当前macOS只取得2个采样周期，不能据此作热点排序。
 - 连续编辑测量区间实际出现4034次同步上传容量等待。已定位CoreRenderBridge::execute_compiled调用全局flush：呈现也可能刷下一游戏帧的队列。当前源码删除BufferHost同步flush和桥接器render_frame/execute_built测试便利入口，提交只执行已准入图；生产渲染线程沿Pending推进上传。测试驱动/等待移至当前项目tests/support；无窗口世界帧拆成prepare/execute，加载worker统一推进上传与管线。新增真实GPU回归要求已准入图不消费下一帧队列；指标改为upload_pending_yields，和旧wait次数不可直接等同比较。最新check77全目标、native76/78、host-unit79通过；窗口和最终性能复验单独登记，不将源码修改视为验收完成。

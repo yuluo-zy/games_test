@@ -54,9 +54,6 @@ impl MeshAtlasPart {
     }
 }
 
-/// PDB 里的名字（O，ICF 别名）。
-pub type ComputedLayout = MeshAtlasPart;
-
 /// 网格图集。
 #[derive(Debug)]
 pub struct MeshAtlas {

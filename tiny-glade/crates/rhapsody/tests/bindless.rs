@@ -422,6 +422,46 @@ fn table_capacity_bad_ranges_and_foreign_devices_are_rejected_before_update() {
 }
 
 #[test]
+fn admitted_page_covers_lease_metadata_until_the_last_owner_releases_it() {
+    let Some(device) = device() else {
+        return;
+    };
+    let buffer = target(&device);
+    let budget = device.allocator_stats();
+    let baseline = budget.cpu_memory_usage().total();
+    let heap = BindlessHeap::new(device.clone(), BindlessConfig {
+        storage_buffers: 8,
+        ..small()
+    }).unwrap();
+    let admitted = budget.cpu_memory_usage().total();
+    budget.set_host_budget(admitted).unwrap();
+    // An admitted page can fill and recycle its slots with no new host credit.
+    // Creating another physical page still requires separate admission.
+    assert!(matches!(heap.new_page(), Err(rhapsody::Error::OutOfHostMemory)));
+    for _ in 0..32 {
+        let leases = (0..8)
+            .map(|_| heap.storage_buffer(buffer.clone(), 0, 4).unwrap())
+            .collect::<Vec<_>>();
+        assert!(matches!(
+            heap.storage_buffer(buffer.clone(), 0, 4),
+            Err(rhapsody::Error::Exhausted(_))
+        ));
+        assert_eq!(budget.cpu_memory_usage().total(), admitted);
+        drop(leases);
+        assert_eq!(budget.cpu_memory_usage().total(), admitted);
+    }
+    let lease = heap.storage_buffer(buffer.clone(), 0, 4).unwrap();
+    let owner = Arc::downgrade(&heap);
+    drop(heap);
+    assert!(owner.upgrade().is_some());
+    assert_eq!(budget.cpu_memory_usage().total(), admitted);
+    drop(lease);
+    assert!(owner.upgrade().is_none());
+    device.try_collect_all_completed().unwrap();
+    assert_eq!(budget.cpu_memory_usage().total(), baseline);
+}
+
+#[test]
 fn known_host_slot_storage_is_admitted_and_released_by_the_unified_budget() {
     let Some(device) = device() else {
         return;

@@ -500,15 +500,14 @@ mod original_main_tests {
         let mut inner = InnerWalls::new();
         inner.new_wall_with_id(WALL, WallState::from_snapshot(snapshot, 0));
         let mut walls = PublicWalls::default();
-        walls.consume(
+        walls.consume_with_paths(
             &mut inner,
             &TerrainHeightGrid512 {
                 encoded: vec![0; 512 * 512].into(),
                 minimum_y: 0.0,
                 maximum_y: 0.0,
                 sampling_fix: false,
-            },
-        );
+            }, None, &country_core::resources::walls::public_walls::WallPublicationDirty::default(), &country_core::resources::walls::public_walls::WallSpatialHash::default());
         assert!(walls.get(WALL).is_some());
         walls
     }

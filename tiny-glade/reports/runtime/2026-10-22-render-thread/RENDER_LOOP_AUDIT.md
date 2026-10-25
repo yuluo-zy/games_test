@@ -1,32 +1,132 @@
 # 完整渲染循环复核（2026-10-23）
 
-## 当前状态（2026-10-25）
+## 当前执行状态（2026-10-26，CPU16ms仍开放）
 
-生产只保留并行 Collect/录制和常驻渲染线程，**整批尚未结项**。MEI/egui 已归入同一有界上传入口；V14 三轮真实晚相机各180世界帧通过。当前优先修复用户报告的 resize 黑边和延迟；正式性能采样暂停，不能以历史窗口通过代替本轮验收。
+最新V31干净测量（600预热+1000帧、真实OS线程CPU，GPU/睡眠排除）：静态 **8.24ms**、大量绘制 **22.66ms**，主线程分别1.73/2.02ms。相同输入同轮V30为14.66/19.84ms；只有一组，重场景本组增加约14.2%，**没有证明稳定收益**。完整诊断下的CPU p95为22.17/43.93ms，包含日志和探针开销，不能当干净p95。
+
+当前源码在V31冻结后又完成两形状CPU投影复用、零报告字节压力回收与一次分配重试；删除无消费者wait_submission、单线程CLI空开关、VRAM历史别名及不可达同步上传fallback；减少indirect临时分配与重复FrameConstants声明。这部分尚未重新测发布收益，不能拿V31数字代表最终源码。
+
+完整已完成项、逐轮数据、验证范围及按依赖排序的优化清单统一见 [CPU当前状态与后续任务](CPU_STATUS_2026-10-26.md)。下一步先完成有界CPU-only逐帧记录与三轮四场景对照，再依据新栈优化ledger、projection和submit scratch；Collect调度及可变owner绘制循环、HostOOM退役无限等待、F032回收配额和长跑仍开放。没有保留旧接口或串行fallback作为回退方案；未宣布所有draw均已迁移worker或60FPS验收通过。
+
+## 历史：V29 live mesh-bin 与上传接纳验证（2026-10-26）
+
+描述符缓存三轮交错对照已完成：static emit/deduplicate 均值 10.262/10.269ms，many_draws 44.466/44.927ms；各轮方向不一致，没有可重复收益。生产已删除缓存状态、失效接口及过时合同，始终使用唯一绑定路径。详见 [决策与原始轮次](performance-2026-10-24/cpu-descriptor-production-decision-20261026.json)。
+
+已实施 Raster 显式 binding-access 映射，删除二次搜索；Canopy/Trunk 按 live mesh-bin 事件计数收紧命令上界。发现并修复配套接纳缺口：positions/data 任一上传未接纳时保留脏范围，在旧帧 settle 后、提取前重试；全部接纳才滚动实例计数，避免发布新上界配旧 GPU 数据。普通帧只读 pending 标志，不增加实例扫描或验证层。旧 void/try_gpu_flush 双入口已统一为返回 Result 的 gpu_flush；删除空壳绑定接口、默认零 mesh-part 构造、历史别名与无消费者 helper。
+
+当前 country-core 全库 2885 通过、1 忽略；tiny-glade 全库 270 通过、5 忽略。上传拒绝用例覆盖 positions 已接纳/data 重试，以及 mesh0/1→7 缩小上界时 positions 被拒后无新写入重试。两处 History App 夹具补真实 Game 状态和 onboarding 事件；方向性 cull-id 断言改在 set40 与 set41 之间观察，整帧后验证清理，无生产调度绕过。原 Nani 2 项（含65实例、1/3真实part）、Raster像素2项、bindless ABI 5项和工作区全 target 检查通过，见 [原始验证记录](performance-2026-10-24/cpu-bin-admission-verification-20261026.json)。当前源码的优化构建和 CPU 收益测量尚未完成，**重场景 CPU16ms 未达成验收**。
+
+下一步先冻结并测量本批，再按新热点推进唯一有序提交类型和 scratch 复用。atlas 热重载未接线 API 的完整 remap 合同仍待独立处理；不将冷端排序修复视为完整热重载支持。
+
+
+## 历史：CPU 测量条件修复（2026-10-26）
+
+生产路径继续为唯一并行模型。新增 u32 别名回归 163 项、Raster host 13 项及 210 游戏帧窗口通过；资产确定性修复另有 17 项加载测试通过。旧 V26/V27 对照因 atlas 注册顺序不同已停止收益归因。现在 Prefab.parts 在发布前按 part 名排序，atlas 初载/重载共用按 prefab 名排序的装配入口；四组 210 帧短跑的 static / many_draws 输入签名分别完全相同。
+
+外部采样随后发现测量进程被后台降级：同一 V28 实验镜像、同一 static 输入与阶段诊断，原轮次主/渲染线程 49/50 个快照的 priority/maxpriority 为 4/4；仅为测试进程传入 Foundation 参数后，39/39 个快照恢复为主线程 46/63、渲染线程 31/63，渲染 CPU 均值由 36.976 降至 10.931ms。**这是调度条件对照，不是渲染算法收益。** 旧轮没有该字段时不能追溯认定 App Nap。见 [调度证据](performance-2026-10-24/cpu-scheduling-condition-audit-20261026.json)。
+
+CPU 工具现在要求短跑输入参考，在预热前发现差异立即取消，并在进程外拒绝被后台节流的验收样本；没有新增游戏热路径检查或系统持久偏好修改。V28 的 descriptor 试验控制仅存在 `/tmp` 测量副本，生产无该开关。正常调度的首组 static 阶段诊断为 emit 10.931、deduplicate 9.297ms；关闭阶段日志的三轮交错对照及大量绘制仍在进行，**CPU16ms最终验收未完成**。见 [当前测量](performance-2026-10-24/cpu-descriptor-awake-measurements-20261026.json)。
+
+本节早先候选状态已由顶部实施记录更新；有序提交类型与 scratch 复用仍待实施。atlas 热重载还存在未接线 API 的 part-count/remap/容量合同缺口，不能将冷端排序修复称为完整热重载修复。
+
+
+## 最新核查更正（2026-10-25，稳定输入与绑定容量）
+
+**CPU 16ms 目标仍未验收，V24/V25 的跨版本性能收益尚未得到可比输入证明。** 复查发现旧压力夹具直接选 ECS 查询前 32 项，实际绘制列表在相同二进制的不同轮次也可能变化；静态 forward 列表亦有差异。因此下文历史单组下降百分比仅保留为观测记录，不能归因为本批优化收益。
+
+当前夹具在预热前按 CPU mesh 内容、shader、transform 与 pass 语义排序并记录 schema 2 输入签名；采样器强制要求新签名，保留原始线程 CPU 计数及同一次查询获得的调度状态。签名覆盖范围有限，不等于完整 GPU 场景等价。
+
+新异构压力输入暴露了生产 pass 绑定别名超过 255 时的 panic。本轮将 Raster/Compute 的 CPU 别名索引及内容意图表统一为 u32，保持现有 8 字节 access 记录，未增加 GPU descriptor 容量或保留旧窄索引接口。当前 pass builder 163 项、Raster host 13 项通过；真实窗口压力夹具完成 210 游戏帧并正常退出（1522 项实际 draw-list entries、480 克隆），后续优化构建正在冻结。压力释放与投影池候选尚未接入生产。
+
+下一步：真实窗口验证 → 用相同夹具、相同 u32 修复构建描述符去重开关差分的两份实验二进制（生产不增加运行时开关）→ 交错重复 CPU 测量 → 再处理已定位的重复扫描、提交 scratch 与压力回收热点。现有短跑和锁顺序审查不足以宣布整链无死锁。
+
+
+## 当前状态（2026-10-25，CPU 专项续修）
+
+生产只有共享任务池的并行 Collect/录制路径。**CPU16ms目标尚未达到。** 两个只读审查agent、中央修改测试。V23的64项回归与全target检查通过；V23信用批未显示render收益；后续V24单组观测静态35.236→20.796ms、多draw40.558→33.226ms，输入一致性未得到证明，不能据此认定收益。descriptor原生绑定去重的正确性已验证，收益正在用新夹具重测。
 
 | 范围 | 已落实 | 当前验收边界 |
 |---|---|---|
-| 所有权与泛型 | CpuPool<T>、GpuUse、scratch、PhysicalIdentity、collections 共用；Rc会话在线程内构造销毁 | 领域回归通过；owner执行仍约10.87次分配/帧，整帧零分配未达成 |
-| 并行与旧入口 | Serial/Inline/Adaptive、门禁、旧提交和bool/take_error旁路、同步ShaderHost::prewarm已删除 | 测试以tests/support显式推进唯一Pending协议；无串行回退 |
-| 上传与确认 | 有界接纳、保脏重试、事务保护、五类逐条ACK、真实完成点、旧World隔离；MEI拒收批次保留 | native90两项实际GPU回归通过；native91的24项混合native/CPU/ABI回归通过 |
-| 窗口与呈现 | 邮箱/代际ACK、异步激活、物理/内部尺寸分离；最终resolve现映射源/目标像素 | red96证明64×64→97×83第64列读黑；green98八组及green102十二组实际GPU全像素检查通过；真实窗口正式版时延复验待完成 |
-| 增量与pass | 生产组件日志、Raster已知范围、阴影/主G-buffer/OC2/late并行Collect | 完整业务工具矩阵及正式性能尚未覆盖 |
+| 泛型与并行 | CpuPool<T>、GpuUse、scratch、PhysicalIdentity、collections、map_chunks 共用；Serial/Inline/Adaptive 录制、旧错误旁路等已删除 | owner 有序提交与完成发布仍是同一协议；worker owner-transfer/end 的借用型泛型优化尚未实施 |
+| 上传与确认 | 有界接纳、保脏重试、事务、五类逐条 ACK、真实完成点、旧 World 隔离 | 既有 GPU/窗口结果保留原源码范围；本轮没有扩充工具/Undo 业务验收声明 |
+| 增量提取 | 当前生产 mirror_journaled/component_journaled，静态帧不扫描组件 tick；Raster 生产者记录已知脏区间 | 旧报告中 Changed 全量扫描待迁移属于历史状态，不应继续写成当前缺口 |
+| resize 与全屏 | 唯一呈现坐标映射、macOS layer frame 与隐式动作事务修复已落实 | V18/V19 原生全屏 2940×1846，0/5427240 错误像素；本轮更新旧呈现测试为当前缩放/翻转的全目标像素断言 |
+| V20 预算优化 | BindlessLease 元数据在页准入一次计费，保留 slot/owner 析构顺序；零字节与相同容量 reservation 避免无效锁 | 严格 Vulkan 12 项通过/1 ignored；预算 CPU 11 项通过。首次错误 filter 的 0 项不算通过 |
+| V21 CPU 优化 | Collect 不可变查询快照；投影复用强 owner；不可变提交检查一次；ABI owner 快路；相同 compute push 复用；同回调 pipeline/vertex/index 绑定去重；全零顶点源按容量复用 | 加载/Raster/呈现/host 22 项 GPU 回归通过；扩容 owner 1 项、compute CPU 4 项与应用库/程序/测试目标检查均通过；首组干净 CPU 数据见下节，不能用代码变化代替收益验收 |
 
-### 当前证据与限制
+### CPU 指标与证据修正
 
-- V12两次原生图像revision冲突已由red82确定MEI绕过读边界。MEI/egui现共用TextureHost::upload_regions，容量拒收保留唯一owned批次；V14三轮修正后的原生DeviceEvent晚相机输入均通过。V13早期假输入依赖偶发OS动作的通过不算确定性验收。
-- V14窗口长跑在第1552世界帧失败于同图像initial access 0x11/0x22冲突。截图目标由TextureHost初始化为AnyShaderRead，声明已修正为0x22；后续真实窗口复验仍需完成。V14 stable压力700帧通过；effects在刺激前因原生全屏状态假设失败，夹具现等待真实窗口态；该失败不算效果性能结论。
-- 原生NSView/CAMetalLayer几何在resize和全屏往返时立即一致（red94窗口检查通过），没有据此修改layer布局。实际GPU red96证明最终shader按目标像素直接Load旧尺寸源图会读黑。当前应用捆绑唯一resize-aware呈现包，沿用现有反射、bindless、Pending、Collect和提交链；测试夹具新增首张正确尺寸呈现的2秒上限，无生产验证层。
-- 最新全工作区全目标检查为check92（早于本次resize改动）。green102通过12组彩色象限/同尺寸/缩放/翻转全像素GPU检查，capture99截图GPU用例通过。V16调试版真实窗口在全屏resize后2.632秒才发布正确尺寸，严格2秒门槛失败；该帧图编译1.961秒。V17正式优化版正在构建并将复用同一冻结二进制验收，尚未发布生产时延通过结论。
-- V11带计时的200预热+1000帧是诊断；有效CPU profiler为10秒997Hz、8511样本。队列提交约占23%叶样本，回读约43样本，不能将回读批处理当主热点。外部sample只取得2个采样周期，不用于排序。
-- 正式性能矩阵和三类30分钟窗口长跑未完成。保留M3/MoltenVK硬件边界，不宣称独立硬件队列、Windows或全部226条审计已关闭。检查与失败日志见[持久清单](../../../crates/rhapsody/reports/refactor/2026-10-24-generic-pools/checks.json)，冻结构建与窗口数据见[性能目录](performance-2026-10-24/)。
+1. **约 54–56 ms/帧是所有线程的 CPU 工作量之和**。历史接近 10 ms 的值分别是反馈完成 wall 9.491 ms 或 record+submit wall 10.235 ms，口径和构建不同，不能直接得出 CPU 从 10 ms 退化到 54 ms，也不能据此排除回退。并行总工作量、单线程实际 CPU 时间、并行关键路径必须分开。
+2. 测量脚本在游戏进程外读取 Darwin 线程 user/system CPU 累计值；排除 GPU 执行和休眠等待，仍包含忙等。约 80 ms CPU 自检与线程 CPU clock 比值 1.0015，80 ms 休眠仅推进约 0.104 ms。每秒快照给出均值，**不是每帧 p95 或整链关键路径**，没有新增游戏热路径验证。
+3. 本轮 CPU-only 阶段诊断仍开启日志，不能当生产验收。V20 static/many 的 tg-render 均值分别 48.489/48.489 ms，总 CPU 80.759/94.273 ms；V19 对应 42.945/45.910 ms，总 CPU 73.751/94.521 ms。环境与日志成本尚未隔离，不据此宣称优化有可靠收益。见 [CPU 续修数据](performance-2026-10-24/cpu-chain-followup-20261025.json)。
+4. 旧 GPU timestamp profile 的队列提交样本含大量 timestamp 编码；不能视为纯生产提交成本。V20 CPU-only 有效栈 6608 样本，原生 submit/Metal 编码 1717（25.98%），Rust owner 转移 175（2.65%），command end 包含 normalize 仅 5（0.076%）；inclusive 父子项不相加。全零 Vertex_Color 的逐 draw 新建/上传占渲染线程 184/3420（5.38%）样本，其中 168 进入原生提交，已作为本批明确热点修复。
+5. 发现 macOS external debug-map 对象被后续构建覆盖：新 V19 profile 出现 V20 才有的 LeaseSlot 与错位源码行，**该次 Rust 源码归因作废**，OS CPU 计数和独立原生驱动栈仍有效。V20 已在下一次构建前冻结匹配 UUID 的 dSYM，后续 CPU profiling 只接纳哈希匹配的符号。55 个临时 C/asm 对象缺失告警保留，不能宣称完整 native DWARF；Rust 对象无此缺失。历史已采集 profile 不一概作废。
 
-### 接下来按依赖推进
+### 当前验证与后续顺序
 
-1. 完成resize彩色像素、截图状态、真实窗口首帧时延与持续resize验收；失败先修正确性，不恢复串行或旧呈现包。
-2. 复验完整窗口控制、取消、晚相机及实际Collect/跨pass任务，统一检查当前源码。
-3. 按实测热点优化：同硬件300帧预热、至少3000帧测量、三轮；阶段计时、CPU栈、GPU时间独立诊断，正式计时关闭插桩并绑定相同二进制身份。
-4. 稳定、效果切换、resize分别30分钟且至少10000帧；核对内存上限、p95/p99的5%门槛与未关闭审计项。整批交付继续保持未完成。
+V21 受影响渲染库投影/ABI/提交 12 项，以及加载/Raster/呈现/host 22 项实际 GPU 测试已通过。故障记录保留：旧测试安装路径失效；修正路径后暴露旧“不缩放”预期；零源创建最初的 Option<&Vec> 泛型参数不匹配。改用当前安装入口、全图精确像素断言与切片参数后重跑，不保留兼容路径，不放宽像素判据。日志见 [本轮验证](performance-2026-10-24/cpu-chain-verification-20261025.json)。
+
+1. V21 二进制、源码、匹配 dSYM 的冻结，以及首组 CPU-only 诊断/无日志对照均已完成；继续实现参数预算 credit 与常量批量领取后，再构建下一批并复测。60 帧目标按 CPU 侧 16.67 ms 关键路径判断，不能拿总 CPU 或 GPU wall 时间替代。
+2. 新栈优先指向参数预算和动态常量争用，descriptor 绑定去重或每 chunk owner-transfer/end 迁移排在其后。零源复用仍按每图导入、实际范围和真实生命周期工作；无全局命令状态猜测、无串行回退、无新逐 draw 验证层。当前扩容单测不替代“旧图 GPU 在途时扩容”的完整组合验收。
+3. F-032 压力回收绕过配额、F-201 投影驱逐与 F-192 current_version 扫描仍未修；常量池搜索/锁、启动检查只列候选，未证明为当前主要热点。继续核实，不标全模块 bug 清零。
+4. 完成大量绘制、局部/连续编辑的正式重复矩阵；loading_switch 仍缺实际切换驱动。稳定/效果/resize 各 30 分钟及至少 10000 帧、独立硬件队列/Windows 仍未验收。短跑通过不等于已排除所有死锁。此前 V18/V19 静态对照方向反转的数据继续保留，不发布可靠 FPS 增益比例。
+
+### 最新干净 CPU 对照与后续源码修复
+
+V21 已完成一次8分26秒优化构建，源码指纹无漂移，匹配UUID dSYM已冻结。V20/V21各自的新CPU-only profile均使用匹配符号；旧V19失真的Rust源码栈不参与对照。每场景一组V20→V21，600预热+1000测量帧，阶段日志、GPU timestamp、栈采样全部关闭：
+
+| 场景 | V20渲染线程CPU | V21渲染线程CPU | V20→V21总CPU工作量 |
+|---|---:|---:|---:|
+| static | 39.067 ms/帧 | 36.281 ms/帧 | 66.092→61.895 ms/帧 |
+| many_draws | 42.616 ms/帧 | 43.126 ms/帧 | 82.930→80.353 ms/帧 |
+
+这是实际user+kernel CPU均值，排除GPU执行与休眠等待；不是每帧p95或整条并行关键路径。静态渲染线程下降7.13%，大量绘制反而增加1.20%；只有一组且场景/输入控制仍需完善，**整体收益未定，60帧CPU目标未达标**。不能用总CPU下降代替关键线程改善。见[干净对照](performance-2026-10-24/cpu-clean-comparison-20261025.json)。
+
+V21稳定采样已无逐draw零源staging/setup、Collect AssetTables锁及managed buffer弱owner查询链。剩余争用主要来自参数builder预算预留/释放、全池统计和动态常量分配；不能把GPU驱动draw-state的全部成本归因于descriptor绑定调用。V21阶段诊断的1000静态/1500大量绘制帧分别实际观察Collect任务20000/30000、跨pass3000/13500，上传容量让出均0。
+
+随后源码已修Raster同值消费反馈污染change tick：唯一WriteBack合同接收Bevy Mut，不提前DerefMut；只在消费状态或rasterized确实变化时写入。无整张像素比较，保留提交失败、晚游戏写入、旧World/资源替换保护。7反馈+27线程/交换+10快照测试共44项及应用库/程序/全测试目标检查通过。另保持描述符统计的精确Mutex事件事务，只在分配时更新总/当前kind峰值，释放/耗尽不再扫描四表；9项并发峰值/注册失败回归通过。**这两处后续修改尚未进入V21测量，不宣称已取得性能收益。**
+
+动态常量批量领取已随V22通过正确性回归；下一批优先落实有界参数预算credit，沿用现有CpuPool和owner生命周期；逐draw借还仍会重复记账，不能当作解决争用。独立原子计数会破坏精确同时峰，未采用。worker保活收尾迁移、descriptor显式状态去重继续按新证据排序；F-032/F-201/F-192、正式重复矩阵和窗口长跑仍开放。
+
+### V22 并发与常量分配续修（正确性已验证，性能待测）
+
+保持同一并行架构，新增以下修复：HostFlushQueue在native flush真正结束后才清dirty，避免释放VkDeviceMemory或另一提交越过尚未完成的flush；失败上传检查统一slots→local锁顺序；TextureHost延后释放只持表owner，打断取消时的boundary引用环；光标四处同步映射写迁到既有owned上传，容量不足保留字节、没有新输入也重试。Raster参数块在同一回调一次取得dynamic锁，仍逐块使用正式allocator；临时列表在锁外按现有TempList一次准入预算。
+
+15项flush、29项host、17项主循环、2项Raster、5项ABI，共68项通过，应用lib/bins/全tests目标检查通过。两项旧测试的per-lease预算假设失效已迁到页准入预算与额外slot部分失败撤销，首次失败日志保留。见[续修证据](performance-2026-10-24/cpu-concurrency-followup-20261025.json)。具体锁序条件与flush并发已受控复现测试；未复现游戏整链死锁，不宣称已排除所有死锁。
+
+V22优化构建与CPU-only三轮交错对照进行中，以上改动和此前Raster反馈/统计缩短尚不能报收益。剩余优先参数builder有界credit、重复绑定错误前cache增长、IndexedCountAdapter旧bare-heap入口、静止PrevTransform无谓发布，以及正常截图等待GPU。基准当前仅核对480克隆/实际draw数量，没有来源内容签名；三轮仍须保留该可比性限制。
+
+### V23 参数唯一入口与 CPU credit（64项回归通过，收益待测）
+
+参数构造统一到 GroupReservation：删除裸heap构造、Option<pages>分支、旧Prepared::with_push；IndexedCount、文字、window_lab和GPU夹具均迁同一入口。CPU参数额度沿既有CpuPool按回调块准入，ABI上界只在不可变package构造时计算，逐draw只消费本地credit；重复slot在cache/descriptor副作用前拒绝。静止PrevTransform不再触发组件日志，普通截图复用已准入像素缓冲并以0超时检查真实GPU完成。
+
+4项credit、5项drawable、17项截图（含真实GPU阻塞/重试/恰好一次交付）、5项ABI、29项host、2项原始blur、2项原始文字像素，共64项有效通过，tiny-glade/rhapsody/tg-text全target检查通过。首次截图过滤器误命中0项已纠正，0项运行不计验收；先前编译错误/磁盘不足日志保留。[验证与边界](performance-2026-10-24/cpu-credit-followup-20261025.json)。V23 release冻结进行中，不把这些改动计入V22收益。
+
+V22严格窗口的单轮CPU线程时钟：静态tg-render22.285ms/帧、多draw39.414ms/帧；不含GPU执行和睡眠，未达到16ms。测量有间歇约1秒resolve等待，独立栈确认可达MoltenVK nextDrawable但未抓到长等待本身；不能把该候选认定根因。旧V21/V22三轮计划已停止，只保留单轮诊断，非正式60帧结论。[原始绑定汇总](performance-2026-10-24/cpu-concurrency-partial-cpu-20261025.json)。下一批在V23实测后处理projection交替缓存与submit scratch，禁止新旧兼容双路径。
+
+### V23 首组实测结果（未证明渲染线程收益）
+
+同条件单轮clean对照（各600帧预热+1000帧测量、关闭GPU timestamp/阶段计时/CPU栈）：静态V22→V23为36.120→37.390ms，多draw为51.753→51.674ms，均为tg-render用户+内核CPU时钟，不含GPU执行/睡眠。当前批不能记为渲染线程收益。先前V22静态22.285ms跨轮波动明显，只保留历史测量边界，不用它与当前V23直接算优化率。新profile显示HostState预算热点明显淡出，但原生indirect编码仍占主要成本。见[对照与限制](performance-2026-10-24/cpu-credit-comparison-20261025.json)。
+
+下一修改仅收紧fine Count的Owned活跃实例上界，保留真实GPU计数器；将用Canopy/TreeTrunk每组65输入、单mesh part的原shader夹具验证不会截断跨32实例组的命令。projection缓存、typed submit scratch与descriptor原生绑定去重仍未实施，不计为已修。
+
+### V24 fine Count 活跃输入上界（14项通过，收益待测）
+
+Count绘制在唯一packet终结入口保留真实GPUcounter，将Owned最大命令数收紧到同一渲染快照instance_count与原容量的较小者。不能用mesh_part_count：65个相同part实例会跨3个分组生成3条命令。Raw仍按原mesh parts，External仍用其producer容量；没有新旧双接口或串行回退。
+
+10项CPU决策/builder、2项原Nani GPU、2项真实Raster测试通过。Canopy/TreeTrunk原shader65输入/单part实际生成3命令，验证非重叠区间覆盖与全部65indirection；没有把None-HZB首轮冒称OC/2。旧夹具初始导入状态冲突修正为实际0x35，仍断原cull读0x1a，首次失败保留。[证据与边界](performance-2026-10-24/cpu-nani-bound-followup-20261025.json)。V24正在单独冻结/实测，尚未宣称收益或16ms达标。
+
+### V24 首组有效收益（仍未达到16ms）
+
+clean静态V23→V24为35.236→20.796ms/帧（单组约41%下降），多draw为40.558→33.226ms/帧（约18%）。这些是用户+内核CPU线程时钟，不含GPU执行与睡眠；各预热600+测量1000帧，仅一组有效配对。首次多draw两轮被本任务慢目录查询干扰，已明确作废并整组补跑，未混入收益统计；替补目录round2不表示已有两组有效验收。[有效对照及原始绑定](performance-2026-10-24/cpu-nani-bound-comparison-20261025.json)。
+
+实际停帧现场97.83%的tg-render wall样本位于CoreAnimation nextDrawable→semaphore_timedwait，六个worker均休眠，未见Rust互锁环；只确认等待位置，drawable耗尽/不可用的上游原因未定。该捕获只作用于独立诊断，不能拿它的耗时当CPU执行或正式性能。descriptor同command/layout/set原生去重已进入下一批源码，GPU ABI已覆盖A/A′/B/A/raw改绑恢复；测试收尾后再冻结V25，尚未计收益。projection缓存仍待压力退役零报告协议一并处理，typed提交scratch尚未实施。
+
+### V25 原生descriptor去重（18项通过，实测待完成）
+
+现有唯一图/裸命令绑定接口共用同一私有录制状态，只跳相同command/bind point/layout/set/真实page的原生bind。所有lease保活、访问准入、每draw参数索引push均继续；begin/reset和callback边界清状态，原生外部改绑/secondary执行通过明确失效边界恢复。无新增高频验证层、旧构造入口或串行回退。
+
+1项状态边界、5项ABI、8项保活、2项Raster、2项文字像素共18项有效通过，全target检查通过。GPU序列A/A′/B/A/外部有效set改绑后invalidate恢复得到[42,43,44,42,42]；故障时外部有效参数会给124，不依赖未初始化描述符。两项旧Timeout容量断言改为当前Exhausted后重跑通过，首次失败不抹去。[证据](performance-2026-10-24/cpu-descriptor-followup-20261025.json)。V25 release冻结/CPU对照排队，不能提前计收益；当前目标仍开放。
 
 ## 历史审查与故障记录（以下“当前”均指记录当日构建）
 

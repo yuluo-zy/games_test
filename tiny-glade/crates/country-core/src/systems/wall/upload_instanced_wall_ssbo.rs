@@ -34,7 +34,7 @@ pub fn gpu_flush_brick_buffers(
             log::error!("gpu_flush_brick_buffers: 墙砖上传失败：{error:?}");
         }
     }
-    if let Err(error) = storage.try_gpu_flush(device.device()) {
+    if let Err(error) = storage.gpu_flush(device.device()) {
         log::error!("gpu_flush_brick_buffers: 设备上传失败，脏标记保留待重试：{error}");
     }
 }

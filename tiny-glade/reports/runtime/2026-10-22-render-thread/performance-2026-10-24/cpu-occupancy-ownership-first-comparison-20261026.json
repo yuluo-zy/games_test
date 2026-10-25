@@ -1,0 +1,70 @@
+{
+  "date": "2026-10-26",
+  "status": "CPU 16 ms acceptance remains open",
+  "measured_binary_version": 31,
+  "measured_binary_sha256": "43e73926188d82bccbab767f5276695b135d2ee74b3cadbece746ffdee549e82",
+  "clean_pairs": [
+    {
+      "scene": "static",
+      "v30_render_cpu_ms": 14.660454358974357,
+      "v31_render_cpu_ms": 8.242869655891553,
+      "relative_change_percent": -43.77480087548785,
+      "v31_main_cpu_ms": 1.7282940563086548,
+      "v31_process_cpu_work_ms": 20.490093847758086,
+      "candidate_gap_to_16ms": 0,
+      "baseline_run": "reports/runtime/2026-10-22-render-thread/performance-2026-10-24/cpu-occupancy-ownership-clean-v30/static-parallel-round1/run.json",
+      "candidate_run": "reports/runtime/2026-10-22-render-thread/performance-2026-10-24/cpu-occupancy-ownership-clean-v31/static-parallel-round1/run.json",
+      "same_input_sha256": true
+    },
+    {
+      "scene": "many_draws",
+      "v30_render_cpu_ms": 19.84121196754564,
+      "v31_render_cpu_ms": 22.65822492401216,
+      "relative_change_percent": 14.197786713202397,
+      "v31_main_cpu_ms": 2.018954407294833,
+      "v31_process_cpu_work_ms": 48.84498480243161,
+      "candidate_gap_to_16ms": 6.65822492401216,
+      "baseline_run": "reports/runtime/2026-10-22-render-thread/performance-2026-10-24/cpu-occupancy-ownership-clean-v30/many_draws-parallel-round1/run.json",
+      "candidate_run": "reports/runtime/2026-10-22-render-thread/performance-2026-10-24/cpu-occupancy-ownership-clean-v31/many_draws-parallel-round1/run.json",
+      "same_input_sha256": true
+    }
+  ],
+  "scope": "Actual Darwin tg-render user+system CPU per observed frame; GPU execution and sleeping excluded. One reversed pair per scene, fixed schema2 input, 600 warmup +1000 measured frames. No stage/GPU/stack instrumentation. Deliberate render QoS policy change is included in V31. Not a stable causal improvement or CPU p95 proof.",
+  "current_worktree_delta": "Two idle projection shapes, zero-report pressure reclamation, legacy CLI/backend/synchronous upload branch deletion, indirect temporary array and duplicate FrameConstants declaration removal are later source changes; their release CPU gains are NOT measured by V31.",
+  "instrumented_cpu_distributions": [
+    {
+      "scene": "static",
+      "render_cpu_frames": {
+        "n": 1000,
+        "p50": 17.527292,
+        "p95": 22.165167,
+        "p99": 23.713166,
+        "mean": 16.671798042
+      },
+      "clock_crosscheck": {
+        "diagnostic_mean_matching_external_frames_ms": 16.653192063894522,
+        "external_thread_mean_ms": 16.65253752535497,
+        "relative_difference": 3.930563366434308e-05,
+        "scope": "OS snapshots occur within at most one frame boundary; same observed frame range, expected endpoint CPU difference."
+      },
+      "path": "reports/runtime/2026-10-22-render-thread/performance-2026-10-24/cpu-occupancy-ownership-diagnostics-v31/static-parallel-round1/run.json"
+    },
+    {
+      "scene": "many_draws",
+      "render_cpu_frames": {
+        "n": 1000,
+        "p50": 37.634542,
+        "p95": 43.933708,
+        "p99": 46.276958,
+        "mean": 33.46193375
+      },
+      "clock_crosscheck": {
+        "diagnostic_mean_matching_external_frames_ms": 33.48152598884381,
+        "external_thread_mean_ms": 33.44381237322516,
+        "relative_difference": 0.0011276709484487426,
+        "scope": "OS snapshots occur within at most one frame boundary; same observed frame range, expected endpoint CPU difference."
+      },
+      "path": "reports/runtime/2026-10-22-render-thread/performance-2026-10-24/cpu-occupancy-ownership-diagnostics-v31/many_draws-parallel-round1/run.json"
+    }
+  ]
+}

@@ -48,8 +48,9 @@ impl<R: Send + Sync + 'static> Default for Present<R> {
     }
 }
 
-/// What a partial write-back applies to the game-side resource.
-pub type WriteBack<R> = Box<dyn FnOnce(&mut R) + Send>;
+/// A partial write-back preserves Bevy change detection: only dereferencing
+/// the received owner mutably marks the game-side resource changed.
+pub type WriteBack<R> = Box<dyn for<'a> FnOnce(bevy_ecs::change_detection::Mut<'a, R>) + Send>;
 
 pub trait RenderExtract {
     /// Structural hooks and mutable producers publish the changed entities.

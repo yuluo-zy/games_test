@@ -375,7 +375,7 @@ mod tests {
         let mut inner = InnerWalls::new();
         let wall = inner.new_wall_from_curve(wall_state(premade));
         let mut public = PublicWalls::default();
-        public.consume(&mut inner, &flat_terrain());
+        public.consume_with_paths(&mut inner, &flat_terrain(), None, &crate::resources::walls::public_walls::WallPublicationDirty::default(), &crate::resources::walls::public_walls::WallSpatialHash::default());
         world.insert_resource(inner);
         world.insert_resource(public);
         world.init_resource::<AdjWallHeightModeCache>();

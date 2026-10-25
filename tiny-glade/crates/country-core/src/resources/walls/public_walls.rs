@@ -167,16 +167,6 @@ impl PublicWalls {
         &self.path_failures
     }
 
-    pub fn consume(&mut self, inner: &mut InnerWalls, terrain: &TerrainHeightGrid512) {
-        self.consume_with_paths(
-            inner,
-            terrain,
-            None,
-            &WallPublicationDirty::default(),
-            &WallSpatialHash::default(),
-        );
-    }
-
     /// B 0x140a8b530 processes removal, creation and editing sets separately.
     /// 0x140b772b0 is hashbrown::RawTable::remove_entry, not an animation test.
     /// The original invalid-source guard skips rebuilding and keeps any old row.

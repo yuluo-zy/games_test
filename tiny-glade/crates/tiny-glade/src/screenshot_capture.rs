@@ -55,6 +55,7 @@ enum Capture {
     },
     Buffer {
         buffer: ManagedBuffer,
+        rgba: Option<Vec<u8>>,
         logical: rhapsody::rg::ResourceHandle,
         retired: Arc<AtomicBool>,
         submitted: bool,
@@ -658,6 +659,7 @@ fn capture_buffer(
     let retired = retirement_flag(frame)?;
     Ok(Capture::Buffer {
         buffer,
+        rgba: None,
         logical: target,
         retired,
         submitted: false,
@@ -891,7 +893,7 @@ fn finish_owned(owner: &mut Requests) -> rhapsody::Result<()> {
             request.remaining -= 1;
             continue;
         }
-        match &request.capture {
+        match &mut request.capture {
             Capture::Texture { hosts, .. } => {
                 if request.hurry {
                     hosts.buffers.graphics_device().wait_idle()?;
@@ -900,12 +902,26 @@ fn finish_owned(owner: &mut Requests) -> rhapsody::Result<()> {
                     callback(Ok(request.extent));
                 }
             }
-            Capture::Buffer { buffer, .. } => {
+            Capture::Buffer { buffer, rgba, .. } => {
                 if request.hurry {
                     buffer.device().wait_idle()?;
                 }
-                let mut rgba = vec![0; byte_size(request.extent)? as usize];
-                buffer.read_bytes(0, &mut rgba)?;
+                if rgba.is_none() {
+                    let mut pixels = Vec::new();
+                    pixels.try_reserve_exact(buffer.size as usize)
+                        .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
+                    pixels.resize(buffer.size as usize, 0);
+                    *rgba = Some(pixels);
+                }
+                let pixels = rgba.as_mut().expect("admitted screenshot pixels");
+                let read = if request.hurry { buffer.read_bytes(0, pixels) }
+                    else { buffer.read_bytes_timeout(0, pixels, 0) };
+                match read {
+                    Ok(()) => {}
+                    Err(rhapsody::Error::Timeout) if !request.hurry => continue,
+                    Err(error) => return Err(error),
+                }
+                let rgba = rgba.take().expect("completed screenshot pixels");
                 let Destination::Pixels(sink) = &request.destination else {
                     unreachable!()
                 };
@@ -1028,6 +1044,97 @@ mod tests {
         resources::steam::{AnalogActionData, DigitalActionData, SteamSdk},
     };
     use std::sync::Mutex;
+
+    #[test]
+    fn pending_gpu_pixels_yield_with_one_cpu_buffer_and_deliver_once_after_completion() {
+        use ash::vk;
+        use rhapsody::{command::VulkanCommandPool, device::{Device, DeviceConfig, DeviceQueue},
+            raw::semaphore::TimelineSemaphore, resource::BufferDesc};
+        struct Release(Option<Arc<TimelineSemaphore>>);
+        impl Release {
+            fn signal(&mut self) {
+                let gate = self.0.take().unwrap();
+                unsafe { gate.device().raw_device().signal_semaphore(
+                    &vk::SemaphoreSignalInfo::default().semaphore(gate.raw_handle()).value(1),
+                ) }.unwrap();
+            }
+        }
+        impl Drop for Release {
+            fn drop(&mut self) {
+                if let Some(gate) = self.0.take() {
+                    let _ = unsafe { gate.device().raw_device().signal_semaphore(
+                        &vk::SemaphoreSignalInfo::default().semaphore(gate.raw_handle()).value(1),
+                    ) };
+                }
+            }
+        }
+        let device = match Device::new_headless(&DeviceConfig::headless()) {
+            Ok(device) => device,
+            Err(error) => {
+                assert!(!std::env::var("RHAPSODY_REQUIRE_VULKAN").is_ok_and(|v| v == "1"), "{error}");
+                return;
+            }
+        };
+        let buffer = device.create_buffer(&BufferDesc::new_gpu_to_cpu(16,
+            vk::BufferUsageFlags::TRANSFER_DST), "pending screenshot fixture", None).unwrap();
+        let gate = TimelineSemaphore::new(device.clone(), 0).unwrap();
+        let mut release = Release(Some(gate.clone()));
+        let pool = VulkanCommandPool::new(device.clone()).unwrap();
+        let mut command = pool.allocate().unwrap();
+        unsafe { command.retain_opaque_buffer_range(buffer.shared(), 0, 16) }.unwrap();
+        command.begin().unwrap();
+        unsafe {
+            device.raw_device().cmd_fill_buffer(command.raw_handle(), buffer.raw_handle(), 0, 16, 0x44332211);
+            device.raw_device().cmd_pipeline_barrier(command.raw_handle(),
+                vk::PipelineStageFlags::TRANSFER, vk::PipelineStageFlags::HOST, vk::DependencyFlags::empty(), &[],
+                &[vk::BufferMemoryBarrier::default().src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
+                    .dst_access_mask(vk::AccessFlags::HOST_READ).buffer(buffer.raw_handle()).offset(0).size(16)
+                    .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED).dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)], &[]);
+        }
+        command.end().unwrap();
+        let pending = command.submit_to(DeviceQueue {handle: device.primary_queue(),
+            family: device.queue_family_index(), index: 0},
+            &[(gate, 1, vk::PipelineStageFlags::ALL_COMMANDS)], &[]).unwrap();
+        let mut graph = rhapsody::rg::RenderGraph::new();
+        let logical = graph.create_buffer("screenshot logical owner", rhapsody::rg::graph::BufferDesc {
+            word_at_00: 16, word_at_08: vk::BufferUsageFlags::TRANSFER_DST.as_raw(), bytes_at_0c_through_0e: [2, 0, 0],
+        }).unwrap().raw();
+        let (send, pixels) = std::sync::mpsc::channel();
+        let (done, completions) = std::sync::mpsc::channel();
+        let mut owner = Requests::default();
+        owner.active.push(Request {
+            purpose: 4, dimensions: Some([2, 2]), extent: [2, 2], hurry: false, remaining: 0,
+            destination: Destination::Pixels(ScreenshotSink::Rgba(Arc::new(move |w, h, rgba| {
+                send.send((w, h, rgba)).unwrap();
+            }))),
+            completion: Some(Arc::new(move |result| { done.send(result).unwrap(); })),
+            capture: Capture::Buffer { buffer, rgba: None, logical,
+                retired: Arc::new(AtomicBool::new(false)), submitted: true },
+        });
+        let started = std::time::Instant::now();
+        finish_owned(&mut owner).unwrap();
+        assert!(started.elapsed() < std::time::Duration::from_secs(2));
+        let allocation = |owner: &Requests| match &owner.active[0].capture {
+            Capture::Buffer { rgba: Some(bytes), .. } => (bytes.as_ptr() as usize, bytes.capacity()),
+            _ => panic!("pending screenshot lost its pixel owner"),
+        };
+        let original = allocation(&owner);
+        finish_owned(&mut owner).unwrap();
+        assert_eq!(allocation(&owner), original, "busy retries must reuse their admitted destination");
+        assert!(pixels.try_recv().is_err());
+        assert!(completions.try_recv().is_err());
+        assert!(owner.writers.is_empty());
+        release.signal();
+        pending.wait(10_000_000_000).unwrap();
+        finish_owned(&mut owner).unwrap();
+        for writer in owner.writers.drain(..) { writer.join().unwrap(); }
+        assert_eq!(pixels.recv().unwrap(), (2, 2, [0x11, 0x22, 0x33, 0x44].repeat(4)));
+        assert_eq!(completions.recv().unwrap().unwrap(), [2, 2]);
+        finish_owned(&mut owner).unwrap();
+        assert!(owner.active.is_empty());
+        assert!(pixels.try_recv().is_err());
+        assert!(completions.try_recv().is_err());
+    }
 
     #[test]
     fn shutdown_settles_unsubmitted_requests_after_render_ownership_transfer_once() {

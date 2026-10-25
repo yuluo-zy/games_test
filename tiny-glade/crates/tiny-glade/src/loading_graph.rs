@@ -363,7 +363,7 @@ fn build_loading(
     // Disk textures remain actual host handles, not graph indices.
     let textures = world.get_resource::<AssetTextureLibrary>().ok_or_else(|| fail("AssetTextureLibrary"))?;
     let blue = textures.get_by_name(NameHash(0x579f_39ab_91a0_1865));
-    raster.assets.lock().textures_by_name.insert(0x579f_39ab_91a0_1865,
+    Arc::make_mut(&mut raster.assets.lock().collect).textures_by_name.insert(0x579f_39ab_91a0_1865,
         (country_core::rhapsody_contract::ManagedHandle(blue.id), country_core::render::pass_builder::framebuffer_binding::AttachmentTexture::from(blue)));
     let lookup = LibraryShaders(shaders);
     frame.with_raster(|host| {
@@ -386,7 +386,7 @@ fn build_loading(
             render::pass_builder::pass_resource_access::SsboType};
         let ssbos = world.get_resource::<AssetSsboLibrary>().ok_or_else(|| fail("AssetSsboLibrary"))?;
         let buffer = ssbos.get_rg_buffer::<ColorLibrarySsbo>(&mut frame.resource_graph());
-        raster.assets.lock().rg_buffers.insert(<ColorLibrarySsbo as SsboType>::rg_buffer_hash(),
+        Arc::make_mut(&mut raster.assets.lock().collect).rg_buffers.insert(<ColorLibrarySsbo as SsboType>::rg_buffer_hash(),
             u32::try_from(buffer.resource).map_err(|_| fail("ColorLibrary graph index overflow"))?);
     }
     frame.with_raster(|host| {

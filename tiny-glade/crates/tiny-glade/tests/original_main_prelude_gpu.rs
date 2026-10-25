@@ -88,8 +88,7 @@ fn original_main_prefix_imports_owned_world_resets_indirect_and_builds_luts_once
         GpuWorldSubsetKind::SolidVertexColor,
         GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<SolidVertexColorInstanceData>(
             buffers.as_ref(),
-            GpuWorldSubsetKind::SolidVertexColor,
-        )),
+            GpuWorldSubsetKind::SolidVertexColor, 0)),
     );
     world.insert_resource(gpu_world);
     let ssbos = world.resource::<AssetSsboLibrary>();

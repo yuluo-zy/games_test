@@ -465,7 +465,7 @@ mod actual_host_tests {
         let curve = country_core::resources::roofs::geometry::surface::Curve2::try_new(vec![[0.,0.],[4.,0.]], false).unwrap();
         inner.new_wall_with_id(wall, WallState::new(curve, 2., 0, 0, false));
         let mut public = PublicWalls::default();
-        public.consume(&mut inner, &TerrainHeightGrid512 { encoded: vec![0u16;512*512].into(), minimum_y: 0., maximum_y: 4., sampling_fix: true });
+        public.consume_with_paths(&mut inner, &TerrainHeightGrid512 { encoded: vec![0u16;512*512].into(), minimum_y: 0., maximum_y: 4., sampling_fix: true }, None, &country_core::resources::walls::public_walls::WallPublicationDirty::default(), &country_core::resources::walls::public_walls::WallSpatialHash::default());
         let storage = SparseInstanceBuffer::<BrickTransformSsbo>::try_new(&CpuBufferDevice(1)).unwrap();
         let owner = InstancedWall::new_awaiting_production(wall.0, &storage);
         let library = AssetSsboLibrary::new(); library.register::<BrickTransformSsbo>(storage);

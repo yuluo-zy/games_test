@@ -468,9 +468,6 @@ pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
     fn drain_pending_acquires(&mut self, _command: u64) -> crate::Result<u32> {
         Ok(0)
     }
-    fn wait_submission(&self, _receipt: crate::sync::SyncPoint) -> crate::Result<()> {
-        Ok(())
-    }
 }
 
 /// Identity of a compiled graph for per-graph PGO statistics: the address of its

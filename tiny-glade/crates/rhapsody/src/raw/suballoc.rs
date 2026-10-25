@@ -503,11 +503,11 @@ impl MemoryBlock {
         super::allocator::relieve_pressure(&device, Some(memory_type), adjusted.size);
         // should_use already trimmed empty native blocks; release idle cache
         // entries before falling back to a dedicated allocation.
-        if !sub.should_use(memory_type, adjusted.size)
-            && (device.evict_idle_caches(adjusted.size) == 0
-                || !sub.should_use(memory_type, adjusted.size))
-        {
-            return Self::allocate_dedicated(device, requirements, required, preferred, flags);
+        if !sub.should_use(memory_type, adjusted.size) {
+            device.evict_idle_caches(adjusted.size);
+            if !sub.should_use(memory_type, adjusted.size) {
+                return Self::allocate_dedicated(device, requirements, required, preferred, flags);
+            }
         }
         let allocation = super::allocator::with_eviction_retry(&device, adjusted.size, || {
             sub.allocate(

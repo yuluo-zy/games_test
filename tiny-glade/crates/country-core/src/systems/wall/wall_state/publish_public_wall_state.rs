@@ -1,20 +1,15 @@
 //! CPU ownership and real ECS publication consumers for B 0x140a8b530.
 //! The ordinary pipeline consumes the named WorldRaster buffers and owns one
-//! PublicWalls resource. The former isolated CPU API is a compatibility facade.
+//! PublicWalls resource.
 
 use bevy_ecs::{prelude::*, system::SystemParam};
-use hashbrown::HashMap;
-use std::{
-    ops::{Deref, DerefMut},
-    sync::Arc,
-};
+use std::sync::Arc;
 use tabloid::Subscriber;
 
-use crate::resources::walls::publication_source::CollectionError;
 use crate::resources::walls::publication_source::TerrainHeightGrid512;
 use crate::resources::{
     walls::{
-        InnerWalls, WallId,
+        InnerWalls,
         public_walls::{
             OnWallChanged, OnWallDeleted, PublicWalls, WallPublicationDirty, WallPublicationEvent,
             WallSpatialHash,
@@ -24,10 +19,6 @@ use crate::resources::{
 };
 use crate::systems::wall::wall_state::path_preparation::PathRasters512;
 use crate::utils::dirty_tiles::DirtyTiles;
-
-pub use crate::resources::walls::public_walls::{
-    PublicWallState as PublishedWallSource, WallPublicationDelta,
-};
 
 /// Derived snapshot of the authoritative TerrainHeightsData owner. Production
 /// refreshes this view from that owner; isolated CPU callers may supply a view.
@@ -58,36 +49,6 @@ pub fn synchronize_wall_publication_terrain(
     }
 }
 
-/// Old direct CPU caller compatibility. It delegates all ownership/algorithms
-/// to PublicWalls; new game consumers use PublicWalls itself.
-#[derive(Resource, Default)]
-pub struct WallPublicationState(PublicWalls);
-impl Deref for WallPublicationState {
-    type Target = PublicWalls;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-impl DerefMut for WallPublicationState {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-impl WallPublicationState {
-    pub fn get(&self, id: WallId) -> Result<Option<&PublishedWallSource>, &CollectionError> {
-        if let Some(error) = self.0.failures().get(&id) {
-            return Err(error);
-        }
-        Ok(self.0.get(id))
-    }
-    pub fn failures(&self) -> &HashMap<WallId, CollectionError> {
-        self.0.failures()
-    }
-    pub fn consume(&mut self, inner: &mut InnerWalls, terrain: &TerrainHeightGrid512) {
-        self.0.consume(inner, terrain);
-    }
-}
-
 /// Original WallLazySubscriber: Path first, Terrain second. The producer's
 /// wrapper @1408c630a/6322 subscribes the existing canonical owners in this
 /// order; no independent publisher is introduced by this derived consumer.
@@ -96,8 +57,6 @@ pub struct WallLazySubscriber {
     pub primary: Subscriber<DirtyTiles>,
     pub secondary: Subscriber<DirtyTiles>,
 }
-/// Compatibility name for the same resource identity.
-pub use WallLazySubscriber as WallPublicationSubscriptions;
 
 /// Original startup::startup_walls::once_startup_walls, merged here with its
 /// actual publication consumer. run_unsafe@1408c61d0 inlines the complete body:
@@ -114,7 +73,7 @@ pub fn once_startup_walls(
 }
 
 pub fn collect_wall_publication_dirty(
-    mut subscriptions: ResMut<WallPublicationSubscriptions>,
+    mut subscriptions: ResMut<WallLazySubscriber>,
     mut dirty: ResMut<WallPublicationDirty>,
 ) {
     if let Some(batch) = subscriptions.primary.take() {
@@ -175,6 +134,19 @@ pub fn publish_public_wall_state(
             .expect("all four path rasters have the declared 512x512 extent"),
         );
     }
+    let changes = inner.changes();
+    if changes.created.is_empty() && changes.updated.is_empty() && changes.removed.is_empty()
+        && dirty.primary.is_empty() && dirty.secondary.is_empty()
+    {
+        // Publish the one transition to an empty delta, then leave static
+        // resource ticks untouched so render extraction can reuse its copy.
+        if !public.last_delta.changed.is_empty() || !public.last_delta.removed.is_empty() || !public.last_delta.events.is_empty() {
+            public.last_delta.changed.clear();
+            public.last_delta.removed.clear();
+            public.last_delta.events.clear();
+        }
+        return;
+    }
     public.consume_with_paths(
         &mut inner,
         &terrain.0,
@@ -201,16 +173,6 @@ pub fn publish_public_wall_state(
             }
         }
     }
-}
-
-/// Preserved for existing isolated core CPU callers. The integrated pipeline
-/// uses publish_public_wall_state and its real event resources instead.
-pub fn publish_wall_sources(
-    mut inner: ResMut<InnerWalls>,
-    terrain: Res<WallPublicationTerrain>,
-    mut published: ResMut<WallPublicationState>,
-) {
-    published.consume(&mut inner, &terrain.0);
 }
 
 #[cfg(test)]

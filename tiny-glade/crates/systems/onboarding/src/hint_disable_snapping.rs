@@ -217,7 +217,7 @@ mod native_regressions {
             sampling_fix: false,
         };
         let mut public = PublicWalls::default();
-        public.consume(&mut inner, &terrain);
+        public.consume_with_paths(&mut inner, &terrain, None, &country_core::resources::walls::public_walls::WallPublicationDirty::default(), &country_core::resources::walls::public_walls::WallSpatialHash::default());
         let mut spatial = WallSpatialHash::default();
         spatial.add_segment(WallSpatialSegment {
             endpoints: [[0., 0.], [8., 0.]],

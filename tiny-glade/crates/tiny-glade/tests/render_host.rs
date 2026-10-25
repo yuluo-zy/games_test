@@ -648,6 +648,9 @@ fn run_core_compute_pass_with_heap_parameters(with_push: bool, external: bool) {
                 program: None,
                 dispatch: if with_push {
                     DispatchMode::With(Box::new(|api| {
+                        api.push_constants(&100_u32.to_le_bytes());
+                        api.push_constants(&100_u32.to_le_bytes());
+                        api.push_constants(&200_u32.to_le_bytes());
                         api.push_constants(&200_u32.to_le_bytes());
                         api.dispatch_1d(4);
                     }))

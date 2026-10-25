@@ -81,8 +81,9 @@ image.workspace = true
 uuid = { version = "=1.15.1", features = ["v4"] }
 tempfile = "=3.20.0"
 crossbeam-channel = "=0.5.6"
+smallvec = "=1.13.2"
 bevy_app.workspace = true
-bevy_ecs.workspace = true
+bevy_ecs = { workspace = true, features = ["multi_threaded"] }
 bevy_tasks.workspace = true
 bevy_time = { version = "=0.16.0", default-features = false, features = ["std"] }
 bevy_state = { version = "=0.16.0", default-features = false, features = ["std", "bevy_app"] }
@@ -111,17 +112,15 @@ profile = ["dep:pprof"]
 # per-frame allocations of the ECS, declaration and recording paths. Library
 # crates and their tests keep the system allocator; disable with
 # `--no-default-features`.
-default = ["mimalloc", "ecs-multithreaded"]
+default = ["mimalloc"]
 mimalloc = ["dep:mimalloc"]
 # FMOD-backed audio. Always on for Windows (original target); other hosts opt in
 # when libfmod/libfmodstudio are available to link.
 native-audio = ["country-core/native-audio"]
-# Enabled by default. ecs_order pins conflicting accesses on schedule rebuild;
-# TG_ECS_EXECUTOR=single remains the reference execution policy. Deferred command
-# visibility still requires explicit business dependencies and sync points.
-ecs-multithreaded = ["bevy_ecs/multi_threaded"]
 
 [dev-dependencies]
+blake3.workspace = true
+rhapsody = { workspace = true, features = ["test-support"] }
 rspirv.workspace = true
 country-core = { workspace = true, features = ["test-support"] }
 # Lets tests/main_chain_audit.rs record every failed system instead of panicking on the first.
@@ -137,6 +136,7 @@ country-core = { workspace = true, features = ["native-audio"] }
 winapi = { version = "=0.3.9", features = ["wingdi", "winuser", "winbase", "winnt"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
+libc = "=0.2.170"
 objc = "=0.2.7"
 core-foundation = "=0.9.3"
 core-graphics = "=0.23.1"

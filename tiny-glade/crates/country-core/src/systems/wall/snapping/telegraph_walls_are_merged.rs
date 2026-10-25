@@ -109,7 +109,7 @@ mod tests {
         ));
         let terrain = TerrainHeightGrid512 { encoded: vec![0; 512*512].into(), minimum_y: 0., maximum_y: 0., sampling_fix: false };
         let mut public = PublicWalls::default();
-        public.consume(&mut inner, &terrain);
+        public.consume_with_paths(&mut inner, &terrain, None, &crate::resources::walls::public_walls::WallPublicationDirty::default(), &crate::resources::walls::public_walls::WallSpatialHash::default());
         assert!(public.get(wall).is_some());
         world.insert_resource(public);
         world.init_resource::<AssetMeshLibrary>();

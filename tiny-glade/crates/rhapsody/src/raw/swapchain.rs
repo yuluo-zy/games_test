@@ -2247,9 +2247,8 @@ impl AcquiredImageLease {
         }
         let signals = [self.presentation.rendered];
         let commands = [command.handle];
-        let mut uses = command.use_cells().to_vec();
-        crate::resource::tracked::normalize_submission_uses(&mut uses);
-        let _reservations = crate::resource::tracked::lock_submission_uses(&uses)?;
+        let uses = crate::resource::tracked::collect_submission_uses(&[command.submission_uses()?], &device.memory.stats)?;
+        let _reservations = crate::resource::tracked::lock_submission_uses(uses.ordered(), &device.memory.stats)?;
         command.validate_submission()?;
         let native_states = unsafe {
             super::command_buffer::prepare_submission_states(

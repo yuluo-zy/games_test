@@ -286,8 +286,7 @@ pub fn run_list_layer(ctx: &mut DrawPassCtx<'_>, layer: &[(&ListPass<'_>, &[Draw
 fn collect_layer(ctx: &mut DrawPassCtx<'_>, layer: &[(&ListPass<'_>, &[DrawEntry])]) -> bool {
     let draws = layer.iter().fold(0usize, |n, (_, items)| n.saturating_add(items.len()));
     if !(2..=8).contains(&layer.len()) || draws == 0 || draws > 4096 { return false; }
-    let pool = bevy_tasks::ComputeTaskPool::get_or_init(bevy_tasks::TaskPool::default);
-    let mut jobs = Vec::with_capacity(layer.len());
+    let mut jobs = smallvec::SmallVec::<[_; 8]>::with_capacity(layer.len());
     let mut bytes = 0usize;
     let prepare_started = crate::render::declare_probe::start();
     // Probe admission before preparing any expensive reflection metadata.
@@ -311,20 +310,15 @@ fn collect_layer(ctx: &mut DrawPassCtx<'_>, layer: &[(&ListPass<'_>, &[DrawEntry
     crate::render::declare_probe::collect_stage(0, prepare_started);
     let started = crate::render::declare_probe::start();
     let world: &World = ctx.world;
-    let mut batches = pool.scope_with_executor(false, None, |scope| {
-        for (index, (factory, viewport, params)) in jobs.into_iter().enumerate() {
-            let (spec, items) = layer[index];
-            scope.spawn(async move {
-                let mut local = RasterPass::collector(factory(), viewport);
-                declare_items(&mut local, spec, items, &params, world);
-                (index, local.into_draw_batch())
-            });
-        }
+    let batches = rhapsody::rg::map_chunks(&mut jobs, |index, (factory, viewport, params)| {
+        let (spec, items) = layer[index];
+        let mut local = RasterPass::collector(factory(), *viewport);
+        declare_items(&mut local, spec, items, params, world);
+        local.into_draw_batch()
     });
-    batches.sort_unstable_by_key(|(index, _)| *index);
     crate::render::declare_probe::collect_stage(1, started);
     let commit_started = crate::render::declare_probe::start();
-    for (&(spec, items), (_, batch)) in layer.iter().zip(batches) {
+    for (&(spec, items), batch) in layer.iter().zip(batches) {
         let mut pass = ctx.raster_pass(spec.name, spec.colors, spec.depth, spec.viewport);
         pass.commit_draw_batch(batch);
         crate::render::declare_probe::collected(1);
@@ -410,20 +404,15 @@ fn collect_list(pass: &mut RasterPass, spec: &ListPass<'_>, items: &[DrawEntry],
         let tasks = pool.thread_num().clamp(1, 8).min(page.len().div_ceil(chunk_draws));
         crate::render::declare_probe::collect_stage(0, prepare_started);
         let started = crate::render::declare_probe::start();
-        let mut indexed = pool.scope_with_executor(false, None, |scope| {
-            for (index, chunk) in page.chunks(page.len().div_ceil(tasks)).enumerate() {
-                let factory = &factory;
-                scope.spawn(async move {
-                    let mut local = RasterPass::collector(factory(), viewport);
-                    declare_items(&mut local, spec, chunk, params, world);
-                    (index, local.into_draw_batch())
-                });
-            }
+        let mut chunks = page.chunks(page.len().div_ceil(tasks)).collect::<smallvec::SmallVec<[_; 8]>>();
+        let batches = rhapsody::rg::map_chunks(&mut chunks, |_, chunk| {
+            let mut local = RasterPass::collector(factory(), viewport);
+            declare_items(&mut local, spec, chunk, params, world);
+            local.into_draw_batch()
         });
-        indexed.sort_unstable_by_key(|(index, _)| *index);
         crate::render::declare_probe::collect_stage(1, started);
         let started = crate::render::declare_probe::start();
-        for (_, batch) in indexed { pass.commit_draw_batch(batch); }
+        for batch in batches { pass.commit_draw_batch(batch); }
         crate::render::declare_probe::collect_stage(2, started);
         crate::render::declare_probe::collected(tasks);
         offset = end;

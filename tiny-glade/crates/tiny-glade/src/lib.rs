@@ -16,7 +16,6 @@ pub mod render_thread;
 mod render_upload_boundary;
 mod temporal_frame;
 mod frame_resolution;
-#[cfg(feature = "ecs-multithreaded")]
 mod ecs_order;
 pub mod render_extract;
 pub mod frame_world;

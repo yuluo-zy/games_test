@@ -359,7 +359,7 @@ mod tests {
                 ShapeParameters::from_shape(Shape::Circle(old_circle)).to_snapshot(),
             );
             let mut public = PublicWalls::default();
-            public.consume(&mut inner, &terrain);
+            public.consume_with_paths(&mut inner, &terrain, None, &crate::resources::walls::public_walls::WallPublicationDirty::default(), &crate::resources::walls::public_walls::WallSpatialHash::default());
             assert!(public.get(previous).is_some());
             let mut roof_record = [0; 88];
             roof_record[..8].copy_from_slice(&previous.0.to_le_bytes());
@@ -524,10 +524,10 @@ mod tests {
                 );
             }
             world.resource_scope(|world, mut public: Mut<PublicWalls>| {
-                public.consume(&mut world.resource_mut::<InnerWalls>(), &terrain);
+                public.consume_with_paths(&mut world.resource_mut::<InnerWalls>(), &terrain, None, &crate::resources::walls::public_walls::WallPublicationDirty::default(), &crate::resources::walls::public_walls::WallSpatialHash::default());
                 assert!(public.get(created).is_some());
                 world.resource_mut::<InnerWalls>().remove(created);
-                public.consume(&mut world.resource_mut::<InnerWalls>(), &terrain);
+                public.consume_with_paths(&mut world.resource_mut::<InnerWalls>(), &terrain, None, &crate::resources::walls::public_walls::WallPublicationDirty::default(), &crate::resources::walls::public_walls::WallSpatialHash::default());
                 assert!(public.get(created).is_none());
                 assert!(public.get(previous).is_some());
                 assert!(public.last_delta.removed.contains(&created));

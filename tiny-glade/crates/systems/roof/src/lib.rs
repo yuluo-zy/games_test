@@ -115,7 +115,11 @@ pub fn gpu_flush_buffers(
     // O：get_mut<RoofTileSsbo> → None 时 unwrap_failed。
     let buffer = library.get_mut::<RoofTileSsbo>().unwrap();
     // O：GraphicsDeviceResource::deref() → SparseInstanceBuffer::gpu_flush<T>。
-    buffer.gpu_flush(device.device());
+    if let Err(error) = buffer.gpu_flush(device.device()) {
+        if !matches!(error, country_core::render::ssbo::rhapsody_boundary::BackendError::Exhausted(_)) {
+            panic!("roof tile upload: {error}");
+        }
+    }
 }
 
 /// `<bevy_app::App as system_roof::RoofSystems>::{add_roof_events_and_resources, add_roof_systems}`

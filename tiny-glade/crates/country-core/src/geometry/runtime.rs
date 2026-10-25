@@ -183,7 +183,7 @@ pub fn sync_wall_bricks(
         log::warn!("{capacity_failures} 堵墙的砖实例空间不足，保留旧几何并等待空闲 chunk");
     }
     status.capacity_failures = capacity_failures;
-    match storage.try_gpu_flush(runtime.buffers.as_ref()) {
+    match storage.gpu_flush(runtime.buffers.as_ref()) {
         Ok(()) => {
             status.gpu_ready = true;
             status.last_error = None;

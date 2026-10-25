@@ -768,12 +768,12 @@ mod tests {
         }
     }
 
-    fn test_world(kind: GpuWorldSubsetKind) -> GpuWorld {
+    fn test_world(kind: GpuWorldSubsetKind, mesh_part_count: usize) -> GpuWorld {
         let dev = TestDevice(1);
         let mut world = GpuWorld::new(&dev);
         world.assign_subset(
             kind,
-            GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<PlacementDataSsbo>(&dev, kind)),
+            GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<PlacementDataSsbo>(&dev, kind, mesh_part_count)),
         );
         world
     }
@@ -885,7 +885,7 @@ mod tests {
 
     #[test]
     fn despawn_prefab_contents_stops_at_gpu_end_sentinel() {
-        let gpu_world = test_world(GpuWorldSubsetKind::Canopy);
+        let gpu_world = test_world(GpuWorldSubsetKind::Canopy, 0);
         let mut rt_world = RtWorld::default();
         let mut audio = AudioTriggerLibrary::default();
         let mut data = PrefabInstance {
@@ -924,7 +924,7 @@ mod tests {
         );
         let kind = GpuWorldSubsetKind::Canopy;
         let mesh_atlases = test_atlas("tree/a", kind);
-        let mut gpu_world = test_world(kind);
+        let mut gpu_world = test_world(kind, mesh_atlases.get_by_world_subset(kind).atlas.layouts.len());
         let mut rt_world = RtWorld::default();
         let mut audio = AudioTriggerLibrary::default();
         let mut pending = Vec::new();
@@ -1012,7 +1012,7 @@ mod tests {
         let mut mesh_b = Mesh::new("test");
         mesh_b.set_indices(vec![0, 1, 2]);
         mesh_atlases.add(kind, PrefabName::new("tree/b"), &mesh_b);
-        let mut gpu_world = test_world(kind);
+        let mut gpu_world = test_world(kind, mesh_atlases.get_by_world_subset(kind).atlas.layouts.len());
         let mut rt_world = RtWorld::default();
         let mut audio = AudioTriggerLibrary::default();
         let mut pending = Vec::new();

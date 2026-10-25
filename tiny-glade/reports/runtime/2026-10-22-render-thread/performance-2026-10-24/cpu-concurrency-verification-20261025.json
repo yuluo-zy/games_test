@@ -1,0 +1,156 @@
+[
+  {
+    "name": "146a-flush-cpu",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "rhapsody",
+      "--lib",
+      "raw::dynamic_constants::tests",
+      "--locked",
+      "--offline"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 34.479014249984175,
+    "log": "/tmp/tg-perf146a-flush-cpu.log",
+    "log_sha256": "62e0872a81545d0058525fd6ee55e2417e816fa1b6a91d4314b97de3c0150033"
+  },
+  {
+    "name": "146b-host-gpu",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "tiny-glade",
+      "--lib",
+      "--features",
+      "profile",
+      "render_host::",
+      "--locked",
+      "--offline",
+      "--",
+      "--test-threads=1"
+    ],
+    "exit_code": 101,
+    "elapsed_s": 134.46816612500697,
+    "log": "/tmp/tg-perf146b-host-gpu.log",
+    "log_sha256": "e925e0297453b31080a25068cdae146b6ee67ed1467b25d41bb310c67740d821"
+  },
+  {
+    "name": "146b2-host-gpu",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "tiny-glade",
+      "--lib",
+      "--features",
+      "profile",
+      "render_host::",
+      "--locked",
+      "--offline",
+      "--",
+      "--test-threads=1"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 56.625633749878034,
+    "log": "/tmp/tg-perf146b2-host-gpu.log",
+    "log_sha256": "375c060301785042866fa66f261ec96097db6ecae2040ab0902390f19092eff2"
+  },
+  {
+    "name": "146c-cursor-gpu",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "tiny-glade",
+      "--lib",
+      "--features",
+      "profile",
+      "game_loop::frame_tests::",
+      "--locked",
+      "--offline",
+      "--",
+      "--test-threads=1"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 20.34958520811051,
+    "log": "/tmp/tg-perf146c-cursor-gpu.log",
+    "log_sha256": "f5b9331d07cc2cd484e58df982fc1143faeea6d226fe1095761bd8c180d43c16"
+  },
+  {
+    "name": "146d-app-check",
+    "command": [
+      "cargo",
+      "check",
+      "-j",
+      "2",
+      "-p",
+      "tiny-glade",
+      "--lib",
+      "--bins",
+      "--tests",
+      "--features",
+      "profile",
+      "--locked",
+      "--offline"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 178.40089362487197,
+    "log": "/tmp/tg-perf146d-app-check.log",
+    "log_sha256": "ae3e41b7da1edd6e414a861d880f20a4da8bf803bfd6eed0256a5cf7e94db211"
+  },
+  {
+    "name": "146e-raster-gpu",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "tiny-glade",
+      "--features",
+      "profile",
+      "--test",
+      "original_raster_gpu",
+      "--locked",
+      "--offline",
+      "--",
+      "--test-threads=1"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 75.50389829091728,
+    "log": "/tmp/tg-perf146e-raster-gpu.log",
+    "log_sha256": "b45fd7460ccb3eb4ae9b64c150b11356946662f090e3da9cbf31a081253f3ae5"
+  },
+  {
+    "name": "146f-abi-gpu",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "rhapsody",
+      "--test",
+      "bindless_shader_abi",
+      "--locked",
+      "--offline",
+      "--",
+      "--test-threads=1"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 44.35932237491943,
+    "log": "/tmp/tg-perf146f-abi-gpu.log",
+    "log_sha256": "f0ddbc9119903cb61236b753f1e94457dab376af2fb5ba8c7716cf65389bb530"
+  }
+]

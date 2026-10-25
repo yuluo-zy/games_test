@@ -189,24 +189,26 @@ fn removing_all_preserves_counter_and_both_prior_notice_sets() {
     assert!(walls.changes().removed.contains(&b));
 }
 
+fn publication_fixture() -> (bevy_ecs::world::World, bevy_ecs::schedule::Schedule) {
+    use country_core::resources::{walls::{publication_source::TerrainHeightGrid512}, world_raster::DirtyTilePublisher, world_raster_defs::{PathRaster, Cobblestone1Raster, Cobblestone2Raster, Cobblestone3Raster}};
+    use country_core::systems::wall::{registration::register_wall_cpu_resources, wall_state::publish_public_wall_state::{WallPublicationTerrain, publish_public_wall_state}};
+    let mut world = bevy_ecs::world::World::new();
+    register_wall_cpu_resources(&mut world);
+    world.insert_resource(WallPublicationTerrain(TerrainHeightGrid512 { encoded: vec![0;512*512].into(), minimum_y:0.0, maximum_y:0.0, sampling_fix:true }));
+    world.insert_resource(PathRaster::new(DirtyTilePublisher::unique()));
+    world.insert_resource(Cobblestone1Raster::new(DirtyTilePublisher::unique()));
+    world.insert_resource(Cobblestone2Raster::new(DirtyTilePublisher::unique()));
+    world.insert_resource(Cobblestone3Raster::new(DirtyTilePublisher::unique()));
+    let mut schedule = bevy_ecs::schedule::Schedule::default();
+    schedule.add_systems(publish_public_wall_state);
+    (world,schedule)
+}
+
 #[test]
 fn core_world_consumes_create_edit_delete_and_restoration_without_upper_runtime() {
     use bevy_ecs::prelude::*;
-    use country_core::resources::walls::publication_source::TerrainHeightGrid512;
-    use country_core::systems::wall::wall_state::publish_public_wall_state::{
-        WallPublicationState, WallPublicationTerrain, publish_wall_sources,
-    };
-    let mut world = World::new();
-    world.insert_resource(InnerWalls::new());
-    world.insert_resource(WallPublicationState::default());
-    world.insert_resource(WallPublicationTerrain(TerrainHeightGrid512 {
-        encoded: vec![0; 512 * 512].into(),
-        minimum_y: 0.0,
-        maximum_y: 0.0,
-        sampling_fix: true,
-    }));
-    let mut schedule = Schedule::default();
-    schedule.add_systems(publish_wall_sources);
+    use country_core::resources::walls::public_walls::PublicWalls;
+    let (mut world, mut schedule) = publication_fixture();
     let rectangle = PreviewRectangleObserved {
         axes: [1.0, 0.0],
         center: [0.0, 0.0],
@@ -224,8 +226,8 @@ fn core_world_consumes_create_edit_delete_and_restoration_without_upper_runtime(
         id
     };
     schedule.run(&mut world);
-    let output = world.resource::<WallPublicationState>();
-    let published = output.get(id).unwrap().unwrap();
+    let output = world.resource::<PublicWalls>();
+    let published = output.get(id).unwrap();
     assert_eq!(published.geometry.original_curve_length, 20.0);
     assert!(published.geometry.outline.len() > 5);
     let initial_max = published.regular_heights.as_ref().unwrap().maximum_y;
@@ -233,26 +235,28 @@ fn core_world_consumes_create_edit_delete_and_restoration_without_upper_runtime(
     schedule.run(&mut world);
     assert!(
         world
-            .resource::<WallPublicationState>()
+            .resource::<PublicWalls>()
             .last_delta
             .changed
             .is_empty()
     );
     assert!(
         world
-            .resource::<WallPublicationState>()
+            .resource::<PublicWalls>()
             .last_delta
             .removed
             .is_empty()
     );
+    let static_tick = world.get_resource_ref::<PublicWalls>().unwrap().last_changed();
+    schedule.run(&mut world);
+    assert_eq!(world.get_resource_ref::<PublicWalls>().unwrap().last_changed(), static_tick);
     world
         .resource_mut::<InnerWalls>()
         .update_wall_state_height(id, 4.0);
     schedule.run(&mut world);
     let published = world
-        .resource::<WallPublicationState>()
+        .resource::<PublicWalls>()
         .get(id)
-        .unwrap()
         .unwrap();
     assert!(published.regular_heights.as_ref().unwrap().maximum_y > initial_max);
     assert_eq!(published.authority.height(), 4.0);
@@ -260,9 +264,8 @@ fn core_world_consumes_create_edit_delete_and_restoration_without_upper_runtime(
     schedule.run(&mut world);
     assert!(
         world
-            .resource::<WallPublicationState>()
+            .resource::<PublicWalls>()
             .get(id)
-            .unwrap()
             .unwrap()
             .regular_heights
             .is_none()
@@ -271,14 +274,13 @@ fn core_world_consumes_create_edit_delete_and_restoration_without_upper_runtime(
     schedule.run(&mut world);
     assert!(
         world
-            .resource::<WallPublicationState>()
+            .resource::<PublicWalls>()
             .get(id)
-            .unwrap()
             .is_none()
     );
     assert!(
         world
-            .resource::<WallPublicationState>()
+            .resource::<PublicWalls>()
             .last_delta
             .removed
             .contains(&id)
@@ -290,39 +292,29 @@ fn core_world_consumes_create_edit_delete_and_restoration_without_upper_runtime(
     assert_eq!(world.resource::<InnerWalls>().max_id(), id.0);
     assert!(
         world
-            .resource::<WallPublicationState>()
+            .resource::<PublicWalls>()
             .get(id)
-            .unwrap()
             .is_some()
     );
 }
 
 #[test]
 fn a_failed_core_publication_is_visible_and_is_cleared_by_delete() {
-    use country_core::resources::walls::publication_source::TerrainHeightGrid512;
-    use country_core::systems::wall::wall_state::publish_public_wall_state::WallPublicationState;
-    let terrain = TerrainHeightGrid512 {
-        encoded: vec![0; 512 * 512].into(),
-        minimum_y: 0.0,
-        maximum_y: 0.0,
-        sampling_fix: true,
-    };
-    let mut inner = InnerWalls::new();
-    let id = inner.new_wall(state(2.0));
-    let mut output = WallPublicationState::default();
-    output.consume(&mut inner, &terrain);
-    assert!(output.get(id).unwrap().is_some());
-    let invalid = Curve2 {
-        points: vec![],
-        points_u: vec![],
-        length: 0.0,
-    };
-    inner.update_wall_state_curve(id, invalid);
-    output.consume(&mut inner, &terrain);
-    assert!(output.get(id).is_err());
+    use country_core::resources::walls::public_walls::PublicWalls;
+    let (mut world, mut schedule) = publication_fixture();
+    let id = world.resource_mut::<InnerWalls>().new_wall(state(2.0));
+    schedule.run(&mut world);
+    assert!(world.resource::<PublicWalls>().get(id).is_some());
+    let invalid = Curve2 { points: vec![], points_u: vec![], length: 0.0 };
+    world.resource_mut::<InnerWalls>().update_wall_state_curve(id, invalid);
+    schedule.run(&mut world);
+    let output = world.resource::<PublicWalls>();
+    assert!(output.failures().contains_key(&id));
+    assert!(output.get(id).is_some(), "failed replacement preserves the last valid row");
     assert!(!output.last_delta.changed.contains(&id));
-    inner.remove(id);
-    output.consume(&mut inner, &terrain);
-    assert!(output.get(id).unwrap().is_none());
+    world.resource_mut::<InnerWalls>().remove(id);
+    schedule.run(&mut world);
+    let output = world.resource::<PublicWalls>();
+    assert!(output.get(id).is_none());
     assert!(output.failures().is_empty());
 }

@@ -1,0 +1,88 @@
+{
+  "updated_utc": "2026-10-25T10:51:11.525596+00:00",
+  "scope": "One pair per scene, V20 then V21. Same frozen benchmark/settings,600warmup+1000measured. Stage logs/GPU timestamps/stack sampling off. Actual CPU user+kernel means exclude GPU execution and sleeping waits. Not per-frame p95, whole parallel critical path,3round acceptance or fully controlled scene/input identity.",
+  "status": "INCONCLUSIVE overall benefit: static render CPU decreased, many_draws render CPU slightly increased. No60FPS CPU claim.",
+  "pairs": [
+    {
+      "scene": "static",
+      "versions": {
+        "20": {
+          "path": "reports/runtime/2026-10-22-render-thread/performance-2026-10-24/cpu-clean-production-v20/static-parallel-round1/run.json",
+          "sha256": "78c35c6e243ac918dc70a8912bf7e62e77797ed893ec25959fe603b8c531d673",
+          "binary_sha256": "62d3119d92eec69b1586108a87975d877d5095e77158c858de8a77c3e1bdfe0d",
+          "measured_frames": 1000,
+          "warmup": 600,
+          "cpu_sampled_frame_range": [
+            601,
+            1599
+          ],
+          "render_cpu_ms_per_frame": 39.066548096192385,
+          "main_cpu_ms_per_frame": 3.4447905811623243,
+          "all_threads_cpu_ms_per_frame": 66.09218436873748,
+          "measurement_runner_sha256": "f0dde9aa5275dfc3d292db095c4a95e1a54fcf054179dced7ed635f4ae9c8ad7"
+        },
+        "21": {
+          "path": "reports/runtime/2026-10-22-render-thread/performance-2026-10-24/cpu-clean-production-v21/static-parallel-round1/run.json",
+          "sha256": "4834198a58368c7ce58a73ff1f59933451c5e7872eeac34d34e36e3a2fc285f2",
+          "binary_sha256": "2a3a17cd54fa49f021f5340ff0a439f974053e7fcf4339ec5553d9d9d90aabfc",
+          "measured_frames": 1000,
+          "warmup": 600,
+          "cpu_sampled_frame_range": [
+            602,
+            1594
+          ],
+          "render_cpu_ms_per_frame": 36.281370967741935,
+          "main_cpu_ms_per_frame": 3.5053497983870967,
+          "all_threads_cpu_ms_per_frame": 61.895161290322584,
+          "measurement_runner_sha256": "f0dde9aa5275dfc3d292db095c4a95e1a54fcf054179dced7ed635f4ae9c8ad7"
+        }
+      },
+      "percent_change_v21_vs_v20": {
+        "render_cpu_ms_per_frame": -7.129314628957218,
+        "main_cpu_ms_per_frame": 1.7579941595270654,
+        "all_threads_cpu_ms_per_frame": -6.350256264793908
+      }
+    },
+    {
+      "scene": "many_draws",
+      "versions": {
+        "20": {
+          "path": "reports/runtime/2026-10-22-render-thread/performance-2026-10-24/cpu-clean-production-v20/many_draws-parallel-round1/run.json",
+          "sha256": "7d7e6646dd10682a737d6322a97174ae2dfe47446fa9ee2990336dd5e73c564f",
+          "binary_sha256": "62d3119d92eec69b1586108a87975d877d5095e77158c858de8a77c3e1bdfe0d",
+          "measured_frames": 1000,
+          "warmup": 600,
+          "cpu_sampled_frame_range": [
+            613,
+            1589
+          ],
+          "render_cpu_ms_per_frame": 42.61590573770492,
+          "main_cpu_ms_per_frame": 3.620126024590164,
+          "all_threads_cpu_ms_per_frame": 82.93032786885246,
+          "measurement_runner_sha256": "f0dde9aa5275dfc3d292db095c4a95e1a54fcf054179dced7ed635f4ae9c8ad7"
+        },
+        "21": {
+          "path": "reports/runtime/2026-10-22-render-thread/performance-2026-10-24/cpu-clean-production-v21/many_draws-parallel-round1/run.json",
+          "sha256": "8b8f1d25aa2a48ebe37480e9d55c75881e1a6f53dddcbd07c6cf56a57b65aa03",
+          "binary_sha256": "2a3a17cd54fa49f021f5340ff0a439f974053e7fcf4339ec5553d9d9d90aabfc",
+          "measured_frames": 1000,
+          "warmup": 600,
+          "cpu_sampled_frame_range": [
+            609,
+            1600
+          ],
+          "render_cpu_ms_per_frame": 43.125676084762866,
+          "main_cpu_ms_per_frame": 3.654608476286579,
+          "all_threads_cpu_ms_per_frame": 80.3531786074672,
+          "measurement_runner_sha256": "f0dde9aa5275dfc3d292db095c4a95e1a54fcf054179dced7ed635f4ae9c8ad7"
+        }
+      },
+      "percent_change_v21_vs_v20": {
+        "render_cpu_ms_per_frame": 1.1961973780294954,
+        "main_cpu_ms_per_frame": 0.9525207537579794,
+        "all_threads_cpu_ms_per_frame": -3.1076077083172837
+      }
+    }
+  ],
+  "later_source_scope": "Raster same-consumption change-tick fix and PoolCounters peak-scan shortening are later source changes and are not in these frozen V21 results."
+}

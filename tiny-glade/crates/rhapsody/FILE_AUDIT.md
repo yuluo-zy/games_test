@@ -51,6 +51,22 @@ related_tasks: IMPROVEMENT_TASKS.md
 
 新增运行发现 N-003：删除旧设备助手后，现代 Device::new 未建立 physical-device 元数据。已将元数据改为构造时必备 Arc，删除 Option/OnceLock 与公开 attach 接口；复用初始化属性和队列快照，预算发布直接使用该所有者。canonical-and-bindless43 的设备结构 3 项通过；全工作区和最终窗口验收另外登记。
 
+## 2026-10-26 当前性能收尾
+
+F127已用封存资源列表统一raw/graph/WSI加锁入口。V31删除纯观测PoolCounters/多订阅全局历史peak，保留真实Slots/预算/lease，唯一sampled_occupancy只按请求逐页采样。最新V31干净CPU单组为静态8.24/重场景22.66ms，同轮V30为14.66/19.84ms，未证明稳定收益。当前源码已额外接入最多两种idle projection复用、零报告释放字节也按可信完成快照回收、一次分配重试；5项投影含真实GPU字节/释放/弱持有回归通过，但性能不在V31冻结范围。retire HostOOM无限等待与F032全量压力析构仍为独立未关闭项，不能宣称台账清零。完整当前状态与后续次序见 [CPU状态](../../reports/runtime/2026-10-22-render-thread/CPU_STATUS_2026-10-26.md)。
+
+## 2026-10-25 CPU 链路续查
+
+V20已把BindlessLease固定容量在页准入一次计费，移除零字节/相同容量reservation的无效锁；严格GPU12项及预算CPU11项通过。V21复用managed projection已有强owner、合并重复不可变提交检查，并在应用侧改为Collect查询快照、回调内绑定去重及不可变零顶点源复用，GPU领域39项及应用检查已通过，登记在runtime性能目录cpu-chain-verification-20261025.json；后续精确统计峰值临界区缩短9项通过。没有新增生产验证层或串行路径。
+
+旧含GPU timestamp profile的submit占比不能当纯CPU提交成本；新V19 Rust源码归因因external debug-map对象覆盖无效，OS CPU计数仍有效。V20已冻结UUID对应dSYM；CPU-only有效栈中的native submit为25.98%、owner转移为2.65%，不等于精确阶段耗时。实际帧CPU目标尚未完成，不能由样本下降/代码变化宣称60FPS。
+
+F-032压力回收配额、F-201投影驱逐和F-192 current_version扫描仍开放；没有“当前核实”的其它条目仍需逐项处理，本轮不把整份台账标为完成。
+
+新增运行/并发发现 N-004：HostFlushQueue在native flush前清dirty，另一提交可跳过刷新，Buffer销毁也可跳过pages锁并释放仍在flush中的memory。现只在同一pages锁内native flush成功后清dirty；错误保留范围。受控并发测试同时覆盖forget和第二次flush，15项常量测试通过。此为明确并发机制/测试证据，不等于已复现游戏死锁。
+
+新增运行发现 N-005：重复slot写入在拒绝前可能增长cache，使失败调用积累CPU存储。现ABI位置/重复检查只执行一次并先于cache与descriptor副作用；真正写入成功后才登记cache。实际GPU ABI连续64次重复写不增长descriptor live数。参数CPU上界在不可变ABI构造时一次算定，后续callback credit覆盖整个prepared生命周期；4项预算/增长失败/checkout失败回归通过。旧裸heap和Prepared构造入口已删除，历史F100/F105名称仅保留原审查来源。
+
 ## 1. 发现索引
 
 | ID | 严重度 | 状态 | 类别 | 位置 | 发现 |
@@ -102,7 +118,7 @@ related_tasks: IMPROVEMENT_TASKS.md
 | F-124 | major | confirmed | test | `src/resource/range_state.rs:1553` | 文件末尾注释声称"完整 prepare 路径作为前缀重放 oracle"的测试，但模块内无该测试；`discard_idle_contents`、`prepare_host` 对 Released 的拒绝、`coalesce` 合并均无用例。  **当前核实：** 已补 Released 范围拒绝 host 写、discard 清除状态且保留饱和 revision 的回归；原有前缀重放证据使用 plan_check/native_state 的独立 oracle，不把末尾注释当已存在测试。 |
 | F-125 | major | suspected | resource | `src/resource/tracked.rs:225` | `enter_plan_private` 只在"当时已有表"时丢弃；`with_range_state`/`prepare_range_state` 未检查该标志。`:42-44` 的注释承诺"plan-private 期间不保留原生状态"，实际只保证"进入时清空"。需要确认是否存在"plan-private 期间新建表"的路径（`command_buffer.rs:658` 已用 `is_plan_private` 过滤采集）。  **当前核实：** 已核实实际消费者：单队列 Create 且不导出的资源进入 private 分支后直接 planner.add_initial 并 continue，不调用 with_range_state；提交同样过滤 private。外部导入先 leave_plan_private。该 AtomicBool 不是独立的并发所有权协议。 |
 | F-126 | major | suspected | correctness | `src/resource/tracked.rs:280` | `initial.writer = EMPTY; initial.writer.points = summary` 是覆盖而非并集，`initial` 中原有的 writer 前置点被丢弃。 **当前核实：** 已修：summary 与初始 writer 的实际点集合合并，保留已有前置点。 |
-| F-127 | major | confirmed | concurrency | `src/resource/tracked.rs:610` | `lock_submission_uses`/`_in` 不校验 cells 按指针升序（只有 `collect_submission_uses:510` 校验）；模块文档称指针序用于防锁倒置，未排序调用会静默死锁。 **当前核实：** 已核实需继续封装：加锁入口已是 pub(crate)，生产使用归一化/合并后的指针序；不按原建议增加每次锁的验证层。 |
+| F-127 | major | confirmed | concurrency | `src/resource/tracked.rs:610` | `lock_submission_uses`/`_in` 不校验 cells 按指针升序（只有 `collect_submission_uses:510` 校验）；模块文档称指针序用于防锁倒置，未排序调用会静默死锁。 **当前核实：** 已实施类型封装：SubmissionUseCells仅在成功end后封存，晚patch保序；门锁唯一接受OrderedSubmissionUses，raw/graph/WSI全部迁移，删除裸slice/Vec与重复排序扫描。438库测试、24项原生提交/保活及全工作区all-target检查199h通过；scratch池复用未包含在本修复内。 |
 | F-128 | major | confirmed | error-handling | `src/resource/tracked.rs:201` | 同一 ownership 冲突，一处返回 `Unsupported`、一处返回 `InvalidUsage`。  **当前核实：** 已修：缺少匹配 queue-family transfer 的参数/顺序错误统一 InvalidUsage。 |
 | F-129 | major | confirmed | doc | `src/resource/tracked.rs:337` | 注释说"Drop the native state"，实现只 `discard_idle_contents` 保留并重置表。  **当前核实：** 已修注释：discard_idle_range_state 保留并重置已安装状态表。 |
 | F-136 | major | confirmed | correctness | `src/raw/descriptor_set.rs:812` | `persistent_pool_plan` 用 `wrapping_add` 汇总数量，溢出静默缩小池容量。 **当前核实：** 已删除零消费者的 PersistentPoolPlan/persistent_pool_plan 旧助手；生产池继续使用已验证 LayoutPlan 的现有构造器，不保留饱和计数兼容实现。 |
@@ -219,7 +235,7 @@ related_tasks: IMPROVEMENT_TASKS.md
 | F-158 | minor | confirmed | correctness | `src/raw/format.rs:34` | `vk_format_all_aspects` 用 `0x10u32 << i` 造 `PLANE_n`，未限定 `i <= 2`；注册表扩容到 >3 planes 会 shift 溢出。 **当前核实：** 已修：固定三 plane 数组的迭代按数组上限截断。 |
 | F-159 | minor | confirmed | perf | `src/raw/shader_interface.rs:138` | `validate_spirv_layout` 每次重新做 SPIR-V 反射 + 每 entry 的 JSON schema 序列化，未复用 `ShaderModule.interfaces`。 |
 | F-160 | minor | confirmed | concurrency | `src/raw/shader/pipeline_cache.rs:257` | `cached_compute_count` 持表锁时对每个 slot 取阻塞锁；某线程正持同 slot 锁做原生创建时会连带阻塞 `slot_for`/`invalidate`。 **当前核实：** 已修：compute cache 只在锁内取 Arc 快照，等待每个 slot 在表锁外。 |
-| F-161 | minor | confirmed | test | `src/raw/shader/pipeline_key.rs:5` | `cfg(test)` 的 `append_dynamic_rendering_key` 复写生产分支，但测试只与自身比较，生产键漂移不会被发现。 |
+| F-161 | minor | confirmed | test | `src/raw/shader/pipeline_key.rs:5` | `cfg(test)` 的 `append_dynamic_rendering_key` 复写生产分支，但测试只与自身比较，生产键漂移不会被发现。 **当前核实：** 已删除 cfg(test) 独立编码器；测试与生产完整 pipeline key 共用 visit_dynamic_rendering_key；perf118b 专项 CPU 回归通过。 |
 | F-162 | minor | confirmed | perf | `src/raw/shader/reflection.rs:181` | 每个 entry point 都 `module.clone()` + `view.assemble()` 重序列化整模块，O(entries×module)；仅加载期。 |
 | F-163 | minor | suspected | correctness | `src/raw/shader/reflection.rs:348` | Matrix 的 JSON 只存 `"vector"` 字符串 + count + stride，丢元素标量类型，`canonical_type` 无法区分不同元素类型的矩阵。  **当前核实：** 原结论不成立：锁定的 spirq 0.6.2 VectorType::Display 生成 vecN<scalar>，包含 f32/f64/i32 等元素类型；matrix.vector 字符串没有丢标量类型。 |
 | F-164 | minor | suspected | correctness | `src/raw/shader/reflection.rs:297` | `descriptor_type = format!("{desc_ty:?}")` 与 `shader.rs:1105-1110` 的字面串精确匹配，耦合 spirq 的 Debug 输出。  **当前核实：** 已核实为版本锁定的反射投影耦合，不是当前类型解析错误；所有支持 DescriptorType 的字符串均由同一 pinned spirq 枚举产生。移除 JSON 中间投影属于结构清理。 |
@@ -246,7 +262,7 @@ related_tasks: IMPROVEMENT_TASKS.md
 | F-189 | minor | confirmed | validation | `group:src/rg/pass_api.rs,pass_builder.rs,pass_bindings.rs,resource_contracts.rs,transient_memory.rs,transient_memory_check.rs,frame_throttle.rs,indirect_count.rs,parallel.rs` | 交叠判断用未检查的 `b_offset + b.size`（同函数前文对 placement 用了 `checked_add`），极端 size 在 debug panic、release 回绕误判。 **当前核实：** 已修：独立 placement 检查器用 checked_add 拒绝偏移溢出。 |
 | F-190 | minor | confirmed | api | `group:src/rg/pass_api.rs,pass_builder.rs,pass_bindings.rs,resource_contracts.rs,transient_memory.rs,transient_memory_check.rs,frame_throttle.rs,indirect_count.rs,parallel.rs` | `end_frame` 用 `push_back` 可能分配，而 `reserve_frame:69` 只是建议性预保留。 **当前核实：** 已核实当前唯一生产消费者在 compile/submit 前 reserve_frame；后续没有并发插入同一个 &mut throttle，end_frame 的 push 不再分配。 |
 | F-191 | minor | suspected | correctness | `group:src/rg/pass_api.rs,pass_builder.rs,pass_bindings.rs,resource_contracts.rs,transient_memory.rs,transient_memory_check.rs,frame_throttle.rs,indirect_count.rs,parallel.rs` | `required[2] += 1` 无注释地假定 scratch 对应 binding 2 且需多一个槽。  **当前核实：** 已核实 required 下标 2 是 DescriptorKind::StorageBuffer，并非 shader binding 2；额外的一槽对应参数块 descriptor，scratch 已在 resources 中计数。 |
-| F-192 | minor | confirmed | perf | `group:src/rg/pass_api.rs,pass_builder.rs,pass_bindings.rs,resource_contracts.rs,transient_memory.rs,transient_memory_check.rs,frame_throttle.rs,indirect_count.rs,parallel.rs` | 每次 `add_pass` 都重查 `get_physical_device_properties`，并用 `graph.buffer_id` 触发 `current_version` 全量扫描。 |
+| F-192 | minor | confirmed | perf | `group:src/rg/pass_api.rs,pass_builder.rs,pass_bindings.rs,resource_contracts.rs,transient_memory.rs,transient_memory_check.rs,frame_throttle.rs,indirect_count.rs,parallel.rs` | 每次 `add_pass` 都重查 `get_physical_device_properties`，并用 `graph.buffer_id` 触发 `current_version` 全量扫描。 **当前核实：** 已复用 Device::limits() 的创建设备时缓存，移除每次 add_pass 的原生设备属性查询；V18实际场景与应用检查已通过；buffer_id 的 current_version 扫描仍保留，不能将整条发现标为全部完成。 |
 | F-193 | minor | suspected | validation | `src/rg/pass_api.rs:61-62` | `split` 的 `load + w` 与 `:61-62` 的 `sum/high` 均未用 checked 运算。  **当前核实：** 已修：均衡切分的累加/预算使用 u128，u64 观测耗时与固定开销的总和不会溢出；已删除只为均值建立的 known Vec。 |
 | F-194 | minor | confirmed | test | `group:src/rg/pass_api.rs,pass_builder.rs,pass_bindings.rs,resource_contracts.rs,transient_memory.rs,transient_memory_check.rs,frame_throttle.rs,indirect_count.rs,parallel.rs` | `balanced_chunks`/`plan_chunks` 无单元测试。 **当前核实：** 已纠正：tests/parallel_chunks.rs 已有真实分块算法测试，当前 8 项通过；旧结论过时。 |
 | F-197 | minor | confirmed | api | `src/rg/cache.rs:198` | `classify_miss` 仅靠 `debug_assert` 保证此前有 Cold miss；release 下 Cold=0 时 `saturating_sub` 吞掉减量，miss 总数虚增。 **当前核实：** 已核实当前私有调用不触发：仅 executor 和 subgraph 两处生产调用，均紧随同一 enabled lookup 的 Cold miss 分支；命中、禁用和 lookup 错误不会调用。保留既有 debug 不变量，不新增热路径状态或检查。 |

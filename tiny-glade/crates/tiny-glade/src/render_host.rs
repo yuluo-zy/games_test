@@ -241,6 +241,32 @@ mod frame_buffer_tests {
     }
 
     #[test]
+    fn failed_upload_check_obeys_frame_local_creation_lock_order() {
+        let Some(device) = device() else { return; };
+        let host = BufferHost::new(device);
+        let frozen = host.with_frame_snapshot(host.freeze_frame_resources()).unwrap();
+        frozen.upload_coverage.failed.store(1, Ordering::Release);
+        let slots = frozen.slots.lock();
+        let (entered_tx, entered_rx) = mpsc::channel();
+        let local_was_free = std::thread::scope(|scope| {
+            let check = &frozen;
+            let checking = scope.spawn(move || {
+                entered_tx.send(()).unwrap();
+                check.check_upload_transactions()
+            });
+            entered_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+            std::thread::sleep(Duration::from_millis(50));
+            let local_was_free = frozen.frame.as_ref().unwrap().0.local.try_lock().is_some();
+            // Always let the check finish before asserting, including on the
+            // old local -> slots implementation that would fail this test.
+            drop(slots);
+            checking.join().unwrap().unwrap();
+            local_was_free
+        });
+        assert!(local_was_free, "checking must not hold local while waiting for slots held by creation");
+    }
+
+    #[test]
     fn owned_multichunk_pressure_keeps_its_cursor_and_returns_before_gpu_capacity() {
         let Some(device) = device() else { return; };
         let host = BufferHost::new(device.clone());
@@ -483,7 +509,7 @@ mod frame_buffer_tests {
         };
         let allocation = storage.new_allocation();
         storage.writer(&allocation).replace_all(&[Value(3); 32]).unwrap();
-        storage.try_gpu_flush(&host).unwrap();
+        storage.gpu_flush(&host).unwrap();
         host.finish_test_uploads().unwrap();
         let handle = storage.buffer.buffer;
         let old = host.managed_buffer(&handle).unwrap();
@@ -494,7 +520,7 @@ mod frame_buffer_tests {
         host.uploads.lock().take();
         let snapshot = host.freeze_frame_resources();
         storage.writer(&allocation).replace_all(&[Value(9); 32]).unwrap();
-        storage.try_gpu_flush(&host).unwrap();
+        storage.gpu_flush(&host).unwrap();
         assert!(storage.dirty_bitset.iter().all(|word| word.load(Ordering::Relaxed) == 0),
             "the producer has already transferred dirty ownership to the queue");
         let next = host.managed_buffer(&handle).unwrap();
@@ -880,8 +906,9 @@ impl BufferHost {
         if let Some(frame) = &self.frame {
             for version in frame.0.buffers.values() { check(version)?; }
             // Render-local owners are created after the immutable extraction.
-            let local = frame.0.local.lock();
+            // Match frame-local creation: host slots precede the local table.
             let slots = self.slots.lock();
+            let local = frame.0.local.lock();
             for slot in slots.iter() {
                 if let Some(version) = &slot.buffer
                     && local.values().any(|buffer| Arc::ptr_eq(&buffer.shared(), &version.buffer.shared())) {
@@ -974,19 +1001,14 @@ impl BufferHost {
     }
 
     /// One validated contiguous write. Runs once no other thread's frame
-    /// reads are pending (directly, or from the lease release). Host-visible
-    /// targets that admit transfers are also written by an ordered GPU copy,
-    /// so neither the producer nor the render thread waits for in-flight GPU
-    /// reads of a persistent mapping.
+    /// reads are pending (directly, or from the lease release). Admission has
+    /// already required TRANSFER_DST. Every target uses an ordered GPU copy;
+    /// neither the producer nor the render thread waits for GPU readers of a
+    /// persistent mapping.
     fn write_now(&self, managed: &ManagedBuffer, buffer: &Buffer, data: &[u8], at: usize)
         -> Result<(), BackendError> {
         let _serial = self.publication.lock();
         let ranges = [0..data.len()];
-        let host_visible = managed.desc.memory_location != MemoryLocation::GpuOnly
-            && managed.persistent_host_ptr().is_some();
-        if host_visible && !managed.desc.usage.contains(vk::BufferUsageFlags::TRANSFER_DST) {
-            return managed.write_bytes(at as u64, data);
-        }
         self.queue_upload(managed, buffer, data, &ranges, at)
     }
 
@@ -994,10 +1016,7 @@ impl BufferHost {
     /// is moved into the bounded queue instead of being copied again.
     fn write_now_owned(&self, managed: &ManagedBuffer, buffer: &Buffer, payload: &mut Vec<u8>, at: usize)
         -> Result<(), BackendError> {
-        let host_visible = managed.desc.memory_location != MemoryLocation::GpuOnly
-            && managed.persistent_host_ptr().is_some();
-        if payload.len() as u64 > UPLOAD_CHUNK_BYTES
-            || (host_visible && !managed.desc.usage.contains(vk::BufferUsageFlags::TRANSFER_DST)) {
+        if payload.len() as u64 > UPLOAD_CHUNK_BYTES {
             return self.write_now(managed, buffer, payload, at);
         }
         if payload.is_empty() { return Ok(()); }
@@ -1641,34 +1660,33 @@ impl TextureHost {
     /// program order with deferred updates. The caller never waits.
     pub fn release(&self, texture: &Texture) -> bool {
         if self.get(texture).is_none() { return false; }
-        let host = self.clone();
+        // A queued job must not retain its own boundary through TextureHost.
+        let slots = self.slots.clone();
+        let views = self.views.clone();
+        let view_variants = self.view_variants.clone();
         let texture = texture.clone();
-        if let Err(error) = self.boundary().write_or_defer(0, move || { host.release_now(&texture); Ok(()) }) {
+        if let Err(error) = self.boundary().write_or_defer(0, move || {
+            let removed = {
+                let mut slots = slots.lock();
+                let Some(slot) = ((texture.id & 0xffff_ffff) as usize)
+                    .checked_sub(1).and_then(|i| slots.get_mut(i))
+                else { return Ok(()); };
+                if slot.generation != texture.generation() || slot.texture.is_none() {
+                    return Ok(());
+                }
+                slot.generation = 0;
+                slot.texture.take()
+            };
+            let view = views.lock().remove(&texture.id);
+            view_variants.lock().retain(|(id, _), _| *id != texture.id);
+            // Final texture ownership retires after every host-table lock ends.
+            drop((view, removed));
+            Ok(())
+        }) {
             log::error!(target: "tiny_glade::upload", "earlier deferred texture write failed: {error}");
             self.boundary().report_failure(error);
             return false;
         }
-        true
-    }
-
-    fn release_now(&self, texture: &Texture) -> bool {
-        if texture.id & (TEXTURE_ID_TAG | BUFFER_TOKEN_TAG) != TEXTURE_ID_TAG { return false; }
-        let mut slots = self.slots.lock();
-        let Some(slot) = ((texture.id & 0xffff_ffff) as usize)
-            .checked_sub(1)
-            .and_then(|i| slots.get_mut(i))
-        else {
-            return false;
-        };
-        if slot.generation != texture.generation() || slot.texture.is_none() {
-            return false;
-        }
-        slot.texture = None;
-        slot.generation = 0;
-        self.views.lock().remove(&texture.id);
-        self.view_variants
-            .lock()
-            .retain(|(id, _), _| *id != texture.id);
         true
     }
 
@@ -1867,6 +1885,45 @@ impl TextureGeneration for Texture {
     /// core 的 `Texture` 只有 `id: u64`：bit 63 是纹理标记，bits 32..63 是代数，低 32 位是槽位序号。
     fn generation(&self) -> u64 {
         (self.id >> 32) & 0x7fff_ffff
+    }
+}
+
+#[cfg(test)]
+mod texture_release_tests {
+    use super::*;
+
+    #[test]
+    fn cancelled_capacity_retry_does_not_pin_the_texture_host_boundary() {
+        let device = match Device::new_headless(&rhapsody::device::DeviceConfig::headless()) {
+            Ok(device) => device,
+            Err(error) => {
+                assert!(!std::env::var("RHAPSODY_REQUIRE_VULKAN").is_ok_and(|v| v == "1"), "{error}");
+                return;
+            }
+        };
+        let host = TextureHost::new(device);
+        let texture = host.create_texture(
+            "cancelled texture", &TextureDesc::new_2d([1, 1], 0x2b).sampled(), &[],
+        ).unwrap();
+        host.default_view(texture.id).unwrap();
+        let boundary = Arc::downgrade(&host.read_boundary);
+        let slots = Arc::downgrade(&host.slots);
+        let views = Arc::downgrade(&host.views);
+        let read = host.begin_frame_read(std::thread::current().id());
+        let writer = host.clone();
+        std::thread::spawn(move || {
+            writer.read_boundary.write_or_defer(0, || {
+                Err(crate::render_upload_boundary::CAPACITY.to_owned())
+            }).unwrap();
+            assert!(writer.release(&texture));
+        }).join().unwrap();
+        assert_eq!(host.read_boundary.pending_jobs(), 2);
+        drop(read);
+        assert_eq!(host.read_boundary.pending_jobs(), 2);
+        drop(host);
+        assert!(boundary.upgrade().is_none());
+        assert!(slots.upgrade().is_none());
+        assert!(views.upgrade().is_none());
     }
 }
 
@@ -2586,7 +2643,7 @@ impl ShaderBindingSnapshot {
         push: &[u8],
         resources: impl Iterator<Item = (BindingLocation, u32, &'a BindlessResource, bool)> + Clone,
         previous: Option<&rhapsody::bindless::PreparedBindlessParameters>,
-        constants: &Mutex<rhapsody::resource::DynamicConstants>,
+        mut allocate: impl FnMut(u64) -> rhapsody::Result<rhapsody::resource::DynamicConstantsChunk>,
     ) -> rhapsody::Result<rhapsody::bindless::PreparedBindlessParameters> {
         if push.len() != self.abi.original_push_bytes as usize {
             return Err(rhapsody::Error::invalid_usage(
@@ -2608,13 +2665,9 @@ impl ShaderBindingSnapshot {
         country_core::render::declare_probe::sub(0, t);
         cursor
             .prepare(|group| {
-                if let Some(previous) =
-                    previous.filter(|previous| previous.belongs_to(group.heap()))
-                {
-                    group.require_slots([0, 0, 1, 0])?;
-                    return previous
-                        .with_push(push, |size| constants.lock().allocate(size))
-                        .map_err(Into::into);
+                if let Some(previous) = previous
+                    && let Some(prepared) = group.with_push(previous, push, &mut allocate)? {
+                    return Ok(prepared);
                 }
                 let t = country_core::render::declare_probe::start();
                 let globals = self
@@ -2635,8 +2688,7 @@ impl ShaderBindingSnapshot {
                     }
                 }
                 group.require_slots(required)?;
-                let mut parameters =
-                    BindlessParameters::new(group.heap().clone(), self.abi.clone(), push)?;
+                let mut parameters = group.parameters(self.abi.clone(), push)?;
                 country_core::render::declare_probe::sub(3, t);
                 let t = country_core::render::declare_probe::start();
                 samplers.write(&self.samplers, &mut parameters)?;
@@ -2672,7 +2724,7 @@ impl ShaderBindingSnapshot {
                 }
                 country_core::render::declare_probe::sub(6, t);
                 let t = country_core::render::declare_probe::start();
-                let prepared = parameters.finish(|size| constants.lock().allocate(size))?;
+                let prepared = parameters.finish(&mut allocate)?;
                 samplers.try_catalog_extras(|required| group.require_slots(required))?;
                 // 实际组和可选目录准备均已完成；不发布半个绑定组或半个目录。
                 if let Some(publication) = publication {
@@ -2890,7 +2942,7 @@ impl ShaderHost {
         if let Some(adapter) = cached.as_ref() {
             return Ok(adapter.clone());
         }
-        let adapter = rhapsody::rg::IndexedCountAdapter::new_paged(
+        let adapter = rhapsody::rg::IndexedCountAdapter::new(
             self.device.clone(),
             self.pages.clone(),
             &self.compiler,
@@ -2989,8 +3041,8 @@ impl ShaderHost {
         self.compute_entry(handle).map(|e| e.registry.clone())
     }
 
-    pub fn bindless_stats(&self) -> rhapsody::bindless::BindlessStats {
-        self.pages.stats()
+    pub fn bindless_occupancy(&self) -> rhapsody::bindless::BindlessOccupancy {
+        self.pages.sampled_occupancy()
     }
     /// Intended retained descriptors in table order (sampled, storage image,
     /// storage buffer, sampler). Compare with heap live counts only after all
@@ -3214,7 +3266,7 @@ impl ShaderBackend for ShaderHost {
         // The native Egui producer stores its actual 8-byte screen extent in
         // DrawPacket.unknown_bytes (B 0x1400def7e..0x1400defd0). Preserve the
         // package's reflected push ABI here; RasterHost forwards the packet's
-        // bytes to ShaderBindings::parameters, and BindlessParameters::new
+        // bytes to ShaderBindings::parameters, and the group parameter factory
         // rejects any byte count differing from abi.original_push_bytes before
         // recording a draw. A pipeline with a push block is not itself missing
         // a producer; a draw with missing/wrong bytes still fails precisely.
@@ -4805,8 +4857,8 @@ impl GraphPasses {
             let mut preserves_texture = false;
             let range = if let Some((index, view)) = view {
                 used_image_views[index] = true;
-                contents_unused = inactive_texture_bindings.contains(&(index as u8));
-                allow_undefined = undefined_texture_bindings.contains(&(index as u8));
+                contents_unused = inactive_texture_bindings.contains(&(index as u32));
+                allow_undefined = undefined_texture_bindings.contains(&(index as u32));
                 if allow_undefined
                     && (contents_unused || rhapsody::command::is_write(access.access))
                 {
@@ -4814,7 +4866,7 @@ impl GraphPasses {
                         "undefined texture read metadata conflicts with its actual access",
                     ));
                 }
-                preserves_texture = preserving_texture_bindings.contains(&(index as u8));
+                preserves_texture = preserving_texture_bindings.contains(&(index as u32));
                 let resource = graph.resource_handle(access.resource)?;
                 // A storage-image (write) view that is not `bind_individual_mips` and
                 // names no level count is a single `RWTexture2D[Array]` operand: the
@@ -4866,7 +4918,7 @@ impl GraphPasses {
                         })
                 {
                     used_image_views[index] = true;
-                    contents_unused = inactive_texture_bindings.contains(&(index as u8));
+                    contents_unused = inactive_texture_bindings.contains(&(index as u32));
                 }
                 rhapsody::rg::AccessRange::Whole
             };
@@ -5074,6 +5126,11 @@ impl GraphPasses {
             }
             let mut parameters: Option<rhapsody::bindless::PreparedBindlessParameters> = None;
             let mut bind_parameters = |push: &[u8]| -> rhapsody::Result<()> {
+                // This callback owns one fixed pipeline/resource group. Its
+                // previously bound immutable owner already retains every lease.
+                if parameters.as_ref().is_some_and(|current| current.matches_original_push(push)) {
+                    return Ok(());
+                }
                 let next = snapshot
                     .prepare(
                         &mut cursor,
@@ -5087,7 +5144,7 @@ impl GraphPasses {
                             )
                         }),
                         parameters.as_ref(),
-                        &dynamic,
+                        |size| dynamic.lock().allocate(size),
                     )
                     .inspect_err(|error| diagnose("parameters.complete_group", error))?;
                 // 原访问范围与上传角色已在同一组内保留；迁页后不使用旧数值下标。
@@ -5572,7 +5629,7 @@ mod sampler_catalog_tests {
     }
 
     #[test]
-    fn optional_partial_host_budget_failure_and_cancel_keep_actual_group_and_old_cache() {
+    fn optional_partial_slot_shortage_and_cancel_keep_actual_group_and_old_cache() {
         let Some(device) = device() else { return };
         let a = binding(&device, "a", "sampler_nnc");
         let b = binding(&device, "b", "sampler_default");
@@ -5583,24 +5640,21 @@ mod sampler_catalog_tests {
         commit(&pages, &heap, std::slice::from_ref(&a));
         let page = pages.state.lock().pages[0].clone();
         let old_stamp = page.leases.lock().catalog.clone().unwrap();
-        let budget = device.allocator_stats();
-        let baseline = budget.cpu_memory_usage().total();
-        let trial = heap.sampler(b.sampler.clone()).unwrap();
-        let one_lease = budget.cpu_memory_usage().total() - baseline;
-        assert!(one_lease > 0);
-        drop(trial);
-        assert_eq!(budget.cpu_memory_usage().total(), baseline);
         pages.register(std::slice::from_ref(&b));
         pages.register(std::slice::from_ref(&c));
         let mut pending = actual(&pages, &heap, std::slice::from_ref(&a));
-        let old_limit = budget.host_budget_limit();
-        budget
-            .set_host_budget(baseline.checked_add(one_lease).unwrap())
-            .unwrap();
-        let result = extras(&mut pending);
-        budget.set_host_budget(old_limit).unwrap();
+        let mut competing = Vec::new();
+        let result = pending.try_catalog_extras(|required| {
+            assert_eq!(required, [0, 0, 0, 2]);
+            // The page metadata is prepaid. Consume capacity after admission
+            // so one extra succeeds and the next fails in materialization.
+            competing.push(heap.sampler(b.sampler.clone())?);
+            competing.push(heap.sampler(c.sampler.clone())?);
+            Ok(())
+        });
+        drop(competing);
         result.unwrap();
-        assert!(!pending.publish_catalog, "部分额外项 OOM 不发布 stamp");
+        assert!(!pending.publish_catalog, "部分额外项耗尽不发布 stamp");
         assert_eq!(pending.values.len(), 1, "实际组不重放也不混入半目录");
         assert_eq!(heap.stats().tables[3].live, 1, "取消所有未发布的额外租约");
         pending.commit();
@@ -5666,13 +5720,16 @@ mod sampler_catalog_tests {
         budget
             .set_host_budget(budget.cpu_memory_usage().total())
             .unwrap();
-        let actual_error = pending.materialize().unwrap_err();
+        let materialized = pending.materialize();
+        let page_error = heap.new_page().err().expect("new page metadata needs host budget");
         budget.set_host_budget(old_limit).unwrap();
-        assert_eq!(
-            actual_error.kind(),
-            rhapsody::ErrorKind::OutOfMemory,
-            "实际组错误仍然失败"
-        );
+        materialized.unwrap();
+        assert_eq!(page_error.kind(), rhapsody::ErrorKind::OutOfMemory);
+        let full = self::heap(&device, 1);
+        let _retained = actual(&pages, &full, std::slice::from_ref(&a));
+        let mut rejected = pages.prepare(&full, std::slice::from_ref(&b)).unwrap();
+        assert_eq!(rejected.materialize().unwrap_err().kind(), rhapsody::ErrorKind::Exhausted,
+            "actual required resources still propagate capacity errors");
     }
 
     #[test]

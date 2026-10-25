@@ -66,7 +66,11 @@ fn write_backs(set: &mut RenderExchange) {
         render: &R,
     ) -> Option<WriteBack<R>> {
         let state = render.consumption();
-        Some(Box::new(move |game: &mut R| game.adopt_consumption(state)))
+        Some(Box::new(move |mut game: bevy_ecs::change_detection::Mut<'_, R>| {
+            if game.consumption() != state {
+                game.adopt_consumption(state);
+            }
+        }))
     }
     set.invalidate_unsubmitted::<rasters::PathRaster>();
     set.invalidate_unsubmitted::<rasters::Cobblestone1Raster>();
@@ -85,7 +89,11 @@ fn write_backs(set: &mut RenderExchange) {
     set.write_back_with::<rasters::GardenRaster>(true, raster);
     set.write_back_with::<TerrainEditingData>(true, |render| {
         let rasterized = render.rasterized;
-        Some(Box::new(move |game: &mut TerrainEditingData| game.0.rasterized = rasterized))
+        Some(Box::new(move |mut game: bevy_ecs::change_detection::Mut<'_, TerrainEditingData>| {
+            if game.rasterized != rasterized {
+                game.0.rasterized = rasterized;
+            }
+        }))
     });
     // Terrain readback: requests are atomic increments through `&self`, so
     // subtract exactly what the frame consumed instead of overwriting.
@@ -240,6 +248,99 @@ mod tests {
     }
     use country_core::systems::render_loop::compute_passes::read_terrain_data::ScheduledTerrainReadback;
     use std::sync::atomic::Ordering;
+
+    fn pending_path() -> country_core::resources::world_raster_defs::PathRaster {
+        use country_core::resources::{world_raster::DirtyTilePublisher, world_raster_defs::PathRaster};
+        let mut raster = PathRaster::new(DirtyTilePublisher::unique());
+        raster.dirty_mut().set_cell(1, 1);
+        raster.mark_staging_uploaded();
+        raster
+    }
+
+    #[test]
+    fn consumption_feedback_marks_changed_only_for_actual_consumption() {
+        use country_core::resources::{terrain_editing::TerrainEditingData, world_raster_defs::PathRaster};
+        let mut game = World::new();
+        let mut render = World::new();
+        game.insert_resource(pending_path());
+        game.insert_resource(TerrainEditingData(Default::default()));
+        let mut exchange = production_exchange();
+        exchange.extract.run(&mut game, &mut render);
+        let before_path = game.get_resource_change_ticks::<PathRaster>().unwrap().changed;
+        let before_terrain = game.get_resource_change_ticks::<TerrainEditingData>().unwrap().changed;
+        for _ in 0..4 {
+            game.increment_change_tick();
+            let mut out = Vec::new();
+            exchange.write_back.run_submitted(&mut render, &mut out);
+            for apply in out { apply(&mut game); }
+            assert_eq!(game.get_resource_change_ticks::<PathRaster>().unwrap().changed, before_path);
+            assert_eq!(game.get_resource_change_ticks::<TerrainEditingData>().unwrap().changed, before_terrain);
+        }
+        render.resource_mut::<PathRaster>().consume_reupload();
+        render.resource_mut::<TerrainEditingData>().0.rasterized = true;
+        game.increment_change_tick();
+        let mut out = Vec::new();
+        exchange.write_back.run_submitted(&mut render, &mut out);
+        for apply in out { apply(&mut game); }
+        assert_ne!(game.get_resource_change_ticks::<PathRaster>().unwrap().changed, before_path);
+        assert_ne!(game.get_resource_change_ticks::<TerrainEditingData>().unwrap().changed, before_terrain);
+        assert!(!game.resource::<PathRaster>().consumption().1);
+        assert!(!game.resource::<PathRaster>().dirty().contains(1, 1));
+        assert!(game.resource::<TerrainEditingData>().rasterized);
+    }
+
+    #[test]
+    fn raster_feedback_preserves_failed_submission_retry() {
+        use country_core::resources::world_raster_defs::PathRaster;
+        let mut game = World::new();
+        let mut render = World::new();
+        game.insert_resource(pending_path());
+        let mut exchange = production_exchange();
+        exchange.extract.run(&mut game, &mut render);
+        render.resource_mut::<PathRaster>().consume_reupload();
+        let mut out = Vec::new();
+        exchange.write_back.run(&mut render, &mut out);
+        assert!(out.is_empty());
+        exchange.write_back.abort_unsubmitted(&mut render);
+        assert!(game.resource::<PathRaster>().consumption().1);
+        assert!(game.resource::<PathRaster>().dirty().contains(1, 1));
+        exchange.extract.run(&mut game, &mut render);
+        assert!(render.resource::<PathRaster>().consumption().1);
+        assert!(render.resource::<PathRaster>().dirty().contains(1, 1));
+        render.resource_mut::<PathRaster>().consume_reupload();
+        exchange.write_back.run_submitted(&mut render, &mut out);
+        for apply in out { apply(&mut game); }
+        assert!(!game.resource::<PathRaster>().consumption().1);
+        assert!(!game.resource::<PathRaster>().dirty().contains(1, 1));
+    }
+
+    #[test]
+    fn raster_feedback_cannot_overwrite_late_edits_or_replacement_owners() {
+        use country_core::resources::world_raster_defs::PathRaster;
+        for replacement in 0..3 {
+            let mut game = World::new();
+            let mut render = World::new();
+            game.insert_resource(pending_path());
+            let mut exchange = production_exchange();
+            exchange.extract.run(&mut game, &mut render);
+            render.resource_mut::<PathRaster>().consume_reupload();
+            let mut out = Vec::new();
+            exchange.write_back.run_submitted(&mut render, &mut out);
+            game.increment_change_tick();
+            match replacement {
+                0 => game.resource_mut::<PathRaster>().dirty_mut().set_cell(2, 2),
+                1 => {
+                    game.remove_resource::<PathRaster>();
+                    game.insert_resource(pending_path());
+                }
+                _ => { game = World::new(); game.insert_resource(pending_path()); }
+            }
+            for apply in out { apply(&mut game); }
+            assert!(game.resource::<PathRaster>().consumption().1);
+            assert!(game.resource::<PathRaster>().dirty().contains(1, 1));
+            if replacement == 0 { assert!(game.resource::<PathRaster>().dirty().contains(2, 2)); }
+        }
+    }
 
     #[test]
     fn terrain_requests_survive_failed_submission_and_merge_later_requests() {

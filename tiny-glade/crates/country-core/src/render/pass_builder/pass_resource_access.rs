@@ -27,6 +27,7 @@
 //! 偏离：`PassBuilder`/`GraphicsDevice` 属 rhapsody（复用库），以 [`RecordingPassBuilder`] / [`TextureDevice`] 接缝；
 //! 旧版以 `hash → 注册表` 的 `append_resource_binding` 是臆造的（机器码里 SSBO 访问不经注册表），已移除。
 
+// Current Rust binding slots are u32 throughout declaration, Collect and Commit; native byte offsets above are historical evidence.
 // Preserve the original instruction-level expression order/NaN policy, API call shapes, and evidence/test transcription. See README.md.
 #![allow(clippy::field_reassign_with_default)]
 use crate::asset_libraries::ssbo_library::{AssetSsboLibrary, SsboType as LibrarySsbo};
@@ -34,7 +35,7 @@ use crate::asset_libraries::texture_library::AssetTextureLibrary;
 use crate::render::pass_builder::pass_resources::PassResources;
 use crate::resources::texture_presets::TextureFromDisk;
 use crate::resources::texture_presets::TexturePreset;
-use crate::rhapsody_contract::{self, Extent2D, Handle, ManagedHandle, ReadOnlyHandle, Texture};
+use crate::rhapsody_contract::{Extent2D, Handle, ManagedHandle, ReadOnlyHandle, Texture};
 use crate::rhapsody_types::{BackendError, RenderGraph, TextureDesc, TextureViewDesc};
 
 // ---- 访问类型（`vk_sync_fork::AccessType` 的数值，O 立即数；枚举名 U）----
@@ -96,10 +97,6 @@ impl PassBinding {
         }
     }
 
-    /// 与共享契约 `RenderPassBinding` 的互转（access_type 位放标签）。
-    pub fn to_contract(&self) -> rhapsody_contract::RenderPassBinding {
-        rhapsody_contract::bind(self.resource(), self.tag())
-    }
 }
 
 /// 一次 `PassBuilder::add_resource_access` 调用的记录。
@@ -132,17 +129,10 @@ impl RecordingPassBuilder {
     }
 }
 
-/// 绑定表上限：下标必须装进 u8（O：`cmp rdi, 0x100; jae → Result::unwrap 失败`）。
-const MAX_BINDINGS: usize = 0x100;
-
-/// 追加前的下标；`>= 0x100` 时 `Result::unwrap()` 失败（原版 `u8::try_from(len).unwrap()`）。
-pub(crate) fn next_binding_index(bindings: &[PassBinding]) -> u8 {
-    let len = bindings.len();
-    if len >= MAX_BINDINGS {
-        // `core::result::unwrap_failed`：`called `Result::unwrap()` on an `Err` value: TryFromIntError(())`。
-        panic!("called `Result::unwrap()` on an `Err` value: TryFromIntError(())");
-    }
-    len as u8
+/// One index domain for declaration, Collect and Commit. Native byte slots are
+/// not a capacity limit of the current Rust pass representation.
+pub(crate) fn next_binding_index(bindings: &[PassBinding]) -> u32 {
+    u32::try_from(bindings.len()).expect("pass binding index exceeds the graph index domain")
 }
 
 /// 取 `T` 对应的 RG 缓冲资源号（`get_rg_buffer<T>` 返回句柄的 `+0x10`）。
@@ -157,7 +147,7 @@ pub fn read_access_buffer<T: LibrarySsbo>(
     builder: &mut RecordingPassBuilder,
     bindings: &mut Vec<PassBinding>,
     access: u8,
-) -> u8 {
+) -> u32 {
     let resource = rg_resource::<T>(resources, &mut builder.render_graph);
     builder.add_resource_access(resource, access, SYNC_GROUP_READ);
     let index = next_binding_index(bindings);
@@ -171,7 +161,7 @@ pub fn write_access_buffer<T: LibrarySsbo>(
     builder: &mut RecordingPassBuilder,
     bindings: &mut Vec<PassBinding>,
     access: u8,
-) -> u8 {
+) -> u32 {
     let resource = rg_resource::<T>(resources, &mut builder.render_graph);
     builder.add_resource_access(resource, access, SYNC_GROUP_DEFAULT);
     let index = next_binding_index(bindings);
@@ -186,7 +176,7 @@ pub fn write_access_buffer_concurrent<T: LibrarySsbo>(
     bindings: &mut Vec<PassBinding>,
     access: u8,
     group: u32,
-) -> u8 {
+) -> u32 {
     let resource = rg_resource::<T>(resources, &mut builder.render_graph);
     builder.add_resource_access(resource, access, group);
     let index = next_binding_index(bindings);
@@ -194,8 +184,7 @@ pub fn write_access_buffer_concurrent<T: LibrarySsbo>(
     index
 }
 
-/// 兼容旧调用点的 SSBO 标记 trait（`rg_buffer_hash` 由各 `*Ssbo` 载体按名字哈希给出；
-/// 机器码里的 `*_access_buffer<T>` 用的是 [`LibrarySsbo`]，不使用本 trait）。
+/// SSBO 载体的资源名和元素类型标记；库访问使用 [`LibrarySsbo`]。
 pub trait SsboType {
     /// 该 SSBO 的 RG 缓冲名字哈希。
     fn rg_buffer_hash() -> u64;
@@ -205,12 +194,6 @@ pub trait SsboType {
     fn rg_type_name() -> &'static str {
         core::any::type_name::<Self>()
     }
-}
-
-/// `ssbo_to_rg_handle`（内联）：`&T` → RG 句柄 hash（兼容旧 trait）。
-#[inline]
-pub fn ssbo_to_rg_handle<T: SsboType>() -> u64 {
-    T::rg_buffer_hash()
 }
 
 // ---- 纹理访问 trait 族（as_texture / dims）----
@@ -448,17 +431,14 @@ mod tests {
     fn binding_tags_match_the_two_bind_constructors() {
         assert_eq!(PassBinding::BufferRead { resource: 1 }.tag(), 3);
         assert_eq!(PassBinding::Buffer { resource: 1 }.tag(), 4);
-        let c = PassBinding::Buffer { resource: 9 }.to_contract();
-        assert_eq!((c.resource_index, c.access_type), (9, 4));
     }
 
     #[test]
-    fn binding_index_limit_is_0x100() {
-        let full = vec![PassBinding::Buffer { resource: 0 }; 0xff];
-        assert_eq!(next_binding_index(&full), 0xff);
-        let over = vec![PassBinding::Buffer { resource: 0 }; 0x100];
-        let r = std::panic::catch_unwind(|| next_binding_index(&over));
-        assert!(r.is_err());
+    fn binding_indices_cover_more_than_one_byte_without_wrapping() {
+        for count in [255,256,1024] {
+            let bindings = vec![PassBinding::Buffer { resource: 0 }; count];
+            assert_eq!(next_binding_index(&bindings), count as u32);
+        }
     }
 
     #[test]
@@ -636,22 +616,16 @@ mod tests {
     }
 
     #[test]
-    fn access_is_registered_before_the_binding_limit_check() {
+    fn large_binding_table_registers_the_original_access_and_full_index() {
         let lib = AssetSsboLibrary::new();
         lib.add_new::<Probe>(&crate::render::test_device::TestDevice(1));
-        let mut res = PassResources::default();
-        res.ssbo_library = &lib;
-        let mut b = RecordingPassBuilder::default();
-        let mut v = vec![PassBinding::Buffer { resource: 0 }; 0x100];
-        let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            read_access_buffer::<Probe>(&res, &mut b, &mut v, ACCESS_READ)
-        }));
-        assert!(r.is_err());
-        assert_eq!(
-            b.accesses.len(),
-            1,
-            "add_resource_access runs before the cmp 0x100 check"
-        );
-        assert_eq!(v.len(), 0x100);
+        let mut res = PassResources::default(); res.ssbo_library = &lib;
+        let mut builder = RecordingPassBuilder::default();
+        let mut bindings = vec![PassBinding::Buffer { resource: 0 }; 1024];
+        let slot = read_access_buffer::<Probe>(&res, &mut builder, &mut bindings, ACCESS_READ);
+        assert_eq!(slot, 1024);
+        assert_eq!(builder.accesses.len(), 1);
+        assert_eq!(bindings.len(), 1025);
     }
+
 }

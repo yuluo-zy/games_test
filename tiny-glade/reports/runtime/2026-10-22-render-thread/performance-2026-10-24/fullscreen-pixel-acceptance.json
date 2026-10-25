@@ -1,0 +1,72 @@
+{
+  "scope": "Same M3/MoltenVK; actual own-window pixels. Debug114/115 and optimized V18/V19 pass native window→fullscreen transition; startup fullscreen/other platforms remain outside proof.",
+  "red": {
+    "case": 111,
+    "native_image": "fullscreen-111.window.png",
+    "main_image": "fullscreen-111.png",
+    "extent": [
+      2940,
+      1846
+    ],
+    "observed_old_region": [
+      480,
+      270
+    ],
+    "note": "Native window retains old region with magenta error fill; GPU final main fills full extent."
+  },
+  "late_recovery": {
+    "case": 112,
+    "frames_before_capture": 120,
+    "native_image": "fullscreen-112.window.png",
+    "note": "Late recovery is not early-resize acceptance."
+  },
+  "green": [
+    {
+      "case": 114,
+      "invalid_pixels": 0,
+      "total_pixels": 5427240,
+      "extent": [
+        2940,
+        1846
+      ],
+      "native_image": "fullscreen-114.window.png"
+    },
+    {
+      "case": 115,
+      "invalid_pixels": 0,
+      "total_pixels": 5427240,
+      "extent": [
+        2940,
+        1846
+      ],
+      "native_image": "fullscreen-115.window.png"
+    },
+    {
+      "case": "V18 optimized",
+      "binary_sha256": "0cb568f16232e6fe3088644da4c6cd13ac69f30bc6e0e456e9f6453b3bb91500",
+      "invalid_pixels": 0,
+      "total_pixels": 5427240,
+      "extent": [
+        2940,
+        1846
+      ],
+      "native_image": "production-v18-fullscreen.window.png",
+      "native_image_sha256": "80fbd6f24bd71ae84db9a0d9ec837f3b1fcc742366309ada4e7790c9d0d01f99",
+      "run": "production-v18-fullscreen-pixels.json"
+    },
+    {
+      "case": "V19 optimized",
+      "binary_sha256": "f95314589172c3e4a91e7989c978a3a58c943d3f1b69e4ee6bd3235570c6a55c",
+      "invalid_pixels": 0,
+      "total_pixels": 5427240,
+      "extent": [
+        2940,
+        1846
+      ],
+      "native_image": "production-v19-fullscreen.window.png",
+      "native_image_sha256": "6ff709791a67ae47d9dc127d25030464859fb09894274d87abd2a4775e88c52e",
+      "run": "production-v19-fullscreen-pixels.json"
+    }
+  ],
+  "fix": "Main-thread resize commits full layer frame with CATransaction actions disabled; class resolved once at surface construction; no production per-frame verification added."
+}

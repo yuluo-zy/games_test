@@ -264,20 +264,16 @@ impl Device {
     /// entries until about `target_bytes` are freed, then destroy what became
     /// collectable. Returns the bytes the caches reported released.
     pub fn evict_idle_caches(&self, target_bytes: u64) -> u64 {
-        if self.memory.evictables.is_empty() {
-            return 0;
-        }
         let completed = match self.poll() {
             Ok(completed) => completed,
             Err(error) => { log::error!("idle cache eviction completion query failed: {error}"); return 0; }
         };
         let released = self.memory.evictables.evict(&completed, target_bytes);
-        if released != 0 {
-            if let Err(error) = self.try_collect_all_completed() {
-                log::warn!("collecting evicted cache entries failed: {error}");
-            }
-            let _ = self.trim_unused_suballocations();
-        }
+        // Caches can drop their last physical owner without reporting its
+        // native bytes. Drain the same trusted completion snapshot even when
+        // reported bytes are zero, including when no cache is registered.
+        self.collect_completed_snapshot(&completed);
+        let _ = self.trim_unused_suballocations();
         released
     }
 }

@@ -485,33 +485,75 @@ impl SyncCell {
     }
 }
 
-/// Each caller collects owners before submission. Stable pointer ordering
-/// prevents lock inversion when independent queues use intersecting resources.
-pub(crate) fn normalize_submission_uses(cells: &mut Vec<std::sync::Arc<SyncCell>>) {
-    sort_submission_uses(cells);
-    cells.dedup_by(|a, b| std::sync::Arc::ptr_eq(a, b));
+/// Recording owns the only mutable resource list. Successful command end
+/// seals its order; late ownership patches preserve that order by insertion.
+pub(crate) struct SubmissionUseCells {
+    cells: crate::raw::temp_list::TempList<std::sync::Arc<SyncCell>>,
+    seen: crate::collections::token_map::TokenMap<()>,
+    sealed: bool,
+}
+impl SubmissionUseCells {
+    pub(crate) fn new(max: usize, stats: std::sync::Arc<crate::raw::allocator::AllocatorStats>, pool: &std::sync::Arc<SyncCell>) -> crate::Result<Self> {
+        let mut result = Self { cells: crate::raw::temp_list::TempList::new(max, stats)?, seen: Default::default(), sealed: false };
+        result.insert(pool)?;
+        Ok(result)
+    }
+    pub(crate) fn insert(&mut self, cell: &std::sync::Arc<SyncCell>) -> crate::Result<()> {
+        let key = std::sync::Arc::as_ptr(cell) as usize as u64;
+        if self.seen.contains_key(&key) { return Ok(()); }
+        self.cells.add(cell.clone())?;
+        self.seen.insert(key, ());
+        if self.sealed { self.cells.sift_last_by_key(|cell| std::sync::Arc::as_ptr(cell) as usize); }
+        Ok(())
+    }
+    pub(crate) fn seal(&mut self) {
+        self.cells.sort_dedup_by_key(|cell| std::sync::Arc::as_ptr(cell) as usize);
+        self.sealed = true;
+    }
+    pub(crate) fn is_sealed(&self) -> bool { self.sealed }
+    pub(crate) fn as_slice(&self) -> &[std::sync::Arc<SyncCell>] { self.cells.as_slice() }
+    pub(crate) fn ordered(&self) -> crate::Result<OrderedSubmissionUses<'_>> {
+        if !self.sealed { return Err(crate::Error::invalid_usage("submitted command has not sealed its resource uses")); }
+        Ok(OrderedSubmissionUses { cells: self.cells.as_slice() })
+    }
+    fn reset_inner(&mut self, pool: &std::sync::Arc<SyncCell>, sealed: bool) {
+        self.cells.clear(); self.seen.clear(); self.sealed = false;
+        self.insert(pool).expect("pool cell capacity was admitted at allocation");
+        self.sealed = sealed;
+    }
+    pub(crate) fn reset(&mut self, pool: &std::sync::Arc<SyncCell>) { self.reset_inner(pool, false); }
+    pub(crate) fn release_completed(&mut self, pool: &std::sync::Arc<SyncCell>) { self.reset_inner(pool, self.sealed); }
 }
 
-fn sort_submission_uses(cells: &mut [std::sync::Arc<SyncCell>]) {
-    cells.sort_unstable_by_key(|cell| std::sync::Arc::as_ptr(cell) as usize);
+/// Only sealed recording and the ordered merge below can construct this view.
+#[derive(Clone, Copy)]
+pub(crate) struct OrderedSubmissionUses<'a> { cells: &'a [std::sync::Arc<SyncCell>] }
+impl<'a> OrderedSubmissionUses<'a> {
+    pub(crate) fn as_slice(self) -> &'a [std::sync::Arc<SyncCell>] { self.cells }
+}
+impl std::ops::Deref for OrderedSubmissionUses<'_> {
+    type Target = [std::sync::Arc<SyncCell>];
+    fn deref(&self) -> &Self::Target { self.cells }
+}
+pub(crate) struct OwnedOrderedSubmissionUses { cells: crate::raw::submit::SubmitScratch<[std::sync::Arc<SyncCell>; 32]> }
+impl OwnedOrderedSubmissionUses {
+    pub(crate) fn ordered(&self) -> OrderedSubmissionUses<'_> { OrderedSubmissionUses { cells: &self.cells } }
+}
+impl std::ops::Deref for OwnedOrderedSubmissionUses {
+    type Target = [std::sync::Arc<SyncCell>];
+    fn deref(&self) -> &Self::Target { &self.cells }
 }
 
 /// Merge the sorted, deduplicated cell lists sealed by command recording.
 /// Two heap-merge passes count and then collect actual unique owners, in
 /// O(total uses * log(command count)) time with bounded/fallible cursor storage.
 pub(crate) fn collect_submission_uses(
-    sources: &[&[std::sync::Arc<SyncCell>]],
+    sources: &[OrderedSubmissionUses<'_>],
     stats: &std::sync::Arc<crate::raw::allocator::AllocatorStats>,
-) -> crate::Result<crate::raw::submit::SubmitScratch<[std::sync::Arc<SyncCell>; 32]>> {
-    for source in sources {
-        if source
-            .windows(2)
-            .any(|pair| std::sync::Arc::as_ptr(&pair[0]) >= std::sync::Arc::as_ptr(&pair[1]))
-        {
-            return Err(crate::Error::invalid_usage(
-                "submitted command use cells are not normalized",
-            ));
-        }
+) -> crate::Result<OwnedOrderedSubmissionUses> {
+    if sources.len() <= 1 {
+        let cells = sources.first().map_or(&[][..], |source| source.cells);
+        return Ok(OwnedOrderedSubmissionUses { cells: crate::raw::submit::SubmitScratch::try_collect(cells.len(), stats, cells.iter().cloned().map(Ok))? });
     }
     let mut positions = crate::raw::submit::SubmitScratch::<[usize; 8]>::try_collect(
         sources.len(),
@@ -532,14 +574,12 @@ pub(crate) fn collect_submission_uses(
     merged.reset();
     let count = merged.by_ref().count();
     merged.reset();
-    crate::raw::submit::SubmitScratch::try_collect(
-        count,
-        stats,
-        merged.map(|cell| Ok(cell.clone())),
-    )
+    Ok(OwnedOrderedSubmissionUses { cells: crate::raw::submit::SubmitScratch::try_collect(
+        count, stats, merged.map(|cell| Ok(cell.clone())),
+    )? })
 }
 struct SubmissionUseMerge<'a, 'b> {
-    sources: &'b [&'a [std::sync::Arc<SyncCell>]],
+    sources: &'b [OrderedSubmissionUses<'a>],
     positions: &'b mut [usize],
     heap: &'b mut [(usize, usize)],
     heap_len: usize,
@@ -595,7 +635,7 @@ impl<'a> Iterator for SubmissionUseMerge<'a, '_> {
             return None;
         }
         let (pointer, source) = self.heap[0];
-        let selected = &self.sources[source][self.positions[source]];
+        let selected = &self.sources[source].as_slice()[self.positions[source]];
         loop {
             self.advance_root();
             if self.heap_len == 0 || self.heap[0].0 != pointer {
@@ -606,28 +646,14 @@ impl<'a> Iterator for SubmissionUseMerge<'a, '_> {
     }
 }
 
-pub(crate) fn lock_submission_uses_in<'a>(
-    cells: &'a [std::sync::Arc<SyncCell>],
+pub(crate) fn lock_submission_uses<'a>(
+    cells: OrderedSubmissionUses<'a>,
     stats: &std::sync::Arc<crate::raw::allocator::AllocatorStats>,
 ) -> crate::Result<crate::raw::submit::SubmitScratch<[parking_lot::MutexGuard<'a, ()>; 32]>> {
     crate::raw::submit::SubmitScratch::try_collect(
-        cells.len(),
-        stats,
-        cells.iter().map(|cell| Ok(cell.lock_submission())),
+        cells.len(), stats,
+        cells.as_slice().iter().map(|cell| Ok(cell.lock_submission())),
     )
-}
-
-pub(crate) fn lock_submission_uses(
-    cells: &[std::sync::Arc<SyncCell>],
-) -> crate::Result<Vec<parking_lot::MutexGuard<'_, ()>>> {
-    let mut guards = Vec::new();
-    guards
-        .try_reserve_exact(cells.len())
-        .map_err(|_| crate::Error::OutOfHostMemory)?;
-    for cell in cells {
-        guards.push(cell.lock_submission());
-    }
-    Ok(guards)
 }
 
 impl Default for SyncCell {
@@ -676,88 +702,85 @@ impl<T: GpuUse + 'static> GpuUse for crate::raw::managed::handle::Managed<T> {
 
 #[cfg(test)]
 mod tests {
+    fn sealed(cells: &[std::sync::Arc<super::SyncCell>]) -> super::SubmissionUseCells {
+        let stats = std::sync::Arc::new(crate::raw::allocator::AllocatorStats::default());
+        let mut uses = super::SubmissionUseCells::new(4096, stats, &cells[0]).unwrap();
+        for cell in cells { uses.insert(cell).unwrap(); }
+        uses.seal(); uses
+    }
     #[test]
     fn normalized_commands_merge_unique_cells_before_spill_admission() {
         let stats = std::sync::Arc::new(crate::raw::allocator::AllocatorStats::default());
         stats.set_total_budget(1).unwrap();
-        let cells: Vec<_> = (0..3)
-            .map(|_| std::sync::Arc::new(super::SyncCell::new()))
-            .collect();
-        let mut repeated: Vec<_> = (0..1000)
-            .map(|index| cells[index % cells.len()].clone())
-            .collect();
-        super::normalize_submission_uses(&mut repeated);
-        assert_eq!(repeated.len(), 3);
-        let sources = [repeated.as_slice(), repeated.as_slice()];
+        let cells: Vec<_> = (0..3).map(|_| std::sync::Arc::new(super::SyncCell::new())).collect();
+        let repeated: Vec<_> = (0..1000).map(|index| cells[index % cells.len()].clone()).collect();
+        let repeated = sealed(&repeated);
+        let sources = [repeated.ordered().unwrap(), repeated.ordered().unwrap()];
         let uses = super::collect_submission_uses(&sources, &stats).unwrap();
         assert_eq!(uses.len(), 3);
-        let guards = super::lock_submission_uses_in(&uses, &stats).unwrap();
-        assert_eq!(guards.len(), 3);
-        assert_eq!(stats.cpu_memory_usage().total(), 0);
-        assert!(
-            uses.windows(2)
-                .all(|pair| std::sync::Arc::as_ptr(&pair[0]) < std::sync::Arc::as_ptr(&pair[1]))
-        );
+        let guards = super::lock_submission_uses(uses.ordered(), &stats).unwrap();
+        assert_eq!(guards.len(), 3); assert_eq!(stats.cpu_memory_usage().total(), 0);
+        assert!(uses.windows(2).all(|p| std::sync::Arc::as_ptr(&p[0]) < std::sync::Arc::as_ptr(&p[1])));
         drop(guards);
-        let mut many: Vec<_> = (0..33)
-            .map(|_| std::sync::Arc::new(super::SyncCell::new()))
-            .collect();
-        super::normalize_submission_uses(&mut many);
-        assert!(matches!(
-            super::collect_submission_uses(&[&many, &many], &stats),
-            Err(crate::Error::OutOfHostMemory)
-        ));
+        let many: Vec<_> = (0..33).map(|_| std::sync::Arc::new(super::SyncCell::new())).collect();
+        let many = sealed(&many);
+        assert!(matches!(super::collect_submission_uses(&[many.ordered().unwrap(), many.ordered().unwrap()], &stats), Err(crate::Error::OutOfHostMemory)));
         assert_eq!(stats.cpu_memory_usage().total(), 0);
         stats.set_total_budget(1 << 20).unwrap();
-        let uses = super::collect_submission_uses(&[&many, &many], &stats).unwrap();
-        assert_eq!(uses.len(), many.len());
-        assert!(
-            uses.iter()
-                .zip(&many)
-                .all(|(actual, expected)| std::sync::Arc::ptr_eq(actual, expected))
-        );
-        drop(uses);
-        assert_eq!(stats.cpu_memory_usage().total(), 0);
+        let uses = super::collect_submission_uses(&[many.ordered().unwrap(), many.ordered().unwrap()], &stats).unwrap();
+        assert_eq!(uses.len(), many.as_slice().len());
+        assert!(uses.iter().zip(many.as_slice()).all(|(a,b)| std::sync::Arc::ptr_eq(a,b)));
+        drop(uses); assert_eq!(stats.cpu_memory_usage().total(), 0);
     }
     #[test]
     fn heap_merge_handles_empty_interleaved_and_repeated_worker_lists() {
         let stats = std::sync::Arc::new(crate::raw::allocator::AllocatorStats::default());
-        let mut cells: Vec<_> = (0..257)
-            .map(|_| std::sync::Arc::new(super::SyncCell::new()))
-            .collect();
-        super::normalize_submission_uses(&mut cells);
-        let lanes: Vec<Vec<_>> = (0..16)
-            .map(|lane| {
-                cells
-                    .iter()
-                    .enumerate()
-                    .filter(|(index, _)| (index + lane) % 7 == 0 || index % 13 == 0)
-                    .map(|(_, cell)| cell.clone())
-                    .collect()
-            })
-            .collect();
-        let mut sources: Vec<&[_]> = lanes.iter().map(Vec::as_slice).collect();
-        sources.push(&[]);
+        let mut cells: Vec<_> = (0..257).map(|_| std::sync::Arc::new(super::SyncCell::new())).collect();
+        cells.sort_unstable_by_key(|cell| std::sync::Arc::as_ptr(cell) as usize);
+        let lanes: Vec<_> = (0..16).map(|lane| sealed(&cells.iter().enumerate().filter(|(i,_)| (i+lane)%7==0 || i%13==0).map(|(_,cell)|cell.clone()).collect::<Vec<_>>())).collect();
+        let empty = super::collect_submission_uses(&[], &stats).unwrap();
+        let mut sources: Vec<_> = lanes.iter().map(|lane| lane.ordered().unwrap()).collect();
+        sources.push(empty.ordered());
         let actual = super::collect_submission_uses(&sources, &stats).unwrap();
         assert_eq!(actual.len(), cells.len());
-        assert!(
-            actual
-                .iter()
-                .zip(&cells)
-                .all(|(a, b)| std::sync::Arc::ptr_eq(a, b))
-        );
-        drop(actual);
-        assert_eq!(stats.cpu_memory_usage().total(), 0);
-        assert!(
-            super::collect_submission_uses(&[], &stats)
-                .unwrap()
-                .is_empty()
-        );
-        let malformed = [cells[0].clone(), cells[0].clone()];
-        assert!(matches!(
-            super::collect_submission_uses(&[&malformed], &stats),
-            Err(crate::Error::InvalidUsage { .. })
-        ));
+        assert!(actual.iter().zip(&cells).all(|(a,b)| std::sync::Arc::ptr_eq(a,b)));
+        drop(actual); assert_eq!(stats.cpu_memory_usage().total(), 0);
+        assert!(super::collect_submission_uses(&[], &stats).unwrap().is_empty());
+        let single = super::collect_submission_uses(&sources[..1], &stats).unwrap();
+        assert_eq!(single.len(), lanes[0].as_slice().len());
+    }
+    #[test]
+    fn recording_seal_late_insert_and_resets_preserve_the_only_lock_order() {
+        let stats = std::sync::Arc::new(crate::raw::allocator::AllocatorStats::default());
+        let mut cells: Vec<_> = (0..4).map(|_| std::sync::Arc::new(super::SyncCell::new())).collect();
+        cells.sort_unstable_by_key(|cell| std::sync::Arc::as_ptr(cell) as usize);
+        let mut uses = super::SubmissionUseCells::new(3, stats, &cells[2]).unwrap();
+        assert!(uses.ordered().is_err());
+        uses.insert(&cells[0]).unwrap(); uses.insert(&cells[0]).unwrap(); uses.seal();
+        uses.insert(&cells[1]).unwrap();
+        assert!(uses.as_slice().iter().zip(&cells[..3]).all(|(a,b)| std::sync::Arc::ptr_eq(a,b)));
+        assert!(uses.insert(&cells[3]).is_err());
+        assert_eq!(uses.ordered().unwrap().len(), 3);
+        uses.release_completed(&cells[2]); assert!(uses.is_sealed()); assert_eq!(uses.as_slice().len(),1);
+        uses.reset(&cells[2]); assert!(!uses.is_sealed()); assert!(uses.ordered().is_err());
+        uses.release_completed(&cells[2]); assert!(!uses.is_sealed());
+        uses.seal(); uses.insert(&cells[3]).unwrap(); uses.insert(&cells[0]).unwrap();
+        assert!(uses.as_slice().windows(2).all(|p| std::sync::Arc::as_ptr(&p[0]) < std::sync::Arc::as_ptr(&p[1])));
+        assert_eq!(uses.ordered().unwrap().len(), 3);
+    }
+    #[test]
+    fn failed_spill_does_not_publish_membership_or_break_sealed_order() {
+        let stats = std::sync::Arc::new(crate::raw::allocator::AllocatorStats::default());
+        let cells: Vec<_> = (0..3).map(|_| std::sync::Arc::new(super::SyncCell::new())).collect();
+        let mut uses = super::SubmissionUseCells::new(8, stats.clone(), &cells[0]).unwrap();
+        uses.insert(&cells[1]).unwrap(); uses.seal();
+        let before = stats.cpu_memory_usage().total(); stats.set_total_budget(before).unwrap();
+        assert!(matches!(uses.insert(&cells[2]), Err(crate::Error::OutOfHostMemory)));
+        assert_eq!(uses.ordered().unwrap().len(), 2); assert_eq!(stats.cpu_memory_usage().total(), before);
+        stats.set_total_budget(1 << 20).unwrap(); uses.insert(&cells[2]).unwrap();
+        assert_eq!(uses.ordered().unwrap().len(), 3);
+        assert!(uses.as_slice().windows(2).all(|p| std::sync::Arc::as_ptr(&p[0]) < std::sync::Arc::as_ptr(&p[1])));
+        drop(uses); assert_eq!(stats.cpu_memory_usage().total(), 0);
     }
     use super::*;
 
@@ -876,10 +899,11 @@ mod tests {
         let (published, received) = mpsc::channel();
         let worker_cell = cell.clone();
         let worker = std::thread::spawn(move || {
-            let cells = vec![worker_cell];
+            let cells = sealed(&[worker_cell]);
+            let stats = std::sync::Arc::new(crate::raw::allocator::AllocatorStats::default());
             started.send(()).unwrap();
-            let _reservation = lock_submission_uses(&cells).unwrap();
-            cells[0].insert_overall(SyncPoint {
+            let _reservation = lock_submission_uses(cells.ordered().unwrap(), &stats).unwrap();
+            cells.as_slice()[0].insert_overall(SyncPoint {
                 queue: q(0),
                 value: 1,
             });
