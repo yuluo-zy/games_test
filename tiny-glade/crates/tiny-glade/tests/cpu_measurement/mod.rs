@@ -86,6 +86,10 @@ fn run() -> Result<()> {
     #[cfg(feature = "cpu-probe")]
     let mut detailed_bills: Vec<(serde_json::Value, serde_json::Value)> = Vec::new();
     #[cfg(feature = "cpu-probe")]
+    let mut binding_scope_bills: Vec<tiny_glade::raster_host::BindingScopeProbeCounts> = Vec::new();
+    #[cfg(feature = "cpu-probe")]
+    if mode == "on" && bill { binding_scope_bills.try_reserve_exact(samples + 1)?; }
+    #[cfg(feature = "cpu-probe")]
     if mode == "on" && bill { detailed_bills.try_reserve_exact(samples + 1)?; }
     #[cfg(feature = "cpu-probe")]
     if mode == "on" { rows.try_reserve_exact(samples + 1)?; }
@@ -199,6 +203,7 @@ fn run() -> Result<()> {
             if bill {
                 detailed_bills.push((bridge.raster_resources().constant_pool_bill(),
                     bridge.raster_resources().draw_scratch_bill()));
+                binding_scope_bills.push(bridge.raster_resources().binding_scope_probe_counts());
             }
             rows.push((tick, receipt, index as u64 + 1, points, counts, declaration));
             recorder.as_mut().unwrap().record(tick, Some(receipt), index as u64 + 1, true);
@@ -233,7 +238,17 @@ fn run() -> Result<()> {
     let input_unchanged = initial_input == final_input;
     let clock_valid = begin[0] > 0 && end[0] > begin[0]
         && end[1] >= begin[1] && end[2] >= begin[2] && clock::wall_frequency() > 0;
-    let valid = clock_valid && session.as_ref().is_none_or(|s| s["valid"] == true)
+    #[cfg(feature = "cpu-probe")]
+    let binding_scope_reuse_enabled = Some(bridge.raster_resources().binding_scope_probe_counts().algorithm_enabled);
+    #[cfg(not(feature = "cpu-probe"))]
+    let binding_scope_reuse_enabled: Option<bool> = None;
+    #[cfg(feature = "cpu-probe")]
+    let binding_scope_bill_valid = !bill || (binding_scope_bills.len() == rows.len()
+        && binding_scope_bills.iter().all(|counts| counts.valid
+            && Some(counts.algorithm_enabled) == binding_scope_reuse_enabled && counts.failed_callbacks == 0));
+    #[cfg(not(feature = "cpu-probe"))]
+    let binding_scope_bill_valid = true;
+    let valid = binding_scope_bill_valid && clock_valid && session.as_ref().is_none_or(|s| s["valid"] == true)
         && actual_workload_report.as_ref().is_none_or(|s| s["valid"] == true)
         && gpu_report.as_ref().is_none_or(|s| s["valid"] == true);
     let management_modes = bridge.raster_resources().draw_management_modes();
@@ -247,6 +262,8 @@ fn run() -> Result<()> {
         "measurement_class":if gpu_diagnostic {"gpu_diagnostic"} else if bill {"management_diagnostic"} else {"clean_cpu"},
         "clean_cpu_acceptance_eligible":!gpu_diagnostic && !bill,
         "actual_workload":actual_workload_report,"gpu_diagnostic":gpu_report,
+        "binding_scope_reuse_enabled":binding_scope_reuse_enabled,
+        "binding_scope_bill_valid":binding_scope_bill_valid,
         "management_modes":{"reflection_scope":management_modes[0],
             "vao_typed_lookup":management_modes[1], "vao_wrapper_reuse":management_modes[2],
             "constant_batch":bridge.raster_resources().constant_batch_enabled()},
@@ -270,6 +287,10 @@ fn run() -> Result<()> {
             if let Some((constants, scratch)) = detailed_bills.get(_index) {
                 row["constant_pool_bill"] = constants.clone();
                 row["draw_scratch_bill"] = scratch.clone();
+            }
+            #[cfg(feature = "cpu-probe")]
+            if let Some(binding) = binding_scope_bills.get(_index) {
+                row["binding_scope_bill"] = json!(binding);
             }
             row
         }).collect::<Vec<_>>(),

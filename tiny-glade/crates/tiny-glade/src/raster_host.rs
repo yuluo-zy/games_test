@@ -459,6 +459,12 @@ pub struct RasterShared {
     #[cfg(feature = "cpu-probe")]
     management_counts: [std::sync::atomic::AtomicU64; 6],
     #[cfg(feature = "cpu-probe")]
+    binding_scope_counts: [std::sync::atomic::AtomicU64; 7],
+    #[cfg(feature = "cpu-probe")]
+    binding_scope_invalid: std::sync::atomic::AtomicBool,
+    #[cfg(feature = "cpu-probe")]
+    binding_scope_reuse: bool,
+    #[cfg(feature = "cpu-probe")]
     management_modes: [bool; 3],
     /// The global texture table's (resource, range) reads for the graph being
     /// declared. Every raster pass of one graph reads the same table, so it is
@@ -696,6 +702,24 @@ impl RasterShared {
         chunk.write_bytes(bytes)
     }
 
+    #[inline]
+    fn binding_scope_reuse_enabled(&self) -> bool {
+        #[cfg(feature = "cpu-probe")]
+        { self.binding_scope_reuse }
+        #[cfg(not(feature = "cpu-probe"))]
+        { true }
+    }
+    /// Cumulative attempted callback work, including failed callbacks. These
+    /// diagnostic counts are separate from successful receipt workload proof.
+    #[cfg(feature = "cpu-probe")]
+    pub fn binding_scope_probe_counts(&self) -> BindingScopeProbeCounts {
+        use std::sync::atomic::Ordering::Relaxed;
+        let values=self.binding_scope_counts.each_ref().map(|value| value.load(Relaxed));
+        BindingScopeProbeCounts { valid:!self.binding_scope_invalid.load(Relaxed),
+            algorithm_enabled:self.binding_scope_reuse, callbacks:values[0], vec_capacity_growths:values[1],
+            vec_capacity_bytes_after_growth_sum:values[2], snapshot_builds:values[3], snapshot_hits:values[4],
+            shape_fallback_callbacks:values[5], failed_callbacks:values[6] }
+    }
     fn count_management(&self, index: usize, amount: u64) {
         #[cfg(feature = "cpu-probe")]
         if crate::render_cpu_probe::management_enabled() {
@@ -1006,6 +1030,12 @@ impl RasterShared {
             #[cfg(feature = "cpu-probe")]
             management_counts: [const { std::sync::atomic::AtomicU64::new(0) }; 6],
             #[cfg(feature = "cpu-probe")]
+            binding_scope_counts: [const { std::sync::atomic::AtomicU64::new(0) }; 7],
+            #[cfg(feature = "cpu-probe")]
+            binding_scope_invalid: std::sync::atomic::AtomicBool::new(false),
+            #[cfg(feature = "cpu-probe")]
+            binding_scope_reuse: std::env::var_os("TG_BINDING_SCOPE_REUSE").is_none_or(|value| value != "0"),
+            #[cfg(feature = "cpu-probe")]
             management_modes: ["TG_REFLECTION_SCOPE", "TG_VAO_TYPED_LOOKUP", "TG_VAO_WRAPPER_REUSE"]
                 .map(|name| std::env::var(name).ok().is_none_or(|value| value != "0")),
             table_reads: Mutex::new(None),
@@ -1147,6 +1177,194 @@ impl RasterPassHost {
         );
         sibling.resource_graph_factory = self.resource_graph_factory.clone();
         sibling
+    }
+}
+
+
+const BINDING_SCOPE_MAX_INPUTS: usize = 256;
+const BINDING_SCOPE_MAX_BYTES: usize = 64 << 10;
+
+/// Callback-exclusive capacity; no resource/graph identity survives a draw.
+/// Values/backing drop before the physical capacity credit is returned.
+struct BindingResourceScratch<T> {
+    values: Vec<(u32, T)>,
+    memory: rhapsody::device::CpuStorageReservation,
+    shape: usize,
+}
+impl<T> BindingResourceScratch<T> {
+    fn supports(shape: usize) -> bool {
+        shape <= BINDING_SCOPE_MAX_INPUTS && shape.checked_mul(std::mem::size_of::<(u32,T)>())
+            .is_some_and(|bytes| bytes <= BINDING_SCOPE_MAX_BYTES)
+    }
+    fn try_new(stats: &Arc<rhapsody::device::AllocatorStats>, shape: usize,
+        #[cfg(feature = "cpu-probe")] probe: &BindingLocalProbe,
+    ) -> rhapsody::Result<Option<Self>> {
+        // Shape fallback is decided before budget admission or allocation.
+        if !Self::supports(shape) { return Ok(None); }
+        let mut result = Self { values: Vec::new(), memory: stats.reserve_cpu_storage(0)?, shape: 0 };
+        result.reserve_shape(shape, #[cfg(feature = "cpu-probe")] probe)?;
+        Ok(Some(result))
+    }
+    fn reserve_shape(&mut self, shape: usize,
+        #[cfg(feature = "cpu-probe")] probe: &BindingLocalProbe,
+    ) -> rhapsody::Result<()> {
+        if !Self::supports(shape) { return Err(rhapsody::Error::exhausted("binding scratch shape exceeds its bound")); }
+        if shape <= self.values.capacity() { self.shape = shape; return Ok(()); }
+        let old_bytes = self.memory.bytes();
+        let bytes = shape.checked_mul(std::mem::size_of::<(u32,T)>()).ok_or(rhapsody::Error::OutOfHostMemory)? as u64;
+        // New storage coexists with the old allocation until all values move.
+        self.memory.resize(old_bytes.checked_add(bytes).ok_or(rhapsody::Error::OutOfHostMemory)?)?;
+        let mut next = Vec::new();
+        if next.try_reserve_exact(shape).is_err() {
+            self.memory.resize(old_bytes).expect("return unallocated binding capacity");
+            return Err(rhapsody::Error::OutOfHostMemory);
+        }
+        let actual = next.capacity().checked_mul(std::mem::size_of::<(u32,T)>())
+            .ok_or(rhapsody::Error::OutOfHostMemory)?;
+        #[cfg(feature = "cpu-probe")]
+        probe.capacity_growth(Some(actual));
+        if actual > BINDING_SCOPE_MAX_BYTES {
+            drop(next);
+            self.memory.resize(old_bytes).expect("return oversized binding capacity");
+            return Err(rhapsody::Error::exhausted("binding scratch physical capacity exceeds its bound"));
+        }
+        if let Err(error) = self.memory.resize(old_bytes.checked_add(actual as u64).ok_or(rhapsody::Error::OutOfHostMemory)?) {
+            drop(next);
+            self.memory.resize(old_bytes).expect("return refused binding capacity");
+            return Err(error);
+        }
+        next.append(&mut self.values);
+        let old = std::mem::replace(&mut self.values, next);
+        drop(old);
+        self.memory.resize(actual as u64).expect("return freed old binding capacity");
+        self.shape = shape;
+        Ok(())
+    }
+}
+
+/// Clear on every normal/error/panic exit. Mutable Vec access is not exposed;
+/// scoped storage may never grow beyond its admitted shape during a draw.
+struct BindingDrawInputs<'a, T> {
+    values: &'a mut Vec<(u32,T)>,
+    shape: Option<usize>,
+    #[cfg(feature = "cpu-probe")]
+    probe: &'a BindingLocalProbe,
+}
+impl<'a,T> BindingDrawInputs<'a,T> {
+    fn new(values: &'a mut Vec<(u32,T)>, shape: Option<usize>,
+        #[cfg(feature = "cpu-probe")] probe: &'a BindingLocalProbe,
+    ) -> Self {
+        values.clear();
+        Self { values, shape, #[cfg(feature = "cpu-probe")] probe }
+    }
+    fn upsert(&mut self, binding: u32, value: T) -> rhapsody::Result<()> {
+        if self.shape.is_some_and(|bound| self.values.len() >= bound)
+            && !self.values.iter().any(|(old,_)| *old == binding) {
+            return Err(rhapsody::Error::invalid_usage("binding input exceeded its admitted shape"));
+        }
+        #[cfg(feature = "cpu-probe")]
+        let before = self.values.capacity();
+        upsert_shader_resource(self.values, binding, value)?;
+        #[cfg(feature = "cpu-probe")]
+        if self.values.capacity() > before {
+            self.probe.capacity_growth(self.values.capacity().checked_mul(std::mem::size_of::<(u32,T)>()));
+        }
+        Ok(())
+    }
+    fn iter(&self) -> std::slice::Iter<'_,(u32,T)> { self.values.iter() }
+}
+impl<T> Drop for BindingDrawInputs<'_,T> {
+    fn drop(&mut self) { self.values.clear(); }
+}
+
+/// At most one immutable snapshot. Keys are borrowed live Arc owners, never
+/// numeric native handles. All dynamic page preparation still happens per draw.
+pub(crate) struct BindingSnapshotCursor<'p,K,S> { current: Option<(&'p Arc<K>,S)> }
+impl<'p,K,S> BindingSnapshotCursor<'p,K,S> {
+    pub(crate) fn new() -> Self { Self { current: None } }
+    pub(crate) fn get_or_insert_with(&mut self, entry: &'p Arc<K>, make: impl FnOnce() -> S) -> (&S,bool) {
+        let hit = self.current.as_ref().is_some_and(|(old,_)| Arc::ptr_eq(old,entry));
+        if !hit { self.current = Some((entry,make())); }
+        (&self.current.as_ref().expect("snapshot initialized").1,hit)
+    }
+}
+
+fn binding_input_shape(draws: &[PreparedDraw]) -> Option<usize> {
+    binding_shape_upper_bound(draws.iter().map(|draw| {
+        let uniforms = draw.packet.bindings.values().filter(|owned|
+            owned.state == country_core::render::pass_builder::draw_stream::GpuOwned::STATE_OWNED
+            && matches!(owned.binding, CoreBinding::UniformBuffer { .. })).count();
+        (uniforms,draw.external.as_slice().len(),draw.packet.accesses.len())
+    }))
+}
+fn binding_shape_upper_bound(mut shapes: impl Iterator<Item=(usize,usize,usize)>) -> Option<usize> {
+    shapes.try_fold(0usize, |largest,(uniforms,external,accesses)| {
+        uniforms.checked_add(external)?.checked_add(accesses).map(|shape| largest.max(shape))
+    })
+}
+
+#[cfg(feature = "cpu-probe")]
+#[derive(Clone,Copy,Debug,serde::Serialize)]
+pub struct BindingScopeProbeCounts {
+    pub valid: bool,
+    pub algorithm_enabled: bool,
+    pub callbacks: u64,
+    pub vec_capacity_growths: u64,
+    pub vec_capacity_bytes_after_growth_sum: u64,
+    pub snapshot_builds: u64,
+    pub snapshot_hits: u64,
+    pub shape_fallback_callbacks: u64,
+    pub failed_callbacks: u64,
+}
+#[cfg(feature = "cpu-probe")]
+struct BindingLocalProbe {
+    enabled: bool,
+    counts: std::cell::Cell<[u64;7]>,
+    valid: std::cell::Cell<bool>,
+}
+#[cfg(feature = "cpu-probe")]
+impl BindingLocalProbe {
+    fn new(enabled: bool) -> Self { Self { enabled, counts: std::cell::Cell::new([0;7]), valid: std::cell::Cell::new(true) } }
+    fn add(&self,index:usize,amount:u64) {
+        if !self.enabled { return; }
+        let mut counts=self.counts.get();
+        match counts[index].checked_add(amount) { Some(value)=>counts[index]=value, None=>self.valid.set(false) }
+        self.counts.set(counts);
+    }
+    // A successful capacity increase need not allocate a new physical block:
+    // the allocator may grow an existing allocation in place. Bytes are the
+    // sum of each resulting Vec capacity, not a delta, peak or allocator size.
+    fn capacity_growth(&self,bytes:Option<usize>) {
+        if !self.enabled { return; }
+        match bytes.and_then(|bytes| u64::try_from(bytes).ok()) {
+            Some(0) => {},
+            Some(bytes) => { self.add(1,1); self.add(2,bytes); },
+            None => self.valid.set(false),
+        }
+    }
+}
+#[cfg(feature = "cpu-probe")]
+struct BindingCallbackProbe<'a> { shared: &'a RasterShared, local: BindingLocalProbe, success: std::cell::Cell<bool> }
+#[cfg(feature = "cpu-probe")]
+impl<'a> BindingCallbackProbe<'a> {
+    fn new(shared:&'a RasterShared) -> Self {
+        let local=BindingLocalProbe::new(crate::render_cpu_probe::management_enabled());
+        local.add(0,1);
+        Self { shared, local, success:std::cell::Cell::new(false) }
+    }
+}
+#[cfg(feature = "cpu-probe")]
+impl Drop for BindingCallbackProbe<'_> {
+    fn drop(&mut self) {
+        if !self.local.enabled { return; }
+        if !self.success.get() { self.local.add(6,1); }
+        use std::sync::atomic::Ordering::Relaxed;
+        if !self.local.valid.get() { self.shared.binding_scope_invalid.store(true,Relaxed); }
+        for (counter,amount) in self.shared.binding_scope_counts.iter().zip(self.local.counts.get()) {
+            if amount!=0 && counter.fetch_update(Relaxed,Relaxed,|old| old.checked_add(amount)).is_err() {
+                self.shared.binding_scope_invalid.store(true,Relaxed);
+            }
+        }
     }
 }
 
@@ -2317,6 +2535,8 @@ impl PassHost for RasterPassHost {
         }
         country_core::render::declare_probe::draw_access(draw_access_started);
         declared.render_with_context(move |ctx| {
+            #[cfg(feature = "cpu-probe")]
+            let binding_probe = BindingCallbackProbe::new(&shared);
             let managed = ctx
                 .managed
                 .expect("pass callback without managed resources");
@@ -2447,6 +2667,23 @@ impl PassHost for RasterPassHost {
                 Ok(chunks) => chunks,
                 Err(error) => { ctx.report_error(error); return false; }
             };
+            let reuse_bindings = shared.binding_scope_reuse_enabled();
+            let mut binding_scratch = if reuse_bindings {
+                match binding_input_shape(&prepared) {
+                    Some(shape) => match BindingResourceScratch::<rhapsody::bindless::BindlessResource>::try_new(
+                        shared.device.allocator_stats(), shape,
+                        #[cfg(feature = "cpu-probe")] &binding_probe.local,
+                    ) {
+                        Ok(scratch) => scratch,
+                        Err(error) => { ctx.report_error(error); return false; }
+                    },
+                    None => None,
+                }
+            } else { None };
+            #[cfg(feature = "cpu-probe")]
+            if reuse_bindings && binding_scratch.is_none() { binding_probe.local.add(5,1); }
+            let reuse_bindings = reuse_bindings && binding_scratch.is_some();
+            let mut binding_snapshots = BindingSnapshotCursor::new();
             for ((draw, pipeline), parameter_chunk) in prepared.iter().zip(&pipelines).zip(parameter_chunks.as_slice()) {
                 country_core::render::declare_probe::rec_draw();
                 let probe = country_core::render::declare_probe::start();
@@ -2462,16 +2699,42 @@ impl PassHost for RasterPassHost {
                     bound_pipeline = Some(pipeline.raw_handle());
                 }
                 country_core::render::declare_probe::rec_pipeline(probe);
-                let parameters = match bindless_parameters(
+                let parameters = {
+                    let mut legacy_inputs = Vec::new();
+                    let fresh;
+                    let snapshot = if reuse_bindings {
+                        let (snapshot,hit) = binding_snapshots.get_or_insert_with(&draw.entry, ||
+                            draw.entry.bindings.snapshot_with_globals(frozen_globals.clone()));
+                        #[cfg(feature = "cpu-probe")]
+                        binding_probe.local.add(if hit {4} else {3},1);
+                        #[cfg(not(feature = "cpu-probe"))]
+                        let _ = hit;
+                        snapshot
+                    } else {
+                        fresh=draw.entry.bindings.snapshot_with_globals(frozen_globals.clone());
+                        #[cfg(feature = "cpu-probe")]
+                        binding_probe.local.add(3,1);
+                        &fresh
+                    };
+                    let (values,shape) = match binding_scratch.as_mut() {
+                        Some(scratch) => (&mut scratch.values,Some(scratch.shape)),
+                        None => (&mut legacy_inputs,None),
+                    };
+                    let mut inputs=BindingDrawInputs::new(values,shape,
+                        #[cfg(feature = "cpu-probe")] &binding_probe.local);
+                    bindless_parameters(
                     &shared,
                     &ctx,
                     draw,
                     &bindings,
                     managed,
                     &mut page_cursor,
-                    frozen_globals.clone(),
                     parameter_chunk,
-                ) {
+                    &mut inputs,
+                    snapshot,
+                    )
+                };
+                let parameters = match parameters {
                     Ok(parameters) => parameters,
                     Err(error) => {
                         ctx.report_error(error);
@@ -2508,6 +2771,8 @@ impl PassHost for RasterPassHost {
             api.end_render_pass();
             #[cfg(feature = "cpu-probe")]
             ctx.record_command_workload(api.take_command_workload());
+            #[cfg(feature = "cpu-probe")]
+            binding_probe.success.set(true);
             true
         });
     }
@@ -2969,12 +3234,12 @@ fn bindless_parameters(
     pass_bindings: &[RenderPassBinding],
     managed: &ManagedPassResources,
     cursor: &mut rhapsody::bindless::BindlessPageCursor,
-    globals: Option<Arc<crate::frame_setup::FrameGlobals>>,
     parameter_chunk: &rhapsody::resource::DynamicConstantsChunk,
+    resources: &mut BindingDrawInputs<'_,rhapsody::bindless::BindlessResource>,
+    snapshot: &crate::render_host::ShaderBindingSnapshot,
 ) -> rhapsody::Result<rhapsody::bindless::PreparedBindlessParameters> {
     shared.count_management(5, 1);
     let probe_resources = country_core::render::declare_probe::start();
-    let mut resources = Vec::new();
     for (binding, owned) in &draw.packet.bindings {
         if owned.state != country_core::render::pass_builder::draw_stream::GpuOwned::STATE_OWNED {
             continue;
@@ -3009,7 +3274,7 @@ fn bindless_parameters(
             }
         };
         shared.count_management(4, 1);
-        upsert_shader_resource(&mut resources, *binding, value)?;
+        resources.upsert(*binding, value)?;
     }
     for binding in draw.external.as_slice() {
         let value = if let Some(desc) = &binding.view {
@@ -3034,7 +3299,7 @@ fn bindless_parameters(
             }
         };
         shared.count_management(4, 1);
-        upsert_shader_resource(&mut resources, binding.binding, value)?;
+        resources.upsert(binding.binding, value)?;
     }
     for access in &draw.packet.accesses {
         let binding = pass_bindings
@@ -3070,14 +3335,13 @@ fn bindless_parameters(
             }
         };
         shared.count_management(4, 1);
-        upsert_shader_resource(&mut resources, access.binding_index, resource)?;
+        resources.upsert(access.binding_index, resource)?;
     }
     // B EguiBackend::draw 0x1400def7e..0x1400defd0 stores the 8-byte
     // screen-size push payload in DrawPacket's byte Vec. Other shaders may use
     // an empty push block; ABI validation retains that distinction.
     country_core::render::declare_probe::rec_resources(probe_resources);
     let probe_prepare = country_core::render::declare_probe::start();
-    let snapshot = draw.entry.bindings.snapshot_with_globals(globals);
     let prepared = snapshot.prepare(
         cursor,
         &draw.packet.unknown_bytes,
@@ -4206,5 +4470,143 @@ mod constant_batch_gpu_tests {
         drop(packets);
         drop(recovered);
         shared.device.wait_idle_and_collect().unwrap();
+    }
+}
+
+#[cfg(test)]
+mod binding_scope_tests {
+    use super::*;
+    fn stats() -> Arc<rhapsody::device::AllocatorStats> { Arc::new(Default::default()) }
+    #[test]
+    fn upsert_keeps_first_position_last_value_and_draw_scope_releases_owners() {
+        let stats=stats();
+        #[cfg(feature = "cpu-probe")] let probe=BindingLocalProbe::new(true);
+        let mut scratch=BindingResourceScratch::<Arc<u32>>::try_new(&stats,2,
+            #[cfg(feature = "cpu-probe")] &probe).unwrap().unwrap();
+        let a=Arc::new(1); let b=Arc::new(2); let c=Arc::new(3);
+        let (wa,wb,wc)=(Arc::downgrade(&a),Arc::downgrade(&b),Arc::downgrade(&c));
+        {
+            let mut draw=BindingDrawInputs::new(&mut scratch.values,Some(2),
+                #[cfg(feature = "cpu-probe")] &probe);
+            draw.upsert(7,a).unwrap(); draw.upsert(9,b).unwrap(); draw.upsert(7,c).unwrap();
+            assert_eq!(draw.iter().map(|(key,value)| (*key,**value)).collect::<Vec<_>>(),[(7,3),(9,2)]);
+            assert!(wa.upgrade().is_none());
+            assert!(wb.upgrade().is_some() && wc.upgrade().is_some());
+            assert!(draw.upsert(11,Arc::new(4)).is_err());
+        }
+        assert!(scratch.values.is_empty());
+        assert!(wb.upgrade().is_none() && wc.upgrade().is_none());
+        assert_eq!(stats.cpu_memory_usage().total(),scratch.memory.bytes());
+        drop(scratch); assert_eq!(stats.cpu_memory_usage().total(),0);
+    }
+    #[test]
+    fn panic_and_error_clear_draw_values_but_external_arc_keeps_its_owner() {
+        let stats=stats();
+        #[cfg(feature = "cpu-probe")] let probe=BindingLocalProbe::new(true);
+        let mut scratch=BindingResourceScratch::<Arc<u32>>::try_new(&stats,1,
+            #[cfg(feature = "cpu-probe")] &probe).unwrap().unwrap();
+        let owner=Arc::new(5); let weak=Arc::downgrade(&owner);
+        let external=owner.clone();
+        let result=std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let mut draw=BindingDrawInputs::new(&mut scratch.values,Some(1),
+                #[cfg(feature = "cpu-probe")] &probe);
+            draw.upsert(0,owner).unwrap(); panic!("cancel callback");
+        }));
+        assert!(result.is_err() && scratch.values.is_empty());
+        assert_eq!(Arc::strong_count(&external),1);
+        drop(external); assert!(weak.upgrade().is_none());
+        let owner=Arc::new(6); let weak=Arc::downgrade(&owner);
+        let failed: rhapsody::Result<()>=(|| {
+            let mut draw=BindingDrawInputs::new(&mut scratch.values,Some(1),
+                #[cfg(feature = "cpu-probe")] &probe);
+            draw.upsert(0,owner)?;
+            Err(rhapsody::Error::invalid_usage("failed preparation"))
+        })();
+        assert!(failed.is_err() && weak.upgrade().is_none() && scratch.values.is_empty());
+    }
+    #[test]
+    fn scratch_refusal_preserves_old_owner_and_both_allocation_peak_then_recovers() {
+        let stats=stats();
+        #[cfg(feature = "cpu-probe")] let probe=BindingLocalProbe::new(true);
+        stats.set_host_budget(1).unwrap();
+        assert!(BindingResourceScratch::<Arc<u32>>::try_new(&stats,2,
+            #[cfg(feature = "cpu-probe")] &probe).is_err());
+        assert_eq!(stats.cpu_memory_usage().total(),0);
+        stats.set_host_budget(1<<20).unwrap();
+        let mut scratch=BindingResourceScratch::<Arc<u32>>::try_new(&stats,2,
+            #[cfg(feature = "cpu-probe")] &probe).unwrap().unwrap();
+        let owner=Arc::new(8); let weak=Arc::downgrade(&owner);
+        scratch.values.push((0,owner));
+        let old=scratch.memory.bytes();
+        let target=scratch.values.capacity()+1;
+        let new=(target*std::mem::size_of::<(u32,Arc<u32>)>()) as u64;
+        stats.set_host_budget(old+new-1).unwrap();
+        assert!(scratch.reserve_shape(target,#[cfg(feature = "cpu-probe")] &probe).is_err());
+        assert_eq!(scratch.memory.bytes(),old); assert!(weak.upgrade().is_some());
+        stats.set_host_budget(old+new).unwrap();
+        scratch.reserve_shape(target,#[cfg(feature = "cpu-probe")] &probe).unwrap();
+        assert_eq!(*scratch.values[0].1,8);
+        assert_eq!(stats.cpu_memory_usage().total(),scratch.memory.bytes());
+        drop(scratch); assert!(weak.upgrade().is_none()); assert_eq!(stats.cpu_memory_usage().total(),0);
+    }
+    #[test]
+    fn oversized_shape_falls_back_before_budget_and_never_scales_by_draw_total() {
+        let stats=stats(); stats.set_host_budget(1).unwrap();
+        #[cfg(feature = "cpu-probe")] let probe=BindingLocalProbe::new(true);
+        assert!(BindingResourceScratch::<Arc<u32>>::try_new(&stats,257,
+            #[cfg(feature = "cpu-probe")] &probe).unwrap().is_none());
+        assert!(!BindingResourceScratch::<[u8;1024]>::supports(65));
+        assert_eq!(stats.cpu_memory_usage().total(),0);
+        assert_eq!(binding_shape_upper_bound(std::iter::repeat((1,2,3)).take(4096)),Some(6));
+        assert_eq!(binding_shape_upper_bound([(1,2,3),(5,3,1)].into_iter()),Some(9));
+        assert_eq!(binding_shape_upper_bound([(usize::MAX,1,0)].into_iter()),None);
+    }
+    #[test]
+    fn cursor_aaba_builds_three_times_and_uses_live_arc_identity() {
+        let (a,b,a_alias)=(Arc::new(7),Arc::new(8),Arc::new(7));
+        let frozen=Arc::new(99); let newer=Arc::new(100);
+        let mut cursor=BindingSnapshotCursor::new(); let mut builds=0; let mut hits=0;
+        for key in [&a,&a,&b,&a] {
+            let (snapshot,hit)=cursor.get_or_insert_with(key,|| {builds+=1; frozen.clone()});
+            hits+=usize::from(hit); assert!(Arc::ptr_eq(snapshot,&frozen));
+        }
+        assert_eq!((builds,hits),(3,1));
+        let (_,hit)=cursor.get_or_insert_with(&a_alias,|| {builds+=1; frozen.clone()});
+        assert!(!hit); assert_eq!(builds,4);
+        drop(cursor);
+        let mut next_callback=BindingSnapshotCursor::new();
+        let (snapshot,hit)=next_callback.get_or_insert_with(&a,||newer.clone());
+        assert!(!hit && Arc::ptr_eq(snapshot,&newer));
+    }
+    #[cfg(feature = "cpu-probe")]
+    #[test]
+    fn probe_counts_capacity_growth_and_capacity_sum_with_checked_overflow() {
+        let stats=stats(); let probe=BindingLocalProbe::new(true);
+        let mut scratch=BindingResourceScratch::<Arc<u32>>::try_new(&stats,4,&probe).unwrap().unwrap();
+        for _ in 0..3 {
+            let mut draw=BindingDrawInputs::new(&mut scratch.values,Some(4),&probe);
+            for key in 0..4 { draw.upsert(key,Arc::new(key)).unwrap(); }
+        }
+        assert_eq!(probe.counts.get()[1],1);
+        let before=probe.counts.get()[1];
+        let mut expected_capacity_sum=(scratch.values.capacity()*std::mem::size_of::<(u32,Arc<u32>)>()) as u64;
+        for _ in 0..3 {
+            let mut values=Vec::new();
+            let mut draw=BindingDrawInputs::new(&mut values,None,&probe);
+            for key in 0..4 { draw.upsert(key,Arc::new(key)).unwrap(); }
+            drop(draw);
+            expected_capacity_sum+=(values.capacity()*std::mem::size_of::<(u32,Arc<u32>)>()) as u64;
+        }
+        assert_eq!(probe.counts.get()[1]-before,3);
+        assert_eq!(probe.counts.get()[2],expected_capacity_sum);
+        let overflow=BindingLocalProbe::new(true);
+        overflow.add(2,u64::MAX-1);
+        overflow.capacity_growth(Some(2));
+        assert!(!overflow.valid.get());
+        assert_eq!(overflow.counts.get()[2],u64::MAX-1,"overflow must not saturate the byte sum");
+        let invalid_size=BindingLocalProbe::new(true);
+        invalid_size.capacity_growth(None);
+        assert!(!invalid_size.valid.get());
+        probe.add(3,u64::MAX); probe.add(3,1); assert!(!probe.valid.get());
     }
 }

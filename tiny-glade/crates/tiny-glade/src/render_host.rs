@@ -4652,10 +4652,10 @@ pub(crate) fn clamp_storage_binding_range(device: &rhapsody::device::Device, siz
     size.min(u64::from(device.limits().max_storage_buffer_range))
 }
 
-pub(crate) fn upsert_shader_resource(
-    resources: &mut Vec<(u32, BindlessResource)>,
+pub(crate) fn upsert_shader_resource<T>(
+    resources: &mut Vec<(u32, T)>,
     binding: u32,
-    resource: BindlessResource,
+    resource: T,
 ) -> rhapsody::Result<()> {
     if let Some((_, old)) = resources.iter_mut().find(|(index, _)| *index == binding) {
         *old = resource;
@@ -5914,6 +5914,38 @@ mod sampler_catalog_tests {
         let mut pending = actual(pages, heap, bindings);
         extras(&mut pending).unwrap();
         pending.commit();
+    }
+
+    #[test]
+    fn reused_snapshot_owner_prepares_real_new_pages_and_observes_sampler_epoch_invalidation() {
+        let Some(device)=device() else { return };
+        let pages=Arc::new(SamplerPages::default());
+        let requested=binding(&device,"cursor-epoch","sampler_nnc");
+        pages.register(std::slice::from_ref(&requested));
+        let entry=Arc::new(());
+        let mut cursor=crate::raster_host::BindingSnapshotCursor::new();
+        let first=heap(&device,4);
+        let second=first.new_page().unwrap();
+        {
+            let (snapshot,hit)=cursor.get_or_insert_with(&entry,||pages.clone());
+            assert!(!hit);
+            commit(snapshot,&first,std::slice::from_ref(&requested));
+        }
+        {
+            let (snapshot,hit)=cursor.get_or_insert_with(&entry,||panic!("same owner must reuse immutable snapshot"));
+            assert!(hit);
+            assert_eq!(snapshot.prepare(&second,std::slice::from_ref(&requested)).unwrap().missing(),1,
+                "snapshot reuse cannot reuse descriptors from another physical page");
+            commit(snapshot,&second,std::slice::from_ref(&requested));
+        }
+        pages.invalidate("cursor-epoch");
+        let (snapshot,hit)=cursor.get_or_insert_with(&entry,||panic!("epoch is dynamic, not a new layout snapshot"));
+        assert!(hit);
+        for page in [&first,&second] {
+            assert_eq!(snapshot.prepare(page,std::slice::from_ref(&requested)).unwrap().missing(),1,
+                "captured sampler owner must observe dynamic page epoch invalidation");
+            commit(snapshot,page,std::slice::from_ref(&requested));
+        }
     }
 
     #[test]
