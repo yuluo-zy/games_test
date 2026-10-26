@@ -5,6 +5,7 @@ replaying the frozen account implementation at least once and complete workload
 witnesses. Default evaluation rechecks artifact SHA bindings against audit seals.
 """
 import argparse
+import base64
 from datetime import datetime, timezone
 import hashlib
 import importlib
@@ -150,17 +151,105 @@ def load_build(path):
     return build
 
 
+
+# Qualified, independently reviewed 26-test relocation verifier. Never execute
+# arbitrary code supplied by an imported manifest; hash the exact bytes first.
+IMPORTER_SHA256 = 'cab6757fffd00eecd7eb786b293b9999c1d99d34bfea48fe359b0af7f767b6d1'
+IMPORT_CONTRACT = 'sealed-imported-frozen-bundle-v1'
+IMPORT_FILES = ('original-build.json', 'original-inventory.json', 'bundle-import-plan.json',
+                'bundle-importer.py', 'frozen-bundle-import.json')
+
+
+def import_verifier(bundle):
+    path = Path(bundle)/'bundle-importer.py'
+    raw = path.read_bytes()
+    require(hashlib.sha256(raw).hexdigest() == IMPORTER_SHA256,
+            'unqualified frozen bundle importer')
+    namespace = {'__name__': '_reviewed_frozen_bundle_importer', '__file__': str(path)}
+    exec(compile(raw, str(path), 'exec'), namespace)
+    return namespace
+
+
+def frozen_commit(raw, expected_oid):
+    require(type(raw) is bytes and 0 < len(raw) <= 1_048_576,
+            'invalid frozen source commit object size')
+    oid = hashlib.sha1(b'commit '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
+    require(oid == expected_oid, 'frozen Git commit object differs from source commit')
+    return {'git_oid': oid, 'object_type': 'commit', 'object_format': 'sha1',
+            'raw_base64': base64.b64encode(raw).decode('ascii'),
+            'raw_sha256': hashlib.sha256(raw).hexdigest()}
+
+
+def bundle_import_binding(build_path, *, declared=None, initial=False):
+    """Native builds retain their contract; imports bind all original evidence.
+
+    First declaration verifies the live original source through the qualified
+    importer. Later readers verify only sealed local bytes and an exact raw Git
+    commit object; source HEAD may advance or the checkout may be removed.
+    """
+    folder = Path(build_path).resolve().parent
+    present = {name for name in IMPORT_FILES if (folder/name).exists()
+               or (folder/name).is_symlink() or (folder/name).is_junction()}
+    if not present:
+        require(declared is None, 'declared imported proof has disappeared')
+        # All five proof files must not be deleted to masquerade as a native
+        # freeze: qualified native target evidence names its own host manifest.
+        artifact = folder/'requested-target-artifact.json'
+        if artifact.exists():
+            origin = Path(read(artifact)['manifest_path']).resolve()
+            host = folder.parent.parent.parent
+            require(origin == (host/'crates/tiny-glade/Cargo.toml').resolve(),
+                    'relocated target evidence is missing imported proof')
+        return None
+    require(present == set(IMPORT_FILES), 'incomplete imported frozen bundle proof')
+    require(initial or declared is not None, 'imported proof was not predeclared')
+    verifier = import_verifier(folder)
+    manifest = verifier['verify_import'](folder, check_origin=initial)
+    inventory = verifier['inventory'](folder)
+    build = read(build_path)
+    if initial:
+        plan = read(folder/'bundle-import-plan.json')
+        raw_commit = verifier['git'](plan['source_root'], 'cat-file', 'commit', build['source_commit'])
+        commit = frozen_commit(raw_commit, build['source_commit'])
+    else:
+        require(declared.get('schema') == IMPORT_CONTRACT, 'unknown imported proof contract')
+        commit = declared['frozen_source_commit']
+        try:
+            raw_commit = base64.b64decode(commit['raw_base64'], validate=True)
+        except (ValueError, TypeError) as error:
+            raise ValueError('invalid frozen commit encoding') from error
+        require(frozen_commit(raw_commit, build['source_commit']) == commit,
+                'frozen source commit proof changed')
+    result = {'schema': IMPORT_CONTRACT, 'bundle': str(folder),
+        'source_commit': build['source_commit'], 'source_content_sha256': build['source_content_sha256'],
+        'derived_build_sha256': digest(build_path),
+        'original_build_sha256': manifest['original_build_sha256'],
+        'importer_sha256': IMPORTER_SHA256, 'import_nonce': manifest['import_nonce'],
+        'frozen_source_commit': commit,
+        'artifacts': {name: {'path': str(folder/name), **record} for name, record in inventory.items()}}
+    if not initial:
+        require(result == declared, 'imported bundle bytes/identity changed after declaration')
+    return result
+
+
 def module_identity(tools_dir):
     return {name: digest(Path(tools_dir)/name) for name in TOOLS}
 
 
 def make_plan(series, baseline_path, candidate_path, calibration_path, tools_dir, output, *,
-              python=sys.executable, baseline_producer_review=None, candidate_producer_review=None):
+              python=sys.executable, baseline_producer_review=None, candidate_producer_review=None,
+              baseline_imported=False, candidate_imported=False):
     require(re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9_-]{0,60}', series), 'unsafe series label')
     require(Path(workload.__file__).resolve() == Path(__file__).with_name('perf_headless_workload.py').resolve(),
             'shadowed workload adapter from another checkout')
     tools_dir = Path(tools_dir).resolve()
     baseline, candidate = load_build(baseline_path), load_build(candidate_path)
+    import_bindings = {side: bundle_import_binding(path, initial=True)
+                       for side, path in (('A', baseline_path), ('B', candidate_path))}
+    import_required = {'A': baseline_imported, 'B': candidate_imported}
+    require(all(type(value) is bool for value in import_required.values()), 'invalid required-import declaration')
+    require(all(not needed or import_bindings[side] is not None for side, needed in import_required.items()),
+            'explicit imported build is missing imported proof')
     for path, build in ((baseline_path, baseline), (candidate_path, candidate)):
         require(Path(path).resolve() == tools_dir.parent/'.perf'/'headless-builds'/build['label']/'build.json',
                 'build must be frozen in the measurement host selected by tools-dir')
@@ -217,6 +306,8 @@ def make_plan(series, baseline_path, candidate_path, calibration_path, tools_dir
         'python': reference(python),
         'tools_dir': str(tools_dir), 'measurement_tools': ids,
         'calibration': reference(calibration_path), 'clock_policy': policy,
+        'import_proof_contract': IMPORT_CONTRACT, 'import_bindings': import_bindings,
+        'import_required': import_required,
         'builds': {'A': reference(baseline_path), 'B': reference(candidate_path)},
         'build_records': {'A': baseline, 'B': candidate}, 'entries': entries,
         'workload_witness_schema': 'headless-actual-workload-proof-v1',
@@ -236,7 +327,15 @@ def validate_plan(plan):
     checked_ref(plan['python'])
     checked_ref(plan['calibration'])
     require(module_identity(plan['tools_dir']) == plan['measurement_tools'], 'measurement tools changed')
+    require(plan.get('import_proof_contract') == IMPORT_CONTRACT
+            and set(plan.get('import_bindings', {})) == {'A', 'B'}, 'missing versioned import declarations')
+    require(set(plan.get('import_required', {})) == {'A', 'B'}
+            and all(type(value) is bool for value in plan['import_required'].values()),
+            'missing required-import declaration')
+    require(all(not needed or plan['import_bindings'][side] is not None
+                for side, needed in plan['import_required'].items()), 'required imported proof absent')
     for side in 'AB':
+        bundle_import_binding(checked_ref(plan['builds'][side]), declared=plan['import_bindings'][side])
         require(load_build(checked_ref(plan['builds'][side])) == plan['build_records'][side],
                 'build identity changed after declaration')
         source_files = read(Path(plan['build_records'][side]['executable']).with_name('source.json'))['files']
@@ -467,7 +566,7 @@ def decide(results):
             'five_pair_upper_bounds': upper, 'near_threshold_signals': near}
 
 
-def seal_artifacts(folder):
+def seal_artifacts(folder, import_binding=None):
     run = read(Path(folder)/'run.json')
     paths = {
         'run': Path(folder)/'run.json', 'session': Path(folder)/'session.json',
@@ -478,7 +577,13 @@ def seal_artifacts(folder):
         'vulkan': Path(folder)/'vulkan-summary.txt'}
     require(all(path.resolve().parent == Path(folder).resolve() for path in paths.values()),
             'audit artifact escapes capture directory')
-    return {name: reference(path) for name, path in paths.items()}
+    result = {name: reference(path) for name, path in paths.items()}
+    if import_binding is not None:
+        bundle_import_binding(Path(import_binding['bundle'])/'build.json', declared=import_binding)
+        result['frozen_bundle_import'] = {'binding_sha256': signature(import_binding),
+            'artifacts': import_binding['artifacts'],
+            'frozen_source_commit': import_binding['frozen_source_commit']}
+    return result
 
 
 def verify_seal(plan, entry):
@@ -487,7 +592,7 @@ def verify_seal(plan, entry):
             'strict raw-trace audit required before cached evaluation')
     require(seal['plan_sha256'] == signature(plan) and seal['ordinal'] == entry['ordinal']
             and seal['comparator_sha256'] == digest(__file__), 'audit seal belongs to another series/tool/run')
-    require(seal['artifacts'] == seal_artifacts(entry['run_dir']), 'raw/account/workload bytes changed after audit')
+    require(seal['artifacts'] == seal_artifacts(entry['run_dir'], plan['import_bindings'][entry['side']]), 'raw/account/workload bytes changed after audit')
 
 
 def audit_run(plan_path, ordinal):
@@ -500,7 +605,7 @@ def audit_run(plan_path, ordinal):
     seal = {'schema': 'headless-series-audit-v2', 'plan_sha256': signature(plan),
         'ordinal': ordinal, 'raw_replay_valid': True, 'comparator_sha256': digest(__file__),
         'audited_utc': datetime.now(timezone.utc).isoformat(),
-        'artifacts': seal_artifacts(entry['run_dir']),
+        'artifacts': seal_artifacts(entry['run_dir'], plan['import_bindings'][entry['side']]),
         'integrity_scope': 'SHA binds reviewed bytes; not a cryptographic attestation of producer honesty'}
     write_new(Path(entry['run_dir'])/'series-audit.json', seal)
     return seal
@@ -566,6 +671,7 @@ def evaluate(plan_path, *, replay=False):
             'comparator_sha256': digest(__file__), 'pairs': count, 'outcome': outcome,
             'validation_mode': 'raw_replay' if replay else 'previous_raw_replay_seals_and_current_artifact_hashes',
             'candidate_accepted': False, 'cost_shift_review_required': True,
+            'frozen_build_import_bindings': plan['import_bindings'],
             'results': results, 'artifacts': loaded,
             'limitations': ['All non-owner process threads include audio/driver/runtime, not worker-only.',
                 '5-pair CI treats whole runs as units, not independent/autocorrelated frame samples.',
@@ -583,6 +689,8 @@ def main():
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--baseline-producer-review', type=Path, required=True)
     p.add_argument('--candidate-producer-review', type=Path, required=True)
+    p.add_argument('--baseline-imported', action='store_true', help='require imported proof even if all origin metadata is missing')
+    p.add_argument('--candidate-imported', action='store_true', help='require imported proof even if all origin metadata is missing')
     p = sub.add_parser('evaluate')
     p.add_argument('series', type=Path); p.add_argument('--output', type=Path, required=True)
     p.add_argument('--replay', action='store_true', help='strict raw replay of every run; default requires audit-run seals')
@@ -594,7 +702,8 @@ def main():
             result = make_plan(args.series, args.baseline_build, args.candidate_build,
                                args.calibration, args.tools_dir, args.output,
                                baseline_producer_review=args.baseline_producer_review,
-                               candidate_producer_review=args.candidate_producer_review)
+                               candidate_producer_review=args.candidate_producer_review,
+                               baseline_imported=args.baseline_imported, candidate_imported=args.candidate_imported)
         elif args.action == 'evaluate':
             result = evaluate(args.series, replay=args.replay)
             write_new(args.output, result)

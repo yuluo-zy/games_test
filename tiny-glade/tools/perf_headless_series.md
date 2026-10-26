@@ -97,6 +97,64 @@ input-before AND input-after (including autonomous transform trajectory), draw
 schedule, workload signature, driver/hardware, source-default selection contract
 and settings.
 
+## Imported frozen bundle provenance (prospective)
+
+A source frozen outside the measurement host may be relocated only with the
+independently reviewed importer whose exact SHA is fixed by IMPORTER_SHA256.
+Use `--baseline-imported` (and `--candidate-imported` when applicable) for a known
+imported source. This explicit origin requirement is predeclared and cannot be
+satisfied by a native-looking partial bundle. It is necessary when all origin
+files were removed before declaration: no byte-only reader can distinguish
+such a laundered partial bundle from a historical native build. Do not omit it
+for the external baseline.
+
+The planner automatically detects any of the five import artifacts and refuses
+an incomplete set. Compiler-artifact evidence naming a foreign source root also
+refuses missing import proof. Truly native, historical local freezes keep the
+original load_build contract and a None import binding. Existing plans and old
+invalid rounds are not retroactively upgraded by this version.
+
+At initial declaration, the qualified archived bundle-importer.py must have the
+reviewed SHA before any code is loaded; arbitrary importer code is never run.
+Its original verify_import(..., check_origin=True) API verifies the current
+original source commit, full clean content identity, common3, seven tools,
+capabilities, original EXE/PDB/FMOD/log/Job evidence and relocated bundle. The
+series importer is a cold, read-only verifier: it never invokes import, Cargo,
+a target, a capture, or network access.
+
+The plan binds the derived build.json SHA separately from original-build.json,
+original-inventory.json, frozen-bundle-import.json, bundle-import-plan.json and
+the qualified archived importer SHA. It also binds every original inventory
+file by absolute location, SHA and size. The derived metadata must equal the
+original JSON with only executable relocation; source identity, label, mode
+capability and entire_cargo_build_passed remain unchanged. The original build
+hash is never substituted for the derived build hash.
+
+Initial verification additionally reads the frozen source_commit raw Git commit
+object via isolated, no-network Git. Its raw bytes are stored in the declaration
+as base64, with SHA256 and the real Git SHA1 object ID independently recomputed
+from the commit header and payload. This is the actual frozen commit object,
+not the current source HEAD, a hand-written commit label or an invented new
+repository identity. The complete frozen source.json manifest and independent
+producer source archives retain their existing separate bindings.
+
+Later validate/evaluate/audit calls use the existing qualified
+verify_import(..., check_origin=False) API plus all sealed local bytes and the
+exact frozen commit object. The live original checkout or original bundle may
+then be absent or its HEAD may advance. No importer policy is edited or silently
+weakened: only its already provided offline verification branch is used after
+the strict initial origin check. Source/EXE/capability identity cannot change.
+The API's local host seven-tool checks remain active. Audit seals contain the
+complete imported artifact references and frozen commit object, and revalidate
+those bytes when seals are created or consumed. Evaluate reports these bindings
+in its result as well as retaining the series-plan hash.
+
+These are reproducible integrity and reviewed provenance checks, not an
+anti-forgery signature over an entirely fabricated source/producer/evidence
+set. Independent producer reviews must still be genuine and predeclared. None
+of this changes pending workload coverage, failed clocks, 5% regression gates,
+headless-only scope or any real-run performance/correctness requirement.
+
 ## Receipt workload contract and source-audit prerequisites
 
 This is a new prospective `headless-cross-source-series-v2` declaration. Old v1
