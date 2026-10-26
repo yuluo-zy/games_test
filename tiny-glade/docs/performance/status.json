@@ -1,7 +1,7 @@
 {
   "source_commit": "6957077f905ab1ef1bb9d16ca3521ce555fa488e",
   "branch": "codex/perf-windows-20261026",
-  "implementation_status": "workload_probe_committed_compiled_and_targeted_tests_passed; demand_backing_zero_on_input_matched_diagnostic; cold_surface_pixels_not_accepted; release_performance_open",
+  "implementation_status": "short_debug_actual_workload_and_separate_gpu_diagnostic_valid; latest_cpu_smoke_has_no_ETW_and_is_invalid_for_CPU; full_constants_equal_but_surface_pixels_fail; binding_debug_bill_reductions_observed_but_actual_workload_mismatch_invalidates_comparison; release_AB_and16ms_open",
   "hardware": {
     "cpu": "Intel Core i7-9700",
     "gpu": "Intel UHD Graphics 630",
@@ -20,9 +20,9 @@
     "measurement_tools_source": "prospective policy a2a8fce100tests; paddingc81975c15; portable3e3b29c24pass0skip; previousc5a6125 archive76 retained",
     "frozen_requested_integration_test_targets_completed": true,
     "entire_frozen_cargo_invocations_passed": false,
-    "current_owner_cpu_crosscheck": "new debug quality round passed1.2780%; old strict long owner0.53423% retained separately",
-    "current_process_cpu_crosscheck": "new debug quality raw process difference0.3694%; mandatory Microsoft process same-stream difference0.0010603%; old strict long process4.75882% failed",
-    "current_measurement_round_valid": true,
+    "current_owner_cpu_crosscheck": "Not available in latest47bdd14 no-ETW round. Historicala2a8fce owner1.2780% quality remains in measurement_closure.",
+    "current_process_cpu_crosscheck": "Not available in latest47bdd14 no-ETW round. Historicala2a8fce precise policy/raw flags and old strict failures remain unchanged.",
+    "current_measurement_round_valid": false,
     "probe_feature_off_overhead_at_most_one_percent": "not accepted",
     "production_window_run": "previous failure: strict swapchainMaintenance1 requirement; user deferred compatibility work",
     "macos_compile_and_runtime": "unverified",
@@ -34,17 +34,22 @@
     "current_rhapsody_library_validation_gate_passed": true,
     "current_rhapsody_library_test_count_scope": "latest corrected fixture strict rerun: 458 passed, 0 failed, 2 ignored; ignored not counted as passed",
     "current_rhapsody_library_logical_tests_passed": 458,
-    "current_measurement_round_scope": "a2a8fce debug quality smoke only; new workload-probe native runtime pending",
-    "latest_python_tool_test_scope": "Most recent portable24 only; policy100/padding15/archive76 are separate checked groups, not one combined total"
+    "current_measurement_round_scope": "Latest47bdd14 short debug workload smoke: session/actual-workload valid, runner invalid without ETW; historicala2a8fce600/600 quality remains separately valid and unmodified.",
+    "latest_python_tool_test_scope": "Most recent portable24 only; policy100/padding15/archive76 are separate checked groups, not one combined total",
+    "latest_actual_workload_runtime": "47bdd14 debug60warm/30samples: session and actual_workload valid;31 raw rows,720 joined tasks/630 waves,90 cross-pass tasks are a subset; no CPU acceptance.",
+    "latest_separate_gpu_diagnostic": "47bdd14 debug: run/session/workload/GPU valid;91 frames720 timestamps;zero skips/pending/retained and zeroVUID;diagnostic only.",
+    "latest_surface_full_constants_pair": "0c6bc69: both children1pass/0ignored/0VUID; all1060u32 and recorded inputs equal for30frames per season; strict RGBA water/ice comparison FAILED.",
+    "binding_experiment_gain": "30-frame bill event reductions observed, but series invalid: direct dispatch357/355 and row18 recording chunks8/7; no whole-frame CPU gain"
   },
   "unverified": [
-    "New committed demand source default/probe workspace all-target checks running; full tiny remains failed solely by preexisting rollercoaster assertion in latest zero-VUID rerun",
-    "Preexisting rollercoaster float oracle mismatch remains open; full tiny suite failed, assertion unchanged",
-    "Release600/3000 measurement closure and complete feature-off<=1% overhead",
-    "Valid original water/ice strict inline/Collect pixel pair after view fix",
-    "Representative four-scene Windows baseline and stable CPU benefits",
+    "Release600/3000 valid ETW measurement and feature-off<=1% probe overhead; latest short workload smoke has no ETW",
+    "Representative four-scene Windows baseline/candidate AB/BA/AB, same semantic/GPU workload and cost-shift review",
     "All four scenes every-run render CPU p95<=16ms and no>5%p95/p99 regression",
-    "Full pressure/fault/30-minute10000-frame stability; WSI deferred; macOS unverified"
+    "Strict water/ice pixels: full1060u32 FrameConstants match yet latest0c6bc69 RGBA still differs; complete GPU inputs/history and same-mode source of drift unresolved",
+    "Binding scratch/snapshot experiment is a candidate without verified whole-frame CPU gain; preserve actual owner/order/budget semantics",
+    "Complete upload/indirect-draw argument evidence and prospective source-reviewed series capabilities; no fake all-upload total",
+    "Preexisting rollercoaster float oracle mismatch remains open; full tiny suite failed, assertion unchanged",
+    "Full pressure/fault and three30-minute/10000-frame stability runs; production WSI user-deferred; macOS unverified"
   ],
   "evidence": [
     {
@@ -404,9 +409,157 @@
     {
       "path": ".perf/constant-demand-tiny-lib-probe-strict-after-timeline.log",
       "sha256": "7ba1625cf135af3b1a39d54c490ef1eb815ee7010f7e2f35156889a5e813109d"
+    },
+    {
+      "path": ".perf/headless-runs/workload-clean-smoke-47bdd14-1/run.json",
+      "sha256": "bab62211809aec897d7d483c40e9012b64fb4c9eafb99c4cefc1833d01331462"
+    },
+    {
+      "path": ".perf/headless-runs/workload-clean-smoke-47bdd14-1/session.json",
+      "sha256": "1d861f010b477b012c56d88271ba2d1362e2a6abd4d3a092d4ffd23f1fcadca4"
+    },
+    {
+      "path": ".perf/headless-runs/workload-clean-smoke-47bdd14-1/fixture.log",
+      "sha256": "843561ccfb4be8f2506d27f235ac1595c1dcc4ef816e430f870bc0326dd7f751"
+    },
+    {
+      "path": ".perf/gpu-diagnostics/workload-probe-47bdd14-1/run.json",
+      "sha256": "4519590595d8a1caf34c231560d829317aae6a50949f1e77cbeb7005468c227d"
+    },
+    {
+      "path": ".perf/gpu-diagnostics/workload-probe-47bdd14-1/session.json",
+      "sha256": "877fcc51bb86eb1a3aa50f384db4169382ee472301d154a8291a936de0753a18"
+    },
+    {
+      "path": ".perf/gpu-diagnostics/workload-probe-47bdd14-1/fixture.log",
+      "sha256": "63bd8472b09dfb5793f5b14a8a3a30905f6d86aad4c87ddb841bab463f75966d"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/pair.json",
+      "sha256": "b54042797709f617a720beebcddf6a75af723fdc4cea62165bf6e5e5ced4c420"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/water-compare.json",
+      "sha256": "157d86801152248c50c945c531c5273685d16e3c097bc679cb663ba49a2d02e6"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/ice-compare.json",
+      "sha256": "6b5f6957bbf9aca57f1ad33ed7fd3a1860551d0fcb7a6e07d21c9e6696a19ef9"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/inline/process.log",
+      "sha256": "3139198ca02b8044f14ac6cbf0829260d116566ecaf52d2c2512fcbdd395f386"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/collect/process.log",
+      "sha256": "141cf62bad694cf8b80558d3b57d2afb7ec2c659aeaac46806b937866b1cf822"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/inline/artifacts.sha256.json",
+      "sha256": "7a3c9646e57ea91de5adb9f371b9b4ba14618d251711a4ed79bde741e151a948"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/collect/artifacts.sha256.json",
+      "sha256": "805ab5be85b1eb59442eb19d5fff15fb2daa835227f03621956c3e185a104399"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/inline/water/frame-20.rgba",
+      "sha256": "59e931bd9a6ffb8c0b4e489d5d2e046c23e029d3a8be4ad8653a5c8d86219aa9"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/collect/water/frame-20.rgba",
+      "sha256": "a1f47c860e79d0d89ce9b4224d5d290b3374d47452b6d6a6bbb764f4064fc6ba"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/inline/water/frame-30.rgba",
+      "sha256": "4ff4e9524abcae36dbdabe7e99c1b8e41895781ebfa3af1dbfb3517e0a146bc2"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/collect/water/frame-30.rgba",
+      "sha256": "d354fa9c0daf8c5c9ca86195ea14a5a6e767803b4101dbd4933bfe36b2f11d2a"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/inline/water/manifest.json",
+      "sha256": "7f33541e2572959d849ec33b8d1d17cfea2ddc77953b1ea2c8083852f0531f6e"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/collect/water/manifest.json",
+      "sha256": "8d7d6632c88f6b9448a12b64fc41c3bc048fa88f0b8f28e6756e33dfc79a7450"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/inline/ice/frame-20.rgba",
+      "sha256": "b21fbe622eb0b6243f81f63f6040a538f22daa4ec9cc9104c303045a57d35bdc"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/collect/ice/frame-20.rgba",
+      "sha256": "ba5293a73eda1b9b534bd3ae1b7e138bf907066361a1614bcd657544f7255e0b"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/inline/ice/frame-30.rgba",
+      "sha256": "d0ce58243e9f5656c4d161d818e6fc2721b139143106e6d7e4d5121e60ebb952"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/collect/ice/frame-30.rgba",
+      "sha256": "73cffa2117a5c6d8bcc7efff72c7a40d60d742bfb334270fadc359630f002e03"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/inline/ice/manifest.json",
+      "sha256": "cc1ac7ca219740fd2577360f8c4fed2c5a5d50685a586d2ff209b2bf5e9c9a66"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/collect/ice/manifest.json",
+      "sha256": "0183c944a93669f339c76a1d3488204673c3af877e048b3884083692b8dac772"
+    },
+    {
+      "path": ".perf/headless-runs/binding-scope-debug-5767a40-static-1-off/run.json",
+      "sha256": "a65405e2cd1a7ded86fa52af8de9dd33c1d18a287c37a8e430f47742ebdc9dd6"
+    },
+    {
+      "path": ".perf/headless-runs/binding-scope-debug-5767a40-static-1-off/session.json",
+      "sha256": "d56996d4c5238635bfd8776d1f808ee5d25f1864358b9a4e5f0649c84c0c50a0"
+    },
+    {
+      "path": ".perf/headless-runs/binding-scope-debug-5767a40-static-1-off/fixture.log",
+      "sha256": "715aab570b3ca54da51c6716cf35ecd4ec0ed9e4bddc6a90b12c0c927fcf01c8"
+    },
+    {
+      "path": ".perf/headless-runs/binding-scope-debug-5767a40-static-1-on/run.json",
+      "sha256": "994a842e8b6725efe0f87dd6427af3e1d2708f9e994038cadbeb39d9df86a981"
+    },
+    {
+      "path": ".perf/headless-runs/binding-scope-debug-5767a40-static-1-on/session.json",
+      "sha256": "100f8c0c57d3d6abe327a4a57be9719c24d201c526083b8f253ea8fc2d66e5aa"
+    },
+    {
+      "path": ".perf/headless-runs/binding-scope-debug-5767a40-static-1-on/fixture.log",
+      "sha256": "7a9576be48b297ca640f79cdaa35cfe023d72905e8e918948fa567bfac78998c"
+    },
+    {
+      "path": ".perf/binding-scope-diagnostics/binding-scope-debug-5767a40-static-1/summary.json",
+      "sha256": "1eca078f98fc6d6ff14218223c3df1ecf13ff31887cba1b8d7f63bd3e5075c9e"
+    },
+    {
+      "path": ".perf/stage5-pressure-reclaim-strict.log",
+      "sha256": "192af72d84758e67444df1bd12c3af95eb29eff42baa991c1cf29579878857d6"
+    },
+    {
+      "path": ".perf/stage5-retirement-reservation-strict.log",
+      "sha256": "dc2764a524fb349bf2448285780f44375e0866b6b31545e9bdd4ba16f3ba2d43"
+    },
+    {
+      "path": ".perf/binding-stage5-surface-workspace-default-check.log",
+      "sha256": "c67469b6a24d5d01105a8010f6c537dc538ed6470c85def4e19489052599c98c"
+    },
+    {
+      "path": ".perf/binding-stage5-surface-workspace-enabled-check.log",
+      "sha256": "c4bdbe06586f64c584603bb3e6a81f57997b5cd513724a85b485462d1d33f81f"
+    },
+    {
+      "path": ".perf/surface-comparator-v3-tests.log",
+      "sha256": "80b6232ad5e8fdd68ec8ed7689aaf3856c98a77ff3ef45e9028a3f2c360dccc6"
     }
   ],
-  "source_candidate_commit": "370f7959e0a9a47d15f84477760f4a01147680fb",
+  "source_candidate_commit": "5767a4073d0adbb8c9bd2daee93f6e7930a25ca4",
   "candidate_commits": {
     "ownership_short_locks": "b792e4c",
     "graph_version_index": "50d8885",
@@ -560,10 +713,10 @@
   ],
   "stage_progress": {
     "0": "source/tooling and29095eb frozen Release integration-test pair exist; full Cargo invocations and production WSI not accepted",
-    "1": "Prospective debug600/600 clock-quality round valid; old strict invalid unchanged. Release600/3000 and probe-off1% remain open",
-    "2": "Isolated24369d5c exact-production29095eb+measurement brackets baseline prepared but unbuilt; valid four-scene baseline absent",
-    "3": "7c42f3a demand plan committed, targeted Country passes; current default/probe all-target checks pending. Fresh demand on/off bills/performance still absent",
-    "4": "Real lake inline ran but VUID invalid; Collect never started/no pair; targeted view fix passed, actual rerun pending",
+    "1": "Historicala2a8fce debug600/600 clock-quality valid unchanged. New47bdd14 short debug workload records valid but noETW runner invalid. Release600/3000 and probe-off1% remain open.",
+    "2": "Isolated measurement-only baseline ef5568b prepared; no valid representative four-scene Release baseline/candidate series. New short47bdd14 workload/GPU smokes are not a substitute.",
+    "3": "Input-matched demand diagnostic backing0/scans/locks retained; new workload counters have real short debug evidence. Binding scratch/snapshot remains experimental; no comparable clean CPU gain accepted.",
+    "4": "Latest0c6bc69 real lake inline/Collect children passed tests withoutVUID; complete recorded inputs and1060u32 constants match30frames/season, but water/ice raw pixels strictly FAIL. Older invalid and same-mode drift evidence retained.",
     "5": "reserved nodes and bounded reclaim source previously validated; complete sustained-pressure/fault/stability acceptance still open; legacy raw retire fallback remains",
     "6": "Final release freezing/AB/16ms/long-run/macOS incomplete, no push"
   },
@@ -610,9 +763,9 @@
   },
   "remaining_task_list": "docs/performance/remaining-tasks-20261026.md",
   "schema": "windows-perf-progress-v2",
-  "updated_local_date": "2026-10-26",
+  "updated_local_date": "2026-10-27",
   "source_candidate_worktree_dirty": true,
-  "source_candidate_identity_note": "Code committed through370f795 (demand7c42f3a, test-only timeline370f795). This progress-doc batch awaits root commit; no new frozen performance candidate. Default/probe all-target checks running.",
+  "source_candidate_identity_note": "Latest independently checked frozen experimental source5767a40 is debug binding diagnostic only; source47bdd14 workload and0c6bc69 surface evidence each retain their separate frozen identity. No frozen Release candidate or clean CPU benefit is accepted.",
   "historical_validation": {
     "source_commit": "53bbbef87fd2ce63906e478dc0ea2b109c14a398",
     "scope": "Earlier source through53bbbef; none of these successes verifies the current combined ownership/Collect candidate.",
@@ -833,7 +986,7 @@
     "remote_project_archive_report_paths_absent_from_copy": 11417,
     "strategy": "Start separate publication branch from real695 descendant of8fd, explicitly record four-file import-byte normalization, replay only post-b91d512 stage commits under tiny-glade/, verify final mapped source identity and recheck remote; do not force-push independent import root."
   },
-  "evidence_identity_scope": "Old evidence identities retained. New small reports/logs hashed; no large trace re-read. Each test result is limited to its checked source; Country latest retries pass, tiny/strict mapped fixture remain open.",
+  "evidence_identity_scope": "Historical identities/failures remain unchanged. Latest47bdd14/0c6bc69 small JSON/logs and eight original RGBA files were independently checked and hashed; no new runtime, compile or benchmark was started. Latest5767a40 binding raw sessions/run references and stage5 strict logs were independently checked; no new execution was started.",
   "current_compile_validation": {
     "scope": "Checked working-tree snapshots only; current targeted/GPU verification and later source changes are not implied passes.",
     "default": {
@@ -1118,7 +1271,185 @@
       "log": ".perf/mapped-raster-timeline-strict.log",
       "source_commit": "370f795",
       "source_scope": "cfg(test) only; production outside test module byte-identical"
-    }
+    },
+    "latest_workload_probe_smokes": {
+      "actual_workload": {
+        "source_commit": "47bdd144bd786f9cc3d25fb7cd607a7ca02cc135",
+        "profile": "debug",
+        "executable_sha256": "9a0b5c5e1b35abcd54d65c24f0a69f0311fefd10ad8040413ef95c7450c5c568",
+        "warmup_frames": 60,
+        "valid_observation_frames": 30,
+        "raw_rows_including_seed": 31,
+        "session_valid": true,
+        "actual_workload_valid": true,
+        "actual_workload_errors": [],
+        "collect_joined_tasks_in_30_observations": 720,
+        "collect_joined_waves_in_30_observations": 630,
+        "cross_pass_tasks_subset_in_30_observations": 90,
+        "etw": false,
+        "runner_valid": false,
+        "invalid_reasons": [
+          "No scheduling trace: diagnostic only; coarse CPU cannot establish frame percentiles"
+        ],
+        "clean_cpu_acceptance": false,
+        "production_16ms_acceptance": false
+      },
+      "separate_gpu_diagnostic": {
+        "source_commit": "47bdd144bd786f9cc3d25fb7cd607a7ca02cc135",
+        "profile": "debug",
+        "executable_sha256": "9a0b5c5e1b35abcd54d65c24f0a69f0311fefd10ad8040413ef95c7450c5c568",
+        "run_valid": true,
+        "session_valid": true,
+        "actual_workload_valid": true,
+        "gpu_diagnostic_valid": true,
+        "warmup_frames": 60,
+        "samples": 30,
+        "frames_including_warmup_and_seed": 91,
+        "timestamp_samples": 720,
+        "expected_command_sum": 720,
+        "per_frame_timestamp_count_equals_expected_commands": true,
+        "ring_stats": {
+          "capacity_skips": 0,
+          "completed": 720,
+          "peak_pending": 16,
+          "pending": 0,
+          "retained_samples": 0
+        },
+        "log_tests_passed": 1,
+        "log_tests_ignored": 0,
+        "vuid_observed": false,
+        "command_span_sum_or_max_is_whole_frame_latency": false,
+        "clean_cpu_acceptance_eligible": false,
+        "production_16ms_acceptance": false
+      },
+      "not_final_or_release_acceptance": true
+    },
+    "latest_surface_full_constants": {
+      "source_commit": "0c6bc6956993292a03a6e216cab1f402ad48a16a",
+      "executable_sha256": "3dd4530adf390523157c84eaae3678af2280df984018056ac862f31e213325e5",
+      "child_tests_passed": 2,
+      "child_tests_ignored": 0,
+      "vuid_observed": false,
+      "pair_passes": false,
+      "per_season": {
+        "water": {
+          "recorded_input_equal_all_frames": true,
+          "full_frame_constant_words_per_frame": 1060,
+          "compared_frames": 30,
+          "pass_call_counts_equal_all_frames": true,
+          "pixels": [
+            {
+              "frame": 20,
+              "changed_pixels": 89205,
+              "max_channel_abs": 3
+            },
+            {
+              "frame": 30,
+              "changed_pixels": 169503,
+              "max_channel_abs": 7
+            }
+          ],
+          "exact_pixels_equal": false,
+          "strict_gate_passed": false,
+          "comparator_valid_same_input": false,
+          "comparator_input_mismatches": [
+            "frame_20_fixture_digest_declarations_differ",
+            "frame_30_fixture_digest_declarations_differ"
+          ]
+        },
+        "ice": {
+          "recorded_input_equal_all_frames": true,
+          "full_frame_constant_words_per_frame": 1060,
+          "compared_frames": 30,
+          "pass_call_counts_equal_all_frames": true,
+          "pixels": [
+            {
+              "frame": 20,
+              "changed_pixels": 6958,
+              "max_channel_abs": 3
+            },
+            {
+              "frame": 30,
+              "changed_pixels": 10890,
+              "max_channel_abs": 5
+            }
+          ],
+          "exact_pixels_equal": false,
+          "strict_gate_passed": false,
+          "comparator_valid_same_input": false,
+          "comparator_input_mismatches": [
+            "frame_20_fixture_digest_declarations_differ",
+            "frame_30_fixture_digest_declarations_differ"
+          ]
+        }
+      },
+      "interpretation": "All recorded CPU input dictionaries, full1060u32 FrameConstants and pass-call counts match; RGBA differs. The comparator mismatch labels name output fixture digest declarations, not newly differing CPU inputs. Unobserved GPU inputs/history are not proven equal."
+    },
+    "latest_binding_diagnostic": {
+      "schema": "binding-scope-diagnostic-series-v1",
+      "path": ".perf/binding-scope-diagnostics/binding-scope-debug-5767a40-static-1/summary.json",
+      "series_valid": false,
+      "diagnostic_only": true,
+      "cpu_performance_evidence": false,
+      "production_16ms_acceptance": false,
+      "source_commit": "5767a4073d0adbb8c9bd2daee93f6e7930a25ca4",
+      "executable_sha256": "4fdccdc45faeaffb53f1ebacb3ae1796ddaf3bdb432387b99c30f81332320397",
+      "warmup": 60,
+      "samples": 30,
+      "sessions_valid": true,
+      "same_before_after_inputs_across_pair": true,
+      "cpu_rounds_valid": false,
+      "workload_mismatch": {
+        "direct_dispatch_api_calls_all31rows": {
+          "off": 357,
+          "on": 355
+        },
+        "row18_graph_recording_chunks": {
+          "off": 8,
+          "on": 7
+        }
+      },
+      "bill_delta_excluding_baseline": {
+        "off": {
+          "callbacks": 840,
+          "failed_callbacks": 0,
+          "shape_fallback_callbacks": 0,
+          "snapshot_builds": 10830,
+          "snapshot_hits": 0,
+          "vec_capacity_bytes_after_growth_sum": 3115200,
+          "vec_capacity_growths": 13530
+        },
+        "on": {
+          "callbacks": 840,
+          "failed_callbacks": 0,
+          "shape_fallback_callbacks": 0,
+          "snapshot_builds": 7080,
+          "snapshot_hits": 3750,
+          "vec_capacity_bytes_after_growth_sum": 249600,
+          "vec_capacity_growths": 720
+        }
+      },
+      "whole_frame_cpu_gain": null,
+      "interpretation": "Fewer scratch growth/snapshot-build events observed; unmatched actual workload, debug diagnostic and no ETW prohibit performance attribution. Capacity-after-growth sums are neither allocation bytes nor peak memory."
+    },
+    "latest_pressure_tests": [
+      {
+        "path": ".perf/stage5-pressure-reclaim-strict.log",
+        "sha256": "192af72d84758e67444df1bd12c3af95eb29eff42baa991c1cf29579878857d6",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "vuid_in_log": 0
+      },
+      {
+        "path": ".perf/stage5-retirement-reservation-strict.log",
+        "sha256": "dc2764a524fb349bf2448285780f44375e0866b6b31545e9bdd4ba16f3ba2d43",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "vuid_in_log": 0
+      }
+    ]
   },
   "historical_tool_validations": [
     {
@@ -1348,7 +1679,7 @@
       "old_rounds_reclassified": false
     }
   },
-  "progress_document_freeze_boundary": "Final small update records committed370f795 and pending full-target checks. Stop actual docs after this batch; root commits/freezes next; later evidence staging only.",
+  "progress_document_freeze_boundary": "This latest evidence update exists only as a staging patch; no actual docs/source write or new run was performed. Root may review/apply before the next freeze.",
   "previous_measurement_closure_strict": {
     "status": "invalid_process_OS_cumulative_crosscheck",
     "source_commit": "29095eb143a029eb32edef56176bc1b6e3577c77",
@@ -1492,7 +1823,7 @@
     "built": false,
     "performance_accepted": false
   },
-  "current_evidence_summary": "docs/performance/evidence-update-3e3b29c-20261026.md",
+  "current_evidence_summary": "docs/performance/evidence-update-workload-probe-20261026.md",
   "latest_tool_validation_historical_archive": {
     "commit": "c5a6125",
     "passed": 76,
@@ -1511,7 +1842,7 @@
     "acceptance_gates_changed": false,
     "scope": "Lossless archive, metadata identity, accounting and Job tools only; not performance acceptance"
   },
-  "source_candidate_dirty_scope": "progress documents before root commit; demand-plan and timeline source commits complete",
+  "source_candidate_dirty_scope": "Frozen5767a40 binding EXE identity was verified in its run references; this does not validate later working-tree edits or imply a clean performance comparison.",
   "latest_all_target_check_update": {
     "source_commit": "370f795",
     "default": {
@@ -1526,17 +1857,276 @@
     },
     "runtime_or_performance_acceptance": false
   },
-  "latest_implementation_commit": "c7f4dc738a618d3469b4ea12114bb0ce3e49bd54",
+  "latest_implementation_commit": "5767a4073d0adbb8c9bd2daee93f6e7930a25ca4",
   "latest_workload_probe_followup": {
     "source": "20de20d",
     "frame_constant_observer_source": "c7f4dc7",
     "baseline_instrumentation_commit": "ef5568b7c81b7b67529eb80fa8c856f34c63f90b",
     "constant_bill_evidence": "docs/performance/constant-demand-592f655.json",
-    "surface_pair": "failed strict input/pixels; zeroVUID children, same-mode drift reproduced",
-    "real_new_probe_runtime": "pending",
+    "surface_pair": "latest0c6bc69 complete constants/recorded inputs equal, both tests pass/zeroVUID, strict water/ice RGBA fails; older failures and same-mode drift preserved",
+    "real_new_probe_runtime": "completed short47bdd14 debug workload smoke and separate GPU diagnostic; noETW CPU smoke remains invalid for timing acceptance",
     "release_AB": "pending",
     "probe_overhead": "pending",
     "pushed": false,
-    "summary": "docs/performance/evidence-update-workload-probe-20261026.md"
+    "summary": "docs/performance/evidence-update-workload-probe-20261026.md",
+    "latest_runtime_workload_source": "47bdd144bd786f9cc3d25fb7cd607a7ca02cc135",
+    "latest_surface_source": "0c6bc6956993292a03a6e216cab1f402ad48a16a",
+    "binding_candidate": "experimental; no validated clean CPU benefit"
+  },
+  "historical_status_updates": [
+    {
+      "scope": "Previous current-state fields preserved before latest47bdd14/0c6bc69 runtime evidence update; old failures remain in original arrays/artifacts.",
+      "previous": {
+        "implementation_status": "workload_probe_committed_compiled_and_targeted_tests_passed; demand_backing_zero_on_input_matched_diagnostic; cold_surface_pixels_not_accepted; release_performance_open",
+        "source_candidate_commit": "370f7959e0a9a47d15f84477760f4a01147680fb",
+        "source_candidate_identity_note": "Code committed through370f795 (demand7c42f3a, test-only timeline370f795). This progress-doc batch awaits root commit; no new frozen performance candidate. Default/probe all-target checks running.",
+        "updated_local_date": "2026-10-26",
+        "current_evidence_summary": "docs/performance/evidence-update-3e3b29c-20261026.md",
+        "stage_progress": {
+          "0": "source/tooling and29095eb frozen Release integration-test pair exist; full Cargo invocations and production WSI not accepted",
+          "1": "Prospective debug600/600 clock-quality round valid; old strict invalid unchanged. Release600/3000 and probe-off1% remain open",
+          "2": "Isolated24369d5c exact-production29095eb+measurement brackets baseline prepared but unbuilt; valid four-scene baseline absent",
+          "3": "7c42f3a demand plan committed, targeted Country passes; current default/probe all-target checks pending. Fresh demand on/off bills/performance still absent",
+          "4": "Real lake inline ran but VUID invalid; Collect never started/no pair; targeted view fix passed, actual rerun pending",
+          "5": "reserved nodes and bounded reclaim source previously validated; complete sustained-pressure/fault/stability acceptance still open; legacy raw retire fallback remains",
+          "6": "Final release freezing/AB/16ms/long-run/macOS incomplete, no push"
+        },
+        "unverified": [
+          "New committed demand source default/probe workspace all-target checks running; full tiny remains failed solely by preexisting rollercoaster assertion in latest zero-VUID rerun",
+          "Preexisting rollercoaster float oracle mismatch remains open; full tiny suite failed, assertion unchanged",
+          "Release600/3000 measurement closure and complete feature-off<=1% overhead",
+          "Valid original water/ice strict inline/Collect pixel pair after view fix",
+          "Representative four-scene Windows baseline and stable CPU benefits",
+          "All four scenes every-run render CPU p95<=16ms and no>5%p95/p99 regression",
+          "Full pressure/fault/30-minute10000-frame stability; WSI deferred; macOS unverified"
+        ],
+        "latest_workload_probe_followup": {
+          "source": "20de20d",
+          "frame_constant_observer_source": "c7f4dc7",
+          "baseline_instrumentation_commit": "ef5568b7c81b7b67529eb80fa8c856f34c63f90b",
+          "constant_bill_evidence": "docs/performance/constant-demand-592f655.json",
+          "surface_pair": "failed strict input/pixels; zeroVUID children, same-mode drift reproduced",
+          "real_new_probe_runtime": "pending",
+          "release_AB": "pending",
+          "probe_overhead": "pending",
+          "pushed": false,
+          "summary": "docs/performance/evidence-update-workload-probe-20261026.md"
+        },
+        "latest_implementation_commit": "c7f4dc738a618d3469b4ea12114bb0ce3e49bd54",
+        "source_candidate_dirty_scope": "progress documents before root commit; demand-plan and timeline source commits complete",
+        "evidence_identity_scope": "Old evidence identities retained. New small reports/logs hashed; no large trace re-read. Each test result is limited to its checked source; Country latest retries pass, tiny/strict mapped fixture remain open."
+      },
+      "previous_latest_cpu_round_flags": {
+        "current_measurement_round_valid": true,
+        "current_measurement_round_scope": "a2a8fce debug quality smoke only; new workload-probe native runtime pending",
+        "current_owner_cpu_crosscheck": "new debug quality round passed1.2780%; old strict long owner0.53423% retained separately",
+        "current_process_cpu_crosscheck": "new debug quality raw process difference0.3694%; mandatory Microsoft process same-stream difference0.0010603%; old strict long process4.75882% failed"
+      }
+    }
+  ],
+  "latest_workload_runtime": {
+    "source_commit": "47bdd144bd786f9cc3d25fb7cd607a7ca02cc135",
+    "profile": "debug",
+    "executable_sha256": "9a0b5c5e1b35abcd54d65c24f0a69f0311fefd10ad8040413ef95c7450c5c568",
+    "warmup_frames": 60,
+    "valid_observation_frames": 30,
+    "raw_rows_including_seed": 31,
+    "session_valid": true,
+    "actual_workload_valid": true,
+    "actual_workload_errors": [],
+    "collect_joined_tasks_in_30_observations": 720,
+    "collect_joined_waves_in_30_observations": 630,
+    "cross_pass_tasks_subset_in_30_observations": 90,
+    "etw": false,
+    "runner_valid": false,
+    "invalid_reasons": [
+      "No scheduling trace: diagnostic only; coarse CPU cannot establish frame percentiles"
+    ],
+    "clean_cpu_acceptance": false,
+    "production_16ms_acceptance": false
+  },
+  "latest_gpu_command_diagnostic_runtime": {
+    "source_commit": "47bdd144bd786f9cc3d25fb7cd607a7ca02cc135",
+    "profile": "debug",
+    "executable_sha256": "9a0b5c5e1b35abcd54d65c24f0a69f0311fefd10ad8040413ef95c7450c5c568",
+    "run_valid": true,
+    "session_valid": true,
+    "actual_workload_valid": true,
+    "gpu_diagnostic_valid": true,
+    "warmup_frames": 60,
+    "samples": 30,
+    "frames_including_warmup_and_seed": 91,
+    "timestamp_samples": 720,
+    "expected_command_sum": 720,
+    "per_frame_timestamp_count_equals_expected_commands": true,
+    "ring_stats": {
+      "capacity_skips": 0,
+      "completed": 720,
+      "peak_pending": 16,
+      "pending": 0,
+      "retained_samples": 0
+    },
+    "log_tests_passed": 1,
+    "log_tests_ignored": 0,
+    "vuid_observed": false,
+    "command_span_sum_or_max_is_whole_frame_latency": false,
+    "clean_cpu_acceptance_eligible": false,
+    "production_16ms_acceptance": false
+  },
+  "latest_surface_full_constants_runtime": {
+    "source_commit": "0c6bc6956993292a03a6e216cab1f402ad48a16a",
+    "executable_sha256": "3dd4530adf390523157c84eaae3678af2280df984018056ac862f31e213325e5",
+    "child_tests_passed": 2,
+    "child_tests_ignored": 0,
+    "vuid_observed": false,
+    "pair_passes": false,
+    "per_season": {
+      "water": {
+        "recorded_input_equal_all_frames": true,
+        "full_frame_constant_words_per_frame": 1060,
+        "compared_frames": 30,
+        "pass_call_counts_equal_all_frames": true,
+        "pixels": [
+          {
+            "frame": 20,
+            "changed_pixels": 89205,
+            "max_channel_abs": 3
+          },
+          {
+            "frame": 30,
+            "changed_pixels": 169503,
+            "max_channel_abs": 7
+          }
+        ],
+        "exact_pixels_equal": false,
+        "strict_gate_passed": false,
+        "comparator_valid_same_input": false,
+        "comparator_input_mismatches": [
+          "frame_20_fixture_digest_declarations_differ",
+          "frame_30_fixture_digest_declarations_differ"
+        ]
+      },
+      "ice": {
+        "recorded_input_equal_all_frames": true,
+        "full_frame_constant_words_per_frame": 1060,
+        "compared_frames": 30,
+        "pass_call_counts_equal_all_frames": true,
+        "pixels": [
+          {
+            "frame": 20,
+            "changed_pixels": 6958,
+            "max_channel_abs": 3
+          },
+          {
+            "frame": 30,
+            "changed_pixels": 10890,
+            "max_channel_abs": 5
+          }
+        ],
+        "exact_pixels_equal": false,
+        "strict_gate_passed": false,
+        "comparator_valid_same_input": false,
+        "comparator_input_mismatches": [
+          "frame_20_fixture_digest_declarations_differ",
+          "frame_30_fixture_digest_declarations_differ"
+        ]
+      }
+    },
+    "interpretation": "All recorded CPU input dictionaries, full1060u32 FrameConstants and pass-call counts match; RGBA differs. The comparator mismatch labels name output fixture digest declarations, not newly differing CPU inputs. Unobserved GPU inputs/history are not proven equal."
+  },
+  "binding_experiment": {
+    "schema": "binding-scope-diagnostic-series-v1",
+    "path": ".perf/binding-scope-diagnostics/binding-scope-debug-5767a40-static-1/summary.json",
+    "series_valid": false,
+    "diagnostic_only": true,
+    "cpu_performance_evidence": false,
+    "production_16ms_acceptance": false,
+    "source_commit": "5767a4073d0adbb8c9bd2daee93f6e7930a25ca4",
+    "executable_sha256": "4fdccdc45faeaffb53f1ebacb3ae1796ddaf3bdb432387b99c30f81332320397",
+    "warmup": 60,
+    "samples": 30,
+    "sessions_valid": true,
+    "same_before_after_inputs_across_pair": true,
+    "cpu_rounds_valid": false,
+    "workload_mismatch": {
+      "direct_dispatch_api_calls_all31rows": {
+        "off": 357,
+        "on": 355
+      },
+      "row18_graph_recording_chunks": {
+        "off": 8,
+        "on": 7
+      }
+    },
+    "bill_delta_excluding_baseline": {
+      "off": {
+        "callbacks": 840,
+        "failed_callbacks": 0,
+        "shape_fallback_callbacks": 0,
+        "snapshot_builds": 10830,
+        "snapshot_hits": 0,
+        "vec_capacity_bytes_after_growth_sum": 3115200,
+        "vec_capacity_growths": 13530
+      },
+      "on": {
+        "callbacks": 840,
+        "failed_callbacks": 0,
+        "shape_fallback_callbacks": 0,
+        "snapshot_builds": 7080,
+        "snapshot_hits": 3750,
+        "vec_capacity_bytes_after_growth_sum": 249600,
+        "vec_capacity_growths": 720
+      }
+    },
+    "whole_frame_cpu_gain": null,
+    "interpretation": "Fewer scratch growth/snapshot-build events observed; unmatched actual workload, debug diagnostic and no ETW prohibit performance attribution. Capacity-after-growth sums are neither allocation bytes nor peak memory."
+  },
+  "latest_pressure_tests": [
+    {
+      "path": ".perf/stage5-pressure-reclaim-strict.log",
+      "sha256": "192af72d84758e67444df1bd12c3af95eb29eff42baa991c1cf29579878857d6",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "vuid_in_log": 0
+    },
+    {
+      "path": ".perf/stage5-retirement-reservation-strict.log",
+      "sha256": "dc2764a524fb349bf2448285780f44375e0866b6b31545e9bdd4ba16f3ba2d43",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "vuid_in_log": 0
+    }
+  ],
+  "latest_engineering_checkpoint": {
+    "head_commit": "366311c",
+    "binding_commit": "5767a40",
+    "pressure_test_commit": "54120b6",
+    "publication_policy_commit": "366311c",
+    "log_evidence": [
+      {
+        "path": ".perf/binding-stage5-surface-workspace-default-check.log",
+        "sha256": "c67469b6a24d5d01105a8010f6c537dc538ed6470c85def4e19489052599c98c",
+        "finished_dev_profile": true,
+        "elapsed": "2m 43s"
+      },
+      {
+        "path": ".perf/binding-stage5-surface-workspace-enabled-check.log",
+        "sha256": "c4bdbe06586f64c584603bb3e6a81f57997b5cd513724a85b485462d1d33f81f",
+        "finished_dev_profile": true,
+        "elapsed": "2m 41s"
+      },
+      {
+        "path": ".perf/surface-comparator-v3-tests.log",
+        "sha256": "80b6232ad5e8fdd68ec8ed7689aaf3856c98a77ff3ef45e9028a3f2c360dccc6",
+        "passed": 20,
+        "skipped": 0
+      }
+    ],
+    "root_reported_command_scope": "workspace --all-targets, default and cpu-probe; raw logs independently confirm both dev-profile completions",
+    "surface_comparator_v3": "20 Python tests passed; source wiring compiled; new GPU run pending",
+    "workload_consistency_fix_and_per_pass_diagnostics": "in_progress",
+    "acceptance_boundary": "Compilation and comparator tests do not supersede strict pixel failures or establish CPU benefit."
   }
 }

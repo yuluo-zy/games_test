@@ -1,3 +1,28 @@
+# 当前进度与未完成任务（最新证据更新：2026-10-27）
+
+**短程真实工作量与独立GPU诊断已实跑；最新CPU smoke没有ETW，严格水冰像素仍失败，Release收益与16ms未验收。**
+证据见[测量补线与真实常量账单](C:/game/docs/performance/evidence-update-workload-probe-20261026.md)。新binding实现仍是实验候选，不能从旧PROFILE热点或锁次数减少宣布CPU收益。
+
+## 最新原始运行证据
+
+- `workload-clean-smoke-47bdd14-1`：debug，60帧预热/30个观察帧，session与actual_workload均有效；31行含seed，30观察实际720个Collect joined任务/630 waves，cross-pass90任务是subset。测试1 pass/0 ignored，但无ETW，run.valid=false，不能接受逐帧CPU/p95或探针开销。
+- `workload-probe-47bdd14-1`：独立GPU诊断run/session/workload/GPU均valid；91帧、720时间戳，每帧样本数量等于该帧实际expected_commands，最终skips/pending/retained均0，VUID0。它不是干净CPU轮；命令跨度sum/max不是全帧GPU延迟，production16ms=false。
+- `lake-full-constants-0c6bc69-1`：inline/Collect各1 pass/0 ignored/0 VUID；水、冰各30帧完整已记录input、1060个u32 FrameConstants和pass调用次数相等。但水20/30帧分别改变89,205/169,503像素，最大通道差3/7；冰6,958/10,890，最大差3/5，严格RGBA失败。完整CPU常量相等不证明所有GPU输入/历史相等。
+
+## 当前依赖队列
+
+1. 保留最新严格像素失败，定位最早分歧的GPU输入/历史/阶段；用同模式重复与冷启动/另行声明的稳态诊断区分问题，零容差不变。不能用两个测试进程exit0替代像素pair通过。
+2. 审查binding scratch/单entry快照实验的真实owner、预算/回收、取消/错误与顺序；验证完整后再冻结对照。无收益验证前不把该候选写成默认优化完成。
+3. 隔离旧生产源码只移植相同测量探针，使用同字节common3 harness与各source自己的compiled defaults；完成source/EXE/PDB/工具/输入身份和Release冻结。旧debug/new短smoke均不能替代正式600预热/3000有效ETW样本及probe feature-off<=1%。
+4. 四场景固定1280×720、scale1、1/60和原画质，按AB/BA/AB开展三对独立比较；完整语义/轨迹/实际native draw API与pass、H2D/D2D payload分别核验，任务/录制成本变化单列调查，不能靠成本转移满足指标。近阈值扩测规则须预先声明。
+5. 四场景每轮render CPU p95<=16ms，p95/p99回退>5%拒绝；同时复核App、owner、全部process/non-owner关键路径。完整上传与indirect参数证据、source审查capabilities及像素正确性未闭环时保持待验。
+6. 完整压力/故障，以及稳定负载、效果切换、resize各至少30分钟且10000帧的稳定性仍待验。既有rollercoaster浮点断言保持失败边界，WSI兼容按用户指示暂缓，macOS待验。
+7. 全部要求达成后才发布新远程分支；当前没有推送。保留原历史和所有失败，不以局部测试通过宣称整轮优化完成。
+
+## 历史进度快照（以下旧pending不覆盖上方最新证据）
+
+下面保留此前完整文本及原始失败，供源码与证据追溯；其中“待实跑/正在检查”等是原冻结时状态，不是最新状态。
+
 # 当前进度与未完成任务（2026-10-26）
 
 **当前测量源码已提交至c7f4dc7，默认/probe全目标检查通过；Release性能与16ms仍未验收。**
@@ -76,3 +101,13 @@
 ## 全目标检查更新
 
 `370f795` 源码的默认工作区全目标检查通过（2m42s），独立 `tiny-glade/cpu-probe` 全目标检查通过（36.39s），日志分别为 `.perf/constant-demand-workspace-default-check.log`、`.perf/constant-demand-workspace-probe-check.log`。该检查不替代真实帧账单、水/冰像素或 Release 性能验收。
+
+### 最新附注：binding与压力回归（独立核验原始记录）
+
+[binding系列](C:/game/.perf/binding-scope-diagnostics/binding-scope-debug-5767a40-static-1/summary.json) 绑定source `5767a4073d0adbb8c9bd2daee93f6e7930a25ca4`、debug EXE `4fdccdc45faeaffb53f1ebacb3ae1796ddaf3bdb432387b99c30f81332320397`。OFF/ON各60预热、30观察帧，session及actual_workload各自有效、前后输入轨迹跨两轮相等；但两轮均无ETW且为诊断，run无效，系列也因实际工作量不同而无效：31行direct_dispatch_api_calls逐行为357/355，row18 recording chunks为8/7。不能据此计算CPU收益。
+
+排除row0后30帧账本差分：OFF/ON Vec容量增长事件13,530/720，增长后容量字节累计3,115,200/249,600，snapshot builds10,830/7,080、hits0/3,750；callbacks均840、builds+hits均10,830，failed/shape fallback均0。这里的容量累计不是malloc字节、峰值内存或CPU时长；只证明本次诊断少了相关事件，仍需相同真实工作量的正式对照。
+
+[压力配额](C:/game/.perf/stage5-pressure-reclaim-strict.log) 3 pass、[退役预留](C:/game/.perf/stage5-retirement-reservation-strict.log) 7 pass，均0 failed/ignored，原日志未见VUID。这些是定向正确性回归，不能代替完整故障矩阵、长跑、像素一致性或Release四场景验收。所有旧失败保持原判。
+
+最新工程checkpoint为`366311c`：binding候选已提交`5767a40`，压力/退役定向测试已提交`54120b6`，publication policy为`366311c`。Root报告本次两次检查范围为workspace --all-targets（default/cpu-probe）；独立核对[default日志](C:/game/.perf/binding-stage5-surface-workspace-default-check.log)和[enabled日志](C:/game/.perf/binding-stage5-surface-workspace-enabled-check.log)，均有dev-profile完成记录（2m43/2m41）且无编译error。[surface comparator v3](C:/game/.perf/surface-comparator-v3-tests.log) 实际20 tests通过、0 skip；源码接线编译已通过，新GPU复验尚未运行。工作量一致性修复与逐pass诊断仍在推进。编译/比较器单测通过不改变上述像素失败和无CPU收益结论。
