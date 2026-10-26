@@ -35,10 +35,12 @@ Frozen builds are accepted through either a completed whole-Cargo build or the e
 
 Target-only evidence explicitly leaves `entire_cargo_build_passed=false` and `remaining_targets_are_not_accepted=true`. It never claims that extra bins or workspace all-target checks passed. Those checks remain independent project acceptance requirements.
 
+Known-helper build evidence has one common acceptance decision for source, artifact, command, raw JSONL and lifecycle. A whole-Cargo claim requires an actual successful `build-finished` event after the requested artifact and zero Cargo/wrapper exit codes; an owned private wrapper additionally requires its matching zero-exit `perf-owned-cargo-finish` event. Relabelling mutually agreeing lifecycle flags cannot replace those raw events. The legacy whole-Cargo route remains available only when there is no new target-specific proof to contradict or discard.
+
 Example after the main agent freezes the appropriate common diagnostic-capable executable:
 
 ```powershell
 python tools/perf_gpu_diagnostic.py --build-json .perf/headless-builds/BUILD/build.json --output .perf/gpu-diagnostics/RUN --scene static --warmup 600 --samples 3000
 ```
 
-Run this separately from clean CPU captures. This tool has 24 synthetic Python validation tests so far; the Rust helpers have CPU-only tests pending the main agent's serial compilation. Actual GPU diagnostic smoke and four-scene coverage remain pending until explicitly run and checked.
+Run this separately from clean CPU captures. This tool has 27 synthetic Python validation tests so far; the Rust helpers have CPU-only tests pending the main agent's serial compilation. Actual GPU diagnostic smoke and four-scene coverage remain pending until explicitly run and checked.

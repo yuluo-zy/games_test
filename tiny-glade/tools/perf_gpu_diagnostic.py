@@ -47,56 +47,47 @@ def dump(path, value):
     Path(path).write_text(json.dumps(value, indent=2, ensure_ascii=False)+'\n', encoding='utf-8')
 
 
-def requested_target_proof(directory, build, source, frozen_exe):
-    """Accept the completed requested target, never other unfinished targets.
+def build_acceptance_proof(directory, build, source, frozen_exe):
+    """One scope decision over the known producer's metadata and raw events."""
+    completed=build.get('entire_cargo_build_passed')
+    require(type(completed) is bool, 'Cargo completion scope missing')
+    standalone_path=directory/'cargo-lifecycle.json'
+    known=any(key in build for key in ('requested_test_target_completed','requested_target_evidence_sha256',
+        'build_jsonl_sha256','build_helper_sha256','cargo_lifecycle'))
+    known |= standalone_path.exists() or (directory/'requested-target-artifact.json').exists()
+    if not known:
+        require(completed, 'legacy build without requested-target proof must have whole Cargo success')
+        return {'policy':'whole-cargo-build-passed','entire_cargo_build_passed':True}
 
-    The hash-whitelisted freezer compares full source inventories before/after
-    build and publishes metadata only after equality. Later source edits do not
-    alter an already frozen executable; no current-worktree equality is inferred.
-    """
-    require(build.get('requested_test_target_completed') is True,
-            'requested test artifact was not completed')
-    require(build.get('features')==['default(mimalloc)','cpu-probe']
-            and build.get('cpu_probe_feature') is True,
-            'target-only declared feature set differs from requested artifact protocol')
-    require(build.get('dirty') is False and source.get('status')==''
-            and re.fullmatch('[0-9a-f]{40}',source.get('commit') or ''),
-            'target-only route requires a frozen clean source commit')
-    require(all(source['files'].get(name)==sha for name,sha in REVIEWED_TARGET_FREEZER.items())
-            and build.get('build_helper_sha256')==REVIEWED_TARGET_FREEZER['tools/perf_build_target.py'],
-            'target-only freezer source guard version is not reviewed/whitelisted')
+    lifecycle=build.get('cargo_lifecycle')
+    require(isinstance(lifecycle,dict) and lifecycle.get('strategy')=='requested test target only'
+            and build.get('requested_test_target_completed') is True
+            and lifecycle.get('requested_target_completed') is True
+            and lifecycle.get('entire_cargo_build_passed') is completed
+            and lifecycle.get('active_build_processes_remaining') is False
+            and lifecycle.get('remaining_targets_are_not_accepted') is True,
+            'known build completion scope/target/private-Job lifecycle missing or contradictory')
+    proof_names=['requested-target-artifact.json','build.jsonl','build.stderr.log']
+    if standalone_path.exists():
+        require(json.loads(standalone_path.read_text(encoding='utf-8'))==lifecycle,
+                'inline and standalone Cargo lifecycle differ')
+        proof_names.append('cargo-lifecycle.json')
     artifact_path=directory/'requested-target-artifact.json'
     jsonl_path=directory/'build.jsonl'
     require(digest(artifact_path)==build.get('requested_target_evidence_sha256')
             and digest(jsonl_path)==build.get('build_jsonl_sha256'),
             'requested artifact/build JSONL evidence SHA mismatch')
     artifact=json.loads(artifact_path.read_text(encoding='utf-8'))
-    lifecycle=json.loads((directory/'cargo-lifecycle.json').read_text(encoding='utf-8'))
-    require(lifecycle==build.get('cargo_lifecycle'), 'private build Job lifecycle metadata mismatch')
-    require(lifecycle.get('strategy')=='requested test target only'
-            and lifecycle.get('requested_target_completed') is True
-            and lifecycle.get('job_assigned_before_cargo_start') is True
-            and lifecycle.get('termination_was_intentional_after_requested_artifact') is True
-            and lifecycle.get('active_build_processes_remaining') is False
-            and lifecycle.get('remaining_targets_are_not_accepted') is True
-            and lifecycle.get('entire_cargo_build_passed') is False
-            and lifecycle.get('job_termination_exit_code')==TERMINATED_AFTER_TARGET
-            # It may already have exited naturally between emitting the
-            # artifact and TerminateJobObject. This accepts no extra targets.
-            and lifecycle.get('wrapper_exit_code') in (0,TERMINATED_AFTER_TARGET)
-            and lifecycle.get('cargo_exit_code') in (None,TERMINATED_AFTER_TARGET),
-            'requested target private Job did not terminate cleanly after artifact completion')
-    spec=json.loads((directory/'build-job-spec.json').read_text(encoding='utf-8'))
-    cwd=Path(spec['cwd']).resolve()
+    require(build.get('features')==['default(mimalloc)','cpu-probe']
+            and build.get('cpu_probe_feature') is True
+            and build.get('profile') in ('debug','release'),
+            'known build declared features/profile differ from requested artifact protocol')
     expected=['cargo','build','-p','tiny-glade','--test','original_gameplay_chain',
-              '--locked','--offline','-j1','--message-format=json-render-diagnostics',
-              '--features','cpu-probe']
-    require(build.get('profile') in ('debug','release'), 'requested target profile missing')
+              '--locked','--offline','-j1','--message-format=json-render-diagnostics','--features','cpu-probe']
     if build['profile']=='release':expected.append('--release')
-    require(spec.get('command')==build.get('command')==expected, 'requested build command mismatch')
-    gate=directory/'build-job-assigned.go'
-    require(Path(spec['gate']).resolve()==gate.resolve()
-            and gate.read_text(encoding='utf-8')=='assigned', 'private Job assignment gate missing/mismatched')
+    require(build.get('command')==expected,'requested build command mismatch')
+    manifest=Path(artifact.get('manifest_path','')).resolve()
+    cwd=manifest.parents[2]
     target=artifact.get('target') or {}
     profile=artifact.get('profile') or {}
     original_exe=Path(artifact.get('executable','')).resolve()
@@ -105,42 +96,82 @@ def requested_target_proof(directory, build, source, frozen_exe):
             and artifact.get('features')==['cpu-probe','default','mimalloc']
             and original_exe.name==frozen_exe.name
             and original_exe.parent==(cwd/'target'/build['profile']/'deps').resolve()
-            and Path(artifact.get('manifest_path','')).resolve()==(cwd/'crates/tiny-glade/Cargo.toml').resolve()
+            and manifest==(cwd/'crates/tiny-glade/Cargo.toml').resolve()
             and (build['profile']!='release' or profile.get('opt_level')=='3'),
             'recorded compiler artifact is not the requested completed test executable')
-    filenames=[Path(p).resolve() for p in artifact.get('filenames',[])]
+    filenames=[Path(name).resolve() for name in artifact.get('filenames',[])]
     require(original_exe in filenames and original_exe.with_suffix('.pdb') in filenames,
             'requested compiler artifact EXE/PDB filenames missing')
     events=[]
     for line in jsonl_path.read_text(encoding='utf-8').splitlines():
-        try:events.append(json.loads(line))
+        try:event=json.loads(line)
         except ValueError:continue
+        require(isinstance(event,dict),'unexpected build JSONL event shape')
+        events.append(event)
     require(not any((event.get('reason')=='compiler-message' and event.get('message',{}).get('level')=='error')
-                    or (event.get('reason')=='build-finished' and event.get('success') is False)
-                    for event in events), 'compiler error observed; target-only artifact rejected')
+                    or (event.get('reason')=='build-finished' and event.get('success') is not True)
+                    for event in events),'compiler/build error observed in known build evidence')
     requested=[event for event in events if event.get('reason')=='compiler-artifact'
                and event.get('target',{}).get('name')=='original_gameplay_chain']
-    require(requested==[artifact], 'requested compiler artifact absent/ambiguous/differs from JSONL')
-    starts=[event for event in events if event.get('reason')=='perf-owned-cargo-start']
-    require(len(starts)==1 and type(lifecycle.get('wrapper_pid')) is int and lifecycle['wrapper_pid']>0
-            and type(lifecycle.get('cargo_pid')) is int and lifecycle['cargo_pid']>0
-            and lifecycle['cargo_pid']!=lifecycle['wrapper_pid']
-            and starts[0].get('pid')==lifecycle['cargo_pid']
-            and starts[0].get('wrapper_pid')==lifecycle['wrapper_pid']
-            and events.index(starts[0])<events.index(artifact),
-            'private owned Cargo start/artifact ordering mismatch')
-    stderr_path=directory/'build.stderr.log'
-    stderr=re.sub(r'\x1b\[[0-9;]*[A-Za-z]','',stderr_path.read_text(encoding='utf-8'))
-    require(not re.search(r'(?m)^\s*error(?:\[E\d+\])?:',stderr,re.I),
-            'compiler error present in build stderr')
-    return {'policy':'requested-target-private-job-reviewed-freezer-v1',
-            'requested_test_target_completed':True,'entire_cargo_build_passed':False,
-            'remaining_targets_are_not_accepted':True,
-            'reviewed_freezer_sources':REVIEWED_TARGET_FREEZER,
-            'source_before_after_guard':'hash-whitelisted perf_headless freezer publishes metadata only after complete before/after inventory equality; current worktree may differ',
-            'files':{name:digest(directory/name) for name in ('requested-target-artifact.json','build.jsonl',
-                'cargo-lifecycle.json','build-job-spec.json','build-job-assigned.go','build.stderr.log')}}
+    require(requested==[artifact],'requested compiler artifact absent/ambiguous/differs from JSONL')
+    stderr=re.sub(r'\x1b\[[0-9;]*[A-Za-z]','',(directory/'build.stderr.log').read_text(encoding='utf-8'))
+    require(not re.search(r'(?m)^\s*error(?:\[E\d+\])?:',stderr,re.I),'compiler error present in build stderr')
 
+    starts=[event for event in events if event.get('reason')=='perf-owned-cargo-start']
+    finishes=[event for event in events if event.get('reason')=='perf-owned-cargo-finish']
+    owned=any(lifecycle.get(key) is not None for key in ('wrapper_pid','cargo_pid')) or bool(starts or finishes)
+    if owned:
+        require(lifecycle.get('job_assigned_before_cargo_start') is True
+                and len(starts)==1 and type(lifecycle.get('wrapper_pid')) is int and lifecycle['wrapper_pid']>0
+                and type(lifecycle.get('cargo_pid')) is int and lifecycle['cargo_pid']>0
+                and lifecycle['cargo_pid']!=lifecycle['wrapper_pid']
+                and starts[0].get('pid')==lifecycle['cargo_pid']
+                and starts[0].get('wrapper_pid')==lifecycle['wrapper_pid']
+                and events.index(starts[0])<events.index(artifact),
+                'private owned Cargo start/artifact ordering mismatch')
+        spec=json.loads((directory/'build-job-spec.json').read_text(encoding='utf-8'))
+        gate=directory/'build-job-assigned.go'
+        require(Path(spec['cwd']).resolve()==cwd and spec.get('command')==expected
+                and Path(spec['gate']).resolve()==gate.resolve()
+                and gate.read_text(encoding='utf-8')=='assigned','private Job command/assignment gate mismatch')
+        proof_names.extend(['build-job-spec.json','build-job-assigned.go'])
+
+    if completed:
+        # A known producer may claim whole success only after actual successful
+        # Cargo finish events, not after rewriting mutually agreeing flags.
+        build_finishes=[event for event in events if event.get('reason')=='build-finished']
+        require(lifecycle.get('cargo_exit_code')==0 and lifecycle.get('wrapper_exit_code') in (None,0)
+                and len(build_finishes)==1 and build_finishes[0].get('success') is True
+                and events.index(artifact)<events.index(build_finishes[0]),
+                'whole Cargo success lacks successful build-finished event/zero exits')
+        if owned:
+            require(len(finishes)==1 and finishes[0].get('pid')==lifecycle['cargo_pid']
+                    and finishes[0].get('exit_code')==0
+                    and events.index(build_finishes[0])<events.index(finishes[0]),
+                    'whole owned Cargo success lacks matching zero-exit Cargo finish event')
+        policy='whole-cargo-build-passed'
+    else:
+        # The whitelisted freezer publishes the frozen EXE only after exact
+        # before/after source-inventory equality. Later live edits are irrelevant.
+        require(build.get('dirty') is False and source.get('status')==''
+                and re.fullmatch('[0-9a-f]{40}',source.get('commit') or '')
+                and all(source['files'].get(name)==sha for name,sha in REVIEWED_TARGET_FREEZER.items())
+                and build.get('build_helper_sha256')==REVIEWED_TARGET_FREEZER['tools/perf_build_target.py'],
+                'target-only route requires clean committed source and reviewed freezer source guard')
+        require(owned and standalone_path.exists()
+                and lifecycle.get('termination_was_intentional_after_requested_artifact') is True
+                and lifecycle.get('job_termination_exit_code')==TERMINATED_AFTER_TARGET
+                and lifecycle.get('wrapper_exit_code') in (0,TERMINATED_AFTER_TARGET)
+                and lifecycle.get('cargo_exit_code') in (None,TERMINATED_AFTER_TARGET),
+                'target-only Job did not end safely after the completed requested artifact')
+        policy='requested-target-private-job-reviewed-freezer-v1'
+    proof={'policy':policy,'requested_test_target_completed':True,'entire_cargo_build_passed':completed,
+           'remaining_targets_are_not_accepted':True,
+           'files':{name:digest(directory/name) for name in proof_names}}
+    if not completed:
+        proof.update(reviewed_freezer_sources=REVIEWED_TARGET_FREEZER,
+            source_before_after_guard='hash-whitelisted freezer publishes only after inventory equality; later current-worktree edits do not alter the frozen EXE')
+    return proof
 
 def frozen_identity(build_path):
     path = Path(build_path).resolve(strict=True)
@@ -166,39 +197,7 @@ def frozen_identity(build_path):
             'frozen source lacks diagnostic/workload fixture identities')
     require(signature(source['files']) == source.get('content_sha256') == build.get('source_content_sha256')
             and source.get('commit') == build.get('source_commit'), 'frozen source metadata mismatch')
-    completed=build.get('entire_cargo_build_passed')
-    require(type(completed) is bool, 'Cargo completion scope missing')
-    standalone_path=path.parent/'cargo-lifecycle.json'
-    target_specific=any(key in build for key in ('requested_test_target_completed',
-        'requested_target_evidence_sha256','build_jsonl_sha256','build_helper_sha256','cargo_lifecycle'))
-    target_specific |= standalone_path.exists() or (path.parent/'requested-target-artifact.json').exists()
-    require(not target_specific or isinstance(build.get('cargo_lifecycle'),dict),
-            'target-specific build evidence requires its original inline lifecycle')
-    if 'requested_test_target_completed' in build:
-        require(build['requested_test_target_completed'] is True,'requested target completion metadata contradicts freeze')
-    if 'cargo_lifecycle' in build:
-        lifecycle=build['cargo_lifecycle']
-        require(isinstance(lifecycle,dict) and lifecycle.get('entire_cargo_build_passed') is completed
-                and lifecycle.get('requested_target_completed') is True
-                and lifecycle.get('active_build_processes_remaining') is False,
-                'whole-build flag/target completion/private-Job metadata contradicts lifecycle')
-        if completed:
-            require(lifecycle.get('cargo_exit_code')==0 and lifecycle.get('wrapper_exit_code') in (None,0),
-                    'whole Cargo success requires observed zero Cargo/wrapper exit, not intentional target-only termination')
-    standalone_sha=None
-    if standalone_path.exists():
-        standalone=json.loads(standalone_path.read_text(encoding='utf-8'))
-        require(isinstance(standalone,dict) and standalone.get('entire_cargo_build_passed') is completed
-                and standalone.get('requested_target_completed') is True
-                and standalone.get('active_build_processes_remaining') is False,
-                'standalone Cargo lifecycle contradicts declared build scope')
-        if 'cargo_lifecycle' in build:
-            require(standalone==build['cargo_lifecycle'],'inline and standalone Cargo lifecycle differ')
-        standalone_sha=digest(standalone_path)
-    proof=({'policy':'whole-cargo-build-passed','entire_cargo_build_passed':True}
-           if completed else requested_target_proof(path.parent,build,source,exe))
-    if completed and standalone_sha is not None:
-        proof['cargo_lifecycle_sha256']=standalone_sha
+    proof=build_acceptance_proof(path.parent,build,source,exe)
     return build, {'build_json_sha256': digest(path), 'source_json_sha256': digest(source_path),
                    'source_content_sha256': source['content_sha256'], 'files': dict(files),
                    'build_acceptance_scope':proof}

@@ -243,7 +243,10 @@ class FrozenIdentityTests(unittest.TestCase):
         self.target_only()
         self.lifecycle.update(entire_cargo_build_passed=True,cargo_exit_code=0,wrapper_exit_code=0,
                               termination_was_intentional_after_requested_artifact=False)
-        self.build['entire_cargo_build_passed']=True;self.save_target_evidence()
+        self.build['entire_cargo_build_passed']=True
+        self.events.extend([{'reason':'build-finished','success':True},
+                            {'reason':'perf-owned-cargo-finish','pid':82,'exit_code':0}])
+        self.save_target_evidence()
         _,identity=tool.frozen_identity(self.path)
         self.assertEqual(identity['build_acceptance_scope']['policy'],'whole-cargo-build-passed')
 
@@ -251,6 +254,41 @@ class FrozenIdentityTests(unittest.TestCase):
         self.target_only();self.build['entire_cargo_build_passed']=True
         self.lifecycle['entire_cargo_build_passed']=True;self.save_target_evidence()
         with self.assertRaises(ValueError):tool.frozen_identity(self.path)
+
+    def whole_success(self):
+        self.target_only()
+        self.build['entire_cargo_build_passed']=True
+        self.lifecycle.update(entire_cargo_build_passed=True,cargo_exit_code=0,wrapper_exit_code=0,
+                              termination_was_intentional_after_requested_artifact=False)
+        self.events.extend([{'reason':'build-finished','success':True},
+                            {'reason':'perf-owned-cargo-finish','pid':82,'exit_code':0}])
+        self.save_target_evidence()
+
+    def test_known_whole_zero_flags_need_real_success_events(self):
+        for missing in ('build-finished','perf-owned-cargo-finish'):
+            self.whole_success();self.events=[e for e in self.events if e.get('reason')!=missing]
+            self.save_target_evidence()
+            with self.subTest(missing=missing),self.assertRaises(ValueError):tool.frozen_identity(self.path)
+
+    def test_known_whole_finish_error_duplicate_or_wrong_pid_rejected(self):
+        for mutation in ('build_error','duplicate','wrong_pid','cargo_error'):
+            self.whole_success()
+            if mutation=='build_error':self.events[-2]['success']=False
+            elif mutation=='duplicate':self.events.insert(-1,copy.deepcopy(self.events[-2]))
+            elif mutation=='wrong_pid':self.events[-1]['pid']=999
+            else:self.events[-1]['exit_code']=1
+            self.save_target_evidence()
+            with self.subTest(mutation=mutation),self.assertRaises(ValueError):tool.frozen_identity(self.path)
+
+    def test_non_windows_whole_success_needs_build_finished_without_private_wrapper(self):
+        self.whole_success()
+        for key in ('wrapper_pid','cargo_pid','job_assigned_before_cargo_start'):
+            self.lifecycle.pop(key)
+        self.lifecycle['wrapper_exit_code']=None
+        self.events=[e for e in self.events if not e.get('reason','').startswith('perf-owned-cargo-')]
+        self.save_target_evidence()
+        _,identity=tool.frozen_identity(self.path)
+        self.assertTrue(identity['build_acceptance_scope']['entire_cargo_build_passed'])
 
 
 if __name__=='__main__':unittest.main()
