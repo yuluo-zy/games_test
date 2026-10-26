@@ -21,6 +21,14 @@ def dump(path, value):
 def frozen_identity(metadata):
     metadata = Path(metadata).resolve(strict=True)
     frozen = json.loads(metadata.read_text(encoding='utf-8'))
+    local_marker = ('local_adapter_policy_sha256' in frozen or
+                    frozen.get('adapter_sha256') == 'bb04a7a790d8316c2dae5b95342f595c1e5bd8eab8e59e56ab7de6e85e00e591' or
+                    frozen.get('fixture_entry') == 'real_lake_surface_same_prefix_zero_tolerance' or
+                    frozen.get('fixture_mode') == 'same-prefix-local-correctness' or
+                    any(isinstance(frozen.get(key), list) and 'surface-compare-test' in frozen[key]
+                        for key in ('features', 'cargo_artifact_features')))
+    if local_marker and frozen.get('schema') != 'surface-frozen-build-v2':
+        raise ValueError('local surface producer requires its explicit reviewed v2 policy; no legacy relabeling')
     if frozen.get('schema') not in ('surface-frozen-build-v1', 'headless-frozen-build-v1', 'surface-frozen-build-v2'):
         raise ValueError('unsupported frozen metadata schema')
     if (not isinstance(frozen.get('source_commit'), str) or
@@ -151,6 +159,8 @@ def verify_sealed_files(folder, expected_sidecar_sha256):
 
 def run_pair(metadata, destination, install=INSTALL, root=ROOT, timeout=600):
     identity = frozen_identity(metadata)
+    if identity.get('build_evidence', {}).get('fixture_mode') == 'same-prefix-local-correctness':
+        raise ValueError('local same-prefix frozen bundle requires run_surface_local_pair.py; legacy pair entry is forbidden')
     destination = Path(destination).resolve()
     if destination.exists():
         raise ValueError('use a fresh output directory; never mix prior capture evidence')

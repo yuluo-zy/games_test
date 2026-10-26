@@ -14,6 +14,17 @@ TEST = 'real_lake_surface_same_prefix_zero_tolerance'
 PAIRS = ('inline-inline', 'collect-collect', 'inline-collect', 'collect-inline')
 
 
+def require_local_build(identity):
+    from surface_frozen_v2 import LOCAL_ADAPTER_SHA, LOCAL_POLICY_SHA
+    proof = identity.get('build_evidence', {})
+    if (proof.get('schema') != 'surface-v2-cold-build-evidence-local-v1' or
+            proof.get('adapter_sha256') != LOCAL_ADAPTER_SHA or
+            proof.get('local_adapter_policy_sha256') != LOCAL_POLICY_SHA or
+            proof.get('fixture_entry') != TEST or
+            proof.get('fixture_mode') != 'same-prefix-local-correctness'):
+        raise ValueError('same-prefix runner requires its exact reviewed local-v2 build/ENTRY proof')
+
+
 def physical_extent_from_manifest(manifest, number):
     """Bind native readback to actual per-frame inputs and original32 alignment.
 
@@ -189,6 +200,7 @@ def main():
     import run_surface_pixels as original
     from compare_surface_pixels import sha256
     identity, scene = original.frozen_identity(args.metadata), original.scene_identity(install)
+    require_local_build(identity)
     out = args.out.resolve()
     if out.exists() or args.timeout_seconds <= 0:
         raise ValueError('positive timeout and a fresh evidence directory are required')

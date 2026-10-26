@@ -66,7 +66,7 @@ class SurfaceV2Tests(unittest.TestCase):
             identity=self.identity()
         self.assertFalse(identity['build_evidence']['entire_cargo_build_passed'])
         self.assertEqual(len(identity['build_evidence']['files']),12)
-        self.assertEqual(identity['build_evidence']['validator_sha256'],sha256(Path(v2.__file__)))
+        self.assertEqual(identity['build_evidence']['validator_sha256'],v2.LEGACY_VALIDATOR_SHA)
     def test_rejects_wrong_target_coherent_artifact_and_log(self):
         self.artifact['target']['name']='original_gameplay_chain';self.write('requested-test-artifact.json',self.artifact);self.log();self.reject()
     def test_rejects_wrong_artifact_source(self):
