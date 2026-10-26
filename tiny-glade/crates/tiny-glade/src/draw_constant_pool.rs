@@ -58,6 +58,8 @@ struct Counters {
     scans: std::sync::atomic::AtomicU64,
     checkouts: std::sync::atomic::AtomicU64,
     returns: std::sync::atomic::AtomicU64,
+    physical_allocations: std::sync::atomic::AtomicU64,
+    physical_allocated_bytes: std::sync::atomic::AtomicU64,
 }
 #[cfg(any(test, feature = "cpu-probe"))]
 #[derive(Clone, Copy, Debug, Default, serde::Serialize)]
@@ -67,6 +69,11 @@ pub(crate) struct ConstantPoolBill {
     pub scanned_idle_entries: u64,
     pub batch_checkouts: u64,
     pub batch_returns: u64,
+    /// Successful nonempty CpuBytes::new results through this pool, including
+    /// retry success; cached reuse and failed admissions do not increment it.
+    pub physical_allocations: u64,
+    /// Cumulative actual capacities, not requested lengths or live bytes.
+    pub physical_allocated_bytes: u64,
     pub idle_blocks: usize,
     pub idle_bytes: usize,
     pub metadata_bytes: u64,
@@ -144,7 +151,7 @@ impl ConstantPool {
         }
     }
     fn allocate_bytes(&self, size: usize) -> Result<CpuBytes> {
-        match CpuBytes::new(&self.budget, size) {
+        let result = match CpuBytes::new(&self.budget, size) {
             Err(Error::OutOfHostMemory) => {
                 let mut attempt = ReclaimAttempt {
                     retried: true,
@@ -154,7 +161,18 @@ impl ConstantPool {
                 CpuBytes::new(&self.budget, size)
             }
             result => result,
+        };
+        #[cfg(any(test, feature = "cpu-probe"))]
+        if billing_enabled() {
+            if let Ok(bytes) = &result {
+                if bytes.capacity() != 0 {
+                    use std::sync::atomic::Ordering::Relaxed;
+                    self.counts.physical_allocations.fetch_add(1, Relaxed);
+                    self.counts.physical_allocated_bytes.fetch_add(bytes.capacity() as u64, Relaxed);
+                }
+            }
         }
+        result
     }
     pub(crate) fn new(budget: Arc<AllocatorStats>) -> Result<Arc<Self>> {
         #[cfg(feature = "cpu-probe")]
@@ -210,6 +228,8 @@ impl ConstantPool {
             scanned_idle_entries: self.counts.scans.load(Relaxed),
             batch_checkouts: self.counts.checkouts.load(Relaxed),
             batch_returns: self.counts.returns.load(Relaxed),
+            physical_allocations: self.counts.physical_allocations.load(Relaxed),
+            physical_allocated_bytes: self.counts.physical_allocated_bytes.load(Relaxed),
             idle_blocks: idle.blocks.len(),
             idle_bytes: idle.bytes,
             metadata_bytes: self.metadata.bytes(),
@@ -588,6 +608,53 @@ mod tests {
         assert_eq!(after.idle_blocks, 64);
         drop(pool);
         assert_eq!(stats.cpu_memory_usage().total(), 0);
+    }
+    #[test]
+    fn mixed_size_warm_tasks_report_new_backing_despite_matching_global_idle() {
+        #[cfg(feature = "cpu-probe")]
+        let modes = [true, false];
+        #[cfg(not(feature = "cpu-probe"))]
+        let modes = [true];
+        for batch in modes {
+            let stats = Arc::new(AllocatorStats::default());
+            #[allow(unused_mut)]
+            let mut pool = ConstantPool::new(stats.clone()).unwrap();
+            #[cfg(feature = "cpu-probe")]
+            { Arc::get_mut(&mut pool).unwrap().batch_constants = batch; }
+            // Both sizes already have enough real backing for the complete
+            // 64-draw task. The inventory is warm before the observation.
+            for size in [128, 96] {
+                for _ in 0..64 { pool.recycle(CpuBytes::new(&stats, size).unwrap()); }
+            }
+            let before = pool.bill();
+            for _ in 0..3 {
+                let mut task = pool.task().unwrap();
+                let mut owners = Vec::with_capacity(64);
+                let bytes = task.take(128).unwrap();
+                owners.push(task.own(bytes).ok().unwrap());
+                for index in 0..63 {
+                    let bytes = task.take(96).unwrap();
+                    if index == 0 {
+                        // The first 96-byte request consumed its single stock
+                        // slot; the global pool still has matching blocks.
+                        let idle = pool.idle.lock();
+                        assert!(idle.blocks.iter().any(|bytes| bytes.capacity() == 96));
+                        assert_eq!(task.stock.len(), if batch { 63 } else { 0 });
+                    }
+                    owners.push(task.own(bytes).ok().unwrap());
+                }
+                drop(task); // Worker scope ends before its CPU packet owners.
+                drop(owners); // Simulate owner cancellation/finished upload.
+            }
+            let after = pool.bill();
+            let expected = if batch { 3 * 62 } else { 0 };
+            assert_eq!(after.physical_allocations - before.physical_allocations, expected);
+            assert_eq!(after.physical_allocated_bytes - before.physical_allocated_bytes,
+                expected * 96);
+            assert!(after.idle_blocks <= MAX_IDLE_BLOCKS);
+            drop(pool);
+            assert_eq!(stats.cpu_memory_usage().total(), 0);
+        }
     }
     #[test]
     fn cancelled_task_and_escaped_owner_keep_credit_until_physical_storage_drops() {
