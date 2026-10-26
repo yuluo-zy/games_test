@@ -515,10 +515,25 @@ struct Env {
 
 impl Env {
     fn new(tag: &str) -> Option<Self> {
-        let device = match GraphicsDevice::new_headless(&rhapsody::device::DeviceConfig {
+        Self::new_with_debug_utils(tag, false)
+    }
+    fn new_with_debug_utils(tag: &str, debug_utils: bool) -> Option<Self> {
+        let config=rhapsody::device::DeviceConfig {
             validation: true,
             ..rhapsody::device::DeviceConfig::headless()
-        }) {
+        };
+        let create_device=|| -> rhapsody::Result<Arc<GraphicsDevice>> {
+            if debug_utils {
+                let mut builder=rhapsody::raw::instance::InstanceBuilder::default();
+                if !builder.enable_validation()? {
+                    return Err(rhapsody::Error::unsupported("native Collect requires the actual Khronos validation layer"));
+                }
+                GraphicsDevice::new(builder.build()?, None, &config)
+            } else {
+                GraphicsDevice::new_headless(&config)
+            }
+        };
+        let device = match create_device() {
             Ok(device) => device,
             Err(error) => {
                 assert!(
@@ -2162,4 +2177,254 @@ fn late_worker_budget_error_rejects_committed_prefix_and_recovers_pixels() {
         );
     }
     env.raster.clear_attachment_cache();
+}
+
+
+// Real unified Collect layer recovery. This is a native host/protocol fixture,
+// not acceptance of the shipped grass, UI2D, water or ice shaders.
+#[derive(bevy_ecs::component::Component)]
+struct NativeCollectDraw { rgb: [f32;3] }
+#[derive(bevy_ecs::resource::Resource)]
+struct NativeCollectAudit {
+    owner: std::thread::ThreadId,
+    workers: std::sync::atomic::AtomicUsize,
+}
+fn emit_native_collect_draw(
+    builder: DrawBuilder<'_>,
+    params: &country_core::systems::render_loop::draw_passes::draw_lists::EntityDrawParams,
+    world: &bevy_ecs::world::World,
+) {
+    use std::sync::atomic::Ordering::Relaxed;
+    let audit=world.resource::<NativeCollectAudit>();
+    if std::thread::current().id()!=audit.owner { audit.workers.fetch_add(1,Relaxed); }
+    let draw=world.get::<NativeCollectDraw>(params.entity).expect("real World draw entity");
+    let mut builder=builder.uniform(m_hash(),glam::Mat4::from_diagonal(glam::Vec4::new(1.0,-1.0,1.0,1.0)))
+        .uniform(name_hash("c_r"),draw.rgb[0]*0.5)
+        .uniform(name_hash("c_g"),draw.rgb[1]*0.5)
+        .uniform(name_hash("c_b"),draw.rgb[2]*0.5)
+        .uniform(name_hash("c_a"),0.5f32);
+    builder.packet_mut().state=RasterState(0).set_byte3_field_2();
+    builder.draw_no_vao(3);
+}
+
+/// Builds with the actual production run_list_layer and real host. Budget
+/// refusal is injected only after scaffold/input declaration and publication;
+/// the original error, not a later Vulkan allocation error, rejects the graph.
+fn native_collect_layer_graph(
+    env: &Env,
+    world: &mut bevy_ecs::world::World,
+    lists: &[Vec<country_core::systems::render_loop::draw_passes::draw_lists::DrawEntry>;3],
+    collected: bool,
+    deny_plan: bool,
+    reversed: bool,
+) -> (rhapsody::rg::BuiltGraph,country_core::render::ssbo::rhapsody_boundary::Buffer) {
+    use country_core::systems::render_loop::draw_passes::d_main_support::{
+        ColorSpec,DepthSpec,DrawPassCtx,ItemMode,ListPass,NoShaders,run_list_layer,
+    };
+    use country_core::asset_libraries::color_library::ColorLibrarySsbo;
+    use country_core::render::pass_builder::pass_resource_access::SsboType;
+    let readback=env.readback_buffer("native-collect-rb");
+    let graph=env.begin();
+    let mut core_rg=env.core_graph(&graph);
+    let rb=core_rg.import_unowned(readback.id,HOST_READ);
+    let (color,common)= {
+        let mut host=env.raster.pass_host(graph.clone(),Some(env.session.clone()));
+        assert_eq!(host.collect_chunk_draws(),64,"native acceptance fixes the existing 64-draw page");
+        assert!(host.collect_constant_plan_enabled(),"native plan-refusal acceptance requires constant batching enabled");
+        let rg=host.rg_resources().unwrap();
+        (rg.create_raw_texture("native-collect-color",&color_desc()),
+         rg.create_raw_buffer("native-collect-common",&CoreBufferDesc::new_gpu_only(16,0x22)))
+    };
+    env.add_clear_pass(&graph,color.resource,[0.0;4]);
+    {
+        let device=env.device.clone();
+        let mut raw=graph.borrow_mut();
+        let mut pass=raw.add_pass("initialize real common buffer");
+        pass.add_resource_access(pass.resource_handle(common.resource).unwrap(),TRANSFER_WRITE,0).unwrap();
+        pass.render_with_result_context(move |ctx| {
+            let managed=ctx.managed.ok_or_else(||rhapsody::Error::invalid_usage("missing real common owner"))?;
+            let buffer=managed.buffer_for(common.resource)?;
+            unsafe { device.raw_device().cmd_fill_buffer(vk::CommandBuffer::from_raw(ctx.command.handle()),buffer.raw(),0,16,0); }
+            Ok(())
+        });
+    }
+    let target=attachment_texture(color.resource);
+    {
+        let mut tables=env.raster.assets.lock();
+        let assets=Arc::make_mut(&mut tables.collect);
+        assets.rg_buffers.insert(ColorLibrarySsbo::rg_buffer_hash(),common.resource);
+        assets.presets.insert(0x11,target);
+        assets.presets.insert(0x12,target);
+    }
+    let colors=[ColorSpec::tag0(target)];
+    let specs=["native-layer-a","native-layer-b","native-layer-c"].map(|name|ListPass {
+        name,colors:&colors,depth:DepthSpec::None,viewport:target,
+        flag:true,mode:ItemMode::Ui,variant:0,extra:None,
+    });
+    {
+        struct Restore<'a>(&'a rhapsody::raw::allocator::AllocatorStats,u64);
+        impl Drop for Restore<'_> { fn drop(&mut self) { self.0.set_host_budget(self.1).expect("restore test budget"); } }
+        let stats=env.device.allocator_stats();
+        let _restore=Restore(stats,stats.host_budget_limit());
+        if deny_plan {
+            let used=stats.cpu_memory_usage().total();
+            assert!(used>0,"zero means unlimited, not a failing budget");
+            stats.set_host_budget(used).unwrap();
+        }
+        let mut factory=||Box::new(env.raster.pass_host(graph.clone(),Some(env.session.clone()))) as Box<dyn PassHost>;
+        let mut ctx=DrawPassCtx::new(world,std::time::Duration::ZERO,&mut factory,&NoShaders);
+        let order=if reversed {[2,1,0]} else {[0,1,2]};
+        if collected {
+            let layer=order.map(|index|(&specs[index],lists[index].as_slice()));
+            run_list_layer(&mut ctx,&layer);
+        } else {
+            // The reference is the original owner-inline declaration loop,
+            // not run_list_pass (which now also routes through Collect).
+            for index in order {
+                let spec=&specs[index];
+                let params=ctx.common_params(true);
+                let mut pass=ctx.raster_pass(spec.name,spec.colors,spec.depth,spec.viewport);
+                for (item,emit) in &lists[index] {
+                    let packet=item.to_draw_packet(pass.host_mut().default_raster_state());
+                    let builder=DrawBuilder::new(&mut pass,packet,0)
+                        .bind_common::<ColorLibrarySsbo>(&params,&item.params.transform);
+                    emit(builder,&item.params,ctx.world);
+                }
+                pass.render();
+            }
+        }
+    }
+    env.add_readback_pass(&graph,color.resource,rb.resource as u32);
+    core_rg.export(rb,HOST_READ);
+    drop(core_rg);
+    (Env::finish_graph(graph),readback)
+}
+
+#[test]
+fn unified_cross_pass_collect_cancel_while_gpu_pending_and_plan_refusal_recover_pixels() {
+    // Move the messenger out only after all env/World/receipt/readback/pool
+    // locals leave this scope. It retains the instance while Device teardown
+    // runs, so error collection is not limited to the last frame submission.
+    let validation = {
+    use country_core::systems::render_loop::draw_passes::draw_lists::{DrawEntry,DrawItem};
+    use std::sync::atomic::Ordering::Relaxed;
+    // This test never silently passes when Vulkan is absent, regardless of env.
+    let mut env=Env::new_with_debug_utils("unified-native-collect-recovery",true).expect("Vulkan initialization and DebugUtils are mandatory for native Collect recovery");
+    let validation=rhapsody::raw::instance::ValidationMessenger::new(env.device.instance())
+        .expect("real native validation collector requires enabled VK_EXT_debug_utils");
+    let mut world=bevy_ecs::world::World::new();
+    world.insert_resource(NativeCollectAudit {owner:std::thread::current().id(),workers:Default::default()});
+    let lengths=[385usize,129,65]; // 12 tasks, 2 waves, each pass crosses 64.
+    let lists:[Vec<DrawEntry>;3]=std::array::from_fn(|pass| (0..lengths[pass]).map(|index| {
+        let mut rgb=[0.0;3]; rgb[pass]=1.0;
+        if index+1==lengths[pass] { rgb[(pass+1)%3]=0.5; }
+        let entity=world.spawn(NativeCollectDraw{rgb}).id();
+        let mut item=DrawItem::new(env.color_program.0.0,index as i32);
+        item.params.entity=entity;
+        (item,emit_native_collect_draw as _)
+    }).collect());
+    let execute_and_read=|env:&Env,built,readback:&country_core::render::ssbo::rhapsody_boundary::Buffer| {
+        env.shaders.prepare_test_pipelines(std::time::Duration::from_secs(10)).unwrap();
+        let receipt=env.session.borrow_mut().execute_frame(built).unwrap();
+        #[cfg(feature="cpu-probe")]
+        { assert!(receipt.stats.command_workload.valid); assert_eq!(receipt.stats.command_workload.direct_draw_api_calls,579); }
+        env.session.borrow_mut().wait_submits_done(TIMEOUT_NS).unwrap();
+        env.read_pixels(readback)
+    };
+    let (built,rb)=native_collect_layer_graph(&env,&mut world,&lists,false,false,false);
+    let expected=execute_and_read(&env,built,&rb);
+    assert!(expected.chunks_exact(4).any(|pixel|pixel!=[0,0,0,0]));
+    let (built,rb)=native_collect_layer_graph(&env,&mut world,&lists,false,false,true);
+    assert_ne!(execute_and_read(&env,built,&rb),expected,"fixture must detect cross-pass reordering");
+    assert_eq!(world.resource::<NativeCollectAudit>().workers.load(Relaxed),0,"reference must stay owner-inline");
+    #[cfg(feature="cpu-probe")]
+    assert!(country_core::render::declare_probe::collect_counts_begin());
+    let workers_before=world.resource::<NativeCollectAudit>().workers.load(Relaxed);
+    let (built,rb)=native_collect_layer_graph(&env,&mut world,&lists,true,false,false);
+    #[cfg(feature="cpu-probe")]
+    {
+        let counts=country_core::render::declare_probe::collect_counts_end();
+        assert!(counts.valid&&!counts.overflow);
+        assert_eq!((counts.tasks,counts.waves,counts.cross_pass_tasks,counts.cross_pass_waves),(12,2,12,2));
+    }
+    assert_eq!(world.resource::<NativeCollectAudit>().workers.load(Relaxed)-workers_before,579,
+        "all Collect callbacks must execute on shared workers, not owner-inline fallback");
+    // Warm every production pipeline before blocking the primary GPU queue.
+    env.shaders.prepare_test_pipelines(std::time::Duration::from_secs(10)).unwrap();
+    struct Gate {
+        device:Arc<GraphicsDevice>,
+        semaphore:Arc<rhapsody::raw::semaphore::TimelineSemaphore>,
+        pending:Option<rhapsody::raw::command_buffer::PendingCommand>,
+        released:bool,
+    }
+    impl Gate {
+        fn release(&mut self) -> rhapsody::Result<()> {
+            if !self.released {
+                unsafe { self.device.raw_device().signal_semaphore(&vk::SemaphoreSignalInfo::default().semaphore(self.semaphore.raw_handle()).value(1))?; }
+                self.released=true;
+            }
+            Ok(())
+        }
+    }
+    impl Drop for Gate { fn drop(&mut self) {
+        // A later session Drop waits indefinitely for A. Never enter it after
+        // failed gate cleanup: abort this isolated test process with evidence.
+        if let Err(error)=self.release() {
+            eprintln!("FATAL native Collect gate release failed during cleanup: {error:?}");
+            std::process::abort();
+        }
+        if let Some(pending)=self.pending.take() {
+            if let Err(error)=pending.wait(TIMEOUT_NS) {
+                eprintln!("FATAL native Collect gate completion failed after bounded cleanup wait: {error:?}");
+                std::process::abort();
+            }
+        }
+    } }
+    let semaphore=rhapsody::raw::semaphore::TimelineSemaphore::new(env.device.clone(),0).unwrap();
+    let pool=rhapsody::raw::command_buffer::VulkanCommandPool::new(env.device.clone()).unwrap();
+    let mut command=pool.allocate().unwrap();command.begin().unwrap();command.end().unwrap();
+    let pending=command.submit_to(rhapsody::device::DeviceQueue {
+        handle:env.device.primary_queue(),family:env.device.queue_family_index(),index:0,
+    },&[(semaphore.clone(),1,vk::PipelineStageFlags::ALL_COMMANDS)],&[]).unwrap();
+    let mut gate=Gate{device:env.device.clone(),semaphore,pending:Some(pending),released:false};
+    let receipt=env.session.borrow_mut().execute_frame(built).unwrap();
+    assert!(!gate.pending.as_ref().unwrap().is_complete().unwrap());
+    assert_eq!(env.session.borrow().pending_frame_count(),1);
+    let done=env.device.poll().unwrap();
+    assert!(receipt.receipts.iter().any(|point|!rhapsody::sync::SyncSet::from_point(*point).is_reached(&done)),
+        "a submitted Collect frame must remain physically incomplete behind the real timeline gate");
+    let (cancelled,cancel_rb)=native_collect_layer_graph(&env,&mut world,&lists,true,false,false);
+    let submitted_before=env.device.retirement_stats().submitted;
+    env.session.borrow_mut().cancel_frame(cancelled).unwrap();
+    assert_eq!(env.device.retirement_stats().submitted,submitted_before,"cancellation must submit no prefix");
+    assert_eq!(env.session.borrow().pending_frame_count(),1,"cancelling B must retain pending A");
+    assert!(!gate.pending.as_ref().unwrap().is_complete().unwrap());
+    assert!(!env.session.borrow().is_poisoned());
+    gate.release().expect("explicitly release native Collect timeline gate");
+    gate.pending.as_ref().unwrap().wait(TIMEOUT_NS).expect("gate command must physically complete within the bounded wait");
+    env.session.borrow_mut().wait_submits_done(TIMEOUT_NS).unwrap();
+    assert_eq!(env.read_pixels(&rb),expected,"cancelling B cannot damage A's native output");
+    drop(cancel_rb);drop(receipt);drop(gate);
+    // Force genuine owner-plan storage admission rather than a reusable credit.
+    env.raster=RasterShared::new_with_shader_library(env.gd.clone(),env.buffers.clone(),env.textures.clone(),env.shaders.clone(),env.shader_library.clone()).unwrap();
+    let workers_before=world.resource::<NativeCollectAudit>().workers.load(Relaxed);
+    let (refused,refused_rb)=native_collect_layer_graph(&env,&mut world,&lists,true,true,false);
+    assert_eq!(world.resource::<NativeCollectAudit>().workers.load(Relaxed),workers_before,
+        "owner-plan budget refusal must stop before any worker callback");
+    let submitted_before=env.device.retirement_stats().submitted;
+    let error=env.session.borrow_mut().execute_frame(refused).expect_err("plan admission refusal must reject the entire graph");
+    assert!(matches!(error,rhapsody::Error::OutOfHostMemory),"original owner budget error: {error:?}");
+    assert_eq!(env.device.retirement_stats().submitted,submitted_before);
+    assert_eq!(env.session.borrow().pending_frame_count(),0);
+    assert!(!env.session.borrow().is_poisoned());
+    drop(refused_rb);
+    let (recovered,rb)=native_collect_layer_graph(&env,&mut world,&lists,true,false,false);
+    assert_eq!(execute_and_read(&env,recovered,&rb),expected,"same complete work must recover after cancellation and budget refusal");
+    env.raster.clear_attachment_cache();
+    validation
+    };
+    // Warnings/performance/info are not relabelled as GPU errors. The external
+    // runner also rejects initial-creation VUIDs emitted before this collector.
+    let errors=validation.collector.errors();
+    assert!(errors.is_empty(),"native Collect captured validation errors: {errors:#?}");
 }
