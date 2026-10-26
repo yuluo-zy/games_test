@@ -1953,3 +1953,184 @@ mod path_upload_receipt_correctness {
         render_path(&mut fixture,target,false,0);
     }
 }
+
+/// Exercise the REAL effect adapter over one Bridge/Session. Merely retaining
+/// a named allocation is not reusable contents; native publication is required.
+/// This does not make Painterly's declaration-time progress transactional.
+#[test]
+fn effects_host_temporal_reuse_tracks_real_submission_resize_and_cancellation() {
+    use country_core::{
+        asset_libraries::vao_library::AssetVAOLibrary,
+        systems::render_loop::{
+            compute_passes::{pass_kit::binding, reprojection},
+            painterly as p,
+        },
+    };
+    use p::PassHost as _;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use tiny_glade::{effects_host::EffectsHost, frame_world::{FrameLibraries, FrameWorldAccess}};
+
+    let Some(mut fixture) = Fixture::new() else { return; };
+    let initialized = Arc::new(AtomicUsize::new(0));
+    let mut submitted_initializers = 0;
+    let mut reference_pixel = None;
+    for step in 0..8 {
+        // 0 fresh declaration cancelled; 1 first successful publication;
+        // 2 valid old history cancelled; 3 resized declaration cancelled;
+        // 4 resized initialization compiled but cancelled before recording;
+        // 5 retry actually submitted; 6 valid old history cancelled; 7 reused.
+        let resized = step >= 3;
+        let dims = if resized { [8, 4] } else { [16, 8] };
+        let size = if resized { 128u32 } else { 64 };
+        let initialize = matches!(step, 1 | 4 | 5 | 7);
+        let expected_reused = matches!(step, 2 | 6 | 7);
+        let marker = 0x1234_ab00u32 + step as u32;
+        let (((texture_reused, buffer_reused), readbacks), built) = fixture.bridge.build_frame(|frame| {
+            tiny_glade::frame_setup::with_frame_resources(frame, &mut fixture.world, |frame, world| {
+                let source = if initialize {
+                    let source = Arc::new(rhapsody::resource::Texture::new(
+                        fixture.device.clone(),
+                        &rhapsody::resource::TextureDesc::new_2d(dims[0], dims[1], vk::Format::R32_SFLOAT)
+                            .usage(vk::ImageUsageFlags::SAMPLED | vk::ImageUsageFlags::TRANSFER_DST),
+                    )?);
+                    let source_id = frame.import_native_texture(source.clone(), 0)?;
+                    frame.with_graph(|graph| {
+                        let device = fixture.device.clone();
+                        let mut clear = graph.add_pass("effect history fixture input");
+                        clear.add_resource_access(source_id, 0x34, 0)?;
+                        clear.render_with_result_context(move |ctx| {
+                            unsafe {
+                                device.raw_device().cmd_clear_color_image(
+                                    vk::CommandBuffer::from_raw(ctx.command.handle()), source.raw_handle(),
+                                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                                    &vk::ClearColorValue { float32: [0.25, 0., 0., 1.] },
+                                    &[vk::ImageSubresourceRange::default().aspect_mask(vk::ImageAspectFlags::COLOR)
+                                        .level_count(1).layer_count(1)],
+                                );
+                            }
+                            Ok(())
+                        });
+                        Ok(())
+                    })?;
+                    Some(RgTexture { resource: source_id.raw(),
+                        desc: TextureDesc::new_2d(dims, vk::Format::R32_SFLOAT.as_raw() as u32).sampled() })
+                } else { None };
+
+                let (target, counter, reused) = {
+                    let shaders = frame.shader_library();
+                    let backend = frame.shader_backend();
+                    let raster = frame.raster_resources();
+                    let access = FrameWorldAccess::new(FrameLibraries {
+                        shaders: shaders.as_ref(), textures: world.resource::<AssetTextureLibrary>(),
+                        ssbos: world.resource::<AssetSsboLibrary>(), vaos: world.resource::<AssetVAOLibrary>(),
+                        placement: world.resource::<AssetPlacementDataLibrary>(), constants: raster.dynamic_constants(),
+                    }, frame.compute_device()).with_resource_graph_factory(frame.resource_graph_factory());
+                    let mut effects = EffectsHost::new(frame, &access, &*backend, shaders.as_ref(),
+                        None, None, None, false);
+                    let texture = effects.temporal_texture("effects validity target", p::TextureDesc {
+                        extent: dims, format: vk::Format::R32_SFLOAT.as_raw() as u32, storage: true, sampled: true,
+                    }).map_err(|e| rhapsody::Error::invalid_usage(e.to_string()))?;
+                    let buffer = effects.temporal_buffer("effects validity counter", p::BufferDesc {
+                        size,
+                        // The compatibility field is forwarded as the original
+                        // BufferDesc usage argument. Admit the actual test fill/copy.
+                        align: (vk::BufferUsageFlags::STORAGE_BUFFER | vk::BufferUsageFlags::TRANSFER_SRC
+                            | vk::BufferUsageFlags::TRANSFER_DST).as_raw(), flag: true,
+                    }).map_err(|e| rhapsody::Error::invalid_usage(e.to_string()))?;
+                    let target = effects.texture(texture.tex)?;
+                    if let Some(source) = source {
+                        let source = effects.register_texture(source);
+                        // Original packaged depth-copy program, through the
+                        // production EffectsHost declaration/parameter path.
+                        effects.submit_compute(p::ComputePassDesc {
+                            name: "effect history fixture actual copy", source: p::ComputeSource::Uri(reprojection::COPY_URI),
+                            ops: vec![
+                                p::ComputeOp::BindTexture { key: binding::INPUT_TEX, access: 0x19, tex: source, write: false },
+                                p::ComputeOp::BindTexture { key: binding::OUTPUT_TEX, access: 0x32, tex: texture.tex, write: true },
+                            ], push_constants: Vec::new(), dispatch_threads: [dims[0], dims[1], 1],
+                        });
+                    }
+                    effects.finish()?;
+                    (target, buffer.buf, (texture.reused, buffer.reused))
+                };
+                if !initialize { return Ok((reused, None)); }
+
+                frame.with_graph(|graph| {
+                    let device = fixture.device.clone();
+                    let calls = initialized.clone();
+                    let mut fill = graph.add_pass("effect history fixture actual counter fill");
+                    let counter_id = fill.resource_handle(counter.0)?;
+                    fill.add_resource_access(counter_id, 0x34, 0)?;
+                    fill.render_with_result_context(move |ctx| {
+                        let target = ctx.managed.ok_or_else(|| rhapsody::Error::invalid_usage("effect counter owner"))?
+                            .buffer_for(counter.0)?;
+                        unsafe { device.raw_device().cmd_fill_buffer(
+                            vk::CommandBuffer::from_raw(ctx.command.handle()), target.raw(), 0, u64::from(size), marker); }
+                        calls.fetch_add(1, Ordering::Relaxed);
+                        Ok(())
+                    });
+                    Ok(())
+                })?;
+                let image_readback = readback(frame, world, &fixture.shaders, &fixture.device, target)?;
+                let buffer_readback = Arc::new(rhapsody::resource::Buffer::new(fixture.device.clone(),
+                    &rhapsody::resource::BufferDesc::new_gpu_to_cpu(u64::from(size), vk::BufferUsageFlags::TRANSFER_DST))?);
+                let output_id = frame.import_native_buffer(buffer_readback.clone(), 0)?;
+                frame.with_graph(|graph| {
+                    let device = fixture.device.clone();
+                    let output = buffer_readback.clone();
+                    let mut copy = graph.add_pass("effect history fixture counter readback");
+                    let counter_id = copy.resource_handle(counter.0)?;
+                    copy.add_resource_access(counter_id, 0x25, 0)?;
+                    copy.add_resource_access(output_id, 0x34, 0)?;
+                    copy.render_with_result_context(move |ctx| {
+                        let source = ctx.managed.ok_or_else(|| rhapsody::Error::invalid_usage("effect counter readback owner"))?
+                            .buffer_for(counter.0)?;
+                        unsafe { device.raw_device().cmd_copy_buffer(vk::CommandBuffer::from_raw(ctx.command.handle()),
+                            source.raw(), output.raw_handle(), &[vk::BufferCopy { src_offset: 0, dst_offset: 0, size: u64::from(size) }]); }
+                        Ok(())
+                    });
+                    graph.export(output_id, 0x26)?;
+                    Ok(())
+                })?;
+                Ok((reused, Some((image_readback, buffer_readback))))
+            })
+        }).unwrap();
+        assert_eq!(texture_reused, expected_reused, "real EffectsHost texture, step {step}");
+        assert_eq!(buffer_reused, expected_reused, "real EffectsHost buffer, step {step}");
+        let queue_before = fixture.device.retirement_stats().submitted;
+        if step == 4 {
+            fixture.bridge.prepare_test_execution().unwrap();
+            let prepared = fixture.bridge.compile_built(built).unwrap();
+            drop(prepared); // Existing CompiledCoreGraph::Drop cancels exactly this frame.
+            assert_eq!(initialized.load(Ordering::Relaxed), submitted_initializers);
+        } else if !initialize {
+            fixture.bridge.cancel_built(built).unwrap();
+            assert_eq!(fixture.device.retirement_stats().submitted, queue_before,
+                "cancelling the graph must not submit graph work, step {step}");
+            assert_eq!(initialized.load(Ordering::Relaxed), submitted_initializers);
+        } else {
+            let receipt = fixture.bridge.execute_test_graph(built).unwrap();
+            assert!(receipt.snapshot.pass_order.iter().any(|name| name == "effect history fixture actual copy"));
+            assert!(receipt.snapshot.pass_order.iter().any(|name| name == "effect history fixture actual counter fill"));
+            fixture.bridge.wait_submits_done(10_000_000_000).unwrap();
+            submitted_initializers += 1;
+            assert_eq!(initialized.load(Ordering::Relaxed), submitted_initializers);
+            let (image, buffer) = readbacks.expect("actual submitted readbacks");
+            let mut pixels = vec![0; (dims[0]*dims[1]*4) as usize];
+            image.read_bytes(0, &mut pixels).unwrap();
+            let first = <[u8; 4]>::try_from(&pixels[..4]).unwrap();
+            assert_eq!(first[3], 255);
+            assert!(first[0] > 0, "known nonzero native copy input must reach readback");
+            assert!(pixels.chunks_exact(4).all(|pixel| pixel == first));
+            if let Some(reference) = reference_pixel { assert_eq!(first, reference); }
+            else { reference_pixel = Some(first); }
+            let mut bytes = vec![0; size as usize];
+            buffer.read_bytes(0, &mut bytes).unwrap();
+            assert!(bytes.chunks_exact(4).all(|word| word == marker.to_le_bytes()),
+                "real named buffer fill must reach native readback, step {step}");
+        }
+        assert_eq!(fixture.bridge.with_session(|session| session.pending_frame_count()), 0);
+        assert_eq!(fixture.bridge.with_session(|session| session.frame_import_count()), 0);
+    }
+    assert_eq!(submitted_initializers, 3);
+}
