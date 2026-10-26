@@ -10,6 +10,7 @@ import math
 import statistics
 from pathlib import Path
 from perf_etw import Timeline, distribution, read_trace
+import perf_clock_policy as clocks
 
 PHASES = ('app_update', 'pacing', 'draw_lists_vao', 'declare', 'compile',
           'pending_admission', 'record_submit', 'maintenance')
@@ -28,7 +29,7 @@ def signature(value):
 def accounting_tools():
     root = Path(__file__).resolve().parent
     result = {}
-    for name in ('perf_headless_account.py', 'perf_etw.py', 'perf_trace_archive.py'):
+    for name in ('perf_headless_account.py', 'perf_etw.py', 'perf_trace_archive.py', 'perf_clock_policy.py'):
         with (root/name).open('rb') as source:
             result[name] = hashlib.file_digest(source, 'sha256').hexdigest()
     return result
@@ -212,10 +213,26 @@ def relative_error(actual, reference):
     return abs(actual - reference) / max(actual, reference, 1)
 
 
-def account(report, trace_path, official_owner_ns=None):
+def account(report, trace_path, official_owner_ns=None, *, capture_record=None, official_totals=None):
     validate(report)
+    policy_key = (capture_record or {}).get('clock_policy',
+        {'id': clocks.LEGACY, 'definition_sha256': clocks.definition_sha(clocks.LEGACY)})
+    clocks.require(policy_key.get('id') in clocks.POLICIES, 'unknown clock policy')
+    calibrated = policy_key['id'] == clocks.CALIBRATED
+    if not calibrated:
+        clocks.require(policy_key == {'id': clocks.LEGACY, 'definition_sha256': clocks.definition_sha(clocks.LEGACY)},
+                       'legacy clock definition identity differs')
+    metadata = {} if calibrated else None
     frequency = report['qpc_frequency']
-    timelines, unmatched, trace_start, trace_end = read_trace(trace_path, report['process_id'], frequency)
+    if calibrated:
+        clocks.require(capture_record is not None, 'new policy requires prospective capture')
+        capture_record = dict(capture_record)
+        capture_record['_verified_raw_trace_sha256'] = clocks.raw_trace_sha(trace_path)
+        metadata = clocks.trace_metadata(trace_path, report['process_id'])
+        timelines, unmatched, trace_start, trace_end = read_trace(
+            trace_path, report['process_id'], frequency)
+    else:
+        timelines, unmatched, trace_start, trace_end = read_trace(trace_path, report['process_id'], frequency)
     start, stop = report['envelope']['begin'][0], report['envelope']['end'][0]
     require(trace_start < start < stop < trace_end, 'ETW does not strictly enclose envelope')
     require(not any(start <= time <= stop for time, _ in unmatched),
@@ -233,8 +250,31 @@ def account(report, trace_path, official_owner_ns=None):
     issues = []
     if owner_error > .02:
         issues.append('ETW owner / GetThreadTimes cumulative discrepancy exceeds 2%')
-    if process_error > .02:
+    if process_error > .02 and not calibrated:
         issues.append('ETW process / GetProcessTimes cumulative discrepancy exceeds 2%')
+    quality = {'percentile_source': 'ETW CSwitch exclusive QPC running intervals',
+               'owner_reference': 'GetThreadTimes cumulative, actual frame envelope',
+               'process_reference': 'GetProcessTimes cumulative',
+               'coarse_checks': {'owner_getthreadtimes_within_2pct': owner_error <= .02,
+                                 'process_getprocesstimes_within_2pct': process_error <= .02},
+               'raw_counters_corrected': False}
+    official_process_ns, official_process_error = None, None
+    if calibrated:
+        policy_key, precise_quality, attribution_issues = clocks.calibrated_quality(
+            report, timelines, metadata, capture_record, official_totals)
+        issues.extend(attribution_issues)
+        require(official_owner_ns is None or official_owner_ns == official_totals['owner_cpu_ns'],
+                'explicit Microsoft owner total differs from mandatory PID reference')
+        official_owner_ns = official_totals['owner_cpu_ns']
+        official_process_ns = official_totals['process_cpu_ns']
+        official_process_error = relative_error(process_ticks*scale_ns, official_process_ns)
+        if official_process_error > .02:
+            issues.append('ETW process / independent Microsoft CSwitch discrepancy exceeds 2%')
+        require(abs(precise_quality['process_sum_tid_cpu_ns']-process_ticks*scale_ns) <= .01,
+                'ETW process=sum(TID) conservation failed')
+        quality.update(precise_quality)
+        quality['process_reference'] = 'mandatory Microsoft CSwitch complete PID, shared event stream'
+        quality['coarse_process_role'] = 'retained diagnostic; not an acceptance reference'
     official_error = None
     if official_owner_ns is not None:
         official_error = relative_error(owner_ticks * scale_ns, official_owner_ns)
@@ -248,8 +288,11 @@ def account(report, trace_path, official_owner_ns=None):
               'process_mean_cpu_ms_per_executed_frame': process_ticks*scale_ms/count,
               'owner_os_cpu_ns': os_owner, 'process_os_cpu_ns': os_process,
               'owner_os_relative_error': owner_error, 'process_os_relative_error': process_error,
-              'official_owner_cpu_ns': official_owner_ns, 'official_owner_relative_error': official_error}
-    result = {'schema': 'headless-etw-account-v1', 'valid': not issues, 'issues': issues,
+              'official_owner_cpu_ns': official_owner_ns, 'official_owner_relative_error': official_error,
+              'official_process_cpu_ns': official_process_ns, 'official_process_relative_error': official_process_error}
+    result = {'schema': 'headless-etw-account-v2' if calibrated else 'headless-etw-account-v1',
+              'clock_policy': policy_key, 'clock_quality': quality,
+              'valid': not issues, 'issues': issues,
               'scope': SCOPE, 'mode': report['mode'], 'input_sha256': signature(input_identity(report)),
               'diagnostic_bill': report.get('diagnostic_bill', False), 'envelope': totals,
               'management_modes': management_modes(report),
@@ -375,10 +418,12 @@ def paired_overhead(runs, kind='runtime_session'):
     require(len(runs) >= 6 and len(runs) % 2 == 0, 'at least three complete on/off pairs required')
     issues = []
     expected = runs[0]
+    expected_policy = clocks.policy_pair_identity(expected)
     compile_pair = kind != 'runtime_session'
     by_role = {}
     for index, run in enumerate(runs):
         require(run.get('account') is not None, 'run has no ETW accounting')
+        require(clocks.policy_pair_identity(run) == expected_policy, 'paired clock policy/evidence differs')
         if compile_pair:
             require(isinstance(run.get('cpu_probe_feature'), bool), 'compiled feature identity missing')
             role = 'on' if run['cpu_probe_feature'] else 'off'
@@ -449,6 +494,7 @@ def paired_overhead(runs, kind='runtime_session'):
         uncovered.append('active session recording overhead; both runtime sessions are off')
     return {'schema': 'headless-probe-overhead-v1', 'valid': not issues, 'issues': sorted(set(issues)),
             'pairs': len(runs)//2, 'metrics': metrics, 'overhead_kind': kinds[kind],
+            'clock_policy': expected_policy,
             'management_modes': management_modes(expected),
             'uncovered_overhead': uncovered,
             'input_policy': expected.get('input_policy', STRICT_INPUT_POLICY),
@@ -464,11 +510,15 @@ def main():
     parser.add_argument('session', type=Path)
     parser.add_argument('trace_csv', type=Path, nargs='?')
     parser.add_argument('--official-owner-ns', type=int)
+    parser.add_argument('--capture-run', type=Path, help='prospective run.json required to replay calibrated policy')
     parser.add_argument('--diagnostic', action='store_true')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     report = json.loads(args.session.read_text(encoding='utf-8'))
-    result = diagnostic_summary(report) if args.diagnostic else account(report, args.trace_csv, args.official_owner_ns)
+    record = json.loads(args.capture_run.read_text(encoding='utf-8')) if args.capture_run else None
+    result = diagnostic_summary(report) if args.diagnostic else account(
+        report, args.trace_csv, args.official_owner_ns, capture_record=record,
+        official_totals=record.get('official_cswitch') if record else None)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False)+'\n', encoding='utf-8')
     if not result.get('valid', result.get('diagnostic_only', False)):

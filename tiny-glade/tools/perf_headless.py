@@ -20,6 +20,7 @@ from perf_windows import ROOT, PERF, INSTALL, XPERF, digest, dump, git, label
 from perf_headless_account import account, diagnostic_summary, paired_overhead, signature, validate, input_identity, SCENES
 from perf_build_target import run_requested_test
 from perf_trace_archive import archive_run_csv, open_trace_text
+import perf_clock_policy as clocks
 
 TEST = 'cpu_measurement::profile_shipped_session_cpu'
 
@@ -274,6 +275,9 @@ def official_owner_total(report, csv_path, etl_path, destination, xperf=XPERF):
 def capture(args, run_label=None, mode=None, build_label=None):
     if getattr(args, 'archive_trace_csv', False) and args.without_etw:
         raise ValueError('--archive-trace-csv requires an ETW capture')
+    policy_id = getattr(args, 'clock_policy', clocks.LEGACY)
+    if policy_id == clocks.CALIBRATED and (args.without_etw or getattr(args, 'clock_calibration', None) is None):
+        raise ValueError('calibrated policy requires ETW and frozen --clock-calibration evidence')
     frozen = load_build(build_label or args.label)
     mode = mode or args.mode
     feature = 'cpu-probe' in frozen['features']
@@ -286,8 +290,11 @@ def capture(args, run_label=None, mode=None, build_label=None):
     destination = PERF/'headless-runs'/label(run_label or args.run_label)
     destination.mkdir(parents=True, exist_ok=False)
     machine = hardware(destination)
+    measurement_tools = clocks.current_tools()
+    policy_key, policy_intent = clocks.prepare_capture(
+        policy_id, getattr(args, 'clock_calibration', None), machine, destination, measurement_tools)
     session_path = destination/'session.json'
-    settings = {'scenario': scene, 'dimensions': '1280x720', 'warmup': args.warmup, 'samples': args.samples,
+    settings = {'clock_policy': policy_key, 'scenario': scene, 'dimensions': '1280x720', 'warmup': args.warmup, 'samples': args.samples,
                 'features': frozen['features'], 'allocator': 'mimalloc',
                 'driver_environment': machine['vulkan_environment'],
                 'worker_configuration': 'existing default; TG overrides cleared',
@@ -300,10 +307,9 @@ def capture(args, run_label=None, mode=None, build_label=None):
     env.update(TG_PERF_SCENARIO=scene, TG_CPU_PROBE_GATE='1', TG_CPU_PROBE_OUT=str(session_path),
                TG_CPU_PROBE_MODE=mode, TG_CPU_PROBE_WARMUP=str(args.warmup),
                TG_CPU_PROBE_SAMPLES=str(args.samples))
-    measurement_tools = {name: digest(Path(__file__).resolve().parent/name) for name in
-                         ('perf_headless.py', 'perf_headless_account.py', 'perf_etw.py', 'perf_trace_archive.py')}
     record = {'measurement_tools': measurement_tools, 'measurement_tools_sha256': signature(measurement_tools),
               'schema': 'headless-capture-v1', 'valid': False, 'mode': mode,
+              'clock_policy': policy_key, 'clock_policy_intent': policy_intent,
               'scenario': scene, 'warmup': args.warmup, 'samples': args.samples, 'diagnostic': args.diagnostic,
               'build': frozen, 'hardware': machine, 'hardware_sha256': machine['sha256'],
               'executable_sha256': frozen['executable_sha256'], 'settings': settings,
@@ -407,11 +413,19 @@ def finish_capture(args, record, destination, session_path, frozen, mode):
         with (destination/'xperf-dump.log').open('w', encoding='utf-8') as out:
             subprocess.run([str(XPERF), '-i', str(destination/'schedule.etl'), '-o', str(csv_path),
                             '-a', 'dumper', '-add_rawdata'], stdout=out, stderr=subprocess.STDOUT, check=True)
-        independent = official_owner_total(report, csv_path, destination/'schedule.etl', destination) if args.official else None
-        precise = account(report, csv_path, independent)
+        calibrated = record.get('clock_policy', {}).get('id') == clocks.CALIBRATED
+        record['trace_csv_sha256'] = digest(csv_path)
+        independent = official_owner_total(
+            report, csv_path, destination/'schedule.etl', destination) if args.official or calibrated else None
+        if calibrated:
+            official = clocks.official_capture_totals(report, destination, record['trace_csv_sha256'])
+            record['official_cswitch'] = official
+            record['trace_etl_sha256'] = official['trace_etl_sha256']
+            precise = account(report, csv_path, independent, capture_record=record, official_totals=official)
+        else:
+            precise = account(report, csv_path, independent)
         dump(destination/'cpu.json', precise)
         record['account'] = precise
-        record['trace_csv_sha256'] = digest(csv_path)
         record['trace_csv_path'] = str(csv_path)
         # All OS capture, optional Microsoft analysis and CPU accounting are
         # complete. Archive even a numerically invalid result without changing
@@ -483,13 +497,18 @@ def overhead(args):
 
 
 def account_command(args):
-    result = account(json.loads(args.session.read_text(encoding='utf-8')), args.trace_csv)
+    record = json.loads(args.capture_run.read_text(encoding='utf-8')) if args.capture_run else None
+    result = account(json.loads(args.session.read_text(encoding='utf-8')), args.trace_csv,
+                     capture_record=record, official_totals=record.get('official_cswitch') if record else None)
     dump(args.output, result)
     if not result['valid']:
         raise SystemExit(2)
 
 
 def measurement_options(parser):
+    parser.add_argument('--clock-policy', choices=clocks.POLICIES, default=clocks.LEGACY,
+                        help='new policy requires prospective calibrated capture and mandatory Microsoft CSwitch')
+    parser.add_argument('--clock-calibration', type=Path, help='frozen evidence JSON for calibrated policy')
     parser.add_argument('--scene', choices=SCENES, default='static')
     parser.add_argument('--warmup', type=int, default=600)
     parser.add_argument('--samples', type=int, default=3000)
@@ -517,8 +536,14 @@ def main():
     p.add_argument('--feature-off-label', help='separate default-feature-off frozen build')
     p.add_argument('--feature-on-mode', choices=('on', 'off'), default='on')
     measurement_options(p); p.set_defaults(function=overhead)
+    p = commands.add_parser('freeze-clock-policy')
+    p.add_argument('output', type=Path); p.add_argument('--predeclared', type=Path, required=True)
+    p.add_argument('--calibration-run', type=Path, action='append', required=True,
+                   help='six completed directories in predeclared AB/BA/AB order')
+    p.set_defaults(function=lambda a: clocks.freeze_evidence(a.output, a.predeclared, a.calibration_run))
     p = commands.add_parser('account')
     p.add_argument('session', type=Path); p.add_argument('trace_csv', type=Path); p.add_argument('--output', type=Path, required=True)
+    p.add_argument('--capture-run', type=Path, help='original prospective run.json; old runs remain legacy')
     p.set_defaults(function=account_command)
     p = commands.add_parser('summarize')
     p.add_argument('session', type=Path); p.add_argument('--output', type=Path, required=True)
