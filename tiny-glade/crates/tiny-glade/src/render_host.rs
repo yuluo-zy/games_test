@@ -624,7 +624,7 @@ mod mapped_raster_gpu_tests {
     use super::*;
     use country_core::{render::ssbo::{MappedStorageBuffer, StorageElement, MAPPED_MEMORY_READBACK},
         resources::{world_raster::{DirtyTilePublisher, WorldRaster}, world_raster_defs::PathRasterStagingSsbo}};
-    use rhapsody::command::VulkanCommandPool;
+    use rhapsody::{command::VulkanCommandPool, raw::semaphore::TimelineSemaphore};
     use std::{sync::mpsc, time::Duration};
 
     // The fixture adds TRANSFER_SRC to the actual original staging allocation
@@ -651,23 +651,38 @@ mod mapped_raster_gpu_tests {
         const BUFFER_LEN: usize = 512 * 512;
         const MAPPED_MEMORY: u8 = MAPPED_MEMORY_READBACK;
     }
-    struct SignalOnDrop(Arc<Device>, vk::Event, bool);
+    struct SignalOnDrop {
+        semaphore: Arc<TimelineSemaphore>,
+        armed: bool,
+    }
     impl SignalOnDrop {
-        fn release(&mut self) {
-            if self.2 {
-                let result = unsafe { self.0.raw_device().set_event(self.1) };
-                self.2 = false;
-                result.unwrap();
+        fn try_release(&mut self) -> std::result::Result<(), vk::Result> {
+            if !self.armed { return Ok(()); }
+            let device = self.semaphore.device();
+            // A timeline wait may legally be pending when the host supplies
+            // its future value. This fixture is the sole signaler of value 1.
+            let result = unsafe {
+                device.raw_device().signal_semaphore(&vk::SemaphoreSignalInfo::default()
+                    .semaphore(self.semaphore.raw_handle()).value(1))
+            };
+            if result.is_ok() || result == Err(vk::Result::ERROR_DEVICE_LOST) {
+                self.armed = false;
             }
+            if result == Err(vk::Result::ERROR_DEVICE_LOST) {
+                device.timelines().mark_device_lost();
+            }
+            result
+        }
+        fn release(&mut self) {
+            self.try_release().expect("host timeline gate signal failed");
         }
     }
     impl Drop for SignalOnDrop {
         fn drop(&mut self) {
-            self.release();
-            // Native interop object: retain it through actual GPU completion,
-            // including assertion unwinding before the explicit pending wait.
-            let _ = self.0.wait_idle();
-            unsafe { self.0.raw_device().destroy_event(self.1, None); }
+            // Also unblock during assertion unwinding. The submitted receipt
+            // and semaphore SyncCell retain native lifetime through completion;
+            // this test never manually destroys a pending synchronization object.
+            let _ = self.try_release();
         }
     }
 
@@ -696,8 +711,8 @@ mod mapped_raster_gpu_tests {
         assert_eq!(first[0], 11);
 
         let pool = VulkanCommandPool::new(device.clone()).unwrap();
-        let gate = unsafe { device.raw_device().create_event(&vk::EventCreateInfo::default(), None) }.unwrap();
-        let mut release = SignalOnDrop(device.clone(), gate, true);
+        let gate = TimelineSemaphore::new(device.clone(), 0).unwrap();
+        let mut release = SignalOnDrop { semaphore: gate.clone(), armed: true };
         let mut command = pool.allocate().unwrap();
         unsafe {
             command.retain_opaque_buffer_range(source.shared(), 0, source.size).unwrap();
@@ -705,8 +720,6 @@ mod mapped_raster_gpu_tests {
         }
         command.begin().unwrap();
         unsafe {
-            device.raw_device().cmd_wait_events(command.raw_handle(), &[gate],
-                vk::PipelineStageFlags::HOST, vk::PipelineStageFlags::TRANSFER, &[], &[], &[]);
             device.raw_device().cmd_pipeline_barrier(command.raw_handle(), vk::PipelineStageFlags::HOST,
                 vk::PipelineStageFlags::TRANSFER, vk::DependencyFlags::empty(), &[],
                 &[vk::BufferMemoryBarrier::default().src_access_mask(vk::AccessFlags::HOST_WRITE)
@@ -723,7 +736,9 @@ mod mapped_raster_gpu_tests {
                     .size(output.size)], &[]);
         }
         command.end().unwrap();
-        let pending = command.submit().unwrap();
+        let pending = command.submit_to(rhapsody::raw::device::DeviceQueue {
+            handle: device.primary_queue(), family: device.queue_family_index(), index: 0,
+        }, &[(gate, 1, vk::PipelineStageFlags::ALL_COMMANDS)], &[]).unwrap();
         assert!(!pending.is_complete().unwrap());
         let mut inspected = false;
         assert_eq!(readback.try_cpu_read(|_| { inspected = true; }).unwrap(), None);
@@ -748,6 +763,8 @@ mod mapped_raster_gpu_tests {
         assert_eq!(staging.cpu_contents()[0].0, 22);
         // Its bytes travel as a GPU copy ordered after the pending read.
         host.0.finish_test_uploads().unwrap();
+        assert!(!pending.is_complete().unwrap(),
+            "producer and upload admission must return before the gated GPU read completes");
         release.release();
         pending.wait(10_000_000_000).unwrap();
         assert_eq!(readback.try_cpu_read(|mapped| mapped[0].0).unwrap(), Some(11));
