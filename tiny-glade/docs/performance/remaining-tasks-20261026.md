@@ -1,9 +1,9 @@
 # 当前进度与未完成任务（2026-10-26）
 
-**已取得一轮有效的前瞻时钟 debug 质量验证；Release 性能、常量新方案和 Collect 完整验收仍未完成。**
-不能报告整帧提升或 16ms 达标。当前已提交至 `370f795`：需求计划 `7c42f3a` 与仅 cfg(test) timeline 夹具 `370f795` 均已提交；新默认/probe 全目标检查仍 pending。
-完整新证据和原始链接见 [本批证据摘要](C:/game/docs/performance/evidence-update-3e3b29c-20261026.md)，
-精确机器状态见 [status.json](C:/game/docs/performance/status.json)。
+**当前测量源码已提交至c7f4dc7，默认/probe全目标检查通过；Release性能与16ms仍未验收。**
+最新证据见[测量补线与真实常量账单](C:/game/docs/performance/evidence-update-workload-probe-20261026.md)。下面历史段落保留各自源码与原失败，不能用旧pending覆盖最新结果，也不能把局部通过当最终验收。
+
+当前优先队列：新冻结EXE的真实计数/GPU闭环 → 绑定scratch/快照定向对照 → 相同common harness的Release探针开销与四场景AB → 完整压力与长跑。水冰同模式漂移仍需定位，原有浮点断言、WSI用户暂缓、macOS待验。远程尚未推送。
 
 ## 本轮真实进展
 
