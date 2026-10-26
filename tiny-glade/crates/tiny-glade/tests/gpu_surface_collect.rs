@@ -1,0 +1,466 @@
+//! Real original rocky-lake scene, Autumn water and Winter ice, through the
+//! existing game App and production CoreRenderBridge. This is GPU correctness
+//! evidence only; no WSI or clean frame-CPU acceptance is claimed.
+//! Boot code is staged from the current original_gameplay_chain fixture. Once
+//! the baseline is frozen, extract this common bootstrap into test support.
+#[path = "support/performance_input.rs"]
+mod surface_input;
+#[path = "support/mod.rs"]
+mod test_support;
+use anyhow::{Context, Result};
+use clap::Parser;
+use country_core::{
+    resources::{
+        session::{ActiveSession, GladeType},
+        walls::InnerWalls,
+        window::WindowSize,
+    },
+    systems::save::load_game::LoadGameManager,
+};
+use std::{path::PathBuf, time::Duration};
+use test_support::BridgeTestDriver as _;
+use tiny_glade::{
+    app_config::{CliArgs, get_app_config},
+    render_bridge::CoreRenderBridge,
+    run_game::{ApplicationShaderLibrary, run_game_thread},
+};
+
+struct BootedSession {
+    driver: tiny_glade::game_loop::GameFrameDriver,
+    context: egui::Context,
+    bridge: CoreRenderBridge,
+    shaders: std::sync::Arc<country_core::asset_libraries::shader_library::AssetShaderLibrary>,
+    device: std::sync::Arc<rhapsody::device::Device>,
+    _boot: std::sync::MutexGuard<'static, ()>,
+}
+
+fn boot_surface_session(glade: GladeType) -> Result<BootedSession> {
+    struct Diagnostics;
+    impl log::Log for Diagnostics {
+        fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
+            metadata.level() <= log::Level::Error
+        }
+        fn log(&self, record: &log::Record<'_>) {
+            if self.enabled(record.metadata()) {
+                eprintln!("{} {}", record.target(), record.args());
+            }
+        }
+        fn flush(&self) {}
+    }
+    static DIAGNOSTICS: Diagnostics = Diagnostics;
+    if log::set_logger(&DIAGNOSTICS).is_ok() {
+        log::set_max_level(log::LevelFilter::Error);
+    }
+
+    let installed = std::env::var_os("TG_INSTALL_ROOT")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../../ljxsj_92385/Tiny Glade")
+        })
+        .canonicalize()?;
+    // Both shipped-session tests boot a whole App in this process: the account paths are process
+    // global, so they are initialised once and the boots are serialised.
+    static BOOT: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    static ACCOUNT: std::sync::OnceLock<tempfile::TempDir> = std::sync::OnceLock::new();
+    let boot_guard = BOOT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if ACCOUNT.get().is_none() {
+        let account = tempfile::tempdir()?;
+        paths::initialize_paths_with_installation(0, Some(account.path()), &installed)?;
+        let _ = ACCOUNT.set(account);
+    }
+    std::env::set_current_dir(&installed)?;
+    utils::local_time::init_local_time();
+    tiny_glade::load_language_library::load_language_library(None, None);
+    let cli = CliArgs::parse_from(["gpu-surface-collect"]);
+    let config = get_app_config(&cli)?;
+    assert!(
+        !config.dev.demo,
+        "this acceptance requires the full original build"
+    );
+    let mut app = run_game_thread(config, &cli, WindowSize::new(1280, 720))?;
+    // Choose metadata before the existing session/startup-water producers.
+    // Changing only ActiveSession after boot would bind a water shader to the
+    // Ice graph and would not test the real winter path.
+    app.insert_resource(country_core::resources::session::NextSession::new_game(
+        country_core::resources::session::SessionMeta {
+            glade,
+            ..Default::default()
+        },
+        Some(installed.join("assets/starting-builds/full/05-rocky-lake/history.json")),
+    ));
+    app.insert_resource(
+        country_core::resources::platform::RuntimePlatform::from_detection(false, false),
+    );
+    tiny_glade::game_loop::register_platform_events(&mut app);
+    tiny_glade::game_loop::register_settings_application_system(&mut app);
+    let device = rhapsody::device::Device::new_headless(&rhapsody::device::DeviceConfig {
+        // Same budget as the production window path (the original allocator has no cap).
+        validation: true,
+        memory_budget_bytes: tiny_glade::production_renderer::UNBOUNDED_DEVICE_BUDGET_BYTES,
+        ..rhapsody::device::DeviceConfig::headless()
+    })
+    .context("strict gameplay physical device")?;
+    let shaders = app.world().resource::<ApplicationShaderLibrary>().0.clone();
+    let bridge = CoreRenderBridge::new(device.clone(), installed.clone(), shaders.clone())?;
+    let mut final_post = None;
+    country_core::startup::load_shaders::load_shaders(
+        &shaders,
+        bridge.shader_backend(),
+        &mut final_post,
+    );
+    // Same shader set as ProductionRenderer::new: the world tail (ui_2d, text, vermeer,
+    // painterly, blit) is part of the compiled production graph.
+    country_core::startup::load_shaders::load_ui_shaders(&shaders, bridge.shader_backend());
+    country_core::startup::startup_blit::startup_blit(&shaders, bridge.shader_backend());
+    struct TailShaders<'a> {
+        library: &'a country_core::asset_libraries::shader_library::AssetShaderLibrary,
+        backend: &'a dyn country_core::render::shader::boundary::ShaderBackend,
+    }
+    impl country_core::systems::render_loop::painterly::ShaderLoader for TailShaders<'_> {
+        fn load_shader_into_library(&mut self, path: &'static str, name: &'static str) {
+            country_core::startup::load_shaders::load_shader_into_library(
+                self.library,
+                self.backend,
+                path,
+                name,
+            );
+        }
+    }
+    country_core::systems::render_loop::painterly::startup_painterly(&mut TailShaders {
+        library: &shaders,
+        backend: bridge.shader_backend(),
+    });
+    country_core::systems::render_loop::vermeer::startup_vermeer(&mut TailShaders {
+        library: &shaders,
+        backend: bridge.shader_backend(),
+    });
+    bridge.install_asset_libraries(app.world_mut())?;
+    tiny_glade::gameplay_startup::install_gameplay_device_runtime(
+        &mut app,
+        device.clone(),
+        bridge.hosts().clone(),
+        installed,
+    )?;
+    // The window path uses this driver to install the same asset maintenance
+    // and canonical egui Context before its first App::update.
+    let context = egui::Context::default();
+    let mut driver = tiny_glade::game_loop::GameFrameDriver::new(app, context.clone());
+    driver
+        .app_mut()
+        .insert_resource(bevy_time::TimeUpdateStrategy::ManualDuration(
+            Duration::from_secs_f64(1.0 / 60.0),
+        ));
+    let mut loaded = false;
+    for frame in 0..600 {
+        context.begin_frame(egui::RawInput::default());
+        driver.app_mut().update();
+        let _ = context.end_frame();
+        let world = driver.app().world();
+        if frame % 60 == 0 {
+            eprintln!(
+                "gameplay App frame {frame}: session={}, walls={}",
+                world.contains_resource::<ActiveSession>(),
+                world.resource::<InnerWalls>().wall_ids().count()
+            );
+        }
+        if world.contains_resource::<ActiveSession>()
+            && world.resource::<LoadGameManager>().options.is_none()
+            && world
+                .get_resource::<country_core::resources::world_raster_defs::WaterRaster>()
+                .is_some_and(|raster| raster.composite().iter().any(|&value| value > 127))
+        {
+            loaded = true;
+            break;
+        }
+    }
+    anyhow::ensure!(
+        loaded,
+        "shipped rocky-lake did not finish through the real gameplay schedule"
+    );
+    // Let actual asynchronous assets, constructor uploads and intro migration
+    // settle through their normal schedules before asserting visible owners.
+    for _ in 0..90 {
+        context.begin_frame(egui::RawInput::default());
+        driver.app_mut().update();
+        let _ = context.end_frame();
+    }
+    Ok(BootedSession {
+        driver,
+        context,
+        bridge,
+        shaders,
+        device,
+        _boot: boot_guard,
+    })
+}
+
+fn run_surface(glade: GladeType, label: &str) -> Result<()> {
+    use country_core::systems::render_loop::draw_passes::draw_lists::{self, DrawLists};
+    let BootedSession {
+        mut driver,
+        context,
+        mut bridge,
+        shaders,
+        device,
+        _boot,
+    } = boot_surface_session(glade)?;
+    let world = driver.app_mut().world_mut();
+    anyhow::ensure!(
+        world.resource::<ActiveSession>().meta.glade == glade,
+        "wrong session season"
+    );
+    let config = *world.resource::<country_core::render::render_config::FrameRenderConfig>();
+    anyhow::ensure!(
+        config.extent_0 == [1280, 720]
+            && config.extent_8 == [1280, 720]
+            && config.world_resolution_scale == 1.0,
+        "surface acceptance must keep full world scale: {config:?}"
+    );
+    let water = world.resource::<country_core::resources::world_raster_defs::WaterRaster>();
+    let wet_pixels = water
+        .composite()
+        .iter()
+        .filter(|&&value| value > 127)
+        .count();
+    anyhow::ensure!(
+        wet_pixels > 0,
+        "lake scene has no actual water raster contents"
+    );
+    let raster_signature = blake3::hash(water.composite()).to_hex().to_string();
+    let mut lists = DrawLists::new();
+    draw_lists::build_draw_lists(world, shaders.as_ref(), &mut lists);
+    anyhow::ensure!(!lists.list(15).is_empty(), "no surface draws admitted");
+    let shader_name = if glade.is_winter() {
+        "ice_plane"
+    } else {
+        "water_plane"
+    };
+    anyhow::ensure!(
+        shaders.get_raster_handle_by_name(shader_name).is_some(),
+        "missing original {shader_name}"
+    );
+    let list_lengths: Vec<_> = (0..draw_lists::DRAW_LIST_COUNT)
+        .map(|index| lists.list(index).len())
+        .collect();
+    let initial_scene_input = surface_input::scene_manifest(world, &list_lengths)?;
+    tiny_glade::production_renderer::warm_up_gameplay(bridge.warmup_owners()?, world)?;
+    bridge.accept_gameplay_warmup(
+        world.resource::<tiny_glade::render_bridge::CompletedGameplayWarmup>(),
+    )?;
+    let captured: std::sync::Arc<parking_lot::Mutex<Vec<(usize, u32, u32, Vec<u8>)>>> =
+        Default::default();
+    let mut commands = Vec::new();
+    let mut expected_surface_draws = 0u64;
+    let _ = country_core::render::declare_probe::take();
+    let _ = country_core::systems::render_loop::draw_passes::transparency_pass::surface_support::take_surface_collect_test_stats();
+    for index in 0..30 {
+        context.begin_frame(egui::RawInput::default());
+        driver.app_mut().update();
+        let _ = context.end_frame();
+        while bridge.with_session(|session| session.pending_frame_count())
+            >= device.frames_in_flight() as usize
+        {
+            anyhow::ensure!(
+                bridge.with_session(|session| session.wait_gpu_queue_trim(120_000_000_000))?,
+                "GPU wait timeout"
+            );
+            anyhow::ensure!(
+                bridge.collect_completed_frames()? > 0,
+                "GPU completion was not retired"
+            );
+        }
+        let world = driver.app_mut().world_mut();
+        let actual_config = world.resource::<country_core::render::render_config::FrameRenderConfig>();
+        anyhow::ensure!(actual_config == &config,
+            "surface workload changed rendering resolution/config at frame {index}");
+        let actual_water = world.resource::<country_core::resources::world_raster_defs::WaterRaster>();
+        anyhow::ensure!(blake3::hash(actual_water.composite()).to_hex().as_str() == raster_signature,
+            "static lake water raster changed at frame {index}");
+        let constants = world.resource::<country_core::render::frame_constants::FrameConstants>();
+        let mut frame_input = serde_json::json!({
+            "frame_counter":constants.frame_counter,
+            "game_time_sec":constants.game_time_sec,
+            "game_time_frac_bits":constants.game_time_frac.to_bits(),
+            "delta_time_bits":constants.delta_time_seconds.to_bits(),
+            "inner_resolution":constants.inner_rendering_resolution,
+            "render_overrides":constants.render_overrides,
+            "time_of_day_bits":constants.time_of_day.to_bits(),
+            "camera_bits":world.resource::<country_core::systems::camera_rig::MainCamera>()
+                .read_matrix(0xc0).to_cols_array().map(f32::to_bits),
+        });
+        let mut actual_lists = DrawLists::new();
+        draw_lists::build_draw_lists(world, shaders.as_ref(), &mut actual_lists);
+        let actual_lengths: Vec<_> = (0..draw_lists::DRAW_LIST_COUNT)
+            .map(|slot| actual_lists.list(slot).len())
+            .collect();
+        anyhow::ensure!(actual_lengths[15] > 0,
+            "surface draw list became empty at frame {index}");
+        expected_surface_draws += actual_lengths[15] as u64;
+        frame_input["water_raster_blake3"] = serde_json::json!(raster_signature);
+        frame_input["scene"] = surface_input::scene_manifest(world, &actual_lengths)?;
+        if [19, 29].contains(&index) {
+            let sink = captured.clone();
+            tiny_glade::screenshot::gather_screenshot_requests(
+                world,
+                [tiny_glade::screenshot::ScreenshotRequest {
+                    purpose: tiny_glade::screenshot::ScreenshotPurpose::MenuBackground,
+                    dimensions: None,
+                    sink: tiny_glade::screenshot::ScreenshotSink::Rgba(std::sync::Arc::new(
+                        move |w, h, rgba| sink.lock().push((index, w, h, rgba)),
+                    )),
+                    completion: None,
+                }],
+            )?;
+        }
+        let frame =
+            tiny_glade::production_renderer::prepare_headless_gameplay_frame(&mut bridge, world)?;
+        bridge.prepare_test_execution()?;
+        let frame = frame.execute(&mut bridge, world)?;
+        anyhow::ensure!(frame.receipt.stats.chunks > 0, "no actual recording tasks");
+        world
+            .resource_mut::<country_core::render::RenderTemporalState>()
+            .frame_render_returned();
+        tiny_glade::screenshot::finish_screenshot_capture(world)?;
+        let pass_names = bridge.with_session(|session| {
+            session
+                .chain
+                .pgo
+                .previous
+                .iter()
+                .map(|(name, _, _)| name.to_owned())
+                .collect::<Vec<_>>()
+        });
+        let expected_pass = if glade.is_winter() {
+            "Ice plane"
+        } else {
+            "Water plane"
+        };
+        anyhow::ensure!(
+            pass_names.iter().any(|name| name == expected_pass),
+            "{expected_pass} never executed"
+        );
+        commands
+            .push(serde_json::json!({"frame":index,"pass_names":pass_names,"input":frame_input}));
+        bridge.collect_completed_frames()?;
+    }
+    let world = driver.app_mut().world_mut();
+    for _ in 0..8 {
+        tiny_glade::screenshot::shared_texture_capture::finish(world)?;
+    }
+    tiny_glade::screenshot::shared_texture_capture::shutdown(world)?;
+    bridge.wait_submits_done(120_000_000_000)?;
+    let collection = country_core::render::declare_probe::take();
+    let surface = country_core::systems::render_loop::draw_passes::transparency_pass::surface_support::take_surface_collect_test_stats();
+    let mode = std::env::var("TG_SURFACE_MODE").unwrap_or_else(|_| "collect".into());
+    if mode == "inline" {
+        anyhow::ensure!(
+            surface.inline_calls == 30
+                && surface.inline_draws == expected_surface_draws
+                && surface.worker_calls == 0
+                && surface.worker_tasks == 0,
+            "inline control did not execute the original owner loop: {surface:?}"
+        );
+    } else {
+        anyhow::ensure!(
+            surface.worker_calls == 30
+                && surface.worker_tasks > 0
+                && surface.worker_draws == expected_surface_draws
+                && surface.inline_calls == 0
+                && surface.owner_collect_tasks == 0,
+            "Collect did not run on actual worker threads: {surface:?}"
+        );
+    }
+    if std::env::var("TG_FRAME_TIMING").is_ok_and(|value| value == "1") {
+        anyhow::ensure!(
+            collection.collect_tasks > 0,
+            "no worker Collect tasks observed"
+        );
+    }
+    let shots = captured.lock();
+    anyhow::ensure!(
+        shots.len() == 2,
+        "expected exactly two completed captures, got {}",
+        shots.len()
+    );
+    let captured_frames: std::collections::BTreeSet<_> =
+        shots.iter().map(|(index, _, _, _)| *index).collect();
+    anyhow::ensure!(
+        captured_frames == [19usize, 29].into_iter().collect::<std::collections::BTreeSet<_>>(),
+        "duplicate or missing capture completion"
+    );
+    let out = std::env::var_os("TG_SURFACE_OUT")
+        .context("TG_SURFACE_OUT must preserve raw pixel evidence")?;
+    let out = PathBuf::from(out).join(label);
+    std::fs::create_dir_all(&out)?;
+    let mut pixels = Vec::new();
+    for (index, w, h, rgba) in shots.iter() {
+        anyhow::ensure!(
+            [*w, *h] == [1280, 720] && rgba.len() == (w * h * 4) as usize,
+            "wrong capture dimensions"
+        );
+        anyhow::ensure!(
+            rgba.chunks_exact(4).any(|pixel| pixel[..3] != [0, 0, 0]),
+            "empty captured world"
+        );
+        let name = format!("frame-{:02}.rgba", index + 1);
+        std::fs::write(out.join(&name), rgba)?;
+        tiny_glade::screenshot::write_image_with_callback_impl(
+            &out.join(format!("frame-{:02}.png", index + 1)),
+            *w,
+            *h,
+            rgba,
+            90,
+            &|result| assert!(result.is_ok(), "{result:?}"),
+        );
+        pixels.push(serde_json::json!({"frame":index+1,"width":w,"height":h,
+            "file":name,"blake3":blake3::hash(rgba).to_hex().to_string()}));
+    }
+    let manifest = serde_json::json!({
+        "schema":"surface-collect-correctness-v1", "season":label,
+        "surface_execution_mode":mode,
+        "source":std::env::var("TG_SURFACE_SOURCE").unwrap_or_else(|_| "unrecorded".into()),
+        "binary_blake3":blake3::hash(&std::fs::read(std::env::current_exe()?)?).to_hex().to_string(),
+        "scene":"assets/starting-builds/full/05-rocky-lake/history.json",
+        "expected_original_scene_sha256":"f85cba25b4a193d517402a57df3590323f3d388b4f8181899c4b7fed7272fec3",
+        "scene_blake3":blake3::hash(&std::fs::read("assets/starting-builds/full/05-rocky-lake/history.json")?).to_hex().to_string(),
+        "water_raster_blake3":raster_signature,"wet_raster_pixels":wet_pixels,
+        "initial_draw_list_lengths":list_lengths,"frames":30,
+        "initial_scene_input":initial_scene_input,
+        "fixed_step":[1,60],"world_scale":1.0,"pixels":pixels,"commands":commands,
+        "collect_tasks":collection.collect_tasks,"cross_pass_tasks":collection.cross_pass_tasks,
+        "actual_surface_execution":{
+            "inline_calls":surface.inline_calls,"inline_draws":surface.inline_draws,
+            "worker_calls":surface.worker_calls,"worker_tasks":surface.worker_tasks,
+            "worker_draws":surface.worker_draws,"owner_collect_tasks":surface.owner_collect_tasks,
+        },
+        "scope":"physical headless GPU correctness; visible surface ROI and matching-source A/B remain required"
+    });
+    std::fs::write(
+        out.join("manifest.json"),
+        serde_json::to_vec_pretty(&manifest)?,
+    )?;
+    let drained = bridge
+        .shader_backend()
+        .bindless_occupancy()
+        .tables
+        .map(|table| table.live);
+    anyhow::ensure!(
+        drained == bridge.shader_backend().retained_bindless_counts(),
+        "descriptor owners leaked"
+    );
+    Ok(())
+}
+
+#[test]
+fn real_lake_water_and_ice_record_collect_and_preserve_raw_pixel_evidence() -> Result<()> {
+    std::thread::Builder::new().name("tg-render".into()).spawn(|| {
+        let mode = std::env::var("TG_SURFACE_MODE").unwrap_or_else(|_| "collect".into());
+        anyhow::ensure!(mode == "inline" || mode == "collect", "unknown surface mode {mode}");
+        country_core::systems::render_loop::draw_passes::transparency_pass::surface_support::with_surface_collect_mode_for_test(mode == "inline", || {
+            run_surface(GladeType::Autumn,"water")?;
+            run_surface(GladeType::Winter,"ice")
+        })
+    })?.join().unwrap_or_else(|panic| std::panic::resume_unwind(panic))
+}
