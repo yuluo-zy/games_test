@@ -791,6 +791,7 @@ impl RasterShared {
             }),
             graph,
             cache: HbMap::new(),
+            scope_reflections: RefCell::new(None),
             constants_error: None,
             resource_graph_factory: None,
         }
@@ -863,6 +864,7 @@ pub struct RasterPassHost {
     /// 设备级 `HashMap<RenderPassDesc, RenderPass>` 缓存（`+0x188`）的每 pass 视图：去重由
     /// [`RenderPassHost::create_from_desc`] 的键表保证，所以不同 pass 拿到的是同一个通道句柄。
     cache: HbMap<RasterRenderPassDesc, ManagedHandle>,
+    scope_reflections: RefCell<Option<Arc<crate::draw_template_cache::ReflectionScope>>>,
     constants_error: Option<rhapsody::Error>,
     resource_graph_factory: Option<Rc<dyn Fn() -> country_core::rhapsody_types::RenderGraph>>,
 }
@@ -873,8 +875,10 @@ impl RasterPassHost {
     pub fn prepare_draw_collection(&self) -> Arc<dyn Fn() -> Box<dyn PassHost> + Send + Sync> {
         let shared = self.shared.clone();
         let assets = shared.assets.lock().collect.clone();
+        let reflections = self.scope_reflections.borrow().clone();
         Arc::new(move || Box::new(RasterCollectHost {
-            shared: shared.clone(), assets: assets.clone(), deferred: RefCell::new(Vec::new()),
+            shared: shared.clone(), assets: assets.clone(), reflections: reflections.clone(),
+            deferred: RefCell::new(Vec::new()),
         }))
     }
     pub fn with_resource_graph_factory(
@@ -924,6 +928,7 @@ struct ExternalDrawBinding {
 struct RasterCollectHost {
     shared: Arc<RasterShared>,
     assets: Arc<CollectAssets>,
+    reflections: Option<Arc<crate::draw_template_cache::ReflectionScope>>,
     deferred: RefCell<Vec<country_core::render::pass_builder::draw_stream::DeferredBuffer>>,
 }
 
@@ -935,7 +940,8 @@ impl PassHost for RasterCollectHost {
         shader: &Handle<RasterShaderProgram>,
         variant: u8,
     ) -> Option<Arc<CoreReflection>> {
-        self.shared.reflection(shader.0.0, variant)
+        self.reflections.as_ref().and_then(|scope| scope.get(&(shader.0.0, variant)))
+            .or_else(|| self.shared.reflection(shader.0.0, variant))
     }
 
     fn ssbo_instance_count(&self, rg_buffer_hash: u64) -> Option<u32> {
@@ -1082,6 +1088,11 @@ impl PassHost for RasterCollectHost {
 }
 
 impl PassHost for RasterPassHost {
+    fn begin_collect_scope(&self) {
+        *self.scope_reflections.borrow_mut() = crate::draw_template_cache::ReflectionScope::try_new(
+            self.shared.device.allocator_stats()).ok().map(Arc::new);
+    }
+
     fn collect_factory(&self) -> Arc<dyn Fn() -> Box<dyn PassHost> + Send + Sync> {
         self.prepare_draw_collection()
     }
@@ -1115,7 +1126,17 @@ impl PassHost for RasterPassHost {
         shader: &Handle<RasterShaderProgram>,
         variant: u8,
     ) -> Option<Arc<CoreReflection>> {
-        self.shared.reflection(shader.0.0, variant)
+        let key = (shader.0.0, variant);
+        {
+            let scopes = self.scope_reflections.borrow();
+            let Some(scope) = scopes.as_ref() else { return self.shared.reflection(key.0, key.1); };
+            if let Some(hit) = scope.get(&key) { return Some(hit); }
+        }
+        let reflection = self.shared.reflection(key.0, key.1)?;
+        if let Some(scope) = self.scope_reflections.borrow_mut().as_mut() {
+            if let Some(scope) = Arc::get_mut(scope) { scope.insert(key, reflection.clone()); }
+        }
+        Some(reflection)
     }
 
     /// 在常量页里为该管线的 uniform 块分配一块；字节在 [`PassHost::flush_dynamic_constants`] 写入。

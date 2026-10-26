@@ -452,6 +452,9 @@ pub struct DrawBatch {
 /// `GraphicsDeviceResource` / `PassResources(7 个指针)` / 游戏资源库在本模块被读取的全部外部调用面
 /// （O 调用点；实现者是 rhapsody 与游戏资源库）。
 pub trait PassHost {
+    /// Begin one bounded admission/worker declaration scope. Sequential hosts
+    /// may ignore it; fixed draws do not need a reflection snapshot allocation.
+    fn begin_collect_scope(&self) {}
     /// Prepare an immutable factory. The returned hosts are constructed and
     /// destroyed inside Collect; neither the graph nor its Rc crosses threads.
     fn collect_factory(&self) -> Arc<dyn Fn() -> alloc::boxed::Box<dyn PassHost> + Send + Sync> {

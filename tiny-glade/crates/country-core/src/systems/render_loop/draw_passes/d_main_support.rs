@@ -294,7 +294,7 @@ fn collect_layer(ctx: &mut DrawPassCtx<'_>, layer: &[(&ListPass<'_>, &[DrawEntry
     if draws < host.collect_chunk_draws().max(1).saturating_mul(2) { return false; }
     for &(spec, items) in layer {
         let host = ctx.host();
-        let factory = host.collect_factory();
+        host.begin_collect_scope();
         for (item, _) in items {
             let shader = Handle(crate::rhapsody_contract::ManagedHandle(item.shader), core::marker::PhantomData);
             let Some(reflection) = host.raster_shader(&shader, spec.variant) else { return false; };
@@ -305,6 +305,7 @@ fn collect_layer(ctx: &mut DrawPassCtx<'_>, layer: &[(&ListPass<'_>, &[DrawEntry
         if let ItemMode::Shadow { flag } = spec.mode {
             params.flag = CommonDrawFlag::from_byte(flag).expect("shadow cascade flag out of range");
         }
+        let factory = host.collect_factory();
         jobs.push((factory, [spec.viewport.extent.0, spec.viewport.extent.1], params));
     }
     crate::render::declare_probe::collect_stage(0, prepare_started);
@@ -405,12 +406,12 @@ pub(crate) fn collect_draw_pages<T: Sync, R: Send + 'static>(
     mut commit: impl FnMut(R),
 ) {
     if items.is_empty() { return; }
-    let factory = pass.host.collect_factory();
     let chunk_draws = pass.host.collect_chunk_draws().max(1);
     let viewport = pass.viewport;
     let mut offset = 0;
     while offset < items.len() {
         let prepare_started = crate::render::declare_probe::start();
+        pass.host.begin_collect_scope();
         let mut bytes = 0usize;
         let mut end = offset;
         for item in &items[offset..items.len().min(offset + COLLECT_MAX_DRAWS)] {
@@ -421,6 +422,7 @@ pub(crate) fn collect_draw_pages<T: Sync, R: Send + 'static>(
             end += 1;
         }
         crate::render::declare_probe::collect_stage(0, prepare_started);
+        let factory = pass.host.collect_factory();
         // At most eight in-flight tasks; each receives the configured 64 draws
         // by default. Completed pages are committed before accepting more.
         for wave in items[offset..end].chunks(chunk_draws.saturating_mul(8)) {
