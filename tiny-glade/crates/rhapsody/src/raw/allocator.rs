@@ -132,14 +132,23 @@ impl MemoryBlock {
         buffer: vk::Buffer,
         image: vk::Image,
     ) -> Result<Self> {
+        let mut reclaim = AllocationReclaim::new(&device);
+        Self::allocate_for_resource_reclaim(device, requirements, required, preferred, flags, buffer, image, &mut reclaim)
+    }
+    pub(crate) fn allocate_for_resource_reclaim(
+        device: Arc<Device>, requirements: vk::MemoryRequirements,
+        required: vk::MemoryPropertyFlags, preferred: vk::MemoryPropertyFlags,
+        flags: vk::MemoryAllocateFlags, buffer: vk::Buffer, image: vk::Image,
+        reclaim: &mut AllocationReclaim,
+    ) -> Result<Self> {
         let memory_type = choose_memory_type(
             &device.core.memory_properties,
             requirements.memory_type_bits,
             required,
             preferred,
         );
-        relieve_pressure(&device, memory_type, requirements.size);
-        with_eviction_retry(&device, requirements.size, || {
+        relieve_pressure(&device, memory_type, requirements.size, reclaim);
+        with_eviction_retry(&device, requirements.size, reclaim, || {
             Self::allocate_for_resource_once(
                 device.clone(),
                 requirements,
@@ -352,7 +361,18 @@ pub(crate) fn needs_eviction(
 
 /// Under budget pressure, or when `bytes` would exceed the heap budget, ask
 /// registered caches to release idle entries before allocating.
-pub(crate) fn relieve_pressure(device: &Device, memory_type: Option<u32>, bytes: u64) {
+/// One allocation, including proactive eviction, retry and suballocation
+/// fallback, shares a completion snapshot and a finite retirement allowance.
+pub(crate) struct AllocationReclaim {
+    pub(crate) completed: Option<Option<CompletedValues>>,
+    pub(crate) remaining: crate::device::ReclamationBudget,
+}
+impl AllocationReclaim {
+    pub(crate) fn new(device: &Device) -> Self {
+        Self { completed: None, remaining: device.pressure_reclamation_budget() }
+    }
+}
+pub(crate) fn relieve_pressure(device: &Device, memory_type: Option<u32>, bytes: u64, reclaim: &mut AllocationReclaim) {
     let stats = &device.memory.stats;
     let heap = memory_type
         .map(|index| device.core.memory_properties.memory_types[index as usize].heap_index);
@@ -361,7 +381,7 @@ pub(crate) fn relieve_pressure(device: &Device, memory_type: Option<u32>, bytes:
         heap.map(|heap| stats.heap_available(heap)),
         bytes,
     ) {
-        device.evict_idle_caches(bytes);
+        device.evict_idle_caches_reclaim(bytes, reclaim);
     }
 }
 
@@ -375,11 +395,12 @@ pub(crate) fn is_memory_exhaustion(error: &Error) -> bool {
 pub(crate) fn with_eviction_retry<T>(
     device: &Device,
     bytes: u64,
+    reclaim: &mut AllocationReclaim,
     mut attempt: impl FnMut() -> Result<T>,
 ) -> Result<T> {
     match attempt() {
         Err(error) if is_memory_exhaustion(&error) => {
-            device.evict_idle_caches(bytes);
+            device.evict_idle_caches_reclaim(bytes, reclaim);
             attempt()
         }
         result => result,

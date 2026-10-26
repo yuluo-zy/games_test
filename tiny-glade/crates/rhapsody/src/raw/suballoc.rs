@@ -500,16 +500,18 @@ impl MemoryBlock {
             preferred,
         )
         .ok_or_else(|| Error::unsupported("no compatible suballocation memory type"))?;
-        super::allocator::relieve_pressure(&device, Some(memory_type), adjusted.size);
+        let mut reclaim = super::allocator::AllocationReclaim::new(&device);
+        super::allocator::relieve_pressure(&device, Some(memory_type), adjusted.size, &mut reclaim);
         // should_use already trimmed empty native blocks; release idle cache
         // entries before falling back to a dedicated allocation.
         if !sub.should_use(memory_type, adjusted.size) {
-            device.evict_idle_caches(adjusted.size);
+            device.evict_idle_caches_reclaim(adjusted.size, &mut reclaim);
             if !sub.should_use(memory_type, adjusted.size) {
-                return Self::allocate_dedicated(device, requirements, required, preferred, flags);
+                return Self::allocate_for_resource_reclaim(device, requirements, required, preferred,
+                    flags, vk::Buffer::null(), vk::Image::null(), &mut reclaim);
             }
         }
-        let allocation = super::allocator::with_eviction_retry(&device, adjusted.size, || {
+        let allocation = super::allocator::with_eviction_retry(&device, adjusted.size, &mut reclaim, || {
             sub.allocate(
                 &AllocationCreateDesc {
                     name: "",

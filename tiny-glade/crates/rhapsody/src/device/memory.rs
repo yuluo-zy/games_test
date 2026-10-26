@@ -264,16 +264,60 @@ impl Device {
     /// entries until about `target_bytes` are freed, then destroy what became
     /// collectable. Returns the bytes the caches reported released.
     pub fn evict_idle_caches(&self, target_bytes: u64) -> u64 {
-        let completed = match self.poll() {
-            Ok(completed) => completed,
-            Err(error) => { log::error!("idle cache eviction completion query failed: {error}"); return 0; }
-        };
-        let released = self.memory.evictables.evict(&completed, target_bytes);
+        let mut reclaim = crate::raw::allocator::AllocationReclaim::new(self);
+        self.evict_idle_caches_reclaim(target_bytes, &mut reclaim)
+    }
+    pub(crate) fn evict_idle_caches_reclaim(
+        &self, target_bytes: u64, reclaim: &mut crate::raw::allocator::AllocationReclaim,
+    ) -> u64 {
+        let completed = reclaim.completed.get_or_insert_with(|| match self.poll() {
+            Ok(completed) => Some(completed),
+            Err(crate::Error::DeviceLost) => Some(crate::sync::CompletedValues::all()),
+            Err(error) => { log::error!("idle cache eviction completion query failed: {error}"); None }
+        });
+        let Some(completed) = completed.as_ref() else { return 0 };
+        let released = self.memory.evictables.evict(completed, target_bytes);
         // Caches can drop their last physical owner without reporting its
-        // native bytes. Drain the same trusted completion snapshot even when
+        // native bytes. Collect with the SAME finite allowance even when
         // reported bytes are zero, including when no cache is registered.
-        self.collect_completed_snapshot(&completed);
+        self.collect_pressure_snapshot(completed, &mut reclaim.remaining);
         let _ = self.trim_unused_suballocations();
         released
+    }
+}
+
+
+#[cfg(test)]
+mod pressure_reclaim_tests {
+    use super::*;
+    #[test]
+    fn one_allocation_shares_its_quota_and_snapshot_even_when_eviction_reports_zero() {
+        let budget = crate::device::ReclamationBudget { max_scans: 3, max_destroys: 2 };
+        let device = match Device::new_headless(&crate::device::DeviceConfig {
+            reclamation: crate::device::ReclamationConfig { normal: budget, pressure: budget },
+            ..crate::device::DeviceConfig::headless()
+        }) {
+            Ok(device) => device,
+            Err(error) => {
+                assert!(!std::env::var("RHAPSODY_REQUIRE_VULKAN").is_ok_and(|v| v == "1"), "{error}");
+                return;
+            }
+        };
+        for _ in 0..9 {
+            let owners = crate::raw::temp_list::TempList::new(1, device.allocator_stats().clone()).unwrap();
+            assert!(device.lifetime.retirement.try_enqueue(crate::sync::SyncSet::EMPTY,
+                crate::raw::graveyard::Doomed::Owners(owners)).is_ok());
+        }
+        let mut reclaim = crate::raw::allocator::AllocationReclaim::new(&device);
+        for _ in 0..4 {
+            assert_eq!(device.evict_idle_caches_reclaim(u64::MAX, &mut reclaim), 0);
+        }
+        assert!(reclaim.completed.as_ref().unwrap().is_some());
+        assert_eq!(reclaim.remaining.max_destroys, 0);
+        assert_eq!(device.retirement_stats().pending, 7, "one attempt never gets a fresh quota");
+        while device.retirement_stats().pending > 0 {
+            device.evict_idle_caches(u64::MAX);
+        }
+        assert_eq!(device.retirement_stats().idle_waits, 0);
     }
 }

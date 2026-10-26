@@ -97,6 +97,18 @@ impl Device {
             .destroyed;
         count
     }
+    pub(crate) fn pressure_reclamation_budget(&self) -> crate::device::ReclamationBudget {
+        self.lifetime.reclamation.pressure
+    }
+    pub(crate) fn collect_pressure_snapshot(
+        &self, completed: &CompletedValues, remaining: &mut crate::device::ReclamationBudget,
+    ) -> usize {
+        let progress = self.lifetime.retirement.collect_limited(completed,
+            remaining.max_scans, remaining.max_destroys, |doomed| self.destroy_now(doomed));
+        remaining.max_scans -= progress.scanned;
+        remaining.max_destroys -= progress.destroyed;
+        progress.destroyed
+    }
     fn reclamation_completed(&self) -> crate::Result<CompletedValues> {
         match self.poll() {
             Err(crate::Error::DeviceLost) => {
