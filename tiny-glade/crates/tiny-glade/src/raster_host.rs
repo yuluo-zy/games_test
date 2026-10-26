@@ -675,6 +675,9 @@ impl RasterShared {
             "scanned_idle_entries": bill.scanned_idle_entries, "batch_checkouts": bill.batch_checkouts,
             "batch_returns": bill.batch_returns, "idle_blocks": bill.idle_blocks,
             "idle_bytes": bill.idle_bytes, "metadata_bytes": bill.metadata_bytes,
+            "physical_allocations": bill.physical_allocations,
+            "physical_allocated_bytes": bill.physical_allocated_bytes,
+            "physical_allocation_scope": "successful_nonempty_cpu_bytes_through_constant_pool_not_malloc_calls",
             "duration_estimates": false,
         })
     }
