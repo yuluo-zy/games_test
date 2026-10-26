@@ -541,6 +541,14 @@ mod photo_focus_tests {
     };
     use glam::{Mat4, Vec2};
 
+    /// Original release UI asset (`B版本内容/assets/ui/<relative>`), resolved from
+    /// the manifest dir. Not part of the repository.
+    fn original_ui_asset(relative: &str) -> std::path::PathBuf {
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../../B版本内容/assets/ui")
+            .join(relative)
+    }
+
     fn camera(tag: u32) -> MainCamera {
         let mut camera = MainCamera::new(1.);
         camera.set_mode_byte(CameraMode::FREE);
@@ -786,19 +794,24 @@ mod photo_focus_tests {
         }
         for pinned in [false, true] {
             let mut mei = crate::MeiContext::default();
+            // Read at run time, like the other original-asset tests in this
+            // module: the original release files are not in the repository, so a
+            // compile-time include_str! would break `cargo check --all-targets`
+            // on every machine without them. A missing file still fails this test
+            // loudly instead of skipping it.
             let (template, config): (&str, crate::mei::config::NodeConfig) = if pinned {
                 (
                     "other/camera_focus_pinned",
-                    ron::from_str(include_str!(
-                        "../../../../../B版本内容/assets/ui/other/camera_focus_pinned.ron"
+                    crate::mei::config::read_node_config_from_file(&original_ui_asset(
+                        "other/camera_focus_pinned.ron",
                     ))
                     .unwrap(),
                 )
             } else {
                 (
                     "other/camera_focus",
-                    ron::from_str(include_str!(
-                        "../../../../../B版本内容/assets/ui/other/camera_focus.ron"
+                    crate::mei::config::read_node_config_from_file(&original_ui_asset(
+                        "other/camera_focus.ron",
                     ))
                     .unwrap(),
                 )
@@ -870,8 +883,7 @@ mod photo_focus_tests {
                     )))
                     .unwrap(),
                 );
-                let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-                    .join("../../../../B版本内容/assets/ui/other/camera_ghost.ron");
+                let path = original_ui_asset("other/camera_ghost.ron");
                 let config = crate::mei::config::read_node_config_from_file(&path).unwrap();
                 mei.configs
                     .insert("other/camera_ghost".into(), std::sync::Arc::new(config));
