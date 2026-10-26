@@ -285,7 +285,7 @@ pub fn run_list_layer(ctx: &mut DrawPassCtx<'_>, layer: &[(&ListPass<'_>, &[Draw
 
 fn collect_layer(ctx: &mut DrawPassCtx<'_>, layer: &[(&ListPass<'_>, &[DrawEntry])]) -> bool {
     let draws = layer.iter().fold(0usize, |n, (_, items)| n.saturating_add(items.len()));
-    if !(2..=8).contains(&layer.len()) || draws == 0 || draws > 4096 { return false; }
+    if !(2..=8).contains(&layer.len()) || draws == 0 || draws > COLLECT_MAX_DRAWS { return false; }
     let mut jobs = smallvec::SmallVec::<[_; 8]>::with_capacity(layer.len());
     let mut bytes = 0usize;
     let prepare_started = crate::render::declare_probe::start();
@@ -299,7 +299,7 @@ fn collect_layer(ctx: &mut DrawPassCtx<'_>, layer: &[(&ListPass<'_>, &[DrawEntry
             let shader = Handle(crate::rhapsody_contract::ManagedHandle(item.shader), core::marker::PhantomData);
             let Some(reflection) = host.raster_shader(&shader, spec.variant) else { return false; };
             bytes = bytes.saturating_add(reflection.uniform_block_size as usize);
-            if bytes > 32 * 1024 * 1024 { return false; }
+            if bytes > COLLECT_MAX_CONSTANT_BYTES { return false; }
         }
         let mut params = ctx.common_params(spec.flag);
         if let ItemMode::Shadow { flag } = spec.mode {
@@ -310,22 +310,32 @@ fn collect_layer(ctx: &mut DrawPassCtx<'_>, layer: &[(&ListPass<'_>, &[DrawEntry
     crate::render::declare_probe::collect_stage(0, prepare_started);
     let started = crate::render::declare_probe::start();
     let world: &World = ctx.world;
-    let batches = rhapsody::rg::map_chunks(&mut jobs, |index, (factory, viewport, params)| {
-        let (spec, items) = layer[index];
-        let mut local = RasterPass::collector(factory(), *viewport);
-        declare_items(&mut local, spec, items, params, world);
-        local.into_draw_batch()
-    });
+    let chunk_draws = host.collect_chunk_draws().max(1);
+    let mut pages = Vec::new();
+    for (index, (_, items)) in layer.iter().enumerate() {
+        for chunk in items.chunks(chunk_draws) { pages.push((index, chunk)); }
+    }
+    let mut batches: Vec<Vec<_>> = (0..layer.len()).map(|_| Vec::new()).collect();
+    for wave in pages.chunks_mut(8) {
+        let results = rhapsody::rg::map_chunks(wave, |_, (index, items)| {
+            let (factory, viewport, params) = &jobs[*index];
+            let mut local = RasterPass::collector(factory(), *viewport);
+            declare_items(&mut local, layer[*index].0, items, params, world);
+            (*index, local.into_draw_batch())
+        });
+        for (index, batch) in results { batches[index].push(batch); }
+    }
     crate::render::declare_probe::collect_stage(1, started);
     let commit_started = crate::render::declare_probe::start();
-    for (&(spec, items), batch) in layer.iter().zip(batches) {
+    for (&(spec, items), batches) in layer.iter().zip(batches) {
         let mut pass = ctx.raster_pass(spec.name, spec.colors, spec.depth, spec.viewport);
-        pass.commit_draw_batch(batch);
-        crate::render::declare_probe::collected(1);
+        let task_count = batches.len();
+        for batch in batches { pass.commit_draw_batch(batch); }
+        crate::render::declare_probe::collected(task_count);
         crate::render::declare_probe::list_loop(None, items.len());
         pass.render();
     }
-    crate::render::declare_probe::cross_pass_collected(layer.len());
+    crate::render::declare_probe::cross_pass_collected(pages.len());
     crate::render::declare_probe::collect_stage(2, commit_started);
     true
 }
@@ -378,12 +388,24 @@ fn declare_items(pass: &mut RasterPass, spec: &ListPass<'_>, items: &[DrawEntry]
 
 /// Bounded worker-owned Collect pages followed by stable owner Commit.
 /// Large passes use the same path in successive pages; no declaration is replayed.
-fn collect_list(pass: &mut RasterPass, spec: &ListPass<'_>, items: &[DrawEntry], params: &CommonDrawParams, world: &World) {
-    const MAX_DRAWS: usize = 4096;
-    const MAX_CONSTANT_BYTES: usize = 32 * 1024 * 1024;
+pub(crate) const COLLECT_MAX_DRAWS: usize = 4096;
+pub(crate) const COLLECT_MAX_CONSTANT_BYTES: usize = 32 * 1024 * 1024;
+
+/// Shared admission rules for list, generated and surface draws. Reflection
+/// is resolved by the owner before a worker receives its immutable input.
+pub(crate) fn draw_constant_bytes(host: &dyn PassHost, shader: u64, variant: u8) -> usize {
+    let shader = Handle(crate::rhapsody_contract::ManagedHandle(shader), core::marker::PhantomData);
+    host.raster_shader(&shader, variant).expect("draw shader reflection missing").uniform_block_size as usize
+}
+
+pub(crate) fn collect_draw_pages<T: Sync, R: Send + 'static>(
+    pass: &mut RasterPass, items: &[T],
+    constant_bytes: impl Fn(&dyn PassHost, &T) -> usize,
+    declare: impl Fn(&mut RasterPass, &[T]) -> R + Send + Sync,
+    mut commit: impl FnMut(R),
+) {
     if items.is_empty() { return; }
     let factory = pass.host.collect_factory();
-    let pool = bevy_tasks::ComputeTaskPool::get_or_init(bevy_tasks::TaskPool::default);
     let chunk_draws = pass.host.collect_chunk_draws().max(1);
     let viewport = pass.viewport;
     let mut offset = 0;
@@ -391,30 +413,75 @@ fn collect_list(pass: &mut RasterPass, spec: &ListPass<'_>, items: &[DrawEntry],
         let prepare_started = crate::render::declare_probe::start();
         let mut bytes = 0usize;
         let mut end = offset;
-        for (item, _) in &items[offset..items.len().min(offset + MAX_DRAWS)] {
-            let shader = Handle(crate::rhapsody_contract::ManagedHandle(item.shader), core::marker::PhantomData);
-            let reflection = pass.host.raster_shader(&shader, spec.variant).expect("draw shader reflection missing");
-            let size = reflection.uniform_block_size as usize;
-            assert!(size <= MAX_CONSTANT_BYTES, "draw constants exceed Collect page budget");
-            if bytes + size > MAX_CONSTANT_BYTES { break; }
+        for item in &items[offset..items.len().min(offset + COLLECT_MAX_DRAWS)] {
+            let size = constant_bytes(pass.host.as_ref(), item);
+            assert!(size <= COLLECT_MAX_CONSTANT_BYTES, "draw constants exceed Collect page budget");
+            if bytes.saturating_add(size) > COLLECT_MAX_CONSTANT_BYTES { break; }
             bytes += size;
             end += 1;
         }
-        let page = &items[offset..end];
-        let tasks = pool.thread_num().clamp(1, 8).min(page.len().div_ceil(chunk_draws));
         crate::render::declare_probe::collect_stage(0, prepare_started);
-        let started = crate::render::declare_probe::start();
-        let mut chunks = page.chunks(page.len().div_ceil(tasks)).collect::<smallvec::SmallVec<[_; 8]>>();
-        let batches = rhapsody::rg::map_chunks(&mut chunks, |_, chunk| {
-            let mut local = RasterPass::collector(factory(), viewport);
-            declare_items(&mut local, spec, chunk, params, world);
-            local.into_draw_batch()
-        });
-        crate::render::declare_probe::collect_stage(1, started);
-        let started = crate::render::declare_probe::start();
-        for batch in batches { pass.commit_draw_batch(batch); }
-        crate::render::declare_probe::collect_stage(2, started);
-        crate::render::declare_probe::collected(tasks);
+        // At most eight in-flight tasks; each receives the configured 64 draws
+        // by default. Completed pages are committed before accepting more.
+        for wave in items[offset..end].chunks(chunk_draws.saturating_mul(8)) {
+            let started = crate::render::declare_probe::start();
+            let mut chunks = wave.chunks(chunk_draws).collect::<smallvec::SmallVec<[_; 8]>>();
+            let batches = rhapsody::rg::map_chunks(&mut chunks, |_, chunk| {
+                let mut local = RasterPass::collector(factory(), viewport);
+                let result = declare(&mut local, chunk);
+                (local.into_draw_batch(), result)
+            });
+            crate::render::declare_probe::collect_stage(1, started);
+            let started = crate::render::declare_probe::start();
+            for (batch, result) in batches { pass.commit_draw_batch(batch); commit(result); }
+            crate::render::declare_probe::collect_stage(2, started);
+            crate::render::declare_probe::collected(chunks.len());
+        }
         offset = end;
+    }
+}
+
+fn collect_list(pass: &mut RasterPass, spec: &ListPass<'_>, items: &[DrawEntry], params: &CommonDrawParams, world: &World) {
+    collect_draw_pages(pass, items,
+        |host, (item, _)| draw_constant_bytes(host, item.shader, spec.variant),
+        |local, chunk| declare_items(local, spec, chunk, params, world), |_| {});
+}
+
+
+#[cfg(test)]
+mod collect_page_tests {
+    use super::*;
+    #[test]
+    fn pages_bound_worker_inputs_and_merge_uneven_results_without_owner_execution() {
+        use crate::render::pass_builder::draw_stream::test_host::MockHost;
+        let owner = std::thread::current().id();
+        for count in [0, 1, 63, 64, 65, 513, 4097] {
+            let (host, _) = MockHost::new();
+            let mut pass = RasterPass::collector(host.boxed(), [1280, 720]);
+            let items: Vec<_> = (0..count).collect();
+            let mut observed = Vec::new();
+            collect_draw_pages(&mut pass, &items, |_, _| 0,
+                |_, chunk| {
+                    if chunk[0] % 2 == 0 { std::thread::yield_now(); }
+                    (chunk.to_vec(), std::thread::current().id())
+                }, |(chunk, thread)| {
+                    assert!(chunk.len() <= 64);
+                    assert_ne!(thread, owner, "Collect must occur on the task pool");
+                    observed.extend(chunk);
+                });
+            assert_eq!(observed, items);
+            drop(pass.into_draw_batch());
+        }
+    }
+    #[test]
+    fn constant_budget_splits_a_page_before_dispatch() {
+        use crate::render::pass_builder::draw_stream::test_host::MockHost;
+        let (host, _) = MockHost::new();
+        let mut pass = RasterPass::collector(host.boxed(), [1280, 720]);
+        let mut page_lengths = Vec::new();
+        collect_draw_pages(&mut pass, &[1, 2, 3, 4, 5], |_, _| COLLECT_MAX_CONSTANT_BYTES / 2,
+            |_, chunk| chunk.len(), |len| page_lengths.push(len));
+        assert_eq!(page_lengths, [2, 2, 1]);
+        drop(pass.into_draw_batch());
     }
 }

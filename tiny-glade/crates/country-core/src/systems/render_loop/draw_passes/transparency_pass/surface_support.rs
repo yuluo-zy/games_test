@@ -300,7 +300,7 @@ pub fn run_surface_raster(
     colors: &[ColorAttachment],
     depth: &RgTexture,
     items: &[DrawEntry],
-    per_item: &dyn for<'p> Fn(DrawBuilder<'p>) -> DrawBuilder<'p>,
+    per_item: &(dyn for<'p> Fn(&SurfaceRasterTrace, DrawBuilder<'p>) -> DrawBuilder<'p> + Sync),
 ) {
     let depth_att = DepthAttachment {
         writable: true,
@@ -313,16 +313,25 @@ pub fn run_surface_raster(
     let mut pass = RasterPass::new(name, colors, Some(&depth_att), host)
         .with_viewport([depth.desc.extent[0], depth.desc.extent[1]]);
     let params = ctx.common_params(false);
-    for (item, func) in items {
-        let state = pass.host.default_raster_state();
+    let world: &bevy_ecs::world::World = ctx.world;
+    super::super::d_main_support::collect_draw_pages(&mut pass, items,
+        |host, (item, _)| super::super::d_main_support::draw_constant_bytes(host, item.shader, 0),
+        |local, items| {
+        // This Rc never crosses a worker boundary. Only the owned Vec returns
+        // with its DrawBatch; the owner merges page/draw order after joining.
+        let trace = SurfaceRasterTrace(Rc::new(RefCell::new(Vec::new())));
+        for (item, func) in items {
+        let state = local.host.default_raster_state();
         let packet = item.to_draw_packet(state);
-        let builder = DrawBuilder::new(&mut pass, packet, 0)
+        let builder = DrawBuilder::new(local, packet, 0)
             .bind_common::<ColorLibrarySsbo>(&params, &item.params.transform);
-        let mut builder = per_item(builder);
+        let mut builder = per_item(&trace, builder);
         let p = builder.packet_mut();
         p.state = p.state.set_byte3_field_2();
-        func(builder, &item.params, &mut *ctx.world);
-    }
+        func(builder, &item.params, world);
+        }
+        std::mem::take(&mut *trace.0.borrow_mut())
+    }, |ops| env.0.borrow_mut().extend(ops));
     env.op(PlanKind::RasterRender, None);
     pass.render();
 }

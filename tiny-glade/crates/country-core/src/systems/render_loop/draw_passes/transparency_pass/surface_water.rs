@@ -59,6 +59,8 @@ pub fn raster_water_surface(ctx: &mut DrawPassCtx<'_>, prepared: &WaterSurfacePr
     // 3-5. 栅格 pass "Water plane"。
     let colors = [ColorAttachment::Texture(att(i.color))];
     let history_valid = u32::from(i.history_valid);
+    let count = &prepared.count;
+    let ray = &prepared.ray;
     {
         let e = &prepared.trace;
         run_surface_raster(
@@ -68,15 +70,15 @@ pub fn raster_water_surface(ctx: &mut DrawPassCtx<'_>, prepared: &WaterSurfacePr
             &colors,
             i.depth,
             i.lists.list(SURFACE_LIST),
-            &|b| {
+            &|e, b| {
                 let b = d_sampled(e, b, i.half_depth, names::HALF_DEPTH_TEX);
                 let b = d_sampled(e, b, i.taa_history, names::TAA_HISTORY_TEX);
                 let b = if i.history_valid == 0 { b.inactive_texture_contents(names::TAA_HISTORY_TEX) } else { b };
                 let b = d_uniform_u32(e, b, names::HISTORY_VALID, history_valid);
                 let b = d_sampled(e, b, i.reprojection, names::REPROJECTION_TEX);
-                let b = d_write_rg(e, b, names::WATER_RT_COUNT_BUFFER, &prepared.count);
+                let b = d_write_rg(e, b, names::WATER_RT_COUNT_BUFFER, count);
                 let b = b.preserve_storage_buffer_contents(names::WATER_RT_COUNT_BUFFER);
-                let b = d_write_rg(e, b, names::WATER_RT_RAY_BUFFER, &prepared.ray);
+                let b = d_write_rg(e, b, names::WATER_RT_RAY_BUFFER, ray);
                 d_sampled(e, b, i.refraction, names::REFRACTION_TEX)
             },
         );

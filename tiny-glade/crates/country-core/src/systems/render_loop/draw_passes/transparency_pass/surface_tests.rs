@@ -945,3 +945,21 @@ fn explicit_surface_phases_keep_original_resource_ids_bindings_and_call_order() 
         }
     }
 }
+
+
+#[test]
+fn collected_surface_pages_merge_trace_in_original_draw_order() {
+    for water in [true, false] {
+        let one = run(water, &scene(1), 1);
+        let begin = one.trace.iter().position(|(kind, _)| *kind == PlanKind::RasterPassNew).unwrap();
+        let end = one.trace.iter().position(|(kind, _)| *kind == PlanKind::RasterRender).unwrap();
+        for count in [0, 63, 64, 65, 513, 4097] {
+            let many = run(water, &scene(count), 1);
+            let mut expected = one.trace[..begin + 1].to_vec();
+            for _ in 0..count { expected.extend_from_slice(&one.trace[begin + 1..end]); }
+            expected.extend_from_slice(&one.trace[end..]);
+            assert_eq!(many.trace, expected, "water={water}, draws={count}");
+            assert_eq!(many.log.borrow().submissions[0].draws.len(), count);
+        }
+    }
+}

@@ -436,6 +436,10 @@ pub struct DeferredBuffer {
 /// Owned output of a contiguous draw range. Contains no host, graph or World.
 /// This is the only declaration result that crosses a worker boundary.
 pub struct DrawBatch {
+    // Preserve mock-host API observations across worker ownership, so existing
+    // layer/view assertions test the same calls after Collect migration.
+    #[cfg(test)]
+    image_views: Vec<(u64, Option<TextureViewDesc>)>,
     draws: Vec<DrawPacket>,
     bindings: Vec<RenderPassBinding>,
     texture_slots: HashMap<TextureBindingKey, u32>,
@@ -454,6 +458,10 @@ pub trait PassHost {
         panic!("list-pass host must provide an owned Collect factory")
     }
     fn collect_chunk_draws(&self) -> usize { 64 }
+    #[cfg(test)]
+    fn take_collected_image_views(&mut self) -> Vec<(u64, Option<TextureViewDesc>)> { Vec::new() }
+    #[cfg(test)]
+    fn commit_collected_image_views(&mut self, _views: Vec<(u64, Option<TextureViewDesc>)>) {}
 
     /// Logical SSBO references recorded by a graph-free collector, in lookup order.
     fn take_deferred_buffers(&mut self) -> Vec<DeferredBuffer> { Vec::new() }
@@ -656,6 +664,8 @@ impl RasterPass {
         assert!(self.colors.is_empty() && self.depth.is_none(), "only a collector can become a batch");
         self.rendered.0 = true;
         DrawBatch {
+            #[cfg(test)]
+            image_views: self.host.take_collected_image_views(),
             draws: self.body.draws,
             bindings: self.body.bindings,
             texture_slots: self.body.texture_slots,
@@ -669,6 +679,8 @@ impl RasterPass {
     /// Stable Commit. Keep unbound and discarded-draw accesses, eliminate only
     /// accesses that the original per-pass binding caches would have skipped.
     pub fn commit_draw_batch(&mut self, mut batch: DrawBatch) {
+        #[cfg(test)]
+        self.host.commit_collected_image_views(core::mem::take(&mut batch.image_views));
         let mut resolved = HashMap::new();
         for buffer in batch.deferred {
             let id = self.host.rg_buffer_resource_typed(buffer.hash, buffer.type_name)
@@ -960,6 +972,12 @@ pub(crate) mod test_host {
     }
 
     impl PassHost for MockHost {
+        fn take_collected_image_views(&mut self) -> Vec<(u64, Option<TextureViewDesc>)> {
+            core::mem::take(&mut self.log.borrow_mut().image_views)
+        }
+        fn commit_collected_image_views(&mut self, views: Vec<(u64, Option<TextureViewDesc>)>) {
+            self.log.borrow_mut().image_views.extend(views);
+        }
         fn collect_factory(&self) -> Arc<dyn Fn() -> Box<dyn PassHost> + Send + Sync> {
             let shaders = self.shaders.clone();
             let rg_buffers = self.rg_buffers.clone();
@@ -1095,6 +1113,7 @@ mod tests {
             draw.accesses.push(ResourceAccess { binding_index: 3, slot: 0 });
             draw.kind = DrawKind::MultiDrawIndirect { buffer: DEFERRED_BUFFER_BASE, arg_50: 0, arg_58: 1 };
             DrawBatch {
+                image_views: Vec::new(),
                 draws: vec![draw],
                 bindings: vec![RenderPassBinding { resource_index: DEFERRED_BUFFER_BASE, access_type: 0x10, view: None }],
                 texture_slots: HashMap::new(),
