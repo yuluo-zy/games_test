@@ -1561,23 +1561,9 @@ impl TextureHost {
         Ok(out)
     }
 
-    /// 默认全范围视图的原生句柄（首次创建后缓存）。
+    /// Default full-range native view, retained by this live host generation.
     pub fn default_view(&self, id: u64) -> rhapsody::Result<u64> {
-        if self.device.is_device_lost() {
-            return Err(rhapsody::Error::DeviceLost);
-        }
-        let texture = self
-            .get_by_id(id)
-            .ok_or_else(|| rhapsody::Error::invalid_usage("texture host handle is not live"))?;
-        let mut views = self.views.lock();
-        if let Some(view) = views.get(&id) {
-            return Ok(ash::vk::Handle::as_raw(view.raw()));
-        }
-        let desc = rhapsody::resource::TextureViewDesc::new(&texture.desc)?;
-        let view = self.device.get_vk_image_view(&texture, &desc)?;
-        let raw = ash::vk::Handle::as_raw(view.raw());
-        views.insert(id, view);
-        Ok(raw)
+        self.cached_view(id, None)
     }
 
     /// Select the native disk texture subresource with the recovered descriptor.
@@ -1586,18 +1572,81 @@ impl TextureHost {
         id: u64,
         desc: &country_core::rhapsody_types::TextureViewDesc,
     ) -> rhapsody::Result<u64> {
-        let texture = self
-            .get_by_id(id)
-            .ok_or_else(|| rhapsody::Error::invalid_usage("texture host handle is not live"))?;
-        let mut variants = self.view_variants.lock();
-        if let Some(view) = variants.get(&id).and_then(|views| views.get(desc)) {
-            return Ok(ash::vk::Handle::as_raw(view.raw()));
-        }
-        let native = rh_view_desc(&texture, desc)?;
-        let view = self.device.get_vk_image_view(&texture, &native)?;
-        let raw = ash::vk::Handle::as_raw(view.raw());
-        variants.entry(id).or_default().insert(*desc, view);
-        Ok(raw)
+        self.cached_view(id, Some(*desc))
+    }
+
+    fn live_texture(slots: &[TextureSlot], id: u64) -> Option<&ManagedTexture> {
+        if id & (TEXTURE_ID_TAG | BUFFER_TOKEN_TAG) != TEXTURE_ID_TAG { return None; }
+        let slot = slots.get(((id & 0xffff_ffff) as usize).checked_sub(1)?)?;
+        let generation = (id >> 32) & 0x7fff_ffff;
+        slot.texture.as_ref().filter(|_| slot.generation == generation)
+    }
+
+    fn cached_view(
+        &self,
+        id: u64,
+        explicit: Option<country_core::rhapsody_types::TextureViewDesc>,
+    ) -> rhapsody::Result<u64> {
+        if self.device.is_device_lost() { return Err(rhapsody::Error::DeviceLost); }
+        // Always take slots before a view cache. A cache hit and its live
+        // generation check are one short publication transaction.
+        let texture = {
+            let slots = self.slots.lock();
+            let texture = Self::live_texture(&slots, id).ok_or_else(||
+                rhapsody::Error::invalid_usage("texture host handle is not live"))?;
+            let cached = match explicit {
+                None => self.views.lock().get(&id).map(|view| ash::vk::Handle::as_raw(view.raw())),
+                Some(desc) => self.view_variants.lock().get(&id)
+                    .and_then(|views| views.get(&desc))
+                    .map(|view| ash::vk::Handle::as_raw(view.raw())),
+            };
+            if let Some(raw) = cached { return Ok(raw); }
+            texture.clone()
+        };
+        // The captured owner keeps native creation safe even if release runs
+        // now. No host-table lock spans descriptor conversion or driver work.
+        let native = match explicit {
+            None => rhapsody::resource::TextureViewDesc::new(&texture.desc)?,
+            Some(desc) => rh_view_desc(&texture, &desc)?,
+        };
+        let created = self.device.get_vk_image_view(&texture, &native)?;
+        self.publish_cached_view(id, &texture, explicit, created)
+    }
+
+    fn publish_cached_view(
+        &self,
+        id: u64,
+        texture: &ManagedTexture,
+        explicit: Option<country_core::rhapsody_types::TextureViewDesc>,
+        created: rhapsody::resource::ManagedTextureView,
+    ) -> rhapsody::Result<u64> {
+        let mut candidate = Some(created);
+        let result = {
+            let slots = self.slots.lock();
+            if !Self::live_texture(&slots, id).is_some_and(|live|
+                Arc::ptr_eq(&live.shared(), &texture.shared())) {
+                Err(rhapsody::Error::invalid_usage("texture host handle is not live"))
+            } else {
+                let raw = match explicit {
+                    None => {
+                        let mut views = self.views.lock();
+                        let view = views.entry(id).or_insert_with(|| candidate.take().unwrap());
+                        ash::vk::Handle::as_raw(view.raw())
+                    }
+                    Some(desc) => {
+                        let mut variants = self.view_variants.lock();
+                        let view = variants.entry(id).or_default().entry(desc)
+                            .or_insert_with(|| candidate.take().unwrap());
+                        ash::vk::Handle::as_raw(view.raw())
+                    }
+                };
+                Ok(raw)
+            }
+        };
+        // A lost creation race or released generation drops its native owner
+        // after both slots and the selected cache have been unlocked.
+        drop(candidate);
+        result
     }
 
     pub(crate) fn owned_view(
@@ -1897,6 +1946,82 @@ impl TextureGeneration for Texture {
 mod texture_release_tests {
     use super::*;
 
+    fn device_for_view_publication() -> Option<Arc<Device>> {
+        match Device::new_headless(&rhapsody::device::DeviceConfig::headless()) {
+            Ok(device) => Some(device),
+            Err(error) => {
+                assert!(!std::env::var("RHAPSODY_REQUIRE_VULKAN").is_ok_and(|v| v == "1"), "{error}");
+                None
+            }
+        }
+    }
+
+    #[test]
+    fn late_view_creation_cannot_republish_a_released_or_reused_generation() {
+        let Some(device) = device_for_view_publication() else { return };
+        for explicit in [None, Some(country_core::rhapsody_types::TextureViewDesc::new())] {
+            let host = TextureHost::new(device.clone());
+            let desc = TextureDesc::new_2d([4, 4], 0x2b).sampled();
+            let first = host.create_texture("first", &desc, &[]).unwrap();
+            let captured = host.get_by_id(first.id).unwrap();
+            let native = rhapsody::resource::TextureViewDesc::new(&captured.desc).unwrap();
+            let created = device.get_vk_image_view(&captured, &native).unwrap();
+            let weak = Arc::downgrade(&created.view);
+            assert!(host.release(&first));
+            let next = host.create_texture("next", &desc, &[]).unwrap();
+            assert_eq!(first.id as u32, next.id as u32);
+            assert_ne!(first.id, next.id);
+            let next_owner = host.get_by_id(next.id).unwrap();
+            assert!(!Arc::ptr_eq(&captured.shared(), &next_owner.shared()));
+            // Full live id alone is insufficient: a candidate made from the
+            // previous physical owner must also fail publication under next.id.
+            let wrong_owner = device.get_vk_image_view(&captured, &native).unwrap();
+            let owners_before = weak.strong_count();
+            assert!(host.publish_cached_view(next.id, &captured, explicit, wrong_owner).is_err());
+            assert_eq!(weak.strong_count(), owners_before - 1);
+            let owners_before = weak.strong_count();
+            assert!(host.publish_cached_view(first.id, &captured, explicit, created).is_err());
+            assert_eq!(weak.strong_count(), owners_before - 1,
+                "rejected host publication must return its view reference");
+            assert!(weak.upgrade().is_some(), "captured managed owner retains its bounded view cache");
+            for id in [first.id, next.id] {
+                assert!(!host.views.lock().contains_key(&id));
+                assert!(!host.view_variants.lock().contains_key(&id));
+            }
+            drop(captured);
+            assert!(weak.upgrade().is_none(), "no rejected candidate may retain the old owner");
+            assert!(host.get_by_id(next.id).is_some());
+            assert!(host.release(&next));
+        }
+    }
+
+    #[test]
+    fn competing_view_creation_keeps_one_published_owner() {
+        let Some(device) = device_for_view_publication() else { return };
+        for explicit in [None, Some(country_core::rhapsody_types::TextureViewDesc::new())] {
+            let host = TextureHost::new(device.clone());
+            let desc = TextureDesc::new_2d([4, 4], 0x2b).sampled();
+            let first = host.create_texture("first", &desc, &[]).unwrap();
+            let captured = host.get_by_id(first.id).unwrap();
+            let native = rhapsody::resource::TextureViewDesc::new(&captured.desc).unwrap();
+            let a = device.get_vk_image_view(&captured, &native).unwrap();
+            let b = device.get_vk_image_view(&captured, &native).unwrap();
+            let weak_b = Arc::downgrade(&b.view);
+            let raw_a = host.publish_cached_view(first.id, &captured, explicit, a).unwrap();
+            let owners_before = weak_b.strong_count();
+            assert_eq!(host.publish_cached_view(first.id, &captured, explicit, b).unwrap(), raw_a);
+            assert_eq!(weak_b.strong_count(), owners_before - 1,
+                "losing host candidate returns its reference even when the native cache shares the view");
+            let external = host.owned_view(first.id, raw_a).unwrap();
+            assert!(Arc::ptr_eq(&external, &weak_b.upgrade().unwrap()));
+            assert!(host.release(&first));
+            assert!(host.owned_view(first.id, raw_a).is_err());
+            drop(captured);
+            assert!(weak_b.upgrade().is_some(), "external Arc keeps the actual view alive after host/cache release");
+            drop(external);
+            assert!(weak_b.upgrade().is_none(), "no losing publication retains a hidden owner");
+        }
+    }
     #[test]
     fn explicit_view_group_release_preserves_external_owners_and_other_textures() {
         let device = match Device::new_headless(&rhapsody::device::DeviceConfig::headless()) {
@@ -2814,8 +2939,10 @@ impl ShaderBindings {
     }
     /// 全局纹理表（set 2/b0）本帧快照的视图；无帧全局时为空。
     pub fn frame_sampled_table(&self) -> Vec<Arc<rhapsody::resource::TextureView>> {
-        self.frame_globals
-            .lock()
+        // Own the immutable frame snapshot before cloning the sampled table.
+        // Allocation and traversal do not need the publication lock.
+        let globals = { self.frame_globals.lock().clone() };
+        globals
             .as_ref()
             .map(|globals| {
                 globals
@@ -2827,7 +2954,8 @@ impl ShaderBindings {
             .unwrap_or_default()
     }
     pub fn snapshot(&self) -> ShaderBindingSnapshot {
-        self.snapshot_with_globals(self.frame_globals.lock().clone())
+        let globals = { self.frame_globals.lock().clone() };
+        self.snapshot_with_globals(globals)
     }
     pub fn snapshot_with_globals(
         &self,
@@ -2992,7 +3120,9 @@ impl ShaderHost {
     }
     pub fn set_frame_globals(&self, globals: Arc<crate::frame_setup::FrameGlobals>) {
         self.pages.advance_frame();
-        *self.frame_globals.lock() = Some(globals);
+        let previous = self.frame_globals.lock().replace(globals);
+        // Final descriptor/page/texture owners may retire here.
+        drop(previous);
     }
     /// Tickets that were requested and not yet observed ready by `poll_preparation`.
     /// Registered at request time so a warm frame scans nothing.
