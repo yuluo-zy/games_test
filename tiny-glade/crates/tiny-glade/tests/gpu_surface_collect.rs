@@ -272,7 +272,7 @@ fn frame_constant_words(c: &country_core::render::frame_constants::FrameConstant
     words
 }
 
-fn run_surface(glade: GladeType, label: &str) -> Result<()> {
+fn run_surface(glade: GladeType, label: &str, local_pair: Option<&str>) -> Result<()> {
     use country_core::systems::render_loop::draw_passes::draw_lists::{self, DrawLists};
     let BootedSession {
         mut driver,
@@ -283,6 +283,25 @@ fn run_surface(glade: GladeType, label: &str) -> Result<()> {
         _boot,
     } = boot_surface_session(glade)?;
     let world = driver.app_mut().world_mut();
+    #[cfg(not(feature = "surface-compare-test"))]
+    anyhow::ensure!(local_pair.is_none(), "same-prefix fixture requires surface-compare-test");
+    #[cfg(feature = "surface-compare-test")]
+    let local_modes = local_pair.map(|pair| {
+        use tiny_glade::world_surface::comparison::Mode::{Inline,Collect};
+        match pair {
+            "inline-collect" => Ok([Inline,Collect]),
+            "collect-inline" => Ok([Collect,Inline]),
+            "inline-inline" => Ok([Inline,Inline]),
+            "collect-collect" => Ok([Collect,Collect]),
+            _ => Err(anyhow::anyhow!("unknown local surface pair {pair}")),
+        }
+    }).transpose()?;
+    #[cfg(feature = "surface-compare-test")]
+    if let Some(modes) = local_modes {
+        anyhow::ensure!(std::env::var("TG_SURFACE_MODE").unwrap_or_else(|_|"collect".into())=="collect",
+            "local diagnostic keeps Collect for all unobserved frames");
+        world.insert_resource(tiny_glade::world_surface::comparison::SurfaceComparison::new(modes));
+    }
     anyhow::ensure!(
         world.resource::<ActiveSession>().meta.glade == glade,
         "wrong session season"
@@ -329,6 +348,8 @@ fn run_surface(glade: GladeType, label: &str) -> Result<()> {
         Default::default();
     let mut commands = Vec::new();
     let mut expected_surface_draws = 0u64;
+    #[cfg(feature = "surface-compare-test")]
+    let mut local_observed_draws = 0u64;
     let mut final_nani_observation = None;
     let _ = country_core::render::declare_probe::take();
     let _ = country_core::systems::render_loop::draw_passes::transparency_pass::surface_support::take_surface_collect_test_stats();
@@ -379,6 +400,26 @@ fn run_surface(glade: GladeType, label: &str) -> Result<()> {
             "bypass_clamp_source":u8::from(actual_config.flag_20),
             "native_uniform_payload_observed":false,
         });
+        #[cfg(feature = "surface-compare-test")]
+        if local_modes.is_some() {
+            // Original resolution publication aligns the physical inner target
+            // to32: nominal1280x720 at scale1 is physically1280x736. Preserve all
+            // native rows and bind readback to this actual config/constants.
+            let aligned=actual_config.extent_0.map(|axis|((axis+31)&!31).clamp(32,10_912));
+            anyhow::ensure!(actual_config.extent_10==aligned
+                && constants.inner_rendering_resolution==actual_config.extent_10
+                && actual_config.world_resolution_scale.to_bits()==1.0f32.to_bits()
+                && actual_config.tgsr_resolution_scale.to_bits()==1.0f32.to_bits()
+                && video.upscaling_mode==country_core::render::render_config::UpscalingMode::Off,
+                "local fixture resolution differs from original scale1/alignment32 path");
+            frame_input["resolution_source"] = serde_json::json!({
+                "nominal_extent":actual_config.extent_0,"effective_output_extent":actual_config.extent_8,
+                "physical_inner_extent":actual_config.extent_10,
+                "world_scale_bits":actual_config.world_resolution_scale.to_bits(),
+                "tgsr_scale_bits":actual_config.tgsr_resolution_scale.to_bits(),
+                "phase":"after_App_update_before_prepare","alignment":32,
+            });
+        }
         let mut actual_lists = DrawLists::new();
         draw_lists::build_draw_lists(world, shaders.as_ref(), &mut actual_lists);
         let actual_lengths: Vec<_> = (0..draw_lists::DRAW_LIST_COUNT)
@@ -387,6 +428,11 @@ fn run_surface(glade: GladeType, label: &str) -> Result<()> {
         anyhow::ensure!(actual_lengths[15] > 0,
             "surface draw list became empty at frame {index}");
         expected_surface_draws += actual_lengths[15] as u64;
+        #[cfg(feature = "surface-compare-test")]
+        if local_modes.is_some() && [19,29].contains(&index) {
+            local_observed_draws += actual_lengths[15] as u64;
+            world.resource_mut::<tiny_glade::world_surface::comparison::SurfaceComparison>().arm((index+1) as u32)?;
+        }
         frame_input["water_raster_blake3"] = serde_json::json!(raster_signature);
         frame_input["scene"] = surface_input::scene_manifest(world, &actual_lengths)?;
         if [19, 29].contains(&index) {
@@ -421,6 +467,11 @@ fn run_surface(glade: GladeType, label: &str) -> Result<()> {
         });
         bridge.prepare_test_execution()?;
         let frame = frame.execute(&mut bridge, world)?;
+        #[cfg(feature = "surface-compare-test")]
+        if local_modes.is_some() {
+            world.resource_mut::<tiny_glade::world_surface::comparison::SurfaceComparison>()
+                .confirm_submission(&mut bridge,&frame.receipt)?;
+        }
         anyhow::ensure!(frame.receipt.stats.chunks > 0, "no actual recording tasks");
         if index == 29 {
             final_nani_observation = Some(surface_nani_observation::retain_final(
@@ -471,7 +522,24 @@ fn run_surface(glade: GladeType, label: &str) -> Result<()> {
     let collection = country_core::render::declare_probe::take();
     let surface = country_core::systems::render_loop::draw_passes::transparency_pass::surface_support::take_surface_collect_test_stats();
     let mode = std::env::var("TG_SURFACE_MODE").unwrap_or_else(|_| "collect".into());
-    if mode == "inline" {
+    #[cfg(feature = "surface-compare-test")]
+    let local_active = local_modes.is_some();
+    #[cfg(not(feature = "surface-compare-test"))]
+    let local_active = false;
+    #[cfg(feature = "surface-compare-test")]
+    if let Some(modes) = local_modes {
+        use tiny_glade::world_surface::comparison::Mode;
+        let inline_branches=modes.into_iter().filter(|m|matches!(m,Mode::Inline)).count() as u64;
+        let expected_inline_calls=inline_branches*2;
+        let expected_worker_calls=28+(2-inline_branches)*2;
+        anyhow::ensure!(surface.inline_calls==expected_inline_calls
+            && surface.inline_draws==inline_branches*local_observed_draws
+            && surface.worker_calls==expected_worker_calls
+            && surface.worker_draws==expected_surface_draws-local_observed_draws+(2-inline_branches)*local_observed_draws
+            && surface.worker_tasks>0 && surface.owner_collect_tasks==0,
+            "local fixture did not run real inline/worker loops: {surface:?}");
+    }
+    if !local_active && mode == "inline" {
         anyhow::ensure!(
             surface.inline_calls == 30
                 && surface.inline_draws == expected_surface_draws
@@ -479,7 +547,7 @@ fn run_surface(glade: GladeType, label: &str) -> Result<()> {
                 && surface.worker_tasks == 0,
             "inline control did not execute the original owner loop: {surface:?}"
         );
-    } else {
+    } else if !local_active {
         anyhow::ensure!(
             surface.worker_calls == 30
                 && surface.worker_tasks > 0
@@ -511,6 +579,11 @@ fn run_surface(glade: GladeType, label: &str) -> Result<()> {
         .context("TG_SURFACE_OUT must preserve raw pixel evidence")?;
     let out = PathBuf::from(out).join(label);
     std::fs::create_dir_all(&out)?;
+    #[cfg(feature = "surface-compare-test")]
+    let local_comparison = if local_active {
+        Some(world.resource::<tiny_glade::world_surface::comparison::SurfaceComparison>()
+            .write_after_existing_drain(&out.join("same-prefix"))?)
+    } else {None};
     let mut pixels = Vec::new();
     for (index, w, h, rgba) in shots.iter() {
         anyhow::ensure!(
@@ -535,7 +608,8 @@ fn run_surface(glade: GladeType, label: &str) -> Result<()> {
             "file":name,"blake3":blake3::hash(rgba).to_hex().to_string()}));
     }
     let manifest = serde_json::json!({
-        "schema":"surface-collect-correctness-v1", "season":label,
+        "schema":if local_active {"surface-same-prefix-fixture-v1"} else {"surface-collect-correctness-v1"}, "season":label,
+        "local_surface_comparison_enabled":local_active,"local_surface_pair":local_pair,
         "pass_names_semantics":"sorted PGO name inventory; pass_call_counts preserves invocations; neither field is command execution order",
         "frame_constants_semantics":"all 0x1090 bytes in native layout as 1060 u32 bit patterns; no padding reads or value overrides",
         "retained_pass_order_semantics":"actual receipt.snapshot retained graph plan order, including repeated names; not GPU wall completion order",
@@ -566,6 +640,11 @@ fn run_surface(glade: GladeType, label: &str) -> Result<()> {
         out.join("manifest.json"),
         serde_json::to_vec_pretty(&manifest)?,
     )?;
+    #[cfg(feature = "surface-compare-test")]
+    if let Some(report) = &local_comparison {
+        anyhow::ensure!(report["passes"]==true,
+            "same-prefix local surface comparison failed; raw evidence and local-comparison.json retained");
+    }
     let drained = bridge
         .shader_backend()
         .bindless_occupancy()
@@ -584,8 +663,22 @@ fn real_lake_water_and_ice_record_collect_and_preserve_raw_pixel_evidence() -> R
         let mode = std::env::var("TG_SURFACE_MODE").unwrap_or_else(|_| "collect".into());
         anyhow::ensure!(mode == "inline" || mode == "collect", "unknown surface mode {mode}");
         country_core::systems::render_loop::draw_passes::transparency_pass::surface_support::with_surface_collect_mode_for_test(mode == "inline", || {
-            run_surface(GladeType::Autumn,"water")?;
-            run_surface(GladeType::Winter,"ice")
+            run_surface(GladeType::Autumn,"water",None)?;
+            run_surface(GladeType::Winter,"ice",None)
         })
     })?.join().unwrap_or_else(|panic| std::panic::resume_unwind(panic))
+}
+
+#[test]
+#[cfg(feature = "surface-compare-test")]
+fn real_lake_surface_same_prefix_zero_tolerance() -> Result<()> {
+    let pair=std::env::var("TG_SURFACE_LOCAL_PAIR").context("TG_SURFACE_LOCAL_PAIR must explicitly select inline-inline/collect-collect/inline-collect/collect-inline")?;
+    std::thread::Builder::new().name("tg-render".into()).spawn(move|| {
+        country_core::systems::render_loop::draw_passes::transparency_pass::surface_support::with_surface_collect_mode_for_test(false,|| {
+            // Preserve both seasons' evidence even if the first comparison fails.
+            let water=run_surface(GladeType::Autumn,"water",Some(&pair));
+            let ice=run_surface(GladeType::Winter,"ice",Some(&pair));
+            water?;ice
+        })
+    })?.join().unwrap_or_else(|panic|std::panic::resume_unwind(panic))
 }

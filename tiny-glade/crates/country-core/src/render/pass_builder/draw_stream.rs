@@ -208,6 +208,10 @@ pub struct DrawPacket {
     pub inactive_texture_bindings: Vec<u32>,
     /// 宿主逐 binding 内容许可：真实只读 fetch 可读取未定义内容，仍保留同步与已有 producer。
     pub undefined_texture_bindings: Vec<u32>,
+    /// Diagnostic-only owned observation, moved through real Collect/Commit.
+    /// It is never a descriptor or an additional upload.
+    #[cfg(feature = "surface-compare-test")]
+    pub observed_dynamic_constants: Vec<(u32, Vec<u8>)>,
 }
 
 impl DrawPacket {
@@ -231,6 +235,8 @@ impl DrawPacket {
             preserving_buffer_bindings: Vec::new(),
             inactive_texture_bindings: Vec::new(),
             undefined_texture_bindings: Vec::new(),
+            #[cfg(feature = "surface-compare-test")]
+            observed_dynamic_constants: Vec::new(),
         }
     }
 

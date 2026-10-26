@@ -1901,6 +1901,8 @@ impl PassHost for RasterPassHost {
     }
 
     fn submit_raster_pass(&mut self, submission: RasterPassSubmission) {
+        #[cfg(feature = "surface-compare-test")]
+        crate::world_surface::comparison::record_raster_submission(&submission);
         let constants_error = self.constants_error.take();
         let shared = self.shared.clone();
         let RasterPassSubmission {

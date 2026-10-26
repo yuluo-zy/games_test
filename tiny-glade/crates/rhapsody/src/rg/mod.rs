@@ -37,6 +37,10 @@ internal_mod!(
     indirect_count,
 );
 
+/// Correctness-only original-format copies; absent from production builds.
+#[cfg(feature = "test-support")]
+pub mod test_image_copy;
+
 #[cfg(feature = "cpu-probe")]
 mod command_workload;
 #[cfg(feature = "cpu-probe")]

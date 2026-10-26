@@ -895,6 +895,10 @@ impl<'p> DrawBuilder<'p> {
     /// 把动态常量字节交回宿主（见 [`PassHost::flush_dynamic_constants`]：原版是映射切片，写入即生效）。
     fn flush_constants(&mut self) {
         if let Some(constants) = self.constants.take() {
+            #[cfg(feature = "surface-compare-test")]
+            self.packet.get_mut().observed_dynamic_constants.push((
+                constants.binding_index, constants.data.to_vec(),
+            ));
             self.host.finish_dynamic_constants(constants, self.packet.get_mut());
         }
     }

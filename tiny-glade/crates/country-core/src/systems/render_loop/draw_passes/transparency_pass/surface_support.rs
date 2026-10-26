@@ -330,6 +330,13 @@ pub fn take_surface_collect_test_stats() -> SurfaceCollectTestStats {
     TEST_SURFACE_STATS.with(|value| value.replace(SurfaceCollectTestStats::default()))
 }
 
+/// Non-destructive owner-local snapshot for paired correctness observations.
+/// It leaves the fixture's complete thirty-frame accounting intact.
+#[cfg(feature = "surface-compare-test")]
+pub fn surface_collect_test_stats_for_test() -> SurfaceCollectTestStats {
+    TEST_SURFACE_STATS.with(core::cell::Cell::get)
+}
+
 struct CollectedSurfaceOps {
     ops: Vec<PlanOp>,
     #[cfg(feature = "test-support")]
