@@ -307,7 +307,7 @@ mod original_startup_tests {
     use bevy_ecs::world::{CommandQueue, World};
     fn evidence(name: &str) -> serde_json::Value {
         let p = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../reverse-engineering/tiny-glade/evidence/round12/brush-startup")
+            .join("tests/fixtures/original/round12/brush-startup")
             .join(name);
         serde_json::from_slice(&std::fs::read(p).unwrap()).unwrap()
     }

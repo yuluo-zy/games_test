@@ -9,7 +9,7 @@ use std::path::PathBuf;
 #[test]
 fn should_reset_temporal_matches_the_original_leaf_on_1005_cases() {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(
-        "../../../reverse-engineering/tiny-glade/evidence/render-recovery/parallel-batch-06/temporal-lifecycle/native-oracle.json",
+        "tests/fixtures/original/render-recovery/parallel-batch-06/temporal-lifecycle/native-oracle.json",
     );
     let Ok(text) = std::fs::read_to_string(&path) else {
         eprintln!("skip should_reset_temporal oracle: evidence missing at {}", path.display());

@@ -314,7 +314,7 @@ mod original_tests {
     // Frozen unchanged-RNE execution; never synthesized from this implementation.
     const FIXTURES: &[u8] = include_bytes!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../../../reverse-engineering/tiny-glade/evidence/round12/roof-visual/native-trigger-fixtures.bin"
+        "/tests/fixtures/original/round12/roof-visual/native-trigger-fixtures.bin"
     ));
     #[test]
     fn whole_trigger_producer_matches_original_rne_shape_branches() {
