@@ -196,6 +196,80 @@ fn boot_surface_session(glade: GladeType) -> Result<BootedSession> {
     })
 }
 
+// Safe field serialization in the exact order of frame_setup::frame_bytes.
+// Do not read Rust padding, round floats, or omit previous-camera/jitter/lighting
+// inputs: all 0x1090 GPU constant bytes participate in strict paired evidence.
+fn frame_constant_words(c: &country_core::render::frame_constants::FrameConstants) -> Vec<u32> {
+    let mut words = Vec::<u32>::with_capacity(0x1090 / 4);
+    for value in [
+        c.sun_color,
+        c.sky_low_color,
+        c.sky_high_color,
+        c.fog_tint_thickness,
+        c.fake_light_color,
+        c.fake_light_dir,
+        c.fake_light2_color,
+        c.fake_light2_dir,
+    ] {
+        words.extend(value.map(f32::to_bits));
+    }
+    words.extend([
+        c.frame_counter,
+        c.delta_time_seconds.to_bits(),
+        c.ev_mult.to_bits(),
+        c.glade_theme_id,
+        c.inner_rendering_resolution[0],
+        c.inner_rendering_resolution[1],
+        c.game_time_sec,
+        c.game_time_frac.to_bits(),
+    ]);
+    words.extend(c.editing_highlight_color.map(f32::to_bits));
+    words.push(c.time_of_day.to_bits());
+    words.extend(c.dir_to_sun.map(f32::to_bits));
+    words.push(c.camera_idx);
+    words.extend(c.dir_to_moon.map(f32::to_bits));
+    words.push(c.render_overrides);
+    words.extend([
+        c.global_mip_bias.to_bits(),
+        c.highlighted_transient_stair_edge_id,
+        c.pad1,
+        c.pad2,
+    ]);
+    words.extend(c.debug_tweakers.map(f32::to_bits));
+    for v in &c.views {
+        for m in [
+            v.clip_from_view,
+            v.view_from_clip,
+            v.clip_from_view_jittered,
+            v.view_from_clip_jittered,
+            v.view_from_world,
+            v.world_from_view,
+            v.clip_from_world_jittered,
+            v.prev_clip_from_clip,
+            v.prev_clip_from_view,
+            v.prev_view_from_clip,
+            v.prev_view_from_world,
+            v.prev_world_from_view,
+        ] {
+            words.extend(m.to_cols_array().map(f32::to_bits));
+        }
+        for v in [
+            v.pixel_offset,
+            v.jitter_ndc,
+            v.prev_pixel_offset,
+            v.prev_jitter_ndc,
+        ] {
+            words.extend(v.to_array().map(f32::to_bits));
+        }
+    }
+    assert_eq!(
+        words.len() * 4,
+        0x1090,
+        "native FrameConstants serialization"
+    );
+    words
+}
+
 fn run_surface(glade: GladeType, label: &str) -> Result<()> {
     use country_core::systems::render_loop::draw_passes::draw_lists::{self, DrawLists};
     let BootedSession {
@@ -280,6 +354,7 @@ fn run_surface(glade: GladeType, label: &str) -> Result<()> {
             "static lake water raster changed at frame {index}");
         let constants = world.resource::<country_core::render::frame_constants::FrameConstants>();
         let mut frame_input = serde_json::json!({
+            "frame_constant_words":frame_constant_words(constants),
             "frame_counter":constants.frame_counter,
             "game_time_sec":constants.game_time_sec,
             "game_time_frac_bits":constants.game_time_frac.to_bits(),
@@ -323,15 +398,17 @@ fn run_surface(glade: GladeType, label: &str) -> Result<()> {
             .resource_mut::<country_core::render::RenderTemporalState>()
             .frame_render_returned();
         tiny_glade::screenshot::finish_screenshot_capture(world)?;
-        let pass_names = bridge.with_session(|session| {
-            session
-                .chain
-                .pgo
-                .previous
-                .iter()
-                .map(|(name, _, _)| name.to_owned())
+        // PGO iterates a name-keyed hash table, not execution order. Preserve
+        // its actual invocation counts and canonicalize only this inventory;
+        // never use its table order as command-order correctness evidence.
+        let mut pass_call_counts = bridge.with_session(|session| {
+            session.chain.pgo.previous.iter()
+                .map(|(name, _, count)| (name.to_owned(), count))
                 .collect::<Vec<_>>()
         });
+        pass_call_counts.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+        let pass_names: Vec<_> = pass_call_counts.iter()
+            .map(|(name, _)| name.clone()).collect();
         let expected_pass = if glade.is_winter() {
             "Ice plane"
         } else {
@@ -342,7 +419,8 @@ fn run_surface(glade: GladeType, label: &str) -> Result<()> {
             "{expected_pass} never executed"
         );
         commands
-            .push(serde_json::json!({"frame":index,"pass_names":pass_names,"input":frame_input}));
+            .push(serde_json::json!({"frame":index,"pass_names":pass_names,
+                "pass_call_counts":pass_call_counts,"input":frame_input}));
         bridge.collect_completed_frames()?;
     }
     let world = driver.app_mut().world_mut();
@@ -419,6 +497,8 @@ fn run_surface(glade: GladeType, label: &str) -> Result<()> {
     }
     let manifest = serde_json::json!({
         "schema":"surface-collect-correctness-v1", "season":label,
+        "pass_names_semantics":"sorted PGO name inventory; pass_call_counts preserves invocations; neither field is command execution order",
+        "frame_constants_semantics":"all 0x1090 bytes in native layout as 1060 u32 bit patterns; no padding reads or value overrides",
         "surface_execution_mode":mode,
         "source":std::env::var("TG_SURFACE_SOURCE").unwrap_or_else(|_| "unrecorded".into()),
         "binary_blake3":blake3::hash(&std::fs::read(std::env::current_exe()?)?).to_hex().to_string(),
