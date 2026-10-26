@@ -292,7 +292,19 @@ fn collect_layer(ctx: &mut DrawPassCtx<'_>, layer: &[(&ListPass<'_>, &[DrawEntry
     // Probe admission before preparing any expensive reflection metadata.
     let host = ctx.host();
     if draws < host.collect_chunk_draws().max(1).saturating_mul(2) { return false; }
+    let mut constant_plan = if host.collect_constant_plan_enabled() {
+        let mut plan = match host.checkout_draw_scratch() {
+            Ok(plan) => plan,
+            Err(error) => return reject_collect_layer(ctx, layer[0].0, error),
+        };
+        if let Err(error) = crate::render::pass_builder::draw_commit_scratch::prepare_constant_plan(&mut plan, draws) {
+            drop(plan);
+            return reject_collect_layer(ctx, layer[0].0, error);
+        }
+        Some(plan)
+    } else { None };
     for &(spec, items) in layer {
+        let plan_start = constant_plan.as_ref().map_or(0, |plan| plan.value().constant_sizes.len());
         let host = ctx.host();
         host.begin_collect_scope();
         for (item, _) in items {
@@ -300,13 +312,14 @@ fn collect_layer(ctx: &mut DrawPassCtx<'_>, layer: &[(&ListPass<'_>, &[DrawEntry
             let Some(reflection) = host.raster_shader(&shader, spec.variant) else { return false; };
             bytes = bytes.saturating_add(reflection.uniform_block_size as usize);
             if bytes > COLLECT_MAX_CONSTANT_BYTES { return false; }
+            if let Some(plan) = &mut constant_plan { plan.with_prepared(|plan| plan.constant_sizes.push(reflection.uniform_block_size)); }
         }
         let mut params = ctx.common_params(spec.flag);
         if let ItemMode::Shadow { flag } = spec.mode {
             params.flag = CommonDrawFlag::from_byte(flag).expect("shadow cascade flag out of range");
         }
         let factory = host.collect_factory();
-        jobs.push((factory, [spec.viewport.extent.0, spec.viewport.extent.1], params));
+        jobs.push((factory, [spec.viewport.extent.0, spec.viewport.extent.1], params, plan_start));
     }
     crate::render::declare_probe::collect_stage(0, prepare_started);
     let started = crate::render::declare_probe::start();
@@ -317,16 +330,29 @@ fn collect_layer(ctx: &mut DrawPassCtx<'_>, layer: &[(&ListPass<'_>, &[DrawEntry
         for chunk in items.chunks(chunk_draws) { pages.push((index, chunk)); }
     }
     let mut batches: Vec<Vec<_>> = (0..layer.len()).map(|_| Vec::new()).collect();
+    let mut positions = [0usize; 8];
     for wave in pages.chunks_mut(8) {
-        let results = rhapsody::rg::map_chunks(wave, |_, (index, items)| {
-            let (factory, viewport, params) = &jobs[*index];
+        let mut offsets = [0usize; 8];
+        if constant_plan.is_some() {
+            for (slot, (index, items)) in wave.iter().enumerate() {
+                offsets[slot] = jobs[*index].3 + positions[*index];
+                positions[*index] += items.len();
+            }
+        }
+        let sizes = constant_plan.as_ref().map(|plan| &plan.value().constant_sizes);
+        let results = rhapsody::rg::map_chunks(wave, |slot, (index, items)| {
+            let (factory, viewport, params, _) = &jobs[*index];
             let mut local = RasterPass::collector(factory(), *viewport);
+            if let Some(sizes) = sizes {
+                local.host.prepare_collect_constants(&sizes[offsets[slot]..offsets[slot] + items.len()]);
+            }
             declare_items(&mut local, layer[*index].0, items, params, world);
             (*index, local.into_draw_batch())
         });
         for (index, batch) in results { batches[index].push(batch); }
     }
     crate::render::declare_probe::collect_stage(1, started);
+    drop(constant_plan); // All scoped workers joined; Commit may reuse this slot.
     let commit_started = crate::render::declare_probe::start();
     for (&(spec, items), batches) in layer.iter().zip(batches) {
         let mut pass = ctx.raster_pass(spec.name, spec.colors, spec.depth, spec.viewport);
@@ -338,6 +364,13 @@ fn collect_layer(ctx: &mut DrawPassCtx<'_>, layer: &[(&ListPass<'_>, &[DrawEntry
     }
     crate::render::declare_probe::cross_pass_collected(pages.len());
     crate::render::declare_probe::collect_stage(2, commit_started);
+    true
+}
+
+fn reject_collect_layer(ctx: &mut DrawPassCtx<'_>, spec: &ListPass<'_>, error: rhapsody::Error) -> bool {
+    let mut pass = ctx.raster_pass(spec.name, spec.colors, spec.depth, spec.viewport);
+    pass.host.record_collect_error(error);
+    pass.render();
     true
 }
 
@@ -412,6 +445,19 @@ pub(crate) fn collect_draw_pages<T: Sync, R: Send + 'static>(
     while offset < items.len() {
         let prepare_started = crate::render::declare_probe::start();
         pass.host.begin_collect_scope();
+        let count = (items.len() - offset).min(COLLECT_MAX_DRAWS);
+        let mut constant_plan = if pass.host.collect_constant_plan_enabled() {
+            let mut plan = match pass.host.checkout_draw_scratch() {
+                Ok(plan) => plan,
+                Err(error) => { pass.host.record_collect_error(error); return; }
+            };
+            if let Err(error) = crate::render::pass_builder::draw_commit_scratch::prepare_constant_plan(&mut plan, count) {
+                drop(plan);
+                pass.host.record_collect_error(error);
+                return;
+            }
+            Some(plan)
+        } else { None };
         let mut bytes = 0usize;
         let mut end = offset;
         for item in &items[offset..items.len().min(offset + COLLECT_MAX_DRAWS)] {
@@ -419,17 +465,24 @@ pub(crate) fn collect_draw_pages<T: Sync, R: Send + 'static>(
             assert!(size <= COLLECT_MAX_CONSTANT_BYTES, "draw constants exceed Collect page budget");
             if bytes.saturating_add(size) > COLLECT_MAX_CONSTANT_BYTES { break; }
             bytes += size;
+            if let Some(plan) = &mut constant_plan { plan.with_prepared(|plan| plan.constant_sizes.push(size as u32)); }
             end += 1;
         }
         crate::render::declare_probe::collect_stage(0, prepare_started);
         let factory = pass.host.collect_factory();
+        let sizes = constant_plan.as_ref().map(|plan| &plan.value().constant_sizes);
+        let mut plan_offset = 0usize;
         // At most eight in-flight tasks; each receives the configured 64 draws
         // by default. Completed pages are committed before accepting more.
         for wave in items[offset..end].chunks(chunk_draws.saturating_mul(8)) {
             let started = crate::render::declare_probe::start();
             let mut chunks = wave.chunks(chunk_draws).collect::<smallvec::SmallVec<[_; 8]>>();
-            let batches = rhapsody::rg::map_chunks(&mut chunks, |_, chunk| {
+            let batches = rhapsody::rg::map_chunks(&mut chunks, |slot, chunk| {
                 let mut local = RasterPass::collector(factory(), viewport);
+                if let Some(sizes) = sizes {
+                    let start = plan_offset + slot * chunk_draws;
+                    local.host.prepare_collect_constants(&sizes[start..start + chunk.len()]);
+                }
                 let result = declare(&mut local, chunk);
                 (local.into_draw_batch(), result)
             });
@@ -438,6 +491,7 @@ pub(crate) fn collect_draw_pages<T: Sync, R: Send + 'static>(
             for (batch, result) in batches { pass.commit_draw_batch(batch); commit(result); }
             crate::render::declare_probe::collect_stage(2, started);
             crate::render::declare_probe::collected(chunks.len());
+            plan_offset += wave.len();
         }
         offset = end;
     }
@@ -475,6 +529,140 @@ mod collect_page_tests {
             drop(pass.into_draw_batch());
         }
     }
+    #[test]
+    fn owner_plan_budget_refusal_stops_workers_and_off_mode_never_rents_plan_storage() {
+        use crate::render::pass_builder::draw_stream::test_host::MockHost;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        for enabled in [true, false] {
+            let (mut host, log) = MockHost::new();
+            host.constant_plan_enabled = enabled;
+            let budget = host.constant_budget_for_test();
+            let usage = budget.cpu_memory_usage().total();
+            budget.set_host_budget(usage).unwrap();
+            let recorded = host.constant_plans.clone();
+            let mut pass = RasterPass::collector(host.boxed(), [1280, 720]);
+            let workers = AtomicUsize::new(0);
+            collect_draw_pages(&mut pass, &[1u32; 64], |_, _| 96,
+                |_, _| { workers.fetch_add(1, Ordering::Relaxed); }, |_| {});
+            pass.render();
+            let log = log.borrow();
+            if enabled {
+                assert_eq!(workers.load(Ordering::Relaxed), 0);
+                assert_eq!(log.collect_errors, 1);
+                assert_eq!(log.render_pass_cache_calls, 0);
+                assert!(log.created_passes.is_empty() && log.submissions.is_empty());
+            } else {
+                // Empty declaration/Commit needs no backing: the old path is
+                // valid under this same cap, so a hidden plan rental would fail.
+                assert_eq!(workers.load(Ordering::Relaxed), 1);
+                assert_eq!(log.collect_errors, 0);
+                assert_eq!(log.created_passes.len(), 1);
+                assert_eq!(log.submissions.len(), 1);
+            }
+            assert!(recorded.lock().unwrap().is_empty());
+            budget.set_host_budget(0).unwrap();
+        }
+    }
+    #[test]
+    fn task_plans_reuse_single_owner_admission_and_preserve_multiwave_size_offsets() {
+        use crate::render::pass_builder::draw_stream::test_host::MockHost;
+        for count in [1usize, 65, 513, 4097] {
+            let (host, _) = MockHost::new();
+            let recorded = host.constant_plans.clone();
+            let mut pass = RasterPass::collector(host.boxed(), [1280, 720]);
+            let items: Vec<_> = (1..=count).collect();
+            let calls = core::cell::Cell::new(0usize);
+            collect_draw_pages(&mut pass, &items, |_, item| {
+                calls.set(calls.get() + 1);
+                *item
+            }, |_, chunk| chunk.len(), |_| {});
+            assert_eq!(calls.get(), count);
+            let mut plans = recorded.lock().unwrap().clone();
+            plans.sort_by_key(|plan| plan[0]);
+            let expected: Vec<Vec<u32>> = items.chunks(64)
+                .map(|chunk| chunk.iter().map(|&size| size as u32).collect()).collect();
+            assert_eq!(plans, expected);
+            drop(pass.into_draw_batch());
+        }
+    }
+    #[test]
+    fn cross_pass_constant_plans_preserve_tagged_slices_across_job_and_wave_boundaries() {
+        use crate::render::pass_builder::draw_builder::DrawBuilder;
+        use crate::render::pass_builder::draw_stream::{ShaderReflection, test_host::{Log, MockHost}};
+        use crate::render::pass_builder::pass_resource_access::SsboType;
+        use crate::rhapsody_contract::ManagedHandle;
+        use crate::systems::render_loop::draw_passes::draw_lists::{DrawItem, EntityDrawParams};
+        use std::{cell::RefCell, rc::Rc, sync::{Arc, Mutex}};
+
+        fn draw(builder: DrawBuilder<'_>, _: &EntityDrawParams, _: &World) {
+            builder.draw_no_vao(3);
+        }
+
+        // A contributes seven tasks. Wave 1's last task starts B; wave 2 must
+        // resume B at offset 64 before advancing to C's non-aligned plan_start.
+        let lengths = [385usize, 129, 65];
+        let tags = [1000u32, 2000, 3000];
+        let names = ["plan-a", "plan-b", "plan-c"];
+        let sizes: Vec<Vec<u32>> = lengths.iter().zip(tags).map(|(&len, tag)| {
+            (0..len).map(|index| tag + index as u32).collect()
+        }).collect();
+        let inputs: Vec<Vec<DrawEntry>> = sizes.iter().map(|sizes| {
+            sizes.iter().enumerate().map(|(index, &size)| {
+                (DrawItem::new(u64::from(size), index as i32), draw as _)
+            }).collect()
+        }).collect();
+        let owner_log = Rc::new(RefCell::new(Log::default()));
+        let plans = Arc::new(Mutex::new(Vec::<Vec<u32>>::new()));
+        let mut factory = || {
+            let (mut host, _) = MockHost::new();
+            host.log = owner_log.clone();
+            host.constant_plans = plans.clone();
+            for &size in sizes.iter().flatten() {
+                host.shaders.insert(u64::from(size), Arc::new(ShaderReflection {
+                    // The plan is an admission hint. No uniform writes are
+                    // needed to test its routing through the real Collect path.
+                    uniform_block_size: size,
+                    ..Default::default()
+                }));
+            }
+            host.rg_buffers.insert(ColorLibrarySsbo::rg_buffer_hash(), 1);
+            // bind_common resolves the preset before consulting the shader's
+            // binding map, even when this plan-only shader has no uniforms.
+            // Match the existing d_main Rig's complete common-bind inputs.
+            host.presets.insert(0x11, AttachmentTexture {
+                id: 900, extent: (4, 4), format: 44, sample_count: 1,
+            });
+            host.presets.insert(0x12, AttachmentTexture {
+                id: 901, extent: (4, 4), format: 44, sample_count: 1,
+            });
+            host.boxed()
+        };
+        let viewport = AttachmentTexture { id: 7, extent: (1280, 720), format: 44, sample_count: 1 };
+        let specs = names.map(|name| ListPass {
+            name, colors: &[], depth: DepthSpec::None, viewport,
+            flag: false, mode: ItemMode::Plain, variant: 0, extra: None,
+        });
+        let layer: Vec<_> = specs.iter().zip(&inputs).map(|(spec, input)| (spec, input.as_slice())).collect();
+        let mut world = World::new();
+        let mut ctx = DrawPassCtx::new(&mut world, Duration::ZERO, &mut factory, &NoShaders);
+        run_list_layer(&mut ctx, &layer);
+
+        let mut actual = plans.lock().unwrap().clone();
+        actual.sort_by_key(|plan| plan[0]); // Worker completion order is arbitrary.
+        let expected: Vec<Vec<u32>> = sizes.iter().flat_map(|sizes| sizes.chunks(64).map(|chunk| chunk.to_vec())).collect();
+        assert_eq!(actual.len(), 12, "must exercise the real cross-pass Collect path");
+        assert_eq!(actual, expected, "exact per-task sizes: no cross-pass alias or wrong resumed offset");
+        let log = owner_log.borrow();
+        assert_eq!(log.raster_reflection_queries, lengths.iter().sum::<usize>(),
+            "one owner admission query per draw, with worker queries in their own logs");
+        assert_eq!(log.submissions.iter().map(|pass| pass.name).collect::<Vec<_>>(), names);
+        for (pass, expected_sizes) in log.submissions.iter().zip(&sizes) {
+            assert_eq!(pass.draws.iter().map(|draw| draw.shader.0.clone()).collect::<Vec<_>>(),
+                expected_sizes.iter().map(|&size| ManagedHandle(u64::from(size))).collect::<Vec<_>>(),
+                "Commit retains pass and draw order independently of plan recording order");
+        }
+    }
+
     #[test]
     fn constant_budget_splits_a_page_before_dispatch() {
         use crate::render::pass_builder::draw_stream::test_host::MockHost;

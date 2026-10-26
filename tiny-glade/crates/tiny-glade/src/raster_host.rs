@@ -674,6 +674,10 @@ impl RasterShared {
             "batch_constants": bill.batch_constants, "lock_acquisitions": bill.lock_acquisitions,
             "scanned_idle_entries": bill.scanned_idle_entries, "batch_checkouts": bill.batch_checkouts,
             "batch_returns": bill.batch_returns, "idle_blocks": bill.idle_blocks,
+            "planned_tasks": bill.planned_tasks, "unplanned_tasks": bill.unplanned_tasks,
+            "planned_cache_misses": bill.planned_cache_misses,
+            "unused_stock_blocks_returned": bill.unused_stock_blocks_returned,
+            "unused_stock_bytes_returned": bill.unused_stock_bytes_returned,
             "idle_bytes": bill.idle_bytes, "metadata_bytes": bill.metadata_bytes,
             "physical_allocations": bill.physical_allocations,
             "physical_allocated_bytes": bill.physical_allocated_bytes,
@@ -1269,6 +1273,15 @@ impl PassHost for RasterCollectHost {
         // would reject every fragment of draws that enable the stencil test.
         RasterState(ORIGINAL_DEFAULT_RASTER_STATE)
     }
+    fn prepare_collect_constants(&mut self, sizes: &[u32]) {
+        if self.collect_error.is_some() { return; }
+        if let Some(task) = self.constants.as_mut() {
+            if let Err(error) = task.prepare_demand(sizes) {
+                self.collect_error.get_or_insert(error);
+            }
+        }
+    }
+
     fn allocate_dynamic_constants(&mut self, reflection: &CoreReflection) -> Option<DynamicConstantsBinding> {
         self.shared.count_management(2, 1);
         if self.collect_error.is_some() { return None; }
@@ -1341,6 +1354,16 @@ impl PassHost for RasterCollectHost {
 }
 
 impl PassHost for RasterPassHost {
+    fn collect_constant_plan_enabled(&self) -> bool {
+        self.shared.constant_pool.batch_enabled()
+    }
+
+    fn reject_failed_declaration(&mut self) -> bool {
+        let Some(error) = self.constants_error.take() else { return false; };
+        self.graph.borrow_mut().reject(error);
+        true
+    }
+
     fn begin_collect_scope(&self) {
         #[cfg(feature = "cpu-probe")]
         if !self.shared.management_mode(0) {
@@ -4137,6 +4160,47 @@ mod constant_batch_gpu_tests {
                 .size,
             16
         );
+        drop(packets);
+        drop(recovered);
+        shared.device.wait_idle_and_collect().unwrap();
+    }
+
+    #[test]
+    fn cold_constant_plan_budget_error_rejects_before_native_pass_cache_and_recovers() {
+        use country_core::render::pass_builder::{
+            draw_commit_scratch::prepare_constant_plan, draw_stream::RasterPass,
+        };
+        let Some(shared) = shared() else { return; };
+        let graph = Rc::new(RefCell::new(RhGraph::new()));
+        let mut owner = shared.pass_host(graph.clone(), None);
+        assert!(owner.cache.is_empty());
+        assert_eq!(shared.shaders.passes().len(), 0, "native pass cache must start cold");
+        let submitted = shared.device.retirement_stats().submitted;
+        let mut scratch = owner.checkout_draw_scratch().unwrap();
+        let stats = shared.device.allocator_stats();
+        let usage = stats.cpu_memory_usage().total();
+        stats.set_host_budget(usage).unwrap();
+        let error = prepare_constant_plan(&mut scratch, 4096).unwrap_err();
+        assert!(matches!(error, rhapsody::Error::OutOfHostMemory), "{error:?}");
+        assert_eq!(stats.cpu_memory_usage().total(), usage, "failed plan retains no extra CPU storage credit");
+        owner.record_collect_error(error);
+        // A cold cache would otherwise enter native render-pass creation before
+        // submit_raster_pass can forward the already-known declaration error.
+        RasterPass::collector(Box::new(owner), [16, 16]).render();
+        assert_eq!(shared.shaders.passes().len(), 0, "rejected declaration creates no native pass");
+        assert_eq!(shared.device.retirement_stats().submitted, submitted);
+        let (declaration, callbacks, retire, declaration_error) = graph.replace(RhGraph::new()).build().into_parts();
+        assert!(declaration.passes.is_empty());
+        assert!(callbacks.is_empty());
+        assert!(retire.is_empty());
+        assert!(matches!(declaration_error, Some(rhapsody::Error::OutOfHostMemory)), "{declaration_error:?}");
+        stats.set_host_budget(0).unwrap();
+        drop(scratch);
+        let mut recovered = shared.pass_host(graph, None);
+        let mut packets = [packet(&shared, 16, 0x84)];
+        recovered.commit_collected_draws(&mut packets);
+        assert!(recovered.constants_error.is_none());
+        assert_eq!(gpu(&packets[0]).expect("same shared allocator recovers").size, 16);
         drop(packets);
         drop(recovered);
         shared.device.wait_idle_and_collect().unwrap();

@@ -18,6 +18,7 @@ pub struct DrawCommitScratch {
     pub(crate) skip: Vec<u8>,
     pub(crate) new_bindings: Vec<usize>,
     pub(crate) access_indices: Vec<usize>,
+    pub(crate) constant_sizes: Vec<u32>,
 }
 impl CpuScratchValue for DrawCommitScratch {
     fn capacity_bytes(&self) -> usize {
@@ -40,6 +41,7 @@ impl CpuScratchValue for DrawCommitScratch {
                     .capacity()
                     .saturating_mul(core::mem::size_of::<usize>()),
             )
+            .saturating_add(self.constant_sizes.capacity().saturating_mul(core::mem::size_of::<u32>()))
     }
     fn reset(&mut self) {
         self.resolved.clear();
@@ -47,6 +49,7 @@ impl CpuScratchValue for DrawCommitScratch {
         self.skip.clear();
         self.new_bindings.clear();
         self.access_indices.clear();
+        self.constant_sizes.clear();
     }
 }
 fn growth<T>(value: &Vec<T>, needed: usize) -> Result<usize> {
@@ -66,6 +69,29 @@ fn projected<T>(value: &Vec<T>, needed: usize) -> Result<usize> {
     Ok(std::alloc::Layout::array::<T>(value.capacity().max(needed))
         .map_err(|_| Error::OutOfHostMemory)?
         .size())
+}
+
+/// Existing device scratch also owns the admission sizes until scoped workers
+/// join. The owner and Commit can hold two of the same bounded pool's leases.
+pub fn prepare_constant_plan(lease: &mut DrawCommitScratchLease, count: usize) -> Result<()> {
+    if count > 4096 { return Err(Error::exhausted("Collect constant plan exceeds draw limit")); }
+    let value = lease.value();
+    let extra = growth(&value.constant_sizes, count)?;
+    let final_bytes = value.capacity_bytes()
+        .checked_sub(value.constant_sizes.capacity() * core::mem::size_of::<u32>())
+        .and_then(|bytes| projected(&value.constant_sizes, count).ok().and_then(|n| bytes.checked_add(n)))
+        .ok_or(Error::OutOfHostMemory)?;
+    if final_bytes > MAX_LEASE_BYTES { return Err(Error::exhausted("Collect constant plan exceeds scratch limit")); }
+    let initialize = |value: &mut DrawCommitScratch| {
+        value.constant_sizes.clear();
+        reserve(&mut value.constant_sizes, count)?;
+        if value.capacity_bytes() > MAX_LEASE_BYTES {
+            *value = DrawCommitScratch::default();
+            return Err(Error::exhausted("actual Collect constant plan exceeds scratch limit"));
+        }
+        Ok(())
+    };
+    if extra == 0 { lease.with_prepared(initialize) } else { lease.prepare(extra, initialize) }
 }
 
 /// `false` means the first page will adopt the worker's binding domain; it
@@ -113,6 +139,7 @@ pub fn prepare(
                 .ok()
                 .and_then(|n| v.checked_add(n))
         })
+        .and_then(|v| projected(&scratch.constant_sizes, 0).ok().and_then(|n| v.checked_add(n)))
         .ok_or(Error::OutOfHostMemory)?;
     if projected > MAX_LEASE_BYTES {
         return Err(Error::exhausted(
@@ -190,6 +217,29 @@ mod tests {
         prepare(&mut lease, 3, 65, 130, true).unwrap();
         drop(lease);
         drop(pool);
+        assert_eq!(budget.cpu_memory_usage().total(), 0);
+    }
+    #[test]
+    fn constant_plan_is_budgeted_cleared_and_shares_bounded_pool_with_commit() {
+        let budget = Arc::new(rhapsody::device::AllocatorStats::default());
+        let pool = DrawCommitScratchPool::new(budget.clone(), 2, 8 << 20, 1 << 20).unwrap();
+        let mut plan = pool.checkout().unwrap();
+        let usage = budget.cpu_memory_usage().total();
+        budget.set_host_budget(usage).unwrap();
+        assert!(matches!(prepare_constant_plan(&mut plan, 4096), Err(Error::OutOfHostMemory)));
+        assert_eq!(plan.value().constant_sizes.capacity(), 0);
+        assert_eq!(budget.cpu_memory_usage().total(), usage);
+        budget.set_host_budget(0).unwrap();
+        prepare_constant_plan(&mut plan, 4096).unwrap();
+        plan.with_prepared(|value| value.constant_sizes.extend([96, 128]));
+        let mut commit = pool.checkout().unwrap();
+        prepare(&mut commit, 1, 3, 6, true).unwrap();
+        assert!(matches!(pool.checkout(), Err(Error::Exhausted(_))));
+        drop(commit); drop(plan);
+        let plan = pool.checkout().unwrap();
+        assert!(plan.value().constant_sizes.is_empty());
+        assert!(plan.value().constant_sizes.capacity() >= 4096);
+        drop(plan); drop(pool);
         assert_eq!(budget.cpu_memory_usage().total(), 0);
     }
     #[test]

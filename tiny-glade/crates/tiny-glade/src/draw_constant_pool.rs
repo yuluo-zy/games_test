@@ -60,6 +60,11 @@ struct Counters {
     returns: std::sync::atomic::AtomicU64,
     physical_allocations: std::sync::atomic::AtomicU64,
     physical_allocated_bytes: std::sync::atomic::AtomicU64,
+    planned_tasks: std::sync::atomic::AtomicU64,
+    unplanned_tasks: std::sync::atomic::AtomicU64,
+    planned_cache_misses: std::sync::atomic::AtomicU64,
+    unused_stock_blocks_returned: std::sync::atomic::AtomicU64,
+    unused_stock_bytes_returned: std::sync::atomic::AtomicU64,
 }
 #[cfg(any(test, feature = "cpu-probe"))]
 #[derive(Clone, Copy, Debug, Default, serde::Serialize)]
@@ -74,6 +79,13 @@ pub(crate) struct ConstantPoolBill {
     pub physical_allocations: u64,
     /// Cumulative actual capacities, not requested lengths or live bytes.
     pub physical_allocated_bytes: u64,
+    pub planned_tasks: u64,
+    pub unplanned_tasks: u64,
+    /// Local stock misses, including failed/retried requests, not unique demand.
+    pub planned_cache_misses: u64,
+    /// All stock remaining at task end, including deliberately recycled discards.
+    pub unused_stock_blocks_returned: u64,
+    pub unused_stock_bytes_returned: u64,
     pub idle_blocks: usize,
     pub idle_bytes: usize,
     pub metadata_bytes: u64,
@@ -230,6 +242,11 @@ impl ConstantPool {
             batch_returns: self.counts.returns.load(Relaxed),
             physical_allocations: self.counts.physical_allocations.load(Relaxed),
             physical_allocated_bytes: self.counts.physical_allocated_bytes.load(Relaxed),
+            planned_tasks: self.counts.planned_tasks.load(Relaxed),
+            unplanned_tasks: self.counts.unplanned_tasks.load(Relaxed),
+            planned_cache_misses: self.counts.planned_cache_misses.load(Relaxed),
+            unused_stock_blocks_returned: self.counts.unused_stock_blocks_returned.load(Relaxed),
+            unused_stock_bytes_returned: self.counts.unused_stock_bytes_returned.load(Relaxed),
             idle_blocks: idle.blocks.len(),
             idle_bytes: idle.bytes,
             metadata_bytes: self.metadata.bytes(),
@@ -404,6 +421,10 @@ impl ConstantPool {
             owners,
             published: 0,
             last_refill: None,
+            planned: false,
+            started: false,
+            #[cfg(any(test, feature = "cpu-probe"))]
+            planned_cache_misses: 0,
             metadata,
         })
     }
@@ -442,10 +463,66 @@ pub(crate) struct ConstantTask {
     owners: Arc<OwnerCredit>,
     published: usize,
     last_refill: Option<usize>,
+    planned: bool,
+    started: bool,
+    #[cfg(any(test, feature = "cpu-probe"))]
+    planned_cache_misses: u64,
     metadata: CpuStorageReservation,
 }
 impl ConstantTask {
+    /// Transfer exactly this task's known mixed inventory in one bounded scan.
+    /// No new backing or metadata is allocated while holding the pool lock.
+    pub(crate) fn prepare_demand(&mut self, sizes: &[u32]) -> Result<()> {
+        // Diagnostic legacy mode and externally configured larger chunks keep
+        // their existing fallback semantics; never truncate actual work.
+        if !self.pool.batch_enabled() || sizes.len() > TASK_BLOCKS { return Ok(()); }
+        if self.planned || self.started || !self.stock.is_empty() {
+            return Err(Error::invalid_usage("constant demand must precede task use"));
+        }
+        let mut sorted = [0u32; TASK_BLOCKS];
+        sorted[..sizes.len()].copy_from_slice(sizes);
+        sorted[..sizes.len()].sort_unstable();
+        let mut demand = [(0u32, 0u8); TASK_BLOCKS];
+        let mut groups = 0usize;
+        let mut remaining = 0usize;
+        for &size in &sorted[..sizes.len()] {
+            if size == 0 { continue; }
+            if groups != 0 && demand[groups - 1].0 == size {
+                demand[groups - 1].1 += 1;
+            } else {
+                demand[groups] = (size, 1);
+                groups += 1;
+            }
+            remaining += 1;
+        }
+        self.planned = true;
+        if remaining == 0 { return Ok(()); }
+        #[cfg(any(test, feature = "cpu-probe"))]
+        if billing_enabled() {
+            self.pool.counts.checkouts.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        }
+        let mut idle = self.pool.lock_idle();
+        let mut index = idle.blocks.len();
+        while index != 0 && remaining != 0 {
+            index -= 1;
+            #[cfg(any(test, feature = "cpu-probe"))]
+            if billing_enabled() {
+                self.pool.counts.scans.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            }
+            let capacity = idle.blocks[index].capacity();
+            let Ok(group) = demand[..groups].binary_search_by_key(&(capacity as u64), |&(size, _)| u64::from(size))
+                else { continue; };
+            if demand[group].1 == 0 { continue; }
+            demand[group].1 -= 1;
+            remaining -= 1;
+            let bytes = idle.blocks.swap_remove(index);
+            idle.bytes -= capacity;
+            self.stock.push(bytes); // Fixed 64-slot metadata was admitted at task creation.
+        }
+        Ok(())
+    }
     pub(crate) fn take(&mut self, size: usize) -> Result<CpuBytes> {
+        self.started = true;
         #[cfg(feature = "cpu-probe")]
         if !self.pool.batch_enabled() {
             return self.pool.take(size);
@@ -457,7 +534,7 @@ impl ConstantTask {
             .stock
             .iter()
             .rposition(|bytes| bytes.capacity() == size);
-        if index.is_none() && self.stock.len() < TASK_BLOCKS && self.last_refill != Some(size) {
+        if !self.planned && index.is_none() && self.stock.len() < TASK_BLOCKS && self.last_refill != Some(size) {
             self.pool.refill(size, &mut self.stock);
             self.last_refill = Some(size);
             index = self
@@ -467,7 +544,11 @@ impl ConstantTask {
         }
         let mut bytes = match index {
             Some(index) => self.stock.swap_remove(index),
-            None => self.pool.allocate_bytes(size)?,
+            None => {
+                #[cfg(any(test, feature = "cpu-probe"))]
+                if self.planned && billing_enabled() { self.planned_cache_misses += 1; }
+                self.pool.allocate_bytes(size)?
+            }
         };
         bytes.reset_zeroed(size)?;
         Ok(bytes)
@@ -527,6 +608,15 @@ impl ConstantTask {
 }
 impl Drop for ConstantTask {
     fn drop(&mut self) {
+        #[cfg(any(test, feature = "cpu-probe"))]
+        if billing_enabled() {
+            use std::sync::atomic::Ordering::Relaxed;
+            let counter = if self.planned { &self.pool.counts.planned_tasks } else { &self.pool.counts.unplanned_tasks };
+            counter.fetch_add(1, Relaxed);
+            self.pool.counts.planned_cache_misses.fetch_add(self.planned_cache_misses, Relaxed);
+            self.pool.counts.unused_stock_blocks_returned.fetch_add(self.stock.len() as u64, Relaxed);
+            self.pool.counts.unused_stock_bytes_returned.fetch_add(self.stock.iter().map(|bytes| bytes.capacity() as u64).sum(), Relaxed);
+        }
         self.pool.recycle_batch(self.stock.drain(..));
     }
 }
@@ -610,7 +700,112 @@ mod tests {
         assert_eq!(stats.cpu_memory_usage().total(), 0);
     }
     #[test]
-    fn mixed_size_warm_tasks_report_new_backing_despite_matching_global_idle() {
+    fn planned_mixed_warm_shapes_use_zero_new_backing_and_one_bounded_checkout() {
+        let mut shapes = vec![vec![128; 64]];
+        let mut skewed = vec![96; 64]; skewed[0] = 128; shapes.push(skewed);
+        shapes.push((0..64).map(|i| if i % 2 == 0 { 128 } else { 96 }).collect());
+        shapes.push((0..64).map(|i| [64, 96, 128][i % 3]).collect());
+        shapes.push((0..64).map(|i| 16 + i * 16).collect());
+        for sizes in shapes {
+            let stats = Arc::new(AllocatorStats::default());
+            #[allow(unused_mut)]
+            let mut pool = ConstantPool::new(stats.clone()).unwrap();
+            #[cfg(feature = "cpu-probe")]
+            { Arc::get_mut(&mut pool).unwrap().batch_constants = true; }
+            for &size in &sizes { pool.recycle(CpuBytes::new(&stats, size as usize).unwrap()); }
+            for round in 0..3 {
+                let before = pool.bill();
+                let mut task = pool.task().unwrap();
+                task.prepare_demand(&sizes).unwrap();
+                assert_eq!(task.stock.len(), 64);
+                let order: Vec<_> = if round % 2 == 0 { sizes.clone() } else { sizes.iter().rev().copied().collect() };
+                let mut owners = Vec::with_capacity(64);
+                for size in order {
+                    let bytes = task.take(size as usize).unwrap();
+                    owners.push(task.own(bytes).ok().unwrap());
+                }
+                assert!(task.stock.is_empty());
+                drop(task);
+                let blocks = owners.into_iter().map(|mut owner| std::mem::take(&mut owner.bytes)).collect::<Vec<_>>();
+                pool.recycle_batch(blocks); // Same bounded bulk return as successful Commit.
+                let after = pool.bill();
+                assert_eq!(after.physical_allocations - before.physical_allocations, 0);
+                assert_eq!(after.physical_allocated_bytes - before.physical_allocated_bytes, 0);
+                assert_eq!(after.lock_acquisitions - before.lock_acquisitions, 2);
+                assert_eq!(after.batch_checkouts - before.batch_checkouts, 1);
+                assert_eq!(after.scanned_idle_entries - before.scanned_idle_entries, 64);
+                assert_eq!(after.planned_tasks - before.planned_tasks, 1);
+                assert_eq!(after.planned_cache_misses - before.planned_cache_misses, 0);
+                assert_eq!(after.unused_stock_blocks_returned - before.unused_stock_blocks_returned, 0);
+            }
+            drop(pool);
+            assert_eq!(stats.cpu_memory_usage().total(), 0);
+        }
+    }
+    #[test]
+    fn planned_shortage_refusal_keeps_stock_and_escaped_owner_then_recovers() {
+        let stats = Arc::new(AllocatorStats::default());
+        #[allow(unused_mut)]
+        let mut pool = ConstantPool::new(stats.clone()).unwrap();
+        #[cfg(feature = "cpu-probe")]
+        { Arc::get_mut(&mut pool).unwrap().batch_constants = true; }
+        for size in [128, 96, 96] { pool.recycle(CpuBytes::new(&stats, size).unwrap()); }
+        let mut task = pool.task().unwrap();
+        task.prepare_demand(&[128, 96, 96, 96]).unwrap();
+        let bytes = task.take(96).unwrap();
+        let escaped = Arc::new(task.own(bytes).ok().unwrap());
+        let pointer = escaped.bytes.as_ptr();
+        let second = task.take(96).unwrap();
+        let usage = stats.cpu_memory_usage().total();
+        stats.set_host_budget(usage).unwrap();
+        assert!(matches!(task.take(96), Err(Error::OutOfHostMemory)));
+        assert_eq!(task.stock.len(), 1);
+        assert_eq!(task.stock[0].capacity(), 128);
+        assert_eq!(stats.cpu_memory_usage().total(), usage);
+        let before = pool.bill();
+        stats.set_host_budget(0).unwrap();
+        let missing = task.take(96).unwrap();
+        assert_eq!(pool.bill().physical_allocations - before.physical_allocations, 1);
+        task.recycle(second); task.recycle(missing);
+        drop(task); drop(pool);
+        assert_eq!(escaped.bytes.as_ptr(), pointer);
+        assert_eq!(escaped.bytes.accounted_bytes(), 96);
+        assert!(stats.cpu_memory_usage().total() >= 96);
+        drop(escaped);
+        assert_eq!(stats.cpu_memory_usage().total(), 0);
+    }
+    #[test]
+    fn repeated_or_late_plan_keeps_original_owner_and_oversized_plan_keeps_legacy_work() {
+        let stats = Arc::new(AllocatorStats::default());
+        #[allow(unused_mut)]
+        let mut pool = ConstantPool::new(stats.clone()).unwrap();
+        #[cfg(feature = "cpu-probe")]
+        { Arc::get_mut(&mut pool).unwrap().batch_constants = true; }
+        for _ in 0..65 { pool.recycle(CpuBytes::new(&stats, 128).unwrap()); }
+        let mut task = pool.task().unwrap();
+        task.prepare_demand(&[128]).unwrap();
+        let pointer = task.stock[0].as_ptr();
+        assert!(matches!(task.prepare_demand(&[96]), Err(Error::InvalidUsage { .. })));
+        assert_eq!(task.stock[0].as_ptr(), pointer);
+        let bytes = task.take(128).unwrap();
+        assert_eq!(bytes.as_ptr(), pointer);
+        assert!(task.prepare_demand(&[128]).is_err());
+        task.recycle(bytes); drop(task);
+        let mut task = pool.task().unwrap();
+        task.prepare_demand(&[128; 65]).unwrap();
+        assert!(!task.planned);
+        let mut owners = Vec::with_capacity(65);
+        for _ in 0..65 {
+            let bytes = task.take(128).unwrap();
+            owners.push(task.own(bytes).ok().unwrap());
+            assert!(task.stock.len() <= 64);
+        }
+        assert_eq!(owners.len(), 65); // No truncation or scheduling change.
+        drop(task); drop(owners); drop(pool);
+        assert_eq!(stats.cpu_memory_usage().total(), 0);
+    }
+    #[test]
+    fn unplanned_greedy_diagnostic_still_reports_churn_despite_warm_inventory() {
         #[cfg(feature = "cpu-probe")]
         let modes = [true, false];
         #[cfg(not(feature = "cpu-probe"))]
