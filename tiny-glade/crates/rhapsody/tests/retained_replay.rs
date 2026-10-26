@@ -92,8 +92,10 @@ fn replayed_graph_declares_what_the_normal_path_declared() {
     assert_eq!(replay.buffer_id(created).unwrap().version(), 1);
     assert_eq!(replay.buffer_id(replay.resource_handle(0).unwrap()).unwrap().version(), 0);
 
-    let (got, got_callbacks, _) = replay.build().into_parts();
-    let (want, want_callbacks, _) = expected.build().into_parts();
+    let (got, got_callbacks, _, declaration_error) = replay.build().into_parts();
+    assert!(declaration_error.is_none());
+    let (want, want_callbacks, _, declaration_error) = expected.build().into_parts();
+    assert!(declaration_error.is_none());
     assert_eq!(got.resources, want.resources);
     assert_eq!(got.exports, want.exports);
     assert_eq!(got.passes.len(), want.passes.len());

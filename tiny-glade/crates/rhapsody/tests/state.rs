@@ -14,7 +14,8 @@ fn graph_passes_commit_atomically_and_callbacks_are_consumed_once() {
         calls.fetch_add(1, Ordering::Relaxed);
         true
     });
-    let (decl, mut callbacks, _) = graph.build().into_parts();
+    let (decl, mut callbacks, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
     assert_eq!(decl.passes.len(), 1);
     struct Fixture;
     impl rhapsody::rg::graph::ResourceBackend for Fixture {

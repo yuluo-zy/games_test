@@ -227,7 +227,8 @@ mod tests {
         if let Some(resource) = resources.first() {
             graph.export(*resource, 0x25).unwrap();
         }
-        let (declaration, _, _) = graph.build().into_parts();
+        let (declaration, _, _, declaration_error) = graph.build().into_parts();
+        assert!(declaration_error.is_none());
         super::super::plan::compile_definition(
             super::super::plan::GraphDefinition::from_declaration(
                 &declaration,

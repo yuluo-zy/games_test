@@ -1733,9 +1733,7 @@ impl PassHost for RasterPassHost {
             (None, Ok(prepared)) => prepared,
             (Some(error), _) | (_, Err(error)) => {
                 log::error!("raster declaration failed: pass={name}, error={error}");
-                let mut declared = graph.add_pass(name);
-                declared.side_effect();
-                declared.render_with_result_context(move |_| Err(error));
+                graph.reject(error);
                 return;
             }
         };
@@ -2020,9 +2018,7 @@ impl PassHost for RasterPassHost {
         let stage_started = country_core::render::declare_probe::start();
         if let Err(error) = index_imports {
             log::error!("raster declaration failed: pass={name}, error={error}");
-            let mut declared = graph.add_pass(name);
-            declared.side_effect();
-            declared.render_with_result_context(move |_| Err(error));
+            graph.reject(error);
             return;
         }
         let (preserving_buffers, read_contents) = match raster_content_intents(
@@ -2046,9 +2042,7 @@ impl PassHost for RasterPassHost {
             Ok(intents) => intents,
             Err(error) => {
                 log::error!("raster declaration failed: pass={name}, error={error}");
-                let mut declared = graph.add_pass(name);
-                declared.side_effect();
-                declared.render_with_result_context(move |_| Err(error));
+                graph.reject(error);
                 return;
             }
         };
@@ -2059,9 +2053,7 @@ impl PassHost for RasterPassHost {
             Ok(attachments) => attachments,
             Err(error) => {
                 log::error!("raster declaration failed: pass={name}, error={error}");
-                let mut declared = graph.add_pass(name);
-                declared.side_effect();
-                declared.render_with_result_context(move |_| Err(error));
+                graph.reject(error);
                 return;
             }
         };
@@ -2078,9 +2070,7 @@ impl PassHost for RasterPassHost {
             Ok(ranges) => ranges,
             Err(error) => {
                 log::error!("raster declaration failed: pass={name}, error={error}");
-                let mut declared = graph.add_pass(name);
-                declared.side_effect();
-                declared.render_with_result_context(move |_| Err(error));
+                graph.reject(error);
                 return;
             }
         };
@@ -2103,9 +2093,7 @@ impl PassHost for RasterPassHost {
                 Ok(range) => access_ranges[index] = (range, None),
                 Err(error) => {
                     log::error!("raster declaration failed: pass={name}, error={error}");
-                    let mut declared = graph.add_pass(name);
-                    declared.side_effect();
-                    declared.render_with_result_context(move |_| Err(error));
+                    graph.reject(error);
                     return;
                 }
             }
@@ -2187,9 +2175,7 @@ impl PassHost for RasterPassHost {
             Ok(reads) => reads,
             Err(error) => {
                 log::error!("raster declaration failed: pass={name}, error={error}");
-                let mut declared = graph.add_pass(name);
-                declared.side_effect();
-                declared.render_with_result_context(move |_| Err(error));
+                graph.reject(error);
                 return;
             }
         };
@@ -2198,8 +2184,7 @@ impl PassHost for RasterPassHost {
         let table_started = country_core::render::declare_probe::start();
         for (resource, range) in table_reads.iter() {
             if let Err(error) = declared.add_resource_access_range(*resource, 0x1d, 0, *range) {
-                declared.side_effect();
-                declared.render_with_result_context(move |_| Err(error.into()));
+                declared.rg_mut().reject(error.into());
                 return;
             }
         }
@@ -2234,8 +2219,7 @@ impl PassHost for RasterPassHost {
             if !frame_constants_declared && let Some((resource, range)) = draw.frame_constants {
                 frame_constants_declared = true;
                 if let Err(error) = declared.add_resource_access_range(resource, 0x1f, 0, range) {
-                    declared.side_effect();
-                    declared.render_with_result_context(move |_| Err(error.into()));
+                    declared.rg_mut().reject(error.into());
                     return;
                 }
             }
@@ -2246,8 +2230,7 @@ impl PassHost for RasterPassHost {
                     0,
                     binding.range,
                 ) {
-                    declared.side_effect();
-                    declared.render_with_result_context(move |_| Err(error.into()));
+                    declared.rg_mut().reject(error.into());
                     return;
                 }
             }

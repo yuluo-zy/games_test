@@ -34,7 +34,8 @@ fn production_compilation_and_observations_share_the_interned_declaration_name()
         .add_pass(name.clone())
         .with_side_effect()
         .render(|_| true);
-    let (declaration, _, _) = graph.build().into_parts();
+    let (declaration, _, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
     let interned = declaration.passes[0].name;
     assert_eq!(interned, "shared producer");
     let definition = GraphDefinition::from_declaration(
@@ -65,7 +66,8 @@ fn production_compilation_and_observations_share_the_interned_declaration_name()
         .add_pass("shared producer")
         .with_side_effect()
         .render(|_| true);
-    let (second, _, _) = again.build().into_parts();
+    let (second, _, _, declaration_error) = again.build().into_parts();
+    assert!(declaration_error.is_none());
     assert!(std::ptr::eq(
         interned.as_str(),
         second.passes[0].name.as_str()

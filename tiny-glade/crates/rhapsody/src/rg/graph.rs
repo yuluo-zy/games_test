@@ -243,6 +243,7 @@ pub struct RenderGraph {
     pub(crate) declaration: GraphDeclaration,
     pub(crate) callbacks: Vec<RenderCallback>,
     retire_callbacks: Vec<RetireCallback>,
+    rejection: Option<crate::Error>,
     /// Logical indices of imports declared outside `import_frame_resource`
     /// (named/temporal/swapchain); frame imports are found through the session's
     /// identity map, so only these need a physical-identity scan.
@@ -257,6 +258,7 @@ impl Default for RenderGraph {
             declaration: GraphDeclaration::default(),
             callbacks: Vec::new(),
             retire_callbacks: Vec::new(),
+            rejection: None,
             foreign_imports: Vec::new(),
         }
     }
@@ -267,11 +269,19 @@ pub struct BuiltGraph {
     pub declaration: GraphDeclaration,
     pub callbacks: Vec<RenderCallback>,
     retire_callbacks: Vec<RetireCallback>,
+    rejection: Option<crate::Error>,
 }
 
 impl RenderGraph {
     pub fn new() -> Self {
         Self::default()
+    }
+    /// Reject this declaration before planning, allocation or render callbacks.
+    /// The first producer failure owns its original diagnostic and category.
+    pub fn reject(&mut self, error: crate::Error) {
+        if self.rejection.is_none() {
+            self.rejection = Some(error);
+        }
     }
 
     pub fn create_raw_resource(
@@ -521,6 +531,7 @@ impl RenderGraph {
             declaration: self.declaration,
             callbacks: self.callbacks,
             retire_callbacks: self.retire_callbacks,
+            rejection: self.rejection,
         }
     }
 }
@@ -539,6 +550,7 @@ impl BuiltGraph {
             declaration: self.declaration,
             callbacks: self.callbacks,
             retire_callbacks: self.retire_callbacks,
+            rejection: self.rejection,
             foreign_imports: Vec::new(),
         }
     }
@@ -546,9 +558,19 @@ impl BuiltGraph {
     pub fn graph_id(&self) -> super::resource::GraphId {
         self.graph_id
     }
-    /// 将退役回调交给完成回执的持有者；提交成功不代表 GPU 已完成。
-    pub fn into_parts(self) -> (GraphDeclaration, Vec<RenderCallback>, Vec<RetireCallback>) {
-        (self.declaration, self.callbacks, self.retire_callbacks)
+    pub(crate) fn take_rejection(&mut self) -> Option<crate::Error> {
+        self.rejection.take()
+    }
+    /// Transfer declaration, callbacks, retirement and its first rejection.
+    /// Execution owners must reject the last item before validating/planning
+    /// or allocating resources. Cancellation still owns retirement callbacks.
+    pub fn into_parts(self) -> (
+        GraphDeclaration,
+        Vec<RenderCallback>,
+        Vec<RetireCallback>,
+        Option<crate::Error>,
+    ) {
+        (self.declaration, self.callbacks, self.retire_callbacks, self.rejection)
     }
 }
 /// 资源创建错误保留设备丢失、显存不足等类别。
@@ -1159,5 +1181,40 @@ pub fn payload_projection(resource: &RegistryResource<u64, u64, ()>) -> (u8, Opt
         RegistryResource::UnownedBuffer(buffer) => (3, Some(buffer.handle)),
         RegistryResource::Other(_) => (4, None),
         RegistryResource::Empty => (5, None),
+    }
+}
+
+#[cfg(test)]
+mod declaration_rejection_tests {
+    use super::*;
+    #[test]
+    fn first_error_survives_build_replay_and_does_not_poison_next_graph() {
+        let mut graph = RenderGraph::new();
+        graph.reject(crate::Error::OutOfHostMemory);
+        graph.reject(crate::Error::invalid_usage("later malformed consumer"));
+        let mut built = graph.build().into_graph().build();
+        assert!(matches!(built.take_rejection(), Some(crate::Error::OutOfHostMemory)));
+        assert!(built.take_rejection().is_none());
+        let (_, _, _, rejection) = RenderGraph::new().build().into_parts();
+        assert!(rejection.is_none());
+    }
+    #[test]
+    fn splitting_rejected_declaration_preserves_callbacks_without_executing_them() {
+        use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
+        let executed = Arc::new(AtomicUsize::new(0));
+        let retired = Arc::new(AtomicUsize::new(0));
+        let mut graph = RenderGraph::new();
+        let calls = executed.clone();
+        graph.add_pass("must not execute").with_side_effect()
+            .render_with_result_context(move |_| { calls.fetch_add(1, Ordering::Relaxed); Ok(()) });
+        let calls = retired.clone();
+        graph.on_retire(move || { calls.fetch_add(1, Ordering::Relaxed); });
+        graph.reject(crate::Error::OutOfHostMemory);
+        let (_, callbacks, retire, rejection) = graph.build().into_parts();
+        assert!(matches!(rejection, Some(crate::Error::OutOfHostMemory)));
+        drop(callbacks);
+        super::super::vulkan::run_retire_callbacks(retire).unwrap();
+        assert_eq!(executed.load(Ordering::Relaxed), 0);
+        assert_eq!(retired.load(Ordering::Relaxed), 1);
     }
 }

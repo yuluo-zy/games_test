@@ -76,8 +76,9 @@ fn execute_frame_protocol<O: FrameOperations>(
     built: BuiltGraph,
 ) -> Result<FrameProtocolOutput<O::GraphReceipt, O::PresentationReceipt>> {
     if operations.is_device_lost() {
-        // Unsubmitted callbacks retire now; their own errors never mask loss.
-        let (_, _, retire) = built.into_parts();
+        // Unsubmitted callbacks retire now; declaration rejection and retirement
+        // errors never mask the terminal device loss.
+        let (_, _, retire, _declaration_error) = built.into_parts();
         if let Err(error) = super::vulkan::run_retire_callbacks(retire) {
             log::warn!("设备丢失后未提交帧的退役回调失败: {error}");
         }
@@ -723,7 +724,11 @@ mod device_loss_tests {
         }
         fn execute_graph(&mut self, built: BuiltGraph) -> Result<()> {
             self.events.push("graph");
-            let (_, _, retire) = built.into_parts();
+            let (_, _, retire, declaration_error) = built.into_parts();
+            if let Some(error) = declaration_error {
+                let _ = super::super::vulkan::run_retire_callbacks(retire);
+                return Err(error);
+            }
             if self.take_failure(Failure::GraphFirstSubmit) {
                 let _ = super::super::vulkan::run_retire_callbacks(retire);
                 return Err(self.error());

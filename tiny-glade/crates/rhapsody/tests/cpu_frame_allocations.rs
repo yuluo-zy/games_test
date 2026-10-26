@@ -210,7 +210,8 @@ fn fixed_graph_reports_real_build_and_cached_execution_allocations() {
         // The CPU-only adapter has no completion poll. Keep the finite measurement
         // below the already warmed pending-vector capacity; no Vulkan liveness claim.
         for _ in 0..300 {
-            let (declaration, mut callbacks, _) = factory().into_parts();
+            let (declaration, mut callbacks, _, declaration_error) = factory().into_parts();
+            assert!(declaration_error.is_none());
             let frame = chain
                 .execute_graph_with_context(
                     declaration,
@@ -224,7 +225,8 @@ fn fixed_graph_reports_real_build_and_cached_execution_allocations() {
         }
         #[cfg(unix)]
         if resources && enabled && std::env::var_os("RHAPSODY_TRACE_CPU_ALLOCATIONS").is_some() {
-            let (declaration, mut callbacks, _) = factory().into_parts();
+            let (declaration, mut callbacks, _, declaration_error) = factory().into_parts();
+            assert!(declaration_error.is_none());
             allocation_trace::ENABLED.with(|enabled| enabled.set(true));
             let (frame, sample) = measured(|| {
                 chain
@@ -247,7 +249,8 @@ fn fixed_graph_reports_real_build_and_cached_execution_allocations() {
         for _ in 0..128 {
             let (built, build) = measured(factory);
             let ((frame, callbacks), execute) = measured(|| {
-                let (declaration, mut callbacks, _) = built.into_parts();
+                let (declaration, mut callbacks, _, declaration_error) = built.into_parts();
+                assert!(declaration_error.is_none());
                 let frame = chain
                     .execute_graph_with_context(
                         declaration,
@@ -381,7 +384,8 @@ fn production_recorder_arena_matches_vec_events_and_returns_cpu_memory_after_cal
                 Ok(())
             });
             graph.export(output, 0x25).unwrap();
-            let (declaration, mut callbacks, _) = graph.build().into_parts();
+            let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+            assert!(declaration_error.is_none());
             let result = chain.execute_graph_with_context(
                 declaration,
                 &mut pool,

@@ -215,7 +215,8 @@ fn result_callbacks_preserve_device_errors_across_parallel_chunk_strategies() {
                         rhapsody::Error::OutOfDeviceMemory
                     })
                 });
-            let (declaration, mut callbacks, _) = graph.build().into_parts();
+            let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+            assert!(declaration_error.is_none());
             let error = chain
                 .execute_graph_with_context(
                     declaration,
@@ -264,7 +265,8 @@ fn reported_callback_errors_cannot_be_ignored_by_returning_true() {
             .add_pass("sibling")
             .with_side_effect()
             .render(|_| true);
-        let (declaration, mut callbacks, _) = graph.build().into_parts();
+        let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+        assert!(declaration_error.is_none());
         let error = chain
             .execute_graph_with_context(
                 declaration,
@@ -296,7 +298,8 @@ fn result_callback_error_after_a_successful_batch_keeps_the_partial_transaction(
         .add_pass("second batch")
         .with_side_effect()
         .render_with_result_context(|_| Err(rhapsody::Error::OutOfDeviceMemory));
-    let (declaration, mut callbacks, _) = graph.build().into_parts();
+    let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
     let error = chain
         .execute_graph_with_context(
             declaration,
@@ -357,7 +360,8 @@ fn cached_plans_cull_dead_callbacks_and_rebind_each_frames_imports() {
                 true
             });
         graph.export(output, 0x25).unwrap();
-        let (declaration, mut callbacks, _) = graph.build().into_parts();
+        let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+        assert!(declaration_error.is_none());
         let execution = chain
             .execute_graph_with_context(
                 declaration,
@@ -451,7 +455,8 @@ fn stable_subgraph_analysis_is_reused_on_the_real_executor_whole_plan_miss_path(
             })
             .unwrap();
         graph.export(output, 0x25).unwrap();
-        let (declaration, mut callbacks, _) = graph.build().into_parts();
+        let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+        assert!(declaration_error.is_none());
         let execution = chain
             .execute_graph_with_context(
                 declaration,
@@ -512,7 +517,9 @@ fn three_buffer_graph(callback_ok: bool) -> graph::GraphDeclaration {
         pass.add_resource_access(handle, WRITE, 0).unwrap();
     }
     pass.render(move |_| callback_ok);
-    graph.build().into_parts().0
+    let (declaration, _, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
+    declaration
 }
 
 fn run(
@@ -558,7 +565,9 @@ fn an_end_error_after_submission_keeps_the_original_error_and_gpu_receipt() {
         graph.add_pass(name).with_side_effect().render(|_| true);
     }
     let mut chain = chain();
-    let error = run(&mut chain, graph.build().into_parts().0, &mut Pool::default(), &mut backend, true).unwrap_err();
+    let (declaration, _, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
+    let error = run(&mut chain, declaration, &mut Pool::default(), &mut backend, true).unwrap_err();
     let Error::PartialSubmission { original, execution } = error else { panic!("successful prefix must remain owned") };
     assert!(matches!(*original, Error::Validation(rhapsody::Error::DeviceLost)));
     assert_eq!(execution.transaction.receipts().len(), 1);
@@ -576,7 +585,8 @@ fn cached_execution_rejects_aliased_imports_at_the_single_declaration_boundary()
     pass.add_resource_access(first, 0x25, 0).unwrap();
     pass.add_resource_access(second, 0x25, 0).unwrap();
     pass.render(|_| true);
-    let mut declaration = graph.build().into_parts().0;
+    let (mut declaration, _, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
     let mut chain = chain();
     let mut backend = Mock::default();
     let mut pool = Pool::default();
@@ -600,7 +610,8 @@ fn an_exported_but_unaccessed_create_resource_is_rejected_before_allocation() {
     pass.add_resource_access(touched, WRITE, 0).unwrap();
     pass.render(|_| true);
     graph.export(exported, 0x26).unwrap();
-    let declaration = graph.build().into_parts().0;
+    let (declaration, _, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
     let mut backend = EventBackend::default();
     let error = graph::compile_graph(
         declaration,
@@ -626,7 +637,8 @@ fn executing_an_uninitialized_export_records_and_allocates_nothing() {
     pass.add_resource_access(touched, WRITE, 0).unwrap();
     pass.render(|_| true);
     graph.export(exported, 0x26).unwrap();
-    let declaration = graph.build().into_parts().0;
+    let (declaration, _, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
     let mut backend = Mock::default();
     let mut pool = Pool::default();
     let error = run(&mut chain(), declaration, &mut pool, &mut backend, true)
@@ -886,7 +898,8 @@ fn partial_submit_failure_defers_published_points_and_abandons_the_rest() {
         pass.add_resource_access(resource, WRITE, 0).unwrap();
         pass.render(|_| true);
     }
-    let (declaration, mut callbacks, _) = graph.build().into_parts();
+    let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
     let error = chain
         .execute_graph_with_context(
             declaration,
@@ -953,7 +966,8 @@ fn queue_domains_do_not_share_command_completion() {
         pass.add_resource_access(resource, WRITE, 0).unwrap();
         pass.render(|_| true);
     }
-    let (declaration, mut callbacks, _) = graph.build().into_parts();
+    let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
     assert!(
         chain
             .execute_graph_with_context(
@@ -985,7 +999,8 @@ fn partial_submit_retains_in_flight_resources_and_original_failure() {
         pass.add_resource_access(resource, WRITE, 0).unwrap();
         pass.render(|_| true);
     }
-    let (declaration, mut callbacks, _) = graph.build().into_parts();
+    let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
     let error = chain
         .execute_graph_with_context(
             declaration,
@@ -1040,7 +1055,8 @@ fn transaction_keeps_partial_import_state_and_does_not_publish_failed_exports() 
             pass.render(|_| true);
         }
         graph.export(resource, 0x26).unwrap();
-        let (declaration, mut callbacks, _) = graph.build().into_parts();
+        let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+        assert!(declaration_error.is_none());
         let result = chain().execute_graph_with_context(
             declaration,
             &mut Pool::default(),
@@ -1106,7 +1122,8 @@ fn duplicate_imports_are_rejected_before_recording_or_allocation() {
     graph
         .import_unowned("other logical name", buffer(), 77, 0x25)
         .unwrap();
-    let (declaration, mut callbacks, _) = graph.build().into_parts();
+    let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
     assert!(matches!(
         declaration.validate(),
         Err(BuildError::AliasedImport(77))
@@ -1143,7 +1160,8 @@ fn parallel_chunks_record_only_through_their_own_pool_leases() {
         for name in ["a", "b", "c"] {
             graph.add_pass(name).with_side_effect().render(|_| true);
         }
-        let (declaration, mut callbacks, _) = graph.build().into_parts();
+        let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+        assert!(declaration_error.is_none());
         let result = chain.execute_graph_with_context(
             declaration,
             &mut Pool::default(),

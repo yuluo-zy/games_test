@@ -229,7 +229,8 @@ fn core_render_graph_imports_and_exports_land_in_the_rhapsody_graph() {
     core.export(b, 3);
     drop(core);
     let built = Rc::try_unwrap(graph).ok().unwrap().into_inner().build();
-    let (declaration, _, _) = built.into_parts();
+    let (declaration, _, _, declaration_error) = built.into_parts();
+    assert!(declaration_error.is_none());
     assert_eq!(declaration.resources.len(), 2);
     assert_eq!(declaration.exports.len(), 1);
     assert_eq!(declaration.resources[0].descriptor.kind_code(), 1);
@@ -1862,12 +1863,13 @@ fn inactive_compute_views_keep_active_mips_with_interleaved_buffer_binding() {
                 .unwrap();
             drop(passes);
             graph.borrow_mut().export(output, 0x26).unwrap();
-            let (declaration, _, _) = Rc::try_unwrap(graph)
+            let (declaration, _, _, declaration_error) = Rc::try_unwrap(graph)
                 .ok()
                 .unwrap()
                 .into_inner()
                 .build()
                 .into_parts();
+            assert!(declaration_error.is_none());
             let compute_index = usize::from(initialize_active);
             let accesses = &declaration.passes[compute_index].accesses;
             assert_eq!(accesses.len(), 3);

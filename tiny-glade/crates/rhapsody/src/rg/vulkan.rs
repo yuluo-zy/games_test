@@ -2602,7 +2602,7 @@ impl VulkanGraphSession {
             .as_ref()
             .is_some_and(|named| named.graph_id == Some(built.graph_id()));
         self.cancel_presentation_of(built.graph_id());
-        let (_, callbacks, retire) = built.into_parts();
+        let (_, callbacks, retire, _cancelled_rejection) = built.into_parts();
         drop(callbacks);
         let retired = run_retire_callbacks(retire);
         self.collect_frame_imports();
@@ -2698,17 +2698,17 @@ impl VulkanGraphSession {
     /// Compile/allocate without issuing Vulkan commands.
     pub fn compile_frame(
         &mut self,
-        built: graph::BuiltGraph,
+        mut built: graph::BuiltGraph,
     ) -> crate::Result<PreparedSessionFrame> {
         if self.active_prepared.is_some() {
-            let (_, _, retire) = built.into_parts();
+            let (_, _, retire, _rejected_input) = built.into_parts();
             let _ = run_retire_callbacks(retire);
             return Err(crate::Error::invalid_usage(
                 "a compiled frame already owns this session",
             ));
         }
         let Some(mut named) = self.named.take() else {
-            let (_, _, retire) = built.into_parts();
+            let (_, _, retire, _rejected_input) = built.into_parts();
             let _ = run_retire_callbacks(retire);
             return Err(crate::Error::invalid_usage(
                 "named frame is already compiling",
@@ -2716,11 +2716,24 @@ impl VulkanGraphSession {
         };
         let graph_id = built.graph_id();
         let result = (|| {
+            // Known producer failures precede named imports, graph validation,
+            // result-cache preparation and all native/CPU frame allocation.
+            if let Some(error) = built.take_rejection() {
+                let error = if self.is_poisoned() { crate::Error::DeviceLost } else { error };
+                let (_, callbacks, retire, rejection) = built.into_parts();
+                debug_assert!(rejection.is_none());
+                if error.is_device_lost() {
+                    self.backend.device.queues.timelines.mark_device_lost();
+                }
+                drop(callbacks);
+                let _ = run_retire_callbacks(retire);
+                return Err(error);
+            }
             if named.state.requested().is_empty() {
                 return self.compile_built(built, |_| Ok(()));
             }
             if named.graph_id != Some(graph_id) {
-                let (_, _, retire) = built.into_parts();
+                let (_, _, retire, _rejected_input) = built.into_parts();
                 let _ = run_retire_callbacks(retire);
                 return Err(crate::Error::invalid_usage(
                     "named resources belong to another frame graph",
@@ -2737,7 +2750,7 @@ impl VulkanGraphSession {
                 Ok(())
             })();
             if let Err(error) = preparation {
-                let (_, _, retire) = graph.build().into_parts();
+                let (_, _, retire, _rejected_input) = graph.build().into_parts();
                 let _ = run_retire_callbacks(retire);
                 return Err(error);
             }
@@ -3067,10 +3080,13 @@ impl VulkanGraphSession {
         validate: impl FnOnce(&graph::FrameInstance) -> crate::Result<()>,
     ) -> crate::Result<PreparedSessionFrame> {
         let graph_id = built.graph_id();
-        let (declaration, callbacks, retire) = built.into_parts();
+        let (declaration, callbacks, retire, rejection) = built.into_parts();
         let result = (|| -> crate::Result<(super::executor::PreparedGraph, super::receipt_storage::ReceiptLease)> {
             if self.is_poisoned() {
                 return Err(crate::Error::DeviceLost);
+            }
+            if let Some(error) = rejection {
+                return Err(error);
             }
             self.result_cache.prepare(
                 graph_id,
@@ -4048,3 +4064,105 @@ const _: fn() = || {
     send::<VulkanGraphSession>();
     send::<PreparedSessionFrame>();
 };
+
+#[cfg(test)]
+mod declaration_rejection_tests {
+    use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    fn session() -> Option<VulkanGraphSession> {
+        let device = match Device::new_headless(&crate::device::DeviceConfig::headless()) {
+            Ok(device) => device,
+            Err(error) => {
+                assert!(!std::env::var("RHAPSODY_REQUIRE_VULKAN").is_ok_and(|v| v == "1"),
+                    "strict graph rejection GPU initialization failed: {error}");
+                eprintln!("SKIP graph rejection GPU initialization: {error}");
+                return None;
+            }
+        };
+        Some(VulkanGraphSession::new(VulkanGraphBackend::new(device, AccessTable::original()).unwrap()))
+    }
+
+    #[test]
+    fn rejection_precedes_uninitialized_read_and_compile_allocation_then_next_frame_recovers() {
+        let Some(mut session) = session() else { return };
+        let device = session.backend.device().clone();
+        let desc = buffer::BufferDesc::new_gpu_only(64,
+            vk::BufferUsageFlags::TRANSFER_SRC | vk::BufferUsageFlags::TRANSFER_DST);
+        let imported = Arc::new(buffer::Buffer::new(device.clone(), &desc).unwrap());
+        let imported_weak = Arc::downgrade(&imported);
+        let mut graph = session.begin_frame().unwrap();
+        session.import_frame_buffer(&mut graph, imported, 0x34).unwrap();
+        let named = session.named_buffer(&mut graph, "rejection-history", desc).unwrap();
+        assert!(!named.history_valid);
+        // Named storage is created during declaration and may stay cached;
+        // rejecting compilation must not create any additional named owners.
+        let named_before_compile = session.named_resource_count();
+        assert_eq!(named_before_compile, 1);
+        let executed = Arc::new(AtomicUsize::new(0));
+        let callback_owner = Arc::new(());
+        let callback_weak = Arc::downgrade(&callback_owner);
+        let calls = executed.clone();
+        let mut reader = graph.add_pass("uninitialized downstream consumer").with_side_effect();
+        reader.add_resource_access(named.buffer.raw(), 0x30, 0).unwrap();
+        reader.render_with_result_context(move |_| {
+            let _retain = &callback_owner;
+            calls.fetch_add(1, Ordering::Relaxed);
+            Ok(())
+        });
+        let retired = Arc::new(AtomicUsize::new(0));
+        let calls = retired.clone();
+        graph.on_retire(move || { calls.fetch_add(1, Ordering::Relaxed); });
+        graph.on_retire(|| panic!("injected retirement failure must not replace OOM"));
+        graph.reject(crate::Error::OutOfHostMemory);
+        graph.reject(crate::Error::invalid_usage("later producer failure"));
+        let submitted = device.retirement_stats().submitted;
+        assert!(matches!(session.execute_frame(graph.build()), Err(crate::Error::OutOfHostMemory)));
+        assert_eq!(executed.load(Ordering::Relaxed), 0);
+        assert_eq!(retired.load(Ordering::Relaxed), 1);
+        assert!(callback_weak.upgrade().is_none());
+        assert!(imported_weak.upgrade().is_none());
+        assert_eq!(session.frame_import_count(), 0);
+        assert_eq!(session.pending_frame_count(), 0);
+        assert_eq!(session.named_resource_count(), named_before_compile);
+        assert!(session.active_prepared.is_none());
+        assert!(session.backend.receipt_storage.is_none());
+        assert_eq!(device.retirement_stats().submitted, submitted);
+        assert!(!session.is_poisoned());
+        let mut next = session.begin_frame().unwrap();
+        let named = session.named_buffer(&mut next, "rejection-history", desc).unwrap();
+        assert!(!named.history_valid);
+        session.cancel_frame(next.build()).unwrap();
+        let next = session.begin_frame().unwrap();
+        let prepared = session.compile_frame(next.build()).unwrap();
+        session.cancel_prepared(prepared).unwrap();
+    }
+
+    #[test]
+    fn cancelling_rejected_graph_retires_once_and_does_not_poison_next_frame() {
+        let Some(mut session) = session() else { return };
+        let retired = Arc::new(AtomicUsize::new(0));
+        let mut graph = session.begin_frame().unwrap();
+        let calls = retired.clone();
+        graph.on_retire(move || { calls.fetch_add(1, Ordering::Relaxed); });
+        graph.reject(crate::Error::OutOfHostMemory);
+        session.cancel_frame(graph.build()).unwrap();
+        assert_eq!(retired.load(Ordering::Relaxed), 1);
+        let graph = session.begin_frame().unwrap();
+        let prepared = session.compile_frame(graph.build()).unwrap();
+        session.cancel_prepared(prepared).unwrap();
+        assert_eq!(retired.load(Ordering::Relaxed), 1);
+    }
+
+    #[test]
+    fn rejected_device_lost_is_terminal_and_retirement_failure_cannot_replace_it() {
+        let Some(mut session) = session() else { return };
+        let mut graph = session.begin_frame().unwrap();
+        graph.on_retire(|| panic!("cleanup cannot mask device loss"));
+        graph.reject(crate::Error::DeviceLost);
+        assert!(matches!(session.compile_frame(graph.build()), Err(crate::Error::DeviceLost)));
+        assert!(session.is_poisoned());
+        assert_eq!(session.pending_frame_count(), 0);
+        assert!(session.active_prepared.is_none());
+    }
+}

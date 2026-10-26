@@ -254,7 +254,8 @@ fn failed_scopes_restore_exports_and_batch_policy_without_reusing_escaped_resour
     let mut pass = graph.add_pass("use retained declaration");
     pass.add_resource_access(escaped, WRITE, 0).unwrap();
     pass.render(|_| true);
-    let (declaration, _, callbacks) = graph.build().into_parts();
+    let (declaration, _, callbacks, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
     assert!(declaration.exports.is_empty());
     assert!(!declaration.batch_per_pass);
     assert_eq!(declaration.resources.len(), 2);

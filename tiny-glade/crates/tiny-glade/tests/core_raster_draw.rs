@@ -1327,6 +1327,32 @@ fn run_depth_frame(env: &Env, draws: &[DepthDraw]) -> Vec<u8> {
 }
 
 fn run_depth_frame_collected(env: &Env, draws: &[DepthDraw], collected: bool) -> Vec<u8> {
+    run_draw_frame_mode(
+        env,
+        draws,
+        DrawFrameMode {
+            collected,
+            ..Default::default()
+        },
+    )
+    .unwrap()
+    .expect("submitted frame has pixels")
+}
+
+#[derive(Clone, Copy, Default)]
+struct DrawFrameMode {
+    collected: bool,
+    transparent: bool,
+    cancel: bool,
+    deny_cpu_budget: bool,
+    reject_late_task: bool,
+}
+
+fn run_draw_frame_mode(
+    env: &Env,
+    draws: &[DepthDraw],
+    mode: DrawFrameMode,
+) -> rhapsody::Result<Option<Vec<u8>>> {
     let declarer: Rc<dyn GraphDeclarer> = env.session.clone();
     let readback = env.readback_buffer("rb");
     let graph = env.begin();
@@ -1370,42 +1396,115 @@ fn run_depth_frame_collected(env: &Env, draws: &[DepthDraw], collected: bool) ->
     .with_viewport([SIZE, SIZE]);
     let program = env.color_program.clone();
     let emit = |pass: &mut RasterPass, d: &DepthDraw| {
-        let packet = DrawPacket::new(program.clone(), [0, 0], DEPTH_TEST_WRITE);
+        let state = if mode.transparent {
+            // The surface mode is premultiplied ONE / ONE_MINUS_SRC_ALPHA.
+            // Disable depth writes so each overlapping layer contributes.
+            RasterState(0).set_byte3_field_2()
+        } else {
+            DEPTH_TEST_WRITE
+        };
+        let packet = DrawPacket::new(program.clone(), [0, 0], state);
+        let alpha = if mode.transparent { 0.5f32 } else { 1.0f32 };
         // Flip 抵消视口翻转；平移先于 Flip（参考坐标系里平移），z 最后加。
         let m = glam::Mat4::from_translation(glam::Vec3::new(0.0, 0.0, d.z))
             * glam::Mat4::from_diagonal(glam::Vec4::new(1.0, -1.0, 1.0, 1.0))
             * glam::Mat4::from_translation(glam::Vec3::new(d.dx, 0.0, 0.0));
         DrawBuilder::new(pass, packet, 0)
             .uniform(m_hash(), m)
-            .uniform(name_hash("c_r"), d.rgb[0])
-            .uniform(name_hash("c_g"), d.rgb[1])
-            .uniform(name_hash("c_b"), d.rgb[2])
-            .uniform(name_hash("c_a"), 1.0f32)
+            .uniform(name_hash("c_r"), d.rgb[0] * alpha)
+            .uniform(name_hash("c_g"), d.rgb[1] * alpha)
+            .uniform(name_hash("c_b"), d.rgb[2] * alpha)
+            .uniform(name_hash("c_a"), alpha)
             .draw_no_vao(3);
     };
-    if collected {
-        let batches = std::thread::scope(|scope| {
-            let handles: Vec<_> = draws
-                .chunks(2)
-                .map(|chunk| {
-                    let factory = &collect_factory;
-                    let emit = &emit;
-                    scope.spawn(move || {
-                        let mut local = RasterPass::collector(factory(), [SIZE, SIZE]);
-                        for d in chunk {
-                            emit(&mut local, d);
-                        }
-                        local.into_draw_batch()
+    let stats = env.device.allocator_stats();
+    let prior_limit = stats.host_budget_limit();
+    if mode.collected {
+        let collect_range = |draws: &[DepthDraw]| {
+            std::thread::scope(|scope| {
+                let handles: Vec<_> = draws
+                    .chunks(if mode.transparent { 64 } else { 2 })
+                    .map(|chunk| {
+                        let factory = &collect_factory;
+                        let emit = &emit;
+                        scope.spawn(move || {
+                            let mut local = RasterPass::collector(factory(), [SIZE, SIZE]);
+                            for d in chunk {
+                                emit(&mut local, d);
+                            }
+                            local.into_draw_batch()
+                        })
                     })
-                })
-                .collect();
-            handles
-                .into_iter()
-                .map(|handle| handle.join().unwrap())
-                .collect::<Vec<_>>()
-        });
+                    .collect();
+                handles
+                    .into_iter()
+                    .map(|handle| handle.join().unwrap())
+                    .collect::<Vec<_>>()
+            })
+        };
+        let batches = if mode.reject_late_task {
+            assert!(draws.len() > 64 && mode.transparent);
+            collect_range(&draws[..64])
+        } else {
+            collect_range(draws)
+        };
+        let gpu_before_first_commit = env.raster.dynamic_constants().lock().stats();
+        // Workers completed CPU-only declaration. The first owner Commit
+        // needs new admission. Scratch may refuse before native-page creation;
+        // this test establishes owner refusal rather than its allocation site.
+        if mode.deny_cpu_budget {
+            assert_eq!(
+                env.raster.dynamic_constants().lock().stats().pages,
+                0,
+                "fault injection requires a missing native constants page, not a reusable credit"
+            );
+            stats.set_host_budget(stats.cpu_memory_usage().total())?;
+        }
         for batch in batches {
+            if mode.reject_late_task {
+                assert_eq!(
+                    batch.collect_error_kind_for_test(),
+                    None,
+                    "the first worker page must be complete before injecting rejection"
+                );
+            }
             pass.commit_draw_batch(batch);
+        }
+        if mode.reject_late_task {
+            assert_eq!(
+                pass.draw_count(),
+                64,
+                "first complete page was not committed"
+            );
+            let gpu_after_first_commit = env.raster.dynamic_constants().lock().stats();
+            assert!(
+                gpu_after_first_commit.pages > 0,
+                "first Commit must use a real native GPU constants page"
+            );
+            assert_eq!(
+                gpu_after_first_commit.allocations - gpu_before_first_commit.allocations,
+                64,
+                "every draw in the first page must allocate its real GPU constants range"
+            );
+            stats.set_host_budget(stats.cpu_memory_usage().total())?;
+            let rejected = collect_range(&draws[64..]);
+            assert!(
+                !rejected.is_empty(),
+                "fault fixture must run a second real worker"
+            );
+            for batch in rejected {
+                assert_eq!(
+                    batch.collect_error_kind_for_test(),
+                    Some(rhapsody::ErrorKind::OutOfMemory),
+                    "the second worker must carry its actual budget refusal, not a later owner failure"
+                );
+                pass.commit_draw_batch(batch);
+            }
+            assert_eq!(
+                pass.draw_count(),
+                64,
+                "rejected worker declarations must not partially append draws"
+            );
         }
     } else {
         for d in draws {
@@ -1413,23 +1512,45 @@ fn run_depth_frame_collected(env: &Env, draws: &[DepthDraw], collected: bool) ->
         }
     }
     pass.render();
+    stats.set_host_budget(prior_limit)?;
     env.add_readback_pass(&graph, color.resource, rb.resource as u32);
     core_rg.export(rb, HOST_READ);
     drop(core_rg);
     let built = Env::finish_graph(graph);
+    if mode.cancel {
+        let submitted_before = env.device.retirement_stats().submitted;
+        let pending_before = env.session.borrow().pending_frame_count();
+        env.session.borrow_mut().cancel_frame(built)?;
+        assert_eq!(env.device.retirement_stats().submitted, submitted_before,
+            "cancelling an unsubmitted Collect graph must not submit any draw prefix");
+        assert_eq!(env.session.borrow().pending_frame_count(), pending_before,
+            "cancellation must not publish a pending execution");
+        assert!(!env.session.borrow().is_poisoned());
+        return Ok(None);
+    }
     env.shaders
         .prepare_test_pipelines(std::time::Duration::from_secs(10))
         .unwrap();
-    env.session
-        .borrow_mut()
-        .execute_frame(built)
-        .expect("execute_frame");
+    let submitted_before = env.device.retirement_stats().submitted;
+    let executed = env.session.borrow_mut().execute_frame(built);
+    if mode.reject_late_task || mode.deny_cpu_budget {
+        assert!(
+            executed.is_err(),
+            "an explicit worker/owner admission refusal must reject the complete pass"
+        );
+        assert_eq!(
+            env.device.retirement_stats().submitted,
+            submitted_before,
+            "no queue may submit the already committed draw prefix of a rejected pass"
+        );
+    }
+    executed?;
     env.session
         .borrow_mut()
         .wait_submits_done(TIMEOUT_NS)
         .unwrap();
     assert!(!env.session.borrow().is_poisoned());
-    env.read_pixels(&readback)
+    Ok(Some(env.read_pixels(&readback)))
 }
 
 #[test]
@@ -1848,5 +1969,197 @@ fn collected_constants_and_stable_depth_draws_match_inline_pixels() {
         );
     }
     assert!(inline.chunks_exact(4).any(|pixel| pixel != [0, 0, 0, 0]));
+    env.raster.clear_attachment_cache();
+}
+fn ordered_transparent_layers() -> Vec<DepthDraw> {
+    (0..65)
+        .map(|index| DepthDraw {
+            dx: 0.0,
+            z: 0.5,
+            rgb: match index {
+                63 => [0.0, 1.0, 0.0],
+                64 => [0.0, 0.0, 1.0],
+                _ => [1.0, 0.0, 0.0],
+            },
+        })
+        .collect()
+}
+
+#[test]
+fn collected_transparent_page_boundary_preserves_order_and_pixels() {
+    let Some(env) = Env::new("collected-transparent-order") else {
+        return;
+    };
+    let mut draws = ordered_transparent_layers();
+    let mode = DrawFrameMode {
+        transparent: true,
+        ..Default::default()
+    };
+    let expected = run_draw_frame_mode(&env, &draws, mode).unwrap().unwrap();
+    let collected = run_draw_frame_mode(
+        &env,
+        &draws,
+        DrawFrameMode {
+            collected: true,
+            ..mode
+        },
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(
+        collected, expected,
+        "stable Commit across the 64/65 boundary must preserve premultiplied blending"
+    );
+    draws.reverse();
+    let reversed = run_draw_frame_mode(&env, &draws, mode).unwrap().unwrap();
+    assert_ne!(
+        reversed, expected,
+        "fixture must detect reordered transparent draws rather than rendering an empty target"
+    );
+    env.raster.clear_attachment_cache();
+}
+
+#[test]
+fn cancelled_collected_draws_return_owners_and_next_frame_matches_pixels() {
+    let Some(env) = Env::new("collected-cancel-recovery") else {
+        return;
+    };
+    let draws = ordered_transparent_layers();
+    let mode = DrawFrameMode {
+        transparent: true,
+        ..Default::default()
+    };
+    let expected = run_draw_frame_mode(&env, &draws, mode).unwrap().unwrap();
+    for _ in 0..3 {
+        assert!(
+            run_draw_frame_mode(
+                &env,
+                &draws,
+                DrawFrameMode {
+                    collected: true,
+                    cancel: true,
+                    ..mode
+                }
+            )
+            .unwrap()
+            .is_none()
+        );
+        let recovered = run_draw_frame_mode(
+            &env,
+            &draws,
+            DrawFrameMode {
+                collected: true,
+                ..mode
+            },
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(
+            recovered, expected,
+            "cancelled constants and local binding domains must not leak into the next real frame"
+        );
+    }
+    env.raster.clear_attachment_cache();
+}
+
+#[test]
+fn collected_owner_budget_rejection_is_explicit_and_retry_preserves_pixels() {
+    let Some(mut env) = Env::new("collected-budget-recovery") else {
+        return;
+    };
+    let draws = ordered_transparent_layers();
+    let mode = DrawFrameMode {
+        transparent: true,
+        ..Default::default()
+    };
+    let expected = run_draw_frame_mode(&env, &draws, mode).unwrap().unwrap();
+    // Keep the same device, shader/render-pass caches and graph session, but
+    // use a fresh production raster owner with zero GPU constants pages. The
+    // next owner Commit needs new admission. This checks explicit owner
+    // rejection/recovery, not which particular allocator fails first; targeted
+    // host unit tests separately prove native allocation and write failures.
+    env.raster = RasterShared::new_with_shader_library(
+        env.gd.clone(),
+        env.buffers.clone(),
+        env.textures.clone(),
+        env.shaders.clone(),
+        env.shader_library.clone(),
+    )
+    .unwrap();
+    assert_eq!(env.raster.dynamic_constants().lock().stats().pages, 0);
+    let error = run_draw_frame_mode(
+        &env,
+        &draws,
+        DrawFrameMode {
+            collected: true,
+            deny_cpu_budget: true,
+            ..mode
+        },
+    )
+    .expect_err("a fully occupied owner CPU budget must refuse preparation explicitly");
+    assert!(matches!(error, rhapsody::Error::OutOfHostMemory), "expected original host admission error, got kind={:?}, error={error:?}", error.kind());
+    assert!(
+        !env.session.borrow().is_poisoned(),
+        "admission failure must permit retry"
+    );
+    let recovered = run_draw_frame_mode(
+        &env,
+        &draws,
+        DrawFrameMode {
+            collected: true,
+            ..mode
+        },
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(
+        recovered, expected,
+        "budget recovery must retain complete work and ordered output"
+    );
+    env.raster.clear_attachment_cache();
+}
+
+#[test]
+fn late_worker_budget_error_rejects_committed_prefix_and_recovers_pixels() {
+    let Some(env) = Env::new("collected-late-task-rejection") else {
+        return;
+    };
+    let draws = ordered_transparent_layers();
+    let mode = DrawFrameMode {
+        transparent: true,
+        ..Default::default()
+    };
+    let expected = run_draw_frame_mode(&env, &draws, mode).unwrap().unwrap();
+    for _ in 0..3 {
+        let error = run_draw_frame_mode(
+            &env,
+            &draws,
+            DrawFrameMode {
+                collected: true,
+                reject_late_task: true,
+                ..mode
+            },
+        )
+        .expect_err("a second worker's explicit admission failure must reject all 65 draws");
+        assert!(matches!(error, rhapsody::Error::OutOfHostMemory), "expected original host admission error, got kind={:?}, error={error:?}", error.kind());
+        assert!(
+            !env.session.borrow().is_poisoned(),
+            "unsubmitted failure must permit retry"
+        );
+        let recovered = run_draw_frame_mode(
+            &env,
+            &draws,
+            DrawFrameMode {
+                collected: true,
+                ..mode
+            },
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(
+            recovered, expected,
+            "late refusal must release incomplete owners and preserve the next complete frame"
+        );
+    }
     env.raster.clear_attachment_cache();
 }
