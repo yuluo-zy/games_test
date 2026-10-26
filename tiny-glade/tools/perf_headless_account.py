@@ -23,6 +23,16 @@ def signature(value):
                                      ensure_ascii=False).encode('utf-8')).hexdigest()
 
 
+
+def accounting_tools():
+    root = Path(__file__).resolve().parent
+    result = {}
+    for name in ('perf_headless_account.py', 'perf_etw.py'):
+        with (root/name).open('rb') as source:
+            result[name] = hashlib.file_digest(source, 'sha256').hexdigest()
+    return result
+
+
 def require(condition, message):
     if not condition:
         raise ValueError(message)
@@ -186,6 +196,7 @@ def account(report, trace_path, official_owner_ns=None):
               'strict_static_scene': input_identity(report)['policy'] == STRICT_INPUT_POLICY,
               'non_owner_note': 'All other target-process threads, including workers, driver and helpers; not a pool-only counter.',
               'source': 'CSwitch absolute QPC, unioned per-CPU DPC/ISR subtraction',
+              'accounting_tools': accounting_tools(),
               'production_16ms_acceptance': False}
     if report['mode'] == 'off':
         return result
@@ -307,7 +318,10 @@ def paired_overhead(runs, kind='runtime_session'):
         if not run.get('valid') or not run['account'].get('valid'):
             issues.append('one or more runs invalid')
         require(not run.get('diagnostic') and not run['account'].get('diagnostic_bill'), 'heavy diagnostics mixed into overhead')
-        fields = ['hardware_sha256', 'input_sha256', 'scenario', 'workload_sha256', 'warmup', 'samples']
+        tools = run['account'].get('accounting_tools')
+        require(isinstance(tools, dict) and tools, 'accounting tool identity absent')
+        require(tools == expected['account'].get('accounting_tools'), 'accounting tools changed during series')
+        fields = ['measurement_tools_sha256', 'hardware_sha256', 'input_sha256', 'scenario', 'workload_sha256', 'warmup', 'samples']
         fields += ['comparison_settings_sha256'] if compile_pair else ['executable_sha256', 'settings_sha256']
         for field in fields:
             require(run.get(field) is not None and run[field] == expected.get(field), 'paired identity mismatch: ' + field)
@@ -341,9 +355,10 @@ def paired_overhead(runs, kind='runtime_session'):
         mean = statistics.mean(ratios)
         margin = T95.get(min(len(ratios)-1, 30), 4.303)*statistics.stdev(ratios)/math.sqrt(len(ratios))
         low, high = mean-margin, mean+margin
-        passed = low >= -.01 and high <= .01
+        ratio_of_means = statistics.mean(on_values)/statistics.mean(off_values)-1
+        passed = low >= -.01 and high <= .01 and abs(ratio_of_means) <= .01
         metrics[name] = {'paired_relative_change': ratios, 'mean_paired_relative_change': mean,
-                         'ratio_of_means_relative_change': statistics.mean(on_values)/statistics.mean(off_values)-1,
+                         'ratio_of_means_relative_change': ratio_of_means,
                          'confidence_95_relative_change': [low, high], 'within_1pct': passed}
         if not passed:
             issues.append(name + ' overhead/noise is not established within +/-1%')
@@ -361,7 +376,7 @@ def paired_overhead(runs, kind='runtime_session'):
             'scenario': expected.get('scenario', 'static'),
             'workload_sha256': expected.get('workload_sha256'),
             'input_comparison': 'policy and both raw before/after trajectory endpoints must match in all runs',
-            'acceptance_rule': 'Paired 95% t interval entirely inside [-1%, +1%], owner and process; all identities and ETW checks valid.',
+            'acceptance_rule': 'Paired 95% t interval and ratio of arithmetic CPU means both inside [-1%, +1%], owner and process; all identities and ETW checks valid.',
             'scope': SCOPE, 'production_16ms_acceptance': False}
 
 

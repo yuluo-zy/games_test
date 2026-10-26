@@ -18,6 +18,7 @@ import sys
 import time
 from perf_windows import ROOT, PERF, INSTALL, XPERF, digest, dump, git, label
 from perf_headless_account import account, diagnostic_summary, paired_overhead, signature, validate, input_identity, SCENES
+from perf_build_target import run_requested_test
 
 TEST = 'cpu_measurement::profile_shipped_session_cpu'
 
@@ -103,10 +104,9 @@ def build(args):
                                 'RUSTFLAGS', 'CARGO_ENCODED_RUSTFLAGS', 'RUSTUP_TOOLCHAIN',
                                 'CC', 'CXX', 'AR', 'LLVM_CONFIG_PATH', 'LIBCLANG_PATH')
                     or name.startswith(('CARGO_TARGET_', 'CARGO_PROFILE_'))}
-    with (destination/'build.jsonl').open('w', encoding='utf-8') as out, (destination/'build.stderr.log').open('w', encoding='utf-8') as err:
-        built = subprocess.run(command, cwd=ROOT, env=build_env, stdout=out, stderr=err)
-    if built.returncode:
-        raise RuntimeError('build failed: '+str(destination/'build.stderr.log'))
+    requested_artifact, build_lifecycle = run_requested_test(
+        command, ROOT, build_env, destination/'build.jsonl', destination/'build.stderr.log')
+    dump(destination/'requested-target-artifact.json', requested_artifact)
     after = source_identity()
     if before != after:
         raise RuntimeError('source contents/identity changed during build; executable not frozen')
@@ -149,6 +149,12 @@ def build(args):
               'build_environment': relevant_env, 'build_environment_sha256': signature(relevant_env),
               'cargo_lock_sha256': digest(ROOT/'Cargo.lock'), 'hardware': machine,
               'rustc': subprocess.check_output(['rustc', '-Vv'], text=True),
+              'requested_test_target_completed': build_lifecycle['requested_target_completed'],
+              'entire_cargo_build_passed': build_lifecycle['entire_cargo_build_passed'],
+              'cargo_lifecycle': build_lifecycle,
+              'requested_target_evidence_sha256': digest(destination/'requested-target-artifact.json'),
+              'build_jsonl_sha256': digest(destination/'build.jsonl'),
+              'build_helper_sha256': digest(Path(__file__).with_name('perf_build_target.py')),
               'scope': 'Frozen headless shipped-session test; not WSI acceptance',
               'measurement_capabilities': 'active phase session and diagnostic bill' if not args.without_cpu_probe else 'envelope clocks only; runtime mode off required'}
     dump(destination/'build.json', record)
@@ -232,7 +238,10 @@ def capture(args, run_label=None, mode=None, build_label=None):
     env.update(TG_PERF_SCENARIO=scene, TG_CPU_PROBE_GATE='1', TG_CPU_PROBE_OUT=str(session_path),
                TG_CPU_PROBE_MODE=mode, TG_CPU_PROBE_WARMUP=str(args.warmup),
                TG_CPU_PROBE_SAMPLES=str(args.samples))
-    record = {'schema': 'headless-capture-v1', 'valid': False, 'mode': mode,
+    measurement_tools = {name: digest(Path(__file__).resolve().parent/name) for name in
+                         ('perf_headless.py', 'perf_headless_account.py', 'perf_etw.py')}
+    record = {'measurement_tools': measurement_tools, 'measurement_tools_sha256': signature(measurement_tools),
+              'schema': 'headless-capture-v1', 'valid': False, 'mode': mode,
               'scenario': scene, 'warmup': args.warmup, 'samples': args.samples, 'diagnostic': args.diagnostic,
               'build': frozen, 'hardware': machine, 'hardware_sha256': machine['sha256'],
               'executable_sha256': frozen['executable_sha256'], 'settings': settings,

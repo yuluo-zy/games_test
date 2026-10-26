@@ -108,7 +108,9 @@ def read_trace(path, process_id, frequency):
             cpu = int(row[fields['CPU']])
             if event in {'DPC', 'Interrupt'}:
                 duration_ticks = round(float(row[fields['ElapsedTime']]) * frequency / 1_000_000)
-                exclusions[cpu].append((raw_time, raw_time + duration_ticks))
+                # Kernel ISR/DPC header QPC is the routine completion timestamp.
+                # Microsoft PerfView: ElapsedTimeMSec = TimeStampRelativeMSec - InitialTimeQPC.
+                exclusions[cpu].append((raw_time - duration_ticks, raw_time))
                 continue
             new_tid = int(row[fields['New TID']])
             old_tid = int(row[fields['Old TID']])

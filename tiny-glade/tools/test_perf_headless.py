@@ -48,7 +48,7 @@ DPC,TimeStamp,CPU,ElapsedTime
 CSwitch,0,game (7),11,Idle (0),0,0
 # 1 # 0x5a # 0
 CSwitch,1,game (7),12,Idle (0),0,1
-# 2 # 0xdc # 0
+# 2 # 0xe6 # 0
 DPC,2,0,10000
 # 3 # 0x1fe # 0
 CSwitch,3,Idle (0),0,game (7),12,1
@@ -155,9 +155,10 @@ def overhead_runs(ratios=(.001, .002, .0015)):
             factor = 1+ratio if mode == 'on' else 1
             runs.append({'valid': True, 'mode': mode, 'diagnostic': False,
                          'executable_sha256': 'exe', 'hardware_sha256': 'hw', 'input_sha256': 'input',
-                         'settings_sha256': 'settings', 'scenario': 'static', 'workload_sha256': 'workload',
+                         'measurement_tools_sha256': 'tools', 'settings_sha256': 'settings', 'scenario': 'static', 'workload_sha256': 'workload',
                          'warmup': 600, 'samples': 3000,
-                         'account': {'valid': True, 'diagnostic_bill': False, 'envelope': {
+                         'account': {'accounting_tools': {'perf_etw.py': 'etw', 'perf_headless_account.py': 'account'},
+                                     'valid': True, 'diagnostic_bill': False, 'envelope': {
                              'owner_mean_cpu_ms_per_executed_frame': 100*factor,
                              'process_mean_cpu_ms_per_executed_frame': 200*factor}}})
     return runs
@@ -444,6 +445,27 @@ class ScenarioTests(unittest.TestCase):
         runs = overhead_runs()
         runs[1]['workload_sha256'] = 'different-schedule'
         with self.assertRaisesRegex(ValueError, 'workload_sha256'):
+            paired_overhead(runs)
+
+
+
+class ReviewRegressionTests(unittest.TestCase):
+    def test_ratio_ci_does_not_override_actual_ratio_of_cpu_means(self):
+        runs = overhead_runs((0, 0, 0, 0, .012))
+        for run in runs[-2:]:
+            for field in ('owner_mean_cpu_ms_per_executed_frame', 'process_mean_cpu_ms_per_executed_frame'):
+                run['account']['envelope'][field] *= 10000
+        result = paired_overhead(runs)
+        self.assertLess(result['metrics']['owner']['confidence_95_relative_change'][1], .01)
+        self.assertGreater(result['metrics']['owner']['ratio_of_means_relative_change'], .01)
+        self.assertFalse(result['valid'])
+
+    def test_modified_capture_or_accounting_tool_cannot_mix_into_series(self):
+        runs = overhead_runs(); runs[1]['measurement_tools_sha256'] = 'different'
+        with self.assertRaisesRegex(ValueError, 'measurement_tools'):
+            paired_overhead(runs)
+        runs = overhead_runs(); runs[1]['account']['accounting_tools']['perf_etw.py'] = 'different'
+        with self.assertRaisesRegex(ValueError, 'accounting tools'):
             paired_overhead(runs)
 
 
