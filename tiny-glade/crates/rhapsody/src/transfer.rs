@@ -157,6 +157,38 @@ impl UploadTicket {
     }
 }
 
+/// Diagnostic view of an existing upload task. It retains only its independent
+/// CPU status/envelope and Weak native owners. The current success/cancellation
+/// paths retain no native owner; an arbitrary future failure Error source must
+/// be audited separately. Holding this view
+/// delays task-slot reuse/CPU-credit return; release it after diagnostic export.
+#[cfg(any(test, feature = "cpu-probe"))]
+#[derive(Clone)]
+pub struct QueuedUploadObservation {
+    task: Arc<queue::Task>,
+    buffer: std::sync::Weak<Buffer>,
+    device: std::sync::Weak<Device>,
+    pub device_generation: crate::device::DeviceGeneration,
+    pub offset: u64,
+    pub bytes: u64,
+    pub options: UploadOptions,
+}
+#[cfg(any(test, feature = "cpu-probe"))]
+impl QueuedUploadObservation {
+    /// Exact task status remains observable after Job/manager removal. A
+    /// Submitted point is published submission evidence, not completed shader output.
+    /// Pending/Failed cannot prove no native submit: native success followed by
+    /// acquire-publication failure has no published task point and is invalid
+    /// for this correctness proof. Preserve its status and aggregate prefix.
+    pub fn status(&self) -> UploadStatus { self.task.status.lock().clone() }
+    pub fn owner_alive(&self) -> bool { self.buffer.strong_count() != 0 }
+    pub fn device_alive(&self) -> bool { self.device.strong_count() != 0 }
+    pub fn same_owner(&self, owner: &Arc<Buffer>) -> bool {
+        self.buffer.ptr_eq(&Arc::downgrade(owner))
+    }
+    pub fn weak_owner(&self) -> std::sync::Weak<Buffer> { self.buffer.clone() }
+}
+
 /// An accepted CPU upload. No completion point exists until a successful GPU
 /// submit. Call `flush_uploads` from the owning frame/service loop, then poll;
 /// dropping a ticket does not cancel already accepted work.
@@ -172,6 +204,12 @@ pub struct QueuedUploadTicket {
 impl QueuedUploadTicket {
     pub fn device_generation(&self) -> crate::device::DeviceGeneration {
         self.device.generation()
+    }
+    #[cfg(any(test, feature = "cpu-probe"))]
+    pub fn observe(&self) -> QueuedUploadObservation {
+        QueuedUploadObservation { task: self.task.clone(), buffer: Arc::downgrade(&self.buffer),
+            device: Arc::downgrade(&self.device), device_generation: self.device.generation(),
+            offset: self.offset, bytes: self.bytes, options: self.options }
     }
     pub fn status(&self) -> UploadStatus {
         self.task.status.lock().clone()
@@ -1435,5 +1473,52 @@ mod tests {
             readback.wait(10_000_000_000).unwrap();
             assert_eq!(owner(&released[0].0), RangeOwner::Owned(device.queues.primary_family));
         }
+    }
+}
+
+#[cfg(all(test, feature = "cpu-probe"))]
+mod weak_upload_observation_tests {
+    use super::*;
+    #[test]
+    fn status_survives_export_without_retaining_buffer_or_device() {
+        let device=Device::new_headless(&crate::device::DeviceConfig::headless())
+            .expect("upload observation ownership test requires actual Vulkan");
+        let stats=device.allocator_stats().clone();
+        let buffer=Arc::new(Buffer::new(device.clone(),&crate::resource::BufferDesc::new_cpu_to_gpu(
+            16,vk::BufferUsageFlags::TRANSFER_DST)).unwrap());
+        let weak_buffer=Arc::downgrade(&buffer);let weak_device=Arc::downgrade(&device);
+        let mut manager=TransferManager::new(device.clone(),TransferConfig::default()).unwrap();
+        let ticket=manager.enqueue_upload_owned(buffer.clone(),0,vec![7;16],
+            UploadOptions{key:UploadKey(1),epoch:0,priority:UploadPriority::High},UploadMode::OrderedDelta).unwrap();
+        let observed=ticket.observe();drop(ticket);
+        let deadline=std::time::Instant::now()+std::time::Duration::from_secs(10);
+        let point=loop {
+            manager.flush_uploads(4).unwrap();
+            if let UploadStatus::Submitted(point)=observed.status(){break point;}
+            assert!(std::time::Instant::now()<deadline,"upload observation never submitted");
+            std::thread::yield_now();
+        };
+        device.wait(&SyncSet::from_point(point),10_000_000_000).unwrap();
+        device.wait_idle_and_collect().unwrap();drop(manager);drop(buffer);
+        device.wait_idle_and_collect().unwrap();
+        assert!(weak_buffer.upgrade().is_none(),"CPU status observer must not pin the GPU buffer");
+        assert!(!observed.owner_alive());assert!(matches!(observed.status(),UploadStatus::Submitted(p) if p==point));
+        drop(device);assert!(weak_device.upgrade().is_none(),"status observer must not retain Device");
+        assert!(!observed.device_alive());
+        let before=stats.cpu_memory_usage().total();drop(observed);
+        assert!(stats.cpu_memory_usage().total()<before,"independent Task credit must be released");
+    }
+    #[test]
+    fn pending_cancelled_status_does_not_disappear_with_manager() {
+        let device=Device::new_headless(&crate::device::DeviceConfig::headless())
+            .expect("upload observation cancellation test requires actual Vulkan");
+        let buffer=Arc::new(Buffer::new(device.clone(),&crate::resource::BufferDesc::new_cpu_to_gpu(
+            16,vk::BufferUsageFlags::TRANSFER_DST)).unwrap());
+        let mut manager=TransferManager::new(device,TransferConfig::default()).unwrap();
+        let ticket=manager.enqueue_upload_owned(buffer.clone(),0,vec![1;16],
+            UploadOptions{key:UploadKey(1),epoch:0,priority:UploadPriority::High},UploadMode::OrderedDelta).unwrap();
+        let observed=ticket.observe();drop(ticket);drop(manager);drop(buffer);
+        assert!(matches!(observed.status(),UploadStatus::Cancelled(UploadCancellation::ManagerDropped)));
+        assert!(!observed.owner_alive());
     }
 }

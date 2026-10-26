@@ -146,6 +146,68 @@ struct BufferUploads {
     epoch: u64,
     /// Bytes accepted since the last flush.
     queued_bytes: u64,
+    #[cfg(feature = "cpu-probe")]
+    observation: Option<BufferUploadObservation>,
+}
+
+/// Bounded correctness-only target observation. Task status retains CPU credit,
+/// so this must never be reported as a clean CPU or native-memory plateau run.
+/// The entry backing and Task references drop before its storage credit.
+/// Structural validity alone does not prove submission/completion: the caller
+/// must require Submitted status, a reached point, and separate output pixels.
+#[cfg(feature = "cpu-probe")]
+pub struct BufferUploadObservation {
+    entries: Vec<ObservedBufferUpload>,
+    memory: rhapsody::device::CpuStorageReservation,
+    target: Buffer,
+    valid: bool,
+    rejected_admissions: u64,
+}
+#[cfg(feature = "cpu-probe")]
+pub struct ObservedBufferUpload {
+    pub logical: Buffer,
+    pub payload_blake3: [u8; 32],
+    pub submission: rhapsody::transfer::QueuedUploadObservation,
+}
+#[cfg(feature = "cpu-probe")]
+impl BufferUploadObservation {
+    pub const CAPACITY: usize = 16;
+    pub fn valid(&self) -> bool { self.valid }
+    pub fn target(&self) -> Buffer { self.target }
+    pub fn entries(&self) -> &[ObservedBufferUpload] { &self.entries }
+    pub fn storage_bytes(&self) -> u64 { self.memory.bytes() }
+    pub fn rejected_admissions(&self) -> u64 { self.rejected_admissions }
+    fn matches(&self, buffer: &Buffer) -> bool {
+        self.target.id == buffer.id && self.target.generation == buffer.generation
+    }
+}
+#[cfg(feature = "cpu-probe")]
+impl BufferUploads {
+    fn observation_digest(&self, buffer: &Buffer, bytes: &[u8]) -> Option<[u8; 32]> {
+        self.observation.as_ref().filter(|probe| probe.matches(buffer))
+            .map(|_| *blake3::hash(bytes).as_bytes())
+    }
+    fn observe_accepted(&mut self, buffer: &Buffer,
+        ticket: &rhapsody::transfer::QueuedUploadTicket, digest: Option<[u8; 32]>) {
+        let Some(probe) = self.observation.as_mut().filter(|probe| probe.matches(buffer)) else { return; };
+        let Some(digest) = digest else { probe.valid = false; return; };
+        if probe.entries.len() == BufferUploadObservation::CAPACITY
+            || ticket.options.key.0 != buffer.id
+            || ticket.offset.checked_add(ticket.bytes).is_none_or(|end| end > buffer.byte_size) {
+            // A diagnostic may not change a successfully accepted real upload.
+            // Invalidate the witness and retain the bounded original prefix.
+            probe.valid = false;
+            return;
+        }
+        probe.entries.push(ObservedBufferUpload { logical: *buffer, payload_blake3: digest,
+            submission: ticket.observe() });
+    }
+    fn observe_rejected(&mut self, buffer: &Buffer) {
+        if let Some(probe) = self.observation.as_mut().filter(|probe| probe.matches(buffer)) {
+            probe.valid = false;
+            probe.rejected_admissions = probe.rejected_admissions.saturating_add(1);
+        }
+    }
 }
 
 struct MappedHostWriter {
@@ -275,6 +337,8 @@ mod frame_buffer_tests {
                 rhapsody::transfer::TransferConfig::default(),
                 rhapsody::transfer::UploadQueueConfig { max_jobs: 1, ..Default::default() }).unwrap(),
             epoch: 0, queued_bytes: 0,
+            #[cfg(feature = "cpu-probe")]
+            observation: None,
         });
         let data = vec![37u8; UPLOAD_CHUNK_BYTES as usize * 3];
         let handle = host.create_buffer(&BufferDesc::new(data.len(),
@@ -302,6 +366,8 @@ mod frame_buffer_tests {
                 rhapsody::transfer::TransferConfig::default(),
                 rhapsody::transfer::UploadQueueConfig { max_jobs: 1, ..Default::default() }).unwrap(),
             epoch: 0, queued_bytes: 0,
+            #[cfg(feature = "cpu-probe")]
+            observation: None,
         });
         let handle = cancel_host.create_buffer(&BufferDesc::new(data.len(),
             vk::BufferUsageFlags::TRANSFER_DST.as_raw(), 1), "cancel owned upload", None).unwrap();
@@ -963,6 +1029,8 @@ impl BufferHost {
                 )?,
                 epoch: 0,
                 queued_bytes: 0,
+                #[cfg(feature = "cpu-probe")]
+                observation: None,
             });
         }
         Ok(uploads.as_mut().expect("initialized bounded upload service"))
@@ -1000,6 +1068,8 @@ impl BufferHost {
                 let mut payload = Vec::new();
                 payload.try_reserve_exact(bytes).map_err(|_| rhapsody::Error::OutOfHostMemory)?;
                 payload.extend_from_slice(slice);
+                #[cfg(feature = "cpu-probe")]
+                let observed_digest = service.observation_digest(buffer, slice);
                 let accepted = service.manager.enqueue_upload_owned(
                     managed.shared(),
                     at,
@@ -1007,8 +1077,17 @@ impl BufferHost {
                     options_at(service.epoch),
                     rhapsody::transfer::UploadMode::OrderedDelta,
                 );
-                if let Err(rejected) = accepted {
-                    return Err(rejected.error);
+                match accepted {
+                    Ok(ticket) => {
+                        #[cfg(feature = "cpu-probe")]
+                        service.observe_accepted(buffer, &ticket, observed_digest);
+                        drop(ticket);
+                    }
+                    Err(rejected) => {
+                        #[cfg(feature = "cpu-probe")]
+                        service.observe_rejected(buffer);
+                        return Err(rejected.error);
+                    }
                 }
                 service.queued_bytes += bytes as u64;
                 cursor += bytes;
@@ -1048,10 +1127,22 @@ impl BufferHost {
             epoch,
             priority: rhapsody::transfer::UploadPriority::High,
         };
+        #[cfg(feature = "cpu-probe")]
+        let observed_digest = service.observation_digest(buffer, payload);
         match service.manager.enqueue_upload_owned(managed.shared(), at as u64, std::mem::take(payload),
             options_at(service.epoch), rhapsody::transfer::UploadMode::OrderedDelta) {
-            Ok(_) => { service.queued_bytes += bytes; Ok(()) }
-            Err(rejected) => { *payload = rejected.payload; Err(rejected.error) },
+            Ok(ticket) => {
+                #[cfg(feature = "cpu-probe")]
+                service.observe_accepted(buffer, &ticket, observed_digest);
+                drop(ticket);
+                service.queued_bytes += bytes;
+                Ok(())
+            }
+            Err(rejected) => {
+                #[cfg(feature = "cpu-probe")]
+                service.observe_rejected(buffer);
+                *payload = rejected.payload; Err(rejected.error)
+            },
         }
     }
 
@@ -1187,6 +1278,33 @@ impl BufferHost {
     /// Return the real description only while the host handle is live.
     pub fn description(&self, handle: &Buffer) -> Option<RhBufferDesc> {
         Some(self.lookup(handle)?.desc)
+    }
+
+    /// Activate one correctness-only logical allocation watch. It observes each
+    /// accepted ticket's actual physical owner, including COW versions. There
+    /// is no edit-id/latest-frame guess: callers use a drained, sequential scope.
+    #[cfg(feature = "cpu-probe")]
+    pub fn begin_buffer_upload_observation(&self, target: &Buffer) -> rhapsody::Result<()> {
+        let _publication = self.publication.lock();
+        self.current_version(target).ok_or_else(|| BackendError::invalid_usage("observed buffer is stale/foreign"))?;
+        let memory = self.device.allocator_stats().reserve_cpu_storage(
+            (BufferUploadObservation::CAPACITY * std::mem::size_of::<ObservedBufferUpload>()) as u64)?;
+        let mut probe = BufferUploadObservation { entries: Vec::new(), memory, target: *target,
+            valid: true, rejected_admissions: 0 };
+        probe.entries.try_reserve_exact(BufferUploadObservation::CAPACITY).map_err(|_| BackendError::OutOfHostMemory)?;
+        probe.memory.resize((probe.entries.capacity() * std::mem::size_of::<ObservedBufferUpload>()) as u64)?;
+        let mut uploads = self.uploads.lock();
+        let service = self.upload_service(&mut uploads)?;
+        if service.observation.is_some() { return Err(BackendError::invalid_usage("buffer observation already active")); }
+        service.observation = Some(probe);
+        Ok(())
+    }
+    /// Transfer the pre-reserved witness outside the uploads lock. Reading task
+    /// status takes only the task's existing state mutex. Drop after export.
+    #[cfg(feature = "cpu-probe")]
+    pub fn take_buffer_upload_observation(&self) -> rhapsody::Result<BufferUploadObservation> {
+        self.uploads.lock().as_mut().and_then(|service| service.observation.take())
+            .ok_or_else(|| BackendError::invalid_usage("no active buffer observation"))
     }
 
     /// (manager identity, submitted jobs, submitted payload bytes), cumulative.
@@ -6244,5 +6362,62 @@ mod sampler_catalog_tests {
         ] {
             assert!(!optional_sampler_budget_error(&error));
         }
+    }
+}
+
+#[cfg(all(test, feature = "cpu-probe"))]
+mod target_upload_observation_tests {
+    use super::*;
+    fn device() -> Arc<Device> {
+        Device::new_headless(&rhapsody::device::DeviceConfig::headless())
+            .expect("target upload observation tests require actual Vulkan")
+    }
+    #[test]
+    fn observed_logical_allocation_tracks_its_real_cow_owner() {
+        let device=device();let host=BufferHost::new(device.clone());
+        let data=[1u8;16];
+        let target=host.create_buffer(&BufferDesc::new(16,
+            vk::BufferUsageFlags::STORAGE_BUFFER.as_raw()|vk::BufferUsageFlags::TRANSFER_DST.as_raw(),1),
+            "observed CPU-authoritative COW",Some(&data)).unwrap();
+        // SAFETY: this test owns the full reconstructible CPU array; no mapping,
+        // device address or native handle escapes, and no GPU writer exists.
+        unsafe {host.register_cpu_authoritative_buffer(&target);}
+        upload_test_wait::until_ready(||host.poll_pending_uploads()).unwrap();
+        device.wait_idle_and_collect().unwrap();
+        let old=host.managed_buffer(&target).unwrap();let snapshot=host.freeze_frame_resources();
+        host.begin_buffer_upload_observation(&target).unwrap();
+        host.update_cpu_buffer_bytes(&target,&[2;16],&[0..16]).unwrap();
+        let next=host.managed_buffer(&target).unwrap();
+        assert!(!Arc::ptr_eq(&old.shared(),&next.shared()));
+        upload_test_wait::until_ready(||host.poll_pending_uploads()).unwrap();
+        let observed=host.take_buffer_upload_observation().unwrap();
+        assert!(observed.valid());assert_eq!(observed.entries().len(),1);
+        let entry=&observed.entries()[0];assert_eq!(entry.logical,target);
+        assert!(entry.submission.same_owner(&next.shared()));
+        assert!(!entry.submission.same_owner(&old.shared()));
+        match entry.submission.status() {
+            rhapsody::transfer::UploadStatus::Submitted(point)=>device.wait(&rhapsody::sync::SyncSet::from_point(point),10_000_000_000).unwrap(),
+            state=>panic!("missing actual COW submission: {state:?}"),
+        }
+        drop(observed);drop(snapshot);drop(old);drop(next);
+        assert!(host.release(&target));device.wait_idle_and_collect().unwrap();
+    }
+    #[test]
+    fn stale_targets_and_overflow_are_rejected_without_changing_real_uploads() {
+        let device=device();let host=BufferHost::new(device.clone());
+        let target=host.create_buffer(&BufferDesc::new(16,
+            (vk::BufferUsageFlags::STORAGE_BUFFER|vk::BufferUsageFlags::TRANSFER_DST).as_raw(),2),
+            "bounded target diagnostic",Some(&[0;16])).unwrap();
+        upload_test_wait::until_ready(||host.poll_pending_uploads()).unwrap();device.wait_idle_and_collect().unwrap();
+        let stale=Buffer{generation:target.generation+1,..target};
+        assert!(host.begin_buffer_upload_observation(&stale).is_err());
+        host.begin_buffer_upload_observation(&target).unwrap();
+        for value in 1u32..=17 {host.update_buffer_bytes(&target,&value.to_ne_bytes(),&[0..4],0).unwrap();}
+        let observed=host.take_buffer_upload_observation().unwrap();
+        assert!(!observed.valid());assert_eq!(observed.entries().len(),BufferUploadObservation::CAPACITY);
+        // Overflow invalidates only the witness: every real queued job survives.
+        assert_eq!(host.queued_upload_stats().unwrap().queued_jobs,17);
+        drop(observed);upload_test_wait::until_ready(||host.poll_pending_uploads()).unwrap();
+        device.wait_idle_and_collect().unwrap();assert!(host.release(&target));
     }
 }

@@ -1788,3 +1788,168 @@ fn original_spd_large_mip_chain_uses_uploaded_zero_atomic_and_reuses_it_next_fra
         "the second frame must reuse the actual atomic allocation"
     );
 }
+
+// Separate correctness-only fixture: explicit drains/readback, no clean CPU claim.
+#[cfg(feature = "cpu-probe")]
+mod path_upload_receipt_correctness {
+    use super::*;
+    use country_core::render::ssbo::rhapsody_boundary::Buffer as CoreBuffer;
+    use tiny_glade::render_host::{BufferHost, BufferUploadObservation};
+
+    fn stage_path(world: &mut World, value: u8, initialize: bool) -> rhapsody::Result<()> {
+        world.resource_scope(|world, mut raster: bevy_ecs::change_detection::Mut<PathRaster>| {
+            if initialize {
+                raster.write_composite(None);
+            } else {
+                let changed: usize = (248..264).map(|y| raster.composite()[y*512+248..y*512+264]
+                    .iter().filter(|&&byte| byte != value).count()).sum();
+                assert_eq!(changed, 256, "the intended local edit must actually change every ROI byte");
+                for y in 248..264 { raster.composite_mut()[y*512+248..y*512+264].fill(value); }
+                for y in 31..33 { for x in 31..33 { raster.dirty_mut().set_cell(x,y); } }
+            }
+            let mut library = world.resource_mut::<AssetSsboLibrary>();
+            let staging = library.get_mut::<PathRasterStagingSsbo>().expect("real typed Path staging");
+            let mut spans = 0usize;
+            let result = staging.with_cpu_write_regions(|mapped, ranges| {
+                let start = ranges.len();
+                raster.copy_to_staging_with_ranges(0, bytemuck::cast_slice_mut(mapped), ranges);
+                spans = ranges.len()-start;
+                if !initialize {
+                    assert_eq!(&ranges[start..], &[
+                        128960..129024, 129024..129088, 133056..133120, 133120..133184]);
+                }
+            });
+            // A failed write keeps the same real CPU shadow/pending spans.
+            result?;
+            if !initialize { assert_eq!(spans, 4); }
+            Ok(())
+        })
+    }
+
+    fn assert_target_tickets(probe: &BufferUploadObservation, target: CoreBuffer,
+        value: u8, buffers: &BufferHost, device: &Arc<rhapsody::device::Device>) {
+        assert!(probe.valid());
+        assert_eq!(probe.target(),target);
+        assert_eq!(probe.rejected_admissions(),0);
+        assert_eq!(probe.entries().len(),2, "four producer tiles merge into two actual queued intervals");
+        let current = buffers.managed_buffer(&target).expect("live selected logical generation").shared();
+        let completed = device.poll().unwrap();
+        let expected = [(128960u64,128u64),(133056,128)];
+        for (entry,(offset,bytes)) in probe.entries().iter().zip(expected) {
+            assert_eq!(entry.logical,target);
+            assert_eq!((entry.submission.offset,entry.submission.bytes),(offset,bytes));
+            assert_eq!(entry.submission.options.key.0,target.id);
+            assert_eq!(entry.submission.device_generation,device.generation());
+            assert_eq!(entry.payload_blake3,*blake3::hash(&[value;128]).as_bytes());
+            assert!(entry.submission.same_owner(&current));
+            assert!(entry.submission.owner_alive() && entry.submission.device_alive());
+            match entry.submission.status() {
+                rhapsody::transfer::UploadStatus::Submitted(point) => {
+                    assert!(rhapsody::sync::SyncSet::from_point(point).is_reached(&completed));
+                }
+                state => panic!("target upload has no successful completed submit: {state:?}"),
+            }
+        }
+    }
+
+    fn render_path(fixture: &mut Fixture, target: CoreBuffer, upload: bool, roi_value: u8) {
+        fixture.world.increment_change_tick();
+        let ((staging, output_resource, output), built) = fixture.bridge.build_frame(|frame| {
+            tiny_glade::frame_setup::with_frame_resources(frame,&mut fixture.world,|frame,world| {
+                let uploaded = scene_compute::upload_raster_staging_to_texture(frame,world,1)?;
+                assert_eq!(uploaded.is_some(),upload);
+                // Use the same library cache and current graph scope as W1.
+                let staging = world.resource::<AssetSsboLibrary>()
+                    .get_rg_buffer::<PathRasterStagingSsbo>(&mut frame.resource_graph());
+                let graph = frame.with_graph(|graph| Ok(graph.graph_id().raw()))?;
+                assert_eq!(staging.generation,graph);
+                let source = world.resource::<AssetTextureLibrary>().get_rg_texture(TexturePreset(1));
+                let output_resource = source.resource as u32;
+                let output = readback(frame,world,&fixture.shaders,&fixture.device,
+                    RgTexture{resource:output_resource,desc:source.desc})?;
+                Ok((staging,output_resource,output))
+            })
+        }).unwrap();
+        let receipt = fixture.bridge.execute_test_graph(built).unwrap();
+        assert!(!receipt.receipts.is_empty());
+        assert!(receipt.stats.command_workload.valid);
+        assert_eq!(receipt.stats.command_workload.direct_dispatch_api_calls,u64::from(upload));
+        assert_eq!(receipt.stats.command_workload.indirect_dispatch_api_calls,0);
+        assert_eq!(receipt.snapshot.pass_order.len(),receipt.snapshot.pass_ranges.len());
+        let slots:Vec<_> = receipt.snapshot.pass_order.iter().enumerate()
+            .filter(|(_,name)| name.as_str()=="Upload cpu raster").map(|(i,_)|i).collect();
+        assert_eq!(slots.len(),usize::from(upload));
+        if let Some(&slot)=slots.first() {
+            let accesses=&receipt.snapshot.accesses[receipt.snapshot.pass_ranges[slot].clone()];
+            assert!(accesses.iter().any(|a| a.resource_index==staging.resource as u32 && a.access_code==0x1a));
+            assert!(accesses.iter().any(|a| a.resource_index==output_resource && a.access_code==0x32));
+            let mapping=receipt.snapshot.physical_mapping.iter().find(|m|m.logical==staging.resource as u32)
+                .expect("retained typed staging physical mapping");
+            assert_eq!(mapping.token,Some(tiny_glade::render_host::graph_token(target.id)));
+        }
+        fixture.bridge.wait_submits_done(10_000_000_000).unwrap();
+        let completed=fixture.device.poll().unwrap();
+        for &point in &receipt.receipts {
+            assert!(rhapsody::sync::SyncSet::from_point(point).is_reached(&completed));
+        }
+        let mut bytes=vec![0;512*512*4];output.read_bytes(0,&mut bytes).unwrap();
+        for y in 0..512 { for x in 0..512 {
+            let expected=if (248..264).contains(&x)&&(248..264).contains(&y) {roi_value} else {0};
+            let red=bytes[(y*512+x)*4];
+            assert!(red.abs_diff(original_resolve_byte(expected))<=1,"Path pixel {x},{y}: {red} vs {expected}");
+        }}
+    }
+
+    #[test]
+    fn path_local_edit_uses_its_queued_owner_then_real_w1_and_recovers_rejection() {
+        let mut fixture=Fixture::new().expect("this correctness test requires actual Vulkan initialization");
+        let buffers=fixture.bridge.hosts().buffers.clone();
+        fixture.world.resource::<AssetSsboLibrary>().add_new::<PathRasterStagingSsbo>(buffers.as_ref());
+        fixture.world.insert_resource(PathRaster::new(DirtyTilePublisher::unique()));
+        let target=*fixture.world.resource::<AssetSsboLibrary>().get_buffer::<PathRasterStagingSsbo>().unwrap();
+        stage_path(&mut fixture.world,0,true).unwrap();
+        fixture.world.resource_mut::<AssetSsboLibrary>().flush_pending_uploads(buffers.as_ref()).unwrap();
+        render_path(&mut fixture,target,true,0);
+
+        buffers.begin_buffer_upload_observation(&target).unwrap();
+        stage_path(&mut fixture.world,255,false).unwrap();
+        fixture.world.resource_mut::<AssetSsboLibrary>().flush_pending_uploads(buffers.as_ref()).unwrap();
+        render_path(&mut fixture,target,true,255);
+        let probe=buffers.take_buffer_upload_observation().unwrap();
+        assert_target_tickets(&probe,target,255,&buffers,&fixture.device);
+        let charged=probe.storage_bytes();let stats=fixture.device.allocator_stats();
+        let before=stats.cpu_memory_usage().total();drop(probe);
+        assert!(stats.cpu_memory_usage().total()<=before-charged,"diagnostic backing credit must return after export/drop");
+
+        // Real enqueue budget rejection before any acceptance, with restoration on unwind.
+        struct Restore {stats:Arc<rhapsody::device::AllocatorStats>,limit:u64}
+        impl Drop for Restore {fn drop(&mut self){let _=self.stats.set_host_budget(self.limit);}}
+        buffers.begin_buffer_upload_observation(&target).unwrap();
+        let guard=Restore{stats:stats.clone(),limit:stats.host_budget_limit()};
+        stats.set_host_budget(stats.cpu_memory_usage().total()).unwrap();
+        let rejected=stage_path(&mut fixture.world,0,false);
+        let retry_while_rejected=fixture.world.resource_mut::<AssetSsboLibrary>().flush_pending_uploads(buffers.as_ref());
+        drop(guard); // restore before assertions and any GPU/cleanup work
+        assert_eq!(rejected.unwrap_err().kind(),rhapsody::ErrorKind::OutOfMemory);
+        assert_eq!(retry_while_rejected.unwrap_err().kind(),rhapsody::ErrorKind::OutOfMemory);
+        assert!(fixture.world.resource::<PathRaster>().published());
+        assert!((248..264).all(|y| fixture.world.resource::<PathRaster>().composite()[y*512+248..y*512+264].iter().all(|&b|b==0)));
+        let refused=buffers.take_buffer_upload_observation().unwrap();
+        assert!(refused.entries().is_empty(),"pre-admission failure cannot invent a submitted ticket");
+        assert!(!refused.valid());
+        assert!(refused.rejected_admissions() >= 2);
+        assert_eq!(buffers.queued_upload_stats().unwrap().queued_jobs, 0);
+        drop(refused);
+        // Queue admission failed before native submit. The real incomplete-write
+        // guard must reject execution, rather than clear Path's publication flag.
+        assert_eq!(buffers.poll_pending_uploads().unwrap_err().kind(), rhapsody::ErrorKind::OutOfMemory);
+        assert!(fixture.world.resource::<PathRaster>().published());
+        buffers.begin_buffer_upload_observation(&target).unwrap();
+        // Retry the retained producer spans, with NO second logical edit.
+        fixture.world.resource_mut::<AssetSsboLibrary>().flush_pending_uploads(buffers.as_ref()).unwrap();
+        render_path(&mut fixture,target,true,0);
+        let recovered=buffers.take_buffer_upload_observation().unwrap();
+        assert_target_tickets(&recovered,target,0,&buffers,&fixture.device);drop(recovered);
+        render_path(&mut fixture,target,false,0);
+    }
+}
