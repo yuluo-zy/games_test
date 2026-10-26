@@ -1470,8 +1470,11 @@ pub struct TextureHost {
     view_variants: Arc<
         Mutex<
             std::collections::HashMap<
-                (u64, country_core::rhapsody_types::TextureViewDesc),
-                rhapsody::resource::ManagedTextureView,
+                u64,
+                std::collections::HashMap<
+                    country_core::rhapsody_types::TextureViewDesc,
+                    rhapsody::resource::ManagedTextureView,
+                >,
             >,
         >,
     >,
@@ -1587,13 +1590,13 @@ impl TextureHost {
             .get_by_id(id)
             .ok_or_else(|| rhapsody::Error::invalid_usage("texture host handle is not live"))?;
         let mut variants = self.view_variants.lock();
-        if let Some(view) = variants.get(&(id, *desc)) {
+        if let Some(view) = variants.get(&id).and_then(|views| views.get(desc)) {
             return Ok(ash::vk::Handle::as_raw(view.raw()));
         }
         let native = rh_view_desc(&texture, desc)?;
         let view = self.device.get_vk_image_view(&texture, &native)?;
         let raw = ash::vk::Handle::as_raw(view.raw());
-        variants.insert((id, *desc), view);
+        variants.entry(id).or_default().insert(*desc, view);
         Ok(raw)
     }
 
@@ -1609,9 +1612,10 @@ impl TextureHost {
         }
         self.view_variants
             .lock()
-            .iter()
-            .find(|((owner, _), view)| *owner == id && ash::vk::Handle::as_raw(view.raw()) == raw)
-            .map(|(_, view)| view.view.clone())
+            .get(&id)
+            .and_then(|views| views.values()
+                .find(|view| ash::vk::Handle::as_raw(view.raw()) == raw))
+            .map(|view| view.view.clone())
             .ok_or_else(|| {
                 rhapsody::Error::invalid_usage("external texture view is not owned by this host")
             })
@@ -1678,9 +1682,10 @@ impl TextureHost {
                 slot.texture.take()
             };
             let view = views.lock().remove(&texture.id);
-            view_variants.lock().retain(|(id, _), _| *id != texture.id);
-            // Final texture ownership retires after every host-table lock ends.
-            drop((view, removed));
+            let variants = view_variants.lock().remove(&texture.id);
+            // Move the whole texture-owned group without allocation or a scan
+            // over other textures. Destructors run after every table lock ends.
+            drop((variants, view, removed));
             Ok(())
         }) {
             log::error!(target: "tiny_glade::upload", "earlier deferred texture write failed: {error}");
@@ -1891,6 +1896,40 @@ impl TextureGeneration for Texture {
 #[cfg(test)]
 mod texture_release_tests {
     use super::*;
+
+    #[test]
+    fn explicit_view_group_release_preserves_external_owners_and_other_textures() {
+        let device = match Device::new_headless(&rhapsody::device::DeviceConfig::headless()) {
+            Ok(device) => device,
+            Err(error) => {
+                assert!(!std::env::var("RHAPSODY_REQUIRE_VULKAN").is_ok_and(|v| v == "1"), "{error}");
+                return;
+            }
+        };
+        let host = TextureHost::new(device.clone());
+        let desc = TextureDesc::new_2d([4, 4], 0x2b).sampled();
+        let first = host.create_texture("first", &desc, &[]).unwrap();
+        let second = host.create_texture("second", &desc, &[]).unwrap();
+        let all = country_core::rhapsody_types::TextureViewDesc::new();
+        let color = all.aspect_mask(vk::ImageAspectFlags::COLOR.as_raw());
+        let raw = host.explicit_view(first.id, &all).unwrap();
+        host.explicit_view(first.id, &color).unwrap();
+        let other = host.explicit_view(second.id, &all).unwrap();
+        let owner = host.owned_view(first.id, raw).unwrap();
+        let weak = Arc::downgrade(&owner);
+        assert_eq!(host.view_variants.lock().get(&first.id).unwrap().len(), 2);
+        assert!(host.release(&first));
+        assert!(!host.view_variants.lock().contains_key(&first.id));
+        assert!(host.owned_view(first.id, raw).is_err());
+        assert!(host.explicit_view(first.id, &all).is_err());
+        assert_eq!(host.explicit_view(second.id, &all).unwrap(), other);
+        assert!(weak.upgrade().is_some(), "external view owns the native lifetime");
+        drop(owner);
+        device.wait_idle_and_collect().unwrap();
+        assert!(weak.upgrade().is_none());
+        assert!(host.release(&second));
+        assert!(host.view_variants.lock().is_empty());
+    }
 
     #[test]
     fn cancelled_capacity_retry_does_not_pin_the_texture_host_boundary() {

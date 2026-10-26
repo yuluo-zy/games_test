@@ -616,7 +616,10 @@ impl RasterShared {
                 }),
             );
         }
-        self.assets.lock().vaos = snapshots;
+        // Move old owners out before releasing them: final leases may retire
+        // native objects and must not extend the asset-table critical section.
+        let previous = std::mem::replace(&mut self.assets.lock().vaos, snapshots);
+        drop(previous);
         self.vao_table_revision
             .fetch_add(1, std::sync::atomic::Ordering::AcqRel);
         Ok(())
@@ -1058,8 +1061,8 @@ impl PassHost for RasterPassHost {
         for binding in packet.bindings.values_mut() {
             let CoreBinding::UniformBuffer { keepalive, lease, .. } = &mut binding.binding else { continue };
             let Some(bytes) = lease.as_ref().and_then(ResourceLease::downcast_ref::<CollectedConstants>) else { continue };
-            let result = self.shared.dynamic.lock().allocate(bytes.bytes.len() as u64)
-                .and_then(|chunk| {
+            let allocation = { self.shared.dynamic.lock().allocate(bytes.bytes.len() as u64) };
+            let result = allocation.and_then(|chunk| {
                     chunk.write_bytes(&bytes.bytes)?;
                     Ok(Arc::new(chunk))
                 });
@@ -1087,7 +1090,8 @@ impl PassHost for RasterPassHost {
         reflection: &CoreReflection,
     ) -> Option<DynamicConstantsBinding> {
         let size = u64::from(reflection.uniform_block_size);
-        let chunk = match self.shared.dynamic.lock().allocate(size) {
+        let allocation = { self.shared.dynamic.lock().allocate(size) };
+        let chunk = match allocation {
             Ok(chunk) => Arc::new(chunk),
             Err(error) => {
                 self.constants_error.get_or_insert(error);
