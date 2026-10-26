@@ -48,10 +48,9 @@ def scene_input_valid(value):
             isinstance(value.get('meshes'), list) and isinstance(value.get('nani'), list))
 
 
-def manifest_errors(row, side):
+def manifest_errors(row, side, comparison_errors):
     errors = []
-    missing = [key for key in (*INPUTS, 'source', 'binary_blake3',
-                               'surface_execution_mode', 'actual_surface_execution', 'pixels')
+    missing = [key for key in INPUTS
                if key not in row or row[key] is None]
     if missing:
         errors.append(side + '_missing_inputs:' + ','.join(missing))
@@ -62,10 +61,11 @@ def manifest_errors(row, side):
             row.get('wet_raster_pixels', 0) <= 0 or
             not digest_string(row.get('scene_blake3')) or
             not digest_string(row.get('water_raster_blake3')) or
-            not digest_string(row.get('binary_blake3')) or
-            not isinstance(row.get('source'), str) or row.get('source') in ('', 'unrecorded') or
             not scene_input_valid(row.get('initial_scene_input'))):
         errors.append(side + '_invalid_fixture_identity_or_workload')
+    if (not digest_string(row.get('binary_blake3')) or
+            not isinstance(row.get('source'), str) or row.get('source') in ('', 'unrecorded')):
+        comparison_errors.append(side + '_invalid_binary_or_source_identity')
     lengths = row.get('initial_draw_list_lengths')
     if (not isinstance(lengths, list) or len(lengths) != 21 or
             any(type(n) is not int or n < 0 for n in lengths) or lengths[15] <= 0):
@@ -118,7 +118,7 @@ def manifest_errors(row, side):
     else:
         valid_counters = False
     if not valid_counters:
-        errors.append(side + '_actual_surface_execution_invalid')
+        comparison_errors.append(side + '_actual_surface_execution_invalid')
     return errors
 
 
@@ -138,13 +138,18 @@ def capture_map(row, side, errors):
 
 def compare(a, b):
     a, b = Path(a), Path(b)
-    result = {'schema': 'surface-collect-pixel-compare-v2', 'a': str(a), 'b': str(b),
-              'input_mismatches': [], 'frames': [], 'passes': False,
+    result = {'schema': 'surface-collect-pixel-compare-v3', 'a': str(a), 'b': str(b),
+              'input_mismatches': [], 'comparison_errors': [], 'capture_errors': [],
+              'output_mismatches': [], 'frames': [], 'passes': False,
+              'input_comparison_scope': 'Validated declared fixture semantic inputs only. Matching declarations do not establish equality of unobserved GPU history contents or native per-pass uniform payloads.',
               'hash_policy': 'SHA256 is independently computed from actual files. BLAKE3 fields are fixture declarations; Python does not verify them.',
               'binary_identity_scope': 'Standalone comparison checks manifest declarations; run_surface_pixels independently binds both processes to verified frozen EXE/PDB SHA256.',
               'limitations': ['Physical headless correctness only; WSI and CPU acceptance are separate.',
                               'Inspect visible water/ice ROI on saved captures before accepting representative surface coverage.']}
     errors = result['input_mismatches']
+    comparison_errors = result['comparison_errors']
+    capture_errors = result['capture_errors']
+    output_mismatches = result['output_mismatches']
     rows = []
     for side, directory in (('a', a), ('b', b)):
         try:
@@ -159,7 +164,7 @@ def compare(a, b):
             rows.append({})
     left, right = rows
     for side, row in zip(('a', 'b'), rows):
-        errors.extend(manifest_errors(row, side))
+        errors.extend(manifest_errors(row, side, comparison_errors))
     errors.extend(key for key in INPUTS if left.get(key) != right.get(key))
     modes = [row.get('surface_execution_mode') for row in rows]
     result.update(source_a=left.get('source'), source_b=right.get('source'), surface_modes=modes,
@@ -169,9 +174,9 @@ def compare(a, b):
     if modes[0] != modes[1]:
         kind = 'same_binary_inline_vs_collect'
         if set(mode for mode in modes if isinstance(mode, str)) != {'inline', 'collect'} or not same_binary:
-            errors.append('inline_collect_requires_same_source_and_binary')
+            comparison_errors.append('inline_collect_requires_same_source_and_binary')
     result['comparison_kind'] = kind
-    captures = [capture_map(row, side, errors) for side, row in zip(('a', 'b'), rows)]
+    captures = [capture_map(row, side, capture_errors) for side, row in zip(('a', 'b'), rows)]
     for frame in sorted(set(captures[0]) & set(captures[1])):
         evidence = {'frame': frame}
         data = []
@@ -186,11 +191,11 @@ def compare(a, b):
                     raise ValueError('capture dimensions, byte count or declared digest are invalid')
                 data.append(path.read_bytes())
             except (OSError, ValueError, TypeError) as error:
-                errors.append(f'{side}_frame_{frame}_invalid:' + str(error))
+                capture_errors.append(f'{side}_frame_{frame}_invalid:' + str(error))
                 data.append(None)
         if all(value is not None for value in data):
             if captures[0][frame].get('blake3') != captures[1][frame].get('blake3'):
-                errors.append(f'frame_{frame}_fixture_digest_declarations_differ')
+                output_mismatches.append(f'frame_{frame}_fixture_digest_declarations_differ')
             changed, maximum, total = 0, 0, 0
             if data[0] != data[1]:
                 for offset in range(0, len(data[0]), 4):
@@ -201,13 +206,18 @@ def compare(a, b):
                         maximum = max(maximum, delta)
                         total += delta
                     changed += pixel_changed
+            if changed:
+                output_mismatches.append(f'frame_{frame}_raw_pixels_differ')
             evidence.update(changed_pixels=changed, pixels=1280 * 720,
                             max_channel_abs=maximum, mean_channel_abs=total / len(data[0]))
         result['frames'].append(evidence)
     result['valid_same_input_comparison'] = not errors
     result['exact_pixels_equal'] = len(result['frames']) == 2 and all(
         row.get('changed_pixels') == 0 for row in result['frames'])
-    result['passes'] = result['valid_same_input_comparison'] and result['exact_pixels_equal']
+    result['comparison_evidence_valid'] = not comparison_errors and not capture_errors
+    result['passes'] = (result['valid_same_input_comparison'] and
+                        result['comparison_evidence_valid'] and
+                        result['exact_pixels_equal'] and not output_mismatches)
     return result
 
 

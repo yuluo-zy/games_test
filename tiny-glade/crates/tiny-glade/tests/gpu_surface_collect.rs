@@ -365,6 +365,17 @@ fn run_surface(glade: GladeType, label: &str) -> Result<()> {
             "camera_bits":world.resource::<country_core::systems::camera_rig::MainCamera>()
                 .read_matrix(0xc0).to_cols_array().map(f32::to_bits),
         });
+        // Observe canonical resources without claiming to have decoded the
+        // eventual native per-pass constant payload. The host consumes these
+        // exact video/config fields when declaring TAA or TGSR.
+        let video = &world.resource::<country_core::game_config::GameConfig>().video;
+        frame_input["temporal_source_resources"] = serde_json::json!({
+            "phase":"after_App_update_before_prepare",
+            "upscaling_mode":video.upscaling_mode,
+            "sharpen_amount_bits":video.sharpen.to_bits(),
+            "bypass_clamp_source":u8::from(actual_config.flag_20),
+            "native_uniform_payload_observed":false,
+        });
         let mut actual_lists = DrawLists::new();
         draw_lists::build_draw_lists(world, shaders.as_ref(), &mut actual_lists);
         let actual_lengths: Vec<_> = (0..draw_lists::DRAW_LIST_COUNT)
@@ -391,6 +402,20 @@ fn run_surface(glade: GladeType, label: &str) -> Result<()> {
         }
         let frame =
             tiny_glade::production_renderer::prepare_headless_gameplay_frame(&mut bridge, world)?;
+        // build_world publishes this observation after choosing the actual
+        // color history pair. Read after this frame's declaration, not before
+        // prepare (which would observe the previous frame's flag).
+        let color_history_valid = world
+            .get_resource::<tiny_glade::world_graph::WorldHistoryObservation>()
+            .context("world graph did not publish its history observation")?
+            .color_history_valid;
+        frame_input["temporal_declaration_observation"] = serde_json::json!({
+            "phase":"after_prepare_before_execute",
+            "color_history_valid":color_history_valid,
+            "native_uniform_payload_observed":false,
+            "gpu_history_contents_observed":false,
+            "ice_resolve_valid_observed":false,
+        });
         bridge.prepare_test_execution()?;
         let frame = frame.execute(&mut bridge, world)?;
         anyhow::ensure!(frame.receipt.stats.chunks > 0, "no actual recording tasks");
@@ -420,7 +445,9 @@ fn run_surface(glade: GladeType, label: &str) -> Result<()> {
         );
         commands
             .push(serde_json::json!({"frame":index,"pass_names":pass_names,
-                "pass_call_counts":pass_call_counts,"input":frame_input}));
+                "pass_call_counts":pass_call_counts,
+                "retained_pass_order":frame.receipt.snapshot.pass_order.clone(),
+                "input":frame_input}));
         bridge.collect_completed_frames()?;
     }
     let world = driver.app_mut().world_mut();
@@ -499,6 +526,11 @@ fn run_surface(glade: GladeType, label: &str) -> Result<()> {
         "schema":"surface-collect-correctness-v1", "season":label,
         "pass_names_semantics":"sorted PGO name inventory; pass_call_counts preserves invocations; neither field is command execution order",
         "frame_constants_semantics":"all 0x1090 bytes in native layout as 1060 u32 bit patterns; no padding reads or value overrides",
+        "retained_pass_order_semantics":"actual receipt.snapshot retained graph plan order, including repeated names; not GPU wall completion order",
+        "temporal_observation_coverage":{
+            "observed":"canonical sharpen/upscaling/bypass source resources and declared color history validity",
+            "not_observed":["native per-pass uniform payload", "ice refr/ray-length pair flags and resolve_valid", "GPU history pixel contents"],
+        },
         "surface_execution_mode":mode,
         "source":std::env::var("TG_SURFACE_SOURCE").unwrap_or_else(|_| "unrecorded".into()),
         "binary_blake3":blake3::hash(&std::fs::read(std::env::current_exe()?)?).to_hex().to_string(),

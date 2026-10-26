@@ -131,7 +131,7 @@ class PixelGateTests(unittest.TestCase):
         self.save()
         result = pixels.compare(self.a, self.b)
         self.assertFalse(result['passes'])
-        self.assertTrue(any('frame_file_binding' in error for error in result['input_mismatches']))
+        self.assertTrue(any('frame_file_binding' in error for error in result['capture_errors']))
         self.left['pixels'][0]['file'] = 'other.rgba'
         self.right['pixels'][0]['file'] = 'other.rgba'
         self.save()
@@ -166,6 +166,56 @@ class PixelGateTests(unittest.TestCase):
         self.right['binary_blake3'] = '7' * 64
         self.save()
         self.assertFalse(pixels.compare(self.a, self.b)['passes'])
+
+    def test_different_output_pixels_and_digest_keep_same_input_but_reject(self):
+        self.right['pixels'][1]['blake3'] = '8' * 64
+        self.save()
+        with (self.b / 'frame-30.rgba').open('r+b') as stream:
+            stream.seek(4 * 123 + 1)
+            stream.write(bytes([9]))
+        result = pixels.compare(self.a, self.b)
+        self.assertTrue(result['valid_same_input_comparison'])
+        self.assertEqual(result['input_mismatches'], [])
+        self.assertEqual(result['capture_errors'], [])
+        self.assertFalse(result['exact_pixels_equal'])
+        self.assertFalse(result['passes'])
+        self.assertIn('frame_30_fixture_digest_declarations_differ', result['output_mismatches'])
+        self.assertIn('frame_30_raw_pixels_differ', result['output_mismatches'])
+
+    def test_actual_input_change_is_invalid_even_with_equal_output(self):
+        self.right['commands'][8]['input']['frame_counter'] += 1
+        self.save()
+        result = pixels.compare(self.a, self.b)
+        self.assertFalse(result['valid_same_input_comparison'])
+        self.assertIn('commands', result['input_mismatches'])
+        self.assertTrue(result['exact_pixels_equal'])
+        self.assertFalse(result['passes'])
+
+    def test_output_digest_declaration_alone_is_output_error_and_still_rejects(self):
+        self.right['pixels'][0]['blake3'] = '9' * 64
+        self.save()
+        result = pixels.compare(self.a, self.b)
+        self.assertTrue(result['valid_same_input_comparison'])
+        self.assertTrue(result['exact_pixels_equal'])
+        self.assertFalse(result['passes'])
+        self.assertEqual(result['output_mismatches'], ['frame_20_fixture_digest_declarations_differ'])
+
+    def test_capture_damage_does_not_mislabel_semantic_inputs(self):
+        (self.b / 'frame-20.rgba').write_bytes(b'truncated')
+        result = pixels.compare(self.a, self.b)
+        self.assertTrue(result['valid_same_input_comparison'])
+        self.assertTrue(result['capture_errors'])
+        self.assertFalse(result['comparison_evidence_valid'])
+        self.assertFalse(result['passes'])
+
+    def test_binary_identity_failure_is_separate_and_still_rejects(self):
+        self.right['binary_blake3'] = '7' * 64
+        self.save()
+        result = pixels.compare(self.a, self.b)
+        self.assertTrue(result['valid_same_input_comparison'])
+        self.assertIn('inline_collect_requires_same_source_and_binary', result['comparison_errors'])
+        self.assertFalse(result['comparison_evidence_valid'])
+        self.assertFalse(result['passes'])
 
 
 class ControllerGateTests(unittest.TestCase):
