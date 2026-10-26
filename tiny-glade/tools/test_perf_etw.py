@@ -55,7 +55,7 @@ class InterruptEndpointReviewTests(unittest.TestCase):
     def event_trace(self, events):
         lines = ['OS Version: test, Events Lost: 0, Buffers lost: 0,',
                  'CSwitch,TimeStamp,New Process Name ( PID),New TID,Old Process Name ( PID),Old TID,CPU',
-                 'DPC,TimeStamp,CPU,ElapsedTime', 'Interrupt,TimeStamp,CPU,ElapsedTime',
+                 'DPC,TimeStamp,CPU,ElapsedTime', 'DPCTmr,TimeStamp,CPU,ElapsedTime', 'Interrupt,TimeStamp,CPU,ElapsedTime',
                  '# 0 # 0x0 # 0', 'CSwitch,0,game (7),11,Idle (0),0,0']
         for event, end, duration in events:
             lines.extend([f'# 0 # {end:#x} # 0', f'{event},0,0,{duration*1000}'])
@@ -63,7 +63,7 @@ class InterruptEndpointReviewTests(unittest.TestCase):
         return self.trace('\n'.join(lines)+'\n')
 
     def test_dpc_and_isr_end_at_raw_qpc_crossing_phase_boundary(self):
-        for event in ('DPC', 'Interrupt'):
+        for event in ('DPC', 'DPCTmr', 'Interrupt'):
             with self.subTest(event=event):
                 timelines, errors, _, _ = read_trace(self.event_trace([(event, 110, 30)]), 7, 1000)
                 self.assertFalse(errors)
@@ -78,6 +78,17 @@ class InterruptEndpointReviewTests(unittest.TestCase):
         self.assertEqual(timelines[11].between(0, 100), 80)
         self.assertEqual(timelines[11].between(100, 200), 80)
         self.assertEqual(timelines[11].between(0, 200), 160)
+
+
+    def test_timer_dpc_nested_with_regular_dpc_and_isr_is_removed_once(self):
+        # DPCTmr [70,130] contains DPC [80,120] and ISR [90,110].
+        events = [('Interrupt', 110, 20), ('DPC', 120, 40), ('DPCTmr', 130, 60)]
+        timelines, errors, _, _ = read_trace(self.event_trace(events), 7, 1000)
+        self.assertFalse(errors)
+        self.assertEqual(timelines[11].between(0, 100), 70)
+        self.assertEqual(timelines[11].between(100, 200), 70)
+        self.assertEqual(timelines[11].between(0, 200), 140)
+
 
 
 if __name__ == '__main__':

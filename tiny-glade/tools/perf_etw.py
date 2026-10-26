@@ -98,7 +98,7 @@ def read_trace(path, process_id, frequency):
             if len(row) > 1 and row[1] == 'TimeStamp':
                 headers[event] = {name: index for index, name in enumerate(row)}
                 continue
-            if event not in {'CSwitch', 'DPC', 'Interrupt'} or raw_time is None:
+            if event not in {'CSwitch', 'DPC', 'DPCTmr', 'Interrupt'} or raw_time is None:
                 continue
             fields = headers.get(event)
             if fields is None:
@@ -106,8 +106,11 @@ def read_trace(path, process_id, frequency):
             first = raw_time if first is None else min(first, raw_time)
             last = raw_time if last is None else max(last, raw_time)
             cpu = int(row[fields['CPU']])
-            if event in {'DPC', 'Interrupt'}:
+            if event in {'DPC', 'DPCTmr', 'Interrupt'}:
                 duration_ticks = round(float(row[fields['ElapsedTime']]) * frequency / 1_000_000)
+                # xperf DPCTmr is the timer-DPC subtype, with the same end-QPC
+                # semantics as DPC. Microsoft PerfView registers opcodes 68/69
+                # as the same DPCTraceData; see KernelTraceEventParser.cs.
                 # Kernel ISR/DPC header QPC is the routine completion timestamp.
                 # Microsoft PerfView: ElapsedTimeMSec = TimeStampRelativeMSec - InitialTimeQPC.
                 exclusions[cpu].append((raw_time - duration_ticks, raw_time))

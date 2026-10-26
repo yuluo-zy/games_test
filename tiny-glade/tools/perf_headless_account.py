@@ -14,7 +14,8 @@ from perf_etw import Timeline, distribution, read_trace
 PHASES = ('app_update', 'pacing', 'draw_lists_vao', 'declare', 'compile',
           'pending_admission', 'record_submit', 'maintenance')
 SCOPE = ('Headless shipped session; App and renderer share one owner. ETW CPU '
-         'is exclusive running time, worker/non-owner CPU is additional work. '
+         'is exclusive running time; non-owner CPU is all other target-process '
+         'threads and is not an identified worker-pool category. '
          'No WSI, production rendering-thread or final 16 ms acceptance.')
 
 
@@ -71,11 +72,72 @@ def input_identity(report):
     return {'policy': policy, 'before': before, 'after': after}
 
 
+
+MANAGEMENT_MODES = ('reflection_scope', 'vao_typed_lookup', 'vao_wrapper_reuse', 'constant_batch')
+
+
+def management_modes(report):
+    modes = report.get('management_modes')
+    if modes is None:
+        return None  # Legacy baseline is allowed only without an ablation request.
+    require(isinstance(modes, dict) and set(modes) == set(MANAGEMENT_MODES)
+            and all(type(value) is bool for value in modes.values()), 'invalid actual management modes')
+    return dict(modes)
+
+
+def validate_boundary_uncertainty(report):
+    boundary = report.get('boundary_uncertainty')
+    if boundary is None:
+        return None  # Existing frozen reports remain readable, never gain a pass.
+    require(isinstance(boundary, dict) and boundary.get('schema') == 'cpu-envelope-brackets-v1'
+            and boundary.get('clock') == 'qpc', 'unknown boundary uncertainty layout')
+    names = ('begin_owner', 'begin_process', 'end_owner', 'end_process')
+    for name in names:
+        span = boundary.get(name)
+        require(isinstance(span, list) and len(span) == 2, 'missing OS clock bracket: '+name)
+        for value in span:
+            integer(value, 'OS clock bracket', 1)
+        require(span[0] <= span[1], 'OS clock bracket regression: '+name)
+    begin, end = report['envelope']['begin'][0], report['envelope']['end'][0]
+    ordered = [begin, *boundary['begin_owner'], *boundary['begin_process'], end,
+               *boundary['end_owner'], *boundary['end_process']]
+    require(all(a <= b for a, b in zip(ordered, ordered[1:])),
+            'OS clock brackets contradict legacy envelope/order')
+    rows = report.get('frames')
+    if isinstance(rows, list) and rows:
+        require(boundary['begin_process'][1] <= rows[0]['qpc'][0],
+                'OS begin clock bracket overlaps first measured frame')
+    return boundary
+
+
+def boundary_uncertainty_summary(report, timelines, trace_start, trace_end):
+    boundary = validate_boundary_uncertainty(report)
+    if boundary is None:
+        return None
+    require(trace_start < boundary['begin_owner'][0]
+            and boundary['end_process'][1] < trace_end, 'ETW does not enclose OS API brackets')
+    owner = timelines[report['thread_id']]
+    scale_ms = 1000/report['qpc_frequency']
+    result = {'raw_qpc': boundary, 'acceptance_adjusted': False,
+              'note': 'OS API read windows only; no correction or tolerance applied to the 2% cumulative gate'}
+    for role in ('owner', 'process'):
+        start, stop = boundary['begin_'+role], boundary['end_'+role]
+        selected = (owner,) if role == 'owner' else tuple(timelines.values())
+        lower = sum(t.between(start[1], stop[0]) if stop[0] > start[1] else 0 for t in selected)*scale_ms
+        upper = sum(t.between(start[0], stop[1]) for t in selected)*scale_ms
+        result[role] = {'begin_api_wall_ms': (start[1]-start[0])*scale_ms,
+                        'end_api_wall_ms': (stop[1]-stop[0])*scale_ms,
+                        'etw_cpu_lower_ms': lower, 'etw_cpu_upper_ms': upper,
+                        'etw_cpu_window_width_ms': upper-lower}
+    return result
+
+
 def validate(report):
     require(report.get('schema') == 'headless-cpu-closure-v1', 'unknown session schema')
     require(report.get('valid') is True, 'fixture marked session invalid')
     require(report.get('mode') in ('on', 'off'), 'invalid probe mode')
     input_identity(report)
+    management_modes(report)
     feature = report.get('cpu_probe_feature', True)
     require(isinstance(feature, bool), 'cpu_probe_feature must be boolean')
     require(feature or report['mode'] == 'off', 'feature-off binary cannot enable probe session')
@@ -95,6 +157,7 @@ def validate(report):
     require(end[0] > begin[0] and end[1] >= begin[1] and end[2] >= begin[2],
             'envelope clock regression')
     require(end[2] - begin[2] >= end[1] - begin[1], 'process CPU smaller than owner CPU')
+    validate_boundary_uncertainty(report)
     rows = report.get('frames')
     require(isinstance(rows, list), 'frame records absent')
     if report['mode'] == 'off':
@@ -189,15 +252,18 @@ def account(report, trace_path, official_owner_ns=None):
     result = {'schema': 'headless-etw-account-v1', 'valid': not issues, 'issues': issues,
               'scope': SCOPE, 'mode': report['mode'], 'input_sha256': signature(input_identity(report)),
               'diagnostic_bill': report.get('diagnostic_bill', False), 'envelope': totals,
+              'management_modes': management_modes(report),
               'scenario': report.get('scenario', 'static'),
               'workload_sha256': signature(report.get('workload')),
               'input_policy': input_identity(report)['policy'],
               'input_unchanged': report['input_before'] == report['input_after'],
               'strict_static_scene': input_identity(report)['policy'] == STRICT_INPUT_POLICY,
-              'non_owner_note': 'All other target-process threads, including workers, driver and helpers; not a pool-only counter.',
+              'non_owner_note': 'Process CPU minus owner CPU: all other target-process threads, including task workers, audio/FMOD, driver and runtime helpers; no per-category attribution or worker-pool total.',
               'source': 'CSwitch absolute QPC, unioned per-CPU DPC/ISR subtraction',
               'accounting_tools': accounting_tools(),
               'production_16ms_acceptance': False}
+    if report.get('boundary_uncertainty') is not None:
+        result['boundary_uncertainty'] = boundary_uncertainty_summary(report, timelines, trace_start, trace_end)
     if report['mode'] == 'off':
         return result
     frames = []
@@ -265,6 +331,13 @@ def diagnostic_summary(report):
         for value in values:
             integer(value, 'declaration delta')
         return sum(values)
+    raw_bills = {}
+    for name in ('constant_pool_bill', 'draw_scratch_bill'):
+        snapshots = [{**{key: row[key] for key in ('world_tick', 'receipt', 'attempt')}, 'raw': row[name]}
+                     for row in rows if name in row]
+        if name in report or snapshots:
+            raw_bills[name] = {'report': report.get(name), 'frames_including_baseline': snapshots,
+                               'interpretation': 'Uninterpreted raw JSON; no assumed counters, units, reset or cumulative semantics.'}
     totals = {name: sum(delta[name] for delta in deltas) for name in names[:-1]}
     return {'schema': 'headless-management-diagnostic-v1', 'diagnostic_only': True,
             'samples': len(deltas), 'input_sha256': signature(input_identity(report)),
@@ -273,6 +346,7 @@ def diagnostic_summary(report):
               'input_policy': input_identity(report)['policy'],
             'input_unchanged': report['input_before'] == report['input_after'],
             'strict_static_scene': input_identity(report)['policy'] == STRICT_INPUT_POLICY,
+            'management_modes': management_modes(report), 'raw_bills': raw_bills,
             'management_totals': totals, 'management_mean_per_frame': {k: v/len(deltas) for k, v in totals.items()},
             'cached_reflection_variants': {'baseline': rows[0]['management'][-1],
                                          'last': rows[-1]['management'][-1],
@@ -318,6 +392,10 @@ def paired_overhead(runs, kind='runtime_session'):
         if not run.get('valid') or not run['account'].get('valid'):
             issues.append('one or more runs invalid')
         require(not run.get('diagnostic') and not run['account'].get('diagnostic_bill'), 'heavy diagnostics mixed into overhead')
+        actual_modes = management_modes(run)
+        require(actual_modes == management_modes(run['account']), 'run/account management modes disagree')
+        require(actual_modes == management_modes(expected), 'algorithm management modes differ across probe-overhead runs')
+        require(not run.get('management_ablation'), 'probe overhead does not accept algorithm ablation runs')
         tools = run['account'].get('accounting_tools')
         require(isinstance(tools, dict) and tools, 'accounting tool identity absent')
         require(tools == expected['account'].get('accounting_tools'), 'accounting tools changed during series')
@@ -371,6 +449,7 @@ def paired_overhead(runs, kind='runtime_session'):
         uncovered.append('active session recording overhead; both runtime sessions are off')
     return {'schema': 'headless-probe-overhead-v1', 'valid': not issues, 'issues': sorted(set(issues)),
             'pairs': len(runs)//2, 'metrics': metrics, 'overhead_kind': kinds[kind],
+            'management_modes': management_modes(expected),
             'uncovered_overhead': uncovered,
             'input_policy': expected.get('input_policy', STRICT_INPUT_POLICY),
             'scenario': expected.get('scenario', 'static'),

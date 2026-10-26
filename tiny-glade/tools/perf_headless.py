@@ -22,6 +22,60 @@ from perf_build_target import run_requested_test
 
 TEST = 'cpu_measurement::profile_shipped_session_cpu'
 
+# Controls are set once when constructing the host, never per draw.
+CONTROL_ENV = {'reflection_scope': 'TG_REFLECTION_SCOPE',
+               'vao_typed_lookup': 'TG_VAO_TYPED_LOOKUP',
+               'vao_wrapper_reuse': 'TG_VAO_WRAPPER_REUSE',
+               'constant_batch': 'TG_CONSTANT_BATCH'}
+
+
+def frozen_control_capabilities(snapshot, cpu_probe):
+    """Prove controls belong to the source snapshot used for this executable.
+
+    Runtime report verification remains mandatory; strings alone never establish
+    that a requested switch was honored by the process.
+    """
+    import hashlib
+    parts = []
+    for name, expected in sorted(snapshot['files'].items()):
+        if ((name.startswith('crates/tiny-glade/src/') and name.endswith('.rs'))
+                or name == 'crates/tiny-glade/tests/cpu_measurement/mod.rs'):
+            content = (ROOT/name).read_bytes()
+            if hashlib.sha256(content).hexdigest() != expected:
+                raise ValueError('management capability source changed since freeze: '+name)
+            parts.append(content.decode('utf-8'))
+    source = '\n'.join(parts)
+    known = '"management_modes"' in source and all(flag in source for flag in CONTROL_ENV.values())
+    return {'probe_runtime_controls': sorted(CONTROL_ENV) if known and cpu_probe else [],
+            'default_modes': {name: True for name in CONTROL_ENV} if known else None,
+            'evidence': 'frozen source declares modes report and all four host-construction controls' if known else 'legacy or unsupported',
+            'source_content_sha256': snapshot['content_sha256']}
+
+
+def requested_management(args, frozen):
+    selected = {name: False for name in CONTROL_ENV if getattr(args, 'disable_'+name, False)}
+    capabilities = frozen.get('management_controls') or {}
+    supported = set(capabilities.get('probe_runtime_controls', []))
+    if selected and ('cpu-probe' not in frozen['features'] or not set(selected) <= supported):
+        raise ValueError('ablation requires a frozen cpu-probe build with known management-control capabilities')
+    defaults = capabilities.get('default_modes')
+    expected = None if defaults is None else dict(defaults)
+    if selected:
+        if expected is None or set(expected) != set(CONTROL_ENV):
+            raise ValueError('ablation requires declared default algorithm modes')
+        expected.update(selected)
+    return selected, expected
+
+
+def actual_management(report):
+    modes = report.get('management_modes')
+    if modes is None:
+        return None
+    if not isinstance(modes, dict) or set(modes) != set(CONTROL_ENV) or any(type(value) is not bool for value in modes.values()):
+        raise ValueError('actual management modes must report exactly four booleans')
+    return dict(modes)
+
+
 
 def environment(diagnostic=False):
     result = os.environ.copy()
@@ -157,6 +211,7 @@ def build(args):
               'build_helper_sha256': digest(Path(__file__).with_name('perf_build_target.py')),
               'scope': 'Frozen headless shipped-session test; not WSI acceptance',
               'measurement_capabilities': 'active phase session and diagnostic bill' if not args.without_cpu_probe else 'envelope clocks only; runtime mode off required'}
+    record['management_controls'] = frozen_control_capabilities(before, not args.without_cpu_probe)
     dump(destination/'build.json', record)
     print(json.dumps(record, ensure_ascii=False), flush=True)
 
@@ -221,6 +276,7 @@ def capture(args, run_label=None, mode=None, build_label=None):
     feature = 'cpu-probe' in frozen['features']
     if not feature and (mode != 'off' or args.diagnostic):
         raise ValueError('feature-off build supports only --mode off and no diagnostic bill')
+    selected_management, expected_management = requested_management(args, frozen)
     scene = getattr(args, 'scene', 'static')
     if scene not in SCENES or (scene != 'static' and args.warmup < 200):
         raise ValueError('known scene required; non-static scenarios require warmup >=200 (formal runs use600)')
@@ -233,8 +289,11 @@ def capture(args, run_label=None, mode=None, build_label=None):
                 'driver_environment': machine['vulkan_environment'],
                 'worker_configuration': 'existing default; TG overrides cleared',
                 'diagnostic': args.diagnostic, 'process_priority': 'NORMAL_PRIORITY_CLASS',
-                'thread_priority': 'existing fixture default'}
+                'thread_priority': 'existing fixture default',
+                'management_ablation': selected_management, 'management_modes_expected': expected_management}
     env = environment(args.diagnostic)
+    for name in selected_management:
+        env[CONTROL_ENV[name]] = '0'
     env.update(TG_PERF_SCENARIO=scene, TG_CPU_PROBE_GATE='1', TG_CPU_PROBE_OUT=str(session_path),
                TG_CPU_PROBE_MODE=mode, TG_CPU_PROBE_WARMUP=str(args.warmup),
                TG_CPU_PROBE_SAMPLES=str(args.samples))
@@ -245,7 +304,10 @@ def capture(args, run_label=None, mode=None, build_label=None):
               'scenario': scene, 'warmup': args.warmup, 'samples': args.samples, 'diagnostic': args.diagnostic,
               'build': frozen, 'hardware': machine, 'hardware_sha256': machine['sha256'],
               'executable_sha256': frozen['executable_sha256'], 'settings': settings,
-              'cpu_probe_feature': feature,
+              'cpu_probe_feature': feature, 'management_ablation': selected_management,
+              'management_modes_expected': expected_management,
+              'attribution_scope': 'same_candidate_algorithm_ablation' if selected_management else 'default_algorithms',
+              'original_baseline_gain_evidence': False if selected_management else None,
               'comparison_settings_sha256': signature({k: v for k, v in settings.items() if k != 'features'}),
               'settings_sha256': signature(settings), 'session_path': str(session_path),
               'start_utc': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
@@ -313,6 +375,14 @@ def finish_capture(args, record, destination, session_path, frozen, mode):
         raise ValueError('fixture compiled feature identity mismatch')
     if report.get('scenario', 'static') != record['scenario']:
         raise ValueError('fixture scenario differs from requested workload')
+    actual = actual_management(report)
+    expected = record.get('management_modes_expected')
+    if expected is not None and actual != expected:
+        raise ValueError('requested management modes missing or not honored by frozen executable')
+    if record.get('management_ablation') and actual is None:
+        raise ValueError('ablation executable did not report actual management modes')
+    record['management_modes'] = actual
+    record['management_modes_sha256'] = signature(actual)
     record['workload'] = report.get('workload')
     record['workload_sha256'] = signature(record['workload'])
     record['input_sha256'] = signature(input_identity(report))
@@ -340,7 +410,8 @@ def finish_capture(args, record, destination, session_path, frozen, mode):
         record['trace_csv_sha256'] = digest(csv_path)
         # Accounting validity is distinct from a clean frozen release candidate.
         record['valid'] = precise['valid'] and not args.diagnostic
-        record['clean_release_candidate'] = record['valid'] and not frozen['dirty'] and frozen['profile'] == 'release'
+        record['clean_release_candidate'] = (record['valid'] and not frozen['dirty'] and frozen['profile'] == 'release'
+                                             and not record.get('management_ablation'))
     dump(destination/'run.json', record)
     print(json.dumps({k: record.get(k) for k in ('valid', 'mode', 'diagnostic', 'clean_release_candidate',
                                                'session_path', 'input_sha256')}, ensure_ascii=False), flush=True)
@@ -358,6 +429,8 @@ def overhead(args):
         raise ValueError('at least three alternating on/off pairs required')
     if args.diagnostic or args.without_etw:
         raise ValueError('paired overhead requires clean scheduling traces')
+    if any(getattr(args, 'disable_'+name, False) for name in CONTROL_ENV):
+        raise ValueError('probe overhead cannot change algorithm management modes')
     destination = PERF/'headless-overhead'/label(args.series)
     destination.mkdir(parents=True, exist_ok=False)
     runs = []
@@ -421,6 +494,8 @@ def main():
     p.set_defaults(function=build)
     p = commands.add_parser('run')
     p.add_argument('label'); p.add_argument('run_label'); p.add_argument('--mode', choices=('on', 'off'), default='on')
+    for name in CONTROL_ENV:
+        p.add_argument('--disable-'+name.replace('_', '-'), dest='disable_'+name, action='store_true')
     measurement_options(p); p.set_defaults(function=run)
     p = commands.add_parser('overhead')
     p.add_argument('label'); p.add_argument('series'); p.add_argument('--pairs', type=int, default=3)

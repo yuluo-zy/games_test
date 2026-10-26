@@ -469,5 +469,140 @@ class ReviewRegressionTests(unittest.TestCase):
             paired_overhead(runs)
 
 
+
+class ManagementAblationTests(unittest.TestCase):
+    def known_build(self, feature=True):
+        return {'features': ['default(mimalloc)']+(['cpu-probe'] if feature else []),
+                'management_controls': {'probe_runtime_controls': sorted(runner.CONTROL_ENV) if feature else [],
+                                        'default_modes': {name: True for name in runner.CONTROL_ENV}}}
+
+    def test_selected_controls_are_explicit_and_default_modes_remain_on(self):
+        args = argparse.Namespace(disable_reflection_scope=True, disable_constant_batch=True)
+        selected, expected = runner.requested_management(args, self.known_build())
+        self.assertEqual(selected, {'reflection_scope': False, 'constant_batch': False})
+        self.assertFalse(expected['reflection_scope']); self.assertFalse(expected['constant_batch'])
+        self.assertTrue(expected['vao_typed_lookup']); self.assertTrue(expected['vao_wrapper_reuse'])
+
+    def test_capture_clears_inherited_flags_then_injects_only_requested_control(self):
+        args = argparse.Namespace(label='candidate', run_label='abl', mode='on', warmup=10,
+                                  samples=30, diagnostic=False, without_etw=True, timeout=60,
+                                  disable_vao_wrapper_reuse=True)
+        frozen = self.known_build()
+        frozen.update(executable='candidate.exe', executable_sha256='exe')
+        seen = {}
+        class Child:
+            pid, code = 123, None
+            def __init__(self, command, **kwargs):
+                seen.update(kwargs['env'])
+                Path(seen['TG_CPU_PROBE_OUT']).with_suffix('.ready').write_text('ready', encoding='utf-8')
+            def poll(self):
+                return self.code
+            def wait(self, timeout=None):
+                self.code = 0
+                return 0
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(runner, 'PERF', Path(directory)), patch.object(runner, 'load_build', return_value=frozen), \
+                    patch.object(runner, 'hardware', return_value={'sha256': 'hw', 'vulkan_environment': {}}), \
+                    patch.object(runner.subprocess, 'Popen', side_effect=Child), \
+                    patch.object(runner, 'finish_capture', side_effect=lambda args, record, *rest: record), \
+                    patch.dict(runner.os.environ, {'TG_REFLECTION_SCOPE': '0', 'TG_CONSTANT_BATCH': '0'}):
+                result = runner.capture(args)
+        self.assertEqual(seen['TG_VAO_WRAPPER_REUSE'], '0')
+        self.assertNotIn('TG_REFLECTION_SCOPE', seen)
+        self.assertNotIn('TG_CONSTANT_BATCH', seen)
+        self.assertEqual(result['settings']['management_ablation'], {'vao_wrapper_reuse': False})
+        self.assertEqual(result['attribution_scope'], 'same_candidate_algorithm_ablation')
+        self.assertFalse(result['original_baseline_gain_evidence'])
+
+    def test_legacy_or_feature_off_build_never_accepts_requested_ablation(self):
+        args = argparse.Namespace(disable_vao_typed_lookup=True)
+        for frozen in ({'features': ['cpu-probe']}, self.known_build(False)):
+            with self.subTest(frozen=frozen), self.assertRaisesRegex(ValueError, 'known management-control'):
+                runner.requested_management(args, frozen)
+        self.assertEqual(runner.requested_management(argparse.Namespace(), {'features': ['cpu-probe']}), ({}, None))
+
+    def finish(self, directory, report, expected=None, selected=None):
+        path = Path(directory)/'session.json'
+        path.write_text(json.dumps(report), encoding='utf-8')
+        args = argparse.Namespace(samples=2, warmup=600, diagnostic=False, without_etw=True)
+        record = {'process_id': 7, 'cpu_probe_feature': True, 'scenario': 'static', 'valid': False,
+                  'management_modes_expected': expected, 'management_ablation': selected or {}}
+        with patch('builtins.print'):
+            return runner.finish_capture(args, record, Path(directory), path,
+                                         {'dirty': False, 'profile': 'release'}, 'on')
+
+    def test_actual_modes_missing_or_ignored_are_rejected(self):
+        expected = {name: True for name in runner.CONTROL_ENV}; expected['reflection_scope'] = False
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, 'not honored'):
+                self.finish(directory, report_fixture(), expected, {'reflection_scope': False})
+            report = report_fixture(); report['management_modes'] = {name: True for name in runner.CONTROL_ENV}
+            with self.assertRaisesRegex(ValueError, 'not honored'):
+                self.finish(directory, report, expected, {'reflection_scope': False})
+            report['management_modes'] = expected
+            result = self.finish(directory, report, expected, {'reflection_scope': False})
+            self.assertEqual(result['management_modes'], expected)
+
+    def test_default_run_keeps_legacy_baseline_report_compatible(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result = self.finish(directory, report_fixture())
+            self.assertIsNone(result['management_modes'])
+            self.assertFalse(result['valid'])  # no ETW never becomes accepted
+
+    def test_modes_must_be_exact_booleans_in_report(self):
+        for bad in ({'constant_batch': False}, {name: 1 for name in runner.CONTROL_ENV}):
+            report = report_fixture(); report['management_modes'] = bad
+            with self.assertRaisesRegex(ValueError, 'management modes'):
+                validate(report)
+
+    def test_probe_overhead_rejects_changed_algorithms_even_with_equal_hash_metadata(self):
+        runs = overhead_runs()
+        modes = {name: True for name in runner.CONTROL_ENV}
+        for run in runs:
+            run['management_modes'] = dict(modes)
+            run['account']['management_modes'] = dict(modes)
+        runs[1]['management_modes']['constant_batch'] = False
+        runs[1]['account']['management_modes']['constant_batch'] = False
+        with self.assertRaisesRegex(ValueError, 'algorithm management modes'):
+            paired_overhead(runs)
+        runs = overhead_runs(); runs[1]['management_ablation'] = {'constant_batch': False}
+        with self.assertRaisesRegex(ValueError, 'ablation runs'):
+            paired_overhead(runs)
+
+    def test_new_raw_bills_are_preserved_without_guessing_deltas(self):
+        report = report_fixture(bill=True)
+        report['constant_pool_bill'] = {'format': 'future', 'snapshot': ['opaque', 123]}
+        report['frames'][0]['draw_scratch_bill'] = {'held': 11}
+        report['frames'][1]['draw_scratch_bill'] = {'unknown_reset': True, 'held': 3}
+        result = diagnostic_summary(report)
+        bills = result['raw_bills']
+        self.assertEqual(bills['constant_pool_bill']['report'], report['constant_pool_bill'])
+        snapshots = bills['draw_scratch_bill']['frames_including_baseline']
+        self.assertEqual([x['raw'] for x in snapshots], [{'held': 11}, {'unknown_reset': True, 'held': 3}])
+        self.assertEqual(snapshots[0]['receipt'], report['frames'][0]['receipt'])
+        self.assertIn('no assumed counters', bills['draw_scratch_bill']['interpretation'])
+
+    def test_capabilities_are_derived_from_exact_frozen_source(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture = root/'crates/tiny-glade/tests/cpu_measurement/mod.rs'
+            fixture.parent.mkdir(parents=True)
+            fixture.write_text('"management_modes"', encoding='utf-8')
+            host = root/'crates/tiny-glade/src/raster_host.rs'
+            host.parent.mkdir(parents=True)
+            host.write_text(' '.join(runner.CONTROL_ENV.values()), encoding='utf-8')
+            files = {str(path.relative_to(root)).replace('\\', '/'): hashlib.sha256(path.read_bytes()).hexdigest()
+                     for path in (fixture, host)}
+            snapshot = {'files': files, 'content_sha256': 'frozen-source'}
+            with patch.object(runner, 'ROOT', root):
+                result = runner.frozen_control_capabilities(snapshot, True)
+                self.assertEqual(result['probe_runtime_controls'], sorted(runner.CONTROL_ENV))
+                self.assertFalse(runner.frozen_control_capabilities(snapshot, False)['probe_runtime_controls'])
+                host.write_text('modified', encoding='utf-8')
+                with self.assertRaisesRegex(ValueError, 'changed since freeze'):
+                    runner.frozen_control_capabilities(snapshot, True)
+
+
 if __name__ == '__main__':
     unittest.main()
