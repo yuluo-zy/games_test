@@ -1,7 +1,7 @@
 {
   "source_commit": "6957077f905ab1ef1bb9d16ca3521ce555fa488e",
   "branch": "codex/perf-windows-20261026",
-  "implementation_status": "measurement_source_implemented; production_window_blocked",
+  "implementation_status": "source_candidates_through_stage5; Windows_performance_acceptance_open; WSI_deferred_by_user",
   "hardware": {
     "cpu": "Intel Core i7-9700",
     "gpu": "Intel UHD Graphics 630",
@@ -21,7 +21,17 @@
     "release_build": "failed: country-core rustc allocation failure, j2; no frozen binary",
     "coarse_clock_min_positive_ns": 15625000,
     "etw_official_crosscheck_relative_error": 8.554622141460925e-05,
-    "coarse_os_counter_relative_error": 0.07283719565091142
+    "coarse_os_counter_relative_error": 0.07283719565091142,
+    "candidate_default_workspace_all_targets": "passed; CARGO_INCREMENTAL=0, -j1, --locked --offline",
+    "candidate_cpu_probe_workspace_all_targets": "passed; CARGO_INCREMENTAL=0, -j1, --locked --offline",
+    "rhapsody_library_tests_passed": 445,
+    "rhapsody_library_diagnostics_ignored_not_passed": 2,
+    "rhapsody_integration_tests_passed": 55,
+    "rhapsody_explicit_validation_layer_integration_tests_passed": 55,
+    "retirement_reservation_tests_passed": 6,
+    "candidate_raster_gpu_tests_passed": 15,
+    "draw_pass_tests_passed": 260,
+    "headless_original_gameplay_30frames_1280x720": "passed; correctness diagnostic, not WSI performance acceptance"
   },
   "unverified": [
     "probe/ETW overhead <=1%",
@@ -31,7 +41,6 @@
     "three 30-minute stability runs",
     "macOS runtime/compilation"
   ],
-  "stage_3_to_6": "not executed; depend on valid production-window baseline",
   "evidence": [
     {
       "path": ".perf/stage0-check.log",
@@ -72,6 +81,140 @@
     {
       "path": ".perf/builds/win-baseline-v1/build.stderr.log",
       "sha256": "85ec1bc2c451015f6680421d0cf9b4e1b2410b83d3267644688a2341c6dd5bd1"
+    },
+    {
+      "path": ".perf/retirement-lib-tests-final.log",
+      "sha256": "54db939aeb83ef97de884acadc030ee3649bea0329f9d90578c0dc32c8a6b230"
+    },
+    {
+      "path": ".perf/retirement-gpu-tests-final.log",
+      "sha256": "4768a79a0485dacdf3fbb8a6eed8fcb58a21904efb9cfa7f53c207b328a4929a"
+    },
+    {
+      "path": ".perf/retirement-validation-layer-tests.log",
+      "sha256": "ef95f256890091abfcc77fcfd1ea6cd1eb79f93a7909113a87604724821b0d48"
+    },
+    {
+      "path": ".perf/candidate-raster-gpu-tests.log",
+      "sha256": "5b54fc2f4209a06a835b50f0436f9eebbb64a2177e5844ff132edf8137dede85"
+    },
+    {
+      "path": ".perf/candidate-workspace-check.log",
+      "sha256": "5a8008c457f445f70a05c439b35d8ee1aaa30025038c02cecdb941143ae7f3db"
+    },
+    {
+      "path": ".perf/candidate-default-workspace-check.log",
+      "sha256": "f96940b214a1c17837b9fc6849610c15849173f0d8372d615a6f8199a330065c"
+    },
+    {
+      "path": ".perf/version-index-tests.log",
+      "sha256": "b379aafcb435f0d7cf4c3ed77f11be513bea03dd255c448942c7506ee668cf33"
+    },
+    {
+      "path": ".perf/collect-unit-tests-rerun.log",
+      "sha256": "9fc60928a0b90f59e1462893f49f9d2997245fda4b607227dd3930e7169dc94d"
+    },
+    {
+      "path": ".perf/candidate-headless-gameplay.log",
+      "sha256": "c4dd60318df64269ca28f62b4cf35bc58c4405b911b9403142d15e262d0318b2"
+    },
+    {
+      "path": ".perf/candidate-headless-gameplay-j1.log",
+      "sha256": "05ff299aed3f7b3f778da83fdabddbe1b8bfb2a9778ac1553f1f2fb2a65c9e4b"
+    },
+    {
+      "path": ".perf/candidate-headless-gameplay-receipts.log",
+      "sha256": "320b5e6ef7a92847a4b87198739f6f4f8508b452767ae8826a6973b15e5d4c4e"
     }
-  ]
+  ],
+  "source_candidate_commit": "53bbbef87fd2ce63906e478dc0ea2b109c14a398",
+  "candidate_commits": {
+    "ownership_short_locks": "b792e4c",
+    "graph_version_index": "50d8885",
+    "shared_bounded_reclaim": "c5171f3",
+    "collect_convergence": "1da8d40",
+    "reserved_retirement_owners": "67ddafa",
+    "device_lost_fixture": "53e9bb1",
+    "headless_receipt_fixture": "53bbbef"
+  },
+  "headless_diagnostic": {
+    "profile": "debug",
+    "validation_layer": true,
+    "stage_logging": true,
+    "frames": 30,
+    "resolution": [
+      1280,
+      720
+    ],
+    "collect_jobs": 720,
+    "cross_pass_jobs": 90,
+    "drained_descriptor_owners_actual": [
+      2,
+      0,
+      1,
+      18
+    ],
+    "drained_descriptor_owners_expected": [
+      2,
+      0,
+      1,
+      18
+    ],
+    "receipt_pacing_fix_commit": "53bbbef",
+    "frame_cpu_p95_acceptance": false,
+    "binary_identity": [
+      {
+        "path": "target/debug/deps/original_gameplay_chain-fe3723ef539e956d.exe",
+        "sha256": "d5e5c7b18f7e031e17bc88cc2d985769ac47d4d08682690f880295dc94ad31df"
+      },
+      {
+        "path": "target/debug/deps/original_gameplay_chain-fe3723ef539e956d.pdb",
+        "sha256": "8bb9797334ce2295f0296e0afb8d825adf83fe5b0cd6ebdf1179526782747b35"
+      }
+    ]
+  },
+  "diagnostic_failures_retained": [
+    {
+      "path": ".perf/retirement-reservation-diagnostic.log",
+      "reason": "initial 64-byte Drop allocation; fixed and rerun"
+    },
+    {
+      "path": ".perf/candidate-headless-gameplay.log",
+      "reason": "parallel compilation allocation failures; rerun with -j1"
+    },
+    {
+      "path": ".perf/candidate-headless-gameplay-j1.log",
+      "reason": "fixture receipt FIFO out of sync with session collection; fixed without weakening assertions and rerun"
+    }
+  ],
+  "stage_progress": {
+    "0": "source/build/tooling implemented; production window exit gate open",
+    "1": "probe and ETW implemented; game-run correlation/overhead acceptance open",
+    "2": "representative Windows baseline not acquired",
+    "3": "version index and selected ownership work implemented; projection gains, scratch and constant batch work open",
+    "4": "remaining selected loops migrated; real workload, pixels and cancellation/performance gates open",
+    "5": "reserved node and bounded reclaim source implemented; full pressure/fault/stability acceptance open",
+    "6": "final release identities, A/B, long runs and macOS acceptance not completed"
+  },
+  "local_diagnostics_not_frame_gains": {
+    "graph_version_query_100000_debug_ns": {
+      "scan": 3793447200,
+      "index": 5302500,
+      "committed_passes": 877
+    },
+    "zero_allocations_proven_for": [
+      "pending_receipt_drop_full_host_budget",
+      "busy_command_pool_collection",
+      "statistics_release",
+      "unused_dedicated_buffer_drop"
+    ],
+    "whole_frame_improvement_percent": null
+  },
+  "html_audit": {
+    "path": "C:/Users/liyu/.codex/visualizations/2026/10/26/01a17788-ae30-7cc2-b9aa-d5ce9dd05608/static-frame-cpu-report.html",
+    "executed_game_or_benchmarks": false,
+    "source_hashes_matching_at_agent_review": "21/22; profiling.rs changed with retirement work",
+    "result": "source candidates confirmed; no static frame counts/bytes/CPU/FPS measurements"
+  },
+  "remaining_task_list": "docs/performance/remaining-tasks-20261026.md"
 }

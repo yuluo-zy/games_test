@@ -51,7 +51,7 @@ benefit and final long runs remain unverified until raw run records exist.
 The production window was actually attempted. It exits with Unsupported because
 this UHD 630 driver exposes neither swapchainMaintenance1 nor present_wait/id.
 AcquireOnly cannot present and is not a performance substitute. Four-scene
-baseline and stages 3-6 therefore remain open. A release j2 build also failed
+baseline and final performance acceptance therefore remain open. At user direction, source candidates for graph indexing, ownership transfer, Collect convergence and reserved retirement have proceeded with local correctness validation; this does not establish Windows frame-time benefit. A release j2 build also failed
 with a country-core rustc allocation failure; the tool now defaults to j1.
 System paging, drivers and release optimization settings were not changed.
 
@@ -64,3 +64,17 @@ our interval implementation; it is not a second independent trace capture.
 
 See status.json for exact gates and evidence hashes, and
 ownership-audit-20261026.md for the read-only agent's prioritized candidates.
+
+## Source candidates and measured scope
+
+See ownership-implementation-20261026.md, version-index-20261026.md,
+collect-migration-20261026.md, pressure-reclaim-20261026.md and
+retirement-reservations-20261026.md. The only timing gain established so far is
+the targeted debug resource-version query comparison (100,000 queries: 3.793s
+scan versus 5.303ms index, about 715x for that operation). No FPS, whole-frame
+percentage, release-build improvement or <=16ms result follows from it.
+Zero-allocation retirement diagnostics establish specific error-path behavior,
+not a frame-time percentage. A real 30-frame original gameplay graph diagnostic
+now passes with 720 Collect /90 cross-pass jobs and expected drained descriptor
+owners; it is debug, instrumented and headless. Frozen representative Windows
+A/B is still needed. See remaining-tasks-20261026.md for the current backlog.
