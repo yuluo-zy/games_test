@@ -23,6 +23,11 @@ mod workload;
 mod workload_probe;
 #[cfg(feature = "cpu-probe")]
 mod gpu_diagnostic;
+#[cfg(feature = "cpu-probe")]
+#[path = "../support/performance_sparse_ranges.rs"]
+mod sparse_ranges;
+#[cfg(feature = "cpu-probe")]
+type WallDispatchSourceRow = (u64, u64, u64, sparse_ranges::WallDispatchSnapshot);
 
 #[test]
 #[ignore = "explicit frozen-binary CPU/ETW run; requires TG_CPU_PROBE_OUT"]
@@ -63,7 +68,15 @@ fn run() -> Result<()> {
         "this binary was compiled without cpu-probe; only TG_CPU_PROBE_MODE=off is supported");
     anyhow::ensure!(cfg!(feature = "cpu-probe") || !bill,
         "TG_CPU_BILL requires a binary compiled with cpu-probe");
+    // Source scans allocate and hash only in this explicit diagnostic. They
+    // are neither native-dispatch evidence nor clean CPU acceptance samples.
+    let wall_source_trace = std::env::var("TG_WALL_DISPATCH_SOURCE_TRACE").is_ok_and(|s| s == "1");
+    let wall_source_diagnostic = bill || wall_source_trace;
+    anyhow::ensure!(!wall_source_diagnostic || (cfg!(feature = "cpu-probe") && mode == "on"),
+        "Wall source diagnostic requires cpu-probe/on");
     let gpu_diagnostic = std::env::var("TG_GPU_DIAGNOSTIC").is_ok_and(|s| s == "1");
+    anyhow::ensure!(!gpu_diagnostic || !wall_source_diagnostic,
+        "GPU timing and allocating Wall source diagnostics must run separately");
     anyhow::ensure!(!gpu_diagnostic || (cfg!(feature = "cpu-probe") && mode == "on" && !bill),
         "GPU diagnostic needs cpu-probe/on and cannot be combined with management bill");
     anyhow::ensure!(std::env::var("TG_GPU_TIMING").is_err(),
@@ -87,6 +100,10 @@ fn run() -> Result<()> {
     let mut detailed_bills: Vec<(serde_json::Value, serde_json::Value)> = Vec::new();
     #[cfg(feature = "cpu-probe")]
     let mut binding_scope_bills: Vec<tiny_glade::raster_host::BindingScopeProbeCounts> = Vec::new();
+    #[cfg(feature = "cpu-probe")]
+    let mut wall_dispatch_source_bills: Vec<WallDispatchSourceRow> = Vec::new();
+    #[cfg(feature = "cpu-probe")]
+    if wall_source_diagnostic { wall_dispatch_source_bills.try_reserve_exact(samples + 1)?; }
     #[cfg(feature = "cpu-probe")]
     if mode == "on" && bill { binding_scope_bills.try_reserve_exact(samples + 1)?; }
     #[cfg(feature = "cpu-probe")]
@@ -159,6 +176,12 @@ fn run() -> Result<()> {
         let world = driver.app_mut().world_mut();
         #[cfg(feature = "cpu-probe")]
         let tick = world.resource::<country_core::render::frame_constants::FrameConstants>().frame_counter as u64;
+        // This exact World has completed App::update. Capture the unmodified
+        // sparse boundaries before prepare; pair only after execute succeeds.
+        #[cfg(feature = "cpu-probe")]
+        let wall_source = if active && wall_source_diagnostic {
+            Some(sparse_ranges::wall_dispatch_snapshot(world)?)
+        } else { None };
         let prepared = tiny_glade::production_renderer::prepare_headless_gameplay_frame_with_lists(&mut bridge, world, &mut lists)?;
         #[cfg(feature = "cpu-probe")]
         if active { points[3..6].copy_from_slice(&probe::take_stages().context("missing stage owner")?); }
@@ -205,6 +228,11 @@ fn run() -> Result<()> {
                     bridge.raster_resources().draw_scratch_bill()));
                 binding_scope_bills.push(bridge.raster_resources().binding_scope_probe_counts());
             }
+            if let Some(source) = wall_source {
+                anyhow::ensure!(wall_dispatch_source_bills.len() < samples + 1,
+                    "Wall source diagnostic exceeded its fixed observation capacity");
+                wall_dispatch_source_bills.push((tick, receipt, index as u64 + 1, source));
+            }
             rows.push((tick, receipt, index as u64 + 1, points, counts, declaration));
             recorder.as_mut().unwrap().record(tick, Some(receipt), index as u64 + 1, true);
         }
@@ -248,7 +276,30 @@ fn run() -> Result<()> {
             && Some(counts.algorithm_enabled) == binding_scope_reuse_enabled && counts.failed_callbacks == 0));
     #[cfg(not(feature = "cpu-probe"))]
     let binding_scope_bill_valid = true;
-    let valid = binding_scope_bill_valid && clock_valid && session.as_ref().is_none_or(|s| s["valid"] == true)
+    #[cfg(feature = "cpu-probe")]
+    let wall_dispatch_source_bill_valid = !wall_source_diagnostic || (
+        wall_dispatch_source_bills.len() == samples + 1 && wall_dispatch_source_bills.len() == rows.len()
+        && wall_dispatch_source_bills.iter().zip(&rows).all(|((tick, receipt, attempt, source), row)| {
+            (*tick, *receipt, *attempt) == (row.0, row.1, row.2) && !source.native_dispatches_observed
+        }));
+    #[cfg(not(feature = "cpu-probe"))]
+    let wall_dispatch_source_bill_valid = true;
+    // All JSON construction and digest formatting happen after the endpoint.
+    #[cfg(feature = "cpu-probe")]
+    let wall_dispatch_source_bill = wall_source_diagnostic.then(|| json!({
+        "schema":"wall-dispatch-source-bill-v1", "valid":wall_dispatch_source_bill_valid,
+        "capacity":samples+1, "retained_observations":wall_dispatch_source_bills.len(), "warmup_observations":0,
+        "source_phase":"after_App_update_before_prepare", "native_dispatches_observed":false,
+        "scope":"Wall source ranges only; matching a successful receipt does not independently prove callbacks executed or GPU completion",
+        "association":"same World tick/attempt as successful execute receipt; first measured observation is row zero, not a warmup sample",
+        "observations":wall_dispatch_source_bills.iter().map(|(tick,receipt,attempt,source)| json!({
+            "world_tick":tick, "receipt":receipt, "attempt":attempt, "source":source,
+            "raw_ranges_blake3_hex":source.raw_ranges_blake3.iter().map(|b| format!("{b:02x}")).collect::<String>(),
+        })).collect::<Vec<_>>(),
+    }));
+    #[cfg(not(feature = "cpu-probe"))]
+    let wall_dispatch_source_bill: Option<serde_json::Value> = None;
+    let valid = wall_dispatch_source_bill_valid && binding_scope_bill_valid && clock_valid && session.as_ref().is_none_or(|s| s["valid"] == true)
         && actual_workload_report.as_ref().is_none_or(|s| s["valid"] == true)
         && gpu_report.as_ref().is_none_or(|s| s["valid"] == true);
     let management_modes = bridge.raster_resources().draw_management_modes();
@@ -259,8 +310,9 @@ fn run() -> Result<()> {
         "process_id":std::process::id(), "thread_id":clock::current_thread_id(), "qpc_frequency":clock::wall_frequency(),
         "warmup":warmup, "samples":samples, "mode":mode, "diagnostic_bill":bill,
         "scenario":workload.scenario(), "boot_clock":boot_clock,
-        "measurement_class":if gpu_diagnostic {"gpu_diagnostic"} else if bill {"management_diagnostic"} else {"clean_cpu"},
-        "clean_cpu_acceptance_eligible":!gpu_diagnostic && !bill,
+        "measurement_class":if gpu_diagnostic {"gpu_diagnostic"} else if bill {"management_diagnostic"} else if wall_source_diagnostic {"wall_dispatch_source_diagnostic"} else {"clean_cpu"},
+        "clean_cpu_acceptance_eligible":!gpu_diagnostic && !wall_source_diagnostic,
+        "wall_dispatch_source_bill":wall_dispatch_source_bill,
         "actual_workload":actual_workload_report,"gpu_diagnostic":gpu_report,
         "binding_scope_reuse_enabled":binding_scope_reuse_enabled,
         "binding_scope_bill_valid":binding_scope_bill_valid,

@@ -1825,6 +1825,9 @@ impl ExecutionChain {
                     work.durations[duration_count] = Some(timer.elapsed().as_nanos() as u64);
                     duration_count += 1;
                     let good = good && errors.borrow().is_none();
+                    #[cfg(feature = "cpu-probe")]
+                    record_trace.complete_with_workload(good, &pass_workload);
+                    #[cfg(not(feature = "cpu-probe"))]
                     record_trace.complete(good);
                     drop(record_trace);
                     #[cfg(feature = "cpu-probe")]
@@ -1876,6 +1879,15 @@ impl ExecutionChain {
                     compiled.declarations.passes.get(first_pass + range.start)
                         .and_then(|pass| pass.graph_id).map_or(0, |id| id.raw()) as usize,
                 );
+            }
+            // Use the existing diagnostic event's three unused fixed count
+            // slots. No extra event, allocation, lock or clean-path arithmetic.
+            #[cfg(feature = "cpu-probe")]
+            if transfer_trace.enabled() {
+                let dispatches = usize::try_from(result.command_workload.direct_dispatch_api_calls).ok();
+                transfer_trace.count("direct_dispatch_api_calls", dispatches.unwrap_or(usize::MAX));
+                transfer_trace.count("native_valid", usize::from(result.ok && result.command_workload.valid && dispatches.is_some()));
+                transfer_trace.count("recorded_passes", result.recorded_durations);
             }
             let retained = backend.retain_command_owners(command.handle(), &mut result.owners);
             transfer_trace.mark("retain_resources");

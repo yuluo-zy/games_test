@@ -611,6 +611,8 @@ struct RecordScopeActive<'a> {
     command: u64,
     name: &'a str,
     callback_ok: Option<bool>,
+    #[cfg(feature = "cpu-probe")]
+    native_workload: Option<super::CommandWorkload>,
     emit: bool,
 }
 pub(crate) struct RecordScope<'a> {
@@ -659,6 +661,8 @@ impl<'a> RecordScope<'a> {
                     command,
                     name,
                     callback_ok: None,
+                    #[cfg(feature = "cpu-probe")]
+                    native_workload: None,
                     emit,
                 })
             })
@@ -668,9 +672,21 @@ impl<'a> RecordScope<'a> {
             _not_send: std::marker::PhantomData,
         }
     }
+    #[cfg(any(not(feature = "cpu-probe"), test))]
     pub(crate) fn complete(&mut self, ok: bool) {
         if let Some(active) = &mut self.active {
             active.callback_ok = Some(ok);
+        }
+    }
+    /// Existing trace-only event: successful recording is not GPU submission.
+    /// Off keeps no workload copy and emits no additional event or allocation.
+    #[cfg(feature = "cpu-probe")]
+    pub(crate) fn complete_with_workload(&mut self, ok: bool, workload: &std::cell::Cell<super::CommandWorkload>) {
+        if let Some(active) = &mut self.active {
+            let mut workload = workload.get();
+            if !ok { workload.invalidate(); }
+            active.callback_ok = Some(ok);
+            active.native_workload = Some(workload);
         }
     }
 }
@@ -687,6 +703,23 @@ impl Drop for RecordScope<'_> {
                 std::array::from_fn(|i| (RECORD_PHASE_NAMES[i], numbers.phases[i]));
             let counts: [(&str, u64); RECORD_COUNTS] =
                 std::array::from_fn(|i| (RECORD_COUNT_NAMES[i], numbers.counts[i]));
+            #[cfg(feature = "cpu-probe")]
+            let _ = writeln!(
+                std::io::stderr().lock(),
+                "RHAPSODY_RECORD_TRACE id={} graph={} pass={} command={} name={:?} callback_ok={:?} unwind={} total_ns={} inclusive_phases_ns={:?} counts={:?} native_workload={:?}",
+                active.id,
+                active.graph,
+                active.pass,
+                active.command,
+                active.name,
+                active.callback_ok,
+                std::thread::panicking(),
+                total_ns,
+                phases,
+                counts,
+                active.native_workload
+            );
+            #[cfg(not(feature = "cpu-probe"))]
             let _ = writeln!(
                 std::io::stderr().lock(),
                 "RHAPSODY_RECORD_TRACE id={} graph={} pass={} command={} name={:?} callback_ok={:?} unwind={} total_ns={} inclusive_phases_ns={:?} counts={:?}",
@@ -819,6 +852,26 @@ mod record_trace_tests {
         drop(scope);
         assert_eq!(RECORD_NUMBERS.with(std::cell::Cell::get), before);
         assert_eq!(RECORD_ACTIVE.with(std::cell::Cell::get), 0);
+    }
+    #[cfg(feature = "cpu-probe")]
+    #[test]
+    fn native_workload_trace_off_is_empty_and_failure_retains_invalid_raw_prefix() {
+        let workload = super::super::CommandWorkload { direct_dispatch_api_calls: 3, ..Default::default() };
+        let counter = std::cell::Cell::new(workload);
+        let mut off = RecordScope::begin(false, 1, 2, 3, "off", false);
+        off.complete_with_workload(true, &counter);
+        assert!(off.active.is_none());
+        drop(off);
+        let mut recorded = RecordScope::begin(true, 1, 2, 3, "duplicate name", false);
+        recorded.complete_with_workload(true, &counter);
+        assert_eq!(recorded.active.as_ref().unwrap().native_workload, Some(workload));
+        drop(recorded);
+        let mut failed = RecordScope::begin(true, 1, 3, 4, "duplicate name", false);
+        failed.complete_with_workload(false, &counter);
+        let failed = failed.active.as_ref().unwrap();
+        assert_eq!(failed.callback_ok, Some(false));
+        assert_eq!(failed.native_workload.unwrap().direct_dispatch_api_calls, 3);
+        assert!(!failed.native_workload.unwrap().valid);
     }
     #[test]
     fn nested_scope_restores_parent_and_discards_foreign_spans() {

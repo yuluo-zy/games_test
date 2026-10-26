@@ -7,6 +7,8 @@
 mod surface_input;
 #[path = "support/mod.rs"]
 mod test_support;
+#[path = "support/surface_nani_observation.rs"]
+mod surface_nani_observation;
 use anyhow::{Context, Result};
 use clap::Parser;
 use country_core::{
@@ -327,6 +329,7 @@ fn run_surface(glade: GladeType, label: &str) -> Result<()> {
         Default::default();
     let mut commands = Vec::new();
     let mut expected_surface_draws = 0u64;
+    let mut final_nani_observation = None;
     let _ = country_core::render::declare_probe::take();
     let _ = country_core::systems::render_loop::draw_passes::transparency_pass::surface_support::take_surface_collect_test_stats();
     for index in 0..30 {
@@ -419,6 +422,10 @@ fn run_surface(glade: GladeType, label: &str) -> Result<()> {
         bridge.prepare_test_execution()?;
         let frame = frame.execute(&mut bridge, world)?;
         anyhow::ensure!(frame.receipt.stats.chunks > 0, "no actual recording tasks");
+        if index == 29 {
+            final_nani_observation = Some(surface_nani_observation::retain_final(
+                world, &mut bridge, &frame.receipt));
+        }
         world
             .resource_mut::<country_core::render::RenderTemporalState>()
             .frame_render_returned();
@@ -456,6 +463,11 @@ fn run_surface(glade: GladeType, label: &str) -> Result<()> {
     }
     tiny_glade::screenshot::shared_texture_capture::shutdown(world)?;
     bridge.wait_submits_done(120_000_000_000)?;
+    // This diagnostic reuses the existing drain. It never submits copy work,
+    // changes native usage/memory type, or waits beyond that completed interval.
+    let final_nani_observation = final_nani_observation
+        .context("final successful main-frame receipt was not observed")?
+        .read_after_existing_drain();
     let collection = country_core::render::declare_probe::take();
     let surface = country_core::systems::render_loop::draw_passes::transparency_pass::surface_support::take_surface_collect_test_stats();
     let mode = std::env::var("TG_SURFACE_MODE").unwrap_or_else(|_| "collect".into());
@@ -541,6 +553,7 @@ fn run_surface(glade: GladeType, label: &str) -> Result<()> {
         "initial_draw_list_lengths":list_lengths,"frames":30,
         "initial_scene_input":initial_scene_input,
         "fixed_step":[1,60],"world_scale":1.0,"pixels":pixels,"commands":commands,
+        "final_nani_observation":final_nani_observation,
         "collect_tasks":collection.collect_tasks,"cross_pass_tasks":collection.cross_pass_tasks,
         "actual_surface_execution":{
             "inline_calls":surface.inline_calls,"inline_draws":surface.inline_draws,
