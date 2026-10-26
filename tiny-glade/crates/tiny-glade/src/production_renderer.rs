@@ -607,8 +607,8 @@ pub struct ProductionRenderer {
     other_applications: BTreeMap<usize, ApplicationGpu>,
     timing: Option<RenderStageTiming>,
     timing_gameplay_count: u64,
-    #[cfg(all(feature = "profile", target_os = "macos"))]
-    cpu_interval: Option<(u64, u64)>,
+    #[cfg(feature = "cpu-probe")]
+    cpu_recorder: Option<crate::render_cpu_probe::CpuIntervalRecorder>,
     gpu_span_window: crate::frame_counters::GpuSpanWindow,
     compiled_shader_root: PathBuf,
     pending: VecDeque<PresentTicket>,
@@ -768,8 +768,8 @@ impl ProductionRenderer {
             other_applications: BTreeMap::new(),
             timing: None,
             timing_gameplay_count: 0,
-            #[cfg(all(feature = "profile", target_os = "macos"))]
-            cpu_interval: None,
+            #[cfg(feature = "cpu-probe")]
+            cpu_recorder: None,
             gpu_span_window: Default::default(),
             compiled_shader_root,
             pending: VecDeque::new(),
@@ -1413,8 +1413,8 @@ impl ProductionRenderer {
             other_applications,
             timing: None,
             timing_gameplay_count: 0,
-            #[cfg(all(feature = "profile", target_os = "macos"))]
-            cpu_interval: None,
+            #[cfg(feature = "cpu-probe")]
+            cpu_recorder: None,
             gpu_span_window: Default::default(),
             compiled_shader_root,
             pending: VecDeque::new(),
@@ -1726,25 +1726,52 @@ impl ProductionRenderer {
         host_result
     }
 
-    /// Consecutive completion samples cover all render-thread CPU work,
-    /// including prior diagnostics and idle polling. Sleeping/GPU time does
-    /// not advance this clock. Only the existing opt-in timing path calls it.
-    #[cfg(all(feature = "profile", target_os = "macos"))]
-    fn record_cpu_interval(&mut self, frame: u64, emit: bool) {
-        let mut stamp = libc::timespec { tv_sec: 0, tv_nsec: 0 };
-        if unsafe { libc::clock_gettime(libc::CLOCK_THREAD_CPUTIME_ID, &mut stamp) } != 0 {
-            log::warn!(target: "tiny_glade::frame_timing", "render_cpu_error gameplay_n={} error={}", frame, std::io::Error::last_os_error());
-            self.cpu_interval = None;
-            return;
+    /// Install a bounded CPU-interval recorder for a measurement session. The
+    /// recorder samples owner CPU at each render completion point without any
+    /// logging or sampling gate (see [`crate::render_cpu_probe`]). Built under
+    /// the `cpu-probe` feature (implied by `profile`); the clock read itself is
+    /// macOS-only. Normal builds have no recorder and no clock overhead.
+    #[cfg(feature = "cpu-probe")]
+    pub fn install_cpu_recorder(
+        &mut self,
+        recorder: crate::render_cpu_probe::CpuIntervalRecorder,
+    ) {
+        self.cpu_recorder = Some(recorder);
+    }
+
+    /// Take the recorder back at the end of a measurement session to dump its
+    /// clean per-frame distribution.
+    #[cfg(feature = "cpu-probe")]
+    pub fn take_cpu_recorder(
+        &mut self,
+    ) -> Option<crate::render_cpu_probe::CpuIntervalRecorder> {
+        self.cpu_recorder.take()
+    }
+
+    /// Reset the recorder's baseline across an App switch so the first interval
+    /// of the new App is not measured against the old App's clock.
+    #[cfg(feature = "cpu-probe")]
+    pub fn reset_cpu_recorder_baseline(&mut self) {
+        if let Some(recorder) = self.cpu_recorder.as_mut() {
+            recorder.reset_baseline();
         }
-        let now = stamp.tv_sec as u64 * 1_000_000_000 + stamp.tv_nsec as u64;
-        if let Some((previous_frame, previous_cpu)) = self.cpu_interval.replace((frame, now)) {
-            if let Some(cpu_ns) = now.checked_sub(previous_cpu) {
-                if emit {
-                    log::info!(target: "tiny_glade::frame_timing", "render_cpu gameplay_n={} interval_frames={} scheduled_ms={:.6}", frame, frame - previous_frame, cpu_ns as f64 / 1_000_000.0);
-                }
+    }
+
+    /// Feed one render completion point into the recorder. `observed` is true
+    /// when the frame produced a real world observation (so its owner CPU is a
+    /// clean per-frame interval); failed/cancelled/app-switch frames pass false
+    /// so the baseline advances without a clean interval. Consecutive
+    /// completion samples cover all render-thread CPU work, including prior
+    /// diagnostics and idle polling; sleeping/GPU time does not advance this
+    /// clock. Unlike the legacy path this never logs and is not gated by log
+    /// sampling.
+    #[cfg(feature = "cpu-probe")]
+    fn record_cpu_interval(&mut self, frame: u64, receipt: Option<u64>, attempt: u64, observed: bool) {
+        if let Some(recorder) = self.cpu_recorder.as_mut() {
+            if observed {
+                recorder.record_observed(frame, receipt, attempt);
             } else {
-                log::warn!(target: "tiny_glade::frame_timing", "render_cpu_error gameplay_n={} error=thread_cpu_clock_regressed", frame);
+                recorder.record_unobserved(frame, attempt);
             }
         }
     }
@@ -1765,8 +1792,18 @@ impl ProductionRenderer {
         let every = crate::game_loop::frame_timing_every();
         if let Some(t) = self.timing.take() {
             let emit = t.frame <= 3 || t.frame % every == 0;
-            #[cfg(all(feature = "profile", target_os = "macos"))]
-            self.record_cpu_interval(t.frame, emit);
+            // The clean CPU recorder fires on every completion point, not just
+            // logged frames: it is independent of the frame-timing log and its
+            // sampling gate. Failed/cancelled frames advance the baseline as
+            // unobserved so a later clean interval does not absorb their CPU.
+            #[cfg(feature = "cpu-probe")]
+            {
+                let observed = self.first_error.is_none() && !self.cancel_preparation;
+                let attempt = self.timing_gameplay_count;
+                let receipt = t.receipt;
+                let frame = t.frame;
+                self.record_cpu_interval(frame, receipt, attempt, observed);
+            }
             if !emit { return self.take_error().map_or(Ok(()), Err); }
             let ms = |d: Duration| d.as_secs_f64() * 1000.0;
             let c = counters.unwrap_or_default();

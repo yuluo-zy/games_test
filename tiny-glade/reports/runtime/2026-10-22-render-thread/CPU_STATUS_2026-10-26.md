@@ -55,8 +55,12 @@ V31之前已完成：rhapsody433、核心库2887、应用库271项通过；真�
 
 ## 后续任务，按依赖推进
 
-1. **先分离干净逐帧CPU测量。** 用唯一profile诊断入口替换当前依赖完整timing日志的时钟采样；构造时一次分配有界记录缓冲，每次反馈完成仅读取时钟和保存累计计数，结束后输出。记录World/主图receipt/attempt并关联真实观察帧；失败推进基线、跨App重置，截断明确报错。普通构建无新增验证层或时钟开销。
-2. **冻结并测当前源码，核实收益与回退。** 两个agent只读审查、中央修改测试；相同输入交替顺序重复V30/V31/新候选，单独确认QoS策略贡献。静态、大量绘制、局部编辑、连续编辑每轮预热后至少1000帧、三轮；同时报告owner CPU均值/p95、主线程和进程工作量。轻场景p95回退超过5%不作为默认候选；不混入GPU时间。
+1. **先分离干净逐帧CPU测量。（代码已落地 2026-10-26）** 用唯一profile诊断入口替换当前依赖完整timing日志的时钟采样；构造时一次分配有界记录缓冲，每次反馈完成仅读取时钟和保存累计计数，结束后输出。记录World/主图receipt/attempt并关联真实观察帧；失败推进基线、跨App重置，截断明确报错。普通构建无新增验证层或时钟开销。
+   - 已实现 `crate::render_cpu_probe::CpuIntervalRecorder`（`crates/tiny-glade/src/render_cpu_probe.rs`）：构造时 `try_reserve_exact` 一次分配有界缓冲，满后置 `truncated` 标志并计 `dropped`（显式截断报错，不静默丢尾）；时钟回退记为 `ClockRegressed` 错误样本并重新播种基线，不 panic；`reset_baseline` 跨 App 清零；每条样本带 `frame`/`receipt`/`attempt`/`interval_frames`/`cpu_ns`/`kind`；`to_json("<label>")` 输出 schema `render-cpu-clean-v1`（含 clean 均值/p95、truncated/dropped、逐 receipt 样本）。
+   - `ProductionRenderer` 接线（`production_renderer.rs`）：`cpu_recorder` 字段 + `install_cpu_recorder`/`take_cpu_recorder`/`reset_cpu_recorder_baseline`/`record_cpu_interval`；在 `finish_render` 完成点调用，**不经 `log::info!`、不受 `frame_timing_every` 门控**；`observed = first_error.is_none() && !cancel_preparation`，失败/取消帧走 `record_unobserved` 推进基线。旧的 `record_cpu_interval`（日志+采样门控路径）已删除。
+   - 门控：新增 `cpu-probe` feature，`profile` 隐含它（`profile = ["dep:pprof", "cpu-probe"]`）；recorder 与接线均 `#[cfg(feature = "cpu-probe")]`，普通构建无此类型、无时钟开销；`CLOCK_THREAD_CPUTIME_ID` 读取在模块内再 `#[cfg(target_os = "macos")]`，非 macOS 返回 `None` 记 `ClockError`。
+   - 验证：默认 `cargo check -p tiny-glade --locked --offline` 通过（profile 代码被排除）；`cargo test -p tiny-glade --lib --features cpu-probe` 下 7 个 probe 单元测试全部通过（273 filtered）——覆盖有界截断、零容量拒绝、时钟回退记错误样本、未观察帧推进基线、跨 App 重置、receipt 关联+JSON 形状、混合失败/取消序列的 receipt 映射。**注意：`--features profile`（拉 pprof）在当前离线 Windows 环境无法编译（`aligned-vec` 不在离线缓存），故用等价的 `cpu-probe` feature 验证纯逻辑；`CLOCK_THREAD_CPUTIME_ID` 实际读取路径仍需在 macOS 上实跑验证。**
+2. **冻结并测当前源码，核实收益与回退。（未开始，需 macOS 实跑）** 两个agent只读审查、中央修改测试；相同输入交替顺序重复V30/V31/新候选，单独确认QoS策略贡献。静态、大量绘制、局部编辑、连续编辑每轮预热后至少1000帧、三轮；同时报告owner CPU均值/p95、主线程和进程工作量。轻场景p95回退超过5%不作为默认候选；不混入GPU时间。
 3. **按新栈继续减少分配与锁争用。** 先验证两种projection复用是否减少ManagedBuffer重建；再测每pass真实唯一ledger长度/容量，避免按draw总量过度预留；评估提交scratch复用。用新栈决定优先级，不重做已经仅占4/1941样本的补丁排序优化，不缓存未知reflection或任意callback。
 4. **收敛剩余Collect调度与可变owner绘制循环。** 统一跨pass和单pass的worker分页规则，保持任务/常量预算与稳定Commit顺序；迁移透明水/冰surface、Ui2d/ws_elements、object_grass_push可变循环。surface的Rc<RefCell> trace需改为worker本地记录后有序合并，不能unsafe Send或加全局锁。固定单draw及真实依赖次序不是旧串行fallback。
 5. **关闭压力下的同步与大回收缺口。** `Device::retire`在HostOOM仍无限等待GPU，需要在真实native对象创建前准入退役ticket；覆盖CommandBuffer双payload、SetupPool detach/adopt与transient Unbound提前创建，禁止Drop临时扩容或改成泄漏。F032压力全量析构仍无配额，应单独设计有界进度，不把未证明的等待称为死锁。

@@ -82,3 +82,9 @@ pub mod world_vegetation;
 pub mod gameplay_startup;
 
 mod render_control;
+
+// Clean per-frame render-thread CPU sampling. Built under `cpu-probe` (implied
+// by `profile`); the actual CLOCK_THREAD_CPUTIME_ID read is macOS-only inside
+// the module. A normal build carries no recorder type and no clock overhead.
+#[cfg(feature = "cpu-probe")]
+pub mod render_cpu_probe;
